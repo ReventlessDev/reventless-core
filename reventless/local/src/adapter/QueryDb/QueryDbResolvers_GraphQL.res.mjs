@@ -11,6 +11,7 @@ import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/I
 import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types/OwnerScope.res.mjs";
 import * as Api_Ids$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Ids.res.mjs";
 import * as Authorization$Reventless from "@reventlessdev/reventless-spec/src/types/Authorization.res.mjs";
+import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
 import * as SortKey_Filter$ReventlessLocal from "./SortKey_Filter.res.mjs";
 import * as QueryDbListQuery$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/QueryDbListQuery.res.mjs";
@@ -100,6 +101,17 @@ function Make(Bus) {
       let field = match._0;
       return Stdlib_Option.mapOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[field]), Stdlib_JSON.Decode.string), false, v => v === required);
     };
+    let retiredFieldOf = () => Stdlib_Option.map(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Plugin_Helpers$ReventlessCore.stateSchemaRegistry[name], StateAnnotations$Reventless.getSpec), spec => spec.retired), r => r.field);
+    let askedForRetired = args => Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["includeRetired"]), Stdlib_JSON.Decode.bool), false);
+    let retiredDecision = (ctx, args) => OwnerScope$Reventless.decideRetired(extractIdentity(ctx), retiredFieldOf(), askedForRetired(args), undefined);
+    let retiredAllows = (ctx, args, item) => {
+      let field = OwnerScope$Reventless.retiredScopeOf(retiredDecision(ctx, args));
+      if (field !== undefined) {
+        return Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[field]), Stdlib_JSON.Decode.bool), false) === false;
+      } else {
+        return true;
+      }
+    };
     let cap = s => s.charAt(0).toUpperCase() + s.slice(1);
     let registryEntry = Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry[name];
     let singleQueryName = registryEntry !== undefined ? registryEntry.singleFieldName : name.charAt(0).toLowerCase() + name.slice(1);
@@ -139,7 +151,7 @@ function Make(Bus) {
       if (item === undefined) {
         return null;
       }
-      if (!ownerAllows(ctx, item)) {
+      if (!ownerAllows(ctx, item) || !retiredAllows(ctx, args, item)) {
         return null;
       }
       if (!includeIdParam) {
@@ -186,7 +198,13 @@ function Make(Bus) {
         }));
         return Stdlib_Array.filterMap(loaded, param => {
           let id = param[0];
-          return Stdlib_Option.map(Stdlib_Option.filter(param[1], item => ownerAllows(ctx, item)), item => {
+          return Stdlib_Option.map(Stdlib_Option.filter(param[1], item => {
+            if (ownerAllows(ctx, item)) {
+              return retiredAllows(ctx, args, item);
+            } else {
+              return false;
+            }
+          }), item => {
             let obj = Stdlib_Option.mapOr(Stdlib_JSON.Decode.object(item), {}, prim => Object.assign({}, prim));
             obj["id"] = id;
             return obj;
@@ -242,19 +260,20 @@ function Make(Bus) {
           return emptyConnection;
         }
         let ownerScope = OwnerScope$Reventless.scopeOf(decision);
+        let retiredScope = OwnerScope$Reventless.retiredScopeOf(retiredDecision(ctx, args));
         let argsDict = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(args), {});
         let decodeLocalId = id => Stdlib_Option.map(DomainGraphQL_Server$ReventlessLocal.decodeGlobalId(id), param => param[1]);
         let listPage = Bus.getQueryDbListPage(name);
         if (listPage !== undefined) {
-          let conn = listPage(argsDict, capability, labelField, ownerScope);
+          let conn = listPage(argsDict, capability, labelField, ownerScope, retiredScope);
           if (conn !== undefined) {
             return conn;
           }
           let items = await fetchAllItems();
-          return QueryDbListQuery$ReventlessCore.run(items, argsDict, capability, labelField, decodeLocalId, ownerScope);
+          return QueryDbListQuery$ReventlessCore.run(items, argsDict, capability, labelField, decodeLocalId, ownerScope, retiredScope);
         }
         let items$1 = await fetchAllItems();
-        return QueryDbListQuery$ReventlessCore.run(items$1, argsDict, capability, labelField, decodeLocalId, ownerScope);
+        return QueryDbListQuery$ReventlessCore.run(items$1, argsDict, capability, labelField, decodeLocalId, ownerScope, retiredScope);
       };
       match = [
         sdl,
@@ -272,7 +291,13 @@ function Make(Bus) {
           };
         }
         let all = await fetchAllItems();
-        let items = all.filter(item => ownerAllows(ctx, item));
+        let items = all.filter(item => {
+          if (ownerAllows(ctx, item)) {
+            return retiredAllows(ctx, args, item);
+          } else {
+            return false;
+          }
+        });
         return {
           nextToken: null,
           scannedCount: items.length,
@@ -331,7 +356,13 @@ function Make(Bus) {
           return emptyConn;
         }
         let loaded = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.succeed([])));
-        let allItems = loaded.filter(item => ownerAllows(ctx, item));
+        let allItems = loaded.filter(item => {
+          if (ownerAllows(ctx, item)) {
+            return retiredAllows(ctx, args, item);
+          } else {
+            return false;
+          }
+        });
         let cursorFiltered;
         if (isBackward) {
           let beforeKey = Stdlib_Option.map(before, decodeCursor);
@@ -408,7 +439,13 @@ function Make(Bus) {
           return [];
         }
         let value = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d[index]), Stdlib_JSON.Decode.string), "");
-        let scoped = rows => rows.filter(item => ownerAllows(ctx, item));
+        let scoped = rows => rows.filter(item => {
+          if (ownerAllows(ctx, item)) {
+            return retiredAllows(ctx, args, item);
+          } else {
+            return false;
+          }
+        });
         let lookup = Bus.getQueryDbIndexLookup(name);
         if (lookup !== undefined) {
           return scoped(lookup(filterField, value));

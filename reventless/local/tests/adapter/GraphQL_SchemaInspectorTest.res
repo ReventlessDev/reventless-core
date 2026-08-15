@@ -432,7 +432,7 @@ describe("GraphQL_SchemaInspector", () => {
       // Query field should use filter + first/after/last/before args (Phase 4)
       expect(
         sdl->String.includes(
-          "Relay_Products(filter: RelayProductFilter, first: Int, after: String, last: Int, before: String): RelayProductConnection!",
+          "Relay_Products(filter: RelayProductFilter, first: Int, after: String, last: Int, before: String, includeRetired: Boolean): RelayProductConnection!",
         ),
       )->toBe(true)
       // Connection filter input with search/searchPrefix/ids

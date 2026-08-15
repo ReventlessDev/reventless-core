@@ -80,6 +80,15 @@ async function dispatch(binding, lookupBindingOpt, payload) {
       let required = match._1;
       return Stdlib_Option.mapOr(argStr(item, match._0), false, v => v === required);
     };
+    let askedForRetired = Stdlib_Option.getOr(Stdlib_Option.flatMap(argObj(payload.arguments)["includeRetired"], Stdlib_JSON.Decode.bool), false);
+    let retiredScope = OwnerScope$Reventless.retiredScopeOf(OwnerScope$Reventless.decideRetired(payload.identity, binding.retiredField, askedForRetired, undefined));
+    let retiredAllows = item => {
+      if (retiredScope !== undefined) {
+        return Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[retiredScope]), Stdlib_JSON.Decode.bool), false) === false;
+      } else {
+        return true;
+      }
+    };
     let other = payload.kind;
     switch (other) {
       case "byIds" :
@@ -87,7 +96,13 @@ async function dispatch(binding, lookupBindingOpt, payload) {
         let found = await binding.pushdowns.byIds(rm, ids);
         let missing = found.length < ids.length ? Stdlib_Array.filterMap(ids, Api_Ids$ReventlessCore.alternateKey) : [];
         let extra = missing.length !== 0 ? await binding.pushdowns.byIds(rm, missing) : [];
-        return found.concat(extra).filter(ownerAllows);
+        return found.concat(extra).filter(item => {
+          if (ownerAllows(item)) {
+            return retiredAllows(item);
+          } else {
+            return false;
+          }
+        });
       case "getById" :
         let id = Stdlib_Option.getOr(argStr(payload.arguments, "id"), "");
         let loadKey = async key => {
@@ -106,7 +121,7 @@ async function dispatch(binding, lookupBindingOpt, payload) {
             await loadKey(match$2)
           ];
         let found$1 = match$3[1];
-        if (found$1 !== undefined && ownerAllows(found$1)) {
+        if (found$1 !== undefined && ownerAllows(found$1) && retiredAllows(found$1)) {
           if (binding.includeIdParam) {
             return withId(found$1, match$3[0]);
           } else {
@@ -134,7 +149,13 @@ async function dispatch(binding, lookupBindingOpt, payload) {
           authorized = true;
         }
         if (authorized) {
-          return (await binding.pushdowns.indexLookup(rm, field, value)).filter(ownerAllows);
+          return (await binding.pushdowns.indexLookup(rm, field, value)).filter(item => {
+            if (ownerAllows(item)) {
+              return retiredAllows(item);
+            } else {
+              return false;
+            }
+          });
         } else {
           return [];
         }
@@ -148,7 +169,7 @@ async function dispatch(binding, lookupBindingOpt, payload) {
         if (typeof decision !== "object" && decision !== "Unscoped") {
           return emptyConnection();
         }
-        return await binding.pushdowns.itemsPage(rm, subIdField, id$1, argObj(payload.arguments), OwnerScope$Reventless.scopeOf(decision));
+        return await binding.pushdowns.itemsPage(rm, subIdField, id$1, argObj(payload.arguments), OwnerScope$Reventless.scopeOf(decision), retiredScope);
         break;
       case "list" :
         let argsDict = argObj(payload.arguments);
@@ -157,12 +178,12 @@ async function dispatch(binding, lookupBindingOpt, payload) {
           return emptyConnection();
         }
         let ownerScope = OwnerScope$Reventless.scopeOf(decision$1);
-        let conn = await binding.pushdowns.listPage(rm, argsDict, binding.capability, binding.labelField, ownerScope);
+        let conn = await binding.pushdowns.listPage(rm, argsDict, binding.capability, binding.labelField, ownerScope, retiredScope);
         if (conn !== undefined) {
           return conn;
         }
         let items$1 = await binding.pushdowns.scanAll(rm);
-        return QueryDbListQuery$ReventlessCore.run(items$1, argsDict, binding.capability, binding.labelField, undefined, ownerScope);
+        return QueryDbListQuery$ReventlessCore.run(items$1, argsDict, binding.capability, binding.labelField, undefined, ownerScope, retiredScope);
         break;
       case "resolveMany" :
         let target = Stdlib_Option.getOr(payload.target, rm);

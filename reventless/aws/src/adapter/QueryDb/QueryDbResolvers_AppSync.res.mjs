@@ -9,6 +9,7 @@ import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types
 import * as Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
 import * as AppSync_Function$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Function.res.mjs";
 import * as Util_AppSync$ReventlessAws from "../../util/Util_AppSync.res.mjs";
+import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 import * as Util_DynamoDb$ReventlessAws from "../../util/Util_DynamoDb.res.mjs";
 import * as Util_QueryDb$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_QueryDb.res.mjs";
 import * as AppSync_DataSource$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_DataSource.res.mjs";
@@ -111,13 +112,21 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
     let requireAttribute = internalRowRequiredAttr(name$1);
     let ownerField = stateSchemaOpt !== undefined ? Owner$Reventless.fieldNames(stateSchemaOpt)[0] : undefined;
     OwnerScopeDiagnostics$ReventlessCore.warnIfNoElevatedGroups("QueryDbResolvers_AppSync", name$1, ownerField);
-    if (ownerField !== undefined) {
-      let indexed = indexes.some(ic => Stdlib_Option.getOr(ic.idField, ic.index) === ownerField) || Stdlib_Option.getOr(subIdField, "") === ownerField;
-      if (!indexed) {
-        log.warn("QueryDbResolvers_AppSync", undefined, name$1 + `: @owner field "` + ownerField + `" is not the key of any index on this table. ` + "Owner-scoped reads will Scan and filter, so pages shrink as the caller's share of the rows falls. Add an @index on that field before this read model grows.");
+    let isIndexed = f => {
+      if (indexes.some(ic => Stdlib_Option.getOr(ic.idField, ic.index) === f)) {
+        return true;
+      } else {
+        return Stdlib_Option.getOr(subIdField, "") === f;
       }
+    };
+    if (ownerField !== undefined && !isIndexed(ownerField)) {
+      log.warn("QueryDbResolvers_AppSync", undefined, name$1 + `: @owner field "` + ownerField + `" is not the key of any index on this table. ` + "Owner-scoped reads will Scan and filter, so pages shrink as the caller's share of the rows falls. Add an @index on that field before this read model grows.");
     }
-    let resolverAll = makeQueryResolver(Stdlib_String.capitalize(fieldNameForAll), fieldNameForAll, connectionSpec ? AppSync_Resolver_Functions$PulumiAws.listAllItemsConnection(labelField, filterFieldNames, rangeFieldNames, sortFieldNames, requireAttribute, ownerField, OwnerScope$Reventless.elevatedGroups()) : AppSync_Resolver_Functions$PulumiAws.listAllItems);
+    let retiredField = Stdlib_Option.map(Stdlib_Option.flatMap(Stdlib_Option.flatMap(stateSchemaOpt, StateAnnotations$Reventless.getSpec), spec => spec.retired), r => r.field);
+    if (retiredField !== undefined && !isIndexed(retiredField)) {
+      log.warn("QueryDbResolvers_AppSync", undefined, name$1 + `: @retired field "` + retiredField + `" is not the key of any index on this table. ` + "Reads that exclude retired rows will Scan and filter, so pages shrink as the archive's share of the rows grows. Add an @index on that field before this read model grows.");
+    }
+    let resolverAll = makeQueryResolver(Stdlib_String.capitalize(fieldNameForAll), fieldNameForAll, connectionSpec ? AppSync_Resolver_Functions$PulumiAws.listAllItemsConnection(labelField, filterFieldNames, rangeFieldNames, sortFieldNames, requireAttribute, ownerField, OwnerScope$Reventless.elevatedGroups(), retiredField) : AppSync_Resolver_Functions$PulumiAws.listAllItems);
     let resolversByIndex = indexes.map(indexConfig => {
       let index = indexConfig.index;
       let stripLeadingBy = s => {

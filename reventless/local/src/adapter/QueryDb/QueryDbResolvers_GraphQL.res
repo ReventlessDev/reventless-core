@@ -180,6 +180,53 @@ module Make = (Bus: LocalBus.T) => {
         ->Option.mapOr(false, v => v == required)
       }
 
+    // ── Retirement narrowing ─────────────────────────────────────────────────
+    // The same two forms as owner scoping above, for the same reason: a door
+    // that narrows the page and a door that hands back one row both have to ask.
+    // Read per request for the same reason too.
+    let retiredFieldOf = () =>
+      Plugin_Helpers.stateSchemaRegistry
+      ->Dict.get(name)
+      ->Option.flatMap(Reventless.StateAnnotations.getSpec)
+      ->Option.flatMap(spec => spec.retired)
+      ->Option.map(r => r.field)
+
+    // `includeRetired` is the caller asking; `decideRetired` decides whether the
+    // asking counts. Read here rather than inside the decision so the argument
+    // stays an argument — the door reports what was asked, the classifier says
+    // who may be answered.
+    let askedForRetired = (~args) =>
+      args
+      ->JSON.Decode.object
+      ->Option.flatMap(d => d->Dict.get("includeRetired"))
+      ->Option.flatMap(JSON.Decode.bool)
+      ->Option.getOr(false)
+
+    let retiredDecision = (~ctx, ~args) =>
+      extractIdentity(ctx)->Reventless.OwnerScope.decideRetired(
+        ~retiredField=retiredFieldOf(),
+        ~asked=askedForRetired(~args),
+      )
+
+    let retiredScopeFor = (~ctx, ~args) =>
+      retiredDecision(~ctx, ~args)->Reventless.OwnerScope.retiredScopeOf
+
+    // Post-read form. The single-row and by-ids doors are where a filtered list
+    // would otherwise be walked around: a pasted URL, or a reference resolved
+    // from another row, reaches the entity directly.
+    let retiredAllows = (~ctx, ~args, item: JSON.t) =>
+      switch retiredScopeFor(~ctx, ~args) {
+      | None => true
+      | Some(field) =>
+        // Absent or non-boolean keeps the row, matching `QueryDbListQuery`: a row
+        // written before the annotation existed is not retired.
+        item
+        ->JSON.Decode.object
+        ->Option.flatMap(d => d->Dict.get(field))
+        ->Option.flatMap(JSON.Decode.bool)
+        ->Option.getOr(false) == false
+      }
+
     let cap = s => s->String.charAt(0)->String.toUpperCase ++ s->String.slice(~start=1)
 
     // Resolve query field names: check registry first, fall back to safe defaults.
@@ -260,7 +307,8 @@ module Make = (Bus: LocalBus.T) => {
           // A row the caller does not own answers as though it were not there.
           // Distinguishing "not yours" from "not found" here would turn this door
           // into an oracle for which ids exist.
-          | Some(item) if !ownerAllows(~ctx, item) => JSON.Encode.null
+          | Some(item) if !ownerAllows(~ctx, item) || !retiredAllows(~ctx, ~args, item) =>
+            JSON.Encode.null
           | Some(item) =>
             if includeIdParam {
               // Copied — `JSON.Decode.object` hands back the stored object itself,
@@ -327,7 +375,7 @@ module Make = (Bus: LocalBus.T) => {
               loaded
               ->Array.filterMap(((id, opt)) =>
                 opt
-                ->Option.filter(item => ownerAllows(~ctx, item))
+                ->Option.filter(item => ownerAllows(~ctx, item) && retiredAllows(~ctx, ~args, item))
                 ->Option.map(item => {
                   let obj = item->JSON.Decode.object->Option.mapOr(Dict.make(), Dict.copy)
                   obj->Dict.set("id", JSON.Encode.string(id))
@@ -411,6 +459,11 @@ module Make = (Bus: LocalBus.T) => {
           | RefuseOwned => emptyConnection
           | decision =>
             let ownerScope = Reventless.OwnerScope.scopeOf(decision)
+            // Same both-arms rule as `ownerScope`, and the same reason it is
+            // spelled out: this predicate decides what the caller may see, so a
+            // push-down that did not receive it would serve the archive to
+            // everyone on the path that is hardest to notice.
+            let retiredScope = retiredScopeFor(~ctx, ~args)
             let argsDict = args->JSON.Decode.object->Option.getOr(Dict.make())
             // Prefer a backend list push-down (SQLite builds json_extract predicates
             // + ORDER BY … LIMIT so it never materialises the whole read model). When
@@ -427,7 +480,7 @@ module Make = (Bus: LocalBus.T) => {
               DomainGraphQL_Server.decodeGlobalId(id)->Option.map(((_, lid)) => lid)
             switch Bus.getQueryDbListPage(name) {
             | Some(listPage) =>
-              switch listPage(~argsDict, ~capability, ~labelField, ~ownerScope?) {
+              switch listPage(~argsDict, ~capability, ~labelField, ~ownerScope?, ~retiredScope?) {
               | Some(conn) => conn
               | None =>
                 let items = await fetchAllItems()
@@ -438,6 +491,7 @@ module Make = (Bus: LocalBus.T) => {
                   ~labelField,
                   ~decodeLocalId,
                   ~ownerScope?,
+                  ~retiredScope?,
                 )
               }
             | None =>
@@ -449,6 +503,7 @@ module Make = (Bus: LocalBus.T) => {
                 ~labelField,
                 ~decodeLocalId,
                 ~ownerScope?,
+                ~retiredScope?,
               )
             }
           }
@@ -466,7 +521,8 @@ module Make = (Bus: LocalBus.T) => {
           // The legacy shape has no push-down to reach, so the narrowing is a plain
           // filter here. `scannedCount` counts what is returned, not what was read:
           // the pre-scoping total would tell a caller how many rows they may not see.
-          let items = all->Array.filter(item => ownerAllows(~ctx, item))
+          let items =
+            all->Array.filter(item => ownerAllows(~ctx, item) && retiredAllows(~ctx, ~args, item))
           Obj.magic({"nextToken": Nullable.null, "scannedCount": items->Array.length, "items": items})
         }
       }
@@ -531,7 +587,10 @@ module Make = (Bus: LocalBus.T) => {
             // Narrowed here, before the cursor window and the sort-key filter, so
             // every page this door emits is a page of rows the caller owns. Doing
             // it after would hand back short pages with valid cursors.
-            let allItems = loaded->Array.filter(item => ownerAllows(~ctx, item))
+            let allItems =
+              loaded->Array.filter(item =>
+                ownerAllows(~ctx, item) && retiredAllows(~ctx, ~args, item)
+              )
 
             // Cursor-keyed filtering: exclude items on the cursor side of the boundary
             let cursorFiltered = if isBackward {
@@ -624,7 +683,8 @@ module Make = (Bus: LocalBus.T) => {
             // push-down and the scan are two ways to reach the same rows, and a
             // narrowing that lives in only one is a hole that appears when a
             // backend gains or loses an index.
-            let scoped = rows => rows->Array.filter(item => ownerAllows(~ctx, item))
+            let scoped = rows =>
+              rows->Array.filter(item => ownerAllows(~ctx, item) && retiredAllows(~ctx, ~args, item))
             // Prefer the pushed-down equality lookup (SQLite rides the GSI index;
             // in-memory reuses its lazy snapshot). Fall back to scan+filter only
             // if no lookup is registered for this QueryDb.

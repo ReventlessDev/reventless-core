@@ -52,6 +52,8 @@ let ops: QueryDb_Adapter.operations = {
   deleteBatch: Obj.magic(0),
 }
 
+let lastRetiredScope: ref<option<string>> = ref(None)
+
 let pushdowns: PgQueryResolver_Lambda.pushdowns = {
   indexLookup: async (~readModelName as _, field, value) =>
     allItems()->Array.filter(i => fieldEq(i, field, value)),
@@ -63,11 +65,20 @@ let pushdowns: PgQueryResolver_Lambda.pushdowns = {
     ~capability as _,
     ~labelField as _,
     ~ownerScope: option<(string, string)>=?,
+    ~retiredScope: option<string>=?,
   ) => {
     lastOwnerScope := ownerScope
+    lastRetiredScope := retiredScope
     listPageReturn.contents
   },
-  itemsPage: async (~readModelName as _, ~subIdField as _, ~id, ~argsDict as _, ~ownerScope as _=?) =>
+  itemsPage: async (
+    ~readModelName as _,
+    ~subIdField as _,
+    ~id,
+    ~argsDict as _,
+    ~ownerScope as _=?,
+    ~retiredScope as _=?,
+  ) =>
     // Sentinel echoing the requested id, so the dispatch routing is observable.
     JSON.Encode.object(Dict.fromArray([("itemsFor", JSON.Encode.string(id))])),
   scanAll: async (~readModelName as _) => allItems(),
@@ -82,6 +93,7 @@ let makeBinding = (
   ~authorization=Reventless.Authorization.AllowAnonymous,
   ~subIdField=None,
   ~ownerField=None,
+  ~retiredField=None,
   (),
 ): PgQueryResolver_Lambda.binding => {
   ops,
@@ -96,6 +108,7 @@ let makeBinding = (
   includeIdParam: true,
   authorization,
   ownerField,
+  retiredField,
 }
 
 let mkPayload = (

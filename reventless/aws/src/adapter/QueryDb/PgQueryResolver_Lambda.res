@@ -68,6 +68,7 @@ type pushdowns = {
     ~capability: ReventlessCore.GraphQL_FragmentGenerator.serverCapability,
     ~labelField: string,
     ~ownerScope: (string, string)=?,
+    ~retiredScope: string=?,
   ) => promise<option<JSON.t>>,
   // Sub-id connection ({single}Items) — keyset over sub_key within a partition.
   itemsPage: (
@@ -76,6 +77,7 @@ type pushdowns = {
     ~id: string,
     ~argsDict: dict<JSON.t>,
     ~ownerScope: (string, string)=?,
+    ~retiredScope: string=?,
   ) => promise<JSON.t>,
   // Full materialisation for the list fallback (shapes listPage declines).
   scanAll: (~readModelName: string) => promise<array<JSON.t>>,
@@ -95,6 +97,7 @@ type binding = {
       from the same schema `capability` comes from, so the two cannot disagree
       about which fields this read model has. */
   ownerField: option<string>,
+  retiredField: option<string>,
 }
 
 // -- arg helpers -------------------------------------------------------------
@@ -178,6 +181,32 @@ let dispatch = async (
       | ScopeTo(field, required) =>
         item->argStr(field)->Option.mapOr(false, v => v == required)
       }
+    // The caller's request to see the archive, honoured only where the
+    // classification says it counts.
+    let askedForRetired =
+      payload.arguments
+      ->argObj
+      ->Dict.get("includeRetired")
+      ->Option.flatMap(JSON.Decode.bool)
+      ->Option.getOr(false)
+    let retiredScope =
+      payload.identity
+      ->Reventless.OwnerScope.decideRetired(
+        ~retiredField=binding.retiredField,
+        ~asked=askedForRetired,
+      )
+      ->Reventless.OwnerScope.retiredScopeOf
+    // Absent or non-boolean keeps the row, as in `QueryDbListQuery`.
+    let retiredAllows = (item: JSON.t) =>
+      switch retiredScope {
+      | None => true
+      | Some(field) =>
+        item
+        ->JSON.Decode.object
+        ->Option.flatMap(d => d->Dict.get(field))
+        ->Option.flatMap(JSON.Decode.bool)
+        ->Option.getOr(false) == false
+      }
     switch payload.kind {
     | "getById" =>
       let id = payload.arguments->argStr("id")->Option.getOr("")
@@ -199,7 +228,7 @@ let dispatch = async (
       switch found {
       // A row the caller does not own answers as "not found". Saying "not yours"
       // instead would make this door an oracle for which ids exist.
-      | Some(item) if !ownerAllows(item) => JSON.Encode.null
+      | Some(item) if !ownerAllows(item) || !retiredAllows(item) => JSON.Encode.null
       | Some(item) => binding.includeIdParam ? withId(item, resolvedKey) : item
       | None => JSON.Encode.null
       }
@@ -216,7 +245,9 @@ let dispatch = async (
       let extra = missing->Array.length > 0
         ? await binding.pushdowns.byIds(~readModelName=rm, missing)
         : []
-      JSON.Encode.array(Array.concat(found, extra)->Array.filter(ownerAllows))
+      JSON.Encode.array(
+        Array.concat(found, extra)->Array.filter(item => ownerAllows(item) && retiredAllows(item)),
+      )
 
     | "items" =>
       // Sub-id connection: {single}Items(id, filter, first/after/last/before).
@@ -233,6 +264,7 @@ let dispatch = async (
             ~id,
             ~argsDict=payload.arguments->argObj,
             ~ownerScope=?Reventless.OwnerScope.scopeOf(decision),
+            ~retiredScope?,
           )
         }
       | None => emptyConnection()
@@ -274,7 +306,7 @@ let dispatch = async (
       if authorized {
         JSON.Encode.array(
           (await binding.pushdowns.indexLookup(~readModelName=rm, field, value))->Array.filter(
-            ownerAllows,
+            item => ownerAllows(item) && retiredAllows(item),
           ),
         )
       } else {
@@ -293,6 +325,7 @@ let dispatch = async (
           ~capability=binding.capability,
           ~labelField=binding.labelField,
           ~ownerScope?,
+          ~retiredScope?,
         ) {
         | Some(conn) => conn
         | None =>
@@ -306,6 +339,7 @@ let dispatch = async (
             ~capability=binding.capability,
             ~labelField=binding.labelField,
             ~ownerScope?,
+            ~retiredScope?,
           )
         }
       }

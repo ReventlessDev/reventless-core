@@ -6,6 +6,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Owner$Reventless from "@reventlessdev/reventless-spec/src/components/Owner.res.mjs";
 import * as PgRuntime$ReventlessAws from "../Postgres/PgRuntime.res.mjs";
 import * as HandlerFactoryHelpersMjs from "./HandlerFactoryHelpers.mjs";
+import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 import * as PgQueryResolver_Lambda$ReventlessAws from "../QueryDb/PgQueryResolver_Lambda.res.mjs";
 import * as ProjectionEntryPoint_Ops$ReventlessAws from "./ProjectionEntryPoint_Ops.res.mjs";
 import * as QueryEnginePostgres$ReventlessPostgres from "@reventlessdev/reventless-postgres/src/QueryEnginePostgres.res.mjs";
@@ -74,7 +75,8 @@ function registerBinding(pushdowns, pgConnection, entry, spec) {
     labelField: entry.labelField,
     includeIdParam: entry.includeIdParam,
     authorization: spec.authorization,
-    ownerField: Owner$Reventless.fieldNames(spec.stateSchema)[0]
+    ownerField: Owner$Reventless.fieldNames(spec.stateSchema)[0],
+    retiredField: Stdlib_Option.map(Stdlib_Option.flatMap(StateAnnotations$Reventless.getSpec(spec.stateSchema), a => a.retired), r => r.field)
   });
   HandlerFactoryHelpersMjs.log.debug("registered resolver binding for " + entry.readModelName, {
     comp: "PgQueryResolver"

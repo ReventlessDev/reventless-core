@@ -360,7 +360,7 @@ export function request(ctx) {
 ` + resultResponseCode + `
 `;
 
-function listAllItemsConnection(labelField, filterFieldsOpt, rangeFieldsOpt, sortFieldsOpt, requireAttribute, ownerField, elevatedGroupsOpt) {
+function listAllItemsConnection(labelField, filterFieldsOpt, rangeFieldsOpt, sortFieldsOpt, requireAttribute, ownerField, elevatedGroupsOpt, retiredField) {
   let filterFields = filterFieldsOpt !== undefined ? filterFieldsOpt : [];
   let rangeFields = rangeFieldsOpt !== undefined ? rangeFieldsOpt : [];
   let sortFields = sortFieldsOpt !== undefined ? sortFieldsOpt : [];
@@ -390,6 +390,26 @@ function listAllItemsConnection(labelField, filterFieldsOpt, rangeFieldsOpt, sor
   }`;
   } else {
     ownerClause = "";
+  }
+  let retiredClause;
+  if (retiredField !== undefined) {
+    let elevatedLiteral$1 = elevatedGroups.map(g => `'` + g + `'`).join(", ");
+    let exemptPrelude = ownerField !== undefined ? "" : `
+  const _id = ctx.identity;
+  const _sub = _id == null ? null : _id.sub;
+  const _groups = (_id != null && _id.claims != null && _id.claims['cognito:groups']) || [];
+  const _elevated = [` + elevatedLiteral$1 + `];
+  const _exempt = _sub == null || _groups.some(g => _elevated.indexOf(g) >= 0);`;
+    retiredClause = exemptPrelude + `
+  // ── retirement narrowing (generated) ──
+  const _wantsRetired = _exempt && ctx.args.includeRetired === true;
+  if (!_wantsRetired) {
+    names['#retired'] = '` + retiredField + `';
+    values[':retiredFalse'] = util.dynamodb.toDynamoDB(false);
+    parts.push('(attribute_not_exists(#retired) OR #retired = :retiredFalse)');
+  }`;
+  } else {
+    retiredClause = "";
   }
   let filterClauses = filterFields.map(f => `
   if (filter.` + f + `Eq !== undefined && filter.` + f + `Eq !== null && filter.` + f + `Eq !== '') {
@@ -460,7 +480,7 @@ export function request(ctx) {
       return key;
     });
     parts.push('#id IN (' + placeholders.join(', ') + ')');
-  }` + filterClauses + rangeClauses + requireAttributeClause + ownerClause + `
+  }` + filterClauses + rangeClauses + requireAttributeClause + ownerClause + retiredClause + `
   // The cursor is base64(JSON({ token, index })); decode the after arg back to the raw
   // DynamoDB continuation token the response side emitted (Fix 1 round-trip).
   let after = null;

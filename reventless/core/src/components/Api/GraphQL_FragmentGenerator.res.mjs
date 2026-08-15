@@ -374,7 +374,7 @@ function deriveByIdsQueryField(listFieldName, returnTypeName) {
 function deriveConnectionQueryField(listFieldName, singularTypeName, filterTypeName, hasOrderByOpt) {
   let hasOrderBy = hasOrderByOpt !== undefined ? hasOrderByOpt : false;
   let orderByArg = hasOrderBy ? `, orderBy: ` + singularTypeName + `OrderBy` : "";
-  return `  ` + listFieldName + `(filter: ` + filterTypeName + orderByArg + `, first: Int, after: String, last: Int, before: String): ` + singularTypeName + `Connection!`;
+  return `  ` + listFieldName + `(filter: ` + filterTypeName + orderByArg + `, first: Int, after: String, last: Int, before: String, includeRetired: Boolean): ` + singularTypeName + `Connection!`;
 }
 
 function deriveMutationFieldFromObject(fieldName, collectedTypes, seenTypes, variantSchema) {

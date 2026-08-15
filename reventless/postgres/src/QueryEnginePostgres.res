@@ -168,6 +168,15 @@ module Make = (P: {let pool: PgDriver.pool}) => {
   let idExprC = `COALESCE(item->>'id', partition_key) COLLATE "C"`
   let jsonTextC = (field: string): string => `${col(field)} COLLATE "C"`
 
+  // "not retired", as jsonb rather than text. `->` keeps the value typed, so a
+  // JSON boolean true is distinguishable from the JSON string "true"; `->>`
+  // would render both as 'true' and hide a row the shared spec keeps, since that
+  // spec decodes strictly and reads a non-boolean as "no flag". `IS DISTINCT
+  // FROM` rather than `<>` so an absent key — NULL — keeps the row instead of
+  // making the whole predicate NULL and dropping it.
+  let notRetiredC = (field: string): string =>
+    `(item->'${field->String.replaceAll("'", "''")}') IS DISTINCT FROM 'true'::jsonb`
+
   // Connection-list push-down. Builds `item->>'field'` predicates + keyset
   // WHERE + `ORDER BY … LIMIT pageSize+1` so a page reads only what it returns
   // rather than the whole read model. Reproduces `QueryDbListQuery` semantics
@@ -184,6 +193,7 @@ module Make = (P: {let pool: PgDriver.pool}) => {
     ~capability: GraphQL_FragmentGenerator.serverCapability,
     ~labelField as _,
     ~ownerScope: option<(string, string)>=?,
+    ~retiredScope: option<string>=?,
   ): option<JSON.t> => {
     let table = QueryDbStorage_Postgres_Ops.tableName(readModelName)
     let filterDict =
@@ -218,6 +228,10 @@ module Make = (P: {let pool: PgDriver.pool}) => {
       switch ownerScope {
       | Some((field, required)) =>
         whereParts->Array.push(`${jsonTextC(field)} = ${b->param(JSON.Encode.string(required))}`)
+      | None => ()
+      }
+      switch retiredScope {
+      | Some(field) => whereParts->Array.push(notRetiredC(field))
       | None => ()
       }
       let valString = v =>
@@ -320,6 +334,7 @@ module Make = (P: {let pool: PgDriver.pool}) => {
     ~id: string,
     ~argsDict: dict<JSON.t>,
     ~ownerScope: option<(string, string)>=?,
+    ~retiredScope: option<string>=?,
   ): JSON.t => {
     let table = QueryDbStorage_Postgres_Ops.tableName(readModelName)
     let filterDict =
@@ -339,6 +354,10 @@ module Make = (P: {let pool: PgDriver.pool}) => {
     switch ownerScope {
     | Some((field, required)) =>
       where->Array.push(`${jsonTextC(field)} = ${b->param(JSON.Encode.string(required))}`)
+    | None => ()
+    }
+    switch retiredScope {
+    | Some(field) => where->Array.push(notRetiredC(field))
     | None => ()
     }
     fstr("prefix")->Option.forEach(p =>

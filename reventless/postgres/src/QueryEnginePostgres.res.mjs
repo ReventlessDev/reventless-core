@@ -169,7 +169,8 @@ function Make(P) {
   };
   let idExprC = `COALESCE(item->>'id', partition_key) COLLATE "C"`;
   let jsonTextC = field => col(field) + ` COLLATE "C"`;
-  let listPage = async (readModelName, argsDict, capability, param$1, ownerScope) => {
+  let notRetiredC = field => `(item->'` + field.replaceAll("'", "''") + `') IS DISTINCT FROM 'true'::jsonb`;
+  let listPage = async (readModelName, argsDict, capability, param$1, ownerScope, retiredScope) => {
     let table = QueryDbStorage_Postgres_Ops$ReventlessPostgres.tableName(readModelName);
     let filterDict = Stdlib_Option.getOr(Stdlib_Option.flatMap(argsDict["filter"], Stdlib_JSON.Decode.object), {});
     let strNonEmpty = k => Stdlib_Option.mapOr(Stdlib_Option.flatMap(filterDict[k], Stdlib_JSON.Decode.string), false, s => s.length > 0);
@@ -185,6 +186,9 @@ function Make(P) {
     let whereParts = [QueryDbStorage_Postgres_Ops$ReventlessPostgres.notExpiredClause];
     if (ownerScope !== undefined) {
       whereParts.push(jsonTextC(ownerScope[0]) + ` = ` + param(b, ownerScope[1]));
+    }
+    if (retiredScope !== undefined) {
+      whereParts.push(notRetiredC(retiredScope));
     }
     let valString = v => {
       let s = Stdlib_JSON.Decode.string(v);
@@ -234,7 +238,7 @@ function Make(P) {
     let cursorValueOf = item => Stdlib_Option.getOr(QueryDbListQuery$ReventlessCore.getFieldString(item, cursorField), QueryDbListQuery$ReventlessCore.getId(item));
     return QueryDbListQuery$ReventlessCore.buildConnection(pageItems, hasMore, false, cursorValueOf);
   };
-  let itemsPage = async (readModelName, param$1, id, argsDict, ownerScope) => {
+  let itemsPage = async (readModelName, param$1, id, argsDict, ownerScope, retiredScope) => {
     let table = QueryDbStorage_Postgres_Ops$ReventlessPostgres.tableName(readModelName);
     let filterDict = Stdlib_Option.getOr(Stdlib_Option.flatMap(argsDict["filter"], Stdlib_JSON.Decode.object), {});
     let fstr = k => Stdlib_Option.flatMap(filterDict[k], Stdlib_JSON.Decode.string);
@@ -254,6 +258,9 @@ function Make(P) {
     ];
     if (ownerScope !== undefined) {
       where.push(jsonTextC(ownerScope[0]) + ` = ` + param(b, ownerScope[1]));
+    }
+    if (retiredScope !== undefined) {
+      where.push(notRetiredC(retiredScope));
     }
     Stdlib_Option.forEach(fstr("prefix"), p => {
       where.push(`starts_with(sub_key, ` + param(b, p) + `)`);
@@ -316,6 +323,7 @@ function Make(P) {
     byIds: byIds,
     idExprC: idExprC,
     jsonTextC: jsonTextC,
+    notRetiredC: notRetiredC,
     listPage: listPage,
     itemsPage: itemsPage
   };

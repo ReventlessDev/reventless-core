@@ -436,6 +436,19 @@ let deriveByIdsQueryField = (
 ): string =>
   `  ${listFieldName}ByIds(ids: [String!]!): [${returnTypeName}!]!`
 
+// `includeRetired` sits beside the paging arguments rather than inside `filter`,
+// and that placement is the point. `filter` is the caller's description of the
+// rows they want; this is a request to lift a restriction the server placed on
+// them, which the server grants or ignores on its own terms. Putting it in the
+// filter input would also require the field to be a declared filter field, which
+// would publish `<field>Eq` to callers who can only ever get an empty page from
+// it.
+//
+// Emitted unconditionally, on every connection field, whether or not the view
+// declares a retirement flag. A view that declares none ignores it, and the
+// alternative — an argument that appears and disappears with the annotation —
+// makes adding `@retired` a breaking schema change for every client that had
+// already learned the field's shape.
 let deriveConnectionQueryField = (
   ~listFieldName: string,
   ~singularTypeName: string,
@@ -443,7 +456,7 @@ let deriveConnectionQueryField = (
   ~hasOrderBy: bool=false,
 ): string => {
   let orderByArg = hasOrderBy ? `, orderBy: ${singularTypeName}OrderBy` : ""
-  `  ${listFieldName}(filter: ${filterTypeName}${orderByArg}, first: Int, after: String, last: Int, before: String): ${singularTypeName}Connection!`
+  `  ${listFieldName}(filter: ${filterTypeName}${orderByArg}, first: Int, after: String, last: Int, before: String, includeRetired: Boolean): ${singularTypeName}Connection!`
 }
 
 // ── Mutation field derivation ──────────────────────────────────────────────

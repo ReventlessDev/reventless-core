@@ -153,6 +153,10 @@ let registerBinding = (
       // From the same schema `capability` is derived from, one line above, so the
       // two cannot end up disagreeing about this read model's fields.
       ownerField: Reventless.Owner.fieldNames(spec.stateSchema)->Array.get(0),
+      retiredField: spec.stateSchema
+      ->Reventless.StateAnnotations.getSpec
+      ->Option.flatMap(a => a.retired)
+      ->Option.map(r => r.field),
     },
   )
   logDebug("registered resolver binding for " ++ entry.readModelName, {comp: "PgQueryResolver"})

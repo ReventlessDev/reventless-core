@@ -21,13 +21,21 @@ let capability: ReventlessCore.GraphQL_FragmentGenerator.serverCapability = {
   sortFields: ["name", "qty", "status"],
 }
 
-let mk = (id, status, name, qty, owner) => {
+let mk = (id, status, name, qty, owner, archived) => {
   let o = Dict.make()
   o->Dict.set("id", JSON.Encode.string(id))
   o->Dict.set("status", JSON.Encode.string(status))
   o->Dict.set("name", JSON.Encode.string(name))
   o->Dict.set("qty", JSON.Encode.int(qty))
   o->Dict.set("owner", JSON.Encode.string(owner))
+  // `archived` is absent on p-5, not false. A row written before the annotation
+  // existed has no such attribute, and "absent means not retired" is the rule
+  // both the spec and every push-down have to land on — get it wrong and the
+  // view empties the day someone adds `@retired`.
+  switch archived {
+  | Some(b) => o->Dict.set("archived", JSON.Encode.bool(b))
+  | None => ()
+  }
   JSON.Encode.object(o)
 }
 
@@ -40,11 +48,11 @@ let mk = (id, status, name, qty, owner) => {
 // to work on a field the client-visible filter surface does not admit, which is
 // the normal case and the reason the predicate travels separately.
 let rows = [
-  ("p-1", "active", "Charlie", 3, "u-a"),
-  ("p-2", "active", "Alpha", 1, "u-b"),
-  ("p-3", "inactive", "Echo", 5, "u-a"),
-  ("p-4", "active", "Bravo", 2, "u-c"),
-  ("p-5", "inactive", "Delta", 4, "u-a"),
+  ("p-1", "active", "Charlie", 3, "u-a", Some(false)),
+  ("p-2", "active", "Alpha", 1, "u-b", Some(true)),
+  ("p-3", "inactive", "Echo", 5, "u-a", Some(false)),
+  ("p-4", "active", "Bravo", 2, "u-c", Some(true)),
+  ("p-5", "inactive", "Delta", 4, "u-a", None),
 ]
 
 type setup = {
@@ -53,6 +61,7 @@ type setup = {
     ~capability: ReventlessCore.GraphQL_FragmentGenerator.serverCapability,
     ~labelField: string,
     ~ownerScope: (string, string)=?,
+    ~retiredScope: string=?,
   ) => option<JSON.t>,
   fullScan: unit => array<JSON.t>,
 }
@@ -66,8 +75,13 @@ let build = async (): setup => {
   let s = Storage.make(~name="items", ~indexes=[], ~api=(), ~apiRole=(), ~owner=None, ~opts)
   let ops = await s.operations->TestRunner.resolve
   for i in 0 to rows->Array.length - 1 {
-    let (id, status, name, qty, owner) = rows->Array.getUnsafe(i)
-    let _ = await ops.save(id, mk(id, status, name, qty, owner), ReventlessCore.QueryDb.Any, None)
+    let (id, status, name, qty, owner, archived) = rows->Array.getUnsafe(i)
+    let _ = await ops.save(
+      id,
+      mk(id, status, name, qty, owner, archived),
+      ReventlessCore.QueryDb.Any,
+      None,
+    )
   }
   {
     listPage: TestBus.getQueryDbListPage("items")->Option.getOrThrow,
@@ -118,7 +132,7 @@ let orderBy = (f, dir) =>
 let cur = ReventlessCore.QueryDbListQuery.encodeCursor
 
 // Assert the push-down serves this shape AND matches the spec exactly.
-let checkPushed = async (~label, ~ownerScope=?, args) => {
+let checkPushed = async (~label, ~ownerScope=?, ~retiredScope=?, args) => {
   let s = await build()
   let argsDict = argsOf(args)
   let expected =
@@ -129,8 +143,9 @@ let checkPushed = async (~label, ~ownerScope=?, args) => {
       ~labelField="name",
       ~decodeLocalId=_ => None,
       ~ownerScope?,
+      ~retiredScope?,
     )->norm
-  switch s.listPage(~argsDict, ~capability, ~labelField="name", ~ownerScope?) {
+  switch s.listPage(~argsDict, ~capability, ~labelField="name", ~ownerScope?, ~retiredScope?) {
   | Some(actual) => expect(actual->norm)->toEqual(expected)
   | None => expect("push-down for " ++ label)->toBe("returned None")
   }
@@ -140,6 +155,15 @@ let checkPushed = async (~label, ~ownerScope=?, args) => {
 let checkFallback = async args => {
   let s = await build()
   expect(s.listPage(~argsDict=argsOf(args), ~capability, ~labelField="name")->Option.isSome)->toBe(false)
+}
+
+// The ids a retirement-narrowed read returns, from the push-down.
+let liveIds = async args => {
+  let s = await build()
+  switch s.listPage(~argsDict=argsOf(args), ~capability, ~labelField="name", ~retiredScope="archived") {
+  | Some(conn) => (conn->norm).edges->Array.map(e => e.id)
+  | None => []
+  }
 }
 
 // The ids a scoped read actually returns, from the push-down.
@@ -217,6 +241,54 @@ describe("QueryDb list push-down parity (SQLite ≡ QueryDbListQuery spec)", () 
   testPromise("backward (last/before) → fallback", () =>
     checkFallback([("last", JSON.Encode.int(2)), ("before", JSON.Encode.string(cur("p-4")))])
   )
+
+  // ── Retirement narrowing ──────────────────────────────────────────────────
+  // Same parity argument as owner scoping below: the push-down is the path a
+  // deployment takes and the spec is the path the tests reach, so a predicate
+  // implemented in one of them is a hole every fallback-based test calls green.
+  describe("retirement narrowing", () => {
+    testPromise("bare page, narrowed", () =>
+      checkPushed(~label="retired-bare", ~retiredScope="archived", [])
+    )
+    testPromise("narrowed + orderBy", () =>
+      checkPushed(
+        ~label="retired-order",
+        ~retiredScope="archived",
+        [("orderBy", orderBy("name", "DESC"))],
+      )
+    )
+    testPromise("narrowed + the caller's own filter", () =>
+      checkPushed(
+        ~label="retired-filter",
+        ~retiredScope="archived",
+        [("filter", filterOf([("statusEq", JSON.Encode.string("active"))]))],
+      )
+    )
+    testPromise("narrowed + owner-scoped together", () =>
+      checkPushed(
+        ~label="retired-owner",
+        ~ownerScope=("owner", "u-a"),
+        ~retiredScope="archived",
+        [],
+      )
+    )
+
+    // The rows, not just the parity: p-2 and p-4 are archived, p-5 carries no
+    // flag at all. Parity alone would pass if BOTH implementations were wrong
+    // the same way.
+    testPromise("drops the archived rows and keeps the one with no flag", async () => {
+      let ids = await liveIds([])
+      expect(ids)->toEqual(["p-1", "p-3", "p-5"])
+    })
+
+    // The reason the predicate is pushed into the SQL rather than applied to the
+    // page: `first: 2` must yield two LIVE rows, not two rows of which some were
+    // filtered away afterwards.
+    testPromise("a page of first:2 is two live rows, not two rows minus the archived", async () => {
+      let ids = await liveIds([("first", JSON.Encode.int(2))])
+      expect(ids)->toEqual(["p-1", "p-3"])
+    })
+  })
 
   // ── Owner scoping ─────────────────────────────────────────────────────────
   // Parity matters more here than anywhere else in this file. The push-down is

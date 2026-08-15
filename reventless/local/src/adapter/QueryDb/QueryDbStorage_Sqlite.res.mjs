@@ -337,7 +337,7 @@ function makeStorage(db, bus, name, indexes, subIdField) {
   };
   let jsonText = field => `CAST(json_extract(item, '$.` + field.replaceAll("'", "''") + `') AS TEXT)`;
   let idExpr = "COALESCE(json_extract(item, '$.id'), partition_key)";
-  let listPage = (argsDict, capability, param, ownerScope) => {
+  let listPage = (argsDict, capability, param, ownerScope, retiredScope) => {
     let filterDict = Stdlib_Option.getOr(Stdlib_Option.flatMap(argsDict["filter"], Stdlib_JSON.Decode.object), {});
     let strNonEmpty = k => Stdlib_Option.mapOr(Stdlib_Option.flatMap(filterDict[k], Stdlib_JSON.Decode.string), false, s => s.length > 0);
     let hasIds = Stdlib_Option.mapOr(Stdlib_Option.flatMap(filterDict["ids"], Stdlib_JSON.Decode.array), false, a => a.length !== 0);
@@ -351,6 +351,9 @@ function makeStorage(db, bus, name, indexes, subIdField) {
     if (ownerScope !== undefined) {
       whereParts.push(jsonText(ownerScope[0]) + ` = ?`);
       params.push(ownerScope[1]);
+    }
+    if (retiredScope !== undefined) {
+      whereParts.push(`json_extract(item, '$.` + retiredScope.replaceAll("'", "''") + `') IS NOT 1`);
     }
     let valString = v => {
       let s = Stdlib_JSON.Decode.string(v);

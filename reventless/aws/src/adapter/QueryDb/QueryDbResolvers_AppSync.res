@@ -256,17 +256,44 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
       ~view=name,
       ~ownerField,
     )
+    let isIndexed = f =>
+      indexes->Array.some(ic => ic.idField->Option.getOr(ic.index) == f) ||
+        subIdField->Option.getOr("") == f
     switch ownerField {
     | Some(f) =>
-      let indexed =
-        indexes->Array.some(ic => ic.idField->Option.getOr(ic.index) == f) ||
-          subIdField->Option.getOr("") == f
-      if !indexed {
+      if !isIndexed(f) {
         log.warn(
           ~comp="QueryDbResolvers_AppSync",
           `${name}: @owner field "${f}" is not the key of any index on this table. ` ++
           "Owner-scoped reads will Scan and filter, so pages shrink as the caller's " ++
           "share of the rows falls. Add an @index on that field before this read model grows.",
+        )
+      }
+    | None => ()
+    }
+    let retiredField =
+      stateSchemaOpt
+      ->Option.flatMap(Reventless.StateAnnotations.getSpec)
+      ->Option.flatMap(spec => spec.retired)
+      ->Option.map(r => r.field)
+    // The same class of "works, but scans" mistake as the owner warning above,
+    // and the retirement case degrades the same way: the FilterExpression is
+    // applied after the page is read, so pages shrink as the archive's share of
+    // the table grows.
+    //
+    // `@scan` deliberately does not satisfy this. It adds no index and removes
+    // no read unit — it only widens the client's filter surface — so accepting it
+    // here would make the warning dismissible by an annotation that changes
+    // nothing about the cost being warned about.
+    switch retiredField {
+    | Some(f) =>
+      if !isIndexed(f) {
+        log.warn(
+          ~comp="QueryDbResolvers_AppSync",
+          `${name}: @retired field "${f}" is not the key of any index on this table. ` ++
+          "Reads that exclude retired rows will Scan and filter, so pages shrink as " ++
+          "the archive's share of the rows grows. Add an @index on that field before " ++
+          "this read model grows.",
         )
       }
     | None => ()
@@ -283,6 +310,7 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
           ~requireAttribute?,
           ~ownerField?,
           ~elevatedGroups=Reventless.OwnerScope.elevatedGroups(),
+          ~retiredField?,
         )
       } else {
         Resolver.Functions.listAllItems

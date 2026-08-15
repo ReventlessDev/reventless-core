@@ -447,6 +447,10 @@ let listAllItemsConnection = (
   // than a per-request one.
   ~ownerField: option<string>=?,
   ~elevatedGroups: array<string>=[],
+  // The state's `@retired` field, when it declares one. Baked in for the same
+  // reason `ownerField` is: there is no Lambda in this path to read it at
+  // request time.
+  ~retiredField: option<string>=?,
 ) => {
   let requireAttributeClause = switch requireAttribute {
   | Some(attr) => `
@@ -478,6 +482,42 @@ let listAllItemsConnection = (
     names['#owner'] = '${field}';
     values[':owner'] = util.dynamodb.toDynamoDB(_sub);
     parts.push('#owner = :owner');
+  }`
+  }
+  // ── retirement narrowing (generated) ──
+  // Reuses `_exempt` when the owner clause already computed it, and computes its
+  // own when it did not — the two clauses are independently optional and either
+  // may be the only one present.
+  //
+  // `includeRetired` IS read from ctx.args, unlike the owner predicate, and the
+  // difference is deliberate: this argument does not say which rows the caller
+  // wants, it asks to lift a restriction, and it is honoured only inside the
+  // `_exempt` branch. A non-exempt caller passing it changes nothing.
+  //
+  // `attribute_not_exists OR = false` rather than `<> true`: a row written before
+  // the annotation existed carries no such attribute, and DynamoDB's `<>` does
+  // not match a missing one — the whole view would come back empty on the day
+  // the annotation lands.
+  let retiredClause = switch retiredField {
+  | None => ""
+  | Some(field) =>
+    let elevatedLiteral = elevatedGroups->Array.map(g => `'${g}'`)->Array.join(", ")
+    let exemptPrelude = switch ownerField {
+    | Some(_) => ""
+    | None => `
+  const _id = ctx.identity;
+  const _sub = _id == null ? null : _id.sub;
+  const _groups = (_id != null && _id.claims != null && _id.claims['cognito:groups']) || [];
+  const _elevated = [${elevatedLiteral}];
+  const _exempt = _sub == null || _groups.some(g => _elevated.indexOf(g) >= 0);`
+    }
+    `${exemptPrelude}
+  // ── retirement narrowing (generated) ──
+  const _wantsRetired = _exempt && ctx.args.includeRetired === true;
+  if (!_wantsRetired) {
+    names['#retired'] = '${field}';
+    values[':retiredFalse'] = util.dynamodb.toDynamoDB(false);
+    parts.push('(attribute_not_exists(#retired) OR #retired = :retiredFalse)');
   }`
   }
   let filterClauses =
@@ -569,7 +609,7 @@ export function request(ctx) {
       return key;
     });
     parts.push('#id IN (' + placeholders.join(', ') + ')');
-  }${filterClauses}${rangeClauses}${requireAttributeClause}${ownerClause}
+  }${filterClauses}${rangeClauses}${requireAttributeClause}${ownerClause}${retiredClause}
   // The cursor is base64(JSON({ token, index })); decode the after arg back to the raw
   // DynamoDB continuation token the response side emitted (Fix 1 round-trip).
   let after = null;

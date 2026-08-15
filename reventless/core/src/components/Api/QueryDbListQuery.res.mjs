@@ -19,6 +19,10 @@ function getId(item) {
   return Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d["id"]), Stdlib_JSON.Decode.string), "");
 }
 
+function getFieldBool(item, field) {
+  return Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[field]), Stdlib_JSON.Decode.bool);
+}
+
 function getFieldString(item, field) {
   return Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[field]), v => {
     let s = Stdlib_JSON.Decode.string(v);
@@ -48,7 +52,7 @@ function buildConnection(pageItems, hasNextPage, hasPreviousPage, cursorValueOf)
   };
 }
 
-function run(items, argsDict, capability, labelField, decodeLocalIdOpt, ownerScope) {
+function run(items, argsDict, capability, labelField, decodeLocalIdOpt, ownerScope, retiredScope) {
   let decodeLocalId = decodeLocalIdOpt !== undefined ? decodeLocalIdOpt : Api_Ids$ReventlessCore.toLocalId;
   let filterDict = Stdlib_Option.getOr(Stdlib_Option.flatMap(argsDict["filter"], Stdlib_JSON.Decode.object), {});
   let search = Stdlib_Option.flatMap(filterDict["search"], Stdlib_JSON.Decode.string);
@@ -102,8 +106,9 @@ function run(items, argsDict, capability, labelField, decodeLocalIdOpt, ownerSco
     } else {
       passOwner = true;
     }
-    if (passSearch && passPrefix && passIds && passPerField) {
-      return passOwner;
+    let passRetired = retiredScope !== undefined ? Stdlib_Option.getOr(getFieldBool(item, retiredScope), false) === false : true;
+    if (passSearch && passPrefix && passIds && passPerField && passOwner) {
+      return passRetired;
     } else {
       return false;
     }
@@ -214,6 +219,7 @@ export {
   decodeCursor,
   defaultListPageSize,
   getId,
+  getFieldBool,
   getFieldString,
   buildConnection,
   run,

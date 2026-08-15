@@ -147,6 +147,7 @@ type busCallbacks = {
       ~capability: GraphQL_FragmentGenerator.serverCapability,
       ~labelField: string,
       ~ownerScope: (string, string)=?,
+      ~retiredScope: string=?,
     ) => option<JSON.t>,
   ) => unit,
 }
@@ -428,6 +429,7 @@ let makeStorage = (
     ~capability: GraphQL_FragmentGenerator.serverCapability,
     ~labelField as _,
     ~ownerScope: option<(string, string)>=?,
+    ~retiredScope: option<string>=?,
   ): option<JSON.t> => {
     let filterDict =
       argsDict->Dict.get("filter")->Option.flatMap(JSON.Decode.object)->Option.getOr(Dict.make())
@@ -449,6 +451,22 @@ let makeStorage = (
       | Some((field, required)) =>
         whereParts->Array.push(`${jsonText(field)} = ?`)
         params->Array.push(JSON.Encode.string(required))
+      | None => ()
+      }
+      // `IS NOT 1`, not `= 0`, and on the raw extraction rather than through
+      // `jsonText`. SQLite renders a JSON true as the integer 1 and a missing
+      // path as NULL, and `IS NOT` is the comparison that treats NULL as a value
+      // rather than poisoning the predicate. Three cases have to land the way the
+      // in-memory spec lands them: absent keeps the row (a row written before the
+      // annotation is not retired), false keeps it, and a value that is not a
+      // JSON boolean keeps it too — which `= 0` would get wrong, since a string
+      // `'true'` compares unequal to 0 and the row would vanish on this backend
+      // only. `QueryDbListPushdownParityTest` is what holds the two together.
+      switch retiredScope {
+      | Some(field) =>
+        whereParts->Array.push(
+          `json_extract(item, '$.${field->String.replaceAll("'", "''")}') IS NOT 1`,
+        )
       | None => ()
       }
       let valString = v =>
