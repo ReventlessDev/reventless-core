@@ -101,13 +101,13 @@ function Make(Bus) {
       let field = match._0;
       return Stdlib_Option.mapOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[field]), Stdlib_JSON.Decode.string), false, v => v === required);
     };
-    let retiredFieldOf = () => Stdlib_Option.map(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Plugin_Helpers$ReventlessCore.stateSchemaRegistry[name], StateAnnotations$Reventless.getSpec), spec => spec.retired), r => r.field);
+    let retiredSpecOf = () => Stdlib_Option.flatMap(Stdlib_Option.flatMap(Plugin_Helpers$ReventlessCore.stateSchemaRegistry[name], StateAnnotations$Reventless.getSpec), spec => spec.retired);
     let askedForRetired = args => Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["includeRetired"]), Stdlib_JSON.Decode.bool), false);
-    let retiredDecision = (ctx, args) => OwnerScope$Reventless.decideRetired(extractIdentity(ctx), retiredFieldOf(), askedForRetired(args), undefined);
+    let retiredDecision = (ctx, args) => OwnerScope$Reventless.decideRetired(extractIdentity(ctx), Stdlib_Option.map(retiredSpecOf(), r => r.field), Stdlib_Option.flatMap(retiredSpecOf(), r => r.value), askedForRetired(args), undefined);
     let retiredAllows = (ctx, args, item) => {
-      let field = OwnerScope$Reventless.retiredScopeOf(retiredDecision(ctx, args));
-      if (field !== undefined) {
-        return Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[field]), Stdlib_JSON.Decode.bool), false) === false;
+      let scope = OwnerScope$Reventless.retiredScopeOf(retiredDecision(ctx, args));
+      if (scope !== undefined) {
+        return !OwnerScope$Reventless.isRetiredValue(scope, Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[scope.field]));
       } else {
         return true;
       }

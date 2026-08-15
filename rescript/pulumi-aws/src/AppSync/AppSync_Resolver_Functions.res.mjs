@@ -360,7 +360,7 @@ export function request(ctx) {
 ` + resultResponseCode + `
 `;
 
-function listAllItemsConnection(labelField, filterFieldsOpt, rangeFieldsOpt, sortFieldsOpt, requireAttribute, ownerField, elevatedGroupsOpt, retiredField) {
+function listAllItemsConnection(labelField, filterFieldsOpt, rangeFieldsOpt, sortFieldsOpt, requireAttribute, ownerField, elevatedGroupsOpt, retiredField, retiredValue) {
   let filterFields = filterFieldsOpt !== undefined ? filterFieldsOpt : [];
   let rangeFields = rangeFieldsOpt !== undefined ? rangeFieldsOpt : [];
   let sortFields = sortFieldsOpt !== undefined ? sortFieldsOpt : [];
@@ -405,8 +405,11 @@ function listAllItemsConnection(labelField, filterFieldsOpt, rangeFieldsOpt, sor
   const _wantsRetired = _exempt && ctx.args.includeRetired === true;
   if (!_wantsRetired) {
     names['#retired'] = '` + retiredField + `';
-    values[':retiredFalse'] = util.dynamodb.toDynamoDB(false);
-    parts.push('(attribute_not_exists(#retired) OR #retired = :retiredFalse)');
+` + (
+      retiredValue !== undefined ? `    values[':retiredValue'] = util.dynamodb.toDynamoDB('` + retiredValue + `');
+    parts.push('(attribute_not_exists(#retired) OR #retired <> :retiredValue)');` : `    values[':retiredFalse'] = util.dynamodb.toDynamoDB(false);
+    parts.push('(attribute_not_exists(#retired) OR #retired = :retiredFalse)');`
+    ) + `
   }`;
   } else {
     retiredClause = "";

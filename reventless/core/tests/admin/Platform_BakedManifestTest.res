@@ -24,6 +24,7 @@ let queryable = (~name, ~visibility=?, ~ownerField=?, ()): queryableDef => {
   requiredAccess: None,
   ownerField,
   retiredField: None,
+  retiredValue: None,
 }
 
 let command = (~name, ~references=[], ~ownerField=?, ()): commandDef => {

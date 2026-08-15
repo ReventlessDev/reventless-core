@@ -76,7 +76,8 @@ function registerBinding(pushdowns, pgConnection, entry, spec) {
     includeIdParam: entry.includeIdParam,
     authorization: spec.authorization,
     ownerField: Owner$Reventless.fieldNames(spec.stateSchema)[0],
-    retiredField: Stdlib_Option.map(Stdlib_Option.flatMap(StateAnnotations$Reventless.getSpec(spec.stateSchema), a => a.retired), r => r.field)
+    retiredField: Stdlib_Option.map(Stdlib_Option.flatMap(StateAnnotations$Reventless.getSpec(spec.stateSchema), a => a.retired), r => r.field),
+    retiredValue: Stdlib_Option.flatMap(Stdlib_Option.flatMap(StateAnnotations$Reventless.getSpec(spec.stateSchema), a => a.retired), r => r.value)
   });
   HandlerFactoryHelpersMjs.log.debug("registered resolver binding for " + entry.readModelName, {
     comp: "PgQueryResolver"

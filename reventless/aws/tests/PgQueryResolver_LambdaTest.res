@@ -52,7 +52,7 @@ let ops: QueryDb_Adapter.operations = {
   deleteBatch: Obj.magic(0),
 }
 
-let lastRetiredScope: ref<option<string>> = ref(None)
+let lastRetiredScope: ref<option<Reventless.OwnerScope.retiredScope>> = ref(None)
 
 let pushdowns: PgQueryResolver_Lambda.pushdowns = {
   indexLookup: async (~readModelName as _, field, value) =>
@@ -65,7 +65,7 @@ let pushdowns: PgQueryResolver_Lambda.pushdowns = {
     ~capability as _,
     ~labelField as _,
     ~ownerScope: option<(string, string)>=?,
-    ~retiredScope: option<string>=?,
+    ~retiredScope: option<Reventless.OwnerScope.retiredScope>=?,
   ) => {
     lastOwnerScope := ownerScope
     lastRetiredScope := retiredScope
@@ -94,6 +94,7 @@ let makeBinding = (
   ~subIdField=None,
   ~ownerField=None,
   ~retiredField=None,
+  ~retiredValue=None,
   (),
 ): PgQueryResolver_Lambda.binding => {
   ops,
@@ -109,6 +110,7 @@ let makeBinding = (
   authorization,
   ownerField,
   retiredField,
+  retiredValue,
 }
 
 let mkPayload = (

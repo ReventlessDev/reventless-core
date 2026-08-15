@@ -35,21 +35,38 @@ KPI label, or `""` to let the UI derive one from the field name.
 type metricSpec = {aggregate: string, label: string}
 
 /**
-The boolean field declared `@retired`, and how a consumer should title it.
+The field declared `@retired`, and how a consumer should title it.
 
-`field` names the boolean whose truth withdraws the row from ordinary use — a
-deactivated customer, an archived category. `label` is what that state is called
-("Archived"), or `""` to let a consumer derive one from the field name.
-`showWhenFalse` asks a consumer to surface the flag in its negative state too;
-the default is false, because a caller who is not exempt from the narrowing never
-receives a retired row and would otherwise see the same negative marker on every
-record they can read.
+`field` names what withdraws the row from ordinary use — a deactivated customer,
+an archived category. `label` is what that state is called ("Archived"), or `""`
+to let a consumer derive one from the field name. `showWhenFalse` asks a consumer
+to surface the flag in its negative state too; the default is false, because a
+caller who is not exempt from the narrowing never receives a retired row and would
+otherwise see the same negative marker on every record they can read.
+
+`value` is what decides which of the two forms this is:
+
+- `None` — the **boolean** form. The row is retired when the field is `true`. The
+  right shape for a record whose retirement genuinely is a flag: a `Products` view
+  with an `archived` boolean and no lifecycle should not have to invent a
+  two-valued enum.
+- `Some(v)` — the **state** form. The row is retired when the field equals `v`,
+  and the field is the record's `@lifecycle` field. One field then carries the
+  fact once instead of twice, and `@allowedStates([Deactivated])` on the way-back
+  command is enough to make a generated menu offer it there and nowhere else —
+  because retirement is finally expressible in the vocabulary that stance is
+  already written in.
 
 The narrowing itself is not described here. This spec carries what the field
 *means*; who still sees a retired row is one deployment-wide rule
 (`OwnerScope.elevatedGroups`), resolved where the query is answered.
 */
-type retiredSpec = {field: string, label: string, showWhenFalse: bool}
+type retiredSpec = {
+  field: string,
+  label: string,
+  showWhenFalse: bool,
+  value: option<string>,
+}
 
 type stateAnnotationSpec = {
   ids: array<string>,
@@ -126,6 +143,10 @@ type stateAnnotationSpec = {
   retirement flags are not a stricter rule but an unanswered one — the read
   predicate would have to guess whether they conjoin or disjoin, and the query
   layer narrows on a single field.
+
+  Both the boolean and the state form ride this one key. `x-reventless-retired`
+  carries `value` only in the state form, on the same omit-rather-than-write-empty
+  rule `label` already follows.
   */
   retired: option<retiredSpec>,
 }

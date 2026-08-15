@@ -86,10 +86,59 @@ function lifecycleFieldFromStateSchema(entityName, stateSchema) {
   }
 }
 
-function retiredFieldFromStateSchema(stateSchema) {
+function retiredFromStateSchema(stateSchema) {
   let spec = StateAnnotations$Reventless.getSpec(stateSchema);
   if (spec !== undefined) {
-    return Stdlib_Option.map(spec.retired, r => r.field);
+    return spec.retired;
+  }
+}
+
+function retiredFieldFromStateSchema(stateSchema) {
+  return Stdlib_Option.map(retiredFromStateSchema(stateSchema), r => r.field);
+}
+
+function retiredValueFromStateSchema(stateSchema) {
+  return Stdlib_Option.flatMap(retiredFromStateSchema(stateSchema), r => r.value);
+}
+
+function checkRetiredValue(entityName, stateSchema) {
+  let match = retiredFromStateSchema(stateSchema);
+  if (match === undefined) {
+    return;
+  }
+  let value = match.value;
+  if (value === undefined) {
+    return;
+  }
+  let field = match.field;
+  let lifecycle = lifecycleFieldFromStateSchema(entityName, stateSchema);
+  if (Primitive_object.notequal(lifecycle, field)) {
+    log.warn("Plugin_Structure", undefined, entityName + `: @retired(` + value + `) is on "` + field + `", which is not this record's lifecycle field` + Stdlib_Option.getOr(Stdlib_Option.map(lifecycle, f => ` (that is "` + f + `")`), " (it declares none)") + `. A retirement state no command's @allowedStates can name loses the command filtering the state form exists for.`);
+  }
+  let declared;
+  declared = stateSchema.type === "object" ? Stdlib_Option.getOr(Stdlib_Option.map(stateSchema.items.find(item => item.location === field), item => {
+      let match = shapeOfItem(entityName, item);
+      if (typeof match !== "object") {
+        return [];
+      }
+      switch (match.TAG) {
+        case "Nullable" :
+          let match$1 = match._0;
+          if (typeof match$1 !== "object") {
+            return [];
+          } else if (match$1.TAG === "Enum") {
+            return match$1._1;
+          } else {
+            return [];
+          }
+        case "Enum" :
+          return match._1;
+        default:
+          return [];
+      }
+    }), []) : [];
+  if (declared.length !== 0 && !declared.includes(value)) {
+    return log.warn("Plugin_Structure", undefined, entityName + `: @retired(` + value + `) names a state "` + field + `" does not declare — known values: ` + declared.join(", ") + `.`);
   }
 }
 
@@ -542,6 +591,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     let label = labelFieldsFromStateSchema(R.Spec.name, stateSchema);
     let keyField = GraphQL_FragmentGenerator$ReventlessCore.resolveKeyField(R.Spec.name, stateSchema);
     let consumed = qualify(name, R.consumedEventNames);
+    checkRetiredValue(R.Spec.name, stateSchema);
     return {
       name: R.Spec.name,
       queryField: qf.listFieldName,
@@ -554,6 +604,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       lifecycleField: lifecycleFieldFromStateSchema(R.Spec.name, stateSchema),
       ownerField: Owner$Reventless.fieldNames(stateSchema)[0],
       retiredField: retiredFieldFromStateSchema(stateSchema),
+      retiredValue: retiredValueFromStateSchema(stateSchema),
       visibility: visibilityTag(R.Spec.visibility),
       chapter: componentChapters[R.Spec.name],
       singleQueryField: qf.singleFieldName,
@@ -569,6 +620,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     let stateSchema = SVS.Spec.stateSchema;
     let label = labelFieldsFromStateSchema(SVS.Spec.name, stateSchema);
     let keyField = GraphQL_FragmentGenerator$ReventlessCore.resolveKeyField(SVS.Spec.name, stateSchema);
+    checkRetiredValue(SVS.Spec.name, stateSchema);
     return {
       name: SVS.Spec.name,
       queryField: qf.listFieldName,
@@ -581,6 +633,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       lifecycleField: lifecycleFieldFromStateSchema(SVS.Spec.name, stateSchema),
       ownerField: Owner$Reventless.fieldNames(stateSchema)[0],
       retiredField: retiredFieldFromStateSchema(stateSchema),
+      retiredValue: retiredValueFromStateSchema(stateSchema),
       visibility: visibilityTag(SVS.Spec.visibility),
       chapter: componentChapters[SVS.Spec.name],
       singleQueryField: qf.singleFieldName,
@@ -702,7 +755,10 @@ export {
   conventionalLabelNames,
   shapeOfItem,
   lifecycleFieldFromStateSchema,
+  retiredFromStateSchema,
   retiredFieldFromStateSchema,
+  retiredValueFromStateSchema,
+  checkRetiredValue,
   labelFieldSourceToString,
   labelFieldsFromStateSchema,
   extractReferences,

@@ -194,7 +194,7 @@ function makeStorage(db, bus, name, indexes, subIdField) {
   };
   let publishSaved = (changeKind, id, state) => {
     let subKey = computeSubKey(state, subIdField);
-    let descriptor = LocalStateChangeDescriptor$ReventlessLocal.make(changeKind, entityKeyFor(id, subKey), state, LocalStateChangeDescriptor$ReventlessLocal.nextSequence(), LocalStateChangeDescriptor$ReventlessLocal.retiredFieldFor(name));
+    let descriptor = LocalStateChangeDescriptor$ReventlessLocal.make(changeKind, entityKeyFor(id, subKey), state, LocalStateChangeDescriptor$ReventlessLocal.nextSequence(), Stdlib_Option.map(LocalStateChangeDescriptor$ReventlessLocal.retiredSpecFor(name), r => r.field), Stdlib_Option.flatMap(LocalStateChangeDescriptor$ReventlessLocal.retiredSpecFor(name), r => r.value));
     bus.publishStateChange(name, descriptor);
   };
   let saveKind = (id, state) => {
@@ -209,7 +209,7 @@ function makeStorage(db, bus, name, indexes, subIdField) {
     }
   };
   let publishRemoved = (id, subKey) => {
-    let descriptor = LocalStateChangeDescriptor$ReventlessLocal.make("Removed", entityKeyFor(id, subKey), undefined, LocalStateChangeDescriptor$ReventlessLocal.nextSequence(), undefined);
+    let descriptor = LocalStateChangeDescriptor$ReventlessLocal.make("Removed", entityKeyFor(id, subKey), undefined, LocalStateChangeDescriptor$ReventlessLocal.nextSequence(), undefined, undefined);
     bus.publishStateChange(name, descriptor);
   };
   let rowKeysForPartition = id => SqliteDriver$ReventlessLocal.all(selectByPartitionStmt, [id]).map(row => {
@@ -353,7 +353,9 @@ function makeStorage(db, bus, name, indexes, subIdField) {
       params.push(ownerScope[1]);
     }
     if (retiredScope !== undefined) {
-      whereParts.push(`json_extract(item, '$.` + retiredScope.replaceAll("'", "''") + `') IS NOT 1`);
+      let path = `json_extract(item, '$.` + retiredScope.field.replaceAll("'", "''") + `')`;
+      let state = retiredScope.value;
+      whereParts.push(state !== undefined ? path + ` IS NOT '` + state.replaceAll("'", "''") + `'` : path + ` IS NOT 1`);
     }
     let valString = v => {
       let s = Stdlib_JSON.Decode.string(v);

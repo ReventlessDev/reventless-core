@@ -122,11 +122,13 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
     if (ownerField !== undefined && !isIndexed(ownerField)) {
       log.warn("QueryDbResolvers_AppSync", undefined, name$1 + `: @owner field "` + ownerField + `" is not the key of any index on this table. ` + "Owner-scoped reads will Scan and filter, so pages shrink as the caller's share of the rows falls. Add an @index on that field before this read model grows.");
     }
-    let retiredField = Stdlib_Option.map(Stdlib_Option.flatMap(Stdlib_Option.flatMap(stateSchemaOpt, StateAnnotations$Reventless.getSpec), spec => spec.retired), r => r.field);
+    let retiredSpec = Stdlib_Option.flatMap(Stdlib_Option.flatMap(stateSchemaOpt, StateAnnotations$Reventless.getSpec), spec => spec.retired);
+    let retiredField = Stdlib_Option.map(retiredSpec, r => r.field);
+    let retiredValue = Stdlib_Option.flatMap(retiredSpec, r => r.value);
     if (retiredField !== undefined && !isIndexed(retiredField)) {
       log.warn("QueryDbResolvers_AppSync", undefined, name$1 + `: @retired field "` + retiredField + `" is not the key of any index on this table. ` + "Reads that exclude retired rows will Scan and filter, so pages shrink as the archive's share of the rows grows. Add an @index on that field before this read model grows.");
     }
-    let resolverAll = makeQueryResolver(Stdlib_String.capitalize(fieldNameForAll), fieldNameForAll, connectionSpec ? AppSync_Resolver_Functions$PulumiAws.listAllItemsConnection(labelField, filterFieldNames, rangeFieldNames, sortFieldNames, requireAttribute, ownerField, OwnerScope$Reventless.elevatedGroups(), retiredField) : AppSync_Resolver_Functions$PulumiAws.listAllItems);
+    let resolverAll = makeQueryResolver(Stdlib_String.capitalize(fieldNameForAll), fieldNameForAll, connectionSpec ? AppSync_Resolver_Functions$PulumiAws.listAllItemsConnection(labelField, filterFieldNames, rangeFieldNames, sortFieldNames, requireAttribute, ownerField, OwnerScope$Reventless.elevatedGroups(), retiredField, retiredValue) : AppSync_Resolver_Functions$PulumiAws.listAllItems);
     let resolversByIndex = indexes.map(indexConfig => {
       let index = indexConfig.index;
       let stripLeadingBy = s => {

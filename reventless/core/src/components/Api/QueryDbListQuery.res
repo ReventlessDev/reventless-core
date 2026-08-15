@@ -108,7 +108,7 @@ let run = (
   ~labelField: string,
   ~decodeLocalId: string => option<string>=Api_Ids.toLocalId,
   ~ownerScope: option<(string, string)>=?,
-  ~retiredScope: option<string>=?,
+  ~retiredScope: option<Reventless.OwnerScope.retiredScope>=?,
 ): JSON.t => {
   let filterDict =
     argsDict->Dict.get("filter")->Option.flatMap(JSON.Decode.object)->Option.getOr(Dict.make())
@@ -197,14 +197,16 @@ let run = (
       getFieldString(item, field)->Option.mapOr(false, v => v == required)
     | None => true
     }
-    // The mirror image of `passOwner`'s missing-field rule, and it lands the
-    // opposite way for the same reason. An owner-scoped read excludes a row that
-    // states no owner, because such a row belongs to nobody in particular. A
-    // retirement read KEEPS a row that states no flag: absent means not retired,
-    // which is what a row written before the annotation existed is. Excluding
-    // those would empty the view the day the annotation lands.
+    // The missing-field rule lives in `OwnerScope.isRetiredValue`, beside the two
+    // forms it has to answer for; the note on why it lands the opposite way from
+    // `passOwner` is there.
     let passRetired = switch retiredScope {
-    | Some(field) => getFieldBool(item, field)->Option.getOr(false) == false
+    | Some(scope) =>
+      !(
+        scope->Reventless.OwnerScope.isRetiredValue(
+          item->JSON.Decode.object->Option.flatMap(d => d->Dict.get(scope.field)),
+        )
+      )
     | None => true
     }
     passSearch && passPrefix && passIds && passPerField && passOwner && passRetired

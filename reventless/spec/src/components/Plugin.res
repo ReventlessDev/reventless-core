@@ -304,6 +304,21 @@ type queryableDef = {
   */
   retiredField: @s.matches(stringOptionSchema) option<string>,
   /**
+  The state a row is retired *in*, when the view declares the state form of
+  `@retired` — `Some("Deactivated")` beside `retiredField: Some("accountStatus")`.
+  `None` is the boolean form, where the excluded value is always `true` and naming
+  it would be a field that can only hold one thing.
+
+  Published beside the field rather than left for a consumer to re-derive from the
+  state schema: a client holding this def holds the whole predicate, and two places
+  deriving one comparison is how they come to disagree about it.
+
+  The state form is also what lets `@allowedStates` answer command applicability
+  when retired, with no annotation beyond the two — retirement expressed in the
+  vocabulary a command's stance is already written in.
+  */
+  retiredValue: @s.matches(stringOptionSchema) option<string>,
+  /**
   Component visibility hint (`@@reventless.visibility`). `Some("Internal")` marks a
   ReadModel / StateViewSlice that the deployed AutoUI hides from its menu, drill-down
   pages, web event graph and cross-plugin edges. `None` (absent) means Public. Internal

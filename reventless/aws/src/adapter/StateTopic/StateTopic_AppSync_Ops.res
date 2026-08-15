@@ -53,12 +53,17 @@ type event = {@as("Records") records: array<record>}
 
 // ── Per-record derivations (ports of the former inline JS helpers) ───────────
 
-// STATE_RETIRED_MAP: `{ <tableName>: <retiredFieldName> }`, injected at deploy
-// time beside STATE_TOPIC_MAP. This handler runs with no plugin registry in
-// process — there is nothing here that could read a state schema — so the field
-// name has to arrive the same way the topic routing does. A table absent from
-// the map declares no retirement flag, which is every table until one does.
-let retiredMap: dict<string> =
+// STATE_RETIRED_MAP: `{ <tableName>: {field, value?} }`, injected at deploy time
+// beside STATE_TOPIC_MAP. This handler runs with no plugin registry in process —
+// there is nothing here that could read a state schema — so the whole predicate
+// has to arrive the same way the topic routing does. A table absent from the map
+// declares no retirement, which is every table until one does.
+//
+// `value` absent is the boolean form. Carried as an object rather than as an
+// encoded string because a `field=Value` convention is a parser this side and a
+// writer the other, and the two drift the first time a state name contains the
+// separator.
+let retiredMap: dict<Reventless.OwnerScope.retiredScope> =
   switch NodeProcess.env
   ->Dict.get("STATE_RETIRED_MAP")
   ->Option.getOr("{}")
@@ -66,7 +71,20 @@ let retiredMap: dict<string> =
   ->JSON.Decode.object {
   | Some(d) =>
     let out = Dict.make()
-    d->Dict.forEachWithKey((v, k) => v->JSON.Decode.string->Option.forEach(sv => out->Dict.set(k, sv)))
+    d->Dict.forEachWithKey((v, k) =>
+      v
+      ->JSON.Decode.object
+      ->Option.flatMap(o =>
+        o
+        ->Dict.get("field")
+        ->Option.flatMap(JSON.Decode.string)
+        ->Option.map(field => {
+          Reventless.OwnerScope.field,
+          value: o->Dict.get("value")->Option.flatMap(JSON.Decode.string),
+        })
+      )
+      ->Option.forEach(scope => out->Dict.set(k, scope))
+    )
     out
   | None => Dict.make()
   }
@@ -159,16 +177,21 @@ let makeDescriptor = (
   ~image: dict<JSON.t>,
   ~seq: option<string>,
   ~retiredField: option<string>=?,
+  ~retiredValue: option<string>=?,
 ): JSON.t => {
   let removed = changeKind == "Removed"
   // A retired row publishes as metadata only, for the reason the other two
   // implementations do it: this channel reaches every subscriber of the view,
   // and a payload would deliver the row to the callers the resolvers refuse it
   // to. `Updated` with no state is the shape an oversized row already takes.
+  // Both forms are the one question `isRetiredValue` answers, so nothing here
+  // branches on which the view declared.
   let retired = switch retiredField {
   | Some(field) =>
     !removed &&
-    image->Dict.get(field)->Option.flatMap(JSON.Decode.bool)->Option.getOr(false)
+    {Reventless.OwnerScope.field, value: retiredValue}->Reventless.OwnerScope.isRetiredValue(
+      image->Dict.get(field),
+    )
   | None => false
   }
   let descriptor = Dict.make()
@@ -229,9 +252,12 @@ let processRecord = async (
           ~entityKey,
           ~image=unmarshalled,
           ~seq=dynamodb.sequenceNumber,
-          ~retiredField=?tableNameFromEventSourceArn(record.eventSourceARN)->Option.flatMap(t =>
-            retiredMap->Dict.get(t)
-          ),
+          ~retiredField=?tableNameFromEventSourceArn(record.eventSourceARN)
+          ->Option.flatMap(t => retiredMap->Dict.get(t))
+          ->Option.map(scope => scope.Reventless.OwnerScope.field),
+          ~retiredValue=?tableNameFromEventSourceArn(record.eventSourceARN)
+          ->Option.flatMap(t => retiredMap->Dict.get(t))
+          ->Option.flatMap(scope => scope.Reventless.OwnerScope.value),
         )
         let body =
           Dict.fromArray([

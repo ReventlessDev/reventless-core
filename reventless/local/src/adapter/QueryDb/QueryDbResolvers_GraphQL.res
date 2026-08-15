@@ -184,12 +184,11 @@ module Make = (Bus: LocalBus.T) => {
     // The same two forms as owner scoping above, for the same reason: a door
     // that narrows the page and a door that hands back one row both have to ask.
     // Read per request for the same reason too.
-    let retiredFieldOf = () =>
+    let retiredSpecOf = () =>
       Plugin_Helpers.stateSchemaRegistry
       ->Dict.get(name)
       ->Option.flatMap(Reventless.StateAnnotations.getSpec)
       ->Option.flatMap(spec => spec.retired)
-      ->Option.map(r => r.field)
 
     // `includeRetired` is the caller asking; `decideRetired` decides whether the
     // asking counts. Read here rather than inside the decision so the argument
@@ -204,7 +203,8 @@ module Make = (Bus: LocalBus.T) => {
 
     let retiredDecision = (~ctx, ~args) =>
       extractIdentity(ctx)->Reventless.OwnerScope.decideRetired(
-        ~retiredField=retiredFieldOf(),
+        ~retiredField=retiredSpecOf()->Option.map(r => r.field),
+        ~retiredValue=?retiredSpecOf()->Option.flatMap(r => r.value),
         ~asked=askedForRetired(~args),
       )
 
@@ -217,14 +217,15 @@ module Make = (Bus: LocalBus.T) => {
     let retiredAllows = (~ctx, ~args, item: JSON.t) =>
       switch retiredScopeFor(~ctx, ~args) {
       | None => true
-      | Some(field) =>
-        // Absent or non-boolean keeps the row, matching `QueryDbListQuery`: a row
-        // written before the annotation existed is not retired.
-        item
-        ->JSON.Decode.object
-        ->Option.flatMap(d => d->Dict.get(field))
-        ->Option.flatMap(JSON.Decode.bool)
-        ->Option.getOr(false) == false
+      // Absent keeps the row, matching `QueryDbListQuery`: a row written before
+      // the annotation existed is not retired. Which of the two forms decides
+      // that is `isRetiredValue`'s question, not this door's.
+      | Some(scope) =>
+        !(
+          scope->Reventless.OwnerScope.isRetiredValue(
+            item->JSON.Decode.object->Option.flatMap(d => d->Dict.get(scope.field)),
+          )
+        )
       }
 
     let cap = s => s->String.charAt(0)->String.toUpperCase ++ s->String.slice(~start=1)

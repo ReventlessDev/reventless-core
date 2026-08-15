@@ -34,12 +34,11 @@ let maxStateChars = 60 * 1024
     is built before every plugin's state schema is necessarily registered, and a
     lookup that missed at construction would publish payloads for the rest of
     the process. */
-let retiredFieldFor = (name: string): option<string> =>
+let retiredSpecFor = (name: string): option<Reventless.StateAnnotations.retiredSpec> =>
   ReventlessCore.Plugin_Helpers.stateSchemaRegistry
   ->Dict.get(name)
   ->Option.flatMap(Reventless.StateAnnotations.getSpec)
   ->Option.flatMap(spec => spec.retired)
-  ->Option.map(r => r.field)
 
 let pickSortKeyValue = (state: JSON.t): option<string> =>
   switch state->JSON.Decode.object {
@@ -88,6 +87,7 @@ let make = (
   ~state: option<JSON.t>,
   ~seq: string,
   ~retiredField: option<string>=?,
+  ~retiredValue: option<string>=?,
 ): JSON.t => {
   let descriptor = Dict.make()
   descriptor->Dict.set("changeKind", JSON.Encode.string(changeKind))
@@ -97,13 +97,13 @@ let make = (
   // list field and entity, and everyone watching the view receives it — so a
   // payload here would hand the row to exactly the callers the resolvers just
   // refused it to.
+  // Both forms of `@retired` are the one question `isRetiredValue` answers, so
+  // nothing here branches on which the view declared.
   let isRetired = switch (retiredField, state) {
   | (Some(field), Some(s)) =>
-    s
-    ->JSON.Decode.object
-    ->Option.flatMap(d => d->Dict.get(field))
-    ->Option.flatMap(JSON.Decode.bool)
-    ->Option.getOr(false)
+    {Reventless.OwnerScope.field, value: retiredValue}->Reventless.OwnerScope.isRetiredValue(
+      s->JSON.Decode.object->Option.flatMap(d => d->Dict.get(field)),
+    )
   | _ => false
   }
   // Dropped along with the payload, not just the payload: the sort value is a

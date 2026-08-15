@@ -68,7 +68,7 @@ type pushdowns = {
     ~capability: ReventlessCore.GraphQL_FragmentGenerator.serverCapability,
     ~labelField: string,
     ~ownerScope: (string, string)=?,
-    ~retiredScope: string=?,
+    ~retiredScope: Reventless.OwnerScope.retiredScope=?,
   ) => promise<option<JSON.t>>,
   // Sub-id connection ({single}Items) — keyset over sub_key within a partition.
   itemsPage: (
@@ -77,7 +77,7 @@ type pushdowns = {
     ~id: string,
     ~argsDict: dict<JSON.t>,
     ~ownerScope: (string, string)=?,
-    ~retiredScope: string=?,
+    ~retiredScope: Reventless.OwnerScope.retiredScope=?,
   ) => promise<JSON.t>,
   // Full materialisation for the list fallback (shapes listPage declines).
   scanAll: (~readModelName: string) => promise<array<JSON.t>>,
@@ -98,6 +98,7 @@ type binding = {
       about which fields this read model has. */
   ownerField: option<string>,
   retiredField: option<string>,
+  retiredValue: option<string>,
 }
 
 // -- arg helpers -------------------------------------------------------------
@@ -193,19 +194,22 @@ let dispatch = async (
       payload.identity
       ->Reventless.OwnerScope.decideRetired(
         ~retiredField=binding.retiredField,
+        ~retiredValue=?binding.retiredValue,
         ~asked=askedForRetired,
       )
       ->Reventless.OwnerScope.retiredScopeOf
-    // Absent or non-boolean keeps the row, as in `QueryDbListQuery`.
+    // Absent keeps the row, as in `QueryDbListQuery`. The two forms of `@retired`
+    // differ only inside `isRetiredValue`, so nothing here branches on which one
+    // the view declared.
     let retiredAllows = (item: JSON.t) =>
       switch retiredScope {
       | None => true
-      | Some(field) =>
-        item
-        ->JSON.Decode.object
-        ->Option.flatMap(d => d->Dict.get(field))
-        ->Option.flatMap(JSON.Decode.bool)
-        ->Option.getOr(false) == false
+      | Some(scope) =>
+        !(
+          scope->Reventless.OwnerScope.isRetiredValue(
+            item->JSON.Decode.object->Option.flatMap(d => d->Dict.get(scope.field)),
+          )
+        )
       }
     switch payload.kind {
     | "getById" =>

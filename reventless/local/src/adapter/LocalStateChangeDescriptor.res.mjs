@@ -2,11 +2,12 @@
 
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types/OwnerScope.res.mjs";
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
 
-function retiredFieldFor(name) {
-  return Stdlib_Option.map(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Plugin_Helpers$ReventlessCore.stateSchemaRegistry[name], StateAnnotations$Reventless.getSpec), spec => spec.retired), r => r.field);
+function retiredSpecFor(name) {
+  return Stdlib_Option.flatMap(Stdlib_Option.flatMap(Plugin_Helpers$ReventlessCore.stateSchemaRegistry[name], StateAnnotations$Reventless.getSpec), spec => spec.retired);
 }
 
 function pickSortKeyValue(state) {
@@ -35,11 +36,14 @@ function nextSequence() {
   return next.toString();
 }
 
-function make(changeKind, id, state, seq, retiredField) {
+function make(changeKind, id, state, seq, retiredField, retiredValue) {
   let descriptor = {};
   descriptor["changeKind"] = changeKind;
   descriptor["id"] = id;
-  let isRetired = retiredField !== undefined && state !== undefined ? Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(state), d => d[retiredField]), Stdlib_JSON.Decode.bool), false) : false;
+  let isRetired = retiredField !== undefined && state !== undefined ? OwnerScope$Reventless.isRetiredValue({
+      field: retiredField,
+      value: retiredValue
+    }, Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(state), d => d[retiredField])) : false;
   let v = isRetired ? undefined : Stdlib_Option.flatMap(state, pickSortKeyValue);
   if (v !== undefined) {
     descriptor["sortKeyValue"] = v;
@@ -60,10 +64,10 @@ let maxStateChars = 61440;
 
 export {
   maxStateChars,
-  retiredFieldFor,
+  retiredSpecFor,
   pickSortKeyValue,
   lastSequence,
   nextSequence,
   make,
 }
-/* StateAnnotations-Reventless Not a pure module */
+/* OwnerScope-Reventless Not a pure module */

@@ -147,7 +147,7 @@ type busCallbacks = {
       ~capability: GraphQL_FragmentGenerator.serverCapability,
       ~labelField: string,
       ~ownerScope: (string, string)=?,
-      ~retiredScope: string=?,
+      ~retiredScope: Reventless.OwnerScope.retiredScope=?,
     ) => option<JSON.t>,
   ) => unit,
 }
@@ -264,7 +264,8 @@ let makeStorage = (
       ~id=entityKeyFor(id, subKey),
       ~state=Some(state),
       ~seq=LocalStateChangeDescriptor.nextSequence(),
-      ~retiredField=?LocalStateChangeDescriptor.retiredFieldFor(name),
+      ~retiredField=?LocalStateChangeDescriptor.retiredSpecFor(name)->Option.map(r => r.field),
+      ~retiredValue=?LocalStateChangeDescriptor.retiredSpecFor(name)->Option.flatMap(r => r.value),
     )
     bus.publishStateChange(~name, ~descriptor)
   }
@@ -430,7 +431,7 @@ let makeStorage = (
     ~capability: GraphQL_FragmentGenerator.serverCapability,
     ~labelField as _,
     ~ownerScope: option<(string, string)>=?,
-    ~retiredScope: option<string>=?,
+    ~retiredScope: option<Reventless.OwnerScope.retiredScope>=?,
   ): option<JSON.t> => {
     let filterDict =
       argsDict->Dict.get("filter")->Option.flatMap(JSON.Decode.object)->Option.getOr(Dict.make())
@@ -463,10 +464,18 @@ let makeStorage = (
       // JSON boolean keeps it too — which `= 0` would get wrong, since a string
       // `'true'` compares unequal to 0 and the row would vanish on this backend
       // only. `QueryDbListPushdownParityTest` is what holds the two together.
+      //
+      // The state form compares against the state's text instead of 1, and the
+      // three cases land identically: absent is NULL, a different state compares
+      // unequal, and a non-string value is not the state either.
       switch retiredScope {
-      | Some(field) =>
+      | Some(scope) =>
+        let path = `json_extract(item, '$.${scope.field->String.replaceAll("'", "''")}')`
         whereParts->Array.push(
-          `json_extract(item, '$.${field->String.replaceAll("'", "''")}') IS NOT 1`,
+          switch scope.value {
+          | None => `${path} IS NOT 1`
+          | Some(state) => `${path} IS NOT '${state->String.replaceAll("'", "''")}'`
+          },
         )
       | None => ()
       }

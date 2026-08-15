@@ -169,7 +169,12 @@ function Make(P) {
   };
   let idExprC = `COALESCE(item->>'id', partition_key) COLLATE "C"`;
   let jsonTextC = field => col(field) + ` COLLATE "C"`;
-  let notRetiredC = field => `(item->'` + field.replaceAll("'", "''") + `') IS DISTINCT FROM 'true'::jsonb`;
+  let notRetiredC = scope => {
+    let key = scope.field.replaceAll("'", "''");
+    let state = scope.value;
+    let retired = state !== undefined ? `'"` + state.replaceAll("'", "''") + `"'::jsonb` : "'true'::jsonb";
+    return `(item->'` + key + `') IS DISTINCT FROM ` + retired;
+  };
   let listPage = async (readModelName, argsDict, capability, param$1, ownerScope, retiredScope) => {
     let table = QueryDbStorage_Postgres_Ops$ReventlessPostgres.tableName(readModelName);
     let filterDict = Stdlib_Option.getOr(Stdlib_Option.flatMap(argsDict["filter"], Stdlib_JSON.Decode.object), {});

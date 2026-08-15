@@ -271,11 +271,12 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
       }
     | None => ()
     }
-    let retiredField =
+    let retiredSpec =
       stateSchemaOpt
       ->Option.flatMap(Reventless.StateAnnotations.getSpec)
       ->Option.flatMap(spec => spec.retired)
-      ->Option.map(r => r.field)
+    let retiredField = retiredSpec->Option.map(r => r.field)
+    let retiredValue = retiredSpec->Option.flatMap(r => r.value)
     // The same class of "works, but scans" mistake as the owner warning above,
     // and the retirement case degrades the same way: the FilterExpression is
     // applied after the page is read, so pages shrink as the archive's share of
@@ -311,6 +312,7 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
           ~ownerField?,
           ~elevatedGroups=Reventless.OwnerScope.elevatedGroups(),
           ~retiredField?,
+          ~retiredValue?,
         )
       } else {
         Resolver.Functions.listAllItems

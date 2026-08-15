@@ -777,9 +777,59 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
           groupBy: None,
           visibility: None,
           live: None,
-          retired: Some({field, label: "", showWhenFalse: false}),
+          retired: Some({field, label: "", showWhenFalse: false, value: None}),
         },
       )
+
+    // The state form. The value is published beside the field so a client holding
+    // the def holds the whole predicate — two places deriving one comparison is
+    // how they come to disagree about which rows a caller may see.
+    testSync("publishes the retirement state beside the field", () => {
+      let withState = schema =>
+        schema->S.castToUnknown->S.Metadata.set(
+          ~id=Reventless.StateAnnotations.stateAnnotationsId,
+          {
+            ids: [],
+            compositeIds: [],
+            subIds: [],
+            compositeSubIds: [],
+            indexes: [],
+            hidden: [],
+            summary: [],
+            drillTargets: [],
+            drillTargetKeys: [],
+            collapsed: [],
+            scan: [],
+            scanSort: [],
+            semantic: [],
+            metric: [],
+            lifecycle: Some("accountStatus"),
+            groupBy: None,
+            visibility: None,
+            live: None,
+            retired: Some({
+              field: "accountStatus",
+              label: "",
+              showWhenFalse: false,
+              value: Some("Deactivated"),
+            }),
+          },
+        )
+      let schema = S.schema(s => {"accountStatus": s.matches(S.string)})->withState
+      expect((
+        Plugin_Structure.retiredFieldFromStateSchema(schema),
+        Plugin_Structure.retiredValueFromStateSchema(schema),
+      ))->toEqual((Some("accountStatus"), Some("Deactivated")))
+    })
+
+    // Absent is what says "boolean form", so it has to stay tellable from a state
+    // that happens to be named.
+    testSync("publishes no value on the boolean form", () => {
+      let schema = S.schema(s => {"archived": s.matches(S.bool)})
+      expect(
+        Plugin_Structure.retiredValueFromStateSchema(schema->withRetired(~field="archived")),
+      )->toEqual(None)
+    })
 
     testSync("names the annotated field", () => {
       let schema = S.schema(s => {"archived": s.matches(S.bool)})

@@ -140,6 +140,7 @@ let pluginReadModel: queryableDef = {
   requiredAccess: None,
   ownerField: None,
   retiredField: None,
+  retiredValue: None,
 }
 
 let structure: pluginStructure = {

@@ -174,8 +174,19 @@ module Make = (P: {let pool: PgDriver.pool}) => {
   // spec decodes strictly and reads a non-boolean as "no flag". `IS DISTINCT
   // FROM` rather than `<>` so an absent key — NULL — keeps the row instead of
   // making the whole predicate NULL and dropping it.
-  let notRetiredC = (field: string): string =>
-    `(item->'${field->String.replaceAll("'", "''")}') IS DISTINCT FROM 'true'::jsonb`
+  //
+  // The state form compares against a JSON string instead of `true`. Same shape,
+  // same index behaviour — an equality predicate over an enum-valued attribute
+  // costs what one over a boolean does — so the `@index` guidance carries over
+  // unchanged.
+  let notRetiredC = (scope: Reventless.OwnerScope.retiredScope): string => {
+    let key = scope.field->String.replaceAll("'", "''")
+    let retired = switch scope.value {
+    | None => "'true'::jsonb"
+    | Some(state) => `'"${state->String.replaceAll("'", "''")}"'::jsonb`
+    }
+    `(item->'${key}') IS DISTINCT FROM ${retired}`
+  }
 
   // Connection-list push-down. Builds `item->>'field'` predicates + keyset
   // WHERE + `ORDER BY … LIMIT pageSize+1` so a page reads only what it returns
@@ -193,7 +204,7 @@ module Make = (P: {let pool: PgDriver.pool}) => {
     ~capability: GraphQL_FragmentGenerator.serverCapability,
     ~labelField as _,
     ~ownerScope: option<(string, string)>=?,
-    ~retiredScope: option<string>=?,
+    ~retiredScope: option<Reventless.OwnerScope.retiredScope>=?,
   ): option<JSON.t> => {
     let table = QueryDbStorage_Postgres_Ops.tableName(readModelName)
     let filterDict =
@@ -231,7 +242,7 @@ module Make = (P: {let pool: PgDriver.pool}) => {
       | None => ()
       }
       switch retiredScope {
-      | Some(field) => whereParts->Array.push(notRetiredC(field))
+      | Some(scope) => whereParts->Array.push(notRetiredC(scope))
       | None => ()
       }
       let valString = v =>
@@ -334,7 +345,7 @@ module Make = (P: {let pool: PgDriver.pool}) => {
     ~id: string,
     ~argsDict: dict<JSON.t>,
     ~ownerScope: option<(string, string)>=?,
-    ~retiredScope: option<string>=?,
+    ~retiredScope: option<Reventless.OwnerScope.retiredScope>=?,
   ): JSON.t => {
     let table = QueryDbStorage_Postgres_Ops.tableName(readModelName)
     let filterDict =
@@ -357,7 +368,7 @@ module Make = (P: {let pool: PgDriver.pool}) => {
     | None => ()
     }
     switch retiredScope {
-    | Some(field) => where->Array.push(notRetiredC(field))
+    | Some(scope) => where->Array.push(notRetiredC(scope))
     | None => ()
     }
     fstr("prefix")->Option.forEach(p =>

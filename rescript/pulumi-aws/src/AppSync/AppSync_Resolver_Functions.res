@@ -451,6 +451,9 @@ let listAllItemsConnection = (
   // reason `ownerField` is: there is no Lambda in this path to read it at
   // request time.
   ~retiredField: option<string>=?,
+  // The value that retires the row, for the state form of the annotation.
+  // Absent is the boolean form, where the value is always `true`.
+  ~retiredValue: option<string>=?,
 ) => {
   let requireAttributeClause = switch requireAttribute {
   | Some(attr) => `
@@ -498,6 +501,12 @@ let listAllItemsConnection = (
   // the annotation existed carries no such attribute, and DynamoDB's `<>` does
   // not match a missing one — the whole view would come back empty on the day
   // the annotation lands.
+  //
+  // The state form compares `<>` against the retiring state instead, under the
+  // same `attribute_not_exists` guard and for the same reason. An equality
+  // predicate over an enum-valued attribute indexes exactly as a boolean one
+  // does, so the warning about an unindexed retirement field carries over
+  // unchanged.
   let retiredClause = switch retiredField {
   | None => ""
   | Some(field) =>
@@ -516,8 +525,12 @@ let listAllItemsConnection = (
   const _wantsRetired = _exempt && ctx.args.includeRetired === true;
   if (!_wantsRetired) {
     names['#retired'] = '${field}';
-    values[':retiredFalse'] = util.dynamodb.toDynamoDB(false);
-    parts.push('(attribute_not_exists(#retired) OR #retired = :retiredFalse)');
+${switch retiredValue {
+      | None => `    values[':retiredFalse'] = util.dynamodb.toDynamoDB(false);
+    parts.push('(attribute_not_exists(#retired) OR #retired = :retiredFalse)');`
+      | Some(state) => `    values[':retiredValue'] = util.dynamodb.toDynamoDB('${state}');
+    parts.push('(attribute_not_exists(#retired) OR #retired <> :retiredValue)');`
+      }}
   }`
   }
   let filterClauses =

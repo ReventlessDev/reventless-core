@@ -431,7 +431,7 @@ describe("SuryToJsonSchema:", () => {
       let schema' =
         schema->withSpec({
           ...emptySpec,
-          retired: Some({field: "archived", label: "Archived", showWhenFalse: true}),
+          retired: Some({field: "archived", label: "Archived", showWhenFalse: true, value: None}),
         })
       let json = SuryToJsonSchema.deriveObjectSchema(schema')
       let retiredObj =
@@ -446,12 +446,57 @@ describe("SuryToJsonSchema:", () => {
       ))->toEqual((Some("Archived"), Some(true), None))
     })
 
+    // The state form. `value` is what tells a consumer which of the two forms a
+    // view declared, so it travels on the same key and only when present.
+    testSync("carries the retirement state on the annotated field", () => {
+      let schema = S.schema(s =>
+        {
+          "customerId": s.matches(S.string),
+          "accountStatus": s.matches(S.union([S.literal("Active"), S.literal("Deactivated")])),
+        }
+      )->S.castToUnknown
+      let schema' =
+        schema->withSpec({
+          ...emptySpec,
+          lifecycle: Some("accountStatus"),
+          retired: Some({
+            field: "accountStatus",
+            label: "",
+            showWhenFalse: false,
+            value: Some("Deactivated"),
+          }),
+        })
+      let json = SuryToJsonSchema.deriveObjectSchema(schema')
+      let retiredObj =
+        getPropertyOf(json, "accountStatus")->Option.flatMap(s =>
+          getProperty(s, "x-reventless-retired")
+        )
+      expect(
+        retiredObj->Option.flatMap(r => getProperty(r, "value"))->Option.flatMap(JSON.Decode.string),
+      )->toEqual(Some("Deactivated"))
+    })
+
+    // Absent rather than null: a consumer reads the key's absence as "the boolean
+    // form", the same way it reads an absent label as "derive one from the name".
+    testSync("omits the value entirely on the boolean form", () => {
+      let schema = S.schema(s => {"archived": s.matches(S.bool)})->S.castToUnknown
+      let schema' =
+        schema->withSpec({
+          ...emptySpec,
+          retired: Some({field: "archived", label: "", showWhenFalse: false, value: None}),
+        })
+      let json = SuryToJsonSchema.deriveObjectSchema(schema')
+      let retiredObj =
+        getPropertyOf(json, "archived")->Option.flatMap(s => getProperty(s, "x-reventless-retired"))
+      expect(retiredObj->Option.flatMap(r => getProperty(r, "value")))->toEqual(None)
+    })
+
     testSync("omits the retired label when empty but always states showWhenFalse", () => {
       let schema = S.schema(s => {"deactivated": s.matches(S.bool)})->S.castToUnknown
       let schema' =
         schema->withSpec({
           ...emptySpec,
-          retired: Some({field: "deactivated", label: "", showWhenFalse: false}),
+          retired: Some({field: "deactivated", label: "", showWhenFalse: false, value: None}),
         })
       let json = SuryToJsonSchema.deriveObjectSchema(schema')
       let retiredObj =

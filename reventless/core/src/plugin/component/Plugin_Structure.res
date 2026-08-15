@@ -86,10 +86,73 @@ let lifecycleFieldFromStateSchema = (
 // a command menu filter oddly; guessing wrong here makes rows vanish for every
 // caller who is not elevated, so a boolean named `archived` that nobody annotated
 // stays exactly as visible as it was.
-let retiredFieldFromStateSchema = (stateSchema: S.t<unknown>): option<string> =>
+let retiredFromStateSchema = (
+  stateSchema: S.t<unknown>,
+): option<Reventless.StateAnnotations.retiredSpec> =>
   switch Reventless.StateAnnotations.getSpec(stateSchema) {
-  | Some(spec) => spec.retired->Option.map(r => r.field)
+  | Some(spec) => spec.retired
   | None => None
+  }
+
+let retiredFieldFromStateSchema = (stateSchema: S.t<unknown>): option<string> =>
+  retiredFromStateSchema(stateSchema)->Option.map(r => r.field)
+
+// The state a row is retired *in*, for the enum form. `None` is the boolean
+// form, where the value is always `true` and naming it would be a parameter that
+// can only hold one thing.
+//
+// Published beside `retiredField` rather than left for a consumer to dig out of
+// the schema: a client that has the def in hand has the whole predicate, and two
+// places deriving one comparison is how they come to disagree about it.
+let retiredValueFromStateSchema = (stateSchema: S.t<unknown>): option<string> =>
+  retiredFromStateSchema(stateSchema)->Option.flatMap(r => r.value)
+
+// The check the PPX cannot make, in the one place that can: the payload is a
+// constructor reference the PPX only ever sees as a name, and whether that name
+// is a case of the field's enum needs the schema.
+//
+// Two rules, and the second is the one the form exists for. A `value` on a field
+// that is not the record's lifecycle would keep the read narrowing while silently
+// losing the command filtering that motivates it — `@allowedStates` is written in
+// terms of the lifecycle field, so a retirement state anywhere else is a state no
+// command can name.
+let checkRetiredValue = (~entityName: string, stateSchema: S.t<unknown>): unit =>
+  switch retiredFromStateSchema(stateSchema) {
+  | Some({field, value: Some(value)}) =>
+    let lifecycle = lifecycleFieldFromStateSchema(~entityName, stateSchema)
+    if lifecycle != Some(field) {
+      log.warn(
+        ~comp="Plugin_Structure",
+        `${entityName}: @retired(${value}) is on "${field}", which is not this record's lifecycle field${lifecycle
+          ->Option.map(f => ` (that is "${f}")`)
+          ->Option.getOr(
+            " (it declares none)",
+          )}. A retirement state no command's @allowedStates can name loses the command filtering the state form exists for.`,
+      )
+    }
+    let declared = switch stateSchema {
+    | Object({items}) =>
+      items
+      ->Array.find(item => item.location == field)
+      ->Option.map(item =>
+        switch shapeOfItem(~entityName, item) {
+        | Enum(_, values) => values
+        | Nullable(Enum(_, values)) => values
+        | _ => []
+        }
+      )
+      ->Option.getOr([])
+    | _ => []
+    }
+    if Array.length(declared) > 0 && !(declared->Array.includes(value)) {
+      log.warn(
+        ~comp="Plugin_Structure",
+        `${entityName}: @retired(${value}) names a state "${field}" does not declare — known values: ${declared->Array.joinWith(
+            ", ",
+          )}.`,
+      )
+    }
+  | _ => ()
   }
 
 // Which rung of the ladder below produced the label. Published on `queryableDef`
@@ -771,6 +834,7 @@ let make = (
       // edges for any event reaching the read model via a DCB-log-sourced mapping (a classic
       // aggregate→view link is also drawn from the producer's linkedViews, deduped downstream).
       let consumed = qualify(~prefix=name, R.consumedEventNames)
+      checkRetiredValue(~entityName=R.Spec.name, stateSchema)
       ({
         Reventless.Plugin.name: R.Spec.name,
         queryField: qf.listFieldName,
@@ -785,6 +849,7 @@ let make = (
         // fields this view has.
         ownerField: Reventless.Owner.fieldNames(stateSchema)->Array.get(0),
         retiredField: retiredFieldFromStateSchema(stateSchema),
+        retiredValue: retiredValueFromStateSchema(stateSchema),
         visibility: visibilityTag(R.Spec.visibility),
         chapter: chapterOf(R.Spec.name),
         // Taken from the `qf` record, never re-derived: `Api_Naming` is the only
@@ -807,6 +872,7 @@ let make = (
         ~entityName=SVS.Spec.name,
         stateSchema,
       )
+      checkRetiredValue(~entityName=SVS.Spec.name, stateSchema)
       ({
         Reventless.Plugin.name: SVS.Spec.name,
         queryField: qf.listFieldName,
@@ -819,6 +885,7 @@ let make = (
         lifecycleField: lifecycleFieldFromStateSchema(~entityName=SVS.Spec.name, stateSchema),
         ownerField: Reventless.Owner.fieldNames(stateSchema)->Array.get(0),
         retiredField: retiredFieldFromStateSchema(stateSchema),
+        retiredValue: retiredValueFromStateSchema(stateSchema),
         visibility: visibilityTag(SVS.Spec.visibility),
         chapter: chapterOf(SVS.Spec.name),
         singleQueryField: Some(qf.singleFieldName),

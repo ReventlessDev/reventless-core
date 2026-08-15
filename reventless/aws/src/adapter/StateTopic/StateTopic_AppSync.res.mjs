@@ -20,7 +20,7 @@ import * as StateTopic_AppSync_Helpers$ReventlessAws from "./StateTopic_AppSync_
 
 let registry = {};
 
-function makeForTable(tableName, streamArn, partitionKeyName, topicName, retiredField, eventsApi, param) {
+function makeForTable(tableName, streamArn, partitionKeyName, topicName, retiredField, retiredValue, eventsApi, param) {
   let checkedTableName = Pulumi.all([
     tableName,
     partitionKeyName
@@ -35,13 +35,14 @@ function makeForTable(tableName, streamArn, partitionKeyName, topicName, retired
       tableName: checkedTableName,
       streamArn: streamArn,
       topicName: topicName,
-      retiredField: retiredField
+      retiredField: retiredField,
+      retiredValue: retiredValue
     }]);
 }
 
 function make(readModelName, topicName, allQueryDbs, eventsApi, opts) {
   let streamResource = Util_DynamoDbStream$ReventlessAws.findResource(Util_ReadModel$ReventlessCore.queryDbStorageResources(allQueryDbs, readModelName));
-  makeForTable(streamResource.name, Util_DynamoDbStream$ReventlessAws.streamArnFromDynamoDbTableResource(streamResource), Pulumi.output(StateTopic_AppSync_Helpers$ReventlessAws.entityKeyPartitionAttribute), topicName, Stdlib_Option.map(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Plugin_Helpers$ReventlessCore.stateSchemaRegistry[readModelName], StateAnnotations$Reventless.getSpec), spec => spec.retired), r => r.field), eventsApi, opts);
+  makeForTable(streamResource.name, Util_DynamoDbStream$ReventlessAws.streamArnFromDynamoDbTableResource(streamResource), Pulumi.output(StateTopic_AppSync_Helpers$ReventlessAws.entityKeyPartitionAttribute), topicName, Stdlib_Option.map(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Plugin_Helpers$ReventlessCore.stateSchemaRegistry[readModelName], StateAnnotations$Reventless.getSpec), spec => spec.retired), r => r.field), Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Plugin_Helpers$ReventlessCore.stateSchemaRegistry[readModelName], StateAnnotations$Reventless.getSpec), spec => spec.retired), r => r.value), eventsApi, opts);
 }
 
 function finish(eventsApi, opts) {
@@ -99,9 +100,19 @@ function finish(eventsApi, opts) {
   });
   let retiredMapJson = Pulumi.all(entries.map(e => e.tableName)).apply(tableNames => {
     let dict = {};
-    tableNames.forEach((tableName, i) => Stdlib_Option.forEach(entries[i].retiredField, f => {
-      dict[tableName] = f;
-    }));
+    tableNames.forEach((tableName, i) => {
+      let entry = entries[i];
+      Stdlib_Option.forEach(entry.retiredField, f => {
+        let obj = Object.fromEntries([[
+            "field",
+            f
+          ]]);
+        Stdlib_Option.forEach(entry.retiredValue, v => {
+          obj["value"] = v;
+        });
+        dict[tableName] = obj;
+      });
+    });
     return JSON.stringify(dict);
   });
   let packageDirs = Object.fromEntries([[

@@ -236,13 +236,24 @@ same deployment-wide `elevatedGroups`. Written apart, they could disagree about
 who an operator is, and the disagreement would be invisible until a caller
 elevated for one rule turned out to be scoped by the other.
 
-`ExcludeRetired` carries the field rather than a `(field, value)` pair like
-`ScopeTo`: the excluded value is always `true`, and a parameter that can only
-hold one value is a parameter a call site can pass wrongly.
+`ExcludeRetired` carries the whole predicate — the field and, for the state form
+of `@retired`, the state that retires the row. `value: None` is the boolean form,
+where the excluded value is always `true`; naming it there would be a parameter
+that can only hold one thing, and a parameter a call site can pass wrongly.
+
+Both halves travel together for the reason the pair exists at all: a field
+without its value is half a comparison, and an adapter left to fetch the other
+half from the schema is an adapter that can disagree with the one next to it
+about which rows a caller may see.
 */
+type retiredScope = {
+  field: string,
+  value: option<string>,
+}
+
 type retiredDecision =
   | RetiredVisible
-  | ExcludeRetired(string)
+  | ExcludeRetired(retiredScope)
 
 /**
 Combine a view's declared retirement flag with the caller behind the request.
@@ -260,15 +271,17 @@ non-exempt caller — so the fail-closed action is simply the narrow read.
 let decideRetired = (
   identity: Identity.t,
   ~retiredField: option<string>,
+  ~retiredValue: option<string>=?,
   ~asked: bool=false,
   ~elevated: array<string>=elevatedGroups(),
 ): retiredDecision =>
   switch retiredField {
   | None => RetiredVisible
   | Some(field) =>
+    let scope = {field, value: retiredValue}
     switch resolve(identity, ~elevated) {
-    | System | Elevated(_) => asked ? RetiredVisible : ExcludeRetired(field)
-    | Owned(_) | Unidentified(_) => ExcludeRetired(field)
+    | System | Elevated(_) => asked ? RetiredVisible : ExcludeRetired(scope)
+    | Owned(_) | Unidentified(_) => ExcludeRetired(scope)
     }
   }
 
@@ -280,8 +293,27 @@ withheld from everyone by default, and elevation buys the ability to ask for
 them rather than a standing exemption. An archive that is always underfoot is
 not an archive.
 */
-let retiredScopeOf = (decision: retiredDecision): option<string> =>
+let retiredScopeOf = (decision: retiredDecision): option<retiredScope> =>
   switch decision {
-  | ExcludeRetired(field) => Some(field)
+  | ExcludeRetired(scope) => Some(scope)
   | RetiredVisible => None
+  }
+
+/**
+Whether a row's value in the retirement field is the retired one.
+
+The single place the two forms differ, so every reader asks one question rather
+than branching on the form itself. `None` — the field absent from the row —
+answers false in both, which is the mirror image of the owner rule and lands the
+opposite way for the same reason: an owner-scoped read excludes a row that states
+no owner, because such a row belongs to nobody in particular, while a retirement
+read KEEPS a row that states no flag, because absent means not retired. That is
+what a row written before the annotation existed is, and excluding those would
+empty the view the day the annotation lands.
+*/
+let isRetiredValue = (scope: retiredScope, cell: option<JSON.t>): bool =>
+  switch (scope.value, cell) {
+  | (_, None) => false
+  | (None, Some(v)) => v->JSON.Decode.bool->Option.getOr(false)
+  | (Some(state), Some(v)) => v->JSON.Decode.string == Some(state)
   }

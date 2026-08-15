@@ -894,6 +894,23 @@ type state = {
 }
 EOF
 
+# ─── Fixture: @retired on a lifecycle state ───────────────────────
+
+cat > "$PLUGIN/src/ReadModel/RetiredStateReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type accountStatus =
+  | Active
+  | Deactivated
+
+@schema
+type state = {
+  @id customerId: string,
+  @retired(Deactivated) @lifecycle accountStatus: accountStatus,
+}
+EOF
+
 # ─── Fixture: @lifecycle (the enum commands branch on) ────────────
 
 cat > "$PLUGIN/src/ReadModel/LifecycleReadModel.res" <<'EOF'
@@ -1776,6 +1793,15 @@ assert_js_contains "$JS" 'lifecycle: "phase"'        "@lifecycle: 'phase' record
 assert_js_not_contains "$JS" '@lifecycle'            "@lifecycle: annotation stripped from output"
 
 echo ""
+echo "=== Test: @retired on a state → value in the metadata ==="
+JS="$PLUGIN/src/ReadModel/RetiredStateReadModel.res.mjs"
+assert_js_contains "$JS" 'stateAnnotationsId'         "@retired(state): metadata emitted"
+assert_js_contains "$JS" 'field: "accountStatus"'     "@retired(state): field recorded"
+assert_js_contains "$JS" 'value: "Deactivated"'       "@retired(state): value recorded"
+assert_js_contains "$JS" 'lifecycle: "accountStatus"' "@retired(state): pairs with @lifecycle"
+assert_js_not_contains "$JS" '@retired'               "@retired(state): annotation stripped"
+
+echo ""
 echo "=== Test: @retired → metadata field populated ==="
 JS="$PLUGIN/src/ReadModel/RetiredReadModel.res.mjs"
 assert_js_contains "$JS" 'stateAnnotationsId'        "@retired: stateAnnotations metadata emitted"
@@ -2226,6 +2252,30 @@ else
   fi
 fi
 rm -f "$ERROR/src/ReadModel/RetiredConflictReadModel.res"
+
+echo ""
+echo "=== Test: PPX error — @retired(state) on a boolean field ==="
+
+cat > "$ERROR/src/ReadModel/RetiredStateOnBoolReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = {
+  @id id: string,
+  @retired(Deactivated) archived: bool,
+}
+EOF
+
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "@retired(state) on bool" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q "names a state, so the field must hold the enum"; then
+    pass "@retired(state) on a boolean field → correct compile error"
+  else
+    fail "@retired(state) on bool" "unexpected error output: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/ReadModel/RetiredStateOnBoolReadModel.res"
 
 echo ""
 echo "=== Test: PPX error — @retired on a non-boolean field ==="

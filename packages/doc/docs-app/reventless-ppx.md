@@ -762,9 +762,13 @@ type state = {
 
 ---
 
-### `@retired` — the boolean that withdraws a row from ordinary reads
+### `@retired` — what withdraws a row from ordinary reads
 
-`@retired` names the boolean state field whose truth means *this row is retired from ordinary use* — a deactivated customer, an archived category. Place it **before the field name**, on a `@schema type state` field of a ReadModel or StateViewSlice spec.
+`@retired` names what means *this row is retired from ordinary use* — a deactivated customer, an archived category. Place it **before the field name**, on a `@schema type state` field of a ReadModel or StateViewSlice spec.
+
+It has two forms, and which one is right depends on whether the record has a lifecycle.
+
+**The boolean form** — the field is a flag, and the row is retired when it is `true`:
 
 ```rescript
 @schema
@@ -775,23 +779,58 @@ type state = {
 }
 ```
 
+**The state form** — the field is the record's `@lifecycle`, and the row is retired in one of its states:
+
+```rescript
+@schema
+type accountStatus =
+  | Active
+  | Deactivated
+
+@schema
+type state = {
+  @id customerId: string,
+  @displayName email: string,
+  @retired(Deactivated) @lifecycle accountStatus: accountStatus,
+}
+```
+
+**Reach for the state form whenever the record has a lifecycle at all**, and the reason is what it does to commands. Without it, a record whose retirement is part of its life carries the same fact twice — once as the boolean the query layer filters on, once as a value of the enum that board columns, group sections, the progress tracker and `@allowedStates` are all expressed in terms of. Two sources of one truth, free to drift, with no rule keeping them in step.
+
+With one field, `@allowedStates` becomes the command-applicability mechanism with no new annotation at all:
+
+```rescript
+| @allowedStates([Active]) UpdateEmail({email: string})
+| @allowedStates([Active]) Deactivate
+| @allowedStates([Deactivated]) Reactivate
+```
+
+That last line is the point. A consumer filtering a per-row command menu against `allowedStates` already exists and already works; what was missing was never a way to describe a command's stance on retirement — it was retirement being expressible in the vocabulary that stance is already written in.
+
+The boolean form stays the right choice where retirement genuinely *is* a flag rather than a state: a `Products` view with an `archived` boolean and no lifecycle should not have to invent a two-valued enum.
+
 Two things follow from the one annotation, and the second is why this is not a presentation hint like `@groupBy`:
 
-- **On the schema:** `SuryToJsonSchema.deriveObjectSchema` stamps `x-reventless-retired: {label?, showWhenFalse}` on the named property, so a consumer renders retirement as a *state of the row* rather than as one more data column.
-- **On every read:** rows whose flag is true are withheld from callers who are not exempt — the list query, the single-entity query, the by-ids and by-index doors, and the payload of a live change frame. Codegen carries the field name as `queryableDef.retiredField`, and the predicate is pushed into SQL and into the DynamoDB `FilterExpression` rather than applied to the returned page, so `first: 2` yields two live rows.
+- **On the schema:** `SuryToJsonSchema.deriveObjectSchema` stamps `x-reventless-retired: {label?, showWhenFalse, value?}` on the named property, so a consumer renders retirement as a *state of the row* rather than as one more data column. `value` is present only in the state form, and its absence is what tells a consumer which form the view declared.
+- **On every read:** rows that are retired — the flag true, or the field equal to the named state — are withheld from callers who are not exempt — the list query, the single-entity query, the by-ids and by-index doors, and the payload of a live change frame. Codegen carries the field name as `queryableDef.retiredField` and the state as `retiredValue`, so a client holding the def holds the whole predicate; it is pushed into SQL and into the DynamoDB `FilterExpression` rather than applied to the returned page, so `first: 2` yields two live rows.
 
-**Payload forms.** Bare, a string label, or a record:
+**Payload forms.** Bare, a state constructor, a string label, or a record:
 
 ```rescript
 @retired deactivated: bool,
+@retired(Deactivated) accountStatus: accountStatus,
 @retired("Archived") archived: bool,
 @retired({label: "Archived", showWhenFalse: true}) archived: bool,
+@retired({value: Deactivated, label: "Closed"}) accountStatus: accountStatus,
 ```
+
+The state is a **constructor reference**, not a string literal, matching `@allowedStates` — the two annotations name states in the same vocabulary, which is the whole reason the state form exists. A string would read the same and check nothing; what survives the constructor reference (a value that is not one of the field's declared cases) is reported when the plugin structure is built, where the schema is in hand.
 
 The label defaults to empty, which the schema emitter omits so a consumer can tell "not stated" from "stated as empty" and derive one from the field name. `showWhenFalse` defaults to `false` and always travels: it asks a consumer to surface the flag in its negative state too, and since a non-exempt caller never receives a retired row, a default-on marker would appear on every row they can read and carry no information.
 
 - **One per state record.** A second `@retired` is a compile error. Two retirement flags do not narrow the read further, they leave it undecided — the query layer tests a single field.
-- **`bool` or `option<bool>` only** (the `f?: bool` form works too). Anything else is a compile error: the annotation names a predicate the query layer evaluates, and on a non-boolean there is nothing to evaluate, so the rows would stay visible to everyone while the field looked as though it restricted them.
+- **The field type check inverts on the payload.** With no state named, the field must be `bool` or `option<bool>` (the `f?: bool` form works too) — the predicate is "is this true?", and on a non-boolean there is nothing to evaluate. With a state named, the field must NOT be a boolean, because it holds the enum that state belongs to. Either mistake is a compile error with the message for that branch; getting it wrong would leave the annotation riding the schema, rendering as a marker and narrowing nothing.
+- **The state form must sit on the record's `@lifecycle` field.** A retirement state anywhere else keeps the read narrowing but loses the command filtering that motivates it, because `@allowedStates` is written in terms of the lifecycle field — a state no command can name. Reported when the structure is built, along with a state the field does not declare.
 - **Absent means not retired**, on all four backends. A row written before the annotation existed carries no flag, and excluding those would empty the view the day someone adds `@retired`.
 - **Annotation or nothing.** Unlike `@lifecycle`, there is no conventional fallback: a boolean named `archived` that nobody annotated stays exactly as visible as it was. Guessing wrong here makes rows disappear.
 
@@ -801,7 +840,7 @@ The label defaults to empty, which the schema emitter omits so a consumer can te
 
 **`@retired` neither needs nor implies `@scan`.** `@scan` widens the *client's* filter surface; this predicate is the resolver's, derived from who the caller is. A `<field>Eq` on the filter input would only ever return an empty page for the callers who could pass it.
 
-**Cost.** The framework warns at deploy time when the annotated field keys no index, mirroring the `@owner` warning and for the same pathology: a `FilterExpression` is applied after the page is read, so pages shrink as the archive's share of the table grows. It warns rather than refuses — a small table may legitimately accept the cost. `@scan` deliberately does not silence it: it adds no index and removes no read unit.
+**Cost.** An equality predicate over an enum-valued attribute indexes exactly as one over a boolean does, so nothing below changes between the two forms. The framework warns at deploy time when the annotated field keys no index, mirroring the `@owner` warning and for the same pathology: a `FilterExpression` is applied after the page is read, so pages shrink as the archive's share of the table grows. It warns rather than refuses — a small table may legitimately accept the cost. `@scan` deliberately does not silence it: it adds no index and removes no read unit.
 
 **Live updates.** The state-change channel is keyed by view and entity and shared by every subscriber, so a publish cannot be scoped per caller. A save that leaves the row retired therefore publishes **metadata only** — `Updated` with no `state` — which asks every subscriber to refetch and lets the query layer answer for each of them. Un-retiring publishes full state as before. A subscriber still learns that *an entity with a given id changed*; removing that residual would need per-caller channels.
 

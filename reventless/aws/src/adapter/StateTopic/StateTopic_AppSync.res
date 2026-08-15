@@ -95,6 +95,7 @@ type streamEntry = {
   // The read model's `@retired` field, resolved at deploy time because the relay
   // Lambda has no plugin registry in process to resolve it at request time.
   retiredField: option<string>,
+  retiredValue: option<string>,
 }
 
 // One registry per events API, keyed by `eventsApi.name` (the static Pulumi
@@ -138,6 +139,7 @@ let makeForTable = (
   ~partitionKeyName: Pulumi.Output.t<string>,
   ~topicName: string,
   ~retiredField: option<string>=?,
+  ~retiredValue: option<string>=?,
   ~eventsApi: AppSync_EventsApi.t,
   ~opts as _: Pulumi.CustomResourceOptions.t,
 ) => {
@@ -156,7 +158,9 @@ let makeForTable = (
   let entries = registry->Dict.get(key)->Option.getOr([])
   registry->Dict.set(
     key,
-    entries->Array.concat([{tableName: checkedTableName, streamArn, topicName, retiredField}]),
+    entries->Array.concat([
+      {tableName: checkedTableName, streamArn, topicName, retiredField, retiredValue},
+    ]),
   )
 }
 
@@ -190,6 +194,11 @@ let make = (
     ->Option.flatMap(Reventless.StateAnnotations.getSpec)
     ->Option.flatMap(spec => spec.retired)
     ->Option.map(r => r.field),
+    ~retiredValue=?ReventlessCore.Plugin_Helpers.stateSchemaRegistry
+    ->Dict.get(readModelName)
+    ->Option.flatMap(Reventless.StateAnnotations.getSpec)
+    ->Option.flatMap(spec => spec.retired)
+    ->Option.flatMap(r => r.value),
     ~eventsApi,
     ~opts,
   )
@@ -284,9 +293,11 @@ let finish = (
         dict->JSON.Encode.object->JSON.stringify
       })
 
-    // STATE_RETIRED_MAP env var — `{ <tableName>: <retiredField> }`, carrying
-    // only the tables that declare one. Built from the same awaited table names
-    // as the topic map so the two cannot describe different sets of tables.
+    // STATE_RETIRED_MAP env var — `{ <tableName>: {field, value?} }`, carrying
+    // only the tables that declare retirement. Built from the same awaited table
+    // names as the topic map so the two cannot describe different sets of tables.
+    // The whole predicate travels: the relay Lambda has no plugin registry, so a
+    // field without its value would leave it unable to tell the two forms apart.
     let retiredMapJson =
       entries
       ->Array.map(e => e.tableName)
@@ -294,9 +305,12 @@ let finish = (
       ->Pulumi.Output.apply(tableNames => {
         let dict = Dict.make()
         tableNames->Array.forEachWithIndex((tableName, i) => {
-          (entries->Array.getUnsafe(i)).retiredField->Option.forEach(f =>
-            dict->Dict.set(tableName, f->JSON.Encode.string)
-          )
+          let entry = entries->Array.getUnsafe(i)
+          entry.retiredField->Option.forEach(f => {
+            let obj = Dict.fromArray([("field", f->JSON.Encode.string)])
+            entry.retiredValue->Option.forEach(v => obj->Dict.set("value", v->JSON.Encode.string))
+            dict->Dict.set(tableName, obj->JSON.Encode.object)
+          })
         })
         dict->JSON.Encode.object->JSON.stringify
       })

@@ -53,7 +53,8 @@ let stateSchema$2 = S.Metadata.set(stateSchema$1, StateAnnotations$Reventless.st
   retired: {
     field: "deactivated",
     label: "",
-    showWhenFalse: false
+    showWhenFalse: false,
+    value: undefined
   }
 });
 

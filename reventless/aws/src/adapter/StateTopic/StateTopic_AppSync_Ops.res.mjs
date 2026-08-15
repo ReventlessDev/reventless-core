@@ -8,6 +8,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types/OwnerScope.res.mjs";
 import * as DynamoDb_Util_Helpers$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_Util_Helpers.res.mjs";
 import * as AppSyncEventsSigner_Ops$ReventlessAws from "../Api/AppSyncEventsSigner_Ops.res.mjs";
 
@@ -29,8 +30,11 @@ let retiredMap;
 
 if (d !== undefined) {
   let out = {};
-  Stdlib_Dict.forEachWithKey(d, (v, k) => Stdlib_Option.forEach(Stdlib_JSON.Decode.string(v), sv => {
-    out[k] = sv;
+  Stdlib_Dict.forEachWithKey(d, (v, k) => Stdlib_Option.forEach(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(v), o => Stdlib_Option.map(Stdlib_Option.flatMap(o["field"], Stdlib_JSON.Decode.string), field => ({
+    field: field,
+    value: Stdlib_Option.flatMap(o["value"], Stdlib_JSON.Decode.string)
+  }))), scope => {
+    out[k] = scope;
   }));
   retiredMap = out;
 } else {
@@ -114,9 +118,12 @@ function pickSortKeyValue(image) {
   }
 }
 
-function makeDescriptor(changeKind, entityKey, image, seq, retiredField) {
+function makeDescriptor(changeKind, entityKey, image, seq, retiredField, retiredValue) {
   let removed = changeKind === "Removed";
-  let retired = retiredField !== undefined ? !removed && Stdlib_Option.getOr(Stdlib_Option.flatMap(image[retiredField], Stdlib_JSON.Decode.bool), false) : false;
+  let retired = retiredField !== undefined ? !removed && OwnerScope$Reventless.isRetiredValue({
+      field: retiredField,
+      value: retiredValue
+    }, image[retiredField]) : false;
   let descriptor = {};
   descriptor["changeKind"] = changeKind;
   descriptor["id"] = entityKey;
@@ -153,7 +160,7 @@ async function processRecord(record, region, creds) {
     let entityKey = entityKeyFromRecord(dynamodb);
     let channel = `/default/` + topicRoot + `/` + AppSyncEventsSigner_Ops$ReventlessAws.pathSegment(entityKey);
     let unmarshalled = DynamoDb_Util_Helpers$AwsSdk.unmarshallDict(undefined, image);
-    let descriptor = makeDescriptor(changeKindFor(record.eventName), entityKey, unmarshalled, dynamodb.SequenceNumber, Stdlib_Option.flatMap(tableNameFromEventSourceArn(record.eventSourceARN), t => retiredMap[t]));
+    let descriptor = makeDescriptor(changeKindFor(record.eventName), entityKey, unmarshalled, dynamodb.SequenceNumber, Stdlib_Option.map(Stdlib_Option.flatMap(tableNameFromEventSourceArn(record.eventSourceARN), t => retiredMap[t]), scope => scope.field), Stdlib_Option.flatMap(Stdlib_Option.flatMap(tableNameFromEventSourceArn(record.eventSourceARN), t => retiredMap[t]), scope => scope.value));
     let body = JSON.stringify(Object.fromEntries([
       [
         "id",

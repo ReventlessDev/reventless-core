@@ -1201,37 +1201,101 @@ let find_record_bool key fields =
     `show_when_false` defaults to false: a caller who is not exempt from the
     narrowing never receives a retired row, so a default-on negative marker
     would appear on every record they can read and carry no information. *)
-let get_retired_value ~loc (attr : attribute) : (string * bool) =
+(* The leaf name of a constructor reference: `Deactivated` and
+   `Customers.Deactivated` both yield "Deactivated". Mirrors
+   [AllowedStatesAnnotation.leaf_of_lident] — the two annotations name states in
+   the same vocabulary, and the state form of `@retired` exists precisely so a
+   command's `@allowedStates` can name the same one. *)
+let retired_leaf_of_lident ~loc (lid : Longident.t) : string =
+  match lid with
+  | Lident name -> name
+  | Ldot (_, name) -> name
+  | Lapply _ ->
+    Location.raise_errorf ~loc
+      "@retired: a functor application is not a valid constructor reference"
+
+(* A constructor reference in a payload position, or None if the expression is
+   something else. Payloadless constructors (`Deactivated`) parse as
+   [Pexp_construct]; a qualified one carries its module in the longident. *)
+let retired_ctor_of_expr ~loc (e : expression) : string option =
+  match e.pexp_desc with
+  | Pexp_construct ({ txt = Lident ("true" | "false"); _ }, None) -> None
+  | Pexp_construct ({ txt; _ }, None) -> Some (retired_leaf_of_lident ~loc txt)
+  | _ -> None
+
+(* Find a constructor-reference member of a record payload by key. *)
+let find_record_ctor ~loc key fields =
+  match List.find_opt (fun (lid, _) ->
+    match lid.txt with Lident k -> String.equal k key | _ -> false
+  ) fields with
+  | Some (_, e) -> retired_ctor_of_expr ~loc e
+  | None -> None
+
+(* Returns (label, showWhenFalse, value). `value = None` is the boolean form —
+   the row is retired when the field is `true`. `value = Some v` is the state
+   form: the row is retired when the field equals `v`, and the field is the
+   record's `@lifecycle` field.
+
+   The payload is a CONSTRUCTOR REFERENCE, not a string, for the same reason
+   `@allowedStates` takes one: a string literal would read identically and check
+   nothing, where a constructor at least states the author's intent in the type's
+   own vocabulary. What survives it — a value that is not one of the field's
+   declared cases — is caught at structure time, where the schema is in hand. *)
+let get_retired_value ~loc (attr : attribute) : (string * bool * string option) =
   match attr.attr_payload with
-  | PStr [] -> ("", false)
+  | PStr [] -> ("", false, None)
   | PStr [{ pstr_desc = Pstr_eval ({pexp_desc = Pexp_constant (Pconst_string (s, _, _)); _}, _); _ }] ->
-    (s, false)
+    (s, false, None)
   | PStr [{ pstr_desc = Pstr_eval ({pexp_desc = Pexp_record (fields, _); _}, _); _ }] ->
     let label = (match find_record_str "label" fields with Some s -> s | None -> "") in
     let show = (match find_record_bool "showWhenFalse" fields with Some b -> b | None -> false) in
-    (label, show)
+    (label, show, find_record_ctor ~loc "value" fields)
+  | PStr [{ pstr_desc = Pstr_eval (e, _); _ }] ->
+    (match retired_ctor_of_expr ~loc e with
+     | Some v -> ("", false, Some v)
+     | None ->
+       Location.raise_errorf ~loc
+         "@retired expects no payload, a state constructor (@retired(Deactivated)), \
+          \"Archived\", or {value: Deactivated, label: \"Closed\", showWhenFalse: true}")
   | _ ->
     Location.raise_errorf ~loc
-      "@retired expects no payload, \"Archived\", or {label: \"Archived\", showWhenFalse: true}"
+      "@retired expects no payload, a state constructor (@retired(Deactivated)), \
+       \"Archived\", or {value: Deactivated, label: \"Closed\", showWhenFalse: true}"
 
-(** Reject `@retired` on a field that cannot carry the flag.
+(** Reject `@retired` on a field that cannot carry the retirement it names.
 
     The annotation names a predicate the query layer evaluates to decide who may
-    see the row. On anything but a boolean there is no predicate to evaluate, so
-    the annotation would ride the schema, render as a marker, and narrow nothing
-    — a row visible to everyone that looks as though it were restricted. A
-    compile error is the difference between that and a build that stops. *)
+    see the row, and the two forms want opposite field types — so the check
+    inverts on the payload rather than reading the same either way.
+
+    Without a value, the predicate is "is this field true?", so the field must be
+    a boolean. With one, the predicate is "does this field equal that state?", so
+    the field must be the enum the state belongs to and a boolean is the one thing
+    it cannot be. Getting either wrong leaves the annotation riding the schema,
+    rendering as a marker and narrowing nothing — a row visible to everyone that
+    looks as though it were restricted. *)
 let check_retired_field_type (ld : label_declaration) : unit =
   match find_retired_attr ld.pld_attributes with
   | None -> ()
-  | Some _ ->
+  | Some attr ->
+    let (_, _, value) = get_retired_value ~loc:ld.pld_loc attr in
     let ty = ld.pld_type in
-    if not (is_bool_type ty || is_option_bool_type ty) then
-      Location.raise_errorf ~loc:ld.pld_loc
-        "@retired only supports bool and option<bool> fields. It marks the row \
-         as withdrawn, and the query layer narrows reads on that field — a \
-         non-boolean gives it nothing to test, so the rows would stay visible \
-         to everyone while the field looked as though it restricted them."
+    (match value with
+     | None ->
+       if not (is_bool_type ty || is_option_bool_type ty) then
+         Location.raise_errorf ~loc:ld.pld_loc
+           "@retired only supports bool and option<bool> fields. It marks the row \
+            as withdrawn, and the query layer narrows reads on that field — a \
+            non-boolean gives it nothing to test, so the rows would stay visible \
+            to everyone while the field looked as though it restricted them. \
+            To retire on a lifecycle state instead, name it: @retired(Deactivated)."
+     | Some v ->
+       if is_bool_type ty || is_option_bool_type ty then
+         Location.raise_errorf ~loc:ld.pld_loc
+           "@retired(%s) names a state, so the field must hold the enum that \
+            state belongs to — a boolean has no case called %s. Drop the payload \
+            to retire on the flag being true."
+           v v)
 
 (** Strip @retired attributes from @schema type state record fields. Mirrors
     [strip_lifecycle_attrs]. *)
@@ -1548,16 +1612,25 @@ let make_state_annotations_binding ~loc ~visibility ~live fields : structure_ite
       | None ->
         { pexp_desc = Pexp_construct ({ txt = Lident "None"; loc }, None);
           pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] }
-      | Some (name, (label, show_when_false)) ->
+      | Some (name, (label, show_when_false, value)) ->
         let estr = Ast_builder.Default.estring ~loc in
         let ebool b =
           { pexp_desc = Pexp_construct ({ txt = Lident (if b then "true" else "false"); loc }, None);
             pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] } in
+        let value_expr =
+          match value with
+          | None ->
+            { pexp_desc = Pexp_construct ({ txt = Lident "None"; loc }, None);
+              pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] }
+          | Some v ->
+            { pexp_desc = Pexp_construct ({ txt = Lident "Some"; loc }, Some (estr v));
+              pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] } in
         let rec_expr =
           { pexp_desc = Pexp_record (
               [ ({ Location.txt = Lident "field"; loc }, estr name);
                 ({ txt = Lident "label"; loc }, estr label);
-                ({ txt = Lident "showWhenFalse"; loc }, ebool show_when_false) ],
+                ({ txt = Lident "showWhenFalse"; loc }, ebool show_when_false);
+                ({ txt = Lident "value"; loc }, value_expr) ],
               None);
             pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] } in
         { pexp_desc = Pexp_construct ({ txt = Lident "Some"; loc }, Some rec_expr);

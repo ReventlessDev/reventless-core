@@ -198,7 +198,8 @@ module Make = (Bus: LocalBus.T) => {
         ~id=entityKeyFor(id, subKey),
         ~state=Some(state),
         ~seq=LocalStateChangeDescriptor.nextSequence(),
-        ~retiredField=?LocalStateChangeDescriptor.retiredFieldFor(name),
+        ~retiredField=?LocalStateChangeDescriptor.retiredSpecFor(name)->Option.map(r => r.field),
+      ~retiredValue=?LocalStateChangeDescriptor.retiredSpecFor(name)->Option.flatMap(r => r.value),
       )
       Bus.publishStateChange(~name, ~descriptor)
     }

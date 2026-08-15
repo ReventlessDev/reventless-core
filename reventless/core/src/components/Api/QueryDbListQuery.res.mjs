@@ -5,6 +5,7 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_Nullable from "@rescript/runtime/lib/es6/Stdlib_Nullable.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
+import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types/OwnerScope.res.mjs";
 import * as Api_Ids$ReventlessCore from "./Api_Ids.res.mjs";
 
 function encodeCursor(value) {
@@ -106,7 +107,7 @@ function run(items, argsDict, capability, labelField, decodeLocalIdOpt, ownerSco
     } else {
       passOwner = true;
     }
-    let passRetired = retiredScope !== undefined ? Stdlib_Option.getOr(getFieldBool(item, retiredScope), false) === false : true;
+    let passRetired = retiredScope !== undefined ? !OwnerScope$Reventless.isRetiredValue(retiredScope, Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[retiredScope.field])) : true;
     if (passSearch && passPrefix && passIds && passPerField && passOwner) {
       return passRetired;
     } else {
@@ -224,4 +225,4 @@ export {
   buildConnection,
   run,
 }
-/* No side effect */
+/* OwnerScope-Reventless Not a pure module */

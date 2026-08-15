@@ -63,7 +63,8 @@ let stateSchema$1 = S.Metadata.set(stateSchema, StateAnnotations$Reventless.stat
   retired: {
     field: "archived",
     label: "",
-    showWhenFalse: false
+    showWhenFalse: false,
+    value: undefined
   }
 });
 

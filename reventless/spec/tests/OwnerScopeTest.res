@@ -237,6 +237,7 @@ describe("OwnerScope:", () => {
       identity
       ->OwnerScope.decideRetired(~retiredField=Some("archived"), ~asked, ~elevated=["Admin"])
       ->OwnerScope.retiredScopeOf
+      ->Option.map(scope => scope.OwnerScope.field)
 
     testSync("a view that declares no retirement flag narrows nothing", () =>
       expect(
@@ -295,4 +296,54 @@ describe("OwnerScope:", () => {
       ))
     })
   })
+})
+
+// The two forms of `@retired` differ in exactly one place, and this is it. Every
+// reader asks `isRetiredValue` rather than branching on the form, so a form that
+// answered differently here would answer differently on every door at once.
+describe("OwnerScope.isRetiredValue:", () => {
+  open Expect
+
+  let boolean: OwnerScope.retiredScope = {field: "archived", value: None}
+  let state: OwnerScope.retiredScope = {field: "accountStatus", value: Some("Deactivated")}
+
+  testSync("the boolean form retires on true", () =>
+    expect(boolean->OwnerScope.isRetiredValue(Some(JSON.Encode.bool(true))))->toEqual(true)
+  )
+
+  testSync("and keeps the row on false", () =>
+    expect(boolean->OwnerScope.isRetiredValue(Some(JSON.Encode.bool(false))))->toEqual(false)
+  )
+
+  testSync("the state form retires on the named state", () =>
+    expect(state->OwnerScope.isRetiredValue(Some(JSON.Encode.string("Deactivated"))))->toEqual(true)
+  )
+
+  testSync("and keeps the row in any other state", () =>
+    expect(state->OwnerScope.isRetiredValue(Some(JSON.Encode.string("Active"))))->toEqual(false)
+  )
+
+  // The mirror image of the owner rule, landing the opposite way on purpose: an
+  // owner-scoped read excludes a row that states no owner, because such a row
+  // belongs to nobody in particular. A retirement read keeps a row that states
+  // nothing, because absent means not retired — which is what every row written
+  // before the annotation is. Excluding those would empty the view the day it
+  // lands, on both forms alike.
+  testSync("an absent field keeps the row, on the boolean form", () =>
+    expect(boolean->OwnerScope.isRetiredValue(None))->toEqual(false)
+  )
+
+  testSync("and on the state form", () =>
+    expect(state->OwnerScope.isRetiredValue(None))->toEqual(false)
+  )
+
+  // A value of the wrong shape is not the retirement value, so the row stays.
+  // The alternative — treating "cannot read this" as retired — would hide rows
+  // on a decoding accident.
+  testSync("a value of the wrong shape is not the retired one", () =>
+    expect((
+      boolean->OwnerScope.isRetiredValue(Some(JSON.Encode.string("true"))),
+      state->OwnerScope.isRetiredValue(Some(JSON.Encode.bool(true))),
+    ))->toEqual((false, false))
+  )
 })
