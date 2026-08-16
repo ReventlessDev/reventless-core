@@ -718,6 +718,12 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-08-16
+- feat(core): let @retired name a lifecycle state, not only a boolean ([6bb346b](https://github.com/ReventlessDev/reventless-core/commit/6bb346b4f6a5f33826fc24537953482a76067177))
+
+### 2026-08-15
+- refactor(core): rename the lifecycle annotation and the field it fills ([28eb3af](https://github.com/ReventlessDev/reventless-core/commit/28eb3afc6c6052b5043e1ab869b1c262683555d3))
+- docs(core): document @retired and refresh the contracts it moved ([c5dcb01](https://github.com/ReventlessDev/reventless-core/commit/c5dcb015c0c7113ce3051d0ffe4587b6a41716e5))
 ### 2026-08-15
 - feat(aws): serve one baked manifest per journey ([16d6307](https://github.com/ReventlessDev/reventless-core/commit/16d63071f059cf1fc7025f9be9206dda51f71053))
 ### 2026-08-15
