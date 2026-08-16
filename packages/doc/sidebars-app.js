@@ -56,6 +56,7 @@ const sidebars = {
         'components/stateviewslice',
         'concepts/stateviewslice-usage',
         'ui-configuration',
+        'authorization',
       ],
     },
     {

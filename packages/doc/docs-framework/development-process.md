@@ -1,6 +1,5 @@
 ---
 title: Development Process
-draft: false
 sidebar_position: 3
 ---
 

@@ -1,6 +1,5 @@
 ---
 title: Plugin Lifecycle
-draft: false
 ---
 
 # Plugin Lifecycle
@@ -182,7 +181,7 @@ one-or-two concurrently-live versions of a rolling deploy — never the full his
 > meaningful operator info ("this name has another version still live"). The full
 > per-version audit trail lives in `PluginHistory`, not here.
 
-**Write side vs read side.** This read-model field is *not* the source of truth. The
+**Write side vs read side.** This read model field is *not* the source of truth. The
 aggregate's write-side `known: dict<version → knownVersion>` still carries the full set
 *with definitions* and the non-`Connected` entries — it needs them to tell a reconnect
 from a new connect ([§2](#2-the-write-side--one-name-keyed-aggregate)) and to carry the

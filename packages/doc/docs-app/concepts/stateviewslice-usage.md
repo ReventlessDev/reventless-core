@@ -1,18 +1,16 @@
 ---
 title: StateViewSlice Usage
-date: 2026-02-18
-draft: false
 ---
 
 This guide covers how to use StateViewSlice in your Reventless application. For the component reference, see [StateViewSlice](../components/stateviewslice.md).
 
 ## Usage Pattern
 
-A StateViewSlice is **two files** in a `StateViewSlice/` (or `StateViewSliceStream/`) folder: a spec file (`<Name>.res`) declaring the events it consumes and the read-model `state`, and a projection file (`<Name>_Projection.res`) holding the projection logic. The plugin generator wires them together.
+A StateViewSlice is **two files** in a `StateViewSlice/` (or `StateViewSliceStream/`) folder: a spec file (`<Name>.res`) declaring the events it consumes and the read model `state`, and a projection file (`<Name>_Projection.res`) holding the projection logic. The plugin generator wires them together.
 
 ### Defining the Spec
 
-The spec file carries `@@reventless.spec`. Because it lives in a view-slice folder, the PPX also auto-injects `let config`, `let subIdConfig`, and `open Reventless.Projection`. A view slice declares its own `consumedEvent` (the events it reads) and `state` (the shape of each read-model row).
+The spec file carries `@@reventless.spec`. Because it lives in a view-slice folder, the PPX also auto-injects `let config`, `let subIdConfig`, and `open Reventless.Projection`. A view slice declares its own `consumedEvent` (the events it reads) and `state` (the shape of each read model row).
 
 ```rescript title="ItemView.res"
 @@reventless.spec

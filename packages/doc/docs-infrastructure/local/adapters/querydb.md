@@ -6,7 +6,7 @@ sidebar_position: 5
 # QueryDb — Local
 
 The local QueryDb is the dev/test counterpart of the
-[QueryDb → DynamoDB](/infrastructure/aws/adapters/querydb) adapter: read-model storage
+[QueryDb → DynamoDB](/infrastructure/aws/adapters/querydb) adapter: read model storage
 for projections. It ships **two backends** that implement the same `QueryDb_Adapter`
 interface:
 

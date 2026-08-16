@@ -1,6 +1,6 @@
 # AppSync Events & Live Updates
 
-How Reventless pushes real-time read-model changes to the browser, why it uses an
+How Reventless pushes real-time read model changes to the browser, why it uses an
 AWS AppSync **Events** API (not GraphQL subscriptions), and the channel/namespace/auth
 contract that the publisher and subscriber **must** agree on.
 
@@ -37,9 +37,9 @@ AWS AppSync exposes **two unrelated real-time products**:
 | Model | subscribe to a GraphQL field; server resolves a mutation→subscription mapping | publish/subscribe to free-form **channels**; no schema, no resolvers |
 | Endpoint | `wss://<host>.appsync-realtime-api.<region>…/graphql` | `wss://<host>.appsync-realtime-api.<region>…/event/realtime` |
 | Publish | implicit (a mutation triggers the subscription) | explicit HTTP `POST /event` to a channel |
-| Reventless usage | the **mutation-accepted feed** (command-result subscriptions, `onX_…`) | the **event-log + read-model feeds** (raw events + read-model state changes) |
+| Reventless usage | the **mutation-accepted feed** (command-result subscriptions, `onX_…`) | the **event-log + read model feeds** (raw events + read model state changes) |
 
-Reventless uses the **Events** API for live read-model updates because the
+Reventless uses the **Events** API for live read model updates because the
 publisher is a **Lambda reacting to a DynamoDB Stream**, not a GraphQL mutation.
 There is no GraphQL operation to hang a subscription off — the change originates
 in the projection store. A plain pub/sub channel is the natural fit: the Lambda
@@ -47,7 +47,7 @@ POSTs a "something changed" descriptor to a channel, and any browser viewing
 that read model is subscribed to it.
 
 A single AppSync Events API per platform serves **both** domain and platform
-read-model channels (see [`AppSync_EventsApi.res`](https://github.com/ReventlessDev/reventless-core/blob/alpha/reventless/aws/src/adapter/Api/AppSync_EventsApi.res)).
+read model channels (see [`AppSync_EventsApi.res`](https://github.com/ReventlessDev/reventless-core/blob/alpha/reventless/aws/src/adapter/Api/AppSync_EventsApi.res)).
 
 ### The two server-side feeds
 
@@ -56,7 +56,7 @@ read-model channels (see [`AppSync_EventsApi.res`](https://github.com/Reventless
 | **Read-model feed** (state changes) | QueryDb DynamoDB **Stream** | [`StateTopic_AppSync.res`](https://github.com/ReventlessDev/reventless-core/blob/alpha/reventless/aws/src/adapter/StateTopic/StateTopic_AppSync.res) | read model **list field name** | change descriptor `{changeKind, id, sortKeyValue?, seq, state?}` |
 | **Event-log feed** (raw events) | SNS EventTopic → SQS | [`EventLogSubscription_AppSync.res`](https://github.com/ReventlessDev/reventless-core/blob/alpha/reventless/aws/src/adapter/EventLogSubscription/EventLogSubscription_AppSync.res) | event log **displayName** | `{position, eventType, payload, originatorSlice}` |
 
-AutoUI list/detail views consume the **read-model feed**. The rest of this guide
+AutoUI list/detail views consume the **read model feed**. The rest of this guide
 focuses on it; the **event-log feed** follows the same namespace/auth rules with a
 different channel root and payload.
 
@@ -108,7 +108,7 @@ let clientNamespace = ChannelNamespace.make(
 They exist because they answer to **different publishers**, which is a
 namespace-level distinction and cannot be expressed by channel paths:
 
-- **`default`** carries read-model change descriptors, published only by the
+- **`default`** carries read model change descriptors, published only by the
   SigV4-signed Lambdas. A browser must never be able to publish here — a forged
   descriptor would make every subscribed list act on a change that never
   happened.
@@ -153,7 +153,7 @@ a namespace that does not exist, so AWS silently delivers nothing.
    │          └─ the read model's GraphQL LIST field name (see below),
    │             sanitised so every non-[A-Za-z0-9-] char becomes "-".
    │
-   └─ the channel namespace — "default" for every read-model change
+   └─ the channel namespace — "default" for every read model change
       descriptor. ("client" is the other namespace, for browser-published
       ephemera; nothing in this diagram is ever published there.)
 ```
@@ -214,7 +214,7 @@ delivered to a channel nobody listens to.
 The trailing `*` wildcard matches any entity key, so a list view receives every
 row change in the read model; a detail view receives only its own entity's changes.
 
-### Change-descriptor payload (read-model feed)
+### Change-descriptor payload (read model feed)
 
 ```json
 { "changeKind": "Added" | "Updated" | "Removed" | "BulkInvalidated",
@@ -284,7 +284,7 @@ Postgres publishers use a wall-clock-seeded counter.
 It is **monotonic, not consecutive**. A client can detect a stale or reordered
 frame; it cannot count gaps, and a missed frame is not visible as a hole in the
 numbering. Recovery for a missed frame stays the reconnect refetch below. Making
-gaps detectable would mean maintaining a version on every read-model row, whose
+gaps detectable would mean maintaining a version on every read model row, whose
 cost is worked through in
 [`docs/analysis/live-update-descriptor-sequencing.md`](https://github.com/ReventlessDev/reventless-core/blob/alpha/docs/analysis/live-update-descriptor-sequencing.md).
 
@@ -333,7 +333,7 @@ defaultSubscribeAuthModes:[AMAZON_COGNITO_USER_POOLS, AWS_IAM]
 The browser's publish capability is granted **only** by the `client`
 namespace's per-namespace override, never by widening the default above. That
 asymmetry is the security property: an authenticated browser can publish
-presence and chat, and still cannot forge a read-model change descriptor.
+presence and chat, and still cannot forge a read model change descriptor.
 
 > **Advertised, not assumed.** The platform emits `clientEventsNamespace` into
 > the host-shell `config.json` when it creates the namespace. Clients gate every
@@ -464,7 +464,7 @@ server-side change journal, descriptor-level catch-up
 | Create the Events API + the `default` and `client` namespaces | `AppSync_EventsApi.make` in [`Platform.res`](https://github.com/ReventlessDev/reventless-core/blob/alpha/reventless/aws/src/Platform.res) | **Only on the platform/monolithic stack.** Plugin stacks reconstruct a phantom from the `eventsApiArn` / `eventsApiDns` stack exports, so they carry neither namespace. |
 | Advertise the client namespace to browsers | the host-ui `config.json` emission in `Platform.res` | Emits `clientEventsNamespace` alongside the events endpoints. Verify end-to-end with `pnpm run verify:client-publish` in `examples/online-shop-hybrid/platform-aws/`. |
 | Shared StateTopic Lambda (one per events API per stack) | `StateTopic_AppSync.make` (registers) + `StateTopic_AppSync.finish` (builds) in `Platform.res` | `subscriptionInfraHook` calls `make` for every stream-enabled QueryDb in the stack — admin RMs, user-plugin `ReadModelStream`s, and `StateViewSliceStream`s alike. `finish` runs once at the end of `makePlatform` / `deployPlatform` / `deployPlugin` and builds a single Lambda + IAM role/policy + one `EventSourceMapping` per stream, all targeting that shared Lambda. Routing is per-record via the `STATE_TOPIC_MAP` env var (`{ "<ddbTableName>": "<listFieldName>" }`) — the handler reads `record.eventSourceARN`, extracts the table name, and looks up the matching channel root. |
-| Admin RM live updates | `PluginReadModel`, `PlatformEventGraphReadModel`, `UIFragmentRegistryReadModel` in `Platform.res` | The framework's built-in admin read models (`Platform_Plugins`, `Platform_PlatformEventGraphs`, `Platform_UIFragments`) are stream-enabled and participate in the read-model feed — admin lists in the host-shell live-update. UIFragmentRegistry uses `ReadModel_Builder_NoResolver_Stream` because its GraphQL field is served by a dedicated `Platform_UIFragments_Lambda`, not an auto-generated resolver. |
+| Admin RM live updates | `PluginReadModel`, `PlatformEventGraphReadModel`, `UIFragmentRegistryReadModel` in `Platform.res` | The framework's built-in admin read models (`Platform_Plugins`, `Platform_PlatformEventGraphs`, `Platform_UIFragments`) are stream-enabled and participate in the read model feed — admin lists in the host-shell live-update. UIFragmentRegistry uses `ReadModel_Builder_NoResolver_Stream` because its GraphQL field is served by a dedicated `Platform_UIFragments_Lambda`, not an auto-generated resolver. |
 
 > **Which read models get a stream (and therefore live updates)?** Streaming is
 > **opt-in**, because each streamed read model costs one DynamoDB Stream + one

@@ -113,7 +113,7 @@ Full migration of a sibling becomes worth it only when a concrete trigger
 forces it:
 
 - The sibling starts hitting the same cross-repo fires this repo migrated to
-  escape (symlinks wiped by `npm install`, `file:` resolution breaking).
+  escape (symlinks wiped by `pnpm install`, `file:` resolution breaking).
 - The sibling's workspace grows enough that npm's hoisting gets unreliable
   or a ReScript phantom-dep surface accumulates there too.
 - The sibling needs `workspace:*` semantics for its own internal deps.

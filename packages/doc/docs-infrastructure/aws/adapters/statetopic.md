@@ -1,7 +1,5 @@
 ---
 title: "StateTopic → DynamoDB + DynamoDB Streams"
-date: 2026-01-15
-draft: false
 ---
 
 ## StateTopic → DynamoDB Streams

@@ -1,7 +1,5 @@
 ---
 title: StateChangeSlice
-date: 2026-02-17
-draft: false
 ---
 
 For a short summary of StateChangeSlice, see [Reventless Components Overview.](../component-overview.md)

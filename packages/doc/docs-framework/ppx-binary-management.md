@@ -15,7 +15,7 @@ The PPX is an OCaml program compiled by [dune](https://dune.build/). ReScript in
 "ppx-flags": ["@reventlessdev/reventless-ppx/bin", "sury-ppx/bin"]
 ```
 
-After `npm install`, the `postinstall` script (`install.cjs`) copies the correct platform binary to `packages/reventless-ppx/bin`, which is the path ReScript calls.
+After `pnpm install`, the `postinstall` script (`install.cjs`) copies the correct platform binary to `packages/reventless-ppx/bin`, which is the path ReScript calls.
 
 ## Platform Binaries
 
@@ -76,7 +76,7 @@ From the repo root:
 
 ```bash
 cd packages/reventless-ppx
-npm run build:ppx
+pnpm run build:ppx
 ```
 
 Or directly with dune:
@@ -122,7 +122,7 @@ Then run the tests to verify:
 
 ```bash
 cd packages/reventless-ppx
-npm test
+pnpm test
 ```
 
 Finally, commit the updated binary:
@@ -138,7 +138,7 @@ The test suite compiles mini ReScript packages through the PPX and checks the ge
 
 ```bash
 cd packages/reventless-ppx
-npm test
+pnpm test
 ```
 
 This runs `test/run.sh`, which:
@@ -152,7 +152,7 @@ The test suite covers all PPX annotations: `@@reventless.spec`, `@@reventless.be
 ## Workflow When Changing PPX Source
 
 1. Edit files in `packages/reventless-ppx/src/ppx/`
-2. Run `npm test` from `packages/reventless-ppx/` — this rebuilds and tests in one step
+2. Run `pnpm test` from `packages/reventless-ppx/` — this rebuilds and tests in one step
 3. Copy the binary to the appropriate platform file(s)
 4. Commit both the source change and the updated binary
 

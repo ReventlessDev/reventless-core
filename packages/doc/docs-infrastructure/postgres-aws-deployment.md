@@ -144,7 +144,7 @@ platform-level toggle is whole-platform; finer selection is a refinement.
 This is the **biggest divergence** from the zero-VPC DynamoDB path. Any Lambda
 that touches Postgres must run in the DB's VPC:
 
-- The command Lambdas (aggregate & DCB), the read-model projection Lambdas, the
+- The command Lambdas (aggregate & DCB), the read model projection Lambdas, the
   QueryDb resolver Lambda, the change-feed relay, and the migration Lambda all
   get a `vpcConfig` built from `PgConnection.{securityGroupId, subnetIds}`.
 - The execution role automatically gains the EC2 network-interface permissions
@@ -202,7 +202,7 @@ schema.
 
 ## Event propagation: the change-feed relay
 
-DynamoDB drives read-model projections and cross-plugin propagation off **DynamoDB
+DynamoDB drives read model projections and cross-plugin propagation off **DynamoDB
 Streams**. Postgres has no streams, so a **scheduled in-VPC relay Lambda**
 (`PgChangeFeedRelay`) takes their place:
 

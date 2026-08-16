@@ -1,7 +1,5 @@
 ---
 title: Common Issues
-date: 2024-08-13
-draft: false
 ---
 
 # Common Issues
@@ -11,7 +9,7 @@ draft: false
 Reventless requires **zero warnings** before committing. After every build, check with:
 
 ```bash
-npm run build 2>&1 | grep -E "Warning|warning|error|Error"
+pnpm run build 2>&1 | grep -E "Warning|warning|error|Error"
 ```
 
 ### Warning 44 — Open shadows existing identifier
@@ -56,21 +54,21 @@ git checkout -- reventless/spec/src/components/Component.js
 
 To prevent this: always run builds from the monorepo root, not from individual package directories.
 
-## `npm ci` Fails / package-lock.json Out of Sync
+## `pnpm install --frozen-lockfile` Fails / package-lock.json Out of Sync
 
 ```
-npm error `npm ci` can only install packages when your package.json and package-lock.json are in sync.
+npm error `pnpm install --frozen-lockfile` can only install packages when your package.json and package-lock.json are in sync.
 ```
 
-**Fix:** Run `npm install` (not `npm ci`) to regenerate the lock file, then commit both `package.json` and `package-lock.json` together:
+**Fix:** Run `pnpm install` (not `pnpm install --frozen-lockfile`) to regenerate the lock file, then commit both `package.json` and `package-lock.json` together:
 
 ```bash
-npm install
+pnpm install
 git add package.json package-lock.json
 git commit -m "chore(deps): sync package-lock.json"
 ```
 
-GitHub Actions uses `npm ci` which requires the lock file to be in sync.
+GitHub Actions uses `pnpm install --frozen-lockfile` which requires the lock file to be in sync.
 
 ## Stale ReScript Build Cache
 
@@ -80,13 +78,13 @@ After reorganizing source files (renaming, moving), the ReScript compiler may pr
 
 ```bash
 npx rescript clean   # from the package directory
-npm run build        # from the monorepo root
+pnpm run build        # from the monorepo root
 ```
 
 Or from the root:
 
 ```bash
-npm run clean && npm run build
+pnpm run clean && pnpm run build
 ```
 
 ## Test Failures from Async Handler Registration (DCB E2E)

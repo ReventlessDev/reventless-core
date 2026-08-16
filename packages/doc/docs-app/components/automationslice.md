@@ -1,7 +1,5 @@
 ---
 title: AutomationSlice
-date: 2026-03-03
-draft: false
 ---
 
 For a short summary of AutomationSlice, see [Reventless Components Overview.](../component-overview.md)
@@ -260,7 +258,7 @@ direction: right
 
 pending: Pending { class: state-view-slice }
 processing: Processing { class: command }
-completed: Completed { class: read-model }
+completed: Completed { class: read model }
 failed: Failed { class: side-effect }
 
 pending -> processing: "process() returns Some" { class: command-flow }

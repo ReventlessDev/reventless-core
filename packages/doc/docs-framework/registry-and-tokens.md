@@ -10,7 +10,7 @@ All `@reventlessdev/*` packages are **public on npmjs** — installing them requ
 **no authentication token**:
 
 ```bash
-npm install @reventlessdev/reventless-core
+pnpm install @reventlessdev/reventless-core
 # or pnpm add / yarn add — all work anonymously
 ```
 

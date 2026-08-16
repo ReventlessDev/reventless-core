@@ -51,8 +51,8 @@ Both platforms expose the same Domain API shape described in this guide. The dif
   - **Read-model feed** (`on<Type>_stateChanged`): one field per queryable type, fires after the projection has written the new state.
   - **Mutation-accepted feed** (`on<MutationField>`): one field per mutation, fires when the mutation is accepted.
 
-  The local platform delivers all three feeds over its in-process bus through graphql-yoga's subscription transport. The AWS platform delivers the mutation-accepted feed via AppSync's native `@aws_subscribe` directive, and the event-log and read-model feeds via AppSync Events.
-- **Authorization.** The AWS platform honours per-table Cognito authorization rules attached at the read-model level; the local platform ignores them (every operation is permitted).
+  The local platform delivers all three feeds over its in-process bus through graphql-yoga's subscription transport. The AWS platform delivers the mutation-accepted feed via AppSync's native `@aws_subscribe` directive, and the event-log and read model feeds via AppSync Events.
+- **Authorization.** The AWS platform honours per-table Cognito authorization rules attached at the read model level; the local platform ignores them (every operation is permitted).
 - **Latency and durability.** Operations on the local platform are synchronous and lose state when the process exits; the AWS platform is eventually consistent (event → projection → query db) and durable.
 
 Use the local platform while you build and test your plugins, and switch to the AWS platform for deployment — without changing any plugin code.

@@ -1,7 +1,5 @@
 ---
 title: Aggregates
-date: 2025-01-01
-draft: false
 sidebar_position: 4
 ---
 
@@ -26,7 +24,7 @@ Handler: "Command Handler\n(Lambda)" { class: aggregate }
 Aggregate: "Aggregate\n(State Machine)" { class: aggregate }
 EventLog: "Event Log\n(DynamoDB)" { class: event-log }
 EventTopic: "Event Topic\n(DynamoDB Streams)" { class: event-topic }
-ReadModel: "Read Model\n(Lambda)" { class: read-model }
+ReadModel: "Read Model\n(Lambda)" { class: read model }
 QueryDb: "Query DB\n(DynamoDB)" { class: query-db }
 EventMapper: "Event Mapper\n(Lambda)" { class: event-mapper }
 OtherCommandTopic: Other Command Topic { class: command-topic }
@@ -164,7 +162,7 @@ See [PPX annotations](./rescript-syntax.md#reventless-ppx-annotations) for the f
 
 ### Step 4: Implement the Projection
 
-The Projection maps aggregate events to actions on the read model. It lives in a `<Plural>_Projections.res` sibling of the read-model spec and is annotated `@@reventless.mappings`, which (inside a `ReadModel/` folder) infers the `Reventless.Projection` domain, brings `Mapping`, `Set`, `Update`, etc. into scope, and emits the `module type Mapping` wrapper. You write one `Mapping.Make` per source — passing the **source spec**, the **target read model spec**, and an anonymous module with a `project` function — plus the `let mappings` array.
+The Projection maps aggregate events to actions on the read model. It lives in a `<Plural>_Projections.res` sibling of the read model spec and is annotated `@@reventless.mappings`, which (inside a `ReadModel/` folder) infers the `Reventless.Projection` domain, brings `Mapping`, `Set`, `Update`, etc. into scope, and emits the `module type Mapping` wrapper. You write one `Mapping.Make` per source — passing the **source spec**, the **target read model spec**, and an anonymous module with a `project` function — plus the `let mappings` array.
 
 ```rescript
 // Product/ReadModel/Products_Projections.res

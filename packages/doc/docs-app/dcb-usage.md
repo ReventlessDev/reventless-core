@@ -314,7 +314,7 @@ The command still executes normally when called programmatically or by internal 
 
 ### 2. Define state view slice specs
 
-A view slice is two files in a `StateViewSliceStream/` folder. The spec file declares `consumedEvent` and the read-model `state`:
+A view slice is two files in a `StateViewSliceStream/` folder. The spec file declares `consumedEvent` and the read model `state`:
 
 ```rescript
 // Categories.res
@@ -349,7 +349,7 @@ let project = ({event}) =>
 `src/Plugin.res` is **auto-generated** by `generate-plugin` (from `reventless-spec`) before each build — no hand-authored composition root needed. The generator discovers all slice specs from their parent folder names and pairs each spec with its body file via a two-argument functor call:
 
 ```rescript
-// AUTO-GENERATED — do not edit. Run `npm run generate` to update.
+// AUTO-GENERATED — do not edit. Run `pnpm run generate` to update.
 module Make = (Platform: ReventlessInfra.Platform.T) => {
   // StateChangeSlices
   module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct, AddProduct_Behavior)

@@ -29,7 +29,7 @@ Two cross-cutting DSLs round out the surface:
 
 - `Mapping_GWT` — cross-pattern automation with any combination of Aggregate or
   StateChangeSlice source/target.
-- `Query_GWT` — read-model query patterns (indexes, composite keys, resolvers)
+- `Query_GWT` — read model query patterns (indexes, composite keys, resolvers)
   for both ReadModel and StateViewSlice consumers. This is the only DSL that
   asserts against `config` rather than `decide` / `evolve` / `project`.
 

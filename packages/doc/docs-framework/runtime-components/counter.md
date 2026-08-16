@@ -1,7 +1,5 @@
 ---
 title: Counter
-date: 2026-01-26
-draft: false
 ---
 
 For a short summary of Counter, see [Reventless Components Overview.](/app/component-overview)

@@ -1,7 +1,5 @@
 ---
 title: AWS Adapters
-date: 2024-08-28
-draft: false
 ---
 
 ## Overview
@@ -27,7 +25,7 @@ Reventless: Generic Components - reventless {
   Aggregate -> CommandTopic
   Aggregate -> CommandGenerator
 
-  ReadModel: { class: read-model }
+  ReadModel: { class: read model }
   QueryDb: { class: query-db }
   EventCollector: { class: event-collector }
 

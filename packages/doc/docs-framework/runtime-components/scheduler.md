@@ -163,7 +163,7 @@ Scheduler: Scheduler { class: scheduler }
 CommandTopic: Command Topic { class: command-topic }
 Aggregate: Aggregate { class: aggregate }
 EventTopic: Event Topic { class: event-topic }
-ReadModel: Read Model { class: read-model }
+ReadModel: Read Model { class: read model }
 
 Scheduler -> CommandTopic: scheduled commands { class: command-flow }
 CommandTopic -> Aggregate: commands { class: command-flow }

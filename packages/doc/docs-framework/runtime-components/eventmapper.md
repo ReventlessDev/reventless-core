@@ -1,7 +1,5 @@
 ---
 title: EventMapper
-date: 2026-01-26
-draft: false
 ---
 
 For a short summary of EventMapper, see [Reventless Components Overview.](/app/component-overview)

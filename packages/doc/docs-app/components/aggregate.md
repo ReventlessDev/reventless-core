@@ -1,7 +1,5 @@
 ---
 title: Aggregate
-date: 2021-11-22
-draft: false
 ---
 
 For a short summary of an Aggregate, see [Reventless Components Overview.](../component-overview.md)
@@ -45,7 +43,7 @@ In an event-sourced system Events are the single source of truth. (note: any sys
 
 ## Aggregate Spec
 
-An Aggregate Spec defines the id, name, command and event types of an Aggregate in a declarataive manner. The Spec is used at any place, where a programmatic interaction with the aggregate is desired. ([Aggregate Behavior](#behavior), EventMapper, [ReadModel Projections](readmodel.md#projections), [Extensionpoint Mappings](extensionpoint.md#extensionpoint-mappings), [Extension Mappings](extension.md#extension-mappings))
+An Aggregate Spec defines the id, name, command and event types of an Aggregate in a declarative manner. The Spec is used at any place, where a programmatic interaction with the aggregate is desired. ([Aggregate Behavior](#behavior), EventMapper, [ReadModel Projections](readmodel.md#projections), [Extensionpoint Mappings](extensionpoint.md#extensionpoint-mappings), [Extension Mappings](extension.md#extension-mappings))
 
 ### Example
 

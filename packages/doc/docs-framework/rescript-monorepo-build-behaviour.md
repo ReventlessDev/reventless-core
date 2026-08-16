@@ -76,17 +76,17 @@ When a package declares a source directory with `"type": "dev"`, that directory 
 | `cd rescript/effect && rescript build` | compiled | compiled |
 | `rescript build` (from monorepo root) | compiled | **deleted** |
 
-After a root build, the test `.res.mjs` files are gone. Running `npm run build` from within the package (or a Lerna `run build` that enters each package) restores them.
+After a root build, the test `.res.mjs` files are gone. Running `pnpm run build` from within the package (or a Lerna `run build` that enters each package) restores them.
 
 ### Workarounds
 
 1. **Remove the package from root `rescript.json` dependencies** if no other root-level source actually imports from it. This prevents the root build from touching the package at all.
 2. **Always build from within the package** when you need test outputs (e.g. before running tests).
-3. **Run Lerna build** (`npm run build` at monorepo root via Lerna) which enters each package and builds it as root, preserving dev sources.
+3. **Run Lerna build** (`pnpm run build` at monorepo root via Lerna) which enters each package and builds it as root, preserving dev sources.
 
 ### Why this matters for CI
 
-If your CI pipeline runs a root-level `rescript build` followed by per-package `npm test`, the test files may be missing. Either:
+If your CI pipeline runs a root-level `rescript build` followed by per-package `pnpm test`, the test files may be missing. Either:
 - Use Lerna's per-package build instead of a root ReScript build, or
 - Run the package-level build before running tests for that package.
 

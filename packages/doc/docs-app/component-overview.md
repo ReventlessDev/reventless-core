@@ -1,6 +1,5 @@
 ---
 title: Component Overview
-draft: false
 ---
 
 ## Plugin with Aggregates
@@ -66,7 +65,7 @@ consumers: {
     class: read-side
 
     collector: Event Collector { class: event-collector }
-    read_model: Read Model { class: read-model }
+    read_model: Read Model { class: read model }
     query_db: Query DB { class: query-db }
 
     collector -> read_model: events { class: event-flow }
@@ -295,7 +294,7 @@ follow the link for types, operations, and examples.
 |---|---|---|
 | **ReadModel** | Projects events from one or more Aggregates into persisted, queryable state | [readmodel](./components/readmodel.md) |
 | **StateViewSlice** | DCB equivalent of a ReadModel: projects DcbEventLog events directly into a QueryDb (no separate EventCollector) | [stateviewslice](./components/stateviewslice.md) |
-| **QueryDb** | Stores denormalized read-model state; serves API queries; supports indexes and TTL | [querydb](/framework/runtime-components/querydb) |
+| **QueryDb** | Stores denormalized read model state; serves API queries; supports indexes and TTL | [querydb](/framework/runtime-components/querydb) |
 | **EventTopic** | Fans events out from an EventLog to multiple EventCollectors | [eventtopic](/framework/runtime-components/eventtopic) |
 | **EventCollector** | Subscribes to EventTopics and delivers ordered events to ReadModels, EventMappers, and SideEffectHandlers | [eventcollector](/framework/runtime-components/eventcollector) |
 

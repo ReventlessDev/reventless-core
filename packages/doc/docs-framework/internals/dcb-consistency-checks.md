@@ -1,6 +1,5 @@
 ---
 title: DCB Consistency Checks
-draft: false
 ---
 
 # DCB Consistency Checks

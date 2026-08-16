@@ -1,7 +1,5 @@
 ---
 title: StateViewSlice
-date: 2026-02-18
-draft: false
 ---
 
 For a short summary of StateViewSlice, see [Reventless Components Overview.](../component-overview.md)

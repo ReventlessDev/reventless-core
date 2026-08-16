@@ -1,7 +1,5 @@
 ---
 title: Component Structure Pattern
-date: 2026-01-24
-draft: false
 ---
 
 ## Overview

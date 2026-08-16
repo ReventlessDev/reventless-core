@@ -1,7 +1,5 @@
 ---
 title: Plugin System
-date: 2025-01-01
-draft: false
 sidebar_position: 6
 ---
 

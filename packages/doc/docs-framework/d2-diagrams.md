@@ -418,7 +418,7 @@ ecollect:  Event Collector  { class: event-collector }
 #### Read models — green
 
 ```d2
-rmodel:   Read Model        { class: read-model }
+rmodel:   Read Model        { class: read model }
 vslice:   State View Slice  { class: state-view-slice }
 qdb:      Query DB          { class: query-db }
 ```

@@ -686,7 +686,7 @@ The mapping logic — routing `ItemOrdered` to `RecordDemand` and `ItemOrderCanc
 The plugin composes all StateChangeSlices, StateViewSlices, the InboundTranslationSlice, the Extension Point, and the Extension using any `Platform` implementation. **You do not write this file** — it is generated at `src/Plugin.res` by `generate-plugin`, which scans `src/` by folder name before each build. It carries an "AUTO-GENERATED — do not edit" banner. Each slice is wired with a two-argument `Make` (spec + body):
 
 ```rescript
-// src/Plugin.res — AUTO-GENERATED — do not edit. Run `npm run generate` to update.
+// src/Plugin.res — AUTO-GENERATED — do not edit. Run `pnpm run generate` to update.
 module Make = (Platform: ReventlessInfra.Platform.T) => {
   // StateChangeSlices
   module AddCategorySlice = Platform.StateChangeSlice.Make(AddCategory, AddCategory_Behavior)

@@ -1,7 +1,5 @@
 ---
 title: Identity
-date: 2026-03-26
-draft: false
 ---
 
 The `Identity` module provides a structured, provider-agnostic representation of the authenticated user for each request — a rich type that carries userId, username, groups, claims, and provider information.

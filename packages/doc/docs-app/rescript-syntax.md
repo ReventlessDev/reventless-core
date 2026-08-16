@@ -1,10 +1,8 @@
 ---
 title: ReScript Syntax
-date: 2022-11-02
-draft: false
 ---
 
-Some most commonly used ReScript features and syntax shall be highlighted here. See [https://rescript-lang.org/](https://rescript-lang.org/) for the complete documtation of ReScript.
+Some most commonly used ReScript features and syntax shall be highlighted here. See [https://rescript-lang.org/](https://rescript-lang.org/) for the complete documentation of ReScript.
 
 ## Types
 
@@ -26,7 +24,7 @@ type hasBlueEyes = bool
 
 ### Record Type
 
-[Record types](https://rescript-lang.org/docs/manual/latest/record) are similar to simple common objects. They provide a way to group properties and label them with meaningfull keys.
+[Record types](https://rescript-lang.org/docs/manual/latest/record) are similar to simple common objects. They provide a way to group properties and label them with meaningful keys.
 
 ```rescript
 type person = { name: string, age: int }
@@ -197,9 +195,10 @@ Switch statements can be used for different types than variants as well.
 ```rescript
 let name = "Charlie"
 
-let nameIsAlice = switch(name) {
-  | "Alice" => true
-  | _ => false // note: _ means anything else
+let nameIsAlice = switch name {
+| "Alice" => true
+| _ => false // note: _ means anything else
+}
 ```
 
 ### `_` placeholder in case statements
@@ -209,7 +208,7 @@ let nameIsAlice = switch(name) {
 If you have a limited (defined) set of possible values the compiler will check if all possible values are presented in the switch statement. The moment you introduce `_`, the compiler will acknowledge that every case is handled. But this also takes the compiler's power away of helping you in future refactorings or code updates.
 
 **This should be used with care!**
-**Whenever possible (and feasable) enumerate all possible values explicitly!**
+**Whenever possible (and feasible) enumerate all possible values explicitly!**
 
 ## Utilities
 

@@ -1,7 +1,5 @@
 ---
 title: CommandGenerator
-date: 2026-01-26
-draft: false
 ---
 
 For a short summary of CommandGenerator, see [Reventless Components Overview.](/app/component-overview)

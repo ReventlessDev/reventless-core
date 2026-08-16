@@ -1,7 +1,5 @@
 ---
 title: Read Model
-date: 2021-11-22
-draft: false
 ---
 
 For a short summary of a ReadModel, see [Reventless Components Overview.](../component-overview.md)
@@ -18,7 +16,7 @@ UiClient: UI Client { class: client }
 GenericReadModel: Generic Read Model {
   class: read-side
   SpecificReadModel: Specific Read Model {
-    class: read-model
+    class: read model
     Config: Config { class: spec }
     Spec: Read Model Spec { class: spec }
     Projections: Projections { class: spec }

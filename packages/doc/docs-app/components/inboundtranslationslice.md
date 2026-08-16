@@ -1,7 +1,5 @@
 ---
 title: InboundTranslationSlice
-date: 2026-03-03
-draft: false
 ---
 
 For a short summary of InboundTranslationSlice, see [Reventless Components Overview.](../component-overview.md)

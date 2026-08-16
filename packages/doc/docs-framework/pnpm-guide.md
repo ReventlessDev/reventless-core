@@ -15,7 +15,7 @@ Cross-repo dev linking is documented separately in
   semver at publish time.
 - **Stable hoisting rules.** npm's layout has shifted multiple times and
   made cross-repo symlinking unreliable (`file:` paths broke, hand-crafted
-  symlinks got wiped by `npm install`).
+  symlinks got wiped by `pnpm install`).
 - **Overlay-friendly topology.** A gitignored overlay can add sibling repos
   as workspace packages without editing committed files — see the link-mode
   tooling in the cross-repo guide.
@@ -34,19 +34,19 @@ Use Node 22.17.1 (see `.node-version`). The `packageManager` field in
 
 | npm | pnpm |
 |---|---|
-| `npm install` | `pnpm install` |
-| `npm ci` | `pnpm install --frozen-lockfile` |
-| `npm install <pkg>` | `pnpm add <pkg>` |
-| `npm install -D <pkg>` | `pnpm add -D <pkg>` |
+| `pnpm install` | `pnpm install` |
+| `pnpm install --frozen-lockfile` | `pnpm install --frozen-lockfile` |
+| `pnpm install <pkg>` | `pnpm add <pkg>` |
+| `pnpm install -D <pkg>` | `pnpm add -D <pkg>` |
 | `npm uninstall <pkg>` | `pnpm remove <pkg>` |
-| `npm run <script>` | `pnpm run <script>` (or `pnpm <script>`) |
-| `npm run build --workspaces` | `pnpm -r run build` |
-| `npm run build -w <pkg>` | `pnpm --filter <pkg> run build` |
+| `pnpm run <script>` | `pnpm run <script>` (or `pnpm <script>`) |
+| `pnpm run build --workspaces` | `pnpm -r run build` |
+| `pnpm run build -w <pkg>` | `pnpm --filter <pkg> run build` |
 | `npm --prefix path run x` | `pnpm --filter ./path run x` |
 | `npx <bin>` | `pnpm exec <bin>` (or `pnpm dlx` for one-shots) |
 
 Scripts inside `package.json` have been converted repo-wide. If you find a
-script still calling `npm run …`, that's a bug — file it.
+script still calling `pnpm run …`, that's a bug — file it.
 
 ## Lockfile
 
@@ -204,7 +204,7 @@ mode — toggling never dirties a tracked file.
 
 ## Common gotchas
 
-- **`npm install` instead of `pnpm install`** leaves `package-lock.json`
+- **`pnpm install` instead of `pnpm install`** leaves `package-lock.json`
   behind and confuses the layout. Delete any accidentally-created
   `package-lock.json`.
 - **`workspace:*` in a published dep** means you forgot to publish via

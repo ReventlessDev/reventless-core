@@ -162,10 +162,10 @@ let default = Platform.deployPlatform(~version=Reventless.PackageVersion.fromCal
 
 **`catalog-aws/src/Main.res`** -- deploys a single plugin's infrastructure:
 
-> Note: This file is **auto-generated** by `generate-plugin --aws`. Do not edit it manually — run `npm run generate` to regenerate.
+> Note: This file is **auto-generated** by `generate-plugin --aws`. Do not edit it manually — run `pnpm run generate` to regenerate.
 
 ```rescript
-// AUTO-GENERATED — do not edit. Run `npm run generate` to update.
+// AUTO-GENERATED — do not edit. Run `pnpm run generate` to update.
 // Catalog plugin — AWS deployment.
 
 module Platform = ReventlessAws.Platform.Make()
@@ -758,7 +758,7 @@ error: getting stack reference "org/my-app-catalog/alpha": no stack found
 ### ReScript compilation error in `-aws` package
 
 **Cause**: Missing dependency in `rescript.json` or the plugin package has not been built.
-**Fix**: Ensure `rescript.json` in the `-aws` package lists all required dependencies including the plugin package. Run `npm run build` from the monorepo root before deploying.
+**Fix**: Ensure `rescript.json` in the `-aws` package lists all required dependencies including the plugin package. Run `pnpm run build` from the monorepo root before deploying.
 
 ### Platform redeployment required after framework upgrade
 

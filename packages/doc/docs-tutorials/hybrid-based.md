@@ -370,7 +370,7 @@ This file is committed to git (CI compiles it directly) but is regenerated on
 every build — never edit it by hand:
 
 ```rescript
-// AUTO-GENERATED — do not edit. Run `npm run generate` to update.
+// AUTO-GENERATED — do not edit. Run `pnpm run generate` to update.
 module Make = (Platform: ReventlessInfra.Platform.T) => {
   // StateChangeSlices (Category + Product + ProductDemand — all DCB entities)
   module AddCategorySlice = Platform.StateChangeSlice.Make(AddCategory, AddCategory_Behavior)
@@ -417,7 +417,7 @@ of `~aggregates` **and** DCB slice arrays in one `Plugin.make` is shown by
 Ordering is generated the same way. Its `make` wires:
 
 - the **`Customer`** aggregate, with a **`Customers` ReadModelStream** (the
-  live-updating read-model variant — `Platform.ReadModelStream.Make`) — this is
+  live-updating read model variant — `Platform.ReadModelStream.Make`) — this is
   the **mixed aggregate + DCB** read model, fed by both the Customer aggregate
   and the Ordering DCB log (`orderCount`);
 - the Order and CatalogProduct **DCB slices** (`PlaceOrder`, `ShipOrder`,

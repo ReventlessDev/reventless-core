@@ -1,7 +1,5 @@
 ---
 title: StateChangeSlice Usage
-date: 2026-02-17
-draft: false
 ---
 
 This guide covers how to use StateChangeSlice in your Reventless application. For the component reference, see [StateChangeSlice](../components/statechangeslice.md).

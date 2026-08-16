@@ -1,7 +1,5 @@
 ---
 title: DCB Slices
-date: 2025-01-01
-draft: false
 sidebar_position: 5
 ---
 
@@ -179,7 +177,7 @@ let decide = (state, command) =>
 
 A `StateViewSlice` projects events from the shared log into a queryable read model. Like a StateChangeSlice it is two files, inside a `StateViewSliceStream/` folder:
 
-- **`<Name>.res`** (`@@reventless.spec`) — declares `consumedEvent` and the read-model `state`
+- **`<Name>.res`** (`@@reventless.spec`) — declares `consumedEvent` and the read model `state`
 - **`<Name>_Projection.res`** (`@@reventless.projection`) — declares `project`
 
 The `project` function takes a `consumedEvent` and returns an **array** of projection actions. `Set`/`Update`/`UpdateWithDefault`/`Delete` are in scope without a `Projection.` prefix (the PPX opens `Reventless.Projection`). State-dependent updates use `Update(id, state => ...)` rather than receiving the existing state directly.

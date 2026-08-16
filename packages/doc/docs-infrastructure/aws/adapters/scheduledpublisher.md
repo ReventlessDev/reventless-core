@@ -1,9 +1,6 @@
 ---
 title: "ScheduledPublisher → EventBridge Scheduler"
-date: 2026-01-15
-draft: false
 ---
-
 
 :::note EventBridge, formerly CloudWatch Events
 AWS renamed CloudWatch Events to **EventBridge**; the Pulumi resource is still

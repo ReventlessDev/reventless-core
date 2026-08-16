@@ -1,7 +1,5 @@
 ---
 title: DcbEventLog
-date: 2026-02-17
-draft: false
 ---
 
 For a short summary of DcbEventLog, see [Reventless Components Overview.](/app/component-overview)
@@ -64,7 +62,7 @@ DCBArchitecture: DCB Architecture {
   Consumers: Event Consumers {
     class: read-side
     EventCollector: Event Collector { class: event-collector }
-    ReadModel: Read Model { class: read-model }
+    ReadModel: Read Model { class: read model }
   }
 
   Client -> SQS: commands { class: command-flow }

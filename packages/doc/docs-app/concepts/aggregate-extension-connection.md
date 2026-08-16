@@ -1,6 +1,5 @@
 ---
 title: Aggregate-Extension Connection
-date: 2025-02-16
 ---
 
 # Aggregate-Extension Connection

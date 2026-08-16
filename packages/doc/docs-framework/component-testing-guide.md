@@ -10,7 +10,7 @@ Use this guide when adding tests for **any** Reventless component:
 - Adapter implementations (DynamoDB, S3, SQS, etc.)
 
 > **Slice-level Given-When-Then tests** — aggregate `Behavior`, DCB
-> `StateChangeSlice`, read-model projections, DCB `StateViewSlice`,
+> `StateChangeSlice`, read model projections, DCB `StateViewSlice`,
 > automation / translation slices, and cross-pattern `Mapping_GWT` — are
 > covered by [`docs/guides/given-when-then.md`](/app/given-when-then) and run
 > through the `reventless-gwt` CLI. This guide is for the component /
@@ -880,8 +880,8 @@ mock.failNextAppends := 4  // Exhaust retries (if max 3 retries)
 Before submitting component tests:
 
 ### Build & Test
-- [ ] `npm run build` — All modules compile
-- [ ] `npm test` — All tests pass (new + existing)
+- [ ] `pnpm run build` — All modules compile
+- [ ] `pnpm test` — All tests pass (new + existing)
 - [ ] `npx jest tests/<component>/` — Isolated component tests pass
 
 ### Coverage
@@ -1045,7 +1045,7 @@ To add tests for a new component:
    - [ ] Happy path tests
    - [ ] Error case tests
    - [ ] Retry/batch tests (if applicable)
-6. [ ] Run `npm run build && npm test`
+6. [ ] Run `pnpm run build && pnpm test`
 7. [ ] Document any new patterns/gotchas discovered
 
 ---
@@ -1067,4 +1067,3 @@ This guide should be updated when:
 - ReScript/sury-ppx version changes affect testing
 - Better mock patterns are identified
 
-**Last updated**: Based on DCB component testing (2024)

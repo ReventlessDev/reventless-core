@@ -1,7 +1,5 @@
 ---
 title: ExtensionPoint
-date: 2021-11-22
-draft: false
 ---
 
 For a short summary of an ExtensionPoint, see [Reventless Components Overview.](../component-overview.md)

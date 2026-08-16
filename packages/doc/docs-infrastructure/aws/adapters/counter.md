@@ -1,7 +1,5 @@
 ---
 title: "Counter → DynamoDB"
-date: 2026-01-15
-draft: false
 ---
 
 ## Counter → DynamoDB Streams

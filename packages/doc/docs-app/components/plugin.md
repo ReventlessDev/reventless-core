@@ -1,7 +1,5 @@
 ---
 title: Plugin
-date: 2021-11-22
-draft: false
 ---
 
 For a short summary of a Plugin, see [Reventless Components Overview.](../component-overview.md)
@@ -35,8 +33,8 @@ Plugin: "Plugin (Bounded Context)" {
     grid-rows: 3
     Agg1: Aggregate 1 { class: aggregate }
     Agg2: Aggregate 2 { class: aggregate }
-    RM1: ReadModel 1 { class: read-model }
-    RM2: ReadModel 2 { class: read-model }
+    RM1: ReadModel 1 { class: read model }
+    RM2: ReadModel 2 { class: read model }
     Task1: Task 1 { class: task }
     Task2: Task 2 { class: task }
   }
@@ -168,7 +166,7 @@ Plugin: Plugin {
   ET: Event Topic { class: event-topic }
   EC: Event Collector { class: event-collector }
   EM: Event Mapper { class: event-mapper }
-  RM: ReadModel { class: read-model }
+  RM: ReadModel { class: read model }
 
   API -> CG: mutation { class: command-flow }
   CG -> CT1: command { class: command-flow }
@@ -267,7 +265,7 @@ The generated file exposes a `Make(Platform)` functor that wires every discovere
 component with the platform's per-component factories:
 
 ```rescript title="src/Plugin.res (generated — do not edit)" showLineNumbers
-// AUTO-GENERATED — do not edit. Run `npm run generate` to update.
+// AUTO-GENERATED — do not edit. Run `pnpm run generate` to update.
 module Make = (Platform: ReventlessInfra.Platform.T) => {
   // Aggregates
   module CustomerAggregate = Platform.Aggregate.Make(
@@ -315,7 +313,7 @@ shape: sequence_diagram
 Pulumi: Pulumi { class: external-system }
 Plugin: Plugin { class: plugin }
 Aggregates: Aggregates { class: aggregate }
-ReadModels: ReadModels { class: read-model }
+ReadModels: ReadModels { class: read model }
 ExtensionPoints: ExtensionPoints { class: extension-point }
 Extensions: Extensions { class: extension }
 EventCollector: EventCollector { class: event-collector }

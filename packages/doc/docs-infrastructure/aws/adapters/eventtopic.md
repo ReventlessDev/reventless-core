@@ -1,9 +1,6 @@
 ---
 title: "EventTopic → SNS (optional publisher)"
-date: 2026-01-15
-draft: false
 ---
-
 
 :::info Which delivery path a platform actually uses
 The AWS platform wires **DynamoDB Streams** on the event log as the default

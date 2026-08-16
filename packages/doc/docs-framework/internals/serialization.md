@@ -1,7 +1,5 @@
 ---
 title: Serialization
-date: 2024-08-20
-draft: false
 ---
 
 ## Sury

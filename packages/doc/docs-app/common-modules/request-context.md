@@ -1,7 +1,5 @@
 ---
 title: RequestContext
-date: 2026-03-26
-draft: false
 ---
 
 `RequestContext` is an Effect service that carries per-request data through the pipeline without explicit argument threading. It is populated at the API entry point and discarded after the response is sent.

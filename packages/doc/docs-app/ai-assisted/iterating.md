@@ -76,14 +76,14 @@ This catches:
 After any code change:
 
 ```bash
-npm run build    # compile all packages
-npm test         # run all tests
+pnpm run build    # compile all packages
+pnpm test         # run all tests
 ```
 
 If you've reorganized files (moved, renamed):
 
 ```bash
-npx rescript clean && npm run build
+npx rescript clean && pnpm run build
 ```
 
 ## When to Regenerate vs Modify

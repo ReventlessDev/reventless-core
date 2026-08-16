@@ -1,7 +1,5 @@
 ---
 title: SideEffectHandler
-date: 2026-01-26
-draft: false
 ---
 
 For a short summary of SideEffectHandler, see [Reventless Components Overview.](../component-overview.md)

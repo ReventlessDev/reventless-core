@@ -1,7 +1,5 @@
 ---
 title: Extension
-date: 2021-11-22
-draft: false
 ---
 
 For a short summary of an Extension, see [Reventless Components Overview.](../component-overview.md)
@@ -34,7 +32,7 @@ PluginB: "Plugin B (Consumer)" {
   }
 
   Agg: Aggregate { class: aggregate }
-  RM: ReadModel { class: read-model }
+  RM: ReadModel { class: read model }
 
   Ext.ExtM -> Agg: command { class: command-flow }
   Ext.ExtM -> RM: event { class: projection-flow }
@@ -356,7 +354,7 @@ EC: Plugin Event Collector { class: event-collector }
 ExtOps: Extension Operations { class: extension }
 AggCT: Aggregate Command Topic { class: command-topic }
 Agg: Aggregate { class: aggregate }
-RM: ReadModel { class: read-model }
+RM: ReadModel { class: read model }
 
 EP -> Admin: event
 Admin -> EC: event

@@ -1,7 +1,5 @@
 ---
 title: Messages
-date: 2024-08-13
-draft: false
 ---
 
 # Messages in Reventless
@@ -204,7 +202,7 @@ CT: CommandTopic { class: command-topic }
 Agg: Aggregate { class: aggregate }
 EL: EventLog { class: event-log }
 ET: EventTopic { class: event-topic }
-RM: ReadModel { class: read-model }
+RM: ReadModel { class: read model }
 
 Client -> CT: command' { class: command-flow }
 CT -> Agg: command' { class: command-flow }
@@ -231,7 +229,7 @@ A: Aggregate { class: aggregate }
 E1: "Event\nmsgId: evt-001\ncorrelationId: cmd-001\ncausationId: cmd-001" { class: msg-event }
 E2: "Event\nmsgId: evt-002\ncorrelationId: cmd-001\ncausationId: cmd-001" { class: msg-event }
 EM: EventMapper { class: event-mapper }
-RM2: ReadModel { class: read-model }
+RM2: ReadModel { class: read model }
 C2: "Command\nmsgId: cmd-002\ncorrelationId: cmd-001\ncausationId: evt-001" { class: msg-command }
 
 C1 -> A { class: command-flow }

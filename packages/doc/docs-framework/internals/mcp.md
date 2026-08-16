@@ -1,7 +1,5 @@
 ---
 title: MCP Server
-date: 2026-03-04
-draft: false
 ---
 
 # MCP — AI-native Access to Reventless

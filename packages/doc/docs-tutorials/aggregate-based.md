@@ -170,7 +170,7 @@ Orders_Extension  ◄─────────────  Orders_ExtensionPo
 
 The following walkthrough uses the **Catalog** Plugin from `examples/online-shop-aggregates/catalog/` — the `Product` aggregate with its read model, the `ProductDemand` aggregate for demand tracking, the `Products_ExtensionPoint`, the `Orders_Extension`, and the generated `Plugin` that wires everything together.
 
-Each component is **split** into a spec file (`<Name>.res`, annotated `@@reventless.spec`) and a body file (e.g. `<Name>_Behavior.res`, `<Name>_Projections.res`). The PPX auto-injects boilerplate — `let name`, `module Id`, `let moduleUrl`, the `open`/`module Spec` lines, projection mapping wrappers, read-model `config`, default authorization, and visibility — so the source you write contains only domain logic. The folder a file lives in (`Aggregate/`, `ReadModel/`, `Task/`, …) tells the PPX and the plugin generator what kind of component it is.
+Each component is **split** into a spec file (`<Name>.res`, annotated `@@reventless.spec`) and a body file (e.g. `<Name>_Behavior.res`, `<Name>_Projections.res`). The PPX auto-injects boilerplate — `let name`, `module Id`, `let moduleUrl`, the `open`/`module Spec` lines, projection mapping wrappers, read model `config`, default authorization, and visibility — so the source you write contains only domain logic. The folder a file lives in (`Aggregate/`, `ReadModel/`, `Task/`, …) tells the PPX and the plugin generator what kind of component it is.
 
 ### 1. Aggregate Spec
 
@@ -418,7 +418,7 @@ module Mapping = {
 The plugin wires all aggregates, read models, the Extension Point, the Extension, and the Task together using any `Platform` implementation. **You do not write this file** — it is generated at `src/Plugin.res` by `generate-plugin`, which scans `src/` by folder name and emits the composition root before each build. It carries an "AUTO-GENERATED — do not edit" banner. Each component is wired with a two-argument `Make` (spec + body); aggregates take a third argument for their event mappings (`NoEventMappings.Make(<Spec>)` when there are none):
 
 ```rescript
-// src/Plugin.res — AUTO-GENERATED — do not edit. Run `npm run generate` to update.
+// src/Plugin.res — AUTO-GENERATED — do not edit. Run `pnpm run generate` to update.
 module Make = (Platform: ReventlessInfra.Platform.T) => {
   // Aggregates
   module CategoryAggregate = Platform.Aggregate.Make(

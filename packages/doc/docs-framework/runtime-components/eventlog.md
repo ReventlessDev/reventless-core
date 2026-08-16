@@ -1,7 +1,5 @@
 ---
 title: EventLog
-date: 2026-01-24
-draft: false
 ---
 
 For a short summary of EventLog, see [Reventless Components Overview.](/app/component-overview)
@@ -16,7 +14,7 @@ This component follows the Reventless [Component Structure Pattern](/framework/i
 Aggregate: Aggregate { class: aggregate }
 EventLog: EventLog { class: event-log }
 EventTopic: Event Topic { class: event-topic }
-ReadModel: Read Model { class: read-model }
+ReadModel: Read Model { class: read model }
 EventMapper: Event Mapper { class: event-mapper }
 
 Aggregate -> EventLog: append events { class: event-flow }
@@ -151,7 +149,12 @@ EventTopic --> EventLog: Ok/Error
 EventLog --> Aggregate: Ok/Error
 ```
 
-Please note that typical EventLogStorages publish changes themself, so the corresponding EventTopic will typically ignore the published events. But for the case that the EventLogStorage does not publish events, the EventTopic will publish them. Take care, that this manual publishing is not recommended, because it is not atomic with the storage operation. 
+Most storage implementations publish their own changes, so the EventTopic
+ignores what it is handed. Where a storage does not publish, the EventTopic
+publishes instead — but that path is a fallback, not a design: publishing
+separately from the write is not atomic with it, so a crash between the two
+loses the notification while keeping the event.
+
 ### Event Replay Sequence
 
 ```d2

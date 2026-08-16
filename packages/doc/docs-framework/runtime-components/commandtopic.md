@@ -1,7 +1,5 @@
 ---
 title: CommandTopic
-date: 2026-01-24
-draft: false
 ---
 
 For a short summary of CommandTopic, see [Reventless Components Overview.](/app/component-overview)

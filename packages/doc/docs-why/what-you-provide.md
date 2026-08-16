@@ -29,7 +29,7 @@ system: "What you get" {
   class: reventless-aws-area
 
   log: "Event log — the full history" { class: event-log }
-  views: "Live views" { class: read-model }
+  views: "Live views" { class: read model }
   api: "GraphQL and MCP APIs" { class: api }
   ui: "Generated user interface" { class: client }
   infra: "Cloud infrastructure" { class: aws-service }

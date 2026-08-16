@@ -1,7 +1,5 @@
 ---
 title: EventLog → DynamoDB
-date: 2024-08-28
-draft: false
 ---
 
 ## EventLog → DynamoDB

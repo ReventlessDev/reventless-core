@@ -493,16 +493,16 @@ test("Heartbeat is idempotent on connected plugin", () =>
 cd packages/reventless
 
 # Run all tests
-npm test
+pnpm test
 
 # Run specific test file
 npx jest tests/plugin/PluginBehaviorTest.res.js
 
 # Run tests in watch mode (re-runs on file changes)
-npm run dev
+pnpm run dev
 
 # Run tests with coverage
-npm run coverage
+pnpm run coverage
 ```
 
 ## File Structure

@@ -293,10 +293,10 @@ The plugin name is auto-registered by `Plugin_Builder.make` — no manual `regis
 
 ### The `Main.res` Composition Root
 
-`Main.res` is **auto-generated** by the generator (`--aws` mode). Do not edit it manually — run `npm run generate` to regenerate.
+`Main.res` is **auto-generated** by the generator (`--aws` mode). Do not edit it manually — run `pnpm run generate` to regenerate.
 
 ```rescript
-// AUTO-GENERATED — do not edit. Run `npm run generate` to update.
+// AUTO-GENERATED — do not edit. Run `pnpm run generate` to update.
 // Ordering plugin — AWS deployment.
 
 module Platform = ReventlessAws.Platform.Make()

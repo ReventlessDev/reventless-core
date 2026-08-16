@@ -1,7 +1,5 @@
 ---
 title: "CommandGenerator → AppSync resolvers"
-date: 2026-01-15
-draft: false
 ---
 
 ## CommandGenerator → AppSync
