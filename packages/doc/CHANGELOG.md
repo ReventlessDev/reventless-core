@@ -719,6 +719,18 @@ This file tracks changes to the documentation. Since the doc package is not vers
 ## Changes
 
 ### 2026-08-16
+- docs: show the decision logic on the recommended path, close out the plan ([303cf8c](https://github.com/ReventlessDev/reventless-core/commit/303cf8cb2093ececdd34555a3b62946183682996))
+- docs: rewrite the AWS getting-started, state the MCP position, trim repeats ([76e68f2](https://github.com/ReventlessDev/reventless-core/commit/76e68f25b6864b21d57034c961425477c0612c2b))
+- docs: reconcile the guide's contradictions, retire duplicate pages, add ops ([0f764bb](https://github.com/ReventlessDev/reventless-core/commit/0f764bb37458400fcb31ec4adcb29662751dea74))
+- docs: explain DCB before using its vocabulary, and state the Postgres position ([95f7590](https://github.com/ReventlessDev/reventless-core/commit/95f75900943b700810ac6f5308b70dec9f82e898))
+- docs: add an authorization guide, repair the glossary, sweep the mechanics ([4b447f6](https://github.com/ReventlessDev/reventless-core/commit/4b447f6333501ffe0c0f530aa6bec51fc12d8e65))
+- docs: replace APIs that no longer exist with the ones that do ([1ba3ce4](https://github.com/ReventlessDev/reventless-core/commit/1ba3ce4e31d968627477d24578c119f6a21d222a))
+- docs: correct entry-path facts and remove references readers cannot follow ([e9a45b2](https://github.com/ReventlessDev/reventless-core/commit/e9a45b2f53e7b0a49a25c756127706b6b56705b5))
+- docs: put provider-authoring and framework-internals pages in the right section ([73ccecf](https://github.com/ReventlessDev/reventless-core/commit/73ccecfbc92420a71fbd06216b41bcb8e550d2eb))
+- docs: split the App Guide into a spine you follow and a reference you consult ([1af4ff7](https://github.com/ReventlessDev/reventless-core/commit/1af4ff7def88e2741b1128163bc007554c3239cd))
+- docs: make running the example a path of its own, and correct what it claims ([4ec4e4b](https://github.com/ReventlessDev/reventless-core/commit/4ec4e4b2f4607185ae5be178d4fe7412d80c2c3b))
+- docs: add an evaluator section and reframe the site around four audiences ([d77c2e4](https://github.com/ReventlessDev/reventless-core/commit/d77c2e44099bbd41787827573c7dac42b7948d4e))
+### 2026-08-16
 - feat(core): let @retired name a lifecycle state, not only a boolean ([6bb346b](https://github.com/ReventlessDev/reventless-core/commit/6bb346b4f6a5f33826fc24537953482a76067177))
 
 ### 2026-08-15
