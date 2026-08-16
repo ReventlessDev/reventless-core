@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.304 (2026-08-16)
+
+### Bug Fixes
+
+* **aws:** ship the DCB slice registry in the archive, not the environment ([3cda4cb](https://github.com/ReventlessDev/reventless-core/commit/3cda4cb780848598a436ab8e80843cf15a4d22b6))
+
+
 # 3.0.0-alpha.303 (2026-08-16)
 
 ### Features
