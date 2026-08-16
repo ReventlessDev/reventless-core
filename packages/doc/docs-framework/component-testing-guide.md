@@ -12,7 +12,7 @@ Use this guide when adding tests for **any** Reventless component:
 > **Slice-level Given-When-Then tests** — aggregate `Behavior`, DCB
 > `StateChangeSlice`, read-model projections, DCB `StateViewSlice`,
 > automation / translation slices, and cross-pattern `Mapping_GWT` — are
-> covered by [`docs/guides/given-when-then.md`](./given-when-then.md) and run
+> covered by [`docs/guides/given-when-then.md`](/app/given-when-then) and run
 > through the `reventless-gwt` CLI. This guide is for the component /
 > integration layer that sits below them (mocks, adapters, callbacks,
 > operations).

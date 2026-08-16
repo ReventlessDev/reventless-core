@@ -242,6 +242,25 @@ const config = {
             to: `/framework/runtime-components/${p}`,
           })),
           {from: "/app/components/api", to: "/app/graphql-api-guide"},
+          // Provider-authoring and framework-internals pages settled into the
+          // section that owns them.
+          {
+            from: "/infrastructure/get-started",
+            to: "/infrastructure/scaffolding-a-provider",
+          },
+          {
+            from: "/app/component-testing-guide",
+            to: "/framework/component-testing-guide",
+          },
+          {
+            from: "/infrastructure/dual-aws-provider",
+            to: "/framework/internals/dual-aws-provider",
+          },
+          {
+            from: "/framework/output-types-in-reventless-spec",
+            to: "/framework/internals/resources",
+          },
+          {from: "/framework/get-started", to: "/framework/contributing"},
         ],
       },
     ],

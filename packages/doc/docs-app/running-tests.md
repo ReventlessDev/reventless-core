@@ -94,5 +94,5 @@ thing before a commit and the wrong thing while iterating.
 ## See also
 
 - [Writing scenarios](./given-when-then.md) — the Given/When/Then DSL
-- [Component testing guide](./component-testing-guide.md) — integration-level
+- [Component testing guide](/framework/component-testing-guide) — integration-level
   tests against a running local platform

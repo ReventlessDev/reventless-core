@@ -96,7 +96,6 @@ const sidebars = {
             'common-modules/config',
           ],
         },
-        'component-testing-guide',
         'writing-unit-tests',
       ],
     },

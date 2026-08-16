@@ -811,7 +811,7 @@ Full field reference lives in
 - [`docs/analysis/given-when-then-specifications.md`](https://github.com/ReventlessDev/reventless-core/blob/main/docs/analysis/given-when-then-specifications.md) —
   design rationale, alternatives, and the canonical format / hint-table
   specifications.
-- [`docs/guides/component-testing-guide.md`](./component-testing-guide.md) —
+- [Component testing guide](/framework/component-testing-guide) —
   where Jest-based component / integration tests live (not the slice level).
 - [`docs/guides/reventless-vscode-testing.md`](/framework/reventless-vscode-testing) —
   VS Code extension setup, continuous run, troubleshooting.

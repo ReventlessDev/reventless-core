@@ -22,7 +22,7 @@ A component (Aggregate, ReadModel, Task, …) follows the
 [component-structure pattern](./component-structure-pattern):
 
 - `Component.res` — type definitions and `outputs` (see
-  [output types in reventless-spec](../output-types-in-reventless-spec)).
+  [why output types live in reventless-spec](./resources.md#why-output-types-live-in-reventless-spec)).
 - `Component_Builder.res` — the `Make` functor that wires it.
 - `Component_Adapter.res` (optional) — the provider-agnostic interface for any
   infrastructure it needs.

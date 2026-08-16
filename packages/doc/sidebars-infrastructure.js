@@ -4,8 +4,6 @@
 const sidebars = {
   infrastructureSidebar: [
     'index',
-    'get-started',
-    'adapter-pattern',
     {
       type: 'category',
       label: 'Local',
@@ -93,12 +91,22 @@ const sidebars = {
         'lambda-deployment',
         'aws-lambda-layer',
         'callback-hooks-and-adapter-wrapping',
-        'dual-aws-provider',
         'ui-fragments-deployment',
         'custom-domain',
         'appsync-events-live-updates',
         'postgres-aws-deployment',
         'local-persistence',
+      ],
+    },
+    {
+      // Authoring a provider is framework work, not operating an application.
+      // The pages stay here beside the adapter reference they describe; the
+      // Contributing sidebar links to them.
+      type: 'category',
+      label: 'Writing a provider',
+      items: [
+        'scaffolding-a-provider',
+        'adapter-pattern',
       ],
     },
   ],

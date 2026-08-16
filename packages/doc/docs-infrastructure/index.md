@@ -11,7 +11,7 @@ Reventless is a **provider-agnostic** event-sourced CQRS framework. The core `re
 > and the [Deployment Guide](./deployment-guide.md). For local runs, see the
 > [Local Provider](./local/).
 >
-> **Writing a new provider?** Start at [Scaffolding a Provider Package](./get-started.md)
+> **Writing a new provider?** Start at [Scaffolding a Provider Package](./scaffolding-a-provider.md)
 > and the [Adapter Pattern](./adapter-pattern.md).
 
 ## What a Provider Does
@@ -76,4 +76,4 @@ The adapter pattern makes it possible to implement Reventless on any serverless 
 - **GCP** — Cloud Functions, Firestore, Pub/Sub, Cloud Tasks
 - **Cloudflare Workers** — Workers, Durable Objects, Queues, R2
 
-Community contributions are welcome. See [Scaffolding a Provider Package](./get-started.md) for how to create a new provider, and the [Adapter Pattern](./adapter-pattern.md) for the full interface checklist.
+Community contributions are welcome. See [Scaffolding a Provider Package](./scaffolding-a-provider.md) for how to create a new provider, and the [Adapter Pattern](./adapter-pattern.md) for the full interface checklist.

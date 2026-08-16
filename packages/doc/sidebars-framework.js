@@ -36,6 +36,7 @@ const sidebars = {
         'internals/pulumi',
         'internals/component-structure-pattern',
         'internals/mcp',
+        'internals/dual-aws-provider',
         'internals/extending-the-framework',
       ],
     },
@@ -88,12 +89,28 @@ const sidebars = {
         'api-protocol-integration',
         'transport-adapter-guide',
         'component-testing',
+        'component-testing-guide',
         'd2-diagrams',
         'forward-codegen-pipeline',
         'reverse-codegen-pipeline',
         'graphql-schema-debugging',
-        'output-types-in-reventless-spec',
         'reventless-vscode-testing',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Writing a provider',
+      items: [
+        {
+          type: 'link',
+          label: 'Scaffolding a provider package',
+          href: '/infrastructure/scaffolding-a-provider',
+        },
+        {
+          type: 'link',
+          label: 'Adapter pattern',
+          href: '/infrastructure/adapter-pattern',
+        },
       ],
     },
     {

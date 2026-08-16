@@ -237,6 +237,29 @@ let queueUrl = (commandTopic.resources->Array.getUnsafe(0)).id
 4. **Use Helper Functions**: Leverage conversion functions rather than manual transformation
 5. **Filter Appropriately**: Use service-specific filters to find resources at runtime
 
+## Why output types live in `reventless-spec`
+
+Every component's `outputs` record — the resources and operations it exposes —
+is defined in `reventless-spec`, not in the implementation package. That looks
+redundant (application developers never construct one) but it is load-bearing:
+
+- **They are a cross-stack serialization contract.** Pulumi stack exports are
+  typed by these records and read back by `Interstack` **without runtime
+  validation**. Two stacks deployed from different framework versions would
+  silently deserialize a changed record into a structurally wrong value — no
+  compile error, no runtime error, wrong data at deploy time. Keeping the types
+  in the conservatively-versioned spec package makes that contract explicit and
+  separately lockable.
+- **They are part of the spec/implementation boundary.** The spec package
+  defines what a component *is* and what it *produces*; moving outputs into the
+  implementation would blur that line and invert the dependency, since outputs
+  reference `Adapter.resource`, itself a spec-level abstraction.
+- **`Plugin_Helpers` mirrors them.** Its `pureOutputs` type is structurally
+  identical to `Plugin.outputs` with the `Pulumi.Output.t` wrappers removed,
+  because a fetched remote export arrives already resolved. Keeping the
+  canonical definition in a different package from its mirror is what makes the
+  two visibly distinct rather than accidentally divergent.
+
 ## Integration with Pulumi
 
 Resources have a close relationship with Pulumi's infrastructure management:
