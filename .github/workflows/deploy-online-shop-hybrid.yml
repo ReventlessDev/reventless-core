@@ -80,7 +80,13 @@ jobs:
       # workflow cannot import ReScript. Leave it out and the demo silently
       # inverts: operators see nothing, and an operator ordering on a customer's
       # behalf has the row stamped with their own id.
-      elevated-groups: "Admin"
+      #
+      # It has drifted once, and nothing reported it: `Fulfilment` was added to
+      # `Storefront.res` and not here, so the browser hid the owner column for a
+      # caller the server still scoped, and the deployed order board showed that
+      # role nothing at all. The two halves fail silently in opposite directions,
+      # which is why this list is worth re-reading whenever the other one changes.
+      elevated-groups: "Admin,Fulfilment"
       # Optional repo VARIABLES (not secrets — none are sensitive). When both
       # base domain and hosted-zone ID are set the framework provisions an
       # ACM cert (us-east-1) + Route53 alias for the host-UI shell and serves
