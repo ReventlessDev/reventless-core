@@ -14,7 +14,7 @@
 - **The place index is the same chain**, with one difference: it backs a stateless lookup service with no per-plugin data, so it stays **platform-scoped and shared** — one geocoding service for every plugin that needs it. Its `dataSource`/`intendedUse` are real licensing decisions, so they belong in Pulumi config, not code (§5.3).
 - **`servedBuckets` should not exist in the public API.** It restates a framework constant (`servedPrefix = "uploads"`) that the app author cannot see, and nothing validates the match — writing `prefix: "media"` deploys green and 404s every image at runtime (§3.2).
 - **Two live defects** fall out of the hand-written infra: `seed:reset` never empties the uploads bucket (no attribution tags), and nothing validates what lands in the event log — a client can put any URL in `imageUrl` and it is appended permanently (§3.3, §3.4).
-- **The mechanism** is a capability model: the plugin declares, the framework provisions. The missing primitive is a *declared storage reference* — `@storageRef("productImages")` today, `productImage: UploadableFile.t` once semantic types land (§5).
+- **The mechanism** is a capability model: the plugin declares, the framework provisions. The missing primitive is a *declared storage reference* — `@storageRef("productImages")` today, `productImage: UploadableImage.t` once semantic types land, with the store derived from the field name (§5).
 - **The constraint to design around** is split-stack deploy ordering: the platform deploys first and has no access to plugin schemas. A build-time capability manifest feeding a generated platform root resolves it (§6).
 
 ---
@@ -157,7 +157,7 @@ Lifting `@semantic` off its `type state` gate is worth doing alongside so it wor
 
 | Rule | Requirement |
 |---|---|
-| field typed `UploadableFile.t`, or annotated `@storageRef("<store>")` | `ObjectStore("<store>")` — **declared, authoritative** |
+| field typed `UploadableImage.t` / `UploadableFile.t` (store from the field name), or annotated `@storageRef("<store>")` | `ObjectStore("<store>")` — **declared, authoritative** |
 | `Task.buckets` entry | `ObjectStore("<bucketName>")` — declared (already provisioned today) |
 | string named `file`/`attachment`/`upload`, or ending `storageRef`/`fileRef`/`attachmentRef` | `ObjectStore` — inferred |
 | string named `image`/`imageUrl`/`photo`/`avatar`/`thumbnail` | `ObjectStore` — inferred, **weak** |
@@ -234,17 +234,20 @@ The `servedBucket` type already made the *within-one-distribution* case unrepres
 
 When the types land, §5.1's annotations collapse into the field's type and everything else falls out of it. Both examples are worth writing down now, so the annotation design is a waypoint on that road rather than a detour.
 
-#### Product image
+#### Uploadable content
+
+The type family is **content-named** — `UploadableImage.t`, `UploadableFile.t`, with room for `UploadableDocument.t` / `UploadableVideo.t` — and a field declares one of them and nothing else. There is no store argument and no store module: the store's name *is* the field's name.
 
 ```rescript
 // now — annotation
 ChangeProductImage({productId: string, @storageRef("productImages") imageUrl: string})
 
 // future — semantic type
-ChangeProductImage({productId: string, productImage: UploadableFile.t})
+ChangeProductImage({productId: string, productImage: UploadableImage.t})
+AddSupplierDatasheet({supplierId: string, datasheet: UploadableFile.t})
 ```
 
-From `productImage: UploadableFile.t` alone the framework derives:
+From `productImage: UploadableImage.t` alone the framework derives:
 
 | Derived | Value |
 |---|---|
@@ -254,11 +257,18 @@ From `productImage: UploadableFile.t` alone the framework derives:
 | Presign service | one, `s3:PutObject` scoped to that bucket only |
 | Capability requirement | `ObjectStore("productImages")` in the plugin manifest |
 | UI | upload input bound to that store — no name heuristic, no endpoint gating |
+| Content / render intent | *image* — from the type, not from the field being called `imageUrl`: thumbnail cell, lightbox detail, gallery capability, and an `accept` filter on the dropzone. `UploadableFile.t` derives the same store and provisioning but claims no thumbnail, only a type-aware icon and download |
 | Validation | schema-level: the value must be a ref into *this* store |
 
-Pluralisation is consistent with conventions the repo already has — aggregates singular, read models plural, and the PPX already strips a trailing `s` when deriving plural DCB tag keys, so `productImage → productImages` is the inverse of a transform that already ships. It should stay overridable (`@storageRef("productImagery")`) where naive pluralisation is wrong: derivation is a default, not a law.
+Both facts ride on the type because both are framework-owned kinds. Putting the content in a *payload* — `UploadableFile.Make({let content = Image})` or `@uploadable(~content=Image)` — would reintroduce the annotation this design exists to remove, and would deny the UI a closed set of keys to match renderers and capabilities on.
 
-The field also gets its proper name back. `imageUrl` was only ever called "URL" because a string was the only thing available; `productImage: UploadableFile.t` says what it is.
+Pluralisation is consistent with conventions the repo already has — aggregates singular, read models plural, and the PPX already strips a trailing `s` when deriving plural DCB tag keys, so `productImage → productImages` is the inverse of a transform that already ships. It must be **one** implementation, consulted by the PPX, the capability manifest and the store-wipe tooling alike; three agreeing copies is the same defect class as the plugin-name case slip in §8. It should stay overridable (`@storageRef("productImagery")`) where naive pluralisation is wrong: derivation is a default, not a law.
+
+The field also gets its proper name back. `imageUrl` was only ever called "URL" because a string was the only thing available; `productImage: UploadableImage.t` says what it is.
+
+**Deriving the store from the field name makes the name load-bearing**, and two consequences belong in the design rather than in a later post-mortem. A field rename is a **store rename**, and a store rename strands the previous generation of objects: the wipe tooling discovers ownership from the current declaration, so anything under the old prefix is unreachable by every tool in the estate — the window closes at deploy time. And fields that must share a store must share a name: today four differently-shaped declarations spell the field `imageUrl` and are unified by the annotation's argument, whereas under derivation a single typo provisions a *second* store silently. The deploy-time coverage assertion should therefore grow a near-duplicate check — two stores in one plugin differing only by singular/plural or by one edit — because nothing else in the pipeline can see that mistake.
+
+`@storageRef` does not go away. It is the **override** where naming a store buys something real (several fields deliberately sharing one, or an IAM/lifecycle/serving boundary between public images and private invoices), and it remains the **migration-free retrofit**: the annotation refines an existing `string` so stored events decode unchanged, while retyping a live field to `UploadableImage.t` is a structural break owing an upcaster.
 
 #### Geocoded address
 
@@ -274,7 +284,7 @@ type command = | Register({email: string, address: PostalAddress.t})      // unt
 type event   = | Registered({email: string, address: GeocodedAddress.t})  // resolved: formatted + lat/lng
 ```
 
-`GeocodedAddress.t` in an event declares `Geocoding` exactly as `UploadableFile.t` declares `ObjectStore`: the manifest carries the requirement, the platform provisions one shared service, and `Main.res` needs nothing.
+`GeocodedAddress.t` in an event declares `Geocoding` exactly as the uploadable family declares `ObjectStore`: the manifest carries the requirement, the platform provisions one shared service, and `Main.res` needs nothing.
 
 **Where the resolution runs matters.** Calling the geocoder inside `decide` would break the framework's central guarantee — `decide` must be pure and deterministic because it is re-run on every replay, and geocoding the same address next year can return a different point as the provider's data changes. A replayed event log would stop reproducing itself. The lookup cannot live there.
 
@@ -442,7 +452,7 @@ The platform learns which stores exist, and — as Stage 2 settled — provision
 
 **Stage 4 — catalogue growth.** `EmailDelivery` (SES identity + IAM), `SecretStore`, `Vpc` (Postgres-backed query storage), `FullTextSearch`, `MediaProcessing`, `WebhookIngress` — registered through [DeployBootstrap](../../reventless/infra/src/components/DeployBootstrap.res) so a provider can ship in a satellite package without touching `reventless-aws`.
 
-**Stage 5 — the rest of the semantic-type library (§5.5).** With the marker and `StorageRef` already shipped in Stages 0.5–1, what remains here is breadth: `UploadableFile.t` and `GeocodedAddress.t` subsuming the annotations entirely (store name, bucket, served path, UI input, schema refinement and capability requirement all derived from the field's type), plus the richer value types whose shape questions are still open. Stage 1's annotations remain valid as the explicit-override form.
+**Stage 5 — the rest of the semantic-type library (§5.5).** With the marker and `StorageRef` already shipped in Stages 0.5–1, what remains here is breadth: `UploadableImage.t` / `UploadableFile.t` and `GeocodedAddress.t` subsuming the annotations entirely (store name, bucket, served path, UI input, render intent, schema refinement and capability requirement all derived from the field's type and name), plus the richer value types whose shape questions are still open. The uploadable half also owes the shared pluralisation rule and the near-duplicate-store check §5.5 names as preconditions. Stage 1's annotations remain valid as the explicit-override form.
 
 Stage 0 is worth doing regardless of whether the later stages are taken: it is pure derivation, it closes a live operational defect, and it removes the file's only correctness trap. Stages 0 and 0.5 are independent of each other and can proceed in either order or in parallel.
 
@@ -456,7 +466,7 @@ Stage 0 is worth doing regardless of whether the later stages are taken: it is p
 | **Inference false positives.** `externalImageUrl: string` on a spec that never uploads → an unused bucket. | Cheap failure mode (empty bucket, unused Lambda). `@@reventless.requires.not(...)` for explicit denial. Every inferred capability logged with provenance at deploy time. |
 | **Inference false negatives.** A field named `banner` holding a storage ref. | Explicit `@storageRef` / `@@reventless.requires`. `deployPlugin`'s assertion (§6) turns the failure into a clear message rather than a runtime 404. |
 | **Rules diverging from Auto UI.** The UI decides the widget; the platform decides the infra. If they drift, a widget appears with no endpoint. | Single source: core owns the declaration and the fallback heuristics; the UI consumes them. This also removes §2's circularity — the UI stops gating on "does an endpoint happen to exist". Right direction of dependency: the UI's inference table is currently the de-facto spec the backend must match. |
-| **Retrofitting the declaration.** `UploadableFile.t` on an existing `imageUrl` changes an event schema; `@storageRef` does not. | Adopt the annotation first (no event-schema change, no replay concern); treat the semantic type as a later, opt-in migration. The scan accepts both. |
+| **Retrofitting the declaration.** `UploadableImage.t` on an existing `imageUrl` changes an event schema — and, because the store is derived from the field name, renaming `imageUrl` to `productImage` in the same move also renames the store, stranding the objects written under the old prefix outside the wipe tooling's reach; `@storageRef` does neither. | Adopt the annotation first (no event-schema change, no replay concern); treat the semantic type as a later, opt-in migration, and sequence the field rename as a data migration whose window closes at deploy time. The scan accepts both. |
 | **Bucket count.** `plugins × stores × stacks` against a globally-unique namespace and an account limit. | Verify the account limit before Stage 2 (§5.3). Prefix-within-one-bucket remains the fallback if the ceiling is real. |
 | **Generator complexity.** `generate-platform` is new surface. | Scope it to exactly what `generate-plugin` does — read a manifest, emit a committed root. One new file kind, no new concepts. |
 
