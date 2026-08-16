@@ -185,3 +185,60 @@ describe("@owner stamping on the command path:", () => {
     })
   })
 })
+
+// The schema is not only a validator, and the case below is the one that proves
+// it. Two AppSync-side call sites passed `S.json` in place of the command schema
+// — a defensible substitution while its only job was validation, since AppSync
+// has already checked the input against the SDL, and per-slice decoding happens
+// downstream anyway. Owner stamping then gave the same argument a second job:
+// it is where the `@owner` fields are read from. Handed a permissive schema the
+// lookup answers "no owner fields" for every command there is, and the write
+// keeps whatever owner the client sent — no error, no warning, a wrong row.
+//
+// Nothing about a single call site was wrong, which is why per-path tests could
+// not catch it. What was missing is a check on the RELATIONSHIP: a generator
+// built for a command whose spec marks an owner must be able to find it.
+describe("the schema a generator is built with must answer for its commands:", () => {
+  let permissive = CommandGenerator_Callback.makeGenerateCommand(
+    ~publishJsons=async cmds => published := published.contents->Array.concat(cmds),
+    ~serviceName="Ordering",
+    ~commandSchema=S.json->S.castToUnknown,
+    ~componentKind=CommandGenerator_Callback.StateChangeSlice,
+    ~stripIdFromParams=false,
+  )
+
+  testPromise("a permissive schema silently stamps nothing — the defect, pinned", async () => {
+    let _ =
+      await permissive(
+        placeOrder(~customerId="cust-B", ~identity=cognito(~userId="cust-A", ~groups=["User"])),
+      )->Effect.runPromise
+    // Not the behaviour we want anywhere — recorded so that a change making the
+    // permissive path stamp correctly is a deliberate one, and so the contrast
+    // with the case below cannot be read as incidental.
+    expect(lastPublished()->fieldOf("customerId"))->toEqual(Some(str("cust-B")))
+  })
+
+  testPromise("the real schema stamps, from the same payload and caller", async () => {
+    let _ =
+      await generate(
+        placeOrder(~customerId="cust-B", ~identity=cognito(~userId="cust-A", ~groups=["User"])),
+      )->Effect.runPromise
+    expect(lastPublished()->fieldOf("customerId"))->toEqual(Some(str("cust-A")))
+  })
+
+  // The check a call site can run against itself, and the one the DCB routing
+  // maps now satisfy by construction: every command a spec exposes resolves to
+  // its own owner fields through the schema that command will be dispatched
+  // with. Reading `[]` here is exactly the state that stamps nothing.
+  testPromise("every command of a spec resolves its owner fields through that spec's schema", async () => {
+    let schema = commandSchema->S.castToUnknown
+    expect(Reventless.Owner.variantFieldNames(schema, ~variant="PlaceOrder"))->toEqual([
+      "customerId",
+    ])
+    expect(Reventless.Owner.variantFieldNames(schema, ~variant="ImportProducts"))->toEqual([])
+    // The substitution, asked the same question.
+    expect(
+      Reventless.Owner.variantFieldNames(S.json->S.castToUnknown, ~variant="PlaceOrder"),
+    )->toEqual([])
+  })
+})

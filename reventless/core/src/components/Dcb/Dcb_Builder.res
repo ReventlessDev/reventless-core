@@ -761,28 +761,80 @@ module Make = (
         // + AppSync direct invocations (CommandGenerator.payload format)
         let dcbHandlerBase = DcbCommandTopic.makeFilteringHandler(dcbCommandTopic)
 
-        // Shared generateCommand for AppSync direct invocations — all sync StateChangeSlices
-        // share the same DCB CommandTopic's publishJsons, so a single function suffices.
-        // commandSchema validation is skipped (permissive JSON.t schema) because AppSync
-        // already validates input against the SDL.
+        // generateCommand for AppSync direct invocations, one per command constructor.
+        //
+        // Every one of them shares this CommandTopic's publishJsons — the reason a
+        // single function used to suffice — and they differ in exactly one argument:
+        // the schema. That argument is not only a validator. `makeGenerateCommand`
+        // also reads it to find the fields a command marks as its owner, and stamps
+        // them with the caller. Handing it the permissive `S.json` (as this did, on
+        // the still-true grounds that AppSync has already validated against the SDL)
+        // makes that lookup answer "no owner fields" for every command there is — so
+        // the write publishes whatever owner the CLIENT sent, silently, and the row
+        // is wrong from then on.
+        //
+        // Per-slice decoding still happens inside `buildSliceHandler`; nothing here
+        // re-validates. The schema travels for what it says about ownership.
+        let dcbCommandSchemasByTag = {
+          let byTag = Dict.make()
+          stateChangeSlices->Array.forEach((module(S: StateChangeSlice.T)) => {
+            let commandSchema = S.Spec.commandSchema->Reventless.DcbTag.toUnknownSchema
+            if !(ApiNoApiHelpers.isNoApi(commandSchema)) {
+              Api_Naming.sliceMutationFields(
+                ~plugin=apiNamePrefix,
+                ~slice=S.Spec.name,
+                ~commandSchema,
+              )->Array.forEach(((_, tag)) => {
+                // The resolver injects the TAG alone, so two slices claiming one
+                // constructor name would make the stamp ambiguous — and the wrong
+                // arm of that ambiguity writes a row owned by nobody's decision.
+                // Multi-command slices cannot reach here (their mutation fields
+                // collide first), which leaves single-command slices, where the
+                // field names differ and nothing else would notice.
+                switch byTag->Dict.get(tag) {
+                | Some(_) =>
+                  log.error(
+                    ~comp="Dcb_Builder",
+                    `Two DCB slices in "${name}" both declare the command "${tag}". ` ++
+                    "Owner stamping resolves a command by that name alone, so it cannot " ++
+                    "tell them apart. Rename one of the constructors.",
+                  )
+                | None => byTag->Dict.set(tag, commandSchema)
+                }
+              })
+            }
+          })
+          byTag
+        }
+
         let dcbGenerateCommandOutput =
           dcbCommandTopic
           ->Component.operations
-          ->Pulumi.Output.apply(ops =>
-            CommandGenerator_Callback.makeGenerateCommand(
-              ~publishJsons=ops.publishJsons,
-              ~publishJsonsAndWait=?ops.publishJsonsAndWait,
-              ~serviceName=name,
-              ~commandSchema=S.json->S.castToUnknown,
-              ~componentKind=CommandGenerator_Callback.StateChangeSlice,
-              ~stripIdFromParams=false,
-            )
-          )
+          ->Pulumi.Output.apply(ops => {
+            let make = commandSchema =>
+              CommandGenerator_Callback.makeGenerateCommand(
+                ~publishJsons=ops.publishJsons,
+                ~publishJsonsAndWait=?ops.publishJsonsAndWait,
+                ~serviceName=name,
+                ~commandSchema,
+                ~componentKind=CommandGenerator_Callback.StateChangeSlice,
+                ~stripIdFromParams=false,
+              )
+            let byTag = Dict.make()
+            dcbCommandSchemasByTag
+            ->Dict.toArray
+            ->Array.forEach(((tag, schema)) => byTag->Dict.set(tag, make(schema)))
+            // A command no slice claims keeps the permissive generator — what every
+            // command got before this change — so nothing that reaches this handler
+            // by another route starts failing. It also cannot stamp, which is why
+            // the unknown case is logged rather than left to look like a success.
+            (byTag, make(S.json->S.castToUnknown))
+          })
 
         let dcbHandler =
           (dcbHandlerBase, inboundReceiversOutput, dcbGenerateCommandOutput)
           ->Pulumi.Output.all3
-          ->Pulumi.Output.apply(((baseHandler, receivers, generateCommand)) => {
+          ->Pulumi.Output.apply(((baseHandler, receivers, (generatorsByTag, generateFallback))) => {
             let composite = (event, ctx) => {
               let raw: dict<JSON.t> = event->Obj.magic
               switch raw->Dict.get("__inboundTranslation") {
@@ -810,6 +862,17 @@ module Make = (
                 switch (raw->Dict.get("command"), raw->Dict.get("arguments")) {
                 | (Some(JSON.String(_)), Some(_)) =>
                   let payload: CommandGenerator.payload = event->Obj.magic
+                  let generateCommand = switch generatorsByTag->Dict.get(payload.command) {
+                  | Some(g) => g
+                  | None =>
+                    log.warn(
+                      ~comp="Dcb_Builder",
+                      `No DCB slice in "${name}" declares the command "${payload.command}", ` ++
+                      "so it is dispatched without an owner stamp. Any field the command " ++
+                      "marks as its owner keeps the value the caller sent.",
+                    )
+                    generateFallback
+                  }
                   (generateCommand(payload)->Effect.map(msgId => msgId->Obj.magic))->Obj.magic
                 | _ => baseHandler(event, ctx)
                 }

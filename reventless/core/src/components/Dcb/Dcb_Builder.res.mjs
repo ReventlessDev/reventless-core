@@ -422,13 +422,42 @@ function Make(DcbEventLogStorage) {
         ]);
       })).apply(pairs => Object.fromEntries(pairs));
       let dcbHandlerBase = DcbCommandTopic.makeFilteringHandler(dcbCommandTopic);
-      let dcbGenerateCommandOutput = Component$ReventlessCore.operations(dcbCommandTopic).apply(ops => CommandGenerator_Callback$ReventlessCore.makeGenerateCommand(ops.publishJsons, ops.publishJsonsAndWait, name, S.json, "StateChangeSlice", false));
+      let byTag = {};
+      stateChangeSlices.forEach(S => {
+        let commandSchema = S.Spec.commandSchema;
+        if (!ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema)) {
+          Api_Naming$ReventlessCore.sliceMutationFields(apiNamePrefix, S.Spec.name, commandSchema).forEach(param => {
+            let tag = param[1];
+            let match = byTag[tag];
+            if (match !== undefined) {
+              return log.error("Dcb_Builder", undefined, `Two DCB slices in "` + name + `" both declare the command "` + tag + `". ` + "Owner stamping resolves a command by that name alone, so it cannot tell them apart. Rename one of the constructors.");
+            } else {
+              byTag[tag] = commandSchema;
+              return;
+            }
+          });
+          return;
+        }
+      });
+      let dcbGenerateCommandOutput = Component$ReventlessCore.operations(dcbCommandTopic).apply(ops => {
+        let make = commandSchema => CommandGenerator_Callback$ReventlessCore.makeGenerateCommand(ops.publishJsons, ops.publishJsonsAndWait, name, commandSchema, "StateChangeSlice", false);
+        let byTag$1 = {};
+        Object.entries(byTag).forEach(param => {
+          byTag$1[param[0]] = make(param[1]);
+        });
+        return [
+          byTag$1,
+          make(S.json)
+        ];
+      });
       let dcbHandler = Pulumi.all([
         dcbHandlerBase,
         inboundReceiversOutput,
         dcbGenerateCommandOutput
       ]).apply(param => {
-        let generateCommand = param[2];
+        let match = param[2];
+        let generateFallback = match[1];
+        let generatorsByTag = match[0];
         let receivers = param[1];
         let baseHandler = param[0];
         return (event, ctx) => {
@@ -448,11 +477,18 @@ function Make(DcbEventLogStorage) {
           }
           let match$1 = event["command"];
           let match$2 = event["arguments"];
-          if (typeof match$1 === "string" && match$2 !== undefined) {
-            return Effect.map(generateCommand(event), msgId => msgId);
-          } else {
+          if (match$1 === undefined) {
             return baseHandler(event, ctx);
           }
+          if (typeof match$1 !== "string") {
+            return baseHandler(event, ctx);
+          }
+          if (match$2 === undefined) {
+            return baseHandler(event, ctx);
+          }
+          let g = generatorsByTag[event.command];
+          let generateCommand = g !== undefined ? g : (log.warn("Dcb_Builder", undefined, `No DCB slice in "` + name + `" declares the command "` + event.command + `", ` + "so it is dispatched without an owner stamp. Any field the command marks as its owner keeps the value the caller sent."), generateFallback);
+          return Effect.map(generateCommand(event), msgId => msgId);
         };
       });
       let dcbResources = Object.values(stateChangeSlicesOutputs).flatMap(outputs => outputs.resources).concat(Object.values(inboundTranslationSlicesOutputs).flatMap(outputs => outputs.resources.concat(outputs.queryDb.resources)));

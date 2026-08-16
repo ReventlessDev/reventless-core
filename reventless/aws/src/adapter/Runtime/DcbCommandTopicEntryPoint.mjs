@@ -95,6 +95,7 @@ export async function buildHandlersForConfig(config, opts = {}) {
   );
 
   const handlersByType = {};
+  const commandSchemasByType = {};
   const sharedDcbEventLogOps = dcbEventLogOperationsMake({
     name: config.pluginName,
     // Mirrors DcbEventLog_Builder.res's `name ++ "DcbEventLog"` — the
@@ -119,6 +120,19 @@ export async function buildHandlersForConfig(config, opts = {}) {
     );
     for (const typeName of commandTypeNames(patchedSpec)) {
       handlersByType[typeName] = jsonHandler;
+      // The schema this command's owner fields are read from. Kept beside the
+      // handler because the two answer the same question — "which slice is this
+      // command?" — and a command routed to a handler but not to a schema is
+      // exactly the state that stamps nothing while looking like it worked.
+      if (commandSchemasByType[typeName] !== undefined) {
+        log.error(
+          "two DCB slices declare the command \"" + typeName + "\"; owner stamping " +
+            "resolves a command by that name alone and cannot tell them apart",
+          { comp: "DcbCommandTopicRuntime" },
+        );
+      } else {
+        commandSchemasByType[typeName] = patchedSpec.commandSchema;
+      }
     }
   });
 
@@ -191,9 +205,7 @@ export async function buildHandlersForConfig(config, opts = {}) {
   // Sync (default): inline-dispatch the command via the same composite handler
   // that Route 2 uses, so the AppSync resolver gets a typed Accepted/Rejected
   // outcome. Async: undefined → makeCommandGenerator falls back to publishJsons
-  // and returns Pending. The schema is permissive (S.json) because AppSync has
-  // already validated input against the SDL — per-slice schemas reapply inside
-  // the typed core's buildSliceHandler decode.
+  // and returns Pending.
   const publishJsonsAndWait = DISPATCH_MODE === "async"
     ? undefined
     : (jsons) => runInlineAndCollect(jsons, compositeJsonCommandsHandler);
@@ -202,14 +214,31 @@ export async function buildHandlersForConfig(config, opts = {}) {
   // the framework signature. stripIdFromParams=false: DCB slices may declare a
   // literal `id` field as part of the command schema (composite partition keys
   // etc.) — don't strip it.
-  const generateCommand = makeCommandGenerator(
+  //
+  // One generator per command, differing only in the schema. This used to be a
+  // single generator built on the permissive `jsonSchema`, on the still-true
+  // grounds that AppSync has already validated input against the SDL and that
+  // per-slice schemas reapply inside `buildSliceHandler`'s decode. What that
+  // reasoning did not cover is that the schema is also where `makeGenerateCommand`
+  // reads a command's `@owner` fields from: given `S.json` it finds none, for every
+  // command, and the write keeps whatever owner the CLIENT sent. Validation was
+  // never the only job.
+  const makeGeneratorFor = (commandSchema) => makeCommandGenerator(
     publishJsons,
     publishJsonsAndWait,
     config.pluginName,
-    jsonSchema,
+    commandSchema,
     "StateChangeSlice",
     false,
   );
+  const generatorsByType = {};
+  for (const typeName of Object.keys(commandSchemasByType)) {
+    generatorsByType[typeName] = makeGeneratorFor(commandSchemasByType[typeName]);
+  }
+  // A command no loaded slice claims keeps the permissive generator — what every
+  // command got before this change — so anything reaching this handler by another
+  // route behaves as it did. It also cannot stamp, hence the warning.
+  const generateFallback = makeGeneratorFor(jsonSchema);
 
   const cmdGenHandler = (event) => {
     // CommandGenerator.meta declares ip as array<string> (X-Forwarded-For chain).
@@ -225,6 +254,15 @@ export async function buildHandlersForConfig(config, opts = {}) {
           groups: [],
           provider: { TAG: "Custom", _0: "aws" },
         };
+    let generateCommand = generatorsByType[event.command];
+    if (generateCommand === undefined) {
+      log.warn(
+        "no DCB slice declares the command \"" + event.command + "\"; dispatching " +
+          "without an owner stamp, so any @owner field keeps the value the caller sent",
+        { comp: "DcbCommandTopicRuntime" },
+      );
+      generateCommand = generateFallback;
+    }
     return generateCommand({ ...event, meta, identity });
   };
 
