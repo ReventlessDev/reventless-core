@@ -371,6 +371,35 @@ let checkLifecycleTopology = (
     log.warn(~comp="Plugin_Structure", `${pluginName}/${view}: ${message}`)
   )
 
+// NOT here: the event-consumption completeness check.
+//
+// The failure it would catch is real and has already happened: a command emitted
+// an event, the slice that owned the opposite command folded it, and the view
+// that renders the entity did not — so the row kept rendering the state it was
+// in before, with every annotation in the plugin correct. That is a class of bug
+// no declaration check can see, because nothing declared is wrong.
+//
+// It is not computable from this metadata, and the reason is worth recording so
+// the attempt is not repeated. Two narrowings were needed and only one was
+// available:
+//
+//   1. The event must belong to the view's own entity, not merely be something a
+//      slice looked up. Available: require it to be PRODUCED by a writable
+//      linked to the same view. Without this the check fires on ordinary DCB —
+//      `AddProduct` folds `CategoryAdded` to check a category exists, and the
+//      `Products` view is right to ignore it.
+//
+//   2. The slice must be known to fold the event. NOT available:
+//      `consumedEventTypes` is built from `eventVariantNames`, which drops
+//      payload-less variants — and a lifecycle-moving event is usually
+//      payload-less in the slice that folds it. Measured on the shipped example:
+//      both order slices publish `consumedEventTypes: ["Ordering.OrderPlaced"]`
+//      and nothing else, though each folds three more.
+//
+// So the exact events the rule is about are the ones the metadata does not
+// record. Making it work means publishing the payload-less consumed variants,
+// which is a platform change with its own consequences, not a lint.
+
 // Which rung of the ladder below produced the label. Published on `queryableDef`
 // as `labelFieldSource`, because the four rungs are not equally believable and a
 // consumer with a name rule of its own has to rank the declaration against it:

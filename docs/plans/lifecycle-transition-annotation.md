@@ -508,11 +508,30 @@ metadata cannot see (an automation, an external system). Failing a deploy on
 that would be the wrong trade, and a smell that stops a deploy gets silenced
 rather than fixed.
 
-**Not built: event-consumption completeness.** The §1.6 generalisation — warning
-when a slice folds a lifecycle-moving event its siblings and the view ignore —
-is still open. It is a different shape of question from either rule here: it
-compares *folds against each other* rather than declarations against an enum,
-and it wants the consumed-event sets that `writableDef` already carries.
+**Event-consumption completeness — attempted, and NOT computable from this
+metadata.** The §1.6 generalisation was built, run against the shipped examples,
+and removed. Two narrowings were needed; only one was available.
+
+1. *The event must belong to the view's own entity.* **Available** — require it
+   to be produced by a writable linked to the same view. Without this the check
+   fires on ordinary DCB: `AddProduct` folds `CategoryAdded` to check a category
+   exists, `PlaceOrder` folds `CatalogProductSynced` to price an order, and the
+   `Products` / `Orders` views are right to ignore both. All three were reported
+   before the narrowing went in.
+2. *The slice must be known to fold the event.* **Not available.**
+   `consumedEventTypes` is built from `eventVariantNames`, which drops
+   payload-less variants — and a lifecycle-moving event is usually payload-less
+   in the slice that folds it. Measured on the shipped example: both order slices
+   publish `consumedEventTypes: ["Ordering.OrderPlaced"]` and nothing else,
+   though each folds three more.
+
+So the exact events the rule is about are the ones the metadata does not record.
+Verified end to end: with the narrowing applied and the `OrderReopened` drift
+deliberately reintroduced into the live example, the check stayed silent.
+
+Making it work means publishing the payload-less consumed variants — a platform
+change with its own consequences (the filter exists for DCB reasons), not a
+lint. That is the prerequisite, and it belongs in its own plan.
 
 **Exit.** Clean on all three examples — reached by deleting the rule that was
 wrong rather than by suppressing what it found. Four unit tests over the pure
