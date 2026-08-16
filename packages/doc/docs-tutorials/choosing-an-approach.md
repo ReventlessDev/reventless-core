@@ -1,6 +1,5 @@
 ---
 title: Choosing an approach
-sidebar_position: 2
 ---
 
 # Choosing an approach: Aggregate, DCB, or Hybrid
@@ -36,10 +35,21 @@ approach that fits it. The full reasoning lives in the App Guide's
 
 The shop has both kinds of entity:
 
-- **Independent** — `Category` and `Customer` are simple Add/Update/Archive
-  lifecycles with no cross-entity needs → aggregates.
-- **Interdependent** — `Product`+`ProductDemand` and `Order`+`CatalogProduct`
-  benefit from shared, tag-filtered reads and cross-entity validation → DCB.
+- **Independent** — `Customer` is a self-contained lifecycle: registering,
+  updating contact details, deactivating and reactivating. No other entity's
+  events take part in those decisions → aggregate.
+- **Interdependent** — `Category`, `Product`, `ProductDemand`, `Order`, and
+  `CatalogProduct` all decide on events other entities produced. `AddProduct`
+  reads `CategoryAdded` / `CategoryArchived` to reject a product in a category
+  that does not exist or has been withdrawn; `PlaceOrder` reads
+  `CatalogProductSynced` to reject an order for a product Ordering has never
+  heard of. Those reads only work if the entities share a tag-filtered log → DCB.
+
+Note how the rule plays out for `Category`: on its own it is a plain
+Add/Rename/Archive lifecycle and would make a perfectly good aggregate. It is DCB
+here because *another* entity's decision has to read its events — the question is
+never "is this entity simple?" but "does any decision need to see it alongside
+something else?".
 
 Hybrid is the most representative of a real application, so it is the spine of
 this tutorial. The two pure styles are kept as

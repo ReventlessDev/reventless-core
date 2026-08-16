@@ -1,6 +1,5 @@
 ---
 title: Run it locally
-sidebar_position: 4
 ---
 
 # Run the online shop locally
@@ -11,7 +10,7 @@ the AWS platform runs, backed by a local store (SQLite by default, persisted to
 `.reventless/local.db`) and a local GraphQL server.
 
 Everything in this page happens inside
-[`examples/online-shop-hybrid/platform-local/`](https://github.com/ReventlessDev/reventless-core/tree/main/examples/online-shop-hybrid/platform-local).
+[`examples/online-shop-hybrid/platform-local/`](https://github.com/ReventlessDev/reventless-core/tree/alpha/examples/online-shop-hybrid/platform-local).
 
 ## Prerequisites
 
@@ -19,15 +18,27 @@ Everything in this page happens inside
 - A checkout of `reventless-core`. You do **not** need the UI source — the local
   UI is provided by the published `reventless-host-shell` package.
 - A GitHub Package Registry token with `read:packages` for `@reventlessdev/*` — the
-  first `pnpm install` pulls published packages (e.g. `reventless-host-shell`). See
+  install pulls published packages (e.g. `reventless-host-shell`). See
   [Registry and Tokens](/framework/registry-and-tokens).
+
+## Bootstrap the checkout
+
+From the **repo root**, once per clone:
+
+```bash
+pnpm run setup
+```
+
+That installs dependencies, makes sure a compiler plugin binary exists for your
+platform, seeds the example's local user file so login works, and builds the
+hybrid example. It is idempotent — re-run it any time.
 
 ## One command
 
 ```bash
 cd examples/online-shop-hybrid/platform-local
 
-pnpm run build      # once, and after any source change
+pnpm run build      # after any source change (setup did the first one)
 pnpm run dev:full   # backend + UI together
 ```
 

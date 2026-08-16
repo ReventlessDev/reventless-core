@@ -36,7 +36,7 @@ function HomepageHeader() {
           </Link>
           <Link
             className="button button--secondary button--lg"
-            to="/tutorials/get-started">
+            to="/tutorials/overview">
             Try the example
           </Link>
           <Link
@@ -64,7 +64,7 @@ const ReadingPaths = [
     persona: 'Try it',
     question: '“How do I see the example running in my own AWS account?”',
     steps: [
-      <><Link to="/tutorials/get-started">The online shop</Link> — what the example does</>,
+      <><Link to="/tutorials/overview">The online shop</Link> — what the example does</>,
       <><Link to="/tutorials/run-locally">Run it locally</Link> — no cloud account needed</>,
       <><Link to="/tutorials/deploy-to-aws">Deploy to your own AWS account</Link></>,
     ],

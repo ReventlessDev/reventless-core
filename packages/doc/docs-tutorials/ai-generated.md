@@ -1,6 +1,5 @@
 ---
 title: AI-Generated Walkthrough
-sidebar_position: 5
 ---
 
 # AI-Generated Walkthrough

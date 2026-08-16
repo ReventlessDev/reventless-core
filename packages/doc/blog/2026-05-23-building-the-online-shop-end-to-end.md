@@ -16,20 +16,21 @@ working package in the repo, not a sketch.
 
 ## One spine, four steps
 
-The [tutorial](/tutorials/get-started) is a single guided track built on
+The [tutorial](/tutorials/overview) is a single guided track built on
 `examples/online-shop-hybrid/`:
 
-1. **Understand it** — the [hybrid walkthrough](/tutorials/hybrid-based) covers
-   every command, event, read model, slice, and the cross-plugin extension-point
-   protocol. Category and Customer are aggregates; Product/ProductDemand and
-   Order/CatalogProduct are DCB slices.
-2. **Run it locally** — [start the whole shop](/tutorials/run-locally) on the
+1. **Run it locally** — [start the whole shop](/tutorials/run-locally) on the
    local platform with one command, served through a local GraphQL API and the
    host-shell UI.
-3. **Deploy it to your AWS account** — [fork-and-deploy](/tutorials/deploy-to-aws)
+2. **Deploy it to your AWS account** — [fork-and-deploy](/tutorials/deploy-to-aws)
    with Pulumi: point the stacks at your own org, pick your Cognito setup, and ship.
-4. **Test it on AWS** — [verify](/tutorials/test-on-aws) the live stack, including
+3. **Test it on AWS** — [verify](/tutorials/test-on-aws) the live stack, including
    subscriptions flowing over WebSockets.
+4. **Understand it** — the [hybrid walkthrough](/tutorials/hybrid-based) covers
+   every command, event, read model, slice, and the cross-plugin extension-point
+   protocol. Customer is the one aggregate; Category, Product/ProductDemand and
+   Order/CatalogProduct are DCB slices, because their decisions read each other's
+   events.
 
 ## Why hybrid?
 

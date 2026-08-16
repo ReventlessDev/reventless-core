@@ -6,7 +6,7 @@ Why do we need all the output types for the components defined in `reventless-sp
 
 ## What the Output Types Are
 
-Every component module in [`packages/reventless-spec/src/components/`](https://github.com/ReventlessDev/reventless-core/tree/main/reventless/spec/src/components/) defines a `type outputs` (and sometimes `type allOutputs`, `type operations`). Examples:
+Every component module in [`packages/reventless-spec/src/components/`](https://github.com/ReventlessDev/reventless-core/tree/alpha/reventless/spec/src/components/) defines a `type outputs` (and sometimes `type allOutputs`, `type operations`). Examples:
 
 - [`Aggregate.outputs`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/spec/src/components/Aggregate.res) — `{name, commandGenerator, commandTopic, eventLog, eventMapper?, addEventMapper}`
 - [`Plugin.outputs`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/spec/src/components/Plugin.res) — `{id, version, heartbeatInterval, eventCollector, extensionPoints, …}`

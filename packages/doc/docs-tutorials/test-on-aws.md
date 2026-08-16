@@ -1,6 +1,5 @@
 ---
 title: Test it on AWS
-sidebar_position: 7
 ---
 
 # Test the deployed shop

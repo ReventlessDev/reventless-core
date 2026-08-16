@@ -1,6 +1,5 @@
 ---
 title: DCB-Based Implementation
-sidebar_position: 3
 ---
 
 # DCB-Based Implementation

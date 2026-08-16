@@ -84,5 +84,5 @@ system lies in a bespoke infrastructure design.
 
 ## Next
 
-- [See it run](/tutorials/get-started) — the worked example, locally and on AWS
+- [See it run](/tutorials/overview) — the worked example, locally and on AWS
 - [Build your own](/app/get-started) — start an application from your own domain

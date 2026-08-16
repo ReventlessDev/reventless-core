@@ -40,7 +40,7 @@ depending on each other's source.
 ## Where to start
 
 - New here? Read [What is Reventless?](/app/) for the full orientation.
-- Want to see it work? Follow the [tutorial](/tutorials/get-started) — understand
+- Want to see it work? Follow the [tutorial](/tutorials/overview) — understand
   the example, run it locally, deploy it to AWS, and test it.
 - Building something? The [App Guide](/app/get-started) walks through your first
   plugin.

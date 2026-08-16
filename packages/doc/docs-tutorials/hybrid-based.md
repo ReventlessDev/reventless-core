@@ -1,6 +1,5 @@
 ---
 title: Hybrid walkthrough
-sidebar_position: 3
 ---
 
 # Hybrid Implementation
@@ -18,7 +17,7 @@ In this example: **Customer** stays an aggregate because its lifecycle is fully 
 
 :::info This page tracks the real package
 The code on this page describes the actual
-[`examples/online-shop-hybrid/`](https://github.com/ReventlessDev/reventless-core/tree/main/examples/online-shop-hybrid)
+[`examples/online-shop-hybrid/`](https://github.com/ReventlessDev/reventless-core/tree/alpha/examples/online-shop-hybrid)
 package. Two things differ from a hand-written sketch:
 
 - **`Plugin.res` is generated**, not hand-written. A `prebuild` step runs

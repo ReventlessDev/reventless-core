@@ -36,7 +36,7 @@ sleep** between schema push and resolver creation.
 ## Where the line is drawn
 
 - **Bindings** — both providers have ReScript bindings in
-  [`rescript-pulumi-aws`](https://github.com/ReventlessDev/reventless-core/tree/main/rescript/pulumi-aws/). Classic
+  [`rescript-pulumi-aws`](https://github.com/ReventlessDev/reventless-core/tree/alpha/rescript/pulumi-aws/). Classic
   bindings live in `src/AppSync/`, `src/DynamoDb/`, etc. The native
   binding sits under `src/AwsNative/AppSync/` and is exposed as
   `PulumiAws.AwsNative.AppSync.Resolver`.

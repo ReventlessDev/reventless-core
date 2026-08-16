@@ -116,7 +116,7 @@ conventions are documented in
 
 Framework-specific conventions (component structure, PPX annotations,
 aggregate vs. DCB choice, idempotency) live in
-[.claude/rules/](https://github.com/ReventlessDev/reventless-core/tree/main/.claude/rules/) and the guides under `docs/guides/`.
+[.claude/rules/](https://github.com/ReventlessDev/reventless-core/tree/alpha/.claude/rules/) and the guides under `docs/guides/`.
 
 ---
 

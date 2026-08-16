@@ -1,6 +1,5 @@
 ---
 title: Aggregate-Based Implementation
-sidebar_position: 2
 ---
 
 # Aggregate-Based Implementation

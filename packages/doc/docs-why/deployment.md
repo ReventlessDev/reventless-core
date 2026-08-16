@@ -84,4 +84,4 @@ production, which is what makes the local test suite meaningful.
 ## Next
 
 - [How it compares](./how-it-compares.md)
-- [See it run](/tutorials/get-started) — the worked example, locally and on AWS
+- [See it run](/tutorials/overview) — the worked example, locally and on AWS

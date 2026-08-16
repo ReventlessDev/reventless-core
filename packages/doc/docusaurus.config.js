@@ -102,6 +102,13 @@ try {
     /* not a git checkout — leave as "local" */
   }
 }
+// The git branch this docs version is built from, so "Edit this page" lands on
+// the source the reader is actually looking at. `alpha` is the repo's default
+// branch and the fallback for local previews of any other branch.
+const editBranch =
+  docsVersion === "latest" ? "main" : docsVersion === "beta" ? "beta" : "alpha";
+const editUrlBase = `https://github.com/ReventlessDev/reventless-core/tree/${editBranch}/packages/doc/`;
+
 const d2StylesPath = join(process.cwd(), "d2", "reventless.d2");
 const d2Opts = {
   // `linkPath` is the URL prefix prepended to every generated diagram <img src>.
@@ -208,6 +215,17 @@ const config = {
 
   plugins: [
     [
+      // Client-side redirects for every page that has been renamed or moved
+      // between sections, so older links and bookmarks keep working.
+      // Only active in production builds (`docusaurus build`), not in `start`.
+      "@docusaurus/plugin-client-redirects",
+      {
+        redirects: [
+          {from: "/tutorials/get-started", to: "/tutorials/overview"},
+        ],
+      },
+    ],
+    [
       "@docusaurus/plugin-content-docs",
       {
         id: "why",
@@ -216,8 +234,7 @@ const config = {
         sidebarPath: "./sidebars-why.js",
         remarkPlugins: [[d2PrependStyles, { stylesPath: d2StylesPath }], [d2, d2Opts]],
         rehypePlugins: [rehypeSequenceDiagramClass],
-        editUrl:
-          "https://github.com/ReventlessDev/reventless-core/tree/main/packages/doc/",
+        editUrl: editUrlBase,
       },
     ],
     [
@@ -230,8 +247,7 @@ const config = {
         sidebarPath: "./sidebars-app.js",
         remarkPlugins: [[d2PrependStyles, { stylesPath: d2StylesPath }], [d2, d2Opts]],
         rehypePlugins: [rehypeSequenceDiagramClass],
-        editUrl:
-          "https://github.com/ReventlessDev/reventless-core/tree/main/packages/doc/",
+        editUrl: editUrlBase,
       },
     ],
     [
@@ -243,8 +259,7 @@ const config = {
         sidebarPath: "./sidebars-framework.js",
         remarkPlugins: [[d2PrependStyles, { stylesPath: d2StylesPath }], [d2, d2Opts]],
         rehypePlugins: [rehypeSequenceDiagramClass],
-        editUrl:
-          "https://github.com/ReventlessDev/reventless-core/tree/main/packages/doc/",
+        editUrl: editUrlBase,
       },
     ],
     [
@@ -256,8 +271,7 @@ const config = {
         sidebarPath: "./sidebars-infrastructure.js",
         remarkPlugins: [[d2PrependStyles, { stylesPath: d2StylesPath }], [d2, d2Opts]],
         rehypePlugins: [rehypeSequenceDiagramClass],
-        editUrl:
-          "https://github.com/ReventlessDev/reventless-core/tree/main/packages/doc/",
+        editUrl: editUrlBase,
       },
     ],
     [
@@ -269,8 +283,7 @@ const config = {
         sidebarPath: "./sidebars-tutorials.js",
         remarkPlugins: [[d2PrependStyles, { stylesPath: d2StylesPath }], [d2, d2Opts]],
         rehypePlugins: [rehypeSequenceDiagramClass],
-        editUrl:
-          "https://github.com/ReventlessDev/reventless-core/tree/main/packages/doc/",
+        editUrl: editUrlBase,
       },
     ],
   ],
@@ -295,8 +308,7 @@ const config = {
               "Release notes, design deep-dives, and case studies for Reventless",
             copyright: `Copyright © ${copyrightYears} Reventless`,
           },
-          editUrl:
-            "https://github.com/ReventlessDev/reventless-core/tree/main/packages/doc/",
+          editUrl: editUrlBase,
         },
         theme: {
           customCss: "./src/css/custom.css",
@@ -387,7 +399,7 @@ const config = {
               },
               {
                 label: "Try the example",
-                to: "/tutorials/get-started",
+                to: "/tutorials/overview",
               },
             ],
           },

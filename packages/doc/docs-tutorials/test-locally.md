@@ -1,6 +1,5 @@
 ---
 title: Test it locally
-sidebar_position: 5
 ---
 
 # Test the running shop
@@ -15,8 +14,10 @@ Reventless is secure by default: commands and queries require an authenticated
 user. Locally, authentication is backed by a YAML file at
 `platform-local/.reventless/users.yaml`. That file is gitignored; it is seeded from the
 committed template
-[`platform-local/users.example.yaml`](https://github.com/ReventlessDev/reventless-core/tree/main/examples/online-shop-hybrid/platform-local/users.example.yaml)
-by `node scripts/setup.mjs` (or `cp users.example.yaml .reventless/users.yaml`). The seeded
+[`platform-local/users.example.yaml`](https://github.com/ReventlessDev/reventless-core/tree/alpha/examples/online-shop-hybrid/platform-local/users.example.yaml)
+by `pnpm run setup` (run from the repo root — see
+[Run it locally](./run-locally#bootstrap-the-checkout)), or by hand with
+`cp users.example.yaml .reventless/users.yaml` from `platform-local/`. The seeded
 users are:
 
 | Username | Password | Groups |

@@ -1,7 +1,7 @@
 # Given-When-Then Testing in Reventless
 
 Reventless ships a dedicated Given-When-Then (GWT) test framework,
-[`@reventlessdev/reventless-gwt`](https://github.com/ReventlessDev/reventless-core/tree/main/reventless/gwt/), with a DSL
+[`@reventlessdev/reventless-gwt`](https://github.com/ReventlessDev/reventless-core/tree/alpha/reventless/gwt/), with a DSL
 for every Event Modeling slice type, a runner-agnostic `Outcome` algebra, and a
 standalone CLI runner (`reventless-gwt`) with five output formats (human, JSON,
 TAP, JUnit, VS Code Testing API).
@@ -132,7 +132,7 @@ Deviations from the shared vocabulary are called out per-DSL below.
 
 Each example is a minimal but complete `_GWT` file that you can copy as a
 template. All nine are also shipped as runnable worked-example tests in
-[`reventless/gwt/tests/`](https://github.com/ReventlessDev/reventless-core/tree/main/reventless/gwt/tests/).
+[`reventless/gwt/tests/`](https://github.com/ReventlessDev/reventless-core/tree/alpha/reventless/gwt/tests/).
 
 ### 4.1 `Behavior_GWT` — Aggregate command slice
 
