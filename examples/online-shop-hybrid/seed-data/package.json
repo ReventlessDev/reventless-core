@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/online-shop-hybrid-seed",
-  "version": "1.0.0-alpha.60",
+  "version": "1.0.0-alpha.61",
   "description": "Shareable app-level definitions for the online-shop-hybrid example — demo data sets for reventless-seed, and the storefront's curated component manifest",
   "license": "Apache-2.0",
   "scripts": {

@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.238 (2026-08-16)
+
+### Bug Fixes
+
+* **core:** stamp the owner from each DCB slice's own command schema ([6edbdf4](https://github.com/ReventlessDev/reventless-core/commit/6edbdf4680f2535597c3b560215aa514ceed27eb))
+### Features
+
+* **core:** check a declared lifecycle edge against the states that exist ([d427d92](https://github.com/ReventlessDev/reventless-core/commit/d427d92f8912b4dc9a9407c3c0cec3200d41a5f1))
+* **core:** report a lifecycle state no command can reach ([eb24dbd](https://github.com/ReventlessDev/reventless-core/commit/eb24dbd90df07185f0f4785c4bb726f5b617e7b2))
+* **ppx:** declare a command's lifecycle edge once, as [@transition](https://github.com/transition) ([dd35130](https://github.com/ReventlessDev/reventless-core/commit/dd3513014f14b71879ee21263c6755d3c3d95096))
+
+
 # 3.0.0-alpha.237 (2026-08-16)
 
 ### Features

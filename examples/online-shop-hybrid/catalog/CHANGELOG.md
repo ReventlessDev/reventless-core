@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.213 (2026-08-16)
+
+### Features
+
+* **ppx:** declare a command's lifecycle edge once, as [@transition](https://github.com/transition) ([dd35130](https://github.com/ReventlessDev/reventless-core/commit/dd3513014f14b71879ee21263c6755d3c3d95096))
+
+
 # 1.0.0-alpha.212 (2026-08-16)
 
 ### Features

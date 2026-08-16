@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.4.0-alpha.78 (2026-08-16)
+
+### Bug Fixes
+
+* **aws:** scope by-key reads to the owner, not only lists ([8232fd4](https://github.com/ReventlessDev/reventless-core/commit/8232fd4c09c1098c7265e4a17882ee44884f3bec))
+
+
 # 2.4.0-alpha.77 (2026-08-16)
 
 ### Features

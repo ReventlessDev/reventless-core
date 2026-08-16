@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/online-shop-hybrid-ordering-spec",
-  "version": "1.0.0-alpha.111",
+  "version": "1.0.0-alpha.112",
   "description": "Online Shop Hybrid example — Ordering plugin specification (extension point specs)",
   "license": "Apache-2.0",
   "scripts": {

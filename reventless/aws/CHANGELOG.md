@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.306 (2026-08-16)
+
+### Bug Fixes
+
+* **aws:** attach the pre-token trigger through both fields Cognito keeps ([6d6e2e9](https://github.com/ReventlessDev/reventless-core/commit/6d6e2e90e1d6cb3defabaab8ae7f3c9d1955a5df))
+* **aws:** scope by-key reads to the owner, not only lists ([8232fd4](https://github.com/ReventlessDev/reventless-core/commit/8232fd4c09c1098c7265e4a17882ee44884f3bec))
+* **core:** stamp the owner from each DCB slice's own command schema ([6edbdf4](https://github.com/ReventlessDev/reventless-core/commit/6edbdf4680f2535597c3b560215aa514ceed27eb))
+
+
 # 3.0.0-alpha.305 (2026-08-16)
 
 ### Bug Fixes
