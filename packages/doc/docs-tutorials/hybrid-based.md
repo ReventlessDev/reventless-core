@@ -110,6 +110,110 @@ counterpart to the webhook-style `ImportProduct` InboundTranslationSlice above:
 both ultimately produce `AddProduct` commands, but the Task reacts to bucket
 uploads while the slice reacts to inbound webhook payloads.
 
+### The decision, in full
+
+Everything above is structure. This is the part that decides — `AddProduct`'s
+spec, then its behavior, as they are shipped.
+
+The spec names what the slice reads, accepts, refuses, and emits. Note
+`consumedEvent`: it lists `CategoryAdded` and `CategoryArchived` alongside the
+product's own `ProductAdded`, which is the whole reason `Category` had to be a
+DCB slice.
+
+```rescript
+@@reventless.spec
+
+@schema
+type consumedEvent =
+  | ProductAdded({productId: string})
+  | CategoryAdded({categoryId: string})
+  | CategoryArchived({categoryId: string})
+
+@schema
+type command =
+  | @authorize(AllowGroups(["Admin", "Merchandiser"])) AddProduct({
+      @partitionTag productId: string,
+      name: string,
+      description: string,
+      price: Reventless.Money.t,
+      @ref("Categories") categoryId: string,
+    })
+
+@schema
+type error =
+  | ProductAlreadyExists
+  | CategoryNotFound
+
+@schema
+type event =
+  | ProductAdded({
+      @partitionTag productId: string,
+      name: string,
+      description: string,
+      price: Reventless.Money.t,
+      categoryId: string,
+    })
+```
+
+Two ids appear on the command, so `@partitionTag` says which one decides storage
+placement; `categoryId` stays queryable, which is what lets the decision read the
+category's events. The behavior folds those events into exactly the two facts the
+rule needs, and nothing else:
+
+```rescript
+@@reventless.behavior
+
+type state = {exists: bool, liveCategoryIds: array<string>}
+
+let initialState = {exists: false, liveCategoryIds: []}
+
+let evolve = (state, event: consumedEvent) =>
+  switch event {
+  | ProductAdded(_) => {...state, exists: true}
+  | CategoryAdded({categoryId}) => {
+      ...state,
+      liveCategoryIds: state.liveCategoryIds->Array.includes(categoryId)
+        ? state.liveCategoryIds
+        : Array.concat(state.liveCategoryIds, [categoryId]),
+    }
+  | CategoryArchived({categoryId}) => {
+      ...state,
+      liveCategoryIds: state.liveCategoryIds->Array.filter(id => id !== categoryId),
+    }
+  }
+
+let decide = (state, command) =>
+  switch command {
+  | AddProduct({productId, name, description, price, categoryId}) =>
+    if state.exists {
+      Error(ProductAlreadyExists)
+    } else if !(state.liveCategoryIds->Array.includes(categoryId)) {
+      Error(CategoryNotFound)
+    } else {
+      Ok([ProductAdded({productId, name, description, price, categoryId})])
+    }
+  }
+```
+
+That is the shape of every write-side component you will write. Three things are
+worth noticing:
+
+- **The state is minimal.** Not "the product" — just whether it exists and which
+  categories are live. A decision model holds what the rule needs and nothing
+  more, because it is rebuilt from events on every single command.
+- **`decide` is total and pure.** Every command case is handled, every outcome is
+  `Ok(events)` or `Error(error)`, and nothing is read or written outside its
+  arguments. The compiler enforces the first; the second is what lets the
+  scenarios in `tests/` run this logic with no infrastructure at all.
+- **The fence follows from the read.** Because the decision consumed category
+  events, the append is conditioned on those categories too — archive the
+  category between the read and the write and the append is rejected, not
+  silently accepted.
+
+The matching scenarios live in
+`catalog/tests/Product/StateChangeSlice/AddProduct_GWT.res`, in the same
+vocabulary: given a `CategoryAdded`, when `AddProduct`, then `ProductAdded`.
+
 ### The shared Catalog DCB event log
 
 There is **no `CatalogEventLog.res` file**. The shared DCB log is *implied* by

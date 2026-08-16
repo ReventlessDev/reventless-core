@@ -417,8 +417,13 @@ const config = {
             label: "Contributing",
           },
           // Blog hidden for now: all posts are `draft: true`, so the /blog
-          // index isn't generated and this link would 404. Restore alongside
-          // the posts when the blog goes live.
+          // index isn't generated and this link would 404.
+          //
+          // Un-drafting takes all three, or the result is a blog nobody can
+          // reach or a navbar link that 404s:
+          //   1. drop `draft: true` from every post in blog/
+          //   2. uncomment this navbar entry
+          //   3. set `indexBlog: true` in the search plugin config above
           // {
           //   to: "/blog",
           //   label: "Blog",

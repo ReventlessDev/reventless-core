@@ -1,7 +1,7 @@
 # Plan: Restructure the docs site around four audience paths
 
-**Status**: In progress (2026-08-16) — A, B, C, D landed; R and E partially landed. See [Execution status](#execution-status).
-**Scope**: `packages/doc/` — information architecture, homepage, navbar, sidebars, and the content each audience path sees, **plus** the docs correctness/dedup/new-content backlog. This plan absorbs [docs-quality-improvements.md](./done/docs-quality-improvements.md) (now in `done/`, merged here as Phases R and E); the full findings behind those phases live in the analysis [docs-quality-review-2026-07.md](../analysis/docs-quality-review-2026-07.md) — items reference its sections (§) rather than repeating evidence.
+**Status**: Done (2026-08-16) — the restructure and the correctness work landed; the long tail moved to [Backlog/docs-remaining-gaps.md](../Backlog/docs-remaining-gaps.md). See [Execution status](#execution-status).
+**Scope**: `packages/doc/` — information architecture, homepage, navbar, sidebars, and the content each audience path sees, **plus** the docs correctness/dedup/new-content backlog. This plan absorbs [docs-quality-improvements.md](./docs-quality-improvements.md) (now in `done/`, merged here as Phases R and E); the full findings behind those phases live in the analysis [docs-quality-review-2026-07.md](../../analysis/docs-quality-review-2026-07.md) — items reference its sections (§) rather than repeating evidence.
 
 ## Goal
 
@@ -46,7 +46,7 @@ The site already has a four-section split (Tutorial / App Guide / Infrastructure
 
 ### P5 — Freshness (spot-verified 2026-08-16)
 
-The [2026-07 quality analysis](../analysis/docs-quality-review-2026-07.md) found 24 critical factual errors, 16 duplication clusters, ~30 removal candidates, and 12 missing-topic areas; the fixes (now Phases R and E of this plan) are still essentially unexecuted. Re-verified samples:
+The [2026-07 quality analysis](../../analysis/docs-quality-review-2026-07.md) found 24 critical factual errors, 16 duplication clusters, ~30 removal candidates, and 12 missing-topic areas; the fixes (now Phases R and E of this plan) are still essentially unexecuted. Re-verified samples:
 
 - `deploy-to-aws.md` pins host-shell `3.0.0-alpha.28`; the example actually pins `3.0.0-alpha.75` — the doc drifted exactly as predicted; must become "check the pin in `platform-aws/package.json`".
 - `choosing-an-approach.md:39-40` still says Category → aggregate; `hybrid-based.md` (and the shipped example) makes Category DCB and Customer the only aggregate.
@@ -331,26 +331,17 @@ Highest-value gaps (§7), roughly priority-ordered; each is its own commit + sid
 
 ### Not yet done
 
-- **R2.2** `application-development-layers.md`; **R2.3** `common-modules/config.md`
-  and `runtime-components/commandgenerator.md`; **R2.5** merging
-  `writing-unit-tests.md` into `given-when-then.md`; **R2.7**
-  `ppx-binary-management.md`; **R2.10** the AWS `get-started.md` end-to-end
-  rewrite (only its install command was fixed).
-- **R3a** guide ⇄ tutorial reconciliation (the 8 drift points, the EP/Extension
-  dedup between `aggregate-based` and `dcb-based`, the missing slice walkthrough
-  in `hybrid-based`); **R3b** collapsing the two `*-usage` concept pages into
-  their component pages; **R3c** annotation-syntax unification; **R3d** adapter
-  page retrofits to the `dcbeventlog` template; **R3e** the remaining splits and
-  deletions (`appsync-events-live-updates` split, `counter.md` trailing section,
-  `d2-diagrams.md` repeat, lambda-layer/custom-domain dedup).
-- **R4.5** AI-filler trimming in `resources.md` / `runtime.md` / `pulumi.md` /
-  `lambda-deployment` §9; blog un-draft checklist.
-- **E3** ops chapters (cost, monitoring/DLQ, deploying-principal IAM); **E4**
-  symmetry stubs other than Postgres; **E5** the recent-feature coverage check —
-  note one finding already: `internals/mcp.md` says the Lambda Function URL
-  binding does not exist, but it does; MCP is still not wired into the AWS
-  deploy, so the *conclusion* holds and `deploy-to-aws.md` states it correctly.
-- **Path 2 verification** against a real AWS account has not been re-run.
+Moved to [Backlog/docs-remaining-gaps.md](../Backlog/docs-remaining-gaps.md):
+three page rewrites (application-development-layers, ppx-binary-management,
+commandgenerator), the guide ⇄ tutorial drift reconciliation, annotation-syntax
+unification, the AWS adapter-page retrofits, the live-updates page split, the
+remaining dedup-to-owner moves, internals trimming, and five new-content items
+(symmetry stubs, schema evolution, MCP surface, pagination semantics,
+contributor internals pages).
+
+Also not done: **path 2 verified against a real AWS account**. The deploy page's
+steps were checked against the shipped stack configuration and source, not by
+running them.
 
 ## Out of scope
 

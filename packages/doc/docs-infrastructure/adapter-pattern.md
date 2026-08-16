@@ -108,31 +108,13 @@ module ReadModel = {
 
 This is the API surface for application developers. They call `ReventlessMyprovider.Aggregate.Make(MySpec)` and get a fully wired `Aggregate.T`.
 
-## InMemory Adapters
+## The local provider implements the same interfaces
 
-The `reventless-local` package implements the same adapter interfaces using simple in-process data structures. It dramatically simplifies local development and testing:
+`reventless-local` implements every adapter interface in this document using
+in-process data structures — no Pulumi resources, no cloud calls, and a store
+that resets between tests. It is the second implementation that keeps the
+interfaces honest: an abstraction with only one implementation is a guess.
 
-- **No Pulumi** — resources are plain ReScript records, not `Pulumi.Output.t<'a>` wrappers
-- **No AWS** — event logs, queues, and buckets are in-memory maps and arrays
-- **Synchronous** — no async infrastructure, making tests deterministic
-- **Resettable** — each test can start from a clean state
-
-```rescript
-// InMemory EventLog adapter — no Pulumi.Output.t wrapping needed
-let make = (~name, ~opts=?) => {
-  let store: ref<array<event>> = ref([])
-
-  {
-    resources: [],  // no cloud resources
-    operations: Pulumi.Output.make({  // still wrapped for API compatibility
-      append: async (_, _, jsons) => {
-        store := store.contents->Array.concat(jsons)
-        Ok()
-      },
-      replay: async id => Ok(store.contents->Array.filter(e => e.id == id)),
-    }),
-  }
-}
-```
-
-The Local package is used by all framework tests. See the [Local Provider](/infrastructure/local) for usage instructions.
+Every framework test runs against it. See the [Local provider](./local/) for
+what it provides, and [local persistence](./local-persistence.md) for the
+SQLite-backed variant that survives restarts.
