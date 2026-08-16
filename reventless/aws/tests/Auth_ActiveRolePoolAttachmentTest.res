@@ -76,6 +76,11 @@ let triggerArn = "arn:aws:lambda:eu-west-1:1:function:ActiveRoleTrigger"
 let lambdaConfigOf = input =>
   input->Dict.get("LambdaConfig")->Option.flatMap(JSON.Decode.object)
 
+/** The `PreTokenGenerationConfig` an attach is expected to write: our ARN, at the
+    only version the trigger handler implements. */
+let v1Config = arn =>
+  Dict.fromArray([("LambdaArn", str(arn)), ("LambdaVersion", str("V1_0"))])->JSON.Encode.object
+
 describe("Auth_ActiveRolePoolAttachment.mergedUpdateInput — settings survive the attach", () => {
   let input = merged(~preTokenGenerationArn=Some(triggerArn))
 
@@ -192,8 +197,105 @@ describe("Auth_ActiveRolePoolAttachment.mergedUpdateInput — a pool with nothin
       ~preTokenGenerationArn=Some(triggerArn),
     )
     expect(lambdaConfigOf(input))->toEqual(
-      Some(Dict.fromArray([("PreTokenGeneration", str(triggerArn))])),
+      Some(
+        Dict.fromArray([
+          ("PreTokenGeneration", str(triggerArn)),
+          ("PreTokenGenerationConfig", v1Config(triggerArn)),
+        ]),
+      ),
     )
+  })
+})
+
+// 🚨 The pool shape that took the deploy down. Cognito carries this one trigger
+// in two fields, and `UpdateUserPool` rejects the call when both are present
+// naming different functions. Nothing in this suite carried a
+// `PreTokenGenerationConfig` before, which is exactly why it shipped.
+describe("Auth_ActiveRolePoolAttachment.mergedUpdateInput — a pool already on the V2 field", () => {
+  let theirArn = "arn:aws:lambda:eu-west-1:1:function:TheirOwnPreToken"
+
+  let describedWithConfig = (~version) =>
+    Dict.fromArray([
+      ("Name", str("CustomerPool")),
+      (
+        "LambdaConfig",
+        Dict.fromArray([
+          ("PreSignUp", str("arn:aws:lambda:eu-west-1:1:function:TheirPreSignUp")),
+          ("PreTokenGeneration", str(theirArn)),
+          (
+            "PreTokenGenerationConfig",
+            Dict.fromArray([
+              ("LambdaArn", str(theirArn)),
+              ("LambdaVersion", str(version)),
+            ])->JSON.Encode.object,
+          ),
+        ])->JSON.Encode.object,
+      ),
+    ])
+
+  let attachOnto = (~version) =>
+    Attachment.mergedUpdateInput(
+      ~described=describedWithConfig(~version),
+      ~userPoolId="eu-west-1_abc123",
+      ~preTokenGenerationArn=Some(triggerArn),
+    )
+
+  // The property AWS enforces, asserted directly rather than through its error
+  // text: the two fields must name the same function.
+  testSync("both fields name our trigger, and the same one", () => {
+    let config = lambdaConfigOf(attachOnto(~version="V1_0"))
+    expect((
+      config->Option.flatMap(c => c->Dict.get("PreTokenGeneration")),
+      config
+      ->Option.flatMap(c => c->Dict.get("PreTokenGenerationConfig"))
+      ->Option.flatMap(JSON.Decode.object)
+      ->Option.flatMap(c => c->Dict.get("LambdaArn")),
+    ))->toEqual((Some(str(triggerArn)), Some(str(triggerArn))))
+  })
+
+  // A pool left on V2_0 does not fail — the handler answers in V1_0 shape and
+  // Cognito ignores it, so tokens mint un-narrowed and nothing reports it.
+  testSync("a pool that arrived on V2_0 is pinned back to the version we implement", () =>
+    expect(
+      lambdaConfigOf(attachOnto(~version="V2_0"))
+      ->Option.flatMap(c => c->Dict.get("PreTokenGenerationConfig"))
+      ->Option.flatMap(JSON.Decode.object)
+      ->Option.flatMap(c => c->Dict.get("LambdaVersion")),
+    )->toEqual(Some(str("V1_0")))
+  )
+
+  testSync("the customer's other triggers still survive", () =>
+    expect(
+      lambdaConfigOf(attachOnto(~version="V1_0"))->Option.flatMap(c => c->Dict.get("PreSignUp")),
+    )->toEqual(Some(str("arn:aws:lambda:eu-west-1:1:function:TheirPreSignUp")))
+  )
+
+  testSync("detaching removes both fields, not just the legacy one", () => {
+    let config = lambdaConfigOf(
+      Attachment.mergedUpdateInput(
+        ~described=describedWithConfig(~version="V1_0"),
+        ~userPoolId="eu-west-1_abc123",
+        ~preTokenGenerationArn=None,
+      ),
+    )
+    expect((
+      config->Option.flatMap(c => c->Dict.get("PreTokenGeneration")),
+      config->Option.flatMap(c => c->Dict.get("PreTokenGenerationConfig")),
+    ))->toEqual((None, None))
+  })
+
+  // The fixpoint property, and the one that would have caught this: AWS
+  // materialises whichever field the merge did not write, so the merge has to
+  // accept its own output unchanged or a later deploy fails with nothing altered
+  // but the service normalising its own record.
+  testSync("feeding the merge its own output back changes nothing", () => {
+    let once = attachOnto(~version="V1_0")
+    let twice = Attachment.mergedUpdateInput(
+      ~described=once,
+      ~userPoolId="eu-west-1_abc123",
+      ~preTokenGenerationArn=Some(triggerArn),
+    )
+    expect(lambdaConfigOf(twice))->toEqual(lambdaConfigOf(once))
   })
 })
 
@@ -207,6 +309,43 @@ describe("Auth_ActiveRolePoolAttachment.attachedTrigger", () => {
     expect(Attachment.attachedTrigger(~described=Dict.fromArray([("Name", str("Bare"))])))->toEqual(
       None,
     )
+  )
+
+  testSync("reads the V2 field on a pool that only carries that one", () =>
+    expect(
+      Attachment.attachedTrigger(
+        ~described=Dict.fromArray([
+          (
+            "LambdaConfig",
+            Dict.fromArray([("PreTokenGenerationConfig", v1Config(triggerArn))])->JSON.Encode.object,
+          ),
+        ]),
+      ),
+    )->toEqual(Some(triggerArn))
+  )
+
+  // Our own ARN, at a version the handler does not speak. Reporting it as
+  // attached would leave a pool minting un-narrowed tokens looking correct
+  // forever; reporting none makes it drift the next `up` repairs.
+  testSync("reports none for our trigger held at a version we do not implement", () =>
+    expect(
+      Attachment.attachedTrigger(
+        ~described=Dict.fromArray([
+          (
+            "LambdaConfig",
+            Dict.fromArray([
+              (
+                "PreTokenGenerationConfig",
+                Dict.fromArray([
+                  ("LambdaArn", str(triggerArn)),
+                  ("LambdaVersion", str("V2_0")),
+                ])->JSON.Encode.object,
+              ),
+            ])->JSON.Encode.object,
+          ),
+        ]),
+      ),
+    )->toEqual(None)
   )
 })
 

@@ -30,6 +30,8 @@ let readOnlyKeys = [
   "EmailConfigurationFailure"
 ];
 
+let triggerVersion = "V1_0";
+
 function mergedUpdateInput(described, userPoolId, preTokenGenerationArn) {
   let out = {};
   Stdlib_Dict.forEachWithKey(described, (value, key) => {
@@ -44,16 +46,31 @@ function mergedUpdateInput(described, userPoolId, preTokenGenerationArn) {
   out["UserPoolId"] = userPoolId;
   let lambdaConfig = Stdlib_Option.mapOr(Stdlib_Option.flatMap(described["LambdaConfig"], Stdlib_JSON.Decode.object), {}, existing => Object.fromEntries(Object.entries(existing)));
   if (preTokenGenerationArn !== undefined) {
+    let config = {};
+    config["LambdaArn"] = preTokenGenerationArn;
+    config["LambdaVersion"] = triggerVersion;
     lambdaConfig["PreTokenGeneration"] = preTokenGenerationArn;
+    lambdaConfig["PreTokenGenerationConfig"] = config;
   } else {
     Stdlib_Dict.$$delete(lambdaConfig, "PreTokenGeneration");
+    Stdlib_Dict.$$delete(lambdaConfig, "PreTokenGenerationConfig");
   }
   out["LambdaConfig"] = lambdaConfig;
   return out;
 }
 
 function attachedTrigger(described) {
-  return Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(described["LambdaConfig"], Stdlib_JSON.Decode.object), c => c["PreTokenGeneration"]), Stdlib_JSON.Decode.string);
+  let lambdaConfig = Stdlib_Option.flatMap(described["LambdaConfig"], Stdlib_JSON.Decode.object);
+  let config = Stdlib_Option.flatMap(Stdlib_Option.flatMap(lambdaConfig, c => c["PreTokenGenerationConfig"]), Stdlib_JSON.Decode.object);
+  if (config === undefined) {
+    return Stdlib_Option.flatMap(Stdlib_Option.flatMap(lambdaConfig, c => c["PreTokenGeneration"]), Stdlib_JSON.Decode.string);
+  }
+  let version = Stdlib_Option.flatMap(config["LambdaVersion"], Stdlib_JSON.Decode.string);
+  if (version !== undefined && version !== triggerVersion) {
+    return;
+  } else {
+    return Stdlib_Option.flatMap(config["LambdaArn"], Stdlib_JSON.Decode.string);
+  }
 }
 
 let newOf1 = ((C, x) => new C(x));
@@ -310,6 +327,7 @@ function make(nameOpt, props, opts) {
 export {
   log,
   readOnlyKeys,
+  triggerVersion,
   mergedUpdateInput,
   attachedTrigger,
   newOf1,

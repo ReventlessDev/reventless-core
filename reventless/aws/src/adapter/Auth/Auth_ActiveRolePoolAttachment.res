@@ -62,8 +62,23 @@ let readOnlyKeys = [
   "EmailConfigurationFailure",
 ]
 
-/** The pool's own configuration, sent back whole with `PreTokenGeneration` set
-    (or, when `preTokenGenerationArn` is `None`, removed).
+/** The version of the pre-token-generation contract this resource attaches at.
+
+    [Auth_ActiveRoleTrigger_Ops] implements `V1_0` — it answers with
+    `claimsOverrideDetails` — and does so deliberately, because `V2_0`/`V3_0` buy
+    access-token customisation it does not need and are gated behind the
+    Essentials and Plus feature plans.
+
+    🚨 **A pool left at a version the handler does not implement does not fail —
+    it silently does nothing.** Cognito sends a `V2_0` event, the handler answers
+    in `V1_0` shape, and the service ignores the answer. Sign-in succeeds, tokens
+    mint, and the role narrowing never happens. So the version is not the pool's
+    to keep: the trigger and the contract it speaks are one unit, and attaching
+    the trigger means attaching its version too. */
+let triggerVersion = "V1_0"
+
+/** The pool's own configuration, sent back whole with the pre-token-generation
+    trigger set (or, when `preTokenGenerationArn` is `None`, removed).
 
     Pure and total so the property that matters — a pool carrying non-default
     settings still carries them afterwards — is checkable without a pool. */
@@ -89,21 +104,64 @@ let mergedUpdateInput = (
     ->Dict.get("LambdaConfig")
     ->Option.flatMap(JSON.Decode.object)
     ->Option.mapOr(Dict.make(), existing => Dict.fromArray(existing->Dict.toArray))
+  // 🚨 Cognito carries this one trigger in TWO fields: the legacy
+  // `PreTokenGeneration` string and the `PreTokenGenerationConfig` object.
+  // `UpdateUserPool` rejects the call outright when both are present naming
+  // different functions, so both are written, together, naming the same one.
+  //
+  // Writing only one and letting the other ride through on the copy above cannot
+  // work, and not merely because a customer might have set it: **AWS
+  // materialises the field we did not write.** Attach via the legacy field alone
+  // and the next `DescribeUserPool` reports a `PreTokenGenerationConfig` the
+  // service populated, which the merge would then feed back on the following
+  // deploy — so an attachment that succeeded once fails the next time with
+  // nothing changed but AWS normalising its own record. Writing the pair in
+  // agreement is the only form stable under repeated describe → merge → update.
   switch preTokenGenerationArn {
-  | Some(arn) => lambdaConfig->Dict.set("PreTokenGeneration", JSON.Encode.string(arn))
-  | None => lambdaConfig->Dict.delete("PreTokenGeneration")
+  | Some(arn) =>
+    let config = Dict.make()
+    config->Dict.set("LambdaArn", JSON.Encode.string(arn))
+    config->Dict.set("LambdaVersion", JSON.Encode.string(triggerVersion))
+    lambdaConfig->Dict.set("PreTokenGeneration", JSON.Encode.string(arn))
+    lambdaConfig->Dict.set("PreTokenGenerationConfig", JSON.Encode.object(config))
+  | None =>
+    // Both, or the destroyed function stays attached through whichever field was
+    // left behind — the "every sign-in fails on a pool nothing here would fix"
+    // hazard [delete_] exists to prevent.
+    lambdaConfig->Dict.delete("PreTokenGeneration")
+    lambdaConfig->Dict.delete("PreTokenGenerationConfig")
   }
   out->Dict.set("LambdaConfig", lambdaConfig->JSON.Encode.object)
   out
 }
 
-/** The trigger currently attached to a described pool, if any. */
-let attachedTrigger = (~described: dict<JSON.t>): option<string> =>
-  described
-  ->Dict.get("LambdaConfig")
-  ->Option.flatMap(JSON.Decode.object)
-  ->Option.flatMap(c => c->Dict.get("PreTokenGeneration"))
-  ->Option.flatMap(JSON.Decode.string)
+/** The trigger currently attached to a described pool, if any.
+
+    Prefers `PreTokenGenerationConfig`, since that is the field AWS populates and
+    the one that carries the version.
+
+    A pool whose `LambdaVersion` names a contract [triggerVersion] does not
+    implement reports `None` — *not attached* — even when it points at our own
+    function. That is what turns the silent-no-op case into ordinary drift:
+    refresh records nothing attached, and the next `up` rewrites the pair at the
+    right version. Reporting the ARN instead would leave a pool that mints
+    un-narrowed tokens looking correct forever. */
+let attachedTrigger = (~described: dict<JSON.t>): option<string> => {
+  let lambdaConfig = described->Dict.get("LambdaConfig")->Option.flatMap(JSON.Decode.object)
+  switch lambdaConfig
+  ->Option.flatMap(c => c->Dict.get("PreTokenGenerationConfig"))
+  ->Option.flatMap(JSON.Decode.object) {
+  | Some(config) =>
+    switch config->Dict.get("LambdaVersion")->Option.flatMap(JSON.Decode.string) {
+    | Some(version) if version != triggerVersion => None
+    | _ => config->Dict.get("LambdaArn")->Option.flatMap(JSON.Decode.string)
+    }
+  | None =>
+    lambdaConfig
+    ->Option.flatMap(c => c->Dict.get("PreTokenGeneration"))
+    ->Option.flatMap(JSON.Decode.string)
+  }
+}
 
 // ── AWS SDK bindings (lazily imported — see AppSync_SourceApiAssociation_Retrying) ──
 
