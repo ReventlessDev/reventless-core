@@ -91,10 +91,12 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
   };
   let fieldNameForAll = registryEntry !== undefined ? registryEntry.listFieldName : name$1 + "s";
   let resourcesMaker = allQueryDbs => {
-    let resolverByIdSingle = includeIdParam ? makeQueryResolver(Stdlib_String.capitalize(fieldNameForSingle), fieldNameForSingle, subIdField !== undefined ? AppSync_Resolver_Functions$PulumiAws.queryByIdSort(subIdField) : AppSync_Resolver_Functions$PulumiAws.getItemById) : makeQueryResolver(Stdlib_String.capitalize(fieldNameForSingle), fieldNameForSingle, AppSync_Resolver_Functions$PulumiAws.listAllItems);
-    let resolverByIdMultiple = includeIdParam ? Stdlib_Option.map(subIdField, sortField => makeQueryResolver(Stdlib_String.capitalize(fieldNameForSingle) + "Items", fieldNameForSingle + "Items", AppSync_Resolver_Functions$PulumiAws.queryItemsWithSortConditions(sortField))) : undefined;
-    let labelField = registryEntry !== undefined ? Stdlib_Option.getOr(registryEntry.labelField, "id") : "id";
     let stateSchemaOpt = Plugin_Helpers$ReventlessCore.stateSchemaRegistry[name$1];
+    let ownerField = stateSchemaOpt !== undefined ? Owner$Reventless.fieldNames(stateSchemaOpt)[0] : undefined;
+    let elevatedGroups = OwnerScope$Reventless.elevatedGroups();
+    let resolverByIdSingle = includeIdParam ? makeQueryResolver(Stdlib_String.capitalize(fieldNameForSingle), fieldNameForSingle, subIdField !== undefined ? AppSync_Resolver_Functions$PulumiAws.queryByIdSort(subIdField, ownerField, elevatedGroups) : AppSync_Resolver_Functions$PulumiAws.getItemById(ownerField, elevatedGroups)) : makeQueryResolver(Stdlib_String.capitalize(fieldNameForSingle), fieldNameForSingle, AppSync_Resolver_Functions$PulumiAws.listAllItems);
+    let resolverByIdMultiple = includeIdParam ? Stdlib_Option.map(subIdField, sortField => makeQueryResolver(Stdlib_String.capitalize(fieldNameForSingle) + "Items", fieldNameForSingle + "Items", AppSync_Resolver_Functions$PulumiAws.queryItemsWithSortConditions(sortField, ownerField, elevatedGroups))) : undefined;
+    let labelField = registryEntry !== undefined ? Stdlib_Option.getOr(registryEntry.labelField, "id") : "id";
     let capability = stateSchemaOpt !== undefined ? GraphQL_FragmentGenerator$ReventlessCore.deriveServerCapability(name$1, stateSchemaOpt) : GraphQL_FragmentGenerator$ReventlessCore.emptyCapability;
     let filterFieldNames = capability.filterFields.map(f => f.name);
     let rangeFieldNames = Stdlib_Array.filterMap(capability.filterFields, f => {
@@ -110,7 +112,6 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
       GraphQL_FragmentGenerator$ReventlessCore.validateScanSortAlignment(stateSchemaOpt, name$1, knownSortFields).forEach(msg => log.warn("QueryDbResolvers_AppSync", undefined, msg));
     }
     let requireAttribute = internalRowRequiredAttr(name$1);
-    let ownerField = stateSchemaOpt !== undefined ? Owner$Reventless.fieldNames(stateSchemaOpt)[0] : undefined;
     OwnerScopeDiagnostics$ReventlessCore.warnIfNoElevatedGroups("QueryDbResolvers_AppSync", name$1, ownerField);
     let isIndexed = f => {
       if (indexes.some(ic => Stdlib_Option.getOr(ic.idField, ic.index) === f)) {
@@ -128,7 +129,7 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
     if (retiredField !== undefined && !isIndexed(retiredField)) {
       log.warn("QueryDbResolvers_AppSync", undefined, name$1 + `: @retired field "` + retiredField + `" is not the key of any index on this table. ` + "Reads that exclude retired rows will Scan and filter, so pages shrink as the archive's share of the rows grows. Add an @index on that field before this read model grows.");
     }
-    let resolverAll = makeQueryResolver(Stdlib_String.capitalize(fieldNameForAll), fieldNameForAll, connectionSpec ? AppSync_Resolver_Functions$PulumiAws.listAllItemsConnection(labelField, filterFieldNames, rangeFieldNames, sortFieldNames, requireAttribute, ownerField, OwnerScope$Reventless.elevatedGroups(), retiredField, retiredValues) : AppSync_Resolver_Functions$PulumiAws.listAllItems);
+    let resolverAll = makeQueryResolver(Stdlib_String.capitalize(fieldNameForAll), fieldNameForAll, connectionSpec ? AppSync_Resolver_Functions$PulumiAws.listAllItemsConnection(labelField, filterFieldNames, rangeFieldNames, sortFieldNames, requireAttribute, ownerField, elevatedGroups, retiredField, retiredValues) : AppSync_Resolver_Functions$PulumiAws.listAllItems);
     let resolversByIndex = indexes.map(indexConfig => {
       let index = indexConfig.index;
       let stripLeadingBy = s => {

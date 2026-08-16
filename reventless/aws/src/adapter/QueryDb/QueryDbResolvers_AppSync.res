@@ -167,13 +167,30 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
   // This prevents a race condition where AppSync resolvers are deployed before
   // the schema push completes and the new fields are ACTIVE in AppSync.
   let resourcesMaker: ReventlessCore.QueryDb.resolversResourcesMaker = allQueryDbs => {
+    // The state's `@owner` field, derived from the same schema `capability` is
+    // derived from, so the two cannot disagree about this read model's fields.
+    //
+    // Read HERE, at the top, rather than beside the list resolver that first
+    // needed it. The by-id resolvers are built a few lines below and the lookup
+    // used to sit well after them, so they were generated without it: a list
+    // narrowed to the caller beside a by-id read that hands over any row it is
+    // asked for. That is not a partial delivery — the row is reachable by
+    // anyone who can name one, and the list gives no sign of it, because the
+    // list is correct.
+    let stateSchemaOpt = ReventlessCore.Plugin_Helpers.stateSchemaRegistry->Dict.get(name)
+    let ownerField = switch stateSchemaOpt {
+    | Some(s) => Reventless.Owner.fieldNames(s)->Array.get(0)
+    | None => None
+    }
+    let elevatedGroups = Reventless.OwnerScope.elevatedGroups()
+
     let resolverByIdSingle = if includeIdParam {
       makeQueryResolver(
         ~resolverName=fieldNameForSingle->String.capitalize,
         ~field=fieldNameForSingle->Pulumi.Input.make,
         ~code=switch subIdField {
-        | Some(sortField) => Resolver.Functions.queryByIdSort(sortField)
-        | None => Resolver.Functions.getItemById
+        | Some(sortField) => Resolver.Functions.queryByIdSort(sortField, ~ownerField?, ~elevatedGroups)
+        | None => Resolver.Functions.getItemById(~ownerField?, ~elevatedGroups)
         },
       )
     } else {
@@ -188,7 +205,11 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
         makeQueryResolver(
           ~resolverName=fieldNameForSingle->String.capitalize ++ "Items",
           ~field=(fieldNameForSingle ++ "Items")->Pulumi.Input.make,
-          ~code=Resolver.Functions.queryItemsWithSortConditions(sortField),
+          ~code=Resolver.Functions.queryItemsWithSortConditions(
+            sortField,
+            ~ownerField?,
+            ~elevatedGroups,
+          ),
         )
       )
     } else {
@@ -203,7 +224,6 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
     // registered or has no indexable fields — the resolver template emits the same
     // SDL the in-memory adapter does, so the AWS Filter / OrderBy stays in lockstep
     // with the SDL emitted by GraphQL_FragmentGenerator at runtime.
-    let stateSchemaOpt = ReventlessCore.Plugin_Helpers.stateSchemaRegistry->Dict.get(name)
     let capability = switch stateSchemaOpt {
     | Some(s) => ReventlessCore.GraphQL_FragmentGenerator.deriveServerCapability(~entityName=name, s)
     | None => ReventlessCore.GraphQL_FragmentGenerator.emptyCapability
@@ -238,12 +258,6 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
     // (prefix-agnostic: real plugin rows always carry `name`, internal rows never do).
     // See docs/plans/platform-plugins-admin-connection-null-rows.md.
     let requireAttribute = internalRowRequiredAttr(name)
-    // Derived from the same schema `capability` came from, so the two cannot
-    // disagree about this read model's fields.
-    let ownerField = switch stateSchemaOpt {
-    | Some(s) => Reventless.Owner.fieldNames(s)->Array.get(0)
-    | None => None
-    }
     // A DynamoDB FilterExpression is applied AFTER the page is read, so a scoped
     // list over a table with no index on the owner field returns short pages —
     // correct, but pathological once a caller owns a small fraction of the rows.
@@ -310,7 +324,7 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
           ~sortFields=sortFieldNames,
           ~requireAttribute?,
           ~ownerField?,
-          ~elevatedGroups=Reventless.OwnerScope.elevatedGroups(),
+          ~elevatedGroups,
           ~retiredField?,
           ~retiredValues?,
         )

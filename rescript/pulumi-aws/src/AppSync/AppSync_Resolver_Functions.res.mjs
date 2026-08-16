@@ -21,6 +21,44 @@ export function response(ctx) {
 
 let importUtil = `import { util } from '@aws-appsync/utils';`;
 
+function ownerGuardPreamble(ownerField, elevatedGroups) {
+  let elevatedLiteral = elevatedGroups.map(g => `'` + g + `'`).join(", ");
+  return `
+  const _id = ctx.identity;
+  const _sub = _id == null ? null : _id.sub;
+  const _groups = (_id != null && _id.claims != null && _id.claims['cognito:groups']) || [];
+  const _elevated = [` + elevatedLiteral + `];
+  const _exempt = _sub == null || _groups.some(g => _elevated.indexOf(g) >= 0);
+  const _owns = (row) => row == null || _exempt || row['` + ownerField + `'] === _sub;`;
+}
+
+function ownerScopedResultResponse(ownerField, elevatedGroups) {
+  if (ownerField !== undefined) {
+    return `
+export function response(ctx) {
+  if (ctx.error) util.error(ctx.error.message, ctx.error.type);
+  // ── owner scoping (generated) ──` + ownerGuardPreamble(ownerField, elevatedGroups) + `
+  return _owns(ctx.result) ? ctx.result : null;
+}`;
+  } else {
+    return resultResponseCode;
+  }
+}
+
+function ownerScopedFirstResultResponse(ownerField, elevatedGroups) {
+  if (ownerField !== undefined) {
+    return `
+export function response(ctx) {
+  if (ctx.error) util.error(ctx.error.message, ctx.error.type);
+  // ── owner scoping (generated) ──` + ownerGuardPreamble(ownerField, elevatedGroups) + `
+  const _row = ctx.result.items[0] ?? null;
+  return _owns(_row) ? _row : null;
+}`;
+  } else {
+    return firstResultResponseCode;
+  }
+}
+
 let pipelinePassThrough = importUtil + `
 export function request(ctx) { return {}; }
 ` + resultResponseCode + `
@@ -64,15 +102,18 @@ export function response(ctx) {
 `;
 }
 
-let getItemById = importUtil + `
+function getItemById(ownerField, elevatedGroupsOpt) {
+  let elevatedGroups = elevatedGroupsOpt !== undefined ? elevatedGroupsOpt : [];
+  return importUtil + `
 export function request(ctx) {
   return {
     operation: 'GetItem',
     key: { id: util.dynamodb.toDynamoDB(ctx.args.id) }
   };
 }
-` + resultResponseCode + `
+` + ownerScopedResultResponse(ownerField, elevatedGroups) + `
 `;
+}
 
 let queryById = importUtil + `
 export function request(ctx) {
@@ -87,7 +128,30 @@ export function request(ctx) {
 ` + resultResponseCode + `
 `;
 
-function queryItemsWithSortConditions(sortField) {
+function queryItemsWithSortConditions(sortField, ownerField, elevatedGroupsOpt) {
+  let elevatedGroups = elevatedGroupsOpt !== undefined ? elevatedGroupsOpt : [];
+  let ownerFilter;
+  if (ownerField !== undefined) {
+    let elevatedLiteral = elevatedGroups.map(g => `'` + g + `'`).join(", ");
+    ownerFilter = `
+  // ── owner scoping (generated) ──
+  // Not read from ctx.args, for the reason the list resolver gives: a predicate
+  // deciding what the caller may see must arrive on a channel they cannot name.
+  const _id = ctx.identity;
+  const _sub = _id == null ? null : _id.sub;
+  const _groups = (_id != null && _id.claims != null && _id.claims['cognito:groups']) || [];
+  const _elevated = [` + elevatedLiteral + `];
+  const _exempt = _sub == null || _groups.some(g => _elevated.indexOf(g) >= 0);
+  const _ownerFilter = _exempt ? undefined : {
+    expression: '#owner = :owner',
+    expressionNames: { '#owner': '` + ownerField + `' },
+    expressionValues: { ':owner': util.dynamodb.toDynamoDB(_sub) },
+  };`;
+  } else {
+    ownerFilter = "";
+  }
+  let ownerFilterField = ownerField !== undefined ? `
+    filter: _ownerFilter,` : "";
   return importUtil + `
 const encodeCursor = (skValue) => util.base64Encode(skValue);
 const decodeCursor = (cursor) => util.base64Decode(cursor);
@@ -130,10 +194,10 @@ export function request(ctx) {
   const expression = skCondition ? \`#id = :id AND \${skCondition}\` : '#id = :id';
   const orderDesc = filter.order === 'DESC';
   const scanForward = isBackward ? orderDesc : !orderDesc;
-  const pageSize = isBackward ? (args.last ?? 50) : (args.first ?? 50);
+  const pageSize = isBackward ? (args.last ?? 50) : (args.first ?? 50);` + ownerFilter + `
   return {
     operation: 'Query',
-    query: { expression, expressionNames, expressionValues },
+    query: { expression, expressionNames, expressionValues },` + ownerFilterField + `
     scanIndexForward: scanForward,
     limit: pageSize + 1,
   };
@@ -164,7 +228,8 @@ export function response(ctx) {
 `;
 }
 
-function queryByIdSort(sortField) {
+function queryByIdSort(sortField, ownerField, elevatedGroupsOpt) {
+  let elevatedGroups = elevatedGroupsOpt !== undefined ? elevatedGroupsOpt : [];
   return importUtil + `
 export function request(ctx) {
   return {
@@ -179,7 +244,7 @@ export function request(ctx) {
     }
   };
 }
-` + firstResultResponseCode + `
+` + ownerScopedFirstResultResponse(ownerField, elevatedGroups) + `
 `;
 }
 
@@ -953,6 +1018,9 @@ export {
   firstResultResponseCode,
   resultListResponseCode,
   importUtil,
+  ownerGuardPreamble,
+  ownerScopedResultResponse,
+  ownerScopedFirstResultResponse,
   pipelinePassThrough,
   nodeDecodeGlobalId,
   nodeGetItemForType,

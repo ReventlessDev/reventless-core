@@ -16,7 +16,7 @@ describe('Resolver code structure', () => {
   // Labeled ReScript args compile to positional JS args in declaration order.
   const codeValues = [
     ['pipelinePassThrough', F.pipelinePassThrough],
-    ['getItemById', F.getItemById],
+    ['getItemById', F.getItemById(undefined, undefined)],
     ['queryById', F.queryById],
     ['queryByIdSort(sortField)', F.queryByIdSort('status')],
     ['queryByIndex(index)', F.queryByIndex('userId')],
@@ -54,7 +54,7 @@ describe('Resolver code structure', () => {
 // getItemById
 // ---------------------------------------------------------------------------
 describe('getItemById', () => {
-  const { request, response } = evalResolver(F.getItemById)
+  const { request, response } = evalResolver(F.getItemById(undefined, undefined))
 
   test('request returns GetItem with id key', () => {
     const ctx = makeCtx({ args: { id: 'abc123' } })
@@ -741,5 +741,82 @@ describe('listAllItemsConnection — owner scoping', () => {
     )
     const r = request(makeCtx({ args: {}, identity: asUser('ops-1', ['Admin']) }))
     expect(r.filter.expressionValues[':owner']).toEqual({ S: 'ops-1' })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// By-key reads — owner scoping
+// ---------------------------------------------------------------------------
+// The list resolver above carried the predicate while these did not, so a caller
+// narrowed to their own rows could still read any row they could name. These
+// cases pin the guard in the place it has to live: the response, since a GetItem
+// has no FilterExpression, and null rather than an error, which is what the
+// in-process platform answers and what does not confirm the row exists.
+describe('getItemById / queryByIdSort — owner scoping', () => {
+  const asUser = (sub, groups = []) => ({
+    username: sub,
+    sub,
+    sourceIp: [],
+    claims: { 'cognito:groups': groups },
+  })
+  const row = { id: 'ord-1', customerId: 'cust-a', total: 10 }
+
+  const getScoped = () => evalResolver(F.getItemById('customerId', ['Admin']))
+  const sortScoped = () => evalResolver(F.queryByIdSort('status', 'customerId', ['Admin']))
+
+  test('an owner reads their own row', () => {
+    const { response } = getScoped()
+    expect(response(makeCtx({ result: row, identity: asUser('cust-a') }))).toEqual(row)
+  })
+
+  test('a foreign row reads as null, not as an error', () => {
+    const { response } = getScoped()
+    expect(response(makeCtx({ result: row, identity: asUser('cust-b') }))).toBeNull()
+  })
+
+  test('an elevated caller reads any row', () => {
+    const { response } = getScoped()
+    expect(response(makeCtx({ result: row, identity: asUser('ops-1', ['Admin']) }))).toEqual(row)
+  })
+
+  test('an IAM-shaped identity with no sub is exempt, not compared against undefined', () => {
+    const { response } = getScoped()
+    const iam = { username: 'svc', userArn: 'arn:aws:iam::1:role/r', sourceIp: [] }
+    expect(response(makeCtx({ result: row, identity: iam }))).toEqual(row)
+  })
+
+  test('a wholly absent identity is exempt rather than a crash', () => {
+    const { response } = getScoped()
+    expect(response(makeCtx({ result: row, identity: null }))).toEqual(row)
+  })
+
+  test('a missing row stays null and does not fall into the ownership branch', () => {
+    const { response } = getScoped()
+    expect(response(makeCtx({ result: null, identity: asUser('cust-b') }))).toBeNull()
+  })
+
+  test('a view with no owner field is never scoped', () => {
+    const { response } = evalResolver(F.getItemById(undefined, []))
+    expect(response(makeCtx({ result: row, identity: asUser('cust-b') }))).toEqual(row)
+  })
+
+  test('queryByIdSort narrows its first row the same way', () => {
+    const { response } = sortScoped()
+    const ctxFor = sub => makeCtx({ result: { items: [row] }, identity: asUser(sub) })
+    expect(response(ctxFor('cust-a'))).toEqual(row)
+    expect(response(ctxFor('cust-b'))).toBeNull()
+  })
+
+  test('queryItemsWithSortConditions scopes in the REQUEST, so the page is cut after narrowing', () => {
+    const { request } = evalResolver(
+      F.queryItemsWithSortConditions('createdAt', 'customerId', ['Admin']),
+    )
+    const scoped = request(makeCtx({ args: { id: 'ord-1' }, identity: asUser('cust-a') }))
+    expect(scoped.filter.expression).toBe('#owner = :owner')
+    expect(scoped.filter.expressionValues[':owner']).toEqual({ S: 'cust-a' })
+    const elevated = request(
+      makeCtx({ args: { id: 'ord-1' }, identity: asUser('ops-1', ['Admin']) }),
+    )
+    expect(elevated.filter).toBeUndefined()
   })
 })

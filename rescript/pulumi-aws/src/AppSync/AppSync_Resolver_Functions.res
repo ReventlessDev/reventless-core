@@ -29,6 +29,69 @@ export function response(ctx) {
 
 let importUtil = `import { util } from '@aws-appsync/utils';`
 
+/**
+The caller-is-exempt test, emitted into a resolver's response.
+
+Mirrors `Reventless.OwnerScope.resolve` — the same branch order for the same
+reason the list predicate gives: an IAM-signed service caller has no `sub`
+because it is inside the trust boundary, not because it is anonymous, so the
+provider question is answered before the identity one.
+
+In the RESPONSE rather than the request, because a `GetItem` has no
+FilterExpression to carry a predicate: the row is fetched by key and the
+decision is made on what came back. A `Query` could filter server-side, and
+deliberately does not — a single-row read that filtered in one place and
+guarded in another would have two implementations of one rule, and the cheaper
+one is the one nobody would remember to change.
+*/
+let ownerGuardPreamble = (~ownerField: string, ~elevatedGroups: array<string>) => {
+  let elevatedLiteral = elevatedGroups->Array.map(g => `'${g}'`)->Array.join(", ")
+  `
+  const _id = ctx.identity;
+  const _sub = _id == null ? null : _id.sub;
+  const _groups = (_id != null && _id.claims != null && _id.claims['cognito:groups']) || [];
+  const _elevated = [${elevatedLiteral}];
+  const _exempt = _sub == null || _groups.some(g => _elevated.indexOf(g) >= 0);
+  const _owns = (row) => row == null || _exempt || row['${ownerField}'] === _sub;`
+}
+
+/**
+A by-key read's response, refusing a row the caller does not own.
+
+**Null, not an error** — which is the opposite of what a first reading suggests,
+since "you may not read this" and "there is nothing here" are different answers
+and only one of them is true. Two things settle it. The in-process platform
+already answers `null` here, and a rule enforced differently per transport is
+the failure mode owner scoping exists to avoid. And an error would confirm the
+row exists to a caller who may not read it, which is a worse leak than the
+ambiguity it removes.
+*/
+let ownerScopedResultResponse = (~ownerField: option<string>, ~elevatedGroups: array<string>) =>
+  switch ownerField {
+  | None => resultResponseCode
+  | Some(field) =>
+    `
+export function response(ctx) {
+  if (ctx.error) util.error(ctx.error.message, ctx.error.type);
+  // ── owner scoping (generated) ──${ownerGuardPreamble(~ownerField=field, ~elevatedGroups)}
+  return _owns(ctx.result) ? ctx.result : null;
+}`
+  }
+
+/** The `queryByIdSort` counterpart — same rule, over the first row of a Query. */
+let ownerScopedFirstResultResponse = (~ownerField: option<string>, ~elevatedGroups: array<string>) =>
+  switch ownerField {
+  | None => firstResultResponseCode
+  | Some(field) =>
+    `
+export function response(ctx) {
+  if (ctx.error) util.error(ctx.error.message, ctx.error.type);
+  // ── owner scoping (generated) ──${ownerGuardPreamble(~ownerField=field, ~elevatedGroups)}
+  const _row = ctx.result.items[0] ?? null;
+  return _owns(_row) ? _row : null;
+}`
+  }
+
 // ---------------------------------------------------------------------------
 // Pipeline resolver pass-through (no before/after processing)
 // ---------------------------------------------------------------------------
@@ -89,7 +152,12 @@ export function response(ctx) {
 // DynamoDB read — by primary key
 // ---------------------------------------------------------------------------
 
-let getItemById =
+// `~ownerField` / `~elevatedGroups` carry the same meaning as on
+// `listAllItemsConnection`, and are optional for the same reason: a state that
+// declares no owner emits exactly the source it emitted before scoping existed.
+// A list that scopes beside a by-id read that does not is not a partial
+// delivery — it is a hole, reachable by anyone who can name a row.
+let getItemById = (~ownerField: option<string>=?, ~elevatedGroups: array<string>=[]) =>
   `${importUtil}
 export function request(ctx) {
   return {
@@ -97,7 +165,7 @@ export function request(ctx) {
     key: { id: util.dynamodb.toDynamoDB(ctx.args.id) }
   };
 }
-${resultResponseCode}
+${ownerScopedResultResponse(~ownerField, ~elevatedGroups)}
 `->Pulumi.Input.make
 
 let queryById =
@@ -119,7 +187,39 @@ ${resultResponseCode}
     Relay pagination: `first`/`after` (forward) or `last`/`before` (backward).
     Cursor is base64 of the sort key value.
     Returns a Relay `{ edges, pageInfo }` shape reusing the entity's `Connection` type. */
-let queryItemsWithSortConditions = (sortField: string) =>
+// A list in everything but its name, so it scopes the way `listAllItemsConnection`
+// does — a FilterExpression on the request, not a guard on the response. The
+// response is where the page is cut, and narrowing after that cut would report
+// `hasNextPage` from a count the caller was never allowed to see.
+let queryItemsWithSortConditions = (
+  sortField: string,
+  ~ownerField: option<string>=?,
+  ~elevatedGroups: array<string>=[],
+) => {
+  let ownerFilter = switch ownerField {
+  | None => ""
+  | Some(field) =>
+    let elevatedLiteral = elevatedGroups->Array.map(g => `'${g}'`)->Array.join(", ")
+    `
+  // ── owner scoping (generated) ──
+  // Not read from ctx.args, for the reason the list resolver gives: a predicate
+  // deciding what the caller may see must arrive on a channel they cannot name.
+  const _id = ctx.identity;
+  const _sub = _id == null ? null : _id.sub;
+  const _groups = (_id != null && _id.claims != null && _id.claims['cognito:groups']) || [];
+  const _elevated = [${elevatedLiteral}];
+  const _exempt = _sub == null || _groups.some(g => _elevated.indexOf(g) >= 0);
+  const _ownerFilter = _exempt ? undefined : {
+    expression: '#owner = :owner',
+    expressionNames: { '#owner': '${field}' },
+    expressionValues: { ':owner': util.dynamodb.toDynamoDB(_sub) },
+  };`
+  }
+  let ownerFilterField = switch ownerField {
+  | None => ""
+  | Some(_) => `
+    filter: _ownerFilter,`
+  }
   `${importUtil}
 const encodeCursor = (skValue) => util.base64Encode(skValue);
 const decodeCursor = (cursor) => util.base64Decode(cursor);
@@ -162,10 +262,10 @@ export function request(ctx) {
   const expression = skCondition ? \`#id = :id AND \${skCondition}\` : '#id = :id';
   const orderDesc = filter.order === 'DESC';
   const scanForward = isBackward ? orderDesc : !orderDesc;
-  const pageSize = isBackward ? (args.last ?? 50) : (args.first ?? 50);
+  const pageSize = isBackward ? (args.last ?? 50) : (args.first ?? 50);${ownerFilter}
   return {
     operation: 'Query',
-    query: { expression, expressionNames, expressionValues },
+    query: { expression, expressionNames, expressionValues },${ownerFilterField}
     scanIndexForward: scanForward,
     limit: pageSize + 1,
   };
@@ -194,8 +294,13 @@ export function response(ctx) {
   };
 }
 `->Pulumi.Input.make
+}
 
-let queryByIdSort = (sortField: string) =>
+let queryByIdSort = (
+  sortField: string,
+  ~ownerField: option<string>=?,
+  ~elevatedGroups: array<string>=[],
+) =>
   `${importUtil}
 export function request(ctx) {
   return {
@@ -210,7 +315,7 @@ export function request(ctx) {
     }
   };
 }
-${firstResultResponseCode}
+${ownerScopedFirstResultResponse(~ownerField, ~elevatedGroups)}
 `->Pulumi.Input.make
 
 // ---------------------------------------------------------------------------
