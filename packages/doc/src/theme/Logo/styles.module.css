@@ -26,3 +26,11 @@
 :global([data-theme='dark']) .lockup {
   color: #e8e8f0;
 }
+
+/* Compact navbar band (see custom.css): the section links share the row with
+   the burger down to 768px, so give the lockup back a few pixels of width. */
+@media (min-width: 768px) and (max-width: 996px) {
+  .lockup {
+    height: 30px;
+  }
+}

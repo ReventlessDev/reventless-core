@@ -96,7 +96,7 @@ export default function HomepageFeatures() {
         <Heading as="h2" className={styles.sectionTitle}>
           Why Reventless?
         </Heading>
-        <div className="row">
+        <div className={clsx('row', styles.featureGrid)}>
           {FeatureList.map((props, idx) => (
             <Feature key={idx} {...props} />
           ))}

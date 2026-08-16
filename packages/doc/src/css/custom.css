@@ -92,6 +92,29 @@ a:hover {
   text-decoration: none;
 }
 
+/* ── Heading rhythm ────────────────────────────────────────────────────────
+   Docusaurus sizes heading margins as multiples of `--ifm-leading` (1.25rem):
+   stock is 3× above an h1 (60px), 2× above an h2 (40px) and 1.25× below every
+   heading (25px), which leaves headings floating far from the text they title.
+   Tightened here — the multipliers still descend h1 → h2 → h3, so the hierarchy
+   reads the same, just at ~2/3 of the whitespace. Set on `.markdown` so it
+   applies to doc/blog content only and leaves the theme's own chrome alone. */
+.markdown {
+  --ifm-heading-vertical-rhythm-bottom: 0.7; /* 14px under any heading (was 20) */
+  --ifm-h1-vertical-rhythm-bottom: 0.8; /* 16px under the page title (was 25) */
+  --ifm-h1-vertical-rhythm-top: 2; /* 40px (was 60) */
+  --ifm-h2-vertical-rhythm-top: 1.4; /* 28px (was 40) */
+  --ifm-h3-vertical-rhythm-top: 1.1; /* 22px (was 30) */
+}
+
+/* Cards must not carry the trailing margin of their last paragraph or list on
+   top of their own padding — that is what leaves a visible dead band along the
+   bottom edge of every card. */
+.card > :last-child,
+.card__body > :last-child {
+  margin-bottom: 0;
+}
+
 /* D2 diagrams — respect each diagram's natural content size */
 .markdown img[src*="/d2/"] {
   max-width: 100%;
@@ -104,10 +127,53 @@ a:hover {
   zoom: 0.8;
 }
 
-/* ── Navbar responsiveness ─────────────────────────────────────────────── */
+/* ── Version banner ────────────────────────────────────────────────────────
+   The pre-release strip rendered by src/components/VersionBanner above the
+   navbar. It sits in normal flow (see the note in that component): visible at
+   the top of the page, scrolls away, and never displaces the header. */
+.version-banner {
+  padding: 0.4rem 1rem;
+  color: #fff;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.version-banner__link,
+.version-banner__link:hover {
+  color: #fff;
+  font-weight: 600;
+  text-decoration: underline;
+  white-space: nowrap;
+}
+
+/* ── Navbar responsiveness ─────────────────────────────────────────────────
+   Two things are wrong with the stock behaviour and both are fixed here.
+
+   1. Infima has a single breakpoint at 996px: below it every `.navbar__item` is
+      hidden and the burger takes over, throwing away the whole row next to the
+      logo. The rules below keep the section links in the top row down to 768px,
+      compacted. The burger stays visible in that band on purpose — at ≤996px it
+      is also the only way to reach the *docs* sidebar, so it can never hidden.
+
+   2. The links never yield: they are `white-space: nowrap` inline boxes in a
+      shrinkable flex group, so whenever the right-hand group grows (most
+      visibly when the search input expands on focus) they simply overflow and
+      paint over it. The left group is therefore allowed to wrap and is clipped
+      to a single row — a link that no longer fits drops to the hidden second
+      row instead of overlapping, which shows exactly the leading entries that
+      fit and nothing half-drawn. Every child is pinned to the row height so the
+      clip lands on a row boundary. (Nothing in this navbar opens a panel; a
+      dropdown item added later would be clipped by the same `overflow`.) */
+
+:root {
+  /* One navbar row = the height of the tallest thing in it (the brand lockup). */
+  --rvl-navbar-row-height: 2.375rem;
+}
 
 /* Keep nav items on a single line and tighter (both sides) so more fit before
-   the navbar collapses to the mobile menu at 996px. */
+   the navbar collapses to the mobile menu. */
 .navbar__item,
 .navbar__link {
   white-space: nowrap;
@@ -115,8 +181,43 @@ a:hover {
   padding-right: 0.5rem;
 }
 
+/* Left group: one row, first-fit, overflow clipped (see note 2 above). */
+.navbar__items:not(.navbar__items--right) {
+  min-width: 0;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  align-self: center;
+  max-height: var(--rvl-navbar-row-height);
+  overflow: hidden;
+}
+
+/* Pin the row height so the clip always lands on a row boundary. Listed by name
+   rather than `> *` so that nothing here overrides the `display` the theme sets
+   per breakpoint — a blanket rule here revives the burger on desktop. */
+.navbar__items:not(.navbar__items--right) > .navbar__brand,
+.navbar__items:not(.navbar__items--right) > .navbar__toggle,
+.navbar__items:not(.navbar__items--right) > .navbar__item {
+  align-items: center;
+  height: var(--rvl-navbar-row-height);
+}
+
+/* Links become flex boxes so their label centres on that row height. Scoped to
+   768px up: below it Infima hides them and they must stay hidden. */
+@media (min-width: 768px) {
+  .navbar__items:not(.navbar__items--right) > .navbar__item {
+    display: inline-flex;
+  }
+}
+
+/* Never let the right-hand group be squeezed into the links to its left. */
+.navbar__items--right {
+  flex: 0 0 auto;
+  gap: 0.25rem;
+}
+
 /* Compact version selector — minimal footprint in the navbar */
 .navbar__version-select {
+  flex: 0 0 auto;
   margin: 0 0.25rem;
   padding: 2px 1.5rem 2px 0.5rem;
   font-size: 0.8rem;
@@ -128,8 +229,10 @@ a:hover {
   cursor: pointer;
 }
 
-/* Collapsed search: show only the magnifier on desktop, expand on focus */
-@media (min-width: 997px) {
+/* Collapsed search: show only the magnifier, expand on focus. Applied from the
+   compact band up, so the search costs one icon of width rather than 9rem for
+   as long as the section links are in the row. */
+@media (min-width: 768px) {
   .navbar__search-input {
     width: 2.25rem;
     padding-right: 0.5rem;
@@ -147,6 +250,110 @@ a:hover {
   .navbar__search:focus-within [class*="searchHintContainer"] {
     display: flex;
   }
+}
+
+/* Compact link typography, from just below the width where the full-size row
+   stops fitting. Starting it at 1100 rather than at Infima's 996 avoids a band
+   around 1000px where a section would clip out at full size and reappear one
+   pixel later at compact size. How many links actually fit at a given width is
+   decided by the clip above, not here. */
+@media (max-width: 1100px) {
+  /* The left-hand group is a bare `.navbar__items` — only the right one carries
+     a modifier — so it is addressed by excluding the right one. */
+  .navbar__items:not(.navbar__items--right) .navbar__link {
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+    font-size: 0.8rem;
+  }
+  .navbar__brand {
+    margin-right: 0.5rem;
+  }
+}
+
+/* Compact band: the section links stay in the top row alongside the burger. */
+@media (min-width: 768px) and (max-width: 996px) {
+  .navbar__toggle {
+    margin-right: 0.25rem;
+  }
+  /* Below 997px the theme takes the search container out of flow
+     (`position: absolute; right: …`), which is what makes it paint over the
+     version selector and the GitHub icon. Put it back in the row. */
+  .navbar [class*="navbarSearchContainer"] {
+    position: static;
+    right: auto;
+  }
+}
+
+/* Phone widths: the search box goes back to the theme's out-of-flow treatment,
+   so anything else still sitting in the row would be painted over by it — drop
+   the version selector and the GitHub icon from the top row (both remain in the
+   mobile sidebar, and the links clip themselves away for lack of room). */
+@media (max-width: 767px) {
+  .navbar__items--right .navbar__version-select,
+  .navbar__items--right .header-github-link {
+    display: none;
+  }
+  /* At phone widths the theme's search input grows on focus until it reaches the
+     wordmark. Yield the row to it rather than let the two overlap; `visibility`
+     rather than `display` so nothing reflows as it opens. Browsers without
+     `:has()` simply keep the previous behaviour. */
+  .navbar__inner:has(.navbar__search-input:focus) .navbar__brand {
+    visibility: hidden;
+  }
+}
+
+/* Sidebar copy of the version selector: full width, aligned with the menu. */
+.navbar-sidebar .navbar__version-select {
+  width: calc(100% - 1rem);
+  margin: 0.5rem;
+  padding: 0.4rem 1.5rem 0.4rem 0.75rem;
+  font-size: 0.9rem;
+}
+
+/* ── Footer ────────────────────────────────────────────────────────────────
+   Infima lays the footer out as a flex row of `.col`s, and at ≤996px gives every
+   column `flex-basis: 100%` — which turns the whole footer into one long stack.
+   A grid keeps 2–4 columns at any width with no breakpoint of its own. */
+.footer__links {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  gap: 1.75rem 1.5rem;
+  margin: 0 0 1.75rem;
+}
+
+.footer__col {
+  padding: 0;
+  margin-bottom: 0;
+}
+
+.footer__title {
+  margin-bottom: 0.6rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.footer__item {
+  margin-top: 0.35rem;
+}
+
+.footer__link-item {
+  display: inline-block;
+  line-height: 1.5;
+}
+
+/* Copyright reads as a separate line under the columns, not a sixth column. */
+.footer__bottom {
+  padding-top: 1.25rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 0.8125rem;
+  opacity: 0.75;
+}
+
+.footer:not(.footer--dark) .footer__bottom {
+  border-top-color: var(--ifm-color-emphasis-300);
 }
 
 /* GitHub navbar entry rendered as an icon (no text label) */

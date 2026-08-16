@@ -484,8 +484,15 @@ const config = {
             ],
           },
           {
+            // Four balanced columns feed the auto-fit grid in custom.css; a
+            // one-item "More" column used to sit here and left the grid lopsided,
+            // so its GitHub link joins the other outbound links.
             title: "Resources",
             items: [
+              {
+                label: "GitHub",
+                href: "https://github.com/ReventlessDev/reventless-core",
+              },
               {
                 label: "ReScript",
                 href: "https://rescript-lang.org/",
@@ -497,15 +504,6 @@ const config = {
               {
                 label: "AWS Serverless",
                 href: "https://aws.amazon.com/serverless/",
-              },
-            ],
-          },
-          {
-            title: "More",
-            items: [
-              {
-                label: "GitHub",
-                href: "https://github.com/ReventlessDev/reventless-core",
               },
             ],
           },

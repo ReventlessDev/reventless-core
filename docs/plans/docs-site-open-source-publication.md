@@ -312,6 +312,93 @@ current docs (✅; `/` → `/alpha/`); D2/search/edit URLs resolve under the new
 
 ---
 
+## Phase 9 — Site chrome & layout (Medium) — ✅ Done (2026-08-17)
+
+Seven chrome and typography defects, each reproduced in a headless Chrome before
+the fix (CDP probe of the live dev server, not eyeballing). 9.1–9.4 were the
+first pass; 9.5–9.7 followed from a second review the same day.
+
+**9.1 Empty band above the navbar.** `VersionBanner` was `position: sticky;
+top: 60px` while sitting *before* the navbar in DOM order. It therefore reserved
+47 px of flow at the very top of the document and then rendered itself 60 px
+lower, so every page opened with a 47 px empty strip above the header. Fixed by
+making the banner an ordinary in-flow strip (announcement-bar semantics: visible
+at the top, scrolls away, navbar keeps sticking to `top: 0`) and moving its
+layout out of inline styles into a `.version-banner` class. The banner is also
+slimmer (one line at typical widths). A sticky banner *plus* a sticky navbar
+would have required re-deriving `--ifm-navbar-height` for the sidebar/TOC
+offsets — not worth it for a build-time-constant strip.
+
+**9.2 Version selector under the search box.** Below 997 px the theme pulls the
+search container out of flow (`position: absolute; right: …`), and our
+`.header-github-link { display: flex }` also defeats Infima's
+`.navbar__item { display: none }`. Both the version `<select>` and the GitHub
+icon stayed in the row and were painted over by the search box. Fixed on both
+sides of the new breakpoint: in the compact band the search container is put
+back in flow, and below it the selector and the GitHub icon are dropped from the
+top row (they remain in the mobile sidebar).
+
+**9.3 Everything collapsing into the burger.** Infima's single 996 px breakpoint
+sent all five section links into the burger, wasting the row next to the logo.
+The section links now stay in the top row down to 768 px with tighter padding, a
+smaller lockup, and the collapsed magnifier search. The burger stays visible
+below 997 px — it is still the only way to the *docs* sidebar there, so it
+cannot be hidden. See 9.5 for how many links are shown at a given width.
+
+**9.4 Single-column footer.** Infima's `.col { flex-basis: 100% }` at ≤996 px
+turned the footer into one long stack. `.footer__links` is now a
+`repeat(auto-fit, minmax(11rem, 1fr))` grid, so it holds 2–4 columns at any
+width without a breakpoint of its own. The one-item "More" column was folded
+into "Resources" so the grid has four balanced columns instead of three plus two
+stubs.
+
+**9.5 Nav links overlapping instead of yielding (follow-up, 2026-08-17).** The
+links are `white-space: nowrap` inline boxes inside a shrinkable flex group, so
+whenever the right-hand group grew — most visibly when the search input expands
+on focus — they overflowed and painted over it rather than giving way. A fixed
+breakpoint cannot fix this, because the trigger is a runtime state, not a width.
+The left group now wraps and is clipped to exactly one row (`flex-wrap: wrap` +
+`max-height` = row height + `overflow: hidden`), with every child pinned to that
+row height so the clip lands on a row boundary. A link that no longer fits drops
+to the hidden second row: the leading entries that fit are shown, nothing is
+half-drawn, and the behaviour is identical whether the cause is a narrow window
+or an expanded search box. This also replaced the 880 px floor from 9.3 — the
+clip decides, so links are simply enabled from 768 px up. Two traps found while
+verifying: a `> *` form of the row-height rule outranks Infima's
+`.navbar__toggle { display: none }` and revives the burger on desktop (children
+are now listed by name), and the compact type has to start at 1100 px rather
+than 996 px, or a section clips out just above the breakpoint and reappears just
+below it. At phone widths the theme's own search overlay still reaches the
+wordmark, which now hides itself while the search has focus.
+
+**9.6 Heading rhythm (follow-up, 2026-08-17).** Docusaurus sizes heading margins
+as multiples of `--ifm-leading` (1.25 rem): 3× above an h1 (60 px), 2× above an
+h2 (40 px), 1.25× below every heading (20–25 px), which left headings floating
+away from the text they title. Retuned on `.markdown` (doc/blog content only, so
+theme chrome is untouched) to 2× / 1.4× / 1.1× above h1/h2/h3 and 0.7× below —
+40/28/22 px above and 14 px below, with the h1's own
+`--ifm-h1-vertical-rhythm-bottom` set separately at 16 px because the theme
+gives the page title a dedicated variable. The multipliers still descend
+h1 → h2 → h3, so the hierarchy reads unchanged at ~2/3 of the whitespace.
+
+**9.7 Dead band under cards (follow-up, 2026-08-17).** Every card carried the
+trailing margin of its last paragraph or list *on top of* its own padding, and
+the homepage feature cards additionally stretched to the tallest card in the row
+(`height: 100%`) despite being borderless — so a short card ended with a large
+empty area. Dropped the stretch in favour of an explicit row gap, zeroed the
+trailing margin on the last child of any card, and gave the feature icon a
+tighter line-height (a 40 px emoji was sitting in a ~64 px line box).
+
+Acceptance: no empty band above the navbar at any width; nothing overlaps the
+search box, idle or focused, between 375 px and 1600 px; all five section links
+in the top row down to 880 px and four down to 768 px, degrading by whole links
+rather than overlapping; footer renders ≥2 columns down to 375 px. Verified by
+headless screenshots and a DOM probe at 1440/1400/1280/1200/1100/1050/1000/997/
+996/940/900/880/868/800/768/767/700/600/375 px, each measured with the search
+both idle and focused.
+
+---
+
 ## Roadmap summary
 
 | Phase | Theme | Priority | Status |
@@ -325,5 +412,6 @@ current docs (✅; `/` → `/alpha/`); D2/search/edit URLs resolve under the new
 | 6 | Blog | Medium | ✅ Done (2026-05-23) — one canonical blog on main |
 | 7 | Talks | Medium | ⏸️ Deferred (large net-new Slidev workspace) |
 | 8 | Domain cutover & link hardening | Medium | 🔶 Mostly done (2026-06-25) — cutover to docs.reventless.dev live (`/`→`/alpha/`); remaining: 8.3 `onBrokenLinks: throw` (8.4 root-redirect is fine; publishing a `latest` is optional) |
+| 9 | Site chrome & layout | Medium | ✅ Done (2026-08-17) — top band, navbar overlap, first-fit nav row, footer grid, heading rhythm, card padding |
 
 Phases 0–3 are the minimum for a credible open-source launch; 4–8 are follow-on polish. Phases 6 and 7 are independent and can run in parallel with 4–5.

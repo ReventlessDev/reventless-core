@@ -10,9 +10,11 @@
   font-weight: 600;
 }
 
+/* Not stretched to the tallest card in the row: these cards are borderless, so
+   equal heights bought nothing and left a large dead band under the shorter
+   ones. Rows are separated by an explicit row-gap instead. */
 .featureCard {
   padding: 1rem;
-  height: 100%;
   border-radius: 8px;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
@@ -24,7 +26,10 @@
 
 .featureIcon {
   font-size: 2.5rem;
-  margin-bottom: 0rem;
+  /* The inherited body line-height would give a 40px glyph a ~64px line box and
+     push the title away from it. */
+  line-height: 1.2;
+  margin-bottom: 0.25rem;
 }
 
 .featureTitle {
@@ -36,14 +41,18 @@
   font-size: 0.95rem;
   color: var(--ifm-color-content-secondary);
   line-height: 1.6;
+  /* Last thing in the card — its paragraph margin would stack on the card's
+     own padding and read as a large gap under the text. */
+  margin-bottom: 0;
+}
+
+/* The grid gap replaces what the stretched cards used to imply. */
+.featureGrid {
+  row-gap: 1.5rem;
 }
 
 @media screen and (max-width: 996px) {
   .features {
     padding: 2rem 1rem;
-  }
-
-  .featureCard {
-    margin-bottom: 1.5rem;
   }
 }

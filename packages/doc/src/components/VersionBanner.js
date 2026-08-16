@@ -57,31 +57,19 @@ export default function VersionBanner() {
   const banner = BANNERS[currentId];
   if (!banner) return null; // latest/local — no banner
 
+  // Rendered as an ordinary in-flow strip above the navbar (announcement-bar
+  // semantics: it scrolls away, the navbar keeps sticking to the top). It used
+  // to be `position: sticky; top: 60px`, which reserved its height at the very
+  // top of the document and then painted itself 60px lower — leaving an empty
+  // band above the header on every page. Layout lives in `.version-banner`
+  // (custom.css); only the per-version colour is inline.
   return (
-    <div style={{
-      backgroundColor: banner.backgroundColor,
-      color: 'white',
-      padding: '12px 20px',
-      textAlign: 'center',
-      fontWeight: 500,
-      fontSize: '14px',
-      position: 'sticky',
-      top: 60,
-      zIndex: 100,
-      boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-    }}>
+    <div className="version-banner" style={{backgroundColor: banner.backgroundColor}}>
       <strong>{banner.label} Version:</strong> {banner.message}
       {stableHref && (
         <>
           {' '}
-          <a
-            href={stableHref}
-            style={{
-              color: 'white',
-              textDecoration: 'underline',
-              fontWeight: 600,
-            }}
-          >
+          <a href={stableHref} className="version-banner__link">
             View Latest Stable Docs →
           </a>
         </>
