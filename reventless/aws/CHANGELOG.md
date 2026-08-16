@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.305 (2026-08-16)
+
+### Bug Fixes
+
+* **aws:** move the EventCollector's queue-URL maps out of the environment ([31172cb](https://github.com/ReventlessDev/reventless-core/commit/31172cb793d267729f201794ff785f9f982315fa))
+
+
 # 3.0.0-alpha.304 (2026-08-16)
 
 ### Bug Fixes
