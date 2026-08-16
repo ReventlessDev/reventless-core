@@ -11,9 +11,20 @@
 //     unlink leaves it on the orphaned inode still serving every row it had, the
 //     delete looks like it worked, and the seed then fails against the untouched
 //     server with "the target store is not empty". Deleting ROWS through a second
-//     connection is visible to the running server immediately (its reads go to
-//     these tables; there is no in-process cache), so a reset needs no restart and
-//     no stopping of the platform.
+//     connection is what works instead — a query issued after the delete reads
+//     the emptied tables, so the platform need not be STOPPED for the reset.
+//
+//     It does need RESTARTING before the re-seed, and this comment claimed
+//     otherwise for a while on the strength of "there is no in-process cache".
+//     There is: a DCB slice's decision state is held per partition in the
+//     running process, and a delete behind its back does not invalidate it. The
+//     slice goes on refusing writes for ids whose state it still remembers, so
+//     the re-seed fails with `…AlreadyExists` naming rows the store visibly does
+//     not hold — verified by the same id being refused before a restart and
+//     accepted after, against byte-identical tables.
+//
+//     So: reset with the platform up, then restart it, then seed. Emptying the
+//     store and emptying the process are two steps, and only the first is here.
 //
 //   • It is SCOPED. Wiping domain data leaves the plugin registry intact, so a
 //     re-seed just works — the same reason the deployed default is `domain`.
@@ -543,15 +554,21 @@ let run = (~dbPath: option<string>=?): unit => {
         if total(plan) == 0 {
           Console.log("Nothing to do.")
         } else {
+          // Set at all ⇒ it is the answer, affirmative or not. Falling through to
+          // the prompt on an unrecognised value would ask for a TTY the runs this
+          // variable exists for do not have, so `SEED_RESET_CONFIRM=no` would
+          // throw where it plainly means "don't". Both arms read the reply
+          // through one predicate, which is what keeps the typed `y` and the
+          // env var speaking the same language.
           let confirmed = switch Seed.Prompt.envValue("SEED_RESET_CONFIRM") {
-          | Some("1") | Some("yes") => true
-          | _ =>
+          | Some(answer) => Seed.Prompt.isAffirmative(answer)
+          | None =>
             let answer = await Seed.Prompt.ask(
               `Empty ${total(
                   plan,
                 )->Int.toString} row(s)/object(s) in the "${plan.scope->scopeLabel}" scope? [y/N]: `,
             )
-            answer->String.trim->String.toLowerCase == "y"
+            Seed.Prompt.isAffirmative(answer)
           }
           if confirmed {
             execute(db, plan)

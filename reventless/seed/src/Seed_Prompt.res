@@ -98,6 +98,24 @@ let askHidden = (query: string): promise<string> =>
   })
 
 /**
+ * Whether an answer means yes — the one vocabulary, for the typed reply and the
+ * env var that stands in for it alike.
+ *
+ * It exists because those two drifted: a `[y/N]` prompt took `y`, and the env
+ * var beside it took only `1` or `yes`, so the obvious `SEED_RESET_CONFIRM=y`
+ * silently fell through to the interactive branch — which, on the CI runs the
+ * variable exists for, has no TTY and throws. Two spellings of one question are
+ * one spelling too many; callers ask this instead of comparing strings.
+ *
+ * Trimmed and case-folded, so `Yes`/` y ` answer the same as `y`.
+ */
+let isAffirmative = (answer: string): bool =>
+  switch answer->String.trim->String.toLowerCase {
+  | "y" | "yes" | "1" => true
+  | _ => false
+  }
+
+/**
  * Chooses one of `options` (a label paired with the value it selects).
  *
  * Auto-returns when there is a single option, so a lone data set or stack needs

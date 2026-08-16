@@ -82,6 +82,18 @@ function askHidden(query) {
   });
 }
 
+function isAffirmative(answer) {
+  let match = answer.trim().toLowerCase();
+  switch (match) {
+    case "1" :
+    case "y" :
+    case "yes" :
+      return true;
+    default:
+      return false;
+  }
+}
+
 async function select(title, options, env) {
   if (options.length === 1) {
     return options[0][1];
@@ -166,6 +178,7 @@ export {
   requireTty,
   ask,
   askHidden,
+  isAffirmative,
   select,
   credentials,
 }

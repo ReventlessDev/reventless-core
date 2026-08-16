@@ -499,25 +499,8 @@ function run(dbPath) {
       if (total(plan) === 0) {
         console.log("Nothing to do.");
       } else {
-        let match$1 = Seed_Prompt$ReventlessSeed.envValue("SEED_RESET_CONFIRM");
-        let confirmed;
-        let exit = 0;
-        if (match$1 !== undefined) {
-          switch (match$1) {
-            case "1" :
-            case "yes" :
-              confirmed = true;
-              break;
-            default:
-              exit = 1;
-          }
-        } else {
-          exit = 1;
-        }
-        if (exit === 1) {
-          let answer = await Seed_Prompt$ReventlessSeed.ask(`Empty ` + total(plan).toString() + ` row(s)/object(s) in the "` + scopeLabel(plan.scope) + `" scope? [y/N]: `);
-          confirmed = answer.trim().toLowerCase() === "y";
-        }
+        let answer = Seed_Prompt$ReventlessSeed.envValue("SEED_RESET_CONFIRM");
+        let confirmed = answer !== undefined ? Seed_Prompt$ReventlessSeed.isAffirmative(answer) : Seed_Prompt$ReventlessSeed.isAffirmative(await Seed_Prompt$ReventlessSeed.ask(`Empty ` + total(plan).toString() + ` row(s)/object(s) in the "` + scopeLabel(plan.scope) + `" scope? [y/N]: `));
         if (confirmed) {
           execute(db, plan);
           console.log(`Reset complete — the "` + scopeLabel(plan.scope) + `" scope reads empty and is re-seedable.`);

@@ -4,9 +4,16 @@
 //
 //   pnpm run seed:reset      # pick a scope, see what it would empty, confirm
 //
-// It works against a RUNNING platform: rows are deleted through a second
-// connection to the same database, which the server sees immediately. So the
-// usual loop is `seed:reset` then `seed`, with the platform left up.
+// It runs against a RUNNING platform — rows are deleted through a second
+// connection to the same database — but **restart the platform before
+// re-seeding**. The rows go, and the server's in-memory state does not: a DCB
+// slice holds decision state per partition, so it goes on refusing writes for
+// ids whose state it still remembers, and a re-seed fails with
+// `…AlreadyExists` against a store that demonstrably does not contain them.
+//
+// The loop is `seed:reset` → restart → `seed`. This comment used to say the
+// platform could be left up; it could not, and the symptom looked like the
+// reset having silently done nothing.
 //
 // The store is the one `REVENTLESS_LOCAL_BACKEND` selects, so this and the
 // platform cannot disagree about which store is being reset. Scope defaults to

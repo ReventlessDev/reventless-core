@@ -114,7 +114,11 @@ pnpm run seed            # in a second shell
 | `platform` | the plugin registry, the UI fragment registry, the Plugin aggregate's log, and the offloaded plugin definitions |
 | `everything` | both |
 
-`domain` is the default because it leaves the plugin registry intact, so a re-seed just works. `SEED_RESET_SCOPE` picks a scope non-interactively and `SEED_RESET_CONFIRM=1` skips the y/N — the deployed script's `SEED_RESET_SCOPE` and typed confirmation, minus the gates that exist because *that* target is remote and irreversible.
+`domain` is the default because it leaves the plugin registry intact, so a re-seed just works. `SEED_RESET_SCOPE` picks a scope non-interactively and `SEED_RESET_CONFIRM` answers the y/N — `y`, `yes` or `1`, in any case, and anything else declines rather than falling back to a prompt no CI run has a terminal for. Together they are the deployed script's `SEED_RESET_SCOPE` and typed confirmation, minus the gates that exist because *that* target is remote and irreversible.
+
+:::caution Restart the platform between a reset and a re-seed
+`seed:reset` empties the store through its own connection, but a running platform keeps in-memory state that the delete does not invalidate — a DCB slice goes on refusing writes for ids whose decision state it still holds, so a re-seed fails with `…AlreadyExists` against a store that plainly does not contain them. The loop is **`seed:reset` → restart the platform → `seed`**.
+:::
 
 **It asks a platform which store to empty.** Both `seed` and `seed:reset` resolve their target the same way — from the platforms actually running in this directory, which each publish their endpoint and store under `.reventless/running/` at startup:
 
