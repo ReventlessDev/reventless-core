@@ -16,6 +16,7 @@ import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/sr
 import * as EventCollector$ReventlessCore from "@reventlessdev/reventless-core/src/components/EventCollector/EventCollector.res.mjs";
 import * as EventLogBackend$ReventlessAws from "../../adapter/EventLog/EventLogBackend.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
+import * as Util_LambdaEnvBudget$ReventlessAws from "../../util/Util_LambdaEnvBudget.res.mjs";
 import * as Platform_Admin_Structure$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin_Structure.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "../../adapter/Runtime/RuntimeEnvironment_Lambda.res.mjs";
 import * as StateChangeSliceRuntime_Builder_Single$ReventlessAws from "../../adapter/Runtime/StateChangeSliceRuntime_Builder_Single.res.mjs";
@@ -323,22 +324,15 @@ function Make(EventCollectorChannel) {
         return entryDict;
       });
       dict["extensions"] = extensionsArr;
-      let publishToAggregatesDict = {};
-      Object.keys(context.publishToAggregates).forEach(aggName => {
-        publishToAggregatesDict[aggName] = `PTA_` + aggName + `_QUEUE_URL`;
-      });
-      dict["publishToAggregates"] = publishToAggregatesDict;
-      let readModelQueueUrlsDict = {};
-      Object.keys(context.readModelQueueUrls).forEach(rmName => {
-        readModelQueueUrlsDict[rmName] = `PRM_` + rmName + `_QUEUE_URL`;
-      });
-      dict["readModelQueueUrls"] = readModelQueueUrlsDict;
       let rmNamesForSourceDict = {};
       Object.entries(context.readModelNamesForSourceName).forEach(param => {
         rmNamesForSourceDict[param[0]] = param[1].map(prim => prim);
       });
       dict["readModelNamesForSourceName"] = rmNamesForSourceDict;
-      return JSON.stringify(dict);
+      let json = JSON.stringify(dict);
+      let queueUrlKeys = Object.keys(context.publishToAggregates).map(n => `PTA_` + n + `_QUEUE_URL`).concat(Object.keys(context.readModelQueueUrls).map(n => `PRM_` + n + `_QUEUE_URL`));
+      Util_LambdaEnvBudget$ReventlessAws.check(name, json, queueUrlKeys);
+      return json;
     });
     envVars["HANDLER_CONFIG"] = handlerConfigJson;
     let packageDirs = {};
@@ -374,6 +368,17 @@ function Make(EventCollectorChannel) {
     ]).apply(param => {
       let extraStringAssets = {};
       extraStringAssets["pluginDefinition.json"] = param[0];
+      let nameMap = (names, prefix) => {
+        let d = {};
+        names.toSorted(Primitive_string.compare).forEach(n => {
+          d[n] = prefix + `_` + n + `_QUEUE_URL`;
+        });
+        return d;
+      };
+      let queueUrlsDict = {};
+      queueUrlsDict["publishToAggregates"] = nameMap(Object.keys(context.publishToAggregates), "PTA");
+      queueUrlsDict["readModelQueueUrls"] = nameMap(Object.keys(context.readModelQueueUrls), "PRM");
+      extraStringAssets["queueUrls.json"] = JSON.stringify(queueUrlsDict);
       extraStringAssets["uiFragments.json"] = param[1];
       return Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/EventCollectorEntryPoint.mjs", packageDirs, extraStringAssets, undefined);
     });

@@ -179,7 +179,9 @@ let forDcbCommandTopic = (
       Pulumi.Output.all4((dcbTableName, queue.id, pgConnectionFragment, inboundFragment))
       ->Pulumi.Output.apply(((table, queueUrl, pgFragment, inbFragment)) => {
         let pluginNameJson = pluginName->JSON.stringifyAny->Option.getOr(`""`)
-        `{"dcbEventLogTableName":"${table}","queueUrl":"${queueUrl}","pluginName":${pluginNameJson}${pgFragment}${inbFragment}}`
+        let json = `{"dcbEventLogTableName":"${table}","queueUrl":"${queueUrl}","pluginName":${pluginNameJson}${pgFragment}${inbFragment}}`
+        Util_LambdaEnvBudget.check(~lambdaName=name, ~handlerConfigJson=json)
+        json
       })
     envVars->Dict.set("HANDLER_CONFIG", handlerConfigJson->Pulumi.Output.asInput)
 

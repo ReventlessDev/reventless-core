@@ -46,12 +46,9 @@
 //       "readModelNames":     string[]         // RMs this extension may enqueue events into (filter into readModelQueueUrls)
 //     }
 //   ],
-//   "publishToAggregates": {                   // aggregateName → env-var name holding the aggregate's cmd-topic SQS URL
-//     "Plugin": "PTA_Plugin_QUEUE_URL"
-//   },
-//   "readModelQueueUrls": {                    // rmName → env-var name holding the RM's EventCollector SQS URL
-//     "ProductDemands": "PRM_ProductDemands_QUEUE_URL"
-//   },
+//   (publishToAggregates / readModelQueueUrls moved to the queueUrls.json asset —
+//    one entry per target, so they outgrew the 4KB environment. Each still maps a
+//    target name to the PTA_/PRM_ env var holding its SQS URL.)
 //   "readModelNamesForSourceName": {           // deploy-side inversion of RM.sourceNames; sourceServiceName → [rmName]
 //     "Ordering.Orders": ["ProductDemands"]
 //   }
@@ -100,6 +97,8 @@ async function buildHandler() {
   await runtimeExtensionsReady;
   const config = Ops.parseHandlerConfig(process.env["HANDLER_CONFIG"] || "");
   const pluginDefinition = Ops.loadPluginDefinition();
+  // target → env-var name; the URLs themselves stay in the environment.
+  const queueUrlNames = Ops.loadQueueUrlNames();
 
   const queryEngine = Ops.makeQueryEngine(config.pluginReadModelTableName);
   const scheduler = Ops.makeScheduler(config.schedulerRoleArn);
@@ -165,7 +164,7 @@ async function buildHandler() {
     return { aggregateNames: ep.aggregateNames, outgoingHandler: ops.outgoingJsonEventsHandler };
   }));
 
-  const publishToAggregates = Ops.buildPublishToAggregates(config.publishToAggregates);
+  const publishToAggregates = Ops.buildPublishToAggregates(queueUrlNames.publishToAggregates);
   const publishToPluginExtensionPoint = Ops.makePublishJsons(config.pluginExtensionPointCmdTopicUrl);
 
   // Connect extension — exactly one entry per plugin Lambda; null for admin.
@@ -230,7 +229,7 @@ async function buildHandler() {
       mappings: [transformedMapping],
     };
 
-    const dicts = Ops.extensionPublishDicts(config, ext);
+    const dicts = Ops.extensionPublishDicts(config, queueUrlNames, ext);
     const ops = extensionOperationsMake(epSpec)(mappingsModule)({
       publishToAggregates: dicts.publishToAggregates,
       publishToPluginExtensionPoint,

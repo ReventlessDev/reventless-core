@@ -503,27 +503,13 @@ module Make = (
           })
         dict->Dict.set("extensions", JSON.Encode.array(extensionsArr))
 
-        let publishToAggregatesDict = Dict.make()
-        context.publishToAggregates
-        ->Dict.keysToArray
-        ->Array.forEach(aggName =>
-          publishToAggregatesDict->Dict.set(
-            aggName,
-            JSON.Encode.string(`PTA_${aggName}_QUEUE_URL`),
-          )
-        )
-        dict->Dict.set("publishToAggregates", JSON.Encode.object(publishToAggregatesDict))
-
-        let readModelQueueUrlsDict = Dict.make()
-        context.readModelQueueUrls
-        ->Dict.keysToArray
-        ->Array.forEach(rmName =>
-          readModelQueueUrlsDict->Dict.set(
-            rmName,
-            JSON.Encode.string(`PRM_${rmName}_QUEUE_URL`),
-          )
-        )
-        dict->Dict.set("readModelQueueUrls", JSON.Encode.object(readModelQueueUrlsDict))
+        // publishToAggregates / readModelQueueUrls live in queueUrls.json (see the
+        // asset bundle below). Both are one entry per target, so they grow with the
+        // plugin, and together with the PTA_/PRM_ vars they name they carried the
+        // catalog EventCollector past Lambda's 4KB environment ceiling. Only the
+        // maps move: they are built from Dict.keysToArray, so they hold no Pulumi
+        // Output and can be serialized here. The URLs themselves cannot follow —
+        // see the note on the aggregate walk further down.
 
         let rmNamesForSourceDict = Dict.make()
         context.readModelNamesForSourceName
@@ -536,7 +522,22 @@ module Make = (
         )
         dict->Dict.set("readModelNamesForSourceName", JSON.Encode.object(rmNamesForSourceDict))
 
-        JSON.Encode.object(dict)->JSON.stringify
+        let json = JSON.Encode.object(dict)->JSON.stringify
+        // The PTA_/PRM_ vars are the rest of this Lambda's environment and the
+        // half that grows with the plugin. Their names are known here; their
+        // values are still Outputs, so the budget check estimates those.
+        let queueUrlKeys = Array.concat(
+          context.publishToAggregates
+          ->Dict.keysToArray
+          ->Array.map(n => `PTA_${n}_QUEUE_URL`),
+          context.readModelQueueUrls->Dict.keysToArray->Array.map(n => `PRM_${n}_QUEUE_URL`),
+        )
+        Util_LambdaEnvBudget.check(
+          ~lambdaName=name,
+          ~handlerConfigJson=json,
+          ~outputValuedKeys=queueUrlKeys,
+        )
+        json
       })
     envVars->Dict.set("HANDLER_CONFIG", handlerConfigJson->Pulumi.Output.asInput)
 
@@ -599,6 +600,29 @@ module Make = (
       ->Pulumi.Output.apply(((pluginDefinitionJson, uiFragmentsJson)) => {
         let extraStringAssets = Dict.make()
         extraStringAssets->Dict.set("pluginDefinition.json", pluginDefinitionJson)
+        // target name → the env var holding that target's queue URL. The
+        // indirection stays (the URLs are Outputs this builder must not resolve
+        // in bulk); only the naming map moves out of HANDLER_CONFIG.
+        let nameMap = (names: array<string>, prefix: string) => {
+          let d = Dict.make()
+          names
+          ->Array.toSorted(String.compare)
+          ->Array.forEach(n => d->Dict.set(n, JSON.Encode.string(`${prefix}_${n}_QUEUE_URL`)))
+          JSON.Encode.object(d)
+        }
+        let queueUrlsDict = Dict.make()
+        queueUrlsDict->Dict.set(
+          "publishToAggregates",
+          nameMap(context.publishToAggregates->Dict.keysToArray, "PTA"),
+        )
+        queueUrlsDict->Dict.set(
+          "readModelQueueUrls",
+          nameMap(context.readModelQueueUrls->Dict.keysToArray, "PRM"),
+        )
+        extraStringAssets->Dict.set(
+          "queueUrls.json",
+          JSON.Encode.object(queueUrlsDict)->JSON.stringify,
+        )
         // The UI-fragment manifest no longer rides pluginDefinition — ship it as
         // its own asset ("null" for plugins without a UI) so the bundled Connect
         // extension can emit RegisterUiFragment in the handshake answer.

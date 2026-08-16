@@ -109,9 +109,16 @@ type handlerConfig = {
   extensionPoints: array<extensionPointConfig>,
   connectExtension: option<connectExtensionConfig>,
   extensions: array<extensionConfig>,
+  readModelNamesForSourceName: dict<array<string>>,
+}
+
+// The target→env-var maps that used to ride HANDLER_CONFIG, now read from
+// queueUrls.json (PluginRuntime_Builder). Values are env var NAMES, not URLs —
+// the URLs stay in the environment because the builder cannot resolve those
+// Outputs in bulk.
+type queueUrlNames = {
   publishToAggregates: dict<string>,
   readModelQueueUrls: dict<string>,
-  readModelNamesForSourceName: dict<array<string>>,
 }
 
 let strOf = (obj: dict<JSON.t>, key: string): option<string> =>
@@ -149,7 +156,6 @@ let parseHandlerConfig = (rawJson: string): handlerConfig => {
     "schedulerQueueName",
     "extensionPoints",
     "extensions",
-    "publishToAggregates",
   ]->Array.forEach(k =>
     if obj->Dict.get(k)->Option.isNone {
       JsError.throwWithMessage("HANDLER_CONFIG missing required field: " ++ k)
@@ -225,8 +231,6 @@ let parseHandlerConfig = (rawJson: string): handlerConfig => {
     extensionPoints,
     connectExtension,
     extensions,
-    publishToAggregates: obj->strDictOf("publishToAggregates"),
-    readModelQueueUrls: obj->strDictOf("readModelQueueUrls"),
     readModelNamesForSourceName,
   }
 }
@@ -625,7 +629,11 @@ type extensionDicts = {
   readModelNamesForSourceName: dict<array<string>>,
 }
 
-let extensionPublishDicts = (config: handlerConfig, ext: extensionConfig): extensionDicts => {
+let extensionPublishDicts = (
+  config: handlerConfig,
+  names: queueUrlNames,
+  ext: extensionConfig,
+): extensionDicts => {
   let resolve = (names: array<string>, envVarNames: dict<string>) =>
     names
     ->Array.filterMap(name =>
@@ -637,8 +645,8 @@ let extensionPublishDicts = (config: handlerConfig, ext: extensionConfig): exten
     )
     ->Dict.fromArray
   {
-    publishToAggregates: resolve(ext.aggregateNames, config.publishToAggregates),
-    publishToReadModels: resolve(ext.readModelNames, config.readModelQueueUrls),
+    publishToAggregates: resolve(ext.aggregateNames, names.publishToAggregates),
+    publishToReadModels: resolve(ext.readModelNames, names.readModelQueueUrls),
     // Scoped to this extension's EP — Extension_Operations uses this dict to
     // decide which RMs receive each incoming event.
     readModelNamesForSourceName: Dict.fromArray([
@@ -678,6 +686,26 @@ let loadPluginDefinition = (): Reventless.Plugin.pluginDefinition =>
     JsError.throwWithMessage(
       "Failed to load pluginDefinition.json from asset zip: " ++ exnMessage(exn),
     )
+  }
+
+// The target→env-var maps, read once at cold start. A plugin that publishes
+// nowhere writes empty maps rather than omitting the file, so a read failure is
+// a genuinely broken archive and not an empty-map case worth guessing at.
+let loadQueueUrlNames = (): queueUrlNames =>
+  try {
+    let obj =
+      assetPath("queueUrls.json")
+      ->NodeFs.readFileSync
+      ->JSON.parseOrThrow
+      ->JSON.Decode.object
+      ->Option.getOr(Dict.make())
+    {
+      publishToAggregates: obj->strDictOf("publishToAggregates"),
+      readModelQueueUrls: obj->strDictOf("readModelQueueUrls"),
+    }
+  } catch {
+  | exn =>
+    JsError.throwWithMessage("Failed to load queueUrls.json from asset zip: " ++ exnMessage(exn))
   }
 
 // The plugin's UI-fragment manifest — its own asset since the manifest no

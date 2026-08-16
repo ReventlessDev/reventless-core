@@ -111,8 +111,7 @@ function parseHandlerConfig(rawJson) {
     "schedulerQueueArn",
     "schedulerQueueName",
     "extensionPoints",
-    "extensions",
-    "publishToAggregates"
+    "extensions"
   ].forEach(k => {
     if (Stdlib_Option.isNone(obj[k])) {
       return Stdlib_JsError.throwWithMessage("HANDLER_CONFIG missing required field: " + k);
@@ -159,8 +158,6 @@ function parseHandlerConfig(rawJson) {
     extensionPoints: extensionPoints,
     connectExtension: connectExtension,
     extensions: extensions,
-    publishToAggregates: strDictOf(obj, "publishToAggregates"),
-    readModelQueueUrls: strDictOf(obj, "readModelQueueUrls"),
     readModelNamesForSourceName: readModelNamesForSourceName
   };
 }
@@ -495,14 +492,14 @@ function buildPublishToAggregates(map) {
   ]));
 }
 
-function extensionPublishDicts(config, ext) {
+function extensionPublishDicts(config, names, ext) {
   let resolve = (names, envVarNames) => Object.fromEntries(Stdlib_Array.filterMap(names, name => Stdlib_Option.map(Stdlib_Option.filter(Stdlib_Option.flatMap(envVarNames[name], envVarName => process.env[envVarName]), queueUrl => queueUrl !== ""), queueUrl => [
     name,
     makePublishJsons(queueUrl)
   ])));
   return {
-    publishToAggregates: resolve(ext.aggregateNames, config.publishToAggregates),
-    publishToReadModels: resolve(ext.readModelNames, config.readModelQueueUrls),
+    publishToAggregates: resolve(ext.aggregateNames, names.publishToAggregates),
+    publishToReadModels: resolve(ext.readModelNames, names.readModelQueueUrls),
     readModelNamesForSourceName: Object.fromEntries([[
         ext.extensionPointName,
         Stdlib_Option.getOr(config.readModelNamesForSourceName[ext.extensionPointName], [])
@@ -526,6 +523,19 @@ function loadPluginDefinition() {
   } catch (raw_exn) {
     let exn = Primitive_exceptions.internalToException(raw_exn);
     return Stdlib_JsError.throwWithMessage("Failed to load pluginDefinition.json from asset zip: " + exnMessage(exn));
+  }
+}
+
+function loadQueueUrlNames() {
+  try {
+    let obj = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(JSON.parse(Nodefs.readFileSync(assetPath("queueUrls.json"), "utf8"))), {});
+    return {
+      publishToAggregates: strDictOf(obj, "publishToAggregates"),
+      readModelQueueUrls: strDictOf(obj, "readModelQueueUrls")
+    };
+  } catch (raw_exn) {
+    let exn = Primitive_exceptions.internalToException(raw_exn);
+    return Stdlib_JsError.throwWithMessage("Failed to load queueUrls.json from asset zip: " + exnMessage(exn));
   }
 }
 
@@ -649,6 +659,7 @@ export {
   warnSkippedExtension,
   assetPath,
   loadPluginDefinition,
+  loadQueueUrlNames,
   loadUiFragments,
   pushHandler,
   makeSqsHandlerBundle,

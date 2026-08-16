@@ -11,6 +11,7 @@ import * as DcbBackend$ReventlessAws from "../DcbEventLog/DcbBackend.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as PgConnection$ReventlessAws from "../Postgres/PgConnection.res.mjs";
+import * as Util_LambdaEnvBudget$ReventlessAws from "../../util/Util_LambdaEnvBudget.res.mjs";
 import * as CommandTopicChannel_SQS$ReventlessAws from "../CommandTopic/CommandTopicChannel_SQS.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 
@@ -79,7 +80,9 @@ function forDcbCommandTopic(slicePaths, inboundSlicesOpt, dcbTableName, pluginNa
     inboundFragment
   ]).apply(param => {
     let pluginNameJson = Stdlib_Option.getOr(JSON.stringify(pluginName), `""`);
-    return `{"dcbEventLogTableName":"` + param[0] + `","queueUrl":"` + param[1] + `","pluginName":` + pluginNameJson + param[2] + param[3] + `}`;
+    let json = `{"dcbEventLogTableName":"` + param[0] + `","queueUrl":"` + param[1] + `","pluginName":` + pluginNameJson + param[2] + param[3] + `}`;
+    Util_LambdaEnvBudget$ReventlessAws.check(name, json, undefined);
+    return json;
   });
   envVars["HANDLER_CONFIG"] = handlerConfigJson;
   let packageDirs = {};

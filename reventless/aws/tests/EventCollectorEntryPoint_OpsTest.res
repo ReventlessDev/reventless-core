@@ -107,7 +107,6 @@ let minimalConfig = (extras: array<(string, JSON.t)>): string =>
       ("schedulerQueueName", str("")),
       ("extensionPoints", JSON.Encode.array([])),
       ("extensions", JSON.Encode.array([])),
-      ("publishToAggregates", obj([])),
     ],
     extras,
   )
@@ -139,7 +138,6 @@ describe("EventCollectorEntryPoint_Ops.parseHandlerConfig", () => {
     let c = EventCollectorEntryPoint_Ops.parseHandlerConfig(minimalConfig([]))
     expect(c.queueUrl)->toBe("q-url")
     expect(c.connectExtension->Option.isNone)->toBe(true) // absent → None
-    expect(c.readModelQueueUrls->Dict.keysToArray->Array.length)->toBe(0)
     expect(c.readModelNamesForSourceName->Dict.keysToArray->Array.length)->toBe(0)
   })
 
@@ -198,7 +196,6 @@ describe("EventCollectorEntryPoint_Ops.parseHandlerConfig", () => {
             ]),
           ]),
         ),
-        ("publishToAggregates", obj([("Plugin", str("PTA_Plugin_QUEUE_URL"))])),
         (
           "readModelNamesForSourceName",
           obj([("Ordering.Orders", JSON.Encode.array([str("ProductDemands")]))]),
@@ -208,9 +205,21 @@ describe("EventCollectorEntryPoint_Ops.parseHandlerConfig", () => {
     let ep = c.extensionPoints->Array.getUnsafe(0)
     expect(ep.eventTopicArn)->toBe("arn:ep")
     expect(ep.aggregateNames)->toEqual(["Plugin"])
-    expect(c.publishToAggregates->Dict.get("Plugin"))->toEqual(Some("PTA_Plugin_QUEUE_URL"))
     expect(c.readModelNamesForSourceName->Dict.get("Ordering.Orders"))->toEqual(
       Some(["ProductDemands"]),
     )
+  })
+
+  // The target→env-var maps left HANDLER_CONFIG for queueUrls.json, so a config
+  // still carrying them must parse rather than trip the required-field check —
+  // that is what a Lambda running an older archive sends.
+  testSync("ignores publishToAggregates left over in HANDLER_CONFIG", () => {
+    let c = EventCollectorEntryPoint_Ops.parseHandlerConfig(
+      minimalConfig([
+        ("publishToAggregates", obj([("Plugin", str("PTA_Plugin_QUEUE_URL"))])),
+        ("readModelQueueUrls", obj([("ProductDemands", str("PRM_ProductDemands_QUEUE_URL"))])),
+      ]),
+    )
+    expect(c.queueUrl)->toBe("q-url")
   })
 })
