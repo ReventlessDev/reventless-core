@@ -178,6 +178,90 @@ let structure = Plugin_Structure.make(
   ],
 )
 
+describe("lifecycle topology", () => {
+  let ordersStates = Dict.fromArray([("Orders", ["Placed", "Shipped", "Cancelled"])])
+  let writableWith = (commands): Reventless.Plugin.writableDef => {
+    name: "Ordering",
+    commands,
+    producedEventTypes: [],
+    consumedEventTypes: [],
+    linkedViews: ["Orders"],
+    consistencyRead: None,
+    events: [],
+    errors: [],
+    chapter: None,
+  }
+  let command = (~name, ~allowedStates=?, ~targetState=?, ()): Reventless.Plugin.commandDef => {
+    name,
+    schema: "",
+    level: Instance,
+    aggregateIdField: None,
+    mutationField: "",
+    references: [],
+    allowedStates,
+    targetState,
+    apiExposed: None,
+    requiredAccess: None,
+    ownerField: None,
+  }
+
+  testSync("names a state no command can reach", () => {
+    // `Cancelled` is in the enum and nothing declares an edge into it.
+    let findings = Plugin_Structure.lifecycleTopologyFindings(
+      ~writables=[
+        writableWith([command(~name="Ship", ~allowedStates=["Placed"], ~targetState="Shipped", ())]),
+      ],
+      ~lifecycleStatesByView=ordersStates,
+    )
+    expect(findings->Array.map(((_, m)) => m->String.includes("Cancelled")))->toEqual([true])
+  })
+
+  testSync("says nothing when every state is reachable", () => {
+    let findings = Plugin_Structure.lifecycleTopologyFindings(
+      ~writables=[
+        writableWith([
+          command(~name="Ship", ~allowedStates=["Placed"], ~targetState="Shipped", ()),
+          command(~name="Cancel", ~allowedStates=["Placed"], ~targetState="Cancelled", ()),
+        ]),
+      ],
+      ~lifecycleStatesByView=ordersStates,
+    )
+    expect(findings->Array.length)->toBe(0)
+  })
+
+  // The first declared state is where rows begin, so nothing pointing at it is
+  // expected rather than suspicious.
+  testSync("does not call the initial state unreachable", () => {
+    let findings = Plugin_Structure.lifecycleTopologyFindings(
+      ~writables=[
+        writableWith([
+          command(~name="Ship", ~allowedStates=["Placed"], ~targetState="Shipped", ()),
+          command(~name="Cancel", ~allowedStates=["Placed"], ~targetState="Cancelled", ()),
+        ]),
+      ],
+      ~lifecycleStatesByView=ordersStates,
+    )
+    expect(findings->Array.map(((_, m)) => m->String.includes("Placed")))->toEqual([])
+  })
+
+  // A terminal state is not a finding. `Shipped` and `Refunded` have no way out
+  // in the shipped aggregates example, and both are correct — which is why the
+  // "dead end" rule this pass was going to carry was dropped rather than
+  // silenced. See the comment in Plugin_Structure.
+  testSync("does not report a state with no way out", () => {
+    let findings = Plugin_Structure.lifecycleTopologyFindings(
+      ~writables=[
+        writableWith([
+          command(~name="Ship", ~allowedStates=["Placed"], ~targetState="Shipped", ()),
+          command(~name="Cancel", ~allowedStates=["Placed"], ~targetState="Cancelled", ()),
+        ]),
+      ],
+      ~lifecycleStatesByView=ordersStates,
+    )
+    expect(findings->Array.length)->toBe(0)
+  })
+})
+
 describe("@transition cross-check", () => {
   // The exit criterion: a state no linked view declares stops the build, and the
   // message says which command, which state, and what it was checked against.

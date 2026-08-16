@@ -477,12 +477,46 @@ graph makes sense:
 Sequenced after §4 on purpose: run against a partially-annotated example it
 would cry wolf on every entity.
 
-This phase ships the **gate** — the deploy-time refusal — in this repo, so a
-plugin built from this framework cannot deploy a broken topology whatever
-tooling its author uses. Presenting these findings in an editor is a separate
-concern and not this repo's.
+**BUILT 2026-08-16, and one of its two rules was removed on contact with the
+examples.**
 
-**Exit.** Clean on all three examples.
+**Unreachable states — kept.** A state in the enum that no command declares a
+transition into, other than the first (where rows begin), is reported.
+`lifecycleTopologyFindings` is pure and returns its findings; the reporting
+wrapper logs them.
+
+**Dead ends — written, run, removed.** The rule as planned was "a state nothing
+can leave, and not marked `@retired`". It is wrong twice:
+
+- It fires on correct models. `Shipped` and `Refunded` are terminal in the
+  aggregates shop, as terminal states are in most lifecycles, and there is
+  nothing to fix about either. Both were reported when the rule first ran.
+- **Its suggested fix is harmful.** `@retired` does not mean "terminal" — it
+  means *withdrawn from ordinary reads*. Marking a shipped order retired to
+  silence a lint would hide every shipped order from every caller who cannot
+  widen their read. An ending and a withdrawal are different facts, and nothing
+  in the vocabulary distinguishes an intentional terminal from an accidental
+  one, so the check cannot tell them apart and should not pretend to.
+
+The rule is gone, with the reasoning recorded at the site so it is not
+reintroduced. If terminal-state modelling is worth checking, it needs a way to
+*declare* an ending first — which is a vocabulary question, not a lint one.
+
+**Reported, not raised** — unlike §3. A state name that does not exist is
+unambiguously a mistake; an unreachable state may be reached by a route this
+metadata cannot see (an automation, an external system). Failing a deploy on
+that would be the wrong trade, and a smell that stops a deploy gets silenced
+rather than fixed.
+
+**Not built: event-consumption completeness.** The §1.6 generalisation — warning
+when a slice folds a lifecycle-moving event its siblings and the view ignore —
+is still open. It is a different shape of question from either rule here: it
+compares *folds against each other* rather than declarations against an enum,
+and it wants the consumed-event sets that `writableDef` already carries.
+
+**Exit.** Clean on all three examples — reached by deleting the rule that was
+wrong rather than by suppressing what it found. Four unit tests over the pure
+finding function.
 
 ---
 

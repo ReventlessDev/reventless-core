@@ -210,6 +210,51 @@ function checkDeclaredTransitions(pluginName, writables, lifecycleStatesByView) 
   }
 }
 
+function lifecycleTopologyFindings(writables, lifecycleStatesByView) {
+  let findings = [];
+  Object.entries(lifecycleStatesByView).forEach(param => {
+    let states = param[1];
+    let view = param[0];
+    let edges = Stdlib_Array.reduce(writables, [], (acc, w) => {
+      if (w.linkedViews.includes(view)) {
+        return acc.concat(Stdlib_Array.reduce(w.commands, [], (inner, cmd) => {
+          let match = cmd.allowedStates;
+          let match$1 = cmd.targetState;
+          if (match !== undefined && match$1 !== undefined) {
+            return inner.concat(match.map(from => [
+              from,
+              match$1
+            ]));
+          } else {
+            return inner;
+          }
+        }));
+      } else {
+        return acc;
+      }
+    });
+    if (edges.length === 0) {
+      return;
+    }
+    let initial = states[0];
+    let reachable = edges.map(param => param[1]);
+    states.forEach(state => {
+      if (!reachable.includes(state) && Primitive_object.notequal(state, initial)) {
+        findings.push([
+          view,
+          `no command declares a transition INTO "` + state + `" — it is unreachable unless something outside this plugin's declarations puts a row there.`
+        ]);
+        return;
+      }
+    });
+  });
+  return findings;
+}
+
+function checkLifecycleTopology(pluginName, writables, lifecycleStatesByView) {
+  lifecycleTopologyFindings(writables, lifecycleStatesByView).forEach(param => log.warn("Plugin_Structure", undefined, pluginName + `/` + param[0] + `: ` + param[1]));
+}
+
 function labelFieldSourceToString(s) {
   switch (s) {
     case "Annotation" :
@@ -812,6 +857,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     };
   });
   checkDeclaredTransitions(name, stateChangeDefs.concat(aggregateDefs), lifecycleStatesByView);
+  checkLifecycleTopology(name, stateChangeDefs.concat(aggregateDefs), lifecycleStatesByView);
   return {
     readModels: readModelDefs,
     stateViewSlices: stateViewDefs,
@@ -840,6 +886,8 @@ export {
   checkRetiredValue,
   lifecycleStatesFromStateSchema,
   checkDeclaredTransitions,
+  lifecycleTopologyFindings,
+  checkLifecycleTopology,
   labelFieldSourceToString,
   labelFieldsFromStateSchema,
   extractReferences,

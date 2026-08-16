@@ -281,6 +281,96 @@ let checkDeclaredTransitions = (
   }
 }
 
+// Beyond "does this state exist" — does the declared graph make sense?
+//
+// A separate pass from the name check on purpose. That one asks whether a name
+// is a case of an enum, which is a question about one annotation in isolation.
+// These ask whether the annotations AGREE with each other across an entity, and
+// a graph can be built entirely out of valid names and still be wrong: a state
+// nothing reaches, or one nothing can leave that was never marked as an ending.
+//
+// Reported as warnings rather than raised. The name check fails a build because
+// a state that does not exist is unambiguously a mistake — there is no domain in
+// which it is what the author meant. These are weaker signals: a state with no
+// way out may be a genuine dead end nobody has marked yet, or a legitimate
+// terminal the model reaches by a route this metadata cannot see (an automation,
+// an external system). Failing a deploy on a modelling smell would be the wrong
+// trade, and a smell that stops a deploy gets silenced rather than fixed.
+// Pure, and returns its findings rather than logging them, so the rule can be
+// tested without reading a log. `checkLifecycleTopology` below is the thin part
+// that reports them.
+let lifecycleTopologyFindings = (
+  ~writables: array<Reventless.Plugin.writableDef>,
+  ~lifecycleStatesByView: dict<array<string>>,
+): array<(string, string)> => {
+  let findings = []
+  lifecycleStatesByView
+  ->Dict.toArray
+  ->Array.forEach(((view, states)) => {
+    // Every edge any command declares into or out of this view's lifecycle.
+    let edges = writables->Array.reduce([], (acc, w) =>
+      w.linkedViews->Array.includes(view)
+        ? Array.concat(
+            acc,
+            w.commands->Array.reduce([], (inner, cmd) =>
+              switch (cmd.allowedStates, cmd.targetState) {
+              | (Some(froms), Some(to)) =>
+                Array.concat(inner, froms->Array.map(from => (from, to)))
+              | _ => inner
+              }
+            ),
+          )
+        : acc
+    )
+    if Array.length(edges) > 0 {
+      // Rows start in the first declared state — the same convention the
+      // lifecycle diagram uses — so nothing pointing at it is expected rather
+      // than suspicious.
+      let initial = states->Array.get(0)
+      let reachable = edges->Array.map(((_, to)) => to)
+
+      states->Array.forEach(state => {
+        if !(reachable->Array.includes(state)) && Some(state) != initial {
+          findings
+          ->Array.push((
+            view,
+            `no command declares a transition INTO "${state}" — it is unreachable ` ++
+            `unless something outside this plugin's declarations puts a row there.`,
+          ))
+          ->ignore
+        }
+        // NOT checked: a state with no way out.
+        //
+        // The obvious second rule — "a dead end that is not `@retired` is
+        // suspicious" — was written, run against the shipped examples, and
+        // removed, because it is wrong twice over.
+        //
+        // It fires on correct models: `Shipped` and `Refunded` are terminal in
+        // the aggregates shop, as terminal states are in most lifecycles, and
+        // there is nothing to fix about either.
+        //
+        // Worse, its suggested fix is harmful. `@retired` does not mean
+        // "terminal" — it means WITHDRAWN FROM ORDINARY READS. Marking a shipped
+        // order retired to silence a lint would hide every shipped order from
+        // every caller who cannot widen their read. An ending and a withdrawal
+        // are different facts, and nothing in the vocabulary currently
+        // distinguishes an intentional terminal from an accidental one, so the
+        // check cannot tell them apart and should not pretend to.
+      })
+    }
+  })
+  findings
+}
+
+let checkLifecycleTopology = (
+  ~pluginName: string,
+  ~writables: array<Reventless.Plugin.writableDef>,
+  ~lifecycleStatesByView: dict<array<string>>,
+): unit =>
+  lifecycleTopologyFindings(~writables, ~lifecycleStatesByView)->Array.forEach(((view, message)) =>
+    log.warn(~comp="Plugin_Structure", `${pluginName}/${view}: ${message}`)
+  )
+
 // Which rung of the ladder below produced the label. Published on `queryableDef`
 // as `labelFieldSource`, because the four rungs are not equally believable and a
 // consumer with a name rule of its own has to rank the declaration against it:
@@ -944,12 +1034,13 @@ let make = (
   // View name -> the states its lifecycle field can hold, collected as the view
   // defs are built so the transition check below has both sides in one place.
   let lifecycleStatesByView: dict<array<string>> = Dict.make()
-  let recordLifecycle = (~entityName, stateSchema) =>
+  let recordLifecycle = (~entityName, stateSchema) => {
     switch lifecycleStatesFromStateSchema(~entityName, stateSchema) {
     | Some(states) if Array.length(states) > 0 =>
       lifecycleStatesByView->Dict.set(entityName, states)
     | _ => ()
     }
+  }
 
   let readModelDefs =
     readModels
@@ -1184,6 +1275,11 @@ let make = (
   // Second pass, on purpose: commands are built well before `linkedViews` is
   // assembled, so the check cannot run inline where the defs are made.
   checkDeclaredTransitions(
+    ~pluginName=name,
+    ~writables=Array.concat(stateChangeDefs, aggregateDefs),
+    ~lifecycleStatesByView,
+  )
+  checkLifecycleTopology(
     ~pluginName=name,
     ~writables=Array.concat(stateChangeDefs, aggregateDefs),
     ~lifecycleStatesByView,
