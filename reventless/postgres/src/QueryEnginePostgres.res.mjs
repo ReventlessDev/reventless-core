@@ -171,9 +171,19 @@ function Make(P) {
   let jsonTextC = field => col(field) + ` COLLATE "C"`;
   let notRetiredC = scope => {
     let key = scope.field.replaceAll("'", "''");
-    let state = scope.value;
-    let retired = state !== undefined ? `'"` + state.replaceAll("'", "''") + `"'::jsonb` : "'true'::jsonb";
-    return `(item->'` + key + `') IS DISTINCT FROM ` + retired;
+    let states = scope.values;
+    if (states !== undefined) {
+      if (states.length !== 0) {
+        return "(" + states.map(state => {
+          let lit = `'"` + state.replaceAll("'", "''") + `"'::jsonb`;
+          return `(item->'` + key + `') IS DISTINCT FROM ` + lit;
+        }).join(" AND ") + ")";
+      } else {
+        return "TRUE";
+      }
+    } else {
+      return `(item->'` + key + `') IS DISTINCT FROM ` + "'true'::jsonb";
+    }
   };
   let listPage = async (readModelName, argsDict, capability, param$1, ownerScope, retiredScope) => {
     let table = QueryDbStorage_Postgres_Ops$ReventlessPostgres.tableName(readModelName);

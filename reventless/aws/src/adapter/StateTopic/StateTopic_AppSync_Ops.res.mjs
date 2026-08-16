@@ -32,7 +32,7 @@ if (d !== undefined) {
   let out = {};
   Stdlib_Dict.forEachWithKey(d, (v, k) => Stdlib_Option.forEach(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(v), o => Stdlib_Option.map(Stdlib_Option.flatMap(o["field"], Stdlib_JSON.Decode.string), field => ({
     field: field,
-    value: Stdlib_Option.flatMap(o["value"], Stdlib_JSON.Decode.string)
+    values: Stdlib_Option.map(Stdlib_Option.flatMap(o["values"], Stdlib_JSON.Decode.array), vs => Stdlib_Array.filterMap(vs, Stdlib_JSON.Decode.string))
   }))), scope => {
     out[k] = scope;
   }));
@@ -118,11 +118,11 @@ function pickSortKeyValue(image) {
   }
 }
 
-function makeDescriptor(changeKind, entityKey, image, seq, retiredField, retiredValue) {
+function makeDescriptor(changeKind, entityKey, image, seq, retiredField, retiredValues) {
   let removed = changeKind === "Removed";
   let retired = retiredField !== undefined ? !removed && OwnerScope$Reventless.isRetiredValue({
       field: retiredField,
-      value: retiredValue
+      values: retiredValues
     }, image[retiredField]) : false;
   let descriptor = {};
   descriptor["changeKind"] = changeKind;
@@ -160,7 +160,7 @@ async function processRecord(record, region, creds) {
     let entityKey = entityKeyFromRecord(dynamodb);
     let channel = `/default/` + topicRoot + `/` + AppSyncEventsSigner_Ops$ReventlessAws.pathSegment(entityKey);
     let unmarshalled = DynamoDb_Util_Helpers$AwsSdk.unmarshallDict(undefined, image);
-    let descriptor = makeDescriptor(changeKindFor(record.eventName), entityKey, unmarshalled, dynamodb.SequenceNumber, Stdlib_Option.map(Stdlib_Option.flatMap(tableNameFromEventSourceArn(record.eventSourceARN), t => retiredMap[t]), scope => scope.field), Stdlib_Option.flatMap(Stdlib_Option.flatMap(tableNameFromEventSourceArn(record.eventSourceARN), t => retiredMap[t]), scope => scope.value));
+    let descriptor = makeDescriptor(changeKindFor(record.eventName), entityKey, unmarshalled, dynamodb.SequenceNumber, Stdlib_Option.map(Stdlib_Option.flatMap(tableNameFromEventSourceArn(record.eventSourceARN), t => retiredMap[t]), scope => scope.field), Stdlib_Option.flatMap(Stdlib_Option.flatMap(tableNameFromEventSourceArn(record.eventSourceARN), t => retiredMap[t]), scope => scope.values));
     let body = JSON.stringify(Object.fromEntries([
       [
         "id",

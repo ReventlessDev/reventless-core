@@ -39,10 +39,13 @@ type locationStatus =
 //
 // The alternative — an `accountStatus` enum AND a `deactivated: bool` — is the
 // same fact twice, with nothing keeping the two in step.
+// `@retired` sits on the state that withdraws the row. A deactivated customer is
+// withdrawn from ordinary use rather than deleted: their orders still reference
+// them, and an operator still needs to find them.
 @schema
 type accountStatus =
   | Active
-  | Deactivated
+  | @retired Deactivated
 
 // A read model states its own key. Without `customerId` the only identifier on a
 // row is the Relay global `id`, which resolves the row through `node` but cannot
@@ -61,14 +64,12 @@ type state = {
   // otherwise; hidden from list views because it is only meaningful on a row a
   // human is already looking into.
   @hidden locationNote: option<string>,
-  // A deactivated customer is withdrawn from ordinary use rather than deleted:
-  // their orders still reference them, and an operator still needs to find them.
-  // `@retired(Deactivated)` is what makes the platform say so — ordinary reads
-  // exclude these rows — and `@lifecycle` is what makes the same field the one a
-  // command's `@allowedStates` is written in terms of.
+  // `@lifecycle` makes this the field a command's `@allowedStates` is written in
+  // terms of; the retirement is on `accountStatus`'s own constructor, so ordinary
+  // reads exclude a deactivated customer with no second annotation here.
   //
   // Annotated rather than named `lifecycle`: the field is honestly called
   // `accountStatus`, which is what the annotation rung exists for.
-  @retired(Deactivated) @lifecycle accountStatus: accountStatus,
+  @lifecycle accountStatus: accountStatus,
   orderCount: int,
 }

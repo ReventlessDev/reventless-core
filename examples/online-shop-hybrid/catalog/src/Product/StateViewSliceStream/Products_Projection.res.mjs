@@ -15,7 +15,8 @@ function project(param) {
             description: event.description,
             price: event.price,
             imageUrl: event.imageUrl,
-            categoryId: event.categoryId
+            categoryId: event.categoryId,
+            shelfStatus: "Listed"
           }
         }];
     case "ProductNameChanged" :
@@ -59,6 +60,36 @@ function project(param) {
           _1: state => {
             let newrecord = {...state};
             newrecord.imageUrl = imageUrl;
+            return newrecord;
+          }
+        }];
+    case "ProductArchived" :
+      return [{
+          TAG: "Update",
+          _0: event.productId,
+          _1: state => {
+            let newrecord = {...state};
+            newrecord.shelfStatus = "Archived";
+            return newrecord;
+          }
+        }];
+    case "ProductUnarchived" :
+      return [{
+          TAG: "Update",
+          _0: event.productId,
+          _1: state => {
+            let newrecord = {...state};
+            newrecord.shelfStatus = "Listed";
+            return newrecord;
+          }
+        }];
+    case "ProductDiscontinued" :
+      return [{
+          TAG: "Update",
+          _0: event.productId,
+          _1: state => {
+            let newrecord = {...state};
+            newrecord.shelfStatus = "Discontinued";
             return newrecord;
           }
         }];

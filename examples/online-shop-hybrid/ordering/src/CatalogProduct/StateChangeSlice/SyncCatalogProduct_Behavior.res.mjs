@@ -3,55 +3,114 @@
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 
 function evolve(state, event) {
-  if (event.TAG === "CatalogProductSynced") {
+  if (typeof event !== "object") {
+    if (event === "CatalogProductWithdrawn") {
+      return {
+        name: state.name,
+        price: state.price,
+        withdrawn: true
+      };
+    } else {
+      return {
+        name: state.name,
+        price: state.price,
+        withdrawn: false
+      };
+    }
+  } else if (event.TAG === "CatalogProductSynced") {
     return {
       name: event.name,
-      price: event.price
+      price: event.price,
+      withdrawn: false
     };
   } else {
     return {
       name: state.name,
-      price: event.price
+      price: event.price,
+      withdrawn: state.withdrawn
     };
   }
 }
 
 function decide(state, command) {
-  if (command.TAG === "SyncNewProduct") {
-    let price = command.price;
-    let name = command.name;
-    if (state.name === name && Primitive_object.equal(state.price, price)) {
-      return {
-        TAG: "Ok",
-        _0: []
-      };
-    } else {
-      return {
-        TAG: "Ok",
-        _0: [{
-            TAG: "CatalogProductSynced",
-            productId: command.productId,
-            name: name,
-            price: price
-          }]
-      };
-    }
-  }
-  let price$1 = command.price;
-  if (Primitive_object.equal(state.price, price$1)) {
-    return {
-      TAG: "Ok",
-      _0: []
-    };
-  } else {
-    return {
-      TAG: "Ok",
-      _0: [{
-          TAG: "CatalogProductPriceChanged",
-          productId: command.productId,
-          price: price$1
-        }]
-    };
+  switch (command.TAG) {
+    case "SyncNewProduct" :
+      let price = command.price;
+      let name = command.name;
+      if (state.name === name && Primitive_object.equal(state.price, price) && !state.withdrawn) {
+        return {
+          TAG: "Ok",
+          _0: []
+        };
+      } else {
+        return {
+          TAG: "Ok",
+          _0: [{
+              TAG: "CatalogProductSynced",
+              productId: command.productId,
+              name: name,
+              price: price
+            }]
+        };
+      }
+    case "ChangeSyncedPrice" :
+      let price$1 = command.price;
+      if (Primitive_object.equal(state.price, price$1)) {
+        return {
+          TAG: "Ok",
+          _0: []
+        };
+      } else {
+        return {
+          TAG: "Ok",
+          _0: [{
+              TAG: "CatalogProductPriceChanged",
+              productId: command.productId,
+              price: price$1
+            }]
+        };
+      }
+    case "WithdrawSyncedProduct" :
+      if (state.withdrawn) {
+        return {
+          TAG: "Ok",
+          _0: []
+        };
+      } else {
+        return {
+          TAG: "Ok",
+          _0: [{
+              TAG: "CatalogProductWithdrawn",
+              productId: command.productId
+            }]
+        };
+      }
+    case "RelistSyncedProduct" :
+      let match = state.withdrawn;
+      let match$1 = state.price;
+      if (match) {
+        if (match$1 !== undefined) {
+          return {
+            TAG: "Ok",
+            _0: [{
+                TAG: "CatalogProductRelisted",
+                productId: command.productId,
+                name: state.name,
+                price: match$1
+              }]
+          };
+        } else {
+          return {
+            TAG: "Ok",
+            _0: []
+          };
+        }
+      } else {
+        return {
+          TAG: "Ok",
+          _0: []
+        };
+      }
   }
 }
 
@@ -59,7 +118,8 @@ let Spec;
 
 let initialState = {
   name: "",
-  price: undefined
+  price: undefined,
+  withdrawn: false
 };
 
 let moduleUrl = "@reventlessdev/online-shop-hybrid-ordering/src/CatalogProduct/StateChangeSlice/SyncCatalogProduct_Behavior.res.mjs";

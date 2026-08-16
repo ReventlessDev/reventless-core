@@ -3,27 +3,36 @@
 
 function project(param) {
   let event = param.event;
-  if (event.TAG === "CatalogProductSynced") {
-    let productId = event.productId;
-    return [{
-        TAG: "Set",
-        _0: productId,
-        _1: {
-          productId: productId,
-          name: event.name,
-          price: event.price
-        }
-      }];
+  switch (event.TAG) {
+    case "CatalogProductPriceChanged" :
+      let price = event.price;
+      return [{
+          TAG: "Update",
+          _0: event.productId,
+          _1: p => ({
+            productId: p.productId,
+            name: p.name,
+            price: price
+          })
+        }];
+    case "CatalogProductWithdrawn" :
+      return [{
+          TAG: "Delete",
+          _0: event.productId
+        }];
+    case "CatalogProductSynced" :
+    case "CatalogProductRelisted" :
+      break;
   }
-  let price = event.price;
+  let productId = event.productId;
   return [{
-      TAG: "Update",
-      _0: event.productId,
-      _1: p => ({
-        productId: p.productId,
-        name: p.name,
-        price: price
-      })
+      TAG: "Set",
+      _0: productId,
+      _1: {
+        productId: productId,
+        name: event.name,
+        price: event.price
+      }
     }];
 }
 

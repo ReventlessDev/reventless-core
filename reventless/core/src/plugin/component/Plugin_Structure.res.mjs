@@ -97,8 +97,8 @@ function retiredFieldFromStateSchema(stateSchema) {
   return Stdlib_Option.map(retiredFromStateSchema(stateSchema), r => r.field);
 }
 
-function retiredValueFromStateSchema(stateSchema) {
-  return Stdlib_Option.flatMap(retiredFromStateSchema(stateSchema), r => r.value);
+function retiredValuesFromStateSchema(stateSchema) {
+  return Stdlib_Option.flatMap(retiredFromStateSchema(stateSchema), r => r.values);
 }
 
 function checkRetiredValue(entityName, stateSchema) {
@@ -106,14 +106,15 @@ function checkRetiredValue(entityName, stateSchema) {
   if (match === undefined) {
     return;
   }
-  let value = match.value;
-  if (value === undefined) {
+  let values = match.values;
+  if (values === undefined) {
     return;
   }
   let field = match.field;
+  let named = values.join(", ");
   let lifecycle = lifecycleFieldFromStateSchema(entityName, stateSchema);
   if (Primitive_object.notequal(lifecycle, field)) {
-    log.warn("Plugin_Structure", undefined, entityName + `: @retired(` + value + `) is on "` + field + `", which is not this record's lifecycle field` + Stdlib_Option.getOr(Stdlib_Option.map(lifecycle, f => ` (that is "` + f + `")`), " (it declares none)") + `. A retirement state no command's @allowedStates can name loses the command filtering the state form exists for.`);
+    log.warn("Plugin_Structure", undefined, entityName + `: @retired(` + named + `) is on "` + field + `", which is not this record's lifecycle field` + Stdlib_Option.getOr(Stdlib_Option.map(lifecycle, f => ` (that is "` + f + `")`), " (it declares none)") + `. A retirement state no command's @allowedStates can name loses the command filtering the state form exists for.`);
   }
   let declared;
   declared = stateSchema.type === "object" ? Stdlib_Option.getOr(Stdlib_Option.map(stateSchema.items.find(item => item.location === field), item => {
@@ -137,8 +138,9 @@ function checkRetiredValue(entityName, stateSchema) {
           return [];
       }
     }), []) : [];
-  if (declared.length !== 0 && !declared.includes(value)) {
-    return log.warn("Plugin_Structure", undefined, entityName + `: @retired(` + value + `) names a state "` + field + `" does not declare — known values: ` + declared.join(", ") + `.`);
+  if (declared.length !== 0) {
+    values.filter(v => !declared.includes(v)).forEach(v => log.warn("Plugin_Structure", undefined, entityName + `: @retired(` + v + `) names a state "` + field + `" does not declare — known values: ` + declared.join(", ") + `.`));
+    return;
   }
 }
 
@@ -604,7 +606,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       lifecycleField: lifecycleFieldFromStateSchema(R.Spec.name, stateSchema),
       ownerField: Owner$Reventless.fieldNames(stateSchema)[0],
       retiredField: retiredFieldFromStateSchema(stateSchema),
-      retiredValue: retiredValueFromStateSchema(stateSchema),
+      retiredValues: retiredValuesFromStateSchema(stateSchema),
       visibility: visibilityTag(R.Spec.visibility),
       chapter: componentChapters[R.Spec.name],
       singleQueryField: qf.singleFieldName,
@@ -633,7 +635,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       lifecycleField: lifecycleFieldFromStateSchema(SVS.Spec.name, stateSchema),
       ownerField: Owner$Reventless.fieldNames(stateSchema)[0],
       retiredField: retiredFieldFromStateSchema(stateSchema),
-      retiredValue: retiredValueFromStateSchema(stateSchema),
+      retiredValues: retiredValuesFromStateSchema(stateSchema),
       visibility: visibilityTag(SVS.Spec.visibility),
       chapter: componentChapters[SVS.Spec.name],
       singleQueryField: qf.singleFieldName,
@@ -757,7 +759,7 @@ export {
   lifecycleFieldFromStateSchema,
   retiredFromStateSchema,
   retiredFieldFromStateSchema,
-  retiredValueFromStateSchema,
+  retiredValuesFromStateSchema,
   checkRetiredValue,
   labelFieldSourceToString,
   labelFieldsFromStateSchema,

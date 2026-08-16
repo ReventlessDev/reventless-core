@@ -35,7 +35,25 @@ let consumedEventSchema = S.union([
     TAG: "ProductImageChanged",
     productId: s.m(S.string),
     imageUrl: s.m(S.string)
+  })),
+  S.schema(s => ({
+    TAG: "ProductArchived",
+    productId: s.m(S.string)
+  })),
+  S.schema(s => ({
+    TAG: "ProductUnarchived",
+    productId: s.m(S.string)
+  })),
+  S.schema(s => ({
+    TAG: "ProductDiscontinued",
+    productId: s.m(S.string)
   }))
+]);
+
+let shelfStatusSchema = S.union([
+  S.literal("Listed"),
+  S.literal("Archived"),
+  S.literal("Discontinued")
 ]);
 
 let stateSchema = S.schema(s => ({
@@ -44,7 +62,8 @@ let stateSchema = S.schema(s => ({
   description: s.m(S.string),
   price: s.m(Money$Reventless.schema),
   imageUrl: s.m(S.option(StorageRef$Reventless.forStore(undefined, "productImages"))),
-  categoryId: s.m(S.string)
+  categoryId: s.m(S.string),
+  shelfStatus: s.m(shelfStatusSchema)
 }));
 
 let config = ReadModel$Reventless.config(undefined, undefined, [{
@@ -71,11 +90,19 @@ let stateSchema$1 = S.Metadata.set(stateSchema, StateAnnotations$Reventless.stat
   scanSort: [],
   semantic: [],
   metric: [],
-  lifecycle: undefined,
+  lifecycle: "shelfStatus",
   groupBy: undefined,
   visibility: undefined,
   live: undefined,
-  retired: undefined
+  retired: {
+    field: "shelfStatus",
+    label: "",
+    showWhenFalse: false,
+    values: [
+      "Archived",
+      "Discontinued"
+    ]
+  }
 });
 
 let name = "Products";
@@ -94,6 +121,7 @@ export {
   name,
   Id,
   consumedEventSchema,
+  shelfStatusSchema,
   config,
   subIdConfig,
   stateSchema$1 as stateSchema,

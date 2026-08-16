@@ -20,7 +20,7 @@ import * as StateTopic_AppSync_Helpers$ReventlessAws from "./StateTopic_AppSync_
 
 let registry = {};
 
-function makeForTable(tableName, streamArn, partitionKeyName, topicName, retiredField, retiredValue, eventsApi, param) {
+function makeForTable(tableName, streamArn, partitionKeyName, topicName, retiredField, retiredValues, eventsApi, param) {
   let checkedTableName = Pulumi.all([
     tableName,
     partitionKeyName
@@ -36,13 +36,13 @@ function makeForTable(tableName, streamArn, partitionKeyName, topicName, retired
       streamArn: streamArn,
       topicName: topicName,
       retiredField: retiredField,
-      retiredValue: retiredValue
+      retiredValues: retiredValues
     }]);
 }
 
 function make(readModelName, topicName, allQueryDbs, eventsApi, opts) {
   let streamResource = Util_DynamoDbStream$ReventlessAws.findResource(Util_ReadModel$ReventlessCore.queryDbStorageResources(allQueryDbs, readModelName));
-  makeForTable(streamResource.name, Util_DynamoDbStream$ReventlessAws.streamArnFromDynamoDbTableResource(streamResource), Pulumi.output(StateTopic_AppSync_Helpers$ReventlessAws.entityKeyPartitionAttribute), topicName, Stdlib_Option.map(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Plugin_Helpers$ReventlessCore.stateSchemaRegistry[readModelName], StateAnnotations$Reventless.getSpec), spec => spec.retired), r => r.field), Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Plugin_Helpers$ReventlessCore.stateSchemaRegistry[readModelName], StateAnnotations$Reventless.getSpec), spec => spec.retired), r => r.value), eventsApi, opts);
+  makeForTable(streamResource.name, Util_DynamoDbStream$ReventlessAws.streamArnFromDynamoDbTableResource(streamResource), Pulumi.output(StateTopic_AppSync_Helpers$ReventlessAws.entityKeyPartitionAttribute), topicName, Stdlib_Option.map(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Plugin_Helpers$ReventlessCore.stateSchemaRegistry[readModelName], StateAnnotations$Reventless.getSpec), spec => spec.retired), r => r.field), Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Plugin_Helpers$ReventlessCore.stateSchemaRegistry[readModelName], StateAnnotations$Reventless.getSpec), spec => spec.retired), r => r.values), eventsApi, opts);
 }
 
 function finish(eventsApi, opts) {
@@ -107,8 +107,8 @@ function finish(eventsApi, opts) {
             "field",
             f
           ]]);
-        Stdlib_Option.forEach(entry.retiredValue, v => {
-          obj["value"] = v;
+        Stdlib_Option.forEach(entry.retiredValues, vs => {
+          obj["values"] = vs.map(prim => prim);
         });
         dict[tableName] = obj;
       });

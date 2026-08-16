@@ -132,6 +132,26 @@ function archiveCategory(command) {
     ]]);
 }
 
+function archiveProduct(command) {
+  return Seed$ReventlessSeed.mutation(`Catalog_` + "ArchiveProduct", [[
+      "productId",
+      {
+        TAG: "Id",
+        _0: command.productId
+      }
+    ]]);
+}
+
+function discontinueProduct(command) {
+  return Seed$ReventlessSeed.mutation(`Catalog_` + "DiscontinueProduct", [[
+      "productId",
+      {
+        TAG: "Id",
+        _0: command.productId
+      }
+    ]]);
+}
+
 function addProduct(command) {
   let imageUrl = command.imageUrl;
   let base = [
@@ -473,6 +493,8 @@ export {
   changeCategoryImage,
   renameCategory,
   archiveCategory,
+  archiveProduct,
+  discontinueProduct,
   addProduct,
   changeProductPrice,
   changeProductDescription,

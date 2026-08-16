@@ -3,25 +3,42 @@
 import * as SyncCatalogProduct$OrderingPlugin from "../CatalogProduct/StateChangeSlice/SyncCatalogProduct.res.mjs";
 
 function mapIncomingEvent(_id, event, _meta, _pluginDef, _queryEngine) {
-  if (event.TAG === "ProductBecameAvailable") {
-    return [{
-        TAG: "PublishStateChangeSliceCommand",
-        _0: {
-          TAG: "SyncNewProduct",
-          productId: event.productId,
-          name: event.name,
-          price: event.price
-        }
-      }];
-  } else {
-    return [{
-        TAG: "PublishStateChangeSliceCommand",
-        _0: {
-          TAG: "ChangeSyncedPrice",
-          productId: event.productId,
-          price: event.price
-        }
-      }];
+  switch (event.TAG) {
+    case "ProductBecameAvailable" :
+      return [{
+          TAG: "PublishStateChangeSliceCommand",
+          _0: {
+            TAG: "SyncNewProduct",
+            productId: event.productId,
+            name: event.name,
+            price: event.price
+          }
+        }];
+    case "ProductPriceChanged" :
+      return [{
+          TAG: "PublishStateChangeSliceCommand",
+          _0: {
+            TAG: "ChangeSyncedPrice",
+            productId: event.productId,
+            price: event.price
+          }
+        }];
+    case "ProductWithdrawn" :
+      return [{
+          TAG: "PublishStateChangeSliceCommand",
+          _0: {
+            TAG: "WithdrawSyncedProduct",
+            productId: event.productId
+          }
+        }];
+    case "ProductRelisted" :
+      return [{
+          TAG: "PublishStateChangeSliceCommand",
+          _0: {
+            TAG: "RelistSyncedProduct",
+            productId: event.productId
+          }
+        }];
   }
 }
 

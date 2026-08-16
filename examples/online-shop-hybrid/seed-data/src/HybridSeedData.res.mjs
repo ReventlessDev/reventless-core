@@ -84,7 +84,8 @@ async function uploadProductImages(products, client, store) {
           description: p.description,
           price: p.price,
           imageUrl: servedRef._0,
-          categoryId: p.categoryId
+          categoryId: p.categoryId,
+          shelf: p.shelf
         });
       } else {
         throw {
@@ -296,6 +297,20 @@ async function seedDeactivations(customers, client) {
   return Seed_Runner$ReventlessSeed.report(`customers: ` + targets.length.toString() + ` deactivated`);
 }
 
+async function seedProductRetirements(products, client) {
+  let archived = DemoData$OnlineShopHybridSeed.archivedProducts(products);
+  await Seed_Client$ReventlessSeed.sendAll(client, archived.map(p => DemoCommands$OnlineShopHybridSeed.archiveProduct({
+    TAG: "ArchiveProduct",
+    productId: p.id
+  })));
+  let discontinued = DemoData$OnlineShopHybridSeed.discontinuedProducts(products);
+  await Seed_Client$ReventlessSeed.sendAll(client, discontinued.map(p => DemoCommands$OnlineShopHybridSeed.discontinueProduct({
+    TAG: "DiscontinueProduct",
+    productId: p.id
+  })));
+  return Seed_Runner$ReventlessSeed.report(`catalog retirements: ` + archived.length.toString() + ` archived, ` + discontinued.length.toString() + ` discontinued`);
+}
+
 async function summarise(client, counts) {
   let orders = await Seed_Client$ReventlessSeed.queryAllNodes(client, "Ordering_Orders", "lifecycle shippingMethod");
   let lifecycles = [
@@ -328,8 +343,15 @@ async function summarise(client, counts) {
   let ranked = demand.toSorted((a, b) => Primitive_int.compare(orderCountOf(b), orderCountOf(a)));
   let withDemand = ranked.filter(n => orderCountOf(n) > 0);
   let head = ranked.slice(0, 3).map(n => Stdlib_Option.getOr(Seed_Client$ReventlessSeed.nodeString(n, "name"), "?") + ` (` + orderCountOf(n).toString() + `)`).join(", ");
+  let shelved = await Seed_Client$ReventlessSeed.queryAllNodes(client, "Catalog_Products", "name shelfStatus");
+  let countShelf = state => shelved.filter(p => Primitive_object.equal(Seed_Client$ReventlessSeed.nodeString(p, "shelfStatus"), state)).length;
   Seed_Runner$ReventlessSeed.heading("Seeded:");
   console.log(`  order lifecycle: ` + lifecycles.map(s => s + ` ` + countLifecycle(s).toString()).join(", "));
+  console.log(`  product shelf:   ` + [
+    "Listed",
+    "Archived",
+    "Discontinued"
+  ].map(s => s + ` ` + countShelf(s).toString()).join(", ") + ` (elevated view — a scoped caller sees only the Listed ones)`);
   console.log(`  demand head:   ` + head);
   console.log(`  demand spread: ` + withDemand.length.toString() + `/` + ranked.length.toString() + ` products ordered, tail min ` + Stdlib_Option.mapOr(Stdlib_Array.last(withDemand), 0, orderCountOf).toString());
   console.log("");
@@ -386,6 +408,7 @@ async function run(connection, productCount, customerCount, orderCount) {
   let dispatched = await dispatchStandardBatch(orders, client);
   await seedCancellations(orders, client, dispatched);
   await seedDeactivations(customers, client);
+  await seedProductRetirements(products, client);
   let counts = await Seed_Runner$ReventlessSeed.verifyViews(client, views);
   return await summarise(client, counts);
 }
@@ -422,6 +445,7 @@ export {
   dispatchStandardBatch,
   seedCancellations,
   seedDeactivations,
+  seedProductRetirements,
   summarise,
   run,
   dataSets,

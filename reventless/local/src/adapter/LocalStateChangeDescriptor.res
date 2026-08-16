@@ -87,7 +87,7 @@ let make = (
   ~state: option<JSON.t>,
   ~seq: string,
   ~retiredField: option<string>=?,
-  ~retiredValue: option<string>=?,
+  ~retiredValues: option<array<string>>=?,
 ): JSON.t => {
   let descriptor = Dict.make()
   descriptor->Dict.set("changeKind", JSON.Encode.string(changeKind))
@@ -101,7 +101,7 @@ let make = (
   // nothing here branches on which the view declared.
   let isRetired = switch (retiredField, state) {
   | (Some(field), Some(s)) =>
-    {Reventless.OwnerScope.field, value: retiredValue}->Reventless.OwnerScope.isRetiredValue(
+    {Reventless.OwnerScope.field, values: retiredValues}->Reventless.OwnerScope.isRetiredValue(
       s->JSON.Decode.object->Option.flatMap(d => d->Dict.get(field)),
     )
   | _ => false

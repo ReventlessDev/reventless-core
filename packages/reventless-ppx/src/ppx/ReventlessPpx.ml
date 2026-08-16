@@ -780,6 +780,7 @@ let transform (str : structure) : structure =
                       |> StateAnnotations.strip_lifecycle_attrs
                       |> StateAnnotations.strip_group_by_attrs
                       |> StateAnnotations.strip_retired_attrs
+                      |> StateAnnotations.strip_retired_ctor_attrs
                       |> StateAnnotations.strip_live_attrs
                  else (StateAnnotations.check_live_placement body; body) in
       let suffix =

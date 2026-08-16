@@ -107,15 +107,28 @@ export function nextSequence() {
 // the resolvers refuse it to. `Updated` with no state is the shape an oversized
 // row already takes, and it asks the client to do the one thing that enforces
 // the rule: refetch, and let the query layer answer.
-export function makeDescriptor({ changeKind, entityKey, state, seq, retiredField }) {
+//
+// `retiredValues` is the state form: the row is retired when the field holds any
+// of those states. Absent is the boolean form, where the flag is `true`. This
+// mirrors `OwnerScope.isRetiredValue`, which the other two implementations call
+// — this one cannot, being hand-written JS outside the ReScript graph, so the
+// three are held together by StateChangeDescriptorParityTest instead. The strict
+// readings matter and are the ones that file asserts: a non-boolean is not
+// `true`, a non-string is in no set, and an absent field is neither.
+export function makeDescriptor({ changeKind, entityKey, state, seq, retiredField, retiredValues }) {
   const descriptor = { changeKind, id: entityKey };
-  const retired =
+  const cell =
     retiredField !== undefined &&
     retiredField !== null &&
     state !== undefined &&
     state !== null &&
-    typeof state === "object" &&
-    state[retiredField] === true;
+    typeof state === "object"
+      ? state[retiredField]
+      : undefined;
+  const retired =
+    retiredValues === undefined || retiredValues === null
+      ? cell === true
+      : typeof cell === "string" && retiredValues.indexOf(cell) >= 0;
   if (state !== undefined && !retired) {
     const sortKeyValue = pickSortKeyValue(state);
     if (sortKeyValue !== undefined) descriptor.sortKeyValue = sortKeyValue;
@@ -143,13 +156,15 @@ export function makeDescriptor({ changeKind, entityKey, state, seq, retiredField
 // - state:      the full new row for a save; omitted for a delete.
 // - dedupeId:   AppSync publish `id` (idempotency hint).
 // - retiredField: the row's `@retired` flag name, when the read model declares
-//                 one; a row whose flag is true publishes metadata-only.
-export async function publishStateChange({ endpoint, region, topicName, entityKey, changeKind, state, dedupeId, retiredField }) {
+//                 one; a retired row publishes metadata-only.
+// - retiredValues: the states that retire the row, for the state form. Absent is
+//                 the boolean form, where the flag is `true`.
+export async function publishStateChange({ endpoint, region, topicName, entityKey, changeKind, state, dedupeId, retiredField, retiredValues }) {
   if (!endpoint || !topicName) return; // not live-enabled — no-op
   try {
     const url = new URL(endpoint);
     const channel = "/default/" + pathSegment(topicName) + "/" + pathSegment(entityKey);
-    const descriptor = makeDescriptor({ changeKind, entityKey, state, seq: nextSequence(), retiredField });
+    const descriptor = makeDescriptor({ changeKind, entityKey, state, seq: nextSequence(), retiredField, retiredValues });
     const body = JSON.stringify({
       id: dedupeId || (topicName + ":" + entityKey + ":" + changeKind),
       channel,

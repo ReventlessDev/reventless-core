@@ -237,18 +237,19 @@ who an operator is, and the disagreement would be invisible until a caller
 elevated for one rule turned out to be scoped by the other.
 
 `ExcludeRetired` carries the whole predicate — the field and, for the state form
-of `@retired`, the state that retires the row. `value: None` is the boolean form,
-where the excluded value is always `true`; naming it there would be a parameter
-that can only hold one thing, and a parameter a call site can pass wrongly.
+of `@retired`, every state that retires the row. `values: None` is the boolean
+form, where the excluded value is always `true`; naming it there would be a
+parameter that can only hold one thing, and a parameter a call site can pass
+wrongly.
 
 Both halves travel together for the reason the pair exists at all: a field
-without its value is half a comparison, and an adapter left to fetch the other
+without its values is half a comparison, and an adapter left to fetch the other
 half from the schema is an adapter that can disagree with the one next to it
 about which rows a caller may see.
 */
 type retiredScope = {
   field: string,
-  value: option<string>,
+  values: option<array<string>>,
 }
 
 type retiredDecision =
@@ -271,14 +272,14 @@ non-exempt caller — so the fail-closed action is simply the narrow read.
 let decideRetired = (
   identity: Identity.t,
   ~retiredField: option<string>,
-  ~retiredValue: option<string>=?,
+  ~retiredValues: option<array<string>>=?,
   ~asked: bool=false,
   ~elevated: array<string>=elevatedGroups(),
 ): retiredDecision =>
   switch retiredField {
   | None => RetiredVisible
   | Some(field) =>
-    let scope = {field, value: retiredValue}
+    let scope = {field, values: retiredValues}
     switch resolve(identity, ~elevated) {
     | System | Elevated(_) => asked ? RetiredVisible : ExcludeRetired(scope)
     | Owned(_) | Unidentified(_) => ExcludeRetired(scope)
@@ -300,20 +301,32 @@ let retiredScopeOf = (decision: retiredDecision): option<retiredScope> =>
   }
 
 /**
-Whether a row's value in the retirement field is the retired one.
+Whether a row's value in the retirement field is a retiring one.
 
 The single place the two forms differ, so every reader asks one question rather
-than branching on the form itself. `None` — the field absent from the row —
-answers false in both, which is the mirror image of the owner rule and lands the
-opposite way for the same reason: an owner-scoped read excludes a row that states
-no owner, because such a row belongs to nobody in particular, while a retirement
-read KEEPS a row that states no flag, because absent means not retired. That is
-what a row written before the annotation existed is, and excluding those would
-empty the view the day the annotation lands.
+than branching on the form itself. The state form is a membership test: a
+lifecycle may be withdrawn by several states, and they exclude identically —
+what differs between them is the way back, which commands express and this does
+not need to know.
+
+`None` — the field absent from the row — answers false in both, which is the
+mirror image of the owner rule and lands the opposite way for the same reason: an
+owner-scoped read excludes a row that states no owner, because such a row belongs
+to nobody in particular, while a retirement read KEEPS a row that states no flag,
+because absent means not retired. That is what a row written before the
+annotation existed is, and excluding those would empty the view the day the
+annotation lands.
+
+A state form naming no states excludes nothing, which is the same reading one
+step further: no state has been declared to withdraw a row, so no row is.
 */
 let isRetiredValue = (scope: retiredScope, cell: option<JSON.t>): bool =>
-  switch (scope.value, cell) {
+  switch (scope.values, cell) {
   | (_, None) => false
   | (None, Some(v)) => v->JSON.Decode.bool->Option.getOr(false)
-  | (Some(state), Some(v)) => v->JSON.Decode.string == Some(state)
+  | (Some(states), Some(v)) =>
+    switch v->JSON.Decode.string {
+    | None => false
+    | Some(s) => states->Array.includes(s)
+    }
   }

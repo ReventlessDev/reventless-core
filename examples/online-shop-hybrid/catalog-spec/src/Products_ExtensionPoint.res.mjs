@@ -14,6 +14,14 @@ let eventSchema = S.union([
     TAG: "ProductPriceChanged",
     productId: s.m(S.string),
     price: s.m(Money$Reventless.schema)
+  })),
+  S.schema(s => ({
+    TAG: "ProductWithdrawn",
+    productId: s.m(S.string)
+  })),
+  S.schema(s => ({
+    TAG: "ProductRelisted",
+    productId: s.m(S.string)
   }))
 ]);
 

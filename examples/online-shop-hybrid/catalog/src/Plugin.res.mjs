@@ -8,14 +8,17 @@ import * as Categories$CatalogPlugin from "./Category/StateViewSliceStream/Categ
 import * as AddCategory$CatalogPlugin from "./Category/StateChangeSlice/AddCategory.res.mjs";
 import * as ImportProduct$CatalogPlugin from "./Product/InboundTranslationSlice/ImportProduct.res.mjs";
 import * as ProductDemand$CatalogPlugin from "./Product/StateViewSliceStream/ProductDemand.res.mjs";
+import * as ArchiveProduct$CatalogPlugin from "./Product/StateChangeSlice/ArchiveProduct.res.mjs";
 import * as ImportProducts$CatalogPlugin from "./Task/ImportProducts.res.mjs";
 import * as RenameCategory$CatalogPlugin from "./Category/StateChangeSlice/RenameCategory.res.mjs";
 import * as ArchiveCategory$CatalogPlugin from "./Category/StateChangeSlice/ArchiveCategory.res.mjs";
 import * as Orders_Extension$CatalogPlugin from "./Extension/Orders_Extension.res.mjs";
+import * as UnarchiveProduct$CatalogPlugin from "./Product/StateChangeSlice/UnarchiveProduct.res.mjs";
 import * as ChangeProductName$CatalogPlugin from "./Product/StateChangeSlice/ChangeProductName.res.mjs";
 import * as UnarchiveCategory$CatalogPlugin from "./Category/StateChangeSlice/UnarchiveCategory.res.mjs";
 import * as ChangeProductImage$CatalogPlugin from "./Product/StateChangeSlice/ChangeProductImage.res.mjs";
 import * as ChangeProductPrice$CatalogPlugin from "./Product/StateChangeSlice/ChangeProductPrice.res.mjs";
+import * as DiscontinueProduct$CatalogPlugin from "./Product/StateChangeSlice/DiscontinueProduct.res.mjs";
 import * as AddProduct_Behavior$CatalogPlugin from "./Product/StateChangeSlice/AddProduct_Behavior.res.mjs";
 import * as ChangeCategoryImage$CatalogPlugin from "./Category/StateChangeSlice/ChangeCategoryImage.res.mjs";
 import * as Products_Projection$CatalogPlugin from "./Product/StateViewSliceStream/Products_Projection.res.mjs";
@@ -24,15 +27,18 @@ import * as AddCategory_Behavior$CatalogPlugin from "./Category/StateChangeSlice
 import * as Orders_ExtensionPoint$OrderingSpec from "@reventlessdev/online-shop-hybrid-ordering-spec/src/Orders_ExtensionPoint.res.mjs";
 import * as Categories_Projection$CatalogPlugin from "./Category/StateViewSliceStream/Categories_Projection.res.mjs";
 import * as Products_ExtensionPoint$CatalogSpec from "@reventlessdev/online-shop-hybrid-catalog-spec/src/Products_ExtensionPoint.res.mjs";
+import * as ArchiveProduct_Behavior$CatalogPlugin from "./Product/StateChangeSlice/ArchiveProduct_Behavior.res.mjs";
 import * as RenameCategory_Behavior$CatalogPlugin from "./Category/StateChangeSlice/RenameCategory_Behavior.res.mjs";
 import * as ArchiveCategory_Behavior$CatalogPlugin from "./Category/StateChangeSlice/ArchiveCategory_Behavior.res.mjs";
 import * as ChangeProductDescription$CatalogPlugin from "./Product/StateChangeSlice/ChangeProductDescription.res.mjs";
 import * as ProductDemand_Projection$CatalogPlugin from "./Product/StateViewSliceStream/ProductDemand_Projection.res.mjs";
 import * as ImportProduct_Translation$CatalogPlugin from "./Product/InboundTranslationSlice/ImportProduct_Translation.res.mjs";
+import * as UnarchiveProduct_Behavior$CatalogPlugin from "./Product/StateChangeSlice/UnarchiveProduct_Behavior.res.mjs";
 import * as ChangeProductName_Behavior$CatalogPlugin from "./Product/StateChangeSlice/ChangeProductName_Behavior.res.mjs";
 import * as UnarchiveCategory_Behavior$CatalogPlugin from "./Category/StateChangeSlice/UnarchiveCategory_Behavior.res.mjs";
 import * as ChangeProductImage_Behavior$CatalogPlugin from "./Product/StateChangeSlice/ChangeProductImage_Behavior.res.mjs";
 import * as ChangeProductPrice_Behavior$CatalogPlugin from "./Product/StateChangeSlice/ChangeProductPrice_Behavior.res.mjs";
+import * as DiscontinueProduct_Behavior$CatalogPlugin from "./Product/StateChangeSlice/DiscontinueProduct_Behavior.res.mjs";
 import * as ChangeCategoryImage_Behavior$CatalogPlugin from "./Category/StateChangeSlice/ChangeCategoryImage_Behavior.res.mjs";
 import * as RecordProductDemand_Behavior$CatalogPlugin from "./ProductDemand/StateChangeSlice/RecordProductDemand_Behavior.res.mjs";
 import * as Products_ExtensionPointMapping$CatalogPlugin from "./ExtensionPoint/Products_ExtensionPointMapping.res.mjs";
@@ -86,6 +92,22 @@ function Make(Platform) {
     evolve: ArchiveCategory_Behavior$CatalogPlugin.evolve,
     decide: ArchiveCategory_Behavior$CatalogPlugin.decide,
     moduleUrl: ArchiveCategory_Behavior$CatalogPlugin.moduleUrl
+  });
+  let ArchiveProductSlice = Platform.StateChangeSlice.Make({
+    name: ArchiveProduct$CatalogPlugin.name,
+    moduleUrl: ArchiveProduct$CatalogPlugin.moduleUrl,
+    Id: Id$Reventless.$$String,
+    consumedEventSchema: ArchiveProduct$CatalogPlugin.consumedEventSchema,
+    errorSchema: ArchiveProduct$CatalogPlugin.errorSchema,
+    eventSchema: ArchiveProduct$CatalogPlugin.eventSchema,
+    commandSchema: ArchiveProduct$CatalogPlugin.commandSchema,
+    commandAuthorization: ArchiveProduct$CatalogPlugin.commandAuthorization,
+    readConsistency: ArchiveProduct$CatalogPlugin.readConsistency
+  })({
+    initialState: ArchiveProduct_Behavior$CatalogPlugin.initialState,
+    evolve: ArchiveProduct_Behavior$CatalogPlugin.evolve,
+    decide: ArchiveProduct_Behavior$CatalogPlugin.decide,
+    moduleUrl: ArchiveProduct_Behavior$CatalogPlugin.moduleUrl
   });
   let ChangeCategoryImageSlice = Platform.StateChangeSlice.Make({
     name: ChangeCategoryImage$CatalogPlugin.name,
@@ -167,6 +189,22 @@ function Make(Platform) {
     decide: ChangeProductPrice_Behavior$CatalogPlugin.decide,
     moduleUrl: ChangeProductPrice_Behavior$CatalogPlugin.moduleUrl
   });
+  let DiscontinueProductSlice = Platform.StateChangeSlice.Make({
+    name: DiscontinueProduct$CatalogPlugin.name,
+    moduleUrl: DiscontinueProduct$CatalogPlugin.moduleUrl,
+    Id: Id$Reventless.$$String,
+    consumedEventSchema: DiscontinueProduct$CatalogPlugin.consumedEventSchema,
+    errorSchema: DiscontinueProduct$CatalogPlugin.errorSchema,
+    eventSchema: DiscontinueProduct$CatalogPlugin.eventSchema,
+    commandSchema: DiscontinueProduct$CatalogPlugin.commandSchema,
+    commandAuthorization: DiscontinueProduct$CatalogPlugin.commandAuthorization,
+    readConsistency: DiscontinueProduct$CatalogPlugin.readConsistency
+  })({
+    initialState: DiscontinueProduct_Behavior$CatalogPlugin.initialState,
+    evolve: DiscontinueProduct_Behavior$CatalogPlugin.evolve,
+    decide: DiscontinueProduct_Behavior$CatalogPlugin.decide,
+    moduleUrl: DiscontinueProduct_Behavior$CatalogPlugin.moduleUrl
+  });
   let RecordProductDemandSlice = Platform.StateChangeSlice.Make({
     name: RecordProductDemand$CatalogPlugin.name,
     moduleUrl: RecordProductDemand$CatalogPlugin.moduleUrl,
@@ -214,6 +252,22 @@ function Make(Platform) {
     evolve: UnarchiveCategory_Behavior$CatalogPlugin.evolve,
     decide: UnarchiveCategory_Behavior$CatalogPlugin.decide,
     moduleUrl: UnarchiveCategory_Behavior$CatalogPlugin.moduleUrl
+  });
+  let UnarchiveProductSlice = Platform.StateChangeSlice.Make({
+    name: UnarchiveProduct$CatalogPlugin.name,
+    moduleUrl: UnarchiveProduct$CatalogPlugin.moduleUrl,
+    Id: Id$Reventless.$$String,
+    consumedEventSchema: UnarchiveProduct$CatalogPlugin.consumedEventSchema,
+    errorSchema: UnarchiveProduct$CatalogPlugin.errorSchema,
+    eventSchema: UnarchiveProduct$CatalogPlugin.eventSchema,
+    commandSchema: UnarchiveProduct$CatalogPlugin.commandSchema,
+    commandAuthorization: UnarchiveProduct$CatalogPlugin.commandAuthorization,
+    readConsistency: UnarchiveProduct$CatalogPlugin.readConsistency
+  })({
+    initialState: UnarchiveProduct_Behavior$CatalogPlugin.initialState,
+    evolve: UnarchiveProduct_Behavior$CatalogPlugin.evolve,
+    decide: UnarchiveProduct_Behavior$CatalogPlugin.decide,
+    moduleUrl: UnarchiveProduct_Behavior$CatalogPlugin.moduleUrl
   });
   let CategoriesStreamSlice = Platform.StateViewSliceStream.Make({
     name: Categories$CatalogPlugin.name,
@@ -322,14 +376,17 @@ function Make(Platform) {
     AddCategorySlice,
     AddProductSlice,
     ArchiveCategorySlice,
+    ArchiveProductSlice,
     ChangeCategoryImageSlice,
     ChangeProductDescriptionSlice,
     ChangeProductImageSlice,
     ChangeProductNameSlice,
     ChangeProductPriceSlice,
+    DiscontinueProductSlice,
     RecordProductDemandSlice,
     RenameCategorySlice,
-    UnarchiveCategorySlice
+    UnarchiveCategorySlice,
+    UnarchiveProductSlice
   ], undefined, undefined, [ImportProductSlice], [Orders_Extension], [{
       ExtensionPoint: {
         name: Products_ExtensionPoint$CatalogSpec.name,
@@ -364,6 +421,10 @@ function Make(Platform) {
       "Category"
     ],
     [
+      "ArchiveProduct",
+      "Product"
+    ],
+    [
       "Categories",
       "Category"
     ],
@@ -385,6 +446,10 @@ function Make(Platform) {
     ],
     [
       "ChangeProductPrice",
+      "Product"
+    ],
+    [
+      "DiscontinueProduct",
       "Product"
     ],
     [
@@ -410,20 +475,27 @@ function Make(Platform) {
     [
       "UnarchiveCategory",
       "Category"
+    ],
+    [
+      "UnarchiveProduct",
+      "Product"
     ]
   ]));
   let make = () => Platform.Plugin.make("Catalog", 5, [Products_ExtensionPoint], [Orders_Extension], undefined, undefined, [ImportProductsTask], [
     AddCategorySlice,
     AddProductSlice,
     ArchiveCategorySlice,
+    ArchiveProductSlice,
     ChangeCategoryImageSlice,
     ChangeProductDescriptionSlice,
     ChangeProductImageSlice,
     ChangeProductNameSlice,
     ChangeProductPriceSlice,
+    DiscontinueProductSlice,
     RecordProductDemandSlice,
     RenameCategorySlice,
-    UnarchiveCategorySlice
+    UnarchiveCategorySlice,
+    UnarchiveProductSlice
   ], [
     CategoriesStreamSlice,
     ProductDemandStreamSlice,
@@ -433,14 +505,17 @@ function Make(Platform) {
     AddCategorySlice: AddCategorySlice,
     AddProductSlice: AddProductSlice,
     ArchiveCategorySlice: ArchiveCategorySlice,
+    ArchiveProductSlice: ArchiveProductSlice,
     ChangeCategoryImageSlice: ChangeCategoryImageSlice,
     ChangeProductDescriptionSlice: ChangeProductDescriptionSlice,
     ChangeProductImageSlice: ChangeProductImageSlice,
     ChangeProductNameSlice: ChangeProductNameSlice,
     ChangeProductPriceSlice: ChangeProductPriceSlice,
+    DiscontinueProductSlice: DiscontinueProductSlice,
     RecordProductDemandSlice: RecordProductDemandSlice,
     RenameCategorySlice: RenameCategorySlice,
     UnarchiveCategorySlice: UnarchiveCategorySlice,
+    UnarchiveProductSlice: UnarchiveProductSlice,
     CategoriesStreamSlice: CategoriesStreamSlice,
     ProductDemandStreamSlice: ProductDemandStreamSlice,
     ProductsStreamSlice: ProductsStreamSlice,

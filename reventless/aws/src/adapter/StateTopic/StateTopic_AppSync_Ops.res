@@ -53,16 +53,17 @@ type event = {@as("Records") records: array<record>}
 
 // ── Per-record derivations (ports of the former inline JS helpers) ───────────
 
-// STATE_RETIRED_MAP: `{ <tableName>: {field, value?} }`, injected at deploy time
+// STATE_RETIRED_MAP: `{ <tableName>: {field, values?} }`, injected at deploy time
 // beside STATE_TOPIC_MAP. This handler runs with no plugin registry in process —
 // there is nothing here that could read a state schema — so the whole predicate
 // has to arrive the same way the topic routing does. A table absent from the map
 // declares no retirement, which is every table until one does.
 //
-// `value` absent is the boolean form. Carried as an object rather than as an
+// `values` absent is the boolean form. Carried as an object rather than as an
 // encoded string because a `field=Value` convention is a parser this side and a
 // writer the other, and the two drift the first time a state name contains the
-// separator.
+// separator — an argument that only gets stronger now that a lifecycle can name
+// several states.
 let retiredMap: dict<Reventless.OwnerScope.retiredScope> =
   switch NodeProcess.env
   ->Dict.get("STATE_RETIRED_MAP")
@@ -80,7 +81,10 @@ let retiredMap: dict<Reventless.OwnerScope.retiredScope> =
         ->Option.flatMap(JSON.Decode.string)
         ->Option.map(field => {
           Reventless.OwnerScope.field,
-          value: o->Dict.get("value")->Option.flatMap(JSON.Decode.string),
+          values: o
+          ->Dict.get("values")
+          ->Option.flatMap(JSON.Decode.array)
+          ->Option.map(vs => vs->Array.filterMap(JSON.Decode.string)),
         })
       )
       ->Option.forEach(scope => out->Dict.set(k, scope))
@@ -177,7 +181,7 @@ let makeDescriptor = (
   ~image: dict<JSON.t>,
   ~seq: option<string>,
   ~retiredField: option<string>=?,
-  ~retiredValue: option<string>=?,
+  ~retiredValues: option<array<string>>=?,
 ): JSON.t => {
   let removed = changeKind == "Removed"
   // A retired row publishes as metadata only, for the reason the other two
@@ -189,7 +193,7 @@ let makeDescriptor = (
   let retired = switch retiredField {
   | Some(field) =>
     !removed &&
-    {Reventless.OwnerScope.field, value: retiredValue}->Reventless.OwnerScope.isRetiredValue(
+    {Reventless.OwnerScope.field, values: retiredValues}->Reventless.OwnerScope.isRetiredValue(
       image->Dict.get(field),
     )
   | None => false
@@ -255,9 +259,9 @@ let processRecord = async (
           ~retiredField=?tableNameFromEventSourceArn(record.eventSourceARN)
           ->Option.flatMap(t => retiredMap->Dict.get(t))
           ->Option.map(scope => scope.Reventless.OwnerScope.field),
-          ~retiredValue=?tableNameFromEventSourceArn(record.eventSourceARN)
+          ~retiredValues=?tableNameFromEventSourceArn(record.eventSourceARN)
           ->Option.flatMap(t => retiredMap->Dict.get(t))
-          ->Option.flatMap(scope => scope.Reventless.OwnerScope.value),
+          ->Option.flatMap(scope => scope.Reventless.OwnerScope.values),
         )
         let body =
           Dict.fromArray([

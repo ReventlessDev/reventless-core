@@ -126,6 +126,11 @@ let locatedAddress = (): (string, float, float) => {
 
 // ── Products ────────────────────────────────────────────────────────────────
 
+// Which shelf a product ends the seed run on. Three-valued rather than the
+// categories' `archive: bool`, because a product has two ways off the shelf and
+// they are not interchangeable — one comes back and the other does not.
+type shelf = Listed | Archived | Discontinued
+
 type product = {
   id: string,
   name: string,
@@ -133,6 +138,9 @@ type product = {
   price: Reventless.Money.t,
   imageUrl: option<string>,
   categoryId: string,
+  // Stated by the fixture rather than derived at seed time, so reading this file
+  // answers "which products end up retired" without following the run.
+  shelf: shelf,
 }
 
 // This dataset prices everything in euros. That is a *choice this data makes*
@@ -211,6 +219,14 @@ let buildProducts = (~count=productCount, ()): array<product> => {
           // ref; products left without an upload keep no image.
           imageUrl: None,
           categoryId: category.id,
+          // Exactly one of each, at low indices so the `sample` set (16 products)
+          // exercises the same path the full one does. A retirement that only the
+          // large data set shows is a retirement nobody checks.
+          shelf: switch n.contents {
+          | 4 => Archived
+          | 8 => Discontinued
+          | _ => Listed
+          },
         })
       }
     }
@@ -225,6 +241,17 @@ let repricedProducts = (products: array<product>): array<product> =>
 
 let redescribedProducts = (products: array<product>): array<product> =>
   products->Array.filterWithIndex((_, i) => mod(i, 17) == 9)
+
+// The two ways off the shelf, read back off the fixture. Retired late in the run
+// — after orders reference the products — for the reason the archived category
+// is: a product withdrawn before anything points at it demonstrates nothing,
+// where one withdrawn after shows an order still resolving a product the catalog
+// no longer offers, which is the case the whole feature is for.
+let archivedProducts = (products: array<product>): array<product> =>
+  products->Array.filter(p => p.shelf == Archived)
+
+let discontinuedProducts = (products: array<product>): array<product> =>
+  products->Array.filter(p => p.shelf == Discontinued)
 
 // The discount is applied to the minor units directly, so it cannot drift into
 // float error on the way through a decimal and back.

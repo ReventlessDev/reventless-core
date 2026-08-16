@@ -69,6 +69,39 @@ const CASES = [
     state: { id: "p5", name: "Widget", archived: false, updatedAt: "2026-05-19T12:00:00Z" },
     retiredField: "archived",
   },
+  // The state form, and the reason it is a set: a lifecycle may end in more than
+  // one way, and both ways withdraw the row identically. Two cases rather than
+  // one so an implementation comparing against only the first member fails.
+  {
+    name: "row in the first retired state degrades to metadata only",
+    changeKind: "Updated",
+    entityKey: "p6",
+    state: { id: "p6", name: "Widget", shelfStatus: "Archived", updatedAt: "2026-05-19T12:00:00Z" },
+    retiredField: "shelfStatus",
+    retiredValues: ["Archived", "Discontinued"],
+  },
+  {
+    name: "row in the second retired state degrades to metadata only",
+    changeKind: "Updated",
+    entityKey: "p7",
+    state: {
+      id: "p7",
+      name: "Widget",
+      shelfStatus: "Discontinued",
+      updatedAt: "2026-05-19T12:00:00Z",
+    },
+    retiredField: "shelfStatus",
+    retiredValues: ["Archived", "Discontinued"],
+  },
+  // The state-form control: a live state on the same declared lifecycle.
+  {
+    name: "row in a live state carries the row",
+    changeKind: "Updated",
+    entityKey: "p8",
+    state: { id: "p8", name: "Widget", shelfStatus: "Listed", updatedAt: "2026-05-19T12:00:00Z" },
+    retiredField: "shelfStatus",
+    retiredValues: ["Archived", "Discontinued"],
+  },
   {
     name: "delete carries no row",
     changeKind: "Removed",
@@ -99,7 +132,7 @@ export async function buildAll() {
     return { ...descriptor, seq: "<seq>" };
   };
 
-  return CASES.map(({ name, changeKind, entityKey, state, retiredField }) => ({
+  return CASES.map(({ name, changeKind, entityKey, state, retiredField, retiredValues }) => ({
     name,
     local: normalise(
       local.make(
@@ -108,6 +141,7 @@ export async function buildAll() {
         state === undefined ? undefined : state,
         local.nextSequence(),
         retiredField,
+        retiredValues,
       ),
     ),
     relay: normalise(
@@ -120,6 +154,7 @@ export async function buildAll() {
         state === undefined ? { id: entityKey } : state,
         "49590300000000016818000000",
         retiredField,
+        retiredValues,
       ),
     ),
     postgres: normalise(
@@ -129,6 +164,7 @@ export async function buildAll() {
         state,
         seq: postgres.nextSequence(),
         retiredField,
+        retiredValues,
       }),
     ),
   }));

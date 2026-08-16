@@ -98,7 +98,7 @@ type binding = {
       about which fields this read model has. */
   ownerField: option<string>,
   retiredField: option<string>,
-  retiredValue: option<string>,
+  retiredValues: option<array<string>>,
 }
 
 // -- arg helpers -------------------------------------------------------------
@@ -194,7 +194,7 @@ let dispatch = async (
       payload.identity
       ->Reventless.OwnerScope.decideRetired(
         ~retiredField=binding.retiredField,
-        ~retiredValue=?binding.retiredValue,
+        ~retiredValues=?binding.retiredValues,
         ~asked=askedForRetired,
       )
       ->Reventless.OwnerScope.retiredScopeOf

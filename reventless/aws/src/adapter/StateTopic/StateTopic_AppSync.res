@@ -95,7 +95,7 @@ type streamEntry = {
   // The read model's `@retired` field, resolved at deploy time because the relay
   // Lambda has no plugin registry in process to resolve it at request time.
   retiredField: option<string>,
-  retiredValue: option<string>,
+  retiredValues: option<array<string>>,
 }
 
 // One registry per events API, keyed by `eventsApi.name` (the static Pulumi
@@ -139,7 +139,7 @@ let makeForTable = (
   ~partitionKeyName: Pulumi.Output.t<string>,
   ~topicName: string,
   ~retiredField: option<string>=?,
-  ~retiredValue: option<string>=?,
+  ~retiredValues: option<array<string>>=?,
   ~eventsApi: AppSync_EventsApi.t,
   ~opts as _: Pulumi.CustomResourceOptions.t,
 ) => {
@@ -159,7 +159,7 @@ let makeForTable = (
   registry->Dict.set(
     key,
     entries->Array.concat([
-      {tableName: checkedTableName, streamArn, topicName, retiredField, retiredValue},
+      {tableName: checkedTableName, streamArn, topicName, retiredField, retiredValues},
     ]),
   )
 }
@@ -194,11 +194,11 @@ let make = (
     ->Option.flatMap(Reventless.StateAnnotations.getSpec)
     ->Option.flatMap(spec => spec.retired)
     ->Option.map(r => r.field),
-    ~retiredValue=?ReventlessCore.Plugin_Helpers.stateSchemaRegistry
+    ~retiredValues=?ReventlessCore.Plugin_Helpers.stateSchemaRegistry
     ->Dict.get(readModelName)
     ->Option.flatMap(Reventless.StateAnnotations.getSpec)
     ->Option.flatMap(spec => spec.retired)
-    ->Option.flatMap(r => r.value),
+    ->Option.flatMap(r => r.values),
     ~eventsApi,
     ~opts,
   )
@@ -293,11 +293,11 @@ let finish = (
         dict->JSON.Encode.object->JSON.stringify
       })
 
-    // STATE_RETIRED_MAP env var — `{ <tableName>: {field, value?} }`, carrying
+    // STATE_RETIRED_MAP env var — `{ <tableName>: {field, values?} }`, carrying
     // only the tables that declare retirement. Built from the same awaited table
     // names as the topic map so the two cannot describe different sets of tables.
     // The whole predicate travels: the relay Lambda has no plugin registry, so a
-    // field without its value would leave it unable to tell the two forms apart.
+    // field without its states would leave it unable to tell the two forms apart.
     let retiredMapJson =
       entries
       ->Array.map(e => e.tableName)
@@ -308,7 +308,9 @@ let finish = (
           let entry = entries->Array.getUnsafe(i)
           entry.retiredField->Option.forEach(f => {
             let obj = Dict.fromArray([("field", f->JSON.Encode.string)])
-            entry.retiredValue->Option.forEach(v => obj->Dict.set("value", v->JSON.Encode.string))
+            entry.retiredValues->Option.forEach(vs =>
+              obj->Dict.set("values", vs->Array.map(JSON.Encode.string)->JSON.Encode.array)
+            )
             dict->Dict.set(tableName, obj->JSON.Encode.object)
           })
         })

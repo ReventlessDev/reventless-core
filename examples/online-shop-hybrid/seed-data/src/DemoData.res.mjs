@@ -345,13 +345,17 @@ function buildProducts(countOpt, param) {
         let high = Math.log(900.0);
         let raw = Math.exp(low + Seed_Random$ReventlessSeed.float(random) * (high - low));
         let price = Money$Reventless.ofMajor(raw, "EUR");
+        let match = n.contents;
         products.push({
           id: `prd-` + pad(n.contents, 3),
           name: name,
           description: name + ` — ` + Seed_Random$ReventlessSeed.pickOr(random, "", blurbs) + ` ` + category.name.toLowerCase() + ` pick.`,
           price: price,
           imageUrl: undefined,
-          categoryId: category.id
+          categoryId: category.id,
+          shelf: match !== 4 ? (
+              match !== 8 ? "Listed" : "Discontinued"
+            ) : "Archived"
         });
       }
     }
@@ -365,6 +369,14 @@ function repricedProducts(products) {
 
 function redescribedProducts(products) {
   return products.filter((param, i) => i % 17 === 9);
+}
+
+function archivedProducts(products) {
+  return products.filter(p => p.shelf === "Archived");
+}
+
+function discontinuedProducts(products) {
+  return products.filter(p => p.shelf === "Discontinued");
 }
 
 function discountedPrice(p) {
@@ -550,6 +562,8 @@ export {
   buildProducts,
   repricedProducts,
   redescribedProducts,
+  archivedProducts,
+  discontinuedProducts,
   discountedPrice,
   demoShopperId,
   demoOperatorId,

@@ -360,7 +360,7 @@ export function request(ctx) {
 ` + resultResponseCode + `
 `;
 
-function listAllItemsConnection(labelField, filterFieldsOpt, rangeFieldsOpt, sortFieldsOpt, requireAttribute, ownerField, elevatedGroupsOpt, retiredField, retiredValue) {
+function listAllItemsConnection(labelField, filterFieldsOpt, rangeFieldsOpt, sortFieldsOpt, requireAttribute, ownerField, elevatedGroupsOpt, retiredField, retiredValues) {
   let filterFields = filterFieldsOpt !== undefined ? filterFieldsOpt : [];
   let rangeFields = rangeFieldsOpt !== undefined ? rangeFieldsOpt : [];
   let sortFields = sortFieldsOpt !== undefined ? sortFieldsOpt : [];
@@ -400,16 +400,26 @@ function listAllItemsConnection(labelField, filterFieldsOpt, rangeFieldsOpt, sor
   const _groups = (_id != null && _id.claims != null && _id.claims['cognito:groups']) || [];
   const _elevated = [` + elevatedLiteral$1 + `];
   const _exempt = _sub == null || _groups.some(g => _elevated.indexOf(g) >= 0);`;
+    let tmp;
+    if (retiredValues !== undefined) {
+      let placeholders = retiredValues.map((state, i) => [
+        `:retiredValue` + i.toString(),
+        state
+      ]);
+      let assignments = placeholders.map(param => `    values['` + param[0] + `'] = util.dynamodb.toDynamoDB('` + param[1] + `');`).join("\n");
+      let comparisons = placeholders.map(param => `#retired <> ` + param[0]).join(" AND ");
+      tmp = placeholders.length !== 0 ? assignments + `
+    parts.push('(attribute_not_exists(#retired) OR (` + comparisons + `))');` : "";
+    } else {
+      tmp = `    values[':retiredFalse'] = util.dynamodb.toDynamoDB(false);
+    parts.push('(attribute_not_exists(#retired) OR #retired = :retiredFalse)');`;
+    }
     retiredClause = exemptPrelude + `
   // ── retirement narrowing (generated) ──
   const _wantsRetired = _exempt && ctx.args.includeRetired === true;
   if (!_wantsRetired) {
     names['#retired'] = '` + retiredField + `';
-` + (
-      retiredValue !== undefined ? `    values[':retiredValue'] = util.dynamodb.toDynamoDB('` + retiredValue + `');
-    parts.push('(attribute_not_exists(#retired) OR #retired <> :retiredValue)');` : `    values[':retiredFalse'] = util.dynamodb.toDynamoDB(false);
-    parts.push('(attribute_not_exists(#retired) OR #retired = :retiredFalse)');`
-    ) + `
+` + tmp + `
   }`;
   } else {
     retiredClause = "";

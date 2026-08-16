@@ -81,7 +81,7 @@ async function dispatch(binding, lookupBindingOpt, payload) {
       return Stdlib_Option.mapOr(argStr(item, match._0), false, v => v === required);
     };
     let askedForRetired = Stdlib_Option.getOr(Stdlib_Option.flatMap(argObj(payload.arguments)["includeRetired"], Stdlib_JSON.Decode.bool), false);
-    let retiredScope = OwnerScope$Reventless.retiredScopeOf(OwnerScope$Reventless.decideRetired(payload.identity, binding.retiredField, binding.retiredValue, askedForRetired, undefined));
+    let retiredScope = OwnerScope$Reventless.retiredScopeOf(OwnerScope$Reventless.decideRetired(payload.identity, binding.retiredField, binding.retiredValues, askedForRetired, undefined));
     let retiredAllows = item => {
       if (retiredScope !== undefined) {
         return !OwnerScope$Reventless.isRetiredValue(retiredScope, Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[retiredScope.field]));

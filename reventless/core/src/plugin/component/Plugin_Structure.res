@@ -97,15 +97,16 @@ let retiredFromStateSchema = (
 let retiredFieldFromStateSchema = (stateSchema: S.t<unknown>): option<string> =>
   retiredFromStateSchema(stateSchema)->Option.map(r => r.field)
 
-// The state a row is retired *in*, for the enum form. `None` is the boolean
+// The states a row is retired *in*, for the enum form. `None` is the boolean
 // form, where the value is always `true` and naming it would be a parameter that
-// can only hold one thing.
+// can only hold one thing. A set, because a lifecycle may be withdrawn by more
+// than one state, and a one-member set is the ordinary case.
 //
 // Published beside `retiredField` rather than left for a consumer to dig out of
 // the schema: a client that has the def in hand has the whole predicate, and two
 // places deriving one comparison is how they come to disagree about it.
-let retiredValueFromStateSchema = (stateSchema: S.t<unknown>): option<string> =>
-  retiredFromStateSchema(stateSchema)->Option.flatMap(r => r.value)
+let retiredValuesFromStateSchema = (stateSchema: S.t<unknown>): option<array<string>> =>
+  retiredFromStateSchema(stateSchema)->Option.flatMap(r => r.values)
 
 // The check the PPX cannot make, in the one place that can: the payload is a
 // constructor reference the PPX only ever sees as a name, and whether that name
@@ -118,12 +119,13 @@ let retiredValueFromStateSchema = (stateSchema: S.t<unknown>): option<string> =>
 // command can name.
 let checkRetiredValue = (~entityName: string, stateSchema: S.t<unknown>): unit =>
   switch retiredFromStateSchema(stateSchema) {
-  | Some({field, value: Some(value)}) =>
+  | Some({field, values: Some(values)}) =>
+    let named = values->Array.joinWith(", ")
     let lifecycle = lifecycleFieldFromStateSchema(~entityName, stateSchema)
     if lifecycle != Some(field) {
       log.warn(
         ~comp="Plugin_Structure",
-        `${entityName}: @retired(${value}) is on "${field}", which is not this record's lifecycle field${lifecycle
+        `${entityName}: @retired(${named}) is on "${field}", which is not this record's lifecycle field${lifecycle
           ->Option.map(f => ` (that is "${f}")`)
           ->Option.getOr(
             " (it declares none)",
@@ -144,12 +146,19 @@ let checkRetiredValue = (~entityName: string, stateSchema: S.t<unknown>): unit =
       ->Option.getOr([])
     | _ => []
     }
-    if Array.length(declared) > 0 && !(declared->Array.includes(value)) {
-      log.warn(
-        ~comp="Plugin_Structure",
-        `${entityName}: @retired(${value}) names a state "${field}" does not declare — known values: ${declared->Array.joinWith(
-            ", ",
-          )}.`,
+    // Reported per state rather than as a set: one wrong entry among three still
+    // narrows something, so the symptom is a subset of rows leaking rather than
+    // all of them — which is harder to spot than the single-value case was.
+    if Array.length(declared) > 0 {
+      values
+      ->Array.filter(v => !(declared->Array.includes(v)))
+      ->Array.forEach(v =>
+        log.warn(
+          ~comp="Plugin_Structure",
+          `${entityName}: @retired(${v}) names a state "${field}" does not declare — known values: ${declared->Array.joinWith(
+              ", ",
+            )}.`,
+        )
       )
     }
   | _ => ()
@@ -849,7 +858,7 @@ let make = (
         // fields this view has.
         ownerField: Reventless.Owner.fieldNames(stateSchema)->Array.get(0),
         retiredField: retiredFieldFromStateSchema(stateSchema),
-        retiredValue: retiredValueFromStateSchema(stateSchema),
+        retiredValues: retiredValuesFromStateSchema(stateSchema),
         visibility: visibilityTag(R.Spec.visibility),
         chapter: chapterOf(R.Spec.name),
         // Taken from the `qf` record, never re-derived: `Api_Naming` is the only
@@ -885,7 +894,7 @@ let make = (
         lifecycleField: lifecycleFieldFromStateSchema(~entityName=SVS.Spec.name, stateSchema),
         ownerField: Reventless.Owner.fieldNames(stateSchema)->Array.get(0),
         retiredField: retiredFieldFromStateSchema(stateSchema),
-        retiredValue: retiredValueFromStateSchema(stateSchema),
+        retiredValues: retiredValuesFromStateSchema(stateSchema),
         visibility: visibilityTag(SVS.Spec.visibility),
         chapter: chapterOf(SVS.Spec.name),
         singleQueryField: Some(qf.singleFieldName),

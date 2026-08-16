@@ -13,7 +13,9 @@ let consumedEventSchema = S.union([
   S.schema(s => ({
     TAG: "CatalogProductPriceChanged",
     price: s.m(Money$Reventless.schema)
-  }))
+  })),
+  S.literal("CatalogProductWithdrawn"),
+  S.literal("CatalogProductRelisted")
 ]);
 
 let commandSchema = S.union([
@@ -27,6 +29,14 @@ let commandSchema = S.union([
     TAG: "ChangeSyncedPrice",
     productId: s.m(DcbTag$Reventless.string),
     price: s.m(Money$Reventless.schema)
+  })),
+  S.schema(s => ({
+    TAG: "WithdrawSyncedProduct",
+    productId: s.m(DcbTag$Reventless.string)
+  })),
+  S.schema(s => ({
+    TAG: "RelistSyncedProduct",
+    productId: s.m(DcbTag$Reventless.string)
   }))
 ]);
 
@@ -40,6 +50,16 @@ let eventSchema = S.union([
   S.schema(s => ({
     TAG: "CatalogProductPriceChanged",
     productId: s.m(DcbTag$Reventless.string),
+    price: s.m(Money$Reventless.schema)
+  })),
+  S.schema(s => ({
+    TAG: "CatalogProductWithdrawn",
+    productId: s.m(DcbTag$Reventless.string)
+  })),
+  S.schema(s => ({
+    TAG: "CatalogProductRelisted",
+    productId: s.m(DcbTag$Reventless.string),
+    name: s.m(S.string),
     price: s.m(Money$Reventless.schema)
   }))
 ]);

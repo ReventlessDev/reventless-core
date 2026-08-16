@@ -36,13 +36,13 @@ function nextSequence() {
   return next.toString();
 }
 
-function make(changeKind, id, state, seq, retiredField, retiredValue) {
+function make(changeKind, id, state, seq, retiredField, retiredValues) {
   let descriptor = {};
   descriptor["changeKind"] = changeKind;
   descriptor["id"] = id;
   let isRetired = retiredField !== undefined && state !== undefined ? OwnerScope$Reventless.isRetiredValue({
       field: retiredField,
-      value: retiredValue
+      values: retiredValues
     }, Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(state), d => d[retiredField])) : false;
   let v = isRetired ? undefined : Stdlib_Option.flatMap(state, pickSortKeyValue);
   if (v !== undefined) {

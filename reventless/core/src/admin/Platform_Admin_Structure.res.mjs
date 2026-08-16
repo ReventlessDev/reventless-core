@@ -153,7 +153,7 @@ let pluginReadModel = {
   lifecycleField: pluginReadModel_lifecycleField,
   ownerField: undefined,
   retiredField: undefined,
-  retiredValue: undefined,
+  retiredValues: undefined,
   visibility: undefined,
   chapter: undefined,
   singleQueryField: pluginReadModel_singleQueryField,

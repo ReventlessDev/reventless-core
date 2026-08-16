@@ -10,6 +10,8 @@
 type consumedEvent =
   | CatalogProductSynced({productId: string, name: string, price: Reventless.Money.t})
   | CatalogProductPriceChanged({productId: string, price: Reventless.Money.t})
+  | CatalogProductWithdrawn({productId: string})
+  | CatalogProductRelisted({productId: string, name: string, price: Reventless.Money.t})
 
 @schema
 type state = {productId: string, name: string, price: Reventless.Money.t}

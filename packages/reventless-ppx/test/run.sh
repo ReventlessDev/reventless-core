@@ -894,7 +894,11 @@ type state = {
 }
 EOF
 
-# ─── Fixture: @retired on a lifecycle state ───────────────────────
+# ─── Fixture: @retired on a lifecycle state, named from the field ─
+#
+# The form that survives for an enum this per-file PPX cannot reach to annotate.
+# `accountStatus` is declared here, so the name IS checked — see the error
+# package for the misspelling that check catches.
 
 cat > "$PLUGIN/src/ReadModel/RetiredStateReadModel.res" <<'EOF'
 @@reventless.spec
@@ -908,6 +912,47 @@ type accountStatus =
 type state = {
   @id customerId: string,
   @retired(Deactivated) @lifecycle accountStatus: accountStatus,
+}
+EOF
+
+# ─── Fixture: @retired on the constructors, one state ─────────────
+#
+# The marker's home. One retired state must be the ordinary case rather than a
+# special one, so it is asserted beside the two-state fixture below.
+
+cat > "$PLUGIN/src/ReadModel/RetiredCtorReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type accountStatus =
+  | Active
+  | @retired Deactivated
+
+@schema
+type state = {
+  @id customerId: string,
+  @lifecycle accountStatus: accountStatus,
+}
+EOF
+
+# ─── Fixture: two retired states on one lifecycle ─────────────────
+#
+# A lifecycle may end in more than one way. Both withdraw the row identically;
+# what differs is the way back, which `@allowedStates` reads elsewhere.
+
+cat > "$PLUGIN/src/ReadModel/RetiredStatesReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type shelfStatus =
+  | Listed
+  | @retired Archived
+  | @retired Discontinued
+
+@schema
+type state = {
+  @id productId: string,
+  @lifecycle shelfStatus: shelfStatus,
 }
 EOF
 
@@ -1793,13 +1838,34 @@ assert_js_contains "$JS" 'lifecycle: "phase"'        "@lifecycle: 'phase' record
 assert_js_not_contains "$JS" '@lifecycle'            "@lifecycle: annotation stripped from output"
 
 echo ""
-echo "=== Test: @retired on a state → value in the metadata ==="
+echo "=== Test: @retired on a state → the set in the metadata ==="
 JS="$PLUGIN/src/ReadModel/RetiredStateReadModel.res.mjs"
 assert_js_contains "$JS" 'stateAnnotationsId'         "@retired(state): metadata emitted"
 assert_js_contains "$JS" 'field: "accountStatus"'     "@retired(state): field recorded"
-assert_js_contains "$JS" 'value: "Deactivated"'       "@retired(state): value recorded"
+assert_js_contains "$JS" 'values: \["Deactivated"\]'  "@retired(state): named state recorded as a one-element set"
 assert_js_contains "$JS" 'lifecycle: "accountStatus"' "@retired(state): pairs with @lifecycle"
 assert_js_not_contains "$JS" '@retired'               "@retired(state): annotation stripped"
+
+echo ""
+echo "=== Test: @retired on a constructor → the field that holds it ==="
+# The marker is on a type and the schema entry is on a field; the correlation
+# pass is what joins them, with no annotation on the field at all.
+JS="$PLUGIN/src/ReadModel/RetiredCtorReadModel.res.mjs"
+assert_js_contains "$JS" 'field: "accountStatus"'     "@retired ctor: correlated to the field holding the enum"
+assert_js_contains "$JS" 'values: \["Deactivated"\]'  "@retired ctor: one retired state recorded"
+assert_js_contains "$JS" 'lifecycle: "accountStatus"' "@retired ctor: pairs with @lifecycle"
+assert_js_not_contains "$JS" '@retired'               "@retired ctor: attribute stripped from the constructor"
+
+echo ""
+echo "=== Test: two @retired constructors → both states ==="
+JS="$PLUGIN/src/ReadModel/RetiredStatesReadModel.res.mjs"
+assert_js_contains "$JS" 'field: "shelfStatus"'  "@retired ×2: field recorded"
+# A multi-element array is emitted one entry per line, so the members are matched
+# individually rather than as one bracketed literal (which is how the one-state
+# case above can be, and is).
+assert_js_contains "$JS" '"Archived"'            "@retired ×2: first state recorded"
+assert_js_contains "$JS" '"Discontinued"'        "@retired ×2: second state recorded"
+assert_js_not_contains "$JS" '@retired'          "@retired ×2: attributes stripped"
 
 echo ""
 echo "=== Test: @retired → metadata field populated ==="
@@ -2300,6 +2366,159 @@ else
   fi
 fi
 rm -f "$ERROR/src/ReadModel/RetiredTypeReadModel.res"
+
+echo ""
+echo "=== Test: PPX error — @retired names a state the enum does not declare ==="
+
+# The hole the constructor form exists to close. `@retired(Archivd)` compiled
+# clean before this check and put "Archivd" on the schema, so every row was
+# compared against a state nothing is in and stayed visible to everyone — while
+# the annotation sat there looking like enforcement.
+cat > "$ERROR/src/ReadModel/RetiredTypoReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type shelfStatus =
+  | Listed
+  | Archived
+
+@schema
+type state = {
+  @id id: string,
+  @retired(Archivd) @lifecycle shelfStatus: shelfStatus,
+}
+EOF
+
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "@retired misspelled state" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q "declares no constructor Archivd"; then
+    pass "@retired naming a state the enum lacks → correct compile error"
+  else
+    fail "@retired misspelled state" "unexpected error output: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/ReadModel/RetiredTypoReadModel.res"
+
+echo ""
+echo "=== Test: PPX error — @retired constructor no field holds ==="
+
+# An annotated state that narrows no read is the same silent failure in a new
+# place: the author marked a retirement and got no enforcement.
+cat > "$ERROR/src/ReadModel/RetiredOrphanReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type shelfStatus =
+  | Listed
+  | @retired Archived
+
+@schema
+type state = {
+  @id id: string,
+  name: string,
+}
+EOF
+
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "@retired ctor with no holder" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q "no field of .type state. holds"; then
+    pass "@retired constructor no field holds → correct compile error"
+  else
+    fail "@retired ctor with no holder" "unexpected error output: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/ReadModel/RetiredOrphanReadModel.res"
+
+echo ""
+echo "=== Test: PPX error — two fields hold the same annotated enum ==="
+
+cat > "$ERROR/src/ReadModel/RetiredTwoHoldersReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type shelfStatus =
+  | Listed
+  | @retired Archived
+
+@schema
+type state = {
+  @id id: string,
+  shelfStatus: shelfStatus,
+  previousStatus: shelfStatus,
+}
+EOF
+
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "two holders of an annotated enum" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q "two fields hold"; then
+    pass "two fields holding one annotated enum → correct compile error"
+  else
+    fail "two holders of an annotated enum" "unexpected error output: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/ReadModel/RetiredTwoHoldersReadModel.res"
+
+echo ""
+echo "=== Test: PPX error — both @retired forms on one field ==="
+
+# Two places to look for one answer is how they come to disagree.
+cat > "$ERROR/src/ReadModel/RetiredBothFormsReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type shelfStatus =
+  | Listed
+  | @retired Archived
+
+@schema
+type state = {
+  @id id: string,
+  @retired(Archived) @lifecycle shelfStatus: shelfStatus,
+}
+EOF
+
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "both @retired forms" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q "whose constructors carry it"; then
+    pass "both @retired forms on one field → correct compile error"
+  else
+    fail "both @retired forms" "unexpected error output: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/ReadModel/RetiredBothFormsReadModel.res"
+
+echo ""
+echo "=== Test: PPX error — @retired constructor with a payload ==="
+
+cat > "$ERROR/src/ReadModel/RetiredCtorPayloadReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type shelfStatus =
+  | Listed
+  | @retired("Withdrawn") Archived
+
+@schema
+type state = {
+  @id id: string,
+  @lifecycle shelfStatus: shelfStatus,
+}
+EOF
+
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "@retired ctor payload" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q "on a constructor takes no payload"; then
+    pass "@retired constructor with a payload → correct compile error"
+  else
+    fail "@retired ctor payload" "unexpected error output: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/ReadModel/RetiredCtorPayloadReadModel.res"
 
 echo ""
 echo "=== Test: PPX error — @live with a non-bool payload ==="

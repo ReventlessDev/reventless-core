@@ -160,7 +160,7 @@ let checkFallback = async args => {
 // The ids a retirement-narrowed read returns, from the push-down.
 let liveIds = async args => {
   let s = await build()
-  switch s.listPage(~argsDict=argsOf(args), ~capability, ~labelField="name", ~retiredScope={field: "archived", value: None}) {
+  switch s.listPage(~argsDict=argsOf(args), ~capability, ~labelField="name", ~retiredScope={field: "archived", values: None}) {
   | Some(conn) => (conn->norm).edges->Array.map(e => e.id)
   | None => []
   }
@@ -248,19 +248,19 @@ describe("QueryDb list push-down parity (SQLite ≡ QueryDbListQuery spec)", () 
   // implemented in one of them is a hole every fallback-based test calls green.
   describe("retirement narrowing", () => {
     testPromise("bare page, narrowed", () =>
-      checkPushed(~label="retired-bare", ~retiredScope={field: "archived", value: None}, [])
+      checkPushed(~label="retired-bare", ~retiredScope={field: "archived", values: None}, [])
     )
     testPromise("narrowed + orderBy", () =>
       checkPushed(
         ~label="retired-order",
-        ~retiredScope={field: "archived", value: None},
+        ~retiredScope={field: "archived", values: None},
         [("orderBy", orderBy("name", "DESC"))],
       )
     )
     testPromise("narrowed + the caller's own filter", () =>
       checkPushed(
         ~label="retired-filter",
-        ~retiredScope={field: "archived", value: None},
+        ~retiredScope={field: "archived", values: None},
         [("filter", filterOf([("statusEq", JSON.Encode.string("active"))]))],
       )
     )
@@ -268,7 +268,7 @@ describe("QueryDb list push-down parity (SQLite ≡ QueryDbListQuery spec)", () 
       checkPushed(
         ~label="retired-owner",
         ~ownerScope=("owner", "u-a"),
-        ~retiredScope={field: "archived", value: None},
+        ~retiredScope={field: "archived", values: None},
         [],
       )
     )

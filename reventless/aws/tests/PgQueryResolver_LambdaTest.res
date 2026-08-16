@@ -94,7 +94,7 @@ let makeBinding = (
   ~subIdField=None,
   ~ownerField=None,
   ~retiredField=None,
-  ~retiredValue=None,
+  ~retiredValues=None,
   (),
 ): PgQueryResolver_Lambda.binding => {
   ops,
@@ -110,7 +110,7 @@ let makeBinding = (
   authorization,
   ownerField,
   retiredField,
-  retiredValue,
+  retiredValues,
 }
 
 let mkPayload = (

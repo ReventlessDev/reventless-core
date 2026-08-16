@@ -777,7 +777,7 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
           groupBy: None,
           visibility: None,
           live: None,
-          retired: Some({field, label: "", showWhenFalse: false, value: None}),
+          retired: Some({field, label: "", showWhenFalse: false, values: None}),
         },
       )
 
@@ -811,23 +811,23 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
               field: "accountStatus",
               label: "",
               showWhenFalse: false,
-              value: Some("Deactivated"),
+              values: Some(["Deactivated", "Closed"]),
             }),
           },
         )
       let schema = S.schema(s => {"accountStatus": s.matches(S.string)})->withState
       expect((
         Plugin_Structure.retiredFieldFromStateSchema(schema),
-        Plugin_Structure.retiredValueFromStateSchema(schema),
-      ))->toEqual((Some("accountStatus"), Some("Deactivated")))
+        Plugin_Structure.retiredValuesFromStateSchema(schema),
+      ))->toEqual((Some("accountStatus"), Some(["Deactivated", "Closed"])))
     })
 
     // Absent is what says "boolean form", so it has to stay tellable from a state
-    // that happens to be named.
-    testSync("publishes no value on the boolean form", () => {
+    // form — including one naming nothing, which is `Some([])`.
+    testSync("publishes no states on the boolean form", () => {
       let schema = S.schema(s => {"archived": s.matches(S.bool)})
       expect(
-        Plugin_Structure.retiredValueFromStateSchema(schema->withRetired(~field="archived")),
+        Plugin_Structure.retiredValuesFromStateSchema(schema->withRetired(~field="archived")),
       )->toEqual(None)
     })
 

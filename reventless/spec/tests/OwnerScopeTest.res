@@ -304,8 +304,17 @@ describe("OwnerScope:", () => {
 describe("OwnerScope.isRetiredValue:", () => {
   open Expect
 
-  let boolean: OwnerScope.retiredScope = {field: "archived", value: None}
-  let state: OwnerScope.retiredScope = {field: "accountStatus", value: Some("Deactivated")}
+  let boolean: OwnerScope.retiredScope = {field: "archived", values: None}
+  let state: OwnerScope.retiredScope = {field: "accountStatus", values: Some(["Deactivated"])}
+  // A lifecycle withdrawn by two states. They exclude identically; what differs
+  // between them is the way back, which commands express and this does not know.
+  let twoStates: OwnerScope.retiredScope = {
+    field: "shelfStatus",
+    values: Some(["Archived", "Discontinued"]),
+  }
+  // A state form naming nothing: no state has been declared to withdraw a row,
+  // so no row is. Distinct from the boolean form, which is `values: None`.
+  let noStates: OwnerScope.retiredScope = {field: "shelfStatus", values: Some([])}
 
   testSync("the boolean form retires on true", () =>
     expect(boolean->OwnerScope.isRetiredValue(Some(JSON.Encode.bool(true))))->toEqual(true)
@@ -321,6 +330,29 @@ describe("OwnerScope.isRetiredValue:", () => {
 
   testSync("and keeps the row in any other state", () =>
     expect(state->OwnerScope.isRetiredValue(Some(JSON.Encode.string("Active"))))->toEqual(false)
+  )
+
+  // Membership, not equality. Both states withdraw the row, and neither is the
+  // primary one — a one-member set is the ordinary case, not the only one.
+  testSync("every state in the set retires the row", () =>
+    expect((
+      twoStates->OwnerScope.isRetiredValue(Some(JSON.Encode.string("Archived"))),
+      twoStates->OwnerScope.isRetiredValue(Some(JSON.Encode.string("Discontinued"))),
+    ))->toEqual((true, true))
+  )
+
+  testSync("and a state in neither keeps the row", () =>
+    expect(twoStates->OwnerScope.isRetiredValue(Some(JSON.Encode.string("Listed"))))->toEqual(false)
+  )
+
+  // The empty case, kept distinct from the boolean form: `values: Some([])` is a
+  // state form that names nothing, so it withdraws nothing — where `values: None`
+  // would read the same cell as a boolean and retire the row on `true`.
+  testSync("a set naming no states retires nothing", () =>
+    expect((
+      noStates->OwnerScope.isRetiredValue(Some(JSON.Encode.string("Archived"))),
+      noStates->OwnerScope.isRetiredValue(Some(JSON.Encode.bool(true))),
+    ))->toEqual((false, false))
   )
 
   // The mirror image of the owner rule, landing the opposite way on purpose: an

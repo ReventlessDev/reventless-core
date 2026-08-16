@@ -194,7 +194,7 @@ function makeStorage(db, bus, name, indexes, subIdField) {
   };
   let publishSaved = (changeKind, id, state) => {
     let subKey = computeSubKey(state, subIdField);
-    let descriptor = LocalStateChangeDescriptor$ReventlessLocal.make(changeKind, entityKeyFor(id, subKey), state, LocalStateChangeDescriptor$ReventlessLocal.nextSequence(), Stdlib_Option.map(LocalStateChangeDescriptor$ReventlessLocal.retiredSpecFor(name), r => r.field), Stdlib_Option.flatMap(LocalStateChangeDescriptor$ReventlessLocal.retiredSpecFor(name), r => r.value));
+    let descriptor = LocalStateChangeDescriptor$ReventlessLocal.make(changeKind, entityKeyFor(id, subKey), state, LocalStateChangeDescriptor$ReventlessLocal.nextSequence(), Stdlib_Option.map(LocalStateChangeDescriptor$ReventlessLocal.retiredSpecFor(name), r => r.field), Stdlib_Option.flatMap(LocalStateChangeDescriptor$ReventlessLocal.retiredSpecFor(name), r => r.values));
     bus.publishStateChange(name, descriptor);
   };
   let saveKind = (id, state) => {
@@ -354,8 +354,14 @@ function makeStorage(db, bus, name, indexes, subIdField) {
     }
     if (retiredScope !== undefined) {
       let path = `json_extract(item, '$.` + retiredScope.field.replaceAll("'", "''") + `')`;
-      let state = retiredScope.value;
-      whereParts.push(state !== undefined ? path + ` IS NOT '` + state.replaceAll("'", "''") + `'` : path + ` IS NOT 1`);
+      let states = retiredScope.values;
+      if (states !== undefined) {
+        states.forEach(state => {
+          whereParts.push(path + ` IS NOT '` + state.replaceAll("'", "''") + `'`);
+        });
+      } else {
+        whereParts.push(path + ` IS NOT 1`);
+      }
     }
     let valString = v => {
       let s = Stdlib_JSON.Decode.string(v);

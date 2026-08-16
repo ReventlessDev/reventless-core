@@ -175,17 +175,30 @@ module Make = (P: {let pool: PgDriver.pool}) => {
   // FROM` rather than `<>` so an absent key — NULL — keeps the row instead of
   // making the whole predicate NULL and dropping it.
   //
-  // The state form compares against a JSON string instead of `true`. Same shape,
-  // same index behaviour — an equality predicate over an enum-valued attribute
-  // costs what one over a boolean does — so the `@index` guidance carries over
-  // unchanged.
+  // The state form compares against JSON strings instead of `true`, one
+  // `IS DISTINCT FROM` per state, ANDed. Not `NOT IN`: that is ordinary
+  // equality, so an absent key makes the predicate NULL and drops a row this
+  // spec keeps. Same shape and same index behaviour as the single-state form —
+  // a handful of equality predicates over an enum-valued attribute cost what one
+  // over a boolean does — so the `@index` guidance carries over unchanged.
+  //
+  // A set naming no states withdraws nothing, so the predicate is vacuously
+  // true, matching what `isRetiredValue` answers for it.
   let notRetiredC = (scope: Reventless.OwnerScope.retiredScope): string => {
     let key = scope.field->String.replaceAll("'", "''")
-    let retired = switch scope.value {
-    | None => "'true'::jsonb"
-    | Some(state) => `'"${state->String.replaceAll("'", "''")}"'::jsonb`
+    let distinctFrom = lit => `(item->'${key}') IS DISTINCT FROM ${lit}`
+    switch scope.values {
+    | None => distinctFrom("'true'::jsonb")
+    | Some([]) => "TRUE"
+    | Some(states) =>
+      // Parenthesised though every caller ANDs these together already: a clause
+      // that is safe only because of where it is spliced is a clause that breaks
+      // the first time it is spliced somewhere else.
+      "(" ++
+      states
+      ->Array.map(state => distinctFrom(`'"${state->String.replaceAll("'", "''")}"'::jsonb`))
+      ->Array.join(" AND ") ++ ")"
     }
-    `(item->'${key}') IS DISTINCT FROM ${retired}`
   }
 
   // Connection-list push-down. Builds `item->>'field'` predicates + keyset

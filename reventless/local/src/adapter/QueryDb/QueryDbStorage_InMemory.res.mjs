@@ -167,7 +167,7 @@ function Make(Bus) {
     };
     let publishSaved = (changeKind, id, state) => {
       let subKey = getSubKey(state, subIdField);
-      let descriptor = LocalStateChangeDescriptor$ReventlessLocal.make(changeKind, entityKeyFor(id, subKey), state, LocalStateChangeDescriptor$ReventlessLocal.nextSequence(), Stdlib_Option.map(LocalStateChangeDescriptor$ReventlessLocal.retiredSpecFor(name), r => r.field), Stdlib_Option.flatMap(LocalStateChangeDescriptor$ReventlessLocal.retiredSpecFor(name), r => r.value));
+      let descriptor = LocalStateChangeDescriptor$ReventlessLocal.make(changeKind, entityKeyFor(id, subKey), state, LocalStateChangeDescriptor$ReventlessLocal.nextSequence(), Stdlib_Option.map(LocalStateChangeDescriptor$ReventlessLocal.retiredSpecFor(name), r => r.field), Stdlib_Option.flatMap(LocalStateChangeDescriptor$ReventlessLocal.retiredSpecFor(name), r => r.values));
       Bus.publishStateChange(name, descriptor);
     };
     let publishRemoved = (id, subKey) => {

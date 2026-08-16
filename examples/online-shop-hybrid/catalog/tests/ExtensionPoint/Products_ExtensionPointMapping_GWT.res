@@ -40,4 +40,29 @@ describe("Products ExtensionPoint mapping", () => {
       ExtensionPoint.EmitPricingUpdate({productId: "p1", price: eur(7.5)}),
     )
   )
+
+  // Both of Catalog's retirements collapse to the one fact Ordering needs. This
+  // is the assertion that keeps the boundary a capability rather than a mirror
+  // of the catalog's lifecycle: adding a third way off the shelf must not add a
+  // third published event.
+  test("ProductArchived publishes ProductWithdrawn", () =>
+    whenDelegateEvent(Delegate.ProductArchived({productId: "p1"}))->thenPublishesEvent(
+      "p1",
+      ExtensionPoint.ProductWithdrawn({productId: "p1"}),
+    )
+  )
+
+  test("ProductDiscontinued publishes the same ProductWithdrawn", () =>
+    whenDelegateEvent(Delegate.ProductDiscontinued({productId: "p1"}))->thenPublishesEvent(
+      "p1",
+      ExtensionPoint.ProductWithdrawn({productId: "p1"}),
+    )
+  )
+
+  test("ProductUnarchived publishes ProductRelisted", () =>
+    whenDelegateEvent(Delegate.ProductUnarchived({productId: "p1"}))->thenPublishesEvent(
+      "p1",
+      ExtensionPoint.ProductRelisted({productId: "p1"}),
+    )
+  )
 })

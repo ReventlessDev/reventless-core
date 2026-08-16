@@ -65,7 +65,21 @@ type retiredSpec = {
   field: string,
   label: string,
   showWhenFalse: bool,
-  value: option<string>,
+  /**
+  The states that withdraw the row, or `None` for the boolean form.
+
+  A **set**, because a lifecycle may end in more than one way — a product is
+  withdrawn `Archived` or `Discontinued`, by different routes and with different
+  ways back — and one field carries all of them. Retired iff the field's value is
+  in the set; a single-element set is the ordinary case rather than a special one.
+
+  The `option` is the **form discriminator** and is load-bearing. `None` is the
+  boolean form, where the row is retired when the field is `true`. Flattened to a
+  bare array, `[]` would mean both "boolean form" and "state form naming no
+  states", and every consumer's boolean-form handling — the column suppression
+  most visibly — would stop firing on a value that looks merely empty.
+  */
+  values: option<array<string>>,
 }
 
 type stateAnnotationSpec = {

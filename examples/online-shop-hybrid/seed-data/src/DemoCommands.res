@@ -75,6 +75,18 @@ let archiveCategory = (command: CatalogPlugin.ArchiveCategory.command): Seed.mut
     Seed.mutation(catalog("ArchiveCategory"), [("categoryId", Id(categoryId))])
   }
 
+let archiveProduct = (command: CatalogPlugin.ArchiveProduct.command): Seed.mutation =>
+  switch command {
+  | ArchiveProduct({productId}) =>
+    Seed.mutation(catalog("ArchiveProduct"), [("productId", Id(productId))])
+  }
+
+let discontinueProduct = (command: CatalogPlugin.DiscontinueProduct.command): Seed.mutation =>
+  switch command {
+  | DiscontinueProduct({productId}) =>
+    Seed.mutation(catalog("DiscontinueProduct"), [("productId", Id(productId))])
+  }
+
 let addProduct = (command: CatalogPlugin.AddProduct.command): Seed.mutation =>
   switch command {
   | AddProduct({productId, name, description, price, imageUrl: ?imageUrl, categoryId}) =>

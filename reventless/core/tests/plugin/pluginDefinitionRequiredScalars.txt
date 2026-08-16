@@ -79,6 +79,7 @@
 .structure.readModels[].name: string
 .structure.readModels[].queryField: string
 .structure.readModels[].requiredAccess[]: string
+.structure.readModels[].retiredValues[]: string
 .structure.readModels[].schema: string
 .structure.readModels[].searchableFields[]: string
 .structure.requiredStoreDeclarations[].component: string
@@ -110,6 +111,7 @@
 .structure.stateViewSlices[].name: string
 .structure.stateViewSlices[].queryField: string
 .structure.stateViewSlices[].requiredAccess[]: string
+.structure.stateViewSlices[].retiredValues[]: string
 .structure.stateViewSlices[].schema: string
 .structure.stateViewSlices[].searchableFields[]: string
 .version: string

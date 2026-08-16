@@ -96,29 +96,43 @@ function mergeAnnotations(fieldSchema, fieldName, spec) {
         "showWhenFalse",
         r.showWhenFalse
       ]];
-    let v = r.value;
-    let entries$1 = v !== undefined ? entries.concat([[
-          "value",
-          v
-        ]]) : entries;
-    let entries$2 = r.label === "" ? entries$1 : [[
+    let vs = r.values;
+    let entries$1;
+    if (vs !== undefined) {
+      let entries$2 = entries.concat([[
+          "values",
+          vs.map(prim => prim)
+        ]]);
+      if (vs.length !== 1) {
+        entries$1 = entries$2;
+      } else {
+        let only = vs[0];
+        entries$1 = entries$2.concat([[
+            "value",
+            only
+          ]]);
+      }
+    } else {
+      entries$1 = entries;
+    }
+    let entries$3 = r.label === "" ? entries$1 : [[
           "label",
           r.label
         ]].concat(entries$1);
-    obj["x-reventless-retired"] = Object.fromEntries(entries$2);
+    obj["x-reventless-retired"] = Object.fromEntries(entries$3);
   }
   let match$4 = spec.metric.find(param => param[0] === fieldName);
   if (match$4 !== undefined) {
     let m = match$4[1];
-    let entries$3 = [[
+    let entries$4 = [[
         "aggregate",
         m.aggregate
       ]];
-    let entries$4 = m.label === "" ? entries$3 : entries$3.concat([[
+    let entries$5 = m.label === "" ? entries$4 : entries$4.concat([[
           "label",
           m.label
         ]]);
-    obj["x-reventless-metric"] = Object.fromEntries(entries$4);
+    obj["x-reventless-metric"] = Object.fromEntries(entries$5);
   }
   return obj;
 }

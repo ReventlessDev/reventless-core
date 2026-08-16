@@ -29,7 +29,7 @@ describe("state-change descriptor parity", () => {
   testAsync("every implementation builds the same descriptor", async () => {
     let cases = await buildAll()
     // A silent zero-case run would pass while asserting nothing.
-    expect(cases->Array.length)->toBe(8)
+    expect(cases->Array.length)->toBe(11)
     cases->Array.forEach(c => {
       expect((c.name, c.relay))->toEqual((c.name, c.local))
       expect((c.name, c.postgres))->toEqual((c.name, c.local))
@@ -87,6 +87,53 @@ describe("state-change descriptor parity", () => {
       expect(keyOf(c.relay, "state")->Option.isSome)->toBe(true)
       expect(keyOf(c.postgres, "state")->Option.isSome)->toBe(true)
     | None => expect("live-with-flag case missing")->toBe("present")
+    }
+  })
+
+  // The state form, where the predicate is membership rather than equality. Both
+  // states are asserted, so an implementation comparing against only the first
+  // member of the set fails on the second — which is the shape of mistake a set
+  // invites and a single value could not.
+  testAsync("a row in any retired state publishes as metadata only", async () => {
+    let cases = await buildAll()
+    let keyOf = (d: JSON.t, k) => d->JSON.Decode.object->Option.flatMap(o => o->Dict.get(k))
+    let byName = name => cases->Array.find(c => c.name == name)
+
+    [
+      "row in the first retired state degrades to metadata only",
+      "row in the second retired state degrades to metadata only",
+    ]->Array.forEach(name =>
+      switch byName(name) {
+      | Some(c) =>
+        expect((name, keyOf(c.local, "state"), keyOf(c.local, "sortKeyValue")))->toEqual((
+          name,
+          None,
+          None,
+        ))
+        expect((name, keyOf(c.relay, "state"), keyOf(c.relay, "sortKeyValue")))->toEqual((
+          name,
+          None,
+          None,
+        ))
+        expect((name, keyOf(c.postgres, "state"), keyOf(c.postgres, "sortKeyValue")))->toEqual((
+          name,
+          None,
+          None,
+        ))
+      | None => expect(name ++ " missing")->toBe("present")
+      }
+    )
+
+    // The control for the state form: a live state on the same lifecycle, so an
+    // implementation dropping every row of a view that declares states fails.
+    switch byName("row in a live state carries the row") {
+    | Some(c) =>
+      expect((
+        keyOf(c.local, "state")->Option.isSome,
+        keyOf(c.relay, "state")->Option.isSome,
+        keyOf(c.postgres, "state")->Option.isSome,
+      ))->toEqual((true, true, true))
+    | None => expect("live-state case missing")->toBe("present")
     }
   })
 })

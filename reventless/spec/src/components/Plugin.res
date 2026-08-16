@@ -304,10 +304,15 @@ type queryableDef = {
   */
   retiredField: @s.matches(stringOptionSchema) option<string>,
   /**
-  The state a row is retired *in*, when the view declares the state form of
-  `@retired` — `Some("Deactivated")` beside `retiredField: Some("accountStatus")`.
-  `None` is the boolean form, where the excluded value is always `true` and naming
-  it would be a field that can only hold one thing.
+  The states a row is retired *in*, when the view declares the state form of
+  `@retired` — `Some(["Archived", "Discontinued"])` beside
+  `retiredField: Some("shelfStatus")`. `None` is the boolean form, where the
+  excluded value is always `true` and naming it would be a field that can only
+  hold one thing.
+
+  A set: a lifecycle may be withdrawn by more than one state, which exclude
+  identically and differ only in the way back. Retired iff the field's value is in
+  it, and one member is the ordinary case rather than a special one.
 
   Published beside the field rather than left for a consumer to re-derive from the
   state schema: a client holding this def holds the whole predicate, and two places
@@ -317,7 +322,7 @@ type queryableDef = {
   when retired, with no annotation beyond the two — retirement expressed in the
   vocabulary a command's stance is already written in.
   */
-  retiredValue: @s.matches(stringOptionSchema) option<string>,
+  retiredValues: @s.matches(stringArrayOptionSchema) option<array<string>>,
   /**
   Component visibility hint (`@@reventless.visibility`). `Some("Internal")` marks a
   ReadModel / StateViewSlice that the deployed AutoUI hides from its menu, drill-down

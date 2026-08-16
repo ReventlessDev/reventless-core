@@ -397,6 +397,30 @@ let seedDeactivations = async (customers: array<DemoData.customer>, ~client: See
   Seed.Runner.report(`customers: ${(targets->Array.length)->Int.toString} deactivated`)
 }
 
+// The two ways a product leaves the shelf, run late for the reason the archived
+// category is archived late: withdrawn before anything points at it, a product
+// demonstrates nothing. Withdrawn after the orders exist, it shows an order still
+// resolving a product the catalog no longer offers — which is the case the whole
+// feature is for — and it shows the withdrawal crossing the extension point into
+// Ordering, where the shopper's `AvailableProducts` drops the row.
+let seedProductRetirements = async (products: array<DemoData.product>, ~client: Seed.Client.t) => {
+  let archived = DemoData.archivedProducts(products)
+  await client->Seed.Client.sendAll(
+    archived->Array.map(p => DemoCommands.archiveProduct(ArchiveProduct({productId: p.id}))),
+  )
+  let discontinued = DemoData.discontinuedProducts(products)
+  await client->Seed.Client.sendAll(
+    discontinued->Array.map(p =>
+      DemoCommands.discontinueProduct(DiscontinueProduct({productId: p.id}))
+    ),
+  )
+  Seed.Runner.report(
+    `catalog retirements: ${(archived->Array.length)->Int.toString} archived, ${(discontinued
+        ->Array.length)
+        ->Int.toString} discontinued`,
+  )
+}
+
 // ── Summary ─────────────────────────────────────────────────────────────────
 
 let summarise = async (~client: Seed.Client.t, ~counts: dict<int>) => {
@@ -441,11 +465,31 @@ let summarise = async (~client: Seed.Client.t, ~counts: dict<int>) => {
     )
     ->Array.join(", ")
 
+  // The retirements, read back and counted by state. This query runs as the seed's
+  // own caller — `admin`, which the deployment lists as elevated — so it returns
+  // retired rows and the view counts above do NOT drop. That is correct behaviour
+  // and reads exactly like a bug, so it is stated rather than left to be
+  // rediscovered. The line below is what an elevated caller sees; a scoped one
+  // sees neither of these rows.
+  let shelved = await client->Seed.Client.queryAllNodes(
+    ~field="Catalog_Products",
+    ~selection="name shelfStatus",
+  )
+  let countShelf = state =>
+    shelved
+    ->Array.filter(p => p->Seed.Client.nodeString("shelfStatus") == Some(state))
+    ->Array.length
+
   Seed.Runner.heading("Seeded:")
   Console.log(
     `  order lifecycle: ${lifecycles
       ->Array.map(s => `${s} ${countLifecycle(s)->Int.toString}`)
       ->Array.join(", ")}`,
+  )
+  Console.log(
+    `  product shelf:   ${["Listed", "Archived", "Discontinued"]
+      ->Array.map(s => `${s} ${countShelf(s)->Int.toString}`)
+      ->Array.join(", ")} (elevated view — a scoped caller sees only the Listed ones)`,
   )
   Console.log(`  demand head:   ${head}`)
   Console.log(
@@ -558,6 +602,7 @@ let run = async (
   let dispatched = await dispatchStandardBatch(orders, ~client)
   await seedCancellations(orders, ~client, ~dispatched)
   await seedDeactivations(customers, ~client)
+  await seedProductRetirements(products, ~client)
 
   let counts = await Seed.Runner.verifyViews(client, ~views)
   await summarise(~client, ~counts)

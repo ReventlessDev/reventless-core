@@ -265,7 +265,7 @@ let makeStorage = (
       ~state=Some(state),
       ~seq=LocalStateChangeDescriptor.nextSequence(),
       ~retiredField=?LocalStateChangeDescriptor.retiredSpecFor(name)->Option.map(r => r.field),
-      ~retiredValue=?LocalStateChangeDescriptor.retiredSpecFor(name)->Option.flatMap(r => r.value),
+      ~retiredValues=?LocalStateChangeDescriptor.retiredSpecFor(name)->Option.flatMap(r => r.values),
     )
     bus.publishStateChange(~name, ~descriptor)
   }
@@ -465,18 +465,27 @@ let makeStorage = (
       // `'true'` compares unequal to 0 and the row would vanish on this backend
       // only. `QueryDbListPushdownParityTest` is what holds the two together.
       //
-      // The state form compares against the state's text instead of 1, and the
-      // three cases land identically: absent is NULL, a different state compares
-      // unequal, and a non-string value is not the state either.
+      // The state form compares against the states' text instead of 1, and the
+      // three cases land identically: absent is NULL, a state outside the set
+      // compares unequal to every member, and a non-string value is none of them
+      // either.
+      //
+      // Written as a conjunction of `IS NOT` rather than as `NOT IN`: `IN` is
+      // ordinary equality, so a NULL path makes the predicate NULL and the row
+      // vanishes — the absent case, which has to keep the row. `IS NOT` is the
+      // comparison that treats NULL as a value, and it does not have an `IN`
+      // spelling. A set naming nothing pushes no predicate down, which is the
+      // same answer `isRetiredValue` gives it.
       switch retiredScope {
       | Some(scope) =>
         let path = `json_extract(item, '$.${scope.field->String.replaceAll("'", "''")}')`
-        whereParts->Array.push(
-          switch scope.value {
-          | None => `${path} IS NOT 1`
-          | Some(state) => `${path} IS NOT '${state->String.replaceAll("'", "''")}'`
-          },
-        )
+        switch scope.values {
+        | None => whereParts->Array.push(`${path} IS NOT 1`)
+        | Some(states) =>
+          states->Array.forEach(state =>
+            whereParts->Array.push(`${path} IS NOT '${state->String.replaceAll("'", "''")}'`)
+          )
+        }
       | None => ()
       }
       let valString = v =>

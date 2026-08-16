@@ -16,6 +16,18 @@ let eventSchema = S.union([
     TAG: "ProductPriceChanged",
     productId: s.m(DcbTag$Reventless.string),
     price: s.m(Money$Reventless.schema)
+  })),
+  S.schema(s => ({
+    TAG: "ProductArchived",
+    productId: s.m(DcbTag$Reventless.string)
+  })),
+  S.schema(s => ({
+    TAG: "ProductDiscontinued",
+    productId: s.m(DcbTag$Reventless.string)
+  })),
+  S.schema(s => ({
+    TAG: "ProductUnarchived",
+    productId: s.m(DcbTag$Reventless.string)
   }))
 ]);
 
@@ -42,41 +54,65 @@ async function directiveHandler(_createSchedule, _deleteSchedule, _queryEngine, 
 }
 
 let mapOutgoingEvent = (_id, event, _meta, _queryEngine) => {
-  if (event.TAG === "ProductAdded") {
-    let productId = event.productId;
-    return [{
-        TAG: "PublishEvent",
-        _0: productId,
-        _1: {
-          TAG: "ProductBecameAvailable",
-          productId: productId,
-          name: event.name,
-          price: event.price
+  switch (event.TAG) {
+    case "ProductAdded" :
+      let productId = event.productId;
+      return [{
+          TAG: "PublishEvent",
+          _0: productId,
+          _1: {
+            TAG: "ProductBecameAvailable",
+            productId: productId,
+            name: event.name,
+            price: event.price
+          }
+        }];
+    case "ProductPriceChanged" :
+      let price = event.price;
+      let productId$1 = event.productId;
+      return [
+        {
+          TAG: "PublishEvent",
+          _0: productId$1,
+          _1: {
+            TAG: "ProductPriceChanged",
+            productId: productId$1,
+            price: price
+          }
+        },
+        {
+          TAG: "HandleDirective",
+          _0: directiveHandler,
+          _1: {
+            TAG: "EmitPricingUpdate",
+            productId: productId$1,
+            price: price
+          }
         }
-      }];
+      ];
+    case "ProductArchived" :
+    case "ProductDiscontinued" :
+      break;
+    case "ProductUnarchived" :
+      let theId = event.productId;
+      return [{
+          TAG: "PublishEvent",
+          _0: theId,
+          _1: {
+            TAG: "ProductRelisted",
+            productId: theId
+          }
+        }];
   }
-  let price = event.price;
-  let productId$1 = event.productId;
-  return [
-    {
+  let theId$1 = event.productId;
+  return [{
       TAG: "PublishEvent",
-      _0: productId$1,
+      _0: theId$1,
       _1: {
-        TAG: "ProductPriceChanged",
-        productId: productId$1,
-        price: price
+        TAG: "ProductWithdrawn",
+        productId: theId$1
       }
-    },
-    {
-      TAG: "HandleDirective",
-      _0: directiveHandler,
-      _1: {
-        TAG: "EmitPricingUpdate",
-        productId: productId$1,
-        price: price
-      }
-    }
-  ];
+    }];
 };
 
 let name = "Products";

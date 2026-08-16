@@ -16,6 +16,16 @@ let consumedEventSchema = S.union([
     TAG: "CatalogProductPriceChanged",
     productId: s.m(S.string),
     price: s.m(Money$Reventless.schema)
+  })),
+  S.schema(s => ({
+    TAG: "CatalogProductWithdrawn",
+    productId: s.m(S.string)
+  })),
+  S.schema(s => ({
+    TAG: "CatalogProductRelisted",
+    productId: s.m(S.string),
+    name: s.m(S.string),
+    price: s.m(Money$Reventless.schema)
   }))
 ]);
 

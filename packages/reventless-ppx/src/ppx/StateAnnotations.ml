@@ -134,6 +134,39 @@ let strip_retired_field_attr (attrs : attributes) =
     not (String.equal attr.attr_name.txt "retired")
   ) attrs
 
+(* ── @retired on a constructor ──
+   The marker's home. `| @retired Archived` says the state means withdrawn, in
+   the one place the name cannot be wrong, because it *is* the declaration. The
+   field form below stays for the two cases a constructor cannot serve — a
+   boolean, and an enum declared in another file, which this per-file PPX cannot
+   reach to annotate.
+
+   Constructor attributes are the established mechanism here, not an invention:
+   [NoApiAnnotation], [AllowedStatesAnnotation] and [TargetStateAnnotation] all
+   read `pcd_attributes`, and `| @noApi ReopenOrder(…)` is the same shape an
+   author already writes. *)
+
+let has_retired_ctor_attr (attrs : attributes) =
+  List.exists (fun (a : attribute) -> String.equal a.attr_name.txt "retired") attrs
+
+let strip_retired_ctor_attr (attrs : attributes) =
+  List.filter (fun (attr : attribute) ->
+    not (String.equal attr.attr_name.txt "retired")
+  ) attrs
+
+(* A constructor-borne `@retired` takes no payload. `label` and `showWhenFalse`
+   are the boolean form's — a state form's word is the state's own name, which
+   the constructor already is, and the negative of "one of three ways to be
+   withdrawn" is not a word at all. *)
+let check_retired_ctor_payload ~loc (attr : attribute) : unit =
+  match attr.attr_payload with
+  | PStr [] -> ()
+  | _ ->
+    Location.raise_errorf ~loc
+      "@retired on a constructor takes no payload — the state's own name is what \
+       a consumer renders, so there is no label to state. `label` and \
+       `showWhenFalse` belong to the boolean form (@retired deactivated: bool)."
+
 let is_bool_type (ct : core_type) =
   match ct.ptyp_desc with
   | Ptyp_constr ({ txt = Lident "bool"; _ }, []) -> true
@@ -170,6 +203,76 @@ let find_schema_state_record (str : structure) : label_declaration list option =
        | _ -> scan rest)
   in
   scan str
+
+(** One `@schema` variant type in the file: its name, every constructor it
+    declares, and the subset carrying `@retired`.
+
+    Both lists are collected in one pass because the two `@retired` forms need
+    opposite halves of it — the constructor form reads `retired`, and the field
+    form is checked against `constructors` to close the hole that let a
+    misspelled state name compile. *)
+type schema_variant = {
+  sv_name : string;
+  sv_constructors : string list;
+  sv_retired : string list;
+  sv_loc : Location.t;
+}
+
+let collect_schema_variants (str : structure) : schema_variant list =
+  List.concat_map (fun (item : structure_item) ->
+    match item.pstr_desc with
+    | Pstr_type (_, decls) ->
+      List.filter_map (fun (td : type_declaration) ->
+        if not (Util.has_attr "schema" td.ptype_attributes) then None
+        else
+          match td.ptype_kind with
+          | Ptype_variant ctors ->
+            Some {
+              sv_name = td.ptype_name.txt;
+              sv_constructors = List.map (fun (cd : constructor_declaration) -> cd.pcd_name.txt) ctors;
+              sv_retired = List.filter_map (fun (cd : constructor_declaration) ->
+                match List.find_opt (fun (a : attribute) ->
+                  String.equal a.attr_name.txt "retired") cd.pcd_attributes with
+                | None -> None
+                | Some attr ->
+                  check_retired_ctor_payload ~loc:cd.pcd_loc attr;
+                  Some cd.pcd_name.txt
+              ) ctors;
+              sv_loc = td.ptype_loc;
+            }
+          | _ -> None
+      ) decls
+    | _ -> []
+  ) str
+
+(** The local type a field holds, following `option<…>` the way [is_option_bool_type]
+    does. `None` for anything qualified, applied or structural — those name a type
+    this per-file PPX cannot see the declaration of, which is exactly the case the
+    field form of `@retired` exists to serve. *)
+let rec local_type_name (ct : core_type) : string option =
+  match ct.ptyp_desc with
+  | Ptyp_constr ({ txt = Lident "option"; _ }, [ inner ]) -> local_type_name inner
+  | Ptyp_constr ({ txt = Lident name; _ }, []) -> Some name
+  | _ -> None
+
+(** Strip `@retired` from the constructors of every `@schema` variant type. The
+    marker is read at structure time and must not reach the typechecker, which
+    knows nothing about it — the same reason the field form is stripped. *)
+let strip_retired_ctor_attrs (str : structure) : structure =
+  List.map (fun (item : structure_item) ->
+    match item.pstr_desc with
+    | Pstr_type (rf, decls) ->
+      let new_decls = List.map (fun (td : type_declaration) ->
+        match td.ptype_kind with
+        | Ptype_variant ctors ->
+          { td with ptype_kind = Ptype_variant (List.map (fun (cd : constructor_declaration) ->
+              { cd with pcd_attributes = strip_retired_ctor_attr cd.pcd_attributes }
+            ) ctors) }
+        | _ -> td
+      ) decls in
+      { item with pstr_desc = Pstr_type (rf, new_decls) }
+    | _ -> item
+  ) str
 
 (** Strip @subId and @compositeSubId attributes from @schema type state record fields. *)
 let strip_sub_id_attrs (str : structure) : structure =
@@ -1467,7 +1570,7 @@ let metric_tuple_array ~loc pairs =
     normalised to `None` upstream so the metadata stays compact. The `~live` arg
     is the bool from `@live(...)` on the state type declaration, or `None` when
     the annotation is absent. *)
-let make_state_annotations_binding ~loc ~visibility ~live fields : structure_item option =
+let make_state_annotations_binding ~loc ~visibility ~live ~variants fields : structure_item option =
   let ids = List.filter_map (fun (ld : label_declaration) ->
     if has_id_field_attr ld.pld_attributes then Some ld.pld_name.txt else None
   ) fields in
@@ -1549,14 +1652,75 @@ let make_state_annotations_binding ~loc ~visibility ~live fields : structure_ite
       Location.raise_errorf ~loc:loc2
         "duplicate @groupBy annotation; only one field per state record may carry @groupBy"
   in
-  let retired_fields = List.filter_map (fun (ld : label_declaration) ->
+  (* ── Where the retirement is declared ──
+     Two sources, one answer. A field carrying `@retired` names it directly; a
+     field whose type is an enum with `@retired` constructors carries it by the
+     states themselves. They are collected separately and then meet, so the "at
+     most one per record" rule is asked once, of both. *)
+  let field_form = List.filter_map (fun (ld : label_declaration) ->
     check_retired_field_type ld;
     match find_retired_attr ld.pld_attributes with
-    | Some attr -> Some (ld.pld_name.txt, get_retired_value ~loc:ld.pld_loc attr, ld.pld_loc)
     | None -> None
+    | Some attr ->
+      let (label, show, value) = get_retired_value ~loc:ld.pld_loc attr in
+      (* The field form takes a name, so the name can be wrong. Where the enum is
+         declared in this file the PPX can say so; where it is imported it cannot
+         reach the declaration, and the error text says which case the author is
+         in rather than leaving the gap to be discovered. *)
+      (match value, local_type_name ld.pld_type with
+       | Some v, Some type_name ->
+         (match List.find_opt (fun sv -> String.equal sv.sv_name type_name) variants with
+          | Some sv when not (List.mem v sv.sv_constructors) ->
+            Location.raise_errorf ~loc:ld.pld_loc
+              "@retired(%s): `%s` declares no constructor %s — its cases are %s. \
+               A state name that matches nothing compares every row against a \
+               state no row is ever in, so every row stays visible to every \
+               caller while the annotation sits on the schema looking like \
+               enforcement. Marking the constructor itself (| @retired %s) \
+               cannot go wrong this way; the name here is only checked when the \
+               enum is declared in the same file."
+              v type_name v (String.concat " | " sv.sv_constructors) v
+          | _ -> ())
+       | _ -> ());
+      Some (ld.pld_name.txt, (label, show, Option.map (fun v -> [v]) value), ld.pld_loc)
   ) fields in
+  (* The marker is on a type and the schema entry is on a field, so this is the
+     step that joins them: for each annotated enum, the field of `type state`
+     that holds it becomes the retirement field. *)
+  let ctor_form = List.concat_map (fun sv ->
+    let holders = List.filter (fun (ld : label_declaration) ->
+      match local_type_name ld.pld_type with
+      | Some type_name -> String.equal type_name sv.sv_name
+      | None -> false
+    ) fields in
+    match holders with
+    | [] ->
+      Location.raise_errorf ~loc:sv.sv_loc
+        "`%s` marks %s as retired, but no field of `type state` holds `%s`, so \
+         nothing is withdrawn. An annotation that narrows no read is the silent \
+         failure this marker exists to prevent — hold the enum in a field, or \
+         drop the marker."
+        sv.sv_name (String.concat " and " sv.sv_retired) sv.sv_name
+    | [ld] ->
+      (match find_retired_attr ld.pld_attributes with
+       | Some _ ->
+         Location.raise_errorf ~loc:ld.pld_loc
+           "`%s` carries @retired and holds `%s`, whose constructors carry it \
+            too. Two places to look for one answer is how they come to disagree \
+            — keep the constructors, which cannot name a state that does not \
+            exist, and drop the annotation here."
+           ld.pld_name.txt sv.sv_name
+       | None -> ());
+      [(ld.pld_name.txt, ("", false, Some sv.sv_retired), ld.pld_loc)]
+    | _ :: ld2 :: _ ->
+      Location.raise_errorf ~loc:ld2.pld_loc
+        "two fields hold `%s`, whose constructors carry @retired, so the row has \
+         two retirements and the query layer tests a single field. Only one \
+         field per state record may carry the retirement."
+        sv.sv_name
+  ) (List.filter (fun sv -> sv.sv_retired <> []) variants) in
   let retired =
-    match retired_fields with
+    match field_form @ ctor_form with
     | [] -> None
     | [(name, value, _)] -> Some (name, value)
     | (_, _, _) :: (_, _, loc2) :: _ ->
@@ -1612,25 +1776,29 @@ let make_state_annotations_binding ~loc ~visibility ~live fields : structure_ite
       | None ->
         { pexp_desc = Pexp_construct ({ txt = Lident "None"; loc }, None);
           pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] }
-      | Some (name, (label, show_when_false, value)) ->
+      | Some (name, (label, show_when_false, values)) ->
         let estr = Ast_builder.Default.estring ~loc in
         let ebool b =
           { pexp_desc = Pexp_construct ({ txt = Lident (if b then "true" else "false"); loc }, None);
             pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] } in
-        let value_expr =
-          match value with
+        (* `None` is the boolean form and stays distinguishable from a state form
+           naming nothing, which is why this is `option<array<string>>` and not a
+           bare array: flattened, `[]` would spell both, and every consumer's
+           boolean-form handling would stop firing on what looks merely empty. *)
+        let values_expr =
+          match values with
           | None ->
             { pexp_desc = Pexp_construct ({ txt = Lident "None"; loc }, None);
               pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] }
-          | Some v ->
-            { pexp_desc = Pexp_construct ({ txt = Lident "Some"; loc }, Some (estr v));
+          | Some vs ->
+            { pexp_desc = Pexp_construct ({ txt = Lident "Some"; loc }, Some (estr_array ~loc vs));
               pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] } in
         let rec_expr =
           { pexp_desc = Pexp_record (
               [ ({ Location.txt = Lident "field"; loc }, estr name);
                 ({ txt = Lident "label"; loc }, estr label);
                 ({ txt = Lident "showWhenFalse"; loc }, ebool show_when_false);
-                ({ txt = Lident "value"; loc }, value_expr) ],
+                ({ txt = Lident "values"; loc }, values_expr) ],
               None);
             pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] } in
         { pexp_desc = Pexp_construct ({ txt = Lident "Some"; loc }, Some rec_expr);
@@ -1723,6 +1891,10 @@ let generate_state_annotations ~loc (str : structure) : structure_item list =
     validate_visibility_annotations fields;
     let visibility = extract_file_visibility str in
     let live = extract_state_live str in
-    (match make_state_annotations_binding ~loc ~visibility ~live fields with
+    (* The file's `@schema` variant types, so the retirement can be read off the
+       constructors that declare it and the field form can be checked against
+       the enum it names. *)
+    let variants = collect_schema_variants str in
+    (match make_state_annotations_binding ~loc ~visibility ~live ~variants fields with
      | None -> []
      | Some s -> [s])

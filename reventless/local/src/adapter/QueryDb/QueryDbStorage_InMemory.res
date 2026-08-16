@@ -199,7 +199,7 @@ module Make = (Bus: LocalBus.T) => {
         ~state=Some(state),
         ~seq=LocalStateChangeDescriptor.nextSequence(),
         ~retiredField=?LocalStateChangeDescriptor.retiredSpecFor(name)->Option.map(r => r.field),
-      ~retiredValue=?LocalStateChangeDescriptor.retiredSpecFor(name)->Option.flatMap(r => r.value),
+      ~retiredValues=?LocalStateChangeDescriptor.retiredSpecFor(name)->Option.flatMap(r => r.values),
       )
       Bus.publishStateChange(~name, ~descriptor)
     }

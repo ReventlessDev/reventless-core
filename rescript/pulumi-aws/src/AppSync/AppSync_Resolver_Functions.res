@@ -451,9 +451,9 @@ let listAllItemsConnection = (
   // reason `ownerField` is: there is no Lambda in this path to read it at
   // request time.
   ~retiredField: option<string>=?,
-  // The value that retires the row, for the state form of the annotation.
+  // The states that retire the row, for the state form of the annotation.
   // Absent is the boolean form, where the value is always `true`.
-  ~retiredValue: option<string>=?,
+  ~retiredValues: option<array<string>>=?,
 ) => {
   let requireAttributeClause = switch requireAttribute {
   | Some(attr) => `
@@ -525,11 +525,29 @@ let listAllItemsConnection = (
   const _wantsRetired = _exempt && ctx.args.includeRetired === true;
   if (!_wantsRetired) {
     names['#retired'] = '${field}';
-${switch retiredValue {
+${switch retiredValues {
       | None => `    values[':retiredFalse'] = util.dynamodb.toDynamoDB(false);
     parts.push('(attribute_not_exists(#retired) OR #retired = :retiredFalse)');`
-      | Some(state) => `    values[':retiredValue'] = util.dynamodb.toDynamoDB('${state}');
-    parts.push('(attribute_not_exists(#retired) OR #retired <> :retiredValue)');`
+      // One `<>` per state, ANDed, rather than `NOT IN`: DynamoDB's `IN` needs a
+      // parenthesised operand list built from the same placeholders anyway, and
+      // the conjunction keeps `attribute_not_exists` covering the absent case
+      // once for the whole clause — a row that states no lifecycle is not
+      // retired, the same reading every other adapter takes.
+      | Some(states) =>
+        let placeholders = states->Array.mapWithIndex((state, i) => (`:retiredValue${Int.toString(i)}`, state))
+        let assignments =
+          placeholders
+          ->Array.map(((ph, state)) => `    values['${ph}'] = util.dynamodb.toDynamoDB('${state}');`)
+          ->Array.join("\n")
+        let comparisons =
+          placeholders->Array.map(((ph, _)) => `#retired <> ${ph}`)->Array.join(" AND ")
+        // A set naming nothing withdraws nothing, so it pushes no predicate down.
+        switch placeholders {
+        | [] => ""
+        | _ =>
+          `${assignments}
+    parts.push('(attribute_not_exists(#retired) OR (${comparisons}))');`
+        }
       }}
   }`
   }

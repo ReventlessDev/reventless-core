@@ -159,10 +159,10 @@ let registerBinding = (
       ->Option.map(r => r.field),
       // The state form's other half. Carried beside the field rather than
       // re-derived at predicate time, so one place decides which rows are retired.
-      retiredValue: spec.stateSchema
+      retiredValues: spec.stateSchema
       ->Reventless.StateAnnotations.getSpec
       ->Option.flatMap(a => a.retired)
-      ->Option.flatMap(r => r.value),
+      ->Option.flatMap(r => r.values),
     },
   )
   logDebug("registered resolver binding for " ++ entry.readModelName, {comp: "PgQueryResolver"})

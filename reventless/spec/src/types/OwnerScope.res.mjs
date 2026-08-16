@@ -2,7 +2,6 @@
 
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
-import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Identity$Reventless from "./Identity.res.mjs";
 
@@ -157,7 +156,7 @@ function scopeOf(decision) {
   }
 }
 
-function decideRetired(identity, retiredField, retiredValue, askedOpt, elevatedOpt) {
+function decideRetired(identity, retiredField, retiredValues, askedOpt, elevatedOpt) {
   let asked = askedOpt !== undefined ? askedOpt : false;
   let elevated = elevatedOpt !== undefined ? elevatedOpt : elevatedGroups();
   if (retiredField === undefined) {
@@ -165,7 +164,7 @@ function decideRetired(identity, retiredField, retiredValue, askedOpt, elevatedO
   }
   let scope = {
     field: retiredField,
-    value: retiredValue
+    values: retiredValues
   };
   let match = resolve(identity, elevated);
   if (typeof match !== "object") {
@@ -206,13 +205,16 @@ function retiredScopeOf(decision) {
 }
 
 function isRetiredValue(scope, cell) {
-  let match = scope.value;
-  if (cell !== undefined) {
-    if (match !== undefined) {
-      return Primitive_object.equal(Stdlib_JSON.Decode.string(cell), match);
-    } else {
-      return Stdlib_Option.getOr(Stdlib_JSON.Decode.bool(cell), false);
-    }
+  let match = scope.values;
+  if (cell === undefined) {
+    return false;
+  }
+  if (match === undefined) {
+    return Stdlib_Option.getOr(Stdlib_JSON.Decode.bool(cell), false);
+  }
+  let s = Stdlib_JSON.Decode.string(cell);
+  if (s !== undefined) {
+    return match.includes(s);
   } else {
     return false;
   }

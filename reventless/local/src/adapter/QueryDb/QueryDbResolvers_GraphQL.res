@@ -204,7 +204,7 @@ module Make = (Bus: LocalBus.T) => {
     let retiredDecision = (~ctx, ~args) =>
       extractIdentity(ctx)->Reventless.OwnerScope.decideRetired(
         ~retiredField=retiredSpecOf()->Option.map(r => r.field),
-        ~retiredValue=?retiredSpecOf()->Option.flatMap(r => r.value),
+        ~retiredValues=?retiredSpecOf()->Option.flatMap(r => r.values),
         ~asked=askedForRetired(~args),
       )
 

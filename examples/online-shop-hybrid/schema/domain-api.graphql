@@ -113,6 +113,7 @@ type Catalog_Product implements Node {
   name: String!
   price: Money!
   productId: ID!
+  shelfStatus: Catalog_ProductShelfStatus!
 }
 
 type Catalog_ProductConnection {
@@ -175,6 +176,12 @@ input Catalog_ProductOrderBy {
 enum Catalog_ProductOrderField {
   categoryId
   productId
+}
+
+enum Catalog_ProductShelfStatus {
+  Archived
+  Discontinued
+  Listed
 }
 
 type CommandAccepted {
@@ -424,14 +431,17 @@ type Mutation {
   Catalog_AddCategory(categoryId: ID!, imageUrl: String, name: String!): CommandResult!
   Catalog_AddProduct(categoryId: ID!, description: String!, imageUrl: String, name: String!, price: MoneyInput!, productId: ID!): CommandResult!
   Catalog_ArchiveCategory(categoryId: ID!): CommandResult!
+  Catalog_ArchiveProduct(productId: ID!): CommandResult!
   Catalog_ChangeCategoryImage(categoryId: ID!, imageUrl: String!): CommandResult!
   Catalog_ChangeProductDescription(description: String!, productId: ID!): CommandResult!
   Catalog_ChangeProductImage(imageUrl: String!, productId: ID!): CommandResult!
   Catalog_ChangeProductName(name: String!, productId: ID!): CommandResult!
   Catalog_ChangeProductPrice(price: MoneyInput!, productId: ID!): CommandResult!
+  Catalog_DiscontinueProduct(productId: ID!): CommandResult!
   Catalog_ImportProduct(category: String!, currency: String!, desc: String!, sku: String!, title: String!, unitPrice: Float!): CommandResult!
   Catalog_RenameCategory(categoryId: ID!, name: String!): CommandResult!
   Catalog_UnarchiveCategory(categoryId: ID!): CommandResult!
+  Catalog_UnarchiveProduct(productId: ID!): CommandResult!
   Ordering_CancelOrder(orderId: ID!): CommandResult!
   Ordering_ChangeSyncedPrice(price: MoneyInput!, productId: ID!): CommandResult!
   Ordering_Customer_Deactivate(id: ID!): CommandResult!
@@ -441,8 +451,10 @@ type Mutation {
   Ordering_Customer_UpdateAddress(address: String!, id: ID!): CommandResult!
   Ordering_Customer_UpdateEmail(email: String!, id: ID!): CommandResult!
   Ordering_PlaceOrder(customerId: ID!, deliveryWindow: DateRangeInput, orderId: ID!, productIds: [ID!]!, shippingMethod: Ordering_PlaceOrderShippingMethod!): CommandResult!
+  Ordering_RelistSyncedProduct(productId: ID!): CommandResult!
   Ordering_ShipOrder(orderId: ID!): CommandResult!
   Ordering_SyncNewProduct(name: String!, price: MoneyInput!, productId: ID!): CommandResult!
+  Ordering_WithdrawSyncedProduct(productId: ID!): CommandResult!
   Platform_Plugin_Activate(_0: String!, id: ID!): CommandResult!
   Platform_Plugin_Deactivate(_0: String!, id: ID!): CommandResult!
   Platform_Plugin_Retire(_0: String!, id: ID!): CommandResult!
@@ -958,14 +970,17 @@ type Subscription {
   onCatalog_AddCategory(id: ID): CommandResult
   onCatalog_AddProduct(id: ID): CommandResult
   onCatalog_ArchiveCategory(id: ID): CommandResult
+  onCatalog_ArchiveProduct(id: ID): CommandResult
   onCatalog_ChangeCategoryImage(id: ID): CommandResult
   onCatalog_ChangeProductDescription(id: ID): CommandResult
   onCatalog_ChangeProductImage(id: ID): CommandResult
   onCatalog_ChangeProductName(id: ID): CommandResult
   onCatalog_ChangeProductPrice(id: ID): CommandResult
+  onCatalog_DiscontinueProduct(id: ID): CommandResult
   onCatalog_ImportProduct(id: ID): CommandResult
   onCatalog_RenameCategory(id: ID): CommandResult
   onCatalog_UnarchiveCategory(id: ID): CommandResult
+  onCatalog_UnarchiveProduct(id: ID): CommandResult
   onCustomerEventLog_eventAppended: CustomerEventLogEvent
   onOrderingEventLog_eventAppended: OrderingEventLogEvent
   onOrdering_CancelOrder(id: ID): CommandResult
@@ -977,8 +992,10 @@ type Subscription {
   onOrdering_Customer_UpdateAddress(id: ID): CommandResult
   onOrdering_Customer_UpdateEmail(id: ID): CommandResult
   onOrdering_PlaceOrder(id: ID): CommandResult
+  onOrdering_RelistSyncedProduct(id: ID): CommandResult
   onOrdering_ShipOrder(id: ID): CommandResult
   onOrdering_SyncNewProduct(id: ID): CommandResult
+  onOrdering_WithdrawSyncedProduct(id: ID): CommandResult
 }
 
 type Upload_ReleaseResult {
