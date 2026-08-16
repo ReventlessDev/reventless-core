@@ -33,7 +33,7 @@ UiClient -> QueryDb: query
 
 A Read Model's business logic is defined by it's [**Spec**](#read-model-spec), [**Projections**](#projections) and [**Config**](../common-modules/config.md).
 
-Events may trigger updates to the state of a Read Model. A Read Model may act on Events of several different [Aggregates](./aggregate.md). The logic how to react to Events is implemented in a [Projection](#projections) per Aggregate. A Read Model's state is persisted in the Query DB and can be made available to the [API](./api.md). The state is mutable (many events may change the data of the same state - one after another) and [eventual consistent](https://en.wikipedia.org/wiki/Eventual_consistency).
+Events may trigger updates to the state of a Read Model. A Read Model may act on Events of several different [Aggregates](./aggregate.md). The logic how to react to Events is implemented in a [Projection](#projections) per Aggregate. A Read Model's state is persisted in the Query DB and can be made available to the [API](/app/graphql-api-guide). The state is mutable (many events may change the data of the same state - one after another) and [eventual consistent](https://en.wikipedia.org/wiki/Eventual_consistency).
 
 ## Read Model Spec
 
@@ -234,7 +234,7 @@ In this example, there is a sub id field `subId` used, therefore the following f
 
 ### config
 
-- `idResolvers`: Other Read Models can be referenced by id in the state . If you (additionally to the id) want to provide the data of that referenced Read Model over the [API](./api.md), you have to specify how to resolve those ids here.
+- `idResolvers`: Other Read Models can be referenced by id in the state . If you (additionally to the id) want to provide the data of that referenced Read Model over the [API](/app/graphql-api-guide), you have to specify how to resolve those ids here.
   The idResolvers configuration is an array of records with these fields:
   - `source`: specification, which id has to be resolved, by providing these fields:
     - `idField`: name of the id field to be resolved
@@ -242,7 +242,7 @@ In this example, there is a sub id field `subId` used, therefore the following f
       - `Field(<fieldName>)`: field name for sub id
       - `Argument(<argumentName>)`: argument name (provided by query) to be used as sub id
       - `NoSubId`: no sub id
-    - `resolvedField`: name of the field in the [API](./api.md) response data, where the referenced data is provided
+    - `resolvedField`: name of the field in the [API](/app/graphql-api-guide) response data, where the referenced data is provided
       - `Single(<fieldName>)` TODO
       - `Multi(<fieldName>)` TODO
   - `target`: specification, how to resolve the given source:
@@ -256,7 +256,7 @@ In this example, there is a sub id field `subId` used, therefore the following f
 - `idsResolvers`: To resolve an array of reference ids (no sub ids supported) you can specify an array of records with these fields:
   - `source`: specification, which id has to be resolved, by providing these fields:
     - `idField`: name of the id field to be resolved
-    - `resolvedField`: name of the field in the [API](./api.md) response data, where the referenced data is provided.
+    - `resolvedField`: name of the field in the [API](/app/graphql-api-guide) response data, where the referenced data is provided.
   - `target`: specification, how to resolve the given source:
     - `tableName`: name of the table to get the resolved data from
     - `idField`: field name in the target table to match with source id
@@ -399,8 +399,8 @@ The Read Model's Pulumi root component is named in this pattern: `Spec.name` and
 
 ## Related Components
 
-- **[EventCollector](./eventcollector.md)** - Collects events from EventTopics for ReadModel projections
-- **[QueryDb](./querydb.md)** - Stores the ReadModel's projected state for querying
-- **[EventTopic](./eventtopic.md)** - Publishes events that the ReadModel subscribes to
+- **[EventCollector](/framework/runtime-components/eventcollector)** - Collects events from EventTopics for ReadModel projections
+- **[QueryDb](/framework/runtime-components/querydb)** - Stores the ReadModel's projected state for querying
+- **[EventTopic](/framework/runtime-components/eventtopic)** - Publishes events that the ReadModel subscribes to
 - **[Aggregate](./aggregate.md)** - Source of events that the ReadModel projects
-- **[API](./api.md)** - Queries the ReadModel's state via GraphQL resolvers
+- **[API](/app/graphql-api-guide)** - Queries the ReadModel's state via GraphQL resolvers

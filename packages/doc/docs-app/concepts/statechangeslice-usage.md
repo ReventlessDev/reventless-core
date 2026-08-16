@@ -284,5 +284,5 @@ See [DCB Plugin Usage Documentation](../dcb-slices.md) for more details on when 
 
 - [StateChangeSlice Component Reference](../components/statechangeslice.md)
 - [DCB Plugin Architecture](../dcb-slices.md)
-- [DcbEventLog](../components/dcbeventlog.md)
-- [CommandTopic](../components/commandtopic.md)
+- [DcbEventLog](/framework/runtime-components/dcbeventlog)
+- [CommandTopic](/framework/runtime-components/commandtopic)

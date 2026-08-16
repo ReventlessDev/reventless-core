@@ -4,7 +4,7 @@ date: 2026-01-26
 draft: false
 ---
 
-For a short summary of Counter, see [Reventless Components Overview.](../component-overview.md)
+For a short summary of Counter, see [Reventless Components Overview.](/app/component-overview)
 
 :::info Framework Implementation
 This component follows the Reventless [Component Structure Pattern](/framework/internals/component-structure-pattern), using separate files for interface definitions (`Counter.res`), builder logic (`Counter_Builder.res`), runtime operations (`Counter_Operations.res`), and runtime callbacks (`Counter_Callback.res`).
@@ -482,7 +482,7 @@ let mappings: array<module(Mapping)> = [
 ## Related Components
 
 - **[EventMapper](./eventmapper.md)** - Primary user of Counter for event coordination
-- **[Aggregate](./aggregate.md)** - Defines EventMappings that may use Counter
+- **[Aggregate](/app/components/aggregate)** - Defines EventMappings that may use Counter
 - **[QueryDb](./querydb.md)** - Underlying storage for counter data
 - **[EventCollector](./eventcollector.md)** - Delivers Counter.Source events
 

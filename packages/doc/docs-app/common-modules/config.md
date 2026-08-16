@@ -80,5 +80,5 @@ module MyPlugin = Plugin.Make(MyPluginSpec, MyConfig)
 ## Related Documentation
 
 - [Plugin Component](../components/plugin.md) - Plugins consume Config
-- [Scheduler Component](../components/scheduler.md) - Scheduler operations
-- [API Component](../components/api.md) - API Gateway integration
+- [Scheduler Component](/framework/runtime-components/scheduler) - Scheduler operations
+- [API Component](/app/graphql-api-guide) - API Gateway integration

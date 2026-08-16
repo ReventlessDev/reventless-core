@@ -222,6 +222,26 @@ const config = {
       {
         redirects: [
           {from: "/tutorials/get-started", to: "/tutorials/overview"},
+          // Infrastructure components an app developer never writes moved to
+          // Contributing; the hand-written-schema API page is superseded by the
+          // generated GraphQL API.
+          ...[
+            "commandtopic",
+            "commandgenerator",
+            "eventlog",
+            "dcbeventlog",
+            "eventtopic",
+            "eventcollector",
+            "eventmapper",
+            "querydb",
+            "counter",
+            "heartbeat",
+            "scheduler",
+          ].map((p) => ({
+            from: `/app/components/${p}`,
+            to: `/framework/runtime-components/${p}`,
+          })),
+          {from: "/app/components/api", to: "/app/graphql-api-guide"},
         ],
       },
     ],

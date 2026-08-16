@@ -4,7 +4,7 @@ date: 2026-01-24
 draft: false
 ---
 
-For a short summary of EventTopic, see [Reventless Components Overview.](../component-overview.md)
+For a short summary of EventTopic, see [Reventless Components Overview.](/app/component-overview)
 
 :::info Framework Implementation
 This component follows the Reventless [Component Structure Pattern](/framework/internals/component-structure-pattern), using separate files for interface definitions (`EventTopic.res`), builder logic (`EventTopic_Builder.res`), adapter interface (`EventTopic_Adapter.res`), and runtime operations (`EventTopic_Operations.res`).
@@ -256,9 +256,9 @@ type outputs = {
 
 - **[EventLog](./eventlog.md)** - Publishes events to EventTopic after storage
 - **[EventCollector](./eventcollector.md)** - Subscribes to EventTopic for event consumption
-- **[ReadModel](./readmodel.md)** - Consumes events via EventCollector
+- **[ReadModel](/app/components/readmodel)** - Consumes events via EventCollector
 - **[EventMapper](./eventmapper.md)** - Consumes events via EventCollector
-- **[SideEffectHandler](./sideeffecthandler.md)** - Consumes events via EventCollector
+- **[SideEffectHandler](/app/components/sideeffecthandler)** - Consumes events via EventCollector
 - **[CommandTopic](./commandtopic.md)** - Similar pattern for command distribution
 
 ## AWS Implementation

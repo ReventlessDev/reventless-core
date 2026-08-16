@@ -284,10 +284,10 @@ follow the link for types, operations, and examples.
 |---|---|---|
 | **Aggregate** | Transactional unit: handles a command against replayed state, emits events to its own EventLog | [aggregate](./components/aggregate.md) |
 | **StateChangeSlice** | DCB equivalent of an Aggregate: decides against a tag-scoped read of the shared DcbEventLog and appends with optimistic concurrency | [statechangeslice](./components/statechangeslice.md) |
-| **EventLog** | Append-only per-aggregate event storage with replay; publishes to EventTopic | [eventlog](./components/eventlog.md) |
-| **DcbEventLog** | Shared, tag-queryable event store for DCB slices, with optimistic concurrency | [dcbeventlog](./components/dcbeventlog.md) |
-| **CommandTopic** | FIFO command queue with exactly-once, in-order delivery to handlers | [commandtopic](./components/commandtopic.md) |
-| **CommandGenerator** | Turns GraphQL mutations into commands published to a CommandTopic | [commandgenerator](./components/commandgenerator.md) |
+| **EventLog** | Append-only per-aggregate event storage with replay; publishes to EventTopic | [eventlog](/framework/runtime-components/eventlog) |
+| **DcbEventLog** | Shared, tag-queryable event store for DCB slices, with optimistic concurrency | [dcbeventlog](/framework/runtime-components/dcbeventlog) |
+| **CommandTopic** | FIFO command queue with exactly-once, in-order delivery to handlers | [commandtopic](/framework/runtime-components/commandtopic) |
+| **CommandGenerator** | Turns GraphQL mutations into commands published to a CommandTopic | [commandgenerator](/framework/runtime-components/commandgenerator) |
 
 ### Read side
 
@@ -295,21 +295,21 @@ follow the link for types, operations, and examples.
 |---|---|---|
 | **ReadModel** | Projects events from one or more Aggregates into persisted, queryable state | [readmodel](./components/readmodel.md) |
 | **StateViewSlice** | DCB equivalent of a ReadModel: projects DcbEventLog events directly into a QueryDb (no separate EventCollector) | [stateviewslice](./components/stateviewslice.md) |
-| **QueryDb** | Stores denormalized read-model state; serves API queries; supports indexes and TTL | [querydb](./components/querydb.md) |
-| **EventTopic** | Fans events out from an EventLog to multiple EventCollectors | [eventtopic](./components/eventtopic.md) |
-| **EventCollector** | Subscribes to EventTopics and delivers ordered events to ReadModels, EventMappers, and SideEffectHandlers | [eventcollector](./components/eventcollector.md) |
+| **QueryDb** | Stores denormalized read-model state; serves API queries; supports indexes and TTL | [querydb](/framework/runtime-components/querydb) |
+| **EventTopic** | Fans events out from an EventLog to multiple EventCollectors | [eventtopic](/framework/runtime-components/eventtopic) |
+| **EventCollector** | Subscribes to EventTopics and delivers ordered events to ReadModels, EventMappers, and SideEffectHandlers | [eventcollector](/framework/runtime-components/eventcollector) |
 
 ### Reactions, automation & translation
 
 | Component | Role | Details |
 |---|---|---|
-| **EventMapper** | Maps events (from one or more Aggregates) to commands for a target Aggregate | [eventmapper](./components/eventmapper.md) |
+| **EventMapper** | Maps events (from one or more Aggregates) to commands for a target Aggregate | [eventmapper](/framework/runtime-components/eventmapper) |
 | **AutomationSlice** | DCB Automation (TODO-list) pattern: collects work from events, issues commands once, tracks resolution | [automationslice](./components/automationslice.md) |
 | **InboundTranslationSlice** | Anti-corruption layer: validates external input (webhooks/APIs) and translates it into domain commands | [inboundtranslationslice](./components/inboundtranslationslice.md) |
 | **OutboundTranslationSlice** | Calls external services per event with per-item retry; optionally publishes commands back | [outboundtranslationslice](./components/outboundtranslationslice.md) |
 | **SideEffectHandler** | Like an EventMapper but targets Tasks/functions outside the command/event paradigm | [sideeffecthandler](./components/sideeffecthandler.md) |
 | **Task** | Escape hatch for logic loosely coupled to events — interval jobs, uploads, foreign API calls | [task](./components/task.md) |
-| **Counter** | Atomic counts and dedup, used by EventMappers to avoid duplicate command generation | [counter](./components/counter.md) |
+| **Counter** | Atomic counts and dedup, used by EventMappers to avoid duplicate command generation | [counter](/framework/runtime-components/counter) |
 
 ### Cross-plugin & platform
 
@@ -318,5 +318,5 @@ follow the link for types, operations, and examples.
 | **Plugin** | A bounded context and deployment unit grouping the components above | [plugin](./components/plugin.md) |
 | **ExtensionPoint** | A plugin's outbound contract: maps internal events to a stable public event vocabulary | [extensionpoint](./components/extensionpoint.md) |
 | **Extension** | A plugin's inbound subscription: maps a remote ExtensionPoint's events to local commands | [extension](./components/extension.md) |
-| **Scheduler** | Time-based command publishing for scheduled/periodic workflows | [scheduler](./components/scheduler.md) |
-| **Heartbeat** | Periodic health/keepalive signals into the Platform Admin's Plugin ExtensionPoint | [heartbeat](./components/heartbeat.md) |
+| **Scheduler** | Time-based command publishing for scheduled/periodic workflows | [scheduler](/framework/runtime-components/scheduler) |
+| **Heartbeat** | Periodic health/keepalive signals into the Platform Admin's Plugin ExtensionPoint | [heartbeat](/framework/runtime-components/heartbeat) |

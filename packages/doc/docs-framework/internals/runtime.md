@@ -596,6 +596,6 @@ Error: Task timed out after 30.00 seconds
 ### Component-Specific Documentation
 
 - [**Aggregate Components**](/app/components/aggregate) - Aggregate runtime patterns
-- [**EventLog Components**](/app/components/eventlog) - Event storage and retrieval
-- [**CommandTopic Components**](/app/components/commandtopic) - Command processing
+- [**EventLog Components**](/framework/runtime-components/eventlog) - Event storage and retrieval
+- [**CommandTopic Components**](/framework/runtime-components/commandtopic) - Command processing
 - [**Plugin System**](/app/components/plugin) - Plugin architecture and runtime

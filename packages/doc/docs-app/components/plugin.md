@@ -93,8 +93,8 @@ A Plugin contains and manages the following components:
 | [Tasks](./task.md) | File processing and external integrations | 0..n |
 | [ExtensionPoints](./extensionpoint.md) | External interface for other Plugins | 0..n |
 | [Extensions](./extension.md) | Consume other Plugins' ExtensionPoints | 0..n |
-| [EventCollector](./eventcollector.md) | Centralized event consumption | 1 |
-| [Heartbeat](./heartbeat.md) | Health monitoring | 1 |
+| [EventCollector](/framework/runtime-components/eventcollector) | Centralized event consumption | 1 |
+| [Heartbeat](/framework/runtime-components/heartbeat) | Health monitoring | 1 |
 
 ## Plugin Configuration
 
@@ -392,5 +392,5 @@ A Plugin deployment exports the following stack outputs:
 - [Task](./task.md) - File processing and external integrations
 - [ExtensionPoint](./extensionpoint.md) - External interface for cross-Plugin communication
 - [Extension](./extension.md) - Consume other Plugins' ExtensionPoints
-- [EventCollector](./eventcollector.md) - Centralized event consumption
-- [Heartbeat](./heartbeat.md) - Health monitoring
+- [EventCollector](/framework/runtime-components/eventcollector) - Centralized event consumption
+- [Heartbeat](/framework/runtime-components/heartbeat) - Health monitoring

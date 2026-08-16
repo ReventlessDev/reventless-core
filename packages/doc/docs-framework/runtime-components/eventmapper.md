@@ -4,7 +4,7 @@ date: 2026-01-26
 draft: false
 ---
 
-For a short summary of EventMapper, see [Reventless Components Overview.](../component-overview.md)
+For a short summary of EventMapper, see [Reventless Components Overview.](/app/component-overview)
 
 :::info Framework Implementation
 This component follows the Reventless [Component Structure Pattern](/framework/internals/component-structure-pattern), using separate files for interface definitions (`EventMapper.res`), builder logic (`EventMapper_Builder.res`), and runtime callbacks (`EventMapper_Callback.res`).
@@ -450,7 +450,7 @@ When multiple events must be collected before taking action, use a Counter inste
 
 ## Related Components
 
-- **[Aggregate](./aggregate.md)** - Defines EventMappings as part of its configuration
+- **[Aggregate](/app/components/aggregate)** - Defines EventMappings as part of its configuration
 - **[EventCollector](./eventcollector.md)** - Subscribes to source EventTopics
 - **[CommandTopic](./commandtopic.md)** - Receives generated commands
 - **[Counter](./counter.md)** - Optional coordination for multi-event scenarios

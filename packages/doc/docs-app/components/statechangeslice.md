@@ -253,10 +253,10 @@ The StateChangeSlice reuses resources from the shared DcbEventLog:
 
 ## Related Components
 
-- **[DcbEventLog](./dcbeventlog.md)** - Shared event log for DCB slices
-- **[CommandTopic](./commandtopic.md)** - Command routing and filtering
+- **[DcbEventLog](/framework/runtime-components/dcbeventlog)** - Shared event log for DCB slices
+- **[CommandTopic](/framework/runtime-components/commandtopic)** - Command routing and filtering
 - **[Plugin](./plugin.md)** - Hosts DCB slices and creates shared infrastructure
-- **[EventCollector](./eventcollector.md)** - Consumes events from DcbEventLog
+- **[EventCollector](/framework/runtime-components/eventcollector)** - Consumes events from DcbEventLog
 - **[ReadModel](./readmodel.md)** - Builds read models from DcbEventLog events
 - **[Usage Guide](../concepts/statechangeslice-usage.md)** - How to use StateChangeSlice in your application
 

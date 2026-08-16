@@ -4,7 +4,7 @@ date: 2026-01-24
 draft: false
 ---
 
-For a short summary of EventLog, see [Reventless Components Overview.](../component-overview.md)
+For a short summary of EventLog, see [Reventless Components Overview.](/app/component-overview)
 
 :::info Framework Implementation
 This component follows the Reventless [Component Structure Pattern](/framework/internals/component-structure-pattern), using separate files for interface definitions (`EventLog.res`), builder logic (`EventLog_Builder.res`), adapter interface (`EventLog_Adapter.res`), and runtime operations (`EventLog_Operations.res`).
@@ -323,10 +323,10 @@ type outputs = {
 
 ## Related Components
 
-- **[Aggregate](./aggregate.md)** - Uses EventLog for event sourcing
+- **[Aggregate](/app/components/aggregate)** - Uses EventLog for event sourcing
 - **[EventTopic](./eventtopic.md)** - Receives events from EventLog for distribution
 - **[EventCollector](./eventcollector.md)** - Can consume events via DynamoDB Streams or EventTopic
-- **[ReadModel](./readmodel.md)** - Consumes events published by EventLog
+- **[ReadModel](/app/components/readmodel)** - Consumes events published by EventLog
 
 ## AWS Implementation
 

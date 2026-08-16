@@ -374,20 +374,20 @@ module Make = (Spec: Component.Spec, /* other deps */): Component.T => {
 ### Core Components
 - **[Aggregate](/app/components/aggregate)** - Uses Builder, Callback
 - **[ReadModel](/app/components/readmodel)** - Uses Builder
-- **[API](/app/components/api)** - GraphQL schema definition pattern
+- **[API](/app/graphql-api-guide)** - GraphQL schema definition pattern
 
 ### Infrastructure Components
-- **[EventLog](/app/components/eventlog)** (`EventLog/`) - Uses all files (complete example)
-- **[CommandTopic](/app/components/commandtopic)** (`CommandTopic/`) - Uses Builder, Adapter, Operations, Callback
-- **[EventTopic](/app/components/eventtopic)** (`EventTopic/`) - Uses Builder, Adapter, Operations
-- **[EventCollector](/app/components/eventcollector)** (`EventCollector/`) - Uses Builder, Adapter
-- **[QueryDb](/app/components/querydb)** (`QueryDb/`) - Uses Builder, Adapter, Operations
+- **[EventLog](/framework/runtime-components/eventlog)** (`EventLog/`) - Uses all files (complete example)
+- **[CommandTopic](/framework/runtime-components/commandtopic)** (`CommandTopic/`) - Uses Builder, Adapter, Operations, Callback
+- **[EventTopic](/framework/runtime-components/eventtopic)** (`EventTopic/`) - Uses Builder, Adapter, Operations
+- **[EventCollector](/framework/runtime-components/eventcollector)** (`EventCollector/`) - Uses Builder, Adapter
+- **[QueryDb](/framework/runtime-components/querydb)** (`QueryDb/`) - Uses Builder, Adapter, Operations
 
 ### Processing Components
-- **[CommandGenerator](/app/components/commandgenerator)** (`CommandGenerator/`) - Uses Builder, Callback
-- **[EventMapper](/app/components/eventmapper)** - Uses Builder pattern for event-to-command mapping
+- **[CommandGenerator](/framework/runtime-components/commandgenerator)** (`CommandGenerator/`) - Uses Builder, Callback
+- **[EventMapper](/framework/runtime-components/eventmapper)** - Uses Builder pattern for event-to-command mapping
 - **[SideEffectHandler](/app/components/sideeffecthandler)** - Uses Builder pattern for event-triggered side effects
-- **[Counter](/app/components/counter)** (`Counter/`) - Uses Builder, Operations
+- **[Counter](/framework/runtime-components/counter)** (`Counter/`) - Uses Builder, Operations
 
 ### Plugin System Components
 - **[Plugin](/app/components/plugin)** - Deployment unit organization
@@ -395,8 +395,8 @@ module Make = (Spec: Component.Spec, /* other deps */): Component.T => {
 - **[Extension](/app/components/extension)** (`Extension/`) - Uses Builder, Operations
 
 ### Scheduling Components
-- **[Scheduler](/app/components/scheduler)** - Time-based command publishing
-- **[Heartbeat](/app/components/heartbeat)** - Periodic health check signals
+- **[Scheduler](/framework/runtime-components/scheduler)** - Time-based command publishing
+- **[Heartbeat](/framework/runtime-components/heartbeat)** - Periodic health check signals
 - **[Task](/app/components/task)** - File-based task processing
 
 ## Related Documentation

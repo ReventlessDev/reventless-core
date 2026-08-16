@@ -367,11 +367,11 @@ type operations = {
 
 ## Related Components
 
-- **[DcbEventLog](./dcbeventlog.md)** -- Shared event log that AutomationSlice subscribes to
+- **[DcbEventLog](/framework/runtime-components/dcbeventlog)** -- Shared event log that AutomationSlice subscribes to
 - **[StateChangeSlice](./statechangeslice.md)** -- Processes the commands AutomationSlice produces
 - **[StateViewSlice](./stateviewslice.md)** -- Another DCB slice type for read-side projections
-- **[CommandTopic](./commandtopic.md)** -- Receives commands from the processor
-- **[EventCollector](./eventcollector.md)** -- Subscribes to DcbEventLog events
-- **[QueryDb](./querydb.md)** -- Stores the TODO list for observability
-- **[EventMapper](./eventmapper.md)** -- Stateless alternative for plugins using Aggregates
+- **[CommandTopic](/framework/runtime-components/commandtopic)** -- Receives commands from the processor
+- **[EventCollector](/framework/runtime-components/eventcollector)** -- Subscribes to DcbEventLog events
+- **[QueryDb](/framework/runtime-components/querydb)** -- Stores the TODO list for observability
+- **[EventMapper](/framework/runtime-components/eventmapper)** -- Stateless alternative for plugins using Aggregates
 - **[Plugin](./plugin.md)** -- Hosts AutomationSlice via DcbSpec

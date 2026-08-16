@@ -449,5 +449,5 @@ When you evolve an ExtensionPoint's commands or events over time, you need to ma
 - [Plugin](./plugin.md) - Container for ExtensionPoints
 - [Extension](./extension.md) - Consumes ExtensionPoints from other Plugins
 - [Aggregate](./aggregate.md) - Source of events and target of commands
-- [CommandTopic](./commandtopic.md) - Command delivery mechanism
-- [EventTopic](./eventtopic.md) - Event publication mechanism
+- [CommandTopic](/framework/runtime-components/commandtopic) - Command delivery mechanism
+- [EventTopic](/framework/runtime-components/eventtopic) - Event publication mechanism

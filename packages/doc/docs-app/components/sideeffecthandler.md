@@ -572,11 +572,11 @@ let sideEffects = [
 
 ## Related Components
 
-- **[EventCollector](./eventcollector.md)** - Subscribes to source EventTopics
-- **[EventTopic](./eventtopic.md)** - Source of events for side effects
-- **[EventMapper](./eventmapper.md)** - Alternative for generating commands (not side effects)
-- **[Scheduler](./scheduler.md)** - Provides scheduling capabilities
-- **[QueryDb](./querydb.md)** - Read model access via QueryEngine
+- **[EventCollector](/framework/runtime-components/eventcollector)** - Subscribes to source EventTopics
+- **[EventTopic](/framework/runtime-components/eventtopic)** - Source of events for side effects
+- **[EventMapper](/framework/runtime-components/eventmapper)** - Alternative for generating commands (not side effects)
+- **[Scheduler](/framework/runtime-components/scheduler)** - Provides scheduling capabilities
+- **[QueryDb](/framework/runtime-components/querydb)** - Read model access via QueryEngine
 
 ## AWS Implementation
 

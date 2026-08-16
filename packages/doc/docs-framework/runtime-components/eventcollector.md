@@ -2,7 +2,7 @@
 title: EventCollector
 ---
 
-For a short summary of EventCollector, see [Reventless Components Overview.](../component-overview.md)
+For a short summary of EventCollector, see [Reventless Components Overview.](/app/component-overview)
 
 :::info Framework Implementation
 This component follows the Reventless [Component Structure Pattern](/framework/internals/component-structure-pattern), using separate files for interface definitions (`EventCollector.res`), builder logic (`EventCollector_Builder.res`), and adapter interface (`EventCollector_Adapter.res`).
@@ -179,9 +179,9 @@ SideEffectHandlerComponent.Effects -> External: call
 
 - **[EventTopic](./eventtopic.md)** - Publishes events that EventCollector subscribes to
 - **[EventLog](./eventlog.md)** - Source of DynamoDB Stream events
-- **[ReadModel](./readmodel.md)** - Uses EventCollector for projection updates
+- **[ReadModel](/app/components/readmodel)** - Uses EventCollector for projection updates
 - **[EventMapper](./eventmapper.md)** - Uses EventCollector for event-to-command mapping
-- **[SideEffectHandler](./sideeffecthandler.md)** - Uses EventCollector for side effect execution
+- **[SideEffectHandler](/app/components/sideeffecthandler)** - Uses EventCollector for side effect execution
 - **[CommandTopic](./commandtopic.md)** - Similar pattern for command consumption
 
 ## AWS Implementation

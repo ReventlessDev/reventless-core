@@ -4,7 +4,7 @@ date: 2026-01-24
 draft: false
 ---
 
-For a short summary of QueryDb, see [Reventless Components Overview.](../component-overview.md)
+For a short summary of QueryDb, see [Reventless Components Overview.](/app/component-overview)
 
 :::info Framework Implementation
 This component follows the Reventless [Component Structure Pattern](/framework/internals/component-structure-pattern), using separate files for interface definitions (`QueryDb.res`), builder logic (`QueryDb_Builder.res`), adapter interface (`QueryDb_Adapter.res`), and runtime operations (`QueryDb_Operations.res`).
@@ -323,7 +323,7 @@ This generates:
 - `let subIdConfig = Some({ subIdField: "lineItemId", getSubId: ... })`
 - `let config` with a `byProduct` secondary index (partition: `productId`, sort: `createdAt`)
 
-For the complete annotation reference see [PPX annotations](../rescript-syntax.md#reventless-ppx-annotations).
+For the complete annotation reference see [PPX annotations](/app/rescript-syntax#reventless-ppx-annotations).
 
 ### Sort key query arguments
 
@@ -523,9 +523,9 @@ type outputs = {
 
 ## Related Components
 
-- **[ReadModel](./readmodel.md)** - Uses QueryDb for state storage
+- **[ReadModel](/app/components/readmodel)** - Uses QueryDb for state storage
 - **[EventCollector](./eventcollector.md)** - Delivers events to ReadModel projections
-- **[API](./api.md)** - Queries QueryDb via AppSync DataSource
+- **[API](/app/graphql-api-guide)** - Queries QueryDb via AppSync DataSource
 - **[EventLog](./eventlog.md)** - Similar storage pattern for events
 
 ## AWS Implementation

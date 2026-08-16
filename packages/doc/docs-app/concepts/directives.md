@@ -63,7 +63,7 @@ domain state change**:
 
 - call a third-party / non-Reventless HTTP API
 - send an email, push, or chat notification
-- create or delete a [Schedule](../components/scheduler.md) (timer) — *ExtensionPoint
+- create or delete a [Schedule](/framework/runtime-components/scheduler) (timer) — *ExtensionPoint
   side only; see below*
 - emit telemetry / metrics, invalidate an external cache
 - bridge an event to a system that has no command of its own
@@ -370,5 +370,5 @@ arm wires one.
 - [OutboundTranslationSlice component](../components/outboundtranslationslice.md)
 - [InboundTranslationSlice component](../components/inboundtranslationslice.md)
 - [SideEffectHandler component](../components/sideeffecthandler.md)
-- [Scheduler component](../components/scheduler.md)
+- [Scheduler component](/framework/runtime-components/scheduler)
 - [AutomationSlice component](../components/automationslice.md)

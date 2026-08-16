@@ -483,4 +483,4 @@ The Extension's name follows the pattern: `{ExtensionPointName}.{MappingName}` a
 - [ExtensionPoint](./extensionpoint.md) - The interface being consumed
 - [Aggregate](./aggregate.md) - Target of generated commands
 - [ReadModel](./readmodel.md) - Can receive forwarded events
-- [EventCollector](./eventcollector.md) - Delivers events to Extension handlers
+- [EventCollector](/framework/runtime-components/eventcollector) - Delivers events to Extension handlers

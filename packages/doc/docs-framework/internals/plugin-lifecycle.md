@@ -108,8 +108,8 @@ deterministic**.
 
 A version is `Connected` only while its deployed infrastructure keeps sending
 `Heartbeat` commands. When a version's stack is torn down, the heartbeats stop, and the
-**Scheduler** (see [Scheduler component](/app/components/scheduler) /
-[Heartbeat component](/app/components/heartbeat)) eventually times out the missing
+**Scheduler** (see [Scheduler component](/framework/runtime-components/scheduler) /
+[Heartbeat component](/framework/runtime-components/heartbeat)) eventually times out the missing
 heartbeats and issues `Disconnect`, flipping the version to `Disconnected`.
 
 This is the mechanical realisation of the invariant: **`Connected` is a liveness
@@ -349,7 +349,7 @@ exactly how ordinary composite-key read models work too.
 ## Related
 
 - [Plugin component](/app/components/plugin) — what a plugin is and how it's composed.
-- [Scheduler](/app/components/scheduler) / [Heartbeat](/app/components/heartbeat) — the
+- [Scheduler](/framework/runtime-components/scheduler) / [Heartbeat](/framework/runtime-components/heartbeat) — the
   liveness machinery behind the `Connected` invariant.
 - [Runtime & Deployment Strategies](./runtime.md) — how plugin versions are deployed.
 - [Messages](./messages.md) — how lifecycle commands and events are routed and serialized.

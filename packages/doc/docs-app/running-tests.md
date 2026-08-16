@@ -1,103 +1,98 @@
 ---
-title: Running Tests
-date: 2026-02-27
-draft: false
+title: Running tests
+sidebar_label: Running tests
 ---
 
-This guide covers how to run the test suite locally. Tests are written in ReScript and compiled to `.res.mjs` files before Jest picks them up, so you need a working build before running tests.
+# Running tests
 
-## Prerequisites
+Scenarios are ReScript sources that compile to `.res.mjs` before Jest sees them,
+so **a test run needs a build first**. That is the one fact behind most confusing
+test failures: a stale build runs stale scenarios.
 
-Make sure dependencies are installed and the project is built:
+## Set up a plugin package for tests
 
-```bash
-npm install
-npm run build
-```
-
-## Running All Tests
-
-From the repository root, run the full test suite across all packages:
+Add Jest and the scenario DSL as dev dependencies:
 
 ```bash
-npm test
+pnpm add -D @reventlessdev/reventless-gwt jest
 ```
 
-This runs Jest across all 8 projects in a single pass and prints a unified summary:
+Then point Jest at the compiled output and give it the ESM flag:
 
-```
-PASS reventless-core AggregateCallbackTest (7 tests, 0.320s)
-PASS reventless-core DcbTagTest (33 tests, 0.265s)
-...
-PASS online-shop-dcb-catalog CatalogE2ETest (9 tests, 3.225s)
-
-Test Suites: 69 passed, 69 total
-Tests:       579 passed, 579 total
-Time:        7.0 s
-```
-
-## Watch Mode
-
-Watch mode re-runs tests automatically whenever compiled `.res.mjs` files change.
-
-### Tests only
-
-```bash
-npm run test:watch          # show all results
-npm run test:watch:fail     # show only failing tests
+```json
+{
+  "scripts": {
+    "build": "rescript build",
+    "test": "NODE_OPTIONS='--experimental-vm-modules' npx jest",
+    "dev": "npx jest --watchAll"
+  },
+  "jest": {
+    "testMatch": [
+      "<rootDir>/tests/**/*Test.res.mjs",
+      "<rootDir>/tests/**/*_GWT.res.mjs"
+    ],
+    "moduleFileExtensions": ["js", "mjs"]
+  }
+}
 ```
 
-### ReScript compiler + tests together
-
-The `dev` commands run the ReScript compiler in watch mode alongside Jest, so saving a `.res` source file triggers a compile-then-test cycle automatically:
-
-```bash
-npm run dev                 # show all results
-npm run dev:fail            # show only failing tests
-```
-
-ReScript output is prefixed with `[rs]` in cyan, Jest output with `[jest]` in yellow.
-
-:::tip
-Use `dev` or `dev:fail` as your normal development loop — edit a `.res` file, save, and see test results update within seconds.
+:::caution The ESM flag is not optional
+Compiled scenarios are ES modules, so Jest needs
+`NODE_OPTIONS='--experimental-vm-modules'` to load them at all. Without it
+**every** suite fails with `SyntaxError: Cannot use import statement outside a
+module` — which looks like a broken test suite rather than a missing flag. Always
+run tests through the `test` script that sets it, never a bare `npx jest`.
 :::
 
-## Running a Single Package
-
-Navigate to the package directory and run its tests directly:
+## The loop
 
 ```bash
-cd reventless/core
-npm test
-
-cd reventless/local
-npm test
-
-cd examples/online-shop-dcb/catalog
-npm test
+pnpm run build     # compile .res → .res.mjs
+pnpm test          # run every scenario in the package
 ```
 
-Per-package watch mode:
+For a tight loop, run the ReScript compiler in watch mode in one terminal and
+`pnpm run dev` (Jest `--watchAll`) in another: saving a `.res` file recompiles it
+and Jest re-runs the affected suites within seconds.
+
+## Where scenarios live
+
+Mirror `src/` under `tests/`, one scenario file per spec:
+
+```
+src/Category/StateChangeSlice/AddCategory.res
+tests/Category/StateChangeSlice/AddCategory_GWT.res
+```
+
+The `_GWT` suffix is what wires the file up: the file-level `@@reventless.gwt`
+annotation finds the matching spec from the filename and pulls in the
+Given/When/Then vocabulary, so the test body is only the scenarios themselves.
+See [Writing scenarios](./given-when-then.md) for the DSL.
+
+## Running a subset
+
+Jest takes a path pattern, so any fragment of a filename works:
 
 ```bash
-npm run dev      # jest --watchAll
+pnpm test AddCategory          # one spec's scenarios
+pnpm test tests/Category       # one entity's folder
 ```
 
-## Running a Single Test File
+In a multi-package repository, run tests from the package directory rather than
+the root — the root run compiles and executes everything, which is the right
+thing before a commit and the wrong thing while iterating.
 
-From a package directory, pass the file path to Jest directly:
+## When a run looks wrong
 
-```bash
-cd reventless/core
-NODE_OPTIONS='--experimental-vm-modules' npx jest tests/aggregate/AggregateCallbackTest.res.mjs
-```
+- **Every suite fails to load** — the ESM flag is missing (see above).
+- **A change you just made has no effect** — the build did not run, or ran in a
+  different package. Rebuild, then re-run.
+- **A suite disappeared from the run** — check the compiled `.res.mjs` exists;
+  a compile error in one file leaves the previous output in place, so the suite
+  silently runs an older version.
 
-You can also use a partial name pattern:
+## See also
 
-```bash
-NODE_OPTIONS='--experimental-vm-modules' npx jest AggregateCallback
-```
-
-## See Also
-
-- [Writing Unit Tests](./writing-unit-tests.md) — how to write tests for your aggregates and read models
+- [Writing scenarios](./given-when-then.md) — the Given/When/Then DSL
+- [Component testing guide](./component-testing-guide.md) — integration-level
+  tests against a running local platform

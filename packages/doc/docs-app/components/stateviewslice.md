@@ -258,10 +258,10 @@ The StateViewSlice creates its own QueryDb:
 
 ## Related Components
 
-- **[DcbEventLog](./dcbeventlog.md)** - Shared event log for DCB slices
+- **[DcbEventLog](/framework/runtime-components/dcbeventlog)** - Shared event log for DCB slices
 - **[StateChangeSlice](./statechangeslice.md)** - Processes commands and appends events
-- **[QueryDb](./querydb.md)** - Read model storage
+- **[QueryDb](/framework/runtime-components/querydb)** - Read model storage
 - **[ReadModel](./readmodel.md)** - General-purpose read model component
 - **[Plugin](./plugin.md)** - Hosts DCB slices and creates shared infrastructure
-- **[EventCollector](./eventcollector.md)** - Consumes events for projection
+- **[EventCollector](/framework/runtime-components/eventcollector)** - Consumes events for projection
 - **[Usage Guide](../concepts/stateviewslice-usage.md)** - How to use StateViewSlice in your application

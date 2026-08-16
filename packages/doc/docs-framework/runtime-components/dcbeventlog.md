@@ -4,7 +4,7 @@ date: 2026-02-17
 draft: false
 ---
 
-For a short summary of DcbEventLog, see [Reventless Components Overview.](../component-overview.md)
+For a short summary of DcbEventLog, see [Reventless Components Overview.](/app/component-overview)
 
 :::info Framework Implementation
 This component follows the Reventless [Component Structure Pattern](/framework/internals/component-structure-pattern), using separate files for interface definitions (`DcbEventLog.res`), builder logic (`DcbEventLog_Builder.res`), operations (`DcbEventLog_Operations.res`), tag utilities (`DcbTag.res`), and adapter interface (`DcbEventLog_Adapter.res`).
@@ -419,15 +419,15 @@ let position = await dcbEventLog.append(
 
 ## Related Components
 
-- **[StateChangeSlice](./statechangeslice.md)** - Processes commands against the DcbEventLog using a decision model
+- **[StateChangeSlice](/app/components/statechangeslice)** - Processes commands against the DcbEventLog using a decision model
 - **[CommandTopic](./commandtopic.md)** - Routes commands to StateChangeSlices
-- **[Plugin](./plugin.md)** - Creates and manages DcbEventLog for DCB plugins
+- **[Plugin](/app/components/plugin)** - Creates and manages DcbEventLog for DCB plugins
 - **[EventCollector](./eventcollector.md)** - Consumes events published by DcbEventLog
 - **[EventTopic](./eventtopic.md)** - Distributes events to subscribers
-- **[ReadModel](./readmodel.md)** - Builds projections from DcbEventLog events
+- **[ReadModel](/app/components/readmodel)** - Builds projections from DcbEventLog events
 
 ## Architecture Documentation
 
 For deeper understanding of DCB architecture:
-- **[DCB Architecture](../concepts/dcb.md)** - Complete DCB architecture overview
-- **[StateChangeSlice Usage](../concepts/statechangeslice-usage.md)** - How to use StateChangeSlice in practice
+- **[DCB Architecture](/app/concepts/dcb)** - Complete DCB architecture overview
+- **[StateChangeSlice Usage](/app/concepts/statechangeslice-usage)** - How to use StateChangeSlice in practice

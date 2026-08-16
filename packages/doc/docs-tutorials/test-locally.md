@@ -20,15 +20,22 @@ by `pnpm run setup` (run from the repo root — see
 `cp users.example.yaml .reventless/users.yaml` from `platform-local/`. The seeded
 users are:
 
-| Username | Password | Groups |
-|---|---|---|
-| `admin` | `admin` | `Admin`, `User` |
-| `user` | `user` | `User` |
+| Username | Password | Groups | What it is for |
+|---|---|---|---|
+| `admin` | `admin` | `Admin`, `Shopper` | Everything, including the platform's own admin views |
+| `shopper` | `shopper` | `Shopper` | Browses the catalogue and places their own orders |
+| `merch` | `merch` | `Merchandiser`, `Shopper` | Maintains products, categories, prices, images |
+| `fulfil` | `fulfil` | `Fulfilment`, `Shopper` | Works the order board and ships other people's orders |
 
 Open the shell at **http://localhost:5180**, go to the login page, and sign in as
-**`admin` / `admin`**. The admin user can reach every plugin's panels plus the
-platform admin views. Add your own entries to `.reventless/users.yaml` (restart the
-server after editing).
+**`admin` / `admin`**. Add your own entries to `.reventless/users.yaml` (restart
+the server after editing).
+
+The four accounts exist to show two different questions being answered
+separately. `merch` and `fulfil` both operate the shop, but only `fulfil` reads
+orders that belong to *other* people — so only `fulfil` is exempt from
+owner-scoped reads. Sign in as `shopper` and you see your own orders and nobody
+else's; sign in as `fulfil` and you see the board.
 
 :::note Anonymous requests
 Without an `X-User` header the local platform falls back to an unprivileged

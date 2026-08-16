@@ -1,48 +1,66 @@
 ---
 title: Get Started
-draft: false
-sidebar_position: 2
 ---
 
-## Basics
+# Get started building an app
 
-When implementing a system based on Reventless you should only think about `commands` and `events`. These provide easy to understand reasoning for anything happening.  
-Great care should go into naming these according to the [ubiquitous language](https://www.martinfowler.com/bliki/UbiquitousLanguage.html) of the project / context.  
-`Command`s are usually named in imperative, while `event`s are usually named in past tense. (e.g: doSomething vs somethingDone).
+There are two ways to start a Reventless application. Most people should use the
+first.
 
-Since `command`s are only a formulated desire for change, they can potentially be rejected with an `error`. `Event`s are absolute facts and the result of `command`s, which will never change once issued.
+## Option 1 — Describe your domain (recommended)
 
-## ReScript and Sury
+Reventless applications are generated well by AI assistants, because the
+vocabulary is small and closed and the compiler checks the result immediately.
+The practical path is: describe what your domain does, review what comes back,
+and correct it through scenarios.
 
-### ReScript
+In an assistant that has this project's skills available (Claude Code, Cursor,
+Copilot, or Codex), run:
 
-Reventless is written in [ReScript](https://rescript-lang.org), a strongly-typed language that compiles to JavaScript. Its variant types, exhaustive pattern matching, and module system are used throughout the framework to model commands, events, and state machines in a way that the compiler can fully verify.
+```
+/reventless-new online-shop
+```
 
-See [ReScript Syntax](./rescript-syntax.md) for an overview of the language features you will encounter most often.
+and describe your domain in your own words:
 
-### Sury
+> "A catalog of products. Products can be added, renamed, and repriced.
+> Categories can be created and archived. Other parts of the system need to know
+> when a product becomes available or changes price."
 
-[Sury](https://github.com/DZakh/sury) is a JSON serialization library for ReScript that Reventless uses. Annotate a type with `@schema` and Sury generates codecs automatically—no hand-written serialization required.
+The assistant proposes an architecture, asks you to confirm it, generates the
+whole project — specs, decisions, views, cross-plugin connections, tests, and
+configuration — and builds it to confirm it compiles cleanly.
 
-See [ReScript Syntax](./rescript-syntax.md#ppx) for details on `@schema` and `@s.matches` annotations.
+See [AI-assisted development](./ai-assisted/getting-started.md) for the full
+workflow, including `/reventless-add` for growing an existing project and
+`/reventless-validate` for checking one.
 
-## Development Setup
+**You still make the domain decisions.** Which facts matter, what the rules are,
+and where consistency boundaries belong are business questions — the assistant
+proposes, and your [scenarios](./given-when-then.md) are where you record the
+answer.
 
-### Install VS Code
+## Option 2 — Scaffold it yourself
 
-- install [Visual Studio Code](https://code.visualstudio.com)
-- install [ReScript](https://marketplace.visualstudio.com/items?itemName=rescript-ide.rescript-vscode) (extension id: `rescript-ide.rescript-vscode`)
+If you would rather assemble the project by hand, or you are adding Reventless to
+an existing repository:
 
-### Install Node and pnpm
+**Prerequisites.** [Node.js 22.17.1](https://nodejs.org/) (see `.node-version`)
+and pnpm 10 via Corepack (`corepack enable && corepack prepare pnpm@10 --activate`).
+For editing, [VS Code](https://code.visualstudio.com) with the
+[ReScript extension](https://marketplace.visualstudio.com/items?itemName=rescript-ide.rescript-vscode).
 
-- install [Node.js 22.17.1](https://nodejs.org/) (see `.node-version`)
-- enable [pnpm](https://pnpm.io) 10 via Corepack: `corepack enable && corepack prepare pnpm@10 --activate`
+**Create the project and add the packages.** They are published under the
+`@reventlessdev` scope on the GitHub Package Registry:
 
-### Initialize a new Project
+```bash
+pnpm init
+pnpm add @reventlessdev/reventless-spec @reventlessdev/reventless-infra sury
+pnpm add -D @reventlessdev/reventless-ppx @reventlessdev/reventless-gwt rescript sury-ppx
+pnpm add @reventlessdev/reventless-local     # or -aws, see "Choosing a platform"
+```
 
-Run `pnpm init` in the directory you want to create the new project in.
-
-Add build scripts to your `package.json`:
+**Add the build scripts** to `package.json`:
 
 ```json
 {
@@ -56,27 +74,13 @@ Add build scripts to your `package.json`:
 }
 ```
 
-`generate-plugin` (shipped with `@reventlessdev/reventless-spec`) scans `src/` and writes the
-composition root `src/Plugin.res` before each build. See the [Plugin System](./plugin-system.md)
-guide for what it wires.
+`generate-plugin` scans `src/` and writes the composition root `src/Plugin.res`
+before each build, wiring together everything it finds. See
+[Connect plugins](./plugin-system.md) for what it wires.
 
-### Install Dependencies
-
-Add the Reventless packages, the ReScript compiler, and Sury to your project. Packages are
-published under the `@reventlessdev` scope on the GitHub Package Registry:
-
-```bash
-pnpm add @reventlessdev/reventless-spec @reventlessdev/reventless-infra sury
-pnpm add -D @reventlessdev/reventless-ppx @reventlessdev/reventless-gwt rescript sury-ppx
-```
-
-Then add a provider package (see [Choose a Provider](#choose-a-provider) below) — e.g.
-`@reventlessdev/reventless-local` for local development.
-
-### Configure ReScript
-
-Create a `rescript.json` in your project root. The `reventless-ppx` **must** come before
-`sury-ppx`, and the output suffix is `.res.mjs`:
+**Configure the compiler** with a `rescript.json` in the project root. The
+`reventless-ppx` entry **must** come before `sury-ppx`, and the output suffix is
+`.res.mjs`:
 
 ```json
 {
@@ -94,44 +98,85 @@ Create a `rescript.json` in your project root. The `reventless-ppx` **must** com
 }
 ```
 
-The PPX auto-injects boilerplate (`let name`, DCB tag annotations, and more) so you can focus on domain logic. See [PPX annotations](./rescript-syntax.md#reventless-ppx-annotations) for details.
+## What a spec actually looks like
 
-### Choose a Provider
+Specs are written in a small declarative vocabulary: a command with its fields,
+the events it can produce, the errors it can return, and a decision that maps one
+to the other. Here is a complete one — a category being created:
 
-Reventless is provider-agnostic: a separate package per provider supplies the pre-configured
-components and adapters. Packages are named `@reventlessdev/reventless-<provider>`:
+```rescript
+@@reventless.spec
 
-- `@reventlessdev/reventless-local` — in-memory / SQLite backend for development and testing
+@schema
+type command =
+  | AddCategory({categoryId: string, name: string})
+
+@schema
+type error = CategoryAlreadyExists
+
+@schema
+type event =
+  | CategoryAdded({categoryId: string, name: string})
+```
+
+and the decision that goes with it:
+
+```rescript
+@@reventless.behavior
+
+type state = {exists: bool}
+let initialState = {exists: false}
+
+let evolve = (_state, event) =>
+  switch event {
+  | CategoryAdded => {exists: true}
+  }
+
+let decide = (state, command) =>
+  switch command {
+  | AddCategory({categoryId, name}) =>
+    state.exists
+      ? Error(CategoryAlreadyExists)
+      : Ok([CategoryAdded({categoryId, name})])
+  }
+```
+
+That is the shape of nearly everything you will write: a list of cases, and a
+function that pattern-matches over them. It is
+[ReScript](https://rescript-lang.org), and the compiler is doing real work here —
+forget a case in `decide` or `evolve` and it will not build. You do not need to
+learn the language up front; the [syntax reference](./rescript-syntax.md) is
+there for when a construct is unfamiliar, and the
+[PPX annotations](./reventless-ppx.md) page explains the `@` markers that inject
+the repetitive parts.
+
+Commands are named in the imperative (`AddCategory`), events in the past tense
+(`CategoryAdded`), both in the
+[ubiquitous language](https://www.martinfowler.com/bliki/UbiquitousLanguage.html)
+of your domain. A command is a request that may be refused; an event is a fact
+that never changes once written.
+
+## Choosing a platform
+
+Reventless is provider-agnostic, and a **platform** package supplies the
+components and adapters for one target:
+
+- `@reventlessdev/reventless-local` — a single process, in-memory or SQLite, for
+  development and tests
 - `@reventlessdev/reventless-aws` — AWS (DynamoDB, Lambda, SQS, SNS, S3)
 
-> AWS and local providers ship today; more cloud targets are planned.
+Each plugin is a functor over the platform, so the same application code runs
+against either. Start local; the platform is a deployment choice, not an
+architectural one.
 
-Install the one you need, e.g. `pnpm add @reventlessdev/reventless-aws`.
+## Next
 
-### The Platform
+Follow the spine from here:
 
-A **Platform** is the foundation every Reventless system is built on: it provides the shared
-infrastructure (event routing, command channels, the admin plugin) that lets `Plugin`s interact
-with each other. You select a Platform by choosing a provider — `ReventlessLocal.Platform` for
-local runs, `ReventlessAws.Platform` for AWS — and each `Plugin` is a functor
-`Make(Platform: ReventlessInfra.Platform.T)`. See the [Plugin System](./plugin-system.md) guide.
-
-## Create a new Plugin
-
-A **Plugin** is a deployment unit in Reventless. It encapsulates a bounded context with its own components.
-
-A plugin can mix two building-block patterns:
-
-1. **[Aggregates](./aggregates.md)** - Each entity has its own event log and sequential command processing
-2. **[DCB Slices](./dcb-slices.md)** - Shared event log with optimistic concurrency across entities
-
-For an overview of plugins, patterns, and cross-plugin communication, see the [Plugin System](./plugin-system.md) guide.
-
-## Next Steps
-
-- [AWS Get Started](/infrastructure/aws/get-started) - Deploy your application to AWS
-- [Writing Unit Tests](./writing-unit-tests.md) - Write tests for your Reventless application
-
-## Reventless Components
-
-Find an overview of the most important Reventless Components in [component-overview.md](./component-overview.md).
+1. [Model your domain](./aggregate-vs-dcb-decision-guide.md) — what your entities
+   are and where consistency boundaries belong
+2. [Write specs](./aggregates.md) — commands, events, decisions
+3. [Write scenarios](./given-when-then.md) — Given/When/Then, as your test suite
+4. [Views and UI](./components/readmodel.md) — what users read
+5. [Connect plugins](./plugin-system.md) — extension points between bounded contexts
+6. [Run and deploy](./local-development.md) — locally, then to the cloud

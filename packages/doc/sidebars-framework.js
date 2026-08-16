@@ -40,6 +40,26 @@ const sidebars = {
       ],
     },
     {
+      // Infrastructure the framework wires for you. An application developer
+      // declares components and never writes these — they belong to whoever
+      // works on the framework itself.
+      type: 'category',
+      label: 'Under the hood: runtime components',
+      items: [
+        'runtime-components/commandtopic',
+        'runtime-components/commandgenerator',
+        'runtime-components/eventlog',
+        'runtime-components/dcbeventlog',
+        'runtime-components/eventtopic',
+        'runtime-components/eventcollector',
+        'runtime-components/eventmapper',
+        'runtime-components/querydb',
+        'runtime-components/counter',
+        'runtime-components/heartbeat',
+        'runtime-components/scheduler',
+      ],
+    },
+    {
       type: 'category',
       label: 'AI Skills',
       items: [

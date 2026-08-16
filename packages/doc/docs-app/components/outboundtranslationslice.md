@@ -502,9 +502,9 @@ type operations = {
 - **[AutomationSlice](./automationslice.md)** -- Similar TODO list pattern for internal command automation (no external calls)
 - **[InboundTranslationSlice](./inboundtranslationslice.md)** -- Complementary component for receiving external input
 - **[SideEffectHandler](./sideeffecthandler.md)** -- Simpler fire-and-forget pattern for plugins using Aggregates
-- **[DcbEventLog](./dcbeventlog.md)** -- Shared event log that OutboundTranslationSlice subscribes to
+- **[DcbEventLog](/framework/runtime-components/dcbeventlog)** -- Shared event log that OutboundTranslationSlice subscribes to
 - **[StateChangeSlice](./statechangeslice.md)** -- Processes the commands OutboundTranslationSlice optionally produces
-- **[CommandTopic](./commandtopic.md)** -- Receives optional commands from the translator
-- **[EventCollector](./eventcollector.md)** -- Subscribes to the topics named in `sourceNames`
-- **[QueryDb](./querydb.md)** -- Stores the TODO list for observability
+- **[CommandTopic](/framework/runtime-components/commandtopic)** -- Receives optional commands from the translator
+- **[EventCollector](/framework/runtime-components/eventcollector)** -- Subscribes to the topics named in `sourceNames`
+- **[QueryDb](/framework/runtime-components/querydb)** -- Stores the TODO list for observability
 - **[Plugin](./plugin.md)** -- Hosts OutboundTranslationSlice via DcbSpec

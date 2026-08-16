@@ -274,6 +274,6 @@ module ItemViewSlice = Platform.StateViewSliceStream.Make(ItemView, ItemView_Pro
 - [StateViewSlice Component Reference](../components/stateviewslice.md)
 - [StateChangeSlice Usage](./statechangeslice-usage.md)
 - [DCB Plugin Architecture](../dcb-slices.md)
-- [DcbEventLog](../components/dcbeventlog.md)
-- [QueryDb](../components/querydb.md)
+- [DcbEventLog](/framework/runtime-components/dcbeventlog)
+- [QueryDb](/framework/runtime-components/querydb)
 - [ReadModel](../components/readmodel.md)

@@ -1,101 +1,103 @@
 // @ts-check
 
-/** @type {import('@docusaurus/plugin-content-docs').SidebarsConfig} */
+/**
+ * Two halves, deliberately: a **spine** you read in order while building your
+ * first application, and a **reference** you look things up in. Anything an app
+ * developer never writes — the infrastructure components the framework wires
+ * for you — lives in Contributing, not here.
+ *
+ * @type {import('@docusaurus/plugin-content-docs').SidebarsConfig}
+ */
 const sidebars = {
   appSidebar: [
     'index',
     'get-started',
-    'aggregates',
-    'dcb-slices',
-    'plugin-system',
-    'component-overview',
     {
       type: 'category',
-      label: 'Testing',
+      label: 'Model your domain',
+      collapsed: false,
       items: [
-        'running-tests',
-        'writing-unit-tests',
-        'given-when-then',
-        'component-testing-guide',
-      ],
-    },
-    {
-      type: 'category',
-      label: 'Concepts',
-      items: [
-        'concepts/aggregate-extension-connection',
-        'concepts/directives',
+        'aggregate-vs-dcb-decision-guide',
         'concepts/dcb',
-        'concepts/statechangeslice-usage',
-        'concepts/stateviewslice-usage',
       ],
     },
     {
       type: 'category',
-      label: 'Components',
+      label: 'Write specs',
+      collapsed: false,
       items: [
+        'aggregates',
+        'dcb-slices',
         'components/aggregate',
-        'components/api',
+        'components/statechangeslice',
+        'concepts/statechangeslice-usage',
         'components/automationslice',
-        'components/commandgenerator',
-        'components/commandtopic',
-        'components/counter',
-        'components/dcbeventlog',
-        'components/eventcollector',
-        'components/eventlog',
-        'components/eventmapper',
-        'components/eventtopic',
-        'components/extension',
-        'components/extensionpoint',
-        'components/heartbeat',
         'components/inboundtranslationslice',
         'components/outboundtranslationslice',
-        'components/plugin',
-        'components/querydb',
-        'components/readmodel',
-        'components/scheduler',
-        'components/sideeffecthandler',
-        'components/statechangeslice',
-        'components/stateviewslice',
         'components/task',
-      ],
-    },
-{
-      type: 'category',
-      label: 'Common Modules',
-      items: [
-        'common-modules/Id',
-        'common-modules/identity',
-        'common-modules/request-context',
-        'common-modules/config',
+        'components/sideeffecthandler',
       ],
     },
     {
       type: 'category',
-      label: 'Troubleshooting',
+      label: 'Write scenarios',
+      collapsed: false,
       items: [
-        'troubleshooting/common-issues',
+        'given-when-then',
+        'running-tests',
       ],
     },
-    'rescript-syntax',
     {
       type: 'category',
-      label: 'Guides',
+      label: 'Views and UI',
+      collapsed: false,
       items: [
-        {
-          type: 'doc',
-          id: 'platform-and-plugin-guide',
-          label: 'Build your own app',
-        },
-        'aggregate-vs-dcb-decision-guide',
-        'graphql-api-guide',
+        'components/readmodel',
+        'components/stateviewslice',
+        'concepts/stateviewslice-usage',
         'ui-configuration',
-        'dcb-usage',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Connect plugins',
+      collapsed: false,
+      items: [
+        'plugin-system',
+        'components/plugin',
+        'components/extensionpoint',
+        'components/extension',
+        'concepts/aggregate-extension-connection',
+      ],
+    },
+    'local-development',
+    {
+      type: 'category',
+      label: 'Reference',
+      items: [
+        'component-overview',
         'reventless-ppx',
+        'graphql-api-guide',
+        'rescript-syntax',
         'querydb-key-design-guide',
         'seeding-guide',
+        'dcb-usage',
         'mixed-source-readmodel',
         'mixed-source-automationslice',
+        'concepts/directives',
+        'platform-and-plugin-guide',
+        {
+          type: 'category',
+          label: 'Common Modules',
+          items: [
+            'common-modules/Id',
+            'common-modules/identity',
+            'common-modules/request-context',
+            'common-modules/config',
+          ],
+        },
+        'component-testing-guide',
+        'writing-unit-tests',
       ],
     },
     {
@@ -108,6 +110,13 @@ const sidebars = {
         'ai-assisted/architecture-decisions',
         'ai-assisted/generated-code-walkthrough',
         'ai-assisted/iterating',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Troubleshooting',
+      items: [
+        'troubleshooting/common-issues',
       ],
     },
     'glossary',

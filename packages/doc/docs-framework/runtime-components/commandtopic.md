@@ -4,7 +4,7 @@ date: 2026-01-24
 draft: false
 ---
 
-For a short summary of CommandTopic, see [Reventless Components Overview.](../component-overview.md)
+For a short summary of CommandTopic, see [Reventless Components Overview.](/app/component-overview)
 
 :::info Framework Implementation
 This component follows the Reventless [Component Structure Pattern](/framework/internals/component-structure-pattern), using separate files for interface definitions (`CommandTopic.res`), builder logic (`CommandTopic_Builder.res`), adapter interface (`CommandTopic_Adapter.res`), runtime operations (`CommandTopic_Operations.res`), and callback handlers (`CommandTopic_Callback.res`).
@@ -280,10 +280,10 @@ This metadata enables:
 
 ## Related Components
 
-- **[Aggregate](./aggregate.md)** - Consumes commands from CommandTopic
+- **[Aggregate](/app/components/aggregate)** - Consumes commands from CommandTopic
 - **[CommandGenerator](./commandgenerator.md)** - Publishes commands to CommandTopic from API
 - **[EventMapper](./eventmapper.md)** - Publishes commands to CommandTopic based on events
-- **[Extension](./extension.md)** - Publishes commands to ExtensionPoint CommandTopics
+- **[Extension](/app/components/extension)** - Publishes commands to ExtensionPoint CommandTopics
 - **[EventTopic](./eventtopic.md)** - Similar pattern for event distribution
 
 ## AWS Implementation

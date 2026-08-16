@@ -363,8 +363,8 @@ type operations = {
 
 - **[OutboundTranslationSlice](./outboundtranslationslice.md)** -- Complementary component for calling external services
 - **[StateChangeSlice](./statechangeslice.md)** -- Processes the commands InboundTranslationSlice produces
-- **[DcbEventLog](./dcbeventlog.md)** -- Shared event log that receives events from processed commands
-- **[CommandTopic](./commandtopic.md)** -- Receives commands from the translator
-- **[QueryDb](./querydb.md)** -- Stores the audit log
+- **[DcbEventLog](/framework/runtime-components/dcbeventlog)** -- Shared event log that receives events from processed commands
+- **[CommandTopic](/framework/runtime-components/commandtopic)** -- Receives commands from the translator
+- **[QueryDb](/framework/runtime-components/querydb)** -- Stores the audit log
 - **[Task](./task.md)** -- Alternative for S3/schedule-triggered external processing
 - **[Plugin](./plugin.md)** -- Hosts InboundTranslationSlice via DcbSpec
