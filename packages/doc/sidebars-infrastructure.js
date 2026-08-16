@@ -94,6 +94,7 @@ const sidebars = {
         'ui-fragments-deployment',
         'custom-domain',
         'appsync-events-live-updates',
+        'postgres-status',
         'postgres-aws-deployment',
         'local-persistence',
       ],

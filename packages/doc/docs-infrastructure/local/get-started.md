@@ -28,35 +28,42 @@ module Platform = ReventlessLocal.Platform.Make()
 
 This creates a fresh `LocalBus`, wires all adapter builders, and starts the GraphQL and MCP servers after plugin construction.
 
-### Silent Mode
+`Make()` gives you: diagnostic warnings on, **split API**, no cloner, and the
+backend taken from `REVENTLESS_LOCAL_BACKEND` (in memory when unset).
 
-For tests where you don't want diagnostic warnings (e.g., missing command handlers), use `MakeWithConfig`:
+### Overriding the defaults
 
-```rescript
-module Platform = ReventlessLocal.Platform.MakeWithConfig({
-  let silent = true
-  let splitApi = false
-})
-```
-
-### Split API Mode
-
-To serve core administrative schema (plugin management) and plugin business domain schema on separate ports:
+`MakeWithConfig` takes every field — there are no partial defaults, which is
+deliberate: a config you can half-specify is a config nobody reads.
 
 ```rescript
 module Platform = ReventlessLocal.Platform.MakeWithConfig({
-  let silent = false
-  let splitApi = true
+  let silent = true                       // suppress diagnostic warnings — for tests
+  let splitApi = false                    // serve everything on one endpoint
+  let cloner = false
+  let backend = ReventlessLocal.Backend.Memory
+  let commandHandlerConfig: ReventlessCore.Runtime.commandHandlerConfigs = {}
 })
 ```
 
-When `splitApi = true`:
-- **Plugin GraphQL** on port 4000 — business domain queries and mutations
-- **Core GraphQL** on port 4001 — plugin management queries and mutations
-- **Plugin MCP** on port 3001 — business domain tools and resources
-- **Core MCP** on port 3002 — administrative tools and resources
+`commandHandlerConfig` exists for parity with the AWS platform; its
+Lambda-specific knobs are no-ops here.
 
-When `splitApi = false` (default), all schema is served from the unified endpoints (port 4000 for GraphQL, port 3001 for MCP).
+### Split versus unified API
+
+Split is the default. It puts the platform's own administrative schema on a
+different endpoint from your application's:
+
+| Service | Split (default) | Unified |
+|---|---|---|
+| Domain GraphQL | 4000 | 4000 |
+| Platform/admin GraphQL | 4001 | 4000 |
+| Domain MCP | 3001 | 3001 |
+| Platform/admin MCP | 3002 | 3001 |
+
+Keeping them apart gives you a boundary to restrict later, and means an AI
+assistant pointed at the domain endpoint sees domain tools rather than platform
+administration.
 
 ## Using in Tests
 
@@ -106,9 +113,11 @@ afterAll(() => {
 })
 ```
 
-## GraphQL Server
+## GraphQL server
 
-The Local platform starts a GraphQL server on **port 4000** automatically after all plugins are constructed. All mutation and query resolvers registered during plugin construction are available immediately.
+The local platform starts its GraphQL servers automatically once all plugins are
+constructed — the domain API on **port 4000**, and (in the default split mode)
+the platform API on 4001. All mutation and query resolvers registered during plugin construction are available immediately.
 
 Access it at `http://localhost:4000/graphql`.
 

@@ -11,14 +11,15 @@ Jest tests continue to use the pure in-memory path — persistence is strictly o
 ### Option 1 — Platform functor argument
 
 ```rescript
-module Platform = InMemory.Platform.MakeWithConfig({
+module Platform = ReventlessLocal.Platform.MakeWithConfig({
   let silent = false
   let splitApi = true
   let cloner = false
-  let backend = Backend.Sqlite({
+  let backend = ReventlessLocal.Backend.Sqlite({
     path: "./.reventless/local.db",
     resetOnStart: false,
   })
+  let commandHandlerConfig: ReventlessCore.Runtime.commandHandlerConfigs = {}
 })
 ```
 
@@ -75,7 +76,7 @@ Delete the file to reset everything. Committing a sample `local.db` into a fixtu
 
 ## What is persisted
 
-All five storage surfaces are SQLite-backed:
+These storage surfaces are SQLite-backed:
 
 | Surface | Status |
 |---|---|

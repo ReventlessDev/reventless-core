@@ -1,6 +1,6 @@
 # Plan: Restructure the docs site around four audience paths
 
-**Status**: Proposed (2026-08-16)
+**Status**: In progress (2026-08-16) — A, B, C, D landed; R and E partially landed. See [Execution status](#execution-status).
 **Scope**: `packages/doc/` — information architecture, homepage, navbar, sidebars, and the content each audience path sees, **plus** the docs correctness/dedup/new-content backlog. This plan absorbs [docs-quality-improvements.md](./done/docs-quality-improvements.md) (now in `done/`, merged here as Phases R and E); the full findings behind those phases live in the analysis [docs-quality-review-2026-07.md](../analysis/docs-quality-review-2026-07.md) — items reference its sections (§) rather than repeating evidence.
 
 ## Goal
@@ -285,6 +285,72 @@ Highest-value gaps (§7), roughly priority-ordered; each is its own commit + sid
 - **Path walkthroughs**: after each phase, follow the affected path start-to-finish as its persona — evaluator path must contain zero code blocks and zero mentions of framework-internal components; path 2's deploy page must work from a fresh clone with only its stated preconditions (re-run against a real AWS account once, per the create-path verification practice).
 - Every factual claim touched is verified against `reventless/*/src` or the shipped `examples/`, never against another doc page.
 - `grep -ri "sovereign" packages/doc/docs-why` non-empty after Phase A; `grep -rn "alpha\.[0-9]" docs-tutorials` returns no hardcoded package pins after Phase B.
+
+## Execution status
+
+### Landed
+
+- **Phase A** — `docs-why` section (5 pages) at `/why`, navbar reordered to the
+  audience funnel, homepage hero + four path cards, `onBrokenLinks` and
+  `onBrokenAnchors` set to `throw` (the two pre-existing offenders fixed).
+- **Phase B** — tutorials reordered to run → test → deploy → test-on-AWS →
+  "Understand the code"; `get-started.md` → `overview.md` with a redirect
+  (`@docusaurus/plugin-client-redirects` added); deploy page made self-contained
+  with cost footprint, "what you have now", and teardown. R1.2–R1.5 landed here,
+  plus a full refresh of the overview's command/event tables against the shipped
+  example (they were missing eight commands and named three that do not exist).
+- **Phase C** — App Guide split into spine + Reference; 11 infrastructure
+  component pages evicted to `docs-framework/runtime-components/` with
+  redirects; `components/api.md` deleted → redirect to the GraphQL guide;
+  `get-started.md` rewritten (AI-assisted first, manual scaffold second);
+  new `local-development.md` ("Run and deploy"); `running-tests.md` rewritten
+  for app projects.
+- **Phase D** — `docs-infrastructure/get-started.md` → `scaffolding-a-provider.md`
+  in a "Writing a provider" group linked from Contributing;
+  `component-testing-guide.md` → docs-framework; `dual-aws-provider.md` →
+  framework internals; `output-types-in-reventless-spec.md` → `docs/analysis/`
+  with its conclusion folded into `internals/resources.md`; framework
+  `get-started.md` tombstone deleted.
+- **R1** — all factual fixes and the internal-reference scrub. Additionally:
+  `forward-codegen-pipeline.md`, `reverse-codegen-pipeline.md`, and
+  `reventless-vscode-testing.md` moved to `docs/guides/` — they document a
+  package that is neither in this tree nor published in either registry.
+- **R2** — DCB architecture page rewritten against the real Spec/Behavior API
+  (and the duplicated internals removed from `dcb-usage.md`); `@noApiVariants` →
+  per-variant `@noApi`; query interceptor un-marked as planned; message
+  correlation rule corrected; `@glennsl/rescript-jest` purged; `~uiBundleUrl` /
+  Maker-module snippets refreshed; three wrong adapter titles; schema-debugging
+  paths; EventBridge naming settled; event-delivery story reconciled to the real
+  default (DynamoDB Streams); exactly-once claims softened; local provider
+  `MakeWithConfig` + split-API default corrected.
+- **R4** — npm → pnpm, Hugo frontmatter, typos, the unclosed code block, "read
+  model" normalisation, README + CONTRIBUTING rewritten.
+- **E** — authorization guide (new), glossary repaired and expanded with the DCB
+  vocabulary, `concepts/dcb.md` rewritten as the beginner explainer,
+  `postgres-status.md` (new, referenced from `/why`).
+
+### Not yet done
+
+- **R2.2** `application-development-layers.md`; **R2.3** `common-modules/config.md`
+  and `runtime-components/commandgenerator.md`; **R2.5** merging
+  `writing-unit-tests.md` into `given-when-then.md`; **R2.7**
+  `ppx-binary-management.md`; **R2.10** the AWS `get-started.md` end-to-end
+  rewrite (only its install command was fixed).
+- **R3a** guide ⇄ tutorial reconciliation (the 8 drift points, the EP/Extension
+  dedup between `aggregate-based` and `dcb-based`, the missing slice walkthrough
+  in `hybrid-based`); **R3b** collapsing the two `*-usage` concept pages into
+  their component pages; **R3c** annotation-syntax unification; **R3d** adapter
+  page retrofits to the `dcbeventlog` template; **R3e** the remaining splits and
+  deletions (`appsync-events-live-updates` split, `counter.md` trailing section,
+  `d2-diagrams.md` repeat, lambda-layer/custom-domain dedup).
+- **R4.5** AI-filler trimming in `resources.md` / `runtime.md` / `pulumi.md` /
+  `lambda-deployment` §9; blog un-draft checklist.
+- **E3** ops chapters (cost, monitoring/DLQ, deploying-principal IAM); **E4**
+  symmetry stubs other than Postgres; **E5** the recent-feature coverage check —
+  note one finding already: `internals/mcp.md` says the Lambda Function URL
+  binding does not exist, but it does; MCP is still not wired into the AWS
+  deploy, so the *conclusion* holds and `deploy-to-aws.md` states it correctly.
+- **Path 2 verification** against a real AWS account has not been re-run.
 
 ## Out of scope
 

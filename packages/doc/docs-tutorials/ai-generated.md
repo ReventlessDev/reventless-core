@@ -6,7 +6,7 @@ title: AI-Generated Walkthrough
 
 This walkthrough shows what happens when you tell an AI assistant:
 
-> "Create an online shop with a Catalog plugin (DCB) and an Ordering plugin (DCB). The Catalog has Products and Categories. Ordering has Customers and Orders. Catalog exposes product availability to Ordering. When an order is placed, auto-ship after 24 hours and send a confirmation email."
+> "Create an online shop with a Catalog plugin (DCB) and an Ordering plugin (DCB). The Catalog has Products and Categories. Ordering has Customers and Orders. Catalog exposes product availability to Ordering. When an order is placed, ship it automatically and send a confirmation email."
 
 ## What the AI Does
 
@@ -75,8 +75,17 @@ compiles with ReScript.
 
 Running `node src/Main.res.mjs` from the `platform-local` package starts:
 
-- **GraphQL API** on port 4000 — all commands and queries available
-- **MCP server** on port 3001 — AI agents can discover and use all tools/resources
-- **Admin API** on port 4001/4002 — platform administration
+- **The domain GraphQL API** on port 4000 — every command and query
+- **The domain MCP server** on port 3001 — the same surface for AI assistants
+- **The platform admin API** on port 4001, with its MCP server on 3002
 
-The AI-generated code is identical in structure to the hand-written [DCB-based example](/tutorials/dcb-based) in this documentation.
+The generated code is identical in structure to the hand-written
+[DCB-based example](/tutorials/dcb-based) in this documentation — the assistant
+is not producing a different kind of application, only producing the same kind
+faster.
+
+## Doing it yourself
+
+This page describes the output. For the workflow — the slash commands, what to
+say to get a good result, and how to grow an existing project — see
+[AI-assisted development](/app/ai-assisted/).

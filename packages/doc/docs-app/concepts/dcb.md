@@ -1,198 +1,111 @@
-# DCB (Dynamic Consistency Boundary)
+---
+title: What is a Dynamic Consistency Boundary?
+sidebar_label: What is a DCB?
+---
 
-The Plugin component supports an optional DCB (Dynamic Consistency Boundary) event log shared across multiple state change slices. All slices in a plugin read from and write to the same event log, with optimistic concurrency control enforced per command.
+# What is a Dynamic Consistency Boundary?
 
-:::tip Full usage guide
-This page explains the concept. For the hands-on patterns — tags, decision
-models, multi-entity commands — see the [DCB usage guide](../dcb-usage).
-:::
+Every write-side design has to answer one question: **when a command arrives,
+what does the system have to know in order to say yes?** A Dynamic Consistency
+Boundary is one answer to it — and the vocabulary below is the whole idea, so it
+is worth defining the words before using them.
 
-## Command Flow
+## The problem it solves
 
-```d2
-Client: Client { class: client }
-SQS: "SQS Queue\n(DCB Command Topic)" { class: command-topic }
-Handler: "filteringHandler\n(Lambda Function)"
-Slice1: CreateItem Slice { class: state-change-slice }
-Slice2: RenameItem Slice { class: state-change-slice }
-Handler3: NoOp Handler
-EventLog: "DcbEventLog\n(Shared Event Log)" { class: dcb-event-log }
-ViewSlice: "StateViewSlice\n(Projection)" { class: state-view-slice }
-QueryDb: "QueryDb\n(Read Model)" { class: query-db }
-Read: 1. read events
-Evolve: 2. evolve
-Decide: 3. decide
-Append: "4. append\n(optimistic concurrency)"
+Classic event sourcing draws the consistency boundary around an *entity*. A
+product has its own event log; a decision about that product reads that log and
+appends to it. Two commands for the same product are ordered against each other,
+and commands for different products never interact. That is an **aggregate**, and
+when entities really are independent it is the simplest thing that works.
 
-Client -> SQS: { class: command-flow }
-SQS -> Handler: { class: command-flow }
-Handler -> Slice1: { class: command-flow }
-Handler -> Slice2: { class: command-flow }
-Handler -> Handler3: { class: command-flow }
-Slice1 -> EventLog: { class: event-flow }
-Slice2 -> EventLog: { class: event-flow }
-EventLog -> ViewSlice: { class: event-flow }
-ViewSlice -> QueryDb: { class: projection-flow }
-EventLog -> Read
-Read -> Evolve
-Evolve -> Decide
-Decide -> Append
-```
+It stops working the moment a decision needs to see *somebody else's* events.
+"Reject a product whose category does not exist or has been archived" is a
+decision about a product that depends on facts about a category. With one log per
+entity there is no way to read both consistently: you can query the category's
+current state, but between reading it and appending your event, it can be
+archived.
 
-The DCB command topic is a standard SQS queue by default — sync slices (the default) return `CommandAccepted` / `CommandRejected`. Slices tagged with `@@reventless.async` use a separate FIFO queue and return `CommandPending`; the plugin generator renders `Platform.StateChangeSlice.MakeAsync(...)` for those and `Make(...)` for the rest, and both types end up in the same `~stateChangeSlices` array at the `Plugin.make` call site. The `filteringHandler` in the Lambda routes each message by its `TAG` field to whichever state change slices handle that command type; both queues share the same handler registry.
+DCB draws the boundary around the **decision** instead of around the entity. The
+entities share one log, the decision reads exactly the events it needs across
+whichever entities it needs them from, and the append is rejected if any of those
+facts changed while it was thinking.
 
-## Slice Shapes
+## The vocabulary
 
-Slices are passed directly to `Plugin.make` — there is no `DcbSpec` or `DcbEventLogSpec` wrapper module. Each slice is a pair of files: a spec file declaring its types and a body file holding the logic. A slice declares its **own** `consumedEvent` (the events it reads to rebuild state) and `event` (the events it produces); the framework derives the DCB query from the `*Id` fields, which the PPX tags automatically inside `*Slice/` folders.
+**Tag.** A key attached to an event that makes it findable — almost always an
+entity id. `CategoryAdded` carries the tag `categoryId: "books"`. Tags are what
+let many entities' events share one log and still be read apart: a query is a
+filter over tags, not a scan.
 
-### StateChangeSlice
+**Partition.** Where an event physically lives in storage. Events sharing a
+partition key are stored and ordered together. When an event carries more than
+one id, one of them is marked as the partition tag — the others remain queryable
+but do not decide placement.
 
-The spec file (`<Name>.res`, `@@reventless.spec`) declares `consumedEvent`, `command`, `error`, and `event`. The behavior file (`<Name>_Behavior.res`, `@@reventless.behavior`) declares `state`, `initialState`, `evolve`, and `decide`:
+**Decision model.** The state a slice builds to answer one command. It is
+produced by reading the relevant events and folding them with `evolve`, starting
+from `initialState`. It is **ephemeral**: rebuilt per command, used once by
+`decide`, then discarded. Nothing persists it, and nothing else can see it.
 
-```rescript title="CreateItem.res — conceptual shape"
-@@reventless.spec
+**Fence.** The condition attached to the append. Having read events for a set of
+tags, the slice appends on the condition that *no new event carrying those tags
+has been recorded since it read*. If one has, the append is rejected and the
+whole read-decide-append cycle retries against the newer history. This is
+optimistic concurrency: no locks, no coordination, and a conflict costs a retry
+rather than a wrong answer.
 
-@schema type consumedEvent = ItemCreated
-@schema type command = CreateItem({itemId: string, name: string})
-@schema type error = ItemAlreadyExists
-@schema type event = ItemCreated({itemId: string, name: string})
-```
+Put together: **read by tags → evolve into a decision model → decide → append
+behind a fence on those same tags.**
 
-```rescript title="CreateItem_Behavior.res — conceptual shape"
-@@reventless.behavior
+## What that buys you
 
-type state
-let initialState: state
-let evolve: (state, consumedEvent) => state
-let decide: (state, command) => result<array<event>, error>
-```
+The boundary is *dynamic* because it is decided per command, from what the
+command actually read. Two commands that touched no common tag do not conflict,
+however close together they arrive. Two that did are serialised against each
+other — exactly the ones that had to be.
 
-### StateViewSlice
+So a slice can enforce a rule spanning several entities without the entities
+being merged into one big aggregate to make it possible, and without the
+usual alternative of "read it first and hope".
 
-The spec file (`<Name>.res`, `@@reventless.spec`) declares `consumedEvent` and the read model `state`. The projection file (`<Name>_Projection.res`, `@@reventless.projection`) declares `project`, which receives a `consumed` envelope `{event, meta, recordedAt}`:
+## What it costs
 
-```rescript title="ItemView.res / ItemView_Projection.res — conceptual shape"
-@schema type consumedEvent  // the events this view reads
-@schema type state          // the read model row shape
+- **Events must be tagged correctly.** A missing tag means a decision reads less
+  than it should, and the fence protects less than you think. Most tags are
+  inferred from `*Id` field names, which is why the naming convention matters.
+- **A shared log means a shared schema.** The log's event type is the union of
+  every slice's events. That is derived rather than declared, so it cannot drift
+  — but it does mean the slices in a plugin are coupled through the log.
+- **Retries are real.** A hot tag — one entity every command touches — serialises
+  everything that touches it. If a rule needs that, the retry is the cost of the
+  rule; if it does not, the tag is too broad.
+- **You have to think about scope.** Does this decision need one entity's history,
+  or every event carrying this key across all partitions? Most of the time the
+  framework infers it from how your slices reference each other; the case it
+  cannot see is when a slice reads its own event type across partitions, such as
+  a capacity limit.
 
-let project: Reventless.StateViewSlice.consumed<consumedEvent> => array<Reventless.Projection.action<string, state>>
-```
+## Choosing between this and an aggregate
 
-## Usage
+Ask it per entity, not per application:
 
-### 1. Define a state change slice
+1. **Does a decision about this entity need another entity's events?** → DCB.
+2. **Does another entity's decision need *this* entity's events?** → DCB, even if
+   this entity looks perfectly self-contained on its own. Its events have to be
+   in the shared log for the other slice to reach them.
+3. **Neither?** → an aggregate. Simpler, isolated, and no shared schema.
 
-The slice declares its own `consumedEvent` and `event` types — there is no shared event-log spec. Inside a `StateChangeSlice/` folder the PPX auto-applies `@s.matches(Reventless.DcbTag.string)` to every `*Id` field, so the event log is queried by those values to rebuild state. For cross-entity queries, use a `*Id: array<string>` field; the runtime builds per-element OR clauses automatically.
+Answering (2) with a self-contained entity is the case people get wrong. In the
+worked example, `Category` is an unremarkable add/rename/archive lifecycle and
+would make a fine aggregate — but `AddProduct` reads `CategoryAdded` and
+`CategoryArchived` to decide, so `Category` has to be DCB.
 
-```rescript title="CreateItem.res"
-@@reventless.spec
+The full version of this question, with the trade-offs written out, is the
+[aggregate vs DCB decision guide](../aggregate-vs-dcb-decision-guide.md).
 
-@schema
-type consumedEvent =
-  | ItemCreated
+## Next
 
-@schema
-type command =
-  | CreateItem({itemId: string, name: string})
-
-@schema
-type error = ItemAlreadyExists
-
-@schema
-type event =
-  | ItemCreated({itemId: string, name: string})
-```
-
-```rescript title="CreateItem_Behavior.res"
-@@reventless.behavior
-
-type state = {exists: bool}
-let initialState = {exists: false}
-
-let evolve = (_state, event) =>
-  switch event {
-  | ItemCreated => {exists: true}
-  }
-
-let decide = (state, command) =>
-  switch command {
-  | CreateItem({itemId, name}) =>
-    if state.exists {
-      Error(ItemAlreadyExists)
-    } else {
-      Ok([ItemCreated({itemId, name})])
-    }
-  }
-```
-
-A second slice on the same event log reads more of the shared history via its own `consumedEvent`:
-
-```rescript title="RenameItem.res"
-@@reventless.spec
-
-@schema
-type consumedEvent =
-  | ItemCreated({name: string})
-  | ItemRenamed({name: string})
-
-@schema
-type command =
-  | RenameItem({itemId: string, name: string})
-
-@schema
-type error = ItemNotFound
-
-@schema
-type event =
-  | ItemRenamed({itemId: string, name: string})
-```
-
-```rescript title="RenameItem_Behavior.res"
-@@reventless.behavior
-
-type state = {exists: bool, currentName: option<string>}
-let initialState = {exists: false, currentName: None}
-
-let evolve = (state, event) =>
-  switch event {
-  | ItemCreated({name}) => {exists: true, currentName: Some(name)}
-  | ItemRenamed({name}) => {...state, currentName: Some(name)}
-  }
-
-let decide = (state, command) =>
-  switch command {
-  | RenameItem({itemId, name}) =>
-    if !state.exists {
-      Error(ItemNotFound)
-    } else {
-      Ok([ItemRenamed({itemId, name})])
-    }
-  }
-```
-
-### 2. Wire the slices
-
-Wiring lives in the generated `Plugin.res` as two-argument functor calls — spec first, behavior second. The shared CommandTopic and event log are provisioned by the plugin at deploy time.
-
-```rescript title="Plugin.res (generated)"
-module CreateItemSlice = Platform.StateChangeSlice.Make(CreateItem, CreateItem_Behavior)
-module RenameItemSlice = Platform.StateChangeSlice.Make(RenameItem, RenameItem_Behavior)
-```
-
-### 3. Create the plugin
-
-```rescript title="Plugin.res (generated)"
-// Inside the plugin's Make functor:
-let make = () =>
-  Platform.Plugin.make(
-    ~name="MyPlugin",
-    ~heartbeatInterval=5,
-    ~stateChangeSlices=[module(CreateItemSlice), module(RenameItemSlice)],
-    ~stateViewSlices=[module(ItemViewSlice)],
-    // ...other component arrays...
-  )
-```
-
-:::info Framework Implementation
-For details on how DCB is implemented inside the framework — the deploy-time plugin builder, schema-based handler registration, filtering handler internals, and design decisions — see the [Framework Developer Guide](/framework/architecture/dcb).
-:::
+- [DCB slices](../dcb-slices.md) — writing one
+- [DCB usage](../dcb-usage.md) — tags, partitioning, and cross-partition reads
+- [How the fence is enforced](/framework/internals/dcb-consistency-checks) —
+  the storage-level detail

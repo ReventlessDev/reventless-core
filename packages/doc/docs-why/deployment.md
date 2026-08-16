@@ -60,7 +60,7 @@ framework, by construction:
   event-log, decision, and view surfaces on a relational database, with exact
   consistency semantics and standard relational tooling. It is validated against
   a live database and can already be used on AWS-managed Postgres — see
-  [Managed Postgres on AWS](/infrastructure/postgres-aws-deployment).
+  [Postgres storage: status](/infrastructure/postgres-status).
 
 **What does not exist yet** is a complete sovereign platform: a provider that
 runs a Reventless application end to end in a European sovereign cloud or in your
