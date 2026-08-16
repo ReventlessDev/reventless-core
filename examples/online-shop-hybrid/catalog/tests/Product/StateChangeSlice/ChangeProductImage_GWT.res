@@ -18,4 +18,22 @@ describe("ChangeProductImage StateChangeSlice", () => {
     ->whenCmd(ChangeProductImage({productId: "p1", imageUrl: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg"}))
     ->thenNoEvent
   )
+
+  test("changing an archived product's image is allowed", () =>
+    givenEvents([
+      ProductAdded({imageUrl: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg"}),
+      ProductArchived,
+    ])
+    ->whenCmd(ChangeProductImage({productId: "p1", imageUrl: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-new.jpg"}))
+    ->thenEvent(ProductImageChanged({productId: "p1", imageUrl: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-new.jpg"}))
+  )
+
+  test("changing a discontinued product's image is refused", () =>
+    givenEvents([
+      ProductAdded({imageUrl: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg"}),
+      ProductDiscontinued,
+    ])
+    ->whenCmd(ChangeProductImage({productId: "p1", imageUrl: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-new.jpg"}))
+    ->thenError(ProductIsDiscontinued)
+  )
 })

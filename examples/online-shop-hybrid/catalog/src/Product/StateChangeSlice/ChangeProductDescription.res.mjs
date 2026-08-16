@@ -2,6 +2,7 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as Api$ReventlessInfra from "@reventlessdev/reventless-infra/src/components/Api.res.mjs";
 
 let consumedEventSchema = S.union([
   S.schema(s => ({
@@ -11,7 +12,10 @@ let consumedEventSchema = S.union([
   S.schema(s => ({
     TAG: "ProductDescriptionChanged",
     description: s.m(S.string)
-  }))
+  })),
+  S.literal("ProductArchived"),
+  S.literal("ProductUnarchived"),
+  S.literal("ProductDiscontinued")
 ]);
 
 let commandSchema = S.schema(s => ({
@@ -20,13 +24,24 @@ let commandSchema = S.schema(s => ({
   description: s.m(S.string)
 }));
 
-let errorSchema = S.literal("ProductNotFound");
+let errorSchema = S.union([
+  S.literal("ProductNotFound"),
+  S.literal("ProductIsDiscontinued")
+]);
 
 let eventSchema = S.schema(s => ({
   TAG: "ProductDescriptionChanged",
   productId: s.m(DcbTag$Reventless.string),
   description: s.m(S.string)
 }));
+
+let commandSchema$1 = Api$ReventlessInfra.markAllowedStates(commandSchema, [[
+    "ChangeProductDescription",
+    [
+      "Listed",
+      "Archived"
+    ]
+  ]]);
 
 function commandAuthorization(command) {
   return {
@@ -50,9 +65,9 @@ export {
   name,
   Id,
   consumedEventSchema,
-  commandSchema,
   errorSchema,
   eventSchema,
+  commandSchema$1 as commandSchema,
   moduleUrl,
   commandAuthorization,
   readConsistency,

@@ -3,16 +3,40 @@
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 
 function evolve(state, event) {
-  if (event.TAG === "ProductAdded") {
-    return {
-      exists: true,
-      currentPrice: event.price
-    };
-  } else {
-    return {
-      exists: state.exists,
-      currentPrice: event.price
-    };
+  if (typeof event === "object") {
+    if (event.TAG === "ProductAdded") {
+      return {
+        exists: true,
+        shelf: "Listed",
+        currentPrice: event.price
+      };
+    } else {
+      return {
+        exists: state.exists,
+        shelf: state.shelf,
+        currentPrice: event.price
+      };
+    }
+  }
+  switch (event) {
+    case "ProductArchived" :
+      return {
+        exists: state.exists,
+        shelf: "Archived",
+        currentPrice: state.currentPrice
+      };
+    case "ProductUnarchived" :
+      return {
+        exists: state.exists,
+        shelf: "Listed",
+        currentPrice: state.currentPrice
+      };
+    case "ProductDiscontinued" :
+      return {
+        exists: state.exists,
+        shelf: "Discontinued",
+        currentPrice: state.currentPrice
+      };
   }
 }
 
@@ -21,6 +45,12 @@ function decide(state, command) {
     return {
       TAG: "Error",
       _0: "ProductNotFound"
+    };
+  }
+  if (state.shelf === "Discontinued") {
+    return {
+      TAG: "Error",
+      _0: "ProductIsDiscontinued"
     };
   }
   let price = command.price;
@@ -45,6 +75,7 @@ let Spec;
 
 let initialState = {
   exists: false,
+  shelf: "Listed",
   currentPrice: undefined
 };
 

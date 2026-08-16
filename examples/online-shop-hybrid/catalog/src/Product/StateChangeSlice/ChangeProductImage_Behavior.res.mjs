@@ -3,16 +3,40 @@
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 
 function evolve(state, event) {
-  if (event.TAG === "ProductAdded") {
-    return {
-      exists: true,
-      currentImageUrl: event.imageUrl
-    };
-  } else {
-    return {
-      exists: state.exists,
-      currentImageUrl: event.imageUrl
-    };
+  if (typeof event === "object") {
+    if (event.TAG === "ProductAdded") {
+      return {
+        exists: true,
+        shelf: "Listed",
+        currentImageUrl: event.imageUrl
+      };
+    } else {
+      return {
+        exists: state.exists,
+        shelf: state.shelf,
+        currentImageUrl: event.imageUrl
+      };
+    }
+  }
+  switch (event) {
+    case "ProductArchived" :
+      return {
+        exists: state.exists,
+        shelf: "Archived",
+        currentImageUrl: state.currentImageUrl
+      };
+    case "ProductUnarchived" :
+      return {
+        exists: state.exists,
+        shelf: "Listed",
+        currentImageUrl: state.currentImageUrl
+      };
+    case "ProductDiscontinued" :
+      return {
+        exists: state.exists,
+        shelf: "Discontinued",
+        currentImageUrl: state.currentImageUrl
+      };
   }
 }
 
@@ -21,6 +45,12 @@ function decide(state, command) {
     return {
       TAG: "Error",
       _0: "ProductNotFound"
+    };
+  }
+  if (state.shelf === "Discontinued") {
+    return {
+      TAG: "Error",
+      _0: "ProductIsDiscontinued"
     };
   }
   let imageUrl = command.imageUrl;
@@ -45,6 +75,7 @@ let Spec;
 
 let initialState = {
   exists: false,
+  shelf: "Listed",
   currentImageUrl: undefined
 };
 

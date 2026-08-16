@@ -7,12 +7,23 @@
 type consumedEvent =
   | ProductAdded({name: string})
   | ProductNameChanged({name: string})
+  | ProductArchived
+  | ProductUnarchived
+  | ProductDiscontinued
+
+// Legal on a listed product and on an archived one — correcting a name while a
+// product is off the shelf is exactly when it wants correcting. Not legal on a
+// discontinued one, which is terminal.
+@schema
+type command =
+  | @authorize(AllowGroups(["Admin", "Merchandiser"]))
+  @transition([Products.Listed, Products.Archived])
+  ChangeProductName({productId: string, name: string})
 
 @schema
-type command = @authorize(AllowGroups(["Admin", "Merchandiser"])) ChangeProductName({productId: string, name: string})
-
-@schema
-type error = ProductNotFound
+type error =
+  | ProductNotFound
+  | ProductIsDiscontinued
 
 @schema
 type event =

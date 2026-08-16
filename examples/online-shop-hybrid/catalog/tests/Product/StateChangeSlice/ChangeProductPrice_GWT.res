@@ -24,4 +24,19 @@ describe("ChangeProductPrice StateChangeSlice", () => {
     ->whenCmd(ChangeProductPrice({productId: "p1", price: eur(999.99)}))
     ->thenNoEvent
   )
+
+  // The second half of the from-set, and the reason it has two states: a product
+  // pulled from the catalog for a season is coming back, and its price should be
+  // right when it does.
+  test("repricing an archived product is allowed", () =>
+    givenEvents([ProductAdded({price: eur(999.99)}), ProductArchived])
+    ->whenCmd(ChangeProductPrice({productId: "p1", price: eur(899.99)}))
+    ->thenEvent(ProductPriceChanged({productId: "p1", price: eur(899.99)}))
+  )
+
+  test("repricing a discontinued product is refused", () =>
+    givenEvents([ProductAdded({price: eur(999.99)}), ProductDiscontinued])
+    ->whenCmd(ChangeProductPrice({productId: "p1", price: eur(899.99)}))
+    ->thenError(ProductIsDiscontinued)
+  )
 })

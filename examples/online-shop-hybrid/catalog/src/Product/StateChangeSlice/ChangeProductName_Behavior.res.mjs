@@ -2,16 +2,40 @@
 
 
 function evolve(state, event) {
-  if (event.TAG === "ProductAdded") {
-    return {
-      exists: true,
-      currentName: event.name
-    };
-  } else {
-    return {
-      exists: state.exists,
-      currentName: event.name
-    };
+  if (typeof event === "object") {
+    if (event.TAG === "ProductAdded") {
+      return {
+        exists: true,
+        shelf: "Listed",
+        currentName: event.name
+      };
+    } else {
+      return {
+        exists: state.exists,
+        shelf: state.shelf,
+        currentName: event.name
+      };
+    }
+  }
+  switch (event) {
+    case "ProductArchived" :
+      return {
+        exists: state.exists,
+        shelf: "Archived",
+        currentName: state.currentName
+      };
+    case "ProductUnarchived" :
+      return {
+        exists: state.exists,
+        shelf: "Listed",
+        currentName: state.currentName
+      };
+    case "ProductDiscontinued" :
+      return {
+        exists: state.exists,
+        shelf: "Discontinued",
+        currentName: state.currentName
+      };
   }
 }
 
@@ -20,6 +44,12 @@ function decide(state, command) {
     return {
       TAG: "Error",
       _0: "ProductNotFound"
+    };
+  }
+  if (state.shelf === "Discontinued") {
+    return {
+      TAG: "Error",
+      _0: "ProductIsDiscontinued"
     };
   }
   let name = command.name;
@@ -44,6 +74,7 @@ let Spec;
 
 let initialState = {
   exists: false,
+  shelf: "Listed",
   currentName: ""
 };
 

@@ -1,13 +1,18 @@
 @@reventless.behavior
 
-type state = {exists: bool, currentName: string}
+type shelf = Listed | Archived | Discontinued
 
-let initialState = {exists: false, currentName: ""}
+type state = {exists: bool, shelf: shelf, currentName: string}
+
+let initialState = {exists: false, shelf: Listed, currentName: ""}
 
 let evolve = (state, event) =>
   switch event {
-  | ProductAdded({name}) => {exists: true, currentName: name}
+  | ProductAdded({name}) => {exists: true, shelf: Listed, currentName: name}
   | ProductNameChanged({name}) => {...state, currentName: name}
+  | ProductArchived => {...state, shelf: Archived}
+  | ProductUnarchived => {...state, shelf: Listed}
+  | ProductDiscontinued => {...state, shelf: Discontinued}
   }
 
 let decide = (state, command) =>
@@ -15,6 +20,8 @@ let decide = (state, command) =>
   | ChangeProductName({productId, name}) =>
     if !state.exists {
       Error(ProductNotFound)
+    } else if state.shelf == Discontinued {
+      Error(ProductIsDiscontinued)
     } else if name == state.currentName {
       Ok([]) // idempotent — name unchanged
     } else {
