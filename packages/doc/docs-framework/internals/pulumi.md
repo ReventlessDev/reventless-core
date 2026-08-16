@@ -102,8 +102,11 @@ This pattern ensures:
 Reventless includes custom ReScript bindings for Pulumi that provide type-safe access to Pulumi APIs:
 
 ### Core Dependencies
-- **@reventless/rescript-pulumi-pulumi**: ^2.2.0 (Core Pulumi bindings)
-- **@reventless/rescript-pulumi-aws**: ^2.3.0 (AWS provider bindings)
+- **`@reventlessdev/rescript-pulumi-pulumi`** — core Pulumi bindings
+- **`@reventlessdev/rescript-pulumi-aws`** — AWS provider bindings
+
+Check each package's `package.json` for the version this build depends on rather
+than a version quoted here.
 
 ### Advantages of Custom Bindings
 

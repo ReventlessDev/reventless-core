@@ -91,10 +91,7 @@ const sidebars = {
         'component-testing',
         'component-testing-guide',
         'd2-diagrams',
-        'forward-codegen-pipeline',
-        'reverse-codegen-pipeline',
         'graphql-schema-debugging',
-        'reventless-vscode-testing',
       ],
     },
     {

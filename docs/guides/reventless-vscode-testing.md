@@ -1,5 +1,9 @@
 # Testing the `reventless-vscode` extension
 
+> **Not part of the published documentation site.** The tooling described here
+> lives outside `reventless-core` and is not published to a registry, so this
+> guide is kept in-tree for maintainers rather than on docs.reventless.dev.
+
 This guide walks through manually verifying the `@reventlessdev/reventless-vscode` extension end-to-end: CLI sanity, dev-host launch, discovery, run, failure rendering, cancellation, configuration, file watching, and VSIX packaging.
 
 The extension is pure glue between the `reventless-gwt --format=vscode` NDJSON stream and VS Code's [Testing API](https://code.visualstudio.com/api/extension-guides/testing). Most bugs show up first in the CLI output; exercising the CLI directly before involving VS Code is the fastest way to narrow down where a failure lives.
@@ -27,7 +31,7 @@ The status bar and a **"Reventless — Build"** output channel surface build pro
 
 ## UI surface map — where to find every component
 
-Everything the extension renders, by location in the VS Code window. Use this as a manual dev-host checklist: each entry says **where** it appears, **what** it looks like, **how** to make it show, and the **provider** in [`src/extension.ts`](https://github.com/ReventlessDev/reventless-core/blob/main/packages/reventless-vscode/src/extension.ts) that produces it.
+Everything the extension renders, by location in the VS Code window. Use this as a manual dev-host checklist: each entry says **where** it appears, **what** it looks like, **how** to make it show, and the **provider** in [`src/extension.ts`](https://github.com/ReventlessDev/reventless-core/blob/alpha/packages/reventless-vscode/src/extension.ts) that produces it.
 
 VS Code geography terms used below: **Activity Bar** = far-left vertical icon strip; **Primary Side Bar** = the panel that opens when you click an Activity Bar icon; **Panel** = the bottom area (Output / Problems / Terminal); **Status Bar** = the bottom strip; **editor** = the code area (CodeLens is clickable text above a line; the Code Action lightbulb is at the start of a line or via `Cmd+.`).
 
@@ -104,7 +108,7 @@ Open it via the **flask icon** in the Activity Bar (or **View → Testing**).
 - **Watch off:** after a manual **Stop Watch**, the item reads `$(circle-slash) Reventless · watch off` (not red — it's intentional) until you **Start Watch** again.
 - **Click target:** clicking the item jumps to the **Test Explorer** (C) and reveals a test there. If **any test is failing**, it switches the explorer to *show-only-failed* and reveals the first failure; otherwise it switches to *show all* and reveals the first test. Command: `reventless.statusBarClick`.
 - **Trigger:** updates on every `build*` / `runEnd`. In a multi-folder workspace the tallies **sum** into this one item.
-- **Source:** `WatchRegistry.statusText()` (unit-tested in [`test/watchRegistry.test.mjs`](https://github.com/ReventlessDev/reventless-core/blob/main/packages/reventless-vscode/test/watchRegistry.test.mjs)).
+- **Source:** `WatchRegistry.statusText()` (unit-tested in [`test/watchRegistry.test.mjs`](https://github.com/ReventlessDev/reventless-core/blob/alpha/packages/reventless-vscode/test/watchRegistry.test.mjs)).
 
 ### E. Editor — CodeLenses and the quick-fix
 - **Run CodeLens:** open any `*_GWT.res` → a clickable **`▷ Run`** sits **above each `test(…)` / `describe(…)`**. Clicking runs just that id via `run --filter`. Source: `GwtCodeLensProvider`.
@@ -251,7 +255,7 @@ All three paths use the CLI's substring-match `--filter`, so the ids emitted at 
 
 ## 7. Verify failure rendering
 
-Temporarily break a test. For example in [`reventless/gwt/tests/StateChangeSliceGwtTest.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/gwt/tests/StateChangeSliceGwtTest.res), change an expected event's field. Rebuild:
+Temporarily break a test. For example in [`reventless/gwt/tests/StateChangeSliceGwtTest.res`](https://github.com/ReventlessDev/reventless-core/blob/alpha/reventless/gwt/tests/StateChangeSliceGwtTest.res), change an expected event's field. Rebuild:
 
 ```bash
 pnpm --filter @reventlessdev/reventless-gwt run build
@@ -409,6 +413,6 @@ Stopping, restarting, removing a workspace folder, or closing the window dispose
 
 ## References
 
-- [`docs/analysis/given-when-then-specifications.md`](https://github.com/ReventlessDev/reventless-core/blob/main/docs/analysis/given-when-then-specifications.md) — `--format=vscode` event table and the thin-extension example.
+- [`docs/analysis/given-when-then-specifications.md`](https://github.com/ReventlessDev/reventless-core/blob/alpha/docs/analysis/given-when-then-specifications.md) — `--format=vscode` event table and the thin-extension example.
 - [VS Code Testing API](https://code.visualstudio.com/api/extension-guides/testing) — `TestController`, `TestItem`, `TestMessage`, `TestRun`.
-- [`packages/reventless-vscode/src/extension.ts`](https://github.com/ReventlessDev/reventless-core/blob/main/packages/reventless-vscode/src/extension.ts) — the extension source (~260 lines).
+- [`packages/reventless-vscode/src/extension.ts`](https://github.com/ReventlessDev/reventless-core/blob/alpha/packages/reventless-vscode/src/extension.ts) — the extension source (~260 lines).

@@ -54,9 +54,9 @@ for how deploy-time and runtime are kept separate.
 Design explorations for other providers (what each interface maps to, and where
 the gaps are) live in the repo's analysis notes:
 
-- [GCP cloud provider analysis](https://github.com/ReventlessDev/reventless-core/blob/main/docs/analysis/gcp-cloud-provider-analysis.md)
-- [Azure cloud provider analysis](https://github.com/ReventlessDev/reventless-core/blob/main/docs/analysis/azure-cloud-provider-analysis.md)
-- [Supabase local platform](https://github.com/ReventlessDev/reventless-core/blob/main/docs/analysis/supabase-local-platform.md)
+- [GCP cloud provider analysis](https://github.com/ReventlessDev/reventless-core/blob/alpha/docs/analysis/gcp-cloud-provider-analysis.md)
+- [Azure cloud provider analysis](https://github.com/ReventlessDev/reventless-core/blob/alpha/docs/analysis/azure-cloud-provider-analysis.md)
+- [Supabase local platform](https://github.com/ReventlessDev/reventless-core/blob/alpha/docs/analysis/supabase-local-platform.md)
 
 ## 3. A new API protocol or transport
 

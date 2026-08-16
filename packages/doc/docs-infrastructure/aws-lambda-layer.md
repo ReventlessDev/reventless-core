@@ -317,29 +317,16 @@ Final size: ~30–40 MB uncompressed. Lambda limit is 50 MB per layer (uncompres
 
 ### Workflow: `.github/workflows/build-lambda-layer.yml`
 
-**Triggers:**
+The layer is rebuilt and published by CI whenever the AWS provider package is
+released, whenever the layer builder itself changes on a release branch, or on
+demand. The publish job builds the layer, refuses artifacts that have grown past
+the size budget, publishes a new Lambda layer version, records its ARN so deploys
+can pick it up, and attaches the archive to the release.
 
-| Event | Condition | Version Source |
-|-------|-----------|----------------|
-| Tag push | `@reventlessdev/reventless-aws@*` | extracted from tag |
-| Branch push | `main`, `beta`, `alpha` + path `reventless/layer-builder/**` | `reventless-aws/package.json` |
-| Manual dispatch | `workflow_dispatch` | input parameter |
-
-**Steps:**
-1. Checkout + setup Node.js 22.17.1
-2. `npm install` (with GitHub Package Registry auth)
-3. Build layer: `cd reventless/layer-builder && npm run build`
-4. Verify artifact size (warn >40 MB)
-5. Publish to AWS Lambda: `aws lambda publish-layer-version --layer-name reventless-aws`
-6. Store new layer ARN in SSM: `aws ssm put-parameter --name /reventless/layer-arn/{stack}`
-7. Upload zip as GitHub release asset
-8. Append layer ARN to release notes
-
-**Secrets required:**
-- `AWS_LAYER_ACCESS_KEY_ID` / `AWS_LAYER_SECRET_ACCESS_KEY` — IAM user `reventless-ci-layer-publisher`
-- `GITHUB_TOKEN` — for npm registry and release asset upload
-
-**IAM policy** (`iam-policy.json`): scoped to `arn:aws:lambda:*:*:layer:reventless-aws*` with `PublishLayerVersion` and `GetLayerVersion` permissions, plus `ssm:PutParameter` on `arn:aws:ssm:*:*:parameter/reventless/layer-arn/*` so the publish job can store the ARN. The deploy credentials need the matching `ssm:GetParameter` on the same path to read it back.
+Publishing requires credentials scoped to exactly that: permission to publish and
+read versions of this one layer, and to write the parameter holding its ARN.
+Deploy credentials need only to read that parameter back. Keep them separate —
+the job that publishes a layer has no reason to be able to deploy a stack.
 
 ### When to Rebuild
 

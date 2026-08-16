@@ -25,8 +25,6 @@ error: Error serializing '(event, ctx) => Effect.Effect.runPro ...':
 
 This is not a bug that can be worked around at individual call sites. Business logic handlers throughout `reventless-aws` (EventLogStorage, CommandTopicChannel, QueryDb, etc.) all use Effect internally. The serialization walker traverses the entire closure graph and hits non-serializable objects deep in the dependency tree.
 
-See `docs/analysis/done/pulumi-effect-serialization.md` for the full analysis.
-
 ### The Code-Asset Solution
 
 Instead of serializing closures, all Lambda handlers:

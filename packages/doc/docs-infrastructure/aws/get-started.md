@@ -19,7 +19,7 @@ This guide covers setting up and deploying a Reventless application on AWS using
 In your Reventless application project:
 
 ```bash
-npm install @reventless/reventless @reventless/aws @reventless/spec
+pnpm add @reventlessdev/reventless-spec @reventlessdev/reventless-infra @reventlessdev/reventless-aws sury
 ```
 
 ## Project Structure

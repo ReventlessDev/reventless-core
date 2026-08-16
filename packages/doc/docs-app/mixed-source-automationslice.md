@@ -10,7 +10,12 @@ Choose mixed-source automation when:
 - You need the standard automation guarantees — exactly-once command emission, retries, heartbeat sweeps, TODO-list correlation — but the events you observe come from heterogeneous sources.
 - The alternative would be a ReadModel + an external poller/trigger; mixed-source automation collapses both into one runtime component.
 
-The motivating commercial use case is a **platform-inspector** automation: the framework's `Plugin` Aggregate runs a runtime state machine (`NotConnected → Detected → Connected → Disconnected`), and a downstream DCB slice tracks the inspector's `(environment, platformName, pluginName)`-partitioned state. A mixed-source automation reacts to the Aggregate events and emits DCB commands to keep the inspector's state in sync.
+The shape to picture is the online shop's **auto-fulfilment** automation: an
+order is a DCB slice, the customer that placed it is an aggregate, and the
+decision to ship reacts to both — an `OrderPlaced` fact from the shared DCB log
+and a `CustomerDeactivated` fact from the aggregate's own log. Neither source
+alone answers "should this ship?", and neither can see the other's log, so the
+automation observes both and emits the command.
 
 ## Anatomy
 
@@ -171,8 +176,8 @@ A single-source slice is a special case where the `mappings` array has exactly o
 
 ## Reference
 
-- Spec module types: [`reventless-spec/src/components/AutomationSlice.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/spec/src/components/AutomationSlice.res)
-- Builder: [`reventless-core/src/components/AutomationSlice/AutomationSlice_Builder.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/core/src/components/AutomationSlice/AutomationSlice_Builder.res)
-- Callback (per-source dispatch + retry): [`reventless-core/src/components/AutomationSlice/AutomationSlice_Callback.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/core/src/components/AutomationSlice/AutomationSlice_Callback.res)
+- Spec module types: [`reventless-spec/src/components/AutomationSlice.res`](https://github.com/ReventlessDev/reventless-core/blob/alpha/reventless/spec/src/components/AutomationSlice.res)
+- Builder: [`reventless-core/src/components/AutomationSlice/AutomationSlice_Builder.res`](https://github.com/ReventlessDev/reventless-core/blob/alpha/reventless/core/src/components/AutomationSlice/AutomationSlice_Builder.res)
+- Callback (per-source dispatch + retry): [`reventless-core/src/components/AutomationSlice/AutomationSlice_Callback.res`](https://github.com/ReventlessDev/reventless-core/blob/alpha/reventless/core/src/components/AutomationSlice/AutomationSlice_Callback.res)
 - Integration test (canonical demo): [`reventless-local/tests/components/automationslice/MixedSourceAutomationSlice*.res`](https://github.com/ReventlessDev/reventless-core/tree/alpha/reventless/local/tests/components/automationslice/)
 - Single-source example slice: [`examples/online-shop-hybrid/ordering/src/Order/AutomationSlice/`](https://github.com/ReventlessDev/reventless-core/tree/alpha/examples/online-shop-hybrid/ordering/src/Order/AutomationSlice/)

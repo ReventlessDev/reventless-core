@@ -11,7 +11,7 @@ Each slice declares its own `consumedEvent` and `event` types independently — 
 ## Command Flow
 
 ```
-Client → SQS (DCB Command Topic) → filteringHandler
+Client → AppSync mutation → DCB command handler → filteringHandler
                                        │
                       ┌────────────────┼────────────────┐
                       ▼                ▼                ▼
@@ -29,7 +29,18 @@ Client → SQS (DCB Command Topic) → filteringHandler
                     StateViewSlice (projects events to QueryDb)
 ```
 
-One SQS FIFO queue per plugin receives all commands. The `filteringHandler` in the Lambda routes each message by its `TAG` field to whichever state change slices handle that command type. Slices that don't handle a command type are never called.
+All of a plugin's StateChangeSlices share one command-handler Lambda, and the
+`filteringHandler` inside it routes each command by its `TAG` field to whichever
+slices handle that command type. Slices that don't handle a command type are
+never called.
+
+Which Lambda a command lands in depends on the slice's dispatch mode. By default
+a slice is **synchronous**: the mutation reaches the plugin's `DcbCmdHandler`
+directly and returns `CommandAccepted` or `CommandRejected` to the caller. A
+slice that opts in with `@@reventless.async` is routed instead through a FIFO
+queue to the plugin's `DcbAsyncCmdHandler`, and the mutation returns
+`CommandPending` immediately. The async Lambda and its queue are only provisioned
+when at least one slice opts in.
 
 ## Module Types
 
@@ -880,7 +891,7 @@ A more robust alternative would be to store handlers on the `DcbCommandTopic` co
 
 ### No Multi-Command-Type Support in `extractTypeNamesFromSchema`
 
-`CommandTopic.extractTypeNamesFromSchema` handles `Union` (multiple variants) and `Object` (single variant). It does not handle payload-less variants (string schemata) — these variants are silently ignored and would never be routed to a handler. Slices whose command type includes a payload-less variant (e.g. `| NoOp`) should be aware that `NoOp` commands will not be dispatched by the filtering handler (they will fall through with no result). See the `MEMORY.md` note on payload-less variants.
+`CommandTopic.extractTypeNamesFromSchema` handles `Union` (multiple variants) and `Object` (single variant). It does not handle payload-less variants (string schemata) — these variants are silently ignored and would never be routed to a handler. Slices whose command type includes a payload-less variant (e.g. `| NoOp`) should be aware that `NoOp` commands will not be dispatched by the filtering handler — they fall through with no result. Give every command variant a payload, even a single-field one, if it must be routable.
 
 ### Aggregates Intentionally Use `makeHandler`
 

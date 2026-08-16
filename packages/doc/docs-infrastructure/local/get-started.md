@@ -15,7 +15,7 @@ This guide covers setting up and using the Local provider for local development 
 ## Install Dependencies
 
 ```bash
-npm install @reventless/reventless @reventless/local @reventless/spec
+pnpm add @reventlessdev/reventless-spec @reventlessdev/reventless-infra @reventlessdev/reventless-local sury
 ```
 
 ## Creating a Platform

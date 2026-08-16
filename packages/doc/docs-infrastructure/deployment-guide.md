@@ -299,9 +299,14 @@ Currently consumed by:
 
 Any future deploy-time helper reading via `Util_LocalConfig.get("…")` automatically participates in the same precedence ladder.
 
-**Host UI custom domain.** Both `hostUiBaseDomain` and `hostUiHostedZoneId` must be set together — if either is missing the framework keeps the default `*.cloudfront.net` URL. When both are set, the framework provisions an ACM cert (us-east-1) + Route53 alias and serves the shell at `${baseName}-${stack}.${baseDomain}` (or `${baseName}.${baseDomain}` when `stack ∈ hostUiProdStacks`). See [`ui-fragments-deployment.md`](./ui-fragments-deployment.md) → "Conditional: custom domain" for the full provisioning detail and [`docs/analysis/host-ui-custom-domain.md`](https://github.com/ReventlessDev/reventless-core/blob/main/docs/analysis/host-ui-custom-domain.md) for the design rationale and multi-tenancy notes.
+**Host UI custom domain.** Both `hostUiBaseDomain` and `hostUiHostedZoneId` must be set together — if either is missing the framework keeps the default `*.cloudfront.net` URL. When both are set, the framework provisions an ACM cert (us-east-1) + Route53 alias and serves the shell at `${baseName}-${stack}.${baseDomain}` (or `${baseName}.${baseDomain}` when `stack ∈ hostUiProdStacks`). See [`ui-fragments-deployment.md`](./ui-fragments-deployment.md) → "Conditional: custom domain" for the full provisioning detail and [`docs/analysis/host-ui-custom-domain.md`](https://github.com/ReventlessDev/reventless-core/blob/alpha/docs/analysis/host-ui-custom-domain.md) for the design rationale and multi-tenancy notes.
 
-> **Sample-config discipline.** Example stack configs in this repo must not ship with `hostUiBaseDomain` set — the Reventless team's `app.reventless.dev` belongs in CI repo variables only. A fork that hardcodes it into a checked-in `Pulumi.<stack>.yaml` would silently try to provision in someone else's Route53 zone (the cert request would just fail, but the intent is wrong).
+:::caution Do not commit `hostUiBaseDomain`
+Set it per deployment — an environment variable or an untracked local config —
+never in a checked-in `Pulumi.<stack>.yaml`. A committed value points every fork
+of that config at a Route53 zone its owner does not control: the certificate
+request simply fails, having tried to provision in somebody else's zone.
+:::
 
 **Env var (CI deploys):**
 

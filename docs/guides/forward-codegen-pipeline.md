@@ -1,5 +1,9 @@
 # Forward Codegen Pipeline
 
+> **Not part of the published documentation site.** The tooling described here
+> lives outside `reventless-core` and is not published to a registry, so this
+> guide is kept in-tree for maintainers rather than on docs.reventless.dev.
+
 This guide covers the **forward leg** of the Event Model ↔ code roundtrip — turning an upstream Event Modeling artifact (Event Modeling JSON today; prooph-board / YAML / Reventless-native later) into the Spec + GWT files that compose a Reventless plugin.
 
 The pipeline is owned by the `@reventlessdev/reventless-codegen` package. The inverse direction (code → model) is the [Reverse Codegen Pipeline](./reverse-codegen-pipeline.md). AI synthesis of skeleton bodies is a separate, planned capability and is not described here.
@@ -32,7 +36,7 @@ plugin/
 
 ## Canonical model
 
-Every adapter targets one in-memory shape: [`Model.t`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/codegen/src/Model.res). It carries slices, aggregates, read models, and structural chapters; each entity has a stable `id` for rename-survival across roundtrips. The same `@schema`-derived JSON codec writes the sync-base snapshots, so the on-disk format is human-diffable in PRs.
+Every adapter targets one in-memory shape: [`Model.t`](https://github.com/ReventlessDev/reventless-core/blob/alpha/reventless/codegen/src/Model.res). It carries slices, aggregates, read models, and structural chapters; each entity has a stable `id` for rename-survival across roundtrips. The same `@schema`-derived JSON codec writes the sync-base snapshots, so the on-disk format is human-diffable in PRs.
 
 Structural chapters in `slice.context` (e.g. `"Catalog.Product"`) become subfolder names — the first segment is the plugin, the rest is the chapter folder under `src/` and `tests/`.
 
@@ -93,5 +97,5 @@ Currently only the **Event Modeling** adapter (`--adapter eventmodeling`) ships.
 
 ## References
 
-- [`docs/analysis/spec-implementation-split.md`](https://github.com/ReventlessDev/reventless-core/blob/main/docs/analysis/spec-implementation-split.md) — Spec-First file boundaries that this pipeline emits into
-- [`docs/analysis/given-when-then-specifications.md`](https://github.com/ReventlessDev/reventless-core/blob/main/docs/analysis/given-when-then-specifications.md) — GWT methodology that the emitter targets
+- [`docs/analysis/spec-implementation-split.md`](https://github.com/ReventlessDev/reventless-core/blob/alpha/docs/analysis/spec-implementation-split.md) — Spec-First file boundaries that this pipeline emits into
+- [`docs/analysis/given-when-then-specifications.md`](https://github.com/ReventlessDev/reventless-core/blob/alpha/docs/analysis/given-when-then-specifications.md) — GWT methodology that the emitter targets

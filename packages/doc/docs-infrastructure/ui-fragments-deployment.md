@@ -122,9 +122,12 @@ When either `hostUiBaseDomain` or `hostUiHostedZoneId` is absent the framework k
 
 **Important.** The default `*.cloudfront.net` hostname stops accepting requests once `aliases` is set (returns 403). Anything caching or linking to the old URL breaks on the first deploy with a custom domain — fine in practice since `hostShellUrl` is the only known consumer and it flips in the same deploy.
 
-The host shell SPA itself is built upstream by `reventless-ui`'s `host-shell` package. `assetsDir` points at its `dist/` directory.
-
-`platform-aws` takes a versioned npm dependency on `@reventlessdev/reventless-host-shell`. The published tarball already contains pre-built `dist/` output (the package's `prepublishOnly` hook runs `vite build` before publish, and `dist/` is in its `files` allowlist). With the repo's `node-linker=hoisted` (`.npmrc`), `pnpm install` places it under the repo-root `node_modules/`, so deploy paths work in CI without checking out the sibling `reventless-ui` repo. To upgrade the shell, bump the dependency version in `platform-aws/package.json` and re-run `pulumi up`.
+The host shell SPA is consumed as the published
+`@reventlessdev/reventless-host-shell` package, whose tarball already contains
+built output — `assetsDir` points at it. A deployment therefore needs nothing but
+an install, and upgrading the shell means bumping that dependency's version in
+your platform package and re-running `pulumi up`. The version is pinned exactly
+on purpose: the shell and the schema it renders move together.
 
 ### `config.json` contract
 

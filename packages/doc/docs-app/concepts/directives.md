@@ -352,13 +352,10 @@ Worked examples for both adapters live in
 
 ## Authoring
 
-The VS Code authoring surface (in the `reventless-tools` repo) scaffolds directives
-for you. **New ExtensionPoint** has a "Protocol directives" section; the
-ExtensionPoint context menu offers **Add Directive…**. When a protocol declares at
-least one directive, the generated ExtensionPoint *and* Extension mappings include
-the matching `handleDirective` stub, and the generated GWTs include a
-`thenHandlesNoDirective` starter test you flip to `thenHandlesDirective(…)` once an
-arm wires one.
+When a protocol declares at least one directive, the ExtensionPoint *and*
+Extension mappings need the matching `handleDirective` stub, and a scenario
+asserting the directive is handled — start from `thenHandlesNoDirective` and flip
+it to `thenHandlesDirective(…)` once an arm wires one.
 
 ---
 

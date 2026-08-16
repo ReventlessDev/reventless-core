@@ -1,5 +1,9 @@
 # Reverse Codegen Pipeline
 
+> **Not part of the published documentation site.** The tooling described here
+> lives outside `reventless-core` and is not published to a registry, so this
+> guide is kept in-tree for maintainers rather than on docs.reventless.dev.
+
 This guide covers the **reverse leg** of the Event Model ↔ code roundtrip — reading a Reventless plugin's ReScript source back into an Event Modeling JSON model. It is the exact inverse of the [Forward Codegen Pipeline](./forward-codegen-pipeline.md): where `forward` turns a model into Spec + GWT files, `export` turns those files back into a model. Together they close the loop, so a model can be edited as code or as a diagram and kept in sync.
 
 The pipeline is owned by the `@reventlessdev/reventless-codegen` package. AI synthesis of skeleton bodies is a separate, planned capability and is not described here.

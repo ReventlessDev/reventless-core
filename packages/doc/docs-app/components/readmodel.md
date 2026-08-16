@@ -195,101 +195,22 @@ payload must be exactly one bool literal.
     - `#KEYS_ONLY`: only the keys will be copied to the index
     - `#ALL`: all fields will be copied to the index
     - `#INCLUDE(array<string>)`: all keys and the specified fields will be copied to the index
-- other optional configurations see [Advanced Read Model Spec](#advanced-read-model-spec)
+- other optional configurations see [Advanced: hand-written config](#advanced-hand-written-config)
 
-## Advanced Read Model Spec
+## Advanced: hand-written config
 
-### Example
+The `config` and `subIdConfig` values above are normally generated for you from
+the annotations on your state fields — `@id`, `@subId`, `@index`, `@resolves`,
+`@resolvesMany`. Writing them by hand is only necessary when an annotation
+cannot express what you need.
 
-```rescript title="Customer/ReadModel/Customers.res" showLineNumbers
-let subIdConfig = Some({
-  Reventless.ReadModel.Spec.subIdField: "subId",
-  getSubId: state => state.subId,
-})
-
-let config = Reventless.ReadModel.Spec.config(
-  ~idResolvers=[
-    {
-      source: {
-        idField: "orderId",
-        subId: NoSubId,
-        resolvedField: Single("order"),
-      },
-      target: {
-        tableName: "Order",
-        idField: Id
-      }
-    }
-  ],
-  (),
-)
-```
-
-### subIdConfig
-
-In this example, there is a sub id field `subId` used, therefore the following fields are provided:
-
-- `subIdField`: name of the sub id field
-- `getSubId`: function to extract the sub id out of the state
-
-### config
-
-- `idResolvers`: Other Read Models can be referenced by id in the state . If you (additionally to the id) want to provide the data of that referenced Read Model over the [API](/app/graphql-api-guide), you have to specify how to resolve those ids here.
-  The idResolvers configuration is an array of records with these fields:
-  - `source`: specification, which id has to be resolved, by providing these fields:
-    - `idField`: name of the id field to be resolved
-    - `subId`:
-      - `Field(<fieldName>)`: field name for sub id
-      - `Argument(<argumentName>)`: argument name (provided by query) to be used as sub id
-      - `NoSubId`: no sub id
-    - `resolvedField`: name of the field in the [API](/app/graphql-api-guide) response data, where the referenced data is provided
-      - `Single(<fieldName>)` TODO
-      - `Multi(<fieldName>)` TODO
-  - `target`: specification, how to resolve the given source:
-    - `tableName`: name of the table to get the resolved data from
-    - `idField`: field name in the target table to match with source id
-      - `Id` TODO 
-      - `Index(<targetFieldName>)` TODO 
-      - `IndexWithId(<indexName>, <targetFieldName>)` TODO
-    - `subIdField`: (optional) field name of the target table to match with source sub id
-    - `pluginName`: (optional) name of the plugin to find the given table. If not provided, the same plugin as the source is used
-- `idsResolvers`: To resolve an array of reference ids (no sub ids supported) you can specify an array of records with these fields:
-  - `source`: specification, which id has to be resolved, by providing these fields:
-    - `idField`: name of the id field to be resolved
-    - `resolvedField`: name of the field in the [API](/app/graphql-api-guide) response data, where the referenced data is provided.
-  - `target`: specification, how to resolve the given source:
-    - `tableName`: name of the table to get the resolved data from
-    - `idField`: field name in the target table to match with source id
-
-The following diagram depicts the relations between the Query DB tables for the given example:
-
-```d2
-CustomerTable: Customer Table {
-  orderId: orderId
-}
-
-Order: Order Table {
-  idOrder: id
-  items: items
-}
-
-CustomerTable.orderId -> Order.idOrder
-```
-
-Example result of `customer("1234")` API query:
-
-```json
-{
-  "customer": {
-    "id": "customer-1234",
-    "orderId" : "order-5678",
-    "order": {
-      "id": "order-5678",
-      "items" :[]
-    }
-  }
-}
-```
+Cross-table resolvers in particular are annotations now: `@resolves` for a single
+reference and `@resolvesMany` for an array of them, both taking a record payload
+naming the target table and the field the resolved data appears under. See the
+[PPX annotation catalog](/app/reventless-ppx#resolves-resolvesmany--cross-table-resolvers)
+for the full option list, and the
+[QueryDb key design guide](/app/querydb-key-design-guide) for how the keys and
+indexes those annotations produce are laid out.
 
 ## Projections
 

@@ -10,7 +10,7 @@ cross-repo linking for developers who also work in a sibling UI repo.
 
 | Tool | Version | Notes |
 |---|---|---|
-| Node | 22.17.1 | Pinned in [.node-version](https://github.com/ReventlessDev/reventless-core/blob/main/.node-version) |
+| Node | 22.17.1 | Pinned in [.node-version](https://github.com/ReventlessDev/reventless-core/blob/alpha/.node-version) |
 | pnpm | 10 | Installed via corepack |
 | Git | Any modern | |
 
@@ -89,7 +89,7 @@ pnpm run build 2>&1 | grep -E "Warning|warning|error|Error"
 
 ## Repo layout
 
-See [CLAUDE.md](https://github.com/ReventlessDev/reventless-core/blob/main/CLAUDE.md) for the full package map. At a glance:
+See [CLAUDE.md](https://github.com/ReventlessDev/reventless-core/blob/alpha/CLAUDE.md) for the full package map. At a glance:
 
 | Folder | Purpose |
 |---|---|
@@ -100,7 +100,7 @@ See [CLAUDE.md](https://github.com/ReventlessDev/reventless-core/blob/main/CLAUD
 
 Always place new packages under the correct root folder. Per-folder
 conventions are documented in
-[.claude/rules/conventions.md](https://github.com/ReventlessDev/reventless-core/blob/main/.claude/rules/conventions.md).
+[.claude/rules/conventions.md](https://github.com/ReventlessDev/reventless-core/blob/alpha/.claude/rules/conventions.md).
 
 ---
 
@@ -170,7 +170,7 @@ and UI side by side.
 
 ## Further reading
 
-- [CLAUDE.md](https://github.com/ReventlessDev/reventless-core/blob/main/CLAUDE.md) — top-level project context and conventions
+- [CLAUDE.md](https://github.com/ReventlessDev/reventless-core/blob/alpha/CLAUDE.md) — top-level project context and conventions
 - [pnpm-guide.md](pnpm-guide.md) — npm → pnpm command reference
 - [registry-and-tokens.md](registry-and-tokens.md) — auth setup
 - [cross-repo-dev-linking.md](cross-repo-dev-linking.md) — link-mode workflow
