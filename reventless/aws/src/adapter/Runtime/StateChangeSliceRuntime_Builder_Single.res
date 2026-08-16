@@ -113,9 +113,16 @@ let forDcbCommandTopic = (
       envVars->Dict.set("LOG_LEVEL", level->Pulumi.Output.make->Pulumi.Output.asInput)
     )
 
-    // Build HANDLER_CONFIG JSON: array of {spec, behavior} objects so the entry point
+    // The slice registry: an array of {spec, behavior} objects so the entry point
     // can dynamically import both modules and apply the curried StateChangeSlice_Callback.Make
     // functor (Make(Spec)(Behavior)).
+    //
+    // Shipped as a `sliceModules.json` asset rather than inline in HANDLER_CONFIG.
+    // Two absolute module specifiers per slice is the one term here that grows
+    // with the plugin, and a plugin with a dozen-odd slices carries enough of
+    // them to pass Lambda's 4KB UpdateFunctionConfiguration ceiling on the whole
+    // environment — the same wall `pluginDefinition` hit in PluginRuntime_Builder,
+    // and it fails at deploy with the registry already committed to the stack.
     let sliceModulesJson =
       slicePaths
       ->Array.map(((specPath, behaviorPath)) => {
@@ -172,7 +179,7 @@ let forDcbCommandTopic = (
       Pulumi.Output.all4((dcbTableName, queue.id, pgConnectionFragment, inboundFragment))
       ->Pulumi.Output.apply(((table, queueUrl, pgFragment, inbFragment)) => {
         let pluginNameJson = pluginName->JSON.stringifyAny->Option.getOr(`""`)
-        `{"dcbEventLogTableName":"${table}","queueUrl":"${queueUrl}","pluginName":${pluginNameJson},"stateChangeSliceModules":[${sliceModulesJson}]${pgFragment}${inbFragment}}`
+        `{"dcbEventLogTableName":"${table}","queueUrl":"${queueUrl}","pluginName":${pluginNameJson}${pgFragment}${inbFragment}}`
       })
     envVars->Dict.set("HANDLER_CONFIG", handlerConfigJson->Pulumi.Output.asInput)
 
@@ -205,9 +212,16 @@ let forDcbCommandTopic = (
       Util_Bundle.resolvePackageRoot("@reventlessdev/reventless-core"),
     )
 
+    // Carries no Pulumi Output, so the archive is still built synchronously —
+    // the audit table names that do are in the inbound fragment, which stays in
+    // HANDLER_CONFIG.
+    let extraStringAssets = Dict.make()
+    extraStringAssets->Dict.set("sliceModules.json", `[${sliceModulesJson}]`)
+
     let {code, sourceCodeHash} = Util_Bundle.buildCodeArchive(
       ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Runtime/DcbCommandTopicEntryPoint.mjs",
       ~packageDirs,
+      ~extraStringAssets,
     )
 
     cfg.sqsBatchSize->Option.forEach(CommandTopicChannel.SQS.setBatchSize)

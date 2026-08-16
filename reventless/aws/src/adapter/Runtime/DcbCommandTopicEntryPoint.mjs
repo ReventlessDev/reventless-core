@@ -3,6 +3,8 @@
 // builds shared DcbEventLog operations and per-slice handlers keyed by command type name.
 // Dual routing: AppSync direct invocation and SQS CommandTopic events.
 
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import * as Chunk from "effect/Chunk";
 import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
@@ -245,6 +247,16 @@ async function buildHandler() {
   // Lambda always sets HANDLER_CONFIG; the production path is unchanged.
   if (!configStr) return [null, null, undefined, undefined];
   const config = JSON.parse(configStr);
+  // The slice registry rides in the archive, not the environment — two module
+  // specifiers per slice outgrow Lambda's 4KB env-var ceiling (see the asset in
+  // StateChangeSliceRuntime_Builder_Single). An inline registry still wins, so a
+  // caller that supplies one — every test that drives a config directly — needs
+  // no asset on disk. process.cwd() is /var/task, where the archive unpacks.
+  if (config.stateChangeSliceModules === undefined) {
+    config.stateChangeSliceModules = JSON.parse(
+      readFileSync(join(process.cwd(), "sliceModules.json"), "utf-8"),
+    );
+  }
   return buildHandlersForConfig(config, { loadModule: dynamicImport });
 }
 

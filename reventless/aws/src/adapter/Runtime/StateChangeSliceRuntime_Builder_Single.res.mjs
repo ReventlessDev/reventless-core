@@ -79,7 +79,7 @@ function forDcbCommandTopic(slicePaths, inboundSlicesOpt, dcbTableName, pluginNa
     inboundFragment
   ]).apply(param => {
     let pluginNameJson = Stdlib_Option.getOr(JSON.stringify(pluginName), `""`);
-    return `{"dcbEventLogTableName":"` + param[0] + `","queueUrl":"` + param[1] + `","pluginName":` + pluginNameJson + `,"stateChangeSliceModules":[` + sliceModulesJson + `]` + param[2] + param[3] + `}`;
+    return `{"dcbEventLogTableName":"` + param[0] + `","queueUrl":"` + param[1] + `","pluginName":` + pluginNameJson + param[2] + param[3] + `}`;
   });
   envVars["HANDLER_CONFIG"] = handlerConfigJson;
   let packageDirs = {};
@@ -97,7 +97,9 @@ function forDcbCommandTopic(slicePaths, inboundSlicesOpt, dcbTableName, pluginNa
   });
   packageDirs["@reventlessdev/reventless-aws"] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, "@reventlessdev/reventless-aws");
   packageDirs["@reventlessdev/reventless-core"] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, "@reventlessdev/reventless-core");
-  let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/DcbCommandTopicEntryPoint.mjs", packageDirs, undefined, undefined);
+  let extraStringAssets = {};
+  extraStringAssets["sliceModules.json"] = `[` + sliceModulesJson + `]`;
+  let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/DcbCommandTopicEntryPoint.mjs", packageDirs, extraStringAssets, undefined);
   Stdlib_Option.forEach(cfg.sqsBatchSize, CommandTopicChannel_SQS$ReventlessAws.setBatchSize);
   let vpcConfig = pgSelection !== undefined ? pgSelection.securityGroupId.apply(sgId => ({
       subnetIds: pgSelection.subnetIds,
