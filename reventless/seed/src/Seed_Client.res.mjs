@@ -175,14 +175,16 @@ async function sendAll(t, mutations) {
   }
 }
 
-async function queryAllNodes(t, fieldName, selection) {
+async function queryAllNodes(t, fieldName, selection, argsOpt) {
+  let args = argsOpt !== undefined ? argsOpt : "";
   let nodes = [];
   let after;
   let more = true;
+  let extra = args === "" ? "" : `, ` + args;
   while (more) {
     let c = after;
     let cursor = c !== undefined ? `, after: ` + Seed_Types$ReventlessSeed.quote(c) : "";
-    let query = `{ ` + fieldName + `(first: 100` + cursor + `) { edges { node { ` + selection + ` } } pageInfo { hasNextPage endCursor } } }`;
+    let query = `{ ` + fieldName + `(first: 100` + extra + cursor + `) { edges { node { ` + selection + ` } } pageInfo { hasNextPage endCursor } } }`;
     let data = await gql(t, query, fieldName);
     let connection = Stdlib_Option.getOr(field(data, fieldName), null);
     let match = field(connection, "edges");
@@ -209,15 +211,16 @@ async function queryAllNodes(t, fieldName, selection) {
 }
 
 async function countNodes(t, field) {
-  return (await queryAllNodes(t, field, "id")).length;
+  return (await queryAllNodes(t, field, "id", undefined)).length;
 }
 
-async function queryAllNodesUntil(t, field, selection, satisfied, onTimeout, timeoutMsOpt) {
+async function queryAllNodesUntil(t, field, selection, argsOpt, satisfied, onTimeout, timeoutMsOpt) {
+  let args = argsOpt !== undefined ? argsOpt : "";
   let timeoutMs = timeoutMsOpt !== undefined ? timeoutMsOpt : 60000;
   let deadline = Date.now() + timeoutMs;
   let result;
   while (result === undefined) {
-    let nodes = await queryAllNodes(t, field, selection);
+    let nodes = await queryAllNodes(t, field, selection, args);
     if (satisfied(nodes)) {
       result = nodes;
     } else {

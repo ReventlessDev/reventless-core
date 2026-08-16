@@ -179,18 +179,27 @@ let sendAll = async (t: t, mutations: array<mutation>): unit =>
  * Walks a Relay-style connection to the end. Connections page at 50 by default,
  * so any count taken from a single request silently truncates.
  */
-let queryAllNodes = async (t: t, ~field as fieldName: string, ~selection: string): array<
-  JSON.t,
-> => {
+// `~args` is spliced into the connection's argument list — `"includeRetired: true"`
+// is the case it exists for, and the only way to read rows the resolvers withhold
+// by default. Literal GraphQL rather than a typed argument list because a seed
+// writes the query it means; the alternative is a builder that has to grow a case
+// per argument the platform adds.
+let queryAllNodes = async (
+  t: t,
+  ~field as fieldName: string,
+  ~selection: string,
+  ~args: string="",
+): array<JSON.t> => {
   let nodes = []
   let after = ref(None)
   let more = ref(true)
+  let extra = args == "" ? "" : `, ${args}`
   while more.contents {
     let cursor = switch after.contents {
     | Some(c) => `, after: ${quote(c)}`
     | None => ""
     }
-    let query = `{ ${fieldName}(first: 100${cursor}) { edges { node { ${selection} } } pageInfo { hasNextPage endCursor } } }`
+    let query = `{ ${fieldName}(first: 100${extra}${cursor}) { edges { node { ${selection} } } pageInfo { hasNextPage endCursor } } }`
     let data = await gql(t, ~query, ~label=fieldName)
     let connection = data->field(fieldName)->Option.getOr(JSON.Encode.null)
     switch connection->field("edges") {
@@ -237,6 +246,7 @@ let queryAllNodesUntil = async (
   t: t,
   ~field: string,
   ~selection: string,
+  ~args: string="",
   ~satisfied: array<JSON.t> => bool,
   ~onTimeout: array<JSON.t> => string,
   ~timeoutMs: int=60000,
@@ -244,7 +254,7 @@ let queryAllNodesUntil = async (
   let deadline = nowMs() +. Int.toFloat(timeoutMs)
   let result = ref(None)
   while result.contents == None {
-    let nodes = await queryAllNodes(t, ~field, ~selection)
+    let nodes = await queryAllNodes(t, ~field, ~selection, ~args)
     if satisfied(nodes) {
       result := Some(nodes)
     } else if nowMs() > deadline {

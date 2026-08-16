@@ -206,7 +206,7 @@ async function seedSupplierFeed(client) {
   }
   let countWith = (audits, status) => audits.filter(a => Primitive_object.equal(Seed_Client$ReventlessSeed.nodeString(a, "status"), status)).length;
   let expected = DemoData$OnlineShopHybridSeed.expectedImportSuccesses.toString() + ` Success / ` + DemoData$OnlineShopHybridSeed.expectedImportFailures.toString() + ` Failure`;
-  let audits = await Seed_Client$ReventlessSeed.queryAllNodesUntil(client, "Catalog_ImportProductAudits", "status", audits => {
+  let audits = await Seed_Client$ReventlessSeed.queryAllNodesUntil(client, "Catalog_ImportProductAudits", "status", undefined, audits => {
     if (countWith(audits, "Success") === DemoData$OnlineShopHybridSeed.expectedImportSuccesses) {
       return countWith(audits, "Failure") === DemoData$OnlineShopHybridSeed.expectedImportFailures;
     } else {
@@ -308,11 +308,26 @@ async function seedProductRetirements(products, client) {
     TAG: "DiscontinueProduct",
     productId: p.id
   })));
+  let expected = archived.length + discontinued.length | 0;
+  let retiredNow = nodes => nodes.filter(n => {
+    let match = Seed_Client$ReventlessSeed.nodeString(n, "shelfStatus");
+    if (match === undefined) {
+      return false;
+    }
+    switch (match) {
+      case "Archived" :
+      case "Discontinued" :
+        return true;
+      default:
+        return false;
+    }
+  }).length;
+  await Seed_Client$ReventlessSeed.queryAllNodesUntil(client, "Catalog_Products", "shelfStatus", "includeRetired: true", nodes => retiredNow(nodes) >= expected, nodes => `catalog retirements: expected ` + expected.toString() + ` withdrawn products, saw ` + retiredNow(nodes).toString(), undefined);
   return Seed_Runner$ReventlessSeed.report(`catalog retirements: ` + archived.length.toString() + ` archived, ` + discontinued.length.toString() + ` discontinued`);
 }
 
 async function summarise(client, counts) {
-  let orders = await Seed_Client$ReventlessSeed.queryAllNodes(client, "Ordering_Orders", "lifecycle shippingMethod");
+  let orders = await Seed_Client$ReventlessSeed.queryAllNodes(client, "Ordering_Orders", "lifecycle shippingMethod", undefined);
   let lifecycles = [
     "Placed",
     "Shipped",
@@ -331,7 +346,7 @@ async function summarise(client, counts) {
     }
   }).length;
   let countLifecycle = lifecycle => orders.filter(o => Primitive_object.equal(Seed_Client$ReventlessSeed.nodeString(o, "lifecycle"), lifecycle)).length;
-  let demand = await Seed_Client$ReventlessSeed.queryAllNodes(client, "Catalog_ProductDemands", "name orderCount");
+  let demand = await Seed_Client$ReventlessSeed.queryAllNodes(client, "Catalog_ProductDemands", "name orderCount", undefined);
   let orderCountOf = node => {
     let match = Seed_Client$ReventlessSeed.field(node, "orderCount");
     if (typeof match === "number") {
@@ -343,7 +358,7 @@ async function summarise(client, counts) {
   let ranked = demand.toSorted((a, b) => Primitive_int.compare(orderCountOf(b), orderCountOf(a)));
   let withDemand = ranked.filter(n => orderCountOf(n) > 0);
   let head = ranked.slice(0, 3).map(n => Stdlib_Option.getOr(Seed_Client$ReventlessSeed.nodeString(n, "name"), "?") + ` (` + orderCountOf(n).toString() + `)`).join(", ");
-  let shelved = await Seed_Client$ReventlessSeed.queryAllNodes(client, "Catalog_Products", "name shelfStatus");
+  let shelved = await Seed_Client$ReventlessSeed.queryAllNodes(client, "Catalog_Products", "name shelfStatus", "includeRetired: true");
   let countShelf = state => shelved.filter(p => Primitive_object.equal(Seed_Client$ReventlessSeed.nodeString(p, "shelfStatus"), state)).length;
   Seed_Runner$ReventlessSeed.heading("Seeded:");
   console.log(`  order lifecycle: ` + lifecycles.map(s => s + ` ` + countLifecycle(s).toString()).join(", "));

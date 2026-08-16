@@ -414,6 +414,33 @@ let seedProductRetirements = async (products: array<DemoData.product>, ~client: 
       DemoCommands.discontinueProduct(DiscontinueProduct({productId: p.id}))
     ),
   )
+  // Wait for the projection rather than reporting the commands as though they
+  // had already landed. A line reading "1 archived" beside a shelf count of
+  // "Archived 0" further down is the bug report the plan's own note warns about,
+  // and it is produced by a race rather than by a fault.
+  //
+  // Read with `includeRetired` for the obvious reason: without it the rows this
+  // is waiting for are precisely the ones the resolvers withhold.
+  let expected = archived->Array.length + discontinued->Array.length
+  let retiredNow = nodes =>
+    nodes
+    ->Array.filter(n =>
+      switch n->Seed.Client.nodeString("shelfStatus") {
+      | Some("Archived") | Some("Discontinued") => true
+      | _ => false
+      }
+    )
+    ->Array.length
+  let _ = await client->Seed.Client.queryAllNodesUntil(
+    ~field="Catalog_Products",
+    ~selection="shelfStatus",
+    ~args="includeRetired: true",
+    ~satisfied=nodes => retiredNow(nodes) >= expected,
+    ~onTimeout=nodes =>
+      `catalog retirements: expected ${expected->Int.toString} withdrawn products, saw ${retiredNow(
+          nodes,
+        )->Int.toString}`,
+  )
   Seed.Runner.report(
     `catalog retirements: ${(archived->Array.length)->Int.toString} archived, ${(discontinued
         ->Array.length)
@@ -474,6 +501,7 @@ let summarise = async (~client: Seed.Client.t, ~counts: dict<int>) => {
   let shelved = await client->Seed.Client.queryAllNodes(
     ~field="Catalog_Products",
     ~selection="name shelfStatus",
+    ~args="includeRetired: true",
   )
   let countShelf = state =>
     shelved
