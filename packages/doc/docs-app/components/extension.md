@@ -91,7 +91,7 @@ module type Spec = {
 ```rescript
 module type Impl = {
   module ExtensionPoint: Spec           // The ExtensionPoint spec being consumed
-  module Aggregate: Aggregate.Spec      // The local Aggregate spec
+  module Delegate: Aggregate.Spec       // The local spec that receives commands
   
   // Map incoming ExtensionPoint events to local Aggregate commands
   let mapIncomingEvent: mapIncomingEvent<

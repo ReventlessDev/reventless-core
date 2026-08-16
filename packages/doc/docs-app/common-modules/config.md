@@ -1,82 +1,63 @@
 ---
-title: Config
+title: Plugin configuration
+sidebar_label: Plugin configuration
 ---
 
-# Config Module
+# Plugin configuration (`plugin.json`)
 
-The Config module defines the configuration interface that plugins use to access shared infrastructure resources and settings within a Reventless application.
+A plugin needs almost no configuration: the generator derives what it can from
+the package and from what it finds in `src/`. What is left goes in an optional
+`src/plugin.json`, read before every build.
 
-## Module Type Definition
+The shipped example is one line:
 
-The Config module type is defined as follows:
+```json
+{"name": "Catalog"}
+```
 
-```rescript
-module type T = {
-  type api
-  type role
-  type userPool
+## Fields
 
-  let pluginName: string
+| Field | Default | What it does |
+|---|---|---|
+| `name` | derived from the package name (`@scope/my-catalog` → `MyCatalog`) | The plugin's registered name. It appears in every GraphQL field prefix (`Catalog_AddProduct`), so changing it is a public API change. |
+| `heartbeatInterval` | framework default | How often the plugin reports itself to the platform, in minutes. |
+| `exclude` | none | Paths under `src/` the generator should skip when discovering components. |
+| `runtime` | none | Per-component resource hints — see below. |
 
-  let api: api
-  let apiRole: role
-  let userPoolId: Pulumi.Output.t<string>
+## Per-component runtime hints
 
-  let scheduler: Pulumi.Output.t<Scheduler.operations>
+Components share a handler per kind, and the shared handler is sized for the
+most demanding component in it. When one component needs more memory or time
+than its neighbours, say so here rather than raising the whole platform:
+
+```json
+{
+  "name": "Catalog",
+  "runtime": {
+    "ImportProducts": {"memorySize": 1024, "timeout": 300}
+  }
 }
 ```
 
-## Configuration Fields
+Keys are component names as they appear in `src/` (`ImportProducts`,
+`PlaceOrder`, `Customers`). Both fields are optional; an omitted one falls
+through to the per-kind default, and the higher of the hint and the default
+wins. On the local platform these are accepted and ignored — there is no process
+boundary to size.
 
-### Type Parameters
+For the deployment-wide knobs (the four command-handler flavours, reserved
+concurrency, ephemeral storage, log retention) see the
+[Lambda deployment guide](/infrastructure/lambda-deployment).
 
-- **`api`** - Abstract type representing the API Gateway instance
-- **`role`** - Abstract type representing IAM role resources
-- **`userPool`** - Abstract type representing Cognito User Pool resources
+## Where the rest of the configuration lives
 
-### Required Fields
+Configuration that is not the plugin's own belongs elsewhere on purpose:
 
-- **`pluginName: string`** - Unique identifier for the plugin within the application
-
-- **`api: api`** - Reference to the shared API Gateway instance that the plugin's endpoints will be attached to
-
-- **`apiRole: role`** - IAM role used by the API Gateway to invoke Lambda functions
-
-- **`userPoolId: Pulumi.Output.t<string>`** - Cognito User Pool ID for authentication integration
-
-- **`scheduler: Pulumi.Output.t<Scheduler.operations>`** - Reference to the shared scheduler component for scheduled task execution
-
-## Usage
-
-The Config module is typically created at the application/stack level and passed to plugins during initialization. Each plugin receives the same configuration, allowing them to:
-
-1. Register API endpoints with the shared API Gateway
-2. Use common authentication via the User Pool
-3. Schedule recurring tasks via the shared Scheduler
-4. Maintain consistent IAM permissions via the shared role
-
-## Example
-
-```rescript
-// In your stack/application setup
-module MyConfig = {
-  type api = Pulumi.Aws.ApiGateway.RestApi.t
-  type role = Pulumi.Aws.Iam.Role.t
-  type userPool = Pulumi.Aws.Cognito.UserPool.t
-
-  let pluginName = "my-plugin"
-  let api = myApiGatewayInstance
-  let apiRole = myIamRole
-  let userPoolId = myUserPool.id
-  let scheduler = schedulerOperations
-}
-
-// Pass to plugin
-module MyPlugin = Plugin.Make(MyPluginSpec, MyConfig)
-```
-
-## Related Documentation
-
-- [Plugin Component](../components/plugin.md) - Plugins consume Config
-- [Scheduler Component](/framework/runtime-components/scheduler) - Scheduler operations
-- [API Component](/app/graphql-api-guide) - API Gateway integration
+- **Which platform you run on** is a functor argument at the composition root —
+  see [Run and deploy](../local-development.md).
+- **Deployment settings** (region, Cognito pool, custom domain, stack
+  references) live in the Pulumi stack config of the `-aws` package, not in the
+  plugin — see the [deployment guide](/infrastructure/deployment-guide).
+- **Who counts as an operator** is `REVENTLESS_ELEVATED_GROUPS`, deliberately an
+  environment setting rather than anything a plugin declares — see
+  [Authorization](../authorization.md).

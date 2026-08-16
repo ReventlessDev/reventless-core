@@ -40,7 +40,7 @@ Use on **all spec files**: aggregate specs, read model specs, extension point sp
 | `ProductsReadModel.res` | `"Products"` |
 | `AddCategory.res` | `"AddCategory"` |
 | `CategoriesView.res` | `"Categories"` |
-| `ProductsExtensionPoint.res` | `"Products"` |
+| `Products_ExtensionPoint.res` | `"Products"` |
 | `Product_Behavior.res` | `"Product"` |
 
 Stripped suffixes (each tried first with a leading underscore, e.g. `_Behavior`, then bare): `ExtensionPointMapping`, `ExtensionPoint`, `ReadModel`, `Behavior`, `Projections`, `Projection`, `Aggregate`, `Plugin`, `Slice`, `Spec`, `View`.
@@ -49,8 +49,8 @@ Stripped suffixes (each tried first with a leading underscore, e.g. `_Behavior`,
 
 | Filename | Namespace | Derived name |
 |----------|-----------|-------------|
-| `ProductsExtensionPoint.res` | `CatalogSpec` | `"Catalog.Products"` |
-| `OrdersExtensionPoint.res` | `OrderingSpec` | `"Ordering.Orders"` |
+| `Products_ExtensionPoint.res` | `CatalogSpec` | `"Catalog.Products"` |
+| `Orders_ExtensionPoint.res` | `OrderingSpec` | `"Ordering.Orders"` |
 
 The plugin name is the namespace with `Spec` stripped.
 
@@ -935,7 +935,7 @@ To override, declare `let config` explicitly — the PPX skips injection when `l
 ### Extension point spec (in a `*Spec` package)
 
 ```rescript
-// ProductsExtensionPoint.res (in CatalogSpec namespace)
+// Products_ExtensionPoint.res (in CatalogSpec namespace)
 @@reventless.spec
 
 @schema

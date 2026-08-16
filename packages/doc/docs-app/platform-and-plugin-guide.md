@@ -177,7 +177,7 @@ Key points:
 - **Minimal dependencies** — only `sury` (no `reventless-spec` needed for EP specs)
 - **Explicit namespace ending in `Spec`** (e.g., `CatalogSpec`) — the PPX uses this to derive dotted EP names
 - **PPX ordering**: `reventless-ppx` must come before `sury-ppx` (injects annotations that sury then processes)
-- Other packages reference types as `CatalogSpec.ProductsExtensionPoint`
+- Other packages reference types as `CatalogSpec.Products_ExtensionPoint`
 
 ---
 
@@ -510,15 +510,15 @@ An extension point maps **internal aggregate events** to the **stable public API
 ```rescript
 open ReventlessInfra.ExtensionPointMapping
 
-module ExtensionPoint = CatalogSpec.ProductsExtensionPoint  // Reference spec via namespace
+module ExtensionPoint = CatalogSpec.Products_ExtensionPoint  // Reference spec via namespace
 
 module ProductMapping = {
   module ExtensionPoint = ExtensionPoint
-  module Aggregate = Product
+  module Delegate = Product
 
   let mapIncomingCommand = (_id, _command, _meta) => []  // No inbound commands
 
-  open Aggregate
+  open Delegate
   open ExtensionPoint
   let mapOutgoingEvent = Some((id, event, _meta, _queryEngine) =>
     switch event {
@@ -568,13 +568,13 @@ An extension **subscribes to another plugin's extension point** and routes the i
 ```rescript
 open ReventlessInfra.ExtensionMapping
 
-module ExtensionPoint = OrderingSpec.OrdersExtensionPoint  // Cross-plugin reference
+module ExtensionPoint = OrderingSpec.Orders_ExtensionPoint  // Cross-plugin reference
 
 module Mapping = {
   module ExtensionPoint = ExtensionPoint
-  module Aggregate = ProductDemand       // Local aggregate to command
+  module Delegate = ProductDemand       // Local aggregate to command
 
-  open Aggregate
+  open Delegate
   open ExtensionPoint
   let mapIncomingEvent = (_id, event, _meta, _pluginDef, _queryEngine) =>
     switch event {
@@ -592,8 +592,8 @@ module Mapping = {
 
 Pattern:
 - **`module ExtensionPoint`** — the external EP spec, referenced through the spec package namespace
-- **`module Aggregate`** — the local aggregate that will receive commands
-- **`open Aggregate` + `open ExtensionPoint`** — allows unqualified command and event access in the mapping
+- **`module Delegate`** — the local aggregate (or DCB slice spec) that will receive commands
+- **`open Delegate` + `open ExtensionPoint`** — allows unqualified command and event access in the mapping
 - **`PublishAggregateCommand(id, command)`** — route to a specific aggregate instance
 
 ---
@@ -662,7 +662,7 @@ Each file in `Extension/` must expose its mapping as an inner module named **`Ma
 open ReventlessInfra.ExtensionMapping
 
 module Mapping = {
-  module ExtensionPoint = OrderingSpec.OrdersExtensionPoint
+  module ExtensionPoint = OrderingSpec.Orders_ExtensionPoint
   module Delegate = ProductDemand
   // ...
 }
@@ -1757,7 +1757,7 @@ After build, AutoUI's Orders list view labels rows by `customerId`, and the per-
 
 - Use `open Product` (the aggregate spec) inside behaviors and projections for unqualified event/command access
 - Use `open ExtensionPoint` in EP mappings and extensions for unqualified EP event access
-- Use `module Aggregate = ProductDemand` + `open Aggregate` in extensions for unqualified command access
+- Use `module Delegate = ProductDemand` + `open Delegate` in extensions for unqualified command access
 
 ### Common mistakes
 

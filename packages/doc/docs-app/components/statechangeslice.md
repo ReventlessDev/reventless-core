@@ -236,6 +236,131 @@ When concurrent modifications cause conflicts:
   }
 ```
 
+## DCB Tags
+
+StateChangeSlice uses DCB tags for efficient event queries. In slice files the PPX auto-injects `@s.matches(DcbTag.string)` on all `*Id: string` fields — no manual annotation needed:
+
+```rescript
+// In a StateChangeSlice file — PPX auto-tags *Id fields
+@schema
+type command =
+  | CreateItem({itemId: string, name: string})
+  | RenameItem({itemId: string, newName: string})
+```
+
+The DCB tag:
+1. Marks the field as a DCB query key
+2. Automatically extracts tag values from commands at runtime
+3. Enables efficient querying of relevant events from DcbEventLog
+
+### Multiple `*Id` fields — partition key
+
+When a variant has multiple `*Id` fields, use `@partitionTag` to mark which one is the partition key:
+
+```rescript
+@schema
+type event =
+  | DemandRecorded({
+      @partitionTag productId: string,  // partition key
+      orderId: string,                  // also tagged as DcbTag.string
+    })
+```
+
+### Composite partition keys
+
+When the partition key should be derived from **multiple fields joined in declaration order**, use `@compositePartitionTag`. Each annotated field is still individually queryable as a regular tag:
+
+```rescript
+@schema
+type event =
+  | PluginSynced({
+      @compositePartitionTag environment: string,   // "/"  after (default)
+      @compositePartitionTag platformName: string,  // "/"  after
+      @compositePartitionTag pluginName: string,    // last — sep ignored
+      version: string,
+    })
+// Partition key: e.g. "prod/acme-platform/billing"
+```
+
+Use `@compositePartitionTag(":")` to set a different separator after a field. Cannot be combined with `@partitionTag` on the same schema.
+
+### Cross-Entity Queries with Tagged Arrays
+
+When a command references multiple entities, use a `*Id: array<string>` field (singular name). Inside a `StateChangeSlice/` folder the PPX auto-applies `@s.matches(Reventless.DcbTag.string)` to the element type:
+
+```rescript
+@schema
+type command =
+  | PlaceOrder({
+      orderId: string,                  // tagged automatically
+      productId: array<string>,         // elements tagged automatically
+    })
+```
+
+For a plural-named field (`productIds: array<string>`) the PPX strips the trailing `s` and tags the elements under key `productId`, so a multi-value field shares a tag key with the singular-named producers.
+
+The runtime automatically detects tagged array fields and builds multi-clause OR queries — one clause per scalar tag, one per array element. This fetches events for all referenced entities into the same state, enabling cross-entity validation at command time.
+
+**Key rule:** name the array field to match the tag key on the referenced events (e.g., command field `productId` matches the `productId` tag on `CatalogProductSynced` events).
+
+## Best Practices
+
+### 1. Keep Decision Models Focused
+
+```rescript
+// Good: Focused on specific domain concern
+type state = {
+  active: bool,
+  lastActivity: option<Js.Date.t>,
+}
+
+// Avoid: Bloated models trying to handle everything
+type state = {
+  // ... 50+ fields for unrelated concerns
+}
+```
+
+### 2. Match `consumedEvent` Exhaustively in `evolve`
+
+```rescript
+// consumedEvent lists exactly the variants this slice reads,
+// so evolve matches them all — no catch-all needed.
+let evolve = (state, event) =>
+  switch event {
+  | KnownEvent1 => state // handle
+  | KnownEvent2 => state // handle
+  }
+```
+
+### 3. Idempotent Commands
+
+Design commands to be idempotent when possible. A command that produces no state change should return `Ok([])`, not an error — commands may be retried under at-least-once delivery:
+
+```rescript
+let decide = (state, command) =>
+  switch command {
+  | SetName({id, name}) =>
+    if name == state.name {
+      Ok([]) // idempotent — name unchanged, emit nothing
+    } else {
+      Ok([NameSet({id, name})])
+    }
+  }
+```
+
+### 4. Tag Only What's Needed
+
+DCB tags are auto-applied to `*Id` fields inside `StateChangeSlice/` folders. For a payload field that happens to end in `Id` but is **not** a query key, suppress tagging with `@noDcbTag`:
+
+```rescript
+// Good: *Id fields are tagged automatically; suppress the ones that are payload only
+@schema
+type command = CreateItem({
+  itemId: string,            // auto-tagged for entity lookup
+  @noDcbTag externalId: string,  // payload data, not a DCB query key
+})
+```
+
 ## Pulumi Outputs
 
 ```rescript
@@ -256,7 +381,6 @@ The StateChangeSlice reuses resources from the shared DcbEventLog:
 - **[Plugin](./plugin.md)** - Hosts DCB slices and creates shared infrastructure
 - **[EventCollector](/framework/runtime-components/eventcollector)** - Consumes events from DcbEventLog
 - **[ReadModel](./readmodel.md)** - Builds read models from DcbEventLog events
-- **[Usage Guide](../concepts/statechangeslice-usage.md)** - How to use StateChangeSlice in your application
 
 ## AWS Implementation
 

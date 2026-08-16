@@ -124,7 +124,7 @@ ExtensionPointMappings define how internal Aggregate events and commands are tra
 ```rescript
 module type Impl = {
   module ExtensionPoint: Spec           // The ExtensionPoint spec
-  module Aggregate: Aggregate.Spec      // The internal Aggregate spec
+  module Delegate: Aggregate.Spec       // The internal spec the events come from
   
   // Map incoming commands to Aggregate commands
   let mapIncomingCommand: mapIncomingCommand<

@@ -428,4 +428,4 @@ let position = await dcbEventLog.append(
 
 For deeper understanding of DCB architecture:
 - **[DCB Architecture](/app/concepts/dcb)** - Complete DCB architecture overview
-- **[StateChangeSlice Usage](/app/concepts/statechangeslice-usage)** - How to use StateChangeSlice in practice
+- **[StateChangeSlice](/app/components/statechangeslice)** — how to write one

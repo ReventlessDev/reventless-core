@@ -261,6 +261,16 @@ const config = {
             to: "/framework/internals/resources",
           },
           {from: "/framework/get-started", to: "/framework/contributing"},
+          // The two usage pages restated their component page and added one
+          // unique half each; that half moved onto the component page.
+          {
+            from: "/app/concepts/statechangeslice-usage",
+            to: "/app/components/statechangeslice",
+          },
+          {
+            from: "/app/concepts/stateviewslice-usage",
+            to: "/app/components/stateviewslice",
+          },
         ],
       },
     ],

@@ -30,7 +30,6 @@ const sidebars = {
         'dcb-slices',
         'components/aggregate',
         'components/statechangeslice',
-        'concepts/statechangeslice-usage',
         'components/automationslice',
         'components/inboundtranslationslice',
         'components/outboundtranslationslice',
@@ -54,7 +53,6 @@ const sidebars = {
       items: [
         'components/readmodel',
         'components/stateviewslice',
-        'concepts/stateviewslice-usage',
         'ui-configuration',
         'authorization',
       ],

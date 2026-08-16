@@ -797,6 +797,25 @@ Full field reference lives in
   `@@reventless.gwt(ProductionModule)` (see § 4.10) rather than an inline copy.
   The inline style is reserved for tests that document a DSL pattern itself.
 
+### Writing scenarios that stay useful
+
+- **Name the scenario, not the test.** `"archived category still rejects a new
+  AddCategory"` tells you what broke; `"test3"` makes you read the body.
+- **One behaviour per scenario.** Chaining a second command onto the end makes a
+  failure ambiguous — you learn that something in the chain broke, not which.
+- **Assert the error cases too.** A `decide` is half rejection logic; a suite
+  that only covers the happy path leaves the half that protects your invariants
+  untested.
+- **Cover idempotency wherever the command has it.** At-least-once delivery
+  means a repeated command is normal traffic, so `thenNoEvent` on the second
+  application is a real assertion, not a formality.
+- **Push shared setup into a companion fixtures module** (see § 4.11) rather than
+  repeating event lists — the fixture is auto-opened, so the scenario body stays
+  the interesting part.
+- **Reach for edge cases the domain actually has**: empty history, an entity in
+  a terminal state, an optional field absent rather than empty.
+
+
 ---
 
 ## 11. Related documentation

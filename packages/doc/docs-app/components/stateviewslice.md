@@ -240,6 +240,69 @@ For the full annotation reference, see [PPX annotations](../rescript-syntax.md#r
 | **Output** | Appends events to DcbEventLog | Updates QueryDb state |
 | **Pattern** | Decision/command pattern | Projection pattern |
 
+## Best Practices
+
+### 1. Use UpdateWithDefault for Optional Creation
+
+```rescript
+// Good: handles both new and existing rows
+let project = ({event}) =>
+  switch event {
+  | ItemAdjusted({itemId, delta}) => [
+      UpdateWithDefault(itemId, {count: 0}, state => {...state, count: state.count + delta}),
+    ]
+  }
+
+// Avoid: Update on a row that may not exist yet is a no-op
+let project = ({event}) =>
+  switch event {
+  | ItemAdjusted({itemId, delta}) => [Update(itemId, state => {...state, count: state.count + delta})]
+  }
+```
+
+### 2. Keep Projections Idempotent
+
+```rescript
+// Good: setting an absolute value is idempotent on replay
+let project = ({event}) =>
+  switch event {
+  | QuantitySet({itemId, qty}) => [Update(itemId, state => {...state, qty})]
+  }
+
+// Be careful: relative deltas can double-count if events are re-delivered
+```
+
+### 3. Denormalize for Read Efficiency
+
+```rescript
+// Good: denormalized read model
+type state = {
+  // Store computed values for fast reads
+  itemName: string,
+  categoryName: string,  // Denormalized from Category aggregate
+  totalQuantity: int,    // Pre-aggregated
+}
+
+// Avoid: requiring joins at read time
+type state = {
+  itemId: string,
+  // This would require lookups at read time...
+}
+```
+
+### 4. Match `consumedEvent` Exhaustively
+
+```rescript
+// consumedEvent lists exactly the events this view reads, so the switch is exhaustive.
+// For an event that should not change state, return [] (or [Ignore]).
+let project = ({event}) =>
+  switch event {
+  | KnownEvent1({id}) => [Update(id, state => state)]
+  | KnownEvent2({id}) => [Delete(id)]
+  | NoteAdded(_) => [] // no state change
+  }
+```
+
 ## Pulumi Outputs
 
 ```rescript
@@ -262,4 +325,3 @@ The StateViewSlice creates its own QueryDb:
 - **[ReadModel](./readmodel.md)** - General-purpose read model component
 - **[Plugin](./plugin.md)** - Hosts DCB slices and creates shared infrastructure
 - **[EventCollector](/framework/runtime-components/eventcollector)** - Consumes events for projection
-- **[Usage Guide](../concepts/stateviewslice-usage.md)** - How to use StateViewSlice in your application

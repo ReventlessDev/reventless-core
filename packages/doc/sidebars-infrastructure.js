@@ -88,6 +88,7 @@ const sidebars = {
       label: 'Guides',
       items: [
         'deployment-guide',
+        'operating',
         'lambda-deployment',
         'aws-lambda-layer',
         'callback-hooks-and-adapter-wrapping',
