@@ -5,6 +5,7 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Primitive_int from "@rescript/runtime/lib/es6/Primitive_int.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
+import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Owner$Reventless from "@reventlessdev/reventless-spec/src/components/Owner.res.mjs";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
@@ -141,6 +142,71 @@ function checkRetiredValue(entityName, stateSchema) {
   if (declared.length !== 0) {
     values.filter(v => !declared.includes(v)).forEach(v => log.warn("Plugin_Structure", undefined, entityName + `: @retired(` + v + `) names a state "` + field + `" does not declare — known values: ` + declared.join(", ") + `.`));
     return;
+  }
+}
+
+function lifecycleStatesFromStateSchema(entityName, stateSchema) {
+  return Stdlib_Option.flatMap(lifecycleFieldFromStateSchema(entityName, stateSchema), field => {
+    if (stateSchema.type === "object") {
+      return Stdlib_Option.map(stateSchema.items.find(item => item.location === field), item => {
+        let match = shapeOfItem(entityName, item);
+        if (typeof match !== "object") {
+          return [];
+        }
+        switch (match.TAG) {
+          case "Nullable" :
+            let match$1 = match._0;
+            if (typeof match$1 !== "object") {
+              return [];
+            } else if (match$1.TAG === "Enum") {
+              return match$1._1;
+            } else {
+              return [];
+            }
+          case "Enum" :
+            return match._1;
+          default:
+            return [];
+        }
+      });
+    }
+  });
+}
+
+function checkDeclaredTransitions(pluginName, writables, lifecycleStatesByView) {
+  let unvalidated = {
+    contents: 0
+  };
+  let failures = [];
+  writables.forEach(w => {
+    w.commands.forEach(cmd => {
+      let t = cmd.targetState;
+      let declared = Stdlib_Option.getOr(cmd.allowedStates, []).concat(t !== undefined ? [t] : []);
+      if (declared.length === 0) {
+        return;
+      }
+      let known = Stdlib_Array.reduce(w.linkedViews, [], (acc, view) => {
+        let states = lifecycleStatesByView[view];
+        if (states !== undefined) {
+          return acc.concat(states);
+        } else {
+          return acc;
+        }
+      });
+      if (known.length === 0) {
+        unvalidated.contents = unvalidated.contents + 1 | 0;
+      } else {
+        declared.filter(state => !known.includes(state)).forEach(state => {
+          failures.push(w.name + `.` + cmd.name + `: @transition names "` + state + `", which none of its ` + (`linked views declare — ` + w.linkedViews.join(", ") + ` know ` + known.join(", ") + `.`));
+        });
+      }
+    });
+  });
+  if (unvalidated.contents > 0) {
+    log.warn("Plugin_Structure", undefined, pluginName + `: ` + unvalidated.contents.toString() + ` command(s) declare a @transition but no linked view declares a lifecycle to check it against.`);
+  }
+  if (failures.length !== 0) {
+    return Stdlib_JsError.throwWithMessage(pluginName + `: @transition names states that do not exist.\n` + failures.join("\n"));
   }
 }
 
@@ -587,6 +653,14 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       return "Internal";
     }
   };
+  let lifecycleStatesByView = {};
+  let recordLifecycle = (entityName, stateSchema) => {
+    let states = lifecycleStatesFromStateSchema(entityName, stateSchema);
+    if (states !== undefined && states.length !== 0) {
+      lifecycleStatesByView[entityName] = states;
+      return;
+    }
+  };
   let readModelDefs = readModels.map(R => {
     let qf = Api_Naming$ReventlessCore.queryFieldNamesForReadModel(name, R.Spec.name, undefined);
     let stateSchema = R.Spec.stateSchema;
@@ -594,6 +668,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     let keyField = GraphQL_FragmentGenerator$ReventlessCore.resolveKeyField(R.Spec.name, stateSchema);
     let consumed = qualify(name, R.consumedEventNames);
     checkRetiredValue(R.Spec.name, stateSchema);
+    recordLifecycle(R.Spec.name, stateSchema);
     return {
       name: R.Spec.name,
       queryField: qf.listFieldName,
@@ -623,6 +698,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     let label = labelFieldsFromStateSchema(SVS.Spec.name, stateSchema);
     let keyField = GraphQL_FragmentGenerator$ReventlessCore.resolveKeyField(SVS.Spec.name, stateSchema);
     checkRetiredValue(SVS.Spec.name, stateSchema);
+    recordLifecycle(SVS.Spec.name, stateSchema);
     return {
       name: SVS.Spec.name,
       queryField: qf.listFieldName,
@@ -735,6 +811,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       commandTypes: Belt_SetString.toArray(Belt_SetString.fromArray(match[2]))
     };
   });
+  checkDeclaredTransitions(name, stateChangeDefs.concat(aggregateDefs), lifecycleStatesByView);
   return {
     readModels: readModelDefs,
     stateViewSlices: stateViewDefs,
@@ -761,6 +838,8 @@ export {
   retiredFieldFromStateSchema,
   retiredValuesFromStateSchema,
   checkRetiredValue,
+  lifecycleStatesFromStateSchema,
+  checkDeclaredTransitions,
   labelFieldSourceToString,
   labelFieldsFromStateSchema,
   extractReferences,

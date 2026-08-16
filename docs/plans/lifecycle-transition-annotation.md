@@ -250,23 +250,29 @@ the retired field.
 
 ### Three things the precedent does not settle
 
-**(a) Where the failure happens — and it cannot be a raise here.**
-`Plugin_Structure` contains **no hard-fail today**: four `log.warn` calls, no
-`raise`, no `panic`, no `failwith`. That is not an oversight to correct. The
-module is reached from `Plugin_Builder.make`, which is reached from both the
-deploy program *and* `PluginRuntime_Builder` — so a raise added here would fire
-in the deployed Lambda at cold start, turning a stale annotation into a
-production outage. That is the exact failure the orchestrating decision was
-written to avoid ("a red deploy is worth more than a log line nobody reads" —
-not "a dead Lambda is worth more").
+**(a) Where the failure happens — CORRECTED, and simpler than first written.**
+This plan originally said the check could not raise, on the grounds that
+`Plugin_Structure` is reached from `Plugin_Builder` and therefore from a
+deployed Lambda. **That was wrong**, and it was wrong because the claim came
+from a grep that matched *comments* in `PluginRuntime_Builder.res` rather than
+calls. Traced properly:
 
-**Decision: the validator is a pure function returning findings, called from two
-places with two severities.** `Plugin_Structure` gets the resolver and the
-finding list; the *build* path turns a non-empty error list into a failed build,
-and the runtime path logs it. One rule, one implementation, two dispositions.
-Settling which build-time entry point owns the abort — the deploy program or a
-codegen step — is this phase's first task, and it should be answered before any
-of the checking code is written.
+- `Plugin_Builder.Make` is instantiated by `aws/src/components/Plugin.res`,
+  which calls `Pulumi.Pulumi.getProjectName()` at module level — the deploy
+  program. It could not load in a Lambda at all.
+- The Lambda side (`Platform_ComponentDefinitions_Lambda_Ops`) **reads a
+  persisted structure and decodes it**; it never builds one.
+- The only other caller is `local/src/Platform.res`, the local dev platform.
+
+So `Plugin_Structure.make` runs at deploy and at local-platform start, and
+nowhere else. **A raise there is a failed deploy, which is precisely the
+intended behaviour** — no "two callers, two dispositions" machinery is needed,
+and the plan is better for not having built it.
+
+Still true, and still the reason the check lives here rather than in the PPX:
+`Plugin_Structure` had no hard-fail before this (four `log.warn`, no `raise`).
+Adding the first one is a deliberate change to what a malformed plugin does at
+this stage, from "logs and continues" to "stops".
 
 **(b) The linked view may not be singular.** `linkedViews` is an array, built
 from `linkedSvsFor(produced)` and `linkedReadModelsFor(…)` (`Plugin_Structure`
@@ -312,9 +318,31 @@ findings list at the same severity, in which case promoting `checkRetiredValue`
 is in scope for this phase and should be stated as such rather than discovered
 later.
 
-**Exit.** A fixture plugin with one deliberately misspelled state fails its
-build with a message naming the command, the state, and the view it was checked
-against. The same plugin, deployed, logs the finding and serves.
+**Exit — met.** Implemented as `checkDeclaredTransitions` in `Plugin_Structure`,
+a second pass over the assembled writable defs, with `lifecycleStatesFromStateSchema`
+collecting each view's states as the view defs are built.
+
+Verified two ways:
+
+1. **Unit** — fixtures `PsShipmentsView` (a view declaring a lifecycle) and
+   `PsDispatchShipment` (a command naming `Dispatchd`, which compiles because the
+   PPX strips the attribute — the hole itself, reproduced). Three tests: the
+   build throws, the message names the command, the state, the view and the known
+   states, and a plugin whose views declare no lifecycle still builds.
+2. **Against a real plugin** — a typo introduced into `online-shop-aggregates`
+   fails `reventless/gwt`'s LocalHost integration, which cold-loads the real
+   example plugins, with:
+
+   ```
+   Ordering: @transition names states that do not exist.
+   Order.Ship: @transition names "Shippd", which none of its linked views
+   declare — Orders know Placed, Shipped, Cancelled, Refunded.
+   ```
+
+   The second check matters because the first only proves the function works on
+   fixtures the same commit wrote. Note that integration covers
+   `online-shop-aggregates` only — the hybrid and dcb examples are validated at
+   deploy or local-platform start, not by the test suite.
 
 ---
 

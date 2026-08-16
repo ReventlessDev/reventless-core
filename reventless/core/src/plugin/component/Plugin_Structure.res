@@ -120,7 +120,7 @@ let retiredValuesFromStateSchema = (stateSchema: S.t<unknown>): option<array<str
 let checkRetiredValue = (~entityName: string, stateSchema: S.t<unknown>): unit =>
   switch retiredFromStateSchema(stateSchema) {
   | Some({field, values: Some(values)}) =>
-    let named = values->Array.joinWith(", ")
+    let named = values->Array.join(", ")
     let lifecycle = lifecycleFieldFromStateSchema(~entityName, stateSchema)
     if lifecycle != Some(field) {
       log.warn(
@@ -155,7 +155,7 @@ let checkRetiredValue = (~entityName: string, stateSchema: S.t<unknown>): unit =
       ->Array.forEach(v =>
         log.warn(
           ~comp="Plugin_Structure",
-          `${entityName}: @retired(${v}) names a state "${field}" does not declare — known values: ${declared->Array.joinWith(
+          `${entityName}: @retired(${v}) names a state "${field}" does not declare — known values: ${declared->Array.join(
               ", ",
             )}.`,
         )
@@ -163,6 +163,123 @@ let checkRetiredValue = (~entityName: string, stateSchema: S.t<unknown>): unit =
     }
   | _ => ()
   }
+
+// The states a record's lifecycle field can hold. The same extraction
+// `checkRetiredValue` does, keyed on the declared lifecycle field rather than the
+// retired one — which is the field a command's `@transition` is written in terms
+// of. `None` means the record declares no lifecycle at all; `Some([])` means it
+// declares one whose shape carries no cases to compare against.
+let lifecycleStatesFromStateSchema = (
+  ~entityName: string,
+  stateSchema: S.t<unknown>,
+): option<array<string>> =>
+  lifecycleFieldFromStateSchema(~entityName, stateSchema)->Option.flatMap(field =>
+    switch stateSchema {
+    | Object({items}) =>
+      items
+      ->Array.find(item => item.location == field)
+      ->Option.map(item =>
+        switch shapeOfItem(~entityName, item) {
+        | Enum(_, values) => values
+        | Nullable(Enum(_, values)) => values
+        | _ => []
+        }
+      )
+    | _ => None
+    }
+  )
+
+// The other check the PPX cannot make, and the reason `@transition` is worth
+// more than a rename.
+//
+// A command declares the states it may run from and the state it lands in, but
+// those states belong to ANOTHER component's lifecycle enum. The PPX only ever
+// sees them as names — it strips the attribute before the typechecker, and a
+// synthetic reference to the constructor does not survive ReScript's pre-PPX
+// dependency walk. So a misspelled state compiles clean, ships, and produces a
+// command that is legal in a state no row is ever in: a menu entry that never
+// appears, with nothing anywhere saying why.
+//
+// Here both sides are in hand. This runs at plugin-structure assembly, which
+// happens in the deploy program and at local-platform start — never inside a
+// deployed Lambda, which reads a persisted structure rather than building one.
+// So raising is a failed deploy, not a dead function.
+//
+// Two severities, and the split is deliberate:
+//   - a state the linked views do not declare  → RAISE. The author named
+//     something that does not exist.
+//   - no resolvable linked view, or none declaring a lifecycle → warn. The
+//     metadata gap is real but hard-failing on it would turn "this plugin's
+//     views could not be resolved" into a deploy outage, and that population is
+//     broad.
+//
+// Checked against the UNION of the linked views' lifecycles rather than a single
+// view: a command whose slice feeds two views is not claiming which one, and
+// failing on an ambiguity the author never expressed would be a false positive
+// on correct code.
+let checkDeclaredTransitions = (
+  ~pluginName: string,
+  ~writables: array<Reventless.Plugin.writableDef>,
+  ~lifecycleStatesByView: dict<array<string>>,
+): unit => {
+  let unvalidated = ref(0)
+  let failures = []
+
+  writables->Array.forEach(w =>
+    w.commands->Array.forEach(cmd => {
+      let declared = Array.concat(
+        cmd.allowedStates->Option.getOr([]),
+        switch cmd.targetState {
+        | Some(t) => [t]
+        | None => []
+        },
+      )
+      if Array.length(declared) > 0 {
+        let known =
+          w.linkedViews->Array.reduce([], (acc, view) =>
+            switch lifecycleStatesByView->Dict.get(view) {
+            | Some(states) => Array.concat(acc, states)
+            | None => acc
+            }
+          )
+        if Array.length(known) == 0 {
+          unvalidated := unvalidated.contents + 1
+        } else {
+          declared
+          ->Array.filter(state => !(known->Array.includes(state)))
+          ->Array.forEach(state =>
+            failures
+            ->Array.push(
+              `${w.name}.${cmd.name}: @transition names "${state}", which none of its ` ++
+              `linked views declare — ${w.linkedViews->Array.join(
+                  ", ",
+                )} know ${known->Array.join(", ")}.`,
+            )
+            ->ignore
+          )
+        }
+      }
+    })
+  )
+
+  // Reported rather than silent: a plugin nothing could be checked against looks
+  // exactly like a plugin that passed, and that population is the one most
+  // likely to be carrying a stale name.
+  if unvalidated.contents > 0 {
+    log.warn(
+      ~comp="Plugin_Structure",
+      `${pluginName}: ${unvalidated.contents->Int.toString} command(s) declare a @transition ` ++
+      `but no linked view declares a lifecycle to check it against.`,
+    )
+  }
+
+  if Array.length(failures) > 0 {
+    JsError.throwWithMessage(
+      `${pluginName}: @transition names states that do not exist.\n` ++
+      failures->Array.join("\n"),
+    )
+  }
+}
 
 // Which rung of the ladder below produced the label. Published on `queryableDef`
 // as `labelFieldSource`, because the four rungs are not equally believable and a
@@ -824,6 +941,16 @@ let make = (
     | Internal => Some("Internal")
     }
 
+  // View name -> the states its lifecycle field can hold, collected as the view
+  // defs are built so the transition check below has both sides in one place.
+  let lifecycleStatesByView: dict<array<string>> = Dict.make()
+  let recordLifecycle = (~entityName, stateSchema) =>
+    switch lifecycleStatesFromStateSchema(~entityName, stateSchema) {
+    | Some(states) if Array.length(states) > 0 =>
+      lifecycleStatesByView->Dict.set(entityName, states)
+    | _ => ()
+    }
+
   let readModelDefs =
     readModels
     ->Array.map((
@@ -844,6 +971,7 @@ let make = (
       // aggregate→view link is also drawn from the producer's linkedViews, deduped downstream).
       let consumed = qualify(~prefix=name, R.consumedEventNames)
       checkRetiredValue(~entityName=R.Spec.name, stateSchema)
+      recordLifecycle(~entityName=R.Spec.name, stateSchema)
       ({
         Reventless.Plugin.name: R.Spec.name,
         queryField: qf.listFieldName,
@@ -882,6 +1010,7 @@ let make = (
         stateSchema,
       )
       checkRetiredValue(~entityName=SVS.Spec.name, stateSchema)
+      recordLifecycle(~entityName=SVS.Spec.name, stateSchema)
       ({
         Reventless.Plugin.name: SVS.Spec.name,
         queryField: qf.listFieldName,
@@ -1051,6 +1180,14 @@ let make = (
       sourceEventTypes: dedupe(evs),
       commandTypes: Some(dedupe(cmds)),
     }: Reventless.Plugin.extensionPointDef))
+
+  // Second pass, on purpose: commands are built well before `linkedViews` is
+  // assembled, so the check cannot run inline where the defs are made.
+  checkDeclaredTransitions(
+    ~pluginName=name,
+    ~writables=Array.concat(stateChangeDefs, aggregateDefs),
+    ~lifecycleStatesByView,
+  )
 
   {
     readModels: readModelDefs,

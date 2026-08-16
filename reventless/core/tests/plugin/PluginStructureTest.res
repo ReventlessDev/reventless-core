@@ -144,6 +144,29 @@ module PsReserveStockSlice: ReventlessInfra.StateChangeSlice.T = {
   let make = (~dcbEventLog as _, ~publishJsons as _, ~tagKeysByEventType as _=?, ~crossPartitionTagKeys as _=?, ~runtime as _=?, ~opts as _=?): component => Obj.magic(0)
 }
 
+module PsDispatchShipmentSlice: ReventlessInfra.StateChangeSlice.T = {
+  module Spec = PsDispatchShipment
+  module Behavior = {
+    type state = PsDispatchShipment.state
+    let initialState = PsDispatchShipment.initialState
+    let evolve = PsDispatchShipment.evolve
+    let decide = PsDispatchShipment.decide
+    let moduleUrl = PsDispatchShipment.moduleUrl
+  }
+  let isAsync = false
+  type component = scsComponent
+  let make = (~dcbEventLog as _, ~publishJsons as _, ~tagKeysByEventType as _=?, ~crossPartitionTagKeys as _=?, ~runtime as _=?, ~opts as _=?): component => Obj.magic(0)
+}
+module PsShipmentsViewSlice: ReventlessInfra.StateViewSlice.T = {
+  module Spec = PsShipmentsView
+  module Projection = {
+    let project = PsShipmentsView.project
+    let moduleUrl = PsShipmentsView.moduleUrl
+  }
+  type component = svsComponent
+  let make = (~dcbEventLog as _, ~runtime as _=?, ~opts as _=?): component => Obj.magic(0)
+}
+
 let structure = Plugin_Structure.make(
   ~name="TestPlugin",
   ~stateChangeSlices=[module(PsPlaceOrderSlice), module(PsShipOrderSlice)],
@@ -154,6 +177,48 @@ let structure = Plugin_Structure.make(
     module(PsAnnotatedViewSlice),
   ],
 )
+
+describe("@transition cross-check", () => {
+  // The exit criterion: a state no linked view declares stops the build, and the
+  // message says which command, which state, and what it was checked against.
+  // `DispatchShipment` produces `ShipmentDispatched`, which the `Shipments` view
+  // consumes — so the two are linked, the view's lifecycle is in hand, and
+  // "Dispatchd" has somewhere to be wrong.
+  let buildBad = () =>
+    try {
+      Plugin_Structure.make(
+        ~name="TransitionPlugin",
+        ~stateChangeSlices=[module(PsDispatchShipmentSlice)],
+        ~stateViewSlices=[module(PsShipmentsViewSlice)],
+      )->ignore
+      None
+    } catch {
+    | Exn.Error(e) => Some(Exn.message(e)->Option.getOr(""))
+    | _ => Some("")
+    }
+
+  testSync("a state no linked view declares fails the build", () => {
+    expect(buildBad()->Option.isSome)->toBe(true)
+  })
+
+  testSync("the failure names the command, the state and the view", () => {
+    let message = buildBad()->Option.getOr("")
+    expect((
+      message->String.includes("DispatchShipment"),
+      message->String.includes("Dispatchd"),
+      message->String.includes("Shipments"),
+      message->String.includes("Booked"),
+    ))->toEqual((true, true, true, true))
+  })
+
+  // The other half of the rule: a correctly-spelled edge passes, and a command
+  // whose linked views declare no lifecycle is warned about rather than failed —
+  // `PsShipOrder` is exactly that shape, and the suite's main `structure` above
+  // builds without throwing, which is that path already exercised.
+  testSync("a plugin whose views declare no lifecycle still builds", () => {
+    expect(structure.stateChangeSlices->Array.length)->toBe(2)
+  })
+})
 
 describe("Plugin_Structure.make — Phase 2 graph fields", () => {
   describe("stateChangeSlices", () => {
