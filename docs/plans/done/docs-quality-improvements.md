@@ -1,15 +1,16 @@
 # Plan: Docs Site Quality Improvements
 
-**Status**: Proposed — derived from analysis [docs-quality-review-2026-07.md](../analysis/docs-quality-review-2026-07.md) (2026-07-05)
+**Status**: Merged (2026-08-16) — this plan was absorbed into [docs-audience-paths-restructure.md](../docs-audience-paths-restructure.md): Phases 1–4 became its Phase R (R1–R4), Phase 5 became its Phase E (teardown and local-dev guide pulled into its Phases B and C). Execute that plan; this file is retained for the original phasing rationale only.
+**Original status**: Proposed — derived from analysis [docs-quality-review-2026-07.md](../../analysis/docs-quality-review-2026-07.md) (2026-07-05)
 **Nature**: umbrella roadmap over the docs site (`packages/doc/`). The analysis holds the full findings (24 critical errors, 16 duplication clusters, ~30 removal candidates, 12 missing-topic areas); this plan sequences them into commit-sized phases. Detail lives in the analysis — items below reference its sections (§) rather than repeating evidence.
 
 ## Phasing rationale
 
-Order = trust-destroying factual errors on the newcomer path → pages that teach removed APIs → deduplication/layering (which requires the canonical pages to be correct first) → mechanical consistency sweeps → new content. Scrubbing commercial/internal mentions is part of Phase 1 because it is small and non-negotiable. Deduplication (Phase 3) must come *after* the stale-API rewrites (Phase 2): you can't point tutorials at guide anchors while the guide still contradicts itself.
+Order = trust-destroying factual errors on the newcomer path → pages that teach removed APIs → deduplication/layering (which requires the canonical pages to be correct first) → mechanical consistency sweeps → new content. Scrubbing internal references is part of Phase 1 because it is small and non-negotiable. Deduplication (Phase 3) must come *after* the stale-API rewrites (Phase 2): you can't point tutorials at guide anchors while the guide still contradicts itself.
 
 | Phase | Theme | Analysis ref | Size | Status |
 |---|---|---|---|---|
-| 1 | Entry-path factual fixes + commercial/internal scrub | §2 #1–5,10,16–18; §5 | ~15 small edits | open |
+| 1 | Entry-path factual fixes + internal-reference scrub | §2 #1–5,10,16–18; §5 | ~15 small edits | open |
 | 2 | Stale-API page rewrites | §2 #3,6–9,11–15,19–24 | ~12 pages | open |
 | 3 | Deduplication, layering, moves/removals | §3, §6 | large | open |
 | 4 | Consistency sweep + site housekeeping | §4, §8 | mechanical batch | open |
@@ -32,16 +33,16 @@ Small edits with outsized trust impact; one commit (or two: fixes / scrub).
 6. `docs-app/components/readmodel.md:219-226`: delete the four-`TODO` idResolvers block (superseded by `@resolves`/`@resolvesMany` docs).
 7. `docs-app/dcb-usage.md`: remove the `MEMORY.md` reference (~line 881); fix the stale "one FIFO queue per plugin" intro at line 32.
 
-**Commercial/internal scrub (§5):**
-8. `docs-app/mixed-source-automationslice.md:13`: drop "commercial use case / platform-inspector" — use the AutoFulfill example as motivation.
-9. `docs-app/concepts/directives.md:355`: remove/rephrase the `reventless-tools` scaffolding reference; verify `@reventlessdev/reventless-vscode` (referenced in `given-when-then.md` §8) is published before keeping its install instructions.
+**Internal-reference scrub (§5):**
+8. `docs-app/mixed-source-automationslice.md:13`: replace the out-of-repo use-case mention — use the AutoFulfill example as motivation.
+9. `docs-app/concepts/directives.md:355`: remove/rephrase the private-repo scaffolding reference; verify `@reventlessdev/reventless-vscode` (referenced in `given-when-then.md` §8) is published before keeping its install instructions.
 10. `docs-infrastructure/appsync-events-live-updates.md`: strip reventless-ui repo-internal file paths and internal plan-doc citations (behavior-level statements instead). Full split of the page is Phase 3.
 11. `docs-infrastructure/ui-fragments-deployment.md:127,177`: drop sibling-repo checkout narration + `cloudfront-ui-fragments-core.md` plan citation.
 12. `docs-infrastructure/aws-lambda-layer.md`: remove the CI/CD internals (secrets, `reventless-ci-layer-publisher` IAM user, SSM write path).
 13. `docs-infrastructure/deployment-guide.md:304`: remove the "Sample-config discipline" internal-policy blockquote.
 14. Bare plan-file references in `lambda-deployment.md` / `appsync-events-live-updates.md`: remove or convert to public GitHub `docs/analysis/` links.
 
-**Done when:** docs build green with `onBrokenLinks: "throw"`; `grep -rn "MEMORY.md\|commercial\|reventless-tools\|tree/main" docs-* blog docusaurus.config.js` returns only intentional hits.
+**Done when:** docs build green with `onBrokenLinks: "throw"`; `grep -rn "MEMORY.md\|tree/main" docs-* blog docusaurus.config.js` returns only intentional hits, and the §5 scrub greps from the analysis come back clean.
 
 ## Phase 2 — Stale-API page rewrites
 
@@ -103,7 +104,7 @@ Requires Phase 2 (canonical pages correct). Sub-phases can land as independent c
 - Swap `aggregate-extension-connection` content: `Plugin_Helpers` walkthrough → framework page; app page becomes usage-level model + diagram + link.
 - Split `appsync-events-live-updates.md`: user page (Stream folders, `liveReconnectRefetch`, debugging checklist) stays; wire protocol/file maps → framework internals; zero-downtime handover + expand/contract → `deployment-guide.md`. Cut war-story asides.
 - Move: `component-testing-guide.md` → docs-framework (fix stale paths; framework `component-testing.md` keeps two-layer architecture only, drops the per-file test index); `dual-aws-provider.md` → framework internals (one paragraph stays in `aws/architecture.md`); `output-types-in-reventless-spec.md` → `docs/analysis/` (conclusion folded into `internals/resources.md`).
-- Relocate or fix moved-package pages: `reventless-vscode-testing.md`, `forward-codegen-pipeline.md`, `reverse-codegen-pipeline.md` → `reventless-tools` repo (or clearly mark as sibling-repo docs and fix every path/link, incl. the dead `spec-implementation-split.md` ref).
+- Relocate or fix moved-package pages: `reventless-vscode-testing.md`, `forward-codegen-pipeline.md`, `reverse-codegen-pipeline.md` — clearly mark as sibling-repo docs and fix every path/link (incl. the dead `spec-implementation-split.md` ref), or relocate out of this site.
 - `cross-repo-dev-linking.md` + `ppx-binary-management.md` → labeled Maintainers grouping; strip planning language.
 - Delete: `docs-framework/get-started.md` (draft tombstone), `counter.md` trailing editorial section, `d2-diagrams.md` closing quick-reference repeat, "For AI Skills" section of `aggregate-vs-dcb-decision-guide.md` (→ skill definition).
 - Dedupe to owners: lambda-layer content → `aws-lambda-layer.md`; custom-domain content → `custom-domain.md`; adapter-pattern's stale "InMemory Adapters" section → link `local/index.md`; workspace-link mechanics → `cross-repo-dev-linking.md`; mixed-source ReadModel → `mixed-source-readmodel.md`.
@@ -143,5 +144,5 @@ Highest-value gaps (§7), roughly priority-ordered; each is its own commit + sid
 ## Out of scope
 
 - Blog un-drafting itself (separate decision; Phase 1 fixes its factual error, Phase 4 adds the checklist).
-- Docs for commercial/business-repo features — explicitly excluded; Phase 1 removes the existing leakage.
+- Docs for anything outside this repo's published packages — explicitly excluded; Phase 1 removes the existing internal-reference leakage.
 - Restructuring the four-section split — the analysis found it sound; only renames/redirects (Phase 3e).
