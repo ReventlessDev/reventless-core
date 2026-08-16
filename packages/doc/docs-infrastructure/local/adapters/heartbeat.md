@@ -7,7 +7,7 @@ sidebar_position: 9
 
 **Source:** `reventless-local/src/adapter/Heartbeat/LocalHeartbeatRunner.res`
 
-**AWS equivalent:** [Heartbeat → CloudWatch Events](/infrastructure/aws/adapters/heartbeat)
+**AWS equivalent:** [Heartbeat → EventBridge](/infrastructure/aws/adapters/heartbeat)
 
 ## How It Works
 
@@ -31,6 +31,6 @@ Active timer handles are tracked in a module-level dictionary for cleanup.
 
 | Aspect | Local | AWS |
 |--------|----------|-----|
-| Scheduling | `setInterval` | CloudWatch Events rule |
+| Scheduling | `setInterval` | EventBridge rule |
 | Timer resolution | Milliseconds | Minutes (CloudWatch minimum) |
 | Cleanup | Manual `reset()` call | CloudWatch rule deletion |

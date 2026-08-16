@@ -254,7 +254,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   // ExtensionPoints
   module Customer_ExtensionPoint = Platform.ExtensionPoint.Make(Customer_ExtensionPointMapping)
 
-  let make = (~uiBundleUrl=?) =>
+  let make = () =>
     Platform.Plugin.make(
       ~name="Customer",
       ~extensionPoints=[module(Customer_ExtensionPoint)],
@@ -399,7 +399,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   module Customer_ExtensionPoint = Platform.ExtensionPoint.Make(Customer_ExtensionPointMapping)
   module Order_ExtensionPoint = Platform.ExtensionPoint.Make(Order_ExtensionPointMapping)
 
-  let make = (~uiBundleUrl=?) =>
+  let make = () =>
     Platform.Plugin.make(
       ~name="Customer",
       ~extensionPoints=[module(Customer_ExtensionPoint), module(Order_ExtensionPoint)],

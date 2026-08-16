@@ -116,6 +116,6 @@ Check that the Lambda layer ARN is correctly configured. See [Getting Started wi
 
 ### Scheduler not triggering
 
-CloudWatch Events has a limit of 300 rules per region per account. If you exceed this limit, new rules cannot be created and the scheduler will not trigger.
+EventBridge has a limit of 300 rules per region per account. If you exceed this limit, new rules cannot be created and the scheduler will not trigger.
 
-Check the CloudWatch Events console for rule creation errors and consider consolidating scheduler configurations.
+Check the EventBridge console for rule creation errors and consider consolidating scheduler configurations.

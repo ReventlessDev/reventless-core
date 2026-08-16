@@ -392,7 +392,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   module Products_ExtensionPoint = Platform.ExtensionPoint.Make(Products_ExtensionPointMapping)
   module Orders_Extension = Platform.Extension.Make(Orders_Extension.Mapping)
 
-  let make = (~uiBundleUrl=?) =>
+  let make = () =>
     Platform.Plugin.make(
       ~name="Catalog",
       ~heartbeatInterval=5,

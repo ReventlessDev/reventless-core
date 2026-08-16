@@ -13,7 +13,7 @@ This component follows the Reventless [Component Structure Pattern](/framework/i
 The Heartbeat component provides periodic health check signals and keepalive mechanisms, specifically designed to integrate with the platform admin's Plugin ExtensionPoint system. It enables health monitoring, periodic extension invocations, and watchdog timer functionality.
 
 ```d2
-CloudWatch: CloudWatch Events { class: aws-service }
+CloudWatch: EventBridge { class: aws-service }
 Lambda: Lambda Function { class: aws-service }
 AdminSQS: Admin Plugin SQS { class: plugin }
 ExtensionPoint: Extension Point { class: extension-point }
@@ -71,7 +71,7 @@ The Heartbeat component operates through a simple, automated flow:
 ```d2
 shape: sequence_diagram
 
-CW: CloudWatch Events { class: aws-service }
+CW: EventBridge { class: aws-service }
 Lambda: Heartbeat Lambda { class: aws-service }
 SQS: Admin Plugin SQS { class: aws-service }
 EP: Extension Point { class: extension-point }
@@ -238,7 +238,7 @@ The Heartbeat component serves a specific purpose compared to the general-purpos
 
 ## Pulumi
 
-The Heartbeat component is deployed as infrastructure that creates CloudWatch Event Rules, Lambda permissions, and IAM policies. All execution happens automatically once deployed.
+The Heartbeat component is deployed as infrastructure that creates EventBridge rules, Lambda permissions, and IAM policies. All execution happens automatically once deployed.
 
 ```rescript
 // Deployment creates all necessary infrastructure
@@ -250,4 +250,4 @@ heartbeat->Reventless.Heartbeat.connect(~runtime, ~remoteChannel, ~timeout=10)
 
 ## AWS Implementation
 
-For detailed AWS-specific implementation including CloudWatch Events integration, Lambda permissions, IAM policies, and admin Plugin SQS integration, see [Heartbeat → EventBridge Rule + Lambda](/infrastructure/aws/adapters/heartbeat).
+For detailed AWS-specific implementation including EventBridge integration, Lambda permissions, IAM policies, and admin Plugin SQS integration, see [Heartbeat → EventBridge Rule + Lambda](/infrastructure/aws/adapters/heartbeat).

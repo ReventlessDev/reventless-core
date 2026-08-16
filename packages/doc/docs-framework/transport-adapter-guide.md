@@ -143,10 +143,15 @@ type queryInterceptor = (
   ~args: JSON.t,           // raw query arguments (filters, pagination, etc.)
 ) => promise<interceptResult>
 
+/** None = passthrough (the default). */
 let queryInterceptorHook: ref<option<queryInterceptor>> = ref(None)
+
+let registerQueryInterceptor: queryInterceptor => unit
+let clearQueryInterceptor: unit => unit
 ```
 
-**Note:** `QueryDb_Callback` and its hook are planned but not yet implemented.
+The AWS provider already consults this hook from its query resolvers, on both the
+DynamoDB and Postgres read paths.
 
 ### When to call it
 
@@ -279,7 +284,7 @@ The GraphQL transport generates resolver field names from `QueryDb_Adapter.resol
 | Hook | Location | Called by | Purpose |
 |---|---|---|---|
 | `commandInterceptorHook` | `CommandGenerator_Callback` | `makeGenerateCommand` (internal) | Intercept all commands before publish |
-| `queryInterceptorHook` | `QueryDb_Callback` *(planned)* | Transport adapter query resolvers | Intercept all queries before QueryDb fetch |
+| `queryInterceptorHook` | `QueryDb_Callback` | Transport adapter query resolvers | Intercept all queries before QueryDb fetch |
 | `aggregateMutationResolverHook` | `Plugin_Builder` | `Plugin_Builder.construct` | Register aggregate mutation resolvers (Phase 1) |
 | `dcbMutationResolverHook` | `Dcb_Builder` | `Dcb_Builder.construct` | Register DCB mutation resolvers (Phase 1) |
 | `dcbMutationBindHook` | `Dcb_Builder` | `Output.apply` in `Dcb_Builder` | Bind DCB mutation handlers (Phase 2) |

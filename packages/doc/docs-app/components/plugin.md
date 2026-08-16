@@ -288,7 +288,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   // Tasks
   module ImportCustomersTask = Platform.Task.Make(ImportCustomers)
 
-  let make = (~uiBundleUrl=?) =>
+  let make = () =>
     Platform.Plugin.make(
       ~name="MyDomain",
       ~heartbeatInterval=5,

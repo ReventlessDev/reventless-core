@@ -292,7 +292,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   module SendTrackingEmailSlice = Platform.OutboundTranslationSlice.Make(SendTrackingEmail, SendTrackingEmail_Translation)
   module ProcessPaymentSlice = Platform.OutboundTranslationSlice.Make(ProcessPayment, ProcessPayment_Translation)
 
-  let make = (~uiBundleUrl=?) =>
+  let make = () =>
     Platform.Plugin.make(
       ~name="Ordering",
       ~outboundTranslationSlices=[module(SendTrackingEmailSlice), module(ProcessPaymentSlice)],

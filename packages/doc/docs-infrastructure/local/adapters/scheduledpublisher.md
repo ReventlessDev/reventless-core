@@ -7,7 +7,7 @@ sidebar_position: 11
 
 **Source:** `reventless-local/src/adapter/Scheduler/LocalScheduledPublisher.res`
 
-**AWS equivalent:** [ScheduledPublisher → CloudWatch Events](/infrastructure/aws/adapters/scheduledpublisher)
+**AWS equivalent:** [ScheduledPublisher → EventBridge](/infrastructure/aws/adapters/scheduledpublisher)
 
 ## How It Works
 
@@ -36,6 +36,6 @@ Schedule rates are converted to milliseconds:
 
 | Aspect | Local | AWS |
 |--------|----------|-----|
-| Scheduling | `setInterval` / `setTimeout` | CloudWatch Events rules |
+| Scheduling | `setInterval` / `setTimeout` | EventBridge rules |
 | Rate expressions | Converted to milliseconds | CloudWatch rate/cron expressions |
 | Payload delivery | Bus event publish | CloudWatch → Lambda → SQS |

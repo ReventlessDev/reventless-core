@@ -26,13 +26,15 @@ All `.res` files within a single package share a flat namespace with each other.
 Dependency packages that omit a namespace expose their modules globally. The key example in this codebase:
 
 ```json
-// node_modules/@glennsl/rescript-jest/rescript.json
+// @reventlessdev/rescript-jest/rescript.json
 {
   "namespace": false
 }
 ```
 
-Because `@glennsl/rescript-jest` has no namespace, its modules (`AsyncTest`, `Jest`) are placed directly in the global flat namespace of every package that depends on it. That is why `open AsyncTest` works without any prefix in test files.
+Because `@reventlessdev/rescript-jest` declares no namespace, its `JestGlobals`
+module lands directly in the global flat namespace of every package that depends
+on it — which is why `open JestGlobals` works with no prefix in test files.
 
 Similarly, `sury` (the schema library) likely has no namespace, which is why `S` is accessible unqualified.
 

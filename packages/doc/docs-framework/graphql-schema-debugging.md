@@ -23,12 +23,12 @@ By default the in-memory GraphQL server masks resolver errors (returning a gener
 GRAPHQL_DEBUG=1 npx tsx src/Main.res.mjs
 ```
 
-The DCB example package includes a convenience script for this:
+The example platforms ship a script for this:
 
 ```bash
-cd examples/dcb/example-dcb
-npm run dev    # starts with GRAPHQL_DEBUG=1
-npm run run    # starts without debug (production-like)
+cd examples/online-shop-hybrid/platform-local
+pnpm run dev     # starts with GRAPHQL_DEBUG=1 and MCP_DEBUG=1
+pnpm run serve   # starts without debug
 ```
 
 When `GRAPHQL_DEBUG` is set:
@@ -199,25 +199,6 @@ let names = GraphQL_Server.getRegisteredResolverNames()
 let schema = GraphQL_Server.getSchema()
 // option<GraphqlYoga.schema>
 ```
-
-## DCB Example Debug Script
-
-The DCB example includes a ready-made debug script that boots the platform and dumps everything:
-
-```bash
-cd examples/dcb/example-dcb
-npx rescript          # compile ReScript → JS
-node src/DebugSchema.res.mjs
-```
-
-This prints the live SDL and full diagnostics, then exits. To keep the server running for GraphiQL:
-
-```rescript
-// In DebugSchema.res, comment out the last line:
-// ReventlessLocal.GraphQL_Server.stop()
-```
-
-Then visit `http://localhost:4000/graphql` in a browser.
 
 ## Integrating Into a New Platform Instance
 

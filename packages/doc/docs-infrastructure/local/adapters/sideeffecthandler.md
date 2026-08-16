@@ -26,5 +26,5 @@ In typical test scenarios, `TaskSpec.setup` returns `sideEffects: None`, so this
 | Aspect | Local | AWS |
 |--------|----------|-----|
 | Event enqueue | No-op | SQS message send |
-| Scheduling | Delegates to LocalScheduledPublisher | CloudWatch Events |
+| Scheduling | Delegates to LocalScheduledPublisher | EventBridge |
 | Lambda | Not needed | Dedicated Lambda for side effect processing |

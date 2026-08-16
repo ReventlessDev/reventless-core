@@ -15,7 +15,7 @@ The Scheduler component provides time-based command publishing capabilities, ena
 ```d2
 Application: Application Code { class: client }
 Scheduler: Scheduler { class: scheduler }
-CloudWatch: CloudWatch Events { class: aws-service }
+CloudWatch: EventBridge { class: aws-service }
 CommandTopic: Command Topic { class: command-topic }
 
 Application -> Scheduler: createSchedule { class: command-flow }
@@ -123,7 +123,7 @@ shape: sequence_diagram
 
 App: Application { class: external-system }
 Sched: Scheduler { class: scheduler }
-CW: CloudWatch Events { class: aws-service }
+CW: EventBridge { class: aws-service }
 Target: Target Service { class: external-system }
 
 App -> Sched: "createSchedule(schedule)"
@@ -143,7 +143,7 @@ shape: sequence_diagram
 
 App: Application { class: external-system }
 Sched: Scheduler { class: scheduler }
-CW: CloudWatch Events { class: aws-service }
+CW: EventBridge { class: aws-service }
 
 App -> Sched: "deleteSchedule(name)"
 Sched -> CW: Remove Targets
@@ -246,10 +246,10 @@ let createUserReminder = async (userId, reminderTime) => {
 
 ## Pulumi
 
-The Scheduler component is deployed as infrastructure that creates the necessary IAM roles and permissions for CloudWatch Events management. The actual event rules are created dynamically at runtime through the component's operations.
+The Scheduler component is deployed as infrastructure that creates the necessary IAM roles and permissions for EventBridge management. The actual event rules are created dynamically at runtime through the component's operations.
 
 ```rescript
-// Deployment creates IAM role with CloudWatch Events permissions
+// Deployment creates IAM role with EventBridge permissions
 let scheduler = Reventless.Scheduler.make(~opts=pulumiOpts)
 
 // Runtime operations use the deployed role to manage schedules
@@ -258,4 +258,4 @@ let operations = scheduler.outputs.resource
 
 ## AWS Implementation
 
-For detailed AWS-specific implementation including CloudWatch Events integration, IAM role configuration, and runtime operations, see [ScheduledPublisher → EventBridge Scheduler](/infrastructure/aws/adapters/scheduledpublisher).
+For detailed AWS-specific implementation including EventBridge integration, IAM role configuration, and runtime operations, see [ScheduledPublisher → EventBridge Scheduler](/infrastructure/aws/adapters/scheduledpublisher).

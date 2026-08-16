@@ -4,13 +4,20 @@ date: 2026-01-15
 draft: false
 ---
 
-## Heartbeat → CloudWatch Events
 
-The Heartbeat adapter provides periodic heartbeat signals using CloudWatch Events, enabling health monitoring, keepalive mechanisms, and periodic extension point invocations within the platform admin.
+:::note EventBridge, formerly CloudWatch Events
+AWS renamed CloudWatch Events to **EventBridge**; the Pulumi resource is still
+called `aws.cloudwatch.EventRule`. This page says EventBridge throughout and
+names the Pulumi resource where it matters.
+:::
 
-## CloudWatch Event Rule Configuration
+## Heartbeat → EventBridge
 
-The Heartbeat adapter creates a CloudWatch Event Rule with a schedule expression based on the configured timeout:
+The Heartbeat adapter provides periodic heartbeat signals using EventBridge, enabling health monitoring, keepalive mechanisms, and periodic extension point invocations within the platform admin.
+
+## EventBridge rule Configuration
+
+The Heartbeat adapter creates a EventBridge rule with a schedule expression based on the configured timeout:
 
 ```rescript
 let cloudwatchEventRule = {
@@ -38,7 +45,7 @@ let cloudwatchEventRule = {
 **Key features:**
 
 - **Fixed interval** - Heartbeat runs at consistent intervals regardless of execution duration
-- **Automatic triggering** - CloudWatch Events invokes Lambda on schedule without manual intervention
+- **Automatic triggering** - EventBridge invokes Lambda on schedule without manual intervention
 - **Environment isolation** - Stack name prefix prevents conflicts between dev/staging/prod
 
 ## Lambda Integration and IAM Policies
@@ -54,7 +61,7 @@ let _attachPoliciesAndSetEventTarget =
   )
   ->Pulumi.Output.all3
   ->Pulumi.Output.apply(((lambdaArn, lambdaName, heartbeatRoleId)) => {
-    // 1. Grant CloudWatch Events permission to invoke Lambda
+    // 1. Grant EventBridge permission to invoke Lambda
     let _addHeartbeatLambdaPermission = PulumiAws.Lambda.Permission.make(
       ~name,
       ~args={
@@ -111,11 +118,11 @@ let _attachPoliciesAndSetEventTarget =
 
 **Integration flow:**
 
-1. **Lambda Permission** - Grants CloudWatch Events service permission to invoke the Lambda function
+1. **Lambda Permission** - Grants EventBridge service permission to invoke the Lambda function
    - **Action**: `lambda:InvokeFunction`
    - **Principal**: `events.amazonaws.com`
    - **Resource**: Specific Lambda function
-   - **Effect**: Allows CloudWatch Events to trigger Lambda on schedule
+   - **Effect**: Allows EventBridge to trigger Lambda on schedule
 
 2. **SQS Send Policy** - Grants Lambda permission to send heartbeat messages to the admin Plugin ExtensionPoint's SQS queue
    - **Action**: `sqs:SendMessage`
@@ -127,10 +134,10 @@ let _attachPoliciesAndSetEventTarget =
    - **SQS policy**: SendMessage permission for admin queue
    - **Attachment**: Attached to Lambda execution role
 
-4. **Event Target** - Configures Lambda as the target for the CloudWatch Event Rule
-   - **Rule**: References the CloudWatch Event Rule created earlier
+4. **Event Target** - Configures Lambda as the target for the EventBridge rule
+   - **Rule**: References the EventBridge rule created earlier
    - **ARN**: Lambda function ARN
-   - **Effect**: CloudWatch Events invokes this Lambda when the rule fires
+   - **Effect**: EventBridge invokes this Lambda when the rule fires
 
 **Key features:**
 
@@ -181,7 +188,7 @@ let make: Reventless.Heartbeat_Adapter.runnerMaker<runtimeParts> = (
   ~runtime,
   ~opts,
 ) => {
-  // 1. Deploy-time: Create CloudWatch Event Rule
+  // 1. Deploy-time: Create EventBridge rule
   let cloudwatchEventRule = EventRule.make(~name, ~args={
     scheduleExpression: EventRule.ScheduleExpression.every(timeout->Minutes),
   }, ~opts)
@@ -205,7 +212,7 @@ let make: Reventless.Heartbeat_Adapter.runnerMaker<runtimeParts> = (
 
 **Flow steps:**
 
-1. **Create Event Rule** - Pulumi provisions CloudWatch Event Rule with schedule expression
+1. **Create Event Rule** - Pulumi provisions EventBridge rule with schedule expression
 2. **Extract resources** - Gets Lambda function, Lambda role, and admin SQS queue from parameters
 3. **Configure permissions** - Sets up Lambda permissions, IAM policies, and event target
 4. **Return resources** - Returns Lambda and Event Rule resources for dependency tracking
@@ -213,7 +220,7 @@ let make: Reventless.Heartbeat_Adapter.runnerMaker<runtimeParts> = (
 **Key features:**
 
 - **No runtime operations** - Heartbeat has no runtime operations; everything is configured at deploy-time
-- **Pure infrastructure** - All logic is in CloudWatch Event Rule and Lambda permissions
+- **Pure infrastructure** - All logic is in EventBridge rule and Lambda permissions
 - **Dependency tracking** - Returns resources for Pulumi dependency graph
 - **Automatic execution** - Once deployed, heartbeat runs automatically on schedule
 

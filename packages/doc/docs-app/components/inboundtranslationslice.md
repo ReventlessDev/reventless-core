@@ -219,7 +219,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   module PaymentWebhookSlice = Platform.InboundTranslationSlice.Make(PaymentWebhook, PaymentWebhook_Translation)
   module ShippingUpdateSlice = Platform.InboundTranslationSlice.Make(ShippingUpdate, ShippingUpdate_Translation)
 
-  let make = (~uiBundleUrl=?) =>
+  let make = () =>
     Platform.Plugin.make(
       ~name="Ordering",
       ~inboundTranslationSlices=[module(PaymentWebhookSlice), module(ShippingUpdateSlice)],

@@ -417,7 +417,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   // Tasks
   module ProfilePicturesTask = Platform.Task.Make(ProfilePictures)
 
-  let make = (~uiBundleUrl=?) =>
+  let make = () =>
     Platform.Plugin.make(
       ~name="Catalog",
       ~tasks=[module(ProfilePicturesTask)],

@@ -75,7 +75,10 @@ let _ = beforeAllAsync(async () => {
 })
 ```
 
-**Async test bodies** use native Jest `test` (bound as `jestTest`) rather than `testPromise` from `@glennsl/rescript-jest`. `testPromise` discards the returned Promise, making tests appear synchronous and causing race conditions on shared state.
+**Async test bodies** use the async `test` binding from
+`@reventlessdev/rescript-jest`'s `JestGlobals`, never a binding that discards the
+returned promise — one that does makes an async test appear synchronous and
+produces races on shared state. `testSync` is the synchronous form.
 
 **Test naming** follows Given/When/Then style: `"ItemCreated preserves through round-trip"`, `"duplicate AddItem produces 0 events (ItemAlreadyExists)"`.
 

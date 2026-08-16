@@ -192,7 +192,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   // AutomationSlices
   module AutoShipOrderSlice = Platform.AutomationSlice.Make(AutoShipOrder, AutoShipOrder_Automation)
 
-  let make = (~uiBundleUrl=?) =>
+  let make = () =>
     Platform.Plugin.make(
       ~name="Ordering",
       ~automationSlices=[module(AutoShipOrderSlice)],

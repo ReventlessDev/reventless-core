@@ -1488,14 +1488,14 @@ In both `package.json` and `rescript.json`, order dependencies as:
 | `sury` | `dependencies` | Runtime — compiled JS imports from sury |
 | `sury-ppx` | `devDependencies` | Build-time only — PPX code generator |
 | `rescript` | `devDependencies` + `peerDependencies` | Compiler |
-| `@glennsl/rescript-jest` | `devDependencies` | Test-only |
+| `@reventlessdev/rescript-jest` | `devDependencies` | Test-only |
 
 ### rescript.json dependency placement
 
 | Package | Section | Why |
 |---------|---------|-----|
 | Framework & plugin packages | `bs-dependencies` | Used in production source |
-| `@glennsl/rescript-jest` | `dev-dependencies` | Used only in test sources |
+| `@reventlessdev/rescript-jest` | `dev-dependencies` | Used only in test sources |
 
 ### Split API mode
 

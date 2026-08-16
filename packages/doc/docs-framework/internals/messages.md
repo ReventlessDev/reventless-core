@@ -228,11 +228,11 @@ Message correlation enables tracing related messages through the system:
 ```d2
 C1: "Command\nmsgId: cmd-001\ncorrelationId: cmd-001" { class: msg-command }
 A: Aggregate { class: aggregate }
-E1: "Event\nmsgId: evt-001\ncorrelationId: cmd-001" { class: msg-event }
-E2: "Event\nmsgId: evt-002\ncorrelationId: cmd-001" { class: msg-event }
+E1: "Event\nmsgId: evt-001\ncorrelationId: cmd-001\ncausationId: cmd-001" { class: msg-event }
+E2: "Event\nmsgId: evt-002\ncorrelationId: cmd-001\ncausationId: cmd-001" { class: msg-event }
 EM: EventMapper { class: event-mapper }
 RM2: ReadModel { class: read-model }
-C2: "Command\nmsgId: cmd-002\ncorrelationId: evt-001" { class: msg-command }
+C2: "Command\nmsgId: cmd-002\ncorrelationId: cmd-001\ncausationId: evt-001" { class: msg-command }
 
 C1 -> A { class: command-flow }
 A -> E1 { class: event-flow }
@@ -242,10 +242,14 @@ E2 -> RM2 { class: event-flow }
 EM -> C2 { class: command-flow }
 ```
 
-**Key Principles**:
-- Original commands set `correlationId` equal to their `msgId`
-- Resulting events maintain the original `correlationId`
-- New commands triggered by events use the triggering event's `msgId` as their `correlationId`
+**Key principles**:
+- A message that starts a chain sets `correlationId` equal to its own `msgId`.
+- Every message derived from it **inherits that same `correlationId`**, however
+  many hops down the chain it is — that is what makes the chain root stable and
+  queryable.
+- `causationId` is the *direct* parent's `msgId`, and it changes at every hop.
+  In the diagram above, `cmd-002` was caused by `evt-001` but still correlates to
+  `cmd-001`.
 
 ### Message Transformation
 

@@ -1052,10 +1052,10 @@ To add tests for a new component:
 
 ## References
 
-- **Component Structure**: `packages/doc/docs/internals/component-structure-pattern.md`
-- **Existing Tests**: `packages/reventless/tests/` — MessageTest, PluginBehaviorTest, ProjectionTest
-- **Jest Bindings**: `node_modules/@glennsl/rescript-jest/src/jest.resi`
-- **Sury Docs**: `node_modules/sury-ppx/README.md`
+- [Component structure pattern](./internals/component-structure-pattern.md)
+- Existing tests: `reventless/core/tests/`
+- Jest bindings: `@reventlessdev/rescript-jest` (`JestGlobals`)
+- Sury: the `sury-ppx` package README
 
 ---
 

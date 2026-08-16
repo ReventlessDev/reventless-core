@@ -3,7 +3,7 @@ title: "CommandTopic → SQS FIFO"
 ---
 ## CommandTopic → SQS FIFO
 
-The CommandTopic adapter provides reliable command delivery using **SQS FIFO queues**, ensuring strict ordering and exactly-once processing guarantees per aggregate instance.
+The CommandTopic adapter delivers commands over **SQS FIFO queues**: strict ordering per message group (one group per aggregate instance) and exactly-once *publish* deduplication. Processing is still at-least-once — a handler that times out after doing its work sees the same command again, which is why command handlers must be idempotent.
 
 ## Queue Configuration
 

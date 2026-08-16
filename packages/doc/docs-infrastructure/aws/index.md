@@ -159,8 +159,8 @@ Reventless components map to AWS services as follows:
 | **Task** | S3 | Stores task data; S3 events trigger Lambda on object create/delete |
 | **CommandGenerator** | AppSync | GraphQL API for command generation with DynamoDB resolvers |
 | **Counter** | DynamoDB Streams | Atomic counter updates triggered by DynamoDB stream events |
-| **ScheduledPublisher** | CloudWatch Events | Time-based event publishing using CloudWatch Events rules |
-| **Heartbeat** | CloudWatch Events | Periodic heartbeat signals using CloudWatch Events |
+| **ScheduledPublisher** | EventBridge | Time-based event publishing using EventBridge rules |
+| **Heartbeat** | EventBridge | Periodic heartbeat signals using EventBridge |
 | **Runtime** | Lambda | Execution environment for all runtime operations |
 
 ## Adapter Details
@@ -182,8 +182,8 @@ The following AWS adapters are available. For how adapters are structured intern
 
 ### Supporting Adapters
 
-- **[ScheduledPublisher → CloudWatch Events](./adapters/scheduledpublisher)** - Scheduled command execution
-- **[Heartbeat → CloudWatch Events](./adapters/heartbeat)** - Health check and keep-alive monitoring
+- **[ScheduledPublisher → EventBridge](./adapters/scheduledpublisher)** - Scheduled command execution
+- **[Heartbeat → EventBridge](./adapters/heartbeat)** - Health check and keep-alive monitoring
 - **[Counter → DynamoDB Streams](./adapters/counter)** - Atomic counting via change data capture
 - **[StateTopic → DynamoDB Streams](./adapters/statetopic)** - State change publishing via DynamoDB Streams
 - **[CommandGenerator → AppSync](./adapters/commandgenerator)** - GraphQL mutation resolvers for command generation
@@ -203,11 +203,11 @@ reventless-aws/src/adapter/
 ├── EventCollector/             # DynamoDB Stream / SQS event collection
 ├── EventLog/                   # DynamoDB event storage
 ├── EventTopic/                 # SNS event publishing
-├── Heartbeat/                  # CloudWatch Events heartbeat
+├── Heartbeat/                  # EventBridge heartbeat
 ├── QueryDb/                    # DynamoDB read model storage
 ├── QueryEngine/                # DynamoDB query execution
 ├── Runtime/                    # Lambda runtime environment
-├── ScheduledPublisher/         # CloudWatch Events scheduled publishing
+├── ScheduledPublisher/         # EventBridge scheduled publishing
 ├── StateTopic/                 # DynamoDB Stream state publishing
 └── Task/                       # S3 task buckets
 ```

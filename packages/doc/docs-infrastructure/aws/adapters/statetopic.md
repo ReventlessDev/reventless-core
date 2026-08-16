@@ -131,7 +131,7 @@ DynamoDB Stream records contain:
 - **Change Data Capture (CDC)** - Automatic capture of all table changes
 - **Event sourcing from state** - Bridge state-based and event-based architectures
 - **Decoupling** - Read Models don't need to know about downstream consumers
-- **Stream guarantees** - DynamoDB Streams provide ordered, exactly-once delivery per shard
+- **Stream guarantees** — DynamoDB Streams deliver records in order per shard, at least once; a consumer must tolerate a repeat
 
 **When to use StateTopic:**
 

@@ -4,13 +4,20 @@ date: 2026-01-15
 draft: false
 ---
 
-## ScheduledPublisher → CloudWatch Events
 
-The ScheduledPublisher adapter provides time-based event publishing capabilities using Amazon CloudWatch Events (now Amazon EventBridge), enabling scheduled workflows, periodic tasks, and cron-like event generation.
+:::note EventBridge, formerly CloudWatch Events
+AWS renamed CloudWatch Events to **EventBridge**; the Pulumi resource is still
+called `aws.cloudwatch.EventRule`. This page says EventBridge throughout and
+names the Pulumi resource where it matters.
+:::
+
+## ScheduledPublisher → EventBridge
+
+The ScheduledPublisher adapter provides time-based event publishing capabilities using Amazon EventBridge (now Amazon EventBridge), enabling scheduled workflows, periodic tasks, and cron-like event generation.
 
 ## IAM Role Configuration
 
-The ScheduledPublisher adapter creates an IAM role with permissions for CloudWatch Events to manage scheduled rules:
+The ScheduledPublisher adapter creates an IAM role with permissions for EventBridge to manage scheduled rules:
 
 ```rescript
 let role = PulumiAws.IAM.Role.makeWithDefaultPolicy(
@@ -51,20 +58,20 @@ let _policy = PulumiAws.IAM.Policy.make(
 
 **IAM configuration details:**
 
-- **Service Principal** - CloudWatch Events service (`events.amazonaws.com`) is granted AssumeRole permissions
-- **`events:*` permissions** - Full access to CloudWatch Events operations
+- **Service Principal** - EventBridge service (`events.amazonaws.com`) is granted AssumeRole permissions
+- **`events:*` permissions** - Full access to EventBridge operations
   - Create, update, and delete event rules
   - Add and remove targets from rules
   - Enable and disable rules
-- **`iam:PassRole` permission** - Allows CloudWatch Events to pass the role to targets (e.g., Lambda, ECS)
+- **`iam:PassRole` permission** - Allows EventBridge to pass the role to targets (e.g., Lambda, ECS)
   - Required when event rules invoke services on behalf of the role
   - Scoped to the specific role ARN for security
 
 **Key features:**
 
 - **Deploy-time role creation** - IAM role and policies are provisioned during deployment
-- **Least privilege principle** - Role is scoped to CloudWatch Events service only
-- **Target invocation** - PassRole permission enables CloudWatch Events to invoke configured targets
+- **Least privilege principle** - Role is scoped to EventBridge service only
+- **Target invocation** - PassRole permission enables EventBridge to invoke configured targets
 
 ## Runtime Operations
 
@@ -72,7 +79,7 @@ The ScheduledPublisher adapter provides two runtime operations for managing sche
 
 ## Create Schedule Operation
 
-The `createSchedule` operation dynamically creates CloudWatch Event Rules at runtime:
+The `createSchedule` operation dynamically creates EventBridge rules at runtime:
 
 ```rescript
 createSchedule: ScheduledPublisher_CloudWatchEvents_Runtime.createSchedule(role)
@@ -85,7 +92,7 @@ createSchedule: ScheduledPublisher_CloudWatchEvents_Runtime.createSchedule(role)
   - Cron: `cron(0 12 * * ? *)` - Daily at 12:00 PM UTC
   - Rate: `rate(5 minutes)` - Every 5 minutes
 - **Target configuration** - Configure which resources (Lambda, SQS, etc.) receive scheduled events
-- **Role binding** - Uses the CloudWatch Events role created at deploy-time
+- **Role binding** - Uses the EventBridge role created at deploy-time
 
 **Use cases:**
 
@@ -95,7 +102,7 @@ createSchedule: ScheduledPublisher_CloudWatchEvents_Runtime.createSchedule(role)
 
 ## Delete Schedule Operation
 
-The `deleteSchedule` operation removes CloudWatch Event Rules at runtime:
+The `deleteSchedule` operation removes EventBridge rules at runtime:
 
 ```rescript
 deleteSchedule: ScheduledPublisher_CloudWatchEvents_Runtime.deleteSchedule
@@ -119,7 +126,7 @@ The ScheduledPublisher adapter follows a simplified deploy-time/runtime pattern 
 
 ```rescript
 let make: Reventless.Scheduler_Adapter.scheduledPublisherMaker = (~name, ~opts) => {
-  // Deploy-time: Create IAM role and policy for CloudWatch Events
+  // Deploy-time: Create IAM role and policy for EventBridge
   let role = PulumiAws.IAM.Role.makeWithDefaultPolicy(
     ~name="CloudWatchEventsRole",
     ~servicePrincipal=AWS.CloudwatchEventRule.principal->Pulumi.Output.make,
@@ -146,16 +153,16 @@ let make: Reventless.Scheduler_Adapter.scheduledPublisherMaker = (~name, ~opts) 
 
 **Flow steps:**
 
-1. **Create IAM role** - Pulumi provisions role with CloudWatch Events service principal
+1. **Create IAM role** - Pulumi provisions role with EventBridge service principal
 2. **Attach policies** - Policy document grants `events:*` and `iam:PassRole` permissions
 3. **Bind runtime functions** - `createSchedule` receives role for target configuration
-4. **Lambda execution** - Runtime functions execute in Lambda, using CloudWatch Events SDK
+4. **Lambda execution** - Runtime functions execute in Lambda, using EventBridge SDK
 
 **Differences from other adapters:**
 
 - **No resource metadata extraction** - Unlike DynamoDB/SQS adapters, no `toRuntime*Output` conversion
 - **Role-based binding** - Runtime functions receive the IAM role itself, not metadata
-- **Dynamic resource creation** - CloudWatch Event Rules are created at runtime, not deploy-time
+- **Dynamic resource creation** - EventBridge rules are created at runtime, not deploy-time
 - **Operations wrapped directly** - No `Pulumi.Output.apply` needed for operations binding
 
 ## When to Use ScheduledPublisher

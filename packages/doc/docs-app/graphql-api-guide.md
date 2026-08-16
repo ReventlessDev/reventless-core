@@ -213,10 +213,24 @@ Use this when an external system needs to call you with their vocabulary and you
 
 ### 5.4 Suppressing mutation fields
 
-| Annotation                            | Effect                                                            |
-| ------------------------------------- | ----------------------------------------------------------------- |
-| `@noApi` on the `command` type        | The whole mutation field (or all variants) is omitted.            |
-| `@noApiVariants(["Variant1", ...])`   | Only the listed union variants are omitted; others remain.        |
+| Where you put it | Effect |
+| --- | --- |
+| `@noApi` on the `command` type | The whole mutation field is omitted — no variant is exposed. |
+| `@noApi` on a single command variant | Only that variant is omitted; the others keep their fields. |
+
+The per-variant form goes **before the constructor name**, like the other
+field-level markers:
+
+```rescript
+@schema
+type command =
+  | PlaceOrder({orderId: string, productIds: array<string>})
+  | @noApi ReopenOrder({orderId: string})
+```
+
+Use it for commands only another component may issue — an automation reopening
+an order, an extension syncing a shadow copy — so no client can reach them even
+though they travel the same channel.
 
 ## 6. Queries
 

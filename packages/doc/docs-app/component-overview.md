@@ -286,7 +286,7 @@ follow the link for types, operations, and examples.
 | **StateChangeSlice** | DCB equivalent of an Aggregate: decides against a tag-scoped read of the shared DcbEventLog and appends with optimistic concurrency | [statechangeslice](./components/statechangeslice.md) |
 | **EventLog** | Append-only per-aggregate event storage with replay; publishes to EventTopic | [eventlog](/framework/runtime-components/eventlog) |
 | **DcbEventLog** | Shared, tag-queryable event store for DCB slices, with optimistic concurrency | [dcbeventlog](/framework/runtime-components/dcbeventlog) |
-| **CommandTopic** | FIFO command queue with exactly-once, in-order delivery to handlers | [commandtopic](/framework/runtime-components/commandtopic) |
+| **CommandTopic** | FIFO command queue: in-order delivery per entity, deduplicated publishes, at-least-once processing | [commandtopic](/framework/runtime-components/commandtopic) |
 | **CommandGenerator** | Turns GraphQL mutations into commands published to a CommandTopic | [commandgenerator](/framework/runtime-components/commandgenerator) |
 
 ### Read side

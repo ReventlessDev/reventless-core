@@ -1,8 +1,18 @@
 ---
-title: "EventCollector → SQS FIFO + DynamoDB"
+title: "EventCollector → SQS"
 date: 2026-01-15
 draft: false
 ---
+
+
+:::info Which delivery path a platform actually uses
+The AWS platform wires **DynamoDB Streams** on the event log as the default
+event-delivery path, with an SQS-backed collector channel. The SNS publisher
+variants described below exist and are selectable, but they are not what a
+default `ReventlessAws.Platform.Make()` provisions. Read this page as the SNS
+option's reference, and [Lambda deployment](/infrastructure/lambda-deployment)
+for the default path.
+:::
 
 ## EventCollector → SQS FIFO
 

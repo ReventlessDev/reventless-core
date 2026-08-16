@@ -414,7 +414,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 
   // ... aggregates, read models, slices, etc.
 
-  let make = (~uiBundleUrl=?) =>
+  let make = () =>
     Platform.Plugin.make(
       ~name="Ordering",
       ~extensions=[module(Customer_Extension)],

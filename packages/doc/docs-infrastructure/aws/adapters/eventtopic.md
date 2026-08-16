@@ -1,8 +1,18 @@
 ---
-title: "EventTopic → SNS + SQS FIFO"
+title: "EventTopic → SNS (optional publisher)"
 date: 2026-01-15
 draft: false
 ---
+
+
+:::info Which delivery path a platform actually uses
+The AWS platform wires **DynamoDB Streams** on the event log as the default
+event-delivery path, with an SQS-backed collector channel. The SNS publisher
+variants described below exist and are selectable, but they are not what a
+default `ReventlessAws.Platform.Make()` provisions. Read this page as the SNS
+option's reference, and [Lambda deployment](/infrastructure/lambda-deployment)
+for the default path.
+:::
 
 ## EventTopic → SNS
 
@@ -36,7 +46,7 @@ let topic = SNS.Topic.make(
 
 ## FIFO SNS Topic
 
-FIFO SNS topics provide strict ordering with exactly-once delivery:
+FIFO SNS topics provide strict ordering and exactly-once publish deduplication:
 
 ```rescript
 let topic = SNS.Topic.make(
@@ -97,7 +107,7 @@ let publishFifo = (topic, id, _meta, json) =>
 - **Message group ID** - Uses the aggregate ID as the message group for ordering
 - **Ordered delivery** - Events within the same message group are delivered in strict order
 - **Deduplication** - Content-based deduplication prevents duplicate events
-- **FIFO guarantee** - Maintains ordering and exactly-once semantics end-to-end
+- **FIFO guarantee** — maintains ordering end to end and deduplicates publishes; consumers still process at least once
 
 ## Deploy-time to Runtime Flow
 
