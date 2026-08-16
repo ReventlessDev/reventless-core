@@ -1,8 +1,16 @@
 # Plan: declare the lifecycle edge once — `@transition` and the check the PPX cannot make
 
-**Status.** PLAN 2026-08-16. Not started. Four phases, of which the first two
-want to land in one release because the first is breaking and the second is the
-reason the first is worth doing.
+**Status.** BUILT 2026-08-16, with two qualifications. Phases 1–3 shipped and
+released; Phase 4 shipped one of its three rules and withdrew the other two on
+contact with the examples — see §5, which records why each was wrong. Phase 3's
+sweep is complete except for the four Product edit commands, which turned out to
+need a domain change rather than an annotation: their folds consume no
+shelf-status event, so declaring a from-set on them would be a claim `decide`
+contradicts. See §4.
+
+The two withdrawn rules left behind vocabulary gaps that are not this plan's to
+close — no way to declare a state an intentional ending, and a consumed-event
+walk that drops payload-less variants. Both are filed as backlog decisions.
 
 **Goal.** Replace the `@allowedStates` / `@targetState` pair with a single
 `@transition` annotation that says the whole edge, and then *check* it — at
@@ -318,6 +326,62 @@ findings list at the same severity, in which case promoting `checkRetiredValue`
 is in scope for this phase and should be stated as such rather than discovered
 later.
 
+**Answered 2026-08-16, and the question was posed too coarsely.** It reads as
+"one annotation is checked strictly and another leniently". Reading the PPX says
+otherwise: a misspelled state in `@retired`'s field form is **already fatal**,
+at compile time, whenever the enum is declared in the same file. The error is
+explicit about its own limit — *"the name here is only checked when the enum is
+declared in the same file"* — and it says exactly why the bug matters: a state
+name that matches nothing *"compares every row against a state no row is ever in,
+so every row stays visible to every caller while the annotation sits on the
+schema looking like enforcement."*
+
+So `checkRetiredValue`'s warning is not the general case. It is the **residue**:
+field form, enum imported from another file, the one population a per-file PPX
+cannot reach. The two checks were never two severities for one question — they
+are an escalation ladder whose second rung was never raised to match the first.
+
+That reframes the defect. As it stands, **the severity of a misspelled retired
+state depends on where the enum happens to be declared**: same file → the build
+fails; imported → a log line, and rows leak. File layout is not a property
+anyone would choose as the thing that decides whether a data-exposure bug stops
+a build, and `Plugin_Structure` is the only place that can close the gap,
+because it holds the resolved schema the PPX never sees.
+
+**Decision: promote the undeclared-state rule to a raise; leave the wrong-field
+rule a warning.** `checkRetiredValue` carries two rules and only one is the same
+question this phase's check asks:
+
+| Rule | Fault | Disposition |
+|---|---|---|
+| `@retired(X)` names a state the field's enum does not declare | unambiguously wrong — no domain means it | **raise** |
+| `@retired` sits on a field that is not the record's lifecycle | a modelling smell: retirement works, command filtering is lost | keep warning |
+
+The second is a judgement call, and judgement calls are what §5's dead-end rule
+taught us not to hard-fail on. The first needs no resolution step at all — it
+compares against an enum on the same record, already in hand — so unlike
+`checkDeclaredTransitions` it has no unresolvable population and a false positive
+is close to impossible.
+
+**Two conditions on doing it, neither optional.**
+
+*It is retroactive, which the transition check was not.* `@transition` was new
+when its check landed, so nothing deployed could carry a stale name. `@retired`
+has been shipping. A deployed plugin holding a misspelled retired value gets a
+red build on its **next** deploy — correct, but it means the fix is gated behind
+the breakage. Sweep the examples first; they are clean today.
+
+*The rule currently skips in silence.* It is guarded by `values: Some(values)`
+and `if Array.length(declared) > 0`, so a record whose lifecycle shape yields no
+cases is passed over without a word. A fatal check that is invisible when it does
+not run is the failure mode §3 already spends a warn counter to avoid — so
+promoting the rule means also reporting its skips, the way `unvalidated` is
+reported here.
+
+**Not scheduled in this plan.** The decision is made; the change belongs to
+whoever next opens `checkRetiredValue`, and the two conditions above travel with
+it.
+
 **Exit — met.** Implemented as `checkDeclaredTransitions` in `Plugin_Structure`,
 a second pass over the assembled writable defs, with `lifecycleStatesFromStateSchema`
 collecting each view's states as the view defs are built.
@@ -372,6 +436,33 @@ The sweep does four things:
 3. **Annotate the guard-only edit commands** with the one-sided form —
    `UpdateEmail`, `ChangeProductPrice`, `RenameCategory` and their siblings,
    none of which carries any annotation today.
+
+   **Outcome: the Product edit commands did not convert like the rest, and the
+   difference is the most instructive thing in this wave.** `UpdateEmail`,
+   `UpdateAddress`, `RenameCategory` and `ChangeCategoryImage` already refused on
+   a withdrawn row — `RenameCategory_Behavior` folds `CategoryArchived` and
+   answers `CategoryAlreadyArchived` — so the annotation only wrote down a guard
+   the code already enforced.
+
+   The four `ChangeProductX` commands had no such guard. Their folds consumed no
+   shelf event and their only error was `ProductNotFound`, so `decide` accepted
+   an edit on an archived *and* on a discontinued product, and the Product and
+   Category halves of one example taught opposite rules with nothing saying why.
+   A one-sided `[Products.Listed]` would have been a *claim the code
+   contradicts* — the command would vanish from an archived row's menu while the
+   slice went on accepting it, which is the failure mode §6's R2 describes.
+
+   Closed as a domain change rather than an annotation: each of the four now
+   consumes `ProductArchived` / `ProductUnarchived` / `ProductDiscontinued`,
+   folds a `shelf` variant rather than a second boolean (the reason is in
+   `ArchiveProduct_Behavior` — two flags can spell "archived and discontinued at
+   once"), refuses with the already-defined `ProductIsDiscontinued`, and declares
+   `@transition([Products.Listed, Products.Archived])`. Two from-states because
+   a product pulled for a season is coming back and its copy should be right when
+   it does, while `Discontinued` is terminal. Two GWTs per slice pin both halves.
+
+   The general point for anyone converting a command later: a from-set is a claim
+   about `decide`, so it is read off `decide` or it is not read at all.
 4. **Fix the `OrderReopened` drift.** `ShipOrder_Behavior` gains the
    `OrderReopened` arm that clears its cancelled flag, and the `Orders` view
    projects a reopen back out of `Cancelled`. Today an order can be reopened and

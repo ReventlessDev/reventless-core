@@ -1,8 +1,11 @@
 # Plan: `@retired` marks the state, not the field that holds it
 
-**Status.** PLAN 2026-08-16. Two changes to one annotation, which want to land
-together because the second is only sound once the first has removed the
-stringly-typed reference the current form depends on.
+**Status.** BUILT 2026-08-16 — both changes are in the tree and released, and the
+examples use the constructor form (`Products` declares `Listed | @retired
+Archived | @retired Discontinued`). It stays in the active directory rather than
+moving to `done/` for one reason: the last acceptance bullets need a **seeded
+store checked in a browser**, and that run has not happened. It is the same
+session the ui side is waiting on.
 
 **Goal.**
 
