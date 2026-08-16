@@ -14,8 +14,15 @@ type consumedEvent =
   // keeps refusing on a flag that is no longer true.
   | CategoryUnarchived
 
+// A from-set and no target: renaming a category is legal only while it is on
+// the shelf, and it does not move it anywhere. `decide` already refuses with
+// `CategoryAlreadyArchived`; the declaration is what keeps the command off an
+// archived row's menu instead of offering it and then refusing.
 @schema
-type command = @authorize(AllowGroups(["Admin", "Merchandiser"])) RenameCategory({categoryId: string, name: string})
+type command =
+  | @authorize(AllowGroups(["Admin", "Merchandiser"]))
+  @transition([Categories.Listed])
+  RenameCategory({categoryId: string, name: string})
 
 @schema
 type error =

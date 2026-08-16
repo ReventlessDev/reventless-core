@@ -6,9 +6,9 @@
 @schema
 type command =
   | Place({customerId: string, @ref("AvailableProducts") @noDcbTag productIds: array<string>})
-  | @allowedStates([Orders.Placed]) Ship
-  | @allowedStates([Orders.Placed]) Cancel
-  | @allowedStates([Orders.Cancelled]) Refund({reason: string})
+  | @transition(([Orders.Placed]) => Orders.Shipped) Ship
+  | @transition(([Orders.Placed]) => Orders.Cancelled) Cancel
+  | @transition(([Orders.Cancelled]) => Orders.Refunded) Refund({reason: string})
 
 @schema
 type event =

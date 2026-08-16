@@ -15,7 +15,11 @@ type consumedEvent =
 
 @schema
 type command =
-  | @authorize(AllowGroups(["Admin", "Merchandiser"])) ChangeCategoryImage({
+  // Guard-only, for the same reason as `RenameCategory`: legal on a listed
+  // category, refused on an archived one, and it moves nothing.
+  | @authorize(AllowGroups(["Admin", "Merchandiser"]))
+  @transition([Categories.Listed])
+  ChangeCategoryImage({
       categoryId: string,
       @storageRef("categoryImages") imageUrl: string,
     })

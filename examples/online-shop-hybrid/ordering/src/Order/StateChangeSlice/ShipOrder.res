@@ -5,8 +5,9 @@
 // lands in `consumedEventTypes`, overlapping the Orders view's consumed events.
 // That is what links this slice to Orders (`consistencyRead=Orders`) so AutoUI's
 // board offers it — shipping is a manual operator action on the Orders board, not
-// automation-only. `@targetState("Shipped")` declares the transition outright, so
-// the board resolves the drop via its DeclaredTarget tier rather than guessing.
+// automation-only. `@transition` declares the whole edge outright — the states
+// the command is legal in and the one it lands in — so the board resolves the
+// drop from the declaration rather than guessing it from the command's name.
 
 @@reventless.spec
 
@@ -15,11 +16,14 @@ type consumedEvent =
   | OrderPlaced({productIds: array<string>})
   | OrderShipped
   | OrderCancelled
+  // The slice refuses on a cancellation, so it has to hear when one is undone.
+  // Consuming `OrderCancelled` without its counterpart is how a slice comes to
+  // decide on a fact that stopped being true.
+  | OrderReopened
 
 @schema
 type command =
-  | @allowedStates([Orders.Placed])
-  @targetState(Orders.Shipped)
+  | @transition(([Orders.Placed]) => Orders.Shipped)
   @authorize(AllowGroups(["Admin", "Fulfilment"])) ShipOrder({orderId: string})
 
 @schema

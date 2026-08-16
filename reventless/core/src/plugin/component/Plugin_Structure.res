@@ -114,7 +114,7 @@ let retiredValuesFromStateSchema = (stateSchema: S.t<unknown>): option<array<str
 //
 // Two rules, and the second is the one the form exists for. A `value` on a field
 // that is not the record's lifecycle would keep the read narrowing while silently
-// losing the command filtering that motivates it — `@allowedStates` is written in
+// losing the command filtering that motivates it — `@transition` is written in
 // terms of the lifecycle field, so a retirement state anywhere else is a state no
 // command can name.
 let checkRetiredValue = (~entityName: string, stateSchema: S.t<unknown>): unit =>
@@ -129,7 +129,7 @@ let checkRetiredValue = (~entityName: string, stateSchema: S.t<unknown>): unit =
           ->Option.map(f => ` (that is "${f}")`)
           ->Option.getOr(
             " (it declares none)",
-          )}. A retirement state no command's @allowedStates can name loses the command filtering the state form exists for.`,
+          )}. A retirement state no command's @transition can name loses the command filtering the state form exists for.`,
       )
     }
     let declared = switch stateSchema {
@@ -454,9 +454,9 @@ let make = (
       // Per-variant `allowedStates` lives on the *parent* command schema
       // (the PPX attaches a single dict<variantName, [|states|]> via
       // markAllowedStates). Look it up by variant name; back-compat
-      // None when the variant lacks an @allowedStates annotation.
+      // None when the variant lacks a @transition annotation.
       let allowedStates = ApiAllowedStatesHelpers.getAllowedStates(parentSchema, ~variantName)
-      // Declared `@targetState` (the command's *to* status), read the same way
+      // The `@transition` target (the command's *to* status), read the same way
       // as allowedStates. None ⇒ AutoUI's board resolver falls back to its
       // name-stem heuristic.
       let targetState = ApiTargetStateHelpers.getTargetState(parentSchema, ~variantName)

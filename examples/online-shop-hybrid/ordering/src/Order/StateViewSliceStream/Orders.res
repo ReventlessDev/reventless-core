@@ -20,6 +20,11 @@ type consumedEvent =
     })
   | OrderShipped({orderId: string})
   | OrderCancelled({orderId: string})
+  // Consumed for the same reason the write side consumes it: a view that folds
+  // a cancellation and ignores the reopen renders the row `Cancelled` for the
+  // rest of its life, and no amount of correct decision-making upstream shows
+  // through. `ReopenOrder` being internal-only does not make the edge less real.
+  | OrderReopened({orderId: string})
 
 @schema
 type lifecycle =

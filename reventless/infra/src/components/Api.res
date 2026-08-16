@@ -26,14 +26,14 @@ let markNoApiVariants = (schema: S.t<'a>, variants: array<string>): S.t<'a> =>
   schema->S.Metadata.set(~id=noApiVariantsId, Set.fromArray(variants))
 
 /** PPX helper: attaches per-variant allowedStates to a command schema. Called by generated code
-    emitted from the @allowedStates([…]) attribute. Each entry is (variantName, allowedStateNames). */
+    emitted from the from-set of an @transition attribute. Each entry is (variantName, allowedStateNames). */
 let markAllowedStates = (
   schema: S.t<'a>,
   entries: array<(string, array<string>)>,
 ): S.t<'a> => schema->S.Metadata.set(~id=allowedStatesId, Dict.fromArray(entries))
 
 /** PPX helper: attaches per-variant targetState to a command schema. Called by generated code
-    emitted from the @targetState("…") attribute. Each entry is (variantName, targetStateName). */
+    emitted from the target of an @transition attribute. Each entry is (variantName, targetStateName). */
 let markTargetState = (
   schema: S.t<'a>,
   entries: array<(string, string)>,

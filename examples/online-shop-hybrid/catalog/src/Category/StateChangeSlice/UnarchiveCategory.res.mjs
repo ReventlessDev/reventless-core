@@ -27,6 +27,11 @@ let commandSchema$1 = Api$ReventlessInfra.markAllowedStates(commandSchema, [[
     ["Archived"]
   ]]);
 
+let commandSchema$2 = Api$ReventlessInfra.markTargetState(commandSchema$1, [[
+    "UnarchiveCategory",
+    "Listed"
+  ]]);
+
 function commandAuthorization(command) {
   return {
     TAG: "AllowGroups",
@@ -51,7 +56,7 @@ export {
   consumedEventSchema,
   errorSchema,
   eventSchema,
-  commandSchema$1 as commandSchema,
+  commandSchema$2 as commandSchema,
   moduleUrl,
   commandAuthorization,
   readConsistency,

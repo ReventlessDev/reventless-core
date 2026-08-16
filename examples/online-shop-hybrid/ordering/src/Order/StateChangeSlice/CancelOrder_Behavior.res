@@ -1,35 +1,35 @@
 @@reventless.behavior
 
-type state = {exists: bool, shipped: bool, cancelled: bool, productIds: array<string>}
+// Where the order is, as one value rather than a pair of flags that could
+// represent `shipped && cancelled`. `productIds` rides alongside because the
+// cancellation event carries them back out for restocking.
+type lifecycle =
+  | NotPlaced
+  | Placed
+  | Shipped
+  | Cancelled
 
-let initialState = {exists: false, shipped: false, cancelled: false, productIds: []}
+type state = {lifecycle: lifecycle, productIds: array<string>}
+
+let initialState = {lifecycle: NotPlaced, productIds: []}
 
 let evolve = (state, event) =>
   switch event {
-  | OrderPlaced({productIds}) => {exists: true, shipped: false, cancelled: false, productIds}
-  | OrderShipped => {...state, shipped: true}
-  | OrderCancelled => {...state, cancelled: true}
-  | OrderReopened => {...state, cancelled: false}
+  | OrderPlaced({productIds}) => {lifecycle: Placed, productIds}
+  | OrderShipped => {...state, lifecycle: Shipped}
+  | OrderCancelled => {...state, lifecycle: Cancelled}
+  | OrderReopened => {...state, lifecycle: Placed}
   }
 
 let decide = (state, command) =>
-  switch command {
-  | CancelOrder({orderId: theId}) =>
-    if !state.exists {
-      Error(OrderNotFound)
-    } else if state.shipped {
-      Error(OrderAlreadyShipped)
-    } else if state.cancelled {
-      Ok([]) // idempotent — already cancelled
-    } else {
-      Ok([OrderCancelled({orderId: theId, productIds: state.productIds})])
-    }
-  | ReopenOrder({orderId: theId}) =>
-    if !state.exists {
-      Error(OrderNotFound)
-    } else if !state.cancelled {
-      Ok([]) // idempotent — not cancelled
-    } else {
-      Ok([OrderReopened({orderId: theId})])
-    }
+  switch (state.lifecycle, command) {
+  | (NotPlaced, CancelOrder(_)) => Error(OrderNotFound)
+  | (Shipped, CancelOrder(_)) => Error(OrderAlreadyShipped)
+  | (Cancelled, CancelOrder(_)) => Ok([]) // idempotent — already cancelled
+  | (Placed, CancelOrder({orderId: theId})) =>
+    Ok([OrderCancelled({orderId: theId, productIds: state.productIds})])
+
+  | (NotPlaced, ReopenOrder(_)) => Error(OrderNotFound)
+  | (Placed | Shipped, ReopenOrder(_)) => Ok([]) // idempotent — not cancelled
+  | (Cancelled, ReopenOrder({orderId: theId})) => Ok([OrderReopened({orderId: theId})])
   }

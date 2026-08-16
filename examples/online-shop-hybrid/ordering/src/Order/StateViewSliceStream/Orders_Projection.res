@@ -21,4 +21,7 @@ let project = ({event, meta}) =>
       Update(orderId, state => {...state, lifecycle: Shipped, shippedAt: meta.time}),
     ]
   | OrderCancelled({orderId}) => [Update(orderId, state => {...state, lifecycle: Cancelled})]
+  // Back to `Placed`, which is where a reopened order is: shippable again, and
+  // not carrying a `shippedAt` it never earned.
+  | OrderReopened({orderId}) => [Update(orderId, state => {...state, lifecycle: Placed})]
   }

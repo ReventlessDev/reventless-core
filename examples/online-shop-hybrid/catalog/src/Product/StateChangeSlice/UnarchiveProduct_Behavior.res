@@ -22,7 +22,7 @@ let decide = (state, command) =>
     } else {
       switch state.shelf {
       // The assertion that makes `Discontinued` terminal in the aggregate and not
-      // only in the diagram. `@allowedStates` already keeps this off the menu for
+      // only in the diagram. `@transition`'s from-set already keeps this off the menu for
       // a discontinued product; refusing here is what holds when a caller posts
       // the command anyway.
       | Discontinued => Error(ProductIsDiscontinued)

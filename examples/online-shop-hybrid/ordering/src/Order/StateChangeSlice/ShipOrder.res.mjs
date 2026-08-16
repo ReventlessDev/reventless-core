@@ -10,7 +10,8 @@ let consumedEventSchema = S.union([
     productIds: s.m(S.array(DcbTag$Reventless.stringForKey("productId")))
   })),
   S.literal("OrderShipped"),
-  S.literal("OrderCancelled")
+  S.literal("OrderCancelled"),
+  S.literal("OrderReopened")
 ]);
 
 let commandSchema = S.schema(s => ({

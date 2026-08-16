@@ -2,7 +2,7 @@
 
 // The modelling claim that makes the two retired states worth having, asserted
 // rather than left to a comment: one withdrawal can be undone and the other
-// cannot. `@allowedStates` is the framework half and is covered elsewhere; this
+// cannot. `@transition` is the framework half and is covered elsewhere; this
 // pins the domain half, so a later edit cannot quietly make `Discontinued`
 // reversible.
 describe("UnarchiveProduct StateChangeSlice", () => {

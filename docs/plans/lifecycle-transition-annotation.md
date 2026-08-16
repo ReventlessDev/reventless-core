@@ -118,7 +118,7 @@ persisted machine snapshot.
 Two forms, one attribute:
 
 ```rescript
-| @transition([Orders.Placed] => Orders.Shipped)   // moves the row
+| @transition(([Orders.Placed]) => Orders.Shipped)   // moves the row
   ShipOrder({orderId: string})
 
 | @transition([Customers.Active])                   // guards, does not move
@@ -153,19 +153,42 @@ structure; it emits both `markAllowedStates` and `markTargetState` rebindings
 from a single pass, chained in that order so the existing lowering is unchanged
 downstream.
 
-**The parse is new code, not a copy.** This is the one genuinely fiddly part.
+**The parse is new code, not a copy — and the AST is not what it looks like.**
 `AllowedStatesAnnotation.parse_payload` walks an *expression* — `Pexp_array` of
-`Pexp_construct`, with an OCaml-list fallback. But ReScript parses `=>` as
-`Pexp_fun`, so in `@transition([A, B] => C)` the left operand arrives as a
-**pattern** (`Ppat_array` of `Ppat_construct`), not an expression, and the right
-as the function body. Two extractors are therefore needed:
+`Pexp_construct`, with an OCaml-list fallback. The arrow form needs a different
+walk, and three facts about it were established by building it rather than by
+reading the parser. All three are silent failures if guessed wrong.
 
-| Form | Payload AST | Extractor |
+**(a) The from-set must be parenthesised.** ReScript's parser rejects a bare
+`@transition([A] => B)` outright — "I'm not sure what to parse here when looking
+at `=>`". An array is not accepted as a bare arrow parameter. The surface is
+therefore:
+
+| Form | Surface |
+|---|---|
+| moves the row | `@transition(([Orders.Placed]) => Orders.Shipped)` |
+| guards only | `@transition([Customers.Active])` |
+
+Slightly noisier than the one-sided form, and worth it: the extra parens are the
+price of the arrow reading as an arrow.
+
+**(b) The arrow does not arrive as `Pexp_fun`.** ReScript wraps it in its
+uncurried marker first, so the payload is
+`Pexp_construct (Function$, Some (Pexp_fun …))` carrying `[@res.arity 1]`. The
+marker must be unwrapped before matching the function — and unwrapped **by
+name**, because the OCaml list form is also a `Pexp_construct` (`::`) and a
+generic constructor unwrap eats it.
+
+**(c) The target is not a one-element list.** Running it through the from-set's
+list walk reports a "must be bracketed" error on a target that must *not* be
+bracketed. It needs its own single-state extractor.
+
+| Form | Payload AST after unwrapping | Extractor |
 |---|---|---|
-| `@transition([A, B] => C)` | `Pexp_fun (_, _, Ppat_array [Ppat_construct …], Pexp_construct …)` | new pattern walk + existing expression walk for the target |
-| `@transition([A, B])` | `Pexp_array [Pexp_construct …]` | the existing expression walk, unchanged |
+| arrow | `Pexp_fun (_, _, Ppat_array [Ppat_construct …], Pexp_construct …)` | new pattern walk for the from-set, single-state walk for the target |
+| one-sided | `Pexp_array [Pexp_construct …]` | the existing expression walk, unchanged |
 
-Pin both shapes in tests before writing the lowering — a mis-read of the arrow
+Pin all three in tests before writing the lowering — a mis-read of the arrow
 form fails by producing an empty from-set, which is silent.
 
 **The old attributes are removed, and their removal is loud.** `@allowedStates`
@@ -343,6 +366,70 @@ follow-up.**
 
 **Exit.** Every state-guarded command in all three examples carries a complete
 declaration; §3 green with zero errors and a known warn count; GWTs green.
+
+### What the sweep found that the plan did not predict
+
+**Four Product edit commands do not guard, and must not be annotated as if they
+did.** The plan named `ChangeProductPrice` as a guard-only command to annotate
+`[Products.Listed]`. Reading its `decide` says otherwise: it checks only
+`exists`, never the shelf status, and its slice does not consume the archive
+events at all — so it accepts an edit on an archived *or* discontinued product.
+`ChangeProductName`, `ChangeProductDescription` and `ChangeProductImage` are the
+same. Annotating them `[Listed]` would declare a guard the write side does not
+enforce, hiding a command from a menu where it in fact works — the stale-metadata
+failure this workstream exists to end, freshly introduced by the sweep meant to
+end it. **They are therefore left unannotated**, and the rule that produced that
+answer is the rule to keep: the annotation describes what `decide` does, and
+where `decide` guards nothing there is nothing to declare.
+
+The Category equivalents (`RenameCategory`, `ChangeCategoryImage`) *do* refuse
+with `CategoryAlreadyArchived`, consume both archive events, and are annotated
+`[Categories.Listed]`. So the two halves of the same example teach opposite
+things about editing a withdrawn row. That asymmetry is a **domain defect worth
+its own decision** — either products should refuse edits when archived, as
+categories do, or categories should stop refusing. It is deliberately *not*
+fixed here: unlike the `OrderReopened` drift, no declaration is wrong and
+nothing is internally inconsistent, so changing four behaviours would be a
+domain change smuggled into an annotation sweep.
+
+**The Customer aggregate splits cleanly**, and is the best illustration of the
+one-sided form in the examples: `UpdateEmail`, `UpdateAddress` and
+`SetAddressLocation` all return `Error(CustomerAlreadyDeactivated)` on a
+deactivated customer, so each carries `@transition([Customers.Active])`. Its two
+`@noApi` geocoding commands return `Ok([])` in *both* states — deliberately, so a
+late-arriving geocode does not park a TODO row in Failed — which makes them legal
+everywhere, and a from-set naming every state says nothing. They stay
+unannotated.
+
+### The pre-fix folds, preserved
+
+§4 replaces `ShipOrder_Behavior`'s fold, and the replacement is what makes the
+reopen work. The pre-fix version is recorded here because a bug-detector built
+later cannot be demonstrated against a bug that no longer exists:
+
+```rescript
+type state = {exists: bool, shipped: bool, cancelled: bool}
+
+let initialState = {exists: false, shipped: false, cancelled: false}
+
+let evolve = (state, event) =>
+  switch event {
+  | OrderPlaced(_) => {exists: true, shipped: false, cancelled: false}
+  | OrderShipped => {...state, shipped: true}
+  | OrderCancelled => {...state, cancelled: true}
+  // and no OrderReopened arm — the slice did not consume the event at all
+  }
+```
+
+Paired with the `Orders` view, which consumed `OrderPlaced | OrderShipped |
+OrderCancelled` and nothing else, the effect was: an order could be reopened,
+never shipped again, and rendered `Cancelled` for the rest of its life. Nothing
+declared was wrong; the folds simply disagreed with each other.
+
+**Verified as a detector, not asserted.** §4 adds a GWT — "reopened order can
+ship again" — which passes against the fixed fold and **fails** against the fold
+above (checked by restoring the old semantics and running it). That is the
+property a generated-conformance effort needs from this fixture.
 
 ---
 

@@ -34,6 +34,11 @@ let commandSchema$1 = Api$ReventlessInfra.markAllowedStates(commandSchema, [[
     ["Placed"]
   ]]);
 
+let commandSchema$2 = Api$ReventlessInfra.markTargetState(commandSchema$1, [[
+    "CancelOrder",
+    "Cancelled"
+  ]]);
+
 function commandAuthorization(param) {
   return "AllowAuthenticated";
 }
@@ -52,7 +57,7 @@ export {
   consumedEventSchema,
   errorSchema,
   eventSchema,
-  commandSchema$1 as commandSchema,
+  commandSchema$2 as commandSchema,
   moduleUrl,
   commandAuthorization,
   readConsistency,

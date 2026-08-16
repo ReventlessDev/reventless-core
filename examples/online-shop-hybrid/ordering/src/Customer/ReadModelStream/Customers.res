@@ -34,7 +34,7 @@ type locationStatus =
 
 // Where a customer is in their life with the shop. `Deactivated` is a state
 // rather than a flag beside one, which is what lets a command say where it
-// belongs: `@allowedStates([Deactivated])` on `Reactivate` is the whole of
+// belongs: `@transition(([Deactivated]) => Active)` on `Reactivate` is the whole of
 // "offer the way back on a deactivated customer and nowhere else".
 //
 // The alternative — an `accountStatus` enum AND a `deactivated: bool` — is the
@@ -64,7 +64,7 @@ type state = {
   // otherwise; hidden from list views because it is only meaningful on a row a
   // human is already looking into.
   @hidden locationNote: option<string>,
-  // `@lifecycle` makes this the field a command's `@allowedStates` is written in
+  // `@lifecycle` makes this the field a command's `@transition` is written in
   // terms of; the retirement is on `accountStatus`'s own constructor, so ordinary
   // reads exclude a deactivated customer with no second annotation here.
   //

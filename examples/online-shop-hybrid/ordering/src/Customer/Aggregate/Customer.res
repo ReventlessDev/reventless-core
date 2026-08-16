@@ -25,31 +25,46 @@
 // wins. That is the whole reason `resolvedFrom` exists.
 @schema
 type command =
+  // No `@transition`: registration creates the row, so there is no state to
+  // come *from*. A creating command declares nothing rather than declaring an
+  // empty from-set.
   | Register({email: string, address: string})
-  | UpdateEmail({email: string})
+  // The three editing commands below carry a from-set and no target, which is
+  // the whole of "legal on an active customer, and it does not move them". Each
+  // one is `Error(CustomerAlreadyDeactivated)` on a deactivated customer, so the
+  // declaration says exactly what `decide` already enforces — it only stops a
+  // menu offering what the write side would refuse.
+  | @transition([Customers.Active]) UpdateEmail({email: string})
   // Change the address and let the geocoder find the point.
-  | UpdateAddress({address: string})
+  | @transition([Customers.Active]) UpdateAddress({address: string})
   // Change the address *and* say where it is — a client that already has a point
   // (it geocoded, or a human dragged the pin). Suppresses the geocoder for this
   // address, because there is nothing left to look up.
-  | SetAddressLocation({address: string, location: Reventless.GeoPoint.t})
+  | @transition([Customers.Active])
+  SetAddressLocation({address: string, location: Reventless.GeoPoint.t})
   // `resolvedFrom` is a staleness token as much as provenance: an answer for an
   // address that has since changed is dropped rather than applied.
+  //
+  // These two are deliberately NOT guarded. On a deactivated customer they
+  // return `Ok([])` rather than refusing, so an in-flight geocode landing after
+  // deactivation does not park a TODO row in Failed forever — which makes them
+  // legal in every state, and a from-set naming every state says nothing.
   | @noApi SetLocation({location: Reventless.GeoPoint.t, resolvedFrom: string})
   | @noApi MarkAddressUnresolvable({address: string, reason: string})
-  | @allowedStates([Customers.Active]) Deactivate
+  | @transition(([Customers.Active]) => Customers.Deactivated) Deactivate
   // The way back. Deactivation withdraws a customer from ordinary use; it does
   // not erase them, so restoring one needs no payload — the profile is still in
   // the state, and asking a caller to re-supply an email they never changed
   // would be a second chance to get it wrong.
   //
-  // `@allowedStates([Deactivated])` is the whole of "offer this on a deactivated
-  // customer and nowhere else". It works because the view's retirement IS a state
-  // of its lifecycle rather than a boolean beside one, so the states a command
-  // names and the states a row can be in are the same vocabulary. The refusal
-  // still lives in `decide`; this only stops a menu offering what the write side
-  // would reject.
-  | @allowedStates([Customers.Deactivated]) Reactivate
+  // `@transition(([Deactivated]) => Active)` is the whole of "offer this on a
+  // deactivated customer and nowhere else, and it puts them back". It works
+  // because the view's retirement IS a state of its lifecycle rather than a
+  // boolean beside one, so the states a command names and the states a row can
+  // be in are the same vocabulary. The refusal still lives in `decide`; this
+  // only stops a menu offering what the write side would reject, and tells a
+  // board which command answers the move.
+  | @transition(([Customers.Deactivated]) => Customers.Active) Reactivate
 
 @schema
 type event =

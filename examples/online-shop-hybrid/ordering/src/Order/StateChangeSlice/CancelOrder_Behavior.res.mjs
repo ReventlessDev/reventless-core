@@ -4,60 +4,46 @@
 let initialState_productIds = [];
 
 let initialState = {
-  exists: false,
-  shipped: false,
-  cancelled: false,
+  lifecycle: "NotPlaced",
   productIds: initialState_productIds
 };
 
 function evolve(state, event) {
   if (typeof event === "object") {
     return {
-      exists: true,
-      shipped: false,
-      cancelled: false,
+      lifecycle: "Placed",
       productIds: event.productIds
     };
   }
   switch (event) {
     case "OrderShipped" :
       return {
-        exists: state.exists,
-        shipped: true,
-        cancelled: state.cancelled,
+        lifecycle: "Shipped",
         productIds: state.productIds
       };
     case "OrderCancelled" :
       return {
-        exists: state.exists,
-        shipped: state.shipped,
-        cancelled: true,
+        lifecycle: "Cancelled",
         productIds: state.productIds
       };
     case "OrderReopened" :
       return {
-        exists: state.exists,
-        shipped: state.shipped,
-        cancelled: false,
+        lifecycle: "Placed",
         productIds: state.productIds
       };
   }
 }
 
 function decide(state, command) {
-  if (command.TAG === "CancelOrder") {
-    if (state.exists) {
-      if (state.shipped) {
-        return {
-          TAG: "Error",
-          _0: "OrderAlreadyShipped"
-        };
-      } else if (state.cancelled) {
-        return {
-          TAG: "Ok",
-          _0: []
-        };
-      } else {
+  let match = state.lifecycle;
+  switch (match) {
+    case "NotPlaced" :
+      return {
+        TAG: "Error",
+        _0: "OrderNotFound"
+      };
+    case "Placed" :
+      if (command.TAG === "CancelOrder") {
         return {
           TAG: "Ok",
           _0: [{
@@ -66,33 +52,39 @@ function decide(state, command) {
               productIds: state.productIds
             }]
         };
+      } else {
+        return {
+          TAG: "Ok",
+          _0: []
+        };
       }
-    } else {
-      return {
-        TAG: "Error",
-        _0: "OrderNotFound"
-      };
-    }
-  } else if (state.exists) {
-    if (state.cancelled) {
-      return {
-        TAG: "Ok",
-        _0: [{
-            TAG: "OrderReopened",
-            orderId: command.orderId
-          }]
-      };
-    } else {
-      return {
-        TAG: "Ok",
-        _0: []
-      };
-    }
-  } else {
-    return {
-      TAG: "Error",
-      _0: "OrderNotFound"
-    };
+    case "Shipped" :
+      if (command.TAG === "CancelOrder") {
+        return {
+          TAG: "Error",
+          _0: "OrderAlreadyShipped"
+        };
+      } else {
+        return {
+          TAG: "Ok",
+          _0: []
+        };
+      }
+    case "Cancelled" :
+      if (command.TAG === "CancelOrder") {
+        return {
+          TAG: "Ok",
+          _0: []
+        };
+      } else {
+        return {
+          TAG: "Ok",
+          _0: [{
+              TAG: "OrderReopened",
+              orderId: command.orderId
+            }]
+        };
+      }
   }
 }
 

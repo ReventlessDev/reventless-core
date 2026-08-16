@@ -18,8 +18,23 @@ let evolve = (_state, _event) => true
 // It is also `@noApi` (internal/admin only): a two-variant slice with exactly
 // one API-exposed command, which is the case that used to leak the exposed
 // command's slice mutation field onto the non-exposed variant.
+// The lifecycle this slice's commands move a shipment through. The PPX strips
+// @transition before the typechecker sees it, so this enum is not what makes the
+// reference below valid — the structure-side check against the linked view is.
+// It is here because a state is a constructor, and naming one in a string is a
+// reference nothing can check at any layer.
+type shipmentStatus = Placed | Shipped | Cancelled
+
+// CancelShipment is payload-less — it compiles to a bare string literal, so it
+// exercises toCommandDef's payload-less branch (still surfaced in `commands`).
+// It is also `@noApi` (internal/admin only): a two-variant slice with exactly
+// one API-exposed command, which is the case that used to leak the exposed
+// command's slice mutation field onto the non-exposed variant. It carries no
+// @transition, which is the un-annotated case the resolver still guesses for.
 @schema
-type command = @targetState("Shipped") ShipOrder({orderId: string}) | @noApi CancelShipment
+type command =
+  | @transition(([Placed]) => Shipped) ShipOrder({orderId: string})
+  | @noApi CancelShipment
 
 // Two variants, one payload-less and one carrying a field — the same two branches
 // `events` exercises, so the structure's `errors` list is pinned on both.

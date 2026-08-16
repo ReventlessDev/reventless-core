@@ -28,6 +28,10 @@ let consumedEventSchema = S.union([
   S.schema(s => ({
     TAG: "OrderCancelled",
     orderId: s.m(S.string)
+  })),
+  S.schema(s => ({
+    TAG: "OrderReopened",
+    orderId: s.m(S.string)
   }))
 ]);
 

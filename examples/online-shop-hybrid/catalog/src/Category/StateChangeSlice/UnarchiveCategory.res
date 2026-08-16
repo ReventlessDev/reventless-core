@@ -19,7 +19,7 @@ type consumedEvent =
 @schema
 type command =
   | @authorize(AllowGroups(["Admin", "Merchandiser"]))
-  @allowedStates([Categories.Archived])
+  @transition(([Categories.Archived]) => Categories.Listed)
   UnarchiveCategory({categoryId: string})
 
 @schema

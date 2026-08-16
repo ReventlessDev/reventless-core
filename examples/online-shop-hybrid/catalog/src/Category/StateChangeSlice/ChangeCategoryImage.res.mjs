@@ -2,6 +2,7 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as Api$ReventlessInfra from "@reventlessdev/reventless-infra/src/components/Api.res.mjs";
 import * as StorageRef$Reventless from "@reventlessdev/reventless-spec/src/semantic/StorageRef.res.mjs";
 
 let consumedEventSchema = S.union([
@@ -34,6 +35,11 @@ let eventSchema = S.schema(s => ({
   imageUrl: s.m(StorageRef$Reventless.forStore(undefined, "categoryImages"))
 }));
 
+let commandSchema$1 = Api$ReventlessInfra.markAllowedStates(commandSchema, [[
+    "ChangeCategoryImage",
+    ["Listed"]
+  ]]);
+
 function commandAuthorization(command) {
   return {
     TAG: "AllowGroups",
@@ -56,9 +62,9 @@ export {
   name,
   Id,
   consumedEventSchema,
-  commandSchema,
   errorSchema,
   eventSchema,
+  commandSchema$1 as commandSchema,
   moduleUrl,
   commandAuthorization,
   readConsistency,

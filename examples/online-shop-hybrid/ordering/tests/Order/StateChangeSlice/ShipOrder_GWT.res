@@ -24,4 +24,15 @@ describe("ShipOrder StateChangeSlice", () => {
     ->whenCmd(ShipOrder({orderId: "o1"}))
     ->thenError(OrderAlreadyCancelled)
   )
+
+  // The case the slice used to get wrong. It folded `OrderCancelled` without
+  // ever hearing `OrderReopened`, so a reopened order stayed cancelled here for
+  // good and could never ship again — while `CancelOrder`, which does consume
+  // the reopen, happily kept issuing it. Nothing in the declaration was wrong;
+  // the two folds simply disagreed, and only running them says so.
+  test("reopened order can ship again", () =>
+    givenEvents([OrderPlaced({productIds: ["p1"]}), OrderCancelled, OrderReopened])
+    ->whenCmd(ShipOrder({orderId: "o1"}))
+    ->thenEvent(OrderShipped({orderId: "o1"}))
+  )
 })

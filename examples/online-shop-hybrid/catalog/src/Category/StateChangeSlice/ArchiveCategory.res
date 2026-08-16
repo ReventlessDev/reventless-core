@@ -13,12 +13,13 @@ type consumedEvent =
 
 @schema
 type command =
-  // Meaningful only on a category still on the shelf. `@allowedStates` names a
-  // state of the view's lifecycle, which is the same field `@retired` marks —
-  // one vocabulary, so a menu offers this and `UnarchiveCategory` on opposite
-  // sides of the same fact.
+  // Meaningful only on a category still on the shelf. `@transition` names states
+  // of the view's lifecycle, which is the same field `@retired` marks — one
+  // vocabulary, so a menu offers this and `UnarchiveCategory` on opposite sides
+  // of the same fact, and the edge between them is drawn from the declaration
+  // rather than guessed from the command's name.
   | @authorize(AllowGroups(["Admin", "Merchandiser"]))
-  @allowedStates([Categories.Listed])
+  @transition(([Categories.Listed]) => Categories.Archived)
   ArchiveCategory({categoryId: string})
 
 @schema

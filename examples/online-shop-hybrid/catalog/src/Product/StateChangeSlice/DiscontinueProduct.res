@@ -20,7 +20,7 @@ type command =
   // Both live states, because the decision is about the product's future rather
   // than about where it sits today.
   | @authorize(AllowGroups(["Admin", "Merchandiser"]))
-  @allowedStates([Products.Listed, Products.Archived])
+  @transition(([Products.Listed, Products.Archived]) => Products.Discontinued)
   DiscontinueProduct({productId: string})
 
 @schema

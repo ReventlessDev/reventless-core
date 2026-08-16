@@ -19,13 +19,13 @@ type consumedEvent =
 // disagree about is whether it can come back.
 //
 // `Archived` is reversible — a product pulled from the catalog for a season, or
-// while its supplier is sorted out. `@allowedStates([Archived])` on
+// while its supplier is sorted out. `@transition(([Archived]) => Listed)` on
 // `UnarchiveProduct` offers the way back exactly where it exists.
 //
 // `Discontinued` is not. No command names it as a from-state, so the generated
 // lifecycle diagram draws it terminal and no surface offers a way out. A boolean
 // could express the exclusion and nothing else; the second state is what carries
-// "can this come back", and `@allowedStates` reads it for free.
+// "can this come back", and a command's `@transition` reads it for free.
 @schema
 type shelfStatus =
   | Listed
@@ -43,7 +43,7 @@ type state = {
   // `categoryIdEq` filter on the connection, rather than a client narrowing one
   // loaded page.
   @index categoryId: string,
-  // `@lifecycle` makes this the field commands' `@allowedStates` are written in
+  // `@lifecycle` makes this the field commands' `@transition`s are written in
   // terms of; the retirements are on the constructors above.
   @lifecycle shelfStatus: shelfStatus,
 }

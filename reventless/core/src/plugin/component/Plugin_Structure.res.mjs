@@ -114,7 +114,7 @@ function checkRetiredValue(entityName, stateSchema) {
   let named = values.join(", ");
   let lifecycle = lifecycleFieldFromStateSchema(entityName, stateSchema);
   if (Primitive_object.notequal(lifecycle, field)) {
-    log.warn("Plugin_Structure", undefined, entityName + `: @retired(` + named + `) is on "` + field + `", which is not this record's lifecycle field` + Stdlib_Option.getOr(Stdlib_Option.map(lifecycle, f => ` (that is "` + f + `")`), " (it declares none)") + `. A retirement state no command's @allowedStates can name loses the command filtering the state form exists for.`);
+    log.warn("Plugin_Structure", undefined, entityName + `: @retired(` + named + `) is on "` + field + `", which is not this record's lifecycle field` + Stdlib_Option.getOr(Stdlib_Option.map(lifecycle, f => ` (that is "` + f + `")`), " (it declares none)") + `. A retirement state no command's @transition can name loses the command filtering the state form exists for.`);
   }
   let declared;
   declared = stateSchema.type === "object" ? Stdlib_Option.getOr(Stdlib_Option.map(stateSchema.items.find(item => item.location === field), item => {

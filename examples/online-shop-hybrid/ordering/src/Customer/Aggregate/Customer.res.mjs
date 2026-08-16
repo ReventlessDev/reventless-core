@@ -83,12 +83,35 @@ let commandSchema$1 = Api$ReventlessInfra.markNoApiVariants(commandSchema, [
 
 let commandSchema$2 = Api$ReventlessInfra.markAllowedStates(commandSchema$1, [
   [
+    "UpdateEmail",
+    ["Active"]
+  ],
+  [
+    "UpdateAddress",
+    ["Active"]
+  ],
+  [
+    "SetAddressLocation",
+    ["Active"]
+  ],
+  [
     "Deactivate",
     ["Active"]
   ],
   [
     "Reactivate",
     ["Deactivated"]
+  ]
+]);
+
+let commandSchema$3 = Api$ReventlessInfra.markTargetState(commandSchema$2, [
+  [
+    "Deactivate",
+    "Deactivated"
+  ],
+  [
+    "Reactivate",
+    "Active"
   ]
 ]);
 
@@ -107,7 +130,7 @@ export {
   Id,
   eventSchema,
   errorSchema,
-  commandSchema$2 as commandSchema,
+  commandSchema$3 as commandSchema,
   moduleUrl,
   commandAuthorization,
 }

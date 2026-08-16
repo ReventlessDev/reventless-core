@@ -125,7 +125,11 @@ cat > "$PLUGIN/rescript.json" <<EOF
   "package-specs": { "module": "esmodule", "in-source": true },
   "suffix": ".res.mjs",
   "sources": [{ "dir": "src", "subdirs": true }],
-  "dependencies": ["sury", "@reventlessdev/reventless-spec"]
+  "dependencies": [
+    "sury",
+    "@reventlessdev/reventless-spec",
+    "@reventlessdev/reventless-infra"
+  ]
 }
 EOF
 
@@ -837,6 +841,38 @@ type consumedEvent = Created({id: string, name: string})
 let project = event => switch event {
   | Created({id, name}) => [Set(id, {id, name})]
 }
+EOF
+
+# ─── Fixture: @transition (lifecycle edge, both forms) ────────────
+
+# Both forms on one command type. `Ship` moves the row and declares the arrow;
+# `Rename` guards only — its absence from the targetState metadata is what tells
+# a consumer the command moves nothing, so the test asserts on that absence too.
+cat > "$PLUGIN/src/Aggregate/TransitionOrder.res" <<'EOF'
+@@reventless.spec
+
+type lifecycle = Placed | Shipped | Cancelled
+
+@schema
+type state = { @id orderId: string, note: string }
+
+let initialState = { orderId: "", note: "" }
+
+@schema
+type command =
+  | @transition(([Placed]) => Shipped) Ship({orderId: string})
+  | @transition(([Placed, Shipped]) => Cancelled) Cancel({orderId: string})
+  | @transition([Placed]) Rename({orderId: string, note: string})
+  | Place({orderId: string})
+
+@schema
+type event = Shipped2({orderId: string})
+
+@schema
+type error = NotFound
+
+let decide = (_state, _command): result<array<event>, error> => Ok([])
+let evolve = (state, _event) => state
 EOF
 
 # ─── Fixture: @live on the state declaration (live-updates hint) ──
@@ -2169,6 +2205,111 @@ JS="$PLUGIN/src/ReadModel/VisibilityDefaultReadModel.res.mjs"
 assert_js_contains "$JS" 'stateAnnotationsId' "stateAnnotations binding present from @id annotation"
 assert_js_not_contains "$JS" 'visibility: "Public"' "Public visibility omitted from metadata (kept compact)"
 assert_js_not_contains "$JS" 'visibility: "Internal"' "Internal visibility absent from default-visibility ReadModel"
+
+echo ""
+echo "=== Test: @transition arrow form → both from-set and target lowered ==="
+JS="$PLUGIN/src/Aggregate/TransitionOrder.res.mjs"
+assert_js_contains "$JS" 'markAllowedStates' "markAllowedStates binding emitted from @transition"
+assert_js_contains "$JS" 'markTargetState' "markTargetState binding emitted from @transition"
+assert_js_contains "$JS" '"Ship"' "moving command present in the metadata"
+assert_js_contains "$JS" '"Shipped"' "arrow target lowered to the metadata"
+
+echo ""
+echo "=== Test: @transition multi-state from-set keeps every state ==="
+assert_js_contains "$JS" '"Cancelled"' "second command's target lowered"
+
+# The guard-only claim is carried by an ABSENCE — `Rename` must appear in the
+# from-set metadata and NOT in the target metadata. Asserted by slicing the
+# markTargetState call out of the generated module and grepping inside it, so a
+# `Rename` mentioned elsewhere in the file cannot satisfy the check.
+echo ""
+echo "=== Test: @transition one-sided form declares no target ==="
+if grep -q '"Rename"' "$JS"; then
+  pass "guard-only command reaches the from-set metadata"
+else
+  fail "guard-only from-set" "Rename missing from generated metadata"
+fi
+TARGET_BLOCK=$(sed -n '/markTargetState/,/]);/p' "$JS")
+if echo "$TARGET_BLOCK" | grep -q '"Rename"'; then
+  fail "guard-only target" "Rename must not appear in markTargetState — its absence is the claim"
+else
+  pass "guard-only command absent from markTargetState (declares no target)"
+fi
+# `Place` carries no annotation at all: it must reach neither binding.
+if echo "$TARGET_BLOCK" | grep -q '"Place"'; then
+  fail "unannotated command" "Place must not appear in markTargetState"
+else
+  pass "unannotated command absent from the transition metadata"
+fi
+
+echo ""
+echo "=== Test: the removed @allowedStates raises, naming @transition ==="
+mkdir -p "$ERROR/src/Aggregate"
+cat > "$ERROR/src/Aggregate/LegacyAllowed.res" <<'EOF'
+@@reventless.spec
+
+type lifecycle = Placed | Shipped
+
+@schema
+type state = { @id orderId: string }
+
+@schema
+type command = @allowedStates([Placed]) Ship({orderId: string})
+EOF
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "removed @allowedStates" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q "@transition"; then
+    pass "leftover @allowedStates fails the build and names @transition"
+  else
+    fail "removed @allowedStates" "error did not name the replacement: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/Aggregate/LegacyAllowed.res"
+
+echo ""
+echo "=== Test: the removed @targetState raises, naming @transition ==="
+cat > "$ERROR/src/Aggregate/LegacyTarget.res" <<'EOF'
+@@reventless.spec
+
+type lifecycle = Placed | Shipped
+
+@schema
+type state = { @id orderId: string }
+
+@schema
+type command = @targetState(Shipped) Ship({orderId: string})
+EOF
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "removed @targetState" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q "@transition"; then
+    pass "leftover @targetState fails the build and names @transition"
+  else
+    fail "removed @targetState" "error did not name the replacement: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/Aggregate/LegacyTarget.res"
+
+echo ""
+echo "=== Test: a string state name is refused ==="
+cat > "$ERROR/src/Aggregate/StringState.res" <<'EOF'
+@@reventless.spec
+
+type lifecycle = Placed | Shipped
+
+@schema
+type state = { @id orderId: string }
+
+@schema
+type command = @transition((["Placed"]) => Shipped) Ship({orderId: string})
+EOF
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "string state name" "expected compilation to fail but it succeeded"
+else
+  pass "a string state name is refused rather than silently accepted"
+fi
+rm -f "$ERROR/src/Aggregate/StringState.res"
 
 echo ""
 echo "=== Test: @live(false) on ReadModel state → metadata carries live: false ==="

@@ -15,12 +15,12 @@ type consumedEvent =
 
 @schema
 type command =
-  // Meaningful only on a product still on the shelf. `@allowedStates` names a
-  // state of the view's lifecycle, which is the same field the retirement is
-  // declared on — one vocabulary, so a menu offers this and `UnarchiveProduct`
-  // on opposite sides of the same fact.
+  // Meaningful only on a product still on the shelf. `@transition` names states
+  // of the view's lifecycle, which is the same field the retirement is declared
+  // on — one vocabulary, so a menu offers this and `UnarchiveProduct` on
+  // opposite sides of the same fact.
   | @authorize(AllowGroups(["Admin", "Merchandiser"]))
-  @allowedStates([Products.Listed])
+  @transition(([Products.Listed]) => Products.Archived)
   ArchiveProduct({productId: string})
 
 // Refused rather than idempotent: `Discontinued` is terminal, and archiving out

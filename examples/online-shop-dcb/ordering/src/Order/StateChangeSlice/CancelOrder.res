@@ -10,7 +10,7 @@ type consumedEvent =
 
 @schema
 type command =
-  | @allowedStates([Orders.Placed]) CancelOrder({orderId: string})
+  | @transition(([Orders.Placed]) => Orders.Cancelled) CancelOrder({orderId: string})
 
 @schema
 type error =

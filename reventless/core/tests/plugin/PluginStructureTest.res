@@ -233,8 +233,8 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
       ))->toEqual((Some(true), Some(false)))
     })
 
-    testSync("ShipOrder: @targetState(\"Shipped\") flows through the PPX to commandDef.targetState", () => {
-      // End-to-end: the reventless-ppx @targetState annotation → markTargetState
+    testSync("ShipOrder: @transition's target flows through the PPX to commandDef.targetState", () => {
+      // End-to-end: the reventless-ppx @transition annotation → markTargetState
       // metadata → ApiTargetStateHelpers.getTargetState → commandDef. The
       // un-annotated CancelShipment carries None (resolver falls back to
       // name-stem).
@@ -244,6 +244,18 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
         byName("ShipOrder")->Option.flatMap(c => c.targetState),
         byName("CancelShipment")->Option.flatMap(c => c.targetState),
       ))->toEqual((Some("Shipped"), None))
+    })
+
+    testSync("ShipOrder: @transition's from-set flows through to commandDef.allowedStates", () => {
+      // The other half of the same annotation, which the removed pair spelled
+      // separately: one attribute now fills both fields, so a command that
+      // declares a target cannot end up without the states it may run from.
+      let shipOrder = structure.stateChangeSlices->Array.getUnsafe(1)
+      let byName = name => shipOrder.commands->Array.find(c => c.name == name)
+      expect((
+        byName("ShipOrder")->Option.flatMap(c => c.allowedStates),
+        byName("CancelShipment")->Option.flatMap(c => c.allowedStates),
+      ))->toEqual((Some(["Placed"]), None))
     })
 
     testSync("ShipOrder: the @noApi variant carries no callable mutation field (no sibling leak)", () => {

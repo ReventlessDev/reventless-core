@@ -180,11 +180,12 @@ type commandDef = {
   /**
   The single lifecycle state this command's handler writes — the command's *to*
   state, sibling of `allowedStates`' *from* set. Source: the
-  `@targetState("Shipped")` command-variant annotation. `None` (absent
-  annotation) is the back-compat default: AutoUI's board resolver then falls
-  back to its name-stem heuristic. `Some("Shipped")` lets the resolver move a
-  row by a declared transition instead of a guess. js_nullable for JSON safety,
-  same as `allowedStates`.
+  target of the `@transition(([Placed]) => Shipped)` command-variant annotation.
+  `Some("Shipped")` lets a resolver move a row by a declared transition instead
+  of a guess. `None` means no target was declared — and note that this is two
+  different statements depending on `allowedStates`: with a from-set present it
+  is the command declaring it does not move the row, and with none it is simply
+  an unannotated command. js_nullable for JSON safety, same as `allowedStates`.
   */
   targetState: @s.matches(stringOptionSchema) option<string>,
   /**
@@ -318,8 +319,8 @@ type queryableDef = {
   state schema: a client holding this def holds the whole predicate, and two places
   deriving one comparison is how they come to disagree about it.
 
-  The state form is also what lets `@allowedStates` answer command applicability
-  when retired, with no annotation beyond the two — retirement expressed in the
+  The state form is also what lets a command's `@transition` answer applicability
+  when retired, with no annotation beyond the one — retirement expressed in the
   vocabulary a command's stance is already written in.
   */
   retiredValues: @s.matches(stringArrayOptionSchema) option<array<string>>,

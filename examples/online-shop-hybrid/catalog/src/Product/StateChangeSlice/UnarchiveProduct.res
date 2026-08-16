@@ -17,7 +17,7 @@ type consumedEvent =
 @schema
 type command =
   | @authorize(AllowGroups(["Admin", "Merchandiser"]))
-  @allowedStates([Products.Archived])
+  @transition(([Products.Archived]) => Products.Listed)
   UnarchiveProduct({productId: string})
 
 @schema

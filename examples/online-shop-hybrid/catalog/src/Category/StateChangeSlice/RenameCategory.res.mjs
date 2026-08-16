@@ -2,6 +2,7 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as Api$ReventlessInfra from "@reventlessdev/reventless-infra/src/components/Api.res.mjs";
 
 let consumedEventSchema = S.union([
   S.schema(s => ({
@@ -33,6 +34,11 @@ let eventSchema = S.schema(s => ({
   name: s.m(S.string)
 }));
 
+let commandSchema$1 = Api$ReventlessInfra.markAllowedStates(commandSchema, [[
+    "RenameCategory",
+    ["Listed"]
+  ]]);
+
 function commandAuthorization(command) {
   return {
     TAG: "AllowGroups",
@@ -55,9 +61,9 @@ export {
   name,
   Id,
   consumedEventSchema,
-  commandSchema,
   errorSchema,
   eventSchema,
+  commandSchema$1 as commandSchema,
   moduleUrl,
   commandAuthorization,
   readConsistency,

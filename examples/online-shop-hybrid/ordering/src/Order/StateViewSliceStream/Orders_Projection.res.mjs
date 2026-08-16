@@ -51,6 +51,21 @@ function project(param) {
             deliveryWindow: state.deliveryWindow
           })
         }];
+    case "OrderReopened" :
+      return [{
+          TAG: "Update",
+          _0: event.orderId,
+          _1: state => ({
+            orderId: state.orderId,
+            customerId: state.customerId,
+            productIds: state.productIds,
+            lifecycle: "Placed",
+            shippingMethod: state.shippingMethod,
+            placedAt: state.placedAt,
+            shippedAt: state.shippedAt,
+            deliveryWindow: state.deliveryWindow
+          })
+        }];
   }
 }
 

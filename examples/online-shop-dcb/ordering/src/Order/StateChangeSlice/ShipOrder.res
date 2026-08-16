@@ -10,7 +10,7 @@ type consumedEvent =
 
 @schema
 type command =
-  | @allowedStates([Orders.Placed]) ShipOrder({orderId: string})
+  | @transition(([Orders.Placed]) => Orders.Shipped) ShipOrder({orderId: string})
 
 @schema
 type error =
