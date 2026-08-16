@@ -9,7 +9,7 @@
 // refactor. So under Backend.Postgres the read-model live-query path uses the
 // in-memory arm (getDb() is None for Postgres → Memory), rebuilt by replay from
 // the durable pg event log; the deploy-usable ReventlessPostgres.QueryDbStorage_Postgres
-// serves non-local compute layers. See docs/plans/postgres-storage-adapter.md §E.
+// serves non-local compute layers. See docs/plans/done/postgres-storage-adapter.md §E.
 
 module Make = (Bus: LocalBus.T) => {
   module Mem = QueryDbStorage_InMemory.Make(Bus)

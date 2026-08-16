@@ -4,7 +4,7 @@
 // source URN.
 //
 // Thin untyped shell ("typed core, thin shell" —
-// docs/plans/minimize-lambda-entrypoint-mjs-shell.md): this file owns ONLY the
+// docs/plans/done/minimize-lambda-entrypoint-mjs-shell.md): this file owns ONLY the
 // inherently-untyped seam — the dynamic `import()` of spec/projection modules
 // named in HANDLER_CONFIG and the reads of their exports. Everything else
 // (HANDLER_CONFIG parsing incl. the compact-v2 expansion, the QueryDb operation

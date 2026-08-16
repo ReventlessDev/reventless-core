@@ -71,7 +71,7 @@ let append = table =>
     )
     ->Effect.runPromise
 
-// ─── Aggregate snapshots (docs/plans/aggregate-snapshotting.md) ───
+// ─── Aggregate snapshots (docs/plans/done/aggregate-snapshotting.md) ───
 // A snapshot lives in the SAME table as the events, on the reserved sort key
 // `position = "SNAPSHOT"`. Event positions are 9-digit zero-padded numbers, so
 // bounding the replay query to the all-digit range excludes the snapshot row

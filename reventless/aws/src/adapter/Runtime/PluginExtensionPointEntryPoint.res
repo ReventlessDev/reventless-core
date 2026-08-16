@@ -95,7 +95,7 @@ module Mappings = {
   // Parity with the former shell: only the Plugin lifecycle mapping. The
   // in-process wiring (PluginExtensionPoint_Builder) additionally registers
   // PluginExtensionPoint_UiFragment.Mapping — divergence tracked in
-  // docs/plans/entry-point-rescript-conversion.md.
+  // docs/plans/done/entry-point-rescript-conversion.md.
   let mappings: array<module(Mapping)> = [module(PluginMappingInstance.Mapping)]
 }
 

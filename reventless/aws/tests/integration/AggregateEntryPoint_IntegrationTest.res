@@ -11,7 +11,7 @@
 // CommandAccepted -> Lambda:Unhandled.
 //
 // This is also the harness that unblocks moving the Aggregate functor wiring
-// behind a typed core (docs/plans/minimize-lambda-entrypoint-mjs-shell.md,
+// behind a typed core (docs/plans/done/minimize-lambda-entrypoint-mjs-shell.md,
 // Tier 2.5): with it green, that refactor is verifiable end-to-end rather than
 // only at compile time. Boots via the same Docker-gated
 // `pnpm run test:integration` suite as the storage-runtime tests.

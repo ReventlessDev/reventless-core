@@ -20,7 +20,7 @@ type command =
   | ForwardCommand(forwardCommand)
   // Registers this plugin's UI-fragment manifest with the admin UiFragmentRegistry slice.
   // Sent by the plugin's connect extension alongside ConnectPlugin (see
-  // docs/plans/event-sourced-fragment-registries.md). Routed by the admin EP's UI-fragment
+  // docs/plans/done/event-sourced-fragment-registries.md). Routed by the admin EP's UI-fragment
   // mapping to UiFragmentRegistry.RegisterUiFragment; DisconnectPlugin drives the matching
   // DeregisterUiFragment. Decoupling the manifest from the Plugin aggregate's lifecycle.
   | RegisterUiFragment(uiFragmentManifest)

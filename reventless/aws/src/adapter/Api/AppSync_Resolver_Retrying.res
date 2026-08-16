@@ -16,7 +16,7 @@
     `aws-native:appsync/resolver:Resolver` type so existing resources are
     adopted in-place on first deploy (no delete+recreate).
 
-    See docs/plans/appsync-resolver-aws-native-retry.md. */
+    See docs/plans/done/appsync-resolver-aws-native-retry.md. */
 
 // ── AWS SDK bindings ─────────────────────────────────────────────────────────
 //
@@ -198,7 +198,7 @@ let jsThrow: JsExn.t => 'a = %raw(`e => { throw e }`)
 
     - `NotFoundException / No field named` — schema-propagation race after a
       successful `StartSchemaCreation`. Backstop for the per-plugin dedup
-      flow (see `docs/plans/appsync-schema-push-dedup.md`).
+      flow (see `docs/plans/done/appsync-schema-push-dedup.md`).
     - `ConcurrentModificationException / Schema is currently being altered` —
       API-level lock contention with an in-flight `StartSchemaCreation` on
       the same API (admin resolvers racing the platform schema push from

@@ -1,7 +1,7 @@
 // Typed cold-start core shared by the QueryDb-backed entry-point shells
 // (ReadModelEntryPoint.mjs, StateViewSliceEntryPoint.mjs).
 //
-// The "typed core, thin shell" split (docs/plans/minimize-lambda-entrypoint-mjs-shell.md).
+// The "typed core, thin shell" split (docs/plans/done/minimize-lambda-entrypoint-mjs-shell.md).
 // The DynamoDB QueryDb operations were built in each shell with seven positional
 // `load(table)` / `save(table)` / … calls into the compiled runtime, assembled
 // into an object the shell then passes to the ReadModel/StateViewSlice callback

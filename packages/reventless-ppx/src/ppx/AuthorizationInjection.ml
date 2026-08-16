@@ -351,7 +351,7 @@ let inject ~loc fname (body : structure) : structure_item list * structure * str
 (* externalSystem auto-injection for translation slices ---------------------- *)
 (* [let externalSystem = None] — the opt-in display name of the foreign system a
    translation slice integrates with. It drives the "external box" drawn outside the
-   plugin in the Event Graph / Context Map (docs/plans/translation-external-boxes.md).
+   plugin in the Event Graph / Context Map.
    Injected for Inbound/Outbound translation specs that don't already declare it, so
    existing specs satisfy the [Spec] module type without a hand-written [= None]. A spec
    that names its system (`let externalSystem = Some("…")`) wins — idempotent. *)

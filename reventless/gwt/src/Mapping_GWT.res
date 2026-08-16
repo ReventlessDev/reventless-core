@@ -5,8 +5,7 @@ open ReventlessCore
 // Generalises `EventMapping_GWT` so both the source and target of a mapping
 // can be an Aggregate (Behavior) or a StateChangeSlice. Covers all four
 // producer/consumer combinations: Aggr→Aggr, Aggr→DCB, DCB→Aggr, DCB→DCB.
-// See `docs/analysis/event-source-connection-matrix.md` for the full matrix
-// and `docs/plans/reventless-gwt.md` Stage 5 for the migration plan.
+// See `docs/plans/done/reventless-gwt.md` Stage 5 for the migration plan.
 //
 // The unified `GwtSource`/`GwtTarget` module type is intentionally wider than
 // either `Aggregate.Spec` or the `StateChangeSlice.SliceSpec`: it names every

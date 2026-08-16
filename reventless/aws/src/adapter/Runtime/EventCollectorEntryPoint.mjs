@@ -3,7 +3,7 @@
 // driven entirely by HANDLER_CONFIG.
 //
 // Thin untyped shell ("typed core, thin shell" —
-// docs/plans/minimize-lambda-entrypoint-mjs-shell.md): this file owns ONLY the
+// docs/plans/done/minimize-lambda-entrypoint-mjs-shell.md): this file owns ONLY the
 // seams that are inherently untyped — the dynamic `import()` of EP/extension/spec
 // modules named in HANDLER_CONFIG and the functor applications consuming those
 // runtime-loaded modules. Everything else (config parse/validation, the Plugin-RM

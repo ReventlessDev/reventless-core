@@ -1,6 +1,6 @@
 // Typed cold-start core for the DCB CommandTopic Lambda entry point.
 //
-// The "typed core, thin shell" split (docs/plans/minimize-lambda-entrypoint-mjs-shell.md).
+// The "typed core, thin shell" split (docs/plans/done/minimize-lambda-entrypoint-mjs-shell.md).
 // The `.mjs` shell owns the one boundary that is inherently untyped: reading
 // `HANDLER_CONFIG` and dynamically `import()`-ing user Spec/Behavior modules at
 // cold start, whose types are unknowable here. Everything below is compiler-

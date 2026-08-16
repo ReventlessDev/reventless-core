@@ -161,7 +161,7 @@ describe("DcbCommandTopicEntryPoint integration", () => {
   )
 
   // Residual composite-fence burst contention
-  // (docs/plans/dcb-composite-fence-residual-burst-contention.md).
+  // (docs/plans/done/dcb-composite-fence-residual-burst-contention.md).
   //
   // The entry point must derive `partitionTag = Composite(...)` and thread it
   // into the DynamoDB `append`, so a `@compositePartitionTag` slice collapses to

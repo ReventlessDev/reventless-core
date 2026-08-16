@@ -1,7 +1,7 @@
 // Typed cold-start core for the shared PgQueryResolver Lambda entry point
 // (B3.2b).
 //
-// The "typed core, thin shell" split (docs/plans/minimize-lambda-entrypoint-mjs-shell.md):
+// The "typed core, thin shell" split (docs/plans/done/minimize-lambda-entrypoint-mjs-shell.md):
 // PgQueryResolverEntryPoint.mjs keeps only the untyped seam — the dynamic
 // `import()` of each spec package named in QUERY_RESOLVER_CONFIG, the
 // `patchSpecId` fix-up, and the reads of the runtime-loaded module's exports

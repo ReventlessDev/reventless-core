@@ -5,7 +5,7 @@
 // consumes — onto that queue. The plugin EventCollector (`EventCollectorEntryPoint`)
 // then drives the full fan-out: read-model projections, aggregate command topics,
 // and the cross-plugin SNS EventTopic. See
-// docs/plans/aws-postgres-change-feed-bridge.md.
+// docs/plans/done/aws-postgres-change-feed-bridge.md.
 //
 // The transform reuses the canonical DynamoDB shape producers
 // (`derivePartitionKey` + `buildJsonEvent'`) so the emitted body is byte-identical

@@ -656,7 +656,7 @@ module MakeWithConfig = (
   }
   module InboundTranslationSlice = InboundTranslationSlice_Builder.Make(ApiConfig)
 
-  // Admin UI-fragment registry slices (docs/plans/event-sourced-fragment-registries.md): the
+  // Admin UI-fragment registry slices (docs/plans/done/event-sourced-fragment-registries.md): the
   // platform UI-fragment registry hosted as admin DCB slices sharing the admin DcbEventLog.
   // Built once at platform-module level and passed into Admin.construct below (registers the
   // slice's command handler exactly once).

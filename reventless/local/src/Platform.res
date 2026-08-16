@@ -700,7 +700,7 @@ module MakeWithConfig = (
       StateViewSliceMaker.Make(Spec, Projection)
   }
 
-  // Admin UI-fragment registry (docs/plans/event-sourced-fragment-registries.md): the
+  // Admin UI-fragment registry (docs/plans/done/event-sourced-fragment-registries.md): the
   // platform UI-fragment registry hosted as an admin DCB slice on the admin DcbEventLog.
   // Built once and passed into Admin.construct below.
   module UiFragmentRegistrySlice = StateChangeSlice.Make(

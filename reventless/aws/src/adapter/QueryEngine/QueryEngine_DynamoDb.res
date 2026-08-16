@@ -147,7 +147,7 @@ let make: ReventlessCore.QueryDb_Adapter.queryEngineMaker = allQueryDbs => {
   // B3.1: Postgres-backed read models have NO DynamoDB resource — exclude them
   // instead of failing findResource at deploy time. They are not reachable via
   // this engine (getRuntimeResource raises its explicit not-found error at
-  // query time); see docs/plans/aws-postgres-querydb-adapter.md § B3.1b.
+  // query time); see docs/plans/done/aws-postgres-querydb-adapter.md § B3.1b.
   let dynamoDbQueryDbs =
     allQueryDbs
     ->Dict.toArray

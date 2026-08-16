@@ -1,6 +1,6 @@
 // Typed cold-start core for the Aggregate Lambda entry point.
 //
-// The "typed core, thin shell" split (docs/plans/minimize-lambda-entrypoint-mjs-shell.md).
+// The "typed core, thin shell" split (docs/plans/done/minimize-lambda-entrypoint-mjs-shell.md).
 // The `.mjs` shell owns the untyped seams — reading `HANDLER_CONFIG`, the dynamic
 // `import()` of user Spec/Behavior modules, and the functor wiring that consumes
 // those runtime-loaded modules (`EventLog_Operations.Make`, `Aggregate_Callback.Make`,

@@ -1,6 +1,6 @@
 // Typed cold-start core for the TaskBucket Lambda entry point.
 //
-// The "typed core, thin shell" split (docs/plans/minimize-lambda-entrypoint-mjs-shell.md):
+// The "typed core, thin shell" split (docs/plans/done/minimize-lambda-entrypoint-mjs-shell.md):
 // TaskBucketEntryPoint.mjs keeps only the inherently-untyped seam — the
 // dynamic `import()` of the task callback module named in HANDLER_CONFIG and
 // the read of its `callback` export. HANDLER_CONFIG parsing, the S3-event →

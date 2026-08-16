@@ -54,8 +54,7 @@ type pluginOutputs = Plugin.outputs
 // (CDN-only read). These four fields are the minimal handle any CDN front needs;
 // the app owns the bucket's lifecycle and creation. Defined at file scope so it
 // is a single shared nominal type across the concrete Platform implementations
-// (AWS fronts it via CloudFront; in-memory ignores it). See
-// [docs/plans/done/ui-served-buckets.md].
+// (AWS fronts it via CloudFront; in-memory ignores it).
 type servedBucket = {
   // Stable stem for the CDN origin id and the per-bucket resource names. Distinct
   // from the prefixes because a bucket can serve several of them.

@@ -12,7 +12,7 @@ registration order.
 
 Same shape as `ReventlessCore.Monitoring.use`: a module-level registry consulted
 by an emitted call, so deploy-time extension becomes *registration*, not *file
-editing*. See `docs/plans/deploy-bootstrap-seam.md`.
+editing*. See `docs/plans/done/deploy-bootstrap-seam.md`.
 */
 
 /**

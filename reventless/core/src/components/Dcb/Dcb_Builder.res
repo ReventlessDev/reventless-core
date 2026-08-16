@@ -312,7 +312,7 @@ module Make = (
         // sweeps up sibling products. Cross-partition fan-out and capacity reads are
         // preserved (generalised rule 3). Safety guard: if any slice's partition is
         // ambiguous we keep the annotated values for the whole boundary rather than
-        // thread a partial inference. See docs/plans/dcb-tag-scope-inference.md.
+        // thread a partial inference. See docs/plans/done/dcb-tag-scope-inference.md.
         let inferenceShapes =
           stateChangeSlices->Array.map((module(Sc: StateChangeSlice.T)) =>
             Reventless.DcbTag.sliceShapeFromSchemas(

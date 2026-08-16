@@ -1,5 +1,5 @@
 // Tests for the Aggregate_Callback in-process replay cache (Phase 1 of
-// docs/plans/aggregate-snapshotting.md): a warm same-id command skips the
+// docs/plans/done/aggregate-snapshotting.md): a warm same-id command skips the
 // event-log replay and decides on the cached (state, sequenceNr); the OCC
 // append fences staleness — a stale cache conflicts, invalidates, and the
 // retry replays cold.

@@ -6,7 +6,7 @@
 // that pure module (so every existing `QueryDbStorage_Postgres.*` reference keeps
 // working) and adds only the deploy-time `Pulumi.Output`-shaped `storage` record
 // and the `Make` provider functor.
-// See docs/plans/deployed-lambda-esm-self-containment.md (Rung-3 finding).
+// See docs/plans/done/deployed-lambda-esm-self-containment.md (Rung-3 finding).
 
 open ReventlessCore
 open Reventless.ReadModel

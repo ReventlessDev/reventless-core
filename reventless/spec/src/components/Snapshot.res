@@ -1,5 +1,5 @@
 // Per-aggregate persisted-snapshot configuration
-// (docs/plans/aggregate-snapshotting.md).
+// (docs/plans/done/aggregate-snapshotting.md).
 //
 // Snapshotting is opt-in and lives on the Behavior module (where `state` is
 // defined): `Behavior.T.snapshot = None` (the default, auto-injected by

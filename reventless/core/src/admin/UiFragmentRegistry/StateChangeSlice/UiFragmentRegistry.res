@@ -1,6 +1,6 @@
 // UiFragmentRegistry StateChangeSlice — the write side of the platform UI-fragment
 // registry, extracted off the Plugin aggregate (see
-// docs/plans/event-sourced-fragment-registries.md).
+// docs/plans/done/event-sourced-fragment-registries.md).
 //
 // Commands are driven by the plugin runtime's connect handshake and routed here by the
 // admin PluginExtensionPoint's UI-fragment mapping (RegisterUiFragment on ConnectPlugin,

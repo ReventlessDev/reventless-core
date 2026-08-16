@@ -4,7 +4,7 @@ open JestGlobals
 // load-bearing contract: every code archive that ships the loader files MUST set
 // NODE_OPTIONS=--import pointing at the shipped register-hook.mjs, and the two
 // files must keep cross-referencing each other by the exact filenames used here.
-// See docs/plans/deployed-lambda-esm-self-containment.md.
+// See docs/plans/done/deployed-lambda-esm-self-containment.md.
 
 describe("Util_Bundle ESM loader — env-var contract", () => {
   testSync("NODE_OPTIONS --imports the shipped register-hook file by name", () => {

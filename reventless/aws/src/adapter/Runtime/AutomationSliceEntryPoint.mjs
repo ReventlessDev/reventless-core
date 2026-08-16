@@ -4,7 +4,7 @@
 // by source URN.
 //
 // Thin untyped shell ("typed core, thin shell" —
-// docs/plans/minimize-lambda-entrypoint-mjs-shell.md): this file owns ONLY the
+// docs/plans/done/minimize-lambda-entrypoint-mjs-shell.md): this file owns ONLY the
 // inherently-untyped seam — the dynamic `import()` of the spec + body modules
 // named in HANDLER_CONFIG and the curried functor applications consuming them
 // (AutomationSlice_Callback.Make(Spec)(Automation) /

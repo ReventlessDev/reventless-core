@@ -1,6 +1,6 @@
 // Typed cold-start core for the EventMapper Lambda entry point (Micro mode).
 //
-// The "typed core, thin shell" split (docs/plans/minimize-lambda-entrypoint-mjs-shell.md):
+// The "typed core, thin shell" split (docs/plans/done/minimize-lambda-entrypoint-mjs-shell.md):
 // EventMapperEntryPoint.mjs keeps only the untyped seam — the dynamic
 // `import()` of the target-spec/mappings modules named in HANDLER_CONFIG, the
 // `patchSpecId` / mapping-Source-Id fix-ups, and the

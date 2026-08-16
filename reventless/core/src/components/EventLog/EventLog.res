@@ -25,7 +25,7 @@ type appendError =
 // staleness — consumers ignore a snapshot whose hash differs from their current
 // state schema and fall back to full replay. Snapshots are a read optimization
 // only; the OCC append remains the sole consistency primitive
-// (docs/plans/aggregate-snapshotting.md).
+// (docs/plans/done/aggregate-snapshotting.md).
 type snapshot = {seqNr: int, state: JSON.t, schemaHash: string}
 
 type append<'id, 'event> = (int, 'id, array<'event>) => promise<result<unit, appendError>>

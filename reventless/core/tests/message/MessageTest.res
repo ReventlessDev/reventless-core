@@ -96,7 +96,7 @@ describe("Message should", () => {
   // Schema-migration-on-read: a VersionConnected event persisted before `kind` (and
   // before later pluginStructure fields like `events`/`chapter`) existed must still
   // decode — otherwise the one stale event bricks the whole lifecycle aggregate. See
-  // docs/plans/platform-infrastructure-in-plugin-list.md (durable fix option 2).
+  // docs/plans/done/platform-infrastructure-in-plugin-list.md (durable fix option 2).
   testSync("tolerantly decode a VersionConnected persisted before kind/structure fields existed", () => {
     open PluginSpec
     let def: Reventless.Plugin.pluginDefinition = {

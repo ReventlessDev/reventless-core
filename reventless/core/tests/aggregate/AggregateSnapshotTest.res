@@ -1,4 +1,4 @@
-// Step 5 of docs/plans/aggregate-snapshotting.md — the Aggregate_Callback
+// Step 5 of docs/plans/done/aggregate-snapshotting.md — the Aggregate_Callback
 // snapshot wiring: a snapshot-enabled behavior seeds cold replays from the
 // latest persisted snapshot (hash-gated) and writes a fresh one every
 // `interval` events, fire-and-forget. Snapshots never affect correctness — the

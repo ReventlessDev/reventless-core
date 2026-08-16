@@ -7,7 +7,7 @@
 // in no Lambda — not the layer, not `/var/runtime`). The thin
 // `EventLogStorage_Postgres` wrapper adds the deploy-time `Pulumi.Output`-shaped
 // adapter on top for local/deploy consumers; the runtime imports `makeOps` here.
-// See docs/plans/deployed-lambda-esm-self-containment.md (Rung-3 finding).
+// See docs/plans/done/deployed-lambda-esm-self-containment.md (Rung-3 finding).
 
 open ReventlessCore
 

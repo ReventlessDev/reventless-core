@@ -7,7 +7,7 @@
 // (which drives CreateDisconnectSchedule). A deployed plugin once ran with schedule
 // rate(60min) but a Heartbeat(10) command (grace ~12min), so it reconnected for
 // ~12min after each hourly beat then sat Disconnected for the rest of the hour —
-// it flapped. See docs/plans/plugin-heartbeat-disconnect-margin-hardening.md.
+// it flapped. See docs/plans/done/plugin-heartbeat-disconnect-margin-hardening.md.
 //
 // These tests pin the two guarantees that the fix provides at this layer:
 //   1. the disconnect grace scales with the interval (large cadences keep headroom);

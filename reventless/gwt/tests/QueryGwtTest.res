@@ -1,6 +1,6 @@
 // Worked examples for Query_GWT — covers both a ReadModel and a StateViewSlice
 // to prove the unified DSL works for either consumer type. Stage 6 of
-// `docs/plans/reventless-gwt.md`.
+// `docs/plans/done/reventless-gwt.md`.
 
 S.enableJson()
 

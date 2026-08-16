@@ -162,7 +162,7 @@ type commandJson = {
 // (clones via a JSON round-trip; never re-encodes through the schema), is idempotent on
 // valid data, and falls back to the ORIGINAL error when the fill doesn't resolve the
 // failure — so genuine corruption still surfaces.
-// See docs/plans/platform-infrastructure-in-plugin-list.md (durable fix option 2).
+// See docs/plans/done/platform-infrastructure-in-plugin-list.md (durable fix option 2).
 //
 // The scalar arm is the odd one out and is deliberately noisy. Every other fill is
 // *derived* — the schema states what an absent value means, and the fill supplies exactly

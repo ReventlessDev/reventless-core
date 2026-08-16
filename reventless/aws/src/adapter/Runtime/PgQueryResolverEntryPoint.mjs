@@ -9,7 +9,7 @@
 // PgQueryResolver_Lambda.dispatch routes.
 //
 // Thin untyped shell ("typed core, thin shell" —
-// docs/plans/minimize-lambda-entrypoint-mjs-shell.md): this file owns ONLY the
+// docs/plans/done/minimize-lambda-entrypoint-mjs-shell.md): this file owns ONLY the
 // seams that are inherently untyped — the dynamic `import()` of the spec
 // packages named in QUERY_RESOLVER_CONFIG, the `patchSpecId` fix-up, and the
 // reads of the runtime-loaded modules' exports. QUERY_RESOLVER_CONFIG parsing,

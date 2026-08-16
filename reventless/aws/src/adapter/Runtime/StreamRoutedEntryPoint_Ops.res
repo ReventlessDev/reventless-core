@@ -2,7 +2,7 @@
 // points (ReadModelEntryPoint.mjs, StateViewSliceEntryPoint.mjs,
 // AutomationSliceEntryPoint.mjs).
 //
-// The "typed core, thin shell" split (docs/plans/minimize-lambda-entrypoint-mjs-shell.md):
+// The "typed core, thin shell" split (docs/plans/done/minimize-lambda-entrypoint-mjs-shell.md):
 // all three shells route DynamoDB-stream / SQS-feed records to per-source-URN
 // handler lists with per-handler log attribution — machinery the `.mjs` files
 // previously duplicated verbatim. It lives here so every co-hosted component

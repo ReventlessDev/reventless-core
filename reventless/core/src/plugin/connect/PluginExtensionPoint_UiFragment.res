@@ -1,5 +1,5 @@
 // Second mapping on the admin PluginExtensionPoint, routing UI-fragment lifecycle to the
-// admin UiFragmentRegistry StateChangeSlice (docs/plans/event-sourced-fragment-registries.md).
+// admin UiFragmentRegistry StateChangeSlice (docs/plans/done/event-sourced-fragment-registries.md).
 //
 // The EP runtime fans every incoming command through ALL mappings and flattens the results
 // (ExtensionPoint_Callback.mapIncomingCommands). This mapping's Delegate is the slice, so its

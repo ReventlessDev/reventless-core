@@ -338,7 +338,7 @@ let make = (
   // spec name has no entry (or lives directly under a kind-folder) carries no chapter
   // and renders flat. Keyed by `Spec.name`, which equals the source filename stem for
   // every graph-node kind, so the generator can build this map from the discovered
-  // file paths. See `Codegen.chapterOf` and docs/plans/deployed-chapter-grouping.md.
+  // file paths. See `Codegen.chapterOf` and docs/plans/done/deployed-chapter-grouping.md.
   ~componentChapters: dict<string>=Dict.make(),
 ): Reventless.Plugin.pluginStructure => {
   let chapterOf = (compName: string): option<string> => componentChapters->Dict.get(compName)

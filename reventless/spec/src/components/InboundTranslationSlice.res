@@ -53,7 +53,7 @@ module type Spec = {
 
   /** Optional display name of the foreign system this anti-corruption slice receives
       from (e.g. `"SupplierFeed"`). Drives the **external box** drawn outside the plugin
-      in the Event Graph / Context Map (see docs/plans/translation-external-boxes.md).
+      in the Event Graph / Context Map.
       Auto-injected by `@@reventless.spec` defaulting to `None` — set it to name the box. */
   let externalSystem: option<string>
 

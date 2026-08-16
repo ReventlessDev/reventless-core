@@ -27,7 +27,7 @@ import { handleQueueEvent, publishJsons as sqsPublishJsons } from "@reventlessde
 // Typed cold-start core — scope/partitionTag derivation, storage-ops wiring, and
 // per-slice handler building (functor + decode + handleCommands), all
 // compiler-checked against the framework signatures (see the module header and
-// docs/plans/minimize-lambda-entrypoint-mjs-shell.md).
+// docs/plans/done/minimize-lambda-entrypoint-mjs-shell.md).
 import { deriveScope, commandTypeNames, makeStorageOps, buildSliceHandler, buildInboundReceiver } from "./DcbCommandTopicEntryPoint_Ops.res.mjs";
 import { makeDynamoQueryDbOps } from "./QueryDbEntryPoint_Ops.res.mjs";
 

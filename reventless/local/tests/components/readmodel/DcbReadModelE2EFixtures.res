@@ -5,7 +5,7 @@
 // `meta.service` with the `allEventTopics` dict key, plus the Phase 3
 // `Reventless.Projection.DcbSource` helper.
 //
-// Plan 03: docs/plans/mixed-source-readmodel.md
+// Plan 03: docs/plans/done/mixed-source-readmodel.md
 
 open TestFixtures
 open Reventless

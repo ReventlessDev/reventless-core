@@ -1,6 +1,6 @@
 // Typed cold-start core for the SideEffectHandler Lambda entry point.
 //
-// The "typed core, thin shell" split (docs/plans/minimize-lambda-entrypoint-mjs-shell.md):
+// The "typed core, thin shell" split (docs/plans/done/minimize-lambda-entrypoint-mjs-shell.md):
 // SideEffectEntryPoint.mjs keeps only the untyped seam — the dynamic `import()`
 // of the side-effect modules named in HANDLER_CONFIG and the
 // SideEffectHandler_Callback.Make functor application consuming them.

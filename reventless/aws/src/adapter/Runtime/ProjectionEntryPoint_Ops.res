@@ -1,7 +1,7 @@
 // Typed QueryDb-assembly core shared by the two projection Lambda entry points
 // (ReadModelEntryPoint.mjs, StateViewSliceEntryPoint.mjs).
 //
-// The "typed core, thin shell" split (docs/plans/minimize-lambda-entrypoint-mjs-shell.md):
+// The "typed core, thin shell" split (docs/plans/done/minimize-lambda-entrypoint-mjs-shell.md):
 // both shells build the QueryDb operation set (DynamoDB or Postgres, live-update
 // wrapped) for each projection from spec-module reads; that machinery lives
 // here, fully type-checked. The routed dispatch boundary they share (with the

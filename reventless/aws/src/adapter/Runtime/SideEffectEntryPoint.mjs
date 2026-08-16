@@ -3,7 +3,7 @@
 // wires SideEffectHandler_Callback.Make, builds handler map keyed by source URN.
 //
 // Thin untyped shell ("typed core, thin shell" —
-// docs/plans/minimize-lambda-entrypoint-mjs-shell.md): this file owns ONLY the
+// docs/plans/done/minimize-lambda-entrypoint-mjs-shell.md): this file owns ONLY the
 // seams that are inherently untyped — the dynamic `import()` of the side-effect
 // modules named in HANDLER_CONFIG and the SideEffectHandler_Callback.Make
 // functor application consuming them. HANDLER_CONFIG parsing and handler

@@ -1,7 +1,7 @@
 (* Aggregate-behavior snapshot-config injection.
 
    [Behavior.T.snapshot : option<Snapshot.config<state>>] is a required
-   module-type field (docs/plans/aggregate-snapshotting.md). This transform
+   module-type field (docs/plans/done/aggregate-snapshotting.md). This transform
    keeps every aggregate behavior file source-compatible by synthesising the
    default, and provides the opt-in sugar:
 

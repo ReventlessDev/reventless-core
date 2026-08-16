@@ -1,6 +1,6 @@
 open JestGlobals
 
-// Regression guard for docs/plans/platform-plugins-admin-connection-null-rows.md:
+// Regression guard for docs/plans/done/platform-plugins-admin-connection-null-rows.md:
 // the Plugins admin RM shares its DynamoDB table with internal bookkeeping rows
 // (`deploy-schema:*`, `plugin-info:*`, `deploy-schema-hash:*`) that carry no `name`.
 // The auto-generated Connection Scan must exclude them, or `name: String!` resolves
@@ -39,7 +39,7 @@ describe("AppSync_Resolver_Retrying.Functions.listAllItemsConnection", () => {
   })
 })
 
-// Tripwires for docs/plans/aws-scan-connection-cursor-roundtrip.md. The Scan
+// Tripwires for docs/plans/done/aws-scan-connection-cursor-roundtrip.md. The Scan
 // resolver's cursor must round-trip DynamoDB's own continuation token, not a
 // synthetic index — every list past page 1 was unreachable before this.
 describe("listAllItemsConnection — Scan cursor round-trip (paging fixes 1–3)", () => {

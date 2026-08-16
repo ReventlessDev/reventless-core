@@ -69,7 +69,7 @@ let toCommandSchema' = (idSchema, commandSchema) =>
 // before a nested `@schema` field existed still decodes instead of bricking the
 // aggregate's log replay. These two entry points thread the memoized envelope schema;
 // `Reventless.Message.decode` (the other central decoder) is tolerant at the source.
-// See docs/plans/platform-infrastructure-in-plugin-list.md (durable fix option 2).
+// See docs/plans/done/platform-infrastructure-in-plugin-list.md (durable fix option 2).
 let decodeEvent' = (json, idSchema, eventSchema) =>
   json->parseJsonTolerant(toEventSchema'(idSchema, eventSchema))
 let decodeCommand' = (json, idSchema, commandSchema) =>

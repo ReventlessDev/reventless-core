@@ -4,7 +4,7 @@ open JestGlobals
 // packages its runtime import graph reaches (`companionModuleUrls`), the
 // bundler carries them into the archive, and the archive build fails loudly on
 // any statically imported package that would not resolve at cold start. See
-// docs/plans/runtime-extension-companion-packages.md.
+// docs/plans/done/runtime-extension-companion-packages.md.
 
 // realpath because macOS hands out /var/... symlinks for tmpdir while the
 // package-root walk reports paths as given.

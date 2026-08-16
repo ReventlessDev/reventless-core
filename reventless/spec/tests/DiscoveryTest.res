@@ -2,7 +2,7 @@
 // grouping band ("chapter") from its source path. The heuristic (first `src/`-relative
 // directory segment that is not a recognised kind-folder) must reuse the single-source
 // `ComponentKind.isKindFolder` so a chapter read here off disk agrees with a chapter
-// reflected off the deployed plugin structure. See docs/plans/deployed-chapter-grouping.md.
+// reflected off the deployed plugin structure. See docs/plans/done/deployed-chapter-grouping.md.
 
 open JestGlobals
 

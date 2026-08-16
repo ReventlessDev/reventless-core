@@ -114,7 +114,7 @@ module Make = (
   // at append time → the conflict branch invalidates the entry and the retry
   // replays cold. Mirrors the StateChangeSlice decision-model cache, including
   // the fixed capacity (a per-aggregate knob is a future refinement — see
-  // docs/plans/aggregate-snapshotting.md).
+  // docs/plans/done/aggregate-snapshotting.md).
   let replayCacheCapacity = 100
   let replayCache: Lru.t<string, (Behavior.state, int)> = Lru.make(
     ~capacity=replayCacheCapacity,
@@ -122,7 +122,7 @@ module Make = (
 
   let resetCache = () => replayCache->Lru.clear
 
-  // Persisted-snapshot configuration (docs/plans/aggregate-snapshotting.md).
+  // Persisted-snapshot configuration (docs/plans/done/aggregate-snapshotting.md).
   // `None` (the default) keeps full replay; `Some({interval, stateSchema})`
   // seeds cold replays from the latest persisted snapshot and writes a fresh
   // one every `interval` events. Snapshots are a read optimization only — the

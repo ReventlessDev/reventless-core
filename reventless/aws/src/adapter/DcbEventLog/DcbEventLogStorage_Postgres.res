@@ -11,7 +11,7 @@
 // The pool is lazy (`PgRuntime.poolFor`), so binding ops inside the deploy-time
 // `Output.apply` opens no connection during `pulumi up` — a real query only runs
 // inside the DcbCommandTopic Lambda at runtime. See
-// docs/plans/aws-postgres-change-feed-bridge.md.
+// docs/plans/done/aws-postgres-change-feed-bridge.md.
 
 let make: ReventlessCore.DcbEventLog_Adapter.storageMaker = (
   ~name,

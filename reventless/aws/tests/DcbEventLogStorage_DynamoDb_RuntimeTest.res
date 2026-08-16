@@ -440,7 +440,7 @@ describe("Runtime.buildConditionalTransactItems — composite partition fences o
   // pluginName}. The read is one exact `tag_composite` match, so the fence must be
   // a SINGLE composite-key fence — not one per member. Per-member fencing made the
   // low-cardinality prefix (`environment`, `platformName`) hot under a deploy
-  // fan-out. Plan: docs/plans/Backlog/dcb-hot-tag-fence-contention.md.
+  // fan-out. Plan: docs/plans/done/dcb-hot-tag-fence-contention.md.
   let event = (eventType, tags): ReventlessCore.DcbEventLog_Adapter.rawStoredEvent => {
     eventType,
     data: JSON.Object(Dict.make()),
@@ -563,7 +563,7 @@ describe("Runtime.toItem — an empty tag value skips its GSI attribute", () => 
   // `tag_<key>` is a GSI hash key, and DynamoDB rejects an empty string for a key
   // attribute — writing one fails the whole append. An empty value is legitimate
   // (an absent composite-partition member), so the attribute is skipped and that
-  // index goes sparse. See docs/plans/dcb-empty-tag-values-break-append.md.
+  // index goes sparse. See docs/plans/done/dcb-empty-tag-values-break-append.md.
   let tagOf = (key, value): Reventless.DcbTag.tag => {key, value}
   let tags = [tagOf("environment", "prod"), tagOf("componentName", "")]
   let storedEvent: ReventlessCore.DcbEventLog_Adapter.rawStoredEvent = {

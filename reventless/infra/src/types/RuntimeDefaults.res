@@ -10,7 +10,7 @@ module at the seam where it applies the core `ExtensionPoint_Builder.Make` /
 `Task_Builder.Make` functor; core feeds the two `let`s into `resolveMemory` /
 `resolveTimeout` in place of the old hardcoded literals.
 
-See docs/plans/runtime-hints-platform-supplied-defaults.md.
+See docs/plans/done/runtime-hints-platform-supplied-defaults.md.
 */
 module type T = {
   let memorySize: int // MiB floor for this pod kind on this platform

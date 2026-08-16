@@ -94,7 +94,7 @@ describe("DcbEventLogStorage_Sqlite", () => {
   // Backend contract: an empty tag value (an absent composite-partition member) is
   // legitimate — it appends, is recorded verbatim, and keeps matching through both
   // the partition read and a composite read. Held identically by the in-memory and
-  // DynamoDB backends. See docs/plans/dcb-empty-tag-values-break-append.md.
+  // DynamoDB backends. See docs/plans/done/dcb-empty-tag-values-break-append.md.
   testPromise("an empty tag value appends and stays readable", async () => {
     await runUnderSqlite(async () => {
       module TestBus = LocalBus.Make()

@@ -72,7 +72,7 @@ module type T = {
   */
   let decide: (state, Spec.command) => result<array<Spec.event>, Spec.error>
 
-  /** Persisted-snapshot configuration (docs/plans/aggregate-snapshotting.md).
+  /** Persisted-snapshot configuration (docs/plans/done/aggregate-snapshotting.md).
       `None` — the default, auto-injected by `@@reventless.behavior` — keeps
       full replay; `Some({interval, stateSchema})` writes a keep-one snapshot
       every `interval` events and seeds cold replays from the latest one.

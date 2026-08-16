@@ -8,7 +8,7 @@
 // existing `DcbEventLogStorage_Postgres.*` reference keeps working) and adds only
 // the deploy-time `DcbEventLog_Adapter` shape, keeping the historic `makeStorage`
 // 3-tuple `(name, ops, adapter)` API unchanged.
-// See docs/plans/deployed-lambda-esm-self-containment.md (Rung-3 finding).
+// See docs/plans/done/deployed-lambda-esm-self-containment.md (Rung-3 finding).
 
 open ReventlessCore
 include DcbEventLogStorage_Postgres_Ops

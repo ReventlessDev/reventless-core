@@ -1,6 +1,6 @@
 // AWS-side selection for the QueryDb (read model) storage backend — the QueryDb
 // analogue of `EventLogBackend` / `DcbBackend` (B3.1,
-// docs/plans/aws-postgres-querydb-adapter.md).
+// docs/plans/done/aws-postgres-querydb-adapter.md).
 //
 // When `Platform.MakeWithConfig` is given a `~pgConnection`, it records the
 // resolved selection here BEFORE any admin/plugin `construct` runs. Read by:

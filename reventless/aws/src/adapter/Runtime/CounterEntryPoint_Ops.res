@@ -1,6 +1,6 @@
 // Typed cold-start core for the Counter Lambda entry point.
 //
-// The "typed core, thin shell" split (docs/plans/minimize-lambda-entrypoint-mjs-shell.md):
+// The "typed core, thin shell" split (docs/plans/done/minimize-lambda-entrypoint-mjs-shell.md):
 // CounterEntryPoint.mjs keeps only the untyped seam — the dynamic `import()`
 // of the target-spec/mappings modules named in HANDLER_CONFIG, the
 // `patchSpecId` fix-up, and the EventMapper_Callback.MakeCounterHandler

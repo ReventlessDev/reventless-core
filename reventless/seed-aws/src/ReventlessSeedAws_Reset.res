@@ -7,7 +7,7 @@
 //
 // A wipe is irreversible, so every step is fail-closed and production must be
 // unreachable at several at once (the separate-AWS-account guarantee is the one
-// deferred layer — see docs/plans/seed-reset-and-fresh-store-guard.md):
+// deferred layer — see docs/plans/done/seed-reset-and-fresh-store-guard.md):
 //
 //   1. name allowlist    — the stack name must match ^(alpha|dev|pr-.+)$
 //   2. wipeable flag      — the target's own `Pulumi.<stack>.yaml` must declare

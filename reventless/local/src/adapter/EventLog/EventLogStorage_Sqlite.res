@@ -20,7 +20,7 @@ let ensureSchema = (db: SqliteDriver.t) => {
   db->SqliteDriver.exec(
     "CREATE TABLE IF NOT EXISTS event_log (log_name TEXT NOT NULL, aggregate_id TEXT NOT NULL, seq_nr INTEGER NOT NULL, payload TEXT NOT NULL, PRIMARY KEY (log_name, aggregate_id, seq_nr))",
   )
-  // Keep-one aggregate-state snapshots (docs/plans/aggregate-snapshotting.md):
+  // Keep-one aggregate-state snapshots (docs/plans/done/aggregate-snapshotting.md):
   // one row per (log, aggregate), overwritten on every snapshot write. `state`
   // is the JSON-encoded fold of events seq 0..seq_nr-1; `schema_hash` lets the
   // consumer detect a state-schema drift and fall back to full replay.

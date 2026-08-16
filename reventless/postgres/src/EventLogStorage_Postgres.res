@@ -7,7 +7,7 @@
 // real Lambda). This module `include`s that pure module and adds only the
 // deploy-time `EventLog_Adapter` shape (`operations` wrapped in `Pulumi.Output`),
 // keeping the historic `makeStorage` 3-tuple `(name, ops, adapter)` API unchanged.
-// See docs/plans/deployed-lambda-esm-self-containment.md (Rung-3 finding).
+// See docs/plans/done/deployed-lambda-esm-self-containment.md (Rung-3 finding).
 
 open ReventlessCore
 include EventLogStorage_Postgres_Ops

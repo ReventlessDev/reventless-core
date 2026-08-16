@@ -57,7 +57,7 @@ describe("Runtime.buildTransactItems", () => {
   })
 })
 
-// ─── Aggregate snapshots (docs/plans/aggregate-snapshotting.md) ───
+// ─── Aggregate snapshots (docs/plans/done/aggregate-snapshotting.md) ───
 
 describe("Runtime.replayQueryInput", () => {
   testSync("default bounds cover exactly the zero-padded event range", () => {

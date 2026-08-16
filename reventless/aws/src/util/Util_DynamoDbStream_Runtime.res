@@ -5,7 +5,7 @@ type result =
   | Invalid
 
 // Returns None for rows that aren't events — e.g. DCB FENCE rows and aggregate
-// snapshot rows (position = "SNAPSHOT"; docs/plans/aggregate-snapshotting.md),
+// snapshot rows (position = "SNAPSHOT"; docs/plans/done/aggregate-snapshotting.md),
 // neither of which has an `event` column. The caller filters these out via
 // `Invalid` rather than synthesising a bogus event that sury would later reject.
 let buildJsonEvent' = dict => {

@@ -22,7 +22,7 @@ import { commandOutcomeToJson, runInlineAndCollect } from "@reventlessdev/revent
 import { handleQueueEvent, publishJsons as sqsPublishJsons } from "@reventlessdev/reventless-aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_Runtime.res.mjs";
 // Typed cold-start core — EventLog storage-ops selection/wiring, compiler-checked
 // against the framework signatures (see the module header and
-// docs/plans/minimize-lambda-entrypoint-mjs-shell.md).
+// docs/plans/done/minimize-lambda-entrypoint-mjs-shell.md).
 import { makeStorageOps } from "./AggregateEntryPoint_Ops.res.mjs";
 import { DynamoDBClient, ScanCommand } from "@aws-sdk/client-dynamodb";
 import { unmarshall } from "@aws-sdk/util-dynamodb";

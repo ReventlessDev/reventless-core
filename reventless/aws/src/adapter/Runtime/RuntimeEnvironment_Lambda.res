@@ -354,7 +354,7 @@ let makeFromCodeAsset: (
 
   // Announce the provisioned execution unit to the Monitoring registry. No-op
   // unless a deploy program registered a backend via Monitoring.use — see
-  // docs/plans/monitoring-hook-seam.md.
+  // docs/plans/done/monitoring-hook-seam.md.
   ReventlessCore.Monitoring.notify(~kind=unitKind, ~name, ~component=lambdaResource)
 
   {

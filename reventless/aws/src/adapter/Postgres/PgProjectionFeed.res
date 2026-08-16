@@ -1,5 +1,5 @@
 // B3.0 — projection delivery on Postgres platforms
-// (docs/plans/aws-postgres-querydb-adapter.md).
+// (docs/plans/done/aws-postgres-querydb-adapter.md).
 //
 // On DynamoDB platforms the ReadModel / StateViewSlice Lambdas consume their
 // source event logs via DynamoDB-stream event-source mappings. Postgres logs have

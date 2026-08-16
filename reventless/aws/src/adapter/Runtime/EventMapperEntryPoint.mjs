@@ -3,7 +3,7 @@
 // wires EventMapper_Callback.MakeCounterHandler + MakeEventCollectorHandler.
 //
 // Thin untyped shell ("typed core, thin shell" —
-// docs/plans/minimize-lambda-entrypoint-mjs-shell.md): this file owns ONLY the
+// docs/plans/done/minimize-lambda-entrypoint-mjs-shell.md): this file owns ONLY the
 // seams that are inherently untyped — the dynamic `import()` of the
 // target-spec/mappings modules named in HANDLER_CONFIG, the shape fix-ups on
 // those runtime-loaded modules (patchSpecId / patchMappingsSourceIds), and the

@@ -1,7 +1,6 @@
 // Worked examples for Mapping_GWT — one for each producer/consumer combination
 // (Aggr→Aggr, Aggr→DCB, DCB→Aggr, DCB→DCB). See
-// `docs/analysis/event-source-connection-matrix.md` for the connection matrix
-// and `docs/plans/reventless-gwt.md` Stage 5 for the plan context.
+// `docs/plans/done/reventless-gwt.md` Stage 5 for the plan context.
 //
 // Each test exercises the full source-command → mapping → target-command →
 // target-decide pipeline end-to-end against the unified `GwtSource`/`GwtTarget`

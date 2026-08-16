@@ -54,7 +54,7 @@ type mutationSchemaEntry = {
   /** Spec-level per-field authorization derived from `Spec.commandAuthorization`,
       keyed by mutation field name. Used by AWS to inject
       `@aws_cognito_user_pools(cognito_groups: ...)` per field (Stage E2 in
-      `docs/plans/host-ui-login-core.md`). In-memory enforcement still happens
+      `docs/plans/done/host-ui-login-core.md`). In-memory enforcement still happens
       at the resolver layer via the same `commandAuthorization` function. */
   fieldPermissions?: dict<Reventless.Authorization.permission>,
   /** Opt a mutation field into deploy-time IAM (SigV4) invocation in addition to
@@ -107,7 +107,7 @@ type querySchemaEntry = {
   /** Spec-level read-model authorization derived from `Spec.authorization`.
       Applies to both the single-id and list query fields. Used by AWS to
       inject `@aws_cognito_user_pools(cognito_groups: ...)` (Stage E2 in
-      `docs/plans/host-ui-login-core.md`). In-memory enforcement happens at
+      `docs/plans/done/host-ui-login-core.md`). In-memory enforcement happens at
       the QueryDb resolver via the same field. */
   permission?: Reventless.Authorization.permission,
   /** Opt the single-id and list query fields into deploy-time IAM (SigV4)

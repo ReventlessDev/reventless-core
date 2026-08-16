@@ -6,7 +6,7 @@
 // a deploy-time dep into its ESM import graph (which fails resolution on real
 // Lambda). The thin `QueryDbStorage_Postgres` wrapper `include`s this and adds the
 // deploy-time `Pulumi.Output`-shaped `storage` record + the `Make` functor.
-// See docs/plans/deployed-lambda-esm-self-containment.md (Rung-3 finding).
+// See docs/plans/done/deployed-lambda-esm-self-containment.md (Rung-3 finding).
 
 open ReventlessCore
 open Reventless.ReadModel

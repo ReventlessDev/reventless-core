@@ -4,7 +4,7 @@
 // Events schedules).
 //
 // Thin untyped shell ("typed core, thin shell" —
-// docs/plans/minimize-lambda-entrypoint-mjs-shell.md): this file owns ONLY the
+// docs/plans/done/minimize-lambda-entrypoint-mjs-shell.md): this file owns ONLY the
 // inherently-untyped seam — the dynamic `import()` of the callback module named
 // in HANDLER_CONFIG and the read of its `callback` export. Everything else
 // (HANDLER_CONFIG parsing, S3-event handling via TaskBucket_S3_Runtime, the

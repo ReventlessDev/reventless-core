@@ -4,8 +4,7 @@
 // `Plugin.res.mjs` against it, read the resolved `pluginStructure` (a plain record
 // — no Pulumi Output), and collect the per-plugin structures.
 //
-// Proven cold (docs/analysis/reventless-vscode-domain-graph-design.md "Spike
-// result"): `Make()` and `Plugin.Make(plat)` open no ports and start no timers —
+// Proven cold: `Make()` and `Plugin.Make(plat)` open no ports and start no timers —
 // reading `pluginStructure` never touches the bus/scheduler/server wiring that the
 // live `deployPlugin` / `startServers` path adds (that path is the runner's, not
 // this). reventless-local is deliberately NOT a static dependency of reventless-gwt

@@ -1,7 +1,7 @@
 // Typed cold-start core for the (per-extension-point) ExtensionPoint Lambda
 // entry point.
 //
-// The "typed core, thin shell" split (docs/plans/minimize-lambda-entrypoint-mjs-shell.md):
+// The "typed core, thin shell" split (docs/plans/done/minimize-lambda-entrypoint-mjs-shell.md):
 // ExtensionPointEntryPoint.mjs keeps only the untyped seam — the dynamic
 // `import()` of the spec/mappings modules named in HANDLER_CONFIG, the
 // `patchSpecId` fix-up, and the ExtensionPoint_Callback.Make /

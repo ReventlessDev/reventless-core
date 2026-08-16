@@ -872,7 +872,7 @@ let transform (str : structure) : structure =
            then automation_mappings_extension ~loc ~spec_name body
            else body
          in
-         (* Aggregate-behavior snapshot config (docs/plans/aggregate-snapshotting.md):
+         (* Aggregate-behavior snapshot config (docs/plans/done/aggregate-snapshotting.md):
             default [let snapshot = None]; @@reventless.snapshots(<interval>)
             switches to Some({interval, stateSchema}). Consumes the attribute;
             idempotent on bodies already declaring the binding. Aggregate

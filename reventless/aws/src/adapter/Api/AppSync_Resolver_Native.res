@@ -1,7 +1,7 @@
 /** AppSync_Resolver_Native — drop-in replacement for
     `PulumiAws.AppSync.Resolver` that uses `@pulumi/aws-native` (Cloud Control
     API) so the CFN handler can internally wait out schema -> resolver
-    propagation. See docs/plans/appsync-resolver-aws-native.md. */
+    propagation. See docs/plans/done/appsync-resolver-aws-native.md. */
 
 module Native = PulumiAws.AwsNative.AppSync.Resolver
 module Functions = PulumiAws.AppSync.Resolver.Functions

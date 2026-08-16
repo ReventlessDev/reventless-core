@@ -145,7 +145,7 @@ describe("DcbEventLogStorage_InMemory", () => {
     // An empty tag value is a legitimate model state — an absent member of a
     // composite partition key. Every backend must accept it, record it verbatim,
     // and keep matching the event through its partition and composite reads. See
-    // docs/plans/dcb-empty-tag-values-break-append.md.
+    // docs/plans/done/dcb-empty-tag-values-break-append.md.
     testPromise("an empty tag value appends and stays readable", async () => {
       let storage = makeStorage()
       let ops = await storage.operations->TestRunner.resolve

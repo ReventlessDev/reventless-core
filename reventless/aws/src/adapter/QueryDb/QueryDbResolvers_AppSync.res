@@ -4,7 +4,7 @@ open PulumiAws.AppSync
 // `NotFoundException: No field named X` (the schema-propagation race) with
 // exponential backoff. Replaces AppSync_Resolver_Native (aws-native provider)
 // which exhibited the same race in production.
-// See docs/plans/appsync-resolver-aws-native-retry.md.
+// See docs/plans/done/appsync-resolver-aws-native-retry.md.
 module Resolver = AppSync_Resolver_Retrying
 open Reventless.ReadModel
 
@@ -55,7 +55,7 @@ export function response(ctx) {
     that carry no `name`. Returning `Some(attr)` makes the Connection Scan emit an
     `attribute_exists(#attr)` filter so those rows never reach the non-null GraphQL schema.
     `name` is the already-capitalized read-model name (spec name, e.g. "Plugins").
-    See docs/plans/platform-plugins-admin-connection-null-rows.md. */
+    See docs/plans/done/platform-plugins-admin-connection-null-rows.md. */
 let internalRowRequiredAttr = (name: string): option<string> =>
   name == "Plugins" ? Some("name") : None
 
@@ -69,7 +69,7 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
   ~idResolverConfigs: array<idResolverConfig>,
   ~idsResolverConfigs: array<idsResolverConfig>,
   // AWS path enforces authorization via `@aws_cognito_user_pools(cognito_groups: …)` on the
-  // SDL fields (see Stage E in docs/plans/host-ui-login-core.md). Accepted but
+  // SDL fields (see Stage E in docs/plans/done/host-ui-login-core.md). Accepted but
   // ignored here so the in-memory and AWS resolver maker signatures stay aligned.
   ~authorization as _: Reventless.Authorization.permission,
   ~opts,
@@ -256,7 +256,7 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
     // resolves `name: String!` to null → non-null violation that nulls the entire
     // Platform_PluginConnection. Exclude them with an `attribute_exists(#name)` filter
     // (prefix-agnostic: real plugin rows always carry `name`, internal rows never do).
-    // See docs/plans/platform-plugins-admin-connection-null-rows.md.
+    // See docs/plans/done/platform-plugins-admin-connection-null-rows.md.
     let requireAttribute = internalRowRequiredAttr(name)
     // A DynamoDB FilterExpression is applied AFTER the page is read, so a scoped
     // list over a table with no index on the owner field returns short pages —

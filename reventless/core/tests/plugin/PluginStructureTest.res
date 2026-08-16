@@ -962,7 +962,7 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
   // The generator captures each component's chapter (source-folder grouping band)
   // and passes it as ~componentChapters; Plugin_Structure looks it up by Spec.name
   // and threads it onto every def, so a deployed-graph consumer can render chapter
-  // bands without workspace access. See docs/plans/deployed-chapter-grouping.md.
+  // bands without workspace access. See docs/plans/done/deployed-chapter-grouping.md.
   describe("componentChapters threading", () => {
     let chaptered = Plugin_Structure.make(
       ~name="TestPlugin",

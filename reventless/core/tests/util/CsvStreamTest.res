@@ -1,6 +1,6 @@
 // CsvStreamTest.res
 // Tests for CsvStream.parseRows — Effect Stream bridge for FastCSV.
-// See docs/plans/effect-stream-integration.md Phase E.
+// See docs/plans/done/effect-stream-integration.md Phase E.
 
 open JestGlobals
 

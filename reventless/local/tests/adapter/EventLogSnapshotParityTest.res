@@ -1,5 +1,5 @@
 // Backend-parity tests for the EventLog snapshot ops
-// (docs/plans/aggregate-snapshotting.md): the in-memory and SQLite backends
+// (docs/plans/done/aggregate-snapshotting.md): the in-memory and SQLite backends
 // must behave identically for latestSnapshot / writeSnapshot (keep-one) and
 // the replayStream ~fromSeq delta read, so GWT/local tests of
 // snapshot-enabled aggregates give the same results under either backend.

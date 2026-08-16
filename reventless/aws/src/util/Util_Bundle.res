@@ -122,7 +122,7 @@ let hashString = (str: string): string =>
 // (set on the Lambda env by RuntimeEnvironment_Lambda.makeFromCodeAsset). Shipped
 // at the root of every code archive; NODE_OPTIONS=--import points Node at
 // register-hook.mjs. Validated on a Node 22.17.1 rig; see
-// docs/plans/deployed-lambda-esm-self-containment.md.
+// docs/plans/done/deployed-lambda-esm-self-containment.md.
 let registerHookFileName = "register-hook.mjs"
 let layerResolverFileName = "layer-resolver.mjs"
 

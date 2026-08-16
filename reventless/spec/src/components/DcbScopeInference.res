@@ -8,7 +8,7 @@ each slice (variant names + `*Id`-shaped fields), never an `S.t` schema and neve
 a tag-metadata flag. That is precisely what we are replacing — so both the runtime
 (building shapes from `S.t` schemas, via `DcbTag.sliceShapeFromSchemas`) and the
 VS Code tooling (building shapes from parsed `.res` source) can feed the same
-`infer`. See `docs/plans/dcb-tag-scope-inference.md` § "Phase 1 design".
+`infer`. See `docs/plans/done/dcb-tag-scope-inference.md` § "Phase 1 design".
 
 The three rules (over the representation):
 

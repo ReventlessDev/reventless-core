@@ -1,6 +1,6 @@
 // Typed cold-start core for the ReadModel Lambda entry point.
 //
-// The "typed core, thin shell" split (docs/plans/minimize-lambda-entrypoint-mjs-shell.md):
+// The "typed core, thin shell" split (docs/plans/done/minimize-lambda-entrypoint-mjs-shell.md):
 // ReadModelEntryPoint.mjs keeps only the untyped seams — the dynamic `import()`
 // of spec/mappings modules named in HANDLER_CONFIG, the `patchSpecId` /
 // `fixMappingsModule` shape fix-ups on those runtime-loaded modules, and the

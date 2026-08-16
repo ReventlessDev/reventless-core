@@ -29,7 +29,7 @@ let folderToComponentType = ComponentKind.folderToKind
 // `None`. Uses the single-source `ComponentKind.isKindFolder`, so a chapter read
 // here (build time, disk) agrees with the authoring tool's identical heuristic and
 // with a chapter reflected off the deployed plugin structure. See
-// docs/plans/deployed-chapter-grouping.md.
+// docs/plans/done/deployed-chapter-grouping.md.
 let chapterOf = (relPath: string): option<string> => {
   let segments = relPath->String.split("/")
   // Need at least one directory segment before the filename.

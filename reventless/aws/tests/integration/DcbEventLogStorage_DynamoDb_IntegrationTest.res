@@ -331,7 +331,7 @@ describe("DCB DynamoDb integration — optimistic concurrency primitives", () =>
 // on the WHOLE composite key, not on each member. Distinct entities sharing a
 // low-cardinality prefix (environment/platformName/pluginName) must therefore NOT
 // serialize on that prefix — the deploy-fan-out hot-fence regression. Plan:
-// docs/plans/Backlog/dcb-hot-tag-fence-contention.md § "Root-cause correction".
+// docs/plans/done/dcb-hot-tag-fence-contention.md § "Root-cause correction".
 describe("DCB DynamoDb integration — composite partition hot-fence fix", () => {
   let composite = (keys, seps): Reventless.DcbTag.derivedPartitionTag => Composite({keys, seps})
   let specKeys = ["environment", "platformName", "pluginName", "resourceName"]
@@ -464,7 +464,7 @@ describe("DCB DynamoDb integration — per-type fence granularity", () => {
 // DynamoDB used to reject the whole append: `tag_<key>` is a GSI hash key and a key
 // attribute cannot hold an empty string. The adapter now skips that one attribute,
 // leaving the index sparse — everything else about the event is unchanged.
-// See docs/plans/dcb-empty-tag-values-break-append.md.
+// See docs/plans/done/dcb-empty-tag-values-break-append.md.
 describe("DCB DynamoDb integration — an empty tag value does not break the append", () => {
   let tags = [tag("orderId", "O-empty"), tag("customerId", "")]
 

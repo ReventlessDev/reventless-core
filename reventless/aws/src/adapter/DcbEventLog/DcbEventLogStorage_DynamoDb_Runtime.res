@@ -704,7 +704,7 @@ let collectEventTags = (
 // local backends' true DCB query semantics (and fixing analysis Issue 4 — the
 // one-event-type-per-attribute deadlock). It also folds the create guard into the
 // fence (see `buildConditionalFenceUpdate`), retiring the `create#` rows.
-// Plan: docs/plans/dcb-fence-event-type-granularity.md.
+// Plan: docs/plans/done/dcb-fence-event-type-granularity.md.
 let fenceTypeAttr = (eventType: string) => `pos#${eventType}`
 
 let dedupStrings = (xs: array<string>): array<string> => {
@@ -975,7 +975,7 @@ let appendUnconditional = async (
 // fan-out sharing those prefixes turns into a hot partition → `TransactionConflict`
 // → `retries exhausted`; it also over-fenced (two DISTINCT composite entities
 // sharing a member value serialized needlessly). Plan:
-// docs/plans/Backlog/dcb-hot-tag-fence-contention.md § "Root-cause correction".
+// docs/plans/done/dcb-hot-tag-fence-contention.md § "Root-cause correction".
 let compositeFenceTagKey = "__dcb_composite__"
 
 let makeCompositeFenceTag = (

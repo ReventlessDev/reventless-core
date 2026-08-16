@@ -10,7 +10,7 @@ concern; this only exposes the choke point through which the framework says
 "I just provisioned an execution unit" and leaves what to do about it to the
 listener.
 
-See `docs/plans/monitoring-hook-seam.md`.
+See `docs/plans/done/monitoring-hook-seam.md`.
 */
 
 /**

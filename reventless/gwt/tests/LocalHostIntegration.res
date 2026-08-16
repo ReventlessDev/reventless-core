@@ -4,8 +4,7 @@
 // Runs under `node --test` (NOT Jest) on purpose: cold-loading the local platform
 // under Jest's experimental-vm-modules hits the graphql/yoga CJS-in-ESM interop
 // wall documented in tests/SplitApiFixtures.res. Plain node ESM is exactly the
-// runtime the CLI host uses, and where the Phase 4.5 spike proved cold-load works
-// (docs/analysis/reventless-vscode-domain-graph-design.md "Spike result"). It is
+// runtime the CLI host uses, and where the Phase 4.5 spike proved cold-load works. It is
 // named without the `Test` suffix so the Jest `testMatch` glob
 // (`tests/**/*Test.res.mjs`) skips it — `pnpm run test:host` runs it via node. The
 // pure helpers (name derivation, discovery) are the Jest test in tests/LocalHostTest.res.

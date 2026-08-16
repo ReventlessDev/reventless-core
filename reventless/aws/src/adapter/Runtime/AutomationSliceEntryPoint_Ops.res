@@ -1,7 +1,7 @@
 // Typed cold-start core for the AutomationSlice / OutboundTranslationSlice
 // Lambda entry point.
 //
-// The "typed core, thin shell" split (docs/plans/minimize-lambda-entrypoint-mjs-shell.md):
+// The "typed core, thin shell" split (docs/plans/done/minimize-lambda-entrypoint-mjs-shell.md):
 // AutomationSliceEntryPoint.mjs keeps only the inherently-untyped seam — the
 // dynamic `import()` of the spec + body modules named in HANDLER_CONFIG and
 // the curried callback-functor applications consuming them

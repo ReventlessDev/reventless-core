@@ -3,7 +3,7 @@ open JestGlobals
 // Guards the resource-attribution tag schema. A downstream inventory answers
 // "which model component owns this resource, in what role, at what scope" purely
 // from these keys, so the key set and its namespacing are load-bearing.
-// See docs/plans/resource-attribution-tag-schema.md.
+// See docs/plans/done/resource-attribution-tag-schema.md.
 
 module Attribution = ReventlessCore.ResourceAttribution
 
@@ -95,7 +95,7 @@ describe("AWS_Tags — owner overrides the piece adapter's own kind", () => {
   // The piece adapters pass their OWN ComponentType as ~kind, which names the
   // piece and so collapses onto ~role. A QueryDb is instantiated by six different
   // component kinds, so without the owner a reader cannot tell a ReadModel's
-  // table from a StateViewSlice's. See docs/plans/resource-attribution-owner-kind.md.
+  // table from a StateViewSlice's. See docs/plans/done/resource-attribution-owner-kind.md.
   let queryDbTagsFor = (~owner=?) =>
     AWS_Tags.make(
       ~name="ProductsQueryDb",
