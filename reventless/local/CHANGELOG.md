@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.225 (2026-08-16)
+
+### Bug Fixes
+
+* **seed:** let seed:reset take the yes it asks for ([1f646f6](https://github.com/ReventlessDev/reventless-core/commit/1f646f6ce13a4238e92b7047ee31650ccc4de4f3))
+### Features
+
+* **core:** exclude retired rows from reads a caller may not widen ([662f31a](https://github.com/ReventlessDev/reventless-core/commit/662f31abb717bda5154199d349da6dcf8e2d3e78))
+* **core:** let [@retired](https://github.com/retired) name a lifecycle state, not only a boolean ([6bb346b](https://github.com/ReventlessDev/reventless-core/commit/6bb346b4f6a5f33826fc24537953482a76067177))
+* **core:** mark the state that retires a row, and allow more than one ([cb1461f](https://github.com/ReventlessDev/reventless-core/commit/cb1461f024d3ca3b53fd9c8b010a054e3fcc4555))
+* **core:** withhold a retired row's payload from the live channel ([82c62db](https://github.com/ReventlessDev/reventless-core/commit/82c62db00b87f7135378496e36601b544d4d2b62))
+* **spec:** [@retired](https://github.com/retired) state-field annotation and its schema emission ([2d8234b](https://github.com/ReventlessDev/reventless-core/commit/2d8234b6b3dd8f479031a67eb5b4b47b5c0c2ff9))
+
+
 # 3.0.0-alpha.224 (2026-08-15)
 
 ### Features

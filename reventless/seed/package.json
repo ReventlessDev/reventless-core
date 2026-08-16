@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-seed",
-  "version": "1.0.0-alpha.14",
+  "version": "1.0.0-alpha.15",
   "description": "Reusable harness for seeding a Reventless platform through its public GraphQL command API",
   "license": "Apache-2.0",
   "scripts": {

@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.60 (2026-08-16)
+
+### Bug Fixes
+
+* **example:** make the hybrid seed run again after the lifecycle rename ([b3bdc75](https://github.com/ReventlessDev/reventless-core/commit/b3bdc75cfe9d59654e85fc1b728a9455664c8274))
+* **seed:** report the retirements the projection has actually applied ([91bc877](https://github.com/ReventlessDev/reventless-core/commit/91bc877d90fc69dab76ff0fb9aae9ea989107aed))
+### Features
+
+* **core:** mark the state that retires a row, and allow more than one ([cb1461f](https://github.com/ReventlessDev/reventless-core/commit/cb1461f024d3ca3b53fd9c8b010a054e3fcc4555))
+* **example:** give the hybrid shop's archive a way back ([524d374](https://github.com/ReventlessDev/reventless-core/commit/524d3748e455c70924b7861cbd4748744186de41))
+
+
 # 1.0.0-alpha.59 (2026-08-15)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-seed

@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.115 (2026-08-16)
+
+### Features
+
+* **core:** let [@retired](https://github.com/retired) name a lifecycle state, not only a boolean ([6bb346b](https://github.com/ReventlessDev/reventless-core/commit/6bb346b4f6a5f33826fc24537953482a76067177))
+* **core:** mark the state that retires a row, and allow more than one ([cb1461f](https://github.com/ReventlessDev/reventless-core/commit/cb1461f024d3ca3b53fd9c8b010a054e3fcc4555))
+* **core:** publish queryableDef.retiredField from the [@retired](https://github.com/retired) annotation ([b44436a](https://github.com/ReventlessDev/reventless-core/commit/b44436a997b6c4ff0531f0b07d793cc858eef94a))
+* **spec:** [@retired](https://github.com/retired) state-field annotation and its schema emission ([2d8234b](https://github.com/ReventlessDev/reventless-core/commit/2d8234b6b3dd8f479031a67eb5b4b47b5c0c2ff9))
+* **spec:** classify a caller against a view's retirement flag ([5031ce5](https://github.com/ReventlessDev/reventless-core/commit/5031ce573ce56d2407888c7777274e5580c4fb51))
+
+
 # 3.0.0-alpha.114 (2026-08-15)
 
 **Note:** Version bump only for package @reventlessdev/reventless-spec

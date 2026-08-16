@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.101 (2026-08-16)
+
+### Features
+
+* **core:** exclude retired rows from reads a caller may not widen ([662f31a](https://github.com/ReventlessDev/reventless-core/commit/662f31abb717bda5154199d349da6dcf8e2d3e78))
+* **core:** let [@retired](https://github.com/retired) name a lifecycle state, not only a boolean ([6bb346b](https://github.com/ReventlessDev/reventless-core/commit/6bb346b4f6a5f33826fc24537953482a76067177))
+* **core:** mark the state that retires a row, and allow more than one ([cb1461f](https://github.com/ReventlessDev/reventless-core/commit/cb1461f024d3ca3b53fd9c8b010a054e3fcc4555))
+
+
 # 3.0.0-alpha.100 (2026-08-15)
 
 **Note:** Version bump only for package @reventlessdev/reventless-postgres

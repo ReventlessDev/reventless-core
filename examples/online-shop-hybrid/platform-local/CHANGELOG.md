@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.225 (2026-08-16)
+
+### Bug Fixes
+
+* **seed:** let seed:reset take the yes it asks for ([1f646f6](https://github.com/ReventlessDev/reventless-core/commit/1f646f6ce13a4238e92b7047ee31650ccc4de4f3))
+
+
 # 1.0.0-alpha.224 (2026-08-15)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-platform-local

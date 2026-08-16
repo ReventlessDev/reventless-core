@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.111 (2026-08-16)
+
+### Features
+
+* **core:** mark the state that retires a row, and allow more than one ([cb1461f](https://github.com/ReventlessDev/reventless-core/commit/cb1461f024d3ca3b53fd9c8b010a054e3fcc4555))
+
+
 # 1.0.0-alpha.110 (2026-08-15)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-catalog-spec

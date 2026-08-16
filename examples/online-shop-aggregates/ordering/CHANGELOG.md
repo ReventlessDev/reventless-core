@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.214 (2026-08-16)
+
+### Features
+
+* **spec:** [@retired](https://github.com/retired) state-field annotation and its schema emission ([2d8234b](https://github.com/ReventlessDev/reventless-core/commit/2d8234b6b3dd8f479031a67eb5b4b47b5c0c2ff9))
+
+
 # 3.0.0-alpha.213 (2026-08-15)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-aggregates-ordering

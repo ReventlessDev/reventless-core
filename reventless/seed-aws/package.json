@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-seed-aws",
-  "version": "1.0.0-alpha.19",
+  "version": "1.0.0-alpha.20",
   "description": "AWS connect + guarded reset for the Reventless seed harness — stack discovery, Cognito login, and a tag-scoped, allowlisted store wipe",
   "license": "Apache-2.0",
   "scripts": {
