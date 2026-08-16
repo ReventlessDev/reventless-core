@@ -94,7 +94,7 @@ the fence**: at `after = None` the partition-tag fence `Update` is gated on
 `attribute_not_exists(pos#<producedType>)`, so two first-writers of the same type collide on
 that attribute. Because the guard is the per-type attribute, it never false-conflicts a
 different slice that merely shares the partition — so there is no separate `create#…` sentinel
-row (see [Conditional append](#conditional-append-optimistic-concurrency)).
+row (see [Conditional append](#conditional-append--optimistic-concurrency)).
 
 ## Global Secondary Indexes
 

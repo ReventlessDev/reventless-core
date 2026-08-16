@@ -57,7 +57,8 @@ same components locally for development and testing.
 
 | Section | Who it's for |
 |---|---|
-| **[Tutorial](/tutorials/get-started)** | The online-shop example, end to end — understand, run locally, deploy to AWS, test. The fastest way to evaluate Reventless. |
+| **[Why Reventless](/why/)** | Evaluating it — the model, what you provide and get, deployment options, and how it compares. No code. |
+| **[Try it](/tutorials/get-started)** | The online-shop example, end to end — run locally, deploy to your own AWS account, test. |
 | **[App Guide](./get-started.md)** | Building your own app — plugins, aggregates, read models, DCB slices, the GraphQL API |
 | **[Infrastructure](/infrastructure)** | AWS adapters, Pulumi deployment, live updates, deploying to your own domain |
 | **[Contributing](/framework/contributing)** | Framework internals and extending the framework |

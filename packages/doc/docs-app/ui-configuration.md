@@ -670,7 +670,7 @@ quiet: a `uiHintsFile` path that does not resolve, and content that is not JSON.
 menu restacks where it stands, so you can name and reorder things by editing and
 saving. On AWS the hints are written once at deploy, as they should be: a running
 deployment does not follow anybody's working copy. See
-[Local development](../guides/local-dev.md).
+[the Local provider guide](/infrastructure/local/).
 
 **Resolve the path from the declaring module**, not from the working directory,
 which differs per platform and would make one declaration two different files:

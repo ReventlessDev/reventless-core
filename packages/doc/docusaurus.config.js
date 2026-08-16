@@ -162,13 +162,16 @@ const config = {
     docsVersion,
   },
 
-  onBrokenLinks: "warn",
-  onBrokenMarkdownLinks: "warn",
+  onBrokenLinks: "throw",
+  onBrokenAnchors: "throw",
 
   // activate mermaid support
   // according to docusarus docs: https://docusaurus.io/docs/markdown-features/diagrams
   markdown: {
     mermaid: true,
+    hooks: {
+      onBrokenMarkdownLinks: "warn",
+    },
   },
 
   themes: [
@@ -185,8 +188,8 @@ const config = {
         // the matching docsRouteBasePath (its `routeBasePath`). docsDir must be
         // set explicitly here because this site has no default `docs/` folder —
         // otherwise the build warns "docsDir doesn't exist".
-        docsDir: ["docs-app", "docs-framework", "docs-infrastructure", "docs-tutorials"],
-        docsRouteBasePath: ["app", "framework", "infrastructure", "tutorials"],
+        docsDir: ["docs-why", "docs-app", "docs-framework", "docs-infrastructure", "docs-tutorials"],
+        docsRouteBasePath: ["why", "app", "framework", "infrastructure", "tutorials"],
         // The index is generated in Docusaurus's postBuild hook, so search only
         // works after `docusaurus build` + `docusaurus serve`, never in `start`.
         removeDefaultStopWordFilter: true,
@@ -204,6 +207,19 @@ const config = {
   },
 
   plugins: [
+    [
+      "@docusaurus/plugin-content-docs",
+      {
+        id: "why",
+        path: "docs-why",
+        routeBasePath: "why",
+        sidebarPath: "./sidebars-why.js",
+        remarkPlugins: [[d2PrependStyles, { stylesPath: d2StylesPath }], [d2, d2Opts]],
+        rehypePlugins: [rehypeSequenceDiagramClass],
+        editUrl:
+          "https://github.com/ReventlessDev/reventless-core/tree/main/packages/doc/",
+      },
+    ],
     [
       "@docusaurus/plugin-content-docs",
       {
@@ -303,24 +319,27 @@ const config = {
           src: 'img/logo-icon-v16e-log-asym.svg',
         },
         items: [
+          // Navbar order follows the audience funnel: evaluate → try → build →
+          // operate → contribute.
           {
-            type: "doc",
-            docId: "index",
+            type: "docSidebar",
+            sidebarId: "whySidebar",
+            docsPluginId: "why",
             position: "left",
-            label: "Intro",
+            label: "Why Reventless",
           },
           {
             type: "docSidebar",
             sidebarId: "tutorialsSidebar",
             docsPluginId: "tutorials",
             position: "left",
-            label: "Tutorial",
+            label: "Try it",
           },
           {
             type: "docSidebar",
             sidebarId: "appSidebar",
             position: "left",
-            label: "App Guide",
+            label: "Build your app",
           },
           {
             type: "docSidebar",
@@ -359,6 +378,19 @@ const config = {
       footer: {
         style: "dark",
         links: [
+          {
+            title: "Start here",
+            items: [
+              {
+                label: "Why Reventless",
+                to: "/why/",
+              },
+              {
+                label: "Try the example",
+                to: "/tutorials/get-started",
+              },
+            ],
+          },
           {
             title: "App Developer Guide",
             items: [

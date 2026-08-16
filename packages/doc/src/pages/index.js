@@ -19,15 +19,23 @@ function HomepageHeader() {
           The spec-driven event platform — focus on your business, not technology
         </p>
         <p className={styles.heroDescription}>
-          Your domain definition is the spec. Define events, commands, and read
-          models in type-safe ReScript, and Reventless derives the rest — database
-          schemas, GraphQL and MCP APIs, and AWS infrastructure. One source of
-          truth: no glue code, no drift between layers. A type-safe, event-sourced
-          CQRS platform that's production-ready and AI-native.
+          Describe your domain as specs — the commands, events, and views your
+          business is made of — and as scenarios that pin the rules down and run
+          as tests. Reventless derives the rest: an event-sourced store with a
+          full audit trail, live read models, GraphQL and MCP APIs, a generated
+          UI, and the cloud infrastructure to run it. One source of truth, no glue
+          code. Deploy to your own AWS account today, with a provider seam built
+          for sovereign and on-premise targets. Open source, self-hosted, and
+          AI-native. Built on ReScript, Pulumi, and AWS serverless.
         </p>
         <div className={styles.buttons}>
           <Link
             className="button button--primary button--lg"
+            to="/why/">
+            Why Reventless
+          </Link>
+          <Link
+            className="button button--secondary button--lg"
             to="/tutorials/get-started">
             Try the example
           </Link>
@@ -35,11 +43,6 @@ function HomepageHeader() {
             className="button button--secondary button--lg"
             to="/app/get-started">
             Build an app
-          </Link>
-          <Link
-            className="button button--secondary button--lg"
-            to="/framework/contributing">
-            Contribute
           </Link>
         </div>
       </div>
@@ -50,25 +53,34 @@ function HomepageHeader() {
 const ReadingPaths = [
   {
     persona: 'Evaluator',
-    question: '“What is Reventless? Should I use it?”',
+    question: '“What is Reventless? Could I use it for my development?”',
     steps: [
-      <><Link to="/app/">Introduction</Link> — what, why, who</>,
-      <><Link to="/tutorials/get-started">Tutorial overview</Link></>,
-      <><Link to="/tutorials/hybrid-based">Example walkthrough</Link></>,
+      <><Link to="/why/">What is Reventless</Link> — the model, in plain language</>,
+      <><Link to="/why/what-you-provide">What you provide, what you get</Link></>,
+      <><Link to="/why/deployment">Deployment options</Link> → <Link to="/why/how-it-compares">how it compares</Link></>,
+    ],
+  },
+  {
+    persona: 'Try it',
+    question: '“How do I see the example running in my own AWS account?”',
+    steps: [
+      <><Link to="/tutorials/get-started">The online shop</Link> — what the example does</>,
+      <><Link to="/tutorials/run-locally">Run it locally</Link> — no cloud account needed</>,
+      <><Link to="/tutorials/deploy-to-aws">Deploy to your own AWS account</Link></>,
     ],
   },
   {
     persona: 'App developer',
-    question: '“I want to build something with Reventless.”',
+    question: '“How do I create my own app from scratch?”',
     steps: [
-      <>The <Link to="/tutorials/get-started">Tutorial spine</Link> — understand, run locally, deploy, test</>,
-      <><Link to="/app/get-started">App Guide</Link> — build your own plugins</>,
-      <><Link to="/infrastructure">Infrastructure</Link> — deploy to your own domain</>,
+      <><Link to="/app/get-started">Get started</Link> — AI-assisted or manual scaffold</>,
+      <><Link to="/app/aggregate-vs-dcb-decision-guide">Model your domain</Link>, then write specs and scenarios</>,
+      <><Link to="/infrastructure">Infrastructure</Link> — deploy and operate it</>,
     ],
   },
   {
     persona: 'Contributor',
-    question: '“I want to contribute to the framework.”',
+    question: '“How does the framework work, and how do I extend it?”',
     steps: [
       <><Link to="/framework/contributing">Contributing setup</Link></>,
       <><Link to="/framework/internals/framework-internals">Framework internals</Link> (ordered)</>,
@@ -86,7 +98,7 @@ function ReadingPathsSection() {
         </Heading>
         <div className="row">
           {ReadingPaths.map((path, idx) => (
-            <div key={idx} className="col col--4 margin-vert--md">
+            <div key={idx} className="col col--3 margin-vert--md">
               <div className="card padding--md" style={{height: '100%'}}>
                 <Heading as="h3">{path.persona}</Heading>
                 <p><em>{path.question}</em></p>

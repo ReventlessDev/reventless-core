@@ -45,9 +45,10 @@ const FeatureList = [
     icon: '⚡',
     description: (
       <>
-        Built in ReScript. Algebraic data types and pattern matching model your
-        domain directly, and the compiler enforces exhaustive handling. Concise,
-        type-safe code with no manual schema files and nothing to keep in sync.
+        No manual schema files, no hand-written API layer, nothing to keep in
+        sync. Specs are a small declarative vocabulary that models your domain
+        directly — and the compiler enforces exhaustive handling, so a forgotten
+        case or a mismatched field fails the build instead of production.
       </>
     ),
   },
@@ -57,9 +58,9 @@ const FeatureList = [
     description: (
       <>
         Open-source software you deploy into your own AWS account — not a hosted
-        SaaS. Ships with AWS and in-memory providers today, with more cloud
-        targets planned. Serverless means you pay only for what you use, with no
-        idle infrastructure.
+        SaaS. Serverless means you pay only for what you use, with no idle
+        infrastructure. Your application is provider-independent by construction,
+        and sovereign-cloud and on-premise targets are on the roadmap.
       </>
     ),
   },
