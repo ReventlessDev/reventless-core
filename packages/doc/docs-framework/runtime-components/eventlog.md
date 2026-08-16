@@ -14,7 +14,7 @@ This component follows the Reventless [Component Structure Pattern](/framework/i
 Aggregate: Aggregate { class: aggregate }
 EventLog: EventLog { class: event-log }
 EventTopic: Event Topic { class: event-topic }
-ReadModel: Read Model { class: read model }
+ReadModel: Read Model { class: read-model }
 EventMapper: Event Mapper { class: event-mapper }
 
 Aggregate -> EventLog: append events { class: event-flow }

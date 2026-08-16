@@ -65,7 +65,7 @@ consumers: {
     class: read-side
 
     collector: Event Collector { class: event-collector }
-    read_model: Read Model { class: read model }
+    read_model: Read Model { class: read-model }
     query_db: Query DB { class: query-db }
 
     collector -> read_model: events { class: event-flow }

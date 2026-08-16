@@ -114,14 +114,29 @@ MCP_Server.start()  // starts alongside GraphQL_Server.start()
 - Tool handlers: reuse GraphQL mutation resolvers via `GraphQL_Server.getMutationResolver`
 - Resource handlers: read from Bus QueryDb directly
 
-### AWS platform
+### AWS platform — not deployed yet
+
+:::caution Not reachable on a deployed stack
+The **runtime handler exists** (`MCP_Lambda`): it parses MCP requests, routes
+tool calls to the command topics and resource reads to the query tables, and
+reads history straight from the event logs — the same backends the AppSync
+resolvers use. What does **not** exist is the deploy-time wiring: the platform
+provisions no function, no Function URL, and no permissions for it, so a
+deployed application exposes no MCP endpoint.
+
+The Function URL binding it would need is now available in
+`rescript-pulumi-aws`, so the remaining work is provisioning, following the
+pattern the geocoder and upload-presign adapters already use. Until that lands,
+MCP is a local-platform capability — which is what
+[the deploy page](/tutorials/deploy-to-aws#what-you-have-now) tells readers.
+:::
+
+The intended shape, once provisioned:
 
 - Transport: Lambda Function URL with Streamable HTTP
-- Tool handlers: SQS SendMessage to CommandTopic queues
-- Resource handlers: DynamoDB GetItem/Query on QueryDb tables
-- Auth: AWS IAM or Cognito OAuth 2.0 (configurable)
-
-> **Note**: AWS MCP deployment requires Lambda Function URL Pulumi bindings (not yet available in `rescript-pulumi-aws`). The `MCP_Lambda` module provides deploy-time config generation and auth types as a placeholder.
+- Tool handlers: send to the command topic queues
+- Resource handlers: read the query tables
+- Auth: IAM or Cognito, configurable
 
 ## Adding Descriptions to Specs
 

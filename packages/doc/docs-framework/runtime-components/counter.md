@@ -484,12 +484,6 @@ let mappings: array<module(Mapping)> = [
 - **[QueryDb](./querydb.md)** - Underlying storage for counter data
 - **[EventCollector](./eventcollector.md)** - Delivers Counter.Source events
 
-## AWS Implementation
+## AWS implementation
 
-For detailed AWS implementation, see Counter AWS adapter documentation (TBD).
-
-## Replacing the Old counter.md
-
-:::note Migration
-The Counter is a full component, not just a common module, and its primary use is within EventMappings for multi-event coordination patterns.
-:::
+See the [Counter AWS adapter](/infrastructure/aws/adapters/counter).

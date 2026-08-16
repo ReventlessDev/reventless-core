@@ -90,7 +90,7 @@ App developers don't pick the channel by hand. The plugin generator selects sync
 
 The Lambda layout follows: async aggregates land in `AllAggregatesAsyncCmdHandler` (separate from the default `AllAggregatesCmdHandler`); async StateChangeSlices share a per-plugin `<Plugin>DcbAsyncCmdHandler` Lambda (separate from the default `<Plugin>DcbCmdHandler`). Async Lambdas are only provisioned when at least one component opts in — sync-only setups pay no extra Lambda cost.
 
-Each of the four command-handler Lambdas (sync / async × aggregates / state-changes) can be tuned independently via `Platform.MakeWithConfig`'s `commandHandlerConfig` record — memory, timeout, reserved concurrency, SQS batch size, ephemeral `/tmp`, log retention, and extra env vars. See the [Tuning the command-handler Lambdas](/infrastructure/lambda-deployment#10-tuning-the-command-handler-lambdas) section in the AWS Lambda deployment guide.
+Each of the four command-handler Lambdas (sync / async × aggregates / state-changes) can be tuned independently via `Platform.MakeWithConfig`'s `commandHandlerConfig` record — memory, timeout, reserved concurrency, SQS batch size, ephemeral `/tmp`, log retention, and extra env vars. See the [Tuning the command-handler Lambdas](/infrastructure/lambda-deployment#9-tuning-the-command-handler-lambdas) section in the AWS Lambda deployment guide.
 
 ### CommandTopic Operations
 

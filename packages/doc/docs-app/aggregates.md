@@ -24,7 +24,7 @@ Handler: "Command Handler\n(Lambda)" { class: aggregate }
 Aggregate: "Aggregate\n(State Machine)" { class: aggregate }
 EventLog: "Event Log\n(DynamoDB)" { class: event-log }
 EventTopic: "Event Topic\n(DynamoDB Streams)" { class: event-topic }
-ReadModel: "Read Model\n(Lambda)" { class: read model }
+ReadModel: "Read Model\n(Lambda)" { class: read-model }
 QueryDb: "Query DB\n(DynamoDB)" { class: query-db }
 EventMapper: "Event Mapper\n(Lambda)" { class: event-mapper }
 OtherCommandTopic: Other Command Topic { class: command-topic }

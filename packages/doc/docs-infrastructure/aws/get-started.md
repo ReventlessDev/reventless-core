@@ -1,148 +1,161 @@
 ---
 title: Getting Started with AWS
-sidebar_position: 2
 ---
 
-# Getting Started with reventless-aws
+# Deploying a plugin on AWS
 
-This guide covers setting up and deploying a Reventless application on AWS using `reventless-aws`.
+Your application code does not change to run on AWS. What you add is a small
+**deployment package** per plugin (and one for the platform), each of which is a
+Pulumi project whose entry point builds your plugin over the AWS platform.
+
+If you want to see this working before building your own, deploy the shipped
+example first: [Deploy the online shop to your AWS account](/tutorials/deploy-to-aws).
 
 ## Prerequisites
 
-- An AWS account with appropriate permissions
-- [Pulumi CLI](https://www.pulumi.com/docs/install/) installed and configured
-- Node.js 22.17.1 (see `.node-version` for exact version)
-- ReScript development setup (see the [App Developer Guide](/app/get-started))
+- An AWS account and credentials that can create the services the framework
+  provisions — see
+  [what the deploying principal needs](../operating.md#what-the-deploying-principal-needs).
+- [Pulumi CLI](https://www.pulumi.com/docs/install/) and a Pulumi account or a
+  self-managed backend.
+- Node.js 22.17.1 and pnpm 10.
 
-## Install Dependencies
+## The shape of a deployment package
 
-In your Reventless application project:
-
-```bash
-pnpm add @reventlessdev/reventless-spec @reventlessdev/reventless-infra @reventlessdev/reventless-aws sury
-```
-
-## Project Structure
-
-A typical Reventless AWS project looks like:
+One package per plugin, named `<plugin>-aws`, sitting beside the plugin it
+deploys:
 
 ```
 my-app/
-├── infra/            # Pulumi infrastructure (deploy-time)
-│   ├── index.ts      # Entry point: creates the core, plugins
-│   └── Pulumi.yaml   # Pulumi project config
-├── src/              # Application logic (ReScript)
-│   ├── MyAggregate.res
-│   ├── MyReadModel.res
-│   └── MyPlugin.res
-├── rescript.json
-└── package.json
+├── catalog/            # the plugin — specs, behaviors, scenarios
+├── catalog-aws/        # its deployment package
+│   ├── src/Main.res    # generated entry point
+│   ├── Pulumi.yaml
+│   ├── Pulumi.<stack>.yaml
+│   ├── rescript.json
+│   └── package.json
+└── platform-aws/       # the platform stack, deployed first
 ```
 
-## Configure Pulumi
-
-```yaml
-# Pulumi.yaml
-name: my-reventless-app
-runtime: nodejs
-description: My Reventless application on AWS
-```
-
-Set your AWS region:
+The deployment package depends on the plugin, on `@reventlessdev/reventless-aws`,
+and on the spec packages of any plugin it integrates with:
 
 ```bash
-pulumi config set aws:region us-east-1
+pnpm add @reventlessdev/reventless-aws @reventlessdev/reventless-infra \
+         @reventlessdev/reventless-spec sury
 ```
 
-## Platform Admin Components
+Its `Pulumi.yaml` points `main` at the compiled entry point, because the project
+is ReScript rather than TypeScript:
 
-The platform admin components (Plugin aggregate, Plugin read model, Plugin extension point) are created internally by `makePlatform` — they provide shared infrastructure for plugins to communicate. You don't need to create them manually.
+```yaml
+name: my-app-catalog-aws
+runtime: nodejs
+main: src/Main.res.mjs
+description: My app — Catalog plugin stack
+```
 
-## Create a Plugin
+## The entry point is generated
+
+`src/Main.res` is written for you by `generate-plugin` before each build, the
+same generator that writes the plugin's composition root:
+
+```json
+{
+  "scripts": {
+    "generate": "generate-plugin --aws CatalogPlugin ../catalog/src/",
+    "prebuild": "pnpm run generate",
+    "build": "rescript build"
+  }
+}
+```
+
+What it produces is short, and worth reading once because it is the whole
+deploy-time story:
 
 ```rescript
-// MyPlugin.res
-module Plugin = ReventlessAws.Plugin.Make({
-  let name = "my-plugin"
-  let version = "1.0.0"
-})
+ReventlessInfra.DeployBootstrap.run(PreDeploy)
 
-let plugin = Plugin.make(
-  ~name="my-plugin",
-  ~version="1.0.0",
-  ~aggregates=[module(MyAggregate)],
-  ~readModels=[module(MyReadModel)],
+module Platform = ReventlessAws.Platform.Make()
+module Catalog = Plugin.Make(Platform)
+
+let default = Platform.deployPlugin(~plugin=module(Catalog))
+
+ReventlessInfra.DeployBootstrap.run(PostDeploy)
+```
+
+The plugin is a functor over the platform — the same functor the local platform
+applies. Swapping `ReventlessAws.Platform` for `ReventlessLocal.Platform` is the
+entire difference between the two deployments.
+
+## The platform stack comes first
+
+The platform stack owns what plugins share: the AppSync API, the admin
+components, the scheduler, the Lambda layer reference, and (optionally) the host
+UI. Deploy it once; plugins deploy independently afterwards and register their
+GraphQL schema fragment with it **at runtime**, so adding a plugin needs no
+platform redeploy.
+
+```rescript
+module Platform = ReventlessAws.Platform.Make()
+
+let default = Platform.deployPlatform(
+  ~version=Reventless.PackageVersion.fromCaller(),
 )
 ```
 
-## Lambda Layer
+## Stack configuration
 
-Reventless applications use a shared Lambda layer containing `@reventlessdev/reventless-aws` and all its dependencies. This keeps individual Lambda deployment packages small and speeds up cold starts.
-
-### Finding the Layer ARN
-
-Each release of `@reventlessdev/reventless-aws` automatically builds and publishes a Lambda layer. The layer ARN is appended to the GitHub release notes:
-
-1. Go to the [reventless-core releases](https://github.com/ReventlessDev/reventless-core/releases)
-2. Find the release for your `@reventlessdev/reventless-aws` version
-3. Copy the **Lambda Layer ARN** from the release notes
-
-### Configuring the Layer
-
-Set the `REVENTLESS_LAYER_ARN` environment variable when running `pulumi up`. All Lambda functions created by Reventless will automatically include this layer:
-
-```bash
-REVENTLESS_LAYER_ARN="arn:aws:lambda:eu-west-1:123456789:layer:reventless-aws:1" pulumi up
-```
-
-For a more permanent setup, add it to your Pulumi stack configuration:
+Per-stack settings live in `Pulumi.<stack>.yaml`. A plugin stack needs to know
+which platform stack it belongs to, and which other plugin stacks it depends on:
 
 ```yaml
-# Pulumi.<stack>.yaml
 config:
   aws:region: eu-west-1
+  platform:stack: <your-pulumi-org>/my-app-platform-aws/alpha
+  interstack:
+    dependencies:
+      - <your-pulumi-org>/my-app-catalog-aws/alpha
 ```
+
+Stack names are `<org>/<project>/<stack>`. The
+[deployment guide](../deployment-guide.md) covers the full key list, the
+environment-variable equivalents for CI, and how cross-plugin extension wiring
+is resolved.
+
+## The Lambda layer
+
+Framework code ships to Lambda as a shared layer rather than being bundled into
+every function, which keeps deployment packages small and cold starts short. The
+layer ARN is resolved at deploy time in this order:
+
+1. `REVENTLESS_LAYER_ARN`, if set — the fast path, and what CI uses.
+2. An SSM parameter at `/reventless/layer-arn/<stack>`, looked up automatically —
+   so a local deploy needs no manual export.
+3. Nothing — functions deploy without the layer, bundling their dependencies
+   instead. This works, but produces larger packages and slower cold starts.
+
+Each release of `@reventlessdev/reventless-aws` publishes a matching layer. Keep
+the layer and the package version in step: a layer older than the code that
+expects it fails at runtime, not at deploy.
+
+## Deploying
 
 ```bash
-# Set in your shell profile or CI environment
-export REVENTLESS_LAYER_ARN="arn:aws:lambda:eu-west-1:123456789:layer:reventless-aws:1"
+pnpm run build          # compile the plugin and its deployment package
+pulumi up --stack alpha
 ```
 
-The layer ARN is read at deploy-time by `rescript-pulumi-aws` and passed to every Lambda function's `layers` configuration. If `REVENTLESS_LAYER_ARN` is not set, Lambda functions are deployed without a layer (all dependencies bundled in the deployment package).
+Pulumi shows the planned changes — tables, queues, topics, functions, resolvers,
+permissions — before it applies anything.
 
-## Deploy
+For the ordering rules when several plugins depend on each other, and for adding
+or removing a plugin later, see the
+[deployment guide](../deployment-guide.md).
 
-```bash
-cd infra
-pulumi up
-```
+## Next
 
-Pulumi will show the planned infrastructure changes — DynamoDB tables, SQS queues, SNS topics, Lambda functions — and ask for confirmation before deploying.
-
-## AWS Service Costs
-
-Reventless uses serverless AWS services with pay-per-use pricing:
-
-- **DynamoDB** — per read/write request (on-demand mode)
-- **SQS** — per message (first 1M requests/month free)
-- **SNS** — per notification (first 1M/month free)
-- **Lambda** — per invocation (first 1M/month free)
-
-For typical development and low-traffic production workloads, costs are negligible.
-
-## Testing AWS Adapters
-
-The `reventless-aws/__tests__` directory contains tests for adapters and utilities. Tests verify both deploy-time resource creation and runtime operation logic.
-
-When developing custom adapters or modifying existing ones, ensure:
-- Deploy-time code creates resources with correct properties
-- Runtime functions handle success and error cases
-- IAM permissions are correctly configured
-- Resources are properly tagged for cost tracking
-
-## Next Steps
-
-- [AWS Adapters Overview](./index.md) — understand how components map to AWS services
-- [EventLog Adapter](./adapters/eventlog.md) — event storage on DynamoDB
-- [CommandTopic Adapter](./adapters/commandtopic.md) — command queuing on SQS FIFO
-- [QueryDb Adapter](./adapters/querydb.md) — read model storage on DynamoDB
+- [AWS adapters overview](./index.md) — how components map to AWS services
+- [Operating a deployment](../operating.md) — costs, logs, dead letters, IAM
+- [Lambda deployment](../lambda-deployment.md) — handler pipeline and per-handler tuning
+- [Custom domain](../custom-domain.md) — serving the UI from your own hostname

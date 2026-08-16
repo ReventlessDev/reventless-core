@@ -4,6 +4,12 @@ This guide helps developers (and AI skills) choose between the **Aggregate** app
 
 ---
 
+:::tip Seeing it decided on a real domain
+[Choosing an approach](/tutorials/choosing-an-approach) applies this guide to the
+online shop, entity by entity — including the case that catches people out,
+where a self-contained entity has to be DCB because another slice reads it.
+:::
+
 ## Quick Decision Table
 
 | Question | Aggregate | DCB Slices |

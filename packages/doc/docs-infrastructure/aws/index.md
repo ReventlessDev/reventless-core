@@ -25,7 +25,7 @@ Reventless: Generic Components - reventless {
   Aggregate -> CommandTopic
   Aggregate -> CommandGenerator
 
-  ReadModel: { class: read model }
+  ReadModel: { class: read-model }
   QueryDb: { class: query-db }
   EventCollector: { class: event-collector }
 

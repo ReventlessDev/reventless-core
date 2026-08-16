@@ -435,23 +435,7 @@ The core builders (`Aggregate_Builder`, `ReadModel_Builder`, `StateViewSlice_Bui
 
 ---
 
-## 9. Key Lessons
-
-1. **ReScript DCE is aggressive.** Module-level `let () = fn()` calls inside constrained functors are removed. Side-effect registration for Lambda handlers must happen in plain JS entry points (`index.mjs`) or through values that are consumed.
-
-2. **`CallbackFunction` is broken with Effect-TS.** Any Lambda handler that transitively uses `Effect.runPromise` (which is all of them) fails Pulumi's closure serializer. There is no workaround short of using code assets.
-
-3. **Handler registration requires module paths.** The `specModulePath`, `behaviorModulePath`, etc. are resolved at deploy time and embedded in the generated entry point code. The Lambda handler imports these modules at runtime.
-
-4. **`finish()` timing matters.** Runtime builders accumulate specs during `forEventCollector` / `registerXxx` calls and create the Lambda only when `finish()` is called. This must happen after all components have registered but before Pulumi's deployment graph is finalized.
-
-5. **`Plugin.res` in `-aws` packages is a thin wrapper.** It delegates to the standard plugin's `Make` functor and only differs in two ways: it constrains `Platform.api` / `Platform.role` to the AppSync types, and it provides an env-var-driven `make: unit => component` that satisfies `PluginMaker`. All component declarations live in the standard `Plugin.res`, which is the single source of truth for in-memory tests and AWS deployment alike.
-
-6. **`Platform.T` is the only entry point for component creation.** `Aggregate.Make`, `ReadModel.Make`, `ExtensionPoint.Make`, `StateChangeSlice.Make`, `StateViewSlice.Make`, `AutomationSlice.Make`, `OutboundTranslationSlice.Make`, and `InboundTranslationSlice.Make` are all platform-provided. The AWS Platform's implementations register Lambda handlers internally — eagerly for aggregates/readmodels/EPs/tasks, deferred via the `onDcbSlicesCreated` hook for DCB slices. Plugin code never names the underlying AWS builders.
-
----
-
-## 10. Tuning the command-handler Lambdas
+## 9. Tuning the command-handler Lambdas
 
 `Platform.MakeWithConfig` accepts a `commandHandlerConfig` record that lets you
 tune the four command-handler Lambdas independently:
@@ -467,7 +451,7 @@ fall back to the framework defaults exposed as
 batch size 10, 512 MB `/tmp`).
 
 `logRetentionDays` and `logLevel` are **not** flat defaults — they are resolved
-per environment tier (see [§11](#11-log-retention-and-levels-per-environment)).
+per environment tier (see [§11](#10-log-retention-and-levels-per-environment)).
 When unset, retention and log level follow the stack's tier rather than a fixed
 value; setting either field pins it for that handler and overrides the tier.
 
@@ -520,7 +504,7 @@ honors them.
 `Platform.Make()` keeps the default behavior — an empty `commandHandlerConfig`
 that leaves every Lambda on framework defaults.
 
-## 11. Log retention and levels per environment
+## 10. Log retention and levels per environment
 
 Retention and log level are **not** fixed defaults — they are tiered by Pulumi
 stack, reusing the same prod allow-list (`hostUiProdStacks`) that names the

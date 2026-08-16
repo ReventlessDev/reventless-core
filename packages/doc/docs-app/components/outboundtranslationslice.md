@@ -408,7 +408,7 @@ direction: right
 
 pending: Pending { class: state-view-slice }
 processing: Processing { class: command }
-completed: Completed { class: read model }
+completed: Completed { class: read-model }
 failed: Failed { class: side-effect }
 
 pending -> processing: translate called { class: command-flow }

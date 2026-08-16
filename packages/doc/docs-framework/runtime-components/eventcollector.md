@@ -14,7 +14,7 @@ This component follows the Reventless [Component Structure Pattern](/framework/i
 EventTopic1: Event Topic { class: event-topic }
 EventTopic2: Event Topic { class: event-topic }
 EventCollector: Event Collector { class: event-collector }
-ReadModel: Read Model { class: read model }
+ReadModel: Read Model { class: read-model }
 EventMapper: Event Mapper { class: event-mapper }
 SideEffectHandler: Side Effect Handler { class: side-effect }
 

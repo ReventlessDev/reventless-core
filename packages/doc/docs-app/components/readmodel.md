@@ -16,7 +16,7 @@ UiClient: UI Client { class: client }
 GenericReadModel: Generic Read Model {
   class: read-side
   SpecificReadModel: Specific Read Model {
-    class: read model
+    class: read-model
     Config: Config { class: spec }
     Spec: Read Model Spec { class: spec }
     Projections: Projections { class: spec }

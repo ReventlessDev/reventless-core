@@ -28,8 +28,13 @@ For each entity in your plugin, ask:
 
 If every entity points the same way, use that pure style. If the answers are
 mixed — which is common — use **Hybrid**, modelling each entity with the
-approach that fits it. The full reasoning lives in the App Guide's
-[DCB concepts](/app/concepts/dcb).
+approach that fits it.
+
+Two App Guide pages go deeper: [What is a DCB?](/app/concepts/dcb) defines the
+vocabulary (tag, partition, fence, decision model) and
+[the decision guide](/app/aggregate-vs-dcb-decision-guide) works the same
+question with the trade-offs written out, for when you are choosing for your own
+domain rather than reading about this one.
 
 ## Why this tutorial uses Hybrid
 

@@ -16,7 +16,7 @@ EventTopic: Event Topic { class: event-topic }
 EventCollector1: Event Collector 1 { class: event-collector }
 EventCollector2: Event Collector 2 { class: event-collector }
 EventCollector3: Event Collector 3 { class: event-collector }
-ReadModel: Read Model { class: read model }
+ReadModel: Read Model { class: read-model }
 EventMapper: Event Mapper { class: event-mapper }
 SideEffectHandler: Side Effect Handler { class: side-effect }
 
@@ -203,7 +203,7 @@ This metadata enables:
 
 ```d2
 EventTopic: Event Topic { class: event-topic }
-ReadModel: "Read Model\nQuery Projection" { class: read model }
+ReadModel: "Read Model\nQuery Projection" { class: read-model }
 EventMapper: "Event Mapper\nCommand Generation" { class: event-mapper }
 SideEffect: "Side Effect Handler\nExternal Integration" { class: side-effect }
 Analytics: "Analytics\nMetrics Collection" { class: task }

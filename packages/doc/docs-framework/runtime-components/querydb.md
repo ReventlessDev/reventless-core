@@ -12,7 +12,7 @@ This component follows the Reventless [Component Structure Pattern](/framework/i
 
 ```d2
 EventCollector: Event Collector { class: event-collector }
-ReadModel: Read Model { class: read model }
+ReadModel: Read Model { class: read-model }
 QueryDb: Query DB { class: query-db }
 API: GraphQL API { class: api }
 Client: Client { class: client }
@@ -217,7 +217,7 @@ await queryDb.deleteBatch(items)
 ```d2
 shape: sequence_diagram
 
-ReadModel: ReadModel { class: read model }
+ReadModel: ReadModel { class: read-model }
 QueryDb: QueryDb
 DynamoDB: DynamoDB { class: aws-service }
 
