@@ -1,8 +1,8 @@
 # Plan: read the lifecycle machine off the GWT corpus, and check `@transition` against it
 
-**Status.** PROPOSED 2026-08-17. Nothing built. Phase 0 is a one-hour
-verification that gates the rest; Phases 1 and 2 are independently shippable and
-Phase 1 is useful on its own.
+**Status.** 2026-08-17. **Phase 0 done** (came back negative — see §2), **Phase 1
+done and green**, Phase 2 not started. Phases 1 and 2 are independently shippable
+and Phase 1 is useful on its own.
 
 **Goal.** Derive each command's `allowedStates` / `targetState` /
 Collection-vs-Instance from the GWT scenarios that already exist, and report
@@ -177,6 +177,33 @@ Also confirm here that the emit fires for **every** DSL kind, by counting
 sidecars against `_GWT.res` sources after a clean full build with the flag. A
 kind that emits nothing is a blind spot the harvest would not announce.
 
+### Outcome — negative, and wider than one function
+
+The projection corpus was recorded as `given` and nothing else: every scenario in
+every view file came back with an empty `when` and `then`. Four separate gaps,
+all in `SidecarEmit`:
+
+1. **The projection verbs were not in `step_names`.** `whenEvent` / `thenState` /
+   `thenStateWithId` are how every view DSL is written, and none was listed — so
+   the walk found no when-step and no then-step to record.
+2. **Lifecycle values were dropped.** A lifecycle case is a payload-less
+   constructor, and `example_of_expr` had no case for one. `shelfStatus: Listed`
+   recorded nothing, so even a recorded `thenState` would have carried no state.
+   Emitted now as a new `enum` kind — see the note under Interference.
+3. **A multi-source read model emitted no sidecar at all.** `Customers_GWT.res`
+   wires one `Make` module per source mapping, so it has no single Spec to
+   include and carries no `@@reventless.gwt`; its calls are qualified
+   (`CustomerGwt.thenState`) besides. The emit now also keys off the `_GWT` /
+   `GwtTest` filename, and step names match on their last segment.
+4. **A scenario that named a value first recorded nothing.** `collect_applies`
+   did not walk into `Pexp_let`, so a test body that binds a date range before
+   the chain looked like a scenario asserting nothing.
+
+After the fix, every StateChangeSlice, Aggregate, StateViewSlice and ReadModel
+scenario across the three examples records a when and a then. The 63 that still
+do not are all in DSLs this harvest does not read — Extension, ExtensionPoint,
+Automation, Inbound/OutboundTranslation, Mapping, Flow.
+
 ---
 
 ## §3 — Phase 1: the checker, report-only
@@ -214,6 +241,44 @@ including its `--update` golden flow.
   checker — treat it as such before adjusting rules.
 - Runs in CI. Warnings do not fail the build; contradictions do.
 
+### Outcome — met, and three rules earned their keep
+
+All four hold. `UpdateEmail` derives `["Active"]`, `Deactivate` derives
+`["Active"] → Deactivated`, and `ChangeProductPrice` derives
+`["Archived", "Listed"]` — the case a retirement-based default could not get
+right. `Reactivate` reports unverified on both halves of its annotation.
+
+The first run reported two contradictions and a wall of level disagreements. Per
+the acceptance note they were treated as findings first, and all of them were:
+
+- **Two real corpus holes.** `ShipOrder` looked like it shipped a *cancelled*
+  order, and `UnarchiveProduct` like it unarchived a *listed* one. Both because
+  the view had never been shown the event: `Orders` had no `OrderReopened`
+  scenario and `Products` had none for the archive trio, so the histories folded
+  one event short. The projections fold all four correctly — only the scenarios
+  were missing. Added, and both contradictions went away. This is the same class
+  of drift as an event one slice folds and its sibling ignores.
+- **A history has to belong to one row.** A slice's `given` names whatever the
+  decision needs, including this entity's *other* rows: "placing a second order"
+  sets up `o1` and then places `o2`. Folding that into `o2`'s state made a
+  creating command look like a guarding one. The fold now keeps only setup
+  carrying the command's own id, and keeps events that name no id at all —
+  which is the normal shape for an aggregate.
+- **Silence beats a confident wrong answer.** Where a writable's linked views
+  declare no lifecycle field, every history folds to "no row" and every command
+  looks like it creates one. That produced 36 bogus level disagreements. The
+  level is now left blank and the command's claims reported as unverified,
+  naming the missing lifecycle field as the reason.
+
+Two findings remain, both correct: `Reactivate` (unverified, no scenarios) and
+`Customer.SetLocation` / `Customer.MarkAddressUnresolvable` taking effect from
+`Active` with no `@transition` written.
+
+**The harvest drives one root build, not one per plugin.** Six per-plugin builds
+orphan the in-source test outputs of packages in their dependency graphs, which
+is not a build failure but a jest project that discovers nothing and passes. It
+runs the same ordered chain as `pnpm run build`.
+
 ---
 
 ## §4 — Phase 2: publish the derived model
@@ -229,11 +294,23 @@ including its `--update` golden flow.
    keeps a plugin with no tests working unchanged rather than emptying its menus.
 3. **Feed the model in as data, not as a filesystem read.** `buildStructure`
    must not read `tests/**` at deploy time — tests are not published with a
-   plugin package. Emit the harvested model as a committed ReScript artifact from
-   `generate-plugin` (the same generated-and-committed contract `src/Plugin.res`
-   already has), and let `buildStructure` consume that.
-4. **Retire the level heuristic** if Phase 1 reports no disagreement, or record
-   why it is kept.
+   plugin package. Emit the harvested model as a committed ReScript artifact (the
+   same generated-and-committed contract `src/Plugin.res` already has), and let
+   `buildStructure` consume that.
+
+   **Written by `check:lifecycle:update`, not by `generate-plugin`.** The
+   generator runs in `prebuild`, and the sidecars are produced by the build it
+   precedes — so a generator-written artifact is always one build stale, and on a
+   cold clone the first build has no sidecars at all. `check:lifecycle` already
+   drives its own sidecar build; having it write the artifact beside the golden
+   keeps the two refreshed by one command and reviewed in one diff.
+4. **Retire the level heuristic.** Phase 1 reports no disagreement wherever the
+   corpus can label a history, so `commandLevelAndId`'s name-stem guess has
+   nothing left to contribute where a corpus exists — but note it also supplies
+   `aggregateIdField`, which the corpus does not, so only the level half goes.
+5. **`allowedStatesSource` must be optional and js_nullable.** A required field
+   added to `pluginStructure` wedges registration for any plugin whose persisted
+   definition predates it.
 
 ---
 
@@ -258,8 +335,18 @@ including its `--update` golden flow.
 
 - **`generate-plugin`** gains an output in Phase 2. Its prebuild contract and the
   committed-`Plugin.res` convention are unchanged.
-- **PPX**: Phase 0 may touch `SidecarEmit.ml` only. No annotation syntax changes,
-  so no example resweep.
+- **PPX**: Phase 0 touched `SidecarEmit.ml` and the one line in `ReventlessPpx.ml`
+  that calls it. No annotation syntax changed, so no example resweep, and the
+  compiled output is identical — the emit is still gated on
+  `REVENTLESS_EMIT_SIDECAR`.
+
+  **The sidecar's `exampleValue` gained an `enum` kind**, and that is a wire
+  change for whoever reads sidecars back. A reader that decodes the kinds
+  exhaustively will not recognise it. The alternative — writing a constructor as
+  the existing `string` kind — was rejected: it renders `shelfStatus: "Listed"`
+  where the author wrote `shelfStatus: Listed`, which is a record literal that
+  does not compile, and a wrong value is worse than an unknown one. Republishing
+  the PPX and updating such a reader is the usual decoupled housekeeping.
 - **CI**: one new root script, same shape as `check:graphql` and
   `check-jest-projects.mjs`.
 - **`reventless-ui`**: Phase 2 adds a field. Nothing breaks if it is ignored.

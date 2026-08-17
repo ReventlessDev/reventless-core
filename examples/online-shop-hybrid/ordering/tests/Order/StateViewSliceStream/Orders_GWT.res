@@ -137,4 +137,36 @@ describe("Orders StateViewSlice", () => {
       },
     )
   )
+
+  // The way back. A cancelled order that is reopened is `Placed` again, and
+  // `ShipOrder` says so on its own side — so a view that did not fold this event
+  // would leave a reopened order rendering `Cancelled` for the rest of its life
+  // while shipping perfectly well. The two halves have to agree, and only a
+  // scenario on each says whether they do.
+  test("OrderReopened puts a cancelled order back to Placed", () =>
+    givenEvents([
+      OrderPlaced({
+        orderId: "o1",
+        customerId: "c1",
+        productIds: ["p1"],
+        shippingMethod: Standard,
+        deliveryWindow: None,
+      }),
+      OrderCancelled({orderId: "o1"}),
+    ])
+    ->whenEvent(OrderReopened({orderId: "o1"}))
+    ->thenStateWithId(
+      "o1",
+      {
+        orderId: "o1",
+        customerId: "c1",
+        productIds: ["p1"],
+        lifecycle: Placed,
+        shippingMethod: Standard,
+        placedAt: "time",
+        shippedAt: "",
+        deliveryWindow: None,
+      },
+    )
+  )
 })

@@ -1,0 +1,301 @@
+[
+  {
+    "component": "AddCategory",
+    "command": "AddCategory",
+    "level": "Collection",
+    "allowedStates": [],
+    "targets": [
+      "Listed"
+    ],
+    "scenarios": 4
+  },
+  {
+    "component": "AddProduct",
+    "command": "AddProduct",
+    "level": "Collection",
+    "allowedStates": [],
+    "targets": [
+      "Listed"
+    ],
+    "scenarios": 5
+  },
+  {
+    "component": "ArchiveCategory",
+    "command": "ArchiveCategory",
+    "level": "Instance",
+    "allowedStates": [
+      "Listed"
+    ],
+    "targets": [
+      "Archived"
+    ],
+    "scenarios": 3
+  },
+  {
+    "component": "ArchiveProduct",
+    "command": "ArchiveProduct",
+    "level": "Instance",
+    "allowedStates": [
+      "Listed"
+    ],
+    "targets": [
+      "Archived"
+    ],
+    "scenarios": 4
+  },
+  {
+    "component": "CancelOrder",
+    "command": "CancelOrder",
+    "level": "Instance",
+    "allowedStates": [
+      "Placed"
+    ],
+    "targets": [
+      "Cancelled"
+    ],
+    "scenarios": 4
+  },
+  {
+    "component": "CancelOrder",
+    "command": "ReopenOrder",
+    "level": "Instance",
+    "allowedStates": [
+      "Cancelled"
+    ],
+    "targets": [
+      "Placed"
+    ],
+    "scenarios": 4
+  },
+  {
+    "component": "ChangeCategoryImage",
+    "command": "ChangeCategoryImage",
+    "level": "Instance",
+    "allowedStates": [
+      "Listed"
+    ],
+    "targets": [],
+    "scenarios": 6
+  },
+  {
+    "component": "ChangeProductDescription",
+    "command": "ChangeProductDescription",
+    "level": "Instance",
+    "allowedStates": [
+      "Archived",
+      "Listed"
+    ],
+    "targets": [],
+    "scenarios": 5
+  },
+  {
+    "component": "ChangeProductImage",
+    "command": "ChangeProductImage",
+    "level": "Instance",
+    "allowedStates": [
+      "Archived",
+      "Listed"
+    ],
+    "targets": [],
+    "scenarios": 5
+  },
+  {
+    "component": "ChangeProductName",
+    "command": "ChangeProductName",
+    "level": "Instance",
+    "allowedStates": [
+      "Archived",
+      "Listed"
+    ],
+    "targets": [],
+    "scenarios": 5
+  },
+  {
+    "component": "ChangeProductPrice",
+    "command": "ChangeProductPrice",
+    "level": "Instance",
+    "allowedStates": [
+      "Archived",
+      "Listed"
+    ],
+    "targets": [],
+    "scenarios": 5
+  },
+  {
+    "component": "Customer",
+    "command": "Deactivate",
+    "level": "Instance",
+    "allowedStates": [
+      "Active"
+    ],
+    "targets": [
+      "Deactivated"
+    ],
+    "scenarios": 2
+  },
+  {
+    "component": "Customer",
+    "command": "MarkAddressUnresolvable",
+    "level": "Instance",
+    "allowedStates": [
+      "Active"
+    ],
+    "targets": [],
+    "scenarios": 2
+  },
+  {
+    "component": "Customer",
+    "command": "Register",
+    "level": "Collection",
+    "allowedStates": [],
+    "targets": [
+      "Active"
+    ],
+    "scenarios": 2
+  },
+  {
+    "component": "Customer",
+    "command": "SetAddressLocation",
+    "level": "Instance",
+    "allowedStates": [
+      "Active"
+    ],
+    "targets": [],
+    "scenarios": 2
+  },
+  {
+    "component": "Customer",
+    "command": "SetLocation",
+    "level": "Instance",
+    "allowedStates": [
+      "Active"
+    ],
+    "targets": [],
+    "scenarios": 5
+  },
+  {
+    "component": "Customer",
+    "command": "UpdateAddress",
+    "level": "Instance",
+    "allowedStates": [
+      "Active"
+    ],
+    "targets": [],
+    "scenarios": 2
+  },
+  {
+    "component": "Customer",
+    "command": "UpdateEmail",
+    "level": "Instance",
+    "allowedStates": [
+      "Active"
+    ],
+    "targets": [],
+    "scenarios": 4
+  },
+  {
+    "component": "DiscontinueProduct",
+    "command": "DiscontinueProduct",
+    "level": "Instance",
+    "allowedStates": [
+      "Archived",
+      "Listed"
+    ],
+    "targets": [
+      "Discontinued"
+    ],
+    "scenarios": 4
+  },
+  {
+    "component": "PlaceOrder",
+    "command": "PlaceOrder",
+    "level": "Collection",
+    "allowedStates": [],
+    "targets": [
+      "Placed"
+    ],
+    "scenarios": 11
+  },
+  {
+    "component": "RecordProductDemand",
+    "command": "RecordDemand",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 3
+  },
+  {
+    "component": "RecordProductDemand",
+    "command": "RevokeDemand",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 3
+  },
+  {
+    "component": "RenameCategory",
+    "command": "RenameCategory",
+    "level": "Instance",
+    "allowedStates": [
+      "Listed"
+    ],
+    "targets": [],
+    "scenarios": 4
+  },
+  {
+    "component": "ShipOrder",
+    "command": "ShipOrder",
+    "level": "Instance",
+    "allowedStates": [
+      "Placed"
+    ],
+    "targets": [
+      "Shipped"
+    ],
+    "scenarios": 5
+  },
+  {
+    "component": "SyncCatalogProduct",
+    "command": "ChangeSyncedPrice",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 2
+  },
+  {
+    "component": "SyncCatalogProduct",
+    "command": "RelistSyncedProduct",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 4
+  },
+  {
+    "component": "SyncCatalogProduct",
+    "command": "SyncNewProduct",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 2
+  },
+  {
+    "component": "SyncCatalogProduct",
+    "command": "WithdrawSyncedProduct",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 2
+  },
+  {
+    "component": "UnarchiveProduct",
+    "command": "UnarchiveProduct",
+    "level": "Instance",
+    "allowedStates": [
+      "Archived"
+    ],
+    "targets": [
+      "Listed"
+    ],
+    "scenarios": 5
+  }
+]

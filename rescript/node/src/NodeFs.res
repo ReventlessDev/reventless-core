@@ -17,6 +17,15 @@ external existsSync: string => bool = "existsSync"
 @module("node:fs")
 external realpathSync: string => string = "realpathSync"
 
+/** Set a file's access and modification times, in seconds since the epoch.
+
+    The reason this exists here rather than as a shell-out to `touch`: a build
+    whose compiler caches on source mtime cannot be made to re-run a side effect
+    of compilation — emitting a sidecar, say — by any argument passed to it. The
+    input has to look newer. */
+@module("node:fs")
+external utimesSync: (string, float, float) => unit = "utimesSync"
+
 // ── Reading ──────────────────────────────────────────────────────────────────
 
 @module("node:fs")

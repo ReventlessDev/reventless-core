@@ -652,10 +652,20 @@ let transform (str : structure) : structure =
      before GwtInference injects the include/open. No-op unless
      REVENTLESS_EMIT_SIDECAR=1 and the file carries @@reventless.gwt. *)
   let () =
-    match GwtInference.find_gwt_attr str with
-    | Some (_, gloc) ->
-      SidecarEmit.maybe_emit_gwt ~fname:gloc.Location.loc_start.pos_fname str
-    | None -> ()
+    let fname =
+      match GwtInference.find_gwt_attr str with
+      | Some (_, gloc) -> gloc.Location.loc_start.pos_fname
+      (* No attribute is not the same as no scenarios — a multi-source read
+         model's GWT file wires its own functors and carries none. Fall back to
+         the location the structure itself came from and let the filename
+         decide. *)
+      | None -> (
+        match str with
+        | item :: _ when SidecarEmit.looks_like_gwt_file item.pstr_loc.loc_start.pos_fname
+          -> item.pstr_loc.loc_start.pos_fname
+        | _ -> "")
+    in
+    SidecarEmit.maybe_emit_gwt ~fname str
   in
   let str = GwtInference.transform str in
   (* Inline spec-shaped inner modules (test fixtures, framework-internal

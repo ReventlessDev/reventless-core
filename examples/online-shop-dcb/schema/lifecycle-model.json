@@ -1,0 +1,156 @@
+[
+  {
+    "component": "AddCategory",
+    "command": "AddCategory",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 3
+  },
+  {
+    "component": "AddProduct",
+    "command": "AddProduct",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 2
+  },
+  {
+    "component": "ArchiveCategory",
+    "command": "ArchiveCategory",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 3
+  },
+  {
+    "component": "CancelOrder",
+    "command": "CancelOrder",
+    "level": "Instance",
+    "allowedStates": [
+      "Placed"
+    ],
+    "targets": [
+      "Cancelled"
+    ],
+    "scenarios": 4
+  },
+  {
+    "component": "ChangeAddress",
+    "command": "ChangeAddress",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 4
+  },
+  {
+    "component": "ChangeEmail",
+    "command": "ChangeEmail",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 4
+  },
+  {
+    "component": "ChangeProductDescription",
+    "command": "ChangeProductDescription",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 3
+  },
+  {
+    "component": "ChangeProductName",
+    "command": "ChangeProductName",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 3
+  },
+  {
+    "component": "ChangeProductPrice",
+    "command": "ChangeProductPrice",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 3
+  },
+  {
+    "component": "DeactivateCustomer",
+    "command": "DeactivateCustomer",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 3
+  },
+  {
+    "component": "PlaceOrder",
+    "command": "PlaceOrder",
+    "level": "Collection",
+    "allowedStates": [],
+    "targets": [
+      "Placed"
+    ],
+    "scenarios": 5
+  },
+  {
+    "component": "RecordProductDemand",
+    "command": "RecordDemand",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 3
+  },
+  {
+    "component": "RecordProductDemand",
+    "command": "RevokeDemand",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 3
+  },
+  {
+    "component": "RegisterCustomer",
+    "command": "RegisterCustomer",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 2
+  },
+  {
+    "component": "RenameCategory",
+    "command": "RenameCategory",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 4
+  },
+  {
+    "component": "ShipOrder",
+    "command": "ShipOrder",
+    "level": "Instance",
+    "allowedStates": [
+      "Placed"
+    ],
+    "targets": [
+      "Shipped"
+    ],
+    "scenarios": 4
+  },
+  {
+    "component": "SyncCatalogProduct",
+    "command": "ChangeSyncedPrice",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 2
+  },
+  {
+    "component": "SyncCatalogProduct",
+    "command": "SyncNewProduct",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 2
+  }
+]

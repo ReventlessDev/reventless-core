@@ -1,0 +1,176 @@
+[
+  {
+    "component": "CatalogProduct",
+    "command": "Sync",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 2
+  },
+  {
+    "component": "CatalogProduct",
+    "command": "UpdatePrice",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 2
+  },
+  {
+    "component": "Category",
+    "command": "Add",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 2
+  },
+  {
+    "component": "Category",
+    "command": "Archive",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 2
+  },
+  {
+    "component": "Category",
+    "command": "Rename",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 4
+  },
+  {
+    "component": "Customer",
+    "command": "Deactivate",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 3
+  },
+  {
+    "component": "Customer",
+    "command": "Register",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 3
+  },
+  {
+    "component": "Customer",
+    "command": "UpdateAddress",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 3
+  },
+  {
+    "component": "Customer",
+    "command": "UpdateEmail",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 4
+  },
+  {
+    "component": "Order",
+    "command": "Cancel",
+    "level": "Instance",
+    "allowedStates": [
+      "Placed"
+    ],
+    "targets": [
+      "Cancelled"
+    ],
+    "scenarios": 4
+  },
+  {
+    "component": "Order",
+    "command": "Place",
+    "level": "Collection",
+    "allowedStates": [],
+    "targets": [
+      "Placed"
+    ],
+    "scenarios": 4
+  },
+  {
+    "component": "Order",
+    "command": "Refund",
+    "level": "Instance",
+    "allowedStates": [
+      "Cancelled"
+    ],
+    "targets": [
+      "Refunded"
+    ],
+    "scenarios": 5
+  },
+  {
+    "component": "Order",
+    "command": "Ship",
+    "level": "Instance",
+    "allowedStates": [
+      "Placed"
+    ],
+    "targets": [
+      "Shipped"
+    ],
+    "scenarios": 4
+  },
+  {
+    "component": "Product",
+    "command": "Add",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 2
+  },
+  {
+    "component": "Product",
+    "command": "UpdateDescription",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 3
+  },
+  {
+    "component": "Product",
+    "command": "UpdateImage",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 3
+  },
+  {
+    "component": "Product",
+    "command": "UpdateName",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 3
+  },
+  {
+    "component": "Product",
+    "command": "UpdatePrice",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 3
+  },
+  {
+    "component": "ProductDemand",
+    "command": "Record",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 3
+  },
+  {
+    "component": "ProductDemand",
+    "command": "Revoke",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 3
+  }
+]

@@ -319,6 +319,17 @@ let rec example_of_expr (e : expression) : Yojson.Safe.t option =
   | Pexp_construct ({ txt = Lident "None"; _ }, None) ->
     Some (`Assoc [ ("kind", `String "null") ])
   | Pexp_construct ({ txt = Lident "Some"; _ }, Some inner) -> example_of_expr inner
+  (* A payload-less constructor — `Listed`, `Customers.Active`. Recorded as its
+     own kind rather than as a string: the two are different ReScript source, and
+     a consumer that renders `"Listed"` where the author wrote `Listed` produces
+     a record literal that does not compile. The name is kept as written, prefix
+     and all, so a reader can take the last segment and a writer can reproduce
+     the qualification. This is the value a lifecycle field carries, so dropping
+     it (as this walk used to) makes a projection scenario unreadable. *)
+  | Pexp_construct ({ txt; _ }, None) ->
+    Some
+      (`Assoc
+         [ ("kind", `String "enum"); ("value", `String (flatten_longident txt)) ])
   | Pexp_array els ->
     Some
       (`Assoc
@@ -367,17 +378,32 @@ let element_of_constructor (e : expression) : (string * Yojson.Safe.t list) opti
 let step_names =
   [ "givenEvents"; "givenEvent"; "whenCmd"; "whenCommand"; "whenInput";
     "thenEvent"; "thenError"; "thenState"; "thenCommand"; "thenSideEffect";
+    (* The projection DSLs (`Projection_GWT`, `MultiSourceProjection_GWT`, and
+       the StateViewSlice forms built on them) drive a fold with an event and
+       assert a row, so their when/then verbs are not the command verbs above.
+       Without them a projection scenario records its `given` and nothing else,
+       which reads as a scenario that asserts nothing. *)
+    "whenEvent"; "whenEvents"; "thenStateWithId"; "thenNoState";
     (* Carries no payload: `->thenNoEvent` asserts that a command was accepted
        and produced nothing. Pipe-first still makes it an apply — the argument is
        the chain it is piped from, not an element — so it needs its own case
        below rather than the payload walk the others share. *)
     "thenNoEvent" ]
 
+(* A GWT module built by a functor is called qualified — `CustomerGwt.thenState`
+   — which is the only form available to a multi-source read model, where one
+   file wires one GWT module per source mapping. The step is the same step, so
+   the last segment is what identifies it. *)
+let step_name_of (lid : Longident.t) : string =
+  match Longident.flatten_exn lid with
+  | [] -> ""
+  | segments -> List.nth segments (List.length segments - 1)
+
 let rec collect_applies (e : expression) (acc : (string * expression list) list) :
     (string * expression list) list =
   match e.pexp_desc with
   | Pexp_apply ({ pexp_desc = Pexp_ident { txt; _ }; _ }, args) ->
-    let name = flatten_longident txt in
+    let name = step_name_of txt in
     let arg_exprs = List.map snd args in
     let acc =
       if List.mem name step_names then (name, arg_exprs) :: acc else acc
@@ -386,6 +412,18 @@ let rec collect_applies (e : expression) (acc : (string * expression list) list)
   | Pexp_construct (_, Some inner) -> collect_applies inner acc
   | Pexp_array els ->
     List.fold_left (fun a ae -> collect_applies ae a) acc els
+  (* A test body is a block whenever the author names a value first — building a
+     date range, say — and the chain is then the block's last expression rather
+     than the body itself. Walking only the head left those scenarios recorded
+     with an empty when and then, which reads as a scenario that asserts
+     nothing rather than as one this walk could not see. *)
+  | Pexp_let (_, vbs, cont) ->
+    let acc =
+      List.fold_left (fun a (vb : value_binding) -> collect_applies vb.pvb_expr a) acc vbs
+    in
+    collect_applies cont acc
+  | Pexp_sequence (a, b) -> collect_applies b (collect_applies a acc)
+  | Pexp_constraint (inner, _) -> collect_applies inner acc
   | _ -> acc
 
 let last = function [] -> None | xs -> Some (List.nth xs (List.length xs - 1))
@@ -420,10 +458,24 @@ let extract_steps (body : expression) :
     | None -> []
   in
   let when_ =
-    match find [ "whenCmd"; "whenCommand"; "whenInput" ] with
+    match find [ "whenCmd"; "whenCommand"; "whenInput"; "whenEvent"; "whenEvents" ] with
     | Some (name, args) -> (
-      let kind = if String.equal name "whenInput" then "input" else "command" in
+      let kind =
+        match name with
+        | "whenInput" -> "input"
+        | "whenEvent" | "whenEvents" -> "event"
+        | _ -> "command"
+      in
       match last args with
+      (* `whenEvents([..])` drives the fold with several events in order; each is
+         a step of its own, the same way `givenEvents` expands. *)
+      | Some { pexp_desc = Pexp_array els; _ } ->
+        List.filter_map
+          (fun el ->
+            match element_of_constructor el with
+            | Some (element, values) -> Some (step_json ~kind ~element ~values)
+            | None -> None)
+          els
       | Some payload -> (
         match element_of_constructor payload with
         | Some (element, values) -> [ step_json ~kind ~element ~values ]
@@ -434,8 +486,8 @@ let extract_steps (body : expression) :
   let then_ =
     match
       find
-        [ "thenEvent"; "thenError"; "thenState"; "thenCommand"; "thenSideEffect";
-          "thenNoEvent" ]
+        [ "thenEvent"; "thenError"; "thenState"; "thenStateWithId"; "thenNoState";
+          "thenCommand"; "thenSideEffect"; "thenNoEvent" ]
     with
     (* "Accepted, and emitted nothing." There is no element to name and no
        payload to walk, so it is emitted as a kind on its own. Recorded rather
@@ -444,11 +496,18 @@ let extract_steps (body : expression) :
        the sidecar cannot see is one a round trip silently rewrites into
        something else. *)
     | Some ("thenNoEvent", _) -> [ step_json ~kind:"noEvent" ~element:"" ~values:[] ]
+    (* The projection counterpart: the fold ran and wrote no row. Like
+       `thenNoEvent` it names no element, and like it the absence is the
+       assertion — a scenario asserting a deletion is exactly this. *)
+    | Some ("thenNoState", _) -> [ step_json ~kind:"noState" ~element:"" ~values:[] ]
     | Some (name, args) -> (
       match last args with
       | Some payload -> (
         match name with
-        | "thenState" ->
+        (* `thenStateWithId(id, record)` names the row it asserts. `last` picks
+           the record either way, so the two share a case; the id is a routing
+           detail of the fold, not part of the row's value. *)
+        | "thenState" | "thenStateWithId" ->
           [ step_json ~kind:"state" ~element:"state" ~values:(record_entries payload) ]
         | _ -> (
           let kind =
@@ -531,7 +590,8 @@ let rec collect_tests (e : expression)
     (Location.t * string * expression) list =
   match e.pexp_desc with
   | Pexp_sequence (a, b) -> collect_tests b (collect_tests a acc)
-  | Pexp_apply ({ pexp_desc = Pexp_ident { txt = Lident "test"; _ }; _ }, args) -> (
+  | Pexp_apply ({ pexp_desc = Pexp_ident { txt; _ }; _ }, args)
+    when String.equal (step_name_of txt) "test" -> (
     let arg_exprs = List.map snd args in
     match arg_exprs with
     | title_e :: fn :: _ -> (
@@ -548,11 +608,10 @@ let describe_of_item (item : structure_item) :
   match item.pstr_desc with
   | Pstr_eval
       ( { pexp_desc =
-            Pexp_apply
-              ( { pexp_desc = Pexp_ident { txt = Lident "describe"; _ }; _ },
-                args );
+            Pexp_apply ({ pexp_desc = Pexp_ident { txt; _ }; _ }, args);
           _ },
-        _ ) -> (
+        _ )
+    when String.equal (step_name_of txt) "describe" -> (
     match List.map snd args with
     | name_e :: fn :: _ -> (
       match (string_of_expr name_e, fun_body fn) with
@@ -603,8 +662,20 @@ let gwt_sidecar_path (fname : string) : string =
     Filename.chop_suffix fname ".res" ^ ".gwt.json"
   else fname ^ ".gwt.json"
 
-(* Public entry — called from the dispatcher for @@reventless.gwt files with
-   the original test structure (before the GWT include/open injection). *)
+(* A GWT file the attribute cannot reach: a multi-source read model wires one
+   `Make` module per source mapping, so it has no single Spec to include and
+   carries no `@@reventless.gwt`. Its scenarios are still scenarios, and the one
+   in the shipped hybrid shop is the corpus for a view two other components are
+   labelled against — so the emit keys off the filename as well, matching the
+   `_GWT` / `GwtTest` stems the rest of the pipeline already recognises.
+
+   Nothing is forced: a file with no top-level `describe` yields no fragment. *)
+let looks_like_gwt_file (fname : string) : bool =
+  let stem = filename_stem fname in
+  ends_with stem "_GWT" || ends_with stem "GwtTest" || ends_with stem "Gwt"
+
+(* Public entry — called from the dispatcher for GWT files with the original
+   test structure (before the GWT include/open injection). *)
 let maybe_emit_gwt ~fname (str : structure) : unit =
   if is_enabled () && fname <> "" then
     try
