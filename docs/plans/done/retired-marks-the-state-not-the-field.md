@@ -1,11 +1,29 @@
 # Plan: `@retired` marks the state, not the field that holds it
 
-**Status.** BUILT 2026-08-16 — both changes are in the tree and released, and the
+**Status.** **DONE 2026-08-17.** Both changes are in the tree and released, the
 examples use the constructor form (`Products` declares `Listed | @retired
-Archived | @retired Discontinued`). It stays in the active directory rather than
-moving to `done/` for one reason: the last acceptance bullets need a **seeded
-store checked in a browser**, and that run has not happened. It is the same
-session the ui side is waiting on.
+Archived | @retired Discontinued`), and the browser acceptance this was waiting
+on has now been run against a seeded local store.
+
+**What the run showed.** A seeded store holds one product in each of the three
+shelf states. `Products` badges the archived row **Archived** and the
+discontinued one **Discontinued**, each by its own state name. `Unarchive Product`
+is offered on the archived row **and on nothing else** — the listed row offers
+`Archive Product` instead, and the discontinued row offers no shelf command at
+all. The lifecycle page draws all three states, `Archived` keeping its outgoing
+`Unarchive Product → Listed` and `Discontinued` rendered as an **END** card
+reading "No commands available". `Customers`, a single-state retirement, renders
+"Deactivated" exactly as an ordinary badge.
+
+The narrowing was checked as a permission rather than a rendering choice, which
+is the half a screenshot cannot show: an elevated caller widens to 20 rows with
+`includeRetired`, while `merch` and `shopper` stay at 18 **even when they ask
+for it**.
+
+**One bug found on the same run, and it is not this plan's.** A discontinued
+product can still be ordered — `PlaceOrder` never folds `CatalogProductWithdrawn`.
+Filed as `Backlog/place-order-ignores-product-withdrawal.md`; it is a fold that
+was never taught the event, not a retirement question.
 
 **Goal.**
 
