@@ -1,13 +1,20 @@
 // PlaceOrder StateChangeSlice.
 // Rejects duplicate placement and validates that all referenced products are
-// available (synced to the ordering event log).
+// available (synced to the ordering event log, and not since withdrawn).
 
 @@reventless.spec
 
+// The full shelf lifecycle, not just its opening move. A slice that folded only
+// `CatalogProductSynced` would decide on a set that never shrinks, and a product
+// pulled from the catalog would stay orderable forever — the read side deletes
+// the row while the write side keeps saying yes. Both the withdrawal and the way
+// back are consumed, so availability follows the shelf in both directions.
 @schema
 type consumedEvent =
   | OrderPlaced({orderId: string})
   | CatalogProductSynced({productId: string})
+  | CatalogProductWithdrawn({productId: string})
+  | CatalogProductRelisted({productId: string})
 
 // Declared in the order the UI should present them: the batched default first,
 // then the expedited option, then in-store collection.

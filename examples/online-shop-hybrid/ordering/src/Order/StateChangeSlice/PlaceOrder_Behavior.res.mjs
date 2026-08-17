@@ -11,17 +11,27 @@ let initialState = {
 };
 
 function evolve(state, event) {
-  if (event.TAG === "OrderPlaced") {
-    let orderId = event.orderId;
-    return {
-      placedOrderIds: state.placedOrderIds.includes(orderId) ? state.placedOrderIds : state.placedOrderIds.concat([orderId]),
-      availableProductIds: state.availableProductIds
-    };
+  switch (event.TAG) {
+    case "OrderPlaced" :
+      let orderId = event.orderId;
+      return {
+        placedOrderIds: state.placedOrderIds.includes(orderId) ? state.placedOrderIds : state.placedOrderIds.concat([orderId]),
+        availableProductIds: state.availableProductIds
+      };
+    case "CatalogProductWithdrawn" :
+      let productId = event.productId;
+      return {
+        placedOrderIds: state.placedOrderIds,
+        availableProductIds: state.availableProductIds.filter(id => id !== productId)
+      };
+    case "CatalogProductSynced" :
+    case "CatalogProductRelisted" :
+      break;
   }
-  let productId = event.productId;
+  let productId$1 = event.productId;
   return {
     placedOrderIds: state.placedOrderIds,
-    availableProductIds: state.availableProductIds.includes(productId) ? state.availableProductIds : state.availableProductIds.concat([productId])
+    availableProductIds: state.availableProductIds.includes(productId$1) ? state.availableProductIds : state.availableProductIds.concat([productId$1])
   };
 }
 

@@ -15,11 +15,19 @@ let evolve = (state, event: consumedEvent) =>
         ? state.placedOrderIds
         : Array.concat(state.placedOrderIds, [orderId]),
     }
-  | CatalogProductSynced({productId}) => {
+  | CatalogProductSynced({productId})
+  | CatalogProductRelisted({productId}) => {
       ...state,
       availableProductIds: state.availableProductIds->Array.includes(productId)
         ? state.availableProductIds
         : Array.concat(state.availableProductIds, [productId]),
+    }
+  // The half that was missing: without it the set only ever grows, and a
+  // withdrawn product stays orderable. Removing the id is what keeps this
+  // decision agreeing with the `AvailableProducts` view, which deletes the row.
+  | CatalogProductWithdrawn({productId}) => {
+      ...state,
+      availableProductIds: state.availableProductIds->Array.filter(id => id != productId),
     }
   }
 

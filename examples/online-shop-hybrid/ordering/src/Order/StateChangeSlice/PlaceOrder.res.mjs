@@ -14,6 +14,14 @@ let consumedEventSchema = S.union([
   S.schema(s => ({
     TAG: "CatalogProductSynced",
     productId: s.m(DcbTag$Reventless.string)
+  })),
+  S.schema(s => ({
+    TAG: "CatalogProductWithdrawn",
+    productId: s.m(DcbTag$Reventless.string)
+  })),
+  S.schema(s => ({
+    TAG: "CatalogProductRelisted",
+    productId: s.m(DcbTag$Reventless.string)
   }))
 ]);
 
