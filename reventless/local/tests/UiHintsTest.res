@@ -103,22 +103,46 @@ describe("UiHints.emit", () => {
 // point, while mid-session it is almost always an editor mid-save, and killing a
 // running dev server over a keystroke is worse than the restart this replaces.
 
-// Both exits close the watcher AND clear the deadline. A watcher is `unref`ed
+// The edit is repeated, and that is not belt-and-braces.
+//
+// `fs.watch` does not promise that a write landing near the watcher's creation
+// is reported. The FSEvents stream behind it on macOS is armed asynchronously,
+// and a write that gets there first is not reported late — it is not reported at
+// all. Measured against this very module: once the stream is up the edit is seen
+// in about 10ms, and when it is not, the same edit produces no event in four
+// seconds, with which of the two happens varying by how many watchers the
+// process has already opened rather than by anything the test does.
+//
+// So a single edit tests the arming, not the reload. Repeating it on an interval
+// far longer than a reload takes — 50ms of debounce plus a file copy — leaves the
+// case where the first write lands identical to what it always was, and lets the
+// case where it is dropped recover on the next one instead of reporting that hot
+// reload is broken. Re-writing the same bytes is what a developer saving twice
+// does, so nothing here asserts less than it did.
+let retryEvery = 1000
+
+// All three exits close the watcher AND clear both timers. A watcher is `unref`ed
 // and would not hold the run open on its own, but a live 4-second timer would —
 // and "Jest did not exit" on a suite that passed is exactly the noise that
 // teaches a reader to ignore it.
-let waitForReload = (~timeoutMs: int=4000, ~afterWatching: unit => unit, ~uiHintsFile, ~dir) =>
+let waitForReload = (~timeoutMs: int=4000, ~edit: unit => unit, ~uiHintsFile, ~dir) =>
   Promise.make((resolve, _) => {
     let fired = ref(0)
     let watcher = ref(None)
     let deadline = ref(None)
+    let retry = ref(None)
     // Resolves with a count rather than rejecting on the deadline: "nothing was
     // re-served" is the expected answer in half these cases, and a rejection
     // would make the assertion read as an infrastructure failure.
     let finish = () => {
       watcher.contents->Option.forEach(NodeFs.watcherClose)
       deadline.contents->Option.forEach(clearTimeout)
+      retry.contents->Option.forEach(clearTimeout)
       resolve(fired.contents)
+    }
+    let rec editUntilSeen = () => {
+      edit()
+      retry := Some(setTimeout(editUntilSeen, retryEvery))
     }
     watcher :=
       UiHints.watch(~uiHintsFile, ~dir, ~onReload=() => {
@@ -126,7 +150,7 @@ let waitForReload = (~timeoutMs: int=4000, ~afterWatching: unit => unit, ~uiHint
         finish()
       })
     deadline := Some(setTimeout(finish, timeoutMs))
-    afterWatching()
+    editUntilSeen()
   })
 
 describe("UiHints.watch", () => {
@@ -147,7 +171,7 @@ describe("UiHints.watch", () => {
     let fired = await waitForReload(
       ~uiHintsFile=Some(path),
       ~dir,
-      ~afterWatching=() => NodeFs.writeFileSync(path, edited),
+      ~edit=() => NodeFs.writeFileSync(path, edited),
     )
     expect((fired > 0, served(dir)))->toEqual((true, edited))
   })
@@ -163,7 +187,7 @@ describe("UiHints.watch", () => {
       ~timeoutMs=1500,
       ~uiHintsFile=Some(path),
       ~dir,
-      ~afterWatching=() => NodeFs.writeFileSync(path, `{"Catalog": {"views":`),
+      ~edit=() => NodeFs.writeFileSync(path, `{"Catalog": {"views":`),
     )
     expect((fired, served(dir)))->toEqual((0, declared))
   })
@@ -178,7 +202,10 @@ describe("UiHints.watch", () => {
     let fired = await waitForReload(
       ~uiHintsFile=Some(path),
       ~dir,
-      ~afterWatching=() => {
+      // Both halves of the save, so a repeat of this edit is the same story told
+      // again and still ends on the whole file — never a truncated write left
+      // standing after a complete one.
+      ~edit=() => {
         NodeFs.writeFileSync(path, `{"Catalog": {"views":`)
         let _ = setTimeout(() => NodeFs.writeFileSync(path, whole), 200)
       },
