@@ -31,10 +31,19 @@ describe("CancelOrder StateChangeSlice", () => {
     ->thenEvent(OrderReopened({orderId: "o1"}))
   )
 
-  test("ReopenOrder on non-cancelled order produces no events (idempotent)", () =>
+  test("ReopenOrder on a placed order produces no events (idempotent)", () =>
     givenEvents([OrderPlaced({productIds: ["p1"]})])
     ->whenCmd(ReopenOrder({orderId: "o1"}))
     ->thenNoEvent
+  )
+
+  // A shipped order is not a cancelled one, so reopening it is not a repeat of
+  // anything. Accepting it silently reported success while the order stayed
+  // shipped — the case no test covered, which is how it survived.
+  test("ReopenOrder on a shipped order returns OrderAlreadyShipped", () =>
+    givenEvents([OrderPlaced({productIds: ["p1"]}), OrderShipped])
+    ->whenCmd(ReopenOrder({orderId: "o1"}))
+    ->thenError(OrderAlreadyShipped)
   )
 
   test("ReopenOrder on non-existent order returns OrderNotFound", () =>

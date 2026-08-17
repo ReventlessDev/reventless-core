@@ -30,6 +30,10 @@ let decide = (state, command) =>
     Ok([OrderCancelled({orderId: theId, productIds: state.productIds})])
 
   | (NotPlaced, ReopenOrder(_)) => Error(OrderNotFound)
-  | (Placed | Shipped, ReopenOrder(_)) => Ok([]) // idempotent — not cancelled
+  | (Placed, ReopenOrder(_)) => Ok([]) // idempotent — already open
+  // A shipped order is not a cancelled one, and reopening it is not a repeat of
+  // anything: accepting it silently told the caller their request had been
+  // honoured while the order stayed shipped.
+  | (Shipped, ReopenOrder(_)) => Error(OrderAlreadyShipped)
   | (Cancelled, ReopenOrder({orderId: theId})) => Ok([OrderReopened({orderId: theId})])
   }

@@ -59,17 +59,10 @@ function decide(state, command) {
         };
       }
     case "Shipped" :
-      if (command.TAG === "CancelOrder") {
-        return {
-          TAG: "Error",
-          _0: "OrderAlreadyShipped"
-        };
-      } else {
-        return {
-          TAG: "Ok",
-          _0: []
-        };
-      }
+      return {
+        TAG: "Error",
+        _0: "OrderAlreadyShipped"
+      };
     case "Cancelled" :
       if (command.TAG === "CancelOrder") {
         return {
