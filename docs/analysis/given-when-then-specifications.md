@@ -1300,6 +1300,47 @@ In priority order:
 
 With all five in place, "I provide the spec and the GWT" → "framework runs, passes" becomes a closed AI iteration loop with the Outcome algebra serving as the fitness function.
 
+### 5.6 The closed-world gate, and the lifecycle model as a corpus by-product
+
+Full analysis: [`lifecycle-model-from-gwt-corpus.md`](./lifecycle-model-from-gwt-corpus.md).
+Two additions to the pipeline above.
+
+**The acceptance gate in Stage E is a lower bound, not an equality.** "Every GWT
+scenario returns `Ok`" does not constrain the cells no scenario mentions. A
+generated `decide` may therefore accept commands in states the corpus never
+described — with no scenario for `Reactivate` on an active customer, `Ok([])`,
+`Ok([Reactivated])` and `Error(CustomerNotFound)` all pass. Anything derived
+*from* the corpus is then narrower than what shipped.
+
+**Fix: make Stage A's stub generator closed-world.** Every `(state, command)`
+cell absent from the corpus gets an explicit refusal, never a permissive
+fall-through. Then implementation ≡ corpus exactly. This also fixes the failure
+mode when scenarios are missing: the feature is *absent and visible at first use*
+rather than improvised and silent. Fail-closed is the correct default for
+generated domain logic.
+
+**With that gate, the lifecycle state machine falls out of the corpus for free.**
+Label each `givenEvents` list by folding it through `project` and reading the
+`@lifecycle` field, then classify by outcome — `thenEvent` = allowed (an edge if
+the lifecycle field moved), `thenNoEvent` = accepted but not offerable,
+`thenError` = refused. Keying on *effect* rather than *acceptance* is load-bearing:
+the repo's `Ok([])`-on-no-change convention systematically widens what `decide`
+accepts beyond what a menu should offer. Applied to the shipped `Customer`
+corpus this reproduces the hand-written `@transition` annotations exactly, and
+additionally yields the Collection-vs-Instance split (a command that succeeds
+from no row is Collection-level) — currently a name-prefix guess in
+`Plugin_Structure.commandLevelAndId`.
+
+**No new plumbing is required.** The PPX already emits a `<Stem>.gwt.json`
+sidecar beside every `@@reventless.gwt` file when `REVENTLESS_EMIT_SIDECAR=1`
+(`SidecarEmit.maybe_emit_gwt`), and the three outcomes are already
+distinguishable in it: `then: [{kind:"event"}]`, `then: []` (`thenNoEvent`),
+`then: [{kind:"error"}]`. Because the sidecar is a **compile-time** artifact, the
+harvest is a build step rather than a consumer of test execution — deploy-time
+metadata must not depend on a test run. Ordering note: the state labels come from
+the projection corpus, so a view's scenarios must be harvested before the command
+slices that reference it.
+
 ---
 
 ## 6. Implementation plan
@@ -1428,3 +1469,5 @@ For DCB slices that today have **no** GWT (raw `expect`), migration is net-new a
 - **Rename and harmonise the existing DSLs** (§4.1, §2.6): `BehaviorTest`→`Behavior_GWT`, `ProjectionTest`→`Projection_GWT`, `EventMappingTest`→`EventMapping_GWT`. Standardise vocabulary, drop module-level `errors` ref, finish missing error combinators, delete duplicated `reventless-local/src/test/*` modules.
 - **Migration is fully additive** (§6): codemods for the existing rename, semi-automatic LLM rewrite for the few DCB hand-rolled tests, deprecation aliases keep every PR green.
 - **AI generation is feasible to a high ceiling** (§5) but only if the GWT corpus covers every cross-entity invariant. The two non-derivable areas — invariants without examples, read-model query patterns — must be made explicit as `_GWT` or `Query_GWT` scenarios. Otherwise an LLM will under-constrain `decide` and over-fit on the supplied examples.
+- **Make the acceptance gate closed-world** (§5.6). "All scenarios pass" is a lower bound; uncovered `(state, command)` cells must refuse explicitly, or generated behaviour exceeds what anyone specified and anything derived from the corpus is unsound.
+- **Harvest the lifecycle state machine from the corpus** (§5.6). With the gate in place, `allowedStates` / `targetState` / Collection-vs-Instance are corpus by-products, and `@transition` becomes a coverage obligation rather than an unverifiable claim. Requires recording the passing `(givenEvents, command, producedEvents)` triple in the Outcome algebra (§3.2).
