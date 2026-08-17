@@ -134,3 +134,63 @@ describe("the boolean form", () => {
     ))->Expect.toEqual((true, false))
   })
 })
+
+// ── Ownership, on the two doors that never had it ────────────────────────────
+
+describe("the by-ids door's owner scoping", () => {
+  let code = F.batchGetItemsByIds(
+    ~ownerField="customerId",
+    ~retiredField="shelfStatus",
+    ~retiredValues=["Archived"],
+    ~elevatedGroups=elevated,
+  )("Orders")
+
+  // Dropped from the array rather than refused, for the reason the single-key
+  // door answers null: telling "not yours" apart from "not there" makes the door
+  // an oracle for which ids exist.
+  testSync("drops a row the caller does not own", () =>
+    expect(code->String.includes("item !== null && _owns(item) && _live(item)"))->Expect.toBe(true)
+  )
+
+  testSync("declares the exemption test once, shared with the retirement guard", () =>
+    expect(code->String.split("const _exempt =")->Array.length - 1)->Expect.toBe(1)
+  )
+
+  testSync("is unchanged for a view with neither rule", () => {
+    let plain = F.batchGetItemsByIds()("Orders")
+    expect((plain->String.includes("_owns"), plain->String.includes("_live")))
+    ->Expect.toEqual((false, false))
+  })
+})
+
+describe("the by-index door's owner scoping", () => {
+  let code = F.queryByIndexFiltered(
+    ~index="byCategory",
+    ~idField="categoryId",
+    ~ownerField="customerId",
+    ~elevatedGroups=elevated,
+  )->asString
+
+  testSync("pushes the owner predicate into the read", () =>
+    expect(code->String.includes("names['#owner'] = 'customerId'"))->Expect.toBe(true)
+  )
+
+  // The predicate must not be readable off the arguments: a rule about what the
+  // caller may see cannot arrive on a channel the caller controls.
+  testSync("reads the owner from the identity, never from ctx.args", () =>
+    expect(code->String.includes("values[':owner'] = _osub"))->Expect.toBe(true)
+  )
+
+  testSync("exempts an elevated caller and an IAM service call", () =>
+    expect(
+      code->String.includes("if (!(_osub == null || _ogroups.some(g => _oelevated.indexOf(g) >= 0)))"),
+    )->Expect.toBe(true)
+  )
+
+  // The generic argument loop turns an unrecognised arg into a `contains` filter.
+  // `includeRetired` is a request to lift a restriction, and filtering on it
+  // would match no row at all.
+  testSync("never treats includeRetired as a column to match on", () =>
+    expect(code->String.includes("key === 'includeRetired'"))->Expect.toBe(true)
+  )
+})

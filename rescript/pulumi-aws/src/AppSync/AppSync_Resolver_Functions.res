@@ -116,6 +116,47 @@ let retiredGuardPreamble = (
   }
 
 /**
+The `@owner` predicate for an index door, as a FilterExpression clause.
+
+Same rule and same branch order as `listAllItemsConnection`'s own owner clause —
+provider before identity, because an IAM-signed service caller has no `sub` for a
+reason that has nothing to do with being anonymous — and pushed into the read for
+the same reason: an index door takes a `limit`, and a page cut before the
+predicate would come back short with nothing said about why.
+
+**Not applied to a group-restricted index.** Where `indexConfig.authorization` is
+set, the door already runs `authorizeIndexedAccess`: the caller must be in the
+named group AND be the holder the auth table records for that index value. Those
+rows are, by construction, other people's — an order assigned to a fulfilment
+operator is owned by the customer who placed it — so ANDing `@owner` on top would
+return nothing and revoke exactly the access the auth table was written to grant.
+An explicit per-index rule is the deployment's answer for that door; this is the
+default for doors that have none. `QueryDbResolvers_AppSync` decides which is
+which and passes `ownerField` only for the latter.
+*/
+let ownerFilterClause = (~ownerField: option<string>, ~elevatedGroups: array<string>) =>
+  switch ownerField {
+  | None => ""
+  | Some(field) =>
+    let elevatedLiteral = elevatedGroups->Array.map(g => `'${g}'`)->Array.join(", ")
+    `
+  // ── owner scoping (generated) ──
+  // Not read from ctx.args: a predicate deciding what the caller may see must
+  // arrive on a channel the caller cannot name.
+  const _oid = ctx.identity;
+  const _osub = _oid == null ? null : _oid.sub;
+  const _ogroups = (_oid != null && _oid.claims != null && _oid.claims['cognito:groups']) || [];
+  const _oelevated = [${elevatedLiteral}];
+  if (!(_osub == null || _ogroups.some(g => _oelevated.indexOf(g) >= 0))) {
+    if (expression) expression += ' AND ';
+    names['#owner'] = '${field}';
+    values[':owner'] = _osub;
+    expression += '#owner = :owner';
+  }
+  `
+  }
+
+/**
 The same retirement predicate as `retiredGuardPreamble`, for a door that reads
 with `Query` and therefore has a FilterExpression to put it in.
 
@@ -538,6 +579,7 @@ ${resultResponseCode}
 let queryByIndexFiltered = (
   ~index: string,
   ~idField: string,
+  ~ownerField: option<string>=?,
   ~retiredField: option<string>=?,
   ~retiredValues: option<array<string>>=?,
   ~elevatedGroups: array<string>=[],
@@ -555,7 +597,12 @@ export function request(ctx) {
   const values = {};
   Object.keys(args).forEach(key => {
     const value = args[key];
-    if (key === '${idField}' || key === 'limit' || key === 'nextToken' || key === 'forward') return;
+    // includeRetired is a request to lift a restriction, not a column to match
+    // on. Unlisted, the loop below would turn it into contains(#includeRetired,
+    // ...) against an attribute no row has, and the door would answer nothing for
+    // the caller it exists to serve. Skipped defensively: the index field's SDL
+    // does not declare the argument today, so GraphQL refuses it before this runs.
+    if (key === '${idField}' || key === 'limit' || key === 'nextToken' || key === 'forward' || key === 'includeRetired') return;
     if (value == null || value === '') return;
     if (expression) expression += ' AND';
     if (key === 'hideDeleted') {
@@ -570,7 +617,7 @@ export function request(ctx) {
       values[':' + key] = '' + value;
     }
   });
-${retiredFilterClause(~retiredField, ~retiredValues, ~elevatedGroups)}
+${ownerFilterClause(~ownerField, ~elevatedGroups)}${retiredFilterClause(~retiredField, ~retiredValues, ~elevatedGroups)}
   const result = {
     operation: 'Query',
     query,
@@ -590,6 +637,7 @@ ${resultResponseCode}
 let queryByIndexSortFiltered = (
   ~index: string,
   ~idField: string,
+  ~ownerField: option<string>=?,
   ~sortField: string,
   ~retiredField: option<string>=?,
   ~retiredValues: option<array<string>>=?,
@@ -617,7 +665,7 @@ export function request(ctx) {
   const values = {};
   Object.keys(args).forEach(key => {
     const value = args[key];
-    if (key === '${idField}' || key === '${sortField}' || key === 'limit' || key === 'nextToken' || key === 'forward') return;
+    if (key === '${idField}' || key === '${sortField}' || key === 'limit' || key === 'nextToken' || key === 'forward' || key === 'includeRetired') return;
     if (value == null || value === '') return;
     if (expression) expression += ' AND';
     if (key === 'hideDeleted') {
@@ -632,7 +680,7 @@ export function request(ctx) {
       values[':' + key] = '' + value;
     }
   });
-${retiredFilterClause(~retiredField, ~retiredValues, ~elevatedGroups)}
+${ownerFilterClause(~ownerField, ~elevatedGroups)}${retiredFilterClause(~retiredField, ~retiredValues, ~elevatedGroups)}
   const result = {
     operation: 'Query',
     query,
@@ -1161,6 +1209,7 @@ export function response(ctx) {
     Single-key tables only — composite-key BatchGetItem needs both pk + sk per
     key entry, which this template doesn't construct. */
 let batchGetItemsByIds = (
+  ~ownerField: option<string>=?,
   ~retiredField: option<string>=?,
   ~retiredValues: option<array<string>>=?,
   ~elevatedGroups: array<string>=[],
@@ -1188,14 +1237,21 @@ export function response(ctx) {
   // missing id makes the entire field fail with "Cannot return null for
   // non-nullable type" and the caller sees data=null. Filter the nulls so
   // the field returns just the items that were found.
-  // The retirement guard the list pushes into a FilterExpression, applied after
-  // the read because BatchGetItem has none to push into.${retiredGuardPreamble(
+  // The owner and retirement guards the list pushes into a FilterExpression,
+  // applied after the read because BatchGetItem has none to push into. A row the
+  // caller does not own is dropped rather than refused, for the reason the
+  // single-key door answers null: distinguishing "not yours" from "not there"
+  // would make this door an oracle for which ids exist.${switch ownerField {
+    | None => ""
+    | Some(field) => ownerGuardPreamble(~ownerField=field, ~elevatedGroups)
+    }}${retiredGuardPreamble(
       ~retiredField,
       ~retiredValues,
       ~elevatedGroups,
-      ~ownerScoped=false,
+      ~ownerScoped=ownerField->Option.isSome,
     )}
-  return (ctx.result?.data?.['${tableName}'] ?? []).filter(item => item !== null${retiredField->Option.isSome
+  return (ctx.result?.data?.['${tableName}'] ?? []).filter(item =>
+    item !== null${ownerField->Option.isSome ? " && _owns(item)" : ""}${retiredField->Option.isSome
       ? " && _live(item)"
       : ""});
 }

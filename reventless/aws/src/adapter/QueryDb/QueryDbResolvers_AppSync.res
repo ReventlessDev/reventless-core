@@ -383,6 +383,7 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
               ~index,
               ~idField,
               ~sortField,
+              ~ownerField?,
               ~retiredField?,
               ~retiredValues?,
               ~elevatedGroups,
@@ -391,6 +392,7 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
             Resolver.Functions.queryByIndexFiltered(
               ~index,
               ~idField,
+              ~ownerField?,
               ~retiredField?,
               ~retiredValues?,
               ~elevatedGroups,
@@ -420,6 +422,13 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
           ~name=resolverName,
           ~api,
           ~dataSource=dataSourceName,
+          // No `~ownerField`, deliberately: this index declares its own
+          // authorization, and the rows it grants a group member are by
+          // construction owned by somebody else — an order assigned to a
+          // fulfilment operator belongs to the customer who placed it. Adding the
+          // owner predicate here would return nothing and revoke the access the
+          // auth table exists to grant. Retirement still applies: an archived row
+          // is withdrawn from everyone who has not asked, whoever owns it.
           ~code=Resolver.Functions.queryByIndexFiltered(
             ~index,
             ~idField,
@@ -480,6 +489,7 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
           ~code=generateCode(
             ~storageResource=storage,
             ~template=Resolver.Functions.batchGetItemsByIds(
+              ~ownerField?,
               ~retiredField?,
               ~retiredValues?,
               ~elevatedGroups,
