@@ -448,6 +448,37 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
       None
     }
 
+    // The reference door. Registered under the same conditions as by-ids because
+    // it is the same read; what differs is the projection on the way out, and
+    // that a view which named its retired rows lets them through it.
+    //
+    // Not conditional on the annotation: `GraphQL_FragmentGenerator` emits the
+    // field for every view — one SDL serves every backend — so a view without a
+    // resolver here would be a field that errors rather than one that is absent.
+    let resolverRefs = if includeIdParam && subIdField === None {
+      let storage = storageResource(~pluginName=None, ~tableName=name)
+      let refsField = fieldNameForAll ++ "Refs"
+      Some(
+        makeQueryResolver(
+          ~resolverName=refsField->String.capitalize,
+          ~field=refsField->Pulumi.Input.make,
+          ~code=generateCode(
+            ~storageResource=storage,
+            ~template=Resolver.Functions.refsByIds(
+              ~labelField,
+              ~retiredField,
+              ~retiredValues,
+              ~namedWhenRetired=retiredSpec->Option.mapOr(false, r => r.namedWhenRetired),
+              ~ownerField?,
+              ~elevatedGroups,
+            ),
+          ),
+        ),
+      )
+    } else {
+      None
+    }
+
     let idResolvers = idResolverConfigs->Array.map(config => {
       let {
         source: {idField: sourceIdField, subId: sourceSubId, resolvedField},
@@ -535,7 +566,11 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
     | (None, Some(byIds)) => [resolverByIdSingle, resolverAll, byIds]
     | (None, None) => [resolverByIdSingle, resolverAll]
     }
-    Array.flat([mainResolvers, resolversByIndex, idResolvers, idsResolvers])
+    // Appended rather than folded into `mainResolvers`' four-way switch: the door
+    // is independent of whether this view has a sub-id door, and adding a third
+    // dimension to that match would spell eight cases to say one thing.
+    let refsResolvers = resolverRefs->Option.mapOr([], r => [r])
+    Array.flat([mainResolvers, refsResolvers, resolversByIndex, idResolvers, idsResolvers])
     ->Array.map(Util.AppSync.toResourceNative)
   }
 

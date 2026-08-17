@@ -1026,6 +1026,78 @@ export function response(ctx) {
 }
 `
 
+/** The reference door — `{list}Refs(ids)`: what a caller holding a pointer to a
+    row may learn about it, and nothing else.
+
+    The same BatchGetItem as `batchGetItemsByIds`, projected in the response to
+    `{id, label, retired, retiredState}`. The projection is the type's — a caller
+    cannot ask for a price here because the SDL type has none — so the response
+    only has to *build* the three fields, never decide which to withhold.
+
+    `namedWhenRetired` is what a retired row turns on: false drops it, exactly as
+    every other door does; true lets it through with the state that withdrew it.
+    The owner rule is applied either way and is not what the annotation lifts. */
+let refsByIds = (
+  ~labelField: string,
+  ~retiredField: option<string>,
+  ~retiredValues: option<array<string>>,
+  ~namedWhenRetired: bool,
+  ~ownerField: option<string>=?,
+  ~elevatedGroups: array<string>=[],
+) => (tableName: string) => {
+  let ownerGuard = switch ownerField {
+  | None => "\n  const _owns = () => true;"
+  | Some(field) => ownerGuardPreamble(~ownerField=field, ~elevatedGroups)
+  }
+  // Retirement, in the vocabulary the row itself uses: a member test for the
+  // state form, truthiness for the boolean one. Absent keeps the row live, which
+  // is what a row written before the annotation is.
+  let retiredExpr = switch (retiredField, retiredValues) {
+  | (None, _) => "false"
+  | (Some(f), Some(values)) =>
+    let literal = values->Array.map(v => `'${v}'`)->Array.join(", ")
+    `[${literal}].indexOf(row['${f}']) >= 0`
+  | (Some(f), None) => `row['${f}'] === true`
+  }
+  // Only the state form has a state to name, and only a retired row reports one:
+  // this door names rows, it does not publish a lifecycle column to callers the
+  // list withholds.
+  let stateExpr = switch (retiredField, retiredValues) {
+  | (Some(f), Some(_)) => `_retired(row) ? (row['${f}'] ?? null) : null`
+  | _ => "null"
+  }
+  `${importUtil}
+import { runtime } from '@aws-appsync/utils';
+export function request(ctx) {
+  const ids = ctx.args.ids ?? [];
+  if (ids.length === 0) return runtime.earlyReturn([]);
+  return {
+    operation: 'BatchGetItem',
+    tables: {
+      '${tableName}': {
+        keys: ids.map(id => ({ id: util.dynamodb.toDynamoDB(id) })),
+        consistentRead: true,
+      }
+    }
+  };
+}
+export function response(ctx) {
+  if (ctx.error) util.error(ctx.error.message, ctx.error.type);${ownerGuard}
+  const _retired = (row) => ${retiredExpr};
+  const _namesRetired = ${namedWhenRetired ? "true" : "false"};
+  return (ctx.result?.data?.['${tableName}'] ?? [])
+    .filter(row => row !== null && _owns(row))
+    .filter(row => _namesRetired || !_retired(row))
+    .map(row => ({
+      id: row.id,
+      label: row['${labelField}'] ?? row.id,
+      retired: _retired(row),
+      retiredState: ${stateExpr},
+    }));
+}
+`
+}
+
 // ---------------------------------------------------------------------------
 // DynamoDB write
 // ---------------------------------------------------------------------------

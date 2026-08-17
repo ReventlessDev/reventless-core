@@ -9,7 +9,7 @@
 //
 // Field names / includeIdParam / connectionSpec come from the same registry the
 // AppSync path reads, so the SDL emitted by GraphQL_FragmentGenerator stays in
-// lockstep. Kinds covered: getById, list (connection), index, byIds. Deferred to
+// lockstep. Kinds covered: getById, list (connection), index, byIds, refs. Deferred to
 // B3.2c: items (sub-id connection), @resolves/@resolvesMany, node, auth-table.
 
 module Resolver = AppSync_Resolver_Retrying
@@ -202,6 +202,18 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
       []
     }
 
+    // The reference door — {list}Refs(ids). Same shape as by-ids and registered
+    // under the same conditions, because it is the same read: a set of keys in,
+    // rows out. What differs is on the way out, where the row is projected to
+    // what a reference needs and a retirement is lifted for a view that named its
+    // rows.
+    let refs = if includeIdParam && subIdField === None {
+      let refsField = fieldNameForAll ++ "Refs"
+      [mkResolver(~resolverName=refsField->String.capitalize, ~field=refsField, ~kind="refs")]
+    } else {
+      []
+    }
+
     // Per-index equality queries: {single}By{Index}. A group-restricted index
     // (indexConfig.authorization) bakes the auth-table pipeline params — the
     // Lambda verifies group membership + ownership against the auth read model.
@@ -278,6 +290,7 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
     [byId, all]
     ->Array.concat(items)
     ->Array.concat(byIds)
+    ->Array.concat(refs)
     ->Array.concat(byIndex)
     ->Array.concat(idResolvers)
     ->Array.concat(idsResolvers)

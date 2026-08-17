@@ -154,6 +154,7 @@ let pluginReadModel = {
   ownerField: undefined,
   retiredField: undefined,
   retiredValues: undefined,
+  namedWhenRetired: undefined,
   visibility: undefined,
   chapter: undefined,
   singleQueryField: pluginReadModel_singleQueryField,

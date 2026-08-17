@@ -69,6 +69,13 @@ enum Catalog_CategoryOrderField {
   categoryId
 }
 
+type Catalog_CategoryRef {
+  id: ID!
+  label: String!
+  retired: Boolean!
+  retiredState: String
+}
+
 enum Catalog_CategoryShelfStatus {
   Archived
   Listed
@@ -98,6 +105,13 @@ input Catalog_ImportProductAuditFilter {
   ids: [ID!]
   search: String
   searchPrefix: String
+}
+
+type Catalog_ImportProductAuditRef {
+  id: ID!
+  label: String!
+  retired: Boolean!
+  retiredState: String
 }
 
 enum Catalog_ImportProductAuditStatus {
@@ -155,6 +169,13 @@ enum Catalog_ProductDemandOrderField {
   productId
 }
 
+type Catalog_ProductDemandRef {
+  id: ID!
+  label: String!
+  retired: Boolean!
+  retiredState: String
+}
+
 type Catalog_ProductEdge {
   cursor: String!
   node: Catalog_Product!
@@ -176,6 +197,13 @@ input Catalog_ProductOrderBy {
 enum Catalog_ProductOrderField {
   categoryId
   productId
+}
+
+type Catalog_ProductRef {
+  id: ID!
+  label: String!
+  retired: Boolean!
+  retiredState: String
 }
 
 enum Catalog_ProductShelfStatus {
@@ -502,6 +530,13 @@ type Ordering_AutoShipOrderTodoItem {
   orderId: ID!
 }
 
+type Ordering_AutoShipOrderTodoRef {
+  id: ID!
+  label: String!
+  retired: Boolean!
+  retiredState: String
+}
+
 enum Ordering_AutoShipOrderTodoStatus {
   Completed
   Failed
@@ -540,6 +575,13 @@ input Ordering_AvailableProductOrderBy {
 
 enum Ordering_AvailableProductOrderField {
   productId
+}
+
+type Ordering_AvailableProductRef {
+  id: ID!
+  label: String!
+  retired: Boolean!
+  retiredState: String
 }
 
 type Ordering_Customer implements Node {
@@ -621,6 +663,13 @@ enum Ordering_CustomerOrderField {
   customerId
 }
 
+type Ordering_CustomerRef {
+  id: ID!
+  label: String!
+  retired: Boolean!
+  retiredState: String
+}
+
 type Ordering_GeocodeCustomerAddressTodo implements Node {
   completedAt: String
   createdAt: String!
@@ -651,6 +700,13 @@ input Ordering_GeocodeCustomerAddressTodoFilter {
 type Ordering_GeocodeCustomerAddressTodoItem {
   address: String!
   customerId: ID!
+}
+
+type Ordering_GeocodeCustomerAddressTodoRef {
+  id: ID!
+  label: String!
+  retired: Boolean!
+  retiredState: String
 }
 
 enum Ordering_GeocodeCustomerAddressTodoStatus {
@@ -702,6 +758,13 @@ input Ordering_OrderOrderBy {
 
 enum Ordering_OrderOrderField {
   orderId
+}
+
+type Ordering_OrderRef {
+  id: ID!
+  label: String!
+  retired: Boolean!
+  retiredState: String
 }
 
 enum Ordering_OrderShippingMethod {
@@ -775,6 +838,13 @@ input Ordering_SendOrderConfirmationTodoFilter {
 type Ordering_SendOrderConfirmationTodoItem {
   customerId: ID!
   orderId: ID!
+}
+
+type Ordering_SendOrderConfirmationTodoRef {
+  id: ID!
+  label: String!
+  retired: Boolean!
+  retiredState: String
 }
 
 enum Ordering_SendOrderConfirmationTodoStatus {
@@ -918,44 +988,62 @@ type Platform_UiFragmentPanels {
   title: String!
 }
 
+type Platform_UiFragmentRef {
+  id: ID!
+  label: String!
+  retired: Boolean!
+  retiredState: String
+}
+
 type Query {
   Catalog_CatalogEventHistory(after: String, before: String, filter: Catalog_CatalogEventHistoryFilter, first: Int, last: Int): Catalog_CatalogEventRecordConnection!
   Catalog_Categories(after: String, before: String, filter: Catalog_CategoryFilter, first: Int, includeRetired: Boolean, last: Int, orderBy: Catalog_CategoryOrderBy): Catalog_CategoryConnection!
-  Catalog_CategoriesByIds(ids: [String!]!): [Catalog_Category!]!
-  Catalog_Category(id: ID!): Catalog_Category
-  Catalog_ImportProductAudit(id: ID!): Catalog_ImportProductAudit
+  Catalog_CategoriesByIds(ids: [String!]!, includeRetired: Boolean): [Catalog_Category!]!
+  Catalog_CategoriesRefs(ids: [ID!]!): [Catalog_CategoryRef!]!
+  Catalog_Category(id: ID!, includeRetired: Boolean): Catalog_Category
+  Catalog_ImportProductAudit(id: ID!, includeRetired: Boolean): Catalog_ImportProductAudit
   Catalog_ImportProductAudits(after: String, before: String, filter: Catalog_ImportProductAuditFilter, first: Int, includeRetired: Boolean, last: Int): Catalog_ImportProductAuditConnection!
-  Catalog_ImportProductAuditsByIds(ids: [String!]!): [Catalog_ImportProductAudit!]!
-  Catalog_Product(id: ID!): Catalog_Product
+  Catalog_ImportProductAuditsByIds(ids: [String!]!, includeRetired: Boolean): [Catalog_ImportProductAudit!]!
+  Catalog_ImportProductAuditsRefs(ids: [ID!]!): [Catalog_ImportProductAuditRef!]!
+  Catalog_Product(id: ID!, includeRetired: Boolean): Catalog_Product
   Catalog_ProductByCategoryId(categoryId: String!): [String]
-  Catalog_ProductDemand(id: ID!): Catalog_ProductDemand
+  Catalog_ProductDemand(id: ID!, includeRetired: Boolean): Catalog_ProductDemand
   Catalog_ProductDemands(after: String, before: String, filter: Catalog_ProductDemandFilter, first: Int, includeRetired: Boolean, last: Int, orderBy: Catalog_ProductDemandOrderBy): Catalog_ProductDemandConnection!
-  Catalog_ProductDemandsByIds(ids: [String!]!): [Catalog_ProductDemand!]!
+  Catalog_ProductDemandsByIds(ids: [String!]!, includeRetired: Boolean): [Catalog_ProductDemand!]!
+  Catalog_ProductDemandsRefs(ids: [ID!]!): [Catalog_ProductDemandRef!]!
   Catalog_Products(after: String, before: String, filter: Catalog_ProductFilter, first: Int, includeRetired: Boolean, last: Int, orderBy: Catalog_ProductOrderBy): Catalog_ProductConnection!
-  Catalog_ProductsByIds(ids: [String!]!): [Catalog_Product!]!
-  Ordering_AutoShipOrderTodo(id: ID!): Ordering_AutoShipOrderTodo
+  Catalog_ProductsByIds(ids: [String!]!, includeRetired: Boolean): [Catalog_Product!]!
+  Catalog_ProductsRefs(ids: [ID!]!): [Catalog_ProductRef!]!
+  Ordering_AutoShipOrderTodo(id: ID!, includeRetired: Boolean): Ordering_AutoShipOrderTodo
   Ordering_AutoShipOrderTodos(after: String, before: String, filter: Ordering_AutoShipOrderTodoFilter, first: Int, includeRetired: Boolean, last: Int): Ordering_AutoShipOrderTodoConnection!
-  Ordering_AutoShipOrderTodosByIds(ids: [String!]!): [Ordering_AutoShipOrderTodo!]!
-  Ordering_AvailableProduct(id: ID!): Ordering_AvailableProduct
+  Ordering_AutoShipOrderTodosByIds(ids: [String!]!, includeRetired: Boolean): [Ordering_AutoShipOrderTodo!]!
+  Ordering_AutoShipOrderTodosRefs(ids: [ID!]!): [Ordering_AutoShipOrderTodoRef!]!
+  Ordering_AvailableProduct(id: ID!, includeRetired: Boolean): Ordering_AvailableProduct
   Ordering_AvailableProducts(after: String, before: String, filter: Ordering_AvailableProductFilter, first: Int, includeRetired: Boolean, last: Int, orderBy: Ordering_AvailableProductOrderBy): Ordering_AvailableProductConnection!
-  Ordering_AvailableProductsByIds(ids: [String!]!): [Ordering_AvailableProduct!]!
-  Ordering_Customer(id: ID!): Ordering_Customer
+  Ordering_AvailableProductsByIds(ids: [String!]!, includeRetired: Boolean): [Ordering_AvailableProduct!]!
+  Ordering_AvailableProductsRefs(ids: [ID!]!): [Ordering_AvailableProductRef!]!
+  Ordering_Customer(id: ID!, includeRetired: Boolean): Ordering_Customer
   Ordering_CustomerEventHistory(after: String, before: String, filter: Ordering_CustomerEventHistoryFilter, first: Int, last: Int): Ordering_CustomerEventRecordConnection!
   Ordering_Customers(after: String, before: String, filter: Ordering_CustomerFilter, first: Int, includeRetired: Boolean, last: Int, orderBy: Ordering_CustomerOrderBy): Ordering_CustomerConnection!
-  Ordering_CustomersByIds(ids: [String!]!): [Ordering_Customer!]!
-  Ordering_GeocodeCustomerAddressTodo(id: ID!): Ordering_GeocodeCustomerAddressTodo
+  Ordering_CustomersByIds(ids: [String!]!, includeRetired: Boolean): [Ordering_Customer!]!
+  Ordering_CustomersRefs(ids: [ID!]!): [Ordering_CustomerRef!]!
+  Ordering_GeocodeCustomerAddressTodo(id: ID!, includeRetired: Boolean): Ordering_GeocodeCustomerAddressTodo
   Ordering_GeocodeCustomerAddressTodos(after: String, before: String, filter: Ordering_GeocodeCustomerAddressTodoFilter, first: Int, includeRetired: Boolean, last: Int): Ordering_GeocodeCustomerAddressTodoConnection!
-  Ordering_GeocodeCustomerAddressTodosByIds(ids: [String!]!): [Ordering_GeocodeCustomerAddressTodo!]!
-  Ordering_Order(id: ID!): Ordering_Order
+  Ordering_GeocodeCustomerAddressTodosByIds(ids: [String!]!, includeRetired: Boolean): [Ordering_GeocodeCustomerAddressTodo!]!
+  Ordering_GeocodeCustomerAddressTodosRefs(ids: [ID!]!): [Ordering_GeocodeCustomerAddressTodoRef!]!
+  Ordering_Order(id: ID!, includeRetired: Boolean): Ordering_Order
   Ordering_OrderingEventHistory(after: String, before: String, filter: Ordering_OrderingEventHistoryFilter, first: Int, last: Int): Ordering_OrderingEventRecordConnection!
   Ordering_Orders(after: String, before: String, filter: Ordering_OrderFilter, first: Int, includeRetired: Boolean, last: Int, orderBy: Ordering_OrderOrderBy): Ordering_OrderConnection!
-  Ordering_OrdersByIds(ids: [String!]!): [Ordering_Order!]!
-  Ordering_SendOrderConfirmationTodo(id: ID!): Ordering_SendOrderConfirmationTodo
+  Ordering_OrdersByIds(ids: [String!]!, includeRetired: Boolean): [Ordering_Order!]!
+  Ordering_OrdersRefs(ids: [ID!]!): [Ordering_OrderRef!]!
+  Ordering_SendOrderConfirmationTodo(id: ID!, includeRetired: Boolean): Ordering_SendOrderConfirmationTodo
   Ordering_SendOrderConfirmationTodos(after: String, before: String, filter: Ordering_SendOrderConfirmationTodoFilter, first: Int, includeRetired: Boolean, last: Int): Ordering_SendOrderConfirmationTodoConnection!
-  Ordering_SendOrderConfirmationTodosByIds(ids: [String!]!): [Ordering_SendOrderConfirmationTodo!]!
-  Platform_UiFragment(id: ID!): Platform_UiFragment
+  Ordering_SendOrderConfirmationTodosByIds(ids: [String!]!, includeRetired: Boolean): [Ordering_SendOrderConfirmationTodo!]!
+  Ordering_SendOrderConfirmationTodosRefs(ids: [ID!]!): [Ordering_SendOrderConfirmationTodoRef!]!
+  Platform_UiFragment(id: ID!, includeRetired: Boolean): Platform_UiFragment
   Platform_UiFragments(after: String, before: String, filter: Platform_UiFragmentFilter, first: Int, includeRetired: Boolean, last: Int, orderBy: Platform_UiFragmentOrderBy): Platform_UiFragmentConnection!
-  Platform_UiFragmentsByIds(ids: [String!]!): [Platform_UiFragment!]!
+  Platform_UiFragmentsByIds(ids: [String!]!, includeRetired: Boolean): [Platform_UiFragment!]!
+  Platform_UiFragmentsRefs(ids: [ID!]!): [Platform_UiFragmentRef!]!
   geocode(text: String!): [GeocodeCandidate!]
   node(id: ID!): Node
 }

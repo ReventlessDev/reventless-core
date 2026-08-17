@@ -99,6 +99,10 @@ type binding = {
   ownerField: option<string>,
   retiredField: option<string>,
   retiredValues: option<array<string>>,
+  /** Whether a reference to a retired row of this read model still resolves its
+      name — the `@namedWhenRetired` opt-in. Read only by the reference door;
+      every other door narrows as it always did. */
+  namedWhenRetired: bool,
 }
 
 // -- arg helpers -------------------------------------------------------------
@@ -251,6 +255,66 @@ let dispatch = async (
         : []
       JSON.Encode.array(
         Array.concat(found, extra)->Array.filter(item => ownerAllows(item) && retiredAllows(item)),
+      )
+
+    | "refs" =>
+      // The reference door. The same by-ids read, projected on the way out to
+      // what naming a row needs, with the retirement lifted for a view that said
+      // its retired rows keep their names — and the owner rule left exactly where
+      // it was, so a row that is somebody's is still only theirs.
+      let ids = payload.arguments->argStrs("ids")
+      let found = await binding.pushdowns.byIds(~readModelName=rm, ids)
+      let missing =
+        found->Array.length < ids->Array.length
+          ? ids->Array.filterMap(ReventlessCore.Api_Ids.alternateKey)
+          : []
+      let extra = missing->Array.length > 0
+        ? await binding.pushdowns.byIds(~readModelName=rm, missing)
+        : []
+      let retirementOf = (item: JSON.t) =>
+        switch binding.retiredField {
+        | None => (false, None)
+        | Some(field) =>
+          let cell = item->JSON.Decode.object->Option.flatMap(d => d->Dict.get(field))
+          let scope: Reventless.OwnerScope.retiredScope = {
+            field,
+            values: binding.retiredValues,
+          }
+          let retired = scope->Reventless.OwnerScope.isRetiredValue(cell)
+          (
+            retired,
+            retired && binding.retiredValues->Option.isSome
+              ? cell->Option.flatMap(JSON.Decode.string)
+              : None,
+          )
+        }
+      JSON.Encode.array(
+        Array.concat(found, extra)
+        ->Array.filter(ownerAllows)
+        ->Array.filterMap(item => {
+          let (retired, state) = retirementOf(item)
+          if retired && !binding.namedWhenRetired {
+            None
+          } else {
+            let get = key => item->JSON.Decode.object->Option.flatMap(d => d->Dict.get(key))
+            let id = get("id")->Option.flatMap(JSON.Decode.string)->Option.getOr("")
+            Some(
+              Dict.fromArray([
+                ("id", JSON.Encode.string(id)),
+                (
+                  "label",
+                  JSON.Encode.string(
+                    get(binding.labelField)
+                    ->Option.flatMap(JSON.Decode.string)
+                    ->Option.getOr(id),
+                  ),
+                ),
+                ("retired", JSON.Encode.bool(retired)),
+                ("retiredState", state->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
+              ])->JSON.Encode.object,
+            )
+          }
+        }),
       )
 
     | "items" =>

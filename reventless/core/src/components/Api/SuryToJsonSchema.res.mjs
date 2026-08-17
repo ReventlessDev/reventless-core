@@ -119,20 +119,24 @@ function mergeAnnotations(fieldSchema, fieldName, spec) {
           "label",
           r.label
         ]].concat(entries$1);
-    obj["x-reventless-retired"] = Object.fromEntries(entries$3);
+    let entries$4 = r.namedWhenRetired ? entries$3.concat([[
+          "namedWhenRetired",
+          true
+        ]]) : entries$3;
+    obj["x-reventless-retired"] = Object.fromEntries(entries$4);
   }
   let match$4 = spec.metric.find(param => param[0] === fieldName);
   if (match$4 !== undefined) {
     let m = match$4[1];
-    let entries$4 = [[
+    let entries$5 = [[
         "aggregate",
         m.aggregate
       ]];
-    let entries$5 = m.label === "" ? entries$4 : entries$4.concat([[
+    let entries$6 = m.label === "" ? entries$5 : entries$5.concat([[
           "label",
           m.label
         ]]);
-    obj["x-reventless-metric"] = Object.fromEntries(entries$5);
+    obj["x-reventless-metric"] = Object.fromEntries(entries$6);
   }
   return obj;
 }

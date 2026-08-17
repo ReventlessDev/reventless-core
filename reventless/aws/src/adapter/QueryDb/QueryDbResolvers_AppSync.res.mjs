@@ -170,6 +170,14 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
     } else {
       resolverByIds = undefined;
     }
+    let resolverRefs;
+    if (includeIdParam && subIdField === undefined) {
+      let storage$1 = storageResource(undefined, name$1);
+      let refsField = fieldNameForAll + "Refs";
+      resolverRefs = makeQueryResolver(Stdlib_String.capitalize(refsField), refsField, generateCode(storage$1, AppSync_Resolver_Functions$PulumiAws.refsByIds(labelField, retiredField, retiredValues, Stdlib_Option.mapOr(retiredSpec, false, r => r.namedWhenRetired), ownerField, elevatedGroups)));
+    } else {
+      resolverRefs = undefined;
+    }
     let idResolvers = idResolverConfigs.map(config => {
       let target = config.target;
       let targetId = target.idField;
@@ -252,8 +260,10 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
             resolverAll
           ]
       );
+    let refsResolvers = Stdlib_Option.mapOr(resolverRefs, [], r => [r]);
     return [
       mainResolvers,
+      refsResolvers,
       resolversByIndex,
       idResolvers,
       idsResolvers

@@ -325,6 +325,26 @@ type queryableDef = {
   */
   retiredValues: @s.matches(stringArrayOptionSchema) option<array<string>>,
   /**
+  Whether this view publishes a **reference door**: the by-ids read that names a
+  retired row for any caller holding a pointer to it, projected to the row's id,
+  its `labelField` and the value of `retiredField`. Declared with
+  `@namedWhenRetired` on the state record.
+
+  Published so a client knows the door exists without probing for it — a query
+  against a field the schema does not have is a validation error, not an empty
+  answer, so "ask and see" is not a usable fallback here.
+
+  Nullable rather than a bare required bool, which is the rule this schema's own
+  tripwire enforces: a definition stored before the field existed would otherwise
+  decode with an invented value and a runtime warning. Absent and `false` mean the
+  same thing to every reader — the archive stays shut — but only one of them is
+  something the platform actually said.
+
+  It is never `true` without `retiredField`: the PPX refuses the annotation on a
+  record with no retirement.
+  */
+  namedWhenRetired: @s.matches(boolOptionSchema) option<bool>,
+  /**
   Component visibility hint (`@@reventless.visibility`). `Some("Internal")` marks a
   ReadModel / StateViewSlice that the deployed AutoUI hides from its menu, drill-down
   pages, web event graph and cross-plugin edges. `None` (absent) means Public. Internal

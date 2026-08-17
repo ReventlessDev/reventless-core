@@ -101,7 +101,8 @@ let stateSchema$1 = S.Metadata.set(stateSchema, StateAnnotations$Reventless.stat
     values: [
       "Archived",
       "Discontinued"
-    ]
+    ],
+    namedWhenRetired: true
   }
 });
 

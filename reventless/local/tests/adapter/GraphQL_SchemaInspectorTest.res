@@ -271,7 +271,7 @@ describe("GraphQL_SchemaInspector", () => {
       expect(result.typeDef->Option.isSome)->toBe(true)
       let typeDef = result.typeDef->Option.getOrThrow
       expect(typeDef->String.includes("type CatalogProduct"))->toBe(true)
-      expect(result.singleQuery->String.includes("Catalog_Product(id: ID!)"))->toBe(true)
+      expect(result.singleQuery->String.includes("Catalog_Product(id: ID!, includeRetired: Boolean)"))->toBe(true)
       expect(result.singleQuery->String.includes("CatalogProduct"))->toBe(true)
       expect(result.listQuery->Option.isSome)->toBe(true)
       let listQ = result.listQuery->Option.getOrThrow
@@ -298,7 +298,7 @@ describe("GraphQL_SchemaInspector", () => {
       )
       let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
       let sdl = inspection.sdlPreview
-      expect(sdl->String.includes("RM_Product(id: ID!): RMProduct"))->toBe(true)
+      expect(sdl->String.includes("RM_Product(id: ID!, includeRetired: Boolean): RMProduct"))->toBe(true)
       expect(sdl->String.includes("type RMProduct"))->toBe(true)
       // The type should have an injected id: ID! field (first field in the type)
       let typeLines = sdl->String.split("\n")
@@ -357,7 +357,7 @@ describe("GraphQL_SchemaInspector", () => {
       )
       let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
       let sdl = inspection.sdlPreview
-      expect(sdl->String.includes("Default_Thing(id: ID!): DefaultThing"))->toBe(true)
+      expect(sdl->String.includes("Default_Thing(id: ID!, includeRetired: Boolean): DefaultThing"))->toBe(true)
     })
   })
 

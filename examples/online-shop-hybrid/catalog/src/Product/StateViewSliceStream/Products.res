@@ -32,7 +32,13 @@ type shelfStatus =
   | @retired Archived
   | @retired Discontinued
 
+// A product that leaves the shelf keeps its name. An order names the products it
+// bought, and a shopper reading their own order is holding a pointer the platform
+// gave them — archiving the product should not turn that into a bare id. The
+// annotation opens one door and only for what a reference needs: id, name, and
+// the shelf state the row is in. The catalog list itself stays closed.
 @schema
+@namedWhenRetired
 type state = {
   productId: string,
   name: string,

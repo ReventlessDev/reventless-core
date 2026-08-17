@@ -809,6 +809,57 @@ export function response(ctx) {
 `;
 }
 
+function refsByIds(labelField, retiredField, retiredValues, namedWhenRetired, ownerField, $staropt$star) {
+  return tableName => {
+    let elevatedGroups = $staropt$star !== undefined ? $staropt$star : [];
+    let ownerGuard = ownerField !== undefined ? ownerGuardPreamble(ownerField, elevatedGroups) : "\n  const _owns = () => true;";
+    let retiredExpr;
+    if (retiredField !== undefined) {
+      if (retiredValues !== undefined) {
+        let literal = retiredValues.map(v => `'` + v + `'`).join(", ");
+        retiredExpr = `[` + literal + `].indexOf(row['` + retiredField + `']) >= 0`;
+      } else {
+        retiredExpr = `row['` + retiredField + `'] === true`;
+      }
+    } else {
+      retiredExpr = "false";
+    }
+    let stateExpr = retiredField !== undefined && retiredValues !== undefined ? `_retired(row) ? (row['` + retiredField + `'] ?? null) : null` : "null";
+    return importUtil + `
+import { runtime } from '@aws-appsync/utils';
+export function request(ctx) {
+  const ids = ctx.args.ids ?? [];
+  if (ids.length === 0) return runtime.earlyReturn([]);
+  return {
+    operation: 'BatchGetItem',
+    tables: {
+      '` + tableName + `': {
+        keys: ids.map(id => ({ id: util.dynamodb.toDynamoDB(id) })),
+        consistentRead: true,
+      }
+    }
+  };
+}
+export function response(ctx) {
+  if (ctx.error) util.error(ctx.error.message, ctx.error.type);` + ownerGuard + `
+  const _retired = (row) => ` + retiredExpr + `;
+  const _namesRetired = ` + (
+      namedWhenRetired ? "true" : "false"
+    ) + `;
+  return (ctx.result?.data?.['` + tableName + `'] ?? [])
+    .filter(row => row !== null && _owns(row))
+    .filter(row => _namesRetired || !_retired(row))
+    .map(row => ({
+      id: row.id,
+      label: row['` + labelField + `'] ?? row.id,
+      retired: _retired(row),
+      retiredState: ` + stateExpr + `,
+    }));
+}
+`;
+  };
+}
+
 let putItem = importUtil + `
 export function request(ctx) {
   return {
@@ -1043,6 +1094,7 @@ export {
   resolveIdByIndexSortArgument,
   resolveIds,
   batchGetItemsByIds,
+  refsByIds,
   putItem,
   addItemToList,
   deleteItem,

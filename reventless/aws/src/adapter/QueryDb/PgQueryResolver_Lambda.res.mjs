@@ -185,11 +185,63 @@ async function dispatch(binding, lookupBindingOpt, payload) {
         let items$1 = await binding.pushdowns.scanAll(rm);
         return QueryDbListQuery$ReventlessCore.run(items$1, argsDict, binding.capability, binding.labelField, undefined, ownerScope, retiredScope);
         break;
+      case "refs" :
+        let ids$1 = argStrs(payload.arguments, "ids");
+        let found$2 = await binding.pushdowns.byIds(rm, ids$1);
+        let missing$1 = found$2.length < ids$1.length ? Stdlib_Array.filterMap(ids$1, Api_Ids$ReventlessCore.alternateKey) : [];
+        let extra$1 = missing$1.length !== 0 ? await binding.pushdowns.byIds(rm, missing$1) : [];
+        let retirementOf = item => {
+          let field = binding.retiredField;
+          if (field === undefined) {
+            return [
+              false,
+              undefined
+            ];
+          }
+          let cell = Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[field]);
+          let scope_values = binding.retiredValues;
+          let scope = {
+            field: field,
+            values: scope_values
+          };
+          let retired = OwnerScope$Reventless.isRetiredValue(scope, cell);
+          return [
+            retired,
+            retired && Stdlib_Option.isSome(binding.retiredValues) ? Stdlib_Option.flatMap(cell, Stdlib_JSON.Decode.string) : undefined
+          ];
+        };
+        return Stdlib_Array.filterMap(found$2.concat(extra$1).filter(ownerAllows), item => {
+          let match = retirementOf(item);
+          let retired = match[0];
+          if (retired && !binding.namedWhenRetired) {
+            return;
+          }
+          let get = key => Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[key]);
+          let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(get("id"), Stdlib_JSON.Decode.string), "");
+          return Object.fromEntries([
+            [
+              "id",
+              id
+            ],
+            [
+              "label",
+              Stdlib_Option.getOr(Stdlib_Option.flatMap(get(binding.labelField), Stdlib_JSON.Decode.string), id)
+            ],
+            [
+              "retired",
+              retired
+            ],
+            [
+              "retiredState",
+              Stdlib_Option.mapOr(match[1], null, prim => prim)
+            ]
+          ]);
+        });
       case "resolveMany" :
         let target = Stdlib_Option.getOr(payload.target, rm);
         let source = Stdlib_Option.getOr(payload.source, null);
-        let ids$1 = argStrs(source, Stdlib_Option.getOr(payload.sourceIdsField, ""));
-        return await binding.pushdowns.byIds(target, ids$1);
+        let ids$2 = argStrs(source, Stdlib_Option.getOr(payload.sourceIdsField, ""));
+        return await binding.pushdowns.byIds(target, ids$2);
       case "resolveOne" :
         let target$1 = Stdlib_Option.getOr(payload.target, rm);
         let source$1 = Stdlib_Option.getOr(payload.source, null);

@@ -411,9 +411,16 @@ let deriveObjectQueryField = (
   ~subIdField: option<string>=?,
 ): string =>
   if includeIdParam {
+    // `includeRetired` reaches this door for the reason it reaches the list: a
+    // caller the server would serve a retired row to had, until it did, no way
+    // to ask for one *singly*. The archive toggle put such rows on screen and
+    // clicking one read a door that refuses them to everybody — `decideRetired`
+    // withholds from `Elevated` and `System` too until they ask, and here there
+    // was nothing to ask with.
     switch subIdField {
-    | Some(sortField) => `  ${singleFieldName}(id: ID!, ${sortField}: String!): ${typeName}`
-    | None => `  ${singleFieldName}(id: ID!): ${typeName}`
+    | Some(sortField) =>
+      `  ${singleFieldName}(id: ID!, ${sortField}: String!, includeRetired: Boolean): ${typeName}`
+    | None => `  ${singleFieldName}(id: ID!, includeRetired: Boolean): ${typeName}`
     }
   } else {
     `  ${singleFieldName}: ${typeName}`
@@ -434,7 +441,38 @@ let deriveByIdsQueryField = (
   ~listFieldName: string,
   ~returnTypeName: string,
 ): string =>
-  `  ${listFieldName}ByIds(ids: [String!]!): [${returnTypeName}!]!`
+  `  ${listFieldName}ByIds(ids: [String!]!, includeRetired: Boolean): [${returnTypeName}!]!`
+
+// ── The reference door ─────────────────────────────────────────────────────
+//
+// What a caller holding a pointer to a row may learn about it: its id, the label
+// a reference resolves to, and — where the view declares a retirement — whether
+// this row is in one and which state that is.
+//
+// The narrowness is the *type's*, which is the whole reason this is a separate
+// field rather than an argument on the by-ids door. A rule that answered a
+// retired row on the existing door "as long as only the safe fields were asked
+// for" would have to be re-implemented, identically, in four backends and to
+// survive aliases, fragments and `__typename`. Here a caller cannot ask for a
+// price, because the type has no price.
+//
+// Emitted for every view, not only for the ones that opted in, on exactly the
+// reasoning `includeRetired` states above: a field that appears and disappears
+// with an annotation makes adding or removing that annotation a breaking schema
+// change, and forces every client to feature-detect. What the annotation decides
+// is not whether the door exists but whether a *retired* row comes through it —
+// without it this is a cheap label read that narrows exactly as every other door
+// does.
+let deriveRefTypeSdl = (~returnTypeName: string): string =>
+  `type ${returnTypeName}Ref {\n  id: ID!\n  label: String!\n  retired: Boolean!\n  retiredState: String\n}`
+
+// `retiredState` is null in two cases that do not need telling apart by a
+// consumer: a live row, and a boolean-form retirement, where the field is the
+// state and `retired: true` has already said everything there is to say.
+let deriveRefsQueryField = (
+  ~listFieldName: string,
+  ~returnTypeName: string,
+): string => `  ${listFieldName}Refs(ids: [ID!]!): [${returnTypeName}Ref!]!`
 
 // `includeRetired` sits beside the paging arguments rather than inside `filter`,
 // and that placement is the point. `filter` is the caller's description of the

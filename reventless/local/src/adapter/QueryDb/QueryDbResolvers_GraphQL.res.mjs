@@ -124,7 +124,7 @@ function Make(Bus) {
       relay.registerNodeType(returnTypeName, name);
     }
     let byIdSdl = includeIdParam ? (
-        subIdField !== undefined ? `  ` + singleQueryName + `(id: ID!, ` + subIdField + `: String): ` + returnTypeName : `  ` + singleQueryName + `(id: ID!): ` + returnTypeName
+        subIdField !== undefined ? `  ` + singleQueryName + `(id: ID!, ` + subIdField + `: String, includeRetired: Boolean): ` + returnTypeName : `  ` + singleQueryName + `(id: ID!, includeRetired: Boolean): ` + returnTypeName
       ) : `  ` + singleQueryName + `: ` + returnTypeName;
     let byIdResolver = async (_root, args, ctx) => {
       let match = await runInterceptor(ctx, args);
@@ -219,6 +219,101 @@ function Make(Bus) {
       byIdsResolverEntry = undefined;
     }
     let labelField = registryEntry !== undefined ? Stdlib_Option.getOr(registryEntry.labelField, "id") : "id";
+    let refsSdl = includeIdParam && subIdField === undefined ? [GraphQL_FragmentGenerator$ReventlessCore.deriveRefsQueryField(listQueryName, returnTypeName)] : [];
+    let refsResolverEntry;
+    if (includeIdParam && subIdField === undefined) {
+      server.registerTypes([GraphQL_FragmentGenerator$ReventlessCore.deriveRefTypeSdl(returnTypeName)]);
+      let resolver$1 = async (_root, args, ctx) => {
+        let match = await runInterceptor(ctx, args);
+        if (typeof match === "object") {
+          return [];
+        }
+        let ids = Stdlib_Array.filterMap(Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["ids"]), Stdlib_JSON.Decode.array), []), Stdlib_JSON.Decode.string);
+        let spec = retiredSpecOf();
+        let namesRetired = Stdlib_Option.mapOr(spec, false, r => r.namedWhenRetired);
+        let retirementOf = item => {
+          if (spec === undefined) {
+            return [
+              false,
+              undefined
+            ];
+          }
+          let cell = Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[spec.field]);
+          let scope_field = spec.field;
+          let scope_values = spec.values;
+          let scope = {
+            field: scope_field,
+            values: scope_values
+          };
+          let retired = OwnerScope$Reventless.isRetiredValue(scope, cell);
+          return [
+            retired,
+            retired && Stdlib_Option.isSome(spec.values) ? Stdlib_Option.flatMap(cell, Stdlib_JSON.Decode.string) : undefined
+          ];
+        };
+        let ops = Bus.getQueryDb(name);
+        if (ops === undefined) {
+          return [];
+        }
+        let load = key => Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(key)), param => Effect.succeed([])));
+        let loaded = await Promise.all(ids.map(async id => {
+          let item = (await load(id))[0];
+          if (item !== undefined) {
+            return [
+              id,
+              item
+            ];
+          }
+          let localId = Api_Ids$ReventlessCore.alternateKey(id);
+          if (localId !== undefined) {
+            return [
+              localId,
+              (await load(localId))[0]
+            ];
+          } else {
+            return [
+              id,
+              undefined
+            ];
+          }
+        }));
+        return Stdlib_Array.filterMap(loaded, param => {
+          let id = param[0];
+          return Stdlib_Option.flatMap(Stdlib_Option.filter(param[1], item => ownerAllows(ctx, item)), item => {
+            let match = retirementOf(item);
+            let retired = match[0];
+            if (retired && !namesRetired) {
+              return;
+            }
+            let label = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[labelField]), Stdlib_JSON.Decode.string), id);
+            return Object.fromEntries([
+              [
+                "id",
+                id
+              ],
+              [
+                "label",
+                label
+              ],
+              [
+                "retired",
+                retired
+              ],
+              [
+                "retiredState",
+                Stdlib_Option.mapOr(match[1], null, prim => prim)
+              ]
+            ]);
+          });
+        });
+      };
+      refsResolverEntry = [
+        listQueryName + "Refs",
+        resolver$1
+      ];
+    } else {
+      refsResolverEntry = undefined;
+    }
     let stateSchemaOpt = Plugin_Helpers$ReventlessCore.stateSchemaRegistry[name];
     let capability = stateSchemaOpt !== undefined ? GraphQL_FragmentGenerator$ReventlessCore.deriveServerCapability(name, stateSchemaOpt) : GraphQL_FragmentGenerator$ReventlessCore.emptyCapability;
     let fetchAllItems = async () => {
@@ -250,7 +345,7 @@ function Make(Bus) {
           endCursor: null
         }
       };
-      let resolver$1 = async (_root, args, ctx) => {
+      let resolver$2 = async (_root, args, ctx) => {
         let match = await runInterceptor(ctx, args);
         if (typeof match === "object") {
           return emptyConnection;
@@ -277,11 +372,11 @@ function Make(Bus) {
       };
       match = [
         sdl,
-        resolver$1
+        resolver$2
       ];
     } else {
       let sdl$1 = [`  ` + listQueryName + `(nextToken: String, limit: Int): ` + pluralTypeName + `!`];
-      let resolver$2 = async (_root, args, ctx) => {
+      let resolver$3 = async (_root, args, ctx) => {
         let match = await runInterceptor(ctx, args);
         if (typeof match === "object") {
           return {
@@ -306,7 +401,7 @@ function Make(Bus) {
       };
       match = [
         sdl$1,
-        resolver$2
+        resolver$3
       ];
     }
     let listResolvers = [[
@@ -324,7 +419,7 @@ function Make(Bus) {
     }
     let itemsResolvers;
     if (subIdField !== undefined) {
-      let resolver$3 = async (_root, args, ctx) => {
+      let resolver$4 = async (_root, args, ctx) => {
         let emptyConn = {
           edges: [],
           pageInfo: {
@@ -423,7 +518,7 @@ function Make(Bus) {
       };
       itemsResolvers = [[
           singleQueryName + "Items",
-          resolver$3
+          resolver$4
         ]];
     } else {
       itemsResolvers = [];
@@ -462,10 +557,13 @@ function Make(Bus) {
         resolver
       ];
     });
-    let allSdl = [byIdSdl].concat(byIdsSdl).concat(match[0]).concat(itemsSdl).concat(indexSdlFields);
+    let allSdl = [byIdSdl].concat(byIdsSdl).concat(refsSdl).concat(match[0]).concat(itemsSdl).concat(indexSdlFields);
     let resolvers = {};
     resolvers[singleQueryName] = byIdResolver;
     Stdlib_Option.forEach(byIdsResolverEntry, param => {
+      resolvers[param[0]] = param[1];
+    });
+    Stdlib_Option.forEach(refsResolverEntry, param => {
       resolvers[param[0]] = param[1];
     });
     listResolvers.forEach(param => {

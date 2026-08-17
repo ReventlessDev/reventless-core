@@ -108,6 +108,14 @@ let retiredFieldFromStateSchema = (stateSchema: S.t<unknown>): option<string> =>
 let retiredValuesFromStateSchema = (stateSchema: S.t<unknown>): option<array<string>> =>
   retiredFromStateSchema(stateSchema)->Option.flatMap(r => r.values)
 
+// Whether a reference to a retired row of this view still resolves its name —
+// `@namedWhenRetired`. Read off the retirement rather than from a second
+// annotation, so a record cannot declare the reach of a retirement it does not
+// have; the PPX refuses that pairing, and reading it here from the same place
+// keeps the two halves agreeing by construction rather than by review.
+let namedWhenRetiredFromStateSchema = (stateSchema: S.t<unknown>): bool =>
+  retiredFromStateSchema(stateSchema)->Option.mapOr(false, r => r.namedWhenRetired)
+
 // What one record's `@retired` declaration could be told about its own field.
 //
 // Three outcomes rather than a bool, because "nothing to check" and "could not
@@ -1180,6 +1188,7 @@ let make = (
         ownerField: Reventless.Owner.fieldNames(stateSchema)->Array.get(0),
         retiredField: retiredFieldFromStateSchema(stateSchema),
         retiredValues: retiredValuesFromStateSchema(stateSchema),
+        namedWhenRetired: Some(namedWhenRetiredFromStateSchema(stateSchema)),
         visibility: visibilityTag(R.Spec.visibility),
         chapter: chapterOf(R.Spec.name),
         // Taken from the `qf` record, never re-derived: `Api_Naming` is the only
@@ -1217,6 +1226,7 @@ let make = (
         ownerField: Reventless.Owner.fieldNames(stateSchema)->Array.get(0),
         retiredField: retiredFieldFromStateSchema(stateSchema),
         retiredValues: retiredValuesFromStateSchema(stateSchema),
+        namedWhenRetired: Some(namedWhenRetiredFromStateSchema(stateSchema)),
         visibility: visibilityTag(SVS.Spec.visibility),
         chapter: chapterOf(SVS.Spec.name),
         singleQueryField: Some(qf.singleFieldName),

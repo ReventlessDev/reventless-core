@@ -40,6 +40,7 @@ let qbl: queryableDef = {
   ownerField: None,
   retiredField: None,
   retiredValues: None,
+  namedWhenRetired: None,
 }
 
 let wbl: writableDef = {
@@ -268,6 +269,7 @@ describe("visibility filtering (deployed AutoUI hides Internal)", () => {
       ownerField: None,
       retiredField: None,
       retiredValues: None,
+      namedWhenRetired: None,
   }
   // A distinct name per source array: the complement has to be fed by both, and
   // reusing one def would hide a version that only walks `readModels`.
@@ -367,6 +369,7 @@ describe("allowedStates + lifecycleField populated", () => {
       ownerField: None,
       retiredField: None,
       retiredValues: None,
+      namedWhenRetired: None,
   }
 
   let wblWithStates: writableDef = {

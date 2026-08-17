@@ -137,6 +137,14 @@ let mergeAnnotations = (
       }
       let entries =
         r.label === "" ? entries : Array.concat([("label", JSON.Encode.string(r.label))], entries)
+      // `namedWhenRetired` travels only when true, on the omit-the-default rule
+      // the keys above follow: false is what every record said before the opt-in
+      // existed, and writing it would put a key on every retirement to say
+      // nothing changed.
+      let entries =
+        r.namedWhenRetired
+          ? Array.concat(entries, [("namedWhenRetired", JSON.Encode.bool(true))])
+          : entries
       obj->Dict.set("x-reventless-retired", JSON.Encode.object(Dict.fromArray(entries)))
     | _ => ()
     }

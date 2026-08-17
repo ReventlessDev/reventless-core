@@ -938,7 +938,7 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
           groupBy: None,
           visibility: None,
           live: None,
-          retired: Some({field, label: "", showWhenFalse: false, values: None}),
+          retired: Some({field, label: "", showWhenFalse: false, values: None, namedWhenRetired: false}),
         },
       )
 
@@ -973,6 +973,7 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
               label: "",
               showWhenFalse: false,
               values: Some(["Deactivated", "Closed"]),
+              namedWhenRetired: false,
             }),
           },
         )
@@ -1045,7 +1046,7 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
           groupBy: None,
           visibility: None,
           live: None,
-          retired: Some({field, label: "", showWhenFalse: false, values}),
+          retired: Some({field, label: "", showWhenFalse: false, values, namedWhenRetired: false}),
         },
       )
 

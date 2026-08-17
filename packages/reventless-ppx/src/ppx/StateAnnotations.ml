@@ -1525,6 +1525,92 @@ let check_live_placement (str : structure) : unit =
     | _ -> ()
   ) str
 
+(* ── @namedWhenRetired: a retired row of this record may still be *named* ──
+       Retirement withholds a row from every door at once, which answers "what
+       may this caller browse" and, unasked, also answers "what is the row this
+       caller already holds a reference to called". This separates them: with the
+       annotation, a retired row still answers a reference-resolving read with its
+       id, its label and the state that retired it — and nothing else, and no
+       other door.
+
+       On the record rather than on a field, and taking no payload, for the same
+       reason `@retired` on a constructor takes none: it is one fact about the
+       record, and the states that retire it do not get to disagree about it.
+       `@displayName` was the tempting site and is the wrong one — it is
+       multi-field and composed, so a per-field opt-in would have to rule on what
+       one annotated field beside one plain one means. ── *)
+
+let find_named_when_retired_attr (attrs : attributes) =
+  List.find_opt (fun (a : attribute) ->
+    String.equal a.attr_name.txt "namedWhenRetired") attrs
+
+(** Presence is the whole declaration; a payload would be claiming something the
+    annotation cannot express. *)
+let check_named_when_retired_payload (attr : attribute) : unit =
+  match attr.attr_payload with
+  | PStr [] -> ()
+  | _ ->
+    Location.raise_errorf ~loc:attr.attr_loc
+      "@namedWhenRetired takes no payload — it says a retired row keeps its \
+       name, and what that name is was already decided by the label field."
+
+(** Extract `@namedWhenRetired` from the `@schema type state` declaration. *)
+let extract_state_named_when_retired (str : structure) : bool =
+  let rec scan = function
+    | [] -> false
+    | (item : structure_item) :: rest ->
+      (match item.pstr_desc with
+       | Pstr_type (_, decls) ->
+         let found = List.find_opt (fun (td : type_declaration) ->
+           String.equal td.ptype_name.txt "state"
+           && Util.has_attr "schema" td.ptype_attributes
+         ) decls in
+         (match found with
+          | Some td ->
+            (match find_named_when_retired_attr td.ptype_attributes with
+             | Some attr -> check_named_when_retired_payload attr; true
+             | None -> false)
+          | None -> scan rest)
+       | _ -> scan rest)
+  in
+  scan str
+
+let strip_named_when_retired_attrs (str : structure) : structure =
+  List.map (fun (item : structure_item) ->
+    match item.pstr_desc with
+    | Pstr_type (rf, decls) ->
+      let new_decls = List.map (fun (td : type_declaration) ->
+        if not (String.equal td.ptype_name.txt "state"
+                && Util.has_attr "schema" td.ptype_attributes) then td
+        else
+          { td with ptype_attributes =
+              List.filter (fun (a : attribute) ->
+                not (String.equal a.attr_name.txt "namedWhenRetired")
+              ) td.ptype_attributes }
+      ) decls in
+      { item with pstr_desc = Pstr_type (rf, new_decls) }
+    | _ -> item
+  ) str
+
+(** Reject `@namedWhenRetired` on state declarations of spec files that are
+    neither a ReadModel nor a StateViewSlice — as `@live` is rejected there, and
+    for the same reason: an annotation nothing reads is worse silent than loud. *)
+let check_named_when_retired_placement (str : structure) : unit =
+  List.iter (fun (item : structure_item) ->
+    match item.pstr_desc with
+    | Pstr_type (_, decls) ->
+      List.iter (fun (td : type_declaration) ->
+        if String.equal td.ptype_name.txt "state"
+           && Util.has_attr "schema" td.ptype_attributes then
+          match find_named_when_retired_attr td.ptype_attributes with
+          | Some attr ->
+            Location.raise_errorf ~loc:attr.attr_loc
+              "@namedWhenRetired is only supported on the @schema type state declaration of ReadModel and StateViewSlice spec files"
+          | None -> ()
+      ) decls
+    | _ -> ()
+  ) str
+
 (* ── State annotation metadata: propagate structural annotations to JSON Schema ── *)
 
 (** Build a string-array AST expression. *)
@@ -1570,7 +1656,7 @@ let metric_tuple_array ~loc pairs =
     normalised to `None` upstream so the metadata stays compact. The `~live` arg
     is the bool from `@live(...)` on the state type declaration, or `None` when
     the annotation is absent. *)
-let make_state_annotations_binding ~loc ~visibility ~live ~variants fields : structure_item option =
+let make_state_annotations_binding ~loc ~visibility ~live ~named_when_retired ~variants fields : structure_item option =
   let ids = List.filter_map (fun (ld : label_declaration) ->
     if has_id_field_attr ld.pld_attributes then Some ld.pld_name.txt else None
   ) fields in
@@ -1774,6 +1860,15 @@ let make_state_annotations_binding ~loc ~visibility ~live ~variants fields : str
     let retired_value =
       match retired with
       | None ->
+        (* `@namedWhenRetired` on a record that declares no retirement is not a
+           harmless extra: it reads as a rule about rows that cannot exist, and
+           the author who wrote it believes something about this record that is
+           not true. *)
+        if named_when_retired then
+          Location.raise_errorf ~loc
+            "@namedWhenRetired needs a retirement to be about — this record \
+             declares no @retired field or state, so no row of it is ever \
+             withheld, and every reference to one already resolves.";
         { pexp_desc = Pexp_construct ({ txt = Lident "None"; loc }, None);
           pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] }
       | Some (name, (label, show_when_false, values)) ->
@@ -1798,7 +1893,11 @@ let make_state_annotations_binding ~loc ~visibility ~live ~variants fields : str
               [ ({ Location.txt = Lident "field"; loc }, estr name);
                 ({ txt = Lident "label"; loc }, estr label);
                 ({ txt = Lident "showWhenFalse"; loc }, ebool show_when_false);
-                ({ txt = Lident "values"; loc }, values_expr) ],
+                ({ txt = Lident "values"; loc }, values_expr);
+                (* Inside the retirement rather than beside it: it is a rule
+                   about withheld rows, and there are none without one. The
+                   error above is what makes that structurally true. *)
+                ({ txt = Lident "namedWhenRetired"; loc }, ebool named_when_retired) ],
               None);
             pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] } in
         { pexp_desc = Pexp_construct ({ txt = Lident "Some"; loc }, Some rec_expr);
@@ -1891,10 +1990,11 @@ let generate_state_annotations ~loc (str : structure) : structure_item list =
     validate_visibility_annotations fields;
     let visibility = extract_file_visibility str in
     let live = extract_state_live str in
+    let named_when_retired = extract_state_named_when_retired str in
     (* The file's `@schema` variant types, so the retirement can be read off the
        constructors that declare it and the field form can be checked against
        the enum it names. *)
     let variants = collect_schema_variants str in
-    (match make_state_annotations_binding ~loc ~visibility ~live ~variants fields with
+    (match make_state_annotations_binding ~loc ~visibility ~live ~named_when_retired ~variants fields with
      | None -> []
      | Some s -> [s])

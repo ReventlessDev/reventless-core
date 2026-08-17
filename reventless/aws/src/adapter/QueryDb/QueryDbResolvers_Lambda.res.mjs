@@ -95,6 +95,13 @@ function make(name, api, param, dataSourceName, indexes, subIdField, idResolverC
     } else {
       byIds = [];
     }
+    let refs;
+    if (includeIdParam && subIdField === undefined) {
+      let refsField = fieldNameForAll + "Refs";
+      refs = [mkResolver(Stdlib_String.capitalize(refsField), refsField, "refs", undefined, undefined, undefined)];
+    } else {
+      refs = [];
+    }
     let byIndex = indexes.map(ic => {
       let index = ic.index;
       let resolverName = Stdlib_String.capitalize(fieldNameForSingle) + "By" + Stdlib_String.capitalize(stripLeadingBy(index));
@@ -150,7 +157,7 @@ function make(name, api, param, dataSourceName, indexes, subIdField, idResolverC
     return [
       byId,
       all
-    ].concat(items).concat(byIds).concat(byIndex).concat(idResolvers).concat(idsResolvers).map(Util_AppSync$ReventlessAws.toResourceNative);
+    ].concat(items).concat(byIds).concat(refs).concat(byIndex).concat(idResolvers).concat(idsResolvers).map(Util_AppSync$ReventlessAws.toResourceNative);
   };
   return {
     resources: [],

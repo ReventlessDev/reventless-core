@@ -354,9 +354,9 @@ function deriveObjectQueryField(singleFieldName, typeName, includeIdParamOpt, su
   let includeIdParam = includeIdParamOpt !== undefined ? includeIdParamOpt : true;
   if (includeIdParam) {
     if (subIdField !== undefined) {
-      return `  ` + singleFieldName + `(id: ID!, ` + subIdField + `: String!): ` + typeName;
+      return `  ` + singleFieldName + `(id: ID!, ` + subIdField + `: String!, includeRetired: Boolean): ` + typeName;
     } else {
-      return `  ` + singleFieldName + `(id: ID!): ` + typeName;
+      return `  ` + singleFieldName + `(id: ID!, includeRetired: Boolean): ` + typeName;
     }
   } else {
     return `  ` + singleFieldName + `: ` + typeName;
@@ -368,7 +368,15 @@ function deriveListQueryField(listFieldName, pluralTypeName) {
 }
 
 function deriveByIdsQueryField(listFieldName, returnTypeName) {
-  return `  ` + listFieldName + `ByIds(ids: [String!]!): [` + returnTypeName + `!]!`;
+  return `  ` + listFieldName + `ByIds(ids: [String!]!, includeRetired: Boolean): [` + returnTypeName + `!]!`;
+}
+
+function deriveRefTypeSdl(returnTypeName) {
+  return `type ` + returnTypeName + `Ref {\n  id: ID!\n  label: String!\n  retired: Boolean!\n  retiredState: String\n}`;
+}
+
+function deriveRefsQueryField(listFieldName, returnTypeName) {
+  return `  ` + listFieldName + `Refs(ids: [ID!]!): [` + returnTypeName + `Ref!]!`;
 }
 
 function deriveConnectionQueryField(listFieldName, singularTypeName, filterTypeName, hasOrderByOpt) {
@@ -579,6 +587,8 @@ export {
   deriveObjectQueryField,
   deriveListQueryField,
   deriveByIdsQueryField,
+  deriveRefTypeSdl,
+  deriveRefsQueryField,
   deriveConnectionQueryField,
   deriveMutationFieldFromObject,
   mutationArgTypes,

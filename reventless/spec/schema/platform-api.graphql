@@ -215,6 +215,7 @@ type Platform_ReadSideDef {
   lifecycleField: String
   linkedWriteSide: [String!]!
   name: String!
+  namedWhenRetired: Boolean!
   ownerField: String
   queryField: String!
   requiredAccess: [String!]
@@ -290,10 +291,10 @@ type PluginStatusChangeEvent {
 
 type Query {
   Platform_ComponentDefinitions: [Platform_ComponentDefinitionEntry!]!
-  Platform_Plugin(id: ID!): Platform_Plugin
+  Platform_Plugin(id: ID!, includeRetired: Boolean): Platform_Plugin
   Platform_PluginStructures: [Platform_PluginStructureEntry!]!
   Platform_Plugins(after: String, before: String, filter: Platform_PluginFilter, first: Int, includeRetired: Boolean, last: Int): Platform_PluginConnection!
-  Platform_PluginsByIds(ids: [String!]!): [Platform_Plugin!]!
+  Platform_PluginsByIds(ids: [String!]!, includeRetired: Boolean): [Platform_Plugin!]!
   Platform_UIFragments: [Platform_UIFragmentEntry!]!
 }
 

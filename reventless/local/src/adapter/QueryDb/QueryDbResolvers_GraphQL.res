@@ -271,10 +271,16 @@ module Make = (Bus: LocalBus.T) => {
     }
 
     // -- Main query: getById ---------------------------------------------------
+    // `includeRetired` here matches the connection field and the AppSync SDL the
+    // FragmentGenerator emits. The resolver below already reads it — `retiredAllows`
+    // consults `askedForRetired(~args)` on every door — so this argument was the
+    // only missing half, and without it an elevated caller could see an archived
+    // row in a list and not open it.
     let byIdSdl = if includeIdParam {
       switch subIdField {
-      | Some(sf) => `  ${singleQueryName}(id: ID!, ${sf}: String): ${returnTypeName}`
-      | None => `  ${singleQueryName}(id: ID!): ${returnTypeName}`
+      | Some(sf) =>
+        `  ${singleQueryName}(id: ID!, ${sf}: String, includeRetired: Boolean): ${returnTypeName}`
+      | None => `  ${singleQueryName}(id: ID!, includeRetired: Boolean): ${returnTypeName}`
       }
     } else {
       `  ${singleQueryName}: ${returnTypeName}`
@@ -401,6 +407,124 @@ module Make = (Bus: LocalBus.T) => {
     | Some({labelField: ?lf}) => lf->Option.getOr("id")
     | None => "id"
     }
+
+    // -- Reference door: {listFieldName}Refs -----------------------------------
+    // Names the rows a caller already holds pointers to, and nothing more. Three
+    // fields, fixed by the type, so this cannot be widened by what a caller
+    // selects.
+    //
+    // Retirement is lifted here only where the view declared `@namedWhenRetired`.
+    // Ownership is not lifted at all, and the asymmetry is the point: an archived
+    // product is a thing the shop sold and every order naming one may say what it
+    // was, while a deactivated customer is somebody's row before it is anything
+    // else. One predicate answers "is this row still on offer", the other "is this
+    // row yours", and only the first is what an archive withdraws.
+    let refsSdl = if includeIdParam && subIdField === None {
+      [GraphQL_FragmentGenerator.deriveRefsQueryField(~listFieldName=listQueryName, ~returnTypeName)]
+    } else {
+      []
+    }
+    let refsResolverEntry: option<(string, ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn)> =
+      if includeIdParam && subIdField === None {
+        server.registerTypes(~sdlTypes=[GraphQL_FragmentGenerator.deriveRefTypeSdl(~returnTypeName)])
+        let resolver: ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn = async (
+          _root,
+          args,
+          ctx,
+        ) => {
+          switch await runInterceptor(~ctx, ~args) {
+          | Deny(_) => []->JSON.Encode.array
+          | Allow =>
+            let ids =
+              args
+              ->JSON.Decode.object
+              ->Option.flatMap(d => d->Dict.get("ids"))
+              ->Option.flatMap(JSON.Decode.array)
+              ->Option.getOr([])
+              ->Array.filterMap(JSON.Decode.string)
+            let spec = retiredSpecOf()
+            let namesRetired = spec->Option.mapOr(false, r => r.namedWhenRetired)
+            // The row's own retirement, read with the same `isRetiredValue` every
+            // other door narrows by — so "retired" here and "withheld" there are
+            // one answer, not two that drift.
+            let retirementOf = (item: JSON.t) =>
+              switch spec {
+              | None => (false, None)
+              | Some(r) =>
+                let cell = item->JSON.Decode.object->Option.flatMap(d => d->Dict.get(r.field))
+                let scope: Reventless.OwnerScope.retiredScope = {field: r.field, values: r.values}
+                let retired = scope->Reventless.OwnerScope.isRetiredValue(cell)
+                (
+                  retired,
+                  // The state that retired it, and only that. A live row reports
+                  // none — this door names rows, it does not publish a lifecycle
+                  // column to callers the list withholds. Nor does the boolean
+                  // form, where the field is the state and `retired` said it.
+                  retired && r.values->Option.isSome
+                    ? cell->Option.flatMap(JSON.Decode.string)
+                    : None,
+                )
+              }
+            switch Bus.getQueryDb(name) {
+            | Some(ops) =>
+              let load = key =>
+                ops.loadStream(key)
+                ->Stream.runCollect
+                ->Effect.catchAll(_ => Effect.succeed([]))
+                ->Effect.runPromise
+              let loaded = await ids->Array.map(async id =>
+                switch (await load(id))->Array.get(0) {
+                | Some(item) => (id, Some(item))
+                | None =>
+                  switch Api_Ids.alternateKey(id) {
+                  | Some(localId) => (localId, (await load(localId))->Array.get(0))
+                  | None => (id, None)
+                  }
+                }
+              )->Promise.all
+              loaded
+              ->Array.filterMap(((id, opt)) =>
+                opt
+                ->Option.filter(item => ownerAllows(~ctx, item))
+                ->Option.flatMap(item => {
+                  let (retired, state) = retirementOf(item)
+                  // A retired row leaves through this door only where the view
+                  // said it may. Where it did not, the door answers exactly as
+                  // every other one does — with nothing.
+                  if retired && !namesRetired {
+                    None
+                  } else {
+                    let label =
+                      item
+                      ->JSON.Decode.object
+                      ->Option.flatMap(d => d->Dict.get(labelField))
+                      ->Option.flatMap(JSON.Decode.string)
+                      // A view with no label field resolves to its id, which is
+                      // what `labelField`'s own fallback already decided.
+                      ->Option.getOr(id)
+                    Some(
+                      Dict.fromArray([
+                        ("id", JSON.Encode.string(id)),
+                        ("label", JSON.Encode.string(label)),
+                        ("retired", JSON.Encode.bool(retired)),
+                        (
+                          "retiredState",
+                          state->Option.mapOr(JSON.Encode.null, JSON.Encode.string),
+                        ),
+                      ])->JSON.Encode.object,
+                    )
+                  }
+                })
+              )
+              ->JSON.Encode.array
+            | None => []->JSON.Encode.array
+            }
+          }
+        }
+        Some((listQueryName ++ "Refs", resolver))
+      } else {
+        None
+      }
 
     // -- List query -------------------------------------------------------------
     // Look up the registered state schema (populated alongside queryFieldNamesRegistry)
@@ -718,6 +842,7 @@ module Make = (Bus: LocalBus.T) => {
     let allSdl =
       [byIdSdl]
       ->Array.concat(byIdsSdl)
+      ->Array.concat(refsSdl)
       ->Array.concat(listSdl)
       ->Array.concat(itemsSdl)
       ->Array.concat(indexSdlFields)
@@ -725,6 +850,7 @@ module Make = (Bus: LocalBus.T) => {
     let resolvers = Dict.make()
     resolvers->Dict.set(singleQueryName, byIdResolver)
     byIdsResolverEntry->Option.forEach(((k, v)) => resolvers->Dict.set(k, v))
+    refsResolverEntry->Option.forEach(((k, v)) => resolvers->Dict.set(k, v))
     listResolvers->Array.forEach(((k, v)) => resolvers->Dict.set(k, v))
     itemsResolvers->Array.forEach(((k, v)) => resolvers->Dict.set(k, v))
     indexResolvers->Array.forEach(((k, v)) => resolvers->Dict.set(k, v))

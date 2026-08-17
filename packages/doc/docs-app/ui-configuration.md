@@ -313,12 +313,47 @@ the payload of a live change frame, which downgrades to metadata-only so every
 subscriber refetches and the query layer answers per caller. The UI cannot show
 what the server does not return, and does not have to filter anything itself.
 
-An exempt caller reaches the archive by passing `includeRetired: true` on the
-list query — a top-level argument beside the paging ones, not a filter field.
-Elevation alone does not lift the restriction; the caller has to ask. A
-non-exempt caller passing it is ignored rather than refused. Who is exempt is
-the same `elevatedGroups` that governs ownership (§5.3) — one declaration, so
-two views cannot disagree about who an operator is.
+An exempt caller reaches the archive by passing `includeRetired: true` — a
+top-level argument beside the paging ones, not a filter field, and accepted on
+the list, the single-entity and the by-ids doors alike, so a row seen in the
+archive can also be opened. Elevation alone does not lift the restriction; the
+caller has to ask. A non-exempt caller passing it is ignored rather than refused.
+Who is exempt is the same `elevatedGroups` that governs ownership (§5.3) — one
+declaration, so two views cannot disagree about who an operator is.
+
+### A retired row keeps its name
+
+Withholding a row answers "what may this caller browse". It also answers, unasked,
+"what is the row this caller is already holding a reference to called" — and an
+order that names a product the catalog has archived should not lose the name of
+what was bought.
+
+`@namedWhenRetired` on the `@schema type state` declaration separates the two. It
+takes no payload, and its presence says: a reference to a retired row of this
+record still resolves. The generated **reference door**, `{list}Refs(ids)`, then
+answers any caller with
+
+```graphql
+type Catalog_ProductRef { id: ID!, label: String!, retired: Boolean!, retiredState: String }
+```
+
+and nothing else — no other field, and no other door. `retiredState` names the
+state that withdrew the row (`"Archived"`, `"Discontinued"`) for the state form,
+and is null for a live row and for the boolean form, where the field *is* the
+state.
+
+Three things it does not do. It does not widen the list, the single-entity read,
+the index reads or the live frame. It does not lift **ownership**: a retired row
+that is owner-scoped is still named to its owner alone, which is why a
+deactivated customer does not become a name oracle for anyone holding a customer
+id. And it is not what makes the door exist — the door is generated for every
+view, so that adding or removing the annotation is not a breaking schema change;
+without it, the door narrows retired rows exactly as every other door does.
+
+The generated UI reads this: a reference cell resolves the archived row's name and
+puts the state beside it as a badge, the same badge the catalog's own list shows.
+It renders the name unlinked for a caller who could not open the row anyway,
+since the single-entity door still refuses one without `includeRetired`.
 
 At most one `@retired` per record, on a `bool` or `option<bool>` field; anything
 else is a compile error. There is no fallback by field name — a boolean called

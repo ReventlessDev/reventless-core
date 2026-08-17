@@ -992,6 +992,28 @@ type state = {
 }
 EOF
 
+# ─── Fixture: @namedWhenRetired (a retired row keeps its name) ────
+#
+# On the record, not on a state: `Archived` and `Discontinued` do not get to
+# disagree about whether the product has a public name.
+
+cat > "$PLUGIN/src/ReadModel/NamedWhenRetiredReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type shelfStatus =
+  | Listed
+  | @retired Archived
+
+@schema
+@namedWhenRetired
+type state = {
+  @id productId: string,
+  name: string,
+  @lifecycle shelfStatus: shelfStatus,
+}
+EOF
+
 # ─── Fixture: @lifecycle (the enum commands branch on) ────────────
 
 cat > "$PLUGIN/src/ReadModel/LifecycleReadModel.res" <<'EOF'
@@ -1915,6 +1937,17 @@ JS="$PLUGIN/src/ReadModel/RetiredLabelledReadModel.res.mjs"
 assert_js_contains "$JS" 'field: "archived"'         "@retired: record payload names the field"
 assert_js_contains "$JS" 'label: "Archived"'         "@retired: record payload carries the label"
 assert_js_contains "$JS" 'showWhenFalse: true'       "@retired: record payload carries showWhenFalse"
+
+echo ""
+echo "=== Test: @namedWhenRetired → carried on the retirement it is about ==="
+JS="$PLUGIN/src/ReadModel/NamedWhenRetiredReadModel.res.mjs"
+assert_js_contains "$JS" 'namedWhenRetired: true'  "@namedWhenRetired: recorded on the retirement"
+assert_js_contains "$JS" 'field: "shelfStatus"'    "@namedWhenRetired: rides the record's own retirement"
+assert_js_not_contains "$JS" '@namedWhenRetired'   "@namedWhenRetired: attribute stripped from output"
+
+# The default every record said before the opt-in existed, and still says.
+JS="$PLUGIN/src/ReadModel/RetiredReadModel.res.mjs"
+assert_js_contains "$JS" 'namedWhenRetired: false' "@retired without the opt-in: the archive stays shut"
 
 echo ""
 echo "=== Test: @drillTarget + @collapsed → metadata fields populated ==="

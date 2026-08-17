@@ -163,6 +163,12 @@ let registerBinding = (
       ->Reventless.StateAnnotations.getSpec
       ->Option.flatMap(a => a.retired)
       ->Option.flatMap(r => r.values),
+      // Read off the retirement rather than from a second annotation: a record
+      // cannot declare the reach of a retirement it does not have.
+      namedWhenRetired: spec.stateSchema
+      ->Reventless.StateAnnotations.getSpec
+      ->Option.flatMap(a => a.retired)
+      ->Option.mapOr(false, r => r.namedWhenRetired),
     },
   )
   logDebug("registered resolver binding for " ++ entry.readModelName, {comp: "PgQueryResolver"})

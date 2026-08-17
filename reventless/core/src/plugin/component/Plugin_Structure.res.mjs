@@ -102,6 +102,10 @@ function retiredValuesFromStateSchema(stateSchema) {
   return Stdlib_Option.flatMap(retiredFromStateSchema(stateSchema), r => r.values);
 }
 
+function namedWhenRetiredFromStateSchema(stateSchema) {
+  return Stdlib_Option.mapOr(retiredFromStateSchema(stateSchema), false, r => r.namedWhenRetired);
+}
+
 function checkRetiredValue(entityName, stateSchema) {
   let match = retiredFromStateSchema(stateSchema);
   if (match === undefined) {
@@ -758,6 +762,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       ownerField: Owner$Reventless.fieldNames(stateSchema)[0],
       retiredField: retiredFieldFromStateSchema(stateSchema),
       retiredValues: retiredValuesFromStateSchema(stateSchema),
+      namedWhenRetired: namedWhenRetiredFromStateSchema(stateSchema),
       visibility: visibilityTag(R.Spec.visibility),
       chapter: componentChapters[R.Spec.name],
       singleQueryField: qf.singleFieldName,
@@ -788,6 +793,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       ownerField: Owner$Reventless.fieldNames(stateSchema)[0],
       retiredField: retiredFieldFromStateSchema(stateSchema),
       retiredValues: retiredValuesFromStateSchema(stateSchema),
+      namedWhenRetired: namedWhenRetiredFromStateSchema(stateSchema),
       visibility: visibilityTag(SVS.Spec.visibility),
       chapter: componentChapters[SVS.Spec.name],
       singleQueryField: qf.singleFieldName,
@@ -915,6 +921,7 @@ export {
   retiredFromStateSchema,
   retiredFieldFromStateSchema,
   retiredValuesFromStateSchema,
+  namedWhenRetiredFromStateSchema,
   checkRetiredValue,
   reportRetiredStates,
   lifecycleStatesFromStateSchema,

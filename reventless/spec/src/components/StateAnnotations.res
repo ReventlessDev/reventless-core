@@ -81,6 +81,27 @@ type retiredSpec = {
   most visibly — would stop firing on a value that looks merely empty.
   */
   values: option<array<string>>,
+  /**
+  Whether a reference to a retired row of this record still resolves — the
+  `@namedWhenRetired` opt-in on the `@schema type state` declaration.
+
+  Retirement withholds a row from every door at once, which is the right answer
+  to "what may this caller browse" and an unasked answer to "what is the row this
+  caller is already holding a reference to called". An order names a product it
+  bought; archiving the product should not unname it on the order.
+
+  `true` opens exactly one door: a retired row answers a by-ids reference read
+  with its id, its label field and the value of `field` — and nothing else, for
+  any caller. It does not widen the list, the single-entity read, the index reads
+  or the live frame, and it does not touch the owner rule: a retired row that is
+  owner-scoped still resolves for its owner alone.
+
+  Inside `retiredSpec` rather than beside it, because it is a rule about withheld
+  rows and there are none without a retirement — the PPX errors on the annotation
+  when the record declares no `@retired`, so the nesting states a guarantee rather
+  than a convention.
+  */
+  namedWhenRetired: bool,
 }
 
 type stateAnnotationSpec = {

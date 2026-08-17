@@ -26,6 +26,7 @@ let publicRm: queryableDef = {
   ownerField: None,
   retiredField: None,
   retiredValues: None,
+  namedWhenRetired: None,
 }
 
 // The component `Platform_ComponentDefinitions` drops and this query must keep.

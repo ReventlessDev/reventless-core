@@ -431,7 +431,7 @@ describe("SuryToJsonSchema:", () => {
       let schema' =
         schema->withSpec({
           ...emptySpec,
-          retired: Some({field: "archived", label: "Archived", showWhenFalse: true, values: None}),
+          retired: Some({field: "archived", label: "Archived", showWhenFalse: true, values: None, namedWhenRetired: false}),
         })
       let json = SuryToJsonSchema.deriveObjectSchema(schema')
       let retiredObj =
@@ -464,6 +464,7 @@ describe("SuryToJsonSchema:", () => {
           label: "",
           showWhenFalse: false,
           values: Some(values),
+          namedWhenRetired: false,
         }),
       })
       ->SuryToJsonSchema.deriveObjectSchema
@@ -522,7 +523,7 @@ describe("SuryToJsonSchema:", () => {
       let schema' =
         schema->withSpec({
           ...emptySpec,
-          retired: Some({field: "archived", label: "", showWhenFalse: false, values: None}),
+          retired: Some({field: "archived", label: "", showWhenFalse: false, values: None, namedWhenRetired: false}),
         })
       let json = SuryToJsonSchema.deriveObjectSchema(schema')
       let retiredObj = json->retiredOn("archived")
@@ -532,12 +533,38 @@ describe("SuryToJsonSchema:", () => {
       ))->toEqual((None, None))
     })
 
+    // The opt-in that lets a reference name a withheld row. Travels only when
+    // true, on the omit-the-default rule the keys around it follow: false is what
+    // every record said before it existed, and writing it would put a key on
+    // every retirement to report that nothing changed.
+    testSync("carries namedWhenRetired only when the record opted in", () => {
+      let build = (~named: bool) => {
+        let schema = S.schema(s => {"archived": s.matches(S.bool)})->S.castToUnknown
+        schema
+        ->withSpec({
+          ...emptySpec,
+          retired: Some({
+            field: "archived",
+            label: "",
+            showWhenFalse: false,
+            values: None,
+            namedWhenRetired: named,
+          }),
+        })
+        ->SuryToJsonSchema.deriveObjectSchema
+        ->retiredOn("archived")
+        ->Option.flatMap(r => getProperty(r, "namedWhenRetired"))
+        ->Option.flatMap(JSON.Decode.bool)
+      }
+      expect((build(~named=true), build(~named=false)))->toEqual((Some(true), None))
+    })
+
     testSync("omits the retired label when empty but always states showWhenFalse", () => {
       let schema = S.schema(s => {"deactivated": s.matches(S.bool)})->S.castToUnknown
       let schema' =
         schema->withSpec({
           ...emptySpec,
-          retired: Some({field: "deactivated", label: "", showWhenFalse: false, values: None}),
+          retired: Some({field: "deactivated", label: "", showWhenFalse: false, values: None, namedWhenRetired: false}),
         })
       let json = SuryToJsonSchema.deriveObjectSchema(schema')
       let retiredObj =

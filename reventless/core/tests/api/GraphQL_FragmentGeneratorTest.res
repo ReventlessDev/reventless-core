@@ -340,3 +340,61 @@ describe("GraphQL_FragmentGenerator.mutationArgTypes", () => {
     expect((mismatched, field->String.length > 0))->toEqual(([], true))
   })
 })
+
+// What a caller holding a pointer to a withheld row may learn about it, and what
+// the two doors that could never answer for one can now be asked.
+describe("the reference door and the archive argument", () => {
+  open Expect
+
+  // The narrowness is the type's, not a rule each backend re-implements: a caller
+  // cannot ask this door for a price, because there is no price on it.
+  testSync("projects a reference to id, label and the state that retired it", () => {
+    let sdl = GraphQL_FragmentGenerator.deriveRefTypeSdl(~returnTypeName="Catalog_Product")
+    expect((
+      sdl->String.includes("type Catalog_ProductRef"),
+      sdl->String.includes("label: String!"),
+      sdl->String.includes("retiredState: String"),
+      sdl->String.includes("price"),
+    ))->toEqual((true, true, true, false))
+  })
+
+  // Emitted for every view rather than only the annotated ones, on the reasoning
+  // `includeRetired` already states: a field that appears with an annotation makes
+  // adding or removing it a breaking schema change.
+  testSync("names the door after the list field it resolves against", () =>
+    expect(
+      GraphQL_FragmentGenerator.deriveRefsQueryField(
+        ~listFieldName="Catalog_Products",
+        ~returnTypeName="Catalog_Product",
+      ),
+    )->toEqual("  Catalog_ProductsRefs(ids: [ID!]!): [Catalog_ProductRef!]!")
+  )
+
+  // The dead end this closes: the archive toggle put retired rows on screen and
+  // clicking one read a door that refused them to every caller alive, elevated
+  // included, because there was no way to ask.
+  testSync("lets the single-entity and by-ids doors be asked for the archive", () =>
+    expect((
+      GraphQL_FragmentGenerator.deriveObjectQueryField(
+        ~singleFieldName="Catalog_Product",
+        ~typeName="Catalog_Product",
+      )->String.includes("includeRetired: Boolean"),
+      GraphQL_FragmentGenerator.deriveByIdsQueryField(
+        ~listFieldName="Catalog_Products",
+        ~returnTypeName="Catalog_Product",
+      )->String.includes("includeRetired: Boolean"),
+    ))->toEqual((true, true))
+  )
+
+  // A sub-id read keeps its sort-key argument beside the new one; dropping it
+  // would silently turn a two-key door into a one-key one.
+  testSync("keeps the sub-id argument when the view has one", () =>
+    expect(
+      GraphQL_FragmentGenerator.deriveObjectQueryField(
+        ~singleFieldName="Ordering_OrderLine",
+        ~typeName="Ordering_OrderLine",
+        ~subIdField="lineNo",
+      ),
+    )->toEqual("  Ordering_OrderLine(id: ID!, lineNo: String!, includeRetired: Boolean): Ordering_OrderLine")
+  )
+})

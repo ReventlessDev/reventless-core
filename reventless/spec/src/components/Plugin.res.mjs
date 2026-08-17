@@ -122,6 +122,7 @@ let queryableDefSchema = S.schema(s => ({
   ownerField: s.m(stringOptionSchema),
   retiredField: s.m(stringOptionSchema),
   retiredValues: s.m(stringArrayOptionSchema),
+  namedWhenRetired: s.m(boolOptionSchema),
   visibility: s.m(stringOptionSchema),
   chapter: s.m(stringOptionSchema),
   singleQueryField: s.m(stringOptionSchema),
