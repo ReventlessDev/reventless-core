@@ -2,11 +2,19 @@
 
 **Status.** BUILT 2026-08-16, with two qualifications. Phases 1–3 shipped and
 released; Phase 4 shipped one of its three rules and withdrew the other two on
-contact with the examples — see §5, which records why each was wrong. Phase 3's
-sweep is complete except for the four Product edit commands, which turned out to
-need a domain change rather than an annotation: their folds consume no
-shelf-status event, so declaring a from-set on them would be a claim `decide`
-contradicts. See §4.
+contact with the examples — see §5, which records why each was wrong.
+
+**Phase 3's sweep is complete (updated 2026-08-17).** It was recorded here as
+complete "except for the four Product edit commands", which were left
+unannotated because their folds consumed no shelf-status event and a from-set
+would have been a claim `decide` contradicts. That was the right reading and the
+wrong resting place: the four were closed as a **domain change** instead — the
+slices now consume the shelf events, fold a `shelf` variant, refuse with
+`ProductIsDiscontinued`, and declare
+`@transition([Products.Listed, Products.Archived])`. Two from-states rather than
+one, because a product pulled from the catalog for a season comes back and its
+price and copy should be right when it does, while a discontinued one is
+terminal. §4 has the detail.
 
 The two withdrawn rules left behind vocabulary gaps that are not this plan's to
 close — no way to declare a state an intentional ending, and a consumed-event
@@ -501,6 +509,18 @@ end it. **They are therefore left unannotated**, and the rule that produced that
 answer is the rule to keep: the annotation describes what `decide` does, and
 where `decide` guards nothing there is nothing to declare.
 
+**Resolved 2026-08-17 by changing the domain, not the annotation.** Leaving them
+unannotated was correct as an *annotation* decision and wrong as a resting place:
+it left the example teaching that a discontinued product's price may be edited.
+The four slices now consume the shelf events, fold a `shelf` variant matching
+`ArchiveProduct_Behavior` rather than adding booleans, refuse with
+`ProductIsDiscontinued` — an error `ArchiveProduct` already declared — and carry
+`@transition([Products.Listed, Products.Archived])`. **Two from-states, not
+one:** a product pulled from the catalog for a season is coming back, and its
+price and copy should be right when it does; a discontinued one is terminal. Two
+GWTs per slice cover both halves of the from-set. This also settles the asymmetry
+noted below in favour of the Category behaviour.
+
 The Category equivalents (`RenameCategory`, `ChangeCategoryImage`) *do* refuse
 with `CategoryAlreadyArchived`, consume both archive events, and are annotated
 `[Categories.Listed]`. So the two halves of the same example teach opposite
@@ -509,7 +529,9 @@ its own decision** — either products should refuse edits when archived, as
 categories do, or categories should stop refusing. It is deliberately *not*
 fixed here: unlike the `OrderReopened` drift, no declaration is wrong and
 nothing is internally inconsistent, so changing four behaviours would be a
-domain change smuggled into an annotation sweep.
+domain change smuggled into an annotation sweep. *(Settled 2026-08-17 in favour
+of the Category behaviour, as its own change rather than inside the sweep — see
+the resolution above.)*
 
 **The Customer aggregate splits cleanly**, and is the best illustration of the
 one-sided form in the examples: `UpdateEmail`, `UpdateAddress` and
@@ -519,6 +541,44 @@ deactivated customer, so each carries `@transition([Customers.Active])`. Its two
 late-arriving geocode does not park a TODO row in Failed — which makes them legal
 everywhere, and a from-set naming every state says nothing. They stay
 unannotated.
+
+### A second disagreement, found later and not by reading (2026-08-17)
+
+The sweep's lesson — that the annotation must describe what `decide` does — has a
+converse the sweep could not reach: a `decide` that is wrong in a state *no
+annotation mentions*. The ordering slice answered a reopen on a **shipped** order
+with `Ok([])`, commented as idempotent. It is not. A shipped order is not a
+cancelled one, so the request is not a repeat of anything, and accepting it
+reported success to the caller while the order stayed shipped.
+
+It now refuses with `OrderAlreadyShipped`, the error the same slice already uses
+for the equivalent mistake on cancellation; reopening a *placed* order stays
+idempotent, which is a genuine repeat.
+
+Two things worth keeping. **No test covered a shipped order there**, which is how
+it survived a sweep that read every `decide` in the example — reading finds what
+a declaration contradicts, not what nothing says anything about. And it was found
+mechanically, by conformance generation flagging a command accepted in a state it
+neither runs from nor moves to. A test now covers it.
+
+### The GWT sidecar carries "emitted nothing" (2026-08-17)
+
+`SidecarEmit` recorded every then-step a scenario can make except `thenNoEvent`,
+which asserts a command was accepted and produced no event. A test using it
+exported a scenario with an empty then-list, indistinguishable from one that
+asserts nothing — so a consumer reading the sidecar back would rewrite it without
+its assertion. Here the *absence* is the assertion, so it has to be recorded
+rather than inferred, and it is emitted as a kind of its own with no element and
+no values.
+
+Two things make it unlike its siblings: it carries no payload, and pipe-first
+still turns it into an application whose single argument is the chain it is piped
+from rather than an element — so the shared payload walk would have read the
+wrong thing. It gets its own case ahead of that walk.
+
+**It needs a release to matter.** Until the PPX is published and consumers repin,
+a `->thenNoEvent` written by a tool still round-trips through an older PPX that
+cannot see it.
 
 ### The pre-fix folds, preserved
 

@@ -75,7 +75,19 @@ let () =
                 (whenCmd
                    (givenEvents [| ProductAdded { productId = "prod-1" } |])
                    (AddProduct { productId = "prod-1" }))
-                ProductAlreadyExists))]
+                ProductAlreadyExists);
+          (* Accepted, and emitted nothing. The absence IS the assertion, so it
+             has to reach the sidecar as a step of its own: a command that
+             declares it guards a state without moving a row claims exactly
+             this, and a step the sidecar cannot see is one a round trip
+             rewrites into something else. Carries no payload, and pipe-first
+             still makes it an apply whose argument is the chain rather than an
+             element. *)
+          test "Renaming a product moves nothing" (fun () ->
+              thenNoEvent
+                (whenCmd
+                   (givenEvents [| ProductAdded { productId = "prod-1" } |])
+                   (RenameProduct { productId = "prod-1" }))))]
   in
   let gj =
     match
@@ -99,6 +111,7 @@ let () =
   gmust "when command element" "\"kind\":\"command\",\"element\":\"AddProduct\"";
   gmust "then event element" "\"kind\":\"event\",\"element\":\"ProductAdded\"";
   gmust "then error element" "\"kind\":\"error\",\"element\":\"ProductAlreadyExists\"";
+  gmust "then no-event step" "\"kind\":\"noEvent\",\"element\":\"\"";
   gmust "given event (duplicate scenario)" "\"kind\":\"event\",\"element\":\"ProductAdded\"";
   gmust "float example value" "\"kind\":\"float\",\"value\":9.99";
   gmust "string example value" "\"kind\":\"string\",\"value\":\"prod-1\"";

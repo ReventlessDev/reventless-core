@@ -366,7 +366,12 @@ let element_of_constructor (e : expression) : (string * Yojson.Safe.t list) opti
 
 let step_names =
   [ "givenEvents"; "givenEvent"; "whenCmd"; "whenCommand"; "whenInput";
-    "thenEvent"; "thenError"; "thenState"; "thenCommand"; "thenSideEffect" ]
+    "thenEvent"; "thenError"; "thenState"; "thenCommand"; "thenSideEffect";
+    (* Carries no payload: `->thenNoEvent` asserts that a command was accepted
+       and produced nothing. Pipe-first still makes it an apply — the argument is
+       the chain it is piped from, not an element — so it needs its own case
+       below rather than the payload walk the others share. *)
+    "thenNoEvent" ]
 
 let rec collect_applies (e : expression) (acc : (string * expression list) list) :
     (string * expression list) list =
@@ -427,7 +432,18 @@ let extract_steps (body : expression) :
     | None -> []
   in
   let then_ =
-    match find [ "thenEvent"; "thenError"; "thenState"; "thenCommand"; "thenSideEffect" ] with
+    match
+      find
+        [ "thenEvent"; "thenError"; "thenState"; "thenCommand"; "thenSideEffect";
+          "thenNoEvent" ]
+    with
+    (* "Accepted, and emitted nothing." There is no element to name and no
+       payload to walk, so it is emitted as a kind on its own. Recorded rather
+       than dropped because the absence IS the assertion: a command declaring it
+       guards a state without moving a row is claiming exactly this, and a step
+       the sidecar cannot see is one a round trip silently rewrites into
+       something else. *)
+    | Some ("thenNoEvent", _) -> [ step_json ~kind:"noEvent" ~element:"" ~values:[] ]
     | Some (name, args) -> (
       match last args with
       | Some payload -> (
