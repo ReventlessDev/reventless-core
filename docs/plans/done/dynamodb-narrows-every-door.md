@@ -5,13 +5,14 @@
 (`d6a799b28`, `5d083dae3`), and the whole `reventless-aws` suite is green at 676
 tests across 59 suites, 19 of them in `AppSync_RetirementNarrowingTest.res`. The
 one item this plan scoped out — an elevated caller cannot widen the **index**
-door, because no SDL emitter declares `includeRetired` there — is filed as
-[Backlog/index-door-cannot-be-widened-to-the-archive.md](../Backlog/index-door-cannot-be-widened-to-the-archive.md).
-Measuring it for the write-up found it is not DynamoDB's alone: the local and
-Postgres resolvers also read the argument and also never receive it, and the
-by-index field is emitted by two paths that disagree on its name, its arguments
-and its return type. That is why it is a plan of its own rather than a follow-on
-line.
+door, because no SDL emitter declares `includeRetired` there — went to its own
+plan, [index-door-cannot-be-widened-to-the-archive.md](index-door-cannot-be-widened-to-the-archive.md),
+**closed 2026-08-18**. Measuring it for the write-up already showed it was not
+DynamoDB's alone: the local and Postgres resolvers read the argument too and also
+never receive it, and the field is emitted by two paths that disagree on its
+name, its arguments and its return type. Closing it found the rest — that the
+door does not answer on *any* backend, each backend's SDL disagreeing with its
+own resolver — which is why it was a plan of its own rather than a follow-on line.
 
 **Step 1 (retirement) BUILT 2026-08-17.** All four doors narrow. The generated JS
 was executed against rows outside the test suite, since asserting text proves the
@@ -189,7 +190,9 @@ A read model without one emits templates identical to today's, so nothing that
 does not declare a retirement can change behaviour.
 
 **Met, with the index door's widening half struck out rather than claimed.** The
-acceptance as first written said "gets it from all three"; the index door has no
-`includeRetired` in its SDL on any backend, so no caller can ask there. It
-narrows correctly, which is the half this plan is measured against — the widening
-half is [Backlog/index-door-cannot-be-widened-to-the-archive.md](../Backlog/index-door-cannot-be-widened-to-the-archive.md).
+acceptance as first written said "gets it from all three"; at the time the index
+door had no `includeRetired` in its SDL on any backend, so no caller could ask
+there. It narrowed correctly, which is the half this plan is measured against.
+The widening half — and, as it turned out, the door itself, which answered on no
+backend — is [index-door-cannot-be-widened-to-the-archive.md](index-door-cannot-be-widened-to-the-archive.md),
+closed the following day.

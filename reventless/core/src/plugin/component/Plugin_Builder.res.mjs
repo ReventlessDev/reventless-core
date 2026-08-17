@@ -194,6 +194,7 @@ function Make(Spec) {
         let queryEntriesFromReadModels = readModels.map(R => {
           let qn = Api_Naming$ReventlessCore.queryFieldNamesForReadModel(extra$1, R.Spec.name, undefined);
           let subIdField = Stdlib_Option.map(R.Spec.subIdConfig, c => c.subIdField);
+          let indexes = R.Spec.config.indexes;
           return {
             singleFieldName: qn.singleFieldName,
             listFieldName: qn.listFieldName,
@@ -202,7 +203,8 @@ function Make(Spec) {
             authorization: undefined,
             permission: R.Spec.authorization,
             connectionSpec: true,
-            subIdField: subIdField
+            subIdField: subIdField,
+            indexQueries: indexes.length !== 0 ? indexes : undefined
           };
         });
         let queryEntries = queryEntriesFromReadModels.concat(dcbResult.queryEntries);

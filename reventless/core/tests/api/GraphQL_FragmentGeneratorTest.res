@@ -398,3 +398,69 @@ describe("the reference door and the archive argument", () => {
     )->toEqual("  Ordering_OrderLine(id: ID!, lineNo: String!, includeRetired: Boolean): Ordering_OrderLine")
   )
 })
+
+// The by-index door is asserted whole rather than by `String.includes`, because
+// what was wrong with it was never a missing substring: the field declared an
+// `id` its resolver did not read and omitted the key its resolver did, so every
+// part of the signature is load-bearing.
+describe("the by-index door", () => {
+  let index = (~index, ~idField=?, ~subIdField=?): Reventless.ReadModel.indexConfig => {
+    index,
+    type_: "S",
+    idField: ?idField,
+    subIdField: ?subIdField,
+    projectionType: ALL,
+  }
+
+  testSync("takes the index value it filters on, and can be asked for the archive", () =>
+    expect(
+      GraphQL_FragmentGenerator.deriveIndexQueryField(
+        ~singleFieldName="Catalog_Product",
+        ~indexConfig=index(~index="categoryId"),
+        ~connectionTypeName="Catalog_ProductConnection",
+      ),
+    )->toEqual(
+      "  Catalog_ProductByCategoryId(categoryId: String!, first: Int, after: String, last: Int, before: String, includeRetired: Boolean): Catalog_ProductConnection!",
+    )
+  )
+
+  // A named index has two different strings in play — `byOwner` names the index,
+  // `ownerId` names the column. The field is named after the first and keyed on
+  // the second, and swapping them is how the local adapter came to offer an
+  // argument the row had no field for.
+  testSync("names the field after the index and keys it on the column", () =>
+    expect(
+      GraphQL_FragmentGenerator.deriveIndexQueryField(
+        ~singleFieldName="Ordering_Order",
+        ~indexConfig=index(~index="byOwner", ~idField="ownerId"),
+        ~connectionTypeName="Ordering_OrderConnection",
+      ),
+    )->toEqual(
+      "  Ordering_OrderByOwner(ownerId: String!, first: Int, after: String, last: Int, before: String, includeRetired: Boolean): Ordering_OrderConnection!",
+    )
+  )
+
+  // Optional, unlike the partition argument: naming the index value is the point
+  // of the door, narrowing to one sort value is a refinement.
+  testSync("offers the sort key the sort template has always read", () =>
+    expect(
+      GraphQL_FragmentGenerator.deriveIndexQueryField(
+        ~singleFieldName="Ordering_Order",
+        ~indexConfig=index(~index="byCustomer", ~idField="customerId", ~subIdField="placedAt"),
+        ~connectionTypeName="Ordering_OrderConnection",
+      ),
+    )->toEqual(
+      "  Ordering_OrderByCustomer(customerId: String!, placedAt: String, first: Int, after: String, last: Int, before: String, includeRetired: Boolean): Ordering_OrderConnection!",
+    )
+  )
+
+  // One derivation, called by every backend. The local adapter used to spell the
+  // name out itself and produced `XByByOwner` where this produces `XByOwner`.
+  testSync("drops a leading `by` exactly once", () =>
+    expect((
+      GraphQL_FragmentGenerator.indexQueryFieldName(~singleFieldName="X", ~index="byOwner"),
+      GraphQL_FragmentGenerator.indexQueryFieldName(~singleFieldName="X", ~index="ownerId"),
+      GraphQL_FragmentGenerator.indexQueryFieldName(~singleFieldName="X", ~index="by"),
+    ))->toEqual(("XByOwner", "XByOwnerId", "XByBy"))
+  )
+})

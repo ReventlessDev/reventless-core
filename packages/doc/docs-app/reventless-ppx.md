@@ -599,7 +599,13 @@ type state = {
   name: string,
 }
 // secondary index: partition key = categoryId, ALL projection
-// Query field generated: productByCategoryId(categoryId: ID!): ...
+// Query field generated:
+//   ProductByCategoryId(categoryId: String!, first: Int, after: String,
+//                       last: Int, before: String,
+//                       includeRetired: Boolean): ProductConnection!
+// Pages forward on first/after. `last`/`before` are declared but refused —
+// the cursor is the store's forward-only continuation token, and both
+// backends say so rather than answering the forward page.
 ```
 
 **`@index` with projection options:**

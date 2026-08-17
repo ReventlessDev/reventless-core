@@ -395,11 +395,46 @@ export function request(ctx) {
 `;
 }
 
+let indexConnectionResponseCode = `
+export function response(ctx) {
+  if (ctx.error) util.error(ctx.error.message, ctx.error.type);
+  const items = ctx.result?.items ?? [];
+  const next = ctx.result?.nextToken ?? null;
+  const edges = items.map((item, i) => ({
+    node: item,
+    cursor: util.base64Encode(JSON.stringify({ token: next, index: i })),
+  }));
+  const boundary = next ? util.base64Encode(JSON.stringify({ token: next, index: -1 })) : null;
+  return {
+    edges,
+    pageInfo: {
+      hasNextPage: !!next,
+      hasPreviousPage: !!ctx.args.after,
+      startCursor: edges.length > 0 ? edges[0].cursor : boundary,
+      endCursor: edges.length > 0 ? edges[edges.length - 1].cursor : boundary,
+    },
+  };
+}`;
+
+let indexBackwardPagingGuard = `
+  if (args.before != null || args.last != null) {
+    util.error('Backward pagination (last/before) is not supported on by-index connections; use first/after.', 'UnsupportedPagination');
+  }`;
+
+let indexCursorPreamble = `
+  let after = null;
+  if (args.after != null && args.after !== '') {
+    const parsed = JSON.parse(util.base64Decode(args.after));
+    after = parsed.token ?? null;
+  }`;
+
+let indexReservedArgs = `key === 'first' || key === 'after' || key === 'last' || key === 'before' || key === 'includeRetired' || key === 'limit' || key === 'nextToken' || key === 'forward'`;
+
 function queryByIndexFiltered(index, idField, ownerField, retiredField, retiredValues, elevatedGroupsOpt) {
   let elevatedGroups = elevatedGroupsOpt !== undefined ? elevatedGroupsOpt : [];
   return importUtil + `
 export function request(ctx) {
-  const args = ctx.args;
+  const args = ctx.args;` + indexBackwardPagingGuard + `
   const query = {
     expression: '#` + idField + ` = :` + idField + `',
     expressionNames: { '#` + idField + `': '` + idField + `' },
@@ -410,12 +445,7 @@ export function request(ctx) {
   const values = {};
   Object.keys(args).forEach(key => {
     const value = args[key];
-    // includeRetired is a request to lift a restriction, not a column to match
-    // on. Unlisted, the loop below would turn it into contains(#includeRetired,
-    // ...) against an attribute no row has, and the door would answer nothing for
-    // the caller it exists to serve. Skipped defensively: the index field's SDL
-    // does not declare the argument today, so GraphQL refuses it before this runs.
-    if (key === '` + idField + `' || key === 'limit' || key === 'nextToken' || key === 'forward' || key === 'includeRetired') return;
+    if (key === '` + idField + `' || ` + indexReservedArgs + `) return;
     if (value == null || value === '') return;
     if (expression) expression += ' AND';
     if (key === 'hideDeleted') {
@@ -430,13 +460,13 @@ export function request(ctx) {
       values[':' + key] = '' + value;
     }
   });
-` + ownerFilterClause(ownerField, elevatedGroups) + retiredFilterClause(retiredField, retiredValues, elevatedGroups) + `
+` + ownerFilterClause(ownerField, elevatedGroups) + retiredFilterClause(retiredField, retiredValues, elevatedGroups) + indexCursorPreamble + `
   const result = {
     operation: 'Query',
     query,
     index: '` + index + `',
-    limit: (args.limit ?? 50),
-    nextToken: (args.nextToken ?? null),
+    limit: (args.first ?? 50),
+    nextToken: after,
     scanIndexForward: (args.forward ?? true)
   };
   if (expression) {
@@ -444,7 +474,7 @@ export function request(ctx) {
   }
   return result;
 }
-` + resultResponseCode + `
+` + indexConnectionResponseCode + `
 `;
 }
 
@@ -452,7 +482,7 @@ function queryByIndexSortFiltered(index, idField, ownerField, sortField, retired
   let elevatedGroups = elevatedGroupsOpt !== undefined ? elevatedGroupsOpt : [];
   return importUtil + `
 export function request(ctx) {
-  const args = ctx.args;
+  const args = ctx.args;` + indexBackwardPagingGuard + `
   const query = args.` + sortField + `
     ? {
         expression: '#` + idField + ` = :` + idField + ` AND #` + sortField + ` = :` + sortField + `',
@@ -472,7 +502,7 @@ export function request(ctx) {
   const values = {};
   Object.keys(args).forEach(key => {
     const value = args[key];
-    if (key === '` + idField + `' || key === '` + sortField + `' || key === 'limit' || key === 'nextToken' || key === 'forward' || key === 'includeRetired') return;
+    if (key === '` + idField + `' || key === '` + sortField + `' || ` + indexReservedArgs + `) return;
     if (value == null || value === '') return;
     if (expression) expression += ' AND';
     if (key === 'hideDeleted') {
@@ -487,13 +517,13 @@ export function request(ctx) {
       values[':' + key] = '' + value;
     }
   });
-` + ownerFilterClause(ownerField, elevatedGroups) + retiredFilterClause(retiredField, retiredValues, elevatedGroups) + `
+` + ownerFilterClause(ownerField, elevatedGroups) + retiredFilterClause(retiredField, retiredValues, elevatedGroups) + indexCursorPreamble + `
   const result = {
     operation: 'Query',
     query,
     index: '` + index + `',
-    limit: (args.limit ?? 50),
-    nextToken: (args.nextToken ?? null),
+    limit: (args.first ?? 50),
+    nextToken: after,
     scanIndexForward: (args.forward ?? true)
   };
   if (expression) {
@@ -501,7 +531,7 @@ export function request(ctx) {
   }
   return result;
 }
-` + resultResponseCode + `
+` + indexConnectionResponseCode + `
 `;
 }
 
@@ -1192,6 +1222,10 @@ export {
   queryByIndex,
   queryByIndexDeletable,
   queryByIndexSort,
+  indexConnectionResponseCode,
+  indexBackwardPagingGuard,
+  indexCursorPreamble,
+  indexReservedArgs,
   queryByIndexFiltered,
   queryByIndexSortFiltered,
   listAllItems,

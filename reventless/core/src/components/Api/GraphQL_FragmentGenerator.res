@@ -497,6 +497,63 @@ let deriveConnectionQueryField = (
   `  ${listFieldName}(filter: ${filterTypeName}${orderByArg}, first: Int, after: String, last: Int, before: String, includeRetired: Boolean): ${singularTypeName}Connection!`
 }
 
+// ── The by-index door ──────────────────────────────────────────────────────
+//
+// One derivation, called by every backend that serves this field, because the
+// alternative was tried and did not survive contact. The field used to be
+// emitted here for AppSync and again, independently, in the local adapter, and
+// the two agreed on neither its name, its argument nor its return type. Both
+// were wrong in the same way: each disagreed with the resolver standing behind
+// it. The AppSync shape declared `id: ID!` while its resolver read the index
+// field, so the value could not be passed at all; the local shape promised
+// `[String]` while its resolver returned whole rows, so every call failed to
+// serialise. A door that answers on no backend is a door whose signature can be
+// chosen on the merits, which is what the one below is.
+
+/** The row field an index is keyed on.
+
+For a named index (`@index("byOwner") ownerId`) the index name and the field it
+indexes differ, and it is the *field* every resolver filters on; for an unnamed
+index the two are the same string. */
+let indexKeyField = (indexConfig: Reventless.ReadModel.indexConfig): string =>
+  indexConfig.idField->Option.getOr(indexConfig.index)
+
+/** `<single>By<Index>`, dropping a leading `by` from the index name so
+`@index("byOwner")` reads `XByOwner` rather than `XByByOwner`. */
+let indexQueryFieldName = (~singleFieldName: string, ~index: string): string => {
+  let stripped = if index->String.startsWith("by") && index->String.length > 2 {
+    index->String.slice(~start=2, ~end=index->String.length)
+  } else {
+    index
+  }
+  singleFieldName ++ "By" ++ stripped->String.capitalize
+}
+
+/** The by-index door's signature.
+
+Paging and `includeRetired` are here for the reasons `deriveConnectionQueryField`
+gives above — this door reads a secondary index that can carry as many rows as
+the list, and an elevated caller that can widen every other door but this one
+would find the archive reachable by id and by list and not by the index that
+exists to look rows up. */
+let deriveIndexQueryField = (
+  ~singleFieldName: string,
+  ~indexConfig: Reventless.ReadModel.indexConfig,
+  ~connectionTypeName: string,
+): string => {
+  let fieldName = indexQueryFieldName(~singleFieldName, ~index=indexConfig.index)
+  let keyField = indexKeyField(indexConfig)
+  // An index with a sort key can be narrowed to one exact value on it. Optional,
+  // unlike the partition argument: naming the index value is what the door is
+  // for, narrowing further is a refinement. The AppSync sort template has read
+  // this argument all along, against an SDL that never offered it.
+  let sortArg = switch indexConfig.subIdField {
+  | Some(sortField) => `${sortField}: String, `
+  | None => ""
+  }
+  `  ${fieldName}(${keyField}: String!, ${sortArg}first: Int, after: String, last: Int, before: String, includeRetired: Boolean): ${connectionTypeName}!`
+}
+
 // ── Mutation field derivation ──────────────────────────────────────────────
 
 let deriveMutationFieldFromObject = (
@@ -715,17 +772,15 @@ let generate = (
     switch entry.indexQueries {
     | Some(indexes) =>
       let connectionTypeName = entry.returnTypeName ++ "Connection"
-      indexes->Array.forEach(({index}) => {
-        let stripped = if index->String.startsWith("by") && index->String.length > 2 {
-          index->String.slice(~start=2, ~end=index->String.length)
-        } else {
-          index
-        }
-        let fieldName = entry.singleFieldName ++ "By" ++ stripped->String.capitalize
+      indexes->Array.forEach(indexConfig =>
         queries->Array.push(
-          `  ${fieldName}(id: ID!, first: Int, after: String, last: Int, before: String): ${connectionTypeName}!`,
+          deriveIndexQueryField(
+            ~singleFieldName=entry.singleFieldName,
+            ~indexConfig,
+            ~connectionTypeName,
+          ),
         )
-      })
+      )
     | None => ()
     }
 

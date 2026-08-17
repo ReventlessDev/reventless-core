@@ -7,6 +7,7 @@ import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/s
 import * as AppSync_Resolver_Functions$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Resolver_Functions.res.mjs";
 import * as PgQueryResolver_Builder$ReventlessAws from "./PgQueryResolver_Builder.res.mjs";
 import * as AppSync_Resolver_Retrying$ReventlessAws from "../Api/AppSync_Resolver_Retrying.res.mjs";
+import * as GraphQL_FragmentGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res.mjs";
 
 let identityBlock = `id != null && id.sub != null
       ? { userId: id.sub, username: id.username, groups: id.claims?.['cognito:groups'] ?? [], claims: id.claims, provider: 'Cognito' }
@@ -77,13 +78,6 @@ function make(name, api, param, dataSourceName, indexes, subIdField, idResolverC
     PgQueryResolver_Builder$ReventlessAws.registerNodeType(returnTypeName, name$1);
   }
   let mkResolver = (resolverName, field, kind, index, authTable, authGroup) => AppSync_Resolver_Retrying$ReventlessAws.makeUnitJsResolver(resolverName, api, dataSourceName, "Query", field, invokeTemplate(name$1, kind, index, authTable, authGroup), opts);
-  let stripLeadingBy = s => {
-    if (s.startsWith("by") && s.length > 2) {
-      return s.slice(2, s.length);
-    } else {
-      return s;
-    }
-  };
   let resourcesMaker = _allQueryDbs => {
     let byId = mkResolver(Stdlib_String.capitalize(fieldNameForSingle), fieldNameForSingle, includeIdParam ? "getById" : "list", undefined, undefined, undefined);
     let all = mkResolver(Stdlib_String.capitalize(fieldNameForAll), fieldNameForAll, "list", undefined, undefined, undefined);
@@ -104,8 +98,8 @@ function make(name, api, param, dataSourceName, indexes, subIdField, idResolverC
     }
     let byIndex = indexes.map(ic => {
       let index = ic.index;
-      let resolverName = Stdlib_String.capitalize(fieldNameForSingle) + "By" + Stdlib_String.capitalize(stripLeadingBy(index));
-      let field = fieldNameForSingle + "By" + Stdlib_String.capitalize(stripLeadingBy(index));
+      let field = GraphQL_FragmentGenerator$ReventlessCore.indexQueryFieldName(fieldNameForSingle, index);
+      let resolverName = Stdlib_String.capitalize(field);
       let match = ic.authorization;
       if (match !== undefined) {
         return mkResolver(resolverName, field, "index", index, Stdlib_String.capitalize(match.tableName), match.group);

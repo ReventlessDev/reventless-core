@@ -1428,11 +1428,10 @@ module MakeWithConfig = (
       switch entry.indexQueries {
       | Some(indexes) =>
         indexes->Array.forEach((ic: Reventless.ReadModel.indexConfig) => {
-          let stripped =
-            ic.index->String.startsWith("by") && ic.index->String.length > 2
-              ? ic.index->String.slice(~start=2, ~end=ic.index->String.length)
-              : ic.index
-          let fieldName = entry.singleFieldName ++ "By" ++ stripped->String.capitalize
+          let fieldName = ReventlessCore.GraphQL_FragmentGenerator.indexQueryFieldName(
+            ~singleFieldName=entry.singleFieldName,
+            ~index=ic.index,
+          )
           queryResolvers->Dict.set(fieldName, async (_root, _args, _ctx): JSON.t =>
             connectionResponse([])
           )

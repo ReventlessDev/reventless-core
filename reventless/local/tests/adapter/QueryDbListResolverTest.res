@@ -102,7 +102,7 @@ let pageInfoString = (response: JSON.t, key: string): option<string> =>
 // Per-test fixture — fresh Bus + storage + registry + resolver
 // ─────────────────────────────────────────────────────────────
 
-let buildFixture = async (~name: string) => {
+let buildFixture = async (~name: string, ~indexes: array<Reventless.ReadModel.indexConfig>=[]) => {
   module Bus = LocalBus.Make()
   module Storage = LocalQueryDbStorage.Make(Bus)
   module Resolvers = QueryDbResolvers_GraphQL.Make(Bus)
@@ -151,7 +151,7 @@ let buildFixture = async (~name: string) => {
     ~api=(),
     ~apiRole=(),
     ~dataSourceName=""->Pulumi.Output.make,
-    ~indexes=[],
+    ~indexes,
     ~subIdField=None,
     ~idResolverConfigs=[],
     ~idsResolverConfigs=[],
@@ -439,4 +439,84 @@ describe("QueryDb list resolver — SQLite push-down path", () => {
       expect(edgeNodeField(edges->Array.getUnsafe(2), "productId"))->toBe("p-4")
     })
   )
+})
+
+// The by-index door answers a Relay connection, keyed on the index's column.
+// Both halves used to be wrong here and in the opposite direction on AppSync:
+// this backend promised `[String]` and returned whole rows, so every call failed
+// to serialise before a caller could reach the rows at all.
+describe("QueryDb by-index resolver", () => {
+  let statusIndex: array<Reventless.ReadModel.indexConfig> = [
+    {index: "status", type_: "S", projectionType: ALL},
+  ]
+
+  let indexResolver = async (~name) => {
+    let _ = await buildFixture(~name, ~indexes=statusIndex)
+    switch DomainGraphQL_Server.getQueryResolver(name ++ "ByStatus") {
+    | Some(r) => r
+    | None => JsError.throwWithMessage("index resolver not registered: " ++ name ++ "ByStatus")
+    }
+  }
+
+  beforeEach(() => {
+    DomainGraphQL_Server.reset()
+  })
+
+  testPromise("answers the rows carrying the index value, as edges", async () => {
+    let resolver = await indexResolver(~name="IdxA")
+    let response = await resolver(JSON.Encode.null, argsOf([("status", strJson("active"))]), emptyCtx)
+    let edges = getEdges(response)
+    expect(edges->Array.length)->toBe(3)
+    expect(edgeNodeField(edges->Array.getUnsafe(0), "productId"))->toBe("p-1")
+  })
+
+  testPromise("pages forward on first/after like every other connection", async () => {
+    let resolver = await indexResolver(~name="IdxB")
+    let page1 =
+      await resolver(
+        JSON.Encode.null,
+        argsOf([("status", strJson("active")), ("first", numJson(2))]),
+        emptyCtx,
+      )
+    expect(getEdges(page1)->Array.length)->toBe(2)
+    expect(pageInfoBool(page1, "hasNextPage"))->toBe(true)
+
+    let page2 =
+      await resolver(
+        JSON.Encode.null,
+        argsOf([
+          ("status", strJson("active")),
+          ("first", numJson(2)),
+          ("after", strJson(pageInfoString(page1, "endCursor")->Option.getOr(""))),
+        ]),
+        emptyCtx,
+      )
+    let edges2 = getEdges(page2)
+    expect(edges2->Array.length)->toBe(1)
+    expect(edgeNodeField(edges2->Array.getUnsafe(0), "productId"))->toBe("p-4")
+    expect(pageInfoBool(page2, "hasNextPage"))->toBe(false)
+  })
+
+  // Refused rather than ignored, and refused here because AppSync cannot do it:
+  // a door that paged backward on one backend and quietly returned the forward
+  // page on the other is the divergence this whole field was rebuilt to remove.
+  testPromise("refuses backward paging instead of answering forward", async () => {
+    let resolver = await indexResolver(~name="IdxC")
+    let outcome = try {
+      let _ =
+        await resolver(
+          JSON.Encode.null,
+          argsOf([("status", strJson("active")), ("last", numJson(2))]),
+          emptyCtx,
+        )
+      Ok()
+    } catch {
+    | e => Error(e->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr(""))
+    }
+    switch outcome {
+    | Ok() => expect("no error")->toBe("a BAD_USER_INPUT refusal")
+    | Error(message) =>
+      expect(message->String.includes("Backward pagination (last/before) is not supported"))->toBe(true)
+    }
+  })
 })

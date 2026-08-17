@@ -249,6 +249,12 @@ module Make = (
       ) => {
         let qn = Api_Naming.queryFieldNamesForReadModel(~plugin=name, ~name=R.Spec.name)
         let subIdField = R.Spec.subIdConfig->Option.map(c => c.subIdField)
+        // An ordinary read model's `@index` reached the resolver layer
+        // (`QueryDbResolvers_{AppSync,Lambda}` build one per `config.indexes`)
+        // and never reached the schema, so AWS carried a resolver for a field
+        // its SDL did not declare. The DCB and admin entries have populated this
+        // all along; the omission here was the asymmetry, not the rule.
+        let indexes = R.Spec.config.indexes
         {
           ReventlessInfra.Api.singleFieldName: qn.singleFieldName,
           listFieldName: qn.listFieldName,
@@ -258,6 +264,7 @@ module Make = (
           permission: R.Spec.authorization,
           connectionSpec: true,
           subIdField: ?subIdField,
+          indexQueries: ?(indexes->Array.length > 0 ? Some(indexes) : None),
         }
       })
 

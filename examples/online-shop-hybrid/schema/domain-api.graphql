@@ -1006,7 +1006,7 @@ type Query {
   Catalog_ImportProductAuditsByIds(ids: [String!]!, includeRetired: Boolean): [Catalog_ImportProductAudit!]!
   Catalog_ImportProductAuditsRefs(ids: [ID!]!): [Catalog_ImportProductAuditRef!]!
   Catalog_Product(id: ID!, includeRetired: Boolean): Catalog_Product
-  Catalog_ProductByCategoryId(categoryId: String!): [String]
+  Catalog_ProductByCategoryId(after: String, before: String, categoryId: String!, first: Int, includeRetired: Boolean, last: Int): Catalog_ProductConnection!
   Catalog_ProductDemand(id: ID!, includeRetired: Boolean): Catalog_ProductDemand
   Catalog_ProductDemands(after: String, before: String, filter: Catalog_ProductDemandFilter, first: Int, includeRetired: Boolean, last: Int, orderBy: Catalog_ProductDemandOrderBy): Catalog_ProductDemandConnection!
   Catalog_ProductDemandsByIds(ids: [String!]!, includeRetired: Boolean): [Catalog_ProductDemand!]!

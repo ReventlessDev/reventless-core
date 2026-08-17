@@ -228,8 +228,6 @@ module Make = (Bus: LocalBus.T) => {
         )
       }
 
-    let cap = s => s->String.charAt(0)->String.toUpperCase ++ s->String.slice(~start=1)
-
     // Resolve query field names: check registry first, fall back to safe defaults.
     // Fallbacks use simple GraphQL built-in types to avoid referencing non-existent custom types.
     let registryEntry = Plugin_Helpers.queryFieldNamesRegistry->Dict.get(name)
@@ -790,20 +788,95 @@ module Make = (Bus: LocalBus.T) => {
     }
 
     // -- Index queries: {name}By{Index} ---------------------------------------
+    // Name, argument and return type all come from `GraphQL_FragmentGenerator`,
+    // which is also where the AppSync SDL gets them. They used to be spelled out
+    // here independently and disagreed with that emitter on all three, so the
+    // same door had a different signature per backend and worked on neither.
     let indexSdlFields = indexes->Array.map((ic: Reventless.ReadModel.indexConfig) =>
-      `  ${singleQueryName}By${cap(ic.index)}(${ic.index}: String!): [String]`
+      GraphQL_FragmentGenerator.deriveIndexQueryField(
+        ~singleFieldName=singleQueryName,
+        ~indexConfig=ic,
+        ~connectionTypeName=returnTypeName ++ "Connection",
+      )
     )
+    // Backward paging is refused rather than ignored, and refused on both
+    // backends rather than on the one that cannot do it. `listAllItemsConnection`
+    // already sets the rule for a door whose read cannot walk backwards — "fail
+    // loud rather than silently returning the forward page" — and its reasoning
+    // is about the answer, not about DynamoDB: `last: 2` handed the first two
+    // rows is a different question answered without saying so.
+    //
+    // The arguments stay in the SDL. One that appeared and disappeared with the
+    // backend would make adding a sort key a breaking schema change and force
+    // every client to feature-detect, which is the same argument `includeRetired`
+    // and the reference door are emitted unconditionally for.
+    let rejectBackwardPaging = (~args) => {
+      let given = key =>
+        switch args->JSON.Decode.object->Option.flatMap(d => d->Dict.get(key)) {
+        | None | Some(JSON.Null) => false
+        | Some(_) => true
+        }
+      if given("last") || given("before") {
+        throw(
+          GraphQL_CallerError.badUserInput(
+            "Backward pagination (last/before) is not supported on by-index connections; use first/after.",
+          ),
+        )
+      }
+    }
+    // A positional connection. This door answers an equality lookup on one index
+    // value and has no ordering key to cut a cursor from — the list door borrows
+    // its sort key because it orders by one. An offset is stable for as long as
+    // a page-forward takes, which is what the field advertises and no more.
+    let indexConnection = (~args, items: array<JSON.t>) => {
+      let arg = key => args->JSON.Decode.object->Option.flatMap(d => d->Dict.get(key))
+      let after =
+        arg("after")->Option.flatMap(JSON.Decode.string)->Option.flatMap(s => Int.fromString(s))->Option.getOr(-1)
+      let first =
+        arg("first")->Option.flatMap(JSON.Decode.float)->Option.map(Float.toInt)->Option.getOr(50)
+      let start = after + 1
+      let page = items->Array.slice(~start, ~end=start + first)
+      let taken = page->Array.length
+      let edges =
+        page->Array.mapWithIndex((item, i) =>
+          Dict.fromArray([
+            ("node", item),
+            ("cursor", (start + i)->Int.toString->JSON.Encode.string),
+          ])->JSON.Encode.object
+        )
+      let cursorAt = i => i->Int.toString->JSON.Encode.string
+      Dict.fromArray([
+        ("edges", edges->JSON.Encode.array),
+        (
+          "pageInfo",
+          Dict.fromArray([
+            ("hasNextPage", JSON.Encode.bool(start + taken < items->Array.length)),
+            ("hasPreviousPage", JSON.Encode.bool(start > 0)),
+            ("startCursor", taken > 0 ? cursorAt(start) : JSON.Encode.null),
+            ("endCursor", taken > 0 ? cursorAt(start + taken - 1) : JSON.Encode.null),
+          ])->JSON.Encode.object,
+        ),
+      ])->JSON.Encode.object
+    }
     let indexResolvers: array<(string, ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn)> = indexes->Array.map(
       (ic: Reventless.ReadModel.indexConfig) => {
-        let index = ic.index
-        let resolverName = singleQueryName ++ "By" ++ cap(index)
-        let filterField = ic.idField->Option.getOr(index)
+        let resolverName = GraphQL_FragmentGenerator.indexQueryFieldName(
+          ~singleFieldName=singleQueryName,
+          ~index=ic.index,
+        )
+        // The argument the caller passes and the row field this filters on are
+        // one and the same — the door reads the index's key, not its name.
+        let filterField = GraphQL_FragmentGenerator.indexKeyField(ic)
         let resolver: ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn = async (_root, args, ctx) => {
           switch await runInterceptor(~ctx, ~args) {
-          | Deny(_) => []->JSON.Encode.array
+          | Deny(_) => indexConnection(~args, [])
           | Allow =>
+            // After the interceptor, matching the AppSync pipeline, where the
+            // interceptor leads the chain and the query function's `request`
+            // raises this second.
+            rejectBackwardPaging(~args)
             let value =
-              args->JSON.Decode.object->Option.flatMap(d => d->Dict.get(index))->Option.flatMap(JSON.Decode.string)->Option.getOr("")
+              args->JSON.Decode.object->Option.flatMap(d => d->Dict.get(filterField))->Option.flatMap(JSON.Decode.string)->Option.getOr("")
             // Applied to whichever arm answers, rather than inside one of them: the
             // push-down and the scan are two ways to reach the same rows, and a
             // narrowing that lives in only one is a hole that appears when a
@@ -814,22 +887,24 @@ module Make = (Bus: LocalBus.T) => {
             // in-memory reuses its lazy snapshot). Fall back to scan+filter only
             // if no lookup is registered for this QueryDb.
             switch Bus.getQueryDbIndexLookup(name) {
-            | Some(lookup) => lookup(filterField, value)->scoped->JSON.Encode.array
+            | Some(lookup) => indexConnection(~args, lookup(filterField, value)->scoped)
             | None =>
               switch Bus.getQueryDbScan(name) {
               | Some(scanAll) =>
-                scanAll()
-                ->Array.filter(item =>
-                  item
-                  ->JSON.Decode.object
-                  ->Option.flatMap(d => d->Dict.get(filterField))
-                  ->Option.flatMap(JSON.Decode.string)
-                  ->Option.map(v => v == value)
-                  ->Option.getOr(false)
+                indexConnection(
+                  ~args,
+                  scanAll()
+                  ->Array.filter(item =>
+                    item
+                    ->JSON.Decode.object
+                    ->Option.flatMap(d => d->Dict.get(filterField))
+                    ->Option.flatMap(JSON.Decode.string)
+                    ->Option.map(v => v == value)
+                    ->Option.getOr(false)
+                  )
+                  ->scoped,
                 )
-                ->scoped
-                ->JSON.Encode.array
-              | None => []->JSON.Encode.array
+              | None => indexConnection(~args, [])
               }
             }
           }

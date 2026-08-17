@@ -132,16 +132,9 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
     let resolverAll = makeQueryResolver(Stdlib_String.capitalize(fieldNameForAll), fieldNameForAll, connectionSpec ? AppSync_Resolver_Functions$PulumiAws.listAllItemsConnection(labelField, filterFieldNames, rangeFieldNames, sortFieldNames, requireAttribute, ownerField, elevatedGroups, retiredField, retiredValues) : AppSync_Resolver_Functions$PulumiAws.listAllItems);
     let resolversByIndex = indexes.map(indexConfig => {
       let index = indexConfig.index;
-      let stripLeadingBy = s => {
-        if (s.startsWith("by") && s.length > 2) {
-          return s.slice(2, s.length);
-        } else {
-          return s;
-        }
-      };
-      let resolverName = Stdlib_String.capitalize(fieldNameForSingle) + "By" + Stdlib_String.capitalize(stripLeadingBy(index));
-      let fieldName = fieldNameForSingle + "By" + Stdlib_String.capitalize(stripLeadingBy(index));
-      let idField = Stdlib_Option.getOr(indexConfig.idField, index);
+      let fieldName = GraphQL_FragmentGenerator$ReventlessCore.indexQueryFieldName(fieldNameForSingle, index);
+      let resolverName = Stdlib_String.capitalize(fieldName);
+      let idField = GraphQL_FragmentGenerator$ReventlessCore.indexKeyField(indexConfig);
       let match = indexConfig.authorization;
       if (match !== undefined) {
         let authDataSource = AppSync_DataSource$PulumiAws.makeDynamoDBDataSourceWithTableName(resolverName + "Auth", api, Util_DynamoDb$ReventlessAws.findResource(Util_QueryDb$ReventlessCore.getLocalStorageResources(allQueryDbs, match.tableName)).name, apiRole, opts);

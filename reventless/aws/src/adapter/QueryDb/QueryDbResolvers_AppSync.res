@@ -352,26 +352,16 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
       },
     )
     let resolversByIndex = indexes->Array.map(({index} as indexConfig) => {
-      // Strip a leading "by" from the index name before capitalizing to avoid
-      // double "By" in the generated field name (e.g. index "byPlugin" → "ByPlugin",
-      // not "ByByPlugin"). Uses the plugin-prefixed fieldNameForSingle so the
-      // resolver name is properly namespaced (e.g. "schemaHistoryByPlugin", not
-      // "SchemaHistoryByByPlugin" from the raw entity name).
-      let stripLeadingBy = s =>
-        if s->String.startsWith("by") && s->String.length > 2 {
-          s->String.slice(~start=2, ~end=s->String.length)
-        } else {
-          s
-        }
-      let resolverName =
-        fieldNameForSingle->String.capitalize ++
-        "By" ++
-        (index->stripLeadingBy->String.capitalize)
-      let fieldName =
-        fieldNameForSingle ++
-        "By" ++
-        (index->stripLeadingBy->String.capitalize)
-      let idField = indexConfig.idField->Option.getOr(index)
+      // Name and key field both come from `GraphQL_FragmentGenerator`, which is
+      // where the SDL field this attaches to is derived. Deriving them here as
+      // well is how the two came to disagree: the emitted field declared `id`
+      // while this resolver read the index key, so the door could not be called.
+      let fieldName = ReventlessCore.GraphQL_FragmentGenerator.indexQueryFieldName(
+        ~singleFieldName=fieldNameForSingle,
+        ~index,
+      )
+      let resolverName = fieldName->String.capitalize
+      let idField = ReventlessCore.GraphQL_FragmentGenerator.indexKeyField(indexConfig)
       switch indexConfig.authorization {
       | None =>
         makeQueryResolver(

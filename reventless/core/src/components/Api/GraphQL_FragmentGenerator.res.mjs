@@ -385,6 +385,23 @@ function deriveConnectionQueryField(listFieldName, singularTypeName, filterTypeN
   return `  ` + listFieldName + `(filter: ` + filterTypeName + orderByArg + `, first: Int, after: String, last: Int, before: String, includeRetired: Boolean): ` + singularTypeName + `Connection!`;
 }
 
+function indexKeyField(indexConfig) {
+  return Stdlib_Option.getOr(indexConfig.idField, indexConfig.index);
+}
+
+function indexQueryFieldName(singleFieldName, index) {
+  let stripped = index.startsWith("by") && index.length > 2 ? index.slice(2, index.length) : index;
+  return singleFieldName + "By" + Stdlib_String.capitalize(stripped);
+}
+
+function deriveIndexQueryField(singleFieldName, indexConfig, connectionTypeName) {
+  let fieldName = indexQueryFieldName(singleFieldName, indexConfig.index);
+  let keyField = indexKeyField(indexConfig);
+  let sortField = indexConfig.subIdField;
+  let sortArg = sortField !== undefined ? sortField + `: String, ` : "";
+  return `  ` + fieldName + `(` + keyField + `: String!, ` + sortArg + `first: Int, after: String, last: Int, before: String, includeRetired: Boolean): ` + connectionTypeName + `!`;
+}
+
 function deriveMutationFieldFromObject(fieldName, collectedTypes, seenTypes, variantSchema) {
   let fields = SchemaType$ReventlessCore.fromSuryObject(fieldName, variantSchema);
   if (fields === undefined) {
@@ -503,11 +520,8 @@ function generate(mutationEntries, queryEntries) {
     let indexes = entry.indexQueries;
     if (indexes !== undefined) {
       let connectionTypeName = entry.returnTypeName + "Connection";
-      indexes.forEach(param => {
-        let index = param.index;
-        let stripped = index.startsWith("by") && index.length > 2 ? index.slice(2, index.length) : index;
-        let fieldName = entry.singleFieldName + "By" + Stdlib_String.capitalize(stripped);
-        queries.push(`  ` + fieldName + `(id: ID!, first: Int, after: String, last: Int, before: String): ` + connectionTypeName + `!`);
+      indexes.forEach(indexConfig => {
+        queries.push(deriveIndexQueryField(entry.singleFieldName, indexConfig, connectionTypeName));
       });
     }
     if (connectionSpec) {
@@ -590,6 +604,9 @@ export {
   deriveRefTypeSdl,
   deriveRefsQueryField,
   deriveConnectionQueryField,
+  indexKeyField,
+  indexQueryFieldName,
+  deriveIndexQueryField,
   deriveMutationFieldFromObject,
   mutationArgTypes,
   generate,

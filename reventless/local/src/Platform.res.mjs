@@ -9,7 +9,6 @@ import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
-import * as Stdlib_String from "@rescript/runtime/lib/es6/Stdlib_String.js";
 import * as Effect from "effect/Effect";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_Promise from "@rescript/runtime/lib/es6/Stdlib_Promise.js";
@@ -81,6 +80,7 @@ import * as LocalDcbEventLogStorage$ReventlessLocal from "./adapter/DcbEventLog/
 import * as LocalRuntimeEnvironment$ReventlessLocal from "./adapter/Runtime/LocalRuntimeEnvironment.res.mjs";
 import * as LocalScheduledPublisher$ReventlessLocal from "./adapter/Scheduler/LocalScheduledPublisher.res.mjs";
 import * as Platform_Admin_Structure$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin_Structure.res.mjs";
+import * as GraphQL_FragmentGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res.mjs";
 import * as LocalCommandTopicChannel$ReventlessLocal from "./adapter/CommandTopic/LocalCommandTopicChannel.res.mjs";
 import * as LocalEventTopicPublisher$ReventlessLocal from "./adapter/EventTopic/LocalEventTopicPublisher.res.mjs";
 import * as StateChangeSlice_Builder$ReventlessLocal from "./components/StateChangeSlice_Builder.res.mjs";
@@ -1206,8 +1206,7 @@ function MakeWithConfig(Config) {
       let indexes = entry.indexQueries;
       if (indexes !== undefined) {
         indexes.forEach(ic => {
-          let stripped = ic.index.startsWith("by") && ic.index.length > 2 ? ic.index.slice(2, ic.index.length) : ic.index;
-          let fieldName = entry.singleFieldName + "By" + Stdlib_String.capitalize(stripped);
+          let fieldName = GraphQL_FragmentGenerator$ReventlessCore.indexQueryFieldName(entry.singleFieldName, ic.index);
           queryResolvers[fieldName] = async (_root, _args, _ctx) => connectionResponse([]);
         });
         return;
@@ -2933,8 +2932,7 @@ function Make($star) {
       let indexes = entry.indexQueries;
       if (indexes !== undefined) {
         indexes.forEach(ic => {
-          let stripped = ic.index.startsWith("by") && ic.index.length > 2 ? ic.index.slice(2, ic.index.length) : ic.index;
-          let fieldName = entry.singleFieldName + "By" + Stdlib_String.capitalize(stripped);
+          let fieldName = GraphQL_FragmentGenerator$ReventlessCore.indexQueryFieldName(entry.singleFieldName, ic.index);
           queryResolvers[fieldName] = async (_root, _args, _ctx) => connectionResponse([]);
         });
         return;

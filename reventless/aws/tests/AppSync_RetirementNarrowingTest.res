@@ -9,7 +9,6 @@
 
 open JestGlobals
 
-open PulumiAws.AppSync
 module F = AppSync_Resolver_Retrying.Functions
 
 // The templates are `Pulumi.Input.t<string>` — a string at rest, wrapped for the
@@ -193,4 +192,81 @@ describe("the by-index door's owner scoping", () => {
   testSync("never treats includeRetired as a column to match on", () =>
     expect(code->String.includes("key === 'includeRetired'"))->Expect.toBe(true)
   )
+})
+
+// The by-index door was, until this landed, unreachable rather than merely
+// un-widenable: the SDL declared `id` while the template below read the index
+// key, and the template answered with DynamoDB's `{items, nextToken}` against a
+// field that promised a Connection. These assert the two halves that were wrong,
+// beside the paging arguments the field actually offers.
+describe("the by-index door answers the field it is attached to", () => {
+  let code =
+    F.queryByIndexFiltered(~index="byCategory", ~idField="categoryId")->asString
+
+  testSync("keys the read on the index column the SDL offers", () =>
+    expect(code->String.includes("util.dynamodb.toDynamoDB(args.categoryId)"))->Expect.toBe(true)
+  )
+
+  testSync("returns a Relay connection, not the raw DynamoDB result", () =>
+    expect((
+      code->String.includes("edges,"),
+      code->String.includes("hasNextPage: !!next"),
+      code->String.includes("return ctx.result;"),
+    ))->Expect.toEqual((true, true, false))
+  )
+
+  // `first`/`after` are what the field declares; `limit`/`nextToken` were what
+  // the template read, and nothing translated between the two.
+  testSync("pages on the Relay arguments the field declares", () =>
+    expect((
+      code->String.includes("limit: (args.first ?? 50)"),
+      code->String.includes("util.base64Decode(args.after)"),
+    ))->Expect.toEqual((true, true))
+  )
+
+  // Every declared argument has a job other than matching a column, so each one
+  // reaching the generic filter loop would filter on an attribute no row has.
+  testSync("keeps every paging argument out of the filter loop", () =>
+    expect(
+      ["first", "after", "last", "before", "includeRetired"]->Array.every(arg =>
+        code->String.includes(`key === '${arg}'`)
+      ),
+    )->Expect.toBe(true)
+  )
+})
+
+// Backward paging is refused rather than ignored. The cursor is DynamoDB's own
+// continuation token, which walks one way, so `last: 2` could only ever be
+// answered with the first two rows — a different question, answered silently.
+// `listAllItemsConnection` set this rule; the local backend refuses with the
+// same sentence, so the door reads the same either side of a deploy.
+describe("the by-index door's backward paging", () => {
+  let refusal = "Backward pagination (last/before) is not supported on by-index connections"
+
+  testSync("refuses last/before on the plain index read", () =>
+    expect(
+      F.queryByIndexFiltered(~index="byCategory", ~idField="categoryId")
+      ->asString
+      ->String.includes(refusal),
+    )->Expect.toBe(true)
+  )
+
+  testSync("refuses them on the sort-key index read too", () =>
+    expect(
+      F.queryByIndexSortFiltered(~index="byCustomer", ~idField="customerId", ~sortField="placedAt")
+      ->asString
+      ->String.includes(refusal),
+    )->Expect.toBe(true)
+  )
+
+  // Before the key condition is built, so a refused request never reaches the
+  // read — and `util.error` is what AppSync returns to the caller as the field
+  // error, rather than an empty page that looks like an answer.
+  testSync("refuses before doing any work, and says so to the caller", () => {
+    let code = F.queryByIndexFiltered(~index="byCategory", ~idField="categoryId")->asString
+    let guardAt = code->String.indexOf("args.before != null")
+    let queryAt = code->String.indexOf("expressionValues")
+    expect((guardAt >= 0 && guardAt < queryAt, code->String.includes("'UnsupportedPagination'")))
+    ->Expect.toEqual((true, true))
+  })
 })

@@ -23,7 +23,7 @@ describe('Resolver code structure', () => {
     ['queryByIndexDeletable(index)', F.queryByIndexDeletable('userId')],
     ['queryByIndexSort(index,idField,sortField)', F.queryByIndexSort('userId', 'userId', 'createdAt')],
     ['queryByIndexFiltered(index,idField)', F.queryByIndexFiltered('userId', 'userId')],
-    ['queryByIndexSortFiltered(index,idField,sortField)', F.queryByIndexSortFiltered('userId', 'userId', 'status')],
+    ['queryByIndexSortFiltered(index,idField,sortField)', F.queryByIndexSortFiltered('userId', 'userId', undefined, 'status')],
     ['listAllItems', F.listAllItems],
     ['resolveId(sourceIdField)', F.resolveId('productId')],
     ['resolveIdSort(sourceIdField,sourceSortField,targetSortField)', F.resolveIdSort('productId', 'status', 'status')],
@@ -437,7 +437,12 @@ describe('listAllItemsConnection', () => {
 // queryByIndexSortFiltered — complex template, most important to test
 // ---------------------------------------------------------------------------
 describe('queryByIndexSortFiltered', () => {
-  const code = F.queryByIndexSortFiltered('ownerId', 'ownerId', 'status')  // index, idField, sortField
+  // index, idField, ownerField, sortField — `ownerField` is optional but sits
+  // ahead of `sortField`, so it has to be passed explicitly. Skipping it slid
+  // the sort key into the owner slot and this file scoped the read by `status`
+  // while asserting it did not, which is the failure mode a positional call
+  // against a labelled-argument function always has.
+  const code = F.queryByIndexSortFiltered('ownerId', 'ownerId', undefined, 'status')
   const { request, response } = evalResolver(code)
 
   test('query by idField only when sortField is absent', () => {
@@ -483,9 +488,19 @@ describe('queryByIndexSortFiltered', () => {
     expect(request(ctx).scanIndexForward).toBe(true)
   })
 
-  test('response returns result on success', () => {
-    const ctx = makeCtx({ result: { items: [{ id: 'x' }] } })
-    expect(response(ctx)).toEqual({ items: [{ id: 'x' }] })
+  // The field this template is attached to has always been declared as returning
+  // a Connection; handing back DynamoDB's `{items, nextToken}` satisfied no part
+  // of that, so the door errored for every caller that selected `edges`.
+  test('response returns a Relay connection', () => {
+    const ctx = makeCtx({ result: { items: [{ id: 'x' }], nextToken: null } })
+    const out = response(ctx)
+    expect(out.edges.map(e => e.node)).toEqual([{ id: 'x' }])
+    expect(out.pageInfo.hasNextPage).toBe(false)
+  })
+
+  test('reports a further page when DynamoDB hands back a token', () => {
+    const ctx = makeCtx({ result: { items: [{ id: 'x' }], nextToken: 'TOK' } })
+    expect(response(ctx).pageInfo.hasNextPage).toBe(true)
   })
 })
 

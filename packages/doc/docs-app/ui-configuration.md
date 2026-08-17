@@ -315,9 +315,10 @@ what the server does not return, and does not have to filter anything itself.
 
 An exempt caller reaches the archive by passing `includeRetired: true` — a
 top-level argument beside the paging ones, not a filter field, and accepted on
-the list, the single-entity and the by-ids doors alike, so a row seen in the
-archive can also be opened. Elevation alone does not lift the restriction; the
-caller has to ask. A non-exempt caller passing it is ignored rather than refused.
+every door that answers rows: the list, the single-entity, the by-ids and the
+by-index one alike, so a row seen in the archive can also be opened and can also
+be looked up. Elevation alone does not lift the restriction; the caller has to
+ask. A non-exempt caller passing it is ignored rather than refused.
 Who is exempt is the same `elevatedGroups` that governs ownership (§5.3) — one
 declaration, so two views cannot disagree about who an operator is.
 

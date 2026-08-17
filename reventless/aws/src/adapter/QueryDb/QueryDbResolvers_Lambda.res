@@ -150,13 +150,6 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
       ~opts,
     )
 
-  let stripLeadingBy = s =>
-    if s->String.startsWith("by") && s->String.length > 2 {
-      s->String.slice(~start=2, ~end=s->String.length)
-    } else {
-      s
-    }
-
   // Resolvers are deferred into resourcesMaker (created inside the schema-pushed
   // builderOutputs.apply, like the AppSync path) — so they only exist after the
   // fields are ACTIVE and after PgQueryResolver_Builder.provision has resolved
@@ -219,9 +212,11 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
     // Lambda verifies group membership + ownership against the auth read model.
     let byIndex = indexes->Array.map((ic: indexConfig) => {
       let index = ic.index
-      let resolverName =
-        fieldNameForSingle->String.capitalize ++ "By" ++ index->stripLeadingBy->String.capitalize
-      let field = fieldNameForSingle ++ "By" ++ index->stripLeadingBy->String.capitalize
+      let field = ReventlessCore.GraphQL_FragmentGenerator.indexQueryFieldName(
+        ~singleFieldName=fieldNameForSingle,
+        ~index,
+      )
+      let resolverName = field->String.capitalize
       switch ic.authorization {
       | Some({tableName, group}) =>
         mkResolver(

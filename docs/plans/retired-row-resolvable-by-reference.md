@@ -43,10 +43,11 @@ belongs in its own change; the reference door added here narrows correctly on
 that backend regardless, so nothing new is opened by this work.
 **Closed 2026-08-17** by [done/dynamodb-narrows-every-door.md](done/dynamodb-narrows-every-door.md),
 which narrowed all four DynamoDB doors and then applied `@owner` to the two that
-never had it. One asymmetry outlived it and is filed separately: the by-index
-door narrows retirement on every backend and no caller can widen it, because no
-SDL emitter declares `includeRetired` there —
-[Backlog/index-door-cannot-be-widened-to-the-archive.md](Backlog/index-door-cannot-be-widened-to-the-archive.md).
+never had it. One asymmetry outlived it — the by-index door narrowed retirement
+with no way to ask past it — and closing that on 2026-08-18 found the door did not
+answer on any backend at all, its SDL disagreeing with its resolver differently
+per backend:
+[done/index-door-cannot-be-widened-to-the-archive.md](done/index-door-cannot-be-widened-to-the-archive.md).
 **Stack:** `reventless-ppx` (OCaml), `reventless/spec`, `reventless/core`
 (codegen + schema emission), `reventless/local`, `reventless/aws`. No new deps.
 **Relates to:** [done/retired-state-flag-annotation.md](done/retired-state-flag-annotation.md)

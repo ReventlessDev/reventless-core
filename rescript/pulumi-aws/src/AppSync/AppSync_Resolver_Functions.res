@@ -572,6 +572,69 @@ export function request(ctx) {
 ${resultResponseCode}
 `->Pulumi.Input.make
 
+/**
+The by-index door's response.
+
+Cursors are the DynamoDB continuation token carrying the row's position in the
+page, exactly as `listAllItemsConnection` builds them — the two doors page over
+the same kind of result, so they page the same way. The boundary cursor covers
+the case that door documents: a filtered page can come back empty while a token
+is still set, and a client has to be able to resume past it.
+
+This replaces returning `ctx.result` raw. The field has always been declared as
+returning a `Connection!`, and handing back DynamoDB's `{items, nextToken}`
+satisfied no part of that contract.
+*/
+let indexConnectionResponseCode = `
+export function response(ctx) {
+  if (ctx.error) util.error(ctx.error.message, ctx.error.type);
+  const items = ctx.result?.items ?? [];
+  const next = ctx.result?.nextToken ?? null;
+  const edges = items.map((item, i) => ({
+    node: item,
+    cursor: util.base64Encode(JSON.stringify({ token: next, index: i })),
+  }));
+  const boundary = next ? util.base64Encode(JSON.stringify({ token: next, index: -1 })) : null;
+  return {
+    edges,
+    pageInfo: {
+      hasNextPage: !!next,
+      hasPreviousPage: !!ctx.args.after,
+      startCursor: edges.length > 0 ? edges[0].cursor : boundary,
+      endCursor: edges.length > 0 ? edges[edges.length - 1].cursor : boundary,
+    },
+  };
+}`
+
+/** Refuses backward paging, for the reason `listAllItemsConnection` gives: the
+cursor is DynamoDB's own continuation token, which only walks forward, so
+`last`/`before` cannot be honoured and handing back the forward page would answer
+a different question without saying so.
+
+The arguments stay declared — one that came and went with the index's shape would
+make every client feature-detect — and the local backend refuses them with the
+same message, so the door reads the same either side of a deploy. */
+let indexBackwardPagingGuard = `
+  if (args.before != null || args.last != null) {
+    util.error('Backward pagination (last/before) is not supported on by-index connections; use first/after.', 'UnsupportedPagination');
+  }`
+
+/** Decodes the Relay `after` cursor back to the DynamoDB continuation token the
+response side encoded. Mirrors `listAllItemsConnection`'s request half. */
+let indexCursorPreamble = `
+  let after = null;
+  if (args.after != null && args.after !== '') {
+    const parsed = JSON.parse(util.base64Decode(args.after));
+    after = parsed.token ?? null;
+  }`
+
+// The arguments the by-index door declares, none of which is a column to match
+// on. `includeRetired` is a request to lift a restriction and the rest are
+// paging; left unlisted, the filter loop below turns each into a
+// `contains(#arg, :arg)` against an attribute no row carries, and the door
+// answers nothing.
+let indexReservedArgs = `key === 'first' || key === 'after' || key === 'last' || key === 'before' || key === 'includeRetired' || key === 'limit' || key === 'nextToken' || key === 'forward'`
+
 // AppSync JS runtime restrictions (APPSYNC_JS 1.0.0):
 //   - No `for` loops (for/for-of/for-in all fail validation)
 //   - No String() / .toString() — use '' + value instead
@@ -586,7 +649,7 @@ let queryByIndexFiltered = (
 ) =>
   `${importUtil}
 export function request(ctx) {
-  const args = ctx.args;
+  const args = ctx.args;${indexBackwardPagingGuard}
   const query = {
     expression: '#${idField} = :${idField}',
     expressionNames: { '#${idField}': '${idField}' },
@@ -597,12 +660,7 @@ export function request(ctx) {
   const values = {};
   Object.keys(args).forEach(key => {
     const value = args[key];
-    // includeRetired is a request to lift a restriction, not a column to match
-    // on. Unlisted, the loop below would turn it into contains(#includeRetired,
-    // ...) against an attribute no row has, and the door would answer nothing for
-    // the caller it exists to serve. Skipped defensively: the index field's SDL
-    // does not declare the argument today, so GraphQL refuses it before this runs.
-    if (key === '${idField}' || key === 'limit' || key === 'nextToken' || key === 'forward' || key === 'includeRetired') return;
+    if (key === '${idField}' || ${indexReservedArgs}) return;
     if (value == null || value === '') return;
     if (expression) expression += ' AND';
     if (key === 'hideDeleted') {
@@ -617,13 +675,13 @@ export function request(ctx) {
       values[':' + key] = '' + value;
     }
   });
-${ownerFilterClause(~ownerField, ~elevatedGroups)}${retiredFilterClause(~retiredField, ~retiredValues, ~elevatedGroups)}
+${ownerFilterClause(~ownerField, ~elevatedGroups)}${retiredFilterClause(~retiredField, ~retiredValues, ~elevatedGroups)}${indexCursorPreamble}
   const result = {
     operation: 'Query',
     query,
     index: '${index}',
-    limit: (args.limit ?? 50),
-    nextToken: (args.nextToken ?? null),
+    limit: (args.first ?? 50),
+    nextToken: after,
     scanIndexForward: (args.forward ?? true)
   };
   if (expression) {
@@ -631,7 +689,7 @@ ${ownerFilterClause(~ownerField, ~elevatedGroups)}${retiredFilterClause(~retired
   }
   return result;
 }
-${resultResponseCode}
+${indexConnectionResponseCode}
 `->Pulumi.Input.make
 
 let queryByIndexSortFiltered = (
@@ -645,7 +703,7 @@ let queryByIndexSortFiltered = (
 ) =>
   `${importUtil}
 export function request(ctx) {
-  const args = ctx.args;
+  const args = ctx.args;${indexBackwardPagingGuard}
   const query = args.${sortField}
     ? {
         expression: '#${idField} = :${idField} AND #${sortField} = :${sortField}',
@@ -665,7 +723,7 @@ export function request(ctx) {
   const values = {};
   Object.keys(args).forEach(key => {
     const value = args[key];
-    if (key === '${idField}' || key === '${sortField}' || key === 'limit' || key === 'nextToken' || key === 'forward' || key === 'includeRetired') return;
+    if (key === '${idField}' || key === '${sortField}' || ${indexReservedArgs}) return;
     if (value == null || value === '') return;
     if (expression) expression += ' AND';
     if (key === 'hideDeleted') {
@@ -680,13 +738,13 @@ export function request(ctx) {
       values[':' + key] = '' + value;
     }
   });
-${ownerFilterClause(~ownerField, ~elevatedGroups)}${retiredFilterClause(~retiredField, ~retiredValues, ~elevatedGroups)}
+${ownerFilterClause(~ownerField, ~elevatedGroups)}${retiredFilterClause(~retiredField, ~retiredValues, ~elevatedGroups)}${indexCursorPreamble}
   const result = {
     operation: 'Query',
     query,
     index: '${index}',
-    limit: (args.limit ?? 50),
-    nextToken: (args.nextToken ?? null),
+    limit: (args.first ?? 50),
+    nextToken: after,
     scanIndexForward: (args.forward ?? true)
   };
   if (expression) {
@@ -694,7 +752,7 @@ ${ownerFilterClause(~ownerField, ~elevatedGroups)}${retiredFilterClause(~retired
   }
   return result;
 }
-${resultResponseCode}
+${indexConnectionResponseCode}
 `->Pulumi.Input.make
 
 // ---------------------------------------------------------------------------
