@@ -56,6 +56,114 @@ let ownerGuardPreamble = (~ownerField: string, ~elevatedGroups: array<string>) =
 }
 
 /**
+The exemption test on its own, for a door that narrows retirement but has no
+`@owner` field to have declared it already.
+
+Identical to the three lines `ownerGuardPreamble` opens with, and emitted only
+when that preamble is absent — two `const _exempt` in one function body is a
+syntax error, and two *different* definitions of exempt would be worse than one.
+*/
+let exemptPreamble = (~elevatedGroups: array<string>) => {
+  let elevatedLiteral = elevatedGroups->Array.map(g => `'${g}'`)->Array.join(", ")
+  `
+  const _id = ctx.identity;
+  const _sub = _id == null ? null : _id.sub;
+  const _groups = (_id != null && _id.claims != null && _id.claims['cognito:groups']) || [];
+  const _elevated = [${elevatedLiteral}];
+  const _exempt = _sub == null || _groups.some(g => _elevated.indexOf(g) >= 0);`
+}
+
+/**
+A by-key read's retirement guard: `_live(row)`, true when the caller may see it.
+
+The post-read half of the predicate `listAllItemsConnection` pushes into a
+FilterExpression. `GetItem` and `BatchGetItem` have no filter to push into — the
+row is fetched by key — so the decision is made on what came back, which is where
+the owner guard beside it already makes its own.
+
+`row[field] == null` keeps a row written before the annotation existed, matching
+the `attribute_not_exists` half of the list's clause and every other adapter's
+reading of an absent value.
+
+Asking is required, not merely permitted: `_exempt` alone leaves a retired row
+withheld until `includeRetired` is passed, so an operator's ordinary read is as
+narrow as anyone's. An archive that is always underfoot is not an archive.
+
+`~ownerScoped` says whether an `ownerGuardPreamble` has already been emitted into
+the same body; when it has, this reuses its `_exempt` instead of redeclaring one.
+*/
+let retiredGuardPreamble = (
+  ~retiredField: option<string>,
+  ~retiredValues: option<array<string>>,
+  ~elevatedGroups: array<string>,
+  ~ownerScoped: bool,
+) =>
+  switch retiredField {
+  | None => ""
+  | Some(field) =>
+    let prelude = ownerScoped ? "" : exemptPreamble(~elevatedGroups)
+    let isRetired = switch retiredValues {
+    | None => `row['${field}'] === true`
+    | Some(states) =>
+      let literal = states->Array.map(s => `'${s}'`)->Array.join(", ")
+      `[${literal}].indexOf(row['${field}']) >= 0`
+    }
+    `${prelude}
+  // ── retirement narrowing (generated) ──
+  const _wantsRetired = _exempt && ctx.args.includeRetired === true;
+  const _live = (row) =>
+    row == null || _wantsRetired || row['${field}'] == null || !(${isRetired});`
+  }
+
+/**
+The same retirement predicate as `retiredGuardPreamble`, for a door that reads
+with `Query` and therefore has a FilterExpression to put it in.
+
+Pushed into the read rather than applied to what came back, on
+`listAllItemsConnection`'s reasoning: an index door takes a `limit`, and
+narrowing after the read would hand back a page of fewer rows than the caller
+asked for while reporting nothing about why.
+
+Emits JS that appends to the `expression` / `names` / `values` the index
+templates already build, so it composes with a caller's own filter arguments
+instead of replacing them.
+*/
+let retiredFilterClause = (
+  ~retiredField: option<string>,
+  ~retiredValues: option<array<string>>,
+  ~elevatedGroups: array<string>,
+) =>
+  switch retiredField {
+  | None => ""
+  | Some(field) =>
+    let assignments = switch retiredValues {
+    | None => `      values[':retiredFalse'] = false;
+      expression += '(attribute_not_exists(#retired) OR #retired = :retiredFalse)';`
+    | Some(states) =>
+      let assigns =
+        states
+        ->Array.mapWithIndex((state, i) =>
+          `      values[':retiredValue${Int.toString(i)}'] = '${state}';`
+        )
+        ->Array.join("\n")
+      let comparisons =
+        states
+        ->Array.mapWithIndex((_, i) => `#retired <> :retiredValue${Int.toString(i)}`)
+        ->Array.join(" AND ")
+      `${assigns}
+      expression += '(attribute_not_exists(#retired) OR (${comparisons}))';`
+    }
+    `${exemptPreamble(~elevatedGroups)}
+  // ── retirement narrowing (generated) ──
+  if (!(_exempt && ctx.args.includeRetired === true)) {
+    if (expression) expression += ' AND ';
+    names['#retired'] = '${field}';
+${assignments}
+  }
+  `
+  }
+
+/**
 A by-key read's response, refusing a row the caller does not own.
 
 **Null, not an error** — which is the opposite of what a first reading suggests,
@@ -66,29 +174,61 @@ the failure mode owner scoping exists to avoid. And an error would confirm the
 row exists to a caller who may not read it, which is a worse leak than the
 ambiguity it removes.
 */
-let ownerScopedResultResponse = (~ownerField: option<string>, ~elevatedGroups: array<string>) =>
-  switch ownerField {
-  | None => resultResponseCode
-  | Some(field) =>
+let ownerScopedResultResponse = (
+  ~ownerField: option<string>,
+  ~elevatedGroups: array<string>,
+  ~retiredField: option<string>=?,
+  ~retiredValues: option<array<string>>=?,
+) =>
+  switch (ownerField, retiredField) {
+  | (None, None) => resultResponseCode
+  | _ =>
+    let ownerPart = switch ownerField {
+    | None => "\n  const _owns = () => true;"
+    | Some(field) =>
+      `
+  // ── owner scoping (generated) ──${ownerGuardPreamble(~ownerField=field, ~elevatedGroups)}`
+    }
+    let retiredPart = retiredGuardPreamble(
+      ~retiredField,
+      ~retiredValues,
+      ~elevatedGroups,
+      ~ownerScoped=ownerField->Option.isSome,
+    )
     `
 export function response(ctx) {
-  if (ctx.error) util.error(ctx.error.message, ctx.error.type);
-  // ── owner scoping (generated) ──${ownerGuardPreamble(~ownerField=field, ~elevatedGroups)}
-  return _owns(ctx.result) ? ctx.result : null;
+  if (ctx.error) util.error(ctx.error.message, ctx.error.type);${ownerPart}${retiredPart}
+  return _owns(ctx.result)${retiredField->Option.isSome ? " && _live(ctx.result)" : ""} ? ctx.result : null;
 }`
   }
 
 /** The `queryByIdSort` counterpart — same rule, over the first row of a Query. */
-let ownerScopedFirstResultResponse = (~ownerField: option<string>, ~elevatedGroups: array<string>) =>
-  switch ownerField {
-  | None => firstResultResponseCode
-  | Some(field) =>
+let ownerScopedFirstResultResponse = (
+  ~ownerField: option<string>,
+  ~elevatedGroups: array<string>,
+  ~retiredField: option<string>=?,
+  ~retiredValues: option<array<string>>=?,
+) =>
+  switch (ownerField, retiredField) {
+  | (None, None) => firstResultResponseCode
+  | _ =>
+    let ownerPart = switch ownerField {
+    | None => "\n  const _owns = () => true;"
+    | Some(field) =>
+      `
+  // ── owner scoping (generated) ──${ownerGuardPreamble(~ownerField=field, ~elevatedGroups)}`
+    }
+    let retiredPart = retiredGuardPreamble(
+      ~retiredField,
+      ~retiredValues,
+      ~elevatedGroups,
+      ~ownerScoped=ownerField->Option.isSome,
+    )
     `
 export function response(ctx) {
-  if (ctx.error) util.error(ctx.error.message, ctx.error.type);
-  // ── owner scoping (generated) ──${ownerGuardPreamble(~ownerField=field, ~elevatedGroups)}
+  if (ctx.error) util.error(ctx.error.message, ctx.error.type);${ownerPart}${retiredPart}
   const _row = ctx.result.items[0] ?? null;
-  return _owns(_row) ? _row : null;
+  return _owns(_row)${retiredField->Option.isSome ? " && _live(_row)" : ""} ? _row : null;
 }`
   }
 
@@ -157,7 +297,12 @@ export function response(ctx) {
 // declares no owner emits exactly the source it emitted before scoping existed.
 // A list that scopes beside a by-id read that does not is not a partial
 // delivery — it is a hole, reachable by anyone who can name a row.
-let getItemById = (~ownerField: option<string>=?, ~elevatedGroups: array<string>=[]) =>
+let getItemById = (
+  ~ownerField: option<string>=?,
+  ~elevatedGroups: array<string>=[],
+  ~retiredField: option<string>=?,
+  ~retiredValues: option<array<string>>=?,
+) =>
   `${importUtil}
 export function request(ctx) {
   return {
@@ -165,7 +310,7 @@ export function request(ctx) {
     key: { id: util.dynamodb.toDynamoDB(ctx.args.id) }
   };
 }
-${ownerScopedResultResponse(~ownerField, ~elevatedGroups)}
+${ownerScopedResultResponse(~ownerField, ~elevatedGroups, ~retiredField?, ~retiredValues?)}
 `->Pulumi.Input.make
 
 let queryById =
@@ -300,6 +445,8 @@ let queryByIdSort = (
   sortField: string,
   ~ownerField: option<string>=?,
   ~elevatedGroups: array<string>=[],
+  ~retiredField: option<string>=?,
+  ~retiredValues: option<array<string>>=?,
 ) =>
   `${importUtil}
 export function request(ctx) {
@@ -315,7 +462,7 @@ export function request(ctx) {
     }
   };
 }
-${ownerScopedFirstResultResponse(~ownerField, ~elevatedGroups)}
+${ownerScopedFirstResultResponse(~ownerField, ~elevatedGroups, ~retiredField?, ~retiredValues?)}
 `->Pulumi.Input.make
 
 // ---------------------------------------------------------------------------
@@ -388,7 +535,13 @@ ${resultResponseCode}
 //   - No `for` loops (for/for-of/for-in all fail validation)
 //   - No String() / .toString() — use '' + value instead
 //   - Object.keys().forEach() works for iteration
-let queryByIndexFiltered = (~index: string, ~idField: string) =>
+let queryByIndexFiltered = (
+  ~index: string,
+  ~idField: string,
+  ~retiredField: option<string>=?,
+  ~retiredValues: option<array<string>>=?,
+  ~elevatedGroups: array<string>=[],
+) =>
   `${importUtil}
 export function request(ctx) {
   const args = ctx.args;
@@ -417,6 +570,7 @@ export function request(ctx) {
       values[':' + key] = '' + value;
     }
   });
+${retiredFilterClause(~retiredField, ~retiredValues, ~elevatedGroups)}
   const result = {
     operation: 'Query',
     query,
@@ -433,7 +587,14 @@ export function request(ctx) {
 ${resultResponseCode}
 `->Pulumi.Input.make
 
-let queryByIndexSortFiltered = (~index: string, ~idField: string, ~sortField: string) =>
+let queryByIndexSortFiltered = (
+  ~index: string,
+  ~idField: string,
+  ~sortField: string,
+  ~retiredField: option<string>=?,
+  ~retiredValues: option<array<string>>=?,
+  ~elevatedGroups: array<string>=[],
+) =>
   `${importUtil}
 export function request(ctx) {
   const args = ctx.args;
@@ -471,6 +632,7 @@ export function request(ctx) {
       values[':' + key] = '' + value;
     }
   });
+${retiredFilterClause(~retiredField, ~retiredValues, ~elevatedGroups)}
   const result = {
     operation: 'Query',
     query,
@@ -998,7 +1160,11 @@ export function response(ctx) {
     time, since BatchGetItem's `tables` map keys on the literal table name.
     Single-key tables only — composite-key BatchGetItem needs both pk + sk per
     key entry, which this template doesn't construct. */
-let batchGetItemsByIds = (tableName: string) =>
+let batchGetItemsByIds = (
+  ~retiredField: option<string>=?,
+  ~retiredValues: option<array<string>>=?,
+  ~elevatedGroups: array<string>=[],
+) => (tableName: string) =>
   `${importUtil}
 import { runtime } from '@aws-appsync/utils';
 export function request(ctx) {
@@ -1022,7 +1188,16 @@ export function response(ctx) {
   // missing id makes the entire field fail with "Cannot return null for
   // non-nullable type" and the caller sees data=null. Filter the nulls so
   // the field returns just the items that were found.
-  return (ctx.result?.data?.['${tableName}'] ?? []).filter(item => item !== null);
+  // The retirement guard the list pushes into a FilterExpression, applied after
+  // the read because BatchGetItem has none to push into.${retiredGuardPreamble(
+      ~retiredField,
+      ~retiredValues,
+      ~elevatedGroups,
+      ~ownerScoped=false,
+    )}
+  return (ctx.result?.data?.['${tableName}'] ?? []).filter(item => item !== null${retiredField->Option.isSome
+      ? " && _live(item)"
+      : ""});
 }
 `
 

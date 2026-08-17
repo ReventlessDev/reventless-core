@@ -184,13 +184,38 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
     }
     let elevatedGroups = Reventless.OwnerScope.elevatedGroups()
 
+    // Read here for exactly the reason `ownerField` above is, and after making
+    // the same mistake: the by-id, by-ids and by-index resolvers are built below
+    // and this lookup used to sit past all of them, so they were generated
+    // without a retirement predicate — a list that withheld archived rows beside
+    // by-key doors that handed any one of them over on request.
+    let retiredSpec =
+      stateSchemaOpt
+      ->Option.flatMap(Reventless.StateAnnotations.getSpec)
+      ->Option.flatMap(spec => spec.retired)
+    let retiredField = retiredSpec->Option.map(r => r.field)
+    let retiredValues = retiredSpec->Option.flatMap(r => r.values)
+
     let resolverByIdSingle = if includeIdParam {
       makeQueryResolver(
         ~resolverName=fieldNameForSingle->String.capitalize,
         ~field=fieldNameForSingle->Pulumi.Input.make,
         ~code=switch subIdField {
-        | Some(sortField) => Resolver.Functions.queryByIdSort(sortField, ~ownerField?, ~elevatedGroups)
-        | None => Resolver.Functions.getItemById(~ownerField?, ~elevatedGroups)
+        | Some(sortField) =>
+          Resolver.Functions.queryByIdSort(
+            sortField,
+            ~ownerField?,
+            ~elevatedGroups,
+            ~retiredField?,
+            ~retiredValues?,
+          )
+        | None =>
+          Resolver.Functions.getItemById(
+            ~ownerField?,
+            ~elevatedGroups,
+            ~retiredField?,
+            ~retiredValues?,
+          )
         },
       )
     } else {
@@ -285,12 +310,6 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
       }
     | None => ()
     }
-    let retiredSpec =
-      stateSchemaOpt
-      ->Option.flatMap(Reventless.StateAnnotations.getSpec)
-      ->Option.flatMap(spec => spec.retired)
-    let retiredField = retiredSpec->Option.map(r => r.field)
-    let retiredValues = retiredSpec->Option.flatMap(r => r.values)
     // The same class of "works, but scans" mistake as the owner warning above,
     // and the retirement case degrades the same way: the FilterExpression is
     // applied after the page is read, so pages shrink as the archive's share of
@@ -360,8 +379,22 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
           ~field=fieldName->Pulumi.Input.make,
           ~code=switch indexConfig.subIdField {
           | Some(sortField) =>
-            Resolver.Functions.queryByIndexSortFiltered(~index, ~idField, ~sortField)
-          | None => Resolver.Functions.queryByIndexFiltered(~index, ~idField)
+            Resolver.Functions.queryByIndexSortFiltered(
+              ~index,
+              ~idField,
+              ~sortField,
+              ~retiredField?,
+              ~retiredValues?,
+              ~elevatedGroups,
+            )
+          | None =>
+            Resolver.Functions.queryByIndexFiltered(
+              ~index,
+              ~idField,
+              ~retiredField?,
+              ~retiredValues?,
+              ~elevatedGroups,
+            )
           },
         )
       | Some({tableName, group}) =>
@@ -387,7 +420,13 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
           ~name=resolverName,
           ~api,
           ~dataSource=dataSourceName,
-          ~code=Resolver.Functions.queryByIndexFiltered(~index, ~idField),
+          ~code=Resolver.Functions.queryByIndexFiltered(
+            ~index,
+            ~idField,
+            ~retiredField?,
+            ~retiredValues?,
+            ~elevatedGroups,
+          ),
           ~opts,
         )
         // The interceptor leads the chain, as it does in every other Query
@@ -440,7 +479,11 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
           ~field=byIdsField->Pulumi.Input.make,
           ~code=generateCode(
             ~storageResource=storage,
-            ~template=Resolver.Functions.batchGetItemsByIds,
+            ~template=Resolver.Functions.batchGetItemsByIds(
+              ~retiredField?,
+              ~retiredValues?,
+              ~elevatedGroups,
+            ),
           ),
         ),
       )
