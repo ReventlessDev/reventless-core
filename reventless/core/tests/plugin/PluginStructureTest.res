@@ -1017,6 +1017,108 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
     })
   })
 
+  // A misspelled retirement state used to be fatal or merely logged depending on
+  // where the enum happened to be declared — the PPX refuses it when the enum is
+  // in the same file, and this pass, which sees the resolved schema, only warned.
+  // File layout is not a defensible arbiter of whether a data-exposure bug stops
+  // a build, so this rung was raised to match the other.
+  describe("@retired state names are checked against the field's own enum", () => {
+    let withRetiredStates = (schema, ~field, ~lifecycle, ~values) =>
+      schema->S.castToUnknown->S.Metadata.set(
+        ~id=Reventless.StateAnnotations.stateAnnotationsId,
+        {
+          ids: [],
+          compositeIds: [],
+          subIds: [],
+          compositeSubIds: [],
+          indexes: [],
+          hidden: [],
+          summary: [],
+          drillTargets: [],
+          drillTargetKeys: [],
+          collapsed: [],
+          scan: [],
+          scanSort: [],
+          semantic: [],
+          metric: [],
+          lifecycle,
+          groupBy: None,
+          visibility: None,
+          live: None,
+          retired: Some({field, label: "", showWhenFalse: false, values}),
+        },
+      )
+
+    let shelf = values =>
+      S.schema(s =>
+        {
+          "shelf": s.matches(S.union([S.literal("Listed"), S.literal("Archived")])),
+        }
+      )->withRetiredStates(~field="shelf", ~lifecycle=Some("shelf"), ~values=Some(values))
+
+    let check = schema => Plugin_Structure.checkRetiredValue(~entityName="Products", schema)
+
+    testSync("a declared state passes", () => {
+      expect(check(shelf(["Archived"])))->toEqual(Plugin_Structure.Checked([]))
+    })
+
+    // Reported per state rather than as a set: one wrong entry among several
+    // still narrows something, so the symptom is a subset of rows leaking.
+    testSync("each undeclared state is reported on its own", () => {
+      switch check(shelf(["Archived", "Discontinud", "Withdrawn"])) {
+      | Checked(failures) =>
+        expect(failures->Array.length)->toBe(2)
+        expect(failures->Array.some(f => f->String.includes("Discontinud")))->toBe(true)
+        expect(failures->Array.some(f => f->String.includes("Withdrawn")))->toBe(true)
+        // Naming what the field does declare is what turns the failure into a fix.
+        expect(failures->Array.every(f => f->String.includes("Listed, Archived")))->toBe(true)
+      | other => expect(other)->toEqual(Plugin_Structure.Checked([]))
+      }
+    })
+
+    // The condition that came with promoting this: a fatal rule that is silent
+    // when it cannot run looks exactly like one that passed.
+    testSync("a field with no cases to compare against says so instead of passing", () => {
+      let schema =
+        S.schema(s => {"shelf": s.matches(S.string)})->withRetiredStates(
+          ~field="shelf",
+          ~lifecycle=Some("shelf"),
+          ~values=Some(["Archived"]),
+        )
+      switch check(schema) {
+      | Unchecked(why) => expect(why->String.includes("no cases"))->toBe(true)
+      | other => expect(other)->toEqual(Plugin_Structure.Unchecked(""))
+      }
+    })
+
+    // The boolean form names no state, so there is nothing to compare — which is
+    // not the same as having failed to compare it.
+    testSync("the boolean form is not a skip", () => {
+      let schema =
+        S.schema(s => {"archived": s.matches(S.bool)})->withRetiredStates(
+          ~field="archived",
+          ~lifecycle=None,
+          ~values=None,
+        )
+      expect(Plugin_Structure.checkRetiredValue(~entityName="Products", schema))->toEqual(
+        Plugin_Structure.NotDeclared,
+      )
+    })
+
+    // The second rule stays a warning: retirement still works, and which field
+    // carries it is a modelling judgement rather than a name that is wrong.
+    testSync("a state on a non-lifecycle field is not a failure", () => {
+      let schema =
+        S.schema(s =>
+          {
+            "shelf": s.matches(S.union([S.literal("Listed"), S.literal("Archived")])),
+            "lifecycle": s.matches(S.union([S.literal("Draft"), S.literal("Live")])),
+          }
+        )->withRetiredStates(~field="shelf", ~lifecycle=Some("lifecycle"), ~values=Some(["Archived"]))
+      expect(check(schema))->toEqual(Plugin_Structure.Checked([]))
+    })
+  })
+
   // Shared by the read-side and write-side schema cases below, which ask the
   // same question of the same emitter.
   let getProperty = (json: JSON.t, key: string): option<JSON.t> =>

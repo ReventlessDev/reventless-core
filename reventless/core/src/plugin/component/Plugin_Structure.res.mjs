@@ -105,11 +105,11 @@ function retiredValuesFromStateSchema(stateSchema) {
 function checkRetiredValue(entityName, stateSchema) {
   let match = retiredFromStateSchema(stateSchema);
   if (match === undefined) {
-    return;
+    return "NotDeclared";
   }
   let values = match.values;
   if (values === undefined) {
-    return;
+    return "NotDeclared";
   }
   let field = match.field;
   let named = values.join(", ");
@@ -139,9 +139,25 @@ function checkRetiredValue(entityName, stateSchema) {
           return [];
       }
     }), []) : [];
-  if (declared.length !== 0) {
-    values.filter(v => !declared.includes(v)).forEach(v => log.warn("Plugin_Structure", undefined, entityName + `: @retired(` + v + `) names a state "` + field + `" does not declare — known values: ` + declared.join(", ") + `.`));
-    return;
+  if (declared.length === 0) {
+    return {
+      TAG: "Unchecked",
+      _0: entityName + `: @retired(` + named + `) is on "` + field + `", whose shape carries no cases to check the names against.`
+    };
+  } else {
+    return {
+      TAG: "Checked",
+      _0: values.filter(v => !declared.includes(v)).map(v => entityName + `: @retired(` + v + `) names a state "` + field + `" does not declare — known values: ` + declared.join(", ") + `.`)
+    };
+  }
+}
+
+function reportRetiredStates(pluginName, failures, unchecked) {
+  if (unchecked.length !== 0) {
+    log.warn("Plugin_Structure", undefined, pluginName + `: ` + unchecked.length.toString() + ` @retired declaration(s) could not be checked.\n` + unchecked.join("\n"));
+  }
+  if (failures.length !== 0) {
+    return Stdlib_JsError.throwWithMessage(pluginName + `: @retired names states that do not exist.\n` + failures.join("\n"));
   }
 }
 
@@ -706,13 +722,28 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       return;
     }
   };
+  let retiredFailures = [];
+  let retiredUnchecked = [];
+  let recordRetired = (entityName, stateSchema) => {
+    let why = checkRetiredValue(entityName, stateSchema);
+    if (typeof why !== "object") {
+      return;
+    }
+    if (why.TAG === "Unchecked") {
+      retiredUnchecked.push(why._0);
+      return;
+    }
+    why._0.forEach(f => {
+      retiredFailures.push(f);
+    });
+  };
   let readModelDefs = readModels.map(R => {
     let qf = Api_Naming$ReventlessCore.queryFieldNamesForReadModel(name, R.Spec.name, undefined);
     let stateSchema = R.Spec.stateSchema;
     let label = labelFieldsFromStateSchema(R.Spec.name, stateSchema);
     let keyField = GraphQL_FragmentGenerator$ReventlessCore.resolveKeyField(R.Spec.name, stateSchema);
     let consumed = qualify(name, R.consumedEventNames);
-    checkRetiredValue(R.Spec.name, stateSchema);
+    recordRetired(R.Spec.name, stateSchema);
     recordLifecycle(R.Spec.name, stateSchema);
     return {
       name: R.Spec.name,
@@ -742,7 +773,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     let stateSchema = SVS.Spec.stateSchema;
     let label = labelFieldsFromStateSchema(SVS.Spec.name, stateSchema);
     let keyField = GraphQL_FragmentGenerator$ReventlessCore.resolveKeyField(SVS.Spec.name, stateSchema);
-    checkRetiredValue(SVS.Spec.name, stateSchema);
+    recordRetired(SVS.Spec.name, stateSchema);
     recordLifecycle(SVS.Spec.name, stateSchema);
     return {
       name: SVS.Spec.name,
@@ -858,6 +889,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
   });
   checkDeclaredTransitions(name, stateChangeDefs.concat(aggregateDefs), lifecycleStatesByView);
   checkLifecycleTopology(name, stateChangeDefs.concat(aggregateDefs), lifecycleStatesByView);
+  reportRetiredStates(name, retiredFailures, retiredUnchecked);
   return {
     readModels: readModelDefs,
     stateViewSlices: stateViewDefs,
@@ -884,6 +916,7 @@ export {
   retiredFieldFromStateSchema,
   retiredValuesFromStateSchema,
   checkRetiredValue,
+  reportRetiredStates,
   lifecycleStatesFromStateSchema,
   checkDeclaredTransitions,
   lifecycleTopologyFindings,

@@ -108,17 +108,47 @@ let retiredFieldFromStateSchema = (stateSchema: S.t<unknown>): option<string> =>
 let retiredValuesFromStateSchema = (stateSchema: S.t<unknown>): option<array<string>> =>
   retiredFromStateSchema(stateSchema)->Option.flatMap(r => r.values)
 
+// What one record's `@retired` declaration could be told about its own field.
+//
+// Three outcomes rather than a bool, because "nothing to check" and "could not
+// check" are different facts and only the second is worth a plugin's attention.
+type retiredCheck =
+  | NotDeclared
+  // Why the names could not be compared. A fatal rule that is invisible when it
+  // does not run is the failure mode the transition check spends a counter to
+  // avoid, so this is reported rather than skipped in silence.
+  | Unchecked(string)
+  | Checked(array<string>)
+
 // The check the PPX cannot make, in the one place that can: the payload is a
 // constructor reference the PPX only ever sees as a name, and whether that name
 // is a case of the field's enum needs the schema.
 //
-// Two rules, and the second is the one the form exists for. A `value` on a field
-// that is not the record's lifecycle would keep the read narrowing while silently
-// losing the command filtering that motivates it — `@transition` is written in
-// terms of the lifecycle field, so a retirement state anywhere else is a state no
-// command can name.
-let checkRetiredValue = (~entityName: string, stateSchema: S.t<unknown>): unit =>
+// Two rules, and they are held to different standards on purpose.
+//
+// **A name the field's enum does not declare is unambiguously wrong** — no domain
+// means it — and the symptom is a data-exposure bug: the retirement predicate
+// compares every row against a state no row is ever in, so every row stays
+// visible to every caller while the annotation sits on the schema looking like
+// enforcement. That is returned as a failure for the caller to raise on.
+//
+// It is the same fault the PPX already refuses to compile when the enum is
+// declared in the same file, and the PPX says so in its own message. This is the
+// residue that a per-file pass cannot reach: field form, enum imported from
+// elsewhere. Two rungs of one ladder — until this was promoted, which rung you
+// landed on decided whether a data-exposure bug stopped the build, and the
+// arbiter was where the enum happened to be declared.
+//
+// **A `value` on a field that is not the record's lifecycle stays a warning.**
+// It would keep the read narrowing while silently losing the command filtering
+// that motivates it — `@transition` is written in terms of the lifecycle field,
+// so a retirement state anywhere else is a state no command can name. That is a
+// modelling judgement rather than a wrong name, and judgement calls are what the
+// withdrawn dead-end rule taught us not to hard-fail on.
+let checkRetiredValue = (~entityName: string, stateSchema: S.t<unknown>): retiredCheck =>
   switch retiredFromStateSchema(stateSchema) {
+  // The boolean form names no state, so there is nothing to compare. Not a skip.
+  | None | Some({values: None}) => NotDeclared
   | Some({field, values: Some(values)}) =>
     let named = values->Array.join(", ")
     let lifecycle = lifecycleFieldFromStateSchema(~entityName, stateSchema)
@@ -146,23 +176,55 @@ let checkRetiredValue = (~entityName: string, stateSchema: S.t<unknown>): unit =
       ->Option.getOr([])
     | _ => []
     }
-    // Reported per state rather than as a set: one wrong entry among three still
-    // narrows something, so the symptom is a subset of rows leaking rather than
-    // all of them — which is harder to spot than the single-value case was.
-    if Array.length(declared) > 0 {
-      values
-      ->Array.filter(v => !(declared->Array.includes(v)))
-      ->Array.forEach(v =>
-        log.warn(
-          ~comp="Plugin_Structure",
-          `${entityName}: @retired(${v}) names a state "${field}" does not declare — known values: ${declared->Array.join(
-              ", ",
-            )}.`,
-        )
+    if Array.length(declared) == 0 {
+      Unchecked(
+        `${entityName}: @retired(${named}) is on "${field}", whose shape carries no cases to check the names against.`,
+      )
+    } else {
+      // Reported per state rather than as a set: one wrong entry among three still
+      // narrows something, so the symptom is a subset of rows leaking rather than
+      // all of them — which is harder to spot than the single-value case was.
+      Checked(
+        values
+        ->Array.filter(v => !(declared->Array.includes(v)))
+        ->Array.map(
+          v =>
+            `${entityName}: @retired(${v}) names a state "${field}" does not declare — known values: ${declared->Array.join(
+                ", ",
+              )}.`,
+        ),
       )
     }
-  | _ => ()
   }
+
+// Raised together, after every view has been walked, so an author sees every bad
+// name at once rather than the first one and then a rebuild.
+//
+// Retroactive in a way the transition check was not: `@transition` was new when
+// its check landed, so nothing deployed could carry a stale name, while `@retired`
+// has been shipping. A deployed plugin holding a misspelled retired value gets a
+// red build on its next deploy — which is the point, and is why the examples were
+// swept before this was promoted.
+let reportRetiredStates = (
+  ~pluginName: string,
+  ~failures: array<string>,
+  ~unchecked: array<string>,
+): unit => {
+  if Array.length(unchecked) > 0 {
+    log.warn(
+      ~comp="Plugin_Structure",
+      `${pluginName}: ${unchecked
+        ->Array.length
+        ->Int.toString} @retired declaration(s) could not be checked.\n` ++
+      unchecked->Array.join("\n"),
+    )
+  }
+  if Array.length(failures) > 0 {
+    JsError.throwWithMessage(
+      `${pluginName}: @retired names states that do not exist.\n` ++ failures->Array.join("\n"),
+    )
+  }
+}
 
 // The states a record's lifecycle field can hold. The same extraction
 // `checkRetiredValue` does, keyed on the declared lifecycle field rather than the
@@ -1071,6 +1133,17 @@ let make = (
     }
   }
 
+  // Collected as the view defs are built and reported once, so a plugin with
+  // three bad names fails naming three rather than one at a time.
+  let retiredFailures = []
+  let retiredUnchecked = []
+  let recordRetired = (~entityName, stateSchema) =>
+    switch checkRetiredValue(~entityName, stateSchema) {
+    | NotDeclared => ()
+    | Unchecked(why) => retiredUnchecked->Array.push(why)->ignore
+    | Checked(failures) => failures->Array.forEach(f => retiredFailures->Array.push(f)->ignore)
+    }
+
   let readModelDefs =
     readModels
     ->Array.map((
@@ -1090,7 +1163,7 @@ let make = (
       // edges for any event reaching the read model via a DCB-log-sourced mapping (a classic
       // aggregate→view link is also drawn from the producer's linkedViews, deduped downstream).
       let consumed = qualify(~prefix=name, R.consumedEventNames)
-      checkRetiredValue(~entityName=R.Spec.name, stateSchema)
+      recordRetired(~entityName=R.Spec.name, stateSchema)
       recordLifecycle(~entityName=R.Spec.name, stateSchema)
       ({
         Reventless.Plugin.name: R.Spec.name,
@@ -1129,7 +1202,7 @@ let make = (
         ~entityName=SVS.Spec.name,
         stateSchema,
       )
-      checkRetiredValue(~entityName=SVS.Spec.name, stateSchema)
+      recordRetired(~entityName=SVS.Spec.name, stateSchema)
       recordLifecycle(~entityName=SVS.Spec.name, stateSchema)
       ({
         Reventless.Plugin.name: SVS.Spec.name,
@@ -1313,6 +1386,10 @@ let make = (
     ~writables=Array.concat(stateChangeDefs, aggregateDefs),
     ~lifecycleStatesByView,
   )
+  // Also a second pass, for a different reason: the failures are gathered per
+  // view as those defs are built, and raising inline would report the first bad
+  // name and hide the rest.
+  reportRetiredStates(~pluginName=name, ~failures=retiredFailures, ~unchecked=retiredUnchecked)
 
   {
     readModels: readModelDefs,
