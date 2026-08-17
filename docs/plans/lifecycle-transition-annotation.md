@@ -386,9 +386,31 @@ not run is the failure mode §3 already spends a warn counter to avoid — so
 promoting the rule means also reporting its skips, the way `unvalidated` is
 reported here.
 
-**Not scheduled in this plan.** The decision is made; the change belongs to
-whoever next opens `checkRetiredValue`, and the two conditions above travel with
-it.
+**~~Not scheduled in this plan.~~ Implemented 2026-08-17**, with both conditions
+met.
+
+`checkRetiredValue` returns a `retiredCheck` — `NotDeclared`, `Unchecked(why)` or
+`Checked(failures)` — instead of logging, and `Plugin_Structure.make` accumulates
+across every view before `reportRetiredStates` warns the skips and raises the
+failures. Aggregating is what the second pass buys: a plugin with three bad names
+fails naming three rather than one, a rebuild, and the next one. The wrong-field
+rule still warns from inside the check, per the table above.
+
+*The skips are reported.* `Unchecked` is returned when the retired field's shape
+carries no cases to compare against — the one silent path the old rule had. The
+boolean form is `NotDeclared` rather than a skip, because naming no state is not
+a failure to check one.
+
+*The sweep found nothing to sweep.* Every `@retired` in this repo is the
+constructor form (`| @retired Archived`), where the name *is* the enum case and
+cannot disagree with it. The field form, which is the only one that can carry a
+wrong name, appears nowhere — so the retroactive risk here is nil, and the first
+plugin this can turn red is one outside these repos.
+
+Five tests in `PluginStructureTest` cover the outcomes: a declared state passes,
+each undeclared state is reported separately and names what the field does
+declare, a caseless field says so instead of passing, the boolean form is not a
+skip, and a state on a non-lifecycle field is not a failure.
 
 **Exit — met.** Implemented as `checkDeclaredTransitions` in `Plugin_Structure`,
 a second pass over the assembled writable defs, with `lifecycleStatesFromStateSchema`

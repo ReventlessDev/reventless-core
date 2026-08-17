@@ -1,8 +1,11 @@
 # Plan: say where each lifecycle fact came from
 
-**Status.** PLAN 2026-08-16. Not started. One new field per fact, following a
-pattern this repo already ships twice, plus the consumer work that pattern was
-introduced for.
+**Status.** PLAN 2026-08-16, **sized 2026-08-17**. Not started. One new field per
+fact, following a pattern this repo already ships twice, plus the consumer work
+that pattern was introduced for. The sizing is below and it sharpens the case
+rather than changing the shape: exactly half the entities in the shipped examples
+get their lifecycle field from the convention rung, and *every* one of them gets
+its initial state that way.
 
 **Goal.** A consumer reading a component definition can already tell whether
 `labelField` was declared or guessed, and whether `idField` was declared or
@@ -52,6 +55,38 @@ believes about an entity — which state is the start, and therefore which state
 are reported unreachable. There is no annotation to get wrong and no error to
 see. It is the least-reviewed load-bearing fact in the lifecycle model, and one
 badge would put it in front of an author the first time they open a diagram.
+
+## How much is actually guessed
+
+Measured 2026-08-17 across every lifecycle-bearing entity in the three shop
+examples, because a provenance field is only worth its wire cost if the rung it
+publishes is ever the lower one.
+
+| Fact | Declared | By convention |
+|---|---|---|
+| the states a lifecycle admits | 6 | — |
+| which states are retirements | 4 | — |
+| a command's from-set and target | 11 (hybrid) | — |
+| **which field holds the lifecycle** | **3** | **3** |
+| **where rows begin** | **0** | **6** |
+
+The split on the lifecycle field is not random. `Categories`, `Products` and
+`Customers` name it after the domain concept — `shelfStatus`, `accountStatus` —
+and so *had* to annotate; all three `Orders` views name the field `lifecycle` and
+are picked up by the convention rung. The convention is right in all three cases,
+nothing says so, and nothing would say otherwise if it were wrong.
+
+Where rows begin is conventional everywhere. Nothing has ever declared or reviewed
+it, and it is the fact two consumers independently re-derive.
+
+**What is no longer guessed is the part that used to dominate.** Before the
+transition sweep the board resolved edges through five tiers, three of them
+inference, and a provenance rung would have been load-bearing on every edge. All
+eleven edges in the hybrid example now resolve from a declaration with zero
+inference hits — which is why this plan proposes no source field for
+`allowedStates` / `targetState` below. Provenance's value inside this repo is the
+two bold rows; its value for a plugin nobody has swept is the whole table, and
+that is the population it is really for.
 
 ## Shape
 

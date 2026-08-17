@@ -54,6 +54,35 @@ missing vocabulary costs nothing until something needs to distinguish a terminal
 the author meant from one they did not, and the dead-end lint is the only
 consumer identified so far.
 
+**Measured 2026-08-17, and the base rate argues for leaving this alone.** Every
+lifecycle-bearing entity in the three shop examples:
+
+| Entity | Lifecycle | Terminal |
+|---|---|---|
+| `hybrid` Orders | Placed → Shipped → Cancelled | `Shipped` |
+| `hybrid` Products | Listed → Archived → Discontinued | `Discontinued` |
+| `hybrid` Categories | Listed → Archived | none |
+| `hybrid` Customers | Active → Deactivated | none |
+| `aggregates` Orders | Placed → Shipped → Cancelled → Refunded | `Shipped`, `Refunded` |
+| `dcb` Orders | Placed → Shipped → Cancelled | `Shipped`, `Cancelled` |
+
+**Six terminal states across six entities, and every one is correct.** The
+withdrawn rule would have reported five of them (all but `Discontinued`, which is
+`@retired` for a reason of its own) — a hundred per cent false positives on the
+shipped examples.
+
+That inverts the case for the rule that *did* ship. An unreachable state is nearly
+always a mistake, so reporting it is nearly always useful; a terminal state is
+nearly always intentional, so reporting it is nearly always noise. Same shape of
+check, opposite base rate — which is a better argument for the removal than "it
+fired on two states", and a reason to be sceptical of any replacement that is not
+driven by an actual accidental terminal turning up.
+
+One more thing the table shows: `Cancelled` is terminal in the DCB shop and not in
+the hybrid one, which declares a `ReopenOrder`. **Terminality is a property of the
+model, not of the state's name** — so it can never be inferred, which is exactly
+why a declaration would be needed if the check were ever wanted.
+
 ## What to decide, when it is picked up
 
 1. **Whether a second marker is the answer at all.** An `@terminal` constructor
