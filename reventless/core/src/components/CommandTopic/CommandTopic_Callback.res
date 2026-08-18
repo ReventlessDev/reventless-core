@@ -18,8 +18,7 @@ module Make = (Spec: ReventlessInfra.CommandTopic.T, Ops: Ops with module Spec =
         | command' => Some({ReventlessInfra.CommandTopic.reference, command: command'})
         | exception err =>
           let commandStr = json->JSON.stringify
-          let errMsg =
-            err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+          let errMsg = err->Reventless.Util_Sury.exnMessage
           EffectLogger.logError(
             ~comp,
             `decode failed: ${commandStr} err=${errMsg}`,

@@ -2,6 +2,8 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Sury from "sury";
+import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
+import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 
 function toJson(value, schema) {
   return S.decodeOrThrow(value, schema, Sury.json);
@@ -18,10 +20,20 @@ function fromJsonString(str, schema) {
   return S.decodeOrThrow(str, Sury.jsonString, schema);
 }
 
+function exnMessage(exn, fallbackOpt) {
+  let fallback = fallbackOpt !== undefined ? fallbackOpt : "unknown";
+  if (exn.RE_EXN_ID === S.Exn) {
+    return exn._1.message;
+  } else {
+    return Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), fallback);
+  }
+}
+
 export {
   toJson,
   toJsonString,
   fromJson,
   fromJsonString,
+  exnMessage,
 }
 /* S Not a pure module */

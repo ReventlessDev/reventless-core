@@ -248,8 +248,7 @@ let fmtState = (~name: string, ~id: string, ~seq: int): string =>
   `state=${name}(${id}) seq=${seq->Int.toString}`
 
 // "err=<message>"
-let fmtExn = (e: exn): string =>
-  `err=${e->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")}`
+let fmtExn = (e: exn): string => `err=${e->Reventless.Util_Sury.exnMessage}`
 
 // ─── Legacy aliases (kept for existing callers) ──────────────────────────────
 

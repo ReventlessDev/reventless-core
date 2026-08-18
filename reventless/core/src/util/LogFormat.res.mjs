@@ -3,10 +3,10 @@
 import * as Stdlib_Int from "@rescript/runtime/lib/es6/Stdlib_Int.js";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
-import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as AnsiStyle$Reventless from "@reventlessdev/reventless-spec/src/AnsiStyle.res.mjs";
+import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Message$ReventlessCore from "../Message.res.mjs";
 
 let maxValueChars = Stdlib_Option.getOr(Stdlib_Option.flatMap(process.env["REVENTLESS_LOG_MAX_VALUE"], v => Stdlib_Int.fromString(v, undefined)), 512);
@@ -204,7 +204,7 @@ function fmtState(name, id, seq) {
 }
 
 function fmtExn(e) {
-  return `err=` + Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(e), Stdlib_JsExn.message), "unknown");
+  return `err=` + Util_Sury$Reventless.exnMessage(e, undefined);
 }
 
 function commandJsonsToLogMessages(cmdJsons) {

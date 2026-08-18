@@ -20,3 +20,13 @@ let fromJson: (JSON.t, S.t<'a>) => 'a = (json, schema) => json->S.parseOrThrow(~
 
 let fromJsonString: (string, S.t<'a>) => 'a = (str, schema) =>
   str->S.decodeOrThrow(~from=S.jsonString, ~to=schema)
+
+// Sury raises `S.Exn`, which carries `RE_EXN_ID: "S.Exn"` and so is not a `JsExn`
+// even though it is a JS Error at runtime — the usual
+// `JsExn.fromException->flatMap(JsExn.message)` yields None and the reason is
+// logged as "unknown". Reach for this at any site that catches a decode.
+let exnMessage = (exn: exn, ~fallback: string="unknown"): string =>
+  switch exn {
+  | S.Exn(e) => e.message
+  | _ => exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr(fallback)
+  }
