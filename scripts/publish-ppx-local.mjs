@@ -38,6 +38,28 @@ const VALID = ['darwin-x64', 'darwin-arm64', 'linux-x64', 'linux-arm64']
 if (!VALID.includes(target)) {
   fail(`Unknown target "${target}". Expected one of: ${VALID.join(', ')}`)
 }
+
+// Targets publish-ppx.yml builds. Publishing one of these by hand is what
+// produces a half-released version: this script publishes ONE per-platform
+// package and never the main thin package, so the version ends up claimed on the
+// registry without being installable — and it cannot be repaired, because a
+// published tarball cannot be replaced. The next release then has to step over
+// the number entirely.
+//
+// Push instead: the workflow publishes every platform AND main under one
+// resolved version, validates the published binary against source (drift guard),
+// and commits the version and pin back.
+const CI_BUILT = ['linux-x64', 'darwin-arm64']
+if (CI_BUILT.includes(target) && !argv.includes('--force')) {
+  fail(
+    `${target} is built and published by publish-ppx.yml — do not publish it by hand.\n` +
+      `  This script publishes only the per-platform package, never main, which leaves the\n` +
+      `  version claimed but unusable and forces the next release to skip the number.\n` +
+      `  Push the PPX change instead; CI publishes every platform and main together.\n` +
+      `  Only darwin-x64 is manual by design (it is out of the CI matrix).\n` +
+      `  Pass --force if you genuinely mean to, and publish main yourself afterwards.`,
+  )
+}
 if (target !== HOST) {
   fail(
     `Cannot build ${target} on ${HOST} — the binary is native, no cross-compile.\n` +

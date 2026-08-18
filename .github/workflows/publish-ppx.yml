@@ -25,9 +25,14 @@ name: Publish Reventless PPX
 # Any platform without a prebuilt falls back to the launcher's local build
 # (`pnpm run setup` / `pnpm build:ppx`).
 #
-# Versioning: main's version is the single source of truth. The `preflight` job
-# fails a push whose main version is already published (a forgotten bump), and the
-# per-platform scaffolds' versions are generated from main at publish time, so the
+# Versioning: the `preflight` job RESOLVES the version — it reads main's, checks it
+# against every package in the release (main + all per-platform), and steps forward
+# until it finds one free on all of them. A forgotten bump therefore costs nothing,
+# and a version half-claimed by an earlier partial publish is stepped over rather
+# than reused. The `pin` job commits the resolved version back. Recovery from a
+# partial publish is always forward: a published tarball cannot be replaced, so
+# completing a half-published version would ship whatever binaries it already has.
+# The per-platform scaffolds' versions are generated from the resolved one, so the
 # two can never desync (see the cutover runbook in
 # docs/plans/prebuilt-binaries-out-of-repo.md). Bump only the main package.
 #
@@ -43,10 +48,15 @@ on:
     branches: [main, beta, alpha]
     paths:
       - "packages/reventless-ppx/src/**"
+      # The manifest too: a change here (a version set by hand, a dependency) is
+      # a release of this package, and leaving it out is what let a lone version
+      # bump publish nothing at all.
+      - "packages/reventless-ppx/package.json"
   pull_request:
     branches: [main, beta, alpha]
     paths:
       - "packages/reventless-ppx/src/**"
+      - "packages/reventless-ppx/package.json"
   workflow_dispatch:
     inputs:
       publish:
@@ -63,40 +73,34 @@ permissions:
   packages: write
 
 jobs:
-  # Fail fast on a forgotten version bump. main's version is the single source of
-  # truth (the per-platform scaffolds are generated from it below), so on a src
-  # push it MUST be new: if it already exists on the registry the publishes would
-  # each silently no-op and the run would report success while shipping nothing.
-  # Manual re-dispatch is exempt — an idempotent re-run of an existing version
-  # (e.g. after a partial failure) is legitimate.
+  # Choose a version the whole release can publish under, rather than failing on
+  # one it cannot. The resolver checks main AND every per-platform package, and
+  # steps forward until it finds one free on all of them; the `pin` job commits
+  # the result back, so git catches up without a human in the loop.
+  #
+  # This replaces a hard gate that checked main only. Two failures came out of
+  # that: a forgotten bump cost a second push, and a version whose per-platform
+  # binaries existed while main did not passed the gate — then either 409'd or,
+  # worse, kept the stale binaries and published a main pointing at them.
+  #
+  # Recovery from a partial publish is always FORWARD, never by completing the
+  # half-published version: its binaries are already on the registry and cannot
+  # be replaced, so completing it ships whatever they happen to contain.
   preflight:
     runs-on: ubuntu-latest
-    name: Preflight (version is new)
+    name: Preflight (resolve a publishable version)
     outputs:
       version: ${{ steps.v.outputs.version }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Read main package version
+      - name: Resolve a publishable version
         id: v
         run: |
-          VERSION=$(node -p "require('./packages/reventless-ppx/package.json').version")
+          VERSION=$(node scripts/resolve-ppx-version.mjs --explain)
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "reventless-ppx main version: $VERSION"
-
-      - name: Assert version is new (push only)
-        if: github.event_name == 'push'
-        env:
-          VERSION: ${{ steps.v.outputs.version }}
-        run: |
-          # `npm view` exits non-zero when the version is absent — the state we want.
-          if npm view "@reventlessdev/reventless-ppx@${VERSION}" version \
-               --registry=https://registry.npmjs.org >/dev/null 2>&1; then
-            echo "::error::@reventlessdev/reventless-ppx@${VERSION} is already published — a src change reached publish-ppx without a version bump. Bump packages/reventless-ppx/package.json (main) in the same commit and re-push; the per-platform scaffolds follow automatically."
-            exit 1
-          fi
-          echo "Version ${VERSION} is not yet on the registry — OK to publish."
+          echo "reventless-ppx will publish as: $VERSION"
 
   build:
     needs: preflight
@@ -177,21 +181,26 @@ jobs:
         if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish)
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          VERSION: ${{ needs.preflight.outputs.version }}
         run: |
-          # Tolerate ONLY a re-publish of an already-existing version; fail loudly
-          # on any other error (auth/403/network) so a real failure can't masquerade
-          # as a green run (see the 2026-06-23 npmjs-migration 2FA-token incident).
+          # Every error is fatal, the version conflict included. Preflight resolved
+          # a version free on every package in this release, so a conflict here
+          # means the registry changed under the run — someone published by hand,
+          # or two runs raced. Tolerating it used to look harmless and was not: it
+          # LEFT THE EXISTING BINARY IN PLACE and let the run publish a main
+          # pointing at it, which is how a stale ppx ships under a fresh version.
+          # Fail, and let the next run resolve forward.
           set +e
           out=$(cd "packages/reventless-ppx/npm/${{ matrix.target }}" && npm publish --access public 2>&1)
           code=$?
           echo "$out"
           if [ $code -ne 0 ]; then
             if echo "$out" | grep -qiE "cannot publish over|previously published|cannot modify pre-existing version|EPUBLISHCONFLICT"; then
-              echo "::warning::publish of ${{ matrix.target }} skipped (version already exists)"
+              echo "::error::${{ matrix.target }}@$VERSION already exists — the registry moved after preflight resolved it. Re-run; the resolver will step past it. Do NOT republish over it."
             else
               echo "::error::publish of ${{ matrix.target }} FAILED — see npm error above"
-              exit $code
             fi
+            exit $code
           fi
 
   test:
@@ -272,20 +281,23 @@ jobs:
       - name: Publish main (thin) package
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          VERSION: ${{ needs.preflight.outputs.version }}
         run: |
-          # Tolerate ONLY a re-publish of an already-existing version; fail loudly
-          # on any other error so a real failure can't masquerade as a green run.
+          # Set the resolved version rather than publishing whatever the checked-out
+          # manifest says. Preflight may have stepped past a claimed version, and the
+          # per-platform packages were published under the resolved one — a main that
+          # published under the manifest's version would name a different release than
+          # its own binaries. This is the exact disagreement that produced a main
+          # published at .69 while the platforms went out as .70.
+          cd packages/reventless-ppx
+          npm pkg set version="$VERSION"
           set +e
-          out=$(cd packages/reventless-ppx && npm publish --access public 2>&1)
+          out=$(npm publish --access public 2>&1)
           code=$?
           echo "$out"
           if [ $code -ne 0 ]; then
-            if echo "$out" | grep -qiE "cannot publish over|previously published|cannot modify pre-existing version|EPUBLISHCONFLICT"; then
-              echo "::warning::publish of main skipped (version already exists)"
-            else
-              echo "::error::publish of main FAILED — see npm error above"
-              exit $code
-            fi
+            echo "::error::publish of main@$VERSION FAILED — see npm error above"
+            exit $code
           fi
 
   # Drift guard: the build job validated the SOURCE (it compiled from source);
@@ -417,6 +429,10 @@ jobs:
             const p = "packages/reventless-ppx/package.json";
             const j = JSON.parse(fs.readFileSync(p, "utf8"));
             const want = "^" + process.env.VERSION;
+            // The version too, not just the pin: preflight may have resolved past
+            // a claimed version, and if git never learns the published number the
+            // next run starts from a stale one and resolves forward again.
+            j.version = process.env.VERSION;
             for (const k of Object.keys(j.optionalDependencies || {})) {
               if (k.startsWith("@reventlessdev/reventless-ppx-")) j.optionalDependencies[k] = want;
             }
@@ -447,7 +463,7 @@ jobs:
         run: |
           SHORT="${VERSION#*-}"   # 1.0.0-alpha.64 -> alpha.64
           git add packages/reventless-ppx/package.json pnpm-lock.yaml
-          git commit -m "chore(ppx): pin the ${SHORT} binaries now that they are published" -m "[skip ci]"
+          git commit -m "chore(ppx): record ${SHORT} as published and pin its binaries" -m "[skip ci]"
           # Rebase-retry in case another [skip ci] commit (e.g. lerna version) landed.
           for i in 1 2 3; do
             git pull --rebase origin "$BRANCH" && git push origin "HEAD:$BRANCH" && exit 0
