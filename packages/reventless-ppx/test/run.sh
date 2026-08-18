@@ -843,11 +843,13 @@ let project = event => switch event {
 }
 EOF
 
-# ─── Fixture: @transition (lifecycle edge, both forms) ────────────
+# ─── Fixture: @transition (lifecycle edge, all three forms) ────────────
 
-# Both forms on one command type. `Ship` moves the row and declares the arrow;
+# Every form on one command type. `Ship` moves the row and declares the arrow;
 # `Rename` guards only — its absence from the targetState metadata is what tells
-# a consumer the command moves nothing, so the test asserts on that absence too.
+# a consumer the command moves nothing, so the test asserts on that absence too;
+# `Open` creates the row and declares a target with an empty from-set, so it must
+# reach markTargetState and NOT markAllowedStates.
 cat > "$PLUGIN/src/Aggregate/TransitionOrder.res" <<'EOF'
 @@reventless.spec
 
@@ -863,6 +865,7 @@ type command =
   | @transition(([Placed]) => Shipped) Ship({orderId: string})
   | @transition(([Placed, Shipped]) => Cancelled) Cancel({orderId: string})
   | @transition([Placed]) Rename({orderId: string, note: string})
+  | @transition(() => Placed) Open({orderId: string})
   | Place({orderId: string})
 
 @schema
@@ -2274,6 +2277,48 @@ if echo "$TARGET_BLOCK" | grep -q '"Place"'; then
 else
   pass "unannotated command absent from the transition metadata"
 fi
+
+# The creating form's claim is the mirror image of the guard-only one: a target
+# and NO from-set. An entry in markAllowedStates would be `allowedStates: Some([])`
+# — legal in no state — and would hide the command that brings the row into being.
+echo ""
+echo "=== Test: @transition creating form declares a target and no from-set ==="
+if echo "$TARGET_BLOCK" | grep -q '"Open"'; then
+  pass "creating command reaches markTargetState"
+else
+  fail "creating target" "Open missing from markTargetState"
+fi
+ALLOWED_BLOCK=$(sed -n '/markAllowedStates/,/]);/p' "$JS")
+if echo "$ALLOWED_BLOCK" | grep -q '"Open"'; then
+  fail "creating from-set" "Open must not appear in markAllowedStates — the empty from-set is the claim"
+else
+  pass "creating command absent from markAllowedStates"
+fi
+
+echo ""
+echo "=== Test: an empty bracketed from-set is refused, naming () ==="
+mkdir -p "$ERROR/src/Aggregate"
+cat > "$ERROR/src/Aggregate/EmptyBracketed.res" <<'EOF'
+@@reventless.spec
+
+type lifecycle = Placed
+
+@schema
+type state = { @id orderId: string }
+
+@schema
+type command = @transition(([]) => Placed) Open({orderId: string})
+EOF
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "empty bracketed from-set" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q "()"; then
+    pass "empty bracketed from-set fails the build and names the () spelling"
+  else
+    fail "empty bracketed from-set" "error did not name the () spelling: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/Aggregate/EmptyBracketed.res"
 
 echo ""
 echo "=== Test: the removed @allowedStates raises, naming @transition ==="

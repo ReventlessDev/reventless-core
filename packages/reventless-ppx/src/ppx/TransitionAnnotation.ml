@@ -7,7 +7,7 @@ open Ppxlib
    lifecycle edge the command owns: the states it may run FROM, and — for a
    command that moves the row — the state it lands IN.
 
-   Two forms, one attribute:
+   Three forms, one attribute:
 
      | @transition([Orders.Placed] => Orders.Shipped)   moves the row
        ShipOrder({orderId: string})
@@ -15,8 +15,18 @@ open Ppxlib
      | @transition([Customers.Active])                   guards, moves nothing
        UpdateEmail({customerId: string, email: string})
 
+     | @transition(() => Orders.Placed)                  creates the row
+       PlaceOrder({orderId: string})
+
    Brackets are mandatory on the from-set even for one element, so the forms are
    told apart by the arrow rather than by the shape of the left operand.
+
+   `()` is the EMPTY from-set: a command that brings the row into existence has
+   no state to run from, so there is no state that could refuse it. It emits a
+   target and no `markAllowedStates` entry, which reads downstream as
+   `allowedStates: None, targetState: Some(_)` — unconstrained from, lands
+   there. That is a different claim from omitting the attribute, which says
+   nothing about where the command lands and draws no edge at all.
 
    The one-sided form is a POSITIVE CLAIM, not an omission: it says the command
    does not move the row. That is already distinguishable on the wire —
@@ -120,6 +130,14 @@ let states_of_pattern (pat : pattern) : (string * location) list =
          e.g. @transition([Orders.Placed, Orders.Shipped] => Orders.Delivered)"
   in
   match pat.ppat_desc with
+  (* The creating form's empty from-set. Spelled `()` rather than `[]` because
+     it is not a list that happens to be empty — it is the absence of a
+     from-state, and the two want telling apart at the authoring site. *)
+  | Ppat_construct ({ txt = Lident "()"; _ }, None) -> []
+  | Ppat_array [] ->
+    Location.raise_errorf ~loc:pat.ppat_loc
+      "@transition: an empty from-set is written `()` — \
+       @transition(() => Orders.Placed) for a command that creates the row."
   | Ppat_array items -> List.map one items
   | Ppat_construct ({ txt = Lident "::"; _ }, _) | Ppat_construct ({ txt = Lident "[]"; _ }, _) ->
     (* OCaml list syntax, for parity with the expression walk. *)
@@ -231,14 +249,12 @@ let parse_payload ~loc (attr : attribute) : edge =
   (* Arrow form. ReScript parses `=>` as a function, so the from-set is the
      parameter pattern and the target is the body. *)
   | Pexp_fun (_, _, from_pat, target_expr) ->
+    (* An empty from-set is legal here and only here: with a target it is the
+       creating edge. Without one it would be the guard-only form claiming a
+       command is legal in no state, which is what the branch below refuses. *)
     let from_states = states_of_pattern from_pat in
-    if from_states = [] then
-      Location.raise_errorf ~loc:from_pat.ppat_loc
-        "@transition: the from-set is empty. A command that is legal \
-         everywhere declares no @transition at all."
-    else
-      let (target, _) = state_of_expression target_expr in
-      { from_states; target = Some target }
+    let (target, _) = state_of_expression target_expr in
+    { from_states; target = Some target }
   (* One-sided form. *)
   | _ ->
     let from_states = states_of_expression payload_expr in
@@ -297,17 +313,26 @@ let rebind ~loc ~schema_name ~fn_name entries_array =
         pvb_loc = loc } ]);
     pstr_loc = loc }
 
+(* Only the variants that constrain where they run FROM. A creating command must
+   NOT appear here: an entry with an empty state array would publish
+   `allowedStates: Some([])` — legal in no state — and every consumer that
+   filters on it would then hide the one command that brings a row into being. *)
 let gen_allowed_binding ~loc ~schema_name entries =
   let items =
-    List.map (fun (variant_name, edge) ->
-      tuple_expr ~loc
-        (str_expr ~loc variant_name)
-        (str_array ~loc (List.map fst edge.from_states))
+    List.filter_map (fun (variant_name, edge) ->
+      match edge.from_states with
+      | [] -> None
+      | from_states ->
+        Some (tuple_expr ~loc
+          (str_expr ~loc variant_name)
+          (str_array ~loc (List.map fst from_states)))
     ) entries
   in
-  rebind ~loc ~schema_name ~fn_name:"markAllowedStates"
-    { pexp_desc = Pexp_array items;
-      pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] }
+  if items = [] then None
+  else
+    Some (rebind ~loc ~schema_name ~fn_name:"markAllowedStates"
+      { pexp_desc = Pexp_array items;
+        pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] })
 
 (* Only the variants that declare a target. A guard-only command must NOT appear
    here — its absence is what tells a consumer the command moves nothing. *)
@@ -349,7 +374,9 @@ let transform ~loc (str : structure) =
               else begin
                 let schema_name = td.ptype_name.txt ^ "Schema" in
                 appended := !appended
-                  @ [gen_allowed_binding ~loc ~schema_name entries]
+                  @ (match gen_allowed_binding ~loc ~schema_name entries with
+                     | Some b -> [b]
+                     | None -> [])
                   @ (match gen_target_binding ~loc ~schema_name entries with
                      | Some b -> [b]
                      | None -> []);

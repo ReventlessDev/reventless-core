@@ -18,8 +18,14 @@ type command =
   // re-run for an already-connected version so its definition is refreshed on the
   // row — unlike Heartbeat, which no-ops a connected keep-alive.
   | @noApi Redetect(version)
-  | @noApi Connect(pluginDefinition)
-  | @noApi Disconnect(version)
+  // The handshake brings the version's row into being, so it runs from no state
+  // — `decide` accepts it against an unknown version and against every status
+  // but `Connected`, where it is a definition refresh rather than a move.
+  | @noApi @transition(() => Plugins.Connected) Connect(pluginDefinition)
+  // A heartbeat timing out is the only way a row reaches `Disconnected`, and
+  // `decide` moves the row for exactly one status — anything else is a stray
+  // disconnect it tolerates without emitting.
+  | @noApi @transition(([Plugins.Connected]) => Plugins.Disconnected) Disconnect(version)
   // Admin lifecycle commands — API-exposed (auto-derived admin mutations,
   // Cognito group-gated). `version` selects which known version to act on.
   // The `@transition` edges must agree with `decide` below; `Platform_Admin_Structure`

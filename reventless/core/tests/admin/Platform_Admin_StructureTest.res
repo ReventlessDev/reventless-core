@@ -156,3 +156,42 @@ describe("the Plugin command defs carry every argument the SDL requires", () => 
     expect(internal->Array.every(c => c.mutationField == ""))->toEqual(true)
   })
 })
+
+// A heartbeat timing out is the only way a row reaches `Disconnected`, and the
+// command that does it carries `@noApi`. Until it declared its edge the topology
+// check reported the state unreachable and was right to: nothing in the
+// declarations said how a row got there.
+describe("the internal commands declare the edges they move rows along", () => {
+  let states = Plugin_Structure.lifecycleStatesFromStateSchema(
+    ~entityName=PluginsReadModelSpec.name,
+    PluginsReadModelSpec.stateSchema->S.castToUnknown,
+  )
+
+  let statesByView = () => {
+    let d = Dict.make()
+    states->Option.forEach(s => d->Dict.set(PluginsReadModelSpec.name, s))
+    d
+  }
+
+  testSync("the only edge into Disconnected is declared", () =>
+    expect((commandNamed("Disconnect").allowedStates, commandNamed("Disconnect").targetState))
+    ->toEqual((Some(["Connected"]), Some("Disconnected")))
+  )
+
+  // The creating form's claim: a target and no from-set. `Connect` brings the
+  // version's row into being, so there is no state it runs from — and an empty
+  // `allowedStates` would say the opposite, that it is legal in none.
+  testSync("the handshake declares a target and no from-set", () =>
+    expect((commandNamed("Connect").allowedStates, commandNamed("Connect").targetState))
+    ->toEqual((None, Some("Connected")))
+  )
+
+  testSync("and no state is left unreachable", () =>
+    expect(
+      Plugin_Structure.lifecycleTopologyFindings(
+        ~writables=[Platform_Admin_Structure.pluginAggregate],
+        ~lifecycleStatesByView=statesByView(),
+      ),
+    )->toEqual([])
+  )
+})

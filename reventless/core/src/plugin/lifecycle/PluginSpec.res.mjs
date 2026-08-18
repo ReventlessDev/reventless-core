@@ -102,6 +102,10 @@ let commandSchema$1 = Api$ReventlessInfra.markNoApiVariants(commandSchema, [
 
 let commandSchema$2 = Api$ReventlessInfra.markAllowedStates(commandSchema$1, [
   [
+    "Disconnect",
+    ["Connected"]
+  ],
+  [
     "Activate",
     [
       "Inactive",
@@ -126,6 +130,14 @@ let commandSchema$2 = Api$ReventlessInfra.markAllowedStates(commandSchema$1, [
 ]);
 
 let commandSchema$3 = Api$ReventlessInfra.markTargetState(commandSchema$2, [
+  [
+    "Connect",
+    "Connected"
+  ],
+  [
+    "Disconnect",
+    "Disconnected"
+  ],
   [
     "Activate",
     "Connected"

@@ -231,29 +231,17 @@ function lifecycleTopologyFindings(writables, lifecycleStatesByView) {
   Object.entries(lifecycleStatesByView).forEach(param => {
     let states = param[1];
     let view = param[0];
-    let edges = Stdlib_Array.reduce(writables, [], (acc, w) => {
+    let reachable = Stdlib_Array.reduce(writables, [], (acc, w) => {
       if (w.linkedViews.includes(view)) {
-        return acc.concat(Stdlib_Array.reduce(w.commands, [], (inner, cmd) => {
-          let match = cmd.allowedStates;
-          let match$1 = cmd.targetState;
-          if (match !== undefined && match$1 !== undefined) {
-            return inner.concat(match.map(from => [
-              from,
-              match$1
-            ]));
-          } else {
-            return inner;
-          }
-        }));
+        return acc.concat(Stdlib_Array.filterMap(w.commands, cmd => cmd.targetState));
       } else {
         return acc;
       }
     });
-    if (edges.length === 0) {
+    if (reachable.length === 0) {
       return;
     }
     let initial = states[0];
-    let reachable = edges.map(param => param[1]);
     states.forEach(state => {
       if (!reachable.includes(state) && Primitive_object.notequal(state, initial)) {
         findings.push([

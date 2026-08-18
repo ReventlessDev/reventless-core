@@ -1,7 +1,10 @@
 # Plan: Derive the platform's own component metadata from its specs
 
-**Status:** Ready to start (not started)
+**Status:** Steps 0, 1 and 3a landed. Steps 2 (other repo), 3, 4, 5 open.
 **Date:** 2026-08-18
+**Analysis it produced:** [plugin-command-union-decode-failure.md](../analysis/plugin-command-union-decode-failure.md)
+— found while verifying step 0, unrelated to this plan, and the reason
+"drive it in a running shell" cannot currently be a verification for anything here.
 
 **Analysis:** [plugin-aggregate-readmodel-vs-normal-harmonization.md](../analysis/plugin-aggregate-readmodel-vs-normal-harmonization.md)
 **Supersedes:** item 3.3 of [admin-readmodel-full-harmonization.md](Backlog/admin-readmodel-full-harmonization.md)
@@ -45,10 +48,18 @@ but `Platform_Admin_Structure` describes the arguments with a local
 `idArgs = {id}` — no `_0`, the target version. AutoUI builds its command form from
 that schema.
 
-**Open question, and step 0 of this plan:** does that make the Deactivate / Retire
-row actions fail at call time with "argument `_0` required"? Verify on an isolated
-memory-backend platform (never against a live `.reventless/local.db`). If they fail,
-this is a live bug and the plan's priority changes accordingly.
+**Answered — it is a live bug.** Driven against an isolated memory-backend platform
+on alt ports. The document AutoUI builds from the published schema:
+
+```
+mutation Platform_Plugin_Deactivate($id: ID!) { Platform_Plugin_Deactivate(id: $id) { … } }
+→ Field "Platform_Plugin_Deactivate" argument "_0" of type "String!" is required,
+  but it was not provided.   (GRAPHQL_VALIDATION_FAILED)
+```
+
+The same mutation with `_0` supplied is accepted. So all three admin row actions —
+Activate, Deactivate, Retire — were rejected before reaching the aggregate, and this
+plan's step 1 is a fix rather than cleanup.
 
 A derived schema cannot have this class of fault: it is produced from the same
 `commandSchema` the SDL is generated from.
@@ -89,12 +100,11 @@ they take schemas.
 
 Each is shippable on its own, in this order.
 
-### Step 0 — Establish whether the missing `_0` is a live bug
+### Step 0 — Establish whether the missing `_0` is a live bug — **DONE**
 
-Isolated memory-backend platform on alt ports; drive the Deactivate row action; record
-whether the mutation is rejected. Report the finding before writing code.
+Answered above: yes. See "Why — four drifts found in one file".
 
-### Step 1 — Derive the command defs
+### Step 1 — Derive the command defs — **DONE**
 
 - Lift `extractCommandDefs` from a local binding inside `Plugin_Structure.make`
   ([Plugin_Structure.res:857](../../reventless/core/src/plugin/component/Plugin_Structure.res#L857))
@@ -108,11 +118,19 @@ Yields all eight variants, including the `@noApi` protocol ones with
 `apiExposed: false` — which is what puts `Connect` / `Disconnect` / `Heartbeat` on
 the event graph. Fixes the `_0` gap by construction.
 
-**Verify:** emitted defs unchanged for the three exposed commands except the
-argument schema, which gains `_0`; `pnpm run check:graphql` unchanged; the Plugins
-lifecycle board still draws its seven edges.
+**Verified.** All eight variants emitted; the three exposed ones keep their
+`Platform_Plugin_*` field names and gain `_0`; the five `@noApi` ones carry
+`apiExposed: false` and the empty `mutationField` sentinel. `aggregateIdField` is now
+`None` rather than `Some("id")` — which is what every ordinary aggregate command
+publishes, and what makes the consumer inject `id: ID!` alongside `_0`. The SDL is
+untouched (it is generated from `PluginBaseFragment`), and `check:graphql`'s document
+half is unchanged.
 
-### Step 2 — Honour `@hidden` in the AutoUI query selection
+The lifecycle board could not be driven — see the decode-failure analysis; there are
+no plugin rows on any local platform. Verified against what
+`Platform_ComponentDefinitions` publishes instead.
+
+### Step 2 — Honour `@hidden` in the AutoUI query selection — **DONE (other repo)**
 
 **Cross-repo (`reventless-ui`).** Skip `x-reventless-hidden` properties in
 `buildFieldSelection`. General benefit: today every hidden field is fetched over the
@@ -120,6 +138,15 @@ wire on every list query.
 
 Once this lands, `apiSchemaFragment` / `structure` need only `@hidden` on the spec,
 and `pluginUIOnlyExcludeFields` goes away.
+
+**The consuming half is not done and is deliberately not part of step 2.** Putting
+`@hidden` on those two spec fields and dropping them from
+`pluginUIOnlyExcludeFields` is a change *here*, and it is only safe once every shell
+reading this platform skips hidden fields in its selection — i.e. after the consuming
+repo publishes and the pin moves. It belongs with step 5, which is the next thing to
+touch that file anyway. `pluginExcludeFields` (the three storage-only fields) stays
+regardless until step 3: those are absent from the SDL, not merely unwanted, and
+`@hidden` does not remove a field from the surface.
 
 ### Step 3 — `@internal`: a field that is not on the GraphQL surface
 
@@ -149,11 +176,37 @@ have) and with `@summary`.
 **Not a security boundary** — same caveat as `visibility(Internal)`. It shapes the
 generated surface; `@owner` / `@retired` remain the enforcement markers.
 
-**First task of this step is a survey, not code:** enumerate every codegen path the
-marker must reach — SDL generation, `queryableDef.schema`, the AppSync and local
-resolvers, the JSON-schema walkers, MCP tool generation — and confirm each has a
-single place to honour it. If it does not, that is the finding, and the step is
-re-scoped before anything is written.
+**First task of this step is a survey, not code** — **DONE, and the answer is
+favourable.** Every path has a single place to honour the marker, and one path turns
+out to need nothing at all:
+
+| Path | Where it is honoured | Notes |
+|---|---|---|
+| SDL generation | `GraphQL_FragmentGenerator.deriveObjectTypeWithNested(~excludeFields)` | one call site (line ~712), already parameterised — the marker feeds the list `PluginBaseFragment` hand-writes today |
+| `queryableDef.schema` | `SuryToJsonSchema.deriveObjectSchema` | `Plugin_Structure` derives it at two sites, but both go through this one walker |
+| JSON-schema walkers | `SuryToJsonSchema.deriveObjectSchema` | 73 references, one definition — the same single point as the row above |
+| AppSync + local resolvers | **nothing** | neither projects by field name; they hand back whole rows and GraphQL's type system is the gate |
+| MCP tool generation | `MCP_SchemaGenerator` | derives *command* variant schemas, and `@internal` is a read-model state marker — unaffected unless MCP grows query tools over state |
+
+The resolver row is the one worth stating plainly, because it was the plan's main
+worry. Verified rather than reasoned: an already-excluded field on the live platform
+is rejected at **validation**, not filtered at serialisation —
+
+```
+{ Platform_Plugins { edges { node { name eventCollector } } } }
+→ Cannot query field "eventCollector" on type "Platform_Plugin".
+```
+
+So excluding a field from the generated SDL type is the whole gate for the read
+surface, and `@internal` needs no resolver change on either adapter.
+
+**The one thing to confirm before writing code:** that dropping internal properties
+inside `deriveObjectSchema` cannot reach storage. It should not — that function
+derives JSON Schema for publishing, while projection and storage use the sury schema
+directly — but it is the assumption the whole shape rests on, and it is cheap to
+check.
+
+Re-scoping to `Plugins` only is therefore **not** indicated.
 
 **Why it is worth a primitive rather than a special case:** a read model's
 `@schema type state` is today simultaneously the storage shape and the API shape,
@@ -163,20 +216,41 @@ resolver, and migration scaffolding all hit it. The workaround — splitting the
 into a storage type and a view type — duplicates the schema and reintroduces exactly
 the drift this plan exists to remove.
 
-### Step 3a — Declare the internal commands' lifecycle edges
+### Step 3a — Declare the internal commands' lifecycle edges — **DONE**
 
 Independent of steps 3–5; do it any time after step 1.
 
 The non-exposed commands move rows too, and nothing says so:
 
 ```rescript
+| @noApi @transition(() => Plugins.Connected) Connect(pluginDefinition)
 | @noApi @transition(([Plugins.Connected]) => Plugins.Disconnected) Disconnect(version)
-| @noApi @transition(=> Plugins.Connected) Connect(pluginDefinition)
 ```
 
-(the creating form's syntax needs checking — `Connect` has no from-state, and
-`@transition` may not accept a target-only edge today. If it does not, that is a PPX
-change and belongs to this step.)
+**The creating form did need a PPX change, and it landed with this step.** `()` is
+the empty from-set: a command that brings the row into being has no state to run
+from. It emits a `markTargetState` entry and **no** `markAllowedStates` one — an
+entry with an empty array would publish `allowedStates: Some([])`, "legal in no
+state", and every consumer that filters on it would hide the one command that creates
+rows. `([]) => X` is refused with an error naming the `()` spelling, so there is one
+way to write it.
+
+`lifecycleTopologyFindings` was reading reachability off `(Some(froms), Some(to))`
+pairs, which would have counted a creating edge as contributing nothing. It now reads
+targets alone — the question it asks is only about arrival.
+
+**Only these two are declared.** `Heartbeat` can also move a row (`Disconnected` →
+`Connected` via `connectEvents`), but it is legal in every state and no-ops in most,
+so an `allowedStates` naming the one state it moves from would be a false guard.
+`Redetect` and `ReportIncompatibility` move nothing. An undeclared edge is not drawn,
+which is the rule the guard-only work established and this keeps.
+
+**Verified** on the live platform's published definitions:
+
+```
+Connect     exposed=False from=None          -> Connected
+Disconnect  exposed=False from=['Connected'] -> Disconnected
+```
 
 With step 1 emitting their `commandDef`s, the platform then publishes the complete
 lifecycle graph — including the only edge into `Disconnected`, which
@@ -244,3 +318,12 @@ workaround.
 Each step: full build zero warnings, `pnpm test` green, `pnpm run check:graphql`
 unchanged (or goldens refreshed in the same commit if the SDL genuinely moves), and
 the Plugins lifecycle board plus the row action menu driven in the host shell.
+
+**The last of those is currently unavailable**, and not for a reason this plan can
+fix: no plugin connects on any local platform, so there are no rows to drive. See
+[plugin-command-union-decode-failure.md](../analysis/plugin-command-union-decode-failure.md).
+Steps 0, 1 and 3a were verified against what `Platform_ComponentDefinitions`
+publishes — which is the thing they change — plus the full suite (346 suites, 3463
+tests) and the PPX suite. Restore the shell check as soon as the decode bug is fixed;
+step 1 in particular changes the schema AutoUI builds forms from, and a form is worth
+seeing.

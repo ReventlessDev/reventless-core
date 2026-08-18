@@ -379,27 +379,21 @@ let lifecycleTopologyFindings = (
   lifecycleStatesByView
   ->Dict.toArray
   ->Array.forEach(((view, states)) => {
-    // Every edge any command declares into or out of this view's lifecycle.
-    let edges = writables->Array.reduce([], (acc, w) =>
+    // Every state some command declares a transition INTO. The question this
+    // check asks is only about arrival, so it reads the target and never the
+    // from-set — which is what lets a creating command (`@transition(() => X)`,
+    // a target and no from-set, because it runs from no row) count towards
+    // reachability the same way an edge out of another state does.
+    let reachable = writables->Array.reduce([], (acc, w) =>
       w.linkedViews->Array.includes(view)
-        ? Array.concat(
-            acc,
-            w.commands->Array.reduce([], (inner, cmd) =>
-              switch (cmd.allowedStates, cmd.targetState) {
-              | (Some(froms), Some(to)) =>
-                Array.concat(inner, froms->Array.map(from => (from, to)))
-              | _ => inner
-              }
-            ),
-          )
+        ? Array.concat(acc, w.commands->Array.filterMap(cmd => cmd.targetState))
         : acc
     )
-    if Array.length(edges) > 0 {
+    if Array.length(reachable) > 0 {
       // Rows start in the first declared state — the same convention the
       // lifecycle diagram uses — so nothing pointing at it is expected rather
       // than suspicious.
       let initial = states->Array.get(0)
-      let reachable = edges->Array.map(((_, to)) => to)
 
       states->Array.forEach(state => {
         if !(reachable->Array.includes(state)) && Some(state) != initial {
