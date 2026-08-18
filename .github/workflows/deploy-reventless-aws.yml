@@ -378,6 +378,18 @@ jobs:
       - name: Build
         run: pnpm run build
 
+      # Compile every resolver template against AppSync before Pulumi attaches
+      # one. AppSync refuses a resolver whose code does not type-check, and
+      # reports it as "The code contains one or more errors" — with no line and
+      # no rule, against the one resource it happened to reach first, after the
+      # stack is already half-updated. This asks the same compiler about all of
+      # them up front, and names the template that produced the bad one. It runs
+      # here rather than in CI because it needs the AWS credentials this job
+      # already has, and skips itself where there are none. The templates are
+      # shared with the plugin deploys, so validating them once covers those too.
+      - name: Validate AppSync resolver code
+        run: pnpm run check:resolvers
+
       - name: Install Pulumi CLI
         uses: pulumi/setup-pulumi@v2
         with:

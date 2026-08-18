@@ -148,18 +148,11 @@ export function request(ctx) { return {}; }
 
 let nodeDecodeGlobalId = importUtil + `
 export function request(ctx) {
-  const globalId = ctx.args.id;
-  try {
-    const decoded = util.base64Decode(globalId);
-    const colonIdx = decoded.indexOf(':');
-    if (colonIdx > 0) {
-      ctx.stash.typeName = decoded.substring(0, colonIdx);
-      ctx.stash.localId = decoded.substring(colonIdx + 1);
-    }
-  } catch (e) {
-    ctx.stash.typeName = null;
-    ctx.stash.localId = null;
-  }
+  const decoded = util.base64Decode(ctx.args.id);
+  const colonIdx = decoded.indexOf(':');
+  const parsed = colonIdx > 0;
+  ctx.stash.typeName = parsed ? decoded.substring(0, colonIdx) : null;
+  ctx.stash.localId = parsed ? decoded.substring(colonIdx + 1) : null;
   return { payload: null };
 }
 export function response(ctx) {

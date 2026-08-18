@@ -300,22 +300,23 @@ ${resultResponseCode}
 // Relay Node resolver — pipeline functions for node(id: ID!) query
 // ---------------------------------------------------------------------------
 
-/** Pipeline function (NONE datasource): decodes global ID and stashes typeName + localId. */
+/** Pipeline function (NONE datasource): decodes global ID and stashes typeName + localId.
+
+    Written without a `try`: APPSYNC_JS rejects try statements outright
+    (`@aws-appsync/no-try`), so a guarded version of this cannot be deployed at
+    all. Nothing is lost by dropping it — `util.base64Decode` does not throw on
+    malformed input, it returns the bytes it made of it, so the catch could never
+    run. An id that decodes to no `type:localId` pair therefore fails the one way
+    that is left: both halves stash as null, which is also what the guarded
+    version reported for a decode it could not parse. */
 let nodeDecodeGlobalId =
   `${importUtil}
 export function request(ctx) {
-  const globalId = ctx.args.id;
-  try {
-    const decoded = util.base64Decode(globalId);
-    const colonIdx = decoded.indexOf(':');
-    if (colonIdx > 0) {
-      ctx.stash.typeName = decoded.substring(0, colonIdx);
-      ctx.stash.localId = decoded.substring(colonIdx + 1);
-    }
-  } catch (e) {
-    ctx.stash.typeName = null;
-    ctx.stash.localId = null;
-  }
+  const decoded = util.base64Decode(ctx.args.id);
+  const colonIdx = decoded.indexOf(':');
+  const parsed = colonIdx > 0;
+  ctx.stash.typeName = parsed ? decoded.substring(0, colonIdx) : null;
+  ctx.stash.localId = parsed ? decoded.substring(colonIdx + 1) : null;
   return { payload: null };
 }
 export function response(ctx) {
