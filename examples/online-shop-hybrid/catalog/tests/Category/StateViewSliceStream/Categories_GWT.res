@@ -10,7 +10,7 @@ describe("Categories StateViewSliceStream", () => {
   test("CategoryAdded carries an image onto the row", () =>
     givenEvents([])
     ->whenEvent(
-      CategoryAdded({categoryId: "c1", name: "Electronics", imageUrl: "/uploads/cat/c1.svg"}),
+      CategoryAdded({categoryId: "c1", name: "Electronics", categoryImage: "/uploads/cat/c1.svg"}),
     )
     ->thenStateWithId(
       "c1",
@@ -18,23 +18,23 @@ describe("Categories StateViewSliceStream", () => {
         categoryId: "c1",
         name: "Electronics",
         shelfStatus: Listed,
-        imageUrl: "/uploads/cat/c1.svg",
+        categoryImage: "/uploads/cat/c1.svg",
       },
     )
   )
 
   test("CategoryImageChanged replaces the image", () =>
     givenEvents([
-      CategoryAdded({categoryId: "c1", name: "Electronics", imageUrl: "/uploads/cat/old.svg"}),
+      CategoryAdded({categoryId: "c1", name: "Electronics", categoryImage: "/uploads/cat/old.svg"}),
     ])
-    ->whenEvent(CategoryImageChanged({categoryId: "c1", imageUrl: "/uploads/cat/new.svg"}))
+    ->whenEvent(CategoryImageChanged({categoryId: "c1", categoryImage: "/uploads/cat/new.svg"}))
     ->thenStateWithId(
       "c1",
       {
         categoryId: "c1",
         name: "Electronics",
         shelfStatus: Listed,
-        imageUrl: "/uploads/cat/new.svg",
+        categoryImage: "/uploads/cat/new.svg",
       },
     )
   )

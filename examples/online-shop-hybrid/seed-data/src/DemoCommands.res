@@ -37,15 +37,15 @@ let dateRange = (r: Reventless.DateRange.t): Seed.value =>
 
 let addCategory = (command: CatalogPlugin.AddCategory.command): Seed.mutation =>
   switch command {
-  | AddCategory({categoryId, name, imageUrl: ?imageUrl}) =>
-    // imageUrl is optional: include the (nullable) arg only when present, so an
-    // image-less category sends no image rather than an empty string.
+  | AddCategory({categoryId, name, categoryImage: ?categoryImage}) =>
+    // categoryImage is optional: include the (nullable) arg only when present, so
+    // an image-less category sends no image rather than an empty string.
     let base: array<(string, Seed.value)> = [
       ("categoryId", Id(categoryId)),
       ("name", String(name)),
     ]
-    let image: array<(string, Seed.value)> = switch imageUrl {
-    | Some(url) => [("imageUrl", String(url))]
+    let image: array<(string, Seed.value)> = switch categoryImage {
+    | Some(url) => [("categoryImage", String(url))]
     | None => []
     }
     Seed.mutation(catalog("AddCategory"), Array.concat(base, image))
@@ -53,10 +53,10 @@ let addCategory = (command: CatalogPlugin.AddCategory.command): Seed.mutation =>
 
 let changeCategoryImage = (command: CatalogPlugin.ChangeCategoryImage.command): Seed.mutation =>
   switch command {
-  | ChangeCategoryImage({categoryId, imageUrl}) =>
+  | ChangeCategoryImage({categoryId, categoryImage}) =>
     Seed.mutation(
       catalog("ChangeCategoryImage"),
-      [("categoryId", Id(categoryId)), ("imageUrl", String(imageUrl))],
+      [("categoryId", Id(categoryId)), ("categoryImage", String(categoryImage))],
     )
   }
 
@@ -89,17 +89,17 @@ let discontinueProduct = (command: CatalogPlugin.DiscontinueProduct.command): Se
 
 let addProduct = (command: CatalogPlugin.AddProduct.command): Seed.mutation =>
   switch command {
-  | AddProduct({productId, name, description, price, imageUrl: ?imageUrl, categoryId}) =>
-    // imageUrl is optional: include the (nullable) arg only when present, so an
-    // image-less product sends no image rather than an empty string.
+  | AddProduct({productId, name, description, price, productImage: ?productImage, categoryId}) =>
+    // productImage is optional: include the (nullable) arg only when present, so
+    // an image-less product sends no image rather than an empty string.
     let base: array<(string, Seed.value)> = [
       ("productId", Id(productId)),
       ("name", String(name)),
       ("description", String(description)),
       ("price", money(price)),
     ]
-    let image: array<(string, Seed.value)> = switch imageUrl {
-    | Some(url) => [("imageUrl", String(url))]
+    let image: array<(string, Seed.value)> = switch productImage {
+    | Some(url) => [("productImage", String(url))]
     | None => []
     }
     let tail: array<(string, Seed.value)> = [("categoryId", Id(categoryId))]

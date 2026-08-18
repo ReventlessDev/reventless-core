@@ -5,9 +5,9 @@
 
 @schema
 type consumedEvent =
-  | CategoryAdded({categoryId: string, name: string, imageUrl?: string})
+  | CategoryAdded({categoryId: string, name: string, categoryImage?: string})
   | CategoryRenamed({categoryId: string, name: string})
-  | CategoryImageChanged({categoryId: string, imageUrl: string})
+  | CategoryImageChanged({categoryId: string, categoryImage: string})
   | CategoryArchived({categoryId: string})
   | CategoryUnarchived({categoryId: string})
 
@@ -33,5 +33,5 @@ type state = {
   // The retirement is on `shelfStatus`'s own constructor and needs no second
   // annotation here.
   @lifecycle shelfStatus: shelfStatus,
-  @storageRef("categoryImages") imageUrl?: string,
+  categoryImage?: Reventless.UploadableImage.t,
 }

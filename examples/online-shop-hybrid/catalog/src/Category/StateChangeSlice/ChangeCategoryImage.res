@@ -6,8 +6,8 @@
 
 @schema
 type consumedEvent =
-  | CategoryAdded({imageUrl?: string})
-  | CategoryImageChanged({imageUrl: string})
+  | CategoryAdded({categoryImage?: string})
+  | CategoryImageChanged({categoryImage: string})
   | CategoryArchived
   // Same reason as the rename slice: the refusal is on `archived`, so the slice
   // has to hear when that stops being true.
@@ -21,7 +21,7 @@ type command =
   @transition([Categories.Listed])
   ChangeCategoryImage({
       categoryId: string,
-      @storageRef("categoryImages") imageUrl: string,
+      categoryImage: Reventless.UploadableImage.t,
     })
 
 @schema
@@ -33,5 +33,5 @@ type error =
 type event =
   | CategoryImageChanged({
       categoryId: string,
-      @storageRef("categoryImages") imageUrl: string,
+      categoryImage: Reventless.UploadableImage.t,
     })

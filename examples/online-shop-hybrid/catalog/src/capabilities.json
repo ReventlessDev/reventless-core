@@ -6,17 +6,17 @@
       "declaredBy": [
         {
           "component": "AddCategory",
-          "field": "imageUrl",
+          "field": "categoryImage",
           "annotation": "categoryImages"
         },
         {
           "component": "Categories",
-          "field": "imageUrl",
+          "field": "categoryImage",
           "annotation": "categoryImages"
         },
         {
           "component": "ChangeCategoryImage",
-          "field": "imageUrl",
+          "field": "categoryImage",
           "annotation": "categoryImages"
         }
       ]
@@ -27,22 +27,22 @@
       "declaredBy": [
         {
           "component": "AddProduct",
-          "field": "imageUrl",
+          "field": "productImage",
           "annotation": "productImages"
         },
         {
           "component": "ChangeProductImage",
-          "field": "imageUrl",
+          "field": "productImage",
           "annotation": "productImages"
         },
         {
           "component": "ImportProduct",
-          "field": "imageUrl",
+          "field": "productImage",
           "annotation": "productImages"
         },
         {
           "component": "Products",
-          "field": "imageUrl",
+          "field": "productImage",
           "annotation": "productImages"
         }
       ]

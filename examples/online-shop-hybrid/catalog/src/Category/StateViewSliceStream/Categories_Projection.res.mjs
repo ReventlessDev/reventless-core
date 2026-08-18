@@ -13,7 +13,7 @@ function project(param) {
             categoryId: categoryId,
             name: event.name,
             shelfStatus: "Listed",
-            imageUrl: event.imageUrl
+            categoryImage: event.categoryImage
           }
         }];
     case "CategoryRenamed" :
@@ -28,13 +28,13 @@ function project(param) {
           }
         }];
     case "CategoryImageChanged" :
-      let imageUrl = event.imageUrl;
+      let categoryImage = event.categoryImage;
       return [{
           TAG: "Update",
           _0: event.categoryId,
           _1: state => {
             let newrecord = {...state};
-            newrecord.imageUrl = imageUrl;
+            newrecord.categoryImage = categoryImage;
             return newrecord;
           }
         }];

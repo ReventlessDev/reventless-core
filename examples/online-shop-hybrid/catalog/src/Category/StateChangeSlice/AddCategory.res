@@ -13,7 +13,7 @@ type command =
       categoryId: string,
       name: string,
       // Optional: a category may be created without an image (absent, not `""`).
-      @storageRef("categoryImages") imageUrl?: string,
+      categoryImage?: Reventless.UploadableImage.t,
     })
 
 @schema
@@ -24,5 +24,5 @@ type event =
   | CategoryAdded({
       categoryId: string,
       name: string,
-      @storageRef("categoryImages") imageUrl?: string,
+      categoryImage?: Reventless.UploadableImage.t,
     })

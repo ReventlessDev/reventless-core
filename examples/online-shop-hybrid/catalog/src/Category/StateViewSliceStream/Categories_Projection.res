@@ -2,12 +2,12 @@
 
 let project = ({event}) =>
   switch event {
-  | CategoryAdded({categoryId, name, imageUrl: ?imageUrl}) => [
-      Set(categoryId, {categoryId, name, shelfStatus: Listed, imageUrl: ?imageUrl}),
+  | CategoryAdded({categoryId, name, categoryImage: ?categoryImage}) => [
+      Set(categoryId, {categoryId, name, shelfStatus: Listed, categoryImage: ?categoryImage}),
     ]
   | CategoryRenamed({categoryId, name}) => [Update(categoryId, state => {...state, name})]
-  | CategoryImageChanged({categoryId, imageUrl}) => [
-      Update(categoryId, state => {...state, imageUrl}),
+  | CategoryImageChanged({categoryId, categoryImage}) => [
+      Update(categoryId, state => {...state, categoryImage}),
     ]
   | CategoryArchived({categoryId}) => [
       Update(categoryId, state => {...state, shelfStatus: Archived}),

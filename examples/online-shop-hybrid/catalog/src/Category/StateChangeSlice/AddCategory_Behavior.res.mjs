@@ -28,7 +28,7 @@ function decide(state, command) {
           TAG: "CategoryAdded",
           categoryId: command.categoryId,
           name: command.name,
-          imageUrl: command.imageUrl
+          categoryImage: command.categoryImage
         }]
     };
   }

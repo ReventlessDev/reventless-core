@@ -14,7 +14,7 @@ function project(param) {
             name: event.name,
             description: event.description,
             price: event.price,
-            imageUrl: event.imageUrl,
+            productImage: event.productImage,
             categoryId: event.categoryId,
             shelfStatus: "Listed"
           }
@@ -53,13 +53,13 @@ function project(param) {
           }
         }];
     case "ProductImageChanged" :
-      let imageUrl = event.imageUrl;
+      let productImage = event.productImage;
       return [{
           TAG: "Update",
           _0: event.productId,
           _1: state => {
             let newrecord = {...state};
-            newrecord.imageUrl = imageUrl;
+            newrecord.productImage = productImage;
             return newrecord;
           }
         }];

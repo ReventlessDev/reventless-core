@@ -2,7 +2,7 @@
 
 import * as Sury from "sury";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
-import * as StorageRef$Reventless from "@reventlessdev/reventless-spec/src/semantic/StorageRef.res.mjs";
+import * as UploadableImage$Reventless from "@reventlessdev/reventless-spec/src/semantic/UploadableImage.res.mjs";
 
 let consumedEventSchema = Sury.union([
   Sury.literal("CategoryAdded"),
@@ -13,7 +13,7 @@ let commandSchema = Sury.$schema(s => ({
   TAG: "AddCategory",
   categoryId: s.m(DcbTag$Reventless.string),
   name: s.m(Sury.string),
-  imageUrl: s.m(Sury.$option(StorageRef$Reventless.forStore(undefined, "categoryImages")))
+  categoryImage: s.m(Sury.$option(UploadableImage$Reventless.forField(undefined, "categoryImages")))
 }));
 
 let errorSchema = Sury.literal("CategoryAlreadyExists");
@@ -22,7 +22,7 @@ let eventSchema = Sury.$schema(s => ({
   TAG: "CategoryAdded",
   categoryId: s.m(DcbTag$Reventless.string),
   name: s.m(Sury.string),
-  imageUrl: s.m(Sury.$option(StorageRef$Reventless.forStore(undefined, "categoryImages")))
+  categoryImage: s.m(Sury.$option(UploadableImage$Reventless.forField(undefined, "categoryImages")))
 }));
 
 function commandAuthorization(command) {

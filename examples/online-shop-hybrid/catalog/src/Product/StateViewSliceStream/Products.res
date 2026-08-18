@@ -7,11 +7,11 @@
 // more same-shaped ones, so the `Money.t` pair must lead (DZakh/sury#392).
 @schema
 type consumedEvent =
-  | ProductAdded({productId: string, name: string, description: string, price: Reventless.Money.t, imageUrl?: string, categoryId: string})
+  | ProductAdded({productId: string, name: string, description: string, price: Reventless.Money.t, productImage?: string, categoryId: string})
   | ProductPriceChanged({productId: string, price: Reventless.Money.t})
   | ProductNameChanged({productId: string, name: string})
   | ProductDescriptionChanged({productId: string, description: string})
-  | ProductImageChanged({productId: string, imageUrl: string})
+  | ProductImageChanged({productId: string, productImage: string})
   | ProductArchived({productId: string})
   | ProductUnarchived({productId: string})
   | ProductDiscontinued({productId: string})
@@ -46,7 +46,7 @@ type state = {
   name: string,
   description: string,
   price: Reventless.Money.t,
-  @storageRef("productImages") imageUrl?: string,
+  productImage?: Reventless.UploadableImage.t,
   // Indexed so the server can answer "the products in this category" — a
   // `categoryIdEq` filter on the connection, rather than a client narrowing one
   // loaded page.

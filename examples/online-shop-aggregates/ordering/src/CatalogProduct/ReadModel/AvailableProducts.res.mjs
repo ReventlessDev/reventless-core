@@ -19,6 +19,7 @@ let stateSchema$1 = Sury.$Metadata_set(stateSchema, StateAnnotations$Reventless.
   indexes: [],
   hidden: [],
   summary: [],
+  internal: [],
   drillTargets: [],
   drillTargetKeys: [],
   collapsed: [],

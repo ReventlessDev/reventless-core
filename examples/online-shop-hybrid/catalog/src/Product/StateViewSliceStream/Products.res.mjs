@@ -3,7 +3,7 @@
 import * as Sury from "sury";
 import * as Money$Reventless from "@reventlessdev/reventless-spec/src/semantic/Money.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
-import * as StorageRef$Reventless from "@reventlessdev/reventless-spec/src/semantic/StorageRef.res.mjs";
+import * as UploadableImage$Reventless from "@reventlessdev/reventless-spec/src/semantic/UploadableImage.res.mjs";
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 
 let consumedEventSchema = Sury.union([
@@ -13,7 +13,7 @@ let consumedEventSchema = Sury.union([
     name: s.m(Sury.string),
     description: s.m(Sury.string),
     price: s.m(Money$Reventless.schema),
-    imageUrl: s.m(Sury.$option(Sury.string)),
+    productImage: s.m(Sury.$option(Sury.string)),
     categoryId: s.m(Sury.string)
   })),
   Sury.$schema(s => ({
@@ -34,7 +34,7 @@ let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "ProductImageChanged",
     productId: s.m(Sury.string),
-    imageUrl: s.m(Sury.string)
+    productImage: s.m(Sury.string)
   })),
   Sury.$schema(s => ({
     TAG: "ProductArchived",
@@ -61,7 +61,7 @@ let stateSchema = Sury.$schema(s => ({
   name: s.m(Sury.string),
   description: s.m(Sury.string),
   price: s.m(Money$Reventless.schema),
-  imageUrl: s.m(Sury.$option(StorageRef$Reventless.forStore(undefined, "productImages"))),
+  productImage: s.m(Sury.$option(UploadableImage$Reventless.forField(undefined, "productImages"))),
   categoryId: s.m(Sury.string),
   shelfStatus: s.m(shelfStatusSchema)
 }));

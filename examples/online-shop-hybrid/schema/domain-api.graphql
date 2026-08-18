@@ -37,8 +37,8 @@ type Catalog_CatalogEventRecordEdge {
 
 type Catalog_Category implements Node {
   categoryId: ID!
+  categoryImage: String
   id: ID!
-  imageUrl: String
   name: String!
   shelfStatus: Catalog_CategoryShelfStatus!
 }
@@ -123,10 +123,10 @@ type Catalog_Product implements Node {
   categoryId: ID!
   description: String!
   id: ID!
-  imageUrl: String
   name: String!
   price: Money!
   productId: ID!
+  productImage: String
   shelfStatus: Catalog_ProductShelfStatus!
 }
 
@@ -456,13 +456,13 @@ input MoneyInput {
 }
 
 type Mutation {
-  Catalog_AddCategory(categoryId: ID!, imageUrl: String, name: String!): CommandResult!
-  Catalog_AddProduct(categoryId: ID!, description: String!, imageUrl: String, name: String!, price: MoneyInput!, productId: ID!): CommandResult!
+  Catalog_AddCategory(categoryId: ID!, categoryImage: String, name: String!): CommandResult!
+  Catalog_AddProduct(categoryId: ID!, description: String!, name: String!, price: MoneyInput!, productId: ID!, productImage: String): CommandResult!
   Catalog_ArchiveCategory(categoryId: ID!): CommandResult!
   Catalog_ArchiveProduct(productId: ID!): CommandResult!
-  Catalog_ChangeCategoryImage(categoryId: ID!, imageUrl: String!): CommandResult!
+  Catalog_ChangeCategoryImage(categoryId: ID!, categoryImage: String!): CommandResult!
   Catalog_ChangeProductDescription(description: String!, productId: ID!): CommandResult!
-  Catalog_ChangeProductImage(imageUrl: String!, productId: ID!): CommandResult!
+  Catalog_ChangeProductImage(productId: ID!, productImage: String!): CommandResult!
   Catalog_ChangeProductName(name: String!, productId: ID!): CommandResult!
   Catalog_ChangeProductPrice(price: MoneyInput!, productId: ID!): CommandResult!
   Catalog_DiscontinueProduct(productId: ID!): CommandResult!

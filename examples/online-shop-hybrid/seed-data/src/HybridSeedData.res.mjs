@@ -61,7 +61,7 @@ async function seedCategories(categories, client) {
     TAG: "AddCategory",
     categoryId: c.id,
     name: c.name,
-    imageUrl: c.imageUrl
+    categoryImage: c.categoryImage
   })));
   return Seed_Runner$ReventlessSeed.report(`categories: ` + categories.length.toString() + ` added`);
 }
@@ -83,7 +83,7 @@ async function uploadProductImages(products, client, store) {
           name: p.name,
           description: p.description,
           price: p.price,
-          imageUrl: servedRef._0,
+          productImage: servedRef._0,
           categoryId: p.categoryId,
           shelf: p.shelf
         });
@@ -114,7 +114,7 @@ async function uploadCategoryImages(categories, client, store) {
           weight: c.weight,
           nouns: c.nouns,
           archive: c.archive,
-          imageUrl: servedRef._0
+          categoryImage: servedRef._0
         });
       } else {
         throw {
@@ -136,7 +136,7 @@ async function seedProducts(products, client) {
     name: p.name,
     description: p.description,
     price: p.price,
-    imageUrl: p.imageUrl,
+    productImage: p.productImage,
     categoryId: p.categoryId
   })));
   return Seed_Runner$ReventlessSeed.report(`products: ` + products.length.toString() + ` added`);
@@ -153,7 +153,7 @@ async function seedRejectedDuplicate(products, client) {
     name: p.name,
     description: p.description,
     price: p.price,
-    imageUrl: p.imageUrl,
+    productImage: p.productImage,
     categoryId: p.categoryId
   }), ["ProductAlreadyExists"]);
   if (outcome !== undefined) {
@@ -187,7 +187,7 @@ async function seedCatalogEdits(products, categories, client, reimage) {
   await Seed_Client$ReventlessSeed.sendAll(client, reimage.map(param => DemoCommands$OnlineShopHybridSeed.changeCategoryImage({
     TAG: "ChangeCategoryImage",
     categoryId: param[0],
-    imageUrl: param[1]
+    categoryImage: param[1]
   })));
   let archived = categories.filter(c => c.archive);
   await Seed_Client$ReventlessSeed.sendAll(client, archived.map(c => DemoCommands$OnlineShopHybridSeed.archiveCategory({
@@ -383,8 +383,8 @@ async function summarise(client, counts) {
 async function run(connection, productCount, customerCount, orderCount) {
   let client = connection.client;
   let built = DemoData$OnlineShopHybridSeed.buildProducts(productCount, undefined);
-  let products = connection.uploadsSkipped ? (Seed_Runner$ReventlessSeed.report(`product images: skipped (SEED_SKIP_UPLOADS) — imageUrl left absent`), built) : await uploadProductImages(built, client, productImageStore);
-  let categories = connection.uploadsSkipped ? (Seed_Runner$ReventlessSeed.report(`category images: skipped (SEED_SKIP_UPLOADS) — imageUrl left absent`), DemoData$OnlineShopHybridSeed.categories) : await uploadCategoryImages(DemoData$OnlineShopHybridSeed.categories, client, categoryImageStore);
+  let products = connection.uploadsSkipped ? (Seed_Runner$ReventlessSeed.report(`product images: skipped (SEED_SKIP_UPLOADS) — productImage left absent`), built) : await uploadProductImages(built, client, productImageStore);
+  let categories = connection.uploadsSkipped ? (Seed_Runner$ReventlessSeed.report(`category images: skipped (SEED_SKIP_UPLOADS) — categoryImage left absent`), DemoData$OnlineShopHybridSeed.categories) : await uploadCategoryImages(DemoData$OnlineShopHybridSeed.categories, client, categoryImageStore);
   let match = connection.uploadsSkipped;
   let match$1 = categories.filter(c => !c.archive)[2];
   let reimage;

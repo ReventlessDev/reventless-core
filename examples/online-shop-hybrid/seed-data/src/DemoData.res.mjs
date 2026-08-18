@@ -22,7 +22,7 @@ let categories = [
       "Workstation"
     ],
     archive: false,
-    imageUrl: undefined
+    categoryImage: undefined
   },
   {
     id: "cat-02",
@@ -34,7 +34,7 @@ let categories = [
       "Phone"
     ],
     archive: false,
-    imageUrl: undefined
+    categoryImage: undefined
   },
   {
     id: "cat-03",
@@ -46,7 +46,7 @@ let categories = [
       "Speaker"
     ],
     archive: false,
-    imageUrl: undefined
+    categoryImage: undefined
   },
   {
     id: "cat-04",
@@ -58,7 +58,7 @@ let categories = [
       "Gimbal"
     ],
     archive: false,
-    imageUrl: undefined
+    categoryImage: undefined
   },
   {
     id: "cat-05",
@@ -70,7 +70,7 @@ let categories = [
       "Band"
     ],
     archive: false,
-    imageUrl: undefined
+    categoryImage: undefined
   },
   {
     id: "cat-06",
@@ -82,7 +82,7 @@ let categories = [
       "Keyboard"
     ],
     archive: false,
-    imageUrl: undefined
+    categoryImage: undefined
   },
   {
     id: "cat-07",
@@ -94,7 +94,7 @@ let categories = [
       "Case"
     ],
     archive: false,
-    imageUrl: undefined
+    categoryImage: undefined
   },
   {
     id: "cat-08",
@@ -105,7 +105,7 @@ let categories = [
       "Refurb Kit"
     ],
     archive: true,
-    imageUrl: undefined
+    categoryImage: undefined
   }
 ];
 
@@ -351,7 +351,7 @@ function buildProducts(countOpt, param) {
           name: name,
           description: name + ` — ` + Seed_Random$ReventlessSeed.pickOr(random, "", blurbs) + ` ` + category.name.toLowerCase() + ` pick.`,
           price: price,
-          imageUrl: undefined,
+          productImage: undefined,
           categoryId: category.id,
           shelf: match !== 4 ? (
               match !== 8 ? "Listed" : "Discontinued"

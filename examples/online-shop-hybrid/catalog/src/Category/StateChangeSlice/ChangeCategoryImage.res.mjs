@@ -3,16 +3,16 @@
 import * as Sury from "sury";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Api$ReventlessInfra from "@reventlessdev/reventless-infra/src/components/Api.res.mjs";
-import * as StorageRef$Reventless from "@reventlessdev/reventless-spec/src/semantic/StorageRef.res.mjs";
+import * as UploadableImage$Reventless from "@reventlessdev/reventless-spec/src/semantic/UploadableImage.res.mjs";
 
 let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "CategoryAdded",
-    imageUrl: s.m(Sury.$option(Sury.string))
+    categoryImage: s.m(Sury.$option(Sury.string))
   })),
   Sury.$schema(s => ({
     TAG: "CategoryImageChanged",
-    imageUrl: s.m(Sury.string)
+    categoryImage: s.m(Sury.string)
   })),
   Sury.literal("CategoryArchived"),
   Sury.literal("CategoryUnarchived")
@@ -21,7 +21,7 @@ let consumedEventSchema = Sury.union([
 let commandSchema = Sury.$schema(s => ({
   TAG: "ChangeCategoryImage",
   categoryId: s.m(DcbTag$Reventless.string),
-  imageUrl: s.m(StorageRef$Reventless.forStore(undefined, "categoryImages"))
+  categoryImage: s.m(UploadableImage$Reventless.forField(undefined, "categoryImages"))
 }));
 
 let errorSchema = Sury.union([
@@ -32,7 +32,7 @@ let errorSchema = Sury.union([
 let eventSchema = Sury.$schema(s => ({
   TAG: "CategoryImageChanged",
   categoryId: s.m(DcbTag$Reventless.string),
-  imageUrl: s.m(StorageRef$Reventless.forStore(undefined, "categoryImages"))
+  categoryImage: s.m(UploadableImage$Reventless.forField(undefined, "categoryImages"))
 }));
 
 let commandSchema$1 = Api$ReventlessInfra.markAllowedStates(commandSchema, [[

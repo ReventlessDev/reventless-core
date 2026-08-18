@@ -47,7 +47,7 @@ let seedCategories = async (categories: array<DemoData.category>, ~client: Seed.
   await client->Seed.Client.sendAll(
     categories->Array.map(c =>
       DemoCommands.addCategory(
-        AddCategory({categoryId: c.id, name: c.name, imageUrl: ?c.imageUrl}),
+        AddCategory({categoryId: c.id, name: c.name, categoryImage: ?c.categoryImage}),
       )
     ),
   )
@@ -55,7 +55,7 @@ let seedCategories = async (categories: array<DemoData.category>, ~client: Seed.
 }
 
 // The store a product image lives in: the qualified `{plugin}.{store}` the
-// catalog plugin's `@storageRef("productImages")` declares, and the key the
+// catalog plugin's `productImage` field derives, and the key the
 // platform publishes that store's presign endpoint under. Naming it is what lets
 // a deployment serving several stores put the image in the right one — a
 // resolver that just took "the" upload endpoint would upload into whichever
@@ -69,7 +69,7 @@ let productImageStore = "Catalog.productImages"
 let categoryImageStore = "Catalog.categoryImages"
 
 // Upload each product's deterministic placeholder SVG through the store's
-// upload endpoint and swap `imageUrl` for the returned served `/{prefix}/{key}`
+// upload endpoint and swap the image field for the returned served `/{prefix}/{key}`
 // ref, so the demo image travels the real upload → store → serve loop (local
 // dev store or AWS bucket) exactly like a user upload — no external image URL.
 let uploadProductImages = async (
@@ -89,7 +89,7 @@ let uploadProductImages = async (
         ~fileName=`${p.id}.svg`,
         ~contentType="image/svg+xml",
       ) {
-      | Ok(servedRef) => out->Array.push({...p, imageUrl: Some(servedRef)})
+      | Ok(servedRef) => out->Array.push({...p, productImage: Some(servedRef)})
       | Error(msg) => throw(Seed.Failed(`product image upload for ${p.id} failed: ${msg}`))
       }
     | None => ()
@@ -121,7 +121,7 @@ let uploadCategoryImages = async (
         ~fileName=`${c.id}.svg`,
         ~contentType="image/svg+xml",
       ) {
-      | Ok(servedRef) => out->Array.push({...c, imageUrl: Some(servedRef)})
+      | Ok(servedRef) => out->Array.push({...c, categoryImage: Some(servedRef)})
       | Error(msg) => throw(Seed.Failed(`category image upload for ${c.id} failed: ${msg}`))
       }
     | None => ()
@@ -142,7 +142,7 @@ let seedProducts = async (products: array<DemoData.product>, ~client: Seed.Clien
           name: p.name,
           description: p.description,
           price: p.price,
-          imageUrl: ?p.imageUrl,
+          productImage: ?p.productImage,
           categoryId: p.categoryId,
         }),
       )
@@ -167,7 +167,7 @@ let seedRejectedDuplicate = async (products: array<DemoData.product>, ~client: S
           name: p.name,
           description: p.description,
           price: p.price,
-          imageUrl: ?p.imageUrl,
+          productImage: ?p.productImage,
           categoryId: p.categoryId,
         }),
       ),
@@ -227,8 +227,8 @@ let seedCatalogEdits = async (
   // the same ref is the idempotent arm and appends nothing, which would leave
   // this phase reporting work it did not do.
   await client->Seed.Client.sendAll(
-    reimage->Array.map(((categoryId, imageUrl)) =>
-      DemoCommands.changeCategoryImage(ChangeCategoryImage({categoryId, imageUrl}))
+    reimage->Array.map(((categoryId, categoryImage)) =>
+      DemoCommands.changeCategoryImage(ChangeCategoryImage({categoryId, categoryImage}))
     ),
   )
 
@@ -560,8 +560,8 @@ let summarise = async (~client: Seed.Client.t, ~counts: dict<int>) => {
 // ── Run ─────────────────────────────────────────────────────────────────────
 
 // The shared seed run, parameterized only by volume so every data set walks the
-// same phases. Uploads no-op when `SEED_SKIP_UPLOADS` is set, keeping `imageUrl`
-// empty rather than failing.
+// same phases. Uploads no-op when `SEED_SKIP_UPLOADS` is set, keeping the image
+// fields empty rather than failing.
 let run = async (
   connection: Seed.connection,
   ~productCount: int,
@@ -574,13 +574,13 @@ let run = async (
   let products = switch connection.uploadsSkipped {
   | false => await uploadProductImages(built, ~client, ~store=productImageStore)
   | true =>
-    Seed.Runner.report(`product images: skipped (SEED_SKIP_UPLOADS) — imageUrl left absent`)
+    Seed.Runner.report(`product images: skipped (SEED_SKIP_UPLOADS) — productImage left absent`)
     built
   }
   let categories = switch connection.uploadsSkipped {
   | false => await uploadCategoryImages(DemoData.categories, ~client, ~store=categoryImageStore)
   | true =>
-    Seed.Runner.report(`category images: skipped (SEED_SKIP_UPLOADS) — imageUrl left absent`)
+    Seed.Runner.report(`category images: skipped (SEED_SKIP_UPLOADS) — categoryImage left absent`)
     DemoData.categories
   }
   // A second, visibly different image for one live category, so the edit phase

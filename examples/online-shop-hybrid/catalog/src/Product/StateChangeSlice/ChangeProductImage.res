@@ -5,8 +5,8 @@
 
 @schema
 type consumedEvent =
-  | ProductAdded({imageUrl?: string})
-  | ProductImageChanged({imageUrl: string})
+  | ProductAdded({productImage?: string})
+  | ProductImageChanged({productImage: string})
   | ProductArchived
   | ProductUnarchived
   | ProductDiscontinued
@@ -17,7 +17,7 @@ type consumedEvent =
 type command =
   | @authorize(AllowGroups(["Admin", "Merchandiser"]))
   @transition([Products.Listed, Products.Archived])
-  ChangeProductImage({productId: string, @storageRef("productImages") imageUrl: string})
+  ChangeProductImage({productId: string, productImage: Reventless.UploadableImage.t})
 
 @schema
 type error =
@@ -28,5 +28,5 @@ type error =
 type event =
   | ProductImageChanged({
       productId: string,
-      @storageRef("productImages") imageUrl: string,
+      productImage: Reventless.UploadableImage.t,
     })

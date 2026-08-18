@@ -8,13 +8,13 @@ function evolve(state, event) {
       return {
         exists: true,
         shelf: "Listed",
-        currentImageUrl: event.imageUrl
+        currentImageUrl: event.productImage
       };
     } else {
       return {
         exists: state.exists,
         shelf: state.shelf,
-        currentImageUrl: event.imageUrl
+        currentImageUrl: event.productImage
       };
     }
   }
@@ -53,8 +53,8 @@ function decide(state, command) {
       _0: "ProductIsDiscontinued"
     };
   }
-  let imageUrl = command.imageUrl;
-  if (Primitive_object.equal(imageUrl, state.currentImageUrl)) {
+  let productImage = command.productImage;
+  if (Primitive_object.equal(productImage, state.currentImageUrl)) {
     return {
       TAG: "Ok",
       _0: []
@@ -65,7 +65,7 @@ function decide(state, command) {
       _0: [{
           TAG: "ProductImageChanged",
           productId: command.productId,
-          imageUrl: imageUrl
+          productImage: productImage
         }]
     };
   }

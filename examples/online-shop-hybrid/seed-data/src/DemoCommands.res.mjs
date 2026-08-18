@@ -57,7 +57,7 @@ function dateRange(r) {
 }
 
 function addCategory(command) {
-  let imageUrl = command.imageUrl;
+  let categoryImage = command.categoryImage;
   let base = [
     [
       "categoryId",
@@ -74,11 +74,11 @@ function addCategory(command) {
       }
     ]
   ];
-  let image = imageUrl !== undefined ? [[
-        "imageUrl",
+  let image = categoryImage !== undefined ? [[
+        "categoryImage",
         {
           TAG: "String",
-          _0: imageUrl
+          _0: categoryImage
         }
       ]] : [];
   return Seed$ReventlessSeed.mutation(`Catalog_` + "AddCategory", base.concat(image));
@@ -94,10 +94,10 @@ function changeCategoryImage(command) {
       }
     ],
     [
-      "imageUrl",
+      "categoryImage",
       {
         TAG: "String",
-        _0: command.imageUrl
+        _0: command.categoryImage
       }
     ]
   ]);
@@ -153,7 +153,7 @@ function discontinueProduct(command) {
 }
 
 function addProduct(command) {
-  let imageUrl = command.imageUrl;
+  let productImage = command.productImage;
   let base = [
     [
       "productId",
@@ -181,11 +181,11 @@ function addProduct(command) {
       money(command.price)
     ]
   ];
-  let image = imageUrl !== undefined ? [[
-        "imageUrl",
+  let image = productImage !== undefined ? [[
+        "productImage",
         {
           TAG: "String",
-          _0: imageUrl
+          _0: productImage
         }
       ]] : [];
   let tail = [[

@@ -19,7 +19,7 @@ type command =
       description: string,
       price: Reventless.Money.t,
       // Optional: a product may be created without an image (absent, not `""`).
-      @storageRef("productImages") imageUrl?: string,
+      productImage?: Reventless.UploadableImage.t,
       @ref("Categories") categoryId: string,
     })
 
@@ -35,6 +35,6 @@ type event =
       name: string,
       description: string,
       price: Reventless.Money.t,
-      @storageRef("productImages") imageUrl?: string,
+      productImage?: Reventless.UploadableImage.t,
       categoryId: string,
     })

@@ -27,21 +27,21 @@ type category = {
   nouns: array<string>,
   archive: bool,
   // Absent until the upload phase fills it with the served `/{prefix}/{key}`
-  // ref, exactly as `product.imageUrl` is.
-  imageUrl: option<string>,
+  // ref, exactly as `product.productImage` is.
+  categoryImage: option<string>,
 }
 
 let categories: array<category> = [
-  {id: "cat-01", name: "Laptops", weight: 9, nouns: ["Notebook", "Ultrabook", "Workstation"], archive: false, imageUrl: None},
-  {id: "cat-02", name: "Phones", weight: 10, nouns: ["Handset", "Smartphone", "Phone"], archive: false, imageUrl: None},
-  {id: "cat-03", name: "Audio", weight: 9, nouns: ["Headphones", "Earbuds", "Speaker"], archive: false, imageUrl: None},
-  {id: "cat-04", name: "Cameras", weight: 7, nouns: ["Camera", "Lens", "Gimbal"], archive: false, imageUrl: None},
-  {id: "cat-05", name: "Wearables", weight: 7, nouns: ["Watch", "Tracker", "Band"], archive: false, imageUrl: None},
-  {id: "cat-06", name: "Home Office", weight: 8, nouns: ["Desk Lamp", "Monitor", "Keyboard"], archive: false, imageUrl: None},
-  {id: "cat-07", name: "Accessories", weight: 6, nouns: ["Cable", "Adapter", "Case"], archive: false, imageUrl: None},
+  {id: "cat-01", name: "Laptops", weight: 9, nouns: ["Notebook", "Ultrabook", "Workstation"], archive: false, categoryImage: None},
+  {id: "cat-02", name: "Phones", weight: 10, nouns: ["Handset", "Smartphone", "Phone"], archive: false, categoryImage: None},
+  {id: "cat-03", name: "Audio", weight: 9, nouns: ["Headphones", "Earbuds", "Speaker"], archive: false, categoryImage: None},
+  {id: "cat-04", name: "Cameras", weight: 7, nouns: ["Camera", "Lens", "Gimbal"], archive: false, categoryImage: None},
+  {id: "cat-05", name: "Wearables", weight: 7, nouns: ["Watch", "Tracker", "Band"], archive: false, categoryImage: None},
+  {id: "cat-06", name: "Home Office", weight: 8, nouns: ["Desk Lamp", "Monitor", "Keyboard"], archive: false, categoryImage: None},
+  {id: "cat-07", name: "Accessories", weight: 6, nouns: ["Cable", "Adapter", "Case"], archive: false, categoryImage: None},
   // Archived at the end of the catalog phase — after its products exist, since
   // AddProduct rejects an archived category with CategoryNotFound.
-  {id: "cat-08", name: "Clearance", weight: 4, nouns: ["Bundle", "Refurb Kit"], archive: true, imageUrl: None},
+  {id: "cat-08", name: "Clearance", weight: 4, nouns: ["Bundle", "Refurb Kit"], archive: true, categoryImage: None},
 ]
 
 let renamedCategoryId = "cat-06"
@@ -136,7 +136,7 @@ type product = {
   name: string,
   description: string,
   price: Reventless.Money.t,
-  imageUrl: option<string>,
+  productImage: option<string>,
   categoryId: string,
   // Stated by the fixture rather than derived at seed time, so reading this file
   // answers "which products end up retired" without following the run.
@@ -152,7 +152,7 @@ let currency = Reventless.Currency.EUR
 // the product index plus the product name as a label. SVG is tiny, text-based
 // (no repo binaries, no third-party service), and serves cleanly through both
 // the AWS CloudFront read path and the local dev serve route. Uploaded at seed
-// time so each product's `imageUrl` travels the real upload → store → serve loop
+// time so each product's `productImage` travels the real upload → store → serve loop
 // instead of an external URL. Products with no upload keep no image.
 let escapeXml = (s: string): string =>
   s
@@ -217,7 +217,7 @@ let buildProducts = (~count=productCount, ()): array<product> => {
           price,
           // Absent until the upload phase fills it with the served `/{prefix}/{key}`
           // ref; products left without an upload keep no image.
-          imageUrl: None,
+          productImage: None,
           categoryId: category.id,
           // Exactly one of each, at low indices so the `sample` set (16 products)
           // exercises the same path the full one does. A retirement that only the

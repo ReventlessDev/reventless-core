@@ -21,13 +21,13 @@ function evolve(state, event) {
     return {
       exists: true,
       archived: false,
-      currentImageUrl: event.imageUrl
+      currentImageUrl: event.categoryImage
     };
   } else {
     return {
       exists: state.exists,
       archived: state.archived,
-      currentImageUrl: event.imageUrl
+      currentImageUrl: event.categoryImage
     };
   }
 }
@@ -45,8 +45,8 @@ function decide(state, command) {
       _0: "CategoryAlreadyArchived"
     };
   }
-  let imageUrl = command.imageUrl;
-  if (Primitive_object.equal(imageUrl, state.currentImageUrl)) {
+  let categoryImage = command.categoryImage;
+  if (Primitive_object.equal(categoryImage, state.currentImageUrl)) {
     return {
       TAG: "Ok",
       _0: []
@@ -57,7 +57,7 @@ function decide(state, command) {
       _0: [{
           TAG: "CategoryImageChanged",
           categoryId: command.categoryId,
-          imageUrl: imageUrl
+          categoryImage: categoryImage
         }]
     };
   }

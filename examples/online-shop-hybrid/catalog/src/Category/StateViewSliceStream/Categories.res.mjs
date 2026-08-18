@@ -2,7 +2,7 @@
 
 import * as Sury from "sury";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
-import * as StorageRef$Reventless from "@reventlessdev/reventless-spec/src/semantic/StorageRef.res.mjs";
+import * as UploadableImage$Reventless from "@reventlessdev/reventless-spec/src/semantic/UploadableImage.res.mjs";
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 
 let consumedEventSchema = Sury.union([
@@ -10,7 +10,7 @@ let consumedEventSchema = Sury.union([
     TAG: "CategoryAdded",
     categoryId: s.m(Sury.string),
     name: s.m(Sury.string),
-    imageUrl: s.m(Sury.$option(Sury.string))
+    categoryImage: s.m(Sury.$option(Sury.string))
   })),
   Sury.$schema(s => ({
     TAG: "CategoryRenamed",
@@ -20,7 +20,7 @@ let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "CategoryImageChanged",
     categoryId: s.m(Sury.string),
-    imageUrl: s.m(Sury.string)
+    categoryImage: s.m(Sury.string)
   })),
   Sury.$schema(s => ({
     TAG: "CategoryArchived",
@@ -41,7 +41,7 @@ let stateSchema = Sury.$schema(s => ({
   categoryId: s.m(Sury.string),
   name: s.m(Sury.string),
   shelfStatus: s.m(shelfStatusSchema),
-  imageUrl: s.m(Sury.$option(StorageRef$Reventless.forStore(undefined, "categoryImages")))
+  categoryImage: s.m(Sury.$option(UploadableImage$Reventless.forField(undefined, "categoryImages")))
 }));
 
 let config = ReadModel$Reventless.config(undefined, undefined, undefined);
@@ -54,6 +54,7 @@ let stateSchema$1 = Sury.$Metadata_set(stateSchema, StateAnnotations$Reventless.
   indexes: [],
   hidden: [],
   summary: [],
+  internal: [],
   drillTargets: [],
   drillTargetKeys: [],
   collapsed: [],

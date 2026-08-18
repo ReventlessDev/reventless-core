@@ -44,6 +44,7 @@ let stateSchema$2 = Sury.$Metadata_set(stateSchema$1, StateAnnotations$Reventles
   indexes: [],
   hidden: ["locationNote"],
   summary: [],
+  internal: [],
   drillTargets: [],
   drillTargetKeys: [],
   collapsed: [],
