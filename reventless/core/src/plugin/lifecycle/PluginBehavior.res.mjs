@@ -119,67 +119,12 @@ function promoteEvents(state, v) {
 
 function decide(state, command) {
   switch (command.TAG) {
-    case "Heartbeat" :
-      let v = command._0;
-      let match = state.known[v];
-      if (match === undefined) {
-        return {
-          TAG: "Ok",
-          _0: [{
-              TAG: "VersionDetected",
-              _0: v
-            }]
-        };
-      }
-      switch (match.status) {
-        case "Disconnected" :
-          return {
-            TAG: "Ok",
-            _0: connectEvents(state, v, match.definition)
-          };
-        case "Connected" :
-        case "Inactive" :
-        case "Retired" :
-          return {
-            TAG: "Ok",
-            _0: []
-          };
-      }
-    case "Redetect" :
-      let v$1 = command._0;
-      let match$1 = state.known[v$1];
-      if (match$1 === undefined) {
-        return {
-          TAG: "Ok",
-          _0: [{
-              TAG: "VersionDetected",
-              _0: v$1
-            }]
-        };
-      }
-      switch (match$1.status) {
-        case "Connected" :
-        case "Disconnected" :
-          return {
-            TAG: "Ok",
-            _0: [{
-                TAG: "VersionDetected",
-                _0: v$1
-              }]
-          };
-        case "Inactive" :
-        case "Retired" :
-          return {
-            TAG: "Ok",
-            _0: []
-          };
-      }
     case "Connect" :
       let def = command._0;
-      let v$2 = def.version;
-      let match$2 = state.known[v$2];
-      if (match$2 !== undefined && match$2.status === "Connected") {
-        if (Primitive_object.equal(match$2.definition, def)) {
+      let v = def.version;
+      let match = state.known[v];
+      if (match !== undefined && match.status === "Connected") {
+        if (Primitive_object.equal(match.definition, def)) {
           return {
             TAG: "Ok",
             _0: []
@@ -196,8 +141,71 @@ function decide(state, command) {
       } else {
         return {
           TAG: "Ok",
-          _0: connectEvents(state, v$2, def)
+          _0: connectEvents(state, v, def)
         };
+      }
+    case "ReportIncompatibility" :
+      return {
+        TAG: "Ok",
+        _0: [{
+            TAG: "IncompatiblePluginDetected",
+            _0: command._0
+          }]
+      };
+    case "Heartbeat" :
+      let v$1 = command._0;
+      let match$1 = state.known[v$1];
+      if (match$1 === undefined) {
+        return {
+          TAG: "Ok",
+          _0: [{
+              TAG: "VersionDetected",
+              _0: v$1
+            }]
+        };
+      }
+      switch (match$1.status) {
+        case "Disconnected" :
+          return {
+            TAG: "Ok",
+            _0: connectEvents(state, v$1, match$1.definition)
+          };
+        case "Connected" :
+        case "Inactive" :
+        case "Retired" :
+          return {
+            TAG: "Ok",
+            _0: []
+          };
+      }
+    case "Redetect" :
+      let v$2 = command._0;
+      let match$2 = state.known[v$2];
+      if (match$2 === undefined) {
+        return {
+          TAG: "Ok",
+          _0: [{
+              TAG: "VersionDetected",
+              _0: v$2
+            }]
+        };
+      }
+      switch (match$2.status) {
+        case "Connected" :
+        case "Disconnected" :
+          return {
+            TAG: "Ok",
+            _0: [{
+                TAG: "VersionDetected",
+                _0: v$2
+              }]
+          };
+        case "Inactive" :
+        case "Retired" :
+          return {
+            TAG: "Ok",
+            _0: []
+          };
       }
     case "Disconnect" :
       let v$3 = command._0;
@@ -309,14 +317,6 @@ function decide(state, command) {
           }].concat(promoteEvents(state, v$5))
       };
       break;
-    case "ReportIncompatibility" :
-      return {
-        TAG: "Ok",
-        _0: [{
-            TAG: "IncompatiblePluginDetected",
-            _0: command._0
-          }]
-      };
     case "Retire" :
       let v$6 = command._0;
       let match$7 = state.known[v$6];

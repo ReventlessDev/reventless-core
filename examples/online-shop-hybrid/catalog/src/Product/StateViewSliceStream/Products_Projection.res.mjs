@@ -19,6 +19,17 @@ function project(param) {
             shelfStatus: "Listed"
           }
         }];
+    case "ProductPriceChanged" :
+      let price = event.price;
+      return [{
+          TAG: "Update",
+          _0: event.productId,
+          _1: state => {
+            let newrecord = {...state};
+            newrecord.price = price;
+            return newrecord;
+          }
+        }];
     case "ProductNameChanged" :
       let name = event.name;
       return [{
@@ -38,17 +49,6 @@ function project(param) {
           _1: state => {
             let newrecord = {...state};
             newrecord.description = description;
-            return newrecord;
-          }
-        }];
-    case "ProductPriceChanged" :
-      let price = event.price;
-      return [{
-          TAG: "Update",
-          _0: event.productId,
-          _1: state => {
-            let newrecord = {...state};
-            newrecord.price = price;
             return newrecord;
           }
         }];

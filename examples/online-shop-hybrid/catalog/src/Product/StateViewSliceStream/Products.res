@@ -3,12 +3,14 @@
 
 @@reventless.spec
 
+// Order is load-bearing: sury strands constructors declared after a run of two or
+// more same-shaped ones, so the `Money.t` pair must lead (DZakh/sury#392).
 @schema
 type consumedEvent =
   | ProductAdded({productId: string, name: string, description: string, price: Reventless.Money.t, imageUrl?: string, categoryId: string})
+  | ProductPriceChanged({productId: string, price: Reventless.Money.t})
   | ProductNameChanged({productId: string, name: string})
   | ProductDescriptionChanged({productId: string, description: string})
-  | ProductPriceChanged({productId: string, price: Reventless.Money.t})
   | ProductImageChanged({productId: string, imageUrl: string})
   | ProductArchived({productId: string})
   | ProductUnarchived({productId: string})

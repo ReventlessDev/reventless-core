@@ -11,17 +11,21 @@ module Plugins = PluginsReadModelSpec
 // supersession synchronously. Version-scoped commands carry the `version`
 // the transition targets; the ExtensionPoint→Plugin mapping supplies it
 // (translated from the transport-level `name@version` id — Approach 1).
+// Order is load-bearing: sury strands constructors declared after a run of two or
+// more same-shaped ones, so the `pluginDefinition` pair must lead (DZakh/sury#392).
 @schema
 type command =
+  // The handshake brings the version's row into being, so it runs from no state
+  // — `decide` accepts it against an unknown version and against every status
+  // but `Connected`, where it is a definition refresh rather than a move.
+  | @noApi @transition(() => Plugins.Connected) Connect(pluginDefinition)
+  // Records a protocol-version incompatibility without changing connection state.
+  | @noApi ReportIncompatibility(pluginDefinition)
   | @noApi Heartbeat(version)
   // Deploy-time re-detect (from RedetectPlugin). Forces the connect handshake to
   // re-run for an already-connected version so its definition is refreshed on the
   // row — unlike Heartbeat, which no-ops a connected keep-alive.
   | @noApi Redetect(version)
-  // The handshake brings the version's row into being, so it runs from no state
-  // — `decide` accepts it against an unknown version and against every status
-  // but `Connected`, where it is a definition refresh rather than a move.
-  | @noApi @transition(() => Plugins.Connected) Connect(pluginDefinition)
   // A heartbeat timing out is the only way a row reaches `Disconnected`, and
   // `decide` moves the row for exactly one status — anything else is a stray
   // disconnect it tolerates without emitting.
@@ -32,8 +36,6 @@ type command =
   // reads them off this schema rather than restating them.
   | @transition(([Plugins.Inactive, Plugins.Retired]) => Plugins.Connected) Activate(version)
   | @transition(([Plugins.Connected, Plugins.Disconnected]) => Plugins.Inactive) Deactivate(version)
-  // Records a protocol-version incompatibility without changing connection state.
-  | @noApi ReportIncompatibility(pluginDefinition)
   // Manual admin retirement of a specific version (archive). Distinct from the
   // automatic `Superseded` transition (which is decided, not commanded).
   | @transition(([Plugins.Connected, Plugins.Disconnected, Plugins.Inactive]) => Plugins.Retired)

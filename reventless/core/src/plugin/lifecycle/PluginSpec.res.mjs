@@ -6,16 +6,20 @@ import * as Api$ReventlessInfra from "@reventlessdev/reventless-infra/src/compon
 
 let commandSchema = Sury.union([
   Sury.$schema(s => ({
+    TAG: "Connect",
+    _0: s.m(Plugin$Reventless.pluginDefinitionSchema)
+  })),
+  Sury.$schema(s => ({
+    TAG: "ReportIncompatibility",
+    _0: s.m(Plugin$Reventless.pluginDefinitionSchema)
+  })),
+  Sury.$schema(s => ({
     TAG: "Heartbeat",
     _0: s.m(Plugin$Reventless.versionSchema)
   })),
   Sury.$schema(s => ({
     TAG: "Redetect",
     _0: s.m(Plugin$Reventless.versionSchema)
-  })),
-  Sury.$schema(s => ({
-    TAG: "Connect",
-    _0: s.m(Plugin$Reventless.pluginDefinitionSchema)
   })),
   Sury.$schema(s => ({
     TAG: "Disconnect",
@@ -28,10 +32,6 @@ let commandSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "Deactivate",
     _0: s.m(Plugin$Reventless.versionSchema)
-  })),
-  Sury.$schema(s => ({
-    TAG: "ReportIncompatibility",
-    _0: s.m(Plugin$Reventless.pluginDefinitionSchema)
   })),
   Sury.$schema(s => ({
     TAG: "Retire",
@@ -93,11 +93,11 @@ let errorSchema = Sury.union([
 ]);
 
 let commandSchema$1 = Api$ReventlessInfra.markNoApiVariants(commandSchema, [
+  "Connect",
+  "ReportIncompatibility",
   "Heartbeat",
   "Redetect",
-  "Connect",
-  "Disconnect",
-  "ReportIncompatibility"
+  "Disconnect"
 ]);
 
 let commandSchema$2 = Api$ReventlessInfra.markAllowedStates(commandSchema$1, [

@@ -79,19 +79,6 @@ function Make(Spec) {
   };
   let directiveHandler = async (createSchedule, deleteSchedule, queryEngine, directive) => {
     switch (directive.TAG) {
-      case "CreateDisconnectSchedule" :
-        let id = directive._0;
-        return await createSchedule({
-          name: disconnectScheduleName(id),
-          rate: ScheduleOps$ReventlessCore.minutesFromNow(directive._1),
-          payload: JSON.stringify(Message$ReventlessCore.encodeCommand$p({
-            id: id,
-            meta: Message$ReventlessCore.generateMeta(PluginExtensionPointSpec$ReventlessInfra.name, undefined, "Scheduler", undefined, undefined, undefined, undefined, undefined),
-            command: "DisconnectPlugin"
-          }, Sury.string, PluginExtensionPointSpec$ReventlessInfra.commandSchema))
-        });
-      case "DeleteDisconnectSchedule" :
-        return await deleteSchedule(disconnectScheduleName(directive._0));
       case "DoConnectPlugin" :
         let fn = Spec.manageSubscriptions;
         if (fn !== undefined) {
@@ -117,6 +104,19 @@ function Make(Spec) {
       case "ForwardCommand" :
         let match = directive._0;
         return await forwardCommand(match.id, match.command, match.extensionPointName, queryEngine);
+      case "CreateDisconnectSchedule" :
+        let id = directive._0;
+        return await createSchedule({
+          name: disconnectScheduleName(id),
+          rate: ScheduleOps$ReventlessCore.minutesFromNow(directive._1),
+          payload: JSON.stringify(Message$ReventlessCore.encodeCommand$p({
+            id: id,
+            meta: Message$ReventlessCore.generateMeta(PluginExtensionPointSpec$ReventlessInfra.name, undefined, "Scheduler", undefined, undefined, undefined, undefined, undefined),
+            command: "DisconnectPlugin"
+          }, Sury.string, PluginExtensionPointSpec$ReventlessInfra.commandSchema))
+        });
+      case "DeleteDisconnectSchedule" :
+        return await deleteSchedule(disconnectScheduleName(directive._0));
     }
   };
   let mapIncomingCommand = (id, cmd, _meta) => {

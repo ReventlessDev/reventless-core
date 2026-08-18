@@ -69,15 +69,6 @@ let eventSchema = Sury.union([
 
 let directiveSchema = Sury.union([
   Sury.$schema(s => ({
-    TAG: "CreateDisconnectSchedule",
-    _0: s.m(Sury.string),
-    _1: s.m(timeoutSchema)
-  })),
-  Sury.$schema(s => ({
-    TAG: "DeleteDisconnectSchedule",
-    _0: s.m(Sury.string)
-  })),
-  Sury.$schema(s => ({
     TAG: "DoConnectPlugin",
     _0: s.m(Plugin$Reventless.pluginDefinitionSchema)
   })),
@@ -88,6 +79,15 @@ let directiveSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "ForwardCommand",
     _0: s.m(forwardCommandSchema)
+  })),
+  Sury.$schema(s => ({
+    TAG: "CreateDisconnectSchedule",
+    _0: s.m(Sury.string),
+    _1: s.m(timeoutSchema)
+  })),
+  Sury.$schema(s => ({
+    TAG: "DeleteDisconnectSchedule",
+    _0: s.m(Sury.string)
   }))
 ]);
 

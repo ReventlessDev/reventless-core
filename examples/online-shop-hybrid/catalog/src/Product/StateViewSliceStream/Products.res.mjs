@@ -17,6 +17,11 @@ let consumedEventSchema = Sury.union([
     categoryId: s.m(Sury.string)
   })),
   Sury.$schema(s => ({
+    TAG: "ProductPriceChanged",
+    productId: s.m(Sury.string),
+    price: s.m(Money$Reventless.schema)
+  })),
+  Sury.$schema(s => ({
     TAG: "ProductNameChanged",
     productId: s.m(Sury.string),
     name: s.m(Sury.string)
@@ -25,11 +30,6 @@ let consumedEventSchema = Sury.union([
     TAG: "ProductDescriptionChanged",
     productId: s.m(Sury.string),
     description: s.m(Sury.string)
-  })),
-  Sury.$schema(s => ({
-    TAG: "ProductPriceChanged",
-    productId: s.m(Sury.string),
-    price: s.m(Money$Reventless.schema)
   })),
   Sury.$schema(s => ({
     TAG: "ProductImageChanged",
@@ -83,6 +83,7 @@ let stateSchema$1 = Sury.$Metadata_set(stateSchema, StateAnnotations$Reventless.
     ]],
   hidden: [],
   summary: [],
+  internal: [],
   drillTargets: [],
   drillTargetKeys: [],
   collapsed: [],

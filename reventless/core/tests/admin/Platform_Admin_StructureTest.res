@@ -147,11 +147,11 @@ describe("the Plugin command defs carry every argument the SDL requires", () => 
     let internal =
       Platform_Admin_Structure.pluginCommands->Array.filter(c => c.apiExposed == Some(false))
     expect(internal->Array.map(c => c.name))->toEqual([
+      "Connect",
+      "ReportIncompatibility",
       "Heartbeat",
       "Redetect",
-      "Connect",
       "Disconnect",
-      "ReportIncompatibility",
     ])
     expect(internal->Array.every(c => c.mutationField == ""))->toEqual(true)
   })

@@ -44,12 +44,14 @@ type event =
   | PluginActivated(pluginDefinition)
   | PluginRetired(pluginDefinition)
 
+// Order is load-bearing: sury strands constructors declared after a run of two or
+// more same-shaped ones, so union-carrying payloads must lead (DZakh/sury#392).
 @schema
 type directive =
-  | CreateDisconnectSchedule(string, timeout)
-  | DeleteDisconnectSchedule(string)
   | DoConnectPlugin(pluginDefinition)
   | DoDisconnectPlugin(pluginDefinition)
   | ForwardCommand(forwardCommand)
+  | CreateDisconnectSchedule(string, timeout)
+  | DeleteDisconnectSchedule(string)
 
 let moduleUrl: string = %raw(`import.meta.url`)
