@@ -13,6 +13,11 @@ type args = {
   name?: Pulumi.Input.t<string>,
   comparisonOperator: Pulumi.Input.t<string>,
   evaluationPeriods: Pulumi.Input.t<int>,
+  /** How many of the last `evaluationPeriods` datapoints must breach to alarm
+    ("M out of N"). Defaults to `evaluationPeriods` when omitted, which is the
+    all-or-nothing behaviour. Setting it below `evaluationPeriods` is how an
+    alarm rides out an isolated blip without going blind to a sustained one. */
+  datapointsToAlarm?: Pulumi.Input.t<int>,
   metricName: Pulumi.Input.t<string>,
   namespace: Pulumi.Input.t<string>,
   /** Metric period in seconds. */
@@ -23,6 +28,12 @@ type args = {
   dimensions?: Pulumi.Input.t<Dict.t<string>>,
   treatMissingData?: Pulumi.Input.t<string>,
   alarmActions?: Pulumi.Input.t<array<Pulumi.Input.t<string>>>,
+  /** ARNs fired when the alarm returns to OK. Without these a notification
+    channel reports every incident and no recovery, so a reader of an ALARM
+    message cannot tell an ongoing outage from one that cleared minutes later. */
+  okActions?: Pulumi.Input.t<array<Pulumi.Input.t<string>>>,
+  /** ARNs fired when the alarm enters INSUFFICIENT_DATA. */
+  insufficientDataActions?: Pulumi.Input.t<array<Pulumi.Input.t<string>>>,
   alarmDescription?: Pulumi.Input.t<string>,
   tags?: Pulumi.Input.t<Aws.tags>,
 }
