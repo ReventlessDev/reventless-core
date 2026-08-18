@@ -24,7 +24,7 @@ function toResourceInfo(param) {
   ]).apply(param => ({
     TAG: "StorageKeys",
     partitionKey: param[0],
-    sortKey: param[1]
+    sortKey: Primitive_option.fromNullable(param[1])
   }));
 }
 
@@ -40,7 +40,7 @@ function toResolvedTableOutput(param) {
     name: param[0],
     arn: param[2],
     hashKey: param[3],
-    rangeKey: Stdlib_Option.map(param[4], rangeKey => rangeKey)
+    rangeKey: Stdlib_Option.map(Primitive_option.fromNullable(param[4]), prim => prim)
   }));
 }
 

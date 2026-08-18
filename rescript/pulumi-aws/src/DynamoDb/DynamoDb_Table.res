@@ -9,7 +9,9 @@ type t = {
   name: Pulumi.Output.t<string>,
   id: Pulumi.Output.t<string>,
   hashKey: Pulumi.Output.t<string>,
-  rangeKey: Pulumi.Output.t<option<string>>,
+  // Pulumi resolves an absent range key to `null`, which ReScript's `option`
+  // (None = undefined) does not accept. Nullable is the shape that arrives.
+  rangeKey: Pulumi.Output.t<Nullable.t<string>>,
   streamEnabled: Pulumi.Output.t<option<bool>>,
   streamArn: Pulumi.Output.t<string>,
   streamLabel: Pulumi.Output.t<string>,

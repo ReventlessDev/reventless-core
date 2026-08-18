@@ -7,7 +7,12 @@ let log = ReventlessCore.Logger.fromEnv()
 let toResourceInfo: table => Pulumi.Output.t<ReventlessInfra.Adapter.resourceInfo> = ({hashKey, rangeKey}) =>
   (hashKey, rangeKey)
   ->Pulumi.Output.all2
-  ->Pulumi.Output.apply(((hashKey, rangeKey)) => ReventlessInfra.Adapter.StorageKeys({partitionKey: hashKey, sortKey: rangeKey}))
+  ->Pulumi.Output.apply(((hashKey, rangeKey)) => ReventlessInfra.Adapter.StorageKeys({
+    partitionKey: hashKey,
+    // Normalize here: a null reaching the plugin-structure export fails sury's
+    // encode-side validation, which expects `option`'s undefined.
+    sortKey: rangeKey->Nullable.toOption,
+  }))
 
 let toResolvedTableOutput = ({name, id, arn, hashKey, rangeKey}) =>
   (name, id, arn, hashKey, rangeKey)
@@ -17,7 +22,7 @@ let toResolvedTableOutput = ({name, id, arn, hashKey, rangeKey}) =>
     name,
     arn,
     hashKey,
-    rangeKey: ?(rangeKey->Option.map(rangeKey => rangeKey->Nullable.make)),
+    rangeKey: ?(rangeKey->Nullable.toOption->Option.map(Nullable.make)),
   })
 
 let toResource = (~tags=?, {id, name, arn} as table) =>
