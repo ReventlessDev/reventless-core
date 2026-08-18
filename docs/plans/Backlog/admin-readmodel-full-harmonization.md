@@ -2,9 +2,11 @@
 
 **Status:** Backlog (not started)
 
-**Depends on:** [plugin-history-parity-gap.md](../plugin-history-parity-gap.md) Part 1
-(admin read-model query SDL generated from the spec) — this plan is "Part 3" of that
-effort, deliberately deferred because it carries cross-repo consumer impact.
+**Depended on:** [plugin-history-parity-gap.md](../rejected/plugin-history-parity-gap.md)
+Part 1 (admin read-model query SDL generated from the spec) — **that plan was rejected
+2026-06-20.** Core admin no longer ships built-in views; a platform that wants them
+registers its own read models. What survives is Part 1's generic admin-query SDL
+mechanism (`Api_Naming.adminField`), still used for the one remaining admin read model.
 
 **Analysis:** [plugin-aggregate-readmodel-vs-normal-harmonization.md](../../analysis/plugin-aggregate-readmodel-vs-normal-harmonization.md),
 [plugin-history-view-design.md](../../analysis/done/plugin-history-view-design.md) (§3.3, §7, §8).
@@ -125,13 +127,32 @@ generic pipeline rather than being worth a fourth hand-written record.
 
 ## Item 3.3 — Route admin read models through the ordinary component pipeline
 
-The parity-gap plan's Part 1 does the **minimal** fix (emit `<single>Items` +
-`By<Index>` for admin fragments). The maximal version routes admin read models
-(`Plugins`, `PlatformEventGraph`, `UIFragmentRegistry`, `PluginHistory`) entirely
-through the same composition path ordinary plugins use (`Plugin_Structure.make` +
+> **➡️ Superseded by [admin-structure-derived-from-specs.md](../admin-structure-derived-from-specs.md)**,
+> which re-scopes this item to what is actually left and carries the evidence for it.
+> The notes below are why it needed re-scoping.
+>
+> **⚠️ The premise has eroded — re-scope before starting.** As written this item
+> targets four admin read models. `PlatformEventGraph` and `PluginHistory` were
+> **removed from core** by `0de749a7b` (*"remove built-in event-graph and plugin-history
+> read models"*), and `PluginBaseFragment.queryEntries` is now a **single** entry —
+> `Plugins`. The only other candidate is `UIFragmentRegistry`, which is item 3.1's
+> subject and blocked cross-repo. So the real scope is one component, not four.
+>
+> This item's own gating criterion — *"only worth doing if several admin read models
+> accumulate or the maintenance cost of the parallel path becomes painful"* — has moved
+> **away** from being met: the population went from four to one. Item 3.2 also removed
+> the main standing cost (the hand-written lifecycle metadata). Do not start this
+> without first re-justifying it.
+
+The maximal version routes the remaining admin read model(s) through the same
+composition path ordinary plugins use (`Plugin_Structure.make` +
 `GraphQL_FragmentGenerator` + the generic read-model builder), deleting the
 hand-maintained `PluginBaseFragment.queryEntries` / `AdminApi.baseFragment` query
 assembly outright.
+
+Note that the three special cases in `PluginBaseFragment` would still need somewhere
+to live: plural `Spec.name` vs singular GraphQL type, the `Platform_UIFragments` field
+collision, and the option-of-nested-object exclusions.
 
 **Work:**
 - Treat the admin platform as an ordinary plugin for structure/SDL purposes (or a
