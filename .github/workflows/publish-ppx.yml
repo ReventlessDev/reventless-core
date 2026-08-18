@@ -264,7 +264,7 @@ jobs:
   # Independent of the `test` job so a flaky test doesn't strand a successful
   # per-platform publish without a matching main release.
   publish-main:
-    needs: build
+    needs: [preflight, build]
     runs-on: ubuntu-latest
     name: Publish main package
     if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish)
