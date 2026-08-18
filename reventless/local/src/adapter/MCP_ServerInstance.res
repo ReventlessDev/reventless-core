@@ -157,7 +157,7 @@ let make = (~label: string="MCP"): t => {
       | Some(json) =>
         json
         ->JSON.parseOrThrow
-        ->S.parseOrThrow(Reventless.Identity.schema)
+        ->S.parseOrThrow(~to=Reventless.Identity.schema)
       | None => Reventless.Identity.anonymous
       }
     } catch {

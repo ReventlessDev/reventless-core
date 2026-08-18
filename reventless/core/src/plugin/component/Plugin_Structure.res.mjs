@@ -65,9 +65,7 @@ let conventionalLabelNames = [
   "displayname"
 ];
 
-function shapeOfItem(entityName, item) {
-  return SchemaType$ReventlessCore.fromSury(entityName, item.location, item.schema);
-}
+let shapeOfField = SchemaType$ReventlessCore.fromSury;
 
 function lifecycleFieldFromStateSchema(entityName, stateSchema) {
   let spec = StateAnnotations$Reventless.getSpec(stateSchema);
@@ -75,13 +73,11 @@ function lifecycleFieldFromStateSchema(entityName, stateSchema) {
   if (annotated !== undefined) {
     return annotated;
   } else if (stateSchema.type === "object") {
-    return Stdlib_Option.map(stateSchema.items.find(item => {
-      if (item.location === "lifecycle") {
-        return isLifecycleShape(shapeOfItem(entityName, item));
-      } else {
-        return false;
+    return Stdlib_Option.flatMap(stateSchema.properties["lifecycle"], schema => {
+      if (isLifecycleShape(SchemaType$ReventlessCore.fromSury(entityName, "lifecycle", schema))) {
+        return "lifecycle";
       }
-    }), item => item.location);
+    });
   } else {
     return;
   }
@@ -122,8 +118,8 @@ function checkRetiredValue(entityName, stateSchema) {
     log.warn("Plugin_Structure", undefined, entityName + `: @retired(` + named + `) is on "` + field + `", which is not this record's lifecycle field` + Stdlib_Option.getOr(Stdlib_Option.map(lifecycle, f => ` (that is "` + f + `")`), " (it declares none)") + `. A retirement state no command's @transition can name loses the command filtering the state form exists for.`);
   }
   let declared;
-  declared = stateSchema.type === "object" ? Stdlib_Option.getOr(Stdlib_Option.map(stateSchema.items.find(item => item.location === field), item => {
-      let match = shapeOfItem(entityName, item);
+  declared = stateSchema.type === "object" ? Stdlib_Option.getOr(Stdlib_Option.map(stateSchema.properties[field], schema => {
+      let match = SchemaType$ReventlessCore.fromSury(entityName, field, schema);
       if (typeof match !== "object") {
         return [];
       }
@@ -168,8 +164,8 @@ function reportRetiredStates(pluginName, failures, unchecked) {
 function lifecycleStatesFromStateSchema(entityName, stateSchema) {
   return Stdlib_Option.flatMap(lifecycleFieldFromStateSchema(entityName, stateSchema), field => {
     if (stateSchema.type === "object") {
-      return Stdlib_Option.map(stateSchema.items.find(item => item.location === field), item => {
-        let match = shapeOfItem(entityName, item);
+      return Stdlib_Option.map(stateSchema.properties[field], schema => {
+        let match = SchemaType$ReventlessCore.fromSury(entityName, field, schema);
         if (typeof match !== "object") {
           return [];
         }
@@ -298,29 +294,30 @@ function labelFieldsFromStateSchema(entityName, stateSchema) {
     };
   }
   let candidates;
-  candidates = stateSchema.type === "object" ? stateSchema.items.filter(item => {
-      if (item.location !== "TAG" && item.location !== "id") {
-        return isLabelShape(shapeOfItem(entityName, item));
+  candidates = stateSchema.type === "object" ? Object.entries(stateSchema.properties).filter(param => {
+      let name = param[0];
+      if (name !== "TAG" && name !== "id") {
+        return isLabelShape(SchemaType$ReventlessCore.fromSury(entityName, name, param[1]));
       } else {
         return false;
       }
     }) : [];
-  let conventional = candidates.find(item => {
-    let lower = item.location.toLowerCase();
+  let conventional = candidates.find(param => {
+    let lower = param[0].toLowerCase();
     return conventionalLabelNames.some(n => n === lower);
   });
   let picked = conventional !== undefined ? [
-      conventional,
+      conventional[0],
       "Convention"
-    ] : Stdlib_Option.map(candidates[0], item => [
-      item,
+    ] : Stdlib_Option.map(candidates[0], param => [
+      param[0],
       "Position"
     ]);
   if (picked !== undefined) {
-    let item = picked[0];
+    let name = picked[0];
     return {
-      field: item.location,
-      searchableFields: [item.location],
+      field: name,
+      searchableFields: [name],
       source: picked[1]
     };
   }
@@ -377,7 +374,7 @@ function toEventDef(v) {
 }
 
 function extractEventDefs(eventSchema) {
-  if (eventSchema.type === "union") {
+  if (eventSchema.type === "anyOf") {
     return Stdlib_Array.filterMap(eventSchema.anyOf, toEventDef);
   } else {
     return Stdlib_Option.mapOr(toEventDef(eventSchema), [], def => [def]);
@@ -537,10 +534,56 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     }
   };
   let extractCommandDefs = (isAggregate, mutationFieldFor, commandAuthorization, commandSchema) => {
-    if (commandSchema.type === "union") {
+    if (commandSchema.type === "anyOf") {
       return Stdlib_Array.filterMap(commandSchema.anyOf, v => toCommandDef(isAggregate, mutationFieldFor, commandSchema, commandAuthorization, v));
     } else {
       return Stdlib_Option.mapOr(toCommandDef(isAggregate, mutationFieldFor, commandSchema, commandAuthorization, commandSchema), [], def => [def]);
+    }
+  };
+  let toEventDef = v => {
+    let mkDef = (variantName, properties) => {
+      let references = Stdlib_Array.filterMap(Object.entries(properties), param => {
+        let fieldName = param[0];
+        return Stdlib_Option.map(Reference$Reventless.getFieldTarget(param[1]), target => ({
+          fieldName: fieldName,
+          entity: target.entity,
+          plugin: target.plugin
+        }));
+      });
+      return {
+        name: variantName,
+        schema: JSON.stringify(SuryToJsonSchema$ReventlessCore.deriveObjectSchema(v)),
+        references: references
+      };
+    };
+    switch (v.type) {
+      case "string" :
+        let variantName = v.const;
+        if (variantName !== undefined) {
+          return mkDef(variantName, {});
+        } else {
+          return;
+        }
+      case "object" :
+        let properties = v.properties;
+        return Stdlib_Option.flatMap(properties["TAG"], tagSchema => {
+          if (tagSchema.type !== "string") {
+            return;
+          }
+          let variantName = tagSchema.const;
+          if (variantName !== undefined) {
+            return mkDef(variantName, properties);
+          }
+        });
+      default:
+        return;
+    }
+  };
+  let extractEventDefs = eventSchema => {
+    if (eventSchema.type === "anyOf") {
+      return Stdlib_Array.filterMap(eventSchema.anyOf, toEventDef);
+    } else {
+      return Stdlib_Option.mapOr(toEventDef(eventSchema), [], def => [def]);
     }
   };
   let scsProduced = stateChangeSlices.map(SCS => [
@@ -690,7 +733,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
         return [];
       }
     };
-    if (schema.type === "union") {
+    if (schema.type === "anyOf") {
       return schema.anyOf.flatMap(fromVariant);
     } else {
       return fromVariant(schema);
@@ -916,7 +959,7 @@ export {
   isLabelShape,
   isLifecycleShape,
   conventionalLabelNames,
-  shapeOfItem,
+  shapeOfField,
   lifecycleFieldFromStateSchema,
   retiredFromStateSchema,
   retiredFieldFromStateSchema,

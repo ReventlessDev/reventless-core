@@ -297,7 +297,7 @@ let structureOf = (item: dict<JSON.t>, ~name as _: string): option<(
   switch (item->str("name"), item->Dict.get("structure")->Option.flatMap(JSON.Decode.object)) {
   | (Some(pluginId), Some(structure)) =>
     let healed = structure->healStructure->JSON.Encode.object
-    switch healed->S.parseJsonOrThrow(Reventless.Plugin.pluginStructureSchema) {
+    switch healed->Reventless.Util_Sury.fromJson(Reventless.Plugin.pluginStructureSchema) {
     | decoded => Some((pluginId, decoded))
     | exception _ =>
       JsError.throwWithMessage(

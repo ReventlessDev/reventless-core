@@ -39,7 +39,7 @@ module Make = (
     // fields entirely, while the consumer side (DcbDecode) parses with the sury
     // schema — a js_nullable option field would reject the missing key and the
     // event would be dropped as schema drift.
-    let json = event->S.reverseConvertToJsonOrThrow(Spec.eventSchema)
+    let json = event->Reventless.Util_Sury.toJson(Spec.eventSchema)
     let (eventType, data) = json->Message.splitMessage
     // Use `extractTagsExpanded` (not `extractTags`) so per-element tags on
     // `array<string>` fields are emitted — e.g. OrderPlaced's
@@ -433,7 +433,7 @@ module Make = (
           | Error(error) =>
             // Business-rule rejection — no append, but the read snapshot is valid; cache it.
             cachePut((state, headPosition))
-            let errorJson = error->S.reverseConvertToJsonOrThrow(Spec.errorSchema)
+            let errorJson = error->Reventless.Util_Sury.toJson(Spec.errorSchema)
             let errorCode = errorJson->Message.variantNameOfJson
             let (_, payloadDict) = errorJson->Message.splitMessage
             let errorDetail =

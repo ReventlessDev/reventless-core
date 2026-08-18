@@ -79,11 +79,13 @@ let validateAmount = (amount: float): result<float, string> =>
     `Cannot access 'v0' before initialization`). Refining the field is both the
     honest placement and the one that works. */
 let amountSchema: S.t<float> =
-  S.float->S.refine(s => amount =>
-    switch validateAmount(amount) {
-    | Ok(_) => ()
-    | Error(why) => s.fail(why)
-    }
+  S.float->S.refine(
+    amount =>
+      switch validateAmount(amount) {
+      | Ok(_) => true
+      | Error(_) => false
+      },
+    ~error="expected a monetary amount",
   )
 
 @schema

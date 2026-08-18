@@ -69,7 +69,7 @@ let make = (
         entries
         ->Array.push((
           "partitionTag",
-          partitionTag->S.reverseConvertToJsonOrThrow(Reventless.DcbTag.derivedPartitionTagSchema),
+          partitionTag->Reventless.Util_Sury.toJson(Reventless.DcbTag.derivedPartitionTagSchema),
         ))
         ->ignore
       | Classic => entries->Array.push(("kind", "classic"->JSON.Encode.string))->ignore

@@ -24,8 +24,8 @@
     "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
     "@reventlessdev/rescript-uuid": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*",
-    "sury": "11.0.0-alpha.4",
-    "sury-ppx": "11.0.0-alpha.2",
+    "sury": "11.0.0-rc.1",
+    "sury-ppx": "11.0.0-rc.1",
     "uuid": "^13.0.0"
   },
   "devDependencies": {

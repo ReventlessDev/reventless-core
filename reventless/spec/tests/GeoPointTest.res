@@ -163,7 +163,7 @@ describe("GeoPoint:", () => {
       )
 
     let parses = (raw: JSON.t) =>
-      switch raw->S.parseOrThrow(GeoPoint.schema) {
+      switch raw->S.parseOrThrow(~to=GeoPoint.schema) {
       | _ => true
       | exception _ => false
       }
@@ -195,7 +195,7 @@ describe("GeoPoint:", () => {
     )
 
     testSync("serializes as {lat, lng}", () =>
-      expect(vienna->S.reverseConvertToJsonOrThrow(GeoPoint.schema))->toEqual(
+      expect(vienna->Util_Sury.toJson(GeoPoint.schema))->toEqual(
         point(48.2082, 16.3738),
       )
     )
@@ -206,7 +206,7 @@ describe("GeoPoint:", () => {
     testSync("JSON from a hand-rolled {lat, lng} record parses unchanged", () => {
       let legacy: {"lat": float, "lng": float} = {"lat": 48.2082, "lng": 16.3738}
       expect(
-        legacy->Obj.magic->S.parseOrThrow(GeoPoint.schema),
+        legacy->Obj.magic->S.parseOrThrow(~to=GeoPoint.schema),
       )->toEqual(vienna)
     })
   })

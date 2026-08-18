@@ -8,8 +8,7 @@
 // `StorageKeys` value, `sortKey` present or not. `js_nullable` produces `string
 // | null` instead, which is JSON-safe in a union payload. (Same fix as
 // `reventless-spec`'s `Plugin.res`.)
-@module("sury/src/Sury.res.mjs") external _jsNullable: (S.t<'a>, unit) => S.t<option<'a>> = "js_nullable"
-let stringOptionSchema = _jsNullable(S.string, ())
+let stringOptionSchema = S.string->S.nullAsOption
 
 @schema
 type resourceInfo =

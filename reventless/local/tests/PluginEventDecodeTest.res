@@ -16,7 +16,7 @@ let envelopeOf = (event: ReventlessCore.PluginSpec.event) =>
     "Catalog",
     meta,
     ~recordedAt="2024-01-01T00:00:00Z",
-    event->S.reverseConvertToJsonOrThrow(ReventlessCore.PluginSpec.eventSchema),
+    event->Reventless.Util_Sury.toJson(ReventlessCore.PluginSpec.eventSchema),
   )
 
 describe("Platform.decodePluginEventEnvelope", () => {
@@ -38,7 +38,7 @@ describe("Platform.decodePluginEventEnvelope", () => {
   testSync("returns None for a bare event JSON (no envelope) and malformed input", () => {
     // The old bug class: input that is not the {id, meta, event} envelope.
     let bare =
-      ReventlessCore.PluginSpec.VersionDetected("2.0.0")->S.reverseConvertToJsonOrThrow(
+      ReventlessCore.PluginSpec.VersionDetected("2.0.0")->Reventless.Util_Sury.toJson(
         ReventlessCore.PluginSpec.eventSchema,
       )
     expect(Platform.decodePluginEventEnvelope(bare))->toEqual(None)
@@ -64,7 +64,7 @@ describe("Platform.decodeUiFragmentRegistryEventEnvelope", () => {
   }
 
   let dcbEnvelopeOf = (event: ReventlessCore.UiFragmentRegistry.event) => {
-    let json = event->S.reverseConvertToJsonOrThrow(ReventlessCore.UiFragmentRegistry.eventSchema)
+    let json = event->Reventless.Util_Sury.toJson(ReventlessCore.UiFragmentRegistry.eventSchema)
     let (eventType, data) = json->ReventlessCore.Message.splitMessage
     ReventlessCore.Message.composeEventJson'(
       "Catalog",

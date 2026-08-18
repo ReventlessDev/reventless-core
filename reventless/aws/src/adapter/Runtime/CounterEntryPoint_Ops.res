@@ -86,7 +86,7 @@ let splitRecords = (
   let references = referenceRecords->Array.filterMap(record =>
     switch record->Util_DynamoDbStream_Runtime.parseDynamoDbStreamRecordState {
     | NewImage(id, newImage) =>
-      let inc = switch newImage->S.parseJsonOrThrow(referencesViewSchema) {
+      let inc = switch newImage->Reventless.Util_Sury.fromJson(referencesViewSchema) {
       | {inc} => inc
       | exception _ => 1
       }

@@ -125,7 +125,7 @@ let extractCommandName = (fieldName: string) => {
 
 let extractVariantSchema = (commandSchema: S.t<unknown>, ~index=0) =>
   switch commandSchema {
-  | Union({anyOf}) => anyOf->Array.get(index)->Option.getOr(commandSchema)
+  | AnyOf({anyOf}) => anyOf->Array.get(index)->Option.getOr(commandSchema)
   | _ => commandSchema
   }
 

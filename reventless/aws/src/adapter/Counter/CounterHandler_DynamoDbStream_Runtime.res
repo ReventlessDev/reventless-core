@@ -79,7 +79,7 @@ let handleStreamEvent = (
   let references = referenceRecords->Array.filterMap(record =>
     switch record->parseDynamoDbStreamRecordState {
     | NewImage(id, newImage) =>
-      let inc = switch newImage->S.parseJsonOrThrow(referencesViewSchema) {
+      let inc = switch newImage->Reventless.Util_Sury.fromJson(referencesViewSchema) {
       | {inc} => inc
       | exception _err => 1
       }

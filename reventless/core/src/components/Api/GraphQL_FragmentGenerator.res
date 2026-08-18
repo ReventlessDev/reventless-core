@@ -641,7 +641,7 @@ let generate = (
     // schema shape — see `mutationSchemaEntry.injectIdArg`.
     let injectIdArg = entry.injectIdArg->Option.getOr(true)
     switch schema {
-    | Union({anyOf}) =>
+    | AnyOf({anyOf}) =>
       // Map each fieldName to its variant in anyOf by matching the constructor
       // name. Position-based pairing (anyOf index ↔ fieldNames index) breaks
       // when `@noApi` filters out some variants but the schema still carries
@@ -650,17 +650,8 @@ let generate = (
       // index 1, leaking a stale `_0: Platform_Plugin_Deactivate_0` arg.
       let variantNames = anyOf->Array.map(v =>
         switch v {
-        | Object({items}) =>
-          items
-          ->Array.find(item => item.location == "TAG")
-          ->Option.flatMap(item =>
-            switch item.schema {
-            | String({const}) => Some(const)
-            | _ => None
-            }
-          )
-          ->Option.getOr("")
-        | String({const}) => const
+        | Object({properties}) => SchemaWalker.tagConstOf(properties)->Option.getOr("")
+        | String({const: ?Some(const)}) => const
         | _ => ""
         }
       )

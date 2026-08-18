@@ -119,7 +119,7 @@ let variantFieldNames = (schema: S.t<unknown>, ~variant: string): array<string> 
     | _ => false
     }
   switch schema {
-  | Union({anyOf}) =>
+  | AnyOf({anyOf}) =>
     anyOf
     ->Array.find(v =>
       switch v {

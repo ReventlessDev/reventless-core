@@ -16,7 +16,6 @@ let keysOf = (config: ReventlessInfra.Platform.bakedManifest) =>
   BakedManifest.files(~config)->Array.map(((key, _)) => key)
 
 describe("BakedManifest.files", () => {
-  open Expect
 
   // The regression line: one declaration, one file, under the name every
   // existing deployment's config.json already points at.

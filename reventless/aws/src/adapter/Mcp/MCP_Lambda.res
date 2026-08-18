@@ -62,11 +62,11 @@ let generateConfig = (
 ): mcpConfig => {
   let toolDefs = ReventlessCore.MCP_SchemaGenerator.generateTools(~pluginName, ~mutationEntries)
   // Build a lookup from field name to component kind.
-  // Union({anyOf}) schemas are aggregate commands; others are DCB StateChangeSlice commands.
+  // AnyOf({anyOf}) schemas are aggregate commands; others are DCB StateChangeSlice commands.
   let kindByField = Dict.make()
   mutationEntries->Array.forEach(entry => {
     let kind = switch entry.commandSchema {
-    | Union(_) => "Aggregate"
+    | AnyOf(_) => "Aggregate"
     | _ => "StateChangeSlice"
     }
     entry.fieldNames->Array.forEach(fieldName => kindByField->Dict.set(fieldName, kind))

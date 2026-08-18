@@ -56,7 +56,7 @@ function scanSchema(component, schema) {
       return [];
     }
   };
-  if (schema.type === "union") {
+  if (schema.type === "anyOf") {
     return schema.anyOf.flatMap(fromVariant);
   } else {
     return fromVariant(schema);

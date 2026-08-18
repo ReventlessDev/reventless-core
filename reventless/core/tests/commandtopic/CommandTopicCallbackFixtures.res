@@ -1,4 +1,3 @@
-S.enableJson()
 
 // ─────────────────────────────────────────────────────────────
 // Command spec for CommandTopic_Callback tests

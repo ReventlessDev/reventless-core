@@ -1,4 +1,3 @@
-S.enableJson()
 // AutomationSlice callback — implements the TODO list pattern with mixed-source
 // dispatch (Plan 04).
 //
@@ -143,7 +142,7 @@ module Make = (
           | Some(_) => () // Already exists — skip
           | None =>
             let row: todoRow = {
-              item: item->S.reverseConvertToJsonOrThrow(Spec.todoItemSchema),
+              item: item->Reventless.Util_Sury.toJson(Spec.todoItemSchema),
               status: Pending,
               createdAt: now(),
               retryCount: 0,
@@ -198,7 +197,7 @@ module Make = (
     let commands = []
 
     pending->Array.forEach(((id, row)) => {
-      let item = try row.item->S.parseJsonOrThrow(Spec.todoItemSchema)->Some catch {
+      let item = try row.item->Reventless.Util_Sury.fromJson(Spec.todoItemSchema)->Some catch {
       | exn =>
         let errMsg =
           exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
@@ -214,7 +213,7 @@ module Make = (
         | Some((targetId, command)) =>
           todoItems->Dict.set(id, {...row, status: Processing, processedAt: now()})
           let commandJson = try command
-          ->S.reverseConvertToJsonOrThrow(Spec.commandSchema)
+          ->Reventless.Util_Sury.toJson(Spec.commandSchema)
           ->Some catch {
           | exn =>
             let errMsg =

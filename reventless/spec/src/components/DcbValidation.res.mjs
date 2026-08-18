@@ -21,7 +21,7 @@ function extractVariantInfo(variantSchema) {
       }
     case "object" :
       let properties = variantSchema.properties;
-      return Stdlib_Option.map(DcbTag$Reventless.variantTagName(variantSchema.items), tagName => {
+      return Stdlib_Option.map(DcbTag$Reventless.variantTagName(properties), tagName => {
         let taggedFields = Stdlib_Array.filterMap(Object.entries(properties), param => {
           if (DcbTag$Reventless.isTagged(param[1])) {
             return param[0];
@@ -39,7 +39,7 @@ function extractVariantInfo(variantSchema) {
 }
 
 function extractAllVariants(schema) {
-  if (schema.type === "union") {
+  if (schema.type === "anyOf") {
     return Stdlib_Array.filterMap(schema.anyOf, extractVariantInfo);
   }
   let info = extractVariantInfo(schema);
@@ -88,8 +88,8 @@ function schemasAreCompatible(_a, _b) {
         } else {
           return false;
         }
-      case "union" :
-        if (b.type !== "union") {
+      case "anyOf" :
+        if (b.type !== "anyOf") {
           return false;
         }
         let av = extractAllVariants(a);
@@ -149,7 +149,7 @@ function schemaTypeName(schema) {
       return "array";
     case "object" :
       return "object";
-    case "union" :
+    case "anyOf" :
       return "union";
     case "ref" :
       return "ref";
@@ -169,7 +169,7 @@ function describeSchema(schema) {
       }
     case "object" :
       return `object{` + Object.keys(schema.properties).toSorted(Primitive_string.compare).join(", ") + `}`;
-    case "union" :
+    case "anyOf" :
       let tags = extractAllVariants(schema).map(v => v.tagName);
       let members = tags.length !== 0 ? tags : schema.anyOf.map(schemaTypeName);
       return `union[` + members.join(" | ") + `]`;

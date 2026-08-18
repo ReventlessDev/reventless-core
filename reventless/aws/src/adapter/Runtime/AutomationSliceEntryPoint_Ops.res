@@ -122,7 +122,7 @@ let makeSyncTodoItems = (
       await todoItems
       ->Dict.toArray
       ->Array.map(((id, row)) =>
-        save(id, row->S.reverseConvertToJsonOrThrow(rowSchema), ReventlessCore.QueryDb.Overwrite, None)
+        save(id, row->Reventless.Util_Sury.toJson(rowSchema), ReventlessCore.QueryDb.Overwrite, None)
       )
       ->Promise.all
   }
@@ -181,7 +181,7 @@ let makeLoadTodoItems = (
           let id = json->JSON.Decode.object->Option.flatMap(d => d->Dict.get("id"))->Option.flatMap(JSON.Decode.string)
           switch id {
           | Some(id) if todoItems->Dict.get(id)->Option.isNone =>
-            switch json->S.parseJsonOrThrow(rowSchema) {
+            switch json->Reventless.Util_Sury.fromJson(rowSchema) {
             | row =>
               todoItems->Dict.set(id, row)
               count + 1

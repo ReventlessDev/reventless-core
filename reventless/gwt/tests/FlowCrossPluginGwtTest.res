@@ -15,7 +15,6 @@
 // order fans out into one demand command per product across the boundary.
 // See `docs/plans/done/gwt-flow-and-extension-test-kinds.md` Phase 3.
 
-S.enableJson()
 
 open Flow_GWT
 

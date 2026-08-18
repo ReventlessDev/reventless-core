@@ -62,7 +62,7 @@ let relayWithPool = async (
 ): int => {
   let partitionTag =
     partitionTagJson->Option.map(json =>
-      json->S.parseJsonOrThrow(Reventless.DcbTag.derivedPartitionTagSchema)
+      json->Reventless.Util_Sury.fromJson(Reventless.DcbTag.derivedPartitionTagSchema)
     )
   await ReventlessPostgres.PgChangeFeed.drain(pool, ~logName, ~subscriber, ~handle=async events => {
     let jsons = events->Array.filterMap(event => toEventCollectorJson(event, ~partitionTag?))

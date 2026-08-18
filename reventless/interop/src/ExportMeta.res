@@ -19,6 +19,6 @@ type t = {
 // exactly the behaviour needed for the field manifest.
 let fieldNamesOf = (value: 'a, schema: S.t<'a>): array<string> =>
   value
-  ->S.reverseConvertToJsonOrThrow(schema)
+  ->S.decodeOrThrow(~from=schema, ~to=S.json)
   ->JSON.Decode.object
   ->Option.mapOr([], Dict.keysToArray)

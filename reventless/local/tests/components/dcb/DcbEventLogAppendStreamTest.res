@@ -7,7 +7,7 @@ open DcbFixtures
 
 // Helper to encode a typed event into a raw event for appending to the DcbEventLog
 let encodeEvent = (event: DcbFixtures.ItemEventLog.event): ReventlessInfra.DcbEventLog.rawEvent => {
-  let json = event->S.reverseConvertToJsonOrThrow(DcbFixtures.ItemEventLog.eventSchema)
+  let json = event->Reventless.Util_Sury.toJson(DcbFixtures.ItemEventLog.eventSchema)
   let (eventType, data) = json->ReventlessCore.Message.splitMessage
   let tags = Reventless.DcbTag.extractTags(DcbFixtures.ItemEventLog.eventSchema, event)
   let meta = ReventlessCore.Message.generateMeta(~service="test")

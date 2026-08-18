@@ -153,7 +153,7 @@ module Make = (
   let encodeState = (state: Behavior.state): option<JSON.t> =>
     switch snapshotConfig {
     | Some({stateSchema}) =>
-      switch state->S.reverseConvertToJsonOrThrow(stateSchema) {
+      switch state->Reventless.Util_Sury.toJson(stateSchema) {
       | json => Some(json)
       | exception _ => None
       }
@@ -163,7 +163,7 @@ module Make = (
   let decodeState = (json: JSON.t): option<Behavior.state> =>
     switch snapshotConfig {
     | Some({stateSchema}) =>
-      switch json->S.parseJsonOrThrow(stateSchema) {
+      switch json->Reventless.Util_Sury.fromJson(stateSchema) {
       | state => Some(state)
       | exception _ => None
       }

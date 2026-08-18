@@ -239,7 +239,7 @@ switch NodeProcess.env->Dict.get("PG_URL") {
 
       // The relay receives the sury-encoded partition tag exactly as the builder emits it.
       let partitionTagJson =
-        DcbTag.Simple({key: "customerId"})->S.reverseConvertToJsonOrThrow(
+        DcbTag.Simple({key: "customerId"})->Reventless.Util_Sury.toJson(
           Reventless.DcbTag.derivedPartitionTagSchema,
         )
 

@@ -33,7 +33,13 @@ external toString: t => string = "%identity"
 
 // Sury's parse, held once — `fromString` runs it and adds the scheme check, and
 // `schema` derives from `fromString`. One grammar, in one place.
-let grammar: S.t<string> = S.string->S.url
+//
+// `S.uri`, not `S.url`: sury 11 turned `S.url` into a `URL` *instance*, whose
+// `href` is normalised (`http://x` comes back `http://x/`). This value is written
+// to an append-only log, so the address has to survive the round trip as the
+// caller wrote it. `S.uri` is the string-preserving arm — it still rejects what
+// does not parse, and returns exactly what it was given.
+let grammar: S.t<string> = S.uri
 
 // Schemes are case-insensitive per RFC 3986, and `HTTPS://x` parses fine, so the
 // allowlist has to fold case or it rejects a valid address on a technicality.
@@ -44,7 +50,7 @@ let hasWebScheme = (raw: string): bool => {
 
 /** Validate a raw string as an `http`/`https` URL, saying why when it is not one. */
 let fromString = (raw: string): result<t, string> =>
-  switch raw->S.parseOrThrow(grammar) {
+  switch raw->S.parseOrThrow(~to=grammar) {
   | value =>
     if hasWebScheme(value) {
       Ok(value)

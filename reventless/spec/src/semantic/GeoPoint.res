@@ -99,20 +99,24 @@ let validateLng = (raw: float): result<float, string> =>
     11-alpha miscompiles a refinement wrapping a *record* schema. Refining the
     field is both the honest placement and the one that works. */
 let latSchema: S.t<float> =
-  S.float->S.refine(s => raw =>
-    switch validateLat(raw) {
-    | Ok(_) => ()
-    | Error(why) => s.fail(why)
-    }
+  S.float->S.refine(
+    raw =>
+      switch validateLat(raw) {
+      | Ok(_) => true
+      | Error(_) => false
+      },
+    ~error="expected a latitude in -90…90",
   )
 
 /** The longitude's own schema, for the same reason. */
 let lngSchema: S.t<float> =
-  S.float->S.refine(s => raw =>
-    switch validateLng(raw) {
-    | Ok(_) => ()
-    | Error(why) => s.fail(why)
-    }
+  S.float->S.refine(
+    raw =>
+      switch validateLng(raw) {
+      | Ok(_) => true
+      | Error(_) => false
+      },
+    ~error="expected a longitude in -180…180",
   )
 
 @schema

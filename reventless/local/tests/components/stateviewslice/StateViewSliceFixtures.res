@@ -88,7 +88,7 @@ let dcbEventTopicResource =
 
 // Encode a typed event into a raw event for appending to the DcbEventLog
 let encodeEvent = (event: ItemEventLog.event): ReventlessInfra.DcbEventLog.rawEvent => {
-  let json = event->S.reverseConvertToJsonOrThrow(ItemEventLog.eventSchema)
+  let json = event->Reventless.Util_Sury.toJson(ItemEventLog.eventSchema)
   let (eventType, data) = json->ReventlessCore.Message.splitMessage
   let tags = Reventless.DcbTag.extractTags(ItemEventLog.eventSchema, event)
   let meta = ReventlessCore.Message.generateMeta(~service="test")
@@ -112,6 +112,6 @@ let loadState = async id => {
       ->Stream.runCollect
       ->Effect.catchAll(_ => Effect.succeed([]))
       ->Effect.runPromise
-    states->Array.map(json => json->S.parseJsonOrThrow(ItemsViewSpec.stateSchema))
+    states->Array.map(json => json->Reventless.Util_Sury.fromJson(ItemsViewSpec.stateSchema))
   }
 }

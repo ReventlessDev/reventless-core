@@ -277,7 +277,7 @@ describe("@transition cross-check", () => {
       )->ignore
       None
     } catch {
-    | Exn.Error(e) => Some(Exn.message(e)->Option.getOr(""))
+    | JsExn(e) => Some(JsExn.message(e)->Option.getOr(""))
     | _ => Some("")
     }
 

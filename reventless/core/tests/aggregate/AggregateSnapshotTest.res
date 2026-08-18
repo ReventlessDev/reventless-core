@@ -12,7 +12,6 @@
 
 open JestGlobals
 
-S.enableJson()
 
 module AggSpec = {
   module Id = Reventless.Id.StringPure
@@ -300,7 +299,7 @@ describe("Aggregate_Callback — snapshots:", () => {
     | Some(snap) =>
       expect(snap.seqNr)->toBe(20)
       // 20 items folded through the seeded state — no double-count, no gap.
-      let decoded = snap.state->S.parseJsonOrThrow(TestBehavior.stateSchema)
+      let decoded = snap.state->Reventless.Util_Sury.fromJson(TestBehavior.stateSchema)
       expect(decoded.items->Array.length)->toBe(20)
     | None => expect("expected snapshot at 20")->toBe("none")
     }

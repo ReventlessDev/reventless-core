@@ -33,7 +33,7 @@ function generateTools(pluginName, mutationEntries) {
           inputSchema: inputSchema
         });
         return;
-      case "union" :
+      case "anyOf" :
         schema.anyOf.forEach((variantSchema, i) => {
           let fieldName = Stdlib_Option.getOr(entry.fieldNames[i], "");
           if (fieldName.length <= 0) {

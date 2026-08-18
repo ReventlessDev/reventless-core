@@ -79,7 +79,6 @@ module type T = {
 module Make = (SE: Reventless.SideEffect.T): (T with module SE = SE) => {
   module SE = SE
 
-  S.enableJson()
 
   let describe = JestBind.describe
   let test = (name, ~timeout=?, body) =>

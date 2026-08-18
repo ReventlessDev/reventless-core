@@ -36,12 +36,13 @@ describe("The stored plugin-lifecycle payload corpus", () => {
 
   entries->Array.forEach(entry =>
     testSync(`still decodes: ${entry.name}`, () => {
-      // Sury's own exception carries the field path, which is the whole value of
+      // Sury's own error carries the field path, which is the whole value of
       // this suite's failure message — report it verbatim rather than "it threw".
+      // sury 11 throws a plain JS `SuryError` with no ReScript exception
+      // constructor to match on, so the message comes off the JS exception.
       let outcome = switch decodeStored(entry) {
       | _ => "decodes"
-      | exception S.Error(err) => err.message
-      | exception JsExn(e) => `threw: ${JsExn.message(e)->Option.getOr("no message")}`
+      | exception JsExn(e) => JsExn.message(e)->Option.getOr("threw: no message")
       | exception _ => "threw a non-JS exception"
       }
       expect(outcome)->toBe("decodes")

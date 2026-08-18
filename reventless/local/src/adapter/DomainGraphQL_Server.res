@@ -110,7 +110,7 @@ let handleLogin = (req: nodeRequest, res: nodeResponse): unit =>
           | None => Reventless.Identity.anonymous
           }
           let identityJson =
-            identity->S.reverseConvertToJsonOrThrow(Reventless.Identity.schema)
+            identity->Reventless.Util_Sury.toJson(Reventless.Identity.schema)
           _writeJson(
             res,
             ~status=200,
@@ -171,7 +171,7 @@ let handleSwitchRole = (req: nodeRequest, res: nodeResponse): unit =>
               ("token", JSON.Encode.string(newToken)),
               (
                 "identity",
-                identity->S.reverseConvertToJsonOrThrow(Reventless.Identity.schema),
+                identity->Reventless.Util_Sury.toJson(Reventless.Identity.schema),
               ),
             ]),
           ),

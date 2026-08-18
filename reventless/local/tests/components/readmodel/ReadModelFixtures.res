@@ -111,11 +111,11 @@ let publishItemCreated = async (id, name) => {
   let eventJson = JSON.Encode.object(
     Dict.fromArray([
       ("id", id->JSON.Encode.string),
-      ("meta", testMeta->S.reverseConvertToJsonOrThrow(Message.metaSchema)),
+      ("meta", testMeta->Reventless.Util_Sury.toJson(Message.metaSchema)),
       (
         "event",
         ItemEventSource.ItemCreated({name: name})
-        ->S.reverseConvertToJsonOrThrow(ItemEventSource.eventSchema),
+        ->Reventless.Util_Sury.toJson(ItemEventSource.eventSchema),
       ),
     ]),
   )
@@ -133,6 +133,6 @@ let loadState = async id => {
       ->Stream.runCollect
       ->Effect.catchAll(_ => Effect.succeed([]))
       ->Effect.runPromise
-    states->Array.map(json => json->S.parseJsonOrThrow(ItemReadModelSpec.stateSchema))
+    states->Array.map(json => json->Reventless.Util_Sury.fromJson(ItemReadModelSpec.stateSchema))
   }
 }

@@ -14,5 +14,5 @@ let recordSend = (~email, ~orderId) =>
 
 let mock: SideEffect_GWT.mock<call> = {
   snapshot: () => calls.contents,
-  encode: c => c->S.reverseConvertToJsonOrThrow(callSchema),
+  encode: c => c->Reventless.Util_Sury.toJson(callSchema),
 }

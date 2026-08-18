@@ -23,8 +23,8 @@
   "dependencies": {
     "@reventlessdev/rescript-jest": "workspace:*",
     "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
-    "sury": "11.0.0-alpha.4",
-    "sury-ppx": "11.0.0-alpha.2"
+    "sury": "11.0.0-rc.1",
+    "sury-ppx": "11.0.0-rc.1"
   },
   "devDependencies": {
     "rescript": "12.3.0"

@@ -1,4 +1,3 @@
-S.enableJson()
 
 /** Identifies the service that produced or is addressed by a message. */
 @schema
@@ -182,6 +181,25 @@ type commandJson = {
 let fillMissingDefaults: (S.t<'a>, JSON.t, array<string>) => JSON.t = %raw(`function(schema, json, scalarFills){
   function isSchema(x){ return x && typeof x === "object" && typeof x.type === "string"; }
   function firstConst(anyOf){ var m=(anyOf||[]).find(function(s){return s.const!==undefined;}); return m ? m.const : undefined; }
+  // Which object-typed member of an anyOf a plain (untagged) object value belongs to.
+  // Scored by how many of the value's own keys the member declares, so an untagged
+  // either-or codec resolves by shape: an offload field is a sentinel-keyed reference
+  // object OR the inline value, and healing an inline payload against the reference
+  // member would invent a reference with an empty key that then decodes cleanly —
+  // corruption, not an error. Ties keep the earliest member, which is the declared
+  // preference order; a value sharing no key with any member is a tie at zero and
+  // picks the first, the same guess this made before scoring existed.
+  function bestObjectMember(members, value){
+    var keys=Object.keys(value), best, bestScore=-1;
+    for(var i=0;i<members.length;i++){
+      var s=members[i];
+      if(s.type!=="object") continue;
+      var props=s.properties||{}, score=0;
+      for(var k=0;k<keys.length;k++){ if(Object.prototype.hasOwnProperty.call(props,keys[k])) score++; }
+      if(score>bestScore){ bestScore=score; best=s; }
+    }
+    return best;
+  }
   function scalarDefault(schema){
     if(schema.const!==undefined) return schema.const;
     switch(schema.type){
@@ -197,8 +215,9 @@ let fillMissingDefaults: (S.t<'a>, JSON.t, array<string>) => JSON.t = %raw(`func
       case "object": {
         if(value===undefined){ value={}; }
         else if(value===null || typeof value!=="object" || Array.isArray(value)) return value;
-        var items=schema.items||[];
-        for(var i=0;i<items.length;i++){ var it=items[i]; value[it.location]=fill(it.schema, value[it.location], path+"."+it.location); }
+        var props=schema.properties||{};
+        var names=Object.keys(props);
+        for(var i=0;i<names.length;i++){ var n=names[i]; value[n]=fill(props[n], value[n], path+"."+n); }
         return value;
       }
       case "array": {
@@ -206,7 +225,7 @@ let fillMissingDefaults: (S.t<'a>, JSON.t, array<string>) => JSON.t = %raw(`func
         if(value===undefined) return [];
         return value;
       }
-      case "union": {
+      case "anyOf": {
         var has=schema.has||{};
         if(value===undefined){
           if(has.null) return null;
@@ -218,8 +237,8 @@ let fillMissingDefaults: (S.t<'a>, JSON.t, array<string>) => JSON.t = %raw(`func
         var members=schema.anyOf||[];
         if(Array.isArray(value)){ var a=members.find(function(s){return s.type==="array";}); return a ? fill(a,value,path) : value; }
         if(typeof value==="object"){
-          var m=members.find(function(s){return s.type==="object" && (s.items||[]).some(function(it){return it.location==="TAG" && it.schema.const===value.TAG;});});
-          if(!m) m=members.find(function(s){return s.type==="object";});
+          var m=members.find(function(s){return s.type==="object" && s.properties && s.properties.TAG && s.properties.TAG.const===value.TAG;});
+          if(!m) m=bestObjectMember(members, value);
           return m ? fill(m,value,path) : value;
         }
         return value;
@@ -239,11 +258,11 @@ let fillMissingDefaults: (S.t<'a>, JSON.t, array<string>) => JSON.t = %raw(`func
 
 // Strict parse with a single schema-migration-on-read retry (see fillMissingDefaults).
 let parseJsonTolerant = (json, schema) =>
-  switch json->S.parseJsonOrThrow(schema) {
+  switch json->Util_Sury.fromJson(schema) {
   | value => value
   | exception firstErr =>
     let scalarFills = []
-    switch fillMissingDefaults(schema, json, scalarFills)->S.parseJsonOrThrow(schema) {
+    switch fillMissingDefaults(schema, json, scalarFills)->Util_Sury.fromJson(schema) {
     | value =>
       // Only the invented values are worth a line. A heal that used nothing but
       // schema-derived defaults is the mechanism working as designed.
@@ -285,7 +304,7 @@ Encode a value to JSON using a sury schema.
 let json = event->Message.encode(Category.eventSchema)
 ```
 */
-let encode = (value, schema: S.t<'a>) => value->S.reverseConvertToJsonOrThrow(schema)
+let encode = (value, schema: S.t<'a>) => value->Util_Sury.toJson(schema)
 
 /** Raised by adapters when an incoming event JSON cannot be matched to a known event variant. */
 exception InvalidEvent(JSON.t)
@@ -319,7 +338,7 @@ let variantNameOfJson = json =>
 let composeEventJson' = (id, meta, eventJson) =>
   [
     ("id", id->JSON.Encode.string),
-    ("meta", meta->S.reverseConvertToJsonOrThrow(metaSchema)),
+    ("meta", meta->Util_Sury.toJson(metaSchema)),
     ("event", eventJson),
   ]
   ->Dict.fromArray

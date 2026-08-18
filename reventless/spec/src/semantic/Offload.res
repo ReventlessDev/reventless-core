@@ -63,17 +63,6 @@ type payload<'a> =
   | Inline('a)
   | Offloaded(offloadedRef)
 
-/** `nullableAsOption` emits `T | undefined | null`, which fails
-    `jsonableValidation` inside an event union; `js_nullable` emits `T | null`,
-    which is JSON-safe there. Same reason `Plugin.res` reaches for it. */
-@module("sury/src/Sury.res.mjs")
-external _jsNullable: (S.t<'a>, unit) => S.t<option<'a>> = "js_nullable"
-
-/** The codec builds on `S.json`, which sury 11 gates behind an explicit enable.
-    Doing it here (at module load, before any `schema` call) makes the primitive
-    self-contained: importing `Offload` is enough, no consumer has to remember. */
-S.enableJson()
-
 /** The object key under which an `Offloaded` value hides. Reserved: no ReScript
     record field encodes to a key starting with `$`, so it cannot collide with an
     inline payload's own fields. */
@@ -86,37 +75,30 @@ Parameterised by the inner value's schema because the `Inline` arm round-trips
 through it. The `Offloaded` arm round-trips through `offloadedRefSchema` under the
 sentinel key. See the module doc for why this is untagged.
 */
+// Both arms are *declared* (`S.object` / `S.shape`) rather than hand-written as
+// `S.transform` pairs, and that is load-bearing, not a style choice. A transform
+// arm is opaque: sury cannot see what it accepts, so it must offer every value to
+// the arm's own serializer and let it reject. Two things follow, both of which bit
+// this codec on 11.0.0-rc.0 and neither of which the type checker can see:
+//
+//   - an absent optional value reaches the arms as a raw `undefined`, and the first
+//     serializer to read its payload dereferences it — an uncatchable `TypeError`;
+//   - a json-typed arm cannot chain into a non-JSON target, so encoding an
+//     `Offloaded` value to `S.jsonString` fails where encoding it to `S.json` works.
+//
+// A declared arm has neither problem: sury derives both directions from the shape,
+// discriminates on it, and never runs user code to find out. One transform arm is
+// enough to bring both failures back, so keep every arm declarative.
 let schema = (inner: S.t<'a>): S.t<payload<'a>> => {
-  // Offloaded arm: recognised by the reserved sentinel key, strict, and tried
-  // first so an offloaded value is never mistaken for an inline one. The ref is
-  // a fixed new shape that needs no healing, so a direct json-transform is fine.
-  let offloadedArm = S.json->S.transform(s => {
-    parser: json =>
-      switch json->JSON.Decode.object->Option.flatMap(dict => dict->Dict.get(sentinelKey)) {
-      | Some(refJson) => Offloaded(refJson->S.parseJsonOrThrow(offloadedRefSchema))
-      | None => s.fail("not an offloaded reference")
-      },
-    serializer: payload =>
-      switch payload {
-      | Offloaded(ref) =>
-        Dict.fromArray([(sentinelKey, ref->S.reverseConvertToJsonOrThrow(offloadedRefSchema))])
-        ->JSON.Encode.object
-      | Inline(_) => s.fail("not an offloaded reference")
-      },
-  })
+  // Offloaded arm: an object carrying the reserved sentinel key, tried first so an
+  // offloaded value is never mistaken for an inline one.
+  let offloadedArm = S.object(s => Offloaded(s.field(sentinelKey, offloadedRefSchema)))
   // Inline arm: the inner schema applied through sury's own pipeline, so it
   // inherits whatever tolerance the surrounding decode uses — the lifecycle
   // Message decoder heals older payloads with missing fields. This is why the
   // codec is a union rather than one json-transform with a nested
   // parseJsonOrThrow: a nested parse runs strict and breaks the frozen corpus.
-  let inlineArm = inner->S.transform(s => {
-    parser: value => Inline(value),
-    serializer: payload =>
-      switch payload {
-      | Inline(value) => value
-      | Offloaded(_) => s.fail("not an inline value")
-      },
-  })
+  let inlineArm = inner->S.shape(value => Inline(value))
   S.union([offloadedArm, inlineArm])
 }
 
@@ -136,10 +118,14 @@ let forStore = (
   schema(inner)->Semantic.mark(~id=Semantic.Id.offload, ~payload=StoredIn({plugin, store, threshold}))
 
 /**
-The codec wrapped for an **optional** field (`js_nullable`), plus the `StoredIn`
-marker. This is the common case: offloadable fields are usually optional (absent
-for older protocol versions, say). The marker sits on the outer schema, where
+The codec wrapped for an **optional** field, plus the `StoredIn` marker. This is
+the common case: offloadable fields are usually optional (absent for older
+protocol versions, say). The marker sits on the outer schema, where
 `Semantic.get` reads it first.
+
+`nullAsOption` keeps the wire form `T | null` — byte-identical to every stored
+message — and makes the union advertise `has.null`, which is what
+`Message.fillMissingDefaults` reads to heal an absent field to `None` on replay.
 */
 let optionSchema = (
   ~plugin: option<string>=?,
@@ -147,7 +133,7 @@ let optionSchema = (
   ~threshold: option<int>=?,
   inner: S.t<'a>,
 ): S.t<option<payload<'a>>> =>
-  _jsNullable(schema(inner), ())->Semantic.mark(
+  S.nullAsOption(schema(inner))->Semantic.mark(
     ~id=Semantic.Id.offload,
     ~payload=StoredIn({plugin, store, threshold}),
   )
@@ -158,7 +144,7 @@ let optionSchema = (
     e.g. the plugin read model, whose DynamoDB write path marshals the raw value
     and would otherwise persist the variant's runtime `{TAG, _0}` shape. */
 let toJson = (inner: S.t<'a>, payload: payload<'a>): JSON.t =>
-  payload->S.reverseConvertToJsonOrThrow(schema(inner))
+  payload->Util_Sury.toJson(schema(inner))
 
 /** The inline value, if this payload is `Inline`. `None` for `Offloaded` — a
     caller that must handle both arms uses `resolve` (async, fetches the ref); a
@@ -202,7 +188,7 @@ let prepare = (
   ~hash: string => string,
   ~upload: (~key: string, ~bytes: string) => promise<unit>,
 ): promise<payload<'a>> => {
-  let bytes = value->S.reverseConvertToJsonStringOrThrow(schema)
+  let bytes = value->Util_Sury.toJsonString(schema)
   if bytes->String.length < threshold {
     Promise.resolve(Inline(value))
   } else {
@@ -227,7 +213,7 @@ let resolve = (payload: payload<'a>, ~schema: S.t<'a>, ~fetch: string => promise
   switch payload {
   | Inline(value) => Promise.resolve(value)
   | Offloaded({key}) =>
-    fetch(key)->Promise.then(bytes => Promise.resolve(bytes->S.parseJsonStringOrThrow(schema)))
+    fetch(key)->Promise.then(bytes => Promise.resolve(bytes->Util_Sury.fromJsonString(schema)))
   }
 
 /**

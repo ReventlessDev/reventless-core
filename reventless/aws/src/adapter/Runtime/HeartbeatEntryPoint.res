@@ -45,7 +45,7 @@ let handler = async (_event: JSON.t, _context: PulumiAws.Lambda.context) => {
     ),
     commandJson: ReventlessInfra.PluginExtensionPointSpec.Heartbeat(
       timeout,
-    )->S.reverseConvertToJsonOrThrow(ReventlessInfra.PluginExtensionPointSpec.commandSchema),
+    )->Reventless.Util_Sury.toJson(ReventlessInfra.PluginExtensionPointSpec.commandSchema),
   }
   await publishJsons([message])
   ""

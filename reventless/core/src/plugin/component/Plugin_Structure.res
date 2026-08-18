@@ -41,8 +41,8 @@ let rec isLifecycleShape = (t: SchemaType.schemaType): bool =>
 // and *exactly*: `customerName` holds a customer's name, not this record's.
 let conventionalLabelNames = ["name", "title", "label", "displayname"]
 
-let shapeOfItem = (~entityName: string, item: S.item): SchemaType.schemaType =>
-  SchemaType.fromSury(~parentName=entityName, ~fieldName=item.location, item.schema)
+let shapeOfField = (~entityName: string, ~name: string, schema: S.t<unknown>): SchemaType.schemaType =>
+  SchemaType.fromSury(~parentName=entityName, ~fieldName=name, schema)
 
 // Resolve the field that holds the entity's lifecycle, used to filter a per-row
 // command menu against each command's `allowedStates`. Resolution order:
@@ -69,12 +69,14 @@ let lifecycleFieldFromStateSchema = (
   | Some(_) as some => some
   | None =>
     switch stateSchema {
-    | Object({items}) =>
-      items
-      ->Array.find(item =>
-        item.location == "lifecycle" && isLifecycleShape(shapeOfItem(~entityName, item))
+    | Object({properties}) =>
+      properties
+      ->Dict.get("lifecycle")
+      ->Option.flatMap(schema =>
+        isLifecycleShape(shapeOfField(~entityName, ~name="lifecycle", schema))
+          ? Some("lifecycle")
+          : None
       )
-      ->Option.map(item => item.location)
     | _ => None
     }
   }
@@ -171,11 +173,11 @@ let checkRetiredValue = (~entityName: string, stateSchema: S.t<unknown>): retire
       )
     }
     let declared = switch stateSchema {
-    | Object({items}) =>
-      items
-      ->Array.find(item => item.location == field)
-      ->Option.map(item =>
-        switch shapeOfItem(~entityName, item) {
+    | Object({properties}) =>
+      properties
+      ->Dict.get(field)
+      ->Option.map(schema =>
+        switch shapeOfField(~entityName, ~name=field, schema) {
         | Enum(_, values) => values
         | Nullable(Enum(_, values)) => values
         | _ => []
@@ -245,11 +247,11 @@ let lifecycleStatesFromStateSchema = (
 ): option<array<string>> =>
   lifecycleFieldFromStateSchema(~entityName, stateSchema)->Option.flatMap(field =>
     switch stateSchema {
-    | Object({items}) =>
-      items
-      ->Array.find(item => item.location == field)
-      ->Option.map(item =>
-        switch shapeOfItem(~entityName, item) {
+    | Object({properties}) =>
+      properties
+      ->Dict.get(field)
+      ->Option.map(schema =>
+        switch shapeOfField(~entityName, ~name=field, schema) {
         | Enum(_, values) => values
         | Nullable(Enum(_, values)) => values
         | _ => []
@@ -523,26 +525,26 @@ let labelFieldsFromStateSchema = (
   | Some(spec) => {field: "displayName", searchableFields: spec.fields, source: Annotation}
   | None =>
     let candidates = switch stateSchema {
-    | Object({items}) =>
-      items->Array.filter(item =>
-        item.location != "TAG" &&
-        item.location != "id" &&
-        isLabelShape(shapeOfItem(~entityName, item))
+    | Object({properties}) =>
+      properties
+      ->Dict.toArray
+      ->Array.filter(((name, schema)) =>
+        name != "TAG" && name != "id" && isLabelShape(shapeOfField(~entityName, ~name, schema))
       )
     | _ => []
     }
-    let conventional = candidates->Array.find(item => {
-      let lower = item.location->String.toLowerCase
+    let conventional = candidates->Array.find(((name, _)) => {
+      let lower = name->String.toLowerCase
       conventionalLabelNames->Array.some(n => n == lower)
     })
     let picked = switch conventional {
-    | Some(item) => Some((item, Convention))
-    | None => candidates->Array.get(0)->Option.map(item => (item, Position))
+    | Some((name, _)) => Some((name, Convention))
+    | None => candidates->Array.get(0)->Option.map(((name, _)) => (name, Position))
     }
     switch picked {
-    | Some((item, source)) => {
-        field: item.location,
-        searchableFields: [item.location],
+    | Some((name, source)) => {
+        field: name,
+        searchableFields: [name],
         source,
       }
     | None =>
@@ -613,7 +615,7 @@ let toEventDef = (v: S.t<unknown>): option<Reventless.Plugin.eventDef> => {
 
 let extractEventDefs = (eventSchema: S.t<unknown>): array<Reventless.Plugin.eventDef> =>
   switch eventSchema {
-  | Union({anyOf}) => anyOf->Array.filterMap(toEventDef)
+  | AnyOf({anyOf}) => anyOf->Array.filterMap(toEventDef)
   | _ => toEventDef(eventSchema)->Option.mapOr([], def => [def])
   }
 
@@ -859,7 +861,7 @@ let make = (
     commandSchema: S.t<unknown>,
   ): array<Reventless.Plugin.commandDef> =>
     switch commandSchema {
-    | Union({anyOf}) =>
+    | AnyOf({anyOf}) =>
       anyOf->Array.filterMap(v =>
         toCommandDef(
           ~isAggregate,
@@ -878,6 +880,57 @@ let make = (
         ~commandAuthorization,
         commandSchema,
       )->Option.mapOr([], def => [def])
+    }
+
+  // ── Per-variant event field extraction ─────────────────────────
+  // Mirrors toCommandDef/extractCommandDefs for emitted events: name (TAG const),
+  // payload JSON Schema, and cross-entity references.
+
+  let toEventDef = (v: S.t<unknown>): option<Reventless.Plugin.eventDef> => {
+    let mkDef = (~variantName, ~properties) => {
+      let references =
+        properties
+        ->Dict.toArray
+        ->Array.filterMap(((fieldName, fieldSchema)) =>
+          Reventless.Reference.getFieldTarget(fieldSchema)->Option.map(target => (
+            {
+              Reventless.Plugin.fieldName,
+              entity: target.entity,
+              plugin: target.plugin,
+            }: Reventless.Plugin.fieldReference
+          ))
+        )
+      ({
+        Reventless.Plugin.name: variantName,
+        // Derived for the same reason as `commandDef.schema` above: an event's
+        // field markers are the write side's half of the same vocabulary.
+        schema: v->SuryToJsonSchema.deriveObjectSchema->JSON.stringify,
+        references,
+      }: Reventless.Plugin.eventDef)
+    }
+    switch v {
+    | Object({properties}) =>
+      properties
+      ->Dict.get("TAG")
+      ->Option.flatMap(tagSchema =>
+        switch tagSchema {
+        | String({const: ?Some(variantName)}) => Some(mkDef(~variantName, ~properties))
+        | _ => None
+        }
+      )
+    // Payload-less event variants (`| Archived`) compile to a bare string literal.
+    // DCB-projection lookups can't WHERE-clause on them, so they stay out of
+    // producedEventTypes/consumedEventTypes; but the full `events` list carries them
+    // so the event graph can still draw the emitted (orphan) event node.
+    | String({const: ?Some(variantName)}) => Some(mkDef(~variantName, ~properties=Dict.make()))
+    | _ => None
+    }
+  }
+
+  let extractEventDefs = (eventSchema: S.t<unknown>): array<Reventless.Plugin.eventDef> =>
+    switch eventSchema {
+    | AnyOf({anyOf}) => anyOf->Array.filterMap(toEventDef)
+    | _ => toEventDef(eventSchema)->Option.mapOr([], def => [def])
     }
 
   // ── Per-component event type extraction ────────────────────────────────────
@@ -1035,7 +1088,7 @@ let make = (
       | _ => []
       }
     switch schema {
-    | Union({anyOf}) => anyOf->Array.flatMap(fromVariant)
+    | AnyOf({anyOf}) => anyOf->Array.flatMap(fromVariant)
     | other => fromVariant(other)
     }
   }

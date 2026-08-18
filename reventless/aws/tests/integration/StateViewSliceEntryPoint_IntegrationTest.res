@@ -106,7 +106,7 @@ let runOneEvent: (string, JSON.t) => promise<unit> = %raw(`
 // calls `parseJsonOrThrow(eventJson, consumedEventSchema)`, so we produce the
 // JSON via the same schema to guarantee a faithful round-trip.
 let encodeEvent = (event): JSON.t =>
-  event->S.reverseConvertToJsonOrThrow(SvsTestSlice.consumedEventSchema)
+  event->Reventless.Util_Sury.toJson(SvsTestSlice.consumedEventSchema)
 
 describe("StateViewSliceEntryPoint integration", () => {
   testAsync(

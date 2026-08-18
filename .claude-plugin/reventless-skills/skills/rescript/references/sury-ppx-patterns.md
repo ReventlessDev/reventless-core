@@ -109,17 +109,45 @@ This is fully supported by `Message.splitMessage`/`combineMessage`.
 
 **`S.nullableAsOption` fails `jsonableValidation` inside union variants** because it creates `T | undefined | null` — sury rejects `undefined` when the parent is not an `object`.
 
-**Use `js_nullable` instead:**
+**Use `S.nullAsOption` instead** — it creates `T | null` with no `undefined`:
 
 ```rescript
-// Binding to sury's js_nullable (creates T | null, no undefined)
-@module("sury/src/Sury.res.mjs")
-external _jsNullable: (S.t<'a>, unit) => S.t<option<'a>> = "js_nullable"
-
-let myOptionSchema = _jsNullable(baseSchema, ())
+let myOptionSchema = S.nullAsOption(baseSchema)
 ```
 
-ReScript omits the `unit` arg in JS output, so `js_nullable(schema)` is called with `undefined` for `maybeOr` — correct behavior.
+Do not hand-bind `js_nullable` through `sury/src/Sury.res.mjs`: that module no longer
+ships, so such an external is a runtime-missing import the compiler cannot see. The
+function survives, re-exported from `"sury"` as `nullable`, and `S.nullAsOption` is the
+ReScript binding to reach for.
+
+## Codecs: declare the shape, don't hand-write transforms
+
+Build a codec from **`S.object` / `S.shape`** rather than a hand-written
+`S.transform` parser/serializer pair wherever the shape can be declared. A transform
+is opaque to sury: it cannot know what the arm accepts, so it must offer every value
+to the arm's own serializer and let it reject. In a union that costs correctness, not
+just speed:
+
+- an absent optional value reaches the arms as a raw `undefined`, and the first
+  serializer to read its payload dereferences it — an uncatchable `TypeError`,
+  not a `SuryError`;
+- a `json`-typed arm cannot chain into a non-JSON target, so a value that encodes
+  fine to `S.json` throws when encoded to `S.jsonString`.
+
+```rescript
+// Untagged either-or: a sentinel-keyed reference OR the bare inline value.
+let referenceArm = S.object(s => Offloaded(s.field("$offload", offloadedRefSchema)))
+let inlineArm = inner->S.shape(value => Inline(value))
+S.union([referenceArm, inlineArm])
+```
+
+One transform arm is enough to bring both failures back, so this is all-or-nothing
+per union. A declared arm also stays **visible to schema walkers** — introspection,
+healing, and the required-scalar tripwire all see through it, and see nothing through
+a transform.
+
+See `Offload` in reventless-spec for the worked example, and
+`docs/analysis/done/sury-rc0-optional-union-encode.md` for the measurements.
 
 ## Required Module URL
 

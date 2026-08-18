@@ -33,13 +33,13 @@ let overlayDisplayName = (
   stateSchema: S.t<'state>,
   spec: Reventless.DisplayName.displayNameSpec,
 ): 'state => {
-  let json = state->S.reverseConvertToJsonOrThrow(stateSchema)
+  let json = state->Reventless.Util_Sury.toJson(stateSchema)
   switch json->JSON.Decode.object {
   | None => state
   | Some(stateDict) =>
     let label = Reventless.DisplayName.computeLabel(spec, stateDict)
     stateDict->Dict.set("displayName", JSON.Encode.string(label))
-    stateDict->JSON.Encode.object->S.parseJsonOrThrow(stateSchema)
+    stateDict->JSON.Encode.object->Reventless.Util_Sury.fromJson(stateSchema)
   }
 }
 

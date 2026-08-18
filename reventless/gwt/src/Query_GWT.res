@@ -87,7 +87,6 @@ module type T = {
 module Make = (Spec: QueryableSpec): (T with module Spec = Spec) => {
   module Spec = Spec
 
-  S.enableJson()
 
   let describe = JestBind.describe
   let test = (name, body) => JestBind.test(~slice=Spec.name, name, body)
@@ -95,7 +94,7 @@ module Make = (Spec: QueryableSpec): (T with module Spec = Spec) => {
   type row = {id: string, subId: option<string>, state: Spec.state}
   type store = array<row>
 
-  let encState = (s: Spec.state): JSON.t => s->S.reverseConvertToJsonOrThrow(Spec.stateSchema)
+  let encState = (s: Spec.state): JSON.t => s->Reventless.Util_Sury.toJson(Spec.stateSchema)
   let encStates = arr => arr->Array.map(encState)
 
   let givenStore = pairs =>
@@ -174,7 +173,7 @@ module Make = (Spec: QueryableSpec): (T with module Spec = Spec) => {
       let field = args.by
       let expected = args.value
       let matches = s->Array.filter(r => {
-        let json = r.state->S.reverseConvertToJsonOrThrow(Spec.stateSchema)
+        let json = r.state->Reventless.Util_Sury.toJson(Spec.stateSchema)
         switch json->JSON.Decode.object->Option.flatMap(d => d->Dict.get(field)) {
         | Some(v) =>
           let actualStr = switch v {
@@ -268,7 +267,6 @@ module Make = (Spec: QueryableSpec): (T with module Spec = Spec) => {
 // field — so a test fails if the `@resolves` annotation is missing, exactly as
 // `whenQuery` validates a named index.
 module MakeResolver = (Primary: QueryableSpec, Target: QueryableSpec) => {
-  S.enableJson()
 
   let describe = JestBind.describe
   let sliceName = `${Primary.name}→${Target.name}`
@@ -281,7 +279,7 @@ module MakeResolver = (Primary: QueryableSpec, Target: QueryableSpec) => {
 
   let givenStores = (primary, target): scenario => {primary, target}
 
-  let encTarget = (s: Target.state): JSON.t => s->S.reverseConvertToJsonOrThrow(Target.stateSchema)
+  let encTarget = (s: Target.state): JSON.t => s->Reventless.Util_Sury.toJson(Target.stateSchema)
   let encTargets = arr => arr->Array.map(encTarget)
 
   let resolverFor = field =>
@@ -295,7 +293,7 @@ module MakeResolver = (Primary: QueryableSpec, Target: QueryableSpec) => {
   // Read a JSON field off the primary row's encoded state.
   let readField = (state: Primary.state, field): option<JSON.t> =>
     state
-    ->S.reverseConvertToJsonOrThrow(Primary.stateSchema)
+    ->Reventless.Util_Sury.toJson(Primary.stateSchema)
     ->JSON.Decode.object
     ->Option.flatMap(d => d->Dict.get(field))
 

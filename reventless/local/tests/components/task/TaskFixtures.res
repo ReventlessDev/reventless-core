@@ -1,7 +1,6 @@
 // Fixtures for Task integration tests.
 // Tests Task_Builder.Make wiring with in-memory adapters.
 
-S.enableJson()
 
 // Activate Pulumi mock mode (must be called before any Component.make)
 let _ = TestRunner.setup()

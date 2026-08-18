@@ -120,7 +120,7 @@ function extractCommandName(fieldName) {
 
 function extractVariantSchema(commandSchema, indexOpt) {
   let index = indexOpt !== undefined ? indexOpt : 0;
-  if (commandSchema.type === "union") {
+  if (commandSchema.type === "anyOf") {
     return Stdlib_Option.getOr(commandSchema.anyOf[index], commandSchema);
   } else {
     return commandSchema;

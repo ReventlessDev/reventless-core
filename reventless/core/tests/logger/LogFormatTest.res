@@ -1,7 +1,6 @@
 open JestGlobals
 open LogFormat
 
-S.enableJson()
 
 // Sink detection (Reventless.AnsiStyle) defaults a non-TTY stdout — Jest
 // included — to JSON, which no-ops `bold`/`fmtComp`. The human-format
@@ -121,7 +120,9 @@ describe("LogFormat", () => {
         let eventJson' = event'->Message.encodeEvent'(S.string, eventSchema)
         let msg = event'JsonToLogMessage(eventJson')
 
-        let expected = `\x1b[1mVersionDetected\x1b[0m(testId): {"event":{"TAG":"VersionDetected","_0":"0.0.0"},"meta":{"service":"testService","time":"testTime","ip":"testIp","user":"testUser","msgId":"testMsgId","correlationId":"testCorrelationId"},"id":"testId"}`
+        // sury 11 (alpha.8) serialises meta keys in a different order than alpha.4
+        // (msgId/correlationId before ip/user) — same data, JSON-equivalent.
+        let expected = `\x1b[1mVersionDetected\x1b[0m(testId): {"event":{"TAG":"VersionDetected","_0":"0.0.0"},"meta":{"service":"testService","time":"testTime","msgId":"testMsgId","correlationId":"testCorrelationId","ip":"testIp","user":"testUser"},"id":"testId"}`
 
         expect(msg)->toEqual(expected)
       },

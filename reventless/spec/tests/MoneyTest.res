@@ -180,7 +180,7 @@ describe("Money:", () => {
 
   describe("the schema:", () => {
     let parses = (raw: JSON.t) =>
-      switch raw->S.parseOrThrow(Money.schema) {
+      switch raw->S.parseOrThrow(~to=Money.schema) {
       | _ => true
       | exception _ => false
       }
@@ -212,7 +212,7 @@ describe("Money:", () => {
     )
     testSync("rejects a non-finite amount", () =>
       expect(
-        switch S.parseOrThrow(money(0.0, "EUR"), Money.schema) {
+        switch S.parseOrThrow(money(0.0, "EUR"), ~to=Money.schema) {
         | _ => Money.validateAmount(Float.Constants.nan)->Result.isOk
         | exception _ => true
         },
@@ -236,7 +236,7 @@ describe("Money:", () => {
     // The wire form is the ISO code, not the variant's ReScript spelling —
     // standard at the boundary, checked type in the domain.
     testSync("serializes the currency as its three-letter code", () =>
-      expect(m(1000.0, EUR)->S.reverseConvertToJsonOrThrow(Money.schema))
+      expect(m(1000.0, EUR)->Util_Sury.toJson(Money.schema))
       ->toEqual(money(1000.0, "EUR"))
     )
   })

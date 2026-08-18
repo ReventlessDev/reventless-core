@@ -92,8 +92,8 @@ function shapeOf(parentName, fieldName, schema) {
       };
     case "array" :
       let additionalItems = schema.additionalItems;
-      let match = schema.items[0];
-      let itemType = match !== undefined ? fromSury(parentName, fieldName, match.schema) : (
+      let itemSchema = schema.items[0];
+      let itemType = itemSchema !== undefined ? fromSury(parentName, fieldName, itemSchema) : (
           additionalItems === "strip" || additionalItems === "strict" ? "ScalarString" : fromSury(parentName, fieldName, additionalItems)
         );
       let itemType$1 = (isIdsFieldName(fieldName) || isIdFieldName(fieldName)) && itemType === "ScalarString" ? "EntityId" : itemType;
@@ -120,7 +120,7 @@ function shapeOf(parentName, fieldName, schema) {
           _1: fields
         };
       }
-    case "union" :
+    case "anyOf" :
       let anyOf = schema.anyOf;
       let nonNullVariants = anyOf.filter(v => {
         switch (v.type) {
@@ -173,7 +173,7 @@ function optionalFieldNames(schema) {
   if (schema.type === "object") {
     return Stdlib_Array.filterMap(Object.entries(schema.properties), param => {
       let propSchema = param[1];
-      if (propSchema.type === "union" && propSchema.anyOf.some(v => {
+      if (propSchema.type === "anyOf" && propSchema.anyOf.some(v => {
           switch (v.type) {
             case "null" :
             case "undefined" :

@@ -1,6 +1,5 @@
 open JestGlobals
 
-S.enableJson()
 
 // The point of the seam, end to end at the hook level: an extension that only
 // ever gets `onColdStart` can reach the framework's runtime callback hooks from

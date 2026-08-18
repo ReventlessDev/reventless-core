@@ -1,4 +1,3 @@
-S.enableJson()
 
 /** Identity provider that authenticated the user. */
 @schema

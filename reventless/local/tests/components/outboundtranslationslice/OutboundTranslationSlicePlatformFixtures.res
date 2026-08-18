@@ -152,7 +152,7 @@ let publishJsons: ReventlessInfra.CommandTopic.publishJsons = async cmdJsons => 
       let fullBody = JSON.Encode.object(
         Dict.fromArray([
           ("id", JSON.Encode.string(cmdJson.id)),
-          ("meta", cmdJson.meta->S.reverseConvertToJsonOrThrow(Reventless.Message.metaSchema)),
+          ("meta", cmdJson.meta->Reventless.Util_Sury.toJson(Reventless.Message.metaSchema)),
           ("command", cmdJson.commandJson),
         ]),
       )
@@ -196,7 +196,7 @@ let placeCmdJson = (orderId: string): Reventless.Message.commandJson => {
   id: orderId,
   meta: testMeta,
   commandJson: PlaceSpec.Place({orderId, customerId: "cust-" ++ orderId})
-    ->S.reverseConvertToJsonOrThrow(PlaceSpec.commandSchema),
+    ->Reventless.Util_Sury.toJson(PlaceSpec.commandSchema),
 }
 
 let readEventTypes = async (orderId: string) => {

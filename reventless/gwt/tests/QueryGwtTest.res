@@ -2,7 +2,6 @@
 // to prove the unified DSL works for either consumer type. Stage 6 of
 // `docs/plans/done/reventless-gwt.md`.
 
-S.enableJson()
 
 // ---------------------------------------------------------------------------
 // Case 1 — ReadModel: Categories.

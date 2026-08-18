@@ -5,6 +5,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_String from "@rescript/runtime/lib/es6/Stdlib_String.js";
 import * as Api_Naming$ReventlessCore from "./Api_Naming.res.mjs";
 import * as SchemaType$ReventlessCore from "./SchemaType.res.mjs";
+import * as SchemaWalker$ReventlessCore from "../../plugin/component/SchemaWalker.res.mjs";
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "./GraphQL_Stitcher.res.mjs";
 
@@ -444,7 +445,7 @@ function generate(mutationEntries, queryEntries) {
         } else {
           return;
         }
-      case "union" :
+      case "anyOf" :
         let anyOf = schema.anyOf;
         let variantNames = anyOf.map(v => {
           switch (v.type) {
@@ -456,16 +457,7 @@ function generate(mutationEntries, queryEntries) {
                 return "";
               }
             case "object" :
-              return Stdlib_Option.getOr(Stdlib_Option.flatMap(v.items.find(item => item.location === "TAG"), item => {
-                let match = item.schema;
-                if (match.type !== "string") {
-                  return;
-                }
-                let $$const = match.const;
-                if ($$const !== undefined) {
-                  return $$const;
-                }
-              }), "");
+              return Stdlib_Option.getOr(SchemaWalker$ReventlessCore.tagConstOf(v.properties), "");
             default:
               return "";
           }

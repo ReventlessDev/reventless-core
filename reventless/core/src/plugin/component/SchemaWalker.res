@@ -10,7 +10,7 @@ open Plugin_BuiltHook
 
 // ---------------------------------------------------------------------------
 // Type description — maps a sury schema node to a human-readable string.
-// Optional fields in sury are Union({anyOf}) containing Null or Undefined.
+// Optional fields in sury are AnyOf({anyOf}) containing Null or Undefined.
 // ---------------------------------------------------------------------------
 let rec describeSchema = (schema: S.t<unknown>): string =>
   switch schema {
@@ -20,7 +20,7 @@ let rec describeSchema = (schema: S.t<unknown>): string =>
   | Boolean(_) => "bool"
   | BigInt(_) => "bigint"
   | Null(_) => "null"
-  | Union({anyOf}) =>
+  | AnyOf({anyOf}) =>
     // Nullable/optional field: Union of Null/Undefined + one real type.
     let nonNull = anyOf->Array.filter(v =>
       switch v {
@@ -58,7 +58,7 @@ let rec describeSchema = (schema: S.t<unknown>): string =>
 // (Union containing Null or Undefined).
 let isOptionalSchema = (schema: S.t<unknown>): bool =>
   switch schema {
-  | Union({anyOf}) =>
+  | AnyOf({anyOf}) =>
     anyOf->Array.some(v =>
       switch v {
       | Null(_) | Undefined(_) => true
@@ -112,11 +112,11 @@ let hashConstructors = (ctors: array<constructorSchema>): string => {
 // ---------------------------------------------------------------------------
 // TAG item helper — extracts the const string value from a TAG schema item.
 // ---------------------------------------------------------------------------
-let tagConstOf = (items: array<S.item>): option<string> =>
-  items
-  ->Array.find(item => item.location == "TAG")
-  ->Option.flatMap(item =>
-    switch item.schema {
+let tagConstOf = (properties: dict<S.t<unknown>>): option<string> =>
+  properties
+  ->Dict.get("TAG")
+  ->Option.flatMap(schema =>
+    switch schema {
     | String({const: ?Some(v)}) => Some(v)
     | _ => None
     }
@@ -135,7 +135,7 @@ let walkSchema = (typeName: string, schema: S.t<unknown>): typeSchema =>
       fields,
       structuralHash: hashFields(fields),
     }
-  | Union({anyOf}) =>
+  | AnyOf({anyOf}) =>
     // Check if this is a nullable scalar vs. a true variant union.
     let hasNullLike = anyOf->Array.some(v =>
       switch v {
@@ -150,8 +150,8 @@ let walkSchema = (typeName: string, schema: S.t<unknown>): typeSchema =>
       let constructors =
         anyOf->Array.filterMap(variantSchema =>
           switch variantSchema {
-          | Object({items, properties}) =>
-            tagConstOf(items)->Option.map(name => {
+          | Object({properties}) =>
+            tagConstOf(properties)->Option.map(name => {
               name,
               fields: extractFields(properties),
             })

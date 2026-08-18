@@ -55,7 +55,7 @@ let scanSchema = (~component: string, schema: S.t<unknown>): array<warning> => {
     | _ => []
     }
   switch schema {
-  | Union({anyOf}) => anyOf->Array.flatMap(fromVariant)
+  | AnyOf({anyOf}) => anyOf->Array.flatMap(fromVariant)
   | other => fromVariant(other)
   }
 }

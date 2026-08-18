@@ -53,13 +53,13 @@
     "@reventlessdev/reventless-local": "workspace:*",
     "@reventlessdev/reventless-seed": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*",
-    "sury": "^11.0.0-alpha.4"
+    "sury": "11.0.0-rc.1"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org"
   },
   "devDependencies": {
     "@reventlessdev/reventless-ppx": "workspace:*",
-    "sury-ppx": "11.0.0-alpha.2"
+    "sury-ppx": "11.0.0-rc.1"
   }
 }

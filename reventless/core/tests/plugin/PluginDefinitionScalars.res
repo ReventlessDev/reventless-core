@@ -41,14 +41,16 @@ let collect = (root: S.t<'a>): array<string> => {
 
   let rec walk = (schema: S.t<unknown>, path: string) =>
     switch schema {
-    | Object({items}) =>
+    | Object({properties}) =>
       if !(seen->Set.has(schema)) {
         seen->Set.add(schema)
-        items->Array.forEach(item => walk(item.schema, `${path}.${item.location}`))
+        properties
+        ->Dict.toArray
+        ->Array.forEach(((name, fieldSchema)) => walk(fieldSchema, `${path}.${name}`))
         seen->Set.delete(schema)->ignore
       }
     | Array({additionalItems: Schema(element)}) => walk(element, `${path}[]`)
-    | Union({anyOf, has}) =>
+    | AnyOf({anyOf, has}) =>
       // A union of literals is an enum: absent heals to the first variant.
       let isEnum = anyOf->Array.every(member =>
         switch member {

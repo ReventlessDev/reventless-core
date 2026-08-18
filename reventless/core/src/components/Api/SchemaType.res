@@ -99,15 +99,11 @@ and shapeOf = (~parentName: string, ~fieldName: string, schema: S.t<unknown>): s
     | BigInt(_) => ScalarBigInt
     | Array({items, additionalItems}) =>
       let itemType = switch items->Array.get(0) {
-      | Some({schema: itemSchema}) =>
-        fromSury(
-          ~parentName,
-          ~fieldName,
-          itemSchema->(Obj.magic: S.t<unknown> => S.t<unknown>),
-        )
+      | Some(itemSchema) => fromSury(~parentName, ~fieldName, itemSchema)
       | None =>
-        // sury stores the item schema in additionalItems (not items) for S.array().
-        // additionalItems is @unboxed: Strip="strip", Strict="strict", Schema(t) = the schema object.
+        // For a homogeneous S.array() sury stores the element schema in
+        // additionalItems (items holds fixed tuple positions). additionalItems is
+        // @unboxed: Strip="strip" | Strict="strict" | Schema(t) = the schema object.
         switch additionalItems {
         | Schema(s) => fromSury(~parentName, ~fieldName, s)
         | _ => ScalarString
@@ -135,7 +131,7 @@ and shapeOf = (~parentName: string, ~fieldName: string, schema: S.t<unknown>): s
       } else {
         ObjectRef(nestedName, fields)
       }
-    | Union({anyOf}) =>
+    | AnyOf({anyOf}) =>
       let nonNullVariants = anyOf->Array.filter(v =>
         switch v {
         | Null(_) | Undefined(_) => false
@@ -196,7 +192,7 @@ let optionalFieldNames = (schema: S.t<unknown>): array<string> =>
     ->Dict.toArray
     ->Array.filterMap(((propName, propSchema)) =>
       switch propSchema {
-      | Union({anyOf}) =>
+      | AnyOf({anyOf}) =>
         anyOf->Array.some(v =>
           switch v {
           | Null(_) | Undefined(_) => true

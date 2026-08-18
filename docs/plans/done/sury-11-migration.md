@@ -1,7 +1,265 @@
-# Plan: Migrate Reventless to Sury 11 (current target: 11.0.0-alpha.8)
+# Plan: Migrate Reventless to Sury 11 (landed on 11.0.0-rc.1)
 
-**Status:** Draft
-**Analysis:** [`docs/analysis/sury-11-migration.md`](../analysis/sury-11-migration.md)
+**Status:** ✅ **Migration complete** — phases 0, 1, 2 and 4 landed; squash-merged to `alpha` on 2026-08-18. Executed on branch `sury-11-migration` (was `sury-alpha8-wip`). Phase 3 (parser hoisting) was **not** executed and moves to the deferred follow-ups below; the Layer rebuild happens on the push.
+**Analysis:** [`docs/analysis/done/sury-11-migration.md`](../analysis/done/sury-11-migration.md)
+
+> **Completion (2026-08-18) — landed on `11.0.0-rc.1`, merged to `alpha`.**
+> The branch was first brought up to date with `alpha`, then squash-merged, so the
+> migration arrives as one commit rather than the fourteen-commit prerelease
+> ladder. Final state: **346 suites, 3450 tests**, zero compiler warnings, both
+> GraphQL contract goldens matching.
+>
+> - **`rc.0` → `rc.1` needed exactly one source change.** `S.url` now decodes to a
+>   `URL` *instance*, so `Url.res` moves to `S.uri`, the string-preserving arm.
+>   This is more than a typing detail: `new URL("http://x").href` normalises to
+>   `http://x/`, and the value is written to an append-only log, so the address has
+>   to survive as the caller wrote it. `S.uri` still rejects what does not parse.
+>   The `http`/`https` allowlist remains what closes the `javascript:` hole, since
+>   `S.uri` accepts that scheme like the old `S.url` did.
+> - **Catching up with `alpha` cost more than the bump itself.** `alpha` had moved
+>   273 commits ahead, and its newer code was written against sury API that rc.1
+>   removed: `Union` → `AnyOf`, `Object({items})` → `Object({properties})`, and
+>   `convertOrThrow` / `reverseConvertToJson*OrThrow` / `parseJsonOrThrow` /
+>   `enableJson` onto `Util_Sury`. Git could not flag any of it — they were clean
+>   auto-merges that simply no longer compiled.
+> - **One behavioural defect the merge would have introduced silently.** `alpha`
+>   split array-unwrapping out of `Reference.getTarget` into `getFieldTarget`,
+>   while this branch's `toEventDef` still called `getTarget` — so plural
+>   (`array`) references stopped reaching the manifest. Caught by
+>   `PluginStructureTest`, fixed by using `getFieldTarget` as the command side
+>   already did.
+
+> **Update (2026-08-05) — the rc.0 workaround is gone too; the tree is now
+> workaround-free on rc.0.** The maintainer answered
+> [#347](https://github.com/DZakh/sury/issues/347): *"I'll improve the case, but for
+> you here `S.shape` or `S.object` would be a better fit. And they wouldn't cause
+> such an error."* He is right, and taking the advice removed more than it was
+> aimed at. Full suite green: **301 suites, 2731 tests** (2724 + 7 new
+> regression tests), no skips, zero compiler warnings.
+>
+> - **`Offload`'s union arms are now declared, not hand-written.** `S.object` for
+>   the sentinel-keyed reference arm, `S.shape` for the inline arm, and
+>   `optionSchema` back to the simple `S.nullAsOption(schema(inner))`. A
+>   `S.transform` arm is opaque — sury cannot know what it accepts, so it must
+>   offer every value to the arm's own serializer, which is why an absent optional
+>   arrived as a raw `undefined`. A declared arm is discriminated on structure and
+>   never runs user code to find out. Leaving even one arm as a transform
+>   reproduces the failure, so this is all-or-nothing per union.
+> - **It fixed a second, unreported defect that no test covered:** a `json`-typed
+>   union arm cannot chain into a non-JSON target, so an `Offloaded` value encoded
+>   to `S.jsonString` threw while the same value encoded to `S.json` succeeded.
+>   Latent rather than live — today's `toJsonString` call sites on that path pass
+>   the inner value's schema, not the codec — but it would have surfaced the first
+>   time a message carrying an offloaded field was serialized to a string.
+> - **One change had to come with it.** A declared reference arm is *object-typed*,
+>   where the json-transform arm was `unknown`, and `Message.fillMissingDefaults`
+>   resolved an object value in an `anyOf` to the *first object-typed member*. A
+>   legacy inline payload missing a later-added field therefore healed into a
+>   reference with an empty key — and then decoded cleanly, i.e. silent corruption
+>   of replayed history rather than an error. The walker now picks the object member
+>   declaring the most of the value's own keys, ties keeping the earliest. This was
+>   a latent fragility for *any* union of two object shapes; offload was simply the
+>   first union with two.
+> - **The required-scalar tripwire gained eight lines, and should have.**
+>   `.apiSchemaFragment.$offload.*` and `.structure.$offload.*` are not new fields —
+>   they have been persisted since `@offload` existed. The guard could not see them
+>   through an opaque transform arm, so it had been checking only the inline half of
+>   every offloadable field. Both halves are covered now.
+> - **`Offload` held the only `S.union` and the only `S.transform` in the whole
+>   source tree**, so there is no second site carrying this hazard.
+>
+> Writeup: [`docs/analysis/done/sury-rc0-optional-union-encode.md`](../analysis/done/sury-rc0-optional-union-encode.md).
+> #347 stays open upstream, but nothing here depends on it — there is no workaround
+> left to revisit if it lands. **Still pending before merge, unchanged:** the Layer
+> republish + Phase 4 post-deploy verification.
+
+> **Update (2026-08-04) — bumped alpha.11 → `11.0.0-rc.0`; the last workaround is
+> gone.** All 67 `sury`/`sury-ppx` pins + lockfile moved to `11.0.0-rc.0` (exact,
+> no caret). Full suite green: **276 suites, 2260 tests, no skips, zero compiler
+> warnings** — the same counts alpha.11 reached, so nothing regressed.
+>
+> - **The alpha.11 optional-leading-literal-union regression is FIXED.** Verified
+>   twice: all seven rows of the repro matrix pass on rc.0, and a real
+>   `PolicyDocument.policySchema` encode round-trips `"*"`, single-string,
+>   array-valued and absent `Action`/`Resource` fields. The `@as("*")` arms in
+>   `rescript/pulumi-aws/src/IAM/PolicyDocument.res` are back in **first** position
+>   and the workaround comment is deleted. **No sury workarounds remain in the
+>   tree.** The issue was never filed and no longer needs to be.
+> - **Only one source change was required by rc.0:** the schema-introspection
+>   variant `Union({anyOf})` was renamed to `AnyOf({anyOf})` (the payload field
+>   keeps the name `anyOf`). 32 pattern-match sites across 12 files in
+>   `reventless-core`, `reventless-spec`, `reventless-local` and `reventless-aws`
+>   — a mechanical rename. `String({const})`, `Object({properties})` and
+>   `Array({additionalItems})` are all unchanged, so the `properties`/`Dict.get("TAG")`
+>   introspection this branch already did carries over untouched.
+> - **The same rename bites at runtime, where the compiler cannot see it.**
+>   `Message.fillMissingDefaults` is a `%raw` walker that switches on the runtime
+>   `schema.type` string; rc.0 renamed that tag from `"union"` to `"anyOf"`, so the
+>   walker silently stopped healing tagged-union members. It compiled fine and
+>   failed only in `MessageTest` (the replay/schema-migration-on-read path). Same
+>   lesson as `DcbCommandTopicEntryPoint.mjs` in alpha.11: **on a sury bump, grep
+>   the untyped surfaces (`%raw`, hand-written `.mjs`) for schema-shape literals.**
+> - **`S.resi` no longer ships** — rc.0 has only `S.res`. That is now the
+>   authoritative reference for this codebase (the earlier "follow `S.resi`, not the
+>   `.d.ts`" note still holds in spirit: read the ReScript source, not the TypeScript).
+> - **Watch out when switching to this branch:** `tests/**/*.res.mjs` is gitignored,
+>   so checking out from `alpha` leaves alpha-only compiled test outputs on disk.
+>   Twelve of them ran against sources this branch does not have and read as sury
+>   failures. They are checkout artefacts — delete any `tests/*.res.mjs` with no
+>   sibling `.res`. Relatedly, `pnpm install` triggered a compiler-update clean that
+>   wiped 675 *tracked* `src/**/*.res.mjs`; the root `build` chain re-emitted all of
+>   them (`git ls-files --deleted` back to 0).
+>
+> **Caught up to `alpha` the same day (162 commits).** Full suite green after the
+> merge: **301 suites, 2724 tests, no skips, zero compiler warnings**. What the
+> merge added on top of the pin bump:
+>
+> - **rc.0 has its own regression, and this one we had to work around.** Encoding
+>   an *absent* optional field whose schema is a `nullable`-wrapped union of
+>   transforms descends into the union's serializers with a raw `undefined`
+>   instead of short-circuiting to null — an uncatchable `TypeError`. alpha.11
+>   short-circuits correctly, so it is new in rc.0. It hit `@offload`, i.e. every
+>   message whose offloadable field was absent. Worked around in
+>   `Offload.optionSchema` by building the optionality *into* the union
+>   (`S.literal(JSON.Null)` arm first, every arm taking `option<payload<'a>>`), so
+>   the absent case is a matchable `None` rather than a raw `undefined`. Repro and
+>   writeup in
+>   [`docs/analysis/done/sury-rc0-optional-union-encode.md`](../analysis/done/sury-rc0-optional-union-encode.md);
+>   **filed upstream as [DZakh/sury#347](https://github.com/DZakh/sury/issues/347)**.
+>   Revisit `Offload.optionSchema` if it is fixed — the wrapped form is simpler, and
+>   the built-in union exists only to dodge this bug. Two details keep the workaround
+>   behaviour-preserving: the
+>   none-arm must be **null-typed** (not json-typed) so the union still advertises
+>   `has.null`, which `Message.fillMissingDefaults` reads to heal an absent field
+>   on replay; and it must encode to an explicit `null`, not an omitted key, so the
+>   wire form stays byte-identical to what is stored.
+> - **`sury/src/Sury.res.mjs` no longer exists**, so alpha's
+>   `@module("sury/src/Sury.res.mjs") external _jsNullable … = "js_nullable"` was a
+>   runtime-missing import. The function survives, re-exported from `"sury"` as
+>   `nullable`. This is the third hand-written/untyped surface a sury bump has
+>   broken invisibly to the compiler, after `HeartbeatEntryPoint.mjs` and
+>   `DcbCommandTopicEntryPoint.mjs`.
+> - **Further rc.0 API drift the merge surfaced**, none of it hard: `S.url`/`S.email`
+>   became schema *values* rather than refinements (`S.string->S.url` → `S.url`);
+>   `S.parseOrThrow` requires the `~to` label; `S.enableJson()` is gone; `S.Error`
+>   is gone as a ReScript exception constructor (sury throws a plain JS `SuryError`,
+>   so its message comes off `JsExn`); `S.refine` is a predicate (alpha had added a
+>   second effect-context site in `Semantic.refined`, plus `Money`/`GeoPoint`); and
+>   `Array({items})` holds `array<t<unknown>>`, not records with `.schema`.
+> - The `Union` → `AnyOf` rename applied to 4 more sites alpha added while the
+>   branch sat idle. The sweep is idempotent, so re-running it over a merged tree
+>   is the right move after every catch-up.
+>
+> **Still pending before merge:** the Layer republish + Phase 4 post-deploy
+> verification (heartbeats clean, `Platform_Plugins` populated). Everything above
+> is local evidence only — nothing has run on AWS.
+
+> **Update (2026-07-28) — caught up to `alpha` and bumped to alpha.11; no known
+> sury blockers remain.** All 34 `sury`/`sury-ppx` pins + lockfile moved to
+> `11.0.0-alpha.11` (exact, no caret). The branch had fallen 358 commits behind
+> `alpha`; a catch-up merge landed it, with five things worth recording:
+>
+> - **The framework packages were renamed on `alpha`** (`reventless/reventless-spec`
+>   → `reventless/spec`, `reventless-local` → `local`, …) and
+>   `reventless-vscode-protocol` moved out of this repo. Git paired the renames for
+>   every file the branch had *modified*, so the careful work (DcbTag/DcbDecode
+>   `properties`/`Dict.get("TAG")` introspection, the `S.nullAsOption` conversions,
+>   the `Message.res` pivot) came across intact. Only `Util_Sury.res` — *added* on
+>   the branch, so no rename to follow — stranded at the old path and was moved by
+>   hand to `reventless/spec/src/util/`.
+> - **The mechanical sweep is re-runnable and was re-run over the merged tree** —
+>   25 files, 57 call renames, 1 `S.enableJson()` deletion — picking up the sury
+>   call sites `alpha` added while the branch sat idle. Files already migrated have
+>   no matches, so the sweep is idempotent.
+> - **`S.refine` changed shape in alpha.11**: the alpha.4 effect-context form
+>   (`S.refine(s => value => … s.fail(why))`) is now a plain predicate
+>   (`S.refine(value => bool, ~error=?)`). One site — `StorageRef.forStore` — used
+>   the old form. Migrated to the predicate; the per-value reason `fromString`
+>   returns is no longer threaded into the schema error (no test asserted it, and
+>   `fromString` remains the API for callers that need the specific rule).
+> - **`S.res.mjs` stopped re-exporting `json`.** `DcbCommandTopicEntryPoint.mjs` —
+>   a hand-written entry point `alpha` added, and the second such consumer after
+>   `HeartbeatEntryPoint.mjs` — imported `{ json } from "sury/src/S.res.mjs"` and
+>   died at module link with *"does not provide an export named 'json'"*. It now
+>   imports from `"sury"`, the same binding the compiled ReScript resolves. Worth
+>   remembering that hand-written `.mjs` is invisible to the compiler, so a sury
+>   bump only surfaces there at test/runtime.
+> - **`Message.fillMissingDefaults` walked the alpha.4 schema shape.** The
+>   schema-migration-on-read walker (`%raw`, added on `alpha` after the branch
+>   forked) read object fields as `schema.items[i].location` / `.schema`, which
+>   sury 11 replaced with `schema.properties` (name → schema), and matched
+>   tagged-union members through the same `items`/`location` pair. Both are now
+>   `properties`-based — the identical rewrite the branch had already applied to
+>   `DcbTag`/`DcbDecode`/`SchemaWalker`. Everything else the walker relies on
+>   (`has.null`, `anyOf[].const`, array `additionalItems`) is unchanged in
+>   alpha.11, verified by dumping live schema objects.
+>
+> **FACET 2 is FIXED in alpha.11** (upstream #311, closed): nested `None` optional
+> fields are omitted on encode again, as alpha.4's `reverseConvertToJsonOrThrow`
+> did. The three `ResolvedOutputsTest` cases that were `test.skip`-ped are restored
+> and pass. With facet 1 already fixed in alpha.10, **neither bug that blocked this
+> migration remains — the full suite is green (2252/2252, no skips).**
+>
+> **One NEW upstream regression came in with alpha.11**, found by two AWS tests that
+> `alpha` added while the branch sat idle: compiling the encoder for an *optional*
+> field whose union schema *leads with a literal* and has ≥3 members throws a raw
+> `TypeError` out of `inlinedValueFromString`. That is the AWS IAM policy grammar
+> (`"Action": "*" | string | array`), so every generated policy document failed to
+> encode — a deploy-path break, not a test artefact. alpha.10 is unaffected.
+> Worked around by declaring the `"*"` arm last in `PolicyDocument.actions` /
+> `resources`; for an `@unboxed` variant that changes neither the encoded JSON nor
+> the decoded runtime value. Repro table + ready-to-post issue in
+> [`docs/analysis/done/sury-alpha11-optional-leading-literal-union.md`](../analysis/done/sury-alpha11-optional-leading-literal-union.md)
+> — never filed; **fixed upstream in rc.0 and the arm order is reverted** (see the
+> 2026-08-04 note above).
+>
+> If the workaround is judged too speculative to carry, alpha.10 is a one-command
+> revert of the pins — the cost is facet 2 returning, i.e. the same 3 skipped
+> `ResolvedOutputsTest` cases and the blocked cross-stack import of a sortless
+> resource.
+>
+> **Still pending before merge:** Layer republish + the Phase 4 post-deploy
+> verification (heartbeats clean, `Platform_Plugins` populated).
+
+> **Update (2026-07-15) — bumped alpha.8 → alpha.10 on the same branch.** All 34
+> `sury`/`sury-ppx` pins + lockfile moved to `11.0.0-alpha.10`; whole monorepo
+> builds green, zero warnings. The alpha.8 external shim rename (`Sury.res.mjs` →
+> `S.mjs`, `js_nullable` → `nullable`) did not bite — the branch already migrated
+> those call sites to `S.nullAsOption`. One drift fixup was needed: `alpha` added a
+> `@groupBy` UI-hint whose PPX emits a `groupBy` field, so `StateAnnotations.
+> stateAnnotationSpec` gained `groupBy: option<string>` and three test fixtures
+> gained `groupBy: None` (this branch predates that feature).
+>
+> **FACET 1 (the reported bug) is FIXED in alpha.10** — the `@s.matches(nullAsOption)`
+> reverse transform now applies at `array<record>` depth. `ResolvedOutputsTest`
+> fixture reverted to `sortKey: None`; the old `test.todo` is now a passing
+> regression guard. **FACET 2 remains** (plain-`None` optional → `undefined`
+> rejected as non-jsonable inside a `JSON`-typed field on encode); 3 tests stay
+> `test.skip`-ped, tracked in
+> [`docs/analysis/done/sury-alpha10-undefined-optional-in-json.issue.md`](../analysis/done/sury-alpha10-undefined-optional-in-json.issue.md).
+> **Still pending before merge:** catch up to `alpha` (branch is ~193 commits
+> behind — ~18 real `.res` conflicts), then Layer republish.
+
+> **Execution log (2026-07-04) — branch `sury-alpha8-wip` (now `sury-11-migration`).** Full mechanical
+> migration done: sury + sury-ppx → `11.0.0-alpha.8` across all 33 package.json
+> pins + lockfile; `Util_Sury` shim (`parseOrThrow`/`decodeOrThrow` labeled args,
+> encode = `decodeOrThrow(~from=schema, ~to=S.json)`); ~90 `.res` files ported;
+> `js_nullable(x, ())` → **`S.nullAsOption`** (the alpha.8 `js_nullable(_, undefined)`
+> returns a bare `x|null` union that rejects `None` — root cause of most failures);
+> sury-11 schema introspection `items`/`location` → `properties`/`Dict.get("TAG")`
+> in DcbTag/DcbDecode/DcbValidation/SchemaWalker/Plugin_Structure/SchemaType/
+> GraphQL_FragmentGenerator; `Array.items` → `additionalItems` in SchemaType;
+> protocol golden + LogFormat expectation updated for benign alpha.8 JSON key
+> reordering. **Whole monorepo builds green; all tests pass** — spec 80, core 491,
+> local 475, aws 139, gwt 195, protocol 90, interop 47 pass / **3 skip + 1 todo**.
+> The 4 non-passing are xfail'd against a confirmed sury alpha.8 upstream bug
+> ([`docs/analysis/done/sury-alpha8-nullasoption-reverse-bug.md`](../analysis/done/sury-alpha8-nullasoption-reverse-bug.md)):
+> `@s.matches(nullAsOption)` reverse transform is dropped when reached through a
+> multi-variant union inside `array<record>` in an object (interop resolvedOutputs),
+> plus nested plain-`None` optionals serialising to `undefined` inside `JSON`-typed
+> fields. **Before merge:** file the sury upstream issue; re-run Phase 4 (flip pins
+> confirmed done here; Layer republish still pending); the interop cross-stack
+> import of a sortless resource stays blocked until sury fixes it.
 **Triggering incident:** Lambda Layer `reventless-aws-alpha:58` shipped with
 `sury@11.0.0-alpha.5` and crashed every heartbeat Lambda at init with
 `SyntaxError: 'reverseConvertToJsonOrThrow' is not an export`.
@@ -338,19 +596,26 @@ post-stability decision, not part of the migration sweep.
 
 ## Validation checklist (cross-phase)
 
-- [ ] Phase 0: production Lambdas no longer crash at init; `Platform_Plugins`
+- [x] Phase 0: production Lambdas no longer crash at init; `Platform_Plugins`
       query returns ≥ 1 edge with non-null `name`/`version`/`status`.
-- [ ] Phase 1: `Util_Sury` shim exists; `Message.res` + `Projection.res`
-      ported; both core test suites green on alpha.5 locally.
-- [ ] Phase 1: 2 new round-trip property tests for typed-state and
+- [x] Phase 1: `Util_Sury` shim exists; `Message.res` + `Projection.res`
+      ported; both core test suites green locally.
+- [x] Phase 1: 2 new round-trip property tests for typed-state and
       variant-payload events.
-- [ ] Phase 2: 76 files swept; zero `S.enableJson` / `js_nullable` /
+- [x] Phase 2: files swept; zero `S.enableJson` / `js_nullable` /
       `reverseConvert*` / `parseJson*` / `convertOrThrow` remain in
-      `--include="*.res"` (sury and lib excluded).
-- [ ] Phase 2: per-package tests + zero compiler warnings.
-- [ ] Phase 3: identified hot paths hoist parsers at module init.
-- [ ] Phase 4: pin removed; all framework packages build + test on alpha.5;
-      Layer 60 deployed; 30-minute log sweep clean.
+      `--include="*.res"` (sury and lib excluded). `js_nullable` survives only
+      as prose naming the `T | null` shape — no binding, no call site;
+      `S.nullAsOption` replaced it.
+- [x] Phase 2: per-package tests + zero compiler warnings.
+- [ ] Phase 3: identified hot paths hoist parsers at module init — **not done.**
+      No `S.parser(` hoist exists in the tree; every hot path still builds its
+      parser per call through `Util_Sury.fromJson`. Deferred rather than
+      abandoned: it is a self-contained performance change that needs no further
+      sury work, so it can be picked up against rc.1 as it stands.
+- [x] Phase 4: pin removed; all framework packages build + test on rc.1.
+- [ ] Phase 4: Layer rebuilt and 30-minute log sweep clean — pending, both
+      happen on the push to `alpha`.
 
 ## Risk register
 
@@ -385,9 +650,16 @@ migration sweep. They become materially easier once Phase 4 lands.
    Threads into `docs/analysis/typescript-client-feasibility.md` Blocker 1
    resolution. Plan (written): `docs/plans/Backlog/typescript-client-sdk.md`.
 
+4. **Opportunity B — hoist parsers on hot paths (Phase 3, unexecuted).**
+   The migration landed without it: every hot path still builds its parser per
+   call through `Util_Sury.fromJson`, and no `S.parser(` hoist exists in the
+   tree. Phase 3 above already names the six target paths and the before/after
+   shape, so it is directly actionable against rc.1 — it needs no further sury
+   work, which is why it was dropped from the sweep rather than blocked by it.
+
 ## References
 
-- Analysis: `docs/analysis/sury-11-migration.md`
+- Analysis: `docs/analysis/done/sury-11-migration.md`
 - Sury repo: <https://github.com/DZakh/sury>
 - Standard Schema: <https://standardschema.dev/>
 - Related: `docs/plans/done/api-component-graphql.md`,

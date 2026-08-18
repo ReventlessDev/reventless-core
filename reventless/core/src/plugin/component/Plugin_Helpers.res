@@ -46,7 +46,7 @@ let getRemoteStorageResources = (pluginName, queryDbName) =>
           | Some(rawReadModel) =>
             try {
               let readModel =
-                rawReadModel->S.parseOrThrow(ReventlessInterop.ReadModel.resolvedOutputsSchema)
+                rawReadModel->S.parseOrThrow(~to=ReventlessInterop.ReadModel.resolvedOutputsSchema)
               readModel.queryDb.resources->Adapter.fromInteropResources
             } catch {
             | exn =>
@@ -607,12 +607,12 @@ module MakeEventCollectorHelper = (
         ecResource.name->ComponentType.nameOpt(EventCollector.componentType)
       let pluginDefinitionJson =
         pluginDefinition
-        ->S.reverseConvertToJsonOrThrow(Reventless.Plugin.pluginDefinitionSchema)
+        ->Reventless.Util_Sury.toJson(Reventless.Plugin.pluginDefinitionSchema)
         ->JSON.stringify
         ->Pulumi.Output.make
       let uiFragmentsJson =
         uiFragments
-        ->S.reverseConvertToJsonOrThrow(Reventless.Plugin.uiFragmentManifestOptionSchema)
+        ->Reventless.Util_Sury.toJson(Reventless.Plugin.uiFragmentManifestOptionSchema)
         ->JSON.stringify
         ->Pulumi.Output.make
       let pluginExtensionPointCmdTopicUrl = switch pluginExtensionPointUnwrapped {
@@ -824,7 +824,7 @@ let offloadPayload = (value: 'a, ~schema: S.t<'a>, ~store: string): Reventless.O
   switch offloadHook.contents {
   | Some(hook) =>
     Reventless.Offload.Offloaded(
-      hook(~store, ~bytes=value->S.reverseConvertToJsonStringOrThrow(schema)),
+      hook(~store, ~bytes=value->Reventless.Util_Sury.toJsonString(schema)),
     )
   | None => Reventless.Offload.Inline(value)
   }
@@ -1250,7 +1250,7 @@ let serializePlainDictExport = (
     ->toResolved
     ->Pulumi.Output.apply(resolved => (
       name,
-      resolved->S.reverseConvertToJsonOrThrow(schema),
+      resolved->Reventless.Util_Sury.toJson(schema),
     ))
   )
   ->Pulumi.Output.all
@@ -1269,7 +1269,7 @@ let serializeDictExport = (
       ->toResolved
       ->Pulumi.Output.apply(resolved => (
         name,
-        resolved->S.reverseConvertToJsonOrThrow(schema),
+        resolved->Reventless.Util_Sury.toJson(schema),
       ))
     )
     ->Pulumi.Output.all
@@ -1285,7 +1285,7 @@ let serializeTasksOutputs = (pluginOutputs: Plugin.outputs): Pulumi.Output.t<JSO
       task
       ->Task.toResolvedOutputs
       ->Pulumi.Output.apply(resolved =>
-        resolved->S.reverseConvertToJsonOrThrow(ReventlessInterop.Task.resolvedOutputsSchema)
+        resolved->Reventless.Util_Sury.toJson(ReventlessInterop.Task.resolvedOutputsSchema)
       )
     )
     ->Pulumi.Output.all
@@ -1310,7 +1310,7 @@ let serializeEventMappersOutputs = (pluginOutputs: Plugin.outputs): Pulumi.Outpu
           ->EventMapper.toResolvedOutputs
           ->Pulumi.Output.apply(resolved =>
             Some(
-              resolved->S.reverseConvertToJsonOrThrow(
+              resolved->Reventless.Util_Sury.toJson(
                 ReventlessInterop.EventMapper.resolvedOutputsSchema,
               ),
             )
@@ -1350,7 +1350,7 @@ let exportPlatformOutputs = (
         ->ExtensionPoint.toResolvedOutputs
         ->Pulumi.Output.apply(resolved => (
           ep.name,
-          resolved->S.reverseConvertToJsonOrThrow(
+          resolved->Reventless.Util_Sury.toJson(
             ReventlessInterop.ExtensionPoint.resolvedOutputsSchema,
           ),
         ))
@@ -1392,7 +1392,7 @@ let exportPlatformOutputs = (
       dcbOutputs
       ->DcbEventLog.toResolvedOutputs
       ->Pulumi.Output.apply(resolved =>
-        resolved->S.reverseConvertToJsonOrThrow(
+        resolved->Reventless.Util_Sury.toJson(
           ReventlessInterop.DcbEventLog.resolvedOutputsSchema,
         )
       ),
@@ -1545,7 +1545,7 @@ let exportPluginOutputs = (pluginOutputs: Plugin.outputs) => {
         dcbOutputs
         ->DcbEventLog.toResolvedOutputs
         ->Pulumi.Output.apply(resolved =>
-          resolved->S.reverseConvertToJsonOrThrow(
+          resolved->Reventless.Util_Sury.toJson(
             ReventlessInterop.DcbEventLog.resolvedOutputsSchema,
           )
         )

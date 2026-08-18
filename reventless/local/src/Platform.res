@@ -39,7 +39,7 @@ let decodePluginEventEnvelope = (eventJson: JSON.t): option<ReventlessCore.Plugi
   switch eventJson
   ->JSON.Decode.object
   ->Option.flatMap(d => d->Dict.get("event"))
-  ->Option.map(payload => payload->S.parseJsonOrThrow(ReventlessCore.PluginSpec.eventSchema)) {
+  ->Option.map(payload => payload->Reventless.Util_Sury.fromJson(ReventlessCore.PluginSpec.eventSchema)) {
   | result => result
   | exception _ => None
   }
@@ -55,7 +55,7 @@ let decodeUiFragmentRegistryEventEnvelope = (
   ->JSON.Decode.object
   ->Option.flatMap(d => d->Dict.get("event"))
   ->Option.map(payload =>
-    payload->S.parseJsonOrThrow(ReventlessCore.UiFragmentRegistry.eventSchema)
+    payload->Reventless.Util_Sury.fromJson(ReventlessCore.UiFragmentRegistry.eventSchema)
   ) {
   | result => result
   | exception _ => None
@@ -968,7 +968,7 @@ module MakeWithConfig = (
     let cmdJson: Reventless.Message.commandJson = {
       id: pluginName,
       meta: ReventlessCore.Message.generateMeta(~service=ReventlessCore.PluginSpec.name),
-      commandJson: command->S.reverseConvertToJsonOrThrow(ReventlessCore.PluginSpec.commandSchema),
+      commandJson: command->Reventless.Util_Sury.toJson(ReventlessCore.PluginSpec.commandSchema),
     }
     Bus.dispatchCommand(pluginCmdTopicKey, ReventlessCore.CommandTopic.encodeCommandJson(cmdJson))
   }
@@ -997,7 +997,7 @@ module MakeWithConfig = (
     let cmdJson: Reventless.Message.commandJson = {
       id: pluginName,
       meta: ReventlessCore.Message.generateMeta(~service=ReventlessCore.UiFragmentRegistry.name),
-      commandJson: command->S.reverseConvertToJsonOrThrow(
+      commandJson: command->Reventless.Util_Sury.toJson(
         ReventlessCore.UiFragmentRegistry.commandSchema,
       ),
     }
@@ -1057,7 +1057,7 @@ module MakeWithConfig = (
           ),
         )
       let manifestJson = (m: Reventless.Plugin.uiFragmentManifest) =>
-        m->S.reverseConvertToJsonOrThrow(Reventless.Plugin.uiFragmentManifestSchema)
+        m->Reventless.Util_Sury.toJson(Reventless.Plugin.uiFragmentManifestSchema)
       Bus.subscribeToEvents(pluginEventTopicKey, async (_service, _meta, eventJson) => {
         switch decodePluginEventEnvelope(eventJson) {
         | Some(VersionConnected(def))
@@ -1723,7 +1723,7 @@ module MakeWithConfig = (
         switch Bus.getQueryDbScan(pluginQueryDbName) {
         | Some(scanAll) =>
           scanAll()->Array.forEach(json =>
-            switch json->S.convertOrThrow(ReventlessCore.PluginsReadModelSpec.stateSchema) {
+            switch json->Reventless.Util_Sury.fromJson(ReventlessCore.PluginsReadModelSpec.stateSchema) {
             | state => statusByName->Dict.set(state.name, state.status)
             | exception _ => ()
             }
@@ -1805,7 +1805,7 @@ module MakeWithConfig = (
         switch Bus.getQueryDbScan(pluginQueryDbName) {
         | Some(scanAll) =>
           scanAll()->Array.forEach(json =>
-            switch json->S.convertOrThrow(ReventlessCore.PluginsReadModelSpec.stateSchema) {
+            switch json->Reventless.Util_Sury.fromJson(ReventlessCore.PluginsReadModelSpec.stateSchema) {
             | state =>
               let id = state.name ++ "@" ++ state.version
               dict->Dict.set(id, state.status)
@@ -1886,7 +1886,7 @@ module MakeWithConfig = (
         // mixed store never surfaces duplicates (mirrors Platform_UIFragments_Lambda.res).
         let latestByName = Dict.make()
         items->Array.forEach(item =>
-          switch item->S.parseOrThrow(ReventlessCore.UiFragments.stateSchema) {
+          switch item->S.parseOrThrow(~to=ReventlessCore.UiFragments.stateSchema) {
           | state =>
             let name = ReventlessCore.Plugin.name(state.pluginId)
             let version = ReventlessCore.Plugin.version(state.pluginId)
@@ -1932,7 +1932,7 @@ module MakeWithConfig = (
       switch Bus.getQueryDbScan(pluginQueryDbName) {
       | Some(scanAll) =>
         scanAll()->Array.findMap(json =>
-          switch json->S.convertOrThrow(ReventlessCore.PluginsReadModelSpec.stateSchema) {
+          switch json->Reventless.Util_Sury.fromJson(ReventlessCore.PluginsReadModelSpec.stateSchema) {
           | state if state.name == pluginName => Some(state.version)
           | _ => None
           | exception _ => None
@@ -2385,7 +2385,7 @@ module MakeWithConfig = (
           }
           items
           ->Array.filterMap(item =>
-            switch item->S.parseOrThrow(ReventlessCore.UiFragments.stateSchema) {
+            switch item->S.parseOrThrow(~to=ReventlessCore.UiFragments.stateSchema) {
             | state =>
               Some(ReventlessCore.Platform_UIFragmentsApi.encodeUIFragmentEntry(state))
             | exception _ => None

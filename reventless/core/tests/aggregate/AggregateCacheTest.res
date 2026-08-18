@@ -12,7 +12,6 @@
 
 open JestGlobals
 
-S.enableJson()
 
 module AggSpec = {
   module Id = Reventless.Id.StringPure

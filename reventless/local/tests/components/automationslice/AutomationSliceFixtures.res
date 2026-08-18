@@ -138,7 +138,7 @@ let testContext: Reventless.AutomationSlice.context = {
 // the event payload with a `meta.service` matching the source name so the
 // callback's per-source dispatch picks the right mapping.
 let encodeShipOrderEvent = (event: ShipOrderSource.event): JSON.t => {
-  let payloadJson = event->S.reverseConvertToJsonOrThrow(ShipOrderSource.eventSchema)
+  let payloadJson = event->Reventless.Util_Sury.toJson(ShipOrderSource.eventSchema)
   let dict = switch payloadJson->JSON.Decode.object {
   | Some(d) => d->Dict.copy
   | None =>
@@ -158,13 +158,13 @@ let encodeShipOrderEvent = (event: ShipOrderSource.event): JSON.t => {
     msgId: "msg-1",
     correlationId: "",
   }
-  dict->Dict.set("meta", meta->S.reverseConvertToJsonOrThrow(Reventless.Message.metaSchema))
+  dict->Dict.set("meta", meta->Reventless.Util_Sury.toJson(Reventless.Message.metaSchema))
   dict->Dict.set("id", JSON.Encode.string("env-id"))
   JSON.Encode.object(dict)
 }
 
 let encodeSkipProcessEvent = (event: SkipProcessSource.event): JSON.t => {
-  let payloadJson = event->S.reverseConvertToJsonOrThrow(SkipProcessSource.eventSchema)
+  let payloadJson = event->Reventless.Util_Sury.toJson(SkipProcessSource.eventSchema)
   let dict = switch payloadJson->JSON.Decode.object {
   | Some(d) => d->Dict.copy
   | None =>
@@ -183,7 +183,7 @@ let encodeSkipProcessEvent = (event: SkipProcessSource.event): JSON.t => {
     msgId: "msg-1",
     correlationId: "",
   }
-  dict->Dict.set("meta", meta->S.reverseConvertToJsonOrThrow(Reventless.Message.metaSchema))
+  dict->Dict.set("meta", meta->Reventless.Util_Sury.toJson(Reventless.Message.metaSchema))
   dict->Dict.set("id", JSON.Encode.string("env-id"))
   JSON.Encode.object(dict)
 }

@@ -136,7 +136,7 @@ let makeJsonEventsHandler = (
       Effect.sync(() =>
         try {
           let {event, meta, recordedAt} = decodeEnvelope(json)
-          project({event: event->S.parseJsonOrThrow(eventSchema), meta, recordedAt})
+          project({event: event->Reventless.Util_Sury.fromJson(eventSchema), meta, recordedAt})
         } catch {
         | exn =>
           StreamRoutedEntryPoint_Ops.logError(

@@ -67,8 +67,8 @@ describe("PgChangeFeedRelay_Runtime partitionTag (B2.3d)", () => {
     let composite =
       Reventless.DcbTag.Composite({keys: ["studentId", "courseId"], seps: [":"]})
     [simple, composite]->Array.forEach(pt => {
-      let wire = pt->S.reverseConvertToJsonOrThrow(Reventless.DcbTag.derivedPartitionTagSchema)
-      let back = wire->S.parseJsonOrThrow(Reventless.DcbTag.derivedPartitionTagSchema)
+      let wire = pt->Reventless.Util_Sury.toJson(Reventless.DcbTag.derivedPartitionTagSchema)
+      let back = wire->Reventless.Util_Sury.fromJson(Reventless.DcbTag.derivedPartitionTagSchema)
       expect(back)->toEqual(pt)
     })
   })

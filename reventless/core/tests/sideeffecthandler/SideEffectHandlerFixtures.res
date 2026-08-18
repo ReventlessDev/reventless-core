@@ -1,4 +1,3 @@
-S.enableJson()
 
 // ─────────────────────────────────────────────────────────────
 // Event source spec for SideEffect

@@ -58,7 +58,7 @@ describe("StorageRef:", () => {
     let schema = StorageRef.forStore(~store="productImages")
 
     let parses = (raw: string) =>
-      switch raw->S.parseOrThrow(schema) {
+      switch raw->S.parseOrThrow(~to=schema) {
       | _ => true
       | exception _ => false
       }

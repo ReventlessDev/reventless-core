@@ -12,8 +12,8 @@ type variantInfo = {
 // Extract variant info (TAG name, fields, tagged fields) from a single variant schema
 let extractVariantInfo = (variantSchema: S.t<unknown>): option<variantInfo> =>
   switch variantSchema {
-  | Object({items, properties}) =>
-    DcbTag.variantTagName(items)->Option.map(tagName => {
+  | Object({properties}) =>
+    DcbTag.variantTagName(properties)->Option.map(tagName => {
       let taggedFields =
         properties
         ->Dict.toArray
@@ -42,7 +42,7 @@ let extractVariantInfo = (variantSchema: S.t<unknown>): option<variantInfo> =>
 // Extract all variant infos from a schema (handles Union and single variants)
 let extractAllVariants = (schema: S.t<unknown>): array<variantInfo> =>
   switch schema {
-  | Union({anyOf}) => anyOf->Array.filterMap(extractVariantInfo)
+  | AnyOf({anyOf}) => anyOf->Array.filterMap(extractVariantInfo)
   | _ =>
     switch extractVariantInfo(schema) {
     | Some(info) => [info]
@@ -66,7 +66,7 @@ let rec schemasAreCompatible = (a: S.t<unknown>, b: S.t<unknown>): bool =>
   | (Array({additionalItems: Schema(aItem)}), Array({additionalItems: Schema(bItem)})) =>
     schemasAreCompatible(aItem, bItem)
   | (Object({properties: aProps}), Object({properties: bProps})) => propsCompatible(aProps, bProps)
-  | (Union(_), Union(_)) =>
+  | (AnyOf(_), AnyOf(_)) =>
     // Same set of variant tags, and each shared variant's payload compatible.
     let av = extractAllVariants(a)
     let bv = extractAllVariants(b)
@@ -104,7 +104,7 @@ let schemaTypeName = (schema: S.t<unknown>): string =>
   | BigInt(_) => "bigint"
   | Array(_) => "array"
   | Object(_) => "object"
-  | Union(_) => "union"
+  | AnyOf(_) => "union"
   | Never(_) => "never"
   | Unknown(_) => "unknown"
   | Ref(_) => "ref"
@@ -126,7 +126,7 @@ let schemaTypeName = (schema: S.t<unknown>): string =>
 // since that is all there is to say about it.
 let describeSchema = (schema: S.t<unknown>): string =>
   switch schema {
-  | Union({anyOf}) =>
+  | AnyOf({anyOf}) =>
     let tags = extractAllVariants(schema)->Array.map(v => v.tagName)
     let members = tags->Array.length > 0 ? tags : anyOf->Array.map(schemaTypeName)
     `union[${members->Array.join(" | ")}]`

@@ -36,12 +36,12 @@
     "@reventlessdev/reventless-interop": "workspace:*",
     "@reventlessdev/reventless-postgres": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*",
-    "sury": "11.0.0-alpha.4",
+    "sury": "11.0.0-rc.1",
     "uuid": "^13.0.0"
   },
   "devDependencies": {
     "rescript": "12.3.0",
-    "sury-ppx": "11.0.0-alpha.2"
+    "sury-ppx": "11.0.0-rc.1"
   },
   "peerDependencies": {
     "rescript": "12.3.0"

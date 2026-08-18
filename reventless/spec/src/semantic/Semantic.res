@@ -102,13 +102,19 @@ hand-rolling a second check beside it. Deriving it here makes that structural:
 there is one place a grammar can be written, so there is nowhere for a second
 one to drift.
 */
+// sury's refiner is a predicate with a fixed message, so the per-value reason
+// `check` returns is not threaded into the schema error; call the scalar's own
+// `fromString`/`fromFloat` directly when the caller needs to report which rule
+// the value broke.
 let refined = (base: S.t<'a>, ~id: string, ~check: 'a => result<'a, string>): S.t<'a> =>
   base
-  ->S.refine(s => value =>
-    switch check(value) {
-    | Ok(_) => ()
-    | Error(why) => s.fail(why)
-    }
+  ->S.refine(
+    value =>
+      switch check(value) {
+      | Ok(_) => true
+      | Error(_) => false
+      },
+    ~error=`expected a valid ${id}`,
   )
   ->mark(~id)
 
@@ -131,7 +137,7 @@ that could stand for the whole.
 */
 let unwrapOptional = (schema: S.t<unknown>): option<S.t<unknown>> =>
   switch schema {
-  | Union({anyOf}) =>
+  | AnyOf({anyOf}) =>
     switch anyOf->Array.filter(v =>
       switch v {
       | Null(_) | Undefined(_) => false

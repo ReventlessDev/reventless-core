@@ -67,7 +67,6 @@ module Make = (
 ): (T with module Spec = Spec) => {
   module Spec = Spec
 
-  S.enableJson()
 
   let testId = ref(TestFixtures.id)
 

@@ -13,6 +13,7 @@ import * as Effect from "effect/Effect";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_Promise from "@rescript/runtime/lib/es6/Stdlib_Promise.js";
 import * as Plugin$Reventless from "@reventlessdev/reventless-spec/src/components/Plugin.res.mjs";
+import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as Plugin$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin.res.mjs";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
@@ -115,7 +116,7 @@ let platformMCPRef = {
 
 function decodePluginEventEnvelope(eventJson) {
   try {
-    return Stdlib_Option.map(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(eventJson), d => d["event"]), payload => S.parseJsonOrThrow(payload, PluginSpec$ReventlessCore.eventSchema));
+    return Stdlib_Option.map(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(eventJson), d => d["event"]), payload => Util_Sury$Reventless.fromJson(payload, PluginSpec$ReventlessCore.eventSchema));
   } catch (exn) {
     return;
   }
@@ -123,7 +124,7 @@ function decodePluginEventEnvelope(eventJson) {
 
 function decodeUiFragmentRegistryEventEnvelope(eventJson) {
   try {
-    return Stdlib_Option.map(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(eventJson), d => d["event"]), payload => S.parseJsonOrThrow(payload, UiFragmentRegistry$ReventlessCore.eventSchema));
+    return Stdlib_Option.map(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(eventJson), d => d["event"]), payload => Util_Sury$Reventless.fromJson(payload, UiFragmentRegistry$ReventlessCore.eventSchema));
   } catch (exn) {
     return;
   }
@@ -882,7 +883,7 @@ function MakeWithConfig(Config) {
   let pluginEventTopicKey = PluginSpec$ReventlessCore.name + "AggrEventTopic";
   let dispatchPluginCommand = (pluginName, command) => {
     let cmdJson_meta = Message$ReventlessCore.generateMeta(PluginSpec$ReventlessCore.name, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
-    let cmdJson_commandJson = S.reverseConvertToJsonOrThrow(command, PluginSpec$ReventlessCore.commandSchema);
+    let cmdJson_commandJson = Util_Sury$Reventless.toJson(command, PluginSpec$ReventlessCore.commandSchema);
     let cmdJson = {
       id: pluginName,
       meta: cmdJson_meta,
@@ -893,7 +894,7 @@ function MakeWithConfig(Config) {
   let adminDcbCmdTopicKey = ComponentType$ReventlessCore.name(Platform_Admin_Structure$ReventlessCore.pluginId + "Dcb", "CommandTopic");
   let dispatchUiFragmentCommand = (pluginName, command) => {
     let cmdJson_meta = Message$ReventlessCore.generateMeta(UiFragmentRegistry$ReventlessCore.name, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
-    let cmdJson_commandJson = S.reverseConvertToJsonOrThrow(command, UiFragmentRegistry$ReventlessCore.commandSchema);
+    let cmdJson_commandJson = Util_Sury$Reventless.toJson(command, UiFragmentRegistry$ReventlessCore.commandSchema);
     let cmdJson = {
       id: pluginName,
       meta: cmdJson_meta,
@@ -967,9 +968,9 @@ function MakeWithConfig(Config) {
       }
       switch (match.TAG) {
         case "UiFragmentRegistered" :
-          return publishUIFragment(match.pluginId, "Registered", S.reverseConvertToJsonOrThrow(match.manifest, Plugin$Reventless.uiFragmentManifestSchema));
+          return publishUIFragment(match.pluginId, "Registered", Util_Sury$Reventless.toJson(match.manifest, Plugin$Reventless.uiFragmentManifestSchema));
         case "UiFragmentUpdated" :
-          return publishUIFragment(match.pluginId, "Updated", S.reverseConvertToJsonOrThrow(match.newManifest, Plugin$Reventless.uiFragmentManifestSchema));
+          return publishUIFragment(match.pluginId, "Updated", Util_Sury$Reventless.toJson(match.newManifest, Plugin$Reventless.uiFragmentManifestSchema));
         case "UiFragmentDeregistered" :
           return publishUIFragment(match.pluginId, "Deregistered", null);
       }
@@ -1335,7 +1336,7 @@ function MakeWithConfig(Config) {
         scanAll().forEach(json => {
           let state;
           try {
-            state = S.convertOrThrow(json, PluginsReadModelSpec$ReventlessCore.stateSchema);
+            state = Util_Sury$Reventless.fromJson(json, PluginsReadModelSpec$ReventlessCore.stateSchema);
           } catch (exn) {
             return;
           }
@@ -1397,7 +1398,7 @@ function MakeWithConfig(Config) {
         scanAll().forEach(json => {
           let state;
           try {
-            state = S.convertOrThrow(json, PluginsReadModelSpec$ReventlessCore.stateSchema);
+            state = Util_Sury$Reventless.fromJson(json, PluginsReadModelSpec$ReventlessCore.stateSchema);
           } catch (exn) {
             return;
           }
@@ -1474,7 +1475,7 @@ function MakeWithConfig(Config) {
         return Stdlib_Array.findMap(scanAll(), json => {
           let state;
           try {
-            state = S.convertOrThrow(json, PluginsReadModelSpec$ReventlessCore.stateSchema);
+            state = Util_Sury$Reventless.fromJson(json, PluginsReadModelSpec$ReventlessCore.stateSchema);
           } catch (exn) {
             return;
           }
@@ -2612,7 +2613,7 @@ function Make($star) {
   let pluginEventTopicKey = PluginSpec$ReventlessCore.name + "AggrEventTopic";
   let dispatchPluginCommand = (pluginName, command) => {
     let cmdJson_meta = Message$ReventlessCore.generateMeta(PluginSpec$ReventlessCore.name, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
-    let cmdJson_commandJson = S.reverseConvertToJsonOrThrow(command, PluginSpec$ReventlessCore.commandSchema);
+    let cmdJson_commandJson = Util_Sury$Reventless.toJson(command, PluginSpec$ReventlessCore.commandSchema);
     let cmdJson = {
       id: pluginName,
       meta: cmdJson_meta,
@@ -2623,7 +2624,7 @@ function Make($star) {
   let adminDcbCmdTopicKey = ComponentType$ReventlessCore.name(Platform_Admin_Structure$ReventlessCore.pluginId + "Dcb", "CommandTopic");
   let dispatchUiFragmentCommand = (pluginName, command) => {
     let cmdJson_meta = Message$ReventlessCore.generateMeta(UiFragmentRegistry$ReventlessCore.name, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
-    let cmdJson_commandJson = S.reverseConvertToJsonOrThrow(command, UiFragmentRegistry$ReventlessCore.commandSchema);
+    let cmdJson_commandJson = Util_Sury$Reventless.toJson(command, UiFragmentRegistry$ReventlessCore.commandSchema);
     let cmdJson = {
       id: pluginName,
       meta: cmdJson_meta,
@@ -2697,9 +2698,9 @@ function Make($star) {
       }
       switch (match.TAG) {
         case "UiFragmentRegistered" :
-          return publishUIFragment(match.pluginId, "Registered", S.reverseConvertToJsonOrThrow(match.manifest, Plugin$Reventless.uiFragmentManifestSchema));
+          return publishUIFragment(match.pluginId, "Registered", Util_Sury$Reventless.toJson(match.manifest, Plugin$Reventless.uiFragmentManifestSchema));
         case "UiFragmentUpdated" :
-          return publishUIFragment(match.pluginId, "Updated", S.reverseConvertToJsonOrThrow(match.newManifest, Plugin$Reventless.uiFragmentManifestSchema));
+          return publishUIFragment(match.pluginId, "Updated", Util_Sury$Reventless.toJson(match.newManifest, Plugin$Reventless.uiFragmentManifestSchema));
         case "UiFragmentDeregistered" :
           return publishUIFragment(match.pluginId, "Deregistered", null);
       }
@@ -3060,7 +3061,7 @@ function Make($star) {
         scanAll().forEach(json => {
           let state;
           try {
-            state = S.convertOrThrow(json, PluginsReadModelSpec$ReventlessCore.stateSchema);
+            state = Util_Sury$Reventless.fromJson(json, PluginsReadModelSpec$ReventlessCore.stateSchema);
           } catch (exn) {
             return;
           }
@@ -3122,7 +3123,7 @@ function Make($star) {
         scanAll().forEach(json => {
           let state;
           try {
-            state = S.convertOrThrow(json, PluginsReadModelSpec$ReventlessCore.stateSchema);
+            state = Util_Sury$Reventless.fromJson(json, PluginsReadModelSpec$ReventlessCore.stateSchema);
           } catch (exn) {
             return;
           }
@@ -3199,7 +3200,7 @@ function Make($star) {
         return Stdlib_Array.findMap(scanAll(), json => {
           let state;
           try {
-            state = S.convertOrThrow(json, PluginsReadModelSpec$ReventlessCore.stateSchema);
+            state = Util_Sury$Reventless.fromJson(json, PluginsReadModelSpec$ReventlessCore.stateSchema);
           } catch (exn) {
             return;
           }

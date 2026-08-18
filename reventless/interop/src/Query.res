@@ -37,7 +37,7 @@ module type StackQuery = {
 // Pulumi resolves and deserialises stack outputs to plain JavaScript values before
 // making them available via StackReference.
 let parseMeta = (raw: 'a): result<ExportMeta.t, string> =>
-  try Ok((raw->Obj.magic: JSON.t)->S.parseOrThrow(ExportMeta.schema))
+  try Ok((raw->Obj.magic: JSON.t)->S.parseOrThrow(~to=ExportMeta.schema))
   catch {
   | exn =>
     let msg =

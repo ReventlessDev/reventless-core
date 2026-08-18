@@ -44,7 +44,7 @@ function fromVariant(plugin, variant) {
 }
 
 function fromEventSchema(plugin, eventSchema) {
-  if (eventSchema.type === "union") {
+  if (eventSchema.type === "anyOf") {
     return Stdlib_Array.filterMap(eventSchema.anyOf, v => fromVariant(plugin, v));
   } else {
     return Stdlib_Option.mapOr(fromVariant(plugin, eventSchema), [], e => [e]);

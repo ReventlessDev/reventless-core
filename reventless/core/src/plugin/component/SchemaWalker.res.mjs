@@ -25,7 +25,7 @@ function describeSchema(schema) {
     case "object" :
       let inner = Object.entries(schema.properties).filter(param => param[0] !== "TAG").toSorted((param, param$1) => Primitive_string.compare(param[0], param$1[0])).map(param => param[0] + ":" + describeSchema(param[1])).join(",");
       return "{" + inner + "}";
-    case "union" :
+    case "anyOf" :
       let nonNull = schema.anyOf.filter(v => {
         switch (v.type) {
           case "null" :
@@ -47,7 +47,7 @@ function describeSchema(schema) {
 }
 
 function isOptionalSchema(schema) {
-  if (schema.type === "union") {
+  if (schema.type === "anyOf") {
     return schema.anyOf.some(v => {
       switch (v.type) {
         case "null" :
@@ -100,13 +100,12 @@ function hashConstructors(ctors) {
   });
 }
 
-function tagConstOf(items) {
-  return Stdlib_Option.flatMap(items.find(item => item.location === "TAG"), item => {
-    let match = item.schema;
-    if (match.type !== "string") {
+function tagConstOf(properties) {
+  return Stdlib_Option.flatMap(properties["TAG"], schema => {
+    if (schema.type !== "string") {
       return;
     }
-    let v = match.const;
+    let v = schema.const;
     if (v !== undefined) {
       return v;
     }
@@ -123,7 +122,7 @@ function walkSchema(typeName, schema) {
         fields: fields,
         structuralHash: hashFields(fields)
       };
-    case "union" :
+    case "anyOf" :
       let anyOf = schema.anyOf;
       let hasNullLike = anyOf.some(v => {
         switch (v.type) {
@@ -147,7 +146,7 @@ function walkSchema(typeName, schema) {
           return;
         }
         let properties = variantSchema.properties;
-        return Stdlib_Option.map(tagConstOf(variantSchema.items), name => ({
+        return Stdlib_Option.map(tagConstOf(properties), name => ({
           name: name,
           fields: extractFields(properties)
         }));

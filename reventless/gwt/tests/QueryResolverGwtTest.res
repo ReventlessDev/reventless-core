@@ -3,7 +3,6 @@
 // productId (and a productIds array) that resolve into a Products read model;
 // the resolver DSL follows those keys across the spec boundary.
 
-S.enableJson()
 
 module RM = Reventless.ReadModel
 

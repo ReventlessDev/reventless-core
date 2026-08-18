@@ -339,17 +339,18 @@ let extractTagsFromProperties = (properties: dict<S.t<unknown>>, jsonDict: dict<
   )
 
 // Extract the discriminating TAG constructor name from a variant Object schema's
-// `items`. sury compiles a record-payload variant `Foo({...})` to an Object whose
-// `items` carry one entry at location "TAG" holding a `String` const = "Foo".
-// Returns None for a non-tagged object (no TAG item, or a non-const schema).
+// `properties`. sury (11) compiles a record-payload variant `Foo({...})` to an
+// Object whose `properties` include a `"TAG"` key holding a `String` const = "Foo".
+// Returns None for a non-tagged object (no TAG property, or a non-const schema).
 // Single source for the ~dozen previously-inlined identical extractions across
-// this file, DcbDecode and DcbValidation.
-let variantTagName = (items: array<S.item>): option<string> =>
-  items
-  ->Array.find(item => item.location == "TAG")
-  ->Option.flatMap(item =>
-    switch item.schema {
-    | String({const}) => Some(const)
+// this file, DcbDecode and DcbValidation. (sury 11 replaced the alpha.4
+// `items`/`location` introspection with `properties` — see docs/plans/sury-11-migration.md.)
+let variantTagName = (properties: dict<S.t<unknown>>): option<string> =>
+  properties
+  ->Dict.get("TAG")
+  ->Option.flatMap(schema =>
+    switch schema {
+    | String({const: ?Some(name)}) => Some(name)
     | _ => None
     }
   )
@@ -362,7 +363,7 @@ only the fields of the matching variant branch are inspected.
 */
 let extractTagsFromJson = (schema: S.t<unknown>, json: JSON.t): array<tag> =>
   switch schema {
-  | Union({anyOf}) =>
+  | AnyOf({anyOf}) =>
     switch json->JSON.Decode.object {
     | Some(jsonDict) =>
       let jsonTag = jsonDict->Dict.get("TAG")->Option.flatMap(j =>
@@ -376,8 +377,8 @@ let extractTagsFromJson = (schema: S.t<unknown>, json: JSON.t): array<tag> =>
           acc
         } else {
           switch variantSchema {
-          | Object({items, properties}) =>
-            if variantTagName(items) == jsonTag {
+          | Object({properties}) =>
+            if variantTagName(properties) == jsonTag {
               extractTagsFromProperties(properties, jsonDict)
             } else {
               []
@@ -415,7 +416,7 @@ let tags = DcbTag.extractTags(
 ```
 */
 let extractTags = (schema: S.t<'a>, value: 'a): array<tag> =>
-  extractTagsFromJson(schema->toUnknownSchema, value->S.reverseConvertToJsonOrThrow(schema))
+  extractTagsFromJson(schema->toUnknownSchema, value->Util_Sury.toJson(schema))
 
 // --- Extract variant constructor names from a tagged union schema ---
 // For a variant type like `type event = ItemCreated({...}) | ItemRenamed({...})`,
@@ -431,10 +432,10 @@ Used by the DCB runtime to build `queryItem.eventTypes` arrays automatically.
 */
 let extractVariantNames = (schema: S.t<'a>): array<string> => {
   switch schema->toUnknownSchema {
-  | Union({anyOf}) =>
+  | AnyOf({anyOf}) =>
     anyOf->Array.filterMap(variantSchema =>
       switch variantSchema {
-      | Object({items}) => variantTagName(items)
+      | Object({properties}) => variantTagName(properties)
       // Payload-less variants (sury-compiled `S.literal("Name")` strings) are
       // intentionally excluded here: DCB event-type lookups can't WHERE-clause
       // on bare-string events, so Plugin_Structure.consumedEventTypes and
@@ -446,7 +447,7 @@ let extractVariantNames = (schema: S.t<'a>): array<string> => {
       | _ => None
       }
     )
-  | Object({items}) => variantTagName(items)->Option.mapOr([], t => [t])
+  | Object({properties}) => variantTagName(properties)->Option.mapOr([], t => [t])
   | _ => []
   }
 }
@@ -463,15 +464,15 @@ WHERE-clause filtering.
 */
 let extractAllVariantNames = (schema: S.t<'a>): array<string> => {
   switch schema->toUnknownSchema {
-  | Union({anyOf}) =>
+  | AnyOf({anyOf}) =>
     anyOf->Array.filterMap(variantSchema =>
       switch variantSchema {
-      | Object({items}) => variantTagName(items)
+      | Object({properties}) => variantTagName(properties)
       | String({const}) => Some(const)
       | _ => None
       }
     )
-  | Object({items}) => variantTagName(items)->Option.mapOr([], t => [t])
+  | Object({properties}) => variantTagName(properties)->Option.mapOr([], t => [t])
   | String({const: ?Some(name)}) => [name]
   | _ => []
   }
@@ -494,14 +495,14 @@ let isVariantPayloadBearing = (schema: S.t<'a>, name: string): bool => {
     false
   } else {
     switch schema->toUnknownSchema {
-    | Union({anyOf}) =>
+    | AnyOf({anyOf}) =>
       anyOf->Array.some(variantSchema =>
         switch variantSchema {
-        | Object({items}) => variantTagName(items)->Option.mapOr(false, t => t == name)
+        | Object({properties}) => variantTagName(properties)->Option.mapOr(false, t => t == name)
         | _ => false
         }
       )
-    | Object({items}) => variantTagName(items)->Option.mapOr(false, t => t == name)
+    | Object({properties}) => variantTagName(properties)->Option.mapOr(false, t => t == name)
     | _ => false
     }
   }
@@ -552,7 +553,7 @@ instead of a single tag with the stringified array.
 */
 let extractTagsFromJsonExpanded = (schema: S.t<unknown>, json: JSON.t): array<tag> =>
   switch schema {
-  | Union({anyOf}) =>
+  | AnyOf({anyOf}) =>
     switch json->JSON.Decode.object {
     | Some(jsonDict) =>
       let jsonTag = jsonDict->Dict.get("TAG")->Option.flatMap(j =>
@@ -566,8 +567,8 @@ let extractTagsFromJsonExpanded = (schema: S.t<unknown>, json: JSON.t): array<ta
           acc
         } else {
           switch variantSchema {
-          | Object({items, properties}) =>
-            if variantTagName(items) == jsonTag {
+          | Object({properties}) =>
+            if variantTagName(properties) == jsonTag {
               extractTagsFromPropertiesExpanded(properties, jsonDict)
             } else {
               []
@@ -599,7 +600,7 @@ let tags = DcbTag.extractTagsExpanded(
 ```
 */
 let extractTagsExpanded = (schema: S.t<'a>, value: 'a): array<tag> =>
-  extractTagsFromJsonExpanded(schema->toUnknownSchema, value->S.reverseConvertToJsonOrThrow(schema))
+  extractTagsFromJsonExpanded(schema->toUnknownSchema, value->Util_Sury.toJson(schema))
 
 // --- Automatic query construction from command schema ---
 
@@ -610,7 +611,7 @@ Used to automatically determine whether to build single-clause or multi-clause q
 */
 let hasTaggedArrayFields = (schema: S.t<'a>): bool =>
   switch schema->toUnknownSchema {
-  | Union({anyOf}) =>
+  | AnyOf({anyOf}) =>
     anyOf->Array.some(variantSchema =>
       switch variantSchema {
       | Object({properties}) =>
@@ -657,14 +658,14 @@ let extractTagKeysByEventType = (schema: S.t<'a>): dict<array<string>> => {
   let result = Dict.make()
   let addVariant = (variantSchema: S.t<unknown>) =>
     switch variantSchema {
-    | Object({items, properties}) =>
-      variantTagName(items)->Option.forEach(eventType =>
+    | Object({properties}) =>
+      variantTagName(properties)->Option.forEach(eventType =>
         result->Dict.set(eventType, tagKeysOfProperties(properties))
       )
     | _ => ()
     }
   switch schema->toUnknownSchema {
-  | Union({anyOf}) => anyOf->Array.forEach(addVariant)
+  | AnyOf({anyOf}) => anyOf->Array.forEach(addVariant)
   | Object(_) as obj => addVariant(obj)
   | _ => ()
   }
@@ -789,7 +790,7 @@ For `CatalogEventLog.event` returns `["categoryId", "productId"]`.
 */
 let extractTaggedFields = (schema: S.t<'event>): array<string> => {
   switch schema->toUnknownSchema {
-  | Union({anyOf}) =>
+  | AnyOf({anyOf}) =>
     // For union types, collect tagged fields from all variants
     let allFields = anyOf->Array.flatMap(variantSchema =>
       switch variantSchema {
@@ -860,7 +861,7 @@ returns `["studentId"]`.
 */
 let extractCrossPartitionTagKeys = (schema: S.t<'event>): array<string> => {
   let keys = switch schema->toUnknownSchema {
-  | Union({anyOf}) =>
+  | AnyOf({anyOf}) =>
     anyOf->Array.flatMap(variantSchema =>
       switch variantSchema {
       | Object({properties}) => crossPartitionKeysOfProperties(properties)
@@ -905,8 +906,8 @@ return a single shape.
 let eventShapesOfSchema = (schema: S.t<'a>): array<DcbScopeInference.eventShape> => {
   let ofVariant = (variantSchema: S.t<unknown>): option<DcbScopeInference.eventShape> =>
     switch variantSchema {
-    | Object({items, properties}) =>
-      variantTagName(items)->Option.map(eventType => {
+    | Object({properties}) =>
+      variantTagName(properties)->Option.map(eventType => {
         DcbScopeInference.eventType,
         idFields: idFieldsOfProperties(properties),
       })
@@ -914,7 +915,7 @@ let eventShapesOfSchema = (schema: S.t<'a>): array<DcbScopeInference.eventShape>
     | _ => None
     }
   switch schema->toUnknownSchema {
-  | Union({anyOf}) => anyOf->Array.filterMap(ofVariant)
+  | AnyOf({anyOf}) => anyOf->Array.filterMap(ofVariant)
   | Object(_) as obj => ofVariant(obj)->Option.mapOr([], s => [s])
   | _ => []
   }
@@ -927,7 +928,7 @@ Extracts field names annotated with `@s.matches(DcbTag.partition)` from an event
 */
 let extractPartitionTagFields = (schema: S.t<'event>): array<string> => {
   switch schema->toUnknownSchema {
-  | Union({anyOf}) =>
+  | AnyOf({anyOf}) =>
     let allFields = anyOf->Array.flatMap(variantSchema =>
       switch variantSchema {
       | Object({properties}) =>
@@ -1063,7 +1064,7 @@ If so, a partition tag annotation is needed to disambiguate.
 */
 let hasMultiTagVariant = (schema: S.t<unknown>): bool =>
   switch schema {
-  | Union({anyOf}) =>
+  | AnyOf({anyOf}) =>
     anyOf->Array.some(variantSchema =>
       switch variantSchema {
       | Object({properties}) => {
@@ -1096,14 +1097,14 @@ let findMultiTagVariantNames = (schema: S.t<unknown>): array<string> => {
   // Extract the variant name from a single object-variant schema via its TAG item.
   let variantName = (variantSchema: S.t<unknown>): option<string> =>
     switch variantSchema {
-    | Object({items, properties}) => {
+    | Object({properties}) => {
         let tagCount =
           properties
           ->Dict.toArray
           ->Array.filter(((_, fieldSchema)) => isTagged(fieldSchema))
           ->Array.length
         if tagCount > 1 {
-          Some(variantTagName(items)->Option.getOr("(unknown)"))
+          Some(variantTagName(properties)->Option.getOr("(unknown)"))
         } else {
           None
         }
@@ -1112,7 +1113,7 @@ let findMultiTagVariantNames = (schema: S.t<unknown>): array<string> => {
     }
 
   switch schema {
-  | Union({anyOf}) => anyOf->Array.filterMap(variantName)
+  | AnyOf({anyOf}) => anyOf->Array.filterMap(variantName)
   | _ =>
     // Single-variant event type — schema is the object directly
     switch variantName(schema) {
@@ -1159,7 +1160,7 @@ let extractCompositePartitionFields = (schema: S.t<'event>): array<compositePart
       }
     })
   switch schema->toUnknownSchema {
-  | Union({anyOf}) =>
+  | AnyOf({anyOf}) =>
     anyOf->Array.flatMap(variantSchema =>
       switch variantSchema {
       | Object({properties}) => collect(properties)

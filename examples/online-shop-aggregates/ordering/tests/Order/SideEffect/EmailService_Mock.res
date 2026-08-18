@@ -27,5 +27,5 @@ let install = () => {
 
 let mock: ReventlessGwt.SideEffect_GWT.mock<call> = {
   snapshot: () => calls.contents,
-  encode: c => c->S.reverseConvertToJsonOrThrow(callSchema),
+  encode: c => c->Reventless.Util_Sury.toJson(callSchema),
 }

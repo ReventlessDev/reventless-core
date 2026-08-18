@@ -103,7 +103,7 @@ module Make = (
                 // fall back defensively so a malformed envelope never drops the event.
                 let meta = switch envelopeDict->Dict.get("meta") {
                 | Some(m) =>
-                  switch m->S.parseJsonOrThrow(Message.metaSchema) {
+                  switch m->Reventless.Util_Sury.fromJson(Message.metaSchema) {
                   | parsed => parsed
                   | exception _ => Message.generateMeta(~service=Spec.name)
                   }

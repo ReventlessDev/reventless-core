@@ -368,7 +368,6 @@ let refDoorFragment = (~subIdField=?) =>
 // What a caller holding a pointer to a withheld row may learn about it, and what
 // the two doors that could never answer for one can now be asked.
 describe("the reference door and the archive argument", () => {
-  open Expect
 
   // The narrowness is the type's, not a rule each backend re-implements: a caller
   // cannot ask this door for a price, because there is no price on it.

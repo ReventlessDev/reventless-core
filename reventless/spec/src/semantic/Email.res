@@ -38,11 +38,11 @@ external toString: t => string = "%identity"
 
 // Sury's check, held once. `fromString` runs it rather than restating it, and
 // `schema` is built from `fromString`, so there is exactly one grammar here.
-let grammar: S.t<string> = S.string->S.email
+let grammar: S.t<string> = S.email
 
 /** Validate a raw string as an email address, saying why when it is not one. */
 let fromString = (raw: string): result<t, string> =>
-  switch raw->S.parseOrThrow(grammar) {
+  switch raw->S.parseOrThrow(~to=grammar) {
   | value => Ok(value)
   | exception _ => Error(`expected an email address, got ${Semantic.showString(raw)}`)
   }

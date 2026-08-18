@@ -163,7 +163,7 @@ testPromise("POST /__inmemory/login returns {token, identity} for valid credenti
   // The echoed identity matches what LocalAuth.lookupUser returns.
   switch getJsonField(body, "identity") {
   | Some(idJson) =>
-    let id = idJson->S.parseJsonOrThrow(Reventless.Identity.schema)
+    let id = idJson->Reventless.Util_Sury.fromJson(Reventless.Identity.schema)
     expect(id.username)->toEqual("alice")
     expect(id.groups)->toEqual(["Editor"])
   | None => JsError.throwWithMessage("response missing identity field")

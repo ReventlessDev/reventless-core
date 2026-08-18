@@ -167,7 +167,7 @@ describe("Message should", () => {
       }`)(json)
 
     // Strict decode must reject the stale JSON — the tolerance is what saves it.
-    let strictThrew = switch oldJson->S.parseJsonOrThrow(
+    let strictThrew = switch oldJson->Reventless.Util_Sury.fromJson(
       Message.toEventSchema'(S.string, PluginSpec.eventSchema),
     ) {
     | _ => false
@@ -222,7 +222,7 @@ describe("Message should", () => {
       )
 
     // Strict decode of the stale variant throws (reproduces the production brick).
-    let strictThrew = switch staleJson->S.parseJsonOrThrow(PluginSpec.eventSchema) {
+    let strictThrew = switch staleJson->Reventless.Util_Sury.fromJson(PluginSpec.eventSchema) {
     | _ => false
     | exception _ => true
     }

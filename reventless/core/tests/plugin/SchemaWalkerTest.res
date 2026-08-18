@@ -1,6 +1,5 @@
 open JestGlobals
 
-S.enableJson()
 
 @schema
 type simpleRecord = {

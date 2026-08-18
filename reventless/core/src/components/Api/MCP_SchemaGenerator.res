@@ -52,7 +52,7 @@ let generateTools = (
     let entryDescription = entry.description->Option.getOr("")
 
     switch schema {
-    | Union({anyOf}) =>
+    | AnyOf({anyOf}) =>
       // Aggregate commands: each variant is a separate tool.
       // Inject an "id" property (aggregate instance ID) since aggregate
       // commands target a specific instance.

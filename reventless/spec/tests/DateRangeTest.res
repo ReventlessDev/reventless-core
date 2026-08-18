@@ -94,7 +94,7 @@ describe("DateRange:", () => {
       )
 
     let parses = (raw: JSON.t) =>
-      switch raw->S.parseOrThrow(DateRange.schema) {
+      switch raw->S.parseOrThrow(~to=DateRange.schema) {
       | _ => true
       | exception _ => false
       }
@@ -125,7 +125,7 @@ describe("DateRange:", () => {
     // `end` on the wire, `end_` in the source — fixed by `@as("end")`, and the
     // wire form is the permanent part.
     testSync("serializes end under the wire key \"end\"", () =>
-      expect(dr(nine, eleven)->S.reverseConvertToJsonOrThrow(DateRange.schema))
+      expect(dr(nine, eleven)->Util_Sury.toJson(DateRange.schema))
       ->toEqual(range(nine, eleven))
     )
   })

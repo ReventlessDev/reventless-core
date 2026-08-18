@@ -11,7 +11,6 @@
 
 open JestGlobals
 
-S.enableJson()
 
 let published: ref<array<Reventless.Message.commandJson>> = ref([])
 

@@ -33,7 +33,7 @@ let _entriesSchema = S.array(entrySchema)
 let parseString = (yamlText: string): result<array<entry>, string> =>
   try {
     let json = _yamlParse(yamlText)->Obj.magic
-    Ok(S.parseOrThrow(json, _entriesSchema))
+    Ok(S.parseOrThrow(json, ~to=_entriesSchema))
   } catch {
   | JsExn(err) => Error(JsExn.message(err)->Option.getOr("YAML parse error"))
   | _ => Error("YAML parse error")

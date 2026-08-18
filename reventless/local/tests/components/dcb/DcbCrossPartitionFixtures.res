@@ -125,7 +125,7 @@ let publishJsons: ReventlessInfra.CommandTopic.publishJsons = async cmdJsons => 
     let fullBody = JSON.Encode.object(
       Dict.fromArray([
         ("id", JSON.Encode.string(cmdJson.id)),
-        ("meta", cmdJson.meta->S.reverseConvertToJsonOrThrow(Reventless.Message.metaSchema)),
+        ("meta", cmdJson.meta->Reventless.Util_Sury.toJson(Reventless.Message.metaSchema)),
         ("command", cmdJson.commandJson),
       ]),
     )
@@ -157,7 +157,7 @@ let dispatch = async (commandJson, id) =>
   await publishJsons([{Reventless.Message.id, meta: testMeta, commandJson}])
 
 let encodeEvent = (event: CatalogLog.event): ReventlessInfra.DcbEventLog.rawEvent => {
-  let json = event->S.reverseConvertToJsonOrThrow(CatalogLog.eventSchema)
+  let json = event->Reventless.Util_Sury.toJson(CatalogLog.eventSchema)
   let (eventType, data) = json->ReventlessCore.Message.splitMessage
   let tags = Reventless.DcbTag.extractTags(CatalogLog.eventSchema, event)
   let meta = ReventlessCore.Message.generateMeta(~service="test")
@@ -165,6 +165,6 @@ let encodeEvent = (event: CatalogLog.event): ReventlessInfra.DcbEventLog.rawEven
 }
 
 let addProductJson = (productId, categoryId, name) =>
-  AddProductSpec.AddProduct({productId, categoryId, name})->S.reverseConvertToJsonOrThrow(
+  AddProductSpec.AddProduct({productId, categoryId, name})->Reventless.Util_Sury.toJson(
     AddProductSpec.commandSchema,
   )

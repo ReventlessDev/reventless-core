@@ -16,6 +16,7 @@ import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/component
 import * as Plugin$Reventless from "@reventlessdev/reventless-spec/src/components/Plugin.res.mjs";
 import * as Task$ReventlessCore from "../../components/Task/Task.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as Adapter$ReventlessCore from "../../adapter/Adapter.res.mjs";
 import * as Task$ReventlessInterop from "@reventlessdev/reventless-interop/src/components/Task.res.mjs";
@@ -321,8 +322,8 @@ function MakeEventCollectorHelper(RuntimeEnvironment) {
         let handler = PluginEventCollector.makeHandler(eventCollector, Callback.handleJsonEvents);
         let ecResource = Component$ReventlessCore.toPulumiResource(eventCollector);
         let ecName = ComponentType$ReventlessCore.nameOpt(ecResource.__name, EventCollector$ReventlessCore.componentType);
-        let pluginDefinitionJson = Pulumi.output(JSON.stringify(S.reverseConvertToJsonOrThrow(pluginDefinition, Plugin$Reventless.pluginDefinitionSchema)));
-        let uiFragmentsJson = Pulumi.output(JSON.stringify(S.reverseConvertToJsonOrThrow(uiFragments, Plugin$Reventless.uiFragmentManifestOptionSchema)));
+        let pluginDefinitionJson = Pulumi.output(JSON.stringify(Util_Sury$Reventless.toJson(pluginDefinition, Plugin$Reventless.pluginDefinitionSchema)));
+        let uiFragmentsJson = Pulumi.output(JSON.stringify(Util_Sury$Reventless.toJson(uiFragments, Plugin$Reventless.uiFragmentManifestOptionSchema)));
         let pluginExtensionPointCmdTopicUrl;
         if (pluginExtensionPointUnwrapped !== undefined) {
           let r = pluginExtensionPointUnwrapped.commandTopic.resources[0];
@@ -436,7 +437,7 @@ function offloadPayload(value, schema, store) {
   if (hook !== undefined) {
     return {
       TAG: "Offloaded",
-      _0: hook(store, S.reverseConvertToJsonStringOrThrow(value, schema, undefined))
+      _0: hook(store, Util_Sury$Reventless.toJsonString(value, schema, undefined))
     };
   } else {
     return {
@@ -636,7 +637,7 @@ function serializePlainDictExport(dict, toResolved, schema) {
     let name = param[0];
     return toResolved(param[1]).apply(resolved => [
       name,
-      S.reverseConvertToJsonOrThrow(resolved, schema)
+      Util_Sury$Reventless.toJson(resolved, schema)
     ]);
   })).apply(pairs => Object.fromEntries(pairs));
 }
@@ -646,19 +647,19 @@ function serializeDictExport(dictOutput, toResolved, schema) {
     let name = param[0];
     return toResolved(param[1]).apply(resolved => [
       name,
-      S.reverseConvertToJsonOrThrow(resolved, schema)
+      Util_Sury$Reventless.toJson(resolved, schema)
     ]);
   })).apply(pairs => Object.fromEntries(pairs)));
 }
 
 function serializeTasksOutputs(pluginOutputs) {
-  return Output$Pulumi.flatMap(pluginOutputs.tasks, tasks => Pulumi.all(Object.values(tasks).map(task => Task$ReventlessCore.toResolvedOutputs(task).apply(resolved => S.reverseConvertToJsonOrThrow(resolved, Task$ReventlessInterop.resolvedOutputsSchema)))).apply(arr => arr));
+  return Output$Pulumi.flatMap(pluginOutputs.tasks, tasks => Pulumi.all(Object.values(tasks).map(task => Task$ReventlessCore.toResolvedOutputs(task).apply(resolved => Util_Sury$Reventless.toJson(resolved, Task$ReventlessInterop.resolvedOutputsSchema)))).apply(arr => arr));
 }
 
 function serializeEventMappersOutputs(pluginOutputs) {
   return Output$Pulumi.flatMap(pluginOutputs.aggregates, aggregates => Pulumi.all(Object.values(aggregates).map(agg => Output$Pulumi.flatMap(agg.eventMapper, em => {
     if (em !== undefined) {
-      return EventMapper$ReventlessCore.toResolvedOutputs(em).apply(resolved => S.reverseConvertToJsonOrThrow(resolved, EventMapper$ReventlessInterop.resolvedOutputsSchema));
+      return EventMapper$ReventlessCore.toResolvedOutputs(em).apply(resolved => Util_Sury$Reventless.toJson(resolved, EventMapper$ReventlessInterop.resolvedOutputsSchema));
     } else {
       return Pulumi.output(undefined);
     }
@@ -669,7 +670,7 @@ function exportPlatformOutputs(extensionPointsOutputs, aggregatesOutputs, readMo
   exportDeploymentMetadata();
   Pulumi$Pulumi.$$export("extensionPoints", Output$Pulumi.flatMap(extensionPointsOutputs, eps => Pulumi.all(eps.map(ep => ExtensionPoint$ReventlessCore.toResolvedOutputs(ep).apply(resolved => [
     ep.name,
-    S.reverseConvertToJsonOrThrow(resolved, ExtensionPoint$ReventlessInterop.resolvedOutputsSchema)
+    Util_Sury$Reventless.toJson(resolved, ExtensionPoint$ReventlessInterop.resolvedOutputsSchema)
   ]))).apply(pairs => Object.fromEntries(pairs))));
   if (Object.keys(aggregatesOutputs).length !== 0) {
     Pulumi$Pulumi.$$export("aggregates", serializePlainDictExport(aggregatesOutputs, Aggregate$ReventlessCore.toResolvedOutputs, Aggregate$ReventlessInterop.resolvedOutputsSchema));
@@ -678,7 +679,7 @@ function exportPlatformOutputs(extensionPointsOutputs, aggregatesOutputs, readMo
     Pulumi$Pulumi.$$export("readModels", serializePlainDictExport(readModelsOutputs, ReadModel$ReventlessCore.toResolvedOutputs, ReadModel$ReventlessInterop.resolvedOutputsSchema));
   }
   if (dcbEventLogOutputs !== undefined) {
-    Pulumi$Pulumi.$$export("dcbEventLog", DcbEventLog$ReventlessCore.toResolvedOutputs(dcbEventLogOutputs).apply(resolved => S.reverseConvertToJsonOrThrow(resolved, DcbEventLog$ReventlessInterop.resolvedOutputsSchema)));
+    Pulumi$Pulumi.$$export("dcbEventLog", DcbEventLog$ReventlessCore.toResolvedOutputs(dcbEventLogOutputs).apply(resolved => Util_Sury$Reventless.toJson(resolved, DcbEventLog$ReventlessInterop.resolvedOutputsSchema)));
   }
   if (Object.keys(stateChangeSlicesOutputs).length !== 0) {
     Pulumi$Pulumi.$$export("stateChangeSlices", serializePlainDictExport(stateChangeSlicesOutputs, StateChangeSlice$ReventlessCore.toResolvedOutputs, StateChangeSlice$ReventlessInterop.resolvedOutputsSchema));
@@ -711,7 +712,7 @@ function exportPluginOutputs(pluginOutputs) {
   Pulumi$Pulumi.$$export("inboundTranslationSlices", serializeDictExport(pluginOutputs.inboundTranslationSlices, InboundTranslationSlice$ReventlessCore.toResolvedOutputs, InboundTranslationSlice$ReventlessInterop.resolvedOutputsSchema));
   Pulumi$Pulumi.$$export("dcbEventLog", Output$Pulumi.flatMap(pluginOutputs.dcbEventLog, opt => {
     if (opt !== undefined) {
-      return DcbEventLog$ReventlessCore.toResolvedOutputs(opt).apply(resolved => S.reverseConvertToJsonOrThrow(resolved, DcbEventLog$ReventlessInterop.resolvedOutputsSchema));
+      return DcbEventLog$ReventlessCore.toResolvedOutputs(opt).apply(resolved => Util_Sury$Reventless.toJson(resolved, DcbEventLog$ReventlessInterop.resolvedOutputsSchema));
     } else {
       return Pulumi.output(null);
     }

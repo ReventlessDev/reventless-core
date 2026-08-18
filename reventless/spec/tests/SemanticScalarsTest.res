@@ -230,7 +230,7 @@ describe("semantic scalars:", () => {
   // schema rejects too. A second hand-rolled check would drift from this.
   describe("the schema agrees with the constructor:", () => {
     let parses = (schema, raw) =>
-      switch raw->S.parseOrThrow(schema) {
+      switch raw->S.parseOrThrow(~to=schema) {
       | _ => true
       | exception _ => false
       }

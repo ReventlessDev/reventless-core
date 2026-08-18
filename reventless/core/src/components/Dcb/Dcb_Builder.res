@@ -51,7 +51,7 @@ let mergedEventSchema = (schemas: array<S.t<unknown>>) =>
     many
     ->Array.flatMap(schema =>
       switch schema {
-      | S.Union({anyOf}) => anyOf
+      | S.AnyOf({anyOf}) => anyOf
       | other => [other]
       }
     )

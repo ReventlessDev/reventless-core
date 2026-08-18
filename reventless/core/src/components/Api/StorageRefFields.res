@@ -78,7 +78,7 @@ to qualify a store the annotation left unqualified.
 */
 let fromEventSchema = (~plugin: string, eventSchema: S.t<unknown>): array<eventRefFields> =>
   switch eventSchema {
-  | Union({anyOf}) => anyOf->Array.filterMap(v => fromVariant(~plugin, v))
+  | AnyOf({anyOf}) => anyOf->Array.filterMap(v => fromVariant(~plugin, v))
   | other => fromVariant(~plugin, other)->Option.mapOr([], e => [e])
   }
 

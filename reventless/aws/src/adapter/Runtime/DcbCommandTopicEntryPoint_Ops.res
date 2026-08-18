@@ -263,7 +263,7 @@ let buildInboundReceiver = (
       let id = result->ReventlessCore.InboundTranslationSlice_Callback.requestIdOf
       switch callback.auditLog->ReventlessCore.InboundTranslationSlice_Callback.takeAuditRow(id) {
       | Some(row) =>
-        let json = row->S.reverseConvertToJsonOrThrow(
+        let json = row->Reventless.Util_Sury.toJson(
           ReventlessCore.InboundTranslationSlice_Callback.auditRowSchema,
         )
         // A failed audit write must not fail the mutation (the command was

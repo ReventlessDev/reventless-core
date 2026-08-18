@@ -20,6 +20,17 @@
 # how requiredStoreDeclarations[].annotation, a required string inside a nullable array,
 # froze a plugin's registration for two days; it is absent from this list because it has
 # since been made `js_nullable`.
+#
+# The `.$offload.*` lines are the reference arm of an `@offload` field. They are not new
+# fields — they have been persisted since `@offload` existed. They appear here because the
+# arm stopped being a hand-written `S.transform` (opaque to any schema walker, so this
+# guard could not see it) and became a declared `S.object`. Both arms of every offloadable
+# field are now covered; before, only the inline one was. Adding a fifth key to
+# `Offload.offloadedRef` would now show up here, and should.
+.apiSchemaFragment.$offload.bytes: number
+.apiSchemaFragment.$offload.hash: string
+.apiSchemaFragment.$offload.key: string
+.apiSchemaFragment.$offload.store: string
 .apiSchemaFragment.encoded: string
 .apiSchemaFragment.protocol: string
 .dcbEventLog.eventTopicArn: string
@@ -36,6 +47,10 @@
 .extensions[].name: string
 .id: string
 .name: string
+.structure.$offload.bytes: number
+.structure.$offload.hash: string
+.structure.$offload.key: string
+.structure.$offload.store: string
 .structure.aggregates[].commands[].allowedStates[]: string
 .structure.aggregates[].commands[].mutationField: string
 .structure.aggregates[].commands[].name: string

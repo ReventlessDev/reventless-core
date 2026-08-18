@@ -253,7 +253,7 @@ module Login = {
       } {
       | Error(_) as e => e
       | Ok(minted) =>
-        let json = minted->S.reverseConvertToJsonOrThrow(Identity.schema)->JSON.stringify
+        let json = minted->Reventless.Util_Sury.toJson(Identity.schema)->JSON.stringify
         let payload = _b64urlEncode(json)
         let sig = _sign(payload)
         Ok(`${payload}.${sig}`)
@@ -293,7 +293,7 @@ module Login = {
     | (Some(payload), Some(sig)) if _sign(payload) === sig =>
       _b64urlDecode(payload)->Option.flatMap(json =>
         try {
-          Some(json->JSON.parseOrThrow->S.parseOrThrow(Identity.schema))
+          Some(json->JSON.parseOrThrow->S.parseOrThrow(~to=Identity.schema))
         } catch {
         | _ => None
         }
@@ -334,7 +334,7 @@ module Login = {
         } {
         | Error(_) as e => e
         | Ok(minted) =>
-          let json = minted->S.reverseConvertToJsonOrThrow(Identity.schema)->JSON.stringify
+          let json = minted->Reventless.Util_Sury.toJson(Identity.schema)->JSON.stringify
           let payload = _b64urlEncode(json)
           Ok(`${payload}.${_sign(payload)}`)
         }

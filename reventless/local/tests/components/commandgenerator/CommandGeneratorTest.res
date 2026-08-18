@@ -30,7 +30,7 @@ describe("CommandGenerator_Builder.Make:", () => {
       expect(cmd.id)->toBe("item-1")
 
       // commandJson should decode to CreateCGItem({name: "widget"})
-      let decoded = cmd.commandJson->S.parseJsonOrThrow(CGSpec.commandSchema)
+      let decoded = cmd.commandJson->Reventless.Util_Sury.fromJson(CGSpec.commandSchema)
       expect(decoded)->toEqual(CGSpec.CreateCGItem({name: "widget"}))
     })
 

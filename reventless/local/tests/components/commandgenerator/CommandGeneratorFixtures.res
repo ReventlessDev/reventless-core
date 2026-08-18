@@ -1,7 +1,6 @@
 // Fixtures for CommandGenerator integration tests.
 // Verifies that makeHandler builds a resolver that publishes the correct commandJson.
 
-S.enableJson()
 
 // Activate Pulumi mock mode (must be called before any Component.make)
 let _ = TestRunner.setup()

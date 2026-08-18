@@ -15,27 +15,105 @@ let codec = Offload.schema(demoSchema)
 describe("Offload codec:", () => {
   testSync("Inline round-trips and encodes with no wrapper key", () => {
     let value = Offload.Inline({name: "a", count: 3})
-    let json = value->S.reverseConvertToJsonOrThrow(codec)
+    let json = value->Util_Sury.toJson(codec)
     let hasSentinel =
       json->JSON.Decode.object->Option.flatMap(d => d->Dict.get(Offload.sentinelKey))->Option.isSome
     expect(hasSentinel)->toBe(false)
-    expect(json->S.parseJsonOrThrow(codec) == value)->toBe(true)
+    expect(json->Util_Sury.fromJson(codec) == value)->toBe(true)
   })
 
   testSync("Offloaded round-trips and hides under the sentinel key", () => {
     let value = Offload.Offloaded({store: "pluginStructures", key: "sha256/abc", hash: "abc", bytes: 74000})
-    let json = value->S.reverseConvertToJsonOrThrow(codec)
+    let json = value->Util_Sury.toJson(codec)
     let hasSentinel =
       json->JSON.Decode.object->Option.flatMap(d => d->Dict.get(Offload.sentinelKey))->Option.isSome
     expect(hasSentinel)->toBe(true)
-    expect(json->S.parseJsonOrThrow(codec) == value)->toBe(true)
+    expect(json->Util_Sury.fromJson(codec) == value)->toBe(true)
   })
 
   testSync("legacy inline bytes (no wrapper) decode as Inline", () => {
     // How an event stored the field before `@offload` existed: the raw inner value.
-    let legacyJson = {name: "legacy", count: 7}->S.reverseConvertToJsonOrThrow(demoSchema)
-    let decoded = legacyJson->S.parseJsonOrThrow(codec)
+    let legacyJson = {name: "legacy", count: 7}->Util_Sury.toJson(demoSchema)
+    let decoded = legacyJson->Util_Sury.fromJson(codec)
     expect(decoded == Offload.Inline({name: "legacy", count: 7}))->toBe(true)
+  })
+})
+
+// The optional field is where the codec's shape is load-bearing: an absent value
+// and an offloaded one each broke on 11.0.0-rc.0 while the inline case — the one a
+// test reaches for first — kept working. Both failures came from hand-written
+// `S.transform` arms and went away when the arms became declared (`S.object` /
+// `S.shape`); see docs/analysis/done/sury-rc0-optional-union-encode.md.
+describe("Offload optional field:", () => {
+  let optional = Offload.optionSchema(~store="pluginStructures", demoSchema)
+
+  testSync("absent encodes to null, not a crash", () => {
+    expect(None->Util_Sury.toJson(optional))->toEqual(JSON.Null)
+    expect(None->Util_Sury.toJsonString(optional))->toBe("null")
+  })
+
+  testSync("offloaded encodes to a JSON string, not just to JSON", () => {
+    // A json-typed union arm cannot chain into a non-JSON target, so this
+    // succeeded through `toJson` and failed through `toJsonString`.
+    let value = Some(
+      Offload.Offloaded({store: "pluginStructures", key: "sha256/abc", hash: "abc", bytes: 74000}),
+    )
+    expect(value->Util_Sury.toJsonString(optional))->toBe(
+      `{"$offload":{"store":"pluginStructures","key":"sha256/abc","hash":"abc","bytes":74000}}`,
+    )
+  })
+
+  testSync("every value round-trips", () => {
+    let values = [
+      None,
+      Some(Offload.Inline({name: "a", count: 3})),
+      Some(Offload.Offloaded({store: "s", key: "sha256/abc", hash: "abc", bytes: 74000})),
+    ]
+    expect(values->Array.map(v => v->Util_Sury.toJson(optional)->Util_Sury.fromJson(optional)))->toEqual(
+      values,
+    )
+  })
+
+  testSync("the union still advertises null, which replay heals against", () => {
+    // `Message.fillMissingDefaults` reads `has.null` to turn an absent field into
+    // `None`. Lose it and an absent field resolves to the first object member instead.
+    let has = (optional->S.castToUnknown->Obj.magic)["has"]
+    expect(has["null"])->toBe(true)
+  })
+})
+
+// An inline payload written before a field existed must heal *as inline*. The
+// walker picks an anyOf's object member by how much of the value it declares;
+// picking the reference member instead would invent a reference with an empty
+// key, which then decodes cleanly — corruption rather than an error.
+@schema
+type envelope = {
+  f: @s.matches(Offload.optionSchema(~store="pluginStructures", demoSchema))
+  option<Offload.payload<demo>>,
+}
+
+describe("Offload healing on replay:", () => {
+  testSync("a legacy inline payload missing a later field heals as Inline", () => {
+    let legacy = `{"f":{"name":"legacy"}}`->JSON.parseOrThrow
+    let fills = []
+    let healed = Message.fillMissingDefaults(envelopeSchema, legacy, fills)
+    expect(healed->Util_Sury.fromJson(envelopeSchema))->toEqual({
+      f: Some(Offload.Inline({name: "legacy", count: 0})),
+    })
+    expect(fills)->toEqual([".f.count := 0"])
+  })
+
+  testSync("an offloaded payload still heals as Offloaded", () => {
+    let stored = `{"f":{"$offload":{"store":"s","key":"sha256/abc","hash":"abc","bytes":74000}}}`->JSON.parseOrThrow
+    let healed = Message.fillMissingDefaults(envelopeSchema, stored, [])
+    expect(healed->Util_Sury.fromJson(envelopeSchema))->toEqual({
+      f: Some(Offload.Offloaded({store: "s", key: "sha256/abc", hash: "abc", bytes: 74000})),
+    })
+  })
+
+  testSync("an absent field heals to None", () => {
+    let healed = Message.fillMissingDefaults(envelopeSchema, `{}`->JSON.parseOrThrow, [])
+    expect(healed->Util_Sury.fromJson(envelopeSchema))->toEqual({f: None})
   })
 })
 

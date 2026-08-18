@@ -7,7 +7,6 @@
 //     command on `o2` does not see `o1`'s prior events.
 //   - The `Error` branch flows through `thenError` like the slice form.
 
-S.enableJson()
 
 open Flow_GWT
 

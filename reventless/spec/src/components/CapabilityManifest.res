@@ -67,7 +67,7 @@ let fromStructure = (structure: Plugin.pluginStructure): t => {
     no source change must produce a byte-identical file, so the committed
     manifest never churns. */
 let render = (manifest: t): string =>
-  JSON.stringify(manifest->S.reverseConvertToJsonOrThrow(schema), ~space=2) ++ "\n"
+  JSON.stringify(manifest->Util_Sury.toJson(schema), ~space=2) ++ "\n"
 
 /** One call for the emit CLI: structure in, `capabilities.json` content out. */
 let renderForStructure = (structure: Plugin.pluginStructure): string =>

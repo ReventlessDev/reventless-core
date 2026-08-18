@@ -2662,7 +2662,7 @@ module MakeWithConfig = (
             ),
             commandJson: ReventlessInfra.PluginExtensionPointSpec.RedetectPlugin(
               hbConfig.heartbeatTimeout,
-            )->S.reverseConvertToJsonOrThrow(ReventlessInfra.PluginExtensionPointSpec.commandSchema),
+            )->Reventless.Util_Sury.toJson(ReventlessInfra.PluginExtensionPointSpec.commandSchema),
           }
           try {
             await publishHeartbeat([message])

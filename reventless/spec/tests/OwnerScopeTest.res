@@ -302,7 +302,6 @@ describe("OwnerScope:", () => {
 // reader asks `isRetiredValue` rather than branching on the form, so a form that
 // answered differently here would answer differently on every door at once.
 describe("OwnerScope.isRetiredValue:", () => {
-  open Expect
 
   let boolean: OwnerScope.retiredScope = {field: "archived", values: None}
   let state: OwnerScope.retiredScope = {field: "accountStatus", values: Some(["Deactivated"])}

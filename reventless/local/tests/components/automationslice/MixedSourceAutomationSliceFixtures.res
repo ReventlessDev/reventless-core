@@ -193,8 +193,8 @@ let publishAggregateEvent = async (id, event: OrderAggregateSource.event) => {
   let eventJson = JSON.Encode.object(
     Dict.fromArray([
       ("id", id->JSON.Encode.string),
-      ("meta", meta->S.reverseConvertToJsonOrThrow(Message.metaSchema)),
-      ("event", event->S.reverseConvertToJsonOrThrow(OrderAggregateSource.eventSchema)),
+      ("meta", meta->Reventless.Util_Sury.toJson(Message.metaSchema)),
+      ("event", event->Reventless.Util_Sury.toJson(OrderAggregateSource.eventSchema)),
     ]),
   )
   await Bus.publishEvent(OrderAggregateSource.name, "test", meta, eventJson)
@@ -205,8 +205,8 @@ let publishDcbEvent = async (id, event: InventoryDcbSource.event) => {
   let eventJson = JSON.Encode.object(
     Dict.fromArray([
       ("id", id->JSON.Encode.string),
-      ("meta", meta->S.reverseConvertToJsonOrThrow(Message.metaSchema)),
-      ("event", event->S.reverseConvertToJsonOrThrow(InventoryDcbSource.eventSchema)),
+      ("meta", meta->Reventless.Util_Sury.toJson(Message.metaSchema)),
+      ("event", event->Reventless.Util_Sury.toJson(InventoryDcbSource.eventSchema)),
     ]),
   )
   await Bus.publishEvent(InventoryDcbSource.name, "test", meta, eventJson)

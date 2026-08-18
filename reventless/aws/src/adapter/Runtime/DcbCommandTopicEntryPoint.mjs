@@ -22,7 +22,9 @@ import {
 import { Make as dcbEventLogOperationsMake } from "@reventlessdev/reventless-core/src/components/DcbEventLog/DcbEventLog_Operations.res.mjs";
 import { makeCommandGenerator } from "./CommandGeneratorEntryPoint_Ops.res.mjs";
 import { commandOutcomeToJson, runInlineAndCollect } from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic_Helpers.res.mjs";
-import { json as jsonSchema } from "sury/src/S.res.mjs";
+// `json` lives on sury's own entry, not the ReScript shim — `S.res.mjs` stopped
+// re-exporting it in sury 11. This is the same binding the compiled ReScript uses.
+import { json as jsonSchema } from "sury";
 import { handleQueueEvent, publishJsons as sqsPublishJsons } from "@reventlessdev/reventless-aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_Runtime.res.mjs";
 // Typed cold-start core — scope/partitionTag derivation, storage-ops wiring, and
 // per-slice handler building (functor + decode + handleCommands), all

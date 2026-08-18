@@ -167,7 +167,6 @@ let fulfilment: ReventlessInfra.Platform.bakedJourney = {
 }
 
 describe("ShellConfig.overlay — journeys", () => {
-  open Expect
 
   // The regression line. A shell that has never heard of journeys must not
   // suddenly find a key it does not know.

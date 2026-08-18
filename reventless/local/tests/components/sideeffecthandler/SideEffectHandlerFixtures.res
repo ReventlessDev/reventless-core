@@ -3,7 +3,6 @@
 
 open TestFixtures
 
-S.enableJson()
 
 // ─────────────────────────────────────────────────────────────
 // Isolated bus + Pulumi mock mode
@@ -117,11 +116,11 @@ let publishOrderPlaced = async (id, orderId) => {
   let eventJson = JSON.Encode.object(
     Dict.fromArray([
       ("id", id->JSON.Encode.string),
-      ("meta", testMeta->S.reverseConvertToJsonOrThrow(Reventless.Message.metaSchema)),
+      ("meta", testMeta->Reventless.Util_Sury.toJson(Reventless.Message.metaSchema)),
       (
         "event",
         TestSEHSource.OrderPlaced({orderId: orderId})
-        ->S.reverseConvertToJsonOrThrow(TestSEHSource.eventSchema),
+        ->Reventless.Util_Sury.toJson(TestSEHSource.eventSchema),
       ),
     ]),
   )

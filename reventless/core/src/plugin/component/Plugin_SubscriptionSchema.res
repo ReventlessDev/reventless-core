@@ -44,7 +44,7 @@ let sourceCFields = (
   mutationEntries->Array.forEach(entry => {
     let schema = entry.commandSchema
     switch schema {
-    | Union({anyOf}) =>
+    | AnyOf({anyOf}) =>
       anyOf->Array.forEachWithIndex((_, i) => {
         let fieldName = entry.fieldNames->Array.get(i)->Option.getOr("")
         if fieldName->String.length > 0 {

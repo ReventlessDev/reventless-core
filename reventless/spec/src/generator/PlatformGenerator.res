@@ -95,7 +95,7 @@ let () = {
               )
               let manifest = try NodeFs.readFileSync(path)
               ->JSON.parseOrThrow
-              ->S.parseOrThrow(CapabilityManifest.schema) catch {
+              ->S.parseOrThrow(~to=CapabilityManifest.schema) catch {
               | _ => {
                   fail(`could not parse ${path} as a capability manifest`)
                   ({capabilities: []}: CapabilityManifest.t)

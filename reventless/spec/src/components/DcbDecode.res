@@ -14,11 +14,11 @@ type variantKind =
 let buildVariantLookup = (schema: S.t<unknown>): dict<variantKind> => {
   let lookup = Dict.make()
   switch schema {
-  | Union({anyOf}) =>
+  | AnyOf({anyOf}) =>
     anyOf->Array.forEach(variantSchema =>
       switch variantSchema {
-      | Object({items, properties}) =>
-        switch DcbTag.variantTagName(items) {
+      | Object({properties}) =>
+        switch DcbTag.variantTagName(properties) {
         | Some(name) =>
           let kind = if properties->Dict.keysToArray->Array.length == 0 {
             PayloadLess
@@ -34,9 +34,9 @@ let buildVariantLookup = (schema: S.t<unknown>): dict<variantKind> => {
       | _ => ()
       }
     )
-  | Object({items}) =>
+  | Object({properties}) =>
     // Single-variant schema with fields
-    switch DcbTag.variantTagName(items) {
+    switch DcbTag.variantTagName(properties) {
     | Some(name) => lookup->Dict.set(name, WithFields)
     | None => ()
     }
@@ -64,12 +64,12 @@ let buildPayloadLessConstructors = (schema: S.t<'event>, lookup: dict<variantKin
   // For payload-less variants, we need to figure out what ReScript value
   // corresponds to each TAG name. sury's schema for a union with payload-less
   // variants encodes them as bare strings. So `| ItemCreated` serializes to
-  // JSON string "ItemCreated". We can use S.parseJsonOrThrow with the string.
+  // JSON string "ItemCreated". We can use Util_Sury.fromJson with the string.
   lookup->Dict.toArray->Array.forEach(((tagName, kind)) =>
     switch kind {
     | PayloadLess =>
       try {
-        let value = JSON.String(tagName)->S.parseJsonOrThrow(schema)
+        let value = JSON.String(tagName)->Util_Sury.fromJson(schema)
         constructors->Dict.set(tagName, value)
       } catch {
       | _ => ()
@@ -100,7 +100,7 @@ let makeDecoder = (schema: S.t<'event>): makeDecoderResult<'event> => {
       let jsonDict = data->Dict.copy
       jsonDict->Dict.set("TAG", JSON.String(eventType))
       try {
-        Some(JSON.Object(jsonDict)->S.parseJsonOrThrow(schema))
+        Some(JSON.Object(jsonDict)->Util_Sury.fromJson(schema))
       } catch {
       | _ =>
         // A parse failure here means a stored event no longer matches the

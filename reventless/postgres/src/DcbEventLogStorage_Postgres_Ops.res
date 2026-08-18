@@ -67,7 +67,7 @@ let rowToEvent = (row: dict<JSON.t>): DcbEventLog_Adapter.rawSequencedEvent => {
     | _ => ""
     }
   let meta = switch row->Dict.get("meta") {
-  | Some(metaJson) => metaJson->S.parseJsonOrThrow(Reventless.Message.metaSchema)
+  | Some(metaJson) => metaJson->Reventless.Util_Sury.fromJson(Reventless.Message.metaSchema)
   | None => JsError.throwWithMessage("missing meta column in dcb_event row")
   }
   {
@@ -236,7 +236,7 @@ let makeOps = (
               JSON.Array(ev.tags->Array.map(t => JSON.Encode.string(t.key ++ "=" ++ t.value))),
             ),
             ("data", ev.data),
-            ("meta", ev.meta->S.reverseConvertToJsonOrThrow(Reventless.Message.metaSchema)),
+            ("meta", ev.meta->Reventless.Util_Sury.toJson(Reventless.Message.metaSchema)),
           ]),
         )
       ),

@@ -15,7 +15,7 @@ open Message
 describe("Message.meta optional fields:", () => {
   testSync("generateMeta() with no ~ip/~user omits those keys from JSON", () => {
     let meta = generateMeta(~service="svc")
-    let json = meta->S.reverseConvertToJsonOrThrow(metaSchema)
+    let json = meta->Reventless.Util_Sury.toJson(metaSchema)
     let obj = json->JSON.Decode.object->Option.getOrThrow
     expect(obj->Dict.get("ip"))->toEqual(None)->ignore
     expect(obj->Dict.get("user"))->toEqual(None)->ignore
@@ -37,8 +37,8 @@ describe("Message.meta optional fields:", () => {
 
   testSync("generateMeta(~user=alice) round-trips Some(alice)", () => {
     let meta = generateMeta(~service="svc", ~user="alice")
-    let json = meta->S.reverseConvertToJsonOrThrow(metaSchema)
-    let decoded = json->S.parseJsonOrThrow(metaSchema)
+    let json = meta->Reventless.Util_Sury.toJson(metaSchema)
+    let decoded = json->Reventless.Util_Sury.fromJson(metaSchema)
     expect(decoded.user)->toEqual(Some("alice"))
   })
 
@@ -54,8 +54,8 @@ describe("Message.meta optional fields:", () => {
       ~schemaVersion="1.2.0",
       ~headers,
     )
-    let json = meta->S.reverseConvertToJsonOrThrow(metaSchema)
-    let decoded = json->S.parseJsonOrThrow(metaSchema)
+    let json = meta->Reventless.Util_Sury.toJson(metaSchema)
+    let decoded = json->Reventless.Util_Sury.fromJson(metaSchema)
     expect(decoded.ip)->toEqual(Some("10.0.0.1"))->ignore
     expect(decoded.user)->toEqual(Some("bob"))->ignore
     expect(decoded.causationId)->toEqual(Some("parent-msg-id"))->ignore

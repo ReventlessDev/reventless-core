@@ -9,6 +9,7 @@ import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Plugin$Reventless from "@reventlessdev/reventless-spec/src/components/Plugin.res.mjs";
+import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as Plugin$ReventlessCore from "./Plugin.res.mjs";
 import * as StackReference$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/StackReference.res.mjs";
@@ -648,7 +649,7 @@ function Make(Spec) {
           inboundTranslationSlices: pluginOutputs_inboundTranslationSlices
         };
         Component$ReventlessCore.setOutputs(extra, pluginOutputs);
-        Plugin_Helpers$ReventlessCore.interopMetaOutput.contents = builderOutputs.apply(outputs => S.reverseConvertToJsonOrThrow(Plugin_Helpers$ReventlessCore.toInteropMeta(outputs), ExportMeta$ReventlessInterop.schema));
+        Plugin_Helpers$ReventlessCore.interopMetaOutput.contents = builderOutputs.apply(outputs => Util_Sury$Reventless.toJson(Plugin_Helpers$ReventlessCore.toInteropMeta(outputs), ExportMeta$ReventlessInterop.schema));
         Logger$ReventlessCore.currentPluginName.contents = _prevPluginName;
         return ResourceAttribution$ReventlessCore.restore(_prevAttribution);
       }, opts);

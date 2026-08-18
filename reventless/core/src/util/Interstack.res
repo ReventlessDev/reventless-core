@@ -21,7 +21,7 @@ module DefaultTaskQuery = ReventlessInterop.Query.Task.Make({
   let requiredFields = ["name"]
   let optionalFields = ["bucketNames", "sideEffectSources"]
   let fromJson = (json: JSON.t) =>
-    try Ok(json->S.parseOrThrow(ReventlessInterop.Task.resolvedOutputsSchema))
+    try Ok(json->S.parseOrThrow(~to=ReventlessInterop.Task.resolvedOutputsSchema))
     catch {
     | exn =>
       let msg =
@@ -35,7 +35,7 @@ module DefaultEventMapperQuery = ReventlessInterop.Query.EventMapper.Make({
   let requiredFields = ["name", "eventCollector"]
   let optionalFields = ["counter"]
   let fromJson = (json: JSON.t) =>
-    try Ok(json->S.parseOrThrow(ReventlessInterop.EventMapper.resolvedOutputsSchema))
+    try Ok(json->S.parseOrThrow(~to=ReventlessInterop.EventMapper.resolvedOutputsSchema))
     catch {
     | exn =>
       let msg =
@@ -54,7 +54,7 @@ module DefaultExtensionPointQuery = ReventlessInterop.Query.ExtensionPoint.Make(
   let requiredFields = ["name", "commandTopic", "eventTopic"]
   let optionalFields = []
   let fromJson = (json: JSON.t) =>
-    try Ok(json->S.parseOrThrow(ReventlessInterop.ExtensionPoint.resolvedOutputsSchema))
+    try Ok(json->S.parseOrThrow(~to=ReventlessInterop.ExtensionPoint.resolvedOutputsSchema))
     catch {
     | exn =>
       let msg =

@@ -105,13 +105,12 @@ type apiTarget = Domain | Platform
 // Sury's nullableAsOption creates T | undefined | null which fails jsonableValidation
 // inside union variant payloads. js_nullable creates T | null (no undefined) which is
 // JSON-safe and passes jsonableValidation in all contexts.
-@module("sury/src/Sury.res.mjs") external _jsNullable: (S.t<'a>, unit) => S.t<option<'a>> = "js_nullable"
 let apiSchemaFragmentOffloadSchema = Offload.optionSchema(~store="pluginApiFragments", apiSchemaFragmentSchema)
-let dcbEventLogOptionSchema = _jsNullable(dcbEventLogDefinitionSchema, ())
+let dcbEventLogOptionSchema = dcbEventLogDefinitionSchema->S.nullAsOption
 // js_nullable creates T | null which passes sury's jsonableValidation inside union variant payloads.
-let stringOptionSchema = _jsNullable(S.string, ())
-let stringArrayOptionSchema = _jsNullable(S.array(S.string), ())
-let boolOptionSchema = _jsNullable(S.bool, ())
+let stringOptionSchema = S.string->S.nullAsOption
+let stringArrayOptionSchema = S.array(S.string)->S.nullAsOption
+let boolOptionSchema = S.bool->S.nullAsOption
 
 // ── UI fragment manifest types ────────────────────────────────────────────────
 
@@ -147,7 +146,7 @@ type uiFragmentManifest = {
   pages: array<pageManifestEntry>,
 }
 
-let uiFragmentManifestOptionSchema = _jsNullable(uiFragmentManifestSchema, ())
+let uiFragmentManifestOptionSchema = uiFragmentManifestSchema->S.nullAsOption
 
 // ── Plugin structure types (component metadata for Auto UI and event graph) ──
 
@@ -566,7 +565,7 @@ type extensionPointDef = {
 
 // js_nullable creates `array | null` (not `| undefined`), which passes sury's
 // jsonableValidation inside the pluginStructure union variant payload.
-let extensionPointDefArrayOptionSchema = _jsNullable(S.array(extensionPointDefSchema), ())
+let extensionPointDefArrayOptionSchema = S.array(extensionPointDefSchema)->S.nullAsOption
 
 /**
 One field's store requirement, with its provenance.
@@ -604,10 +603,8 @@ type requiredStoreDeclaration = {
   annotation: @s.matches(stringOptionSchema) option<string>,
 }
 
-let requiredStoreDeclarationArrayOptionSchema = _jsNullable(
-  S.array(requiredStoreDeclarationSchema),
-  (),
-)
+let requiredStoreDeclarationArrayOptionSchema =
+  S.array(requiredStoreDeclarationSchema)->S.nullAsOption
 
 /**
 Adding a field here? It has to be a shape a stale event can be healed into.

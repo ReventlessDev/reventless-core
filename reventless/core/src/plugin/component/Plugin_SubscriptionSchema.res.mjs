@@ -26,7 +26,7 @@ function sourceCFields(mutationEntries) {
         } else {
           return;
         }
-      case "union" :
+      case "anyOf" :
         schema.anyOf.forEach((param, i) => {
           let fieldName = Stdlib_Option.getOr(entry.fieldNames[i], "");
           if (fieldName.length > 0) {

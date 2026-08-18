@@ -99,7 +99,7 @@ let alive = (pid: int): bool =>
   }
 
 let readEntry = (path: string): option<entry> =>
-  try Some(path->NodeFs.readFileSync->JSON.parseOrThrow->S.parseJsonOrThrow(entrySchema)) catch {
+  try Some(path->NodeFs.readFileSync->JSON.parseOrThrow->Reventless.Util_Sury.fromJson(entrySchema)) catch {
   | _ => None
   }
 
@@ -157,7 +157,7 @@ let write = (
     NodeFs.mkdirSync(runningDir(~cwd, ()), {recursive: true})
     NodeFs.writeFileSync(
       path,
-      entry->S.reverseConvertToJsonOrThrow(entrySchema)->JSON.stringify(~space=2),
+      entry->Reventless.Util_Sury.toJson(entrySchema)->JSON.stringify(~space=2),
     )
   } catch {
   // A platform that cannot announce itself must still serve. The tools fall back

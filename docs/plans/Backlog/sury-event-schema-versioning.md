@@ -1,7 +1,7 @@
 # Backlog: Event Schema Versioning via Sury Decoder Chains
 
 **Status:** Backlog — depends on `docs/plans/sury-11-migration.md` Phase 4
-**Analysis:** `docs/analysis/sury-11-migration.md` (opportunity C);
+**Analysis:** `docs/analysis/done/sury-11-migration.md` (opportunity C);
 related: `docs/plans/done/effect-library-integration.md` §10,
 `docs/analysis/event-format-and-meta-review.md` #9 and "schemaVersion"
 discussion.

@@ -2,7 +2,7 @@
 
 **Status:** Backlog — depends on `docs/plans/sury-11-migration.md` Phase 4
 **Analysis:** `docs/analysis/typescript-client-feasibility.md` Blocker 1;
-`docs/analysis/sury-11-migration.md` (opportunity G);
+`docs/analysis/done/sury-11-migration.md` (opportunity G);
 context from `docs/analysis/rejected/sury-vs-effect-schema.md`.
 
 ## Context and motivation
@@ -219,7 +219,7 @@ ReScript developer's.
 
 - TS client blockers: `docs/analysis/typescript-client-feasibility.md`
 - Standard Schema spec: <https://standardschema.dev/>
-- Sury 11 opportunities: `docs/analysis/sury-11-migration.md` G
+- Sury 11 opportunities: `docs/analysis/done/sury-11-migration.md` G
 - HTTP transport (dependency for Phase 3):
   `docs/plans/Backlog/reventless-client-transport.md`
 - Message envelope shape: `docs/analysis/event-format-and-meta-review.md`

@@ -72,7 +72,6 @@ module type T = {
 module Make = (D: Delegate): (T with type inbound = D.inbound) => {
   type inbound = D.inbound
 
-  S.enableJson()
 
   let describe = JestBind.describe
   let test = (name, ~timeout=?, body) =>

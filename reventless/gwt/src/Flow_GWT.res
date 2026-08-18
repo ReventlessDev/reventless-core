@@ -81,7 +81,6 @@ type flowState = {
 
 type flow = promise<flowState>
 
-S.enableJson()
 
 let emptyState = {
   log: [],

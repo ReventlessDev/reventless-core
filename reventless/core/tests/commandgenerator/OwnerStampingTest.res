@@ -1,6 +1,5 @@
 open JestGlobals
 
-S.enableJson()
 
 // Driven through `makeGenerateCommand` rather than by calling `stampOwnerFields`
 // directly. The unit under test is not really the stamp — it is the claim that

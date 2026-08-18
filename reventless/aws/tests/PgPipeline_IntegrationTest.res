@@ -68,7 +68,7 @@ module OrdersMappings = {
 let flatItem = (~id, ~seq, ~service, ~event: OrderSource.event) => {
   let (eventType, data) =
     event
-    ->S.reverseConvertToJsonOrThrow(OrderSource.eventSchema)
+    ->Reventless.Util_Sury.toJson(OrderSource.eventSchema)
     ->Message.splitMessage
   [
     ("id", JSON.Encode.string(id)),
