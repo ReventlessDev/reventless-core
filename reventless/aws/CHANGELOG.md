@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.307 (2026-08-18)
+
+### Bug Fixes
+
+* **api:** make the by-index door answer, and let an elevated caller widen it ([0fe0c6f](https://github.com/ReventlessDev/reventless-core/commit/0fe0c6f8dec6228ecaba39577e28d780b4f79c83))
+* **aws:** apply [@owner](https://github.com/owner) on the DynamoDB by-ids and by-index doors ([a6b5afc](https://github.com/ReventlessDev/reventless-core/commit/a6b5afc2923bfa4d3e0b2990367f67e8ffdd8877))
+* **aws:** narrow retirement on every DynamoDB door, not only the list ([d6a799b](https://github.com/ReventlessDev/reventless-core/commit/d6a799b287b28e9c1f75e193adbf3f6328a6bf2d))
+### Features
+
+* **core:** let a reference name a retired row, and let an elevated caller open one ([9e2623a](https://github.com/ReventlessDev/reventless-core/commit/9e2623a4b22487561607fcc0ca19d51726069ee4))
+
+
 # 3.0.0-alpha.306 (2026-08-16)
 
 ### Bug Fixes

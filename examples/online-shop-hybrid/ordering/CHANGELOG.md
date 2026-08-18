@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.213 (2026-08-18)
+
+### Bug Fixes
+
+* **examples:** refuse to order a product withdrawn from the catalog ([2343a8c](https://github.com/ReventlessDev/reventless-core/commit/2343a8cb869344fc58cc3aaa2c774219f186158a))
+* **examples:** refuse to reopen an order that has already shipped ([1f78be8](https://github.com/ReventlessDev/reventless-core/commit/1f78be89a001fc93d35af7f681b4d68a3fe6ef8b))
+### Features
+
+* **core:** let a reference name a retired row, and let an elevated caller open one ([9e2623a](https://github.com/ReventlessDev/reventless-core/commit/9e2623a4b22487561607fcc0ca19d51726069ee4))
+* **core:** read a command's lifecycle guard off the GWT corpus, and check [@transition](https://github.com/transition) against it ([057c898](https://github.com/ReventlessDev/reventless-core/commit/057c898761917bd6fc5eb9ac6867c8125709eab4))
+
+
 # 1.0.0-alpha.212 (2026-08-16)
 
 ### Features

@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.117 (2026-08-18)
+
+### Bug Fixes
+
+* **api:** declare the reference door in the SDL every backend is built from ([5c1857e](https://github.com/ReventlessDev/reventless-core/commit/5c1857ea90ff40305a1c44a9e57043528e6a93aa))
+### Features
+
+* **core:** let a reference name a retired row, and let an elevated caller open one ([9e2623a](https://github.com/ReventlessDev/reventless-core/commit/9e2623a4b22487561607fcc0ca19d51726069ee4))
+
+
 # 3.0.0-alpha.116 (2026-08-16)
 
 ### Features

@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.0.0-alpha.8 (2026-08-18)
+
+### Features
+
+* **core:** read a command's lifecycle guard off the GWT corpus, and check [@transition](https://github.com/transition) against it ([057c898](https://github.com/ReventlessDev/reventless-core/commit/057c898761917bd6fc5eb9ac6867c8125709eab4))
+
+
 # 2.0.0-alpha.7 (2026-08-15)
 
 ### Features

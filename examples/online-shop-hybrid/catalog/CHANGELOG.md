@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.214 (2026-08-18)
+
+### Bug Fixes
+
+* **examples:** refuse product edits once a product is discontinued ([ad5de25](https://github.com/ReventlessDev/reventless-core/commit/ad5de25e3d2f58b7fdff74969c9e6e31d5ba3a6d))
+### Features
+
+* **core:** let a reference name a retired row, and let an elevated caller open one ([9e2623a](https://github.com/ReventlessDev/reventless-core/commit/9e2623a4b22487561607fcc0ca19d51726069ee4))
+* **core:** read a command's lifecycle guard off the GWT corpus, and check [@transition](https://github.com/transition) against it ([057c898](https://github.com/ReventlessDev/reventless-core/commit/057c898761917bd6fc5eb9ac6867c8125709eab4))
+
+
 # 1.0.0-alpha.213 (2026-08-16)
 
 ### Features
