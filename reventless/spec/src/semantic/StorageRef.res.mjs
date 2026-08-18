@@ -45,14 +45,16 @@ function fromString(raw) {
   }
 }
 
+let refinement = S.refine(Sury.string, value => {
+  if (value === "") {
+    return true;
+  }
+  let match = fromString(value);
+  return match.TAG === "Ok";
+}, `expected an origin-relative storage ref: "/" followed by a prefix and an object path, or "" for no object`, undefined);
+
 function forStore(plugin, store) {
-  return Semantic$Reventless.mark(S.refine(Sury.string, value => {
-    if (value === "") {
-      return true;
-    }
-    let match = fromString(value);
-    return match.TAG === "Ok";
-  }, `expected an origin-relative storage ref: "/" followed by a prefix and an object path, or "" for no object`, undefined), Semantic$Reventless.Id.storageRef, {
+  return Semantic$Reventless.mark(refinement, Semantic$Reventless.Id.storageRef, {
     TAG: "StoredIn",
     _0: {
       plugin: plugin,
@@ -101,8 +103,9 @@ function getFieldStore(schema) {
 export {
   segmentIsSafe,
   fromString,
+  refinement,
   forStore,
   getStore,
   getFieldStore,
 }
-/* S Not a pure module */
+/* refinement Not a pure module */

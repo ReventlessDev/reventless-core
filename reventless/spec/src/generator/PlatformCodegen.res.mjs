@@ -59,7 +59,7 @@ function renderEntry(entry) {
     let site_ = `  // ` + site.pluginName + `: ` + site.component + `.` + site.field;
     let annotation = site.annotation;
     if (annotation !== undefined) {
-      return site_ + ` @storageRef(` + JSON.stringify(annotation) + `)`;
+      return site_ + ` → ` + annotation;
     } else {
       return site_;
     }

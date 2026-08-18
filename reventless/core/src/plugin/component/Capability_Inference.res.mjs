@@ -3,6 +3,7 @@
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as StorageRef$Reventless from "@reventlessdev/reventless-spec/src/semantic/StorageRef.res.mjs";
+import * as Api_Naming$ReventlessCore from "../../components/Api/Api_Naming.res.mjs";
 
 let refLikeNames = [
   "file",
@@ -67,6 +68,127 @@ function message(w) {
   return w.component + `.` + w.field + ` looks like a stored-object reference but declares no store — annotate it \`@storageRef("<store>")\` so the deployment provisions the store it needs, or rename the field if it holds an external URL. Heuristic matches are never provisioned.`;
 }
 
+function withinOneEdit(a, b) {
+  let la = a.length;
+  let lb = b.length;
+  if (la === lb) {
+    let diffs = [];
+    for (let i = 0; i < la; ++i) {
+      if (a.charAt(i) !== b.charAt(i)) {
+        diffs.push(i);
+      }
+    }
+    let len = diffs.length;
+    if (len >= 3) {
+      return false;
+    }
+    switch (len) {
+      case 0 :
+      case 1 :
+        return true;
+      case 2 :
+        let i$1 = diffs[0];
+        let j = diffs[1];
+        if (j === (i$1 + 1 | 0) && a.charAt(i$1) === b.charAt(j)) {
+          return a.charAt(j) === b.charAt(i$1);
+        } else {
+          return false;
+        }
+    }
+  } else {
+    if ((la - lb | 0) !== 1 && (lb - la | 0) !== 1) {
+      return false;
+    }
+    let match = la > lb ? [
+        a,
+        b
+      ] : [
+        b,
+        a
+      ];
+    let short = match[1];
+    let long = match[0];
+    let _li = 0;
+    let _si = 0;
+    let _skipped = false;
+    while (true) {
+      let skipped = _skipped;
+      let si = _si;
+      let li = _li;
+      if (si >= short.length) {
+        return true;
+      }
+      if (long.charAt(li) === short.charAt(si)) {
+        _si = si + 1 | 0;
+        _li = li + 1 | 0;
+        continue;
+      }
+      if (skipped) {
+        return false;
+      }
+      _skipped = true;
+      _li = li + 1 | 0;
+      continue;
+    };
+  }
+}
+
+function sameStem(a, b) {
+  return Api_Naming$ReventlessCore.singularize(a) === Api_Naming$ReventlessCore.singularize(b);
+}
+
+function splitKey(key) {
+  let match = key.split(".");
+  if (match.length !== 2) {
+    return [
+      "",
+      key
+    ];
+  }
+  let plugin = match[0];
+  let store = match[1];
+  return [
+    plugin,
+    store
+  ];
+}
+
+function collisions(declarations) {
+  let byStore = {};
+  declarations.forEach(d => {
+    let match = byStore[d.store];
+    if (match !== undefined) {
+      return;
+    } else {
+      byStore[d.store] = d;
+      return;
+    }
+  });
+  let unique = Object.values(byStore);
+  let found = [];
+  for (let i = 0, i_finish = unique.length; i < i_finish; ++i) {
+    for (let j = i + 1 | 0, j_finish = unique.length; j < j_finish; ++j) {
+      let a = unique[i];
+      let b = unique[j];
+      let match = splitKey(a.store);
+      let storeA = match[1];
+      let match$1 = splitKey(b.store);
+      let storeB = match$1[1];
+      if (match[0] === match$1[0] && (withinOneEdit(storeA, storeB) || sameStem(storeA, storeB))) {
+        found.push({
+          a: a,
+          b: b
+        });
+      }
+    }
+  }
+  return found;
+}
+
+function collisionMessage(c) {
+  return c.a.store + ` (` + c.a.component + `.` + c.a.field + `) and ` + c.b.store + ` ` + (`(` + c.b.component + `.` + c.b.field + `) differ by one edit — one is probably a typo for `) + `the other, and both would be provisioned, splitting objects across two stores. Fix the field name, or name the store explicitly with \`@storageRef("<store>")\` if the two really are separate stores.`;
+}
+
 export {
   refLikeNames,
   refLikeSuffixes,
@@ -75,5 +197,10 @@ export {
   warningsFromProperties,
   scanSchema,
   message,
+  withinOneEdit,
+  sameStem,
+  splitKey,
+  collisions,
+  collisionMessage,
 }
 /* StorageRef-Reventless Not a pure module */

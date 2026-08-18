@@ -705,6 +705,9 @@ let transform (str : structure) : structure =
     let () = DcbTagInference.check_deprecated_no_tag body in
     let body = ReferenceInference.transform_structure body in
     let body = StorageRefInference.transform_structure body in
+    (* After StorageRefInference, which leaves uploadable-typed fields — including
+       the ones carrying an explicit @storageRef override — to this pass. *)
+    let body = UploadableInference.transform_structure body in
     let body = OffloadInference.transform_structure body in
     let body = if dcb_tags then DcbTagInference.transform_structure ~loc body else body in
     let body = DcbTagInference.transform_partition_tags ~loc body in

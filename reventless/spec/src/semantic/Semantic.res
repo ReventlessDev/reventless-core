@@ -57,6 +57,18 @@ module Id = {
   // value rather than an always-a-ref path string.
   let offload = "offload"
 
+  // The uploadable family: the same `StoredIn` declaration as `storageRef`,
+  // plus a statement about what the value *is*, so one declaration picks both a
+  // renderer and an upload endpoint. The store is derived from the field name by
+  // the ppx rather than written on the type.
+  let uploadableImage = "uploadableImage"
+  let uploadableFile = "uploadableFile"
+
+  // The same content facts with no store attached, for values the platform
+  // reads but does not own. Nothing is provisioned for these.
+  let imageRef = "imageRef"
+  let fileRef = "fileRef"
+
   // The branded scalars. Each refines a `string` or a number without changing
   // its shape, so a field gains one of these without anything stored changing.
   let email = "email"

@@ -89,8 +89,21 @@ let is_string_type (ct : core_type) =
   | Ptyp_constr ({ txt = Lident "string"; _ }, []) -> true
   | _ -> false
 
+(* An [@storageRef] on an uploadable-typed field is a store *override*, not a
+   declaration this pass owns: claiming it would inject [StorageRef.forStore] and
+   downgrade the field to a bare ref, losing the semantic its type states.
+   [UploadableInference] runs next and consumes the attribute. *)
+let is_uploadable_field (ld : label_declaration) =
+  match Util.uploadable_module_of_type ld.pld_type with
+  | Some _ -> true
+  | None -> (
+    match Util.array_element ld.pld_type with
+    | Some elem -> Util.uploadable_module_of_type elem <> None
+    | None -> false)
+
 let transform_label_decl (ld : label_declaration) : label_declaration =
   if not (has_storage_ref_attr ld.pld_attributes) then ld
+  else if is_uploadable_field ld then ld
   else begin
     let loc = ld.pld_loc in
     match get_store_target ld.pld_attributes with

@@ -1176,6 +1176,18 @@ let make = (
     ->Belt.Set.String.fromArray
     ->Belt.Set.String.toArray
 
+  // Two stores one edit apart are a typo that would provision twice. A hard
+  // failure, unlike the heuristic lint below: nothing downstream can see the
+  // mistake, and by deploy time both buckets exist.
+  switch Capability_Inference.collisions(requiredStoreDeclarations) {
+  | [] => ()
+  | found =>
+    JsError.throwWithMessage(
+      `${name}: two declared object stores look like one store misspelled.\n` ++
+      found->Array.map(Capability_Inference.collisionMessage)->Array.join("\n"),
+    )
+  }
+
   // Heuristic-only matches — a field *named* like a stored-object ref with no
   // `@storageRef` — warn and provision nothing. Declaration outranks inference;
   // the warning names the annotation that would settle it.

@@ -40,8 +40,8 @@ describe("PlatformCodegen.render", () => {
 // disappears from this list, the diff says which field's change removed it.
 
 let capabilities: array<ReventlessInfra.Platform.capability> = [
-  // catalog: AddProduct.imageUrl @storageRef("productImages")
-  // catalog: Products.imageUrl @storageRef("productImages")
+  // catalog: AddProduct.imageUrl → productImages
+  // catalog: Products.imageUrl → productImages
   ObjectStore({plugin: "Catalog", store: "productImages"}),
 ]
 `,
@@ -113,7 +113,7 @@ let capabilities: array<ReventlessInfra.Platform.capability> = [
     switch PlatformCodegen.render([foreign]) {
     | Ok(source) => {
         expect(
-          source->String.includes(`// catalog: AttachInvoice.logoUrl @storageRef("branding.logos")`),
+          source->String.includes(`// catalog: AttachInvoice.logoUrl → branding.logos`),
         )->toBe(true)
         expect(
           source->String.includes(`ObjectStore({plugin: "branding", store: "logos"}),`),
@@ -123,13 +123,13 @@ let capabilities: array<ReventlessInfra.Platform.capability> = [
     }
   })
 
-  // The defect this replaced: the comment used to be reconstructed by comparing
+  // The defect this replaced: the store was reconstructed by comparing
   // the deploy-manifest entry name with the key's registered-name prefix,
   // case-insensitively. A kebab-case entry name against a PascalCase registered
   // name is an ordinary pairing that the comparison misses, and the fallback
   // quoted the qualified key — a string in no source file, offered to a reader
   // as the thing to grep for.
-  testSync("a kebab-case entry name still quotes the annotation as written", () => {
+  testSync("a kebab-case entry name still names the store as the field spells it", () => {
     let inspector: PlatformCodegen.pluginManifest = {
       pluginName: "platform-inspector",
       manifest: {
@@ -147,18 +147,18 @@ let capabilities: array<ReventlessInfra.Platform.capability> = [
     | Ok(source) => {
         expect(
           source->String.includes(
-            `// platform-inspector: SyncAlarmState.urn @storageRef("inspectorSnapshots")`,
+            `// platform-inspector: SyncAlarmState.urn → inspectorSnapshots`,
           ),
         )->toBe(true)
-        expect(source->String.includes(`@storageRef("PlatformInspector.`))->toBe(false)
+        expect(source->String.includes(`→ PlatformInspector.`))->toBe(false)
       }
     | Error(_) => expect(true)->toBe(false)
     }
   })
 
-  // A manifest emitted before the annotation was recorded. The comment still
-  // names the field — its actual job — and makes no claim it cannot support.
-  testSync("a site with no recorded annotation names the field and quotes nothing", () => {
+  // A manifest emitted before the store was recorded. The comment still names
+  // the field — its actual job — and makes no claim it cannot support.
+  testSync("a site with no recorded store names the field and nothing more", () => {
     let legacy: PlatformCodegen.pluginManifest = {
       pluginName: "catalog",
       manifest: {
@@ -170,7 +170,7 @@ let capabilities: array<ReventlessInfra.Platform.capability> = [
     switch PlatformCodegen.render([legacy]) {
     | Ok(source) => {
         expect(source->String.includes("// catalog: AddProduct.imageUrl"))->toBe(true)
-        expect(source->String.includes("@storageRef"))->toBe(false)
+        expect(source->String.includes("→"))->toBe(false)
       }
     | Error(_) => expect(true)->toBe(false)
     }

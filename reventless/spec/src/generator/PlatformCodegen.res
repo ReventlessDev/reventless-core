@@ -73,17 +73,16 @@ let splitKey = (key: string): option<(string, string)> =>
     key->String.slice(~start=i + 1),
   ))
 
-// The provenance comment quotes the annotation as its author wrote it — taken
-// from the manifest, which recorded it at the one place the owning plugin was
+// The provenance comment names the store as the field spells it — taken from
+// the manifest, which recorded it at the one place the owning plugin was
 // unambiguous. Inferring it here is what this replaced: the manifest carries a
 // deploy-manifest entry name and the key carries the registered name, and no
 // rule relates the two (`platform-inspector` against `PlatformInspector` is an
-// ordinary pairing), so any comparison here eventually quotes a string that is
+// ordinary pairing), so any comparison here eventually names a string that is
 // in no source file.
 //
-// A site with no recorded annotation predates the recording. It still names the
-// field, which is the comment's job; it just makes no claim about the source
-// text it cannot see.
+// A site with no recorded store predates the recording. It still names the
+// field, which is the comment's job; it just makes no claim it cannot support.
 let renderEntry = (entry: unionEntry): result<array<string>, string> =>
   switch splitKey(entry.key) {
   | None =>
@@ -94,8 +93,13 @@ let renderEntry = (entry: unionEntry): result<array<string>, string> =>
       let comments =
         entry.declaredBy->Array.map(site => {
           let site_ = `  // ${site.pluginName}: ${site.component}.${site.field}`
+          // `→ store` rather than `@storageRef("store")`: a field may name its
+          // store by annotation *or* by being named, and the manifest carries
+          // the store either way without saying which. Naming the annotation
+          // would send a reader looking for source text a derived field has not
+          // got.
           switch site.annotation {
-          | Some(annotation) => `${site_} @storageRef(${quote(annotation)})`
+          | Some(annotation) => `${site_} → ${annotation}`
           | None => site_
           }
         })
@@ -115,13 +119,12 @@ aggregate is keyed by the registered name — so a second plugin registering an
 existing name is not rejected but read as a **new version of the first**, and
 silently supersedes it in the registry.
 
-Ownership is read from the annotation as authored, which is the one signal that
-separates a duplicate from legitimate sharing: an **unqualified**
-`@storageRef("productImages")` means "a store of my own plugin", so the
-deployable that wrote it is the plugin the key names. A **qualified**
-`@storageRef("Catalog.productImages")` points at someone else's store and says
-nothing about who owns it — that is the sanctioned cross-plugin form and must not
-trip this.
+Ownership is read from the store as the field states it, which is the one signal
+that separates a duplicate from legitimate sharing: an **unqualified**
+`productImages` means "a store of my own plugin", so the deployable that stated
+it is the plugin the key names. A **qualified** `Catalog.productImages` points at
+someone else's store and says nothing about who owns it — that is the sanctioned
+cross-plugin form and must not trip this.
 
 Partial by construction: it can only see plugins that declare a store, because
 capability manifests are the only per-plugin input the generator reads. A

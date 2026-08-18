@@ -740,6 +740,10 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     }
   });
   let requiredStores = Belt_SetString.toArray(Belt_SetString.fromArray(requiredStoreDeclarations.map(d => d.store)));
+  let found = Capability_Inference$ReventlessCore.collisions(requiredStoreDeclarations);
+  if (found.length !== 0) {
+    Stdlib_JsError.throwWithMessage(name + `: two declared object stores look like one store misspelled.\n` + found.map(Capability_Inference$ReventlessCore.collisionMessage).join("\n"));
+  }
   storeDeclarationSites.forEach(param => {
     Capability_Inference$ReventlessCore.scanSchema(param[0], param[1]).forEach(w => log.warn("Plugin_Structure", undefined, Capability_Inference$ReventlessCore.message(w)));
   });

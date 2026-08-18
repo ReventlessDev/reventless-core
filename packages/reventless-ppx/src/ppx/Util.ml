@@ -89,6 +89,91 @@ let drop_trailing_s name =
   if len > 0 && name.[len - 1] = 's' then String.sub name 0 (len - 1)
   else name
 
+(* ── Store-name derivation for the uploadable family ──────────────────────
+   A field typed [UploadableImage.t] / [UploadableFile.t] declares the store its
+   value lives in by being named: the store is the field name, pluralised.
+
+   This is the ONLY place a store name is derived. Everything downstream —
+   the capability manifest, provisioning, the presign endpoints, the wipe
+   tooling — reads the derived name off the schema the ppx wrote, so there is
+   no second implementation to drift from this one. The rules mirror
+   [Api_Naming.pluralize] / [singularize] in reventless-core, which is the
+   framework's pluralisation elsewhere; if either side changes, change both. *)
+
+let is_vowel c =
+  match Char.lowercase_ascii c with
+  | 'a' | 'e' | 'i' | 'o' | 'u' -> true
+  | _ -> false
+
+let ends_with_ci s suffix =
+  let slen = String.length s and suflen = String.length suffix in
+  slen >= suflen
+  && String.lowercase_ascii (String.sub s (slen - suflen) suflen) = suffix
+
+let drop_last s n = String.sub s 0 (String.length s - n)
+
+let pluralize n =
+  let len = String.length n in
+  if len >= 2 && Char.lowercase_ascii n.[len - 1] = 'y' && not (is_vowel n.[len - 2])
+  then drop_last n 1 ^ "ies"
+  else if
+    ends_with_ci n "s" || ends_with_ci n "x" || ends_with_ci n "z"
+    || ends_with_ci n "ch" || ends_with_ci n "sh"
+  then n ^ "es"
+  else n ^ "s"
+
+let singularize n =
+  if ends_with_ci n "ies" then drop_last n 3 ^ "y"
+  else if
+    ends_with_ci n "ses" || ends_with_ci n "xes" || ends_with_ci n "zes"
+    || ends_with_ci n "ches" || ends_with_ci n "shes"
+  then drop_last n 2
+  else if ends_with_ci n "s" then drop_last n 1
+  else n
+
+(* Pluralise through the singular stem so an already-plural field name is
+   idempotent: [productImage] and [productImages] both derive [productImages].
+   The array case needs this — a field holding many images is named plurally. *)
+let canonical_plural n = pluralize (singularize n)
+
+(* [Ok store], or [Error reason] for a name whose plural this rule cannot state
+   with confidence. Erroring is the point: a silently wrong derivation
+   provisions a store nobody meant, and the field can always name its store
+   explicitly instead. *)
+let derive_store_name field =
+  if String.length field < 2 then
+    Error "a store name cannot be derived from a one-character field name"
+  else if ends_with_ci field "ss" then
+    Error
+      (Printf.sprintf
+         "%S ends in \"ss\", where singular and plural cannot be told apart"
+         field)
+  else Ok (canonical_plural field)
+
+(* The uploadable semantic types, by module name. [Some name] for a type
+   expression that is one of them ([UploadableImage.t], or qualified as
+   [Reventless.UploadableImage.t]); [None] for anything else.
+
+   Lives here rather than in [UploadableInference] so [StorageRefInference] can
+   consult it — it must leave these fields alone, including the ones carrying an
+   explicit [@storageRef] override, which the later pass consumes. *)
+let uploadable_module_of_type (ct : core_type) : string option =
+  let module_of = function
+    | Ldot (Lident ("UploadableImage" | "UploadableFile" as m), "t") -> Some m
+    (* Qualified through the package namespace. *)
+    | Ldot (Ldot (_, ("UploadableImage" | "UploadableFile" as m)), "t") -> Some m
+    | _ -> None
+  in
+  match ct.ptyp_desc with
+  | Ptyp_constr ({ txt; _ }, []) -> module_of txt
+  | _ -> None
+
+(* The element type of [array<X>], if the type is one. *)
+let array_element (ct : core_type) : core_type option =
+  match ct.ptyp_desc with
+  | Ptyp_constr ({ txt = Lident "array"; _ }, [ elem ]) -> Some elem
+  | _ -> None
+
 let strip_suffix s suffix =
   let slen = String.length s in
   let suflen = String.length suffix in

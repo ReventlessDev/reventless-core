@@ -90,27 +90,25 @@ let fromString = (raw: string): result<t, string> =>
   }
 
 /**
-The sury schema for a field holding a ref into a named store.
-
-Prefer the `@storageRef("<store>")` ppx shorthand over writing this by hand.
-Qualify the store as `"<plugin>.<store>"` to point at another plugin's store.
+The refinement a ref-holding field validates against, carrying no semantic yet.
+The `Uploadable*` types re-label this rather than restating the grammar, so a
+re-labelling cannot validate differently from what it re-labels.
 */
-let forStore = (~plugin: option<string>=?, ~store: string): S.t<t> =>
-  S.string
-  // The empty string is admitted as the "no object" sentinel. The fields this
-  // marks are non-optional today, and a producer with nothing to reference —
-  // a supplier feed carrying no image, say — already writes `""` to mean
-  // absence. Rejecting it here would break a legitimate existing value and
-  // force an event-schema change, which this marker exists to avoid: it
-  // refines an existing `string` field without altering what is stored.
-  //
-  // Note this is a strictly weaker guarantee than `fromString`, which stays
-  // exact. Making these fields properly optional would let the sentinel go.
-  //
-  // sury's refiner is a predicate with a fixed message, so the per-value reason
-  // `fromString` returns is not threaded through; call `fromString` directly
-  // when the caller needs to report which rule the value broke.
-  ->S.refine(
+// The empty string is admitted as the "no object" sentinel. The fields this
+// marks are non-optional today, and a producer with nothing to reference —
+// a supplier feed carrying no image, say — already writes `""` to mean
+// absence. Rejecting it here would break a legitimate existing value and
+// force an event-schema change, which this marker exists to avoid: it
+// refines an existing `string` field without altering what is stored.
+//
+// Note this is a strictly weaker guarantee than `fromString`, which stays
+// exact. Making these fields properly optional would let the sentinel go.
+//
+// sury's refiner is a predicate with a fixed message, so the per-value reason
+// `fromString` returns is not threaded through; call `fromString` directly
+// when the caller needs to report which rule the value broke.
+let refinement: S.t<t> =
+  S.string->S.refine(
     value =>
       value === "" ||
         switch fromString(value) {
@@ -119,7 +117,18 @@ let forStore = (~plugin: option<string>=?, ~store: string): S.t<t> =>
         },
     ~error=`expected an origin-relative storage ref: "/" followed by a prefix and an object path, or "" for no object`,
   )
-  ->Semantic.mark(~id=Semantic.Id.storageRef, ~payload=StoredIn({plugin, store, threshold: None}))
+
+/**
+The sury schema for a field holding a ref into a named store.
+
+Prefer the `@storageRef("<store>")` ppx shorthand over writing this by hand.
+Qualify the store as `"<plugin>.<store>"` to point at another plugin's store.
+*/
+let forStore = (~plugin: option<string>=?, ~store: string): S.t<t> =>
+  refinement->Semantic.mark(
+    ~id=Semantic.Id.storageRef,
+    ~payload=StoredIn({plugin, store, threshold: None}),
+  )
 
 /** The store a field's schema declares its refs live in, if any. */
 let getStore = (schema: S.t<'a>): option<Semantic.storeTarget> =>

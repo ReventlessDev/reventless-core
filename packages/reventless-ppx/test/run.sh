@@ -245,6 +245,30 @@ type event = Stored({ @offload("blobs") raw: blob })
 type error = unit
 EOF
 
+# Uploadable semantic types — the store is the field's name pluralised, so the
+# type takes no store argument. The explicit `@storageRef` on a typed field is
+# the documented override and must keep the type's semantic rather than
+# downgrading the field to a bare storage ref.
+cat > "$PLUGIN/src/UploadHost.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type command =
+  | Upload({
+      productImage: Reventless.UploadableImage.t,
+      categoryImage?: Reventless.UploadableImage.t,
+      datasheets: array<Reventless.UploadableFile.t>,
+      @storageRef("branding.logos") logo: Reventless.UploadableImage.t,
+      plain: string,
+    })
+
+@schema
+type event = Uploaded({productImage: Reventless.UploadableImage.t})
+
+@schema
+type error = unit
+EOF
+
 # Note: `@reventless.projections` was retired — projection mappings now live
 # in slice-local `<Plural>_Projections.res` files with `@@reventless.mappings`
 # (covered by the multi-source ReadModel fixture below).
@@ -1489,8 +1513,30 @@ assert_js_contains "$JS" 'customerId: s.m(Owner$Reventless.optionString)' \
   "@owner: option<string> field emits Owner.optionString"
 # The unannotated sibling must stay bare — a pass that marked every field would
 # scope correctly on this fixture and wrongly on every real one.
-assert_js_contains "$JS" 'rowId: s.m(S.string)' \
+assert_js_contains "$JS" 'rowId: s.m(Sury.string)' \
   "@owner: unmarked sibling field left untouched"
+
+echo ""
+echo "=== Test: uploadable types (store derived from the field name) ==="
+JS="$PLUGIN/src/UploadHost.res.mjs"
+assert_js_contains "$JS" 'productImage: s.m(UploadableImage$Reventless.forField(undefined, "productImages"))' \
+  "uploadable: store derived as the field name pluralised"
+assert_js_contains "$JS" 'categoryImage: s.m(Sury.$option(UploadableImage$Reventless.forField(undefined, "categoryImages")))' \
+  "uploadable: optional field derives through the option wrapper"
+# The array marker goes on the ELEMENT: attached to the array itself it collects
+# nothing, which is the same silence as never declaring a store.
+assert_js_contains "$JS" 'datasheets: s.m(Sury.array(UploadableFile$Reventless.forField(undefined, "datasheets")))' \
+  "uploadable: array field marks its element, store already plural"
+assert_js_contains "$JS" 'logo: s.m(UploadableImage$Reventless.forField("branding", "logos"))' \
+  "uploadable: explicit @storageRef overrides the derived store"
+# The override must not fall through to StorageRefInference, which would emit
+# StorageRef.forStore and lose the field's image semantic.
+assert_js_not_contains "$JS" 'StorageRef$Reventless' \
+  "uploadable: an overridden field keeps its own semantic"
+assert_js_contains "$JS" 'plain: s.m(Sury.string)' \
+  "uploadable: an untyped sibling field is left untouched"
+assert_js_contains "$JS" 'productImage: s.m(UploadableImage$Reventless.forField(undefined, "productImages"))' \
+  "uploadable: the event field derives the same store as the command field"
 
 # Note: `@reventless.projections` was retired — its replacement is
 # `@@reventless.mappings` covered by the multi-source ReadModel fixture below.
@@ -1675,7 +1721,7 @@ assert_js_contains "$JS" 'agentId: s.m(Owner$Reventless.string)' \
   "@owner + @noDcbTag: bare Owner.string emitted"
 # The optional form needs no separate constructor — sury wraps the annotated
 # inner schema itself, and Owner.isFieldOwner looks through that wrapper.
-assert_js_contains "$JS" 'onBehalfOf: s.m(S.option(Owner$Reventless.string))' \
+assert_js_contains "$JS" 'onBehalfOf: s.m(Sury.$option(Owner$Reventless.string))' \
   "@owner on f?: string — marker lands inside the option wrapper"
 assert_js_not_contains "$JS" 'noDcbTag' "@owner: @noDcbTag field attr stripped"
 

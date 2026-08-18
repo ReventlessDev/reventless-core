@@ -116,6 +116,34 @@ module PsUploadAvatarSlice: ReventlessInfra.StateChangeSlice.T = {
   let make = (~dcbEventLog as _, ~publishJsons as _, ~tagKeysByEventType as _=?, ~crossPartitionTagKeys as _=?, ~runtime as _=?, ~opts as _=?): component => Obj.magic(0)
 }
 
+module PsUploadImagesSlice: ReventlessInfra.StateChangeSlice.T = {
+  module Spec = PsUploadImages
+  module Behavior = {
+    type state = PsUploadImages.state
+    let initialState = PsUploadImages.initialState
+    let evolve = PsUploadImages.evolve
+    let decide = PsUploadImages.decide
+    let moduleUrl = PsUploadImages.moduleUrl
+  }
+  let isAsync = false
+  type component = scsComponent
+  let make = (~dcbEventLog as _, ~publishJsons as _, ~tagKeysByEventType as _=?, ~crossPartitionTagKeys as _=?, ~runtime as _=?, ~opts as _=?): component => Obj.magic(0)
+}
+
+module PsTypoStoreSlice: ReventlessInfra.StateChangeSlice.T = {
+  module Spec = PsTypoStore
+  module Behavior = {
+    type state = PsTypoStore.state
+    let initialState = PsTypoStore.initialState
+    let evolve = PsTypoStore.evolve
+    let decide = PsTypoStore.decide
+    let moduleUrl = PsTypoStore.moduleUrl
+  }
+  let isAsync = false
+  type component = scsComponent
+  let make = (~dcbEventLog as _, ~publishJsons as _, ~tagKeysByEventType as _=?, ~crossPartitionTagKeys as _=?, ~runtime as _=?, ~opts as _=?): component => Obj.magic(0)
+}
+
 module PsChangePhotoSlice: ReventlessInfra.StateChangeSlice.T = {
   module Spec = PsChangePhoto
   module Behavior = {
@@ -1371,6 +1399,165 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
         )
       })
     })
+  })
+
+  // A field typed uploadable declares its store by being named. The collection
+  // walk is unchanged: it matches the `StoredIn` payload, never the semantic id,
+  // so a new id carrying one is provisioned by machinery that knows nothing
+  // about it.
+  describe("uploadable types derive their store from the field name", () => {
+    let withUploads = Plugin_Structure.make(
+      ~name="TestPlugin",
+      ~stateChangeSlices=[module(PsUploadImagesSlice)],
+    )
+    let stores = withUploads.requiredStores->Option.getOr([])
+
+    testSync("the derived store is the field name, pluralised", () =>
+      expect(stores->Array.includes("TestPlugin.productImages"))->toBe(true)
+    )
+
+    testSync("an optional field still declares its store", () =>
+      expect(stores->Array.includes("TestPlugin.categoryImages"))->toBe(true)
+    )
+
+    // The array marker lives on the element type. Reading the field schema
+    // directly answers `None`, which is the same silence as never declaring —
+    // so this asserts collection, not just that the fixture compiled.
+    testSync("an array field declares through its element", () =>
+      expect(stores->Array.includes("TestPlugin.datasheets"))->toBe(true)
+    )
+
+    testSync("an explicit @storageRef overrides the derived name", () =>
+      expect(stores->Array.includes("branding.logos"))->toBe(true)
+    )
+
+    testSync("nothing else is collected", () => expect(stores->Array.length)->toBe(4))
+
+    // The event field derives the same store as the command field of the same
+    // name, so the two collapse to one declaration site — the behaviour the
+    // annotation form already had, reached without an annotation.
+    testSync("each requirement keeps its declaring sites", () => {
+      let expected: array<Reventless.Plugin.requiredStoreDeclaration> = [
+        {
+          store: "TestPlugin.categoryImages",
+          component: "UploadImages",
+          field: "categoryImage",
+          annotation: Some("categoryImages"),
+        },
+        {
+          store: "TestPlugin.datasheets",
+          component: "UploadImages",
+          field: "datasheets",
+          annotation: Some("datasheets"),
+        },
+        {
+          store: "TestPlugin.productImages",
+          component: "UploadImages",
+          field: "productImage",
+          annotation: Some("productImages"),
+        },
+        {
+          store: "branding.logos",
+          component: "UploadImages",
+          field: "logo",
+          annotation: Some("branding.logos"),
+        },
+      ]
+      expect(withUploads.requiredStoreDeclarations)->toEqual(Some(expected))
+    })
+
+    let commandJson =
+      ((withUploads.stateChangeSlices->Array.getUnsafe(0)).commands->Array.getUnsafe(0)).schema
+      ->JSON.parseOrThrow
+
+    let semanticOf = field =>
+      commandJson
+      ->getPropertyOf(field)
+      ->Option.flatMap(s => getProperty(s, "x-reventless-semantic"))
+      ->Option.flatMap(JSON.Decode.string)
+
+    // The whole point of the family: one declaration states the content type
+    // too, so the UI stops learning "this is an image" from the field's name.
+    testSync("the wire carries the content half, not just the store", () =>
+      expect(semanticOf("productImage"))->toBe(Some("uploadableImage"))
+    )
+
+    // The override replaces the *store*, not the type's semantic: a field
+    // pointing at another plugin's store is still an image.
+    testSync("an overridden field keeps its uploadable semantic", () =>
+      expect(semanticOf("logo"))->toBe(Some("uploadableImage"))
+    )
+
+    testSync("the non-image arm carries its own id, on the element", () =>
+      expect(
+        commandJson
+        ->getPropertyOf("datasheets")
+        ->Option.flatMap(s => getProperty(s, "items"))
+        ->Option.flatMap(s => getProperty(s, "x-reventless-semantic"))
+        ->Option.flatMap(JSON.Decode.string),
+      )->toBe(Some("uploadableFile"))
+    )
+  })
+
+  // Deriving the store from the field name turns a typo into a second store
+  // rather than into a compile error, so the plugin has to refuse it.
+  describe("near-duplicate stores are refused", () => {
+    let failureText = () =>
+      try {
+        Plugin_Structure.make(
+          ~name="TestPlugin",
+          ~stateChangeSlices=[module(PsTypoStoreSlice)],
+        )->ignore
+        ""
+      } catch {
+      | JsExn(e) => JsExn.message(e)->Option.getOr("(no message)")
+      | _ => "(not a JS error)"
+      }
+
+    testSync("two stores one transposition apart fail the build", () =>
+      expect(failureText() != "")->toBe(true)
+    )
+
+    testSync("the failure names both stores and both fields", () => {
+      let text = failureText()
+      expect([
+        text->String.includes("TestPlugin.productImages"),
+        text->String.includes("TestPlugin.productImgaes"),
+        text->String.includes("TypoStore.productImage"),
+        text->String.includes("@storageRef"),
+      ])->toEqual([true, true, true, true])
+    })
+
+    // Every legitimate pair in the other fixtures has to stay legitimate — a
+    // check that fails on real designs is worse than the typo it catches.
+    testSync("the four stores of the uploadable fixture do not collide", () =>
+      expect(
+        Capability_Inference.collisions(
+          Plugin_Structure.make(
+            ~name="TestPlugin",
+            ~stateChangeSlices=[module(PsUploadImagesSlice)],
+          ).requiredStoreDeclarations->Option.getOr([]),
+        ),
+      )->toEqual([])
+    )
+
+    testSync("one edit, transpositions included; two edits not", () =>
+      expect(
+        [
+          ("productImages", "productImgaes"),
+          ("productImages", "productImage"),
+          ("logos", "logo"),
+          ("documents", "logos"),
+          ("productImages", "productImgeas"),
+        ]->Array.map(((a, b)) => Capability_Inference.withinOneEdit(a, b)),
+      )->toEqual([true, true, true, false, false])
+    )
+
+    // Reached only through an explicit override: two *derived* names cannot
+    // differ by number, because each is pluralised through its singular stem.
+    testSync("a singular/plural pair collides even at two edits apart", () =>
+      expect(Capability_Inference.sameStem("productImage", "productImages"))->toBe(true)
+    )
   })
 
   // Making a field optional says the value may be absent. It does not say the
