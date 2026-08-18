@@ -48,7 +48,7 @@ let stateSchema$1 = Sury.$Metadata_set(stateSchema, StateAnnotations$Reventless.
   scanSort: [],
   semantic: [],
   metric: [],
-  lifecycle: undefined,
+  lifecycle: "status",
   groupBy: "kind",
   visibility: undefined,
   live: undefined,

@@ -64,21 +64,10 @@ type idArgs = {id: @s.matches(Reventless.DcbTag.string) string}
 
 let commandSchema = PluginSpec.commandSchema->S.castToUnknown
 
-// The one part of a lifecycle command this file still decides. Everything the
-// board reads — the states the command runs from, the state it lands in — is
-// read off `PluginSpec.command`'s `@transition` annotations through the same
-// helpers `Plugin_Structure.toCommandDef` uses for an ordinary aggregate.
-//
-// It was written out as literals here, which meant tracking
-// `PluginBehavior.decide` by hand, and the copy had drifted in three ways at
-// once: `Activate` is accepted on `Retired` as well as `Inactive`, every
-// `targetState` was `None` — which AutoUI reads as the positive claim that the
-// command does not move the row, so the Plugins board drew four states and no
-// edges between them — and `Retire` had no definition at all despite
-// `Platform_Plugin_Retire` being a live mutation.
-//
-// `mutationField` is composed the same way `PluginBaseFragment` composes the
-// field it generates, so the two cannot name it differently.
+// The lifecycle edges are read off `PluginSpec.command`'s `@transition` through the
+// same helpers `Plugin_Structure.toCommandDef` uses for an ordinary aggregate;
+// `mutationField` is composed the way `PluginBaseFragment` composes the field it
+// generates, so the two cannot name it differently.
 let lifecycleCommand = (~name: string): commandDef => {
   name,
   schema: idArgsSchema->S.castToUnknown->encodeSchema,
@@ -127,9 +116,11 @@ let pluginReadModel: queryableDef = {
   // Hand-rolled rather than resolved, but the rung is the same one
   // `labelFieldsFromStateSchema` would report for a field literally named `name`.
   labelFieldSource: Some("convention"),
-  // The published wire name stays `status` — it is what the SDL declares and what
-  // stored rows carry. Only the key naming it moved.
-  lifecycleField: Some("status"),
+  // Derived from the spec's `@lifecycle` rather than restated here.
+  lifecycleField: Plugin_Structure.lifecycleFieldFromStateSchema(
+    ~entityName=PluginsReadModelSpec.name,
+    PluginsReadModelSpec.stateSchema->S.castToUnknown,
+  ),
   visibility: None,
   chapter: None,
   // The admin fragment hand-declares its query names rather than deriving them from

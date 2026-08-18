@@ -47,3 +47,53 @@ describe("the Plugins read model declares its lifecycle", () => {
     )->toEqual(false)
   )
 })
+
+// `Plugin_Structure.make` never sees the platform's own components, so the checks it
+// runs over every ordinary plugin do not run here. A test rather than a startup call:
+// both sides are compile-time constants in this package, so nothing varies at runtime.
+describe("the admin structure's declared transitions are checked", () => {
+  let states = Plugin_Structure.lifecycleStatesFromStateSchema(
+    ~entityName=PluginsReadModelSpec.name,
+    PluginsReadModelSpec.stateSchema->S.castToUnknown,
+  )
+
+  let statesByView = () => {
+    let d = Dict.make()
+    states->Option.forEach(s => d->Dict.set(PluginsReadModelSpec.name, s))
+    d
+  }
+
+  let raises = writables =>
+    switch Plugin_Structure.checkDeclaredTransitions(
+      ~pluginName="Platform",
+      ~writables,
+      ~lifecycleStatesByView=statesByView(),
+    ) {
+    | () => false
+    | exception _ => true
+    }
+
+  // The precondition the rest of the block is worthless without: with no states the
+  // check counts the commands as unvalidated and passes.
+  testSync("the linked view yields its lifecycle states", () =>
+    expect(states)->toEqual(Some(["Connected", "Disconnected", "Inactive", "Retired"]))
+  )
+
+  testSync("every state the Plugin commands name is one the view declares", () =>
+    expect(raises([Platform_Admin_Structure.pluginAggregate]))->toEqual(false)
+  )
+
+  // A check that cannot fail is indistinguishable from one that is not running.
+  testSync("and a state the view does not declare is caught", () => {
+    let bogus: Reventless.Plugin.writableDef = {
+      ...Platform_Admin_Structure.pluginAggregate,
+      commands: [
+        {
+          ...Platform_Admin_Structure.activateCommand,
+          targetState: Some("Conected"),
+        },
+      ],
+    }
+    expect(raises([bogus]))->toEqual(true)
+  })
+})

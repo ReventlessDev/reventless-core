@@ -107,7 +107,7 @@ let pluginReadModel_searchableFields = ["name"];
 
 let pluginReadModel_labelFieldSource = "convention";
 
-let pluginReadModel_lifecycleField = "status";
+let pluginReadModel_lifecycleField = Plugin_Structure$ReventlessCore.lifecycleFieldFromStateSchema(PluginsReadModelSpec$ReventlessCore.name, PluginsReadModelSpec$ReventlessCore.stateSchema);
 
 let pluginReadModel_singleQueryField = Api_Naming$ReventlessCore.adminField("Plugin");
 

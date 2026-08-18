@@ -22,7 +22,11 @@ type state = {
   extensionPointNames: array<string>,
   extensionNames: array<string>,
   extensions: array<Reventless.Plugin.extensionDefinition>,
-  status: status,
+  // Annotated rather than renamed to `lifecycle` to meet the convention: `status`
+  // is published in the SDL, in stored rows and in the UI's hand-written plugin
+  // views. Without this the transition check has no states to compare and passes
+  // while verifying nothing.
+  @lifecycle status: status,
   statusChange: Message.statusChange,
   // Stored as the **untagged** offload wire JSON (a bare fragment, or an
   // `{$offload: {...}}` reference) — NOT the `Offload.payload` variant. The QueryDb

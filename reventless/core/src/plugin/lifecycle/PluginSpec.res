@@ -2,12 +2,8 @@
 
 open Reventless.Plugin
 
-// The linked view whose lifecycle the `@transition` edges below are written in
-// terms of. An alias rather than an `open`: the PPX strips `@transition` before
-// the typechecker, so the state constructors never reach it as identifiers and
-// an `open` would resolve nothing and earn an unused-open warning. Naming the
-// qualifier after the view also matches how an ordinary spec reads its edges
-// (`Orders.Placed`, `Products.Listed`).
+// Alias, not `open`: the PPX strips `@transition` before the typechecker, so the
+// state constructors never reach it and an `open` would warn as unused.
 module Plugins = PluginsReadModelSpec
 
 // The Plugin aggregate is keyed by plugin **name** (not name@version). One
@@ -26,13 +22,8 @@ type command =
   | @noApi Disconnect(version)
   // Admin lifecycle commands — API-exposed (auto-derived admin mutations,
   // Cognito group-gated). `version` selects which known version to act on.
-  //
-  // The `@transition` edges name the states of the linked view's lifecycle
-  // (`PluginsReadModelSpec.status`) and are the same ones `decide` accepts
-  // below — `Activate` on a version the admin suspended or archived,
-  // `Deactivate` on one that is live either way, `Retire` on anything not
-  // already retired. `Platform_Admin_Structure` reads them off this schema
-  // rather than restating them, so the board and the behaviour cannot drift.
+  // The `@transition` edges must agree with `decide` below; `Platform_Admin_Structure`
+  // reads them off this schema rather than restating them.
   | @transition(([Plugins.Inactive, Plugins.Retired]) => Plugins.Connected) Activate(version)
   | @transition(([Plugins.Connected, Plugins.Disconnected]) => Plugins.Inactive) Deactivate(version)
   // Records a protocol-version incompatibility without changing connection state.
