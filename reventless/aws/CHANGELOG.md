@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.310 (2026-08-18)
+
+### Bug Fixes
+
+* **aws:** normalize the null a table without a sort key resolves to ([8fb15ac](https://github.com/ReventlessDev/reventless-core/commit/8fb15ac066679b6799f4287c2c8d332e2367f599))
+
+
 # 3.0.0-alpha.309 (2026-08-18)
 
 * feat(core)!: tell the Monitoring seam where a unit's logs live ([6cbd595](https://github.com/ReventlessDev/reventless-core/commit/6cbd595e2474fce3f87b7720a332e82583899bae))

@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.1 (2026-08-18)
+
+### Bug Fixes
+
+* **aws:** normalize the null a table without a sort key resolves to ([8fb15ac](https://github.com/ReventlessDev/reventless-core/commit/8fb15ac066679b6799f4287c2c8d332e2367f599))
+
+
 # 3.0.0-alpha.0 (2026-08-18)
 
 * feat(sury)!: migrate to sury 11.0.0-rc.1 ([2cf8969](https://github.com/ReventlessDev/reventless-core/commit/2cf8969a222ce1b775563668a4126cb20611966c))

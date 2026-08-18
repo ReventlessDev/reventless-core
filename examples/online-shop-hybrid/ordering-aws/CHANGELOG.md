@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.269 (2026-08-18)
+
+**Note:** Version bump only for package @reventlessdev/online-shop-hybrid-ordering-aws
+
+
+
+
+
 # 1.0.0-alpha.268 (2026-08-18)
 
 * feat(sury)!: migrate to sury 11.0.0-rc.1 ([2cf8969](https://github.com/ReventlessDev/reventless-core/commit/2cf8969a222ce1b775563668a4126cb20611966c))
