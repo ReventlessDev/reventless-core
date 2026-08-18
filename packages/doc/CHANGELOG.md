@@ -718,6 +718,12 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-08-18
+- fix(api): make the by-index door answer, and let an elevated caller widen it ([0fe0c6f](https://github.com/ReventlessDev/reventless-core/commit/0fe0c6f8dec6228ecaba39577e28d780b4f79c83))
+
+### 2026-08-17
+- feat(core): let a reference name a retired row, and let an elevated caller open one ([9e2623a](https://github.com/ReventlessDev/reventless-core/commit/9e2623a4b22487561607fcc0ca19d51726069ee4))
+- fix(doc): repair the site header, footer, and vertical rhythm ([9359196](https://github.com/ReventlessDev/reventless-core/commit/93591960be317f1a6095483218f6aa67d5a656e6))
 ### 2026-08-16
 - docs: show the decision logic on the recommended path, close out the plan ([303cf8c](https://github.com/ReventlessDev/reventless-core/commit/303cf8cb2093ececdd34555a3b62946183682996))
 - docs: rewrite the AWS getting-started, state the MCP position, trim repeats ([76e68f2](https://github.com/ReventlessDev/reventless-core/commit/76e68f25b6864b21d57034c961425477c0612c2b))
