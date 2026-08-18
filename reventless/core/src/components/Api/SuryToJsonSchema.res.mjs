@@ -281,7 +281,8 @@ function objectRefToJsonSchema(annotations, optionalOpt, ownersOpt, fields) {
   let owners = ownersOpt !== undefined ? ownersOpt : [];
   let props = {};
   let required = [];
-  Object.entries(fields).forEach(param => {
+  let internal = Stdlib_Option.getOr(Stdlib_Option.flatMap(annotations, spec => spec.internal), []);
+  Object.entries(fields).filter(param => !internal.includes(param[0])).forEach(param => {
     let fieldType = param[1];
     let fieldName = param[0];
     let baseSchema = fromSchemaType(fieldType);

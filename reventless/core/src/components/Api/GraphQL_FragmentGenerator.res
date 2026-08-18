@@ -132,6 +132,21 @@ let deriveObjectTypeWithNested = (
 ): array<string> =>
   switch SchemaType.fromSuryObject(~typeName, schema) {
   | Some(fields) =>
+    // `@internal` joins the caller's exclusions rather than replacing them. The
+    // caller's list is a decision made where the query entry is assembled; this
+    // one is a declaration on the field itself, and the schema is the better
+    // place for it — a hand-written list has to be kept in step with the record
+    // by whoever next edits it, which is the drift that made a hand-maintained
+    // `pluginExcludeFields` necessary in the first place.
+    //
+    // This is the single point for the SDL: every generated object type is
+    // derived here, so a field declared internal is absent from all of them
+    // without any entry having to say so.
+    let declaredInternal =
+      Reventless.StateAnnotations.getSpec(schema)
+      ->Option.flatMap(spec => spec.internal)
+      ->Option.getOr([])
+    let excludeFields = Array.concat(excludeFields, declaredInternal)
     let filteredFields = if excludeFields->Array.length > 0 {
       let d = Dict.make()
       fields

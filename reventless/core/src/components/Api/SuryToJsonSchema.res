@@ -263,8 +263,19 @@ and objectRefToJsonSchema = (
 ): JSON.t => {
   let props = Dict.make()
   let required: array<string> = []
+  // `@internal` fields are dropped rather than annotated. A marker would be the
+  // right answer for a field that is on the surface and merely unwanted (that is
+  // `@hidden`); this one is not on the surface at all, so there is nothing for a
+  // consumer to describe and an entry here would advertise a field the SDL does
+  // not declare — which is precisely the mismatch that made read-model queries
+  // reference fields the server rejects.
+  //
+  // This is the single point for every JSON-Schema consumer: `queryableDef.schema`,
+  // the MCP generator and the manifest all derive through this walk.
+  let internal = annotations->Option.flatMap(spec => spec.internal)->Option.getOr([])
   fields
   ->Dict.toArray
+  ->Array.filter(((fieldName, _)) => !(internal->Array.includes(fieldName)))
   ->Array.forEach(((fieldName, fieldType)) => {
     let baseSchema = fromSchemaType(fieldType)
     let withAnnotations = switch annotations {

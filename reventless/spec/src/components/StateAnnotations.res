@@ -15,6 +15,8 @@ Each list contains the source field names; `indexes` carries `(fieldName,
 indexName)` pairs where `indexName` is `""` for unnamed `@index` annotations.
 `hidden` lists fields the UI should suppress from summary/list views;
 `summary` lists fields the UI should always include in summary/list views.
+`internal` lists fields that are not on the GraphQL surface at all — see the
+field's own note below; it is a different kind of claim from `hidden`.
 `drillTargets` carries `(fieldName, sliceName)` pairs naming the slice/view
 the UI should navigate to instead of expanding the field inline;
 `drillTargetKeys` carries `(fieldName, keyPath)` pairs for fields whose
@@ -112,6 +114,27 @@ type stateAnnotationSpec = {
   indexes: array<(string, string)>,
   hidden: array<string>,
   summary: array<string>,
+  /**
+  Fields annotated `@internal` — present in the record and in storage, absent
+  from the generated SDL type and from the published state schema.
+
+  A different claim from `hidden`, and the distinction is the point. `hidden`
+  says "do not show this": the field is on the API and any client may ask for
+  it. `internal` says "this is not on the API", so nothing can ask and nothing
+  needs to be told not to show it. That is why the two are separate lists rather
+  than one flag with a mode — a consumer reading `hidden` is deciding what to
+  render, and a consumer reading this is deciding what exists.
+
+  **Not a security boundary** — the same caveat `visibility` carries. It shapes
+  the generated surface; `@owner` and `@retired` remain the enforcement markers.
+  The PPX rejects `@internal` beside either of them, and beside every other
+  marker that keys a door, because a door cannot be keyed on a field the SDL
+  does not have.
+
+  Optional so a state schema annotated by a PPX that predates the marker still
+  reads: absent and empty mean the same thing to every consumer.
+  */
+  internal?: array<string>,
   drillTargets: array<(string, string)>,
   drillTargetKeys: array<(string, string)>,
   collapsed: array<string>,

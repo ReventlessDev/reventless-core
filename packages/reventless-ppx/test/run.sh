@@ -2433,6 +2433,116 @@ else
 fi
 rm -f "$ERROR/src/ReadModel/HiddenSummaryConflictReadModel.res"
 
+# ── @internal: a field that is not on the GraphQL surface ───────────────────
+#
+# @hidden says "do not show this" — the field is on the API and any client may
+# ask for it. @internal says "this is not on the API at all", so codegen drops it
+# from the generated SDL type and from the published state schema.
+#
+# Every marker that KEYS A DOOR is therefore rejected beside it: each makes some
+# generated surface name the field, and a surface cannot name a field the SDL
+# does not have. Two of the list are checked here — one structural, one an
+# enforcement marker — because they reach the check by different predicates.
+
+echo ""
+echo "=== Test: @internal lowers to the annotation spec ==="
+
+cat > "$PLUGIN/src/ReadModel/InternalFieldsReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = {
+  @id itemId: string,
+  name: string,
+  @internal eventCollector: string,
+  @internal extensionNames: array<string>,
+}
+EOF
+
+if OUTPUT=$(cd "$PLUGIN" && npx rescript build 2>&1); then
+  JS="$PLUGIN/src/ReadModel/InternalFieldsReadModel.res.mjs"
+  assert_js_contains "$JS" 'internal:' "internal list emitted into the annotation spec"
+  assert_js_contains "$JS" '"eventCollector"' "annotated field named in the spec"
+  # The field stays in the record: @internal removes it from the API, not from
+  # storage. If the type lost it, projection and every reader would lose it too.
+  assert_js_contains "$JS" 'eventCollector: ' "the field survives in the schema itself"
+else
+  fail "@internal lowering" "expected compilation to succeed: $OUTPUT"
+fi
+
+echo ""
+echo "=== Test: PPX error — @internal + @id on same field ==="
+
+cat > "$ERROR/src/ReadModel/InternalIdConflictReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = {
+  @internal @id itemId: string,
+  name: string,
+}
+EOF
+
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "@internal + @id conflict" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q "@internal cannot appear with @id"; then
+    pass "@internal + @id on same field → correct compile error"
+  else
+    fail "@internal + @id conflict" "unexpected error output: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/ReadModel/InternalIdConflictReadModel.res"
+
+echo ""
+echo "=== Test: PPX error — @internal + @owner on same field ==="
+
+cat > "$ERROR/src/ReadModel/InternalOwnerConflictReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = {
+  @id itemId: string,
+  @internal @owner customerId: string,
+}
+EOF
+
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "@internal + @owner conflict" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q "@internal cannot appear with @owner"; then
+    pass "@internal + @owner on same field → correct compile error"
+  else
+    fail "@internal + @owner conflict" "unexpected error output: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/ReadModel/InternalOwnerConflictReadModel.res"
+
+# The error has to point somewhere useful: @hidden is the annotation an author
+# reaching for @internal on a queryable field actually wants.
+echo ""
+echo "=== Test: the @internal conflict error names @hidden as the alternative ==="
+
+cat > "$ERROR/src/ReadModel/InternalHintReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = {
+  @internal @id itemId: string,
+}
+EOF
+
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "@internal hint" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q "use @hidden instead"; then
+    pass "@internal conflict error names @hidden"
+  else
+    fail "@internal hint" "error did not name @hidden: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/ReadModel/InternalHintReadModel.res"
+
 echo ""
 echo "=== Test: PPX error — duplicate @groupBy on same record ==="
 

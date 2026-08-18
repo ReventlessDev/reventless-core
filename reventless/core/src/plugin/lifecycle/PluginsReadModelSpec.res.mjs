@@ -41,6 +41,11 @@ let stateSchema$1 = Sury.$Metadata_set(stateSchema, StateAnnotations$Reventless.
   indexes: [],
   hidden: [],
   summary: [],
+  internal: [
+    "eventCollector",
+    "extensionPointNames",
+    "extensionNames"
+  ],
   drillTargets: [],
   drillTargetKeys: [],
   collapsed: [],
@@ -55,6 +60,11 @@ let stateSchema$1 = Sury.$Metadata_set(stateSchema, StateAnnotations$Reventless.
   retired: undefined
 });
 
+let authorization = {
+  TAG: "AllowGroups",
+  _0: ["Admin"]
+};
+
 let name = "Plugins";
 
 let Id;
@@ -62,8 +72,6 @@ let Id;
 let subIdConfig;
 
 let moduleUrl = "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginsReadModelSpec.res.mjs";
-
-let authorization = "AllowAuthenticated";
 
 let visibility = "Public";
 

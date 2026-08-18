@@ -1105,9 +1105,28 @@ let generate_config ~loc (str : structure) : structure_item =
     else
       gen_config_call_full ~loc ~index_exprs ~id_resolver_exprs ~ids_resolver_exprs
 
-(* ── @hidden / @summary: visibility annotations (no behavioural effect; flow
-       through the metadata pipeline so JSON Schema can surface them as
-       x-reventless-hidden / x-reventless-summary). ── *)
+(* ── @hidden / @summary / @internal: visibility annotations ──
+
+   @hidden and @summary have no behavioural effect; they flow through the
+   metadata pipeline so JSON Schema can surface them as x-reventless-hidden /
+   x-reventless-summary and a UI can decide what to show.
+
+   @internal is different in kind, and the difference is worth stating because
+   the three sit together. @hidden says "do not SHOW this"; the field is on the
+   API and any client may ask for it. @internal says "this is not on the API at
+   all": it exists in the record and in storage, and codegen drops it from the
+   generated SDL type and from the published state schema.
+
+   A read model's `@schema type state` is otherwise simultaneously the storage
+   shape and the API shape, with nothing able to separate them. Denormalised
+   projection keys, sync cursors, fields served by a dedicated resolver and
+   migration scaffolding all want the separation; the workaround — splitting the
+   record into a storage type and a view type — duplicates the schema and
+   reintroduces exactly the drift the annotation exists to remove.
+
+   NOT a security boundary, the same caveat `@@reventless.visibility(Internal)`
+   carries. It shapes the generated surface. `@owner` / `@retired` remain the
+   enforcement markers, which is also why carrying both is an error below. ── *)
 
 let has_hidden_field_attr (attrs : attributes) =
   List.exists (fun (attr : attribute) -> String.equal attr.attr_name.txt "hidden") attrs
@@ -1115,10 +1134,14 @@ let has_hidden_field_attr (attrs : attributes) =
 let has_summary_field_attr (attrs : attributes) =
   List.exists (fun (attr : attribute) -> String.equal attr.attr_name.txt "summary") attrs
 
+let has_internal_field_attr (attrs : attributes) =
+  List.exists (fun (attr : attribute) -> String.equal attr.attr_name.txt "internal") attrs
+
 let strip_visibility_field_attrs (attrs : attributes) =
   List.filter (fun (attr : attribute) ->
     not (String.equal attr.attr_name.txt "hidden"
-         || String.equal attr.attr_name.txt "summary")
+         || String.equal attr.attr_name.txt "summary"
+         || String.equal attr.attr_name.txt "internal")
   ) attrs
 
 (** Strip @hidden and @summary from @schema type state record fields. *)
@@ -1151,6 +1174,55 @@ let validate_visibility_annotations (fields : label_declaration list) : unit =
         "@hidden and @summary cannot both appear on the same field '%s'"
         ld.pld_name.txt
   ) fields
+
+(** Reject @internal beside any marker that KEYS A DOOR.
+
+    Each of those makes some generated surface name the field: `@id` and the
+    sub-id markers key a query, `@index` keys a GSI query field, `@owner` and
+    `@retired` key the server's narrowing of a read, `@lifecycle` names the enum a
+    board draws its columns from and a command's `@transition` is written
+    against. A field that is not on the SDL cannot be named by any of them, so the
+    pair would generate a surface referring to a field the schema does not have —
+    and the failure would land at query time, in the generated document, a long
+    way from the declaration. @summary is rejected for the plain reason that a
+    field nobody can fetch cannot be one a list view always includes.
+
+    Structure-level, and run EARLY — before `OwnerInference` rewrites the record —
+    because that pass strips `@owner` on its way through, and a check that ran
+    afterwards would silently pass the one pairing that most wants catching. *)
+let validate_internal_conflicts (str : structure) : unit =
+  match find_schema_state_record str with
+  | None -> ()
+  | Some fields ->
+    List.iter (fun (ld : label_declaration) ->
+      if has_internal_field_attr ld.pld_attributes then begin
+        let conflicts =
+          [ "@id",             has_id_field_attr ld.pld_attributes;
+            "@compositeId",    has_composite_id_field_attr ld.pld_attributes;
+            "@subId",          has_subid_field_attr ld.pld_attributes;
+            "@compositeSubId", has_composite_subid_field_attr ld.pld_attributes;
+            "@index",          (match find_index_attr ld.pld_attributes with
+                                | Some _ -> true | None -> false);
+            "@owner",          List.exists (fun (a : attribute) ->
+                                 String.equal a.attr_name.txt "owner") ld.pld_attributes;
+            "@retired",        (match find_retired_attr ld.pld_attributes with
+                                | Some _ -> true | None -> false);
+            "@lifecycle",      has_lifecycle_field_attr ld.pld_attributes;
+            "@summary",        has_summary_field_attr ld.pld_attributes ]
+          |> List.filter snd |> List.map fst
+        in
+        match conflicts with
+        | [] -> ()
+        | other :: _ ->
+          Location.raise_errorf ~loc:ld.pld_loc
+            "@internal cannot appear with %s on the same field '%s'. @internal \
+             removes the field from the generated SDL type, and %s names it on a \
+             surface that would then reference a field the schema does not have. \
+             If the field has to be queryable, use @hidden instead — that keeps \
+             it on the API and only asks the UI not to show it."
+            other ld.pld_name.txt other
+      end
+    ) fields
 
 (* ── @drillTarget / @collapsed: hierarchical rendering hints (no behavioural
        effect; flow through the metadata pipeline so JSON Schema can surface
@@ -1680,6 +1752,9 @@ let make_state_annotations_binding ~loc ~visibility ~live ~named_when_retired ~v
   let summary = List.filter_map (fun (ld : label_declaration) ->
     if has_summary_field_attr ld.pld_attributes then Some ld.pld_name.txt else None
   ) fields in
+  let internal = List.filter_map (fun (ld : label_declaration) ->
+    if has_internal_field_attr ld.pld_attributes then Some ld.pld_name.txt else None
+  ) fields in
   let drill_targets = List.filter_map (fun (ld : label_declaration) ->
     match find_drill_target_attr ld.pld_attributes with
     | Some attr ->
@@ -1816,7 +1891,7 @@ let make_state_annotations_binding ~loc ~visibility ~live ~named_when_retired ~v
          they leave it undecided — the query layer tests a single field."
   in
   if ids = [] && composite_ids = [] && sub_ids = [] && composite_sub_ids = []
-     && indexes = [] && hidden = [] && summary = []
+     && indexes = [] && hidden = [] && summary = [] && internal = []
      && drill_targets = [] && drill_target_keys = [] && collapsed = []
      && scan = [] && scan_sort = [] && semantic = [] && metric = []
      && lifecycle = None && group_by = None && retired = None
@@ -1933,6 +2008,7 @@ let make_state_annotations_binding ~loc ~visibility ~live ~named_when_retired ~v
             ({ txt = Lident "indexes"; loc }, str_tuple_array ~loc indexes);
             ({ txt = Lident "hidden"; loc }, estr_array ~loc hidden);
             ({ txt = Lident "summary"; loc }, estr_array ~loc summary);
+            ({ txt = Lident "internal"; loc }, estr_array ~loc internal);
             ({ txt = Lident "drillTargets"; loc }, str_tuple_array ~loc drill_targets);
             ({ txt = Lident "drillTargetKeys"; loc }, str_tuple_array ~loc drill_target_keys);
             ({ txt = Lident "collapsed"; loc }, estr_array ~loc collapsed);

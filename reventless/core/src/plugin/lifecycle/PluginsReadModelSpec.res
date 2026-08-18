@@ -1,5 +1,17 @@
 @@reventless.spec("Plugins")
 
+// Who may read this view. Declared rather than left to default, because the
+// default was `AllowAuthenticated` and it was not true: `PluginBaseFragment`
+// hand-wrote an `Admin` Cognito gate beside it, and the local platform serves
+// every `Platform_*` field behind an `Admin` wrapper. Three statements of one
+// rule, one of which disagreed with the other two.
+//
+// Stating it here makes the spec the source. The AppSync directive comes from
+// this (spec-level `permission` outranks the legacy `{tableName, group}` pair),
+// and so does the `requiredAccess` the platform publishes — so a shell can gate
+// the Plugins view up front instead of offering it and meeting a refusal.
+@@reventless.authorize(Reventless.Authorization.AllowGroups(["Admin"]))
+
 // Current view — one row per plugin **name**, holding the currently-active
 // version's definition. Keyed by the aggregate id (= plugin name). The status
 // here is the *current* version's status; "Superseded" is not represented (a
@@ -17,10 +29,14 @@ type status =
 type state = {
   name: Reventless.Plugin.name,
   version: Reventless.Plugin.version,
-  eventCollector: string,
+  // Projection/storage only — never on the GraphQL surface. `@internal` says so
+  // on the field, where the next person to edit the record will see it; the same
+  // three names used to live in a hand-written exclude list in `PluginBaseFragment`
+  // that nothing kept in step with this declaration.
+  @internal eventCollector: string,
   extensionPoints: array<Reventless.Plugin.extensionPointDefinition>,
-  extensionPointNames: array<string>,
-  extensionNames: array<string>,
+  @internal extensionPointNames: array<string>,
+  @internal extensionNames: array<string>,
   extensions: array<Reventless.Plugin.extensionDefinition>,
   // Annotated rather than renamed to `lifecycle` to meet the convention: `status`
   // is published in the SDL, in stored rows and in the UI's hand-written plugin

@@ -256,6 +256,49 @@ describe("SuryToJsonSchema:", () => {
       ))->toEqual((Some(true), None))
     })
 
+    // `@internal` drops the property rather than marking it. A marker is the
+    // right answer for a field that is on the surface and merely unwanted — that
+    // is `@hidden`, above. This one is not on the surface at all, so an entry
+    // here would describe a field the SDL does not declare, which is the
+    // mismatch that makes a generated list query name fields the server rejects.
+    testSync("drops a field listed in internal rather than annotating it", () => {
+      let schema = S.schema(s =>
+        {
+          "id": s.matches(S.string),
+          "eventCollector": s.matches(S.string),
+        }
+      )->S.castToUnknown
+      let schema' = schema->withSpec({...emptySpec, internal: ["eventCollector"]})
+      let json = SuryToJsonSchema.deriveObjectSchema(schema')
+      expect((
+        getPropertyOf(json, "eventCollector")->Option.isNone,
+        getPropertyOf(json, "id")->Option.isSome,
+      ))->toEqual((true, true))
+    })
+
+    // A dropped property must not be left behind in `required`, or a consumer
+    // building a form from the schema asks for a field it was never given.
+    testSync("keeps a dropped field out of required", () => {
+      let schema = S.schema(s =>
+        {
+          "id": s.matches(S.string),
+          "eventCollector": s.matches(S.string),
+        }
+      )->S.castToUnknown
+      let json =
+        schema
+        ->withSpec({...emptySpec, internal: ["eventCollector"]})
+        ->SuryToJsonSchema.deriveObjectSchema
+      expect(
+        json
+        ->JSON.Decode.object
+        ->Option.flatMap(o => o->Dict.get("required"))
+        ->Option.flatMap(JSON.Decode.array)
+        ->Option.getOr([])
+        ->Array.filterMap(JSON.Decode.string),
+      )->toEqual(["id"])
+    })
+
     testSync("emits x-reventless-summary on field listed in summary", () => {
       let schema = S.schema(s =>
         {

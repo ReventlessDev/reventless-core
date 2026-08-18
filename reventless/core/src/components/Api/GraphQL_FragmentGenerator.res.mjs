@@ -117,12 +117,14 @@ function deriveObjectTypeWithNested(typeName, excludeFieldsOpt, includeIdParamOp
   if (fields === undefined) {
     return [];
   }
+  let declaredInternal = Stdlib_Option.getOr(Stdlib_Option.flatMap(StateAnnotations$Reventless.getSpec(schema), spec => spec.internal), []);
+  let excludeFields$1 = excludeFields.concat(declaredInternal);
   let filteredFields;
-  if (excludeFields.length !== 0) {
+  if (excludeFields$1.length !== 0) {
     let d = {};
     Object.entries(fields).forEach(param => {
       let k = param[0];
-      if (!excludeFields.some(ex => ex === k)) {
+      if (!excludeFields$1.some(ex => ex === k)) {
         d[k] = param[1];
         return;
       }

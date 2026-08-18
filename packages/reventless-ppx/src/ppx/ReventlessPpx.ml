@@ -712,6 +712,10 @@ let transform (str : structure) : structure =
     let body = DcbTagInference.transform_composite_partition_tags ~loc body in
     let body = DcbTagInference.transform_explicit_dcb_tags ~loc body in
     let body = DcbTagInference.strip_no_tag_attrs body in
+    (* Before OwnerInference, which strips [@owner] on its way through — a check
+       that ran afterwards would silently pass @internal + @owner, the one pairing
+       that most wants catching. See validate_internal_conflicts. *)
+    StateAnnotations.validate_internal_conflicts body;
     (* After every DCB-tag pass, on purpose: [@owner] wraps whatever schema the
        field ended up with rather than replacing it, so an owner field keeps the
        tag it would otherwise have had. See OwnerInference's header. *)

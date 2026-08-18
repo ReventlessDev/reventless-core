@@ -510,3 +510,65 @@ describe("the by-index door", () => {
     ))->toEqual(("XByOwner", "XByOwnerId", "XByBy"))
   )
 })
+
+// ── @internal: a field that is not on the GraphQL surface ────────────────────
+//
+// A read model's `@schema type state` is otherwise simultaneously the storage
+// shape and the API shape. `@internal` separates them: the field stays in the
+// record and in storage, and every generated object type drops it.
+//
+// The declaration is read off the schema rather than passed in, which is the
+// point — the alternative is a hand-written exclude list beside the query entry,
+// kept in step with the record by whoever next edits it. That is exactly what
+// `PluginBaseFragment` maintained and what this replaces.
+//
+// The fixture is `PsInternalFieldsReadModel`, a spec file: the annotation machinery
+// runs under `@@reventless.spec`.
+
+describe("@internal keeps a field off the generated type", () => {
+  let stateSchema = PsInternalFieldsReadModel.stateSchema->S.castToUnknown
+
+  let types = (~excludeFields=?) =>
+    GraphQL_FragmentGenerator.deriveObjectTypeWithNested(
+      ~typeName="Platform_Widget",
+      ~excludeFields?,
+      stateSchema,
+    )->Array.join("\n")
+
+  testSync("the declared fields are absent", () =>
+    expect((
+      types()->String.includes("eventCollector"),
+      types()->String.includes("extensionNames"),
+    ))->toEqual((false, false))
+  )
+
+  testSync("and everything else is untouched", () =>
+    expect((types()->String.includes("name"), types()->String.includes("itemId")))->toEqual((
+      true,
+      true,
+    ))
+  )
+
+  // The caller's own exclusions still apply. The two lists answer different
+  // questions — one is a decision made where the entry is assembled, the other a
+  // declaration on the field — so the marker joins the list rather than
+  // replacing it.
+  testSync("a caller's excludeFields still applies alongside", () => {
+    let sdl = types(~excludeFields=["name"])
+    expect((sdl->String.includes("name"), sdl->String.includes("eventCollector")))->toEqual((
+      false,
+      false,
+    ))
+  })
+
+  // The published state schema and the SDL have to agree, because AutoUI builds
+  // its list query from the former and sends it against the latter. This is the
+  // pairing that used to need two hand-maintained lists to hold.
+  testSync("the published state schema drops them too", () => {
+    let json = SuryToJsonSchema.deriveObjectSchema(stateSchema)->JSON.stringify
+    expect((json->String.includes("eventCollector"), json->String.includes("name")))->toEqual((
+      false,
+      true,
+    ))
+  })
+})
