@@ -1,21 +1,5 @@
 open ReventlessInfra.Api
 
-// Fields the SDL exposes but the Plugin list view should NOT surface — they are
-// option-of-nested-object types (`apiSchemaFragment`, `structure`) which AutoUI
-// renders as scalar columns and queries without a sub-selection, failing schema
-// validation. Other callers (the host shell's `Platform_ComponentDefinitions`)
-// keep querying them via dedicated fields and resolver paths, which is why they
-// stay on the surface rather than becoming `@internal`.
-//
-// The three projection/storage-only fields that used to head this list are gone:
-// `PluginsReadModelSpec` declares them `@internal`, so SDL generation and the
-// published state schema both drop them from the declaration itself. A list here
-// and a record over there had nothing keeping them in step.
-let pluginUIOnlyExcludeFields: array<string> = [
-  "apiSchemaFragment",
-  "structure",
-]
-
 // Admin read-model query entries are generated from each spec the same way
 // ordinary read models are (Plugin_Builder.res): `subIdField` flows from the
 // spec's `subIdConfig` and `indexQueries` from `config.indexes`, so

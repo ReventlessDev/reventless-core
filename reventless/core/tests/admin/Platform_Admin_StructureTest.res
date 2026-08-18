@@ -254,12 +254,17 @@ describe("the Plugins queryableDef is what the generic helpers produce", () => {
     expect((rm.idField, rm.idFieldSource))->toEqual((None, None))
   )
 
-  // The last hand-written list here. `apiSchemaFragment` and `structure` are on
-  // the API — the shell queries them through dedicated resolver paths — but
-  // AutoUI would name them in a generated list query without a sub-selection.
-  // `@hidden` on the spec replaces this once every shell skips hidden fields in
-  // its selection; until the pin moves, declaring it would take the page down.
-  testSync("the two narrowed fields are absent from the published schema", () => {
+  // `apiSchemaFragment` and `structure` are on the API — the shell fetches them
+  // through dedicated resolver paths — but each is a multi-kilobyte JSON blob
+  // that a generated list view must not name. They used to be cut out of the
+  // published schema by a hand-written list; they now carry `@hidden`, so they
+  // are described and the consumer decides.
+  //
+  // This is the difference between the two markers, asserted side by side: a
+  // `@hidden` field is present and flagged, an `@internal` one is not there at
+  // all. Cutting a hidden field out here would leave a consumer unable to tell
+  // "not for you" from "does not exist".
+  testSync("the blob fields are published, and marked hidden", () => {
     // Read as property NAMES, not as substrings of the JSON: the schema carries
     // nested object types whose own fields would match a naive `includes`.
     let props =
@@ -268,10 +273,30 @@ describe("the Plugins queryableDef is what the generic helpers produce", () => {
       ->JSON.Decode.object
       ->Option.flatMap(o => o->Dict.get("properties"))
       ->Option.flatMap(JSON.Decode.object)
+      ->Option.getOr(Dict.make())
+    let isHidden = key =>
+      props
+      ->Dict.get(key)
+      ->Option.flatMap(JSON.Decode.object)
+      ->Option.flatMap(o => o->Dict.get("x-reventless-hidden"))
+      ->Option.flatMap(JSON.Decode.bool)
+    expect((isHidden("apiSchemaFragment"), isHidden("structure")))->toEqual((
+      Some(true),
+      Some(true),
+    ))
+  })
+
+  testSync("while the internal fields are not published at all", () => {
+    let props =
+      rm.schema
+      ->JSON.parseExn
+      ->JSON.Decode.object
+      ->Option.flatMap(o => o->Dict.get("properties"))
+      ->Option.flatMap(JSON.Decode.object)
       ->Option.mapOr([], Dict.keysToArray)
     expect((
-      props->Array.includes("apiSchemaFragment"),
-      props->Array.includes("structure"),
+      props->Array.includes("eventCollector"),
+      props->Array.includes("extensionNames"),
       props->Array.includes("statusChange"),
     ))->toEqual((false, false, true))
   })

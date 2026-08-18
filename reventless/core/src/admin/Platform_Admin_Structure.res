@@ -62,17 +62,6 @@ let pluginReadModel: queryableDef = Plugin_Structure.queryableDefFromSpec(
   ~stateSchema=PluginsReadModelSpec.stateSchema->S.castToUnknown,
   ~authorization=PluginsReadModelSpec.authorization,
   ~linkedWriteSide=["Plugin"],
-  // The two fields the generated list view must not name. They ARE on the API —
-  // the host shell queries them through dedicated resolver paths — but they are
-  // `option`-of-nested-object types that AutoUI renders as scalar columns and
-  // queries without a sub-selection, which fails validation.
-  //
-  // This is the last hand-written field list here, and it is a lockstep away
-  // from going: once every shell skips `@hidden` fields in its query selection,
-  // `@hidden` on the two spec fields replaces it. That waits for the consuming
-  // repo to publish and the pin to move — a platform declaring it against an
-  // older shell would take the Plugins page down.
-  ~excludeFields=PluginBaseFragment.pluginUIOnlyExcludeFields,
 )
 
 let structure: pluginStructure = {

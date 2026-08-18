@@ -3,7 +3,6 @@
 import * as Api_Naming$ReventlessCore from "../components/Api/Api_Naming.res.mjs";
 import * as PluginSpec$ReventlessCore from "../plugin/lifecycle/PluginSpec.res.mjs";
 import * as Plugin_Structure$ReventlessCore from "../plugin/component/Plugin_Structure.res.mjs";
-import * as PluginBaseFragment$ReventlessCore from "../plugin/api/PluginBaseFragment.res.mjs";
 import * as PluginsReadModelSpec$ReventlessCore from "../plugin/lifecycle/PluginsReadModelSpec.res.mjs";
 
 let pluginId = "Platform";
@@ -32,7 +31,7 @@ let pluginAggregate = {
   chapter: undefined
 };
 
-let pluginReadModel = Plugin_Structure$ReventlessCore.queryableDefFromSpec(pluginId, PluginsReadModelSpec$ReventlessCore.name, PluginsReadModelSpec$ReventlessCore.stateSchema, PluginsReadModelSpec$ReventlessCore.authorization, undefined, undefined, ["Plugin"], PluginBaseFragment$ReventlessCore.pluginUIOnlyExcludeFields, undefined);
+let pluginReadModel = Plugin_Structure$ReventlessCore.queryableDefFromSpec(pluginId, PluginsReadModelSpec$ReventlessCore.name, PluginsReadModelSpec$ReventlessCore.stateSchema, PluginsReadModelSpec$ReventlessCore.authorization, undefined, undefined, ["Plugin"], undefined);
 
 let structure_readModels = [pluginReadModel];
 

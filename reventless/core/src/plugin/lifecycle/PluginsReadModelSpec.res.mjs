@@ -39,7 +39,10 @@ let stateSchema$1 = Sury.$Metadata_set(stateSchema, StateAnnotations$Reventless.
   subIds: [],
   compositeSubIds: [],
   indexes: [],
-  hidden: [],
+  hidden: [
+    "apiSchemaFragment",
+    "structure"
+  ],
   summary: [],
   internal: [
     "eventCollector",

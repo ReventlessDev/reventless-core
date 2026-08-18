@@ -861,44 +861,6 @@ let visibilityTag = (v: Reventless.Visibility.t): option<string> =>
   | Internal => Some("Internal")
   }
 
-// Strip named fields from a derived JSON schema's `properties` and `required`.
-//
-// The narrow companion to `@internal`, and the two are not alternatives. A field
-// declared `@internal` is off the surface entirely and this never sees it. This
-// is for a caller that publishes a NARROWED view of a schema whose fields are
-// genuinely on the API — the admin's `apiSchemaFragment` / `structure`, which
-// other callers query through dedicated resolver paths and only the generated
-// list view must not name.
-let encodeSchemaExcluding = (schema: S.t<unknown>, ~excludeFields: array<string>): string => {
-  let derived = schema->SuryToJsonSchema.deriveObjectSchema
-  if excludeFields->Array.length == 0 {
-    derived->JSON.stringify
-  } else {
-    switch derived->JSON.Decode.object {
-    | None => derived->JSON.stringify
-    | Some(obj) =>
-      switch obj->Dict.get("properties")->Option.flatMap(JSON.Decode.object) {
-      | None => derived->JSON.stringify
-      | Some(props) =>
-        excludeFields->Array.forEach(f => props->Dict.delete(f))
-        obj->Dict.set("properties", props->JSON.Encode.object)
-        switch obj->Dict.get("required")->Option.flatMap(JSON.Decode.array) {
-        | None => ()
-        | Some(req) =>
-          let filtered =
-            req
-            ->Array.filterMap(JSON.Decode.string)
-            ->Array.filter(name => !(excludeFields->Array.includes(name)))
-            ->Array.map(JSON.Encode.string)
-            ->JSON.Encode.array
-          obj->Dict.set("required", filtered)
-        }
-        obj->JSON.Encode.object->JSON.stringify
-      }
-    }
-  }
-}
-
 /**
  A read model's published `queryableDef`, assembled from its **spec** rather than
  from a built component.
@@ -927,9 +889,6 @@ let queryableDefFromSpec = (
   ~visibility: Reventless.Visibility.t=Public,
   ~consumedEventTypes: array<string>=[],
   ~linkedWriteSide: array<string>=[],
-  // See `encodeSchemaExcluding`. Empty for every caller that has nothing to
-  // narrow, which is the ordinary case.
-  ~excludeFields: array<string>=[],
   ~chapter: option<string>=?,
 ): Reventless.Plugin.queryableDef => {
   let qf = Api_Naming.queryFieldNamesForReadModel(~plugin, ~name)
@@ -940,7 +899,7 @@ let queryableDefFromSpec = (
   {
     Reventless.Plugin.name: name,
     queryField: qf.listFieldName,
-    schema: stateSchema->encodeSchemaExcluding(~excludeFields),
+    schema: stateSchema->SuryToJsonSchema.deriveObjectSchema->JSON.stringify,
     consumedEventTypes,
     linkedWriteSide,
     labelField: label.field,

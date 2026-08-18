@@ -48,10 +48,14 @@ type state = {
   // `{$offload: {...}}` reference) — NOT the `Offload.payload` variant. The QueryDb
   // write path marshals the raw ReScript value straight to DynamoDB without
   // sury-encoding through this field's schema, so a variant would persist as its
-  // runtime `{TAG, _0}` shape and no reader could parse it. UI-excluded
-  // (PluginBaseFragment.pluginUIOnlyExcludeFields), so JSON.t typing costs no
-  // GraphQL consumer. PluginsProjection.displayState writes it via Offload.toJson.
-  apiSchemaFragment: option<JSON.t>,
+  // runtime `{TAG, _0}` shape and no reader could parse it.
+  // PluginsProjection.displayState writes it via Offload.toJson.
+  //
+  // `@hidden`, not `@internal`: the field IS on the API and the host shell fetches
+  // it through a dedicated resolver path. What it must not be is a column in a
+  // generated list view — it is a multi-kilobyte JSON blob, and a query that names
+  // it drags one per row over the wire to render a cell nobody reads.
+  @hidden apiSchemaFragment: option<JSON.t>,
   // API target for split-API schema routing. Absent/None means "Domain" (backward compat).
   // "Platform" → excluded from DomainApi runtime schema stitching in updateApiSchema.
   apiTarget?: string,
@@ -59,7 +63,10 @@ type state = {
   // None for older plugins whose protocol version did not carry the field. Same
   // untagged-JSON storage as apiSchemaFragment above; the ComponentDefinitions
   // Lambda detects the `$offload` sentinel and resolves it from S3.
-  structure: option<JSON.t>,
+  //
+  // `@hidden` for the same reason, and more so: this is the larger of the two
+  // blobs.
+  @hidden structure: option<JSON.t>,
   // DCB EventLog definition for plugins that bundle a DcbEventLog component.
   // Admin's manageSubscriptions uses this to wire cross-plugin SNS subscriptions
   // from this plugin's DCB topic → peer EventCollectors (and vice-versa). None

@@ -1,7 +1,7 @@
 # Plan: Derive the platform's own component metadata from its specs
 
-**Status:** DONE — every step landed 2026-08-18. One follow-on is deliberately
-held back: see "The lockstep that remains" at the end.
+**Status:** DONE — every step landed 2026-08-18, including the follow-on that was
+held back; see "The lockstep" at the end.
 **Date:** 2026-08-18
 **Analysis it produced:** [plugin-command-union-decode-failure.md](../analysis/plugin-command-union-decode-failure.md)
 — found while verifying step 0, unrelated to this plan, and the reason
@@ -402,25 +402,50 @@ seeing.
 
 ---
 
-## The lockstep that remains
+## The lockstep — done
 
-One follow-on is deliberately **not** done, and it is the last hand-written field
-list in `Platform_Admin_Structure`:
+The follow-on this plan held back has landed. It is recorded here rather than
+dropped, because two things it predicted were wrong and the corrections are the
+useful part.
 
-```rescript
-~excludeFields=PluginBaseFragment.pluginUIOnlyExcludeFields,   // apiSchemaFragment, structure
+`PluginsReadModelSpec` declares `@hidden apiSchemaFragment` and
+`@hidden structure`; `~excludeFields` is gone from the `queryableDefFromSpec`
+call, and `pluginUIOnlyExcludeFields` is deleted. With no caller left, the
+`~excludeFields` parameter and its `encodeSchemaExcluding` helper went too — they
+existed for that one argument.
+
+**Correction 1 — the risk was overstated.** The claim was that a lagging shell
+would "take the Plugins page down", because the two fields were
+option-of-nested-object types that AutoUI would query without a sub-selection.
+The SDL says otherwise:
+
+```graphql
+apiSchemaFragment: String
+structure: String
 ```
 
-Those two fields are genuinely on the API — the host shell queries them through
-dedicated resolver paths — so `@internal` is the wrong marker. `@hidden` is the
-right one, and it now works: the consuming repo skips hidden fields in its query
-selection. But **a platform declaring it against an older shell would take the
-Plugins page down**, because that shell would still select the two fields and fail
-validation on the sub-selection.
+They are scalars, and selecting them validates. The justification comment
+described a shape the SDL no longer has. So a shell without the selection change
+does not break — it over-fetches roughly 44KB of JSON blob per row and renders
+two useless columns. Bad, worth avoiding, not a breakage.
 
-So it waits for the consuming repo to publish and the pin to move. When it does:
-put `@hidden` on `apiSchemaFragment` and `structure` in `PluginsReadModelSpec`,
-drop the `~excludeFields` argument, and delete `pluginUIOnlyExcludeFields`. The
-test `the two narrowed fields are absent from the published schema` should keep
+**Correction 2 — the test could not have kept passing.** This plan said the test
+`the two narrowed fields are absent from the published schema` "should keep
 passing across the change — that is what makes it a safe swap rather than a
-behaviour change.
+behaviour change." That was wrong on its own terms: the entire point of the swap
+is that the schema now *carries* the two fields, marked hidden, where the exclude
+list cut them out. The test asserts the new claim, and a sibling asserts the
+contrast that makes the two markers worth having separately:
+
+- `@hidden` ⇒ published, flagged. The consumer decides.
+- `@internal` ⇒ not there at all.
+
+Cutting a hidden field out of the published schema would leave a consumer unable
+to tell "not for you" from "does not exist".
+
+**Verified as a round trip**, which is what the swap actually rests on: the live
+platform's published schema was run through the consuming repo's own
+`parseSchema` + `buildListQuery` / `buildQuery`. Both fields are published and
+marked; neither is selected by either query; `eventCollector` is absent
+altogether; ordinary fields are selected. The SDL is unchanged — `@hidden` does
+not move a field off the surface.

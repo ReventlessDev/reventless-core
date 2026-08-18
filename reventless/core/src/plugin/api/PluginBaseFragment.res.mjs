@@ -7,11 +7,6 @@ import * as PluginSpec$ReventlessCore from "../lifecycle/PluginSpec.res.mjs";
 import * as ApiNoApiHelpers$ReventlessCore from "../../components/Api/ApiNoApiHelpers.res.mjs";
 import * as PluginsReadModelSpec$ReventlessCore from "../lifecycle/PluginsReadModelSpec.res.mjs";
 
-let pluginUIOnlyExcludeFields = [
-  "apiSchemaFragment",
-  "structure"
-];
-
 function indexQueriesOfConfig(config) {
   if (config.indexes.length !== 0) {
     return config.indexes;
@@ -42,7 +37,6 @@ let pluginAggregateMutationEntries = fieldNames.length === 0 ? [] : [{
     }];
 
 export {
-  pluginUIOnlyExcludeFields,
   indexQueriesOfConfig,
   queryEntries,
   pluginAggregateMutationEntries,
