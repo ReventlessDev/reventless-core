@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.118 (2026-08-18)
+
+### Bug Fixes
+
+* **core:** report the real reason a decode failed ([233c835](https://github.com/ReventlessDev/reventless-core/commit/233c835be47cb83fbd247ab0d8a7073cad622fee)), closes [DZakh/sury#392](https://github.com/DZakh/sury/issues/392)
+* feat(sury)!: migrate to sury 11.0.0-rc.1 ([2cf8969](https://github.com/ReventlessDev/reventless-core/commit/2cf8969a222ce1b775563668a4126cb20611966c))
+### Features
+
+* **spec,ppx:** uploadable types that derive their store from the field name ([722b404](https://github.com/ReventlessDev/reventless-core/commit/722b4044a2e8dfb6a34231d6bfb529526de38b20))
+* **spec:** ImageRef and FileRef, for media the platform does not own ([a63425c](https://github.com/ReventlessDev/reventless-core/commit/a63425cba5fd381da6deaabccc94501739e3ad59))
+
+### BREAKING CHANGES
+
+* sury is a direct dependency of the published packages and
+its schema and serialization surface changed; consumers must migrate to
+sury 11.
+
+
+
 # 3.0.0-alpha.117 (2026-08-18)
 
 ### Bug Fixes

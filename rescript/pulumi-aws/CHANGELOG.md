@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.0 (2026-08-18)
+
+* feat(sury)!: migrate to sury 11.0.0-rc.1 ([2cf8969](https://github.com/ReventlessDev/reventless-core/commit/2cf8969a222ce1b775563668a4126cb20611966c))
+### Features
+
+* **pulumi-aws:** expose recovery actions and M-of-N on metric alarms ([0062155](https://github.com/ReventlessDev/reventless-core/commit/00621553ffc56f29a2395d444e898175ec409cbc))
+
+### BREAKING CHANGES
+
+* sury is a direct dependency of the published packages and
+its schema and serialization surface changed; consumers must migrate to
+sury 11.
+
+
+
 # 2.4.0-alpha.80 (2026-08-18)
 
 ### Bug Fixes

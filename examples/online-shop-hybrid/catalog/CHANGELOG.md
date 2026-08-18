@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.215 (2026-08-18)
+
+### Bug Fixes
+
+* **core:** order union constructors so every one decodes ([39c17ad](https://github.com/ReventlessDev/reventless-core/commit/39c17ad8cedd6f120e92d81b4a05b8c733b4617d)), closes [DZakh/sury#392](https://github.com/DZakh/sury/issues/392)
+* feat(sury)!: migrate to sury 11.0.0-rc.1 ([2cf8969](https://github.com/ReventlessDev/reventless-core/commit/2cf8969a222ce1b775563668a4126cb20611966c))
+
+### BREAKING CHANGES
+
+* sury is a direct dependency of the published packages and
+its schema and serialization surface changed; consumers must migrate to
+sury 11.
+
+
+
 # 1.0.0-alpha.214 (2026-08-18)
 
 ### Bug Fixes

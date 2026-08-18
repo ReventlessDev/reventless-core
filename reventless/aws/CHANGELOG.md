@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.309 (2026-08-18)
+
+* feat(core)!: tell the Monitoring seam where a unit's logs live ([6cbd595](https://github.com/ReventlessDev/reventless-core/commit/6cbd595e2474fce3f87b7720a332e82583899bae))
+* feat(sury)!: migrate to sury 11.0.0-rc.1 ([2cf8969](https://github.com/ReventlessDev/reventless-core/commit/2cf8969a222ce1b775563668a4126cb20611966c))
+
+### BREAKING CHANGES
+
+* Monitoring.Backend.onProvisioned gained a required
+~logLocator argument. An extension that packs its backend against the
+module type will not compile until onProvisioned accepts it.
+* sury is a direct dependency of the published packages and
+its schema and serialization surface changed; consumers must migrate to
+sury 11.
+
+
+
 # 3.0.0-alpha.308 (2026-08-18)
 
 ### Bug Fixes

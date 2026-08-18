@@ -3,6 +3,34 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.240 (2026-08-18)
+
+### Bug Fixes
+
+* **core:** derive the platform's own command defs from its spec ([599d0b6](https://github.com/ReventlessDev/reventless-core/commit/599d0b64e1ab1687841dbff9383f9bda5d2e629b))
+* **core:** give the Plugin lifecycle its transitions back ([1dc2ab2](https://github.com/ReventlessDev/reventless-core/commit/1dc2ab28cf145f2e709359d2a5a67a50b46f5ce4))
+* **core:** let the Plugins view say which field its lifecycle lives in ([45511c5](https://github.com/ReventlessDev/reventless-core/commit/45511c5476e45586b2a6ae8ebac67786360d0d85))
+* **core:** let the Plugins view state its own read rule ([1fe9fcf](https://github.com/ReventlessDev/reventless-core/commit/1fe9fcfb198334923dd8342861315ac53cb78cac))
+* **core:** order union constructors so every one decodes ([39c17ad](https://github.com/ReventlessDev/reventless-core/commit/39c17ad8cedd6f120e92d81b4a05b8c733b4617d)), closes [DZakh/sury#392](https://github.com/DZakh/sury/issues/392)
+* **core:** report the real reason a decode failed ([233c835](https://github.com/ReventlessDev/reventless-core/commit/233c835be47cb83fbd247ab0d8a7073cad622fee)), closes [DZakh/sury#392](https://github.com/DZakh/sury/issues/392)
+* feat(core)!: tell the Monitoring seam where a unit's logs live ([6cbd595](https://github.com/ReventlessDev/reventless-core/commit/6cbd595e2474fce3f87b7720a332e82583899bae))
+* feat(sury)!: migrate to sury 11.0.0-rc.1 ([2cf8969](https://github.com/ReventlessDev/reventless-core/commit/2cf8969a222ce1b775563668a4126cb20611966c))
+### Features
+
+* **core:** let a command declare the edge that creates the row ([a5b6dbd](https://github.com/ReventlessDev/reventless-core/commit/a5b6dbddd3f81ac23117f9ccb9ffdbdd07781dcc))
+* **spec,ppx:** uploadable types that derive their store from the field name ([722b404](https://github.com/ReventlessDev/reventless-core/commit/722b4044a2e8dfb6a34231d6bfb529526de38b20))
+
+### BREAKING CHANGES
+
+* Monitoring.Backend.onProvisioned gained a required
+~logLocator argument. An extension that packs its backend against the
+module type will not compile until onProvisioned accepts it.
+* sury is a direct dependency of the published packages and
+its schema and serialization surface changed; consumers must migrate to
+sury 11.
+
+
+
 # 3.0.0-alpha.239 (2026-08-18)
 
 ### Bug Fixes
