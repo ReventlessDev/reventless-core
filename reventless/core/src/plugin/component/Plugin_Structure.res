@@ -629,6 +629,235 @@ let extractErrorDefs = (errorSchema: S.t<unknown>): array<Reventless.Plugin.erro
     {name, schema, references}: Reventless.Plugin.errorDef
   ))
 
+// The command walk, module-level for the same reason as the event walk above:
+// the synthetic Platform_Admin structure cannot reach `make` — it has no
+// `module(Aggregate.T)` to hand it — and hand-writing a second copy of this walk
+// is what let its command metadata drift from the SDL generated off the same
+// schema.
+
+// Aggregate commands that initialize a new aggregate instance are Collection-level
+// (shown as table-top buttons); all others are Instance-level (shown per-row).
+let isCreateCommandName = name =>
+  ["Add", "Create", "Register", "Open", "Initialize", "Submit", "Start", "Place"]->Array.some(p =>
+    name->String.startsWith(p)
+  )
+
+let commandLevelAndId = (~isAggregate, ~variantName, properties: dict<S.t<unknown>>) =>
+  if isAggregate {
+    if isCreateCommandName(variantName) {
+      (Reventless.Plugin.Collection, None)
+    } else {
+      (Reventless.Plugin.Instance, None)
+    }
+  } else {
+    let taggedFields =
+      properties
+      ->Dict.toArray
+      ->Array.filter(((fieldName, fieldSchema)) =>
+        fieldName != "TAG" &&
+          (Reventless.DcbTag.isTagged(fieldSchema) ||
+            Reventless.DcbTag.isTaggedArray(fieldSchema))
+      )
+    let taggedField =
+      taggedFields
+      ->Array.find(((_, fieldSchema)) => Reventless.DcbTag.isPartitionTag(fieldSchema))
+      ->Option.orElse(taggedFields->Array.get(0))
+    switch taggedField {
+    | Some((fieldName, _)) =>
+      if isCreateCommandName(variantName) {
+        // Creation command: Collection-level, but UUID is injected into the tagged ID field.
+        (Reventless.Plugin.Collection, Some(fieldName))
+      } else {
+        (Reventless.Plugin.Instance, Some(fieldName))
+      }
+    | None => (Reventless.Plugin.Collection, None)
+    }
+  }
+
+// A rule the server enforces, expressed as the keys a client checks against
+// `identity.groups ++ config.accessTiers`. `AllowGroups` is satisfied by ANY of
+// its groups (`Authorization.isAllowed` is `some`, not `every`), so the array is
+// an any-of and a client must read it that way.
+//
+// `AllowAuthenticated` / `AllowAnonymous` ask for nothing a client can check —
+// anyone holding a session already satisfies them — so they publish no keys
+// rather than a key everyone holds.
+//
+// `DenyAll` also publishes none, deliberately. An unsatisfiable key would render
+// as locked-with-upsell in a tiered shell: a surface advertised as purchasable
+// that no purchase unlocks. A component nobody may call belongs in no menu, and
+// that is an omission for the enumerating side to make, not a key to invent here.
+let accessKeysFor = (rule: Reventless.Authorization.permission): option<array<string>> =>
+  switch rule {
+  | AllowGroups(groups) if groups->Array.length > 0 => Some(groups)
+  | AllowGroups(_) | AllowAuthenticated | AllowAnonymous | DenyAll => None
+  }
+
+// Write each mutation argument's rendered GraphQL type onto the property it
+// belongs to, so a consumer assembling its own mutation document declares the
+// variable the server actually expects instead of guessing `String!`.
+//
+// Mutates the freshly derived schema in place — `deriveObjectSchema` has just
+// built it and nothing else holds it yet. A property with no matching
+// argument is left alone rather than annotated with a guess.
+let annotateArgTypes = (schema: JSON.t, argTypes: dict<string>): JSON.t => {
+  schema
+  ->JSON.Decode.object
+  ->Option.flatMap(o => o->Dict.get("properties"))
+  ->Option.flatMap(JSON.Decode.object)
+  ->Option.forEach(props =>
+    props
+    ->Dict.toArray
+    ->Array.forEach(((key, prop)) =>
+      switch (argTypes->Dict.get(key), prop->JSON.Decode.object) {
+      | (Some(gqlType), Some(p)) =>
+        p->Dict.set("x-reventless-graphql-type", JSON.Encode.string(gqlType))
+      | _ => ()
+      }
+    )
+  )
+  schema
+}
+
+let toCommandDef = (
+  ~isAggregate,
+  ~mutationFieldFor: string => string,
+  ~parentSchema: S.t<unknown>,
+  // The PPX-generated `command => permission`. Per VARIANT, not per component:
+  // one aggregate carries commands with very different audiences, and a
+  // component-level shortcut would gate `AddProduct` and `PlaceOrder` alike.
+  ~commandAuthorization: unknown => Reventless.Authorization.permission,
+  v: S.t<unknown>,
+): option<Reventless.Plugin.commandDef> => {
+  // Build a commandDef for one variant. `properties` is the variant's field dict —
+  // empty for a payload-less variant (e.g. `| Archive`), which compiles to a bare
+  // `S.literal("Archive")` string rather than an `{TAG, ...}` object.
+  let mkDef = (~variantName, ~properties) => {
+    let (level, aggregateIdField) = commandLevelAndId(~isAggregate, ~variantName, properties)
+    let references = extractReferences(properties)
+    // Per-variant `allowedStates` lives on the *parent* command schema
+    // (the PPX attaches a single dict<variantName, [|states|]> via
+    // markAllowedStates). Look it up by variant name; back-compat
+    // None when the variant lacks a @transition annotation.
+    let allowedStates = ApiAllowedStatesHelpers.getAllowedStates(parentSchema, ~variantName)
+    // The `@transition` target (the command's *to* status), read the same way
+    // as allowedStates. None ⇒ AutoUI's board resolver falls back to its
+    // name-stem heuristic.
+    let targetState = ApiTargetStateHelpers.getTargetState(parentSchema, ~variantName)
+    // API-exposed iff the whole command isn't @noApi and this variant
+    // isn't in its @noApi-variants set — mirrors the API-generation filter
+    // (Plugin_Helpers / PluginBaseFragment). Drives the event-graph API badge.
+    let apiExposed =
+      !ApiNoApiHelpers.isNoApi(parentSchema) &&
+      switch ApiNoApiHelpers.getExcludedVariants(parentSchema) {
+      | Some(excluded) => !(excluded->Set.has(variantName))
+      | None => true
+      }
+    // Evaluated against a synthetic value per constructor, the same shape the
+    // resolver builds at call time: a payload-bearing variant compiles to
+    // `{TAG, ...}`, a payload-less one to a bare string.
+    let syntheticCommand: unknown =
+      Reventless.DcbTag.isVariantPayloadBearing(parentSchema, variantName)
+        ? {"TAG": variantName}->Obj.magic
+        : variantName->Obj.magic
+    let requiredAccess = accessKeysFor(commandAuthorization(syntheticCommand))
+    // See the note on the record's `mutationField` for why a non-exposed
+    // variant gets the empty sentinel. It has no callable field, and the
+    // argument type names are composed *from* that field name, so there is
+    // nothing to publish for it either.
+    let mutationField = apiExposed ? mutationFieldFor(variantName) : ""
+    let jsonSchema = v->SuryToJsonSchema.deriveObjectSchema
+    let annotatedSchema = if apiExposed {
+      GraphQL_FragmentGenerator.mutationArgTypes(~fieldName=mutationField, v)->Option.mapOr(
+        jsonSchema,
+        annotateArgTypes(jsonSchema, _),
+      )
+    } else {
+      jsonSchema
+    }
+    ({
+      Reventless.Plugin.name: variantName,
+      // The derived schema, not sury's raw one: `S.toJSONSchema` carries the
+      // shape and drops every `x-reventless-*` marker the PPX put on the
+      // fields, so a command's `@storageRef`/`@semantic`/`@ref` reached the
+      // wire on the read side and nowhere on the write side. A reader that
+      // matches a field against its setter — or picks the upload endpoint of
+      // the store a command argument declares — then has nothing to match on.
+      // `MCP_SchemaGenerator` already derives these same variant schemas.
+      //
+      // Carries `x-reventless-graphql-type` per property — see
+      // `annotateArgTypes`.
+      schema: annotatedSchema->JSON.stringify,
+      level,
+      aggregateIdField,
+      // A non-exposed (`@noApi`) variant has no callable mutation field. For a
+      // single-exposed-command slice, `mutationFieldFor` resolves *every*
+      // variant — including the `@noApi` one — to the slice's one mutation
+      // field, so emitting it here would hand the non-exposed variant a
+      // sibling's callable-looking field (e.g. `ReopenOrder` →
+      // `Ordering_CancelOrder`). Emit an empty sentinel instead; the variant
+      // stays listed with `apiExposed: false` for the event-graph badge, but
+      // no consumer can mistake it for a callable field. Exposed variants are
+      // byte-identical.
+      mutationField,
+      references,
+      allowedStates,
+      targetState,
+      apiExposed: Some(apiExposed),
+      requiredAccess,
+      // Resolved from this constructor's own properties, not the union's: two
+      // commands in one slice can disagree about whether they record an owner,
+      // and the write path stamps per constructor for the same reason.
+      ownerField: Reventless.Owner.fieldNamesOfProperties(properties)->Array.get(0),
+    }: Reventless.Plugin.commandDef)
+  }
+  switch v {
+  | Object({properties}) =>
+    properties
+    ->Dict.get("TAG")
+    ->Option.flatMap(tagSchema =>
+      switch tagSchema {
+      | String({const: ?Some(variantName)}) => Some(mkDef(~variantName, ~properties))
+      | _ => None
+      }
+    )
+  // Payload-less command variants (`| Archive`) compile to a bare string literal,
+  // not an `{TAG, ...}` object. They still get a generated mutation (API generation
+  // walks the schema via extractAllVariantNames), so surface them here too —
+  // otherwise the event graph hides a command the API actually exposes.
+  | String({const: ?Some(variantName)}) => Some(mkDef(~variantName, ~properties=Dict.make()))
+  | _ => None
+  }
+}
+
+let extractCommandDefs = (
+  ~isAggregate,
+  ~mutationFieldFor: string => string,
+  ~commandAuthorization: unknown => Reventless.Authorization.permission,
+  commandSchema: S.t<unknown>,
+): array<Reventless.Plugin.commandDef> =>
+  switch commandSchema {
+  | AnyOf({anyOf}) =>
+    anyOf->Array.filterMap(v =>
+      toCommandDef(
+        ~isAggregate,
+        ~mutationFieldFor,
+        ~parentSchema=commandSchema,
+        ~commandAuthorization,
+        v,
+      )
+    )
+  | _ =>
+    // Single-variant command types compile to a bare Object schema, not a Union.
+    toCommandDef(
+      ~isAggregate,
+      ~mutationFieldFor,
+      ~parentSchema=commandSchema,
+      ~commandAuthorization,
+      commandSchema,
+    )->Option.mapOr([], def => [def])
+  }
+
 let make = (
   type api role,
   ~name: string,
@@ -658,280 +887,6 @@ let make = (
   // GraphQL mutation surface stays addressable.
   let commandVariantNames = schema => Reventless.DcbTag.extractAllVariantNames(schema)
   let qualify = (~prefix, names) => names->Array.map(n => prefix ++ "." ++ n)
-
-  // Aggregate commands that initialize a new aggregate instance are Collection-level
-  // (shown as table-top buttons); all others are Instance-level (shown per-row).
-  let isCreateCommandName = name =>
-    ["Add", "Create", "Register", "Open", "Initialize", "Submit", "Start", "Place"]->Array.some(p =>
-      name->String.startsWith(p)
-    )
-
-  let commandLevelAndId = (~isAggregate, ~variantName, properties: dict<S.t<unknown>>) =>
-    if isAggregate {
-      if isCreateCommandName(variantName) {
-        (Reventless.Plugin.Collection, None)
-      } else {
-        (Reventless.Plugin.Instance, None)
-      }
-    } else {
-      let taggedFields =
-        properties
-        ->Dict.toArray
-        ->Array.filter(((fieldName, fieldSchema)) =>
-          fieldName != "TAG" &&
-            (Reventless.DcbTag.isTagged(fieldSchema) ||
-              Reventless.DcbTag.isTaggedArray(fieldSchema))
-        )
-      let taggedField =
-        taggedFields
-        ->Array.find(((_, fieldSchema)) => Reventless.DcbTag.isPartitionTag(fieldSchema))
-        ->Option.orElse(taggedFields->Array.get(0))
-      switch taggedField {
-      | Some((fieldName, _)) =>
-        if isCreateCommandName(variantName) {
-          // Creation command: Collection-level, but UUID is injected into the tagged ID field.
-          (Reventless.Plugin.Collection, Some(fieldName))
-        } else {
-          (Reventless.Plugin.Instance, Some(fieldName))
-        }
-      | None => (Reventless.Plugin.Collection, None)
-      }
-    }
-
-  // A rule the server enforces, expressed as the keys a client checks against
-  // `identity.groups ++ config.accessTiers`. `AllowGroups` is satisfied by ANY of
-  // its groups (`Authorization.isAllowed` is `some`, not `every`), so the array is
-  // an any-of and a client must read it that way.
-  //
-  // `AllowAuthenticated` / `AllowAnonymous` ask for nothing a client can check —
-  // anyone holding a session already satisfies them — so they publish no keys
-  // rather than a key everyone holds.
-  //
-  // `DenyAll` also publishes none, deliberately. An unsatisfiable key would render
-  // as locked-with-upsell in a tiered shell: a surface advertised as purchasable
-  // that no purchase unlocks. A component nobody may call belongs in no menu, and
-  // that is an omission for the enumerating side to make, not a key to invent here.
-  let accessKeysFor = (rule: Reventless.Authorization.permission): option<array<string>> =>
-    switch rule {
-    | AllowGroups(groups) if groups->Array.length > 0 => Some(groups)
-    | AllowGroups(_) | AllowAuthenticated | AllowAnonymous | DenyAll => None
-    }
-
-  // Write each mutation argument's rendered GraphQL type onto the property it
-  // belongs to, so a consumer assembling its own mutation document declares the
-  // variable the server actually expects instead of guessing `String!`.
-  //
-  // Mutates the freshly derived schema in place — `deriveObjectSchema` has just
-  // built it and nothing else holds it yet. A property with no matching
-  // argument is left alone rather than annotated with a guess.
-  let annotateArgTypes = (schema: JSON.t, argTypes: dict<string>): JSON.t => {
-    schema
-    ->JSON.Decode.object
-    ->Option.flatMap(o => o->Dict.get("properties"))
-    ->Option.flatMap(JSON.Decode.object)
-    ->Option.forEach(props =>
-      props
-      ->Dict.toArray
-      ->Array.forEach(((key, prop)) =>
-        switch (argTypes->Dict.get(key), prop->JSON.Decode.object) {
-        | (Some(gqlType), Some(p)) =>
-          p->Dict.set("x-reventless-graphql-type", JSON.Encode.string(gqlType))
-        | _ => ()
-        }
-      )
-    )
-    schema
-  }
-
-  let toCommandDef = (
-    ~isAggregate,
-    ~mutationFieldFor: string => string,
-    ~parentSchema: S.t<unknown>,
-    // The PPX-generated `command => permission`. Per VARIANT, not per component:
-    // one aggregate carries commands with very different audiences, and a
-    // component-level shortcut would gate `AddProduct` and `PlaceOrder` alike.
-    ~commandAuthorization: unknown => Reventless.Authorization.permission,
-    v: S.t<unknown>,
-  ): option<Reventless.Plugin.commandDef> => {
-    // Build a commandDef for one variant. `properties` is the variant's field dict —
-    // empty for a payload-less variant (e.g. `| Archive`), which compiles to a bare
-    // `S.literal("Archive")` string rather than an `{TAG, ...}` object.
-    let mkDef = (~variantName, ~properties) => {
-      let (level, aggregateIdField) = commandLevelAndId(~isAggregate, ~variantName, properties)
-      let references = extractReferences(properties)
-      // Per-variant `allowedStates` lives on the *parent* command schema
-      // (the PPX attaches a single dict<variantName, [|states|]> via
-      // markAllowedStates). Look it up by variant name; back-compat
-      // None when the variant lacks a @transition annotation.
-      let allowedStates = ApiAllowedStatesHelpers.getAllowedStates(parentSchema, ~variantName)
-      // The `@transition` target (the command's *to* status), read the same way
-      // as allowedStates. None ⇒ AutoUI's board resolver falls back to its
-      // name-stem heuristic.
-      let targetState = ApiTargetStateHelpers.getTargetState(parentSchema, ~variantName)
-      // API-exposed iff the whole command isn't @noApi and this variant
-      // isn't in its @noApi-variants set — mirrors the API-generation filter
-      // (Plugin_Helpers / PluginBaseFragment). Drives the event-graph API badge.
-      let apiExposed =
-        !ApiNoApiHelpers.isNoApi(parentSchema) &&
-        switch ApiNoApiHelpers.getExcludedVariants(parentSchema) {
-        | Some(excluded) => !(excluded->Set.has(variantName))
-        | None => true
-        }
-      // Evaluated against a synthetic value per constructor, the same shape the
-      // resolver builds at call time: a payload-bearing variant compiles to
-      // `{TAG, ...}`, a payload-less one to a bare string.
-      let syntheticCommand: unknown =
-        Reventless.DcbTag.isVariantPayloadBearing(parentSchema, variantName)
-          ? {"TAG": variantName}->Obj.magic
-          : variantName->Obj.magic
-      let requiredAccess = accessKeysFor(commandAuthorization(syntheticCommand))
-      // See the note on the record's `mutationField` for why a non-exposed
-      // variant gets the empty sentinel. It has no callable field, and the
-      // argument type names are composed *from* that field name, so there is
-      // nothing to publish for it either.
-      let mutationField = apiExposed ? mutationFieldFor(variantName) : ""
-      let jsonSchema = v->SuryToJsonSchema.deriveObjectSchema
-      let annotatedSchema = if apiExposed {
-        GraphQL_FragmentGenerator.mutationArgTypes(~fieldName=mutationField, v)->Option.mapOr(
-          jsonSchema,
-          annotateArgTypes(jsonSchema, _),
-        )
-      } else {
-        jsonSchema
-      }
-      ({
-        Reventless.Plugin.name: variantName,
-        // The derived schema, not sury's raw one: `S.toJSONSchema` carries the
-        // shape and drops every `x-reventless-*` marker the PPX put on the
-        // fields, so a command's `@storageRef`/`@semantic`/`@ref` reached the
-        // wire on the read side and nowhere on the write side. A reader that
-        // matches a field against its setter — or picks the upload endpoint of
-        // the store a command argument declares — then has nothing to match on.
-        // `MCP_SchemaGenerator` already derives these same variant schemas.
-        //
-        // Carries `x-reventless-graphql-type` per property — see
-        // `annotateArgTypes`.
-        schema: annotatedSchema->JSON.stringify,
-        level,
-        aggregateIdField,
-        // A non-exposed (`@noApi`) variant has no callable mutation field. For a
-        // single-exposed-command slice, `mutationFieldFor` resolves *every*
-        // variant — including the `@noApi` one — to the slice's one mutation
-        // field, so emitting it here would hand the non-exposed variant a
-        // sibling's callable-looking field (e.g. `ReopenOrder` →
-        // `Ordering_CancelOrder`). Emit an empty sentinel instead; the variant
-        // stays listed with `apiExposed: false` for the event-graph badge, but
-        // no consumer can mistake it for a callable field. Exposed variants are
-        // byte-identical.
-        mutationField,
-        references,
-        allowedStates,
-        targetState,
-        apiExposed: Some(apiExposed),
-        requiredAccess,
-        // Resolved from this constructor's own properties, not the union's: two
-        // commands in one slice can disagree about whether they record an owner,
-        // and the write path stamps per constructor for the same reason.
-        ownerField: Reventless.Owner.fieldNamesOfProperties(properties)->Array.get(0),
-      }: Reventless.Plugin.commandDef)
-    }
-    switch v {
-    | Object({properties}) =>
-      properties
-      ->Dict.get("TAG")
-      ->Option.flatMap(tagSchema =>
-        switch tagSchema {
-        | String({const: ?Some(variantName)}) => Some(mkDef(~variantName, ~properties))
-        | _ => None
-        }
-      )
-    // Payload-less command variants (`| Archive`) compile to a bare string literal,
-    // not an `{TAG, ...}` object. They still get a generated mutation (API generation
-    // walks the schema via extractAllVariantNames), so surface them here too —
-    // otherwise the event graph hides a command the API actually exposes.
-    | String({const: ?Some(variantName)}) => Some(mkDef(~variantName, ~properties=Dict.make()))
-    | _ => None
-    }
-  }
-
-  let extractCommandDefs = (
-    ~isAggregate,
-    ~mutationFieldFor: string => string,
-    ~commandAuthorization: unknown => Reventless.Authorization.permission,
-    commandSchema: S.t<unknown>,
-  ): array<Reventless.Plugin.commandDef> =>
-    switch commandSchema {
-    | AnyOf({anyOf}) =>
-      anyOf->Array.filterMap(v =>
-        toCommandDef(
-          ~isAggregate,
-          ~mutationFieldFor,
-          ~parentSchema=commandSchema,
-          ~commandAuthorization,
-          v,
-        )
-      )
-    | _ =>
-      // Single-variant command types compile to a bare Object schema, not a Union.
-      toCommandDef(
-        ~isAggregate,
-        ~mutationFieldFor,
-        ~parentSchema=commandSchema,
-        ~commandAuthorization,
-        commandSchema,
-      )->Option.mapOr([], def => [def])
-    }
-
-  // ── Per-variant event field extraction ─────────────────────────
-  // Mirrors toCommandDef/extractCommandDefs for emitted events: name (TAG const),
-  // payload JSON Schema, and cross-entity references.
-
-  let toEventDef = (v: S.t<unknown>): option<Reventless.Plugin.eventDef> => {
-    let mkDef = (~variantName, ~properties) => {
-      let references =
-        properties
-        ->Dict.toArray
-        ->Array.filterMap(((fieldName, fieldSchema)) =>
-          Reventless.Reference.getFieldTarget(fieldSchema)->Option.map(target => (
-            {
-              Reventless.Plugin.fieldName,
-              entity: target.entity,
-              plugin: target.plugin,
-            }: Reventless.Plugin.fieldReference
-          ))
-        )
-      ({
-        Reventless.Plugin.name: variantName,
-        // Derived for the same reason as `commandDef.schema` above: an event's
-        // field markers are the write side's half of the same vocabulary.
-        schema: v->SuryToJsonSchema.deriveObjectSchema->JSON.stringify,
-        references,
-      }: Reventless.Plugin.eventDef)
-    }
-    switch v {
-    | Object({properties}) =>
-      properties
-      ->Dict.get("TAG")
-      ->Option.flatMap(tagSchema =>
-        switch tagSchema {
-        | String({const: ?Some(variantName)}) => Some(mkDef(~variantName, ~properties))
-        | _ => None
-        }
-      )
-    // Payload-less event variants (`| Archived`) compile to a bare string literal.
-    // DCB-projection lookups can't WHERE-clause on them, so they stay out of
-    // producedEventTypes/consumedEventTypes; but the full `events` list carries them
-    // so the event graph can still draw the emitted (orphan) event node.
-    | String({const: ?Some(variantName)}) => Some(mkDef(~variantName, ~properties=Dict.make()))
-    | _ => None
-    }
-  }
-
-  let extractEventDefs = (eventSchema: S.t<unknown>): array<Reventless.Plugin.eventDef> =>
-    switch eventSchema {
-    | AnyOf({anyOf}) => anyOf->Array.filterMap(toEventDef)
-    | _ => toEventDef(eventSchema)->Option.mapOr([], def => [def])
-    }
 
   // ── Per-component event type extraction ────────────────────────────────────
 

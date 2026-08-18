@@ -389,6 +389,154 @@ function extractErrorDefs(errorSchema) {
   }));
 }
 
+function isCreateCommandName(name) {
+  return [
+    "Add",
+    "Create",
+    "Register",
+    "Open",
+    "Initialize",
+    "Submit",
+    "Start",
+    "Place"
+  ].some(p => name.startsWith(p));
+}
+
+function commandLevelAndId(isAggregate, variantName, properties) {
+  if (isAggregate) {
+    if (isCreateCommandName(variantName)) {
+      return [
+        "Collection",
+        undefined
+      ];
+    } else {
+      return [
+        "Instance",
+        undefined
+      ];
+    }
+  }
+  let taggedFields = Object.entries(properties).filter(param => {
+    let fieldSchema = param[1];
+    if (param[0] !== "TAG") {
+      if (DcbTag$Reventless.isTagged(fieldSchema)) {
+        return true;
+      } else {
+        return DcbTag$Reventless.isTaggedArray(fieldSchema);
+      }
+    } else {
+      return false;
+    }
+  });
+  let taggedField = Stdlib_Option.orElse(taggedFields.find(param => DcbTag$Reventless.isPartitionTag(param[1])), taggedFields[0]);
+  if (taggedField === undefined) {
+    return [
+      "Collection",
+      undefined
+    ];
+  }
+  let fieldName = taggedField[0];
+  if (isCreateCommandName(variantName)) {
+    return [
+      "Collection",
+      fieldName
+    ];
+  } else {
+    return [
+      "Instance",
+      fieldName
+    ];
+  }
+}
+
+function accessKeysFor(rule) {
+  if (typeof rule !== "object") {
+    return;
+  }
+  let groups = rule._0;
+  if (groups.length !== 0) {
+    return groups;
+  }
+}
+
+function annotateArgTypes(schema, argTypes) {
+  Stdlib_Option.forEach(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(schema), o => o["properties"]), Stdlib_JSON.Decode.object), props => {
+    Object.entries(props).forEach(param => {
+      let match = argTypes[param[0]];
+      let match$1 = Stdlib_JSON.Decode.object(param[1]);
+      if (match !== undefined && match$1 !== undefined) {
+        match$1["x-reventless-graphql-type"] = match;
+        return;
+      }
+    });
+  });
+  return schema;
+}
+
+function toCommandDef(isAggregate, mutationFieldFor, parentSchema, commandAuthorization, v) {
+  let mkDef = (variantName, properties) => {
+    let match = commandLevelAndId(isAggregate, variantName, properties);
+    let references = extractReferences(properties);
+    let allowedStates = ApiAllowedStatesHelpers$ReventlessCore.getAllowedStates(parentSchema, variantName);
+    let targetState = ApiTargetStateHelpers$ReventlessCore.getTargetState(parentSchema, variantName);
+    let apiExposed = false;
+    if (!ApiNoApiHelpers$ReventlessCore.isNoApi(parentSchema)) {
+      let excluded = ApiNoApiHelpers$ReventlessCore.getExcludedVariants(parentSchema);
+      apiExposed = excluded !== undefined ? !excluded.has(variantName) : true;
+    }
+    let syntheticCommand = DcbTag$Reventless.isVariantPayloadBearing(parentSchema, variantName) ? ({
+        TAG: variantName
+      }) : variantName;
+    let requiredAccess = accessKeysFor(commandAuthorization(syntheticCommand));
+    let mutationField = apiExposed ? mutationFieldFor(variantName) : "";
+    let jsonSchema = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(v);
+    let annotatedSchema = apiExposed ? Stdlib_Option.mapOr(GraphQL_FragmentGenerator$ReventlessCore.mutationArgTypes(mutationField, v), jsonSchema, __x => annotateArgTypes(jsonSchema, __x)) : jsonSchema;
+    return {
+      name: variantName,
+      schema: JSON.stringify(annotatedSchema),
+      level: match[0],
+      aggregateIdField: match[1],
+      mutationField: mutationField,
+      references: references,
+      allowedStates: allowedStates,
+      targetState: targetState,
+      apiExposed: apiExposed,
+      requiredAccess: requiredAccess,
+      ownerField: Owner$Reventless.fieldNamesOfProperties(properties)[0]
+    };
+  };
+  switch (v.type) {
+    case "string" :
+      let variantName = v.const;
+      if (variantName !== undefined) {
+        return mkDef(variantName, {});
+      } else {
+        return;
+      }
+    case "object" :
+      let properties = v.properties;
+      return Stdlib_Option.flatMap(properties["TAG"], tagSchema => {
+        if (tagSchema.type !== "string") {
+          return;
+        }
+        let variantName = tagSchema.const;
+        if (variantName !== undefined) {
+          return mkDef(variantName, properties);
+        }
+      });
+    default:
+      return;
+  }
+}
+
+function extractCommandDefs(isAggregate, mutationFieldFor, commandAuthorization, commandSchema) {
+  if (commandSchema.type === "anyOf") {
+    return Stdlib_Array.filterMap(commandSchema.anyOf, v => toCommandDef(isAggregate, mutationFieldFor, commandSchema, commandAuthorization, v));
+  } else {
+    return Stdlib_Option.mapOr(toCommandDef(isAggregate, mutationFieldFor, commandSchema, commandAuthorization, commandSchema), [], def => [def]);
+  }
+}
+
 function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChangeSlicesOpt, automationSlicesOpt, outboundTranslationSlicesOpt, inboundTranslationSlicesOpt, extensionsOpt, extensionPointsOpt, componentChaptersOpt) {
   let aggregates = aggregatesOpt !== undefined ? aggregatesOpt : [];
   let readModels = readModelsOpt !== undefined ? readModelsOpt : [];
@@ -401,191 +549,6 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
   let extensionPoints = extensionPointsOpt !== undefined ? extensionPointsOpt : [];
   let componentChapters = componentChaptersOpt !== undefined ? componentChaptersOpt : ({});
   let qualify = (prefix, names) => names.map(n => prefix + "." + n);
-  let isCreateCommandName = name => [
-    "Add",
-    "Create",
-    "Register",
-    "Open",
-    "Initialize",
-    "Submit",
-    "Start",
-    "Place"
-  ].some(p => name.startsWith(p));
-  let commandLevelAndId = (isAggregate, variantName, properties) => {
-    if (isAggregate) {
-      if (isCreateCommandName(variantName)) {
-        return [
-          "Collection",
-          undefined
-        ];
-      } else {
-        return [
-          "Instance",
-          undefined
-        ];
-      }
-    }
-    let taggedFields = Object.entries(properties).filter(param => {
-      let fieldSchema = param[1];
-      if (param[0] !== "TAG") {
-        if (DcbTag$Reventless.isTagged(fieldSchema)) {
-          return true;
-        } else {
-          return DcbTag$Reventless.isTaggedArray(fieldSchema);
-        }
-      } else {
-        return false;
-      }
-    });
-    let taggedField = Stdlib_Option.orElse(taggedFields.find(param => DcbTag$Reventless.isPartitionTag(param[1])), taggedFields[0]);
-    if (taggedField === undefined) {
-      return [
-        "Collection",
-        undefined
-      ];
-    }
-    let fieldName = taggedField[0];
-    if (isCreateCommandName(variantName)) {
-      return [
-        "Collection",
-        fieldName
-      ];
-    } else {
-      return [
-        "Instance",
-        fieldName
-      ];
-    }
-  };
-  let accessKeysFor = rule => {
-    if (typeof rule !== "object") {
-      return;
-    }
-    let groups = rule._0;
-    if (groups.length !== 0) {
-      return groups;
-    }
-  };
-  let toCommandDef = (isAggregate, mutationFieldFor, parentSchema, commandAuthorization, v) => {
-    let mkDef = (variantName, properties) => {
-      let match = commandLevelAndId(isAggregate, variantName, properties);
-      let references = extractReferences(properties);
-      let allowedStates = ApiAllowedStatesHelpers$ReventlessCore.getAllowedStates(parentSchema, variantName);
-      let targetState = ApiTargetStateHelpers$ReventlessCore.getTargetState(parentSchema, variantName);
-      let apiExposed = false;
-      if (!ApiNoApiHelpers$ReventlessCore.isNoApi(parentSchema)) {
-        let excluded = ApiNoApiHelpers$ReventlessCore.getExcludedVariants(parentSchema);
-        apiExposed = excluded !== undefined ? !excluded.has(variantName) : true;
-      }
-      let syntheticCommand = DcbTag$Reventless.isVariantPayloadBearing(parentSchema, variantName) ? ({
-          TAG: variantName
-        }) : variantName;
-      let requiredAccess = accessKeysFor(commandAuthorization(syntheticCommand));
-      let mutationField = apiExposed ? mutationFieldFor(variantName) : "";
-      let jsonSchema = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(v);
-      let annotatedSchema = apiExposed ? Stdlib_Option.mapOr(GraphQL_FragmentGenerator$ReventlessCore.mutationArgTypes(mutationField, v), jsonSchema, __x => {
-          Stdlib_Option.forEach(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(jsonSchema), o => o["properties"]), Stdlib_JSON.Decode.object), props => {
-            Object.entries(props).forEach(param => {
-              let match = __x[param[0]];
-              let match$1 = Stdlib_JSON.Decode.object(param[1]);
-              if (match !== undefined && match$1 !== undefined) {
-                match$1["x-reventless-graphql-type"] = match;
-                return;
-              }
-            });
-          });
-          return jsonSchema;
-        }) : jsonSchema;
-      return {
-        name: variantName,
-        schema: JSON.stringify(annotatedSchema),
-        level: match[0],
-        aggregateIdField: match[1],
-        mutationField: mutationField,
-        references: references,
-        allowedStates: allowedStates,
-        targetState: targetState,
-        apiExposed: apiExposed,
-        requiredAccess: requiredAccess,
-        ownerField: Owner$Reventless.fieldNamesOfProperties(properties)[0]
-      };
-    };
-    switch (v.type) {
-      case "string" :
-        let variantName = v.const;
-        if (variantName !== undefined) {
-          return mkDef(variantName, {});
-        } else {
-          return;
-        }
-      case "object" :
-        let properties = v.properties;
-        return Stdlib_Option.flatMap(properties["TAG"], tagSchema => {
-          if (tagSchema.type !== "string") {
-            return;
-          }
-          let variantName = tagSchema.const;
-          if (variantName !== undefined) {
-            return mkDef(variantName, properties);
-          }
-        });
-      default:
-        return;
-    }
-  };
-  let extractCommandDefs = (isAggregate, mutationFieldFor, commandAuthorization, commandSchema) => {
-    if (commandSchema.type === "anyOf") {
-      return Stdlib_Array.filterMap(commandSchema.anyOf, v => toCommandDef(isAggregate, mutationFieldFor, commandSchema, commandAuthorization, v));
-    } else {
-      return Stdlib_Option.mapOr(toCommandDef(isAggregate, mutationFieldFor, commandSchema, commandAuthorization, commandSchema), [], def => [def]);
-    }
-  };
-  let toEventDef = v => {
-    let mkDef = (variantName, properties) => {
-      let references = Stdlib_Array.filterMap(Object.entries(properties), param => {
-        let fieldName = param[0];
-        return Stdlib_Option.map(Reference$Reventless.getFieldTarget(param[1]), target => ({
-          fieldName: fieldName,
-          entity: target.entity,
-          plugin: target.plugin
-        }));
-      });
-      return {
-        name: variantName,
-        schema: JSON.stringify(SuryToJsonSchema$ReventlessCore.deriveObjectSchema(v)),
-        references: references
-      };
-    };
-    switch (v.type) {
-      case "string" :
-        let variantName = v.const;
-        if (variantName !== undefined) {
-          return mkDef(variantName, {});
-        } else {
-          return;
-        }
-      case "object" :
-        let properties = v.properties;
-        return Stdlib_Option.flatMap(properties["TAG"], tagSchema => {
-          if (tagSchema.type !== "string") {
-            return;
-          }
-          let variantName = tagSchema.const;
-          if (variantName !== undefined) {
-            return mkDef(variantName, properties);
-          }
-        });
-      default:
-        return;
-    }
-  };
-  let extractEventDefs = eventSchema => {
-    if (eventSchema.type === "anyOf") {
-      return Stdlib_Array.filterMap(eventSchema.anyOf, toEventDef);
-    } else {
-      return Stdlib_Option.mapOr(toEventDef(eventSchema), [], def => [def]);
-    }
-  };
   let scsProduced = stateChangeSlices.map(SCS => [
     SCS.Spec.name,
     qualify(name, DcbTag$Reventless.extractVariantNames(SCS.Spec.eventSchema))
@@ -977,6 +940,12 @@ export {
   toEventDef,
   extractEventDefs,
   extractErrorDefs,
+  isCreateCommandName,
+  commandLevelAndId,
+  accessKeysFor,
+  annotateArgTypes,
+  toCommandDef,
+  extractCommandDefs,
   make,
 }
 /* log Not a pure module */

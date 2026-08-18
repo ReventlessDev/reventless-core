@@ -15,6 +15,17 @@
 open JestGlobals
 open Reventless.Plugin
 
+// The commands are derived from `PluginSpec.command` rather than hand-written, so
+// a test names one by looking it up. Raises rather than defaulting: a missing
+// variant is the failure these tests exist to catch, and a placeholder would let
+// the assertions below pass against nothing.
+let commandNamed = (name: string): commandDef =>
+  Platform_Admin_Structure.pluginCommands
+  ->Array.find(c => c.name == name)
+  ->Option.getOrThrow(~message=`Platform_Admin_Structure publishes no "${name}" command`)
+
+let activate = () => commandNamed("Activate")
+
 describe("the Plugins read model declares its lifecycle", () => {
   let rm: queryableDef = Platform_Admin_Structure.pluginReadModel
 
@@ -89,11 +100,59 @@ describe("the admin structure's declared transitions are checked", () => {
       ...Platform_Admin_Structure.pluginAggregate,
       commands: [
         {
-          ...Platform_Admin_Structure.activateCommand,
+          ...activate(),
           targetState: Some("Conected"),
         },
       ],
     }
     expect(raises([bogus]))->toEqual(true)
+  })
+})
+
+// The drift that made deriving these defs worth doing rather than tidy. The
+// hand-written arg schema described only `id`, while the SDL generated off the
+// same `commandSchema` declares `Platform_Plugin_Activate(_0: String!, id: ID!)`.
+// AutoUI builds its mutation document from the published schema, so it sent a
+// document missing a required argument and every admin row action was rejected at
+// GraphQL validation, before the aggregate saw it.
+describe("the Plugin command defs carry every argument the SDL requires", () => {
+  testSync("the version argument is published", () =>
+    expect(activate().schema->String.includes(`"_0"`))->toEqual(true)
+  )
+
+  testSync("and so is the aggregate id", () => {
+    // `id` is not in the command schema — it is the aggregate instance, injected
+    // by the auto-resolver flow. What the def has to get right is naming it, so
+    // the consumer declares the variable rather than guessing.
+    expect(activate().aggregateIdField)->toEqual(None)
+  })
+
+  testSync("the exposed commands name the field PluginBaseFragment generates", () =>
+    expect(
+      Platform_Admin_Structure.pluginCommands
+      ->Array.filter(c => c.apiExposed != Some(false))
+      ->Array.map(c => c.mutationField),
+    )->toEqual([
+      "Platform_Plugin_Activate",
+      "Platform_Plugin_Deactivate",
+      "Platform_Plugin_Retire",
+    ])
+  )
+
+  // The `@noApi` protocol variants come back from the same walk. They belong on
+  // the event graph — `Disconnect` is the only edge into `Disconnected` — but
+  // `Connect` carries a whole plugin definition, so publishing metadata about
+  // them must not publish a way to call them.
+  testSync("the internal commands are published as uncallable", () => {
+    let internal =
+      Platform_Admin_Structure.pluginCommands->Array.filter(c => c.apiExposed == Some(false))
+    expect(internal->Array.map(c => c.name))->toEqual([
+      "Heartbeat",
+      "Redetect",
+      "Connect",
+      "Disconnect",
+      "ReportIncompatibility",
+    ])
+    expect(internal->Array.every(c => c.mutationField == ""))->toEqual(true)
   })
 })
