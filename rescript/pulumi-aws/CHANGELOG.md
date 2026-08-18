@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.4.0-alpha.80 (2026-08-18)
+
+### Bug Fixes
+
+* **aws:** make the unowned stub callable on the doors that call it ([931aa39](https://github.com/ReventlessDev/reventless-core/commit/931aa3968ae0e29befab7183125ed2453d4765cb))
+### Features
+
+* **aws:** compile every resolver against AppSync before the deploy attaches one ([635bc26](https://github.com/ReventlessDev/reventless-core/commit/635bc265c63e19f1a69f31dfefe116b523b1c39b))
+
+
 # 2.4.0-alpha.79 (2026-08-18)
 
 ### Bug Fixes

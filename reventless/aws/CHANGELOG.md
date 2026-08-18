@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.308 (2026-08-18)
+
+### Bug Fixes
+
+* **aws:** make the unowned stub callable on the doors that call it ([931aa39](https://github.com/ReventlessDev/reventless-core/commit/931aa3968ae0e29befab7183125ed2453d4765cb))
+
+
 # 3.0.0-alpha.307 (2026-08-18)
 
 ### Bug Fixes
