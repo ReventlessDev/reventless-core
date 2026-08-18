@@ -167,7 +167,7 @@ function makeFromCodeAsset(name, unitKind, componentKind, code, sourceCodeHash, 
     });
   }
   let lambdaResource = Util_Lambda$ReventlessAws.functionToResource(tags, lambda);
-  Monitoring$ReventlessCore.notify(unitKind, name, lambdaResource);
+  Monitoring$ReventlessCore.notify(unitKind, name, lambdaResource, Util_LambdaLogging$ReventlessAws.logLocatorFor(logGroup, lambdaResource.name));
   return {
     parts: {
       lambda: Pulumi.output(lambda),

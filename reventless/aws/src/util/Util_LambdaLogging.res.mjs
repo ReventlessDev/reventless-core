@@ -2,6 +2,7 @@
 
 import * as Stdlib_Int from "@rescript/runtime/lib/es6/Stdlib_Int.js";
 import * as Aws from "@pulumi/aws";
+import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
@@ -54,6 +55,18 @@ function makeManagedLogGroup(name, retentionDaysOverride, tags, opts, param) {
   }, opts !== undefined ? Primitive_option.valFromOption(opts) : undefined));
 }
 
+function autoCreatedLogGroupNameFor(physicalName) {
+  return `/aws/lambda/` + physicalName;
+}
+
+function logLocatorFor(logGroup, physicalName) {
+  if (logGroup !== undefined) {
+    return logGroup.name;
+  } else {
+    return Output$Pulumi.map(physicalName, autoCreatedLogGroupNameFor);
+  }
+}
+
 function loggingConfigFor(logGroup) {
   return Stdlib_Option.map(logGroup, group => ({
     logFormat: "Text",
@@ -67,6 +80,8 @@ export {
   applyLogLevelDefault,
   logGroupNameFor,
   makeManagedLogGroup,
+  autoCreatedLogGroupNameFor,
+  logLocatorFor,
   loggingConfigFor,
 }
 /* @pulumi/aws Not a pure module */

@@ -124,6 +124,34 @@ let makeManagedLogGroup = (
   )
 }
 
+/** The group Lambda auto-creates for a function it was given no `loggingConfig`
+    for — keyed on the function's PHYSICAL name, suffix and all, which is the
+    whole reason it differs from the managed name above.
+
+    Kept here, beside `logGroupNameFor`, so both naming shapes a Lambda's logs can
+    take live in the one module that owns log-group naming and neither is
+    reconstructed at a call site. */
+let autoCreatedLogGroupNameFor = (~physicalName: string): string =>
+  `/aws/lambda/${physicalName}`
+
+/** Where a function's logs actually land, for a caller that wants to point
+    somebody at them (a monitoring backend stamping an address into an alert).
+
+    Which of the two shapes applies is decided by `makeManagedLogGroup`, from
+    stack configuration, and is invisible to anyone downstream — a consumer that
+    derives the name instead of asking would be right only on the stacks that
+    manage their groups and would send an operator to a group that does not exist
+    on the ones that do not. So the answer comes from the site that took the
+    branch, and the caller passes what it got back from `makeManagedLogGroup`. */
+let logLocatorFor = (
+  ~logGroup: option<Cloudwatch.LogGroup.t>,
+  ~physicalName: Pulumi.Output.t<string>,
+): Pulumi.Output.t<string> =>
+  switch logGroup {
+  | Some(group) => group.name
+  | None => physicalName->Pulumi.Output.map(n => autoCreatedLogGroupNameFor(~physicalName=n))
+  }
+
 // The `loggingConfig` that points a function at the group `makeManagedLogGroup`
 // just created. Reading `logGroup.name` is also what orders the two: Pulumi sees
 // the function depend on the group, so the group exists first and the function

@@ -355,7 +355,17 @@ let makeFromCodeAsset: (
   // Announce the provisioned execution unit to the Monitoring registry. No-op
   // unless a deploy program registered a backend via Monitoring.use — see
   // docs/plans/done/monitoring-hook-seam.md.
-  ReventlessCore.Monitoring.notify(~kind=unitKind, ~name, ~component=lambdaResource)
+  //
+  // `~logLocator` is resolved from the branch actually taken above: the managed
+  // group when one was created, the group Lambda auto-creates otherwise. This is
+  // the only place both are known, which is why the seam is told rather than
+  // leaving a backend to guess.
+  ReventlessCore.Monitoring.notify(
+    ~kind=unitKind,
+    ~name,
+    ~component=lambdaResource,
+    ~logLocator=Util_LambdaLogging.logLocatorFor(~logGroup, ~physicalName=lambdaResource.name),
+  )
 
   {
     parts: {lambda: lambda->Pulumi.Output.make, lambdaRole},

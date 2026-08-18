@@ -46,3 +46,30 @@ describe("Util_LambdaLogging.logGroupNameFor", () => {
     expect(nameFor(~name="AllReadModels"))->not_->toBe(autoCreated)
   })
 })
+
+// A Lambda's logs land in one of two differently-shaped groups, and which one is
+// a stack-configuration decision invisible outside this module. Anything that
+// wants to point a human at those logs has to be told which shape applied, so
+// both are pinned here — a consumer deriving one of them would be right on half
+// the estate and send an operator to a nonexistent group on the other half.
+describe("Util_LambdaLogging.autoCreatedLogGroupNameFor", () => {
+  testSync("is the group Lambda makes from the PHYSICAL name, suffix and all", () =>
+    expect(Util_LambdaLogging.autoCreatedLogGroupNameFor(~physicalName="AllReadModels-0287438"))
+    ->toBe("/aws/lambda/AllReadModels-0287438")
+  )
+
+  // The two shapes must not converge: the managed name is chosen from the static
+  // name so it survives a replacement, the auto-created one is not. If these ever
+  // matched, the managed group would be racing the auto-create it exists to avoid.
+  testSync("never equals the managed name for the same unit", () =>
+    expect(
+      Util_LambdaLogging.autoCreatedLogGroupNameFor(~physicalName="AllReadModels-0287438"),
+    )->not_->toBe(
+      Util_LambdaLogging.logGroupNameFor(
+        ~project="online-shop-catalog-aws",
+        ~stack="alpha",
+        ~name="AllReadModels",
+      ),
+    )
+  )
+})

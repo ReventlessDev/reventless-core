@@ -15,7 +15,7 @@ describe("Monitoring", () => {
   testSync("use registers a backend that receives every notify, role and name", () => {
     let recorded: array<(Monitoring.unitKind, string)> = []
     module Recorder: Monitoring.Backend = {
-      let onProvisioned = (~kind, ~name, ~component as _, ~plugin as _, ~platform as _) =>
+      let onProvisioned = (~kind, ~name, ~component as _, ~plugin as _, ~platform as _, ~logLocator as _) =>
         recorded->Array.push((kind, name))
     }
     Monitoring.use(module(Recorder: Monitoring.Backend))
@@ -39,7 +39,7 @@ describe("Monitoring", () => {
   testSync("notify forwards the static name and component resource to the backend", () => {
     let seen: ref<option<(string, ReventlessInfra.Adapter.resource)>> = ref(None)
     module Capture: Monitoring.Backend = {
-      let onProvisioned = (~kind as _, ~name, ~component, ~plugin as _, ~platform as _) =>
+      let onProvisioned = (~kind as _, ~name, ~component, ~plugin as _, ~platform as _, ~logLocator as _) =>
         seen := Some((name, component))
     }
     Monitoring.use(module(Capture: Monitoring.Backend))
@@ -56,7 +56,7 @@ describe("Monitoring", () => {
   testSync("notify delivers the ambient plugin/platform inside a construct scope, None outside", () => {
     let seen: array<(option<string>, option<string>)> = []
     module OwnerCapture: Monitoring.Backend = {
-      let onProvisioned = (~kind as _, ~name as _, ~component as _, ~plugin, ~platform) =>
+      let onProvisioned = (~kind as _, ~name as _, ~component as _, ~plugin, ~platform, ~logLocator as _) =>
         seen->Array.push((plugin, platform))
     }
     Monitoring.use(module(OwnerCapture: Monitoring.Backend))
@@ -77,6 +77,33 @@ describe("Monitoring", () => {
       (Some("Ordering"), Some("online-shop")),
       (None, None),
     ])
+
+    Monitoring.use(module(Monitoring.Noop))
+  })
+
+  // Unlike the owner, the locator is not ambient — the seam only forwards what the provisioning
+  // site passed. A site with nothing to say omits it, and the backend must see that as "this unit
+  // has no logs of its own" rather than receiving a fabricated address.
+  testSync("notify forwards the log locator when given one, None when omitted", () => {
+    // The registry only forwards the locator; it never resolves it. A structural stand-in keeps
+    // @pulumi/pulumi out of the Jest run, exactly as `stubResource` does.
+    let stubLocator: Pulumi.Output.t<string> = %raw(`{}`)
+    let seen: array<bool> = []
+    module LocatorCapture: Monitoring.Backend = {
+      let onProvisioned = (~kind as _, ~name as _, ~component as _, ~plugin as _, ~platform as _, ~logLocator) =>
+        seen->Array.push(logLocator->Option.isSome)
+    }
+    Monitoring.use(module(LocatorCapture: Monitoring.Backend))
+
+    Monitoring.notify(
+      ~kind=CommandHandler,
+      ~name="AllAggregatesCmdHandler",
+      ~component=stubResource,
+      ~logLocator=stubLocator,
+    )
+    Monitoring.notify(~kind=DeadLetterSink, ~name="DeadLetterQueue", ~component=stubResource)
+
+    expect(seen)->toEqual([true, false])
 
     Monitoring.use(module(Monitoring.Noop))
   })

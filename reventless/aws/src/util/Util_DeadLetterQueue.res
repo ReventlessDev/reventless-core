@@ -113,15 +113,20 @@ let handler = Lambda.Function.make(
   ~opts,
 )
 
-// Second Monitoring provisioning site (§2): the dead-letter mechanism. Role-based
+// Second Monitoring provisioning site: the dead-letter mechanism. Role-based
 // kind, mechanism-agnostic resource — no-op unless a backend is registered.
+let deadLetterResource = Util_Lambda.functionToResource(
+  handler,
+  ~tags=AWS.Tags.make(~name, ~kind=ReventlessCore.ComponentType.Plugin, ~role=DeadLetter, ~scope=Plugin)->Pulumi.Output.fromInput,
+)
+
 ReventlessCore.Monitoring.notify(
   ~kind=DeadLetterSink,
   ~name,
-  ~component=Util_Lambda.functionToResource(
-    handler,
-    ~tags=AWS.Tags.make(~name, ~kind=ReventlessCore.ComponentType.Plugin, ~role=DeadLetter, ~scope=Plugin)->Pulumi.Output.fromInput,
-  ),
+  ~component=deadLetterResource,
+  // This handler is built without a managed group, so its logs are in the one
+  // Lambda auto-creates from the physical name.
+  ~logLocator=Util_LambdaLogging.logLocatorFor(~logGroup=None, ~physicalName=deadLetterResource.name),
 )
 
 let lambda = handler->Pulumi.Output.make

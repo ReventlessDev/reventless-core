@@ -64,6 +64,16 @@ same stack, parented naturally.
 `AWS_Tags` uses). Both are `None` for substrate provisioned outside any plugin construct — the
 correct answer for platform-scope resources. A backend that names or routes its monitoring resources
 per plugin needs this: `~name` is only the component, and two plugins can own like-named components.
+
+`~logLocator` is the provider-native address of the unit's logs — an OPAQUE string core assigns no
+further meaning to (a CloudWatch log group name on one runtime, a namespace/selector on another),
+and `None` for a unit with no logs of its own. It exists because an alert is only half of what an
+operator needs: the notification a provider sends names the unit and the metric, never where to
+read what happened. A backend cannot reconstruct the address either — where a unit's logs land can
+depend on stack configuration the runtime backend resolved and did not record, so a derived guess is
+wrong exactly where it differs from the default. Like `~component`'s fields this is an `Output`, so
+it can only be used inside a resolution (a description, an annotation) and never as a synchronous
+logical resource name — which is no limitation for an address a human is meant to follow.
 */
 module type Backend = {
   let onProvisioned: (
@@ -72,12 +82,20 @@ module type Backend = {
     ~component: ReventlessInfra.Adapter.resource,
     ~plugin: option<string>,
     ~platform: option<string>,
+    ~logLocator: option<Pulumi.Output.t<string>>,
   ) => unit
 }
 
 /** Default backend: does nothing. Active unless an extension calls `use`. */
 module Noop: Backend = {
-  let onProvisioned = (~kind as _, ~name as _, ~component as _, ~plugin as _, ~platform as _) => ()
+  let onProvisioned = (
+    ~kind as _,
+    ~name as _,
+    ~component as _,
+    ~plugin as _,
+    ~platform as _,
+    ~logLocator as _,
+  ) => ()
 }
 
 let backend: ref<module(Backend)> = ref(module(Noop: Backend))
@@ -98,11 +116,15 @@ let notify = (
   ~kind: unitKind,
   ~name: string,
   ~component: ReventlessInfra.Adapter.resource,
+  ~logLocator: option<Pulumi.Output.t<string>>=?,
 ) => {
   module B = unpack(backend.contents)
   // The owning plugin/platform come from the ambient context the plugin builder publishes
   // (ResourceAttribution.enter) — populated exactly when this fires, so the call sites need not
   // thread the names. `None` outside a plugin construct (platform substrate).
   let {ResourceAttribution.plugin: plugin, platform} = ResourceAttribution.current.contents
-  B.onProvisioned(~kind, ~name, ~component, ~plugin, ~platform)
+  // `~logLocator`, unlike the owner, is NOT ambient: only the provisioning site knows where it
+  // pointed the unit's logs. So it is passed, and optional — a call site with nothing to say omits
+  // it rather than being forced to invent an address.
+  B.onProvisioned(~kind, ~name, ~component, ~plugin, ~platform, ~logLocator)
 }

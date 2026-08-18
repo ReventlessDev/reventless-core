@@ -74,7 +74,7 @@ repo/plan, not here.
 
 ## §2 — The unit's diagnostics locator
 
-**Status: proposed.**
+**Status: implemented.**
 
 ### Why
 
@@ -118,19 +118,30 @@ provisioning site, so `notify` cannot read it behind the call sites' backs.
    namespace/selector there. `None` means the unit has no log stream of its own. Keeping it opaque
    is what stops provider vocabulary leaking into the seam, exactly as `unitKind` describes a role
    rather than a mechanism.
-2. **`Monitoring.notify`** gains the same argument and forwards it. Unlike §1 this **does** change
-   `notify`'s signature — the value is not ambient — so both call sites are edited:
-   - `RuntimeEnvironment_Lambda` — passes the managed group's `name` when it created one, and
-     otherwise the provider default derived from the function's physical name, so the locator is
-     correct on both branches.
-   - `Util_DeadLetterQueue` — passes `None`; a queue has no log stream of its own.
-3. **`Util_LambdaLogging`** gains the derivation for the unmanaged default, next to `logGroupNameFor`,
-   so both naming shapes stay in the one module that owns log-group naming and neither is
-   reconstructed at a call site.
-4. **`Monitoring.Noop`** updated to the new signature.
-5. **`MonitoringTest`** — stub backends updated; add cases asserting the managed and unmanaged
-   branches each deliver the locator their group actually has, and that a unit with no logs delivers
-   `None`.
+2. **`Monitoring.notify`** gains the same argument and forwards it. Unlike §1 the value is not
+   ambient, so it has to be passed rather than read behind the call sites' backs. It is **optional**
+   on `notify` (`=?`) and required on `Backend` — a future provisioning site with nothing to say
+   omits it and still compiles, while a backend is always handed an explicit `None` rather than
+   having to know the argument might be absent.
+3. Both existing call sites supply one:
+   - `RuntimeEnvironment_Lambda` — the managed group's `name` when it created one, otherwise the
+     provider default derived from the function's physical name, so the locator is correct on both
+     branches.
+   - `Util_DeadLetterQueue` — **also a locator, not `None`.** The first draft of this plan assumed a
+     dead-letter sink was a bare queue with no logs of its own; it is not. The site provisions a
+     handler Lambda that deliberately fails its invocation (so the message is retained and `Errors`
+     stays non-zero), and that handler logs the payload it received — which is the single most
+     useful thing to read when a dead-letter alarm fires. It is built without a managed group, so
+     its locator is the auto-created shape.
+4. **`Util_LambdaLogging`** gains `autoCreatedLogGroupNameFor` and `logLocatorFor`, next to
+   `logGroupNameFor`, so both naming shapes stay in the one module that owns log-group naming and
+   neither is reconstructed at a call site.
+5. **`Monitoring.Noop`** updated to the new signature.
+6. **Tests** — `MonitoringTest` asserts the seam forwards a locator when given one and `None` when
+   omitted (a structural `%raw` stand-in keeps `@pulumi/pulumi` out of the Jest run, as the existing
+   `stubResource` does). `Util_LambdaLoggingTest` pins the auto-created shape and that it can never
+   converge with the managed one — if those two ever matched, the managed group would be racing the
+   auto-create it exists to avoid.
 
 The locator is an `Output`, so a backend can only use it *inside* a resolution (a description, an
 annotation, a tag) — never as a synchronous logical resource name. That is the same constraint §1
@@ -149,3 +160,10 @@ is always resolved content, never a graph-construction-time name.
 A monitoring extension can, once this ships and is published, put the locator into whatever its
 provider carries to a human — an alert description, an annotation, a runbook link. That work lives
 in the extension's own repo/plan, not here.
+
+**This is a breaking change for anything implementing `Backend`.** The module type gained a required
+argument, so an extension that packs its backend as
+`module(TheirBackend: ReventlessCore.Monitoring.Backend)` stops compiling on the version bump until
+`onProvisioned` takes `~logLocator`. Nothing in this repo implements the seam outside the tests, so
+the break surfaces at a consumer's pin bump rather than here — worth stating in the release notes
+rather than leaving it to be discovered.

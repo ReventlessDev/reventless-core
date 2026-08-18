@@ -85,7 +85,9 @@ let handler = new (Aws.lambda.Function)(name, {
   sourceCodeHash: sourceCodeHash
 }, opts);
 
-Monitoring$ReventlessCore.notify("DeadLetterSink", name, Util_Lambda$ReventlessAws.functionToResource(AWS_Tags$ReventlessAws.make(name, "Plugin", "DeadLetter", "Plugin", undefined, undefined, undefined, undefined), handler));
+let deadLetterResource = Util_Lambda$ReventlessAws.functionToResource(AWS_Tags$ReventlessAws.make(name, "Plugin", "DeadLetter", "Plugin", undefined, undefined, undefined, undefined), handler);
+
+Monitoring$ReventlessCore.notify("DeadLetterSink", name, deadLetterResource, Util_LambdaLogging$ReventlessAws.logLocatorFor(undefined, deadLetterResource.name));
 
 let lambda = Pulumi.output(handler);
 
@@ -177,6 +179,7 @@ export {
   sourceCodeHash,
   layers,
   handler,
+  deadLetterResource,
   lambda,
   esmTags,
   _subscription,

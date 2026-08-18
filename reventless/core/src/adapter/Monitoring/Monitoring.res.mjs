@@ -2,7 +2,7 @@
 
 import * as ResourceAttribution$ReventlessCore from "../../ResourceAttribution.res.mjs";
 
-function onProvisioned(param, param$1, param$2, param$3, param$4) {
+function onProvisioned(param, param$1, param$2, param$3, param$4, param$5) {
   
 }
 
@@ -18,10 +18,10 @@ function use(b) {
   backend.contents = b;
 }
 
-function notify(kind, name, component) {
+function notify(kind, name, component, logLocator) {
   let B = backend.contents;
   let match = ResourceAttribution$ReventlessCore.current.contents;
-  B.onProvisioned(kind, name, component, match.plugin, match.platform);
+  B.onProvisioned(kind, name, component, match.plugin, match.platform, logLocator);
 }
 
 export {
