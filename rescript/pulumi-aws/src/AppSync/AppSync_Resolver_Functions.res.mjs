@@ -113,7 +113,7 @@ function ownerScopedResultResponse(ownerField, elevatedGroups, retiredField, ret
     return resultResponseCode;
   }
   let ownerPart = ownerField !== undefined ? `
-  // ── owner scoping (generated) ──` + ownerGuardPreamble(ownerField, elevatedGroups) : "\n  const _owns = () => true;";
+  // ── owner scoping (generated) ──` + ownerGuardPreamble(ownerField, elevatedGroups) : "\n  const _owns = (row) => true;";
   let retiredPart = retiredGuardPreamble(retiredField, retiredValues, elevatedGroups, Stdlib_Option.isSome(ownerField));
   return `
 export function response(ctx) {
@@ -129,7 +129,7 @@ function ownerScopedFirstResultResponse(ownerField, elevatedGroups, retiredField
     return firstResultResponseCode;
   }
   let ownerPart = ownerField !== undefined ? `
-  // ── owner scoping (generated) ──` + ownerGuardPreamble(ownerField, elevatedGroups) : "\n  const _owns = () => true;";
+  // ── owner scoping (generated) ──` + ownerGuardPreamble(ownerField, elevatedGroups) : "\n  const _owns = (row) => true;";
   let retiredPart = retiredGuardPreamble(retiredField, retiredValues, elevatedGroups, Stdlib_Option.isSome(ownerField));
   return `
 export function response(ctx) {
@@ -948,7 +948,7 @@ export function response(ctx) {
 function refsByIds(labelField, retiredField, retiredValues, namedWhenRetired, ownerField, $staropt$star) {
   return tableName => {
     let elevatedGroups = $staropt$star !== undefined ? $staropt$star : [];
-    let ownerGuard = ownerField !== undefined ? ownerGuardPreamble(ownerField, elevatedGroups) : "\n  const _owns = () => true;";
+    let ownerGuard = ownerField !== undefined ? ownerGuardPreamble(ownerField, elevatedGroups) : "\n  const _owns = (row) => true;";
     let retiredExpr;
     if (retiredField !== undefined) {
       if (retiredValues !== undefined) {

@@ -225,7 +225,13 @@ let ownerScopedResultResponse = (
   | (None, None) => resultResponseCode
   | _ =>
     let ownerPart = switch ownerField {
-    | None => "\n  const _owns = () => true;"
+    // Takes the row it ignores: APPSYNC_JS type-checks the resolver, so a
+  // zero-parameter stub called as `_owns(row)` is TS2554 ("Expected 0
+  // arguments, but got 1") and AppSync rejects the whole resolver at create
+  // time with "The code contains one or more errors". Only a door that emits
+  // the call conditionally is safe with a bare `() => true`, and that is not a
+  // property worth relying on across three templates.
+  | None => "\n  const _owns = (row) => true;"
     | Some(field) =>
       `
   // ── owner scoping (generated) ──${ownerGuardPreamble(~ownerField=field, ~elevatedGroups)}`
@@ -254,7 +260,13 @@ let ownerScopedFirstResultResponse = (
   | (None, None) => firstResultResponseCode
   | _ =>
     let ownerPart = switch ownerField {
-    | None => "\n  const _owns = () => true;"
+    // Takes the row it ignores: APPSYNC_JS type-checks the resolver, so a
+  // zero-parameter stub called as `_owns(row)` is TS2554 ("Expected 0
+  // arguments, but got 1") and AppSync rejects the whole resolver at create
+  // time with "The code contains one or more errors". Only a door that emits
+  // the call conditionally is safe with a bare `() => true`, and that is not a
+  // property worth relying on across three templates.
+  | None => "\n  const _owns = (row) => true;"
     | Some(field) =>
       `
   // ── owner scoping (generated) ──${ownerGuardPreamble(~ownerField=field, ~elevatedGroups)}`
@@ -1335,7 +1347,13 @@ let refsByIds = (
   ~elevatedGroups: array<string>=[],
 ) => (tableName: string) => {
   let ownerGuard = switch ownerField {
-  | None => "\n  const _owns = () => true;"
+  // Takes the row it ignores: APPSYNC_JS type-checks the resolver, so a
+  // zero-parameter stub called as `_owns(row)` is TS2554 ("Expected 0
+  // arguments, but got 1") and AppSync rejects the whole resolver at create
+  // time with "The code contains one or more errors". Only a door that emits
+  // the call conditionally is safe with a bare `() => true`, and that is not a
+  // property worth relying on across three templates.
+  | None => "\n  const _owns = (row) => true;"
   | Some(field) => ownerGuardPreamble(~ownerField=field, ~elevatedGroups)
   }
   // Retirement, in the vocabulary the row itself uses: a member test for the

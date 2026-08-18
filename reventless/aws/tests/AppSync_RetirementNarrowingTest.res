@@ -270,3 +270,41 @@ describe("the by-index door's backward paging", () => {
     ->Expect.toEqual((true, true))
   })
 })
+
+// APPSYNC_JS is type-checked, so the emitted source has to type-check as well as
+// read correctly. The stub a door emits when a view declares no `@owner` is
+// still *called* with the row on the doors that narrow retirement, and a
+// zero-parameter `() => true` makes that call TS2554 — which AppSync reports at
+// create time as "The code contains one or more errors", failing the deploy on
+// a resolver whose text looks perfectly reasonable.
+describe("the unowned stub is callable where the door calls it", () => {
+  // Retirement without an owner is the combination that emits the stub and then
+  // calls it: with neither rule the guard is not emitted at all, and with an
+  // owner the real one-parameter test replaces it.
+  testSync("declares a parameter on the single-entity door", () => {
+    let code =
+      F.ownerScopedResultResponse(
+        ~ownerField=None,
+        ~elevatedGroups=elevated,
+        ~retiredField="lifecycle",
+        ~retiredValues=["Archived"],
+      )
+    expect((
+      code->String.includes("const _owns = (row) => true;"),
+      code->String.includes("const _owns = () => true;"),
+    ))->Expect.toEqual((true, false))
+  })
+
+  testSync("declares a parameter on the reference door", () => {
+    let code = F.refsByIds(
+      ~labelField="name",
+      ~retiredField=None,
+      ~retiredValues=None,
+      ~namedWhenRetired=false,
+    )("Products")
+    expect((
+      code->String.includes("const _owns = (row) => true;"),
+      code->String.includes("_owns(row)"),
+    ))->Expect.toEqual((true, true))
+  })
+})
