@@ -7,21 +7,10 @@ import * as PluginSpec$ReventlessCore from "../lifecycle/PluginSpec.res.mjs";
 import * as ApiNoApiHelpers$ReventlessCore from "../../components/Api/ApiNoApiHelpers.res.mjs";
 import * as PluginsReadModelSpec$ReventlessCore from "../lifecycle/PluginsReadModelSpec.res.mjs";
 
-let adminAuth = {
-  tableName: "Plugin",
-  group: "Admin"
-};
-
-let pluginExcludeFields = [
-  "eventCollector",
-  "extensionPointNames",
-  "extensionNames"
-];
-
-let pluginUIOnlyExcludeFields = pluginExcludeFields.concat([
+let pluginUIOnlyExcludeFields = [
   "apiSchemaFragment",
   "structure"
-]);
+];
 
 function indexQueriesOfConfig(config) {
   if (config.indexes.length !== 0) {
@@ -35,8 +24,8 @@ let queryEntries = [{
     returnTypeName: Api_Naming$ReventlessCore.adminField("Plugin"),
     stateSchema: PluginsReadModelSpec$ReventlessCore.stateSchema,
     specName: PluginsReadModelSpec$ReventlessCore.name,
-    authorization: adminAuth,
-    excludeFields: pluginExcludeFields,
+    authorization: undefined,
+    permission: PluginsReadModelSpec$ReventlessCore.authorization,
     subIdField: Stdlib_Option.map(undefined, c => c.subIdField),
     indexQueries: indexQueriesOfConfig(PluginsReadModelSpec$ReventlessCore.config)
   }];
@@ -53,11 +42,9 @@ let pluginAggregateMutationEntries = fieldNames.length === 0 ? [] : [{
     }];
 
 export {
-  adminAuth,
-  pluginExcludeFields,
   pluginUIOnlyExcludeFields,
   indexQueriesOfConfig,
   queryEntries,
   pluginAggregateMutationEntries,
 }
-/* pluginUIOnlyExcludeFields Not a pure module */
+/* queryEntries Not a pure module */

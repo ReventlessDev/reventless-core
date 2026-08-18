@@ -1,31 +1,20 @@
 open ReventlessInfra.Api
 
-let adminAuth: Reventless.ReadModel.authorization = {
-  tableName: "Plugin",
-  group: "Admin",
-}
-
-// Fields present on `PluginsReadModelSpec.state` for projection/storage purposes
-// but intentionally absent from the public GraphQL surface. Shared with
-// `Platform_Admin_Structure` so the schema announced via `Platform_ComponentDefinitions`
-// stays aligned with the SDL — otherwise AutoUI generates list-view queries
-// for fields the server doesn't expose and every Plugin row fails to load.
-let pluginExcludeFields: array<string> = [
-  "eventCollector",
-  "extensionPointNames",
-  "extensionNames",
-]
-
-// Additional fields the SDL exposes but the Plugin list view should NOT
-// surface — they're option-of-nested-object types (e.g. apiSchemaFragment,
-// structure) which AutoUI currently renders as scalar columns
-// and queries without a sub-selection, failing schema validation. Other
-// callers (host-shell's Platform_ComponentDefinitions) keep querying them via
-// dedicated fields and resolver paths.
-let pluginUIOnlyExcludeFields: array<string> = pluginExcludeFields->Array.concat([
+// Fields the SDL exposes but the Plugin list view should NOT surface — they are
+// option-of-nested-object types (`apiSchemaFragment`, `structure`) which AutoUI
+// renders as scalar columns and queries without a sub-selection, failing schema
+// validation. Other callers (the host shell's `Platform_ComponentDefinitions`)
+// keep querying them via dedicated fields and resolver paths, which is why they
+// stay on the surface rather than becoming `@internal`.
+//
+// The three projection/storage-only fields that used to head this list are gone:
+// `PluginsReadModelSpec` declares them `@internal`, so SDL generation and the
+// published state schema both drop them from the declaration itself. A list here
+// and a record over there had nothing keeping them in step.
+let pluginUIOnlyExcludeFields: array<string> = [
   "apiSchemaFragment",
   "structure",
-])
+]
 
 // Admin read-model query entries are generated from each spec the same way
 // ordinary read models are (Plugin_Builder.res): `subIdField` flows from the
@@ -57,8 +46,18 @@ let queryEntries: array<querySchemaEntry> = [
     listFieldName: Api_Naming.adminField(~name="Plugins"),
     returnTypeName: Api_Naming.adminField(~name="Plugin"),
     stateSchema: PluginsReadModelSpec.stateSchema->S.castToUnknown,
-    authorization: Some(adminAuth),
-    excludeFields: pluginExcludeFields,
+    // Read off the spec rather than restated. The hand-written
+    // `{tableName: "Plugin", group: "Admin"}` that used to sit here said the same
+    // thing as `Spec.authorization` in a different type, and the spec's default
+    // (`AllowAuthenticated`) disagreed with it — so the view's rule depended on
+    // which of the two a reader happened to find. The `tableName` half was never
+    // read: the entry path uses only the group, and the per-`@index` auth-table
+    // pipeline params come from `indexConfig.authorization`, which is untouched.
+    authorization: None,
+    permission: PluginsReadModelSpec.authorization,
+    // No `excludeFields`: the three fields this entry used to name are declared
+    // `@internal` on the spec, and `deriveObjectTypeWithNested` reads that off the
+    // schema itself.
     subIdField: ?PluginsReadModelSpec.subIdConfig->Option.map((c: Reventless.ReadModel.subIdConfig<_>) => c.subIdField),
     indexQueries: ?indexQueriesOfConfig(PluginsReadModelSpec.config),
   },
