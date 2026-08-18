@@ -178,6 +178,13 @@ enum Platform_PluginKind {
   PlatformInfrastructure
 }
 
+type Platform_PluginRef {
+  id: ID!
+  label: String!
+  retired: Boolean!
+  retiredState: String
+}
+
 enum Platform_PluginStatus {
   Connected
   Disconnected
@@ -295,6 +302,7 @@ type Query {
   Platform_PluginStructures: [Platform_PluginStructureEntry!]!
   Platform_Plugins(after: String, before: String, filter: Platform_PluginFilter, first: Int, includeRetired: Boolean, last: Int): Platform_PluginConnection!
   Platform_PluginsByIds(ids: [String!]!, includeRetired: Boolean): [Platform_Plugin!]!
+  Platform_PluginsRefs(ids: [ID!]!): [Platform_PluginRef!]!
   Platform_UIFragments: [Platform_UIFragmentEntry!]!
 }
 

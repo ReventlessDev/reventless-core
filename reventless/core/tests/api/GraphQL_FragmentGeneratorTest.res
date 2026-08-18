@@ -341,6 +341,30 @@ describe("GraphQL_FragmentGenerator.mutationArgTypes", () => {
   })
 })
 
+module RefDoorRow = {
+  @schema
+  type state = {id: string, name: string}
+}
+
+let queryFor = (fragment, needle) =>
+  GraphQL_Stitcher.decode(fragment).queries->Array.find(q => q->String.includes(needle))
+
+let refDoorFragment = (~subIdField=?) =>
+  GraphQL_FragmentGenerator.generate(
+    ~mutationEntries=[],
+    ~queryEntries=[
+      {
+        ReventlessInfra.Api.singleFieldName: "Catalog_Product",
+        listFieldName: "Catalog_Products",
+        returnTypeName: "Catalog_Product",
+        stateSchema: RefDoorRow.stateSchema->S.castToUnknown,
+        authorization: None,
+        connectionSpec: true,
+        subIdField: ?subIdField,
+      },
+    ],
+  )
+
 // What a caller holding a pointer to a withheld row may learn about it, and what
 // the two doors that could never answer for one can now be asked.
 describe("the reference door and the archive argument", () => {
@@ -368,6 +392,29 @@ describe("the reference door and the archive argument", () => {
         ~returnTypeName="Catalog_Product",
       ),
     )->toEqual("  Catalog_ProductsRefs(ids: [ID!]!): [Catalog_ProductRef!]!")
+  )
+
+  // Every assertion above reads a `derive*` helper directly, which is how a door
+  // that no `generate` call emitted still passed them all: the SDL both AppSync
+  // APIs are built from comes from `generate`, while the adapter provisions a
+  // `<list>Refs` resolver per queryable on the premise that it is declared there.
+  // AppSync rejects a resolver for a field its schema does not have, so the
+  // mismatch surfaced as a failed deploy rather than a missing feature.
+  testSync("emits the door from generate, not only from the helper", () =>
+    expect((
+      queryFor(refDoorFragment(), "Catalog_ProductsRefs(ids: [ID!]!)")->Option.isSome,
+      typeDefFor(refDoorFragment(), "type Catalog_ProductRef")->Option.isSome,
+    ))->toEqual((true, true))
+  )
+
+  // The condition the resolver side uses, mirrored: a composite-key view gets no
+  // door, because the read behind it is a BatchGetItem that would need both keys.
+  // Emitting the field for one would restore the same mismatch, reversed.
+  testSync("withholds the door from a composite-key view", () =>
+    expect((
+      queryFor(refDoorFragment(~subIdField="lineNo"), "Catalog_ProductsRefs")->Option.isSome,
+      typeDefFor(refDoorFragment(~subIdField="lineNo"), "type Catalog_ProductRef")->Option.isSome,
+    ))->toEqual((false, false))
   )
 
   // The dead end this closes: the archive toggle put retired rows on screen and

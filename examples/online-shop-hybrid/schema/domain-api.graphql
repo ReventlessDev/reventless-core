@@ -918,6 +918,13 @@ enum Platform_PluginKind {
   PlatformInfrastructure
 }
 
+type Platform_PluginRef {
+  id: ID!
+  label: String!
+  retired: Boolean!
+  retiredState: String
+}
+
 enum Platform_PluginStatus {
   Connected
   Disconnected

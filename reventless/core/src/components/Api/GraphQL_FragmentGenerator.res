@@ -747,6 +747,23 @@ let generate = (
           ~returnTypeName=entry.returnTypeName,
         ),
       )
+
+      // The reference door, under the by-ids condition because it is the same
+      // read. Emitted here rather than per-backend so the field a backend
+      // provisions a resolver for is one this SDL declares: the AppSync adapter
+      // registers `<list>Refs` for every queryable on exactly that premise, and
+      // a door named in one half and not the other fails the deploy outright.
+      let refTypeName = entry.returnTypeName ++ "Ref"
+      if !(seenTypes->Set.has(refTypeName)) {
+        seenTypes->Set.add(refTypeName)
+        types->Array.push(deriveRefTypeSdl(~returnTypeName=entry.returnTypeName))
+      }
+      queries->Array.push(
+        deriveRefsQueryField(
+          ~listFieldName=entry.listFieldName,
+          ~returnTypeName=entry.returnTypeName,
+        ),
+      )
     }
 
     let listFieldName = entry.listFieldName

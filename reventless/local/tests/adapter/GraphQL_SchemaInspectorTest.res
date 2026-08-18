@@ -542,13 +542,15 @@ describe("GraphQL_SchemaInspector", () => {
         ],
       )
       let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
-      // TestState, TestStateEdge, TestStateConnection, TestStateFilter (Phase 4 connection filter)
+      // TestState, TestStateEdge, TestStateConnection, TestStateFilter (connection filter)
+      // + TestStateRef (the reference door's projection)
       // + CommandResult union + CommandAccepted + CommandRejected + CommandPending
       // (auto-injected whenever the fragment emits any mutation field).
-      expect(inspection.types->Array.length)->toBe(8)
+      expect(inspection.types->Array.length)->toBe(9)
       expect(inspection.mutations->Array.length)->toBe(1)
-      // single Test_State(id), list Test_States(...), and Test_StatesByIds(ids: [String!]!)
-      expect(inspection.queries->Array.length)->toBe(3)
+      // single Test_State(id), list Test_States(...), Test_StatesByIds(ids: [String!]!)
+      // and Test_StatesRefs(ids: [ID!]!) — the by-ids read projected to a reference.
+      expect(inspection.queries->Array.length)->toBe(4)
       expect(inspection.sdlPreview->String.includes("type TestState"))->toBe(true)
       expect(inspection.sdlPreview->String.includes("type TestStateEdge"))->toBe(true)
       expect(inspection.sdlPreview->String.includes("type TestStateConnection"))->toBe(true)

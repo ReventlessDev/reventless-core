@@ -506,6 +506,12 @@ function generate(mutationEntries, queryEntries) {
     queries.push(singleField);
     if (includeIdParam && entry.subIdField === undefined) {
       queries.push(deriveByIdsQueryField(entry.listFieldName, entry.returnTypeName));
+      let refTypeName = entry.returnTypeName + "Ref";
+      if (!seenTypes.has(refTypeName)) {
+        seenTypes.add(refTypeName);
+        types.push(deriveRefTypeSdl(entry.returnTypeName));
+      }
+      queries.push(deriveRefsQueryField(entry.listFieldName, entry.returnTypeName));
     }
     let listFieldName = entry.listFieldName;
     let _sf = entry.subIdField;
