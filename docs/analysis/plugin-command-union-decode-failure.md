@@ -4,8 +4,9 @@
 **Status:** Open — found while verifying step 0 of
 [admin-structure-derived-from-specs.md](../plans/admin-structure-derived-from-specs.md);
 neither caused nor fixed by it.
-**Where it bites:** every local platform. Almost certainly AWS too, though only local
-was driven.
+**Where it bites:** every local platform, and AWS equally — the affected schemas live in
+`reventless-core` and `reventless-infra` and are shared by both, though only local was
+driven. Three unions are broken today, not one; see *Where else it already bites*.
 
 An analysis rather than a plan: the cause is upstream of this repo, so what to do
 about it is a decision, not a task list.
@@ -51,35 +52,97 @@ Accepted, logged, dropped. The caller is told it worked.
 | `Retire(version)` | 8th | **fails** |
 
 `Disconnect` and `Heartbeat` have identical shapes (`{TAG, _0: string}`) and disagree,
-so it is not the payload — it is the position. Everything at and after the third
-variant fails.
+so it is not the payload. The same `pluginDefinition` parses fine on its own against
+the same `Plugin.pluginDefinitionSchema` — it is only inside the union that it breaks,
+and it takes its successors with it.
 
-The third variant is the first whose payload contains a **nested union**.
-`pluginDefinition` has three: `apiSchemaFragment` (offload envelope | inline | null),
-`structure` (the same), and `kind` (a literal union). Minimal repro, plain sury
-11.0.0-rc.1, no Reventless code:
+The reason is visible in the parser sury generates for the union. It collapses a
+**contiguous run of two or more statically-checkable object variants** into one inner
+dispatch block, and guards that block with "is this an object?" rather than with the
+TAGs the block actually handles:
 
 ```js
-const mk = (payload) => S.union([
-  S.$schema(s => ({ TAG: "One",   _0: s.m(S.string) })),
-  S.$schema(s => ({ TAG: "Two",   _0: s.m(S.string) })),
-  S.$schema(s => ({ TAG: "Three", _0: s.m(payload) })),
-  S.$schema(s => ({ TAG: "Four",  _0: s.m(S.string) })),
-])
-
-// payload = S.schema({ a: S.string })                     → all four parse
-// payload = S.schema({ a: S.string, kind: S.union([…]) })  → One, Two parse;
-//                                                            Three, Four fail
+i => { for(;;) {
+  if (typeof i === "object" && i && !Array.isArray(i)) {   // guard omits the TAG
+    for(;;) {
+      if (i["TAG"] === "Heartbeat") { … break }
+      if (i["TAG"] === "Redetect")  { … break }
+      e[2](i)                        // ← every other object throws here
+    };
+    break                            // ← and this exits the outer dispatch
+  }
+  if (… && i["TAG"] === "Connect")    { … }   // unreachable
+  if (… && i["TAG"] === "Disconnect") { … }   // unreachable
+  …
+} }
 ```
 
-The same `pluginDefinition` parses fine on its own, against the same
-`Plugin.pluginDefinitionSchema` — it is only inside the union that it breaks, and it
-takes its successors with it.
+Every object entering the parser is captured by the grouped block. A TAG the group
+does not know hits its fall-through throw, and the trailing `break` means the branches
+below are dead code. So the rule is:
 
-So: a **sury union whose variant payload contains a union** stops parsing at that
-variant, and every later variant becomes unreachable. Nothing about this is specific
-to `PluginSpec`; any `@schema type command` with a rich payload mid-list is exposed,
-which makes it a framework-wide exposure rather than one component's bug.
+> A grouped run of ≥2 variants that is **not the last group in the union** strands
+> every variant after it.
+
+`Heartbeat` and `Redetect` both carry `version` (a bare string), so they group;
+`Connect` carries a union-bearing payload and cannot join them; the group is therefore
+not last, and variants 3–8 are unreachable. The position of the *first union-bearing
+payload* is what decides where the stranding starts — not the payload itself.
+
+Two things follow that are easy to get wrong:
+
+- **The trigger is wider than "a nested union".** An `option` or nullable field is a
+  union in sury, so any record payload with one qualifies. And the leading run need not
+  be uniform — two variants with *different* plain record payloads still group.
+  Payload-less variants (bare literals) do **not** group: they serialise as strings,
+  not objects, so they never enter the object-guarded block.
+- **Leading is safe; third-or-later is not.** A union-bearing payload at position 1 or 2
+  leaves the whole union working, because it gets its own TAG-guarded branch and the
+  group that follows it is last. At position 3, 4, or even *last of five*, that variant
+  and all successors fail.
+
+Nothing here is specific to `PluginSpec`. This is a sury codegen regression, and any
+`@schema` variant type whose first union-bearing payload sits third or later is exposed.
+
+### Where else it already bites
+
+A sweep of the 109 tagged-union schemas compiled in this repo — detecting a non-final
+grouped block in the generated parser, each hit confirmed by round-trip — finds three,
+not one. The sweep is not exhaustive: 25 modules (all test files, which need Jest
+globals to import) could not be loaded.
+
+| Schema | Reachable | Stranded |
+|---|---|---|
+| `PluginSpec.commandSchema` | `Heartbeat`, `Redetect` | `Connect`, `Disconnect`, `Activate`, `Deactivate`, `ReportIncompatibility`, `Retire` |
+| `PluginExtensionPointSpec.directiveSchema` | `CreateDisconnectSchedule`, `DeleteDisconnectSchedule` | `DoConnectPlugin`, `DoDisconnectPlugin`, `ForwardCommand` |
+| hybrid catalog `Products.consumedEventSchema` | `ProductAdded`, `ProductNameChanged`, `ProductDescriptionChanged` | `ProductPriceChanged`, `ProductImageChanged`, `ProductArchived`, `ProductUnarchived`, `ProductDiscontinued` |
+
+The second is arguably the more serious: it sits in `reventless-infra`, and
+`DoConnectPlugin` is the handshake directive itself. The third is a projection silently
+dropping five of its eight event types.
+
+`PluginSpec.eventSchema` is **not** affected, and its shape shows why the rule is about
+grouping rather than richness: its six consecutive `pluginDefinition` variants form a
+group, but that group is last, so nothing is stranded.
+
+### Which sury versions
+
+The grouped-loop codegen is absent from every published bundle through
+`11.0.0-alpha.11` and present in `11.0.0-rc.0` and `11.0.0-rc.1` (the pinned version).
+The optimization — and this failure mode with it — landed in **`rc.0`**.
+
+`rc.1` is the newest published version, so there is nothing to move forward to. Moving
+backward is not a version pin: the schema-building API changed at both the
+alpha→rc boundary (`$schema`/`s.m` vs `schema`/`s.matches`) and the v10→v11 boundary, and
+sury-ppx emits against the v11 API — so a downgrade is a codegen change across every
+`@schema` type in the repo, onto releases carrying their own known regressions.
+
+Reported upstream as [DZakh/sury#392](https://github.com/DZakh/sury/issues/392)
+(filed 2026-08-18, open); the source text is in
+[sury-union-regression-issue.md](sury-union-regression-issue.md). sury's tracker shows a
+cluster of other regressions from the same rc line
+([#347](https://github.com/DZakh/sury/issues/347) open, #351/#369 closed) — #347 is the
+closest neighbour and may share a cause, but it is on the encode path.
 
 ## Why nothing caught it
 
@@ -95,10 +158,17 @@ variant would have been diagnosable from the first boot log.
 on the command topic, where nothing reports back. `eventCount: 0` is the only tell,
 and it is also what a legitimately idempotent command returns.
 
-The tests do not cover it because they exercise `decide` directly, against ReScript
-values that never round-trip through the schema. That is the gap worth closing
-whatever is done about the cause: a command union that cannot decode its own
-constructors is a property worth asserting per spec, not per aggregate.
+**The tests only ever encode.** Every test touching `PluginSpec.commandSchema` calls
+`Message.encode` — `MessageTest` even builds a full `Connect` and encodes it, and
+encoding works fine for all eight variants. Nothing decodes a command, so the one
+direction that is broken is the one direction untested. (`PluginSpec.eventSchema` *is*
+decoded, by `PluginLifecycleCorpusTest` and `PluginEventDecodeTest` — and it is the
+schema that happens to be unaffected.)
+
+That is the gap worth closing whatever is done about the cause: a command union that
+cannot decode its own constructors is a property worth asserting per spec, not per
+aggregate. The sweep used here is cheap enough to be that assertion — it needs no
+fixture values, only the generated parser, and it caught all three cases.
 
 ## What it means for the work around it
 
@@ -115,14 +185,31 @@ publishes) is unaffected, and is what those steps were verified against.
 
 ## Options
 
-1. **Reorder the variants** so every rich payload sits last. Cheapest, and a
-   workaround that will be forgotten and re-broken by the next variant added.
-2. **Pin or bump sury.** 11.0.0-rc.1 is a release candidate; check whether a later
-   build fixes it, and report upstream if not. The minimal repro above is the report.
+1. **Reorder the variants so a union-bearing payload comes _first_.** Verified against
+   the real schemas: `Connect`/`ReportIncompatibility` moved to the front makes all
+   eight parse. Note this is the *opposite* of the intuitive fix — moving them last
+   leaves the six-variant `version` run leading and non-final, and they still fail.
+   Cheapest, and a workaround that will be forgotten and re-broken by the next
+   variant added.
+2. **Wait for the upstream fix.** Filed as
+   [DZakh/sury#392](https://github.com/DZakh/sury/issues/392). This is the only option
+   that removes the bug rather than dodging it, but it is not on our clock — and there
+   is no version to bump to meanwhile, since `rc.1` is the newest published and
+   downgrading is a codegen change, not a pin (see *Which sury versions*). Assume a
+   local workaround is needed regardless.
 3. **Flatten `pluginDefinition`'s unions** — resolve the offload envelope before
    decode rather than modelling it in the schema. Largest change, and it removes the
-   shape rather than working around it.
+   shape rather than working around it. Does not help `directiveSchema` or
+   `Products.consumedEventSchema`, which are broken by different payloads.
 
-Whichever: **log the decode reason properly first.** It is three lines in
-`CommandTopic_Callback`, it is independent of the fix, and without it the next
-occurrence is as opaque as this one.
+Whichever: **log the decode reason properly first, and add the sweep as a test.**
+
+The logging is three lines in `CommandTopic_Callback`, independent of the fix, and
+without it the next occurrence is as opaque as this one. The error sury raises is a
+`SuryError` carrying `RE_EXN_ID: "S.Exn"` — a JS `Error` instance, but not a ReScript
+`JsExn`, which is why `JsExn.fromException` yields `None` and the message is replaced
+by `"unknown"`. The full text (`Expected { TAG: "Heartbeat"; … }`) is sitting on the
+exception the whole time.
+
+The sweep matters more than any single fix: option 1 is per-union and will drift, and
+the two cases outside `PluginSpec` show the exposure is not where anyone was looking.
