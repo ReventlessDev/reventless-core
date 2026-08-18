@@ -11,7 +11,7 @@
   "dependencies": {
     "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
     "@reventlessdev/reventless-aws": "workspace:*",
-    "@reventlessdev/reventless-host-shell": "3.0.0-alpha.76",
+    "@reventlessdev/reventless-host-shell": "3.0.0-alpha.78",
     "@reventlessdev/reventless-infra": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*",
     "sury": "11.0.0-rc.1"
