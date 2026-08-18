@@ -207,9 +207,16 @@ generated like any other.
 
 Even without A or B:
 
-1. Move `allowedStates` for `Activate` / `Deactivate` to `@allowedStates` annotations on `PluginSpec.command`
+1. ✅ **Done.** Move `allowedStates` for `Activate` / `Deactivate` to annotations on `PluginSpec.command`
    and have `Platform_Admin_Structure` read them via `ApiAllowedStatesHelpers` instead of literals — removes
    the behavior-drift hazard immediately.
+
+   The annotation shipped as `@transition`, which supersedes the `@allowedStates` / `@targetState` pair this
+   document was written against and carries the **target** state as well as the from-set. That turned out to
+   matter: the literals had drifted in three ways (`Activate` missing `Retired`, every `targetState` `None`,
+   `Retire` absent entirely), and the missing targets were why the Plugins lifecycle board drew four states
+   and no edges between them. See
+   [admin-readmodel-full-harmonization.md](../plans/Backlog/admin-readmodel-full-harmonization.md) item 3.2.
 2. Collapse the three manual seed sites behind one helper (`Platform_Admin.seedAdminStructure(store)`) so a
    new consumer can't forget one.
 3. Keep `pluginExcludeFields` already shared (it is) and add a compile-time assertion that the structure's

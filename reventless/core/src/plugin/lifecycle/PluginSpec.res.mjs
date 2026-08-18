@@ -100,6 +100,46 @@ let commandSchema$1 = Api$ReventlessInfra.markNoApiVariants(commandSchema, [
   "ReportIncompatibility"
 ]);
 
+let commandSchema$2 = Api$ReventlessInfra.markAllowedStates(commandSchema$1, [
+  [
+    "Activate",
+    [
+      "Inactive",
+      "Retired"
+    ]
+  ],
+  [
+    "Deactivate",
+    [
+      "Connected",
+      "Disconnected"
+    ]
+  ],
+  [
+    "Retire",
+    [
+      "Connected",
+      "Disconnected",
+      "Inactive"
+    ]
+  ]
+]);
+
+let commandSchema$3 = Api$ReventlessInfra.markTargetState(commandSchema$2, [
+  [
+    "Activate",
+    "Connected"
+  ],
+  [
+    "Deactivate",
+    "Inactive"
+  ],
+  [
+    "Retire",
+    "Retired"
+  ]
+]);
+
 function commandAuthorization(param) {
   return "AllowAuthenticated";
 }
@@ -108,15 +148,18 @@ let name = "Plugin";
 
 let Id;
 
+let Plugins;
+
 let moduleUrl = "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginSpec.res.mjs";
 
 export {
   name,
   Id,
+  Plugins,
   versionSupersededDataSchema,
   eventSchema,
   errorSchema,
-  commandSchema$1 as commandSchema,
+  commandSchema$3 as commandSchema,
   moduleUrl,
   commandAuthorization,
 }

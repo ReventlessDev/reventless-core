@@ -12,6 +12,8 @@ import * as Plugin_Structure$ReventlessCore from "../plugin/component/Plugin_Str
 import * as SuryToJsonSchema$ReventlessCore from "../components/Api/SuryToJsonSchema.res.mjs";
 import * as PluginBaseFragment$ReventlessCore from "../plugin/api/PluginBaseFragment.res.mjs";
 import * as PluginsReadModelSpec$ReventlessCore from "../plugin/lifecycle/PluginsReadModelSpec.res.mjs";
+import * as ApiTargetStateHelpers$ReventlessCore from "../components/Api/ApiTargetStateHelpers.res.mjs";
+import * as ApiAllowedStatesHelpers$ReventlessCore from "../components/Api/ApiAllowedStatesHelpers.res.mjs";
 
 let pluginId = "Platform";
 
@@ -43,64 +45,32 @@ let idArgsSchema = Sury.$schema(s => ({
   id: s.m(DcbTag$Reventless.string)
 }));
 
-let activateCommand_schema = encodeSchema(idArgsSchema);
+function lifecycleCommand(name) {
+  return {
+    name: name,
+    schema: encodeSchema(idArgsSchema),
+    level: "Instance",
+    aggregateIdField: "id",
+    mutationField: Api_Naming$ReventlessCore.adminField(PluginSpec$ReventlessCore.name + "_" + name),
+    references: [],
+    allowedStates: ApiAllowedStatesHelpers$ReventlessCore.getAllowedStates(PluginSpec$ReventlessCore.commandSchema, name),
+    targetState: ApiTargetStateHelpers$ReventlessCore.getTargetState(PluginSpec$ReventlessCore.commandSchema, name),
+    apiExposed: true,
+    requiredAccess: undefined,
+    ownerField: undefined
+  };
+}
 
-let activateCommand_aggregateIdField = "id";
+let activateCommand = lifecycleCommand("Activate");
 
-let activateCommand_mutationField = Api_Naming$ReventlessCore.adminField("Plugin_Activate");
+let deactivateCommand = lifecycleCommand("Deactivate");
 
-let activateCommand_references = [];
-
-let activateCommand_allowedStates = ["Inactive"];
-
-let activateCommand_apiExposed = true;
-
-let activateCommand = {
-  name: "Activate",
-  schema: activateCommand_schema,
-  level: "Instance",
-  aggregateIdField: activateCommand_aggregateIdField,
-  mutationField: activateCommand_mutationField,
-  references: activateCommand_references,
-  allowedStates: activateCommand_allowedStates,
-  targetState: undefined,
-  apiExposed: activateCommand_apiExposed,
-  requiredAccess: undefined,
-  ownerField: undefined
-};
-
-let deactivateCommand_schema = encodeSchema(idArgsSchema);
-
-let deactivateCommand_aggregateIdField = "id";
-
-let deactivateCommand_mutationField = Api_Naming$ReventlessCore.adminField("Plugin_Deactivate");
-
-let deactivateCommand_references = [];
-
-let deactivateCommand_allowedStates = [
-  "Connected",
-  "Disconnected"
-];
-
-let deactivateCommand_apiExposed = true;
-
-let deactivateCommand = {
-  name: "Deactivate",
-  schema: deactivateCommand_schema,
-  level: "Instance",
-  aggregateIdField: deactivateCommand_aggregateIdField,
-  mutationField: deactivateCommand_mutationField,
-  references: deactivateCommand_references,
-  allowedStates: deactivateCommand_allowedStates,
-  targetState: undefined,
-  apiExposed: deactivateCommand_apiExposed,
-  requiredAccess: undefined,
-  ownerField: undefined
-};
+let retireCommand = lifecycleCommand("Retire");
 
 let pluginAggregate_commands = [
   activateCommand,
-  deactivateCommand
+  deactivateCommand,
+  retireCommand
 ];
 
 let pluginAggregate_producedEventTypes = [];
@@ -195,14 +165,19 @@ let structure = {
 
 let pluginName = pluginId;
 
+let commandSchema = PluginSpec$ReventlessCore.commandSchema;
+
 export {
   pluginId,
   pluginName,
   encodeSchema,
   encodeSchemaExcluding,
   idArgsSchema,
+  commandSchema,
+  lifecycleCommand,
   activateCommand,
   deactivateCommand,
+  retireCommand,
   pluginAggregate,
   pluginReadModel,
   structure,

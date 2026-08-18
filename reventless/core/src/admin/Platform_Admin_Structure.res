@@ -51,8 +51,8 @@ let encodeSchemaExcluding = (schema: S.t<unknown>, ~excludeFields: array<string>
   }
 }
 
-// Args schema for the synthetic Auto UI metadata. Activate/Deactivate are payload-less
-// `PluginSpec.command` variants on the wire — the auto-resolver flow injects `id: ID!`.
+// Args schema for the synthetic Auto UI metadata. The lifecycle commands are
+// payload-less `PluginSpec.command` variants on the wire — the auto-resolver flow injects `id: ID!`.
 // Keep a local schema here so Auto UI's command-form metadata stays accurate.
 @schema
 type idArgs = {id: @s.matches(Reventless.DcbTag.string) string}
@@ -62,41 +62,46 @@ type idArgs = {id: @s.matches(Reventless.DcbTag.string) string}
 // Instance-level command whose schema has a DCB-tagged id field; the
 // hand-rolled definitions below have to mirror that.
 
-// `allowedStates` mirrors the PluginBehavior accept/reject branches: Activate
-// is meaningful only on Inactive plugins; Deactivate is meaningful on
-// Connected or Disconnected ones. Strings here must match the variant
-// constructor names that PluginsReadModelSpec.status serialises to.
-let activateCommand: commandDef = {
-  name: "Activate",
+let commandSchema = PluginSpec.commandSchema->S.castToUnknown
+
+// The one part of a lifecycle command this file still decides. Everything the
+// board reads — the states the command runs from, the state it lands in — is
+// read off `PluginSpec.command`'s `@transition` annotations through the same
+// helpers `Plugin_Structure.toCommandDef` uses for an ordinary aggregate.
+//
+// It was written out as literals here, which meant tracking
+// `PluginBehavior.decide` by hand, and the copy had drifted in three ways at
+// once: `Activate` is accepted on `Retired` as well as `Inactive`, every
+// `targetState` was `None` — which AutoUI reads as the positive claim that the
+// command does not move the row, so the Plugins board drew four states and no
+// edges between them — and `Retire` had no definition at all despite
+// `Platform_Plugin_Retire` being a live mutation.
+//
+// `mutationField` is composed the same way `PluginBaseFragment` composes the
+// field it generates, so the two cannot name it differently.
+let lifecycleCommand = (~name: string): commandDef => {
+  name,
   schema: idArgsSchema->S.castToUnknown->encodeSchema,
   level: Instance,
   aggregateIdField: Some("id"),
-  mutationField: Api_Naming.adminField(~name="Plugin_Activate"),
+  mutationField: Api_Naming.adminField(~name=PluginSpec.name ++ "_" ++ name),
   references: [],
-  allowedStates: Some(["Inactive"]),
-  targetState: None,
+  allowedStates: ApiAllowedStatesHelpers.getAllowedStates(commandSchema, ~variantName=name),
+  targetState: ApiTargetStateHelpers.getTargetState(commandSchema, ~variantName=name),
   apiExposed: Some(true),
   requiredAccess: None,
   ownerField: None,
 }
 
-let deactivateCommand: commandDef = {
-  name: "Deactivate",
-  schema: idArgsSchema->S.castToUnknown->encodeSchema,
-  level: Instance,
-  aggregateIdField: Some("id"),
-  mutationField: Api_Naming.adminField(~name="Plugin_Deactivate"),
-  references: [],
-  allowedStates: Some(["Connected", "Disconnected"]),
-  targetState: None,
-  apiExposed: Some(true),
-  requiredAccess: None,
-  ownerField: None,
-}
+let activateCommand: commandDef = lifecycleCommand(~name="Activate")
+
+let deactivateCommand: commandDef = lifecycleCommand(~name="Deactivate")
+
+let retireCommand: commandDef = lifecycleCommand(~name="Retire")
 
 let pluginAggregate: writableDef = {
   name: "Plugin",
-  commands: [activateCommand, deactivateCommand],
+  commands: [activateCommand, deactivateCommand, retireCommand],
   producedEventTypes: [],
   consumedEventTypes: [],
   linkedViews: ["Plugins"],

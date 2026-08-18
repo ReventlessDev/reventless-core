@@ -23,8 +23,8 @@ Three independent work items, each shippable on its own:
 
 1. **Retire `Platform_UIFragments_Lambda`** — serve `UIFragmentRegistry` through the
    standard auto-generated read-model path.
-2. **Derive `allowedStates`** from `@allowedStates` annotations instead of
-   hand-writing them in `Platform_Admin_Structure`.
+2. **Derive the lifecycle metadata** from `@transition` annotations instead of
+   hand-writing it in `Platform_Admin_Structure`.
 3. **(Maximal) Route admin read models entirely through the ordinary component
    pipeline** — the full version of the parity-gap plan's Part 1.
 
@@ -35,7 +35,7 @@ Three independent work items, each shippable on its own:
 | Item | Status | Notes |
 |---|---|---|
 | 3.1 — retire `Platform_UIFragments_Lambda` | ⬜ backlog | **cross-repo:** SDL shape flat `[X!]!` → `Connection` breaks the host-shell consumer |
-| 3.2 — derive `allowedStates` from `@allowedStates` | ⬜ backlog | self-contained in core |
+| 3.2 — derive lifecycle metadata from `@transition` | ✅ done | fixed three drifts; SDL unchanged |
 | 3.3 — route admin read models through the ordinary pipeline | ⬜ backlog | largest; subsumes parity-gap Part 1's minimal form |
 
 ---
@@ -71,26 +71,55 @@ fire.
 
 ---
 
-## Item 3.2 — Derive `allowedStates` from `@allowedStates`
+## Item 3.2 — Derive lifecycle metadata from `@transition` — ✅ done
 
-The Plugin aggregate's command-visibility-by-state metadata (`allowedStates` for
-`Activate` / `Deactivate` / `Retire`) is **hand-written** in
-[`Platform_Admin_Structure.res`](../../../reventless/reventless-core/src/admin/Platform_Admin_Structure.res),
-not derived from `@allowedStates` annotations on the spec like every other aggregate
-(harmonization analysis §1).
+The Plugin aggregate's lifecycle metadata was **hand-written** in
+[`Platform_Admin_Structure.res`](../../../reventless/core/src/admin/Platform_Admin_Structure.res),
+not derived from annotations on the spec like every other aggregate (harmonization
+analysis §1).
 
-**Work:**
-- Annotate the Plugin spec command variants with `@allowedStates(...)` and let
-  `ApiAllowedStatesHelpers` / `Plugin_Structure.make` derive the metadata, removing
-  the hand-written `allowedStates` from `Platform_Admin_Structure`.
-- Keep the emitted structure byte-stable vs today (regression check on the AutoUI
-  command-visibility behaviour).
+**The annotation is `@transition`, not `@allowedStates`.** This item was written
+before [lifecycle-transition-annotation.md](../lifecycle-transition-annotation.md)
+replaced the `@allowedStates` / `@targetState` pair with the single `@transition`
+attribute; the removed attributes are now a hard PPX error. The distinction matters
+here rather than being cosmetic: `@allowedStates` carried only the from-set, and it
+is the **target** that AutoUI needs to draw an edge.
 
-**Risk:** low — self-contained in core; the admin aggregate would consume the same
-PPX-emitted metadata path ordinary aggregates use.
+**Byte-stability was the wrong acceptance criterion**, because the hand-written copy
+was wrong in three ways at once, and preserving it would have preserved all three:
 
-**Verification:** the Plugins admin UI shows `Activate` only on `Inactive` / `Retired`
-rows and `Deactivate` only on `Connected` / `Disconnected` rows, unchanged.
+| Drift | Symptom |
+|---|---|
+| `Activate` declared `["Inactive"]` | `PluginBehavior.decide` also accepts `Retired`; the archive looked one-way |
+| every `targetState` was `None` | `AutoStatusTransitions.declaresNoMove` reads `(Some(from), None)` as the positive claim that the command does not move the row — so the Plugins lifecycle board drew four states and **no edges at all** |
+| `Retire` had no `commandDef` | `Platform_Plugin_Retire` is a live mutation; the `Retired` column read "No commands available" and nothing pointed into it |
+
+**Done:**
+- `PluginSpec.command`'s three admin variants carry `@transition`, naming the same
+  edges `PluginBehavior.decide` accepts.
+- `Platform_Admin_Structure` reads `allowedStates` / `targetState` off
+  `PluginSpec.commandSchema` through `ApiAllowedStatesHelpers` /
+  `ApiTargetStateHelpers` — the same helpers `Plugin_Structure.toCommandDef` uses —
+  and composes `mutationField` the way `PluginBaseFragment` composes the field it
+  generates, so the two cannot name it differently.
+- `retireCommand` added to `pluginAggregate.commands`.
+
+**Verified:** full build zero warnings; 346 suites / 3453 tests green;
+`pnpm run check:graphql` unchanged (the `Plugin_Retire` mutation already existed in
+the SDL — only the structure metadata was missing it). Emitted defs:
+
+```
+Activate   | from: ["Inactive","Retired"]                  | to: "Connected" | Platform_Plugin_Activate
+Deactivate | from: ["Connected","Disconnected"]            | to: "Inactive"  | Platform_Plugin_Deactivate
+Retire     | from: ["Connected","Disconnected","Inactive"] | to: "Retired"   | Platform_Plugin_Retire
+```
+
+**Left for 3.3:** the `@noApi` protocol variants (`Heartbeat`, `Connect`,
+`Disconnect`, `Redetect`, `ReportIncompatibility`) still have no `commandDef`. The
+ordinary path emits them with `apiExposed: false` for the event-graph badge; here
+they are simply absent. Harmless for the lifecycle board, which only reads
+Instance-level exposed commands, and it falls out of routing the admin through the
+generic pipeline rather than being worth a fourth hand-written record.
 
 ---
 
@@ -123,7 +152,7 @@ AutoUI renders all admin views; no hand-rolled admin fragment code remains.
 
 Independent items; suggested order if pursued:
 
-1. **3.2** first (low-risk, self-contained, immediate cleanup).
+1. ~~**3.2** first (low-risk, self-contained, immediate cleanup).~~ Done.
 2. **3.1** when a coordinated `reventless-ui` host-shell change can be scheduled.
 3. **3.3** last (or instead of the parity-gap plan's minimal Part 1 if tackled up
    front) — the consolidation that makes 3.1's SDL half fall out for free.
