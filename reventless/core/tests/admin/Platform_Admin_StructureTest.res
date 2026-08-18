@@ -195,3 +195,84 @@ describe("the internal commands declare the edges they move rows along", () => {
     )->toEqual([])
   )
 })
+
+// One rule, read on both sides of the wire. `PluginBaseFragment` hand-wrote an
+// `Admin` Cognito gate while the spec defaulted to `AllowAuthenticated`, and the
+// published `requiredAccess` said `None` — so a shell was told the Plugins view
+// was open to everyone and the server refused anyone outside `Admin`. The
+// mismatch is invisible until a non-admin clicks the page.
+describe("the Plugins view publishes the rule the server enforces", () => {
+  testSync("the spec declares the group", () =>
+    expect(PluginsReadModelSpec.authorization)->toEqual(
+      Reventless.Authorization.AllowGroups(["Admin"]),
+    )
+  )
+
+  testSync("and the published access keys are derived from it", () =>
+    expect(Platform_Admin_Structure.pluginReadModel.requiredAccess)->toEqual(Some(["Admin"]))
+  )
+
+  // The API entry reads the same binding rather than restating it, so the two
+  // cannot be edited apart.
+  testSync("the query entry carries the spec's rule and no hand-written pair", () => {
+    let entry = PluginBaseFragment.queryEntries->Array.getUnsafe(0)
+    expect((entry.permission, entry.authorization))->toEqual((
+      Some(PluginsReadModelSpec.authorization),
+      None,
+    ))
+  })
+})
+
+// The `queryableDef` is derived from the spec, not hand-written. The analysis
+// that preceded this expected the admin's naming to be bespoke and it is not:
+// `Api_Naming.queryFieldNamesForReadModel` returns byte-identical names, because
+// `singularize` already handles the plural-spec-name / singular-type shape that
+// looked special. Asserted rather than assumed — the whole case for deriving
+// rests on the generic helpers reaching the same answers.
+describe("the Plugins queryableDef is what the generic helpers produce", () => {
+  let rm: queryableDef = Platform_Admin_Structure.pluginReadModel
+
+  testSync("the field names are the generic ones", () =>
+    expect((rm.queryField, rm.singleQueryField))->toEqual((
+      "Platform_Plugins",
+      Some("Platform_Plugin"),
+    ))
+  )
+
+  testSync("the label ladder reaches the same field, by convention", () =>
+    expect((rm.labelField, rm.labelFieldSource, rm.searchableFields))->toEqual((
+      "name",
+      Some("convention"),
+      ["name"],
+    ))
+  )
+
+  // The row id is `name@version` and the state carries the two halves
+  // separately, never the composed key — so `None` is the honest answer, and it
+  // is the one the resolver ladder reaches on its own.
+  testSync("the key ladder finds no id field, as the hand-written def claimed", () =>
+    expect((rm.idField, rm.idFieldSource))->toEqual((None, None))
+  )
+
+  // The last hand-written list here. `apiSchemaFragment` and `structure` are on
+  // the API — the shell queries them through dedicated resolver paths — but
+  // AutoUI would name them in a generated list query without a sub-selection.
+  // `@hidden` on the spec replaces this once every shell skips hidden fields in
+  // its selection; until the pin moves, declaring it would take the page down.
+  testSync("the two narrowed fields are absent from the published schema", () => {
+    // Read as property NAMES, not as substrings of the JSON: the schema carries
+    // nested object types whose own fields would match a naive `includes`.
+    let props =
+      rm.schema
+      ->JSON.parseExn
+      ->JSON.Decode.object
+      ->Option.flatMap(o => o->Dict.get("properties"))
+      ->Option.flatMap(JSON.Decode.object)
+      ->Option.mapOr([], Dict.keysToArray)
+    expect((
+      props->Array.includes("apiSchemaFragment"),
+      props->Array.includes("structure"),
+      props->Array.includes("statusChange"),
+    ))->toEqual((false, false, true))
+  })
+})

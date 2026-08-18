@@ -1,6 +1,7 @@
 # Plan: Derive the platform's own component metadata from its specs
 
-**Status:** Steps 0, 1 and 3a landed. Steps 2 (other repo), 3, 4, 5 open.
+**Status:** DONE — every step landed 2026-08-18. One follow-on is deliberately
+held back: see "The lockstep that remains" at the end.
 **Date:** 2026-08-18
 **Analysis it produced:** [plugin-command-union-decode-failure.md](../analysis/plugin-command-union-decode-failure.md)
 — found while verifying step 0, unrelated to this plan, and the reason
@@ -148,7 +149,7 @@ touch that file anyway. `pluginExcludeFields` (the three storage-only fields) st
 regardless until step 3: those are absent from the SDL, not merely unwanted, and
 `@hidden` does not remove a field from the surface.
 
-### Step 3 — `@internal`: a field that is not on the GraphQL surface
+### Step 3 — `@internal`: a field that is not on the GraphQL surface — **DONE**
 
 The one genuinely new primitive. A field that exists in the record and in storage but
 is not exposed:
@@ -208,6 +209,33 @@ check.
 
 Re-scoping to `Plugins` only is therefore **not** indicated.
 
+**What landed.** `@internal` on a record field, collected by the PPX into
+`stateAnnotationSpec.internal` and honoured in exactly the two places the survey
+named:
+
+- `SuryToJsonSchema.objectRefToJsonSchema` **drops** the property rather than
+  marking it. A marker is right for a field that is on the surface and merely
+  unwanted — that is `@hidden`; this one is not on the surface, so an entry would
+  describe a field the SDL does not declare. Every JSON-Schema consumer
+  (`queryableDef.schema`, MCP, the manifest) inherits it from that one walk.
+- `GraphQL_FragmentGenerator.deriveObjectTypeWithNested` reads it off the schema
+  and unions it into the caller's `excludeFields`. Every generated object type is
+  derived there, so no query entry has to say anything.
+
+The conflict check runs **before** `OwnerInference`, which strips `@owner` on its
+way through — a check placed with the other visibility validation silently passed
+the one pairing that most wants catching, and the PPX test that caught that is
+worth keeping. `@lifecycle` was added to the plan's rejection list for the same
+reason the others are on it: it names the enum a board draws its columns from.
+
+`PluginsReadModelSpec` now declares the three fields, `pluginExcludeFields` is
+gone, and the generated SDL is **byte-identical** — which is the right outcome for
+a mechanical replacement, and the check that it was one.
+
+**Verified** on the live platform: the SDL still rejects `eventCollector` at
+validation, and the published `queryableDef.schema` no longer lists it either —
+the two agreeing without two lists to keep in step being the whole point.
+
 **Why it is worth a primitive rather than a special case:** a read model's
 `@schema type state` is today simultaneously the storage shape and the API shape,
 with no way to separate them. `Plugins` hits this hardest, but denormalised
@@ -266,7 +294,7 @@ it makes the published graph complete and lets the topology check pass honestly.
 (`mutationField: ""`) and must stay uncallable — `Connect` carries a whole plugin
 definition. Publishing metadata about an edge is not publishing a way to invoke it.
 
-### Step 4 — Declare the read model's authorization on the spec
+### Step 4 — Declare the read model's authorization on the spec — **DONE**
 
 `PluginBaseFragment.adminAuth = {tableName: "Plugin", group: "Admin"}` is
 hand-written. The spec carries only `authorization = AllowAuthenticated`, which is a
@@ -275,7 +303,31 @@ different type (query permission, not the AppSync group gate). Per-`@index`
 
 Make it declarable on the spec, then read it rather than restate it.
 
-### Step 5 — Derive the `queryableDef`
+**It was already declarable; nobody had declared it.** `@@reventless.authorize`
+sets `Spec.authorization`, and `querySchemaEntry.permission` already outranks the
+legacy `{tableName, group}` pair on AppSync. So the work was not a new primitive —
+it was noticing that three statements of one rule existed and one of them was
+wrong:
+
+| Where | Said |
+|---|---|
+| `PluginsReadModelSpec.authorization` | `AllowAuthenticated` (the PPX default — nobody wrote it) |
+| `PluginBaseFragment.adminAuth` | Cognito group `Admin` |
+| the local platform | every `Platform_*` field behind an `Admin` wrapper |
+
+`PluginsReadModelSpec` now declares `AllowGroups(["Admin"])`, the entry passes
+`permission: PluginsReadModelSpec.authorization`, and `adminAuth` is deleted. The
+`tableName` half was never read on this path — only `{group}` is destructured, and
+the per-`@index` auth-table pipeline params come from `indexConfig.authorization`,
+which is untouched.
+
+**The payoff is UI-visible.** `requiredAccess` on the published def was `None` —
+"open to everyone" — while the server refused anyone outside `Admin`, so a shell
+offered the Plugins page and then met a refusal. It is now `["Admin"]`, derived
+through the same `accessKeysFor` every ordinary read model's goes through.
+Verified live.
+
+### Step 5 — Derive the `queryableDef` — **DONE**
 
 With 2–4 in place, the remaining fields (`queryField`, `singleQueryField`,
 `labelField`, `searchableFields`, `idField`, `schema`) come from the generic helpers.
@@ -284,6 +336,25 @@ With 2–4 in place, the remaining fields (`queryField`, `singleQueryField`,
 Needs a structure-assembly entry point that takes **specs** rather than functor
 modules — the Force 1 accommodation. That entry point is the deliverable, not a
 workaround.
+
+**The entry point is `Plugin_Structure.queryableDefFromSpec`**, taking the schemas
+the extractors need rather than a `module(ReadModel.T)` the platform cannot hand
+itself. `Platform_Admin_Structure.pluginReadModel` is now one call to it.
+
+Every derived field matches what was hand-written, and the analysis's central
+claim held: the naming is not bespoke.
+
+| Field | Derived | Was |
+|---|---|---|
+| `queryField` / `singleQueryField` | `Platform_Plugins` / `Platform_Plugin` | identical |
+| `labelField` / `labelFieldSource` | `name` / `convention` | identical (hand-rolled as "convention") |
+| `searchableFields` | `["name"]` | identical |
+| `lifecycleField` | `status` | identical |
+| `idField` / `idFieldSource` | `None` / `None` | identical — the ladder reaches `None` on its own, exactly as the hand-written comment predicted |
+| `requiredAccess` | `["Admin"]` | `None` — **corrected**, see step 4 |
+
+`encodeSchemaExcluding` moved from the admin module to `Plugin_Structure` beside
+the entry point, since it is now a parameter of it rather than a local trick.
 
 ---
 
@@ -327,3 +398,29 @@ publishes — which is the thing they change — plus the full suite (346 suites
 tests) and the PPX suite. Restore the shell check as soon as the decode bug is fixed;
 step 1 in particular changes the schema AutoUI builds forms from, and a form is worth
 seeing.
+
+
+---
+
+## The lockstep that remains
+
+One follow-on is deliberately **not** done, and it is the last hand-written field
+list in `Platform_Admin_Structure`:
+
+```rescript
+~excludeFields=PluginBaseFragment.pluginUIOnlyExcludeFields,   // apiSchemaFragment, structure
+```
+
+Those two fields are genuinely on the API — the host shell queries them through
+dedicated resolver paths — so `@internal` is the wrong marker. `@hidden` is the
+right one, and it now works: the consuming repo skips hidden fields in its query
+selection. But **a platform declaring it against an older shell would take the
+Plugins page down**, because that shell would still select the two fields and fail
+validation on the sub-selection.
+
+So it waits for the consuming repo to publish and the pin to move. When it does:
+put `@hidden` on `apiSchemaFragment` and `structure` in `PluginsReadModelSpec`,
+drop the `~excludeFields` argument, and delete `pluginUIOnlyExcludeFields`. The
+test `the two narrowed fields are absent from the published schema` should keep
+passing across the change — that is what makes it a safe swap rather than a
+behaviour change.

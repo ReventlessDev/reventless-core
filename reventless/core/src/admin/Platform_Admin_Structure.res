@@ -19,37 +19,6 @@ let pluginId = "Platform"
 
 let pluginName = pluginId
 
-// Strip the named fields from a derived JSON schema's `properties` map and
-// `required` list. Used so Plugin read model metadata announced via
-// `Platform_ComponentDefinitions` matches the SDL — fields excluded from the GraphQL
-// schema in `PluginBaseFragment` must also disappear from the schema string
-// AutoUI consumes, or list-view queries will reference non-existent fields.
-let encodeSchemaExcluding = (schema: S.t<unknown>, ~excludeFields: array<string>): string => {
-  let derived = schema->SuryToJsonSchema.deriveObjectSchema
-  switch derived->JSON.Decode.object {
-  | None => derived->JSON.stringify
-  | Some(obj) =>
-    switch obj->Dict.get("properties")->Option.flatMap(JSON.Decode.object) {
-    | None => derived->JSON.stringify
-    | Some(props) =>
-      excludeFields->Array.forEach(f => props->Dict.delete(f))
-      obj->Dict.set("properties", props->JSON.Encode.object)
-      switch obj->Dict.get("required")->Option.flatMap(JSON.Decode.array) {
-      | None => ()
-      | Some(req) =>
-        let filtered =
-          req
-          ->Array.filterMap(JSON.Decode.string)
-          ->Array.filter(name => !(excludeFields->Array.includes(name)))
-          ->Array.map(JSON.Encode.string)
-          ->JSON.Encode.array
-        obj->Dict.set("required", filtered)
-      }
-      obj->JSON.Encode.object->JSON.stringify
-    }
-  }
-}
-
 let commandSchema = PluginSpec.commandSchema->S.castToUnknown
 
 // Every variant of `PluginSpec.command`, walked by the same `extractCommandDefs`
@@ -87,42 +56,24 @@ let pluginAggregate: writableDef = {
   chapter: None,
 }
 
-let pluginReadModel: queryableDef = {
-  name: "Plugins",
-  queryField: Api_Naming.adminField(~name="Plugins"),
-  schema: PluginsReadModelSpec.stateSchema
-  ->S.castToUnknown
-  ->encodeSchemaExcluding(~excludeFields=PluginBaseFragment.pluginUIOnlyExcludeFields),
-  consumedEventTypes: [],
-  linkedWriteSide: ["Plugin"],
-  labelField: "name",
-  searchableFields: ["name"],
-  // Hand-rolled rather than resolved, but the rung is the same one
-  // `labelFieldsFromStateSchema` would report for a field literally named `name`.
-  labelFieldSource: Some("convention"),
-  // Derived from the spec's `@lifecycle` rather than restated here.
-  lifecycleField: Plugin_Structure.lifecycleFieldFromStateSchema(
-    ~entityName=PluginsReadModelSpec.name,
-    PluginsReadModelSpec.stateSchema->S.castToUnknown,
-  ),
-  visibility: None,
-  chapter: None,
-  // The admin fragment hand-declares its query names rather than deriving them from
-  // the read-model name, so the singular is taken from the same call
-  // `PluginBaseFragment.queryNames.singleFieldName` makes — not singularised here.
-  singleQueryField: Some(Api_Naming.adminField(~name="Plugin")),
-  // No key field to name: the row id is `name@version` (`Plugin.makeId`), and the
-  // state carries the two halves separately rather than the composed key. `None`
-  // is the honest answer — the same one the resolver ladder reaches for a state
-  // with no `*Id` field.
-  idField: None,
-  idFieldSource: None,
-  requiredAccess: None,
-  ownerField: None,
-  retiredField: None,
-  retiredValues: None,
-  namedWhenRetired: None,
-}
+let pluginReadModel: queryableDef = Plugin_Structure.queryableDefFromSpec(
+  ~plugin=pluginId,
+  ~name=PluginsReadModelSpec.name,
+  ~stateSchema=PluginsReadModelSpec.stateSchema->S.castToUnknown,
+  ~authorization=PluginsReadModelSpec.authorization,
+  ~linkedWriteSide=["Plugin"],
+  // The two fields the generated list view must not name. They ARE on the API —
+  // the host shell queries them through dedicated resolver paths — but they are
+  // `option`-of-nested-object types that AutoUI renders as scalar columns and
+  // queries without a sub-selection, which fails validation.
+  //
+  // This is the last hand-written field list here, and it is a lockstep away
+  // from going: once every shell skips `@hidden` fields in its query selection,
+  // `@hidden` on the two spec fields replaces it. That waits for the consuming
+  // repo to publish and the pin to move — a platform declaring it against an
+  // older shell would take the Plugins page down.
+  ~excludeFields=PluginBaseFragment.pluginUIOnlyExcludeFields,
+)
 
 let structure: pluginStructure = {
   readModels: [pluginReadModel],

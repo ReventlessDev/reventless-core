@@ -852,6 +852,114 @@ let extractCommandDefs = (
     )->Option.mapOr([], def => [def])
   }
 
+// Omitted for the default `Public` so a published def stays compact: absent and
+// "public" are the same answer, and writing one would make every ordinary view
+// carry a word that says nothing.
+let visibilityTag = (v: Reventless.Visibility.t): option<string> =>
+  switch v {
+  | Public => None
+  | Internal => Some("Internal")
+  }
+
+// Strip named fields from a derived JSON schema's `properties` and `required`.
+//
+// The narrow companion to `@internal`, and the two are not alternatives. A field
+// declared `@internal` is off the surface entirely and this never sees it. This
+// is for a caller that publishes a NARROWED view of a schema whose fields are
+// genuinely on the API — the admin's `apiSchemaFragment` / `structure`, which
+// other callers query through dedicated resolver paths and only the generated
+// list view must not name.
+let encodeSchemaExcluding = (schema: S.t<unknown>, ~excludeFields: array<string>): string => {
+  let derived = schema->SuryToJsonSchema.deriveObjectSchema
+  if excludeFields->Array.length == 0 {
+    derived->JSON.stringify
+  } else {
+    switch derived->JSON.Decode.object {
+    | None => derived->JSON.stringify
+    | Some(obj) =>
+      switch obj->Dict.get("properties")->Option.flatMap(JSON.Decode.object) {
+      | None => derived->JSON.stringify
+      | Some(props) =>
+        excludeFields->Array.forEach(f => props->Dict.delete(f))
+        obj->Dict.set("properties", props->JSON.Encode.object)
+        switch obj->Dict.get("required")->Option.flatMap(JSON.Decode.array) {
+        | None => ()
+        | Some(req) =>
+          let filtered =
+            req
+            ->Array.filterMap(JSON.Decode.string)
+            ->Array.filter(name => !(excludeFields->Array.includes(name)))
+            ->Array.map(JSON.Encode.string)
+            ->JSON.Encode.array
+          obj->Dict.set("required", filtered)
+        }
+        obj->JSON.Encode.object->JSON.stringify
+      }
+    }
+  }
+}
+
+/**
+ A read model's published `queryableDef`, assembled from its **spec** rather than
+ from a built component.
+
+ `make` cannot serve the platform's own components: it takes
+ `module(ReadModel.T)` values, and the platform has no built module to hand
+ itself at structure-assembly time — the components it is describing are the ones
+ being assembled. That is a real constraint and this routes around it rather than
+ pretending it away, by taking the schemas the extractors actually need.
+
+ Everything here is the same helper `make` calls on the same schema, so the
+ platform's own view is described by the mechanism that describes everyone
+ else's. The alternative — a hand-written record — is what let the admin's
+ metadata drift from the SDL generated off the same spec, four times over.
+
+ `queryField` and `singleQueryField` come from `Api_Naming`, which is the only
+ place that decides how a name singularises. For the admin these are
+ byte-identical to the names it used to hand-write; `singularize` already handled
+ the plural-spec-name / singular-type shape that looked bespoke.
+ */
+let queryableDefFromSpec = (
+  ~plugin: string,
+  ~name: string,
+  ~stateSchema: S.t<unknown>,
+  ~authorization: Reventless.Authorization.permission,
+  ~visibility: Reventless.Visibility.t=Public,
+  ~consumedEventTypes: array<string>=[],
+  ~linkedWriteSide: array<string>=[],
+  // See `encodeSchemaExcluding`. Empty for every caller that has nothing to
+  // narrow, which is the ordinary case.
+  ~excludeFields: array<string>=[],
+  ~chapter: option<string>=?,
+): Reventless.Plugin.queryableDef => {
+  let qf = Api_Naming.queryFieldNamesForReadModel(~plugin, ~name)
+  let label = labelFieldsFromStateSchema(~entityName=name, stateSchema)
+  // The same call the capability deriver makes, so the published key and the key
+  // the generated filter/order-by is built from cannot disagree.
+  let keyField = GraphQL_FragmentGenerator.resolveKeyField(~entityName=name, stateSchema)
+  {
+    Reventless.Plugin.name: name,
+    queryField: qf.listFieldName,
+    schema: stateSchema->encodeSchemaExcluding(~excludeFields),
+    consumedEventTypes,
+    linkedWriteSide,
+    labelField: label.field,
+    searchableFields: label.searchableFields,
+    labelFieldSource: Some(labelFieldSourceToString(label.source)),
+    lifecycleField: lifecycleFieldFromStateSchema(~entityName=name, stateSchema),
+    ownerField: Reventless.Owner.fieldNames(stateSchema)->Array.get(0),
+    retiredField: retiredFieldFromStateSchema(stateSchema),
+    retiredValues: retiredValuesFromStateSchema(stateSchema),
+    namedWhenRetired: Some(namedWhenRetiredFromStateSchema(stateSchema)),
+    visibility: visibilityTag(visibility),
+    chapter,
+    singleQueryField: Some(qf.singleFieldName),
+    idField: keyField->Option.map(((f, _)) => f),
+    idFieldSource: keyField->Option.map(((_, rung)) => rung),
+    requiredAccess: accessKeysFor(authorization),
+  }
+}
+
 let make = (
   type api role,
   ~name: string,
@@ -1126,12 +1234,6 @@ let make = (
   // graph and dead-code analysis — read them so an Internal view still shows up there. The
   // deployed AutoUI's consumers (Platform_ComponentDefinitionsApi menu/pages) re-filter on
   // the tag so the live UI keeps hiding them — see Visibility.res, which documents this contract.
-  let visibilityTag = (v: Reventless.Visibility.t): option<string> =>
-    switch v {
-    | Public => None
-    | Internal => Some("Internal")
-    }
-
   // View name -> the states its lifecycle field can hold, collected as the view
   // defs are built so the transition check below has both sides in one place.
   let lifecycleStatesByView: dict<array<string>> = Dict.make()
