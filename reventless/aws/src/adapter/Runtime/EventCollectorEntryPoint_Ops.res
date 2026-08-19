@@ -12,8 +12,8 @@
 // Plugin_Callback wiring, and the Lambda dispatch boundary.
 //
 // Runtime-pure: no `open PulumiAws` values — Pulumi appears in type positions
-// only (erased). The two `%identity` casts below sit on documented JSON
-// contracts (same pattern as AggregateEntryPoint_Ops.asConnectionConfig).
+// only (erased). The one `%identity` cast below sits on a documented JSON
+// contract (same pattern as AggregateEntryPoint_Ops.asConnectionConfig).
 
 // ── Shim bindings (HandlerFactoryHelpers.mjs) ───────────────────────────────
 // The structured-log + Effect dispatch boundary shared by every deployed entry
@@ -325,8 +325,8 @@ let projectPluginRow = (row: JSON.t): option<pluginProjection> =>
 
 // A pluginDefinition viewed as a projection (the manage logic reads only the
 // shared subset; `status` is never read for the acting plugin). Array/option
-// fields are js_nullable-normalized — the definition may come from a plain
-// JSON.parse of pluginDefinition.json.
+// fields stay js_nullable-normalized: a definition arriving over the wire, rather
+// than from loadPluginDefinition's decode, still carries null for an absent field.
 let projectionOfDefinition = (d: Reventless.Plugin.pluginDefinition): pluginProjection => {
   id: d.id,
   status: "",
@@ -671,16 +671,16 @@ let warnSkippedExtension = (ext: extensionConfig) =>
 
 let assetPath = (fileName: string): string => NodePath.join([NodeProcess.cwd(), fileName])
 
-// pluginDefinition.json is written at deploy time as a stable JSON literal
-// matching Reventless.Plugin.pluginDefinitionSchema (PluginRuntime_Builder), so
-// the parsed object IS the record shape — cast at the documented contract (the
-// AggregateEntryPoint_Ops.asConnectionConfig pattern). js_nullable option
-// fields may hold null; consumers normalize via jsOption.
-external asPluginDefinition: JSON.t => Reventless.Plugin.pluginDefinition = "%identity"
-
+// pluginDefinition.json is written through the schema's encoder (Plugin_Helpers),
+// so it holds the wire form, which is not the record's runtime shape: an @offload
+// field is {"$offload": …} on the wire and Offloaded(…) in ReScript. Decode it
+// back through the same schema — a cast leaves the wire form in a value typed as
+// the record, and the next encode of it (the Connect handshake) throws.
 let loadPluginDefinition = (): Reventless.Plugin.pluginDefinition =>
   try {
-    assetPath("pluginDefinition.json")->NodeFs.readFileSync->JSON.parseOrThrow->asPluginDefinition
+    assetPath("pluginDefinition.json")
+    ->NodeFs.readFileSync
+    ->Reventless.Util_Sury.fromJsonString(Reventless.Plugin.pluginDefinitionSchema)
   } catch {
   | exn =>
     JsError.throwWithMessage(

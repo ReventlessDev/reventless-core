@@ -8,8 +8,10 @@ import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
+import * as Plugin$Reventless from "@reventlessdev/reventless-spec/src/components/Plugin.res.mjs";
 import * as SNS_Helpers$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/SNS_Helpers.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as HandlerFactoryHelpersMjs from "./HandlerFactoryHelpers.mjs";
 import * as Plugin_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Callback.res.mjs";
 import * as Util_PluginMessage_Runtime$ReventlessAws from "../../plugin/runtime/Util_PluginMessage_Runtime.res.mjs";
@@ -519,7 +521,7 @@ function assetPath(fileName) {
 
 function loadPluginDefinition() {
   try {
-    return JSON.parse(Nodefs.readFileSync(assetPath("pluginDefinition.json"), "utf8"));
+    return Util_Sury$Reventless.fromJsonString(Nodefs.readFileSync(assetPath("pluginDefinition.json"), "utf8"), Plugin$Reventless.pluginDefinitionSchema);
   } catch (raw_exn) {
     let exn = Primitive_exceptions.internalToException(raw_exn);
     return Stdlib_JsError.throwWithMessage("Failed to load pluginDefinition.json from asset zip: " + exnMessage(exn));
