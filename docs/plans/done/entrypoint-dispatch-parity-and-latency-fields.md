@@ -1,9 +1,15 @@
 # Entry-Point Dispatch Parity + Latency Fields
 
-**Status:** Implemented (2026-07-21) — unit + both Docker integration
-gates green; **on-AWS verification pending** (needs a deploy; see Verification
-below). Phases A–D are in; the plan stays here rather than in `done/` until the
-alpha CloudWatch check passes.
+**Status:** DONE — implemented 2026-07-21, **verified on alpha 2026-08-20**.
+Phases A–D are in; unit + both Docker integration gates green; the CloudWatch
+check this plan was held open for has now run and passed on every claim it makes
+about the dispatch boundary, including a genuine redelivery carrying
+`retryCount` (see Verification).
+
+The same run found that the annotations never reach a *component* log line,
+because component code logs through `Effect.runSync`. That is a pre-existing
+defect in components this plan never touched, and it is
+[component-logs-detached-from-invocation.md](../component-logs-detached-from-invocation.md).
 
 **Created:** 2026-07-21
 
@@ -19,7 +25,7 @@ ships primitive #3.
 
 Primitive #1 (`comp` + `causationId` on every line of an invocation) is shipped in the **ReScript**
 dispatch boundary — `Runtime.annotateInvocation` / `runEffect` / `runEffectHandler`
-([Runtime.res:15-95](../../reventless/core/src/adapter/Runtime/Runtime.res#L15-L95)).
+([Runtime.res:15-95](../../../reventless/core/src/adapter/Runtime/Runtime.res#L15-L95)).
 
 That boundary does **not** execute on AWS. Every deployed Lambda is an archive whose
 `index.handler` is a hand-written entry-point shell:
@@ -29,7 +35,7 @@ That boundary does **not** execute on AWS. Every deployed Lambda is an archive w
   SideEffect, ExtensionPoint, …).
 - The AWS runtime builders take `~handler as _` — the ReScript handler closure is **discarded**;
   wiring happens at cold start inside the `.mjs` from `HANDLER_CONFIG`
-  (e.g. [AggregateRuntime_Builder_Single.res:89](../../reventless/aws/src/adapter/Runtime/AggregateRuntime_Builder_Single.res#L89),
+  (e.g. [AggregateRuntime_Builder_Single.res:89](../../../reventless/aws/src/adapter/Runtime/AggregateRuntime_Builder_Single.res#L89),
   `~handler as _` again at 120 and 161).
 - `RuntimeEnvironment_Lambda.res:16` labels the `CallbackFunction` closure path "legacy — retained
   for module type compatibility".
@@ -74,7 +80,7 @@ AWS. This plan closes that, and — because the fix touches the same six lines �
 ### Phase A — one shared dispatch shim
 
 Add `runEffect` to
-[HandlerFactoryHelpers.mjs](../../reventless/aws/src/adapter/Runtime/HandlerFactoryHelpers.mjs)
+[HandlerFactoryHelpers.mjs](../../../reventless/aws/src/adapter/Runtime/HandlerFactoryHelpers.mjs)
 (already the shared shell module: exports `log`, `pluginName`, `patchSpecId`, `makeQueueRef`, …).
 Signature takes an options object so later fields are additive and call sites never depend on
 argument order:
@@ -106,7 +112,7 @@ table in `docs/guides/cloudwatch-logs-insights.md` is the contract.
 `causationId` comes off the same parsed SQS body the shells already read for `correlationId`
 (`DcbCommandTopicEntryPoint.mjs::extractCorrelationId` is the pattern) — extend to a shared
 `extractMetaField(records, field)` in the helper, mirroring
-[RuntimeEnvironment_Lambda.res:288](../../reventless/aws/src/adapter/Runtime/RuntimeEnvironment_Lambda.res#L288).
+[RuntimeEnvironment_Lambda.res:288](../../../reventless/aws/src/adapter/Runtime/RuntimeEnvironment_Lambda.res#L288).
 
 ### Phase C — primitive #3: `timestamp` + `retryCount`
 
@@ -117,12 +123,12 @@ Per `docs/analysis/request-context-usage.md` §timestamp / §retryCount.
 - **AWS extraction:** `record.attributes.SentTimestamp` (ms epoch, string → float) and
   `record.attributes.ApproximateReceiveCount` (string → int), off the first record of the batch —
   same position `extractMetaField` reads. Note `attributes` is **commented out** of the SQS record
-  binding ([SQS_Queue.res:63](../../rescript/pulumi-aws/src/SQS/SQS_Queue.res#L63)); the ReScript
+  binding ([SQS_Queue.res:63](../../../rescript/pulumi-aws/src/SQS/SQS_Queue.res#L63)); the ReScript
   side needs a `@get external` alongside the existing `recordBody`
-  ([RuntimeEnvironment_Lambda.res:285](../../reventless/aws/src/adapter/Runtime/RuntimeEnvironment_Lambda.res#L285)),
+  ([RuntimeEnvironment_Lambda.res:285](../../../reventless/aws/src/adapter/Runtime/RuntimeEnvironment_Lambda.res#L285)),
   or uncommenting the field with a typed `sqsRecordAttributes`.
 - **Local extraction:** `Date.now()` at dispatch, `retryCount = 0`
-  ([LocalRuntimeEnvironment.res:52](../../reventless/local/src/adapter/Runtime/LocalRuntimeEnvironment.res#L52)).
+  ([LocalRuntimeEnvironment.res:52](../../../reventless/local/src/adapter/Runtime/LocalRuntimeEnvironment.res#L52)).
 - Extend `Runtime.Environment` with `extractSentTimestamp` / `extractRetryCount` and thread them
   through `annotateInvocation` / `runEffectHandler` exactly as the causationId extractor is threaded
   today, so the ReScript path keeps parity with the shells.
@@ -182,9 +188,15 @@ alongside (typed against the `HashMap` it actually returns, with
 
 ## Acceptance
 
-- An application handler on **deployed AWS** that only calls `Effect.logInfo("…")` emits a JSON line
-  carrying `comp`, `correlationId`, and `causationId` as top-level fields — the acceptance criterion
-  the predecessor plan claimed, now true on both platforms.
+- ~~An application handler on **deployed AWS** that only calls `Effect.logInfo("…")` emits a JSON
+  line carrying `comp`, `correlationId`, and `causationId` as top-level fields.~~ **Moved
+  2026-08-20** to
+  [component-logs-detached-from-invocation.md](../component-logs-detached-from-invocation.md).
+  Nothing in `examples/` calls `Effect.log*`, so this criterion has no subject on a deployed
+  stack; and the run that established that also established it would fail — a handler's own line
+  is emitted through `Effect.runSync` and never sees the boundary's annotations. Both halves are
+  that plan's to close. What this plan is accountable for — the boundary computing and attaching
+  the fields — is verified.
 - No entry-point `.mjs` retains a private `runEffect`; `grep -c "function runEffect" *.mjs` → 0.
 - `RequestContext` provided on AWS is constructed by the ReScript constructor and carries
   `identity` + `claims`, so `getClaim` cannot throw on a deployed invocation.
@@ -210,20 +222,59 @@ re-running on the baseline, and a test-harness artifact rather than a product bu
 - `pnpm run test:integration:pg` — 3 suites / 10 tests green (`PgChangeFeedRelay`, `PgPipeline`,
   `PgMigrationEntryPoint`).
 
-**Not done — needs a deploy:** confirm in alpha CloudWatch that an application handler's own log
-line carries `comp` + `causationId`, that `plugin` is populated on both shared Lambdas
-(`AllReadModels` and `AllAggregatesCmdHandler`), and that a redelivery surfaces `retryCount`. Watch the cold start first — a failure in the
-shared shim would take out all ten Lambdas at once, and that is the one failure mode no local test
-reaches.
+**Done — on AWS (2026-08-20)**, against `online-shop-*-aws-alpha` (functions last modified
+2026-08-19, so a month after this work landed):
+
+- The shared shim carries a cold start on all ten Lambdas — the failure mode no local test
+  reaches, and the one to watch first. No cold-start failures in the sampled window.
+- The **boundary** line carries the full set: `AllAggregatesCmdHandler` and
+  `CatalogDcbCmdHandler` emit `plugin`, `correlationId`, `requestId` and `comp` together
+  (20 and 17 lines respectively). `plugin` resolves at deploy time as designed — the
+  deployed `AllReadModels` `HANDLER_CONFIG` carries
+  `{"comp": "EventCollector(CustomersReadModel)", "plugin": "Ordering"}` per handler.
+- `comp` is top-level on every framework line across every group checked.
+- `correlationId` reads `"unknown"` on the command handlers. Not a defect of this plan: an
+  AppSync-triggered command arrives with no `meta.correlationId`, so `extractMetaField`
+  correctly finds nothing.
+
+**Found by the same run, and split out:** the annotations decorate a fiber that no
+*component* line ever reads, because component code logs with
+`EffectLogger.log*(…)->Effect.runSync` and `runSync` starts a fresh fiber with default
+FiberRefs. So `AllReadModels` — whose every line is a component line — shows `comp` alone
+and no `plugin`/`correlationId`/`causationId` anywhere. That is a pre-existing defect in
+`reventless-core` components this plan never touched; it is
+[component-logs-detached-from-invocation.md](../component-logs-detached-from-invocation.md),
+with the measurements.
+
+- **`retryCount` on a real redelivery — observed.** One occurrence in 80,724 records across
+  20 example log groups over 30 days (`filter @message like /retryCount/`), which is what a
+  field annotated only when `> 1` should look like on a healthy stack. On
+  `…-OrderingPluginEventColl`, 2026-08-18 07:37:03Z:
+
+  ```json
+  {"plugin":"Ordering","comp":"Plugin(Ordering@1.0.0-alpha.213)","retryCount":"2",
+   "correlationId":"27e56f2e-…","causationId":"bf0e704a-…","requestId":"…"}
+  ```
+
+  That one line closes three claims at once: `retryCount` surfaces on redelivery and only on
+  redelivery, `causationId` reaches a top-level field when the trigger carries one, and all
+  four fields co-occur on a single boundary line.
 
 ## Open items
 
-One. Two of the three recorded on 2026-07-21 are closed:
+None. All three recorded on 2026-07-21 are closed:
 
-1. **On-AWS verification** — still open (see Verification). The predecessor plan was marked Done on
-   an acceptance criterion nobody checked against a deployed stack, and that is precisely the gap
-   this plan exists to fix — so closing this one on the same assumption would repeat the mistake it
-   corrects. **This is the only thing keeping the plan out of `done/`.**
+1. ~~**On-AWS verification.**~~ **Closed 2026-08-20** — the check ran and the boundary half
+   passed on every claim, including `retryCount` on a genuine redelivery (see Verification).
+   One criterion did not survive contact and was handed over rather than ticked:
+
+   - **The application-handler criterion is unexercisable as written** —
+     `grep "Effect.log" examples/ --include=*.res` returns nothing, so no deployed handler emits
+     an application log line at all. Reworded rather than dropped: the substance moved to
+     [component-logs-detached-from-invocation.md](../component-logs-detached-from-invocation.md),
+     whose acceptance covers it on framework lines, of which the estate has plenty. The
+     predecessor plan was marked Done on a criterion nobody checked against a deployed stack;
+     the lesson holds, and this is what checking it produced.
 2. ~~`timestamp` / `retryCount` untested on the local path.~~ **Closed** —
    `reventless/local/tests/adapter/LocalDispatchContextTest.res` (4 cases) dispatches a handler
    through `Runtime.runEffectHandler` wired with `LocalRuntimeEnvironment`'s extractors — the exact

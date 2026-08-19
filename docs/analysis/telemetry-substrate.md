@@ -39,9 +39,9 @@ behaviour. It **does not replace** any existing plan; it sequences them and name
 
 | # | Primitive | What it enables | Status | Owner doc |
 |---|---|---|---|---|
-| 1 | **Log attribution** — `comp` + `causationId` on *every* line of an invocation | Isolate one component's logs in a shared runtime; reconstruct the causal tree from logs alone | **Done on both platforms** (AWS half 2026-07-21) — pending an on-AWS check, see the note below | `done/queryable-dispatch-log-annotations.md` + `done/eventcollector-element-level-log-comp.md` + `entrypoint-dispatch-parity-and-latency-fields.md` |
+| 1 | **Log attribution** — `comp` + `causationId` on *every* line of an invocation | Isolate one component's logs in a shared runtime; reconstruct the causal tree from logs alone | **Done at the dispatch boundary on both platforms** (AWS half 2026-07-21, verified on alpha 2026-08-20). **Not yet true of *every* line**: component logs run through `Effect.runSync` and never see the annotations — `component-logs-detached-from-invocation.md` | `done/queryable-dispatch-log-annotations.md` + `done/eventcollector-element-level-log-comp.md` + `done/entrypoint-dispatch-parity-and-latency-fields.md` |
 | 2 | **Metrics / Telemetry service** — an Effect service at dispatch (e.g. CloudWatch EMF) | Counters, histograms, timing emitted uniformly, provider-swappable, silenced in tests | Not implemented | `effect-services-beyond-logging.md` (§Metrics) |
-| 3 | **Latency timing** — send-time `timestamp` (+ `retryCount`) in `RequestContext` | A handler computes processing latency without `Date.now()`; retry visibility | **Done** (2026-07-21) — both platforms; `retryCount` also surfaces as a log field on redelivery | `entrypoint-dispatch-parity-and-latency-fields.md` |
+| 3 | **Latency timing** — send-time `timestamp` (+ `retryCount`) in `RequestContext` | A handler computes processing latency without `Date.now()`; retry visibility | **Done** (2026-07-21) — both platforms; `retryCount` also surfaces as a log field on redelivery | `done/entrypoint-dispatch-parity-and-latency-fields.md` |
 | 4 | **Per-hop `traceparent` rewrite** — update span/parent-id at each hop | Proper OpenTelemetry span *tree* (not just a flat trace-id) | `traceparent` is propagated **flat** (`deriveMeta` inherits as-is) | this doc (decision) |
 
 ### Platform-coverage note on primitive #1 (found and closed 2026-07-21)
@@ -55,7 +55,7 @@ and provided `RequestContext` as a bare object literal — so on a deployed stac
 handler's log line could not be attributed to a component and no `causationId` reached the log
 stream, while the same code on `reventless-local` was fully annotated.
 
-`entrypoint-dispatch-parity-and-latency-fields.md` replaced the ten copies with one shared shim in
+`done/entrypoint-dispatch-parity-and-latency-fields.md` replaced the ten copies with one shared shim in
 `HandlerFactoryHelpers.mjs` and landed primitive #3 in the same pass (same extraction site). Keep
 the two boundaries in step: a field added to one belongs in the other.
 
@@ -78,10 +78,13 @@ the two boundaries in step: a field added to one belongs in the other.
 1. ~~**`queryable-dispatch-log-annotations.md`** (primitive #1) — small, unblocks per-component log
    isolation and log-derived causal trees immediately. Ship first.~~ Done on the ReScript dispatch
    boundary (2026-07-20/21, with `eventcollector-element-level-log-comp.md`).
-2. ~~**`entrypoint-dispatch-parity-and-latency-fields.md`** — closes primitive #1 on AWS (one shared
+2. ~~**`done/entrypoint-dispatch-parity-and-latency-fields.md`** — closes primitive #1 on AWS (one shared
    dispatch shim across the ten entry-point shells) and lands **primitive #3** (`timestamp` /
-   `retryCount`) in the same pass, since both read the same SQS record.~~ **Implemented 2026-07-21**;
-   on-AWS verification pending a deploy. Next up is step 3.
+   `retryCount`) in the same pass, since both read the same SQS record.~~ **Implemented 2026-07-21,
+   verified on alpha 2026-08-20** — the boundary carries `plugin` / `comp` / `correlationId` /
+   `causationId`, and `retryCount` was observed on a genuine redelivery. The same run showed the
+   annotations stop at the boundary, which is `component-logs-detached-from-invocation.md` —
+   primitive #1's "*every* line" clause depends on it. Next up is step 3.
 3. **Metrics/Telemetry service** (primitive #2) — the larger build; gives durations/histograms and
    feeds any latency view. Design the provider interface for EMF + an in-memory test accumulator.
 4. **Per-hop `traceparent`** (primitive #4) — only when span-tree fidelity is actually required.
