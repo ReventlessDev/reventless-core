@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.311 (2026-08-19)
+
+### Bug Fixes
+
+* **aws:** decode the plugin definition asset instead of casting it ([5ac8a75](https://github.com/ReventlessDev/reventless-core/commit/5ac8a758673da63479049ba17658c8f91c5d72c5))
+
+
 # 3.0.0-alpha.310 (2026-08-18)
 
 ### Bug Fixes
