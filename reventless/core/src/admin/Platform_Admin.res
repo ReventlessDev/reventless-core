@@ -75,23 +75,8 @@ module Make = (
         )
 
       resources->Pulumi.Output.apply(resources => {
-        let fakePluginDefinition: Reventless.Plugin.pluginDefinition = {
-          id: Platform_Admin_Structure.pluginId ++ "@INTERNAL",
-          name: Platform_Admin_Structure.pluginId,
-          version: "INTERNAL",
-          extensionPoints: [],
-          extensions: [],
-          eventCollector: "NOT-SET",
-          extensionProtocols: [],
-          apiSchemaFragment: None,
-          apiTarget: None,
-          structure: None,
-          dcbEventLog: None,
-          kind: Domain,
-        }
-
         module Callback = Platform_Admin_Callback.Make({
-          let pluginDefinition = fakePluginDefinition
+          let pluginDefinition = Platform_Admin_Structure.internalPluginDefinition
           let outgoingExtensionPointJsonEventsHandlers = extensionPointsOutgoingJsonEventsHandlers
         })
         let handler = PlatformEventCollector.makeHandler(

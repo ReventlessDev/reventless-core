@@ -101,4 +101,15 @@ describe("pluginDefinition.json write/read symmetry", () => {
     expect(def.structure->Option.isNone)->toBe(true)
     expect(def.dcbEventLog->Option.isNone)->toBe(true)
   })
+
+  // The platform's own EventCollector ships a placeholder rather than a real
+  // definition — the admin IS the Plugin extension point — but it is read back on
+  // this same path, so it has to satisfy the same schema. Its asset used to be a
+  // hand-written JSON literal in PluginRuntime_Builder and fell two fields behind
+  // (dcbEventLog, kind) with nothing to notice.
+  testSync("the platform's own placeholder asset survives the same round trip", () => {
+    let def = ReventlessCore.Platform_Admin_Structure.internalPluginDefinition->writeAsset->readAsset
+    expect(def.id)->toBe(ReventlessCore.Platform_Admin_Structure.pluginId ++ "@INTERNAL")
+    expect(def.kind)->toBe(Reventless.Plugin.Domain)
+  })
 })

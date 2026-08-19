@@ -683,8 +683,12 @@ let loadPluginDefinition = (): Reventless.Plugin.pluginDefinition =>
     ->Reventless.Util_Sury.fromJsonString(Reventless.Plugin.pluginDefinitionSchema)
   } catch {
   | exn =>
+    // Util_Sury.exnMessage, not the local one: sury raises S.Exn, which is not a
+    // JsExn, so the local reader yields "unknown error" and loses the field path —
+    // the whole diagnosis for a decode failure here.
     JsError.throwWithMessage(
-      "Failed to load pluginDefinition.json from asset zip: " ++ exnMessage(exn),
+      "Failed to load pluginDefinition.json from asset zip: " ++
+      Reventless.Util_Sury.exnMessage(exn),
     )
   }
 

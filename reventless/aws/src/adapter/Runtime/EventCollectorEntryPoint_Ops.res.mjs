@@ -524,7 +524,7 @@ function loadPluginDefinition() {
     return Util_Sury$Reventless.fromJsonString(Nodefs.readFileSync(assetPath("pluginDefinition.json"), "utf8"), Plugin$Reventless.pluginDefinitionSchema);
   } catch (raw_exn) {
     let exn = Primitive_exceptions.internalToException(raw_exn);
-    return Stdlib_JsError.throwWithMessage("Failed to load pluginDefinition.json from asset zip: " + exnMessage(exn));
+    return Stdlib_JsError.throwWithMessage("Failed to load pluginDefinition.json from asset zip: " + Util_Sury$Reventless.exnMessage(exn, undefined));
   }
 }
 

@@ -268,12 +268,13 @@ module Make = (
   // keeps the JSON shape consistent so the entry point can parse uniformly.
   let synthesizeAdminContext = (): ReventlessCore.Plugin_Helpers.eventCollectorContext => {
     let config = configRef.contents
-    // Stable JSON literal — matches Reventless.Plugin.pluginDefinitionSchema
-    // (optional fields encoded as null via js_nullable). Must stay byte-aligned with
-    // the ReScript-built twin in `Platform_Admin.construct`'s `fakePluginDefinition`.
-    let platformId = ReventlessCore.Platform_Admin_Structure.pluginId
+    // Encoded from the one placeholder value, through the same schema the entry
+    // point decodes with. It was a hand-written JSON literal, which drifted: the
+    // schema gained `dcbEventLog` and `kind` and the literal did not follow.
     let fakePluginDefinitionJson =
-      `{"id":"${platformId}@INTERNAL","name":"${platformId}","version":"INTERNAL","extensionPoints":[],"extensions":[],"eventCollector":"NOT-SET","extensionProtocols":[],"apiSchemaFragment":null,"apiTarget":null,"structure":null}`->Pulumi.Output.make
+      ReventlessCore.Platform_Admin_Structure.internalPluginDefinition
+      ->Reventless.Util_Sury.toJsonString(Reventless.Plugin.pluginDefinitionSchema)
+      ->Pulumi.Output.make
     let adminEpEventTopicArn = switch config.eventTopicArn {
     | Some(arn) => arn
     | None => Pulumi.Output.make("NOT_AVAILABLE")

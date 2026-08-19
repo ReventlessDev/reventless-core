@@ -5,6 +5,8 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
+import * as Plugin$Reventless from "@reventlessdev/reventless-spec/src/components/Plugin.res.mjs";
+import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as DcbBackend$ReventlessAws from "../../adapter/DcbEventLog/DcbBackend.res.mjs";
@@ -202,7 +204,7 @@ function Make(EventCollectorChannel) {
   };
   let synthesizeAdminContext = () => {
     let config = configRef.contents;
-    let fakePluginDefinitionJson = Pulumi.output(`{"id":"` + Platform_Admin_Structure$ReventlessCore.pluginId + `@INTERNAL","name":"` + Platform_Admin_Structure$ReventlessCore.pluginId + `","version":"INTERNAL","extensionPoints":[],"extensions":[],"eventCollector":"NOT-SET","extensionProtocols":[],"apiSchemaFragment":null,"apiTarget":null,"structure":null}`);
+    let fakePluginDefinitionJson = Pulumi.output(Util_Sury$Reventless.toJsonString(Platform_Admin_Structure$ReventlessCore.internalPluginDefinition, Plugin$Reventless.pluginDefinitionSchema, undefined));
     let arn = config.eventTopicArn;
     let adminEpEventTopicArn = arn !== undefined ? arn : Pulumi.output("NOT_AVAILABLE");
     return {

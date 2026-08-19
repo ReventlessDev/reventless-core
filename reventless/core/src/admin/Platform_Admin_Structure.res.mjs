@@ -63,6 +63,21 @@ let structure = {
   requiredStoreDeclarations: undefined
 };
 
+let internalPluginDefinition = {
+  id: pluginId + "@INTERNAL",
+  name: pluginId,
+  version: "INTERNAL",
+  extensionPoints: [],
+  extensions: [],
+  eventCollector: "NOT-SET",
+  extensionProtocols: [],
+  apiSchemaFragment: undefined,
+  apiTarget: undefined,
+  structure: undefined,
+  dcbEventLog: undefined,
+  kind: "Domain"
+};
+
 let pluginName = pluginId;
 
 let commandSchema = PluginSpec$ReventlessCore.commandSchema;
@@ -75,5 +90,6 @@ export {
   pluginAggregate,
   pluginReadModel,
   structure,
+  internalPluginDefinition,
 }
 /* pluginCommands Not a pure module */

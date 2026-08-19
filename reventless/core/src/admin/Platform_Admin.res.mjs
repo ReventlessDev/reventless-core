@@ -38,22 +38,8 @@ function Make(RuntimeEnvironment) {
       let connect = (eventCollector, eventTopics, extensionPointsOutputs, extensionPointsOutgoingJsonEventsHandlers) => {
         let resources = Pulumi.all(extensionPointsOutputs.map(extensionPoint => extensionPoint.eventTopic)).apply(eventTopics => eventTopics.map(eventTopic => eventTopic.resources).flat());
         return resources.apply(resources => {
-          let fakePluginDefinition = {
-            id: Platform_Admin_Structure$ReventlessCore.pluginId + "@INTERNAL",
-            name: Platform_Admin_Structure$ReventlessCore.pluginId,
-            version: "INTERNAL",
-            extensionPoints: [],
-            extensions: [],
-            eventCollector: "NOT-SET",
-            extensionProtocols: [],
-            apiSchemaFragment: undefined,
-            apiTarget: undefined,
-            structure: undefined,
-            dcbEventLog: undefined,
-            kind: "Domain"
-          };
           let Callback = Platform_Admin_Callback$ReventlessCore.Make({
-            pluginDefinition: fakePluginDefinition,
+            pluginDefinition: Platform_Admin_Structure$ReventlessCore.internalPluginDefinition,
             outgoingExtensionPointJsonEventsHandlers: extensionPointsOutgoingJsonEventsHandlers
           });
           let handler = PlatformEventCollector.makeHandler(eventCollector, Callback.handleJsonEvents);
@@ -195,22 +181,8 @@ function Make(RuntimeEnvironment) {
         let connect = (eventCollector, eventTopics, extensionPointsOutputs, extensionPointsOutgoingJsonEventsHandlers) => {
           let resources = Pulumi.all(extensionPointsOutputs.map(extensionPoint => extensionPoint.eventTopic)).apply(eventTopics => eventTopics.map(eventTopic => eventTopic.resources).flat());
           return resources.apply(resources => {
-            let fakePluginDefinition = {
-              id: Platform_Admin_Structure$ReventlessCore.pluginId + "@INTERNAL",
-              name: Platform_Admin_Structure$ReventlessCore.pluginId,
-              version: "INTERNAL",
-              extensionPoints: [],
-              extensions: [],
-              eventCollector: "NOT-SET",
-              extensionProtocols: [],
-              apiSchemaFragment: undefined,
-              apiTarget: undefined,
-              structure: undefined,
-              dcbEventLog: undefined,
-              kind: "Domain"
-            };
             let Callback = Platform_Admin_Callback$ReventlessCore.Make({
-              pluginDefinition: fakePluginDefinition,
+              pluginDefinition: Platform_Admin_Structure$ReventlessCore.internalPluginDefinition,
               outgoingExtensionPointJsonEventsHandlers: extensionPointsOutgoingJsonEventsHandlers
             });
             let handler = PlatformEventCollector.makeHandler(eventCollector, Callback.handleJsonEvents);

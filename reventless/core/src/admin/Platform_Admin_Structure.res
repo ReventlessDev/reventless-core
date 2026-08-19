@@ -77,3 +77,28 @@ let structure: pluginStructure = {
   requiredStores: None,
   requiredStoreDeclarations: None,
 }
+
+/** The definition the platform's own EventCollector ships as its
+    `pluginDefinition.json` asset, and hands to `Platform_Admin_Callback`.
+
+    The admin IS the Plugin extension point, so it never travels the connect
+    handshake and every field here is a placeholder. The asset is still read back
+    on the same path as every other plugin's, so it is declared as a value and
+    encoded through `pluginDefinitionSchema` at both sites rather than written out
+    as JSON: the hand-written twin that used to live in the AWS builder predated
+    `dcbEventLog` and `kind` and silently stopped matching the schema, which only
+    surfaced once the read side decoded instead of casting. */
+let internalPluginDefinition: pluginDefinition = {
+  id: pluginId ++ "@INTERNAL",
+  name: pluginId,
+  version: "INTERNAL",
+  extensionPoints: [],
+  extensions: [],
+  eventCollector: "NOT-SET",
+  extensionProtocols: [],
+  apiSchemaFragment: None,
+  apiTarget: None,
+  structure: None,
+  dcbEventLog: None,
+  kind: Domain,
+}
