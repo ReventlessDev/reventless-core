@@ -11,7 +11,7 @@ behaviour to preserve and the signature could be chosen on the merits.
 **Relates to:** [dynamodb-narrows-every-door.md](dynamodb-narrows-every-door.md)
 (which named this as the asymmetry it was leaving),
 [retired-state-flag-annotation.md](retired-state-flag-annotation.md) (the rule),
-[retired-row-resolvable-by-reference.md](../retired-row-resolvable-by-reference.md).
+[retired-row-resolvable-by-reference.md](retired-row-resolvable-by-reference.md).
 
 ## What was actually wrong
 

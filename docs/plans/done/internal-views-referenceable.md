@@ -9,7 +9,7 @@ free-text input in the generated form, for every caller including admins.
 — the consuming half. Core ships the datum; the shell unions it into the ref
 registry. Neither half is useful alone.
 
-**Dependent plan:** `docs/plans/ui-manifest-baked-emission.md` — must land
+**Dependent plan:** `docs/plans/done/ui-manifest-baked-emission.md` — must land
 **after** this one. A baked manifest has to carry `internalQueryables`, and a
 shell reading one never falls back to the admin API, so a reference target
 absent from the baked file is absent permanently.

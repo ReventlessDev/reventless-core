@@ -16,7 +16,7 @@ the boot, and failing it halfway would leave one audience's file beside a stale
 copy of another's.
 
 **Sibling plans:**
-- `docs/plans/ui-manifest-baked-emission.md` — the single-manifest bake this
+- `docs/plans/done/ui-manifest-baked-emission.md` — the single-manifest bake this
   generalises. Read it first; everything here is its declaration growing a
   dimension.
 - `docs/plans/active-role-narrows-the-token.md` — decides what a role *may do*.

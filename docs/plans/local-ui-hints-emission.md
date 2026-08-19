@@ -2,7 +2,7 @@
 
 **Status.** Open.
 
-**Sibling work:** `docs/plans/ui-manifest-baked-emission.md` — the same seam,
+**Sibling work:** `docs/plans/done/ui-manifest-baked-emission.md` — the same seam,
 one file over. That plan taught the local platform to write the baked manifest
 and the `config.json` overlay into the host shell's served `dist/`. This one
 finishes the set: `ui-hints.json` is the third asset the shell fetches from that

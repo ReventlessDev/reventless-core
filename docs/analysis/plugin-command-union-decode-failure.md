@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-18
 **Status:** Open — found while verifying step 0 of
-[admin-structure-derived-from-specs.md](../plans/admin-structure-derived-from-specs.md);
+[admin-structure-derived-from-specs.md](../plans/done/admin-structure-derived-from-specs.md);
 neither caused nor fixed by it.
 **Where it bites:** every local platform, and AWS equally — the affected schemas live in
 `reventless-core` and `reventless-infra` and are shared by both, though only local was

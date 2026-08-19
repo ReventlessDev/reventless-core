@@ -8,7 +8,7 @@ shell at the file through `config.json`. Nothing in §4 is open.
 — the shell-side `manifestUrl` discovery path that consumes what this plan
 writes.
 
-**Prerequisite plan:** `docs/plans/internal-views-referenceable.md` — adds
+**Prerequisite plan:** `docs/plans/done/internal-views-referenceable.md` — adds
 `internalQueryables` to the manifest entry. **It must land first.** §5 requires
 the baked file to carry that field, and a shell reading a baked manifest has no
 admin API to fall back on — so a reference target missing from the file is
@@ -139,7 +139,7 @@ Platform_ComponentDefinitionsApi.encodePluginStructureEntry(~pluginId, structure
 ## §5 — Carry `internalQueryables`
 
 The baked file must include the `internalQueryables` field added by
-`docs/plans/internal-views-referenceable.md`, restricted to entries actually
+`docs/plans/done/internal-views-referenceable.md`, restricted to entries actually
 referenced by an included command. Omitting it reintroduces exactly the defect
 that plan fixes, in the one deployment shape that has no fallback: a shell
 reading a baked manifest never queries the admin API, so a missing reference

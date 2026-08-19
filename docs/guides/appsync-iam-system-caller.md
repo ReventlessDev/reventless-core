@@ -32,7 +32,7 @@ errorType: Unauthorized
 > admits neither IAM *nor* — on a multi-auth API — anyone at all: AppSync ignores
 > it outright, and `defaultAction: ALLOW` then opens the field to every
 > authenticated Cognito user. The adapter emitted that form until the fix in
-> `docs/plans/appsync-group-authorization-unenforced.md`; every group gate was
+> `docs/plans/done/appsync-group-authorization-unenforced.md`; every group gate was
 > inert. If you see `@aws_auth` anywhere in a deployed SDL, it is gating nothing.
 
 ## Opting a field into dual-auth (Cognito + IAM)

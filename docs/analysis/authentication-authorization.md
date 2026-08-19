@@ -43,7 +43,7 @@ authentication type is `AMAZON_COGNITO_USER_POOLS`.
 > user. The adapter now emits `@aws_cognito_user_pools(cognito_groups: [...])`,
 > which the service does enforce. Read every `@aws_auth` claim below as being
 > about that superseded form. See
-> `docs/plans/appsync-group-authorization-unenforced.md`.
+> `docs/plans/done/appsync-group-authorization-unenforced.md`.
 
 **In-memory GraphQL** (graphql-yoga) has no authentication — the `user` field in `CommandGenerator.meta` is hardcoded to `"local"`.
 

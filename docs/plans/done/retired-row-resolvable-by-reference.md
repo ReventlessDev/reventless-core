@@ -41,18 +41,18 @@ plan's own "Why" section assumes is closed. The local and Postgres backends do
 narrow all four doors. Fixing it changes what deployed DynamoDB apps return and
 belongs in its own change; the reference door added here narrows correctly on
 that backend regardless, so nothing new is opened by this work.
-**Closed 2026-08-17** by [done/dynamodb-narrows-every-door.md](done/dynamodb-narrows-every-door.md),
+**Closed 2026-08-17** by [done/dynamodb-narrows-every-door.md](dynamodb-narrows-every-door.md),
 which narrowed all four DynamoDB doors and then applied `@owner` to the two that
 never had it. One asymmetry outlived it — the by-index door narrowed retirement
 with no way to ask past it — and closing that on 2026-08-18 found the door did not
 answer on any backend at all, its SDL disagreeing with its resolver differently
 per backend:
-[done/index-door-cannot-be-widened-to-the-archive.md](done/index-door-cannot-be-widened-to-the-archive.md).
+[done/index-door-cannot-be-widened-to-the-archive.md](index-door-cannot-be-widened-to-the-archive.md).
 **Stack:** `reventless-ppx` (OCaml), `reventless/spec`, `reventless/core`
 (codegen + schema emission), `reventless/local`, `reventless/aws`. No new deps.
-**Relates to:** [done/retired-state-flag-annotation.md](done/retired-state-flag-annotation.md)
-(the annotation and its enforcement), [done/retired-marks-the-state-not-the-field.md](done/retired-marks-the-state-not-the-field.md),
-[done/retired-as-a-lifecycle-state.md](done/retired-as-a-lifecycle-state.md)
+**Relates to:** [done/retired-state-flag-annotation.md](retired-state-flag-annotation.md)
+(the annotation and its enforcement), [done/retired-marks-the-state-not-the-field.md](retired-marks-the-state-not-the-field.md),
+[done/retired-as-a-lifecycle-state.md](retired-as-a-lifecycle-state.md)
 (the state form).
 
 ## Why
@@ -121,7 +121,7 @@ Opt-in per record. Absent the opt-in, today's behaviour holds everywhere.
 
 It has to be sayable in **both** forms of `@retired`, and the constructor form
 takes no payload by design — "the state's own name is what a consumer renders, so
-there is no label to state" ([StateAnnotations.ml](../../packages/reventless-ppx/src/ppx/StateAnnotations.ml)).
+there is no label to state" ([StateAnnotations.ml](../../../packages/reventless-ppx/src/ppx/StateAnnotations.ml)).
 That is the right rule and this must not bend it: the opt-in is not a property of
 one state anyway. `Archived` and `Discontinued` do not get to disagree about
 whether the product has a public name.
@@ -144,7 +144,7 @@ path from there to every consumer.
 the label field is the one thing the door emits, so name the leak where the field
 is named — until the annotation's actual shape settled it: `@displayName` is
 **multi-field and composed**, several fields joined by a separator into one
-projected `displayName` column ([DisplayNameInference.ml](../../packages/reventless-ppx/src/ppx/DisplayNameInference.ml)).
+projected `displayName` column ([DisplayNameInference.ml](../../../packages/reventless-ppx/src/ppx/DisplayNameInference.ml)).
 A per-field opt-in on a composed label has to answer what
 `@displayName(Public) firstName` beside a plain `@displayName lastName` means,
 and every answer is bad: refuse it and the annotation carries a rule about its
@@ -251,7 +251,7 @@ way.
    index reads; a non-opted-in retired row resolves nowhere; an owner-scoped
    retired row resolves through the door **only for its owner**; a live row
    resolves as it always did. Plus the two PPX errors from step 1.
-8. **Docs.** The `@retired` rule in [.claude/rules/app-developer.md](../../.claude/rules/app-developer.md)
+8. **Docs.** The `@retired` rule in [.claude/rules/app-developer.md](../../../.claude/rules/app-developer.md)
    gains the opt-in and its narrow projection; `ui-configuration.md` §2.11 gains
    the same beside `includeRetired`, which stays what it is — the elevated
    caller's way into the archive, not this.

@@ -127,7 +127,7 @@ generic pipeline rather than being worth a fourth hand-written record.
 
 ## Item 3.3 — Route admin read models through the ordinary component pipeline
 
-> **➡️ Superseded by [admin-structure-derived-from-specs.md](../admin-structure-derived-from-specs.md)**,
+> **➡️ Superseded by [admin-structure-derived-from-specs.md](../done/admin-structure-derived-from-specs.md)**,
 > which re-scopes this item to what is actually left and carries the evidence for it.
 > The notes below are why it needed re-scoping.
 >

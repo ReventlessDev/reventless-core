@@ -3,12 +3,12 @@
 **Status:** DONE — every step landed 2026-08-18, including the follow-on that was
 held back; see "The lockstep" at the end.
 **Date:** 2026-08-18
-**Analysis it produced:** [plugin-command-union-decode-failure.md](../analysis/plugin-command-union-decode-failure.md)
+**Analysis it produced:** [plugin-command-union-decode-failure.md](../../analysis/plugin-command-union-decode-failure.md)
 — found while verifying step 0, unrelated to this plan, and the reason
 "drive it in a running shell" cannot currently be a verification for anything here.
 
-**Analysis:** [plugin-aggregate-readmodel-vs-normal-harmonization.md](../analysis/plugin-aggregate-readmodel-vs-normal-harmonization.md)
-**Supersedes:** item 3.3 of [admin-readmodel-full-harmonization.md](Backlog/admin-readmodel-full-harmonization.md)
+**Analysis:** [plugin-aggregate-readmodel-vs-normal-harmonization.md](../../analysis/plugin-aggregate-readmodel-vs-normal-harmonization.md)
+**Supersedes:** item 3.3 of [admin-readmodel-full-harmonization.md](../Backlog/admin-readmodel-full-harmonization.md)
 (that item was written against a four-read-model admin that no longer exists, and
 against a dependency that was rejected — see its own re-scope warning)
 
@@ -108,7 +108,7 @@ Answered above: yes. See "Why — four drifts found in one file".
 ### Step 1 — Derive the command defs — **DONE**
 
 - Lift `extractCommandDefs` from a local binding inside `Plugin_Structure.make`
-  ([Plugin_Structure.res:857](../../reventless/core/src/plugin/component/Plugin_Structure.res#L857))
+  ([Plugin_Structure.res:857](../../../reventless/core/src/plugin/component/Plugin_Structure.res#L857))
   to module level. Mechanical; no behaviour change.
 - Call it once with `PluginSpec.commandSchema`, the already-exported
   `PluginSpec.commandAuthorization`, and a `mutationFieldFor` composed the way
@@ -392,7 +392,7 @@ the Plugins lifecycle board plus the row action menu driven in the host shell.
 
 **The last of those is currently unavailable**, and not for a reason this plan can
 fix: no plugin connects on any local platform, so there are no rows to drive. See
-[plugin-command-union-decode-failure.md](../analysis/plugin-command-union-decode-failure.md).
+[plugin-command-union-decode-failure.md](../../analysis/plugin-command-union-decode-failure.md).
 Steps 0, 1 and 3a were verified against what `Platform_ComponentDefinitions`
 publishes — which is the thing they change — plus the full suite (346 suites, 3463
 tests) and the PPX suite. Restore the shell check as soon as the decode bug is fixed;

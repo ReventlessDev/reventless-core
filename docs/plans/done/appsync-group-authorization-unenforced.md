@@ -4,7 +4,7 @@
 gate was confirmed open by observation, fixed, redeployed, and confirmed closed
 by the same probe — before and after, same command, same two callers. §8 records
 both halves. This plan supersedes
-[appsync-refusal-vocabulary.md](appsync-refusal-vocabulary.md), whose step 0
+[appsync-refusal-vocabulary.md](../appsync-refusal-vocabulary.md), whose step 0
 produced the observation and whose step 1 required stopping if it came out this
 way. It did.
 
@@ -368,7 +368,7 @@ Establish what it does and does not cover before assuming any of it.
      insufficient — the failure mode of anything in this area is refusing
      everybody, which `probe-appsync-group-gate.mjs` alone scores as a pass.
 3. **Revisit the refusal-vocabulary question**
-   ([appsync-refusal-vocabulary.md](appsync-refusal-vocabulary.md)).
+   ([appsync-refusal-vocabulary.md](../appsync-refusal-vocabulary.md)).
    Its §2 table can now be written from observation: the AWS path answers an
    unentitled caller with HTTP 200 + `errorType: "Unauthorized"`, and an
    unidentified one with HTTP 401 — which is exactly what it predicted, and is

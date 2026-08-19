@@ -79,7 +79,7 @@ trap.
 **Stack:** `rescript/pulumi-aws` (the APPSYNC_JS resolver templates),
 `reventless/aws`. No new deps.
 **Relates to:** [retired-state-flag-annotation.md](retired-state-flag-annotation.md)
-(the rule this is measured against), [retired-row-resolvable-by-reference.md](../retired-row-resolvable-by-reference.md)
+(the rule this is measured against), [retired-row-resolvable-by-reference.md](retired-row-resolvable-by-reference.md)
 (where the gap surfaced).
 
 ## Why

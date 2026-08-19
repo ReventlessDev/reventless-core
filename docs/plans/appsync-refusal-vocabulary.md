@@ -5,7 +5,7 @@
 This plan was closed the same day it was written: step 0 found that `@aws_auth`
 was not enforced at all, so there was no refusal to give a vocabulary to. That
 was fixed and deployed (`13926388c`, see
-[appsync-group-authorization-unenforced.md](appsync-group-authorization-unenforced.md)),
+[appsync-group-authorization-unenforced.md](done/appsync-group-authorization-unenforced.md)),
 and the four rows were re-observed against the deployed API.
 
 **§2's table was right.** The middle row — the one this plan could not verify
@@ -89,7 +89,7 @@ field error**, where the local path expresses it as **two extensions codes**:
 
 > Every row above is a captured response, not a prediction. The refusal bodies
 > are recorded in
-> [appsync-group-authorization-unenforced.md](appsync-group-authorization-unenforced.md) §8.
+> [appsync-group-authorization-unenforced.md](done/appsync-group-authorization-unenforced.md) §8.
 >
 > **Historical note.** Between this plan being written and the fix landing, the
 > middle row did not happen at all — the gate was inert and the resolver simply
@@ -196,7 +196,7 @@ written against it.
 > throwaway Cognito user in no groups received the full payload of every
 > admin-gated query (HTTP 200), and a group-gated mutation reached its command
 > handler. The security finding, the captured bodies and the fix are in
-> [appsync-group-authorization-unenforced.md](appsync-group-authorization-unenforced.md).
+> [appsync-group-authorization-unenforced.md](done/appsync-group-authorization-unenforced.md).
 >
 > **Resolved in `13926388c`**, deployed and re-probed: the adapter now emits
 > `@aws_cognito_user_pools(cognito_groups: [...])` everywhere, and the same
@@ -231,7 +231,7 @@ line and full JSON — for each row before writing any mapping down.
 > **Observed 2026-08-14.** The caution was warranted. The 401 row held; the
 > unentitled row did not. Recorded inline in the §2 table above, with verbatim
 > bodies in
-> [appsync-group-authorization-unenforced.md](appsync-group-authorization-unenforced.md) §1.
+> [appsync-group-authorization-unenforced.md](done/appsync-group-authorization-unenforced.md) §1.
 > This is the case for step 0 existing at all: the plan would otherwise have
 > built a mapping onto a refusal that never happens.
 
@@ -240,11 +240,11 @@ line and full JSON — for each row before writing any mapping down.
 **0. Observe.** ✅ **Done twice** — once before the fix (which is what uncovered
 §6.1) and once after, against the deployed alpha API. All four rows captured
 verbatim; the post-fix table is §2 above, the bodies are in
-[appsync-group-authorization-unenforced.md](appsync-group-authorization-unenforced.md) §8.
+[appsync-group-authorization-unenforced.md](done/appsync-group-authorization-unenforced.md) §8.
 Re-runnable as `scripts/probe-appsync-group-gate.mjs`.
 
 **1. Stop if 6.1 answers badly.** ✅ **Done** — it answered badly, this plan was
-closed, `appsync-group-authorization-unenforced.md` was opened, the fix shipped
+closed, `done/appsync-group-authorization-unenforced.md` was opened, the fix shipped
 in `13926388c` and was verified on a deployment. This plan then reopened. The
 remaining steps are the original conformance work, now on a sound premise.
 
@@ -291,7 +291,7 @@ resolves the prefix collision in both directions.
   of step 0, and the captured bodies are recorded — twice, in fact: once with
   the gate open (which is what turned this plan into a security finding) and
   once with it closed. Bodies in
-  [appsync-group-authorization-unenforced.md](appsync-group-authorization-unenforced.md)
+  [appsync-group-authorization-unenforced.md](done/appsync-group-authorization-unenforced.md)
   §1 and §8.
 - ✅ §6.1 is answered in writing — "no", and it did outrank this plan. Closed in
   favour of that finding, fixed in `13926388c`, reopened once the premise held.
