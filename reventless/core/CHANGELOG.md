@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.241 (2026-08-19)
+
+### Bug Fixes
+
+* **aws:** build the platform's definition asset from the shared value ([c0e432d](https://github.com/ReventlessDev/reventless-core/commit/c0e432d98d96af3ff4c305b62f658ae102c5d142))
+
+
 # 3.0.0-alpha.240 (2026-08-18)
 
 ### Bug Fixes
