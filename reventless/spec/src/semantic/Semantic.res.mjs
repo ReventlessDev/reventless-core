@@ -22,7 +22,8 @@ let Id = {
   color: "color",
   money: "money",
   dateRange: "dateRange",
-  geoPoint: "geoPoint"
+  geoPoint: "geoPoint",
+  geolocation: "geolocation"
 };
 
 let semanticId = Sury.$Metadata_Id_make("reventless", "semantic");

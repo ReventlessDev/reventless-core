@@ -1,10 +1,17 @@
 # Plan: `Geolocation` — the geocoder's answer as one value
 
 **Date:** 2026-08-20
-**Status:** Proposed. Nothing implemented. **Unblocked** as of 2026-08-20:
-[tagged-union-state-fields.md](./tagged-union-state-fields.md) landed, so the framework can now
-express, emit and store a tagged-union field. One thing it added that step 1 below owes: a union
-carries its own name on its schema, so `Geolocation` writes
+**Status:** Steps 1–4 implemented, 2026-08-20. `Customers` now carries one `Geolocation` union in place
+of a point, a status enum and a note, and the SDL golden moved with it. **Unreleased and undeployed** —
+the breaking retype below is real, so the alpha store needs a wipe and a replay when this goes out.
+Step 5 (the dedicated UI control) may safely lag; the generic union renderer already ships.
+What is **not** covered is the AppSync and Postgres half of D1's read doors, which needs the deploy —
+see *Verification*.
+[tagged-union-state-fields.md](./done/tagged-union-state-fields.md) landed first, so the framework can
+express, emit and store a tagged-union field; its reader half shipped too, as
+`reventless-host-shell@3.0.0-alpha.80`, which the examples already pin — so the hard lockstep below is
+satisfied *before* the adopter exists rather than during it. One thing the mechanism added that step 1
+owed: a union carries its own name on its schema, so `Geolocation` writes
 `Reventless.TaggedUnion.named(~name="Geolocation", …)` beside its `Semantic.mark` — that name is
 what both the emitted `union Geolocation` and the stored `__typename` are built from.
 **Scope:** the semantic type, the first view to adopt it, and the deployment proof the mechanism plan
@@ -169,6 +176,15 @@ moment: the window is the cache's length, not the deploy's.
 So: bump the pin as its own commit, let it deploy, invalidate, confirm the new shell is being served —
 **then** land step 3. The insurance is one line, and it is what makes the SDL change a non-event.
 
+*Where that stands, 2026-08-20.* The first three are already done, and not as a step of this plan —
+the pin bump to `3.0.0-alpha.80` landed on its own, ahead of any adopter, and has deployed. The
+invalidation is no longer a manual step either: the stack invalidates `/*` after the bundle upload
+([Plugin_Stack.res:511-523](../../reventless/aws/src/plugin/stack/Plugin_Stack.res#L511-L523)), chained
+on the upload etags so it runs after the new content is in S3. It is best-effort by design — a failed
+invalidation must not fail a deploy — which leaves exactly one thing owed before step 3: **confirm the
+served shell is alpha.80**, rather than assume it from a green deploy. That is a browser check, and it
+is the cheapest item in this plan's verification.
+
 **What it costs to get wrong, for calibration.** The Customers view fails to load on the alpha example
 app. Not the platform, not the other views, not production, and the fix is a pin bump and a redeploy or
 a revert of the collapse. This is cheap insurance against a self-inflicted breakage, not a
@@ -186,12 +202,52 @@ projection's five arms map one-to-one onto the new value.
 needs without matching arms (`point: t => option<GeoPoint.t>`, `isLocated`, `reason`). Accessors rather
 than arm matches at consumers is `DateRange`'s discipline and the reason it held.
 
+*Done*: [Geolocation.res](../../reventless/spec/src/semantic/Geolocation.res), with
+[GeolocationTest.res](../../reventless/spec/tests/GeolocationTest.res) — 19 assertions, D5's four rows
+included.
+
+**One thing the plan asked for could not be built as specified.** D5 wants the `Unresolvable` reason to
+say *which* rule declined — "ambiguous or low-relevance, said in the reason" — and
+`Geocoding.confidentMatch` returns an `option`, which does not say. Producing the distinction in
+`ofSearch` meant comparing the top score to the floor a second time, and a second copy of the
+confidence rule is precisely what [Geocoding.res](../../reventless/spec/src/semantic/Geocoding.res)
+exists to prevent. So the rule was *widened where it lives* instead: `Geocoding.assess` returns
+`Confident` / `NoCandidates` / `Unscored` / `LowRelevance` / `Ambiguous`, and `confidentMatch` became a
+four-line wrapper over it with its signature and behaviour unchanged — its eight existing tests are the
+proof of that, and they pass untouched. `ofSearch` then reports what came back (which candidates, at
+what score, against what floor) without restating the rule that rejected it.
+
+The alternative was a single flat reason, and it is worth saying why that was refused: "no confident
+match" gives an operator nothing to do, where "matched 'Springfield, IL' and 'Springfield, MA' about
+equally well" tells them the address needs a state. The whole point of `Unresolvable` being a state
+rather than a note is that somebody acts on it.
+
 **2 — the marker and the canonical name.** `Semantic.Id.geolocation`, and an entry in
 `semanticCompositeNames` ([SchemaType.res:51-55](../../reventless/core/src/components/Api/SchemaType.res#L51-L55))
 so the union is emitted as `Geolocation` for every field that uses it rather than once per field path.
 This is what makes each plugin's copy byte-identical, which is what merged-API composition requires —
 the same property `Money`, `DateRange` and `GeoPoint` already rely on, and it matters more for a union
 than for an object, since a union's members are named types too.
+
+*Done — as half of what it says.* `Semantic.Id.geolocation` exists and the type carries it. **The
+`semanticCompositeNames` entry was deliberately not added, because the mechanism's D3 made it inert.**
+That table sets the `parentName` a semantic's shape is walked under, and the union branch
+([SchemaType.res:177-198](../../reventless/core/src/components/Api/SchemaType.res#L177-L198)) never
+reads `parentName`: the union's name comes off the schema via `TaggedUnion.classify`, and each member's
+from `memberTypeName(~union, ~arm)`. An entry would change nothing and would leave two places appearing
+to decide one name — the failure mode being that someone later edits the inert one and cannot see why
+the SDL disagrees.
+
+The byte-identity this step wanted is still delivered, and delivered *better*: a schema-carried name is
+path-independent by construction, where a `semanticCompositeNames` entry only makes it
+path-independent for fields that also carry the semantic marker.
+
+Asserted rather than argued —
+[GeolocationSemanticTest.res](../../reventless/core/tests/api/GeolocationSemanticTest.res) pins
+`canonicalName(geolocation) == None` **beside** the emitted `union Geolocation` with its three members,
+so the two facts cannot drift apart quietly. It also pins the thing that has no other guard: that
+`Semantic.mark` and `TaggedUnion.named` ride on one schema without displacing each other. Losing either
+marker emits the field as `String` — no compile error, no runtime failure, just a degraded contract.
 
 **3 — the example adopts it.** `Customers` drops `location`, `locationStatus` and `locationNote` for one
 `geolocation: Geolocation.t`. The five arms in `Customers_Projections` each write one value:
@@ -201,6 +257,24 @@ Both `UpdateWithDefault` defaults carry `Pending`. The GWT fixtures follow.
 
 The GraphQL golden `examples/online-shop-hybrid/schema/domain-api.graphql` is refreshed **in the same
 commit** — for this change the schema diff is the review artifact, more than the ReScript is.
+
+*Done.* The golden diff is the shape this predicted: three fields and the `Ordering_CustomerLocationStatus`
+enum gone, `union Geolocation` with its three member types added, `geolocation: Geolocation!` on
+`Ordering_Customer`. The platform golden is untouched.
+
+Two notes for whoever reads that diff next:
+
+- **`check:graphql`'s summary reports one line that did not happen.** It printed
+  `- Ordering_SendOrderConfirmationTodoStatus.Pending`, which is a *labelling artifact*: the reporter
+  diffs raw lines as a multiset and names each by the declaration the walk was last inside
+  ([CheckGraphqlContract.res:187-199](../../scripts/CheckGraphqlContract.res#L187-L199)). `  Pending`
+  appeared twice in the old golden and once in the new, so the surplus was attributed to the
+  alphabetically later of the two enums. The regenerated file confirms that enum keeps all four values.
+  Worth knowing before someone chases it; noted as a follow-up below.
+- `| AddressUnresolvable({reason}) => … Unresolvable({reason})` does not compile — punning across the
+  two inline records makes the source constructor's anonymous type escape its scope. Bind it under
+  another name (`{reason: why}`). A one-line fix, but the error names the *target* field, which points
+  away from the cause.
 
 **4 — the docs, one of which is already wrong.**
 [ui-configuration.md](../../packages/doc/docs-app/ui-configuration.md) names this read model twice, and
@@ -215,12 +289,25 @@ the two spots need different fixes:
   It needs a different subject, and `accountStatus` is the honest one: a record whose lifecycle field is
   named something other than `lifecycle` is exactly what the annotation is for.
 
+*Done, and the second bullet was wrong about its own subject.* That worked example already used
+`accountStatus`; nothing was owed there. What actually needed the fix was the paragraph *below* it —
+"Not every enum ending in `Status` is one" — which taught the rule using `locationStatus` as its
+counter-example, a field this change deletes. It now states the principle generically and adds what is
+newly true: the temptation is gone because the enum is gone, and `@lifecycle` on a union field is a
+compile error.
+
+Two more the plan had not found, both the same drift: the `@hidden` example was `@hidden locationNote`
+(now a generic `internalNote`), and [reventless-ppx.md:418](../../packages/doc/docs-app/reventless-ppx.md)
+taught the same lesson with the same doomed field. Left alone deliberately:
+`PluginStructureTest` and `Platform_ComponentDefinitions_Lambda_OpsTest` each use the string
+`"locationStatus"` in a synthetic fixture that never referenced this view — renaming those is churn.
+
 **5 — the reader half, planned in `reventless-ui`.** What this plan owes it, beyond the mechanism
 plan's contract:
 
 | What the UI reads | Fixed by |
 |---|---|
-| `x-reventless-semantic: "geolocation"` on the field | step 2 |
+| `x-reventless-semantic: "geolocation"` on the field | step 2 — *verified in the live published schema* |
 | one spelling only — `geolocation`, in both vocabularies | D3 |
 | three members, named `GeolocationPending` / `GeolocationLocated` / `GeolocationUnresolvable` | step 2 + the mechanism's member naming |
 | the point lives on `Located` alone, so a map pin is drawn from one arm and never from an absent field | the shape |
@@ -231,34 +318,66 @@ the distinction this plan exists to create.
 
 ## Verification
 
-- **The fourteen doors.** Every read door in the mechanism plan's D1 table, against a deployed
-  `Customers` carrying a real union: AppSync's single, single`Items`, list, by-index, by-ids, refs,
-  `@resolves` and `@resolvesMany`; the Postgres resolver; and local's six. **Each one called, none
-  sampled.** This is the evidence the mechanism plan could not gather and the reason this plan exists
-  as a separate one — a union field missing `__typename` resolves to null, and a null in a non-nullable
-  field nulls its parent, which inside a list is every row disappearing. The by-index and `@resolves`
-  doors are the likeliest to be skipped, since `Customers` does not exercise them itself; give them a
-  fixture rather than an exemption.
-- **A pre-existing row is rebuilt, not decoded.** Assert the *failure* deliberately: a row written in
-  the three-field shape does not parse against the new schema. This is the plan's breaking claim, and
-  a plan that asserts its cheap claims and assumes its expensive one has it backwards.
-- **`ofSearch` maps every outcome, including the one that maps to nothing.** All four rows of D5's
-  table, with `Unavailable` asserted to return `None` — the single most consequential branch, since
-  getting it wrong converts an outage into a permanent verdict.
-- **The SDL golden diff is read, not just regenerated.** Three member types, one union, and the three
-  old fields gone. Regenerating a golden without reading it is how a wrong contract gets committed with
-  a green build.
-- **A live local round trip, then a browser.** A customer registered with a plain address, geocoded, and
-  the detail page showing one Geolocation control where three rows are today — then the same page while
-  the address is changed, which should return it to `Pending` and clear the pin. `GeoPoint`'s
-  verification carries its own note that nobody opened a map; the equivalent mistake here is a
-  `Pending` row and an `Unresolvable` row rendering identically, which only a person looking at both
-  will catch.
+**What ran, 2026-08-20.** `pnpm run build` clean; `pnpm test` — 355 suites, 3569 tests, green;
+`pnpm run check:graphql:update` with the diff read by hand; the docs site builds; and a live local
+round trip against an in-memory platform on alternate ports.
+
+- **The doors.** ✅ *for every door this view has, locally.* `Customers` declares exactly four —
+  `Ordering_Customer` (single), `Ordering_Customers` (list/connection), `Ordering_CustomersByIds` and
+  `Ordering_CustomersRefs` — and **all four were called against a live server**, each returning
+  `__typename` plus the arm's own fields through an inline fragment. Not sampled: called.
+
+  ❌ **The other doors in D1's table are not covered, and two of them cannot be by this view.** The
+  spec declares no `@index` and no composite sort key, so the by-index and single`Items` doors do not
+  exist for `Customers` at all, and nothing `@resolves` to it. Those need the fixture the plan asked
+  for rather than an exemption — and it is still owed. **The eight AppSync doors and the Postgres
+  resolver need a deploy**, which is the one thing this verification cannot reach from here.
+- **A pre-existing row is rebuilt, not decoded.** ✅ Asserted as the failure it is, in
+  [GeolocationSemanticTest.res](../../reventless/core/tests/api/GeolocationSemanticTest.res): a row in
+  the three-field shape does not parse against the union-carrying state schema.
+- **`ofSearch` maps every outcome, including the one that maps to nothing.** ✅ All four rows of D5's
+  table, `Unavailable → None` asserted on its own.
+- **The SDL golden diff is read, not just regenerated.** ✅ Read, and it matched the prediction — with
+  one reported line that turned out to be a reporter artifact rather than a change (see step 3).
+- **The map still gets its pins.** ✅ The one consumer of this field. AutoUI reads `geolocation` as a
+  `Geolocated` geo source from `x-reventless-semantic: "geolocation"` **on the union field**, then
+  reads `point` out of the `Located` arm by `__typename`/`TAG`. Confirmed against the schema the local
+  platform actually publishes, not the IR.
+
+  Worth recording as a near-miss, because it decided which half of step 2 mattered. AutoUI's schema
+  walk enumerates **top-level properties only** and hands unions back untouched, so the `geoPoint`
+  semantic *inside* the `Located` arm is invisible to it. Had the field shipped without
+  `Semantic.mark(~id=geolocation)`, the view would have resolved to no geo source at all and **the map
+  mode would simply not be offered** — not a missing pin, no map. The table would have rendered the
+  arm honestly, so it would have read as "the map disappeared" with nothing naming the cause.
+- **A live local round trip.** ✅ Register → `GeolocationPending{requestedFor: "Stephansplatz 1,
+  Vienna"}`; `SetAddressLocation` → `GeolocationLocated{point}`; `UpdateAddress` →
+  `GeolocationPending{requestedFor: "Karlsplatz 13, Vienna"}` — the new address, which is D2's
+  staleness argument holding end to end rather than only in a projection test.
+
+  Two gaps in this, both honest: the **`Unresolvable` arm was never driven through the API**, because
+  no mutation produces it — `MarkAddressUnresolvable` reaches the aggregate from the geocoding slice,
+  so that arm is covered by the GWT projection test and not by a live call. And **nobody has opened a
+  browser.** `GeoPoint`'s verification carries a note that nobody opened a map; the equivalent mistake
+  here is a `Pending` row and an `Unresolvable` row rendering identically, and only a person looking at
+  both will catch it.
 
 ## Out of scope
 
 - **The geocoding transport.** Which provider answers, and how, stays where it is. This plan types the
   answer.
+
+  *Narrowed in practice.* The **caller** was not out of scope and was initially missed:
+  `GeocodeCustomerAddress_Translation` went on calling `Geocoding.confidentMatch` and writing its own
+  flat reason, which left `ofSearch` — the helper D5 justified as existing "rather than being written
+  per caller" — with no production caller at all. It now goes through `ofSearch`, so the reasons name
+  the candidates and the "an outage is not a verdict" rule has one home. The transport underneath is
+  still untouched.
+
+  Two seams showed up in the fit, both worth knowing before the next caller: `ofSearch` collapses
+  `Unavailable(why)` to `None` and loses `why`, so the slice still matches that arm itself to keep the
+  retry message; and `Some(Pending(_))` is unreachable but must still be written, because the return
+  type admits an arm the function never produces.
 - **Other views.** `Customers` is the case being proved. No other view is retyped until something asks.
 - **An interface for the shared "which address" field.** D2's reasoning: build it when two arms
   genuinely need the field, not in anticipation.
@@ -277,3 +396,18 @@ the distinction this plan exists to create.
 - **A second union semantic.** One entry is not a vocabulary. The mechanism plan's naming rules and
   D2's every-arm-named-field constraint were fitted to this case; the next one — an outcome, an
   approval, a settlement state — is what shows whether they generalise.
+- **`translate`'s own body is untested, and was before this too.**
+  `GeocodeCustomerAddress_GWT` mocks `translate` wholesale via `whenTranslateMocked`, so the mapping
+  from a geocoder answer to a command has never been exercised — only `collect` and the TODO
+  lifecycle are. `ofSearch` is covered directly, so what is uncovered is the glue. Closing it means
+  either raw Jest in an example plugin (against the GWT-only convention) or a GWT verb that supplies a
+  stub `Capabilities.t` and runs the real `translate` — the second is the right shape, and is a change
+  to `OutboundTranslation_GWT`.
+- **A union behind an index, as a fixture.** The by-index and single`Items` doors carry no union today
+  because no view declares both, so D1's table has two entries nothing has ever exercised. A fixture
+  view with an `@index` and a union field would close that without waiting for a real view to want one.
+- **`check:graphql`'s drift summary mislabels a moved duplicate line.** It diffs raw lines as a
+  multiset and names each by the declaration the walk was last inside, so a line appearing in two
+  declarations has its surplus attributed to whichever sorts later. This change printed a removal
+  against an enum it never touched. Harmless once understood, and a few minutes of somebody's time
+  every time it is not.

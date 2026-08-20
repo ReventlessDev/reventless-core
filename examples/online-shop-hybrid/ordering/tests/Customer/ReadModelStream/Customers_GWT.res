@@ -1,8 +1,5 @@
-// Multi-source ReadModel: one `_GWT` instance per source mapping. The
-// `MultiSourceProjection_GWT.Make` functor is single-source — wire one GWT
-// module per source view and let each describe its own slice of behaviour.
-// (At runtime the two mappings merge into one row keyed by `customerId`; each
-// module here exercises its source in isolation.)
+// `MultiSourceProjection_GWT.Make` is single-source, so one GWT module per source
+// mapping. At runtime the two merge on `customerId`; here each is tested alone.
 
 module CustomerGwt = ReventlessGwt.MultiSourceProjection_GWT.Make(
   Customers_Projections.CustomerMapping,
@@ -19,9 +16,7 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
       Customers.customerId: "id",
       email: "alice@x.y",
       address: "123 Main",
-      location: None,
-      locationStatus: Pending,
-      locationNote: None,
+      geolocation: Pending({requestedFor: "123 Main"}),
       accountStatus: Active,
       orderCount: 0,
     })
@@ -34,9 +29,7 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
       Customers.customerId: "id",
       email: "alice2@x.y",
       address: "123 Main",
-      location: None,
-      locationStatus: Pending,
-      locationNote: None,
+      geolocation: Pending({requestedFor: "123 Main"}),
       accountStatus: Active,
       orderCount: 0,
     })
@@ -49,9 +42,7 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
       Customers.customerId: "id",
       email: "alice@x.y",
       address: "789 Pine",
-      location: None,
-      locationStatus: Pending,
-      locationNote: None,
+      geolocation: Pending({requestedFor: "789 Pine"}),
       accountStatus: Active,
       orderCount: 0,
     })
@@ -64,9 +55,7 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
       Customers.customerId: "id",
       email: "alice@x.y",
       address: "123 Main",
-      location: Some({lat: 51.2093, lng: 3.2247}),
-      locationStatus: Located,
-      locationNote: None,
+      geolocation: Located({point: {lat: 51.2093, lng: 3.2247}}),
       accountStatus: Active,
       orderCount: 0,
     })
@@ -79,9 +68,7 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
       Customers.customerId: "id",
       email: "alice@x.y",
       address: "123 Main",
-      location: None,
-      locationStatus: Pending,
-      locationNote: None,
+      geolocation: Pending({requestedFor: "123 Main"}),
       accountStatus: Deactivated,
       orderCount: 0,
     })
@@ -100,9 +87,7 @@ OrderGwt.describe("Customers ReadModel ← Ordering DCB log", () => {
         Customers.customerId: "c1",
         email: "",
         address: "",
-        location: None,
-        locationStatus: Pending,
-        locationNote: None,
+        geolocation: Pending({requestedFor: ""}),
         accountStatus: Active,
         orderCount: 1,
       },
@@ -122,9 +107,7 @@ OrderGwt.describe("Customers ReadModel ← Ordering DCB log", () => {
         Customers.customerId: "c1",
         email: "",
         address: "",
-        location: None,
-        locationStatus: Pending,
-        locationNote: None,
+        geolocation: Pending({requestedFor: ""}),
         accountStatus: Active,
         orderCount: 2,
       },

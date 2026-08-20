@@ -1,27 +1,15 @@
-// Customer projection mappings — a single read model fed by TWO sources:
+// One read model fed by two sources — the Customer aggregate (profile) and the
+// Ordering DCB EventLog (`orderCount`) — merged on `customerId`.
 //
-//   1. the **Customer aggregate** (profile: email, address, accountStatus), and
-//   2. the **Ordering DCB EventLog** (`orderCount`, from `OrderPlaced` events).
+// The DCB source's `name` MUST equal `<pluginName>DcbEventLog`: it is both the key
+// `Plugin_Builder` registers the EventTopic under and the `meta.service` stamped
+// on every published event.
 //
-// This is the canonical mixed **aggregate + DCB** read model: an aggregate's
-// per-instance state correlated with DCB events that reference it by a shared
-// key (`customerId`). Both mappings write to the same row id, so the framework
-// merges them into one `Customers` record.
-//
-// The DCB source's `name` MUST equal `<pluginName>DcbEventLog`
-// ("OrderingDcbEventLog") — the key under which `Plugin_Builder` registers the
-// ordering plugin's DCB EventTopic AND the `meta.service` DcbEventLog stamps on
-// every published event.
-//
-// Both mappings use `UpdateWithDefault` so the merge is order-independent: an
-// `OrderPlaced` that arrives before its customer's `Registered` still creates a
-// row (and vice-versa), and neither source clobbers the other's fields.
+// Both use `UpdateWithDefault`, so the merge is order-independent.
 
 @@reventless.mappings
 
-// ─────────────────────────────────────────────────────────────
-// DCB source view — Order-side events (only what this read model needs)
-// ─────────────────────────────────────────────────────────────
+// DCB source view — only the Order-side events this read model needs.
 
 module OrderEvents = {
   let name = "OrderingDcbEventLog"
@@ -30,9 +18,7 @@ module OrderEvents = {
   type event = OrderPlaced({orderId: string, customerId: string})
 }
 
-// ─────────────────────────────────────────────────────────────
 // Source 1 — Customer aggregate (profile)
-// ─────────────────────────────────────────────────────────────
 
 module CustomerMapping = Mapping.Make(
   Customer,
@@ -48,61 +34,31 @@ module CustomerMapping = Mapping.Make(
             Customers.customerId: id,
             email,
             address,
-            location: None,
-            locationStatus: Pending,
-            locationNote: None,
+            geolocation: Pending({requestedFor: address}),
             accountStatus: Active,
             orderCount: 0,
           },
           state => {...state, email, address, accountStatus: Active},
         )
       | EmailUpdated({email}) => Update(id, state => {...state, email})
-      // A new address invalidates the pin: back to Pending until the geocoding
-      // slice answers for the new one. Leaving the old point on the row would
-      // show an address and a marker that disagree, with nothing saying so.
+      // A new address invalidates the pin: back to Pending for the new one.
       | AddressUpdated({address}) =>
-        Update(id, state => {
-          ...state,
-          address,
-          location: None,
-          locationStatus: Pending,
-          locationNote: None,
-        })
+        Update(id, state => {...state, address, geolocation: Pending({requestedFor: address})})
       | LocationSet({location}) =>
-        Update(id, state => {
-          ...state,
-          location: Some(location),
-          locationStatus: Located,
-          locationNote: None,
-        })
-      // Both halves in one event — the client supplied the pair, so the row is
-      // Located immediately and no geocode is owed.
+        Update(id, state => {...state, geolocation: Located({point: location})})
+      // The client supplied the pair, so no geocode is owed.
       | AddressLocated({address, location}) =>
-        Update(id, state => {
-          ...state,
-          address,
-          location: Some(location),
-          locationStatus: Located,
-          locationNote: None,
-        })
-      | AddressUnresolvable({reason}) =>
-        Update(id, state => {
-          ...state,
-          location: None,
-          locationStatus: Unresolvable,
-          locationNote: Some(reason),
-        })
+        Update(id, state => {...state, address, geolocation: Located({point: location})})
+      | AddressUnresolvable({reason: why}) =>
+        Update(id, state => {...state, geolocation: Unresolvable({reason: why})})
       | Deactivated => Update(id, state => {...state, accountStatus: Deactivated})
-      // The row comes back to ordinary reads with the profile it left with —
-      // the aggregate held it throughout, so nothing here has to be rebuilt.
+      // The aggregate held the profile throughout, so nothing is rebuilt here.
       | Reactivated => Update(id, state => {...state, accountStatus: Active})
       }
   },
 )
 
-// ─────────────────────────────────────────────────────────────
 // Source 2 — Ordering DCB EventLog (order count, keyed by customerId)
-// ─────────────────────────────────────────────────────────────
 
 module CustomerOrdersMapping = Mapping.Make(
   OrderEvents,
@@ -118,9 +74,8 @@ module CustomerOrdersMapping = Mapping.Make(
             Customers.customerId: customerId,
             email: "",
             address: "",
-            location: None,
-            locationStatus: Pending,
-            locationNote: None,
+            // No address from this side; `Registered` fills it in when it arrives.
+            geolocation: Pending({requestedFor: ""}),
             accountStatus: Active,
             orderCount: 1,
           },

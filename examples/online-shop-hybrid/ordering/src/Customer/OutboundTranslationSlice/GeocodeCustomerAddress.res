@@ -1,13 +1,7 @@
-// GeocodeCustomerAddress OutboundTranslationSlice.
-//
-// A human enters an address and nothing else. This slice turns that address into
-// a point by asking Amazon Location, and reports the outcome back to the Customer
-// aggregate — `SetLocation` when it is sure, `MarkAddressUnresolvable` when it is
-// not. Neither command is callable from the API; see `Customer.res`.
-//
-// This is the *unattended* path. A client that can geocode for itself would send
-// the point with the command and never reach here — `collect` is where that
-// future arm goes, and it is the only place this slice would need to change.
+// Turns an address into a point and reports back to the Customer aggregate:
+// `SetLocation` when sure, `MarkAddressUnresolvable` when not. Neither is callable
+// from the API. The unattended path — a client that geocodes for itself never
+// reaches here, and `collect` is where that arm would go.
 
 @@reventless.spec
 
@@ -24,16 +18,13 @@ type inboundCommand =
   | SetLocation({location: Reventless.GeoPoint.t, resolvedFrom: string})
   | MarkAddressUnresolvable({address: string, reason: string})
 
-// Retries here are for a geocoder that is *down*, not for one that has answered.
-// An address the service has no match for is resolved by publishing
-// `MarkAddressUnresolvable`, not by trying again three times.
+// Retries are for a geocoder that is down, not one that has answered.
 let maxRetries = 3
 let heartbeatInterval = 60
 let targetName = Some("Customer")
 
-// The Customer aggregate, by its Spec.name — the capability that made this slice
-// possible at all. Before it, an outbound slice could only read its plugin's DCB
-// event log, and a customer's lifecycle is an aggregate.
+// The Customer aggregate by its Spec.name; an outbound slice could once only read
+// its plugin's DCB event log.
 let sourceNames = ["Customer"]
 
 // Drawn as an external box outside the Ordering plugin in the Event Graph.

@@ -119,14 +119,19 @@ Resolution order: (1) the annotated field; (2) a field literally named `lifecycl
 whose shape is an enum; (3) none, and the per-row filter is inert. At most one
 `@lifecycle` per record — a duplicate is a compile error.
 
-**Not every enum ending in `Status` is one.** A customer record may also carry a
-`locationStatus: Pending | Located | Unresolvable` tracking whether a geocoder has
-turned the address into a point. It is enum-shaped and it is called a status, and
-it is still not the lifecycle: no command branches on it and no lifecycle passes
-through it. It is a background job's progress. Annotating it would section the list
-by how far a geocoder got and filter the command menu against states no command
-mentions. This is why the annotation is keyed on `lifecycle` rather than on
-`status` — `status` is a promiscuous name, and a record often has several.
+**Not every enum ending in `Status` is one.** A record often carries a second
+enum-shaped field that tracks a background job's progress — how far a geocoder,
+an export or a delivery attempt has got. It is not the lifecycle: no command
+branches on it, and annotating it would section the list by a job's progress and
+filter the command menu against states no command mentions. This is why the
+annotation is keyed on `lifecycle` rather than on `status` — `status` is a
+promiscuous name, and a record often has several.
+
+The `Customers` view used to make exactly this mistake available, with a
+`locationStatus: Pending | Located | Unresolvable` beside a `location` point. It
+now carries one `Geolocation` union instead, which removes the temptation by
+removing the enum — and `@lifecycle` on a union field is a compile error, since a
+per-row filter cannot be built from one.
 
 ### 2.3 List and summary presentation
 
@@ -143,7 +148,7 @@ mentions. This is why the annotation is keyed on `lifecycle` rather than on
 into a row:
 
 ```rescript
-@hidden locationNote: option<string>,
+@hidden internalNote: option<string>,
 ```
 
 ### 2.4 Hierarchical rendering
@@ -937,7 +942,7 @@ What each of the shop's components declares:
 | `Catalog/Categories` | `@storageRef("categoryImages")` image — its own store, not the products' one; nav group "Shop" |
 | `Catalog/ProductDemand` | `@@reventless.authorize(AllowGroups(["Admin", "Merchandiser"]))`; `@id productId`; only in the `Merchandiser` journey, under its own nav group |
 | `Ordering/Orders` | `@owner customerId`; `lifecycle` by name; `DateTime` timestamps; `DateRange` delivery window; nav "All Orders", or "My Orders" for a caller reading only their own |
-| `Ordering/Customers` | `@@reventless.authorize`; `@displayName email`; `@lifecycle accountStatus` with `@retired Deactivated` on its own constructor; `@hidden locationNote`; `GeoPoint` location, beside an unannotated `locationStatus` that is a job's progress rather than a lifecycle |
+| `Ordering/Customers` | `@@reventless.authorize`; `@displayName email`; `@lifecycle accountStatus` with `@retired Deactivated` on its own constructor; a `Geolocation` union carrying the geocoder's answer, whose `Located` arm holds the `GeoPoint` the map pin is drawn from |
 | `Ordering/AvailableProducts` | `@@reventless.visibility(Internal)` — reachable only as the `@ref` target of `PlaceOrder`'s product picker |
 | `Ordering/PlaceOrder` | `@owner customerId`; `@ref("AvailableProducts") productIds`; optional `DateRange` delivery window |
 

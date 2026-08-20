@@ -277,6 +277,20 @@ type GeocodeCandidate {
   relevance: Float
 }
 
+union Geolocation = GeolocationLocated | GeolocationPending | GeolocationUnresolvable
+
+type GeolocationLocated {
+  point: GeoPoint!
+}
+
+type GeolocationPending {
+  requestedFor: String!
+}
+
+type GeolocationUnresolvable {
+  reason: String!
+}
+
 type Money {
   amount: Float!
   currency: MoneyCurrency!
@@ -590,10 +604,8 @@ type Ordering_Customer implements Node {
   customerId: ID!
   displayName: String
   email: String!
+  geolocation: Geolocation!
   id: ID!
-  location: GeoPoint
-  locationNote: String
-  locationStatus: Ordering_CustomerLocationStatus!
   orderCount: Float!
 }
 
@@ -646,12 +658,6 @@ input Ordering_CustomerFilter {
   ids: [ID!]
   search: String
   searchPrefix: String
-}
-
-enum Ordering_CustomerLocationStatus {
-  Located
-  Pending
-  Unresolvable
 }
 
 input Ordering_CustomerOrderBy {

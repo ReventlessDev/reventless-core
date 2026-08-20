@@ -65,9 +65,10 @@ function project(param) {
           customerId: id,
           email: email,
           address: address,
-          location: undefined,
-          locationStatus: "Pending",
-          locationNote: undefined,
+          geolocation: {
+            TAG: "Pending",
+            requestedFor: address
+          },
           accountStatus: "Active",
           orderCount: 0
         },
@@ -97,9 +98,10 @@ function project(param) {
         _0: id,
         _1: state => {
           let newrecord = {...state};
-          newrecord.locationNote = undefined;
-          newrecord.locationStatus = "Pending";
-          newrecord.location = undefined;
+          newrecord.geolocation = {
+            TAG: "Pending",
+            requestedFor: address$1
+          };
           newrecord.address = address$1;
           return newrecord;
         }
@@ -111,9 +113,10 @@ function project(param) {
         _0: id,
         _1: state => {
           let newrecord = {...state};
-          newrecord.locationNote = undefined;
-          newrecord.locationStatus = "Located";
-          newrecord.location = location;
+          newrecord.geolocation = {
+            TAG: "Located",
+            point: location
+          };
           return newrecord;
         }
       };
@@ -125,23 +128,25 @@ function project(param) {
         _0: id,
         _1: state => {
           let newrecord = {...state};
-          newrecord.locationNote = undefined;
-          newrecord.locationStatus = "Located";
-          newrecord.location = location$1;
+          newrecord.geolocation = {
+            TAG: "Located",
+            point: location$1
+          };
           newrecord.address = address$2;
           return newrecord;
         }
       };
     case "AddressUnresolvable" :
-      let reason = event.reason;
+      let why = event.reason;
       return {
         TAG: "Update",
         _0: id,
         _1: state => {
           let newrecord = {...state};
-          newrecord.locationNote = reason;
-          newrecord.locationStatus = "Unresolvable";
-          newrecord.location = undefined;
+          newrecord.geolocation = {
+            TAG: "Unresolvable",
+            reason: why
+          };
           return newrecord;
         }
       };
@@ -170,9 +175,10 @@ function project$1(param) {
       customerId: customerId,
       email: "",
       address: "",
-      location: undefined,
-      locationStatus: "Pending",
-      locationNote: undefined,
+      geolocation: {
+        TAG: "Pending",
+        requestedFor: ""
+      },
       accountStatus: "Active",
       orderCount: 1
     },
