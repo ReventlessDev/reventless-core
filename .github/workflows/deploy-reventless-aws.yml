@@ -315,14 +315,6 @@ jobs:
       REVENTLESS_HOST_UI_BASE_DOMAIN: ${{ inputs.host-ui-base-domain }}
       REVENTLESS_HOST_UI_HOSTED_ZONE_ID: ${{ inputs.host-ui-hosted-zone-id }}
       REVENTLESS_HOST_UI_PROD_STACKS: ${{ inputs.host-ui-prod-stacks }}
-      # TEMPORARY escape hatch (read by Util_LocalConfig → Util_LogRetention).
-      # Keeps `alpha` on Lambda/AppSync auto-created log groups instead of
-      # Pulumi-managed ones, so the deploy does not race the live stack's
-      # heartbeats recreating groups → CreateLogGroup ResourceAlreadyExists.
-      # Remove at the deliberate managed-log-group cutover (a local `pulumi up`
-      # right after deleting alpha's groups) — see
-      # docs/plans/env-tiered-log-retention-and-levels.md Step 8.
-      REVENTLESS_UNMANAGED_LOG_GROUP_STACKS: alpha
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -517,14 +509,6 @@ jobs:
       REVENTLESS_HOST_UI_BASE_DOMAIN: ${{ inputs.host-ui-base-domain }}
       REVENTLESS_HOST_UI_HOSTED_ZONE_ID: ${{ inputs.host-ui-hosted-zone-id }}
       REVENTLESS_HOST_UI_PROD_STACKS: ${{ inputs.host-ui-prod-stacks }}
-      # TEMPORARY escape hatch (read by Util_LocalConfig → Util_LogRetention).
-      # Keeps `alpha` on Lambda/AppSync auto-created log groups instead of
-      # Pulumi-managed ones, so the deploy does not race the live stack's
-      # heartbeats recreating groups → CreateLogGroup ResourceAlreadyExists.
-      # Remove at the deliberate managed-log-group cutover (a local `pulumi up`
-      # right after deleting alpha's groups) — see
-      # docs/plans/env-tiered-log-retention-and-levels.md Step 8.
-      REVENTLESS_UNMANAGED_LOG_GROUP_STACKS: alpha
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
