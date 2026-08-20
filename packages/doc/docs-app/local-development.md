@@ -119,6 +119,12 @@ Each entry needs `username`, `password`, and `groups` (an empty list means
 unprivileged); `userId` defaults to the username. The file is read relative to
 the process working directory at startup, so restart the server after editing it.
 
+`pnpm run seed` reads the same file — it offers these accounts as the login to
+seed as, in the order they appear with the first as the default, and takes the
+password from the entry. A deployed platform keeps a `.reventless/users.yaml`
+too, recording the accounts created in its Cognito pool, and the seed offers
+those the same way.
+
 Sign in through the shell's login page to exercise group-based rules. Give
 yourself one account per role you have defined — the useful test is not "does
 admin work" but "does each role see exactly its own surfaces".

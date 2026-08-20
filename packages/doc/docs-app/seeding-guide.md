@@ -241,6 +241,16 @@ If more than one data set exists the runner prompts which to seed (or `SEED_SET`
 selects one). Override the local endpoints with `REVENTLESS_GRAPHQL_ENDPOINT` /
 `REVENTLESS_LOGIN_ENDPOINT`; nothing in the harness assumes a local runtime.
 
+**Who it logs in as.** Both providers take their accounts from the platform's
+`.reventless/users.yaml` — the file the local auth adapter already loads, and the
+record of the Cognito accounts on AWS. The run lists its entries in file order
+with the first as the default and takes the password from the chosen entry, so
+nothing is typed; `SEED_USER` picks by username or 1-based index and
+`SEED_USERS_FILE` points elsewhere. It matters which one you pick: owner-scoped
+rows belong to whoever seeded them. A platform with no such file falls back to
+prompting for a username and password, and `REVENTLESS_DEMO_USER` +
+`REVENTLESS_DEMO_PASSWORD` together bypass both — the CI path.
+
 ## Related
 
 - [Generated GraphQL API Guide](graphql-api-guide.md) — the mutation names and

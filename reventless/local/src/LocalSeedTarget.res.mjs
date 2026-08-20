@@ -67,7 +67,7 @@ async function select() {
       running.length !== 0 ? await Seed_Prompt$ReventlessSeed.select("Platform:", running.map(e => [
           entryLabel(e),
           e
-        ]), "SEED_PLATFORM") : undefined
+        ]), "SEED_PLATFORM", undefined) : undefined
     );
   if (chosen !== undefined) {
     return {

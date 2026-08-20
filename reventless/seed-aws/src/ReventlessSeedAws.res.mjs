@@ -108,7 +108,7 @@ async function resolveStack(projectDir, backend, stack) {
   return await Seed_Prompt$ReventlessSeed.select("Stack:", stacks.map(s => [
     s,
     s
-  ]), undefined);
+  ]), undefined, undefined);
 }
 
 async function fetchConfig(hostShellUrl) {

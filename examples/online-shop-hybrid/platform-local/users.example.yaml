@@ -11,6 +11,9 @@
 # [] = unprivileged), userId? (defaults to username). Restart the server after
 # editing.
 #
+# `pnpm run seed` reads the same file: it offers these accounts as the login to
+# seed as, first as the default, and takes the password from here.
+#
 # The shop's four roles, and what makes them different from each other:
 #
 #   Shopper       browses the catalog and places their own orders. Reads are

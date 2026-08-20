@@ -10,7 +10,8 @@
     "rebuild": "pnpm run clean && pnpm run build"
   },
   "dependencies": {
-    "@reventlessdev/rescript-node": "workspace:*"
+    "@reventlessdev/rescript-node": "workspace:*",
+    "yaml": "^2.8.3"
   },
   "devDependencies": {
     "@reventlessdev/rescript-jest": "workspace:*",

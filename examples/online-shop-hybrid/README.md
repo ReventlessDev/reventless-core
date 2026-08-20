@@ -121,21 +121,28 @@ the deployed stack.
 ```bash
 cd platform-local
 pnpm run serve:reset     # in one shell — a clean store
-pnpm run seed            # in another — pick a data set, log in as admin/admin
+pnpm run seed            # in another — pick a data set, then an account
 ```
 
 Two data sets ship, so the run first asks which to seed: `full` (above) and a
 compact `sample` (16 products, 8 customers, 40 orders) for a quick check. It then
-prompts for a **username and password**. Local authenticates against the dev
-`/__inmemory/login` route (the seeded `admin`/`admin` by default). A single
-shared prompt handles the whole run.
+asks **which account to seed as**, listing the ones in that platform's
+`.reventless/users.yaml` in the order the file defines them — Enter takes the
+first. The file records the password beside the username, so nothing is typed;
+local sends both to the dev `/__inmemory/login` route, AWS to Cognito. A platform
+that keeps no such file prompts for a username and password instead.
+
+Which account matters: owner-scoped rows are keyed to whoever seeded them, so the
+orders `shopper` creates are the orders `shopper` sees. `SEED_USER` picks by
+username or 1-based index, and `SEED_USERS_FILE` points at a file elsewhere.
 
 Generation is deterministic (fixed PRNG seed, fixed literal data), so a reset
 plus a re-run reproduces the same rows. There is no idempotence logic: run it
 against a fresh store, not on top of an existing one.
 
 For a non-interactive run (CI), set `SEED_SET` (`full` or `sample`) plus
-`REVENTLESS_DEMO_USER`/`REVENTLESS_DEMO_PASSWORD` to skip every prompt. Add
+`REVENTLESS_DEMO_USER`/`REVENTLESS_DEMO_PASSWORD` to skip every prompt — those
+two together bypass the accounts file entirely, so CI needs no copy of it. Add
 `SEED_SKIP_UPLOADS=1` to seed the domain data without product images (the
 optional `imageUrl` is then simply absent) — handy when a deployment serves no
 upload endpoint.
@@ -197,13 +204,15 @@ and [Test it on AWS](../../packages/doc/docs-tutorials/test-on-aws.md).
 Run [`pnpm run seed`](#seed-demo-data) from `platform-aws/` — it targets AWS by
 construction. It picks the stack (or `SEED_STACK`), discovers the endpoints from
 the stack's published `config.json` (or its stack outputs), and signs in against
-Cognito. The user must exist with a permanent password — see
+Cognito with the account you pick from `platform-aws/.reventless/users.yaml`.
+That account must exist in the stack's pool with a permanent password, and the
+file is the record of the ones that do — see
 [Test it on AWS](../../packages/doc/docs-tutorials/test-on-aws.md). As locally,
 the seed is **non-idempotent** — run it against a fresh deployment.
 
 ```bash
 cd platform-aws
-pnpm run seed            # pick a data set and stack, then log in
+pnpm run seed            # pick a data set and stack, then an account
 ```
 
 ### Reset a deployed stack to re-seed

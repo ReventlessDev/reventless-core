@@ -493,7 +493,7 @@ function run(dbPath) {
       let root = Nodepath.dirname(resolved$1);
       let db = SqliteDriver$ReventlessLocal.openDb(resolved$1);
       let plugins = readPlugins(db, root).map(p => p.plugin);
-      let scope = await Seed_Prompt$ReventlessSeed.select("Reset scope:", scopeOptions(plugins), "SEED_RESET_SCOPE");
+      let scope = await Seed_Prompt$ReventlessSeed.select("Reset scope:", scopeOptions(plugins), "SEED_RESET_SCOPE", undefined);
       let plan = build(db, root, scope);
       describe(plan);
       if (total(plan) === 0) {

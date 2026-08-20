@@ -12,6 +12,8 @@ let Upload;
 
 let Prompt;
 
+let Users;
+
 let Connect;
 
 let Failed = Seed_Types$ReventlessSeed.Failed;
@@ -30,6 +32,7 @@ export {
   Runner,
   Upload,
   Prompt,
+  Users,
   Connect,
   Failed,
   mutation,

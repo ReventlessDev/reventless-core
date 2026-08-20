@@ -10,6 +10,7 @@ module Client = Seed_Client
 module Runner = Seed_Runner
 module Upload = Seed_Upload
 module Prompt = Seed_Prompt
+module Users = Seed_Users
 module Connect = Seed_Connect
 
 exception Failed = Seed_Types.Failed

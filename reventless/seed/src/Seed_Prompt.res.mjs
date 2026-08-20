@@ -5,6 +5,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Nodereadline from "node:readline";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Seed_Types$ReventlessSeed from "./Seed_Types.res.mjs";
+import * as Seed_Users$ReventlessSeed from "./Seed_Users.res.mjs";
 
 let rlRef = {
   contents: undefined
@@ -94,7 +95,7 @@ function isAffirmative(answer) {
   }
 }
 
-async function select(title, options, env) {
+async function select(title, options, env, defaultIndex) {
   if (options.length === 1) {
     return options[0][1];
   }
@@ -118,8 +119,13 @@ async function select(title, options, env) {
   options.forEach((param, i) => {
     console.log(`  ` + (i + 1 | 0).toString() + `) ` + param[0]);
   });
+  let fallback = Stdlib_Option.flatMap(defaultIndex, i => options[i]);
+  let hint = defaultIndex !== undefined && fallback !== undefined ? ` (default ` + (defaultIndex + 1 | 0).toString() + `)` : "";
   let pick = async () => {
-    let answer = await ask(`\nSelect [1-` + options.length.toString() + `]: `);
+    let answer = await ask(`\nSelect [1-` + options.length.toString() + `]` + hint + `: `);
+    if (answer === "" && fallback !== undefined) {
+      return fallback[1];
+    }
     let n = Stdlib_Int.fromString(answer, undefined);
     if (n !== undefined) {
       if (n >= 1 && n <= options.length) {
@@ -136,12 +142,10 @@ async function select(title, options, env) {
   return await pick();
 }
 
-async function credentials(localDefaultsOpt) {
-  let localDefaults = localDefaultsOpt !== undefined ? localDefaultsOpt : false;
-  let u = envValue("REVENTLESS_DEMO_USER");
+async function askCredentials(localDefaults, envUser) {
   let username;
-  if (u !== undefined) {
-    username = u;
+  if (envUser !== undefined) {
+    username = envUser;
   } else {
     requireTty();
     let entered = await ask(localDefaults ? "Username [admin]: " : "Username: ");
@@ -156,6 +160,52 @@ async function credentials(localDefaultsOpt) {
     let entered$1 = await askHidden(localDefaults ? "Password [admin]: " : "Password: ");
     password = entered$1 === "" && localDefaults ? "admin" : entered$1;
   }
+  return [
+    username,
+    password
+  ];
+}
+
+async function fromUsersFile(envUser) {
+  let match = Seed_Users$ReventlessSeed.load(envValue("SEED_USERS_FILE"));
+  if (match === undefined) {
+    return;
+  }
+  let users = match[1];
+  let path = match[0];
+  let chosen = envUser !== undefined ? users.find(u => u.username === envUser) : await select(`User (` + path + `):`, users.map(u => [
+      Seed_Users$ReventlessSeed.label(u),
+      u
+    ]), "SEED_USER", 0);
+  return Stdlib_Option.map(chosen, u => {
+    console.log(`Logging in as ` + u.username + ` (from ` + path + `)`);
+    return [
+      u.username,
+      u.password
+    ];
+  });
+}
+
+async function credentials(localDefaultsOpt) {
+  let localDefaults = localDefaultsOpt !== undefined ? localDefaultsOpt : false;
+  let envUser = envValue("REVENTLESS_DEMO_USER");
+  let match = envValue("REVENTLESS_DEMO_PASSWORD");
+  let match$1;
+  let exit = 0;
+  if (envUser !== undefined && match !== undefined) {
+    match$1 = [
+      envUser,
+      match
+    ];
+  } else {
+    exit = 1;
+  }
+  if (exit === 1) {
+    let pair = await fromUsersFile(envUser);
+    match$1 = pair !== undefined ? pair : await askCredentials(localDefaults, envUser);
+  }
+  let password = match$1[1];
+  let username = match$1[0];
   if (username === "" || password === "") {
     throw {
       RE_EXN_ID: Seed_Types$ReventlessSeed.Failed,
@@ -180,6 +230,8 @@ export {
   askHidden,
   isAffirmative,
   select,
+  askCredentials,
+  fromUsersFile,
   credentials,
 }
 /* node:readline Not a pure module */

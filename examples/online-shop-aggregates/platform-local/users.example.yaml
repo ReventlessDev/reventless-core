@@ -12,6 +12,9 @@
 # platform/admin access; "User" is a regular shopper. Restart the server after
 # editing.
 #
+# `pnpm run seed` reads the same file: it offers these accounts as the login to
+# seed as, first as the default, and takes the password from here.
+#
 # Log in via POST http://localhost:4000/__inmemory/login or the host-shell
 # LoginPage. THESE ARE THROWAWAY DEV CREDENTIALS — never reuse them anywhere real.
 

@@ -155,7 +155,7 @@ function seed(sets, connect) {
           chosen = await Seed_Prompt$ReventlessSeed.select("Data set:", sets.map(s => [
             s.label,
             s
-          ]), undefined);
+          ]), undefined, undefined);
         }
       } else {
         chosen = sets[0];

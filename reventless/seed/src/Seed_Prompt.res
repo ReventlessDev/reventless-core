@@ -121,11 +121,15 @@ let isAffirmative = (answer: string): bool =>
  * Auto-returns when there is a single option, so a lone data set or stack needs
  * no keypress. `env` (e.g. `SEED_SET`) preselects by matching label or 1-based
  * index, so CI runs without a TTY. Otherwise it prints a numbered menu.
+ *
+ * `defaultIndex` makes Enter a valid answer, selecting that 0-based option;
+ * without one every reply must name a choice.
  */
 let select = async (
   ~title: string,
   ~options: array<(string, 'a)>,
   ~env=?,
+  ~defaultIndex=?,
 ): 'a =>
   switch options {
   | [(_, only)] => only
@@ -153,29 +157,38 @@ let select = async (
       options->Array.forEachWithIndex(((label, _), i) =>
         Console.log(`  ${(i + 1)->Int.toString}) ${label}`)
       )
+      let fallback = defaultIndex->Option.flatMap(i => options->Array.get(i))
+      let hint = switch (defaultIndex, fallback) {
+      | (Some(i), Some(_)) => ` (default ${(i + 1)->Int.toString})`
+      | _ => ""
+      }
       let rec pick = async (): 'a => {
-        let answer = await ask(`\nSelect [1-${(options->Array.length)->Int.toString}]: `)
-        switch Int.fromString(answer) {
-        | Some(n) if n >= 1 && n <= options->Array.length =>
-          let (_, value) = options->Array.getUnsafe(n - 1)
-          value
+        let answer = await ask(
+          `\nSelect [1-${(options->Array.length)->Int.toString}]${hint}: `,
+        )
+        switch (answer, fallback) {
+        | ("", Some((_, value))) => value
         | _ =>
-          Console.log("  Not a valid choice.")
-          await pick()
+          switch Int.fromString(answer) {
+          | Some(n) if n >= 1 && n <= options->Array.length =>
+            let (_, value) = options->Array.getUnsafe(n - 1)
+            value
+          | _ =>
+            Console.log("  Not a valid choice.")
+            await pick()
+          }
         }
       }
       await pick()
     }
   }
 
-/**
- * Prompts for a username (visible) and password (echo muted).
- *
- * `REVENTLESS_DEMO_USER` / `REVENTLESS_DEMO_PASSWORD` skip the prompts. With
- * `localDefaults`, empty input falls back to `admin`/`admin` — the dev login.
- */
-let credentials = async (~localDefaults: bool=false): (string, string) => {
-  let username = switch envValue("REVENTLESS_DEMO_USER") {
+// Typing both halves is the fallback, not the first offer: it is what happens
+// when the platform keeps no accounts file. `envUser` is threaded in so a
+// `REVENTLESS_DEMO_USER` that named nobody in the file still skips the username
+// prompt rather than asking for a name that was already given.
+let askCredentials = async (~localDefaults: bool, ~envUser: option<string>): (string, string) => {
+  let username = switch envUser {
   | Some(u) => u
   | None =>
     requireTty()
@@ -188,6 +201,60 @@ let credentials = async (~localDefaults: bool=false): (string, string) => {
     requireTty()
     let entered = await askHidden(localDefaults ? "Password [admin]: " : "Password: ")
     entered == "" && localDefaults ? "admin" : entered
+  }
+  (username, password)
+}
+
+// The accounts file the platform already keeps (`.reventless/users.yaml`, or
+// `SEED_USERS_FILE`). It records the password beside the username, so choosing
+// an account is the whole credential step — nothing is typed.
+//
+// A named `REVENTLESS_DEMO_USER` picks its entry directly; otherwise the file's
+// accounts are offered in the order it defines them, first as the default.
+// `None` means the file has nothing to offer and the caller should ask.
+let fromUsersFile = async (~envUser: option<string>): option<(string, string)> =>
+  switch Seed_Users.load(~path=?envValue("SEED_USERS_FILE")) {
+  | None => None
+  | Some((path, users)) =>
+    let chosen = switch envUser {
+    | Some(name) => users->Array.find(u => u.username == name)
+    | None =>
+      Some(
+        await select(
+          ~title=`User (${path}):`,
+          ~options=users->Array.map(u => (Seed_Users.label(u), u)),
+          ~env="SEED_USER",
+          ~defaultIndex=0,
+        ),
+      )
+    }
+    // Logged for every arm, including the single-account file that selects
+    // itself without a keypress: which identity seeded the data is the thing an
+    // operator checks when owner-scoped rows turn up under the wrong account.
+    chosen->Option.map(u => {
+      Console.log(`Logging in as ${u.username} (from ${path})`)
+      (u.username, u.password)
+    })
+  }
+
+/**
+ * Resolves the credentials a seed run logs in with.
+ *
+ * `REVENTLESS_DEMO_USER` + `REVENTLESS_DEMO_PASSWORD` together are the
+ * non-interactive path and skip everything below. Otherwise the platform's
+ * `.reventless/users.yaml` supplies the accounts to choose from, and only a
+ * platform without one falls back to typing both halves — where, with
+ * `localDefaults`, empty input means `admin`/`admin`.
+ */
+let credentials = async (~localDefaults: bool=false): (string, string) => {
+  let envUser = envValue("REVENTLESS_DEMO_USER")
+  let (username, password) = switch (envUser, envValue("REVENTLESS_DEMO_PASSWORD")) {
+  | (Some(u), Some(p)) => (u, p)
+  | _ =>
+    switch await fromUsersFile(~envUser) {
+    | Some(pair) => pair
+    | None => await askCredentials(~localDefaults, ~envUser)
+    }
   }
   if username == "" || password == "" {
     throw(Failed("username and password are required."))

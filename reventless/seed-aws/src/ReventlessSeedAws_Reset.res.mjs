@@ -531,7 +531,7 @@ async function chooseScope(targets) {
         targets
       ]);
     }
-    return await Seed_Prompt$ReventlessSeed.select("Reset scope:", options, undefined);
+    return await Seed_Prompt$ReventlessSeed.select("Reset scope:", options, undefined, undefined);
   }
 }
 

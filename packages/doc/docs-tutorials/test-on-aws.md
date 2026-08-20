@@ -55,12 +55,20 @@ It first asks which data set to seed (`full` or `sample`), then picks the stack
 (one Pulumi stack auto-selects; otherwise it lists the stacks or reads
 `SEED_STACK`). It reads that stack's `config.json` — the same file the host-shell
 boots from — for the GraphQL and upload endpoints, region and Cognito client (or
-the stack outputs directly when no host-shell URL is published), then asks for a
-username and password. It signs in against Cognito for that user (who must exist
-with a permanent password, per the previous section) and runs the seed.
+the stack outputs directly when no host-shell URL is published), then asks which
+account to seed as.
+
+The accounts it offers come from `.reventless/users.yaml` beside the platform
+(the file that records what was created in the pool), listed in the order the
+file defines them with the first as the default; it holds the password too, so
+there is nothing to type. Each must exist in the pool with a permanent password,
+per the previous section. `SEED_USER` picks one by username or 1-based index, and
+`SEED_USERS_FILE` points at a file elsewhere. Without such a file the seed asks
+for a username and password instead.
 
 Set `SEED_SET` (`full` or `sample`), `SEED_STACK` (the stack name), plus
-`REVENTLESS_DEMO_USER`/`REVENTLESS_DEMO_PASSWORD` for a non-interactive (CI) run.
+`REVENTLESS_DEMO_USER`/`REVENTLESS_DEMO_PASSWORD` for a non-interactive (CI) run
+— that pair bypasses the accounts file, so CI needs no copy of it.
 The seed is non-idempotent — run it against a fresh deployment, not on top of
 existing data.
 

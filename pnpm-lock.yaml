@@ -1611,6 +1611,9 @@ importers:
       '@reventlessdev/rescript-node':
         specifier: workspace:*
         version: link:../../rescript/node
+      yaml:
+        specifier: ^2.8.3
+        version: 2.8.3
     devDependencies:
       '@reventlessdev/rescript-jest':
         specifier: workspace:*
