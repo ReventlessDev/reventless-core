@@ -9,8 +9,10 @@ What is **not** covered is the AppSync and Postgres half of D1's read doors, whi
 see *Verification*.
 [tagged-union-state-fields.md](./done/tagged-union-state-fields.md) landed first, so the framework can
 express, emit and store a tagged-union field; its reader half shipped too, as
-`reventless-host-shell@3.0.0-alpha.80`, which the examples already pin — so the hard lockstep below is
-satisfied *before* the adopter exists rather than during it. One thing the mechanism added that step 1
+`reventless-host-shell@3.0.0-alpha.81`, which the examples pin — so the hard lockstep below is
+satisfied *before* the adopter exists rather than during it. (`alpha.80` shipped the reader but dropped
+an arm's nested point from the list selection, which would have cost this view its map pins; `.81` is
+the one that carries them.) One thing the mechanism added that step 1
 owed: a union carries its own name on its schema, so `Geolocation` writes
 `Reventless.TaggedUnion.named(~name="Geolocation", …)` beside its `Semantic.mark` — that name is
 what both the emitted `union Geolocation` and the stored `__typename` are built from.
@@ -177,13 +179,18 @@ So: bump the pin as its own commit, let it deploy, invalidate, confirm the new s
 **then** land step 3. The insurance is one line, and it is what makes the SDL change a non-event.
 
 *Where that stands, 2026-08-20.* The first three are already done, and not as a step of this plan —
-the pin bump to `3.0.0-alpha.80` landed on its own, ahead of any adopter, and has deployed. The
+the pin bump landed on its own, ahead of any adopter, and `alpha.80` has deployed. The
 invalidation is no longer a manual step either: the stack invalidates `/*` after the bundle upload
 ([Plugin_Stack.res:511-523](../../reventless/aws/src/plugin/stack/Plugin_Stack.res#L511-L523)), chained
 on the upload etags so it runs after the new content is in S3. It is best-effort by design — a failed
-invalidation must not fail a deploy — which leaves exactly one thing owed before step 3: **confirm the
-served shell is alpha.80**, rather than assume it from a green deploy. That is a browser check, and it
-is the cheapest item in this plan's verification.
+invalidation must not fail a deploy. The served bundle *was* confirmed byte-identical to the published
+`alpha.80`, so that check is done and the mechanism works.
+
+**But `alpha.80` turned out to be the wrong target.** It selects a union by its arms — the property the
+lockstep argument is about — while dropping a `Located` arm's nested `point` from the list selection,
+so this view would have rendered a valid query and an empty map. `alpha.81` fixes the arm's depth
+budget, and the pins now name it. What is owed before step 3 deploys is therefore the same check again
+against **alpha.81**, which is only meaningful once it has been deployed.
 
 **What it costs to get wrong, for calibration.** The Customers view fails to load on the alpha example
 app. Not the platform, not the other views, not production, and the fix is a pin bump and a redeploy or

@@ -5,8 +5,9 @@
 (`reventless-core@3.0.0-alpha.242`, `reventless-spec@3.0.0-alpha.119`,
 `reventless-aws@3.0.0-alpha.313`) and carried through a green alpha deploy. No view declares a union
 yet, so every SDL golden and every stored row is byte-identical to before. **Step 7 (the reader half)
-has landed too**, in `reventless-ui`, released as `reventless-host-shell@3.0.0-alpha.80` — which the
-examples are already pinned to, so the release lockstep below is satisfied before any adopter exists.
+has landed too**, in `reventless-ui`, first released as `reventless-host-shell@3.0.0-alpha.80` and
+completed in `alpha.81`, which the examples pin — so the release lockstep below is satisfied before any
+adopter exists.
 What is **not** proved here is a deployed read — see *Verification*.
 **Scope:** the **mechanism** only — the framework learning to express, emit and store a
 tagged-union field. No view adopts one here. The first adopter, and the semantic type it adopts, are
@@ -238,10 +239,16 @@ union support must ship **before or with** the first adopter, never after. This 
 lockstep `GeoPoint` needed, one notch harder: there the UI degraded to no map, here the query fails
 outright. The mechanism itself is safe to release ahead of both.
 
-*Satisfied, 2026-08-20.* The generic union reader landed in `reventless-ui` the same day and shipped as
-`reventless-host-shell@3.0.0-alpha.80`; the examples pin that version. A client now selects a union by
-its arms, so the first adopter inherits a shell that already reads one and the lockstep is no longer a
-sequencing risk it has to carry.
+*Satisfied, 2026-08-20 — but it took two releases, not one.* `alpha.80` shipped the generic reader, so
+a client selects a union by its arms and the query is valid. It was **not enough**: its list selection
+gave an arm only its scalar leaves, so a `Located` arm holding a `GeoPoint` contributed no fragment and
+the point was never fetched. Valid query, no coordinates — an adopter's map would have lost its pins
+with nothing failing. `alpha.81` gives an arm the field's own depth budget and fixes it; the examples
+pin that.
+
+Worth keeping as the sharper version of this section's claim: "the client can select a union" and "the
+client fetches what the arm holds" are two properties, and only the first is what an invalid-query
+argument catches. The second fails silently.
 
 ## Steps
 
@@ -332,7 +339,7 @@ decline. The storage arms could not all live beside it: a package's `type: dev` 
 to another package, so the local and AWS round trips redeclare the four-line union.
 
 **7 — the reader half, planned in `reventless-ui`.** *Done there, 2026-08-20, and released as
-`reventless-host-shell@3.0.0-alpha.80`* — every row below is honoured by a generic renderer, so no
+`reventless-host-shell@3.0.0-alpha.81`* — every row below is honoured by a generic renderer, so no
 adopter has to ship a reader with it. What this plan owed it is a contract, not a design:
 
 | What the UI reads | Fixed by |
