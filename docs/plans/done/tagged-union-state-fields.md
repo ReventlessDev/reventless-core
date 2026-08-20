@@ -455,7 +455,13 @@ below.
 - **The `Unknown` fallthrough's other callers.** Step 1 makes it warn for state fields. Command and
   event schemas reach the same emitter and can also produce an unclassifiable shape; that path is
   untouched here and deserves the same treatment.
-- **A union behind an `@index`, as a fixture.** [TaggedUnionFixtures.res](../../../reventless/core/tests/fixtures/TaggedUnionFixtures.res)
-  declares no index and no composite sort key, so the by-index and single`Items` doors in D1's table
-  carry no union anywhere — the two entries a reader would most reasonably assume step 6 covered. A
-  fixture view declaring both closes it without waiting for a real view to want one.
+- **A union behind an `@index`.** *Half done, 2026-08-20.* The **by-index door now carries one**:
+  [QueryDbListResolverTest.res](../../../reventless/local/tests/adapter/QueryDbListResolverTest.res)'s
+  indexed fixture gained an optional union field, and its by-index resolver is asserted to return
+  `__typename` and the arm's payload — plus that an absent optional union stays absent rather than
+  being stamped into an arm. Checked by mutation: changing the expected member name fails the test.
+
+  **single`Items` is still uncovered.** It needs a composite sort key, which that fixture does not
+  declare, and it is the last door in D1's table carrying no union anywhere. The AppSync side of both
+  remains gated on a deploy — the local resolver passing says the stamp survives the read, not that
+  AppSync's does.

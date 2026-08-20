@@ -12,11 +12,22 @@ let _ = TestRunner.setup()
 // Test state spec — five-row fixture exercising filter / sort / paginate
 // ─────────────────────────────────────────────────────────────
 
+// A union field on an *indexed* view: the by-index door is one of two in the
+// mechanism plan's table that no fixture carried a union through. Optional so the
+// existing five-row literals below are untouched.
+@schema
+type geolocation =
+  | Pending({requestedFor: string})
+  | Located({lat: float, lng: float})
+
+let geolocationSchema = Reventless.TaggedUnion.named(~name="Geolocation", geolocationSchema)
+
 @schema
 type rowState = {
   productId: @s.matches(Reventless.DcbTag.string) string,
   status: string,
   name: string,
+  geolocation?: geolocation,
 }
 
 let rowStateSchemaWithAnnotations =
@@ -84,6 +95,13 @@ let edgeNodeField = (edge: JSON.t, field: string): string =>
   ->getField("node")
   ->Option.flatMap(n => n->getString(field))
   ->Option.getOr("")
+
+let edges2Find = (edges: array<JSON.t>, pid: string): JSON.t =>
+  edges->Array.find(e => e->getField("node")->Option.flatMap(n => n->getString("productId")) === Some(pid))
+  ->Option.getOr(JSON.Encode.null)
+
+let edgeNodeJson = (edge: JSON.t, field: string): option<JSON.t> =>
+  edge->getField("node")->Option.flatMap(n => n->getField(field))
 
 let pageInfo = (response: JSON.t): JSON.t =>
   response->getField("pageInfo")->Option.getOr(JSON.Encode.null)
@@ -175,7 +193,13 @@ let buildFixture = async (~name: string, ~indexes: array<Reventless.ReadModel.in
   ]
   for i in 0 to rows->Array.length - 1 {
     let (pid, status, n) = rows->Array.getUnsafe(i)
-    let _ = await ops.save(pid, ({productId: pid, status, name: n}: rowState), Init, None)
+    // p-1 carries the union; the rest leave it absent, which also proves an
+    // absent optional union is not stamped into something.
+    let state: rowState =
+      pid === "p-1"
+        ? {productId: pid, status, name: n, geolocation: Located({lat: 48.2082, lng: 16.3738})}
+        : {productId: pid, status, name: n}
+    let _ = await ops.save(pid, state, Init, None)
   }
 
   (resolver, listFieldName)
@@ -495,6 +519,36 @@ describe("QueryDb by-index resolver", () => {
     expect(edges2->Array.length)->toBe(1)
     expect(edgeNodeField(edges2->Array.getUnsafe(0), "productId"))->toBe("p-4")
     expect(pageInfoBool(page2, "hasNextPage"))->toBe(false)
+  })
+
+  // The gap this fixture exists to close: a union field reaching a caller through
+  // the by-index door, carrying the `__typename` the write-time stamp put on it.
+  // A member without one resolves to null and takes its non-nullable parent with
+  // it, so the whole row would vanish rather than error.
+  testPromise("carries a union field's member type through", async () => {
+    let resolver = await indexResolver(~name="IdxU")
+    let response = await resolver(JSON.Encode.null, argsOf([("status", strJson("active"))]), emptyCtx)
+    let edges = getEdges(response)
+    let seeded =
+      edges->Array.find(e => edgeNodeField(e, "productId") === "p-1")->Option.getOr(JSON.Encode.null)
+    let geo = edgeNodeJson(seeded, "geolocation")->Option.flatMap(JSON.Decode.object)
+    expect(geo->Option.flatMap(o => o->Dict.get("__typename"))->Option.flatMap(JSON.Decode.string))
+    ->toEqual(Some("GeolocationLocated"))
+    expect(
+      geo
+      ->Option.flatMap(o => o->Dict.get("lat"))
+      ->Option.flatMap(JSON.Decode.float),
+    )->toEqual(Some(48.2082))
+  })
+
+  // An absent optional union is left absent rather than stamped into an arm.
+  testPromise("leaves an absent union absent", async () => {
+    let resolver = await indexResolver(~name="IdxV")
+    let response = await resolver(JSON.Encode.null, argsOf([("status", strJson("active"))]), emptyCtx)
+    let other = edges2Find(getEdges(response), "p-2")
+    // Assert the row is real first, so an absent field cannot pass as an absent row.
+    expect(edgeNodeField(other, "name"))->toBe("Alpha")
+    expect(edgeNodeJson(other, "geolocation")->Option.isNone)->toBe(true)
   })
 
   // Refused rather than ignored, and refused here because AppSync cannot do it:

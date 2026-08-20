@@ -403,13 +403,16 @@ round trip against an in-memory platform on alternate ports.
 - **A second union semantic.** One entry is not a vocabulary. The mechanism plan's naming rules and
   D2's every-arm-named-field constraint were fitted to this case; the next one — an outcome, an
   approval, a settlement state — is what shows whether they generalise.
-- **`translate`'s own body is untested, and was before this too.**
-  `GeocodeCustomerAddress_GWT` mocks `translate` wholesale via `whenTranslateMocked`, so the mapping
-  from a geocoder answer to a command has never been exercised — only `collect` and the TODO
-  lifecycle are. `ofSearch` is covered directly, so what is uncovered is the glue. Closing it means
-  either raw Jest in an example plugin (against the GWT-only convention) or a GWT verb that supplies a
-  stub `Capabilities.t` and runs the real `translate` — the second is the right shape, and is a change
-  to `OutboundTranslation_GWT`.
+- **`translate`'s own body.** *Done, 2026-08-20, and it needed no framework change.* The plan assumed a
+  new GWT verb was owed; `whenTranslateMocked` already takes any
+  `(id, item) => promise<translateResult>`, which the real `translate` satisfies once a stub
+  `Capabilities.t` is applied. Three cases now drive the real body: a confident answer produces
+  `SetLocation` with the point, an ambiguous one produces a reason **naming both candidates** — the
+  thing the widening of `confidentMatch` into `assess` was for — and an `Unavailable` leaves the TODO
+  `Pending` rather than recording a verdict.
+
+  The last one is a strictly better version of the sibling test beside it, which asserts the same
+  outcome from a mocked error *string*; this one drives it from a real `Unavailable`.
 - **A union behind an index, as a fixture.** The by-index and single`Items` doors carry no union today
   because no view declares both, so D1's table has two entries nothing has ever exercised. A fixture
   view with an `@index` and a union field would close that without waiting for a real view to want one.

@@ -16,6 +16,21 @@ module GeocodeCustomerAddressSlice = {
 
 let vienna: Reventless.GeoPoint.t = {lat: 48.2082, lng: 16.3738}
 
+// The real `translate`, driven by a stub geocoder. `whenTranslateMocked` takes any
+// (id, item) => promise<translateResult>, so no DSL verb is needed to reach it.
+let withGeocoder = (answer: result<array<Reventless.Geocoding.candidate>, Reventless.Geocoding.failure>) => {
+  let capabilities: Reventless.Capabilities.t = {
+    geocode: (~text as _) => Promise.resolve(answer),
+  }
+  (id, item) => GeocodeCustomerAddress_Translation.translate(id, item, ~capabilities)
+}
+
+let candidate = (~label, ~point=vienna, ~relevance): Reventless.Geocoding.candidate => {
+  label,
+  point,
+  relevance: Some(relevance),
+}
+
 describe("GeocodeCustomerAddress OutboundTranslationSlice", () => {
   // The customer id arrives from the event envelope, not the payload.
   testSync("collect: Registered queues a TODO carrying the customer from ~sourceId", () =>
@@ -55,6 +70,53 @@ describe("GeocodeCustomerAddress OutboundTranslationSlice", () => {
       )
     )
     ->thenTodoStatus("cust-1:Stephansplatz 1, Vienna", #Completed)
+  )
+
+  // The real `translate`, not a mock of it: a confident answer becomes SetLocation
+  // with the point the geocoder returned.
+  test("translate: a confident answer produces SetLocation", () =>
+    givenTodo("cust-1:Stephansplatz 1, Vienna", {
+      customerId: "cust-1",
+      address: "Stephansplatz 1, Vienna",
+    })
+    ->whenTranslateMocked(
+      withGeocoder(Ok([candidate(~label="Stephansplatz 1, Vienna", ~relevance=0.995)])),
+    )
+    ->thenCommand("cust-1", SetLocation({location: vienna, resolvedFrom: "Stephansplatz 1, Vienna"}))
+  )
+
+  // An ambiguous answer is a verdict, and the reason names both candidates rather
+  // than saying only that there was no confident match.
+  test("translate: an ambiguous answer produces a reason naming the candidates", () =>
+    givenTodo("cust-1:Springfield", {customerId: "cust-1", address: "Springfield"})
+    ->whenTranslateMocked(
+      withGeocoder(
+        Ok([
+          candidate(~label="Springfield, IL", ~relevance=0.99),
+          candidate(~label="Springfield, MA", ~relevance=0.985),
+        ]),
+      ),
+    )
+    ->thenCommand(
+      "cust-1",
+      MarkAddressUnresolvable({
+        address: "Springfield",
+        reason: `"Springfield" matched "Springfield, IL" and "Springfield, MA" about equally well`,
+      }),
+    )
+  )
+
+  // The one outcome that must not become a verdict: an outage is an Error, so the
+  // TODO stays Pending for retry rather than recording a verdict on the address.
+  // The sibling test below asserts the same thing from a mocked error string; this
+  // one drives it from a real `Unavailable`.
+  test("translate: an unavailable geocoder leaves the TODO Pending", () =>
+    givenTodo("cust-1:Stephansplatz 1, Vienna", {
+      customerId: "cust-1",
+      address: "Stephansplatz 1, Vienna",
+    })
+    ->whenTranslateMocked(withGeocoder(Error(Unavailable("502"))))
+    ->thenTodoStatus("cust-1:Stephansplatz 1, Vienna", #Pending)
   )
 
   // A service that cannot answer is retried, not written off as a verdict.
