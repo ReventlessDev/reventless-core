@@ -7,8 +7,11 @@ import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
 import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as TaggedUnion$Reventless from "@reventlessdev/reventless-spec/src/components/TaggedUnion.res.mjs";
+
+let log = Logger$ReventlessCore.fromEnv();
 
 function Make(ReadModelSpec) {
   return Ops => {
@@ -77,14 +80,30 @@ function Make(ReadModelSpec) {
         dict[attrName$1] = value$1;
       });
     };
-    let stampUnionMembers = dict => TaggedUnion$Reventless.stampInto(ReadModelSpec.stateSchema, dict);
+    let declaredUnionFields = TaggedUnion$Reventless.fieldsOf(ReadModelSpec.stateSchema);
+    log.debug("QueryDb", undefined, ReadModelSpec.name + `: union fields ` + (
+      declaredUnionFields.length !== 0 ? declaredUnionFields.map(param => param[0] + `:` + Stdlib_Option.getOr(param[1], "<unnamed>")).join(", ") : "none"
+    ));
+    let reportUnstamped = dict => {
+      declaredUnionFields.forEach(param => {
+        let field = param[0];
+        let value = Stdlib_Option.flatMap(dict[field], Stdlib_JSON.Decode.object);
+        if (value !== undefined && Stdlib_Option.isSome(value["TAG"]) && Stdlib_Option.isNone(value[TaggedUnion$Reventless.typenameKey])) {
+          return log.warn("QueryDb", undefined, ReadModelSpec.name + `.` + field + `: stored a union value with no ` + TaggedUnion$Reventless.typenameKey + ` ` + (`(union ` + Stdlib_Option.getOr(param[1], "<unnamed>") + `). The field will resolve to null and take its `) + (`parent with it. Union fields seen on this spec: ` + declaredUnionFields.map(param => param[0]).join(", ")));
+        }
+      });
+    };
+    let stampUnionMembers = dict => {
+      TaggedUnion$Reventless.stampInto(ReadModelSpec.stateSchema, dict);
+      reportUnstamped(dict);
+    };
     let save = async (id, state, saveMode, ttl) => {
       let dict = Stdlib_JSON.Decode.object(Message$ReventlessCore.encode(state, ReadModelSpec.stateSchema));
       if (dict !== undefined) {
         dict["id"] = Message$ReventlessCore.encode(id, ReadModelSpec.Id.schema);
         injectSubId(dict, state);
         injectCompositeIndexAttrs(dict);
-        TaggedUnion$Reventless.stampInto(ReadModelSpec.stateSchema, dict);
+        stampUnionMembers(dict);
         return await Ops.jsonOps.save(ReadModelSpec.Id.toString(id), dict, saveMode, ttl);
       } else {
         return {
@@ -110,7 +129,7 @@ function Make(ReadModelSpec) {
             dict["id"] = Message$ReventlessCore.encode(id, ReadModelSpec.Id.schema);
             injectSubId(dict, state);
             injectCompositeIndexAttrs(dict);
-            TaggedUnion$Reventless.stampInto(ReadModelSpec.stateSchema, dict);
+            stampUnionMembers(dict);
             return {
               TAG: "Ok",
               _0: batch.concat([[
@@ -154,6 +173,8 @@ function Make(ReadModelSpec) {
       load: load,
       injectSubId: injectSubId,
       injectCompositeIndexAttrs: injectCompositeIndexAttrs,
+      declaredUnionFields: declaredUnionFields,
+      reportUnstamped: reportUnstamped,
       stampUnionMembers: stampUnionMembers,
       save: save,
       saveBatch: saveBatch,
@@ -165,6 +186,7 @@ function Make(ReadModelSpec) {
 }
 
 export {
+  log,
   Make,
 }
-/* effect/Effect Not a pure module */
+/* log Not a pure module */

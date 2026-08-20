@@ -1,3 +1,5 @@
+let log = Logger.fromEnv()
+
 module type Ops = {
   let jsonOps: QueryDb.operations<string, JSON.t>
 }
@@ -72,11 +74,53 @@ module Make = (ReadModelSpec: Reventless.ReadModel.Spec, Ops: Ops) => {
   // backends — and, unlike a read-time stamp, it is also on the row the live
   // change channel hands over as raw JSON. A view with no union field is walked
   // and left exactly as it was.
-  let stampUnionMembers = dict =>
+  // The union fields this view declares, read once. Empty for most views, and
+  // the whole diagnostic below costs nothing when it is.
+  let declaredUnionFields =
+    Reventless.TaggedUnion.fieldsOf(ReadModelSpec.stateSchema->S.castToUnknown)
+
+  // Logged once per instantiation, and unconditionally: "none" has to be
+  // distinguishable from "never instantiated", because a schema that resolves no
+  // union fields and a stamp that failed to run leave the same stored row.
+  log.debug(
+    ~comp="QueryDb",
+    `${ReadModelSpec.name}: union fields ${switch declaredUnionFields {
+      | [] => "none"
+      | fields =>
+        fields->Array.map(((f, n)) => `${f}:${n->Option.getOr("<unnamed>")}`)->Array.join(", ")
+      }}`,
+  )
+
+  // A union value stored without `__typename` is the failure D1 exists to
+  // prevent, and it is silent: the member resolves to null, the null takes its
+  // non-nullable parent, and a list loses the row rather than erroring. Nothing
+  // downstream can tell that from "no such row", so it is reported here — the
+  // one place that knows both the schema and the row.
+  let reportUnstamped = dict =>
+    declaredUnionFields->Array.forEach(((field, unionName)) =>
+      switch dict->Dict.get(field)->Option.flatMap(JSON.Decode.object) {
+      | Some(value) if value->Dict.get("TAG")->Option.isSome =>
+        if value->Dict.get(Reventless.TaggedUnion.typenameKey)->Option.isNone {
+          log.warn(
+            ~comp="QueryDb",
+            `${ReadModelSpec.name}.${field}: stored a union value with no ${Reventless.TaggedUnion.typenameKey} ` ++
+            `(union ${unionName->Option.getOr("<unnamed>")}). The field will resolve to null and take its ` ++
+            `parent with it. Union fields seen on this spec: ${declaredUnionFields
+              ->Array.map(((f, _)) => f)
+              ->Array.join(", ")}`,
+          )
+        }
+      | _ => ()
+      }
+    )
+
+  let stampUnionMembers = dict => {
     Reventless.TaggedUnion.stampInto(
       ~schema=ReadModelSpec.stateSchema->S.castToUnknown,
       JSON.Encode.object(dict),
     )
+    reportUnstamped(dict)
+  }
 
   let save = async (id, state, saveMode, ttl) =>
     switch state->Message.encode(ReadModelSpec.stateSchema)->JSON.Decode.object {
