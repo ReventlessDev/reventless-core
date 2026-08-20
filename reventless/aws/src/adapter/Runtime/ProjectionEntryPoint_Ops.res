@@ -55,6 +55,37 @@ external withLiveUpdates: (
   liveConfig,
 ) => ReventlessCore.QueryDb_Adapter.operations = "withLiveUpdates"
 
+/**
+Stamps every union value in a saved row with the GraphQL member type it is.
+
+`QueryDb_Operations.Make` does this for the typed path — the local platform and
+the storage tests — but the deployed projection Lambdas do not go through that
+functor: they assemble JSON-level operations here. Without this the stamp never
+ran on AWS, every union member resolved to null, and the null took its
+non-nullable parent, so rows vanished from a view rather than erroring.
+
+`stateSchema` is `None` for a spec module that predates it, which leaves rows
+exactly as they were.
+*/
+let withUnionMemberTypes = (
+  base: ReventlessCore.QueryDb_Adapter.operations,
+  ~stateSchema: option<S.t<unknown>>,
+): ReventlessCore.QueryDb_Adapter.operations =>
+  switch stateSchema {
+  | None => base
+  | Some(schema) =>
+    let stamp = (state: JSON.t) => {
+      Reventless.TaggedUnion.stampInto(~schema, state)
+      state
+    }
+    {
+      ...base,
+      save: (id, state, saveMode, ttl) => base.save(id, stamp(state), saveMode, ttl),
+      saveBatch: items =>
+        base.saveBatch(items->Array.map(((id, state, ttl)) => (id, stamp(state), ttl))),
+    }
+  }
+
 let makeQueryDbOps = (
   ~queryDbTableName: string,
   ~pgConnection: option<PgConnection.connectionConfig>,

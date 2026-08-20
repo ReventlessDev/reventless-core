@@ -176,6 +176,8 @@ type sliceModules<'event> = {
   >,
   config: option<ProjectionEntryPoint_Ops.specConfig>,
   subIdConfig: option<Reventless.ReadModel.subIdConfig<JSON.t>>,
+  // Same union stamp the read-model path needs; a slice's state can hold one too.
+  stateSchema: option<S.t<unknown>>,
 }
 
 let makeRegisteredHandler = (
@@ -188,7 +190,7 @@ let makeRegisteredHandler = (
     ~stateTopicName=entry.stateTopicName,
     ~indexes=ProjectionEntryPoint_Ops.indexesOf(modules.config),
     ~subIdField=ProjectionEntryPoint_Ops.subIdFieldOf(modules.subIdConfig),
-  )
+  )->ProjectionEntryPoint_Ops.withUnionMemberTypes(~stateSchema=modules.stateSchema)
   {
     handler: StreamRoutedEntryPoint_Ops.toStreamHandler(
       makeJsonEventsHandler(

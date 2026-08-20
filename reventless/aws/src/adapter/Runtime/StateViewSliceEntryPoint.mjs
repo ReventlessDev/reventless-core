@@ -42,6 +42,7 @@ async function buildAllHandlers() {
         project: projectionModule.project,
         config: specModule.config,
         subIdConfig: specModule.subIdConfig,
+        stateSchema: specModule.stateSchema,
       })
     );
   }));

@@ -16,11 +16,21 @@
 @schema
 type consumedEvent = ItemAddedToCart({cartId: string, productId: string, qty: int})
 
+// A union on the state, so the integration test covers the runtime path's
+// `__typename` stamp — the one the deployed Lambdas skipped entirely.
+@schema
+type fulfilment =
+  | Pending({requestedFor: string})
+  | Shipped({carrier: string})
+
+let fulfilmentSchema = Reventless.TaggedUnion.named(~name="Fulfilment", fulfilmentSchema)
+
 @schema
 type state = {
   cartId: string,
   productId: string,
   qty: int,
+  fulfilment: fulfilment,
 }
 
 // `Some({subIdField, getSubId})` — the compiled per-slice spec that a real

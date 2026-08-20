@@ -84,7 +84,7 @@ function makeJsonEventsHandler(sliceName, eventSchema, project, queryDbOps, subI
 }
 
 function makeRegisteredHandler(entry, modules) {
-  let queryDbOps = ProjectionEntryPoint_Ops$ReventlessAws.makeQueryDbOps(entry.queryDbTableName, entry.pgConnection, entry.stateTopicName, ProjectionEntryPoint_Ops$ReventlessAws.indexesOf(modules.config), ProjectionEntryPoint_Ops$ReventlessAws.subIdFieldOf(modules.subIdConfig));
+  let queryDbOps = ProjectionEntryPoint_Ops$ReventlessAws.withUnionMemberTypes(ProjectionEntryPoint_Ops$ReventlessAws.makeQueryDbOps(entry.queryDbTableName, entry.pgConnection, entry.stateTopicName, ProjectionEntryPoint_Ops$ReventlessAws.indexesOf(modules.config), ProjectionEntryPoint_Ops$ReventlessAws.subIdFieldOf(modules.subIdConfig)), modules.stateSchema);
   return {
     handler: StreamRoutedEntryPoint_Ops$ReventlessAws.toStreamHandler(makeJsonEventsHandler(modules.name, modules.consumedEventSchema, modules.project, queryDbOps, modules.subIdConfig)),
     comp: `StateViewSlice(` + modules.name + `)`

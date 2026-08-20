@@ -47,6 +47,7 @@ async function buildAllHandlers() {
     const operations = Ops.buildOperations(entry, {
       config: specModule.config,
       subIdConfig: specModule.subIdConfig,
+      stateSchema: specModule.stateSchema,
     });
     const callback = readModelCallbackMake(specModule)(mappingsModule)({
       ReadModelSpec: specModule,

@@ -1,13 +1,15 @@
 # Plan: `Geolocation` — the geocoder's answer as one value
 
 **Date:** 2026-08-20
-**Status:** Steps 1–4 implemented, 2026-08-20. `Customers` now carries one `Geolocation` union in place
+**Status:** Steps 1–4 implemented, 2026-08-20; **deployed and not yet working** — the deployed rows
+carry no `__typename`, which is the mechanism plan's runtime gap rather than this plan's, and it
+reopened to fix it. `Customers` now carries one `Geolocation` union in place
 of a point, a status enum and a note, and the SDL golden moved with it. **Unreleased and undeployed** —
 the breaking retype below is real, so the alpha store needs a wipe and a replay when this goes out.
 Step 5 (the dedicated UI control) may safely lag; the generic union renderer already ships.
 What is **not** covered is the AppSync and Postgres half of D1's read doors, which needs the deploy —
 see *Verification*.
-[tagged-union-state-fields.md](./done/tagged-union-state-fields.md) landed first, so the framework can
+[tagged-union-state-fields.md](./tagged-union-state-fields.md) landed first, so the framework can
 express, emit and store a tagged-union field; its reader half shipped too, as
 `reventless-host-shell@3.0.0-alpha.81`, which the examples pin — so the hard lockstep below is
 satisfied *before* the adopter exists rather than during it. (`alpha.80` shipped the reader but dropped
@@ -333,6 +335,13 @@ round trip against an in-memory platform on alternate ports.
   `Ordering_Customer` (single), `Ordering_Customers` (list/connection), `Ordering_CustomersByIds` and
   `Ordering_CustomersRefs` — and **all four were called against a live server**, each returning
   `__typename` plus the arm's own fields through an inline fragment. Not sampled: called.
+
+  ❌ **The deployed rows were unstamped, for a reason that was not this plan's.** The first AWS deploy
+  carrying the union wrote every `Customers` row without `__typename`: the write-time stamp lives in
+  the typed `QueryDb_Operations` functor, and the deployed projection Lambdas assemble JSON-level ops
+  instead. Root cause and fix are the mechanism plan's, which reopened for it. Until that ships, no
+  AppSync door can resolve a union member here — so the sweep below is blocked on it rather than on
+  the deploy alone.
 
   ❌ **The other doors in D1's table are not covered, and two of them cannot be by this view.** The
   spec declares no `@index` and no composite sort key, so the by-index and single`Items` doors do not

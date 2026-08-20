@@ -60,7 +60,7 @@ function withInjectedId(base) {
 }
 
 function buildOperations(entry, spec) {
-  return withInjectedId(ProjectionEntryPoint_Ops$ReventlessAws.makeQueryDbOps(entry.queryDbTableName, entry.pgConnection, entry.stateTopicName, ProjectionEntryPoint_Ops$ReventlessAws.indexesOf(spec.config), ProjectionEntryPoint_Ops$ReventlessAws.subIdFieldOf(spec.subIdConfig)));
+  return withInjectedId(ProjectionEntryPoint_Ops$ReventlessAws.withUnionMemberTypes(ProjectionEntryPoint_Ops$ReventlessAws.makeQueryDbOps(entry.queryDbTableName, entry.pgConnection, entry.stateTopicName, ProjectionEntryPoint_Ops$ReventlessAws.indexesOf(spec.config), ProjectionEntryPoint_Ops$ReventlessAws.subIdFieldOf(spec.subIdConfig)), spec.stateSchema));
 }
 
 function makeRegisteredHandler(entry, handleJsonEvents) {

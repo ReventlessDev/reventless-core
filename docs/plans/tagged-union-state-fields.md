@@ -1,7 +1,14 @@
 # Plan: tagged-union fields in queryable state
 
 **Date:** 2026-08-20
-**Status:** Implemented (steps 1–6), 2026-08-20; released the same day
+**Status:** **Reopened 2026-08-20** — filed as done, then found untrue in production. D1 says the
+`__typename` stamp happens "in one place instead of fourteen". That one place is
+`QueryDb_Operations.Make`, the *typed* ops functor — which the deployed projection Lambdas never call.
+`ReadModelEntryPoint_Ops.buildOperations` assembles JSON-level operations through
+`ProjectionEntryPoint_Ops.makeQueryDbOps` instead, so on AWS no union value has ever carried its
+member type. Fixed by stamping in the runtime path too; see *The gap D1 missed* below.
+
+Implemented (steps 1–6), 2026-08-20; released the same day
 (`reventless-core@3.0.0-alpha.242`, `reventless-spec@3.0.0-alpha.119`,
 `reventless-aws@3.0.0-alpha.313`) and carried through a green alpha deploy. No view declares a union
 yet, so every SDL golden and every stored row is byte-identical to before. **Step 7 (the reader half)
@@ -11,18 +18,18 @@ adopter exists.
 What is **not** proved here is a deployed read — see *Verification*.
 **Scope:** the **mechanism** only — the framework learning to express, emit and store a
 tagged-union field. No view adopts one here. The first adopter, and the semantic type it adopts, are
-[semantic-geolocation.md](../semantic-geolocation.md), which is where the deployment proof lives.
+[semantic-geolocation.md](./semantic-geolocation.md), which is where the deployment proof lives.
 **Repos:** `reventless-core`, with a reader half in `reventless-ui` planned there. Unlike `Money` and
 `DateRange`, this one changes the *SDL shape* a consumer selects against, so the two halves carry a
 hard sequencing constraint (below).
-**Builds on:** [done/semantic-money-and-currency.md](./semantic-money-and-currency.md) and
-[semantic-geo-point.md](../semantic-geo-point.md) — the composite template, and the read model whose
+**Builds on:** [done/semantic-money-and-currency.md](./done/semantic-money-and-currency.md) and
+[semantic-geo-point.md](./semantic-geo-point.md) — the composite template, and the read model whose
 shape motivates this.
 
 ## What this replaces: one fact spread across three fields
 
 `Customers` spends three fields on one three-state fact
-([Customers.res:57-75](../../../examples/online-shop-hybrid/ordering/src/Customer/ReadModelStream/Customers.res#L57-L75)):
+([Customers.res:57-75](../../examples/online-shop-hybrid/ordering/src/Customer/ReadModelStream/Customers.res#L57-L75)):
 
 ```rescript
 location: option<Reventless.GeoPoint.t>,
@@ -33,7 +40,7 @@ locationStatus: locationStatus,       // Pending | Located | Unresolvable
 Twelve representable combinations for three legal ones. `Located` with `location: None` compiles.
 `Unresolvable` with a stale point still on the row compiles. `Pending` carrying a note compiles. What
 keeps the twelve down to three is the five-arm switch in
-[Customers_Projections.res:42-99](../../../examples/online-shop-hybrid/ordering/src/Customer/ReadModelStream/Customers_Projections.res#L42-L99)
+[Customers_Projections.res:42-99](../../examples/online-shop-hybrid/ordering/src/Customer/ReadModelStream/Customers_Projections.res#L42-L99)
 remembering to write all three fields on every arm — and it does, today, in both the aggregate mapping
 and the DCB one, and in both `UpdateWithDefault` defaults. Six places that have to agree.
 
@@ -57,16 +64,16 @@ type geolocation =
 every arm has to carry *something*, and it is a GraphQL rule rather than a ReScript one.)
 
 `Customers` is the motivating case, not this plan's work: collapsing it belongs to
-[semantic-geolocation.md](../semantic-geolocation.md), because the type it should collapse *into* is
+[semantic-geolocation.md](./semantic-geolocation.md), because the type it should collapse *into* is
 framework vocabulary rather than an example's local variant, and deciding that alongside the
 mechanism would let two unrelated arguments lean on each other. What matters here is only that the
 type above cannot be written today.
 
 Writing it compiles, deploys, and silently degrades the field to `String!` in the API —
 `SchemaType.shapeOf` sends a mixed `AnyOf` to `Unknown`
-([SchemaType.res:150-166](../../../reventless/core/src/components/Api/SchemaType.res#L150-L166)) and
+([SchemaType.res:150-166](../../reventless/core/src/components/Api/SchemaType.res#L150-L166)) and
 `Unknown` is emitted as `String${bang}`
-([GraphQL_FragmentGenerator.res:88](../../../reventless/core/src/components/Api/GraphQL_FragmentGenerator.res#L88)).
+([GraphQL_FragmentGenerator.res:88](../../reventless/core/src/components/Api/GraphQL_FragmentGenerator.res#L88)).
 No error anywhere. **Silent degradation is the current behaviour, which makes this a correctness fix
 as much as a feature** — even if nothing else here is built, the fallthrough deserves to become a
 compile error.
@@ -78,12 +85,12 @@ against the installed toolchain, not reasoned about:
 
 | Layer | State | Evidence |
 |---|---|---|
-| sury-ppx compilation | ✅ | a payload variant compiles to `S.union` of **declared** arms — `S.$schema(s => ({TAG: "Located", point: s.m(…)}))` — which is the form [Offload.res:78-90](../../../reventless/spec/src/semantic/Offload.res#L78-L90) requires and a transform arm is not |
+| sury-ppx compilation | ✅ | a payload variant compiles to `S.union` of **declared** arms — `S.$schema(s => ({TAG: "Located", point: s.m(…)}))` — which is the form [Offload.res:78-90](../../reventless/spec/src/semantic/Offload.res#L78-L90) requires and a transform arm is not |
 | encode / decode / round-trip | ✅ | probed on sury 11.0.0-rc.1: a nested union field encodes to `{"TAG":"Located","point":{…}}`, parses back identically, and a payload-less arm encodes to the bare string `"Pending"` |
 | `toJSONSchema` | ✅ | emits `anyOf` with `const` discriminators on `TAG`, per arm |
-| storage, all four backends | ✅ | [QueryDb_Operations.res:71,85](../../../reventless/core/src/components/QueryDb/QueryDb_Operations.res#L71) encodes state through `Message.encode(stateSchema)` and decodes through `Message.decode` — not a raw marshal — so DynamoDB, Postgres, SQLite and in-memory carry a nested union with no backend change |
-| replay healing | ✅ | [Message.res:240-243](../../../reventless/spec/src/types/Message.res#L240-L243) already resolves an `anyOf` member by matching `properties.TAG.const` against the value's `TAG`, with a shape-scored fallback |
-| a union in the SDL | ✅ | `CommandResult` is one, on AppSync and on the local yoga server, resolved by an explicitly written `__typename` ([CommandTopic_Helpers.res:131-158](../../../reventless/core/src/components/CommandTopic/CommandTopic_Helpers.res#L131-L158)) |
+| storage, all four backends | ✅ | [QueryDb_Operations.res:71,85](../../reventless/core/src/components/QueryDb/QueryDb_Operations.res#L71) encodes state through `Message.encode(stateSchema)` and decodes through `Message.decode` — not a raw marshal — so DynamoDB, Postgres, SQLite and in-memory carry a nested union with no backend change |
+| replay healing | ✅ | [Message.res:240-243](../../reventless/spec/src/types/Message.res#L240-L243) already resolves an `anyOf` member by matching `properties.TAG.const` against the value's `TAG`, with a shape-scored fallback |
+| a union in the SDL | ✅ | `CommandResult` is one, on AppSync and on the local yoga server, resolved by an explicitly written `__typename` ([CommandTopic_Helpers.res:131-158](../../reventless/core/src/components/CommandTopic/CommandTopic_Helpers.res#L131-L158)) |
 | an empty inline-record arm | ✅ ReScript, ❌ SDL | `\| Pending({})` compiles, sury-ppx emits a declared object arm, and the runtime and wire form is `{"TAG":"Pending"}` — but the member type it implies has zero fields, which is invalid GraphQL |
 | a positional-payload arm | ✅ everywhere, ❌ as a contract | `\| Located(GeoPoint.t)` compiles and encodes to `{"TAG":"Located","_0":{…}}` — correct, and it publishes the compiler's `_0` as an SDL field name. Both rows are what D2 turns on |
 
@@ -98,21 +105,21 @@ Everything else is mechanical. These two decide whether the change is contained 
 
 Both AppSync and graphql-js resolve a union member from `__typename` on the returned value. The
 AppSync JS resolvers hand back the DynamoDB item as it was stored, and
-[PgQueryResolver_Lambda.res:509](../../../reventless/aws/src/adapter/QueryDb/PgQueryResolver_Lambda.res#L509)
+[PgQueryResolver_Lambda.res:509](../../reventless/aws/src/adapter/QueryDb/PgQueryResolver_Lambda.res#L509)
 stamps only the *top-level* one. So a read-time stamp has to reach a nested field on **fourteen
 doors**:
 
 | Backend | Doors |
 |---|---|
-| AppSync ([QueryDbResolvers_AppSync.res](../../../reventless/aws/src/adapter/QueryDb/QueryDbResolvers_AppSync.res)) | single, single`Items` (composite sort key), list/connection, by-index, by-ids, refs, `@resolves`, `@resolvesMany` |
-| Postgres ([PgQueryResolver_Lambda.res](../../../reventless/aws/src/adapter/QueryDb/PgQueryResolver_Lambda.res)) | its own resolver |
-| Local ([QueryDbResolvers_GraphQL.res](../../../reventless/local/src/adapter/QueryDb/QueryDbResolvers_GraphQL.res)) | single, single`Items`, list, by-ids, refs, by-index |
+| AppSync ([QueryDbResolvers_AppSync.res](../../reventless/aws/src/adapter/QueryDb/QueryDbResolvers_AppSync.res)) | single, single`Items` (composite sort key), list/connection, by-index, by-ids, refs, `@resolves`, `@resolvesMany` |
+| Postgres ([PgQueryResolver_Lambda.res](../../reventless/aws/src/adapter/QueryDb/PgQueryResolver_Lambda.res)) | its own resolver |
+| Local ([QueryDbResolvers_GraphQL.res](../../reventless/local/src/adapter/QueryDb/QueryDbResolvers_GraphQL.res)) | single, single`Items`, list, by-ids, refs, by-index |
 
 Fourteen chances to miss one, and missing one is not a visible bug: a union field with no
 `__typename` resolves to null, and **a null in a non-nullable field nulls its parent** — inside a list
 that is every row vanishing — precisely the failure this read model already produced once, when a
 newly non-nullable `locationStatus` made all eight seeded customers disappear from the list
-([customer-address-backend-geocoding.md](../customer-address-backend-geocoding.md), "A note this plan
+([customer-address-backend-geocoding.md](./customer-address-backend-geocoding.md), "A note this plan
 owes step 6"). It reads as data loss rather than as a schema mistake.
 
 Stamping at write time — in `QueryDb_Operations`, beside the existing `Message.encode` — is one place
@@ -121,9 +128,9 @@ rows written before it.
 
 It also buys something the read-time stamp cannot. The live change descriptor carries the row as
 **raw JSON**, not through a typed GraphQL field
-([LocalStateChangeDescriptor.res:119-130](../../../reventless/local/src/adapter/LocalStateChangeDescriptor.res#L119-L130);
+([LocalStateChangeDescriptor.res:119-130](../../reventless/local/src/adapter/LocalStateChangeDescriptor.res#L119-L130);
 the AWS relay carries no payload at all, only `changeKind`/`id`/`sortKeyValue`, per
-[StateTopic_AppSync.res:121-124](../../../reventless/aws/src/adapter/StateTopic/StateTopic_AppSync.res#L121-L124)).
+[StateTopic_AppSync.res:121-124](../../reventless/aws/src/adapter/StateTopic/StateTopic_AppSync.res#L121-L124)).
 So under read-time stamping a subscriber sees `{TAG: "Located"}` from the live channel and
 `{__typename: "GeolocationLocated"}` from the query — two shapes for one value, decided by which
 channel delivered it, with the client owning the reconciliation. Under D1 the stored row carries both
@@ -149,7 +156,7 @@ runtime and wire form is `{"TAG": "Pending"}` — an object, exactly what the un
 verified.
 
 **But the member type would then have no fields.** `TAG` is filtered out of the emitted fields
-([SchemaType.res:125](../../../reventless/core/src/components/Api/SchemaType.res#L125)), leaving
+([SchemaType.res:125](../../reventless/core/src/components/Api/SchemaType.res#L125)), leaving
 `type GeolocationPending { }` — and a GraphQL object type with zero fields is invalid. So the empty
 arm gets exactly as far as the SDL and stops.
 
@@ -250,18 +257,49 @@ Worth keeping as the sharper version of this section's claim: "the client can se
 client fetches what the arm holds" are two properties, and only the first is what an invalid-query
 argument catches. The second fails silently.
 
+## The gap D1 missed, and why every check passed anyway
+
+D1 chose a write-time stamp over a read-time one, and the reasoning holds. What it got wrong is
+*where* the write happens. There are two write paths, and the plan only knew about one:
+
+| Path | Used by | Stamps |
+|---|---|---|
+| `QueryDb_Operations.Make` (typed, holds `Spec.stateSchema`) | the local platform, the storage tests, the DynamoDB and Postgres integration tests | ✅ always did |
+| `ProjectionEntryPoint_Ops.makeQueryDbOps` (JSON-level) | **the deployed ReadModel and StateViewSlice Lambdas** | ❌ never did |
+
+So the mechanism was correct and completely untested on the path that actually runs in production.
+Every verification this plan and its adopter ran — a local seed read straight out of SQLite, the
+DynamoDB Local integration test, even extracting the deployed layer and Lambda archive and running
+`stampInto` against the real `Customers.stateSchema` by hand — exercised the typed functor. Running
+the deployed *artifacts* is not the same as running the deployed *path*, and treating them as
+equivalent is what kept this hidden through two deploys.
+
+What finally showed it was a diagnostic that printed **nothing**: a debug line added to
+`QueryDb_Operations.Make` never appeared in the Lambda's logs, while the projection demonstrably ran.
+The silence was the finding — that functor is not on the deployed path at all.
+
+The fix keeps one implementation (`TaggedUnion.stampInto`) and adds a second call site:
+`ProjectionEntryPoint_Ops.withUnionMemberTypes` wraps the JSON-level ops for both projection entry
+points, with the spec's `stateSchema` threaded from the module the shell already imports. A spec
+module without one leaves rows untouched.
+
+**The lesson worth keeping is about the deploy-time/runtime split**, which this repo takes seriously
+everywhere else: a behaviour added to a builder-side functor does not reach a Lambda that assembles
+its own operations at cold start. Anything written into `QueryDb_Operations` from here on needs the
+same question asked of it.
+
 ## Steps
 
 **1 — the IR grows a case, and the fallthrough stops being silent.** `TaggedUnion(string, array<(string, schemaType)>)`
-in [SchemaType.res](../../../reventless/core/src/components/Api/SchemaType.res) — the union's name, and
+in [SchemaType.res](../../reventless/core/src/components/Api/SchemaType.res) — the union's name, and
 its arms by TAG const. `shapeOf`'s `AnyOf` branch classifies a multi-arm union whose members are all
 TAG-discriminated objects; anything else still falls to `Unknown`, but `Unknown` reaching the SDL
 emitter now warns at deploy time rather than emitting `String!` in silence.
 
-Four consumers, all in core: [GraphQL_FragmentGenerator](../../../reventless/core/src/components/Api/GraphQL_FragmentGenerator.res),
-[SuryToJsonSchema](../../../reventless/core/src/components/Api/SuryToJsonSchema.res),
-[Plugin_Structure](../../../reventless/core/src/plugin/component/Plugin_Structure.res),
-[SchemaWalker](../../../reventless/core/src/plugin/component/SchemaWalker.res). **Read each by hand rather
+Four consumers, all in core: [GraphQL_FragmentGenerator](../../reventless/core/src/components/Api/GraphQL_FragmentGenerator.res),
+[SuryToJsonSchema](../../reventless/core/src/components/Api/SuryToJsonSchema.res),
+[Plugin_Structure](../../reventless/core/src/plugin/component/Plugin_Structure.res),
+[SchemaWalker](../../reventless/core/src/plugin/component/SchemaWalker.res). **Read each by hand rather
 than trusting the compiler** — `isLabelShape` and `isLifecycleShape` both end `| _ => false`, so a new
 case slips past them without a warning. Neither should accept a union (a union is not a name and not a
 lifecycle), so `false` is the right answer in both — but it should be the *chosen* answer.
@@ -280,10 +318,10 @@ structural hash was blind to every other one. It now describes all of them.
 plus a member object type per arm, out of `GraphQL_FragmentGenerator`. The naming input already
 exists: `SchemaWalker.tagConstOf` reads the TAG const, and the generator uses it today to pair mutation
 field names with command variants
-([GraphQL_FragmentGenerator.res:665-671](../../../reventless/core/src/components/Api/GraphQL_FragmentGenerator.res#L665-L671)).
+([GraphQL_FragmentGenerator.res:665-671](../../reventless/core/src/components/Api/GraphQL_FragmentGenerator.res#L665-L671)).
 Member names are `<UnionName><Arm>` so that a plugin's copy of the union is byte-identical to every
 other plugin's — the property merged-API composition needs, and the reason `semanticCompositeNames`
-exists ([SchemaType.res:51-55](../../../reventless/core/src/components/Api/SchemaType.res#L51-L55)).
+exists ([SchemaType.res:51-55](../../reventless/core/src/components/Api/SchemaType.res#L51-L55)).
 
 *Done*, with the name coming from D3's marker rather than from the field path — which is what
 actually delivers the byte-identity this step asked for. In an input position the union is *not*
@@ -312,7 +350,7 @@ arrays, optionals and unions nested inside an arm.
     (`| Pending({})`) or positional (`| Located(GeoPoint.t)`), one error for all three (D2);
   - `@index` / `@scan` / `@scanSort` / `@groupBy` / `@lifecycle` / `@retired` on a union field —
     `deriveServerCapability` is annotation-driven
-    ([GraphQL_FragmentGenerator.res:286-331](../../../reventless/core/src/components/Api/GraphQL_FragmentGenerator.res#L286-L331))
+    ([GraphQL_FragmentGenerator.res:286-331](../../reventless/core/src/components/Api/GraphQL_FragmentGenerator.res#L286-L331))
     and would otherwise emit a filter input whose `gqlType` falls back to `String` against a value
     that is an object;
   - `@id` / `@subId` on a union field, for the same reason one notch harder — a key must be a scalar.
@@ -333,7 +371,7 @@ Deliberately a *fixture* and not the example. Pointing step 1 at a real view wou
 plan own a breaking retype, a golden refresh and a UI pin — which is exactly the coupling this cut
 exists to avoid, and it would put the plan's release behind the adopting plan's argument.
 
-*Done*: [TaggedUnionFixtures.res](../../../reventless/core/tests/fixtures/TaggedUnionFixtures.res) — a
+*Done*: [TaggedUnionFixtures.res](../../reventless/core/tests/fixtures/TaggedUnionFixtures.res) — a
 required union, an optional one, an array of them, and an unnamed one for the case the emitter must
 decline. The storage arms could not all live beside it: a package's `type: dev` sources are invisible
 to another package, so the local and AWS round trips redeclare the four-line union.
@@ -384,14 +422,14 @@ deliberately outside what it reports on.
   and Postgres in the AWS suite: save a `Located`, read it back, get a `Located` with its point intact.
 
   **All four ran and pass**, on two machines. In-memory and SQLite locally
-  ([QueryDbUnionRoundTripTest.res](../../../reventless/local/tests/adapter/QueryDbUnionRoundTripTest.res));
+  ([QueryDbUnionRoundTripTest.res](../../reventless/local/tests/adapter/QueryDbUnionRoundTripTest.res));
   `QueryDbUnion_DynamoDb_IntegrationTest` and `PgQueryDbUnion_IntegrationTest` in the alpha CI run of
   2026-08-20 **and** locally against the Docker sidecars the same day. All four assert the same two
   things: `__typename` survives the store as a nested key, and the row decodes back to the arm it was
   saved as.
 
   Read the *step logs*, not the job result, when re-checking the CI half. Both integration steps carry
-  `continue-on-error: true` ([ci.yml:203-211](../../../.github/workflows/ci.yml#L203-L211)), so a green
+  `continue-on-error: true` ([ci.yml:203-211](../../.github/workflows/ci.yml#L203-L211)), so a green
   CI job says nothing about whether they passed — or ran at all.
 - **Replay heals an older row.** A row stored before the union field existed, parsed against the new
   schema, arrives as the first arm rather than throwing — the `fillMissingDefaults` path, asserted
@@ -402,7 +440,7 @@ deliberately outside what it reports on.
 - **The marker survives the wrapper sury does not keep.** `option<union>` flattens the arms and the
   `undefined` into one `anyOf`, so there is nothing nested left to read a name from — what makes an
   optional union field work is that the metadata survives onto the wrapper.
-  [TaggedUnionTest.res](../../../reventless/spec/tests/TaggedUnionTest.res) pins it, because a sury
+  [TaggedUnionTest.res](../../reventless/spec/tests/TaggedUnionTest.res) pins it, because a sury
   release that stopped preserving it would turn every optional union field into a `String` with no
   compile error anywhere.
 
@@ -411,7 +449,7 @@ a union field survives a *deployed* read. The deploy above proves non-regression
 claim: the deployed SDL declared no union outside `CommandResult`, so at the time of that deploy all
 fourteen doors in D1's table were uncalled. They need a real view declaring a real union, which is why
 that sweep, the live local round trip and the browser check are
-[semantic-geolocation.md](../semantic-geolocation.md)'s verification, not this one's. Saying so is the
+[semantic-geolocation.md](./semantic-geolocation.md)'s verification, not this one's. Saying so is the
 point: a mechanism plan that claims deployment evidence it has not gathered is how a door gets
 declared covered without ever being called — and a green deploy of a mechanism nothing uses is exactly
 the shape of evidence that invites the mistake.
@@ -435,7 +473,7 @@ below.
   beside the union, not a filter over the union — see follow-ups.
 - **Recursive unions.** An arm carrying the union again. Nothing needs it, the SDL emitter would need
   cycle detection, and `fillMissingDefaults` walks eagerly.
-- **Any view adopting a union**, `Customers` included — [semantic-geolocation.md](../semantic-geolocation.md)
+- **Any view adopting a union**, `Customers` included — [semantic-geolocation.md](./semantic-geolocation.md)
   owns the first one, and every other view keeps its shape until something asks.
 - **The semantic vocabulary.** Whether a given union is framework vocabulary or an application's own
   local type is a question about that union, not about the mechanism. Every union emitted here is a
@@ -448,7 +486,7 @@ below.
   make the query work without making the union itself indexable. Worth doing when asked for, not
   before — it is a second statement of the same fact, and the only thing that justifies one is that
   DynamoDB cannot key on the first.
-- **A second union semantic.** [semantic-geolocation.md](../semantic-geolocation.md) is the first, and
+- **A second union semantic.** [semantic-geolocation.md](./semantic-geolocation.md) is the first, and
   one entry does not make a vocabulary. The shape of the *next* one — an outcome, an approval, a
   settlement state — is what will show whether `<UnionName><Arm>` member naming and the
   every-arm-carries-a-payload rule generalise or were fitted to one case.
@@ -456,7 +494,7 @@ below.
   event schemas reach the same emitter and can also produce an unclassifiable shape; that path is
   untouched here and deserves the same treatment.
 - **A union behind an `@index`.** *Half done, 2026-08-20.* The **by-index door now carries one**:
-  [QueryDbListResolverTest.res](../../../reventless/local/tests/adapter/QueryDbListResolverTest.res)'s
+  [QueryDbListResolverTest.res](../../reventless/local/tests/adapter/QueryDbListResolverTest.res)'s
   indexed fixture gained an optional union field, and its by-index resolver is asserted to return
   `__typename` and the arm's payload — plus that an absent optional union stays absent rather than
   being stamped into an arm. Checked by mutation: changing the expected member name fails the test.

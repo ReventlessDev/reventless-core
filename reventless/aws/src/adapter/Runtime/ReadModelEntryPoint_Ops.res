@@ -90,6 +90,8 @@ let withInjectedId = (
 type specInfo = {
   config: option<ProjectionEntryPoint_Ops.specConfig>,
   subIdConfig: option<Reventless.ReadModel.subIdConfig<JSON.t>>,
+  // Read off the runtime-loaded spec module; `None` on a module that predates it.
+  stateSchema: option<S.t<unknown>>,
 }
 
 let buildOperations = (
@@ -102,7 +104,9 @@ let buildOperations = (
     ~stateTopicName=entry.stateTopicName,
     ~indexes=ProjectionEntryPoint_Ops.indexesOf(spec.config),
     ~subIdField=ProjectionEntryPoint_Ops.subIdFieldOf(spec.subIdConfig),
-  )->withInjectedId
+  )
+  ->ProjectionEntryPoint_Ops.withUnionMemberTypes(~stateSchema=spec.stateSchema)
+  ->withInjectedId
 
 let makeRegisteredHandler = (
   entry: handlerEntry,
