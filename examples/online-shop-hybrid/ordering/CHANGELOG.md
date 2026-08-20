@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.217 (2026-08-20)
+
+### Features
+
+* **spec:** type a geocoder's answer as one Geolocation value ([157be7a](https://github.com/ReventlessDev/reventless-core/commit/157be7aca4806ae19dba1f58979af13b88dc1821))
+
+
 # 1.0.0-alpha.216 (2026-08-20)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-ordering

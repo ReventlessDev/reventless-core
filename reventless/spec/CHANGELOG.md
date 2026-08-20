@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.120 (2026-08-20)
+
+### Features
+
+* **spec:** type a geocoder's answer as one Geolocation value ([157be7a](https://github.com/ReventlessDev/reventless-core/commit/157be7aca4806ae19dba1f58979af13b88dc1821))
+
+
 # 3.0.0-alpha.119 (2026-08-20)
 
 ### Features
