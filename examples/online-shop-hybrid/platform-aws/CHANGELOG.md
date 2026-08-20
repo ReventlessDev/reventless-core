@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.260 (2026-08-20)
+
+### Bug Fixes
+
+* **examples:** publish to the Events endpoint, not endpoint/event ([6b357ee](https://github.com/ReventlessDev/reventless-core/commit/6b357eede1299f6e28c8dce4b7d37a23faf29153))
+
+
 # 1.0.0-alpha.259 (2026-08-19)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-platform-aws

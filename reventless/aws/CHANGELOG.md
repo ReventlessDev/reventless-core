@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.313 (2026-08-20)
+
+### Features
+
+* **api:** emit a tagged-union state field as a GraphQL union ([3a380c0](https://github.com/ReventlessDev/reventless-core/commit/3a380c0ab055b87048d90a852ec1664f6aab6b00))
+
+
 # 3.0.0-alpha.312 (2026-08-19)
 
 ### Bug Fixes
