@@ -1482,7 +1482,15 @@ EOF
 # guard, which runs the just-published binary and needs no OCaml toolchain.
 if [ -z "${REVENTLESS_PPX_SKIP_SELF_BUILD:-}" ]; then
   echo "Building PPX..."
-  (cd src && dune build 2>&1) || { echo "PPX build failed"; exit 1; }
+  # Bare `dune`, on purpose: the caller supplies the switch. CI runs
+  # `opam exec -- npm test`; run this script the same way by hand. Without it
+  # dune resolves outside the switch and fails on a ppxlib/OCaml version
+  # mismatch, which reads like a source error and is not one.
+  (cd src && dune build 2>&1) || {
+    echo "PPX build failed — if the error mentions ppxlib or 'not a compiled interface',"
+    echo "you are outside the opam switch: re-run as 'opam exec -- ./test/run.sh'."
+    exit 1
+  }
 fi
 
 # ─── Compile plugin package ─────────────────────────────────────────
