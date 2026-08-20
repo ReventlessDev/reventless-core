@@ -10,7 +10,7 @@
 // this (spec-level `permission` outranks the legacy `{tableName, group}` pair),
 // and so does the `requiredAccess` the platform publishes — so a shell can gate
 // the Plugins view up front instead of offering it and meeting a refusal.
-@@reventless.authorize(Reventless.Authorization.AllowGroups(["Admin"]))
+@@reventless.authorize(AllowGroups(["Admin"]))
 
 // Current view — one row per plugin **name**, holding the currently-active
 // version's definition. Keyed by the aggregate id (= plugin name). The status

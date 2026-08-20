@@ -269,7 +269,7 @@ describe("the Plugins queryableDef is what the generic helpers produce", () => {
     // nested object types whose own fields would match a naive `includes`.
     let props =
       rm.schema
-      ->JSON.parseExn
+      ->JSON.parseOrThrow
       ->JSON.Decode.object
       ->Option.flatMap(o => o->Dict.get("properties"))
       ->Option.flatMap(JSON.Decode.object)
@@ -289,7 +289,7 @@ describe("the Plugins queryableDef is what the generic helpers produce", () => {
   testSync("while the internal fields are not published at all", () => {
     let props =
       rm.schema
-      ->JSON.parseExn
+      ->JSON.parseOrThrow
       ->JSON.Decode.object
       ->Option.flatMap(o => o->Dict.get("properties"))
       ->Option.flatMap(JSON.Decode.object)
