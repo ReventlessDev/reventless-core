@@ -2,7 +2,7 @@
 
 **Status:** Analysis
 **Date:** 2026-08-01
-**Plans:** [task-bucket-naming-and-declared-store-wipe.md](../plans/task-bucket-naming-and-declared-store-wipe.md) (Part 3 adds the check this analysis argues is necessary but not sufficient)
+**Plans:** [task-bucket-naming-and-declared-store-wipe.md](../plans/done/task-bucket-naming-and-declared-store-wipe.md) (Part 3 adds the check this analysis argues is necessary but not sufficient)
 **Subject:** [`PluginSpec.res`](../../reventless/core/src/plugin/lifecycle/PluginSpec.res), [`Plugin_Structure.res`](../../reventless/core/src/plugin/component/Plugin_Structure.res), [`PlatformCodegen.res`](../../reventless/spec/src/generator/PlatformCodegen.res)
 **Question:** Should a platform enforce that no two plugins share a name? Does merging same-named plugins ever make sense? And how does either answer survive installing a plugin whose name the installer did not choose?
 

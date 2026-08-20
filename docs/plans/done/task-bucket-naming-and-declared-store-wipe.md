@@ -1,10 +1,10 @@
 # Plan: task-bucket names, wiping declared object stores, and plugin-qualified store prefixes
 
 **Date:** 2026-08-01
-**Status:** All four parts implemented; full build clean and 2613 tests green across 16 jest
-projects. **Part 4's legacy-prefix grandfathering was dropped by decision** — see
-[Deviation](#deviation-no-legacy-prefixes). Outstanding: the on-stack verifications, which need a
-deploy (Part 1 `pulumi preview` replace check, Part 2 dry run and real wipe, Part 4 new-prefix mint).
+**Status:** DONE — all four parts implemented (full build clean, 2613 tests green across 16 jest
+projects) and **every on-stack verification run against deployed `alpha` on 2026-08-20**, including
+the real wipe. **Part 4's legacy-prefix grandfathering was dropped by decision** — see
+[Deviation](#deviation-no-legacy-prefixes).
 **Repos:** `reventless-core` only.
 **Touches:** `reventless/core` (task bucket naming, registration warning), `reventless/aws` (bucket
 destroy semantics, store prefixes, serving, presign), `reventless/seed-aws` (reset),
@@ -45,7 +45,7 @@ Part 3").
 
 ## The gap
 
-[`Task_Builder.res:176`](../../reventless/core/src/components/Task/Task_Builder.res#L176):
+[`Task_Builder.res:176`](../../../reventless/core/src/components/Task/Task_Builder.res#L176):
 
 ```rescript
 let bucketStem = bucketSpec.bucketName->Option.mapOr("", pascalCase)
@@ -63,7 +63,7 @@ Three defects compound in that one line:
    carry.
 2. **PascalCase in a lowercase namespace.** PascalCase carries word boundaries for DynamoDB, which
    preserves case. S3 does not, so the name collapses into an unreadable run-on. The framework's own
-   S3 names already know this: [`Util_StoreLayout.bucketNameFor`](../../reventless/aws/src/util/Util_StoreLayout.res)
+   S3 names already know this: [`Util_StoreLayout.bucketNameFor`](../../../reventless/aws/src/util/Util_StoreLayout.res)
    emits kebab (`{plugin}-{store}`, `{stack}-stores`) through the same `S3.Bucket.make(~name)` path.
    Task buckets simply never got the same treatment, so kebab is the established house rule for S3
    logical names here, not a new convention.
@@ -81,7 +81,7 @@ Three defects compound in that one line:
 
 All segments kebab-cased and lowercased; no `Bucket` suffix. `{plugin}` comes from
 `ResourceAttribution.current.contents.plugin` — the same ambient context
-[`AWS_Tags.makeDict`](../../reventless/aws/src/adapter/AWS_Tags.res#L55) already reads — and is
+[`AWS_Tags.makeDict`](../../../reventless/aws/src/adapter/AWS_Tags.res#L55) already reads — and is
 omitted when a task is constructed outside any plugin.
 
 The remaining stutter in the example is the *declaration's*, not the framework's: a task called
@@ -92,7 +92,7 @@ rather than adding a de-stutter heuristic to the framework.
 
 `Task_Builder` already receives `~resourceNaming: ReventlessInfra.ResourceNaming.operations`, so it
 looks like the seam for this. It is not: `ResourceNaming` is a *runtime* interface (only
-[`ScheduleOps`](../../reventless/core/src/util/ScheduleOps.res) consumes it), its `validateName` is a
+[`ScheduleOps`](../../../reventless/core/src/util/ScheduleOps.res) consumes it), its `validateName` is a
 character-sanitiser with no plugin context, and most implementations are the identity function.
 Composing a deploy-time name there would overload a seam that means something else.
 
@@ -106,7 +106,7 @@ URN churn buys nothing.
 
 ## Steps
 
-1. **Add `kebabCase` beside `pascalCase`** in [`Task_Builder.res:6`](../../reventless/core/src/components/Task/Task_Builder.res#L6) —
+1. **Add `kebabCase` beside `pascalCase`** in [`Task_Builder.res:6`](../../../reventless/core/src/components/Task/Task_Builder.res#L6) —
    splitting PascalCase/camelCase on case boundaries and normalising existing `-`/`_` runs, so both
    `"ImportProducts"` and `"product-imports"` reduce to the same shape. Pure; unit-tested.
 2. **Compose the new name** at `Task_Builder.res:176`, joining the plugin (when ambient), the task,
@@ -117,24 +117,24 @@ URN churn buys nothing.
    the task and telling the developer to shorten the task or bucket id. Do **not** truncate —
    truncation silently manufactures collisions between two long names sharing a prefix.
 4. **Drop `bucketName` from the three example tasks** —
-   [`online-shop-hybrid`](../../examples/online-shop-hybrid/catalog/src/Task/ImportProducts.res#L10),
+   [`online-shop-hybrid`](../../../examples/online-shop-hybrid/catalog/src/Task/ImportProducts.res#L10),
    `online-shop-aggregates`, `online-shop-dcb` — each of which declares a single bucket whose id
    restates its task. Verified safe: the string `"product-imports"` is read by nothing in the repo;
    it exists only to be concatenated into the bucket name. Note this also renames the bucket's
    side-effect Lambda from `ImportProductsProductImportsSideEffectHandler` to
-   `ImportProductsSideEffectHandler` ([`TaskRuntime_Builder_PerBucket.res:22`](../../reventless/aws/src/adapter/Runtime/TaskRuntime_Builder_PerBucket.res#L22)) —
+   `ImportProductsSideEffectHandler` ([`TaskRuntime_Builder_PerBucket.res:22`](../../../reventless/aws/src/adapter/Runtime/TaskRuntime_Builder_PerBucket.res#L22)) —
    a Lambda replace, no data at risk.
 5. **Unit-test the rule** in `reventless/core/tests/` (`kebabCase` round-trips; plugin-present and
    plugin-absent composition; named and unnamed buckets; the length guard firing).
 
 ## Migration hazard — read before deploying
 
-**Any bucket-name change is a replace**, and [`TaskBucket_S3.make`](../../reventless/aws/src/adapter/Task/TaskBucket_S3.res#L125)
+**Any bucket-name change is a replace**, and [`TaskBucket_S3.make`](../../../reventless/aws/src/adapter/Task/TaskBucket_S3.res#L125)
 sets no `forceDestroy`. A replace against a task bucket holding even one object fails the deploy with
 `BucketNotEmpty`.
 
 6. **Thread `forceDestroy` into `TaskBucket_S3.make`**, gated on
-   [`Util_StoreLayout.protectionFor`](../../reventless/aws/src/util/Util_StoreLayout.res) —
+   [`Util_StoreLayout.protectionFor`](../../../reventless/aws/src/util/Util_StoreLayout.res) —
    `Unprotected` (the `pr-*` prefixes) gets `forceDestroy: true`. This mirrors exactly the judgement
    the store buckets already make, and without it every PR stack wedges on the first deploy after
    this change.
@@ -145,11 +145,14 @@ sets no `forceDestroy`. A replace against a task bucket holding even one object 
 
 ## Verification
 
-- Unit tests from step 5 green.
-- `pulumi preview` on the hybrid `alpha` stack shows the task bucket, its two notifications and its
-  role policy as **replace**, and no other resource replacing.
-- After deploy: the bucket reads `catalog-import-products-<suffix>` and the next `seed:reset` dry run
-  prints that name.
+- ✅ Unit tests from step 5 green.
+- ~~`pulumi preview` on the hybrid `alpha` stack shows the task bucket, its two notifications and its
+  role policy as **replace**, and no other resource replacing.~~ **Moot — the replace has since
+  happened.** Verifying a preview of a rename that is already live is not possible; the outcome
+  below is the stronger evidence.
+- ✅ **Verified on alpha 2026-08-20** — the bucket reads `catalog-import-products-26a6887` and the
+  `seed:reset` dry run prints that name under catalog's S3 buckets. The unreadable
+  `importproductsproductimportsbucket-699dee6` is gone.
 
 ---
 
@@ -157,11 +160,11 @@ sets no `forceDestroy`. A replace against a task bucket holding even one object 
 
 ## The gap, which is two gaps
 
-Discovery in [`ReventlessSeedAws_Reset.res:166-214`](../../reventless/seed-aws/src/ReventlessSeedAws_Reset.res#L166-L214)
+Discovery in [`ReventlessSeedAws_Reset.res:166-214`](../../../reventless/seed-aws/src/ReventlessSeedAws_Reset.res#L166-L214)
 filters purely on `reventless:platform` + `reventless:environment`. `reventless:platform` is the
 **deploying Pulumi project**, and a declared store's bucket is created by the *platform* deploy
-([`Platform.res:1574`](../../reventless/aws/src/Platform.res#L1574)). On a non-production stack
-`Util_StoreLayout.layoutFor` returns `SharedBucket`, so [`Platform.res:1578-1581`](../../reventless/aws/src/Platform.res#L1578-L1581)
+([`Platform.res:1574`](../../../reventless/aws/src/Platform.res#L1574)). On a non-production stack
+`Util_StoreLayout.layoutFor` returns `SharedBucket`, so [`Platform.res:1578-1581`](../../../reventless/aws/src/Platform.res#L1578-L1581)
 deliberately passes `~plugin=None` — one bucket serves every plugin, so no single plugin can own it —
 and the bucket lands tagged `platform=<platform project>`, `scope=platform`, `plugin=""`.
 
@@ -170,7 +173,7 @@ Consequences, in both directions:
 - **Under-wipe.** `1) domain`, the documented default, empties the catalog's event log and read
   models and leaves every product image behind — objects whose referencing events no longer exist,
   while the next seed mints fresh UUID keys on top. This is precisely the failure the
-  [`Capability_ObjectStore_S3` header](../../reventless/aws/src/capability/Capability_ObjectStore_S3.res#L1-L11)
+  [`Capability_ObjectStore_S3` header](../../../reventless/aws/src/capability/Capability_ObjectStore_S3.res#L1-L11)
   warns about, reached by a different route: correct tags, wrong scope split.
 - **Over-wipe.** `4) platform` *does* reach the bucket, but `emptyBucket` empties a whole bucket, so
   it destroys every plugin's objects — and it also truncates the platform's own tables (the plugin
@@ -179,7 +182,7 @@ Consequences, in both directions:
 
 ## The mapping already exists
 
-The platform stack exports it ([`Platform.res:1701-1719`](../../reventless/aws/src/Platform.res#L1701-L1719)).
+The platform stack exports it ([`Platform.res:1701-1719`](../../../reventless/aws/src/Platform.res#L1701-L1719)).
 Read from the deployed hybrid `alpha` stack:
 
 ```
@@ -189,8 +192,8 @@ $ pulumi stack output objectStores --json --stack alpha
 ```
 
 Plugin, bucket and prefix — everything a per-plugin wipe needs, keyed by `{plugin}.{store}`. And the
-client side is already in place: [`ReventlessSeedAws.stackOutputs`](../../reventless/seed-aws/src/ReventlessSeedAws.res#L79)
-reads stack outputs, and [`ListObjectVersionsCommand.input`](../../rescript/aws-sdk/src/S3.res#L56)
+client side is already in place: [`ReventlessSeedAws.stackOutputs`](../../../reventless/seed-aws/src/ReventlessSeedAws.res#L79)
+reads stack outputs, and [`ListObjectVersionsCommand.input`](../../../rescript/aws-sdk/src/S3.res#L56)
 already accepts `Prefix`. **No new bindings and no new AWS API calls.**
 
 ## Store-name collisions
@@ -228,7 +231,7 @@ it is the tool that destroys data, so it must not depend on an upstream check ha
    plugin's own name (`Catalog`) while the target label is the operator-facing one (`catalog`);
    case-folding and hoping would violate the file's stated posture that the caller declares the
    topology and the reset never guesses it. Update the hybrid
-   [`SeedAwsReset.res`](../../examples/online-shop-hybrid/platform-aws/src/SeedAwsReset.res#L24-L28)
+   [`SeedAwsReset.res`](../../../examples/online-shop-hybrid/platform-aws/src/SeedAwsReset.res#L24-L28)
    targets accordingly.
 2. **Resolve the stores.** Read `objectStores` from the `Platform`-group target's stack via
    `ReventlessSeedAws.stackOutputs`, regardless of which scope was selected — reading is side-effect
@@ -299,13 +302,23 @@ re-run.
 
 ## Verification
 
-- Unit tests from step 10 green.
-- Dry run on the hybrid `alpha` stack, scope `1) domain`: the catalog section lists
-  `Catalog.productImages` with a non-zero count, and the run total includes it.
-- Dry run, scope `4) platform`: `alpha-stores-…` **no longer appears** as a plain bucket.
-- Real wipe, scope `2) catalog`: images removed, per-store verify line prints 0, and the platform's
-  registry tables are untouched (so a re-seed needs no redeploy).
-- Re-run the reset: reports 0 and exits via the "already reads empty" path.
+All run against deployed `alpha` on 2026-08-20.
+
+- ✅ Unit tests from step 10 green.
+- ✅ Dry run, scope `domain`: catalog lists `9 Catalog.categoryImages` and `16 Catalog.productImages`,
+  each printed with its resolved prefix (`alpha-stores-507202d/Catalog/<store>/`).
+- ✅ Dry run, scope `platform`: `alpha-stores-…` does **not** appear — the platform section lists only
+  `host-ui-bundle-222500b` and `reventless-offload-94ae291`.
+- ✅ Real wipe, scope `catalog`: 9 + 16 objects removed, and the per-store verify line printed
+  `0 object(s) remain` for both. Nine runtimes were held at zero concurrency and recycled around it.
+- ✅ Scope held: `Plugins` (2), `PluginAggrEventLog` (745) and `ActiveRoleStore` (1) are unchanged, as
+  is all of ordering (`Orders` 40, `Customers` 10, `OrderingDcbEventLog` 157) — so a re-seed needs no
+  redeploy.
+- ✅ Re-run: every count reads 0 and it exits via `Nothing to reset — the selected scope already
+  reads empty`.
+
+**Note for whoever reads this next:** the real wipe emptied alpha's catalog and it was **not**
+re-seeded — `pnpm run seed` needs `REVENTLESS_DEMO_USER` / `REVENTLESS_DEMO_PASSWORD`.
 - Collision path, exercised by unit test rather than on a live stack (a second plugin declaring
   `productImages` would have to be deployed to test it end-to-end, and the refusal is pure logic).
 
@@ -316,7 +329,7 @@ re-run.
 ## What happens today
 
 The collision is already fatal — just late, and by accident. Both serving arms build one CloudFront
-cache behavior per served prefix ([`Plugin_Stack.res:243-247`](../../reventless/aws/src/plugin/stack/Plugin_Stack.res#L243-L247)),
+cache behavior per served prefix ([`Plugin_Stack.res:243-247`](../../../reventless/aws/src/plugin/stack/Plugin_Stack.res#L243-L247)),
 and exactly one distribution fronts every store bucket. Two plugins declaring `productImages` produce
 two behaviors with the same path pattern in **either** layout:
 
@@ -336,7 +349,7 @@ three things silently go wrong:
 
 - objects intermix with no way to attribute them — the wipe problem of Part 2;
 - `Upload_Presign_S3` scopes its grants to `{bucket}/{prefix}/*`
-  ([`Upload_Presign_S3.res:111`](../../reventless/aws/src/adapter/Upload/Upload_Presign_S3.res#L111)),
+  ([`Upload_Presign_S3.res:111`](../../../reventless/aws/src/adapter/Upload/Upload_Presign_S3.res#L111)),
   so a caller authorised for one plugin's store can address the other's objects — least privilege
   collapses without a symptom;
 - the existing `coverageFor` gate passes cleanly, because `objectStores` holds two distinct keys and
@@ -344,7 +357,7 @@ three things silently go wrong:
 
 ## Deliberate sharing is not a collision
 
-[`Plugin_Structure.res:504-517`](../../reventless/core/src/plugin/component/Plugin_Structure.res#L504-L517)
+[`Plugin_Structure.res:504-517`](../../../reventless/core/src/plugin/component/Plugin_Structure.res#L504-L517)
 resolves `@storageRef`'s optional plugin qualifier and only defaults to the declaring plugin when the
 annotation left it off. So `@storageRef("Catalog.productImages")` from another plugin collapses to
 **one** qualified key and is legitimate sharing. The error case is precisely *two unqualified
@@ -368,7 +381,7 @@ remedies: qualify the annotation if you meant to share, rename if you didn't.
    and the one shape that then becomes reachable is a *legacy* store whose bare name equals a plugin
    name, e.g. legacy `Catalog` enclosing `Catalog/productImages`. Comparing on containment from the
    start means Part 4 introduces no new check.
-2. **Call it at [`Platform.res:1526`](../../reventless/aws/src/Platform.res#L1526)**, where
+2. **Call it at [`Platform.res:1526`](../../../reventless/aws/src/Platform.res#L1526)**, where
    `declaredStores` already holds every plugin's pairs, and throw before a single resource is
    created. The message names every colliding qualified key with its declaration site, and states
    both remedies.
@@ -387,25 +400,25 @@ remedies: qualify the annotation if you meant to share, rename if you didn't.
 Part 4's qualifier only qualifies if plugin names are unique within a platform. They are not
 enforced to be, anywhere. The wider design question — whether to enforce, whether merging ever makes
 sense, and how either survives installing a plugin whose name the installer did not choose — is
-[plugin-name-identity-and-uniqueness.md](../analysis/plugin-name-identity-and-uniqueness.md); this
+[plugin-name-identity-and-uniqueness.md](../../analysis/plugin-name-identity-and-uniqueness.md); this
 plan takes only the check that analysis calls step 1. What exists today and what it actually
 guarantees:
 
 - **The deploy manifest** lists plugins as a YAML mapping, so its *keys* are unique — but those keys
   are deployable names, not registered plugin names, and
-  [`PlatformCodegen.res:76-82`](../../reventless/spec/src/generator/PlatformCodegen.res#L76-L82)
+  [`PlatformCodegen.res:76-82`](../../../reventless/spec/src/generator/PlatformCodegen.res#L76-L82)
   states outright that "no rule relates the two" (`platform-inspector` against `PlatformInspector` is
   an ordinary pairing). It constrains nothing about plugin names.
-- **The Plugin aggregate is keyed by plugin name** — [`PluginSpec.res:4-8`](../../reventless/core/src/plugin/lifecycle/PluginSpec.res#L4-L8):
+- **The Plugin aggregate is keyed by plugin name** — [`PluginSpec.res:4-8`](../../../reventless/core/src/plugin/lifecycle/PluginSpec.res#L4-L8):
   "One instance owns the whole lifecycle of every version of that name." So a second plugin
   registering an existing name is not rejected; it is read as a **new version of the first** and
   drives `VersionSuperseded`. The first plugin is superseded by an unrelated one, silently.
 - **The capability union** merges on `{plugin}.{store}`
-  ([`PlatformCodegen.res:40-61`](../../reventless/spec/src/generator/PlatformCodegen.res#L40-L61)),
+  ([`PlatformCodegen.res:40-61`](../../../reventless/spec/src/generator/PlatformCodegen.res#L40-L61)),
   so two same-named plugins' stores collapse into one entry that is indistinguishable from
   deliberate cross-plugin sharing.
 - **`GraphQL_Stitcher`** is the only place with any duplicate handling at all, and it *warns and
-  skips* duplicate types and fields ([lines 209-267](../../reventless/core/src/components/Api/GraphQL_Stitcher.res#L209-L267)),
+  skips* duplicate types and fields ([lines 209-267](../../../reventless/core/src/components/Api/GraphQL_Stitcher.res#L209-L267)),
   so the loser's fields quietly vanish from the schema.
 
 The store prefix is therefore the least of it: a same-named pair already corrupts the registry's
@@ -518,7 +531,7 @@ containment rather than equality.
 2. Everything downstream — the served-bucket prefixes, the presign IAM ARN, the `UPLOAD_STORES`
    config, the `objectStores` stack output and the reset's delete prefix — reads that one value, so
    no consumer needed a change beyond passing `~plugin`.
-3. **`reventless-local`** ([`LocalObjectStore`](../../reventless/local/src/adapter/LocalObjectStore.res#L25))
+3. **`reventless-local`** ([`LocalObjectStore`](../../../reventless/local/src/adapter/ObjectStore/LocalObjectStore.res#L25))
    serves one flat `uploads` prefix and has no per-store prefixes, so it neither breaks nor benefits.
    Its composition-time collision warning restates `{plugin}/{store}` so it cannot report a collision
    the deploy would not.
@@ -533,12 +546,15 @@ prefixes**, which is the only place a bare prefix survives. The rule effectively
 
 ## Verification
 
-- Unit tests for `keyPrefixFor`, the prefix set, the widened `scopeCheck`, and `collisionsFor` under
-  qualified prefixes.
-- On a stack with an existing store: deploy, then confirm an **old** ref still resolves through the
-  distribution, an old ref can still be released, and a **new** upload mints under
-  `{plugin}/{store}/…`.
-- `seed:reset` reports one store whose count covers both prefixes, and reads 0 afterwards.
+- ✅ Unit tests for `keyPrefixFor`, the prefix set, the widened `scopeCheck`, and `collisionsFor`
+  under qualified prefixes.
+- ✅ **New uploads mint under `{plugin}/{store}/…`** — verified on alpha 2026-08-20:
+  `alpha-stores-507202d` contains exactly `Catalog/categoryImages/` and `Catalog/productImages/`,
+  with keys of the shape `Catalog/productImages/<owner>/<id>/<file>`.
+- ~~confirm an **old** ref still resolves … an old ref can still be released~~ /
+  ~~`seed:reset` reports one store whose count covers both prefixes~~ — **moot under the
+  [Deviation](#deviation-no-legacy-prefixes)**: legacy prefixes were dropped by decision, and the
+  bucket listing above confirms none exist. There is no both-prefixes case to observe.
 - A deliberately colliding pair of plugins deploys cleanly where it previously could not.
 
 ---
