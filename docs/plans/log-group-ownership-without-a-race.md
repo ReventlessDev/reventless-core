@@ -2,7 +2,14 @@
 
 **Status.** Implemented — 2026-08-08. Written after a managed-log-group rollout deadlocked in the
 field: three groups could not be adopted because the runtimes they belong to kept recreating them
-faster than a deploy could reach them. On-AWS verification (§6) is outstanding.
+faster than a deploy could reach them.
+
+**On-AWS verification run 2026-08-20 — §6 passes on every criterion but one** (see §6). The
+outstanding item is the **sweep**, and it is blocked rather than forgotten: the auto-created groups
+cannot be swept while their functions are still writing to them, and those functions have no managed
+group because `unmanagedLogGroupStacks: alpha` suppressed it. Removing that var landed in
+`0bc73d444`; the sweep is runnable one deploy later. Tracked from the other side in
+[env-tiered-log-retention-and-levels.md](env-tiered-log-retention-and-levels.md).
 
 **Goal.** A framework-provisioned runtime's CloudWatch log group is created and owned by the
 deploy, with no window in which AWS can create it first — and an estate whose groups AWS already
@@ -194,19 +201,46 @@ in-place update.
 
 ## §6 — Acceptance
 
-- A stack deployed from scratch never emits `CreateLogGroup` for a group AWS created first, under
-  any invocation load — verified with a runtime that is invoked during its own deploy.
-- A stack whose groups were auto-created deploys to green without manual intervention, and the
-  groups end up in state with the declared retention and tags.
-- A deploy that fails for an unrelated reason, is left for an hour with live traffic, and is then
-  re-run, succeeds — the scenario §1.3 describes.
-- Replacing a function does not leave an orphan log group.
-- The groups AWS auto-created before this change are swept once the first deploy on the new naming
-  has landed. They are written to by nothing and carry no retention, so leaving them is the
-  unbounded-storage outcome §5 rejects — only now silent rather than loud.
-- `unmanagedLogGroupStacks` still works for a stack that has adopted nothing, and its
-  documentation states that it must not be set once adoption is partial.
-- No call site outside the three in §1 changes.
+Measured against deployed `alpha`, 2026-08-20.
+
+- ✅ A stack deployed from scratch never emits `CreateLogGroup` for a group AWS created first, under
+  any invocation load. Structural, per §3: the chosen name is one the service never produces, so
+  there is nothing to collide with. 35 managed groups exist, created cleanly.
+- ✅ A stack whose groups were auto-created deploys to green without manual intervention, and the
+  groups end up in state with the declared retention and tags. **35 / 35 carry retention**, and the
+  tags are the full set (`reventless:role: Logs`, plus component / plugin / kind / environment /
+  platform).
+- ⚠️ A deploy that fails for an unrelated reason, is left for an hour with live traffic, and is then
+  re-run, succeeds — the scenario §1.3 describes. **Not observed, and not reachable on the Lambda
+  path**: the same property that satisfies criterion 1 removes the failure mode this describes. It
+  remains meaningful for AppSync, whose name comes from a server-assigned id — covered by §4's
+  create-or-adopt.
+- ✅ Replacing a function does not leave an orphan log group. **35 managed groups, 35 functions
+  pointing at one, 35 distinct targets, and zero groups nobody writes to** — the managed name is
+  stable across the physical-name hash change, which is the whole point.
+- ❌ The groups AWS auto-created before this change are swept once the first deploy on the new naming
+  has landed. **Blocked, not forgotten.** 39 auto-created groups remain and **none is sweepable**:
+  every one still has a live function writing to it, because `unmanagedLogGroupStacks: alpha` kept
+  those functions off the managed path. Removing that var landed in `0bc73d444`; the sweep is
+  runnable one deploy later. (The 9 that *were* written to by nothing — from stacks destroyed the
+  same day — were deleted, 249.3 MB.)
+- ✅ `unmanagedLogGroupStacks` still works for a stack that has adopted nothing, and its
+  documentation states that it must not be set once adoption is partial —
+  [`Util_LogRetention.res`](../../reventless/aws/src/util/Util_LogRetention.res#L72-L76), in stronger
+  terms than this line asked for: it names the consequence (the next deploy deletes the groups with
+  their retention, tags and metric filters).
+- ✅ No call site outside the three in §1 changes.
+- ✅ **§4, AppSync.** Every live API's group carries retention. The only three without belonged to
+  deleted APIs and were swept 2026-08-20.
+
+### The near-miss this measurement turned up
+
+`alpha` sat for 18 days in exactly the state the documentation above forbids — hatch set, 35 managed
+groups in state. It survived only because all 35 are declared through
+`makeManagedLogGroup`'s `retentionDaysOverride` branch, which ignores the hatch by design, so they
+were never un-declared and no deploy proposed deleting them. Had those groups come through the tier
+branch instead, the next deploy would have deleted 35 log groups with their retention, tags and DCB
+metric filters. The warning is correct; the estate was one code path away from needing it.
 
 ---
 
