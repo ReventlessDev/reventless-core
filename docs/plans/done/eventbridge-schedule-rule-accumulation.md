@@ -25,7 +25,7 @@ explain the rules" reading rested on a wrong assumption about `Spec.environment`
 
 **Discovered**: 2026-07-22, while confirming that the CommandTopic queue policy's
 EventBridge grant is load-bearing — see
-[`../commandtopic-queue-policy-eventbridge-source-conditions.md`](../commandtopic-queue-policy-eventbridge-source-conditions.md).
+[`commandtopic-queue-policy-eventbridge-source-conditions.md`](commandtopic-queue-policy-eventbridge-source-conditions.md).
 
 ## Problem
 
@@ -75,7 +75,7 @@ earlier revision of this plan claimed the asymmetry did not explain the rules,
 because `Spec.environment` was assumed to be the stack name (the EP Lambda's
 `Environment` env var reads `alpha`). That assumption was wrong.
 
-[`PluginExtensionPointEntryPoint.mjs:40-43`](../../../reventless/aws/src/adapter/Runtime/PluginExtensionPointEntryPoint.mjs#L40-L43)
+[`PluginExtensionPointEntryPoint.res:40-43`](../../../reventless/aws/src/adapter/Runtime/PluginExtensionPointEntryPoint.res)
 — hand-written, still current in this tree — binds the field from the *function
 name*, ignoring the `Environment` variable entirely:
 
@@ -216,7 +216,7 @@ the `Environment` variable the Lambda already carries (`alpha`) rather than from
 within-generation leak, step 5 the across-deploy one.
 
 **Done**, in both hand-written entry points —
-[`PluginExtensionPointEntryPoint.mjs`](../../../reventless/aws/src/adapter/Runtime/PluginExtensionPointEntryPoint.mjs)
+[`PluginExtensionPointEntryPoint.res`](../../../reventless/aws/src/adapter/Runtime/PluginExtensionPointEntryPoint.res)
 and
 [`EventCollectorEntryPoint.mjs`](../../../reventless/aws/src/adapter/Runtime/EventCollectorEntryPoint.mjs).
 They instantiate the *same* admin Plugin EP module, so they had to change

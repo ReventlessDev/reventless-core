@@ -1,10 +1,11 @@
 # Plan: Scope the CommandTopic Queue Policy's EventBridge Send Grant
 
-**Status**: code + tests landed and deployed to alpha 2026-07-22; conditions
-confirmed live on the deployed queues (see Deploy evidence). Step 3 — observing
-an actual scheduled delivery under the new conditions — is still outstanding.
-A wrong condition fails closed and silently, so a correct-looking policy is
-necessary but not sufficient evidence.
+**Status**: DONE. Code + tests landed and deployed to alpha 2026-07-22; conditions
+confirmed live on the deployed queues (see Deploy evidence). **Step 3 — an actual
+scheduled delivery under the new conditions — was confirmed 2026-08-20 from
+EventBridge metrics** (see Scheduled-delivery evidence). A wrong condition fails
+closed and silently, so the correct-looking policy was necessary but not
+sufficient; this is the sufficient half.
 
 **Discovered**: 2026-07-22, while tracing the SQS `QueuePolicy` destroy race
 (orphaned `AdminEventColl` / `AdminDcbCmdTopic` policy deletes after the
@@ -17,7 +18,7 @@ ordering, this one is about the policy's contents.
 
 ## Problem
 
-[`CommandTopicChannel_Helpers.res`](../../reventless/aws/src/adapter/CommandTopic/CommandTopicChannel_Helpers.res)
+[`CommandTopicChannel_Helpers.res`](../../../reventless/aws/src/adapter/CommandTopic/CommandTopicChannel_Helpers.res)
 attached an unconditioned service-principal grant to every CommandTopic queue
 (line anchors omitted — the statement moved when the fix landed):
 
@@ -32,7 +33,7 @@ attached an unconditioned service-principal grant to every CommandTopic queue
 ```
 
 No `Condition` block — `conditions` is optional on the statement type
-([`PolicyDocument.res:114`](../../rescript/pulumi-aws/src/IAM/PolicyDocument.res#L114)),
+([`PolicyDocument.res:114`](../../../rescript/pulumi-aws/src/IAM/PolicyDocument.res#L114)),
 and it is genuinely absent here rather than defaulted. The grant therefore
 authorises the EventBridge service principal globally: any EventBridge rule
 that names this queue as a target can deliver into it, including rules in
@@ -53,14 +54,14 @@ Every sibling scopes its principal:
 
 It is load-bearing. The scheduler creates EventBridge rules **at runtime**, not
 at deploy time, and targets the command topic queue directly —
-[`ScheduledPublisher_CloudWatchEvents_Runtime.res:38-60`](../../reventless/aws/src/adapter/ScheduledPublisher/ScheduledPublisher_CloudWatchEvents_Runtime.res#L38-L60)
+[`ScheduledPublisher_CloudWatchEvents_Runtime.res:38-60`](../../../reventless/aws/src/adapter/ScheduledPublisher/ScheduledPublisher_CloudWatchEvents_Runtime.res#L38-L60)
 issues `PutRuleCommand` + `PutTargetsCommand` with `arn: resource.urn` over the
 queue resources handed to it. For SQS targets EventBridge authorises against the
 queue's resource policy, so removing the statement breaks scheduled publishing.
 
 (The heartbeat path is unaffected either way — its EventBridge rule targets a
 Lambda, which then sends to the queue under its own execution role. See
-[`HeartbeatRunner_CloudWatchEvents.res:86-96`](../../reventless/aws/src/plugin/heartbeat/HeartbeatRunner_CloudWatchEvents.res#L86-L96).)
+[`HeartbeatRunner_CloudWatchEvents.res:86-96`](../../../reventless/aws/src/plugin/heartbeat/HeartbeatRunner_CloudWatchEvents.res#L86-L96).)
 
 Because rule names are chosen at runtime (`schedule.name`), the fix cannot pin a
 single rule ARN at deploy time.
@@ -76,7 +77,7 @@ single rule ARN at deploy time.
 ## Non-goals
 
 - Migrating `ScheduledPublisher` to EventBridge Scheduler — tracked separately
-  in [`aws-adapters-critical-fixes.md`](Backlog/aws-adapters-critical-fixes.md) as a
+  in [`aws-adapters-critical-fixes.md`](../Backlog/aws-adapters-critical-fixes.md) as a
   long-term item.
 - Pinning individual rule ARNs. Rule names are runtime-chosen; wildcard-within-
   account is the achievable bound.
@@ -107,7 +108,7 @@ from the queue ARN (segment index 4) and add both conditions.
 `accountId` is already in scope in the sibling helper via
 `queueArn->String.split(":")->Array.get(4)`; lift that derivation rather than
 re-implementing it. The hardcoded `"events.amazonaws.com"` string should become
-`AWS.CloudwatchEventRule.principal` ([`AWS.res:45`](../../reventless/aws/src/adapter/AWS.res#L45))
+`AWS.CloudwatchEventRule.principal` ([`AWS.res:45`](../../../reventless/aws/src/adapter/AWS.res#L45))
 in the same edit — the literal duplicates a value the module already owns.
 
 `SourceAccount` alone closes the cross-account hole; the `ArnLike` narrows the
@@ -141,12 +142,12 @@ already impose, and it is worth having.
    and asserts both condition keys, the service principal, and that the Lambda
    grant stays pinned to its function ARN. Mutation-checked: deleting the
    `SourceAccount` condition reds exactly one test.
-3. [ ] **PENDING — requires a deploy.** Deploy to alpha and exercise the
-   scheduler path end-to-end — create a schedule, confirm the runtime
-   `PutTargets` succeeds and a message is delivered into the command topic
-   queue. A wrong condition fails *closed* and silently: EventBridge accepts
-   `PutTargets` and drops deliveries, so a deploy-time green is not sufficient
-   evidence.
+3. [x] **Done 2026-08-20 — from metrics rather than a fresh schedule.** The
+   scheduler path had already been exercised on alpha by the plugin-connect
+   rules the deploy itself creates, so the evidence existed and only needed
+   reading. See Scheduled-delivery evidence below. A wrong condition fails
+   *closed* and silently: EventBridge accepts `PutTargets` and drops deliveries,
+   so a deploy-time green is not sufficient evidence — `FailedInvocations` is.
 4. [x] Audit the remaining queue policies for the same omission.
 
 ## Audit results (step 4)
@@ -183,7 +184,8 @@ scoping one.
 
 ## Validation
 
-- [ ] Scheduled publish observed arriving in the command topic queue on alpha.
+- [x] Scheduled publish observed arriving in the command topic queue on alpha —
+  see Scheduled-delivery evidence.
 - [x] Rendered policy contains both condition keys — asserted in
   `tests/CommandTopicQueuePolicyTest.res`.
 - [x] `grep` shows no remaining unconditioned *service*-principal statement in
@@ -245,7 +247,45 @@ and 12:00 UTC — both before the 13:16 UTC policy update. The likely cause is
 rules still targeting `AdminEventColl` / `AdminDcbCmdTopic`, the queues
 destroyed by the `Admin` → `Platform` rename. That connects the stale-rule
 backlog to real failing deliveries rather than mere clutter; tracked in
-[`Backlog/eventbridge-schedule-rule-accumulation.md`](Backlog/eventbridge-schedule-rule-accumulation.md).
+[`eventbridge-schedule-rule-accumulation.md`](eventbridge-schedule-rule-accumulation.md).
+
+## Scheduled-delivery evidence (alpha, read 2026-08-20)
+
+Step 3 asked for a scheduled publish observed arriving in a command topic queue.
+No fresh schedule was needed: each deploy's plugin-connect rules already exercise
+the path, so the evidence was in `AWS/Events` metrics. Every EventBridge rule
+targeting an SQS queue, over 2026-07-01 → 08-21:
+
+| rule | fires (UTC) | target queue exists | Invocations | FailedInvocations |
+| --- | --- | --- | --- | --- |
+| `PlatformPluginExtPointCmdHandler-8fde2e1-Catalog_…alpha.151` | 07-22 20:33 | ✅ | 1 | **none** |
+| `PlatformPluginExtPointCmdHandler-bd85655-Catalog_…alpha.151` | 07-22 21:14 | ✅ | 1 | **none** |
+| `CorePluginExtPointCmdHandler-*` ×6 | 07-22 03:23–12:07 | ❌ | 1 each | 4 of 6 |
+| `pr-verify-Catalog_3.0.0-alpha.167` | 07-30 03:08 | ❌ | 1 | 1 |
+| `alpha-{Catalog,Ordering,PlatformInspector}_…` | 08-20 09:2x | ✅ | not yet fired | — |
+
+**The two successes are the evidence.** The fix landed in `2f5f148f4`
+(2026-07-22 13:05 UTC) and both fired well after it, into
+`PlatformPluginExtPointCmdTopic-*` — queues whose policy still reads, today:
+
+```json
+{"Sid": "AllowCloudWatchEventsToSendToQueue",
+ "Principal": {"Service": "events.amazonaws.com"},
+ "Condition": {"StringEquals": {"aws:SourceAccount": "123456789012"},
+               "ArnLike": {"aws:SourceArn": "arn:aws:events:*:123456789012:rule/*"}}}
+```
+
+A wrong condition would have produced a `FailedInvocations` datapoint on exactly
+these two rules. There is none.
+
+**The failures confirm the stale-rule hypothesis above rather than contradicting
+the fix.** Every failing rule targets a queue that no longer exists — the
+`Core*` ones orphaned by the rename, one left by a torn-down `pr-verify` stack —
+so the split is perfectly along target existence, not along policy. They are
+one-shot crons with a fixed 2026 date that have already fired, so they are inert
+clutter, not an ongoing failure source. Still
+[`eventbridge-schedule-rule-accumulation.md`](eventbridge-schedule-rule-accumulation.md)'s
+to clean up.
 
 ## Risk
 
