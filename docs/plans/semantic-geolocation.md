@@ -1,9 +1,12 @@
 # Plan: `Geolocation` — the geocoder's answer as one value
 
 **Date:** 2026-08-20
-**Status:** Proposed. Nothing implemented. **Blocked on**
-[tagged-union-state-fields.md](./tagged-union-state-fields.md) — the framework cannot express a
-tagged-union field until that lands, and this type is one.
+**Status:** Proposed. Nothing implemented. **Unblocked** as of 2026-08-20:
+[tagged-union-state-fields.md](./tagged-union-state-fields.md) landed, so the framework can now
+express, emit and store a tagged-union field. One thing it added that step 1 below owes: a union
+carries its own name on its schema, so `Geolocation` writes
+`Reventless.TaggedUnion.named(~name="Geolocation", …)` beside its `Semantic.mark` — that name is
+what both the emitted `union Geolocation` and the stored `__typename` are built from.
 **Scope:** the semantic type, the first view to adopt it, and the deployment proof the mechanism plan
 deliberately cannot gather.
 **Repos:** `reventless-core`, with a reader half in `reventless-ui` planned there. The lockstep is
@@ -143,10 +146,33 @@ for data that has to survive.
 
 **The lockstep is hard, and it is the one to get right.** A union field cannot be selected bare. The
 moment `Customers` declares one, a client that has not learned inline fragments sends an **invalid
-query**, not a degraded one — the view fails outright rather than losing a control. So the reader
-half's generic union support must ship **before or with** this plan, never after. `GeoPoint` had the
+query**, not a degraded one — the view fails outright rather than losing a control. `GeoPoint` had the
 same shape of constraint with a gentler failure (a map silently not offered); this one takes the view
 down.
+
+Two things sharpen that into an order of operations.
+
+**It is step 3 that binds, not this plan.** Steps 1, 2 and 4 are inert on a deployment: a type nobody
+declares, a marker on nothing, and a doc. Only the `Customers` collapse puts a union into a served
+SDL. So the pin can be bumped between step 2 and step 3 as easily as ahead of the whole plan, and
+splitting there is the cheaper order whenever the reader half is not ready yet.
+
+**"With" is not available, only "before."** The tempting move is one commit carrying both the host-shell
+pin bump and the collapse — one deploy, no window. It does not work, for two reasons that are specific
+to this shell and this CDN. The shell reads schemas at **runtime**, querying
+`Platform_ComponentDefinitions` off the live platform rather than from anything baked into its bundle,
+so every already-open browser starts building queries from the new schema the instant AppSync's SDL
+changes — a deploy cannot fix a tab that is already loaded. And CloudFront keeps serving the previous
+bundle after a UI deploy until someone invalidates it by hand, so one commit buys one deploy and not one
+moment: the window is the cache's length, not the deploy's.
+
+So: bump the pin as its own commit, let it deploy, invalidate, confirm the new shell is being served —
+**then** land step 3. The insurance is one line, and it is what makes the SDL change a non-event.
+
+**What it costs to get wrong, for calibration.** The Customers view fails to load on the alpha example
+app. Not the platform, not the other views, not production, and the fix is a pin bump and a redeploy or
+a revert of the collapse. This is cheap insurance against a self-inflicted breakage, not a
+one-way door — worth stating so the ordering reads as prudence rather than as a hazard.
 
 **Events are untouched.** `LocationSet`, `AddressLocated` and `AddressUnresolvable` are already a
 discriminated union carrying exactly these three outcomes. Nothing stored needs upcasting, and the

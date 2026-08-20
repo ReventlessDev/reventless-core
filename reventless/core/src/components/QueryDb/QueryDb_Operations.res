@@ -67,12 +67,24 @@ module Make = (ReadModelSpec: Reventless.ReadModel.Spec, Ops: Ops) => {
     })
   }
 
+  // Every union value in the row carries the GraphQL member type it is, written
+  // once here rather than by each of the fourteen read doors across three
+  // backends — and, unlike a read-time stamp, it is also on the row the live
+  // change channel hands over as raw JSON. A view with no union field is walked
+  // and left exactly as it was.
+  let stampUnionMembers = dict =>
+    Reventless.TaggedUnion.stampInto(
+      ~schema=ReadModelSpec.stateSchema->S.castToUnknown,
+      JSON.Encode.object(dict),
+    )
+
   let save = async (id, state, saveMode, ttl) =>
     switch state->Message.encode(ReadModelSpec.stateSchema)->JSON.Decode.object {
     | Some(dict) =>
       dict->Dict.set("id", id->Message.encode(ReadModelSpec.Id.schema))
       injectSubId(dict, state)
       injectCompositeIndexAttrs(dict)
+      stampUnionMembers(dict)
       let json = JSON.Encode.object(dict)
       await Ops.jsonOps.save(id->ReadModelSpec.Id.toString, json, saveMode, ttl)
     | None =>
@@ -87,6 +99,7 @@ module Make = (ReadModelSpec: Reventless.ReadModel.Spec, Ops: Ops) => {
           dict->Dict.set("id", id->Message.encode(ReadModelSpec.Id.schema))
           injectSubId(dict, state)
           injectCompositeIndexAttrs(dict)
+          stampUnionMembers(dict)
           let json = JSON.Encode.object(dict)
           Ok(batch->Array.concat([(id->ReadModelSpec.Id.toString, json, ttl)]))
         | None =>

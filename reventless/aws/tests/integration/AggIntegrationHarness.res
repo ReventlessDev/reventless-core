@@ -47,6 +47,26 @@ let createEventLogTable = async (tableName): Util_DynamoDb_Runtime.resolvedTable
   }
 }
 
+// A read-model table: `id` (HASH) alone. No range key — a projection with no
+// `@subId` writes one row per id, which is the shape `QueryDbStorage_DynamoDb`
+// provisions when `subIdField` is absent.
+let createQueryDbTable = async (tableName): Util_DynamoDb_Runtime.resolvedTable => {
+  let input =
+    Dict.fromArray([
+      ("TableName", s(tableName)),
+      ("AttributeDefinitions", [attrDef("id")]->JSON.Encode.array),
+      ("KeySchema", [keyEl("id", "HASH")]->JSON.Encode.array),
+      ("BillingMode", s("PAY_PER_REQUEST")),
+    ])->JSON.Encode.object
+  let _ = await send(createTableCommand(input))
+  {
+    Util_DynamoDb_Runtime.id: tableName,
+    name: tableName,
+    arn: `arn:aws:dynamodb:local:000000000000:table/${tableName}`,
+    hashKey: "id",
+  }
+}
+
 let deleteTable = async (table: Util_DynamoDb_Runtime.resolvedTable) => {
   let input = Dict.fromArray([("TableName", s(table.name))])->JSON.Encode.object
   let _ = await send(deleteTableCommand(input))

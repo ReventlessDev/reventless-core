@@ -3,11 +3,14 @@
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_String from "@rescript/runtime/lib/es6/Stdlib_String.js";
+import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as Api_Naming$ReventlessCore from "./Api_Naming.res.mjs";
 import * as SchemaType$ReventlessCore from "./SchemaType.res.mjs";
 import * as SchemaWalker$ReventlessCore from "../../plugin/component/SchemaWalker.res.mjs";
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "./GraphQL_Stitcher.res.mjs";
+
+let log = Logger$ReventlessCore.fromEnv();
 
 let commandResultSdlTypes = [
   `union CommandResult = CommandAccepted | CommandRejected | CommandPending`,
@@ -90,6 +93,18 @@ function fromSchemaType(_required, _asInputOpt, _st, collectedTypes, seenTypes) 
           _st = inner;
           _asInputOpt = asInput;
           continue;
+        case "TaggedUnion" :
+          let name$3 = st._0;
+          if (asInput) {
+            log.warn("GraphQL_FragmentGenerator", undefined, `union "` + name$3 + `" is used in an input position; GraphQL has no input unions, so the field is emitted as String. Take the arms as separate mutations instead.`);
+            return `String` + bang;
+          }
+          if (!seenTypes.has(name$3)) {
+            seenTypes.add(name$3);
+            let memberNames = st._1.map(param => fromSchemaType(false, asInput, param[1], collectedTypes, seenTypes));
+            collectedTypes.push(`union ` + name$3 + ` = ` + memberNames.join(" | "));
+          }
+          return name$3 + bang;
       }
     }
   };
@@ -110,9 +125,14 @@ function deriveFieldType(parentTypeName, fieldName, required, fieldSchema, colle
   return fromSchemaType(required, undefined, st, collectedTypes, seenTypes);
 }
 
+function reportUnclassifiedUnions(typeName, schema) {
+  SchemaType$ReventlessCore.unclassifiedUnions(schema).forEach(param => log.warn("GraphQL_FragmentGenerator", undefined, typeName + `.` + param.path + ` is emitted as String: ` + param.reason));
+}
+
 function deriveObjectTypeWithNested(typeName, excludeFieldsOpt, includeIdParamOpt, schema) {
   let excludeFields = excludeFieldsOpt !== undefined ? excludeFieldsOpt : [];
   let includeIdParam = includeIdParamOpt !== undefined ? includeIdParamOpt : true;
+  reportUnclassifiedUnions(typeName, schema);
   let fields = SchemaType$ReventlessCore.fromSuryObject(typeName, schema);
   if (fields === undefined) {
     return [];
@@ -580,10 +600,12 @@ function generate(mutationEntries, queryEntries) {
 }
 
 export {
+  log,
   commandResultSdlTypes,
   fromSchemaType,
   objectRefToGraphQL,
   deriveFieldType,
+  reportUnclassifiedUnions,
   deriveObjectTypeWithNested,
   derivePluralWrapperType,
   deriveConnectionTypes,
@@ -611,4 +633,4 @@ export {
   mutationArgTypes,
   generate,
 }
-/* Api_Naming-ReventlessCore Not a pure module */
+/* log Not a pure module */

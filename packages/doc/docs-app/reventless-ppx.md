@@ -854,6 +854,72 @@ The label defaults to empty, which the schema emitter omits so a consumer can te
 
 ---
 
+### Tagged unions as state fields
+
+A variant held by a `@schema type state` field is one fact with several shapes, and it is the honest
+alternative to several fields that nothing keeps in step:
+
+```rescript
+@schema
+type geolocation =
+  | Pending({requestedFor: string})
+  | Located({point: Reventless.GeoPoint.t})
+  | Unresolvable({reason: string})
+
+@schema
+type state = {
+  @id customerId: string,
+  geolocation: geolocation,
+}
+```
+
+The value is stored as sury encodes it — `{"TAG":"Located","point":{…}}` — and reaches GraphQL as a
+union with one object type per arm. Consumers select it with inline fragments
+(`... on Ordering_CustomersGeolocationLocated { point { lat lng } }`), never bare.
+
+**There is no annotation to write.** Inside a ReadModel or StateViewSlice spec, the PPX names the
+union on its schema — `<Plugin>_<Spec><Type>`, the same shape the enum beside it is already
+emitted under — and every member type is that name plus the arm's own. The name has to live on the
+schema because two halves of the framework need it and neither can derive it from the other: the SDL
+emitter reaches a field through a path, and the write path, which stamps each stored value with the
+`__typename` GraphQL resolves the member by, has only the schema in hand. Elsewhere — a union
+declared in a framework module, say — the same line is written by hand:
+
+```rescript
+let geolocationSchema = Reventless.TaggedUnion.named(~name="Geolocation", geolocationSchema)
+```
+
+A union with no name is not emitted as one: the field falls back to `String`, and the deploy log
+names the view and the field so it is not silent.
+
+**Every arm must declare at least one named field.** Three shapes are compile errors, and all three
+compile, encode and decode perfectly well — what refuses them is GraphQL:
+
+| Refused | Why |
+|---|---|
+| `\| Pending` | payload-less, so it is the bare string `"Pending"` on the wire; a union member must be an object type |
+| `\| Pending({})` | an object, but the member type it implies has zero fields, which is invalid |
+| `\| Located(GeoPoint.t)` | its field is published under the compiler's name `_0` — in the SDL, in the stored row, and in every consumer's query |
+
+The pressure this creates is usually productive: an arm that seems to carry nothing normally carries
+*when*, or *what it was trying*, and the declaration is the right place to be asked.
+
+**An enum is untouched.** A variant whose arms all carry nothing is an enum, emitted as one, and none
+of the above applies to it.
+
+**Keys, filters, sorts and predicates are refused on a union field**: `@id`, `@subId` (and the
+composite forms), `@index`, `@indexSubId`, `@scan`, `@scanSort`, `@groupBy`, `@lifecycle` and
+`@retired` — including `@retired` on an arm. All of them end up comparing the field to a scalar,
+and this field's value is an object whose shape depends on the row. The comparison would compile,
+publish a filter input, and never match. Put the annotation on a scalar field beside the union.
+"List the rows whose geolocation is `Unresolvable`" wants a derived arm-name field beside the union,
+not a filter over it.
+
+**Command and event variants are unaffected.** They are decomposed into one mutation per constructor,
+so a payload-less command like `Deactivate` stays exactly as it is.
+
+---
+
 ## Examples
 
 ### Aggregate spec

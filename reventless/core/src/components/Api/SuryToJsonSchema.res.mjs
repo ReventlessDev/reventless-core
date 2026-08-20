@@ -246,8 +246,52 @@ function fromSchemaType(st) {
         ]);
       case "Semantic" :
         return withSemantic(fromSchemaType(st._1), st._0);
+      case "TaggedUnion" :
+        let members = st._1.map(param => armToJsonSchema(param[0], param[1]));
+        return Object.fromEntries([
+          [
+            "oneOf",
+            members
+          ],
+          [
+            "x-reventless-union",
+            st._0
+          ]
+        ]);
     }
   }
+}
+
+function armToJsonSchema(tag, armType) {
+  if (typeof armType !== "object") {
+    return fromSchemaType(armType);
+  }
+  if (armType.TAG !== "ObjectRef") {
+    return fromSchemaType(armType);
+  }
+  let base = objectRefToJsonSchema(undefined, undefined, undefined, armType._1);
+  let obj = Stdlib_JSON.Decode.object(base);
+  if (obj === undefined) {
+    return base;
+  }
+  let props = Stdlib_Option.flatMap(obj["properties"], Stdlib_JSON.Decode.object);
+  if (props !== undefined) {
+    props["TAG"] = Object.fromEntries([
+      [
+        "type",
+        "string"
+      ],
+      [
+        "const",
+        tag
+      ]
+    ]);
+  }
+  let existing = Stdlib_Option.flatMap(obj["required"], Stdlib_JSON.Decode.array);
+  let required = existing !== undefined ? ["TAG"].concat(existing) : ["TAG"];
+  obj["required"] = required;
+  obj["x-reventless-union-member"] = armType._0;
+  return obj;
 }
 
 function withSemantic(fieldSchema, sem) {
@@ -368,6 +412,7 @@ export {
   mergeAnnotations,
   isNullableType,
   fromSchemaType,
+  armToJsonSchema,
   withSemantic,
   objectRefToJsonSchema,
   deriveObjectSchema,

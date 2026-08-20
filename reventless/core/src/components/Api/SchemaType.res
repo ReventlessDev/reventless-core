@@ -15,6 +15,14 @@ type rec schemaType =
         are *not* expressed this way: they long predate the generic marker and
         their JSON Schema `format` output is a published contract. */
   Semantic(Reventless.Semantic.t, schemaType)
+  | /** A variant used as a field: the union's name, and one arm per constructor
+        keyed by the `TAG` sury discriminates on. Each arm is the `ObjectRef` its
+        member type is emitted from, so the arm's own name travels with it and
+        every consumer that can already render an object renders an arm.
+
+        Only a *named* union reaches this case — see `Reventless.TaggedUnion`,
+        which owns the name and the arm rules both. */
+  TaggedUnion(string, array<(string, schemaType)>)
   | Unknown
 
 let isTagged = Reventless.DcbTag.isTagged
@@ -162,13 +170,137 @@ and shapeOf = (~parentName: string, ~fieldName: string, schema: S.t<unknown>): s
           let enum = Enum(enumName, constValues)
           isOptional ? Nullable(enum) : enum
         } else {
-          Unknown
+          // A union of payload-carrying arms. Its name is read off the schema
+          // rather than composed from the field path the way the enum above is:
+          // the same union is one type wherever it appears, and the write-time
+          // `__typename` stamp has only the schema to derive it from.
+          switch Reventless.TaggedUnion.classify(schema) {
+          | Some((unionName, arms)) =>
+            let armTypes = arms->Array.map(({tag, schema: armSchema}) => {
+              let memberName = Reventless.TaggedUnion.memberTypeName(~union=unionName, ~arm=tag)
+              let fields = Dict.make()
+              switch armSchema {
+              | Object({properties}) =>
+                properties
+                ->Dict.toArray
+                ->Array.forEach(((propName, propSchema)) =>
+                  if propName !== "TAG" {
+                    fields->Dict.set(
+                      propName,
+                      fromSury(~parentName=memberName, ~fieldName=propName, propSchema),
+                    )
+                  }
+                )
+              | _ => ()
+              }
+              (tag, ObjectRef(memberName, fields))
+            })
+            let union = TaggedUnion(unionName, armTypes)
+            isOptional ? Nullable(union) : union
+          | None => Unknown
+          }
         }
       }
     | Null(_) => Nullable(ScalarString)
     | _ => Unknown
     }
   }
+}
+
+/**
+A field whose schema is a union the walk could not classify, and why.
+
+`Unknown` is emitted as `String`, which is a lie a client only discovers at
+execution time — and for a union field it is the *silent* half of a failure
+whose loud half is a null in a non-nullable position. Reporting is deliberately
+narrow: a field is only named here if its schema is a union of two or more real
+members, which is a shape somebody wrote on purpose. An opaque `JSON.t` field
+also lands on `Unknown` and is left alone, because nothing better was ever
+available for it.
+*/
+type unclassifiedUnion = {path: string, reason: string}
+
+// Walks the schema, not a value, so a self-referential schema has nothing to
+// terminate it. Bounded rather than cycle-detected: this is a report, and a
+// field nested a dozen records deep is past the depth the SDL emitter itself
+// renders usefully.
+let maxReportDepth = 12
+
+let rec collectUnclassifiedUnions = (
+  ~path: string,
+  ~depth: int=0,
+  schema: S.t<unknown>,
+  out: array<unclassifiedUnion>,
+): unit =>
+  if depth > maxReportDepth {
+    ()
+  } else {
+    let under = (name: string) => path === "" ? name : path ++ "." ++ name
+    let recurse = (~path, schema) => collectUnclassifiedUnions(~path, ~depth=depth + 1, schema, out)
+    switch schema {
+    | Object({properties}) =>
+      properties
+      ->Dict.toArray
+      ->Array.forEach(((name, propSchema)) =>
+        if name !== "TAG" {
+          recurse(~path=under(name), propSchema)
+        }
+      )
+    | Array({items, additionalItems}) =>
+      let itemSchema = switch items->Array.get(0) {
+      | Some(s) => Some(s)
+      | None =>
+        switch additionalItems {
+        | Schema(s) => Some(s)
+        | _ => None
+        }
+      }
+      switch itemSchema {
+      | Some(s) => recurse(~path=path ++ "[]", s)
+      | None => ()
+      }
+    | AnyOf({anyOf}) =>
+      let members = anyOf->Array.filter(v =>
+        switch v {
+        | Null(_) | Undefined(_) => false
+        | _ => true
+        }
+      )
+      switch members {
+      | [inner] => recurse(~path, inner)
+      | _ =>
+        let allConst = members->Array.every(v =>
+          switch v {
+          | String({const: ?Some(_)}) => true
+          | _ => false
+          }
+        )
+        if allConst {
+          ()
+        } else {
+          switch Reventless.TaggedUnion.classify(schema) {
+          | Some((_, arms)) =>
+            arms->Array.forEach(({tag, schema: armSchema}) => recurse(~path=under(tag), armSchema))
+          | None =>
+            let reason = if Reventless.TaggedUnion.armsOf(schema)->Option.isSome {
+              `its arms are well-formed but the union carries no name. Declare it in a spec file, where the ppx names it, or mark the schema with \`Reventless.TaggedUnion.named\`.`
+            } else {
+              `its ${members
+                ->Array.length
+                ->Int.toString} members are neither all string literals (an enum) nor all tagged objects each declaring at least one named field of its own (a union).`
+            }
+            out->Array.push({path, reason})
+          }
+        }
+      }
+    | _ => ()
+    }
+  }
+
+let unclassifiedUnions = (schema: S.t<unknown>): array<unclassifiedUnion> => {
+  let out = []
+  collectUnclassifiedUnions(~path="", schema, out)
+  out
 }
 
 /**

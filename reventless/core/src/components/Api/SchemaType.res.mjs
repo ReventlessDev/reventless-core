@@ -6,6 +6,7 @@ import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/component
 import * as DateTime$Reventless from "@reventlessdev/reventless-spec/src/types/DateTime.res.mjs";
 import * as Semantic$Reventless from "@reventlessdev/reventless-spec/src/semantic/Semantic.res.mjs";
 import * as Reference$Reventless from "@reventlessdev/reventless-spec/src/components/Reference.res.mjs";
+import * as TaggedUnion$Reventless from "@reventlessdev/reventless-spec/src/components/TaggedUnion.res.mjs";
 
 function isIdFieldName(name) {
   let lower = name.toLowerCase();
@@ -147,26 +148,145 @@ function shapeOf(parentName, fieldName, schema) {
           return c;
         }
       });
-      if (constValues.length !== nonNullVariants.length || constValues.length === 0) {
+      if (constValues.length === nonNullVariants.length && constValues.length !== 0) {
+        let enumName = parentName + fieldName.charAt(0).toUpperCase() + fieldName.slice(1, fieldName.length);
+        let $$enum = {
+          TAG: "Enum",
+          _0: enumName,
+          _1: constValues
+        };
+        if (isOptional) {
+          return {
+            TAG: "Nullable",
+            _0: $$enum
+          };
+        } else {
+          return $$enum;
+        }
+      }
+      let match = TaggedUnion$Reventless.classify(schema);
+      if (match === undefined) {
         return "Unknown";
       }
-      let enumName = parentName + fieldName.charAt(0).toUpperCase() + fieldName.slice(1, fieldName.length);
-      let $$enum = {
-        TAG: "Enum",
-        _0: enumName,
-        _1: constValues
+      let unionName = match[0];
+      let armTypes = match[1].map(param => {
+        let armSchema = param.schema;
+        let tag = param.tag;
+        let memberName = TaggedUnion$Reventless.memberTypeName(unionName, tag);
+        let fields = {};
+        if (armSchema.type === "object") {
+          Object.entries(armSchema.properties).forEach(param => {
+            let propName = param[0];
+            if (propName !== "TAG") {
+              fields[propName] = fromSury(memberName, propName, param[1]);
+              return;
+            }
+          });
+        }
+        return [
+          tag,
+          {
+            TAG: "ObjectRef",
+            _0: memberName,
+            _1: fields
+          }
+        ];
+      });
+      let union = {
+        TAG: "TaggedUnion",
+        _0: unionName,
+        _1: armTypes
       };
       if (isOptional) {
         return {
           TAG: "Nullable",
-          _0: $$enum
+          _0: union
         };
       } else {
-        return $$enum;
+        return union;
       }
     default:
       return "Unknown";
   }
+}
+
+function collectUnclassifiedUnions(path, depthOpt, schema, out) {
+  let depth = depthOpt !== undefined ? depthOpt : 0;
+  if (depth > 12) {
+    return;
+  }
+  let under = name => {
+    if (path === "") {
+      return name;
+    } else {
+      return path + "." + name;
+    }
+  };
+  let recurse = (path, schema) => collectUnclassifiedUnions(path, depth + 1 | 0, schema, out);
+  switch (schema.type) {
+    case "array" :
+      let additionalItems = schema.additionalItems;
+      let s = schema.items[0];
+      let itemSchema = s !== undefined ? s : (
+          additionalItems === "strip" || additionalItems === "strict" ? undefined : additionalItems
+        );
+      if (itemSchema !== undefined) {
+        return recurse(path + "[]", itemSchema);
+      } else {
+        return;
+      }
+    case "object" :
+      Object.entries(schema.properties).forEach(param => {
+        let name = param[0];
+        if (name !== "TAG") {
+          return recurse(under(name), param[1]);
+        }
+      });
+      return;
+    case "anyOf" :
+      let members = schema.anyOf.filter(v => {
+        switch (v.type) {
+          case "null" :
+          case "undefined" :
+            return false;
+          default:
+            return true;
+        }
+      });
+      if (members.length !== 1) {
+        let allConst = members.every(v => {
+          if (v.type === "string") {
+            return v.const !== undefined;
+          } else {
+            return false;
+          }
+        });
+        if (allConst) {
+          return;
+        }
+        let match = TaggedUnion$Reventless.classify(schema);
+        if (match !== undefined) {
+          match[1].forEach(param => recurse(under(param.tag), param.schema));
+          return;
+        }
+        let reason = Stdlib_Option.isSome(TaggedUnion$Reventless.armsOf(schema)) ? `its arms are well-formed but the union carries no name. Declare it in a spec file, where the ppx names it, or mark the schema with \`Reventless.TaggedUnion.named\`.` : `its ` + members.length.toString() + ` members are neither all string literals (an enum) nor all tagged objects each declaring at least one named field of its own (a union).`;
+        out.push({
+          path: path,
+          reason: reason
+        });
+        return;
+      }
+      let inner = members[0];
+      return recurse(path, inner);
+    default:
+      return;
+  }
+}
+
+function unclassifiedUnions(schema) {
+  let out = [];
+  collectUnclassifiedUnions("", undefined, schema, out);
+  return out;
 }
 
 function optionalFieldNames(schema) {
@@ -209,6 +329,8 @@ let isTagged = DcbTag$Reventless.isTagged;
 
 let isDateTime = DateTime$Reventless.isDateTime;
 
+let maxReportDepth = 12;
+
 export {
   isTagged,
   isDateTime,
@@ -218,6 +340,9 @@ export {
   canonicalName,
   fromSury,
   shapeOf,
+  maxReportDepth,
+  collectUnclassifiedUnions,
+  unclassifiedUnions,
   optionalFieldNames,
   fromSuryObject,
 }

@@ -767,6 +767,24 @@ let transform (str : structure) : structure =
         && (not (Util.has_let_binding "subIdConfig" body)
             || not (Util.has_let_binding "config" body))
       in
+      (* A union used as a state field, checked and named before the annotation
+         strips run — the guards read the very attributes those strips remove. *)
+      let () = if is_readmodel || is_stateview then TaggedUnionInference.check body in
+      let body =
+        if is_readmodel || is_stateview then
+          let base = String.concat "_" (String.split_on_char '.' name) in
+          let prefix =
+            match pkg with
+            | Some p when not (ModuleUrl.is_spec_namespace p) ->
+              (match ModuleUrl.plugin_name_from_namespace p with
+               | "" -> base
+               | plugin -> plugin ^ "_" ^ base)
+            (* A *Spec namespace already carries the plugin in the spec name. *)
+            | _ -> base
+          in
+          TaggedUnionInference.inject_names ~prefix body
+        else body
+      in
       (* Generate subIdConfig and makeId BEFORE stripping annotations *)
       let sub_id_items = gen_sub_id_config ~loc body in
       let make_id_items = gen_make_id ~loc body in

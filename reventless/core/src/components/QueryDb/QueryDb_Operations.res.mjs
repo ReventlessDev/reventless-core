@@ -8,6 +8,7 @@ import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
+import * as TaggedUnion$Reventless from "@reventlessdev/reventless-spec/src/components/TaggedUnion.res.mjs";
 
 function Make(ReadModelSpec) {
   return Ops => {
@@ -76,12 +77,14 @@ function Make(ReadModelSpec) {
         dict[attrName$1] = value$1;
       });
     };
+    let stampUnionMembers = dict => TaggedUnion$Reventless.stampInto(ReadModelSpec.stateSchema, dict);
     let save = async (id, state, saveMode, ttl) => {
       let dict = Stdlib_JSON.Decode.object(Message$ReventlessCore.encode(state, ReadModelSpec.stateSchema));
       if (dict !== undefined) {
         dict["id"] = Message$ReventlessCore.encode(id, ReadModelSpec.Id.schema);
         injectSubId(dict, state);
         injectCompositeIndexAttrs(dict);
+        TaggedUnion$Reventless.stampInto(ReadModelSpec.stateSchema, dict);
         return await Ops.jsonOps.save(ReadModelSpec.Id.toString(id), dict, saveMode, ttl);
       } else {
         return {
@@ -107,6 +110,7 @@ function Make(ReadModelSpec) {
             dict["id"] = Message$ReventlessCore.encode(id, ReadModelSpec.Id.schema);
             injectSubId(dict, state);
             injectCompositeIndexAttrs(dict);
+            TaggedUnion$Reventless.stampInto(ReadModelSpec.stateSchema, dict);
             return {
               TAG: "Ok",
               _0: batch.concat([[
@@ -150,6 +154,7 @@ function Make(ReadModelSpec) {
       load: load,
       injectSubId: injectSubId,
       injectCompositeIndexAttrs: injectCompositeIndexAttrs,
+      stampUnionMembers: stampUnionMembers,
       save: save,
       saveBatch: saveBatch,
       count: count,

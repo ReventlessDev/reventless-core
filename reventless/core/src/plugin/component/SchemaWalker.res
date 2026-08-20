@@ -28,9 +28,22 @@ let rec describeSchema = (schema: S.t<unknown>): string =>
       | _ => true
       }
     )
-    switch nonNull->Array.get(0) {
-    | Some(inner) => "option<" ++ describeSchema(inner) ++ ">"
-    | None => "unknown"
+    let isOptional = nonNull->Array.length < anyOf->Array.length
+    switch nonNull {
+    | [inner] => "option<" ++ describeSchema(inner) ++ ">"
+    | [] => "unknown"
+    | members =>
+      // A field holding a variant. Described by every arm, sorted, rather than by
+      // the first one: the structural hash is computed from this string, and a
+      // description that mentions one arm is blind to a change in any other —
+      // which is drift detection reporting "no change" for a changed schema.
+      let inner =
+        members
+        ->Array.map(describeSchema)
+        ->Array.toSorted(String.compare)
+        ->Array.join("|")
+      let union = "union<" ++ inner ++ ">"
+      isOptional ? "option<" ++ union ++ ">" : union
     }
   | Array({additionalItems}) =>
     let itemDesc = switch additionalItems {

@@ -196,7 +196,43 @@ let rec fromSchemaType = (st: SchemaType.schemaType): JSON.t =>
       ("enum", JSON.Encode.array(values->Array.map(JSON.Encode.string))),
     ])
   | Semantic(sem, inner) => fromSchemaType(inner)->withSemantic(sem)
+  // A union is `oneOf` its arms, each an object carrying the `TAG` const it is
+  // discriminated by. The discriminator is what tells a union apart from a
+  // nullable object, which is also a `oneOf` of objects — a reader that misses
+  // it selects one arm's fields as though they were the field's own and produces
+  // a query that looks plausible and is invalid.
+  | TaggedUnion(name, arms) =>
+    let members = arms->Array.map(((tag, armType)) => armToJsonSchema(~tag, armType))
+    jsonObject([("oneOf", JSON.Encode.array(members)), ("x-reventless-union", str(name))])
   | Unknown => jsonObject([("type", str("string"))])
+  }
+
+// One arm. `TAG` is declared rather than filtered out — the raw value on the
+// wire and in the live change channel carries it, and it is the only thing in
+// the payload that says which arm this is. The GraphQL member type name rides
+// alongside so a reader mapping a raw payload to a selection does not have to
+// re-derive the naming rule in a second repo.
+and armToJsonSchema = (~tag: string, armType: SchemaType.schemaType): JSON.t =>
+  switch armType {
+  | ObjectRef(memberName, fields) =>
+    let base = objectRefToJsonSchema(fields)
+    switch base->JSON.Decode.object {
+    | Some(obj) =>
+      switch obj->Dict.get("properties")->Option.flatMap(JSON.Decode.object) {
+      | Some(props) =>
+        props->Dict.set("TAG", jsonObject([("type", str("string")), ("const", str(tag))]))
+      | None => ()
+      }
+      let required = switch obj->Dict.get("required")->Option.flatMap(JSON.Decode.array) {
+      | Some(existing) => Array.concat([str("TAG")], existing)
+      | None => [str("TAG")]
+      }
+      obj->Dict.set("required", JSON.Encode.array(required))
+      obj->Dict.set("x-reventless-union-member", str(memberName))
+      JSON.Encode.object(obj)
+    | None => base
+    }
+  | other => fromSchemaType(other)
   }
 
 // Attach a type-carried semantic to a field's JSON Schema.

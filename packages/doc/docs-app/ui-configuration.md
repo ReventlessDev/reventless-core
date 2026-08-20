@@ -392,6 +392,55 @@ the boolean form as their home. There is no fallback by field name — a boolean
 called `archived` that nobody annotated hides nothing, and neither does a
 constructor called `Archived`.
 
+### 2.12 Tagged unions — one fact with several shapes
+
+A field may hold a variant, which is the honest way to say a fact that takes
+several shapes — the geocoder's answer is *pending on an address*, or *a point*,
+or *unresolvable for a reason*, and those carry different data:
+
+```rescript
+@schema
+type geolocation =
+  | Pending({requestedFor: string})
+  | Located({point: Reventless.GeoPoint.t})
+  | Unresolvable({reason: string})
+
+@schema
+type state = {@id customerId: string, geolocation: geolocation}
+```
+
+The alternative — a point field, a status enum and a note field, with nine of the
+twelve combinations illegal — is the same shape of mistake §2.11 removes for
+retirement: several fields stating one fact, kept in step by hand.
+
+**On the wire it is a GraphQL union**, one object type per arm, named
+`<UnionName><Arm>`. Four things follow, and a reader that misses any of them
+fails in a way that does not look like a schema mistake:
+
+- **It cannot be selected bare.** Every consumer emits
+  `... on Ordering_CustomersGeolocationLocated { point { lat lng } }`. A client
+  that has not learned inline fragments sends an *invalid query*, not a degraded
+  one — so generic union support has to ship before or with the first view that
+  declares one.
+- **The arm is `__typename`**, and it is stamped into the stored value at write
+  time. So the row the live change channel delivers as raw JSON carries the same
+  discriminator the query does, rather than a `TAG` the client has to translate.
+- **The JSON Schema says so.** The field carries `x-reventless-union: "<Name>"`
+  and a `oneOf` of arms, each with a `TAG` const and
+  `x-reventless-union-member: "<UnionName><Arm>"` — the GraphQL type that arm is
+  emitted as. The member name is published rather than left to be re-derived,
+  and the `TAG` const is what distinguishes a union from a nullable object, which
+  is also a `oneOf` of objects.
+- **It is never a filter, sort, group or lifecycle field.** Those compare a field
+  to a scalar; this one is an object whose shape depends on the row. The PPX
+  refuses the annotations outright. "Show me the rows that are `Unresolvable`"
+  wants a derived arm-name field beside the union.
+
+For the UI the point of the type is that the arms are *different states*, not one
+value that is sometimes absent: `Pending` waits and `Unresolvable` wants a human,
+and a control that renders both as "no location" throws away the distinction the
+type exists to make.
+
 ---
 
 ## 3. Layer 2 — the baked manifest

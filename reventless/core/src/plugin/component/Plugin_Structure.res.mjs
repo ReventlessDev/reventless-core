@@ -32,11 +32,13 @@ function isLabelShape(_t) {
     if (typeof t !== "object") {
       return t === "ScalarString";
     }
-    if (t.TAG !== "Nullable") {
-      return false;
+    switch (t.TAG) {
+      case "Nullable" :
+        _t = t._0;
+        continue;
+      default:
+        return false;
     }
-    _t = t._0;
-    continue;
   };
 }
 

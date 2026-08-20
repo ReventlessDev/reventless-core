@@ -4,6 +4,8 @@
 
 open ReventlessInfra.Api
 
+let log = Logger.fromEnv()
+
 // Every aggregate-derived mutation returns the CommandResult union — the
 // shape carries the outcome from CommandTopic processing (Accepted / Rejected
 // for sync slices, Pending for async). Consumers select sub-fields via inline
@@ -85,6 +87,37 @@ let rec fromSchemaType = (
   // reaches the UI through the field's JSON Schema, which is the channel that
   // can express it.
   | Semantic(_, inner) => fromSchemaType(~required, ~asInput, inner, collectedTypes, seenTypes)
+  // A union declares one object type per arm and a `union` naming them. Both
+  // names come from the schema — see `Reventless.TaggedUnion` — so the same union
+  // is the same type wherever it appears, which is what lets AppSync merge each
+  // source API's copy back into one, and what lets the write path stamp a
+  // `__typename` the SDL will recognise.
+  | TaggedUnion(name, arms) =>
+    if asInput {
+      // GraphQL has no input unions. A command that wants one takes its arms as
+      // separate mutations, which is what the command decomposition already
+      // does. Emitting the union type here would produce an SDL AppSync rejects
+      // outright, so the field keeps the `String` it renders as today — said out
+      // loud, because it is not what the declaration asks for.
+      log.warn(
+        ~comp="GraphQL_FragmentGenerator",
+        `union "${name}" is used in an input position; GraphQL has no input unions, so the field is emitted as String. Take the arms as separate mutations instead.`,
+      )
+      `String${bang}`
+    } else {
+      if !(seenTypes->Set.has(name)) {
+        seenTypes->Set.add(name)
+        // The member types are collected by the recursion, which emits each arm
+        // as the object type it is. `~required=false` only so the reference comes
+        // back without a `!` — a union's member list carries no nullability.
+        let memberNames =
+          arms->Array.map(((_, armType)) =>
+            fromSchemaType(~required=false, ~asInput, armType, collectedTypes, seenTypes)
+          )
+        collectedTypes->Array.push(`union ${name} = ${memberNames->Array.join(" | ")}`)
+      }
+      `${name}${bang}`
+    }
   | Unknown => `String${bang}`
   }
 }
@@ -124,12 +157,26 @@ let deriveFieldType = (
 
 // ── Object type derivation ─────────────────────────────────────────────────
 
+// A union field the walk cannot classify is emitted as `String`, and that has
+// been true and silent for as long as the fallthrough has existed. Saying it here
+// — at the one point every generated object type is derived — costs a walk of the
+// schema and turns a field that will fail at execution into a line in the deploy
+// log naming the type and the field.
+let reportUnclassifiedUnions = (~typeName: string, schema: S.t<unknown>): unit =>
+  SchemaType.unclassifiedUnions(schema)->Array.forEach(({path, reason}) =>
+    log.warn(
+      ~comp="GraphQL_FragmentGenerator",
+      `${typeName}.${path} is emitted as String: ${reason}`,
+    )
+  )
+
 let deriveObjectTypeWithNested = (
   ~typeName: string,
   ~excludeFields: array<string>=[],
   ~includeIdParam: bool=true,
   schema: S.t<unknown>,
-): array<string> =>
+): array<string> => {
+  reportUnclassifiedUnions(~typeName, schema)
   switch SchemaType.fromSuryObject(~typeName, schema) {
   | Some(fields) =>
     // `@internal` joins the caller's exclusions rather than replacing them. The
@@ -175,6 +222,7 @@ let deriveObjectTypeWithNested = (
     Array.concat(collectedTypes, [mainTypeWithId])
   | None => []
   }
+}
 
 let derivePluralWrapperType = (~pluralTypeName: string, ~singularTypeName: string): string =>
   `type ${pluralTypeName} {\n  nextToken: String\n  scannedCount: Int!\n  items: [${singularTypeName}!]!\n}`

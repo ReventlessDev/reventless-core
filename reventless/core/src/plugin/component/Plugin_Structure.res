@@ -23,6 +23,11 @@ let rec isLabelShape = (t: SchemaType.schemaType): bool =>
   switch t {
   | ScalarString => true
   | Nullable(inner) => isLabelShape(inner)
+  // Written out rather than left to the catch-all: a union is a composite whose
+  // rendering depends on which arm a row is in, so no single string names the
+  // record. The label picker's fallback rung is a *guess*, and this is the shape
+  // it would guess most confidently and most wrongly.
+  | TaggedUnion(_, _) => false
   | _ => false
   }
 
@@ -33,6 +38,10 @@ let rec isLifecycleShape = (t: SchemaType.schemaType): bool =>
   switch t {
   | Enum(_, _) => true
   | Nullable(inner) => isLifecycleShape(inner)
+  // A union is a closed set of *shapes*, not of values, and `allowedStates`
+  // compares values. The same answer the ppx gives `@lifecycle` on a union
+  // field, which is a compile error — this is the convention rung agreeing.
+  | TaggedUnion(_, _) => false
   | _ => false
   }
 

@@ -26,7 +26,8 @@ function describeSchema(schema) {
       let inner = Object.entries(schema.properties).filter(param => param[0] !== "TAG").toSorted((param, param$1) => Primitive_string.compare(param[0], param$1[0])).map(param => param[0] + ":" + describeSchema(param[1])).join(",");
       return "{" + inner + "}";
     case "anyOf" :
-      let nonNull = schema.anyOf.filter(v => {
+      let anyOf = schema.anyOf;
+      let nonNull = anyOf.filter(v => {
         switch (v.type) {
           case "null" :
           case "undefined" :
@@ -35,12 +36,22 @@ function describeSchema(schema) {
             return true;
         }
       });
-      let inner$1 = nonNull[0];
-      if (inner$1 !== undefined) {
-        return "option<" + describeSchema(inner$1) + ">";
-      } else {
-        return "unknown";
+      let isOptional = nonNull.length < anyOf.length;
+      let len = nonNull.length;
+      if (len !== 1) {
+        if (len === 0) {
+          return "unknown";
+        }
+        let inner$1 = nonNull.map(describeSchema).toSorted(Primitive_string.compare).join("|");
+        let union = "union<" + inner$1 + ">";
+        if (isOptional) {
+          return "option<" + union + ">";
+        } else {
+          return union;
+        }
       }
+      let inner$2 = nonNull[0];
+      return "option<" + describeSchema(inner$2) + ">";
     default:
       return "unknown";
   }

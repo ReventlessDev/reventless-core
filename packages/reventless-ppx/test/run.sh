@@ -957,6 +957,53 @@ type state = {
 }
 EOF
 
+# ─── Fixture: a tagged union as a state field ─────────────────────
+#
+# The union has to carry its own name: the SDL emitter reaches a field through a
+# path and the write-time `__typename` stamp has only the schema, so the name
+# both must agree on lives on the schema. The enum beside it is the control —
+# an enum is a different emission and must stay untouched.
+
+cat > "$PLUGIN/src/ReadModel/UnionReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type geolocation =
+  | Pending({requestedFor: string})
+  | Located({lat: float, lng: float})
+  | Unresolvable({reason: string})
+
+@schema
+type accountStatus =
+  | Active
+  | Deactivated
+
+@schema
+type state = {
+  @id customerId: string,
+  geolocation: geolocation,
+  @lifecycle accountStatus: accountStatus,
+}
+EOF
+
+# ─── Fixture: an optional union and an array of them ──────────────
+
+cat > "$PLUGIN/src/ReadModel/UnionWrappedReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type outcome =
+  | Settled({amount: float})
+  | Refunded({reason: string})
+
+@schema
+type state = {
+  @id orderId: string,
+  outcome: option<outcome>,
+  attempts: array<outcome>,
+}
+EOF
+
 # ─── Fixture: @retired on a lifecycle state, named from the field ─
 #
 # The form that survives for an enum this per-file PPX cannot reach to annotate.
@@ -1938,6 +1985,30 @@ assert_js_contains "$JS" 'groupBy: "kind"'           "@groupBy: 'kind' recorded 
 assert_js_not_contains "$JS" '@groupBy'              "@groupBy: annotation stripped from output"
 
 echo ""
+echo "=== Test: a union state field is named on its schema ==="
+JS="$PLUGIN/src/ReadModel/UnionReadModel.res.mjs"
+# `Test` from the namespace, `Union` from the filename minus its `ReadModel`
+# suffix — the same spec name every other injection here is derived from.
+assert_js_contains "$JS" 'TaggedUnion.*named("Test_UnionGeolocation"' \
+  "union: schema shadowed with <Plugin>_<Spec><Type>"
+# The shadow has to be what `type state` closes over — a binding emitted after
+# the state record would name a union nothing is using.
+assert_js_contains "$JS" 'geolocation: s.m(geolocationSchema\$1)' \
+  "union: the state field uses the named schema"
+assert_js_not_contains "$JS" 'accountStatusSchema\$1' \
+  "union: the enum beside it is left alone"
+
+echo ""
+echo "=== Test: an optional union and an array of them are named too ==="
+JS="$PLUGIN/src/ReadModel/UnionWrappedReadModel.res.mjs"
+assert_js_contains "$JS" 'TaggedUnion.*named("Test_UnionWrappedOutcome"' \
+  "union: named through option<> and array<>"
+assert_js_contains "$JS" 'outcome: s.m(Sury.\$option(outcomeSchema\$1))' \
+  "union: option field uses the named schema"
+assert_js_contains "$JS" 'attempts: s.m(Sury.array(outcomeSchema\$1))' \
+  "union: array field uses the named schema"
+
+echo ""
 echo "=== Test: @lifecycle → metadata field populated ==="
 JS="$PLUGIN/src/ReadModel/LifecycleReadModel.res.mjs"
 assert_js_contains "$JS" 'stateAnnotationsId'        "@lifecycle: stateAnnotations metadata emitted"
@@ -2613,6 +2684,107 @@ else
   fi
 fi
 rm -f "$ERROR/src/ReadModel/GroupByConflictReadModel.res"
+
+echo ""
+echo "=== Test: PPX error — union arms that GraphQL cannot express ==="
+
+# Three shapes, one rule, and every one of them compiles and round-trips through
+# sury. What refuses them is the SDL: a union member must be an object type with
+# at least one field, and a field it names must be one the author named.
+union_arm_case() {
+  local label="$1" arm="$2" needle="$3"
+  cat > "$ERROR/src/ReadModel/UnionArmReadModel.res" <<EOF
+@@reventless.spec
+
+@schema
+type verdict =
+  | $arm
+  | Rejected({reason: string})
+
+@schema
+type state = {@id caseId: string, verdict: verdict}
+EOF
+  if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+    fail "$label" "expected compilation to fail but it succeeded"
+  else
+    if echo "$OUTPUT" | grep -q "$needle"; then
+      pass "$label → correct compile error"
+    else
+      fail "$label" "unexpected error output: $OUTPUT"
+    fi
+  fi
+  rm -f "$ERROR/src/ReadModel/UnionArmReadModel.res"
+}
+
+union_arm_case "payload-less union arm"   "Approved"          'carries no payload'
+union_arm_case "empty inline record arm"  "Approved({})"      'carries an empty inline record'
+union_arm_case "positional payload arm"   "Approved(string)"  'carries a positional payload'
+
+echo ""
+echo "=== Test: PPX error — key/filter annotations on a union field ==="
+
+# `deriveServerCapability` is annotation-driven: it would emit `<field>Eq: String`
+# against a value that is an object, and the filter would never match. The
+# annotation is refused rather than ignored, because a filter input that exists
+# and cannot match is worse than one that is absent.
+union_annotation_case() {
+  local annotation="$1" needle="$2"
+  cat > "$ERROR/src/ReadModel/UnionAnnotationReadModel.res" <<EOF
+@@reventless.spec
+
+@schema
+type verdict =
+  | Approved({by: string})
+  | Rejected({reason: string})
+
+@schema
+type state = {@id caseId: string, $annotation verdict: verdict}
+EOF
+  if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+    fail "$annotation on a union field" "expected compilation to fail but it succeeded"
+  else
+    if echo "$OUTPUT" | grep -q "$needle"; then
+      pass "$annotation on a union field → correct compile error"
+    else
+      fail "$annotation on a union field" "unexpected error output: $OUTPUT"
+    fi
+  fi
+  rm -f "$ERROR/src/ReadModel/UnionAnnotationReadModel.res"
+}
+
+union_annotation_case "@index"     '@index cannot be used on "verdict"'
+union_annotation_case "@scan"      '@scan cannot be used on "verdict"'
+union_annotation_case "@groupBy"   '@groupBy cannot be used on "verdict"'
+union_annotation_case "@lifecycle" '@lifecycle cannot be used on "verdict"'
+
+echo ""
+echo "=== Test: PPX error — @retired on an arm of a union state field ==="
+
+# The constructor form of `@retired` is read by comparing the stored field to a
+# state name. A union field stores a record, so the predicate never fires and
+# every row stays visible — a retirement that silently retires nothing.
+cat > "$ERROR/src/ReadModel/UnionRetiredReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type verdict =
+  | Approved({by: string})
+  | @retired Rejected({reason: string})
+
+@schema
+type state = {@id caseId: string, verdict: verdict}
+EOF
+
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "@retired on a union arm" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q "@retired on arm .Rejected."; then
+    pass "@retired on an arm of a union state field → correct compile error"
+  else
+    fail "@retired on a union arm" "unexpected error output: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/ReadModel/UnionRetiredReadModel.res"
 
 echo ""
 echo "=== Test: PPX error — duplicate @lifecycle on same record ==="
