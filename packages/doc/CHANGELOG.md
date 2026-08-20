@@ -719,6 +719,8 @@ This file tracks changes to the documentation. Since the doc package is not vers
 ## Changes
 
 ### 2026-08-20
+- feat(seed): choose the login from the platform's users.yaml ([74e61de](https://github.com/ReventlessDev/reventless-core/commit/74e61de8fba3ee4cc62b368ff12010f162d49db7))
+### 2026-08-20
 - feat(spec): type a geocoder's answer as one Geolocation value ([157be7a](https://github.com/ReventlessDev/reventless-core/commit/157be7aca4806ae19dba1f58979af13b88dc1821))
 ### 2026-08-20
 - feat(api): emit a tagged-union state field as a GraphQL union ([3a380c0](https://github.com/ReventlessDev/reventless-core/commit/3a380c0ab055b87048d90a852ec1664f6aab6b00))
