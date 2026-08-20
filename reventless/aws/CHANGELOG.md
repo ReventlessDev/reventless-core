@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.317 (2026-08-20)
+
+### Bug Fixes
+
+* **aws:** stamp union member types on the deployed projection path ([140251a](https://github.com/ReventlessDev/reventless-core/commit/140251ac7c18f484be32e8683a725f6fac2b9519))
+
+
 # 3.0.0-alpha.316 (2026-08-20)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws
