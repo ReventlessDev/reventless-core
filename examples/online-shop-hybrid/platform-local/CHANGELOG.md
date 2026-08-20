@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.233 (2026-08-20)
+
+### Features
+
+* **seed:** choose the login from the platform's users.yaml ([74e61de](https://github.com/ReventlessDev/reventless-core/commit/74e61de8fba3ee4cc62b368ff12010f162d49db7))
+
+
 # 1.0.0-alpha.232 (2026-08-20)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-platform-local

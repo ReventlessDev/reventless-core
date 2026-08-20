@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.245 (2026-08-20)
+
+### Features
+
+* **core:** report a union value stored without its member type ([3a834b5](https://github.com/ReventlessDev/reventless-core/commit/3a834b51d1d9441f5dfcaebec5fac365063c905e))
+
+
 # 3.0.0-alpha.244 (2026-08-20)
 
 ### Bug Fixes
