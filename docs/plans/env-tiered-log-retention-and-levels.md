@@ -3,14 +3,22 @@
 Source analysis: [../analysis/log-retention-and-levels-per-environment.md](../analysis/log-retention-and-levels-per-environment.md).
 
 **Status: code complete (2026-08-02) — Steps 1–7 + Step 9 (bespoke-builder
-coverage gap) done and committed; on alpha the `makeFromCodeAsset` Lambdas carry
-`LOG_LEVEL=debug` and the 8 bespoke Lambdas flip on the next deploy (commit
-`8814627a2`, unpushed). Only **Step 8** (the operator-driven alpha managed-group
-cutover — full Pulumi-owned groups + DCB metric filters) is outstanding, and it is
-**deliberately deferred** (low value, risky local `pulumi up`). Alpha meanwhile has
-**interim 7-day retention** applied via Option A (retroactive `put-retention-policy`,
-2026-08-02) — see Step 8. Stays in `docs/plans/` until Step 8's on-AWS verification
-passes.**
+coverage gap) done and committed. **Step 8** (the alpha managed-group cutover)
+is outstanding and is no longer "low value, deferred".**
+
+**Re-measured on alpha 2026-08-20** (see Step 8 § Field state): the escape hatch
+is still set while adoption is partial, so **48 of 83 Lambdas — 43 of them
+redeployed the day before — still write to auto-created groups, and 27 groups
+carry no retention at all**, the largest at 249 MB and still growing. The Option A
+interim sweep was never re-run, exactly as its own caveat warned.
+
+The deferral rested on the cutover needing a risky local `pulumi up` to beat a
+recreate race. That race was removed on 2026-08-08 by
+[log-group-ownership-without-a-race.md](log-group-ownership-without-a-race.md),
+so the cutover is now "delete two env-var lines and let CI deploy". Step 8 is
+rewritten accordingly and carries the ordered remaining work.
+
+Stays in `docs/plans/` until that work lands and the verification passes.
 
 ## Problem
 
@@ -161,15 +169,98 @@ Chosen path — **decouple landing the code from cutting alpha over**:
    in both `env:` blocks of `deploy-reventless-aws.yml`. Alpha deploys keep
    Lambda/AppSync auto-created groups (status quo), so CI stays green; alpha does
    not yet get tiered retention. `LOG_LEVEL` tiering still applies (env var only).
-2. ⬜ **Deliberate cutover** — remove the escape-hatch var, then run a **local
+2. ⬜ **Deliberate cutover** — ~~remove the escape-hatch var, then run a **local
    `pulumi up`** immediately after deleting alpha's groups
    (`scratchpad/migrate-alpha-log-groups.sh APPLY=1`), so the managed creates land
    seconds later and beat the ~minute heartbeat window; re-delete + up for any
-   group that races.
+   group that races.~~ **Rewritten 2026-08-20 — the procedure is obsolete.**
+   [log-group-ownership-without-a-race.md](log-group-ownership-without-a-race.md)
+   (implemented 2026-08-08) removed the race this dance existed to beat: the group
+   is now named by us, created **before** the function, and the function is pointed
+   at it with `loggingConfig`, so there is no window for an invocation to take the
+   name first. The cutover is therefore just **remove the escape-hatch var and let
+   CI deploy** — no local `pulumi up`, no delete-then-race, no re-delete loop.
+
+   **Both `env:` blocks were cleared 2026-08-20**; the var no longer appears in
+   `deploy-reventless-aws.yml`. It takes effect on the next deploy, which is when
+   the 43 get their managed groups — so item 3's verification is the thing that
+   closes this, not the edit.
 3. ⬜ **Verify** the managed group + its `retentionInDays` actually exist after
    the cutover — not merely that it went green.
 
 Needs AWS account access + touches deploy state → operator-driven.
+
+### Field state, measured 2026-08-20
+
+The hatch is **still set** and adoption is **partial**, which is the one
+combination `log-group-ownership-without-a-race.md` §6 says must not happen
+("`unmanagedLogGroupStacks` still works for a stack that has adopted nothing, and
+its documentation states that it must not be set once adoption is partial"). On
+alpha:
+
+| | count |
+| --- | --- |
+| Lambda functions | 83 |
+| → `loggingConfig` points at a managed `<project>-<stack>-<name>` group | 35 |
+| → still writing to the auto-created `/aws/lambda/<fn>-<hash>` group | **48** |
+| CloudWatch groups under `/aws/lambda/` | 83 |
+| → managed name, retention set | 35 / 35 |
+| → auto-created, **no retention at all** | **27** |
+
+**43 of the 48 unmanaged functions were last modified 2026-08-19** — yesterday's
+deploy — so this is not drift from an old rollout. Every deploy reproduces it,
+because the hatch makes `managesLogGroup` false and only the callers that pin
+`~logRetentionDays` (the `retentionDaysOverride` branch, which applies even on an
+unmanaged stack) get a group. That branch is why 35 groups are managed *despite*
+the hatch.
+
+The Option A caveat below came true: the sweep was never re-run, so the groups
+created since drifted back to unbounded. The largest is
+`/aws/lambda/CustomerPluginHeartbeat-64ae7e2` at **249 MB**, still receiving
+events, with no retention.
+
+**Five functions were leaked, not merely unmanaged** — last modified
+**2025-08-28 / 2025-08-13**: `CustomerPluginHeartbeat-64ae7e2` (still invoking
+daily a year on), `CustomerPluginEventColl-defdfab`,
+`ProfilePictureTaskBucket-d2d3691`, `ProfilePictureTaskEventColl-c24b540`,
+`CoreEventColl-84d2516`.
+
+They were **not orphans**: they belonged to two intact Pulumi stacks,
+`reventless/customer/dev` (144 resources) and `reventless/core/dev` (79). Deleting
+the functions directly would have drifted those stacks, so the right remedy was
+`pulumi destroy` on both — **done 2026-08-20**. Both stacks are gone, the five
+functions with them (83 → 78 Lambdas), and all ten `alpha` stacks are untouched.
+
+**One trap worth recording**, found while previewing that destroy:
+`customer/dev` **owned the Cognito user pool `eu-west-1_CQTwafSeX`** — the
+account's only pool, and the one live `alpha` authenticates against, with
+`DeletionProtection: INACTIVE`. A destroy run without checking would have deleted
+every user account. Preview the resource list before destroying any long-abandoned
+stack; ownership drifts to whatever created a shared resource first.
+
+### Remaining work, in order
+
+1. **Remove the escape-hatch var** from both `env:` blocks and let CI deploy —
+   step 2 above, in its rewritten form. Converts the 43 in one pass. Check first
+   that no alarm or saved query is keyed to the old `/aws/lambda/<fn>-<hash>`
+   names; the DCB metric filters, which need a managed group, start working as a
+   side effect.
+2. **Sweep the auto-created leftovers** once (1) has landed and nothing writes to
+   them — required by `log-group-ownership-without-a-race.md` §6 and never run.
+   Worth a committed script rather than a `scratchpad/` one, since it is now a
+   recurring operation. **Partly done 2026-08-20:** the 9 groups whose function no
+   longer exists were deleted (249.3 MB, almost all of it
+   `CustomerPluginHeartbeat-64ae7e2` at 249.2 MB). The rest wait on (1), since
+   their functions are still writing to them.
+3. ✅ **Delete the five leaked functions**, their schedules and their groups —
+   **done 2026-08-20** via `pulumi destroy` on the two stacks that owned them,
+   plus the log-group sweep in (2). Log groups are not Pulumi-owned, so `destroy`
+   left them behind and they had to be deleted separately.
+4. **The `DeadLetterQueue` managed group** — Step 9's deferred item, confirmed
+   unbounded across 7 functions.
+5. **A drift guard.** This was invisible for 18 days and survived a deploy that
+   touched 43 functions. A post-deploy check counting functions with no
+   `loggingConfig` would have caught it the same day.
 
 **Interim retention applied (Option A, 2026-08-02).** Rather than run the risky
 cutover now, alpha's existing groups got a *retroactive* retention policy — no
@@ -208,7 +299,12 @@ Fix — a shared helper so the policy lives in one place:
   (escape hatch), so they complete the cutover without changing current behavior.
 - ⬜ **`DeadLetterQueue` managed group deferred** — its module provisions at import
   time (races Jest teardown; flagged fragile), so only `LOG_LEVEL` was added there.
-  Fold its managed group into the Step 8 cutover.
+  Fold its managed group into the Step 8 cutover. **Confirmed in the field
+  2026-08-20:** all **7** `DeadLetterQueue-*` functions on alpha write to
+  auto-created groups, three of them with no retention and receiving events the
+  same day. Because the module's resources are created inside an import-time
+  `apply`, the group has to be created *within* that apply rather than hoisted out
+  of it.
 
 Verified: `pnpm run build` clean/zero-warnings; 183 tests green across the affected
 suites; on-AWS, the ~22 `makeFromCodeAsset` Lambdas already carry `LOG_LEVEL=debug`
@@ -222,3 +318,17 @@ on alpha (the 8 bespoke ones flip on the next deploy).
   `AppSync_AdapterTest` — all green.
 - On-AWS verification of the managed group + retention is deferred to Step 8's
   `alpha` rollout.
+- **Measured on alpha 2026-08-20** — see Step 8 § Field state. Where a managed
+  group exists it is correct (35 / 35 carry retention), so the mechanism is
+  sound; the gap is that the escape hatch keeps 48 of 83 functions off it. Re-run
+  with:
+
+  ```bash
+  aws lambda list-functions --region eu-west-1 \
+    --query 'Functions[].[FunctionName,LoggingConfig.LogGroup]' --output text \
+    | awk -F'\t' '{ if ($2 ~ /^\/aws\/lambda\/online-shop/) m++; else u++ } END { print "managed", m, "| unmanaged", u }'
+
+  aws logs describe-log-groups --region eu-west-1 \
+    --query 'logGroups[?starts_with(logGroupName,`/aws/lambda/`)].[logGroupName,retentionInDays,storedBytes]' \
+    --output text | awk -F'\t' '$2=="None"{ n++; b+=$3 } END { print n, "groups with no retention,", b/1e6, "MB" }'
+  ```
