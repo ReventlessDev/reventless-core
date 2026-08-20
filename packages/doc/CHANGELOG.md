@@ -718,6 +718,9 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-08-20
+- feat(api): emit a tagged-union state field as a GraphQL union ([3a380c0](https://github.com/ReventlessDev/reventless-core/commit/3a380c0ab055b87048d90a852ec1664f6aab6b00))
+- docs: correct the lifecycle example and document @retired's constructor form ([5ec8e6d](https://github.com/ReventlessDev/reventless-core/commit/5ec8e6dd51fc11e279bfff3f89cdb598e7888429))
 ### 2026-08-18
 - fix(api): make the by-index door answer, and let an elevated caller widen it ([0fe0c6f](https://github.com/ReventlessDev/reventless-core/commit/0fe0c6f8dec6228ecaba39577e28d780b4f79c83))
 
