@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.244 (2026-08-20)
+
+### Bug Fixes
+
+* **api:** name a union after itself, not after the keyword ([58ab956](https://github.com/ReventlessDev/reventless-core/commit/58ab956b8fa310c60f118595768e40e750d61784))
+
+
 # 3.0.0-alpha.243 (2026-08-20)
 
 ### Features
