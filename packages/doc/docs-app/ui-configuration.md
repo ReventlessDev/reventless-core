@@ -106,18 +106,27 @@ type state = {
 else, and calling it `lifecycle` would assert something false:
 
 ```rescript
-@schema type locationStatus = Pending | Located | Unresolvable
+@schema type accountStatus = Active | Deactivated
 
 @schema
 type state = {
   customerId: string,
-  @lifecycle locationStatus: locationStatus,
+  @lifecycle accountStatus: accountStatus,
 }
 ```
 
 Resolution order: (1) the annotated field; (2) a field literally named `lifecycle`
 whose shape is an enum; (3) none, and the per-row filter is inert. At most one
 `@lifecycle` per record — a duplicate is a compile error.
+
+**Not every enum ending in `Status` is one.** A customer record may also carry a
+`locationStatus: Pending | Located | Unresolvable` tracking whether a geocoder has
+turned the address into a point. It is enum-shaped and it is called a status, and
+it is still not the lifecycle: no command branches on it and no lifecycle passes
+through it. It is a background job's progress. Annotating it would section the list
+by how far a geocoder got and filter the command menu against states no command
+mentions. This is why the annotation is keyed on `lifecycle` rather than on
+`status` — `status` is a promiscuous name, and a record often has several.
 
 ### 2.3 List and summary presentation
 
@@ -285,29 +294,49 @@ see §5.3.
 
 ### 2.11 Retirement
 
-**`@retired`** names the boolean whose truth means the row is withdrawn from
-ordinary use — a deactivated customer, an archived category.
+**`@retired`** names the state that withdraws a row from ordinary use — a
+deactivated customer, an archived category. It has two forms, and which one a
+record wants follows from whether it already has a lifecycle.
+
+**On a lifecycle constructor**, which is the marker's home. The state's own name is
+what it means, so the annotation takes no payload:
 
 ```rescript
+@schema type accountStatus = Active | @retired Deactivated
+
 @schema
 type state = {
   @id customerId: string,
   displayName: string,
-  @retired deactivated: bool,
+  @lifecycle accountStatus: accountStatus,
 }
+```
+
+**On a boolean field**, where the field itself is the state:
+
+```rescript
+@retired deactivated: bool,
 
 // or, naming the state and asking for it in the negative too
 @retired({label: "Archived", showWhenFalse: true}) archived: bool,
 ```
 
-For the UI this says: render retirement as a *state of the row* — a badge, a
-dimmed row, a filter toggle — rather than as one more boolean column. The
-annotation emits `x-reventless-retired: {label?, showWhenFalse}` on the field's
-JSON Schema. An absent label means "not stated": derive one from the field name.
-`showWhenFalse` asks for the marker in the negative state too; by default the
-flag is worth showing only when it is true.
+Prefer the constructor form wherever a lifecycle already exists. A record with
+`accountStatus: Active | Deactivated` *and* a `deactivated: bool` beside it states
+the same fact twice with nothing keeping the two in step — which is the shape the
+lifecycle was introduced to remove.
 
-The rest is not a hint. Rows whose flag is true are **withheld server-side** from
+For the UI both say the same thing: render retirement as a *state of the row* — a
+badge, a dimmed row, a filter toggle — rather than as one more boolean column. The
+annotation emits `x-reventless-retired` on the field's JSON Schema. `label` and
+`showWhenFalse` are the boolean form's payload: an absent label means "not stated",
+so derive one from the field name, and `showWhenFalse` asks for the marker in the
+negative state too, since by default a flag is worth showing only when it is true.
+The constructor form needs neither — the state is already named, and a row that is
+not retired is in some other named state.
+
+The rest is not a hint. Rows in the retired state — the flag true, or the lifecycle
+sitting on the marked constructor — are **withheld server-side** from
 callers who are not exempt — from the list query, the single-entity query, and
 the payload of a live change frame, which downgrades to metadata-only so every
 subscriber refetches and the query layer answers per caller. The UI cannot show
@@ -356,9 +385,12 @@ puts the state beside it as a badge, the same badge the catalog's own list shows
 It renders the name unlinked for a caller who could not open the row anyway,
 since the single-entity door still refuses one without `includeRetired`.
 
-At most one `@retired` per record, on a `bool` or `option<bool>` field; anything
-else is a compile error. There is no fallback by field name — a boolean called
-`archived` that nobody annotated hides nothing.
+At most one `@retired` per record, in either form. The boolean form takes a `bool`
+or `option<bool>` field and anything else is a compile error; the constructor form
+takes no payload, and `label` or `showWhenFalse` on one is a compile error naming
+the boolean form as their home. There is no fallback by field name — a boolean
+called `archived` that nobody annotated hides nothing, and neither does a
+constructor called `Archived`.
 
 ---
 
@@ -856,7 +888,7 @@ What each of the shop's components declares:
 | `Catalog/Categories` | `@storageRef("categoryImages")` image — its own store, not the products' one; nav group "Shop" |
 | `Catalog/ProductDemand` | `@@reventless.authorize(AllowGroups(["Admin", "Merchandiser"]))`; `@id productId`; only in the `Merchandiser` journey, under its own nav group |
 | `Ordering/Orders` | `@owner customerId`; `lifecycle` by name; `DateTime` timestamps; `DateRange` delivery window; nav "All Orders", or "My Orders" for a caller reading only their own |
-| `Ordering/Customers` | `@@reventless.authorize`; `@displayName email`; `@lifecycle locationStatus`; `@hidden locationNote`; `GeoPoint` location |
+| `Ordering/Customers` | `@@reventless.authorize`; `@displayName email`; `@lifecycle accountStatus` with `@retired Deactivated` on its own constructor; `@hidden locationNote`; `GeoPoint` location, beside an unannotated `locationStatus` that is a job's progress rather than a lifecycle |
 | `Ordering/AvailableProducts` | `@@reventless.visibility(Internal)` — reachable only as the `@ref` target of `PlaceOrder`'s product picker |
 | `Ordering/PlaceOrder` | `@owner customerId`; `@ref("AvailableProducts") productIds`; optional `DateRange` delivery window |
 

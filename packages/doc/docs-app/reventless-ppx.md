@@ -404,16 +404,18 @@ type state = {
 
 ```rescript
 @schema
-type locationStatus = Pending | Located | Unresolvable
+type accountStatus = Active | Deactivated
 
 @schema
 type state = {
   customerId: string,
-  @lifecycle locationStatus: locationStatus,
+  @lifecycle accountStatus: accountStatus,
 }
 ```
 
 The PPX emits the annotated field name into `stateAnnotationSpec.lifecycle` (sury metadata attached to the state schema). Codegen reads it when building `queryableDef.lifecycleField`.
+
+An enum-shaped field is not automatically a candidate. A `locationStatus: Pending | Located | Unresolvable` tracking a geocoder's progress is enum-shaped and named like a status, and annotating it would section the list by how far a background job got and filter the command menu against states no command mentions. The annotation is keyed on `lifecycle` rather than `status` for exactly this reason — a record often carries several statuses and at most one lifecycle.
 
 **Resolution order** (codegen, `Plugin_Structure.lifecycleFieldFromStateSchema`): (1) field annotated `@lifecycle`; (2) field literally named `"lifecycle"` whose shape is an enum (a free-text `lifecycle: string` does not count — `@allowedStates` filtering needs states to compare against); (3) `None`, and the per-row filter is inert.
 
