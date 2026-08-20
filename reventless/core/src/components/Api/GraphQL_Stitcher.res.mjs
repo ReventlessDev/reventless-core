@@ -115,11 +115,19 @@ function collectSubscriptionSources(baseFragment, pluginFragments) {
   });
 }
 
+let definitionKeywords = [
+  "type ",
+  "enum ",
+  "input ",
+  "union ",
+  "interface ",
+  "scalar "
+];
+
 function extractLeadingName(str) {
   let trimmed = str.trim();
-  let afterType = trimmed.startsWith("type ") || trimmed.startsWith("enum ") ? trimmed.slice(5, trimmed.length).trim() : (
-      trimmed.startsWith("input ") ? trimmed.slice(6, trimmed.length).trim() : trimmed
-    );
+  let kw = definitionKeywords.find(kw => trimmed.startsWith(kw));
+  let afterType = kw !== undefined ? trimmed.slice(kw.length, trimmed.length).trim() : trimmed;
   return Stdlib_Option.getOr(Stdlib_Option.getOr(Stdlib_Option.getOr(Stdlib_Option.getOr(afterType.split("(")[0], "").trim().split(" ")[0], "").trim().split("{")[0], "").trim().split(":")[0], "").trim();
 }
 
@@ -231,6 +239,7 @@ export {
   encode,
   decode,
   collectSubscriptionSources,
+  definitionKeywords,
   extractLeadingName,
   relayBaseTypes,
   relayBaseQueries,

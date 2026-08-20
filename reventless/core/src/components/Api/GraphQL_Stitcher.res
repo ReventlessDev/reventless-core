@@ -122,17 +122,19 @@ let collectSubscriptionSources = (
 // Extract the first identifier from a SDL field/type string.
 // e.g. "  fieldName(args): Type" → "fieldName"
 //      "type TypeName {" → "TypeName"
+// Every SDL keyword that introduces a named definition. `union` was missing while
+// `CommandResult` was the only union in the schema: a keyword left in place makes
+// every declaration of that kind name itself after the keyword, so the second one
+// deduped against the first and vanished — AppSync then rejected the schema for a
+// type that was never emitted.
+let definitionKeywords = ["type ", "enum ", "input ", "union ", "interface ", "scalar "]
+
 let extractLeadingName = (str: string): string => {
   let trimmed = str->String.trim
-  // Remove "type ", "enum ", or "input " prefix if present
-  let afterType = if trimmed->String.startsWith("type ") {
-    trimmed->String.slice(~start=5, ~end=trimmed->String.length)->String.trim
-  } else if trimmed->String.startsWith("enum ") {
-    trimmed->String.slice(~start=5, ~end=trimmed->String.length)->String.trim
-  } else if trimmed->String.startsWith("input ") {
-    trimmed->String.slice(~start=6, ~end=trimmed->String.length)->String.trim
-  } else {
-    trimmed
+  let afterType = switch definitionKeywords->Array.find(kw => trimmed->String.startsWith(kw)) {
+  | Some(kw) =>
+    trimmed->String.slice(~start=kw->String.length, ~end=trimmed->String.length)->String.trim
+  | None => trimmed
   }
   // Split on "(" first to remove arg list, then on " ", "{", and ":" for the name.
   // The ":" split is load-bearing for ARG-LESS fields: `Foo: [Bar!]!` has no "(" to

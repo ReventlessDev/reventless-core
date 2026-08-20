@@ -64,6 +64,51 @@ describe("GraphQL_Stitcher.subscriptionSources", () => {
   })
 })
 
+// Two unions in one schema is what caught this: every definition keyword the name
+// extractor does not strip makes each declaration of that kind name itself after
+// the keyword, so the second dedupes against the first and is dropped. With
+// `CommandResult` the only union, nothing showed it. The local path does not use
+// this dedup, so a golden carrying both unions still passed while AppSync rejected
+// the schema for a type that was never emitted.
+describe("GraphQL_Stitcher.extractLeadingName", () => {
+  testSync("names a union after the union, not after the keyword", () => {
+    expect(extractLeadingName("union Geolocation = GeolocationLocated | GeolocationPending"))->toBe(
+      "Geolocation",
+    )
+    expect(extractLeadingName("union CommandResult = CommandAccepted | CommandRejected"))->toBe(
+      "CommandResult",
+    )
+  })
+
+  testSync("names an interface and a scalar after themselves", () => {
+    expect(extractLeadingName("interface Node { id: ID! }"))->toBe("Node")
+    expect(extractLeadingName("scalar AWSDateTime"))->toBe("AWSDateTime")
+  })
+
+  // The cases that already worked, kept so a rewrite of the keyword list has to
+  // keep them working.
+  testSync("still names types, enums and inputs", () => {
+    expect(extractLeadingName("type Ordering_Customer implements Node { id: ID! }"))->toBe(
+      "Ordering_Customer",
+    )
+    expect(extractLeadingName("enum SortOrder { ASC DESC }"))->toBe("SortOrder")
+    expect(extractLeadingName("input Ordering_CustomerFilter { id: ID }"))->toBe(
+      "Ordering_CustomerFilter",
+    )
+  })
+
+  // Fields go through the same extractor, and an arg-less one has no "(" to cleave
+  // the type off.
+  testSync("still names fields, with and without args", () => {
+    expect(extractLeadingName("  Catalog_AddProduct(input: AddInput): CommandResult"))->toBe(
+      "Catalog_AddProduct",
+    )
+    expect(extractLeadingName("  Platform_ApiFragments: [Fragment!]!"))->toBe(
+      "Platform_ApiFragments",
+    )
+  })
+})
+
 describe("GraphQL_Stitcher.stitchStandalone", () => {
   let pluginFragment = encode({
     types: [
