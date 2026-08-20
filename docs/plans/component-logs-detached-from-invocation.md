@@ -97,6 +97,34 @@ once, off an SQS message whose `meta` had all of it:
 Everything this plan wants on a component line is already computed, extracted and
 attached one frame up. It just does not survive `Effect.runSync`.
 
+### Measured locally too — this is not an AWS defect
+
+A seeded in-memory `online-shop-hybrid` run, 2026-08-20, classifying every
+component log line by whether it carries a top-level `correlationId`:
+
+| `comp` prefix | with `correlationId` | without |
+| --- | --- | --- |
+| `StateChangeSlice` | 0 | 1331 |
+| `StateViewSlice` | 0 | 482 |
+| `ExtensionPoint` | 0 | 447 |
+| `Extension` | 0 | 312 |
+| `ReadModel` | 0 | 191 |
+| `CommandTopic` | 0 | 132 |
+| `CommandGenerator` | 0 | 113 |
+| `Aggregate` | **12** | 123 |
+| `Plugin` (the dispatch boundary) | 333 | 0 |
+
+Roughly **90% of component log lines carry no `correlationId` on the local
+platform**, where `Runtime.annotateInvocation` demonstrably *does* run — the
+`Plugin` row is that boundary working exactly as designed.
+
+This matters for scoping. The AWS measurement above could be read as an
+entry-point-shell problem, and it is not: both platforms annotate correctly and
+both lose it at the same place. `Aggregate`'s split — 12 annotated against 123
+not — is the mechanism in miniature within a single component: the lines that
+happen to sit in the effect chain keep the annotations, and the `Effect.runSync`
+lines beside them do not.
+
 ## Why it matters
 
 The dispatch-parity plan shipped the boundary, the extractors, the per-handler

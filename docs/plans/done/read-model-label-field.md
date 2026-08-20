@@ -1,9 +1,12 @@
 # Plan: the field a read model is named by
 
 **Date:** 2026-07-29
-**Status:** IMPLEMENTED (2026-07-29) — all four phases landed; verified against a
-live `online-shop-hybrid` local platform. The one leg not run is a browser walk
-of the rendered heading (see Verification).
+**Status:** DONE — all four phases landed 2026-07-29 and verified against a live
+`online-shop-hybrid` local platform. The one leg left open, a browser walk of the
+rendered heading and reference cells, **was run 2026-08-20** and passed: the
+Orders heading reads `ord-001` rather than a timestamp, the Products heading
+reads its `name`, and reference cells resolve to labels throughout. See
+Verification.
 
 ## Motivation
 
@@ -12,7 +15,7 @@ records. It is what a reference dropdown lists, what a detail heading shows,
 what `QueryDbListQuery` matches `search` / `searchPrefix` against, and what
 `Api_Naming.queryNames` carries into every generated query. One function
 decides it for all four
-([Plugin_Structure.res:47](../../reventless/core/src/plugin/component/Plugin_Structure.res)),
+([Plugin_Structure.res:47](../../../reventless/core/src/plugin/component/Plugin_Structure.res)),
 and its ladder is:
 
 1. `@displayName` spec present → `"displayName"` + the spec's source fields.
@@ -22,7 +25,7 @@ and its ladder is:
 
 Rung 2 is a three-line guess about what a field *is*, and this repo already has
 the answer to that question:
-[`SchemaType.fromSury`](../../reventless/core/src/components/Api/SchemaType.res)
+[`SchemaType.fromSury`](../../../reventless/core/src/components/Api/SchemaType.res)
 is the IR every other schema consumer reads — it distinguishes `ScalarString`
 from `DateTime`, `EntityId`, `Enum`, `Nullable(_)` and `Semantic(_, _)`, and it
 derives the entity-id case from DCB tags and `Reference.getTarget` rather than
@@ -216,10 +219,32 @@ one row of the tables above:
     while `search: "2026"` — which previously matched every order — returns
     nothing. The push-down reproduces it without a change, because it is passed
     the same declared field.
-- **Not run: a browser walk** of the detail heading and reference cells. The
-  path is `AutoDrillDetail`'s existing "labelField, when present on the row data
-  as a non-empty string" rung and nothing about it changed — only which field it
-  is handed. Stated here rather than implied.
+- **Browser walk — run 2026-08-20** against a freshly seeded in-memory
+  `online-shop-hybrid` (sample set: 16 products, 9 customers, 40 orders), signed
+  in as `admin`:
+  - **Detail heading, the fallback case.** `/Ordering/Orders/ord-001` renders
+    **`ord-001`** — the row id, not the ISO timestamp it used to pick. This is
+    the whole point of the change, seen in the place a user sees it.
+  - **Detail heading, the declared case.** `/Catalog/Products/prd-006` renders
+    **`Ember Headphones Max`**, its `name` field.
+  - **Reference cells.** In the Orders list, customer references render
+    `shopper@example.com` / `ada.duarte@example.com` (Customers' `@displayName`
+    rung) and product references render product names, each linked to its detail
+    route. In the Products list, category references render `Accessories`,
+    `Laptops`, `Home & Office`.
+  - **Retired references still read as names**, where the record asks for it: a
+    withdrawn product appears as `Granite Phone Studio` + an `Archived` badge,
+    `Basalt Gimbal Studio` + `Discontinued` — named, and deliberately not a link.
+  - **And do not, where it does not.** A deactivated customer renders as bare
+    `cust-06`, because `Ordering.Customers` declares no `@namedWhenRetired` —
+    the case `done/retired-row-resolvable-by-reference.md` chose on purpose.
+    Confirmed at the source: `Ordering_CustomersRefs(ids: ["cust-06"])` returns
+    `[]`, while `Ordering_Customer(id: "cust-06", includeRetired: true)` returns
+    the row for an elevated caller.
+
+  The heading rung is `AutoDrillDetail`'s existing "labelField, when present on
+  the row data as a non-empty string"; nothing about it changed, only which
+  field it is handed — and this walk is what says so rather than assuming it.
 
 ### What the live run found
 
@@ -244,7 +269,7 @@ than by one side winning.
   human-readable field; inventing one to silence a warning would hide the thing
   this plan makes visible. An app that wants order numbers should model them.
 - ~~**Publishing *why* a label was chosen.**~~ — **closed 2026-07-29**
-  ([label-field-provenance.md](done/label-field-provenance.md)). The consumer asked:
+  ([label-field-provenance.md](label-field-provenance.md)). The consumer asked:
   a client that renders records has a name rule of its own and, told only the
   field, could rank the declaration only wholesale — right for a guess and wrong
   for a `@displayName`, or the reverse. `queryableDef.labelFieldSource` now names

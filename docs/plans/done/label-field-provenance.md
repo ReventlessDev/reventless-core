@@ -3,7 +3,7 @@
 **Date:** 2026-07-29
 **Status:** IMPLEMENTED (2026-07-29) — all four phases landed; verified on the
 wire against two live local platforms (see Verification).
-**Predecessor:** [read-model-label-field.md](../read-model-label-field.md) — this
+**Predecessor:** [read-model-label-field.md](read-model-label-field.md) — this
 is the one item that plan deferred for want of a consumer.
 
 ## Motivation
@@ -83,7 +83,7 @@ That is provenance leaking through a value, for one rung out of four.
    element makes every call site restate which is which; `{field,
    searchableFields, source}` names them once. The rung is decided in the one
    place the field is decided — a second function that re-walked the ladder to
-   report on it would be the duplication [read-model-label-field.md](../read-model-label-field.md)
+   report on it would be the duplication [read-model-label-field.md](read-model-label-field.md)
    removed.
 
 4. **`"convention"` and `"position"` stay distinct even though this repo treats
