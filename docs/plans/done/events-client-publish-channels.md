@@ -1,17 +1,25 @@
 # Plan: Client-publishable Events channels (`/client/**`) + local Events transport
 
 **Date:** 2026-07-28
-**Status:** IMPLEMENTED (2026-07-28) — Phases 1–5 landed (AWS namespace +
-config advertisement + LocalBus hook + local transport + tests, plus a live
-ws-handshake smoke run); Phase 6 (AWS E2E) is deploy-only and stays staged,
-like the event-history AWS resolver.
+**Status:** DONE — Phases 1–5 landed 2026-07-28 (AWS namespace + config
+advertisement + LocalBus hook + local transport + tests, plus a live ws-handshake
+smoke run). **Phase 6 ran against deployed `alpha` on 2026-08-20 and all five
+checks pass**, including the decisive one: an ordinary browser token publishes to
+`/client/**` and is *delivered*, and the same token is refused `401` on
+`/default/**`. That settles the staged open point — the per-namespace
+`publishAuthModes` override suffices; no `onPublish` handler or separate Events
+API is needed.
+
+The first run reported (3) failed and (4) passed, both wrongly and for the same
+reason: the verifier appended `/event` to an endpoint that already ended in it.
+Fixed in `VerifyClientPublish.res` — see Phase 6.
 
 ## Motivation
 
 The AppSync Events API is one-directional today: Lambda publishers push
 read-model change descriptors to `/default/**`, and browser clients only
 subscribe. `defaultPublishAuthModes: [AWS_IAM]`
-([AppSync_EventsApi.res:126](../../reventless/aws/src/adapter/Api/AppSync_EventsApi.res))
+([AppSync_EventsApi.res:126](../../../reventless/aws/src/adapter/Api/AppSync_EventsApi.res))
 is deliberate — a browser must never be able to forge a change descriptor —
 but it also blocks a whole class of collaborative, ephemeral UI features that
 need *client→client* fan-out through the platform: who-is-here presence,
@@ -48,7 +56,7 @@ work in local dev for the first time.
    code may also publish there) and
    `subscribeAuthModes: [AMAZON_COGNITO_USER_POOLS, AWS_IAM]`. The
    per-namespace override fields already exist in the Pulumi binding
-   ([AwsNative_AppSync_ChannelNamespace.res:66-68](../../rescript/pulumi-aws/src/AwsNative/AppSync/AwsNative_AppSync_ChannelNamespace.res))
+   ([AwsNative_AppSync_ChannelNamespace.res:66-68](../../../rescript/pulumi-aws/src/AwsNative/AppSync/AwsNative_AppSync_ChannelNamespace.res))
    and were simply never used. Channels under `/client/**` are free-form;
    the platform relays them opaquely.
 
@@ -64,7 +72,7 @@ work in local dev for the first time.
 3. **The local transport speaks the AppSync Events wire protocol.** Clients
    already implement connection_init/ack, subscribe with a `header-<b64url>`
    auth subprotocol, and stringified-JSON `data` frames (documented in
-   [appsync-events-live-updates.md](../../packages/doc/docs-infrastructure/appsync-events-live-updates.md)).
+   [appsync-events-live-updates.md](../../../packages/doc/docs-infrastructure/appsync-events-live-updates.md)).
    A local emulator that speaks the same frames means one client code path for
    dev and prod — no local-only transport branch. Endpoint contract:
    - `POST /events` on the domain dev server = the publish endpoint
@@ -192,10 +200,70 @@ deployed yet) — so the check is meaningful rather than vacuously green. Run it
 again after `pulumi up`. Joins the existing deploy-only checklist (map picker,
 presigned upload, `/ui-hints.json`).
 
+#### Run 2026-08-20 against deployed `alpha` — all five checks pass
+
+As pool user `shopper` (an ordinary browser account, which is the right subject
+for (4)):
+
+```
+  PASS  config.json advertises clientEventsNamespace
+  PASS  Cognito IdToken can subscribe to a client channel
+  PASS  Cognito publish to a client channel is ACCEPTED
+        HTTP 200 — the per-namespace publishAuthModes override works
+  PASS  the published event is DELIVERED to the subscriber
+        round trip completed — browser→platform→browser fan-out works
+  PASS  Cognito publish to /default/** is REJECTED
+        HTTP 401 — change descriptors stay unforgeable
+```
+
+**This settles the open point below**: the per-namespace `publishAuthModes`
+override is sufficient on the deployed service. No `onPublish` CODE handler and
+no separate Events API are needed for client channels.
+
+**The first run failed, and the way it failed is the lesson.** The verifier built
+its publish URL as `${endpoint}/event`, but `domainApiEventsEndpoint` *already*
+ends in `/event` — it is the publish URL, and the same value the subscribe path
+opens as `wss://`, which is why (2) passed while (3) did not. Every publish went
+to `/event/event` and came back `404 UnknownOperationException`. That produced
+the worst possible pair of readings:
+
+- (3) **failed**, suggesting the namespace override had not taken effect — the
+  script even printed the fallback hypothesis this plan had staged;
+- (4) **passed**, on the very same 404 — a "rejection" that was a wrong URL, not
+  an auth boundary.
+
+Both conclusions were wrong and they pointed in opposite directions, so neither
+looked obviously suspect on its own. What separated them was that a correct
+rejection reads **401 `UnauthorizedException`**, not 404: publishing the same
+token to `/client/**` at the fixed URL returns `200 {"successful":[…]}`, and to
+`/default/**` returns `401`. Fixed in `VerifyClientPublish.res`.
+
+The deployed auth-mode table, read off `DomainEventsApi-05eec57` and identically
+off its sibling, is what the run confirms behaviourally:
+
+| | publish | subscribe |
+| --- | --- | --- |
+| API defaults | `AWS_IAM` | Cognito + IAM |
+| `default` namespace | *(inherits)* | *(inherits)* |
+| `client` namespace | **Cognito + IAM** | Cognito + IAM |
+
+To re-run, from `examples/online-shop-hybrid/platform-aws`:
+
+```bash
+SEED_STACK=alpha REVENTLESS_DEMO_USER=<pool user> REVENTLESS_DEMO_PASSWORD=<…> \
+  pnpm run verify:client-publish
+```
+
 ## Risks / open points
 
-- **The AWS publish path is unverified inference — the plan's biggest open
-  assumption.** Everything rests on per-namespace `publishAuthModes`
+- ~~**The AWS publish path is unverified inference — the plan's biggest open
+  assumption.**~~ **Closed 2026-08-20 by observation** (Phase 6): deployed and
+  exercised with a real pool user, the override behaves exactly as inferred —
+  `/client/**` accepts a Cognito publish and fans it out, `/default/**` refuses
+  the same token with `401`. The original text, and why it was right to distrust
+  the inference until measured, follows.
+
+  Everything rests on per-namespace `publishAuthModes`
   overriding the API-level `defaultPublishAuthModes`, which is what lets a
   browser publish on `/client/**` while `/default/**` stays IAM-only. That
   reading comes from the Pulumi binding's field surface and the AWS docs, not

@@ -83,7 +83,7 @@ async function publish(endpoint, idToken, channel, payload) {
       [JSON.stringify(payload)]
     ]
   ]));
-  let res = await fetch(endpoint + `/event`, {
+  let res = await fetch(endpoint, {
     method: "POST",
     headers: Object.fromEntries([
       [

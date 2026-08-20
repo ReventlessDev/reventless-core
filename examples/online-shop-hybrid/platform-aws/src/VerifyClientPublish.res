@@ -118,8 +118,12 @@ let publish = async (
     ])
     ->JSON.Encode.object
     ->JSON.stringify
+  // `domainApiEventsEndpoint` already ends in `/event` — it is the publish URL,
+  // and the same value the subscribe path opens as `wss://`. Appending a second
+  // `/event` yields 404 UnknownOperationException on every channel, which reads
+  // as "client publish refused" and "default publish refused" alike.
   let res = await Fetch.fetch(
-    `${endpoint}/event`,
+    endpoint,
     {
       method: "POST",
       headers: Dict.fromArray([
