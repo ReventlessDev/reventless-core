@@ -755,7 +755,23 @@ nav, and which cross-plugin actions a row offers. The hybrid shop's file:
 The structure is keyed *plugin → views → view*. A `nav` entry sets the menu label,
 its group and its sort order. A `rowActions` entry turns a row into the start of a
 command in another plugin: the row's key is carried into the named command's
-`field`, and `then` is where the user lands afterwards.
+`field`, and `then` is where the user lands afterwards. A row and that row's own
+detail page offer the same set — a detail page is one of the view's rows.
+
+**Most of these the shell now works out for itself.** Where a command declares an
+explicit `@ref` naming the view being drawn and that field is required, the manifest
+already says the command acts on that row, and the shell places it without being
+told. So this key is the override layer rather than the only way in: a declared
+entry is kept as written, an inferred one is appended only where no declaration
+names that command, and `suppressRowActions` takes one back out — declared and
+inferred alike.
+
+Declare an entry where the inference cannot see the link. `PlaceOrder` above is that
+case: its `@ref` names Ordering's own mirror of a product rather than the catalog
+view the action is offered on, so nothing in the manifest connects the command to
+that row. What the shell inferred, and what it considered and refused, is reported
+per view — an action you expected and do not see was usually refused for a reason
+worth reading rather than overlooked.
 
 **`scopedLabel` is the one key that varies per caller.** A menu label is normally
 a fact about the component, and one file can state it for everybody. "My Orders"
