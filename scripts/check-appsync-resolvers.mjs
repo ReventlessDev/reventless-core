@@ -60,7 +60,14 @@ const ELEVATED = ['Admin']
 /** @returns {Array<[string, string]>} [name, code] for every unit to validate. */
 const generateUnits = () => {
   const units = []
-  const push = (name, code) => units.push([name, typeof code === 'string' ? code : String(code)])
+  // A curried template that was under-applied is still a function, and
+  // stringifying one yields its compiler output ($staropt$star, unbound
+  // parameter names) — a defect report about code no deploy ever attaches.
+  const push = (name, code) => {
+    if (typeof code === 'function')
+      throw new Error(`${name}: template under-applied — it returned a function, not resolver code.`)
+    units.push([name, typeof code === 'string' ? code : String(code)])
+  }
 
   for (const owner of OWNERS) {
     for (const [retiredField, retiredValues] of RETIREMENTS) {
@@ -77,6 +84,11 @@ const generateUnits = () => {
       // so both arms are generated code worth compiling.
       for (const named of [true, false])
         push(`refsByIds__${tag}_named${named}`, F.refsByIds('name', retiredField, retiredValues, named, owner, ELEVATED)('TestTable'))
+      // `@resolvesMany` carries the target's guards, and a target with a sort
+      // key builds a two-part BatchGetItem key — both arms are generated code.
+      for (const sort of [undefined, 'sk'])
+        push(`resolveIds__${tag}_sort${sort ?? 'none'}`,
+          F.resolveIds('ids', sort, owner, retiredField, retiredValues, ELEVATED)('TestTable'))
     }
   }
 
@@ -102,7 +114,6 @@ const generateUnits = () => {
   push('resolveIdResults', F.resolveIdResults('TestTable', 'id'))
   push('resolveIdSort', F.resolveIdSort('catId', 'sub', 'sk'))
   push('resolveIdSortArgument', F.resolveIdSortArgument('catId', 'arg', 'sk'))
-  push('resolveIds', F.resolveIds('TestTable', 'ids', 'sk'))
   push('resolveIdsResult', F.resolveIdsResult('TestTable', 'ids'))
 
   for (const name of ['deleteItem', 'firstResult', 'firstResultResponseCode', 'indexConnectionResponseCode',
