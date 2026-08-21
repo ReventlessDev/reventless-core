@@ -1,9 +1,16 @@
 # The Plugin aggregate decodes two of its eight commands
 
 **Date:** 2026-08-18
-**Status:** Open — found while verifying step 0 of
+**Status:** Resolved 2026-08-21 — the upstream cause is fixed in sury `11.0.0-rc.2`
+([DZakh/sury#392](https://github.com/DZakh/sury/issues/392)), and the repo is pinned
+there. Found while verifying step 0 of
 [admin-structure-derived-from-specs.md](../plans/done/admin-structure-derived-from-specs.md);
 neither caused nor fixed by it.
+
+Option 1 below (reorder so a union-bearing payload leads) is what shipped, and it is
+still in place — it is wire-compatible and costs nothing to keep. The reachability
+sweep that enforces it now only recognises the older codegen shape; see
+[union-reachability-guard-rc2-shape.md](../plans/Backlog/union-reachability-guard-rc2-shape.md).
 **Where it bites:** every local platform, and AWS equally — the affected schemas live in
 `reventless-core` and `reventless-infra` and are shared by both, though only local was
 driven. Three unions are broken today, not one; see *Where else it already bites*.
@@ -131,14 +138,16 @@ The grouped-loop codegen is absent from every published bundle through
 `11.0.0-alpha.11` and present in `11.0.0-rc.0` and `11.0.0-rc.1` (the pinned version).
 The optimization — and this failure mode with it — landed in **`rc.0`**.
 
-`rc.1` is the newest published version, so there is nothing to move forward to. Moving
-backward is not a version pin: the schema-building API changed at both the
-alpha→rc boundary (`$schema`/`s.m` vs `schema`/`s.matches`) and the v10→v11 boundary, and
-sury-ppx emits against the v11 API — so a downgrade is a codegen change across every
-`@schema` type in the repo, onto releases carrying their own known regressions.
+Fixed in **`11.0.0-rc.2`** (2026-08-20), which is where the repo is now pinned. At the
+time of writing `rc.1` was the newest published version, so there was nothing to move
+forward to — and moving backward was not a version pin: the schema-building API changed
+at both the alpha→rc boundary (`$schema`/`s.m` vs `schema`/`s.matches`) and the v10→v11
+boundary, and sury-ppx emits against the v11 API — so a downgrade would have been a
+codegen change across every `@schema` type in the repo, onto releases carrying their own
+known regressions.
 
 Reported upstream as [DZakh/sury#392](https://github.com/DZakh/sury/issues/392)
-(filed 2026-08-18, open); the source text is in
+(filed 2026-08-18, closed 2026-08-20); the source text is in
 [sury-union-regression-issue.md](sury-union-regression-issue.md). sury's tracker shows a
 cluster of other regressions from the same rc line
 ([#347](https://github.com/DZakh/sury/issues/347) open, #351/#369 closed) — #347 is the
@@ -192,11 +201,11 @@ publishes) is unaffected, and is what those steps were verified against.
    Cheapest, and a workaround that will be forgotten and re-broken by the next
    variant added.
 2. **Wait for the upstream fix.** Filed as
-   [DZakh/sury#392](https://github.com/DZakh/sury/issues/392). This is the only option
-   that removes the bug rather than dodging it, but it is not on our clock — and there
-   is no version to bump to meanwhile, since `rc.1` is the newest published and
-   downgrading is a codegen change, not a pin (see *Which sury versions*). Assume a
-   local workaround is needed regardless.
+   [DZakh/sury#392](https://github.com/DZakh/sury/issues/392). The only option that
+   removes the bug rather than dodging it, but not on our clock — and with no version to
+   bump to meanwhile, since `rc.1` was then the newest published and downgrading is a
+   codegen change, not a pin (see *Which sury versions*). **This is what happened:** the
+   fix landed in `rc.2` two days after filing, and option 1 carried the gap.
 3. **Flatten `pluginDefinition`'s unions** — resolve the offload envelope before
    decode rather than modelling it in the schema. Largest change, and it removes the
    shape rather than working around it. Does not help `directiveSchema` or

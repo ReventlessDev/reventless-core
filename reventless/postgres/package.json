@@ -34,13 +34,13 @@
     "@reventlessdev/reventless-infra": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*",
     "pg": "^8.13.1",
-    "sury": "11.0.0-rc.1"
+    "sury": "11.0.0-rc.2"
   },
   "devDependencies": {
     "@reventlessdev/reventless-ppx": "workspace:*",
     "@types/pg": "^8.11.10",
     "rescript": "12.3.0",
-    "sury-ppx": "11.0.0-rc.1"
+    "sury-ppx": "11.0.0-rc.2"
   },
   "peerDependencies": {
     "rescript": "12.3.0"

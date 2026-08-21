@@ -3,6 +3,11 @@
 **Filed 2026-08-18 as [DZakh/sury#392](https://github.com/DZakh/sury/issues/392).**
 Kept here as the source text; edit upstream, not here.
 
+**Resolved 2026-08-20 in `11.0.0-rc.2`** ([PR #393](https://github.com/DZakh/sury/pull/393)).
+The grouped block now dispatches on every member's `TAG` and falls through inside the
+block, so no member is stranded. Verified against the reproduction below: all four
+round-trip on `rc.2`.
+
 ---
 
 Since `11.0.0-rc.0` the union parser groups a contiguous run of two or more object

@@ -129,8 +129,8 @@ importers:
         specifier: workspace:*
         version: link:../../../reventless/spec
       sury:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(rescript@12.3.0)
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(rescript@12.3.0)
     devDependencies:
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
@@ -139,8 +139,8 @@ importers:
         specifier: 12.3.0
         version: 12.3.0
       sury-ppx:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(sury@11.0.0-rc.1(rescript@12.3.0))
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(sury@11.0.0-rc.2(rescript@12.3.0))
 
   examples/online-shop-aggregates/catalog-aws:
     dependencies:
@@ -166,8 +166,8 @@ importers:
         specifier: workspace:*
         version: link:../../../reventless/spec
       sury:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(rescript@12.3.0)
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(rescript@12.3.0)
     devDependencies:
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
@@ -176,8 +176,8 @@ importers:
         specifier: 12.3.0
         version: 12.3.0
       sury-ppx:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(sury@11.0.0-rc.1(rescript@12.3.0))
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(sury@11.0.0-rc.2(rescript@12.3.0))
 
   examples/online-shop-aggregates/catalog-spec:
     dependencies:
@@ -185,8 +185,8 @@ importers:
         specifier: workspace:*
         version: link:../../../reventless/spec
       sury:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(rescript@12.3.0)
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(rescript@12.3.0)
     devDependencies:
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
@@ -195,8 +195,8 @@ importers:
         specifier: 12.3.0
         version: 12.3.0
       sury-ppx:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(sury@11.0.0-rc.1(rescript@12.3.0))
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(sury@11.0.0-rc.2(rescript@12.3.0))
 
   examples/online-shop-aggregates/ordering:
     dependencies:
@@ -222,8 +222,8 @@ importers:
         specifier: workspace:*
         version: link:../../../reventless/spec
       sury:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(rescript@12.3.0)
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(rescript@12.3.0)
     devDependencies:
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
@@ -232,8 +232,8 @@ importers:
         specifier: 12.3.0
         version: 12.3.0
       sury-ppx:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(sury@11.0.0-rc.1(rescript@12.3.0))
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(sury@11.0.0-rc.2(rescript@12.3.0))
 
   examples/online-shop-aggregates/ordering-aws:
     dependencies:
@@ -259,8 +259,8 @@ importers:
         specifier: workspace:*
         version: link:../../../reventless/spec
       sury:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(rescript@12.3.0)
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(rescript@12.3.0)
     devDependencies:
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
@@ -269,8 +269,8 @@ importers:
         specifier: 12.3.0
         version: 12.3.0
       sury-ppx:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(sury@11.0.0-rc.1(rescript@12.3.0))
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(sury@11.0.0-rc.2(rescript@12.3.0))
 
   examples/online-shop-aggregates/ordering-spec:
     dependencies:
@@ -278,8 +278,8 @@ importers:
         specifier: workspace:*
         version: link:../../../reventless/spec
       sury:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(rescript@12.3.0)
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(rescript@12.3.0)
     devDependencies:
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
@@ -288,8 +288,8 @@ importers:
         specifier: 12.3.0
         version: 12.3.0
       sury-ppx:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(sury@11.0.0-rc.1(rescript@12.3.0))
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(sury@11.0.0-rc.2(rescript@12.3.0))
 
   examples/online-shop-aggregates/platform-aws:
     dependencies:
@@ -309,8 +309,8 @@ importers:
         specifier: workspace:*
         version: link:../../../reventless/spec
       sury:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(rescript@12.3.0)
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(rescript@12.3.0)
     devDependencies:
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
@@ -319,8 +319,8 @@ importers:
         specifier: 12.3.0
         version: 12.3.0
       sury-ppx:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(sury@11.0.0-rc.1(rescript@12.3.0))
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(sury@11.0.0-rc.2(rescript@12.3.0))
 
   examples/online-shop-aggregates/platform-local:
     dependencies:
@@ -352,15 +352,15 @@ importers:
         specifier: workspace:*
         version: link:../../../reventless/spec
       sury:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(rescript@12.3.0)
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(rescript@12.3.0)
     devDependencies:
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
         version: link:../../../packages/reventless-ppx
       sury-ppx:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(sury@11.0.0-rc.1(rescript@12.3.0))
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(sury@11.0.0-rc.2(rescript@12.3.0))
     optionalDependencies:
       '@reventlessdev/reventless-host-shell':
         specifier: 3.0.0-alpha.81
@@ -390,8 +390,8 @@ importers:
         specifier: workspace:*
         version: link:../../../reventless/spec
       sury:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(rescript@12.3.0)
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(rescript@12.3.0)
     devDependencies:
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
@@ -400,8 +400,8 @@ importers:
         specifier: 12.3.0
         version: 12.3.0
       sury-ppx:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(sury@11.0.0-rc.1(rescript@12.3.0))
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(sury@11.0.0-rc.2(rescript@12.3.0))
 
   examples/online-shop-dcb/catalog-aws:
     dependencies:
@@ -427,8 +427,8 @@ importers:
         specifier: workspace:*
         version: link:../../../reventless/spec
       sury:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(rescript@12.3.0)
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(rescript@12.3.0)
     devDependencies:
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
@@ -437,8 +437,8 @@ importers:
         specifier: 12.3.0
         version: 12.3.0
       sury-ppx:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(sury@11.0.0-rc.1(rescript@12.3.0))
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(sury@11.0.0-rc.2(rescript@12.3.0))
 
   examples/online-shop-dcb/catalog-spec:
     dependencies:
@@ -446,8 +446,8 @@ importers:
         specifier: workspace:*
         version: link:../../../reventless/spec
       sury:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(rescript@12.3.0)
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(rescript@12.3.0)
     devDependencies:
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
@@ -456,8 +456,8 @@ importers:
         specifier: 12.3.0
         version: 12.3.0
       sury-ppx:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(sury@11.0.0-rc.1(rescript@12.3.0))
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(sury@11.0.0-rc.2(rescript@12.3.0))
 
   examples/online-shop-dcb/ordering:
     dependencies:
@@ -483,8 +483,8 @@ importers:
         specifier: workspace:*
         version: link:../../../reventless/spec
       sury:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(rescript@12.3.0)
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(rescript@12.3.0)
     devDependencies:
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
@@ -493,8 +493,8 @@ importers:
         specifier: 12.3.0
         version: 12.3.0
       sury-ppx:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(sury@11.0.0-rc.1(rescript@12.3.0))
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(sury@11.0.0-rc.2(rescript@12.3.0))
 
   examples/online-shop-dcb/ordering-aws:
     dependencies:
@@ -520,8 +520,8 @@ importers:
         specifier: workspace:*
         version: link:../../../reventless/spec
       sury:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(rescript@12.3.0)
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(rescript@12.3.0)
     devDependencies:
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
@@ -530,8 +530,8 @@ importers:
         specifier: 12.3.0
         version: 12.3.0
       sury-ppx:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(sury@11.0.0-rc.1(rescript@12.3.0))
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(sury@11.0.0-rc.2(rescript@12.3.0))
 
   examples/online-shop-dcb/ordering-spec:
     dependencies:
@@ -539,8 +539,8 @@ importers:
         specifier: workspace:*
         version: link:../../../reventless/spec
       sury:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(rescript@12.3.0)
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(rescript@12.3.0)
     devDependencies:
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
@@ -549,8 +549,8 @@ importers:
         specifier: 12.3.0
         version: 12.3.0
       sury-ppx:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(sury@11.0.0-rc.1(rescript@12.3.0))
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(sury@11.0.0-rc.2(rescript@12.3.0))
 
   examples/online-shop-dcb/platform-aws:
     dependencies:
@@ -570,8 +570,8 @@ importers:
         specifier: workspace:*
         version: link:../../../reventless/spec
       sury:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(rescript@12.3.0)
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(rescript@12.3.0)
     devDependencies:
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
@@ -580,8 +580,8 @@ importers:
         specifier: 12.3.0
         version: 12.3.0
       sury-ppx:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(sury@11.0.0-rc.1(rescript@12.3.0))
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(sury@11.0.0-rc.2(rescript@12.3.0))
 
   examples/online-shop-dcb/platform-local:
     dependencies:
@@ -613,8 +613,8 @@ importers:
         specifier: workspace:*
         version: link:../../../reventless/spec
       sury:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(rescript@12.3.0)
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(rescript@12.3.0)
     devDependencies:
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
@@ -623,8 +623,8 @@ importers:
         specifier: 12.3.0
         version: 12.3.0
       sury-ppx:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(sury@11.0.0-rc.1(rescript@12.3.0))
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(sury@11.0.0-rc.2(rescript@12.3.0))
     optionalDependencies:
       '@reventlessdev/reventless-host-shell':
         specifier: 3.0.0-alpha.81
@@ -654,8 +654,8 @@ importers:
         specifier: workspace:*
         version: link:../../../reventless/spec
       sury:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(rescript@12.3.0)
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(rescript@12.3.0)
     devDependencies:
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
@@ -664,8 +664,8 @@ importers:
         specifier: 12.3.0
         version: 12.3.0
       sury-ppx:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(sury@11.0.0-rc.1(rescript@12.3.0))
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(sury@11.0.0-rc.2(rescript@12.3.0))
 
   examples/online-shop-hybrid/catalog-aws:
     dependencies:
@@ -691,8 +691,8 @@ importers:
         specifier: workspace:*
         version: link:../../../reventless/spec
       sury:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(rescript@12.3.0)
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(rescript@12.3.0)
     devDependencies:
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
@@ -701,8 +701,8 @@ importers:
         specifier: 12.3.0
         version: 12.3.0
       sury-ppx:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(sury@11.0.0-rc.1(rescript@12.3.0))
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(sury@11.0.0-rc.2(rescript@12.3.0))
 
   examples/online-shop-hybrid/catalog-spec:
     dependencies:
@@ -710,8 +710,8 @@ importers:
         specifier: workspace:*
         version: link:../../../reventless/spec
       sury:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(rescript@12.3.0)
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(rescript@12.3.0)
     devDependencies:
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
@@ -720,8 +720,8 @@ importers:
         specifier: 12.3.0
         version: 12.3.0
       sury-ppx:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(sury@11.0.0-rc.1(rescript@12.3.0))
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(sury@11.0.0-rc.2(rescript@12.3.0))
 
   examples/online-shop-hybrid/ordering:
     dependencies:
@@ -747,8 +747,8 @@ importers:
         specifier: workspace:*
         version: link:../../../reventless/spec
       sury:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(rescript@12.3.0)
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(rescript@12.3.0)
     devDependencies:
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
@@ -757,8 +757,8 @@ importers:
         specifier: 12.3.0
         version: 12.3.0
       sury-ppx:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(sury@11.0.0-rc.1(rescript@12.3.0))
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(sury@11.0.0-rc.2(rescript@12.3.0))
 
   examples/online-shop-hybrid/ordering-aws:
     dependencies:
@@ -784,8 +784,8 @@ importers:
         specifier: workspace:*
         version: link:../../../reventless/spec
       sury:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(rescript@12.3.0)
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(rescript@12.3.0)
     devDependencies:
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
@@ -794,8 +794,8 @@ importers:
         specifier: 12.3.0
         version: 12.3.0
       sury-ppx:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(sury@11.0.0-rc.1(rescript@12.3.0))
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(sury@11.0.0-rc.2(rescript@12.3.0))
 
   examples/online-shop-hybrid/ordering-spec:
     dependencies:
@@ -803,8 +803,8 @@ importers:
         specifier: workspace:*
         version: link:../../../reventless/spec
       sury:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(rescript@12.3.0)
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(rescript@12.3.0)
     devDependencies:
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
@@ -813,8 +813,8 @@ importers:
         specifier: 12.3.0
         version: 12.3.0
       sury-ppx:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(sury@11.0.0-rc.1(rescript@12.3.0))
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(sury@11.0.0-rc.2(rescript@12.3.0))
 
   examples/online-shop-hybrid/platform-aws:
     dependencies:
@@ -849,8 +849,8 @@ importers:
         specifier: workspace:*
         version: link:../../../reventless/spec
       sury:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(rescript@12.3.0)
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(rescript@12.3.0)
     devDependencies:
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
@@ -859,8 +859,8 @@ importers:
         specifier: 12.3.0
         version: 12.3.0
       sury-ppx:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(sury@11.0.0-rc.1(rescript@12.3.0))
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(sury@11.0.0-rc.2(rescript@12.3.0))
 
   examples/online-shop-hybrid/platform-local:
     dependencies:
@@ -898,15 +898,15 @@ importers:
         specifier: workspace:*
         version: link:../../../reventless/spec
       sury:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(rescript@12.3.0)
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(rescript@12.3.0)
     devDependencies:
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
         version: link:../../../packages/reventless-ppx
       sury-ppx:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(sury@11.0.0-rc.1(rescript@12.3.0))
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(sury@11.0.0-rc.2(rescript@12.3.0))
     optionalDependencies:
       '@reventlessdev/reventless-host-shell':
         specifier: 3.0.0-alpha.81
@@ -939,8 +939,8 @@ importers:
         specifier: workspace:*
         version: link:../../../reventless/spec
       sury:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(rescript@12.3.0)
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(rescript@12.3.0)
     devDependencies:
       rescript:
         specifier: 12.3.0
@@ -1188,8 +1188,8 @@ importers:
         specifier: workspace:*
         version: link:../pulumi-pulumi
       sury:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(rescript@12.3.0)
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(rescript@12.3.0)
     devDependencies:
       esbuild:
         specifier: ^0.25.12
@@ -1198,8 +1198,8 @@ importers:
         specifier: 12.3.0
         version: 12.3.0
       sury-ppx:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(sury@11.0.0-rc.1(rescript@12.3.0))
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(sury@11.0.0-rc.2(rescript@12.3.0))
 
   rescript/pulumi-pulumi:
     dependencies:
@@ -1304,8 +1304,8 @@ importers:
         specifier: workspace:*
         version: link:../spec
       sury:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(rescript@12.3.0)
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(rescript@12.3.0)
       uuid:
         specifier: ^13.0.0
         version: 13.0.0
@@ -1314,8 +1314,8 @@ importers:
         specifier: 12.3.0
         version: 12.3.0
       sury-ppx:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(sury@11.0.0-rc.1(rescript@12.3.0))
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(sury@11.0.0-rc.2(rescript@12.3.0))
 
   reventless/conventional-changelog: {}
 
@@ -1355,8 +1355,8 @@ importers:
         specifier: workspace:*
         version: link:../spec
       sury:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(rescript@12.3.0)
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(rescript@12.3.0)
       uuid:
         specifier: ^13.0.0
         version: 13.0.0
@@ -1368,8 +1368,8 @@ importers:
         specifier: 12.3.0
         version: 12.3.0
       sury-ppx:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(sury@11.0.0-rc.1(rescript@12.3.0))
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(sury@11.0.0-rc.2(rescript@12.3.0))
 
   reventless/graphql-server:
     dependencies:
@@ -1405,8 +1405,8 @@ importers:
         specifier: workspace:*
         version: link:../spec
       sury:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(rescript@12.3.0)
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(rescript@12.3.0)
     devDependencies:
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
@@ -1415,8 +1415,8 @@ importers:
         specifier: 12.3.0
         version: 12.3.0
       sury-ppx:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(sury@11.0.0-rc.1(rescript@12.3.0))
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(sury@11.0.0-rc.2(rescript@12.3.0))
 
   reventless/infra:
     dependencies:
@@ -1433,11 +1433,11 @@ importers:
         specifier: workspace:*
         version: link:../spec
       sury:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(rescript@12.3.0)
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(rescript@12.3.0)
       sury-ppx:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(sury@11.0.0-rc.1(rescript@12.3.0))
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(sury@11.0.0-rc.2(rescript@12.3.0))
       uuid:
         specifier: ^13.0.0
         version: 13.0.0
@@ -1458,11 +1458,11 @@ importers:
         specifier: workspace:*
         version: link:../../rescript/pulumi-pulumi
       sury:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(rescript@12.3.0)
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(rescript@12.3.0)
       sury-ppx:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(sury@11.0.0-rc.1(rescript@12.3.0))
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(sury@11.0.0-rc.2(rescript@12.3.0))
     devDependencies:
       rescript:
         specifier: 12.3.0
@@ -1550,8 +1550,8 @@ importers:
         specifier: ^5.21.0
         version: 5.21.0(graphql@16.13.2)
       sury:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(rescript@12.3.0)
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(rescript@12.3.0)
       ws:
         specifier: ^8.18.0
         version: 8.20.0
@@ -1563,8 +1563,8 @@ importers:
         specifier: 12.3.0
         version: 12.3.0
       sury-ppx:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(sury@11.0.0-rc.1(rescript@12.3.0))
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(sury@11.0.0-rc.2(rescript@12.3.0))
 
   reventless/postgres:
     dependencies:
@@ -1590,8 +1590,8 @@ importers:
         specifier: ^8.13.1
         version: 8.22.0
       sury:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(rescript@12.3.0)
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(rescript@12.3.0)
     devDependencies:
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
@@ -1603,8 +1603,8 @@ importers:
         specifier: 12.3.0
         version: 12.3.0
       sury-ppx:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(sury@11.0.0-rc.1(rescript@12.3.0))
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(sury@11.0.0-rc.2(rescript@12.3.0))
 
   reventless/seed:
     dependencies:
@@ -1650,11 +1650,11 @@ importers:
         specifier: 1.1.1
         version: 1.1.1
       sury:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(rescript@12.3.0)
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(rescript@12.3.0)
       sury-ppx:
-        specifier: 11.0.0-rc.1
-        version: 11.0.0-rc.1(sury@11.0.0-rc.1(rescript@12.3.0))
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(sury@11.0.0-rc.2(rescript@12.3.0))
       yaml:
         specifier: ^2.8.3
         version: 2.8.3
@@ -11002,13 +11002,13 @@ packages:
     resolution: {integrity: sha512-ot0WnXS9fgdkgIcePe6RHNk1WA8+muPa6cSjeR3V8K27q9BB1rTE3R1p7Hv0z1ZyAc8s6Vvv8DIyWf681MAt0w==}
     engines: {node: '>= 0.4'}
 
-  sury-ppx@11.0.0-rc.1:
-    resolution: {integrity: sha512-hvRWv/R74H2Hatkhs0I14JzrmWvNm6mUhNwr/rOvDZatGBGh2yTdv7hGmqPo/FNG/tD4molv6c1YAIOUSOrI4Q==}
+  sury-ppx@11.0.0-rc.2:
+    resolution: {integrity: sha512-QuUFjls+5UFH/8AZyXVPR0wtvgQ4t2W2VIJs+BJpzh7Z+T6oJWyl2BaOMbfO/Pzi2HmM1knEuRmLjy3iMMBX+w==}
     peerDependencies:
-      sury: ^11.0.0-rc.1
+      sury: ^11.0.0-rc.2
 
-  sury@11.0.0-rc.1:
-    resolution: {integrity: sha512-UzxKHMmL2iNdKmbckYDYgaQOnv1l6I+r6orv03P29oAEC9CpzljkpYeIcJ/oAoBc63VSFaCnmoL6gfuhPDTimA==}
+  sury@11.0.0-rc.2:
+    resolution: {integrity: sha512-2sibppQ43Al/AxcXzOg/XorS5QDsQUO1FNnDFp88U+OVPyFg8DX7IUwWoWZeloaz5L7lDY8KFhGHptyFFklc4g==}
     peerDependencies:
       rescript: 12.x
     peerDependenciesMeta:
@@ -25453,11 +25453,11 @@ snapshots:
 
   supports-preserve-symlinks-flag@1.0.0: {}
 
-  sury-ppx@11.0.0-rc.1(sury@11.0.0-rc.1(rescript@12.3.0)):
+  sury-ppx@11.0.0-rc.2(sury@11.0.0-rc.2(rescript@12.3.0)):
     dependencies:
-      sury: 11.0.0-rc.1(rescript@12.3.0)
+      sury: 11.0.0-rc.2(rescript@12.3.0)
 
-  sury@11.0.0-rc.1(rescript@12.3.0):
+  sury@11.0.0-rc.2(rescript@12.3.0):
     optionalDependencies:
       rescript: 12.3.0
 

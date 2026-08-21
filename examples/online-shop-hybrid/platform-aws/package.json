@@ -23,12 +23,12 @@
     "@reventlessdev/reventless-seed": "workspace:*",
     "@reventlessdev/reventless-seed-aws": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*",
-    "sury": "11.0.0-rc.1"
+    "sury": "11.0.0-rc.2"
   },
   "devDependencies": {
     "@reventlessdev/reventless-ppx": "workspace:*",
     "rescript": "12.3.0",
-    "sury-ppx": "11.0.0-rc.1"
+    "sury-ppx": "11.0.0-rc.2"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org"
