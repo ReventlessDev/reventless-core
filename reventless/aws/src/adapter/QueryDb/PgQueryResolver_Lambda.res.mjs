@@ -241,7 +241,13 @@ async function dispatch(binding, lookupBindingOpt, payload) {
         let target = Stdlib_Option.getOr(payload.target, rm);
         let source = Stdlib_Option.getOr(payload.source, null);
         let ids$2 = argStrs(source, Stdlib_Option.getOr(payload.sourceIdsField, ""));
-        return await binding.pushdowns.byIds(target, ids$2);
+        return (await binding.pushdowns.byIds(target, ids$2)).filter(item => {
+          if (ownerAllows(item)) {
+            return retiredAllows(item);
+          } else {
+            return false;
+          }
+        });
       case "resolveOne" :
         let target$1 = Stdlib_Option.getOr(payload.target, rm);
         let source$1 = Stdlib_Option.getOr(payload.source, null);
@@ -265,10 +271,17 @@ async function dispatch(binding, lookupBindingOpt, payload) {
         } else {
           filtered = items$2;
         }
+        let allowed = filtered.filter(item => {
+          if (ownerAllows(item)) {
+            return retiredAllows(item);
+          } else {
+            return false;
+          }
+        });
         if (Stdlib_Option.getOr(payload.multi, false)) {
-          return filtered;
+          return allowed;
         }
-        let item = filtered[0];
+        let item = allowed[0];
         if (item !== undefined) {
           return item;
         } else {

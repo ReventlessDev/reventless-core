@@ -231,6 +231,14 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
       }
     })
 
+    // The GraphQL type the cross-table fields hang off — the plugin-prefixed SDL
+    // name, not the QueryDb's own. A resolver naming the other one is refused at
+    // deploy with "No field named X found on type Y".
+    let parentTypeName = switch registryEntry {
+    | Some({returnTypeName}) => returnTypeName
+    | None => name
+    }
+
     // @resolves — single cross-table field resolver on this (parent) type. The
     // target's binding key is its capitalized spec name (mirrors how the binding
     // registry is keyed); the parent object flows via ctx.source.
@@ -259,7 +267,7 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
         ~name=name ++ field->String.capitalize,
         ~api,
         ~dataSourceName,
-        ~type_=name->Pulumi.Input.make,
+        ~type_=parentTypeName->Pulumi.Input.make,
         ~field=field->Pulumi.Input.make,
         ~code=invokeFieldTemplate(~sourceType=name, ~kind="resolveOne", ~target=targetKey, ~extra),
         ~opts,
@@ -275,7 +283,7 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
         ~name=name ++ resolvedField->String.capitalize,
         ~api,
         ~dataSourceName,
-        ~type_=name->Pulumi.Input.make,
+        ~type_=parentTypeName->Pulumi.Input.make,
         ~field=resolvedField->Pulumi.Input.make,
         ~code=invokeFieldTemplate(~sourceType=name, ~kind="resolveMany", ~target=targetKey, ~extra),
         ~opts,

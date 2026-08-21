@@ -8,6 +8,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Stdlib_Nullable from "@rescript/runtime/lib/es6/Stdlib_Nullable.js";
 import * as Owner$Reventless from "@reventlessdev/reventless-spec/src/components/Owner.res.mjs";
+import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
 import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types/OwnerScope.res.mjs";
 import * as Api_Ids$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Ids.res.mjs";
@@ -54,7 +55,7 @@ function Make(Bus) {
       nodeTypeRegistry: DomainGraphQL_Server$ReventlessLocal.nodeTypeRegistry
     }
   };
-  let make = (name, param, param$1, param$2, indexes, subIdField, param$3, param$4, authorization, param$5) => {
+  let make = (name, param, param$1, param$2, indexes, subIdField, idResolverConfigs, idsResolverConfigs, authorization, param$3) => {
     let server = serverRef.contents;
     let relay = relayRef.contents;
     if (relay !== undefined) {
@@ -617,6 +618,122 @@ function Make(Bus) {
         resolver
       ];
     });
+    let targetAllows = (ctx, target, item) => {
+      let schema = Plugin_Helpers$ReventlessCore.stateSchemaRegistry[target];
+      let cell = field => Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[field]);
+      let identity = extractIdentity(ctx);
+      let match = OwnerScope$Reventless.decide(identity, Stdlib_Option.flatMap(schema, s => Owner$Reventless.fieldNames(s)[0]), undefined);
+      let ownerOk;
+      if (typeof match !== "object") {
+        ownerOk = match === "Unscoped";
+      } else {
+        let required = match._1;
+        ownerOk = Stdlib_Option.mapOr(Stdlib_Option.flatMap(cell(match._0), Stdlib_JSON.Decode.string), false, v => v === required);
+      }
+      let retiredSpec = Stdlib_Option.flatMap(Stdlib_Option.flatMap(schema, StateAnnotations$Reventless.getSpec), spec => spec.retired);
+      let scope = OwnerScope$Reventless.retiredScopeOf(OwnerScope$Reventless.decideRetired(identity, Stdlib_Option.map(retiredSpec, r => r.field), Stdlib_Option.flatMap(retiredSpec, r => r.values), false, undefined));
+      let retiredOk = scope !== undefined ? !OwnerScope$Reventless.isRetiredValue(scope, cell(scope.field)) : true;
+      if (ownerOk) {
+        return retiredOk;
+      } else {
+        return false;
+      }
+    };
+    let withId = (key, item) => {
+      let obj = Stdlib_Option.mapOr(Stdlib_JSON.Decode.object(item), {}, prim => Object.assign({}, prim));
+      obj["id"] = key;
+      return obj;
+    };
+    let loadFrom = async (target, key) => {
+      let ops = Bus.getQueryDb(target);
+      if (ops !== undefined) {
+        return await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(key)), param => Effect.succeed([])));
+      } else {
+        return [];
+      }
+    };
+    let lookupByIndexIn = (target, field, value) => {
+      let lookup = Bus.getQueryDbIndexLookup(target);
+      if (lookup !== undefined) {
+        return lookup(field, value);
+      }
+      let scanAll = Bus.getQueryDbScan(target);
+      if (scanAll !== undefined) {
+        return scanAll().filter(item => Stdlib_Option.mapOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[field]), Stdlib_JSON.Decode.string), false, v => v === value));
+      } else {
+        return [];
+      }
+    };
+    let sourceField = (root, field) => Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(root), d => d[field]);
+    let fieldResolvers = {};
+    idResolverConfigs.forEach(config => {
+      let target = config.target;
+      let match = config.source;
+      let resolvedField = match.resolvedField;
+      let subId = match.subId;
+      let idField = match.idField;
+      let match$1;
+      match$1 = resolvedField.TAG === "Single" ? [
+          resolvedField._0,
+          false
+        ] : [
+          resolvedField._0,
+          true
+        ];
+      let multi = match$1[1];
+      let targetName = target.tableName;
+      let resolver = async (root, args, ctx) => {
+        let key = Stdlib_Option.getOr(Stdlib_Option.flatMap(sourceField(root, idField), Stdlib_JSON.Decode.string), "");
+        let rows;
+        if (key === "") {
+          rows = [];
+        } else {
+          let index = target.idField;
+          rows = typeof index !== "object" ? (await loadFrom(targetName, key)).map(extra => withId(key, extra)) : (
+              index.TAG === "Index" ? lookupByIndexIn(targetName, index._0, key) : lookupByIndexIn(targetName, index._1, key)
+            );
+        }
+        let match = target.subIdField;
+        let narrowed;
+        if (typeof subId !== "object") {
+          narrowed = rows;
+        } else if (subId.TAG === "Field") {
+          if (match !== undefined) {
+            let want = Stdlib_Option.flatMap(sourceField(root, subId._0), Stdlib_JSON.Decode.string);
+            narrowed = rows.filter(item => Primitive_object.equal(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[match]), Stdlib_JSON.Decode.string), want));
+          } else {
+            narrowed = rows;
+          }
+        } else if (match !== undefined) {
+          let sortArgument = subId._0;
+          let want$1 = Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d[sortArgument]);
+          narrowed = want$1 !== undefined ? rows.filter(item => Primitive_object.equal(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[match]), Stdlib_JSON.Decode.string), Stdlib_JSON.Decode.string(want$1))) : rows;
+        } else {
+          narrowed = rows;
+        }
+        let allowed = narrowed.filter(item => targetAllows(ctx, targetName, item));
+        if (multi) {
+          return allowed;
+        } else {
+          return Stdlib_Option.getOr(allowed[0], null);
+        }
+      };
+      fieldResolvers[match$1[0]] = resolver;
+    });
+    idsResolverConfigs.forEach(config => {
+      let match = config.source;
+      let idsField = match.idsField;
+      let targetName = config.target.tableName;
+      let resolver = async (root, _args, ctx) => {
+        let ids = Stdlib_Array.filterMap(Stdlib_Option.getOr(Stdlib_Option.flatMap(sourceField(root, idsField), Stdlib_JSON.Decode.array), []), Stdlib_JSON.Decode.string);
+        let rows = await Promise.all(ids.map(async key => Stdlib_Option.map((await loadFrom(targetName, key))[0], extra => withId(key, extra))));
+        return Stdlib_Array.filterMap(rows, row => Stdlib_Option.filter(row, item => targetAllows(ctx, targetName, item)));
+      };
+      fieldResolvers[match.resolvedField] = resolver;
+    });
+    if (Object.keys(fieldResolvers).length !== 0) {
+      server.registerFieldResolvers(returnTypeName, fieldResolvers);
+    }
     let allSdl = [byIdSdl].concat(byIdsSdl).concat(refsSdl).concat(match[0]).concat(itemsSdl).concat(indexSdlFields);
     let resolvers = {};
     resolvers[singleQueryName] = byIdResolver;

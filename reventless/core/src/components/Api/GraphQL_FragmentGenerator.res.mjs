@@ -3,6 +3,8 @@
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_String from "@rescript/runtime/lib/es6/Stdlib_String.js";
+import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as Api_Naming$ReventlessCore from "./Api_Naming.res.mjs";
 import * as SchemaType$ReventlessCore from "./SchemaType.res.mjs";
@@ -129,9 +131,20 @@ function reportUnclassifiedUnions(typeName, schema) {
   SchemaType$ReventlessCore.unclassifiedUnions(schema).forEach(param => log.warn("GraphQL_FragmentGenerator", undefined, typeName + `.` + param.path + ` is emitted as String: ` + param.reason));
 }
 
-function deriveObjectTypeWithNested(typeName, excludeFieldsOpt, includeIdParamOpt, schema) {
+function resolvedFieldSdl(param) {
+  let typeName = param.typeName;
+  let fieldName = param.fieldName;
+  if (param.multi) {
+    return `  ` + fieldName + `: [` + typeName + `!]`;
+  } else {
+    return `  ` + fieldName + `: ` + typeName;
+  }
+}
+
+function deriveObjectTypeWithNested(typeName, excludeFieldsOpt, includeIdParamOpt, resolvedFieldsOpt, schema) {
   let excludeFields = excludeFieldsOpt !== undefined ? excludeFieldsOpt : [];
   let includeIdParam = includeIdParamOpt !== undefined ? includeIdParamOpt : true;
+  let resolvedFields = resolvedFieldsOpt !== undefined ? resolvedFieldsOpt : [];
   reportUnclassifiedUnions(typeName, schema);
   let fields = SchemaType$ReventlessCore.fromSuryObject(typeName, schema);
   if (fields === undefined) {
@@ -158,7 +171,20 @@ function deriveObjectTypeWithNested(typeName, excludeFieldsOpt, includeIdParamOp
   seenTypes.add(typeName);
   let mainType = objectRefToGraphQL(undefined, typeName, filteredFields, collectedTypes, seenTypes);
   let mainTypeWithId = includeIdParam ? mainType.replace(`type ` + typeName + ` {\n`, `type ` + typeName + ` implements Node {\n  id: ID!\n`) : mainType;
-  return collectedTypes.concat([mainTypeWithId]);
+  resolvedFields.forEach(param => {
+    let fieldName = param.fieldName;
+    if (Stdlib_Option.isSome(filteredFields[fieldName]) || includeIdParam && fieldName === "id") {
+      return Stdlib_JsError.throwWithMessage(typeName + `.` + fieldName + ` is declared by @resolves/@resolvesMany and is already a field of the state record. Name the resolved field something the state does not use.`);
+    }
+  });
+  let mainTypeComplete;
+  if (resolvedFields.length === 0) {
+    mainTypeComplete = mainTypeWithId;
+  } else {
+    let body = mainTypeWithId.slice(0, mainTypeWithId.length - 1 | 0);
+    mainTypeComplete = body + resolvedFields.map(resolvedFieldSdl).join("\n") + "\n}";
+  }
+  return collectedTypes.concat([mainTypeComplete]);
 }
 
 function derivePluralWrapperType(pluralTypeName, singularTypeName) {
@@ -505,13 +531,27 @@ function generate(mutationEntries, queryEntries) {
     }
   });
   queryEntries.forEach(entry => {
+    Stdlib_Option.getOr(entry.resolvedFields, []).forEach(param => {
+      let typeName = param.typeName;
+      let fieldName = param.fieldName;
+      let target = queryEntries.find(e => e.returnTypeName === typeName);
+      if (target === undefined) {
+        return Stdlib_JsError.throwWithMessage(entry.returnTypeName + `.` + fieldName + ` is declared by @resolves/@resolvesMany and resolves to "` + typeName + `", which this plugin does not expose as a queryable. The target must be a ReadModel or StateViewSlice of the same plugin, named by its spec name.`);
+      }
+      let targetPermission = Stdlib_Option.getOr(target.permission, "AllowAuthenticated");
+      if (Primitive_object.notequal(targetPermission, Stdlib_Option.getOr(entry.permission, "AllowAuthenticated")) && targetPermission !== "AllowAnonymous") {
+        return Stdlib_JsError.throwWithMessage(entry.returnTypeName + `.` + fieldName + ` resolves to "` + typeName + `", which declares a different authorization. A cross-table field is read through its parent and would answer under ` + entry.returnTypeName + `'s rule, handing over rows ` + typeName + `'s own door withholds. Give the two views the same authorization, or query ` + typeName + ` directly.`);
+      }
+    });
+  });
+  queryEntries.forEach(entry => {
     let includeIdParam = Stdlib_Option.getOr(entry.includeIdParam, true);
     let connectionSpec = Stdlib_Option.getOr(entry.connectionSpec, true);
     if (!seenTypes.has(entry.returnTypeName)) {
       seenTypes.add(entry.returnTypeName);
       let fields = entry.excludeFields;
       let excludeFields = fields !== undefined ? fields : [];
-      let nestedTypes = deriveObjectTypeWithNested(entry.returnTypeName, excludeFields, includeIdParam, entry.stateSchema);
+      let nestedTypes = deriveObjectTypeWithNested(entry.returnTypeName, excludeFields, includeIdParam, Stdlib_Option.getOr(entry.resolvedFields, []), entry.stateSchema);
       nestedTypes.forEach(t => {
         types.push(t);
       });
@@ -606,6 +646,7 @@ export {
   objectRefToGraphQL,
   deriveFieldType,
   reportUnclassifiedUnions,
+  resolvedFieldSdl,
   deriveObjectTypeWithNested,
   derivePluralWrapperType,
   deriveConnectionTypes,

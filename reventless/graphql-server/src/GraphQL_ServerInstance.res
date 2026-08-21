@@ -42,6 +42,11 @@ type t = {
   registerQueries: (~sdlFields: array<string>, ~resolvers: dict<resolverFn>) => unit,
   registerSubscriptions: (~sdlFields: array<string>, ~resolvers: dict<resolverFn>) => unit,
   registerTypes: (~sdlTypes: array<string>) => unit,
+  /** Resolvers for fields of an object type rather than of a root type — the
+      cross-table fields `@resolves` / `@resolvesMany` add to a queryable. The
+      SDL for those fields comes from the plugin's schema fragment, so only the
+      resolver map is registered here. */
+  registerFieldResolvers: (~typeName: string, ~resolvers: dict<resolverFn>) => unit,
   getMutationResolver: string => option<resolverFn>,
   getQueryResolver: string => option<resolverFn>,
   // `~contextFactory` is the yoga context factory — when supplied, requests
@@ -76,6 +81,7 @@ let make = (~label: string="GraphQL"): t => {
   let mutationResolvers: ref<dict<resolverFn>> = ref(Dict.make())
   let queryResolvers: ref<dict<resolverFn>> = ref(Dict.make())
   let subscriptionResolvers: ref<dict<resolverFn>> = ref(Dict.make())
+  let fieldResolvers: ref<dict<dict<resolverFn>>> = ref(Dict.make())
   let mutationFields: ref<array<string>> = ref([])
   let queryFields: ref<array<string>> = ref([])
   let subscriptionFields: ref<array<string>> = ref([])
@@ -108,6 +114,17 @@ let make = (~label: string="GraphQL"): t => {
     resolvers->Dict.toArray->Array.forEach(((k, v)) =>
       subscriptionResolvers.contents->Dict.set(k, v)
     )
+  }
+
+  let registerFieldResolvers = (~typeName: string, ~resolvers: dict<resolverFn>) => {
+    let forType = switch fieldResolvers.contents->Dict.get(typeName) {
+    | Some(d) => d
+    | None =>
+      let d = Dict.make()
+      fieldResolvers.contents->Dict.set(typeName, d)
+      d
+    }
+    resolvers->Dict.toArray->Array.forEach(((k, v)) => forType->Dict.set(k, v))
   }
 
   // Identical type blocks dedupe: shared-type registrations (e.g. the
@@ -173,6 +190,9 @@ ${mutations}
     if subscriptionResolvers.contents->Dict.keysToArray->Array.length > 0 {
       resolvers->Dict.set("Subscription", subscriptionResolvers.contents)
     }
+    fieldResolvers.contents
+    ->Dict.toArray
+    ->Array.forEach(((typeName, byField)) => resolvers->Dict.set(typeName, byField))
     let sdl = buildSdl()
     lastFullSdl.contents = Some(sdl)
     let schema = YG.createSchema({"typeDefs": sdl, "resolvers": resolvers})
@@ -220,6 +240,7 @@ ${mutations}
     mutationResolvers.contents = Dict.make()
     queryResolvers.contents = Dict.make()
     subscriptionResolvers.contents = Dict.make()
+    fieldResolvers.contents = Dict.make()
     mutationFields.contents = []
     queryFields.contents = []
     subscriptionFields.contents = []
@@ -318,6 +339,7 @@ ${mutations}
     registerQueries,
     registerSubscriptions,
     registerTypes,
+    registerFieldResolvers,
     getMutationResolver,
     getQueryResolver,
     start,

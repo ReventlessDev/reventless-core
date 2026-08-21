@@ -62,6 +62,10 @@ let registerQueries = DomainGraphQL_Server$ReventlessLocal.registerQueries;
 
 let registerSubscriptions = DomainGraphQL_Server$ReventlessLocal.registerSubscriptions;
 
+let registerFieldResolvers = DomainGraphQL_Server$ReventlessLocal.registerFieldResolvers;
+
+let getFieldResolver = DomainGraphQL_Server$ReventlessLocal.getFieldResolver;
+
 let getMutationResolver = DomainGraphQL_Server$ReventlessLocal.getMutationResolver;
 
 let getQueryResolver = DomainGraphQL_Server$ReventlessLocal.getQueryResolver;
@@ -157,6 +161,8 @@ export {
   registerMutations,
   registerQueries,
   registerSubscriptions,
+  registerFieldResolvers,
+  getFieldResolver,
   getMutationResolver,
   getQueryResolver,
   registerTypes,

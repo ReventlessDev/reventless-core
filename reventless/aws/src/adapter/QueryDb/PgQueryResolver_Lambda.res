@@ -443,10 +443,15 @@ let dispatch = async (
         items->Array.filter(it => it->argStr(subField)->Option.getOr("") == subVal)
       | _ => items
       }
+      // The target's own rules, applied to the target's rows — `binding` here is
+      // the target's, so `ownerAllows` / `retiredAllows` ask its questions. A
+      // nested field takes no `includeRetired` argument, so a retired row never
+      // travels through one.
+      let allowed = filtered->Array.filter(item => ownerAllows(item) && retiredAllows(item))
       if payload.multi->Option.getOr(false) {
-        JSON.Encode.array(filtered)
+        JSON.Encode.array(allowed)
       } else {
-        switch filtered->Array.get(0) {
+        switch allowed->Array.get(0) {
         | Some(item) => item
         | None => JSON.Encode.null
         }
@@ -459,7 +464,11 @@ let dispatch = async (
       let target = payload.target->Option.getOr(rm)
       let source = payload.source->Option.getOr(JSON.Encode.null)
       let ids = source->argStrs(payload.sourceIdsField->Option.getOr(""))
-      JSON.Encode.array(await binding.pushdowns.byIds(~readModelName=target, ids))
+      JSON.Encode.array(
+        (await binding.pushdowns.byIds(~readModelName=target, ids))->Array.filter(item =>
+          ownerAllows(item) && retiredAllows(item)
+        ),
+      )
 
     | other =>
       // Fail loudly on unmapped kinds (feature-parity guard, per the B3.2 plan).

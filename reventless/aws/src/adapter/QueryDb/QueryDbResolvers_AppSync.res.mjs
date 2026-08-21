@@ -171,10 +171,22 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
     } else {
       resolverRefs = undefined;
     }
+    let parentTypeName = registryEntry !== undefined ? registryEntry.returnTypeName : name$1;
+    let targetScope = targetName => {
+      let schema = Plugin_Helpers$ReventlessCore.stateSchemaRegistry[targetName];
+      let retired = Stdlib_Option.flatMap(Stdlib_Option.flatMap(schema, StateAnnotations$Reventless.getSpec), spec => spec.retired);
+      return [
+        Stdlib_Option.flatMap(schema, s => Owner$Reventless.fieldNames(s)[0]),
+        Stdlib_Option.map(retired, r => r.field),
+        Stdlib_Option.flatMap(retired, r => r.values)
+      ];
+    };
     let idResolvers = idResolverConfigs.map(config => {
       let target = config.target;
       let targetId = target.idField;
+      let tableName = target.tableName;
       let match = config.source;
+      let resolvedField = match.resolvedField;
       let sourceSubId = match.subId;
       let sourceIdField = match.idField;
       let match$1;
@@ -197,40 +209,62 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
       }
       let targetIdField = match$1[1];
       let index$1 = match$1[0];
-      let storageResource$1 = storageResource(target.pluginName, target.tableName);
-      let field = match.resolvedField._0;
+      let storageResource$1 = storageResource(target.pluginName, tableName);
+      let match$2 = targetScope(tableName);
+      let match$3;
+      match$3 = resolvedField.TAG === "Single" ? [
+          resolvedField._0,
+          false
+        ] : [
+          resolvedField._0,
+          true
+        ];
+      let field = match$3[0];
+      let response = AppSync_Resolver_Functions$PulumiAws.resolvedFieldResponse(match$3[1], match$2[0], elevatedGroups, match$2[1], match$2[2]);
       let dataSourceName = AppSync_DataSource$PulumiAws.makeDynamoDBDataSourceWithTableName(name$1 + (Stdlib_String.capitalize(field) + "Resolver"), api, storageResource$1.name, apiRole, opts).name;
-      let match$2 = target.subIdField;
+      let match$4 = target.subIdField;
       let tmp;
       let exit = 0;
+      let exit$1 = 0;
       if (typeof targetId !== "object") {
-        tmp = typeof sourceSubId !== "object" ? AppSync_Resolver_Functions$PulumiAws.resolveId(sourceIdField) : (
+        tmp = typeof sourceSubId !== "object" ? AppSync_Resolver_Functions$PulumiAws.resolveId(sourceIdField, response) : (
             sourceSubId.TAG === "Field" ? (
-                match$2 !== undefined ? AppSync_Resolver_Functions$PulumiAws.resolveIdSort(sourceIdField, sourceSubId._0, match$2) : AppSync_Resolver_Functions$PulumiAws.resolveId(sourceIdField)
+                match$4 !== undefined ? AppSync_Resolver_Functions$PulumiAws.resolveIdSort(sourceIdField, sourceSubId._0, match$4, response) : AppSync_Resolver_Functions$PulumiAws.resolveId(sourceIdField, response)
               ) : (
-                match$2 !== undefined ? AppSync_Resolver_Functions$PulumiAws.resolveIdSortArgument(sourceIdField, sourceSubId._0, match$2) : AppSync_Resolver_Functions$PulumiAws.resolveId(sourceIdField)
+                match$4 !== undefined ? AppSync_Resolver_Functions$PulumiAws.resolveIdSortArgument(sourceIdField, sourceSubId._0, match$4, response) : AppSync_Resolver_Functions$PulumiAws.resolveId(sourceIdField, response)
               )
           );
       } else {
-        exit = 1;
+        exit$1 = 2;
+      }
+      if (exit$1 === 2) {
+        if (typeof sourceSubId !== "object") {
+          exit = 1;
+        } else if (sourceSubId.TAG === "Field") {
+          if (match$4 !== undefined) {
+            tmp = AppSync_Resolver_Functions$PulumiAws.resolveIdByIndexSort(index$1, sourceIdField, sourceSubId._0, targetIdField, match$4, response);
+          } else {
+            exit = 1;
+          }
+        } else if (match$4 !== undefined) {
+          tmp = AppSync_Resolver_Functions$PulumiAws.resolveIdByIndexSortArgument(index$1, sourceIdField, sourceSubId._0, targetIdField, match$4, response);
+        } else {
+          exit = 1;
+        }
       }
       if (exit === 1) {
-        tmp = typeof sourceSubId !== "object" ? AppSync_Resolver_Functions$PulumiAws.resolveIdByIndex(index$1, sourceIdField, targetIdField) : (
-            sourceSubId.TAG === "Field" ? (
-                match$2 !== undefined ? AppSync_Resolver_Functions$PulumiAws.resolveIdByIndexSort(index$1, sourceIdField, sourceSubId._0, targetIdField, match$2) : AppSync_Resolver_Functions$PulumiAws.resolveIdByIndex(index$1, sourceIdField, targetIdField)
-              ) : (
-                match$2 !== undefined ? AppSync_Resolver_Functions$PulumiAws.resolveIdByIndexSortArgument(index$1, sourceIdField, sourceSubId._0, targetIdField, match$2) : AppSync_Resolver_Functions$PulumiAws.resolveIdByIndex(index$1, sourceIdField, targetIdField)
-              )
-          );
+        tmp = AppSync_Resolver_Functions$PulumiAws.resolveIdByIndex(index$1, sourceIdField, targetIdField, response);
       }
-      return AppSync_Resolver_Retrying$ReventlessAws.makeUnitJsResolver(name$1 + Stdlib_String.capitalize(field), api, dataSourceName, name$1, field, tmp, opts);
+      return AppSync_Resolver_Retrying$ReventlessAws.makeUnitJsResolver(name$1 + Stdlib_String.capitalize(field), api, dataSourceName, parentTypeName, field, tmp, opts);
     });
     let idsResolvers = idsResolverConfigs.map(config => {
       let target = config.target;
+      let tableName = target.tableName;
       let match = config.source;
-      let idsField = match.idsField;
-      let storageResource$1 = storageResource(target.pluginName, target.tableName);
-      return AppSync_Resolver_Retrying$ReventlessAws.makeUnitJsResolver(name$1 + Stdlib_String.capitalize(idsField), api, dataSourceName, name$1, match.resolvedField, generateCode(storageResource$1, none => AppSync_Resolver_Functions$PulumiAws.resolveIds(none, idsField, target.subIdField)), opts);
+      let resolvedField = match.resolvedField;
+      let storageResource$1 = storageResource(target.pluginName, tableName);
+      let match$1 = targetScope(tableName);
+      return AppSync_Resolver_Retrying$ReventlessAws.makeUnitJsResolver(name$1 + Stdlib_String.capitalize(resolvedField), api, dataSourceName, parentTypeName, resolvedField, generateCode(storageResource$1, AppSync_Resolver_Functions$PulumiAws.resolveIds(match.idsField, target.subIdField, match$1[0], match$1[1], match$1[2], elevatedGroups)), opts);
     });
     let mainResolvers = resolverByIdMultiple !== undefined ? (
         resolverByIds !== undefined ? [

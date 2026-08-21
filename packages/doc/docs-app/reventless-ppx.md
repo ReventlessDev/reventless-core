@@ -680,11 +680,6 @@ type state = {
 // Resolved by querying Orders table's byProductId secondary index
 ```
 
-**`@resolves` with cross-plugin table:**
-```rescript
-@resolves({table: "Products", field: "product", plugin: "CatalogPlugin"}) productId: string,
-```
-
 **`@resolvesMany` — resolve an array of IDs:**
 ```rescript
 @schema
@@ -692,11 +687,34 @@ type state = {
   @id cartId: string,
   @resolvesMany({table: "Products", field: "products"}) productIds: array<string>,
 }
-// Adds virtual GraphQL field: products: [Product!]!
+// Adds virtual GraphQL field: products: [Catalog_Product!]
 // Resolved by BatchGetItem on the Products table
 ```
 
 **Note:** `@resolves` and `@resolvesMany` use **record payload syntax** (`({key: "value"})`), not labeled-arg syntax. The keywords `~to` and `~as` are reserved in ReScript and cannot be used as labeled args.
+
+**The target must be a queryable of the same plugin.** `table` names another
+ReadModel or StateViewSlice by its spec name; the field is emitted with that
+view's GraphQL type (`{Plugin}_{Singular}`). A target the plugin does not expose
+is refused at build time, and so is a `plugin:` key naming a different plugin:
+each plugin's GraphQL document has to be valid standalone before the merge, and
+on AWS the target table's grant is attached to the declaring plugin's API role.
+To read across a plugin boundary, query the other view directly.
+
+**The target must be guarded the way the declaring view is.** A cross-table field
+is read through its parent and answers under the parent's authorization, so a
+target declaring a different `@authorize` rule is refused at build time. A target
+open to everyone is allowed — it can only narrow.
+
+**The target's rules narrow the rows.** The row comes out of the target's table,
+so the target's `@owner` and `@retired` declarations decide what the caller sees
+— on every backend. A cross-table field takes no `includeRetired` argument, so a
+retired row never travels through one; `{list}Refs` plus `@namedWhenRetired` is
+the door that still names a row the archive took.
+
+**Nullability.** The single form is nullable (the foreign key may name a row that
+was never written); the batch form is `[T!]` — ids that match nothing drop out,
+so the list is shorter rather than null-holed.
 
 ---
 

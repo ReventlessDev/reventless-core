@@ -30,6 +30,9 @@ function make(labelOpt) {
   let subscriptionResolvers = {
     contents: {}
   };
+  let fieldResolvers = {
+    contents: {}
+  };
   let mutationFields = {
     contents: []
   };
@@ -69,6 +72,20 @@ function make(labelOpt) {
     subscriptionFields.contents = subscriptionFields.contents.concat(sdlFields);
     Object.entries(resolvers).forEach(param => {
       subscriptionResolvers.contents[param[0]] = param[1];
+    });
+  };
+  let registerFieldResolvers = (typeName, resolvers) => {
+    let d = fieldResolvers.contents[typeName];
+    let forType;
+    if (d !== undefined) {
+      forType = d;
+    } else {
+      let d$1 = {};
+      fieldResolvers.contents[typeName] = d$1;
+      forType = d$1;
+    }
+    Object.entries(resolvers).forEach(param => {
+      forType[param[0]] = param[1];
     });
   };
   let registerTypes = sdlTypes => {
@@ -112,6 +129,9 @@ type Mutation {
     if (Object.keys(subscriptionResolvers.contents).length !== 0) {
       resolvers["Subscription"] = subscriptionResolvers.contents;
     }
+    Object.entries(fieldResolvers.contents).forEach(param => {
+      resolvers[param[0]] = param[1];
+    });
     let sdl = buildSdl();
     lastFullSdl.contents = sdl;
     let schema = GraphqlYoga$1.createSchema({
@@ -167,6 +187,7 @@ type Mutation {
     mutationResolvers.contents = {};
     queryResolvers.contents = {};
     subscriptionResolvers.contents = {};
+    fieldResolvers.contents = {};
     mutationFields.contents = [];
     queryFields.contents = [];
     subscriptionFields.contents = [];
@@ -258,6 +279,7 @@ type Mutation {
     registerQueries: registerQueries,
     registerSubscriptions: registerSubscriptions,
     registerTypes: registerTypes,
+    registerFieldResolvers: registerFieldResolvers,
     getMutationResolver: getMutationResolver,
     getQueryResolver: getQueryResolver,
     start: start,

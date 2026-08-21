@@ -33,6 +33,10 @@ pass green over the gap, and
 still has "Integration test: verify virtual field resolvable" unchecked. **Fixing `@resolvesMany`
 is out of scope here** — it wants its own plan.
 
+> Since fixed, end to end, in [cross-table-fields-end-to-end.md](cross-table-fields-end-to-end.md).
+> The relation below is still served by the index, which is the right shape for a paginated,
+> server-filtered product list; the annotation is for embedding a referenced row.
+
 So the relation is served the other way round: index `Products.categoryId` so the server can
 answer "products in this category".
 

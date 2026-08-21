@@ -522,6 +522,32 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
       None
     }
 
+    // The GraphQL type the cross-table fields hang off. `name` is the QueryDb's
+    // own (capitalised spec) name; the SDL calls the type by its plugin-prefixed
+    // name, and a resolver naming the other one is refused at deploy with
+    // "No field named X found on type Y".
+    let parentTypeName = switch registryEntry {
+    | Some({returnTypeName}) => returnTypeName
+    | None => name
+    }
+
+    // A cross-table field hands back rows from the TARGET's table, so the owner
+    // and retirement rules that apply are the target's. Read from the same
+    // registry this view reads its own from — populated for every queryable in
+    // the plugin before any resolver is built.
+    let targetScope = (targetName: string) => {
+      let schema = ReventlessCore.Plugin_Helpers.stateSchemaRegistry->Dict.get(targetName)
+      let retired =
+        schema
+        ->Option.flatMap(Reventless.StateAnnotations.getSpec)
+        ->Option.flatMap(spec => spec.retired)
+      (
+        schema->Option.flatMap(s => Reventless.Owner.fieldNames(s)->Array.get(0)),
+        retired->Option.map(r => r.field),
+        retired->Option.flatMap(r => r.values),
+      )
+    }
+
     let idResolvers = idResolverConfigs->Array.map(config => {
       let {
         source: {idField: sourceIdField, subId: sourceSubId, resolvedField},
@@ -533,71 +559,100 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
       | _ => ("", "")
       }
       let storageResource = storageResource(~pluginName=target.pluginName, ~tableName)
-      switch resolvedField {
-      | Single(field)
-      | Multi(field) =>
-        let dataSourceName =
-          DataSource.makeDynamoDBDataSourceWithTableName(
-            ~name=name ++ (field->String.capitalize ++ "Resolver"),
-            ~api,
-            ~tableName=storageResource.name,
-            ~serviceRole=apiRole,
-            ~opts,
-          ).name->Pulumi.Output.asInput
-
-        Resolver.makeUnitJsResolver(
-          ~name=name ++ field->String.capitalize,
-          ~api,
-          ~dataSourceName,
-          ~type_=name->Pulumi.Input.make,
-          ~field=field->Pulumi.Input.make,
-          ~code=switch (targetId, sourceSubId, target.subIdField) {
-          | (Id, Field(sourceSortField), Some(targetSortField)) =>
-            Resolver.Functions.resolveIdSort(~sourceIdField, ~sourceSortField, ~targetSortField)
-          | (Id, Argument(sourceSortArgument), Some(targetSortField)) =>
-            Resolver.Functions.resolveIdSortArgument(
-              ~sourceIdField,
-              ~sourceSortArgument,
-              ~targetSortField,
-            )
-          | (Id, _, _) => Resolver.Functions.resolveId(~sourceIdField)
-
-          | (_, Field(sourceSortField), Some(targetSortField)) =>
-            Resolver.Functions.resolveIdByIndexSort(
-              ~index,
-              ~sourceIdField,
-              ~targetIdField,
-              ~sourceSortField,
-              ~targetSortField,
-            )
-          | (_, Argument(sourceSortArgument), Some(targetSortField)) =>
-            Resolver.Functions.resolveIdByIndexSortArgument(
-              ~index,
-              ~sourceIdField,
-              ~targetIdField,
-              ~sourceSortArgument,
-              ~targetSortField,
-            )
-          | _ => Resolver.Functions.resolveIdByIndex(~index, ~sourceIdField, ~targetIdField)
-          },
-          ~opts,
-        )
+      let (targetOwnerField, targetRetiredField, targetRetiredValues) = targetScope(tableName)
+      let (field, multi) = switch resolvedField {
+      | Single(field) => (field, false)
+      | Multi(field) => (field, true)
       }
+      let response = Resolver.Functions.resolvedFieldResponse(
+        ~multi,
+        ~ownerField=targetOwnerField,
+        ~elevatedGroups,
+        ~retiredField=?targetRetiredField,
+        ~retiredValues=?targetRetiredValues,
+      )
+      let dataSourceName =
+        DataSource.makeDynamoDBDataSourceWithTableName(
+          ~name=name ++ (field->String.capitalize ++ "Resolver"),
+          ~api,
+          ~tableName=storageResource.name,
+          ~serviceRole=apiRole,
+          ~opts,
+        ).name->Pulumi.Output.asInput
+
+      Resolver.makeUnitJsResolver(
+        ~name=name ++ field->String.capitalize,
+        ~api,
+        ~dataSourceName,
+        ~type_=parentTypeName->Pulumi.Input.make,
+        ~field=field->Pulumi.Input.make,
+        ~code=switch (targetId, sourceSubId, target.subIdField) {
+        | (Id, Field(sourceSortField), Some(targetSortField)) =>
+          Resolver.Functions.resolveIdSort(
+            ~sourceIdField,
+            ~sourceSortField,
+            ~targetSortField,
+            ~response,
+          )
+        | (Id, Argument(sourceSortArgument), Some(targetSortField)) =>
+          Resolver.Functions.resolveIdSortArgument(
+            ~sourceIdField,
+            ~sourceSortArgument,
+            ~targetSortField,
+            ~response,
+          )
+        | (Id, _, _) => Resolver.Functions.resolveId(~sourceIdField, ~response)
+
+        | (_, Field(sourceSortField), Some(targetSortField)) =>
+          Resolver.Functions.resolveIdByIndexSort(
+            ~index,
+            ~sourceIdField,
+            ~targetIdField,
+            ~sourceSortField,
+            ~targetSortField,
+            ~response,
+          )
+        | (_, Argument(sourceSortArgument), Some(targetSortField)) =>
+          Resolver.Functions.resolveIdByIndexSortArgument(
+            ~index,
+            ~sourceIdField,
+            ~targetIdField,
+            ~sourceSortArgument,
+            ~targetSortField,
+            ~response,
+          )
+        | _ =>
+          Resolver.Functions.resolveIdByIndex(~index, ~sourceIdField, ~targetIdField, ~response)
+        },
+        ~opts,
+      )
     })
 
+    // `@resolvesMany` — BatchGetItem against the target's table. Runs on THIS
+    // view's data source rather than one of the target's: the tables map names
+    // the target explicitly, and every QueryDb in the plugin has already granted
+    // `dynamodb:*` on itself to the API role the data source assumes.
     let idsResolvers = idsResolverConfigs->Array.map(config => {
       let {source: {idsField, resolvedField}, target: {tableName} as target} = config
       let storageResource = storageResource(~pluginName=target.pluginName, ~tableName)
+      let (targetOwnerField, targetRetiredField, targetRetiredValues) = targetScope(tableName)
 
       Resolver.makeUnitJsResolver(
-        ~name=name ++ idsField->String.capitalize,
+        ~name=name ++ resolvedField->String.capitalize,
         ~api,
         ~dataSourceName,
-        ~type_=name->Pulumi.Input.make,
+        ~type_=parentTypeName->Pulumi.Input.make,
         ~field=resolvedField->Pulumi.Input.make,
         ~code=generateCode(
           ~storageResource,
-          ~template=Resolver.Functions.resolveIds(~idsField, ~sortField=target.subIdField, ...),
+          ~template=Resolver.Functions.resolveIds(
+            ~idsField,
+            ~sortField=target.subIdField,
+            ~ownerField=?targetOwnerField,
+            ~retiredField=?targetRetiredField,
+            ~retiredValues=?targetRetiredValues,
+            ~elevatedGroups,
+          ),
         ),
         ~opts,
       )

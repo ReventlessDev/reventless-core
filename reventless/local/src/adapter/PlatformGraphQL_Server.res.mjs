@@ -25,6 +25,8 @@ let registerSubscriptions = instance.registerSubscriptions;
 
 let registerTypes = instance.registerTypes;
 
+let registerFieldResolvers = instance.registerFieldResolvers;
+
 let getMutationResolver = instance.getMutationResolver;
 
 let getQueryResolver = instance.getQueryResolver;
@@ -50,6 +52,7 @@ let asInterface = {
   registerQueries: registerQueries,
   registerSubscriptions: registerSubscriptions,
   registerTypes: registerTypes,
+  registerFieldResolvers: registerFieldResolvers,
   getMutationResolver: getMutationResolver,
   getQueryResolver: getQueryResolver,
   start: start,
@@ -69,6 +72,7 @@ export {
   registerQueries,
   registerSubscriptions,
   registerTypes,
+  registerFieldResolvers,
   getMutationResolver,
   getQueryResolver,
   start,

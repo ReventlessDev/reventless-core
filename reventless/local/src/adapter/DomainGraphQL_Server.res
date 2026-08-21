@@ -347,6 +347,10 @@ type bucket = {
   mutationResolvers: dict<resolverFn>,
   queryResolvers: dict<resolverFn>,
   subscriptionResolvers: dict<resolverFn>,
+  // Object-type field resolvers, keyed type name → field name. Carries the
+  // cross-table fields `@resolves` / `@resolvesMany` add to a queryable; their
+  // SDL rides the plugin's schema fragment, so only the map lives here.
+  fieldResolvers: dict<dict<resolverFn>>,
 }
 
 let makeBucket = (~scope: string): bucket => {
@@ -363,6 +367,7 @@ let makeBucket = (~scope: string): bucket => {
   mutationResolvers: Dict.make(),
   queryResolvers: Dict.make(),
   subscriptionResolvers: Dict.make(),
+  fieldResolvers: Dict.make(),
 }
 
 // Insertion order = composition order (platform bucket is forced first in
@@ -420,6 +425,15 @@ let relabelScope = (~from: string, ~to_: string) =>
         b.subscriptionResolvers
         ->Dict.toArray
         ->Array.forEach(((k, v)) => existing.subscriptionResolvers->Dict.set(k, v))
+        b.fieldResolvers
+        ->Dict.toArray
+        ->Array.forEach(((typeName, byField)) =>
+          switch existing.fieldResolvers->Dict.get(typeName) {
+          | Some(target) =>
+            byField->Dict.toArray->Array.forEach(((k, v)) => target->Dict.set(k, v))
+          | None => existing.fieldResolvers->Dict.set(typeName, byField)
+          }
+        )
       }
       if currentScope.contents == from {
         currentScope.contents = to_
@@ -452,6 +466,24 @@ let registerSubscriptions = (~sdlFields: array<string>, ~resolvers: dict<resolve
   b.subscriptionFields = b.subscriptionFields->Array.concat(sdlFields)
   resolvers->Dict.toArray->Array.forEach(((k, v)) => b.subscriptionResolvers->Dict.set(k, v))
 }
+
+let registerFieldResolvers = (~typeName: string, ~resolvers: dict<resolverFn>) => {
+  let b = currentBucket()
+  let forType = switch b.fieldResolvers->Dict.get(typeName) {
+  | Some(d) => d
+  | None =>
+    let d = Dict.make()
+    b.fieldResolvers->Dict.set(typeName, d)
+    d
+  }
+  resolvers->Dict.toArray->Array.forEach(((k, v)) => forType->Dict.set(k, v))
+}
+
+/** Look up a registered object-type field resolver. Searches all scope buckets. */
+let getFieldResolver = (~typeName: string, fieldName: string): option<resolverFn> =>
+  buckets.contents
+  ->Dict.valuesToArray
+  ->Array.findMap(b => b.fieldResolvers->Dict.get(typeName)->Option.flatMap(d => d->Dict.get(fieldName)))
 
 /** Look up a registered mutation resolver by field name (used by MCP_Server).
     Searches all scope buckets. */
@@ -620,6 +652,9 @@ let scopeResolverMap = (b: bucket, ~withRootDefaults: bool): dict<dict<resolverF
   if b.subscriptionResolvers->Dict.keysToArray->Array.length > 0 {
     resolvers->Dict.set("Subscription", b.subscriptionResolvers)
   }
+  b.fieldResolvers
+  ->Dict.toArray
+  ->Array.forEach(((typeName, byField)) => resolvers->Dict.set(typeName, byField))
   resolvers
 }
 
@@ -913,6 +948,7 @@ let asInterface: ReventlessGraphqlServer.GraphQL_ServerInstance.t = {
   registerQueries,
   registerSubscriptions,
   registerTypes,
+  registerFieldResolvers,
   getMutationResolver,
   getQueryResolver,
   start,

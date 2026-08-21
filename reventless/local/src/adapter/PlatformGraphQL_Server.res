@@ -48,6 +48,10 @@ let registerQueries = (~sdlFields, ~resolvers) =>
   instance.registerQueries(~sdlFields, ~resolvers=wrapAdmin(resolvers))
 let registerSubscriptions = instance.registerSubscriptions
 let registerTypes = instance.registerTypes
+// Not admin-wrapped: a field resolver is only reached through a parent field
+// that already met the group check, so wrapping would re-refuse a caller the
+// root already admitted.
+let registerFieldResolvers = instance.registerFieldResolvers
 let getMutationResolver = instance.getMutationResolver
 let getQueryResolver = instance.getQueryResolver
 let start = instance.start
@@ -67,6 +71,7 @@ let asInterface: ReventlessGraphqlServer.GraphQL_ServerInstance.t = {
   registerQueries,
   registerSubscriptions,
   registerTypes,
+  registerFieldResolvers,
   getMutationResolver,
   getQueryResolver,
   start,

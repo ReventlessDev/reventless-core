@@ -128,6 +128,64 @@ let queryFieldNamesForReadModel = (~plugin: string, ~name: string, ~connectionSp
   }
 }
 
+// The GraphQL type a queryable is exposed as, from its spec name alone. Both
+// `queryFieldNamesFor*` above name it this way, so a `@resolves` target reached
+// by spec name lands on the same type whichever kind declares it.
+let returnTypeNameFor = (~plugin: string, ~name: string) =>
+  `${plugin}_${singularize(stripViewSuffix(name))}`
+
+/**
+The cross-table fields `@resolves` / `@resolvesMany` add to a queryable's object
+type, named for the SDL. `plugin` owns the declaring view.
+
+A target in another plugin is refused rather than emitted: under merged-API
+composition each plugin's document must be valid standalone, so a field
+returning a type the plugin does not define fails the merge — and on AWS the
+target table's `dynamodb:*` grant is attached to the *declaring* plugin's API
+role, so even a schema that merged would be refused at read time.
+*/
+let resolvedFieldsOfConfig = (
+  ~plugin: string,
+  config: Reventless.ReadModel.config,
+): array<ReventlessInfra.Api.resolvedFieldEntry> => {
+  let assertSamePlugin = (~pluginName: option<string>, ~tableName: string, ~fieldName: string) =>
+    switch pluginName {
+    | Some(p) if p != plugin =>
+      JsError.throwWithMessage(
+        `Field \`${fieldName}\` resolves to "${tableName}" in plugin "${p}", but cross-plugin ` ++
+        `resolvers are not supported: a plugin's GraphQL document must be valid standalone, and ` ++
+        `"${p}"'s table is not readable by "${plugin}"'s API role. Query the other view directly, ` ++
+        `or project the fields you need into this one.`,
+      )
+    | _ => ()
+    }
+  let single = config.idResolvers->Array.map(({source, target}) => {
+    let (fieldName, multi) = switch source.resolvedField {
+    | Single(f) => (f, false)
+    | Multi(f) => (f, true)
+    }
+    assertSamePlugin(~pluginName=target.pluginName, ~tableName=target.tableName, ~fieldName)
+    {
+      ReventlessInfra.Api.fieldName,
+      typeName: returnTypeNameFor(~plugin, ~name=target.tableName),
+      multi,
+    }
+  })
+  let many = config.idsResolvers->Array.map(({source, target}) => {
+    assertSamePlugin(
+      ~pluginName=target.pluginName,
+      ~tableName=target.tableName,
+      ~fieldName=source.resolvedField,
+    )
+    {
+      ReventlessInfra.Api.fieldName: source.resolvedField,
+      typeName: returnTypeNameFor(~plugin, ~name=target.tableName),
+      multi: true,
+    }
+  })
+  Array.concat(single, many)
+}
+
 let queryFieldNamesForStateView = (~plugin: string, ~viewName: string, ~connectionSpec: bool=true): queryNames => {
   let entity = stripViewSuffix(viewName)
   let singular = singularize(entity)

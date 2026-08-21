@@ -1095,6 +1095,8 @@ module Make = (
           let subIdField = V.Spec.subIdConfig->Option.map(c => c.subIdField)
           let indexes = V.Spec.config.indexes
           let indexQueries = if indexes->Array.length > 0 {Some(indexes)} else {None}
+          let resolved = Api_Naming.resolvedFieldsOfConfig(~plugin=name, V.Spec.config)
+          let resolvedFields = if resolved->Array.length > 0 {Some(resolved)} else {None}
           {
             ReventlessInfra.Api.singleFieldName: qn.singleFieldName,
             listFieldName: qn.listFieldName,
@@ -1107,6 +1109,7 @@ module Make = (
             connectionSpec: true,
             subIdField: ?subIdField,
             indexQueries: ?indexQueries,
+            resolvedFields: ?resolvedFields,
           }
         })
 

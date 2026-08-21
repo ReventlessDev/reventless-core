@@ -603,6 +603,8 @@ function Make(DcbEventLogStorage) {
         let subIdField = Stdlib_Option.map(V.Spec.subIdConfig, c => c.subIdField);
         let indexes = V.Spec.config.indexes;
         let indexQueries = indexes.length !== 0 ? indexes : undefined;
+        let resolved = Api_Naming$ReventlessCore.resolvedFieldsOfConfig(name, V.Spec.config);
+        let resolvedFields = resolved.length !== 0 ? resolved : undefined;
         return {
           singleFieldName: qn.singleFieldName,
           listFieldName: qn.listFieldName,
@@ -614,7 +616,8 @@ function Make(DcbEventLogStorage) {
           includeIdParam: qn.includeIdParam,
           connectionSpec: true,
           subIdField: subIdField,
-          indexQueries: indexQueries
+          indexQueries: indexQueries,
+          resolvedFields: resolvedFields
         };
       });
       let automationEntries = automationSlices.map(A => {

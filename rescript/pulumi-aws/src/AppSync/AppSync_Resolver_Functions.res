@@ -1082,7 +1082,55 @@ export function response(ctx) {
 // DynamoDB nested resolvers — resolve linked item(s) by ID
 // ---------------------------------------------------------------------------
 
-let resolveId = (~sourceIdField: string) =>
+/**
+The response of a cross-table field (`@resolves`) over a Query-shaped read.
+
+The narrowing is the TARGET's, not the declaring view's: the row comes out of the
+target's table, so whether this caller may see it is the target's question — asked
+here with the same `_owns` / `_live` guards every by-key door on that table asks.
+
+A nested field takes no `includeRetired` argument, so `_wantsRetired` is never
+true and a retired row never travels through one. A reference that must keep
+reading as a name after the archive took it is what `{list}Refs` + `@namedWhenRetired`
+answers.
+*/
+let resolvedFieldResponse = (
+  ~multi: bool,
+  ~ownerField: option<string>,
+  ~elevatedGroups: array<string>,
+  ~retiredField: option<string>=?,
+  ~retiredValues: option<array<string>>=?,
+) =>
+  switch (ownerField, retiredField) {
+  | (None, None) => multi ? resultListResponseCode : firstResultResponseCode
+  | _ =>
+    let ownerPart = switch ownerField {
+    // Takes the row it ignores, for the reason `ownerScopedResponse` gives: a
+    // zero-parameter stub called with one argument is a TS2554 the APPSYNC_JS
+    // type-checker rejects at resolver-create time.
+    | None => "\n  const _owns = (row) => true;"
+    | Some(field) =>
+      `
+  // ── owner scoping (generated) ──${ownerGuardPreamble(~ownerField=field, ~elevatedGroups)}`
+    }
+    let retiredPart = retiredGuardPreamble(
+      ~retiredField,
+      ~retiredValues,
+      ~elevatedGroups,
+      ~ownerScoped=ownerField->Option.isSome,
+    )
+    let live = retiredField->Option.isSome ? " && _live(_row)" : ""
+    let body = multi
+      ? `  return (ctx.result.items ?? []).filter(_row => _owns(_row)${live});`
+      : `  const _row = ctx.result.items[0] ?? null;\n  return _owns(_row)${live} ? _row : null;`
+    `
+export function response(ctx) {
+  if (ctx.error) util.error(ctx.error.message, ctx.error.type);${ownerPart}${retiredPart}
+${body}
+}`
+  }
+
+let resolveId = (~sourceIdField: string, ~response: string=firstResultResponseCode) =>
   `${importUtil}
 export function request(ctx) {
   if (!ctx.source.${sourceIdField}) return runtime.earlyReturn(null);
@@ -1098,10 +1146,15 @@ export function request(ctx) {
     scanIndexForward: (ctx.args.forward ?? true)
   };
 }
-${firstResultResponseCode}
+${response}
 `->Pulumi.Input.make
 
-let resolveIdSort = (~sourceIdField: string, ~sourceSortField: string, ~targetSortField: string) =>
+let resolveIdSort = (
+  ~sourceIdField: string,
+  ~sourceSortField: string,
+  ~targetSortField: string,
+  ~response: string=firstResultResponseCode,
+) =>
   `${importUtil}
 export function request(ctx) {
   return {
@@ -1119,13 +1172,14 @@ export function request(ctx) {
     scanIndexForward: (ctx.args.forward ?? true)
   };
 }
-${firstResultResponseCode}
+${response}
 `->Pulumi.Input.make
 
 let resolveIdSortArgument = (
   ~sourceIdField: string,
   ~sourceSortArgument: string,
   ~targetSortField: string,
+  ~response: string=firstResultResponseCode,
 ) =>
   `${importUtil}
 export function request(ctx) {
@@ -1151,14 +1205,19 @@ export function request(ctx) {
     scanIndexForward: (ctx.args.forward ?? true)
   };
 }
-${firstResultResponseCode}
+${response}
 `->Pulumi.Input.make
 
 // ---------------------------------------------------------------------------
 // DynamoDB nested resolvers — resolve by index
 // ---------------------------------------------------------------------------
 
-let resolveIdByIndex = (~index: string, ~sourceIdField: string, ~targetIdField: string) =>
+let resolveIdByIndex = (
+  ~index: string,
+  ~sourceIdField: string,
+  ~targetIdField: string,
+  ~response: string=firstResultResponseCode,
+) =>
   `${importUtil}
 export function request(ctx) {
   return {
@@ -1174,7 +1233,7 @@ export function request(ctx) {
     scanIndexForward: (ctx.args.forward ?? true)
   };
 }
-${firstResultResponseCode}
+${response}
 `->Pulumi.Input.make
 
 let resolveIdByIndexSort = (
@@ -1183,6 +1242,7 @@ let resolveIdByIndexSort = (
   ~sourceSortField: string,
   ~targetIdField: string,
   ~targetSortField: string,
+  ~response: string=firstResultResponseCode,
 ) =>
   `${importUtil}
 export function request(ctx) {
@@ -1202,7 +1262,7 @@ export function request(ctx) {
     scanIndexForward: (ctx.args.forward ?? true)
   };
 }
-${firstResultResponseCode}
+${response}
 `->Pulumi.Input.make
 
 let resolveIdByIndexSortArgument = (
@@ -1211,6 +1271,7 @@ let resolveIdByIndexSortArgument = (
   ~sourceSortArgument: string,
   ~targetIdField: string,
   ~targetSortField: string,
+  ~response: string=firstResultResponseCode,
 ) =>
   `${importUtil}
 export function request(ctx) {
@@ -1237,12 +1298,27 @@ export function request(ctx) {
     scanIndexForward: (ctx.args.forward ?? true)
   };
 }
-${firstResultResponseCode}
+${response}
 `->Pulumi.Input.make
 
-// resolveIds — returns a plain string (table name is interpolated by the adapter
-// via Pulumi.Output.apply)
-let resolveIds = (tableName: string, ~idsField: string, ~sortField: option<string>) => {
+/** `@resolvesMany` — the parent's id array batch-read from the target's table.
+
+    Returns a plain string: the table name is interpolated by the adapter via
+    `Pulumi.Output.apply`, because BatchGetItem's `tables` map keys on the literal
+    name.
+
+    Same shape as `batchGetItemsByIds`, and narrowed by the same guards — the
+    target's, since the rows are the target's. Missing ids come back as nulls in
+    the result array (BatchGetItem preserves index correspondence) and are
+    dropped, so the field is shorter rather than null-holed. */
+let resolveIds = (
+  ~idsField: string,
+  ~sortField: option<string>,
+  ~ownerField: option<string>=?,
+  ~retiredField: option<string>=?,
+  ~retiredValues: option<array<string>>=?,
+  ~elevatedGroups: array<string>=[],
+) => (tableName: string) => {
   let keysCode = switch sortField {
   | Some(sf) =>
     `id => ({ id: util.dynamodb.toString(id.id), ${sf}: util.dynamodb.toString(id.${sf}) })`
@@ -1251,23 +1327,32 @@ let resolveIds = (tableName: string, ~idsField: string, ~sortField: option<strin
   `${importUtil}
 import { runtime } from '@aws-appsync/utils';
 export function request(ctx) {
-  const idList = ctx.source.${idsField};
-  if (idList && idList.length > 0) {
-    return {
-      operation: 'BatchGetItem',
-      tables: {
-        '${tableName}': {
-          keys: idList.map(${keysCode}),
-          consistentRead: true
-        }
+  const idList = ctx.source.${idsField} ?? [];
+  if (idList.length === 0) return runtime.earlyReturn([]);
+  return {
+    operation: 'BatchGetItem',
+    tables: {
+      '${tableName}': {
+        keys: idList.map(${keysCode}),
+        consistentRead: true
       }
-    };
-  }
-  return { operation: 'GetItem', key: { id: util.dynamodb.toString(ctx.source.id) } };
+    }
+  };
 }
 export function response(ctx) {
-  if (ctx.error) util.error(ctx.error.message, ctx.error.type);
-  return ctx.result;
+  if (ctx.error) util.error(ctx.error.message, ctx.error.type);${switch ownerField {
+    | None => ""
+    | Some(field) => ownerGuardPreamble(~ownerField=field, ~elevatedGroups)
+    }}${retiredGuardPreamble(
+      ~retiredField,
+      ~retiredValues,
+      ~elevatedGroups,
+      ~ownerScoped=ownerField->Option.isSome,
+    )}
+  return (ctx.result?.data?.['${tableName}'] ?? []).filter(item =>
+    item !== null${ownerField->Option.isSome ? " && _owns(item)" : ""}${retiredField->Option.isSome
+      ? " && _live(item)"
+      : ""});
 }
 `
 }

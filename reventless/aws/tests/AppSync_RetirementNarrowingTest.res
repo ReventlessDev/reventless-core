@@ -308,3 +308,81 @@ describe("the unowned stub is callable where the door calls it", () => {
     ))->Expect.toEqual((true, true))
   })
 })
+
+// ── The cross-table doors (`@resolves` / `@resolvesMany`) ────────────────────
+//
+// A field that follows a foreign key hands back the TARGET's rows, so the
+// target's rules narrow them. The field takes no `includeRetired` argument, so
+// `_wantsRetired` is never true through one — `{list}Refs` is the door that
+// names a row the archive took.
+
+describe("the cross-table batch door", () => {
+  let code = F.resolveIds(
+    ~idsField="productIds",
+    ~sortField=None,
+    ~retiredField="shelfStatus",
+    ~retiredValues=["Archived"],
+    ~elevatedGroups=elevated,
+  )("ProductsTable")
+
+  // BatchGetItem answers `{data: {<table>: [...]}}`; returning `ctx.result`
+  // handed the whole envelope to a field typed as a list, which fails at
+  // execution for every caller that selects it.
+  testSync("returns the rows out of the batch envelope", () =>
+    expect(code->String.includes("ctx.result?.data?.['ProductsTable']"))->Expect.toBe(true)
+  )
+
+  testSync("drops retired rows from the returned array", () =>
+    expect(code->String.includes("item !== null && _live(item)"))->Expect.toBe(true)
+  )
+
+  // An empty id array used to fall through to a GetItem on the PARENT's own id
+  // against the target's table — a read that answers a shape the field cannot be.
+  testSync("short-circuits an empty id array instead of reading", () =>
+    expect((
+      code->String.includes("if (idList.length === 0) return runtime.earlyReturn([]);"),
+      code->String.includes("operation: 'GetItem'"),
+    ))->toEqual((true, false))
+  )
+
+  testSync("is unchanged for a target that declares neither rule", () => {
+    let plain = F.resolveIds(~idsField="productIds", ~sortField=None)("ProductsTable")
+    expect((plain->String.includes("_owns"), plain->String.includes("_live")))->toEqual((
+      false,
+      false,
+    ))
+  })
+})
+
+describe("the cross-table single door", () => {
+  let response = (~multi) =>
+    F.resolvedFieldResponse(
+      ~multi,
+      ~ownerField=Some("customerId"),
+      ~elevatedGroups=elevated,
+      ~retiredField="shelfStatus",
+      ~retiredValues=["Archived"],
+    )
+
+  testSync("narrows the one row it hands back", () =>
+    expect(response(~multi=false)->String.includes("_owns(_row) && _live(_row) ? _row : null"))
+    ->Expect.toBe(true)
+  )
+
+  testSync("narrows every row of the list form", () =>
+    expect(
+      response(~multi=true)->String.includes("filter(_row => _owns(_row) && _live(_row))"),
+    )->Expect.toBe(true)
+  )
+
+  // The list form used to answer with the first row alone, whatever the SDL said.
+  testSync("the list form returns the list", () =>
+    expect(response(~multi=true)->String.includes("ctx.result.items[0]"))->Expect.toBe(false)
+  )
+
+  testSync("a target with neither rule keeps the plain response", () => {
+    let plain = F.resolvedFieldResponse(~multi=false, ~ownerField=None, ~elevatedGroups=elevated)
+    expect((plain->String.includes("_owns"), plain->String.includes("ctx.result.items[0]")))
+    ->toEqual((false, true))
+  })
+})

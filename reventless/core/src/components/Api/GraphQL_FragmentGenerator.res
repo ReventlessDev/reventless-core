@@ -170,10 +170,18 @@ let reportUnclassifiedUnions = (~typeName: string, schema: S.t<unknown>): unit =
     )
   )
 
+// The SDL line for one `@resolves` / `@resolvesMany` field. Both forms are
+// nullable: the single form has no row when the foreign key names one that was
+// never written, and the batch form drops missing ids rather than padding with
+// nulls, so the list is shorter — never null inside.
+let resolvedFieldSdl = ({fieldName, typeName, multi}: resolvedFieldEntry): string =>
+  multi ? `  ${fieldName}: [${typeName}!]` : `  ${fieldName}: ${typeName}`
+
 let deriveObjectTypeWithNested = (
   ~typeName: string,
   ~excludeFields: array<string>=[],
   ~includeIdParam: bool=true,
+  ~resolvedFields: array<resolvedFieldEntry>=[],
   schema: S.t<unknown>,
 ): array<string> => {
   reportUnclassifiedUnions(~typeName, schema)
@@ -219,7 +227,24 @@ let deriveObjectTypeWithNested = (
     } else {
       mainType
     }
-    Array.concat(collectedTypes, [mainTypeWithId])
+    // A cross-table field shares the type with the state record's own fields, so
+    // a name already taken would emit the field twice and fail the whole document
+    // — for every plugin in the merge, not just this one. Refuse at build time,
+    // naming both halves.
+    resolvedFields->Array.forEach(({fieldName}) =>
+      if filteredFields->Dict.get(fieldName)->Option.isSome || (includeIdParam && fieldName == "id") {
+        JsError.throwWithMessage(
+          `${typeName}.${fieldName} is declared by @resolves/@resolvesMany and is already a field of the state record. Name the resolved field something the state does not use.`,
+        )
+      }
+    )
+    let mainTypeComplete = if resolvedFields->Array.length == 0 {
+      mainTypeWithId
+    } else {
+      let body = mainTypeWithId->String.slice(~start=0, ~end=mainTypeWithId->String.length - 1)
+      body ++ resolvedFields->Array.map(resolvedFieldSdl)->Array.join("\n") ++ "\n}"
+    }
+    Array.concat(collectedTypes, [mainTypeComplete])
   | None => []
   }
 }
@@ -763,6 +788,40 @@ let generate = (
     }
   })
 
+  // Two things a cross-table field has to satisfy, both checked before anything
+  // is emitted so the report names the declaration rather than the merge:
+  //
+  // The type it returns has to be one this fragment defines. A plugin's document
+  // is validated standalone before it is merged, and a field returning a name
+  // nothing declares fails the whole document rather than just the field.
+  //
+  // And the target has to be guarded the way the parent is. A nested field is
+  // reached through its parent, so it answers under the parent's authorization —
+  // a target that guards itself differently would be handed over by the wider
+  // door, which is the kind of hole nothing downstream can see. Equal rules pass,
+  // and so does a target open to everyone, which can only narrow.
+  let permissionOf = (entry: querySchemaEntry) =>
+    entry.permission->Option.getOr(Reventless.Authorization.AllowAuthenticated)
+  queryEntries->Array.forEach(entry =>
+    entry.resolvedFields
+    ->Option.getOr([])
+    ->Array.forEach(({fieldName, typeName}) =>
+      switch queryEntries->Array.find(e => e.returnTypeName == typeName) {
+      | None =>
+        JsError.throwWithMessage(
+          `${entry.returnTypeName}.${fieldName} is declared by @resolves/@resolvesMany and resolves to "${typeName}", which this plugin does not expose as a queryable. The target must be a ReadModel or StateViewSlice of the same plugin, named by its spec name.`,
+        )
+      | Some(target) =>
+        let targetPermission = permissionOf(target)
+        if targetPermission != permissionOf(entry) && targetPermission != AllowAnonymous {
+          JsError.throwWithMessage(
+            `${entry.returnTypeName}.${fieldName} resolves to "${typeName}", which declares a different authorization. A cross-table field is read through its parent and would answer under ${entry.returnTypeName}'s rule, handing over rows ${typeName}'s own door withholds. Give the two views the same authorization, or query ${typeName} directly.`,
+          )
+        }
+      }
+    )
+  )
+
   queryEntries->Array.forEach(entry => {
     let includeIdParam = entry.includeIdParam->Option.getOr(true)
     let connectionSpec = entry.connectionSpec->Option.getOr(true)
@@ -776,6 +835,7 @@ let generate = (
         ~typeName=entry.returnTypeName,
         ~excludeFields,
         ~includeIdParam,
+        ~resolvedFields=entry.resolvedFields->Option.getOr([]),
         entry.stateSchema,
       )
       nestedTypes->Array.forEach(t => {

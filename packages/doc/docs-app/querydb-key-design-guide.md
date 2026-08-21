@@ -274,7 +274,6 @@ Creates a virtual `customer` field on the `Order` GraphQL type that resolves to 
 
 **Optional record keys:**
 - `via: "indexName"` — resolve via a secondary index instead of primary key
-- `plugin: "OtherPlugin"` — cross-plugin table reference
 
 ### `@resolvesMany` — batch join
 
@@ -287,7 +286,14 @@ type state = {
 }
 ```
 
-Creates a virtual `products` field that batch-resolves all product IDs to `Product` objects.
+Creates a virtual `products` field that batch-resolves all product IDs to `Catalog_Product`
+objects. Ids that match no row drop out, so the field is shorter rather than null-holed.
+
+**Both forms target a queryable of the same plugin**, named by its spec name — a target
+the plugin does not expose is refused at build time. The rows are the target's, so the
+target's `@owner` / `@retired` rules narrow them, and a retired row never travels through
+a cross-table field (it takes no `includeRetired` argument). To name a row the archive
+took, use the `{list}Refs` door with `@namedWhenRetired`.
 
 ---
 

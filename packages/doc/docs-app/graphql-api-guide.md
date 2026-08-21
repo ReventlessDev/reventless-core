@@ -425,8 +425,8 @@ ids: [ID!]
 
 | Annotation                                                         | Effect on SDL                                                                                                              |
 | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
-| `@resolves({table, field, via?, plugin?, sourceSubId?, subIdArg?})` | On a `string` field. Adds a virtual field of the target entity type alongside the original id field.                       |
-| `@resolvesMany({table, field, plugin?})`                           | On an `array<string>` field. Adds a virtual list field of the target entity type alongside the original id list.           |
+| `@resolves({table, field, via?, sourceSubId?, subIdArg?})`         | On a `string` field. Adds a virtual field of the target entity type alongside the original id field.                       |
+| `@resolvesMany({table, field})`                                    | On an `array<string>` field. Adds a virtual list field of the target entity type alongside the original id list.           |
 | `@displayName` / `@displayName("sep")` (≥ 1 field)                 | Composes a synthetic `displayName: String` field on the generated type, derived by joining the annotated fields.          |
 
 ### Cross-table references — `@resolves` and `@resolvesMany`
@@ -436,7 +436,6 @@ The two annotations let your query expand an id (or list of ids) into the full t
 - `table` — the target table name (matches the target plugin's spec name, e.g. the singular form `"Customers"` for the `Customers` ReadModel).
 - `field` — the name of the **virtual** field that will appear on the source type. Choose any name that fits your domain (`"customer"`, `"products"`, `"placedBy"`).
 - `via` *(optional, single only)* — the name of a target-side `@index` to resolve through, instead of the primary key.
-- `plugin` *(optional)* — the target plugin's name, when it lives in a different plugin. Omit for same-plugin references.
 
 #### Example: order references its customer and the products it contains
 
@@ -469,7 +468,7 @@ type Ordering_Order implements Node {
   customer: Ordering_Customer              # virtual — resolved on read
 
   productIds: [ID]!                        # original id list stays
-  products: [Ordering_AvailableProduct]    # virtual — resolved on read
+  products: [Ordering_AvailableProduct!]   # virtual — resolved on read
 
   status: Ordering_OrderStatus!
 }
@@ -497,12 +496,11 @@ query OrderDetails($id: ID!) {
 Notes on usage:
 
 - The original `customerId`/`productIds` fields are **not** removed — clients that only need ids stay efficient.
-- The resolved entity type must be queryable in its own right (i.e. the target plugin exposes it as a `ReadModel` or `StateViewSlice`).
-- When the target lives in another plugin, add `plugin: "<TargetPlugin>"`:
-  ```rescript
-  @resolves({plugin: "Catalog", table: "Products", field: "product"})
-  productId: string,
-  ```
+- The resolved entity type must be queryable in its own right — a `ReadModel` or `StateViewSlice` **of the same plugin**, named by its spec name. A target the plugin does not expose is refused at build time.
+- **Same plugin only.** Each plugin's GraphQL document must be valid standalone before the merge, and on AWS the target table's grant is attached to the declaring plugin's API role, so a field returning another plugin's type could neither merge nor read. Query the other view directly, or project the fields you need into this one.
+- **The target must be guarded the way the view that embeds it is.** A nested field is read through its parent and answers under the parent's authorization, so a target declaring a different `@authorize` rule is refused at build time — otherwise the wider door would hand over rows the target's own door withholds. A target open to everyone is allowed, since it can only narrow.
+- **The target's rules narrow the rows.** The rows come out of the target's table, so its `@owner` and `@retired` declarations decide what the caller sees, on every backend. A cross-table field carries no `includeRetired` argument, so a retired row never travels through one — `{list}Refs` with `@namedWhenRetired` is the door that still names a row the archive took.
+- The single form is nullable; the batch form is `[T!]` — ids matching no row drop out, so the list is shorter rather than null-holed.
 - When the target table has a composite key and you want to resolve through a secondary index, set `via: "<indexName>"`:
   ```rescript
   @resolves({table: "Customers", field: "owner", via: "byOwnerId"})

@@ -724,7 +724,28 @@ export function response(ctx) {
 `;
 }
 
-function resolveId(sourceIdField) {
+function resolvedFieldResponse(multi, ownerField, elevatedGroups, retiredField, retiredValues) {
+  if (ownerField === undefined && retiredField === undefined) {
+    if (multi) {
+      return resultListResponseCode;
+    } else {
+      return firstResultResponseCode;
+    }
+  }
+  let ownerPart = ownerField !== undefined ? `
+  // ── owner scoping (generated) ──` + ownerGuardPreamble(ownerField, elevatedGroups) : "\n  const _owns = (row) => true;";
+  let retiredPart = retiredGuardPreamble(retiredField, retiredValues, elevatedGroups, Stdlib_Option.isSome(ownerField));
+  let live = Stdlib_Option.isSome(retiredField) ? " && _live(_row)" : "";
+  let body = multi ? `  return (ctx.result.items ?? []).filter(_row => _owns(_row)` + live + `);` : `  const _row = ctx.result.items[0] ?? null;\n  return _owns(_row)` + live + ` ? _row : null;`;
+  return `
+export function response(ctx) {
+  if (ctx.error) util.error(ctx.error.message, ctx.error.type);` + ownerPart + retiredPart + `
+` + body + `
+}`;
+}
+
+function resolveId(sourceIdField, responseOpt) {
+  let response = responseOpt !== undefined ? responseOpt : firstResultResponseCode;
   return importUtil + `
 export function request(ctx) {
   if (!ctx.source.` + sourceIdField + `) return runtime.earlyReturn(null);
@@ -740,11 +761,12 @@ export function request(ctx) {
     scanIndexForward: (ctx.args.forward ?? true)
   };
 }
-` + firstResultResponseCode + `
+` + response + `
 `;
 }
 
-function resolveIdSort(sourceIdField, sourceSortField, targetSortField) {
+function resolveIdSort(sourceIdField, sourceSortField, targetSortField, responseOpt) {
+  let response = responseOpt !== undefined ? responseOpt : firstResultResponseCode;
   return importUtil + `
 export function request(ctx) {
   return {
@@ -762,11 +784,12 @@ export function request(ctx) {
     scanIndexForward: (ctx.args.forward ?? true)
   };
 }
-` + firstResultResponseCode + `
+` + response + `
 `;
 }
 
-function resolveIdSortArgument(sourceIdField, sourceSortArgument, targetSortField) {
+function resolveIdSortArgument(sourceIdField, sourceSortArgument, targetSortField, responseOpt) {
+  let response = responseOpt !== undefined ? responseOpt : firstResultResponseCode;
   return importUtil + `
 export function request(ctx) {
   const query = ctx.args.` + sourceSortArgument + `
@@ -791,11 +814,12 @@ export function request(ctx) {
     scanIndexForward: (ctx.args.forward ?? true)
   };
 }
-` + firstResultResponseCode + `
+` + response + `
 `;
 }
 
-function resolveIdByIndex(index, sourceIdField, targetIdField) {
+function resolveIdByIndex(index, sourceIdField, targetIdField, responseOpt) {
+  let response = responseOpt !== undefined ? responseOpt : firstResultResponseCode;
   return importUtil + `
 export function request(ctx) {
   return {
@@ -811,11 +835,12 @@ export function request(ctx) {
     scanIndexForward: (ctx.args.forward ?? true)
   };
 }
-` + firstResultResponseCode + `
+` + response + `
 `;
 }
 
-function resolveIdByIndexSort(index, sourceIdField, sourceSortField, targetIdField, targetSortField) {
+function resolveIdByIndexSort(index, sourceIdField, sourceSortField, targetIdField, targetSortField, responseOpt) {
+  let response = responseOpt !== undefined ? responseOpt : firstResultResponseCode;
   return importUtil + `
 export function request(ctx) {
   return {
@@ -834,11 +859,12 @@ export function request(ctx) {
     scanIndexForward: (ctx.args.forward ?? true)
   };
 }
-` + firstResultResponseCode + `
+` + response + `
 `;
 }
 
-function resolveIdByIndexSortArgument(index, sourceIdField, sourceSortArgument, targetIdField, targetSortField) {
+function resolveIdByIndexSortArgument(index, sourceIdField, sourceSortArgument, targetIdField, targetSortField, responseOpt) {
+  let response = responseOpt !== undefined ? responseOpt : firstResultResponseCode;
   return importUtil + `
 export function request(ctx) {
   const query = ctx.args.` + sourceSortArgument + `
@@ -864,34 +890,42 @@ export function request(ctx) {
     scanIndexForward: (ctx.args.forward ?? true)
   };
 }
-` + firstResultResponseCode + `
+` + response + `
 `;
 }
 
-function resolveIds(tableName, idsField, sortField) {
-  let keysCode = sortField !== undefined ? `id => ({ id: util.dynamodb.toString(id.id), ` + sortField + `: util.dynamodb.toString(id.` + sortField + `) })` : `id => ({ id: util.dynamodb.toString(id) })`;
-  return importUtil + `
+function resolveIds(idsField, sortField, ownerField, retiredField, retiredValues, $staropt$star) {
+  return tableName => {
+    let elevatedGroups = $staropt$star !== undefined ? $staropt$star : [];
+    let keysCode = sortField !== undefined ? `id => ({ id: util.dynamodb.toString(id.id), ` + sortField + `: util.dynamodb.toString(id.` + sortField + `) })` : `id => ({ id: util.dynamodb.toString(id) })`;
+    return importUtil + `
 import { runtime } from '@aws-appsync/utils';
 export function request(ctx) {
-  const idList = ctx.source.` + idsField + `;
-  if (idList && idList.length > 0) {
-    return {
-      operation: 'BatchGetItem',
-      tables: {
-        '` + tableName + `': {
-          keys: idList.map(` + keysCode + `),
-          consistentRead: true
-        }
+  const idList = ctx.source.` + idsField + ` ?? [];
+  if (idList.length === 0) return runtime.earlyReturn([]);
+  return {
+    operation: 'BatchGetItem',
+    tables: {
+      '` + tableName + `': {
+        keys: idList.map(` + keysCode + `),
+        consistentRead: true
       }
-    };
-  }
-  return { operation: 'GetItem', key: { id: util.dynamodb.toString(ctx.source.id) } };
+    }
+  };
 }
 export function response(ctx) {
-  if (ctx.error) util.error(ctx.error.message, ctx.error.type);
-  return ctx.result;
+  if (ctx.error) util.error(ctx.error.message, ctx.error.type);` + (
+      ownerField !== undefined ? ownerGuardPreamble(ownerField, elevatedGroups) : ""
+    ) + retiredGuardPreamble(retiredField, retiredValues, elevatedGroups, Stdlib_Option.isSome(ownerField)) + `
+  return (ctx.result?.data?.['` + tableName + `'] ?? []).filter(item =>
+    item !== null` + (
+      Stdlib_Option.isSome(ownerField) ? " && _owns(item)" : ""
+    ) + (
+      Stdlib_Option.isSome(retiredField) ? " && _live(item)" : ""
+    ) + `);
 }
 `;
+  };
 }
 
 function batchGetItemsByIds(ownerField, retiredField, retiredValues, $staropt$star) {
@@ -1223,6 +1257,7 @@ export {
   queryByIndexSortFiltered,
   listAllItems,
   listAllItemsConnection,
+  resolvedFieldResponse,
   resolveId,
   resolveIdSort,
   resolveIdSortArgument,

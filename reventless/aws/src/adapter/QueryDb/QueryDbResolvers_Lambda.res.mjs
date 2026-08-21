@@ -107,6 +107,7 @@ function make(name, api, param, dataSourceName, indexes, subIdField, idResolverC
         return mkResolver(resolverName, field, "index", index, undefined, undefined);
       }
     });
+    let parentTypeName = registryEntry !== undefined ? registryEntry.returnTypeName : name$1;
     let idResolvers = idResolverConfigs.map(config => {
       let target = config.target;
       let match = config.source;
@@ -139,14 +140,14 @@ function make(name, api, param, dataSourceName, indexes, subIdField, idResolverC
       let extra = `\n      sourceIdField: '` + match.idField + `',\n      multi: ` + (
         match$1[1] ? "true" : "false"
       ) + `,` + targetFrag + subIdFrag;
-      return AppSync_Resolver_Retrying$ReventlessAws.makeUnitJsResolver(name$1 + Stdlib_String.capitalize(field), api, dataSourceName, name$1, field, invokeFieldTemplate(name$1, "resolveOne", targetKey, extra), opts);
+      return AppSync_Resolver_Retrying$ReventlessAws.makeUnitJsResolver(name$1 + Stdlib_String.capitalize(field), api, dataSourceName, parentTypeName, field, invokeFieldTemplate(name$1, "resolveOne", targetKey, extra), opts);
     });
     let idsResolvers = idsResolverConfigs.map(config => {
       let match = config.source;
       let resolvedField = match.resolvedField;
       let targetKey = Stdlib_String.capitalize(config.target.tableName);
       let extra = `\n      sourceIdsField: '` + match.idsField + `',`;
-      return AppSync_Resolver_Retrying$ReventlessAws.makeUnitJsResolver(name$1 + Stdlib_String.capitalize(resolvedField), api, dataSourceName, name$1, resolvedField, invokeFieldTemplate(name$1, "resolveMany", targetKey, extra), opts);
+      return AppSync_Resolver_Retrying$ReventlessAws.makeUnitJsResolver(name$1 + Stdlib_String.capitalize(resolvedField), api, dataSourceName, parentTypeName, resolvedField, invokeFieldTemplate(name$1, "resolveMany", targetKey, extra), opts);
     });
     return [
       byId,

@@ -572,3 +572,144 @@ describe("@internal keeps a field off the generated type", () => {
     ))
   })
 })
+
+// `@resolves` / `@resolvesMany` add a field to a queryable's object type that the
+// state record does not carry — the row on the other side of a foreign key. The
+// PPX has written those configs into `config.idResolvers` / `config.idsResolvers`
+// all along and nothing emitted the field, so every backend provisioned a
+// resolver for a field its own schema never declared.
+
+module ResolvedFields = {
+  @schema
+  type product = {productId: string, name: string}
+
+  @schema
+  type order = {orderId: string, productId: string, productIds: array<string>}
+
+  let entries = (
+    ~resolvedFields,
+    ~targetPermission: option<Reventless.Authorization.permission>=?,
+  ): array<ReventlessInfra.Api.querySchemaEntry> => [
+    {
+      singleFieldName: "Catalog_Order",
+      listFieldName: "Catalog_Orders",
+      returnTypeName: "Catalog_Order",
+      stateSchema: orderSchema->S.castToUnknown,
+      authorization: None,
+      resolvedFields: ?resolvedFields,
+    },
+    {
+      singleFieldName: "Catalog_Product",
+      listFieldName: "Catalog_Products",
+      returnTypeName: "Catalog_Product",
+      stateSchema: productSchema->S.castToUnknown,
+      authorization: None,
+      permission: ?targetPermission,
+    },
+  ]
+
+  let bothFields: array<ReventlessInfra.Api.resolvedFieldEntry> = [
+    {fieldName: "product", typeName: "Catalog_Product", multi: false},
+    {fieldName: "products", typeName: "Catalog_Product", multi: true},
+  ]
+}
+
+describe("@resolves / @resolvesMany reach the SDL", () => {
+  let refused = f =>
+    try {
+      let _ = f()
+      false
+    } catch {
+    | _ => true
+    }
+
+  let orderType = (~resolvedFields, ~targetPermission=?) =>
+    GraphQL_Stitcher.decode(
+      GraphQL_FragmentGenerator.generate(
+        ~mutationEntries=[],
+        ~queryEntries=ResolvedFields.entries(~resolvedFields, ~targetPermission?),
+      ),
+    ).types
+    ->Array.find(t => t->String.startsWith("type Catalog_Order "))
+    ->Option.getOr("")
+
+  testSync("the single form returns the target's type", () =>
+    expect(
+      orderType(~resolvedFields=Some(ResolvedFields.bothFields))->String.includes(
+        "product: Catalog_Product",
+      ),
+    )->toBe(true)
+  )
+
+  // A list of non-null items rather than `[T]`: the batch read drops ids it did
+  // not find instead of padding the gap with nulls, so the field is shorter.
+  testSync("the batch form returns a list of the target's type", () =>
+    expect(
+      orderType(~resolvedFields=Some(ResolvedFields.bothFields))->String.includes(
+        "products: [Catalog_Product!]",
+      ),
+    )->toBe(true)
+  )
+
+  testSync("the state's own fields are untouched", () => {
+    let sdl = orderType(~resolvedFields=Some(ResolvedFields.bothFields))
+    expect((sdl->String.includes("orderId:"), sdl->String.includes("id: ID!")))->toEqual((
+      true,
+      true,
+    ))
+  })
+
+  // The control: without the entry the type is exactly what it was, which is what
+  // made the annotation inert rather than wrong.
+  testSync("a view that declares none gets no extra field", () =>
+    expect(orderType(~resolvedFields=None)->String.includes("Catalog_Product"))->toBe(false)
+  )
+
+  // A plugin's document is validated standalone before the merge, so a field
+  // returning a name nothing declares fails the whole document — every type in
+  // it, not just this field. Refused where the declaration is, naming it.
+  testSync("a target this plugin does not expose is refused", () =>
+    expect(
+      refused(() =>
+        orderType(
+          ~resolvedFields=Some([{fieldName: "supplier", typeName: "Supply_Supplier", multi: false}]),
+        )
+      ),
+    )->toBe(true)
+  )
+
+  // A nested field is read through its parent, so it answers under the parent's
+  // rule. A target guarded more narrowly than the view that embeds it would be
+  // handed over by the wider door.
+  testSync("a target guarded differently from the parent is refused", () =>
+    expect(
+      refused(() =>
+        orderType(
+          ~resolvedFields=Some(ResolvedFields.bothFields),
+          ~targetPermission=AllowGroups(["Admin"]),
+        )
+      ),
+    )->toBe(true)
+  )
+
+  // A target open to everyone can only narrow, so it needs no refusal.
+  testSync("a target open to everyone is allowed under an authenticated parent", () =>
+    expect(
+      refused(() =>
+        orderType(~resolvedFields=Some(ResolvedFields.bothFields), ~targetPermission=AllowAnonymous)
+      ),
+    )->toBe(false)
+  )
+
+  testSync("a resolved field colliding with a state field is refused", () =>
+    expect(
+      refused(() =>
+        orderType(
+          ~resolvedFields=Some([
+            {fieldName: "productId", typeName: "Catalog_Product", multi: false},
+          ]),
+        )
+      ),
+    )->toBe(true)
+  )
+})

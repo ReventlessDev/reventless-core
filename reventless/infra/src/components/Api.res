@@ -85,6 +85,22 @@ type mutationSchemaEntry = {
 }
 
 /**
+A cross-table field on a queryable's object type, declared by `@resolves` /
+`@resolvesMany`. The field is not part of the state record — it is filled at
+query time by following a foreign key into another queryable's table.
+
+`typeName` is the GraphQL type the field returns (the target's
+`returnTypeName`), resolved where the entry is built because that is the only
+place the owning plugin's name is known. Carrying it here is what keeps the SDL
+and the resolver a backend provisions from disagreeing about the field.
+*/
+type resolvedFieldEntry = {
+  fieldName: string,
+  typeName: string,
+  multi: bool,
+}
+
+/**
 Schema entry for a query field, derived from a ReadModel or StateViewSlice state schema.
 Consumed by GraphQL, MCP, and (future) OpenAPI generators.
 `S.t<unknown>` is used for type-erasure — build entries with `Obj.magic`.
@@ -123,6 +139,9 @@ type querySchemaEntry = {
   subIdField?: string,
   /** When set, generates `{singleFieldName}By{Index}` connection query fields for each GSI. */
   indexQueries?: array<Reventless.ReadModel.indexConfig>,
+  /** Cross-table fields on the return type, from `config.idResolvers` /
+      `config.idsResolvers` (`@resolves` / `@resolvesMany`). */
+  resolvedFields?: array<resolvedFieldEntry>,
 }
 
 /**

@@ -255,6 +255,7 @@ module Make = (
         // its SDL did not declare. The DCB and admin entries have populated this
         // all along; the omission here was the asymmetry, not the rule.
         let indexes = R.Spec.config.indexes
+        let resolvedFields = Api_Naming.resolvedFieldsOfConfig(~plugin=name, R.Spec.config)
         {
           ReventlessInfra.Api.singleFieldName: qn.singleFieldName,
           listFieldName: qn.listFieldName,
@@ -265,6 +266,7 @@ module Make = (
           connectionSpec: true,
           subIdField: ?subIdField,
           indexQueries: ?(indexes->Array.length > 0 ? Some(indexes) : None),
+          resolvedFields: ?(resolvedFields->Array.length > 0 ? Some(resolvedFields) : None),
         }
       })
 

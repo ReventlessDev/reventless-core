@@ -72,8 +72,8 @@ module Make = (Bus: LocalBus.T) => {
     ~dataSourceName as _,
     ~indexes,
     ~subIdField,
-    ~idResolverConfigs as _,
-    ~idsResolverConfigs as _,
+    ~idResolverConfigs,
+    ~idsResolverConfigs,
     ~authorization,
     ~opts as _,
   ) => {
@@ -912,6 +912,175 @@ module Make = (Bus: LocalBus.T) => {
         (resolverName, resolver)
       },
     )
+
+    // -- Cross-table fields: @resolves / @resolvesMany -------------------------
+    // Field resolvers on this view's object type, following a foreign key into
+    // another queryable's rows. Their SDL rides the plugin's schema fragment
+    // (`GraphQL_FragmentGenerator` emits it from the same config), so only the
+    // resolvers are registered here.
+    //
+    // The rows are the TARGET's, so the target's `@owner` / `@retired` rules
+    // narrow them — the same reading the AppSync resolver bakes into its
+    // response. A nested field takes no `includeRetired` argument, so a retired
+    // row never travels through one; `{list}Refs` is the door that names those.
+    let targetAllows = (~ctx, ~target: string, item: JSON.t): bool => {
+      let schema = Plugin_Helpers.stateSchemaRegistry->Dict.get(target)
+      let cell = field => item->JSON.Decode.object->Option.flatMap(d => d->Dict.get(field))
+      let identity = extractIdentity(ctx)
+      let ownerOk = switch identity->Reventless.OwnerScope.decide(
+        ~ownerField=schema->Option.flatMap(s => Reventless.Owner.fieldNames(s)->Array.get(0)),
+      ) {
+      | Unscoped => true
+      | RefuseOwned => false
+      | ScopeTo(field, required) =>
+        cell(field)->Option.flatMap(JSON.Decode.string)->Option.mapOr(false, v => v == required)
+      }
+      let retiredSpec =
+        schema
+        ->Option.flatMap(Reventless.StateAnnotations.getSpec)
+        ->Option.flatMap(spec => spec.retired)
+      let retiredOk = switch identity
+      ->Reventless.OwnerScope.decideRetired(
+        ~retiredField=retiredSpec->Option.map(r => r.field),
+        ~retiredValues=?retiredSpec->Option.flatMap(r => r.values),
+        ~asked=false,
+      )
+      ->Reventless.OwnerScope.retiredScopeOf {
+      | None => true
+      | Some(scope) => !(scope->Reventless.OwnerScope.isRetiredValue(cell(scope.field)))
+      }
+      ownerOk && retiredOk
+    }
+
+    // The storage key the row was loaded by, reported as `id` — the nested type
+    // is a `Node`, so the field is non-null, and `loadStream` hands back the
+    // stored value without one.
+    let withId = (~key: string, item: JSON.t): JSON.t => {
+      let obj = item->JSON.Decode.object->Option.mapOr(Dict.make(), Dict.copy)
+      obj->Dict.set("id", JSON.Encode.string(key))
+      JSON.Encode.object(obj)
+    }
+    let loadFrom = async (~target: string, key: string): array<JSON.t> =>
+      switch Bus.getQueryDb(target) {
+      | Some(ops) =>
+        await ops.loadStream(key)
+        ->Stream.runCollect
+        ->Effect.catchAll(_ => Effect.succeed([]))
+        ->Effect.runPromise
+      | None => []
+      }
+
+    let lookupByIndexIn = (~target: string, ~field: string, value: string): array<JSON.t> =>
+      switch Bus.getQueryDbIndexLookup(target) {
+      | Some(lookup) => lookup(field, value)
+      | None =>
+        switch Bus.getQueryDbScan(target) {
+        | Some(scanAll) =>
+          scanAll()->Array.filter(item =>
+            item
+            ->JSON.Decode.object
+            ->Option.flatMap(d => d->Dict.get(field))
+            ->Option.flatMap(JSON.Decode.string)
+            ->Option.mapOr(false, v => v == value)
+          )
+        | None => []
+        }
+      }
+
+    let sourceField = (root: JSON.t, field: string): option<JSON.t> =>
+      root->JSON.Decode.object->Option.flatMap(d => d->Dict.get(field))
+
+    let fieldResolvers = Dict.make()
+
+    idResolverConfigs->Array.forEach((config: Reventless.ReadModel.idResolverConfig) => {
+      let {source: {idField, subId, resolvedField}, target} = config
+      let (fieldName, multi) = switch resolvedField {
+      | Single(f) => (f, false)
+      | Multi(f) => (f, true)
+      }
+      let targetName = target.tableName
+      let resolver: ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn = async (
+        root,
+        args,
+        ctx,
+      ) => {
+        let key =
+          root->sourceField(idField)->Option.flatMap(JSON.Decode.string)->Option.getOr("")
+        let rows = if key == "" {
+          []
+        } else {
+          switch target.idField {
+          | Id => (await loadFrom(~target=targetName, key))->Array.map(withId(~key, ...))
+          | Index(index) => lookupByIndexIn(~target=targetName, ~field=index, key)
+          | IndexWithId(_, targetIdField) =>
+            lookupByIndexIn(~target=targetName, ~field=targetIdField, key)
+          }
+        }
+        // The target's sort key, taken from the parent row or from an argument on
+        // the field — the same two sources the AppSync template reads.
+        let narrowed = switch (subId, target.subIdField) {
+        | (Field(sourceSortField), Some(targetSortField)) =>
+          let want = root->sourceField(sourceSortField)->Option.flatMap(JSON.Decode.string)
+          rows->Array.filter(item =>
+            item
+            ->JSON.Decode.object
+            ->Option.flatMap(d => d->Dict.get(targetSortField))
+            ->Option.flatMap(JSON.Decode.string) == want
+          )
+        | (Argument(sortArgument), Some(targetSortField)) =>
+          switch args->JSON.Decode.object->Option.flatMap(d => d->Dict.get(sortArgument)) {
+          | None => rows
+          | Some(want) =>
+            rows->Array.filter(item =>
+              item
+              ->JSON.Decode.object
+              ->Option.flatMap(d => d->Dict.get(targetSortField))
+              ->Option.flatMap(JSON.Decode.string) == want->JSON.Decode.string
+            )
+          }
+        | _ => rows
+        }
+        let allowed = narrowed->Array.filter(item => targetAllows(~ctx, ~target=targetName, item))
+        if multi {
+          allowed->JSON.Encode.array
+        } else {
+          allowed->Array.get(0)->Option.getOr(JSON.Encode.null)
+        }
+      }
+      fieldResolvers->Dict.set(fieldName, resolver)
+    })
+
+    idsResolverConfigs->Array.forEach((config: Reventless.ReadModel.idsResolverConfig) => {
+      let {source: {idsField, resolvedField}, target} = config
+      let targetName = target.tableName
+      let resolver: ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn = async (
+        root,
+        _args,
+        ctx,
+      ) => {
+        let ids =
+          root
+          ->sourceField(idsField)
+          ->Option.flatMap(JSON.Decode.array)
+          ->Option.getOr([])
+          ->Array.filterMap(JSON.Decode.string)
+        // Missing ids drop out rather than becoming nulls, matching BatchGetItem
+        // and the by-ids door built on it.
+        let rows = await ids->Array.map(async key =>
+          (await loadFrom(~target=targetName, key))->Array.get(0)->Option.map(withId(~key, ...))
+        )->Promise.all
+        rows
+        ->Array.filterMap(row =>
+          row->Option.filter(item => targetAllows(~ctx, ~target=targetName, item))
+        )
+        ->JSON.Encode.array
+      }
+      fieldResolvers->Dict.set(resolvedField, resolver)
+    })
+
+    if fieldResolvers->Dict.keysToArray->Array.length > 0 {
+      server.registerFieldResolvers(~typeName=returnTypeName, ~resolvers=fieldResolvers)
+    }
 
     // -- Register all fields --------------------------------------------------
     let allSdl =

@@ -101,6 +101,48 @@ function queryFieldNamesForReadModel(plugin, name, connectionSpecOpt) {
   };
 }
 
+function returnTypeNameFor(plugin, name) {
+  return plugin + `_` + singularize(stripViewSuffix(name));
+}
+
+function resolvedFieldsOfConfig(plugin, config) {
+  let assertSamePlugin = (pluginName, tableName, fieldName) => {
+    if (pluginName !== undefined && pluginName !== plugin) {
+      return Stdlib_JsError.throwWithMessage(`Field \`` + fieldName + `\` resolves to "` + tableName + `" in plugin "` + pluginName + `", but cross-plugin resolvers are not supported: a plugin's GraphQL document must be valid standalone, and ` + (`"` + pluginName + `"'s table is not readable by "` + plugin + `"'s API role. Query the other view directly, `) + `or project the fields you need into this one.`);
+    }
+  };
+  let single = config.idResolvers.map(param => {
+    let target = param.target;
+    let f = param.source.resolvedField;
+    let match;
+    match = f.TAG === "Single" ? [
+        f._0,
+        false
+      ] : [
+        f._0,
+        true
+      ];
+    let fieldName = match[0];
+    assertSamePlugin(target.pluginName, target.tableName, fieldName);
+    return {
+      fieldName: fieldName,
+      typeName: returnTypeNameFor(plugin, target.tableName),
+      multi: match[1]
+    };
+  });
+  let many = config.idsResolvers.map(param => {
+    let target = param.target;
+    let source = param.source;
+    assertSamePlugin(target.pluginName, target.tableName, source.resolvedField);
+    return {
+      fieldName: source.resolvedField,
+      typeName: returnTypeNameFor(plugin, target.tableName),
+      multi: true
+    };
+  });
+  return single.concat(many);
+}
+
 function queryFieldNamesForStateView(plugin, viewName, connectionSpecOpt) {
   let connectionSpec = connectionSpecOpt !== undefined ? connectionSpecOpt : true;
   let entity = stripViewSuffix(viewName);
@@ -147,6 +189,8 @@ export {
   sliceMutationFieldFor,
   canonicalPlural,
   queryFieldNamesForReadModel,
+  returnTypeNameFor,
+  resolvedFieldsOfConfig,
   queryFieldNamesForStateView,
   queryFieldNamesForSliceQueryDb,
   adminField,

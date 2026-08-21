@@ -252,7 +252,8 @@ function makeBucket(scope) {
     typeDefinitions: scope === platformScope ? [] : GraphQL_Stitcher$ReventlessCore.relayBaseTypes.slice(),
     mutationResolvers: {},
     queryResolvers: {},
-    subscriptionResolvers: {}
+    subscriptionResolvers: {},
+    fieldResolvers: {}
   };
 }
 
@@ -316,6 +317,18 @@ function relabelScope(from, to_) {
     Object.entries(b.subscriptionResolvers).forEach(param => {
       existing.subscriptionResolvers[param[0]] = param[1];
     });
+    Object.entries(b.fieldResolvers).forEach(param => {
+      let byField = param[1];
+      let typeName = param[0];
+      let target = existing.fieldResolvers[typeName];
+      if (target !== undefined) {
+        Object.entries(byField).forEach(param => {
+          target[param[0]] = param[1];
+        });
+      } else {
+        existing.fieldResolvers[typeName] = byField;
+      }
+    });
   } else {
     buckets.contents[to_] = b;
   }
@@ -352,6 +365,26 @@ function registerSubscriptions(sdlFields, resolvers) {
   Object.entries(resolvers).forEach(param => {
     b.subscriptionResolvers[param[0]] = param[1];
   });
+}
+
+function registerFieldResolvers(typeName, resolvers) {
+  let b = bucketFor(currentScope.contents);
+  let d = b.fieldResolvers[typeName];
+  let forType;
+  if (d !== undefined) {
+    forType = d;
+  } else {
+    let d$1 = {};
+    b.fieldResolvers[typeName] = d$1;
+    forType = d$1;
+  }
+  Object.entries(resolvers).forEach(param => {
+    forType[param[0]] = param[1];
+  });
+}
+
+function getFieldResolver(typeName, fieldName) {
+  return Stdlib_Array.findMap(Object.values(buckets.contents), b => Stdlib_Option.flatMap(b.fieldResolvers[typeName], d => d[fieldName]));
 }
 
 function getMutationResolver(fieldName) {
@@ -486,6 +519,9 @@ function scopeResolverMap(b, withRootDefaults) {
   if (Object.keys(b.subscriptionResolvers).length !== 0) {
     resolvers["Subscription"] = b.subscriptionResolvers;
   }
+  Object.entries(b.fieldResolvers).forEach(param => {
+    resolvers[param[0]] = param[1];
+  });
   return resolvers;
 }
 
@@ -749,6 +785,7 @@ let asInterface = {
   registerQueries: registerQueries,
   registerSubscriptions: registerSubscriptions,
   registerTypes: registerTypes,
+  registerFieldResolvers: registerFieldResolvers,
   getMutationResolver: getMutationResolver,
   getQueryResolver: getQueryResolver,
   start: start,
@@ -798,6 +835,8 @@ export {
   registerMutations,
   registerQueries,
   registerSubscriptions,
+  registerFieldResolvers,
+  getFieldResolver,
   getMutationResolver,
   getQueryResolver,
   registerTypes,
