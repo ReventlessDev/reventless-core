@@ -718,6 +718,11 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-08-22
+- chore(deps): pin the example host shells to alpha.82 ([852a9b9](https://github.com/ReventlessDev/reventless-core/commit/852a9b92b8ffda4d03dae117910b0ef09919ec82))
+
+### 2026-08-21
+- fix(core): make @resolves/@resolvesMany work end to end ([4c52957](https://github.com/ReventlessDev/reventless-core/commit/4c5295759dcb4b3eda4f0f4f2c1bc387fed88fcb))
 ### 2026-08-20
 - feat(seed): choose the login from the platform's users.yaml ([74e61de](https://github.com/ReventlessDev/reventless-core/commit/74e61de8fba3ee4cc62b368ff12010f162d49db7))
 ### 2026-08-20
