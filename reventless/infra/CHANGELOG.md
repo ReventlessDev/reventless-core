@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.149 (2026-08-21)
+
+### Bug Fixes
+
+* **core:** make @resolves/[@resolves](https://github.com/resolves)Many work end to end ([4c52957](https://github.com/ReventlessDev/reventless-core/commit/4c5295759dcb4b3eda4f0f4f2c1bc387fed88fcb))
+* **deps:** update sury to 11.0.0-rc.2 to fix unreachable union constructors ([fa5744f](https://github.com/ReventlessDev/reventless-core/commit/fa5744fed8de975e2f14725c856c6e5ce7d04a74))
+
+
 # 3.0.0-alpha.148 (2026-08-20)
 
 **Note:** Version bump only for package @reventlessdev/reventless-infra

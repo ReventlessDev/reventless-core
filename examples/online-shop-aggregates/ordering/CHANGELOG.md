@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.223 (2026-08-21)
+
+### Bug Fixes
+
+* **deps:** update sury to 11.0.0-rc.2 to fix unreachable union constructors ([fa5744f](https://github.com/ReventlessDev/reventless-core/commit/fa5744fed8de975e2f14725c856c6e5ce7d04a74))
+
+
 # 3.0.0-alpha.222 (2026-08-20)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-aggregates-ordering

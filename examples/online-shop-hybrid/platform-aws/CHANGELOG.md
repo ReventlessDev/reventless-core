@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.265 (2026-08-21)
+
+### Bug Fixes
+
+* **deps:** update sury to 11.0.0-rc.2 to fix unreachable union constructors ([fa5744f](https://github.com/ReventlessDev/reventless-core/commit/fa5744fed8de975e2f14725c856c6e5ce7d04a74))
+### Features
+
+* **online-shop-hybrid:** name both view modes in the deployed shell ([9d4f6c4](https://github.com/ReventlessDev/reventless-core/commit/9d4f6c41c870becaaff1658019853f21f09bd45d))
+
+
 # 1.0.0-alpha.264 (2026-08-20)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-platform-aws

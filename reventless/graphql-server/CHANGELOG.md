@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.94 (2026-08-21)
+
+### Bug Fixes
+
+* **core:** make @resolves/[@resolves](https://github.com/resolves)Many work end to end ([4c52957](https://github.com/ReventlessDev/reventless-core/commit/4c5295759dcb4b3eda4f0f4f2c1bc387fed88fcb))
+
+
 # 1.0.0-alpha.93 (2026-08-20)
 
 **Note:** Version bump only for package @reventlessdev/reventless-graphql-server
