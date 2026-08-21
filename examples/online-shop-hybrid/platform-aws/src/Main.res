@@ -28,9 +28,17 @@ let placeIndex = ReventlessAws.Capability_Geocoding_AwsLocation.make(~name="onli
 // before a regenerate.
 let default = Platform.deployPlatform(
   ~version=Reventless.PackageVersion.fromCaller(),
-  // `Map({})` — the mode with its defaults. No `style`: the mode's built-in
-  // demo tiles are the honest default for an example, and a real style URL is a
-  // per-deployment key with an account behind it.
+  // `Map({})` / `Graph({})` — both known modes, each with its defaults. No
+  // `style`: the mode's built-in demo tiles are the honest default for an
+  // example, and a real style URL is a per-deployment key with an account behind
+  // it. No `layout`: dagre is what the shop's references want.
+  //
+  // `graph` buys two surfaces from one word — the node-link row mode on every
+  // list whose schema carries references, and the Lifecycles page's lane/diagram
+  // toggle. That page hides the toggle when no renderer is registered, so
+  // leaving the mode unnamed did not degrade to a missing diagram; it read as a
+  // feature that had never been built.
+  //
   // `shellConfig` carries the keys the shell owns and the deploy has no way to
   // compute. `appName` is what the host UI puts in its sidebar and browser tab;
   // without it the shell falls back to the framework's own name.
@@ -42,7 +50,7 @@ let default = Platform.deployPlatform(
   // the server is the failure this key exists to avoid — and the shell treats an
   // absent key as "unknown", so leaving it out silently stops hiding anything.
   ~hostUiBundle={
-    viewModes: [Map({})],
+    viewModes: [Map({}), Graph({})],
     geocoderPlaceIndex: placeIndex,
     // The storefront's surface, shared with the in-memory root that hosts the
     // same shop. Declaring it is what points the shell at a static manifest for

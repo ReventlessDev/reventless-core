@@ -14,10 +14,16 @@ let $$default = Platform.deployPlatform(PackageVersion$Reventless.fromCaller(), 
   uiHintsFile: Storefront$OnlineShopHybridSeed.uiHintsFile,
   bakedManifest: Storefront$OnlineShopHybridSeed.manifest,
   geocoderPlaceIndex: placeIndex,
-  viewModes: [{
+  viewModes: [
+    {
       TAG: "Map",
       _0: {}
-    }],
+    },
+    {
+      TAG: "Graph",
+      _0: {}
+    }
+  ],
   shellConfig: Object.fromEntries([
     [
       "appName",
