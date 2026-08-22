@@ -4,17 +4,41 @@ import * as Aws from "@pulumi/aws";
 import * as Pulumi$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Pulumi.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
+import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as AWS_Tags$ReventlessAws from "./adapter/AWS_Tags.res.mjs";
 import * as Util_LocalConfig$ReventlessAws from "./util/Util_LocalConfig.res.mjs";
 import * as Auth_ActiveRoleStore$ReventlessAws from "./adapter/Auth/Auth_ActiveRoleStore.res.mjs";
 import * as Auth_ActiveRoleTrigger$ReventlessAws from "./adapter/Auth/Auth_ActiveRoleTrigger.res.mjs";
 import * as Auth_ActiveRolePoolAttachment$ReventlessAws from "./adapter/Auth/Auth_ActiveRolePoolAttachment.res.mjs";
 
+let log = Logger$ReventlessCore.fromEnv();
+
+let _deprecatedPoolIdKey = "cognitoUserPoolId";
+
+function _identityProviderId(cfg) {
+  let read = key => {
+    let v = Util_LocalConfig$ReventlessAws.get(key);
+    if (v !== undefined) {
+      return v;
+    } else {
+      return cfg.get(key);
+    }
+  };
+  let v = read("identityProviderId");
+  if (v !== undefined) {
+    return v;
+  } else {
+    return Stdlib_Option.map(read(_deprecatedPoolIdKey), id => {
+      log.warn("Platform_Stack", undefined, `platform:` + _deprecatedPoolIdKey + ` (REVENTLESS_COGNITO_USER_POOL_ID) is deprecated — rename it to platform:identityProviderId (REVENTLESS_IDENTITY_PROVIDER_ID). Still honoured, because dropping it silently would deploy in auto mode and create a NEW user pool.`);
+      return id;
+    });
+  }
+}
+
 function _resolveUncached() {
   let cfg = new Pulumi.Config("platform");
-  let v = Util_LocalConfig$ReventlessAws.get("cognitoUserPoolId");
-  let existingPoolId = v !== undefined ? v : cfg.get("cognitoUserPoolId");
-  let activeRoleTable = Auth_ActiveRoleStore$ReventlessAws.makeTable(undefined, {});
+  let existingPoolId = _identityProviderId(cfg);
+  let activeRoleTable = Auth_ActiveRoleStore$ReventlessAws.resolveTable(Auth_ActiveRoleStore$ReventlessAws.chooseStore(existingPoolId), {});
   let activeRoleTrigger = Auth_ActiveRoleTrigger$ReventlessAws.make(activeRoleTable.name, activeRoleTable.arn, undefined, {});
   let result;
   if (existingPoolId !== undefined) {
@@ -45,7 +69,8 @@ function _resolveUncached() {
     Auth_ActiveRolePoolAttachment$ReventlessAws.make(undefined, {
       userPoolId: existingPoolId,
       preTokenGenerationArn: activeRoleTrigger.functionArn,
-      codeHash: activeRoleTrigger.sourceCodeHash
+      codeHash: activeRoleTrigger.sourceCodeHash,
+      activeRoleStore: activeRoleTable.name
     }, {});
     result = {
       poolId: Pulumi.output(existingPoolId),
@@ -114,6 +139,7 @@ function _resolveUncached() {
   Pulumi$Pulumi.$$export("cognitoUserPoolArn", result.poolArn);
   Pulumi$Pulumi.$$export("cognitoRegion", Pulumi.output(regionStr));
   Pulumi$Pulumi.$$export("cognitoUserPoolManaged", Pulumi.output(result.managed ? "true" : "false"));
+  Pulumi$Pulumi.$$export("activeRoleStore", result.activeRoleTable.name);
   return result;
 }
 
@@ -132,8 +158,11 @@ function resolveCognitoUserPool() {
 }
 
 export {
+  log,
+  _deprecatedPoolIdKey,
+  _identityProviderId,
   _resolveUncached,
   _cached,
   resolveCognitoUserPool,
 }
-/* @pulumi/aws Not a pure module */
+/* log Not a pure module */

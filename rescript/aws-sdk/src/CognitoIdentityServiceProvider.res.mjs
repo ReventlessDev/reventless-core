@@ -70,6 +70,39 @@ let AdminListGroupsForUserCommand = {
   send: send$3
 };
 
+let Raw$5 = {};
+
+function send$4(command) {
+  return client().send(command);
+}
+
+let CreateUserPoolCommand = {
+  Raw: Raw$5,
+  send: send$4
+};
+
+let Raw$6 = {};
+
+function send$5(command) {
+  return client().send(command);
+}
+
+let ListUserPoolsCommand = {
+  Raw: Raw$6,
+  send: send$5
+};
+
+let Raw$7 = {};
+
+function send$6(command) {
+  return client().send(command);
+}
+
+let DescribeUserPoolCommand = {
+  Raw: Raw$7,
+  send: send$6
+};
+
 export {
   Raw,
   clientInstance,
@@ -78,5 +111,8 @@ export {
   AdminAddUserToGroupCommand,
   AdminRemoveUserFromGroupCommand,
   AdminListGroupsForUserCommand,
+  CreateUserPoolCommand,
+  ListUserPoolsCommand,
+  DescribeUserPoolCommand,
 }
 /* @smithy/node-http-handler Not a pure module */

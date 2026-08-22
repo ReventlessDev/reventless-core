@@ -7,6 +7,7 @@ import * as LibDynamodb from "@aws-sdk/lib-dynamodb";
 import * as DynamoDb_DocumentClient$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DocumentClient.res.mjs";
 import * as CognitoIdentityServiceProvider$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/CognitoIdentityServiceProvider.res.mjs";
 import * as ClientCognitoIdentityProvider from "@aws-sdk/client-cognito-identity-provider";
+import * as Auth_ActiveRoleStore_Schema$ReventlessAws from "./Auth_ActiveRoleStore_Schema.res.mjs";
 
 function getEnv(k) {
   let v = process.env[k];
@@ -76,6 +77,19 @@ function cognitoLookupName(identity) {
   }
 }
 
+function appClientId(identity) {
+  let match = identity.clientId;
+  if (match === undefined) {
+    return;
+  }
+  let id = Primitive_option.valFromOption(match);
+  if ((id == null) || id.trim() === "") {
+    return;
+  } else {
+    return id;
+  }
+}
+
 function result(activeRole, availableRoles) {
   return Object.fromEntries([
     [
@@ -96,6 +110,8 @@ async function handler(event) {
   }
   let name = Stdlib_Option.flatMap(event.identity, cognitoLookupName);
   let lookupName = name !== undefined ? name : Stdlib_JsError.throwWithMessage("unauthenticated");
+  let id = Stdlib_Option.flatMap(event.identity, appClientId);
+  let clientId = id !== undefined ? id : Stdlib_JsError.throwWithMessage("Cannot determine which application this session belongs to, so the active role cannot be stored where the token minter will look for it");
   let table = tableName();
   let membership = await membershipOf(lookupName, userPoolId());
   let match = Stdlib_Option.flatMap(event.arguments, a => a.activeRole);
@@ -112,11 +128,15 @@ async function handler(event) {
     }
     let item = Object.fromEntries([
       [
-        "id",
+        Auth_ActiveRoleStore_Schema$ReventlessAws.partitionKey,
         sub
       ],
       [
-        "activeRole",
+        Auth_ActiveRoleStore_Schema$ReventlessAws.sortKey,
+        clientId
+      ],
+      [
+        Auth_ActiveRoleStore_Schema$ReventlessAws.roleAttribute,
         requested
       ],
       [
@@ -130,7 +150,7 @@ async function handler(event) {
     }));
     return result(requested, membership);
   }
-  await DynamoDb_DocumentClient$AwsSdk.deleteById(table, sub);
+  await DynamoDb_DocumentClient$AwsSdk.deleteByIdSort(table, sub, Auth_ActiveRoleStore_Schema$ReventlessAws.sortKey, clientId);
   return result(undefined, membership);
 }
 
@@ -141,6 +161,7 @@ export {
   membershipOf,
   mayActAs,
   cognitoLookupName,
+  appClientId,
   result,
   handler,
 }

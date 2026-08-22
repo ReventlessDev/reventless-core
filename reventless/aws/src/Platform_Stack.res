@@ -17,39 +17,77 @@ type cognitoUserPool = {
 /**
  * Resolve the Cognito UserPool used by AppSync auth. Two modes:
  *
- * - **Auto**: no `platform:cognitoUserPoolId` config — create a fresh UserPool
+ * - **Auto**: no `platform:identityProviderId` config — create a fresh UserPool
  *   with SPA-friendly defaults (email username, 12-char password policy, no
  *   MFA, admin-only user creation). Caller is responsible for creating
  *   groups (`Admin`, `User`, …) and users via the AWS console / CLI.
  *
- * - **BYO**: pool ID provided — skip pool creation, look up the existing
+ * - **BYO**: provider ID provided — skip pool creation, look up the existing
  *   pool via `aws.cognito.getUserPool` for its ARN. Lookup precedence
  *   (highest → lowest):
- *     1. `REVENTLESS_COGNITO_USER_POOL_ID` env var (typically a CI secret).
- *     2. `Pulumi.local.yaml` sidecar key `cognitoUserPoolId` (gitignored;
+ *     1. `REVENTLESS_IDENTITY_PROVIDER_ID` env var (typically a CI secret).
+ *     2. `Pulumi.local.yaml` sidecar key `identityProviderId` (gitignored;
  *        per-dev override).
- *     3. `platform:cognitoUserPoolId` in the checked-in `Pulumi.<stack>.yaml`.
+ *     3. `platform:identityProviderId` in the checked-in `Pulumi.<stack>.yaml`.
+ *
+ *   The former `cognitoUserPoolId` spelling is still read at every level, and
+ *   warns — see `_deprecatedPoolIdKey` for why dropping it is its own act.
  *
  * In both modes the framework owns the `UserPoolClient` (SPA settings would
  * not reliably exist on a pre-existing client; the client is a child resource
  * Pulumi can destroy without touching the parent pool).
  *
  * Always exports `cognitoUserPoolId`, `cognitoUserPoolClientId`,
- * `cognitoUserPoolArn`, `cognitoRegion`, and `cognitoUserPoolManaged` as
- * stack outputs so downstream stacks (and Stage D AppSync wiring) can read
- * them via `StackReference`.
+ * `cognitoUserPoolArn`, `cognitoRegion`, `cognitoUserPoolManaged` and
+ * `activeRoleStore` as stack outputs so downstream stacks (and Stage D AppSync
+ * wiring) can read them via `StackReference`.
  *
  * Also provisions the role-state table and the pre-token-generation trigger that
  * narrows `cognito:groups` to a caller's chosen role. They belong here rather
  * than beside the mutation that writes the table because the pool must be
  * declared carrying the trigger's ARN — see the ordering note below.
+ *
+ * In BYO mode the store follows the provider rather than the stack: its name is
+ * derived from the provider id, it is looked up rather than created, and it is
+ * provisioned outside every stack alongside the pool. Either lookup finding
+ * nothing fails the deploy — the provider and its store exist together or not
+ * at all.
  */
+let log = ReventlessCore.Logger.fromEnv()
+
+/** The key that was `cognitoUserPoolId` before the concept was named for what it
+  is rather than for the service implementing it.
+
+  🚨 **Still read, and it must stay read until every caller has moved.** An absent
+  provider id is not an error here — it is auto mode, and auto mode *creates a
+  user pool*. So a caller left on the old key after this stopped reading it would
+  not fail: it would deploy green, mint a fresh pool, and orphan every account in
+  the old one. Dropping this fallback is a separate act, done once the callers are
+  known to have moved, not a tidy-up. */
+let _deprecatedPoolIdKey = "cognitoUserPoolId"
+
+let _identityProviderId = (~cfg: Pulumi.Config.t): option<string> => {
+  let read = key =>
+    switch Util_LocalConfig.get(key) {
+    | Some(_) as v => v
+    | None => cfg->Pulumi.Config.get(key)
+    }
+  switch read("identityProviderId") {
+  | Some(_) as v => v
+  | None =>
+    read(_deprecatedPoolIdKey)->Option.map(id => {
+      log.warn(
+        ~comp="Platform_Stack",
+        `platform:${_deprecatedPoolIdKey} (REVENTLESS_COGNITO_USER_POOL_ID) is deprecated — rename it to platform:identityProviderId (REVENTLESS_IDENTITY_PROVIDER_ID). Still honoured, because dropping it silently would deploy in auto mode and create a NEW user pool.`,
+      )
+      id
+    })
+  }
+}
+
 let _resolveUncached = (): cognitoUserPool => {
   let cfg = Pulumi.Config.make(Some("platform"))
-  let existingPoolId = switch Util_LocalConfig.get("cognitoUserPoolId") {
-  | Some(_) as v => v
-  | None => cfg->Pulumi.Config.get("cognitoUserPoolId")
-  }
+  let existingPoolId = _identityProviderId(~cfg)
 
   // Provisioned ahead of the pool in both pool modes: the pre-token-generation
   // trigger reads these rows, and in auto mode the pool is declared carrying the
@@ -71,7 +109,19 @@ let _resolveUncached = (): cognitoUserPool => {
   // Saving one GetItem in a legacy mode is not worth a switch whose failure mode
   // is a feature that quietly is not there. If the cost ever matters, the fix is
   // a design that does not hinge on call order — not this parameter again.
-  let activeRoleTable = Auth_ActiveRoleStore.makeTable(~opts={})
+  //
+  // 🚨 **On a provider we do not own, the rows do not belong to this stack.** A
+  // pool holds one pre-token-generation trigger, so two stacks sharing a pool with
+  // a table each have the winning trigger reading rows the serving resolver never
+  // wrote — every role switch succeeds and does nothing. So the store follows the
+  // provider: named by derivation from the provider id, looked up rather than
+  // created, and provisioned outside every stack alongside the pool itself. See
+  // [Auth_ActiveRoleStore.chooseStore] and
+  // [docs/plans/active-role-store-scoped-to-the-pool.md].
+  let activeRoleTable = Auth_ActiveRoleStore.resolveTable(
+    ~choice=Auth_ActiveRoleStore.chooseStore(~identityProviderId=existingPoolId),
+    ~opts={},
+  )
   let activeRoleTrigger = Auth_ActiveRoleTrigger.make(
     ~activeRoleTableName=activeRoleTable.name->Pulumi.Output.asInput,
     ~activeRoleTableArn=activeRoleTable.arn->Pulumi.Output.asInput,
@@ -112,11 +162,16 @@ let _resolveUncached = (): cognitoUserPool => {
     // The code hash is an input so a new build of the trigger reaches this
     // resource: the function ARN is stable, so it alone would let a broken
     // version onto the pool unchecked after the first deploy.
+    //
+    // The store travels with it because the pool has one trigger slot: the
+    // resource compares this against the store read by whatever already holds the
+    // slot, and refuses rather than taking it from a trigger that disagrees.
     let _attachment = Auth_ActiveRolePoolAttachment.make(
       ~props={
         userPoolId: Pulumi.Input.make(poolId),
         preTokenGenerationArn: activeRoleTrigger.functionArn->Pulumi.Output.asInput,
         codeHash: Pulumi.Input.make(activeRoleTrigger.sourceCodeHash),
+        activeRoleStore: activeRoleTable.name->Pulumi.Output.asInput,
       },
       ~opts={},
     )
@@ -213,6 +268,10 @@ let _resolveUncached = (): cognitoUserPool => {
     "cognitoUserPoolManaged",
     Pulumi.Output.make(result.managed ? "true" : "false"),
   )
+  // Exported so a second stack meant to share this pool has a name to put in its
+  // own `platform:activeRoleStore` — without it, pointing two stacks at one store
+  // means reading a table name out of the console.
+  Pulumi.Pulumi.export("activeRoleStore", result.activeRoleTable.name)
 
   result
 }

@@ -14,15 +14,37 @@ import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/
 import * as Util_DynamoDb$ReventlessAws from "../../util/Util_DynamoDb.res.mjs";
 import * as Util_LambdaLogging$ReventlessAws from "../../util/Util_LambdaLogging.res.mjs";
 import * as AppSync_Resolver_Native$ReventlessAws from "../Api/AppSync_Resolver_Native.res.mjs";
+import * as Auth_ActiveRoleStore_Schema$ReventlessAws from "./Auth_ActiveRoleStore_Schema.res.mjs";
+
+function chooseStore(identityProviderId) {
+  if (identityProviderId !== undefined) {
+    return {
+      TAG: "ProviderScoped",
+      _0: Auth_ActiveRoleStore_Schema$ReventlessAws.derivedStoreName(identityProviderId)
+    };
+  } else {
+    return "StackScoped";
+  }
+}
 
 let invokeCode = `import { util } from '@aws-appsync/utils';
+function appClientId(id) {
+  const claims = id.claims;
+  if (claims == null) return null;
+  const aud = claims.aud;
+  const picked = Array.isArray(aud) ? aud[0] : aud;
+  const value = picked ?? claims.client_id;
+  return typeof value === 'string' && value !== '' ? value : null;
+}
 export function request(ctx) {
   const id = ctx.identity;
   return {
     operation: 'Invoke',
     payload: {
       arguments: ctx.args,
-      identity: id != null && id.sub != null ? { sub: id.sub, username: id.username ?? null } : null
+      identity: id != null && id.sub != null
+        ? { sub: id.sub, username: id.username ?? null, clientId: appClientId(id) }
+        : null
     }
   };
 }
@@ -35,14 +57,38 @@ export function response(ctx) {
 function makeTable(nameOpt, opts) {
   let name = nameOpt !== undefined ? nameOpt : "ActiveRoleStore";
   let opts$1 = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
-  let table = Util_DynamoDb$ReventlessAws.makeTable([{
-      name: "id",
+  let table = Util_DynamoDb$ReventlessAws.makeTable([
+    {
+      name: Auth_ActiveRoleStore_Schema$ReventlessAws.partitionKey,
       type: "S"
-    }], undefined, undefined, undefined, AWS_Tags$ReventlessAws.make(name + "Table", "Platform", "Auth", "Platform", undefined, undefined, undefined, undefined), opts$1, name);
+    },
+    {
+      name: Auth_ActiveRoleStore_Schema$ReventlessAws.sortKey,
+      type: "S"
+    }
+  ], undefined, undefined, Auth_ActiveRoleStore_Schema$ReventlessAws.sortKey, AWS_Tags$ReventlessAws.make(name + "Table", "Platform", "Auth", "Platform", undefined, undefined, undefined, undefined), opts$1, name);
   return {
     name: table.name,
     arn: table.arn
   };
+}
+
+function lookupTable(tableName) {
+  let found = Aws.dynamodb.getTableOutput({
+    name: tableName
+  });
+  return {
+    name: found.apply(t => t.name),
+    arn: found.apply(t => t.arn)
+  };
+}
+
+function resolveTable(choice, opts) {
+  if (typeof choice !== "object") {
+    return makeTable(undefined, opts);
+  } else {
+    return lookupTable(choice._0);
+  }
 }
 
 function makeWriteDoor(api, table, cognitoUserPoolId, cognitoUserPoolArn, nameOpt, opts) {
@@ -156,8 +202,11 @@ function makeWriteDoor(api, table, cognitoUserPoolId, cognitoUserPoolArn, nameOp
 }
 
 export {
+  chooseStore,
   invokeCode,
   makeTable,
+  lookupTable,
+  resolveTable,
   makeWriteDoor,
 }
 /* @pulumi/aws Not a pure module */

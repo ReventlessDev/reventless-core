@@ -60,6 +60,11 @@ type triggerRequest = {
   groupConfiguration?: groupConfiguration,
 }
 
+/** The app client this token is being minted for — the second half of the store's
+  row key, and what makes the active role per-platform on a provider serving
+  several. Cognito supplies it on every pre-token-generation event. */
+type callerContext = {clientId?: string}
+
 type groupOverrideDetails = {
   groupsToOverride: array<string>,
   iamRolesToOverride: array<string>,
@@ -77,6 +82,7 @@ type event = {
   request?: triggerRequest,
   response?: triggerResponse,
   userName?: string,
+  callerContext?: callerContext,
 }
 
 // ── The decision ────────────────────────────────────────────────────────────
@@ -171,15 +177,18 @@ sign-in outright, and failing a login because a *preference* could not be read
 trades a working session for a cosmetic one. The caller lands on full membership —
 their existing privileges, not more — which is the safe direction to fail.
 */
-let storedRoleFor = async (~sub: string, ~table: string): option<string> =>
+let storedRoleFor = async (~sub: string, ~clientId: string, ~table: string): option<string> =>
   try {
     let out = await DynamoDb_DocumentClient.GetCommand.make({
       tableName: table,
-      key: Dict.fromArray([("id", JSON.Encode.string(sub))]),
+      key: Dict.fromArray([
+        (Auth_ActiveRoleStore_Schema.partitionKey, JSON.Encode.string(sub)),
+        (Auth_ActiveRoleStore_Schema.sortKey, JSON.Encode.string(clientId)),
+      ]),
     })->DynamoDb_DocumentClient.GetCommand.send
     out.item
     ->Option.flatMap(JSON.Decode.object)
-    ->Option.flatMap(o => o->Dict.get("activeRole"))
+    ->Option.flatMap(o => o->Dict.get(Auth_ActiveRoleStore_Schema.roleAttribute))
     ->Option.flatMap(JSON.Decode.string)
   } catch {
   | _ => None
@@ -197,12 +206,17 @@ let handler = async (event: event): event => {
   let sub =
     event.request->Option.flatMap(r => r.userAttributes)->Option.flatMap(u => u.sub)->Option.getOr("")
 
-  // No subject means no row to look up. Returning the event untouched keeps the
-  // sign-in working on exactly the membership the pool granted.
-  if sub == "" {
+  let clientId = event.callerContext->Option.flatMap(c => c.clientId)->Option.getOr("")
+
+  // Neither half of the key means no row to look up. Returning the event
+  // untouched keeps the sign-in working on exactly the membership the pool
+  // granted — the safe direction, and the same one a read failure takes. An
+  // absent client id is not worth failing a login over: the caller lands on their
+  // full membership, which is their existing privileges and not more.
+  if sub == "" || clientId == "" {
     event
   } else {
-    let storedRole = await storedRoleFor(~sub, ~table=tableName())
+    let storedRole = await storedRoleFor(~sub, ~clientId, ~table=tableName())
     respond(~event, ~decision=decide(~membership, ~storedRole))
   }
 }

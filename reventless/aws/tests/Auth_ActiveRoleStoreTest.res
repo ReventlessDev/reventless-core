@@ -72,3 +72,68 @@ describe("Auth_ActiveRoleStore_Ops.cognitoLookupName", () => {
     expect(Ops.cognitoLookupName(~identity={}))->toEqual(None)
   )
 })
+
+// Which store this deployment reads and writes. Two cases and no third: a stack
+// that creates its own provider owns everything attached to it, and a stack given
+// a provider owns none of it. See
+// [docs/plans/active-role-store-scoped-to-the-pool.md].
+describe("Auth_ActiveRoleStore.chooseStore", () => {
+  testSync("a stack that creates its own provider keeps its own table", () =>
+    expect(Auth_ActiveRoleStore.chooseStore(~identityProviderId=None))->toEqual(
+      Auth_ActiveRoleStore.StackScoped,
+    )
+  )
+
+  testSync("a stack given a provider reads that provider's derived store", () =>
+    expect(Auth_ActiveRoleStore.chooseStore(~identityProviderId=Some("eu-west-1_CQTwafSeX")))
+    ->toEqual(
+      Auth_ActiveRoleStore.ProviderScoped("ReventlessActiveRoleStore-eu-west-1_CQTwafSeX"),
+    )
+  )
+
+  // 🚨 The defect, expressed as the property that now prevents it. Two platform
+  // stacks on one provider previously deployed a table each, so the pool's single
+  // trigger read rows the other's resolver wrote — every switch succeeding and
+  // doing nothing. There is no configuration either could carry that would make
+  // them disagree.
+  testSync("two deployments on one provider cannot choose different stores", () =>
+    expect(Auth_ActiveRoleStore.chooseStore(~identityProviderId=Some("eu-west-1_Shared")))
+    ->toEqual(Auth_ActiveRoleStore.chooseStore(~identityProviderId=Some("eu-west-1_Shared")))
+  )
+})
+
+// The second half of the row key. Every other absent field in this handler has a
+// defensible default; this one does not, and the test that matters is the one
+// asserting it refuses rather than substituting something.
+describe("Auth_ActiveRoleStore_Ops.appClientId", () => {
+  testSync("the app client the authorizer resolved is the one used", () =>
+    expect(Ops.appClientId(~identity={sub: "sub-1", clientId: Value("7cl13nt")}))->toEqual(
+      Some("7cl13nt"),
+    )
+  )
+
+  // 🚨 The trigger keys its read on the client id Cognito hands it, so a write
+  // under any substitute — a constant, the subject, the empty string — is a row
+  // the trigger never finds. Refusing is the only answer that does not recreate
+  // the defect one level down.
+  testSync("an absent client id yields nothing to key a row on", () =>
+    expect(Ops.appClientId(~identity={sub: "sub-1"}))->toEqual(None)
+  )
+
+  // The resolver sends `appClientId(id)`, which returns null when the claims are
+  // not there to read — so null is the shape that actually arrives, not a missing
+  // field.
+  testSync("an explicitly null client id is not a client id", () =>
+    expect(Ops.appClientId(~identity={sub: "sub-1", clientId: Null}))->toEqual(None)
+  )
+
+  testSync("a blank client id is not a client id either", () =>
+    expect(Ops.appClientId(~identity={sub: "sub-1", clientId: Value("   ")}))->toEqual(None)
+  )
+
+  // The subject is deliberately not a fallback: it would key every platform's row
+  // identically and undo the per-platform narrowing the pair key exists for.
+  testSync("the subject is never substituted for the app client", () =>
+    expect(Ops.appClientId(~identity={sub: "sub-1", clientId: Null}))->toEqual(None)
+  )
+})

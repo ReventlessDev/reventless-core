@@ -51,7 +51,7 @@ don't own). Values are read with first-match precedence:
 | `hostUiProdStacks` | `REVENTLESS_HOST_UI_PROD_STACKS` | CSV of stack names treated as prod (default `prod,main`) |
 
 For CI, set these as **repository variables** (none are secret) and surface them
-in the deploy job's `env:` block next to `REVENTLESS_COGNITO_USER_POOL_ID`.
+in the deploy job's `env:` block next to `REVENTLESS_IDENTITY_PROVIDER_ID`.
 
 :::caution Don't commit a real base domain
 Keep `hostUiBaseDomain` out of checked-in `Pulumi.<stack>.yaml` in shared

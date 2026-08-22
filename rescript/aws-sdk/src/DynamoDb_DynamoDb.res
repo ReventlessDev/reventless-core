@@ -231,3 +231,70 @@ module UpdateContinuousBackupsCommand = {
 
   let send: t => promise<output> = command => Raw.send(client(), command)
 }
+
+module CreateTableCommand = {
+  /*** create a table
+
+  this command is not available in document-client
+
+  see: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/dynamodb/command/CreateTableCommand/ */
+
+  type t
+
+  type attributeDefinition = {
+    @as("AttributeName") attributeName: string,
+    /** "S" | "N" | "B" */
+    @as("AttributeType")
+    attributeType: string,
+  }
+
+  type input = {
+    @as("TableName") tableName: string,
+    @as("KeySchema") keySchema: array<DescribeTableCommand.keySchemaElement>,
+    @as("AttributeDefinitions") attributeDefinitions: array<attributeDefinition>,
+    /** "PROVISIONED" | "PAY_PER_REQUEST" */
+    @as("BillingMode")
+    billingMode?: string,
+    @as("Tags") tags?: array<Dict.t<string>>,
+  }
+
+  type output = {@as("$metadata") metadata: Metadata.t}
+
+  @new @module("@aws-sdk/client-dynamodb")
+  external make: input => t = "CreateTableCommand"
+
+  module Raw = {
+    @send
+    external send: (client, t) => promise<output> = "send"
+  }
+
+  let send: t => promise<output> = command => Raw.send(client(), command)
+}
+
+module TableExistsWaiter = {
+  /*** block until a table reports ACTIVE.
+
+  🚨 **Does not reject on failure.** The SDK's waiters resolve with a `state` of
+  `"SUCCESS"`, `"FAILURE"`, `"TIMEOUT"` or `"RETRY"` — so a caller that only
+  awaits this treats a timeout as success. Check [result.state].
+
+  see: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/dynamodb/#waiters */
+
+  type config = {
+    client: client,
+    /** seconds */
+    maxWaitTime: int,
+  }
+
+  type params = {@as("TableName") tableName: string}
+
+  type result = {state: string}
+
+  @module("@aws-sdk/client-dynamodb")
+  external waitUntilTableExists: (config, params) => promise<result> = "waitUntilTableExists"
+
+  let succeeded = (result: result): bool => result.state == "SUCCESS"
+
+  let wait = (~tableName: string, ~maxWaitTime: int=300): promise<result> =>
+    waitUntilTableExists({client: client(), maxWaitTime}, {tableName: tableName})
+}

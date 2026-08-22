@@ -79,7 +79,7 @@ config:
 `<org>/<project>/<stack>` — the `<stack>` segment matches your branch/environment
 (`alpha` here).
 
-## Step 2 — Cognito: auto-provision or bring your own
+## Step 2 — Identity: auto-provision or bring your own
 
 The platform needs a Cognito user pool for authentication. By default it
 **auto-provisions a fresh pool** — nothing to configure. To reuse an existing
@@ -88,10 +88,22 @@ pool, set its ID (it is read with first-match precedence: env var, then
 
 ```yaml
 # platform-aws/Pulumi.local.yaml  (gitignored; bare key, no namespace prefix)
-cognitoUserPoolId: eu-west-1_AbCdEfGhI
+identityProviderId: eu-west-1_AbCdEfGhI
 ```
 
-or, for CI: `REVENTLESS_COGNITO_USER_POOL_ID=eu-west-1_AbCdEfGhI`.
+or, for CI: `REVENTLESS_IDENTITY_PROVIDER_ID=eu-west-1_AbCdEfGhI`.
+
+Bringing your own pool also means bringing its **active-role store** — the table
+the pool's token trigger reads. Provision both at once, before the first deploy:
+
+```bash
+pnpm --filter @reventlessdev/reventless-aws run provision:identity -- \
+  --provider-id eu-west-1_AbCdEfGhI
+```
+
+A stack pointed at a pool whose store is missing fails the deploy. See
+[Bringing your own identity provider](../docs-infrastructure/deployment-guide.md)
+for why the store belongs to the pool rather than to the stack.
 
 ## Step 3 — Check the host-shell version pin
 

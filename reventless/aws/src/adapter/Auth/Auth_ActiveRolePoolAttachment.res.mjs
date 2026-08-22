@@ -59,6 +59,16 @@ function mergedUpdateInput(described, userPoolId, preTokenGenerationArn) {
   return out;
 }
 
+function attachedTriggerArn(described) {
+  let lambdaConfig = Stdlib_Option.flatMap(described["LambdaConfig"], Stdlib_JSON.Decode.object);
+  let arn = Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(lambdaConfig, c => c["PreTokenGenerationConfig"]), Stdlib_JSON.Decode.object), config => config["LambdaArn"]), Stdlib_JSON.Decode.string);
+  if (arn !== undefined) {
+    return arn;
+  } else {
+    return Stdlib_Option.flatMap(Stdlib_Option.flatMap(lambdaConfig, c => c["PreTokenGeneration"]), Stdlib_JSON.Decode.string);
+  }
+}
+
 function attachedTrigger(described) {
   let lambdaConfig = Stdlib_Option.flatMap(described["LambdaConfig"], Stdlib_JSON.Decode.object);
   let config = Stdlib_Option.flatMap(Stdlib_Option.flatMap(lambdaConfig, c => c["PreTokenGenerationConfig"]), Stdlib_JSON.Decode.object);
@@ -70,6 +80,48 @@ function attachedTrigger(described) {
     return;
   } else {
     return Stdlib_Option.flatMap(config["LambdaArn"], Stdlib_JSON.Decode.string);
+  }
+}
+
+function classifySlot(attachedArn, ourArn, ourStore, attachedStore) {
+  if (attachedArn !== undefined && attachedArn !== "") {
+    if (attachedArn === ourArn) {
+      return "Ours";
+    } else if (attachedStore !== undefined) {
+      if (attachedStore === ourStore) {
+        return {
+          TAG: "SharedWith",
+          _0: attachedArn
+        };
+      } else {
+        return {
+          TAG: "DifferentStore",
+          arn: attachedArn,
+          theirStore: attachedStore
+        };
+      }
+    } else {
+      return {
+        TAG: "Foreign",
+        _0: attachedArn
+      };
+    }
+  } else {
+    return "Vacant";
+  }
+}
+
+function refusalFor(slot, userPoolId, ourStore) {
+  if (typeof slot !== "object") {
+    return;
+  }
+  switch (slot.TAG) {
+    case "DifferentStore" :
+      return `user pool ` + userPoolId + ` already carries the active-role trigger ` + slot.arn + `, which reads "` + slot.theirStore + `" — but this deployment's Platform_SetActiveRole writes "` + ourStore + `". A pool holds one pre-token-generation trigger, so attaching would leave one of the two stacks writing rows nothing reads and every role switch silently doing nothing. Point both stacks at one store with platform:activeRoleStore, or give them separate user pools.`;
+    case "Foreign" :
+      return `user pool ` + userPoolId + ` already carries the pre-token-generation trigger ` + slot._0 + `, which is not an active-role trigger of this framework — attaching would silently replace it, and Cognito allows a pool only one. Detach it deliberately if it is obsolete, or give this deployment its own user pool. (If it *is* a Reventless trigger, this deployment could not read its configuration: the deploying principal needs lambda:GetFunctionConfiguration on it.)`;
+    default:
+      return;
   }
 }
 
@@ -135,6 +187,19 @@ async function getLambdaClient() {
   return c$1;
 }
 
+async function activeRoleStoreOf(functionArn) {
+  try {
+    let sdk = await getLambdaSdk();
+    let client = await getLambdaClient();
+    let input = {};
+    input["FunctionName"] = functionArn;
+    let result = await client.send(newOf1(sdk.GetFunctionConfigurationCommand, input));
+    return Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(result.Environment, Stdlib_JSON.Decode.object), env => env["Variables"]), Stdlib_JSON.Decode.object), vars => vars["ACTIVE_ROLE_TABLE"]), Stdlib_JSON.Decode.string);
+  } catch (exn) {
+    return;
+  }
+}
+
 let decodePayload = ((p) => {
   if (p == null) return "";
   if (typeof p === "string") return p;
@@ -161,6 +226,8 @@ function isPoolGoneError(jsErr) {
 
 let probeSubject = "reventless-attachment-probe";
 
+let probeClientId = "reventless-attachment-probe-client";
+
 function probeEvent(userPoolId) {
   let groupConfiguration = {};
   groupConfiguration["groupsToOverride"] = [];
@@ -170,11 +237,14 @@ function probeEvent(userPoolId) {
   let request = {};
   request["userAttributes"] = userAttributes;
   request["groupConfiguration"] = groupConfiguration;
+  let callerContext = {};
+  callerContext["clientId"] = probeClientId;
   let event = {};
   event["version"] = "1";
   event["triggerSource"] = "TokenGeneration_Authentication";
   event["userPoolId"] = userPoolId;
   event["userName"] = probeSubject;
+  event["callerContext"] = callerContext;
   event["request"] = request;
   event["response"] = {};
   return event;
@@ -230,45 +300,77 @@ async function describePool(userPoolId) {
   return Stdlib_Option.flatMap(result.UserPool, Stdlib_JSON.Decode.object);
 }
 
-async function applyTrigger(userPoolId, preTokenGenerationArn) {
+async function sendMerged(described, userPoolId, preTokenGenerationArn) {
   let sdk = await getSdk();
   let client = await getClient();
-  let described = await describePool(userPoolId);
-  if (described === undefined) {
-    return Stdlib_JsError.throwWithMessage(`DescribeUserPool returned no pool for "` + userPoolId + `"; refusing to send an UpdateUserPool that would reset it`);
-  }
   let input = mergedUpdateInput(described, userPoolId, preTokenGenerationArn);
   return await client.send(newOf1(sdk.UpdateUserPoolCommand, input));
 }
 
+function throwOnEmptyDescribe(userPoolId) {
+  return Stdlib_JsError.throwWithMessage(`DescribeUserPool returned no pool for "` + userPoolId + `"; refusing to send an UpdateUserPool that would reset it`);
+}
+
+async function attachTrigger(userPoolId, preTokenGenerationArn, activeRoleStore) {
+  let described = await describePool(userPoolId);
+  if (described === undefined) {
+    return throwOnEmptyDescribe(userPoolId);
+  }
+  let attachedArn = attachedTriggerArn(described);
+  let attachedStore = attachedArn !== undefined && attachedArn !== preTokenGenerationArn && attachedArn !== "" ? await activeRoleStoreOf(attachedArn) : undefined;
+  let slot = classifySlot(attachedArn, preTokenGenerationArn, activeRoleStore, attachedStore);
+  let message = refusalFor(slot, userPoolId, activeRoleStore);
+  if (message !== undefined) {
+    Stdlib_JsError.throwWithMessage(message);
+  }
+  if (typeof slot === "object" && slot.TAG === "SharedWith") {
+    log.info("Auth_ActiveRolePoolAttachment", undefined, `user pool ` + userPoolId + ` carries active-role trigger ` + slot._0 + ` from another deployment, reading the same store "` + activeRoleStore + `" — taking the slot serves both`);
+  }
+  await verifyTrigger(userPoolId, preTokenGenerationArn);
+  return await sendMerged(described, userPoolId, preTokenGenerationArn);
+}
+
 async function create(inputs) {
-  await verifyTrigger(inputs.userPoolId, inputs.preTokenGenerationArn);
-  await applyTrigger(inputs.userPoolId, inputs.preTokenGenerationArn);
+  await attachTrigger(inputs.userPoolId, inputs.preTokenGenerationArn, inputs.activeRoleStore);
   return {
     id: inputs.userPoolId,
     outs: {
       userPoolId: inputs.userPoolId,
       preTokenGenerationArn: inputs.preTokenGenerationArn,
-      codeHash: inputs.codeHash
+      codeHash: inputs.codeHash,
+      activeRoleStore: inputs.activeRoleStore
     }
   };
 }
 
 async function update(_id, _olds, news) {
-  await verifyTrigger(news.userPoolId, news.preTokenGenerationArn);
-  await applyTrigger(news.userPoolId, news.preTokenGenerationArn);
+  await attachTrigger(news.userPoolId, news.preTokenGenerationArn, news.activeRoleStore);
   return {
     outs: {
       userPoolId: news.userPoolId,
       preTokenGenerationArn: news.preTokenGenerationArn,
-      codeHash: news.codeHash
+      codeHash: news.codeHash,
+      activeRoleStore: news.activeRoleStore
     }
   };
 }
 
 async function delete_(_id, props) {
   try {
-    return await applyTrigger(props.userPoolId, undefined);
+    let described = await describePool(props.userPoolId);
+    if (described === undefined) {
+      return throwOnEmptyDescribe(props.userPoolId);
+    }
+    let arn = attachedTriggerArn(described);
+    if (arn !== undefined) {
+      if (arn === props.preTokenGenerationArn) {
+        return await sendMerged(described, props.userPoolId, undefined);
+      } else {
+        return log.info("Auth_ActiveRolePoolAttachment", undefined, `user pool ` + props.userPoolId + ` carries ` + arn + `, not this deployment's trigger; leaving it attached`);
+      }
+    } else {
+      return;
+    }
   } catch (raw_exn) {
     let exn = Primitive_exceptions.internalToException(raw_exn);
     if (Stdlib_Option.mapOr(Stdlib_JsExn.fromException(exn), false, isPoolGoneError)) {
@@ -281,7 +383,7 @@ async function delete_(_id, props) {
 function diff_(_id, olds, news) {
   let poolChanged = olds.userPoolId !== news.userPoolId;
   return {
-    changes: poolChanged || olds.preTokenGenerationArn !== news.preTokenGenerationArn || olds.codeHash !== news.codeHash,
+    changes: poolChanged || olds.preTokenGenerationArn !== news.preTokenGenerationArn || olds.codeHash !== news.codeHash || olds.activeRoleStore !== news.activeRoleStore,
     replaces: poolChanged ? ["userPoolId"] : [],
     deleteBeforeReplace: true
   };
@@ -296,7 +398,8 @@ async function read_(id, props) {
         props: {
           userPoolId: props.userPoolId,
           preTokenGenerationArn: Stdlib_Option.getOr(attachedTrigger(described), ""),
-          codeHash: props.codeHash
+          codeHash: props.codeHash,
+          activeRoleStore: props.activeRoleStore
         }
       };
     } else {
@@ -329,7 +432,10 @@ export {
   readOnlyKeys,
   triggerVersion,
   mergedUpdateInput,
+  attachedTriggerArn,
   attachedTrigger,
+  classifySlot,
+  refusalFor,
   newOf1,
   newOf0,
   _sdk,
@@ -340,14 +446,18 @@ export {
   _lambdaClient,
   getLambdaSdk,
   getLambdaClient,
+  activeRoleStoreOf,
   decodePayload,
   isPoolGoneError,
   probeSubject,
+  probeClientId,
   probeEvent,
   probeVerdict,
   verifyTrigger,
   describePool,
-  applyTrigger,
+  sendMerged,
+  throwOnEmptyDescribe,
+  attachTrigger,
   create,
   update,
   delete_,

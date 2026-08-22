@@ -70,6 +70,36 @@ let UpdateContinuousBackupsCommand = {
   send: send$3
 };
 
+let Raw$5 = {};
+
+function send$4(command) {
+  return client().send(command);
+}
+
+let CreateTableCommand = {
+  Raw: Raw$5,
+  send: send$4
+};
+
+function succeeded(result) {
+  return result.state === "SUCCESS";
+}
+
+function wait(tableName, maxWaitTimeOpt) {
+  let maxWaitTime = maxWaitTimeOpt !== undefined ? maxWaitTimeOpt : 300;
+  return ClientDynamodb.waitUntilTableExists({
+    client: client(),
+    maxWaitTime: maxWaitTime
+  }, {
+    TableName: tableName
+  });
+}
+
+let TableExistsWaiter = {
+  succeeded: succeeded,
+  wait: wait
+};
+
 export {
   Raw,
   clientInstance,
@@ -78,5 +108,7 @@ export {
   UpdateTableCommand,
   UpdateTimeToLiveCommand,
   UpdateContinuousBackupsCommand,
+  CreateTableCommand,
+  TableExistsWaiter,
 }
 /* @aws-sdk/client-dynamodb Not a pure module */

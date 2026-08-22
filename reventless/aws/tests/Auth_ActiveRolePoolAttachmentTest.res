@@ -421,4 +421,179 @@ describe("Auth_ActiveRolePoolAttachment.probeEvent", () => {
       ->Option.flatMap(JSON.Decode.array),
     )->toEqual(Some([]))
   )
+
+  // 🚨 The handler keys its row on (subject, app client), and takes the
+  // "nothing to look up" branch when either is missing. A probe without a
+  // `callerContext` would return healthy without the handler ever reaching the
+  // store — proving less than the check appears to prove.
+  testSync("carries the caller context the handler keys its read on", () =>
+    expect(
+      event
+      ->Option.flatMap(o => o->Dict.get("callerContext"))
+      ->Option.flatMap(JSON.Decode.object)
+      ->Option.flatMap(c => c->Dict.get("clientId"))
+      ->Option.flatMap(JSON.Decode.string)
+      ->Option.isSome,
+    )->toBe(true)
+  )
+
+  // Both halves of the key must miss every real row, not just the subject.
+  testSync("the probe's subject and client cannot collide with a real row", () =>
+    expect(
+      Attachment.probeSubject == Attachment.probeClientId,
+    )->toBe(false)
+  )
+})
+
+// 🚨 Whose slot is it. Cognito allows a pool exactly one pre-token-generation
+// trigger, so an unconditional attach is last-writer-wins — it replaces a BYO
+// customer's own trigger silently, and it lets two platform stacks each read a
+// store the other never writes. The describe this resource already performs is
+// read for what is attached, and a slot held by anything else fails the deploy.
+describe("Auth_ActiveRolePoolAttachment.attachedTriggerArn", () => {
+  let theirArn = "arn:aws:lambda:eu-west-1:1:function:TheirOwnPreToken"
+
+  let withConfig = (~version) =>
+    Dict.fromArray([
+      (
+        "LambdaConfig",
+        Dict.fromArray([
+          (
+            "PreTokenGenerationConfig",
+            Dict.fromArray([
+              ("LambdaArn", str(theirArn)),
+              ("LambdaVersion", str(version)),
+            ])->JSON.Encode.object,
+          ),
+        ])->JSON.Encode.object,
+      ),
+    ])
+
+  testSync("an empty pool holds nothing", () =>
+    expect(Attachment.attachedTriggerArn(~described=Dict.fromArray([("Name", str("Bare"))])))
+    ->toEqual(None)
+  )
+
+  testSync("reports the trigger a pool carries", () =>
+    expect(Attachment.attachedTriggerArn(~described=withConfig(~version="V1_0")))->toEqual(
+      Some(theirArn),
+    )
+  )
+
+  // 🚨 The distinction from `attachedTrigger`, and the reason both exist. A
+  // foreign trigger pinned at a version we do not implement is very much
+  // attached; a version-aware read calls it absent, and this resource would then
+  // quietly replace the very trigger it is meant to refuse.
+  testSync("a foreign trigger at another version is still occupying the slot", () =>
+    expect((
+      Attachment.attachedTriggerArn(~described=withConfig(~version="V2_0")),
+      Attachment.attachedTrigger(~described=withConfig(~version="V2_0")),
+    ))->toEqual((Some(theirArn), None))
+  )
+
+  testSync("falls back to the legacy field on a pool carrying only that", () =>
+    expect(
+      Attachment.attachedTriggerArn(
+        ~described=Dict.fromArray([
+          (
+            "LambdaConfig",
+            Dict.fromArray([("PreTokenGeneration", str(theirArn))])->JSON.Encode.object,
+          ),
+        ]),
+      ),
+    )->toEqual(Some(theirArn))
+  )
+})
+
+describe("Auth_ActiveRolePoolAttachment.classifySlot", () => {
+  let ours = "arn:aws:lambda:eu-west-1:1:function:OurTrigger"
+  let theirs = "arn:aws:lambda:eu-west-1:1:function:OtherStackTrigger"
+  let store = "ReventlessActiveRoleStore-eu-west-1_x"
+
+  let classify = (~attachedArn, ~attachedStore) =>
+    Attachment.classifySlot(~attachedArn, ~ourArn=ours, ~ourStore=store, ~attachedStore)
+
+  testSync("an empty slot is free to take", () =>
+    expect(classify(~attachedArn=None, ~attachedStore=None))->toEqual(Attachment.Vacant)
+  )
+
+  // A pool can carry an empty string where a trigger was detached out of band.
+  testSync("an empty ARN is an empty slot, not a foreign trigger", () =>
+    expect(classify(~attachedArn=Some(""), ~attachedStore=None))->toEqual(Attachment.Vacant)
+  )
+
+  testSync("our own trigger is ours to re-attach", () =>
+    expect(classify(~attachedArn=Some(ours), ~attachedStore=None))->toEqual(Attachment.Ours)
+  )
+
+  // 🚨 The case the shared pool exists for: two platform stacks running identical
+  // code over identical rows. Whichever holds the slot serves both, so this is
+  // not a conflict and must not fail a deploy.
+  testSync("another deployment's trigger on the same store serves both", () =>
+    expect(classify(~attachedArn=Some(theirs), ~attachedStore=Some(store)))->toEqual(
+      Attachment.SharedWith(theirs),
+    )
+  )
+
+  // 🚨 The original defect, caught at the only moment anything can see both
+  // halves. Unreachable by configuration now that the store is derived — reachable
+  // by version skew, while an older release is still on its stack-scoped table.
+  testSync("another deployment's trigger on a different store is the defect", () =>
+    expect(classify(~attachedArn=Some(theirs), ~attachedStore=Some("ActiveRoleStore-829c96f")))
+    ->toEqual(Attachment.DifferentStore({arn: theirs, theirStore: "ActiveRoleStore-829c96f"}))
+  )
+
+  // Reading the store rather than matching a name is what makes this a check on
+  // the invariant: a function with no ACTIVE_ROLE_TABLE is not one of ours, and
+  // neither is one we could not read.
+  testSync("a trigger with no store of ours is foreign", () =>
+    expect(classify(~attachedArn=Some(theirs), ~attachedStore=None))->toEqual(
+      Attachment.Foreign(theirs),
+    )
+  )
+})
+
+describe("Auth_ActiveRolePoolAttachment.refusalFor", () => {
+  let store = "ReventlessActiveRoleStore-eu-west-1_x"
+  let refusal = slot => Attachment.refusalFor(~slot, ~userPoolId="eu-west-1_x", ~ourStore=store)
+
+  testSync("the three attachable slots produce no refusal", () =>
+    expect((
+      refusal(Attachment.Vacant),
+      refusal(Attachment.Ours),
+      refusal(Attachment.SharedWith("arn:aws:lambda:eu-west-1:1:function:Other")),
+    ))->toEqual((None, None, None))
+  )
+
+  // Both stores named, because an operator cannot act on this without knowing
+  // which two are in disagreement.
+  testSync("a disagreeing store is refused, naming both stores", () => {
+    let message =
+      refusal(
+        Attachment.DifferentStore({
+          arn: "arn:aws:lambda:eu-west-1:1:function:Other",
+          theirStore: "ActiveRoleStore-829c96f",
+        }),
+      )->Option.getOr("")
+    expect((
+      message->String.includes(store),
+      message->String.includes("ActiveRoleStore-829c96f"),
+      message->String.includes("eu-west-1_x"),
+    ))->toEqual((true, true, true))
+  })
+
+  // 🚨 The trade this file already makes for its denylist, applied to the trigger
+  // slot: a customer's own claims-enrichment trigger is replaced silently today.
+  // Given "a customer's pool quietly loses a trigger" and "the deploy fails
+  // naming what is in the way", the second is the one to design for.
+  testSync("a foreign trigger is refused, naming what is attached", () => {
+    let arn = "arn:aws:lambda:eu-west-1:1:function:TheirClaimsEnrichment"
+    let message = refusal(Attachment.Foreign(arn))->Option.getOr("")
+    expect((
+      message->String.includes(arn),
+      // The likeliest cause of a false Foreign is a missing permission, so the
+      // sentence has to name it or an operator debugs the wrong thing.
+      message->String.includes("lambda:GetFunctionConfiguration"),
+    ))->toEqual((true, true))
+  })
 })

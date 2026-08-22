@@ -151,3 +151,115 @@ module AdminListGroupsForUserCommand = {
 
   let send: t => promise<output> = command => Raw.send(client(), command)
 }
+
+module CreateUserPoolCommand = {
+  type t
+
+  type passwordPolicy = {
+    @as("MinimumLength") minimumLength?: int,
+    @as("RequireLowercase") requireLowercase?: bool,
+    @as("RequireUppercase") requireUppercase?: bool,
+    @as("RequireNumbers") requireNumbers?: bool,
+    @as("RequireSymbols") requireSymbols?: bool,
+  }
+
+  type policies = {@as("PasswordPolicy") passwordPolicy?: passwordPolicy}
+
+  type adminCreateUserConfig = {
+    @as("AllowAdminCreateUserOnly") allowAdminCreateUserOnly?: bool,
+  }
+
+  /** Only the members a Reventless pool is provisioned with. The API accepts far
+    more; an operator wanting the rest edits the pool afterwards rather than
+    having every setting grow a parameter here. */
+  type input = {
+    @as("PoolName") poolName: string,
+    @as("UsernameAttributes") usernameAttributes?: array<string>,
+    @as("MfaConfiguration") mfaConfiguration?: string,
+    @as("Policies") policies?: policies,
+    @as("AdminCreateUserConfig") adminCreateUserConfig?: adminCreateUserConfig,
+    @as("UserPoolTags") userPoolTags?: Dict.t<string>,
+  }
+
+  type userPoolType = {
+    @as("Id") id?: string,
+    @as("Name") name?: string,
+    @as("Arn") arn?: string,
+  }
+
+  type output = {@as("UserPool") userPool?: userPoolType}
+
+  @new @module("@aws-sdk/client-cognito-identity-provider")
+  external make: input => t = "CreateUserPoolCommand"
+
+  module Raw = {
+    /**
+      see: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/cognito-identity-provider/command/CreateUserPoolCommand/
+    */
+    @send
+    external send: (client, t) => promise<output> = "send"
+  }
+
+  let send: t => promise<output> = command => Raw.send(client(), command)
+}
+
+module ListUserPoolsCommand = {
+  type t
+
+  /** `MaxResults` caps at 60, so a caller looking for a pool by name has to page.
+    Cognito offers no lookup by name and does not enforce name uniqueness. */
+  type input = {
+    @as("MaxResults") maxResults: int,
+    @as("NextToken") nextToken?: string,
+  }
+
+  type userPoolDescription = {
+    @as("Id") id?: string,
+    @as("Name") name?: string,
+  }
+
+  type output = {
+    @as("UserPools") userPools?: array<userPoolDescription>,
+    @as("NextToken") nextToken?: string,
+  }
+
+  @new @module("@aws-sdk/client-cognito-identity-provider")
+  external make: input => t = "ListUserPoolsCommand"
+
+  module Raw = {
+    /**
+      see: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/cognito-identity-provider/command/ListUserPoolsCommand/
+    */
+    @send
+    external send: (client, t) => promise<output> = "send"
+  }
+
+  let send: t => promise<output> = command => Raw.send(client(), command)
+}
+
+module DescribeUserPoolCommand = {
+  type t
+
+  type input = {@as("UserPoolId") userPoolId: string}
+
+  type userPoolType = {
+    @as("Id") id?: string,
+    @as("Name") name?: string,
+    @as("Arn") arn?: string,
+  }
+
+  type output = {@as("UserPool") userPool?: userPoolType}
+
+  @new @module("@aws-sdk/client-cognito-identity-provider")
+  external make: input => t = "DescribeUserPoolCommand"
+
+  module Raw = {
+    /**
+      see: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/cognito-identity-provider/command/DescribeUserPoolCommand/
+    */
+    @send
+    external send: (client, t) => promise<output> = "send"
+  }
+
+  let send: t => promise<output> = command => Raw.send(client(), command)
+}

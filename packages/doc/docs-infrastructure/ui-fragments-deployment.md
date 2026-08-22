@@ -152,7 +152,7 @@ The first block of keys is always present. The events keys appear only when the 
 
 `authMode: "cognito"` matches the AppSync auth wiring used for host-UI login — every AWS AppSync GraphQL API uses `AMAZON_COGNITO_USER_POOLS` as its primary authenticationType with `AWS_IAM` as the single additional provider for server-to-server lambdas.
 
-`apiEndpoint` and `platformApiEndpoint` are written separately so the host shell can target the platform admin schema independently of plugin-domain queries; in unified-API mode (the default — `Config.splitApi=false`) both keys resolve to the same URL and the SPA treats them interchangeably. `cognitoUserPoolId` / `cognitoClientId` come from `Platform_Stack.resolveCognitoUserPool` (auto-provisioned or BYO via `REVENTLESS_COGNITO_USER_POOL_ID` env var / `Pulumi.local.yaml` / `Pulumi.<stack>.yaml`).
+`apiEndpoint` and `platformApiEndpoint` are written separately so the host shell can target the platform admin schema independently of plugin-domain queries; in unified-API mode (the default — `Config.splitApi=false`) both keys resolve to the same URL and the SPA treats them interchangeably. `cognitoUserPoolId` / `cognitoClientId` come from `Platform_Stack.resolveCognitoUserPool` (auto-provisioned or BYO via `REVENTLESS_IDENTITY_PROVIDER_ID` env var / `Pulumi.local.yaml` / `Pulumi.<stack>.yaml`). The `config.json` keys keep their `cognito` spelling — they are a contract with the shell, renamed separately from the deploy-time config key.
 
 ### Wiring it in your stack
 

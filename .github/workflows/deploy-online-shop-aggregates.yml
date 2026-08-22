@@ -72,9 +72,16 @@ jobs:
       PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      # Optional: when set, Platform_Stack uses the existing UserPool instead of
-      # auto-provisioning a fresh one — shared with hybrid, as both read the same
-      # repository secret.
+      # Optional: when set, Platform_Stack uses the existing identity provider
+      # instead of auto-provisioning a fresh one — shared with hybrid, as both
+      # read the same repository secret. Sharing the provider is deliberate: both
+      # then derive the same active-role store, and each platform keeps its own
+      # active role because the rows are keyed per app client.
+      #
+      # Both spellings are passed so the repo secret can be renamed without a
+      # window where neither resolves — and an unresolved provider id is not an
+      # error, it silently creates a new pool.
+      IDENTITY_PROVIDER_ID: ${{ secrets.IDENTITY_PROVIDER_ID }}
       COGNITO_USER_POOL_ID: ${{ secrets.COGNITO_USER_POOL_ID }}
       # Defined so the repo .npmrc's ${NPM_TOKEN} expands and pnpm honours
       # node-linker=hoisted during the deploy install.

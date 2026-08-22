@@ -291,13 +291,56 @@ Currently consumed by:
 
 | Config key | Env var | Used by | Behavior when unset |
 |---|---|---|---|
-| `cognitoUserPoolId` | `REVENTLESS_COGNITO_USER_POOL_ID` | `Platform_Stack.resolveCognitoUserPool` | Auto-provisions a fresh UserPool |
+| `identityProviderId` | `REVENTLESS_IDENTITY_PROVIDER_ID` | `Platform_Stack.resolveCognitoUserPool` | Auto-provisions a fresh UserPool **and** its active-role store |
 | `hostUiBaseDomain` | `REVENTLESS_HOST_UI_BASE_DOMAIN` | `Platform.deployPlatform` (host UI custom domain) | Keeps `*.cloudfront.net` default URL |
 | `hostUiHostedZoneId` | `REVENTLESS_HOST_UI_HOSTED_ZONE_ID` | same | Keeps `*.cloudfront.net` default URL |
 | `hostUiBaseName` | `REVENTLESS_HOST_UI_BASE_NAME` | same | Defaults to `Pulumi.getProjectName()` |
 | `hostUiProdStacks` | `REVENTLESS_HOST_UI_PROD_STACKS` (CSV) | same | Defaults to `["prod", "main"]` |
 
 Any future deploy-time helper reading via `Util_LocalConfig.get("…")` automatically participates in the same precedence ladder.
+
+:::caution `cognitoUserPoolId` is the deprecated spelling
+`identityProviderId` was `cognitoUserPoolId` (`REVENTLESS_COGNITO_USER_POOL_ID`).
+The old key is still read at every level of the ladder and logs a warning.
+
+Do not drop it until the new one is confirmed in place everywhere, because **an
+unset provider id is not an error — it is auto mode, and auto mode creates a new
+user pool.** A caller left on the old spelling after it stops being read deploys
+green, mints a fresh pool, and orphans every existing account.
+:::
+
+#### Bringing your own identity provider
+
+Setting `identityProviderId` means the pool is yours, not the framework's — and
+so is the **active-role store**, the table the pool's pre-token-generation trigger
+reads to narrow a caller's groups to the role they chose. The two are provisioned
+together, outside every stack, because a Cognito pool has exactly **one** trigger
+slot: two platform stacks on one pool each deploying their own store would leave
+the winning trigger reading rows the other platform's resolver never writes, and
+every role switch would report success and do nothing.
+
+The store's name is **derived, not configured** —
+`ReventlessActiveRoleStore-<identityProviderId>` — so every stack on the provider
+resolves the same table and no two can disagree. Provision both with:
+
+```bash
+# create a pool and its store
+pnpm --filter @reventlessdev/reventless-aws run provision:identity -- --name MyIdentity
+
+# or add the store to a pool you already have
+pnpm --filter @reventlessdev/reventless-aws run provision:identity -- --provider-id eu-west-1_AbCdEfGhI
+```
+
+Re-running is safe — existing resources are adopted, never recreated. The script
+deliberately does **not** attach the trigger; the deploy does that, and refuses if
+the pool's slot is held by a trigger that is not one of ours.
+
+A stack given an `identityProviderId` whose pool or store does not exist **fails
+the deploy**. Both exist or neither does.
+
+Each platform on a shared provider keeps its **own** active role: rows are keyed
+by `(sub, clientId)`, and each stack declares its own app client. Narrowing to a
+role in one platform leaves the others as they were.
 
 **Host UI custom domain.** Both `hostUiBaseDomain` and `hostUiHostedZoneId` must be set together — if either is missing the framework keeps the default `*.cloudfront.net` URL. When both are set, the framework provisions an ACM cert (us-east-1) + Route53 alias and serves the shell at `${baseName}-${stack}.${baseDomain}` (or `${baseName}.${baseDomain}` when `stack ∈ hostUiProdStacks`). See [`ui-fragments-deployment.md`](./ui-fragments-deployment.md) → "Conditional: custom domain" for the full provisioning detail and [`docs/analysis/host-ui-custom-domain.md`](https://github.com/ReventlessDev/reventless-core/blob/alpha/docs/analysis/host-ui-custom-domain.md) for the design rationale and multi-tenancy notes.
 
@@ -310,7 +353,7 @@ request simply fails, having tried to provision in somebody else's zone.
 
 **Env var (CI deploys):**
 
-camelCase config key → `REVENTLESS_<SCREAMING_SNAKE>`. Example for `cognitoUserPoolId`:
+camelCase config key → `REVENTLESS_<SCREAMING_SNAKE>`. Example for `identityProviderId`:
 
 ```yaml
 # .github/workflows/deploy-online-shop-hybrid.yml
@@ -321,7 +364,7 @@ jobs:
       …
     # In deploy-reventless-aws.yml, surface the env var to the pulumi step:
     # env:
-    #   REVENTLESS_COGNITO_USER_POOL_ID: ${{ secrets.COGNITO_USER_POOL_ID }}
+    #   REVENTLESS_IDENTITY_PROVIDER_ID: ${{ secrets.IDENTITY_PROVIDER_ID }}
 ```
 
 An empty value is treated as "not set" so a stray empty export does not mask the sidecar.
@@ -330,11 +373,11 @@ An empty value is treated as "not set" so a stray empty export does not mask the
 
 ```yaml
 # platform-aws/Pulumi.local.yaml — gitignored, read from process.cwd()
-cognitoUserPoolId: eu-west-1_AbCdEfGhI
+identityProviderId: eu-west-1_AbCdEfGhI
 ```
 
 Notes:
-- **Bare keys, no namespace prefix.** The same value in `Pulumi.<stack>.yaml` would be written `platform:cognitoUserPoolId: …`; the sidecar drops the `platform:` prefix because lookup happens after the namespace is bound.
+- **Bare keys, no namespace prefix.** The same value in `Pulumi.<stack>.yaml` would be written `platform:identityProviderId: …`; the sidecar drops the `platform:` prefix because lookup happens after the namespace is bound.
 - Format: minimal `key: value` lines. Quotes optional, `#` introduces comments, blank lines ignored — not a full YAML parser.
 - Gitignored at the repo root via `**/Pulumi.local.yaml` — verify with `git check-ignore -v platform-aws/Pulumi.local.yaml`.
 

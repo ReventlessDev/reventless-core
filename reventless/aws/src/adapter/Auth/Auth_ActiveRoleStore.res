@@ -29,6 +29,18 @@
 //
 // Provisioning the table with the write door instead would close that chain into
 // a cycle, so the table is hoisted to where the pool is resolved.
+//
+// 🚨 **The rows follow the identity provider, not the stack** — see
+// [ReventlessCore.Auth_ActiveRole] for the contract and
+// [docs/plans/active-role-store-scoped-to-the-pool.md] for the defect that
+// produced it. A pool holds one pre-token-generation trigger, so two stacks
+// sharing a pool with a table each have the winning trigger reading rows the
+// serving resolver never wrote: every switch succeeds and does nothing.
+//
+// So there are two cases and no third. A stack that creates its own pool owns
+// everything attached to it, this table included. A stack handed an
+// `identityProviderId` owns none of it: the pool exists outside every stack, and
+// so does the store, at the name [derivedStoreName] gives. See [chooseStore].
 
 open PulumiAws
 
@@ -36,6 +48,31 @@ type storeTable = {
   name: Pulumi.Output.t<string>,
   arn: Pulumi.Output.t<string>,
 }
+
+/** Which store a deployment's trigger reads and its write door writes. */
+type storeChoice =
+  /** The stack creates and owns the table, because it also creates and owns the
+    pool: nothing else can be attached to that pool, so there is nothing to
+    share. */
+  | StackScoped
+  /** The provider's own store, looked up at [derivedStoreName] and never created.
+    Every stack on that provider resolves the same table. */
+  | ProviderScoped(string)
+
+/**
+The store a resolved provider calls for.
+
+Total and pure, so the rule is checkable without a stack — and total is the point:
+there is no configuration here that can be wrong, because there is no second key
+to disagree with the first. Whether the provider is ours decides the store, and
+nothing else is consulted.
+*/
+let chooseStore = (~identityProviderId: option<string>): storeChoice =>
+  switch identityProviderId {
+  | None => StackScoped
+  | Some(id) =>
+    ProviderScoped(Auth_ActiveRoleStore_Schema.derivedStoreName(~identityProviderId=id))
+  }
 
 // JS resolver code (APPSYNC_JS runtime): forward the caller's arguments and the
 // authorizer-verified identity. `sub` is what keys the row, and it comes from
@@ -49,14 +86,35 @@ type storeTable = {
 // how the membership read used to fail for every caller on such a pool. Both
 // fields come from the authorizer, so forwarding the second grants nothing the
 // first did not.
+//
+// 🚨 **`clientId` completes the row key, and it comes from the token's own
+// claims** — `aud` on an ID token, `client_id` on an access token, since AppSync
+// accepts either. It is what makes the active role per-platform on a provider
+// serving several. `aud` is a string on a Cognito ID token but an array in OIDC
+// generally, so the first element is taken rather than assuming.
+//
+// Forwarded as `null` when the claims are not there to read: the handler refuses
+// rather than inventing a key. A guessed client id would write a row under one
+// key that the trigger reads under another — the very defect this feature was
+// repaired for, rebuilt one level down.
 let invokeCode: Pulumi.Input.t<string> = `import { util } from '@aws-appsync/utils';
+function appClientId(id) {
+  const claims = id.claims;
+  if (claims == null) return null;
+  const aud = claims.aud;
+  const picked = Array.isArray(aud) ? aud[0] : aud;
+  const value = picked ?? claims.client_id;
+  return typeof value === 'string' && value !== '' ? value : null;
+}
 export function request(ctx) {
   const id = ctx.identity;
   return {
     operation: 'Invoke',
     payload: {
       arguments: ctx.args,
-      identity: id != null && id.sub != null ? { sub: id.sub, username: id.username ?? null } : null
+      identity: id != null && id.sub != null
+        ? { sub: id.sub, username: id.username ?? null, clientId: appClientId(id) }
+        : null
     }
   };
 }
@@ -66,16 +124,22 @@ export function response(ctx) {
 }
 `->Pulumi.Input.make
 
-/** One row per subject: `id` is the caller's Cognito `sub`, `activeRole` the
-  group they chose, `updatedAt` an operational breadcrumb. No sort key — a caller
-  acts as exactly one role at a time, so the row is the whole state. */
+/** One row per (subject, app client) — the key schema is
+  [Auth_ActiveRoleStore_Schema]'s, shared with both handlers and the provisioning
+  script — plus `activeRole`, the group they chose, and `updatedAt`, an
+  operational breadcrumb. A caller acts as exactly one role at a time *per
+  platform*, so the row is the whole state. */
 let makeTable = (
   ~name: string="ActiveRoleStore",
   ~opts: Pulumi.ComponentResource.options,
 ): storeTable => {
   let opts = opts->ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
   let table = Util_DynamoDb.makeTable(
-    ~attributes=[{name: "id", type_: "S"}],
+    ~attributes=[
+      {name: Auth_ActiveRoleStore_Schema.partitionKey, type_: "S"},
+      {name: Auth_ActiveRoleStore_Schema.sortKey, type_: "S"},
+    ],
+    ~rangeKey=Auth_ActiveRoleStore_Schema.sortKey,
     ~tags=AWS.Tags.make(
       ~name=name ++ "Table",
       ~kind=ReventlessCore.ComponentType.Platform,
@@ -87,6 +151,30 @@ let makeTable = (
   )
   {name: table.name, arn: table.arn}
 }
+
+/** The [ProviderScoped] table: looked up, never created.
+
+  Looked up for the same reason a BYO pool is — the operator owns the identity,
+  and these rows are part of that identity's state. Creating it here would put
+  every stack on the provider in a race to own one resource.
+
+  A name that resolves to nothing fails the deploy, which is the second half of
+  "the provider and its store must both exist". The failure names the table it
+  looked for, which is also the table the provisioning script creates. */
+let lookupTable = (~tableName: string): storeTable => {
+  let found = DynamoDb.Table.Get.output(~args={name: tableName})
+  {
+    name: found->Pulumi.Output.apply(t => t.name),
+    arn: found->Pulumi.Output.apply(t => t.arn),
+  }
+}
+
+/** The store a resolved provider calls for — created or looked up. */
+let resolveTable = (~choice: storeChoice, ~opts: Pulumi.ComponentResource.options): storeTable =>
+  switch choice {
+  | StackScoped => makeTable(~opts)
+  | ProviderScoped(tableName) => lookupTable(~tableName)
+  }
 
 /** The Lambda behind `Mutation.Platform_SetActiveRole` and its resolver: an
   execution role scoped to Logs + the one table + `AdminListGroupsForUser` on the

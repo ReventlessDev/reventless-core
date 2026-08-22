@@ -66,3 +66,26 @@ type args = {
 @module("@pulumi/aws") @scope("dynamodb") @new
 external make: (~name: string, ~args: args, ~opts: Pulumi.CustomResourceOptions.t=?) => table =
   "Table"
+
+/** Look up a table this stack does not own.
+
+  In a submodule because the lookup result's fields are a subset of [t]'s: at
+  file level the later record would win inference for `{id, name, arn}` and
+  silently retype every such destructuring of a real table.
+
+  The lookup fails the deploy when the table does not exist, which is the point —
+  a name that resolves to nothing would otherwise reach a Lambda's environment
+  and surface at sign-in. */
+module Get = {
+  type args = {name: string}
+
+  type result = {
+    arn: string,
+    id: string,
+    name: string,
+  }
+
+  @module("@pulumi/aws") @scope("dynamodb") @val
+  external output: (~args: args, ~opts: Pulumi.InvokeOptions.t=?) => Pulumi.Output.t<result> =
+    "getTableOutput"
+}

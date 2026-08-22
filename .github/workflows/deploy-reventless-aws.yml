@@ -82,9 +82,18 @@ on:
         required: true
       AWS_SECRET_ACCESS_KEY:
         required: true
-      # Optional. When set, Platform_Stack uses the existing UserPool
-      # instead of auto-provisioning one. Forwarded to deploy jobs as
-      # REVENTLESS_COGNITO_USER_POOL_ID (read by Util_LocalConfig).
+      # Optional. When set, Platform_Stack uses the existing identity provider
+      # (and its derived active-role store) instead of auto-provisioning one.
+      # Forwarded to deploy jobs as REVENTLESS_IDENTITY_PROVIDER_ID.
+      IDENTITY_PROVIDER_ID:
+        required: false
+      # Deprecated spelling of the above, still accepted so a repo can rename its
+      # secret without a window where neither name resolves.
+      #
+      # 🚨 An unset provider id does not fail a deploy — it is auto mode, and auto
+      # mode CREATES A NEW USER POOL. So this stays until IDENTITY_PROVIDER_ID is
+      # confirmed present everywhere; removing it early orphans every account in
+      # the existing pool, on a deploy that reports success.
       COGNITO_USER_POOL_ID:
         required: false
       # Optional. Only needs to be DEFINED so the repo .npmrc's ${NPM_TOKEN}
@@ -307,7 +316,9 @@ jobs:
       # Read by Util_LocalConfig (Platform_Stack.resolveCognitoUserPool).
       # Unset/empty → falls through to Pulumi.local.yaml then Pulumi
       # stack config; if still unset, auto-provisions a fresh UserPool.
-      REVENTLESS_COGNITO_USER_POOL_ID: ${{ secrets.COGNITO_USER_POOL_ID }}
+      # Either secret spelling resolves it — see the secrets block above.
+      REVENTLESS_IDENTITY_PROVIDER_ID:
+        ${{ secrets.IDENTITY_PROVIDER_ID || secrets.COGNITO_USER_POOL_ID }}
       # Read by Util_LocalConfig (Platform.deployPlatform). When both base
       # domain and hosted-zone ID are set the framework provisions an ACM
       # cert + Route53 alias for the host-UI shell. Unset → cloudfront.net
@@ -502,7 +513,8 @@ jobs:
       NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
       # Forwarded for plugin stacks that wire AppSync auth themselves.
       # Unset/empty → falls through to local sidecar / stack config.
-      REVENTLESS_COGNITO_USER_POOL_ID: ${{ secrets.COGNITO_USER_POOL_ID }}
+      REVENTLESS_IDENTITY_PROVIDER_ID:
+        ${{ secrets.IDENTITY_PROVIDER_ID || secrets.COGNITO_USER_POOL_ID }}
       # Per-plugin UI bundles read the same host-UI domain config to derive
       # their own subdomain (once per-plugin SPAs ship). Forwarded here so
       # plugin stacks see the same values the platform job sees.

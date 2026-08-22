@@ -9,6 +9,7 @@
     "clean": "rescript clean",
     "rebuild": "pnpm run clean && pnpm run build",
     "deploy": "./scripts/deploy.sh",
+    "provision:identity": "node ./scripts/ProvisionIdentity.res.mjs",
     "test": "NODE_OPTIONS='--experimental-vm-modules' npx jest",
     "coverage": "nyc report --temp-directory=coverage --reporter=text-lcov | coveralls",
     "dev": "jest --watchAll",

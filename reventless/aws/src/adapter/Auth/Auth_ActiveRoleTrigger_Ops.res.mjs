@@ -6,6 +6,7 @@ import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as LibDynamodb from "@aws-sdk/lib-dynamodb";
 import * as Auth_ActiveRole$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Auth/Auth_ActiveRole.res.mjs";
 import * as DynamoDb_DocumentClient$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DocumentClient.res.mjs";
+import * as Auth_ActiveRoleStore_Schema$ReventlessAws from "./Auth_ActiveRoleStore_Schema.res.mjs";
 
 function getEnv(k) {
   let v = process.env[k];
@@ -90,16 +91,22 @@ function respond(event, decision) {
   ]));
 }
 
-async function storedRoleFor(sub, table) {
+async function storedRoleFor(sub, clientId, table) {
   try {
     let out = await DynamoDb_DocumentClient$AwsSdk.GetCommand.send(new LibDynamodb.GetCommand({
       TableName: table,
-      Key: Object.fromEntries([[
-          "id",
+      Key: Object.fromEntries([
+        [
+          Auth_ActiveRoleStore_Schema$ReventlessAws.partitionKey,
           sub
-        ]])
+        ],
+        [
+          Auth_ActiveRoleStore_Schema$ReventlessAws.sortKey,
+          clientId
+        ]
+      ])
     }));
-    return Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(out.Item, Stdlib_JSON.Decode.object), o => o["activeRole"]), Stdlib_JSON.Decode.string);
+    return Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(out.Item, Stdlib_JSON.Decode.object), o => o[Auth_ActiveRoleStore_Schema$ReventlessAws.roleAttribute]), Stdlib_JSON.Decode.string);
   } catch (exn) {
     return;
   }
@@ -108,10 +115,11 @@ async function storedRoleFor(sub, table) {
 async function handler(event) {
   let membership = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(event.request, r => r.groupConfiguration), g => g.groupsToOverride), []);
   let sub = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(event.request, r => r.userAttributes), u => u.sub), "");
-  if (sub === "") {
+  let clientId = Stdlib_Option.getOr(Stdlib_Option.flatMap(event.callerContext, c => c.clientId), "");
+  if (sub === "" || clientId === "") {
     return event;
   }
-  let storedRole = await storedRoleFor(sub, tableName());
+  let storedRole = await storedRoleFor(sub, clientId, tableName());
   return respond(event, decide(membership, storedRole));
 }
 

@@ -98,7 +98,13 @@ let mayActAs = (~membership: array<string>, ~requested: string): bool =>
 
 // ── AppSync resolver event / result shapes ──────────────────────────────────
 
-type identity = {sub?: string, username?: Nullable.t<string>}
+type identity = {
+  sub?: string,
+  username?: Nullable.t<string>,
+  /** The app client the caller's token was minted for — the second half of the
+    row key. `Null` when the resolver could not read it from the claims. */
+  clientId?: Nullable.t<string>,
+}
 type activeRoleArgs = {activeRole?: Nullable.t<string>}
 type appSyncEvent = {
   arguments?: activeRoleArgs,
@@ -125,6 +131,28 @@ let cognitoLookupName = (~identity: identity): option<string> =>
     }
   }
 
+/**
+The app client this row belongs to, completing the key alongside the subject.
+
+🚨 **No fallback, deliberately — this refuses instead of guessing.** Every other
+absent field in this handler has a defensible default; this one does not. The
+pre-token trigger keys its read on the client id Cognito hands it, so a write
+under any substitute — a constant, the subject, the empty string — is a row the
+trigger will never find: a switch that reports success and does nothing, which is
+the exact defect this store was repaired for. A caller told "we could not
+determine which application you are signed in to" has something to act on; a
+caller whose switch silently fails does not.
+
+Reachable when the authorizer omits `claims`, which happens on some APPSYNC_JS
+invocation shapes — see `Auth_Cognito.fromAppSyncIdentity`, which documents the
+same gap and falls back for fields where falling back is safe.
+*/
+let appClientId = (~identity: identity): option<string> =>
+  switch identity.clientId {
+  | Some(Value(id)) if id->String.trim != "" => Some(id)
+  | _ => None
+  }
+
 let result = (~activeRole: option<string>, ~availableRoles: array<string>): JSON.t =>
   Dict.fromArray([
     ("activeRole", activeRole->Option.mapOr(JSON.Null, JSON.Encode.string)),
@@ -146,6 +174,15 @@ let handler = async (event: appSyncEvent): JSON.t => {
   | Some(name) => name
   | None => JsError.throwWithMessage("unauthenticated")
   }
+  // Refused rather than defaulted — see `appClientId`. The row is keyed on the
+  // pair, and half a key is not a key.
+  let clientId = switch event.identity->Option.flatMap(i => appClientId(~identity=i)) {
+  | Some(id) => id
+  | None =>
+    JsError.throwWithMessage(
+      "Cannot determine which application this session belongs to, so the active role cannot be stored where the token minter will look for it",
+    )
+  }
   let table = tableName()
   let membership = await membershipOf(~username=lookupName, ~poolId=userPoolId())
 
@@ -159,7 +196,15 @@ let handler = async (event: appSyncEvent): JSON.t => {
 
   switch requested {
   | None =>
-    let _ = await DynamoDb_DocumentClient.deleteById(~tableName=table, ~id=sub)
+    // Clears this platform's preference only. A caller acting as a role in
+    // another platform on the same provider keeps it — which is the point of the
+    // pair key, and would be surprising if the clear were pool-wide.
+    let _ = await DynamoDb_DocumentClient.deleteByIdSort(
+      ~tableName=table,
+      ~id=sub,
+      ~sortField=Auth_ActiveRoleStore_Schema.sortKey,
+      ~sortKey=clientId,
+    )
     result(~activeRole=None, ~availableRoles=membership)
   | Some(role) =>
     // Refused, specifically — not ignored and stored anyway. A client asking for
@@ -170,8 +215,9 @@ let handler = async (event: appSyncEvent): JSON.t => {
     }
     let item =
       Dict.fromArray([
-        ("id", JSON.Encode.string(sub)),
-        ("activeRole", JSON.Encode.string(role)),
+        (Auth_ActiveRoleStore_Schema.partitionKey, JSON.Encode.string(sub)),
+        (Auth_ActiveRoleStore_Schema.sortKey, JSON.Encode.string(clientId)),
+        (Auth_ActiveRoleStore_Schema.roleAttribute, JSON.Encode.string(role)),
         ("updatedAt", JSON.Encode.string(Date.make()->Date.toISOString)),
       ])->JSON.Encode.object
     let _ = await DynamoDb_DocumentClient.PutCommand.make({

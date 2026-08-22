@@ -43,6 +43,21 @@ they picked stopped taking effect.
 */
 let staleRoleClaim = "activeRoleStale"
 
+// 🚨 **State that narrows an identity is scoped to the identity provider, not to
+// the platform.**
+//
+// A provider has one minting point, and narrowing works by driving it. Keep the
+// state a platform-scoped resource and two deployments sharing one provider each
+// drive their own copy — whichever holds the minting point reads state the other
+// never writes, so a role switch reports success and changes nothing. Each half
+// is individually correct, so nothing short of two deployments can observe it.
+//
+// On AWS that is a pool's single `PreTokenGeneration` slot and the
+// `platform:activeRoleStore` that follows it; elsewhere the shape differs and the
+// rule does not. It cannot be a `conformanceCases` entry — those are
+// `(membership, requested) → expected`, and this is about *where two deployments
+// keep state*. See [docs/plans/active-role-store-scoped-to-the-pool.md].
+
 /**
 The conformance table §6 of the plan requires: the same (membership, requested,
 expected) cases run against both minting paths, so the two implementations cannot
