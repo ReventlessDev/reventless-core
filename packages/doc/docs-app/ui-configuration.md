@@ -868,10 +868,18 @@ shellConfig: Dict.fromArray([
 ```
 
 It merges in **under** the keys the deploy computes (`apiEndpoint`, `region`,
-`authMode`, `cognitoUserPoolId`, …). A key colliding with a computed one **fails
+`authMode`, `identityProviderId`, …). A key colliding with a computed one **fails
 the deploy naming the key**, rather than quietly pointing the app at a different
 API. See [the `config.json` contract](/infrastructure/ui-fragments-deployment) for
 the full computed set.
+
+:::caution Two computed keys were added
+`identityProviderId` and `identityProviderClientId` are now computed alongside the
+`cognitoUserPoolId` / `cognitoClientId` pair they are replacing. A `shellConfig`
+that already passed either new name through now collides with a computed key and
+fails the deploy naming it — which is the intended behaviour, but it is a deploy
+that used to work.
+:::
 
 `home` is per-deployment rather than a nav hint, because an app has one home and no
 view is entitled to claim it.

@@ -78,8 +78,9 @@ is the reset-by-omission failure §6 warns about, and it is the kind that succee
 quietly — nothing errors, a setting simply goes back to its default.
 
 **Dry-run against the live alpha pool, 2026-08-13 — the payload is verified up to
-the network call.** `eu-west-1_CQTwafSeX` (`cognitoUserPoolManaged: false`,
-confirming BYO) was described, run through `mergedUpdateInput`, and serialised by
+the network call.** `eu-west-1_CQTwafSeX` (`cognitoUserPoolManaged: false` — since
+renamed `identityProviderManaged`, both exported during the transition; confirming
+BYO) was described, run through `mergedUpdateInput`, and serialised by
 `UpdateUserPoolCommand` with the request aborted before the HTTP handler. Results:
 
 - Every one of the 17 `UpdateUserPool` members the pool carries is on the wire —

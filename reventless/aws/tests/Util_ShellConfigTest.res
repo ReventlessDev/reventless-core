@@ -224,3 +224,54 @@ describe("Util_ShellConfig.fields — shellConfig passthrough", () => {
     }
   })
 })
+
+// 🚨 The identity keys travel under both spellings through the rename. A shell
+// reads config.json at runtime and CloudFront serves the previous bundle until
+// someone invalidates it, so switching them in one deploy leaves a window where
+// the served bundle and the served config disagree — and `cognitoClientId` is
+// read into an option, so a bundle that cannot find its key does not error, it
+// gets `None` and login silently stops working.
+//
+// These assert the property that removes that window, not the spelling.
+describe("Util_ShellConfig.identityFields", () => {
+  let fields = Util_ShellConfig.identityFields(~providerId="eu-west-1_x", ~clientId="7cl13nt")
+  let get = key =>
+    fields->Array.find(((k, _)) => k == key)->Option.map(((_, v)) => v)
+
+  testSync("the new spelling is present", () =>
+    expect((get("identityProviderId"), get("identityProviderClientId")))->toEqual((
+      Some(JSON.Encode.string("eu-west-1_x")),
+      Some(JSON.Encode.string("7cl13nt")),
+    ))
+  )
+
+  // Not "still" — deliberately. Every shipped shell reads these, and dropping
+  // them is a later release gated on the pinned bundle, not on this one.
+  testSync("the deprecated spelling is present too", () =>
+    expect((get("cognitoUserPoolId"), get("cognitoClientId")))->toEqual((
+      Some(JSON.Encode.string("eu-west-1_x")),
+      Some(JSON.Encode.string("7cl13nt")),
+    ))
+  )
+
+  // The whole point: a bundle reading either name gets the same answer. Two keys
+  // carrying different values would be worse than one key, not better.
+  testSync("both spellings carry identical values", () =>
+    expect((
+      get("identityProviderId") == get("cognitoUserPoolId"),
+      get("identityProviderClientId") == get("cognitoClientId"),
+    ))->toEqual((true, true))
+  )
+
+  // The client id is the load-bearing one — it is what the shell's auth provider
+  // branches on. The pool id is currently discarded by the shell, which is
+  // exactly why a `cognito*` sweep is dangerous: the safe one gives no warning.
+  testSync("nothing else sneaks into the identity field set", () =>
+    expect(fields->Array.map(((k, _)) => k)->Array.toSorted(String.compare))->toEqual([
+      "cognitoClientId",
+      "cognitoUserPoolId",
+      "identityProviderClientId",
+      "identityProviderId",
+    ])
+  )
+})

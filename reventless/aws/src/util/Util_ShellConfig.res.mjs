@@ -31,6 +31,27 @@ function modeOptions(mode) {
   }
 }
 
+function identityFields(providerId, clientId) {
+  return [
+    [
+      "identityProviderId",
+      providerId
+    ],
+    [
+      "identityProviderClientId",
+      clientId
+    ],
+    [
+      "cognitoUserPoolId",
+      providerId
+    ],
+    [
+      "cognitoClientId",
+      clientId
+    ]
+  ];
+}
+
 function fields(computed, viewModes, bakedManifest, shellConfig) {
   let out = Object.fromEntries(computed);
   Stdlib_Option.forEach(bakedManifest, bake => {
@@ -70,6 +91,7 @@ export {
   Platform,
   journeyManifestsKey,
   modeOptions,
+  identityFields,
   fields,
 }
 /* No side effect */

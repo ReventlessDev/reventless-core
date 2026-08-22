@@ -1,12 +1,14 @@
 # Plan: one identity provider, several platforms — scope the active-role store to the pool
 
 **Date:** 2026-08-22
-**Status:** 🚧 STEPS 1–6 BUILT, NOT DEPLOY-VERIFIED. Built and unit-tested; the full
-suite is green (359 suites / 3667 tests) and the build is warning-free. **Step 7 (the
-published names) is not started** — it is a staged, multi-release rename with a
-consumer outside this repo, and it is deliberately not carried by the same commit.
-Two things have also not happened, both named under "Build state": nothing has met a
-live pool, and the `(sub, clientId)` pairing has not been checked against a real token.
+**Status:** 🚧 BUILT, NOT DEPLOY-VERIFIED. Steps 1–6 are complete. **Step 7's core
+half is complete too**: both spellings are published — stack exports and `config.json`
+keys — and neither old set is dropped, so nothing has to be sequenced. What remains of
+step 7 is a shell change in the UI repo and two removals, all later releases.
+
+Built and unit-tested throughout; the build is warning-free. Two things have **not**
+happened, both named under "Build state": nothing has met a live pool, and the
+`(sub, clientId)` pairing has not been checked against a real token.
 **Scope:** `reventless/aws` (the store, the trigger, the attachment, the BYO config),
 one contract statement in `reventless/core`, bindings in `rescript/pulumi-aws` and
 `rescript/aws-sdk`, an operator script, and the docs that tell an operator to run it.
@@ -122,9 +124,9 @@ therefore still read, as a deprecated fallback that logs, and the workflows read
 `${{ secrets.IDENTITY_PROVIDER_ID || secrets.COGNITO_USER_POOL_ID }}` — correct before the
 new secret exists and after the old one is deleted, with no window in between.
 
-The names this platform *publishes* follow in **step 7**, deliberately separated: they
-are a contract with consumers this repo does not deploy, so they move on their own
-schedule rather than as a side effect of an input rename.
+The names this platform *publishes* are step 7, kept separate because they are a
+contract with consumers this repo does not deploy — so they move by adding the new
+names rather than by switching to them.
 
 ## Steps
 
@@ -274,11 +276,13 @@ whether it should be renamed or simply deleted before doing either.
 already errors by name when an export is missing, so a mismatch stops a plugin deploy
 with a sentence. Staged across releases:
 
-1. Export **both** names. A plugin stack pinned to an older `reventless-aws` keeps
-   resolving.
+1. Export **both** names — **done**. A plugin stack pinned to an older
+   `reventless-aws` keeps resolving.
 2. Switch the readers to prefer the new name and fall back to the old, the fallback's
-   error message naming both.
-3. Drop the old exports, once no pinned consumer reads them.
+   error message naming both — **done**. Both levels fall back: the direct output and
+   the ESM-nested `default.<key>` form.
+3. Drop the old exports, once no pinned consumer reads them — **not done**, a later
+   release.
 
 **`config.json` fails silently, and one of its two keys takes authentication with it.**
 
@@ -313,7 +317,7 @@ instead of being managed.
 
 Then, in order and each independently safe:
 
-1. this repo writes both keys;
+1. this repo writes both keys — **done**;
 2. the shell prefers the new key, falls back to the old — a UI-repo change, released and
    tagged, then pinned here from the tag;
 3. this repo stops writing the old keys;
@@ -410,7 +414,7 @@ role switching broke for everyone at once.
 | 6. Docs | deployment guide (+ BYO section), identity page, deploy tutorial, custom-domain, ui-fragments |
 | Workflows | all three core deploy workflows pass both secret spellings |
 | Tests | 98 across four suites (was 65) |
-| 7. Published names renamed | **not started** — staged release, see the step |
+| 7. Published names renamed | **core half done** — both spellings exported and both `config.json` keys written; `Util_ShellConfig.identityFields` + 4 tests. Dropping the old names and the shell's own change are later releases |
 
 The store's name and key schema live in **one** module, `Auth_ActiveRoleStore_Schema`,
 which is Pulumi-free and SDK-free (`No side effect` footer) so both Lambda bundles and

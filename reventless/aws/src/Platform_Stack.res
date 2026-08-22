@@ -37,10 +37,11 @@ type cognitoUserPool = {
  * not reliably exist on a pre-existing client; the client is a child resource
  * Pulumi can destroy without touching the parent pool).
  *
- * Always exports `cognitoUserPoolId`, `cognitoUserPoolClientId`,
- * `cognitoUserPoolArn`, `cognitoRegion`, `cognitoUserPoolManaged` and
+ * Always exports `identityProviderId`, `identityProviderClientId`,
+ * `identityProviderArn`, `identityProviderRegion`, `identityProviderManaged` and
  * `activeRoleStore` as stack outputs so downstream stacks (and Stage D AppSync
- * wiring) can read them via `StackReference`.
+ * wiring) can read them via `StackReference` — plus, for one release, the
+ * deprecated `cognito*` spellings of the first five.
  *
  * Also provisions the role-state table and the pre-token-generation trigger that
  * narrows `cognito:groups` to a caller's chosen role. They belong here rather
@@ -260,17 +261,40 @@ let _resolveUncached = (): cognitoUserPool => {
   let regionStr =
     Pulumi.Config.make(Some("aws"))->Pulumi.Config.get("region")->Option.getOr("unknown")
 
+  // 🚨 **Both spellings, deliberately, and for one release only.**
+  //
+  // The `cognito*` names are what every consumer reads today; the
+  // `identityProvider*` names are what they are becoming, for the reason the
+  // config key changed — the concept is not AWS-specific. A stack that exported
+  // only the new ones would break any plugin stack pinned to an older
+  // `reventless-aws`, which reads the old names through `StackReference`.
+  //
+  // Exporting both costs nothing and removes the ordering problem entirely
+  // rather than managing it: every consumer, old or new, finds a name it knows.
+  // The old set goes in a later release, once no pinned consumer reads them.
+  //
+  // `Arn` survives the rename on purpose — the value *is* an ARN, and `urn` in a
+  // Pulumi codebase already means the Pulumi URN every resource carries. See
+  // [docs/plans/active-role-store-scoped-to-the-pool.md] step 7.
+  let managedStr = Pulumi.Output.make(result.managed ? "true" : "false")
+  let regionOutput = Pulumi.Output.make(regionStr)
+
+  Pulumi.Pulumi.export("identityProviderId", result.poolId)
+  Pulumi.Pulumi.export("identityProviderClientId", result.clientId)
+  Pulumi.Pulumi.export("identityProviderArn", result.poolArn)
+  Pulumi.Pulumi.export("identityProviderRegion", regionOutput)
+  Pulumi.Pulumi.export("identityProviderManaged", managedStr)
+
+  // Deprecated spellings — see above.
   Pulumi.Pulumi.export("cognitoUserPoolId", result.poolId)
   Pulumi.Pulumi.export("cognitoUserPoolClientId", result.clientId)
   Pulumi.Pulumi.export("cognitoUserPoolArn", result.poolArn)
-  Pulumi.Pulumi.export("cognitoRegion", Pulumi.Output.make(regionStr))
-  Pulumi.Pulumi.export(
-    "cognitoUserPoolManaged",
-    Pulumi.Output.make(result.managed ? "true" : "false"),
-  )
-  // Exported so a second stack meant to share this pool has a name to put in its
-  // own `platform:activeRoleStore` — without it, pointing two stacks at one store
-  // means reading a table name out of the console.
+  Pulumi.Pulumi.export("cognitoRegion", regionOutput)
+  Pulumi.Pulumi.export("cognitoUserPoolManaged", managedStr)
+
+  // Exported so an operator can read back the store this provider resolved to —
+  // the name is derived, not configured, so this is a convenience for checking
+  // rather than a value anything is meant to copy into a config.
   Pulumi.Pulumi.export("activeRoleStore", result.activeRoleTable.name)
 
   result

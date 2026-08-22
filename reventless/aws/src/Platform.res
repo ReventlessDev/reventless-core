@@ -309,36 +309,57 @@ module MakeWithConfig = (
     //
     // In ESM mode, Pulumi exports are inside the "default" output.
     // Try top-level field first (CJS), fall back to "default".<field> (ESM).
+    // Read under both spellings: this plugin stack may be deploying against a
+    // platform older than the rename, or newer than a pinned plugin. Neither
+    // direction is the ordinary case, and neither should fail.
     let defaultOutput: Pulumi.Output.t<option<JSON.t>> =
       stackRef->Pulumi.StackReference.getOutput("default")
+    let providerIdOutput: Pulumi.Output.t<option<string>> =
+      stackRef->Pulumi.StackReference.getOutput("identityProviderId")
+    let providerRegionOutput: Pulumi.Output.t<option<string>> =
+      stackRef->Pulumi.StackReference.getOutput("identityProviderRegion")
     let cognitoPoolIdOutput: Pulumi.Output.t<option<string>> =
       stackRef->Pulumi.StackReference.getOutput("cognitoUserPoolId")
     let cognitoRegionOutput: Pulumi.Output.t<option<string>> =
       stackRef->Pulumi.StackReference.getOutput("cognitoRegion")
     let userPoolConfig =
-      (cognitoPoolIdOutput, cognitoRegionOutput, defaultOutput)
+      (
+        (providerIdOutput, providerRegionOutput)->Pulumi.Output.all2,
+        (cognitoPoolIdOutput, cognitoRegionOutput)->Pulumi.Output.all2,
+        defaultOutput,
+      )
       ->Pulumi.Output.all3
-      ->Pulumi.Output.apply(((directPoolId, directRegion, default)) => {
-        let getFromDefault = key =>
-          default
-          ->Option.flatMap(d => d->JSON.Decode.object)
-          ->Option.flatMap(d => d->Dict.get(key))
-          ->Option.flatMap(v => v->JSON.Decode.string)
-        let userPoolId =
-          directPoolId
-          ->Option.orElse(getFromDefault("cognitoUserPoolId"))
-          ->Option.getOrThrow(
-            ~message="Platform stack does not export 'cognitoUserPoolId' — redeploy the platform stack first",
+      ->Pulumi.Output.apply(
+        (((directProviderId, directProviderRegion), (directPoolId, directRegion), default)) => {
+          let getFromDefault = key =>
+            default
+            ->Option.flatMap(d => d->JSON.Decode.object)
+            ->Option.flatMap(d => d->Dict.get(key))
+            ->Option.flatMap(v => v->JSON.Decode.string)
+          // New spelling first at both levels, then the deprecated one. In ESM
+          // mode exports arrive nested under "default", hence each pair.
+          let userPoolId =
+            directProviderId
+            ->Option.orElse(getFromDefault("identityProviderId"))
+            ->Option.orElse(directPoolId)
+            ->Option.orElse(getFromDefault("cognitoUserPoolId"))
+            ->Option.getOrThrow(
+              ~message="Platform stack exports neither 'identityProviderId' nor 'cognitoUserPoolId' — redeploy the platform stack first",
+            )
+          let awsRegion =
+            directProviderRegion
+            ->Option.orElse(getFromDefault("identityProviderRegion"))
+            ->Option.orElse(directRegion)
+            ->Option.orElse(getFromDefault("cognitoRegion"))
+          (
+            {
+              userPoolId,
+              ?awsRegion,
+              defaultAction: PulumiAws.AppSync.GraphQLApi.ALLOW,
+            }: PulumiAws.AppSync.GraphQLApi.userPoolConfig
           )
-        let awsRegion = directRegion->Option.orElse(getFromDefault("cognitoRegion"))
-        (
-          {
-            userPoolId,
-            ?awsRegion,
-            defaultAction: PulumiAws.AppSync.GraphQLApi.ALLOW,
-          }: PulumiAws.AppSync.GraphQLApi.userPoolConfig
-        )
-      })
+        },
+      )
     let (api, role) = AppSync_Adapter.makePluginSourceApiResource(
       ~name="PluginSourceApi",
       ~userPoolConfig,
@@ -2137,15 +2158,18 @@ module MakeWithConfig = (
         )
         ->Pulumi.Output.all2
         ->Pulumi.Output.apply((((domainEp, platformEp, poolId, clientId), eventsEpOpt)) => {
-          let computed = [
-            ("apiEndpoint", JSON.Encode.string(domainEp)),
-            ("platformApiEndpoint", JSON.Encode.string(platformEp)),
-            ("region", JSON.Encode.string(regionStr)),
-            ("authMode", JSON.Encode.string("cognito")),
-            ("cognitoUserPoolId", JSON.Encode.string(poolId)),
-            ("cognitoClientId", JSON.Encode.string(clientId)),
-            ("liveUpdates", JSON.Encode.bool(true)),
-          ]
+          // `authMode` stays `"cognito"`: it is a value naming which provider
+          // authenticates this deployment, and that is true. The identity *keys*
+          // travel under both spellings — see [Util_ShellConfig.identityFields].
+          let computed =
+            [
+              ("apiEndpoint", JSON.Encode.string(domainEp)),
+              ("platformApiEndpoint", JSON.Encode.string(platformEp)),
+              ("region", JSON.Encode.string(regionStr)),
+              ("authMode", JSON.Encode.string("cognito")),
+            ]
+            ->Array.concat(Util_ShellConfig.identityFields(~providerId=poolId, ~clientId))
+            ->Array.concat([("liveUpdates", JSON.Encode.bool(true))])
           let withEvents = switch eventsEpOpt {
           | Some(ep) =>
             Array.concat(

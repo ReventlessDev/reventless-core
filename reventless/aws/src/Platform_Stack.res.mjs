@@ -134,11 +134,18 @@ function _resolveUncached() {
   }
   Auth_ActiveRoleTrigger$ReventlessAws.grantInvoke(activeRoleTrigger, result.poolArn, undefined, {});
   let regionStr = Stdlib_Option.getOr(new Pulumi.Config("aws").get("region"), "unknown");
+  let managedStr = Pulumi.output(result.managed ? "true" : "false");
+  let regionOutput = Pulumi.output(regionStr);
+  Pulumi$Pulumi.$$export("identityProviderId", result.poolId);
+  Pulumi$Pulumi.$$export("identityProviderClientId", result.clientId);
+  Pulumi$Pulumi.$$export("identityProviderArn", result.poolArn);
+  Pulumi$Pulumi.$$export("identityProviderRegion", regionOutput);
+  Pulumi$Pulumi.$$export("identityProviderManaged", managedStr);
   Pulumi$Pulumi.$$export("cognitoUserPoolId", result.poolId);
   Pulumi$Pulumi.$$export("cognitoUserPoolClientId", result.clientId);
   Pulumi$Pulumi.$$export("cognitoUserPoolArn", result.poolArn);
-  Pulumi$Pulumi.$$export("cognitoRegion", Pulumi.output(regionStr));
-  Pulumi$Pulumi.$$export("cognitoUserPoolManaged", Pulumi.output(result.managed ? "true" : "false"));
+  Pulumi$Pulumi.$$export("cognitoRegion", regionOutput);
+  Pulumi$Pulumi.$$export("cognitoUserPoolManaged", managedStr);
   Pulumi$Pulumi.$$export("activeRoleStore", result.activeRoleTable.name);
   return result;
 }

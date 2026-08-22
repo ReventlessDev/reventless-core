@@ -207,17 +207,27 @@ function MakeWithConfig(Config) {
   if (platformStackRef !== undefined) {
     let stackRef = Primitive_option.valFromOption(platformStackRef);
     let defaultOutput = stackRef.getOutput("default");
+    let providerIdOutput = stackRef.getOutput("identityProviderId");
+    let providerRegionOutput = stackRef.getOutput("identityProviderRegion");
     let cognitoPoolIdOutput = stackRef.getOutput("cognitoUserPoolId");
     let cognitoRegionOutput = stackRef.getOutput("cognitoRegion");
     let userPoolConfig = Pulumi.all([
-      cognitoPoolIdOutput,
-      cognitoRegionOutput,
+      Pulumi.all([
+        providerIdOutput,
+        providerRegionOutput
+      ]),
+      Pulumi.all([
+        cognitoPoolIdOutput,
+        cognitoRegionOutput
+      ]),
       defaultOutput
     ]).apply(param => {
       let $$default = param[2];
+      let match = param[1];
+      let match$1 = param[0];
       let getFromDefault = key => Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap($$default, d => Stdlib_JSON.Decode.object(d)), d => d[key]), v => Stdlib_JSON.Decode.string(v));
-      let userPoolId = Stdlib_Option.getOrThrow(Stdlib_Option.orElse(param[0], getFromDefault("cognitoUserPoolId")), "Platform stack does not export 'cognitoUserPoolId' — redeploy the platform stack first");
-      let awsRegion = Stdlib_Option.orElse(param[1], getFromDefault("cognitoRegion"));
+      let userPoolId = Stdlib_Option.getOrThrow(Stdlib_Option.orElse(Stdlib_Option.orElse(Stdlib_Option.orElse(match$1[0], getFromDefault("identityProviderId")), match[0]), getFromDefault("cognitoUserPoolId")), "Platform stack exports neither 'identityProviderId' nor 'cognitoUserPoolId' — redeploy the platform stack first");
+      let awsRegion = Stdlib_Option.orElse(Stdlib_Option.orElse(Stdlib_Option.orElse(match$1[1], getFromDefault("identityProviderRegion")), match[1]), getFromDefault("cognitoRegion"));
       return {
         userPoolId: userPoolId,
         defaultAction: "ALLOW",
@@ -1162,20 +1172,11 @@ function MakeWithConfig(Config) {
           [
             "authMode",
             "cognito"
-          ],
-          [
-            "cognitoUserPoolId",
-            match[2]
-          ],
-          [
-            "cognitoClientId",
-            match[3]
-          ],
-          [
+          ]
+        ].concat(Util_ShellConfig$ReventlessAws.identityFields(match[2], match[3])).concat([[
             "liveUpdates",
             true
-          ]
-        ];
+          ]]);
         let withEvents = eventsEpOpt !== undefined ? computed.concat([
             [
               "domainApiEventsEndpoint",
@@ -1520,17 +1521,27 @@ function Make($star) {
   if (platformStackRef !== undefined) {
     let stackRef = Primitive_option.valFromOption(platformStackRef);
     let defaultOutput = stackRef.getOutput("default");
+    let providerIdOutput = stackRef.getOutput("identityProviderId");
+    let providerRegionOutput = stackRef.getOutput("identityProviderRegion");
     let cognitoPoolIdOutput = stackRef.getOutput("cognitoUserPoolId");
     let cognitoRegionOutput = stackRef.getOutput("cognitoRegion");
     let userPoolConfig = Pulumi.all([
-      cognitoPoolIdOutput,
-      cognitoRegionOutput,
+      Pulumi.all([
+        providerIdOutput,
+        providerRegionOutput
+      ]),
+      Pulumi.all([
+        cognitoPoolIdOutput,
+        cognitoRegionOutput
+      ]),
       defaultOutput
     ]).apply(param => {
       let $$default = param[2];
+      let match = param[1];
+      let match$1 = param[0];
       let getFromDefault = key => Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap($$default, d => Stdlib_JSON.Decode.object(d)), d => d[key]), v => Stdlib_JSON.Decode.string(v));
-      let userPoolId = Stdlib_Option.getOrThrow(Stdlib_Option.orElse(param[0], getFromDefault("cognitoUserPoolId")), "Platform stack does not export 'cognitoUserPoolId' — redeploy the platform stack first");
-      let awsRegion = Stdlib_Option.orElse(param[1], getFromDefault("cognitoRegion"));
+      let userPoolId = Stdlib_Option.getOrThrow(Stdlib_Option.orElse(Stdlib_Option.orElse(Stdlib_Option.orElse(match$1[0], getFromDefault("identityProviderId")), match[0]), getFromDefault("cognitoUserPoolId")), "Platform stack exports neither 'identityProviderId' nor 'cognitoUserPoolId' — redeploy the platform stack first");
+      let awsRegion = Stdlib_Option.orElse(Stdlib_Option.orElse(Stdlib_Option.orElse(match$1[1], getFromDefault("identityProviderRegion")), match[1]), getFromDefault("cognitoRegion"));
       return {
         userPoolId: userPoolId,
         defaultAction: "ALLOW",
@@ -2452,20 +2463,11 @@ function Make($star) {
           [
             "authMode",
             "cognito"
-          ],
-          [
-            "cognitoUserPoolId",
-            match[2]
-          ],
-          [
-            "cognitoClientId",
-            match[3]
-          ],
-          [
+          ]
+        ].concat(Util_ShellConfig$ReventlessAws.identityFields(match[2], match[3])).concat([[
             "liveUpdates",
             true
-          ]
-        ];
+          ]]);
         let withEvents = eventsEpOpt !== undefined ? computed.concat([
             [
               "domainApiEventsEndpoint",
