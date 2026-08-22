@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.247 (2026-08-22)
+
+* feat(core)!: a slice that has given up says so ([f5559ab](https://github.com/ReventlessDev/reventless-core/commit/f5559abede3a9cf2c9a48aadc69a666c46cc75bf))
+
+### BREAKING CHANGES
+
+* `onExhausted` is required on the Translation and Automation
+module types. ReScript has no optional module-type fields, so the alternative
+was a PPX-injected default — and defaulting this one to silence is the bug.
+A slice now states what abandonment means for its domain, `None` included.
+GeocodeCustomerAddress answers with MarkAddressUnresolvable; the others say
+nothing, on purpose.
+
+
+
 # 3.0.0-alpha.246 (2026-08-21)
 
 ### Bug Fixes
