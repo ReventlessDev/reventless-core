@@ -459,10 +459,31 @@ round trip against an in-memory platform on alternate ports.
 
 ## Follow-ups
 
-- **No deployed view live-updates, and the deploy side is not the reason.** Found in the browser walk,
-  unrelated to unions: a list held its rows across a navigation away and back while the row behind it
-  had changed twice, and the console showed a WebSocket handshake refused with HTTP 400 against
-  `wss://<platformMergedApiId>.appsync-api.eu-west-1.amazonaws.com/graphql`.
+- **A refused WebSocket in the browser walk — and the conclusion drawn from it here was wrong.**
+  *Corrected 2026-08-22, later the same day, by driving the shipped client against the deployed Events
+  API.* What was recorded below is the evidence; what was inferred from it is not. Keeping both, because
+  the inference is the instructive part.
+
+  **Two sockets, and this walk blamed the wrong one.** The shell opens an Events WebSocket for
+  live view updates *and* a graphql-ws socket for the platform's lifecycle subscriptions
+  (`onPluginStatusChange`, `onUIFragmentChange`). The refused handshake is the **second**. The live-update
+  path takes the events endpoint and applies the `appsync-api` → `appsync-realtime-api`, `/event` →
+  `/event/realtime` transform correctly, and always has — it opens, subscribes and delivers descriptors
+  against this deployment. The claim that it picks the query endpoint was mine, from a console line, and
+  it is retracted.
+
+  **The stale list had a duller explanation**: live is opt-in per view, and this walk never toggled it.
+  A list nobody switched to Live is a snapshot behaving exactly as designed. Reading "no view
+  live-updates" out of a view that was never asked to is the mistake worth remembering — the console
+  error was real and the sockets were two, so a wrong story fitted the evidence comfortably.
+
+  **What survives, and is genuinely broken:** the lifecycle subscriptions. Their endpoint is derived by
+  promoting `platformApiEndpoint`'s scheme, because the deploy writes no explicit subscription endpoint
+  — **that derivation gap is core's**, in `Platform.res`. Fixing it is necessary but not sufficient: AWS
+  refuses the `graphql-transport-ws` subprotocol the npm client sends, and accepts only its own
+  `graphql-ws`. Until both are addressed, plugin activation reaches a deployed menu only on reload.
+
+  The evidence as gathered, which stands:
 
   Narrowed rather than guessed at, because the guess would have been wrong. The served `config.json`
   is **correct and complete** — `liveUpdates: true`, and both `domainApiEventsEndpoint` and
@@ -480,11 +501,11 @@ round trip against an in-memory platform on alternate ports.
   | `<id>.appsync-realtime-api…` + legacy query-string auth | opens |
   | Events API realtime host + `aws-appsync-event-ws` | opens |
 
-  So this is a client-side endpoint selection, and **nothing here is core's to fix** — recorded so the
-  next person does not re-derive it from a console line. It also **retires a stale diagnosis**:
-  [graphql-subscriptions-appsync.md](../graphql-subscriptions-appsync.md) has carried "WebSocket
-  subscriber verification blocked by unresolved client `Sec-WebSocket-Protocol` format" since
-  2026-04-18, and the protocol format is demonstrably fine on three of the four rows above.
+  Row 4 is the refused one, and it belongs to the lifecycle path. Row 1 is the live-update transport,
+  which works. The reading that went wrong was treating row 4's failure as the live path's, when the
+  four rows never distinguished which socket the browser was opening — they establish what each *host*
+  accepts, not which host the client chose. A probe that answers a question you did not ask is still
+  evidence for the question you did.
 - **A `Pending` row that never resolves is indistinguishable from one that is about to.** Making one
   hold still needed an address the geocoder rejects outright, and the row then sits in `Locating…`
   forever with nothing saying a retry is owed. Harmless in a demo; the operator's queue below is where

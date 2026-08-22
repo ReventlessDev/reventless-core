@@ -1,6 +1,6 @@
 # Plan: GraphQL Subscriptions — AppSync Real-Time Infrastructure
 
-## Status: Phases 1–6 complete. Source C verified in AWS. Source B publish chain verified (DDB Stream → Lambda → AppSync Events HTTP publish — two latent Lambda handler bugs fixed, see Phase 4). WebSocket subscriber verification still outstanding — but **not** for the reason recorded here since 2026-04-18: the client `Sec-WebSocket-Protocol` format works, and the refusal came from connecting to the query host rather than the realtime one (see Phase 4's verify item). Source A infrastructure ready but no SNS-backed event topics currently deployed in the example stack.
+## Status: Phases 1–6 complete. Source C verified in AWS. Source B publish chain verified (DDB Stream → Lambda → AppSync Events HTTP publish — two latent Lambda handler bugs fixed, see Phase 4). **WebSocket subscriber verification closed 2026-08-22** — descriptors observed arriving over the deployed Events transport, so the format recorded as blocked since 2026-04-18 was correct all along for that path. What remains broken is the *lifecycle* subscription path, for two independent reasons, one of which is core's: no explicit subscription endpoint is written into `config.json`. See Phase 4's verify items. Source A infrastructure ready but no SNS-backed event topics currently deployed in the example stack.
 
 ### Bug fixed (2026-04-18): `Plugin_SubscriptionSchema.sourceCFields` used `String.replace(": String!", ...)` which replaced the first occurrence — hitting String! args before the return type. Fixed to `sub ++ @aws_subscribe directive` (append at end). Deployed fragments and pushed corrected schema.
 
@@ -228,17 +228,25 @@ Wiring `StateTopic_AppSync.make` per ReadModel/StateViewSlice is left as opt-in 
   - Two pre-existing bugs fixed: (1) handler used nonexistent `@aws-sdk/client-appsync-events` — replaced with native SigV4+fetch; (2) AppSync Events channels forbid underscores — `topicName` normalized via `_`→`-`
   - Verified via direct DDB write to `Products-07b7f5f` table: DDB Stream fired, Lambda invoked, zero errors in CloudWatch
   - Verified HTTP publish format via direct `POST /event` calls: 200 OK for `/default/catalog-Product` channel
-- [ ] Verify: push reaches WebSocket subscriber. **The protocol format is no longer the blocker
-      (2026-08-22).** Probed against the deployed `alpha` stack with a Cognito id token: the Events API
-      realtime host opens on `aws-appsync-event-ws` + `header-<base64url>`, and the GraphQL realtime
-      host opens on `graphql-ws` + `header-<base64url>` and on the legacy query-string form. What is
-      refused (non-101) is connecting to the **query** host `<id>.appsync-api…` instead of
-      `<id>.appsync-realtime-api…` — which is what the deployed shell is doing, with
-      `platformApiEndpoint` rather than the `platformApiEventsEndpoint` this plan's config already
-      serves it. A subprotocol error was the symptom of the wrong host, not a format that could not be
-      found. Evidence in
-      [done/semantic-geolocation.md](done/semantic-geolocation.md#follow-ups); the remaining fix is
-      client-side, so what is owed **here** is only the end-to-end verification once it lands.
+- [x] Verify: push reaches WebSocket subscriber. **Closed 2026-08-22** — the shipped Events client was
+      driven against the deployed `alpha` Events API with a Cognito id token and observed
+      `connection_ack` → `subscribe_success` → `Added`/`Updated` change descriptors for commands fired
+      on the same run. The subscribe-message format this plan wrote against the public docs is what the
+      deployed API accepts.
+
+      **The `Sec-WebSocket-Protocol` note above was two problems wearing one symptom.** For the Events
+      transport, `aws-appsync-event-ws` + `header-<base64url>` was always right. For the **lifecycle**
+      subscriptions (`onPluginStatusChange`, `onUIFragmentChange`) both halves are wrong: they are aimed
+      at the query host `<id>.appsync-api…` rather than `<id>.appsync-realtime-api…`, *and* AWS refuses
+      the `graphql-transport-ws` subprotocol the npm `graphql-ws` client sends, accepting only its own
+      `graphql-ws`. Fixing either alone leaves them dark.
+
+- [ ] **Write an explicit subscription endpoint into `config.json`.** The client currently derives one
+      by promoting `platformApiEndpoint`'s scheme, because `Platform.res` writes none — so the
+      derivation lands on the query host, which never accepts a socket. This half is core's, and it is
+      the only part of the lifecycle-subscription failure that is. The subprotocol half, and the choice
+      between speaking AWS's `graphql-ws` or moving these two subscriptions onto the Events transport,
+      belong to the client.
 
 ---
 
