@@ -1,7 +1,12 @@
 # Plan: tagged-union fields in queryable state
 
 **Date:** 2026-08-20
-**Status:** **Reopened 2026-08-20** — filed as done, then found untrue in production. D1 says the
+**Status:** **Done — the deployed read is proved, 2026-08-22.** Reopened 2026-08-20 after being filed
+as done and found untrue in production; the runtime stamp landed (`140251ac7`), deployed
+(`880d6c301`), and the adopter's doors were then called against the deployment. See *Verification*
+for what that covers and the two rows of D1's table it does not.
+
+The reopening, kept because it is the useful part of the record: D1 says the
 `__typename` stamp happens "in one place instead of fourteen". That one place is
 `QueryDb_Operations.Make`, the *typed* ops functor — which the deployed projection Lambdas never call.
 `ReadModelEntryPoint_Ops.buildOperations` assembles JSON-level operations through
@@ -15,7 +20,8 @@ yet, so every SDL golden and every stored row is byte-identical to before. **Ste
 has landed too**, in `reventless-ui`, first released as `reventless-host-shell@3.0.0-alpha.80` and
 completed in `alpha.81`, which the examples pin — so the release lockstep below is satisfied before any
 adopter exists.
-What is **not** proved here is a deployed read — see *Verification*.
+A deployed read is proved by the adopter rather than here, which is where it belongs — see
+*Verification*.
 **Scope:** the **mechanism** only — the framework learning to express, emit and store a
 tagged-union field. No view adopts one here. The first adopter, and the semantic type it adopts, are
 [semantic-geolocation.md](./semantic-geolocation.md), which is where the deployment proof lives.
@@ -454,12 +460,37 @@ point: a mechanism plan that claims deployment evidence it has not gathered is h
 declared covered without ever being called — and a green deploy of a mechanism nothing uses is exactly
 the shape of evidence that invites the mistake.
 
-*Where that sweep stands, for whoever follows the trail here.* The adopter has since called **four**
-doors locally — single, list/connection, by-ids and refs, every door `Customers` declares. The eight
-AppSync doors and the Postgres resolver remain uncalled and are gated on that plan's deploy. Two —
-by-index and single`Items` — have never carried a union in **any** test in either plan, because no
-fixture declares both an `@index` and a union field; that gap is this plan's to own, and is listed
-below.
+*Where that sweep stands, for whoever follows the trail here.* **Run and closed, 2026-08-22.** The
+adopter called four doors locally — single, list/connection, by-ids and refs, every door `Customers`
+declares — and then **the same four against the deployed merged domain API**, once the stamp fix below
+had deployed (`880d6c301`). Each answered `__typename` plus the arm's own fields through an inline
+fragment, with all three arms driven through the deploy. The remaining rows of D1's table are covered
+where they are decidable rather than left open:
+
+| Row | How it stands |
+| --- | --- |
+| AppSync — single, list/connection, by-ids, refs | called against the deployment |
+| AppSync — by-index, single`Items` | `Customers` declares neither, so covered by fixtures on the local resolver instead (below) |
+| AppSync — `@resolves`, `@resolvesMany` | nothing `@resolves` to a union-carrying view yet; covered on the Postgres dispatcher, uncalled on AppSync |
+| Postgres | **not callable at all** — no example selects that backend and the account holds no RDS instance; covered by the dispatcher test below |
+| Local — all six | covered from the start, plus the two fixtures below |
+
+**single`Items` is no longer uncovered.** A sub-id fixture in
+[QueryDbListResolverTest.res](../../reventless/local/tests/adapter/QueryDbListResolverTest.res) sits
+beside the indexed one: a view declaring `subIdConfig`, two lines under one id, the first carrying a
+union and the second leaving the optional field absent. The Items connection returns the member type
+and the arm's payload, and the absent one stays absent. Checked by mutation.
+
+**The Postgres door is asserted where it can be.** The write-time stamp is applied *above* the backend
+branch — `withUnionMemberTypes` wraps the result of `makeQueryDbOps`, which is itself what chooses
+DynamoDB or Postgres — so a Postgres row carries the member type inside the stored value exactly as a
+DynamoDB row does, and this resolver's only job is not to lose it. It stamps a `__typename` of its own
+at the *top* level of a `node` answer, which is the one place it could.
+[PgQueryResolver_LambdaTest.res](../../reventless/aws/tests/PgQueryResolver_LambdaTest.res) now pins a
+nested union surviving `getById`, `byIds`, by-index, `list`, `items`, `resolveOne`, `resolveMany` and
+`node` — the last asserting both stamps at once. Checked by mutation. That is a weaker claim than
+calling the door on a deployment and is written here as such; it is the strongest available while no
+Postgres deployment exists.
 
 ## Out of scope
 
@@ -499,7 +530,8 @@ below.
   `__typename` and the arm's payload — plus that an absent optional union stays absent rather than
   being stamped into an arm. Checked by mutation: changing the expected member name fails the test.
 
-  **single`Items` is still uncovered.** It needs a composite sort key, which that fixture does not
-  declare, and it is the last door in D1's table carrying no union anywhere. The AppSync side of both
-  remains gated on a deploy — the local resolver passing says the stamp survives the read, not that
-  AppSync's does.
+  **single`Items` is covered too, 2026-08-22** — a sub-id fixture beside the indexed one; see the
+  verification above. The AppSync side of both stays uncalled, because `Customers` declares neither an
+  `@index` nor a sub-id and no other view carries a union yet: the local resolver passing says the
+  stamp survives the read, not that AppSync's does. The first view that declares a union *behind* an
+  index is what settles that, and it is not worth manufacturing one to find out.

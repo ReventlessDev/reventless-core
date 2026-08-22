@@ -1,14 +1,19 @@
 # Plan: `Geolocation` — the geocoder's answer as one value
 
 **Date:** 2026-08-20
-**Status:** Steps 1–4 implemented, 2026-08-20; **deployed and not yet working** — the deployed rows
-carry no `__typename`, which is the mechanism plan's runtime gap rather than this plan's, and it
-reopened to fix it. `Customers` now carries one `Geolocation` union in place
-of a point, a status enum and a note, and the SDL golden moved with it. **Unreleased and undeployed** —
-the breaking retype below is real, so the alpha store needs a wipe and a replay when this goes out.
-Step 5 (the dedicated UI control) may safely lag; the generic union renderer already ships.
-What is **not** covered is the AppSync and Postgres half of D1's read doors, which needs the deploy —
-see *Verification*.
+**Status:** **Done — verified on the deployed stack, 2026-08-22.** Steps 1–4 implemented 2026-08-20;
+the first deploy carrying the union wrote unstamped rows, which was the mechanism plan's runtime gap
+rather than this plan's, and it reopened to fix it (`140251ac7`, deployed with `880d6c301`). With that
+in, every door `Customers` declares answers a union member on AppSync, all three arms were driven
+through the deployed API, and the browser walk this plan named as its decisive check was run: `Pending`
+and `Unresolvable` read differently, in the list and in the detail. `Customers` carries one
+`Geolocation` union in place of a point, a status enum and a note, and the SDL golden moved with it.
+The alpha store needed no wipe to *reach* that state — the rows the projection rewrote after the stamp
+fix already carried the new shape — but the domain scope was wiped and replayed at the end anyway, and
+that turned out to be the better evidence: every row was then written from scratch by the deployed
+projection Lambdas rather than rewritten over a stamped one, and all four doors still answer a member.
+Step 5 (the dedicated UI control) may safely lag; the generic union renderer already ships and renders
+the three arms distinguishably. See *Verification*.
 [tagged-union-state-fields.md](./tagged-union-state-fields.md) landed first, so the framework can
 express, emit and store a tagged-union field; its reader half shipped too, as
 `reventless-host-shell@3.0.0-alpha.81`, which the examples pin — so the hard lockstep below is
@@ -336,18 +341,43 @@ round trip against an in-memory platform on alternate ports.
   `Ordering_CustomersRefs` — and **all four were called against a live server**, each returning
   `__typename` plus the arm's own fields through an inline fragment. Not sampled: called.
 
-  ❌ **The deployed rows were unstamped, for a reason that was not this plan's.** The first AWS deploy
-  carrying the union wrote every `Customers` row without `__typename`: the write-time stamp lives in
-  the typed `QueryDb_Operations` functor, and the deployed projection Lambdas assemble JSON-level ops
-  instead. Root cause and fix are the mechanism plan's, which reopened for it. Until that ships, no
-  AppSync door can resolve a union member here — so the sweep below is blocked on it rather than on
-  the deploy alone.
+  ~~❌ **The deployed rows were unstamped, for a reason that was not this plan's.**~~ **Resolved and
+  re-run on AWS, 2026-08-22.** The first AWS deploy carrying the union wrote every `Customers` row
+  without `__typename`: the write-time stamp lived in the typed `QueryDb_Operations` functor, and the
+  deployed projection Lambdas assemble JSON-level ops instead. The fix is the mechanism plan's
+  (`140251ac7`), and it deployed with `880d6c301`. **All four doors were then called against the
+  deployed merged domain API** with an inline fragment per arm, as the authenticated `admin` caller:
+  single, list/connection, by-ids and refs each answered `__typename` plus the arm's own fields. Nine
+  rows, no member missing, no row absent.
 
-  ❌ **The other doors in D1's table are not covered, and two of them cannot be by this view.** The
-  spec declares no `@index` and no composite sort key, so the by-index and single`Items` doors do not
-  exist for `Customers` at all, and nothing `@resolves` to it. Those need the fixture the plan asked
-  for rather than an exemption — and it is still owed. **The eight AppSync doors and the Postgres
-  resolver need a deploy**, which is the one thing this verification cannot reach from here.
+  **Re-proved on a store built from nothing.** The domain scope was then wiped
+  (`seed:reset`, catalog + ordering) and replayed with the `full` set, so every `Customers` row was
+  written by the deployed projection Lambdas from an empty table rather than rewritten over an already
+  stamped one. All four doors answered a member again — 16 `Located`, 3 `Unresolvable` across 20 rows.
+
+  **All three arms were driven through the deployed API, not just the two the seed happens to
+  produce.** `Located` and `Unresolvable` are in the seed; `Pending` is transient, and polling at 150 ms
+  caught it on both paths that write it — `Registered` → `Pending{requestedFor}` → `Unresolvable`
+  (1.4 s → 2.9 s), and `UpdateAddress` → `Pending{requestedFor: the new address}` → `Unresolvable`
+  (0.4 s → 0.8 s). The second is **D2's staleness argument holding on the deploy**: `requestedFor`
+  names the address just asked for, not the one the stale answer was about. An earlier attempt at
+  ~840 ms intervals missed the arm entirely and read as "the row skips `Pending`" — worth recording,
+  because the window is shorter than a careless poll.
+
+  ✅ **The other doors in D1's table now carry a union, and the two that cannot for this view are
+  covered where they live.** `Customers` declares no `@index` and no composite sort key, so by-index
+  and single`Items` do not exist for it and never will by adding to this spec. Both are now covered by
+  fixtures instead: by-index in
+  [QueryDbListResolverTest.res](../../reventless/local/tests/adapter/QueryDbListResolverTest.res)
+  (already there), and single`Items` added beside it — a sub-id view whose union survives the Items
+  connection, with the absent-optional case beside it. **The Postgres resolver cannot be called against
+  any deployment**: no example selects that backend and the account holds no RDS instance, so the door
+  is asserted where it is decidable — the write-time stamp is applied *above* the backend branch
+  (`withUnionMemberTypes` wraps the result of `makeQueryDbOps`), and
+  [PgQueryResolver_LambdaTest.res](../../reventless/aws/tests/PgQueryResolver_LambdaTest.res) now pins
+  that every read kind hands a nested union back as stored — `getById`, `byIds`, by-index, `list`,
+  `items`, `resolveOne`, `resolveMany`, and `node`, the one door that writes a `__typename` of its own
+  and must not reach down and overwrite the member's. Both additions were checked by mutation.
 - **A pre-existing row is rebuilt, not decoded.** ✅ Asserted as the failure it is, in
   [GeolocationSemanticTest.res](../../reventless/core/tests/api/GeolocationSemanticTest.res): a row in
   the three-field shape does not parse against the union-carrying state schema.
@@ -371,12 +401,38 @@ round trip against an in-memory platform on alternate ports.
   `GeolocationPending{requestedFor: "Karlsplatz 13, Vienna"}` — the new address, which is D2's
   staleness argument holding end to end rather than only in a projection test.
 
-  Two gaps in this, both honest: the **`Unresolvable` arm was never driven through the API**, because
-  no mutation produces it — `MarkAddressUnresolvable` reaches the aggregate from the geocoding slice,
-  so that arm is covered by the GWT projection test and not by a live call. And **nobody has opened a
-  browser.** `GeoPoint`'s verification carries a note that nobody opened a map; the equivalent mistake
-  here is a `Pending` row and an `Unresolvable` row rendering identically, and only a person looking at
-  both will catch it.
+  Two gaps in this, both since closed. The **`Unresolvable` arm was never driven through the API**,
+  because no mutation produces it — `MarkAddressUnresolvable` reaches the aggregate from the geocoding
+  slice. It is now driven on the deploy, through the geocoder: an address the geocoder answers but
+  cannot match confidently lands the arm with its reason.
+- **Somebody opened a browser.** ✅ **2026-08-22, against the deployed shell** — the check `GeoPoint`'s
+  verification left undone, and the one this plan named as the mistake only a person catches: a
+  `Pending` row and an `Unresolvable` row reading the same. **They do not.** In one table, side by side:
+
+  | Arm | List cell | Detail panel |
+  | --- | --- | --- |
+  | `Pending` | grey *Locating…* | `Locating…` + the address it is pending on |
+  | `Unresolvable` | amber **Not located** | `Not located` + the reason, naming the candidate and its score |
+  | `Located` | the coordinates | the coordinates, and a pin on the map |
+
+  So D1 holds all the way to the screen: the state an operator has to *act* on is the one that reads
+  differently, and the reason it carries — the whole argument for widening `confidentMatch` into
+  `assess` — reaches them in the detail panel rather than dying in the store. **Map mode is offered and
+  draws its pins** (step 2's `Semantic.mark` doing its job on the deployed schema, not just the local
+  one); rows with no point are simply not pinned.
+
+  **Getting a `Pending` row to hold still is worth recording**, since the arm is otherwise a ~1.5 s
+  window and a screenshot cannot race it. An address the geocoder *rejects outright* (an over-long one)
+  comes back `Unavailable`, which `ofSearch` collapses to `None` — so the slice leaves the row alone and
+  it stays `Pending` indefinitely. That is the retry path being visible rather than a defect, and it is
+  the only way to see the arm in a browser without a stopwatch.
+
+  **One defect found while doing this, and it is not this plan's.** The shell's subscription WebSocket
+  to the **platform** merged API fails the handshake with HTTP 400
+  (`wss://<platformMergedApiId>.appsync-api.eu-west-1.amazonaws.com/graphql`), so a deployed view never
+  live-updates: a list already on screen kept serving its cached rows across a navigation away and back
+  while the row behind it had changed twice. Nothing about unions — every field is equally stale — but
+  it is why catching `Pending` needed a fresh page rather than a live frame. Filed as a follow-up below.
 
 ## Out of scope
 
@@ -403,6 +459,36 @@ round trip against an in-memory platform on alternate ports.
 
 ## Follow-ups
 
+- **No deployed view live-updates, and the deploy side is not the reason.** Found in the browser walk,
+  unrelated to unions: a list held its rows across a navigation away and back while the row behind it
+  had changed twice, and the console showed a WebSocket handshake refused with HTTP 400 against
+  `wss://<platformMergedApiId>.appsync-api.eu-west-1.amazonaws.com/graphql`.
+
+  Narrowed rather than guessed at, because the guess would have been wrong. The served `config.json`
+  is **correct and complete** — `liveUpdates: true`, and both `domainApiEventsEndpoint` and
+  `platformApiEventsEndpoint` carrying the Events API in the HTTPS `…/event` form that
+  [Platform.res:2077-2083](../../reventless/aws/src/Platform.res#L2077-L2083) documents the client as
+  expecting. The refused URL is neither of those: it is `platformApiEndpoint`, the GraphQL *query*
+  endpoint, turned into a `wss://` with no host swap and no `/realtime`. Four handshakes were tried
+  against the deployment with the same Cognito token and the same `graphql-ws` + `header-<base64>`
+  subprotocol; every one opened except that shape:
+
+  | Target | Result |
+  | --- | --- |
+  | `<id>.appsync-realtime-api…` + `graphql-ws` | opens |
+  | `<id>.appsync-api…` + `graphql-ws` — *what was attempted* | refused, non-101 |
+  | `<id>.appsync-realtime-api…` + legacy query-string auth | opens |
+  | Events API realtime host + `aws-appsync-event-ws` | opens |
+
+  So this is a client-side endpoint selection, and **nothing here is core's to fix** — recorded so the
+  next person does not re-derive it from a console line. It also **retires a stale diagnosis**:
+  [graphql-subscriptions-appsync.md](../graphql-subscriptions-appsync.md) has carried "WebSocket
+  subscriber verification blocked by unresolved client `Sec-WebSocket-Protocol` format" since
+  2026-04-18, and the protocol format is demonstrably fine on three of the four rows above.
+- **A `Pending` row that never resolves is indistinguishable from one that is about to.** Making one
+  hold still needed an address the geocoder rejects outright, and the row then sits in `Locating…`
+  forever with nothing saying a retry is owed. Harmless in a demo; the operator's queue below is where
+  it stops being harmless.
 - **The operator's queue.** Once `Unresolvable` is a state rather than a note, "the addresses needing a
   human" is a view someone will want. That is the derived-scalar follow-up cashed in, and it is the
   first thing that will test whether refusing to index a union was the right call.

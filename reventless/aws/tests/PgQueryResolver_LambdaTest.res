@@ -612,3 +612,169 @@ describe("owner scoping", () => {
     expect(r->ids)->toEqual(["p-1", "p-3"])
   })
 })
+
+// ── nested union member types ───────────────────────────────────────────────
+//
+// The `__typename` a union member is resolved from is written into the stored
+// row, above the DynamoDB/Postgres branch (`withUnionMemberTypes` wraps the
+// result of `makeQueryDbOps`), and this resolver stamps only the *top level* of
+// a `node` answer. So the Postgres door's whole claim is that it hands a nested
+// union back exactly as stored — which no test made, and which no deploy can
+// make either: nothing runs the Postgres backend, so this door cannot be called
+// against a deployment the way the AppSync ones were.
+//
+// Losing the nested key is not visible as an error: the member resolves to null
+// and the null takes its non-nullable parent, so rows leave the answer.
+
+let geoRow = (id, status) => {
+  let geo = Dict.make()
+  geo->Dict.set("__typename", JSON.Encode.string("GeolocationLocated"))
+  geo->Dict.set("lat", JSON.Encode.float(48.2082))
+  geo->Dict.set("lng", JSON.Encode.float(16.3738))
+  let o = Dict.make()
+  o->Dict.set("id", JSON.Encode.string(id))
+  o->Dict.set("status", JSON.Encode.string(status))
+  o->Dict.set("name", JSON.Encode.string("Geo " ++ id))
+  o->Dict.set("owner", JSON.Encode.string("u-a"))
+  o->Dict.set("geolocation", JSON.Encode.object(geo))
+  JSON.Encode.object(o)
+}
+
+let geoStore = Dict.fromArray([("g-1", geoRow("g-1", "active")), ("g-2", geoRow("g-2", "active"))])
+let geoItems = () => geoStore->Dict.valuesToArray
+
+let geoConnection = (): JSON.t =>
+  JSON.Encode.object(
+    Dict.fromArray([
+      (
+        "edges",
+        JSON.Encode.array(
+          geoItems()->Array.map(item =>
+            JSON.Encode.object(
+              Dict.fromArray([("cursor", JSON.Encode.string("c")), ("node", item)]),
+            )
+          ),
+        ),
+      ),
+    ]),
+  )
+
+let geoBinding = (): PgQueryResolver_Lambda.binding => {
+  ops: {
+    ...ops,
+    load: async id => Ok(geoStore->Dict.get(id)->Option.mapOr([], i => [i])),
+  },
+  pushdowns: {
+    indexLookup: async (~readModelName as _, _field, _value) => geoItems(),
+    byIds: async (~readModelName as _, ids) => ids->Array.filterMap(id => geoStore->Dict.get(id)),
+    listPage: async (
+      ~readModelName as _,
+      ~argsDict as _,
+      ~capability as _,
+      ~labelField as _,
+      ~ownerScope as _=?,
+      ~retiredScope as _=?,
+    ) => Some(geoConnection()),
+    itemsPage: async (
+      ~readModelName as _,
+      ~subIdField as _,
+      ~id as _,
+      ~argsDict as _,
+      ~ownerScope as _=?,
+      ~retiredScope as _=?,
+    ) => geoConnection(),
+    scanAll: async (~readModelName as _) => geoItems(),
+  },
+  indexes: [
+    {index: "byStatus", type_: "S", idField: "status", projectionType: Reventless.ReadModel.ALL},
+  ],
+  subIdField: Some("lineNo"),
+  capability,
+  labelField: "name",
+  includeIdParam: true,
+  authorization: Reventless.Authorization.AllowAnonymous,
+  ownerField: None,
+  retiredField: None,
+  retiredValues: None,
+  namedWhenRetired: false,
+}
+
+// The member type of the first row a door answers with, whatever shape it took.
+let memberOf = (r: JSON.t): option<string> => {
+  let fromRow = row =>
+    row->field("geolocation")->Option.flatMap(g => g->str("__typename"))
+  switch r->JSON.Decode.array {
+  | Some(rows) => rows->Array.get(0)->Option.flatMap(fromRow)
+  | None =>
+    switch r->field("edges")->Option.flatMap(JSON.Decode.array) {
+    | Some(edges) => edges->Array.get(0)->Option.flatMap(e => e->field("node"))->Option.flatMap(fromRow)
+    | None => fromRow(r)
+    }
+  }
+}
+
+describe("PgQueryResolver — a nested union survives every door", () => {
+  let doors = [
+    ("getById", mkPayload(~kind="getById", ~args=objArgs([("id", JSON.Encode.string("g-1"))]), ())),
+    (
+      "byIds",
+      mkPayload(~kind="byIds", ~args=objArgs([("ids", JSON.Encode.array([JSON.Encode.string("g-1")]))]), ()),
+    ),
+    (
+      "index",
+      mkPayload(~kind="index", ~index="byStatus", ~args=objArgs([("byStatus", JSON.Encode.string("active"))]), ()),
+    ),
+    ("list", mkPayload(~kind="list", ())),
+    ("items", mkPayload(~kind="items", ~args=objArgs([("id", JSON.Encode.string("g-1"))]), ())),
+    // The cross-table doors answer with the *target's* rows, so a union on the
+    // target travels through a field on some other view's type.
+    (
+      "resolveOne",
+      {
+        readModelName: "Geos",
+        kind: "resolveOne",
+        target: "Geos",
+        source: objArgs([("ref", JSON.Encode.string("g-1"))]),
+        sourceIdField: "ref",
+        multi: false,
+        arguments: objArgs([]),
+        identity: Reventless.Identity.anonymous,
+      },
+    ),
+    (
+      "resolveMany",
+      {
+        readModelName: "Geos",
+        kind: "resolveMany",
+        target: "Geos",
+        source: objArgs([("refs", JSON.Encode.array([JSON.Encode.string("g-1")]))]),
+        sourceIdsField: "refs",
+        arguments: objArgs([]),
+        identity: Reventless.Identity.anonymous,
+      },
+    ),
+  ]
+
+  doors->Array.forEach(((label, payload)) =>
+    testPromise(label ++ " hands the member type back as stored", async () => {
+      let r = await PgQueryResolver_Lambda.dispatch(~binding=geoBinding(), ~payload)
+      expect(memberOf(r))->toEqual(Some("GeolocationLocated"))
+    })
+  )
+
+  // `node` is the one door that writes a `__typename` of its own, at the top
+  // level. It must not reach down and overwrite the member's.
+  testPromise("node stamps the top level without disturbing the member", async () => {
+    PgQueryResolver_Lambda.register(~readModelName="Geos", geoBinding())
+    PgQueryResolver_Lambda.registerNodeType(~typeName="Geo", ~readModelName="Geos")
+    let payload: PgQueryResolver_Lambda.payload = {
+      readModelName: "",
+      kind: "node",
+      arguments: objArgs([("id", JSON.Encode.string(btoa("Geo:g-1")))]),
+      identity: Reventless.Identity.anonymous,
+    }
+    let r = await PgQueryResolver_Lambda.handler(payload, Obj.magic(Nullable.null))
+    expect(r->str("__typename"))->toEqual(Some("Geo"))
+    expect(memberOf(r))->toEqual(Some("GeolocationLocated"))
+  })
+})

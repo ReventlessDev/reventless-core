@@ -574,3 +574,153 @@ describe("QueryDb by-index resolver", () => {
     }
   })
 })
+
+// ─────────────────────────────────────────────────────────────
+// Sub-id view — the `{name}Items` door
+// ─────────────────────────────────────────────────────────────
+
+// The door only exists when a view declares a sub-id, and no fixture declared one
+// alongside a union field, so it was the last door in the mechanism plan's table
+// carrying a union nowhere.
+
+@schema
+type lineState = {
+  orderId: @s.matches(Reventless.DcbTag.string) string,
+  lineNo: string,
+  label: string,
+  geolocation?: geolocation,
+}
+
+let lineStateSchemaWithAnnotations =
+  lineStateSchema->S.Metadata.set(
+    ~id=Reventless.StateAnnotations.stateAnnotationsId,
+    {
+      ids: ["orderId"],
+      compositeIds: [],
+      subIds: ["lineNo"],
+      compositeSubIds: [],
+      indexes: [],
+      hidden: [],
+      summary: [],
+      drillTargets: [],
+      drillTargetKeys: [],
+      collapsed: [],
+      scan: [],
+      scanSort: [],
+      semantic: [],
+      metric: [],
+      lifecycle: None,
+      groupBy: None,
+      visibility: None,
+      live: None,
+      retired: None,
+    },
+  )
+
+let buildSubIdFixture = async (~name: string) => {
+  module Bus = LocalBus.Make()
+  module Storage = LocalQueryDbStorage.Make(Bus)
+  module Resolvers = QueryDbResolvers_GraphQL.Make(Bus)
+
+  module Spec = {
+    module Id = Reventless.Id.StringPure
+    let name = name
+    let moduleUrl: string = %raw(`import.meta.url`)
+    @schema
+    type state = lineState
+    let config = Reventless.ReadModel.config()
+    let subIdConfig = Some({
+      Reventless.ReadModel.subIdField: "lineNo",
+      getSubId: (state: lineState) => state.lineNo,
+    })
+    let authorization: Reventless.Authorization.permission = AllowAuthenticated
+    let visibility: Reventless.Visibility.t = Public
+  }
+
+  module QDbResolversAdapter = ReventlessCore.QueryDb_Adapter.NoResolvers(Storage)
+  module Maker = ReventlessCore.QueryDb_Builder.Make(Spec, Storage, QDbResolversAdapter)
+
+  ReventlessCore.Plugin_Helpers.queryFieldNamesRegistry->Dict.set(
+    name,
+    {
+      singleFieldName: name,
+      listFieldName: name ++ "s",
+      returnTypeName: name,
+      pluralTypeName: "[" ++ name ++ "]",
+      includeIdParam: true,
+      connectionSpec: true,
+    },
+  )
+  ReventlessCore.Plugin_Helpers.stateSchemaRegistry->Dict.set(
+    name,
+    lineStateSchemaWithAnnotations->S.castToUnknown,
+  )
+
+  let queryDb = Maker.make(~api=(), ~apiRole=())
+  let ops = await queryDb->ReventlessCore.Component.operations->TestRunner.resolve
+
+  let _: ReventlessCore.QueryDb_Adapter.resolvers = Resolvers.make(
+    ~name,
+    ~api=(),
+    ~apiRole=(),
+    ~dataSourceName=""->Pulumi.Output.make,
+    ~indexes=[],
+    ~subIdField=Some("lineNo"),
+    ~idResolverConfigs=[],
+    ~idsResolverConfigs=[],
+    ~authorization=Reventless.Authorization.AllowAuthenticated,
+    ~opts=({}: Pulumi.CustomResourceOptions.t),
+  )
+
+  // Two lines under one order: the first carries the union, the second leaves the
+  // optional field absent.
+  let _ = await ops.save(
+    "o-1",
+    {orderId: "o-1", lineNo: "l-1", label: "First", geolocation: Located({lat: 48.2082, lng: 16.3738})},
+    Init,
+    None,
+  )
+  let _ = await ops.save("o-1", {orderId: "o-1", lineNo: "l-2", label: "Second"}, Init, None)
+
+  switch DomainGraphQL_Server.getQueryResolver(name ++ "Items") {
+  | Some(r) => r
+  | None => JsError.throwWithMessage("items resolver not registered: " ++ name ++ "Items")
+  }
+}
+
+describe("QueryDb sub-id resolver — the Items door", () => {
+  beforeEach(() => {
+    DomainGraphQL_Server.reset()
+  })
+
+  testPromise("answers the sub-items of one id, as edges", async () => {
+    let resolver = await buildSubIdFixture(~name="ItemA")
+    let response = await resolver(JSON.Encode.null, argsOf([("id", strJson("o-1"))]), emptyCtx)
+    let edges = getEdges(response)
+    expect(edges->Array.length)->toBe(2)
+    expect(edgeNodeField(edges->Array.getUnsafe(0), "lineNo"))->toBe("l-1")
+  })
+
+  // The gap this fixture exists to close, mirroring the by-index case above: a
+  // union reaching a caller through the Items door with the member type the
+  // write-time stamp put on it. Without it the member resolves to null and takes
+  // its non-nullable parent, so the row leaves the connection rather than erroring.
+  testPromise("carries a union field's member type through", async () => {
+    let resolver = await buildSubIdFixture(~name="ItemB")
+    let response = await resolver(JSON.Encode.null, argsOf([("id", strJson("o-1"))]), emptyCtx)
+    let first = getEdges(response)->Array.getUnsafe(0)
+    let geo = edgeNodeJson(first, "geolocation")->Option.flatMap(JSON.Decode.object)
+    expect(geo->Option.flatMap(o => o->Dict.get("__typename"))->Option.flatMap(JSON.Decode.string))
+    ->toEqual(Some("GeolocationLocated"))
+    expect(geo->Option.flatMap(o => o->Dict.get("lat"))->Option.flatMap(JSON.Decode.float))
+    ->toEqual(Some(48.2082))
+  })
+
+  testPromise("leaves an absent union absent", async () => {
+    let resolver = await buildSubIdFixture(~name="ItemC")
+    let response = await resolver(JSON.Encode.null, argsOf([("id", strJson("o-1"))]), emptyCtx)
+    let second = getEdges(response)->Array.getUnsafe(1)
+    expect(edgeNodeField(second, "label"))->toBe("Second")
+    expect(edgeNodeJson(second, "geolocation")->Option.isNone)->toBe(true)
+  })
+})
