@@ -158,6 +158,7 @@ module FromDcb = AutomationSlice.Mapping.Make(
 module AutoShipAutomation: AutomationSlice.Automation with module Spec := AutoShipSpec = {
   let process = (id, _item: AutoShipSpec.todoItem) =>
     Some((id, AutoShipSpec.Ship({orderId: id})))
+  let onExhausted = (_id, _item: AutoShipSpec.todoItem) => None
   let moduleUrl: string = %raw(`import.meta.url`)
   module M = AutomationSlice.Mappings.Make(AutoShipSpec)
   module type Mapping = M.Mapping

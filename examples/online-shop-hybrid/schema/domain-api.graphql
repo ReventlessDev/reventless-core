@@ -519,6 +519,7 @@ type Ordering_AutoShipOrderTodo implements Node {
   createdAt: String!
   id: ID!
   item: Ordering_AutoShipOrderTodoItem!
+  maxRetries: Float
   processedAt: String
   retryCount: Float!
   status: Ordering_AutoShipOrderTodoStatus!
@@ -552,6 +553,7 @@ type Ordering_AutoShipOrderTodoRef {
 }
 
 enum Ordering_AutoShipOrderTodoStatus {
+  Abandoned
   Completed
   Failed
   Pending
@@ -682,6 +684,7 @@ type Ordering_GeocodeCustomerAddressTodo implements Node {
   id: ID!
   item: Ordering_GeocodeCustomerAddressTodoItem!
   lastError: String
+  maxRetries: Float
   processedAt: String
   retryCount: Float!
   status: Ordering_GeocodeCustomerAddressTodoStatus!
@@ -716,6 +719,7 @@ type Ordering_GeocodeCustomerAddressTodoRef {
 }
 
 enum Ordering_GeocodeCustomerAddressTodoStatus {
+  Abandoned
   Completed
   Failed
   Pending
@@ -820,6 +824,7 @@ type Ordering_SendOrderConfirmationTodo implements Node {
   id: ID!
   item: Ordering_SendOrderConfirmationTodoItem!
   lastError: String
+  maxRetries: Float
   processedAt: String
   retryCount: Float!
   status: Ordering_SendOrderConfirmationTodoStatus!
@@ -854,6 +859,7 @@ type Ordering_SendOrderConfirmationTodoRef {
 }
 
 enum Ordering_SendOrderConfirmationTodoStatus {
+  Abandoned
   Completed
   Failed
   Pending

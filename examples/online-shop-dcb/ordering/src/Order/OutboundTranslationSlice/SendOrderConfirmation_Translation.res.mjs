@@ -33,6 +33,10 @@ async function translate(_id, item, param) {
   }
 }
 
+function onExhausted(_id, _item, param) {
+  
+}
+
 let Spec;
 
 let moduleUrl = "@reventlessdev/online-shop-dcb-ordering/src/Order/OutboundTranslationSlice/SendOrderConfirmation_Translation.res.mjs";
@@ -41,6 +45,7 @@ export {
   Spec,
   collect,
   translate,
+  onExhausted,
   moduleUrl,
 }
 /* Stdlib_JsExn Not a pure module */

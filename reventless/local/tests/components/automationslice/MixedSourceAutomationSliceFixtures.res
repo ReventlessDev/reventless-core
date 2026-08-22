@@ -117,6 +117,7 @@ module AutoFulfillAutomation: AutomationSlice.Automation
   with module Spec := AutoFulfillSpec = {
   let process = (id, item: AutoFulfillSpec.todoItem) =>
     Some((id, AutoFulfillSpec.MarkFulfilled({orderId: item.orderId, productId: item.productId})))
+  let onExhausted = (_id, _item: AutoFulfillSpec.todoItem) => None
   let moduleUrl: string = %raw(`import.meta.url`)
   module M = AutomationSlice.Mappings.Make(AutoFulfillSpec)
   module type Mapping = M.Mapping

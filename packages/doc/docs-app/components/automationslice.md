@@ -285,12 +285,28 @@ A periodic heartbeat (configurable via `heartbeatInterval`) runs **Phase 2 only*
 - Failed items eligible for retry (`retryCount < maxRetries`)
 - Items stuck in `Processing` beyond a timeout
 
+## When an item runs out of retries
+
+`process` producing a command that cannot be published moves the item towards its
+retry ceiling. On the attempt that spends the budget the row becomes `Abandoned`
+and `onExhausted` is consulted:
+
+```rescript
+let onExhausted = (_id, _item) => None
+```
+
+Return `Some((targetId, command))` to tell the domain, `None` to stay silent. It
+is declared either way, because abandonment is an outcome and the framework cannot
+publish it for you: the command has to name a target, and which target is exactly
+what the slice knows and the framework does not. The row is marked `Abandoned`
+regardless — the hook decides only whether anything downstream reacts.
+
 ## TODO List Storage
 
 The TODO list is stored in a QueryDb for observability. Each row:
 
 ```rescript
-type todoStatus = Pending | Processing | Completed | Failed
+type todoStatus = Pending | Processing | Completed | Failed | Abandoned
 
 type todoRow = {
   item: JSON.t,
@@ -299,8 +315,16 @@ type todoRow = {
   processedAt?: string,
   completedAt?: string,
   retryCount: int,
+  maxRetries?: int,
 }
 ```
+
+`Failed` and `Abandoned` are opposite instructions to whoever is reading. A
+`Failed` row will be tried again on the next sweep; an `Abandoned` one has spent
+its retry budget and no sweep will pick it up. The row carries `maxRetries`
+alongside `retryCount` so a caller can read "2 of 3" without knowing a constant
+that lives in the Spec. It is optional only because rows written before the field
+existed are rehydrated by decoding them.
 
 This QueryDb is automatically created by the builder and can be queried via the GraphQL API to inspect pending work.
 

@@ -111,6 +111,8 @@ module SendConfirmTranslation: OutboundTranslationSlice.Translation
     externalCalls->Array.push(item.orderId)
     Ok(None)
   }
+
+  let onExhausted = (_id, _item: SendConfirmSpec.outboundItem, ~lastError as _) => None
 }
 
 // ─────────────────────────────────────────────────────────────

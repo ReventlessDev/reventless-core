@@ -15,7 +15,8 @@ let todoStatusSchema = Sury.union([
   Sury.literal("Pending"),
   Sury.literal("Processing"),
   Sury.literal("Completed"),
-  Sury.literal("Failed")
+  Sury.literal("Failed"),
+  Sury.literal("Abandoned")
 ]);
 
 let todoRowSchema = Sury.$schema(s => ({
@@ -25,6 +26,7 @@ let todoRowSchema = Sury.$schema(s => ({
   processedAt: s.m(Sury.$option(Sury.string)),
   completedAt: s.m(Sury.$option(Sury.string)),
   retryCount: s.m(Sury.int),
+  maxRetries: s.m(Sury.$option(Sury.int)),
   lastError: s.m(Sury.$option(Sury.string))
 }));
 
@@ -36,6 +38,7 @@ function todoRowSchemaFor(itemSchema) {
     processedAt: s.m(Sury.$option(Sury.string)),
     completedAt: s.m(Sury.$option(Sury.string)),
     retryCount: s.m(Sury.int),
+    maxRetries: s.m(Sury.$option(Sury.int)),
     lastError: s.m(Sury.$option(Sury.string))
   }));
 }
@@ -44,6 +47,41 @@ function Make(Spec) {
   return Translation => {
     let todoItems = {};
     let makeMeta = () => Message$ReventlessCore.generateMeta(Stdlib_Option.getOr(Spec.targetName, `OutboundTranslationSlice:` + Spec.name), undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+    let afterFailedAttempt = (row, lastError) => {
+      let retryCount = row.retryCount + 1 | 0;
+      let newrecord = {...row};
+      newrecord.lastError = lastError !== undefined ? lastError : row.lastError;
+      newrecord.retryCount = retryCount;
+      newrecord.status = retryCount >= Spec.maxRetries ? "Abandoned" : "Failed";
+      return newrecord;
+    };
+    let announceAbandonment = async (id, row, publishJsons) => {
+      let item;
+      try {
+        item = Util_Sury$Reventless.fromJson(row.item, Spec.outboundItemSchema);
+      } catch (exn) {
+        return Effect.runSync(EffectLogger$ReventlessCore.logError(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, `retries exhausted for ` + id + `, and its item could not be decoded to announce it`));
+      }
+      let match = Translation.onExhausted(id, item, row.lastError);
+      if (match === undefined) {
+        return;
+      }
+      try {
+        let msg_id = match[0];
+        let msg_meta = makeMeta();
+        let msg_commandJson = Util_Sury$Reventless.toJson(match[1], Spec.inboundCommandSchema);
+        let msg = {
+          id: msg_id,
+          meta: msg_meta,
+          commandJson: msg_commandJson
+        };
+        return await publishJsons([msg]);
+      } catch (raw_exn) {
+        let exn$1 = Primitive_exceptions.internalToException(raw_exn);
+        let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$1), Stdlib_JsExn.message), "unknown");
+        return Effect.runSync(EffectLogger$ReventlessCore.logError(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, `retries exhausted for ` + id + `, and the abandonment command could not be published: ` + errMsg));
+      }
+    };
     let phase1 = events => {
       events.forEach(param => {
         Translation.collect(param[1], param[0]).forEach(param => {
@@ -54,17 +92,31 @@ function Make(Spec) {
           }
           let row_item = Util_Sury$Reventless.toJson(param[1], Spec.outboundItemSchema);
           let row_createdAt = new Date().toISOString();
+          let row_maxRetries = Spec.maxRetries;
           let row = {
             item: row_item,
             status: "Pending",
             createdAt: row_createdAt,
-            retryCount: 0
+            retryCount: 0,
+            maxRetries: row_maxRetries
           };
           todoItems[id] = row;
         });
       });
     };
     let phase2 = async (publishJsons, capabilities) => {
+      let newlyAbandoned = [];
+      Object.entries(todoItems).forEach(param => {
+        let row = param[1];
+        if (!(row.status === "Failed" && row.retryCount >= Spec.maxRetries)) {
+          return;
+        }
+        let id = param[0];
+        let newrecord = {...row};
+        newrecord.status = "Abandoned";
+        todoItems[id] = newrecord;
+        newlyAbandoned.push(id);
+      });
       let pending = Object.entries(todoItems).filter(param => {
         let row = param[1];
         if (row.status === "Pending") {
@@ -137,33 +189,48 @@ function Make(Spec) {
                 let exn$3 = Primitive_exceptions.internalToException(raw_exn$3);
                 let errMsg$2 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$3), Stdlib_JsExn.message), "unknown");
                 Effect.runSync(EffectLogger$ReventlessCore.logError(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, `failed to publish command: ` + errMsg$2));
-                let newrecord$2 = {...row};
-                newrecord$2.retryCount = row.retryCount + 1 | 0;
-                newrecord$2.status = "Failed";
-                todoItems[id] = newrecord$2;
-                return;
+                let updated = afterFailedAttempt(row, errMsg$2);
+                todoItems[id] = updated;
+                if (updated.status === "Abandoned") {
+                  newlyAbandoned.push(id);
+                  return;
+                } else {
+                  return;
+                }
               }
             } else {
-              let newrecord$3 = {...row};
-              newrecord$3.retryCount = row.retryCount + 1 | 0;
-              newrecord$3.status = "Failed";
-              todoItems[id] = newrecord$3;
-              return;
+              let updated$1 = afterFailedAttempt(row, undefined);
+              todoItems[id] = updated$1;
+              if (updated$1.status === "Abandoned") {
+                newlyAbandoned.push(id);
+                return;
+              } else {
+                return;
+              }
             }
           } else {
-            let newrecord$4 = {...row};
-            newrecord$4.completedAt = new Date().toISOString();
-            newrecord$4.status = "Completed";
-            todoItems[id] = newrecord$4;
+            let newrecord$2 = {...row};
+            newrecord$2.completedAt = new Date().toISOString();
+            newrecord$2.status = "Completed";
+            todoItems[id] = newrecord$2;
             return;
           }
         } else {
-          let newrecord$5 = {...row};
-          newrecord$5.lastError = result._0;
-          newrecord$5.retryCount = row.retryCount + 1 | 0;
-          newrecord$5.status = "Failed";
-          todoItems[id] = newrecord$5;
-          return;
+          let updated$2 = afterFailedAttempt(row, result._0);
+          todoItems[id] = updated$2;
+          if (updated$2.status === "Abandoned") {
+            newlyAbandoned.push(id);
+            return;
+          } else {
+            return;
+          }
+        }
+      });
+      await Stdlib_Array.reduce(newlyAbandoned, Promise.resolve(), async (prev, id) => {
+        await prev;
+        let row = todoItems[id];
+        if (row !== undefined) {
+          return await announceAbandonment(id, row, publishJsons);
         }
       });
     };

@@ -18,7 +18,12 @@ type todoStatus =
   | Pending
   | Processing
   | Completed
+  /** Failed and will be tried again. */
   | Failed
+  /** Failed for the last time — the retry budget is spent and no pass will pick
+      this row up again. Distinct from `Failed` because the two are opposite
+      instructions to whoever is reading: wait, or intervene. */
+  | Abandoned
 
 @schema
 type todoRow = {
@@ -28,6 +33,11 @@ type todoRow = {
   processedAt?: string,
   completedAt?: string,
   retryCount: int,
+  /** The ceiling `retryCount` is racing, copied from the Spec when the row is
+      created. Optional because rows written before this field existed are
+      rehydrated through `S.parseOrThrow`, and a required field would fail that
+      decode — silently, since the restore swallows it per row. */
+  maxRetries?: int,
 }
 
 /** The item schema seen through the `JSON.t` the row actually stores.
@@ -58,6 +68,7 @@ let todoRowSchemaFor = (itemSchema: S.t<'item>): S.t<todoRow> =>
     processedAt: ?s.matches(S.option(S.string)),
     completedAt: ?s.matches(S.option(S.string)),
     retryCount: s.matches(S.int),
+    maxRetries: ?s.matches(S.option(S.int)),
   })
 
 /**
@@ -122,6 +133,39 @@ module Make = (
   // the slice here makes the target's own events unmatchable, silently.
   let makeMeta = (): Reventless.Message.meta => Message.generateMeta(~service=Spec.targetName)
 
+  /** Record a failed attempt. The row is marked `Abandoned` at the moment the
+      budget runs out rather than being left to fall out of the next pass's
+      filter, so a reader never has to compare `retryCount` against a constant
+      that lives only in this Spec. */
+  let afterFailedAttempt = (row: todoRow): todoRow => {
+    let retryCount = row.retryCount + 1
+    {...row, status: retryCount >= Spec.maxRetries ? Abandoned : Failed, retryCount}
+  }
+
+  /** The command a slice wants published now that this item will never be
+      processed again, if it wants one. The row is `Abandoned` either way. */
+  let abandonmentCommand = (~id: string, ~row: todoRow): option<Reventless.Message.commandJson> =>
+    switch row.item->Reventless.Util_Sury.fromJson(Spec.todoItemSchema) {
+    | item =>
+      Automation.onExhausted(id, item)->Option.flatMap(((targetId, command)) =>
+        switch command->Reventless.Util_Sury.toJson(Spec.commandSchema) {
+        | commandJson => Some({Reventless.Message.id: targetId, meta: makeMeta(), commandJson})
+        | exception _ =>
+          EffectLogger.logError(
+            ~comp=`AutomationSlice(${Spec.name})`,
+            `retries exhausted for ${id}, and the abandonment command could not be encoded`,
+          )->Effect.runSync
+          None
+        }
+      )
+    | exception _ =>
+      EffectLogger.logError(
+        ~comp=`AutomationSlice(${Spec.name})`,
+        `retries exhausted for ${id}, and its item could not be decoded to announce it`,
+      )->Effect.runSync
+      None
+    }
+
   // Per-source erased dispatch — pre-compile decoders once at module init.
   type dispatch = {
     sourceName: string,
@@ -146,6 +190,7 @@ module Make = (
               status: Pending,
               createdAt: now(),
               retryCount: 0,
+              maxRetries: Spec.maxRetries,
             }
             todoItems->Dict.set(id, row)
           }
@@ -187,6 +232,20 @@ module Make = (
   }
 
   let phase2 = async (publishJsons: ReventlessInfra.CommandTopic.publishJsons) => {
+    // A `Failed` row at or past the ceiling is one an older build left stranded,
+    // or one whose Spec lowered `maxRetries` under it. Either way it is abandoned
+    // in fact, so say so rather than letting it sit in a status that promises a
+    // retry no pass will make.
+    let newlyAbandoned: array<string> = []
+    todoItems
+    ->Dict.toArray
+    ->Array.forEach(((id, row)) =>
+      if row.status == Failed && row.retryCount >= Spec.maxRetries {
+        todoItems->Dict.set(id, {...row, status: Abandoned})
+        newlyAbandoned->Array.push(id)
+      }
+    )
+
     let pending =
       todoItems
       ->Dict.toArray
@@ -222,10 +281,11 @@ module Make = (
               ~comp=`AutomationSlice(${Spec.name})`,
               `failed to encode command: ${errMsg}`,
             )->Effect.runSync
-            todoItems->Dict.set(
-              id,
-              {...row, status: Failed, retryCount: row.retryCount + 1},
-            )
+            let updated = row->afterFailedAttempt
+            todoItems->Dict.set(id, updated)
+            if updated.status == Abandoned {
+              newlyAbandoned->Array.push(id)
+            }
             None
           }
           commandJson->Option.forEach(
@@ -256,13 +316,33 @@ module Make = (
         pending->Array.forEach(((id, row)) => {
           switch todoItems->Dict.get(id) {
           | Some(current) if current.status == Processing =>
-            todoItems->Dict.set(
-              id,
-              {...row, status: Failed, retryCount: row.retryCount + 1},
-            )
+            let updated = row->afterFailedAttempt
+            todoItems->Dict.set(id, updated)
+            if updated.status == Abandoned {
+              newlyAbandoned->Array.push(id)
+            }
           | _ => ()
           }
         })
+      }
+    }
+
+    // Announced after the batch, so a publish failure above has already had its
+    // say on which rows ran out of budget. A failure here cannot mark anything for
+    // retry — the budget is what ran out — so the rows stay `Abandoned` regardless.
+    let abandonmentCommands =
+      newlyAbandoned->Array.filterMap(id =>
+        todoItems->Dict.get(id)->Option.flatMap(row => abandonmentCommand(~id, ~row))
+      )
+    if abandonmentCommands->Array.length > 0 {
+      try await publishJsons(abandonmentCommands) catch {
+      | exn =>
+        let errMsg =
+          exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+        EffectLogger.logError(
+          ~comp=`AutomationSlice(${Spec.name})`,
+          `failed to publish abandonment commands: ${errMsg}`,
+        )->Effect.runSync
       }
     }
   }

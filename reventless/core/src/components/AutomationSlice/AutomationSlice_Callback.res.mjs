@@ -2,6 +2,7 @@
 
 import * as Sury from "sury";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
+import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
@@ -17,7 +18,8 @@ let todoStatusSchema = Sury.union([
   Sury.literal("Pending"),
   Sury.literal("Processing"),
   Sury.literal("Completed"),
-  Sury.literal("Failed")
+  Sury.literal("Failed"),
+  Sury.literal("Abandoned")
 ]);
 
 let todoRowSchema = Sury.$schema(s => ({
@@ -26,7 +28,8 @@ let todoRowSchema = Sury.$schema(s => ({
   createdAt: s.m(Sury.string),
   processedAt: s.m(Sury.$option(Sury.string)),
   completedAt: s.m(Sury.$option(Sury.string)),
-  retryCount: s.m(Sury.int)
+  retryCount: s.m(Sury.int),
+  maxRetries: s.m(Sury.$option(Sury.int))
 }));
 
 function todoRowSchemaFor(itemSchema) {
@@ -36,7 +39,8 @@ function todoRowSchemaFor(itemSchema) {
     createdAt: s.m(Sury.string),
     processedAt: s.m(Sury.$option(Sury.string)),
     completedAt: s.m(Sury.$option(Sury.string)),
-    retryCount: s.m(Sury.int)
+    retryCount: s.m(Sury.int),
+    maxRetries: s.m(Sury.$option(Sury.int))
   }));
 }
 
@@ -44,6 +48,13 @@ function Make(Spec) {
   return Automation => {
     let todoItems = {};
     let makeMeta = () => Message$ReventlessCore.generateMeta(Spec.targetName, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+    let afterFailedAttempt = row => {
+      let retryCount = row.retryCount + 1 | 0;
+      let newrecord = {...row};
+      newrecord.retryCount = retryCount;
+      newrecord.status = retryCount >= Spec.maxRetries ? "Abandoned" : "Failed";
+      return newrecord;
+    };
     let dispatches = Automation.mappings.map(M => {
       let decoder = DcbDecode$Reventless.makeDecoder(M.sourceEventSchema);
       let handle = (json, ctx) => {
@@ -61,11 +72,13 @@ function Make(Spec) {
           }
           let row_item = Util_Sury$Reventless.toJson(param[1], Spec.todoItemSchema);
           let row_createdAt = new Date().toISOString();
+          let row_maxRetries = Spec.maxRetries;
           let row = {
             item: row_item,
             status: "Pending",
             createdAt: row_createdAt,
-            retryCount: 0
+            retryCount: 0,
+            maxRetries: row_maxRetries
           };
           todoItems[id] = row;
         });
@@ -98,6 +111,18 @@ function Make(Spec) {
       });
     };
     let phase2 = async publishJsons => {
+      let newlyAbandoned = [];
+      Object.entries(todoItems).forEach(param => {
+        let row = param[1];
+        if (!(row.status === "Failed" && row.retryCount >= Spec.maxRetries)) {
+          return;
+        }
+        let id = param[0];
+        let newrecord = {...row};
+        newrecord.status = "Abandoned";
+        todoItems[id] = newrecord;
+        newlyAbandoned.push(id);
+      });
       let pending = Object.entries(todoItems).filter(param => {
         let row = param[1];
         if (row.status === "Pending") {
@@ -138,10 +163,11 @@ function Make(Spec) {
             let exn = Primitive_exceptions.internalToException(raw_exn);
             let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
             Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, `failed to encode command: ` + errMsg));
-            let newrecord$1 = {...row};
-            newrecord$1.retryCount = row.retryCount + 1 | 0;
-            newrecord$1.status = "Failed";
-            todoItems[id] = newrecord$1;
+            let updated = afterFailedAttempt(row);
+            todoItems[id] = updated;
+            if (updated.status === "Abandoned") {
+              newlyAbandoned.push(id);
+            }
             commandJson = undefined;
           }
           Stdlib_Option.forEach(commandJson, commandJson => {
@@ -155,31 +181,63 @@ function Make(Spec) {
           });
         });
       });
-      if (commands.length === 0) {
+      if (commands.length !== 0) {
+        try {
+          await publishJsons(commands);
+        } catch (raw_exn) {
+          let exn = Primitive_exceptions.internalToException(raw_exn);
+          let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
+          Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, `failed to publish commands: ` + errMsg));
+          pending.forEach(param => {
+            let id = param[0];
+            let current = todoItems[id];
+            if (current === undefined) {
+              return;
+            }
+            if (current.status !== "Processing") {
+              return;
+            }
+            let updated = afterFailedAttempt(param[1]);
+            todoItems[id] = updated;
+            if (updated.status === "Abandoned") {
+              newlyAbandoned.push(id);
+              return;
+            }
+          });
+        }
+      }
+      let abandonmentCommands = Stdlib_Array.filterMap(newlyAbandoned, id => Stdlib_Option.flatMap(todoItems[id], row => {
+        let item;
+        try {
+          item = Util_Sury$Reventless.fromJson(row.item, Spec.todoItemSchema);
+        } catch (exn) {
+          Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, `retries exhausted for ` + id + `, and its item could not be decoded to announce it`));
+          return;
+        }
+        return Stdlib_Option.flatMap(Automation.onExhausted(id, item), param => {
+          let commandJson;
+          try {
+            commandJson = Util_Sury$Reventless.toJson(param[1], Spec.commandSchema);
+          } catch (exn) {
+            Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, `retries exhausted for ` + id + `, and the abandonment command could not be encoded`));
+            return;
+          }
+          return {
+            id: param[0],
+            meta: makeMeta(),
+            commandJson: commandJson
+          };
+        });
+      }));
+      if (abandonmentCommands.length === 0) {
         return;
       }
       try {
-        return await publishJsons(commands);
-      } catch (raw_exn) {
-        let exn = Primitive_exceptions.internalToException(raw_exn);
-        let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
-        Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, `failed to publish commands: ` + errMsg));
-        pending.forEach(param => {
-          let row = param[1];
-          let id = param[0];
-          let current = todoItems[id];
-          if (current === undefined) {
-            return;
-          }
-          if (current.status !== "Processing") {
-            return;
-          }
-          let newrecord = {...row};
-          newrecord.retryCount = row.retryCount + 1 | 0;
-          newrecord.status = "Failed";
-          todoItems[id] = newrecord;
-        });
-        return;
+        return await publishJsons(abandonmentCommands);
+      } catch (raw_exn$1) {
+        let exn$1 = Primitive_exceptions.internalToException(raw_exn$1);
+        let errMsg$1 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$1), Stdlib_JsExn.message), "unknown");
+        return Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, `failed to publish abandonment commands: ` + errMsg$1));
       }
     };
     return {

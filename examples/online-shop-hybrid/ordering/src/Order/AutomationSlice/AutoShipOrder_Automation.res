@@ -49,3 +49,8 @@ module FromOrderingDcb = Mapping.Make(
 let mappings: array<module(Mapping)> = [module(FromOrderingDcb)]
 
 let process = (id, _item) => Some((id, ShipOrder({orderId: id})))
+
+// Nothing to say: an order the shipping automation gave up on is a Placed order
+// that never shipped, which the Orders view already shows. A command here would
+// be inventing a lifecycle state the domain does not have.
+let onExhausted = (_id, _item) => None

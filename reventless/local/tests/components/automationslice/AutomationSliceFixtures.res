@@ -108,6 +108,7 @@ module ShipOrderAutomation: Reventless.AutomationSlice.Automation
   with module Spec := ShipOrderSpec = {
   let process = (id, _item: ShipOrderSpec.todoItem) =>
     Some((id, ShipOrderSpec.CreateShipment({orderId: id})))
+  let onExhausted = (_id, _item: ShipOrderSpec.todoItem) => None
   let moduleUrl: string = %raw(`import.meta.url`)
   module M = Reventless.AutomationSlice.Mappings.Make(ShipOrderSpec)
   module type Mapping = M.Mapping
@@ -117,6 +118,7 @@ module ShipOrderAutomation: Reventless.AutomationSlice.Automation
 module SkipProcessAutomation: Reventless.AutomationSlice.Automation
   with module Spec := SkipProcessSpec = {
   let process = (_id, _item: SkipProcessSpec.todoItem) => None
+  let onExhausted = (_id, _item: SkipProcessSpec.todoItem) => None
   let moduleUrl: string = %raw(`import.meta.url`)
   module M = Reventless.AutomationSlice.Mappings.Make(SkipProcessSpec)
   module type Mapping = M.Mapping

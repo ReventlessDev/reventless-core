@@ -8,7 +8,12 @@ type todoStatus =
   | Pending
   | Processing
   | Completed
+  /** Failed and will be tried again. */
   | Failed
+  /** Failed for the last time — the retry budget is spent and no pass will pick
+      this row up again. Distinct from `Failed` because the two are opposite
+      instructions to whoever is reading: wait, or intervene. */
+  | Abandoned
 
 @schema
 type todoRow = {
@@ -18,6 +23,11 @@ type todoRow = {
   processedAt?: string,
   completedAt?: string,
   retryCount: int,
+  /** The ceiling `retryCount` is racing, copied from the Spec when the row is
+      created. Optional because rows written before this field existed are
+      rehydrated through `S.parseOrThrow`, and a required field would fail that
+      decode — silently, since the restore swallows it per row. */
+  maxRetries?: int,
   lastError?: string,
 }
 
@@ -50,6 +60,7 @@ let todoRowSchemaFor = (itemSchema: S.t<'item>): S.t<todoRow> =>
     processedAt: ?s.matches(S.option(S.string)),
     completedAt: ?s.matches(S.option(S.string)),
     retryCount: s.matches(S.int),
+    maxRetries: ?s.matches(S.option(S.int)),
     lastError: ?s.matches(S.option(S.string)),
   })
 
@@ -135,6 +146,61 @@ module Make = (
       ~service=Spec.targetName->Option.getOr(`OutboundTranslationSlice:${Spec.name}`),
     )
 
+  /** Record a failed attempt. The row is marked `Abandoned` at the moment the
+      budget runs out rather than being left to fall out of the next pass's
+      filter, so a reader never has to compare `retryCount` against a constant
+      that lives only in this Spec. */
+  let afterFailedAttempt = (row: todoRow, ~lastError: option<string>=?): todoRow => {
+    let retryCount = row.retryCount + 1
+    {
+      ...row,
+      status: retryCount >= Spec.maxRetries ? Abandoned : Failed,
+      retryCount,
+      lastError: ?switch lastError {
+      | Some(_) as given => given
+      | None => row.lastError
+      },
+    }
+  }
+
+  /** Ask the slice whether abandonment is worth telling the domain about, and
+      publish what it says. Failing to publish here cannot mark the row for retry
+      — the budget is what ran out — so the loss is logged and the row stays
+      `Abandoned`. */
+  let announceAbandonment = async (
+    ~id: string,
+    ~row: todoRow,
+    ~publishJsons: ReventlessInfra.CommandTopic.publishJsons,
+  ) =>
+    switch row.item->Reventless.Util_Sury.fromJson(Spec.outboundItemSchema) {
+    | item =>
+      switch Translation.onExhausted(id, item, ~lastError=row.lastError) {
+      | None => ()
+      | Some((targetId, cmd)) =>
+        try {
+          let msg: Reventless.Message.commandJson = {
+            id: targetId,
+            meta: makeMeta(),
+            commandJson: cmd->Reventless.Util_Sury.toJson(Spec.inboundCommandSchema),
+          }
+          await publishJsons([msg])
+        } catch {
+        | exn =>
+          let errMsg =
+            exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+          EffectLogger.logError(
+            ~comp=`OutboundTranslationSlice(${Spec.name})`,
+            `retries exhausted for ${id}, and the abandonment command could not be published: ${errMsg}`,
+          )->Effect.runSync
+        }
+      }
+    | exception _ =>
+      EffectLogger.logError(
+        ~comp=`OutboundTranslationSlice(${Spec.name})`,
+        `retries exhausted for ${id}, and its item could not be decoded to announce it`,
+      )->Effect.runSync
+    }
+
   let phase1 = (events: array<(string, Spec.consumedEvent)>) => {
     events->Array.forEach(((sourceId, event)) => {
       // Collect new outbound items
@@ -147,6 +213,7 @@ module Make = (
             status: Pending,
             createdAt: now(),
             retryCount: 0,
+            maxRetries: Spec.maxRetries,
           }
           todoItems->Dict.set(id, row)
         }
@@ -158,6 +225,23 @@ module Make = (
     publishJsons: ReventlessInfra.CommandTopic.publishJsons,
     ~capabilities: Reventless.Capabilities.t,
   ) => {
+    // Ids that ran out of budget during this pass, announced once at the end so
+    // one item's abandonment cannot interleave with another's attempt.
+    let newlyAbandoned: array<string> = []
+
+    // A `Failed` row at or past the ceiling is one an older build left stranded,
+    // or one whose Spec lowered `maxRetries` under it. Either way it is abandoned
+    // in fact, so say so rather than letting it sit in a status that promises a
+    // retry no pass will make.
+    todoItems
+    ->Dict.toArray
+    ->Array.forEach(((id, row)) =>
+      if row.status == Failed && row.retryCount >= Spec.maxRetries {
+        todoItems->Dict.set(id, {...row, status: Abandoned})
+        newlyAbandoned->Array.push(id)
+      }
+    )
+
     let pending =
       todoItems
       ->Dict.toArray
@@ -229,16 +313,18 @@ module Make = (
                 ~comp=`OutboundTranslationSlice(${Spec.name})`,
                 `failed to publish command: ${errMsg}`,
               )->Effect.runSync
-              todoItems->Dict.set(
-                id,
-                {...row, status: Failed, retryCount: row.retryCount + 1},
-              )
+              let updated = row->afterFailedAttempt(~lastError=errMsg)
+              todoItems->Dict.set(id, updated)
+              if updated.status == Abandoned {
+                newlyAbandoned->Array.push(id)
+              }
             }
           | None =>
-            todoItems->Dict.set(
-              id,
-              {...row, status: Failed, retryCount: row.retryCount + 1},
-            )
+            let updated = row->afterFailedAttempt
+            todoItems->Dict.set(id, updated)
+            if updated.status == Abandoned {
+              newlyAbandoned->Array.push(id)
+            }
           }
 
         | Ok(None) =>
@@ -246,11 +332,21 @@ module Make = (
           todoItems->Dict.set(id, {...row, status: Completed, completedAt: now()})
 
         | Error(msg) =>
-          todoItems->Dict.set(
-            id,
-            {...row, status: Failed, retryCount: row.retryCount + 1, lastError: msg},
-          )
+          let updated = row->afterFailedAttempt(~lastError=msg)
+          todoItems->Dict.set(id, updated)
+          if updated.status == Abandoned {
+            newlyAbandoned->Array.push(id)
+          }
         }
+      }
+    })
+
+    // The row is already `Abandoned`; this only asks whether the domain hears.
+    let _ = await newlyAbandoned->Array.reduce(Promise.resolve(), async (prev, id) => {
+      let _ = await prev
+      switch todoItems->Dict.get(id) {
+      | Some(row) => await announceAbandonment(~id, ~row, ~publishJsons)
+      | None => ()
       }
     })
   }

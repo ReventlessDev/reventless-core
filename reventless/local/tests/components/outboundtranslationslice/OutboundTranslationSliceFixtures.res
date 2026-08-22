@@ -36,6 +36,7 @@ module SendTrackingEmailSpec = {
     }
 
   let translate = async (_id, _item, ~capabilities as _) => Ok(None)
+  let onExhausted = (_id, _item, ~lastError as _) => None
 
   let maxRetries = 3
   let heartbeatInterval = 60
@@ -76,6 +77,13 @@ module ProcessPaymentSpec = {
   // the item, and threading capabilities into every fixture would make each
   // one restate a type it does not use.
   let translate = (id, item, ~capabilities as _) => translateFn.contents(id, item)
+
+  // Overridable like `translateFn`, so a test can assert both answers a slice may
+  // give when its budget runs out: say nothing, or tell the domain.
+  let onExhaustedFn: ref<(string, outboundItem, option<string>) => option<(string, inboundCommand)>> = ref(
+    (_id, _item, _lastError) => None
+  )
+  let onExhausted = (id, item, ~lastError) => onExhaustedFn.contents(id, item, lastError)
 
   let maxRetries = 2
   let heartbeatInterval = 30

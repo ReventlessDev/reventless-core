@@ -85,6 +85,10 @@ function process(id, _item) {
   ];
 }
 
+function onExhausted(_id, _item) {
+  
+}
+
 let Spec;
 
 let moduleUrl = "@reventlessdev/online-shop-dcb-ordering/src/Order/AutomationSlice/AutoShipOrder_Automation.res.mjs";
@@ -96,6 +100,7 @@ export {
   FromOrderingDcb,
   mappings,
   process,
+  onExhausted,
   moduleUrl,
 }
 /* M Not a pure module */

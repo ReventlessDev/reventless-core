@@ -153,6 +153,22 @@ module type Automation = {
   */
   let process: (string, Spec.todoItem) => option<(string, Spec.command)>
 
+  /**
+  The retry budget is spent: this item will never be processed again.
+
+  Return `Some((targetId, command))` to tell the domain, or `None` to say nothing.
+
+  Abandonment is an outcome, not the absence of one, and the framework cannot
+  publish it on a slice's behalf: the command would have to name a target, and
+  which target is exactly what this module knows and the framework does not. So
+  the choice is declared here even when the answer is `None` — a slice that stays
+  silent says so on purpose.
+
+  The row is marked `Abandoned` either way; this decides only whether anything
+  downstream hears about it.
+  */
+  let onExhausted: (string, Spec.todoItem) => option<(string, Spec.command)>
+
   /** File URL of this Automation module (`import.meta.url`). */
   let moduleUrl: string
 

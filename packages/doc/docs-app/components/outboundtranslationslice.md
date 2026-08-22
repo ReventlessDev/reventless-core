@@ -57,7 +57,7 @@ The key difference from AutomationSlice is that the "process" step involves an *
 | Aspect | SideEffectHandler | OutboundTranslationSlice |
 |--------|-------------------|--------------------------|
 | **Architecture** | Aggregate-based plugins | Either — DCB by default, Aggregates via `sourceNames` |
-| **State tracking** | None -- fire-and-forget | TODO list with status (Pending/Processing/Completed/Failed) |
+| **State tracking** | None -- fire-and-forget | TODO list with status (Pending/Processing/Completed/Failed/Abandoned) |
 | **Retry** | Relies on EventCollector retry (entire batch) | Per-item retry with configurable max |
 | **Idempotency** | None -- replays cause duplicate calls | Deduplication key prevents double-processing |
 | **Visibility** | No queryable state | QueryDb stores full processing history |
@@ -178,6 +178,30 @@ The `translate` function is the anti-corruption layer -- where user code calls e
 - **`Ok(Some((targetId, command)))`** -- External call succeeded; publish command back into the domain (e.g., confirm payment after calling payment gateway)
 - **`Ok(None)`** -- External call succeeded; no command needed (fire-and-forget, e.g., send email notification)
 - **`Error(msg)`** -- External call failed; item will be retried up to `maxRetries`
+
+### `onExhausted`: what to say when the retries run out
+
+`Error(msg)` on the last permitted attempt ends the item: no later sweep will pick
+it up. `onExhausted` decides whether the domain hears about that.
+
+```rescript
+let onExhausted = (_id, item, ~lastError) =>
+  Some((item.customerId, MarkAddressUnresolvable({
+    address: item.address,
+    reason: "the geocoder never answered after repeated attempts",
+  })))
+```
+
+Return `None` to stay silent. It is declared either way, because abandonment is
+an outcome and the framework cannot publish it for you: the command has to name a
+target, and which target is exactly what the slice knows and the framework does
+not.
+
+Whether you answer or not, the row is marked `Abandoned` — the hook decides only
+whether anything downstream reacts. Answer it when leaving the item alone would
+strand a *domain* state: a customer stuck on "locating…" forever is waiting for
+an answer nobody is still fetching. Stay silent when the abandoned row is itself
+the record, as it is for an email that could not be sent.
 
 ## Usage Pattern
 
@@ -376,7 +400,7 @@ OutboundSlice -> TodoList: mark item Processing
 OutboundSlice -> External: "Spec.translate(id, item)"
 External -> OutboundSlice: result
 OutboundSlice -> CommandTopic: "publishJsons (if Ok(Some))" { class: command-flow }
-OutboundSlice -> TodoList: mark Completed or Failed
+OutboundSlice -> TodoList: mark Completed, Failed or Abandoned
 OutboundSlice -> QueryDb: sync TODO state
 ```
 
@@ -410,11 +434,13 @@ pending: Pending { class: state-view-slice }
 processing: Processing { class: command }
 completed: Completed { class: read-model }
 failed: Failed { class: side-effect }
+abandoned: Abandoned { class: side-effect }
 
 pending -> processing: translate called { class: command-flow }
 processing -> completed: "Ok(Some/None)" { class: projection-flow }
 processing -> failed: "Error(msg)" { class: event-flow }
 failed -> processing: "retry (count < max)" { class: command-flow }
+processing -> abandoned: "Error(msg), budget spent" { class: event-flow }
 ```
 
 Each TODO item moves through these statuses:
@@ -425,6 +451,7 @@ Each TODO item moves through these statuses:
 | `Processing` | `translate` is being called |
 | `Completed` | External call succeeded |
 | `Failed` | External call failed -- eligible for retry |
+| `Abandoned` | External call failed for the last time -- `onExhausted` was consulted, and no sweep will pick this row up again |
 
 ### Heartbeat Handler
 
@@ -438,7 +465,7 @@ A periodic heartbeat (configurable via `heartbeatInterval`) runs **Phase 2 only*
 The TODO list is stored in a QueryDb for observability. Each row:
 
 ```rescript
-type todoStatus = Pending | Processing | Completed | Failed
+type todoStatus = Pending | Processing | Completed | Failed | Abandoned
 
 type todoRow = {
   item: JSON.t,
@@ -447,9 +474,18 @@ type todoRow = {
   processedAt?: string,
   completedAt?: string,
   retryCount: int,
+  maxRetries?: int,
   lastError?: string,
 }
 ```
+
+`Failed` and `Abandoned` are opposite instructions to whoever is reading. A
+`Failed` row will be tried again on the next sweep; an `Abandoned` one has spent
+its retry budget and no sweep will pick it up — `lastError` then holds the reason
+it stopped. The row carries `maxRetries` alongside `retryCount` so a caller can
+read "2 of 3" without knowing a constant that lives in the Spec. It is optional
+only because rows written before the field existed are rehydrated by decoding
+them.
 
 This QueryDb is automatically created by the builder and can be queried via the GraphQL API to inspect pending work and translation history.
 

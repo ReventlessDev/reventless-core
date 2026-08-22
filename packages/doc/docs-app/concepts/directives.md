@@ -264,7 +264,7 @@ and [SideEffectHandler](../components/sideeffecthandler.md) (aggregate plugins):
 | What it is | an *action* returned by a cross-plugin mapping | a first-class *component* in a plugin | a first-class *component* in a plugin |
 | Architecture | EP / Extension boundary (any) | aggregate-based plugins | DCB-based plugins |
 | Triggered by | translating a cross-plugin event/command | the plugin's own event topics | the plugin's own DcbEventLog events |
-| Tracking | none | none — fire-and-forget | TODO list with status (Pending/Processing/Completed/Failed) |
+| Tracking | none | none — fire-and-forget | TODO list with status (Pending/Processing/Completed/Failed/Abandoned) |
 | Retry | none | EventCollector batch retry | per-item retry, configurable max |
 | Idempotency | none | none (replays re-call) | dedup key prevents double-processing |
 | Audit / observability | a log line only | none | QueryDb stores full history |

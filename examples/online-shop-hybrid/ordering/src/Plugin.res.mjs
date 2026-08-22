@@ -131,6 +131,7 @@ function Make(Platform) {
     targetName: AutoShipOrder$OrderingPlugin.targetName
   })({
     process: AutoShipOrder_Automation$OrderingPlugin.process,
+    onExhausted: AutoShipOrder_Automation$OrderingPlugin.onExhausted,
     moduleUrl: AutoShipOrder_Automation$OrderingPlugin.moduleUrl,
     mappings: AutoShipOrder_Automation$OrderingPlugin.mappings
   });
@@ -148,6 +149,7 @@ function Make(Platform) {
   })({
     collect: GeocodeCustomerAddress_Translation$OrderingPlugin.collect,
     translate: GeocodeCustomerAddress_Translation$OrderingPlugin.translate,
+    onExhausted: GeocodeCustomerAddress_Translation$OrderingPlugin.onExhausted,
     moduleUrl: GeocodeCustomerAddress_Translation$OrderingPlugin.moduleUrl
   });
   let SendOrderConfirmationSlice = Platform.OutboundTranslationSlice.Make({
@@ -164,6 +166,7 @@ function Make(Platform) {
   })({
     collect: SendOrderConfirmation_Translation$OrderingPlugin.collect,
     translate: SendOrderConfirmation_Translation$OrderingPlugin.translate,
+    onExhausted: SendOrderConfirmation_Translation$OrderingPlugin.onExhausted,
     moduleUrl: SendOrderConfirmation_Translation$OrderingPlugin.moduleUrl
   });
   let CustomerAggregate = Platform.Aggregate.Make({

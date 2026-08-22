@@ -147,6 +147,25 @@ module type Translation = {
     result<option<(string, Spec.inboundCommand)>, string>,
   >
 
+  /**
+  The retry budget is spent: this item will never be attempted again.
+
+  Return `Some((targetId, cmd))` to tell the domain, or `None` to say nothing.
+  `~lastError` is the failure that ended it.
+
+  Abandonment is an outcome, not the absence of one, and the framework cannot
+  publish it on a slice's behalf: the event would need a home in some aggregate's
+  log, and which aggregate is exactly what this module knows and the framework
+  does not. So the choice is declared here even when the answer is `None` —
+  a slice that stays silent says so on purpose.
+
+  The row is marked `Abandoned` either way; this decides only whether anything
+  downstream hears about it.
+  */
+  let onExhausted: (string, Spec.outboundItem, ~lastError: option<string>) => option<
+    (string, Spec.inboundCommand),
+  >
+
   /** File URL of this Translation module (`import.meta.url`). */
   let moduleUrl: string
 }

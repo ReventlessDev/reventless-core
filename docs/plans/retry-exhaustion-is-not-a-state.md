@@ -1,9 +1,11 @@
 # Plan: a slice that has given up says so
 
 **Date:** 2026-08-22
-**Status:** Proposed — nothing implemented. Found while making a `Geolocation` `Pending` row hold still
-long enough to photograph, during
+**Status:** **Implemented 2026-08-22** — all five steps. Found while making a `Geolocation` `Pending`
+row hold still long enough to photograph, during
 [done/semantic-geolocation.md](done/semantic-geolocation.md)'s browser walk.
+Full build warning-free, 358 suites / 3634 tests green, GraphQL goldens refreshed, docs site builds.
+Two decisions were taken differently from what is written below; both are recorded at their step.
 **Repos:** `reventless-core` only.
 
 **Goal.** When a slice's todo row exhausts its retries, that is a *state the row is in* and a *fact the
@@ -73,6 +75,8 @@ Three shapes, and they are not alternatives so much as increasing commitments.
 | **B. An exhaustion hook** | the slice maps abandonment onto a command of its own choosing | every slice must remember to implement it, and the ones that forget are exactly today's behaviour |
 | **C. Both** | the view is honest *and* the domain can react | more surface, and B's per-slice question still has to be answered |
 
+*Built as C, in one pass rather than two — see the note under Steps.*
+
 **C, with A first.** A is a strictly-contained change to the shared callback — one arm of a status
 variant and one filter — and it removes the misreporting on its own, for every existing slice, with no
 spec change and nothing for a slice author to opt into. B cannot be retrofitted silently the way A can,
@@ -100,28 +104,59 @@ Whatever else changes, a caller reading a todo needs to know the ceiling the cou
 honest option: carry `maxRetries` on the todo row beside `retryCount`, so the two travel together and
 the view needs no out-of-band constant. It is one field on a shape that already carries five.
 
+*Built as an **optional** field, and it had to be.* Todo rows are not only written — the AWS entry
+point rehydrates `Pending`/`Failed` rows from DynamoDB through `Util_Sury.fromJson`, and that restore
+**swallows a decode failure per row** (`| exception _ => count`). A required field would therefore not
+have failed loudly on rows written before it existed; it would have made them silently vanish from the
+sweep, which is a worse version of the bug this plan is about.
+
 ## Steps
 
-1. **`Abandoned` in `todoStatus`**, in both callbacks that share the shape, plus the filter change
+*One decision taken differently.* D1 argued A first and B after, and the reason A was safe to ship
+alone still holds. What the plan had not priced is that **B cannot be added without deciding how a
+slice that does not implement it compiles**: ReScript module types have no optional fields, so
+`onExhausted` is either injected by the PPX (a source change, a local dune rebuild, a version bump in
+the same commit and a republish lockstep for external consumers) or it is a **breaking module-type
+change**. The breaking change was chosen deliberately: the seven in-repo slices were updated with it,
+and an external slice fails to compile with "the value `onExhausted' is required but not provided",
+which names the decision it has to make rather than defaulting it to silence.
+
+1. ✅ **`Abandoned` in `todoStatus`**, in both callbacks that share the shape, plus the filter change
    (`Failed && retryCount < maxRetries` stays the selection; the transition at the ceiling writes
    `Abandoned` rather than `Failed`). Tests: a row at the ceiling is written `Abandoned`, is not
    selected on the next pass, and a row below the ceiling still is.
-2. **`maxRetries` on the todo row** (D3), and through to the generated view type.
-3. **The exhaustion hook** (D2) on the two specs, defaulting to "no command", with the callback
+
+   *Two mechanisms, not one, and each is pinned separately.* The ceiling is marked at the **moment of
+   the failing attempt**, which handles every row this build writes. A **normalising sweep** at the top
+   of `phase2` also converts any `Failed` row already at or past the ceiling — what an older build left
+   behind, and what a Spec that lowers `maxRetries` strands under itself. Mutation-checked: breaking
+   the transition fails two tests, disabling the sweep fails a third.
+
+   The AWS restore scan gets the change for free and improves: it reads `Pending`/`Failed` only, so an
+   `Abandoned` row is no longer carried into memory to be filtered out on arrival.
+2. ✅ **`maxRetries` on the todo row** (D3), and through to the generated view type.
+3. ✅ **The exhaustion hook** (D2) on the two specs, defaulting to "no command", with the callback
    publishing what it returns exactly as the success path does.
-4. **`GeocodeCustomerAddress` implements it**, mapping exhaustion to `MarkAddressUnresolvable` with a
+4. ✅ **`GeocodeCustomerAddress` implements it**, mapping exhaustion to `MarkAddressUnresolvable` with a
    reason that says the geocoder never answered rather than that the address was ambiguous.
-5. **Docs**: the slice guides, and the todo-status vocabulary wherever it is written down.
+5. ✅ **Docs**: the slice guides, and the todo-status vocabulary wherever it is written down.
 
 ## Verification
 
-- A todo driven past its ceiling reads `Abandoned`, in a unit test and in the deployed view.
-- **The case that started this**: an over-long address on the deployed stack leaves the customer in
-  `Unresolvable` with a reason, not in `Locating…` forever. This is a browser check, because "the row
-  stops saying it is waiting" is the whole deliverable and only a person looking at it can confirm the
-  wait reads as over.
-- A slice that implements no hook behaves exactly as before — the same commands, the same todo rows
-  bar the terminal status.
+- ✅ **A todo driven past its ceiling reads `Abandoned`** — unit-tested on both callbacks, and pinned
+  by mutation. The GraphQL goldens moved with it: `Abandoned` on three todo status enums and
+  `maxRetries: Float` on three todo types, and nothing else, which is the whole schema cost.
+- ✅ **The hook is exercised in all four shapes it can take**: a slice that answers has its command
+  published (with `meta.service` naming the target, the same rule the success path follows); a slice
+  that stays silent publishes nothing and the row is still `Abandoned`; the hook is handed the
+  `lastError` that ended it; and a **failed announcement leaves the row `Abandoned`** rather than
+  dropping it back to `Failed`, since the budget is precisely what ran out.
+- ✅ **A slice that answers `None` behaves exactly as before** bar the terminal status — which is what
+  the two example slices that had nothing to say now assert by doing.
+- ❌ **Not yet observed on a deployment.** The case that started this — an over-long address leaving
+  the customer in `Unresolvable` with a reason rather than in `Locating…` forever — is a browser check
+  against a deployed stack, and needs this released and deployed first. It is the deliverable, so it
+  stays owed: "the row stops saying it is waiting" is only confirmable by a person looking at it.
 
 ## Out of scope
 
@@ -132,6 +167,11 @@ the view needs no out-of-band constant. It is one field on a shape that already 
   retries inside a single command, not passes over a durable todo.
 
 ## Follow-ups
+
+- **Release note.** `onExhausted` is a required field on two published module types, so a consumer
+  writing their own AutomationSlice or OutboundTranslationSlice gets a compile error until they declare
+  it. That is the intended prompt, but it is a major-version conversation and wants saying out loud in
+  the changelog rather than discovered at a build.
 
 - **Re-driving an abandoned todo** is the obvious next request, and the first thing that will show
   whether `Abandoned` should be a status or a status plus a timestamp.

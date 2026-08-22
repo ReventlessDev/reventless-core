@@ -211,6 +211,7 @@ function Make(Platform) {
     targetName: AutoShipOrder$OrderingPlugin.targetName
   })({
     process: AutoShipOrder_Automation$OrderingPlugin.process,
+    onExhausted: AutoShipOrder_Automation$OrderingPlugin.onExhausted,
     moduleUrl: AutoShipOrder_Automation$OrderingPlugin.moduleUrl,
     mappings: AutoShipOrder_Automation$OrderingPlugin.mappings
   });
@@ -228,6 +229,7 @@ function Make(Platform) {
   })({
     collect: SendOrderConfirmation_Translation$OrderingPlugin.collect,
     translate: SendOrderConfirmation_Translation$OrderingPlugin.translate,
+    onExhausted: SendOrderConfirmation_Translation$OrderingPlugin.onExhausted,
     moduleUrl: SendOrderConfirmation_Translation$OrderingPlugin.moduleUrl
   });
   let Orders_ExtensionPoint = Platform.ExtensionPoint.Make({

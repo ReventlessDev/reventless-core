@@ -179,6 +179,70 @@ describe("AutomationSlice Callback (mixed-source)", () => {
     })
   })
 
+  // A row used to leave the retry budget by falling out of phase2's filter, so
+  // `Failed` meant both "will be retried" and "never again" and only the count
+  // told them apart — against a ceiling that lives in the Spec, not in the row.
+  describe("retry exhaustion", () => {
+    let failingPublish: ReventlessInfra.CommandTopic.publishJsons = async _cmds =>
+      JsError.throwWithMessage("publish failed")
+
+    let collectOne = () =>
+      Callback.phase1(
+        [encodeShipOrderEvent(OrderPlaced({orderId: "ord-1", address: "123 Main St"}))],
+        testContext,
+      )
+
+    let statusOf = id => (Callback.todoItems->Dict.get(id)->Option.getOrThrow).status
+
+    testPromise("the attempt that spends the budget writes Abandoned, not Failed", async () => {
+      collectOne()
+      // ShipOrderSpec.maxRetries is 3: attempts at retryCount 0, 1 and 2 leave the
+      // row retriable, and the third failure is the one that ends it.
+      await Callback.phase2(failingPublish)
+      expect(statusOf("ord-1"))->toBe(Failed)
+      await Callback.phase2(failingPublish)
+      expect(statusOf("ord-1"))->toBe(Failed)
+      await Callback.phase2(failingPublish)
+      expect(statusOf("ord-1"))->toBe(Abandoned)
+      expect((Callback.todoItems->Dict.get("ord-1")->Option.getOrThrow).retryCount)->toBe(3)
+    })
+
+    testPromise("an abandoned row is not picked up again", async () => {
+      collectOne()
+      await Callback.phase2(failingPublish)
+      await Callback.phase2(failingPublish)
+      await Callback.phase2(failingPublish)
+      expect(statusOf("ord-1"))->toBe(Abandoned)
+
+      // A pass that would have succeeded: the row must still not be attempted,
+      // which is what makes the status a decision rather than a label.
+      let published = ref([])
+      await Callback.phase2(async cmds => published := cmds)
+      expect(published.contents->Array.length)->toBe(0)
+      expect(statusOf("ord-1"))->toBe(Abandoned)
+      expect((Callback.todoItems->Dict.get("ord-1")->Option.getOrThrow).retryCount)->toBe(3)
+    })
+
+    testPromise("a row left stranded at the ceiling is normalised on the next pass", async () => {
+      collectOne()
+      // What an older build wrote, and what a Spec that lowered maxRetries leaves
+      // behind: Failed at the ceiling, which no pass would ever pick up or mark.
+      let row = Callback.todoItems->Dict.get("ord-1")->Option.getOrThrow
+      Callback.todoItems->Dict.set("ord-1", {...row, status: Failed, retryCount: 3})
+
+      let published = ref([])
+      await Callback.phase2(async cmds => published := cmds)
+      expect(published.contents->Array.length)->toBe(0)
+      expect(statusOf("ord-1"))->toBe(Abandoned)
+    })
+
+    testPromise("the row carries the ceiling its count is racing", async () => {
+      collectOne()
+      expect((Callback.todoItems->Dict.get("ord-1")->Option.getOrThrow).maxRetries)
+      ->toEqual(Some(ShipOrderSpec.maxRetries))
+    })
+  })
+
   describe("full lifecycle", () => {
     testPromise("collect → process → resolve completes the TODO item", async () => {
       Callback.phase1(

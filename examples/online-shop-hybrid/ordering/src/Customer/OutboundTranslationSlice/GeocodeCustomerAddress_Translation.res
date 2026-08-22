@@ -29,3 +29,20 @@ let translate = async (_id, item, ~capabilities: Reventless.Capabilities.t) => {
     }
   }
 }
+
+// The point of the whole slice: `Pending` means the geocoder has not answered
+// *yet*, and once the retries are spent there is no yet. Leaving the row Pending
+// would put the wait and the giving-up back into one state, which is the collapse
+// `Geolocation` exists to undo — so the customer is told the address could not be
+// resolved, by the same event a confident refusal produces.
+let onExhausted = (_id, item: outboundItem, ~lastError) =>
+  Some((
+    item.customerId,
+    MarkAddressUnresolvable({
+      address: item.address,
+      reason: switch lastError {
+      | Some(why) => `the geocoder never answered after repeated attempts (${why})`
+      | None => "the geocoder never answered after repeated attempts"
+      },
+    }),
+  ))

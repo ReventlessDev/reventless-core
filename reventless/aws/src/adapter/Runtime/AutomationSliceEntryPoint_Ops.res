@@ -148,9 +148,12 @@ let makeSyncTodoItems = (
 // by definition no fresher.
 //
 // Only `Pending` and `Failed` are read. `Completed` rows are the bulk of a
-// mature table and are never actionable. Retry-exhausted rows are not excluded —
-// `maxRetries` is Spec-level and not known here — but `phase2` filters them, so
-// they are inert rather than wrong.
+// mature table and are never actionable, and neither are `Abandoned` ones — a
+// row whose retry budget is spent is terminal, so it is left in the table rather
+// than carried into memory. That the status says so is what lets this filter
+// decide it: `maxRetries` is Spec-level and still not known here, and before the
+// status existed an exhausted row had to be loaded and then filtered out by
+// `phase2`.
 let makeLoadTodoItems = (
   ~queryDbTableName: string,
   ~todoItems: dict<'row>,

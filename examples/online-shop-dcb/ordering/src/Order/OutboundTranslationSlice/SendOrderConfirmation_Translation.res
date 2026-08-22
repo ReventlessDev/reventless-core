@@ -25,3 +25,8 @@ let translate = async (_id, item, ~capabilities as _) => {
     Error(msg)
   }
 }
+
+// Nothing to say: a confirmation email that could not be sent is not a fact the
+// order aggregate models, and inventing one to record a mail failure would put
+// the mail server inside the domain. The Abandoned row is the record.
+let onExhausted = (_id, _item, ~lastError as _) => None

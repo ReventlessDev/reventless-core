@@ -75,6 +75,17 @@ async function translate(_id, item, capabilities) {
   }
 }
 
+function onExhausted(_id, item, lastError) {
+  return [
+    item.customerId,
+    {
+      TAG: "MarkAddressUnresolvable",
+      address: item.address,
+      reason: lastError !== undefined ? `the geocoder never answered after repeated attempts (` + lastError + `)` : "the geocoder never answered after repeated attempts"
+    }
+  ];
+}
+
 let Spec;
 
 let moduleUrl = "@reventlessdev/online-shop-hybrid-ordering/src/Customer/OutboundTranslationSlice/GeocodeCustomerAddress_Translation.res.mjs";
@@ -83,6 +94,7 @@ export {
   Spec,
   collect,
   translate,
+  onExhausted,
   moduleUrl,
 }
 /* Geolocation-Reventless Not a pure module */
