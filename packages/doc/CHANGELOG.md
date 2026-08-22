@@ -719,6 +719,8 @@ This file tracks changes to the documentation. Since the doc package is not vers
 ## Changes
 
 ### 2026-08-22
+- feat(core)!: a slice that has given up says so ([f5559ab](https://github.com/ReventlessDev/reventless-core/commit/f5559abede3a9cf2c9a48aadc69a666c46cc75bf))
+### 2026-08-22
 - chore(deps): pin the example host shells to alpha.82 ([852a9b9](https://github.com/ReventlessDev/reventless-core/commit/852a9b92b8ffda4d03dae117910b0ef09919ec82))
 
 ### 2026-08-21
