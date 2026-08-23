@@ -718,6 +718,13 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-08-23
+- chore(ci): stop requiring an npm token to install ([523db07](https://github.com/ReventlessDev/reventless-core/commit/523db07e5030410d24742b9dffd856538c6b2263))
+- fix(aws): make the identity provisioning script reachable and legible ([a5e7059](https://github.com/ReventlessDev/reventless-core/commit/a5e7059044cf8ab65a1dea92b0d70cbd6d306717))
+
+### 2026-08-22
+- feat(aws): publish identity names alongside the cognito ones ([e240d4f](https://github.com/ReventlessDev/reventless-core/commit/e240d4f01fbda20b71edf822596e634b0d4cdbc0))
+- feat(aws)!: scope the active-role store to the identity provider ([08e287d](https://github.com/ReventlessDev/reventless-core/commit/08e287db9721977b818bad76671ec4c62be6f9af))
 ### 2026-08-22
 - feat(core)!: a slice that has given up says so ([f5559ab](https://github.com/ReventlessDev/reventless-core/commit/f5559abede3a9cf2c9a48aadc69a666c46cc75bf))
 ### 2026-08-22
