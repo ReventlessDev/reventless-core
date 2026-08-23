@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.248 (2026-08-23)
+
+* feat(aws)!: scope the active-role store to the identity provider ([08e287d](https://github.com/ReventlessDev/reventless-core/commit/08e287db9721977b818bad76671ec4c62be6f9af))
+
+### BREAKING CHANGES
+
+* platform:cognitoUserPoolId is now
+platform:identityProviderId (REVENTLESS_IDENTITY_PROVIDER_ID). The old
+spelling is still read and warns — do not drop it until the new secret
+is in place, because an unset provider id is auto mode, and auto mode
+creates a new user pool.
+
+
+
 # 3.0.0-alpha.247 (2026-08-22)
 
 * feat(core)!: a slice that has given up says so ([f5559ab](https://github.com/ReventlessDev/reventless-core/commit/f5559abede3a9cf2c9a48aadc69a666c46cc75bf))
