@@ -18,7 +18,7 @@
     "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
     "@reventlessdev/rescript-web": "workspace:*",
     "@reventlessdev/reventless-aws": "workspace:*",
-    "@reventlessdev/reventless-host-shell": "3.0.0-alpha.85",
+    "@reventlessdev/reventless-host-shell": "3.0.0-alpha.86",
     "@reventlessdev/reventless-infra": "workspace:*",
     "@reventlessdev/reventless-seed": "workspace:*",
     "@reventlessdev/reventless-seed-aws": "workspace:*",
