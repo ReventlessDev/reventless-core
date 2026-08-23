@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.322 (2026-08-23)
+
+### Bug Fixes
+
+* **aws:** grant the AppSync data source Query on the table's indexes ([0dc5ed2](https://github.com/ReventlessDev/reventless-core/commit/0dc5ed2e783be22af5b418c94c95fc35f4b73851))
+
+
 # 3.0.0-alpha.321 (2026-08-23)
 
 ### Bug Fixes
