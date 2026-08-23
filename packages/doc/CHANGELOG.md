@@ -719,6 +719,8 @@ This file tracks changes to the documentation. Since the doc package is not vers
 ## Changes
 
 ### 2026-08-23
+- feat(querydb): serve owner-scoped lists from an index instead of a filtered Scan ([ad26c28](https://github.com/ReventlessDev/reventless-core/commit/ad26c284b4b0650fa3f3b6109ed33bbfe8608f6d))
+### 2026-08-23
 - chore(ci): stop requiring an npm token to install ([523db07](https://github.com/ReventlessDev/reventless-core/commit/523db07e5030410d24742b9dffd856538c6b2263))
 - fix(aws): make the identity provisioning script reachable and legible ([a5e7059](https://github.com/ReventlessDev/reventless-core/commit/a5e7059044cf8ab65a1dea92b0d70cbd6d306717))
 
