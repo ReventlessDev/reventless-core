@@ -82,7 +82,7 @@ on:
         type: string
         default: "https://registry.npmjs.org"
       token-env-var:
-        description: "Name of the environment variable the caller's .npmrc expands for auth. The NPM_TOKEN secret is exported under this name for install and publish."
+        description: "Name of the environment variable the caller's .npmrc expands for auth, if it has an `_authToken` line at all. The NPM_TOKEN secret is exported under this name for install and publish, alongside NODE_AUTH_TOKEN for callers that authenticate through the ~/.npmrc setup-node writes."
         required: false
         type: string
         default: "NPM_TOKEN"
@@ -511,7 +511,22 @@ jobs:
           PREID: ${{ steps.prerelease.outputs.preid }}
         run: |
           set -euo pipefail
+          # Two names, because a caller can authenticate either way and this
+          # workflow does not know which.
+          #
+          #   NODE_AUTH_TOKEN -> the ~/.npmrc `actions/setup-node` wrote from
+          #     `registry-url` above. This is the path for a repository whose own
+          #     .npmrc carries no `_authToken` line — the right shape, since every
+          #     published package here is public and only publishing needs a
+          #     credential.
+          #   ${TOKEN_ENV_VAR} -> a caller whose .npmrc still expands a variable
+          #     of its own. Kept so this reusable workflow does not break the
+          #     repositories that pin it.
+          #
+          # Exporting both is harmless: whichever .npmrc is in play reads the one
+          # it names and ignores the other.
           export "${TOKEN_ENV_VAR}=${RELEASE_TOKEN}"
+          export NODE_AUTH_TOKEN="${RELEASE_TOKEN}"
 
           # if-blocks, not `test && cmd`: under `set -e` a false test makes the
           # whole statement non-zero and aborts the step.

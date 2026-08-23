@@ -71,15 +71,12 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Build layer
         working-directory: reventless/layer-builder
         run: pnpm run build
         env:
           REVENTLESS_AWS_VERSION: ${{ steps.version.outputs.version }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Verify artifact
         working-directory: reventless/layer-builder/builder

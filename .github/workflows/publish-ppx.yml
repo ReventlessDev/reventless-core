@@ -223,16 +223,11 @@ jobs:
       - name: Setup workspace (pnpm-workspace.yaml)
         run: node scripts/workspace-setup.mjs
 
+      # No token: every dependency is public on npmjs and the project .npmrc
+      # carries no `_authToken` line, so the install is anonymous. Publishing
+      # below still authenticates, through NODE_AUTH_TOKEN.
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-        env:
-          # Must be NPM_TOKEN (not NODE_AUTH_TOKEN): the project .npmrc references
-          # ${NPM_TOKEN}. When that env var is undefined, pnpm discards the entire
-          # .npmrc — dropping node-linker=hoisted and falling back to the isolated
-          # linker. That un-hoists `sury` from the root node_modules, so the PPX
-          # test's temp packages (which symlink to root node_modules) fail
-          # rescript's upward traversal: "did not find 'sury'".
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Setup OCaml
         uses: ocaml/setup-ocaml@v3
@@ -332,17 +327,15 @@ jobs:
 
       - name: Install dependencies
         # run.sh's temp fixtures resolve sury / sury-ppx / reventless-spec through
-        # the (hoisted) root node_modules. NPM_TOKEN must be set or pnpm discards
-        # the .npmrc and un-hoists sury (same reason as the Test PPX job).
+        # the (hoisted) root node_modules, so `node-linker=hoisted` in the project
+        # .npmrc has to survive. It does now unconditionally — that file expands
+        # no environment variable, so there is nothing for a missing one to break.
         run: pnpm install --frozen-lockfile
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Fetch the just-published linux-x64 binary
         id: fetch
         env:
           VERSION: ${{ needs.preflight.outputs.version }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           pkg="@reventlessdev/reventless-ppx-linux-x64@${VERSION}"
           ok=false
@@ -416,10 +409,6 @@ jobs:
         id: bump
         env:
           VERSION: ${{ needs.preflight.outputs.version }}
-          # Must be NPM_TOKEN (not NODE_AUTH_TOKEN): the project .npmrc expands
-          # ${NPM_TOKEN}; when it is undefined pnpm discards the whole .npmrc and
-          # drops node-linker=hoisted, changing lockfile resolution.
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           # Rewrite every @reventlessdev/reventless-ppx-* optionalDependency to
           # ^$VERSION (only those already listed — darwin-x64 is intentionally

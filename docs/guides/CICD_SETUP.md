@@ -141,8 +141,8 @@ registry=https://registry.npmjs.org
 access=public
 audit-level=moderate
 
-# CI publish auth (installs of public packages need no token)
-//registry.npmjs.org/:_authToken=${NPM_TOKEN}
+# No auth line: every package is public, so installs need no token. Publish jobs
+# authenticate through the ~/.npmrc `actions/setup-node` writes (NODE_AUTH_TOKEN).
 ```
 
 ### `lerna.json`

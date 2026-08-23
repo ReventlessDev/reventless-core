@@ -110,6 +110,3 @@ jobs:
       # error, it silently creates a new pool.
       IDENTITY_PROVIDER_ID: ${{ secrets.IDENTITY_PROVIDER_ID }}
       COGNITO_USER_POOL_ID: ${{ secrets.COGNITO_USER_POOL_ID }}
-      # Defined so the repo .npmrc's ${NPM_TOKEN} expands and pnpm honours
-      # node-linker=hoisted during the deploy install (see deploy-reventless-aws.yml).
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

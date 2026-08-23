@@ -88,8 +88,6 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Build reventless-postgres (with deps)
         run: pnpm --filter @reventlessdev/reventless-postgres run build

@@ -96,11 +96,6 @@ on:
       # the existing pool, on a deploy that reports success.
       COGNITO_USER_POOL_ID:
         required: false
-      # Optional. Only needs to be DEFINED so the repo .npmrc's ${NPM_TOKEN}
-      # reference expands and `node-linker=hoisted` is honoured; the install
-      # itself is anonymous (all deps are public on npmjs).
-      NPM_TOKEN:
-        required: false
 
 # A Pulumi Cloud *individual* account permits one running update per ACCOUNT —
 # the "Individual user accounts do not support concurrent updates" 409 names
@@ -305,14 +300,6 @@ jobs:
       # reads run in runtimes this process never enters and would otherwise
       # conclude that nobody is elevated.
       REVENTLESS_ELEVATED_GROUPS: ${{ inputs.elevated-groups }}
-      # Defines NPM_TOKEN for every pnpm step. The repo .npmrc references
-      # ${NPM_TOKEN} on its npmjs authToken line; if the var is undefined pnpm
-      # fails to parse the whole file and silently drops `node-linker=hoisted`,
-      # falling back to isolated linking. That leaves @pulumi/* unhoisted and
-      # unreachable from the deploy program -> "Pulumi SDK has not been
-      # installed". Install itself stays anonymous (all deps are public), so an
-      # empty value is fine — it just has to be defined.
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
       # Read by Util_LocalConfig (Platform_Stack.resolveCognitoUserPool).
       # Unset/empty → falls through to Pulumi.local.yaml then Pulumi
       # stack config; if still unset, auto-provisions a fresh UserPool.
@@ -503,14 +490,6 @@ jobs:
       # reads run in runtimes this process never enters and would otherwise
       # conclude that nobody is elevated.
       REVENTLESS_ELEVATED_GROUPS: ${{ inputs.elevated-groups }}
-      # Defines NPM_TOKEN for every pnpm step. The repo .npmrc references
-      # ${NPM_TOKEN} on its npmjs authToken line; if the var is undefined pnpm
-      # fails to parse the whole file and silently drops `node-linker=hoisted`,
-      # falling back to isolated linking. That leaves @pulumi/* unhoisted and
-      # unreachable from the deploy program -> "Pulumi SDK has not been
-      # installed". Install itself stays anonymous (all deps are public), so an
-      # empty value is fine — it just has to be defined.
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
       # Forwarded for plugin stacks that wire AppSync auth themselves.
       # Unset/empty → falls through to local sidecar / stack config.
       REVENTLESS_IDENTITY_PROVIDER_ID:

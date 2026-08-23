@@ -151,8 +151,6 @@ jobs:
       - name: Install dependencies
         if: steps.affected.outputs.select != 'none'
         run: pnpm install --frozen-lockfile
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Build all packages
         id: build
