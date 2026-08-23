@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.250 (2026-08-23)
+
+### Bug Fixes
+
+* **querydb:** serve the previous page instead of refusing it ([48341c9](https://github.com/ReventlessDev/reventless-core/commit/48341c9f61b5155b441deeb0edc9abf461948346))
+
+
 # 3.0.0-alpha.249 (2026-08-23)
 
 ### Features
