@@ -319,27 +319,47 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
       )
     | _ => ()
     }
-    // The same class of "works, but scans" mistake as the owner warning above,
-    // and the retirement case degrades the same way: the FilterExpression is
-    // applied after the page is read, so pages shrink as the archive's share of
-    // the table grows.
+    // The same "works, but scans" cost as the owner warning above: the
+    // FilterExpression is applied after the page is read, so pages shrink as the
+    // archive's share of the table grows.
     //
-    // `@scan` deliberately does not satisfy this. It adds no index and removes
-    // no read unit — it only widens the client's filter surface — so accepting it
-    // here would make the warning dismissible by an annotation that changes
-    // nothing about the cost being warned about.
-    switch retiredField {
-    | Some(f) =>
-      if !isIndexed(f) {
-        log.warn(
-          ~comp="QueryDbResolvers_AppSync",
-          `${name}: @retired field "${f}" is not the key of any index on this table. ` ++
-          "Reads that exclude retired rows will Scan and filter, so pages shrink as " ++
-          "the archive's share of the rows grows. Add an @index on that field before " ++
-          "this read model grows.",
-        )
-      }
-    | None => ()
+    // What it must NOT say any more is "add an @index on that field". That was
+    // the same defect the owner warning had — following it changed nothing — and
+    // here it is worse advice, twice over: a GSI partitioned on a two- or
+    // three-valued flag funnels the whole table through one partition, and the
+    // list door reads neither it nor the by-index door it provisions.
+    //
+    // Retirement has no partition key of its own. It is only useful as the
+    // leading component of a sort key INSIDE some other partition, and `@owner`
+    // is what supplies one — see
+    // docs/plans/Backlog/retirement-folded-into-the-owner-index.md. On a view
+    // with no owner there is nothing to fold into, and the honest answer is a
+    // purpose-built view or the constant-PK index in
+    // docs/plans/Backlog/aws-fulllist-ordered-index-promotion.md.
+    //
+    // Fires whatever the field keys, unlike the owner check: an `@index` on the
+    // retirement field does not make this read cheaper, so suppressing on one
+    // would silence a cost that is still being paid. `@scan` does not satisfy it
+    // either — it widens the client's filter surface and removes no read unit.
+    switch (retiredField, ownerField) {
+    | (Some(f), Some(o)) =>
+      log.warn(
+        ~comp="QueryDbResolvers_AppSync",
+        `${name}: @retired field "${f}" is filtered after the page is read, so pages ` ++
+        `shrink as the archive's share of the rows grows. This view is scoped on "${o}", ` ++
+        "so a scoped caller only sifts their own partition and pays in proportion to " ++
+        "their rows; it is the elevated whole-table read that pays in full.",
+      )
+    | (Some(f), None) =>
+      log.warn(
+        ~comp="QueryDbResolvers_AppSync",
+        `${name}: @retired field "${f}" is filtered after the page is read, so pages ` ++
+        "shrink as the archive's share of the rows grows. An @index on that field " ++
+        "would not help — the list read does not use one, and a flag makes a poor " ++
+        "partition key. Reshape the view so the rows you serve are the rows you " ++
+        "keep, or accept the cost while the archive stays small.",
+      )
+    | (None, _) => ()
     }
     let resolverAll = makeQueryResolver(
       ~resolverName=fieldNameForAll->String.capitalize,

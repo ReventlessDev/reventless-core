@@ -136,8 +136,12 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
     if (ownerField !== undefined && !(ownerIndex !== undefined || isIndexed(ownerField))) {
       log.warn("QueryDbResolvers_AppSync", undefined, name$1 + `: @owner field "` + ownerField + `" keys no index on this table, so owner-scoped ` + "reads Scan the table and filter after the page is read — cost grows with the table while the answer shrinks with the caller's share of it. Drop `@owner({index: false})` to let the framework derive the index, or accept the cost on a view that stays small.");
     }
-    if (retiredField !== undefined && !isIndexed(retiredField)) {
-      log.warn("QueryDbResolvers_AppSync", undefined, name$1 + `: @retired field "` + retiredField + `" is not the key of any index on this table. ` + "Reads that exclude retired rows will Scan and filter, so pages shrink as the archive's share of the rows grows. Add an @index on that field before this read model grows.");
+    if (retiredField !== undefined) {
+      if (ownerField !== undefined) {
+        log.warn("QueryDbResolvers_AppSync", undefined, name$1 + `: @retired field "` + retiredField + `" is filtered after the page is read, so pages ` + (`shrink as the archive's share of the rows grows. This view is scoped on "` + ownerField + `", `) + "so a scoped caller only sifts their own partition and pays in proportion to their rows; it is the elevated whole-table read that pays in full.");
+      } else {
+        log.warn("QueryDbResolvers_AppSync", undefined, name$1 + `: @retired field "` + retiredField + `" is filtered after the page is read, so pages ` + "shrink as the archive's share of the rows grows. An @index on that field would not help — the list read does not use one, and a flag makes a poor partition key. Reshape the view so the rows you serve are the rows you keep, or accept the cost while the archive stays small.");
+      }
     }
     let resolverAll = makeQueryResolver(Stdlib_String.capitalize(fieldNameForAll), fieldNameForAll, connectionSpec ? AppSync_Resolver_Functions$PulumiAws.listAllItemsConnection(labelField, filterFieldNames, rangeFieldNames, sortFieldNames, requireAttribute, ownerField, elevatedGroups, retiredField, retiredValues, ownerIndex, ownerIndexSortField) : AppSync_Resolver_Functions$PulumiAws.listAllItems);
     let resolversByIndex = indexes.filter(ic => !ReadModel$Reventless.isDerivedIndex(ic)).map(indexConfig => {

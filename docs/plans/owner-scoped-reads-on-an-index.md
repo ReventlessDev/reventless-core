@@ -1,12 +1,13 @@
 # Plan: `@owner` provisions an index, and the list door reads it
 
 **Date:** 2026-08-23<br/>
-**Status:** Steps 1, 2 and the owner half of Step 4 are **done** (2026-08-23) —
-the index is derived, the list resolver branches on it, and the warning that
-prescribed a redundant `@index` now describes what `@owner({index: false})`
-costs. Step 3 (retirement into the same key) waits on Step 2 being verified
-against a deployed stack, as it says; Step 5 is deferred by design; the
-retirement half of Step 4 goes with Step 3.
+**Status:** Steps 1, 2 and 4 are **done** (2026-08-23) — the index is derived,
+the list resolver branches on it, and both warnings say something true. Step 3
+was extracted to
+[Backlog/retirement-folded-into-the-owner-index.md](Backlog/retirement-folded-into-the-owner-index.md):
+no spec in the repo declares `@owner` and `@retired` together, so it has no
+beneficiary yet. Step 5 is deferred by design. Remaining before this closes:
+Acceptance 1, 2 and 4, which need an authenticated call against the deployed API.
 
 **Verified on alpha 2026-08-23**, deploy `4b643e1f1`: the `_owner` GSI is
 `ACTIVE` on `Orders-10f6a39` with the `ALL` projection; all 151 pre-existing rows
@@ -74,8 +75,8 @@ not degrade.
 ## Scope
 
 **In:** `@owner` provisions a GSI; the generated list resolver picks `Query` or
-`Scan` from `_exempt`; retirement folds into that index's sort key; the two inert
-warnings become accurate.
+`Scan` from `_exempt`; the two inert warnings become accurate. (Retirement
+folding into that index's sort key was in scope and moved out — see Step 3.)
 
 **Out, deliberately:**
 - The **constant-PK ordered GSI** for elevated whole-table lists — that is
@@ -213,38 +214,48 @@ row count, not the table's.
 
 ---
 
-## Step 3 — fold retirement into the same key (next)
+## Step 3 — fold retirement into the same key → Backlog
 
-`@retired` degrades the same way and reuses the same index. Make the derived
-index's sort key a composite `<liveFlag>#<sortField>#<id>`, so "live rows of
-owner X, ordered by f" becomes `#pk = :owner AND begins_with(#sk, '0#')` — still a
-key condition, still an exact page. The elevated `includeRetired: true` path
-drops the `begins_with` and reads the whole partition.
+Extracted whole to
+[Backlog/retirement-folded-into-the-owner-index.md](Backlog/retirement-folded-into-the-owner-index.md)
+on 2026-08-23, on a finding this plan did not anticipate: **no spec in the repo
+declares `@owner` and `@retired` together**, and this step only does anything for
+one that does.
 
-`QueryDb_Operations.injectCompositeIndexAttrs` (`:49`) already writes synthetic
-composite attributes from `skFields`, so the mechanism exists — but it
-concatenates *raw string fields*, and the live flag is a derived value (a boolean
-field inverted, or a state name tested against the retiring set). That is the new
-part: a computed component in a composite key, not a copied one.
+`@owner` is on `Orders` alone, which does not retire; `@retired` is on
+`Categories`, `Products`, `AvailableProducts` and `Customers`, none of which is
+owned. So the step would have added a computed composite-key mechanism, an index
+replacement and a mandatory projection replay, exercised by tests alone — and
+would have silenced none of the three retirement warnings the alpha deploy
+emits, because all three are on unowned views.
 
-The sparse-index alternative — write a `_live` attribute only on non-retired rows
-and let the GSI omit the rest — is cheaper and cannot serve `includeRetired` at
-all, so it would need the Scan back as its archive path. Prefer the composite.
-
-Do this **after** Step 2 is verified, not with it: it changes the key schema of an
-index that will by then hold data, and the two failures would be
-indistinguishable.
+The limit is structural, not accidental: a retirement flag has two or three
+values, which makes it a poor partition key on its own and useful only as the
+leading component of a sort key inside a partition something else supplies.
+`@owner` is what supplies one. A retired view with no owner is the constant-PK
+problem in
+[Backlog/aws-fulllist-ordered-index-promotion.md](Backlog/aws-fulllist-ordered-index-promotion.md),
+not this one.
 
 ---
 
-## Step 4 — make the warnings true (owner half ✅ done)
+## Step 4 — make the warnings true ✅ done
 
-After Steps 1–3 the `isIndexed` check goes quiet by construction for every view
-that did not opt out. What is left to write is the honest form of both warnings:
+The `isIndexed` check goes quiet by construction for every owned view that did not
+opt out. Both warnings now say something true:
 
-- The owner warning fires only for `@owner({index: false})`, and should say what
-  that costs rather than prescribing an `@index` that is now redundant.
-- The retirement warning names the composite key, not a separate `@index`.
+- **The owner warning** fires only for `@owner({index: false})`, and states what
+  that costs instead of prescribing an `@index` that is now redundant.
+- **The retirement warning** no longer says "add an `@index` on that field". That
+  was the same defect the owner warning had, and worse advice here: a GSI
+  partitioned on a two- or three-valued flag funnels the table through one
+  partition, and the list door reads neither it nor the by-index door it
+  provisions. It now states the cost and splits on whether the view is owned —
+  naming the fold for a view that has a partition to fold into, and saying
+  plainly that no index helps for one that does not.
+- It fires **whatever the field keys**, unlike the owner check. An `@index` on a
+  retirement field does not make this read cheaper, so suppressing on one would
+  silence a cost still being paid. `@scan` does not satisfy it either.
 - `warnIfNoElevatedGroups` is unaffected.
 
 This step is what closes the finding. It is listed last because a warning
