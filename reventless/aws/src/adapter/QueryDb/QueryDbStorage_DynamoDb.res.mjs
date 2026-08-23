@@ -38,7 +38,7 @@ function globalSecondaryIndexes(indexes) {
 }
 
 function attributes(sortField, indexes) {
-  return [
+  let all = [
     [{
         name: "id",
         type: "S"
@@ -58,6 +58,16 @@ function attributes(sortField, indexes) {
         }])
     ].flat()).flat()
   ].flat();
+  let seen = new Set();
+  return all.filter(param => {
+    let name = param.name;
+    if (seen.has(name)) {
+      return false;
+    } else {
+      seen.add(name);
+      return true;
+    }
+  });
 }
 
 function dataSource(name, table, api, apiRole, opts) {

@@ -181,8 +181,14 @@ table into a single Query-able, globally-ordered partition.
 - **Composite SK encoding** — `f#id` separator choice and numeric zero-padding (the
   Scan per-page sort already zero-pads numerics to 22 chars; match it so lex order = sort
   order).
-- **Cursor path-tag format** — the one-byte discriminator that lets the dispatch reject
-  a Scan-path cursor on the Query path and vice versa.
+- ~~**Cursor path-tag format**~~ — **settled** by
+  [../owner-scoped-reads-on-an-index.md](../owner-scoped-reads-on-an-index.md), which
+  needed the same discriminator first: the cursor JSON carries `p`, one character —
+  `s` the full-list Scan, `q` the owner-index Query. Absent reads as `s`, because every
+  cursor minted before the tag existed came off a Scan. `cursorDecode` /
+  `connectionPageResponse` / `cursorPathGuard` in `AppSync_Resolver_Functions.res` are
+  the three halves. This plan's keyset **value** cursor takes the next letter (`o`) and
+  must not reuse `s` or `q`.
 - **Sharded-merge threshold** — when (if) to move a promoted field off the
   single-partition GSI onto the Lambda scatter-gather path.
 - **Backfill mechanism for prod** — projection rebuild vs. a dedicated backfill Lambda.

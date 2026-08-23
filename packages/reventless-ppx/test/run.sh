@@ -194,6 +194,33 @@ cat > "$PLUGIN/src/ReadModel/OwnedRowsReadModel.res" <<'EOF'
 type state = { @id rowId: string, @owner customerId: option<string> }
 EOF
 
+# The index @owner derives. Four shapes, because each answers a different
+# question about which read the list door ends up making:
+#   OwnedRows…      → no @subId, so `id` is the sort key (a total order)
+#   OwnedVersioned… → the record's own @subId orders the caller's rows
+#   OwnedSmall…     → @owner({index: false}) declines it
+#   OwnedIndexed…   → the author's own @index on the field wins; one config, not two
+cat > "$PLUGIN/src/ReadModel/OwnedVersionedReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = { @owner tenantId: string, @subId version: string, data: string }
+EOF
+
+cat > "$PLUGIN/src/ReadModel/OwnedSmallReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = { id: string, @owner({index: false}) customerId: string }
+EOF
+
+cat > "$PLUGIN/src/ReadModel/OwnedIndexedReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = { id: string, @index @owner customerId: string, name: string }
+EOF
+
 # Authorization injection — per-constructor @authorize plus file-level default
 cat > "$PLUGIN/src/Aggregate/Category.res" <<'EOF'
 @@reventless.spec
@@ -1570,6 +1597,31 @@ assert_js_contains "$JS" 'customerId: s.m(Owner$Reventless.optionString)' \
 # scope correctly on this fixture and wrongly on every real one.
 assert_js_contains "$JS" 'rowId: s.m(Sury.string)' \
   "@owner: unmarked sibling field left untouched"
+
+echo ""
+echo "=== Test: @owner derives the index its scoped read is served from ==="
+JS="$PLUGIN/src/ReadModel/OwnedRowsReadModel.res.mjs"
+assert_js_contains "$JS" 'index: "_owner"'          "@owner index: named _owner"
+assert_js_contains "$JS" 'idField: "customerId"'    "@owner index: partitioned by the owner field"
+assert_js_contains "$JS" 'subIdField: "id"'         "@owner index: sorts on id when no @subId"
+assert_js_contains "$JS" 'projectionType: "ALL"'    "@owner index: projects every attribute"
+assert_js_contains "$JS" 'derived: true'            "@owner index: marked derived (carries no SDL door)"
+
+JS="$PLUGIN/src/ReadModel/OwnedVersionedReadModel.res.mjs"
+assert_js_contains "$JS" 'idField: "tenantId"'      "@owner + @subId: partitioned by the owner field"
+assert_js_contains "$JS" 'subIdField: "version"'    "@owner + @subId: the record's own sub-id orders it"
+
+JS="$PLUGIN/src/ReadModel/OwnedSmallReadModel.res.mjs"
+assert_js_not_contains "$JS" '_owner'               "@owner({index: false}): no index derived"
+assert_js_not_contains "$JS" 'derived'              "@owner({index: false}): nothing marked derived"
+assert_js_contains "$JS" 'Owner$Reventless.string'  "@owner({index: false}): still marks the field"
+
+# An author who indexed the field already gets ONE index, not two: the derived
+# one would be a second write per projection write on the same key.
+JS="$PLUGIN/src/ReadModel/OwnedIndexedReadModel.res.mjs"
+assert_js_contains "$JS" 'index: "customerId"'      "@index + @owner: the author's index is emitted"
+assert_js_not_contains "$JS" '_owner'               "@index + @owner: no second index on the same key"
+assert_js_not_contains "$JS" 'derived'              "@index + @owner: nothing marked derived"
 
 echo ""
 echo "=== Test: uploadable types (store derived from the field name) ==="

@@ -786,6 +786,15 @@ type state = {
 
 **Who is exempt** is deployment configuration, not part of the annotation: a caller whose group is listed in `REVENTLESS_ELEVATED_GROUPS` is neither stamped nor scoped, and an internal system caller is exempt too. A deployment that declares `@owner` and configures no elevated groups is warned per view at startup — otherwise its operators would silently see only their own rows.
 
+**The scope gets an index.** *The rows that belong to me* is the most frequent read a deployed application makes, so `@owner` on a state also provisions the index that serves it: a GSI named `_owner`, partitioned by the owner field and sorted by the record's `@subId` when it declares one and by `id` when it does not, projecting every attribute. The generated list resolver then reads it — a scoped caller gets a `Query` whose key condition *is* the ownership predicate, while an exempt caller keeps the table read unchanged. Without it the predicate is a filter applied after the page is read, so a caller who owns a hundred of a million rows pays for the million and receives short pages.
+
+Two consequences worth knowing:
+
+- **A GSI indexes only rows carrying its key attributes**, so rows written before the annotation are invisible to the scoped read until they are rewritten. Rebuild the projection when adding `@owner` to a view that already holds data.
+- **Check the owner field's cardinality.** The index is well distributed when owners are users. It is a hot partition when one "owner" is a tenant holding most of the estate.
+
+The index carries no query field of its own — a `<view>By<OwnerField>` door any caller could name is not the read it serves — and it is skipped when the field already carries an `@index`, since the author's index is then the one the read targets. A view small enough to accept the scan declines it with `@owner({index: false})`, which is also the only case the "keys no index" deploy-time warning still fires for.
+
 ---
 
 ### `@retired` — what withdraws a row from ordinary reads

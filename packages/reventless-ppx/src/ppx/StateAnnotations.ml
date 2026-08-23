@@ -692,8 +692,8 @@ let gen_str_array ~loc strs =
     `pk_source_fields` / `sk_source_fields` are the original field names for composite keys;
     when present, also emit `pkFields`/`skFields` so QueryDb_Operations can inject them. *)
 let gen_index_config_expr ~loc ~index ~type_ ~id_field ~sub_id_field
-    ~pk_source_fields ~sk_source_fields ~sep
-    ~projection ~include_fields ~auth =
+    ~pk_source_fields ~sk_source_fields ~sep ?(derived = false)
+    ~projection ~include_fields ~auth () =
   let estr s = Ast_builder.Default.estring ~loc s in
   let required = [
     ({ txt = Lident "index"; loc }, estr index);
@@ -729,8 +729,16 @@ let gen_index_config_expr ~loc ~index ~type_ ~id_field ~sub_id_field
       [({ txt = Lident "authorization"; loc }, gen_authorization_expr ~loc ~group ~auth_table)]
     | None -> []
   in
+  (* Only emitted when true: an index the author did not write carries no SDL
+     door, and the emitters that would give it one read this flag. *)
+  let opt_derived =
+    if not derived then []
+    else [({ txt = Lident "derived"; loc },
+           Ast_builder.Default.ebool ~loc true)]
+  in
   { pexp_desc = Pexp_record (
-      required @ opt_id @ opt_sk @ opt_pk_fields @ opt_pk_sep @ opt_sk_fields @ opt_sk_sep @ opt_auth,
+      required @ opt_id @ opt_sk @ opt_pk_fields @ opt_pk_sep @ opt_sk_fields
+      @ opt_sk_sep @ opt_auth @ opt_derived,
       None);
     pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] }
 
@@ -757,9 +765,56 @@ let gen_config_call ~loc (index_exprs : expression list) =
     }]);
     pstr_loc = loc }
 
+(* ── The index [@owner] derives ──
+
+   The most frequent read a deployed application makes is "the rows that belong
+   to me", and without a key for it the owner predicate is a FilterExpression
+   applied after the page is read — O(table) for a caller who owns O(1) of it.
+   The name is [_owner]: the leading underscore is the synthetic-attribute
+   convention already used for composite keys, and an author's index name comes
+   from a string payload, so the two cannot collide.
+
+   Derived by DEFAULT and declined with [@owner({index: false})], rather than
+   opted into: the annotation that costs nothing is the one nobody writes, and
+   the view that needs the index is any view that grows. *)
+
+(** The name of the [@owner] field this record should derive an index for, with
+    the DynamoDB type of its key. [None] when the record declares no owner, when
+    the author declined with [@owner({index: false})], or when the owner field
+    already carries an [@index] — the author's index is then the one the read
+    targets, and a second on the same key would be paid for twice.
+
+    Reads [@owner] off the field attributes, so it must run BEFORE
+    [OwnerInference], which strips them on its way through. *)
+let derived_owner_index (str : structure) : (string * string) option =
+  let is_owner (a : attribute) = String.equal a.attr_name.txt "owner" in
+  (* [@owner({index: false})] — the only payload the marker takes. *)
+  let declines (a : attribute) =
+    match a.attr_payload with
+    | PStr [{ pstr_desc = Pstr_eval ({ pexp_desc = Pexp_record (fields, _); _ }, _); _ }] ->
+      List.exists (fun (lid, e) ->
+        match lid.txt, e.pexp_desc with
+        | Lident "index", Pexp_construct ({ txt = Lident "false"; _ }, None) -> true
+        | _ -> false
+      ) fields
+    | _ -> false
+  in
+  match find_schema_state_record str with
+  | None -> None
+  | Some fields ->
+    List.find_map (fun (ld : label_declaration) ->
+      match List.find_opt is_owner ld.pld_attributes with
+      | None -> None
+      | Some attr ->
+        if declines attr || has_index_field_attr ld.pld_attributes then None
+        else Some (ld.pld_name.txt, infer_dynamo_type ld.pld_type)
+    ) fields
+
 (** Collect all @index and @indexSubId annotations from @schema type state fields,
-    validate, and generate indexConfig expressions. *)
-let collect_index_configs ~loc (fields : label_declaration list) : expression list =
+    validate, and generate indexConfig expressions. [owner_index] is
+    [derived_owner_index]'s answer, captured before [@owner] was stripped. *)
+let collect_index_configs ~loc ?(owner_index : (string * string) option)
+    (fields : label_declaration list) : expression list =
   (* Collect unnamed @index fields — each becomes a standalone index *)
   let unnamed = List.filter_map (fun (ld : label_declaration) ->
     match find_index_attr ld.pld_attributes with
@@ -771,7 +826,7 @@ let collect_index_configs ~loc (fields : label_declaration list) : expression li
       Some (gen_index_config_expr ~loc
               ~index:ld.pld_name.txt ~type_ ~id_field:None ~sub_id_field:None
               ~pk_source_fields:[] ~sk_source_fields:[] ~sep:None
-              ~projection ~include_fields ~auth)
+              ~projection ~include_fields ~auth ())
     | _ -> None
   ) fields in
   (* Collect named @index fields grouped by index name, carrying options from the first attr *)
@@ -835,7 +890,7 @@ let collect_index_configs ~loc (fields : label_declaration list) : expression li
     let pk_source_fields = List.map fst pk_fields in
     gen_index_config_expr ~loc ~index:index_name ~type_ ~id_field ~sub_id_field
       ~pk_source_fields ~sk_source_fields:sk_fields ~sep:None
-      ~projection ~include_fields ~auth
+      ~projection ~include_fields ~auth ()
   ) index_names in
   (* Validate: @indexSubId with no matching @index *)
   List.iter (fun (name, _) ->
@@ -843,7 +898,38 @@ let collect_index_configs ~loc (fields : label_declaration list) : expression li
       Location.raise_errorf ~loc
         "@indexSubId(\"%s\") has no matching @index(\"%s\")" name name
   ) named_sks;
-  unnamed @ named_configs
+  (* The derived owner index, last so an author's index keeps its position.
+
+     Its sort key is the record's own sub-id when it declares one and `id`
+     otherwise: the caller's rows need a TOTAL order for the page to be stable
+     and for a keyset cursor to have something to name, and `id` is the tiebreak
+     the in-memory and Postgres cursors already use.
+
+     `ALL`, not a narrow projection: the list door pushes the caller's filter,
+     `requireAttribute` and the retirement predicate down as FilterExpressions
+     over arbitrary columns, and a DynamoDB filter on a GSI can only reference
+     PROJECTED attributes. A non-projected attribute also comes back missing and
+     resolves a non-null SDL field to null — the failure `requireAttribute`
+     exists to prevent. *)
+  let derived_configs = match owner_index with
+    | None -> []
+    | Some (owner_field, type_) ->
+      let sub_id_field =
+        match List.find_opt (fun (ld : label_declaration) ->
+          has_subid_field_attr ld.pld_attributes) fields with
+        | Some ld -> ld.pld_name.txt
+        | None ->
+          if List.exists (fun (ld : label_declaration) ->
+            has_composite_subid_field_attr ld.pld_attributes) fields
+          then "_subId"
+          else "id"
+      in
+      [gen_index_config_expr ~loc ~index:"_owner" ~type_
+         ~id_field:(Some owner_field) ~sub_id_field:(Some sub_id_field)
+         ~pk_source_fields:[] ~sk_source_fields:[] ~sep:None ~derived:true
+         ~projection:"ALL" ~include_fields:[] ~auth:None ()]
+  in
+  unnamed @ named_configs @ derived_configs
 
 (** Returns true if the @schema type state record has any @index or @indexSubId annotations. *)
 let has_index_annotations (str : structure) : bool =
@@ -1093,11 +1179,12 @@ let gen_config_call_full ~loc ~index_exprs ~id_resolver_exprs ~ids_resolver_expr
 
 (** Generate `let config = config()` or `let config = config(~indexes=[...], ~idResolvers=[...], ~idsResolvers=[...])`.
     Returns a list with one structure item. *)
-let generate_config ~loc (str : structure) : structure_item =
+let generate_config ~loc ?(owner_index : (string * string) option)
+    (str : structure) : structure_item =
   match find_schema_state_record str with
   | None -> gen_config_call ~loc []
   | Some fields ->
-    let index_exprs = collect_index_configs ~loc fields in
+    let index_exprs = collect_index_configs ~loc ?owner_index fields in
     let id_resolver_exprs = collect_id_resolver_configs ~loc fields in
     let ids_resolver_exprs = collect_ids_resolver_configs ~loc fields in
     if id_resolver_exprs = [] && ids_resolver_exprs = [] then

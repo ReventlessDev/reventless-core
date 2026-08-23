@@ -1,10 +1,20 @@
 # Plan: `@owner` provisions an index, and the list door reads it
 
 **Date:** 2026-08-23<br/>
-**Status:** Not started. The defect that motivated it is already papered over —
-[done/aws-scan-connection-cursor-roundtrip.md](done/aws-scan-connection-cursor-roundtrip.md)
-shipped the read window on 2026-08-23, so a scoped list no longer serves blank
-pages. This plan removes the reason the window was needed.<br/>
+**Status:** Steps 1, 2 and the owner half of Step 4 are **done** (2026-08-23) —
+the index is derived, the list resolver branches on it, and the warning that
+prescribed a redundant `@index` now describes what `@owner({index: false})`
+costs. Step 3 (retirement into the same key) waits on Step 2 being verified
+against a deployed stack, as it says; Step 5 is deferred by design; the
+retirement half of Step 4 goes with Step 3.
+
+**Before the next deploy of a stack holding data:** Steps 1 and 2 landed in one
+change, and a GSI indexes only rows carrying its key attributes — so a scoped
+caller reads the index and an un-backfilled row is *absent*, not slow. On alpha
+the standing convention covers it: wipe and replay the projections of every view
+declaring `@owner` (`online-shop-hybrid`'s `Orders` is the only one today).
+Anywhere with real data, split the two steps across releases with a touch-pass
+between, per **Backfill and migration** below.<br/>
 **Relates to:**
 - [done/aws-scan-connection-cursor-roundtrip.md](done/aws-scan-connection-cursor-roundtrip.md)
   — the window, and the `{t, n}` cursor this plan must keep compatible.
@@ -84,7 +94,7 @@ warnings become accurate.
 
 ---
 
-## Step 1 — derive the owner index in the PPX
+## Step 1 — derive the owner index in the PPX ✅ done
 
 `collect_index_configs` (`packages/reventless-ppx/src/ppx/StateAnnotations.ml:762`)
 is the single place index configs are built from field annotations, and
@@ -125,6 +135,11 @@ payload; `@owner`'s payload parsing is the new part.
   for the same reason.
 - `QueryDbResolvers_AppSync.res:354` — skip them in `resolversByIndex`; this plan's
   Step 2 is the only thing that reads the derived index.
+- **A fourth, found while doing it:** `QueryDbResolvers_GraphQL.res:795` emits the
+  by-index SDL fields *and* their resolvers for the local backend. Left alone it
+  would have put a door in the local SDL that the deployed one does not have —
+  the divergence the shared `deriveIndexQueryField` exists to prevent. The filter
+  is `Reventless.ReadModel.isDerivedIndex`, applied in all four places.
 
 `QueryDbStorage_DynamoDb.globalSecondaryIndexes` needs no change — it provisions
 whatever configs it is handed. `attributes` (`:32`) does: with `subIdField = "id"`
@@ -136,7 +151,7 @@ simply gain one, which is the correct outcome there too.
 
 ---
 
-## Step 2 — the list resolver branches on `_exempt`
+## Step 2 — the list resolver branches on `_exempt` ✅ done
 
 In `listAllItemsConnection` (`AppSync_Resolver_Functions.res:799`) the owner
 clause currently computes `_exempt` inline and pushes `#owner = :owner` into
@@ -197,7 +212,7 @@ row count, not the table's.
 
 ---
 
-## Step 3 — fold retirement into the same key
+## Step 3 — fold retirement into the same key (next)
 
 `@retired` degrades the same way and reuses the same index. Make the derived
 index's sort key a composite `<liveFlag>#<sortField>#<id>`, so "live rows of
@@ -221,7 +236,7 @@ indistinguishable.
 
 ---
 
-## Step 4 — make the warnings true
+## Step 4 — make the warnings true (owner half ✅ done)
 
 After Steps 1–3 the `isIndexed` check goes quiet by construction for every view
 that did not opt out. What is left to write is the honest form of both warnings:

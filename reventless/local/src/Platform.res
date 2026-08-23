@@ -1427,7 +1427,9 @@ module MakeWithConfig = (
       // indexed scan is fleshed out together with that first concrete index.
       switch entry.indexQueries {
       | Some(indexes) =>
-        indexes->Array.forEach((ic: Reventless.ReadModel.indexConfig) => {
+        indexes
+        ->Array.filter(ic => !Reventless.ReadModel.isDerivedIndex(ic))
+        ->Array.forEach((ic: Reventless.ReadModel.indexConfig) => {
           let fieldName = ReventlessCore.GraphQL_FragmentGenerator.indexQueryFieldName(
             ~singleFieldName=entry.singleFieldName,
             ~index=ic.index,

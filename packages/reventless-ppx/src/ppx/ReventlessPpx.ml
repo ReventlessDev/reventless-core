@@ -203,8 +203,8 @@ let gen_open_projection ~loc =
     };
     pstr_loc = loc }
 
-let gen_config_let ~loc body =
-  StateAnnotations.generate_config ~loc body
+let gen_config_let ~loc ?owner_index body =
+  StateAnnotations.generate_config ~loc ?owner_index body
 
 let gen_sub_id_config ~loc body =
   StateAnnotations.generate_sub_id_config ~loc body
@@ -719,6 +719,10 @@ let transform (str : structure) : structure =
        that ran afterwards would silently pass @internal + @owner, the one pairing
        that most wants catching. See validate_internal_conflicts. *)
     StateAnnotations.validate_internal_conflicts body;
+    (* Captured here for the same reason, and consumed further down by
+       [gen_config_let]: the index [@owner] derives is keyed on a field this is
+       the last point that can still name. *)
+    let owner_index = StateAnnotations.derived_owner_index body in
     (* After every DCB-tag pass, on purpose: [@owner] wraps whatever schema the
        field ended up with rather than replacing it, so an owner field keeps the
        tag it would otherwise have had. See OwnerInference's header. *)
@@ -795,10 +799,11 @@ let transform (str : structure) : structure =
       in
       let readmodel_suffix =
         if is_readmodel
-        then [gen_config_let ~loc body] @ sub_id_items @ make_id_items
+        then [gen_config_let ~loc ?owner_index body] @ sub_id_items @ make_id_items
              @ state_annotations_items
         else if is_stateview then
-          (if not (Util.has_let_binding "config" body) then [gen_config_let ~loc body] else [])
+          (if not (Util.has_let_binding "config" body)
+           then [gen_config_let ~loc ?owner_index body] else [])
           @ sub_id_items @ make_id_items @ state_annotations_items
         else []
       in

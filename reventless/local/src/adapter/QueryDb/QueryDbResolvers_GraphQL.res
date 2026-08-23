@@ -792,7 +792,12 @@ module Make = (Bus: LocalBus.T) => {
     // which is also where the AppSync SDL gets them. They used to be spelled out
     // here independently and disagreed with that emitter on all three, so the
     // same door had a different signature per backend and worked on neither.
-    let indexSdlFields = indexes->Array.map((ic: Reventless.ReadModel.indexConfig) =>
+    //
+    // Derived indexes carry no door, on either backend — the same reasoning, and
+    // the same filter, as `GraphQL_FragmentGenerator`: a field emitted here and
+    // not there would make the local SDL disagree with the deployed one.
+    let doorIndexes = indexes->Array.filter(ic => !Reventless.ReadModel.isDerivedIndex(ic))
+    let indexSdlFields = doorIndexes->Array.map((ic: Reventless.ReadModel.indexConfig) =>
       GraphQL_FragmentGenerator.deriveIndexQueryField(
         ~singleFieldName=singleQueryName,
         ~indexConfig=ic,
@@ -858,7 +863,7 @@ module Make = (Bus: LocalBus.T) => {
         ),
       ])->JSON.Encode.object
     }
-    let indexResolvers: array<(string, ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn)> = indexes->Array.map(
+    let indexResolvers: array<(string, ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn)> = doorIndexes->Array.map(
       (ic: Reventless.ReadModel.indexConfig) => {
         let resolverName = GraphQL_FragmentGenerator.indexQueryFieldName(
           ~singleFieldName=singleQueryName,

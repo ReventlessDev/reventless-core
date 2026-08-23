@@ -509,6 +509,42 @@ describe("the by-index door", () => {
       GraphQL_FragmentGenerator.indexQueryFieldName(~singleFieldName="X", ~index="by"),
     ))->toEqual(("XByOwner", "XByOwnerId", "XByBy"))
   )
+
+  // The regression that would otherwise land in silence: `@owner` provisions an
+  // index on every view that declares one, and if that index emitted a door, a
+  // `<single>By<OwnerField>` field any caller may name would appear in every
+  // published SDL — a schema change nobody asked for, on views that only wanted
+  // their own list read to stop scanning.
+  testSync("a derived index adds no query field", () => {
+    let entryWith = (indexes): ReventlessInfra.Api.querySchemaEntry => {
+      singleFieldName: "Ordering_Order",
+      listFieldName: "Ordering_Orders",
+      returnTypeName: "Ordering_Order",
+      stateSchema: S.unknown,
+      authorization: None,
+      indexQueries: indexes,
+    }
+    let derived: Reventless.ReadModel.indexConfig = {
+      index: "_owner",
+      type_: "S",
+      idField: "customerId",
+      subIdField: "id",
+      projectionType: ALL,
+      derived: true,
+    }
+    let authored: Reventless.ReadModel.indexConfig = {
+      index: "byCategory",
+      type_: "S",
+      idField: "categoryId",
+      projectionType: ALL,
+    }
+    let doorsOf = indexes =>
+      GraphQL_Stitcher.decode(
+        GraphQL_FragmentGenerator.generate(~mutationEntries=[], ~queryEntries=[entryWith(indexes)]),
+      ).queries->Array.filter(q => q->String.includes("Ordering_OrderBy"))
+    expect((doorsOf([derived])->Array.length, doorsOf([authored, derived])->Array.length))
+    ->toEqual((0, 1))
+  })
 })
 
 // ── @internal: a field that is not on the GraphQL surface ────────────────────

@@ -10,6 +10,7 @@ import * as Stdlib_Nullable from "@rescript/runtime/lib/es6/Stdlib_Nullable.js";
 import * as Owner$Reventless from "@reventlessdev/reventless-spec/src/components/Owner.res.mjs";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
+import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types/OwnerScope.res.mjs";
 import * as Api_Ids$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Ids.res.mjs";
 import * as Authorization$Reventless from "@reventlessdev/reventless-spec/src/types/Authorization.res.mjs";
@@ -525,7 +526,8 @@ function Make(Bus) {
     } else {
       itemsResolvers = [];
     }
-    let indexSdlFields = indexes.map(ic => GraphQL_FragmentGenerator$ReventlessCore.deriveIndexQueryField(singleQueryName, ic, returnTypeName + "Connection"));
+    let doorIndexes = indexes.filter(ic => !ReadModel$Reventless.isDerivedIndex(ic));
+    let indexSdlFields = doorIndexes.map(ic => GraphQL_FragmentGenerator$ReventlessCore.deriveIndexQueryField(singleQueryName, ic, returnTypeName + "Connection"));
     let rejectBackwardPaging = args => {
       let given = key => {
         let match = Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d[key]);
@@ -585,7 +587,7 @@ function Make(Bus) {
         ]
       ]);
     };
-    let indexResolvers = indexes.map(ic => {
+    let indexResolvers = doorIndexes.map(ic => {
       let resolverName = GraphQL_FragmentGenerator$ReventlessCore.indexQueryFieldName(singleQueryName, ic.index);
       let filterField = GraphQL_FragmentGenerator$ReventlessCore.indexKeyField(ic);
       let resolver = async (_root, args, ctx) => {

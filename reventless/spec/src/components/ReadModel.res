@@ -90,6 +90,10 @@ Configuration for a DynamoDB Global Secondary Index on a read model table.
 - `pkSep` / `skSep` — separator for composite pk/sk concatenation (default `"/"`)
 - `projectionType` — which attributes are projected into the index
 - `authorization` — optional AppSync authorization rule
+- `derived` — the framework wrote this index, not the author. It keys a read the
+  generated resolvers already make (`@owner` scoping); no `<single>By<Index>`
+  door is emitted for it, since a door named after a key the author never
+  declared is noise on every published schema.
 */
 type indexConfig = {
   index: string,
@@ -102,7 +106,12 @@ type indexConfig = {
   skSep?: string,
   projectionType: projectionType,
   authorization?: authorization,
+  derived?: bool,
 }
+
+/** Does this index carry an SDL door? Derived indexes serve a read the resolvers
+    already make and are provisioned without one. */
+let isDerivedIndex = (ic: indexConfig) => ic.derived->Option.getOr(false)
 
 /**
 Composite-key configuration for a read model that has both a primary ID and a sub-ID.

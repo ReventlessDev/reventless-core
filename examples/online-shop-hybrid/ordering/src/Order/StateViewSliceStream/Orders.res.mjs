@@ -52,7 +52,14 @@ let stateSchema = Sury.$schema(s => ({
   deliveryWindow: s.m(Sury.$option(DateRange$Reventless.schema))
 }));
 
-let config = ReadModel$Reventless.config(undefined, undefined, undefined);
+let config = ReadModel$Reventless.config(undefined, undefined, [{
+    index: "_owner",
+    type_: "S",
+    idField: "customerId",
+    subIdField: "id",
+    projectionType: "ALL",
+    derived: true
+  }]);
 
 let name = "Orders";
 

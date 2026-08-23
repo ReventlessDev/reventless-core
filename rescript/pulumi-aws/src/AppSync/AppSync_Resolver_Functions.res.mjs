@@ -396,14 +396,23 @@ function cursorDecode(args) {
   return `
   let _window = null;
   let _from = 0;
+  let _cursorPath = null;
   if (` + args + `.after != null && ` + args + `.after !== '') {
     const _c = JSON.parse(util.base64Decode(` + args + `.after));
     _window = (_c.t !== undefined ? _c.t : _c.token) ?? null;
     _from = _c.n !== undefined ? _c.n + 1 : 0;
+    _cursorPath = _c.p ?? 's';
   }`;
 }
 
-let connectionPageResponse = `
+let cursorPathGuard = `
+  if (_cursorPath !== null && _cursorPath !== (_exempt ? 's' : 'q')) {
+    util.error('This cursor belongs to a different read of this list; restart from the first page.', 'CursorPathMismatch');
+  }`;
+
+function connectionPageResponse(pathExpr) {
+  let tag = pathExpr !== undefined ? `, p: ` + pathExpr : "";
+  return `
   const _first = ctx.args.first ?? 50;
   const _rest = items.slice(_from);
   const _page = _rest.slice(0, _first);
@@ -416,12 +425,14 @@ let connectionPageResponse = `
   const edges = _page.map((item, i) => ({
     node: item,
     cursor: util.base64Encode(JSON.stringify(
-      (!_more && _next && i === _lastIndex) ? { t: _next, n: -1 } : { t: _window, n: _from + i }
+      (!_more && _next && i === _lastIndex)
+        ? { t: _next, n: -1` + tag + ` }
+        : { t: _window, n: _from + i` + tag + ` }
     )),
   }));
   // A window the filter emptied leaves no row to cut a cursor from; the token is
   // the window's, so a client can step past it rather than restart.
-  const _boundary = _next ? util.base64Encode(JSON.stringify({ t: _next, n: -1 })) : null;
+  const _boundary = _next ? util.base64Encode(JSON.stringify({ t: _next, n: -1` + tag + ` })) : null;
   return {
     edges,
     pageInfo: {
@@ -431,11 +442,12 @@ let connectionPageResponse = `
       endCursor: edges.length > 0 ? edges[edges.length - 1].cursor : _boundary,
     },
   };`;
+}
 
 let indexConnectionResponseCode = `
 export function response(ctx) {
   if (ctx.error) util.error(ctx.error.message, ctx.error.type);
-  const items = ctx.result?.items ?? [];` + cursorDecode("ctx.args") + connectionPageResponse + `
+  const items = ctx.result?.items ?? [];` + cursorDecode("ctx.args") + connectionPageResponse(undefined) + `
 }`;
 
 let indexBackwardPagingGuard = `
@@ -564,18 +576,17 @@ export function request(ctx) {
 ` + resultResponseCode + `
 `;
 
-function listAllItemsConnection(labelField, filterFieldsOpt, rangeFieldsOpt, sortFieldsOpt, requireAttribute, ownerField, elevatedGroupsOpt, retiredField, retiredValues) {
+function listAllItemsConnection(labelField, filterFieldsOpt, rangeFieldsOpt, sortFieldsOpt, requireAttribute, ownerField, elevatedGroupsOpt, retiredField, retiredValues, ownerIndex, ownerIndexSortField) {
   let filterFields = filterFieldsOpt !== undefined ? filterFieldsOpt : [];
   let rangeFields = rangeFieldsOpt !== undefined ? rangeFieldsOpt : [];
   let sortFields = sortFieldsOpt !== undefined ? sortFieldsOpt : [];
   let elevatedGroups = elevatedGroupsOpt !== undefined ? elevatedGroupsOpt : [];
+  let ownerIndex$1 = Stdlib_Option.isSome(ownerField) ? ownerIndex : undefined;
   let requireAttributeClause = requireAttribute !== undefined ? `
   names['#` + requireAttribute + `'] = '` + requireAttribute + `';
   parts.push('attribute_exists(#` + requireAttribute + `)');` : "";
-  let ownerClause;
-  if (ownerField !== undefined) {
-    let elevatedLiteral = elevatedGroups.map(g => `'` + g + `'`).join(", ");
-    ownerClause = `
+  let elevatedLiteral = elevatedGroups.map(g => `'` + g + `'`).join(", ");
+  let ownerIdentityPreamble = `
   // ── owner scoping (generated) ──
   // Not read from ctx.args: a predicate deciding what the caller may see must
   // arrive on a channel the caller cannot name, and this field is usually absent
@@ -586,15 +597,15 @@ function listAllItemsConnection(labelField, filterFieldsOpt, rangeFieldsOpt, sor
   const _elevated = [` + elevatedLiteral + `];
   // No identity at all, or an identity with no \`sub\`, is the IAM service caller
   // the API also accepts — inside the trust boundary, and exempt.
-  const _exempt = _sub == null || _groups.some(g => _elevated.indexOf(g) >= 0);
+  const _exempt = _sub == null || _groups.some(g => _elevated.indexOf(g) >= 0);`;
+  let ownerClause = ownerField !== undefined ? (
+      ownerIndex$1 !== undefined ? ownerIdentityPreamble : ownerIdentityPreamble + `
   if (!_exempt) {
     names['#owner'] = '` + ownerField + `';
     values[':owner'] = util.dynamodb.toDynamoDB(_sub);
     parts.push('#owner = :owner');
-  }`;
-  } else {
-    ownerClause = "";
-  }
+  }`
+    ) : "";
   let retiredClause;
   if (retiredField !== undefined) {
     let elevatedLiteral$1 = elevatedGroups.map(g => `'` + g + `'`).join(", ");
@@ -646,13 +657,14 @@ function listAllItemsConnection(labelField, filterFieldsOpt, rangeFieldsOpt, sor
     parts.push('#` + f + ` <= :` + f + `To');
   }`).join("");
   let sortFieldsLiteral = sortFields.map(f => `'` + f + `'`).join(", ");
+  let sortGuard = ownerIndex$1 !== undefined && ownerIndexSortField !== undefined ? "!_indexOrdered && " : "";
   let sortBlock = sortFields.length === 0 ? "" : `
   // Per-page sort (Scan returns items in indeterminate order; ScanIndexForward
   // does not apply to Scan). Global ordering across pages requires v1.5 index
   // promotion; @scanSort is per-page even then.
   const orderBy = ctx.args.orderBy;
   const sortFields = [` + sortFieldsLiteral + `];
-  if (orderBy && orderBy.field && sortFields.indexOf(orderBy.field) >= 0) {
+  if (` + sortGuard + `orderBy && orderBy.field && sortFields.indexOf(orderBy.field) >= 0) {
     const field = orderBy.field;
     const nulls = items.filter(it => it[field] === null || it[field] === undefined);
     const nonNulls = items.filter(it => it[field] !== null && it[field] !== undefined);
@@ -667,6 +679,44 @@ function listAllItemsConnection(labelField, filterFieldsOpt, rangeFieldsOpt, sor
     if (orderBy.direction === 'DESC') encoded.reverse();
     items = encoded.map(e => JSON.parse(e.split('\\x01')[1])).concat(nulls);
   }`;
+  let indexOrderedExpr = ownerIndex$1 !== undefined && ownerIndexSortField !== undefined ? `!_exempt && !!(ctx.args.orderBy && ctx.args.orderBy.field === '` + ownerIndexSortField + `')` : "false";
+  let requestOperation = ownerField !== undefined ? (
+      ownerIndex$1 !== undefined ? `
+  const _indexOrdered = ` + indexOrderedExpr + `;
+  const req = _exempt
+    ? {
+        operation: 'Scan',
+        limit: ` + (`(` + "parts.length > 0" + ` ? (_first > 1000 ? _first : 1000) : _first + _from)`) + `,
+        nextToken: _window,
+      }
+    : {
+        operation: 'Query',
+        index: '` + ownerIndex$1 + `',
+        query: {
+          expression: '#owner = :owner',
+          expressionNames: { '#owner': '` + ownerField + `' },
+          expressionValues: { ':owner': util.dynamodb.toDynamoDB(_sub) },
+        },
+        limit: ` + (`(` + "parts.length > 0" + ` ? (_first > 1000 ? _first : 1000) : _first + _from)`) + `,
+        nextToken: _window,
+        scanIndexForward: !(_indexOrdered && ctx.args.orderBy.direction === 'DESC'),
+      };` : `
+  const req = {
+    operation: 'Scan',
+    limit: ` + (`(` + "parts.length > 0" + ` ? (_first > 1000 ? _first : 1000) : _first + _from)`) + `,
+    nextToken: _window,
+  };`
+    ) : `
+  const req = {
+    operation: 'Scan',
+    limit: ` + (`(` + "parts.length > 0" + ` ? (_first > 1000 ? _first : 1000) : _first + _from)`) + `,
+    nextToken: _window,
+  };`;
+  let requestPathGuard = Stdlib_Option.isSome(ownerIndex$1) ? cursorPathGuard : "";
+  let responsePathPreamble = ownerIndex$1 !== undefined ? ownerIdentityPreamble + `
+  const _path = _exempt ? 's' : 'q';
+  const _indexOrdered = ` + indexOrderedExpr + `;` : "";
+  let pageResponse = ownerIndex$1 !== undefined ? connectionPageResponse("_path") : connectionPageResponse(undefined);
   return importUtil + `
 export function request(ctx) {
   // Scan cannot page backward (ScanIndexForward is Query-only). Fail loud rather than
@@ -698,13 +748,8 @@ export function request(ctx) {
     });
     parts.push('#id IN (' + placeholders.join(', ') + ')');
   }` + filterClauses + rangeClauses + requireAttributeClause + ownerClause + retiredClause + `
-` + cursorDecode("ctx.args") + `
-  const _first = ctx.args.first ?? 50;
-  const req = {
-    operation: 'Scan',
-    limit: ` + (`(` + "parts.length > 0" + ` ? (_first > 1000 ? _first : 1000) : _first + _from)`) + `,
-    nextToken: _window,
-  };
+` + cursorDecode("ctx.args") + requestPathGuard + `
+  const _first = ctx.args.first ?? 50;` + requestOperation + `
   if (parts.length > 0) {
     req.filter = {
       expression: parts.join(' AND '),
@@ -716,7 +761,7 @@ export function request(ctx) {
 }
 export function response(ctx) {
   if (ctx.error) util.error(ctx.error.message, ctx.error.type);
-  let items = ctx.result?.items ?? [];` + sortBlock + cursorDecode("ctx.args") + connectionPageResponse + `
+  let items = ctx.result?.items ?? [];` + responsePathPreamble + sortBlock + cursorDecode("ctx.args") + pageResponse + `
 }
 `;
 }
@@ -1245,6 +1290,7 @@ export {
   queryByIndexSort,
   pageWindowBudget,
   cursorDecode,
+  cursorPathGuard,
   connectionPageResponse,
   indexConnectionResponseCode,
   indexBackwardPagingGuard,

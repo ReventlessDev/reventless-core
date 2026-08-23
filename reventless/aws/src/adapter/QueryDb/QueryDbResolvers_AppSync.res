@@ -283,13 +283,6 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
     // (prefix-agnostic: real plugin rows always carry `name`, internal rows never do).
     // See docs/plans/done/platform-plugins-admin-connection-null-rows.md.
     let requireAttribute = internalRowRequiredAttr(name)
-    // A DynamoDB FilterExpression is applied AFTER the page is read, so a scoped
-    // list over a table with no index on the owner field returns short pages —
-    // correct, but pathological once a caller owns a small fraction of the rows.
-    // Warned rather than refused: the resolver does serve the query, and a
-    // deployment may legitimately accept the cost on a small table. Mirrors the
-    // `@scanSort` alignment warning above, which exists for the same class of
-    // "works, but scans" mistake.
     ReventlessCore.OwnerScopeDiagnostics.warnIfNoElevatedGroups(
       ~comp="QueryDbResolvers_AppSync",
       ~view=name,
@@ -298,17 +291,33 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
     let isIndexed = f =>
       indexes->Array.some(ic => ic.idField->Option.getOr(ic.index) == f) ||
         subIdField->Option.getOr("") == f
-    switch ownerField {
+    // The index `@owner` derives, and the sort key that orders one caller's rows
+    // inside it. Its absence means the author declined it — the list then falls
+    // back to the Scan-and-filter this used to prescribe an `@index` for.
+    let ownerIndexConfig = switch ownerField {
     | Some(f) =>
-      if !isIndexed(f) {
-        log.warn(
-          ~comp="QueryDbResolvers_AppSync",
-          `${name}: @owner field "${f}" is not the key of any index on this table. ` ++
-          "Owner-scoped reads will Scan and filter, so pages shrink as the caller's " ++
-          "share of the rows falls. Add an @index on that field before this read model grows.",
-        )
-      }
-    | None => ()
+      indexes->Array.find(ic =>
+        Reventless.ReadModel.isDerivedIndex(ic) && ic.idField->Option.getOr(ic.index) == f
+      )
+    | None => None
+    }
+    let ownerIndex = ownerIndexConfig->Option.map(ic => ic.index)
+    let ownerIndexSortField = ownerIndexConfig->Option.flatMap(ic => ic.subIdField)
+    // Only reachable through `@owner({index: false})` now that the index is
+    // derived by default, so this states the cost of that choice rather than
+    // prescribing an `@index` — which would provision a second index on the same
+    // key and still not be the one the list reads.
+    switch (ownerField, ownerIndex) {
+    | (Some(f), None) if !isIndexed(f) =>
+      log.warn(
+        ~comp="QueryDbResolvers_AppSync",
+        `${name}: @owner field "${f}" keys no index on this table, so owner-scoped ` ++
+        "reads Scan the table and filter after the page is read — cost grows with the " ++
+        "table while the answer shrinks with the caller's share of it. Drop " ++
+        "`@owner({index: false})` to let the framework derive the index, or accept " ++
+        "the cost on a view that stays small.",
+      )
+    | _ => ()
     }
     // The same class of "works, but scans" mistake as the owner warning above,
     // and the retirement case degrades the same way: the FilterExpression is
@@ -346,12 +355,19 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
           ~elevatedGroups,
           ~retiredField?,
           ~retiredValues?,
+          ~ownerIndex?,
+          ~ownerIndexSortField?,
         )
       } else {
         Resolver.Functions.listAllItems
       },
     )
-    let resolversByIndex = indexes->Array.map(({index} as indexConfig) => {
+    // Derived indexes are absent from the SDL (`GraphQL_FragmentGenerator` skips
+    // them), so a resolver here would attach to a field that does not exist and
+    // fail the deploy. The list resolver above is the only thing that reads one.
+    let resolversByIndex = indexes
+    ->Array.filter(ic => !Reventless.ReadModel.isDerivedIndex(ic))
+    ->Array.map(({index} as indexConfig) => {
       // Name and key field both come from `GraphQL_FragmentGenerator`, which is
       // where the SDL field this attaches to is derived. Deriving them here as
       // well is how the two came to disagree: the emitted field declared `id`

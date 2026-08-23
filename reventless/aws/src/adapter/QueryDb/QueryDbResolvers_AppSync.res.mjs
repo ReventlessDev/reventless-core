@@ -4,6 +4,7 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_String from "@rescript/runtime/lib/es6/Stdlib_String.js";
 import * as Owner$Reventless from "@reventlessdev/reventless-spec/src/components/Owner.res.mjs";
+import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types/OwnerScope.res.mjs";
 import * as Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
@@ -123,14 +124,23 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
         return Stdlib_Option.getOr(subIdField, "") === f;
       }
     };
-    if (ownerField !== undefined && !isIndexed(ownerField)) {
-      log.warn("QueryDbResolvers_AppSync", undefined, name$1 + `: @owner field "` + ownerField + `" is not the key of any index on this table. ` + "Owner-scoped reads will Scan and filter, so pages shrink as the caller's share of the rows falls. Add an @index on that field before this read model grows.");
+    let ownerIndexConfig = ownerField !== undefined ? indexes.find(ic => {
+        if (ReadModel$Reventless.isDerivedIndex(ic)) {
+          return Stdlib_Option.getOr(ic.idField, ic.index) === ownerField;
+        } else {
+          return false;
+        }
+      }) : undefined;
+    let ownerIndex = Stdlib_Option.map(ownerIndexConfig, ic => ic.index);
+    let ownerIndexSortField = Stdlib_Option.flatMap(ownerIndexConfig, ic => ic.subIdField);
+    if (ownerField !== undefined && !(ownerIndex !== undefined || isIndexed(ownerField))) {
+      log.warn("QueryDbResolvers_AppSync", undefined, name$1 + `: @owner field "` + ownerField + `" keys no index on this table, so owner-scoped ` + "reads Scan the table and filter after the page is read — cost grows with the table while the answer shrinks with the caller's share of it. Drop `@owner({index: false})` to let the framework derive the index, or accept the cost on a view that stays small.");
     }
     if (retiredField !== undefined && !isIndexed(retiredField)) {
       log.warn("QueryDbResolvers_AppSync", undefined, name$1 + `: @retired field "` + retiredField + `" is not the key of any index on this table. ` + "Reads that exclude retired rows will Scan and filter, so pages shrink as the archive's share of the rows grows. Add an @index on that field before this read model grows.");
     }
-    let resolverAll = makeQueryResolver(Stdlib_String.capitalize(fieldNameForAll), fieldNameForAll, connectionSpec ? AppSync_Resolver_Functions$PulumiAws.listAllItemsConnection(labelField, filterFieldNames, rangeFieldNames, sortFieldNames, requireAttribute, ownerField, elevatedGroups, retiredField, retiredValues) : AppSync_Resolver_Functions$PulumiAws.listAllItems);
-    let resolversByIndex = indexes.map(indexConfig => {
+    let resolverAll = makeQueryResolver(Stdlib_String.capitalize(fieldNameForAll), fieldNameForAll, connectionSpec ? AppSync_Resolver_Functions$PulumiAws.listAllItemsConnection(labelField, filterFieldNames, rangeFieldNames, sortFieldNames, requireAttribute, ownerField, elevatedGroups, retiredField, retiredValues, ownerIndex, ownerIndexSortField) : AppSync_Resolver_Functions$PulumiAws.listAllItems);
+    let resolversByIndex = indexes.filter(ic => !ReadModel$Reventless.isDerivedIndex(ic)).map(indexConfig => {
       let index = indexConfig.index;
       let fieldName = GraphQL_FragmentGenerator$ReventlessCore.indexQueryFieldName(fieldNameForSingle, index);
       let resolverName = Stdlib_String.capitalize(fieldName);

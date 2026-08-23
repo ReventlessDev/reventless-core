@@ -29,20 +29,35 @@ let globalSecondaryIndexes = (indexes: array<Reventless.ReadModel.indexConfig>) 
   })
   ->Pulumi.Input.make
 
-let attributes = (sortField, indexes: array<Reventless.ReadModel.indexConfig>) =>
-  [
-    [{name: "id", type_: "S"}],
-    sortField->Option.mapOr([], sortField => [{name: sortField, type_: "S"}]),
-    indexes
-    ->Array.map((indexConfig: Reventless.ReadModel.indexConfig) => {
-      let {index, type_} = indexConfig
-      [
-        [{name: indexConfig.idField->Option.getOr(index), type_}],
-        indexConfig.subIdField->Option.mapOr([], sortField => [{name: sortField, type_: "S"}]),
-      ]->Array.flat
-    })
-    ->Array.flat,
-  ]->Array.flat
+// Pulumi rejects a table that defines the same attribute twice, and an index may
+// legitimately key on one the table already declares — the derived `@owner` index
+// sorts on `id`, and any index may sort on the table's own sort key. First
+// declaration wins; they agree on the type because both name the same column.
+let attributes = (sortField, indexes: array<Reventless.ReadModel.indexConfig>) => {
+  let all =
+    [
+      [{name: "id", type_: "S"}],
+      sortField->Option.mapOr([], sortField => [{name: sortField, type_: "S"}]),
+      indexes
+      ->Array.map((indexConfig: Reventless.ReadModel.indexConfig) => {
+        let {index, type_} = indexConfig
+        [
+          [{name: indexConfig.idField->Option.getOr(index), type_}],
+          indexConfig.subIdField->Option.mapOr([], sortField => [{name: sortField, type_: "S"}]),
+        ]->Array.flat
+      })
+      ->Array.flat,
+    ]->Array.flat
+  let seen = Set.make()
+  all->Array.filter(({name}) =>
+    if seen->Set.has(name) {
+      false
+    } else {
+      seen->Set.add(name)
+      true
+    }
+  )
+}
 
 let dataSource = (name, table, api, apiRole, opts) => {
   let _dataSourceRolePolicy = {

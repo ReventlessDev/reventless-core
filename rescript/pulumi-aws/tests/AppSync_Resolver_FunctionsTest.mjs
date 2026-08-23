@@ -845,6 +845,196 @@ describe('listAllItemsConnection — owner scoping', () => {
     const r = request(makeCtx({ args: {}, identity: asUser('ops-1', ['Admin']) }))
     expect(r.filter.expressionValues[':owner']).toEqual({ S: 'ops-1' })
   })
+
+  // ── The same identities, once the scope has an index to read ──────────────
+  //
+  // The predicate moves from the FilterExpression to a key condition, so who is
+  // narrowed and who is not now selects a different PHYSICAL READ. The defect
+  // class this guards against was invisible precisely because each path was
+  // individually correct — so the identity table runs over both, rather than a
+  // parallel suite growing beside it.
+  //
+  // (labelField, filterFields, rangeFields, sortFields, requireAttribute,
+  //  ownerField, elevatedGroups, retiredField, retiredValues,
+  //  ownerIndex, ownerIndexSortField)
+  const indexed = () =>
+    evalResolver(
+      F.listAllItemsConnection(
+        'name', ['status'], [], [], undefined, 'customerId', ['Admin'],
+        undefined, undefined, '_owner', 'id',
+      ),
+    )
+
+  const identities = [
+    ['a plain caller', asUser('cust-a'), 'Query'],
+    ['a caller in an elevated group', asUser('ops-1', ['Admin']), 'Scan'],
+    ['an IAM-shaped identity with no sub', { userArn: 'arn:aws:sts::1:x', username: 'Ing' }, 'Scan'],
+    ['a wholly absent identity', null, 'Scan'],
+  ]
+
+  test.each(identities)('%s reads through the operation its scope implies', (_, identity, op) => {
+    const { request } = indexed()
+    expect(request(makeCtx({ args: {}, identity })).operation).toBe(op)
+  })
+
+  test('a scoped caller is keyed on their own id, not filtered on it', () => {
+    const { request } = indexed()
+    const r = request(makeCtx({ args: {}, identity: asUser('cust-a') }))
+    expect(r.index).toBe('_owner')
+    expect(r.query.expression).toBe('#owner = :owner')
+    expect(r.query.expressionNames['#owner']).toBe('customerId')
+    expect(r.query.expressionValues[':owner']).toEqual({ S: 'cust-a' })
+    // The whole point: no owner clause survives anywhere in the filter. A copy
+    // left there would be a second, redundant predicate — and an expressionName
+    // the filter no longer references is a ValidationException.
+    expect(r.filter).toBeUndefined()
+  })
+
+  // The elevated read is the one that must not have changed: it is the same
+  // request the unindexed resolver builds, argument for argument.
+  test.each([
+    ['an elevated caller', asUser('ops-1', ['Admin'])],
+    ['an IAM service caller', { userArn: 'arn:aws:sts::1:x', username: 'Ing' }],
+  ])("%s's read is unchanged by the index existing", (_, identity) => {
+    const before = evalResolver(
+      F.listAllItemsConnection('name', ['status'], [], [], undefined, 'customerId', ['Admin']),
+    ).request(makeCtx({ args: { first: 20, filter: { statusEq: 'Placed' } }, identity }))
+    const after = indexed().request(
+      makeCtx({ args: { first: 20, filter: { statusEq: 'Placed' } }, identity }),
+    )
+    expect(after).toEqual(before)
+  })
+
+  // The read window exists because a FilterExpression cuts rows AFTER `Limit`.
+  // A key condition does not, so a scoped caller with no filter of their own
+  // examines exactly the page they asked for — the arithmetic the window was
+  // hiding, gone rather than papered over.
+  test('a scoped caller with no filter examines exactly the page', () => {
+    const { request } = indexed()
+    expect(request(makeCtx({ args: { first: 25 }, identity: asUser('cust-a') })).limit).toBe(25)
+  })
+
+  test("a scoped caller's own filter still widens the window", () => {
+    const { request } = indexed()
+    const r = request(
+      makeCtx({ args: { first: 25, filter: { statusEq: 'Placed' } }, identity: asUser('cust-a') }),
+    )
+    expect(r.limit).toBe(1000)
+    expect(r.filter.expression).toBe('#status = :statusEq')
+  })
+
+  // Both branches are reachable by the SAME caller across requests — an active
+  // role switch mid-pagination flips `_exempt`. A `nextToken` continues the
+  // operation that minted it, so replaying one on the other branch would answer
+  // a different question in silence.
+  describe('the cursor path tag', () => {
+    const { request, response } = indexed()
+    const pageFor = identity =>
+      response(makeCtx({
+        args: {},
+        identity,
+        result: { items: [{ id: 'a' }], nextToken: 'TOK' },
+      })).pageInfo.endCursor
+
+    test('a Scan cursor replayed on the Query branch is refused', () => {
+      const scanCursor = pageFor(asUser('ops-1', ['Admin']))
+      expect(() =>
+        request(makeCtx({ args: { after: scanCursor }, identity: asUser('cust-a') })),
+      ).toThrow('different read of this list')
+    })
+
+    test('a Query cursor replayed on the Scan branch is refused', () => {
+      const queryCursor = pageFor(asUser('cust-a'))
+      expect(() =>
+        request(makeCtx({ args: { after: queryCursor }, identity: asUser('ops-1', ['Admin']) })),
+      ).toThrow('different read of this list')
+    })
+
+    test('each branch resumes its own cursor', () => {
+      expect(
+        request(makeCtx({ args: { after: pageFor(asUser('cust-a')) }, identity: asUser('cust-a') }))
+          .nextToken,
+      ).toBe('TOK')
+      const ops = asUser('ops-1', ['Admin'])
+      expect(request(makeCtx({ args: { after: pageFor(ops) }, identity: ops })).nextToken).toBe('TOK')
+    })
+
+    // Cursors minted before the tag existed all came off a Scan, and the callers
+    // holding one are the exempt callers whose read did not change.
+    test('an untagged cursor still resumes the Scan branch', () => {
+      const legacy = util.base64Encode(JSON.stringify({ t: 'TOK9', n: 2 }))
+      const ops = asUser('ops-1', ['Admin'])
+      expect(request(makeCtx({ args: { after: legacy }, identity: ops })).nextToken).toBe('TOK9')
+    })
+  })
+
+  // Ordering on the index's own sort key is `ScanIndexForward`'s job across the
+  // caller's whole partition. Re-sorting the page in JS afterwards is the one
+  // way to BREAK that order — a sort over a page is not a sort over the rows.
+  describe('orderBy on the index sort key', () => {
+    const sorted = () =>
+      evalResolver(
+        F.listAllItemsConnection(
+          'name', [], [], ['id', 'placedAt'], undefined, 'customerId', ['Admin'],
+          undefined, undefined, '_owner', 'id',
+        ),
+      )
+    const items = [{ id: 'c' }, { id: 'a' }, { id: 'b' }]
+    const scoped = asUser('cust-a')
+
+    test('DESC flips scanIndexForward instead of reversing a page', () => {
+      const { request } = sorted()
+      const args = { orderBy: { field: 'id', direction: 'DESC' } }
+      expect(request(makeCtx({ args, identity: scoped })).scanIndexForward).toBe(false)
+      expect(
+        request(makeCtx({ args: { orderBy: { field: 'id', direction: 'ASC' } }, identity: scoped }))
+          .scanIndexForward,
+      ).toBe(true)
+    })
+
+    test('the page DynamoDB ordered is handed back untouched', () => {
+      const { response } = sorted()
+      const r = response(makeCtx({
+        args: { orderBy: { field: 'id', direction: 'ASC' } },
+        identity: scoped,
+        result: { items, nextToken: null },
+      }))
+      expect(r.edges.map(e => e.node.id)).toEqual(['c', 'a', 'b'])
+    })
+
+    test('any other sort field still sorts in JS', () => {
+      const { response } = sorted()
+      const r = response(makeCtx({
+        args: { orderBy: { field: 'placedAt', direction: 'ASC' } },
+        identity: scoped,
+        result: { items: [{ placedAt: 'z' }, { placedAt: 'a' }], nextToken: null },
+      }))
+      expect(r.edges.map(e => e.node.placedAt)).toEqual(['a', 'z'])
+    })
+
+    // The exempt caller Scans, which has no ordering of its own, so the per-page
+    // sort is still the only order they get.
+    test('an exempt caller keeps the per-page sort on the same field', () => {
+      const { response } = sorted()
+      const r = response(makeCtx({
+        args: { orderBy: { field: 'id', direction: 'ASC' } },
+        identity: asUser('ops-1', ['Admin']),
+        result: { items, nextToken: null },
+      }))
+      expect(r.edges.map(e => e.node.id)).toEqual(['a', 'b', 'c'])
+    })
+  })
+
+  // Backward paging stays refused on both branches: a Query can walk backward,
+  // but the `{t, n}` cursor is DynamoDB's forward-only continuation token, and a
+  // door must not advertise what its cursor cannot honour.
+  test.each([['scoped', asUser('cust-a')], ['exempt', asUser('ops-1', ['Admin'])]])(
+    'a %s caller is still refused backward paging',
+    (_, identity) => {
+      const { request } = indexed()
+      expect(() => request(makeCtx({ args: { last: 5 }, identity }))).toThrow('Backward pagination')
+    },
+  )
 })
 
 // ---------------------------------------------------------------------------

@@ -13,6 +13,7 @@ import * as Effect from "effect/Effect";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_Promise from "@rescript/runtime/lib/es6/Stdlib_Promise.js";
 import * as Plugin$Reventless from "@reventlessdev/reventless-spec/src/components/Plugin.res.mjs";
+import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as Plugin$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin.res.mjs";
@@ -1206,7 +1207,7 @@ function MakeWithConfig(Config) {
       }
       let indexes = entry.indexQueries;
       if (indexes !== undefined) {
-        indexes.forEach(ic => {
+        indexes.filter(ic => !ReadModel$Reventless.isDerivedIndex(ic)).forEach(ic => {
           let fieldName = GraphQL_FragmentGenerator$ReventlessCore.indexQueryFieldName(entry.singleFieldName, ic.index);
           queryResolvers[fieldName] = async (_root, _args, _ctx) => connectionResponse([]);
         });
@@ -2932,7 +2933,7 @@ function Make($star) {
       }
       let indexes = entry.indexQueries;
       if (indexes !== undefined) {
-        indexes.forEach(ic => {
+        indexes.filter(ic => !ReadModel$Reventless.isDerivedIndex(ic)).forEach(ic => {
           let fieldName = GraphQL_FragmentGenerator$ReventlessCore.indexQueryFieldName(entry.singleFieldName, ic.index);
           queryResolvers[fieldName] = async (_root, _args, _ctx) => connectionResponse([]);
         });

@@ -903,7 +903,12 @@ let generate = (
     switch entry.indexQueries {
     | Some(indexes) =>
       let connectionTypeName = entry.returnTypeName ++ "Connection"
-      indexes->Array.forEach(indexConfig =>
+      // Derived indexes are skipped: they key a read the list resolver already
+      // makes on the caller's behalf, and a `<single>By<OwnerField>` door any
+      // caller may name is not the read they serve.
+      indexes
+      ->Array.filter(ic => !Reventless.ReadModel.isDerivedIndex(ic))
+      ->Array.forEach(indexConfig =>
         queries->Array.push(
           deriveIndexQueryField(
             ~singleFieldName=entry.singleFieldName,

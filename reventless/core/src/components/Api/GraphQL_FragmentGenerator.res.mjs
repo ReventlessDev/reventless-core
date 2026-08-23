@@ -5,6 +5,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_String from "@rescript/runtime/lib/es6/Stdlib_String.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
+import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as Api_Naming$ReventlessCore from "./Api_Naming.res.mjs";
 import * as SchemaType$ReventlessCore from "./SchemaType.res.mjs";
@@ -580,7 +581,7 @@ function generate(mutationEntries, queryEntries) {
     let indexes = entry.indexQueries;
     if (indexes !== undefined) {
       let connectionTypeName = entry.returnTypeName + "Connection";
-      indexes.forEach(indexConfig => {
+      indexes.filter(ic => !ReadModel$Reventless.isDerivedIndex(ic)).forEach(indexConfig => {
         queries.push(deriveIndexQueryField(entry.singleFieldName, indexConfig, connectionTypeName));
       });
     }

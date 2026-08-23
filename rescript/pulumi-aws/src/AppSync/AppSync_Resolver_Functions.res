@@ -567,21 +567,47 @@ let pageWindowBudget = (~filtered: string) =>
 Decodes `after` into the window it names (`t`, the token opening it) and the row's
 index among that window's matches (`n`). Pre-window cursors carried
 `{token, index}` naming the window that follows — position -1 of it.
+
+`p` is the one-character tag naming which read the window belongs to (`s` Scan,
+`q` the owner-index Query). Absent reads as `s`: every cursor minted before the
+tag existed came off a Scan. Only a door with more than one read tests it — see
+`cursorPathGuard`.
 */
 let cursorDecode = (~args: string) => `
   let _window = null;
   let _from = 0;
+  let _cursorPath = null;
   if (${args}.after != null && ${args}.after !== '') {
     const _c = JSON.parse(util.base64Decode(${args}.after));
     _window = (_c.t !== undefined ? _c.t : _c.token) ?? null;
     _from = _c.n !== undefined ? _c.n + 1 : 0;
+    _cursorPath = _c.p ?? 's';
+  }`
+
+/**
+Refuses a cursor minted on this door's other read. The two branches are selectable
+by the SAME caller across requests — an active-role switch mid-pagination flips
+`_exempt` — and a `nextToken` continues the operation that issued it, so replaying
+one on the other branch answers a different question without saying so.
+
+Expects `_cursorPath` from `cursorDecode` and `_exempt` from the owner preamble.
+*/
+let cursorPathGuard = `
+  if (_cursorPath !== null && _cursorPath !== (_exempt ? 's' : 'q')) {
+    util.error('This cursor belongs to a different read of this list; restart from the first page.', 'CursorPathMismatch');
   }`
 
 /**
 Cuts the requested page out of the returned window. Expects `items` (sorted, if the
-door sorts) plus `_window` / `_from` from `cursorDecode`.
+door sorts) plus `_window` / `_from` from `cursorDecode`. `pathExpr` is the JS
+expression naming which read minted these cursors, for a door that has two.
 */
-let connectionPageResponse = `
+let connectionPageResponse = (~pathExpr: option<string>=?) => {
+  let tag = switch pathExpr {
+  | None => ""
+  | Some(e) => `, p: ${e}`
+  }
+  `
   const _first = ctx.args.first ?? 50;
   const _rest = items.slice(_from);
   const _page = _rest.slice(0, _first);
@@ -594,12 +620,14 @@ let connectionPageResponse = `
   const edges = _page.map((item, i) => ({
     node: item,
     cursor: util.base64Encode(JSON.stringify(
-      (!_more && _next && i === _lastIndex) ? { t: _next, n: -1 } : { t: _window, n: _from + i }
+      (!_more && _next && i === _lastIndex)
+        ? { t: _next, n: -1${tag} }
+        : { t: _window, n: _from + i${tag} }
     )),
   }));
   // A window the filter emptied leaves no row to cut a cursor from; the token is
   // the window's, so a client can step past it rather than restart.
-  const _boundary = _next ? util.base64Encode(JSON.stringify({ t: _next, n: -1 })) : null;
+  const _boundary = _next ? util.base64Encode(JSON.stringify({ t: _next, n: -1${tag} })) : null;
   return {
     edges,
     pageInfo: {
@@ -609,6 +637,7 @@ let connectionPageResponse = `
       endCursor: edges.length > 0 ? edges[edges.length - 1].cursor : _boundary,
     },
   };`
+}
 
 /**
 The by-index door's response. Pages out of a read window exactly as
@@ -618,7 +647,7 @@ declared — returning `ctx.result` raw did not.
 let indexConnectionResponseCode = `
 export function response(ctx) {
   if (ctx.error) util.error(ctx.error.message, ctx.error.type);
-  const items = ctx.result?.items ?? [];${cursorDecode(~args="ctx.args")}${connectionPageResponse}
+  const items = ctx.result?.items ?? [];${cursorDecode(~args="ctx.args")}${connectionPageResponse()}
 }`
 
 /** Refuses backward paging, for the reason `listAllItemsConnection` gives: the
@@ -795,6 +824,13 @@ per-field forms become `=` / `>=` / `<=`.
 `orderBy` sorts in the JS runtime over the read window, not globally: Scan returns
 items in indeterminate order and `ScanIndexForward` is Query-only. Empty and null
 filter values mean "no filter", as they do in-memory.
+
+With `ownerIndex` the door has **two** reads against the same data source, chosen
+by whether the caller is exempt from owner scoping: a Query on the derived
+`@owner` index for a scoped caller, the Scan above for everyone else. A user
+`filter` still lands in a FilterExpression on top of the Query's key condition, so
+a scoped caller searching their own rows can still get a short page — but bounded
+by their row count rather than the table's.
 */
 let listAllItemsConnection = (
   ~labelField: string,
@@ -818,7 +854,14 @@ let listAllItemsConnection = (
   // The states that retire the row, for the state form of the annotation.
   // Absent is the boolean form, where the value is always `true`.
   ~retiredValues: option<array<string>>=?,
+  // The index `@owner` derives, and its sort key. Present turns the owner
+  // predicate from a post-read sieve into a key condition for a scoped caller.
+  ~ownerIndex: option<string>=?,
+  ~ownerIndexSortField: option<string>=?,
 ) => {
+  // The Query branch needs `ownerField` to key on; an index without one would
+  // have nothing to name in the key condition.
+  let ownerIndex = ownerField->Option.isSome ? ownerIndex : None
   let requireAttributeClause = switch requireAttribute {
   | Some(attr) => `
   names['#${attr}'] = '${attr}';
@@ -829,9 +872,11 @@ let listAllItemsConnection = (
   // it. The branch ORDER is the part that has to match: provider first, because
   // an IAM-signed service caller has no `sub` for a reason that has nothing to do
   // with being anonymous, and must not be refused as though it did.
-  let ownerClause = switch ownerField {
-  | None => ""
-  | Some(field) =>
+  //
+  // Emitted in BOTH halves of the resolver when an owner index is in play: the
+  // response has to know which read minted the cursors it hands out, and that is
+  // the same question.
+  let ownerIdentityPreamble = {
     let elevatedLiteral = elevatedGroups->Array.map(g => `'${g}'`)->Array.join(", ")
     `
   // ── owner scoping (generated) ──
@@ -844,7 +889,16 @@ let listAllItemsConnection = (
   const _elevated = [${elevatedLiteral}];
   // No identity at all, or an identity with no \`sub\`, is the IAM service caller
   // the API also accepts — inside the trust boundary, and exempt.
-  const _exempt = _sub == null || _groups.some(g => _elevated.indexOf(g) >= 0);
+  const _exempt = _sub == null || _groups.some(g => _elevated.indexOf(g) >= 0);`
+  }
+  let ownerClause = switch (ownerField, ownerIndex) {
+  | (None, _) => ""
+  // With an index the predicate is the Query's key condition, so nothing is
+  // pushed into the filter — and nothing may be: an expressionName the filter
+  // never references is a ValidationException, not a harmless extra.
+  | (Some(_), Some(_)) => ownerIdentityPreamble
+  | (Some(field), None) =>
+    `${ownerIdentityPreamble}
   if (!_exempt) {
     names['#owner'] = '${field}';
     values[':owner'] = util.dynamodb.toDynamoDB(_sub);
@@ -930,6 +984,13 @@ ${switch retiredValues {
     ->Array.join("")
   let sortFieldsLiteral =
     sortFields->Array.map(f => `'${f}'`)->Array.join(", ")
+  // When the Query branch already ordered on the index's own sort key, the page
+  // arrives globally ordered and re-sorting it here is the one way to break that
+  // order — a sort over a page is not a sort over the caller's rows.
+  let sortGuard = switch (ownerIndex, ownerIndexSortField) {
+  | (Some(_), Some(_)) => "!_indexOrdered && "
+  | _ => ""
+  }
   let sortBlock = if sortFields->Array.length == 0 {
     ""
   } else {
@@ -944,7 +1005,7 @@ ${switch retiredValues {
   // promotion; @scanSort is per-page even then.
   const orderBy = ctx.args.orderBy;
   const sortFields = [${sortFieldsLiteral}];
-  if (orderBy && orderBy.field && sortFields.indexOf(orderBy.field) >= 0) {
+  if (${sortGuard}orderBy && orderBy.field && sortFields.indexOf(orderBy.field) >= 0) {
     const field = orderBy.field;
     const nulls = items.filter(it => it[field] === null || it[field] === undefined);
     const nonNulls = items.filter(it => it[field] !== null && it[field] !== undefined);
@@ -959,6 +1020,58 @@ ${switch retiredValues {
     if (orderBy.direction === 'DESC') encoded.reverse();
     items = encoded.map(e => JSON.parse(e.split('\\x01')[1])).concat(nulls);
   }`
+  }
+  // Did the Query branch order this page itself? Answered the same way in both
+  // halves, because both need it: the request to set `scanIndexForward`, the
+  // response to leave an already-ordered page alone.
+  let indexOrderedExpr = switch (ownerIndex, ownerIndexSortField) {
+  | (Some(_), Some(sf)) =>
+    `!_exempt && !!(ctx.args.orderBy && ctx.args.orderBy.field === '${sf}')`
+  | _ => "false"
+  }
+  // The two reads, chosen by the same test that used to choose a predicate.
+  // Both target the one data source the resolver is attached to, so this is a
+  // branch inside one resolver — no second field, no second data source, no
+  // client change.
+  let requestOperation = switch (ownerField, ownerIndex) {
+  | (Some(field), Some(index)) => `
+  const _indexOrdered = ${indexOrderedExpr};
+  const req = _exempt
+    ? {
+        operation: 'Scan',
+        limit: ${pageWindowBudget(~filtered="parts.length > 0")},
+        nextToken: _window,
+      }
+    : {
+        operation: 'Query',
+        index: '${index}',
+        query: {
+          expression: '#owner = :owner',
+          expressionNames: { '#owner': '${field}' },
+          expressionValues: { ':owner': util.dynamodb.toDynamoDB(_sub) },
+        },
+        limit: ${pageWindowBudget(~filtered="parts.length > 0")},
+        nextToken: _window,
+        scanIndexForward: !(_indexOrdered && ctx.args.orderBy.direction === 'DESC'),
+      };`
+  | _ => `
+  const req = {
+    operation: 'Scan',
+    limit: ${pageWindowBudget(~filtered="parts.length > 0")},
+    nextToken: _window,
+  };`
+  }
+  // Only a door with two reads tests the tag, and only that door stamps one.
+  let requestPathGuard = ownerIndex->Option.isSome ? cursorPathGuard : ""
+  let responsePathPreamble = switch ownerIndex {
+  | None => ""
+  | Some(_) => `${ownerIdentityPreamble}
+  const _path = _exempt ? 's' : 'q';
+  const _indexOrdered = ${indexOrderedExpr};`
+  }
+  let pageResponse = switch ownerIndex {
+  | None => connectionPageResponse()
+  | Some(_) => connectionPageResponse(~pathExpr="_path")
   }
   `${importUtil}
 export function request(ctx) {
@@ -991,13 +1104,8 @@ export function request(ctx) {
     });
     parts.push('#id IN (' + placeholders.join(', ') + ')');
   }${filterClauses}${rangeClauses}${requireAttributeClause}${ownerClause}${retiredClause}
-${cursorDecode(~args="ctx.args")}
-  const _first = ctx.args.first ?? 50;
-  const req = {
-    operation: 'Scan',
-    limit: ${pageWindowBudget(~filtered="parts.length > 0")},
-    nextToken: _window,
-  };
+${cursorDecode(~args="ctx.args")}${requestPathGuard}
+  const _first = ctx.args.first ?? 50;${requestOperation}
   if (parts.length > 0) {
     req.filter = {
       expression: parts.join(' AND '),
@@ -1009,9 +1117,9 @@ ${cursorDecode(~args="ctx.args")}
 }
 export function response(ctx) {
   if (ctx.error) util.error(ctx.error.message, ctx.error.type);
-  let items = ctx.result?.items ?? [];${sortBlock}${cursorDecode(
+  let items = ctx.result?.items ?? [];${responsePathPreamble}${sortBlock}${cursorDecode(
       ~args="ctx.args",
-    )}${connectionPageResponse}
+    )}${pageResponse}
 }
 `->Pulumi.Input.make
 }
