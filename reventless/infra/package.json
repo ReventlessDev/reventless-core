@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-infra",
-  "version": "3.0.0-alpha.150",
+  "version": "3.0.0-alpha.151",
   "description": "Infrastructure types for Reventless framework",
   "license": "Apache-2.0",
   "scripts": {

@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.4 (2026-08-23)
+
+### Bug Fixes
+
+* **aws:** serve a full page from a filtered AppSync read ([b7dca5d](https://github.com/ReventlessDev/reventless-core/commit/b7dca5dac02e8c35c4848828152b90ade0f3c8ba))
+### Features
+
+* **querydb:** serve owner-scoped lists from an index instead of a filtered Scan ([ad26c28](https://github.com/ReventlessDev/reventless-core/commit/ad26c284b4b0650fa3f3b6109ed33bbfe8608f6d))
+
+
 # 3.0.0-alpha.3 (2026-08-23)
 
 * feat(aws)!: scope the active-role store to the identity provider ([08e287d](https://github.com/ReventlessDev/reventless-core/commit/08e287db9721977b818bad76671ec4c62be6f9af))

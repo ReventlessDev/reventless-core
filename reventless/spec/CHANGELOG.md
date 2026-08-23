@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.123 (2026-08-23)
+
+### Features
+
+* **querydb:** serve owner-scoped lists from an index instead of a filtered Scan ([ad26c28](https://github.com/ReventlessDev/reventless-core/commit/ad26c284b4b0650fa3f3b6109ed33bbfe8608f6d))
+
+
 # 3.0.0-alpha.122 (2026-08-22)
 
 * feat(core)!: a slice that has given up says so ([f5559ab](https://github.com/ReventlessDev/reventless-core/commit/f5559abede3a9cf2c9a48aadc69a666c46cc75bf))

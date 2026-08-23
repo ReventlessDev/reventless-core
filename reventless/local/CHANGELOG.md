@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.237 (2026-08-23)
+
+### Features
+
+* **querydb:** serve owner-scoped lists from an index instead of a filtered Scan ([ad26c28](https://github.com/ReventlessDev/reventless-core/commit/ad26c284b4b0650fa3f3b6109ed33bbfe8608f6d))
+
+
 # 3.0.0-alpha.236 (2026-08-23)
 
 **Note:** Version bump only for package @reventlessdev/reventless-local
