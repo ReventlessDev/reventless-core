@@ -38,7 +38,7 @@
     }
   },
   "optionalDependencies": {
-    "@reventlessdev/reventless-host-shell": "3.0.0-alpha.83"
+    "@reventlessdev/reventless-host-shell": "3.0.0-alpha.84"
   },
   "dependencies": {
     "@reventlessdev/online-shop-dcb-catalog": "workspace:*",
