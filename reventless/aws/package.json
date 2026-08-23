@@ -3,13 +3,16 @@
   "version": "3.0.0-alpha.319",
   "description": "AWS adapters for Reventless",
   "license": "Apache-2.0",
+  "bin": {
+    "provision-identity": "./run-provision-identity.mjs"
+  },
   "scripts": {
     "build": "rescript build",
     "start": "rescript watch",
     "clean": "rescript clean",
     "rebuild": "pnpm run clean && pnpm run build",
     "deploy": "./scripts/deploy.sh",
-    "provision:identity": "node ./scripts/ProvisionIdentity.res.mjs",
+    "provision:identity": "node ./run-provision-identity.mjs",
     "test": "NODE_OPTIONS='--experimental-vm-modules' npx jest",
     "coverage": "nyc report --temp-directory=coverage --reporter=text-lcov | coveralls",
     "dev": "jest --watchAll",

@@ -299,16 +299,6 @@ Currently consumed by:
 
 Any future deploy-time helper reading via `Util_LocalConfig.get("…")` automatically participates in the same precedence ladder.
 
-:::caution `cognitoUserPoolId` is the deprecated spelling
-`identityProviderId` was `cognitoUserPoolId` (`REVENTLESS_COGNITO_USER_POOL_ID`).
-The old key is still read at every level of the ladder and logs a warning.
-
-Do not drop it until the new one is confirmed in place everywhere, because **an
-unset provider id is not an error — it is auto mode, and auto mode creates a new
-user pool.** A caller left on the old spelling after it stops being read deploys
-green, mints a fresh pool, and orphans every existing account.
-:::
-
 #### Bringing your own identity provider
 
 Setting `identityProviderId` means the pool is yours, not the framework's — and
@@ -323,13 +313,28 @@ The store's name is **derived, not configured** —
 `ReventlessActiveRoleStore-<identityProviderId>` — so every stack on the provider
 resolves the same table and no two can disagree. Provision both with:
 
+Run it from your `platform-aws` package — anywhere that depends on
+`@reventlessdev/reventless-aws` — where it is on the path as `provision-identity`:
+
 ```bash
+cd platform-aws
+
 # create a pool and its store
-pnpm --filter @reventlessdev/reventless-aws run provision:identity -- --name MyIdentity
+pnpm exec provision-identity --name MyIdentity
 
 # or add the store to a pool you already have
-pnpm --filter @reventlessdev/reventless-aws run provision:identity -- --provider-id eu-west-1_AbCdEfGhI
+pnpm exec provision-identity --provider-id eu-west-1_AbCdEfGhI
 ```
+
+:::caution Without `--provider-id`, an unmatched `--name` **creates** a pool
+The default name is `ReventlessIdentity`. If no pool carries the name it is
+given, the script makes one — so pointing it at an existing pool means naming
+that pool exactly, or passing its id. Two pools named the same is refused rather
+than guessed at.
+
+A pool created this way is owned by no stack: `pulumi destroy` will not remove it,
+which is the point of bringing your own, and also means a stray one lingers.
+:::
 
 Re-running is safe — existing resources are adopted, never recreated. The script
 deliberately does **not** attach the trigger; the deploy does that, and refuses if
@@ -434,7 +439,6 @@ jobs:
       PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 ```
 
 The reusable workflow handles change detection, environment selection, deployment ordering, and secret resolution automatically.
@@ -721,14 +725,39 @@ This creates one stack with all resources. To migrate to per-plugin deployment, 
 
 Go to your GitHub repo Settings, then Secrets and variables, then Actions, then Repository secrets:
 
-| Name | Value | Purpose |
-|---|---|---|
-| `PULUMI_ACCESS_TOKEN` | Your Pulumi access token | Authenticates Pulumi CLI (default for all stacks) |
-| `AWS_ACCESS_KEY_ID` | IAM access key | AWS authentication for resource creation |
-| `AWS_SECRET_ACCESS_KEY` | IAM secret key | AWS authentication for resource creation |
-| `NPM_TOKEN` | GitHub Package Registry token | Install `@reventlessdev/*` packages |
+| Name | Value | Purpose | Required |
+|---|---|---|---|
+| `PULUMI_ACCESS_TOKEN` | Your Pulumi access token | Authenticates Pulumi CLI (default for all stacks) | yes |
+| `AWS_ACCESS_KEY_ID` | IAM access key | AWS authentication for resource creation | yes |
+| `AWS_SECRET_ACCESS_KEY` | IAM secret key | AWS authentication for resource creation | yes |
+| `IDENTITY_PROVIDER_ID` | An existing user pool id, e.g. `eu-west-1_AbCdEfGhI` | Deploy against an identity provider you own instead of provisioning one | no — see below |
 
 These are the defaults used by the platform and all plugins unless overridden.
+
+**No npm token is needed.** `@reventlessdev/*` are public on npmjs, so every
+install is anonymous. Publishing is the only thing that authenticates, and that
+belongs to the release workflow rather than to a deploy.
+
+#### `IDENTITY_PROVIDER_ID` is configuration, not a credential
+
+It is carried as a secret only because that is how a value reaches a workflow —
+a user pool id authenticates nobody. The same id is exported as a stack output
+and written into the host shell's public `config.json`, so treating it as
+sensitive would be theatre. It is listed here because this is where someone sets
+up a deployment, not because it needs protecting.
+
+:::danger An unset or misspelled `IDENTITY_PROVIDER_ID` does not fail the deploy
+It means **auto mode**, and auto mode **creates a new user pool**. The deploy goes
+green, mints a fresh pool, and every account in the pool you meant to use is
+orphaned — with nothing in the log to say so.
+
+So: set it, or deliberately leave it unset. There is no in-between state that
+does what you meant.
+:::
+
+**Bringing your own provider also means bringing its active-role store.** See
+[Bringing your own identity provider](#bringing-your-own-identity-provider)
+above: a stack given this id looks up both and fails if either is missing.
 
 ### Per-plugin secret overrides (optional)
 
@@ -746,6 +775,7 @@ The same mechanism works for the platform stack via the `deploy-platform` enviro
 
 | What | Where | Why |
 |---|---|---|
+| Identity provider id | GitHub secret **or** `Pulumi.<env>.yaml` | Not a credential — a secret only because CI has no other injection point. Committed is fine if the pool is not itself sensitive |
 | AWS region, memory, capacity | `Pulumi.<env>.yaml` (committed) | Non-secret, per-environment |
 | Platform stack reference | `Pulumi.<env>.yaml` (committed) | Points to correct env's platform |
 | Feature flags | `Pulumi.<env>.yaml` (committed) | Per-environment behavior |

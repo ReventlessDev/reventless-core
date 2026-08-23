@@ -216,7 +216,13 @@ Requirements:
 - **it does not attach a trigger.** The pool's trigger slot is the deploy's business, and
   a script that filled it would be the hand-run `UpdateUserPool` this whole area refuses;
 - it prints what to do next rather than assuming, since the pool it made is deliberately
-  not owned by any stack.
+  not owned by any stack;
+- **it is a `bin`, not a repo script.** An operator with an app does not have this
+  monorepo, so `pnpm --filter <framework package> run …` names nothing they can reach.
+  `provision-identity` is on the path of any package depending on `reventless-aws` —
+  their `platform-aws` — which is also where their AWS credentials and region already
+  point. The launcher exports `main` rather than running on import, matching
+  `emit-capabilities`, so the script's own logic stays testable.
 
 ### 6. Documentation
 
@@ -410,7 +416,7 @@ role switching broke for everyone at once.
 | 2. Rename, derivation, both looked up | `Platform_Stack.res`, `Auth_ActiveRoleStore{,_Schema}.res`, `rescript/pulumi-aws` `DynamoDb.Table.Get` |
 | 3. Refuse a takeover | `Auth_ActiveRolePoolAttachment.res` (`classifySlot` / `refusalFor` / `attachedTriggerArn`, destroy guard) |
 | 4. Per-platform active role | `Auth_ActiveRoleStore_Schema.res` (the pair key), `Auth_ActiveRoleStore{,_Ops}.res`, `Auth_ActiveRoleTrigger_Ops.res` |
-| 5. Operator script | `reventless/aws/scripts/ProvisionIdentity.res`, `pnpm run provision:identity` |
+| 5. Operator script | `reventless/aws/scripts/ProvisionIdentity.res`, reached as the `provision-identity` **bin** (`run-provision-identity.mjs`) so an app's `platform-aws` runs `pnpm exec provision-identity`; 12 tests |
 | 6. Docs | deployment guide (+ BYO section), identity page, deploy tutorial, custom-domain, ui-fragments |
 | Workflows | all three core deploy workflows pass both secret spellings |
 | Tests | 98 across four suites (was 65) |
@@ -436,4 +442,5 @@ the CLI can import it without dragging a deploy-time dependency into a runtime g
 - **The old config key is still read.** Removing it is a separate act, after the new
   secret is confirmed everywhere. See Risk.
 - **The estate on the shared pool needs its store created** before it deploys against
-  this, with `provision:identity --provider-id`. Its two existing tables are superseded.
+  this, with `pnpm exec provision-identity --provider-id`. Its two existing tables are
+  superseded.

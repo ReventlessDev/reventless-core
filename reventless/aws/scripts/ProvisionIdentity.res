@@ -17,9 +17,12 @@ than from constants here. A second copy of either would be one edit away from
 creating a table the deploy does not look for — which surfaces as "table not
 found" long after whoever ran this has moved on.
 
+Reached as the `provision-identity` bin, from any package depending on
+`@reventlessdev/reventless-aws` — an app's `platform-aws`, typically:
+
 ```
-pnpm --filter @reventlessdev/reventless-aws run provision:identity -- --name MyIdentity
-pnpm --filter @reventlessdev/reventless-aws run provision:identity -- --provider-id eu-west-1_AbCdEfGhI
+pnpm exec provision-identity --name MyIdentity
+pnpm exec provision-identity --provider-id eu-west-1_AbCdEfGhI
 ```
 
 Re-running is safe: existing resources are adopted and reported, never recreated.
@@ -181,20 +184,11 @@ let keySchema: array<DynamoDb.DynamoDb.DescribeTableCommand.keySchemaElement> = 
 ]
 
 /** The SDK's shape mapped onto the plain pairs [Schema.keySchemaRefusal] compares.
-  The refusal itself lives with the schema it is about, where a test can reach it
-  without importing this file — importing this file runs it. */
+  The refusal itself lives with the schema it is about, since the schema is what
+  it is a statement about — and it is shared with the deploy, which never sees
+  this file. */
 let asPairs = (elements: array<DynamoDb.DynamoDb.DescribeTableCommand.keySchemaElement>) =>
   elements->Array.map(k => (k.attributeName, k.keyType))
-
-let isTableMissing = (exn: exn): bool =>
-  switch exn->JsExn.fromException {
-  | Some(jsErr) =>
-    switch JsExn.message(jsErr) {
-    | Some(msg) => msg->String.includes("ResourceNotFoundException")
-    | None => false
-    }
-  | None => false
-  }
 
 let describeTable = async (~tableName: string): option<
   DynamoDb.DynamoDb.DescribeTableCommand.tableDescription,
@@ -205,7 +199,7 @@ let describeTable = async (~tableName: string): option<
     })->DynamoDb.DynamoDb.DescribeTableCommand.send
     out.table
   } catch {
-  | exn if isTableMissing(exn) => None
+  | exn if Util_AwsError.isNotFound(exn) => None
   }
 
 let provisionStore = async (~tableName: string): result<unit, string> =>
@@ -284,12 +278,26 @@ let run = async (): result<unit, string> =>
     }
   }
 
+/**
+🚨 **Catches thrown exceptions, not only `Error` results.**
+
+Without this an SDK failure escapes an async function nothing awaits, and Node
+reports `UnhandledPromiseRejection ... "#<Object>"` — which names neither the call
+that failed nor why. Every AWS call in this script can throw, so the top level has
+to turn any of them into something an operator can read.
+*/
 let main = async () =>
   switch await run() {
   | Ok() => ()
   | Error(message) =>
     Console.error(`provision-identity: ${message}`)
     NodeProcess.exit(1)
+  | exception exn =>
+    Console.error(`provision-identity: ${Util_AwsError.describe(exn)}`)
+    NodeProcess.exit(1)
   }
 
-let _ = main()
+// 🚨 **No top-level call.** `../run-provision-identity.mjs` invokes [main]; this
+// module only defines it. A module that ran itself on import could not be
+// imported by a test — which is exactly how a guard that could never match
+// shipped in this file once already.

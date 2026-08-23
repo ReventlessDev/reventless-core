@@ -130,7 +130,7 @@ Passing no role (or `null`) clears the choice and widens back to full membership
 
 The stored choice belongs to the **identity provider**, not to the platform that wrote it. That follows from where the narrowing happens: a provider has one token-minting point, and driving it from per-deployment state means two deployments contending for it — with the loser writing a preference nothing ever reads.
 
-On AWS that store is a DynamoDB table. When the framework creates the user pool it creates the table too. When you bring your own pool, the table is yours as well, named `ReventlessActiveRoleStore-<identityProviderId>` and provisioned alongside the pool — see [Bringing your own identity provider](../../docs-infrastructure/deployment-guide.md).
+On AWS that store is a DynamoDB table. When the framework creates the user pool it creates the table too. When you bring your own pool, the table is yours as well, named `ReventlessActiveRoleStore-<identityProviderId>` and provisioned alongside the pool — see [Bringing your own identity provider](/infrastructure/deployment-guide#bringing-your-own-identity-provider).
 
 **Each platform on a shared provider keeps its own active role.** Rows are keyed by the caller's subject *and* the application they signed in to, so acting as `Fulfilment` in one platform leaves your session in another exactly as you left it. Without that, one identity across several platforms would mean one role across all of them — defensible, but it would leave a platform showing nothing whenever the chosen role has no surfaces there.
 

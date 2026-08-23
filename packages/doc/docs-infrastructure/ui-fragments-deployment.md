@@ -156,10 +156,8 @@ The first block of keys is always present. The events keys appear only when the 
 
 `apiEndpoint` and `platformApiEndpoint` are written separately so the host shell can target the platform admin schema independently of plugin-domain queries; in unified-API mode (the default — `Config.splitApi=false`) both keys resolve to the same URL and the SPA treats them interchangeably. The identity keys come from `Platform_Stack.resolveCognitoUserPool` (auto-provisioned or BYO via `REVENTLESS_IDENTITY_PROVIDER_ID` env var / `Pulumi.local.yaml` / `Pulumi.<stack>.yaml`).
 
-:::note The identity keys are written twice, on purpose
-`identityProviderId` / `identityProviderClientId` are the names these are becoming — the concept is not AWS-specific. `cognitoUserPoolId` / `cognitoClientId` are what every shipped shell reads today, and both pairs carry identical values.
-
-A shell reads this file at runtime and CloudFront serves the previous bundle until it is invalidated, so switching the keys in one deploy would leave a window where the served bundle and the served config disagree — and the client id is read into an optional, so a bundle that cannot find its key does not fail loudly, it simply stops being able to log anyone in. Writing both removes that window. Read the new names; the `cognito` pair goes in a later release.
+:::note Read `identityProviderId` / `identityProviderClientId`
+The `cognitoUserPoolId` / `cognitoClientId` pair is also emitted, carrying identical values, and is transitional.
 
 `authMode: "cognito"` is **not** renamed: it is a value naming which provider authenticates the deployment, and that stays true.
 :::

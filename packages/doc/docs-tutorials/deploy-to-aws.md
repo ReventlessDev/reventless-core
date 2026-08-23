@@ -97,12 +97,12 @@ Bringing your own pool also means bringing its **active-role store** — the tab
 the pool's token trigger reads. Provision both at once, before the first deploy:
 
 ```bash
-pnpm --filter @reventlessdev/reventless-aws run provision:identity -- \
-  --provider-id eu-west-1_AbCdEfGhI
+cd platform-aws
+pnpm exec provision-identity --provider-id eu-west-1_AbCdEfGhI
 ```
 
 A stack pointed at a pool whose store is missing fails the deploy. See
-[Bringing your own identity provider](../docs-infrastructure/deployment-guide.md)
+[Bringing your own identity provider](/infrastructure/deployment-guide#bringing-your-own-identity-provider)
 for why the store belongs to the pool rather than to the stack.
 
 ## Step 3 — Check the host-shell version pin
