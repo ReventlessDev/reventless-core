@@ -790,7 +790,7 @@ type state = {
 
 Two consequences worth knowing:
 
-- **A GSI indexes only rows carrying its key attributes**, so rows written before the annotation are invisible to the scoped read until they are rewritten. Rebuild the projection when adding `@owner` to a view that already holds data.
+- **Creating the index is slow, once.** DynamoDB builds a GSI on the control plane and the deploy blocks until it is `ACTIVE` — on the order of ten minutes, largely independent of table size. It happens on the deploy that first adds `@owner` to a view and not again. Existing rows need no rebuild: `UpdateTable` populates the new index from the rows that already carry its key attributes, which for this index is every row the view has (`id` is the table's key, and the owner field is the one you just annotated — if the projection already wrote it).
 - **Check the owner field's cardinality.** The index is well distributed when owners are users. It is a hot partition when one "owner" is a tenant holding most of the estate.
 
 The index carries no query field of its own — a `<view>By<OwnerField>` door any caller could name is not the read it serves — and it is skipped when the field already carries an `@index`, since the author's index is then the one the read targets. A view small enough to accept the scan declines it with `@owner({index: false})`, which is also the only case the "keys no index" deploy-time warning still fires for.

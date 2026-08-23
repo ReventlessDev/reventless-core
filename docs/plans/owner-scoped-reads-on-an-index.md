@@ -8,13 +8,14 @@ costs. Step 3 (retirement into the same key) waits on Step 2 being verified
 against a deployed stack, as it says; Step 5 is deferred by design; the
 retirement half of Step 4 goes with Step 3.
 
-**Before the next deploy of a stack holding data:** Steps 1 and 2 landed in one
-change, and a GSI indexes only rows carrying its key attributes — so a scoped
-caller reads the index and an un-backfilled row is *absent*, not slow. On alpha
-the standing convention covers it: wipe and replay the projections of every view
-declaring `@owner` (`online-shop-hybrid`'s `Orders` is the only one today).
-Anywhere with real data, split the two steps across releases with a touch-pass
-between, per **Backfill and migration** below.<br/>
+**Verified on alpha 2026-08-23**, deploy `4b643e1f1`: the `_owner` GSI is
+`ACTIVE` on `Orders-10f6a39` with the `ALL` projection; all 151 pre-existing rows
+answer through it (DynamoDB backfilled them on index creation — **no reseed
+needed**, and the *Backfill and migration* section below is corrected
+accordingly); the deployed resolver carries the Query branch, the cursor path
+tag and the sort skip; and no `@owner … keys no index` warning appears in the
+deploy log. Cost: one 522s `UpdateTable`, one-time. Still unverified end-to-end
+through an authenticated GraphQL call — Acceptance 1, 2 and 4.<br/>
 **Relates to:**
 - [done/aws-scan-connection-cursor-roundtrip.md](done/aws-scan-connection-cursor-roundtrip.md)
   — the window, and the `{t, n}` cursor this plan must keep compatible.
@@ -268,15 +269,41 @@ adding a third cursor shape safe later.
 
 ## Backfill and migration
 
-A GSI indexes only rows carrying both key attributes, so **existing rows are
-invisible to the derived index until they are rewritten.** This is the whole
-correctness risk in the plan: after Step 2 a scoped caller reads the index, and
-an un-backfilled row is not "slow", it is *absent*.
+**Corrected 2026-08-23, against the alpha deploy.** This section originally said
+existing rows were invisible to the derived index "until they are rewritten", and
+required Steps 1 and 2 to ship in separate releases with a touch-pass between.
+That is **wrong for this index** and right only for Step 3's. Both halves matter,
+so both are stated:
 
-- On alpha, the standing convention applies — wipe and replay the projection.
-- Anywhere with real data, a touch-pass over the table is required **before** the
-  resolver branch is deployed. Deploy Step 1 (provisioning), backfill, *then*
-  Step 2 (routing). They must not ship in one release.
+**Steps 1–2 need no backfill.** `UpdateTable` adding a GSI makes DynamoDB
+populate it from the existing items that carry its key attributes — the copy is
+part of the index reaching `ACTIVE`, not something the projection has to
+re-drive. Both of this index's keys pre-exist on every row: the `@owner` field,
+because the view already declared it, and `id`, because it is the table's own
+partition key. Measured on `Orders-10f6a39` (151 rows, 23 owners): the index came
+back `ACTIVE` with `Backfilling` absent, and a `Query` on it returned every row
+the table scan did, with the full `ALL` projection. The two steps therefore ship
+together safely, which is what this repo did.
+
+**Step 3 does need one.** Its composite sort key `<liveFlag>#<sortField>#<id>` is
+a *synthetic attribute written at projection time* by
+`injectCompositeIndexAttrs`. No existing row carries it, so no existing row
+enters that index at creation, and there is nothing for DynamoDB to copy. That is
+the case the original wording describes: an un-backfilled row is not slow, it is
+*absent*. Replay the projection (or touch-pass the table) **before** the read
+that depends on the new key goes live — and note Step 3 also *replaces* the
+index, so it pays the creation latency below a second time.
+
+The general rule the two cases share: **a derived index needs a backfill exactly
+when it keys on an attribute the projection did not already write.**
+
+- **Creating the index is slow, and it is a one-time cost.** Measured: `~
+  aws:dynamodb:Table Orders updated (522s) [diff: +globalSecondaryIndexes
+  ~attributes]` — 8m42s on a 151-row table, taking the ordering plugin's deploy
+  from 186s to 759s. It is control-plane latency, not row volume; Pulumi's
+  `aws:dynamodb:Table` blocks until the index is `ACTIVE`. Subsequent deploys see
+  no diff on the table. Budget it once per table that newly gains the index —
+  concurrent across *different* tables, so N tables cost roughly one wait, not N.
 - Adding a GSI is an in-place `UpdateTable`, not a table replacement, so it does
   not collide with
   [Backlog/dynamodb-key-schema-migration.md](Backlog/dynamodb-key-schema-migration.md).
