@@ -10,6 +10,17 @@ Fix 4 (index promotion) is tracked separately in
 [../Backlog/aws-fulllist-ordered-index-promotion.md](../Backlog/aws-fulllist-ordered-index-promotion.md).
 A downstream consumer's interim `first: 1000` stopgap can now be dropped.
 
+**Superseded in part (2026-08-23).** Fix 3 made an empty filtered page *resumable*;
+it did not stop one being served. `Limit` counts rows examined, so an owner-scoped
+view spread one matching row over three pages, two of them blank under a live Next
+button. The resolver now reads a **window** wider than the page whenever a filter is
+pushed down (1000 rows, or `first` when larger), sorts and trims it, and cursors
+carry `{t, n}` — the window's opening token plus the row's position among its
+matches — instead of `{token, index}`. Old cursors still decode. `orderBy` is now
+per-window rather than per-page; Fix 4's durable form is unaffected. Fix 2's refusal
+of `last`/`before` stands: AutoUI's Prev now walks the cursors it already visited
+rather than asking the server to read backwards.
+
 **Relates to:**
 - [relay-server-compliance.md](relay-server-compliance.md) — introduced
   the Relay connection shape and **specified the intended cursor** at line 198:

@@ -30,19 +30,11 @@ export function response(ctx) {
 let importUtil = `import { util } from '@aws-appsync/utils';`
 
 /**
-The caller-is-exempt test, emitted into a resolver's response.
-
-Mirrors `Reventless.OwnerScope.resolve` — the same branch order for the same
-reason the list predicate gives: an IAM-signed service caller has no `sub`
-because it is inside the trust boundary, not because it is anonymous, so the
-provider question is answered before the identity one.
-
-In the RESPONSE rather than the request, because a `GetItem` has no
-FilterExpression to carry a predicate: the row is fetched by key and the
-decision is made on what came back. A `Query` could filter server-side, and
-deliberately does not — a single-row read that filtered in one place and
-guarded in another would have two implementations of one rule, and the cheaper
-one is the one nobody would remember to change.
+The caller-is-exempt test, emitted into a resolver's response. Mirrors
+`Reventless.OwnerScope.resolve`, branch order included — an IAM-signed caller has
+no `sub` because it is inside the trust boundary, not because it is anonymous.
+In the response because `GetItem` has no FilterExpression; `Query` follows it so
+one rule keeps one implementation.
 */
 let ownerGuardPreamble = (~ownerField: string, ~elevatedGroups: array<string>) => {
   let elevatedLiteral = elevatedGroups->Array.map(g => `'${g}'`)->Array.join(", ")
@@ -56,12 +48,9 @@ let ownerGuardPreamble = (~ownerField: string, ~elevatedGroups: array<string>) =
 }
 
 /**
-The exemption test on its own, for a door that narrows retirement but has no
-`@owner` field to have declared it already.
-
-Identical to the three lines `ownerGuardPreamble` opens with, and emitted only
-when that preamble is absent — two `const _exempt` in one function body is a
-syntax error, and two *different* definitions of exempt would be worse than one.
+The exemption test alone, for a door that narrows retirement but declares no
+`@owner`. Emitted only when `ownerGuardPreamble` is absent — two `const _exempt`
+in one body is a syntax error, and two different ones would be worse.
 */
 let exemptPreamble = (~elevatedGroups: array<string>) => {
   let elevatedLiteral = elevatedGroups->Array.map(g => `'${g}'`)->Array.join(", ")
@@ -75,22 +64,14 @@ let exemptPreamble = (~elevatedGroups: array<string>) => {
 
 /**
 A by-key read's retirement guard: `_live(row)`, true when the caller may see it.
+The post-read half of what `listAllItemsConnection` pushes into a
+FilterExpression — `GetItem` has none to push into.
 
-The post-read half of the predicate `listAllItemsConnection` pushes into a
-FilterExpression. `GetItem` and `BatchGetItem` have no filter to push into — the
-row is fetched by key — so the decision is made on what came back, which is where
-the owner guard beside it already makes its own.
+`row[field] == null` keeps a row written before the annotation existed. Exemption
+alone withholds a retired row until `includeRetired` is passed, so an operator's
+ordinary read is as narrow as anyone's.
 
-`row[field] == null` keeps a row written before the annotation existed, matching
-the `attribute_not_exists` half of the list's clause and every other adapter's
-reading of an absent value.
-
-Asking is required, not merely permitted: `_exempt` alone leaves a retired row
-withheld until `includeRetired` is passed, so an operator's ordinary read is as
-narrow as anyone's. An archive that is always underfoot is not an archive.
-
-`~ownerScoped` says whether an `ownerGuardPreamble` has already been emitted into
-the same body; when it has, this reuses its `_exempt` instead of redeclaring one.
+`~ownerScoped` says an `ownerGuardPreamble` already declared `_exempt` here.
 */
 let retiredGuardPreamble = (
   ~retiredField: option<string>,
@@ -116,23 +97,15 @@ let retiredGuardPreamble = (
   }
 
 /**
-The `@owner` predicate for an index door, as a FilterExpression clause.
+The `@owner` predicate for an index door, as a FilterExpression clause. Same rule
+and branch order as `listAllItemsConnection`'s, and pushed into the read for the
+same reason.
 
-Same rule and same branch order as `listAllItemsConnection`'s own owner clause —
-provider before identity, because an IAM-signed service caller has no `sub` for a
-reason that has nothing to do with being anonymous — and pushed into the read for
-the same reason: an index door takes a `limit`, and a page cut before the
-predicate would come back short with nothing said about why.
-
-**Not applied to a group-restricted index.** Where `indexConfig.authorization` is
-set, the door already runs `authorizeIndexedAccess`: the caller must be in the
-named group AND be the holder the auth table records for that index value. Those
-rows are, by construction, other people's — an order assigned to a fulfilment
-operator is owned by the customer who placed it — so ANDing `@owner` on top would
-return nothing and revoke exactly the access the auth table was written to grant.
-An explicit per-index rule is the deployment's answer for that door; this is the
-default for doors that have none. `QueryDbResolvers_AppSync` decides which is
-which and passes `ownerField` only for the latter.
+**Not applied to a group-restricted index.** There `authorizeIndexedAccess`
+already gates the caller, and the rows are by construction other people's — an
+order assigned to a fulfilment operator is owned by the customer who placed it —
+so ANDing `@owner` on top would revoke exactly what the auth table granted.
+`QueryDbResolvers_AppSync` passes `ownerField` only for doors with no such rule.
 */
 let ownerFilterClause = (~ownerField: option<string>, ~elevatedGroups: array<string>) =>
   switch ownerField {
@@ -158,16 +131,12 @@ let ownerFilterClause = (~ownerField: option<string>, ~elevatedGroups: array<str
 
 /**
 The same retirement predicate as `retiredGuardPreamble`, for a door that reads
-with `Query` and therefore has a FilterExpression to put it in.
+with `Query` and so has a FilterExpression to put it in. Pushed into the read
+rather than applied after it, or the page comes back short with nothing said
+about why.
 
-Pushed into the read rather than applied to what came back, on
-`listAllItemsConnection`'s reasoning: an index door takes a `limit`, and
-narrowing after the read would hand back a page of fewer rows than the caller
-asked for while reporting nothing about why.
-
-Emits JS that appends to the `expression` / `names` / `values` the index
-templates already build, so it composes with a caller's own filter arguments
-instead of replacing them.
+Appends to the `expression` / `names` / `values` the index templates already
+build, so it composes with a caller's own filter arguments.
 */
 let retiredFilterClause = (
   ~retiredField: option<string>,
@@ -207,13 +176,9 @@ ${assignments}
 /**
 A by-key read's response, refusing a row the caller does not own.
 
-**Null, not an error** — which is the opposite of what a first reading suggests,
-since "you may not read this" and "there is nothing here" are different answers
-and only one of them is true. Two things settle it. The in-process platform
-already answers `null` here, and a rule enforced differently per transport is
-the failure mode owner scoping exists to avoid. And an error would confirm the
-row exists to a caller who may not read it, which is a worse leak than the
-ambiguity it removes.
+**Null, not an error.** The in-process platform answers `null` here, and a rule
+enforced differently per transport is what owner scoping exists to avoid. An
+error would also confirm the row exists to a caller who may not read it.
 */
 let ownerScopedResultResponse = (
   ~ownerField: option<string>,
@@ -303,12 +268,9 @@ ${resultResponseCode}
 /** Pipeline function (NONE datasource): decodes global ID and stashes typeName + localId.
 
     Written without a `try`: APPSYNC_JS rejects try statements outright
-    (`@aws-appsync/no-try`), so a guarded version of this cannot be deployed at
-    all. Nothing is lost by dropping it — `util.base64Decode` does not throw on
-    malformed input, it returns the bytes it made of it, so the catch could never
-    run. An id that decodes to no `type:localId` pair therefore fails the one way
-    that is left: both halves stash as null, which is also what the guarded
-    version reported for a decode it could not parse. */
+    (`@aws-appsync/no-try`), and nothing is lost — `util.base64Decode` returns
+    bytes rather than throwing on malformed input, so an unparseable id stashes
+    both halves as null, which is what a guarded version reported anyway. */
 let nodeDecodeGlobalId =
   `${importUtil}
 export function request(ctx) {
@@ -585,61 +547,96 @@ export function request(ctx) {
 ${resultResponseCode}
 `->Pulumi.Input.make
 
+// ---------------------------------------------------------------------------
+// Paging a filtered read
+// ---------------------------------------------------------------------------
+
 /**
-The by-index door's response.
+Rows a read may EXAMINE per page.
 
-Cursors are the DynamoDB continuation token carrying the row's position in the
-page, exactly as `listAllItemsConnection` builds them — the two doors page over
-the same kind of result, so they page the same way. The boundary cursor covers
-the case that door documents: a filtered page can come back empty while a token
-is still set, and a client has to be able to resume past it.
+`Limit` applies before the FilterExpression, so reading `first` rows and returning
+the survivors serves short — usually empty — pages under a selective filter. With
+no loops in APPSYNC_JS the door reads wider instead and addresses the surplus by
+position. 1 MB caps a page anyway, hence 1000; `filtered` is the JS expression
+saying whether a filter was pushed down.
+*/
+let pageWindowBudget = (~filtered: string) =>
+  `(${filtered} ? (_first > 1000 ? _first : 1000) : _first + _from)`
 
-This replaces returning `ctx.result` raw. The field has always been declared as
-returning a `Connection!`, and handing back DynamoDB's `{items, nextToken}`
-satisfied no part of that contract.
+/**
+Decodes `after` into the window it names (`t`, the token opening it) and the row's
+index among that window's matches (`n`). Pre-window cursors carried
+`{token, index}` naming the window that follows — position -1 of it.
+*/
+let cursorDecode = (~args: string) => `
+  let _window = null;
+  let _from = 0;
+  if (${args}.after != null && ${args}.after !== '') {
+    const _c = JSON.parse(util.base64Decode(${args}.after));
+    _window = (_c.t !== undefined ? _c.t : _c.token) ?? null;
+    _from = _c.n !== undefined ? _c.n + 1 : 0;
+  }`
+
+/**
+Cuts the requested page out of the returned window. Expects `items` (sorted, if the
+door sorts) plus `_window` / `_from` from `cursorDecode`.
+*/
+let connectionPageResponse = `
+  const _first = ctx.args.first ?? 50;
+  const _rest = items.slice(_from);
+  const _page = _rest.slice(0, _first);
+  const _more = _rest.length > _first;
+  const _next = ctx.result?.nextToken ?? null;
+  const _lastIndex = _page.length - 1;
+  // A row's cursor names its own position. The last row of a page that closes its
+  // window is the exception — no position follows it there, so it names the next
+  // window, or resuming from it answers blank.
+  const edges = _page.map((item, i) => ({
+    node: item,
+    cursor: util.base64Encode(JSON.stringify(
+      (!_more && _next && i === _lastIndex) ? { t: _next, n: -1 } : { t: _window, n: _from + i }
+    )),
+  }));
+  // A window the filter emptied leaves no row to cut a cursor from; the token is
+  // the window's, so a client can step past it rather than restart.
+  const _boundary = _next ? util.base64Encode(JSON.stringify({ t: _next, n: -1 })) : null;
+  return {
+    edges,
+    pageInfo: {
+      hasNextPage: _more || !!_next,
+      hasPreviousPage: !!ctx.args.after,
+      startCursor: edges.length > 0 ? edges[0].cursor : _boundary,
+      endCursor: edges.length > 0 ? edges[edges.length - 1].cursor : _boundary,
+    },
+  };`
+
+/**
+The by-index door's response. Pages out of a read window exactly as
+`listAllItemsConnection` does, and satisfies the `Connection!` the field has always
+declared — returning `ctx.result` raw did not.
 */
 let indexConnectionResponseCode = `
 export function response(ctx) {
   if (ctx.error) util.error(ctx.error.message, ctx.error.type);
-  const items = ctx.result?.items ?? [];
-  const next = ctx.result?.nextToken ?? null;
-  const edges = items.map((item, i) => ({
-    node: item,
-    cursor: util.base64Encode(JSON.stringify({ token: next, index: i })),
-  }));
-  const boundary = next ? util.base64Encode(JSON.stringify({ token: next, index: -1 })) : null;
-  return {
-    edges,
-    pageInfo: {
-      hasNextPage: !!next,
-      hasPreviousPage: !!ctx.args.after,
-      startCursor: edges.length > 0 ? edges[0].cursor : boundary,
-      endCursor: edges.length > 0 ? edges[edges.length - 1].cursor : boundary,
-    },
-  };
+  const items = ctx.result?.items ?? [];${cursorDecode(~args="ctx.args")}${connectionPageResponse}
 }`
 
 /** Refuses backward paging, for the reason `listAllItemsConnection` gives: the
 cursor is DynamoDB's own continuation token, which only walks forward, so
-`last`/`before` cannot be honoured and handing back the forward page would answer
-a different question without saying so.
-
-The arguments stay declared — one that came and went with the index's shape would
-make every client feature-detect — and the local backend refuses them with the
-same message, so the door reads the same either side of a deploy. */
+`last`/`before` cannot be honoured, and handing back the forward page would answer
+a different question without saying so. The arguments stay declared — one that
+came and went with the index's shape would make every client feature-detect — and
+the local backend refuses them with the same message. */
 let indexBackwardPagingGuard = `
   if (args.before != null || args.last != null) {
     util.error('Backward pagination (last/before) is not supported on by-index connections; use first/after.', 'UnsupportedPagination');
   }`
 
-/** Decodes the Relay `after` cursor back to the DynamoDB continuation token the
-response side encoded. Mirrors `listAllItemsConnection`'s request half. */
-let indexCursorPreamble = `
-  let after = null;
-  if (args.after != null && args.after !== '') {
-    const parsed = JSON.parse(util.base64Decode(args.after));
-    after = parsed.token ?? null;
-  }`
+/** Decodes the Relay `after` cursor back to the read window the response side
+encoded, and sizes the window this read may examine. Mirrors
+`listAllItemsConnection`'s request half. */
+let indexCursorPreamble = `${cursorDecode(~args="args")}
+  const _first = args.first ?? 50;`
 
 // The arguments the by-index door declares, none of which is a column to match
 // on. `includeRetired` is a request to lift a restriction and the rest are
@@ -693,8 +690,8 @@ ${ownerFilterClause(~ownerField, ~elevatedGroups)}${retiredFilterClause(~retired
     operation: 'Query',
     query,
     index: '${index}',
-    limit: (args.first ?? 50),
-    nextToken: after,
+    limit: ${pageWindowBudget(~filtered="expression")},
+    nextToken: _window,
     scanIndexForward: (args.forward ?? true)
   };
   if (expression) {
@@ -756,8 +753,8 @@ ${ownerFilterClause(~ownerField, ~elevatedGroups)}${retiredFilterClause(~retired
     operation: 'Query',
     query,
     index: '${index}',
-    limit: (args.first ?? 50),
-    nextToken: after,
+    limit: ${pageWindowBudget(~filtered="expression")},
+    nextToken: _window,
     scanIndexForward: (args.forward ?? true)
   };
   if (expression) {
@@ -789,48 +786,29 @@ ${resultResponseCode}
 // ---------------------------------------------------------------------------
 
 /**
- * Scan with optional `filter` arg: `{search?, searchPrefix?, ids?, <field>Eq?, <field>From?, <field>To?}`
- * and optional `orderBy: {field, direction}`.
- *
- * `search`       → `contains(labelField, :v)` — case-sensitive on DynamoDB. Callers that
- *                  need case-insensitive matching should project a lowercased label column
- *                  (future Phase 6.1 / external full-text search).
- * `searchPrefix` → `begins_with(labelField, :v)` — case-sensitive. Scan-only here;
- *                  Phase 6 `@searchable` provisions a GSI to promote this to a query.
- * `ids`          → FilterExpression `#id IN (:id0, :id1, …)`. Simple scan-based
- *                  path; BatchGetItem optimisation is deferred (open question 1).
- * `<field>Eq`    → FilterExpression `#<field> = :<field>Eq`, one per `~filterFields` entry.
- * `<field>From`  → FilterExpression `#<field> >= :<field>From`, one per `~rangeFields` entry.
- * `<field>To`    → FilterExpression `#<field> <= :<field>To`, one per `~rangeFields` entry.
- * `orderBy`      → JS-runtime sort over the returned page when `orderBy.field` is in
- *                  `~sortFields`. **Per-page only**, not global — DynamoDB Scan returns
- *                  items in indeterminate order and `ScanIndexForward` does not apply
- *                  to Scan. Index-routed Query (v1.5) lifts this caveat for indexed
- *                  sort fields; `@scanSort` on a non-indexed field is per-page even then.
- *
- * Empty-string and null filter values are treated as "no filter" — consistent with the
- * in-memory adapter so clients don't need to conditionally omit keys.
- */
+Scan behind `filter: {search?, searchPrefix?, ids?, <field>Eq?, <field>From?,
+<field>To?}` and `orderBy: {field, direction}`. `search` / `searchPrefix` become
+`contains` / `begins_with` on `labelField` (case-sensitive — a case-insensitive
+match wants a lowercased projected column); `ids` becomes `#id IN (…)`; the
+per-field forms become `=` / `>=` / `<=`.
+
+`orderBy` sorts in the JS runtime over the read window, not globally: Scan returns
+items in indeterminate order and `ScanIndexForward` is Query-only. Empty and null
+filter values mean "no filter", as they do in-memory.
+*/
 let listAllItemsConnection = (
   ~labelField: string,
   ~filterFields: array<string>=[],
   ~rangeFields: array<string>=[],
   ~sortFields: array<string>=[],
-  // When set, emit an always-on `attribute_exists(#<attr>)` FilterExpression clause
-  // (ANDed with any client filters) so rows lacking that attribute never enter the
-  // Connection. Used for read models whose physical DynamoDB table co-hosts internal
-  // bookkeeping rows written outside the projection (e.g. the Plugins admin RM, whose
-  // table also holds `deploy-schema:*` / `plugin-info:*` rows with no `name`). Those
-  // rows would otherwise resolve `name`/`status`/`version` to null and violate the
-  // non-null GraphQL connection schema, nulling the whole connection.
+  // An always-on `attribute_exists(#<attr>)` clause, for a read model whose table
+  // co-hosts bookkeeping rows written outside the projection (the Plugins admin RM's
+  // `deploy-schema:*` / `plugin-info:*` rows carry no `name`). Those rows resolve
+  // non-null fields to null and take the whole Connection with them.
   ~requireAttribute: option<string>=?,
-  // The state's `@owner` field, when it declares one, plus the groups exempt from
-  // scoping. Baked into the generated source because this resolver runs inside
-  // AppSync with no Lambda in the path — there is nothing here that could read a
-  // configuration value at request time, so the deploy is the only chance to
-  // state it. Changing the elevated-group list therefore requires a redeploy,
-  // which is worth knowing and is why it is a deployment-level setting rather
-  // than a per-request one.
+  // The state's `@owner` field and the groups exempt from scoping. Baked in
+  // because no Lambda sits in this path to read a value at request time, so the
+  // elevated-group list changes only on redeploy.
   ~ownerField: option<string>=?,
   ~elevatedGroups: array<string>=[],
   // The state's `@retired` field, when it declares one. Baked in for the same
@@ -874,25 +852,15 @@ let listAllItemsConnection = (
   }`
   }
   // ── retirement narrowing (generated) ──
-  // Reuses `_exempt` when the owner clause already computed it, and computes its
-  // own when it did not — the two clauses are independently optional and either
-  // may be the only one present.
+  // Reuses `_exempt` when the owner clause computed it; either clause may be the
+  // only one present. `includeRetired` IS read from ctx.args, unlike the owner
+  // predicate — it asks to lift a restriction rather than naming rows, and is
+  // honoured only inside `_exempt`.
   //
-  // `includeRetired` IS read from ctx.args, unlike the owner predicate, and the
-  // difference is deliberate: this argument does not say which rows the caller
-  // wants, it asks to lift a restriction, and it is honoured only inside the
-  // `_exempt` branch. A non-exempt caller passing it changes nothing.
-  //
-  // `attribute_not_exists OR = false` rather than `<> true`: a row written before
-  // the annotation existed carries no such attribute, and DynamoDB's `<>` does
-  // not match a missing one — the whole view would come back empty on the day
-  // the annotation lands.
-  //
-  // The state form compares `<>` against the retiring state instead, under the
-  // same `attribute_not_exists` guard and for the same reason. An equality
-  // predicate over an enum-valued attribute indexes exactly as a boolean one
-  // does, so the warning about an unindexed retirement field carries over
-  // unchanged.
+  // `attribute_not_exists OR = false` rather than `<> true`, because `<>` does not
+  // match a missing attribute and the view would empty out the day the annotation
+  // lands. The state form compares `<>` against the retiring state under the same
+  // guard.
   let retiredClause = switch retiredField {
   | None => ""
   | Some(field) =>
@@ -965,15 +933,11 @@ ${switch retiredValues {
   let sortBlock = if sortFields->Array.length == 0 {
     ""
   } else {
-    // APPSYNC_JS 1.0.0 forbids: Array.prototype.sort(comparator), arrow/function
-    // expressions passed to sort, for/while loops, recursion, and ++/--. So we
-    // can't run a comparator-driven sort and we can't write our own loop. Use a
-    // schwartzian transform: encode each item as `<sortKey>\x01<json>`, run the
-    // no-comparator default sort (lexicographic), reverse for DESC, and decode.
-    // Numeric fields get zero-padded so lex order matches numeric order for
-    // non-negative values (typical for IDs, counts, timestamps). Negatives sort
-    // lexicographically — acceptable since DynamoDB sort keys are rarely signed
-    // numbers. Nulls split out and append to the end regardless of direction.
+    // APPSYNC_JS 1.0.0 forbids comparator sorts, loops, recursion and ++/--, so
+    // this is a schwartzian transform: encode each item as `<sortKey>\x01<json>`,
+    // default-sort lexicographically, reverse for DESC, decode. Numbers are
+    // zero-padded so lex order matches numeric order for non-negative values;
+    // nulls split out and append to the end either way.
     `
   // Per-page sort (Scan returns items in indeterminate order; ScanIndexForward
   // does not apply to Scan). Global ordering across pages requires v1.5 index
@@ -1027,17 +991,12 @@ export function request(ctx) {
     });
     parts.push('#id IN (' + placeholders.join(', ') + ')');
   }${filterClauses}${rangeClauses}${requireAttributeClause}${ownerClause}${retiredClause}
-  // The cursor is base64(JSON({ token, index })); decode the after arg back to the raw
-  // DynamoDB continuation token the response side emitted (Fix 1 round-trip).
-  let after = null;
-  if (ctx.args.after != null && ctx.args.after !== '') {
-    const parsed = JSON.parse(util.base64Decode(ctx.args.after));
-    after = parsed.token ?? null;
-  }
+${cursorDecode(~args="ctx.args")}
+  const _first = ctx.args.first ?? 50;
   const req = {
     operation: 'Scan',
-    limit: (ctx.args.first ?? 50),
-    nextToken: after,
+    limit: ${pageWindowBudget(~filtered="parts.length > 0")},
+    nextToken: _window,
   };
   if (parts.length > 0) {
     req.filter = {
@@ -1050,30 +1009,9 @@ export function request(ctx) {
 }
 export function response(ctx) {
   if (ctx.error) util.error(ctx.error.message, ctx.error.type);
-  let items = ctx.result?.items ?? [];${sortBlock}
-  // One Scan continuation token per page; encode it (with the item's page index for a
-  // unique, opaque Relay cursor). The request side decodes .token back to the raw
-  // DynamoDB nextToken (Fix 1).
-  const next = ctx.result?.nextToken ?? null;
-  const edges = items.map((item, i) => ({
-    node: item,
-    cursor: util.base64Encode(JSON.stringify({ token: next, index: i })),
-  }));
-  // A filtered/1MB-capped page can be empty or short while next is still set (limit
-  // caps rows scanned, not returned). The token is page-level, so synthesise a
-  // boundary cursor from it alone so a client can resume past a fully-filtered-out
-  // page instead of restarting from page 1 (Fix 3). The request only reads .token,
-  // so index -1 is inert on resume.
-  const boundary = next ? util.base64Encode(JSON.stringify({ token: next, index: -1 })) : null;
-  return {
-    edges,
-    pageInfo: {
-      hasNextPage: !!next,
-      hasPreviousPage: !!ctx.args.after,
-      startCursor: edges.length > 0 ? edges[0].cursor : boundary,
-      endCursor: edges.length > 0 ? edges[edges.length - 1].cursor : boundary,
-    },
-  };
+  let items = ctx.result?.items ?? [];${sortBlock}${cursorDecode(
+      ~args="ctx.args",
+    )}${connectionPageResponse}
 }
 `->Pulumi.Input.make
 }
@@ -1085,14 +1023,10 @@ export function response(ctx) {
 /**
 The response of a cross-table field (`@resolves`) over a Query-shaped read.
 
-The narrowing is the TARGET's, not the declaring view's: the row comes out of the
-target's table, so whether this caller may see it is the target's question — asked
-here with the same `_owns` / `_live` guards every by-key door on that table asks.
-
-A nested field takes no `includeRetired` argument, so `_wantsRetired` is never
-true and a retired row never travels through one. A reference that must keep
-reading as a name after the archive took it is what `{list}Refs` + `@namedWhenRetired`
-answers.
+The narrowing is the TARGET's, not the declaring view's — the row is the target's,
+so it answers with the same `_owns` / `_live` guards its by-key doors use. A
+nested field takes no `includeRetired`, so a retired row never travels through
+one; `{list}Refs` + `@namedWhenRetired` is that door.
 */
 let resolvedFieldResponse = (
   ~multi: bool,
@@ -1303,14 +1237,10 @@ ${response}
 
 /** `@resolvesMany` — the parent's id array batch-read from the target's table.
 
-    Returns a plain string: the table name is interpolated by the adapter via
-    `Pulumi.Output.apply`, because BatchGetItem's `tables` map keys on the literal
-    name.
-
-    Same shape as `batchGetItemsByIds`, and narrowed by the same guards — the
-    target's, since the rows are the target's. Missing ids come back as nulls in
-    the result array (BatchGetItem preserves index correspondence) and are
-    dropped, so the field is shorter rather than null-holed. */
+    A plain string, because BatchGetItem's `tables` map keys on the literal name,
+    which the adapter interpolates via `Pulumi.Output.apply`. Same shape and
+    guards as `batchGetItemsByIds`; missing ids come back null and are dropped, so
+    the field is shorter rather than null-holed. */
 let resolveIds = (
   ~idsField: string,
   ~sortField: option<string>,
@@ -1357,13 +1287,10 @@ export function response(ctx) {
 `
 }
 
-/** Batched-by-ids — top-level Query resolver reading `ctx.args.ids: [String!]!`
-    and returning the matching items via a single BatchGetItem. Missing ids drop
-    out (BatchGetItem does not preserve cardinality); empty input short-circuits
-    to an empty result without hitting DDB. Table name is interpolated at deploy
-    time, since BatchGetItem's `tables` map keys on the literal table name.
-    Single-key tables only — composite-key BatchGetItem needs both pk + sk per
-    key entry, which this template doesn't construct. */
+/** Batched-by-ids — reads `ctx.args.ids: [String!]!` through one BatchGetItem.
+    Missing ids drop out; empty input short-circuits without hitting DDB. The
+    table name is interpolated at deploy time, since BatchGetItem's `tables` map
+    keys on the literal. Single-key tables only. */
 let batchGetItemsByIds = (
   ~ownerField: option<string>=?,
   ~retiredField: option<string>=?,
@@ -1387,12 +1314,9 @@ export function request(ctx) {
 }
 export function response(ctx) {
   if (ctx.error) util.error(ctx.error.message, ctx.error.type);
-  // BatchGetItem returns null in the result array for keys that don't exist
-  // in the table, preserving index correspondence with the input. The SDL
-  // returns this field as \`[T!]!\` (non-null element list), so any single
-  // missing id makes the entire field fail with "Cannot return null for
-  // non-nullable type" and the caller sees data=null. Filter the nulls so
-  // the field returns just the items that were found.
+  // BatchGetItem returns null for keys that don't exist, preserving index
+  // correspondence. The SDL declares \`[T!]!\`, so one missing id would null the
+  // whole field — drop them and return what was found.
   // The owner and retirement guards the list pushes into a FilterExpression,
   // applied after the read because BatchGetItem has none to push into. A row the
   // caller does not own is dropped rather than refused, for the reason the
@@ -1416,14 +1340,11 @@ export function response(ctx) {
 /** The reference door — `{list}Refs(ids)`: what a caller holding a pointer to a
     row may learn about it, and nothing else.
 
-    The same BatchGetItem as `batchGetItemsByIds`, projected in the response to
-    `{id, label, retired, retiredState}`. The projection is the type's — a caller
-    cannot ask for a price here because the SDL type has none — so the response
-    only has to *build* the three fields, never decide which to withhold.
-
-    `namedWhenRetired` is what a retired row turns on: false drops it, exactly as
-    every other door does; true lets it through with the state that withdrew it.
-    The owner rule is applied either way and is not what the annotation lifts. */
+    The same BatchGetItem as `batchGetItemsByIds`, projected to
+    `{id, label, retired, retiredState}` by the SDL type, so the response builds
+    three fields rather than deciding what to withhold. `namedWhenRetired` decides
+    a retired row: false drops it, true names it. The owner rule applies either
+    way — that is not what the annotation lifts. */
 let refsByIds = (
   ~labelField: string,
   ~retiredField: option<string>,

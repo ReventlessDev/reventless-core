@@ -1,11 +1,7 @@
-// The DynamoDB backend narrows retirement on every door the rule names, not
-// only on the list.
-//
-// These assert the *generated resolver source*, which is the only artifact that
-// exists before a deploy: the predicate runs inside AppSync's JS runtime, so a
-// unit test cannot execute it against a table, and what can be checked here is
-// that each door carries the guard, in the half of the template its operation
-// allows, and that a view declaring no retirement is untouched.
+// The DynamoDB backend narrows retirement on every door the rule names, not only
+// on the list. These assert the generated resolver source — the only artifact
+// that exists before a deploy — for the guard, the half of the template its
+// operation allows, and a view declaring no retirement staying untouched.
 
 open JestGlobals
 
@@ -210,18 +206,20 @@ describe("the by-index door answers the field it is attached to", () => {
   testSync("returns a Relay connection, not the raw DynamoDB result", () =>
     expect((
       code->String.includes("edges,"),
-      code->String.includes("hasNextPage: !!next"),
+      code->String.includes("hasNextPage: _more || !!_next"),
       code->String.includes("return ctx.result;"),
     ))->Expect.toEqual((true, true, false))
   )
 
   // `first`/`after` are what the field declares; `limit`/`nextToken` were what
-  // the template read, and nothing translated between the two.
+  // the template read, and nothing translated between the two. `limit` counts
+  // rows examined, so a filtered read looks wider than the page it serves.
   testSync("pages on the Relay arguments the field declares", () =>
     expect((
-      code->String.includes("limit: (args.first ?? 50)"),
+      code->String.includes("const _first = args.first ?? 50;"),
+      code->String.includes("expression ? (_first > 1000 ? _first : 1000)"),
       code->String.includes("util.base64Decode(args.after)"),
-    ))->Expect.toEqual((true, true))
+    ))->Expect.toEqual((true, true, true))
   )
 
   // Every declared argument has a job other than matching a column, so each one

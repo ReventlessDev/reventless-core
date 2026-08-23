@@ -129,11 +129,11 @@ There is no per-request override that says "I want this client-side even though 
 
 ### Cursor stability across the two backends
 
-Both adapters use keyset cursors. In-memory cursors encode the value of `orderBy.field` (or `id` when no `orderBy`), with an id tiebreak so duplicate sort values don't collide. AWS encodes DynamoDB's `LastEvaluatedKey`. The fact that the in-memory default-order is *id ascending* (not "insertion order" or "natural") is precisely so the cursor decode stays deterministic when no `orderBy` is supplied. Don't change that fallback casually — the resolver tests assert it.
+Both adapters use keyset cursors. In-memory cursors encode the value of `orderBy.field` (or `id` when no `orderBy`), with an id tiebreak so duplicate sort values don't collide. AWS encodes `{t, n}` — the DynamoDB continuation token that opens the *read window* the row sits in, plus its position among that window's matches. A window is wider than a page whenever a filter is pushed down, because DynamoDB's `Limit` counts rows examined rather than rows returned; the resolver serves `first` matches out of it and addresses the rest by position. The fact that the in-memory default-order is *id ascending* (not "insertion order" or "natural") is precisely so the cursor decode stays deterministic when no `orderBy` is supplied. Don't change that fallback casually — the resolver tests assert it.
 
-### Caveat: AWS per-page sort
+### Caveat: AWS per-window sort
 
-`orderBy` on AWS sorts within the returned page only, because DynamoDB Scan returns indeterminate order and `ScanIndexForward` is Query-only. Paging through multiple pages with `@scanSort` reveals an inconsistent global order. The deploy-time warning surfaces this; the v1.5 index-promotion phase (out of scope here) is what eliminates it for fields that *are* a sort key of some index.
+`orderBy` on AWS sorts within the read window only, because DynamoDB Scan returns indeterminate order and `ScanIndexForward` is Query-only. Paging past a window with `@scanSort` reveals an inconsistent global order. The deploy-time warning surfaces this; the v1.5 index-promotion phase (out of scope here) is what eliminates it for fields that *are* a sort key of some index.
 
 ### How often does this actually bite? (prevalence + priority)
 

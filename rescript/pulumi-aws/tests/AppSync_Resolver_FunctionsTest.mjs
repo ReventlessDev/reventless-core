@@ -148,7 +148,7 @@ describe('listAllItems', () => {
 })
 
 // ---------------------------------------------------------------------------
-// listAllItemsConnection — Phase 3 server-side filter/sort
+// listAllItemsConnection — server-side filter/sort
 // ---------------------------------------------------------------------------
 describe('listAllItemsConnection', () => {
   describe('default (no capability args)', () => {
@@ -193,13 +193,13 @@ describe('listAllItemsConnection', () => {
       expect(r.edges[0].node).toEqual({ id: 'a' })
       expect(r.pageInfo.hasNextPage).toBe(true)
       expect(r.pageInfo.hasPreviousPage).toBe(false)
-      // Fix 1: the cursor encodes the real nextToken, not a positional index.
-      expect(JSON.parse(util.base64Decode(r.pageInfo.endCursor)).token).toBe('next')
+      // The cursor encodes a real read window, not a positional index. The last row
+      // closed this one, so it names the window that follows.
+      expect(JSON.parse(util.base64Decode(r.pageInfo.endCursor)).t).toBe('next')
     })
 
-    // Fix 1 (docs/plans/done/aws-scan-connection-cursor-roundtrip.md): the cursor the
-    // response emits must decode back to the exact DynamoDB nextToken the request feeds
-    // to the next Scan. This is the round-trip that failed before the fix.
+    // The cursor the response emits must decode back to the DynamoDB nextToken the
+    // request feeds to the next Scan.
     test('endCursor round-trips: response endCursor → request nextToken', () => {
       const page1 = response(makeCtx({
         args: {},
@@ -210,16 +210,17 @@ describe('listAllItemsConnection', () => {
     })
 
     test('final page (nextToken null) closes the connection', () => {
+      const after = util.base64Encode(JSON.stringify({ t: 'TOK1', n: -1 }))
       const r = response(makeCtx({
-        args: { after: 'x' },
+        args: { after },
         result: { items: [{ id: 'z' }], nextToken: null },
       }))
       expect(r.pageInfo.hasNextPage).toBe(false)
       expect(r.pageInfo.hasPreviousPage).toBe(true)
     })
 
-    // Fix 3: a filtered Scan can return an empty page while nextToken is still set.
-    // The boundary cursor must let the client resume instead of restarting page 1.
+    // A filtered Scan can return an empty page while nextToken is still set. The
+    // boundary cursor must let the client resume instead of restarting page 1.
     test('empty-but-continuable page yields a resumable boundary cursor', () => {
       const empty = response(makeCtx({
         args: {},
@@ -238,7 +239,7 @@ describe('listAllItemsConnection', () => {
       expect(r.pageInfo.hasNextPage).toBe(false)
     })
 
-    // Fix 2: Scan cannot page backward; last/before must error, not mislead.
+    // Scan cannot page backward; last/before must error, not mislead.
     test('request rejects backward pagination (before)', () => {
       expect(() => request(makeCtx({ args: { before: 'x' } }))).toThrow(
         'Backward pagination',
@@ -247,6 +248,95 @@ describe('listAllItemsConnection', () => {
 
     test('request rejects backward pagination (last)', () => {
       expect(() => request(makeCtx({ args: { last: 5 } }))).toThrow('Backward pagination')
+    })
+
+    // Cursors minted before the read window existed named the following window.
+    test('a pre-window { token, index } cursor still resumes', () => {
+      const legacy = util.base64Encode(JSON.stringify({ token: 'TOK9', index: 3 }))
+      const req = request(makeCtx({ args: { after: legacy } }))
+      expect(req.nextToken).toBe('TOK9')
+      const r = response(makeCtx({
+        args: { after: legacy },
+        result: { items: [{ id: 'a' }], nextToken: null },
+      }))
+      expect(r.edges).toHaveLength(1)
+    })
+  })
+
+  // The defect a selective filter turns into a visibly broken list: DynamoDB
+  // applies Limit before the FilterExpression, so reading `first` rows and
+  // returning the survivors spreads one matching row over several pages, most of
+  // them blank under a live Next button.
+  describe('reads a window, serves a page', () => {
+    const { request, response } = evalResolver(
+      F.listAllItemsConnection('name', [], [], [], undefined, 'customerId', ['Admin']),
+    )
+
+    test('an unfiltered read examines exactly the page it serves', () => {
+      const req = request(makeCtx({ args: { first: 25 }, identity: null }))
+      expect(req.filter).toBeUndefined()
+      expect(req.limit).toBe(25)
+    })
+
+    test('a filtered read examines a wider window than the page', () => {
+      const req = request(makeCtx({ args: { first: 25 } }))
+      expect(req.filter.expression).toBe('#owner = :owner')
+      expect(req.limit).toBe(1000)
+    })
+
+    test('a caller asking for more than the window gets what it asked for', () => {
+      expect(request(makeCtx({ args: { first: 5000 } })).limit).toBe(5000)
+    })
+
+    // The user-visible bug: one matching row must be one page, not three.
+    test('the matches of an exhausted window are a single closed page', () => {
+      const r = response(makeCtx({
+        args: { first: 50 },
+        result: { items: [{ id: 'mine' }], nextToken: null },
+      }))
+      expect(r.edges).toHaveLength(1)
+      expect(r.pageInfo.hasNextPage).toBe(false)
+    })
+
+    test('a window holding more matches than the page pages within itself', () => {
+      const items = [{ id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }, { id: 'e' }]
+      const page1 = response(makeCtx({
+        args: { first: 2 },
+        result: { items, nextToken: 'W2' },
+      }))
+      expect(page1.edges.map(e => e.node.id)).toEqual(['a', 'b'])
+      expect(page1.pageInfo.hasNextPage).toBe(true)
+
+      // Same window, resumed past the rows already served — not the next window.
+      const req2 = request(makeCtx({ args: { first: 2, after: page1.pageInfo.endCursor } }))
+      expect(req2.nextToken).toBeNull()
+      const page2 = response(makeCtx({
+        args: { first: 2, after: page1.pageInfo.endCursor },
+        result: { items, nextToken: 'W2' },
+      }))
+      expect(page2.edges.map(e => e.node.id)).toEqual(['c', 'd'])
+
+      // The row that closes the window hands the next request the window after it.
+      const page3 = response(makeCtx({
+        args: { first: 2, after: page2.pageInfo.endCursor },
+        result: { items, nextToken: 'W2' },
+      }))
+      expect(page3.edges.map(e => e.node.id)).toEqual(['e'])
+      expect(page3.pageInfo.hasNextPage).toBe(true)
+      expect(
+        request(makeCtx({ args: { first: 2, after: page3.pageInfo.endCursor } })).nextToken,
+      ).toBe('W2')
+    })
+
+    // Without this the final row of a window resumes into a window with nothing
+    // left in it, which is the blank page again one step later.
+    test('the last row of a page that closes its window names the next window', () => {
+      const r = response(makeCtx({
+        args: { first: 2 },
+        result: { items: [{ id: 'a' }, { id: 'b' }], nextToken: 'W2' },
+      }))
+      expect(JSON.parse(util.base64Decode(r.edges[1].cursor))).toEqual({ t: 'W2', n: -1 })
+      expect(JSON.parse(util.base64Decode(r.edges[0].cursor))).toEqual({ t: null, n: 0 })
     })
   })
 
@@ -669,11 +759,9 @@ describe('authorizeIndexedAccess', () => {
 // ---------------------------------------------------------------------------
 // listAllItemsConnection — @owner scoping
 // ---------------------------------------------------------------------------
-// This is the one read path with no Lambda in it: the predicate lives in
-// generated JS that AppSync runs directly, so it shares no code with the three
-// paths the ReScript suites cover. Evaluating the emitted source here is the
-// strongest check available short of a deployed stack, and the only one that
-// can catch an APPSYNC_JS-hostile construct or a mis-ordered branch.
+// The one read path with no Lambda in it — the predicate is generated JS that
+// AppSync runs directly, sharing no code with the paths the ReScript suites
+// cover. Evaluating the emitted source is the strongest check short of a deploy.
 describe('listAllItemsConnection — owner scoping', () => {
   // (labelField, filterFields, rangeFields, sortFields, requireAttribute,
   //  ownerField, elevatedGroups)
@@ -762,11 +850,9 @@ describe('listAllItemsConnection — owner scoping', () => {
 // ---------------------------------------------------------------------------
 // By-key reads — owner scoping
 // ---------------------------------------------------------------------------
-// The list resolver above carried the predicate while these did not, so a caller
-// narrowed to their own rows could still read any row they could name. These
-// cases pin the guard in the place it has to live: the response, since a GetItem
-// has no FilterExpression, and null rather than an error, which is what the
-// in-process platform answers and what does not confirm the row exists.
+// The list resolver carried the predicate while these did not, so a caller
+// narrowed to their own rows could still read any row they could name. The guard
+// belongs in the response — GetItem has no FilterExpression — and answers null.
 describe('getItemById / queryByIdSort — owner scoping', () => {
   const asUser = (sub, groups = []) => ({
     username: sub,

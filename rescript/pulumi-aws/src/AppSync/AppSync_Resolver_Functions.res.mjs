@@ -388,25 +388,54 @@ export function request(ctx) {
 `;
 }
 
-let indexConnectionResponseCode = `
-export function response(ctx) {
-  if (ctx.error) util.error(ctx.error.message, ctx.error.type);
-  const items = ctx.result?.items ?? [];
-  const next = ctx.result?.nextToken ?? null;
-  const edges = items.map((item, i) => ({
+function pageWindowBudget(filtered) {
+  return `(` + filtered + ` ? (_first > 1000 ? _first : 1000) : _first + _from)`;
+}
+
+function cursorDecode(args) {
+  return `
+  let _window = null;
+  let _from = 0;
+  if (` + args + `.after != null && ` + args + `.after !== '') {
+    const _c = JSON.parse(util.base64Decode(` + args + `.after));
+    _window = (_c.t !== undefined ? _c.t : _c.token) ?? null;
+    _from = _c.n !== undefined ? _c.n + 1 : 0;
+  }`;
+}
+
+let connectionPageResponse = `
+  const _first = ctx.args.first ?? 50;
+  const _rest = items.slice(_from);
+  const _page = _rest.slice(0, _first);
+  const _more = _rest.length > _first;
+  const _next = ctx.result?.nextToken ?? null;
+  const _lastIndex = _page.length - 1;
+  // A row's cursor names its own position. The last row of a page that closes its
+  // window is the exception — no position follows it there, so it names the next
+  // window, or resuming from it answers blank.
+  const edges = _page.map((item, i) => ({
     node: item,
-    cursor: util.base64Encode(JSON.stringify({ token: next, index: i })),
+    cursor: util.base64Encode(JSON.stringify(
+      (!_more && _next && i === _lastIndex) ? { t: _next, n: -1 } : { t: _window, n: _from + i }
+    )),
   }));
-  const boundary = next ? util.base64Encode(JSON.stringify({ token: next, index: -1 })) : null;
+  // A window the filter emptied leaves no row to cut a cursor from; the token is
+  // the window's, so a client can step past it rather than restart.
+  const _boundary = _next ? util.base64Encode(JSON.stringify({ t: _next, n: -1 })) : null;
   return {
     edges,
     pageInfo: {
-      hasNextPage: !!next,
+      hasNextPage: _more || !!_next,
       hasPreviousPage: !!ctx.args.after,
-      startCursor: edges.length > 0 ? edges[0].cursor : boundary,
-      endCursor: edges.length > 0 ? edges[edges.length - 1].cursor : boundary,
+      startCursor: edges.length > 0 ? edges[0].cursor : _boundary,
+      endCursor: edges.length > 0 ? edges[edges.length - 1].cursor : _boundary,
     },
-  };
+  };`;
+
+let indexConnectionResponseCode = `
+export function response(ctx) {
+  if (ctx.error) util.error(ctx.error.message, ctx.error.type);
+  const items = ctx.result?.items ?? [];` + cursorDecode("ctx.args") + connectionPageResponse + `
 }`;
 
 let indexBackwardPagingGuard = `
@@ -414,12 +443,8 @@ let indexBackwardPagingGuard = `
     util.error('Backward pagination (last/before) is not supported on by-index connections; use first/after.', 'UnsupportedPagination');
   }`;
 
-let indexCursorPreamble = `
-  let after = null;
-  if (args.after != null && args.after !== '') {
-    const parsed = JSON.parse(util.base64Decode(args.after));
-    after = parsed.token ?? null;
-  }`;
+let indexCursorPreamble = cursorDecode("args") + `
+  const _first = args.first ?? 50;`;
 
 let indexReservedArgs = `key === 'first' || key === 'after' || key === 'last' || key === 'before' || key === 'includeRetired' || key === 'limit' || key === 'nextToken' || key === 'forward'`;
 
@@ -458,8 +483,8 @@ export function request(ctx) {
     operation: 'Query',
     query,
     index: '` + index + `',
-    limit: (args.first ?? 50),
-    nextToken: after,
+    limit: ` + (`(` + "expression" + ` ? (_first > 1000 ? _first : 1000) : _first + _from)`) + `,
+    nextToken: _window,
     scanIndexForward: (args.forward ?? true)
   };
   if (expression) {
@@ -515,8 +540,8 @@ export function request(ctx) {
     operation: 'Query',
     query,
     index: '` + index + `',
-    limit: (args.first ?? 50),
-    nextToken: after,
+    limit: ` + (`(` + "expression" + ` ? (_first > 1000 ? _first : 1000) : _first + _from)`) + `,
+    nextToken: _window,
     scanIndexForward: (args.forward ?? true)
   };
   if (expression) {
@@ -673,17 +698,12 @@ export function request(ctx) {
     });
     parts.push('#id IN (' + placeholders.join(', ') + ')');
   }` + filterClauses + rangeClauses + requireAttributeClause + ownerClause + retiredClause + `
-  // The cursor is base64(JSON({ token, index })); decode the after arg back to the raw
-  // DynamoDB continuation token the response side emitted (Fix 1 round-trip).
-  let after = null;
-  if (ctx.args.after != null && ctx.args.after !== '') {
-    const parsed = JSON.parse(util.base64Decode(ctx.args.after));
-    after = parsed.token ?? null;
-  }
+` + cursorDecode("ctx.args") + `
+  const _first = ctx.args.first ?? 50;
   const req = {
     operation: 'Scan',
-    limit: (ctx.args.first ?? 50),
-    nextToken: after,
+    limit: ` + (`(` + "parts.length > 0" + ` ? (_first > 1000 ? _first : 1000) : _first + _from)`) + `,
+    nextToken: _window,
   };
   if (parts.length > 0) {
     req.filter = {
@@ -696,30 +716,7 @@ export function request(ctx) {
 }
 export function response(ctx) {
   if (ctx.error) util.error(ctx.error.message, ctx.error.type);
-  let items = ctx.result?.items ?? [];` + sortBlock + `
-  // One Scan continuation token per page; encode it (with the item's page index for a
-  // unique, opaque Relay cursor). The request side decodes .token back to the raw
-  // DynamoDB nextToken (Fix 1).
-  const next = ctx.result?.nextToken ?? null;
-  const edges = items.map((item, i) => ({
-    node: item,
-    cursor: util.base64Encode(JSON.stringify({ token: next, index: i })),
-  }));
-  // A filtered/1MB-capped page can be empty or short while next is still set (limit
-  // caps rows scanned, not returned). The token is page-level, so synthesise a
-  // boundary cursor from it alone so a client can resume past a fully-filtered-out
-  // page instead of restarting from page 1 (Fix 3). The request only reads .token,
-  // so index -1 is inert on resume.
-  const boundary = next ? util.base64Encode(JSON.stringify({ token: next, index: -1 })) : null;
-  return {
-    edges,
-    pageInfo: {
-      hasNextPage: !!next,
-      hasPreviousPage: !!ctx.args.after,
-      startCursor: edges.length > 0 ? edges[0].cursor : boundary,
-      endCursor: edges.length > 0 ? edges[edges.length - 1].cursor : boundary,
-    },
-  };
+  let items = ctx.result?.items ?? [];` + sortBlock + cursorDecode("ctx.args") + connectionPageResponse + `
 }
 `;
 }
@@ -948,12 +945,9 @@ export function request(ctx) {
 }
 export function response(ctx) {
   if (ctx.error) util.error(ctx.error.message, ctx.error.type);
-  // BatchGetItem returns null in the result array for keys that don't exist
-  // in the table, preserving index correspondence with the input. The SDL
-  // returns this field as \`[T!]!\` (non-null element list), so any single
-  // missing id makes the entire field fail with "Cannot return null for
-  // non-nullable type" and the caller sees data=null. Filter the nulls so
-  // the field returns just the items that were found.
+  // BatchGetItem returns null for keys that don't exist, preserving index
+  // correspondence. The SDL declares \`[T!]!\`, so one missing id would null the
+  // whole field — drop them and return what was found.
   // The owner and retirement guards the list pushes into a FilterExpression,
   // applied after the read because BatchGetItem has none to push into. A row the
   // caller does not own is dropped rather than refused, for the reason the
@@ -1249,6 +1243,9 @@ export {
   queryByIndex,
   queryByIndexDeletable,
   queryByIndexSort,
+  pageWindowBudget,
+  cursorDecode,
+  connectionPageResponse,
   indexConnectionResponseCode,
   indexBackwardPagingGuard,
   indexCursorPreamble,
@@ -1285,4 +1282,4 @@ export {
   resolveIdsResult,
   $$null,
 }
-/* No side effect */
+/* indexConnectionResponseCode Not a pure module */
