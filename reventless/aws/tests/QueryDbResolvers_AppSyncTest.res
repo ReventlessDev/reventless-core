@@ -51,14 +51,30 @@ describe("listAllItemsConnection — paging", () => {
   })
 
   testSync("a filtered read examines more rows than it serves", () => {
-    expect(code->String.includes("parts.length > 0 ? (_first > 1000 ? _first : 1000)"))->toBe(true)
-    expect(code->String.includes("const _page = _rest.slice(0, _first);"))->toBe(true)
+    // The budget reads as deep as the page needs, which for a backward cut is
+    // `_upTo` rather than `_first + _from`.
+    expect(
+      code->String.includes("parts.length > 0 ? ((_backward ? _upTo : _first + _from) > 1000"),
+    )->toBe(true)
+    expect(code->String.includes("const _page = _backward ? _rest : _rest.slice(0, _first);"))
+    ->toBe(true)
     expect(code->String.includes("hasNextPage: _more || !!_next,"))->toBe(true)
   })
 
-  testSync("backward paging (last/before) is rejected, not silently mishandled", () => {
-    expect(code->String.includes("ctx.args.before != null || ctx.args.last != null"))->toBe(true)
+  // `before` is served by re-reading the window the cursor names; only a previous
+  // page lying in an EARLIER window is out of reach, and `last` — which needs the
+  // end of the list — stays refused.
+  testSync("backward paging is served, and its one limit is named", () => {
+    expect(code->String.includes("ctx.args.before != null && ctx.args.before !== ''"))->toBe(true)
+    expect(code->String.includes("_backward && _upTo <= 0 && _window !== null"))->toBe(true)
     expect(code->String.includes("UnsupportedPagination"))->toBe(true)
+  })
+
+  // The door must not advertise a previous page it cannot serve — that is what
+  // put a live Prev button in front of an error.
+  testSync("only a reachable previous page is advertised", () => {
+    expect(code->String.includes("hasPreviousPage: _from > 0,"))->toBe(true)
+    expect(code->String.includes("hasPreviousPage: !!ctx.args.after,"))->toBe(false)
   })
 
   testSync("a window emptied by the filter still yields a resumable boundary cursor", () => {

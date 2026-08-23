@@ -527,7 +527,15 @@ let makeStorage = (
       | Some(f) => jsonText(f)
       | None => idExpr
       }
-      switch argsDict->Dict.get("after")->Option.flatMap(JSON.Decode.string) {
+      // Empty is absent, as it is in the spec: the host shell clears the opposite
+      // cursor by setting it to "" rather than dropping it, and an empty cursor
+      // pushed into SQL bounds the read on a decoded empty string.
+      let afterCursor =
+        argsDict
+        ->Dict.get("after")
+        ->Option.flatMap(JSON.Decode.string)
+        ->Option.flatMap(c => c == "" ? None : Some(c))
+      switch afterCursor {
       | Some(c) =>
         whereParts->Array.push(`${cursorExpr} ${isDesc ? "<" : ">"} ?`)
         params->Array.push(JSON.Encode.string(QueryDbListQuery.decodeCursor(c)))
@@ -557,7 +565,10 @@ let makeStorage = (
         QueryDbListQuery.buildConnection(
           ~pageItems,
           ~hasNextPage=hasMore,
-          ~hasPreviousPage=false,
+          // Same rule the spec uses, because the parity suite compares them: a
+          // forward page reached by a cursor has one behind it. Hardcoding false
+          // made Prev disappear on exactly the pages that have a previous one.
+          ~hasPreviousPage=afterCursor->Option.isSome,
           ~cursorValueOf,
         ),
       )

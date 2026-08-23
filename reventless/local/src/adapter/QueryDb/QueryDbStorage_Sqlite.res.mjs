@@ -396,12 +396,18 @@ function makeStorage(db, bus, name, indexes, subIdField) {
     let orderByField = Stdlib_Option.flatMap(Stdlib_Option.flatMap(orderByDict, ob => ob["field"]), Stdlib_JSON.Decode.string);
     let isDesc = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(orderByDict, ob => ob["direction"]), Stdlib_JSON.Decode.string), "ASC") === "DESC";
     let cursorExpr = orderByField !== undefined ? jsonText(orderByField) : idExpr;
-    let c = Stdlib_Option.flatMap(argsDict["after"], Stdlib_JSON.Decode.string);
-    if (c !== undefined) {
+    let afterCursor = Stdlib_Option.flatMap(Stdlib_Option.flatMap(argsDict["after"], Stdlib_JSON.Decode.string), c => {
+      if (c === "") {
+        return;
+      } else {
+        return c;
+      }
+    });
+    if (afterCursor !== undefined) {
       whereParts.push(cursorExpr + ` ` + (
         isDesc ? "<" : ">"
       ) + ` ?`);
-      params.push(QueryDbListQuery$ReventlessCore.decodeCursor(c));
+      params.push(QueryDbListQuery$ReventlessCore.decodeCursor(afterCursor));
     }
     let orderClause = orderByField !== undefined ? jsonText(orderByField) + ` ` + (
         isDesc ? "DESC" : "ASC"
@@ -413,7 +419,7 @@ function makeStorage(db, bus, name, indexes, subIdField) {
     let pageItems = rows.slice(0, pageSize);
     let cursorField = Stdlib_Option.getOr(orderByField, "id");
     let cursorValueOf = item => Stdlib_Option.getOr(QueryDbListQuery$ReventlessCore.getFieldString(item, cursorField), QueryDbListQuery$ReventlessCore.getId(item));
-    return QueryDbListQuery$ReventlessCore.buildConnection(pageItems, hasMore, false, cursorValueOf);
+    return QueryDbListQuery$ReventlessCore.buildConnection(pageItems, hasMore, Stdlib_Option.isSome(afterCursor), cursorValueOf);
   };
   bus.registerQueryDbListPage(name, listPage);
   return {

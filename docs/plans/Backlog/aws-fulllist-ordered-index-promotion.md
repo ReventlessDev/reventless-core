@@ -18,6 +18,26 @@ correctly across pages — and, as a consequence, page **backward**.
 
 ---
 
+## Backward paging is no longer a reason to pull this
+
+`before` on the full-list connection is **served** as of 2026-08-23: the door
+re-reads the window the cursor names and cuts the page ending at it, which needs
+no ordered key. What this plan still uniquely buys for backward paging is the
+**window boundary** — a previous page beginning in an earlier window, which a
+forward-only continuation token cannot name — and real `last`, which needs the
+end of the list.
+
+That boundary is a scaling limit: every view on alpha fits inside one window
+(largest is 151 rows / 29 KB against a 1 MB page), so it is thousands of rows
+away, and `hasPreviousPage` now reports only what the door can serve rather than
+promising the unreachable page. For an **owned** view the cheap answer is Step 5
+of [../owner-scoped-reads-on-an-index.md](../owner-scoped-reads-on-an-index.md),
+whose index already exists; for an unowned one the cheap answer is a client-side
+cursor trail in the host shell. Both are weighed there. Pull *this* plan for
+ordering, not for Prev.
+
+---
+
 ## When to pull this from Backlog
 
 This is **demand-driven, not speculative** — build it only when a concrete read model

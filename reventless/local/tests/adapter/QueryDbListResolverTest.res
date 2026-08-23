@@ -291,7 +291,10 @@ describe("QueryDb list resolver — keyset pagination", () => {
     expect(edgeNodeField(backEdges->Array.getUnsafe(0), "productId"))->toBe("p-3")
     expect(edgeNodeField(backEdges->Array.getUnsafe(1), "productId"))->toBe("p-4")
     expect(pageInfoBool(backPage, "hasPreviousPage"))->toBe(true)
-    expect(pageInfoBool(backPage, "hasNextPage"))->toBe(false)
+    // A backward page was cut from ahead, so the page it came from is a next
+    // page. Reporting false here is what made Prev a one-way door: step back
+    // once and the connection claimed to have ended.
+    expect(pageInfoBool(backPage, "hasNextPage"))->toBe(true)
 
     // Walk one more step back — should land on p-1, p-2 with hasPreviousPage = false.
     let backStart = pageInfoString(backPage, "startCursor")->Option.getOr("")

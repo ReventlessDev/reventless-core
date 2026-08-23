@@ -392,6 +392,10 @@ function pageWindowBudget(filtered) {
   return `(` + filtered + ` ? (_first > 1000 ? _first : 1000) : _first + _from)`;
 }
 
+let need = "(_backward ? _upTo : _first + _from)";
+
+let listPageWindowBudget = `(parts.length > 0 ? (` + need + ` > 1000 ? ` + need + ` : 1000) : ` + need + `)`;
+
 function cursorDecode(args) {
   return `
   let _window = null;
@@ -410,13 +414,42 @@ let cursorPathGuard = `
     util.error('This cursor belongs to a different read of this list; restart from the first page.', 'CursorPathMismatch');
   }`;
 
-function connectionPageResponse(pathExpr) {
-  let tag = pathExpr !== undefined ? `, p: ` + pathExpr : "";
-  return `
+let listCursorPreamble = `
   const _first = ctx.args.first ?? 50;
+  let _window = null;
+  let _from = 0;
+  let _cursorPath = null;
+  let _backward = false;
+  let _upTo = -1;
+  if (ctx.args.before != null && ctx.args.before !== '') {
+    const _c = JSON.parse(util.base64Decode(ctx.args.before));
+    _window = (_c.t !== undefined ? _c.t : _c.token) ?? null;
+    _cursorPath = _c.p ?? 's';
+    _backward = true;
+    _upTo = _c.n !== undefined ? _c.n : 0;
+    _from = (_upTo - _first) > 0 ? (_upTo - _first) : 0;
+  } else if (ctx.args.after != null && ctx.args.after !== '') {
+    const _c = JSON.parse(util.base64Decode(ctx.args.after));
+    _window = (_c.t !== undefined ? _c.t : _c.token) ?? null;
+    _from = _c.n !== undefined ? _c.n + 1 : 0;
+    _cursorPath = _c.p ?? 's';
+  }`;
+
+function connectionPageResponse(pathExpr, bidirectionalOpt) {
+  let bidirectional = bidirectionalOpt !== undefined ? bidirectionalOpt : false;
+  let tag = pathExpr !== undefined ? `, p: ` + pathExpr : "";
+  let firstDecl = bidirectional ? "" : "\n  const _first = ctx.args.first ?? 50;";
+  let slice = bidirectional ? `
+  const _rest = _backward ? items.slice(_from, _upTo) : items.slice(_from);
+  const _page = _backward ? _rest : _rest.slice(0, _first);
+  // A backward page was cut from ahead, so a next page provably exists — the one
+  // the caller came from — whatever this window's tail looks like.
+  const _more = _backward ? true : _rest.length > _first;` : `
   const _rest = items.slice(_from);
   const _page = _rest.slice(0, _first);
-  const _more = _rest.length > _first;
+  const _more = _rest.length > _first;`;
+  let hasPrevious = bidirectional ? "_from > 0" : "!!ctx.args.after";
+  return firstDecl + slice + `
   const _next = ctx.result?.nextToken ?? null;
   const _lastIndex = _page.length - 1;
   // A row's cursor names its own position. The last row of a page that closes its
@@ -437,7 +470,7 @@ function connectionPageResponse(pathExpr) {
     edges,
     pageInfo: {
       hasNextPage: _more || !!_next,
-      hasPreviousPage: !!ctx.args.after,
+      hasPreviousPage: ` + hasPrevious + `,
       startCursor: edges.length > 0 ? edges[0].cursor : _boundary,
       endCursor: edges.length > 0 ? edges[edges.length - 1].cursor : _boundary,
     },
@@ -447,7 +480,7 @@ function connectionPageResponse(pathExpr) {
 let indexConnectionResponseCode = `
 export function response(ctx) {
   if (ctx.error) util.error(ctx.error.message, ctx.error.type);
-  const items = ctx.result?.items ?? [];` + cursorDecode("ctx.args") + connectionPageResponse(undefined) + `
+  const items = ctx.result?.items ?? [];` + cursorDecode("ctx.args") + connectionPageResponse(undefined, undefined) + `
 }`;
 
 let indexBackwardPagingGuard = `
@@ -686,7 +719,7 @@ function listAllItemsConnection(labelField, filterFieldsOpt, rangeFieldsOpt, sor
   const req = _exempt
     ? {
         operation: 'Scan',
-        limit: ` + (`(` + "parts.length > 0" + ` ? (_first > 1000 ? _first : 1000) : _first + _from)`) + `,
+        limit: ` + listPageWindowBudget + `,
         nextToken: _window,
       }
     : {
@@ -697,33 +730,35 @@ function listAllItemsConnection(labelField, filterFieldsOpt, rangeFieldsOpt, sor
           expressionNames: { '#owner': '` + ownerField + `' },
           expressionValues: { ':owner': util.dynamodb.toDynamoDB(_sub) },
         },
-        limit: ` + (`(` + "parts.length > 0" + ` ? (_first > 1000 ? _first : 1000) : _first + _from)`) + `,
+        limit: ` + listPageWindowBudget + `,
         nextToken: _window,
         scanIndexForward: !(_indexOrdered && ctx.args.orderBy.direction === 'DESC'),
       };` : `
   const req = {
     operation: 'Scan',
-    limit: ` + (`(` + "parts.length > 0" + ` ? (_first > 1000 ? _first : 1000) : _first + _from)`) + `,
+    limit: ` + listPageWindowBudget + `,
     nextToken: _window,
   };`
     ) : `
   const req = {
     operation: 'Scan',
-    limit: ` + (`(` + "parts.length > 0" + ` ? (_first > 1000 ? _first : 1000) : _first + _from)`) + `,
+    limit: ` + listPageWindowBudget + `,
     nextToken: _window,
   };`;
   let requestPathGuard = Stdlib_Option.isSome(ownerIndex$1) ? cursorPathGuard : "";
   let responsePathPreamble = ownerIndex$1 !== undefined ? ownerIdentityPreamble + `
   const _path = _exempt ? 's' : 'q';
   const _indexOrdered = ` + indexOrderedExpr + `;` : "";
-  let pageResponse = ownerIndex$1 !== undefined ? connectionPageResponse("_path") : connectionPageResponse(undefined);
+  let pageResponse = ownerIndex$1 !== undefined ? connectionPageResponse("_path", true) : connectionPageResponse(undefined, true);
   return importUtil + `
 export function request(ctx) {
-  // Scan cannot page backward (ScanIndexForward is Query-only). Fail loud rather than
-  // silently returning the forward page. The ordered {single}Items connection
-  // (queryItemsWithSortConditions) supports last/before — direct backward callers there.
-  if (ctx.args.before != null || ctx.args.last != null) {
-    util.error('Backward pagination (last/before) is not supported on full-list connections; use first/after.', 'UnsupportedPagination');
+  // 'before' IS served — the page is cut backward out of the window the cursor
+  // names. 'last' is not: "the last N rows of the list" needs the end of the
+  // list, which a forward-only Scan cursor cannot reach. The ordered
+  // {single}Items connection (queryItemsWithSortConditions) has a real keyset
+  // cursor and honours both — direct callers who need 'last' there.
+  if (ctx.args.last != null) {
+    util.error('last is not supported on full-list connections; page backward with first and before.', 'UnsupportedPagination');
   }
   const filter = ctx.args.filter ?? {};
   const names = {};
@@ -748,8 +783,14 @@ export function request(ctx) {
     });
     parts.push('#id IN (' + placeholders.join(', ') + ')');
   }` + filterClauses + rangeClauses + requireAttributeClause + ownerClause + retiredClause + `
-` + cursorDecode("ctx.args") + requestPathGuard + `
-  const _first = ctx.args.first ?? 50;` + requestOperation + `
+` + listCursorPreamble + requestPathGuard + `
+  // The one page a cursor cannot reach: it begins in an earlier window, and a
+  // continuation token cannot name the one before it. Refused by itself rather
+  // than folded into the 'last' guard, because the two are different limits and a
+  // caller can act on this one (page forward from the start).
+  if (_backward && _upTo <= 0 && _window !== null) {
+    util.error('The previous page begins in an earlier read window, which this cursor cannot name; page forward from the start.', 'UnsupportedPagination');
+  }` + requestOperation + `
   if (parts.length > 0) {
     req.filter = {
       expression: parts.join(' AND '),
@@ -761,7 +802,7 @@ export function request(ctx) {
 }
 export function response(ctx) {
   if (ctx.error) util.error(ctx.error.message, ctx.error.type);
-  let items = ctx.result?.items ?? [];` + responsePathPreamble + sortBlock + cursorDecode("ctx.args") + pageResponse + `
+  let items = ctx.result?.items ?? [];` + responsePathPreamble + sortBlock + listCursorPreamble + pageResponse + `
 }
 `;
 }
@@ -1289,8 +1330,10 @@ export {
   queryByIndexDeletable,
   queryByIndexSort,
   pageWindowBudget,
+  listPageWindowBudget,
   cursorDecode,
   cursorPathGuard,
+  listCursorPreamble,
   connectionPageResponse,
   indexConnectionResponseCode,
   indexBackwardPagingGuard,

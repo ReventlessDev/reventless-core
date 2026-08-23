@@ -564,6 +564,18 @@ let pageWindowBudget = (~filtered: string) =>
   `(${filtered} ? (_first > 1000 ? _first : 1000) : _first + _from)`
 
 /**
+The same budget for the full-list door, which may also read backward.
+
+A backward page is the slice `[_from, _upTo)` of the window, so the read has to
+reach `_upTo` rows into it — `_first + _from` would stop short and hand back a
+page with its tail missing.
+*/
+let listPageWindowBudget = {
+  let need = "(_backward ? _upTo : _first + _from)"
+  `(parts.length > 0 ? (${need} > 1000 ? ${need} : 1000) : ${need})`
+}
+
+/**
 Decodes `after` into the window it names (`t`, the token opening it) and the row's
 index among that window's matches (`n`). Pre-window cursors carried
 `{token, index}` naming the window that follows — position -1 of it.
@@ -598,20 +610,73 @@ let cursorPathGuard = `
   }`
 
 /**
+The full-list door's cursor decode, which unlike `cursorDecode` may run backward.
+
+A `{t, n}` cursor names a position INSIDE a read window, and a window is re-read
+from its own token — which forward paging already relies on to resume mid-window.
+Backward is the same move in the other direction: re-read the window `before`
+names and cut the page that ends at `n`, `[n - first, n)`. No new cursor shape, no
+index, and no assumption forward paging does not already make.
+
+What it cannot do is cross into an EARLIER window: DynamoDB's continuation chain
+walks one way, so a window cannot name the one before it. `_upTo <= 0` with a
+non-null window is that case, and it is the only one still refused.
+
+Declares `_first` (the response's slicing needs it before `connectionPageResponse`
+would have declared it, so that one omits it here).
+*/
+let listCursorPreamble = `
+  const _first = ctx.args.first ?? 50;
+  let _window = null;
+  let _from = 0;
+  let _cursorPath = null;
+  let _backward = false;
+  let _upTo = -1;
+  if (ctx.args.before != null && ctx.args.before !== '') {
+    const _c = JSON.parse(util.base64Decode(ctx.args.before));
+    _window = (_c.t !== undefined ? _c.t : _c.token) ?? null;
+    _cursorPath = _c.p ?? 's';
+    _backward = true;
+    _upTo = _c.n !== undefined ? _c.n : 0;
+    _from = (_upTo - _first) > 0 ? (_upTo - _first) : 0;
+  } else if (ctx.args.after != null && ctx.args.after !== '') {
+    const _c = JSON.parse(util.base64Decode(ctx.args.after));
+    _window = (_c.t !== undefined ? _c.t : _c.token) ?? null;
+    _from = _c.n !== undefined ? _c.n + 1 : 0;
+    _cursorPath = _c.p ?? 's';
+  }`
+
+/**
 Cuts the requested page out of the returned window. Expects `items` (sorted, if the
 door sorts) plus `_window` / `_from` from `cursorDecode`. `pathExpr` is the JS
 expression naming which read minted these cursors, for a door that has two.
+
+`bidirectional` is the full-list door, whose page may have been cut backward: it
+reads `_backward` / `_upTo` from `listCursorPreamble` and takes `_first` from
+there rather than declaring its own.
 */
-let connectionPageResponse = (~pathExpr: option<string>=?) => {
+let connectionPageResponse = (~pathExpr: option<string>=?, ~bidirectional: bool=false) => {
   let tag = switch pathExpr {
   | None => ""
   | Some(e) => `, p: ${e}`
   }
-  `
-  const _first = ctx.args.first ?? 50;
+  let firstDecl = bidirectional ? "" : "\n  const _first = ctx.args.first ?? 50;"
+  let slice = bidirectional
+    ? `
+  const _rest = _backward ? items.slice(_from, _upTo) : items.slice(_from);
+  const _page = _backward ? _rest : _rest.slice(0, _first);
+  // A backward page was cut from ahead, so a next page provably exists — the one
+  // the caller came from — whatever this window's tail looks like.
+  const _more = _backward ? true : _rest.length > _first;`
+    : `
   const _rest = items.slice(_from);
   const _page = _rest.slice(0, _first);
-  const _more = _rest.length > _first;
+  const _more = _rest.length > _first;`
+  // Only what the door can actually serve. `!!ctx.args.after` said "a page
+  // precedes this one", which is a different claim: at a window boundary one does
+  // and this door cannot reach it, so the client drew a Prev that always errored.
+  let hasPrevious = bidirectional ? "_from > 0" : "!!ctx.args.after"
+  `${firstDecl}${slice}
   const _next = ctx.result?.nextToken ?? null;
   const _lastIndex = _page.length - 1;
   // A row's cursor names its own position. The last row of a page that closes its
@@ -632,7 +697,7 @@ let connectionPageResponse = (~pathExpr: option<string>=?) => {
     edges,
     pageInfo: {
       hasNextPage: _more || !!_next,
-      hasPreviousPage: !!ctx.args.after,
+      hasPreviousPage: ${hasPrevious},
       startCursor: edges.length > 0 ? edges[0].cursor : _boundary,
       endCursor: edges.length > 0 ? edges[edges.length - 1].cursor : _boundary,
     },
@@ -1039,7 +1104,7 @@ ${switch retiredValues {
   const req = _exempt
     ? {
         operation: 'Scan',
-        limit: ${pageWindowBudget(~filtered="parts.length > 0")},
+        limit: ${listPageWindowBudget},
         nextToken: _window,
       }
     : {
@@ -1050,14 +1115,14 @@ ${switch retiredValues {
           expressionNames: { '#owner': '${field}' },
           expressionValues: { ':owner': util.dynamodb.toDynamoDB(_sub) },
         },
-        limit: ${pageWindowBudget(~filtered="parts.length > 0")},
+        limit: ${listPageWindowBudget},
         nextToken: _window,
         scanIndexForward: !(_indexOrdered && ctx.args.orderBy.direction === 'DESC'),
       };`
   | _ => `
   const req = {
     operation: 'Scan',
-    limit: ${pageWindowBudget(~filtered="parts.length > 0")},
+    limit: ${listPageWindowBudget},
     nextToken: _window,
   };`
   }
@@ -1070,16 +1135,18 @@ ${switch retiredValues {
   const _indexOrdered = ${indexOrderedExpr};`
   }
   let pageResponse = switch ownerIndex {
-  | None => connectionPageResponse()
-  | Some(_) => connectionPageResponse(~pathExpr="_path")
+  | None => connectionPageResponse(~bidirectional=true)
+  | Some(_) => connectionPageResponse(~pathExpr="_path", ~bidirectional=true)
   }
   `${importUtil}
 export function request(ctx) {
-  // Scan cannot page backward (ScanIndexForward is Query-only). Fail loud rather than
-  // silently returning the forward page. The ordered {single}Items connection
-  // (queryItemsWithSortConditions) supports last/before — direct backward callers there.
-  if (ctx.args.before != null || ctx.args.last != null) {
-    util.error('Backward pagination (last/before) is not supported on full-list connections; use first/after.', 'UnsupportedPagination');
+  // 'before' IS served — the page is cut backward out of the window the cursor
+  // names. 'last' is not: "the last N rows of the list" needs the end of the
+  // list, which a forward-only Scan cursor cannot reach. The ordered
+  // {single}Items connection (queryItemsWithSortConditions) has a real keyset
+  // cursor and honours both — direct callers who need 'last' there.
+  if (ctx.args.last != null) {
+    util.error('last is not supported on full-list connections; page backward with first and before.', 'UnsupportedPagination');
   }
   const filter = ctx.args.filter ?? {};
   const names = {};
@@ -1104,8 +1171,14 @@ export function request(ctx) {
     });
     parts.push('#id IN (' + placeholders.join(', ') + ')');
   }${filterClauses}${rangeClauses}${requireAttributeClause}${ownerClause}${retiredClause}
-${cursorDecode(~args="ctx.args")}${requestPathGuard}
-  const _first = ctx.args.first ?? 50;${requestOperation}
+${listCursorPreamble}${requestPathGuard}
+  // The one page a cursor cannot reach: it begins in an earlier window, and a
+  // continuation token cannot name the one before it. Refused by itself rather
+  // than folded into the 'last' guard, because the two are different limits and a
+  // caller can act on this one (page forward from the start).
+  if (_backward && _upTo <= 0 && _window !== null) {
+    util.error('The previous page begins in an earlier read window, which this cursor cannot name; page forward from the start.', 'UnsupportedPagination');
+  }${requestOperation}
   if (parts.length > 0) {
     req.filter = {
       expression: parts.join(' AND '),
@@ -1117,9 +1190,7 @@ ${cursorDecode(~args="ctx.args")}${requestPathGuard}
 }
 export function response(ctx) {
   if (ctx.error) util.error(ctx.error.message, ctx.error.type);
-  let items = ctx.result?.items ?? [];${responsePathPreamble}${sortBlock}${cursorDecode(
-      ~args="ctx.args",
-    )}${pageResponse}
+  let items = ctx.result?.items ?? [];${responsePathPreamble}${sortBlock}${listCursorPreamble}${pageResponse}
 }
 `->Pulumi.Input.make
 }

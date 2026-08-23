@@ -201,11 +201,14 @@ Four things have to move with it:
    sort, which is now a sort over the caller's own rows rather than an arbitrary
    window of the table.
 
-**Backward paging stays refused in this step.** A Query *can* page backward, but
-the `{t, n}` cursor is DynamoDB's forward-only continuation token; real
-`last`/`before` needs the keyset value cursor of Step 5. Keep the
-`UnsupportedPagination` guard on both branches until then, so the door does not
-advertise a capability the cursor cannot honour.
+**Backward paging was refused in this step, and no longer is** (2026-08-23, after
+a Prev button on a deployed list turned out to be a live error). The `{t, n}`
+cursor names a position *inside* a window, and a window is re-read from its own
+token — which forward paging already relies on to resume mid-window. Backward is
+the same move reversed: re-read the window `before` names and cut `[n - first, n)`.
+That needs no keyset cursor and no index, and works on both branches unchanged
+because it never touches the operation. What Step 5 still buys is the part this
+cannot do — see **The window boundary** below.
 
 Residual, and worth stating in the resolver's own comment: a *user* filter still
 lands in a FilterExpression on top of the key condition, so a scoped caller
@@ -272,9 +275,51 @@ base64 keyset **value** cursor and the `+1` overshoot for
 `hasNextPage`/`hasPreviousPage`. The derived owner index is a partition pinned by
 `_sub` with a totally-ordered sort key, which is precisely that shape.
 
-Pull this when a client actually asks the server to page backward. Until then the
-client-side cursor trail is adequate, and the path tag from Step 2 is what makes
-adding a third cursor shape safe later.
+Most of what this was for shipped without it: `before` is served today by
+re-reading its window. What is left is the window boundary, and real `last`.
+
+### The window boundary — the residual, and what each fix costs
+
+A page is a slice of a **window**, and windows chain one way: the token that opens
+W1 comes from reading W0, and from W1 there is no way back to W0. So a previous
+page that begins in an earlier window is unreachable, and `hasPreviousPage` says
+so rather than promising it.
+
+**It is a scaling limit, not a live defect.** A window ends at DynamoDB's 1 MB
+page or the read budget (1000 examined rows when a filter is pushed down; the
+budget grows with the page otherwise). Measured on alpha 2026-08-23: Products 64
+rows / 18 KB, Orders 151 / 29 KB, Customers 23, Categories 8 — every view fits in
+one window, `t` stays null, and Prev already reaches page 1 from anywhere. At
+Products' ~283 bytes/row the boundary is ~3,700 rows unfiltered, or 1,000 examined
+rows with a filter.
+
+Three ways to close it, when a view gets there:
+
+1. **Client-side cursor trail** (host shell). The client walked forward through
+   those windows and holds every token; Prev pops the stack and re-issues a plain
+   forward `first`/`after`. Complete, unbounded, every backend and every door, no
+   server or schema change. The trail is client state, so a pasted deep link or a
+   reload wants it persisted in the URL or session storage. **The only
+   proportionate fix for an UNOWNED view**, which is the case that will hit this
+   first.
+2. **A back-pointer in the cursor** — `{t, n, b}` with `b` the previous window's
+   token, which the server does know at the moment it closes a window.
+   **Rejected:** it reaches exactly one window back. Serving from `b`, the server
+   no longer knows what preceded `b`, so the chain breaks after one hop, and the
+   general form is a *stack* of hundreds-of-bytes tokens carried in the cursor and
+   growing linearly with paging depth — option 1 relocated, and worse.
+3. **This step** (keyset over an ordered key) — exact, unbounded, and it delivers
+   real `last` as a side effect. Small for an **owned** view: the index and its
+   total sort key exist, and the sibling above is a working implementation to
+   copy. For an unowned view it needs a partition to Query, which is
+   [Backlog/aws-fulllist-ordered-index-promotion.md](Backlog/aws-fulllist-ordered-index-promotion.md)
+   — the big one, and the case DynamoDB is worst at.
+
+**Decision (2026-08-23): do nothing yet.** The boundary is thousands of rows away
+on every view here and the door no longer lies about it. When one approaches it,
+take 1 for unowned views and 3 for owned ones. Pull this step independently if
+real `last`/`before` is ever wanted on an owned view — it is cheap there, and the
+Step 2 path tag is what makes adding a third cursor shape safe.
 
 ---
 

@@ -154,10 +154,17 @@ function run(items, argsDict, capability, labelField, decodeLocalIdOpt, ownerSco
     });
   }
   let first = Stdlib_Option.map(Stdlib_Option.flatMap(argsDict["first"], Stdlib_JSON.Decode.float), prim => prim | 0);
-  let after = Stdlib_Option.flatMap(argsDict["after"], Stdlib_JSON.Decode.string);
+  let cursorArg = key => Stdlib_Option.flatMap(Stdlib_Option.flatMap(argsDict[key], Stdlib_JSON.Decode.string), s => {
+    if (s === "") {
+      return;
+    } else {
+      return s;
+    }
+  });
+  let after = cursorArg("after");
   let last = Stdlib_Option.map(Stdlib_Option.flatMap(argsDict["last"], Stdlib_JSON.Decode.float), prim => prim | 0);
-  let before = Stdlib_Option.flatMap(argsDict["before"], Stdlib_JSON.Decode.string);
-  let isBackward = Stdlib_Option.isSome(last);
+  let before = cursorArg("before");
+  let isBackward = Stdlib_Option.isSome(last) || Stdlib_Option.isSome(before);
   let cursorField = Stdlib_Option.getOr(orderByField, "id");
   let getCursorValue = item => Stdlib_Option.getOr(getFieldString(item, cursorField), getId(item));
   let cursorBounded;
@@ -188,7 +195,7 @@ function run(items, argsDict, capability, labelField, decodeLocalIdOpt, ownerSco
   } else {
     cursorBounded = sorted;
   }
-  let pageSize = isBackward ? Stdlib_Option.getOr(last, 50) : Stdlib_Option.getOr(first, 50);
+  let pageSize = isBackward && last !== undefined ? last : Stdlib_Option.getOr(first, 50);
   let take = pageSize + 1 | 0;
   let match;
   if (isBackward) {
@@ -210,7 +217,7 @@ function run(items, argsDict, capability, labelField, decodeLocalIdOpt, ownerSco
     ];
   }
   let hasMore$2 = match[1];
-  return buildConnection(match[0], !isBackward && hasMore$2, isBackward && hasMore$2, getCursorValue);
+  return buildConnection(match[0], isBackward ? true : hasMore$2, isBackward ? hasMore$2 : Stdlib_Option.isSome(after), getCursorValue);
 }
 
 let defaultListPageSize = 50;

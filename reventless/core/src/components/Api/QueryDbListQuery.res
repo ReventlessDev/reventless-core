@@ -265,10 +265,22 @@ let run = (
 
   let first =
     argsDict->Dict.get("first")->Option.flatMap(JSON.Decode.float)->Option.map(Float.toInt)
-  let after = argsDict->Dict.get("after")->Option.flatMap(JSON.Decode.string)
+  // An empty cursor is no cursor. The host shell clears the opposite argument by
+  // setting it to "" rather than dropping it, and `Some("")` read as a cursor
+  // bounds nothing while still selecting the branch that expects one.
+  let cursorArg = key =>
+    argsDict
+    ->Dict.get(key)
+    ->Option.flatMap(JSON.Decode.string)
+    ->Option.flatMap(s => s == "" ? None : Some(s))
+  let after = cursorArg("after")
   let last = argsDict->Dict.get("last")->Option.flatMap(JSON.Decode.float)->Option.map(Float.toInt)
-  let before = argsDict->Dict.get("before")->Option.flatMap(JSON.Decode.string)
-  let isBackward = last->Option.isSome
+  let before = cursorArg("before")
+  // `before` decides the direction, not `last`. Relay pairs `last` with `before`,
+  // but a client that keeps its page size in `first` and only moves the cursor
+  // sends `before` alone — and keying on `last` made that a FORWARD read bounded
+  // by nothing, which answers page one and calls it the previous page.
+  let isBackward = last->Option.isSome || before->Option.isSome
   let cursorField = orderByField->Option.getOr("id")
   let getCursorValue = item => getFieldString(item, cursorField)->Option.getOr(getId(item))
 
@@ -288,8 +300,12 @@ let run = (
   | _ => sorted
   }
 
+  // `last` when given, else the page size the caller has been paging with.
   let pageSize = if isBackward {
-    last->Option.getOr(defaultListPageSize)
+    switch last {
+    | Some(n) => n
+    | None => first->Option.getOr(defaultListPageSize)
+    }
   } else {
     first->Option.getOr(defaultListPageSize)
   }
@@ -311,10 +327,14 @@ let run = (
     (arr->Array.slice(~start=0, ~end=pageSize), hasMore)
   }
 
+  // Both directions report both flags. A backward page was cut from ahead, so a
+  // next page provably exists — the one the caller came from — and a forward page
+  // reached by a cursor has one behind it. Reporting only the flag that matches
+  // the direction made Prev vanish the moment it was used.
   buildConnection(
     ~pageItems,
-    ~hasNextPage=!isBackward && hasMore,
-    ~hasPreviousPage=isBackward && hasMore,
+    ~hasNextPage=isBackward ? true : hasMore,
+    ~hasPreviousPage=isBackward ? hasMore : after->Option.isSome,
     ~cursorValueOf=getCursorValue,
   )
 }

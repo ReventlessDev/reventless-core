@@ -209,6 +209,11 @@ describe('listAllItemsConnection', () => {
       expect(req2.nextToken).toBe('TOK1')
     })
 
+    // `hasPreviousPage` reports what this door can SERVE, not what exists. This
+    // cursor opens a new window at position 0, so the page before it lies in the
+    // previous window — real, and unreachable, because a continuation token
+    // cannot name the one before it. Claiming it is what drew a Prev button that
+    // always errored.
     test('final page (nextToken null) closes the connection', () => {
       const after = util.base64Encode(JSON.stringify({ t: 'TOK1', n: -1 }))
       const r = response(makeCtx({
@@ -216,7 +221,7 @@ describe('listAllItemsConnection', () => {
         result: { items: [{ id: 'z' }], nextToken: null },
       }))
       expect(r.pageInfo.hasNextPage).toBe(false)
-      expect(r.pageInfo.hasPreviousPage).toBe(true)
+      expect(r.pageInfo.hasPreviousPage).toBe(false)
     })
 
     // A filtered Scan can return an empty page while nextToken is still set. The
@@ -239,15 +244,55 @@ describe('listAllItemsConnection', () => {
       expect(r.pageInfo.hasNextPage).toBe(false)
     })
 
-    // Scan cannot page backward; last/before must error, not mislead.
-    test('request rejects backward pagination (before)', () => {
-      expect(() => request(makeCtx({ args: { before: 'x' } }))).toThrow(
-        'Backward pagination',
+    // `before` is served by re-reading the window the cursor names and cutting
+    // the page that ends at it. `last` is not: the last N rows of the list needs
+    // the END of the list, which a forward-only cursor cannot reach.
+    test('request rejects `last`, which needs the end of the list', () => {
+      expect(() => request(makeCtx({ args: { last: 5 } }))).toThrow('last is not supported')
+    })
+
+    test('a backward page is the page that precedes it, exactly', () => {
+      const items = Array.from({ length: 25 }, (_, i) => ({ id: 'r' + i }))
+      const page1 = response(makeCtx({ args: { first: 10 }, result: { items, nextToken: null } }))
+      const fwd = { args: { first: 10, after: page1.pageInfo.endCursor } }
+      const page2 = response(makeCtx({ ...fwd, result: { items, nextToken: null } }))
+      expect(page2.edges.map(e => e.node.id)).toEqual(items.slice(10, 20).map(i => i.id))
+
+      const back = { args: { first: 10, before: page2.pageInfo.startCursor } }
+      const prev = response(makeCtx({ ...back, result: { items, nextToken: null } }))
+      expect(prev.edges.map(e => e.node.id)).toEqual(page1.edges.map(e => e.node.id))
+      // Cut from ahead, so a next page provably exists — the one we came from.
+      expect(prev.pageInfo.hasNextPage).toBe(true)
+      expect(prev.pageInfo.hasPreviousPage).toBe(false)
+    })
+
+    // The read must reach `_upTo` rows into the window, not `first + from`, or the
+    // backward slice comes back with its tail missing.
+    test('a backward read examines the window as deep as the page it cuts', () => {
+      const before = util.base64Encode(JSON.stringify({ t: null, n: 30 }))
+      expect(request(makeCtx({ args: { first: 10, before } })).limit).toBe(30)
+    })
+
+    test('the window a backward cursor names is the one re-read', () => {
+      const before = util.base64Encode(JSON.stringify({ t: 'W7', n: 30 }))
+      expect(request(makeCtx({ args: { first: 10, before } })).nextToken).toBe('W7')
+    })
+
+    // The one page still out of reach, and the only case left refused.
+    test('a previous page in an earlier window is refused, and says which limit', () => {
+      const before = util.base64Encode(JSON.stringify({ t: 'W2', n: 0 }))
+      expect(() => request(makeCtx({ args: { first: 10, before } }))).toThrow(
+        'earlier read window',
       )
     })
 
-    test('request rejects backward pagination (last)', () => {
-      expect(() => request(makeCtx({ args: { last: 5 } }))).toThrow('Backward pagination')
+    // At the very start there is no earlier window to be unable to name, so a
+    // short backward page is served rather than refused.
+    test('a backward page at the start of the first window is served, not refused', () => {
+      const items = Array.from({ length: 10 }, (_, i) => ({ id: 'r' + i }))
+      const before = util.base64Encode(JSON.stringify({ t: null, n: 3 }))
+      const r = response(makeCtx({ args: { first: 10, before }, result: { items, nextToken: null } }))
+      expect(r.edges.map(e => e.node.id)).toEqual(['r0', 'r1', 'r2'])
     })
 
     // Cursors minted before the read window existed named the following window.
@@ -1025,16 +1070,37 @@ describe('listAllItemsConnection — owner scoping', () => {
     })
   })
 
-  // Backward paging stays refused on both branches: a Query can walk backward,
-  // but the `{t, n}` cursor is DynamoDB's forward-only continuation token, and a
-  // door must not advertise what its cursor cannot honour.
+  // Backward paging works the same way on both branches, and for the same reason:
+  // it re-reads the window the cursor names and cuts the page ending at it, which
+  // is operation-agnostic. `last` stays refused on both — it needs the end of the
+  // list, which neither a Scan nor this Query's cursor can reach.
   test.each([['scoped', asUser('cust-a')], ['exempt', asUser('ops-1', ['Admin'])]])(
-    'a %s caller is still refused backward paging',
+    'a %s caller is still refused `last`',
     (_, identity) => {
       const { request } = indexed()
-      expect(() => request(makeCtx({ args: { last: 5 }, identity }))).toThrow('Backward pagination')
+      expect(() => request(makeCtx({ args: { last: 5 }, identity }))).toThrow(
+        'last is not supported',
+      )
     },
   )
+
+  // The path tag has to survive the direction change: a backward cursor still
+  // names the read that minted it, and replaying it on the other branch is the
+  // same mistake as replaying a forward one.
+  test('a backward cursor is path-checked like a forward one', () => {
+    const { request, response } = indexed()
+    const scopedPage = response(makeCtx({
+      args: { first: 10 },
+      identity: asUser('cust-a'),
+      result: { items: Array.from({ length: 10 }, (_, i) => ({ id: 'r' + i })), nextToken: null },
+    }))
+    expect(() =>
+      request(makeCtx({
+        args: { first: 10, before: scopedPage.pageInfo.endCursor },
+        identity: asUser('ops-1', ['Admin']),
+      })),
+    ).toThrow('different read of this list')
+  })
 })
 
 // ---------------------------------------------------------------------------
