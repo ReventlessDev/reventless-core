@@ -59,26 +59,39 @@ let attributes = (sortField, indexes: array<Reventless.ReadModel.indexConfig>) =
   )
 }
 
+/**
+The DynamoDB grant the AppSync data source assumes.
+
+An index is a SEPARATE IAM resource (`<table>/index/<name>`), so a grant naming
+only the table permits `Scan` and `GetItem` and denies every `Query` against a
+GSI — silently at deploy time, loudly at the first request. Two doors read one:
+the by-index door, and the list door's owner-scoped branch.
+
+Pure and named so the resource list is assertable without a deploy; the failure
+it guards has no other artifact to check.
+*/
+let dataSourcePolicyDocument = (~name: string, ~tableArn: string): string => {
+  open PolicyDocument
+  PolicyDocument.make(
+    ~id=name ++ "DataSourcePolicy",
+    ~statements=[
+      {
+        sid: "AllowDynamoDbActions",
+        effect: Allow,
+        actions: Action("dynamodb:*"),
+        resources: Resources([tableArn, tableArn ++ "/index/*"]),
+      },
+    ],
+  )->toJsonString
+}
+
 let dataSource = (name, table, api, apiRole, opts) => {
   let _dataSourceRolePolicy = {
     IAM.RolePolicy.make(
       ~name,
       ~args={
         IAM.RolePolicy.policy: table.arn
-        ->Pulumi.Output.apply(tableArn => {
-          open PolicyDocument
-          PolicyDocument.make(
-            ~id=name ++ "DataSourcePolicy",
-            ~statements=[
-              {
-                sid: "AllowDynamoDbActions",
-                effect: Allow,
-                actions: Action("dynamodb:*"),
-                resources: Resource(tableArn),
-              },
-            ],
-          )->toJsonString
-        })
+        ->Pulumi.Output.apply(tableArn => dataSourcePolicyDocument(~name, ~tableArn))
         ->Pulumi.Output.asInput,
         role: apiRole
         ->Pulumi.Output.flatMap((role: PulumiAws.IAM.Role.t) => role.id)

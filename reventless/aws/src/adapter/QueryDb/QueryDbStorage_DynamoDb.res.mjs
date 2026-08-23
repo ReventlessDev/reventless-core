@@ -70,14 +70,21 @@ function attributes(sortField, indexes) {
   });
 }
 
+function dataSourcePolicyDocument(name, tableArn) {
+  return PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "DataSourcePolicy", [{
+      Sid: "AllowDynamoDbActions",
+      Effect: "Allow",
+      Action: "dynamodb:*",
+      Resource: [
+        tableArn,
+        tableArn + "/index/*"
+      ]
+    }]));
+}
+
 function dataSource(name, table, api, apiRole, opts) {
   new (Aws.iam.RolePolicy)(name, {
-    policy: table.arn.apply(tableArn => PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "DataSourcePolicy", [{
-        Sid: "AllowDynamoDbActions",
-        Effect: "Allow",
-        Action: "dynamodb:*",
-        Resource: tableArn
-      }]))),
+    policy: table.arn.apply(tableArn => dataSourcePolicyDocument(name, tableArn)),
     role: Output$Pulumi.flatMap(apiRole, role => role.id)
   }, opts);
   return AppSync_DataSource$PulumiAws.makeDynamoDBDataSource(name, api, table, apiRole, opts);
@@ -104,6 +111,7 @@ function make(name, indexes, subIdField, ttl, api, apiRole, owner, opts) {
 export {
   globalSecondaryIndexes,
   attributes,
+  dataSourcePolicyDocument,
   dataSource,
   make,
 }
