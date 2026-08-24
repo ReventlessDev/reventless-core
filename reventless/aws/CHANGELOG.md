@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.324 (2026-08-24)
+
+### Bug Fixes
+
+* **aws:** keep a served bucket's read grant when serving moves distributions ([40b712a](https://github.com/ReventlessDev/reventless-core/commit/40b712a62d7b9d44621962984ff63c7719df642e))
+
+
 # 3.0.0-alpha.323 (2026-08-23)
 
 ### Bug Fixes

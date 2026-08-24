@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.223 (2026-08-24)
+
+### Bug Fixes
+
+* **deps:** update host-shell to 3.0.0-alpha.85 for working backward paging ([0bd8fa5](https://github.com/ReventlessDev/reventless-core/commit/0bd8fa5b5ceefef364fa29f10c1c32769885a31c))
+* **deps:** update host-shell to 3.0.0-alpha.86 ([80c3f11](https://github.com/ReventlessDev/reventless-core/commit/80c3f110c7b6c2c9c971e613a4cbc7acca1bc1aa))
+
+
 # 1.0.0-alpha.222 (2026-08-23)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-dcb-platform-local
