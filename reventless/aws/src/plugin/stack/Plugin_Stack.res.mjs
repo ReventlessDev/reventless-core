@@ -275,6 +275,8 @@ function makeUiBundleDistribution(pluginId, bundleVersion, assetsDir, spaFallbac
             }
           }]
       }))
+    }, {
+      retainOnDelete: true
     });
   });
   if (assetsDir !== undefined) {
@@ -409,6 +411,8 @@ function makeServedBucketDistribution(name, servedBuckets, customDomain) {
             }
           }]
       }))
+    }, {
+      retainOnDelete: true
     });
   });
   if (customDomain !== undefined) {

@@ -445,9 +445,19 @@ let makeUiBundleDistribution = (
   // Exactly one policy per bucket — S3 permits no more. Grouping prefixes into
   // one `servedBucket` is what makes that structural rather than a rule to
   // remember.
+  //
+  // `retainOnDelete` is what makes moving a bucket's serving between
+  // distributions survivable. The policy resource is named after the
+  // distribution, so a handover is a create and a delete over the bucket's one
+  // physical policy — and Pulumi runs deletes last, so the old resource's
+  // DeleteBucketPolicy would wipe the grant the new one just wrote. Deploy
+  // green, every object 403. Retaining drops the stale entry from state without
+  // calling the provider; the most it can leave behind is a grant naming a
+  // distribution that no longer exists, which authorizes nothing.
   servedBuckets->Array.forEach(sb => {
     let _ = PulumiAws.S3.BucketPolicy.make(
       ~name=name ++ "-served-" ++ sb.id ++ "-policy",
+      ~opts={retainOnDelete: true},
       ~args={
         bucket: sb.bucketId,
         policy: (sb.bucketArn->Pulumi.Output.fromInput, distribution.arn)
@@ -691,10 +701,12 @@ let makeServedBucketDistribution = (
   }
 
   // One policy per bucket — see the module doc above for why this is here and
-  // not in the consuming stack.
+  // not in the consuming stack, and `makeUiBundleDistribution` for why the
+  // policy is retained rather than deleted.
   servedBuckets->Array.forEach(sb => {
     let _ = PulumiAws.S3.BucketPolicy.make(
       ~name=name ++ "-served-" ++ sb.id ++ "-policy",
+      ~opts={retainOnDelete: true},
       ~args={
         bucket: sb.bucketId,
         policy: (sb.bucketArn->Pulumi.Output.fromInput, distribution.arn)
