@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.6 (2026-08-24)
+
+### Features
+
+* **pulumi-aws:** match events by pattern and rewrite what a target receives ([8f94ef3](https://github.com/ReventlessDev/reventless-core/commit/8f94ef3c4f5d24f87c1331b8a63c35bd9c4a92b2))
+
+
 # 3.0.0-alpha.5 (2026-08-23)
 
 ### Bug Fixes
