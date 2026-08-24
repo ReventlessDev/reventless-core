@@ -44,6 +44,10 @@ module ScheduleExpression: {
 type args = {
   description?: Pulumi.Input.t<string>,
   scheduleExpression?: ScheduleExpression.t,
+  /** JSON event pattern the rule matches on. A rule fires on a schedule or on a
+    pattern — set exactly one of the two.
+    see: https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-event-patterns.html */
+  eventPattern?: Pulumi.Input.t<string>,
   roleArn?: Pulumi.Input.t<string>,
   tags?: Pulumi.Input.t<Aws.tags>,
 }
