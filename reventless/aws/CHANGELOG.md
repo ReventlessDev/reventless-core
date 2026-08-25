@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.326 (2026-08-25)
+
+### Bug Fixes
+
+* **aws:** open the subscription socket on the host AppSync serves it from ([426d932](https://github.com/ReventlessDev/reventless-core/commit/426d9322d6aff694e3c82c64ea1483760457b8e4))
+
+
 # 3.0.0-alpha.325 (2026-08-24)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws
