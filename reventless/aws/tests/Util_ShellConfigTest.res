@@ -277,8 +277,6 @@ describe("Util_ShellConfig.identityFields", () => {
 })
 
 describe("the subscription endpoint", () => {
-  open Expect
-
   // The one that matters: AppSync serves realtime on its own host, so a scheme
   // swap alone yields a URL the service refuses to upgrade — and the shell's own
   // fallback is exactly that scheme swap.
