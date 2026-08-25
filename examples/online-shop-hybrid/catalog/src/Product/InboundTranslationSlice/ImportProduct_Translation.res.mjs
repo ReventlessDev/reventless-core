@@ -31,7 +31,7 @@ function translate(input) {
               productId: input.sku,
               name: input.title,
               description: input.desc,
-              price: Money$Reventless.make(input.unitPrice, why._0),
+              price: Money$Reventless.ofMinor(input.unitPrice, why._0),
               categoryId: input.category
             }
           ]]

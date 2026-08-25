@@ -1,5 +1,14 @@
 # Plan: `Money` and a closed `Currency`
 
+> **Partly superseded** by
+> [money-in-the-currencys-own-units.md](money-in-the-currencys-own-units.md)
+> (2026-08-25). Two of the decisions below were reversed: an amount is now in the
+> currency's own units rather than whole minor units, and `Currency` admits ten
+> codes rather than all 165 (the rest are kept, commented, in the generated
+> file). Everything else here — the closed type, the generated exponent, the
+> semantic marker, the wire form, the UI renderer — still stands. Read that plan
+> for what changed and why; this one for what the shape was chosen against.
+
 **Date:** 2026-07-31
 **Status:** Complete — all six steps done across both repos. Three decisions changed on contact with
 the code and are recorded in place below (`amount` is `float`, not `int`; the wholeness check sits on

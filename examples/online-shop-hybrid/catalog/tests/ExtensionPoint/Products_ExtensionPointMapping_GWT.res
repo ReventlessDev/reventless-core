@@ -4,11 +4,10 @@
 
 // Published events and handled directives are disjoint channels on the same
 // mapping run — each `test` projects to one channel and asserts on it.
-// Prices are money now, so a test writes the amount a person would say and
-// converts it once. `ofMajor` scales by the currency's own exponent, which is
-// what keeps the literal honest: 9.99 EUR is 999 cents, and the same call on a
-// JPY price would scale by 1.
-let eur = amount => Reventless.Money.ofMajor(~amount, ~currency=EUR)
+// Prices are money, so a test writes the amount a person would say and pairs it
+// with a currency. `make` rounds to the decimals EUR has and scales nothing:
+// 9.99 EUR is 9.99, and the same call on a JPY price would round to a whole yen.
+let eur = amount => Reventless.Money.make(~amount, ~currency=EUR)
 
 describe("Products ExtensionPoint mapping", () => {
   test("ProductAdded publishes ProductBecameAvailable", () =>

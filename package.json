@@ -58,6 +58,7 @@
     "check:unions": "node ./scripts/check-union-reachability.mjs",
     "check:lifecycle": "node ./scripts/CheckLifecycleModel.res.mjs",
     "check:lifecycle:update": "node ./scripts/CheckLifecycleModel.res.mjs --update",
+    "generate:currency": "node ./scripts/GenerateCurrency.res.mjs",
     "test:watch": "NODE_OPTIONS='--experimental-vm-modules --no-warnings --max-old-space-size=4096' jest --watchAll --silent",
     "test:watch:fail": "ONLY_FAILURES=1 NODE_OPTIONS='--experimental-vm-modules --no-warnings --max-old-space-size=4096' jest --watchAll --silent",
     "dev": "concurrently --names rs,jest --prefix-colors cyan,yellow \"rescript watch\" \"NODE_OPTIONS='--experimental-vm-modules --no-warnings --max-old-space-size=4096' jest --watchAll --silent\"",
