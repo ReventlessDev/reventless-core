@@ -60,6 +60,25 @@ let identityFields = (~providerId: string, ~clientId: string): array<(string, JS
 ]
 
 /**
+The websocket endpoint graphql-ws subscriptions open against.
+
+AppSync serves realtime on a **different host** from queries — `appsync-realtime-api`
+rather than `appsync-api` — so a scheme swap alone produces a URL the service will
+not upgrade. The shell derives one when this key is absent, and its derivation is
+the generic scheme swap, correct for a same-host server and wrong here. Absent, an
+operator's menu therefore stops following Activate / Deactivate: the socket never
+opens, and nothing on the page says so.
+
+Written for every deployment rather than left to a passthrough because it is a
+function of an endpoint the deploy already resolves, and a shell config that
+restated it would be one more copy of a rule with a silent failure mode.
+*/
+let subscriptionEndpoint = (httpsEndpoint: string): string =>
+  httpsEndpoint
+  ->String.replace("https://", "wss://")
+  ->String.replace(".appsync-api.", ".appsync-realtime-api.")
+
+/**
 The config.json field set.
 
 `computed` arrives in wire order and keeps it. `viewModes` unset ⇒ no

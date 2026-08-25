@@ -1156,6 +1156,7 @@ function MakeWithConfig(Config) {
       ]).apply(param => {
         let eventsEpOpt = param[1];
         let match = param[0];
+        let platformEp = match[1];
         let computed = [
           [
             "apiEndpoint",
@@ -1163,7 +1164,11 @@ function MakeWithConfig(Config) {
           ],
           [
             "platformApiEndpoint",
-            match[1]
+            platformEp
+          ],
+          [
+            "platformApiSubscriptionEndpoint",
+            Util_ShellConfig$ReventlessAws.subscriptionEndpoint(platformEp)
           ],
           [
             "region",
@@ -2447,6 +2452,7 @@ function Make($star) {
       ]).apply(param => {
         let eventsEpOpt = param[1];
         let match = param[0];
+        let platformEp = match[1];
         let computed = [
           [
             "apiEndpoint",
@@ -2454,7 +2460,11 @@ function Make($star) {
           ],
           [
             "platformApiEndpoint",
-            match[1]
+            platformEp
+          ],
+          [
+            "platformApiSubscriptionEndpoint",
+            Util_ShellConfig$ReventlessAws.subscriptionEndpoint(platformEp)
           ],
           [
             "region",

@@ -275,3 +275,26 @@ describe("Util_ShellConfig.identityFields", () => {
     ])
   )
 })
+
+describe("the subscription endpoint", () => {
+  open Expect
+
+  // The one that matters: AppSync serves realtime on its own host, so a scheme
+  // swap alone yields a URL the service refuses to upgrade — and the shell's own
+  // fallback is exactly that scheme swap.
+  testSync("moves an AppSync endpoint onto the realtime host", () =>
+    expect(
+      Util_ShellConfig.subscriptionEndpoint(
+        "https://abc123.appsync-api.eu-west-1.amazonaws.com/graphql",
+      ),
+    )->toEqual("wss://abc123.appsync-realtime-api.eu-west-1.amazonaws.com/graphql")
+  )
+
+  // A server that speaks websockets on the host it serves queries from is left
+  // alone rather than rewritten toward a host that does not exist.
+  testSync("leaves a same-host endpoint on its own host", () =>
+    expect(Util_ShellConfig.subscriptionEndpoint("https://api.example.test/graphql"))->toEqual(
+      "wss://api.example.test/graphql",
+    )
+  )
+})

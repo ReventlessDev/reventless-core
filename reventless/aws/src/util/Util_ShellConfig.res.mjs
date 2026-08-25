@@ -52,6 +52,10 @@ function identityFields(providerId, clientId) {
   ];
 }
 
+function subscriptionEndpoint(httpsEndpoint) {
+  return httpsEndpoint.replace("https://", "wss://").replace(".appsync-api.", ".appsync-realtime-api.");
+}
+
 function fields(computed, viewModes, bakedManifest, shellConfig) {
   let out = Object.fromEntries(computed);
   Stdlib_Option.forEach(bakedManifest, bake => {
@@ -92,6 +96,7 @@ export {
   journeyManifestsKey,
   modeOptions,
   identityFields,
+  subscriptionEndpoint,
   fields,
 }
 /* No side effect */

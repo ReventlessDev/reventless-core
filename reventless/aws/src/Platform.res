@@ -2165,6 +2165,10 @@ module MakeWithConfig = (
             [
               ("apiEndpoint", JSON.Encode.string(domainEp)),
               ("platformApiEndpoint", JSON.Encode.string(platformEp)),
+              (
+                "platformApiSubscriptionEndpoint",
+                JSON.Encode.string(Util_ShellConfig.subscriptionEndpoint(platformEp)),
+              ),
               ("region", JSON.Encode.string(regionStr)),
               ("authMode", JSON.Encode.string("cognito")),
             ]
