@@ -71,7 +71,7 @@ let stateSchema$1 = Sury.$Metadata_set(stateSchema, StateAnnotations$Reventless.
     label: "",
     showWhenFalse: false,
     values: ["Archived"],
-    namedWhenRetired: false
+    namedWhenRetired: true
   }
 });
 

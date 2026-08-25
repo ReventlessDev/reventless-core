@@ -24,7 +24,13 @@ type shelfStatus =
   | Listed
   | @retired Archived
 
+// An archived category keeps its name, for the reason the retirement above
+// already gives: the products filed under it still name it, and a live product
+// showing `cat-08` where it means "Clearance" is a pointer the platform handed
+// out and stopped honouring. The list stays closed — a reference gets id, name
+// and state, nothing more.
 @schema
+@namedWhenRetired
 type state = {
   categoryId: string,
   name: string,
