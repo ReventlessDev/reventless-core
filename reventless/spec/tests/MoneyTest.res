@@ -5,9 +5,9 @@ open JestGlobals
 // should; this one is right when it *knows how precise an amount may be*, and it
 // can only do that because the currency travels with the number.
 //
-// So the load-bearing currency below is JPY: it has no decimal place at all,
-// where every other admitted code has two. A suite that only exercises EUR
-// proves nothing that a hardcoded two would not also pass.
+// So the load-bearing currency below is JPY: it has no minor unit at all, where
+// every other admitted code has two decimals. A suite that only exercises EUR
+// proves nothing that a hardcoded `/100` would not also pass.
 describe("Money:", () => {
   let m = (amount, currency): Money.t => {amount, currency}
 
@@ -83,112 +83,215 @@ describe("Money:", () => {
     )
   })
 
-  describe("format shows the decimals the currency has:", () => {
+  describe("format places the decimal point from the currency:", () => {
     let format = (amount, currency) => Money.format(m(amount, currency))
 
-    testSync("two for EUR", () => expect(format(10.0, EUR))->toBe("10.00 EUR"))
+    testSync("two decimals for EUR", () => expect(format(1000.0, EUR))->toBe("10.00 EUR"))
 
     // The case that decides whether the exponent is real or decorative.
     testSync("none for JPY", () => expect(format(1000.0, JPY))->toBe("1,000 JPY"))
 
     testSync("an amount under one unit keeps its leading zero", () =>
-      expect(format(0.05, EUR))->toBe("0.05 EUR")
+      expect(format(5.0, EUR))->toBe("0.05 EUR")
     )
     testSync("zero", () => expect(format(0.0, EUR))->toBe("0.00 EUR"))
     testSync("thousands are grouped", () =>
-      expect(format(1234567.89, USD))->toBe("1,234,567.89 USD")
+      expect(format(123456789.0, USD))->toBe("1,234,567.89 USD")
     )
-    testSync("a refund is money", () => expect(format(-25.5, EUR))->toBe("-25.50 EUR"))
+    testSync("a refund is money", () => expect(format(-2550.0, EUR))->toBe("-25.50 EUR"))
   })
 
-  describe("make rounds to what the currency holds:", () => {
-    testSync("an amount the currency can hold is untouched", () =>
-      expect(Money.make(~amount=10.5, ~currency=EUR))->toEqual(m(10.5, EUR))
+  // The boundary a form, a supplier feed or any other decimal-speaking caller
+  // converts through. Nothing downstream of it holds a decimal.
+  describe("ofMajor converts a decimal at the boundary:", () => {
+    testSync("EUR scales by 100", () =>
+      expect(Money.ofMajor(~amount=10.5, ~currency=EUR))->toEqual(m(1050.0, EUR))
     )
 
-    testSync("a third decimal is rounded away for EUR", () =>
+    // The reason this lives on the type rather than at each call site: written
+    // by hand it is `*. 100.0`, which is wrong for this one.
+    testSync("JPY scales by 1", () =>
+      expect(Money.ofMajor(~amount=1000.0, ~currency=JPY))->toEqual(m(1000.0, JPY))
+    )
+
+    testSync("it rounds to a whole minor unit", () =>
       expect((
-        Money.make(~amount=10.004, ~currency=EUR).amount,
-        Money.make(~amount=10.006, ~currency=EUR).amount,
-      ))->toEqual((10.0, 10.01))
-    )
-
-    // The reason rounding lives on the type rather than at each call site:
-    // written by hand it is a `toFixed(2)`, which is wrong for this.
-    testSync("JPY has no decimals to round to", () =>
-      expect(Money.make(~amount=1000.4, ~currency=JPY).amount)->toBe(1000.0)
+        Money.ofMajor(~amount=10.004, ~currency=EUR).amount,
+        Money.ofMajor(~amount=10.006, ~currency=EUR).amount,
+      ))->toEqual((1000.0, 1001.0))
     )
 
     // `Math.round` alone rounds half toward positive infinity, so a refund would
     // round the other way from the charge it reverses.
     testSync("a half rounds away from zero in both directions", () =>
       expect((
-        Money.make(~amount=2.5, ~currency=JPY).amount,
-        Money.make(~amount=-2.5, ~currency=JPY).amount,
+        Money.ofMajor(~amount=2.5, ~currency=JPY).amount,
+        Money.ofMajor(~amount=-2.5, ~currency=JPY).amount,
       ))->toEqual((3.0, -3.0))
     )
 
     testSync("what it produces is always valid money", () =>
-      expect(
-        Money.validate(~amount=Money.make(~amount=0.1 +. 0.2, ~currency=EUR).amount, ~currency=EUR),
-      )->toEqual(Ok(0.3))
+      expect(Money.validateAmount(Money.ofMajor(~amount=0.1 +. 0.2, ~currency=EUR).amount))
+      ->toEqual(Ok(30.0))
     )
-  })
 
-  // The scale is not gone, it is contained: a payment gateway and a supplier
-  // feed both count in minor units, and this is the one place that conversion is
-  // written down.
-  describe("ofMinor converts what an external system counts in:", () => {
-    testSync("EUR divides by 100", () =>
-      expect(Money.ofMinor(~units=1050.0, ~currency=EUR))->toEqual(m(10.5, EUR))
+    testSync("toMajor is its inverse for a whole major amount", () =>
+      expect(Money.toMajor(Money.ofMajor(~amount=1234.56, ~currency=EUR)))->toBe(1234.56)
     )
-    testSync("JPY divides by 1 — the case a hand-written /100 gets wrong", () =>
-      expect(Money.ofMinor(~units=1000.0, ~currency=JPY))->toEqual(m(1000.0, JPY))
-    )
-    testSync("toMinor is its inverse", () =>
-      expect(Money.toMinor(Money.ofMinor(~units=1234.0, ~currency=EUR)))->toBe(1234.0)
+
+    testSync("and gives a form the figure it shows", () =>
+      expect((Money.toMajor(m(1050.0, EUR)), Money.toMajor(m(1000.0, JPY))))->toEqual((10.5, 1000.0))
     )
   })
 
   describe("add checks the currency rather than assuming it:", () => {
     testSync("same currency adds", () =>
-      expect(Money.add(m(1.0, EUR), m(0.5, EUR)))->toEqual(Ok(m(1.5, EUR)))
+      expect(Money.add(m(100.0, EUR), m(50.0, EUR)))->toEqual(Ok(m(150.0, EUR)))
     )
 
     // §15.1's second rider. The branded-scalar shape would have made this
     // unrepresentable by deleting the currency; keeping it means the mix is
     // caught instead of silently summed into a meaningless number.
     testSync("different currencies do not", () =>
-      expect(Money.add(m(1.0, EUR), m(0.5, USD))->Result.isOk)->toBe(false)
+      expect(Money.add(m(100.0, EUR), m(50.0, USD))->Result.isOk)->toBe(false)
     )
 
     testSync("and the refusal names both amounts", () =>
       expect(
-        switch Money.add(m(1.0, EUR), m(0.5, USD)) {
+        switch Money.add(m(100.0, EUR), m(50.0, USD)) {
         | Error(why) => why->String.includes("1.00 EUR") && why->String.includes("0.50 USD")
         | Ok(_) => false
         },
       )->toBe(true)
     )
 
-    // What the minor-unit representation used to buy, kept: the plain float
-    // equivalent — 0.1 +. 0.2 — is not 0.3.
-    testSync("addition is exact", () =>
-      expect(Money.add(m(0.1, EUR), m(0.2, EUR)))->toEqual(Ok(m(0.3, EUR)))
+    testSync("exactness is why the amount is in minor units", () =>
+      // The float equivalent — 0.1 +. 0.2 — is not 0.3.
+      expect(Money.add(m(10.0, EUR), m(20.0, EUR)))->toEqual(Ok(m(30.0, EUR)))
     )
 
-    testSync("and stays exact over a long run", () =>
-      expect(Money.sum(Array.make(~length=10, m(0.1, EUR))))->toEqual(Some(Ok(m(1.0, EUR))))
+    // The case that decided this representation: a decimal amount summed over a
+    // page of rows lands a cent out and looks entirely plausible doing it.
+    testSync("and it stays exact over a long run", () =>
+      expect(Money.sum(Array.make(~length=10, m(10.0, EUR))))->toEqual(Some(Ok(m(100.0, EUR))))
     )
 
     testSync("sum refuses at the first currency that does not match", () =>
       expect(
-        Money.sum([m(1.0, EUR), m(0.5, EUR), m(1.0, GBP)])->Option.map(Result.isOk),
+        Money.sum([m(100.0, EUR), m(50.0, EUR), m(1.0, GBP)])->Option.map(Result.isOk),
       )->toEqual(Some(false))
     )
 
     testSync("the sum of no amounts has no currency to be in", () =>
       expect(Money.sum([])->Option.isNone)->toBe(true)
+    )
+  })
+
+  // Quantity, not rate. The distinction is the whole reason this is exact: whole
+  // minor units times a whole count needs no rounding decision, where a
+  // percentage of an amount always does.
+  describe("times multiplies by a count:", () => {
+    testSync("a line item is its unit price times its quantity", () =>
+      expect(Money.times(m(1050.0, EUR), ~by=3))->toEqual(Ok(m(3150.0, EUR)))
+    )
+
+    testSync("none of something is nothing, in the same currency", () =>
+      expect(Money.times(m(1050.0, EUR), ~by=0))->toEqual(Ok(m(0.0, EUR)))
+    )
+
+    testSync("a negative count reverses the sign", () =>
+      expect(Money.times(m(1050.0, EUR), ~by=-2))->toEqual(Ok(m(-2100.0, EUR)))
+    )
+
+    // No rounding is possible here, which is the point: the operands are whole
+    // and so is everything they can produce.
+    testSync("what it produces is always valid money", () =>
+      expect(
+        switch Money.times(m(333.0, EUR), ~by=7) {
+        | Ok(product) => Money.validateAmount(product.amount)
+        | Error(_) => Error("refused")
+        },
+      )->toEqual(Ok(2331.0))
+    )
+
+    // Past 2^53 a `float` stops being an exact integer, and every guarantee in
+    // the module is stated over that range. Refused rather than quietly wrong.
+    testSync("a product past the exact-integer range is refused", () =>
+      expect(Money.times(m(9_000_000_000_000_000.0, EUR), ~by=3)->Result.isOk)->toBe(false)
+    )
+
+    testSync("and the refusal says what it could not stay inside", () =>
+      expect(
+        switch Money.times(m(9_000_000_000_000_000.0, EUR), ~by=3) {
+        | Error(why) => why->String.includes("exact")
+        | Ok(_) => false
+        },
+      )->toBe(true)
+    )
+  })
+
+  // The last cent has to go somewhere, and the failure this prevents is the one
+  // that looks like nothing: three shares of €3.33 are €9.99.
+  describe("allocate splits an amount without losing a unit:", () => {
+    let amounts = r => r->Result.getOr([])->Array.map(part => part.Money.amount)
+
+    testSync("€10.00 into three is 3.34, 3.33, 3.33", () =>
+      expect(amounts(Money.allocate(m(1000.0, EUR), ~into=3)))->toEqual([334.0, 333.0, 333.0])
+    )
+
+    testSync("and those add back up to what was split", () =>
+      expect(
+        Money.allocate(m(1000.0, EUR), ~into=3)->Result.getOr([])->Money.sum,
+      )->toEqual(Some(Ok(m(1000.0, EUR))))
+    )
+
+    // The property, over sizes where the remainder lands differently each time.
+    testSync("a split always adds back up to the whole", () =>
+      expect(
+        [1.0, 2.0, 7.0, 1000.0, 1001.0, 999999.0]->Array.every(amount =>
+          [1, 2, 3, 7, 11]->Array.every(into =>
+            Money.allocate(m(amount, EUR), ~into)->Result.getOr([])->Money.sum ==
+              Some(Ok(m(amount, EUR)))
+          )
+        ),
+      )->toBe(true)
+    )
+
+    testSync("every part is a whole minor unit", () =>
+      expect(
+        Money.allocate(m(1000.0, EUR), ~into=7)
+        ->Result.getOr([])
+        ->Array.every(part => Money.validateAmount(part.amount)->Result.isOk),
+      )->toBe(true)
+    )
+
+    testSync("a split into one is the amount itself", () =>
+      expect(amounts(Money.allocate(m(1000.0, EUR), ~into=1)))->toEqual([1000.0])
+    )
+
+    testSync("more parts than units leaves the tail at zero", () =>
+      expect(amounts(Money.allocate(m(2.0, EUR), ~into=4)))->toEqual([1.0, 1.0, 0.0, 0.0])
+    )
+
+    // A refund divides like a charge: away from zero, and still summing back.
+    testSync("a negative amount splits away from zero", () =>
+      expect(amounts(Money.allocate(m(-1000.0, EUR), ~into=3)))->toEqual([
+        -334.0,
+        -333.0,
+        -333.0,
+      ])
+    )
+
+    // The currency that has no unit to hand out below the whole one.
+    testSync("yen split three ways are whole yen", () =>
+      expect(amounts(Money.allocate(m(10.0, JPY), ~into=3)))->toEqual([4.0, 3.0, 3.0])
+    )
+
+    testSync("a split into no parts at all is refused", () =>
+      expect((
+        Money.allocate(m(1000.0, EUR), ~into=0)->Result.isOk,
+        Money.allocate(m(1000.0, EUR), ~into=-1)->Result.isOk,
+      ))->toEqual((false, false))
     )
   })
 
@@ -216,49 +319,41 @@ describe("Money:", () => {
     // purpose, exactly as the branded scalars are.
     testSync("and the id is the wire string", () => expect(Semantic.Id.money)->toBe("money"))
 
-    testSync("accepts an amount with the currency's decimals", () =>
-      expect(parses(money(10.5, "EUR")))->toBe(true)
+    testSync("accepts an amount in minor units", () =>
+      expect(parses(money(1000.0, "EUR")))->toBe(true)
     )
-    testSync("accepts a whole amount", () => expect(parses(money(1000.0, "EUR")))->toBe(true))
-    testSync("accepts a negative amount", () => expect(parses(money(-10.5, "EUR")))->toBe(true))
+    testSync("accepts a negative amount", () => expect(parses(money(-1000.0, "EUR")))->toBe(true))
 
-    // The check that needs both halves of the pair, which is why it sits on the
-    // record and not on the amount.
-    testSync("rejects an amount more precise than its currency", () =>
-      expect(parses(money(10.555, "EUR")))->toBe(false)
+    // The check the type would have got for free from `int`, if `int` could
+    // hold a real amount. Half a cent is not a value the log may contain.
+    testSync("rejects a fraction of a minor unit", () =>
+      expect(parses(money(10.5, "EUR")))->toBe(false)
     )
-    testSync("rejects a decimal amount of a currency that has none", () =>
-      expect(parses(money(10.5, "JPY")))->toBe(false)
-    )
-    testSync("and accepts the same figure where the currency allows it", () =>
-      expect(parses(money(10.5, "EUR")))->toBe(true)
-    )
-
     testSync("rejects a non-finite amount", () =>
-      expect(Money.validate(~amount=Float.Constants.nan, ~currency=EUR)->Result.isOk)->toBe(false)
+      expect(Money.validateAmount(Float.Constants.nan)->Result.isOk)->toBe(false)
     )
 
     // Why `float` and not `int`: ReScript's `int` is int32, so an `int` amount
-    // stops at 2,147,483,647. A framework money type that cannot express a €22M
-    // total is not one.
+    // stops at €21,474,836.47. A framework money type that cannot express a
+    // €22M total is not one — the same correction `Bytes` already made.
     testSync("accepts an amount an int32 could not hold", () =>
       expect(parses(money(9_000_000_000.0, "EUR")))->toBe(true)
     )
 
     testSync("rejects an unknown currency code", () =>
-      expect(parses(money(10.0, "QQQ")))->toBe(false)
+      expect(parses(money(1000.0, "QQQ")))->toBe(false)
     )
     testSync("rejects a currency the framework has not admitted", () =>
-      expect(parses(money(10.0, "AED")))->toBe(false)
+      expect(parses(money(1000.0, "AED")))->toBe(false)
     )
     testSync("rejects a lower-case currency code", () =>
-      expect(parses(money(10.0, "eur")))->toBe(false)
+      expect(parses(money(1000.0, "eur")))->toBe(false)
     )
 
     // The wire form is the ISO code, not the variant's ReScript spelling —
     // standard at the boundary, checked type in the domain.
     testSync("serializes the currency as its three-letter code", () =>
-      expect(m(10.5, EUR)->Util_Sury.toJson(Money.schema))->toEqual(money(10.5, "EUR"))
+      expect(m(1000.0, EUR)->Util_Sury.toJson(Money.schema))->toEqual(money(1000.0, "EUR"))
     )
   })
 })

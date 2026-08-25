@@ -344,7 +344,7 @@ function buildProducts(countOpt, param) {
         let low = Math.log(5.0);
         let high = Math.log(900.0);
         let raw = Math.exp(low + Seed_Random$ReventlessSeed.float(random) * (high - low));
-        let price = Money$Reventless.make(raw, "EUR");
+        let price = Money$Reventless.ofMajor(raw, "EUR");
         let match = n.contents;
         products.push({
           id: `prd-` + pad(n.contents, 3),
@@ -380,7 +380,7 @@ function discontinuedProducts(products) {
 }
 
 function discountedPrice(p) {
-  return Money$Reventless.make(p.price.amount * 0.85, p.price.currency);
+  return Money$Reventless.make(Math.round(p.price.amount * 0.85), p.price.currency);
 }
 
 let demoShopperId = "local-shopper";

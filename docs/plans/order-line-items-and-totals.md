@@ -258,11 +258,12 @@ looks right:
 - **A mixed-currency order is refused, not silently summed.** `Money.add` already
   returns `result` for exactly this (`Money.res:178-189`); surface it as an error
   rather than unwrapping it.
-- **`Money` has no multiply.** Add `Money.times(m, ~by: int)` beside `add`/`sum`
-  in `reventless/spec/src/semantic/Money.res`, checked the same way `add` checks
-  its currency and `validateAmount` checks wholeness. Do not compute
-  `amount *. float(qty)` at the call site — that is the exact arithmetic the
-  module exists to own.
+- **`Money` has no multiply.** ~~Add~~ `Money.times(m, ~by: int)` now exists
+  beside `add`/`sum` in `reventless/spec/src/semantic/Money.res`, checked the way
+  this asked for — it refuses a product past the range where a `float` is an
+  exact integer. `Money.allocate(m, ~into: int)` landed with it, for the split
+  this plan's per-line rounding will want. Do not compute `amount *. float(qty)`
+  at the call site — that is the exact arithmetic the module exists to own.
 
 **Keep `productIds` on the event.** `OrderPlaced` carries **both**
 `lines: array<orderLine>` and `productIds: array<string>` (derived by the

@@ -1,8 +1,8 @@
 @@reventless.translation
 
-// The feed speaks in minor units and the domain speaks in the currency's own
-// decimals, so the translation converts — but it converts through
-// `Money.ofMinor`, which reads the scale off the currency the supplier sent.
+// The feed already speaks in minor units, so the translation is a *parse* of its
+// currency code rather than an arithmetic conversion: `Money.make` takes the two
+// facts the supplier sent and nothing is scaled.
 //
 // This used to read `Int.toFloat(input.unitPrice) /. 100.0` and reject anything
 // that was not USD — two halves of one mistake. The divide-by-100 was a minor
@@ -27,7 +27,7 @@ let translate = (input: externalInput) =>
           productId: input.sku,
           name: input.title,
           description: input.desc,
-          price: Reventless.Money.ofMinor(~units=Int.toFloat(input.unitPrice), ~currency),
+          price: Reventless.Money.make(~amount=Int.toFloat(input.unitPrice), ~currency),
           // Supplier feed carries no image — the optional productImage is simply absent.
           categoryId: input.category,
         }),

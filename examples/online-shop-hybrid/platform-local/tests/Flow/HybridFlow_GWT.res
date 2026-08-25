@@ -24,10 +24,11 @@ module OrdersEp = ExtensionPointStep(OrderingPlugin.Orders_ExtensionPointMapping
 module OrdersExt = ExtensionStep(CatalogPlugin.Orders_Extension.Mapping)
 module Demand = CommandStep(CatalogPlugin.RecordProductDemand, CatalogPlugin.RecordProductDemand_Behavior)
 
-// Prices are money, so a test writes the amount a person would say and pairs it
-// with a currency. `make` rounds to the decimals EUR has and scales nothing:
-// 9.99 EUR is 9.99, and the same call on a JPY price would round to a whole yen.
-let eur = amount => Reventless.Money.make(~amount, ~currency=EUR)
+// Prices are money, so a test writes the amount a person would say and converts
+// it once. `ofMajor` scales by the currency's own exponent, which is what keeps
+// the literal honest: 9.99 EUR is 999 cents, and the same call on a JPY price
+// would scale by 1.
+let eur = amount => Reventless.Money.ofMajor(~amount, ~currency=EUR)
 
 describe("Hybrid cross-plugin flow", () => {
   test("Tier 2 — a product added in Catalog becomes orderable in Ordering via the sync", () =>

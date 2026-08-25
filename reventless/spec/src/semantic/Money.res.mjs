@@ -3,58 +3,46 @@
 import * as S from "sury/src/S.res.mjs";
 import * as Sury from "sury";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
-import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
 import * as Currency$Reventless from "./Currency.res.mjs";
 import * as Semantic$Reventless from "./Semantic.res.mjs";
 
-function scale(currency) {
-  return Math.pow(10.0, Currency$Reventless.exponent(currency));
-}
-
-function round(amount, currency) {
-  let factor = Math.pow(10.0, Currency$Reventless.exponent(currency));
-  let scaled = amount * factor;
-  return (
-    scaled < 0.0 ? - Math.round(- scaled) : Math.round(scaled)
-  ) / factor;
-}
-
-function validate(amount, currency) {
-  if (!isFinite(amount)) {
+function validateAmount(amount) {
+  if (isFinite(amount)) {
+    if (amount !== Math.trunc(amount)) {
+      return {
+        TAG: "Error",
+        _0: `an amount is a whole number of a currency's minor units, got ` + (amount.toString() + `. There is no such thing as a fraction of the `) + `smallest unit — a major amount converts with Money.ofMajor.`
+      };
+    } else {
+      return {
+        TAG: "Ok",
+        _0: amount
+      };
+    }
+  } else {
     return {
       TAG: "Error",
-      _0: `an amount must be a finite number, got ` + amount.toString()
+      _0: `an amount must be a finite number of minor units, got ` + amount.toString()
     };
   }
-  if (round(amount, currency) === amount) {
-    return {
-      TAG: "Ok",
-      _0: amount
-    };
-  }
-  let places = Currency$Reventless.exponent(currency);
-  return {
-    TAG: "Error",
-    _0: Currency$Reventless.toString(currency) + ` has ` + (
-      places === 0 ? `no decimal places, so ` + amount.toString() + ` is not an amount of it` : places.toString() + ` decimal places, so ` + amount.toString() + ` is more precise than one. Money.make rounds an amount to what its currency holds.`
-    )
-  };
 }
 
+let amountSchema = S.refine(Sury.float, amount => {
+  let match = validateAmount(amount);
+  return match.TAG === "Ok";
+}, "expected a monetary amount", undefined);
+
 let schema = Sury.$schema(s => ({
-  amount: s.m(Sury.float),
+  amount: s.m(amountSchema),
   currency: s.m(Currency$Reventless.schema)
 }));
 
-let schema$1 = Semantic$Reventless.mark(S.refine(schema, m => {
-  let match = validate(m.amount, m.currency);
-  return match.TAG === "Ok";
-}, "expected an amount its currency can hold", undefined), Semantic$Reventless.Id.money, undefined);
+let schema$1 = Semantic$Reventless.mark(schema, Semantic$Reventless.Id.money, undefined);
 
 function make(amount, currency) {
   return {
-    amount: round(amount, currency),
+    amount: amount,
     currency: currency
   };
 }
@@ -66,25 +54,32 @@ function zero(currency) {
   };
 }
 
-function ofMinor(units, currency) {
+function scale(currency) {
+  return Math.pow(10.0, Currency$Reventless.exponent(currency));
+}
+
+function ofMajor(amount, currency) {
+  let scaled = amount * Math.pow(10.0, Currency$Reventless.exponent(currency));
   return {
-    amount: units / Math.pow(10.0, Currency$Reventless.exponent(currency)),
+    amount: scaled < 0.0 ? - Math.round(- scaled) : Math.round(scaled),
     currency: currency
   };
 }
 
-function toMinor(m) {
-  return Math.round(m.amount * Math.pow(10.0, Currency$Reventless.exponent(m.currency)));
+function toMajor(m) {
+  return m.amount / Math.pow(10.0, Currency$Reventless.exponent(m.currency));
 }
 
 function format(m) {
+  let exponent = Currency$Reventless.exponent(m.currency);
   let negative = m.amount < 0.0;
-  let fixed = (
+  let digits = (
     negative ? - m.amount : m.amount
-  ).toFixed(Currency$Reventless.exponent(m.currency));
-  let parts = fixed.split(".");
-  let whole = Stdlib_Option.getOr(parts[0], "0");
-  let fraction = parts[1];
+  ).toString();
+  let padded = digits.padStart(exponent + 1 | 0, "0");
+  let split = padded.length - exponent | 0;
+  let whole = padded.slice(0, split);
+  let fraction = padded.slice(split, padded.length);
   let group = s => {
     let length = s.length;
     if (length <= 3) {
@@ -96,24 +91,64 @@ function format(m) {
   return (
     negative ? "-" : ""
   ) + group(whole) + (
-    fraction !== undefined ? "." + fraction : ""
+    exponent === 0 ? "" : "." + fraction
   ) + " " + Currency$Reventless.toString(m.currency);
 }
 
 function add(a, b) {
-  if (a.currency !== b.currency) {
+  if (a.currency === b.currency) {
+    return {
+      TAG: "Ok",
+      _0: {
+        amount: a.amount + b.amount,
+        currency: a.currency
+      }
+    };
+  } else {
     return {
       TAG: "Error",
       _0: `cannot add ` + format(b) + ` to ` + format(a) + `: they are different currencies. Converting between them needs a rate, which is not something an amount carries.`
     };
   }
-  let factor = Math.pow(10.0, Currency$Reventless.exponent(a.currency));
+}
+
+function times(m, by) {
+  let product = m.amount * by;
+  if (Math.abs(product) <= Number.MAX_SAFE_INTEGER) {
+    return {
+      TAG: "Ok",
+      _0: {
+        amount: product,
+        currency: m.currency
+      }
+    };
+  } else {
+    return {
+      TAG: "Error",
+      _0: `cannot multiply ` + format(m) + ` by ` + by.toString() + `: the result is past the ` + (`largest amount that stays exact, ` + Number.MAX_SAFE_INTEGER.toString() + ` minor units.`)
+    };
+  }
+}
+
+function allocate(m, into) {
+  if (into <= 0) {
+    return {
+      TAG: "Error",
+      _0: `cannot split ` + format(m) + ` into ` + into.toString() + ` parts: a split is into at least one part.`
+    };
+  }
+  let share = Math.trunc(m.amount / into);
+  let remainder = m.amount - share * into;
+  let step = remainder < 0.0 ? -1.0 : 1.0;
+  let extra = Math.abs(remainder);
   return {
     TAG: "Ok",
-    _0: {
-      amount: (Math.round(a.amount * factor) + Math.round(b.amount * factor)) / factor,
-      currency: a.currency
-    }
+    _0: Stdlib_Array.fromInitializer(into, i => ({
+      amount: share + (
+        i < extra ? step : 0.0
+      ),
+      currency: m.currency
+    }))
   };
 }
 
@@ -130,16 +165,18 @@ function sum(amounts) {
 }
 
 export {
-  scale,
-  round,
-  validate,
+  validateAmount,
+  amountSchema,
   schema$1 as schema,
   make,
   zero,
-  ofMinor,
-  toMinor,
+  scale,
+  ofMajor,
+  toMajor,
   format,
   add,
+  times,
+  allocate,
   sum,
 }
-/* schema Not a pure module */
+/* amountSchema Not a pure module */

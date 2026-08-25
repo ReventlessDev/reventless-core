@@ -206,11 +206,10 @@ let buildProducts = (~count=productCount, ()): array<product> => {
         let low = Math.log(5.0)
         let high = Math.log(900.0)
         let raw = Math.exp(low +. ReventlessSeed.Seed.Random.float(random) *. (high -. low))
-        // `make` is the rounding: it lands on the decimals the currency has,
-        // which is what the hand-written `Math.round(raw *. 100.0) /. 100.0`
-        // here used to approximate — and would have got wrong for a currency
-        // with a different number of them.
-        let price = Reventless.Money.make(~amount=raw, ~currency)
+        // `ofMajor` is the rounding: it scales by the currency's exponent and
+        // lands on a whole minor unit, which is what the hand-written
+        // `Math.round(raw *. 100.0) /. 100.0` here used to approximate.
+        let price = Reventless.Money.ofMajor(~amount=raw, ~currency)
         products->Array.push({
           id: `prd-${pad(n.contents, 3)}`,
           name,
@@ -254,10 +253,10 @@ let archivedProducts = (products: array<product>): array<product> =>
 let discontinuedProducts = (products: array<product>): array<product> =>
   products->Array.filter(p => p.shelf == Discontinued)
 
-// `make` rounds the discounted figure to what the currency holds, so the price
-// that lands is one a shop could print rather than a float with a tail.
+// The discount is applied to the minor units directly, so it cannot drift into
+// float error on the way through a decimal and back.
 let discountedPrice = (p: product): Reventless.Money.t =>
-  Reventless.Money.make(~amount=p.price.amount *. 0.85, ~currency=p.price.currency)
+  Reventless.Money.make(~amount=Math.round(p.price.amount *. 0.85), ~currency=p.price.currency)
 
 // ── Customers ───────────────────────────────────────────────────────────────
 

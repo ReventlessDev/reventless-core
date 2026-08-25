@@ -9,10 +9,9 @@ module ImportProductSlice = {
 
 @@reventless.gwt
 
-// The feed counts in minor units and the domain counts in the currency's own,
-// so the expectations are written the way a person says a price and the slice is
-// left to do the conversion. That the two differ by exactly the currency's scale
-// — ×100 for USD, ×1 for JPY — is what these cases are checking.
+// The feed sends minor units already, so these expectations are written the same
+// way — `make`, not `ofMajor`. Nothing is scaled at this boundary, which is the
+// point: the supplier's `unitPrice` and the domain's `amount` are the same number.
 let money = (amount, currency) => Reventless.Money.make(~amount, ~currency)
 
 describe("ImportProduct InboundTranslationSlice", () => {
@@ -31,7 +30,7 @@ describe("ImportProduct InboundTranslationSlice", () => {
         productId: "p-1",
         name: "Laptop",
         description: "high-end",
-        price: money(999.99, USD),
+        price: money(99999.0, USD),
         // Supplier feed carries no image → the optional productImage is absent.
         categoryId: "cat1",
       }),
@@ -57,16 +56,15 @@ describe("ImportProduct InboundTranslationSlice", () => {
         productId: "p-2",
         name: "Buch",
         description: "gut",
-        price: money(19.99, EUR),
+        price: money(1999.0, EUR),
         categoryId: "cat1",
       }),
     )
   )
 
   // And the case that would have been silently wrong under a hardcoded `/100`:
-  // JPY has no minor unit, so a feed's 1200 is ¥1200 and not ¥12. Nothing in this
-  // slice special-cases it — `ofMinor` reads the scale off the currency, and for
-  // this one the scale is 1.
+  // JPY has no minor unit, so ¥1200 is 1200 and not ¥12. Nothing in this slice
+  // special-cases it — the amount is simply not scaled at all.
   test("a currency with no minor unit needs no special case", () =>
     whenInput({
       sku: "p-3",
