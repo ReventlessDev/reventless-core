@@ -42,13 +42,33 @@ function mapIncomingEvent(_id, event, _meta, _pluginDef, _queryEngine) {
   }
 }
 
+let handledEvents = [
+  {
+    name: "ProductBecameAvailable",
+    toCommandTypes: ["SyncNewProduct"]
+  },
+  {
+    name: "ProductPriceChanged",
+    toCommandTypes: ["ChangeSyncedPrice"]
+  },
+  {
+    name: "ProductWithdrawn",
+    toCommandTypes: ["WithdrawSyncedProduct"]
+  },
+  {
+    name: "ProductRelisted",
+    toCommandTypes: ["RelistSyncedProduct"]
+  }
+];
+
 let Mapping = {
   ExtensionPoint: undefined,
   Delegate: undefined,
   mapIncomingEvent: mapIncomingEvent,
   mapOutgoingEvent: undefined,
   delegateModuleUrl: SyncCatalogProduct$OrderingPlugin.moduleUrl,
-  moduleUrl: "@reventlessdev/online-shop-hybrid-ordering/src/Extension/Products_Extension.res.mjs"
+  moduleUrl: "@reventlessdev/online-shop-hybrid-ordering/src/Extension/Products_Extension.res.mjs",
+  handledEvents: handledEvents
 };
 
 let moduleUrl = "@reventlessdev/online-shop-hybrid-ordering/src/Extension/Products_Extension.res.mjs";

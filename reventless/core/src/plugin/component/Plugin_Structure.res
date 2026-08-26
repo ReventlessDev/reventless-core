@@ -1,32 +1,18 @@
-// Pure metadata extraction from spec modules.
-// Extracts the pluginStructure (component graph metadata) that Auto UI, the
-// event-graph view, and MCP tooling consume. Kept standalone so it can be
-// unit-tested without spinning up a Platform.
+// Pure metadata extraction from spec modules: the pluginStructure that Auto UI,
+// the event graph and MCP tooling consume. Standalone, so it unit-tests without
+// a Platform.
 
 let log = Logger.fromEnv()
 
-// What a field *is* is `SchemaType`'s question, and it is the IR every other
-// schema consumer here reads. The two predicates below are the only two answers
-// this module needs; both are stated over the IR rather than over sury shapes,
-// so a field that is a date, a reference or an enum is one for the label picker
-// too.
-
-// Whether a field can name a record. `Nullable` unwraps — an optional name is
-// still the entity's name, absent on some rows, which is a rendering question
-// rather than a declaration one. A `Semantic` wrapper is refused: it is the
-// schema saying the string means something other than prose (a storage ref, a
-// URL), and a bucket key is not a name. `DateTime`, `EntityId`, `Enum` and every
-// composite shape fall out of the catch-all without being named — which is the
-// point of reading an IR rather than restating it: the next shape it grows is
-// excluded before it exists.
+// Whether a field can name a record, stated over `SchemaType`'s IR so every
+// shape it grows is excluded before it exists. `Nullable` unwraps; a `Semantic`
+// wrapper is refused — a bucket key or URL is not prose.
 let rec isLabelShape = (t: SchemaType.schemaType): bool =>
   switch t {
   | ScalarString => true
   | Nullable(inner) => isLabelShape(inner)
-  // Written out rather than left to the catch-all: a union is a composite whose
-  // rendering depends on which arm a row is in, so no single string names the
-  // record. The label picker's fallback rung is a *guess*, and this is the shape
-  // it would guess most confidently and most wrongly.
+  // Written out rather than left to the catch-all: no single string names a row
+  // whose rendering depends on its arm.
   | TaggedUnion(_, _) => false
   | _ => false
   }
@@ -53,19 +39,9 @@ let conventionalLabelNames = ["name", "title", "label", "displayname"]
 let shapeOfField = (~entityName: string, ~name: string, schema: S.t<unknown>): SchemaType.schemaType =>
   SchemaType.fromSury(~parentName=entityName, ~fieldName=name, schema)
 
-// Resolve the field that holds the entity's lifecycle, used to filter a per-row
-// command menu against each command's `allowedStates`. Resolution order:
-//   1. Field annotated `@lifecycle` (PPX-emitted; see StateAnnotations).
-//   2. Field literally named `"lifecycle"` whose IR shape is an enum (convention;
-//      mirrors how labelField falls back to a conventionally-named field).
-//   3. None — filter is inert for this read model.
-//
-// The convention rung is keyed on `lifecycle` rather than `status` deliberately:
-// `status` is a promiscuous name — geocoding progress, todo-queue progress and
-// translation audit outcome all wear it — so a convention keyed on it guesses,
-// and guesses often. `lifecycle` is a word nobody types by accident, so matching
-// it is closer to a declaration written in the field name. A record whose field
-// is honestly called something else annotates instead.
+// The field holding the entity's lifecycle, for filtering a per-row command menu:
+// `@lifecycle`, else an enum field literally named `lifecycle`, else None. Not
+// keyed on `status` — a promiscuous name that would guess, and guess often.
 let lifecycleFieldFromStateSchema = (
   ~entityName: string,
   stateSchema: S.t<unknown>,
@@ -91,12 +67,8 @@ let lifecycleFieldFromStateSchema = (
   }
 }
 
-// The field whose truth withdraws a row from ordinary reads. Annotation-only:
-// there is no convention rung here, and its absence is the point. `lifecycleField`
-// may fall back to a field literally named "lifecycle" because guessing wrong makes
-// a command menu filter oddly; guessing wrong here makes rows vanish for every
-// caller who is not elevated, so a boolean named `archived` that nobody annotated
-// stays exactly as visible as it was.
+// The field whose truth withdraws a row from ordinary reads. Annotation-only —
+// no convention rung, since guessing wrong here makes rows vanish.
 let retiredFromStateSchema = (
   stateSchema: S.t<unknown>,
 ): option<Reventless.StateAnnotations.retiredSpec> =>
@@ -108,62 +80,29 @@ let retiredFromStateSchema = (
 let retiredFieldFromStateSchema = (stateSchema: S.t<unknown>): option<string> =>
   retiredFromStateSchema(stateSchema)->Option.map(r => r.field)
 
-// The states a row is retired *in*, for the enum form. `None` is the boolean
-// form, where the value is always `true` and naming it would be a parameter that
-// can only hold one thing. A set, because a lifecycle may be withdrawn by more
-// than one state, and a one-member set is the ordinary case.
-//
-// Published beside `retiredField` rather than left for a consumer to dig out of
-// the schema: a client that has the def in hand has the whole predicate, and two
-// places deriving one comparison is how they come to disagree about it.
+// The states a row is retired *in*, for the enum form; `None` is the boolean
+// form. Published beside `retiredField` so a client holds the whole predicate.
 let retiredValuesFromStateSchema = (stateSchema: S.t<unknown>): option<array<string>> =>
   retiredFromStateSchema(stateSchema)->Option.flatMap(r => r.values)
 
-// Whether a reference to a retired row of this view still resolves its name —
-// `@namedWhenRetired`. Read off the retirement rather than from a second
-// annotation, so a record cannot declare the reach of a retirement it does not
-// have; the PPX refuses that pairing, and reading it here from the same place
-// keeps the two halves agreeing by construction rather than by review.
+// Whether a reference to a retired row still resolves its name. Read off the
+// retirement itself, so a record cannot declare the reach of one it lacks.
 let namedWhenRetiredFromStateSchema = (stateSchema: S.t<unknown>): bool =>
   retiredFromStateSchema(stateSchema)->Option.mapOr(false, r => r.namedWhenRetired)
 
-// What one record's `@retired` declaration could be told about its own field.
-//
-// Three outcomes rather than a bool, because "nothing to check" and "could not
-// check" are different facts and only the second is worth a plugin's attention.
+// What one record's `@retired` could be told about its own field. Three outcomes,
+// because "nothing to check" and "could not check" are different facts.
 type retiredCheck =
   | NotDeclared
-  // Why the names could not be compared. A fatal rule that is invisible when it
-  // does not run is the failure mode the transition check spends a counter to
-  // avoid, so this is reported rather than skipped in silence.
+  // Why the names could not be compared — reported, never skipped in silence.
   | Unchecked(string)
   | Checked(array<string>)
 
-// The check the PPX cannot make, in the one place that can: the payload is a
-// constructor reference the PPX only ever sees as a name, and whether that name
-// is a case of the field's enum needs the schema.
-//
-// Two rules, and they are held to different standards on purpose.
-//
-// **A name the field's enum does not declare is unambiguously wrong** — no domain
-// means it — and the symptom is a data-exposure bug: the retirement predicate
-// compares every row against a state no row is ever in, so every row stays
-// visible to every caller while the annotation sits on the schema looking like
-// enforcement. That is returned as a failure for the caller to raise on.
-//
-// It is the same fault the PPX already refuses to compile when the enum is
-// declared in the same file, and the PPX says so in its own message. This is the
-// residue that a per-file pass cannot reach: field form, enum imported from
-// elsewhere. Two rungs of one ladder — until this was promoted, which rung you
-// landed on decided whether a data-exposure bug stopped the build, and the
-// arbiter was where the enum happened to be declared.
-//
-// **A `value` on a field that is not the record's lifecycle stays a warning.**
-// It would keep the read narrowing while silently losing the command filtering
-// that motivates it — `@transition` is written in terms of the lifecycle field,
-// so a retirement state anywhere else is a state no command can name. That is a
-// modelling judgement rather than a wrong name, and judgement calls are what the
-// withdrawn dead-end rule taught us not to hard-fail on.
+// The check the PPX cannot make (it sees the payload only as a name; the schema
+// says whether that name is a case of the field's enum). A name the enum does not
+// declare is a failure — the predicate then matches no row and every row stays
+// visible. A `value` on a field that is not the lifecycle is only a warning: a
+// modelling judgement rather than a wrong name.
 let checkRetiredValue = (~entityName: string, stateSchema: S.t<unknown>): retiredCheck =>
   switch retiredFromStateSchema(stateSchema) {
   // The boolean form names no state, so there is nothing to compare. Not a skip.
@@ -216,14 +155,9 @@ let checkRetiredValue = (~entityName: string, stateSchema: S.t<unknown>): retire
     }
   }
 
-// Raised together, after every view has been walked, so an author sees every bad
-// name at once rather than the first one and then a rebuild.
-//
-// Retroactive in a way the transition check was not: `@transition` was new when
-// its check landed, so nothing deployed could carry a stale name, while `@retired`
-// has been shipping. A deployed plugin holding a misspelled retired value gets a
-// red build on its next deploy — which is the point, and is why the examples were
-// swept before this was promoted.
+// Raised together, after every view is walked, so an author sees every bad name
+// at once. Retroactive: a deployed plugin with a stale value goes red on its next
+// build, which is the point.
 let reportRetiredStates = (
   ~pluginName: string,
   ~failures: array<string>,
@@ -245,11 +179,8 @@ let reportRetiredStates = (
   }
 }
 
-// The states a record's lifecycle field can hold. The same extraction
-// `checkRetiredValue` does, keyed on the declared lifecycle field rather than the
-// retired one — which is the field a command's `@transition` is written in terms
-// of. `None` means the record declares no lifecycle at all; `Some([])` means it
-// declares one whose shape carries no cases to compare against.
+// The states a record's lifecycle field can hold — the field `@transition` is
+// written in terms of. `None`: no lifecycle; `Some([])`: one with no cases.
 let lifecycleStatesFromStateSchema = (
   ~entityName: string,
   stateSchema: S.t<unknown>,
@@ -270,34 +201,152 @@ let lifecycleStatesFromStateSchema = (
     }
   )
 
-// The other check the PPX cannot make, and the reason `@transition` is worth
-// more than a rename.
+// ── The port's translation table ─────────────────────────────────────────────
 //
-// A command declares the states it may run from and the state it lands in, but
-// those states belong to ANOTHER component's lifecycle enum. The PPX only ever
-// sees them as names — it strips the attribute before the typechecker, and a
-// synthetic reference to the constructor does not survive ReScript's pre-PPX
-// dependency walk. So a misspelled state compiles clean, ships, and produces a
-// command that is legal in a state no row is ever in: a menu entry that never
-// appears, with nothing anywhere saying why.
-//
-// Here both sides are in hand. This runs at plugin-structure assembly, which
-// happens in the deploy program and at local-platform start — never inside a
-// deployed Lambda, which reads a persisted structure rather than building one.
-// So raising is a failed deploy, not a dead function.
-//
-// Two severities, and the split is deliberate:
-//   - a state the linked views do not declare  → RAISE. The author named
-//     something that does not exist.
-//   - no resolvable linked view, or none declaring a lifecycle → warn. The
-//     metadata gap is real but hard-failing on it would turn "this plugin's
-//     views could not be resolved" into a deploy outage, and that population is
-//     broad.
-//
-// Checked against the UNION of the linked views' lifecycles rather than a single
-// view: a command whose slice feeds two views is not claiming which one, and
-// failing on an ambiguity the author never expressed would be a false positive
-// on correct code.
+// The PPX reads the table off the mapping's own arms, so these checks are what
+// stands behind a HAND-WRITTEN one — the escape hatch for a mapping whose arms
+// the PPX refused to guess at. Names raise (both sides are `@schema` types, so a
+// non-constructor is a mistake); the probe below is best-effort and reports what
+// it could not follow.
+
+let translationTableFailures = (
+  ~label: string,
+  ~declared: array<ReventlessInfra.ExtensionPointMapping.publishedEvent>,
+  ~publishedNames: array<string>,
+  ~sourceNames: array<string>,
+): array<string> => {
+  let failures = []
+  let push = msg => failures->Array.push(msg)->ignore
+  declared->Array.forEach(({name, fromEventTypes}) => {
+    if !(publishedNames->Array.includes(name)) {
+      push(
+        `${label}: publishedEvents names "${name}", which the extension point does not ` ++
+        `publish — it declares ${publishedNames->Array.join(", ")}.`,
+      )
+    }
+    fromEventTypes->Array.forEach(src => {
+      if !(sourceNames->Array.includes(src)) {
+        push(
+          `${label}: publishedEvents says "${name}" comes from "${src}", which is not an ` ++
+          `event of ${sourceNames->Array.join(", ")}.`,
+        )
+      }
+    })
+  })
+  failures
+}
+
+// What the probe saw against what was declared. Produced-but-undeclared raises
+// (the probe watched it happen); declared-but-unproduced only warns (the arm may
+// branch on a payload the probe cannot synthesise). Unfollowed sources are not
+// judged at all — "did not look" must not read as "no edge".
+let translationTableDrift = (
+  ~label: string,
+  ~declared: array<ReventlessInfra.ExtensionPointMapping.publishedEvent>,
+  ~observed: array<(string, string)>,
+  ~followed: array<string>,
+): (array<string>, array<string>) => {
+  let declaredEdges = declared->Array.reduce([], (acc, {name, fromEventTypes}) =>
+    Array.concat(acc, fromEventTypes->Array.map(src => (src, name)))
+  )
+  let has = (edges, (src, pub)) => edges->Array.some(((s, p)) => s == src && p == pub)
+
+  let failures =
+    observed
+    ->Array.filter(edge => !(declaredEdges->has(edge)))
+    ->Array.map(((src, pub)) =>
+      `${label}: "${src}" publishes "${pub}", which publishedEvents does not declare.`
+    )
+
+  let warnings =
+    declaredEdges
+    ->Array.filter(((src, pub)) => followed->Array.includes(src) && !(observed->has((src, pub))))
+    ->Array.map(((src, pub)) =>
+      `${label}: publishedEvents declares "${src}" → "${pub}", which the mapping did not ` ++
+      `produce for a synthesised "${src}".`
+    )
+
+  (failures, warnings)
+}
+
+// The subscriber's mirror, resolved against the union of both command sets:
+// publishing back to the port is as real an edge as publishing inward.
+let handledTableFailures = (
+  ~label: string,
+  ~declared: array<ReventlessInfra.ExtensionMapping.handledEvent>,
+  ~eventNames: array<string>,
+  ~commandNames: array<string>,
+): array<string> => {
+  let failures = []
+  declared->Array.forEach(({name, toCommandTypes}) => {
+    if !(eventNames->Array.includes(name)) {
+      failures
+      ->Array.push(
+        `${label}: handledEvents names "${name}", which the extension point does not ` ++
+        `publish — it declares ${eventNames->Array.join(", ")}.`,
+      )
+      ->ignore
+    }
+    toCommandTypes->Array.forEach(cmd =>
+      if !(commandNames->Array.includes(cmd)) {
+        failures
+        ->Array.push(
+          `${label}: handledEvents says "${name}" routes to "${cmd}", which is neither a ` ++
+          `delegate command nor an extension point command — ${commandNames->Array.join(", ")}.`,
+        )
+        ->ignore
+      }
+    )
+  })
+  failures
+}
+
+// The probe's stand-ins. A mapping can only reach the query engine behind a
+// promise, and such an arm is reported as unfollowed anyway.
+let probeId = "probe"
+let probeMeta: Reventless.Message.meta = {
+  service: "Plugin_Structure",
+  time: "",
+  msgId: "",
+  correlationId: "",
+}
+let probeQueryEngine: Reventless.QueryEngine.operations = {
+  scan: async (~readModelName as _, ~filterConfigs as _, ~limit as _) => [],
+  query: async (
+    ~readModelName as _,
+    ~key as _=?,
+    ~id as _,
+    ~subIdConfig as _=?,
+    ~filterConfigs as _=?,
+    ~ascending as _=?,
+    ~limit as _=?,
+  ) => [],
+}
+
+// One place raises, at the end of the build: a stale table drifts in more than
+// one spot, and stopping at the first would hide the rest.
+let reportTranslationTables = (
+  ~pluginName: string,
+  ~failures: array<string>,
+  ~warnings: array<string>,
+): unit => {
+  if Array.length(warnings) > 0 {
+    log.warn(~comp="Plugin_Structure", `${pluginName}:\n` ++ warnings->Array.join("\n"))
+  }
+  if Array.length(failures) > 0 {
+    JsError.throwWithMessage(
+      `${pluginName}: the declared translation table does not match the mapping.\n` ++
+      failures->Array.join("\n"),
+    )
+  }
+}
+
+// `@transition` names states belonging to another component's enum, which the PPX
+// only ever sees as names — so a misspelling compiles clean and produces a command
+// legal in a state no row is in. Both sides are in hand here. A state the linked
+// views do not declare raises (this runs at assembly, never in a Lambda, so that is
+// a failed deploy); no resolvable view only warns. Checked against the UNION of the
+// linked views: a slice feeding two is not claiming which one.
 let checkDeclaredTransitions = (
   ~pluginName: string,
   ~writables: array<Reventless.Plugin.writableDef>,
@@ -362,24 +411,10 @@ let checkDeclaredTransitions = (
   }
 }
 
-// Beyond "does this state exist" — does the declared graph make sense?
-//
-// A separate pass from the name check on purpose. That one asks whether a name
-// is a case of an enum, which is a question about one annotation in isolation.
-// These ask whether the annotations AGREE with each other across an entity, and
-// a graph can be built entirely out of valid names and still be wrong: a state
-// nothing reaches, or one nothing can leave that was never marked as an ending.
-//
-// Reported as warnings rather than raised. The name check fails a build because
-// a state that does not exist is unambiguously a mistake — there is no domain in
-// which it is what the author meant. These are weaker signals: a state with no
-// way out may be a genuine dead end nobody has marked yet, or a legitimate
-// terminal the model reaches by a route this metadata cannot see (an automation,
-// an external system). Failing a deploy on a modelling smell would be the wrong
-// trade, and a smell that stops a deploy gets silenced rather than fixed.
-// Pure, and returns its findings rather than logging them, so the rule can be
-// tested without reading a log. `checkLifecycleTopology` below is the thin part
-// that reports them.
+// Whether the declared transitions AGREE across an entity — a graph of valid names
+// can still leave a state nothing reaches. Warnings only: a smell is not a mistake,
+// and one that stops a deploy gets silenced rather than fixed. Pure, so the rule
+// tests without a log; `checkLifecycleTopology` reports.
 let lifecycleTopologyFindings = (
   ~writables: array<Reventless.Plugin.writableDef>,
   ~lifecycleStatesByView: dict<array<string>>,
@@ -388,20 +423,15 @@ let lifecycleTopologyFindings = (
   lifecycleStatesByView
   ->Dict.toArray
   ->Array.forEach(((view, states)) => {
-    // Every state some command declares a transition INTO. The question this
-    // check asks is only about arrival, so it reads the target and never the
-    // from-set — which is what lets a creating command (`@transition(() => X)`,
-    // a target and no from-set, because it runs from no row) count towards
-    // reachability the same way an edge out of another state does.
+    // Arrival only, so a creating command (a target and no from-set) counts
+    // towards reachability like any other edge.
     let reachable = writables->Array.reduce([], (acc, w) =>
       w.linkedViews->Array.includes(view)
         ? Array.concat(acc, w.commands->Array.filterMap(cmd => cmd.targetState))
         : acc
     )
     if Array.length(reachable) > 0 {
-      // Rows start in the first declared state — the same convention the
-      // lifecycle diagram uses — so nothing pointing at it is expected rather
-      // than suspicious.
+      // Rows start in the first declared state, so nothing pointing at it is fine.
       let initial = states->Array.get(0)
 
       states->Array.forEach(state => {
@@ -414,23 +444,9 @@ let lifecycleTopologyFindings = (
           ))
           ->ignore
         }
-        // NOT checked: a state with no way out.
-        //
-        // The obvious second rule — "a dead end that is not `@retired` is
-        // suspicious" — was written, run against the shipped examples, and
-        // removed, because it is wrong twice over.
-        //
-        // It fires on correct models: `Shipped` and `Refunded` are terminal in
-        // the aggregates shop, as terminal states are in most lifecycles, and
-        // there is nothing to fix about either.
-        //
-        // Worse, its suggested fix is harmful. `@retired` does not mean
-        // "terminal" — it means WITHDRAWN FROM ORDINARY READS. Marking a shipped
-        // order retired to silence a lint would hide every shipped order from
-        // every caller who cannot widen their read. An ending and a withdrawal
-        // are different facts, and nothing in the vocabulary currently
-        // distinguishes an intentional terminal from an accidental one, so the
-        // check cannot tell them apart and should not pretend to.
+        // NOT checked: a state with no way out. Terminal states are ordinary,
+        // and the only fix a lint could suggest — `@retired` — withdraws the
+        // rows from reads rather than marking an ending.
       })
     }
   })
@@ -446,44 +462,12 @@ let checkLifecycleTopology = (
     log.warn(~comp="Plugin_Structure", `${pluginName}/${view}: ${message}`)
   )
 
-// NOT here: the event-consumption completeness check.
-//
-// The failure it would catch is real and has already happened: a command emitted
-// an event, the slice that owned the opposite command folded it, and the view
-// that renders the entity did not — so the row kept rendering the state it was
-// in before, with every annotation in the plugin correct. That is a class of bug
-// no declaration check can see, because nothing declared is wrong.
-//
-// It is not computable from this metadata, and the reason is worth recording so
-// the attempt is not repeated. Two narrowings were needed and only one was
-// available:
-//
-//   1. The event must belong to the view's own entity, not merely be something a
-//      slice looked up. Available: require it to be PRODUCED by a writable
-//      linked to the same view. Without this the check fires on ordinary DCB —
-//      `AddProduct` folds `CategoryAdded` to check a category exists, and the
-//      `Products` view is right to ignore it.
-//
-//   2. The slice must be known to fold the event. NOT available:
-//      `consumedEventTypes` is built from `eventVariantNames`, which drops
-//      payload-less variants — and a lifecycle-moving event is usually
-//      payload-less in the slice that folds it. Measured on the shipped example:
-//      both order slices publish `consumedEventTypes: ["Ordering.OrderPlaced"]`
-//      and nothing else, though each folds three more.
-//
-// So the exact events the rule is about are the ones the metadata does not
-// record. Making it work means publishing the payload-less consumed variants,
-// which is a platform change with its own consequences, not a lint.
+// NOT here: an event-consumption completeness check. `consumedEventTypes` drops
+// payload-less variants, which is exactly what a lifecycle-moving event usually
+// is — so the events such a rule is about are the ones this metadata omits.
 
-// Which rung of the ladder below produced the label. Published on `queryableDef`
-// as `labelFieldSource`, because the four rungs are not equally believable and a
-// consumer with a name rule of its own has to rank the declaration against it:
-// rung 1 is the author saying which field names the record, rungs 2 and 3 are
-// guesses this repo makes on their behalf, and rung 4 is the admission that
-// there was nothing to guess from. Convention and position are both guesses and
-// nothing here branches on the difference — but a conventional name is the one a
-// client can independently arrive at, while a positional pick is a fact only
-// this side knows.
+// Which rung produced the label, published as `labelFieldSource`: a consumer with
+// a name rule of its own has to rank a declaration (rung 1) against a guess.
 type labelFieldSource =
   | Annotation
   | Convention
@@ -504,22 +488,9 @@ type labelResolution = {
   source: labelFieldSource,
 }
 
-// Resolves the field a state is named by, from a state schema.
-// Source ladder:
-//   1. @displayName spec present → "displayName" + spec.fields (raw underlying fields)
-//   2. A candidate field named `name`/`title`/`label`/`displayName`
-//   3. The first candidate in declaration order
-//   4. "id" fallback with a logged warning (no searchable fields)
-//
-// A *candidate* is a non-TAG field, not literally named `id`, whose IR shape can
-// name a record (`isLabelShape`). Rungs 2 and 3 are both guesses, and the order
-// between them matters: declaration order alone means a state gains a new name
-// whenever a field is inserted above the old one — a `placedAt` added so date
-// views have something to key off renames every order to a timestamp.
-//
-// `id` is excluded here rather than by the IR because `SchemaType` treats a name
-// that short as an ordinary string; every other reference — `*Id`/`*Ids`, a DCB
-// tag, a `Reference.to` — is already an `EntityId` there.
+// The field a state is named by: `@displayName`, else a candidate named
+// name/title/label/displayName, else the first candidate, else `id` with a
+// warning. A candidate is a non-TAG field, not named `id`, passing `isLabelShape`.
 let labelFieldsFromStateSchema = (
   ~entityName: string,
   stateSchema: S.t<unknown>,
@@ -559,18 +530,13 @@ let labelFieldsFromStateSchema = (
     }
   }
 
-// ── Per-variant event / error field extraction (Phase 6.3) ───────────────────
-// Mirrors toCommandDef/extractCommandDefs for emitted events: name (TAG const),
-// payload JSON Schema, and cross-entity references. Module-level rather than
-// inside `make` because the synthetic Platform_Admin structure — hand-written,
-// because its components never pass through `make` — has to derive its defs the
-// same way, and a second copy of this walk would be free to drift from this one.
+// ── Per-variant event / error field extraction ───────────────────────────────
+// Mirrors the command walk for emitted events. Module-level so Platform_Admin,
+// whose components never pass through `make`, derives its defs the same way.
 
-// A variant's declared cross-entity references. Shared by the command and event
-// walks because the two ask the identical question of identical field dicts, and
-// the question is `getFieldTarget` rather than `getTarget`: a reference declared
-// on an `array<string>` field sits on the element schema. Collecting it in one
-// place is what stops one walk from being taught that and the other not.
+// A variant's cross-entity references, shared by the command and event walks.
+// `getFieldTarget`, not `getTarget`: an `array<string>` field declares it on the
+// element schema.
 let extractReferences = (properties: dict<S.t<unknown>>): array<
   Reventless.Plugin.fieldReference,
 > =>
@@ -607,10 +573,8 @@ let toEventDef = (v: S.t<unknown>): option<Reventless.Plugin.eventDef> => {
       | _ => None
       }
     )
-  // Payload-less event variants (`| Archived`) compile to a bare string literal.
-  // DCB-projection lookups can't WHERE-clause on them, so they stay out of
-  // producedEventTypes/consumedEventTypes; but the full `events` list carries them
-  // so the event graph can still draw the emitted (orphan) event node.
+  // Payload-less variants compile to a bare string literal. Kept here (though not
+  // in produced/consumedEventTypes) so the graph can draw the orphan node.
   | String({const: ?Some(variantName)}) => Some(mkDef(~variantName, ~properties=Dict.make()))
   | _ => None
   }
@@ -622,21 +586,16 @@ let extractEventDefs = (eventSchema: S.t<unknown>): array<Reventless.Plugin.even
   | _ => toEventDef(eventSchema)->Option.mapOr([], def => [def])
   }
 
-// Declared errors walk identically to emitted events — an error variant is a
-// variant, and the payload-less form (`| CategoryNotFound`) is the common case
-// the bare-string branch above already handles. Reusing the walk rather than
-// copying it keeps the two from drifting; only the def type differs, so that a
-// consumer (and the SDL) can tell a refusal from a fact.
+// Errors walk identically to events; only the def type differs, so a consumer
+// can tell a refusal from a fact. Shared rather than copied, so they cannot drift.
 let extractErrorDefs = (errorSchema: S.t<unknown>): array<Reventless.Plugin.errorDef> =>
   extractEventDefs(errorSchema)->Array.map(({name, schema, references}) => (
     {name, schema, references}: Reventless.Plugin.errorDef
   ))
 
-// The command walk, module-level for the same reason as the event walk above:
-// the synthetic Platform_Admin structure cannot reach `make` — it has no
-// `module(Aggregate.T)` to hand it — and hand-writing a second copy of this walk
-// is what let its command metadata drift from the SDL generated off the same
-// schema.
+// Module-level like the event walk: the synthetic Platform_Admin structure has no
+// `module(Aggregate.T)` to hand `make`, and a second copy of this walk is what let
+// its metadata drift from the SDL.
 
 // Aggregate commands that initialize a new aggregate instance are Collection-level
 // (shown as table-top buttons); all others are Instance-level (shown per-row).
@@ -677,32 +636,18 @@ let commandLevelAndId = (~isAggregate, ~variantName, properties: dict<S.t<unknow
     }
   }
 
-// A rule the server enforces, expressed as the keys a client checks against
-// `identity.groups ++ config.accessTiers`. `AllowGroups` is satisfied by ANY of
-// its groups (`Authorization.isAllowed` is `some`, not `every`), so the array is
-// an any-of and a client must read it that way.
-//
-// `AllowAuthenticated` / `AllowAnonymous` ask for nothing a client can check —
-// anyone holding a session already satisfies them — so they publish no keys
-// rather than a key everyone holds.
-//
-// `DenyAll` also publishes none, deliberately. An unsatisfiable key would render
-// as locked-with-upsell in a tiered shell: a surface advertised as purchasable
-// that no purchase unlocks. A component nobody may call belongs in no menu, and
-// that is an omission for the enumerating side to make, not a key to invent here.
+// The server's rule as keys a client checks against `identity.groups ++
+// config.accessTiers`; an any-of, since `isAllowed` is `some`. The rules asking
+// for nothing checkable — and `DenyAll` — publish no keys rather than an
+// unsatisfiable one.
 let accessKeysFor = (rule: Reventless.Authorization.permission): option<array<string>> =>
   switch rule {
   | AllowGroups(groups) if groups->Array.length > 0 => Some(groups)
   | AllowGroups(_) | AllowAuthenticated | AllowAnonymous | DenyAll => None
   }
 
-// Write each mutation argument's rendered GraphQL type onto the property it
-// belongs to, so a consumer assembling its own mutation document declares the
-// variable the server actually expects instead of guessing `String!`.
-//
-// Mutates the freshly derived schema in place — `deriveObjectSchema` has just
-// built it and nothing else holds it yet. A property with no matching
-// argument is left alone rather than annotated with a guess.
+// Each mutation argument's GraphQL type onto its property, so a consumer declares
+// the variable the server expects. Mutates the freshly derived schema in place.
 let annotateArgTypes = (schema: JSON.t, argTypes: dict<string>): JSON.t => {
   schema
   ->JSON.Decode.object
@@ -738,10 +683,7 @@ let toCommandDef = (
   let mkDef = (~variantName, ~properties) => {
     let (level, aggregateIdField) = commandLevelAndId(~isAggregate, ~variantName, properties)
     let references = extractReferences(properties)
-    // Per-variant `allowedStates` lives on the *parent* command schema
-    // (the PPX attaches a single dict<variantName, [|states|]> via
-    // markAllowedStates). Look it up by variant name; back-compat
-    // None when the variant lacks a @transition annotation.
+    // Per-variant, but attached by the PPX to the *parent* schema as one dict.
     let allowedStates = ApiAllowedStatesHelpers.getAllowedStates(parentSchema, ~variantName)
     // The `@transition` target (the command's *to* status), read the same way
     // as allowedStates. None ⇒ AutoUI's board resolver falls back to its
@@ -780,28 +722,13 @@ let toCommandDef = (
     }
     ({
       Reventless.Plugin.name: variantName,
-      // The derived schema, not sury's raw one: `S.toJSONSchema` carries the
-      // shape and drops every `x-reventless-*` marker the PPX put on the
-      // fields, so a command's `@storageRef`/`@semantic`/`@ref` reached the
-      // wire on the read side and nowhere on the write side. A reader that
-      // matches a field against its setter — or picks the upload endpoint of
-      // the store a command argument declares — then has nothing to match on.
-      // `MCP_SchemaGenerator` already derives these same variant schemas.
-      //
-      // Carries `x-reventless-graphql-type` per property — see
-      // `annotateArgTypes`.
+      // The derived schema, not sury's raw one, which drops every `x-reventless-*`
+      // marker the PPX put on the fields. Also carries `x-reventless-graphql-type`.
       schema: annotatedSchema->JSON.stringify,
       level,
       aggregateIdField,
-      // A non-exposed (`@noApi`) variant has no callable mutation field. For a
-      // single-exposed-command slice, `mutationFieldFor` resolves *every*
-      // variant — including the `@noApi` one — to the slice's one mutation
-      // field, so emitting it here would hand the non-exposed variant a
-      // sibling's callable-looking field (e.g. `ReopenOrder` →
-      // `Ordering_CancelOrder`). Emit an empty sentinel instead; the variant
-      // stays listed with `apiExposed: false` for the event-graph badge, but
-      // no consumer can mistake it for a callable field. Exposed variants are
-      // byte-identical.
+      // Empty for a `@noApi` variant: `mutationFieldFor` would resolve it to a
+      // sibling's field, which reads as callable. Exposed variants are unchanged.
       mutationField,
       references,
       allowedStates,
@@ -871,24 +798,10 @@ let visibilityTag = (v: Reventless.Visibility.t): option<string> =>
   }
 
 /**
- A read model's published `queryableDef`, assembled from its **spec** rather than
- from a built component.
-
- `make` cannot serve the platform's own components: it takes
- `module(ReadModel.T)` values, and the platform has no built module to hand
- itself at structure-assembly time — the components it is describing are the ones
- being assembled. That is a real constraint and this routes around it rather than
- pretending it away, by taking the schemas the extractors actually need.
-
- Everything here is the same helper `make` calls on the same schema, so the
- platform's own view is described by the mechanism that describes everyone
- else's. The alternative — a hand-written record — is what let the admin's
- metadata drift from the SDL generated off the same spec, four times over.
-
- `queryField` and `singleQueryField` come from `Api_Naming`, which is the only
- place that decides how a name singularises. For the admin these are
- byte-identical to the names it used to hand-write; `singularize` already handled
- the plural-spec-name / singular-type shape that looked bespoke.
+ A read model's `queryableDef` assembled from its spec, for the platform's own
+ components: `make` takes `module(ReadModel.T)` values, and at structure-assembly
+ time the platform has no built module to hand itself. Every extractor here is the
+ one `make` calls, so the two cannot drift — a hand-written record did, four times.
  */
 let queryableDefFromSpec = (
   ~plugin: string,
@@ -940,23 +853,18 @@ let make = (
   ~inboundTranslationSlices: array<module(ReventlessInfra.InboundTranslationSlice.T)>=[],
   ~extensions: array<module(ReventlessInfra.Extension.Blueprint)>=[],
   ~extensionPoints: array<module(ReventlessInfra.ExtensionPointMapping.Mapping)>=[],
-  // Component name → chapter (intra-plugin grouping band), captured at build time
-  // from each component's source folder by the plugin generator. A component whose
-  // spec name has no entry (or lives directly under a kind-folder) carries no chapter
-  // and renders flat. Keyed by `Spec.name`, which equals the source filename stem for
-  // every graph-node kind, so the generator can build this map from the discovered
-  // file paths. See `Codegen.chapterOf` and docs/plans/done/deployed-chapter-grouping.md.
+  // Component name → chapter, captured from each component's source folder by the
+  // plugin generator. Keyed by `Spec.name`; no entry renders flat.
   ~componentChapters: dict<string>=Dict.make(),
 ): Reventless.Plugin.pluginStructure => {
   let chapterOf = (compName: string): option<string> => componentChapters->Dict.get(compName)
-  // Event schemas: filter out payload-less variants — DCB event-type lookups
-  // can't WHERE-clause on bare-string events, so the plugin graph mustn't
-  // claim cross-component edges that the runtime can't honour.
+  // Payload-less variants dropped: the graph must not claim an edge a DCB lookup
+  // cannot WHERE-clause on.
   let eventVariantNames = schema => Reventless.DcbTag.extractVariantNames(schema)
-  // Command schemas: keep every constructor (including payload-less) so the
-  // GraphQL mutation surface stays addressable.
+  // Every constructor, so the mutation surface stays addressable.
   let commandVariantNames = schema => Reventless.DcbTag.extractAllVariantNames(schema)
   let qualify = (~prefix, names) => names->Array.map(n => prefix ++ "." ++ n)
+  let dedupe = (xs: array<string>) => xs->Belt.Set.String.fromArray->Belt.Set.String.toArray
 
   // ── Per-component event type extraction ────────────────────────────────────
 
@@ -1058,21 +966,10 @@ let make = (
 
   // ── Declared object stores ─────────────────────────────────────────────────
   //
-  // A field typed as a storage ref states that the deployment needs the named
-  // store to exist. Read that declaration the same way `Reference.getTarget` is
-  // read for entity references, so the requirement travels with the plugin's
-  // structure instead of living only inside a field's schema, where the deploy
-  // would have to re-walk every component to find it.
-  //
-  // An unqualified store belongs to the declaring plugin, so every collected
-  // entry is qualified to `{plugin}.{store}` — one shape, and the string is
-  // directly the store's identity. Many fields legitimately name one store, so
-  // the key set is deduplicated.
-  //
-  // Each collected entry keeps its declaration site `(component, field)` as
-  // provenance, and `requiredStores` is derived from the collected entries —
-  // one walk, so the capability manifest's provenance and the deploy's key set
-  // cannot come from different readings of the schemas.
+  // A storage-ref field states the deployment needs that store. Collected here so
+  // the requirement travels with the structure, qualified to `{plugin}.{store}`
+  // and deduplicated, each entry keeping its `(component, field)` site.
+  // `requiredStores` is derived from the same walk, so the two cannot disagree.
 
   let storesFromProperties = (~component, properties: dict<S.t<unknown>>): array<
     Reventless.Plugin.requiredStoreDeclaration,
@@ -1088,11 +985,8 @@ let make = (
         Reventless.Plugin.store: target.plugin->Option.getOr(name) ++ "." ++ target.store,
         component,
         field,
-        // The annotation as its author wrote it. `target.plugin` is `None`
-        // exactly when the field left the store unqualified, so this is the
-        // source text rather than a guess at it — and this is the only place
-        // that distinction survives. Always `Some` here: the field is optional
-        // on the type only so definitions stored before it existed still decode.
+        // The source text, not a guess: `target.plugin` is `None` exactly when the
+        // field left the store unqualified, and only here does that survive.
         annotation: Some(
           switch target.plugin {
           | None => target.store
@@ -1135,10 +1029,8 @@ let make = (
     }
   }
 
-  // The (component, schema) sites the store walk reads. One list feeds both the
-  // declared-store collection and the heuristic lint below, so a field is read
-  // exactly once: either its declaration is collected, or its name is eligible
-  // to warn — never a third reading that could disagree with both.
+  // One list feeds both the store collection and the lint below, so a field is
+  // read exactly once by either.
   let storeDeclarationSites: array<(string, S.t<unknown>)> =
     [
       aggregates->Array.flatMap((module(A: ReventlessInfra.Aggregate.T with type api = api)) => [
@@ -1165,9 +1057,7 @@ let make = (
       ) => (ITS.Spec.name, ITS.Spec.commandSchema->S.castToUnknown)),
     ]->Array.flat
 
-  // Sorted so the emitted manifest is deterministic; identical triples collapse
-  // (one store named by a component's command field and again by its event
-  // field under the same field name is one declaration site).
+  // Sorted for a deterministic manifest; identical triples collapse.
   let requiredStoreDeclarations =
     storeDeclarationSites
     ->Array.flatMap(((component, schema)) => storesFromSchema(~component, schema))
@@ -1185,9 +1075,8 @@ let make = (
     ->Belt.Set.String.fromArray
     ->Belt.Set.String.toArray
 
-  // Two stores one edit apart are a typo that would provision twice. A hard
-  // failure, unlike the heuristic lint below: nothing downstream can see the
-  // mistake, and by deploy time both buckets exist.
+  // Two stores one edit apart provision twice. Hard failure, unlike the lint
+  // below: by deploy time both buckets exist.
   switch Capability_Inference.collisions(requiredStoreDeclarations) {
   | [] => ()
   | found =>
@@ -1208,12 +1097,8 @@ let make = (
 
   // ── Build queryable defs ───────────────────────────────────────────────────
   //
-  // Internal ReadModels and StateViewSlices (marked `@@reventless.visibility(Internal)`)
-  // are CARRIED in pluginStructure, tagged via `queryableDef.visibility` (`None` = Public,
-  // `Some("Internal")` = Internal). Developer tools — the `reventless-gwt` / VSCode domain
-  // graph and dead-code analysis — read them so an Internal view still shows up there. The
-  // deployed AutoUI's consumers (Platform_ComponentDefinitionsApi menu/pages) re-filter on
-  // the tag so the live UI keeps hiding them — see Visibility.res, which documents this contract.
+  // Internal views are carried here, tagged via `queryableDef.visibility`, so
+  // developer tools see them; AutoUI's consumers re-filter on the tag.
   // View name -> the states its lifecycle field can hold, collected as the view
   // defs are built so the transition check below has both sides in one place.
   let lifecycleStatesByView: dict<array<string>> = Dict.make()
@@ -1250,10 +1135,7 @@ let make = (
         ~entityName=R.Spec.name,
         stateSchema,
       )
-      // The events this read model projects from, qualified to the plugin's event ids so
-      // they match the producers' nodes in the graph. Was empty — which dropped projection
-      // edges for any event reaching the read model via a DCB-log-sourced mapping (a classic
-      // aggregate→view link is also drawn from the producer's linkedViews, deduped downstream).
+      // Qualified to the plugin's event ids so they match the producers' nodes.
       let consumed = qualify(~prefix=name, R.consumedEventNames)
       recordRetired(~entityName=R.Spec.name, stateSchema)
       recordLifecycle(~entityName=R.Spec.name, stateSchema)
@@ -1422,30 +1304,77 @@ let make = (
 
   // ── Extensions ───────────────────────────────────────────────────────────
 
+  let tableFailures = []
+  let tableWarnings = []
+  let pushAll = (into, xs) => xs->Array.forEach(x => into->Array.push(x)->ignore)
+
+  // Every constructor, payload-less included: a declaration is checked against
+  // what the author can write, not the payload-filtered subset the edges use.
+  let allVariantNames = schema => Reventless.DcbTag.extractAllVariantNames(schema)
+
   let extensionDefs =
     extensions->Array.map((module(E: ReventlessInfra.Extension.Blueprint)) => {
       let delegateNames = E.mappings->Array.map((module(M: E.Mapping)) => M.delegateName)
+      let epEventNames = allVariantNames(E.Spec.eventSchema)
+      let epCommandNames = allVariantNames(E.Spec.commandSchema)
+
+      // Mappings sharing one EP union their tables — the same event may route to
+      // a different delegate's command in each.
+      let commandsByEvent: Dict.t<array<string>> = Dict.make()
+      E.mappings->Array.forEach((module(M: E.Mapping)) => {
+        pushAll(
+          tableFailures,
+          handledTableFailures(
+            ~label=`${E.Spec.name} → ${M.delegateName}`,
+            ~declared=M.handledEvents,
+            ~eventNames=epEventNames,
+            ~commandNames=Array.concat(M.delegateCommandNames, epCommandNames),
+          ),
+        )
+        M.handledEvents->Array.forEach(({name: eventName, toCommandTypes}) => {
+          // The qualifier says which way the command goes: plugin-qualified
+          // inward, EP-qualified back to the port.
+          let qualified =
+            toCommandTypes->Array.map(cmd =>
+              M.delegateCommandNames->Array.includes(cmd)
+                ? `${name}.${cmd}`
+                : `${E.Spec.name}.${cmd}`
+            )
+          let key = `${E.Spec.name}.${eventName}`
+          commandsByEvent->Dict.set(
+            key,
+            Array.concat(commandsByEvent->Dict.get(key)->Option.getOr([]), qualified),
+          )
+        })
+      })
+
       ({
         Reventless.Plugin.name: E.Spec.name,
         delegateNames,
         eventTypes: qualify(~prefix=E.Spec.name, eventVariantNames(E.Spec.eventSchema)),
         commandTypes: qualify(~prefix=E.Spec.name, commandVariantNames(E.Spec.commandSchema)),
+        handledEvents: Some(
+          commandsByEvent
+          ->Dict.toArray
+          ->Array.map(((eventName, cmds)) => ({
+            Reventless.Plugin.name: eventName,
+            toCommandTypes: dedupe(cmds),
+          }: Reventless.Plugin.handledEventDef)),
+        ),
       }: Reventless.Plugin.extensionDef)
     })
 
   // ── Extension points (producer side) ──────────────────────────────────────
   //
-  // The mapping modules connect one Delegate (an aggregate / DCB event log) to
-  // one extension point. Several mappings can target the SAME extension point
-  // (Make2 / Make3 / MakeMulti), so group by the EP's dotted spec name and union
-  // each delegate's name + its source event types. Source events are qualified
-  // with the plugin name to match `producedEventTypes` on the write-sides, so the
-  // event graph can draw producing-write-side → event → extension-point.
-
-  let dedupe = (xs: array<string>) =>
-    xs->Belt.Set.String.fromArray->Belt.Set.String.toArray
+  // Several mappings can target one EP, so group by its dotted name and union each
+  // delegate's name and source events. Source events are plugin-qualified to match
+  // `producedEventTypes`, so the graph can draw write-side → event → EP.
 
   let epByName: Dict.t<(array<string>, array<string>, array<string>)> = Dict.make()
+  // Per EP: published event → the internal events producing it, unioned over
+  // every mapping targeting it.
+  let epPublished: Dict.t<Dict.t<array<string>>> = Dict.make()
+
   extensionPoints->Array.forEach((module(M: ReventlessInfra.ExtensionPointMapping.Mapping)) => {
     let epName = M.ExtensionPoint.name
     let sourceEvents = qualify(~prefix=name, eventVariantNames(M.Delegate.eventSchema->S.castToUnknown))
@@ -1457,7 +1386,124 @@ let make = (
       epName,
       (Array.concat(dels, [M.Delegate.name]), Array.concat(evs, sourceEvents), Array.concat(cmds, commands)),
     )
+
+    let label = `${epName} ← ${M.Delegate.name}`
+    let publishedNames = allVariantNames(M.ExtensionPoint.eventSchema)
+    let sourceNames = allVariantNames(M.Delegate.eventSchema->S.castToUnknown)
+    pushAll(
+      tableFailures,
+      translationTableFailures(~label, ~declared=M.publishedEvents, ~publishedNames, ~sourceNames),
+    )
+
+    switch M.mapOutgoingEvent {
+    | None =>
+      if Array.length(M.publishedEvents) > 0 {
+        tableFailures
+        ->Array.push(
+          `${label}: publishedEvents declares ${M.publishedEvents
+            ->Array.length
+            ->Int.toString} event(s), but the mapping has no mapOutgoingEvent and ` ++
+          `publishes nothing.`,
+        )
+        ->ignore
+      }
+    | Some(mapOutgoing) =>
+      // One synthesised event per Delegate constructor, through the author's own
+      // function — not the compiled one, which logs and re-encodes.
+      let observed = []
+      let followed = []
+      sourceNames->Array.forEach(src => {
+        let synthesised = Reventless.DcbTag.isVariantPayloadBearing(
+          M.Delegate.eventSchema->S.castToUnknown,
+          src,
+        )
+          ? Dict.fromArray([("TAG", JSON.Encode.string(src))])->JSON.Encode.object
+          : JSON.Encode.string(src)
+        let outcome = try {
+          // Filled directly rather than through `parseJsonTolerant`, which warns
+          // about inventing values — here the invention is the point.
+          let event =
+            Reventless.Message.fillMissingDefaults(M.Delegate.eventSchema, synthesised, [])
+            ->Reventless.Util_Sury.fromJson(M.Delegate.eventSchema)
+          // A fabricated payload can decode as a sibling constructor; only a
+          // value that round-trips is judged.
+          let decodedAs =
+            event
+            ->Reventless.Message.encode(M.Delegate.eventSchema)
+            ->Reventless.Message.variantNameOfJson
+          if decodedAs != src {
+            Error(`a synthesised "${src}" decoded as "${decodedAs}"`)
+          } else {
+            let actions = mapOutgoing(probeId, event, probeMeta, probeQueryEngine)
+            actions->Array.forEach(action =>
+              switch action {
+              | ReventlessInfra.ExtensionPointMapping.PublishEvent(_, published) =>
+                observed
+                ->Array.push((
+                  src,
+                  published
+                  ->Reventless.Message.encode(M.ExtensionPoint.eventSchema)
+                  ->Reventless.Message.variantNameOfJson,
+                ))
+                ->ignore
+              | PublishEventAsync(_) | HandleDirective(_, _) => ()
+              }
+            )
+            // A promise hides what it will publish — leave the arm unjudged.
+            actions->Array.some(action =>
+              switch action {
+              | PublishEventAsync(_) => true
+              | PublishEvent(_, _) | HandleDirective(_, _) => false
+              }
+            )
+              ? Error(`"${src}" publishes behind a promise`)
+              : Ok()
+          }
+        } catch {
+        | _ => Error(`the mapping raised on a synthesised "${src}"`)
+        }
+        switch outcome {
+        | Ok() => followed->Array.push(src)->ignore
+        | Error(reason) =>
+          tableWarnings->Array.push(`${label}: not checked against the arms — ${reason}.`)->ignore
+        }
+      })
+
+      let (failures, warnings) = translationTableDrift(
+        ~label,
+        ~declared=M.publishedEvents,
+        ~observed,
+        ~followed,
+      )
+      pushAll(tableFailures, failures)
+      pushAll(tableWarnings, warnings)
+    }
+
+    // Dead protocol surface: an event of the published contract that no arm
+    // produces, which a subscriber may already be routing.
+    let declaredNames = M.publishedEvents->Array.map(p => p.name)
+    publishedNames
+    ->Array.filter(p => !(declaredNames->Array.includes(p)))
+    ->Array.forEach(p =>
+      tableWarnings
+      ->Array.push(`${label}: the extension point publishes "${p}", which no arm produces.`)
+      ->ignore
+    )
+
+    let table = epPublished->Dict.get(epName)->Option.getOr(Dict.make())
+    M.publishedEvents->Array.forEach(({name: published, fromEventTypes}) => {
+      let key = `${epName}.${published}`
+      table->Dict.set(
+        key,
+        Array.concat(
+          table->Dict.get(key)->Option.getOr([]),
+          qualify(~prefix=name, fromEventTypes),
+        ),
+      )
+    })
+    epPublished->Dict.set(epName, table)
   })
+
   let extensionPointDefs =
     epByName
     ->Dict.toArray
@@ -1466,7 +1512,19 @@ let make = (
       delegateNames: dedupe(dels),
       sourceEventTypes: dedupe(evs),
       commandTypes: Some(dedupe(cmds)),
+      publishedEvents: Some(
+        epPublished
+        ->Dict.get(epName)
+        ->Option.getOr(Dict.make())
+        ->Dict.toArray
+        ->Array.map(((published, sources)) => ({
+          Reventless.Plugin.name: published,
+          fromEventTypes: dedupe(sources),
+        }: Reventless.Plugin.publishedEventDef)),
+      ),
     }: Reventless.Plugin.extensionPointDef))
+
+  reportTranslationTables(~pluginName=name, ~failures=tableFailures, ~warnings=tableWarnings)
 
   // Second pass, on purpose: commands are built well before `linkedViews` is
   // assembled, so the check cannot run inline where the defs are made.

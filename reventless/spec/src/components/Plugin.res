@@ -6,16 +6,8 @@ type name = string
 @schema
 type version = string
 
-/**
-Classifies the business role of a plugin, carried on `pluginDefinition` so the
-plugin-lifecycle read model can segregate infrastructure/commercial/marketplace
-plugins from domain plugins in the admin Plugins view. Absent (on definitions
-persisted before this field existed) is read as `Domain`.
-
-Canonical here in `reventless-spec` because `pluginDefinition` (a `@schema` type
-nested in the lifecycle Message union) needs the sury schema; `ReventlessCore.Plugin_BuiltHook`
-re-exports this same type for its deploy-time metadata registry.
-*/
+/** A plugin's business role, used by the admin Plugins view to segregate
+    infrastructure from domain plugins. Absent is read as `Domain`. */
 @schema
 type pluginKind =
   | Domain
@@ -43,22 +35,13 @@ Included in the plugin's `pluginDefinition` for use by the host.
 type extensionDefinition = {
   name: string,
   extensionPointName: string,
-  /**
-  DCB EventLog source names this extension consumes. Convention: each entry is
-  the `name` field of a peer plugin's `dcbEventLogDefinition` (i.e. `${peer}DcbEventLog`).
-  The admin uses these to provision cross-plugin SNS subscriptions from peer DCB
-  EventTopics → this plugin's EventCollector. `[]` for extensions that only consume
-  ExtensionPoint EventTopics.
-  */
+  /** Peer `dcbEventLogDefinition.name`s this extension consumes (`${peer}DcbEventLog`),
+      which the admin turns into cross-plugin SNS subscriptions. */
   dcbSources: array<string>,
 }
 
-/**
-Describes a DCB EventLog exposed by a plugin.
-Included in the plugin's `pluginDefinition` so the admin can provision SNS
-subscriptions from this plugin's DCB EventTopic to any peer plugin whose
-extension references the DCB log by name.
-*/
+/** A DCB EventLog exposed by a plugin, so the admin can subscribe peer plugins
+    that reference it by name. */
 @schema
 type dcbEventLogDefinition = {
   /** Service name carried in event meta — convention: `${plugin.name}DcbEventLog`. */
@@ -67,15 +50,8 @@ type dcbEventLogDefinition = {
   eventTopicArn: string,
 }
 
-/**
-Protocol version declaration for a single extension point connection.
-
-Carried in the `ConnectPlugin` handshake so the host can validate schema
-compatibility before accepting the extension. Use `[]` when version
-negotiation is not needed.
-*/
-// Protocol version declaration for a single extension point connection.
-// Carried in the ConnectPlugin handshake so the host can validate compatibility.
+/** Protocol versions for one extension point connection, carried in the
+    `ConnectPlugin` handshake. `[]` when negotiation is not needed. */
 @schema
 type extensionProtocol = {
   extensionPointName: string,
@@ -92,22 +68,15 @@ Encoded as JSON for transport; protocol identifies the schema format (e.g. "grap
 @schema
 type apiSchemaFragment = {encoded: string, protocol: string}
 
-/**
-The API a plugin's GraphQL fields are stitched into: the Domain API (the default —
-application plugins) or the Platform API (platform-level plugins such as an inspector,
-which contribute fields alongside the admin base). Serializes as the bare string
-"Domain" / "Platform". Consumed by the schema-fragment registry to maintain one
-cumulative schema per API.
-*/
+/** Which API a plugin's GraphQL fields are stitched into. Serializes as the bare
+    string "Domain" / "Platform". */
 @schema
 type apiTarget = Domain | Platform
 
-// Sury's nullableAsOption creates T | undefined | null which fails jsonableValidation
-// inside union variant payloads. js_nullable creates T | null (no undefined) which is
-// JSON-safe and passes jsonableValidation in all contexts.
+// js_nullable (T | null) is the only optional that passes jsonableValidation inside
+// union variant payloads; nullableAsOption adds `undefined` and fails it.
 let apiSchemaFragmentOffloadSchema = Offload.optionSchema(~store="pluginApiFragments", apiSchemaFragmentSchema)
 let dcbEventLogOptionSchema = dcbEventLogDefinitionSchema->S.nullAsOption
-// js_nullable creates T | null which passes sury's jsonableValidation inside union variant payloads.
 let stringOptionSchema = S.string->S.nullAsOption
 let stringArrayOptionSchema = S.array(S.string)->S.nullAsOption
 let boolOptionSchema = S.bool->S.nullAsOption
@@ -168,60 +137,19 @@ type commandDef = {
   aggregateIdField: @s.matches(stringOptionSchema) option<string>,
   mutationField: string,
   references: array<fieldReference>,
-  /**
-  Lifecycle states under which this command is meaningful. `None` means the command
-  is always available (back-compat default). `Some([…])` lets AutoUI hide the
-  command on rows whose lifecycle field is not in the set — see
-  `queryableDef.lifecycleField` for how the row's state is located. `Some([])` is
-  the defensive "never show" form.
-  */
+  /** The `@transition` *from* set — lifecycle states this command is meaningful in.
+      `None` means always available; `Some([])` means never show. */
   allowedStates: @s.matches(stringArrayOptionSchema) option<array<string>>,
-  /**
-  The single lifecycle state this command's handler writes — the command's *to*
-  state, sibling of `allowedStates`' *from* set. Source: the
-  target of the `@transition(([Placed]) => Shipped)` command-variant annotation.
-  `Some("Shipped")` lets a resolver move a row by a declared transition instead
-  of a guess. `None` means no target was declared — and note that this is two
-  different statements depending on `allowedStates`: with a from-set present it
-  is the command declaring it does not move the row, and with none it is simply
-  an unannotated command. js_nullable for JSON safety, same as `allowedStates`.
-  */
+  /** The `@transition` *to* state this command's handler writes. `None` with a
+      from-set present means the command does not move the row. */
   targetState: @s.matches(stringOptionSchema) option<string>,
-  /**
-  Whether this command variant is exposed in the generated API (a non-`@noApi`
-  variant of a non-`@noApi` command). Dev tooling badges API-exposed commands in
-  the event graph. js_nullable (T | null) so it stays JSON-safe inside the
-  persisted/lifecycle payloads; absent on defs written before this field existed
-  (read as None) — those stores must be reset. See [[sury-optional-field-absent-vs-null]].
-  */
+  /** Whether the variant is exposed in the generated API (non-`@noApi`). */
   apiExposed: @s.matches(boolOptionSchema) option<bool>,
-  /**
-  Access keys a caller must hold — any one of them — to be *offered* this command,
-  derived from the authorization rule the server already enforces. `None` (or `[]`)
-  means the rule asks for nothing a client can check.
-
-  A hint, never a boundary: the rule in the resolver is what refuses a call, and a
-  caller who edits this list gains nothing. It exists so a client stops advertising
-  what the server would refuse — an offered command that always fails is a worse
-  answer than no command at all. Derived rather than authored, so it cannot drift
-  from the rule it describes. js_nullable, so defs written before this field
-  existed decode as None.
-  */
+  /** Access keys — any one of them — a caller needs to be *offered* this command.
+      A hint derived from the server's rule, never the refusal itself. */
   requiredAccess: @s.matches(stringArrayOptionSchema) option<array<string>>,
-  /**
-  Name of the command field the server stamps with the caller's own identity, when
-  the command declares one (`@owner`). A client should omit it from a generated
-  form for a caller who is not elevated: whatever it collects there is discarded
-  and replaced, so offering the field asks a question whose answer is ignored.
-
-  Derived from the annotation, never authored, so it cannot disagree with what the
-  write path actually does. js_nullable for the same JSON-safety reason as
-  `requiredAccess`.
-
-  ⚠️ A client cannot decide the *elevated* half from this alone — the manifest
-  states which field carries the owner, and the caller's own identity says whether
-  they are exempt. Both are needed, and neither is derivable from the other.
-  */
+  /** The `@owner` command field the server stamps with the caller's identity; a
+      client omits it from a form, since whatever it collects is discarded. */
   ownerField: @s.matches(stringOptionSchema) option<string>,
 }
 
@@ -232,209 +160,53 @@ type queryableDef = {
   schema: string,
   consumedEventTypes: array<string>,
   linkedWriteSide: array<string>,
-  /**
-  The field on this entity that carries the human-readable label.
-  When the entity's state schema declares one or more `@displayName` annotations,
-  this resolves to `"displayName"` (the projected column). Otherwise it falls back
-  to the first non-`id` string property, or `"id"` as a last resort.
-  */
+  /** The field carrying the human-readable label: `"displayName"` when the state
+      declares `@displayName`, else the first non-`id` string, else `"id"`. */
   labelField: string,
-  /**
-  Fields appropriate for label-oriented text search.
-  Mirrors `labelField` when the entity uses the fallback or single-field label.
-  For composite `@displayName` annotations, lists the *raw* underlying source
-  fields (so clients with substring indexes can target them directly).
-  */
+  /** Fields for label-oriented text search — the *raw* source fields behind a
+      composite `@displayName`, else `labelField`. */
   searchableFields: array<string>,
-  /**
-  Which rung of the `labelField` ladder produced it, so a consumer with a name
-  rule of its own can tell a declaration from a guess before ranking the two:
-
-  - `"annotation"` — a `@displayName` spec. The author said which field names the
-    record; nothing a client infers locally outranks it.
-  - `"convention"` — a field literally named `name`/`title`/`label`/`displayName`.
-    A guess, and the one guess a client can independently arrive at.
-  - `"position"` — the first candidate in declaration order. A guess, and a fact
-    only this side knows; a client's own conventional-name rule is the better
-    answer where the two differ.
-  - `"fallback"` — no candidate at all, so `labelField` is `"id"`. The state
-    saying it has no human-readable field.
-
-  `None` means not stated — defs persisted before this field existed, and
-  hand-rolled defs that decline to say. Distinct from `Some("fallback")`, which
-  is this side stating that it looked. js_nullable for the same JSON-safety
-  reason as `lifecycleField`.
-  */
+  /** Which rung produced `labelField`, so a consumer can rank it against its own
+      rule: `"annotation"` | `"convention"` | `"position"` | `"fallback"`. */
   labelFieldSource: @s.matches(stringOptionSchema) option<string>,
-  /**
-  Name of the state field whose value identifies the row's lifecycle, used by
-  AutoUI together with `commandDef.allowedStates` to filter the per-row command
-  menu. Resolution order (codegen): (1) field annotated `@lifecycle`; (2) a field
-  literally named `"lifecycle"` whose shape is an enum; (3) `None`. Spec authors
-  that hand-roll a `queryableDef` set this explicitly.
-  */
+  /** The state field holding the row's lifecycle, paired with
+      `commandDef.allowedStates`. From `@lifecycle`, else an enum named `lifecycle`. */
   lifecycleField: @s.matches(stringOptionSchema) option<string>,
-  /**
-  Name of the state field that ties a row to the principal owning it (`@owner`),
-  when the view declares one. Two consequences for a client: reads of this view
-  are narrowed server-side to a non-elevated caller's own rows, and the column is
-  constant for such a caller and so carries no information in a list.
-
-  Derived from the annotation. As on `commandDef.ownerField`, this states which
-  field carries the owner and not whether the current caller is exempt — that is
-  the caller's own identity to answer.
-  */
+  /** The `@owner` state field. Reads of this view are narrowed server-side to a
+      non-elevated caller's own rows. */
   ownerField: @s.matches(stringOptionSchema) option<string>,
-  /**
-  Name of the boolean state field that withdraws a row from ordinary reads
-  (`@retired`), when the view declares one. Reads of this view exclude rows whose
-  flag is true for callers outside `OwnerScope.elevatedGroups`, on the list door
-  and the single-entity door alike; an exempt caller reaches them by asking for
-  them.
-
-  Derived from the annotation and from nothing else — deliberately no fallback to
-  a conventionally-named boolean, unlike `lifecycleField`. A field named `archived`
-  that nobody annotated must not start hiding rows the day this ships, and the
-  cost of guessing wrong here is data disappearing rather than a menu filtering
-  oddly.
-
-  The label the flag reads as is not here. It travels on the state schema, which
-  every consumer of this def already holds, and a second copy is a second thing
-  to keep in step.
-  */
+  /** The `@retired` state field withdrawing a row from ordinary reads. From the
+      annotation only — no fallback by name, since guessing hides data. */
   retiredField: @s.matches(stringOptionSchema) option<string>,
-  /**
-  The states a row is retired *in*, when the view declares the state form of
-  `@retired` — `Some(["Archived", "Discontinued"])` beside
-  `retiredField: Some("shelfStatus")`. `None` is the boolean form, where the
-  excluded value is always `true` and naming it would be a field that can only
-  hold one thing.
-
-  A set: a lifecycle may be withdrawn by more than one state, which exclude
-  identically and differ only in the way back. Retired iff the field's value is in
-  it, and one member is the ordinary case rather than a special one.
-
-  Published beside the field rather than left for a consumer to re-derive from the
-  state schema: a client holding this def holds the whole predicate, and two places
-  deriving one comparison is how they come to disagree about it.
-
-  The state form is also what lets a command's `@transition` answer applicability
-  when retired, with no annotation beyond the one — retirement expressed in the
-  vocabulary a command's stance is already written in.
-  */
+  /** The states a row is retired *in* (state form of `@retired`); `None` is the
+      boolean form, where the excluded value is always `true`. */
   retiredValues: @s.matches(stringArrayOptionSchema) option<array<string>>,
-  /**
-  Whether this view publishes a **reference door**: the by-ids read that names a
-  retired row for any caller holding a pointer to it, projected to the row's id,
-  its `labelField` and the value of `retiredField`. Declared with
-  `@namedWhenRetired` on the state record.
-
-  Published so a client knows the door exists without probing for it — a query
-  against a field the schema does not have is a validation error, not an empty
-  answer, so "ask and see" is not a usable fallback here.
-
-  Nullable rather than a bare required bool, which is the rule this schema's own
-  tripwire enforces: a definition stored before the field existed would otherwise
-  decode with an invented value and a runtime warning. Absent and `false` mean the
-  same thing to every reader — the archive stays shut — but only one of them is
-  something the platform actually said.
-
-  It is never `true` without `retiredField`: the PPX refuses the annotation on a
-  record with no retirement.
-  */
+  /** Whether the view publishes the by-ids reference door that names a retired row
+      to any caller holding a pointer (`@namedWhenRetired`). Never true without
+      `retiredField`. */
   namedWhenRetired: @s.matches(boolOptionSchema) option<bool>,
-  /**
-  Component visibility hint (`@@reventless.visibility`). `Some("Internal")` marks a
-  ReadModel / StateViewSlice that the deployed AutoUI hides from its menu, drill-down
-  pages, web event graph and cross-plugin edges. `None` (absent) means Public. Internal
-  components are still CARRIED in `pluginStructure` (tagged here) so developer tools — the
-  `reventless-gwt` / VSCode domain graph and dead-code analysis — can see them, per
-  Visibility.res. Optional for back-compat: definitions persisted before this field
-  existed decode as `None` (Public).
-  */
+  /** `@@reventless.visibility`. `Some("Internal")` hides the component from AutoUI;
+      it is still carried here for developer tooling. `None` means Public. */
   visibility: @s.matches(stringOptionSchema) option<string>,
-  /**
-  Intra-plugin grouping band (the "chapter") this component belongs to, captured at
-  build time from its source folder by the plugin generator: the first path segment
-  under the plugin's `src/` that is not a recognised kind-folder
-  (`src/<Chapter>/…/<Component>.res` → `Some("<Chapter>")`; a component directly under a
-  kind-folder → `None`). Lets a consumer that renders the event graph from the
-  *deployed* plugin structure group components into chapter sub-containers identically
-  to the authoring tooling, with no workspace/disk access — the renderer already
-  supports the bands (`DomainGraphD2 ~chapters`); only this datum was missing on the
-  deployed side. `None` (absent) renders flat. js_nullable (T | null) keeps it JSON-safe
-  inside the lifecycle Message union; always written (None → null), so defs persisted
-  before this field existed must be reset/re-emitted. See [[deployed-chapter-grouping]].
-  */
+  /** Intra-plugin grouping band, the first non-kind path segment under `src/`.
+      `None` renders flat. */
   chapter: @s.matches(stringOptionSchema) option<string>,
-  /**
-  The singular counterpart of `queryField`: the generated single-entity query
-  (`Plugin_Order(id: ID!)` beside the list field `Plugin_Orders`), and — because
-  `Api_Naming` returns the same string for both — the prefix of the queryable's
-  generated input types (`Plugin_OrderFilter`, `Plugin_OrderOrderBy`). One field
-  rather than two, so the two uses cannot drift apart.
-
-  Published because it is not derivable from `queryField` without re-implementing
-  `Api_Naming.singularize`: a consumer that strips a trailing `s` turns
-  `Plugin_Categories` into `Plugin_Categorie`, a name the schema does not serve,
-  and fails at query time against that one view. Sourced from the naming module
-  itself, never re-derived.
-
-  `None` means not stated — defs persisted before this field existed, and
-  hand-rolled defs that decline to say; a consumer falls back to its own
-  derivation there. js_nullable for the same JSON-safety reason as `lifecycleField`.
-  */
+  /** The singular counterpart of `queryField` (`Plugin_Order`), also the prefix of
+      the generated input types. Not derivable without `Api_Naming.singularize`. */
   singleQueryField: @s.matches(stringOptionSchema) option<string>,
-  /**
-  The state field that identifies a row — the queryable's own key, as opposed to
-  a reference to some other entity. `Products` carries `productId` and
-  `categoryId`; this says which of the two the row is about.
-
-  `None` means unresolved: a state with several `*Id` fields and no name match,
-  or with none at all. Such a component gets no key-derived filter or sort until
-  its spec declares `@id`. Also `None` on defs persisted before this field
-  existed. js_nullable for the same JSON-safety reason as `lifecycleField`.
-  */
+  /** The state field identifying a row, as opposed to a reference to another entity.
+      `None` means unresolved — no key-derived filter or sort until `@id` is declared. */
   idField: @s.matches(stringOptionSchema) option<string>,
-  /**
-  Which rung produced `idField`, so a consumer can tell a declaration from a
-  guess — the same reason `labelFieldSource` exists:
-
-  - `"annotation"` — the state declares `@id`. The author said which field keys
-    the row; nothing inferred outranks it.
-  - `"convention"` — a field named `<singular component name>Id` exists
-    (`Products` → `productId`). A guess, and the one guess a client can make for
-    itself.
-  - `"sole"` — the state has exactly one `*Id` field, so there is nothing else
-    the key could be (`AvailableProducts` → `productId`). A guess, and one that
-    needs the state's full field list to make.
-
-  `None` whenever `idField` is `None`, and on defs that predate the field.
-  */
+  /** Which rung produced `idField`, as `labelFieldSource` does: `"annotation"` |
+      `"convention"` | `"sole"`. */
   idFieldSource: @s.matches(stringOptionSchema) option<string>,
-  /**
-  Access keys a caller must hold — any one of them — to be *offered* this view,
-  derived from the component's module-level authorization rule. Same terms as
-  `commandDef.requiredAccess`: a hint that keeps a client from advertising a
-  surface the server would refuse, never the refusal itself.
-
-  Worth stating for reads in particular: a denied query does not error, it comes
-  back empty, so a client that offers a view it may not read renders a confident
-  blank table rather than a visible failure.
-  */
+  /** Access keys — any one of them — a caller needs to be *offered* this view. A
+      denied read comes back empty rather than erroring, hence the hint. */
   requiredAccess: @s.matches(stringArrayOptionSchema) option<array<string>>,
 }
 
-/**
-One emitted event of a write side, with its field schema. Mirrors `commandDef`
-but for the past-tense facts a write side produces: `name` is the event variant
-name (e.g. `OrderPlaced`), `schema` is the JSON Schema of that variant's payload
-(same serialization as `commandDef.schema`: `SuryToJsonSchema.deriveObjectSchema`,
-so field-level `x-reventless-*` extensions are carried and the variant's `TAG`
-discriminator is not — the constructor name is already `name`), `references` its
-cross-entity field links.
-Carried so developer tools (the `reventless-dev` / VSCode domain graph) can show
-event field rows — AutoUI ignores it. */
+/** One emitted event of a write side. `name` is the variant name, `schema` its
+    payload's JSON Schema (no `TAG` — the constructor name is already `name`). */
 @schema
 type eventDef = {
   name: string,
@@ -442,17 +214,8 @@ type eventDef = {
   references: array<fieldReference>,
 }
 
-/**
-One declared error of a write side, with its field schema. Same shape and same
-derivation as `eventDef` — a refusal is a variant of `Spec.errorSchema` exactly as
-an emitted fact is a variant of `Spec.eventSchema`, so a consumer reading an
-error's payload walks it with the code path it already uses for an event. `name`
-is the variant name (e.g. `CategoryNotFound`) — the same string the runtime puts
-on `errorCode` when a decision is rejected (see `CommandTopic_Helpers`), so a
-caller can match what it reads here against what it receives. Payload-less
-variants (the common case for errors) carry an empty `schema` object and no
-references.
-*/
+/** One declared error of a write side, derived exactly as `eventDef`. `name` is the
+    string the runtime puts on `errorCode`; payload-less variants carry `{}`. */
 @schema
 type errorDef = {
   name: string,
@@ -468,23 +231,11 @@ type writableDef = {
   consumedEventTypes: array<string>,
   linkedViews: array<string>,
   consistencyRead: @s.matches(stringOptionSchema) option<string>,
-  /** Emitted-event field schemas. Required like the other write-side arrays; `[]`
-  when there are none. */
+  /** Emitted-event field schemas; `[]` when there are none. */
   events: array<eventDef>,
-  /** Declared-error field schemas — what this component can refuse a command with.
-  Required, on the same reasoning as `events`: the persisted copy is never decoded
-  through this schema (the event log carries it as an offload reference, and the
-  serving path reads it as raw JSON), so `[]` honestly means "declares no errors"
-  rather than "an older deploy could not say".
-
-  Being required does NOT make it safe to add such a field without a read-path
-  shim. A structure is re-derived on every build, but it is only RE-REGISTERED
-  when a plugin re-runs the connect handshake — which a plugin whose version never
-  changes may not do for a long time. Until then the serving path reads a
-  persisted structure that has no key for the new field, and against a `[T!]!` SDL
-  field that null propagates to the root and answers the whole query with `data:
-  null`. Both admin resolvers therefore heal absent required lists to `[]` on
-  read; a new one has to be added to that list too. */
+  /** Declared-error field schemas. Required, but a persisted structure predating a
+      required list still lacks the key — both admin resolvers heal absent ones to
+      `[]` on read, and a new one must be added there too. */
   errors: array<errorDef>,
   /** Chapter grouping band — see `queryableDef.chapter`. */
   chapter: @s.matches(stringOptionSchema) option<string>,
@@ -523,37 +274,46 @@ type inboundTranslationSliceDef = {
   chapter: @s.matches(stringOptionSchema) option<string>,
 }
 
+/** A published event of an extension point and the internal events producing it.
+    `name` is EP-qualified, `fromEventTypes` plugin-qualified; `[]` means published
+    from a path the declaration cannot name. */
+@schema
+type publishedEventDef = {
+  name: string,
+  fromEventTypes: array<string>,
+}
+
+let publishedEventDefArrayOptionSchema = S.array(publishedEventDefSchema)->S.nullAsOption
+
+/** The subscriber's half: a published event and the commands it routes to. A
+    delegate command is plugin-qualified, one sent back to the EP is EP-qualified. */
+@schema
+type handledEventDef = {
+  name: string,
+  toCommandTypes: array<string>,
+}
+
+let handledEventDefArrayOptionSchema = S.array(handledEventDefSchema)->S.nullAsOption
+
 @schema
 type extensionDef = {
   name: string,
   delegateNames: array<string>,
   eventTypes: array<string>,
   commandTypes: array<string>,
+  /** Which published event routes to which commands. js_nullable like
+      `extensionPointDef.commandTypes`; re-emit definitions persisted before it. */
+  handledEvents: @s.matches(handledEventDefArrayOptionSchema) option<array<handledEventDef>>,
 }
 
 /**
-Describes an extension point owned by a plugin, from the *producer* side.
+An extension point owned by a plugin, from the producer side.
 
-`sourceEventTypes` are the owner-plugin internal events (the `Delegate`'s events)
-that feed this extension point's published protocol — plugin-qualified to match
-`writableDef.producedEventTypes`, so the event graph can link a producing
-write-side to the extension point it ultimately feeds. `delegateNames` are the
-connected targets (one per `ExtensionPointMapping`).
-
-`commandTypes` are the EP's *inbound* command protocol (the variants of its
-`command` type). It is empty (None, read as []) when the EP declares
-`command = unit` — a notification-only, events-out boundary that accepts nothing
-inward. The event graph uses this to decide whether the EP routes any command (an
-empty list means no `routesTo` edge: there is nothing for the EP to route).
-
-Optional (None for a `command = unit` EP). Uses the `js_nullable` pattern (T | null).
-A sury field cannot be BOTH absent-tolerant on decode AND JSON-encodable (proven:
-S.option = `T|undefined`, nullableAsOption = `T|undefined|null` both decode an absent
-key but fail jsonableValidation; js_nullable = `T|null` is the only JSON-safe form but
-rejects an absent key). This def is nested in the JSON-encoded lifecycle Message union
-(Connect/Heartbeat), so jsonability wins → js_nullable. It always writes the field
-(None → null), so it is present-required on decode; a plugin definition persisted
-before this field existed must be reset/re-emitted. Read with `->Option.getOr([])`.
+`sourceEventTypes` are the `Delegate`'s events feeding the published protocol,
+plugin-qualified to match `writableDef.producedEventTypes`. `commandTypes` is the
+EP's inbound protocol — None (read as []) for a `command = unit` EP, which routes
+nothing. js_nullable is the only JSON-safe optional here (this def is nested in the
+lifecycle Message union); definitions persisted before a field must be re-emitted.
 */
 @schema
 type extensionPointDef = {
@@ -561,6 +321,9 @@ type extensionPointDef = {
   delegateNames: array<string>,
   sourceEventTypes: array<string>,
   commandTypes: @s.matches(stringArrayOptionSchema) option<array<string>>,
+  /** Which internal event becomes which published event. */
+  publishedEvents: @s.matches(publishedEventDefArrayOptionSchema)
+  option<array<publishedEventDef>>,
 }
 
 // js_nullable creates `array | null` (not `| undefined`), which passes sury's
@@ -570,30 +333,11 @@ let extensionPointDefArrayOptionSchema = S.array(extensionPointDefSchema)->S.nul
 /**
 One field's store requirement, with its provenance.
 
-`store` is the same qualified `{plugin}.{store}` string `requiredStores`
-carries; `component` and `field` name the declaration site. The site matters
-because a requirement only ever changes by editing a field — when a rename
-removes a store from the manifest, the diff has to say which field caused it.
-
-`annotation` is the store exactly as the field spells it — bare for a store
-the declaring plugin owns, qualified for a foreign one. It is recorded rather
-than reconstructed: only here is the owning plugin unambiguous, so anything
-downstream would have to infer it by comparing a registered plugin name with
-whatever name a deploy manifest happened to use, and those were never required
-to match.
-
-Optional for the same reason `CapabilityManifest.provenance` and
-`PlatformCodegen.provenance` — the two places this value travels onward to —
-already declare it optional: an event stored before the field existed cannot
-say what the source said, and a reader that cannot say omits the claim rather
-than inventing one. Every definition emitted now carries it.
-
-That is not a stylistic preference. It was first added here as a required
-`string` while events written without it were already stored, and since the
-lifecycle aggregate replays its own log before every decision, those events
-stopped decoding and the plugin's registration froze for two days. `None` is
-also the honest value: `""` would assert the author wrote an empty annotation.
-See the schema-evolution note on `pluginStructure` below.
+`store` is the qualified `{plugin}.{store}` string `requiredStores` carries;
+`component` and `field` name the declaration site, so a diff can say which field
+added or removed a store. `annotation` is the store as the field spells it —
+recorded, not reconstructed, since only here is the owning plugin unambiguous.
+Optional because an event stored before it cannot say (`""` would claim it did).
 */
 @schema
 type requiredStoreDeclaration = {
@@ -607,30 +351,12 @@ let requiredStoreDeclarationArrayOptionSchema =
   S.array(requiredStoreDeclarationSchema)->S.nullAsOption
 
 /**
-Adding a field here? It has to be a shape a stale event can be healed into.
-
-Everything reachable from `pluginDefinition` is persisted in the Plugin lifecycle
-aggregate's event log, and that aggregate replays its own log before every
-decision. Events already written do not have your new field, so if decoding one
-of them throws, the aggregate cannot process ANY command for that plugin — it
-stops answering the deploy handshake and its registration silently freezes at
-whatever version connected last.
-
-`Message.parseJsonTolerant` heals a stale event on read, but only for shapes it
-can supply a value for: a `T | null` union (→ `None`), an array (→ `[]`), a
-mandatory enum (→ first variant), a nested object (→ recursively filled), and a
-scalar (→ `""` / `0` / `false`, logged as a warning because it is a fabricated
-value, not a derived one).
-
-So: **prefer `js_nullable` for anything genuinely optional**, and expect a scalar
-addition to show up as a warning in the logs of every deployment that still holds
-older events. A field that can be absent should say so in its type rather than
-lean on the healer.
-
-The regression suite for this is `PluginLifecycleCorpusTest` in reventless-core,
-which decodes frozen payloads captured off a deployed log. If it goes red naming
-your field, re-shape the field — do not re-cut the fixtures. Background:
-`docs/analysis/plugin-definition-schema-evolution-wedge.md`.
+Adding a field here? It must be a shape a stale event can be healed into — the
+lifecycle aggregate replays its own log before every decision, so one event that
+fails to decode freezes that plugin's registration. `Message.parseJsonTolerant`
+heals `T | null`, arrays, enums and nested objects; a bare scalar is fabricated
+and warned about. Prefer `js_nullable`. Regression suite:
+`PluginLifecycleCorpusTest` — if it goes red, re-shape the field, not the fixtures.
 */
 @schema
 type pluginStructure = {
@@ -642,32 +368,15 @@ type pluginStructure = {
   outboundTranslationSlices: array<outboundTranslationSliceDef>,
   inboundTranslationSlices: array<inboundTranslationSliceDef>,
   extensions: array<extensionDef>,
-  // Extension points owned by this plugin (producer side). Optional so plugin
-  // definitions persisted before this field existed still decode (absent → None,
-  // read as []). js_nullable keeps it JSON-safe inside union variant payloads.
+  // Extension points owned by this plugin (producer side). Optional so older
+  // definitions still decode (absent → None, read as []).
   extensionPoints: @s.matches(extensionPointDefArrayOptionSchema)
   option<array<extensionPointDef>>,
-  /**
-   The object stores this plugin's fields declare they need, deduplicated and
-   fully qualified as `{plugin}.{store}`.
-
-   A field typed as a storage ref states a *requirement*: the deployment needs
-   that store to exist. Collecting the requirement here is what lets it be read
-   without re-walking every component's schema — the same reason
-   `producedEventTypes` is carried rather than recomputed.
-
-   Qualified even for the common same-plugin case, so one entry has one shape
-   and the string is directly the store's identity. Optional and js_nullable for
-   the same reason as `extensionPoints`: definitions persisted before this field
-   existed still decode (absent → None, read as []).
-   */
+  /** The object stores this plugin's fields declare they need, deduplicated and
+      qualified as `{plugin}.{store}` even for the same-plugin case. */
   requiredStores: @s.matches(stringArrayOptionSchema) option<array<string>>,
-  /**
-   Provenance for `requiredStores`: one entry per declaring `(component, field)`
-   site, with `store` matching the qualified key above. `requiredStores` is
-   derived from this list, so the two cannot disagree. Optional and js_nullable
-   for the same reason as `extensionPoints`.
-   */
+  /** Provenance for `requiredStores`: one entry per declaring `(component, field)`.
+      `requiredStores` is derived from it, so the two cannot disagree. */
   requiredStoreDeclarations: @s.matches(requiredStoreDeclarationArrayOptionSchema)
   option<array<requiredStoreDeclaration>>,
 }
@@ -689,34 +398,22 @@ type pluginDefinition = {
   extensionPoints: array<extensionPointDefinition>,
   extensions: array<extensionDefinition>,
   mutable eventCollector: string,
-  // Protocol version declarations for each extension point this plugin connects to.
-  // Use [] when the plugin does not need version negotiation.
+  // [] when the plugin does not need version negotiation.
   extensionProtocols: array<extensionProtocol>,
-  // GraphQL schema fragment contributed by this plugin (optional, set at build time).
   // Offloadable: a large SDL fragment is content-addressed to the pluginApiFragments
-  // store by the client and carried by reference; a small one stays Inline. optionSchema
-  // wraps the untagged codec in js_nullable (T | null, not T | undefined | null) so it
-  // passes jsonableValidation inside the lifecycle Message union, and marks the store.
+  // store and carried by reference; a small one stays Inline.
   apiSchemaFragment: @s.matches(apiSchemaFragmentOffloadSchema) option<Offload.payload<apiSchemaFragment>>,
-  // API target for schema routing in split-API mode.
-  // None/"Domain" → fragment goes to the DomainApi (default).
-  // Some("Platform") → fragment goes to the PlatformApi; excluded from DomainApi runtime schema.
-  // Uses @s.matches(stringOptionSchema) — js_nullable creates string | null (not string | undefined),
-  // which passes sury's jsonableValidation inside union variant payloads.
+  // Schema routing in split-API mode: None/"Domain" → DomainApi, Some("Platform") →
+  // PlatformApi (and excluded from the DomainApi runtime schema).
   apiTarget: @s.matches(stringOptionSchema) option<string>,
-  // Component graph metadata — populated by makePluginDefinition; absent for older protocol versions.
-  // Offloadable: the large structure is content-addressed to the pluginStructures store by
-  // the client and carried by reference; a small one stays Inline (see apiSchemaFragment).
+  // Component graph metadata, offloadable like apiSchemaFragment. Absent for older
+  // protocol versions.
   structure: @s.matches(pluginStructureOffloadSchema) option<Offload.payload<pluginStructure>>,
-  // DCB EventLog definition for plugins that bundle a DcbEventLog component.
-  // Carries the EventTopic ARN so the admin can provision cross-plugin SNS
-  // subscriptions from this plugin's DCB topic → peer EventCollectors.
-  // None for plugins without a DCB EventLog.
+  // EventTopic ARN of a bundled DcbEventLog, so the admin can subscribe peer
+  // EventCollectors to it. None for plugins without one.
   dcbEventLog: @s.matches(dcbEventLogOptionSchema) option<dcbEventLogDefinition>,
-  // Business role of this plugin. Mandatory: `Domain` is the default kind, resolved once
-  // at the deploy-metadata → definition boundary (Plugin_Builder). PlatformInfrastructure
-  // plugins are segregated out of the admin Plugins list. Payload-less variant → serialises
-  // as a bare JSON string, so it is JSON-safe inside the lifecycle Message union without js_nullable.
+  // Mandatory; `Domain` is resolved as the default in Plugin_Builder. Payload-less
+  // variant → a bare JSON string, so JSON-safe without js_nullable.
   kind: pluginKind,
 }
 

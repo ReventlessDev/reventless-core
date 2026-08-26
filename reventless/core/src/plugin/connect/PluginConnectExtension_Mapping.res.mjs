@@ -45,6 +45,13 @@ function Make(Spec) {
         }];
     }
   };
+  let handledEvents = [{
+      name: "UnknownPluginDetected",
+      toCommandTypes: [
+        "ConnectPlugin",
+        "RegisterUiFragment"
+      ]
+    }];
   let $$let = ExtensionMapping$ReventlessInfra.NoDelegate.Id;
   let ConnectPluginMapping = ExtensionMapping$ReventlessInfra.Make({
     ExtensionPoint: {
@@ -72,7 +79,8 @@ function Make(Spec) {
     moduleUrl: PluginExtensionPointSpec$ReventlessInfra.moduleUrl,
     delegateModuleUrl: delegateModuleUrl,
     mapIncomingEvent: mapIncomingEvent,
-    mapOutgoingEvent: undefined
+    mapOutgoingEvent: undefined,
+    handledEvents: handledEvents
   });
   let moduleUrl = import.meta.url;
   let mappings = [ConnectPluginMapping];

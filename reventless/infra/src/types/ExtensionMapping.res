@@ -1,8 +1,5 @@
-/**
-A pre-serialized command routed to a foreign extension point.
-Used when an extension needs to dispatch to an extension point it does not
-own — the command JSON is forwarded opaquely without re-encoding.
-*/
+/** A command routed to an extension point this extension does not own —
+    forwarded opaquely, without re-encoding. */
 type forwardCommand = {
   extensionPointName: string,
   id: string,
@@ -11,18 +8,9 @@ type forwardCommand = {
 
 type id = string
 
-/**
-Actions returned by an extension's `mapIncomingEvent` function.
-
-When an extension point emits an event, the extension's mapping can:
-- publish a command to the aggregate it wraps (`PublishAggregateCommand`)
-- publish a command to the StateChangeSlice it wraps (`PublishStateChangeSliceCommand`)
-  — no id argument; the framework derives the FIFO grouping id from the command's
-  `@partitionTag` (or `@compositePartitionTag`) field.
-- publish a command back to the extension point (`PublishExtensionPointCommand`)
-- forward a command to another extension point opaquely (`ForwardCommand`)
-- handle an extension-point-defined directive via an async handler (`HandleDirective`)
-*/
+/** What `mapIncomingEvent` can do with a published event: command the wrapped
+    aggregate or slice, command the extension point, forward, or run a directive.
+    The slice forms take no id — the FIFO group comes from `@partitionTag`. */
 type incomingCommandAction<'aggregateCommand, 'extensionPointCommand, 'directive> =
   | PublishAggregateCommand(id, 'aggregateCommand)
   | PublishAggregateCommandAsync(promise<(id, 'aggregateCommand)>)
@@ -34,26 +22,14 @@ type incomingCommandAction<'aggregateCommand, 'extensionPointCommand, 'directive
   | ForwardCommand(forwardCommand)
   | HandleDirective(Reventless.Handler.handler<'directive>, 'directive)
 
-/**
-Actions returned by an extension's `mapOutgoingEvent` function.
-
-When the wrapped aggregate emits an event, the extension can:
-- publish a command to the extension point (`PublishExtensionPointCommand`)
-- forward a command to another extension point opaquely (`ForwardCommand`)
-- handle an extension-point-defined directive via an async handler (`HandleDirective`)
-*/
+/** What `mapOutgoingEvent` can do with a delegate event: command the extension
+    point, forward, or run a directive. */
 type outgoingCommandAction<'extensionPointCommand, 'directive> =
   | PublishExtensionPointCommand(id, 'extensionPointCommand)
   | ForwardCommand(forwardCommand)
   | HandleDirective(Reventless.Handler.handler<'directive>, 'directive)
 
-/**
-Maps an extension point event to actions on the wrapped aggregate or extension point.
-
-Called when the extension point emits an event that this extension handles.
-Receives the entity ID, the event, message metadata, the plugin definition,
-and the query engine.
-*/
+/** Maps a published event to actions on the wrapped delegate or the extension point. */
 type mapIncomingEvent<
   'extensionPointEvent,
   'aggregateCommand,
@@ -69,12 +45,8 @@ type mapIncomingEvent<
   incomingCommandAction<'aggregateCommand, 'extensionPointCommand, 'extensionPointDirective>,
 >
 
-/**
-Maps an aggregate event to actions on the extension point.
-
-Optionally defined — return `None` if the aggregate's outgoing events do not
-need to be reflected back through the extension point.
-*/
+/** Maps a delegate event back to actions on the extension point. `None` when
+    nothing flows back. */
 type mapOutgoingEvent<'aggregateEvent, 'extensionPointCommand, 'extensionPointDirective> = (
   string,
   'aggregateEvent,
@@ -82,11 +54,8 @@ type mapOutgoingEvent<'aggregateEvent, 'extensionPointCommand, 'extensionPointDi
   Reventless.Plugin.pluginDefinition,
 ) => array<outgoingCommandAction<'extensionPointCommand, 'extensionPointDirective>>
 
-/**
-The extension point protocol that this `Extension` connects to.
-Mirrors `ExtensionPoint.Spec` so the extension can be type-checked
-against the extension point's command / event / directive types.
-*/
+/** The extension point protocol this `Extension` connects to — mirrors
+    `ExtensionPoint.Spec` so the mapping type-checks against it. */
 module type Spec = {
   let name: string
   let moduleUrl: string
@@ -99,30 +68,26 @@ module type Spec = {
   type directive
 }
 
-/**
-Application-level implementation of an extension's bidirectional mapping.
+/** One published event this extension handles and the commands it routes to —
+    the subscriber's half of `ExtensionPointMapping.publishedEvent`. Bare names,
+    resolved against the `Delegate`'s commands first, the EP's second. */
+type handledEvent = {
+  name: string,
+  toCommandTypes: array<string>,
+}
 
-- `ExtensionPoint` — the extension point protocol this extension connects to
-- `Delegate` — the component this extension delegates to (aggregate or DCB slice)
-- `mapIncomingEvent` — routes extension point events to delegate commands
-- `mapOutgoingEvent` — optionally routes delegate events back to the EP
-*/
+/** An extension's bidirectional mapping between one extension point and one
+    delegate (aggregate or DCB slice). */
 module type Mapping = {
   module ExtensionPoint: Spec
   module Delegate: Reventless.Aggregate.Spec
 
-  // npm-style specifier of the user extension file (the module exporting this
-  // Mapping). Used by Plugin_Helpers + the bundled Plugin EventCollector entry
-  // point to dynamic-import the user mapping for runtime reconstruction of
-  // mapIncomingEvent / mapOutgoingEvent. PPX-injected on @@reventless.extension
-  // files as the same specifier as the file-level moduleUrl.
+  // The extension file's own url — dynamic-imported at runtime to reconstruct the
+  // two mapping functions. Injected by `@@reventless.extension`.
   let moduleUrl: string
 
-  // npm-style specifier of the Delegate's source module. Used by the bundled
-  // Plugin EventCollector entry point to dynamic-import the Delegate spec at
-  // cold start (Mapping.ExtensionPoint and Mapping.Delegate are erased in the
-  // compiled .res.mjs export). PPX-injected on @@reventless.extension files
-  // as `Delegate.moduleUrl`.
+  // The Delegate's url — the EventCollector imports its spec at cold start, since
+  // the compiled export erases `Mapping.Delegate`.
   let delegateModuleUrl: string
 
   let mapIncomingEvent: mapIncomingEvent<
@@ -135,12 +100,14 @@ module type Mapping = {
   let mapOutgoingEvent: option<
     mapOutgoingEvent<Delegate.event, ExtensionPoint.command, ExtensionPoint.directive>,
   >
+
+  /** Which published event routes to which commands — see `handledEvent`. Derived
+      by the PPX from `mapIncomingEvent`'s arms; hand-written only where it says
+      it cannot read them. */
+  let handledEvents: array<handledEvent>
 }
 
-/**
-A dummy target used when an extension does not wrap a real aggregate or slice.
-Satisfies `Aggregate.Spec` with unit command / event / error types.
-*/
+/** A stand-in for an extension that wraps no aggregate or slice. */
 module NoDelegate = {
   let name = "NoDelegate"
 
@@ -193,6 +160,12 @@ module type T = {
 
   let delegateName: string
 
+  // Both carried through the functor: `Plugin_Structure` sees an extension only
+  // compiled, and `T` erases the Delegate's types, so the check against
+  // `handledEvents` needs its command names rather than its schema.
+  let handledEvents: array<handledEvent>
+  let delegateCommandNames: array<string>
+
   let mapIncomingEvent: (
     Reventless.Message.event'<string, ExtensionPoint.event>,
     pluginDefinition,
@@ -217,21 +190,16 @@ module Make = (MappingImpl: Mapping): (
   module Delegate = MappingImpl.Delegate
   let delegateName = Delegate.name
   let extensionPointName = Spec.name
+  let handledEvents = MappingImpl.handledEvents
+  let delegateCommandNames = Reventless.DcbTag.extractAllVariantNames(Delegate.commandSchema)
 
-  // Variant TAGs the Delegate cares about — derived from the Delegate's event
-  // schema at functor instantiation. Used to pre-filter incoming envelopes:
-  // sibling variants on the source log (events the Delegate did not declare)
-  // are silently skipped without any decode attempt.
-  // extractAllVariantNames keeps payload-less variants (sury-compiled bare
-  // `S.literal("Name")` strings) — the JSON envelope's `event` TAG still
-  // carries the literal name, so the filter would otherwise drop them.
+  // Pre-filter for incoming envelopes: sibling variants the Delegate did not
+  // declare are skipped undecoded. Payload-less variants included — the
+  // envelope's `event` TAG still carries their name.
   let acceptedTags = Reventless.DcbTag.extractAllVariantNames(Delegate.eventSchema)
 
-  // Lazily-computed partition-tag derivation for `PublishStateChangeSliceCommand*`.
-  // Derived from the Delegate's command schema; throws if no `@partitionTag` /
-  // `@compositePartitionTag` annotation exists (i.e. the Delegate is an Aggregate,
-  // not a StateChangeSlice — in which case the user should use
-  // `PublishAggregateCommand` instead).
+  // Partition tag for `PublishStateChangeSliceCommand*`. Throws when the Delegate
+  // declares none — an Aggregate, where `PublishAggregateCommand` is the right form.
   let derivedPartitionTagLazy = ref(None)
   let getDerivedPartitionTag = () =>
     switch derivedPartitionTagLazy.contents {
@@ -253,10 +221,8 @@ module Make = (MappingImpl: Mapping): (
       Reventless.DcbTag.getCompositePartitionKeyValue(tags, spec)
     }
 
-  // Carry `comp` as a structured Effect log annotation — EffectLogger.install
-  // (in reventless-core, wired at Lambda startup) lifts it to the top-level
-  // JSON `comp` field. Without the unified logger installed, Effect's default
-  // logger still renders the annotation, just less prettily.
+  // `comp` as an Effect log annotation; EffectLogger.install lifts it to the
+  // top-level JSON field.
   let compLog = (comp, msg) =>
     Effect.logInfo(msg)->Effect.annotateLogs("comp", comp)->Effect.runSync
 
@@ -378,9 +344,7 @@ module Make = (MappingImpl: Mapping): (
 
   let doMapOutgoingEvent = (mapOutgoingEventImpl, targetEvent'Json, pluginDef) => {
     let tag = variantTagOfEnvelope(targetEvent'Json)
-    // Pre-filter by TAG: sibling variants from the source log that the Delegate
-    // did not declare are not this mapping's concern — skip silently with no
-    // decode attempt.
+    // Not this mapping's concern — skip without decoding.
     if !(acceptedTags->Array.includes(tag)) {
       []
     } else {

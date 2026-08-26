@@ -33,7 +33,9 @@ let sdlTypes: array<string> = [
   `type Platform_AutomationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  producedCommandTypes: [String!]!\n  targetName: String\n  chapter: String\n}`,
   `type Platform_OutboundTranslationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  inboundCommandTypes: [String!]!\n  targetName: String\n  externalSystem: String\n  chapter: String\n}`,
   `type Platform_InboundTranslationSliceDef {\n  name: String!\n  commandTypes: [String!]!\n  targetName: String\n  externalSystem: String\n  chapter: String\n}`,
-  `type Platform_ExtensionDef {\n  name: String!\n  delegateNames: [String!]!\n  eventTypes: [String!]!\n  commandTypes: [String!]!\n}`,
+  // The subscriber's half of the port's translation table — see `handledEventDef`.
+  `type Platform_HandledEventDef {\n  name: String!\n  toCommandTypes: [String!]!\n}`,
+  `type Platform_ExtensionDef {\n  name: String!\n  delegateNames: [String!]!\n  eventTypes: [String!]!\n  commandTypes: [String!]!\n  handledEvents: [Platform_HandledEventDef!]\n}`,
   // `internalQueryables` is the complement of the `readModels` / `stateViewSlices`
   // filter, not an addition to either: it carries exactly the components the
   // filter removed. A consumer enumerating surfaces reads the two filtered lists
@@ -208,6 +210,19 @@ let encodeExtensionDef = (e: extensionDef): JSON.t =>
     ("delegateNames", encodeStrings(e.delegateNames)),
     ("eventTypes", encodeStrings(e.eventTypes)),
     ("commandTypes", encodeStrings(e.commandTypes)),
+    (
+      "handledEvents",
+      e.handledEvents->Option.mapOr(JSON.Encode.null, handled =>
+        handled
+        ->Array.map(h =>
+          Dict.fromArray([
+            ("name", JSON.Encode.string(h.name)),
+            ("toCommandTypes", encodeStrings(h.toCommandTypes)),
+          ])->JSON.Encode.object
+        )
+        ->JSON.Encode.array
+      ),
+    ),
   ])->JSON.Encode.object
 
 // `derived` is curation, not structure: it says which of the pages a shell

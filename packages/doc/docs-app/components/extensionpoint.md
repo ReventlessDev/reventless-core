@@ -137,8 +137,35 @@ module type Impl = {
   let mapOutgoingEvent: option<
     mapOutgoingEvent<Aggregate.event, ExtensionPoint.event, ExtensionPoint.directive>,
   >
+
+  // The translation table — which internal event becomes which published event.
+  // Derived by the PPX from `mapOutgoingEvent`'s own arms; you do not write it.
+  let publishedEvents: array<publishedEvent>
 }
 ```
+
+### The translation table
+
+Which internal event becomes which published event is the port's public contract,
+and it is published on `extensionPointDef.publishedEvents` so a tool can render,
+diff or document it. You do not declare it: the PPX reads it off the `switch`
+arms below, so the names are the constructors the compiler already checked and a
+typo is impossible.
+
+Where the arms cannot be read — an event behind a promise (`PublishEventAsync`),
+an opaque helper call, a wildcard arm that publishes — the PPX **fails the build
+naming that arm** rather than emitting a partial table, and you write the binding
+by hand:
+
+```rescript
+let publishedEvents: array<publishedEvent> = [
+  {name: "CustomerCreated", fromEventTypes: ["Created"]},
+]
+```
+
+A hand-written table is checked at plugin-structure assembly: every name must be
+a real constructor, and the arms are probed to catch a declaration that has gone
+stale.
 
 ### Mapping Functions
 

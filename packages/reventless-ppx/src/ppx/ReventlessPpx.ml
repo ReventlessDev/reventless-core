@@ -674,6 +674,9 @@ let transform (str : structure) : structure =
   let str = AuthorizationInjection.walk_inline_specs str in
   let str = VisibilityInjection.walk_inline_specs str in
   let str = ReadConsistencyInjection.walk_inline_specs str in
+  (* Mapping-shaped inner modules — the framework's own ports and test fixtures —
+     get their translation table derived independent of any file-level mode. *)
+  let str = TranslationTable.walk_inline_mappings str in
   let initial_mode = detect_mode str in
   let has_mode = initial_mode <> None in
   let is_spec = match initial_mode with Some (Spec _, _) -> true | _ -> false in
@@ -858,8 +861,18 @@ let transform (str : structure) : structure =
       let ext_suffix =
         AuthorizationInjection.external_system_suffix ~loc loc.loc_start.pos_fname body
       in
+      (* The port's translation table, read off `mapOutgoingEvent`'s own arms —
+         see TranslationTable. *)
+      let table_suffix =
+        if Util.is_extensionpointmapping_filename loc.loc_start.pos_fname then
+          match TranslationTable.derive_published ~loc body with
+          | Some tbl -> [tbl]
+          | None -> []
+        else []
+      in
       !prefix @ authz_prefix @ vis_prefix @ rc_prefix @ body
         @ readmodel_suffix @ suffix @ authz_suffix @ vis_suffix @ rc_suffix @ ext_suffix
+        @ table_suffix
 
     | Implementation (kind, spec_name_opt) ->
       let fname = loc.loc_start.pos_fname in

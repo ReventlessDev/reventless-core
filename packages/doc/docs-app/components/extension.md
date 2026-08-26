@@ -105,8 +105,19 @@ module type Impl = {
   let mapOutgoingEvent: option<
     mapOutgoingEvent<Aggregate.event, ExtensionPoint.command, ExtensionPoint.directive>,
   >
+
+  // Which published event routes to which commands — the subscriber's half of
+  // the port's translation table. Derived by the PPX from `mapIncomingEvent`'s
+  // own arms; you do not write it.
+  let handledEvents: array<handledEvent>
 }
 ```
+
+The table is published on `extensionDef.handledEvents`, so what an extension does
+with each published event is readable without opening the mapping. Where an arm
+cannot be read — a command behind a promise, a `ForwardCommand`'s opaque JSON —
+the PPX fails the build naming that arm, and you write `let handledEvents = [...]`
+by hand for that file.
 
 ### Mapping Functions
 

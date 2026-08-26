@@ -1,7 +1,6 @@
 @@reventless.spec
 
 open ReventlessInfra.ExtensionPointMapping
-open Reventless.Plugin
 
 module PluginExtensionPointSpec = ReventlessInfra.PluginExtensionPointSpec
 

@@ -3,11 +3,8 @@
 
 module ExtensionPoint = CatalogSpec.Products_ExtensionPoint
 
-// DCB adapter: defines the event type used for outgoing event mapping.
-// Only the events relevant to the extension point are included.
-// `name` MUST equal `<pluginName>DcbEventLog` so the dispatch in
-// `Plugin_Callback` resolves it to the topic key `Plugin_Builder` registers
-// under (`name ++ "DcbEventLog"`).
+// DCB adapter carrying only the events this port maps. `name` MUST be
+// `<pluginName>DcbEventLog` — `Plugin_Callback` dispatches on it.
 module Delegate = {
   let name = "CatalogDcbEventLog"
   @schema

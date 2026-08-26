@@ -52,6 +52,12 @@ let structure: pluginStructure = {
       delegateNames: ["onAdded"],
       sourceEventTypes: ["Catalog.ProductAdded"],
       commandTypes: None,
+      publishedEvents: Some([
+        {
+          name: "Catalog.Products.ProductBecameAvailable",
+          fromEventTypes: ["Catalog.ProductAdded"],
+        },
+      ]),
     },
   ]),
   requiredStores: Some(["Catalog.images"]),
@@ -116,7 +122,8 @@ describe("Platform_PluginStructures entry", () => {
   testSync("encodes extension points with their source event types", () =>
     expect(
       json->String.includes(
-        "\"extensionPoints\":[{\"name\":\"Catalog.Products\",\"delegateNames\":[\"onAdded\"],\"sourceEventTypes\":[\"Catalog.ProductAdded\"],\"commandTypes\":null}]",
+        "\"extensionPoints\":[{\"name\":\"Catalog.Products\",\"delegateNames\":[\"onAdded\"],\"sourceEventTypes\":[\"Catalog.ProductAdded\"],\"commandTypes\":null," ++
+          "\"publishedEvents\":[{\"name\":\"Catalog.Products.ProductBecameAvailable\",\"fromEventTypes\":[\"Catalog.ProductAdded\"]}]}]",
       ),
     )->toEqual(true)
   )

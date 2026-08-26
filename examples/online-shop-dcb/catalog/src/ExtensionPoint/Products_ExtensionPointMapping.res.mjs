@@ -66,6 +66,17 @@ let mapOutgoingEvent = (_id, event, _meta, _queryEngine) => {
     }];
 };
 
+let publishedEvents = [
+  {
+    name: "ProductBecameAvailable",
+    fromEventTypes: ["ProductAdded"]
+  },
+  {
+    name: "ProductPriceChanged",
+    fromEventTypes: ["ProductPriceChanged"]
+  }
+];
+
 let name = "Products";
 
 let Id;
@@ -82,5 +93,6 @@ export {
   mapIncomingCommand,
   mapOutgoingEvent,
   moduleUrl,
+  publishedEvents,
 }
 /* commandSchema Not a pure module */

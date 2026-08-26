@@ -142,7 +142,8 @@ function Make(Platform) {
     },
     moduleUrl: Products_ExtensionPointMapping$CatalogPlugin.moduleUrl,
     mapIncomingCommand: Products_ExtensionPointMapping$CatalogPlugin.mapIncomingCommand,
-    mapOutgoingEvent: Products_ExtensionPointMapping$CatalogPlugin.mapOutgoingEvent
+    mapOutgoingEvent: Products_ExtensionPointMapping$CatalogPlugin.mapOutgoingEvent,
+    publishedEvents: Products_ExtensionPointMapping$CatalogPlugin.publishedEvents
   });
   let Orders_Extension = Platform.Extension.Make({
     ExtensionPoint: {
@@ -164,7 +165,8 @@ function Make(Platform) {
     moduleUrl: Orders_Extension$CatalogPlugin.Mapping.moduleUrl,
     delegateModuleUrl: Orders_Extension$CatalogPlugin.Mapping.delegateModuleUrl,
     mapIncomingEvent: Orders_Extension$CatalogPlugin.Mapping.mapIncomingEvent,
-    mapOutgoingEvent: Orders_Extension$CatalogPlugin.Mapping.mapOutgoingEvent
+    mapOutgoingEvent: Orders_Extension$CatalogPlugin.Mapping.mapOutgoingEvent,
+    handledEvents: Orders_Extension$CatalogPlugin.Mapping.handledEvents
   });
   let pluginStructure = Platform.Plugin.makePluginDefinition("Catalog", [
     CategoryAggregate,
@@ -193,7 +195,8 @@ function Make(Platform) {
       },
       moduleUrl: Products_ExtensionPointMapping$CatalogPlugin.moduleUrl,
       mapIncomingCommand: Products_ExtensionPointMapping$CatalogPlugin.mapIncomingCommand,
-      mapOutgoingEvent: Products_ExtensionPointMapping$CatalogPlugin.mapOutgoingEvent
+      mapOutgoingEvent: Products_ExtensionPointMapping$CatalogPlugin.mapOutgoingEvent,
+      publishedEvents: Products_ExtensionPointMapping$CatalogPlugin.publishedEvents
     }], Object.fromEntries([
     [
       "Categories",

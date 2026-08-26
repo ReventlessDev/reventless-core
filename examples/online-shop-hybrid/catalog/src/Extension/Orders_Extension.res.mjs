@@ -57,6 +57,17 @@ function mapIncomingEvent(_id, event, _meta, _pluginDef, _queryEngine) {
   ];
 }
 
+let handledEvents = [
+  {
+    name: "ItemOrdered",
+    toCommandTypes: ["RecordDemand"]
+  },
+  {
+    name: "ItemOrderCancelled",
+    toCommandTypes: ["RevokeDemand"]
+  }
+];
+
 let Mapping = {
   ExtensionPoint: undefined,
   Delegate: undefined,
@@ -64,7 +75,8 @@ let Mapping = {
   mapIncomingEvent: mapIncomingEvent,
   mapOutgoingEvent: undefined,
   delegateModuleUrl: RecordProductDemand$CatalogPlugin.moduleUrl,
-  moduleUrl: "@reventlessdev/online-shop-hybrid-catalog/src/Extension/Orders_Extension.res.mjs"
+  moduleUrl: "@reventlessdev/online-shop-hybrid-catalog/src/Extension/Orders_Extension.res.mjs",
+  handledEvents: handledEvents
 };
 
 let moduleUrl = "@reventlessdev/online-shop-hybrid-catalog/src/Extension/Orders_Extension.res.mjs";

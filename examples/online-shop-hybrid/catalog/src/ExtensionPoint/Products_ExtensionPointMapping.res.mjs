@@ -119,6 +119,28 @@ let mapOutgoingEvent = (_id, event, _meta, _queryEngine) => {
     }];
 };
 
+let publishedEvents = [
+  {
+    name: "ProductBecameAvailable",
+    fromEventTypes: ["ProductAdded"]
+  },
+  {
+    name: "ProductPriceChanged",
+    fromEventTypes: ["ProductPriceChanged"]
+  },
+  {
+    name: "ProductWithdrawn",
+    fromEventTypes: [
+      "ProductArchived",
+      "ProductDiscontinued"
+    ]
+  },
+  {
+    name: "ProductRelisted",
+    fromEventTypes: ["ProductUnarchived"]
+  }
+];
+
 let name = "Products";
 
 let Id;
@@ -136,5 +158,6 @@ export {
   directiveHandler,
   mapOutgoingEvent,
   moduleUrl,
+  publishedEvents,
 }
 /* commandSchema Not a pure module */

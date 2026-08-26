@@ -153,6 +153,14 @@ let outboundTranslationSliceDefSchema = Plugin$Reventless.outboundTranslationSli
 
 let inboundTranslationSliceDefSchema = Plugin$Reventless.inboundTranslationSliceDefSchema;
 
+let publishedEventDefSchema = Plugin$Reventless.publishedEventDefSchema;
+
+let publishedEventDefArrayOptionSchema = Plugin$Reventless.publishedEventDefArrayOptionSchema;
+
+let handledEventDefSchema = Plugin$Reventless.handledEventDefSchema;
+
+let handledEventDefArrayOptionSchema = Plugin$Reventless.handledEventDefArrayOptionSchema;
+
 let extensionDefSchema = Plugin$Reventless.extensionDefSchema;
 
 let extensionPointDefSchema = Plugin$Reventless.extensionPointDefSchema;
@@ -200,6 +208,10 @@ export {
   automationSliceDefSchema,
   outboundTranslationSliceDefSchema,
   inboundTranslationSliceDefSchema,
+  publishedEventDefSchema,
+  publishedEventDefArrayOptionSchema,
+  handledEventDefSchema,
+  handledEventDefArrayOptionSchema,
   extensionDefSchema,
   extensionPointDefSchema,
   extensionPointDefArrayOptionSchema,

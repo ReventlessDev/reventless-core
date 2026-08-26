@@ -9,6 +9,7 @@ module Mapping = {
 
   open ExtensionPoint
   open RecordProductDemand
+
   let mapIncomingEvent = (_id, event, _meta, _pluginDef, _queryEngine) =>
     switch event {
     | ItemOrdered({productId, orderId}) => [

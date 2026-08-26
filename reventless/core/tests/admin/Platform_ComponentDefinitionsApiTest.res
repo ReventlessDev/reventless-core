@@ -94,6 +94,9 @@ let structure: pluginStructure = {
       delegateNames: ["onAdded"],
       eventTypes: ["ProductAdded"],
       commandTypes: [],
+      handledEvents: Some([
+        {name: "Catalog.Products.ProductAdded", toCommandTypes: ["Catalog.Watch"]},
+      ]),
     },
   ],
   extensionPoints: None,

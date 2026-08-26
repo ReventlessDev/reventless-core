@@ -9,6 +9,7 @@ module Mapping = {
 
   open ExtensionPoint
   open SyncCatalogProduct
+
   let mapIncomingEvent = (_id, event, _meta, _pluginDef, _queryEngine) =>
     switch event {
     | ProductBecameAvailable({productId, name, price}) => [
@@ -17,9 +18,7 @@ module Mapping = {
     | ProductPriceChanged({productId, price}) => [
         PublishStateChangeSliceCommand(ChangeSyncedPrice({productId, price})),
       ]
-    // A withdrawn product stops being orderable. The relist carries only the id
-    // because Ordering's own shadow still holds the name and price — see
-    // `SyncCatalogProduct`, which is what that shadow is for.
+    // The relist carries only the id — Ordering's own shadow still holds the rest.
     | ProductWithdrawn({productId: theId}) => [
         PublishStateChangeSliceCommand(WithdrawSyncedProduct({productId: theId})),
       ]

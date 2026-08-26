@@ -14,7 +14,8 @@ let sdlTypes = [
   `type Platform_AutomationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  producedCommandTypes: [String!]!\n  targetName: String\n  chapter: String\n}`,
   `type Platform_OutboundTranslationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  inboundCommandTypes: [String!]!\n  targetName: String\n  externalSystem: String\n  chapter: String\n}`,
   `type Platform_InboundTranslationSliceDef {\n  name: String!\n  commandTypes: [String!]!\n  targetName: String\n  externalSystem: String\n  chapter: String\n}`,
-  `type Platform_ExtensionDef {\n  name: String!\n  delegateNames: [String!]!\n  eventTypes: [String!]!\n  commandTypes: [String!]!\n}`,
+  `type Platform_HandledEventDef {\n  name: String!\n  toCommandTypes: [String!]!\n}`,
+  `type Platform_ExtensionDef {\n  name: String!\n  delegateNames: [String!]!\n  eventTypes: [String!]!\n  commandTypes: [String!]!\n  handledEvents: [Platform_HandledEventDef!]\n}`,
   `type Platform_ComponentDefinitionEntry {\n  pluginId: String!\n  readModels: [Platform_ReadSideDef!]!\n  stateViewSlices: [Platform_ReadSideDef!]!\n  internalQueryables: [Platform_ReadSideDef!]!\n  stateChangeSlices: [Platform_WriteSideDef!]!\n  aggregates: [Platform_WriteSideDef!]!\n  automationSlices: [Platform_AutomationSliceDef!]!\n  outboundTranslationSlices: [Platform_OutboundTranslationSliceDef!]!\n  inboundTranslationSlices: [Platform_InboundTranslationSliceDef!]!\n  extensions: [Platform_ExtensionDef!]!\n}`
 ];
 
@@ -347,6 +348,19 @@ function encodeExtensionDef(e) {
     [
       "commandTypes",
       e.commandTypes.map(prim => prim)
+    ],
+    [
+      "handledEvents",
+      Stdlib_Option.mapOr(e.handledEvents, null, handled => handled.map(h => Object.fromEntries([
+        [
+          "name",
+          h.name
+        ],
+        [
+          "toCommandTypes",
+          h.toCommandTypes.map(prim => prim)
+        ]
+      ])))
     ]
   ]);
 }

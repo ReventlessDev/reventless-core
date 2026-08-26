@@ -10,10 +10,7 @@ module Mapping = {
   open ExtensionPoint
   open RecordProductDemand
 
-  // Extension-side directive handler: pure fire-and-forget
-  // (`'directive => promise<unit>`). Query-based decisions live in
-  // `mapIncomingEvent` (which has `_queryEngine`); the handler executes the
-  // resulting side effect.
+  // Fire-and-forget side effect; query-based decisions belong in `mapIncomingEvent`.
   let directiveHandler = async (directive: ExtensionPoint.directive) =>
     switch directive {
     | EmitOrderRecordedTelemetry({productId, orderId}) =>

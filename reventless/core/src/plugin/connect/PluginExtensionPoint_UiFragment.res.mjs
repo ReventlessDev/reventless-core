@@ -34,12 +34,15 @@ function mapIncomingCommand(id, cmd, meta) {
   }
 }
 
+let publishedEvents = [];
+
 let UiFragmentMapping = {
   ExtensionPoint: undefined,
   Delegate: undefined,
   moduleUrl: moduleUrl,
   mapIncomingCommand: mapIncomingCommand,
-  mapOutgoingEvent: undefined
+  mapOutgoingEvent: undefined,
+  publishedEvents: publishedEvents
 };
 
 let Mapping = ExtensionPointMapping$ReventlessInfra.Make({
@@ -61,7 +64,8 @@ let Mapping = ExtensionPointMapping$ReventlessInfra.Make({
   },
   moduleUrl: moduleUrl,
   mapIncomingCommand: mapIncomingCommand,
-  mapOutgoingEvent: undefined
+  mapOutgoingEvent: undefined,
+  publishedEvents: publishedEvents
 });
 
 let PluginExtensionPointSpec;

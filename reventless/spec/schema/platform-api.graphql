@@ -88,6 +88,7 @@ type Platform_ExtensionDef {
   commandTypes: [String!]!
   delegateNames: [String!]!
   eventTypes: [String!]!
+  handledEvents: [Platform_HandledEventDef!]
   name: String!
 }
 
@@ -95,6 +96,7 @@ type Platform_ExtensionPointDef {
   commandTypes: [String!]
   delegateNames: [String!]!
   name: String!
+  publishedEvents: [Platform_PublishedEventDef!]
   sourceEventTypes: [String!]!
 }
 
@@ -102,6 +104,11 @@ type Platform_FieldReference {
   entity: String!
   fieldName: String!
   plugin: String
+}
+
+type Platform_HandledEventDef {
+  name: String!
+  toCommandTypes: [String!]!
 }
 
 type Platform_InboundTranslationSliceDef {
@@ -210,6 +217,11 @@ type Platform_PluginStructureEntry {
   requiredStores: [String!]
   stateChangeSlices: [Platform_WriteSideDef!]!
   stateViewSlices: [Platform_ReadSideDef!]!
+}
+
+type Platform_PublishedEventDef {
+  fromEventTypes: [String!]!
+  name: String!
 }
 
 type Platform_ReadSideDef {

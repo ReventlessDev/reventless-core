@@ -24,13 +24,25 @@ function mapIncomingEvent(_id, event, _meta, _pluginDef, _queryEngine) {
   }
 }
 
+let handledEvents = [
+  {
+    name: "ItemOrdered",
+    toCommandTypes: ["Record"]
+  },
+  {
+    name: "ItemOrderCancelled",
+    toCommandTypes: ["Revoke"]
+  }
+];
+
 let Mapping = {
   ExtensionPoint: undefined,
   Delegate: undefined,
   mapIncomingEvent: mapIncomingEvent,
   mapOutgoingEvent: undefined,
   delegateModuleUrl: ProductDemand$CatalogPlugin.moduleUrl,
-  moduleUrl: "@reventlessdev/online-shop-aggregates-catalog/src/Extension/Orders_Extension.res.mjs"
+  moduleUrl: "@reventlessdev/online-shop-aggregates-catalog/src/Extension/Orders_Extension.res.mjs",
+  handledEvents: handledEvents
 };
 
 let moduleUrl = "@reventlessdev/online-shop-aggregates-catalog/src/Extension/Orders_Extension.res.mjs";

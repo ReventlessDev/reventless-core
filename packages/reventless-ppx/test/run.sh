@@ -395,7 +395,10 @@ module ExtensionPoint = {
   let name = "Test.Items"
   let moduleUrl = "test"
   @schema type command = unit
-  @schema type event = | ItemPublished({itemId: string})
+  @schema
+  type event =
+    | ItemPublished({itemId: string})
+    | ItemWithdrawn({itemId: string})
   @schema type directive = unit
 }
 
@@ -404,6 +407,10 @@ module Delegate = {
   @schema
   type event =
     | ItemAdded({itemId: string, name: string})
+    | ItemArchived({itemId: string})
+    | ItemDiscontinued({itemId: string})
+    | ItemRenamed({itemId: string, name: string})
+    | ItemsBatched({itemIds: array<string>})
 }
 
 let mapIncomingCommand = (_id, _command, _meta) => []
@@ -413,6 +420,17 @@ let mapOutgoingEvent = Some((_id, event, _meta, _queryEngine) =>
   | Delegate.ItemAdded({itemId, name: _}) => [
       PublishEvent(itemId, ExtensionPoint.ItemPublished({itemId: itemId})),
     ]
+  // Two internal events, one published fact.
+  | Delegate.ItemArchived({itemId}) => [
+      PublishEvent(itemId, ExtensionPoint.ItemWithdrawn({itemId: itemId})),
+    ]
+  | Delegate.ItemDiscontinued({itemId}) => [
+      PublishEvent(itemId, ExtensionPoint.ItemWithdrawn({itemId: itemId})),
+    ]
+  // Fans out through a lambda, and stops at the port.
+  | Delegate.ItemsBatched({itemIds}) =>
+    itemIds->Array.map(id => PublishEvent(id, ExtensionPoint.ItemPublished({itemId: id})))
+  | Delegate.ItemRenamed(_) => []
   }
 )
 EOF
@@ -1482,13 +1500,44 @@ cat > "$DCB/src/Extension/Demo_Extension.res" <<'EOF'
 @@reventless.extension
 
 module Mapping = {
+  module ExtensionPoint = {
+    let name = "Test.Demo"
+    let moduleUrl = "test"
+    @schema type command = unit
+    @schema
+    type event =
+      | DemoPublished({demoId: string})
+      | DemoWithdrawn({demoId: string})
+    @schema type directive = unit
+  }
+
   // Inner Delegate — should get dcbTags + module Id injected by the PPX
   // (the same auto-transform spec files apply to a `module Delegate`).
   module Delegate = {
     let name = "DemoDelegate"
     @schema
+    type command =
+      | SyncDemo({demoId: string})
+      | DropDemo({demoId: string})
+    @schema
     type event = | DemoEvent({demoId: string})
   }
+
+  let mapIncomingEvent = (_id, event: ExtensionPoint.event, _meta, _pluginDef, _queryEngine) =>
+    switch event {
+    | DemoPublished({demoId}) => [
+        ReventlessInfra.ExtensionMapping.PublishStateChangeSliceCommand(
+          Delegate.SyncDemo({demoId: demoId}),
+        ),
+      ]
+    | DemoWithdrawn({demoId}) => [
+        ReventlessInfra.ExtensionMapping.PublishStateChangeSliceCommand(
+          Delegate.DropDemo({demoId: demoId}),
+        ),
+      ]
+    }
+
+  let mapOutgoingEvent = None
 }
 EOF
 
@@ -1703,6 +1752,28 @@ JS="$DCB/src/ItemExtensionPointMapping.res.mjs"
 # PublishEvent is used without explicit open — compiles proves PPX injected the open
 pass "EP mapping: compiles using PublishEvent without explicit open (PPX auto-injected)"
 assert_js_contains "$JS" 'moduleUrl'                      "EP mapping: moduleUrl injected"
+# The translation table is read off the arms — no author-written strings.
+assert_js_contains "$JS" 'publishedEvents'                "EP mapping: publishedEvents derived"
+TABLE=$(node -e '
+  const m = require("fs").readFileSync(process.argv[1], "utf8");
+  const i = m.indexOf("let publishedEvents = [");
+  process.stdout.write(i < 0 ? "" : m.slice(i, m.indexOf("];", i)));
+' "$JS")
+# Two internal retirements collapsing into one published fact is exactly what a
+# consumer joining the two name lists by hand gets wrong.
+case "$TABLE" in
+  *ItemArchived*ItemDiscontinued*)
+    pass "EP mapping: many-to-one arms collapse into one published event" ;;
+  *) fail "EP mapping many-to-one" "ItemWithdrawn did not carry both source events" ;;
+esac
+case "$TABLE" in
+  *ItemsBatched*) pass "EP mapping: a fan-out through Array.map is read" ;;
+  *) fail "EP mapping fan-out" "ItemsBatched missing from the derived table" ;;
+esac
+case "$TABLE" in
+  *ItemRenamed*) fail "EP mapping swallowed arm" "ItemRenamed should not appear in the table" ;;
+  *) pass "EP mapping: an arm that publishes nothing adds no row" ;;
+esac
 
 echo ""
 echo "=== Test: Phase 8 — slice folder auto-applies dcbTags (no @@reventless.dcbTags needed) ==="
@@ -2206,6 +2277,18 @@ JS="$DCB/src/Extension/Demo_Extension.res.mjs"
 assert_js_contains "$JS" 'Extension/Demo_Extension.res.mjs' "extension: moduleUrl injected"
 assert_js_contains "$JS" 'DcbTag' "extension: inner Mapping.Delegate got dcbTags + module Id"
 assert_js_contains "$JS" 'delegateModuleUrl' "extension: Mapping.delegateModuleUrl injected (lets the runtime dynamic-import the Delegate spec)"
+# The subscriber's half of the table, read off `mapIncomingEvent`'s arms.
+assert_js_contains "$JS" 'handledEvents' "extension: handledEvents derived"
+HANDLED=$(node -e '
+  const m = require("fs").readFileSync(process.argv[1], "utf8");
+  const i = m.indexOf("let handledEvents = [");
+  process.stdout.write(i < 0 ? "" : m.slice(i, m.indexOf("];", i)));
+' "$JS")
+case "$HANDLED" in
+  *DemoPublished*SyncDemo*DemoWithdrawn*DropDemo*)
+    pass "extension: each published event carries the command it routes to" ;;
+  *) fail "extension handledEvents" "unexpected derived table: $HANDLED" ;;
+esac
 
 echo ""
 echo "=== Test: @@reventless.task (Task/<Name>.res — name + open + moduleUrl) ==="
@@ -2230,11 +2313,98 @@ cat > "$ERROR/rescript.json" <<EOF
   "package-specs": { "module": "esmodule", "in-source": true },
   "suffix": ".res.mjs",
   "sources": [{ "dir": "src", "subdirs": true }],
-  "dependencies": ["sury", "@reventlessdev/reventless-spec"]
+  "dependencies": ["sury", "@reventlessdev/reventless-spec", "@reventlessdev/reventless-infra"]
 }
 EOF
 
 link_node_modules "$ERROR"
+
+echo ""
+echo "=== Test: PPX error — a mapping arm the translation table cannot be read from ==="
+
+# An arm that hands its actions to a helper. The table must not silently omit it:
+# "no edge" and "did not look" are different facts, so the derivation stops and
+# names the arm rather than guessing.
+mkdir -p "$ERROR/src/ExtensionPoint"
+EPM_DIR="$ERROR/src/ExtensionPoint"
+cat > "$EPM_DIR/Opaque_ExtensionPointMapping.res" <<'RES'
+@@reventless.spec
+
+module ExtensionPoint = {
+  let name = "Test.Opaque"
+  let moduleUrl = "test"
+  @schema type command = unit
+  @schema type event = | Published({itemId: string})
+  @schema type directive = unit
+}
+
+module Delegate = {
+  let name = "OpaqueDelegate"
+  @schema type event = | Added({itemId: string})
+}
+
+let mapIncomingCommand = (_id, _command, _meta) => []
+
+let actionsFor = _itemId => []
+
+let mapOutgoingEvent = Some((_id, event, _meta, _queryEngine) =>
+  switch event {
+  | Delegate.Added({itemId}) => actionsFor(itemId)
+  }
+)
+RES
+
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "unreadable mapping arm" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q "cannot read publishedEvents"; then
+    pass "unreadable mapping arm → correct compile error naming the escape hatch"
+  else
+    fail "unreadable mapping arm" "unexpected error output: $OUTPUT"
+  fi
+fi
+
+echo ""
+echo "=== Test: a hand-written table where the arms cannot be read ==="
+
+# The escape hatch: the author states the table and the derivation steps aside.
+cat > "$EPM_DIR/Opaque_ExtensionPointMapping.res" <<'RES'
+@@reventless.spec
+
+module ExtensionPoint = {
+  let name = "Test.Opaque"
+  let moduleUrl = "test"
+  @schema type command = unit
+  @schema type event = | Published({itemId: string})
+  @schema type directive = unit
+}
+
+module Delegate = {
+  let name = "OpaqueDelegate"
+  @schema type event = | Added({itemId: string})
+}
+
+let mapIncomingCommand = (_id, _command, _meta) => []
+
+let actionsFor = _itemId => []
+
+let publishedEvents: array<publishedEvent> = [
+  {name: "Published", fromEventTypes: ["Added"]},
+]
+
+let mapOutgoingEvent = Some((_id, event, _meta, _queryEngine) =>
+  switch event {
+  | Delegate.Added({itemId}) => actionsFor(itemId)
+  }
+)
+RES
+
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  pass "a hand-written publishedEvents compiles where the arms cannot be read"
+else
+  fail "hand-written publishedEvents" "expected it to compile: $OUTPUT"
+fi
+rm -f "$EPM_DIR/Opaque_ExtensionPointMapping.res"
 
 echo ""
 echo "=== Test: PPX error — two @owner fields in one record ==="

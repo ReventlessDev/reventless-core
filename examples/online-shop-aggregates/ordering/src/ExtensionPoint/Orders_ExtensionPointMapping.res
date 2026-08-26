@@ -1,5 +1,5 @@
-// Maps internal Order aggregate events to the stable OrdersExtensionPoint public API.
-// Decomposes a batch OrderPlaced (multiple productIds) into one ItemOrdered per product.
+// Maps internal Order events to the OrdersExtensionPoint public API, one published
+// event per product in a batch.
 @@reventless.spec
 
 module ExtensionPoint = OrderingSpec.Orders_ExtensionPoint

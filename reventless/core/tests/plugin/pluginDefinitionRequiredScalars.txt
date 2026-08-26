@@ -77,10 +77,14 @@
 .structure.extensionPoints[].commandTypes[]: string
 .structure.extensionPoints[].delegateNames[]: string
 .structure.extensionPoints[].name: string
+.structure.extensionPoints[].publishedEvents[].fromEventTypes[]: string
+.structure.extensionPoints[].publishedEvents[].name: string
 .structure.extensionPoints[].sourceEventTypes[]: string
 .structure.extensions[].commandTypes[]: string
 .structure.extensions[].delegateNames[]: string
 .structure.extensions[].eventTypes[]: string
+.structure.extensions[].handledEvents[].name: string
+.structure.extensions[].handledEvents[].toCommandTypes[]: string
 .structure.extensions[].name: string
 .structure.inboundTranslationSlices[].commandTypes[]: string
 .structure.inboundTranslationSlices[].name: string

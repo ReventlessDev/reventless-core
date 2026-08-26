@@ -1,11 +1,10 @@
-// Maps internal Ordering events to the stable Orders_ExtensionPoint public API.
-// Decomposes batch OrderPlaced / OrderCancelled events into per-product EP events.
+// Maps internal Ordering events to the Orders_ExtensionPoint public API, one
+// published event per product in a batch.
 @@reventless.spec
 
 module ExtensionPoint = OrderingSpec.Orders_ExtensionPoint
 
-// DCB adapter: defines the event type used for outgoing event mapping.
-// Only the events relevant to the extension point are included.
+// DCB adapter carrying only the events this port maps.
 module Delegate = {
   let name = "OrderingDcbEventLog"
   @schema

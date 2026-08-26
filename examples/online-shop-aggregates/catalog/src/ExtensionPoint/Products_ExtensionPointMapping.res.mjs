@@ -33,6 +33,17 @@ let mapOutgoingEvent = (id, event, _meta, _queryEngine) => {
   }
 };
 
+let publishedEvents = [
+  {
+    name: "ProductBecameAvailable",
+    fromEventTypes: ["Added"]
+  },
+  {
+    name: "ProductPriceChanged",
+    fromEventTypes: ["PriceUpdated"]
+  }
+];
+
 let name = "Products";
 
 let Id;
@@ -51,5 +62,6 @@ export {
   mapIncomingCommand,
   mapOutgoingEvent,
   moduleUrl,
+  publishedEvents,
 }
 /* No side effect */

@@ -327,12 +327,46 @@ function Make(Spec) {
       }
     ];
   };
+  let publishedEvents = [
+    {
+      name: "UnknownPluginDetected",
+      fromEventTypes: ["VersionDetected"]
+    },
+    {
+      name: "PluginConnected",
+      fromEventTypes: [
+        "VersionConnected",
+        "VersionPromoted"
+      ]
+    },
+    {
+      name: "PluginDisconnected",
+      fromEventTypes: ["VersionDisconnected"]
+    },
+    {
+      name: "PluginDeactivated",
+      fromEventTypes: ["VersionDeactivated"]
+    },
+    {
+      name: "PluginActivated",
+      fromEventTypes: ["VersionActivated"]
+    },
+    {
+      name: "PluginRetired",
+      fromEventTypes: ["VersionRetired"]
+    },
+    {
+      name: "IncompatiblePlugin",
+      fromEventTypes: ["IncompatiblePluginDetected"]
+    }
+  ];
   let PluginMapping = {
     ExtensionPoint: undefined,
     Delegate: undefined,
     moduleUrl: PluginExtensionPointSpec$ReventlessInfra.moduleUrl,
     mapIncomingCommand: mapIncomingCommand,
-    mapOutgoingEvent: mapOutgoingEvent
+    mapOutgoingEvent: mapOutgoingEvent,
+    publishedEvents: publishedEvents
   };
   let Mapping = ExtensionPointMapping$ReventlessInfra.Make({
     ExtensionPoint: {
@@ -353,7 +387,8 @@ function Make(Spec) {
     },
     moduleUrl: PluginExtensionPointSpec$ReventlessInfra.moduleUrl,
     mapIncomingCommand: mapIncomingCommand,
-    mapOutgoingEvent: mapOutgoingEvent
+    mapOutgoingEvent: mapOutgoingEvent,
+    publishedEvents: publishedEvents
   });
   return {
     disconnectScheduleName: disconnectScheduleName,

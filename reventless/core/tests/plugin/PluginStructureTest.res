@@ -1747,3 +1747,112 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
     })
   })
 })
+
+// The port's translation table — the pure halves of the check. The probe itself
+// needs a mapping module and is exercised by the examples' own build.
+describe("the port's translation table", () => {
+  let published = (name, fromEventTypes): ReventlessInfra.ExtensionPointMapping.publishedEvent => {
+    name,
+    fromEventTypes,
+  }
+  let failures = (~declared) =>
+    Plugin_Structure.translationTableFailures(
+      ~label="Catalog.Products ← Product",
+      ~declared,
+      ~publishedNames=["ProductBecameAvailable", "ProductWithdrawn"],
+      ~sourceNames=["Added", "Archived", "Discontinued", "Renamed"],
+    )
+
+  testSync("accepts a many-to-one declaration", () =>
+    expect(
+      failures(~declared=[published("ProductWithdrawn", ["Archived", "Discontinued"])])->Array.length,
+    )->toBe(0)
+  )
+
+  testSync("rejects a published name the extension point does not declare", () =>
+    expect(
+      failures(~declared=[published("ProductRetired", ["Archived"])])->Array.length,
+    )->toBe(1)
+  )
+
+  testSync("rejects a source name the delegate does not declare", () =>
+    expect(
+      failures(~declared=[published("ProductWithdrawn", ["Archivd"])])->Array.length,
+    )->toBe(1)
+  )
+
+})
+
+describe("the translation table against the probe", () => {
+  let declared = [
+    ({
+      ReventlessInfra.ExtensionPointMapping.name: "ProductWithdrawn",
+      fromEventTypes: ["Archived", "Discontinued"],
+    }: ReventlessInfra.ExtensionPointMapping.publishedEvent),
+  ]
+  let drift = (~observed, ~followed) =>
+    Plugin_Structure.translationTableDrift(~label="EP", ~declared, ~observed, ~followed)
+
+  testSync("says nothing when the arms produce what was declared", () => {
+    let (failures, warnings) = drift(
+      ~observed=[("Archived", "ProductWithdrawn"), ("Discontinued", "ProductWithdrawn")],
+      ~followed=["Archived", "Discontinued"],
+    )
+    expect((failures->Array.length, warnings->Array.length))->toEqual((0, 0))
+  })
+
+  // The probe watched the arm publish it, so the declaration is stale.
+  testSync("fails on an edge the probe saw and the declaration omits", () => {
+    let (failures, _) = drift(
+      ~observed=[("Archived", "ProductRelisted")],
+      ~followed=["Archived"],
+    )
+    expect(failures->Array.length)->toBe(1)
+  })
+
+  // The arm may branch on a payload the probe cannot synthesise.
+  testSync("only warns on a declared edge the probe did not see", () => {
+    let (failures, warnings) = drift(
+      ~observed=[("Archived", "ProductWithdrawn")],
+      ~followed=["Archived", "Discontinued"],
+    )
+    expect((failures->Array.length, warnings->Array.length))->toEqual((0, 1))
+  })
+
+  // "Did not look" must not read as "no edge".
+  testSync("judges nothing about a source the probe could not follow", () => {
+    let (failures, warnings) = drift(~observed=[], ~followed=[])
+    expect((failures->Array.length, warnings->Array.length))->toEqual((0, 0))
+  })
+})
+
+describe("the subscriber's half of the table", () => {
+  let handled = (name, toCommandTypes): ReventlessInfra.ExtensionMapping.handledEvent => {
+    name,
+    toCommandTypes,
+  }
+  let failures = declared =>
+    Plugin_Structure.handledTableFailures(
+      ~label="Catalog.Products → SyncCatalogProduct",
+      ~declared,
+      ~eventNames=["ProductBecameAvailable"],
+      // The delegate's commands and the extension point's own, resolved as one set.
+      ~commandNames=["SyncNewProduct", "AckProduct"],
+    )
+
+  testSync("accepts a delegate command and an extension point command alike", () =>
+    expect(
+      failures([handled("ProductBecameAvailable", ["SyncNewProduct", "AckProduct"])])->Array.length,
+    )->toBe(0)
+  )
+
+  testSync("rejects a handled event the extension point does not publish", () =>
+    expect(failures([handled("ProductAdded", ["SyncNewProduct"])])->Array.length)->toBe(1)
+  )
+
+  testSync("rejects a command neither side declares", () =>
+    expect(
+      failures([handled("ProductBecameAvailable", ["SyncNewProdct"])])->Array.length,
+    )->toBe(1)
+  )
+})

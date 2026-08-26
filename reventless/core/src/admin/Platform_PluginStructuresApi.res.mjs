@@ -5,7 +5,8 @@ import * as Plugin$ReventlessCore from "../plugin/component/Plugin.res.mjs";
 import * as Platform_ComponentDefinitionsApi$ReventlessCore from "./Platform_ComponentDefinitionsApi.res.mjs";
 
 let sdlTypes = [
-  `type Platform_ExtensionPointDef {\n  name: String!\n  delegateNames: [String!]!\n  sourceEventTypes: [String!]!\n  commandTypes: [String!]\n}`,
+  `type Platform_PublishedEventDef {\n  name: String!\n  fromEventTypes: [String!]!\n}`,
+  `type Platform_ExtensionPointDef {\n  name: String!\n  delegateNames: [String!]!\n  sourceEventTypes: [String!]!\n  commandTypes: [String!]\n  publishedEvents: [Platform_PublishedEventDef!]\n}`,
   `type Platform_RequiredStoreDeclaration {\n  store: String!\n  component: String!\n  field: String!\n  annotation: String\n}`,
   `type Platform_PluginStructureEntry {\n  pluginId: String!\n  readModels: [Platform_ReadSideDef!]!\n  stateViewSlices: [Platform_ReadSideDef!]!\n  stateChangeSlices: [Platform_WriteSideDef!]!\n  aggregates: [Platform_WriteSideDef!]!\n  automationSlices: [Platform_AutomationSliceDef!]!\n  outboundTranslationSlices: [Platform_OutboundTranslationSliceDef!]!\n  inboundTranslationSlices: [Platform_InboundTranslationSliceDef!]!\n  extensions: [Platform_ExtensionDef!]!\n  extensionPoints: [Platform_ExtensionPointDef!]\n  requiredStores: [String!]\n  requiredStoreDeclarations: [Platform_RequiredStoreDeclaration!]\n}`
 ];
@@ -27,6 +28,19 @@ function encodeExtensionPointDef(e) {
     [
       "commandTypes",
       Stdlib_Option.mapOr(e.commandTypes, null, Platform_ComponentDefinitionsApi$ReventlessCore.encodeStrings)
+    ],
+    [
+      "publishedEvents",
+      Stdlib_Option.mapOr(e.publishedEvents, null, published => published.map(p => Object.fromEntries([
+        [
+          "name",
+          p.name
+        ],
+        [
+          "fromEventTypes",
+          Platform_ComponentDefinitionsApi$ReventlessCore.encodeStrings(p.fromEventTypes)
+        ]
+      ])))
     ]
   ]);
 }

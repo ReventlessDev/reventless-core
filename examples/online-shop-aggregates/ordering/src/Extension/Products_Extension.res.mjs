@@ -25,13 +25,25 @@ function mapIncomingEvent(_id, event, _meta, _pluginDef, _queryEngine) {
   }
 }
 
+let handledEvents = [
+  {
+    name: "ProductBecameAvailable",
+    toCommandTypes: ["Sync"]
+  },
+  {
+    name: "ProductPriceChanged",
+    toCommandTypes: ["UpdatePrice"]
+  }
+];
+
 let Mapping = {
   ExtensionPoint: undefined,
   Delegate: undefined,
   mapIncomingEvent: mapIncomingEvent,
   mapOutgoingEvent: undefined,
   delegateModuleUrl: CatalogProduct$OrderingPlugin.moduleUrl,
-  moduleUrl: "@reventlessdev/online-shop-aggregates-ordering/src/Extension/Products_Extension.res.mjs"
+  moduleUrl: "@reventlessdev/online-shop-aggregates-ordering/src/Extension/Products_Extension.res.mjs",
+  handledEvents: handledEvents
 };
 
 let moduleUrl = "@reventlessdev/online-shop-aggregates-ordering/src/Extension/Products_Extension.res.mjs";

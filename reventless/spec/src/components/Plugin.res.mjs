@@ -183,18 +183,34 @@ let inboundTranslationSliceDefSchema = Sury.$schema(s => ({
   chapter: s.m(stringOptionSchema)
 }));
 
+let publishedEventDefSchema = Sury.$schema(s => ({
+  name: s.m(Sury.string),
+  fromEventTypes: s.m(Sury.array(Sury.string))
+}));
+
+let publishedEventDefArrayOptionSchema = Sury.$nullAsOption(Sury.array(publishedEventDefSchema));
+
+let handledEventDefSchema = Sury.$schema(s => ({
+  name: s.m(Sury.string),
+  toCommandTypes: s.m(Sury.array(Sury.string))
+}));
+
+let handledEventDefArrayOptionSchema = Sury.$nullAsOption(Sury.array(handledEventDefSchema));
+
 let extensionDefSchema = Sury.$schema(s => ({
   name: s.m(Sury.string),
   delegateNames: s.m(Sury.array(Sury.string)),
   eventTypes: s.m(Sury.array(Sury.string)),
-  commandTypes: s.m(Sury.array(Sury.string))
+  commandTypes: s.m(Sury.array(Sury.string)),
+  handledEvents: s.m(handledEventDefArrayOptionSchema)
 }));
 
 let extensionPointDefSchema = Sury.$schema(s => ({
   name: s.m(Sury.string),
   delegateNames: s.m(Sury.array(Sury.string)),
   sourceEventTypes: s.m(Sury.array(Sury.string)),
-  commandTypes: s.m(stringArrayOptionSchema)
+  commandTypes: s.m(stringArrayOptionSchema),
+  publishedEvents: s.m(publishedEventDefArrayOptionSchema)
 }));
 
 let extensionPointDefArrayOptionSchema = Sury.$nullAsOption(Sury.array(extensionPointDefSchema));
@@ -269,6 +285,10 @@ export {
   automationSliceDefSchema,
   outboundTranslationSliceDefSchema,
   inboundTranslationSliceDefSchema,
+  publishedEventDefSchema,
+  publishedEventDefArrayOptionSchema,
+  handledEventDefSchema,
+  handledEventDefArrayOptionSchema,
   extensionDefSchema,
   extensionPointDefSchema,
   extensionPointDefArrayOptionSchema,

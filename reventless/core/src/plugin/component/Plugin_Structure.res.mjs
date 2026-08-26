@@ -10,7 +10,9 @@ import * as Owner$Reventless from "@reventlessdev/reventless-spec/src/components
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 import * as Reference$Reventless from "@reventlessdev/reventless-spec/src/components/Reference.res.mjs";
+import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as StorageRef$Reventless from "@reventlessdev/reventless-spec/src/semantic/StorageRef.res.mjs";
 import * as DisplayName$Reventless from "@reventlessdev/reventless-spec/src/components/DisplayName.res.mjs";
@@ -189,6 +191,113 @@ function lifecycleStatesFromStateSchema(entityName, stateSchema) {
       });
     }
   });
+}
+
+function translationTableFailures(label, declared, publishedNames, sourceNames) {
+  let failures = [];
+  let push = msg => {
+    failures.push(msg);
+  };
+  declared.forEach(param => {
+    let name = param.name;
+    if (!publishedNames.includes(name)) {
+      push(label + `: publishedEvents names "` + name + `", which the extension point does not ` + (`publish — it declares ` + publishedNames.join(", ") + `.`));
+    }
+    param.fromEventTypes.forEach(src => {
+      if (!sourceNames.includes(src)) {
+        return push(label + `: publishedEvents says "` + name + `" comes from "` + src + `", which is not an ` + (`event of ` + sourceNames.join(", ") + `.`));
+      }
+    });
+  });
+  return failures;
+}
+
+function translationTableDrift(label, declared, observed, followed) {
+  let declaredEdges = Stdlib_Array.reduce(declared, [], (acc, param) => {
+    let name = param.name;
+    return acc.concat(param.fromEventTypes.map(src => [
+      src,
+      name
+    ]));
+  });
+  let has = (edges, param) => {
+    let pub = param[1];
+    let src = param[0];
+    return edges.some(param => {
+      if (Primitive_object.equal(param[0], src)) {
+        return Primitive_object.equal(param[1], pub);
+      } else {
+        return false;
+      }
+    });
+  };
+  let failures = observed.filter(edge => !has(declaredEdges, edge)).map(param => label + `: "` + param[0] + `" publishes "` + param[1] + `", which publishedEvents does not declare.`);
+  let warnings = declaredEdges.filter(param => {
+    let src = param[0];
+    if (followed.includes(src)) {
+      return !has(observed, [
+        src,
+        param[1]
+      ]);
+    } else {
+      return false;
+    }
+  }).map(param => {
+    let src = param[0];
+    return label + `: publishedEvents declares "` + src + `" → "` + param[1] + `", which the mapping did not ` + (`produce for a synthesised "` + src + `".`);
+  });
+  return [
+    failures,
+    warnings
+  ];
+}
+
+function handledTableFailures(label, declared, eventNames, commandNames) {
+  let failures = [];
+  declared.forEach(param => {
+    let name = param.name;
+    if (!eventNames.includes(name)) {
+      failures.push(label + `: handledEvents names "` + name + `", which the extension point does not ` + (`publish — it declares ` + eventNames.join(", ") + `.`));
+    }
+    param.toCommandTypes.forEach(cmd => {
+      if (!commandNames.includes(cmd)) {
+        failures.push(label + `: handledEvents says "` + name + `" routes to "` + cmd + `", which is neither a ` + (`delegate command nor an extension point command — ` + commandNames.join(", ") + `.`));
+        return;
+      }
+    });
+  });
+  return failures;
+}
+
+let probeId = "probe";
+
+let probeMeta = {
+  service: "Plugin_Structure",
+  time: "",
+  msgId: "",
+  correlationId: ""
+};
+
+async function probeQueryEngine_scan(param, param$1, param$2) {
+  return [];
+}
+
+async function probeQueryEngine_query(param, param$1, param$2, param$3, param$4, param$5, param$6) {
+  return [];
+}
+
+let probeQueryEngine = {
+  scan: probeQueryEngine_scan,
+  query: probeQueryEngine_query
+};
+
+function reportTranslationTables(pluginName, failures, warnings) {
+  if (warnings.length !== 0) {
+    log.warn("Plugin_Structure", undefined, pluginName + `:\n` + warnings.join("\n"));
+  }
+  if (failures.length !== 0) {
+    return Stdlib_JsError.throwWithMessage(pluginName + `: the declared translation table does not match the mapping.\n` + failures.join("\n"));
+  }
 }
 
 function checkDeclaredTransitions(pluginName, writables, lifecycleStatesByView) {
@@ -890,16 +999,45 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     externalSystem: ITS.Spec.externalSystem,
     chapter: componentChapters[ITS.Spec.name]
   }));
+  let tableFailures = [];
+  let tableWarnings = [];
+  let pushAll = (into, xs) => {
+    xs.forEach(x => {
+      into.push(x);
+    });
+  };
   let extensionDefs = extensions.map(E => {
     let delegateNames = E.mappings.map(M => M.delegateName);
+    let epEventNames = DcbTag$Reventless.extractAllVariantNames(E.Spec.eventSchema);
+    let epCommandNames = DcbTag$Reventless.extractAllVariantNames(E.Spec.commandSchema);
+    let commandsByEvent = {};
+    E.mappings.forEach(M => {
+      pushAll(tableFailures, handledTableFailures(E.Spec.name + ` → ` + M.delegateName, M.handledEvents, epEventNames, M.delegateCommandNames.concat(epCommandNames)));
+      M.handledEvents.forEach(param => {
+        let qualified = param.toCommandTypes.map(cmd => {
+          if (M.delegateCommandNames.includes(cmd)) {
+            return name + `.` + cmd;
+          } else {
+            return E.Spec.name + `.` + cmd;
+          }
+        });
+        let key = E.Spec.name + `.` + param.name;
+        commandsByEvent[key] = Stdlib_Option.getOr(commandsByEvent[key], []).concat(qualified);
+      });
+    });
     return {
       name: E.Spec.name,
       delegateNames: delegateNames,
       eventTypes: qualify(E.Spec.name, DcbTag$Reventless.extractVariantNames(E.Spec.eventSchema)),
-      commandTypes: qualify(E.Spec.name, DcbTag$Reventless.extractAllVariantNames(E.Spec.commandSchema))
+      commandTypes: qualify(E.Spec.name, DcbTag$Reventless.extractAllVariantNames(E.Spec.commandSchema)),
+      handledEvents: Object.entries(commandsByEvent).map(param => ({
+        name: param[0],
+        toCommandTypes: Belt_SetString.toArray(Belt_SetString.fromArray(param[1]))
+      }))
     };
   });
   let epByName = {};
+  let epPublished = {};
   extensionPoints.forEach(M => {
     let epName = M.ExtensionPoint.name;
     let sourceEvents = qualify(name, DcbTag$Reventless.extractVariantNames(M.Delegate.eventSchema));
@@ -914,16 +1052,103 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       match[1].concat(sourceEvents),
       match[2].concat(commands)
     ];
+    let label = epName + ` ← ` + M.Delegate.name;
+    let publishedNames = DcbTag$Reventless.extractAllVariantNames(M.ExtensionPoint.eventSchema);
+    let sourceNames = DcbTag$Reventless.extractAllVariantNames(M.Delegate.eventSchema);
+    pushAll(tableFailures, translationTableFailures(label, M.publishedEvents, publishedNames, sourceNames));
+    let mapOutgoing = M.mapOutgoingEvent;
+    if (mapOutgoing !== undefined) {
+      let observed = [];
+      let followed = [];
+      sourceNames.forEach(src => {
+        let synthesised = DcbTag$Reventless.isVariantPayloadBearing(M.Delegate.eventSchema, src) ? Object.fromEntries([[
+              "TAG",
+              src
+            ]]) : src;
+        let outcome;
+        try {
+          let event = Util_Sury$Reventless.fromJson(Message$Reventless.fillMissingDefaults(M.Delegate.eventSchema, synthesised, []), M.Delegate.eventSchema);
+          let decodedAs = Message$Reventless.variantNameOfJson(Message$Reventless.encode(event, M.Delegate.eventSchema));
+          if (decodedAs !== src) {
+            outcome = {
+              TAG: "Error",
+              _0: `a synthesised "` + src + `" decoded as "` + decodedAs + `"`
+            };
+          } else {
+            let actions = mapOutgoing(probeId, event, probeMeta, probeQueryEngine);
+            actions.forEach(action => {
+              switch (action.TAG) {
+                case "PublishEvent" :
+                  observed.push([
+                    src,
+                    Message$Reventless.variantNameOfJson(Message$Reventless.encode(action._1, M.ExtensionPoint.eventSchema))
+                  ]);
+                  return;
+                case "PublishEventAsync" :
+                case "HandleDirective" :
+                  return;
+              }
+            });
+            outcome = actions.some(action => {
+              switch (action.TAG) {
+                case "PublishEventAsync" :
+                  return true;
+                case "PublishEvent" :
+                case "HandleDirective" :
+                  return false;
+              }
+            }) ? ({
+                TAG: "Error",
+                _0: `"` + src + `" publishes behind a promise`
+              }) : ({
+                TAG: "Ok",
+                _0: undefined
+              });
+          }
+        } catch (exn) {
+          outcome = {
+            TAG: "Error",
+            _0: `the mapping raised on a synthesised "` + src + `"`
+          };
+        }
+        if (outcome.TAG === "Ok") {
+          followed.push(src);
+          return;
+        }
+        tableWarnings.push(label + `: not checked against the arms — ` + outcome._0 + `.`);
+      });
+      let match$1 = translationTableDrift(label, M.publishedEvents, observed, followed);
+      pushAll(tableFailures, match$1[0]);
+      pushAll(tableWarnings, match$1[1]);
+    } else if (M.publishedEvents.length !== 0) {
+      tableFailures.push(label + `: publishedEvents declares ` + M.publishedEvents.length.toString() + ` event(s), but the mapping has no mapOutgoingEvent and publishes nothing.`);
+    }
+    let declaredNames = M.publishedEvents.map(p => p.name);
+    publishedNames.filter(p => !declaredNames.includes(p)).forEach(p => {
+      tableWarnings.push(label + `: the extension point publishes "` + p + `", which no arm produces.`);
+    });
+    let table = Stdlib_Option.getOr(epPublished[epName], {});
+    M.publishedEvents.forEach(param => {
+      let key = epName + `.` + param.name;
+      table[key] = Stdlib_Option.getOr(table[key], []).concat(qualify(name, param.fromEventTypes));
+    });
+    epPublished[epName] = table;
   });
   let extensionPointDefs = Object.entries(epByName).map(param => {
     let match = param[1];
+    let epName = param[0];
     return {
-      name: param[0],
+      name: epName,
       delegateNames: Belt_SetString.toArray(Belt_SetString.fromArray(match[0])),
       sourceEventTypes: Belt_SetString.toArray(Belt_SetString.fromArray(match[1])),
-      commandTypes: Belt_SetString.toArray(Belt_SetString.fromArray(match[2]))
+      commandTypes: Belt_SetString.toArray(Belt_SetString.fromArray(match[2])),
+      publishedEvents: Object.entries(Stdlib_Option.getOr(epPublished[epName], {})).map(param => ({
+        name: param[0],
+        fromEventTypes: Belt_SetString.toArray(Belt_SetString.fromArray(param[1]))
+      }))
     };
   });
+  reportTranslationTables(name, tableFailures, tableWarnings);
   checkDeclaredTransitions(name, stateChangeDefs.concat(aggregateDefs), lifecycleStatesByView);
   checkLifecycleTopology(name, stateChangeDefs.concat(aggregateDefs), lifecycleStatesByView);
   reportRetiredStates(name, retiredFailures, retiredUnchecked);
@@ -956,6 +1181,13 @@ export {
   checkRetiredValue,
   reportRetiredStates,
   lifecycleStatesFromStateSchema,
+  translationTableFailures,
+  translationTableDrift,
+  handledTableFailures,
+  probeId,
+  probeMeta,
+  probeQueryEngine,
+  reportTranslationTables,
   checkDeclaredTransitions,
   lifecycleTopologyFindings,
   checkLifecycleTopology,
