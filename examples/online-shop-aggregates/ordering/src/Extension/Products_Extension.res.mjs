@@ -41,9 +41,9 @@ let Mapping = {
   Delegate: undefined,
   mapIncomingEvent: mapIncomingEvent,
   mapOutgoingEvent: undefined,
+  handledEvents: handledEvents,
   delegateModuleUrl: CatalogProduct$OrderingPlugin.moduleUrl,
-  moduleUrl: "@reventlessdev/online-shop-aggregates-ordering/src/Extension/Products_Extension.res.mjs",
-  handledEvents: handledEvents
+  moduleUrl: "@reventlessdev/online-shop-aggregates-ordering/src/Extension/Products_Extension.res.mjs"
 };
 
 let moduleUrl = "@reventlessdev/online-shop-aggregates-ordering/src/Extension/Products_Extension.res.mjs";

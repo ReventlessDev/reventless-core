@@ -66,9 +66,9 @@ let Mapping = {
   Delegate: undefined,
   mapIncomingEvent: mapIncomingEvent,
   mapOutgoingEvent: undefined,
+  handledEvents: handledEvents,
   delegateModuleUrl: SyncCatalogProduct$OrderingPlugin.moduleUrl,
-  moduleUrl: "@reventlessdev/online-shop-hybrid-ordering/src/Extension/Products_Extension.res.mjs",
-  handledEvents: handledEvents
+  moduleUrl: "@reventlessdev/online-shop-hybrid-ordering/src/Extension/Products_Extension.res.mjs"
 };
 
 let moduleUrl = "@reventlessdev/online-shop-hybrid-ordering/src/Extension/Products_Extension.res.mjs";

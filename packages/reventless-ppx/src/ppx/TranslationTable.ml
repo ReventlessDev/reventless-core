@@ -117,12 +117,60 @@ let is_action_construct (e : expression) : bool =
     match last_of txt with "[]" | "::" | "Some" | "None" -> false | _ -> true)
   | _ -> false
 
-(* Walked in tail position: only what reaches the returned array is read. *)
-let rec walk_body ~side ~emit (e : expression) : unit =
-  let recur = walk_body ~side ~emit in
+let bindings_of (vbs : value_binding list) : (string * expression) list =
+  List.filter_map
+    (fun (vb : value_binding) ->
+      match vb.pvb_pat.ppat_desc with
+      | Ppat_var { txt; _ } | Ppat_constraint ({ ppat_desc = Ppat_var { txt; _ }; _ }, _) ->
+        Some (txt, vb.pvb_expr)
+      | _ -> None)
+    vbs
+
+let ident_name (e : expression) : string option =
+  match e.pexp_desc with Pexp_ident { txt = Lident n; _ } -> Some n | _ -> None
+
+(* What a name bound in the arm holds. An arm that builds part of its result
+   separately and merges it in — `Array.concat([…], extra)` — passes that name
+   where the walk below expects data, which is the one way an edge could be lost
+   in silence. [Unknown] is a call whose result cannot be told from data: refused
+   rather than guessed at, so it surfaces as an unreadable arm. *)
+type bound = Actions | Data | Unknown
+
+let rec classify (env : (string * expression) list) (e : expression) : bound =
+  let branches bs =
+    let cs = List.map (classify env) bs in
+    if List.mem Unknown cs then Unknown
+    else if List.mem Actions cs then Actions
+    else Data
+  in
+  match e.pexp_desc with
+  | Pexp_constraint (inner, _) | Pexp_open (_, inner) -> classify env inner
+  | Pexp_let (_, vbs, cont) -> classify (bindings_of vbs @ env) cont
+  | Pexp_sequence (_, cont) -> classify env cont
+  (* An empty result names nothing either way. *)
+  | Pexp_array [] | Pexp_construct ({ txt = Lident "[]"; _ }, None) -> Data
+  | Pexp_array elems -> if List.exists is_action_construct elems then Actions else Data
+  | Pexp_construct ({ txt = Lident "::"; _ }, Some { pexp_desc = Pexp_tuple [ hd; tl ]; _ }) ->
+    if is_action_construct hd then Actions else classify env tl
+  | Pexp_ifthenelse (_, a, b) -> branches (a :: (match b with Some b -> [ b ] | None -> []))
+  | Pexp_match (_, cases) | Pexp_try (_, cases) ->
+    branches (List.map (fun (c : case) -> c.pc_rhs) cases)
+  | Pexp_construct _ when is_action_construct e -> Actions
+  | Pexp_apply _ -> Unknown
+  | Pexp_ident { txt = Lident n; _ } -> (
+    match List.assoc_opt n env with
+    | Some b -> classify (List.remove_assoc n env) b
+    | None -> Data)
+  | _ -> Data
+
+(* Walked in tail position: only what reaches the returned array is read. [env]
+   carries the arm's own `let` bindings, so a name standing for actions is
+   followed rather than passed over. *)
+let rec walk_body ~side ~emit ~env (e : expression) : unit =
+  let recur = walk_body ~side ~emit ~env in
   match e.pexp_desc with
   | Pexp_constraint (inner, _) -> recur inner
-  | Pexp_let (_, _, cont) -> recur cont
+  | Pexp_let (_, vbs, cont) -> walk_body ~side ~emit ~env:(bindings_of vbs @ env) cont
   | Pexp_sequence (_, cont) -> recur cont
   | Pexp_open (_, cont) -> recur cont
   | Pexp_array elems -> List.iter (element ~side ~emit) elems
@@ -137,13 +185,28 @@ let rec walk_body ~side ~emit (e : expression) : unit =
     List.iter (fun (c : case) -> recur c.pc_rhs) cases
   (* A lone action — the body of `ids->Array.map(id => PublishEvent(...))`. *)
   | Pexp_construct _ when is_action_construct e -> element ~side ~emit e
+  (* A name the arm bound above. Followed under the env it was bound in minus
+     itself, so a shadowing rebind cannot loop. *)
+  | Pexp_ident { txt = Lident n; _ } -> (
+    match List.assoc_opt n env with
+    | Some bound -> walk_body ~side ~emit ~env:(List.remove_assoc n env) bound
+    | None ->
+      raise
+        (Unfollowable (e.pexp_loc, Printf.sprintf "`%s` is not bound to actions this can read" n))
+    )
   (* A call: the actions can only be in a lambda it runs, in a nested call (the
-     `->` pipe puts the real one there), or in a literal it is given. Everything
-     else is data. A call carrying none of those is opaque and is refused. *)
+     `->` pipe puts the real one there), in a literal it is given, or behind a
+     name the arm bound to actions. Everything else is data. A call carrying none
+     of those is opaque and is refused. *)
   | Pexp_apply (_, args) ->
-    let carriers =
-      List.filter (fun (_, a) -> is_lambda a || is_call a || is_literal a) args
+    let carries a =
+      is_lambda a || is_call a || is_literal a
+      ||
+      match ident_name a with
+      | Some n when List.mem_assoc n env -> classify env a <> Data
+      | _ -> false
     in
+    let carriers = List.filter (fun (_, a) -> carries a) args in
     if List.length carriers = 0 then
       raise
         (Unfollowable
@@ -161,7 +224,7 @@ let edges_of_switch ~side (expr : expression) : (string * string) list =
     List.concat_map
       (fun (c : case) ->
         let targets = ref [] in
-        walk_body ~side ~emit:(fun n -> targets := !targets @ [ n ]) c.pc_rhs;
+        walk_body ~side ~emit:(fun n -> targets := !targets @ [ n ]) ~env:[] c.pc_rhs;
         match (pattern_ctors c.pc_lhs, !targets) with
         | _, [] -> []
         | Some sources, targets ->

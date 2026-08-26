@@ -399,6 +399,7 @@ module ExtensionPoint = {
   type event =
     | ItemPublished({itemId: string})
     | ItemWithdrawn({itemId: string})
+    | ItemReplenished({itemId: string})
   @schema type directive = unit
 }
 
@@ -411,6 +412,7 @@ module Delegate = {
     | ItemDiscontinued({itemId: string})
     | ItemRenamed({itemId: string, name: string})
     | ItemsBatched({itemIds: array<string>})
+    | ItemRestocked({itemId: string, count: int})
 }
 
 let mapIncomingCommand = (_id, _command, _meta) => []
@@ -430,6 +432,17 @@ let mapOutgoingEvent = Some((_id, event, _meta, _queryEngine) =>
   // Fans out through a lambda, and stops at the port.
   | Delegate.ItemsBatched({itemIds}) =>
     itemIds->Array.map(id => PublishEvent(id, ExtensionPoint.ItemPublished({itemId: id})))
+  // Builds part of its result under a name and merges it in.
+  | Delegate.ItemRestocked({itemId, count}) =>
+    let alsoPublish = if count > 0 {
+      [PublishEvent(itemId, ExtensionPoint.ItemReplenished({itemId: itemId}))]
+    } else {
+      []
+    }
+    Array.concat(
+      [PublishEvent(itemId, ExtensionPoint.ItemPublished({itemId: itemId}))],
+      alsoPublish,
+    )
   | Delegate.ItemRenamed(_) => []
   }
 )
@@ -1774,6 +1787,13 @@ case "$TABLE" in
   *ItemRenamed*) fail "EP mapping swallowed arm" "ItemRenamed should not appear in the table" ;;
   *) pass "EP mapping: an arm that publishes nothing adds no row" ;;
 esac
+# An edge reachable only through a let-bound name merged in with Array.concat.
+# Passed over as data, it would be lost in silence — the one shape where "no
+# edge" and "did not look" could read alike.
+case "$TABLE" in
+  *ItemReplenished*) pass "EP mapping: a let-bound action array merged in is followed" ;;
+  *) fail "EP mapping let-bound arm" "ItemReplenished missing — the merged branch was dropped" ;;
+esac
 
 echo ""
 echo "=== Test: Phase 8 — slice folder auto-applies dcbTags (no @@reventless.dcbTags needed) ==="
@@ -2361,6 +2381,51 @@ else
     pass "unreadable mapping arm → correct compile error naming the escape hatch"
   else
     fail "unreadable mapping arm" "unexpected error output: $OUTPUT"
+  fi
+fi
+
+echo ""
+echo "=== Test: PPX error — an arm merging in a name bound to an opaque call ==="
+
+# The same refusal one level in. `extra` reaches the result, so passing over it
+# would drop an edge silently; the walk cannot tell a call's result from data, so
+# it refuses rather than guessing either way.
+cat > "$EPM_DIR/Opaque_ExtensionPointMapping.res" <<'RES'
+@@reventless.spec
+
+module ExtensionPoint = {
+  let name = "Test.Opaque"
+  let moduleUrl = "test"
+  @schema type command = unit
+  @schema type event = | Published({itemId: string})
+  @schema type directive = unit
+}
+
+module Delegate = {
+  let name = "OpaqueDelegate"
+  @schema type event = | Added({itemId: string})
+}
+
+let mapIncomingCommand = (_id, _command, _meta) => []
+
+let actionsFor = _itemId => []
+
+let mapOutgoingEvent = Some((_id, event, _meta, _queryEngine) =>
+  switch event {
+  | Delegate.Added({itemId}) =>
+    let extra = actionsFor(itemId)
+    Array.concat([PublishEvent(itemId, ExtensionPoint.Published({itemId: itemId}))], extra)
+  }
+)
+RES
+
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "opaque let-bound merge" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q "cannot read publishedEvents"; then
+    pass "opaque let-bound merge → refused rather than silently dropped"
+  else
+    fail "opaque let-bound merge" "unexpected error output: $OUTPUT"
   fi
 fi
 

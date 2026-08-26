@@ -40,9 +40,9 @@ let Mapping = {
   Delegate: undefined,
   mapIncomingEvent: mapIncomingEvent,
   mapOutgoingEvent: undefined,
+  handledEvents: handledEvents,
   delegateModuleUrl: RecordProductDemand$CatalogPlugin.moduleUrl,
-  moduleUrl: "@reventlessdev/online-shop-dcb-catalog/src/Extension/Orders_Extension.res.mjs",
-  handledEvents: handledEvents
+  moduleUrl: "@reventlessdev/online-shop-dcb-catalog/src/Extension/Orders_Extension.res.mjs"
 };
 
 let moduleUrl = "@reventlessdev/online-shop-dcb-catalog/src/Extension/Orders_Extension.res.mjs";
