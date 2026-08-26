@@ -3,7 +3,7 @@
 
 let platformPlugin = {
   commandVersion: "1.0.0",
-  eventVersion: "1.0.0"
+  eventVersion: "1.1.0"
 };
 
 export {

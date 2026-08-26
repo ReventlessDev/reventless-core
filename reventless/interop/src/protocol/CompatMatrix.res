@@ -21,15 +21,20 @@
 // Platform.Plugin — the single built-in extension point.
 //
 // command types (PluginExtensionPointSpec.command):
-//   Heartbeat(timeout) | ConnectPlugin(pluginDefinition)
-//   | DisconnectPlugin | ForwardCommand(forwardCommand)
+//   Heartbeat(timeout) | ConnectPlugin(pluginDefinition) | DisconnectPlugin
+//   | ForwardCommand(forwardCommand) | RegisterUiFragment(uiFragmentManifest)
+//   | RedetectPlugin(timeout)
 //
 // event types (PluginExtensionPointSpec.event):
 //   UnknownPluginDetected | IncompatiblePlugin(pluginDefinition)
-//   | PluginConnected(pluginDefinition) | PluginReconnected(pluginDefinition)
-//   | PluginDisconnected(pluginDefinition) | PluginDeactivated(pluginDefinition)
-//   | PluginActivated(pluginDefinition)
+//   | PluginConnected(pluginDefinition) | PluginDisconnected(pluginDefinition)
+//   | PluginDeactivated(pluginDefinition) | PluginActivated(pluginDefinition)
+//   | PluginRetired(pluginDefinition)
+//
+// eventVersion 1.1.0 dropped `PluginReconnected`, which nothing ever published:
+// a minor bump, not a major, because the host now sends a strict subset of what
+// 1.0.0 described and an extension compiled against it is unaffected.
 let platformPlugin: ExtensionPointProtocol.schemaVersions = {
   commandVersion: "1.0.0",
-  eventVersion: "1.0.0",
+  eventVersion: "1.1.0",
 }

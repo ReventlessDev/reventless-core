@@ -46,10 +46,6 @@ let eventSchema = Sury.union([
     _0: s.m(Plugin$Reventless.pluginDefinitionSchema)
   })),
   Sury.$schema(s => ({
-    TAG: "PluginReconnected",
-    _0: s.m(Plugin$Reventless.pluginDefinitionSchema)
-  })),
-  Sury.$schema(s => ({
     TAG: "PluginDisconnected",
     _0: s.m(Plugin$Reventless.pluginDefinitionSchema)
   })),

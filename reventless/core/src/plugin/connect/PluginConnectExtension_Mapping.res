@@ -74,12 +74,9 @@ module Make = (Spec: Spec) => {
               ),
             ]
           }
-        // PluginConnected / PluginReconnected / PluginDeactivated for peer
-        // plugins used to call DoConnectPlugin / DoDisconnectPlugin here so
-        // each plugin's EC Lambda could subscribe / unsubscribe its own
-        // queue to peer EP topics. Admin owns that work now
-        // (manageSubscriptions in EventCollectorEntryPoint.mjs) — these
-        // cases drop to no-ops.
+        // A peer's PluginConnected / PluginDeactivated used to subscribe or
+        // unsubscribe this plugin's own queue to peer EP topics. Admin owns that
+        // now (manageSubscriptions), so these drop to no-ops.
         | _ => []
         }
       }

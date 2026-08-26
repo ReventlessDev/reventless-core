@@ -37,8 +37,10 @@ type event =
   // Emitted when a connecting plugin declared incompatible protocol versions.
   // The plugin is still connected; this event gives operators visibility.
   | IncompatiblePlugin(pluginDefinition)
+  // One fact for both arrivals, because the Plugin aggregate has one: per-version
+  // tracking made `VersionConnected` replace Connected/Reconnected, and a
+  // subscriber does the same work either way.
   | PluginConnected(pluginDefinition)
-  | PluginReconnected(pluginDefinition)
   | PluginDisconnected(pluginDefinition)
   | PluginDeactivated(pluginDefinition)
   | PluginActivated(pluginDefinition)
