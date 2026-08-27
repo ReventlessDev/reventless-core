@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.75 (2026-08-27)
+
+**Note:** Version bump only for package @reventlessdev/online-shop-hybrid-seed
+
+
+
+
+
 # 1.0.0-alpha.74 (2026-08-27)
 
 * feat(spec)!: keep the amount in minor units, and add times and allocate ([6ff6308](https://github.com/ReventlessDev/reventless-core/commit/6ff630875f9b126b2f87b980a4dbb56582f8aebe))

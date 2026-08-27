@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.18 (2026-08-27)
+
+### Bug Fixes
+
+* **seed:** one endpoint-side fault throws away every command that landed ([6126dca](https://github.com/ReventlessDev/reventless-core/commit/6126dca7c62d193cf3a4efe379160af8207faa86))
+
+
 # 1.0.0-alpha.17 (2026-08-20)
 
 ### Features
