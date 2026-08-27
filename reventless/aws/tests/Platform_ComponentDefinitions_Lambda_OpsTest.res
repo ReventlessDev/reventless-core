@@ -355,8 +355,8 @@ describe("bakeJourney", () => {
 // The bake reads a read model the deploy updates asynchronously, so "is this the
 // deployment I was asked to bake" is a question it has to be able to answer. The
 // answer is an equality check against the key each plugin stack just wrote.
-describe("pendingRegistrations", () => {
-  let row = (~name, ~key=?, ()) => {
+describe("registrations", () => {
+  let row = (~name, ~key=?, ~at=?, ()) => {
     let item = Dict.fromArray([("name", JSON.Encode.string(name))])
     key->Option.forEach(k =>
       item->Dict.set(
@@ -364,14 +364,28 @@ describe("pendingRegistrations", () => {
         JSON.parseOrThrow(`{"$offload": {"store": "pluginStructures", "key": "${k}"}}`),
       )
     )
+    at->Option.forEach(t =>
+      item->Dict.set("statusChange", JSON.parseOrThrow(`{"at": "${t}", "by": "deploy"}`))
+    )
     item
   }
 
-  let pending = (rows, expect) =>
-    Platform_ComponentDefinitions_Lambda_Ops.pendingRegistrations(
+  let regs = (rows, expect, ~since=?) =>
+    Platform_ComponentDefinitions_Lambda_Ops.registrations(
       rows,
       ~expect=Dict.fromArray(expect),
+      ~since,
     )
+
+  let pending = (rows, expect) =>
+    regs(rows, expect)
+    ->Array.filter(Platform_ComponentDefinitions_Lambda_Ops.isPending)
+    ->Array.map(r => r.plugin)
+
+  let stateOf = (rows, expect, ~since=?) =>
+    regs(rows, expect, ~since?)
+    ->Array.get(0)
+    ->Option.map(r => Platform_ComponentDefinitions_Lambda_Ops.stateName(r.state))
 
   testSync("nothing is pending when every row carries the key the deploy wrote", () =>
     expect(
@@ -412,6 +426,111 @@ describe("pendingRegistrations", () => {
       )->Dict.get("Ordering"),
     )->toEqual(Some("sha256/b"))
   )
+
+  testSync("reads the deploy instant off the invocation payload", () =>
+    expect(
+      Platform_ComponentDefinitions_Lambda_Ops.bakeSince(
+        JSON.parseOrThrow(`{"bake": true, "since": "2026-08-27T10:00:00Z"}`),
+      ),
+    )->toEqual(Some("2026-08-27T10:00:00Z"))
+  )
+
+  // Both halves of the comparison and the row's date, which is the whole point:
+  // the failure used to report a name and nothing else, and the four causes it
+  // could have had were told apart by reading the read model out of band.
+  testSync("reports the expected key, the found key and when the row was written", () => {
+    let r = regs(
+      [row(~name="Ordering", ~key="sha256/old", ~at="2026-08-27T09:00:00Z", ())],
+      [("Ordering", "sha256/new")],
+    )->Array.get(0)
+    expect((
+      r->Option.map(r => r.expected),
+      r->Option.flatMap(r => r.found),
+      r->Option.flatMap(r => r.writtenAt),
+    ))->toEqual((Some("sha256/new"), Some("sha256/old"), Some("2026-08-27T09:00:00Z")))
+  })
+
+  describe("dated against the deploy", () => {
+    let since = "2026-08-27T10:00:00Z"
+    let before = "2026-08-27T09:00:00Z"
+    let after = "2026-08-27T10:05:00Z"
+
+    // The distinction §4 exists for: this plugin proves the chain works.
+    testSync("a matching key on a row this deploy wrote is registered", () =>
+      expect(
+        stateOf(
+          [row(~name="Ordering", ~key="sha256/a", ~at=after, ())],
+          [("Ordering", "sha256/a")],
+          ~since,
+        ),
+      )->toEqual(Some("registered"))
+    )
+
+    // Correct, and vacuous — an unchanged structure converges against a
+    // completely broken chain, which is why it is not counted as evidence.
+    testSync("a matching key on a row that predates the deploy is unchanged", () =>
+      expect(
+        stateOf(
+          [row(~name="Ordering", ~key="sha256/a", ~at=before, ())],
+          [("Ordering", "sha256/a")],
+          ~since,
+        ),
+      )->toEqual(Some("unchanged"))
+    )
+
+    testSync("a matching key with no deploy instant to date it against is matched", () =>
+      expect(
+        stateOf(
+          [row(~name="Ordering", ~key="sha256/a", ~at=after, ())],
+          [("Ordering", "sha256/a")],
+        ),
+      )->toEqual(Some("matched"))
+    )
+
+    // Retrying is for this one.
+    testSync("a stale row that predates the deploy is behind", () =>
+      expect(
+        stateOf(
+          [row(~name="Ordering", ~key="sha256/old", ~at=before, ())],
+          [("Ordering", "sha256/new")],
+          ~since,
+        ),
+      )->toEqual(Some("behind"))
+    )
+
+    // And never for this one: the plugin answered during this deploy and produced
+    // a structure other than the one the deploy hashed, so the keys cannot
+    // converge and every remaining attempt is spent on something that cannot happen.
+    testSync("a stale row this deploy wrote is diverged", () =>
+      expect(
+        stateOf(
+          [row(~name="Ordering", ~key="sha256/other", ~at=after, ())],
+          [("Ordering", "sha256/new")],
+          ~since,
+        ),
+      )->toEqual(Some("diverged"))
+    )
+
+    // The scan filters on Connected, so a version that dropped out mid-deploy
+    // leaves no row to compare against — indistinguishable, before this, from a
+    // projection that had merely not landed yet, and waited on for the full
+    // retry budget either way.
+    testSync("no Connected row at all is missing, not behind", () =>
+      expect(stateOf([], [("Ordering", "sha256/new")], ~since))->toEqual(Some("missing"))
+    )
+
+    // An unparseable stamp must not read as fresh: reporting `registered` off a
+    // date nobody could read would credit the chain for work it may not have done.
+    testSync("an unreadable row date does not count as written by this deploy", () =>
+      expect(
+        stateOf(
+          [row(~name="Ordering", ~key="sha256/a", ~at="not-a-date", ())],
+          [("Ordering", "sha256/a")],
+          ~since,
+        ),
+      )->toEqual(Some("unchanged"))
+    )
+  })
 })
 
 describe("resolveStructure", () => {

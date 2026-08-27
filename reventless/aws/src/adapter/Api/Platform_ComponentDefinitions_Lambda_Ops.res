@@ -440,6 +440,15 @@ let bakeExpectations = (event: JSON.t): dict<string> =>
     ->Dict.fromArray
   )
 
+// The instant this deploy began, when the caller names one. Optional because the
+// key comparison stands without it; what it adds is telling a matching key that
+// was re-registered apart from one that merely never changed.
+let bakeSince = (event: JSON.t): option<string> =>
+  event
+  ->JSON.Decode.object
+  ->Option.flatMap(o => o->Dict.get("since"))
+  ->Option.flatMap(JSON.Decode.string)
+
 // The offload key a scanned row carries. None for a structure held inline, which
 // on a deployed platform means the row predates offloading — it cannot match an
 // expectation, and saying so beats baking it.
@@ -452,19 +461,143 @@ let structureRefKey = (item: dict<JSON.t>): option<string> =>
   ->Option.flatMap(r => r->Dict.get("key"))
   ->Option.flatMap(JSON.Decode.string)
 
+// When the projection last wrote this row. Every status-moving event stamps the
+// producing message's time onto `statusChange`, and a Connect carrying a changed
+// definition re-emits VersionConnected — so this advances exactly when the
+// registration chain completes, and stays put when it does not.
+let rowWrittenAt = (item: dict<JSON.t>): option<string> =>
+  item
+  ->Dict.get("statusChange")
+  ->Option.flatMap(JSON.Decode.object)
+  ->Option.flatMap(o => o->Dict.get("at"))
+  ->Option.flatMap(JSON.Decode.string)
+
+// Parsed rather than compared as strings: an offset-bearing ISO timestamp on
+// either side orders wrongly lexically. An unreadable date answers false, so it
+// reports a plugin as still pending rather than baking on a stamp nobody read.
+let notBefore = (~at: string, ~since: string): bool => {
+  let a = Date.fromString(at)->Date.getTime
+  let s = Date.fromString(since)->Date.getTime
+  !Float.isNaN(a) && !Float.isNaN(s) && a >= s
+}
+
+/** What the Plugin read model says about one plugin the bake is waiting on.
+
+    Distinct outcomes rather than a boolean because a bake that reported only
+    "pending" left every one of these to be told apart by reading the read model
+    out of band, with credentials the deploy pipeline does not surface. */
+type registrationState =
+  /** Key agrees, row written by this deploy: the chain ran, and this is the evidence. */
+  | Registered
+  /** Key agrees, nothing re-registered — a correct pass that proves nothing. */
+  | Unchanged
+  /** Key agrees, and no deploy instant to tell the two above apart. */
+  | Matched
+  /** No Connected row carries a structure. The scan filters on Connected, so a
+      version that dropped out mid-deploy leaves nothing to converge against. */
+  | Missing
+  /** Row holds another key and predates this deploy — the case retrying is for. */
+  | Behind
+  /** Row written by this deploy and still holding another key. Retrying cannot fix it. */
+  | Diverged
+
+type registration = {
+  plugin: string,
+  expected: string,
+  found: option<string>,
+  writtenAt: option<string>,
+  state: registrationState,
+}
+
+let classify = (
+  ~expected: string,
+  ~found: option<string>,
+  ~writtenAt: option<string>,
+  ~since: option<string>,
+): registrationState => {
+  let fresh = switch (since, writtenAt) {
+  | (Some(since), Some(at)) => Some(notBefore(~at, ~since))
+  | _ => None
+  }
+  switch found {
+  | None => Missing
+  | Some(key) if key == expected =>
+    switch fresh {
+    | None => Matched
+    | Some(true) => Registered
+    | Some(false) => Unchanged
+    }
+  | Some(_) => fresh == Some(true) ? Diverged : Behind
+  }
+}
+
 // Compared against the collapsed latest version per plugin, the same view the
 // bake itself takes — an older version's row lingering on the table is not the
 // registration anyone is waiting for.
-let pendingRegistrations = (items: array<dict<JSON.t>>, ~expect: dict<string>): array<string> => {
+let registrations = (
+  items: array<dict<JSON.t>>,
+  ~expect: dict<string>,
+  ~since: option<string>,
+): array<registration> => {
   let current =
     Platform_AdminScan_Ops.latestByName(
       items,
       ~nameVersionOf=item => item->str("name"),
-      ~toEntry=(item, ~name) => item->structureRefKey->Option.map(key => (name, key)),
+      ~toEntry=(item, ~name) =>
+        item->structureRefKey->Option.map(key => (name, (key, item->rowWrittenAt))),
     )->Dict.fromArray
   expect
   ->Dict.toArray
-  ->Array.filterMap(((plugin, key)) => current->Dict.get(plugin) == Some(key) ? None : Some(plugin))
+  ->Array.map(((plugin, expected)) => {
+    let row = current->Dict.get(plugin)
+    let found = row->Option.map(((key, _)) => key)
+    let writtenAt = row->Option.flatMap(((_, at)) => at)
+    {plugin, expected, found, writtenAt, state: classify(~expected, ~found, ~writtenAt, ~since)}
+  })
+}
+
+let isPending = (r: registration): bool =>
+  switch r.state {
+  | Missing | Behind | Diverged => true
+  | Registered | Unchanged | Matched => false
+  }
+
+let stateName = (s: registrationState): string =>
+  switch s {
+  | Registered => "registered"
+  | Unchanged => "unchanged"
+  | Matched => "matched"
+  | Missing => "missing"
+  | Behind => "behind"
+  | Diverged => "diverged"
+  }
+
+// Both halves of the comparison and the date on the row, which is what separates
+// the causes on sight. `found` and `writtenAt` travel as null rather than being
+// omitted, so the line printed for a plugin with no row has a column for them too.
+let encodeRegistration = (r: registration): JSON.t =>
+  Dict.fromArray([
+    ("plugin", JSON.Encode.string(r.plugin)),
+    ("state", JSON.Encode.string(r.state->stateName)),
+    ("expected", JSON.Encode.string(r.expected)),
+    ("found", r.found->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
+    ("writtenAt", r.writtenAt->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
+  ])->JSON.Encode.object
+
+// What a green bake actually proved. Without the counts it says "nothing needed to
+// converge" as often as it says "convergence works", and the two read identically
+// — so this path can be broken across any number of green deploys and surface on
+// the first one that changes a structure, maximally far from what broke it.
+let encodeSummary = (rs: array<registration>): JSON.t => {
+  let count = f => rs->Array.filter(f)->Array.length
+  Dict.fromArray([
+    ("summary", JSON.Encode.bool(true)),
+    ("plugins", JSON.Encode.int(rs->Array.length)),
+    ("registered", JSON.Encode.int(count(r => r.state == Registered))),
+    ("unchanged", JSON.Encode.int(count(r => r.state == Unchanged))),
+    ("matched", JSON.Encode.int(count(r => r.state == Matched))),
+    ("registrations", rs->Array.map(encodeRegistration)->JSON.Encode.array),
+  ])->JSON.Encode.object
 }
 
 // Every failure mode here is the deployment's own mistake — a name matching no
@@ -561,7 +694,12 @@ let handler = async (event: JSON.t): array<JSON.t> => {
     | Some(target) =>
       // Checked on the raw rows: the refs are what the deploy can predict, and a
       // row that is behind should not have its structure fetched at all.
-      switch pendingRegistrations(rawItems, ~expect=bakeExpectations(event)) {
+      let regs = registrations(
+        rawItems,
+        ~expect=bakeExpectations(event),
+        ~since=bakeSince(event),
+      )
+      switch regs->Array.filter(isPending) {
       | [] =>
         // The built-in admin entry is deliberately absent: it never enters the
         // Plugin read model, and the in-memory bake curates the composed plugins
@@ -571,14 +709,22 @@ let handler = async (event: JSON.t): array<JSON.t> => {
           ~nameVersionOf=item => item->str("name"),
           ~toEntry=structureOf,
         )
-        await runBake(~target, ~structures)
+        let written = await runBake(~target, ~structures)
+        // Appended rather than merged into a file's report: the caller reads
+        // `[0]` to decide whether anything was written, and that stays the first
+        // file. What the summary adds is orthogonal to the files — it says what
+        // the convergence check proved, not what the bake wrote.
+        Array.concat(written, [encodeSummary(regs)])
       | pending =>
         // Not an error — the deploy just has not finished arriving. Reported so the
-        // caller can invoke again rather than bake the previous deployment.
+        // caller can invoke again rather than bake the previous deployment, and
+        // reported with both keys and the row's date so that when it never does
+        // arrive, the job says which of the causes it was.
         [
           Dict.fromArray([
             ("baked", JSON.Encode.bool(false)),
-            ("pending", pending->Array.map(JSON.Encode.string)->JSON.Encode.array),
+            ("pending", pending->Array.map(r => JSON.Encode.string(r.plugin))->JSON.Encode.array),
+            ("registrations", regs->Array.map(encodeRegistration)->JSON.Encode.array),
           ])->JSON.Encode.object,
         ]
       }

@@ -1,7 +1,8 @@
 # Plan: the manifest bake's convergence check can fail forever, and cannot say why
 
 **Date:** 2026-08-27
-**Status:** PROPOSED — nothing implemented.
+**Status:** §1, §4 and §5 done; §3 resolved as already-satisfied (see below); §2 partly done,
+the rest left open with its reasoning.
 **Repos:** `reventless-core` only.
 **Relates to:** [baked-manifest-without-host-ui-bundle.md](./baked-manifest-without-host-ui-bundle.md)
 (a platform that cannot bake at all — a different gap in the same feature) and
@@ -54,69 +55,106 @@ Diagnosing which required reading the read model directly, out of band, with cre
 deploy pipeline does not surface. That is the gap this plan exists to close: the bake already
 knows both halves of the comparison and reports neither.
 
-## The invariant nobody checks
+## The invariant nobody checks — and why it turned out to hold
 
 Content addressing makes the key a *consequence* of the structure bytes, so convergence requires
 that **the structure the deploy hashes and the structure the plugin's own registration produces
 are byte-identical.**
 
-Those are produced by two independently built artifacts: the deploy program, resolved from the
-deploying workspace's install, and the plugin's runtime, whose framework comes from the Lambda
-layer — resolved from SSM, on its own release cadence. Nothing asserts the two agree. When they
-diverge — a layer built against a different framework version, a field emitted on one side and
-not the other, a filter applied in one path — the only signal is a hash that silently never
-matches, which is exactly the shape of the failure above.
+The plan assumed those were two independent computations — the deploy program, resolved from the
+deploying workspace's install, against the plugin's runtime, whose framework comes from the Lambda
+layer on its own release cadence. **They are not.** There is only one computation:
 
-This is also why a version bump is a plausible trigger even when every stack deploys cleanly:
-adding a field to a definition changes the bytes on whichever side is rebuilt first.
+- `Plugin_Builder` offloads the structure once, during `P.make()`, and the returned reference
+  becomes `pluginDefinition.structure` ([Plugin_Builder.res:648](../../reventless/core/src/plugin/component/Plugin_Builder.res#L648),
+  [Plugin_Helpers.res:823](../../reventless/core/src/plugin/component/Plugin_Helpers.res#L823)).
+- That **same value** is serialized to `pluginDefinition.json` and shipped inside the
+  EventCollector's code archive ([Plugin_Helpers.res:608](../../reventless/core/src/plugin/component/Plugin_Helpers.res#L608)).
+- The runtime decodes that file at cold start and hands it straight back through the Connect
+  handshake ([EventCollectorEntryPoint_Ops.res:679](../../reventless/aws/src/adapter/Runtime/EventCollectorEntryPoint_Ops.res#L679),
+  [PluginConnectExtension_Mapping.res](../../reventless/core/src/plugin/connect/PluginConnectExtension_Mapping.res)).
+
+So the key is already carried, which is exactly what §3's preferred option proposed to build. The
+layer's framework version cannot move it: the runtime never derives the structure's identity, it
+only relays it. Recorded as a test rather than as a change — see §3 below.
+
+The practical consequence is that a mismatch already means "this plugin has not registered", never
+"this plugin registered something else", so the ambiguity §1 was written to resolve by hand is
+narrower than it looked.
 
 ## Phases
 
-### §1 — Make the failure state its evidence (do first; everything else is easier after)
+### §1 — Make the failure state its evidence — **done**
 
-The bake handler compares two keys per plugin. Have it return both, plus the row's last-written
-timestamp, and have the workflow print them on each pending attempt. Turning "pending:
-`<plugin>`" into "expected `sha256/A`, row holds `sha256/B`, written at `T`" separates the four
-causes above on sight, and costs one field in a response that is already being returned.
+`pendingRegistrations` (a list of names) is now `registrations`, returning per plugin the key the
+deploy expected, the key the row holds, the row's last-written timestamp and a classified state.
+The workflow prints one line per plugin on every pending attempt and on the final failure.
 
-`A == B` never appearing while `T` keeps advancing is the divergence case; `T` frozen at a
-pre-deploy instant is one of the three missing-link cases.
+The row's date is `statusChange.at`. It is the right clock: every event that moves a version's
+status stamps the producing message's time onto it, and `PluginBehavior.decide` re-emits
+`VersionConnected` exactly when a Connect carries a changed definition — so it advances when the
+chain completes and stays put when it does not.
 
-### §2 — Distinguish the links
+The invocation now also carries `since`, the instant the deploy began (the `detect-changes` job
+stamps it, before any stack runs). It is what lets a matching key be told apart as re-registered
+or merely never changed, which §4 needs.
 
-Given §1, name which step is outstanding rather than reporting the aggregate. The re-detect's
-publication, the plugin's answer and the projection's write are three observable events; the
-handler can say which it is still waiting on.
+### §2 — Distinguish the links — **partly done**
 
-### §3 — Remove the divergence, rather than detect it faster
+Reported from the read model: `behind` (the row predates this deploy — the case retrying is for),
+`diverged` (the row was written by this deploy and still holds another key — retrying cannot fix
+it), and `missing`.
 
-Two candidate designs, to be chosen once §1 says what actually diverges:
+`missing` is **a cause this plan did not list, and the one that best fits the observed symptom.**
+The bake's scan filters on `contains(status, "Connected")`, so a plugin whose row is not Connected
+— a version that dropped out mid-deploy, was deactivated, or was retired — leaves nothing to
+compare against. Before this it was indistinguishable from a projection that had merely not landed
+yet, and was waited on for the whole retry budget either way, reproducibly, forever.
 
-- **Carry the key instead of recomputing it.** The deploy has already written the structure
-  object and knows its key; if the re-detect carries that key and the plugin's registration
-  records what it was told, the two sides cannot disagree by construction. The plugin still
-  serves its own structure; it stops independently deriving the *identity* of one.
-- **Derive both sides from one artifact.** Stronger and more invasive: the deploy and the runtime
-  resolve the structure from the same built module, so no second computation exists.
+Left open: the full three-link split (the re-detect published / the plugin answered / the
+projection landed). The read model cannot separate the last two — both leave the row untouched —
+and doing it properly means reading the Plugin aggregate's event log for `VersionDetected` and
+`VersionConnected`, which the bake Lambda has neither an env var nor an IAM grant for. Worth doing
+if the evidence §1 now prints turns out not to be enough; not worth the grant on speculation.
 
-The first is preferred: it is smaller, and it makes the invariant structural rather than
-maintained. Note it also changes what a mismatch *means* — with the key carried, a difference
-becomes "the plugin did not register" and never "the plugin registered something else", which is
-the ambiguity §1 currently has to resolve by hand.
+### §3 — Remove the divergence — **no work needed; the key is already carried**
 
-### §4 — Stop reporting an untested path as a pass
+See "The invariant nobody checks" above: the runtime does not recompute the structure. The deploy
+offloads it once, ships the resulting reference inside `pluginDefinition.json`, and the runtime
+relays that file back through the Connect handshake — which is precisely the preferred design.
 
-Keep the unchanged-structure fast path — it is what makes the bake cheap — but record it as
-`unchanged` rather than folding it into `matched`, and have the job say how many plugins actually
-exercised the chain. A deploy where that count is zero has verified nothing about registration,
-and should say so rather than printing a green tick.
+So this phase became a test rather than a change. `BakeConvergenceTest` asserts it end to end: the
+key the deploy's offload hook exported is the key on the row the projection writes, after the
+definition has been through the same encode → decode round trip the EventCollector performs.
+Nothing enforced that before, and it is the property every other phase rests on.
 
-### §5 — A test that would have caught it
+`Diverged` is still reported — the invariant makes a framework-version mismatch impossible, not a
+concurrent stack or a reconnect replaying an older definition.
 
-An integration case where a plugin's structure **changes** between two deploys and the bake is
-required to converge. The existing coverage cannot catch this class: an unchanged structure
-converges trivially, so a test that does not mutate the structure passes against a completely
-broken chain.
+### §4 — Stop reporting an untested path as a pass — **done**
+
+The fast path is kept and now counted apart. A successful bake's response carries an appended
+summary — `registered` / `unchanged` / `matched` — and the workflow prints it, with a `::notice::`
+when `registered` is zero: the manifest is current, and the chain that keeps it current was not
+exercised by any plugin on this deploy.
+
+Appended rather than merged into a file's report so `[0]` stays the first file, which is what the
+workflow reads to decide whether anything was written.
+
+### §5 — A test that would have caught it — **done**
+
+`reventless/aws/tests/BakeConvergenceTest.res`. A plugin's structure changes between two deploys
+and the bake is required to converge, driving the real chain rather than hand-built rows: the
+deploy-time offload hook, the `pluginDefinition.json` round trip, `PluginBehavior.decide` on
+Redetect and Connect, and `PluginsProjection.displayState`.
+
+It pins the two facts the old coverage could not distinguish — a changed structure re-emits
+`VersionConnected` and converges as `registered`; an unchanged one emits nothing, is never
+rewritten, and passes as `unchanged` — which is Defect 1 stated as a test.
+
+Still not covered: the transport between those steps (the re-detect's publication and the
+plugin's answer crossing SQS/SNS). That needs a live estate or the local platform's bake, and is
+the same gap §2's remaining half describes.
 
 ## Risks and notes
 

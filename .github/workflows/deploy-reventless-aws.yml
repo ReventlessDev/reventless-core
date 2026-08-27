@@ -127,11 +127,21 @@ jobs:
       branch: ${{ steps.branch.outputs.name }}
       skip-deploy: ${{ steps.skip.outputs.skip }}
       region: ${{ steps.changes.outputs.region }}
+      started-at: ${{ steps.started.outputs.at }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      # Read by the bake to date the Plugin read model's rows against this deploy.
+      # Taken here because this job runs before any stack does: a row written after
+      # it was written by this deploy, and a row written before it is one the deploy
+      # has not touched — which is what separates "this plugin re-registered" from
+      # "this plugin's structure never changed and matched trivially".
+      - name: Record deploy start
+        id: started
+        run: echo "at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
 
       - name: Determine branch name
         id: branch
@@ -736,6 +746,7 @@ jobs:
       - name: Bake
         env:
           ALL_PLUGINS: ${{ needs.detect-changes.outputs.all-plugins }}
+          DEPLOY_STARTED_AT: ${{ needs.detect-changes.outputs.started-at }}
         run: |
           set -euo pipefail
           BRANCH="${{ needs.detect-changes.outputs.branch }}"
@@ -786,7 +797,22 @@ jobs:
           # and the response reports every file that was written.
           echo "Baking ${BUCKET}/${KEY} via ${FN}"
           PAYLOAD=$(jq -nc --arg b "$BUCKET" --arg k "$KEY" --argjson e "$EXPECT" \
-            '{bake: true, bucket: $b, key: $k, expect: $e}')
+            --arg s "${DEPLOY_STARTED_AT:-}" \
+            '{bake: true, bucket: $b, key: $k, expect: $e}
+             + (if $s == "" then {} else {since: $s} end)')
+
+          # Both halves of every plugin's comparison and the row's date, from
+          # whichever shape the response took — the pending report carries them at
+          # the top level, a successful one on its appended summary. `behind` is what
+          # retrying is for; `missing` (no Connected row to converge against) and
+          # `diverged` (already written by this deploy, holding another key) are not,
+          # and used to be indistinguishable from it.
+          report() {
+            jq -r '[.[] | .registrations // empty] | add // []
+                   | .[]
+                   | "  \(.plugin): \(.state) — expected \(.expected), row holds \(.found // "no row") (written \(.writtenAt // "never"))"' \
+              response.json
+          }
 
           # Registration lands within seconds of the stack that triggered it, so
           # the first attempt is the normal case — the retries are for a slow
@@ -811,15 +837,29 @@ jobs:
             fi
 
             if ! jq -e '.[0].baked == false' response.json > /dev/null; then
+              # A bake where nothing re-registered verified that the manifest is
+              # current, and nothing at all about the chain that keeps it current —
+              # an unchanged structure converges even when that chain is broken. Said
+              # out loud rather than folded into a green tick, because the deploy
+              # this stays silent on is the one that hid the break.
+              report
+              jq -r '.[] | select(.summary)
+                     | "\(.registered)/\(.plugins) plugin(s) re-registered during this deploy "
+                       + "(\(.unchanged) unchanged, \(.matched) undated)."' response.json
+              if [[ "$(jq -r '[.[] | select(.summary) | .registered] | add // 0' response.json)" == "0" ]]; then
+                echo "::notice::The manifest is current, but no plugin exercised the registration chain on this deploy — it is unverified, not proven working."
+              fi
               exit 0
             fi
 
             PENDING=$(jq -r '.[0].pending | join(", ")' response.json)
             echo "Attempt ${attempt}: registration has not caught up yet — ${PENDING}"
+            report
             sleep 15
           done
 
           echo "::error::Registration never caught up with this deploy (${PENDING}); the manifest would describe the previous one, so nothing was written."
+          report
           exit 1
 
   # The change-detection base SHA is derived from the last successful run of the

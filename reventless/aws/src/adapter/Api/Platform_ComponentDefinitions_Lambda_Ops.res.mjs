@@ -365,23 +365,156 @@ function bakeExpectations(event) {
   })));
 }
 
+function bakeSince(event) {
+  return Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(event), o => o["since"]), Stdlib_JSON.Decode.string);
+}
+
 function structureRefKey(item) {
   return Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(item["structure"], Stdlib_JSON.Decode.object), o => o[Offload$Reventless.sentinelKey]), Stdlib_JSON.Decode.object), r => r["key"]), Stdlib_JSON.Decode.string);
 }
 
-function pendingRegistrations(items, expect) {
+function rowWrittenAt(item) {
+  return Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(item["statusChange"], Stdlib_JSON.Decode.object), o => o["at"]), Stdlib_JSON.Decode.string);
+}
+
+function notBefore(at, since) {
+  let a = new Date(at).getTime();
+  let s = new Date(since).getTime();
+  if (!Number.isNaN(a) && !Number.isNaN(s)) {
+    return a >= s;
+  } else {
+    return false;
+  }
+}
+
+function classify(expected, found, writtenAt, since) {
+  let fresh = since !== undefined && writtenAt !== undefined ? notBefore(writtenAt, since) : undefined;
+  if (found !== undefined) {
+    if (found === expected) {
+      if (fresh !== undefined) {
+        if (fresh) {
+          return "Registered";
+        } else {
+          return "Unchanged";
+        }
+      } else {
+        return "Matched";
+      }
+    } else if (Primitive_object.equal(fresh, true)) {
+      return "Diverged";
+    } else {
+      return "Behind";
+    }
+  } else {
+    return "Missing";
+  }
+}
+
+function registrations(items, expect, since) {
   let current = Object.fromEntries(Platform_AdminScan_Ops$ReventlessAws.latestByName(items, item => str(item, "name"), (item, name) => Stdlib_Option.map(structureRefKey(item), key => [
     name,
-    key
+    [
+      key,
+      rowWrittenAt(item)
+    ]
   ])));
-  return Stdlib_Array.filterMap(Object.entries(expect), param => {
+  return Object.entries(expect).map(param => {
+    let expected = param[1];
     let plugin = param[0];
-    if (Primitive_object.equal(current[plugin], param[1])) {
-      return;
-    } else {
-      return plugin;
-    }
+    let row = current[plugin];
+    let found = Stdlib_Option.map(row, param => param[0]);
+    let writtenAt = Stdlib_Option.flatMap(row, param => param[1]);
+    return {
+      plugin: plugin,
+      expected: expected,
+      found: found,
+      writtenAt: writtenAt,
+      state: classify(expected, found, writtenAt, since)
+    };
   });
+}
+
+function isPending(r) {
+  let match = r.state;
+  switch (match) {
+    case "Missing" :
+    case "Behind" :
+    case "Diverged" :
+      return true;
+    default:
+      return false;
+  }
+}
+
+function stateName(s) {
+  switch (s) {
+    case "Registered" :
+      return "registered";
+    case "Unchanged" :
+      return "unchanged";
+    case "Matched" :
+      return "matched";
+    case "Missing" :
+      return "missing";
+    case "Behind" :
+      return "behind";
+    case "Diverged" :
+      return "diverged";
+  }
+}
+
+function encodeRegistration(r) {
+  return Object.fromEntries([
+    [
+      "plugin",
+      r.plugin
+    ],
+    [
+      "state",
+      stateName(r.state)
+    ],
+    [
+      "expected",
+      r.expected
+    ],
+    [
+      "found",
+      Stdlib_Option.mapOr(r.found, null, prim => prim)
+    ],
+    [
+      "writtenAt",
+      Stdlib_Option.mapOr(r.writtenAt, null, prim => prim)
+    ]
+  ]);
+}
+
+function encodeSummary(rs) {
+  return Object.fromEntries([
+    [
+      "summary",
+      true
+    ],
+    [
+      "plugins",
+      rs.length
+    ],
+    [
+      "registered",
+      rs.filter(r => r.state === "Registered").length
+    ],
+    [
+      "unchanged",
+      rs.filter(r => r.state === "Unchanged").length
+    ],
+    [
+      "matched",
+      rs.filter(r => r.state === "Matched").length
+    ],
+    [
+      "registrations",
+      rs.map(encodeRegistration)
+    ]
+  ]);
 }
 
 async function runBake(target, structures) {
@@ -466,7 +599,8 @@ async function handler(event) {
     let fetch = Offload$Reventless.cachedFetch(key => S3$AwsSdk.GetObjectCommand.getString(bucket, key));
     let resolveAll = () => Promise.all(rawItems.map(item => resolveStructure(fetch, item)));
     if (bakeTarget !== undefined) {
-      let pending = pendingRegistrations(rawItems, bakeExpectations(event));
+      let regs = registrations(rawItems, bakeExpectations(event), bakeSince(event));
+      let pending = regs.filter(isPending);
       if (pending.length !== 0) {
         return [Object.fromEntries([
             [
@@ -475,12 +609,17 @@ async function handler(event) {
             ],
             [
               "pending",
-              pending.map(prim => prim)
+              pending.map(r => r.plugin)
+            ],
+            [
+              "registrations",
+              regs.map(encodeRegistration)
             ]
           ])];
       }
       let structures = Platform_AdminScan_Ops$ReventlessAws.latestByName(await resolveAll(), item => str(item, "name"), structureOf);
-      return await runBake(bakeTarget, structures);
+      let written = await runBake(bakeTarget, structures);
+      return written.concat([encodeSummary(regs)]);
     }
     let userEntries = Platform_AdminScan_Ops$ReventlessAws.latestByName(await resolveAll(), item => str(item, "name"), toEntry);
     return admin.concat(userEntries);
@@ -518,8 +657,16 @@ export {
   bakeJourneys,
   bakeTargetOf,
   bakeExpectations,
+  bakeSince,
   structureRefKey,
-  pendingRegistrations,
+  rowWrittenAt,
+  notBefore,
+  classify,
+  registrations,
+  isPending,
+  stateName,
+  encodeRegistration,
+  encodeSummary,
   runBake,
   handler,
 }
