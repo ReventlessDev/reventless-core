@@ -99,6 +99,13 @@ The invocation now also carries `since`, the instant the deploy began (the `dete
 stamps it, before any stack runs). It is what lets a matching key be told apart as re-registered
 or merely never changed, which §4 needs.
 
+The reporting itself is shell in a workflow, so it only ever runs on a deploy — and a fault in it
+would cost a whole run and leave the diagnosis exactly where it started. It was therefore exercised
+against both shapes the handler returns (the pending object; the files array with the summary
+appended): the retry gate fires on one and not the other, `report` flattens across both, and a
+`missing` row prints as `no row` / `never` rather than `null`. So a deploy that prints nothing is
+itself evidence, not an open question.
+
 ### §2 — Distinguish the links — **partly done**
 
 Reported from the read model: `behind` (the row predates this deploy — the case retrying is for),
@@ -153,8 +160,14 @@ It pins the two facts the old coverage could not distinguish — a changed struc
 rewritten, and passes as `unchanged` — which is Defect 1 stated as a test.
 
 Still not covered: the transport between those steps (the re-detect's publication and the
-plugin's answer crossing SQS/SNS). That needs a live estate or the local platform's bake, and is
-the same gap §2's remaining half describes.
+plugin's answer crossing SQS/SNS). That needs a live estate — and only a live estate. The local
+platform's bake is not a second route: it reads each plugin's structure straight off the
+in-process component outputs and writes the files
+([Platform.res:880-904](../../reventless/local/src/Platform.res#L880-L904)), with no key, no
+comparison against a read-model row, and no re-detect — registration there is a synthetic
+`Connect(def)` dispatched to the aggregate. There is no convergence to observe, so covering this
+locally would mean building the check into the local platform first. Same gap §2's remaining half
+describes.
 
 ## Risks and notes
 
