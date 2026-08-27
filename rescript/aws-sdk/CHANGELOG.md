@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.14 (2026-08-27)
+
+### Bug Fixes
+
+* **seed-aws:** a throttled control plane aborts the reset hold and blames IAM ([95af263](https://github.com/ReventlessDev/reventless-core/commit/95af263afba7dfdfa9a7fc45f494b302dba4baf8))
+
+
 # 3.0.0-alpha.13 (2026-08-23)
 
 * feat(aws)!: scope the active-role store to the identity provider ([08e287d](https://github.com/ReventlessDev/reventless-core/commit/08e287db9721977b818bad76671ec4c62be6f9af))

@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.25 (2026-08-27)
+
+### Bug Fixes
+
+* **seed-aws:** a throttled control plane aborts the reset hold and blames IAM ([95af263](https://github.com/ReventlessDev/reventless-core/commit/95af263afba7dfdfa9a7fc45f494b302dba4baf8))
+
+
 # 1.0.0-alpha.24 (2026-08-23)
 
 **Note:** Version bump only for package @reventlessdev/reventless-seed-aws
