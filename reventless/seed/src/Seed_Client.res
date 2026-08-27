@@ -106,10 +106,57 @@ let login = async (t: t): unit => {
   t.token = json->field("token")->Option.flatMap(asString)
 }
 
+/** Error types the endpoint returns for a fault on its own side rather than a
+    problem with the document. They say nothing about the request, so the same
+    request sent again can succeed — and across the few hundred commands a seed
+    issues, one of these is ordinary rather than exceptional.
+
+    Everything else — a validation error, an unknown field, a refused token — is
+    an answer, and the same answer comes back however many times it is asked. */
+let transientErrorTypes = [
+  "InternalFailure",
+  "ServiceUnavailable",
+  "ServiceUnavailableError",
+  "Throttling",
+  "ThrottlingException",
+  "TooManyRequestsException",
+  "RequestTimeout",
+]
+
+/** Every entry must be transient for the document to be worth resending: one
+    real error alongside a transient one still means the request was wrong. An
+    empty `errors` array is not a reason to retry either. */
+let isTransient = (errors: JSON.t): bool =>
+  switch errors->JSON.Decode.array {
+  | None | Some([]) => false
+  | Some(entries) =>
+    entries->Array.every(e =>
+      switch e->nodeString("errorType") {
+      | Some(errorType) => transientErrorTypes->Array.includes(errorType)
+      | None => false
+      }
+    )
+  }
+
+let attempts = 4
+
 /**
  * Sends one GraphQL document and returns its `data`. A GraphQL-level error
  * aborts the run: a half-seeded store is worse than an empty one, because it
  * looks like a working dataset.
+ *
+ * Which is exactly why a fault on the endpoint's own side must not abort it. A
+ * seed issues hundreds of commands, many of them concurrently and all of them
+ * against runtimes that a preceding reset left cold, so a single
+ * `InternalFailure` somewhere in the batch is a normal event. Treating it as
+ * fatal threw away every command that had already landed and demanded a full
+ * wipe and re-run — for a request that would have succeeded on being asked
+ * again. So resend those, backing off between tries, and keep failing fast on
+ * everything that is an answer rather than a fault.
+ *
+ * The backoff is jittered because the commands go out in concurrent batches: a
+ * fixed delay would have the whole batch retry in lockstep and rebuild the same
+ * burst that provoked the fault.
  */
 let gql = async (t: t, ~query: string, ~label: string): JSON.t => {
   let headers = Dict.fromArray([("content-type", "application/json")])
@@ -120,18 +167,27 @@ let gql = async (t: t, ~query: string, ~label: string): JSON.t => {
   let body = JSON.stringify(
     JSON.Encode.object(Dict.fromArray([("query", JSON.Encode.string(query))])),
   )
-  let res = try await fetch(t.config.endpoint, {method: "POST", headers, body}) catch {
-  | _ =>
-    throw(Failed(`${label}: cannot reach ${t.config.endpoint} — is the platform running?`))
+  let rec attempt = async (n: int): JSON.t => {
+    let res = try await fetch(t.config.endpoint, {method: "POST", headers, body}) catch {
+    | _ =>
+      throw(Failed(`${label}: cannot reach ${t.config.endpoint} — is the platform running?`))
+    }
+    let json = await res->responseJson
+    switch json->field("errors") {
+    | Some(errors) =>
+      if errors->isTransient && n < attempts {
+        await sleep(250 * Int.shiftLeft(1, n - 1) + Int.fromFloat(Math.random() *. 250.))
+        await attempt(n + 1)
+      } else {
+        let tried = n > 1 ? `\n  gave up after ${n->Int.toString} attempts` : ""
+        throw(
+          Failed(`${label} failed\n  query: ${query}\n  response: ${JSON.stringify(errors)}${tried}`),
+        )
+      }
+    | None => json->field("data")->Option.getOr(JSON.Encode.null)
+    }
   }
-  let json = await res->responseJson
-  switch json->field("errors") {
-  | Some(errors) =>
-    throw(
-      Failed(`${label} failed\n  query: ${query}\n  response: ${JSON.stringify(errors)}`),
-    )
-  | None => json->field("data")->Option.getOr(JSON.Encode.null)
-  }
+  await attempt(1)
 }
 
 // ── Commands ────────────────────────────────────────────────────────────────
