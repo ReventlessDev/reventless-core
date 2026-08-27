@@ -58,6 +58,9 @@ let structure: pluginStructure = {
           fromEventTypes: ["Catalog.ProductAdded"],
         },
       ]),
+      acceptedCommands: Some([
+        {name: "Catalog.Products.Reserve", toCommandTypes: ["Catalog.ReserveStock"]},
+      ]),
     },
   ]),
   requiredStores: Some(["Catalog.images"]),
@@ -123,7 +126,8 @@ describe("Platform_PluginStructures entry", () => {
     expect(
       json->String.includes(
         "\"extensionPoints\":[{\"name\":\"Catalog.Products\",\"delegateNames\":[\"onAdded\"],\"sourceEventTypes\":[\"Catalog.ProductAdded\"],\"commandTypes\":null," ++
-          "\"publishedEvents\":[{\"name\":\"Catalog.Products.ProductBecameAvailable\",\"fromEventTypes\":[\"Catalog.ProductAdded\"]}]}]",
+          "\"publishedEvents\":[{\"name\":\"Catalog.Products.ProductBecameAvailable\",\"fromEventTypes\":[\"Catalog.ProductAdded\"]}]," ++
+          "\"acceptedCommands\":[{\"name\":\"Catalog.Products.Reserve\",\"toCommandTypes\":[\"Catalog.ReserveStock\"]}]}]",
       ),
     )->toEqual(true)
   )

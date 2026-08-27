@@ -861,13 +861,13 @@ let transform (str : structure) : structure =
       let ext_suffix =
         AuthorizationInjection.external_system_suffix ~loc loc.loc_start.pos_fname body
       in
-      (* The port's translation table, read off `mapOutgoingEvent`'s own arms —
-         see TranslationTable. *)
+      (* The port's two translation tables, read off the arms of `mapOutgoingEvent`
+         and `mapIncomingCommand` — see TranslationTable. *)
       let table_suffix =
         if Util.is_extensionpointmapping_filename loc.loc_start.pos_fname then
-          match TranslationTable.derive_published ~loc body with
-          | Some tbl -> [tbl]
-          | None -> []
+          List.filter_map
+            (fun derive -> derive ~loc body)
+            [TranslationTable.derive_published; TranslationTable.derive_accepted]
         else []
       in
       !prefix @ authz_prefix @ vis_prefix @ rc_prefix @ body

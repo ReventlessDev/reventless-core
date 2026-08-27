@@ -30,10 +30,17 @@ let rec strip_funs (e : expression) : expression =
   | Pexp_open (_, body) -> strip_funs body
   | _ -> e
 
-let rec ctor_of (e : expression) : string option =
+(* [env] holds the arm's own `let` bindings, so a routed message the arm named
+   before publishing it — `let cmd = X(…)` then `PublishCommand(id, cmd)` — is
+   read rather than refused. *)
+let rec ctor_of ?(env = []) (e : expression) : string option =
   match e.pexp_desc with
   | Pexp_construct ({ txt; _ }, _) -> Some (last_of txt)
-  | Pexp_constraint (inner, _) -> ctor_of inner
+  | Pexp_constraint (inner, _) -> ctor_of ~env inner
+  | Pexp_ident { txt = Lident n; _ } -> (
+    match List.assoc_opt n env with
+    | Some bound -> ctor_of ~env:(List.remove_assoc n env) bound
+    | None -> None)
   | _ -> None
 
 (* The constructors a case's pattern names. [None] for a wildcard — a source the
@@ -51,18 +58,21 @@ let rec pattern_ctors (p : pattern) : string list option =
 
 (* Which action constructors carry a routed message, and where its constructor
    sits in the payload. Everything else in the union either carries no name this
-   can read (a promise, an opaque forward) or routes nothing (a directive). *)
-type side = Published | Handled
+   can read (a promise, an opaque forward) or routes nothing (a directive).
 
-let target_of_action ~(side : side) ~loc (name : string) (arg : expression option) :
+   One side per mapping function: the port's two halves are [Published] out and
+   [Accepted] in, the subscriber's are [Handled] in and [Issued] back. *)
+type side = Published | Handled | Accepted | Issued
+
+let target_of_action ~(side : side) ~env ~loc (name : string) (arg : expression option) :
     string option =
   let nth_of_tuple n =
     match arg with
     | Some { pexp_desc = Pexp_tuple parts; _ } when List.length parts > n ->
-      ctor_of (List.nth parts n)
+      ctor_of ~env (List.nth parts n)
     | _ -> None
   in
-  let single () = match arg with Some e -> ctor_of e | None -> None in
+  let single () = match arg with Some e -> ctor_of ~env e | None -> None in
   let follow got what =
     match got with
     | Some n -> Some n
@@ -74,6 +84,8 @@ let target_of_action ~(side : side) ~loc (name : string) (arg : expression optio
   | Handled, ("PublishAggregateCommand" | "PublishExtensionPointCommand") ->
     follow (nth_of_tuple 1) "the published command"
   | Handled, "PublishStateChangeSliceCommand" -> follow (single ()) "the published command"
+  | Accepted, "PublishCommand" -> follow (nth_of_tuple 1) "the routed command"
+  | Issued, "PublishExtensionPointCommand" -> follow (nth_of_tuple 1) "the published command"
   (* A directive is a local side effect, not a routed message. *)
   | _, "HandleDirective" -> None
   | _, ("PublishEventAsync" | "PublishAggregateCommandAsync" | "PublishAggregateCommandsAsync"
@@ -85,12 +97,12 @@ let target_of_action ~(side : side) ~loc (name : string) (arg : expression optio
     raise (Unfollowable (loc, Printf.sprintf "`%s` is not an action this can read" other))
 
 (* One element of the returned action array. *)
-let element ~side ~(emit : string -> unit) (e : expression) : unit =
+let element ~side ~env ~(emit : string -> unit) (e : expression) : unit =
   let rec go (e : expression) =
     match e.pexp_desc with
     | Pexp_constraint (inner, _) -> go inner
     | Pexp_construct ({ txt; _ }, arg) -> (
-      match target_of_action ~side ~loc:e.pexp_loc (last_of txt) arg with
+      match target_of_action ~side ~env ~loc:e.pexp_loc (last_of txt) arg with
       | Some n -> emit n
       | None -> ())
     | _ -> raise (Unfollowable (e.pexp_loc, "the arm returns something other than actions"))
@@ -173,10 +185,10 @@ let rec walk_body ~side ~emit ~env (e : expression) : unit =
   | Pexp_let (_, vbs, cont) -> walk_body ~side ~emit ~env:(bindings_of vbs @ env) cont
   | Pexp_sequence (_, cont) -> recur cont
   | Pexp_open (_, cont) -> recur cont
-  | Pexp_array elems -> List.iter (element ~side ~emit) elems
+  | Pexp_array elems -> List.iter (element ~side ~env ~emit) elems
   | Pexp_construct ({ txt = Lident "[]"; _ }, None) -> ()
   | Pexp_construct ({ txt = Lident "::"; _ }, Some { pexp_desc = Pexp_tuple [ hd; tl ]; _ }) ->
-    element ~side ~emit hd;
+    element ~side ~env ~emit hd;
     recur tl
   | Pexp_ifthenelse (_, a, b) ->
     recur a;
@@ -184,7 +196,7 @@ let rec walk_body ~side ~emit ~env (e : expression) : unit =
   | Pexp_match (_, cases) | Pexp_try (_, cases) ->
     List.iter (fun (c : case) -> recur c.pc_rhs) cases
   (* A lone action — the body of `ids->Array.map(id => PublishEvent(...))`. *)
-  | Pexp_construct _ when is_action_construct e -> element ~side ~emit e
+  | Pexp_construct _ when is_action_construct e -> element ~side ~env ~emit e
   (* A name the arm bound above. Followed under the env it was bound in minus
      itself, so a shadowing rebind cannot loop. *)
   | Pexp_ident { txt = Lident n; _ } -> (
@@ -235,6 +247,10 @@ let edges_of_switch ~side (expr : expression) : (string * string) list =
                ( c.pc_lhs.ppat_loc,
                  "a wildcard arm publishes something, so the events it covers have no names" )))
       cases
+  (* A mapping that routes nothing at all — the `=> []` idiom for a direction a
+     port does not use. Read to the end, so it is no edges rather than an
+     unreadable arm. *)
+  | Pexp_array [] | Pexp_construct ({ txt = Lident "[]"; _ }, None) -> []
   | _ ->
     raise
       (Unfollowable (expr.pexp_loc, "the mapping is not a switch over the incoming message"))
@@ -304,6 +320,16 @@ let report ~what (exn_loc, why) =
 let edges ~side ~what expr =
   try edges_of_switch ~side expr with Unfollowable (l, why) -> report ~what (l, why)
 
+(* The rows of an `option`-typed mapping function: absent or `None` routes
+   nothing, which is a table with no rows rather than an unreadable one. *)
+let optional_rows ~side ~what (binding_name : string) (body : structure) =
+  match value_of_binding binding_name body with
+  | None -> []
+  | Some { pexp_desc = Pexp_construct ({ txt = Lident "None"; _ }, None); _ } -> []
+  | Some { pexp_desc = Pexp_construct ({ txt = Lident "Some"; _ }, Some inner); _ } ->
+    edges ~side ~what inner
+  | Some other -> edges ~side ~what other
+
 (* `let publishedEvents` on an ExtensionPoint mapping file, read off
    `mapOutgoingEvent`. Absent or `None` publishes nothing. Keyed by published
    event, so the many-to-one case a port exists for reads naturally. *)
@@ -311,18 +337,38 @@ let derive_published ~loc (body : structure) : structure_item option =
   if Util.has_let_binding "publishedEvents" body then None
   else
     let what = "publishedEvents" in
-    let rows =
-      match value_of_binding "mapOutgoingEvent" body with
-      | None -> []
-      | Some { pexp_desc = Pexp_construct ({ txt = Lident "None"; _ }, None); _ } -> []
-      | Some { pexp_desc = Pexp_construct ({ txt = Lident "Some"; _ }, Some inner); _ } ->
-        edges ~side:Published ~what inner
-      | Some other -> edges ~side:Published ~what other
-    in
     Some
       (binding ~loc ~modul:"ExtensionPointMapping" ~type_name:"publishedEvent"
          ~value_name:what ~target_field:"fromEventTypes"
-         (group ~key:snd ~value:fst rows))
+         (group ~key:snd ~value:fst (optional_rows ~side:Published ~what "mapOutgoingEvent" body)))
+
+(* `let acceptedCommands` on an ExtensionPoint mapping file, read off
+   `mapIncomingCommand` — the port's inbound half. Keyed by the arriving EP
+   command, so it mirrors `handledEvents`. *)
+let derive_accepted ~loc (body : structure) : structure_item option =
+  if Util.has_let_binding "acceptedCommands" body then None
+  else
+    let what = "acceptedCommands" in
+    let rows =
+      match value_of_binding "mapIncomingCommand" body with
+      | None -> []
+      | Some e -> edges ~side:Accepted ~what e
+    in
+    Some
+      (binding ~loc ~modul:"ExtensionPointMapping" ~type_name:"acceptedCommand"
+         ~value_name:what ~target_field:"toCommandTypes" (group ~key:fst ~value:snd rows))
+
+(* `let issuedCommands` on an extension mapping, read off its `mapOutgoingEvent`
+   — the commands it sends back to the port. Keyed by the published command, so
+   it mirrors `publishedEvents`. *)
+let derive_issued ~loc (inner : structure) : structure_item option =
+  if Util.has_let_binding "issuedCommands" inner then None
+  else
+    let what = "issuedCommands" in
+    Some
+      (binding ~loc ~modul:"ExtensionMapping" ~type_name:"issuedCommand" ~value_name:what
+         ~target_field:"fromEventTypes"
+         (group ~key:snd ~value:fst (optional_rows ~side:Issued ~what "mapOutgoingEvent" inner)))
 
 (* `let handledEvents` inside `module Mapping` of an extension file, read off
    `mapIncomingEvent`. Keyed by the published event it handles. *)
@@ -347,7 +393,8 @@ let derive_handled ~loc (inner : structure) : structure_item option =
    Which side a module is on is read off its inbound function, the way the two
    module types differ: an extension maps incoming EVENTS, an extension point
    maps incoming COMMANDS. Both bind `mapOutgoingEvent`, and they mean different
-   things by it. *)
+   things by it — which is why the side is decided once, and then both of that
+   side's tables are derived from it. *)
 let rec walk_inline_mappings (str : structure) : structure =
   List.map
     (fun (item : structure_item) ->
@@ -365,12 +412,17 @@ and walk_module_expr (me : module_expr) : module_expr =
     let looks_like_mapping =
       Util.has_module_binding "ExtensionPoint" body && Util.has_module_binding "Delegate" body
     in
+    let append derive body =
+      match derive ~loc body with Some t -> body @ [ t ] | None -> body
+    in
     let body =
       if not looks_like_mapping then body
       else if Util.has_let_binding "mapIncomingEvent" body then
-        match derive_handled ~loc body with Some t -> body @ [ t ] | None -> body
-      else if Util.has_let_binding "mapOutgoingEvent" body then
-        match derive_published ~loc body with Some t -> body @ [ t ] | None -> body
+        body |> append derive_handled |> append derive_issued
+      else if
+        Util.has_let_binding "mapIncomingCommand" body
+        || Util.has_let_binding "mapOutgoingEvent" body
+      then body |> append derive_published |> append derive_accepted
       else body
     in
     { me with pmod_desc = Pmod_structure body }

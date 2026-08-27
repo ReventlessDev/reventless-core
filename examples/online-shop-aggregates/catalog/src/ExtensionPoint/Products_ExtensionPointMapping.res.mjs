@@ -44,6 +44,8 @@ let publishedEvents = [
   }
 ];
 
+let acceptedCommands = [];
+
 let name = "Products";
 
 let Id;
@@ -63,5 +65,6 @@ export {
   mapOutgoingEvent,
   moduleUrl,
   publishedEvents,
+  acceptedCommands,
 }
 /* No side effect */

@@ -74,6 +74,8 @@
 .structure.automationSlices[].name: string
 .structure.automationSlices[].producedCommandTypes[]: string
 .structure.automationSlices[].targetName: string
+.structure.extensionPoints[].acceptedCommands[].name: string
+.structure.extensionPoints[].acceptedCommands[].toCommandTypes[]: string
 .structure.extensionPoints[].commandTypes[]: string
 .structure.extensionPoints[].delegateNames[]: string
 .structure.extensionPoints[].name: string
@@ -85,6 +87,8 @@
 .structure.extensions[].eventTypes[]: string
 .structure.extensions[].handledEvents[].name: string
 .structure.extensions[].handledEvents[].toCommandTypes[]: string
+.structure.extensions[].issuedCommands[].fromEventTypes[]: string
+.structure.extensions[].issuedCommands[].name: string
 .structure.extensions[].name: string
 .structure.inboundTranslationSlices[].commandTypes[]: string
 .structure.inboundTranslationSlices[].name: string

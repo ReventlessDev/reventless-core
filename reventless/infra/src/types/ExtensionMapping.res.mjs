@@ -250,7 +250,9 @@ function Make(MappingImpl) {
   return {
     delegateName: delegateName,
     handledEvents: MappingImpl.handledEvents,
+    issuedCommands: MappingImpl.issuedCommands,
     delegateCommandNames: delegateCommandNames,
+    delegateEventNames: acceptedTags,
     mapIncomingEvent: mapIncomingEvent,
     mapOutgoingEvent: mapOutgoingEvent
   };

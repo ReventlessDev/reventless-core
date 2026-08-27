@@ -190,6 +190,13 @@ let publishedEventDefSchema = Sury.$schema(s => ({
 
 let publishedEventDefArrayOptionSchema = Sury.$nullAsOption(Sury.array(publishedEventDefSchema));
 
+let acceptedCommandDefSchema = Sury.$schema(s => ({
+  name: s.m(Sury.string),
+  toCommandTypes: s.m(Sury.array(Sury.string))
+}));
+
+let acceptedCommandDefArrayOptionSchema = Sury.$nullAsOption(Sury.array(acceptedCommandDefSchema));
+
 let handledEventDefSchema = Sury.$schema(s => ({
   name: s.m(Sury.string),
   toCommandTypes: s.m(Sury.array(Sury.string))
@@ -197,12 +204,20 @@ let handledEventDefSchema = Sury.$schema(s => ({
 
 let handledEventDefArrayOptionSchema = Sury.$nullAsOption(Sury.array(handledEventDefSchema));
 
+let issuedCommandDefSchema = Sury.$schema(s => ({
+  name: s.m(Sury.string),
+  fromEventTypes: s.m(Sury.array(Sury.string))
+}));
+
+let issuedCommandDefArrayOptionSchema = Sury.$nullAsOption(Sury.array(issuedCommandDefSchema));
+
 let extensionDefSchema = Sury.$schema(s => ({
   name: s.m(Sury.string),
   delegateNames: s.m(Sury.array(Sury.string)),
   eventTypes: s.m(Sury.array(Sury.string)),
   commandTypes: s.m(Sury.array(Sury.string)),
-  handledEvents: s.m(handledEventDefArrayOptionSchema)
+  handledEvents: s.m(handledEventDefArrayOptionSchema),
+  issuedCommands: s.m(issuedCommandDefArrayOptionSchema)
 }));
 
 let extensionPointDefSchema = Sury.$schema(s => ({
@@ -210,7 +225,8 @@ let extensionPointDefSchema = Sury.$schema(s => ({
   delegateNames: s.m(Sury.array(Sury.string)),
   sourceEventTypes: s.m(Sury.array(Sury.string)),
   commandTypes: s.m(stringArrayOptionSchema),
-  publishedEvents: s.m(publishedEventDefArrayOptionSchema)
+  publishedEvents: s.m(publishedEventDefArrayOptionSchema),
+  acceptedCommands: s.m(acceptedCommandDefArrayOptionSchema)
 }));
 
 let extensionPointDefArrayOptionSchema = Sury.$nullAsOption(Sury.array(extensionPointDefSchema));
@@ -287,8 +303,12 @@ export {
   inboundTranslationSliceDefSchema,
   publishedEventDefSchema,
   publishedEventDefArrayOptionSchema,
+  acceptedCommandDefSchema,
+  acceptedCommandDefArrayOptionSchema,
   handledEventDefSchema,
   handledEventDefArrayOptionSchema,
+  issuedCommandDefSchema,
+  issuedCommandDefArrayOptionSchema,
   extensionDefSchema,
   extensionPointDefSchema,
   extensionPointDefArrayOptionSchema,

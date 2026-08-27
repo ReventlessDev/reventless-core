@@ -153,9 +153,17 @@ let publishedEventDefSchema = Plugin$Reventless.publishedEventDefSchema;
 
 let publishedEventDefArrayOptionSchema = Plugin$Reventless.publishedEventDefArrayOptionSchema;
 
+let acceptedCommandDefSchema = Plugin$Reventless.acceptedCommandDefSchema;
+
+let acceptedCommandDefArrayOptionSchema = Plugin$Reventless.acceptedCommandDefArrayOptionSchema;
+
 let handledEventDefSchema = Plugin$Reventless.handledEventDefSchema;
 
 let handledEventDefArrayOptionSchema = Plugin$Reventless.handledEventDefArrayOptionSchema;
+
+let issuedCommandDefSchema = Plugin$Reventless.issuedCommandDefSchema;
+
+let issuedCommandDefArrayOptionSchema = Plugin$Reventless.issuedCommandDefArrayOptionSchema;
 
 let extensionDefSchema = Plugin$Reventless.extensionDefSchema;
 
@@ -206,8 +214,12 @@ export {
   inboundTranslationSliceDefSchema,
   publishedEventDefSchema,
   publishedEventDefArrayOptionSchema,
+  acceptedCommandDefSchema,
+  acceptedCommandDefArrayOptionSchema,
   handledEventDefSchema,
   handledEventDefArrayOptionSchema,
+  issuedCommandDefSchema,
+  issuedCommandDefArrayOptionSchema,
   extensionDefSchema,
   extensionPointDefSchema,
   extensionPointDefArrayOptionSchema,

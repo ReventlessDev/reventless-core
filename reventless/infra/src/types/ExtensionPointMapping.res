@@ -58,6 +58,14 @@ type publishedEvent = {
   fromEventTypes: array<string>,
 }
 
+/** The port's inbound half: one command this port takes and the `Delegate`
+    commands it routes to. Keyed by the arriving command, mirroring
+    `ExtensionMapping.handledEvent`. */
+type acceptedCommand = {
+  name: string,
+  toCommandTypes: array<string>,
+}
+
 /** One aggregate's mapping to an extension point. Pass to
     `ExtensionPointMapping.Make` for the compiled `T`. */
 module type Mapping = {
@@ -81,6 +89,10 @@ module type Mapping = {
   /** The port's translation table — see `publishedEvent`. Derived by the PPX from
       `mapOutgoingEvent`'s own arms; write it by hand only where it says it cannot. */
   let publishedEvents: array<publishedEvent>
+
+  /** The same for the command direction — see `acceptedCommand`. Derived from
+      `mapIncomingCommand`'s arms, under the same rule. */
+  let acceptedCommands: array<acceptedCommand>
 }
 
 // Pre-compiled action types: made by Make, consumed by ExtensionPoint_Callback

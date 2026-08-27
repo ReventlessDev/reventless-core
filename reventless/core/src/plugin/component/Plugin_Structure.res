@@ -301,6 +301,38 @@ let handledTableFailures = (
   failures
 }
 
+// The command direction's two tables. Both key on an EP command and value a list
+// of delegate names, so one check serves them: `keyed` names the table, `keyKind`
+// and `valueKind` name what each side must be.
+let commandTableFailures = (
+  ~label: string,
+  ~keyed: string,
+  ~valueKind: string,
+  ~rows: array<(string, array<string>)>,
+  ~keyNames: array<string>,
+  ~valueNames: array<string>,
+): array<string> => {
+  let failures = []
+  let push = msg => failures->Array.push(msg)->ignore
+  rows->Array.forEach(((name, values)) => {
+    if !(keyNames->Array.includes(name)) {
+      push(
+        `${label}: ${keyed} names "${name}", which is not a command of the extension ` ++
+        `point — it declares ${keyNames->Array.join(", ")}.`,
+      )
+    }
+    values->Array.forEach(v =>
+      if !(valueNames->Array.includes(v)) {
+        push(
+          `${label}: ${keyed} says "${name}" ${valueKind} "${v}", which the delegate does ` ++
+          `not declare — ${valueNames->Array.join(", ")}.`,
+        )
+      }
+    )
+  })
+  failures
+}
+
 // The probe's stand-ins. A mapping can only reach the query engine behind a
 // promise, and such an arm is reported as unfollowed anyway.
 let probeId = "probe"
@@ -1321,16 +1353,39 @@ let make = (
       // Mappings sharing one EP union their tables — the same event may route to
       // a different delegate's command in each.
       let commandsByEvent: Dict.t<array<string>> = Dict.make()
+      let eventsByCommand: Dict.t<array<string>> = Dict.make()
       E.mappings->Array.forEach((module(M: E.Mapping)) => {
+        let label = `${E.Spec.name} → ${M.delegateName}`
         pushAll(
           tableFailures,
           handledTableFailures(
-            ~label=`${E.Spec.name} → ${M.delegateName}`,
+            ~label,
             ~declared=M.handledEvents,
             ~eventNames=epEventNames,
             ~commandNames=Array.concat(M.delegateCommandNames, epCommandNames),
           ),
         )
+        pushAll(
+          tableFailures,
+          commandTableFailures(
+            ~label,
+            ~keyed="issuedCommands",
+            ~valueKind="comes from",
+            ~rows=M.issuedCommands->Array.map(({name, fromEventTypes}) => (name, fromEventTypes)),
+            ~keyNames=epCommandNames,
+            ~valueNames=M.delegateEventNames,
+          ),
+        )
+        M.issuedCommands->Array.forEach(({name: commandName, fromEventTypes}) => {
+          let key = `${E.Spec.name}.${commandName}`
+          eventsByCommand->Dict.set(
+            key,
+            Array.concat(
+              eventsByCommand->Dict.get(key)->Option.getOr([]),
+              qualify(~prefix=name, fromEventTypes),
+            ),
+          )
+        })
         M.handledEvents->Array.forEach(({name: eventName, toCommandTypes}) => {
           // The qualifier says which way the command goes: plugin-qualified
           // inward, EP-qualified back to the port.
@@ -1361,6 +1416,14 @@ let make = (
             toCommandTypes: dedupe(cmds),
           }: Reventless.Plugin.handledEventDef)),
         ),
+        issuedCommands: Some(
+          eventsByCommand
+          ->Dict.toArray
+          ->Array.map(((commandName, evs)) => ({
+            Reventless.Plugin.name: commandName,
+            fromEventTypes: dedupe(evs),
+          }: Reventless.Plugin.issuedCommandDef)),
+        ),
       }: Reventless.Plugin.extensionDef)
     })
 
@@ -1374,6 +1437,10 @@ let make = (
   // Per EP: published event → the internal events producing it, unioned over
   // every mapping targeting it.
   let epPublished: Dict.t<Dict.t<array<string>>> = Dict.make()
+  // The command direction's mirror: arriving command → the delegate commands it
+  // routes to. Unioned the same way — one port's inbound protocol is split across
+  // its mappings, so a command handled by a sibling is not dead surface.
+  let epAccepted: Dict.t<Dict.t<array<string>>> = Dict.make()
 
   extensionPoints->Array.forEach((module(M: ReventlessInfra.ExtensionPointMapping.Mapping)) => {
     let epName = M.ExtensionPoint.name
@@ -1394,6 +1461,99 @@ let make = (
       tableFailures,
       translationTableFailures(~label, ~declared=M.publishedEvents, ~publishedNames, ~sourceNames),
     )
+
+    // ── The command direction ────────────────────────────────────────────────
+    let acceptedNames = allVariantNames(M.ExtensionPoint.commandSchema)
+    let delegateCommandNames = allVariantNames(M.Delegate.commandSchema)
+    pushAll(
+      tableFailures,
+      commandTableFailures(
+        ~label,
+        ~keyed="acceptedCommands",
+        ~valueKind="routes to",
+        ~rows=M.acceptedCommands->Array.map(({name, toCommandTypes}) => (name, toCommandTypes)),
+        ~keyNames=acceptedNames,
+        ~valueNames=delegateCommandNames,
+      ),
+    )
+
+    // The mirror of the published-event probe: one synthesised EP command per
+    // constructor, through the author's own mapIncomingCommand. Cheaper than the
+    // event probe — the signature reaches no query engine.
+    let acceptedObserved = []
+    acceptedNames->Array.forEach(cmd => {
+      let synthesised = Reventless.DcbTag.isVariantPayloadBearing(
+        M.ExtensionPoint.commandSchema->S.castToUnknown,
+        cmd,
+      )
+        ? Dict.fromArray([("TAG", JSON.Encode.string(cmd))])->JSON.Encode.object
+        : JSON.Encode.string(cmd)
+      switch (
+        try {
+          let command =
+            Reventless.Message.fillMissingDefaults(
+              M.ExtensionPoint.commandSchema,
+              synthesised,
+              [],
+            )->Reventless.Util_Sury.fromJson(M.ExtensionPoint.commandSchema)
+          let decodedAs =
+            command
+            ->Reventless.Message.encode(M.ExtensionPoint.commandSchema)
+            ->Reventless.Message.variantNameOfJson
+          decodedAs != cmd
+            ? Error(`a synthesised "${cmd}" decoded as "${decodedAs}"`)
+            : Ok(M.mapIncomingCommand(probeId, command, probeMeta))
+        } catch {
+        | _ => Error(`the mapping raised on a synthesised "${cmd}"`)
+        }
+      ) {
+      | Ok(actions) =>
+        actions->Array.forEach(action =>
+          switch action {
+          | ReventlessInfra.ExtensionPointMapping.PublishCommand(_, routed) =>
+            acceptedObserved
+            ->Array.push((
+              cmd,
+              routed
+              ->Reventless.Message.encode(M.Delegate.commandSchema)
+              ->Reventless.Message.variantNameOfJson,
+            ))
+            ->ignore
+          | HandleDirective(_, _) => ()
+          }
+        )
+      | Error(reason) =>
+        tableWarnings->Array.push(`${label}: not checked against the arms — ${reason}.`)->ignore
+      }
+    })
+    acceptedObserved->Array.forEach(((cmd, routed)) =>
+      if (
+        !(
+          M.acceptedCommands->Array.some(({name, toCommandTypes}) =>
+            name == cmd && toCommandTypes->Array.includes(routed)
+          )
+        )
+      ) {
+        tableFailures
+        ->Array.push(
+          `${label}: "${cmd}" routes to "${routed}", which acceptedCommands does not declare.`,
+        )
+        ->ignore
+      }
+    )
+
+    let acceptedTable = epAccepted->Dict.get(epName)->Option.getOr(Dict.make())
+    M.acceptedCommands->Array.forEach(({name: accepted, toCommandTypes}) => {
+      let key = `${epName}.${accepted}`
+      acceptedTable->Dict.set(
+        key,
+        Array.concat(
+          acceptedTable->Dict.get(key)->Option.getOr([]),
+          qualify(~prefix=name, toCommandTypes),
+        ),
+      )
+    })
+    epAccepted->Dict.set(epName, acceptedTable)
 
     switch M.mapOutgoingEvent {
     | None =>
@@ -1522,7 +1682,39 @@ let make = (
           fromEventTypes: dedupe(sources),
         }: Reventless.Plugin.publishedEventDef)),
       ),
+      acceptedCommands: Some(
+        epAccepted
+        ->Dict.get(epName)
+        ->Option.getOr(Dict.make())
+        ->Dict.toArray
+        ->Array.map(((accepted, routed)) => ({
+          Reventless.Plugin.name: accepted,
+          toCommandTypes: dedupe(routed),
+        }: Reventless.Plugin.acceptedCommandDef)),
+      ),
     }: Reventless.Plugin.extensionPointDef))
+
+  // Dead inbound surface, judged only after every mapping on an EP has been seen:
+  // one port's inbound protocol is split across its mappings, so a command the
+  // Plugin mapping ignores may be the UiFragment mapping's whole job.
+  epByName
+  ->Dict.toArray
+  ->Array.forEach(((epName, (_, _, cmds))) => {
+    let handled =
+      epAccepted->Dict.get(epName)->Option.getOr(Dict.make())->Dict.keysToArray
+    cmds
+    ->dedupe
+    ->Array.forEach(cmd =>
+      if !(handled->Array.includes(cmd)) {
+        tableWarnings
+        ->Array.push(
+          `${epName}: the extension point accepts "${cmd}", which no arm handles — a ` ++
+          `sender gets no error and nothing happens.`,
+        )
+        ->ignore
+      }
+    )
+  })
 
   reportTranslationTables(~pluginName=name, ~failures=tableFailures, ~warnings=tableWarnings)
 

@@ -144,6 +144,7 @@ let extension: extensionDef = {
   eventTypes: ["ProductAdded"],
   commandTypes: ["Add"],
   handledEvents: Some([{name: "ProductAdded", toCommandTypes: ["Ordering.SyncNewProduct"]}]),
+  issuedCommands: Some([{name: "Catalog.Products.Ack", fromEventTypes: ["Ordering.Synced"]}]),
 }
 
 let extensionPoint: extensionPointDef = {
@@ -154,6 +155,7 @@ let extensionPoint: extensionPointDef = {
   publishedEvents: Some([
     {name: "Catalog.Products.ProductAdded", fromEventTypes: ["Catalog.ProductAdded"]},
   ]),
+  acceptedCommands: Some([{name: "Catalog.Products.Add", toCommandTypes: ["Catalog.Add"]}]),
 }
 
 let storeDecl: requiredStoreDeclaration = {

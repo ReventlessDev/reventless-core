@@ -97,6 +97,9 @@ let structure: pluginStructure = {
       handledEvents: Some([
         {name: "Catalog.Products.ProductAdded", toCommandTypes: ["Catalog.Watch"]},
       ]),
+      issuedCommands: Some([
+        {name: "Catalog.Products.Acknowledge", fromEventTypes: ["Catalog.Watched"]},
+      ]),
     },
   ],
   extensionPoints: None,

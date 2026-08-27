@@ -252,7 +252,8 @@ function Make(Platform) {
     moduleUrl: Orders_ExtensionPointMapping$OrderingPlugin.moduleUrl,
     mapIncomingCommand: Orders_ExtensionPointMapping$OrderingPlugin.mapIncomingCommand,
     mapOutgoingEvent: Orders_ExtensionPointMapping$OrderingPlugin.mapOutgoingEvent,
-    publishedEvents: Orders_ExtensionPointMapping$OrderingPlugin.publishedEvents
+    publishedEvents: Orders_ExtensionPointMapping$OrderingPlugin.publishedEvents,
+    acceptedCommands: Orders_ExtensionPointMapping$OrderingPlugin.acceptedCommands
   });
   let Products_Extension = Platform.Extension.Make({
     ExtensionPoint: {
@@ -275,7 +276,8 @@ function Make(Platform) {
     delegateModuleUrl: Products_Extension$OrderingPlugin.Mapping.delegateModuleUrl,
     mapIncomingEvent: Products_Extension$OrderingPlugin.Mapping.mapIncomingEvent,
     mapOutgoingEvent: Products_Extension$OrderingPlugin.Mapping.mapOutgoingEvent,
-    handledEvents: Products_Extension$OrderingPlugin.Mapping.handledEvents
+    handledEvents: Products_Extension$OrderingPlugin.Mapping.handledEvents,
+    issuedCommands: Products_Extension$OrderingPlugin.Mapping.issuedCommands
   });
   let pluginStructure = Platform.Plugin.makePluginDefinition("Ordering", undefined, undefined, [
     AvailableProductsSlice,
@@ -310,7 +312,8 @@ function Make(Platform) {
       moduleUrl: Orders_ExtensionPointMapping$OrderingPlugin.moduleUrl,
       mapIncomingCommand: Orders_ExtensionPointMapping$OrderingPlugin.mapIncomingCommand,
       mapOutgoingEvent: Orders_ExtensionPointMapping$OrderingPlugin.mapOutgoingEvent,
-      publishedEvents: Orders_ExtensionPointMapping$OrderingPlugin.publishedEvents
+      publishedEvents: Orders_ExtensionPointMapping$OrderingPlugin.publishedEvents,
+      acceptedCommands: Orders_ExtensionPointMapping$OrderingPlugin.acceptedCommands
     }], Object.fromEntries([
     [
       "AutoShipOrder",

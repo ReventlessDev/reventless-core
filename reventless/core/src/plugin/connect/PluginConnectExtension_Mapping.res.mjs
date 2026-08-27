@@ -52,6 +52,7 @@ function Make(Spec) {
         "RegisterUiFragment"
       ]
     }];
+  let issuedCommands = [];
   let $$let = ExtensionMapping$ReventlessInfra.NoDelegate.Id;
   let ConnectPluginMapping = ExtensionMapping$ReventlessInfra.Make({
     ExtensionPoint: {
@@ -80,7 +81,8 @@ function Make(Spec) {
     delegateModuleUrl: delegateModuleUrl,
     mapIncomingEvent: mapIncomingEvent,
     mapOutgoingEvent: undefined,
-    handledEvents: handledEvents
+    handledEvents: handledEvents,
+    issuedCommands: issuedCommands
   });
   let moduleUrl = import.meta.url;
   let mappings = [ConnectPluginMapping];

@@ -394,7 +394,11 @@ cat > "$DCB/src/ItemExtensionPointMapping.res" <<'EOF'
 module ExtensionPoint = {
   let name = "Test.Items"
   let moduleUrl = "test"
-  @schema type command = unit
+  @schema
+  type command =
+    | PublishItem({itemId: string})
+    | WithdrawItem({itemId: string})
+    | AuditItem({itemId: string})
   @schema
   type event =
     | ItemPublished({itemId: string})
@@ -406,6 +410,10 @@ module ExtensionPoint = {
 module Delegate = {
   let name = "ItemCatalog"
   @schema
+  type command =
+    | AddItem({itemId: string})
+    | ArchiveItem({itemId: string})
+  @schema
   type event =
     | ItemAdded({itemId: string, name: string})
     | ItemArchived({itemId: string})
@@ -415,7 +423,13 @@ module Delegate = {
     | ItemRestocked({itemId: string, count: int})
 }
 
-let mapIncomingCommand = (_id, _command, _meta) => []
+let mapIncomingCommand = (_id, command: ExtensionPoint.command, _meta) =>
+  switch command {
+  | PublishItem({itemId}) => [PublishCommand(itemId, Delegate.AddItem({itemId: itemId}))]
+  | WithdrawItem({itemId}) => [PublishCommand(itemId, Delegate.ArchiveItem({itemId: itemId}))]
+  // Arrives, routes nothing — no row, and the port's own check calls it out.
+  | AuditItem(_) => []
+  }
 
 let mapOutgoingEvent = Some((_id, event, _meta, _queryEngine) =>
   switch event {
@@ -1516,7 +1530,10 @@ module Mapping = {
   module ExtensionPoint = {
     let name = "Test.Demo"
     let moduleUrl = "test"
-    @schema type command = unit
+    @schema
+    type command =
+      | AckDemo({demoId: string})
+      | RejectDemo({demoId: string})
     @schema
     type event =
       | DemoPublished({demoId: string})
@@ -1550,7 +1567,18 @@ module Mapping = {
       ]
     }
 
-  let mapOutgoingEvent = None
+  // The command direction: what this extension sends back to the port.
+  let mapOutgoingEvent = Some(
+    (_id, event: Delegate.event, _meta, _pluginDef) =>
+      switch event {
+      | DemoEvent({demoId}) => [
+          ReventlessInfra.ExtensionMapping.PublishExtensionPointCommand(
+            demoId,
+            ExtensionPoint.AckDemo({demoId: demoId}),
+          ),
+        ]
+      },
+  )
 }
 EOF
 
@@ -1793,6 +1821,22 @@ esac
 case "$TABLE" in
   *ItemReplenished*) pass "EP mapping: a let-bound action array merged in is followed" ;;
   *) fail "EP mapping let-bound arm" "ItemReplenished missing — the merged branch was dropped" ;;
+esac
+# The command direction, off the same file's `mapIncomingCommand`.
+assert_js_contains "$JS" 'acceptedCommands'               "EP mapping: acceptedCommands derived"
+ACCEPTED=$(node -e '
+  const m = require("fs").readFileSync(process.argv[1], "utf8");
+  const i = m.indexOf("let acceptedCommands = [");
+  process.stdout.write(i < 0 ? "" : m.slice(i, m.indexOf("];", i)));
+' "$JS")
+case "$ACCEPTED" in
+  *PublishItem*AddItem*WithdrawItem*ArchiveItem*)
+    pass "EP mapping: each arriving command carries the delegate command it routes to" ;;
+  *) fail "EP mapping acceptedCommands" "unexpected derived table: $ACCEPTED" ;;
+esac
+case "$ACCEPTED" in
+  *AuditItem*) fail "EP mapping unrouted command" "AuditItem routes nothing and should add no row" ;;
+  *) pass "EP mapping: a command that routes nothing adds no row" ;;
 esac
 
 echo ""
@@ -2308,6 +2352,18 @@ case "$HANDLED" in
   *DemoPublished*SyncDemo*DemoWithdrawn*DropDemo*)
     pass "extension: each published event carries the command it routes to" ;;
   *) fail "extension handledEvents" "unexpected derived table: $HANDLED" ;;
+esac
+# The command direction, off the same Mapping's `mapOutgoingEvent`.
+assert_js_contains "$JS" 'issuedCommands' "extension: issuedCommands derived"
+ISSUED=$(node -e '
+  const m = require("fs").readFileSync(process.argv[1], "utf8");
+  const i = m.indexOf("let issuedCommands = [");
+  process.stdout.write(i < 0 ? "" : m.slice(i, m.indexOf("];", i)));
+' "$JS")
+case "$ISSUED" in
+  *AckDemo*DemoEvent*)
+    pass "extension: a command sent back to the port carries the event producing it" ;;
+  *) fail "extension issuedCommands" "unexpected derived table: $ISSUED" ;;
 esac
 
 echo ""

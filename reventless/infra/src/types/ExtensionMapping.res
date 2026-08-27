@@ -76,6 +76,15 @@ type handledEvent = {
   toCommandTypes: array<string>,
 }
 
+/** One command this extension sends back to the port and the `Delegate` events
+    producing it — the subscriber's half of `ExtensionPointMapping.acceptedCommand`.
+    Read off `mapOutgoingEvent` only: an EP command published from an arm of
+    `mapIncomingEvent` is an event→command edge and stays in `handledEvent`. */
+type issuedCommand = {
+  name: string,
+  fromEventTypes: array<string>,
+}
+
 /** An extension's bidirectional mapping between one extension point and one
     delegate (aggregate or DCB slice). */
 module type Mapping = {
@@ -105,6 +114,10 @@ module type Mapping = {
       by the PPX from `mapIncomingEvent`'s arms; hand-written only where it says
       it cannot read them. */
   let handledEvents: array<handledEvent>
+
+  /** Which commands travel back to the port — see `issuedCommand`. Derived from
+      `mapOutgoingEvent`'s arms, under the same rule. */
+  let issuedCommands: array<issuedCommand>
 }
 
 /** A stand-in for an extension that wraps no aggregate or slice. */
@@ -160,11 +173,13 @@ module type T = {
 
   let delegateName: string
 
-  // Both carried through the functor: `Plugin_Structure` sees an extension only
-  // compiled, and `T` erases the Delegate's types, so the check against
-  // `handledEvents` needs its command names rather than its schema.
+  // All carried through the functor: `Plugin_Structure` sees an extension only
+  // compiled, and `T` erases the Delegate's types, so the checks against the two
+  // tables need its command and event names rather than its schemas.
   let handledEvents: array<handledEvent>
+  let issuedCommands: array<issuedCommand>
   let delegateCommandNames: array<string>
+  let delegateEventNames: array<string>
 
   let mapIncomingEvent: (
     Reventless.Message.event'<string, ExtensionPoint.event>,
@@ -191,12 +206,14 @@ module Make = (MappingImpl: Mapping): (
   let delegateName = Delegate.name
   let extensionPointName = Spec.name
   let handledEvents = MappingImpl.handledEvents
+  let issuedCommands = MappingImpl.issuedCommands
   let delegateCommandNames = Reventless.DcbTag.extractAllVariantNames(Delegate.commandSchema)
 
   // Pre-filter for incoming envelopes: sibling variants the Delegate did not
   // declare are skipped undecoded. Payload-less variants included — the
   // envelope's `event` TAG still carries their name.
   let acceptedTags = Reventless.DcbTag.extractAllVariantNames(Delegate.eventSchema)
+  let delegateEventNames = acceptedTags
 
   // Partition tag for `PublishStateChangeSliceCommand*`. Throws when the Delegate
   // declares none — an Aggregate, where `PublishAggregateCommand` is the right form.

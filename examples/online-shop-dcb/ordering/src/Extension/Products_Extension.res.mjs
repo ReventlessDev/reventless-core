@@ -36,12 +36,15 @@ let handledEvents = [
   }
 ];
 
+let issuedCommands = [];
+
 let Mapping = {
   ExtensionPoint: undefined,
   Delegate: undefined,
   mapIncomingEvent: mapIncomingEvent,
   mapOutgoingEvent: undefined,
   handledEvents: handledEvents,
+  issuedCommands: issuedCommands,
   delegateModuleUrl: SyncCatalogProduct$OrderingPlugin.moduleUrl,
   moduleUrl: "@reventlessdev/online-shop-dcb-ordering/src/Extension/Products_Extension.res.mjs"
 };

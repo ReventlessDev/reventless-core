@@ -35,7 +35,9 @@ let sdlTypes: array<string> = [
   `type Platform_InboundTranslationSliceDef {\n  name: String!\n  commandTypes: [String!]!\n  targetName: String\n  externalSystem: String\n  chapter: String\n}`,
   // The subscriber's half of the port's translation table — see `handledEventDef`.
   `type Platform_HandledEventDef {\n  name: String!\n  toCommandTypes: [String!]!\n}`,
-  `type Platform_ExtensionDef {\n  name: String!\n  delegateNames: [String!]!\n  eventTypes: [String!]!\n  commandTypes: [String!]!\n  handledEvents: [Platform_HandledEventDef!]\n}`,
+  // Its command-direction mirror — see `issuedCommandDef`.
+  `type Platform_IssuedCommandDef {\n  name: String!\n  fromEventTypes: [String!]!\n}`,
+  `type Platform_ExtensionDef {\n  name: String!\n  delegateNames: [String!]!\n  eventTypes: [String!]!\n  commandTypes: [String!]!\n  handledEvents: [Platform_HandledEventDef!]\n  issuedCommands: [Platform_IssuedCommandDef!]\n}`,
   // `internalQueryables` is the complement of the `readModels` / `stateViewSlices`
   // filter, not an addition to either: it carries exactly the components the
   // filter removed. A consumer enumerating surfaces reads the two filtered lists
@@ -218,6 +220,19 @@ let encodeExtensionDef = (e: extensionDef): JSON.t =>
           Dict.fromArray([
             ("name", JSON.Encode.string(h.name)),
             ("toCommandTypes", encodeStrings(h.toCommandTypes)),
+          ])->JSON.Encode.object
+        )
+        ->JSON.Encode.array
+      ),
+    ),
+    (
+      "issuedCommands",
+      e.issuedCommands->Option.mapOr(JSON.Encode.null, issued =>
+        issued
+        ->Array.map(i =>
+          Dict.fromArray([
+            ("name", JSON.Encode.string(i.name)),
+            ("fromEventTypes", encodeStrings(i.fromEventTypes)),
           ])->JSON.Encode.object
         )
         ->JSON.Encode.array

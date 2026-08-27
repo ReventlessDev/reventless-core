@@ -1,6 +1,7 @@
 # Plan: the port's other half — the command direction's translation table
 
-**Status.** Proposed 2026-08-27.
+**Status.** Implemented 2026-08-27. Two shapes the derivation had to learn were found by
+running it, not by writing this — see §4.3's postscript and §8.
 
 **Goal.** `extension-point-translation-table.md` (done) made the *event* flow across a port
 visible: which internal event becomes which published event, and which published event becomes
@@ -161,6 +162,15 @@ recurring into the continuation; a `Pexp_ident` argument in `Pexp_apply` resolve
 is walked; an identifier that resolves to nothing raises `Unfollowable` naming it. Do this
 **first, as its own commit**, so the fix to the shipped table is separable from the new sides.
 
+**What shipped** (`230c72e25`), where it differs: an unresolvable identifier stays **data**, as
+before. Raising on it would misfire on `let ids = event.ids` — a perfectly ordinary arm — so the
+decision is made on what the name *holds*: an array/`if`/`switch` of actions is followed, a field
+access or constant is data, and a **call**, whose result cannot be told from either, is refused.
+That keeps the guarantee (a droppable edge is never silently dropped) without inventing failures.
+The predicted payoff is visible: the lifecycle port now derives
+`ConnectPlugin → [Connect, ReportIncompatibility]`, the second of which is the `Array.concat`
+branch this fix rescued.
+
 ### 4.4 Errors and the escape hatch
 
 Unchanged in kind: an unreadable arm fails the build naming itself and the table, and a file that
@@ -241,6 +251,21 @@ silently. Sequence with `plugin-definition-schema-evolution-guards.md`, not sepa
    local fixtures. The examples are all `[]` / `None`, so the real surface is the two lifecycle
    mappings — `PluginExtensionPoint_Plugin`'s `ConnectPlugin` arm is the one to watch, and it is
    the reason step 1 comes first.
+
+**What the sweep taught, and neither §3 nor §4 predicted.** Not one mapping needed a hand-written
+table, but two shapes had to be read that the event direction never presented:
+
+- **`=> []` is how a mapping says it routes nothing**, and it is not a switch. Every example's
+  `mapIncomingCommand` is written that way, and the derivation refused all six as unreadable.
+  An empty literal is read to the end, so it is *no edges* — the distinction this whole design
+  rests on, applied to the function rather than the arm.
+- **A name can stand for the routed message itself**, not only for an array of actions:
+  `reventless-local`'s fixture writes `let execCmd = …Execute({…})` then
+  `PublishCommand(targetId, execCmd)`. §4.3's env reached the arm's result but not the action's
+  payload; `ctor_of` now resolves through the same env.
+
+Both are the same lesson: the command direction is written in idioms the event direction is not,
+and only compiling the repo surfaces them.
 
 ## §9 — Risks
 

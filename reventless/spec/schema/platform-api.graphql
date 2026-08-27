@@ -37,6 +37,11 @@ type PageInfo {
   startCursor: String
 }
 
+type Platform_AcceptedCommandDef {
+  name: String!
+  toCommandTypes: [String!]!
+}
+
 type Platform_AutomationSliceDef {
   chapter: String
   consumedEventTypes: [String!]!
@@ -89,10 +94,12 @@ type Platform_ExtensionDef {
   delegateNames: [String!]!
   eventTypes: [String!]!
   handledEvents: [Platform_HandledEventDef!]
+  issuedCommands: [Platform_IssuedCommandDef!]
   name: String!
 }
 
 type Platform_ExtensionPointDef {
+  acceptedCommands: [Platform_AcceptedCommandDef!]
   commandTypes: [String!]
   delegateNames: [String!]!
   name: String!
@@ -117,6 +124,11 @@ type Platform_InboundTranslationSliceDef {
   externalSystem: String
   name: String!
   targetName: String
+}
+
+type Platform_IssuedCommandDef {
+  fromEventTypes: [String!]!
+  name: String!
 }
 
 type Platform_OutboundTranslationSliceDef {

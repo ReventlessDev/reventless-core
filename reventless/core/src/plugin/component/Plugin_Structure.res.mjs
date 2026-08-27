@@ -269,6 +269,25 @@ function handledTableFailures(label, declared, eventNames, commandNames) {
   return failures;
 }
 
+function commandTableFailures(label, keyed, valueKind, rows, keyNames, valueNames) {
+  let failures = [];
+  let push = msg => {
+    failures.push(msg);
+  };
+  rows.forEach(param => {
+    let name = param[0];
+    if (!keyNames.includes(name)) {
+      push(label + `: ` + keyed + ` names "` + name + `", which is not a command of the extension ` + (`point — it declares ` + keyNames.join(", ") + `.`));
+    }
+    param[1].forEach(v => {
+      if (!valueNames.includes(v)) {
+        return push(label + `: ` + keyed + ` says "` + name + `" ` + valueKind + ` "` + v + `", which the delegate does ` + (`not declare — ` + valueNames.join(", ") + `.`));
+      }
+    });
+  });
+  return failures;
+}
+
 let probeId = "probe";
 
 let probeMeta = {
@@ -1011,8 +1030,18 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     let epEventNames = DcbTag$Reventless.extractAllVariantNames(E.Spec.eventSchema);
     let epCommandNames = DcbTag$Reventless.extractAllVariantNames(E.Spec.commandSchema);
     let commandsByEvent = {};
+    let eventsByCommand = {};
     E.mappings.forEach(M => {
-      pushAll(tableFailures, handledTableFailures(E.Spec.name + ` → ` + M.delegateName, M.handledEvents, epEventNames, M.delegateCommandNames.concat(epCommandNames)));
+      let label = E.Spec.name + ` → ` + M.delegateName;
+      pushAll(tableFailures, handledTableFailures(label, M.handledEvents, epEventNames, M.delegateCommandNames.concat(epCommandNames)));
+      pushAll(tableFailures, commandTableFailures(label, "issuedCommands", "comes from", M.issuedCommands.map(param => [
+        param.name,
+        param.fromEventTypes
+      ]), epCommandNames, M.delegateEventNames));
+      M.issuedCommands.forEach(param => {
+        let key = E.Spec.name + `.` + param.name;
+        eventsByCommand[key] = Stdlib_Option.getOr(eventsByCommand[key], []).concat(qualify(name, param.fromEventTypes));
+      });
       M.handledEvents.forEach(param => {
         let qualified = param.toCommandTypes.map(cmd => {
           if (M.delegateCommandNames.includes(cmd)) {
@@ -1033,11 +1062,16 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       handledEvents: Object.entries(commandsByEvent).map(param => ({
         name: param[0],
         toCommandTypes: Belt_SetString.toArray(Belt_SetString.fromArray(param[1]))
+      })),
+      issuedCommands: Object.entries(eventsByCommand).map(param => ({
+        name: param[0],
+        fromEventTypes: Belt_SetString.toArray(Belt_SetString.fromArray(param[1]))
       }))
     };
   });
   let epByName = {};
   let epPublished = {};
+  let epAccepted = {};
   extensionPoints.forEach(M => {
     let epName = M.ExtensionPoint.name;
     let sourceEvents = qualify(name, DcbTag$Reventless.extractVariantNames(M.Delegate.eventSchema));
@@ -1056,6 +1090,63 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     let publishedNames = DcbTag$Reventless.extractAllVariantNames(M.ExtensionPoint.eventSchema);
     let sourceNames = DcbTag$Reventless.extractAllVariantNames(M.Delegate.eventSchema);
     pushAll(tableFailures, translationTableFailures(label, M.publishedEvents, publishedNames, sourceNames));
+    let acceptedNames = DcbTag$Reventless.extractAllVariantNames(M.ExtensionPoint.commandSchema);
+    let delegateCommandNames = DcbTag$Reventless.extractAllVariantNames(M.Delegate.commandSchema);
+    pushAll(tableFailures, commandTableFailures(label, "acceptedCommands", "routes to", M.acceptedCommands.map(param => [
+      param.name,
+      param.toCommandTypes
+    ]), acceptedNames, delegateCommandNames));
+    let acceptedObserved = [];
+    acceptedNames.forEach(cmd => {
+      let synthesised = DcbTag$Reventless.isVariantPayloadBearing(M.ExtensionPoint.commandSchema, cmd) ? Object.fromEntries([[
+            "TAG",
+            cmd
+          ]]) : cmd;
+      let actions;
+      try {
+        let command = Util_Sury$Reventless.fromJson(Message$Reventless.fillMissingDefaults(M.ExtensionPoint.commandSchema, synthesised, []), M.ExtensionPoint.commandSchema);
+        let decodedAs = Message$Reventless.variantNameOfJson(Message$Reventless.encode(command, M.ExtensionPoint.commandSchema));
+        actions = decodedAs !== cmd ? ({
+            TAG: "Error",
+            _0: `a synthesised "` + cmd + `" decoded as "` + decodedAs + `"`
+          }) : ({
+            TAG: "Ok",
+            _0: M.mapIncomingCommand(probeId, command, probeMeta)
+          });
+      } catch (exn) {
+        actions = {
+          TAG: "Error",
+          _0: `the mapping raised on a synthesised "` + cmd + `"`
+        };
+      }
+      if (actions.TAG === "Ok") {
+        actions._0.forEach(action => {
+          if (action.TAG !== "PublishCommand") {
+            return;
+          }
+          acceptedObserved.push([
+            cmd,
+            Message$Reventless.variantNameOfJson(Message$Reventless.encode(action._1, M.Delegate.commandSchema))
+          ]);
+        });
+        return;
+      }
+      tableWarnings.push(label + `: not checked against the arms — ` + actions._0 + `.`);
+    });
+    acceptedObserved.forEach(param => {
+      let routed = param[1];
+      let cmd = param[0];
+      if (!M.acceptedCommands.some(param => param.name === cmd ? param.toCommandTypes.includes(routed) : false)) {
+        tableFailures.push(label + `: "` + cmd + `" routes to "` + routed + `", which acceptedCommands does not declare.`);
+        return;
+      }
+    });
+    let acceptedTable = Stdlib_Option.getOr(epAccepted[epName], {});
+    M.acceptedCommands.forEach(param => {
+      let key = epName + `.` + param.name;
+      acceptedTable[key] = Stdlib_Option.getOr(acceptedTable[key], []).concat(qualify(name, param.toCommandTypes));
+    });
+    epAccepted[epName] = acceptedTable;
     let mapOutgoing = M.mapOutgoingEvent;
     if (mapOutgoing !== undefined) {
       let observed = [];
@@ -1145,8 +1236,22 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       publishedEvents: Object.entries(Stdlib_Option.getOr(epPublished[epName], {})).map(param => ({
         name: param[0],
         fromEventTypes: Belt_SetString.toArray(Belt_SetString.fromArray(param[1]))
+      })),
+      acceptedCommands: Object.entries(Stdlib_Option.getOr(epAccepted[epName], {})).map(param => ({
+        name: param[0],
+        toCommandTypes: Belt_SetString.toArray(Belt_SetString.fromArray(param[1]))
       }))
     };
+  });
+  Object.entries(epByName).forEach(param => {
+    let epName = param[0];
+    let handled = Object.keys(Stdlib_Option.getOr(epAccepted[epName], {}));
+    Belt_SetString.toArray(Belt_SetString.fromArray(param[1][2])).forEach(cmd => {
+      if (!handled.includes(cmd)) {
+        tableWarnings.push(epName + `: the extension point accepts "` + cmd + `", which no arm handles — a sender gets no error and nothing happens.`);
+        return;
+      }
+    });
   });
   reportTranslationTables(name, tableFailures, tableWarnings);
   checkDeclaredTransitions(name, stateChangeDefs.concat(aggregateDefs), lifecycleStatesByView);
@@ -1184,6 +1289,7 @@ export {
   translationTableFailures,
   translationTableDrift,
   handledTableFailures,
+  commandTableFailures,
   probeId,
   probeMeta,
   probeQueryEngine,

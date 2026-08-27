@@ -30,9 +30,11 @@ open Reventless.Plugin
 let sdlTypes: array<string> = [
   // The port's translation table — see `publishedEventDef`.
   `type Platform_PublishedEventDef {\n  name: String!\n  fromEventTypes: [String!]!\n}`,
+  // Its command-direction mirror — see `acceptedCommandDef`.
+  `type Platform_AcceptedCommandDef {\n  name: String!\n  toCommandTypes: [String!]!\n}`,
   // Producer side of an extension point. `commandTypes` is null for a
   // notification-only (`command = unit`) extension point — see `extensionPointDef`.
-  `type Platform_ExtensionPointDef {\n  name: String!\n  delegateNames: [String!]!\n  sourceEventTypes: [String!]!\n  commandTypes: [String!]\n  publishedEvents: [Platform_PublishedEventDef!]\n}`,
+  `type Platform_ExtensionPointDef {\n  name: String!\n  delegateNames: [String!]!\n  sourceEventTypes: [String!]!\n  commandTypes: [String!]\n  publishedEvents: [Platform_PublishedEventDef!]\n  acceptedCommands: [Platform_AcceptedCommandDef!]\n}`,
   `type Platform_RequiredStoreDeclaration {\n  store: String!\n  component: String!\n  field: String!\n  annotation: String\n}`,
   // `extensionPoints` / `requiredStores` / `requiredStoreDeclarations` are nullable
   // lists, not `[T!]!`: all three are optional on `pluginStructure` so that plugin
@@ -64,6 +66,22 @@ let encodeExtensionPointDef = (e: extensionPointDef): JSON.t =>
             (
               "fromEventTypes",
               Platform_ComponentDefinitionsApi.encodeStrings(p.fromEventTypes),
+            ),
+          ])->JSON.Encode.object
+        )
+        ->JSON.Encode.array
+      ),
+    ),
+    (
+      "acceptedCommands",
+      e.acceptedCommands->Option.mapOr(JSON.Encode.null, accepted =>
+        accepted
+        ->Array.map(a =>
+          Dict.fromArray([
+            ("name", JSON.Encode.string(a.name)),
+            (
+              "toCommandTypes",
+              Platform_ComponentDefinitionsApi.encodeStrings(a.toCommandTypes),
             ),
           ])->JSON.Encode.object
         )

@@ -68,6 +68,8 @@ let handledEvents = [
   }
 ];
 
+let issuedCommands = [];
+
 let Mapping = {
   ExtensionPoint: undefined,
   Delegate: undefined,
@@ -75,6 +77,7 @@ let Mapping = {
   mapIncomingEvent: mapIncomingEvent,
   mapOutgoingEvent: undefined,
   handledEvents: handledEvents,
+  issuedCommands: issuedCommands,
   delegateModuleUrl: RecordProductDemand$CatalogPlugin.moduleUrl,
   moduleUrl: "@reventlessdev/online-shop-hybrid-catalog/src/Extension/Orders_Extension.res.mjs"
 };

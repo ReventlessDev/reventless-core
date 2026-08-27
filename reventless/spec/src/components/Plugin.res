@@ -285,6 +285,17 @@ type publishedEventDef = {
 
 let publishedEventDefArrayOptionSchema = S.array(publishedEventDefSchema)->S.nullAsOption
 
+/** The command direction's producer half: a command an extension point takes and
+    the delegate commands it routes to. `name` is EP-qualified, `toCommandTypes`
+    plugin-qualified. */
+@schema
+type acceptedCommandDef = {
+  name: string,
+  toCommandTypes: array<string>,
+}
+
+let acceptedCommandDefArrayOptionSchema = S.array(acceptedCommandDefSchema)->S.nullAsOption
+
 /** The subscriber's half: a published event and the commands it routes to. A
     delegate command is plugin-qualified, one sent back to the EP is EP-qualified. */
 @schema
@@ -295,6 +306,17 @@ type handledEventDef = {
 
 let handledEventDefArrayOptionSchema = S.array(handledEventDefSchema)->S.nullAsOption
 
+/** The command direction's subscriber half: a command sent back to the port and
+    the internal events producing it. `name` is EP-qualified, `fromEventTypes`
+    plugin-qualified. */
+@schema
+type issuedCommandDef = {
+  name: string,
+  fromEventTypes: array<string>,
+}
+
+let issuedCommandDefArrayOptionSchema = S.array(issuedCommandDefSchema)->S.nullAsOption
+
 @schema
 type extensionDef = {
   name: string,
@@ -304,6 +326,10 @@ type extensionDef = {
   /** Which published event routes to which commands. js_nullable like
       `extensionPointDef.commandTypes`; re-emit definitions persisted before it. */
   handledEvents: @s.matches(handledEventDefArrayOptionSchema) option<array<handledEventDef>>,
+  /** Which internal event sends which command back to the port. `None` means a
+      definition persisted before the field, NOT an extension that issues nothing —
+      a reader joining the two halves must keep them apart. */
+  issuedCommands: @s.matches(issuedCommandDefArrayOptionSchema) option<array<issuedCommandDef>>,
 }
 
 /**
@@ -324,6 +350,10 @@ type extensionPointDef = {
   /** Which internal event becomes which published event. */
   publishedEvents: @s.matches(publishedEventDefArrayOptionSchema)
   option<array<publishedEventDef>>,
+  /** Which arriving command becomes which delegate command. `None` means a
+      definition persisted before the field, NOT a port that accepts nothing. */
+  acceptedCommands: @s.matches(acceptedCommandDefArrayOptionSchema)
+  option<array<acceptedCommandDef>>,
 }
 
 // js_nullable creates `array | null` (not `| undefined`), which passes sury's

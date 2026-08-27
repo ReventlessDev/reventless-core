@@ -77,6 +77,8 @@ let publishedEvents = [
   }
 ];
 
+let acceptedCommands = [];
+
 let name = "Orders";
 
 let Id;
@@ -94,5 +96,6 @@ export {
   mapOutgoingEvent,
   moduleUrl,
   publishedEvents,
+  acceptedCommands,
 }
 /* commandSchema Not a pure module */

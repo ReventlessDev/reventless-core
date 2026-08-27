@@ -360,13 +360,35 @@ function Make(Spec) {
       fromEventTypes: ["IncompatiblePluginDetected"]
     }
   ];
+  let acceptedCommands = [
+    {
+      name: "Heartbeat",
+      toCommandTypes: ["Heartbeat"]
+    },
+    {
+      name: "RedetectPlugin",
+      toCommandTypes: ["Redetect"]
+    },
+    {
+      name: "ConnectPlugin",
+      toCommandTypes: [
+        "Connect",
+        "ReportIncompatibility"
+      ]
+    },
+    {
+      name: "DisconnectPlugin",
+      toCommandTypes: ["Disconnect"]
+    }
+  ];
   let PluginMapping = {
     ExtensionPoint: undefined,
     Delegate: undefined,
     moduleUrl: PluginExtensionPointSpec$ReventlessInfra.moduleUrl,
     mapIncomingCommand: mapIncomingCommand,
     mapOutgoingEvent: mapOutgoingEvent,
-    publishedEvents: publishedEvents
+    publishedEvents: publishedEvents,
+    acceptedCommands: acceptedCommands
   };
   let Mapping = ExtensionPointMapping$ReventlessInfra.Make({
     ExtensionPoint: {
@@ -388,7 +410,8 @@ function Make(Spec) {
     moduleUrl: PluginExtensionPointSpec$ReventlessInfra.moduleUrl,
     mapIncomingCommand: mapIncomingCommand,
     mapOutgoingEvent: mapOutgoingEvent,
-    publishedEvents: publishedEvents
+    publishedEvents: publishedEvents,
+    acceptedCommands: acceptedCommands
   });
   return {
     disconnectScheduleName: disconnectScheduleName,

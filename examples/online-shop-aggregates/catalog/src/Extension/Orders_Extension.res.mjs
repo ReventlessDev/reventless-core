@@ -35,12 +35,15 @@ let handledEvents = [
   }
 ];
 
+let issuedCommands = [];
+
 let Mapping = {
   ExtensionPoint: undefined,
   Delegate: undefined,
   mapIncomingEvent: mapIncomingEvent,
   mapOutgoingEvent: undefined,
   handledEvents: handledEvents,
+  issuedCommands: issuedCommands,
   delegateModuleUrl: ProductDemand$CatalogPlugin.moduleUrl,
   moduleUrl: "@reventlessdev/online-shop-aggregates-catalog/src/Extension/Orders_Extension.res.mjs"
 };
