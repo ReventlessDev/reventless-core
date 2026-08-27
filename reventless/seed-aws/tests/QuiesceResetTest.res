@@ -109,6 +109,30 @@ describe("refillMessage", () => {
   })
 })
 
+describe("isThrottle", () => {
+  // A hold that fails because the control plane is busy and a hold that fails
+  // because the credentials are short a policy read identically at the call
+  // site, and the fixes point in opposite directions: wait, versus go and edit
+  // an IAM policy. Sending an operator to the policy for a throttle costs them
+  // the whole trip.
+  testSync("recognises the wordings a throttled hold actually comes back with", () =>
+    [
+      "Rate exceeded",
+      "TooManyRequestsException: Rate exceeded",
+      "Request throttled, please try again",
+    ]->Array.forEach(reason => expect(Quiesce.isThrottle(reason))->toBe(true))
+  )
+
+  testSync("leaves a permission failure to the IAM advice", () => {
+    expect(
+      Quiesce.isThrottle(
+        "AccessDeniedException: User is not authorized to perform: lambda:PutFunctionConcurrency",
+      ),
+    )->toBe(false)
+    expect(Quiesce.isThrottle("ResourceNotFoundException: Function not found"))->toBe(false)
+  })
+})
+
 describe("noQuiesce", () => {
   let set = v => NodeProcess.env->Dict.set("SEED_RESET_NO_QUIESCE", v)
 

@@ -86,6 +86,17 @@ let mapBounded = async (items: array<'a>, ~limit: int, f: 'a => promise<'b>): ar
 let errorText = (exn: exn): string =>
   exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown error")
 
+/** A throttle and a missing permission both surface as a failure to hold, and
+    they call for opposite responses — wait and re-run, versus go and fix the
+    policy. The control plane says "Rate exceeded"; the SDK says
+    "TooManyRequestsException". Match on either. */
+let isThrottle = (reason: string): bool => {
+  let r = reason->String.toLowerCase
+  r->String.includes("rate exceeded") ||
+  r->String.includes("toomanyrequests") ||
+  r->String.includes("throttl")
+}
+
 // An update is rejected while another is still settling, and a stack that was
 // deployed moments ago can still be settling. Poll rather than assume.
 let awaitSettled = async (~client, ~functionName: string): unit => {
@@ -269,14 +280,21 @@ let hold = async (~client, ~functionNames: array<string>): array<held> => {
   | Some((functionName, reason)) =>
     let rollback = await taken->mapBounded(~limit=concurrency, h => restoreConcurrency(~client, ~h))
     let stranded = rollback->Array.filterMap(w => w)
+    let advice = if reason->isThrottle {
+      `The Lambda control plane throttled the hold. That budget is per account and region and is ` ++
+      `shared with anything else using it — a deploy, an inspector sync, another stack in the same ` ++
+      `region — so this is transient and nothing is wrong with the credentials. Wait for whatever ` ++
+      `else is running to finish and re-run.`
+    } else {
+      `The reset holds every runtime in scope for the length of the wipe, which needs ` ++
+      `lambda:GetFunctionConcurrency, lambda:GetFunctionConfiguration, lambda:PutFunctionConcurrency, ` ++
+      `lambda:DeleteFunctionConcurrency and lambda:UpdateFunctionConfiguration.`
+    }
     throw(
       ReventlessSeed.Seed.Failed(
         `could not hold Lambda function ${functionName} at zero concurrency (${reason}) — nothing was ` ++
-        `deleted. The reset holds every runtime in scope for the length of the wipe, which needs ` ++
-        `lambda:GetFunctionConcurrency, lambda:GetFunctionConfiguration, lambda:PutFunctionConcurrency, ` ++
-        `lambda:DeleteFunctionConcurrency and lambda:UpdateFunctionConfiguration. Set ` ++
-        `SEED_RESET_NO_QUIESCE=1 to wipe without the hold — but a running runtime can then write back ` ++
-        `what the wipe removes.` ++
+        `deleted. ${advice} Set SEED_RESET_NO_QUIESCE=1 to wipe without the hold — but a running ` ++
+        `runtime can then write back what the wipe removes.` ++
         switch stranded {
         | [] => ""
         | messages => `\n\n  ` ++ messages->Array.join("\n  ")

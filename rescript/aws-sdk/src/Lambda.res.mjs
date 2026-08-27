@@ -6,7 +6,9 @@ let Raw = {};
 
 function client(region, param) {
   return new ClientLambda.LambdaClient({
-    region: region
+    region: region,
+    maxAttempts: 10,
+    retryMode: "adaptive"
   });
 }
 

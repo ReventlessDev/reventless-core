@@ -24,12 +24,23 @@
 type client
 
 module Raw = {
-  type options = {region?: string}
+  type options = {region?: string, maxAttempts?: int, retryMode?: string}
   @module("@aws-sdk/client-lambda") @new
   external client: (~options: options=?, unit) => client = "LambdaClient"
 }
 
-let client = (~region: option<string>=?, ()): client => Raw.client(~options={region: ?region}, ())
+/** The Lambda control plane is rate-limited per account and region, and that
+    budget is shared with everything else touching it — a concurrent deploy, an
+    inspector sync, a second estate in the same region. A caller that walks every
+    function in a stack therefore meets `Rate exceeded` on calls it has every
+    right to make, and the SDK default of three attempts in `standard` mode is
+    not enough to ride it out.
+
+    `adaptive` adds a client-side rate limiter that slows the whole client down
+    when the service throttles it, rather than retrying into the same wall, which
+    is what the control plane wants. */
+let client = (~region: option<string>=?, ()): client =>
+  Raw.client(~options={region: ?region, maxAttempts: 10, retryMode: "adaptive"}, ())
 
 /** A function's environment variables, in the shape both the get and the update
     use. `variables` absent and `variables` empty are different: sending an empty

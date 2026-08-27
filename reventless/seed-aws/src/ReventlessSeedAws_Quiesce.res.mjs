@@ -37,6 +37,15 @@ function errorText(exn) {
   return Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown error");
 }
 
+function isThrottle(reason) {
+  let r = reason.toLowerCase();
+  if (r.includes("rate exceeded") || r.includes("toomanyrequests")) {
+    return true;
+  } else {
+    return r.includes("throttl");
+  }
+}
+
 async function awaitSettled(client, functionName) {
   let poll = async attempt => {
     if (attempt >= 60) {
@@ -174,11 +183,13 @@ async function hold(client, functionNames) {
   if (match === undefined) {
     return taken;
   }
+  let reason = match[1];
   let rollback = await mapBounded(taken, 6, h => restoreConcurrency(client, h));
   let stranded = Stdlib_Array.filterMap(rollback, w => w);
+  let advice = isThrottle(reason) ? `The Lambda control plane throttled the hold. That budget is per account and region and is shared with anything else using it — a deploy, an inspector sync, another stack in the same region — so this is transient and nothing is wrong with the credentials. Wait for whatever else is running to finish and re-run.` : `The reset holds every runtime in scope for the length of the wipe, which needs lambda:GetFunctionConcurrency, lambda:GetFunctionConfiguration, lambda:PutFunctionConcurrency, lambda:DeleteFunctionConcurrency and lambda:UpdateFunctionConfiguration.`;
   throw {
     RE_EXN_ID: Seed$ReventlessSeed.Failed,
-    _1: `could not hold Lambda function ` + match[0] + ` at zero concurrency (` + match[1] + `) — nothing was deleted. The reset holds every runtime in scope for the length of the wipe, which needs lambda:GetFunctionConcurrency, lambda:GetFunctionConfiguration, lambda:PutFunctionConcurrency, lambda:DeleteFunctionConcurrency and lambda:UpdateFunctionConfiguration. Set SEED_RESET_NO_QUIESCE=1 to wipe without the hold — but a running runtime can then write back what the wipe removes.` + (
+    _1: `could not hold Lambda function ` + match[0] + ` at zero concurrency (` + reason + `) — nothing was ` + (`deleted. ` + advice + ` Set SEED_RESET_NO_QUIESCE=1 to wipe without the hold — but a running `) + `runtime can then write back what the wipe removes.` + (
       stranded.length !== 0 ? `\n\n  ` + stranded.join("\n  ") : ""
     ),
     Error: new Error()
@@ -195,6 +206,7 @@ export {
   concurrency,
   mapBounded,
   errorText,
+  isThrottle,
   awaitSettled,
   updateVariables,
   restoreConcurrency,
