@@ -718,6 +718,8 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-08-27
+- feat(spec)!: read the port's translation table off the mapping's arms ([956348a](https://github.com/ReventlessDev/reventless-core/commit/956348a9fcb256cfff9db51809bdc27d73360e6c))
 ### 2026-08-23
 - docs(querydb): correct when a derived @owner index needs a backfill ([b5bb586](https://github.com/ReventlessDev/reventless-core/commit/b5bb586323d0063dadbc97c16108b1b272170d1b))
 ### 2026-08-23
