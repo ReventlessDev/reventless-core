@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.329 (2026-08-27)
+
+### Bug Fixes
+
+* **aws:** report why the manifest bake is waiting, and what a pass proved ([7ba2a04](https://github.com/ReventlessDev/reventless-core/commit/7ba2a04c7dfa88bc10ca4336f9298f5fee1eb763))
+
+
 # 3.0.0-alpha.328 (2026-08-27)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws
