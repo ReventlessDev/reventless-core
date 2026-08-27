@@ -3,6 +3,27 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.241 (2026-08-27)
+
+### Bug Fixes
+
+* **deps:** bump reventless-host-shell to 3.0.0-alpha.89 ([4f53b68](https://github.com/ReventlessDev/reventless-core/commit/4f53b680417a9b7e0dadd3d48948321fcf234950))
+* feat(spec)!: keep the amount in minor units, and add times and allocate ([6ff6308](https://github.com/ReventlessDev/reventless-core/commit/6ff630875f9b126b2f87b980a4dbb56582f8aebe))
+* feat(spec)!: hold a money amount in the currency's own units ([94d3bba](https://github.com/ReventlessDev/reventless-core/commit/94d3bbaf0c47a639c20de6847c4615070ad51b38))
+
+### BREAKING CHANGES
+
+* reverts the wire shape to whole minor units, so a log written
+against the intervening commit reads a hundredfold low. Nothing released carried
+the decimal form.
+* stored amounts do not migrate. A log written before this holds
+minor units and now decodes a hundredfold high, cleanly and without complaint —
+a log that has to survive needs an upcaster written before this is deployed, and
+a demo log needs discarding and reseeding. A stored currency outside the ten no
+longer decodes; admit it in the generator or migrate the data.
+
+
+
 # 1.0.0-alpha.240 (2026-08-25)
 
 ### Bug Fixes

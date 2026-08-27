@@ -3,6 +3,30 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.228 (2026-08-27)
+
+### Bug Fixes
+
+* **ppx:** follow a let-bound action array merged into an arm's result ([230c72e](https://github.com/ReventlessDev/reventless-core/commit/230c72e25856d8ed20d0860e742b133b2c672d4a))
+* feat(spec)!: reflect the command direction across a port, both halves ([f2fe258](https://github.com/ReventlessDev/reventless-core/commit/f2fe258d195b74f4a61488edee305665341020ea))
+* feat(spec)!: read the port's translation table off the mapping's arms ([956348a](https://github.com/ReventlessDev/reventless-core/commit/956348a9fcb256cfff9db51809bdc27d73360e6c))
+
+### BREAKING CHANGES
+
+* `ExtensionPointMapping.Mapping` gains `acceptedCommands` and
+`ExtensionMapping.Mapping` gains `issuedCommands`; both are derived, so a
+mapping the ppx can read needs no source change, and one it cannot names itself
+at compile time. Definitions persisted before the two new def fields must be
+re-emitted before a consumer can read them as present — and until then they
+decode as None, which means unknown, not "issues nothing".
+* `ExtensionPointMapping.Mapping` requires `publishedEvents` and
+`ExtensionMapping.Mapping` requires `handledEvents`; the ppx injects both for
+mappings it can read, so app code must build against the matching ppx. Plugin
+definitions persisted before the new fields must be re-emitted before a consumer
+reads them as present.
+
+
+
 # 3.0.0-alpha.227 (2026-08-23)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-aggregates-ordering

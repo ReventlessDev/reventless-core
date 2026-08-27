@@ -3,6 +3,37 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.124 (2026-08-27)
+
+* feat(spec)!: reflect the command direction across a port, both halves ([f2fe258](https://github.com/ReventlessDev/reventless-core/commit/f2fe258d195b74f4a61488edee305665341020ea))
+* feat(spec)!: read the port's translation table off the mapping's arms ([956348a](https://github.com/ReventlessDev/reventless-core/commit/956348a9fcb256cfff9db51809bdc27d73360e6c))
+* feat(spec)!: keep the amount in minor units, and add times and allocate ([6ff6308](https://github.com/ReventlessDev/reventless-core/commit/6ff630875f9b126b2f87b980a4dbb56582f8aebe))
+* feat(spec)!: hold a money amount in the currency's own units ([94d3bba](https://github.com/ReventlessDev/reventless-core/commit/94d3bbaf0c47a639c20de6847c4615070ad51b38))
+
+### BREAKING CHANGES
+
+* `ExtensionPointMapping.Mapping` gains `acceptedCommands` and
+`ExtensionMapping.Mapping` gains `issuedCommands`; both are derived, so a
+mapping the ppx can read needs no source change, and one it cannot names itself
+at compile time. Definitions persisted before the two new def fields must be
+re-emitted before a consumer can read them as present — and until then they
+decode as None, which means unknown, not "issues nothing".
+* `ExtensionPointMapping.Mapping` requires `publishedEvents` and
+`ExtensionMapping.Mapping` requires `handledEvents`; the ppx injects both for
+mappings it can read, so app code must build against the matching ppx. Plugin
+definitions persisted before the new fields must be re-emitted before a consumer
+reads them as present.
+* reverts the wire shape to whole minor units, so a log written
+against the intervening commit reads a hundredfold low. Nothing released carried
+the decimal form.
+* stored amounts do not migrate. A log written before this holds
+minor units and now decodes a hundredfold high, cleanly and without complaint —
+a log that has to survive needs an upcaster written before this is deployed, and
+a demo log needs discarding and reseeding. A stored currency outside the ten no
+longer decodes; admit it in the generator or migrate the data.
+
+
+
 # 3.0.0-alpha.123 (2026-08-23)
 
 ### Features

@@ -3,6 +3,31 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.251 (2026-08-27)
+
+* feat(spec)!: reflect the command direction across a port, both halves ([f2fe258](https://github.com/ReventlessDev/reventless-core/commit/f2fe258d195b74f4a61488edee305665341020ea))
+* feat(spec)!: drop the plugin protocol's reconnect event, which nothing published ([7549db6](https://github.com/ReventlessDev/reventless-core/commit/7549db6aac6ad3f94dbb8d72dac4b4e783756ad1))
+* feat(spec)!: read the port's translation table off the mapping's arms ([956348a](https://github.com/ReventlessDev/reventless-core/commit/956348a9fcb256cfff9db51809bdc27d73360e6c))
+
+### BREAKING CHANGES
+
+* `ExtensionPointMapping.Mapping` gains `acceptedCommands` and
+`ExtensionMapping.Mapping` gains `issuedCommands`; both are derived, so a
+mapping the ppx can read needs no source change, and one it cannot names itself
+at compile time. Definitions persisted before the two new def fields must be
+re-emitted before a consumer can read them as present — and until then they
+decode as None, which means unknown, not "issues nothing".
+* `PluginExtensionPointSpec.event` no longer declares
+`PluginReconnected`. An extension matching on it was matching an event it could
+never receive; drop the arm.
+* `ExtensionPointMapping.Mapping` requires `publishedEvents` and
+`ExtensionMapping.Mapping` requires `handledEvents`; the ppx injects both for
+mappings it can read, so app code must build against the matching ppx. Plugin
+definitions persisted before the new fields must be re-emitted before a consumer
+reads them as present.
+
+
+
 # 3.0.0-alpha.250 (2026-08-23)
 
 ### Bug Fixes

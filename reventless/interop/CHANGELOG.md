@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.34 (2026-08-27)
+
+* feat(spec)!: drop the plugin protocol's reconnect event, which nothing published ([7549db6](https://github.com/ReventlessDev/reventless-core/commit/7549db6aac6ad3f94dbb8d72dac4b4e783756ad1))
+
+### BREAKING CHANGES
+
+* `PluginExtensionPointSpec.event` no longer declares
+`PluginReconnected`. An extension matching on it was matching an event it could
+never receive; drop the arm.
+
+
+
 # 3.0.0-alpha.33 (2026-08-21)
 
 ### Bug Fixes
