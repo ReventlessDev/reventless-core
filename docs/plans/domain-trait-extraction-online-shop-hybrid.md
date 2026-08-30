@@ -155,9 +155,9 @@ only *scanning* does — so it moves ahead of the seam work.
 
 1. **Geocoding transplant** — [trait-address-geocoding.md](./trait-address-geocoding.md).
    Calibrates the scaffold/conformance mechanics on the already-correct specimen, and depends on
-   no core change. ⚠️ Sequence its strip/transplant steps after
-   [customer-address-backend-geocoding.md](./customer-address-backend-geocoding.md) step 10
-   lands — both rewrite the same files.
+   no core change. **[2026-08-30] No longer gated** —
+   [customer-address-backend-geocoding.md](./customer-address-backend-geocoding.md) is complete and
+   deployed, so nothing else is writing to the geocoding path.
 2. **Part 3 verification** (an afternoon): confirm the generator's dependency arm resolves a
    trait package's `src/capabilities.json`; extend only if it does not.
 3. **Attachment set** — [trait-file-attachment.md](./trait-file-attachment.md) Part A. No

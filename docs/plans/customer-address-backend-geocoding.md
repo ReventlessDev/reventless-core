@@ -1,37 +1,36 @@
 # Plan: an address is entered once, and the backend finds the point
 
 **Date:** 2026-08-03
-**Status:** IN PROGRESS — steps 1–9 **built, deployed and proven end to end**; **step 10 is now built
-in both repos** (the platform-API geocode field, its AWS + local resolvers, the UI client, and every
-deletion) and awaits only the coordinated UI release + deploy D9 sequenced — see [the step 10
-round](#the-step-10-round-the-client-door-opens-and-the-function-url-closes). A customer registered
-with nothing but a plain address gets the right pin,
-with no map opened — see [the proving deploy](#the-proving-deploy-2-the-pin-appears). Full suite
-301 suites / 2726 tests, all passing. **D9 is resolved** (two callers, two seams) and **half 1 is
-built**: the geocoder reaches `translate` as an injected capability calling the SDK, not an HTTP
-client, and the backend no longer touches the public Function URL. **D3 is now calibrated against the
-live Esri index** — the shipped `0.8`/`0.1` declined correct addresses at a 1-in-4 rate and is
-replaced by `0.97`/`0.01`; see [the measurement
-round](#the-measurement-round-d3-calibrated-against-a-real-index). Step 7's fast path is
-**built, deployed, and proven end to end** — a real address was geocoded to the right point and
-`LocationSet` was appended to the aggregate, which closes steps 1–7 against live infrastructure ([the
-run](#the-end-to-end-run-the-loop-closes-and-the-last-hop-drops-the-answer)). Two gaps remain between
-that and a visible pin, both found by running it and both wider than this feature: the read model
-dropped the event because `meta.service` named the slice rather than its target (blocker 7 — **fixed,
-awaiting a deploy**), and [the retry sweep D4 relies on has no
-caller](#the-proving-deploy-the-wiring-is-confirmed-on-real-infrastructure-and-the-sweep-does-not-exist)
-(blocker 6 — open). Checking the deployed stack turned up five
-blockers, none of them in the plugin code — the stale composition root (`c05641014`); the AWS
-runtime's inability to feed an outbound slice from an aggregate (fixed, confirmed live: the Lambda
-carries an enabled event-source mapping on `CustomerAggrEventLog`); a false-positive DCB validation
-error; a `phase1` shape mismatch that had been crashing **every** outbound slice on AWS since step 1;
-and a publish path that had never once run — no IAM grant, hardwired to the wrong queue, wrong SQS
-flavor. **All five are now closed in code**, the last verified by `pulumi preview` against the real
-stack (routing, grant, flavor, and no replacements); the next deploy is the end-to-end proof. See
-[the deploy round](#the-deploy-round-step-7s-wiring-works-and-two-things-behind-it-do-not). Step 10
-waits on a UI release.
+**Status:** ✅ **COMPLETE — all ten steps built, deployed and verified on the live `alpha` stack.**
+Closed 2026-08-30. The status this replaced had gone stale: it still described step 10 as awaiting a
+release and deploy, and blocker 6 as open, both of which had been resolved by deploys that ran while
+nobody updated this line.
+
+Verified read-only against the deployed stack on 2026-08-30:
+
+| Claim | Evidence |
+|---|---|
+| step 10 deployed — the client door open, the Function URL closed | the `geocoderEndpoint` export is **absent** from the stack's 41 outputs and no Function URL resource remains; only `geocoderPlaceIndex` (`online-shop-geocoder`) is left, which the resolver still needs |
+| deployed from the branch tip | `deploymentMetadata.gitSha = 989bd1c36`, `2026-08-27T14:48:44Z`, actor `github-actions[bot]` — the current head of `alpha` |
+| **blocker 6 closed** — the sweep has a caller *and* a schedule | `builtSlice.sweep` + `runSweeps` exist for a scheduled invocation carrying no records, the entry point reloads unfinished TODO rows from the view table on a cold container, and EventBridge rules `alpha-AllAutomationSlicesSweep-*` are ENABLED at `rate(5 minutes)` |
+| blocker 7 closed | fixed in code and carried by the deploys since |
+
+Two durable results worth keeping visible, because other work cites them:
+
+- **D9 is resolved** — geocoding copies the object store's two-door shape. The backend reaches
+  `translate` as an injected capability calling the SDK, not an HTTP client; the browser reaches it
+  through the platform API's `Query.geocode`.
+- **D3 is calibrated against the live Esri index** — the shipped `0.8`/`0.1` declined correct
+  addresses at a 1-in-4 rate and is replaced by `0.97`/`0.01`; see [the measurement
+  round](#the-measurement-round-d3-calibrated-against-a-real-index).
+
+⚠️ Noted while verifying, not diagnosed: the live account carries **two** of each scheduled rule
+(`alpha-AllAutomationSlicesSweep-0109c4f` and `-abb7702`, and two heartbeats per plugin). Either two
+estates share the region or a prior deploy left orphans. Worth a look on its own; it does not affect
+anything this plan built.
+
 See [Build log](#build-log) at the foot for what landed and what the build taught that the plan had
-wrong.
+wrong, and the rounds below for the full history.
 **Repos:** reventless-core. A UI-repo change is *anticipated* (D7) but not required by this plan and
 not scheduled here.
 **Builds on:** [semantic-geo-point.md](./semantic-geo-point.md) (the declared point) and

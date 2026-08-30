@@ -114,13 +114,14 @@ Three of the four assertions already exist as example GWTs in
 own tarball into a scratch copy of the example and builds (the pack-and-install check — with a Shape
 A package this is the only thing that proves the boundary is real, since there is no linked code).
 
-## 6. Interference — resolve before starting
+## 6. Interference — none; cleared 2026-08-30
 
-🚨 `customer-address-backend-geocoding.md` is **IN PROGRESS**: steps 1–9 are deployed, and **step 10
-is built in both repos and awaiting a coordinated UI release plus deploy.** G4/G5 strip and rewrite
-the same files. Starting before step 10 lands puts two workstreams on one code path.
+`customer-address-backend-geocoding.md` was the one workstream competing for these files, and it is
+**complete**: all ten steps are deployed and verified on the live `alpha` stack. Nothing else is
+writing to the geocoding path, so **G1–G6 can run straight through.**
 
-**Sequence G4 onward after step 10 completes.** G1–G3 are additive and can run in parallel with it.
+What this plan takes from it, unchanged: the implementation itself, and D3's `0.97`/`0.01`
+calibration against the live Esri index. Neither is re-decided here.
 
 ## 7. Risks
 
