@@ -52,7 +52,7 @@ function project(param) {
 
 let Spec;
 
-let moduleUrl = "@reventlessdev/online-shop-hybrid-catalog/src/Product/StateViewSliceStream/ProductDemand_Projection.res.mjs";
+let moduleUrl = "@reventlessdev/online-shop-hybrid-catalog/src/ProductDemand/StateViewSliceStream/ProductDemand_Projection.res.mjs";
 
 export {
   Spec,

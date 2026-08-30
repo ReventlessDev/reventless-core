@@ -53,7 +53,7 @@ let name = "RecordProductDemand";
 
 let Id;
 
-let moduleUrl = "@reventlessdev/online-shop-dcb-catalog/src/Product/StateChangeSlice/RecordProductDemand.res.mjs";
+let moduleUrl = "@reventlessdev/online-shop-dcb-catalog/src/ProductDemand/StateChangeSlice/RecordProductDemand.res.mjs";
 
 let readConsistency = "EscalateOnRetry";
 

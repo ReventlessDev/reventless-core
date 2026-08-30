@@ -306,7 +306,7 @@ As with the aggregate-based approach, `Order` references products by `ProductId`
 
 ## Implementation
 
-The following walkthrough uses the **Catalog** Plugin from `examples/online-shop-dcb/catalog/` — the `Product` chapter with its StateChangeSlices, StateViewSlices, the `ProductDemand` view for demand tracking, the `Products_ExtensionPoint`, the `Orders_Extension`, and the generated `Plugin` that wires everything together.
+The following walkthrough uses the **Catalog** Plugin from `examples/online-shop-dcb/catalog/` — the `Product` chapter with its StateChangeSlices and StateViewSlices, the `ProductDemand` chapter that tracks demand, the `Products_ExtensionPoint`, the `Orders_Extension`, and the generated `Plugin` that wires everything together.
 
 There is **no hand-written event-log spec file**. In the DCB approach the plugin's event log is simply the union of the events declared by its slices — each slice owns the events it produces (`event`) and the events it reads (`consumedEvent`). The framework assembles the shared log from these declarations. Every slice is **split** into a spec file (`@@reventless.spec`, the types) and a body file (`_Behavior.res`, `_Projection.res`, `_Translation.res`, or `_Automation.res`, the logic). Because the files live inside a `*Slice/` folder, `@@reventless.spec` automatically applies `@s.matches(Reventless.DcbTag.string)` to every `*Id` field — you never write the tag annotation by hand.
 
@@ -445,7 +445,7 @@ let decide = (state, command) =>
 `RecordProductDemand` is not called by UI clients. It is dispatched internally by the `Orders_Extension` whenever Ordering's Extension Point emits an `ItemOrdered` or `ItemOrderCancelled` event. The decision state tracks which order IDs have already been recorded to make the operation idempotent. Because this slice is the **target of an Extension**, its produced events mark `productId` with `@partitionTag` so the framework can derive the FIFO grouping id from the command.
 
 ```rescript
-// Product/StateChangeSlice/RecordProductDemand.res
+// ProductDemand/StateChangeSlice/RecordProductDemand.res
 @@reventless.spec
 
 @schema
@@ -474,7 +474,7 @@ type event =
 ```
 
 ```rescript
-// Product/StateChangeSlice/RecordProductDemand_Behavior.res
+// ProductDemand/StateChangeSlice/RecordProductDemand_Behavior.res
 @@reventless.behavior
 
 type state = {recordedOrderIds: array<string>}
@@ -558,7 +558,7 @@ let project = ({event}) =>
 A StateViewSlice can consume events from multiple chapters in the same shared log. `ProductDemand` reads both `ProductAdded` (to initialise the entry with the product name) and the demand events (to maintain the order count). `UpdateWithDefault` seeds the row on first sight and folds in later updates:
 
 ```rescript
-// Product/StateViewSlice/ProductDemand.res
+// ProductDemand/StateViewSlice/ProductDemand.res
 @@reventless.spec
 
 @schema
@@ -572,7 +572,7 @@ type consumedEvent =
 ```
 
 ```rescript
-// Product/StateViewSlice/ProductDemand_Projection.res
+// ProductDemand/StateViewSlice/ProductDemand_Projection.res
 @@reventless.projection
 
 let project = ({event}) =>

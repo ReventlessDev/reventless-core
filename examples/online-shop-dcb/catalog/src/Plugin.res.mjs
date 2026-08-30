@@ -7,7 +7,7 @@ import * as AddProduct$CatalogPlugin from "./Product/StateChangeSlice/AddProduct
 import * as Categories$CatalogPlugin from "./Category/StateViewSlice/Categories.res.mjs";
 import * as AddCategory$CatalogPlugin from "./Category/StateChangeSlice/AddCategory.res.mjs";
 import * as ImportProduct$CatalogPlugin from "./Product/InboundTranslationSlice/ImportProduct.res.mjs";
-import * as ProductDemand$CatalogPlugin from "./Product/StateViewSlice/ProductDemand.res.mjs";
+import * as ProductDemand$CatalogPlugin from "./ProductDemand/StateViewSlice/ProductDemand.res.mjs";
 import * as ImportProducts$CatalogPlugin from "./Task/ImportProducts.res.mjs";
 import * as RenameCategory$CatalogPlugin from "./Category/StateChangeSlice/RenameCategory.res.mjs";
 import * as ArchiveCategory$CatalogPlugin from "./Category/StateChangeSlice/ArchiveCategory.res.mjs";
@@ -17,7 +17,7 @@ import * as ChangeProductName$CatalogPlugin from "./Product/StateChangeSlice/Cha
 import * as ChangeProductPrice$CatalogPlugin from "./Product/StateChangeSlice/ChangeProductPrice.res.mjs";
 import * as AddProduct_Behavior$CatalogPlugin from "./Product/StateChangeSlice/AddProduct_Behavior.res.mjs";
 import * as Products_Projection$CatalogPlugin from "./Product/StateViewSlice/Products_Projection.res.mjs";
-import * as RecordProductDemand$CatalogPlugin from "./Product/StateChangeSlice/RecordProductDemand.res.mjs";
+import * as RecordProductDemand$CatalogPlugin from "./ProductDemand/StateChangeSlice/RecordProductDemand.res.mjs";
 import * as AddCategory_Behavior$CatalogPlugin from "./Category/StateChangeSlice/AddCategory_Behavior.res.mjs";
 import * as Orders_ExtensionPoint$OrderingSpec from "@reventlessdev/online-shop-dcb-ordering-spec/src/Orders_ExtensionPoint.res.mjs";
 import * as Categories_Projection$CatalogPlugin from "./Category/StateViewSlice/Categories_Projection.res.mjs";
@@ -25,12 +25,12 @@ import * as Products_ExtensionPoint$CatalogSpec from "@reventlessdev/online-shop
 import * as RenameCategory_Behavior$CatalogPlugin from "./Category/StateChangeSlice/RenameCategory_Behavior.res.mjs";
 import * as ArchiveCategory_Behavior$CatalogPlugin from "./Category/StateChangeSlice/ArchiveCategory_Behavior.res.mjs";
 import * as ChangeProductDescription$CatalogPlugin from "./Product/StateChangeSlice/ChangeProductDescription.res.mjs";
-import * as ProductDemand_Projection$CatalogPlugin from "./Product/StateViewSlice/ProductDemand_Projection.res.mjs";
+import * as ProductDemand_Projection$CatalogPlugin from "./ProductDemand/StateViewSlice/ProductDemand_Projection.res.mjs";
 import * as ImportProduct_Translation$CatalogPlugin from "./Product/InboundTranslationSlice/ImportProduct_Translation.res.mjs";
 import * as ChangeProductName_Behavior$CatalogPlugin from "./Product/StateChangeSlice/ChangeProductName_Behavior.res.mjs";
 import * as ChangeProductPrice_Behavior$CatalogPlugin from "./Product/StateChangeSlice/ChangeProductPrice_Behavior.res.mjs";
 import * as CategoryActivity_Projections$CatalogPlugin from "./CategoryActivity/ReadModel/CategoryActivity_Projections.res.mjs";
-import * as RecordProductDemand_Behavior$CatalogPlugin from "./Product/StateChangeSlice/RecordProductDemand_Behavior.res.mjs";
+import * as RecordProductDemand_Behavior$CatalogPlugin from "./ProductDemand/StateChangeSlice/RecordProductDemand_Behavior.res.mjs";
 import * as Products_ExtensionPointMapping$CatalogPlugin from "./ExtensionPoint/Products_ExtensionPointMapping.res.mjs";
 import * as ChangeProductDescription_Behavior$CatalogPlugin from "./Product/StateChangeSlice/ChangeProductDescription_Behavior.res.mjs";
 
@@ -353,7 +353,7 @@ function Make(Platform) {
     ],
     [
       "ProductDemand",
-      "Product"
+      "ProductDemand"
     ],
     [
       "Products",
@@ -361,7 +361,7 @@ function Make(Platform) {
     ],
     [
       "RecordProductDemand",
-      "Product"
+      "ProductDemand"
     ],
     [
       "RenameCategory",

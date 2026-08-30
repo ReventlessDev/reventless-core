@@ -69,7 +69,7 @@ let Id;
 
 let subIdConfig;
 
-let moduleUrl = "@reventlessdev/online-shop-hybrid-catalog/src/Product/StateViewSliceStream/ProductDemand.res.mjs";
+let moduleUrl = "@reventlessdev/online-shop-hybrid-catalog/src/ProductDemand/StateViewSliceStream/ProductDemand.res.mjs";
 
 let visibility = "Public";
 

@@ -965,7 +965,8 @@ The `project` function uses the same operations as aggregate projections, but re
 ```
 src/Product/StateViewSliceStream/
 ├── Products.res                  // Spec — identical shape to a StateViewSlice spec
-├── Products_Projection.res
+└── Products_Projection.res
+src/ProductDemand/StateViewSliceStream/
 ├── ProductDemand.res
 └── ProductDemand_Projection.res
 ```

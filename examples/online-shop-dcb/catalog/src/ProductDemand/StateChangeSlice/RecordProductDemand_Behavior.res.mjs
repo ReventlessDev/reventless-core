@@ -56,7 +56,7 @@ function decide(state, command) {
 
 let Spec;
 
-let moduleUrl = "@reventlessdev/online-shop-dcb-catalog/src/Product/StateChangeSlice/RecordProductDemand_Behavior.res.mjs";
+let moduleUrl = "@reventlessdev/online-shop-dcb-catalog/src/ProductDemand/StateChangeSlice/RecordProductDemand_Behavior.res.mjs";
 
 export {
   Spec,

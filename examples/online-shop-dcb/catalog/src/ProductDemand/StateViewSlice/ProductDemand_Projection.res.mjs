@@ -47,7 +47,7 @@ function project(param) {
 
 let Spec;
 
-let moduleUrl = "@reventlessdev/online-shop-dcb-catalog/src/Product/StateViewSlice/ProductDemand_Projection.res.mjs";
+let moduleUrl = "@reventlessdev/online-shop-dcb-catalog/src/ProductDemand/StateViewSlice/ProductDemand_Projection.res.mjs";
 
 export {
   Spec,

@@ -7,7 +7,7 @@ import * as AddProduct$CatalogPlugin from "./Product/StateChangeSlice/AddProduct
 import * as Categories$CatalogPlugin from "./Category/StateViewSliceStream/Categories.res.mjs";
 import * as AddCategory$CatalogPlugin from "./Category/StateChangeSlice/AddCategory.res.mjs";
 import * as ImportProduct$CatalogPlugin from "./Product/InboundTranslationSlice/ImportProduct.res.mjs";
-import * as ProductDemand$CatalogPlugin from "./Product/StateViewSliceStream/ProductDemand.res.mjs";
+import * as ProductDemand$CatalogPlugin from "./ProductDemand/StateViewSliceStream/ProductDemand.res.mjs";
 import * as ArchiveProduct$CatalogPlugin from "./Product/StateChangeSlice/ArchiveProduct.res.mjs";
 import * as ImportProducts$CatalogPlugin from "./Task/ImportProducts.res.mjs";
 import * as RenameCategory$CatalogPlugin from "./Category/StateChangeSlice/RenameCategory.res.mjs";
@@ -31,7 +31,7 @@ import * as ArchiveProduct_Behavior$CatalogPlugin from "./Product/StateChangeSli
 import * as RenameCategory_Behavior$CatalogPlugin from "./Category/StateChangeSlice/RenameCategory_Behavior.res.mjs";
 import * as ArchiveCategory_Behavior$CatalogPlugin from "./Category/StateChangeSlice/ArchiveCategory_Behavior.res.mjs";
 import * as ChangeProductDescription$CatalogPlugin from "./Product/StateChangeSlice/ChangeProductDescription.res.mjs";
-import * as ProductDemand_Projection$CatalogPlugin from "./Product/StateViewSliceStream/ProductDemand_Projection.res.mjs";
+import * as ProductDemand_Projection$CatalogPlugin from "./ProductDemand/StateViewSliceStream/ProductDemand_Projection.res.mjs";
 import * as ImportProduct_Translation$CatalogPlugin from "./Product/InboundTranslationSlice/ImportProduct_Translation.res.mjs";
 import * as UnarchiveProduct_Behavior$CatalogPlugin from "./Product/StateChangeSlice/UnarchiveProduct_Behavior.res.mjs";
 import * as ChangeProductName_Behavior$CatalogPlugin from "./Product/StateChangeSlice/ChangeProductName_Behavior.res.mjs";
@@ -464,7 +464,7 @@ function Make(Platform) {
     ],
     [
       "ProductDemand",
-      "Product"
+      "ProductDemand"
     ],
     [
       "Products",

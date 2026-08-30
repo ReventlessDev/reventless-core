@@ -43,7 +43,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     ~inboundTranslationSlices=[module(ImportProductSlice)],
     ~extensions=[module(Orders_Extension)],
     ~extensionPoints=[module(Products_ExtensionPointMapping)],
-    ~componentChapters=Dict.fromArray([("AddCategory", "Category"), ("AddProduct", "Product"), ("ArchiveCategory", "Category"), ("ArchiveProduct", "Product"), ("Categories", "Category"), ("ChangeCategoryImage", "Category"), ("ChangeProductDescription", "Product"), ("ChangeProductImage", "Product"), ("ChangeProductName", "Product"), ("ChangeProductPrice", "Product"), ("DiscontinueProduct", "Product"), ("ImportProduct", "Product"), ("ProductDemand", "Product"), ("Products", "Product"), ("RecordProductDemand", "ProductDemand"), ("RenameCategory", "Category"), ("UnarchiveCategory", "Category"), ("UnarchiveProduct", "Product")]),
+    ~componentChapters=Dict.fromArray([("AddCategory", "Category"), ("AddProduct", "Product"), ("ArchiveCategory", "Category"), ("ArchiveProduct", "Product"), ("Categories", "Category"), ("ChangeCategoryImage", "Category"), ("ChangeProductDescription", "Product"), ("ChangeProductImage", "Product"), ("ChangeProductName", "Product"), ("ChangeProductPrice", "Product"), ("DiscontinueProduct", "Product"), ("ImportProduct", "Product"), ("ProductDemand", "ProductDemand"), ("Products", "Product"), ("RecordProductDemand", "ProductDemand"), ("RenameCategory", "Category"), ("UnarchiveCategory", "Category"), ("UnarchiveProduct", "Product")]),
   )
 
   let make = () =>

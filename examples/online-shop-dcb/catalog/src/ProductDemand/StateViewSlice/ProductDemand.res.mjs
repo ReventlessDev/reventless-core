@@ -34,7 +34,7 @@ let Id;
 
 let subIdConfig;
 
-let moduleUrl = "@reventlessdev/online-shop-dcb-catalog/src/Product/StateViewSlice/ProductDemand.res.mjs";
+let moduleUrl = "@reventlessdev/online-shop-dcb-catalog/src/ProductDemand/StateViewSlice/ProductDemand.res.mjs";
 
 let authorization = "AllowAuthenticated";
 
