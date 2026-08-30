@@ -3,7 +3,7 @@
 **Date:** 2026-08-30
 **Repo:** reventless-core — a new package under `traits/`, and the `online-shop-hybrid` ordering
 plugin it is extracted from.
-**Status:** Proposed. Blocked only on the interference in §6.
+**Status:** In progress — G1–G5 landed 2026-08-30; G6 is its own commit, next.
 **Builds on:**
 [customer-address-backend-geocoding.md](./customer-address-backend-geocoding.md) — **the plan that
 built this feature.** Steps 1–9 deployed and proven; its D3 round calibrated `0.97`/`0.01` against
@@ -113,6 +113,39 @@ Three of the four assertions already exist as example GWTs in
 **Exit:** event-level behaviour identical to today; conformance green; the package installs from its
 own tarball into a scratch copy of the example and builds (the pack-and-install check — with a Shape
 A package this is the only thing that proves the boundary is real, since there is no linked code).
+
+**[2026-08-30] G1–G5 done.**
+
+- **G1** — `traits/address-geocoding`, `@reventlessdev/trait-address-geocoding`, namespace
+  `TraitAddressGeocoding`. `files` allowlist, in-source `.res.mjs`, no ppx (it declares no schema),
+  depends on `spec` and `gwt` only. `traits/*` is a Lerna and pnpm workspace folder.
+- **G2** — `src/AddressGeocoding.res`: one flat `module type Binding` over an abstract `subject`
+  (`subjectText` is what the geocoder and the TODO key see), plus `type posture = WritesBack |
+  Observes` (R4). The binding carries the host's constructors for the five events/commands, the
+  slice spec + `translate`, its triggers, and `standsDownOn` — the pair-supplying event names.
+- **G3** — `src/AddressGeocoding_Conformance.res`: `Make(Binding).register()` registers one
+  `describe` with 13 assertions (7 aggregate, 6 slice) built on `Behavior_GWT.MakeFromAggregate` and
+  `OutboundTranslation_GWT.Make`. The stand-down is the contract check of §4: the consumed set
+  decoded from `consumedEventSchema` must equal the binding's triggers and contain none of
+  `standsDownOn`. The scaffold is five hand-applied `templates/*.res.tpl` files — no engine.
+- **G4/G5** — under Shape A the strip and the transplant produce the same source: the templates
+  were transcribed from the working graft, so re-applying them to `Customer` is a no-op diff. What
+  the transplant *adds* is the binding, `ordering/tests/Customer/AddressGeocodingConformance_GWT.res`,
+  and the suite is green against `Customer`. The honest reading: the specimen validated the
+  contract and the runner; the templates are validated only by transcription until R1's second host.
+- **Exit check** — `scripts/check-trait-pack.mjs` (`pnpm run check:traits`, in CI after the unit
+  tests): packs the trait, extracts the tarball in place of the workspace link, copies the ordering
+  plugin beside it and runs `rescript build`. Passes; the tarball ships no `lib/`.
+
+**G6 — to delete** (each now asserted by the suite): in `Customer_GWT.res` — "SetLocation for an
+address already resolved is idempotent", "SetLocation after an address change is not swallowed",
+"SetLocation for a superseded address is dropped as stale", "MarkAddressUnresolvable for a
+superseded address is dropped as stale", "MarkAddressUnresolvable records the verdict"; in
+`GeocodeCustomerAddress_GWT.res` — the two `collect` trigger cases, "translate: an unavailable
+geocoder leaves the TODO Pending", "an unreachable geocoder leaves the TODO Pending for retry",
+"no match completes the TODO with a verdict rather than retrying". Keep the ambiguity-reason case
+(it asserts core's wording, not the graft), the correction case (`SetAddressLocation`) and the
+`CustomerNotFound` cases (host rules).
 
 ## 6. Interference — none; cleared 2026-08-30
 

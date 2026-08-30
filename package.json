@@ -52,6 +52,7 @@
     "test": "NODE_OPTIONS='--experimental-vm-modules --no-warnings --max-old-space-size=4096' jest --silent",
     "test:file": "NODE_OPTIONS='--experimental-vm-modules --no-warnings --max-old-space-size=4096' jest --testPathPattern",
     "test:projects": "node ./scripts/check-jest-projects.mjs",
+    "check:traits": "node ./scripts/check-trait-pack.mjs",
   "check:graphql": "node ./scripts/CheckGraphqlContract.res.mjs",
   "check:graphql:update": "node ./scripts/CheckGraphqlContract.res.mjs --update",
     "check:resolvers": "node ./scripts/check-appsync-resolvers.mjs",

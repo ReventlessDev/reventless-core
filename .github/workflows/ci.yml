@@ -101,6 +101,10 @@ jobs:
           if echo "$CHANGED" | grep -q "^examples/online-shop-hybrid/ordering/"; then
             PROJECTS="$PROJECTS --selectProjects online-shop-hybrid-ordering"
           fi
+          # Traits run their conformance suites inside their specimen hosts
+          if echo "$CHANGED" | grep -q "^traits/"; then
+            PROJECTS="$PROJECTS --selectProjects online-shop-hybrid-ordering"
+          fi
 
           # In-memory changes also affect all example tests (they depend on it)
           if echo "$CHANGED" | grep -q "^reventless/local/"; then
@@ -198,6 +202,14 @@ jobs:
       - name: Skip tests (no affected projects)
         if: steps.affected.outputs.select == 'none'
         run: echo "No test-mapped packages changed — skipping tests"
+
+      # A trait is a scaffold plus a conformance suite, so nothing links against it
+      # at build time; pack each one and build its specimen host from the tarball,
+      # which is the only thing that proves the package boundary is real. After the
+      # unit tests: the scratch build shares the workspace's dependency outputs.
+      - name: Check trait packages install from their tarballs
+        if: steps.build.outcome == 'success'
+        run: pnpm run check:traits
 
       - name: Run integration tests
         if: success() && steps.affected.outputs.select != 'none'

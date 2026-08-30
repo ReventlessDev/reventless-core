@@ -3,6 +3,7 @@ packages:
   - 'rescript/*'
   - 'reventless/*'
   - 'examples/**'
+  - 'traits/*'
 
 # pnpm 10 blocks postinstall scripts by default; allowlist the ones we need.
 # Keep this list in sync with the set of deps that ship native binaries or

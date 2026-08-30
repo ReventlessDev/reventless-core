@@ -19,9 +19,10 @@ This is a Lerna monorepo. Packages are organized by type — **always place new 
 | `rescript/` | ReScript bindings for JS/npm libraries | `rescript-uuid`, `rescript-graphql-yoga` |
 | `reventless/` | Reventless framework + extension packages | `reventless-spec`, `reventless-local` |
 | `examples/` | Example applications | `examples/online-shop-aggregates/`, `examples/online-shop-dcb/`. |
+| `traits/` | Domain traits — host contract + scaffold templates + conformance suite, grafted onto an example's aggregate | `traits/address-geocoding` |
 | `packages/` | Build tooling and documentation only | `doc` |
 
-All four folders are Lerna workspaces (`lerna.json` packages) and pnpm workspaces (declared in `pnpm-workspace.yaml`).
+All five folders are Lerna workspaces (`lerna.json` packages) and pnpm workspaces (declared in `pnpm-workspace.yaml`).
 
 ## Build Commands
 
@@ -242,6 +243,9 @@ From the codebase documentation:
 **`examples/` — Example applications:**
 - `examples/online-shop-aggregates/` — aggregate-based plugin examples
 - `examples/online-shop-dcb/` — DCB-based plugin examples
+
+**`traits/` — Domain traits (framework packages never import one; only examples do):**
+- `trait-address-geocoding` — host contract, scaffold templates and conformance suite for grafting address geocoding onto an aggregate; specimen host is `examples/online-shop-hybrid/ordering` (`Customer`). `pnpm run check:traits` packs each trait and builds its host from the tarball.
 
 **`packages/` — Build tooling and documentation:**
 - `doc` — Docusaurus documentation site

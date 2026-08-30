@@ -107,6 +107,21 @@ afternoon, not a wave. The uniform rule below still stands as the statement of i
 annotations are one producer of manifest entries; packaged declarations are the other. The
 generator treats them identically.**
 
+**[2026-08-30] Verified — read the arms, nothing to extend for Shape A.** Three facts:
+
+1. Arm 1 wins for a composition plugin: a plugin that emits its own `src/capabilities.json` never
+   unions a dependency's. The dependency arm serves *deployment roots* that install a published
+   plugin, which is not where a trait sits (a trait is a dependency of the plugin).
+2. The manifest vocabulary is `kind = ObjectStore` only; there is no *requirement* entry, so "this
+   slice needs `geocode`" cannot be declared as data today by anyone, trait or plugin — the
+   ordering plugin's manifest is `[]` although it geocodes.
+3. Under Shape A nothing is lost: the graft is scaffolded source, scanned by the host like any
+   other source. The seam only matters for a trait that ships a compiled slice, which none does.
+
+So the open item is not "union dependency fragments" but **requirement declarations in the
+manifest** (fail fast when a slice requires a capability the platform does not provision). That
+belongs with Part 1, which is where the first second capability arrives.
+
 ## Part 4 — example changes, per competency
 
 **[2026-08-30] Moved out.** Per-competency build detail now lives in its own plan, so this
@@ -137,6 +152,9 @@ distribution forms this part was written around no longer apply.
 - Packaging follows the open-source rules: `.res`/`.resi` + in-source `.res.mjs` +
   `rescript.json`, an explicit `files` allowlist, `rescript` as a pinned peerDependency, never
   `lib/`.
+- ✅ **[2026-08-30]** `scripts/check-trait-pack.mjs` (`pnpm run check:traits`) — packs each trait,
+  extracts the tarball in place of the workspace link beside a copy of its specimen host, builds.
+  In CI after the unit tests, since the scratch build shares the workspace's dependency outputs.
 - 🔑 **The pack-and-install check is required, not optional.** Workspace resolution hides exactly
   the packaging defects this repo keeps hitting — `.cmi` skew, a missing `files` allowlist, a
   tarball that omits what the consumer compiles. CI must pack each trait, install the tarball into
@@ -153,12 +171,12 @@ step 1 and unblocks the first transplant from waiting on a core release at all. 
 verification, not a build. The attachment set turns out not to need the object-store accessor —
 only *scanning* does — so it moves ahead of the seam work.
 
-1. **Geocoding transplant** — [trait-address-geocoding.md](./trait-address-geocoding.md).
+1. ✅ **[2026-08-30] G1–G5** **Geocoding transplant** — [trait-address-geocoding.md](./trait-address-geocoding.md).
    Calibrates the scaffold/conformance mechanics on the already-correct specimen, and depends on
    no core change. **[2026-08-30] No longer gated** —
    [customer-address-backend-geocoding.md](./customer-address-backend-geocoding.md) is complete and
    deployed, so nothing else is writing to the geocoding path.
-2. **Part 3 verification** (an afternoon): confirm the generator's dependency arm resolves a
+2. ✅ **[2026-08-30]** **Part 3 verification** (see the finding in Part 3): confirm the generator's dependency arm resolves a
    trait package's `src/capabilities.json`; extend only if it does not.
 3. **Attachment set** — [trait-file-attachment.md](./trait-file-attachment.md) Part A. No
    framework dependency.

@@ -29,6 +29,13 @@ This is the package behind the documentation
 `src/Plugin.res` in each plugin is **generated** by `generate-plugin src/` (a
 `prebuild` step) — it is committed but never hand-edited.
 
+The Customer aggregate's address geocoding is a graft of the
+`@reventlessdev/trait-address-geocoding` package (`traits/address-geocoding`): the
+aggregate arms, the `GeocodeCustomerAddress` slice and the `Customers` geolocation
+field follow its templates, and
+`ordering/tests/Customer/AddressGeocodingConformance_GWT.res` binds `Customer` to the
+trait's conformance suite.
+
 ## Run it locally
 
 On a fresh clone, bootstrap once from the **repo root** (creates the workspace

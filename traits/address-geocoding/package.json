@@ -1,0 +1,40 @@
+{
+  "name": "@reventlessdev/trait-address-geocoding",
+  "version": "1.0.0-alpha.0",
+  "description": "Address-geocoding domain trait: host contract, scaffold templates and conformance suite for grafting geocoding onto an aggregate",
+  "license": "Apache-2.0",
+  "files": [
+    "src/**/*.res",
+    "src/**/*.resi",
+    "src/**/*.res.mjs",
+    "templates",
+    "rescript.json",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "rescript build",
+    "start": "rescript watch",
+    "clean": "rescript clean",
+    "rebuild": "pnpm run clean && pnpm run build",
+    "test": "echo \"The conformance suite runs in its hosts; see README.md.\""
+  },
+  "dependencies": {
+    "@reventlessdev/reventless-gwt": "workspace:*",
+    "@reventlessdev/reventless-spec": "workspace:*",
+    "sury": "11.0.0-rc.2"
+  },
+  "devDependencies": {
+    "rescript": "12.3.0"
+  },
+  "peerDependencies": {
+    "rescript": "12.3.0"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ReventlessDev/reventless-core.git",
+    "directory": "traits/address-geocoding"
+  }
+}
