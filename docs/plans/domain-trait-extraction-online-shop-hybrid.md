@@ -3,10 +3,10 @@
 **Date:** 2026-08-09<br/>
 **Status:** Proposed — not started.<br/>
 **Scope:** `reventless/spec`, `reventless/aws`, `reventless/local`,
-`examples/online-shop-hybrid`. The extracted packages themselves live in an
-external repo; from this repo's perspective they are published trait packages
-on public npmjs — installable without auth, distributed as built artifacts.
-This plan covers only what core must provide and how the example changes.
+`examples/online-shop-hybrid`, and `traits/`. **[2026-08-30]** The trait packages live in this
+repo, published by this repo's release train under the same open licence as the framework — not
+in an external repo as built artifacts. This plan covers the framework seams; per-competency
+build detail is in the three plans named in Part 4.
 
 ## Why
 
@@ -30,10 +30,10 @@ maturity, and all three are in the wrong place long-term:
 A **domain trait** is the packaged form of such a bundle: host-free vocabulary
 and policy, a slice-set, a written host contract, a read-model contribution,
 and a conformance GWT suite — grafted onto a host aggregate or slice-set at
-scaffold time. Traits are not core packages: core keeps only what platforms
-broker (capability ports, adapters). The example then consumes traits exactly
-the way any external project would, which makes the example an honest test of
-the packaging instead of a private shortcut.
+scaffold time. **[2026-08-30]** Traits are not framework packages — `spec`, `core`, `aws` and
+`local` keep only what platforms broker (capability ports, adapters) — but they are packages *in
+this repo*, siblings of the examples. What keeps the example an honest test of the packaging is
+not repo distance but the pack-and-install check in Part 5.
 
 ## Part 1 — the `notify` capability (new core seam)
 
@@ -58,13 +58,24 @@ Mirror the geocoding capability end to end:
 
 ## Part 2 — the `Geocoding` module split
 
-`Capabilities.t.geocode` names `Geocoding.search`, so the *port* half of the
-module (`candidate`, `failure`, `search`) stays in spec — platforms and
-adapters need it. The *policy* half (`confidentMatch`,
-`defaultMinRelevance`, `defaultAmbiguityMargin`) is domain code by the
-domain-facts test and moves to the external address-geocoding trait package.
-Breaking spec change, acceptable at alpha; `GeocodingTest.res` policy cases
-move with the policy, port cases stay.
+🚨 **[2026-08-30] Cancelled — do not do this split.** See
+[trait-address-geocoding.md](./trait-address-geocoding.md) §1.
+
+`Capabilities.t.geocode` names `Geocoding.search`, so the *port* half stays in spec — that part
+was right. But the *policy* half must stay too. `Geolocation.ofSearch` calls `Geocoding.assess`
+and threads both thresholds, and `Geolocation.t` is a `@schema` semantic type rendered as a
+GraphQL union and read by the `Customers` read model. Moving the policy out would leave a core
+semantic type whose natural constructor lives in an optional package, and would drag
+`GeolocationTest`/`GeocodingTest` out of core with it. The stated objection — that
+provider-calibrated numbers do not belong in a provider-neutral spec — is already answered in the
+code: they are labelled arguments with defaults, so a differently-scoring provider passes its own
+pair.
+
+**This removes a breaking spec change from the workstream.** Nothing in Part 2 remains.
+
+~~Superseded: the policy half (`confidentMatch`, `defaultMinRelevance`,
+`defaultAmbiguityMargin`) is domain code by the domain-facts test and moves to the external
+address-geocoding trait package; `GeocodingTest.res` policy cases move with the policy.~~
 
 ## Part 3 — manifest contributions as data (packaged-slice seam)
 
@@ -84,87 +95,76 @@ instead of the contributing field. This also covers requirement declarations
 (a packaged slice declaring it needs `Geocoding`/`Notification`), which is
 what lets a deployment fail fast rather than at first call.
 
-Trait packages distributed as interface shims over compiled JS need the same
-seam — the shim's `external` bindings carry no reventless annotations either.
-The rule is uniform: **source annotations are one producer of manifest
-entries; packaged declarations are the other. The generator treats them
-identically.**
+**[2026-08-30] Re-scoped from *build the seam* to *verify it*.** The original justification was
+that a precompiled slice has no scannable source. Trait packages ship their sources and are
+compiled by the consumer, so they are scanned like any other package — and the generator
+(`spec/src/generator/PlatformManifests.res`) already resolves manifests in four arms, one of
+which walks the deployment root's dependencies for `<package>/src/capabilities.json`. A trait
+package shipping that file may already contribute with no core change.
 
-## Part 4 — example changes, per competency (strip, then transplant)
+**Do:** confirm the dependency arm resolves a trait package, and extend only if it does not. An
+afternoon, not a wave. The uniform rule below still stands as the statement of intent: **source
+annotations are one producer of manifest entries; packaged declarations are the other. The
+generator treats them identically.**
 
-Order within each: remove the woven-in implementation first, let the GWTs go
-red, then add the trait package and regenerate/bind — never both at once.
+## Part 4 — example changes, per competency
 
-**Geocoding** (pure relocation, no behavior change):
-- `GeocodeCustomerAddress` slice and the `Customer` location arms are
-  regenerated from the trait's scaffold bound to the host contract
-  (trigger events `Registered`/`AddressUpdated`, address field, entity id,
-  target commands). The `resolvedFrom` staleness token, both idempotency
-  guards, and the picker stand-down are asserted by the trait's conformance
-  GWT suite instead of only by example-local GWTs.
-- Acceptance: event-level behavior identical; conformance suite green against
-  the `Customer` graft.
+**[2026-08-30] Moved out.** Per-competency build detail now lives in its own plan, so this
+document stays organised by *seam* — a seam serves several traits, and describing both axes here
+duplicated each of them.
 
-**Product images** (upgrade from field to attachment set):
-- Retire the single-URL `ChangeProductImage` overwrite model. The trait owns a
-  DCB-style slice keyed by the product's entity tag: attachments with
-  `{ref, altText, position}`, a primary designation, add/remove/reorder
-  commands, lifecycle facts. `@storageRef` and `Offload` stay exactly as they
-  are — the trait sits above the plumbing, not beside it.
-- Seed data migrates: existing `imageUrl` values become the sole (primary)
-  attachment.
-- This is the first trait whose state lives entirely in trait-owned slices
-  (the host contributes only the entity tag and existence events). Whether
-  the host's commands can stay fully ignorant of trait state is the open
-  question this wave answers with code; the fallback is host-arm generation
-  as in geocoding.
+| Competency | Plan |
+|---|---|
+| Address geocoding | [trait-address-geocoding.md](./trait-address-geocoding.md) |
+| File attachment | [trait-file-attachment.md](./trait-file-attachment.md) |
+| Notification | [trait-notification.md](./trait-notification.md) |
 
-**Order confirmation** (stub → modelled competency):
-- Delete `examples/online-shop-hybrid/ordering/src/Service/EmailService.res`.
-- `SendOrderConfirmation` becomes the trait's outbound slice reading
-  `capabilities.notify`, with the retry-vs-verdict switch on the new failure
-  variant. The current version's real defect — one `catch` arm that turns
-  every failure into a retry — disappears by construction.
-- The `Order` host gains arms recording the outcome as domain facts
-  (`ConfirmationSent` / `ConfirmationFailed({reason})`, `@noApi` commands from
-  the slice, mirroring `SetLocation`/`MarkAddressUnresolvable`), and the
-  orders read model gains `confirmationStatus: Pending | Sent | Failed`.
-- The slice needs the customer's *email*, not just the id it currently mails
-  to — the collect side joins the customer's current email the same way
-  cross-slice inputs are handled elsewhere in the example; getting this shape
-  right is part of the trait's host contract, not an example hack.
+The rule those plans share, and the only thing worth restating here: within each competency,
+**remove the woven-in implementation first, let the GWTs go red, then bind the trait** — never
+both implementations at once.
 
 ## Part 5 — dependency and CI shape
 
-- `examples/online-shop-hybrid` gains dependencies on the published external
-  trait packages. Direction stays acyclic: core packages never import traits;
-  only examples do.
-- Hard constraint: every trait package the example consumes must remain
-  installable from public npmjs without a token — this repo's CI and every
-  cloned checkout must build without credentials.
-- Trait packages arrive in one of two closed forms, and only one constrains
-  this repo: packages distributed as an interface shim (visible type
-  declarations + `external` bindings over compiled JS) compile on any
-  ReScript line; packages distributed as binary artifacts (`.cmi`/`.cmj`,
-  no rebuildable source) must match the example's exact compiler version —
-  a compiler bump here is blocked until such packages republish on it.
-  Prefer depending on shim-form packages from the example for that reason.
-- Consequence: a spec-layer break now requires a traits release before the
-  example builds. The pnpm-override pin discipline applies; example pins bump
-  in the same commit as the consuming `.res` changes.
-- Example GWTs that duplicated what a conformance suite now asserts are
-  deleted, not kept in parallel — one source of truth per guard.
+**[2026-08-30] Rewritten.** The trait packages live in this repo under `traits/`, published by
+this repo's release train, so the cross-repo pin, the no-token constraint and the closed
+distribution forms this part was written around no longer apply.
+
+- `traits/*` are workspace packages, siblings of `examples/`. `examples/online-shop-hybrid`
+  depends on them like any other workspace member.
+- Direction stays acyclic and is now enforceable by inspection: **framework packages never import
+  a trait; only examples do.** A trait may depend on `spec`; nothing in `spec`, `core`, `aws` or
+  `local` may depend on a trait.
+- Packaging follows the open-source rules: `.res`/`.resi` + in-source `.res.mjs` +
+  `rescript.json`, an explicit `files` allowlist, `rescript` as a pinned peerDependency, never
+  `lib/`.
+- 🔑 **The pack-and-install check is required, not optional.** Workspace resolution hides exactly
+  the packaging defects this repo keeps hitting — `.cmi` skew, a missing `files` allowlist, a
+  tarball that omits what the consumer compiles. CI must pack each trait, install the tarball into
+  a scratch copy of the example, and build. With a scaffold-shaped trait this is the *only* thing
+  that proves the package boundary is real, because there is no linked code to fail at link time.
+- Example GWTs that duplicated what a conformance suite now asserts are deleted, not kept in
+  parallel — one source of truth per guard, and delete only after the suite is green, in its own
+  commit.
 
 ## Sequencing
 
-1. Part 1 + Part 2 in one core release (both are spec-breaking; break once).
-   Part 3 (manifest seam) rides the same release — it is additive, and every
-   transplant after the first needs it.
-2. Geocoding transplant (calibrates the scaffold/conformance mechanics on the
-   already-correct specimen).
-3. Product-image transplant (the trait-owned-slice spike; first real consumer
-   of the Part 3 seam — its declared `ObjectStore` need replaces today's
-   source-scanned entry).
-4. Confirmation transplant (depends on Part 1's port; declares its
-   notification requirement through the Part 3 seam).
-5. Full example rebuild + GWT + deploy verification on both platforms.
+**[2026-08-30] Revised.** Part 2 is cancelled, which removes the only spec-breaking change from
+step 1 and unblocks the first transplant from waiting on a core release at all. Part 3 is now a
+verification, not a build. The attachment set turns out not to need the object-store accessor —
+only *scanning* does — so it moves ahead of the seam work.
+
+1. **Geocoding transplant** — [trait-address-geocoding.md](./trait-address-geocoding.md).
+   Calibrates the scaffold/conformance mechanics on the already-correct specimen, and depends on
+   no core change. ⚠️ Sequence its strip/transplant steps after
+   [customer-address-backend-geocoding.md](./customer-address-backend-geocoding.md) step 10
+   lands — both rewrite the same files.
+2. **Part 3 verification** (an afternoon): confirm the generator's dependency arm resolves a
+   trait package's `src/capabilities.json`; extend only if it does not.
+3. **Attachment set** — [trait-file-attachment.md](./trait-file-attachment.md) Part A. No
+   framework dependency.
+4. **Part 1** (`notify` port) **+ the object-store accessor on `Capabilities.t`** in one core
+   release — both extend the same record, so break once.
+5. **Scan and retention** (trait-file-attachment Part B), then **confirmation transplant**
+   ([trait-notification.md](./trait-notification.md)) once its D1 recipient-resolution gap is
+   answered.
+6. Full example rebuild + GWT + deploy verification on both platforms.
