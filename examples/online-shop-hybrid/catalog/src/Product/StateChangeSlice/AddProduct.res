@@ -18,8 +18,8 @@ type command =
       name: string,
       description: string,
       price: Reventless.Money.t,
-      // Optional: a product may be created without an image (absent, not `""`).
-      productImage?: Reventless.UploadableImage.t,
+      // Images are attached afterwards, through `ProductImages` — a creation
+      // that also attaches would be two facts in one event.
       @ref("Categories") categoryId: string,
     })
 
@@ -35,6 +35,5 @@ type event =
       name: string,
       description: string,
       price: Reventless.Money.t,
-      productImage?: Reventless.UploadableImage.t,
       categoryId: string,
     })

@@ -3,7 +3,6 @@
 import * as Sury from "sury";
 import * as Money$Reventless from "@reventlessdev/reventless-spec/src/semantic/Money.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
-import * as UploadableImage$Reventless from "@reventlessdev/reventless-spec/src/semantic/UploadableImage.res.mjs";
 
 let externalInputSchema = Sury.$schema(s => ({
   sku: s.m(Sury.string),
@@ -20,7 +19,6 @@ let commandSchema = Sury.$schema(s => ({
   name: s.m(Sury.string),
   description: s.m(Sury.string),
   price: s.m(Money$Reventless.schema),
-  productImage: s.m(Sury.$option(UploadableImage$Reventless.forField(undefined, "productImages"))),
   categoryId: s.m(DcbTag$Reventless.string)
 }));
 

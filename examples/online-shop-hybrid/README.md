@@ -20,7 +20,7 @@ This is the package behind the documentation
 |---|---|
 | `catalog-spec/` | Catalog's public extension-point contract (`Products`) — depended on by Ordering |
 | `ordering-spec/` | Ordering's public extension-point contract (`Orders`) — depended on by Catalog |
-| `catalog/` | Catalog plugin: Category, Product, and ProductDemand DCB slices (AddProduct verifies the referenced category exists); StateView stream views; task; EP + extension |
+| `catalog/` | Catalog plugin: Category, Product, and ProductDemand DCB slices (AddProduct verifies the referenced category exists); `ProductImages` / `CategoryImages` attachment sets; StateView stream views; task; EP + extension |
 | `ordering/` | Ordering plugin: Customer aggregate; Order/CatalogProduct DCB slices; the `Customers` mixed aggregate+DCB read model (profile + order count); automation; outbound email; EP + extension |
 | `catalog-aws/`, `ordering-aws/` | AWS deployment entry points for each plugin |
 | `platform-local/` | Local dev runtime — GraphQL server + in-memory stores |
@@ -34,7 +34,9 @@ The Customer aggregate's address geocoding is a graft of the
 aggregate arms, the `GeocodeCustomerAddress` slice and the `Customers` geolocation
 field follow its templates, and
 `ordering/tests/Customer/AddressGeocodingConformance_GWT.res` binds `Customer` to the
-trait's conformance suite.
+trait's conformance suite. Likewise the catalog's `ProductImages` and `CategoryImages`
+slices are grafts of `@reventlessdev/trait-file-attachment` (`traits/file-attachment`),
+each bound to its suite in `catalog/tests/*/…Conformance_GWT.res`.
 
 ## Run it locally
 

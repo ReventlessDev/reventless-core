@@ -1,0 +1,24 @@
+{
+  "name": "@reventlessdev/trait-file-attachment",
+  "package-specs": {
+    "module": "esmodule",
+    "in-source": true
+  },
+  "namespace": "TraitFileAttachment",
+  "warnings": {
+    "error": "-44+101"
+  },
+  "sources": [
+    {
+      "dir": "src",
+      "subdirs": true
+    }
+  ],
+  "dependencies": [
+    "sury",
+    "@reventlessdev/reventless-spec",
+    "@reventlessdev/reventless-gwt"
+  ],
+  "compiler-flags": [],
+  "suffix": ".res.mjs"
+}

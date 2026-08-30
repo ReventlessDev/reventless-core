@@ -103,7 +103,7 @@ jobs:
           fi
           # Traits run their conformance suites inside their specimen hosts
           if echo "$CHANGED" | grep -q "^traits/"; then
-            PROJECTS="$PROJECTS --selectProjects online-shop-hybrid-ordering"
+            PROJECTS="$PROJECTS --selectProjects online-shop-hybrid-catalog --selectProjects online-shop-hybrid-ordering"
           fi
 
           # In-memory changes also affect all example tests (they depend on it)

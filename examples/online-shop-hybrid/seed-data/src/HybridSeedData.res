@@ -43,15 +43,22 @@ let probeViews =
 
 // ── Phases ──────────────────────────────────────────────────────────────────
 
+// Creation and the first attachment are two facts, so two commands: the uploaded
+// ref is attached after the category exists, and becomes its primary by being first.
 let seedCategories = async (categories: array<DemoData.category>, ~client: Seed.Client.t) => {
   await client->Seed.Client.sendAll(
-    categories->Array.map(c =>
-      DemoCommands.addCategory(
-        AddCategory({categoryId: c.id, name: c.name, categoryImage: ?c.categoryImage}),
-      )
-    ),
+    categories->Array.map(c => DemoCommands.addCategory(AddCategory({categoryId: c.id, name: c.name}))),
   )
-  Seed.Runner.report(`categories: ${(categories->Array.length)->Int.toString} added`)
+  let attached = categories->Array.filterMap(c =>
+    c.categoryImage->Option.map(categoryImage =>
+      DemoCommands.categoryImages(AttachCategoryImage({categoryId: c.id, categoryImage}))
+    )
+  )
+  await client->Seed.Client.sendAll(attached)
+  Seed.Runner.report(
+    `categories: ${(categories->Array.length)->Int.toString} added, ${(attached->Array.length)
+        ->Int.toString} images attached`,
+  )
 }
 
 // The store a product image lives in: the qualified `{plugin}.{store}` the
@@ -142,13 +149,23 @@ let seedProducts = async (products: array<DemoData.product>, ~client: Seed.Clien
           name: p.name,
           description: p.description,
           price: p.price,
-          productImage: ?p.productImage,
           categoryId: p.categoryId,
         }),
       )
     ),
   )
-  Seed.Runner.report(`products: ${(products->Array.length)->Int.toString} added`)
+  let attached = products->Array.filterMap(p =>
+    p.productImage->Option.map(productImage =>
+      DemoCommands.productImages(
+        AttachProductImage({productId: p.id, productImage, altText: p.name}),
+      )
+    )
+  )
+  await client->Seed.Client.sendAll(attached)
+  Seed.Runner.report(
+    `products: ${(products->Array.length)->Int.toString} added, ${(attached->Array.length)
+        ->Int.toString} images attached`,
+  )
 }
 
 // One command the domain must refuse, sent on purpose: re-adding a productId
@@ -167,7 +184,6 @@ let seedRejectedDuplicate = async (products: array<DemoData.product>, ~client: S
           name: p.name,
           description: p.description,
           price: p.price,
-          productImage: ?p.productImage,
           categoryId: p.categoryId,
         }),
       ),
@@ -222,14 +238,15 @@ let seedCatalogEdits = async (
       }),
     ),
   ])
-  // Re-image one live category, so the change path is exercised next to the
-  // rename. The ref must differ from the one AddCategory carried — changing to
-  // the same ref is the idempotent arm and appends nothing, which would leave
-  // this phase reporting work it did not do.
+  // Re-image one live category, so the set's paths are exercised next to the
+  // rename: a second image attached, then chosen as the primary. The ref must
+  // differ from the first — attaching the same ref is the idempotent arm and
+  // appends nothing, which would leave this phase reporting work it did not do.
   await client->Seed.Client.sendAll(
-    reimage->Array.map(((categoryId, categoryImage)) =>
-      DemoCommands.changeCategoryImage(ChangeCategoryImage({categoryId, categoryImage}))
-    ),
+    reimage->Array.flatMap(((categoryId, categoryImage)) => [
+      DemoCommands.categoryImages(AttachCategoryImage({categoryId, categoryImage})),
+      DemoCommands.categoryImages(SetPrimaryCategoryImage({categoryId, categoryImage})),
+    ]),
   )
 
   let archived = categories->Array.filter(c => c.archive)

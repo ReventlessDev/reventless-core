@@ -57,8 +57,7 @@ function dateRange(r) {
 }
 
 function addCategory(command) {
-  let categoryImage = command.categoryImage;
-  let base = [
+  return Seed$ReventlessSeed.mutation(`Catalog_` + "AddCategory", [
     [
       "categoryId",
       {
@@ -73,34 +72,97 @@ function addCategory(command) {
         _0: command.name
       }
     ]
-  ];
-  let image = categoryImage !== undefined ? [[
-        "categoryImage",
-        {
-          TAG: "String",
-          _0: categoryImage
-        }
-      ]] : [];
-  return Seed$ReventlessSeed.mutation(`Catalog_` + "AddCategory", base.concat(image));
+  ]);
 }
 
-function changeCategoryImage(command) {
-  return Seed$ReventlessSeed.mutation(`Catalog_` + "ChangeCategoryImage", [
-    [
-      "categoryId",
-      {
-        TAG: "Id",
-        _0: command.categoryId
-      }
-    ],
-    [
-      "categoryImage",
-      {
-        TAG: "String",
-        _0: command.categoryImage
-      }
-    ]
-  ]);
+function categoryImages(command) {
+  switch (command.TAG) {
+    case "AttachCategoryImage" :
+      let altText = command.altText;
+      let base = [
+        [
+          "categoryId",
+          {
+            TAG: "Id",
+            _0: command.categoryId
+          }
+        ],
+        [
+          "categoryImage",
+          {
+            TAG: "String",
+            _0: command.categoryImage
+          }
+        ]
+      ];
+      let alt = altText !== undefined ? [[
+            "altText",
+            {
+              TAG: "String",
+              _0: altText
+            }
+          ]] : [];
+      return Seed$ReventlessSeed.mutation(`Catalog_` + "AttachCategoryImage", base.concat(alt));
+    case "SetPrimaryCategoryImage" :
+      return Seed$ReventlessSeed.mutation(`Catalog_` + "SetPrimaryCategoryImage", [
+        [
+          "categoryId",
+          {
+            TAG: "Id",
+            _0: command.categoryId
+          }
+        ],
+        [
+          "categoryImage",
+          {
+            TAG: "String",
+            _0: command.categoryImage
+          }
+        ]
+      ]);
+    case "RemoveCategoryImage" :
+    case "SetCategoryImageAltText" :
+      throw {
+        RE_EXN_ID: Seed$ReventlessSeed.Failed,
+        _1: "the seed does not drive RemoveCategoryImage / SetCategoryImageAltText",
+        Error: new Error()
+      };
+  }
+}
+
+function productImages(command) {
+  if (command.TAG === "AttachProductImage") {
+    let altText = command.altText;
+    let base = [
+      [
+        "productId",
+        {
+          TAG: "Id",
+          _0: command.productId
+        }
+      ],
+      [
+        "productImage",
+        {
+          TAG: "String",
+          _0: command.productImage
+        }
+      ]
+    ];
+    let alt = altText !== undefined ? [[
+          "altText",
+          {
+            TAG: "String",
+            _0: altText
+          }
+        ]] : [];
+    return Seed$ReventlessSeed.mutation(`Catalog_` + "AttachProductImage", base.concat(alt));
+  }
+  throw {
+    RE_EXN_ID: Seed$ReventlessSeed.Failed,
+    _1: "the seed only attaches product images",
+    Error: new Error()
+  };
 }
 
 function renameCategory(command) {
@@ -153,8 +215,7 @@ function discontinueProduct(command) {
 }
 
 function addProduct(command) {
-  let productImage = command.productImage;
-  let base = [
+  return Seed$ReventlessSeed.mutation(`Catalog_` + "AddProduct", [
     [
       "productId",
       {
@@ -179,23 +240,15 @@ function addProduct(command) {
     [
       "price",
       money(command.price)
-    ]
-  ];
-  let image = productImage !== undefined ? [[
-        "productImage",
-        {
-          TAG: "String",
-          _0: productImage
-        }
-      ]] : [];
-  let tail = [[
+    ],
+    [
       "categoryId",
       {
         TAG: "Id",
         _0: command.categoryId
       }
-    ]];
-  return Seed$ReventlessSeed.mutation(`Catalog_` + "AddProduct", base.concat(image).concat(tail));
+    ]
+  ]);
 }
 
 function changeProductPrice(command) {
@@ -490,7 +543,8 @@ export {
   money,
   dateRange,
   addCategory,
-  changeCategoryImage,
+  categoryImages,
+  productImages,
   renameCategory,
   archiveCategory,
   archiveProduct,

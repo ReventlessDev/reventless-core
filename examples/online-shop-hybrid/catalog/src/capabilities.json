@@ -5,17 +5,12 @@
       "key": "Catalog.categoryImages",
       "declaredBy": [
         {
-          "component": "AddCategory",
-          "field": "categoryImage",
-          "annotation": "categoryImages"
-        },
-        {
           "component": "Categories",
           "field": "categoryImage",
           "annotation": "categoryImages"
         },
         {
-          "component": "ChangeCategoryImage",
+          "component": "CategoryImages",
           "field": "categoryImage",
           "annotation": "categoryImages"
         }
@@ -26,17 +21,7 @@
       "key": "Catalog.productImages",
       "declaredBy": [
         {
-          "component": "AddProduct",
-          "field": "productImage",
-          "annotation": "productImages"
-        },
-        {
-          "component": "ChangeProductImage",
-          "field": "productImage",
-          "annotation": "productImages"
-        },
-        {
-          "component": "ImportProduct",
+          "component": "ProductImages",
           "field": "productImage",
           "annotation": "productImages"
         },

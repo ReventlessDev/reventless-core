@@ -4,7 +4,6 @@ import * as Sury from "sury";
 import * as Money$Reventless from "@reventlessdev/reventless-spec/src/semantic/Money.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Reference$Reventless from "@reventlessdev/reventless-spec/src/components/Reference.res.mjs";
-import * as UploadableImage$Reventless from "@reventlessdev/reventless-spec/src/semantic/UploadableImage.res.mjs";
 
 let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
@@ -27,7 +26,6 @@ let commandSchema = Sury.$schema(s => ({
   name: s.m(Sury.string),
   description: s.m(Sury.string),
   price: s.m(Money$Reventless.schema),
-  productImage: s.m(Sury.$option(UploadableImage$Reventless.forField(undefined, "productImages"))),
   categoryId: s.m(Reference$Reventless.to_(undefined, undefined, "Categories"))
 }));
 
@@ -42,7 +40,6 @@ let eventSchema = Sury.$schema(s => ({
   name: s.m(Sury.string),
   description: s.m(Sury.string),
   price: s.m(Money$Reventless.schema),
-  productImage: s.m(Sury.$option(UploadableImage$Reventless.forField(undefined, "productImages"))),
   categoryId: s.m(DcbTag$Reventless.string)
 }));
 

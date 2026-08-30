@@ -7,11 +7,14 @@
 // more same-shaped ones, so the `Money.t` pair must lead (DZakh/sury#392).
 @schema
 type consumedEvent =
-  | ProductAdded({productId: string, name: string, description: string, price: Reventless.Money.t, productImage?: string, categoryId: string})
+  | ProductAdded({productId: string, name: string, description: string, price: Reventless.Money.t, categoryId: string})
   | ProductPriceChanged({productId: string, price: Reventless.Money.t})
   | ProductNameChanged({productId: string, name: string})
   | ProductDescriptionChanged({productId: string, description: string})
-  | ProductImageChanged({productId: string, productImage: string})
+  | ProductImageAttached({productId: string, productImage: string, altText?: string})
+  | ProductImageRemoved({productId: string, productImage: string})
+  | ProductPrimaryImageSet({productId: string, productImage: string})
+  | ProductImageAltTextSet({productId: string, productImage: string, altText: string})
   | ProductArchived({productId: string})
   | ProductUnarchived({productId: string})
   | ProductDiscontinued({productId: string})
@@ -34,6 +37,14 @@ type shelfStatus =
   | @retired Archived
   | @retired Discontinued
 
+// One member of the attachment set. The field is named for its store, as the
+// single image was, so the same `productImages` store is provisioned.
+@schema
+type productAttachment = {
+  productImage: Reventless.UploadableImage.t,
+  altText?: string,
+}
+
 // A product that leaves the shelf keeps its name. An order names the products it
 // bought, and a shopper reading their own order is holding a pointer the platform
 // gave them — archiving the product should not turn that into a bare id. The
@@ -46,7 +57,11 @@ type state = {
   name: string,
   description: string,
   price: Reventless.Money.t,
+  // The primary, as one string: the image a card, a gallery tile and a reference
+  // cell draw. Chosen explicitly, else the first attached.
   productImage?: Reventless.UploadableImage.t,
+  // The whole set, in attachment order.
+  productImages: array<productAttachment>,
   // Indexed so the server can answer "the products in this category" — a
   // `categoryIdEq` filter on the connection, rather than a client narrowing one
   // loaded page.

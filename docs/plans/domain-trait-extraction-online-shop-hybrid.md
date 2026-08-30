@@ -178,8 +178,8 @@ only *scanning* does — so it moves ahead of the seam work.
    deployed, so nothing else is writing to the geocoding path.
 2. ✅ **[2026-08-30]** **Part 3 verification** (see the finding in Part 3): confirm the generator's dependency arm resolves a
    trait package's `src/capabilities.json`; extend only if it does not.
-3. **Attachment set** — [trait-file-attachment.md](./trait-file-attachment.md) Part A. No
-   framework dependency.
+3. ✅ **[2026-08-30]** **Attachment set** — [trait-file-attachment.md](./trait-file-attachment.md) Part A.
+   No framework dependency. Confirmed the self-contained fork: its binding has no posture flag.
 4. **Part 1** (`notify` port) **+ the object-store accessor on `Capabilities.t`** in one core
    release — both extend the same record, so break once.
 5. **Scan and retention** (trait-file-attachment Part B), then **confirmation transplant**

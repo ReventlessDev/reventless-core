@@ -15,7 +15,8 @@ products carry a demo image while the supplier-feed imports carry none (their
 
 1. `POST {uploadEndpoint}` with `{fileName, contentType}` → `{uploadUrl, storageRef}`.
 2. `PUT {uploadUrl}` with the file bytes.
-3. Set the returned `storageRef` on the product via the `ChangeProductImage` command.
+3. Attach the returned `storageRef` to the product via the `AttachProductImage` command
+   (the first attachment becomes the primary; `SetPrimaryProductImage` picks another).
 
 Locally the object store serves the bytes back at `/{prefix}/{key}`; on a deployed
 AWS stack the bytes land in S3 and are read back through CloudFront.

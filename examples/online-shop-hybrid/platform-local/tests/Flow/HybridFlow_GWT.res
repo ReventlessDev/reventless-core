@@ -41,7 +41,6 @@ describe("Hybrid cross-plugin flow", () => {
         name: "Book",
         description: "A good book",
         price: eur(9.99),
-        productImage: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg",
         categoryId: "cat1",
       }),
     )
@@ -51,7 +50,6 @@ describe("Hybrid cross-plugin flow", () => {
         name: "Book",
         description: "A good book",
         price: eur(9.99),
-        productImage: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg",
         categoryId: "cat1",
       }),
     )

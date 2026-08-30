@@ -38,9 +38,15 @@ type Catalog_CatalogEventRecordEdge {
 type Catalog_Category implements Node {
   categoryId: ID!
   categoryImage: String
+  categoryImages: [Catalog_CategoryCategoryImages!]!
   id: ID!
   name: String!
   shelfStatus: Catalog_CategoryShelfStatus!
+}
+
+type Catalog_CategoryCategoryImages {
+  altText: String
+  categoryImage: String!
 }
 
 type Catalog_CategoryConnection {
@@ -127,6 +133,7 @@ type Catalog_Product implements Node {
   price: Money!
   productId: ID!
   productImage: String
+  productImages: [Catalog_ProductProductImages!]!
   shelfStatus: Catalog_ProductShelfStatus!
 }
 
@@ -197,6 +204,11 @@ input Catalog_ProductOrderBy {
 enum Catalog_ProductOrderField {
   categoryId
   productId
+}
+
+type Catalog_ProductProductImages {
+  altText: String
+  productImage: String!
 }
 
 type Catalog_ProductRef {
@@ -315,18 +327,24 @@ input MoneyInput {
 }
 
 type Mutation {
-  Catalog_AddCategory(categoryId: ID!, categoryImage: String, name: String!): CommandResult!
-  Catalog_AddProduct(categoryId: ID!, description: String!, name: String!, price: MoneyInput!, productId: ID!, productImage: String): CommandResult!
+  Catalog_AddCategory(categoryId: ID!, name: String!): CommandResult!
+  Catalog_AddProduct(categoryId: ID!, description: String!, name: String!, price: MoneyInput!, productId: ID!): CommandResult!
   Catalog_ArchiveCategory(categoryId: ID!): CommandResult!
   Catalog_ArchiveProduct(productId: ID!): CommandResult!
-  Catalog_ChangeCategoryImage(categoryId: ID!, categoryImage: String!): CommandResult!
+  Catalog_AttachCategoryImage(altText: String, categoryId: ID!, categoryImage: String!): CommandResult!
+  Catalog_AttachProductImage(altText: String, productId: ID!, productImage: String!): CommandResult!
   Catalog_ChangeProductDescription(description: String!, productId: ID!): CommandResult!
-  Catalog_ChangeProductImage(productId: ID!, productImage: String!): CommandResult!
   Catalog_ChangeProductName(name: String!, productId: ID!): CommandResult!
   Catalog_ChangeProductPrice(price: MoneyInput!, productId: ID!): CommandResult!
   Catalog_DiscontinueProduct(productId: ID!): CommandResult!
   Catalog_ImportProduct(category: String!, currency: String!, desc: String!, sku: String!, title: String!, unitPrice: Float!): CommandResult!
+  Catalog_RemoveCategoryImage(categoryId: ID!, categoryImage: String!): CommandResult!
+  Catalog_RemoveProductImage(productId: ID!, productImage: String!): CommandResult!
   Catalog_RenameCategory(categoryId: ID!, name: String!): CommandResult!
+  Catalog_SetCategoryImageAltText(altText: String!, categoryId: ID!, categoryImage: String!): CommandResult!
+  Catalog_SetPrimaryCategoryImage(categoryId: ID!, categoryImage: String!): CommandResult!
+  Catalog_SetPrimaryProductImage(productId: ID!, productImage: String!): CommandResult!
+  Catalog_SetProductImageAltText(altText: String!, productId: ID!, productImage: String!): CommandResult!
   Catalog_UnarchiveCategory(categoryId: ID!): CommandResult!
   Catalog_UnarchiveProduct(productId: ID!): CommandResult!
   Ordering_CancelOrder(orderId: ID!): CommandResult!
@@ -923,14 +941,20 @@ type Subscription {
   onCatalog_AddProduct(id: ID): CommandResult
   onCatalog_ArchiveCategory(id: ID): CommandResult
   onCatalog_ArchiveProduct(id: ID): CommandResult
-  onCatalog_ChangeCategoryImage(id: ID): CommandResult
+  onCatalog_AttachCategoryImage(id: ID): CommandResult
+  onCatalog_AttachProductImage(id: ID): CommandResult
   onCatalog_ChangeProductDescription(id: ID): CommandResult
-  onCatalog_ChangeProductImage(id: ID): CommandResult
   onCatalog_ChangeProductName(id: ID): CommandResult
   onCatalog_ChangeProductPrice(id: ID): CommandResult
   onCatalog_DiscontinueProduct(id: ID): CommandResult
   onCatalog_ImportProduct(id: ID): CommandResult
+  onCatalog_RemoveCategoryImage(id: ID): CommandResult
+  onCatalog_RemoveProductImage(id: ID): CommandResult
   onCatalog_RenameCategory(id: ID): CommandResult
+  onCatalog_SetCategoryImageAltText(id: ID): CommandResult
+  onCatalog_SetPrimaryCategoryImage(id: ID): CommandResult
+  onCatalog_SetPrimaryProductImage(id: ID): CommandResult
+  onCatalog_SetProductImageAltText(id: ID): CommandResult
   onCatalog_UnarchiveCategory(id: ID): CommandResult
   onCatalog_UnarchiveProduct(id: ID): CommandResult
   onCustomerEventLog_eventAppended: CustomerEventLogEvent

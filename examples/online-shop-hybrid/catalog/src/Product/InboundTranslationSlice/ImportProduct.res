@@ -23,9 +23,6 @@ type command = @authorize(AllowGroups(["Admin", "Merchandiser"])) AddProduct({
   name: string,
   description: string,
   price: Reventless.Money.t,
-  // The supplier feed carries no image, so this field is simply absent on the
-  // mapped command — Product.AddProduct now models the image as optional.
-  productImage?: Reventless.UploadableImage.t,
   categoryId: string,
 })
 

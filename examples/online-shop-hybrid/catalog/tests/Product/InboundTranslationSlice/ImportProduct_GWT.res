@@ -31,7 +31,6 @@ describe("ImportProduct InboundTranslationSlice", () => {
         name: "Laptop",
         description: "high-end",
         price: money(99999.0, USD),
-        // Supplier feed carries no image → the optional productImage is absent.
         categoryId: "cat1",
       }),
     )

@@ -60,10 +60,15 @@ async function seedCategories(categories, client) {
   await Seed_Client$ReventlessSeed.sendAll(client, categories.map(c => DemoCommands$OnlineShopHybridSeed.addCategory({
     TAG: "AddCategory",
     categoryId: c.id,
-    name: c.name,
-    categoryImage: c.categoryImage
+    name: c.name
   })));
-  return Seed_Runner$ReventlessSeed.report(`categories: ` + categories.length.toString() + ` added`);
+  let attached = Stdlib_Array.filterMap(categories, c => Stdlib_Option.map(c.categoryImage, categoryImage => DemoCommands$OnlineShopHybridSeed.categoryImages({
+    TAG: "AttachCategoryImage",
+    categoryId: c.id,
+    categoryImage: categoryImage
+  })));
+  await Seed_Client$ReventlessSeed.sendAll(client, attached);
+  return Seed_Runner$ReventlessSeed.report(`categories: ` + categories.length.toString() + ` added, ` + attached.length.toString() + ` images attached`);
 }
 
 let productImageStore = "Catalog.productImages";
@@ -136,10 +141,16 @@ async function seedProducts(products, client) {
     name: p.name,
     description: p.description,
     price: p.price,
-    productImage: p.productImage,
     categoryId: p.categoryId
   })));
-  return Seed_Runner$ReventlessSeed.report(`products: ` + products.length.toString() + ` added`);
+  let attached = Stdlib_Array.filterMap(products, p => Stdlib_Option.map(p.productImage, productImage => DemoCommands$OnlineShopHybridSeed.productImages({
+    TAG: "AttachProductImage",
+    productId: p.id,
+    productImage: productImage,
+    altText: p.name
+  })));
+  await Seed_Client$ReventlessSeed.sendAll(client, attached);
+  return Seed_Runner$ReventlessSeed.report(`products: ` + products.length.toString() + ` added, ` + attached.length.toString() + ` images attached`);
 }
 
 async function seedRejectedDuplicate(products, client) {
@@ -153,7 +164,6 @@ async function seedRejectedDuplicate(products, client) {
     name: p.name,
     description: p.description,
     price: p.price,
-    productImage: p.productImage,
     categoryId: p.categoryId
   }), ["ProductAlreadyExists"]);
   if (outcome !== undefined) {
@@ -184,11 +194,22 @@ async function seedCatalogEdits(products, categories, client, reimage) {
       categoryId: DemoData$OnlineShopHybridSeed.renamedCategoryId,
       name: DemoData$OnlineShopHybridSeed.renamedCategoryName
     })]);
-  await Seed_Client$ReventlessSeed.sendAll(client, reimage.map(param => DemoCommands$OnlineShopHybridSeed.changeCategoryImage({
-    TAG: "ChangeCategoryImage",
-    categoryId: param[0],
-    categoryImage: param[1]
-  })));
+  await Seed_Client$ReventlessSeed.sendAll(client, reimage.flatMap(param => {
+    let categoryImage = param[1];
+    let categoryId = param[0];
+    return [
+      DemoCommands$OnlineShopHybridSeed.categoryImages({
+        TAG: "AttachCategoryImage",
+        categoryId: categoryId,
+        categoryImage: categoryImage
+      }),
+      DemoCommands$OnlineShopHybridSeed.categoryImages({
+        TAG: "SetPrimaryCategoryImage",
+        categoryId: categoryId,
+        categoryImage: categoryImage
+      })
+    ];
+  }));
   let archived = categories.filter(c => c.archive);
   await Seed_Client$ReventlessSeed.sendAll(client, archived.map(c => DemoCommands$OnlineShopHybridSeed.archiveCategory({
     TAG: "ArchiveCategory",

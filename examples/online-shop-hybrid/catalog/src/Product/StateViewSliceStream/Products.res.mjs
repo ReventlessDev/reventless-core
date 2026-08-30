@@ -13,7 +13,6 @@ let consumedEventSchema = Sury.union([
     name: s.m(Sury.string),
     description: s.m(Sury.string),
     price: s.m(Money$Reventless.schema),
-    productImage: s.m(Sury.$option(Sury.string)),
     categoryId: s.m(Sury.string)
   })),
   Sury.$schema(s => ({
@@ -32,9 +31,26 @@ let consumedEventSchema = Sury.union([
     description: s.m(Sury.string)
   })),
   Sury.$schema(s => ({
-    TAG: "ProductImageChanged",
+    TAG: "ProductImageAttached",
+    productId: s.m(Sury.string),
+    productImage: s.m(Sury.string),
+    altText: s.m(Sury.$option(Sury.string))
+  })),
+  Sury.$schema(s => ({
+    TAG: "ProductImageRemoved",
     productId: s.m(Sury.string),
     productImage: s.m(Sury.string)
+  })),
+  Sury.$schema(s => ({
+    TAG: "ProductPrimaryImageSet",
+    productId: s.m(Sury.string),
+    productImage: s.m(Sury.string)
+  })),
+  Sury.$schema(s => ({
+    TAG: "ProductImageAltTextSet",
+    productId: s.m(Sury.string),
+    productImage: s.m(Sury.string),
+    altText: s.m(Sury.string)
   })),
   Sury.$schema(s => ({
     TAG: "ProductArchived",
@@ -56,12 +72,18 @@ let shelfStatusSchema = Sury.union([
   Sury.literal("Discontinued")
 ]);
 
+let productAttachmentSchema = Sury.$schema(s => ({
+  productImage: s.m(UploadableImage$Reventless.forField(undefined, "productImages")),
+  altText: s.m(Sury.$option(Sury.string))
+}));
+
 let stateSchema = Sury.$schema(s => ({
   productId: s.m(Sury.string),
   name: s.m(Sury.string),
   description: s.m(Sury.string),
   price: s.m(Money$Reventless.schema),
   productImage: s.m(Sury.$option(UploadableImage$Reventless.forField(undefined, "productImages"))),
+  productImages: s.m(Sury.array(productAttachmentSchema)),
   categoryId: s.m(Sury.string),
   shelfStatus: s.m(shelfStatusSchema)
 }));
@@ -124,6 +146,7 @@ export {
   Id,
   consumedEventSchema,
   shelfStatusSchema,
+  productAttachmentSchema,
   config,
   subIdConfig,
   stateSchema$1 as stateSchema,

@@ -653,6 +653,9 @@ importers:
       '@reventlessdev/reventless-spec':
         specifier: workspace:*
         version: link:../../../reventless/spec
+      '@reventlessdev/trait-file-attachment':
+        specifier: workspace:*
+        version: link:../../../traits/file-attachment
       sury:
         specifier: 11.0.0-rc.2
         version: 11.0.0-rc.2(rescript@12.3.0)
@@ -1670,6 +1673,22 @@ importers:
         version: 12.3.0
 
   traits/address-geocoding:
+    dependencies:
+      '@reventlessdev/reventless-gwt':
+        specifier: workspace:*
+        version: link:../../reventless/gwt
+      '@reventlessdev/reventless-spec':
+        specifier: workspace:*
+        version: link:../../reventless/spec
+      sury:
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(rescript@12.3.0)
+    devDependencies:
+      rescript:
+        specifier: 12.3.0
+        version: 12.3.0
+
+  traits/file-attachment:
     dependencies:
       '@reventlessdev/reventless-gwt':
         specifier: workspace:*

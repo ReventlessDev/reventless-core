@@ -37,27 +37,47 @@ let dateRange = (r: Reventless.DateRange.t): Seed.value =>
 
 let addCategory = (command: CatalogPlugin.AddCategory.command): Seed.mutation =>
   switch command {
-  | AddCategory({categoryId, name, categoryImage: ?categoryImage}) =>
-    // categoryImage is optional: include the (nullable) arg only when present, so
-    // an image-less category sends no image rather than an empty string.
-    let base: array<(string, Seed.value)> = [
-      ("categoryId", Id(categoryId)),
-      ("name", String(name)),
-    ]
-    let image: array<(string, Seed.value)> = switch categoryImage {
-    | Some(url) => [("categoryImage", String(url))]
-    | None => []
-    }
-    Seed.mutation(catalog("AddCategory"), Array.concat(base, image))
+  | AddCategory({categoryId, name}) =>
+    Seed.mutation(catalog("AddCategory"), [("categoryId", Id(categoryId)), ("name", String(name))])
   }
 
-let changeCategoryImage = (command: CatalogPlugin.ChangeCategoryImage.command): Seed.mutation =>
+// The attachment set. Only the arms the seed drives are encoded; the alt text is
+// optional on Attach and sent only when present.
+let categoryImages = (command: CatalogPlugin.CategoryImages.command): Seed.mutation =>
   switch command {
-  | ChangeCategoryImage({categoryId, categoryImage}) =>
+  | AttachCategoryImage({categoryId, categoryImage, altText: ?altText}) =>
+    let base: array<(string, Seed.value)> = [
+      ("categoryId", Id(categoryId)),
+      ("categoryImage", String(categoryImage)),
+    ]
+    let alt: array<(string, Seed.value)> = switch altText {
+    | Some(text) => [("altText", String(text))]
+    | None => []
+    }
+    Seed.mutation(catalog("AttachCategoryImage"), Array.concat(base, alt))
+  | SetPrimaryCategoryImage({categoryId, categoryImage}) =>
     Seed.mutation(
-      catalog("ChangeCategoryImage"),
+      catalog("SetPrimaryCategoryImage"),
       [("categoryId", Id(categoryId)), ("categoryImage", String(categoryImage))],
     )
+  | RemoveCategoryImage(_) | SetCategoryImageAltText(_) =>
+    throw(Seed.Failed("the seed does not drive RemoveCategoryImage / SetCategoryImageAltText"))
+  }
+
+let productImages = (command: CatalogPlugin.ProductImages.command): Seed.mutation =>
+  switch command {
+  | AttachProductImage({productId, productImage, altText: ?altText}) =>
+    let base: array<(string, Seed.value)> = [
+      ("productId", Id(productId)),
+      ("productImage", String(productImage)),
+    ]
+    let alt: array<(string, Seed.value)> = switch altText {
+    | Some(text) => [("altText", String(text))]
+    | None => []
+    }
+    Seed.mutation(catalog("AttachProductImage"), Array.concat(base, alt))
+  | RemoveProductImage(_) | SetPrimaryProductImage(_) | SetProductImageAltText(_) =>
+    throw(Seed.Failed("the seed only attaches product images"))
   }
 
 let renameCategory = (command: CatalogPlugin.RenameCategory.command): Seed.mutation =>
@@ -89,21 +109,17 @@ let discontinueProduct = (command: CatalogPlugin.DiscontinueProduct.command): Se
 
 let addProduct = (command: CatalogPlugin.AddProduct.command): Seed.mutation =>
   switch command {
-  | AddProduct({productId, name, description, price, productImage: ?productImage, categoryId}) =>
-    // productImage is optional: include the (nullable) arg only when present, so
-    // an image-less product sends no image rather than an empty string.
-    let base: array<(string, Seed.value)> = [
-      ("productId", Id(productId)),
-      ("name", String(name)),
-      ("description", String(description)),
-      ("price", money(price)),
-    ]
-    let image: array<(string, Seed.value)> = switch productImage {
-    | Some(url) => [("productImage", String(url))]
-    | None => []
-    }
-    let tail: array<(string, Seed.value)> = [("categoryId", Id(categoryId))]
-    Seed.mutation(catalog("AddProduct"), Array.concat(Array.concat(base, image), tail))
+  | AddProduct({productId, name, description, price, categoryId}) =>
+    Seed.mutation(
+      catalog("AddProduct"),
+      [
+        ("productId", Id(productId)),
+        ("name", String(name)),
+        ("description", String(description)),
+        ("price", money(price)),
+        ("categoryId", Id(categoryId)),
+      ],
+    )
   }
 
 let changeProductPrice = (command: CatalogPlugin.ChangeProductPrice.command): Seed.mutation =>

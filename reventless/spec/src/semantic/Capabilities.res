@@ -5,9 +5,9 @@ A plugin is provider-agnostic: it depends on `reventless-spec`, never on
 `reventless-aws`, so it cannot name Amazon Location — and it should not want to.
 What it can do is receive a function that geocodes, and let whoever assembled the
 runtime decide what is on the other end. The same capability a client reaches
-through a GraphQL field, plugin code reaches through here; the object store
-already works this way, with `Upload_Presign` on one side and an injected
-`Offload.resolve(~fetch)` on the other.
+through a GraphQL field, plugin code reaches through here. (The object store has
+only the client half so far — `Upload_Presign`; `Offload.resolve(~fetch)` has no
+injected caller yet, and the accessor for it belongs in this record.)
 
 Injected rather than looked up, and required rather than optional, because the
 alternative is a slot filled at cold start that nothing enforces: ES modules

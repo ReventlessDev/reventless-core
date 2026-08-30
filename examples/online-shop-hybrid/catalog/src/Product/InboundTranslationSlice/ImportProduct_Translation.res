@@ -28,7 +28,6 @@ let translate = (input: externalInput) =>
           name: input.title,
           description: input.desc,
           price: Reventless.Money.make(~amount=Int.toFloat(input.unitPrice), ~currency),
-          // Supplier feed carries no image — the optional productImage is simply absent.
           categoryId: input.category,
         }),
       )])

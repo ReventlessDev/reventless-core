@@ -12,10 +12,10 @@ let evolve = (state, event) =>
 
 let decide = (state, command) =>
   switch command {
-  | AddCategory({categoryId, name, categoryImage: ?categoryImage}) =>
+  | AddCategory({categoryId, name}) =>
     if state.exists {
       Error(CategoryAlreadyExists)
     } else {
-      Ok([CategoryAdded({categoryId, name, categoryImage: ?categoryImage})])
+      Ok([CategoryAdded({categoryId, name})])
     }
   }

@@ -27,7 +27,7 @@ optional image; **Categories** are named groupings that products reference by ID
 |---|---|---|
 | `AddCategory` | `CategoryAdded` | Creates a new named grouping |
 | `RenameCategory` | `CategoryRenamed` | Renames a category |
-| `ChangeCategoryImage` | `CategoryImageChanged` | Sets or replaces the category image |
+| `AttachCategoryImage`, `RemoveCategoryImage`, `SetPrimaryCategoryImage`, `SetCategoryImageAltText` | `CategoryImageAttached`, `CategoryImageRemoved`, `CategoryPrimaryImageSet`, `CategoryImageAltTextSet` | The category's attachment set: an ordered set of images with a primary and captions |
 | `ArchiveCategory` | `CategoryArchived` | Withdraws the category from the catalogue |
 | `UnarchiveCategory` | `CategoryUnarchived` | Returns an archived category to the catalogue |
 
@@ -39,7 +39,7 @@ optional image; **Categories** are named groupings that products reference by ID
 | `ChangeProductName` | `ProductNameChanged` | Renames an existing product |
 | `ChangeProductDescription` | `ProductDescriptionChanged` | Updates a product's description |
 | `ChangeProductPrice` | `ProductPriceChanged` | Changes a product's price |
-| `ChangeProductImage` | `ProductImageChanged` | Sets or replaces the product image |
+| `AttachProductImage`, `RemoveProductImage`, `SetPrimaryProductImage`, `SetProductImageAltText` | `ProductImageAttached`, `ProductImageRemoved`, `ProductPrimaryImageSet`, `ProductImageAltTextSet` | The product's attachment set: an ordered set of images with a primary and captions |
 | `ArchiveProduct` | `ProductArchived` | Withdraws a product from sale, reversibly |
 | `UnarchiveProduct` | `ProductUnarchived` | Returns an archived product to sale |
 | `DiscontinueProduct` | `ProductDiscontinued` | Ends a product's life permanently |

@@ -3,8 +3,8 @@
 **Date:** 2026-08-30
 **Repo:** reventless-core — the `online-shop-hybrid` catalog plugin, one capability seam, and the
 trait package that comes out of it.
-**Status:** Proposed. Part A has no framework dependency and can start immediately; Part B is gated
-on one seam and one decision.
+**Status:** Part A done 2026-08-30 (A1–A3, A5; A4 as auto-UI only — see the note under §3). Part B is
+gated on one seam and one decision.
 **Builds on:**
 [done/upload-release-path.md](./done/upload-release-path.md) (mint and release behind the platform
 GraphQL API) ·
@@ -74,6 +74,38 @@ picture is not a set.
 
 Exit: products and categories carry multi-image sets with a primary and alt text; the gallery
 renders them; the trait's conformance suite is green against both hosts.
+
+**[2026-08-30] Part A landed.** The decision that shaped it: **replace the field, wipe alpha** —
+no wipe was pending, so this change is the one others ride; `ProductAdded` / `CategoryAdded` lose
+their image, and `ChangeProductImage` / `ChangeCategoryImage` are gone.
+
+- **A1/A2** — one multi-command StateChangeSlice per host, `ProductImages` and `CategoryImages`:
+  `Attach…Image({…, altText?})`, `Remove…Image`, `SetPrimary…Image`, `Set…ImageAltText`, each
+  carrying the host's `@transition`. Creation no longer attaches: a creation that also attached
+  would be two facts in one event, so the seed sends `AddProduct` then `AttachProductImage`.
+  Rules: attach/remove idempotent; the primary must be in the set, and until one is chosen the
+  first attached stands in (removing the chosen one falls back the same way); a caption belongs
+  to a member. `…ImageNotAttached` is the one new error.
+- **A3** — each view carries the set (`productImages: array<{productImage, altText?}>`, the member
+  field named for its store) **and the primary as one string** (`productImage?`). The second is
+  not redundancy: the UI's card, gallery and reference cell read one `image`-semantic string per
+  row (`AutoSemantics.imageField`), so without it every tile went blank.
+- **A4 — auto-UI only, and two limits found by reading the UI, recorded for the UI repo's plan:**
+  (1) the gallery shows the *primary* per row; a per-row multi-image gallery over the set needs
+  UI work; (2) the empty-tile "fill me" slot resolves its setter by *one command carrying exactly
+  one field of the store* (`AutoSetterCommand`, tier 2) — with four such commands on the slice it
+  abstains, so an empty tile no longer opens an upload. A declared setter (`x-reventless-setter`)
+  has no core-side annotation yet; that is the fix on this side.
+- **A5 / D1** — `traits/file-attachment` (`@reventlessdev/trait-file-attachment`), Shape A again:
+  `module type Binding` over an abstract `ref` and a StateChangeSlice host; a 14-assertion
+  conformance suite green against **both** hosts (R3 answered); three templates. No posture flag —
+  this competency is self-contained, the fork the extraction plan anticipated. In the pack check.
+- **Corpus note.** The view GWTs must spell states as literals: the lifecycle harvest reads the
+  PPX sidecar, and a row helper empties it (found the hard way; the checker then reported every
+  catalog command as "declares no lifecycle field").
+
+**Still to do from Part A:** the alpha wipe itself is a deploy step (`seed:reset`) after this
+lands; the two UI limits above.
 
 ## 4. Part B — scan and retention (gated)
 

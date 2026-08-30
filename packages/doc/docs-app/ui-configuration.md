@@ -954,8 +954,8 @@ What each of the shop's components declares:
 
 | Component | Declarations |
 |---|---|
-| `Catalog/Products` | `Money.t` price; `@storageRef("productImages")` image; `@index categoryId`, so a category's products can be asked for by category; nav group "Shop"; a row action that starts `Ordering.PlaceOrder` |
-| `Catalog/Categories` | `@storageRef("categoryImages")` image — its own store, not the products' one; nav group "Shop" |
+| `Catalog/Products` | `Money.t` price; a `productImages` attachment set of `UploadableImage.t` members with a primary `productImage` beside it; `@index categoryId`, so a category's products can be asked for by category; nav group "Shop"; a row action that starts `Ordering.PlaceOrder` |
+| `Catalog/Categories` | a `categoryImages` attachment set — its own store, not the products' one — with a primary `categoryImage`; nav group "Shop" |
 | `Catalog/ProductDemand` | `@@reventless.authorize(AllowGroups(["Admin", "Merchandiser"]))`; `@id productId`; only in the `Merchandiser` journey, under its own nav group |
 | `Ordering/Orders` | `@owner customerId`; `lifecycle` by name; `DateTime` timestamps; `DateRange` delivery window; nav "All Orders", or "My Orders" for a caller reading only their own |
 | `Ordering/Customers` | `@@reventless.authorize`; `@displayName email`; `@lifecycle accountStatus` with `@retired Deactivated` on its own constructor; a `Geolocation` union carrying the geocoder's answer, whose `Located` arm holds the `GeoPoint` the map pin is drawn from |

@@ -245,7 +245,9 @@ From the codebase documentation:
 - `examples/online-shop-dcb/` — DCB-based plugin examples
 
 **`traits/` — Domain traits (framework packages never import one; only examples do):**
-- `trait-address-geocoding` — host contract, scaffold templates and conformance suite for grafting address geocoding onto an aggregate; specimen host is `examples/online-shop-hybrid/ordering` (`Customer`). `pnpm run check:traits` packs each trait and builds its host from the tarball.
+- `trait-address-geocoding` — host contract, scaffold templates and conformance suite for grafting address geocoding onto an aggregate; specimen host is `examples/online-shop-hybrid/ordering` (`Customer`).
+- `trait-file-attachment` — the same shape for an ordered attachment set with a primary and captions on a StateChangeSlice; specimen hosts are the catalog's `ProductImages` and `CategoryImages`.
+- `pnpm run check:traits` packs each trait and builds its specimen host from the tarball (`scripts/check-trait-pack.mjs` lists the pairs).
 
 **`packages/` — Build tooling and documentation:**
 - `doc` — Docusaurus documentation site

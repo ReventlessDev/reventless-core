@@ -19,6 +19,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 // trait dir → the host that binds it. Add a row per trait.
 const specimens = {
   "traits/address-geocoding": "examples/online-shop-hybrid/ordering",
+  "traits/file-attachment": "examples/online-shop-hybrid/catalog",
 }
 
 const run = (cmd, args, cwd) => execFileSync(cmd, args, { cwd, stdio: "inherit" })

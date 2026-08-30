@@ -5,9 +5,12 @@
 
 @schema
 type consumedEvent =
-  | CategoryAdded({categoryId: string, name: string, categoryImage?: string})
+  | CategoryAdded({categoryId: string, name: string})
   | CategoryRenamed({categoryId: string, name: string})
-  | CategoryImageChanged({categoryId: string, categoryImage: string})
+  | CategoryImageAttached({categoryId: string, categoryImage: string, altText?: string})
+  | CategoryImageRemoved({categoryId: string, categoryImage: string})
+  | CategoryPrimaryImageSet({categoryId: string, categoryImage: string})
+  | CategoryImageAltTextSet({categoryId: string, categoryImage: string, altText: string})
   | CategoryArchived({categoryId: string})
   | CategoryUnarchived({categoryId: string})
 
@@ -24,6 +27,14 @@ type shelfStatus =
   | Listed
   | @retired Archived
 
+// One member of the attachment set, named for its store — `categoryImages`, the
+// categories' own, not the products'.
+@schema
+type categoryAttachment = {
+  categoryImage: Reventless.UploadableImage.t,
+  altText?: string,
+}
+
 // An archived category keeps its name, for the reason the retirement above
 // already gives: the products filed under it still name it, and a live product
 // showing `cat-08` where it means "Clearance" is a pointer the platform handed
@@ -39,5 +50,7 @@ type state = {
   // The retirement is on `shelfStatus`'s own constructor and needs no second
   // annotation here.
   @lifecycle shelfStatus: shelfStatus,
+  // The primary, as one string, for the card and the gallery tile.
   categoryImage?: Reventless.UploadableImage.t,
+  categoryImages: array<categoryAttachment>,
 }

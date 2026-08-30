@@ -68,29 +68,48 @@
     "scenarios": 4
   },
   {
-    "component": "ChangeCategoryImage",
-    "command": "ChangeCategoryImage",
+    "component": "CategoryImages",
+    "command": "AttachCategoryImage",
     "level": "Instance",
     "allowedStates": [
       "Listed"
     ],
     "targets": [],
-    "scenarios": 6
+    "scenarios": 4
+  },
+  {
+    "component": "CategoryImages",
+    "command": "RemoveCategoryImage",
+    "level": "Instance",
+    "allowedStates": [
+      "Listed"
+    ],
+    "targets": [],
+    "scenarios": 1
+  },
+  {
+    "component": "CategoryImages",
+    "command": "SetCategoryImageAltText",
+    "level": "Instance",
+    "allowedStates": [
+      "Listed"
+    ],
+    "targets": [],
+    "scenarios": 1
+  },
+  {
+    "component": "CategoryImages",
+    "command": "SetPrimaryCategoryImage",
+    "level": "Instance",
+    "allowedStates": [
+      "Listed"
+    ],
+    "targets": [],
+    "scenarios": 1
   },
   {
     "component": "ChangeProductDescription",
     "command": "ChangeProductDescription",
-    "level": "Instance",
-    "allowedStates": [
-      "Archived",
-      "Listed"
-    ],
-    "targets": [],
-    "scenarios": 5
-  },
-  {
-    "component": "ChangeProductImage",
-    "command": "ChangeProductImage",
     "level": "Instance",
     "allowedStates": [
       "Archived",
@@ -203,6 +222,50 @@
       "Placed"
     ],
     "scenarios": 11
+  },
+  {
+    "component": "ProductImages",
+    "command": "AttachProductImage",
+    "level": "Instance",
+    "allowedStates": [
+      "Archived",
+      "Listed"
+    ],
+    "targets": [],
+    "scenarios": 4
+  },
+  {
+    "component": "ProductImages",
+    "command": "RemoveProductImage",
+    "level": "Instance",
+    "allowedStates": [
+      "Archived",
+      "Listed"
+    ],
+    "targets": [],
+    "scenarios": 2
+  },
+  {
+    "component": "ProductImages",
+    "command": "SetPrimaryProductImage",
+    "level": "Instance",
+    "allowedStates": [
+      "Archived",
+      "Listed"
+    ],
+    "targets": [],
+    "scenarios": 2
+  },
+  {
+    "component": "ProductImages",
+    "command": "SetProductImageAltText",
+    "level": "Instance",
+    "allowedStates": [
+      "Archived",
+      "Listed"
+    ],
+    "targets": [],
+    "scenarios": 2
   },
   {
     "component": "RecordProductDemand",
