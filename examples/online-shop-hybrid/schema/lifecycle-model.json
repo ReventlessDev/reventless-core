@@ -135,16 +135,6 @@
   },
   {
     "component": "Customer",
-    "command": "MarkAddressUnresolvable",
-    "level": "Instance",
-    "allowedStates": [
-      "Active"
-    ],
-    "targets": [],
-    "scenarios": 2
-  },
-  {
-    "component": "Customer",
     "command": "Register",
     "level": "Collection",
     "allowedStates": [],
@@ -166,12 +156,10 @@
   {
     "component": "Customer",
     "command": "SetLocation",
-    "level": "Instance",
-    "allowedStates": [
-      "Active"
-    ],
+    "level": "",
+    "allowedStates": [],
     "targets": [],
-    "scenarios": 5
+    "scenarios": 1
   },
   {
     "component": "Customer",

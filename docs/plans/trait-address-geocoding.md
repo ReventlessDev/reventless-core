@@ -137,15 +137,19 @@ A package this is the only thing that proves the boundary is real, since there i
   tests): packs the trait, extracts the tarball in place of the workspace link, copies the ordering
   plugin beside it and runs `rescript build`. Passes; the tarball ships no `lib/`.
 
-**G6 — to delete** (each now asserted by the suite): in `Customer_GWT.res` — "SetLocation for an
-address already resolved is idempotent", "SetLocation after an address change is not swallowed",
-"SetLocation for a superseded address is dropped as stale", "MarkAddressUnresolvable for a
-superseded address is dropped as stale", "MarkAddressUnresolvable records the verdict"; in
-`GeocodeCustomerAddress_GWT.res` — the two `collect` trigger cases, "translate: an unavailable
-geocoder leaves the TODO Pending", "an unreachable geocoder leaves the TODO Pending for retry",
-"no match completes the TODO with a verdict rather than retrying". Keep the ambiguity-reason case
-(it asserts core's wording, not the graft), the correction case (`SetAddressLocation`) and the
-`CustomerNotFound` cases (host rules).
+**G6 — done 2026-08-30, its own commit.** Deleted, each now asserted by the suite: in
+`Customer_GWT.res` — the plain `SetLocation` case, "already resolved is idempotent", "after an
+address change is not swallowed", both "superseded address is dropped as stale" cases and
+"MarkAddressUnresolvable records the verdict"; in `GeocodeCustomerAddress_GWT.res` — the three
+`collect` cases and the three outage / no-match cases. Kept: the ambiguity-reason case (core's
+wording), "a confident answer produces SetLocation" (asserts the point), the `SetAddressLocation`
+correction cases and the `CustomerNotFound` cases (host rules). 108 → 96 tests in the project.
+
+One cost surfaced by `check:lifecycle`: the conformance suite is registered from a functor, not
+from `@@reventless.gwt`, so the PPX emits no `.gwt.json` sidecar for it and the lifecycle model
+loses the scenario evidence for `SetLocation` / `MarkAddressUnresolvable` (both `@noApi`, neither
+declares a `@transition`, so nothing is contradicted — the golden just lists them unexercised).
+Teaching the runner to emit a sidecar is the fix if that evidence is wanted back.
 
 ## 6. Interference — none; cleared 2026-08-30
 
