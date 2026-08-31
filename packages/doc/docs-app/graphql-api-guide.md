@@ -96,7 +96,7 @@ Connection plumbing (`<Type>Edge`, `<Type>Connection`, `<Type>Filter`, `<Type>Or
 | `string`                                               | `String!`         | Plain text.                                            |
 | `string` + `@s.matches(Reventless.DcbTag.string)`      | `ID!`             | Entity-id tag → `ID` scalar.                           |
 | `float`                                                | `Float!`          |                                                        |
-| `int`                                                  | `Int!`            |                                                        |
+| `int`                                                  | `Float!`          | sury collapses both numeric types to one schema, so `int` is indistinguishable from `float` by the time the SDL is emitted. `Int` appears only in hand-written plumbing (`first`, `eventCount`). |
 | `bool`                                                 | `Boolean!`        |                                                        |
 | `bigint`                                               | `String!`         | Stringified for JSON safety.                           |
 | `array<T>`                                             | `[T]!`            |                                                        |
@@ -109,7 +109,13 @@ Connection plumbing (`<Type>Edge`, `<Type>Connection`, `<Type>Filter`, `<Type>Or
 
 ## 5. Mutations
 
-The return type of every mutation is `String!` — the resolver returns a JSON-encoded outcome (command id on success, structured error otherwise). Domain errors are **not** modelled as a typed GraphQL union.
+The return type of every mutation is `CommandResult!` — a union of the outcome types the resolver can report:
+
+```graphql
+union CommandResult = CommandAccepted | CommandPending | CommandRejected
+```
+
+`CommandPending` is what an [async](./reventless-ppx.md) component returns, having handed the command to a queue rather than run it inline. Domain errors arrive as `CommandRejected`, not as a typed error union per command — a client selects the three arms with inline fragments once and reuses that selection everywhere.
 
 ### 5.1 From an `Aggregate/`
 
@@ -128,9 +134,9 @@ type command =
 
 ```graphql
 extend type Mutation {
-  Ordering_Customer_Register(id: ID!, email: String!, address: String!): String!
-  Ordering_Customer_UpdateEmail(id: ID!, email: String!): String!
-  Ordering_Customer_Deactivate(id: ID!): String!
+  Ordering_Customer_Register(id: ID!, email: String!, address: String!): CommandResult!
+  Ordering_Customer_UpdateEmail(id: ID!, email: String!): CommandResult!
+  Ordering_Customer_Deactivate(id: ID!): CommandResult!
 }
 ```
 
@@ -154,7 +160,7 @@ type command =
 
 ```graphql
 extend type Mutation {
-  Catalog_AddProduct(productId: ID!, name: String!, description: String!, price: Float!): String!
+  Catalog_AddProduct(productId: ID!, name: String!, description: String!, price: Float!): CommandResult!
 }
 ```
 
@@ -169,10 +175,10 @@ type command =
 ```
 
 ```graphql
-Ordering_PlaceOrder(orderId: ID!, customerId: ID!, productIds: [ID]!): String!
+Ordering_PlaceOrder(orderId: ID!, customerId: ID!, productIds: [ID]!): CommandResult!
 ```
 
-A `StateChangeSlice` may also use a union command, in which case it emits one field per variant (still without a prepended `id`):
+A `StateChangeSlice` may also use a union command, in which case it emits one field per variant (still without a prepended `id`). The variant name replaces the slice name — a DCB command constructor already names the operation, so the field is `<Plugin>_<Variant>`, **not** the aggregate-style `<Plugin>_<Slice>_<Variant>`:
 
 ```rescript
 // ordering/src/CatalogProduct/StateChangeSlice/SyncCatalogProduct.res
@@ -183,13 +189,15 @@ type command =
 ```
 
 ```graphql
-Ordering_SyncCatalogProduct_SyncNewProduct(productId: ID!, name: String!, price: Float!): String!
-Ordering_SyncCatalogProduct_ChangeSyncedPrice(productId: ID!, price: Float!): String!
+Ordering_SyncNewProduct(productId: ID!, name: String!, price: Float!): CommandResult!
+Ordering_ChangeSyncedPrice(productId: ID!, price: Float!): CommandResult!
 ```
+
+A single-constructor slice keeps the `<Plugin>_<Slice>` name instead, which is why `Catalog_AddProduct` above is not `Catalog_AddProduct_AddProduct`. Both forms are checked at build time against AppSync's 50-character subscription-field cap (each mutation `f` produces an `on<f>` subscription), failing with an actionable message rather than an opaque deploy-time error.
 
 ### 5.3 From an `InboundTranslationSlice/`
 
-An inbound translation slice exposes a mutation whose argument list comes from `@schema type externalInput` — **not** the internal `command`. The slice's translation function maps the external shape into the internal command before publishing it.
+An inbound translation slice exposes a mutation whose argument list comes from `@schema type externalInput` — **not** the internal `command`. The slice's translation function maps the external shape into the internal command before publishing it. The field is `<Plugin>_<Slice>`:
 
 ```rescript
 // catalog/src/Product/InboundTranslationSlice/ImportProduct.res
@@ -202,14 +210,17 @@ type externalInput = {
   desc: string,
   unitPrice: int,
   currency: string,
+  category: string,
 }
 ```
 
 ```graphql
-Catalog_ImportProduct(sku: String!, title: String!, desc: String!, unitPrice: Int!, currency: String!): String!
+Catalog_ImportProduct(category: String!, currency: String!, desc: String!, sku: String!, title: String!, unitPrice: Float!): CommandResult!
 ```
 
 Use this when an external system needs to call you with their vocabulary and you translate to your domain command.
+
+Two things differ from the other mutation sources. There is **no `@noApi` opt-out** — declaring the slice declares its mutation. And the mutation is currently the *only* door the framework builds for an inbound slice: no Lambda Function URL and no API Gateway is provisioned yet, so a sender that can only POST to a plain URL needs a transport you build yourself. A provisioned webhook endpoint is planned — see [InboundTranslationSlice](./components/inboundtranslationslice.md#no-http-endpoint-yet--planned).
 
 ### 5.4 Suppressing mutation fields
 
@@ -611,11 +622,11 @@ One field per mutation. Fires when the mutation is accepted (before its side eff
 
 ```graphql
 extend type Subscription {
-  onCatalog_AddProduct(id: ID): String!
+  onCatalog_AddProduct(id: ID): CommandResult
     @aws_subscribe(mutations: ["Catalog_AddProduct"])
-  onCatalog_AddCategory(id: ID): String!
+  onCatalog_AddCategory(id: ID): CommandResult
     @aws_subscribe(mutations: ["Catalog_AddCategory"])
-  onOrdering_PlaceOrder(id: ID): String!
+  onOrdering_PlaceOrder(id: ID): CommandResult
     @aws_subscribe(mutations: ["Ordering_PlaceOrder"])
 }
 ```
@@ -732,36 +743,47 @@ type CustomerEventLogEvent { position: String! eventType: String! payload: AWSJS
 ```graphql
 extend type Mutation {
   # Catalog — Category DCB slices
-  Catalog_AddCategory(categoryId: ID!, name: String!): String!
-  Catalog_RenameCategory(categoryId: ID!, name: String!): String!
-  Catalog_ArchiveCategory(categoryId: ID!): String!
+  Catalog_AddCategory(categoryId: ID!, categoryImage: String, name: String!): CommandResult!
+  Catalog_RenameCategory(categoryId: ID!, name: String!): CommandResult!
+  Catalog_ChangeCategoryImage(categoryId: ID!, categoryImage: String!): CommandResult!
+  Catalog_ArchiveCategory(categoryId: ID!): CommandResult!
+  Catalog_UnarchiveCategory(categoryId: ID!): CommandResult!
 
   # Catalog — Product DCB slices
-  Catalog_AddProduct(productId: ID!, name: String!, description: String!, price: Float!, categoryId: ID!): String!
-  Catalog_ChangeProductName(productId: ID!, newName: String!): String!
-  Catalog_ChangeProductDescription(productId: ID!, description: String!): String!
-  Catalog_ChangeProductPrice(productId: ID!, price: Float!): String!
-  Catalog_RecordProductDemand(productId: ID!): String!
+  Catalog_AddProduct(categoryId: ID!, description: String!, name: String!, price: MoneyInput!, productId: ID!, productImage: String): CommandResult!
+  Catalog_ChangeProductName(name: String!, productId: ID!): CommandResult!
+  Catalog_ChangeProductDescription(description: String!, productId: ID!): CommandResult!
+  Catalog_ChangeProductPrice(price: MoneyInput!, productId: ID!): CommandResult!
+  Catalog_ChangeProductImage(productId: ID!, productImage: String!): CommandResult!
+  Catalog_ArchiveProduct(productId: ID!): CommandResult!
+  Catalog_UnarchiveProduct(productId: ID!): CommandResult!
+  Catalog_DiscontinueProduct(productId: ID!): CommandResult!
 
   # Catalog — Inbound translation (external schema as args)
-  Catalog_ImportProduct(sku: String!, title: String!, desc: String!, unitPrice: Int!, currency: String!, category: String!): String!
+  Catalog_ImportProduct(category: String!, currency: String!, desc: String!, sku: String!, title: String!, unitPrice: Float!): CommandResult!
 
   # Ordering — Customer aggregate
-  Ordering_Customer_Register(id: ID!, email: String!, address: String!): String!
-  Ordering_Customer_UpdateEmail(id: ID!, email: String!): String!
-  Ordering_Customer_UpdateAddress(id: ID!, address: String!): String!
-  Ordering_Customer_Deactivate(id: ID!): String!
+  Ordering_Customer_Register(address: String!, email: String!, id: ID!): CommandResult!
+  Ordering_Customer_UpdateEmail(email: String!, id: ID!): CommandResult!
+  Ordering_Customer_UpdateAddress(address: String!, id: ID!): CommandResult!
+  Ordering_Customer_SetAddressLocation(address: String!, id: ID!, location: GeoPointInput!): CommandResult!
+  Ordering_Customer_Deactivate(id: ID!): CommandResult!
+  Ordering_Customer_Reactivate(id: ID!): CommandResult!
 
   # Ordering — Order DCB slices
-  Ordering_PlaceOrder(orderId: ID!, customerId: ID!, productIds: [ID]!): String!
-  Ordering_ShipOrder(orderId: ID!): String!
-  Ordering_CancelOrder(orderId: ID!): String!
+  Ordering_PlaceOrder(customerId: ID!, deliveryWindow: DateRangeInput, orderId: ID!, productIds: [ID!]!, shippingMethod: Ordering_PlaceOrderShippingMethod!): CommandResult!
+  Ordering_ShipOrder(orderId: ID!): CommandResult!
+  Ordering_CancelOrder(orderId: ID!): CommandResult!
 
   # Ordering — CatalogProduct sync (driven by the Extension; also reachable directly)
-  Ordering_SyncCatalogProduct_SyncNewProduct(productId: ID!, name: String!, price: Float!): String!
-  Ordering_SyncCatalogProduct_ChangeSyncedPrice(productId: ID!, price: Float!): String!
+  Ordering_SyncNewProduct(name: String!, price: MoneyInput!, productId: ID!): CommandResult!
+  Ordering_ChangeSyncedPrice(price: MoneyInput!, productId: ID!): CommandResult!
+  Ordering_WithdrawSyncedProduct(productId: ID!): CommandResult!
+  Ordering_RelistSyncedProduct(productId: ID!): CommandResult!
 }
 ```
+
+Arguments are emitted in alphabetical order, not declaration order. The platform contributes its own fields alongside these — `Platform_Plugin_*` for the built-in Plugin aggregate and `Upload_Presign` / `Upload_Release` for the object-store door.
 
 ### Queries
 
@@ -794,9 +816,9 @@ extend type Query {
 ```graphql
 extend type Subscription {
   # Mutation-accepted feed (one per mutation field)
-  onCatalog_AddCategory(id: ID): String! @aws_subscribe(mutations: ["Catalog_AddCategory"])
-  onCatalog_AddProduct(id: ID): String!  @aws_subscribe(mutations: ["Catalog_AddProduct"])
-  onOrdering_PlaceOrder(id: ID): String! @aws_subscribe(mutations: ["Ordering_PlaceOrder"])
+  onCatalog_AddCategory(id: ID): CommandResult @aws_subscribe(mutations: ["Catalog_AddCategory"])
+  onCatalog_AddProduct(id: ID): CommandResult  @aws_subscribe(mutations: ["Catalog_AddProduct"])
+  onOrdering_PlaceOrder(id: ID): CommandResult @aws_subscribe(mutations: ["Ordering_PlaceOrder"])
   # ... one entry per mutation above
 
   # Read-model feed (one per queryable type)

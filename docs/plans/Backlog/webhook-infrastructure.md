@@ -1,273 +1,126 @@
 # Backlog: Webhook Infrastructure for InboundTranslationSlice
 
-**Status:** Backlog
-**Depends on:** TranslationSlice plan (completed — `docs/plans/done/translation-slice.md`)
-**Related:** `docs/plans/Backlog/api-component-openapi.md` (REST API Gateway)
+**Status:** Backlog. Refreshed 2026-08-31 against the current tree — the original
+draft predates the repo split, the two-file slice spec, and the generated inbound
+mutation, and several of its steps were either already done or would now be wrong.
+**Depends on:** [done/translation-slice.md](../done/translation-slice.md)
+**Prior art:** [done/inbound-translation-slice-api-mutation.md](../done/inbound-translation-slice-api-mutation.md),
+[done/aws-inbound-translation-lambda-routing.md](../done/aws-inbound-translation-lambda-routing.md),
+[done/inbound-translation-mutation-result-type.md](../done/inbound-translation-mutation-result-type.md)
+**Related:** [api-component-openapi.md](./api-component-openapi.md) (REST API Gateway)
 
 ## Motivation
 
-The InboundTranslationSlice component implements the Event Modeling **Inbound Translation** pattern — it receives external input, validates it through an anti-corruption layer, and publishes domain commands. The translation logic is complete: `operations.receive` accepts `JSON.t` and returns `promise<result<string, string>>`.
+An InboundTranslationSlice receives external input, validates it through an
+anti-corruption layer, and publishes domain commands.
 
-However, there is **no framework support for exposing `receive` as an HTTP endpoint**. The user must manually wire a Lambda, API Gateway route, or GraphQL mutation to call `operations.receive`. This defeats the component's purpose — a payment provider sending webhooks needs a URL, not a ReScript function reference.
+It is **already reachable**: every slice gets a generated GraphQL mutation
+`<Plugin>_<Slice>`, whose arguments come from `@schema type externalInput` and
+which returns `CommandResult!`. On AWS that is an AppSync DataSource + Resolver
+onto the shared DCB CommandTopic Lambda (`InboundTranslationResolvers_AppSync`);
+locally it is a field on the local GraphQL server
+(`InboundTranslationResolvers_GraphQL`). No wiring is asked of the app author.
 
-This plan adds **webhook endpoint configuration** to the InboundTranslationSlice spec and **infrastructure creation** to the platform builders, so that declaring an InboundTranslationSlice automatically provisions a reachable HTTP endpoint.
+What is missing is a **URL**. A payment provider or a shipping carrier posts a
+JSON body to an address you give it; it does not speak GraphQL and it cannot
+present a Cognito token. So the remaining gap is narrower than "the component is
+unreachable" — it is:
+
+- no HTTP address for `receive`, and
+- no authentication model that fits a third-party sender (see
+  [Authentication](#authentication-is-the-hard-half) — this, not the Pulumi
+  plumbing, is the part that needs a decision).
+
+This plan adds an optional webhook endpoint to the InboundTranslationSlice spec
+and the infrastructure to provision it, so that a slice that wants a URL gets one
+without giving up the mutation it already has.
+
+## What changed since the first draft
+
+| Draft said | Now |
+|---|---|
+| The author must hand-wire a Lambda, an API Gateway route, **or a GraphQL mutation** | The mutation is generated on both platforms; only the URL is missing |
+| Step 3: add `Lambda.FunctionUrl` bindings | **Done** — [rescript/pulumi-aws/src/Lambda/FunctionUrl.res](../../../rescript/pulumi-aws/src/Lambda/FunctionUrl.res), richer than the sketch (`invokeMode`, `qualifier`, `urlId`, `get`) |
+| Step 4: add `ApiGatewayV2` bindings | Still absent — no `ApiGatewayV2` under `rescript/pulumi-aws/src/` |
+| `let translate` and `module DcbEventLogSpec` on the Spec | `translate` lives on the `Translation` module (`<Name>_Translation.res`); there is no `DcbEventLogSpec` member |
+| `translate: externalInput => result<(string, command), string>` | `result<array<(string, command)>, string>` — a translation may publish several commands, or none |
+| `receive: JSON.t => promise<result<string, string>>` | `promise<result<acceptedResult, rejectedResult>>`, both arms carrying `requestId` |
+| Lambdas via `aws.lambda.CallbackFunction` | **Must not** — see [Do not use CallbackFunction](#do-not-use-callbackfunction) |
+| `reventless/reventless-spec`, `reventless-in-memory`, `rescript/rescript-pulumi-aws` | `reventless/spec`, `reventless/local`, `rescript/pulumi-aws` |
+| `examples/dcb/ordering/src/Slices/` | `examples/online-shop-dcb/<plugin>/src/<Entity>/InboundTranslationSlice/` |
+
+---
 
 ## Design
 
-### Spec Extension
+### Spec extension
 
-Add an optional `endpoint` configuration to the InboundTranslationSlice spec:
-
-```rescript
-module type Spec = {
-  // ... existing fields ...
-  let name: string
-  module DcbEventLogSpec: DcbEventLog.Spec
-  @schema type externalInput
-  @schema type command
-  let translate: externalInput => result<(string, command), string>
-
-  // NEW: webhook endpoint configuration
-  let endpoint: option<endpointConfig>
-}
-
-type endpointMethod = POST | PUT
-type authType = None | IAM | ApiKey(string)
-
-type endpointConfig = {
-  /** URL path segment (e.g., "payment-webhook"). Combined with a base path to form the full URL. */
-  path: string,
-  /** HTTP method. Default: POST. */
-  method?: endpointMethod,
-  /** Authentication type for the endpoint. Default: None (open). */
-  auth?: authType,
-}
-```
-
-When `endpoint = None`, behaviour is unchanged — the user wires `operations.receive` manually (e.g., via a GraphQL mutation resolver). When `endpoint = Some({path: "payment-webhook"})`, the platform builder provisions an HTTP endpoint that forwards the request body to `operations.receive`.
-
-### Why Optional?
-
-Not every InboundTranslationSlice needs a dedicated HTTP endpoint:
-- Some are triggered via GraphQL mutations (internal API consumers)
-- Some are triggered by message queue consumers (SQS, EventBridge)
-- Only external webhooks (payment providers, shipping updates, third-party integrations) need a stable URL
-
-Making `endpoint` optional keeps the component flexible while providing first-class webhook support when needed.
-
-### Outputs Extension
-
-When an endpoint is configured, the outputs expose the URL:
-
-```rescript
-type outputs = {
-  resources: array<Adapter.resource>,
-  queryDb: QueryDb.outputs,
-  endpointUrl?: Pulumi.Output.t<string>,  // NEW: the provisioned webhook URL
-}
-```
-
-This lets the user retrieve the webhook URL at deploy time (e.g., to register it with a payment provider's dashboard or to configure another system).
-
----
-
-## AWS Implementation: Two Approaches
-
-Both approaches create a Lambda function that wraps `operations.receive` and returns an HTTP response. They differ only in the HTTP routing layer in front of the Lambda.
-
-### Approach A: API Gateway HTTP API
-
-Uses [AWS API Gateway v2 (HTTP API)](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api.html) — the lightweight, low-cost variant designed for simple proxy integrations.
-
-**Architecture:**
-
-```
-External System
-    ↓ POST /payment-webhook
-API Gateway HTTP API
-    ↓ Lambda proxy integration
-Webhook Lambda
-    ↓ operations.receive(event.body)
-InboundTranslationSlice Callback
-    ↓ translate → publishJsons
-CommandTopic
-```
-
-**Resources created per InboundTranslationSlice (with endpoint):**
-
-| Resource | Type | Purpose |
-|----------|------|---------|
-| Lambda Function | `aws.lambda.CallbackFunction` | Wraps `operations.receive` |
-| IAM Role | `aws.iam.Role` | Lambda execution role |
-| HTTP API | `aws.apigatewayv2.Api` | HTTP API (one per plugin, shared) |
-| Route | `aws.apigatewayv2.Route` | `POST /payment-webhook` |
-| Integration | `aws.apigatewayv2.Integration` | Lambda proxy integration |
-| Stage | `aws.apigatewayv2.Stage` | `$default` auto-deploy stage |
-| Permission | `aws.lambda.Permission` | Allows API Gateway to invoke Lambda |
-
-**Shared API Gateway:** A single HTTP API can be shared across all InboundTranslationSlices in a plugin (or even across the entire Core). Each slice adds its own route. This is more cost-effective and provides a single base URL.
-
-**URL format:** `https://{api-id}.execute-api.{region}.amazonaws.com/{path}`
-
-**Pros:**
-- Standard AWS pattern for webhooks
-- Supports custom domains via Route 53 + ACM
-- Supports API key authentication, IAM auth, JWT authorizers
-- Request/response transformation and validation
-- CloudWatch access logging and metrics
-- Rate limiting and throttling built-in
-- Single base URL for all webhooks in a plugin
-
-**Cons:**
-- Additional infrastructure (API Gateway + routes + integrations)
-- Requires new Pulumi AWS bindings (`apigatewayv2`)
-- Slight latency overhead vs direct Lambda invocation
-
-### Approach B: Lambda Function URL
-
-Uses [Lambda Function URLs](https://docs.aws.amazon.com/lambda/latest/dg/urls-configuration.html) — a built-in HTTP(S) endpoint on the Lambda function itself.
-
-**Architecture:**
-
-```
-External System
-    ↓ POST https://{url-id}.lambda-url.{region}.on.aws/
-Lambda Function URL
-    ↓ (direct invocation, no proxy)
-Webhook Lambda
-    ↓ operations.receive(event.body)
-InboundTranslationSlice Callback
-    ↓ translate → publishJsons
-CommandTopic
-```
-
-**Resources created per InboundTranslationSlice (with endpoint):**
-
-| Resource | Type | Purpose |
-|----------|------|---------|
-| Lambda Function | `aws.lambda.CallbackFunction` | Wraps `operations.receive` |
-| IAM Role | `aws.iam.Role` | Lambda execution role |
-| Function URL | `aws.lambda.FunctionUrl` | HTTPS endpoint on the Lambda |
-| Permission | `aws.lambda.Permission` | (only if auth=None, allows public access) |
-
-**URL format:** `https://{url-id}.lambda-url.{region}.on.aws/`
-
-**Pros:**
-- Minimal infrastructure — just the Lambda + URL config
-- No additional service to manage
-- Lower latency (no API Gateway hop)
-- Simpler — fewer moving parts
-- Free (included in Lambda pricing, no API Gateway cost)
-
-**Cons:**
-- One URL per Lambda (can't share a base URL across slices)
-- No custom domain support without CloudFront
-- Limited auth options (IAM or NONE — no API keys, no JWT authorizers)
-- No built-in rate limiting or throttling
-- No request/response transformation
-- URL is auto-generated (not human-friendly)
-
-### Recommendation
-
-Both approaches should be supported. The choice depends on the use case:
-
-- **Lambda Function URL** for simple, low-cost webhooks where the URL can be registered with a provider (e.g., Stripe webhook configuration accepts any URL)
-- **API Gateway HTTP API** when you need custom domains, API keys, rate limiting, or a unified base URL for multiple webhook endpoints
-
-The spec's `endpointConfig` drives the choice. The AWS builder checks for a `transport` field:
-
-```rescript
-type transportType = FunctionUrl | ApiGateway
-
-type endpointConfig = {
-  path: string,
-  method?: endpointMethod,
-  auth?: authType,
-  transport?: transportType,  // Default: FunctionUrl
-}
-```
-
----
-
-## In-Memory Implementation
-
-The in-memory platform needs to support webhook endpoints for local development and testing. Two options:
-
-### Option A: Direct Function Exposure (Minimal)
-
-The simplest approach: `operations.receive` is already callable directly. For in-memory, the "endpoint" just registers the path in a routing table that test code can look up:
-
-```rescript
-type operations = {
-  receive: JSON.t => promise<result<string, string>>,
-  endpointUrl?: string,  // e.g., "http://localhost:4000/payment-webhook"
-}
-```
-
-The in-memory platform maintains a global route registry. Test code calls `InMemory_Webhooks.post("/payment-webhook", jsonBody)` which looks up and invokes the matching `receive` function.
-
-### Option B: HTTP Server (Full Fidelity)
-
-For integration testing that needs real HTTP calls, spin up a lightweight HTTP server (Node `http` module) that listens on a local port:
-
-```rescript
-// Shared across all InboundTranslationSlices in a plugin
-let webhookServer = InMemory_WebhookServer.make(~port=4000)
-
-// Each slice with an endpoint registers its route
-webhookServer.addRoute("POST", "/payment-webhook", slice.operations.receive)
-```
-
-This mirrors the production behaviour — external systems can POST to `http://localhost:4000/payment-webhook` during local development.
-
-### Recommendation
-
-Start with **Option A** (direct function + route registry) — it's sufficient for unit and integration tests. Add Option B later if users need full HTTP fidelity for local development.
-
----
-
-## Implementation Steps
-
-### Step 1: Add Endpoint Types to Spec
-
-**Modify:** `reventless/reventless-spec/src/components/InboundTranslationSlice.res`
-
-Add the endpoint configuration types and the optional `endpoint` field to the Spec module type.
+A slice that wants no URL says nothing and pays nothing:
 
 ```rescript
 type endpointMethod = POST | PUT
 
 type authType =
-  | None
+  | Open
   | IAM
   | ApiKey(string)
+  | SignedBody(signatureConfig)
 
-type transportType =
-  | FunctionUrl
-  | ApiGateway
+type transportType = FunctionUrl | ApiGateway
 
 type endpointConfig = {
+  /** URL path segment, e.g. "payment-webhook". */
   path: string,
+  /** Default: POST. */
   method?: endpointMethod,
+  /** Default: Open — see the authentication section before choosing it. */
   auth?: authType,
+  /** Default: FunctionUrl. */
   transport?: transportType,
 }
+```
 
+```rescript
 module type Spec = {
   let name: string
-  module DcbEventLogSpec: DcbEventLog.Spec
+  let moduleUrl: string
   @schema type externalInput
   @schema type command
-  let translate: externalInput => result<(string, command), string>
+  let targetName: string
+  let externalSystem: option<string>
+  let commandAuthorization: command => Authorization.permission
+
+  /** Auto-injected by `@@reventless.spec` as `None`, mirroring `externalSystem`. */
   let endpoint: option<endpointConfig>
 }
 ```
 
-### Step 2: Extend Infra Types
+**On `option<endpointConfig>` vs an optional field.** A ReScript `module type`
+cannot declare an optional `let` — `let endpoint?: endpointConfig` is a syntax
+error, and the repo has no such precedent. The `?` form is reachable only by
+moving the member onto a record, and a one-field wrapper record earns nothing
+here: the PPX injects the default either way, so neither form makes an author
+write `None`, and the wrapper costs a nested record at the one site that does set
+it (`{endpoint: {path: …}}` vs `Some({path: …})`). Option-typed it is —
+consistent with `externalSystem: option<string>` two lines above it, and with
+`subIdConfig` on the queryable specs.
 
-**Modify:** `reventless/reventless-infra/src/components/InboundTranslationSlice.res`
+**Worth considering instead: a file-level attribute.** A webhook endpoint is a
+component-level infrastructure opt-in, which the repo already expresses as an
+attribute the generator reads from raw source — `@@reventless.async`,
+`@@reventless.systemCallable`:
 
-Add `endpointUrl` to outputs:
+```rescript
+@@reventless.spec
+@@reventless.webhook({path: "payment-webhook", transport: FunctionUrl})
+```
+
+That removes the question entirely at the authoring surface — a slice with no
+endpoint carries no attribute and no `let` — and leaves `option<endpointConfig>`
+as a purely internal representation nobody hand-writes. It costs a PPX change
+and a republish, so it is a decision for step 1, not an implementation detail.
+
+### Outputs extension
 
 ```rescript
 type outputs = {
@@ -277,478 +130,283 @@ type outputs = {
 }
 ```
 
-### Step 3: Add Lambda Function URL Bindings
+Optional field, not `option<Pulumi.Output.t<string>>` — that combination is
+called out in CLAUDE.md as one that does not work. Lets the deploy read the URL
+back to register it with the provider.
 
-**New file:** `rescript/rescript-pulumi-aws/src/Lambda/Lambda_FunctionUrl.res`
+### Both doors, one `receive` — and why the endpoint does not switch the mutation off
 
-Add ReScript bindings for `@pulumi/aws.lambda.FunctionUrl`:
+The endpoint is **additive**. The mutation is generated as it is today; declaring
+an endpoint adds a URL beside it. It is not either/or, and the choice does **not**
+belong inside `endpointConfig`.
 
-```rescript
-type authorizationType =
-  | @as("NONE") None_
-  | @as("AWS_IAM") AwsIam
+Three reasons the endpoint must not suppress the mutation implicitly:
 
-type cors = {
-  allowCredentials?: bool,
-  allowHeaders?: array<string>,
-  allowMethods?: array<string>,
-  allowOrigins?: array<string>,
-  exposeHeaders?: array<string>,
-  maxAge?: int,
-}
+1. **The mutation is load-bearing.** The seed harness drives the supplier feed
+   through `Catalog_ImportProduct`
+   ([HybridSeedData.res](../../../examples/online-shop-hybrid/seed-data/src/HybridSeedData.res)
+   `seedSupplierFeed`). A slice that traded its mutation for a URL would break
+   seeding, replay and every GWT-adjacent path that posts external input directly.
+2. **Local has no public URL.** The local platform provisions a route registry,
+   not a reachable address. The mutation is the door that works in development on
+   both platforms; making it conditional on production infrastructure inverts that.
+3. **Adding a webhook would become a breaking schema change.** Removing a field
+   from the SDL breaks open clients — and the shell reads schemas at runtime, so
+   an already-open tab breaks the moment the SDL changes. "Add a URL" must not
+   mean "withdraw a mutation".
 
-type args = {
-  functionName: Pulumi.Input.t<string>,
-  authorizationType: authorizationType,
-  cors?: Pulumi.Input.t<cors>,
-}
+**The two are independent axes** — API surface vs. transport — and the repo
+already has a knob for the first: `@noApi`. Wire that for inbound slices (it is
+read for StateChangeSlice commands and ignored for these) and all four
+combinations are expressible, without `endpointConfig` knowing anything about
+GraphQL:
 
-type t = {
-  functionUrl: Pulumi.Output.t<string>,
-  functionArn: Pulumi.Output.t<string>,
-}
+| | no `endpoint` | `endpoint` declared |
+|---|---|---|
+| **default** | mutation only — today's behaviour | mutation **and** URL |
+| **`@noApi`** | build error — unreachable slice | URL only, the pure webhook receiver |
 
-@module("@pulumi/aws") @scope("lambda") @new
-external make: (~name: string, ~args: args, ~opts: Pulumi.CustomResourceOptions.t=?) => t =
-  "FunctionUrl"
+For an inbound slice `@noApi` reads off `externalInputSchema`, not
+`commandSchema`, since that is where the mutation's arguments come from.
+
+### Consequences of two doors
+
+Additive is the right default, but it is not free, and the implementation must
+handle these rather than discover them:
+
+- **Signature verification protects the URL only.** A slice with `SignedBody` and
+  a default `commandAuthorization` of `AllowAuthenticated` can still be handed a
+  forged payment confirmation by any signed-in caller through the mutation. A
+  slice that has a URL should set `commandAuthorization` deliberately —
+  `AllowGroups([...])` for an operator-only replay door, or `@noApi` for none at
+  all. Consider warning at build time when a slice declares `SignedBody` and
+  leaves `commandAuthorization` at the default.
+- **The audit log sees both.** The audit row must record which door the input
+  arrived through, or the log cannot answer "did the provider actually call us?"
+- `requestId` must stay unique across both.
+
+---
+
+## Authentication is the hard half
+
+The mutation answers under the slice's `commandAuthorization` (default
+`AllowAuthenticated`). A URL has no such caller. The options are not equivalent
+and the choice cannot be deferred to the implementer:
+
+| `auth` | Who can call | Honest assessment |
+|---|---|---|
+| `Open` | Anybody on the internet | The slice's `translate` is the only gate. Every rejection still costs a Lambda invocation and an audit row — an open URL is a spend amplifier as much as a correctness risk. |
+| `IAM` | SigV4 signers | Fine for AWS-internal senders; useless for a third-party SaaS. |
+| `ApiKey(name)` | Bearer of a shared secret | API Gateway only. Better than open; the key is a static secret needing rotation. |
+| `SignedBody(cfg)` | A sender holding the shared signing secret | **What real webhook providers actually do** (Stripe's `Stripe-Signature`, GitHub's `X-Hub-Signature-256`): HMAC over the raw body plus a timestamp, verified before parsing. Works on both transports because it is done in the handler, not the router. |
+
+`SignedBody` did not exist in the first draft and is the reason this plan should
+not be implemented as a straight Pulumi exercise. It also imposes a constraint on
+the handler: signature verification needs the **raw** request body, so the
+handler must verify before `JSON.parse`, not after.
+
+Decide `SignedBody`'s shape (header name, algorithm, timestamp tolerance, secret
+source — Secrets Manager vs an env var) before writing Step 5.
+
+---
+
+## Do not use CallbackFunction
+
+The first draft's Steps 6 and 7 both created the webhook Lambda with
+`aws.lambda.CallbackFunction`. That path is known-broken for anything touching
+the AWS SDK: the serialized closure mixes the Lambda layer's `@smithy` versions
+with the runtime's and fails at cold start with a 502. See
+[task-sideeffect-callbackfunction-conversion.md](../task-sideeffect-callbackfunction-conversion.md)
+and [done/entry-point-rescript-conversion.md](../done/entry-point-rescript-conversion.md).
+
+Follow the established shape instead — a runtime-pure `*_Ops.res` module compiled
+into an entry point and shipped via `buildCodeArchive`, exactly as
+[Upload_Presign_S3](../../../reventless/aws/src/adapter/Upload/Upload_Presign_S3.res)
+(+ `Upload_Presign_S3_Ops.res`) and
+[Geocoder_AwsLocation_Resolver](../../../reventless/aws/src/adapter/Geocoder/Geocoder_AwsLocation_Resolver.res)
+do. Keeping deploy-time Pulumi values out of the runtime graph is the whole point
+of the split; a webhook handler that imports `@pulumi/pulumi` will not cold-start.
+
+---
+
+## AWS implementation: two transports
+
+Both create a Lambda wrapping `receive` and differ only in the HTTP router.
+
+### Approach A: Lambda Function URL (default)
+
+```
+External System
+    ↓ POST https://{url-id}.lambda-url.{region}.on.aws/
+Lambda Function URL  →  Webhook Lambda  →  receive(body)  →  translate → publishJsons → CommandTopic
 ```
 
-Re-export from `Lambda.res`:
-```rescript
-module FunctionUrl = Lambda_FunctionUrl
+| Resource | Type |
+|---|---|
+| Lambda Function | compiled entry point via `buildCodeArchive` |
+| IAM Role | `aws.iam.Role` |
+| Function URL | `aws.lambda.FunctionUrl` — binding exists |
+| Permission | `aws.lambda.Permission` (only when `auth = Open`) |
+
+**Pros:** minimal infrastructure, no extra service, no API Gateway cost, lower
+latency. **Cons:** one URL per Lambda, no shared base URL, no custom domain
+without CloudFront, auth limited to IAM or NONE at the router (which is why
+`SignedBody` matters), no built-in throttling, auto-generated URL.
+
+### Approach B: API Gateway HTTP API
+
+```
+External System
+    ↓ POST /payment-webhook
+API Gateway HTTP API  →  Lambda proxy integration  →  Webhook Lambda  →  receive(body)  →  …
 ```
 
-### Step 4: Add API Gateway v2 (HTTP API) Bindings
+| Resource | Type |
+|---|---|
+| Lambda + IAM Role | as above |
+| HTTP API | `aws.apigatewayv2.Api` (shared) |
+| Route | `aws.apigatewayv2.Route` — `POST /payment-webhook` |
+| Integration | `aws.apigatewayv2.Integration` — `AWS_PROXY`, payload format `2.0` |
+| Stage | `aws.apigatewayv2.Stage` — `$default`, auto-deploy |
+| Permission | `aws.lambda.Permission` for `apigateway.amazonaws.com` |
 
-**New file:** `rescript/rescript-pulumi-aws/src/ApiGatewayV2/ApiGatewayV2.res`
+**Pros:** one base URL for every webhook in a plugin, custom domains via Route 53
++ ACM, API keys / JWT authorizers, request validation, access logs, throttling.
+**Cons:** more infrastructure, needs the missing `apigatewayv2` bindings, an extra
+hop.
 
-Add ReScript bindings for the minimal set of API Gateway v2 resources:
+**Recommendation:** default `FunctionUrl`; reach for `ApiGateway` when you need a
+custom domain, a unified base URL, or throttling. `transport` on the config picks.
 
-```rescript
-module Api = {
-  type args = {
-    name: string,
-    protocolType: string,  // "HTTP"
-    description?: string,
-  }
+---
 
-  type t = {
-    id: Pulumi.Output.t<string>,
-    apiEndpoint: Pulumi.Output.t<string>,
-  }
+## Local implementation
 
-  @module("@pulumi/aws") @scope("apigatewayv2") @new
-  external make: (~name: string, ~args: args, ~opts: Pulumi.CustomResourceOptions.t=?) => t = "Api"
-}
+Start with a route registry — enough for tests, no server:
 
-module Integration = {
-  type args = {
-    apiId: Pulumi.Input.t<string>,
-    integrationType: string,  // "AWS_PROXY"
-    integrationUri: Pulumi.Input.t<string>,
-    payloadFormatVersion?: string,  // "2.0"
-  }
-
-  type t = {
-    id: Pulumi.Output.t<string>,
-  }
-
-  @module("@pulumi/aws") @scope("apigatewayv2") @new
-  external make: (~name: string, ~args: args, ~opts: Pulumi.CustomResourceOptions.t=?) => t =
-    "Integration"
-}
-
-module Route = {
-  type args = {
-    apiId: Pulumi.Input.t<string>,
-    routeKey: string,  // "POST /payment-webhook"
-    target: Pulumi.Input.t<string>,  // "integrations/{integration-id}"
-  }
-
-  type t = {
-    id: Pulumi.Output.t<string>,
-  }
-
-  @module("@pulumi/aws") @scope("apigatewayv2") @new
-  external make: (~name: string, ~args: args, ~opts: Pulumi.CustomResourceOptions.t=?) => t =
-    "Route"
-}
-
-module Stage = {
-  type args = {
-    apiId: Pulumi.Input.t<string>,
-    name: string,  // "$default"
-    autoDeploy?: bool,
-  }
-
-  type t = {
-    id: Pulumi.Output.t<string>,
-  }
-
-  @module("@pulumi/aws") @scope("apigatewayv2") @new
-  external make: (~name: string, ~args: args, ~opts: Pulumi.CustomResourceOptions.t=?) => t =
-    "Stage"
-}
-```
-
-### Step 5: Create Webhook Adapter Interface
-
-**New file:** `reventless/reventless-infra/src/components/Webhook_Adapter.res`
-
-Provider abstraction so the core builder doesn't depend on AWS directly:
-
-```rescript
-type webhookHandler = JSON.t => promise<result<string, string>>
-
-type webhookEndpoint = {
-  url: Pulumi.Output.t<string>,
-  resources: array<Adapter.resource>,
-}
-
-module type Provider = {
-  type config
-
-  /** Create an HTTP endpoint that invokes the given handler. */
-  let makeEndpoint: (
-    ~name: string,
-    ~path: string,
-    ~method: string,
-    ~handler: Pulumi.Output.t<webhookHandler>,
-    ~config: config,
-    ~opts: Pulumi.ComponentResource.options,
-  ) => webhookEndpoint
-}
-```
-
-### Step 6: Implement Lambda Function URL Provider
-
-**New file:** `reventless/reventless-aws/src/adapter/Webhook/Webhook_FunctionUrl.res`
-
-Creates a Lambda wrapping `operations.receive` and attaches a Function URL:
-
-```rescript
-type config = unit
-
-let makeEndpoint = (~name, ~path as _path, ~method as _method, ~handler, ~config as _, ~opts) => {
-  // Create Lambda that accepts API Gateway v2 payload format
-  // and calls handler(event.body)
-  let lambdaRole = IAM.Role.makeWithDefaultPolicy(...)
-  let lambda = handler->Output.apply(handler =>
-    Lambda.CallbackFunction.make(~name=name ++ "Webhook", ~args=Lambda.CallbackFunction.Args.make(
-      ~callback=async (event, _ctx) => {
-        let body = event["body"]->JSON.parseExn
-        let result = await handler(body)
-        switch result {
-        | Ok(targetId) => {statusCode: 200, body: JSON.stringify({"targetId": targetId})}
-        | Error(msg) => {statusCode: 400, body: JSON.stringify({"error": msg})}
-        }
-      },
-      ~role=lambdaRole,
-    ))
-  )
-
-  // Attach Function URL
-  let functionUrl = lambda->Output.apply(lambda =>
-    Lambda.FunctionUrl.make(~name=name ++ "WebhookUrl", ~args={
-      functionName: lambda.name,
-      authorizationType: None_,
-    })
-  )
-
-  {
-    url: functionUrl->Output.apply(fu => fu.functionUrl),
-    resources: [...],
-  }
-}
-```
-
-### Step 7: Implement API Gateway HTTP API Provider
-
-**New file:** `reventless/reventless-aws/src/adapter/Webhook/Webhook_ApiGateway.res`
-
-Creates a shared HTTP API and adds routes per InboundTranslationSlice:
-
-```rescript
-type config = {
-  api: ApiGatewayV2.Api.t,
-  stage: ApiGatewayV2.Stage.t,
-}
-
-let makeSharedApi = (~name, ~opts) => {
-  let api = ApiGatewayV2.Api.make(~name, ~args={
-    name: name ++ "WebhookApi",
-    protocolType: "HTTP",
-  }, ~opts)
-
-  let stage = ApiGatewayV2.Stage.make(~name=name ++ "DefaultStage", ~args={
-    apiId: api.id,
-    name: "$default",
-    autoDeploy: true,
-  }, ~opts)
-
-  {api, stage}
-}
-
-let makeEndpoint = (~name, ~path, ~method, ~handler, ~config, ~opts) => {
-  // Create Lambda (same as FunctionUrl approach)
-  let lambda = ...
-
-  // Create Integration
-  let integration = ApiGatewayV2.Integration.make(
-    ~name=name ++ "Integration",
-    ~args={
-      apiId: config.api.id,
-      integrationType: "AWS_PROXY",
-      integrationUri: lambda.arn,
-      payloadFormatVersion: "2.0",
-    },
-    ~opts,
-  )
-
-  // Create Route
-  let routeKey = method ++ " /" ++ path
-  let _route = ApiGatewayV2.Route.make(
-    ~name=name ++ "Route",
-    ~args={
-      apiId: config.api.id,
-      routeKey,
-      target: integration.id->Output.apply(id => "integrations/" ++ id),
-    },
-    ~opts,
-  )
-
-  // Grant API Gateway permission to invoke Lambda
-  let _permission = Lambda.Permission.make(
-    ~name=name ++ "ApiGwPermission",
-    ~args={
-      action: "lambda:InvokeFunction",
-      function: lambda.arn,
-      principal: "apigateway.amazonaws.com",
-      sourceArn: config.api.id->Output.apply(id =>
-        "arn:aws:execute-api:*:*:" ++ id ++ "/*"
-      ),
-    },
-    ~opts,
-  )
-
-  {
-    url: config.api.apiEndpoint->Output.apply(base => base ++ "/" ++ path),
-    resources: [...],
-  }
-}
-```
-
-### Step 8: Wire Webhook Provider into Core Builder
-
-**Modify:** `reventless/reventless-core/src/components/InboundTranslationSlice/InboundTranslationSlice_Builder.res`
-
-Add an optional `Webhook` functor parameter and wire it when `Spec.endpoint` is `Some`:
-
-```rescript
-module Make = (
-  QueryDbStorage: QueryDb_Adapter.Storage,
-  QueryDbResolvers: QueryDb_Adapter.Resolvers with type api = QueryDbStorage.api and type role = QueryDbStorage.role,
-  Api: { let api: QueryDbStorage.api; let apiRole: QueryDbStorage.role },
-  Webhook: {
-    type config
-    let makeEndpoint: (
-      ~name: string, ~path: string, ~method: string,
-      ~handler: Pulumi.Output.t<Webhook_Adapter.webhookHandler>,
-      ~config: config,
-      ~opts: Pulumi.ComponentResource.options,
-    ) => Webhook_Adapter.webhookEndpoint
-    let config: option<config>
-  },
-) => {
-  // ... existing builder code ...
-
-  let construct = (~publishJsons, self, _name) => {
-    // ... existing code creating queryDb and operations ...
-
-    // NEW: create webhook endpoint if configured
-    let webhookEndpoint = switch (Spec.endpoint, Webhook.config) {
-    | (Some(endpointCfg), Some(webhookConfig)) =>
-      let method = endpointCfg.method->Option.getOr(POST)->endpointMethodToString
-      let endpoint = Webhook.makeEndpoint(
-        ~name=Spec.name,
-        ~path=endpointCfg.path,
-        ~method,
-        ~handler=operationsOutput->Output.apply(ops => ops.receive),
-        ~config=webhookConfig,
-        ~opts,
-      )
-      Some(endpoint)
-    | _ => None
-    }
-
-    let outputs: InboundTranslationSlice.outputs = {
-      resources: webhookEndpoint->Option.map(e => e.resources)->Option.getOr([]),
-      queryDb: queryDb->Component.outputs,
-      endpointUrl: ?webhookEndpoint->Option.map(e => e.url),
-    }
-    self->Component.setOutputs(outputs)
-  }
-}
-```
-
-### Step 9: Wire into AWS Platform Builders
-
-**Modify:** `reventless/reventless-aws/src/components/InboundTranslationSlice_Builder.res`
-
-Pass the webhook provider based on the spec's transport choice:
-
-```rescript
-module Make = (Api: {
-  let api: Types.AppSync.api
-  let apiRole: Types.AppSync.role
-  // NEW: shared API Gateway (None if not using ApiGateway transport)
-  let webhookApiGateway: option<Webhook_ApiGateway.config>
-}) => ReventlessCore.InboundTranslationSlice_Builder.Make(
-  QueryDbStorage.DynamoDb,
-  QueryDbResolvers.AppSync,
-  Api,
-  {
-    type config = /* determined by transport choice */
-    let makeEndpoint = ...
-    let config = ...
-  },
-)
-```
-
-The Plugin_Builder (AWS) creates the shared API Gateway HTTP API once per plugin if any InboundTranslationSlice uses `transport: ApiGateway`. For `FunctionUrl` slices, no shared resource is needed.
-
-### Step 10: Implement In-Memory Webhook Support
-
-**New file:** `reventless/reventless-in-memory/src/adapter/Webhook/InMemory_WebhookRegistry.res`
-
-Simple route registry for test code:
+**New file:** `reventless/local/src/adapter/Webhook/LocalWebhookRegistry.res`
+(`Local` prefix, no backend suffix — there is no in-memory/SQLite choice here;
+see the backend-suffix convention in `.claude/rules/component-guidelines.md`.)
 
 ```rescript
 type route = {
   method: string,
   path: string,
-  handler: JSON.t => promise<result<string, string>>,
+  handler: JSON.t => promise<ReventlessInfra.InboundTranslationSlice.receiveResult>,
 }
 
 let routes: ref<array<route>> = ref([])
-
-let register = (~method, ~path, ~handler) => {
-  routes := routes.contents->Array.concat([{method, path, handler}])
-}
-
-let post = async (path, body) => {
-  switch routes.contents->Array.find(r => r.path == path && r.method == "POST") {
-  | Some(route) => await route.handler(body)
-  | None => Error("No route registered for POST " ++ path)
-  }
-}
-
-let reset = () => { routes := [] }
+let register = (~method, ~path, ~handler) => ...
+let post = async (path, body) => ...
+let reset = () => routes := []
 ```
 
-**Modify:** `reventless/reventless-in-memory/src/components/InboundTranslationSlice_Builder.res`
+Registration must be **two-phase**, mirroring `InboundTranslationResolvers_GraphQL`:
+register the route synchronously with a queuing forwarder, bind the real `receive`
+when the `Output` resolves, drain the parked calls. Without this a test that posts
+before the platform settles hangs.
 
-Pass a webhook provider that registers routes in the in-memory registry and returns `http://localhost/{path}` as the URL.
-
-### Step 11: Update Example Plugins
-
-Add an example InboundTranslationSlice with `endpoint` configured:
-
-```rescript
-// examples/dcb/ordering/src/Slices/PaymentWebhook.res
-module DcbEventLogSpec = OrderingEventLog
-
-let name = "PaymentWebhook"
-
-@schema type externalInput = { paymentId: string, orderId: string, status: string, amount: float }
-@schema type command = ConfirmPayment({ orderId: @s.matches(DcbTag.string) string, paymentId: string, amount: float })
-
-let translate = (input: externalInput) =>
-  switch input.status {
-  | "completed" => Ok((input.orderId, ConfirmPayment({ orderId: input.orderId, paymentId: input.paymentId, amount: input.amount })))
-  | status => Error("Unknown payment status: " ++ status)
-  }
-
-let endpoint = Some({
-  path: "payment-webhook",
-  method: POST,
-  auth: None,
-  transport: FunctionUrl,
-})
-```
-
-### Step 12: Tests
-
-**Webhook Registry Tests (in-memory):**
-- Register route, call `post`, verify handler invoked
-- Unregistered route returns Error
-- Reset clears all routes
-
-**Builder Tests (in-memory):**
-- Slice with `endpoint = None` → no endpointUrl in outputs
-- Slice with `endpoint = Some(...)` → endpointUrl is set, route is registered
-- `InMemory_WebhookRegistry.post` invokes `receive` end-to-end
-
-**AWS Builder Tests (unit):**
-- Verify FunctionUrl resources are created when `transport = FunctionUrl`
-- Verify API Gateway resources are created when `transport = ApiGateway`
-- Verify correct resource naming conventions
-
-### Step 13: Documentation
-
-Update existing InboundTranslationSlice docs:
-- Add "Webhook Endpoint" section explaining the `endpoint` spec field
-- Add examples for both FunctionUrl and ApiGateway transports
-- Document how to retrieve the endpoint URL from outputs
-- Add comparison table of FunctionUrl vs ApiGateway trade-offs
+A real local HTTP server (Node `http`, routes mounted on the existing local
+GraphQL server's port) can come later if anyone needs to point a tunnel at it.
 
 ---
 
-## New Pulumi AWS Bindings Required
+## Implementation steps
 
-| Binding | Pulumi Resource | Package |
-|---------|----------------|---------|
-| `Lambda.FunctionUrl` | `aws.lambda.FunctionUrl` | `rescript-pulumi-aws` |
-| `ApiGatewayV2.Api` | `aws.apigatewayv2.Api` | `rescript-pulumi-aws` |
-| `ApiGatewayV2.Integration` | `aws.apigatewayv2.Integration` | `rescript-pulumi-aws` |
-| `ApiGatewayV2.Route` | `aws.apigatewayv2.Route` | `rescript-pulumi-aws` |
-| `ApiGatewayV2.Stage` | `aws.apigatewayv2.Stage` | `rescript-pulumi-aws` |
+| # | Step | File | State |
+|---|---|---|---|
+| 1 | Decide `SignedBody`'s shape, and `let endpoint` vs `@@reventless.webhook` | — | **Blocks 2–3 and 8–9** |
+| 2 | Add `endpointConfig` + `let endpoint` to the Spec | `reventless/spec/src/components/InboundTranslationSlice.res` | |
+| 3 | Inject `let endpoint = None` by default (or read the attribute, per step 1) | `reventless-ppx` (spec pass) | Republish in lockstep — an older published ppx omits the injection and every spec fails to compile against the new module type |
+| 4 | Add `endpointUrl?` to outputs | `reventless/infra/src/components/InboundTranslationSlice.res` | |
+| 5 | `Lambda.FunctionUrl` bindings | `rescript/pulumi-aws/src/Lambda/FunctionUrl.res` | **Done** |
+| 6 | `ApiGatewayV2` bindings (`Api`, `Integration`, `Route`, `Stage`) | `rescript/pulumi-aws/src/ApiGatewayV2/` | Only for transport B |
+| 7 | Webhook provider abstraction | `reventless/infra/src/components/Webhook_Adapter.res` | |
+| 8 | Function URL provider (+ `_Ops` split) | `reventless/aws/src/adapter/Webhook/Webhook_FunctionUrl.res` | |
+| 9 | API Gateway provider (+ `_Ops` split) | `reventless/aws/src/adapter/Webhook/Webhook_ApiGateway.res` | |
+| 10 | Local registry | `reventless/local/src/adapter/Webhook/LocalWebhookRegistry.res` | |
+| 11 | Thread the provider through the core builder | `reventless/core/src/components/InboundTranslationSlice/InboundTranslationSlice_Builder.res` | Note the **nested** `Make` and the `unit => api` thunks on the `Api` parameter |
+| 12 | Wire AWS | `reventless/aws/src/components/InboundTranslationSlice_Builder.res`, `reventless/aws/src/Platform.res` | Shared HTTP API created once per plugin, only if some slice asks for transport B |
+| 13 | Wire local | `reventless/local/src/components/InboundTranslationSlice_Builder.res`, `reventless/local/src/Platform.res` | |
+| 14 | Honour `@noApi` on `externalInputSchema`; error when a slice has neither a mutation nor an endpoint | `reventless/core/src/components/Dcb/Dcb_Builder.res` (`inboundTranslationSliceData`, `mutationEntriesFromInboundSlices` — neither filters today) | |
+| 15 | Record the door on the audit row | `reventless/core/src/components/InboundTranslationSlice/InboundTranslationSlice_Callback.res` | |
+| 16 | Example slice with an endpoint | `examples/online-shop-dcb/<plugin>/src/<Entity>/InboundTranslationSlice/` | Two files: `<Name>.res` + `<Name>_Translation.res` |
+| 17 | Tests | | See below |
+| 18 | Docs | `packages/doc/docs-app/components/inboundtranslationslice.md` § "No HTTP endpoint yet — planned", `packages/doc/docs-app/graphql-api-guide.md` § 5.3 | Both currently state the gap; both must be rewritten when it closes |
 
-These are standard `@pulumi/aws` resources. The bindings follow the existing pattern in `rescript-pulumi-aws` (FFI via `@module("@pulumi/aws") @scope(...) @new external make`).
+### Builder wiring sketch (step 11)
 
-## Files Summary
+The current functor is nested — an outer `Make` taking the adapters, an inner
+`Make` taking `(Spec, Translation)`. The webhook provider is an outer parameter:
 
-### New files:
-| Package | File | Purpose |
-|---------|------|---------|
-| `rescript-pulumi-aws` | `src/Lambda/Lambda_FunctionUrl.res` | Lambda Function URL bindings |
-| `rescript-pulumi-aws` | `src/ApiGatewayV2/ApiGatewayV2.res` | API Gateway v2 HTTP API bindings |
-| `reventless-infra` | `src/components/Webhook_Adapter.res` | Provider abstraction |
-| `reventless-aws` | `src/adapter/Webhook/Webhook_FunctionUrl.res` | Lambda Function URL provider |
-| `reventless-aws` | `src/adapter/Webhook/Webhook_ApiGateway.res` | API Gateway HTTP API provider |
-| `reventless-in-memory` | `src/adapter/Webhook/InMemory_WebhookRegistry.res` | In-memory route registry |
+```rescript
+module Make = (
+  QueryDbStorage: QueryDb_Adapter.Storage,
+  QueryDbResolvers: QueryDb_Adapter.Resolvers
+    with type api = QueryDbStorage.api and type role = QueryDbStorage.role,
+  Api: {
+    let api: unit => QueryDbStorage.api
+    let apiRole: unit => QueryDbStorage.role
+  },
+  Webhook: Webhook_Adapter.Provider,
+) => {
+  module Make = (
+    Spec: Reventless.InboundTranslationSlice.Spec,
+    Translation: Reventless.InboundTranslationSlice.Translation with module Spec := Spec,
+  ): InboundTranslationSlice.T => {
+    // ... existing audit QueryDb + receive wiring ...
 
-### Modified files:
-| Package | File | Change |
-|---------|------|--------|
-| `reventless-spec` | `src/components/InboundTranslationSlice.res` | Add `endpoint` types + field |
-| `reventless-infra` | `src/components/InboundTranslationSlice.res` | Add `endpointUrl?` to outputs |
-| `reventless-core` | `src/components/InboundTranslationSlice/InboundTranslationSlice_Builder.res` | Add Webhook functor + wiring |
-| `reventless-aws` | `src/components/InboundTranslationSlice_Builder.res` | Pass webhook provider |
-| `reventless-aws` | `src/Platform.res` | Wire webhook providers |
-| `reventless-in-memory` | `src/components/InboundTranslationSlice_Builder.res` | Pass in-memory webhook provider |
-| `reventless-in-memory` | `src/Platform.res` | Wire in-memory webhook registry |
+    let endpoint = switch Spec.endpoint {
+    | Some(cfg) => Some(Webhook.makeEndpoint(~name=Spec.name, ~cfg, ~handler=..., ~opts))
+    | None => None
+    }
 
-## Open Questions
+    let outputs: InboundTranslationSlice.outputs = {
+      resources: ...,
+      queryDb: queryDb->Component.outputs,
+      endpointUrl: ?endpoint->Option.map(e => e.url),
+    }
+  }
+}
+```
 
-1. **Shared API Gateway scope**: Should the HTTP API be shared per-plugin or per-Core? Per-plugin is simpler (created in Plugin_Builder alongside other slice infrastructure). Per-Core gives a single base URL for all webhooks across all plugins but requires coordination in Core_Builder.
+Platforms that provision no webhooks pass a no-op provider rather than making the
+parameter optional — a functor parameter that is sometimes absent is worse than
+one that sometimes does nothing.
 
-2. **Custom domains**: API Gateway HTTP API supports custom domains via Route 53 + ACM. Should this be configurable in the spec or handled externally? Recommend: externally (infrastructure concern, not domain concern).
+### Tests (step 16)
 
-3. **CORS**: Webhooks from server-to-server integrations don't need CORS. Browser-initiated POST requests (e.g., from a partner's web app) might. Should CORS be configurable in `endpointConfig`? Recommend: add an optional `cors` field for API Gateway transport only.
+- **Registry:** register → `post` invokes the handler; unknown route errors; calls
+  placed before `bindReceive` drain afterwards; `reset` clears.
+- **Local builder:** no `endpoint` ⇒ no `endpointUrl` and no route; with `endpoint`
+  ⇒ both, and `post` reaches `translate` end to end.
+- **Signature verification:** a valid HMAC passes; a wrong one, a replayed
+  timestamp outside tolerance, and a body mutated after signing all reject —
+  before parsing, and with an audit row.
+- **Both doors:** the same input through the mutation and the URL produces the
+  same commands and two distinguishable audit rows; a slice with `@noApi` and an
+  endpoint exposes no mutation but still receives over the URL; a slice with
+  `@noApi` and no endpoint fails the build.
+- **AWS builder:** the right resources per transport; naming conventions hold.
 
-4. **Request validation**: API Gateway HTTP API supports request validation via OpenAPI models. Should the framework auto-generate a JSON Schema from `externalInputSchema` and attach it as a request validator? This would reject malformed requests before they reach the Lambda.
+---
 
-5. **Rate limiting**: API Gateway supports throttling. Should `endpointConfig` include rate limit settings, or is this an infrastructure concern handled outside the framework?
+## Open questions
 
-6. **Idempotency**: Webhook providers often retry on timeout. Should the framework provide idempotency key support (e.g., extract a key from headers and deduplicate in the audit log)?
+1. **Shared API Gateway scope** — per-plugin (simpler, created alongside other
+   plugin infrastructure) or per-platform (one base URL, needs coordination)?
+2. **Custom domains** — spec-configurable or left to infrastructure?
+   Recommendation: infrastructure.
+3. **CORS** — server-to-server webhooks do not need it; a browser-initiated POST
+   would. Add an optional `cors` to `endpointConfig` for transport B only?
+4. **Request validation** — auto-generate a JSON Schema from `externalInputSchema`
+   and attach it as an API Gateway validator, rejecting malformed bodies before
+   the Lambda? Note this cannot precede signature verification.
+5. **Rate limiting** — in `endpointConfig`, or an infrastructure concern? An open
+   Function URL has no throttle at all, which argues for at least a reserved
+   concurrency on the webhook Lambda.
+6. **Idempotency** — providers retry on timeout. Extract a provider-supplied key
+   from a header and deduplicate against the audit log, or leave it to `translate`
+   (which can already return `Ok([])` for a no-op)?
+7. **Secret storage** — Secrets Manager (rotatable, costs per secret) or a Lambda
+   env var (free, rotation is a redeploy)?

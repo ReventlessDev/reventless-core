@@ -18,14 +18,14 @@ CommandTopic: Command Topic { class: command-topic }
 StateChangeSlice: StateChangeSlice { class: state-change-slice }
 DcbEventLog: DcbEventLog { class: dcb-event-log }
 
-External -> InboundSlice: "external input (webhook/API)" { class: command-flow }
+External -> InboundSlice: "external input (GraphQL mutation)" { class: command-flow }
 InboundSlice -> AuditQueryDb: audit log { class: projection-flow }
 InboundSlice -> CommandTopic: commands { class: command-flow }
 CommandTopic -> StateChangeSlice: commands { class: command-flow }
 StateChangeSlice -> DcbEventLog: append { class: event-flow }
 ```
 
-The **InboundTranslationSlice** implements the Event Modeling **Translation** pattern for inbound external communication. It receives external input (webhooks, API calls, message queue messages), validates and transforms it through an anti-corruption layer, and publishes domain commands.
+The **InboundTranslationSlice** implements the Event Modeling **Translation** pattern for inbound external communication. It receives external input in the sender's vocabulary, validates and transforms it through an anti-corruption layer, and publishes domain commands. The framework gives it a [generated GraphQL mutation](#integration-the-generated-mutation) as its door; a provisioned HTTP endpoint is [planned but not yet implemented](#no-http-endpoint-yet--planned).
 
 ## Event Modeling: The Inbound Translation Pattern
 
@@ -48,13 +48,13 @@ The anti-corruption layer protects the domain from external data formats and val
 
 | Aspect | Task | InboundTranslationSlice |
 |--------|------|--------------------------|
-| **Trigger** | S3 object / schedule | HTTP webhook / API / message queue |
+| **Trigger** | S3 object / schedule | A call to the slice's generated GraphQL mutation |
 | **Input validation** | None -- raw JSON | Anti-corruption layer with schema validation |
 | **Translation** | Ad-hoc | Structured `translate` function with typed input/output |
 | **Error handling** | Lambda error | Structured error response to caller |
 | **Observability** | CloudWatch only | QueryDb audit log of all translations |
 
-**Choose Task** when you need S3 triggers, scheduled jobs, or provider-specific integrations.
+**Choose Task** when you need S3 triggers, scheduled jobs, or provider-specific integrations — or, for now, when the sender can only reach you over plain HTTP, since an inbound slice's door is a GraphQL mutation and its own URL is [still planned](#no-http-endpoint-yet--planned).
 
 **Choose InboundTranslationSlice** when you need validated, audited external input processing with a clean anti-corruption layer.
 
@@ -236,19 +236,19 @@ Unlike other slices, InboundTranslationSlice is triggered externally via `operat
 shape: sequence_diagram
 
 External: External System { class: external-system }
-Endpoint: API Endpoint { class: api }
+Endpoint: "GraphQL mutation (Plugin_Slice)" { class: api }
 InboundSlice: InboundTranslationSlice { class: automation-slice }
 AuditLog: Audit Log { class: query-db }
 CommandTopic: Command Topic { class: command-topic }
 
-External -> Endpoint: "POST webhook payload"
+External -> Endpoint: "call with externalInput fields"
 Endpoint -> InboundSlice: "receive(inputJson)"
 InboundSlice -> InboundSlice: "Parse with externalInputSchema"
-InboundSlice -> InboundSlice: "Spec.translate(input)"
+InboundSlice -> InboundSlice: "Translation.translate(input)"
 InboundSlice -> CommandTopic: "publishJsons(command)" { class: command-flow }
 InboundSlice -> AuditLog: "record success" { class: projection-flow }
-InboundSlice -> Endpoint: "Ok(targetId)"
-Endpoint -> External: "200 OK"
+InboundSlice -> Endpoint: "Ok(acceptedResult)"
+Endpoint -> External: "CommandResult"
 ```
 
 **Receive processing steps:**
@@ -258,7 +258,7 @@ receive(inputJson):
   1. Parse inputJson against Spec.externalInputSchema
      -> Error: record audit failure, return Error(msg)
 
-  2. Call Spec.translate(input) -- anti-corruption layer
+  2. Call Translation.translate(input) -- anti-corruption layer
      -> Error(msg): record audit failure, return Error(msg)
 
   3. Encode command via Spec.commandSchema
@@ -267,39 +267,70 @@ receive(inputJson):
   4. Publish command via publishJsons
      -> Error: record audit failure, return Error(msg)
 
-  5. Record audit success, return Ok(targetId)
+  5. Record audit success, return Ok(acceptedResult)
 ```
 
-### Integration: Exposing the Endpoint
+### Integration: The Generated Mutation
 
-The InboundTranslationSlice exposes `operations.receive` which accepts `JSON.t` and returns `promise<result<string, string>>`. You need to wire this to an HTTP endpoint:
+You do not wire a transport. Declaring the slice declares a GraphQL mutation, and
+both platforms create it for you:
 
-**Option A -- GraphQL Mutation** (consistent with existing Api component):
+| Platform | What is created |
+|----------|-----------------|
+| AWS | An AppSync DataSource + Resolver per slice, pointing at the shared DCB CommandTopic Lambda. The request template carries `__inboundTranslation: true`, which routes the invocation to the slice's `receive` instead of the regular SQS command path. |
+| Local | The mutation field registered on the local GraphQL server. Registration is two-phase, so a caller can invoke `receive` before the deploy-time `Output` resolves — early calls park in a queue and drain once the real `receive` is bound. |
+
+The field is named `<Plugin>_<Slice>`, its arguments come from `@schema type
+externalInput` (**not** the internal `command`), and it returns `CommandResult`.
+For the `PaymentWebhook` slice above, in a plugin named `Ordering`:
+
+```graphql
+Ordering_PaymentWebhook(amount: Float!, orderId: ID!, paymentId: ID!, status: String!): CommandResult!
+```
+
+Arguments are emitted alphabetically, and `orderId` / `paymentId` render as `ID!`
+because the PPX auto-tags `*Id` fields inside a `*Slice/` folder. See the
+[GraphQL API guide](../graphql-api-guide.md#53-from-an-inboundtranslationslice)
+for the full mapping.
+
+There is no opt-out. Unlike a StateChangeSlice command, an inbound slice honours
+no `@noApi` — every declared slice gets its mutation.
+
+The field answers under the slice's `commandAuthorization`, which defaults to
+`AllowAuthenticated` (see [Authorization](../authorization.md)). A caller that
+must reach it without signing in needs `AllowAnonymous` written on the spec.
+
+#### No HTTP endpoint yet — planned
+
+:::caution Not implemented
+The framework creates **no** Lambda Function URL and **no** API Gateway for an
+inbound slice today. "Webhook" here names the *shape* — an external system pushing
+data in — not a bare URL you can hand to a third party.
+:::
+
+A first-class webhook endpoint is planned: an optional endpoint declaration on the
+slice's spec that provisions a URL (Lambda Function URL or API Gateway HTTP API)
+and reports it back as a deploy-time output, so it can be registered with the
+sending provider. The generated mutation stays either way — a slice with a URL
+will have both doors into the same `receive`.
+
+Until then, a sender that can only POST to a plain URL needs a transport you build
+and operate yourself. The seam to call from it is the component's
+`operations.receive`:
 
 ```rescript
-// Register a GraphQL mutation resolver that calls operations.receive
-let resolver = async (inputJson) => {
-  switch await inboundSliceOps.receive(inputJson) {
-  | Ok(targetId) => {success: true, targetId}
-  | Error(msg) => {success: false, error: msg}
-  }
-}
+receive: JSON.t => promise<result<acceptedResult, rejectedResult>>
 ```
 
-**Option B -- Lambda Function URL / API Gateway** (for external webhooks):
+Both arms carry a `requestId` that correlates the response with the slice's
+[audit row](#audit-log).
 
-```rescript
-// Lambda handler that accepts webhook POST body
-let handler = async (event) => {
-  let body = event.body->JSON.parseExn
-  switch await inboundSliceOps.receive(body) {
-  | Ok(_) => {statusCode: 200, body: "OK"}
-  | Error(msg) => {statusCode: 400, body: msg}
-  }
-}
-```
-
-Both options can coexist -- the component exposes `operations.receive` and the transport layer is up to you.
+Two things to settle in any transport you write yourself, because the mutation
+handles them for you and a URL does not: **authentication** — the mutation answers
+under `commandAuthorization`, whereas a public URL has no authenticated caller, so
+verify a provider signature (HMAC over the raw body plus a timestamp) *before*
+parsing; and **cost** — every rejected request still runs your handler and writes
+an audit row.
 
 ## Audit Log
 
