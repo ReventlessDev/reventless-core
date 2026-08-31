@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.232 (2026-08-31)
+
+### Bug Fixes
+
+* **example:** give the catalog's demand feature its own chapter ([8fbff92](https://github.com/ReventlessDev/reventless-core/commit/8fbff92874902faa3df2bff6c595344a0ee17fb1))
+
+
 # 1.0.0-alpha.231 (2026-08-27)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-dcb-catalog
