@@ -118,6 +118,33 @@ classes: {
   adapter: {
     style: { fill: "#F5F5F4"; stroke: "#78716C"; font-color: "#1C1917"; border-radius: 6 }
   }
+  # In-process state a component holds between steps, not a provisioned store.
+  # Dashed to say it does not survive the process.
+  memory-state: {
+    style: { fill: "#FAFAF9"; stroke: "#78716C"; font-color: "#1C1917"; border-radius: 6; stroke-dash: 3 }
+  }
+
+  # ── Work-item statuses (washed) ───────────────────────────
+  # For state machines whose nodes are statuses rather than components.
+  # Deliberately paler than every component class so a status diagram does
+  # not read as a diagram of components.
+  status-pending: {
+    style: { fill: "#F5F5F4"; stroke: "#78716C"; font-color: "#1C1917"; border-radius: 6 }
+  }
+  status-active: {
+    style: { fill: "#E7E5E4"; stroke: "#44403C"; font-color: "#1C1917"; border-radius: 6; bold: true }
+  }
+  status-done: {
+    style: { fill: "#F0FDF4"; stroke: "#16A34A"; font-color: "#14532D"; border-radius: 6 }
+  }
+  # Retryable: a later sweep picks it up again.
+  status-retry: {
+    style: { fill: "#FFFBEB"; stroke: "#D97706"; font-color: "#78350F"; border-radius: 6 }
+  }
+  # Terminal: no sweep will pick it up. Dashed to say the flow stops here.
+  status-terminal: {
+    style: { fill: "#FEF2F2"; stroke: "#DC2626"; font-color: "#7F1D1D"; border-radius: 6; stroke-dash: 3 }
+  }
 
   # ── Containers ────────────────────────────────────────────
   write-side: {

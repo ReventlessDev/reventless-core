@@ -256,16 +256,16 @@ for each item where status = Pending
 ```d2
 direction: right
 
-pending: Pending { class: state-view-slice }
-processing: Processing { class: command }
-completed: Completed { class: read-model }
-failed: Failed { class: side-effect }
+pending: Pending { class: status-pending }
+processing: Processing { class: status-active }
+completed: Completed { class: status-done }
+failed: Failed { class: status-retry }
 
-pending -> processing: "process() returns Some" { class: command-flow }
-processing -> completed: "resolve() matches" { class: projection-flow }
-processing -> failed: publish error { class: event-flow }
-failed -> processing: "retry (count < max)" { class: command-flow }
-pending -> completed: "resolve() before process" { class: projection-flow }
+pending -> processing: "process() returns Some"
+processing -> completed: "resolve() matches"
+processing -> failed: publish error
+failed -> processing: "retry (count < max)"
+pending -> completed: "resolve() before process"
 ```
 
 Each TODO item moves through these statuses:

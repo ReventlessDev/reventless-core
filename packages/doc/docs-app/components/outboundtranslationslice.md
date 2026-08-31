@@ -386,7 +386,7 @@ shape: sequence_diagram
 DcbEventLog: DcbEventLog { class: dcb-event-log }
 EventCollector: EventCollector { class: event-collector }
 OutboundSlice: OutboundTranslationSlice { class: automation-slice }
-TodoList: TODO List
+TodoList: "TODO List (in process)" { class: memory-state }
 External: External System { class: external-system }
 CommandTopic: Command Topic { class: command-topic }
 QueryDb: QueryDb { class: query-db }
@@ -430,17 +430,17 @@ for each item where status = Pending
 ```d2
 direction: right
 
-pending: Pending { class: state-view-slice }
-processing: Processing { class: command }
-completed: Completed { class: read-model }
-failed: Failed { class: side-effect }
-abandoned: Abandoned { class: side-effect }
+pending: Pending { class: status-pending }
+processing: Processing { class: status-active }
+completed: Completed { class: status-done }
+failed: Failed { class: status-retry }
+abandoned: Abandoned { class: status-terminal }
 
-pending -> processing: translate called { class: command-flow }
-processing -> completed: "Ok(Some/None)" { class: projection-flow }
-processing -> failed: "Error(msg)" { class: event-flow }
-failed -> processing: "retry (count < max)" { class: command-flow }
-processing -> abandoned: "Error(msg), budget spent" { class: event-flow }
+pending -> processing: translate called
+processing -> completed: "Ok(Some/None)"
+processing -> failed: "Error(msg)"
+failed -> processing: "retry (count < max)"
+processing -> abandoned: "Error(msg), budget spent"
 ```
 
 Each TODO item moves through these statuses:

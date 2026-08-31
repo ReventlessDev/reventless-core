@@ -95,7 +95,8 @@ of a node — and its connections — immediately communicates its DDD role.
 | Purple  | Policy / Reaction / UI           | `event-mapper`, `counter`, `api`, `client`                    | —                  |
 | Pink    | External System / Side Effect    | `side-effect`, `task`, `external-system`                      | —                  |
 | Teal    | Cross-context boundary           | `extension-point`, `extension`                                | `cross-plugin`     |
-| Gray    | Scheduling / Infrastructure      | `scheduler`, `heartbeat`, `adapter`                           | —                  |
+| Gray    | Scheduling / Infrastructure      | `scheduler`, `heartbeat`, `adapter`, `memory-state`           | —                  |
+| Washed  | Work-item status (not a component) | `status-pending`, `status-active`, `status-done`, `status-retry`, `status-terminal` | —        |
 
 ---
 
@@ -166,6 +167,27 @@ These are applied to individual nodes with `{ class: <name> }`.
 | `scheduler` | rectangle | Scheduler for time-based command publishing |
 | `heartbeat` | rectangle | Heartbeat for periodic health signals |
 | `adapter` | rectangle | Adapter interface or adapter implementation node |
+| `memory-state` | rectangle, dashed | In-process state a component holds between steps — not a provisioned store. Dashed because it does not survive the process. |
+
+### Work-item statuses — washed
+
+For state machines whose nodes are **statuses rather than components** — a TODO
+item's lifecycle, say. Reach for these instead of borrowing a component class:
+a box labelled `Completed` styled `read-model` claims the status *is* a read
+model, and picks up a colour that means something else in every other diagram.
+They are deliberately paler than the component classes so a status diagram does
+not read as a diagram of components.
+
+| Class | Shape | Use for |
+|---|---|---|
+| `status-pending` | rectangle | Waiting, not yet picked up |
+| `status-active` | rectangle, bold | In flight right now |
+| `status-done` | rectangle | Finished successfully |
+| `status-retry` | rectangle | Failed, but a later sweep will try again |
+| `status-terminal` | rectangle, dashed | Failed for good — no sweep picks it up. Dashed because the flow stops here. |
+
+Leave the transitions between them unclassed: `command-flow` / `event-flow` /
+`projection-flow` name message kinds, and a state transition is not a message.
 
 ---
 
