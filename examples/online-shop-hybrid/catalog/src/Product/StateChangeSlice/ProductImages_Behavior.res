@@ -1,52 +1,59 @@
 @@reventless.behavior
 
+// The set's rules are the trait's; what is left here is the shelf refusal and the
+// mapping between this host's constructors and the trait's ops and facts.
+module Attachments = TraitFileAttachment.FileAttachment_Set
+
 type shelf = Listed | Archived | Discontinued
 
-// The set in attachment order. `primary` is only the one chosen explicitly: until
-// then the first attached is primary, and the projection applies the same rule.
-type state = {
-  exists: bool,
-  shelf: shelf,
-  attached: array<string>,
-  primary: option<string>,
-  altTexts: array<(string, string)>,
-}
+type state = {exists: bool, shelf: shelf, images: Attachments.t}
 
-let initialState = {exists: false, shelf: Listed, attached: [], primary: None, altTexts: []}
+let initialState = {exists: false, shelf: Listed, images: Attachments.empty}
 
-let evolve = (state, event) =>
+let evolve = (state, event) => {
+  let fold = fact => {...state, images: state.images->Attachments.evolve(fact)}
   switch event {
   | ProductAdded(_) => {...state, exists: true}
-  | ProductImageAttached({productImage}) =>
-    state.attached->Array.includes(productImage)
-      ? state
-      : {...state, attached: state.attached->Array.concat([productImage])}
-  | ProductImageRemoved({productImage}) => {
-      ...state,
-      attached: state.attached->Array.filter(r => r != productImage),
-      primary: state.primary == Some(productImage) ? None : state.primary,
-      altTexts: state.altTexts->Array.filter(((r, _)) => r != productImage),
-    }
-  | ProductPrimaryImageSet({productImage}) => {...state, primary: Some(productImage)}
-  | ProductImageAltTextSet({productImage, altText}) => {
-      ...state,
-      altTexts: state.altTexts
-      ->Array.filter(((r, _)) => r != productImage)
-      ->Array.concat([(productImage, altText)]),
-    }
+  | ProductImageAttached({productImage}) => fold(Attached({ref: productImage, altText: None}))
+  | ProductImageRemoved({productImage}) => fold(Removed({ref: productImage}))
+  | ProductPrimaryImageSet({productImage}) => fold(PrimarySet({ref: productImage}))
+  | ProductImageAltTextSet({productImage, altText}) =>
+    fold(AltTextSet({ref: productImage, altText}))
   | ProductArchived => {...state, shelf: Archived}
   | ProductUnarchived => {...state, shelf: Listed}
   | ProductDiscontinued => {...state, shelf: Discontinued}
   }
+}
 
-let effectivePrimary = state =>
-  switch state.primary {
-  | Some(_) as p => p
-  | None => state.attached->Array.get(0)
+let toOp = command =>
+  switch command {
+  | AttachProductImage({productId, productImage, altText: ?altText}) => (
+      productId,
+      Attachments.Attach({ref: productImage, altText}),
+    )
+  | RemoveProductImage({productId, productImage}) => (
+      productId,
+      Attachments.Remove({ref: productImage}),
+    )
+  | SetPrimaryProductImage({productId, productImage}) => (
+      productId,
+      Attachments.SetPrimary({ref: productImage}),
+    )
+  | SetProductImageAltText({productId, productImage, altText}) => (
+      productId,
+      Attachments.SetAltText({ref: productImage, altText}),
+    )
   }
 
-let altTextOf = (state, ref) =>
-  state.altTexts->Array.find(((r, _)) => r == ref)->Option.map(((_, t)) => t)
+let toEvent = (productId, fact) =>
+  switch fact {
+  | Attachments.Attached({ref, altText}) =>
+    ProductImageAttached({productId, productImage: ref, altText: ?altText})
+  | Attachments.Removed({ref}) => ProductImageRemoved({productId, productImage: ref})
+  | Attachments.PrimarySet({ref}) => ProductPrimaryImageSet({productId, productImage: ref})
+  | Attachments.AltTextSet({ref, altText}) =>
+    ProductImageAltTextSet({productId, productImage: ref, altText})
+  }
 
 let decide = (state, command) =>
   if !state.exists {
@@ -54,30 +61,10 @@ let decide = (state, command) =>
   } else if state.shelf == Discontinued {
     Error(ProductIsDiscontinued)
   } else {
-    switch command {
-    | AttachProductImage({productId, productImage, altText: ?altText}) =>
-      state.attached->Array.includes(productImage)
-        ? Ok([])
-        : Ok([ProductImageAttached({productId, productImage, altText: ?altText})])
-    | RemoveProductImage({productId, productImage}) =>
-      state.attached->Array.includes(productImage)
-        ? Ok([ProductImageRemoved({productId, productImage})])
-        : Ok([])
-    | SetPrimaryProductImage({productId, productImage}) =>
-      if !(state.attached->Array.includes(productImage)) {
-        Error(ProductImageNotAttached)
-      } else if effectivePrimary(state) == Some(productImage) {
-        Ok([])
-      } else {
-        Ok([ProductPrimaryImageSet({productId, productImage})])
-      }
-    | SetProductImageAltText({productId, productImage, altText}) =>
-      if !(state.attached->Array.includes(productImage)) {
-        Error(ProductImageNotAttached)
-      } else if altTextOf(state, productImage) == Some(altText) {
-        Ok([])
-      } else {
-        Ok([ProductImageAltTextSet({productId, productImage, altText})])
-      }
+    let (productId, op) = toOp(command)
+    switch state.images->Attachments.decide(op) {
+    | Error(#NotAttached) => Error(ProductImageNotAttached)
+    | Ok(None) => Ok([])
+    | Ok(Some(fact)) => Ok([toEvent(productId, fact)])
     }
   }

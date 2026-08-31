@@ -1,16 +1,14 @@
 @@reventless.projection
 
-// The primary falls back to the first attached, so a set never shows no image
-// while it has one.
-let withPrimary = (state: Categories.state, chosen: option<string>) =>
-  switch chosen {
-  | Some(_) as p => {...state, categoryImage: ?p}
-  | None =>
-    switch state.categoryImages->Array.get(0) {
-    | Some(first) => {...state, categoryImage: first.categoryImage}
-    | None => {...state, categoryImage: ?None}
-    }
-  }
+// The fallback to the first attached is the trait's rule, applied here over the
+// view's own rows so a card never shows no image while the set holds one.
+let withPrimary = (state: Categories.state, chosen: option<string>) => {
+  ...state,
+  categoryImage: ?TraitFileAttachment.FileAttachment_Set.primaryOf(
+    ~chosen,
+    ~attached=state.categoryImages->Array.map(a => a.categoryImage),
+  ),
+}
 
 let project = ({event}) =>
   switch event {
