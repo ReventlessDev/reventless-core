@@ -3,6 +3,10 @@
 
 @@reventless.behavior
 
+// Staleness, redelivery and the client-supplied pair are the geocoding trait's
+// rules; this aggregate keeps the fields they read and names the facts they allow.
+module Guards = TraitAddressGeocoding.AddressGeocoding_Guards
+
 // `location` and `locationResolvedFrom` are separate fields rather than one,
 // because there are three states and a lone `option` can only express two: no
 // attempt yet, a point found, and an address *tried and found wanting* (which
@@ -63,6 +67,21 @@ let evolve = (state, event) =>
   | (NotCreated, _) => state
   }
 
+// The three fields the trait reads, and what it decides, in this host's terms.
+// Built per call: an aggregate's state is snapshotted, so the trait's own record
+// stays out of it.
+let resolution = (address, location, locationResolvedFrom): Guards.resolution => {
+  subject: address,
+  location,
+  resolvedFrom: locationResolvedFrom,
+}
+
+let appended = (verdict, event) =>
+  switch verdict {
+  | Guards.Append => Ok([event])
+  | Guards.Ignore => Ok([])
+  }
+
 let decide = (state, command) =>
   switch (state, command) {
   | (NotCreated, Register({email, address})) => Ok([Registered({email, address})])
@@ -77,36 +96,31 @@ let decide = (state, command) =>
   | (Active(_), Register(_)) => Error(CustomerAlreadyRegistered)
   | (Active(s), UpdateEmail({email})) if email == s.email => Ok([])
   | (Active(_), UpdateEmail({email})) => Ok([EmailUpdated({email: email})])
-  | (Active(s), UpdateAddress({address})) if address == s.address => Ok([])
-  | (Active(_), UpdateAddress({address})) => Ok([AddressUpdated({address: address})])
+  | (Active(s), UpdateAddress({address})) =>
+    Guards.onSubjectUpdate(
+      resolution(s.address, s.location, s.locationResolvedFrom),
+      ~subject=address,
+    )->appended(AddressUpdated({address: address}))
 
-  // Client-supplied pair. Idempotent only when *both* halves already match —
-  // same address with a different point is a pin correction, and swallowing it
-  // would lose the one edit a human came here to make.
-  | (Active(s), SetAddressLocation({address, location}))
-    if address == s.address && s.location == Some(location) => Ok([])
-  | (Active(_), SetAddressLocation({address, location})) =>
-    Ok([AddressLocated({address, location})])
+  | (Active(s), SetAddressLocation({address, location})) =>
+    Guards.onSuppliedPair(
+      resolution(s.address, s.location, s.locationResolvedFrom),
+      ~subject=address,
+      ~location,
+    )->appended(AddressLocated({address, location}))
 
-  // Stale: the slice is reporting on an address this customer has since moved
-  // off. Applying it would pin the row's new address at the old one's point,
-  // with nothing to say the two disagree.
-  | (Active(s), SetLocation({resolvedFrom})) if resolvedFrom != s.address => Ok([])
-  // Redelivery. Commands arrive at-least-once and the slice re-publishes on
-  // every heartbeat sweep until its TODO row clears, so without this an
-  // unchanged answer appends a duplicate event on every pass.
-  | (Active(s), SetLocation({location, resolvedFrom}))
-    if s.location == Some(location) && s.locationResolvedFrom == Some(resolvedFrom) => Ok([])
-  | (Active(_), SetLocation({location, resolvedFrom})) =>
-    Ok([LocationSet({location, resolvedFrom})])
+  | (Active(s), SetLocation({location, resolvedFrom})) =>
+    Guards.onLocationReport(
+      resolution(s.address, s.location, s.locationResolvedFrom),
+      ~location,
+      ~resolvedFrom,
+    )->appended(LocationSet({location, resolvedFrom}))
 
-  // Same two guards, for the verdict: stale reports are dropped, and a repeated
-  // verdict on the same address is a no-op.
-  | (Active(s), MarkAddressUnresolvable({address})) if address != s.address => Ok([])
-  | (Active(s), MarkAddressUnresolvable({address})) if s.locationResolvedFrom == Some(address) =>
-    Ok([])
-  | (Active(_), MarkAddressUnresolvable({address, reason})) =>
-    Ok([AddressUnresolvable({address, reason})])
+  | (Active(s), MarkAddressUnresolvable({address, reason})) =>
+    Guards.onUnresolvableReport(
+      resolution(s.address, s.location, s.locationResolvedFrom),
+      ~subject=address,
+    )->appended(AddressUnresolvable({address, reason}))
 
   | (Active(_), Deactivate) => Ok([Customer.Deactivated])
   // Already where the caller is asking it to be.
