@@ -1,4 +1,4 @@
-// Scaffold: the read-model contribution. One `Reventless.Geolocation.t` field on the
+// Fragment: the read-model contribution. One `Reventless.Geolocation.t` field on the
 // view's state — `geolocation: Reventless.Geolocation.t` — and these projection arms.
 // Three arms rather than `option<GeoPoint.t>`: `Pending` carries the {{subject}}
 // asked about, so a stale answer is detectable from the row alone.

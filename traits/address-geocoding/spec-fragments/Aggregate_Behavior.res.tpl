@@ -1,10 +1,16 @@
-// Scaffold: the behavior half of the graft. Paste into `Aggregate/{{Entity}}_Behavior.res`.
+// Fragment: the behavior half of the graft. Paste into `Aggregate/{{Entity}}_Behavior.res`.
+// Staleness, redelivery and the client-supplied pair are `AddressGeocoding_Guards`;
+// the state and the facts stay the host's.
+
+module Guards = TraitAddressGeocoding.AddressGeocoding_Guards
 
 // --- state fields ------------------------------------------------------------
 // Two fields, because there are three states and one `option` holds two: never
 // asked, a point found, and a {{subject}} tried and found wanting (resolved-from,
-// no point). Invariant every arm preserves: `locationResolvedFrom` is `None` or
-// equal to `{{subject}}`.
+// no point). Host-owned, not the trait's record: an aggregate's state is
+// snapshotted, so a trait release that reshaped it would be a migration.
+// Invariant every arm preserves: `locationResolvedFrom` is `None` or equal to
+// `{{subject}}`.
       location: option<Reventless.GeoPoint.t>,
       locationResolvedFrom: option<string>,
 
@@ -22,31 +28,47 @@
   | (Active(s), {{Subject}}Unresolvable({ {{subject}} })) =>
     Active({...s, location: None, locationResolvedFrom: Some({{subject}})})
 
+// --- the trait's view, and what it decides -----------------------------------
+// Built per call from the fields above, because the inline record of `Active`
+// cannot escape its constructor.
+let resolution = ({{subject}}, location, locationResolvedFrom): Guards.resolution => {
+  subject: {{subject}},
+  location,
+  resolvedFrom: locationResolvedFrom,
+}
+
+let appended = (verdict, event) =>
+  switch verdict {
+  | Guards.Append => Ok([event])
+  | Guards.Ignore => Ok([])
+  }
+
 // --- decide arms -------------------------------------------------------------
-  | (Active(s), Update{{Subject}}({ {{subject}} })) if {{subject}} == s.{{subject}} => Ok([])
-  | (Active(_), Update{{Subject}}({ {{subject}} })) => Ok([{{Subject}}Updated({ {{subject}}: {{subject}} })])
+  | (Active(s), Update{{Subject}}({ {{subject}} })) =>
+    Guards.onSubjectUpdate(
+      resolution(s.{{subject}}, s.location, s.locationResolvedFrom),
+      ~subject={{subject}},
+    )->appended({{Subject}}Updated({ {{subject}}: {{subject}} }))
 
-  // Idempotent only when *both* halves match — same {{subject}}, new point is a
-  // correction, not a retry.
-  | (Active(s), Set{{Subject}}Location({ {{subject}}, location}))
-    if {{subject}} == s.{{subject}} && s.location == Some(location) => Ok([])
-  | (Active(_), Set{{Subject}}Location({ {{subject}}, location})) =>
-    Ok([{{Subject}}Located({ {{subject}}, location})])
+  | (Active(s), Set{{Subject}}Location({ {{subject}}, location})) =>
+    Guards.onSuppliedPair(
+      resolution(s.{{subject}}, s.location, s.locationResolvedFrom),
+      ~subject={{subject}},
+      ~location,
+    )->appended({{Subject}}Located({ {{subject}}, location}))
 
-  // Stale: a report on a {{subject}} this entity has since moved off.
-  | (Active(s), SetLocation({resolvedFrom})) if resolvedFrom != s.{{subject}} => Ok([])
-  // Redelivery: the slice re-publishes every heartbeat until its TODO clears.
-  | (Active(s), SetLocation({location, resolvedFrom}))
-    if s.location == Some(location) && s.locationResolvedFrom == Some(resolvedFrom) => Ok([])
-  | (Active(_), SetLocation({location, resolvedFrom})) =>
-    Ok([LocationSet({location, resolvedFrom})])
+  | (Active(s), SetLocation({location, resolvedFrom})) =>
+    Guards.onLocationReport(
+      resolution(s.{{subject}}, s.location, s.locationResolvedFrom),
+      ~location,
+      ~resolvedFrom,
+    )->appended(LocationSet({location, resolvedFrom}))
 
-  // Same two guards for the verdict.
-  | (Active(s), Mark{{Subject}}Unresolvable({ {{subject}} })) if {{subject}} != s.{{subject}} => Ok([])
-  | (Active(s), Mark{{Subject}}Unresolvable({ {{subject}} }))
-    if s.locationResolvedFrom == Some({{subject}}) => Ok([])
-  | (Active(_), Mark{{Subject}}Unresolvable({ {{subject}}, reason})) =>
-    Ok([{{Subject}}Unresolvable({ {{subject}}, reason})])
+  | (Active(s), Mark{{Subject}}Unresolvable({ {{subject}}, reason})) =>
+    Guards.onUnresolvableReport(
+      resolution(s.{{subject}}, s.location, s.locationResolvedFrom),
+      ~subject={{subject}},
+    )->appended({{Subject}}Unresolvable({ {{subject}}, reason}))
 
   // A retired entity has no location work owing — swallow, never error.
   | (Retired(_), SetLocation(_)) => Ok([])

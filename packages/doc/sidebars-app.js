@@ -69,6 +69,12 @@ const sidebars = {
         'concepts/aggregate-extension-connection',
       ],
     },
+    {
+      type: 'category',
+      label: 'Reuse competencies',
+      collapsed: false,
+      items: ['domain-traits'],
+    },
     'local-development',
     {
       type: 'category',

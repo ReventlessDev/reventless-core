@@ -1,76 +1,68 @@
-// Scaffold: the slice body. Paste as `StateChangeSlice/{{Entity}}Images_Behavior.res`.
+// Fragment: the slice body. Paste as `StateChangeSlice/{{Entity}}Images_Behavior.res`.
+// The set's rules live in `FileAttachment_Set` — what is written here is the host's
+// own refusal and the mapping between its constructors and the trait's ops and facts.
 
 @@reventless.behavior
 
-// The set in attachment order. `primary` is only the one chosen explicitly: until
-// then the first attached is primary, and the projection applies the same rule.
-type state = {
-  exists: bool,
-  attached: array<string>,
-  primary: option<string>,
-  altTexts: array<(string, string)>,
-}
+module Attachments = TraitFileAttachment.FileAttachment_Set
 
-let initialState = {exists: false, attached: [], primary: None, altTexts: []}
+// The set is embedded directly: a StateChangeSlice's state is refolded per decision
+// and never stored, so a trait release that reshapes it costs no migration.
+type state = {exists: bool, images: Attachments.t}
 
-let evolve = (state, event) =>
+let initialState = {exists: false, images: Attachments.empty}
+
+let evolve = (state, event) => {
+  let fold = fact => {...state, images: state.images->Attachments.evolve(fact)}
   switch event {
   | {{Created}}(_) => {...state, exists: true}
-  | {{Entity}}ImageAttached({ {{file}} }) =>
-    state.attached->Array.includes({{file}})
-      ? state
-      : {...state, attached: state.attached->Array.concat([{{file}}])}
-  | {{Entity}}ImageRemoved({ {{file}} }) => {
-      ...state,
-      attached: state.attached->Array.filter(r => r != {{file}}),
-      primary: state.primary == Some({{file}}) ? None : state.primary,
-      altTexts: state.altTexts->Array.filter(((r, _)) => r != {{file}}),
-    }
-  | {{Entity}}PrimaryImageSet({ {{file}} }) => {...state, primary: Some({{file}})}
-  | {{Entity}}ImageAltTextSet({ {{file}}, altText}) => {
-      ...state,
-      altTexts: state.altTexts->Array.filter(((r, _)) => r != {{file}})->Array.concat([({{file}}, altText)]),
-    }
+  | {{Entity}}ImageAttached({ {{file}} }) => fold(Attached({ref: {{file}}, altText: None}))
+  | {{Entity}}ImageRemoved({ {{file}} }) => fold(Removed({ref: {{file}} }))
+  | {{Entity}}PrimaryImageSet({ {{file}} }) => fold(PrimarySet({ref: {{file}} }))
+  | {{Entity}}ImageAltTextSet({ {{file}}, altText}) => fold(AltTextSet({ref: {{file}}, altText}))
+  // Plus the arms the host's own refusal turns on (archived, discontinued …).
+  }
+}
+
+let toOp = command =>
+  switch command {
+  | Attach{{Entity}}Image({ {{entityId}}, {{file}}, altText: ?altText}) => (
+      {{entityId}},
+      Attachments.Attach({ref: {{file}}, altText}),
+    )
+  | Remove{{Entity}}Image({ {{entityId}}, {{file}} }) => (
+      {{entityId}},
+      Attachments.Remove({ref: {{file}} }),
+    )
+  | SetPrimary{{Entity}}Image({ {{entityId}}, {{file}} }) => (
+      {{entityId}},
+      Attachments.SetPrimary({ref: {{file}} }),
+    )
+  | Set{{Entity}}ImageAltText({ {{entityId}}, {{file}}, altText}) => (
+      {{entityId}},
+      Attachments.SetAltText({ref: {{file}}, altText}),
+    )
   }
 
-let effectivePrimary = state =>
-  switch state.primary {
-  | Some(_) as p => p
-  | None => state.attached->Array.get(0)
+let toEvent = ({{entityId}}, fact) =>
+  switch fact {
+  | Attachments.Attached({ref, altText}) =>
+    {{Entity}}ImageAttached({ {{entityId}}, {{file}}: ref, altText: ?altText})
+  | Attachments.Removed({ref}) => {{Entity}}ImageRemoved({ {{entityId}}, {{file}}: ref})
+  | Attachments.PrimarySet({ref}) => {{Entity}}PrimaryImageSet({ {{entityId}}, {{file}}: ref})
+  | Attachments.AltTextSet({ref, altText}) =>
+    {{Entity}}ImageAltTextSet({ {{entityId}}, {{file}}: ref, altText})
   }
-
-let altTextOf = (state, ref) =>
-  state.altTexts->Array.find(((r, _)) => r == ref)->Option.map(((_, t)) => t)
 
 let decide = (state, command) =>
   if !state.exists {
     Error({{Entity}}NotFound)
   } else {
     // The host's own refusal (archived, discontinued …) goes here.
-    switch command {
-    | Attach{{Entity}}Image({ {{entityId}}, {{file}}, altText: ?altText}) =>
-      state.attached->Array.includes({{file}})
-        ? Ok([])
-        : Ok([{{Entity}}ImageAttached({ {{entityId}}, {{file}}, altText: ?altText})])
-    | Remove{{Entity}}Image({ {{entityId}}, {{file}} }) =>
-      state.attached->Array.includes({{file}})
-        ? Ok([{{Entity}}ImageRemoved({ {{entityId}}, {{file}} })])
-        : Ok([])
-    | SetPrimary{{Entity}}Image({ {{entityId}}, {{file}} }) =>
-      if !(state.attached->Array.includes({{file}})) {
-        Error({{Entity}}ImageNotAttached)
-      } else if effectivePrimary(state) == Some({{file}}) {
-        Ok([])
-      } else {
-        Ok([{{Entity}}PrimaryImageSet({ {{entityId}}, {{file}} })])
-      }
-    | Set{{Entity}}ImageAltText({ {{entityId}}, {{file}}, altText}) =>
-      if !(state.attached->Array.includes({{file}})) {
-        Error({{Entity}}ImageNotAttached)
-      } else if altTextOf(state, {{file}}) == Some(altText) {
-        Ok([])
-      } else {
-        Ok([{{Entity}}ImageAltTextSet({ {{entityId}}, {{file}}, altText})])
-      }
+    let ({{entityId}}, op) = toOp(command)
+    switch state.images->Attachments.decide(op) {
+    | Error(#NotAttached) => Error({{Entity}}ImageNotAttached)
+    | Ok(None) => Ok([])
+    | Ok(Some(fact)) => Ok([toEvent({{entityId}}, fact)])
     }
   }

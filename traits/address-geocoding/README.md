@@ -1,13 +1,21 @@
 # @reventlessdev/trait-address-geocoding
 
 A **domain trait**: the reusable middle of turning an aggregate's address into a map
-point without corrupting the aggregate's data. It ships no runtime code. What it ships:
+point without corrupting the aggregate's data. The rules are a module the host calls;
+the types are the host's own. What it ships:
 
 | Part | Where |
 |---|---|
+| The decision rules | `src/AddressGeocoding_Guards.res` (staleness, redelivery, the supplied pair) |
+| The slice body | `src/AddressGeocoding_Translate.res` (`translate`, `exhaustedReason`) |
 | The host contract, as a type | `src/AddressGeocoding.res` (`module type Binding`) |
 | The conformance suite | `src/AddressGeocoding_Conformance.res` (`Make(Binding).register()`) |
-| Scaffold templates for the graft | `templates/*.res.tpl` |
+| Spec fragments for the graft | `spec-fragments/*.res.tpl` |
+
+The rule modules are compiled code a host imports at runtime, so a change to them is a
+behavior change for every host: version it `fix:`/`feat:` accordingly. The fragments are
+the declarative residue that cannot come from a module — variant constructors, their
+annotations, the state fields — and are still pasted and edited by hand.
 
 The confidence rule — what a geocoder's reply *means* — is core's
 (`Reventless.Geocoding`, `Reventless.Geolocation`). This package owns how that reply is
@@ -25,9 +33,10 @@ grafted onto an aggregate:
 
 ## Grafting a host
 
-1. Paste the `templates/` into the aggregate, its behavior, an outbound translation
+1. Paste the `spec-fragments/` into the aggregate, its behavior, an outbound translation
    slice and the read model, replacing `{{Entity}}`, `{{entityId}}`, `{{Subject}}`,
-   `{{subject}}`, `{{Created}}` and `{{Slice}}`. The scaffolding is by hand on purpose.
+   `{{subject}}`, `{{Created}}` and `{{Slice}}`. The spec surface is by hand on purpose;
+   the guards and the geocoder call the fragments delegate to are not copied.
 2. Bind the host in a `_GWT.res` test file and run the suite:
 
 ```rescript

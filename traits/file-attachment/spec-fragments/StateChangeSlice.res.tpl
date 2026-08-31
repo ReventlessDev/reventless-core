@@ -1,4 +1,4 @@
-// Scaffold: the slice spec. Paste as `StateChangeSlice/{{Entity}}Images.res`.
+// Fragment: the slice spec. Paste as `StateChangeSlice/{{Entity}}Images.res`.
 // `{{file}}` is the attachment field — `productImage`, named for its store, so the
 // same `{{file}}s` store is provisioned for every member.
 

@@ -1,6 +1,10 @@
-// Scaffold: the slice body. Paste as `OutboundTranslationSlice/{{Slice}}_Translation.res`.
+// Fragment: the slice body. Paste as `OutboundTranslationSlice/{{Slice}}_Translation.res`.
+// Asking the geocoder and reading its answer are `AddressGeocoding_Translate`; the
+// keying and the two commands the answer is reported through are the host's.
 
 @@reventless.translation
+
+module Geocode = TraitAddressGeocoding.AddressGeocoding_Translate
 
 // Keyed by entity *and* {{subject}}: keying by entity alone would make a later
 // change look like work already done. `~sourceId` is the entity id, which an
@@ -11,34 +15,21 @@ let collect = (event, ~sourceId) =>
   | {{Subject}}Updated({ {{subject}} }) => [(`${sourceId}:${ {{subject}} }`, { {{entityId}}: sourceId, {{subject}} })]
   }
 
-// The geocoder arrives as a capability; the deployment decides what answers.
-let translate = async (_id, item, ~capabilities: Reventless.Capabilities.t) => {
-  let answer = await capabilities.geocode(~text=item.{{subject}})
-  switch answer {
-  // Matched only to keep `why`; `ofSearch` refuses this case too and is the rule.
-  | Error(Unavailable(why)) => Error(`geocoder unavailable: ${why}`)
-  | _ =>
-    switch Reventless.Geolocation.ofSearch(~requestedFor=item.{{subject}}, answer) {
-    | Some(Located({point})) =>
-      Ok(Some((item.{{entityId}}, SetLocation({location: point, resolvedFrom: item.{{subject}}}))))
-    | Some(Unresolvable({reason})) =>
-      Ok(Some((item.{{entityId}}, Mark{{Subject}}Unresolvable({ {{subject}}: item.{{subject}}, reason}))))
-    | Some(Pending(_)) => Error("unreachable: ofSearch never answers Pending")
-    | None => Error("geocoder unavailable")
-    }
-  }
-}
+let translate = async (_id, item, ~capabilities: Reventless.Capabilities.t) =>
+  (
+    await Geocode.translate(
+      ~text=item.{{subject}},
+      ~capabilities,
+      ~located=(~point, ~resolvedFrom) => SetLocation({location: point, resolvedFrom}),
+      ~unresolvable=(~subject, ~reason) => Mark{{Subject}}Unresolvable({ {{subject}}: subject, reason}),
+    )
+  )->Result.map(command => Some((item.{{entityId}}, command)))
 
-// Once the retries are spent there is no "yet": the entity is told the {{subject}}
-// could not be resolved, by the same event a confident refusal produces.
 let onExhausted = (_id, item: outboundItem, ~lastError) =>
   Some((
     item.{{entityId}},
     Mark{{Subject}}Unresolvable({
       {{subject}}: item.{{subject}},
-      reason: switch lastError {
-      | Some(why) => `the geocoder never answered after repeated attempts (${why})`
-      | None => "the geocoder never answered after repeated attempts"
-      },
+      reason: Geocode.exhaustedReason(lastError),
     }),
   ))

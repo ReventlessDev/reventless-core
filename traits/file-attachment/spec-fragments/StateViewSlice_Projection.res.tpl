@@ -1,4 +1,4 @@
-// Scaffold: the read-model contribution. On the view's state, two fields — the
+// Fragment: the read-model contribution. On the view's state, two fields — the
 // primary as one string, which is what a card, a gallery tile and a reference
 // cell draw, and the whole set:
 //
@@ -7,18 +7,17 @@
 //   {{file}}?: Reventless.UploadableImage.t,
 //   {{file}}s: array<{{entity}}Attachment>,
 //
-// and these projection arms. The primary falls back to the first attached, so a
-// set never shows no image while it has one.
+// and these projection arms.
 
-let withPrimary = (state: {{View}}.state, chosen: option<string>) =>
-  switch chosen {
-  | Some(_) as p => {...state, {{file}}: ?p}
-  | None =>
-    switch state.{{file}}s->Array.get(0) {
-    | Some(first) => {...state, {{file}}: first.{{file}} }
-    | None => {...state, {{file}}: ?None}
-    }
-  }
+// The fallback to the first attached is the trait's rule, applied here over the
+// view's own rows so a card never shows no image while the set holds one.
+let withPrimary = (state: {{View}}.state, chosen: option<string>) => {
+  ...state,
+  {{file}}: ?TraitFileAttachment.FileAttachment_Set.primaryOf(
+    ~chosen,
+    ~attached=state.{{file}}s->Array.map(a => a.{{file}}),
+  ),
+}
 
   | {{Entity}}ImageAttached({ {{entityId}}, {{file}}, altText: ?altText}) => [
       Update({{entityId}}, state =>

@@ -1,4 +1,4 @@
-// Scaffold: the slice spec. Paste as `OutboundTranslationSlice/{{Slice}}.res`.
+// Fragment: the slice spec. Paste as `OutboundTranslationSlice/{{Slice}}.res`.
 // Turns a {{subject}} into a point and reports back to `{{Entity}}`: `SetLocation`
 // when sure, `Mark{{Subject}}Unresolvable` when not. Neither is callable from the API.
 

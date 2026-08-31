@@ -1,13 +1,20 @@
 # @reventlessdev/trait-file-attachment
 
 A **domain trait**: an ordered set of stored files on an entity — attach, remove,
-choose the primary, caption — as domain facts. It ships no runtime code:
+choose the primary, caption — as domain facts. The rules are a module the host calls;
+the types are the host's own:
 
 | Part | Where |
 |---|---|
+| The set's rules | `src/FileAttachment_Set.res` (`empty`, `op`, `fact`, `decide`, `evolve`, `primaryOf`) |
 | The host contract, as a type | `src/FileAttachment.res` (`module type Binding`) |
 | The conformance suite | `src/FileAttachment_Conformance.res` (`Make(Binding).register()`) |
-| Scaffold templates for the graft | `templates/*.res.tpl` |
+| Spec fragments for the graft | `spec-fragments/*.res.tpl` |
+
+`FileAttachment_Set` is compiled code a host imports at runtime, so a change to it is a
+behavior change for every host: version it `fix:`/`feat:` accordingly. The fragments are
+the declarative residue that cannot come from a module — variant constructors, their
+annotations, the state fields — and are still pasted and edited by hand.
 
 Storage is the platform's (`UploadableImage.t` names the store; mint, presign and
 pending-expiry are shipped). This package owns the rules of the *set*:
@@ -27,10 +34,11 @@ Unlike the geocoding trait this one writes nothing back into its host: the graft
 
 ## Grafting a host
 
-1. Paste the `templates/` into a `StateChangeSlice/<Entity>Images.res` pair and the
+1. Paste the `spec-fragments/` into a `StateChangeSlice/<Entity>Images.res` pair and the
    view's projection, replacing `{{Entity}}`, `{{entity}}`, `{{entityId}}`,
    `{{file}}` (`productImage` — the field is named for its store), `{{Created}}`
-   and `{{View}}`; add the host's own refusal to `decide`.
+   and `{{View}}`; add the host's own refusal to `decide`. The set's rules are not
+   copied — the behavior fragment maps this host's constructors onto them.
 2. Bind the host in a `_GWT.res` file and run the suite:
 
 ```rescript

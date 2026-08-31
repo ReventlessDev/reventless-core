@@ -1,9 +1,10 @@
 /**
 The host contract of the address-geocoding trait: what an aggregate and its
 outbound slice expose so the graft rules can be checked against them. The rules —
-staleness, redelivery, an outage is not a verdict, the stand-down — are asserted by
-`AddressGeocoding_Conformance`; the confidence rule stays core's
-(`Reventless.Geocoding`). The graft itself is scaffolded from `templates/`.
+staleness, redelivery, an outage is not a verdict, the stand-down — live in
+`AddressGeocoding_Guards` and `AddressGeocoding_Translate` and are asserted through a
+host by `AddressGeocoding_Conformance`; the confidence rule stays core's
+(`Reventless.Geocoding`). The spec surface is scaffolded from `spec-fragments/`.
 */
 
 /** Whether the graft reports back into its host. This trait does — the two `@noApi`

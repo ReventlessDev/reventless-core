@@ -105,7 +105,8 @@ their image, and `ChangeProductImage` / `ChangeCategoryImage` are gone.
   catalog command as "declares no lifecycle field").
 
 **Still to do from Part A:** the alpha wipe itself is a deploy step (`seed:reset`) after this
-lands; the two UI limits above.
+lands, and the two UI limits above. The set's rules moved into a trait-owned `FileAttachment_Set`
+both hosts call on 2026-08-31 — [trait-rules-as-modules.md](./done/trait-rules-as-modules.md).
 
 ## 4. Part B — scan and retention (gated)
 

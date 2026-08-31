@@ -62,10 +62,19 @@ A product listing with a name, description, price, and the `categoryId` it belon
 | `ChangeProductName` | `ChangeProductName` | `ProductNameChanged` |
 | `ChangeProductDescription` | `ChangeProductDescription` | `ProductDescriptionChanged` |
 | `ChangeProductPrice` | `ChangeProductPrice` | `ProductPriceChanged` |
+| `ProductImages` | `AttachProductImage`, `RemoveProductImage`, `SetPrimaryProductImage`, `SetProductImageAltText` | `ProductImageAttached`, `ProductImageRemoved`, `ProductPrimaryImageSet`, `ProductImageAltTextSet` |
 
 | State View Slice (Stream) | Events | Queryable view |
 |---|---|---|
-| `Products` | `ProductAdded`, `ProductNameChanged`, `ProductDescriptionChanged`, `ProductPriceChanged` | `Products` |
+| `Products` | `ProductAdded`, `ProductNameChanged`, `ProductDescriptionChanged`, `ProductPriceChanged`, the four `ProductImage…` events | `Products` |
+
+`ProductImages` is a **graft of the file-attachment trait**: an ordered set of
+images with a primary and per-member alt text, as domain facts. The `Products` view
+carries the set (`productImages`) beside the primary as one string (`productImage`),
+which is what a card or gallery tile draws. `Category` has the same graft
+(`CategoryImages`), and the trait's conformance suite runs against both — see
+[Domain Traits](/app/domain-traits) for what the trait is and how to lift it into your
+own application.
 
 In the source these live in `catalog/src/Product/StateViewSliceStream/` — the
 **Stream** variant projects into a live-updating view that pushes changes to
@@ -282,6 +291,17 @@ A registered buyer with contact details and account status. Customer has its own
 | `DeactivateCustomer` | `CustomerDeactivated` |
 
 **Why an aggregate?** Customer's *write side* is fully independent — no cross-entity consistency with Order or CatalogProduct is needed, so its register/update/deactivate lifecycle is a natural fit for a simple aggregate. (The *read side* can still blend in other sources — see the `Customers` read model next.)
+
+**Address geocoding is a graft of the address-geocoding trait.** The
+`GeocodeCustomerAddress` outbound slice turns a registered or updated address into
+a point through the platform's `geocode` capability and reports back through two
+internal (`@noApi`) commands, `SetLocation` and `MarkAddressUnresolvable`; the
+aggregate's guards drop a stale answer, swallow a redelivered one, and stand down
+when a client supplied address and point together (`SetAddressLocation`). The
+`Customers` view carries the outcome as a `Geolocation` union. The trait's
+conformance suite is bound to `Customer` in
+`ordering/tests/Customer/AddressGeocodingConformance_GWT.res`; see
+[Domain Traits](/app/domain-traits).
 
 ### Read Model: `Customers` (mixed aggregate + DCB)
 

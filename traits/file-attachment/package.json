@@ -1,13 +1,13 @@
 {
   "name": "@reventlessdev/trait-file-attachment",
   "version": "1.0.0-alpha.0",
-  "description": "File-attachment domain trait: host contract, scaffold templates and conformance suite for an ordered attachment set with a primary and captions",
+  "description": "File-attachment domain trait: rules, host contract, conformance suite and spec fragments for an ordered attachment set with a primary and captions",
   "license": "Apache-2.0",
   "files": [
     "src/**/*.res",
     "src/**/*.resi",
     "src/**/*.res.mjs",
-    "templates",
+    "spec-fragments",
     "rescript.json",
     "README.md"
   ],

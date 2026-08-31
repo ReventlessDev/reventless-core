@@ -1,4 +1,4 @@
-// Scaffold: the aggregate half of the graft. Paste into `Aggregate/{{Entity}}.res`.
+// Fragment: the aggregate half of the graft. Paste into `Aggregate/{{Entity}}.res`.
 // `{{subject}}` is the address field (a `string` today); `{{Subject}}` its capitalised form.
 
 // --- command arms ------------------------------------------------------------

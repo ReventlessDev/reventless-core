@@ -3,7 +3,9 @@
 **Date:** 2026-08-30
 **Repo:** reventless-core — a new package under `traits/`, and the `online-shop-hybrid` ordering
 plugin it is extracted from.
-**Status:** In progress — G1–G5 landed 2026-08-30; G6 is its own commit, next.
+**Status:** In progress — G1–G6 landed 2026-08-30. The rules moved behind
+`AddressGeocoding_Guards` / `AddressGeocoding_Translate` and `templates/` became `spec-fragments/`
+on 2026-08-31 — [trait-rules-as-modules.md](./done/trait-rules-as-modules.md).
 **Builds on:**
 [customer-address-backend-geocoding.md](./customer-address-backend-geocoding.md) — **the plan that
 built this feature.** Steps 1–9 deployed and proven; its D3 round calibrated `0.97`/`0.01` against

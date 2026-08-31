@@ -138,6 +138,11 @@ The rule those plans share, and the only thing worth restating here: within each
 **remove the woven-in implementation first, let the GWTs go red, then bind the trait** — never
 both implementations at once.
 
+**[2026-08-31]** The trait *shape* itself was revised by
+[trait-rules-as-modules.md](./done/trait-rules-as-modules.md): the rules moved from string templates
+into per-trait modules the hosts call; only the spec surface stays a copied fragment. Both shipped
+traits migrated under their existing conformance suites, unedited.
+
 ## Part 5 — dependency and CI shape
 
 **[2026-08-30] Rewritten.** The trait packages live in this repo under `traits/`, published by
