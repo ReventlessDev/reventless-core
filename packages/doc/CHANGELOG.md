@@ -718,6 +718,11 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-08-31
+- docs: correct the inbound translation slice's transport story ([04ff975](https://github.com/ReventlessDev/reventless-core/commit/04ff9756042bc1a0c9f35ada5cb1be0765baf5ee))
+
+### 2026-08-30
+- fix(example): give the catalog's demand feature its own chapter ([8fbff92](https://github.com/ReventlessDev/reventless-core/commit/8fbff92874902faa3df2bff6c595344a0ee17fb1))
 ### 2026-08-27
 - feat(spec)!: read the port's translation table off the mapping's arms ([956348a](https://github.com/ReventlessDev/reventless-core/commit/956348a9fcb256cfff9db51809bdc27d73360e6c))
 ### 2026-08-23
