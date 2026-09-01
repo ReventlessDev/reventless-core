@@ -22,3 +22,7 @@ let sourceNames: array<string> = []
 // Foreign system this anti-corruption slice publishes confirmations to — drawn as an
 // external box outside the Ordering plugin in the Event Graph.
 let externalSystem = Some("EmailService")
+
+// Its mailer is not a platform capability: this slice calls a service the
+// framework does not broker, so the deployment provisions nothing for it.
+let capabilityNeeds: array<Reventless.CapabilityNeed.t> = []

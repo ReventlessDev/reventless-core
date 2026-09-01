@@ -106,6 +106,22 @@ module type Spec = {
       in the Event Graph / Context Map.
       Auto-injected by `@@reventless.spec` defaulting to `None` — set it to name the box. */
   let externalSystem: option<string>
+
+  /**
+  The platform capabilities this slice's `translate` reaches for.
+
+  `[]` — the common case — means `translate` calls a service the framework does
+  not broker, and the deployment provisions nothing on its behalf. Naming a
+  capability makes the need a checked fact: it reaches `capabilities.json`, the
+  platform's generated capability list, and the deploy-time gate, which refuses a
+  plugin whose platform provisions none of it.
+
+  Declared rather than inferred because what `translate` reads off
+  `Capabilities.t` is only visible in its body, and provisioning infrastructure
+  from a guess at a function body is not a service. A trait exports the value for
+  its host to name, so grafting one cannot leave the need unstated.
+  */
+  let capabilityNeeds: array<CapabilityNeed.t>
 }
 
 /**

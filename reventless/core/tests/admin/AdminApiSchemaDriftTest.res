@@ -165,6 +165,11 @@ let storeDecl: requiredStoreDeclaration = {
   annotation: Some("images"),
 }
 
+let capabilityDecl: requiredCapabilityDeclaration = {
+  capability: "Geocoding",
+  component: "GeocodeAddress",
+}
+
 let structure: pluginStructure = {
   readModels: [queryable],
   stateViewSlices: [],
@@ -177,6 +182,7 @@ let structure: pluginStructure = {
   extensionPoints: Some([extensionPoint]),
   requiredStores: Some(["catalog.images"]),
   requiredStoreDeclarations: Some([storeDecl]),
+  requiredCapabilities: Some([capabilityDecl]),
 }
 
 let panel: panelManifestEntry = {
@@ -338,7 +344,12 @@ let guards: array<guard> = [
     wireOnly: ["pluginId", "internalQueryables"],
     // Producer-side and store fields belong to Platform_PluginStructures — the
     // deployed AutoUI has no use for either.
-    recordOnly: ["extensionPoints", "requiredStores", "requiredStoreDeclarations"],
+    recordOnly: [
+      "extensionPoints",
+      "requiredStores",
+      "requiredStoreDeclarations",
+      "requiredCapabilities",
+    ],
   },
   {
     gqlType: "Platform_PublishedEventDef",
@@ -361,6 +372,16 @@ let guards: array<guard> = [
     sdlTypes: structuresSdl,
     recordFields: schemaKeys(requiredStoreDeclarationSchema),
     wireFields: jsonKeys(Platform_PluginStructuresApi.encodeRequiredStoreDeclaration(storeDecl)),
+    wireOnly: [],
+    recordOnly: [],
+  },
+  {
+    gqlType: "Platform_RequiredCapabilityDeclaration",
+    sdlTypes: structuresSdl,
+    recordFields: schemaKeys(requiredCapabilityDeclarationSchema),
+    wireFields: jsonKeys(
+      Platform_PluginStructuresApi.encodeRequiredCapabilityDeclaration(capabilityDecl),
+    ),
     wireOnly: [],
     recordOnly: [],
   },

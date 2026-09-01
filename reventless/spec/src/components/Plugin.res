@@ -381,6 +381,21 @@ let requiredStoreDeclarationArrayOptionSchema =
   S.array(requiredStoreDeclarationSchema)->S.nullAsOption
 
 /**
+One component's capability requirement, with its provenance.
+
+`capability` is `CapabilityNeed.toString` — a string rather than an enum so a
+plugin built against a newer framework still decodes here; `component` names the
+slice that declared it, so a diff can say which component added or removed the
+need. Unlike a store there is no field: what a `translate` reaches for is not
+expressible as an annotation on one, which is why the need is declared.
+*/
+@schema
+type requiredCapabilityDeclaration = {capability: string, component: string}
+
+let requiredCapabilityDeclarationArrayOptionSchema =
+  S.array(requiredCapabilityDeclarationSchema)->S.nullAsOption
+
+/**
 Adding a field here? It must be a shape a stale event can be healed into — the
 lifecycle aggregate replays its own log before every decision, so one event that
 fails to decode freezes that plugin's registration. `Message.parseJsonTolerant`
@@ -409,6 +424,11 @@ type pluginStructure = {
       `requiredStores` is derived from it, so the two cannot disagree. */
   requiredStoreDeclarations: @s.matches(requiredStoreDeclarationArrayOptionSchema)
   option<array<requiredStoreDeclaration>>,
+  /** The platform capabilities this plugin's components declare they need, one
+      entry per declaring component. Object stores are not here — a store need is
+      a field's, and travels as `requiredStores`. Absent → None, read as []. */
+  requiredCapabilities: @s.matches(requiredCapabilityDeclarationArrayOptionSchema)
+  option<array<requiredCapabilityDeclaration>>,
 }
 
 let pluginStructureOffloadSchema = Offload.optionSchema(~store="pluginStructures", pluginStructureSchema)

@@ -56,7 +56,21 @@ module Binding = {
 TraitAddressGeocoding.AddressGeocoding_Conformance.Make(Binding).register()
 ```
 
-3. Requires the `geocode` capability; the platform provisions it
-   (`Capability_Geocoding_AwsLocation` on AWS, `Capabilities.none` locally).
+3. Declare the capability on the outbound slice's spec, so the deployment is
+   checked rather than trusted:
+
+```rescript
+let capabilityNeeds = TraitAddressGeocoding.AddressGeocoding.capabilityNeeds
+```
+
+   The declaration reaches the plugin's `capabilities.json`, the platform's
+   generated capability list, and a deploy-time gate that refuses a plugin whose
+   platform provisions no place index. Skip it and the deploy succeeds, the slice
+   exhausts its retries, and every address is recorded as permanently
+   unresolvable — with no error anywhere.
+
+   The platform provisions the capability itself: `Capability_Geocoding_AwsLocation`
+   on AWS, passed as `~geocoderPlaceIndex`; `Capabilities.none` locally, which
+   answers `Unavailable` on purpose.
 
 The specimen host is `examples/online-shop-hybrid/ordering` (`Customer`).

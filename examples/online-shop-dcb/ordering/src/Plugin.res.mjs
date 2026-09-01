@@ -225,7 +225,8 @@ function Make(Platform) {
     heartbeatInterval: SendOrderConfirmation$OrderingPlugin.heartbeatInterval,
     targetName: undefined,
     sourceNames: SendOrderConfirmation$OrderingPlugin.sourceNames,
-    externalSystem: SendOrderConfirmation$OrderingPlugin.externalSystem
+    externalSystem: SendOrderConfirmation$OrderingPlugin.externalSystem,
+    capabilityNeeds: SendOrderConfirmation$OrderingPlugin.capabilityNeeds
   })({
     collect: SendOrderConfirmation_Translation$OrderingPlugin.collect,
     translate: SendOrderConfirmation_Translation$OrderingPlugin.translate,

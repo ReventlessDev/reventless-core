@@ -76,6 +76,7 @@ let structure: pluginStructure = {
   extensionPoints: None,
   requiredStores: None,
   requiredStoreDeclarations: None,
+  requiredCapabilities: None,
 }
 
 /** The definition the platform's own EventCollector ships as its

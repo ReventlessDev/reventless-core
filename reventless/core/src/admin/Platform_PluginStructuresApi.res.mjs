@@ -9,7 +9,8 @@ let sdlTypes = [
   `type Platform_AcceptedCommandDef {\n  name: String!\n  toCommandTypes: [String!]!\n}`,
   `type Platform_ExtensionPointDef {\n  name: String!\n  delegateNames: [String!]!\n  sourceEventTypes: [String!]!\n  commandTypes: [String!]\n  publishedEvents: [Platform_PublishedEventDef!]\n  acceptedCommands: [Platform_AcceptedCommandDef!]\n}`,
   `type Platform_RequiredStoreDeclaration {\n  store: String!\n  component: String!\n  field: String!\n  annotation: String\n}`,
-  `type Platform_PluginStructureEntry {\n  pluginId: String!\n  readModels: [Platform_ReadSideDef!]!\n  stateViewSlices: [Platform_ReadSideDef!]!\n  stateChangeSlices: [Platform_WriteSideDef!]!\n  aggregates: [Platform_WriteSideDef!]!\n  automationSlices: [Platform_AutomationSliceDef!]!\n  outboundTranslationSlices: [Platform_OutboundTranslationSliceDef!]!\n  inboundTranslationSlices: [Platform_InboundTranslationSliceDef!]!\n  extensions: [Platform_ExtensionDef!]!\n  extensionPoints: [Platform_ExtensionPointDef!]\n  requiredStores: [String!]\n  requiredStoreDeclarations: [Platform_RequiredStoreDeclaration!]\n}`
+  `type Platform_RequiredCapabilityDeclaration {\n  capability: String!\n  component: String!\n}`,
+  `type Platform_PluginStructureEntry {\n  pluginId: String!\n  readModels: [Platform_ReadSideDef!]!\n  stateViewSlices: [Platform_ReadSideDef!]!\n  stateChangeSlices: [Platform_WriteSideDef!]!\n  aggregates: [Platform_WriteSideDef!]!\n  automationSlices: [Platform_AutomationSliceDef!]!\n  outboundTranslationSlices: [Platform_OutboundTranslationSliceDef!]!\n  inboundTranslationSlices: [Platform_InboundTranslationSliceDef!]!\n  extensions: [Platform_ExtensionDef!]!\n  extensionPoints: [Platform_ExtensionPointDef!]\n  requiredStores: [String!]\n  requiredStoreDeclarations: [Platform_RequiredStoreDeclaration!]\n  requiredCapabilities: [Platform_RequiredCapabilityDeclaration!]\n}`
 ];
 
 function encodeExtensionPointDef(e) {
@@ -80,6 +81,19 @@ function encodeRequiredStoreDeclaration(d) {
   ]);
 }
 
+function encodeRequiredCapabilityDeclaration(d) {
+  return Object.fromEntries([
+    [
+      "capability",
+      d.capability
+    ],
+    [
+      "component",
+      d.component
+    ]
+  ]);
+}
+
 function encodePluginStructureEntry(pluginId, def) {
   return Object.fromEntries([
     [
@@ -129,6 +143,10 @@ function encodePluginStructureEntry(pluginId, def) {
     [
       "requiredStoreDeclarations",
       Stdlib_Option.mapOr(def.requiredStoreDeclarations, null, ds => ds.map(encodeRequiredStoreDeclaration))
+    ],
+    [
+      "requiredCapabilities",
+      Stdlib_Option.mapOr(def.requiredCapabilities, null, ds => ds.map(encodeRequiredCapabilityDeclaration))
     ]
   ]);
 }
@@ -140,6 +158,7 @@ export {
   sdlQueryField,
   encodeExtensionPointDef,
   encodeRequiredStoreDeclaration,
+  encodeRequiredCapabilityDeclaration,
   encodePluginStructureEntry,
 }
 /* No side effect */

@@ -25,6 +25,7 @@ import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/co
 import * as DcbBackend$ReventlessAws from "./adapter/DcbEventLog/DcbBackend.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as ReadModel$ReventlessCore from "@reventlessdev/reventless-core/src/components/ReadModel/ReadModel.res.mjs";
+import * as CapabilityNeed$Reventless from "@reventlessdev/reventless-spec/src/semantic/CapabilityNeed.res.mjs";
 import * as PluginSpec$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginSpec.res.mjs";
 import * as Util_Bundle$ReventlessAws from "./util/Util_Bundle.res.mjs";
 import * as Plugin_Stack$ReventlessAws from "./plugin/stack/Plugin_Stack.res.mjs";
@@ -1145,6 +1146,9 @@ function MakeWithConfig(Config) {
       let geocoderPlaceIndexFlat = index$1 !== undefined ? index$1.indexName : Pulumi.output("");
       Pulumi$Pulumi.$$export("geocoderPlaceIndex", geocoderPlaceIndexFlat);
       geocoderPlaceIndexRef.contents = geocoderPlaceIndexFlat;
+      if (capabilities.includes("Geocoding") && Stdlib_Option.isNone(hostUiBundle.geocoderPlaceIndex)) {
+        Stdlib_JsError.throwWithMessage(`A plugin of this deployment declares the Geocoding capability, but this platform provisions no place index.\n  Add \`let placeIndex = ReventlessAws.Capability_Geocoding_AwsLocation.make(~name=…)\` and pass \`~geocoderPlaceIndex=placeIndex\` in \`~hostUiBundle\`.\n  The declaration is generated from the plugins' capabilities.json — regenerate with \`pnpm run generate:platform\` if it is stale.`);
+      }
       let configJsonContent = Pulumi.all([
         Pulumi.all([
           resolvedDomainApiEndpoint,
@@ -1352,17 +1356,26 @@ function MakeWithConfig(Config) {
       let mergeGate = AppSync_MergedApi$ReventlessAws.mergeStatusGateWith(checkedMergedApiArn, association);
       let capabilityGate = Pulumi.all([
         pluginOutputs.pluginStructure,
-        stackRef.getOutput("objectStores")
+        stackRef.getOutput("objectStores"),
+        geocoderPlaceIndex
       ]).apply(param => {
-        let required = Stdlib_Option.getOr(Stdlib_Option.flatMap(param[0], s => s.requiredStores), []);
+        let structure = param[0];
+        let missing = CapabilityNeed$Reventless.unmet(Stdlib_Option.getOr(Stdlib_Option.flatMap(structure, s => s.requiredCapabilities), []).map(d => [
+          d.capability,
+          d.component
+        ]), param[2] === "" ? [] : ["Geocoding"]);
+        if (missing.length !== 0) {
+          Stdlib_JsError.throwWithMessage(CapabilityNeed$Reventless.unmetMessage(missing) + `\n  Geocoding is \`Capability_Geocoding_AwsLocation.make\`, passed to the platform as \`~geocoderPlaceIndex\`.`);
+        }
+        let required = Stdlib_Option.getOr(Stdlib_Option.flatMap(structure, s => s.requiredStores), []);
         let provisioned = Stdlib_Option.getOr(Stdlib_Option.map(Stdlib_Option.flatMap(param[1], Stdlib_JSON.Decode.object), prim => Object.keys(prim)), []);
-        let missing = Util_StoreLayout$ReventlessAws.coverageFor(required, provisioned);
-        if (typeof missing !== "object") {
+        let missing$1 = Util_StoreLayout$ReventlessAws.coverageFor(required, provisioned);
+        if (typeof missing$1 !== "object") {
           return;
-        } else if (missing.TAG === "NotAdopted") {
-          return log.warn("Platform:deployPlugin", undefined, `declares ` + missing._0.join(", ") + ` but the platform stack provisions no object stores — add them to the platform's ~capabilities and redeploy the platform first, or uploads will fall back to the legacy service and write to the wrong bucket`);
+        } else if (missing$1.TAG === "NotAdopted") {
+          return log.warn("Platform:deployPlugin", undefined, `declares ` + missing$1._0.join(", ") + ` but the platform stack provisions no object stores — add them to the platform's ~capabilities and redeploy the platform first, or uploads will fall back to the legacy service and write to the wrong bucket`);
         } else {
-          return Stdlib_JsError.throwWithMessage(`Plugin requires object store(s) the platform does not provision: ` + missing.missing.join(", ") + `.\n` + (`  The platform stack provisions: ` + missing.provisioned.join(", ") + `.\n`) + `  A store's key is {plugin}.{store}, where {plugin} is the name the plugin registers — check the capability's spelling and case against it.\n  Add the missing entr(ies) to the platform's ~capabilities and redeploy the platform stack first.`);
+          return Stdlib_JsError.throwWithMessage(`Plugin requires object store(s) the platform does not provision: ` + missing$1.missing.join(", ") + `.\n` + (`  The platform stack provisions: ` + missing$1.provisioned.join(", ") + `.\n`) + `  A store's key is {plugin}.{store}, where {plugin} is the name the plugin registers — check the capability's spelling and case against it.\n  Add the missing entr(ies) to the platform's ~capabilities and redeploy the platform stack first.`);
         }
       });
       Pulumi$Pulumi.$$export("sourceApiAssociationId", Pulumi.all([
@@ -2441,6 +2454,9 @@ function Make($star) {
       let geocoderPlaceIndexFlat = index$1 !== undefined ? index$1.indexName : Pulumi.output("");
       Pulumi$Pulumi.$$export("geocoderPlaceIndex", geocoderPlaceIndexFlat);
       geocoderPlaceIndexRef.contents = geocoderPlaceIndexFlat;
+      if (capabilities.includes("Geocoding") && Stdlib_Option.isNone(hostUiBundle.geocoderPlaceIndex)) {
+        Stdlib_JsError.throwWithMessage(`A plugin of this deployment declares the Geocoding capability, but this platform provisions no place index.\n  Add \`let placeIndex = ReventlessAws.Capability_Geocoding_AwsLocation.make(~name=…)\` and pass \`~geocoderPlaceIndex=placeIndex\` in \`~hostUiBundle\`.\n  The declaration is generated from the plugins' capabilities.json — regenerate with \`pnpm run generate:platform\` if it is stale.`);
+      }
       let configJsonContent = Pulumi.all([
         Pulumi.all([
           resolvedDomainApiEndpoint,
@@ -2646,17 +2662,26 @@ function Make($star) {
       let mergeGate = AppSync_MergedApi$ReventlessAws.mergeStatusGateWith(checkedMergedApiArn, association);
       let capabilityGate = Pulumi.all([
         pluginOutputs.pluginStructure,
-        stackRef.getOutput("objectStores")
+        stackRef.getOutput("objectStores"),
+        geocoderPlaceIndex
       ]).apply(param => {
-        let required = Stdlib_Option.getOr(Stdlib_Option.flatMap(param[0], s => s.requiredStores), []);
+        let structure = param[0];
+        let missing = CapabilityNeed$Reventless.unmet(Stdlib_Option.getOr(Stdlib_Option.flatMap(structure, s => s.requiredCapabilities), []).map(d => [
+          d.capability,
+          d.component
+        ]), param[2] === "" ? [] : ["Geocoding"]);
+        if (missing.length !== 0) {
+          Stdlib_JsError.throwWithMessage(CapabilityNeed$Reventless.unmetMessage(missing) + `\n  Geocoding is \`Capability_Geocoding_AwsLocation.make\`, passed to the platform as \`~geocoderPlaceIndex\`.`);
+        }
+        let required = Stdlib_Option.getOr(Stdlib_Option.flatMap(structure, s => s.requiredStores), []);
         let provisioned = Stdlib_Option.getOr(Stdlib_Option.map(Stdlib_Option.flatMap(param[1], Stdlib_JSON.Decode.object), prim => Object.keys(prim)), []);
-        let missing = Util_StoreLayout$ReventlessAws.coverageFor(required, provisioned);
-        if (typeof missing !== "object") {
+        let missing$1 = Util_StoreLayout$ReventlessAws.coverageFor(required, provisioned);
+        if (typeof missing$1 !== "object") {
           return;
-        } else if (missing.TAG === "NotAdopted") {
-          return log.warn("Platform:deployPlugin", undefined, `declares ` + missing._0.join(", ") + ` but the platform stack provisions no object stores — add them to the platform's ~capabilities and redeploy the platform first, or uploads will fall back to the legacy service and write to the wrong bucket`);
+        } else if (missing$1.TAG === "NotAdopted") {
+          return log.warn("Platform:deployPlugin", undefined, `declares ` + missing$1._0.join(", ") + ` but the platform stack provisions no object stores — add them to the platform's ~capabilities and redeploy the platform first, or uploads will fall back to the legacy service and write to the wrong bucket`);
         } else {
-          return Stdlib_JsError.throwWithMessage(`Plugin requires object store(s) the platform does not provision: ` + missing.missing.join(", ") + `.\n` + (`  The platform stack provisions: ` + missing.provisioned.join(", ") + `.\n`) + `  A store's key is {plugin}.{store}, where {plugin} is the name the plugin registers — check the capability's spelling and case against it.\n  Add the missing entr(ies) to the platform's ~capabilities and redeploy the platform stack first.`);
+          return Stdlib_JsError.throwWithMessage(`Plugin requires object store(s) the platform does not provision: ` + missing$1.missing.join(", ") + `.\n` + (`  The platform stack provisions: ` + missing$1.provisioned.join(", ") + `.\n`) + `  A store's key is {plugin}.{store}, where {plugin} is the name the plugin registers — check the capability's spelling and case against it.\n  Add the missing entr(ies) to the platform's ~capabilities and redeploy the platform stack first.`);
         }
       });
       Pulumi$Pulumi.$$export("sourceApiAssociationId", Pulumi.all([

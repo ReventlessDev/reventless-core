@@ -36,13 +36,16 @@ let sdlTypes: array<string> = [
   // notification-only (`command = unit`) extension point — see `extensionPointDef`.
   `type Platform_ExtensionPointDef {\n  name: String!\n  delegateNames: [String!]!\n  sourceEventTypes: [String!]!\n  commandTypes: [String!]\n  publishedEvents: [Platform_PublishedEventDef!]\n  acceptedCommands: [Platform_AcceptedCommandDef!]\n}`,
   `type Platform_RequiredStoreDeclaration {\n  store: String!\n  component: String!\n  field: String!\n  annotation: String\n}`,
-  // `extensionPoints` / `requiredStores` / `requiredStoreDeclarations` are nullable
-  // lists, not `[T!]!`: all three are optional on `pluginStructure` so that plugin
-  // definitions persisted before the field existed still decode. A structure written
-  // by an older deploy sends null, and null is the honest answer — an empty list
-  // would claim the plugin has no extension points when the truth is that the
-  // deployment cannot say.
-  `type Platform_PluginStructureEntry {\n  pluginId: String!\n  readModels: [Platform_ReadSideDef!]!\n  stateViewSlices: [Platform_ReadSideDef!]!\n  stateChangeSlices: [Platform_WriteSideDef!]!\n  aggregates: [Platform_WriteSideDef!]!\n  automationSlices: [Platform_AutomationSliceDef!]!\n  outboundTranslationSlices: [Platform_OutboundTranslationSliceDef!]!\n  inboundTranslationSlices: [Platform_InboundTranslationSliceDef!]!\n  extensions: [Platform_ExtensionDef!]!\n  extensionPoints: [Platform_ExtensionPointDef!]\n  requiredStores: [String!]\n  requiredStoreDeclarations: [Platform_RequiredStoreDeclaration!]\n}`,
+  // The capability a component declares its translate reaches for. No `field`:
+  // unlike a store, this need is not expressible as an annotation on one.
+  `type Platform_RequiredCapabilityDeclaration {\n  capability: String!\n  component: String!\n}`,
+  // `extensionPoints` / `requiredStores` / `requiredStoreDeclarations` /
+  // `requiredCapabilities` are nullable lists, not `[T!]!`: all four are optional on
+  // `pluginStructure` so that plugin definitions persisted before the field existed
+  // still decode. A structure written by an older deploy sends null, and null is the
+  // honest answer — an empty list would claim the plugin has no extension points when
+  // the truth is that the deployment cannot say.
+  `type Platform_PluginStructureEntry {\n  pluginId: String!\n  readModels: [Platform_ReadSideDef!]!\n  stateViewSlices: [Platform_ReadSideDef!]!\n  stateChangeSlices: [Platform_WriteSideDef!]!\n  aggregates: [Platform_WriteSideDef!]!\n  automationSlices: [Platform_AutomationSliceDef!]!\n  outboundTranslationSlices: [Platform_OutboundTranslationSliceDef!]!\n  inboundTranslationSlices: [Platform_InboundTranslationSliceDef!]!\n  extensions: [Platform_ExtensionDef!]!\n  extensionPoints: [Platform_ExtensionPointDef!]\n  requiredStores: [String!]\n  requiredStoreDeclarations: [Platform_RequiredStoreDeclaration!]\n  requiredCapabilities: [Platform_RequiredCapabilityDeclaration!]\n}`,
 ]
 
 let sdlQueryField: string = `  Platform_PluginStructures: [Platform_PluginStructureEntry!]!`
@@ -96,6 +99,12 @@ let encodeRequiredStoreDeclaration = (d: requiredStoreDeclaration): JSON.t =>
     ("component", JSON.Encode.string(d.component)),
     ("field", JSON.Encode.string(d.field)),
     ("annotation", d.annotation->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
+  ])->JSON.Encode.object
+
+let encodeRequiredCapabilityDeclaration = (d: requiredCapabilityDeclaration): JSON.t =>
+  Dict.fromArray([
+    ("capability", JSON.Encode.string(d.capability)),
+    ("component", JSON.Encode.string(d.component)),
   ])->JSON.Encode.object
 
 // Deliberately NOT filtered by `isPublicQueryable`: that filter is the AutoUI
@@ -163,6 +172,12 @@ let encodePluginStructureEntry = (~pluginId: string, def: pluginStructure): JSON
       "requiredStoreDeclarations",
       def.requiredStoreDeclarations->Option.mapOr(JSON.Encode.null, ds =>
         ds->Array.map(encodeRequiredStoreDeclaration)->JSON.Encode.array
+      ),
+    ),
+    (
+      "requiredCapabilities",
+      def.requiredCapabilities->Option.mapOr(JSON.Encode.null, ds =>
+        ds->Array.map(encodeRequiredCapabilityDeclaration)->JSON.Encode.array
       ),
     ),
   ])->JSON.Encode.object

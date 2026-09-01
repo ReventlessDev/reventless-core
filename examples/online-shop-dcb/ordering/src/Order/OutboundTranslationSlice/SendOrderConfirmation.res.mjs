@@ -18,6 +18,8 @@ let inboundCommandSchema = Sury.$unit;
 
 let sourceNames = [];
 
+let capabilityNeeds = [];
+
 let name = "SendOrderConfirmation";
 
 let Id;
@@ -43,6 +45,7 @@ export {
   targetName,
   sourceNames,
   externalSystem,
+  capabilityNeeds,
   moduleUrl,
 }
 /* consumedEventSchema Not a pure module */

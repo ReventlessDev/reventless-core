@@ -1118,6 +1118,32 @@ let make = (
     )
   }
 
+  // Capabilities a slice declares its `translate` reaches for. Sorted and
+  // deduplicated for the same reason the store declarations are: the manifest is
+  // committed, so it must not churn on a re-build. Only outbound translation
+  // slices are handed `Capabilities.t`, so only they can declare.
+  let requiredCapabilities =
+    outboundTranslationSlices
+    ->Array.flatMap((module(OTS: ReventlessInfra.OutboundTranslationSlice.T)) =>
+      OTS.Spec.capabilityNeeds->Array.map(need => (
+        {
+          Reventless.Plugin.capability: Reventless.CapabilityNeed.toString(need),
+          component: OTS.Spec.name,
+        }: Reventless.Plugin.requiredCapabilityDeclaration
+      ))
+    )
+    ->Array.toSorted((a, b) =>
+      a.capability == b.capability
+        ? String.compare(a.component, b.component)
+        : String.compare(a.capability, b.capability)
+    )
+    ->Array.reduce([], (acc, d) =>
+      switch acc->Array.last {
+      | Some(prev) if prev == d => acc
+      | _ => acc->Array.concat([d])
+      }
+    )
+
   // Heuristic-only matches — a field *named* like a stored-object ref with no
   // `@storageRef` — warn and provision nothing. Declaration outranks inference;
   // the warning names the annotation that would settle it.
@@ -1747,5 +1773,6 @@ let make = (
     extensionPoints: Some(extensionPointDefs),
     requiredStores: Some(requiredStores),
     requiredStoreDeclarations: Some(requiredStoreDeclarations),
+    requiredCapabilities: Some(requiredCapabilities),
   }
 }

@@ -47,16 +47,10 @@ function splitKey(key) {
   ]);
 }
 
-function renderEntry(entry) {
-  let match = splitKey(entry.key);
-  if (match === undefined) {
-    return {
-      TAG: "Error",
-      _0: `malformed capability key ` + JSON.stringify(entry.key) + ` — expected "{plugin}.{store}" (is the plugin's capabilities.json hand-edited?)`
-    };
-  }
-  let comments = entry.declaredBy.map(site => {
-    let site_ = `  // ` + site.pluginName + `: ` + site.component + `.` + site.field;
+function renderComments(entry) {
+  return entry.declaredBy.map(site => {
+    let field = site.field;
+    let site_ = field !== undefined ? `  // ` + site.pluginName + `: ` + site.component + `.` + field : `  // ` + site.pluginName + `: ` + site.component;
     let annotation = site.annotation;
     if (annotation !== undefined) {
       return site_ + ` → ` + annotation;
@@ -64,11 +58,28 @@ function renderEntry(entry) {
       return site_;
     }
   });
-  let line = `  ObjectStore({plugin: ` + JSON.stringify(match[0]) + `, store: ` + JSON.stringify(match[1]) + `}),`;
-  return {
-    TAG: "Ok",
-    _0: comments.concat([line])
-  };
+}
+
+function renderEntry(entry) {
+  let match = entry.kind;
+  if (match !== "ObjectStore") {
+    return {
+      TAG: "Ok",
+      _0: renderComments(entry).concat(["  Geocoding,"])
+    };
+  }
+  let match$1 = splitKey(entry.key);
+  if (match$1 !== undefined) {
+    return {
+      TAG: "Ok",
+      _0: renderComments(entry).concat([`  ObjectStore({plugin: ` + JSON.stringify(match$1[0]) + `, store: ` + JSON.stringify(match$1[1]) + `}),`])
+    };
+  } else {
+    return {
+      TAG: "Error",
+      _0: `malformed capability key ` + JSON.stringify(entry.key) + ` — expected "{plugin}.{store}" (is the plugin's capabilities.json hand-edited?)`
+    };
+  }
 }
 
 function duplicatePluginOwners(entries) {
@@ -106,8 +117,8 @@ let header = [
   "//",
   "// The platform's capability list, unioned from the committed",
   "// `capabilities.json` manifests of the plugins deploy-manifest.yaml names.",
-  "// Each entry keeps its declaring fields as provenance, so when a capability",
-  "// disappears from this list, the diff says which field's change removed it.",
+  "// Each entry keeps its declaring sites as provenance, so when a capability",
+  "// disappears from this list, the diff says which change removed it.",
   ""
 ];
 
@@ -145,6 +156,7 @@ export {
   union,
   quote,
   splitKey,
+  renderComments,
   renderEntry,
   duplicatePluginOwners,
   duplicatePluginMessage,

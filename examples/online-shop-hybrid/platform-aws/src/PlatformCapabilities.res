@@ -2,8 +2,8 @@
 //
 // The platform's capability list, unioned from the committed
 // `capabilities.json` manifests of the plugins deploy-manifest.yaml names.
-// Each entry keeps its declaring fields as provenance, so when a capability
-// disappears from this list, the diff says which field's change removed it.
+// Each entry keeps its declaring sites as provenance, so when a capability
+// disappears from this list, the diff says which change removed it.
 
 let capabilities: array<ReventlessInfra.Platform.capability> = [
   // catalog: Categories.categoryImage → categoryImages
@@ -12,4 +12,6 @@ let capabilities: array<ReventlessInfra.Platform.capability> = [
   // catalog: ProductImages.productImage → productImages
   // catalog: Products.productImage → productImages
   ObjectStore({plugin: "Catalog", store: "productImages"}),
+  // ordering: GeocodeCustomerAddress
+  Geocoding,
 ]

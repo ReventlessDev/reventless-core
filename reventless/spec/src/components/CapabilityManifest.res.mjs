@@ -3,13 +3,18 @@
 import * as Sury from "sury";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
 import * as Util_Sury$Reventless from "../util/Util_Sury.res.mjs";
+import * as CapabilityNeed$Reventless from "../semantic/CapabilityNeed.res.mjs";
 
-let kindSchema = Sury.literal("ObjectStore");
+let kindSchema = Sury.union([
+  Sury.literal("ObjectStore"),
+  Sury.literal("Geocoding")
+]);
 
 let provenanceSchema = Sury.$schema(s => ({
   component: s.m(Sury.string),
-  field: s.m(Sury.string),
+  field: s.m(Sury.$option(Sury.string)),
   annotation: s.m(Sury.$option(Sury.string))
 }));
 
@@ -25,20 +30,34 @@ let schema = Sury.$schema(s => ({
 
 function fromStructure(structure) {
   let declarations = Stdlib_Option.getOr(structure.requiredStoreDeclarations, []);
+  let stores = Stdlib_Option.getOr(structure.requiredStores, []).map(key => ({
+    kind: "ObjectStore",
+    key: key,
+    declaredBy: Stdlib_Array.filterMap(declarations, d => {
+      if (d.store === key) {
+        return {
+          component: d.component,
+          field: d.field,
+          annotation: d.annotation
+        };
+      }
+    })
+  }));
+  let needs = Stdlib_Option.getOr(structure.requiredCapabilities, []);
+  let capabilityKeys = Belt_SetString.toArray(Belt_SetString.fromArray(needs.map(d => d.capability)));
+  let capabilities = Stdlib_Array.filterMap(capabilityKeys, key => Stdlib_Option.map(CapabilityNeed$Reventless.fromString(key), need => ({
+    kind: "Geocoding",
+    key: key,
+    declaredBy: Stdlib_Array.filterMap(needs, d => {
+      if (d.capability === key) {
+        return {
+          component: d.component
+        };
+      }
+    })
+  })));
   return {
-    capabilities: Stdlib_Option.getOr(structure.requiredStores, []).map(key => ({
-      kind: "ObjectStore",
-      key: key,
-      declaredBy: Stdlib_Array.filterMap(declarations, d => {
-        if (d.store === key) {
-          return {
-            component: d.component,
-            field: d.field,
-            annotation: d.annotation
-          };
-        }
-      })
-    }))
+    capabilities: stores.concat(capabilities)
   };
 }
 

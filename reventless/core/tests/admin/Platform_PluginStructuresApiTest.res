@@ -67,6 +67,7 @@ let structure: pluginStructure = {
   requiredStoreDeclarations: Some([
     {store: "Catalog.images", component: "Product", field: "image", annotation: Some("images")},
   ]),
+  requiredCapabilities: Some([{capability: "Geocoding", component: "GeocodeAddress"}]),
 }
 
 let encoded = Platform_PluginStructuresApi.encodePluginStructureEntry(
@@ -98,6 +99,7 @@ describe("Platform_PluginStructures entry", () => {
       "outboundTranslationSlices",
       "pluginId",
       "readModels",
+      "requiredCapabilities",
       "requiredStoreDeclarations",
       "requiredStores",
       "stateChangeSlices",
@@ -142,6 +144,16 @@ describe("Platform_PluginStructures entry", () => {
   testSync("encodes required stores with their provenance", () =>
     expect(json->String.includes("\"requiredStores\":[\"Catalog.images\"]"))->toEqual(true)
   )
+
+  // No `field`: a capability a slice declares is not a field's need, which is why
+  // it travels beside `requiredStores` rather than inside it.
+  testSync("encodes required capabilities with their declaring component", () =>
+    expect(
+      json->String.includes(
+        "\"requiredCapabilities\":[{\"capability\":\"Geocoding\",\"component\":\"GeocodeAddress\"}]",
+      ),
+    )->toEqual(true)
+  )
 })
 
 // A structure persisted before these fields existed decodes as None, and null is the
@@ -153,6 +165,7 @@ describe("absent optional collections", () => {
     extensionPoints: None,
     requiredStores: None,
     requiredStoreDeclarations: None,
+    requiredCapabilities: None,
   }
   let bareJson =
     Platform_PluginStructuresApi.encodePluginStructureEntry(

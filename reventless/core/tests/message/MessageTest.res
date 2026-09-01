@@ -133,6 +133,7 @@ describe("Message should", () => {
         extensionPoints: None,
         requiredStores: None,
         requiredStoreDeclarations: None,
+        requiredCapabilities: None,
       })),
       dcbEventLog: None,
       kind: Domain,

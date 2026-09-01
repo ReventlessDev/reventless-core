@@ -12,6 +12,18 @@ host by `AddressGeocoding_Conformance`; the confidence rule stays core's
     competency that only observes is not mis-modelled as one that writes. */
 type posture = WritesBack | Observes
 
+/**
+The platform capabilities a host of this trait needs, for its outbound slice's
+`capabilityNeeds` to name.
+
+Exported as a value rather than stated in the README because forgetting it is
+silent and terminal: an unprovisioned geocoder answers `Unavailable`, the slice
+retries its budget, `onExhausted` fires, and every address the host ever sees is
+recorded as permanently unresolvable — correct data, a permanent wrong verdict,
+no error. A host that spells this reaches a deploy-time refusal instead.
+*/
+let capabilityNeeds: array<Reventless.CapabilityNeed.t> = [Geocoding]
+
 /** One host, bound. Written over an abstract `subject` (the address) so retyping it
     is a re-instantiation of this module, not a break in the trait. */
 module type Binding = {

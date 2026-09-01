@@ -2141,6 +2141,24 @@ module MakeWithConfig = (
       Pulumi.Pulumi.export("geocoderPlaceIndex", geocoderPlaceIndexFlat)
       geocoderPlaceIndexRef := geocoderPlaceIndexFlat
 
+      // The generated capability list says a plugin of this deployment declared it
+      // needs geocoding. Provisioning it is a hand-written line in this root —
+      // `Capability_Geocoding_AwsLocation.make`, passed as `~geocoderPlaceIndex` —
+      // so the list and the handle can disagree, and the way they disagree is
+      // silent: the slice retries, exhausts, and writes a permanent verdict.
+      // Caught here rather than only in the plugin stack because this is the stack
+      // that can fix it, and it deploys first.
+      if capabilities->Array.includes(Geocoding) && cfg.geocoderPlaceIndex->Option.isNone {
+        JsError.throwWithMessage(
+          `A plugin of this deployment declares the Geocoding capability, but this platform ` ++
+          `provisions no place index.\n` ++
+          `  Add \`let placeIndex = ReventlessAws.Capability_Geocoding_AwsLocation.make(~name=…)\` ` ++
+          `and pass \`~geocoderPlaceIndex=placeIndex\` in \`~hostUiBundle\`.\n` ++
+          `  The declaration is generated from the plugins' capabilities.json — regenerate with ` ++
+          `\`pnpm run generate:platform\` if it is stale.`,
+        )
+      }
+
       // Presign endpoints are no longer written to config.json: under route B the
       // client calls the platform API's `Upload_Presign` mutation (reachable from
       // `platformApiEndpoint`, already present) with the store it declares, so there
@@ -2580,9 +2598,51 @@ module MakeWithConfig = (
       // is: a dangling `apply` is not guaranteed to be evaluated, and a check
       // that might not run is not a check.
       let capabilityGate: Pulumi.Output.t<unit> =
-        (pluginOutputs.pluginStructure, stackRef->Pulumi.StackReference.getOutput("objectStores"))
-        ->Pulumi.Output.all2
-        ->Pulumi.Output.apply((((structure, objectStores): (_, option<JSON.t>))) => {
+        (
+          pluginOutputs.pluginStructure,
+          stackRef->Pulumi.StackReference.getOutput("objectStores"),
+          geocoderPlaceIndex,
+        )
+        ->Pulumi.Output.all3
+        ->Pulumi.Output.apply((((structure, objectStores, placeIndex): (
+          _,
+          option<JSON.t>,
+          string,
+        ))) => {
+          // ── Declared capabilities ──────────────────────────────────────────
+          //
+          // A slice that names `Geocoding` in `capabilityNeeds` says its
+          // `translate` will reach `capabilities.geocode`. A platform that
+          // provisioned no place index hands it an empty endpoint, and the client
+          // reports `Unavailable` — retried three times, then `onExhausted` fires
+          // and every address the slice ever sees is recorded as permanently
+          // unresolvable. A silent data outcome with no error anywhere, which is
+          // why a *declared* need fails the deploy.
+          //
+          // Only a declared need. A plugin that says nothing still degrades
+          // exactly as before: the empty endpoint is a modelled outcome for a
+          // deployment that simply has no geocoder, and failing those would break
+          // deployments that work.
+          switch Reventless.CapabilityNeed.unmet(
+            ~declared=structure
+            ->Option.flatMap(s => s.requiredCapabilities)
+            ->Option.getOr([])
+            ->Array.map(d => (d.capability, d.component)),
+            // The place index the slice Lambdas are actually handed, so this
+            // reads the value that decides the outcome rather than a second
+            // record of the same intent. `""` is what an unprovisioned platform
+            // exports.
+            ~provisioned=placeIndex == "" ? [] : [Geocoding],
+          ) {
+          | [] => ()
+          | missing =>
+            JsError.throwWithMessage(
+              Reventless.CapabilityNeed.unmetMessage(missing) ++
+              `\n  Geocoding is \`Capability_Geocoding_AwsLocation.make\`, passed to the platform ` ++
+              `as \`~geocoderPlaceIndex\`.`,
+            )
+          }
+
           let required =
             structure->Option.flatMap(s => s.requiredStores)->Option.getOr([])
           let provisioned =

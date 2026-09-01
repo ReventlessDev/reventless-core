@@ -17,6 +17,7 @@ import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as StorageRef$Reventless from "@reventlessdev/reventless-spec/src/semantic/StorageRef.res.mjs";
 import * as DisplayName$Reventless from "@reventlessdev/reventless-spec/src/components/DisplayName.res.mjs";
 import * as Api_Naming$ReventlessCore from "../../components/Api/Api_Naming.res.mjs";
+import * as CapabilityNeed$Reventless from "@reventlessdev/reventless-spec/src/semantic/CapabilityNeed.res.mjs";
 import * as SchemaType$ReventlessCore from "../../components/Api/SchemaType.res.mjs";
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 import * as ApiNoApiHelpers$ReventlessCore from "../../components/Api/ApiNoApiHelpers.res.mjs";
@@ -874,6 +875,27 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
   if (found.length !== 0) {
     Stdlib_JsError.throwWithMessage(name + `: two declared object stores look like one store misspelled.\n` + found.map(Capability_Inference$ReventlessCore.collisionMessage).join("\n"));
   }
+  let requiredCapabilities = Stdlib_Array.reduce(outboundTranslationSlices.flatMap(OTS => OTS.Spec.capabilityNeeds.map(need => ({
+    capability: CapabilityNeed$Reventless.toString(need),
+    component: OTS.Spec.name
+  }))).toSorted((a, b) => {
+    if (a.capability === b.capability) {
+      return Primitive_string.compare(a.component, b.component);
+    } else {
+      return Primitive_string.compare(a.capability, b.capability);
+    }
+  }), [], (acc, d) => {
+    let prev = Stdlib_Array.last(acc);
+    if (prev !== undefined) {
+      if (Primitive_object.equal(prev, d)) {
+        return acc;
+      } else {
+        return acc.concat([d]);
+      }
+    } else {
+      return acc.concat([d]);
+    }
+  });
   storeDeclarationSites.forEach(param => {
     Capability_Inference$ReventlessCore.scanSchema(param[0], param[1]).forEach(w => log.warn("Plugin_Structure", undefined, Capability_Inference$ReventlessCore.message(w)));
   });
@@ -1268,7 +1290,8 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     extensions: extensionDefs,
     extensionPoints: extensionPointDefs,
     requiredStores: requiredStores,
-    requiredStoreDeclarations: requiredStoreDeclarations
+    requiredStoreDeclarations: requiredStoreDeclarations,
+    requiredCapabilities: requiredCapabilities
   };
 }
 

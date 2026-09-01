@@ -225,6 +225,7 @@ type Platform_PluginStructureEntry {
   outboundTranslationSlices: [Platform_OutboundTranslationSliceDef!]!
   pluginId: String!
   readModels: [Platform_ReadSideDef!]!
+  requiredCapabilities: [Platform_RequiredCapabilityDeclaration!]
   requiredStoreDeclarations: [Platform_RequiredStoreDeclaration!]
   requiredStores: [String!]
   stateChangeSlices: [Platform_WriteSideDef!]!
@@ -256,6 +257,11 @@ type Platform_ReadSideDef {
   searchableFields: [String!]!
   singleQueryField: String
   visibility: String
+}
+
+type Platform_RequiredCapabilityDeclaration {
+  capability: String!
+  component: String!
 }
 
 type Platform_RequiredStoreDeclaration {

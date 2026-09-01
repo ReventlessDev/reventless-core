@@ -50,6 +50,7 @@ let emptyStructure: Reventless.Plugin.pluginStructure = {
   extensionPoints: None,
   requiredStores: None,
   requiredStoreDeclarations: None,
+  requiredCapabilities: None,
 }
 
 let definition = (~structure): Reventless.Plugin.pluginDefinition => {

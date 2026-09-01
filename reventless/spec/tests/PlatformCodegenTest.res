@@ -36,8 +36,8 @@ describe("PlatformCodegen.render", () => {
 //
 // The platform's capability list, unioned from the committed
 // \`capabilities.json\` manifests of the plugins deploy-manifest.yaml names.
-// Each entry keeps its declaring fields as provenance, so when a capability
-// disappears from this list, the diff says which field's change removed it.
+// Each entry keeps its declaring sites as provenance, so when a capability
+// disappears from this list, the diff says which change removed it.
 
 let capabilities: array<ReventlessInfra.Platform.capability> = [
   // catalog: AddProduct.imageUrl → productImages
@@ -47,6 +47,54 @@ let capabilities: array<ReventlessInfra.Platform.capability> = [
 `,
       ),
     )
+  })
+
+  // A capability with no `{plugin}.{store}` identity: one arm, its declaring
+  // slices as comments, and no `field` to name in them. The key-splitting the
+  // store arm does must not be reached — an unsplittable key is an error there.
+  testSync("renders a capability entry as a bare arm with its declaring slices", () => {
+    let geocoding: PlatformCodegen.pluginManifest = {
+      pluginName: "ordering",
+      manifest: {
+        capabilities: [
+          {
+            kind: Geocoding,
+            key: "Geocoding",
+            declaredBy: [{component: "GeocodeCustomerAddress"}],
+          },
+        ],
+      },
+    }
+    switch PlatformCodegen.render([catalogManifest, geocoding]) {
+    | Ok(source) => {
+        expect(source->String.includes("  // ordering: GeocodeCustomerAddress\n  Geocoding,"))->toBe(
+          true,
+        )
+        expect(source->String.includes("ObjectStore({plugin: \"Catalog\""))->toBe(true)
+      }
+    | Error(_) => expect(true)->toBe(false)
+    }
+  })
+
+  // Several slices, in one plugin or several, legitimately need one capability.
+  testSync("two slices needing one capability collapse to one arm", () => {
+    let needs = (~pluginName, ~component): PlatformCodegen.pluginManifest => {
+      pluginName,
+      manifest: {
+        capabilities: [{kind: Geocoding, key: "Geocoding", declaredBy: [{component: component}]}],
+      },
+    }
+    switch PlatformCodegen.render([
+      needs(~pluginName="ordering", ~component="GeocodeCustomerAddress"),
+      needs(~pluginName="dispatch", ~component="GeocodeDropOff"),
+    ]) {
+    | Ok(source) => {
+        expect(source->String.split("  Geocoding,")->Array.length)->toBe(2)
+        expect(source->String.includes("  // ordering: GeocodeCustomerAddress"))->toBe(true)
+        expect(source->String.includes("  // dispatch: GeocodeDropOff"))->toBe(true)
+      }
+    | Error(_) => expect(true)->toBe(false)
+    }
   })
 
   testSync("no plugin declaring anything renders an empty list, not an absent binding", () => {

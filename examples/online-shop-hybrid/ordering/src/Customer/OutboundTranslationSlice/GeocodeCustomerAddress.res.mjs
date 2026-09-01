@@ -2,6 +2,7 @@
 
 import * as Sury from "sury";
 import * as GeoPoint$Reventless from "@reventlessdev/reventless-spec/src/semantic/GeoPoint.res.mjs";
+import * as AddressGeocoding$TraitAddressGeocoding from "@reventlessdev/trait-address-geocoding/src/AddressGeocoding.res.mjs";
 
 let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
@@ -47,6 +48,8 @@ let targetName = "Customer";
 
 let externalSystem = "AwsLocation";
 
+let capabilityNeeds = AddressGeocoding$TraitAddressGeocoding.capabilityNeeds;
+
 let moduleUrl = "@reventlessdev/online-shop-hybrid-ordering/src/Customer/OutboundTranslationSlice/GeocodeCustomerAddress.res.mjs";
 
 export {
@@ -60,6 +63,7 @@ export {
   targetName,
   sourceNames,
   externalSystem,
+  capabilityNeeds,
   moduleUrl,
 }
 /* consumedEventSchema Not a pure module */

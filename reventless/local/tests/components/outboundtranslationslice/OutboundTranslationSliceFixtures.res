@@ -43,6 +43,7 @@ module SendTrackingEmailSpec = {
   let targetName = None
   let sourceNames: array<string> = []
   let externalSystem = None
+  let capabilityNeeds: array<Reventless.CapabilityNeed.t> = []
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -90,4 +91,5 @@ module ProcessPaymentSpec = {
   let targetName = Some("ConfirmPayment")
   let sourceNames: array<string> = []
   let externalSystem = None
+  let capabilityNeeds: array<Reventless.CapabilityNeed.t> = []
 }

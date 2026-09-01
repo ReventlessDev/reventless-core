@@ -11,7 +11,8 @@ let capabilities = [
     TAG: "ObjectStore",
     plugin: "Catalog",
     store: "productImages"
-  }
+  },
+  "Geocoding"
 ];
 
 export {

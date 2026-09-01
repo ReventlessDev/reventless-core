@@ -17,17 +17,20 @@ type pluginManifest = {
   manifest: CapabilityManifest.t,
 }
 
-/** One declaring site, keeping which plugin's manifest carried it. */
+/** One declaring site, keeping which plugin's manifest carried it. `field` is
+    absent for a capability a slice declares — there is no field to name. */
 type provenance = {
   pluginName: string,
   component: string,
-  field: string,
+  field: option<string>,
   annotation: option<string>,
 }
 
-/** One capability the platform must provision: the qualified `{plugin}.{store}`
-    key with every declaring site across every plugin. Identity is the key —
-    many fields, in several plugins, legitimately name one store. */
+/** One capability the platform must provision: the key — a qualified
+    `{plugin}.{store}` for a store, the capability's own name otherwise — with
+    every declaring site across every plugin. Identity is the key: many fields,
+    in several plugins, legitimately name one store, and several slices
+    legitimately need one capability. */
 type unionEntry = {
   kind: CapabilityManifest.kind,
   key: string,
@@ -83,31 +86,41 @@ let splitKey = (key: string): option<(string, string)> =>
 //
 // A site with no recorded store predates the recording. It still names the
 // field, which is the comment's job; it just makes no claim it cannot support.
-let renderEntry = (entry: unionEntry): result<array<string>, string> =>
-  switch splitKey(entry.key) {
-  | None =>
-    Error(
-      `malformed capability key ${quote(entry.key)} — expected "{plugin}.{store}" (is the plugin's capabilities.json hand-edited?)`,
-    )
-  | Some((plugin, store)) => {
-      let comments =
-        entry.declaredBy->Array.map(site => {
-          let site_ = `  // ${site.pluginName}: ${site.component}.${site.field}`
-          // `→ store` rather than `@storageRef("store")`: a field may name its
-          // store by annotation *or* by being named, and the manifest carries
-          // the store either way without saying which. Naming the annotation
-          // would send a reader looking for source text a derived field has not
-          // got.
-          switch site.annotation {
-          | Some(annotation) => `${site_} → ${annotation}`
-          | None => site_
-          }
-        })
-      let line = switch entry.kind {
-      | ObjectStore => `  ObjectStore({plugin: ${quote(plugin)}, store: ${quote(store)}}),`
-      }
-      Ok(comments->Array.concat([line]))
+let renderComments = (entry: unionEntry): array<string> =>
+  entry.declaredBy->Array.map(site => {
+    let site_ = switch site.field {
+    | Some(field) => `  // ${site.pluginName}: ${site.component}.${field}`
+    | None => `  // ${site.pluginName}: ${site.component}`
     }
+    // `→ store` rather than `@storageRef("store")`: a field may name its
+    // store by annotation *or* by being named, and the manifest carries
+    // the store either way without saying which. Naming the annotation
+    // would send a reader looking for source text a derived field has not
+    // got.
+    switch site.annotation {
+    | Some(annotation) => `${site_} → ${annotation}`
+    | None => site_
+    }
+  })
+
+let renderEntry = (entry: unionEntry): result<array<string>, string> =>
+  switch entry.kind {
+  | ObjectStore =>
+    switch splitKey(entry.key) {
+    | None =>
+      Error(
+        `malformed capability key ${quote(entry.key)} — expected "{plugin}.{store}" (is the plugin's capabilities.json hand-edited?)`,
+      )
+    | Some((plugin, store)) =>
+      Ok(
+        renderComments(entry)->Array.concat([
+          `  ObjectStore({plugin: ${quote(plugin)}, store: ${quote(store)}}),`,
+        ]),
+      )
+    }
+  // A capability with no per-plugin identity: one arm however many slices
+  // declared it, with every declaring slice kept as provenance.
+  | Geocoding => Ok(renderComments(entry)->Array.concat(["  Geocoding,"]))
   }
 
 /**
@@ -170,8 +183,8 @@ let header = [
   "//",
   "// The platform's capability list, unioned from the committed",
   "// `capabilities.json` manifests of the plugins deploy-manifest.yaml names.",
-  "// Each entry keeps its declaring fields as provenance, so when a capability",
-  "// disappears from this list, the diff says which field's change removed it.",
+  "// Each entry keeps its declaring sites as provenance, so when a capability",
+  "// disappears from this list, the diff says which change removed it.",
   "",
 ]
 

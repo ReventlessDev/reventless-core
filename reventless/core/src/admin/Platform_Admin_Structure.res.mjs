@@ -60,7 +60,8 @@ let structure = {
   extensions: structure_extensions,
   extensionPoints: undefined,
   requiredStores: undefined,
-  requiredStoreDeclarations: undefined
+  requiredStoreDeclarations: undefined,
+  requiredCapabilities: undefined
 };
 
 let internalPluginDefinition = {

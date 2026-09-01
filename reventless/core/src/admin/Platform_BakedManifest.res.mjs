@@ -134,7 +134,8 @@ function curateStructure(pluginId, def, sel) {
       extensions: def.extensions,
       extensionPoints: def.extensionPoints,
       requiredStores: def.requiredStores,
-      requiredStoreDeclarations: def.requiredStoreDeclarations
+      requiredStoreDeclarations: def.requiredStoreDeclarations,
+      requiredCapabilities: def.requiredCapabilities
     };
   });
 }

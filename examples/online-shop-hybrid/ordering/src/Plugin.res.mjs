@@ -145,7 +145,8 @@ function Make(Platform) {
     heartbeatInterval: GeocodeCustomerAddress$OrderingPlugin.heartbeatInterval,
     targetName: GeocodeCustomerAddress$OrderingPlugin.targetName,
     sourceNames: GeocodeCustomerAddress$OrderingPlugin.sourceNames,
-    externalSystem: GeocodeCustomerAddress$OrderingPlugin.externalSystem
+    externalSystem: GeocodeCustomerAddress$OrderingPlugin.externalSystem,
+    capabilityNeeds: GeocodeCustomerAddress$OrderingPlugin.capabilityNeeds
   })({
     collect: GeocodeCustomerAddress_Translation$OrderingPlugin.collect,
     translate: GeocodeCustomerAddress_Translation$OrderingPlugin.translate,
@@ -162,7 +163,8 @@ function Make(Platform) {
     heartbeatInterval: SendOrderConfirmation$OrderingPlugin.heartbeatInterval,
     targetName: undefined,
     sourceNames: SendOrderConfirmation$OrderingPlugin.sourceNames,
-    externalSystem: SendOrderConfirmation$OrderingPlugin.externalSystem
+    externalSystem: SendOrderConfirmation$OrderingPlugin.externalSystem,
+    capabilityNeeds: SendOrderConfirmation$OrderingPlugin.capabilityNeeds
   })({
     collect: SendOrderConfirmation_Translation$OrderingPlugin.collect,
     translate: SendOrderConfirmation_Translation$OrderingPlugin.translate,

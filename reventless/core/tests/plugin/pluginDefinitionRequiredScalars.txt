@@ -105,6 +105,13 @@
 .structure.readModels[].retiredValues[]: string
 .structure.readModels[].schema: string
 .structure.readModels[].searchableFields[]: string
+# `requiredCapabilities` is itself `js_nullable` and is NEW, so no persisted payload
+# carries the array: a stored structure heals to null and these two are never reached.
+# Required inside it because a declaration naming no capability, or no declaring
+# component, is not a declaration — the same call `requiredStoreDeclarations` made for
+# `store`/`component`/`field`.
+.structure.requiredCapabilities[].capability: string
+.structure.requiredCapabilities[].component: string
 .structure.requiredStoreDeclarations[].component: string
 .structure.requiredStoreDeclarations[].field: string
 .structure.requiredStoreDeclarations[].store: string

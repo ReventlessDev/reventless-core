@@ -1366,6 +1366,43 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
         expect(Reventless.CapabilityManifest.fromStructure(structure).capabilities)->toEqual([])
       )
 
+      // A capability a slice declares rides the same manifest as the stores, so
+      // the platform generator reads one file. It carries no `field`: nothing
+      // annotated it, and naming one would be a fiction.
+      describe("declared capabilities", () => {
+        let withCapability = {
+          ...structure,
+          requiredCapabilities: Some([
+            ({capability: "Geocoding", component: "GeocodeAddress"}: Reventless.Plugin.requiredCapabilityDeclaration),
+            {capability: "Geocoding", component: "GeocodeDropOff"},
+          ]),
+        }
+        let entries = Reventless.CapabilityManifest.fromStructure(withCapability).capabilities
+
+        testSync("two components needing one capability yield one entry", () =>
+          expect(entries->Array.map(e => e.key))->toEqual(["Geocoding"])
+        )
+
+        testSync("both declaring components are kept, with no field", () =>
+          expect((entries->Array.getUnsafe(0)).declaredBy)->toEqual([
+            ({component: "GeocodeAddress"}: Reventless.CapabilityManifest.provenance),
+            {component: "GeocodeDropOff"},
+          ])
+        )
+
+        // The generator downstream renders a real `Platform.capability` arm, and
+        // a name this build cannot map has no arm to render — so it is dropped
+        // here rather than passed through as an unrenderable key.
+        testSync("a capability this build does not know is dropped", () =>
+          expect(
+            Reventless.CapabilityManifest.fromStructure({
+              ...structure,
+              requiredCapabilities: Some([{capability: "Telepathy", component: "Guess"}]),
+            }).capabilities,
+          )->toEqual([])
+        )
+      })
+
       testSync("rendering is deterministic and newline-terminated", () => {
         let rendered = Reventless.CapabilityManifest.renderForStructure(withStores)
         expect(rendered)->toBe(
@@ -1671,7 +1708,7 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
       let manifest = Reventless.CapabilityManifest.fromStructure(withHeuristicField)
       expect(
         manifest.capabilities->Array.every(entry =>
-          entry.declaredBy->Array.every(site => site.field != "photoUrl")
+          entry.declaredBy->Array.every(site => site.field != Some("photoUrl"))
         ),
       )->toBe(true)
     })

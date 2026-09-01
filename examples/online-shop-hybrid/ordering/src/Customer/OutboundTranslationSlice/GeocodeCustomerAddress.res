@@ -29,3 +29,7 @@ let sourceNames = ["Customer"]
 
 // Drawn as an external box outside the Ordering plugin in the Event Graph.
 let externalSystem = Some("AwsLocation")
+
+// The trait says what it reaches for; this host only names it. Spelling the
+// capability here instead would be the one part of the graft nothing checks.
+let capabilityNeeds = TraitAddressGeocoding.AddressGeocoding.capabilityNeeds

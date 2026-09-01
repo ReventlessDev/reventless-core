@@ -88,6 +88,7 @@ module SendConfirmSpec = {
   let targetName = None
   let sourceNames: array<string> = []
   let externalSystem = Some("EmailService")
+  let capabilityNeeds: array<Reventless.CapabilityNeed.t> = []
 }
 
 // Two separate records so a failure says which phase stalled: `collectCalls`

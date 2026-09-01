@@ -1,3 +1,13 @@
 {
-  "capabilities": []
+  "capabilities": [
+    {
+      "kind": "Geocoding",
+      "key": "Geocoding",
+      "declaredBy": [
+        {
+          "component": "GeocodeCustomerAddress"
+        }
+      ]
+    }
+  ]
 }
