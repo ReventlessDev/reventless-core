@@ -2,6 +2,10 @@
 
 import * as Behavior_GWT$ReventlessGwt from "@reventlessdev/reventless-gwt/src/Behavior_GWT.res.mjs";
 
+function suiteName(host) {
+  return host + ` conforms to the attachments trait`;
+}
+
 function Make(B) {
   let $$let = B.Behavior;
   let G = Behavior_GWT$ReventlessGwt.Make(B.Spec)({
@@ -11,7 +15,7 @@ function Make(B) {
   });
   let withA = B.created.concat([B.attachedC(B.refA)]);
   let withAB = withA.concat([B.attachedC(B.refB)]);
-  let register = () => G.describe(B.Spec.name + ` conforms to the attachments trait`, () => {
+  let register = () => G.describe(suiteName(B.Spec.name), () => {
     G.test("the first attachment is appended", () => G.thenEvent(G.whenCmd(G.givenEvents(B.created), B.attach(B.refA)), B.attached(B.refA)));
     G.test("attaching a ref already in the set is a no-op", () => G.thenNoEvent(G.whenCmd(G.givenEvents(withA), B.attach(B.refA))));
     G.test("a second ref extends the set rather than replacing it", () => G.thenEvent(G.whenCmd(G.givenEvents(withA), B.attach(B.refB)), B.attached(B.refB)));
@@ -39,6 +43,7 @@ function Make(B) {
 }
 
 export {
+  suiteName,
   Make,
 }
 /* Behavior_GWT-ReventlessGwt Not a pure module */

@@ -7,6 +7,12 @@ the host's posture, and — the part worth being strict about — that the three
 to send nothing stay three different facts.
 */
 
+/** The suite's title, composed once and read twice: the suite registers it,
+    and `certify-trait` computes the same string to find the run's assertions in
+    a test report. Exported rather than inlined so neither side parses the
+    other's prose. */
+let suiteName = (host: string) => `${host} conforms to the notification trait`
+
 module Make = (B: Notification.Binding) => {
   module G = ReventlessGwt.Behavior_GWT.Make(B.Spec, B.Behavior)
   module R = Notification_Rules
@@ -14,7 +20,7 @@ module Make = (B: Notification.Binding) => {
   let announced = Array.concat(B.created, [B.announcedC(B.addressA)])
 
   let register = () =>
-    G.describe(`${B.Spec.name} conforms to the notification trait`, () => {
+    G.describe(suiteName(B.Spec.name), () => {
       G.test("an announced contact is recorded", () =>
         G.givenEvents(B.created)->G.whenCmd(B.announce(B.addressA))->G.thenEvent(
           B.announced(B.addressA),

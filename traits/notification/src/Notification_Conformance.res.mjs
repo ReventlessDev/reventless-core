@@ -2,6 +2,10 @@
 
 import * as Behavior_GWT$ReventlessGwt from "@reventlessdev/reventless-gwt/src/Behavior_GWT.res.mjs";
 
+function suiteName(host) {
+  return host + ` conforms to the notification trait`;
+}
+
 function Make(B) {
   let $$let = B.Behavior;
   let G = Behavior_GWT$ReventlessGwt.Make(B.Spec)({
@@ -10,7 +14,7 @@ function Make(B) {
     decide: $$let.decide
   });
   let announced = B.created.concat([B.announcedC(B.addressA)]);
-  let register = () => G.describe(B.Spec.name + ` conforms to the notification trait`, () => {
+  let register = () => G.describe(suiteName(B.Spec.name), () => {
     G.test("an announced contact is recorded", () => G.thenEvent(G.whenCmd(G.givenEvents(B.created), B.announce(B.addressA)), B.announced(B.addressA)));
     G.test("re-announcing the address already on file is a no-op", () => G.thenNoEvent(G.whenCmd(G.givenEvents(announced), B.announce(B.addressA))));
     G.test("a changed address is recorded", () => G.thenEvent(G.whenCmd(G.givenEvents(announced), B.announce(B.addressB)), B.announced(B.addressB)));
@@ -41,6 +45,7 @@ function Make(B) {
 }
 
 export {
+  suiteName,
   Make,
 }
 /* Behavior_GWT-ReventlessGwt Not a pure module */

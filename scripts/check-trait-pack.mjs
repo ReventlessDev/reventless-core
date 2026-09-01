@@ -56,6 +56,10 @@ const specimens = {
         "tests/Customer/AddressGeocodingConformance_GWT.res",
       ],
       conformance: "tests/Customer/AddressGeocodingConformance_GWT.res.mjs",
+      // The bound component, as its Spec names it — what the certificate is
+      // about. The aggregate, not the slice: this trait's binding is over the
+      // host's aggregate, and the outbound slice is bound separately as `Slice`.
+      certifies: "Customer",
     },
   },
   "traits/attachments": {
@@ -71,6 +75,7 @@ const specimens = {
       tests: "tests/Gadget",
       // The suite the emitted binding registers, run against what was emitted.
       conformance: "tests/Gadget/GadgetImagesConformance_GWT.res.mjs",
+      certifies: "GadgetImages",
     },
   },
   // The SelfContained shape: the graft is a set of new components rather than
@@ -97,6 +102,7 @@ const specimens = {
       into: "src/Subscriber",
       tests: "tests/Subscriber",
       conformance: "tests/Subscriber/NotificationConformance_GWT.res.mjs",
+      certifies: "SubscriberPreferences",
     },
   },
 }
@@ -199,10 +205,27 @@ for (const [traitDir, spec] of Object.entries(specimens)) {
       if (!existsSync(suite)) throw new Error(`emitted conformance suite missing: ${spec.graft.conformance}`)
       // `lib/bs/` holds a compiled copy of the same suite; without ignoring it
       // jest runs each assertion twice and the count stops meaning anything.
+      const report = join(scratch, "conformance-report.json")
       run("node", ["--experimental-vm-modules", join(root, "node_modules", "jest", "bin", "jest.js"),
         "--rootDir", host, "--testMatch", `**/${spec.graft.conformance.split("/").pop()}`,
-        "--testPathIgnorePatterns", "/lib/", "--testEnvironment", "node"], host)
+        "--testPathIgnorePatterns", "/lib/", "--testEnvironment", "node",
+        "--json", "--outputFile", report], host)
       console.log(`[check-trait-pack] ok: ${traitPkg.name}'s emitted graft passes its conformance suite`)
+
+      // …and says so in a form something other than a person can read. The
+      // certificate is what a listing carries and what a gate downstream checks,
+      // so producing one here proves the whole path — not just that the suite is
+      // green, but that its result survives into an artifact. `certify-trait`
+      // exits non-zero if the suite is missing from the report, which is the
+      // failure a green console cannot distinguish from success.
+      const certifyBin = join(modules, "@reventlessdev", "reventless-spec", "run-certify-trait.mjs")
+      const certificate = join(scratch, "conformance.json")
+      run("node", [certifyBin, traitPkg.name, "--host", spec.graft.certifies,
+        "--report", report, "--out", certificate], host)
+      const parsed = JSON.parse(readFileSync(certificate, "utf8"))
+      if (!(parsed.failed === 0 && parsed.assertions.length > 0)) {
+        throw new Error(`certificate is not verified: ${JSON.stringify(parsed)}`)
+      }
     }
   } catch (err) {
     failed = true

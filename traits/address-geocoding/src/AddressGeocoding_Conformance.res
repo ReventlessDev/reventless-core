@@ -10,6 +10,12 @@ over the binding, never over a host's constructors.
 
 module Outcome = ReventlessGwt.Outcome
 
+/** The suite's title, composed once and read twice: the suite registers it,
+    and `certify-trait` computes the same string to find the run's assertions in
+    a test report. Exported rather than inlined so neither side parses the
+    other's prose. */
+let suiteName = (host: string) => `${host} conforms to the address-geocoding trait`
+
 module Make = (B: AddressGeocoding.Binding) => {
   module A = ReventlessGwt.Behavior_GWT.MakeFromAggregate(B.Spec, B.Behavior)
   module S = ReventlessGwt.OutboundTranslation_GWT.Make(B.Slice)
@@ -72,7 +78,7 @@ module Make = (B: AddressGeocoding.Binding) => {
   }
 
   let register = () =>
-    A.describe(`${B.Spec.name} conforms to the address-geocoding trait`, () => {
+    A.describe(suiteName(B.Spec.name), () => {
       switch B.posture {
       | Observes =>
         A.test("posture: Observes is not supported by this runner", () =>

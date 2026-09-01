@@ -9,6 +9,10 @@ import * as Capabilities$Reventless from "@reventlessdev/reventless-spec/src/sem
 import * as Behavior_GWT$ReventlessGwt from "@reventlessdev/reventless-gwt/src/Behavior_GWT.res.mjs";
 import * as OutboundTranslation_GWT$ReventlessGwt from "@reventlessdev/reventless-gwt/src/OutboundTranslation_GWT.res.mjs";
 
+function suiteName(host) {
+  return host + ` conforms to the address-geocoding trait`;
+}
+
 function Make(B) {
   let A = Behavior_GWT$ReventlessGwt.MakeFromAggregate(B.Spec)(B.Behavior);
   let S = OutboundTranslation_GWT$ReventlessGwt.Make(B.Slice);
@@ -75,7 +79,7 @@ function Make(B) {
       });
     }
   };
-  let register = () => A.describe(B.Spec.name + ` conforms to the address-geocoding trait`, () => {
+  let register = () => A.describe(suiteName(B.Spec.name), () => {
     if (B.posture !== "WritesBack") {
       A.test("posture: Observes is not supported by this runner", () => Outcome$ReventlessGwt.fail({
         TAG: "Throw",
@@ -146,6 +150,7 @@ let Outcome;
 
 export {
   Outcome,
+  suiteName,
   Make,
 }
 /* Message-Reventless Not a pure module */

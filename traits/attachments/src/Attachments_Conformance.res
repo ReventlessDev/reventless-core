@@ -3,6 +3,12 @@ The conformance suite, run by a host against its own graft. `Make(Binding).regis
 inside a Jest test file registers one `describe` block over the binding.
 */
 
+/** The suite's title, composed once and read twice: the suite registers it,
+    and `certify-trait` computes the same string to find the run's assertions in
+    a test report. Exported rather than inlined so neither side parses the
+    other's prose. */
+let suiteName = (host: string) => `${host} conforms to the attachments trait`
+
 module Make = (B: Attachments.Binding) => {
   module G = ReventlessGwt.Behavior_GWT.Make(B.Spec, B.Behavior)
 
@@ -10,7 +16,7 @@ module Make = (B: Attachments.Binding) => {
   let withAB = Array.concat(withA, [B.attachedC(B.refB)])
 
   let register = () =>
-    G.describe(`${B.Spec.name} conforms to the attachments trait`, () => {
+    G.describe(suiteName(B.Spec.name), () => {
       G.test("the first attachment is appended", () =>
         G.givenEvents(B.created)->G.whenCmd(B.attach(B.refA))->G.thenEvent(B.attached(B.refA))
       )
