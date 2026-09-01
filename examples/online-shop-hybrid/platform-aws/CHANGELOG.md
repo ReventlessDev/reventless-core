@@ -3,6 +3,24 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.280 (2026-09-01)
+
+### Bug Fixes
+
+* **capabilities:** a plugin's geocoding need was declared nowhere and failed silently ([67917dd](https://github.com/ReventlessDev/reventless-core/commit/67917dd504b43fa78b7c6a51644c9eae656b7f6b))
+* feat(example)!: model product and category images as attachment sets ([6ae18d8](https://github.com/ReventlessDev/reventless-core/commit/6ae18d896215b448177ba0516e74bfda5f88d2db))
+### Features
+
+* **online-shop:** notifications decide who to reach and record why they did not ([b850ce3](https://github.com/ReventlessDev/reventless-core/commit/b850ce3d3e238db70a168aa6a72812dc89986697))
+
+### BREAKING CHANGES
+
+* ProductAdded/CategoryAdded lose their image field and
+ChangeProductImage/ChangeCategoryImage are replaced; the alpha event log is
+wiped on the next deploy.
+
+
+
 # 1.0.0-alpha.279 (2026-08-31)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-platform-aws

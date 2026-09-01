@@ -3,6 +3,31 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.125 (2026-09-01)
+
+### Bug Fixes
+
+* **automation:** a mapping is handed the envelope's id ([9ee482c](https://github.com/ReventlessDev/reventless-core/commit/9ee482c5ad0aae09efd1259eeb7f39b781867b91))
+* **capabilities:** a plugin's geocoding need was declared nowhere and failed silently ([67917dd](https://github.com/ReventlessDev/reventless-core/commit/67917dd504b43fa78b7c6a51644c9eae656b7f6b))
+* feat(example)!: model product and category images as attachment sets ([6ae18d8](https://github.com/ReventlessDev/reventless-core/commit/6ae18d896215b448177ba0516e74bfda5f88d2db))
+### Features
+
+* **capabilities:** a plugin can send a message without naming a provider ([b001a1e](https://github.com/ReventlessDev/reventless-core/commit/b001a1e9361a0f4d0affe228cb4c08c38a5a995e))
+* **plugin:** the admin lifecycle commands name their argument ([ea552ec](https://github.com/ReventlessDev/reventless-core/commit/ea552ec64e5db0b3dc465c0d9a80cac89627f727))
+* **spec:** a command declares its lifecycle edge as a value ([40eee9f](https://github.com/ReventlessDev/reventless-core/commit/40eee9f7723dc05e418be680528f01967d074da4))
+* **spec:** a graft leaves a trace the deployed plugin can read ([c08ff6c](https://github.com/ReventlessDev/reventless-core/commit/c08ff6c0f6177d58603e7ae1e5cec392d9bac16a))
+* **spec:** graft-trait, a CLI that runs a trait's emitter ([1b87399](https://github.com/ReventlessDev/reventless-core/commit/1b87399987033765d6a1ee8ea22ab7f02056e9c0))
+* **traits:** a conformance run leaves something a machine can read ([cd9cb81](https://github.com/ReventlessDev/reventless-core/commit/cd9cb81aa643f8e30ccf072df458fdc136897746))
+* **traits:** a listing reads a trait instead of being told about it ([8a23219](https://github.com/ReventlessDev/reventless-core/commit/8a23219c5a69011ef9310ebf8bfcbf9315a577ba))
+
+### BREAKING CHANGES
+
+* ProductAdded/CategoryAdded lose their image field and
+ChangeProductImage/ChangeCategoryImage are replaced; the alpha event log is
+wiped on the next deploy.
+
+
+
 # 3.0.0-alpha.124 (2026-08-27)
 
 * feat(spec)!: reflect the command direction across a port, both halves ([f2fe258](https://github.com/ReventlessDev/reventless-core/commit/f2fe258d195b74f4a61488edee305665341020ea))

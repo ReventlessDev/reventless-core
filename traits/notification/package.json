@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/trait-notification",
-  "version": "1.0.0-alpha.0",
+  "version": "1.0.0-alpha.1",
   "description": "Notification domain trait: rules, host contract, conformance suite and emitter for a per-recipient contact directory, a kind x channel subscription matrix, and the decision to send, suppress or record a message as undeliverable",
   "license": "Apache-2.0",
   "files": [

@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.245 (2026-09-01)
+
+* feat(example)!: model product and category images as attachment sets ([6ae18d8](https://github.com/ReventlessDev/reventless-core/commit/6ae18d896215b448177ba0516e74bfda5f88d2db))
+
+### BREAKING CHANGES
+
+* ProductAdded/CategoryAdded lose their image field and
+ChangeProductImage/ChangeCategoryImage are replaced; the alpha event log is
+wiped on the next deploy.
+
+
+
 # 1.0.0-alpha.244 (2026-08-31)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-platform-local
