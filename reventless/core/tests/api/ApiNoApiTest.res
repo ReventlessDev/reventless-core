@@ -1,6 +1,52 @@
 open JestGlobals
 open ApiNoApiHelpers
 
+// The exclusion has to survive a variant spread. Splicing copies a union's
+// members, not its metadata, so an exclusion recorded only on the union vanishes
+// on the way into the host — and the host publishes as a mutation and a
+// subscription a command whose author marked it internal. No error, no warning.
+//
+// Built the way the PPX builds it (`markNoApiVariants` on a freshly made union),
+// then spliced the way the compiler splices it (concatenating `anyOf`), so this
+// exercises the real path rather than a hand-stamped stand-in.
+let member = name =>
+  S.object(o => {
+    let _ = o.field("TAG", S.literal(name))
+  })->S.castToUnknown
+
+let sourceUnion =
+  S.union([member("Public"), member("Internal")])->ReventlessInfra.Api.markNoApiVariants([
+    "Internal",
+  ])
+
+let spliced = switch sourceUnion {
+| AnyOf({anyOf}) => S.union(Array.concat([member("HostOwn")], anyOf))
+| _ => sourceUnion
+}
+
+describe("a spread carries its exclusions", () => {
+  testSync("the source union still reports its own exclusion", () =>
+    expect(getExcludedVariants(sourceUnion)->Option.map(Set.toArray))->toEqual(Some(["Internal"]))
+  )
+
+  testSync("a host that splices the members inherits the exclusion", () =>
+    expect(getExcludedVariants(spliced)->Option.map(Set.toArray))->toEqual(Some(["Internal"]))
+  )
+
+  // The failure this closes, stated as the thing it must not do: the spliced
+  // internal variant must not appear among the host's callable fields.
+  testSync("the spliced internal variant is filtered out of a host's fields", () =>
+    expect(filterNoApiVariants(["HostOwn", "Public", "Internal"], spliced))->toEqual([
+      "HostOwn",
+      "Public",
+    ])
+  )
+
+  testSync("nothing else is filtered", () =>
+    expect(filterNoApiVariants(["HostOwn", "Public"], spliced))->toEqual(["HostOwn", "Public"])
+  )
+})
+
 describe("ApiNoApiHelpers:", () => {
   testSync("isNoApi returns false for schema without noApi metadata", () => {
     let schema = S.string->S.castToUnknown

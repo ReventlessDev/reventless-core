@@ -7,6 +7,18 @@ let noApiId: S.Metadata.Id.t<bool> = S.Metadata.Id.make(~namespace="api", ~name=
 let noApiVariantsId: S.Metadata.Id.t<Set.t<string>> =
   S.Metadata.Id.make(~namespace="api", ~name="noApiVariants")
 
+/** The same exclusion, carried by the excluded *member* rather than by the union
+    it sits in — so it survives a variant spread.
+
+    A spread splices members: the generated code concatenates the source union's
+    `anyOf` into the target's. Metadata on the source *union* is not part of that,
+    so an exclusion recorded only there vanishes on the way into the host, and the
+    host publishes a command its author marked internal. A mark on the member
+    travels, because the member is what is spliced — the host's union holds the
+    same schema object. */
+let noApiVariantId: S.Metadata.Id.t<bool> =
+  S.Metadata.Id.make(~namespace="api", ~name="noApiVariant")
+
 /** Internal sury metadata ID storing per-variant allowed-state lists for AutoUI command filtering.
     Maps variant name → set of status values under which the command is meaningful. */
 let allowedStatesId: S.Metadata.Id.t<dict<array<string>>> =
@@ -21,9 +33,60 @@ let targetStateId: S.Metadata.Id.t<dict<string>> =
 let markNoApi = (schema: S.t<'a>): S.t<'a> =>
   schema->S.Metadata.set(~id=noApiId, true)
 
-/** PPX helper: attaches variant-level exclusions to a command schema. Called by generated code. */
-let markNoApiVariants = (schema: S.t<'a>, variants: array<string>): S.t<'a> =>
-  schema->S.Metadata.set(~id=noApiVariantsId, Set.fromArray(variants))
+/** The constructor a union member stands for: the `TAG` literal of a
+    payload-bearing variant, or the bare literal a payload-less one compiles to. */
+let variantNameOf = (member: S.t<unknown>): option<string> =>
+  switch member {
+  | Object({properties}) =>
+    properties
+    ->Dict.get("TAG")
+    ->Option.flatMap(tag =>
+      switch tag {
+      | String({const: ?Some(name)}) => Some(name)
+      | _ => None
+      }
+    )
+  | String({const: ?Some(name)}) => Some(name)
+  | _ => None
+  }
+
+/**
+PPX helper: attaches variant-level exclusions to a command schema. Called by
+generated code.
+
+Recorded twice, on purpose. The set on the union is what every reader has always
+consulted; the per-member mark is what survives being spliced into another type.
+Writing only the second would break any reader holding a union whose members it
+did not build, and writing only the first is the defect this exists to close.
+
+The union is rebuilt from the marked members because sury metadata is immutable —
+setting it returns a new schema, so the members the original union holds would
+otherwise still be the unmarked ones. Sound here because the PPX calls this
+*first*, directly on the freshly built union, before any other metadata is
+attached: there is nothing on the parent yet to lose. A schema that is not a
+union, or that names no excluded variant, is left structurally untouched.
+*/
+let markNoApiVariants = (schema: S.t<'a>, variants: array<string>): S.t<'a> => {
+  let excluded = Set.fromArray(variants)
+  let marked = switch (variants, schema->S.castToUnknown) {
+  | ([], _) => schema
+  | (_, AnyOf({anyOf})) =>
+    anyOf
+    ->Array.map(member =>
+      switch variantNameOf(member) {
+      | Some(name) if excluded->Set.has(name) => member->S.Metadata.set(~id=noApiVariantId, true)
+      | _ => member
+      }
+    )
+    ->S.union
+    // The rebuilt union describes the same values as the one handed in — same
+    // members, same order, only metadata added. `S.union` cannot express that in
+    // the type, so the equivalence is carried here rather than by the compiler.
+    ->(Obj.magic: S.t<unknown> => S.t<'a>)
+  | (_, _) => schema
+  }
+  marked->S.Metadata.set(~id=noApiVariantsId, excluded)
+}
 
 /** PPX helper: attaches per-variant allowedStates to a command schema. Called by generated code
     emitted from the from-set of an @transition attribute. Each entry is (variantName, allowedStateNames). */
