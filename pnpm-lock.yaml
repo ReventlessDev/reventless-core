@@ -1708,6 +1708,9 @@ importers:
       sury:
         specifier: 11.0.0-rc.2
         version: 11.0.0-rc.2(rescript@12.3.0)
+      sury-ppx:
+        specifier: 11.0.0-rc.2
+        version: 11.0.0-rc.2(sury@11.0.0-rc.2(rescript@12.3.0))
     devDependencies:
       rescript:
         specifier: 12.3.0
