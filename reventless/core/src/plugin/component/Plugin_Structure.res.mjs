@@ -9,6 +9,7 @@ import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Owner$Reventless from "@reventlessdev/reventless-spec/src/components/Owner.res.mjs";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
+import * as Trait$Reventless from "@reventlessdev/reventless-spec/src/types/Trait.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 import * as Reference$Reventless from "@reventlessdev/reventless-spec/src/components/Reference.res.mjs";
@@ -915,6 +916,34 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       return acc.concat([d]);
     }
   });
+  let entry = (component, decl) => ({
+    trait: decl.trait,
+    version: decl.version,
+    posture: Trait$Reventless.postureToString(decl.posture),
+    component: component
+  });
+  let traitDeclarations = Stdlib_Array.reduce([
+    aggregates.flatMap(A => A.Spec.traits.map(extra => entry(A.Spec.name, extra))),
+    stateChangeSlices.flatMap(SCS => SCS.Spec.traits.map(extra => entry(SCS.Spec.name, extra))),
+    outboundTranslationSlices.flatMap(OTS => OTS.Spec.traits.map(extra => entry(OTS.Spec.name, extra)))
+  ].flat().toSorted((a, b) => {
+    if (a.trait === b.trait) {
+      return Primitive_string.compare(a.component, b.component);
+    } else {
+      return Primitive_string.compare(a.trait, b.trait);
+    }
+  }), [], (acc, d) => {
+    let prev = Stdlib_Array.last(acc);
+    if (prev !== undefined) {
+      if (Primitive_object.equal(prev, d)) {
+        return acc;
+      } else {
+        return acc.concat([d]);
+      }
+    } else {
+      return acc.concat([d]);
+    }
+  });
   storeDeclarationSites.forEach(param => {
     Capability_Inference$ReventlessCore.scanSchema(param[0], param[1]).forEach(w => log.warn("Plugin_Structure", undefined, Capability_Inference$ReventlessCore.message(w)));
   });
@@ -1310,7 +1339,8 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     extensionPoints: extensionPointDefs,
     requiredStores: requiredStores,
     requiredStoreDeclarations: requiredStoreDeclarations,
-    requiredCapabilities: requiredCapabilities
+    requiredCapabilities: requiredCapabilities,
+    traitDeclarations: traitDeclarations
   };
 }
 

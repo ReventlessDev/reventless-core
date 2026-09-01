@@ -4,6 +4,7 @@ import * as Sury from "sury";
 import * as Owner$Reventless from "@reventlessdev/reventless-spec/src/components/Owner.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Api$ReventlessInfra from "@reventlessdev/reventless-infra/src/components/Api.res.mjs";
+import * as Notification$TraitNotification from "@reventlessdev/trait-notification/src/Notification.res.mjs";
 
 let categorySchema = Sury.union([
   Sury.literal("OrderConfirmation"),
@@ -133,6 +134,8 @@ let eventSchema = Sury.union([
   }))
 ]);
 
+let traits = [Notification$TraitNotification.declaration];
+
 let commandSchema$1 = Api$ReventlessInfra.markNoApiVariants(commandSchema, [
   "AnnounceRecipient",
   "RequestNotification",
@@ -164,6 +167,7 @@ export {
   consumedEventSchema,
   errorSchema,
   eventSchema,
+  traits,
   commandSchema$1 as commandSchema,
   moduleUrl,
   commandAuthorization,

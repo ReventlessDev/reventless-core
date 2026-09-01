@@ -66,6 +66,8 @@ function commandTransition(command) {
   }
 }
 
+let traits = [AddressGeocoding$TraitAddressGeocoding.declaration];
+
 function commandAuthorization(param) {
   return "AllowAuthenticated";
 }
@@ -83,6 +85,7 @@ export {
   eventSchema,
   errorSchema,
   commandTransition,
+  traits,
   moduleUrl,
   commandAuthorization,
 }

@@ -10,8 +10,30 @@ let sdlTypes = [
   `type Platform_ExtensionPointDef {\n  name: String!\n  delegateNames: [String!]!\n  sourceEventTypes: [String!]!\n  commandTypes: [String!]\n  publishedEvents: [Platform_PublishedEventDef!]\n  acceptedCommands: [Platform_AcceptedCommandDef!]\n}`,
   `type Platform_RequiredStoreDeclaration {\n  store: String!\n  component: String!\n  field: String!\n  annotation: String\n}`,
   `type Platform_RequiredCapabilityDeclaration {\n  capability: String!\n  component: String!\n}`,
-  `type Platform_PluginStructureEntry {\n  pluginId: String!\n  readModels: [Platform_ReadSideDef!]!\n  stateViewSlices: [Platform_ReadSideDef!]!\n  stateChangeSlices: [Platform_WriteSideDef!]!\n  aggregates: [Platform_WriteSideDef!]!\n  automationSlices: [Platform_AutomationSliceDef!]!\n  outboundTranslationSlices: [Platform_OutboundTranslationSliceDef!]!\n  inboundTranslationSlices: [Platform_InboundTranslationSliceDef!]!\n  extensions: [Platform_ExtensionDef!]!\n  extensionPoints: [Platform_ExtensionPointDef!]\n  requiredStores: [String!]\n  requiredStoreDeclarations: [Platform_RequiredStoreDeclaration!]\n  requiredCapabilities: [Platform_RequiredCapabilityDeclaration!]\n}`
+  `type Platform_TraitDeclaration {\n  trait: String!\n  version: String!\n  posture: String!\n  component: String!\n}`,
+  `type Platform_PluginStructureEntry {\n  pluginId: String!\n  readModels: [Platform_ReadSideDef!]!\n  stateViewSlices: [Platform_ReadSideDef!]!\n  stateChangeSlices: [Platform_WriteSideDef!]!\n  aggregates: [Platform_WriteSideDef!]!\n  automationSlices: [Platform_AutomationSliceDef!]!\n  outboundTranslationSlices: [Platform_OutboundTranslationSliceDef!]!\n  inboundTranslationSlices: [Platform_InboundTranslationSliceDef!]!\n  extensions: [Platform_ExtensionDef!]!\n  extensionPoints: [Platform_ExtensionPointDef!]\n  requiredStores: [String!]\n  requiredStoreDeclarations: [Platform_RequiredStoreDeclaration!]\n  requiredCapabilities: [Platform_RequiredCapabilityDeclaration!]\n  traitDeclarations: [Platform_TraitDeclaration!]\n}`
 ];
+
+function encodeTraitDeclaration(d) {
+  return Object.fromEntries([
+    [
+      "trait",
+      d.trait
+    ],
+    [
+      "version",
+      d.version
+    ],
+    [
+      "posture",
+      d.posture
+    ],
+    [
+      "component",
+      d.component
+    ]
+  ]);
+}
 
 function encodeExtensionPointDef(e) {
   return Object.fromEntries([
@@ -147,6 +169,10 @@ function encodePluginStructureEntry(pluginId, def) {
     [
       "requiredCapabilities",
       Stdlib_Option.mapOr(def.requiredCapabilities, null, ds => ds.map(encodeRequiredCapabilityDeclaration))
+    ],
+    [
+      "traitDeclarations",
+      Stdlib_Option.mapOr(def.traitDeclarations, null, ds => ds.map(encodeTraitDeclaration))
     ]
   ]);
 }
@@ -156,6 +182,7 @@ let sdlQueryField = `  Platform_PluginStructures: [Platform_PluginStructureEntry
 export {
   sdlTypes,
   sdlQueryField,
+  encodeTraitDeclaration,
   encodeExtensionPointDef,
   encodeRequiredStoreDeclaration,
   encodeRequiredCapabilityDeclaration,

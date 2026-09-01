@@ -57,6 +57,8 @@ function commandTransition(param) {
   return "Unrestricted";
 }
 
+let traits = [];
+
 let name = "ChangeProductDescription";
 
 let Id;
@@ -76,5 +78,6 @@ export {
   commandAuthorization,
   readConsistency,
   commandTransition,
+  traits,
 }
 /* consumedEventSchema Not a pure module */

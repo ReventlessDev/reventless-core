@@ -36,6 +36,8 @@ function commandTransition() {
   return "Unrestricted";
 }
 
+let traits = [];
+
 let NoDelegate = {
   name: "NoDelegate",
   Id: Id,
@@ -44,7 +46,8 @@ let NoDelegate = {
   commandSchema: commandSchema,
   moduleUrl: moduleUrl,
   commandAuthorization: commandAuthorization,
-  commandTransition: commandTransition
+  commandTransition: commandTransition,
+  traits: traits
 };
 
 function Make(MappingImpl) {

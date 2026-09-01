@@ -13,6 +13,20 @@ host by `AddressGeocoding_Conformance`; the confidence rule stays core's
 type posture = WritesBack | Observes
 
 /**
+This trait's own account of itself, for a host to name in its `traits` and for the
+plugin structure to record.
+
+The version is read from this package rather than written here, so it cannot drift
+from what was actually installed. A host names this value, so a renamed or removed
+trait is a build error rather than a row that outlives its dependency.
+*/
+let declaration: Reventless.Trait.t = {
+  trait: "@reventlessdev/trait-address-geocoding",
+  version: Reventless.PackageVersion.fromModuleUrl(%raw(`import.meta.url`)),
+  posture: WritesBack,
+}
+
+/**
 The platform capabilities a host of this trait needs, for its outbound slice's
 `capabilityNeeds` to name.
 

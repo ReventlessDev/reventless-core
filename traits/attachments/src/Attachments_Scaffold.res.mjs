@@ -140,7 +140,14 @@ function sliceSpec(c) {
       `  | ` + n.altTextSet + `({ ` + c.entityId + `: string, ` + c.file + `: ` + ref + `, altText: string})`,
       ``
     ],
-    commandTransitionBinding(c)
+    commandTransitionBinding(c),
+    [
+      `// The graft's own record of itself. Nothing else survives into a deployed`,
+      `// plugin — the dependency and the rules alias are source-side — so without`,
+      `// this a running estate cannot say where this slice came from.`,
+      `let traits = [TraitAttachments.Attachments.declaration]`,
+      ``
+    ]
   ]).join("\n");
 }
 

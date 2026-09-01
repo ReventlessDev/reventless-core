@@ -396,6 +396,32 @@ let requiredCapabilityDeclarationArrayOptionSchema =
   S.array(requiredCapabilityDeclarationSchema)->S.nullAsOption
 
 /**
+One graft's provenance: which trait, at which version, on which component.
+
+Strings rather than the `Trait.t` variant for `posture`, on the same rule the
+capability above follows — a plugin built against a newer framework, naming a
+posture this one has never heard of, still decodes here rather than failing the
+whole structure.
+
+`component` is not declared by the trait or by the host: the structure fills it in
+while it walks the components, because it is the only party that knows which one
+carried the declaration. Nothing in this record is a string a developer typed.
+
+It records ORIGIN, not behaviour — a grafted file is the host's to edit
+afterwards. What answers "does it still behave like the trait" is the trait's own
+conformance suite, which runs in the consumer's build and is not this field.
+*/
+@schema
+type traitDeclaration = {
+  trait: string,
+  version: string,
+  posture: string,
+  component: string,
+}
+
+let traitDeclarationArrayOptionSchema = S.array(traitDeclarationSchema)->S.nullAsOption
+
+/**
 Adding a field here? It must be a shape a stale event can be healed into — the
 lifecycle aggregate replays its own log before every decision, so one event that
 fails to decode freezes that plugin's registration. `Message.parseJsonTolerant`
@@ -429,6 +455,13 @@ type pluginStructure = {
       a field's, and travels as `requiredStores`. Absent → None, read as []. */
   requiredCapabilities: @s.matches(requiredCapabilityDeclarationArrayOptionSchema)
   option<array<requiredCapabilityDeclaration>>,
+  /** The domain traits grafted into this plugin, one entry per declaring
+      component. Absent → None, read as []. The only signal a graft leaves that
+      survives into a deployed plugin — every other one (the dependency, the
+      variant spread, the rules alias, the conformance binding) is source-side.
+      A claim about origin, never about behaviour: see `Trait`. */
+  traitDeclarations: @s.matches(traitDeclarationArrayOptionSchema)
+  option<array<traitDeclaration>>,
 }
 
 let pluginStructureOffloadSchema = Offload.optionSchema(~store="pluginStructures", pluginStructureSchema)

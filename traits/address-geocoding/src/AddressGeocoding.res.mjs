@@ -3,6 +3,15 @@
 import * as Sury from "sury";
 import * as Api$ReventlessInfra from "@reventlessdev/reventless-infra/src/components/Api.res.mjs";
 import * as GeoPoint$Reventless from "@reventlessdev/reventless-spec/src/semantic/GeoPoint.res.mjs";
+import * as PackageVersion$Reventless from "@reventlessdev/reventless-spec/src/PackageVersion.res.mjs";
+
+let declaration_version = PackageVersion$Reventless.fromModuleUrl(import.meta.url);
+
+let declaration = {
+  trait: "@reventlessdev/trait-address-geocoding",
+  version: declaration_version,
+  posture: "WritesBack"
+};
 
 let capabilityNeeds = ["Geocoding"];
 
@@ -59,9 +68,10 @@ let reportCommandsSchema$1 = Api$ReventlessInfra.markNoApiVariants(reportCommand
 ]);
 
 export {
+  declaration,
   capabilityNeeds,
   eventsSchema,
   addressCommandsSchema,
   reportCommandsSchema$1 as reportCommandsSchema,
 }
-/* eventsSchema Not a pure module */
+/* declaration Not a pure module */

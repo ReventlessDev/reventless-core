@@ -179,6 +179,10 @@ let requiredCapabilityDeclarationSchema = Plugin$Reventless.requiredCapabilityDe
 
 let requiredCapabilityDeclarationArrayOptionSchema = Plugin$Reventless.requiredCapabilityDeclarationArrayOptionSchema;
 
+let traitDeclarationSchema = Plugin$Reventless.traitDeclarationSchema;
+
+let traitDeclarationArrayOptionSchema = Plugin$Reventless.traitDeclarationArrayOptionSchema;
+
 let pluginStructureSchema = Plugin$Reventless.pluginStructureSchema;
 
 let pluginStructureOffloadSchema = Plugin$Reventless.pluginStructureOffloadSchema;
@@ -231,6 +235,8 @@ export {
   requiredStoreDeclarationArrayOptionSchema,
   requiredCapabilityDeclarationSchema,
   requiredCapabilityDeclarationArrayOptionSchema,
+  traitDeclarationSchema,
+  traitDeclarationArrayOptionSchema,
   pluginStructureSchema,
   pluginStructureOffloadSchema,
   pluginDefinitionSchema,

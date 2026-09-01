@@ -65,6 +65,8 @@ function commandTransition(param) {
   return "Unrestricted";
 }
 
+let traits = [];
+
 let name = "PlaceOrder";
 
 let Id;
@@ -85,5 +87,6 @@ export {
   commandAuthorization,
   readConsistency,
   commandTransition,
+  traits,
 }
 /* consumedEventSchema Not a pure module */

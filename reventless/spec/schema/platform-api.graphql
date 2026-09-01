@@ -230,6 +230,7 @@ type Platform_PluginStructureEntry {
   requiredStores: [String!]
   stateChangeSlices: [Platform_WriteSideDef!]!
   stateViewSlices: [Platform_ReadSideDef!]!
+  traitDeclarations: [Platform_TraitDeclaration!]
 }
 
 type Platform_PublishedEventDef {
@@ -269,6 +270,13 @@ type Platform_RequiredStoreDeclaration {
   component: String!
   field: String!
   store: String!
+}
+
+type Platform_TraitDeclaration {
+  component: String!
+  posture: String!
+  trait: String!
+  version: String!
 }
 
 type Platform_UIFragmentEntry {

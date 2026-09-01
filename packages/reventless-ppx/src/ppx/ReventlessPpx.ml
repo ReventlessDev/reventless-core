@@ -259,11 +259,18 @@ let transform_delegate_module ~loc ~specifier (mb : module_binding) : module_bin
         AuthorizationInjection.gen_command_transition ~loc;
       ]
     in
+    (* A delegate is nobody's graft — it is the event face of a component that may
+       itself be one, and the declaration belongs on that component. *)
+    let traits_suffix =
+      if Util.has_let_binding "traits" body then []
+      else [AuthorizationInjection.gen_traits ~loc]
+    in
     let suffix =
       (if not (Util.has_type_binding "error" body) then [gen_schema_unit_type ~loc "error"] else [])
       @ (if not (Util.has_let_binding "moduleUrl" body) then [ModuleUrl.gen_module_url ~loc specifier] else [])
       @ auth_suffix
       @ transition_suffix
+      @ traits_suffix
     in
     let new_body = { mb.pmb_expr with pmod_desc = Pmod_structure (prefix @ body @ suffix) } in
     { mb with pmb_expr = new_body; pmb_attributes = attrs }
@@ -879,6 +886,12 @@ let transform (str : structure) : structure =
       let transition_suffix =
         AuthorizationInjection.command_transition_suffix ~loc loc.loc_start.pos_fname body
       in
+      (* traits auto-injection (graft-target specs). Appends
+         [let traits: array<Reventless.Trait.t> = []] when the spec names none, so a
+         component that is nobody's graft satisfies the member without a line. *)
+      let traits_suffix =
+        AuthorizationInjection.traits_suffix ~loc loc.loc_start.pos_fname body
+      in
       (* The port's two translation tables, read off the arms of `mapOutgoingEvent`
          and `mapIncomingCommand` — see TranslationTable. *)
       let table_suffix =
@@ -890,7 +903,7 @@ let transform (str : structure) : structure =
       in
       !prefix @ authz_prefix @ vis_prefix @ rc_prefix @ body
         @ readmodel_suffix @ suffix @ authz_suffix @ vis_suffix @ rc_suffix @ ext_suffix
-        @ transition_suffix @ table_suffix
+        @ transition_suffix @ traits_suffix @ table_suffix
 
     | Implementation (kind, spec_name_opt) ->
       let fname = loc.loc_start.pos_fname in

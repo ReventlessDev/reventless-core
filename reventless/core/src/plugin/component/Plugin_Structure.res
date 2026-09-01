@@ -1230,6 +1230,43 @@ let make = (
       }
     )
 
+  // The traits grafted into this plugin, one entry per declaring component. The
+  // component name is added here rather than declared: a trait cannot know which
+  // component a host grafted it onto, and a host writing it down would be the one
+  // hand-typed string this whole mechanism exists to avoid. Sorted and
+  // deduplicated for the same reason the two declarations above are.
+  let traitDeclarations = {
+    let entry = (~component, decl: Reventless.Trait.t) => (
+      {
+        Reventless.Plugin.trait: decl.trait,
+        version: decl.version,
+        posture: Reventless.Trait.postureToString(decl.posture),
+        component,
+      }: Reventless.Plugin.traitDeclaration
+    )
+    [
+      aggregates->Array.flatMap((module(A: ReventlessInfra.Aggregate.T with type api = api)) =>
+        A.Spec.traits->Array.map(entry(~component=A.Spec.name, ...))
+      ),
+      stateChangeSlices->Array.flatMap((module(SCS: ReventlessInfra.StateChangeSlice.T)) =>
+        SCS.Spec.traits->Array.map(entry(~component=SCS.Spec.name, ...))
+      ),
+      outboundTranslationSlices->Array.flatMap((
+        module(OTS: ReventlessInfra.OutboundTranslationSlice.T),
+      ) => OTS.Spec.traits->Array.map(entry(~component=OTS.Spec.name, ...))),
+    ]
+    ->Array.flat
+    ->Array.toSorted((a, b) =>
+      a.trait == b.trait ? String.compare(a.component, b.component) : String.compare(a.trait, b.trait)
+    )
+    ->Array.reduce([], (acc, d) =>
+      switch acc->Array.last {
+      | Some(prev) if prev == d => acc
+      | _ => acc->Array.concat([d])
+      }
+    )
+  }
+
   // Heuristic-only matches — a field *named* like a stored-object ref with no
   // `@storageRef` — warn and provision nothing. Declaration outranks inference;
   // the warning names the annotation that would settle it.
@@ -1861,6 +1898,7 @@ let make = (
     extensionPoints: Some(extensionPointDefs),
     requiredStores: Some(requiredStores),
     requiredStoreDeclarations: Some(requiredStoreDeclarations),
+    traitDeclarations: Some(traitDeclarations),
     requiredCapabilities: Some(requiredCapabilities),
   }
 }

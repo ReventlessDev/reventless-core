@@ -50,3 +50,10 @@ let commandTransition = (command: command): Reventless.Transition.t<lifecycleSta
   | Abandon(_) => Unrestricted
   }
 }
+
+// Declared, so the structure has a graft to record. The value stands in for a
+// trait package's own `declaration` — a fixture cannot depend on one, and what is
+// under test is the collection, not where the value came from.
+let traits: array<Reventless.Trait.t> = [
+  {trait: "@reventlessdev/trait-booking", version: "9.9.9", posture: SelfContained},
+]

@@ -20,6 +20,8 @@ let sourceNames = [];
 
 let capabilityNeeds = [];
 
+let traits = [];
+
 let name = "SendOrderConfirmation";
 
 let Id;
@@ -47,5 +49,6 @@ export {
   externalSystem,
   capabilityNeeds,
   moduleUrl,
+  traits,
 }
 /* consumedEventSchema Not a pure module */

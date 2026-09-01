@@ -2,6 +2,7 @@
 
 import * as Sury from "sury";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as Notification$TraitNotification from "@reventlessdev/trait-notification/src/Notification.res.mjs";
 import * as NotificationPreferences$OrderingPlugin from "../StateChangeSlice/NotificationPreferences.res.mjs";
 
 let consumedEventSchema = Sury.$schema(s => ({
@@ -42,6 +43,8 @@ let sourceNames = [];
 
 let capabilityNeeds = ["Messaging"];
 
+let traits = [Notification$TraitNotification.declaration];
+
 let name = "SendNotification";
 
 let Id;
@@ -68,6 +71,7 @@ export {
   sourceNames,
   externalSystem,
   capabilityNeeds,
+  traits,
   moduleUrl,
 }
 /* consumedEventSchema Not a pure module */

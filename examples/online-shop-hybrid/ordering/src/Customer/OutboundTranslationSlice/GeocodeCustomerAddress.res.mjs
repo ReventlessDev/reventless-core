@@ -36,6 +36,8 @@ let inboundCommandSchema = Sury.union([
 
 let sourceNames = ["Customer"];
 
+let traits = [AddressGeocoding$TraitAddressGeocoding.declaration];
+
 let name = "GeocodeCustomerAddress";
 
 let Id;
@@ -64,6 +66,7 @@ export {
   sourceNames,
   externalSystem,
   capabilityNeeds,
+  traits,
   moduleUrl,
 }
 /* consumedEventSchema Not a pure module */

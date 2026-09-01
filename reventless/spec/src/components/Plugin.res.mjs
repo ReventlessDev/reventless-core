@@ -247,6 +247,15 @@ let requiredCapabilityDeclarationSchema = Sury.$schema(s => ({
 
 let requiredCapabilityDeclarationArrayOptionSchema = Sury.$nullAsOption(Sury.array(requiredCapabilityDeclarationSchema));
 
+let traitDeclarationSchema = Sury.$schema(s => ({
+  trait: s.m(Sury.string),
+  version: s.m(Sury.string),
+  posture: s.m(Sury.string),
+  component: s.m(Sury.string)
+}));
+
+let traitDeclarationArrayOptionSchema = Sury.$nullAsOption(Sury.array(traitDeclarationSchema));
+
 let pluginStructureSchema = Sury.$schema(s => ({
   readModels: s.m(Sury.array(queryableDefSchema)),
   stateViewSlices: s.m(Sury.array(queryableDefSchema)),
@@ -259,7 +268,8 @@ let pluginStructureSchema = Sury.$schema(s => ({
   extensionPoints: s.m(extensionPointDefArrayOptionSchema),
   requiredStores: s.m(stringArrayOptionSchema),
   requiredStoreDeclarations: s.m(requiredStoreDeclarationArrayOptionSchema),
-  requiredCapabilities: s.m(requiredCapabilityDeclarationArrayOptionSchema)
+  requiredCapabilities: s.m(requiredCapabilityDeclarationArrayOptionSchema),
+  traitDeclarations: s.m(traitDeclarationArrayOptionSchema)
 }));
 
 let pluginStructureOffloadSchema = Offload$Reventless.optionSchema(undefined, "pluginStructures", undefined, pluginStructureSchema);
@@ -324,6 +334,8 @@ export {
   requiredStoreDeclarationArrayOptionSchema,
   requiredCapabilityDeclarationSchema,
   requiredCapabilityDeclarationArrayOptionSchema,
+  traitDeclarationSchema,
+  traitDeclarationArrayOptionSchema,
   pluginStructureSchema,
   pluginStructureOffloadSchema,
   pluginDefinitionSchema,

@@ -350,6 +350,40 @@ describe("commandTransition — the edge as a switch", () => {
   })
 })
 
+describe("traitDeclarations — a graft leaves a trace", () => {
+  // The one signal a graft leaves that survives into a deployed plugin. Every
+  // other one — the package dependency, the variant spread, the rules alias, the
+  // conformance binding — is source-side and invisible to a running estate.
+  let structure = Plugin_Structure.make(
+    ~name="TraitPlugin",
+    ~stateChangeSlices=[module(PsTransitionSwitchSlice), module(PsShipOrderSlice)],
+    ~stateViewSlices=[],
+  )
+
+  testSync("a declaring component's trait reaches the structure", () => {
+    expect(
+      structure.traitDeclarations->Option.getOr([])->Array.map(d => (d.trait, d.component)),
+    )->toEqual([("@reventlessdev/trait-booking", "TransitionSwitch")])
+  })
+
+  testSync("the component name is filled in by the structure, not declared", () => {
+    // The trait exports its identity and posture; it cannot know which component a
+    // host grafted it onto, and a host writing that name down would be the one
+    // hand-typed string this mechanism exists to avoid.
+    expect(
+      structure.traitDeclarations
+      ->Option.getOr([])
+      ->Array.map(d => (d.version, d.posture, d.component)),
+    )->toEqual([("9.9.9", "SelfContained", "TransitionSwitch")])
+  })
+
+  testSync("a component that is nobody's graft contributes nothing", () => {
+    // `PsShipOrder` declares no traits, and the injected default is empty — so the
+    // absence of a graft is silence rather than a row.
+    expect(structure.traitDeclarations->Option.getOr([])->Array.length)->toBe(1)
+  })
+})
+
 describe("@transition cross-check", () => {
   // The exit criterion: a state no linked view declares stops the build, and the
   // message says which command, which state, and what it was checked against.
@@ -1436,6 +1470,7 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
             ({capability: "Geocoding", component: "GeocodeAddress"}: Reventless.Plugin.requiredCapabilityDeclaration),
             {capability: "Geocoding", component: "GeocodeDropOff"},
           ]),
+          traitDeclarations: None,
         }
         let entries = Reventless.CapabilityManifest.fromStructure(withCapability).capabilities
 
@@ -1458,6 +1493,7 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
             Reventless.CapabilityManifest.fromStructure({
               ...structure,
               requiredCapabilities: Some([{capability: "Telepathy", component: "Guess"}]),
+              traitDeclarations: None,
             }).capabilities,
           )->toEqual([])
         )

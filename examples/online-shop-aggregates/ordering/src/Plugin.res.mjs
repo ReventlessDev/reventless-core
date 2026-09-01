@@ -31,7 +31,8 @@ function Make(Platform) {
     commandSchema: CatalogProduct$OrderingPlugin.commandSchema,
     moduleUrl: CatalogProduct$OrderingPlugin.moduleUrl,
     commandAuthorization: CatalogProduct$OrderingPlugin.commandAuthorization,
-    commandTransition: CatalogProduct$OrderingPlugin.commandTransition
+    commandTransition: CatalogProduct$OrderingPlugin.commandTransition,
+    traits: CatalogProduct$OrderingPlugin.traits
   })({
     initialState: CatalogProduct_Behavior$OrderingPlugin.initialState,
     evolve: CatalogProduct_Behavior$OrderingPlugin.evolve,
@@ -51,7 +52,8 @@ function Make(Platform) {
     commandSchema: Customer$OrderingPlugin.commandSchema,
     moduleUrl: Customer$OrderingPlugin.moduleUrl,
     commandAuthorization: Customer$OrderingPlugin.commandAuthorization,
-    commandTransition: Customer$OrderingPlugin.commandTransition
+    commandTransition: Customer$OrderingPlugin.commandTransition,
+    traits: Customer$OrderingPlugin.traits
   })({
     initialState: Customer_Behavior$OrderingPlugin.initialState,
     evolve: Customer_Behavior$OrderingPlugin.evolve,
@@ -71,7 +73,8 @@ function Make(Platform) {
     commandSchema: Order$OrderingPlugin.commandSchema,
     moduleUrl: Order$OrderingPlugin.moduleUrl,
     commandAuthorization: Order$OrderingPlugin.commandAuthorization,
-    commandTransition: Order$OrderingPlugin.commandTransition
+    commandTransition: Order$OrderingPlugin.commandTransition,
+    traits: Order$OrderingPlugin.traits
   })({
     initialState: Order_Behavior$OrderingPlugin.initialState,
     evolve: Order_Behavior$OrderingPlugin.evolve,
@@ -143,7 +146,8 @@ function Make(Platform) {
       commandSchema: Order$OrderingPlugin.commandSchema,
       moduleUrl: Order$OrderingPlugin.moduleUrl,
       commandAuthorization: Order$OrderingPlugin.commandAuthorization,
-      commandTransition: Order$OrderingPlugin.commandTransition
+      commandTransition: Order$OrderingPlugin.commandTransition,
+      traits: Order$OrderingPlugin.traits
     },
     moduleUrl: Orders_ExtensionPointMapping$OrderingPlugin.moduleUrl,
     mapIncomingCommand: Orders_ExtensionPointMapping$OrderingPlugin.mapIncomingCommand,
@@ -167,7 +171,8 @@ function Make(Platform) {
       commandSchema: CatalogProduct$OrderingPlugin.commandSchema,
       moduleUrl: CatalogProduct$OrderingPlugin.moduleUrl,
       commandAuthorization: CatalogProduct$OrderingPlugin.commandAuthorization,
-      commandTransition: CatalogProduct$OrderingPlugin.commandTransition
+      commandTransition: CatalogProduct$OrderingPlugin.commandTransition,
+      traits: CatalogProduct$OrderingPlugin.traits
     },
     moduleUrl: Products_Extension$OrderingPlugin.Mapping.moduleUrl,
     delegateModuleUrl: Products_Extension$OrderingPlugin.Mapping.delegateModuleUrl,
@@ -200,7 +205,8 @@ function Make(Platform) {
         commandSchema: Order$OrderingPlugin.commandSchema,
         moduleUrl: Order$OrderingPlugin.moduleUrl,
         commandAuthorization: Order$OrderingPlugin.commandAuthorization,
-        commandTransition: Order$OrderingPlugin.commandTransition
+        commandTransition: Order$OrderingPlugin.commandTransition,
+        traits: Order$OrderingPlugin.traits
       },
       moduleUrl: Orders_ExtensionPointMapping$OrderingPlugin.moduleUrl,
       mapIncomingCommand: Orders_ExtensionPointMapping$OrderingPlugin.mapIncomingCommand,

@@ -134,6 +134,7 @@ describe("Message should", () => {
         requiredStores: None,
         requiredStoreDeclarations: None,
         requiredCapabilities: None,
+        traitDeclarations: None,
       })),
       dcbEventLog: None,
       kind: Domain,

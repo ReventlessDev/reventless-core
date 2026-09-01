@@ -458,6 +458,7 @@ function MakeWithConfig(Config) {
     commandSchema: UiFragmentRegistry$ReventlessCore.commandSchema,
     commandAuthorization: UiFragmentRegistry$ReventlessCore.commandAuthorization,
     commandTransition: UiFragmentRegistry$ReventlessCore.commandTransition,
+    traits: UiFragmentRegistry$ReventlessCore.traits,
     readConsistency: UiFragmentRegistry$ReventlessCore.readConsistency
   };
   let UiFragmentRegistrySlice = StateChangeSlice_Builder$ReventlessAws.Make(Spec)({
@@ -646,7 +647,8 @@ function MakeWithConfig(Config) {
     commandSchema: PluginSpec$ReventlessCore.commandSchema,
     moduleUrl: PluginSpec$ReventlessCore.moduleUrl,
     commandAuthorization: PluginSpec$ReventlessCore.commandAuthorization,
-    commandTransition: PluginSpec$ReventlessCore.commandTransition
+    commandTransition: PluginSpec$ReventlessCore.commandTransition,
+    traits: PluginSpec$ReventlessCore.traits
   })({
     initialState: PluginBehavior$ReventlessCore.initialState,
     evolve: PluginBehavior$ReventlessCore.evolve,
@@ -1817,6 +1819,7 @@ function Make($star) {
     commandSchema: UiFragmentRegistry$ReventlessCore.commandSchema,
     commandAuthorization: UiFragmentRegistry$ReventlessCore.commandAuthorization,
     commandTransition: UiFragmentRegistry$ReventlessCore.commandTransition,
+    traits: UiFragmentRegistry$ReventlessCore.traits,
     readConsistency: UiFragmentRegistry$ReventlessCore.readConsistency
   };
   let UiFragmentRegistrySlice = StateChangeSlice_Builder$ReventlessAws.Make(Spec)({
@@ -2005,7 +2008,8 @@ function Make($star) {
     commandSchema: PluginSpec$ReventlessCore.commandSchema,
     moduleUrl: PluginSpec$ReventlessCore.moduleUrl,
     commandAuthorization: PluginSpec$ReventlessCore.commandAuthorization,
-    commandTransition: PluginSpec$ReventlessCore.commandTransition
+    commandTransition: PluginSpec$ReventlessCore.commandTransition,
+    traits: PluginSpec$ReventlessCore.traits
   })({
     initialState: PluginBehavior$ReventlessCore.initialState,
     evolve: PluginBehavior$ReventlessCore.evolve,

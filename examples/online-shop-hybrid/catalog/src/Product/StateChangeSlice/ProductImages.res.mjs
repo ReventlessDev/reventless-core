@@ -4,6 +4,7 @@ import * as Sury from "sury";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Api$ReventlessInfra from "@reventlessdev/reventless-infra/src/components/Api.res.mjs";
 import * as UploadableImage$Reventless from "@reventlessdev/reventless-spec/src/semantic/UploadableImage.res.mjs";
+import * as Attachments$TraitAttachments from "@reventlessdev/trait-attachments/src/Attachments.res.mjs";
 
 let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
@@ -88,6 +89,8 @@ let eventSchema = Sury.union([
   }))
 ]);
 
+let traits = [Attachments$TraitAttachments.declaration];
+
 let commandSchema$1 = Api$ReventlessInfra.markAllowedStates(commandSchema, [
   [
     "AttachProductImage",
@@ -153,6 +156,7 @@ export {
   consumedEventSchema,
   errorSchema,
   eventSchema,
+  traits,
   commandSchema$1 as commandSchema,
   moduleUrl,
   commandAuthorization,

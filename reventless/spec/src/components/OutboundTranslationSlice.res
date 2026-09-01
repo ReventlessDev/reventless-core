@@ -122,6 +122,14 @@ module type Spec = {
   its host to name, so grafting one cannot leave the need unstated.
   */
   let capabilityNeeds: array<CapabilityNeed.t>
+
+  /** The domain traits grafted into this component, as values the trait packages
+      export — `[TraitAttachments.Attachments.declaration]`. Auto-injected as `[]`
+      by `@@reventless.spec`, so a component that is nobody's graft says so without
+      a line. A graft names its trait here and the structure records it, which is
+      the only way a deployed plugin can answer "where did this come from". See
+      `Trait`. */
+  let traits: array<Trait.t>
 }
 
 /**

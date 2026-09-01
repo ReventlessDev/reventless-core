@@ -20,6 +20,8 @@ function commandTransition(param) {
   return "Unrestricted";
 }
 
+let traits = [];
+
 let name = "AutoShipOrder";
 
 let Id;
@@ -43,5 +45,6 @@ export {
   moduleUrl,
   commandAuthorization,
   commandTransition,
+  traits,
 }
 /* todoItemSchema Not a pure module */

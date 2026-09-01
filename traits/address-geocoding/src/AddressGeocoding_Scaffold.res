@@ -201,6 +201,11 @@ let sliceSpec = (c: config): string => {
     `// an unprovisioned geocoder answers \`Unavailable\`, the retries run out, and`,
     `// every ${n.subject} is recorded as permanently unresolvable with no error raised.`,
     `let capabilityNeeds = TraitAddressGeocoding.AddressGeocoding.capabilityNeeds`,
+    `// The graft's own record of itself. Nothing else survives into a deployed`,
+    `// plugin — the dependency, the spread and the conformance binding are all`,
+    `// source-side — so without this a running estate cannot say where this`,
+    `// component came from.`,
+    `let traits = [TraitAddressGeocoding.AddressGeocoding.declaration]`,
     ``,
   ])
 }

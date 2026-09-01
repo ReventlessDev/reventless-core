@@ -112,6 +112,17 @@
 # `store`/`component`/`field`.
 .structure.requiredCapabilities[].capability: string
 .structure.requiredCapabilities[].component: string
+# `traitDeclarations` is itself `js_nullable` and is NEW, so no persisted payload
+# carries the array: a stored structure heals to null and these four are never
+# reached. Required inside it for the same reason the two above are — a graft
+# naming no trait, no version, no posture or no component is not a record of a
+# graft, and a fabricated `""` here would read as "grafted from nothing", which is
+# worse than absent. The version is read from the trait's own package rather than
+# written by hand, so it cannot be the empty string in practice either.
+.structure.traitDeclarations[].component: string
+.structure.traitDeclarations[].posture: string
+.structure.traitDeclarations[].trait: string
+.structure.traitDeclarations[].version: string
 .structure.requiredStoreDeclarations[].component: string
 .structure.requiredStoreDeclarations[].field: string
 .structure.requiredStoreDeclarations[].store: string

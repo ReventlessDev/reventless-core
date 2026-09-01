@@ -61,7 +61,8 @@ let structure = {
   extensionPoints: undefined,
   requiredStores: undefined,
   requiredStoreDeclarations: undefined,
-  requiredCapabilities: undefined
+  requiredCapabilities: undefined,
+  traitDeclarations: undefined
 };
 
 let internalPluginDefinition = {

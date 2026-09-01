@@ -21,6 +21,20 @@ graft has to be given, and everything else can be handed over whole.
 */
 
 /**
+This trait's own account of itself — see `AddressGeocoding.declaration` for why the
+version is read rather than written.
+
+`SelfContained` is the whole reason this specimen was built third: it brings its own
+components and grafts by reading host events alone, writing nothing back. The two
+earlier traits share a posture; this one is the reason `posture` exists.
+*/
+let declaration: Reventless.Trait.t = {
+  trait: "@reventlessdev/trait-notification",
+  version: Reventless.PackageVersion.fromModuleUrl(%raw(`import.meta.url`)),
+  posture: SelfContained,
+}
+
+/**
 The platform capabilities a host of this trait needs, for its send slice's
 `capabilityNeeds` to name.
 

@@ -216,6 +216,28 @@ for (const [traitDir, spec] of Object.entries(specimens)) {
       run("pnpm", ["exec", "rescript", "build"], host)
       console.log(`[check-trait-pack] ok: ${traitPkg.name}'s emitted graft compiles`)
 
+      // The graft records itself. This is the one signal a graft leaves that
+      // survives into a deployed plugin — the dependency, the spread, the rules
+      // alias and the conformance binding are all source-side — so a scaffold
+      // that stopped emitting it would cost the deployed map every trait it can
+      // see, silently and with everything else still green.
+      //
+      // Asserted on the emitted source rather than on a built structure: what is
+      // under test is that the SCAFFOLD writes it. That the structure then
+      // collects it is `PluginStructureTest`'s job, against a fixture that needs
+      // no pack.
+      const emittedDir = join(host, spec.graft.into)
+      const emitted = readdirSync(emittedDir, { recursive: true })
+        .filter((p) => String(p).endsWith(".res"))
+        .map((p) => readFileSync(join(emittedDir, String(p)), "utf8"))
+      if (!emitted.some((src) => /let traits = \[[^\]]*\.declaration\]/.test(src))) {
+        throw new Error(
+          `${traitPkg.name}: the emitted graft declares no \`traits\`. A graft that does not ` +
+          `record itself is invisible to a deployed plugin — see Reventless.Trait.`,
+        )
+      }
+      console.log(`[check-trait-pack] ok: ${traitPkg.name}'s graft records itself`)
+
       // …and satisfies the trait's own rules. The binding was emitted whole, so
       // nothing between the trait's assertions and the emitted code was written
       // by a human.

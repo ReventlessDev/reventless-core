@@ -58,3 +58,9 @@ let externalSystem = Some("Messaging")
 // Declared, so a deployment that provisions no sender fails rather than queueing
 // every confirmation until it is abandoned.
 let capabilityNeeds: array<Reventless.CapabilityNeed.t> = [Messaging]
+
+// Grafted, and this is the only record of it that survives into a deployed
+// plugin — every other signal (the dependency, the spread, the rules alias, the
+// conformance binding) is source-side. The value comes from the trait, so a
+// rename or a removed dependency is a build error rather than a stale row.
+let traits = [TraitNotification.Notification.declaration]

@@ -30,7 +30,8 @@ function Make(Platform) {
     commandSchema: Category$CatalogPlugin.commandSchema,
     moduleUrl: Category$CatalogPlugin.moduleUrl,
     commandAuthorization: Category$CatalogPlugin.commandAuthorization,
-    commandTransition: Category$CatalogPlugin.commandTransition
+    commandTransition: Category$CatalogPlugin.commandTransition,
+    traits: Category$CatalogPlugin.traits
   })({
     initialState: Category_Behavior$CatalogPlugin.initialState,
     evolve: Category_Behavior$CatalogPlugin.evolve,
@@ -50,7 +51,8 @@ function Make(Platform) {
     commandSchema: Product$CatalogPlugin.commandSchema,
     moduleUrl: Product$CatalogPlugin.moduleUrl,
     commandAuthorization: Product$CatalogPlugin.commandAuthorization,
-    commandTransition: Product$CatalogPlugin.commandTransition
+    commandTransition: Product$CatalogPlugin.commandTransition,
+    traits: Product$CatalogPlugin.traits
   })({
     initialState: Product_Behavior$CatalogPlugin.initialState,
     evolve: Product_Behavior$CatalogPlugin.evolve,
@@ -70,7 +72,8 @@ function Make(Platform) {
     commandSchema: ProductDemand$CatalogPlugin.commandSchema,
     moduleUrl: ProductDemand$CatalogPlugin.moduleUrl,
     commandAuthorization: ProductDemand$CatalogPlugin.commandAuthorization,
-    commandTransition: ProductDemand$CatalogPlugin.commandTransition
+    commandTransition: ProductDemand$CatalogPlugin.commandTransition,
+    traits: ProductDemand$CatalogPlugin.traits
   })({
     initialState: ProductDemand_Behavior$CatalogPlugin.initialState,
     evolve: ProductDemand_Behavior$CatalogPlugin.evolve,
@@ -142,7 +145,8 @@ function Make(Platform) {
       commandSchema: Product$CatalogPlugin.commandSchema,
       moduleUrl: Product$CatalogPlugin.moduleUrl,
       commandAuthorization: Product$CatalogPlugin.commandAuthorization,
-      commandTransition: Product$CatalogPlugin.commandTransition
+      commandTransition: Product$CatalogPlugin.commandTransition,
+      traits: Product$CatalogPlugin.traits
     },
     moduleUrl: Products_ExtensionPointMapping$CatalogPlugin.moduleUrl,
     mapIncomingCommand: Products_ExtensionPointMapping$CatalogPlugin.mapIncomingCommand,
@@ -166,7 +170,8 @@ function Make(Platform) {
       commandSchema: ProductDemand$CatalogPlugin.commandSchema,
       moduleUrl: ProductDemand$CatalogPlugin.moduleUrl,
       commandAuthorization: ProductDemand$CatalogPlugin.commandAuthorization,
-      commandTransition: ProductDemand$CatalogPlugin.commandTransition
+      commandTransition: ProductDemand$CatalogPlugin.commandTransition,
+      traits: ProductDemand$CatalogPlugin.traits
     },
     moduleUrl: Orders_Extension$CatalogPlugin.Mapping.moduleUrl,
     delegateModuleUrl: Orders_Extension$CatalogPlugin.Mapping.delegateModuleUrl,
@@ -199,7 +204,8 @@ function Make(Platform) {
         commandSchema: Product$CatalogPlugin.commandSchema,
         moduleUrl: Product$CatalogPlugin.moduleUrl,
         commandAuthorization: Product$CatalogPlugin.commandAuthorization,
-        commandTransition: Product$CatalogPlugin.commandTransition
+        commandTransition: Product$CatalogPlugin.commandTransition,
+        traits: Product$CatalogPlugin.traits
       },
       moduleUrl: Products_ExtensionPointMapping$CatalogPlugin.moduleUrl,
       mapIncomingCommand: Products_ExtensionPointMapping$CatalogPlugin.mapIncomingCommand,

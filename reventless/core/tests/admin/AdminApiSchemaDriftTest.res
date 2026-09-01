@@ -183,6 +183,7 @@ let structure: pluginStructure = {
   requiredStores: Some(["catalog.images"]),
   requiredStoreDeclarations: Some([storeDecl]),
   requiredCapabilities: Some([capabilityDecl]),
+  traitDeclarations: None,
 }
 
 let panel: panelManifestEntry = {
@@ -349,6 +350,10 @@ let guards: array<guard> = [
       "requiredStores",
       "requiredStoreDeclarations",
       "requiredCapabilities",
+      // Structure-level provenance, like the three above: AutoUI renders
+      // components, and where one came from is the map's question rather than a
+      // generated page's. It reaches the wire on `Platform_PluginStructures`.
+      "traitDeclarations",
     ],
   },
   {

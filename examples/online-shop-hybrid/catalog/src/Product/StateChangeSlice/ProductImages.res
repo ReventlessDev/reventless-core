@@ -60,3 +60,9 @@ type event =
       productImage: Reventless.UploadableImage.t,
       altText: string,
     })
+
+// Grafted, and this is the only record of it that survives into a deployed
+// plugin — every other signal (the dependency, the spread, the rules alias, the
+// conformance binding) is source-side. The value comes from the trait, so a
+// rename or a removed dependency is a build error rather than a stale row.
+let traits = [TraitAttachments.Attachments.declaration]

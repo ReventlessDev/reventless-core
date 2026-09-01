@@ -488,6 +488,63 @@ let inject_command_transition_into_inner_module ~loc (mb : module_binding) : mod
     { mb with pmb_expr = { mb.pmb_expr with pmod_desc = Pmod_structure new_body } }
   | _ -> mb
 
+(* traits auto-injection for graft-target specs -------------------------------- *)
+(* [let traits: array<Reventless.Trait.t> = []] — the domain traits grafted into
+   this component.
+
+   Injected rather than required-by-hand because any component can be a graft
+   target, so requiring the line would put it on every spec in every repository to
+   record a fact about a handful of them. A graft overrides it with the trait's
+   own exported value; everything else says "nobody's graft" for free.
+
+   Empty is the honest default here, unlike the capability need it otherwise
+   mirrors: a component with no trait genuinely declares none, whereas an
+   unstated capability need is a silent deploy failure — which is why that one is
+   required and this one is injected. *)
+let gen_traits ~loc =
+  let empty = Ast_builder.Default.pexp_array ~loc [] in
+  let ty =
+    Ast_builder.Default.ptyp_constr
+      ~loc
+      { txt = Lident "array"; loc }
+      [ Ast_builder.Default.ptyp_constr ~loc
+          { txt = Ldot (Ldot (Lident "Reventless", "Trait"), "t"); loc } [] ]
+  in
+  let expr = Ast_builder.Default.pexp_constraint ~loc empty ty in
+  let pat = Ast_builder.Default.ppat_var ~loc { txt = "traits"; loc } in
+  Ast_builder.Default.pstr_value ~loc Nonrecursive
+    [Ast_builder.Default.value_binding ~loc ~pat ~expr]
+
+(* The three module types that carry the member: aggregates, state-change slices
+   and outbound translation slices — the components the shipped traits actually
+   graft onto. Widening this list is additive and costs one folder name. *)
+let is_graft_target_folder fname =
+  Util.is_in_aggregate_folder fname
+  || Util.is_in_folder fname "StateChangeSlice"
+  || Util.is_in_folder fname "StateChangeSlices"
+  || Util.is_in_folder fname "OutboundTranslationSlice"
+  || Util.is_in_folder fname "OutboundTranslationSlices"
+
+let traits_suffix ~loc fname (body : structure) : structure_item list =
+  if is_spec_namespace_pkg loc then []
+  else if Util.has_let_binding "traits" body then []
+  else if is_graft_target_folder fname then [gen_traits ~loc]
+  else
+    (* A spec that declares commands but sits outside the folders above — the
+       platform's own `PluginSpec` is one — is still handed to `Aggregate.Spec`
+       somewhere, so it needs the member. Structural detection is what the
+       authorization injection falls back to for the same reason. *)
+    match detect_kind_by_structure body with
+    | CommandCarrier -> [gen_traits ~loc]
+    | _ -> []
+
+let inject_traits_into_inner_module ~loc (mb : module_binding) : module_binding =
+  match mb.pmb_expr.pmod_desc with
+  | Pmod_structure body when not (Util.has_let_binding "traits" body) ->
+    let new_body = body @ [gen_traits ~loc] in
+    { mb with pmb_expr = { mb.pmb_expr with pmod_desc = Pmod_structure new_body } }
+  | _ -> mb
+
 let is_translation_folder fname =
   Util.is_in_folder fname "InboundTranslationSlice"
   || Util.is_in_folder fname "InboundTranslationSlices"
@@ -636,6 +693,7 @@ let walk_inline_specs (str : structure) : structure =
          externalSystem. *)
       let mb' = inject_into_inner_module ~loc ~is_command_carrier:true mb in
       let mb' = inject_command_transition_into_inner_module ~loc mb' in
+      let mb' = inject_traits_into_inner_module ~loc mb' in
       let mb' =
         if inner_module_is_translation_spec mb'
         then inject_external_system_into_inner_module ~loc mb'

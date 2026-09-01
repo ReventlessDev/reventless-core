@@ -39,16 +39,31 @@ let sdlTypes: array<string> = [
   // The capability a component declares its translate reaches for. No `field`:
   // unlike a store, this need is not expressible as an annotation on one.
   `type Platform_RequiredCapabilityDeclaration {\n  capability: String!\n  component: String!\n}`,
+  // One graft's provenance. `posture` is a String rather than an enum for the
+  // reason the capability above is: a plugin built against a newer framework,
+  // naming a posture this schema has never heard of, still decodes.
+  //
+  // It records ORIGIN, never behaviour — a grafted file is the host's to edit
+  // afterwards — so a reader must not paint a declared graft as a verified one.
+  `type Platform_TraitDeclaration {\n  trait: String!\n  version: String!\n  posture: String!\n  component: String!\n}`,
   // `extensionPoints` / `requiredStores` / `requiredStoreDeclarations` /
-  // `requiredCapabilities` are nullable lists, not `[T!]!`: all four are optional on
+  // `requiredCapabilities` / `traitDeclarations` are nullable lists, not `[T!]!`: all five are optional on
   // `pluginStructure` so that plugin definitions persisted before the field existed
   // still decode. A structure written by an older deploy sends null, and null is the
   // honest answer — an empty list would claim the plugin has no extension points when
   // the truth is that the deployment cannot say.
-  `type Platform_PluginStructureEntry {\n  pluginId: String!\n  readModels: [Platform_ReadSideDef!]!\n  stateViewSlices: [Platform_ReadSideDef!]!\n  stateChangeSlices: [Platform_WriteSideDef!]!\n  aggregates: [Platform_WriteSideDef!]!\n  automationSlices: [Platform_AutomationSliceDef!]!\n  outboundTranslationSlices: [Platform_OutboundTranslationSliceDef!]!\n  inboundTranslationSlices: [Platform_InboundTranslationSliceDef!]!\n  extensions: [Platform_ExtensionDef!]!\n  extensionPoints: [Platform_ExtensionPointDef!]\n  requiredStores: [String!]\n  requiredStoreDeclarations: [Platform_RequiredStoreDeclaration!]\n  requiredCapabilities: [Platform_RequiredCapabilityDeclaration!]\n}`,
+  `type Platform_PluginStructureEntry {\n  pluginId: String!\n  readModels: [Platform_ReadSideDef!]!\n  stateViewSlices: [Platform_ReadSideDef!]!\n  stateChangeSlices: [Platform_WriteSideDef!]!\n  aggregates: [Platform_WriteSideDef!]!\n  automationSlices: [Platform_AutomationSliceDef!]!\n  outboundTranslationSlices: [Platform_OutboundTranslationSliceDef!]!\n  inboundTranslationSlices: [Platform_InboundTranslationSliceDef!]!\n  extensions: [Platform_ExtensionDef!]!\n  extensionPoints: [Platform_ExtensionPointDef!]\n  requiredStores: [String!]\n  requiredStoreDeclarations: [Platform_RequiredStoreDeclaration!]\n  requiredCapabilities: [Platform_RequiredCapabilityDeclaration!]\n  traitDeclarations: [Platform_TraitDeclaration!]\n}`,
 ]
 
 let sdlQueryField: string = `  Platform_PluginStructures: [Platform_PluginStructureEntry!]!`
+
+let encodeTraitDeclaration = (d: traitDeclaration): JSON.t =>
+  Dict.fromArray([
+    ("trait", JSON.Encode.string(d.trait)),
+    ("version", JSON.Encode.string(d.version)),
+    ("posture", JSON.Encode.string(d.posture)),
+    ("component", JSON.Encode.string(d.component)),
+  ])->JSON.Encode.object
 
 let encodeExtensionPointDef = (e: extensionPointDef): JSON.t =>
   Dict.fromArray([
@@ -178,6 +193,12 @@ let encodePluginStructureEntry = (~pluginId: string, def: pluginStructure): JSON
       "requiredCapabilities",
       def.requiredCapabilities->Option.mapOr(JSON.Encode.null, ds =>
         ds->Array.map(encodeRequiredCapabilityDeclaration)->JSON.Encode.array
+      ),
+    ),
+    (
+      "traitDeclarations",
+      def.traitDeclarations->Option.mapOr(JSON.Encode.null, ds =>
+        ds->Array.map(encodeTraitDeclaration)->JSON.Encode.array
       ),
     ),
   ])->JSON.Encode.object

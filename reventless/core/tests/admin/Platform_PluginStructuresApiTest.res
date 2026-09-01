@@ -68,6 +68,7 @@ let structure: pluginStructure = {
     {store: "Catalog.images", component: "Product", field: "image", annotation: Some("images")},
   ]),
   requiredCapabilities: Some([{capability: "Geocoding", component: "GeocodeAddress"}]),
+  traitDeclarations: None,
 }
 
 let encoded = Platform_PluginStructuresApi.encodePluginStructureEntry(
@@ -104,6 +105,7 @@ describe("Platform_PluginStructures entry", () => {
       "requiredStores",
       "stateChangeSlices",
       "stateViewSlices",
+      "traitDeclarations",
     ])
   })
 
@@ -166,6 +168,7 @@ describe("absent optional collections", () => {
     requiredStores: None,
     requiredStoreDeclarations: None,
     requiredCapabilities: None,
+    traitDeclarations: None,
   }
   let bareJson =
     Platform_PluginStructuresApi.encodePluginStructureEntry(

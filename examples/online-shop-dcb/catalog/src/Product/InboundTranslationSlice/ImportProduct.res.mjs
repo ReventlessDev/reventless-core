@@ -27,6 +27,8 @@ function commandTransition(param) {
   return "Unrestricted";
 }
 
+let traits = [];
+
 let name = "ImportProduct";
 
 let Id;
@@ -47,5 +49,6 @@ export {
   moduleUrl,
   commandAuthorization,
   commandTransition,
+  traits,
 }
 /* externalInputSchema Not a pure module */

@@ -8,6 +8,19 @@ them is written by `Attachments_Scaffold`.
 */
 
 /**
+This trait's own account of itself — see `AddressGeocoding.declaration` for why the
+version is read rather than written.
+
+`WritesBack`: the graft's commands append this trait's facts onto the host's own
+slice, which is what a host grafting it is asking for.
+*/
+let declaration: Reventless.Trait.t = {
+  trait: "@reventlessdev/trait-attachments",
+  version: Reventless.PackageVersion.fromModuleUrl(%raw(`import.meta.url`)),
+  posture: WritesBack,
+}
+
+/**
 The platform capabilities a host of this trait needs: **none**.
 
 Not an oversight and not a placeholder. What this trait needs is an object

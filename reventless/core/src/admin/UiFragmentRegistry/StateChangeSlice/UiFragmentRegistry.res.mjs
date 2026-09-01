@@ -50,6 +50,8 @@ function commandTransition(param) {
   return "Unrestricted";
 }
 
+let traits = [];
+
 let name = "UiFragmentRegistry";
 
 let Id;
@@ -71,5 +73,6 @@ export {
   commandAuthorization,
   readConsistency,
   commandTransition,
+  traits,
 }
 /* commandSchema Not a pure module */

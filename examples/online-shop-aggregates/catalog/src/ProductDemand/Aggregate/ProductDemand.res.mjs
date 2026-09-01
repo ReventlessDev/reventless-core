@@ -37,6 +37,8 @@ function commandTransition(param) {
   return "Unrestricted";
 }
 
+let traits = [];
+
 let name = "ProductDemand";
 
 let Id;
@@ -52,5 +54,6 @@ export {
   moduleUrl,
   commandAuthorization,
   commandTransition,
+  traits,
 }
 /* commandSchema Not a pure module */

@@ -44,6 +44,7 @@ function Make(Platform) {
     commandSchema: CancelOrder$OrderingPlugin.commandSchema,
     commandAuthorization: CancelOrder$OrderingPlugin.commandAuthorization,
     commandTransition: CancelOrder$OrderingPlugin.commandTransition,
+    traits: CancelOrder$OrderingPlugin.traits,
     readConsistency: CancelOrder$OrderingPlugin.readConsistency
   })({
     initialState: CancelOrder_Behavior$OrderingPlugin.initialState,
@@ -61,6 +62,7 @@ function Make(Platform) {
     commandSchema: ChangeAddress$OrderingPlugin.commandSchema,
     commandAuthorization: ChangeAddress$OrderingPlugin.commandAuthorization,
     commandTransition: ChangeAddress$OrderingPlugin.commandTransition,
+    traits: ChangeAddress$OrderingPlugin.traits,
     readConsistency: ChangeAddress$OrderingPlugin.readConsistency
   })({
     initialState: ChangeAddress_Behavior$OrderingPlugin.initialState,
@@ -78,6 +80,7 @@ function Make(Platform) {
     commandSchema: ChangeEmail$OrderingPlugin.commandSchema,
     commandAuthorization: ChangeEmail$OrderingPlugin.commandAuthorization,
     commandTransition: ChangeEmail$OrderingPlugin.commandTransition,
+    traits: ChangeEmail$OrderingPlugin.traits,
     readConsistency: ChangeEmail$OrderingPlugin.readConsistency
   })({
     initialState: ChangeEmail_Behavior$OrderingPlugin.initialState,
@@ -95,6 +98,7 @@ function Make(Platform) {
     commandSchema: DeactivateCustomer$OrderingPlugin.commandSchema,
     commandAuthorization: DeactivateCustomer$OrderingPlugin.commandAuthorization,
     commandTransition: DeactivateCustomer$OrderingPlugin.commandTransition,
+    traits: DeactivateCustomer$OrderingPlugin.traits,
     readConsistency: DeactivateCustomer$OrderingPlugin.readConsistency
   })({
     initialState: DeactivateCustomer_Behavior$OrderingPlugin.initialState,
@@ -112,6 +116,7 @@ function Make(Platform) {
     commandSchema: PlaceOrder$OrderingPlugin.commandSchema,
     commandAuthorization: PlaceOrder$OrderingPlugin.commandAuthorization,
     commandTransition: PlaceOrder$OrderingPlugin.commandTransition,
+    traits: PlaceOrder$OrderingPlugin.traits,
     readConsistency: PlaceOrder$OrderingPlugin.readConsistency
   })({
     initialState: PlaceOrder_Behavior$OrderingPlugin.initialState,
@@ -129,6 +134,7 @@ function Make(Platform) {
     commandSchema: RegisterCustomer$OrderingPlugin.commandSchema,
     commandAuthorization: RegisterCustomer$OrderingPlugin.commandAuthorization,
     commandTransition: RegisterCustomer$OrderingPlugin.commandTransition,
+    traits: RegisterCustomer$OrderingPlugin.traits,
     readConsistency: RegisterCustomer$OrderingPlugin.readConsistency
   })({
     initialState: RegisterCustomer_Behavior$OrderingPlugin.initialState,
@@ -146,6 +152,7 @@ function Make(Platform) {
     commandSchema: ShipOrder$OrderingPlugin.commandSchema,
     commandAuthorization: ShipOrder$OrderingPlugin.commandAuthorization,
     commandTransition: ShipOrder$OrderingPlugin.commandTransition,
+    traits: ShipOrder$OrderingPlugin.traits,
     readConsistency: ShipOrder$OrderingPlugin.readConsistency
   })({
     initialState: ShipOrder_Behavior$OrderingPlugin.initialState,
@@ -163,6 +170,7 @@ function Make(Platform) {
     commandSchema: SyncCatalogProduct$OrderingPlugin.commandSchema,
     commandAuthorization: SyncCatalogProduct$OrderingPlugin.commandAuthorization,
     commandTransition: SyncCatalogProduct$OrderingPlugin.commandTransition,
+    traits: SyncCatalogProduct$OrderingPlugin.traits,
     readConsistency: SyncCatalogProduct$OrderingPlugin.readConsistency
   })({
     initialState: SyncCatalogProduct_Behavior$OrderingPlugin.initialState,
@@ -234,7 +242,8 @@ function Make(Platform) {
     targetName: undefined,
     sourceNames: SendOrderConfirmation$OrderingPlugin.sourceNames,
     externalSystem: SendOrderConfirmation$OrderingPlugin.externalSystem,
-    capabilityNeeds: SendOrderConfirmation$OrderingPlugin.capabilityNeeds
+    capabilityNeeds: SendOrderConfirmation$OrderingPlugin.capabilityNeeds,
+    traits: SendOrderConfirmation$OrderingPlugin.traits
   })({
     collect: SendOrderConfirmation_Translation$OrderingPlugin.collect,
     translate: SendOrderConfirmation_Translation$OrderingPlugin.translate,
@@ -257,7 +266,8 @@ function Make(Platform) {
       commandSchema: Orders_ExtensionPointMapping$OrderingPlugin.Delegate.commandSchema,
       moduleUrl: Orders_ExtensionPointMapping$OrderingPlugin.Delegate.moduleUrl,
       commandAuthorization: Orders_ExtensionPointMapping$OrderingPlugin.Delegate.commandAuthorization,
-      commandTransition: Orders_ExtensionPointMapping$OrderingPlugin.Delegate.commandTransition
+      commandTransition: Orders_ExtensionPointMapping$OrderingPlugin.Delegate.commandTransition,
+      traits: Orders_ExtensionPointMapping$OrderingPlugin.Delegate.traits
     },
     moduleUrl: Orders_ExtensionPointMapping$OrderingPlugin.moduleUrl,
     mapIncomingCommand: Orders_ExtensionPointMapping$OrderingPlugin.mapIncomingCommand,
@@ -281,7 +291,8 @@ function Make(Platform) {
       commandSchema: SyncCatalogProduct$OrderingPlugin.commandSchema,
       moduleUrl: SyncCatalogProduct$OrderingPlugin.moduleUrl,
       commandAuthorization: SyncCatalogProduct$OrderingPlugin.commandAuthorization,
-      commandTransition: SyncCatalogProduct$OrderingPlugin.commandTransition
+      commandTransition: SyncCatalogProduct$OrderingPlugin.commandTransition,
+      traits: SyncCatalogProduct$OrderingPlugin.traits
     },
     moduleUrl: Products_Extension$OrderingPlugin.Mapping.moduleUrl,
     delegateModuleUrl: Products_Extension$OrderingPlugin.Mapping.delegateModuleUrl,
@@ -319,7 +330,8 @@ function Make(Platform) {
         commandSchema: Orders_ExtensionPointMapping$OrderingPlugin.Delegate.commandSchema,
         moduleUrl: Orders_ExtensionPointMapping$OrderingPlugin.Delegate.moduleUrl,
         commandAuthorization: Orders_ExtensionPointMapping$OrderingPlugin.Delegate.commandAuthorization,
-        commandTransition: Orders_ExtensionPointMapping$OrderingPlugin.Delegate.commandTransition
+        commandTransition: Orders_ExtensionPointMapping$OrderingPlugin.Delegate.commandTransition,
+        traits: Orders_ExtensionPointMapping$OrderingPlugin.Delegate.traits
       },
       moduleUrl: Orders_ExtensionPointMapping$OrderingPlugin.moduleUrl,
       mapIncomingCommand: Orders_ExtensionPointMapping$OrderingPlugin.mapIncomingCommand,

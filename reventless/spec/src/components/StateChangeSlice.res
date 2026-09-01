@@ -99,6 +99,14 @@ module type Spec = {
       See `Transition`. */
   let commandTransition: command => Transition.t<lifecycleState>
 
+  /** The domain traits grafted into this component, as values the trait packages
+      export — `[TraitAttachments.Attachments.declaration]`. Auto-injected as `[]`
+      by `@@reventless.spec`, so a component that is nobody's graft says so without
+      a line. A graft names its trait here and the structure records it, which is
+      the only way a deployed plugin can answer "where did this come from". See
+      `Trait`. */
+  let traits: array<Trait.t>
+
   /** Decision-read consistency mode for this slice's optimistic-concurrency
       retry loop. Auto-injected by `@@reventless.spec` and on
       structurally-detected inline spec modules — defaults to

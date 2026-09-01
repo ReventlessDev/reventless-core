@@ -479,6 +479,8 @@ let sendSpec = (c: config): string => {
     `// Declared, so a deployment that provisions no sender fails rather than queueing`,
     `// every message until it is abandoned.`,
     `let capabilityNeeds = TraitNotification.Notification.capabilityNeeds`,
+    `// The graft's own record of itself — see the trait's \`declaration\`.`,
+    `let traits = [TraitNotification.Notification.declaration]`,
     ``,
   ])
 }
@@ -727,6 +729,7 @@ let contactRelayPatch = (c: config): patch => {
             `// No external box: this slice reaches nothing outside the plugin.`,
             `let externalSystem = None`,
             `let capabilityNeeds: array<Reventless.CapabilityNeed.t> = []`,
+            `let traits = [TraitNotification.Notification.declaration]`,
             ``,
             `// ── ${n.relay}_Translation.res ──`,
             ``,

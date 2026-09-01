@@ -26,6 +26,8 @@ function commandTransition(param) {
   return "Unrestricted";
 }
 
+let traits = [];
+
 let name = "NotificationIntake";
 
 let Id;
@@ -49,5 +51,6 @@ export {
   moduleUrl,
   commandAuthorization,
   commandTransition,
+  traits,
 }
 /* todoItemSchema Not a pure module */

@@ -106,6 +106,7 @@ let structure: pluginStructure = {
   requiredStores: None,
   requiredStoreDeclarations: None,
   requiredCapabilities: None,
+  traitDeclarations: None,
 }
 
 let encoded = Platform_ComponentDefinitionsApi.encodePluginStructureEntry(
@@ -404,6 +405,7 @@ describe("allowedStates + lifecycleField populated", () => {
     requiredStores: None,
     requiredStoreDeclarations: None,
     requiredCapabilities: None,
+    traitDeclarations: None,
   }
 
   let json =

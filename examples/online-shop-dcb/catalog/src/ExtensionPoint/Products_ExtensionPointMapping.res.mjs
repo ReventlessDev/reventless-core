@@ -30,6 +30,8 @@ function commandTransition(param) {
   return "Unrestricted";
 }
 
+let traits = [];
+
 let Delegate = {
   Id: undefined,
   commandSchema: commandSchema,
@@ -38,7 +40,8 @@ let Delegate = {
   errorSchema: errorSchema,
   moduleUrl: "@reventlessdev/online-shop-dcb-catalog/src/ExtensionPoint/Products_ExtensionPointMapping.res.mjs",
   commandAuthorization: commandAuthorization,
-  commandTransition: commandTransition
+  commandTransition: commandTransition,
+  traits: traits
 };
 
 function mapIncomingCommand(_id, _command, _meta) {

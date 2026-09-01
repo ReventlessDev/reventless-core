@@ -149,6 +149,7 @@ module NoDelegate = {
     AllowAuthenticated
   type lifecycleState = unit
   let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> => Unrestricted
+  let traits: array<Reventless.Trait.t> = []
 }
 
 
