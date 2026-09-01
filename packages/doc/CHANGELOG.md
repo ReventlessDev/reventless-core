@@ -718,6 +718,8 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-09-02
+- refactor(spec): a command's lifecycle edge is declared one way ([dbf4a97](https://github.com/ReventlessDev/reventless-core/commit/dbf4a97194c9445cbf92fedbf0ea629a7e266ebf))
 ### 2026-09-01
 - feat(spec): a command declares its lifecycle edge as a value ([40eee9f](https://github.com/ReventlessDev/reventless-core/commit/40eee9f7723dc05e418be680528f01967d074da4))
 - feat(plugin): refuse two DCB slices that declare one command name ([8c6ec39](https://github.com/ReventlessDev/reventless-core/commit/8c6ec39cb3c6768446f46d0fc6dc04c256e2e9d9))
