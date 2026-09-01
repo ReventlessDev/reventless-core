@@ -13,7 +13,7 @@
 // view's own rows so a card never shows no image while the set holds one.
 let withPrimary = (state: {{View}}.state, chosen: option<string>) => {
   ...state,
-  {{file}}: ?TraitFileAttachmentSet.FileAttachmentSet_Rules.primaryOf(
+  {{file}}: ?TraitAttachments.Attachments_Rules.primaryOf(
     ~chosen,
     ~attached=state.{{file}}s->Array.map(a => a.{{file}}),
   ),

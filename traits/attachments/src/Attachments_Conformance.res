@@ -3,14 +3,14 @@ The conformance suite, run by a host against its own graft. `Make(Binding).regis
 inside a Jest test file registers one `describe` block over the binding.
 */
 
-module Make = (B: FileAttachmentSet.Binding) => {
+module Make = (B: Attachments.Binding) => {
   module G = ReventlessGwt.Behavior_GWT.Make(B.Spec, B.Behavior)
 
   let withA = Array.concat(B.created, [B.attachedC(B.refA)])
   let withAB = Array.concat(withA, [B.attachedC(B.refB)])
 
   let register = () =>
-    G.describe(`${B.Spec.name} conforms to the attachment-set trait`, () => {
+    G.describe(`${B.Spec.name} conforms to the attachments trait`, () => {
       G.test("the first attachment is appended", () =>
         G.givenEvents(B.created)->G.whenCmd(B.attach(B.refA))->G.thenEvent(B.attached(B.refA))
       )

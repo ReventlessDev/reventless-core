@@ -1,9 +1,9 @@
 /**
-The host contract of the attachment-set trait: an ordered set of stored files on
+The host contract of the attachments trait: an ordered set of stored files on
 an entity, with a primary and a caption per member. Unlike the geocoding trait this
 one writes nothing back — the graft *is* a StateChangeSlice of the host — so the
-contract is over that slice. The rules live in `FileAttachmentSet_Rules` and are asserted
-through a host by `FileAttachmentSet_Conformance`; the spec surface the host maps onto
+contract is over that slice. The rules live in `Attachments_Rules` and are asserted
+through a host by `Attachments_Conformance`; the spec surface the host maps onto
 them is scaffolded from `spec-fragments/`.
 */
 

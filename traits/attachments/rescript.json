@@ -1,10 +1,10 @@
 {
-  "name": "@reventlessdev/trait-file-attachment-set",
+  "name": "@reventlessdev/trait-attachments",
   "package-specs": {
     "module": "esmodule",
     "in-source": true
   },
-  "namespace": "TraitFileAttachmentSet",
+  "namespace": "TraitAttachments",
   "warnings": {
     "error": "-44+101"
   },

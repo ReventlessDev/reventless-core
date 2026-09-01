@@ -2,7 +2,7 @@
 
 // The set's rules are the trait's; what is left here is the shelf refusal and the
 // mapping between this host's constructors and the trait's ops and facts.
-module Attachments = TraitFileAttachmentSet.FileAttachmentSet_Rules
+module Attachments = TraitAttachments.Attachments_Rules
 
 type shelf = Listed | Archived | Discontinued
 

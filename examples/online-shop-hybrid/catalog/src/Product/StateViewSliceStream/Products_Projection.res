@@ -4,7 +4,7 @@
 // view's own rows so a card never shows no image while the set holds one.
 let withPrimary = (state: Products.state, chosen: option<string>) => {
   ...state,
-  productImage: ?TraitFileAttachmentSet.FileAttachmentSet_Rules.primaryOf(
+  productImage: ?TraitAttachments.Attachments_Rules.primaryOf(
     ~chosen,
     ~attached=state.productImages->Array.map(a => a.productImage),
   ),

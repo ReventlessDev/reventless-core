@@ -35,7 +35,7 @@ aggregate arms, the `GeocodeCustomerAddress` slice and the `Customers` geolocati
 field follow its templates, and
 `ordering/tests/Customer/AddressGeocodingConformance_GWT.res` binds `Customer` to the
 trait's conformance suite. Likewise the catalog's `ProductImages` and `CategoryImages`
-slices are grafts of `@reventlessdev/trait-file-attachment-set` (`traits/file-attachment-set`),
+slices are grafts of `@reventlessdev/trait-attachments` (`traits/attachments`),
 each bound to its suite in `catalog/tests/*/…Conformance_GWT.res`.
 
 ## Run it locally
