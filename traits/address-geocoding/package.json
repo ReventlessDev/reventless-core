@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/trait-address-geocoding",
-  "version": "1.0.0-alpha.1",
+  "version": "1.0.0-alpha.2",
   "description": "Address-geocoding domain trait: rules, host contract, conformance suite and emitter for grafting geocoding onto an aggregate",
   "license": "Apache-2.0",
   "files": [

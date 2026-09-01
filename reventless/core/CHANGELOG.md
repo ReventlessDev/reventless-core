@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.253 (2026-09-01)
+
+**Note:** Version bump only for package @reventlessdev/reventless-core
+
+
+
+
+
 # 3.0.0-alpha.252 (2026-09-01)
 
 ### Bug Fixes

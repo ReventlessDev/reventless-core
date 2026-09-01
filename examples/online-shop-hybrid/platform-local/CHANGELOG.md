@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.246 (2026-09-01)
+
+### Bug Fixes
+
+* **deps:** follow the host UI to 3.0.0-alpha.92 ([2192e0a](https://github.com/ReventlessDev/reventless-core/commit/2192e0afe6e482e26c7ba1e2b8a9518dec17037d))
+
+
 # 1.0.0-alpha.245 (2026-09-01)
 
 * feat(example)!: model product and category images as attachment sets ([6ae18d8](https://github.com/ReventlessDev/reventless-core/commit/6ae18d896215b448177ba0516e74bfda5f88d2db))
