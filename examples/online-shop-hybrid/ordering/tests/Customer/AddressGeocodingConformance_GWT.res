@@ -29,7 +29,7 @@ module Binding = {
     GeocodeCustomerAddress.Registered({email: "alice@x.y", address}),
     GeocodeCustomerAddress.AddressUpdated({address: address}),
   ]
-  let standsDownOn = ["AddressLocated"]
+  let standsDownOn = [Customer.AddressLocated({address: subjectA, location: {lat: 0.0, lng: 0.0}})]
   let isLocation = (cmd: GeocodeCustomerAddress.inboundCommand) =>
     switch cmd {
     | SetLocation(_) => true

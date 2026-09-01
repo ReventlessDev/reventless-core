@@ -50,7 +50,14 @@ module Make = (B: AddressGeocoding.Binding) => {
         e->Reventless.Message.encode(B.Slice.consumedEventSchema)->Reventless.Message.variantNameOfJson
       )
       ->sorted
-    let widened = consumed->Array.some(t => B.standsDownOn->Array.includes(t))
+    // Encoded through the aggregate's own schema, so a stand-down event is a
+    // constructor the compiler checked rather than a name that merely looks like
+    // one. Compared on variant names because that is what a consumed set holds.
+    let standsDownOn =
+      B.standsDownOn->Array.map(e =>
+        e->Reventless.Message.encode(B.Spec.eventSchema)->Reventless.Message.variantNameOfJson
+      )
+    let widened = consumed->Array.some(t => standsDownOn->Array.includes(t))
     if consumed == triggers && !widened {
       Outcome.pass
     } else {

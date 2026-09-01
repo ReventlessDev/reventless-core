@@ -62,7 +62,8 @@ function Make(B) {
   let consumedSetMatchesTriggers = () => {
     let consumed = sorted(DcbDecode$Reventless.makeDecoder(B.Slice.consumedEventSchema).eventTypes);
     let triggers = sorted(B.triggers(B.subjectA).map(e => Message$Reventless.variantNameOfJson(Message$Reventless.encode(e, B.Slice.consumedEventSchema))));
-    let widened = consumed.some(t => B.standsDownOn.includes(t));
+    let standsDownOn = B.standsDownOn.map(e => Message$Reventless.variantNameOfJson(Message$Reventless.encode(e, B.Spec.eventSchema)));
+    let widened = consumed.some(t => standsDownOn.includes(t));
     if (Primitive_object.equal(consumed, triggers) && !widened) {
       return Outcome$ReventlessGwt.pass;
     } else {

@@ -60,9 +60,15 @@ module type Binding = {
   /** One consumed event per trigger, carrying `subject`. Every event type the slice
       consumes must appear here — the consumed set may not be wider than its triggers. */
   let triggers: subject => array<Slice.consumedEvent>
-  /** Event type names the host emits when address and point arrive together. The
-      slice must not consume them: that is the stand-down. */
-  let standsDownOn: array<string>
+  /** The host events that carry address and point together. The slice must not
+      consume them: that is the stand-down.
+
+      Real events rather than their type names. A name is a string the compiler
+      never sees, so a misspelling here does not fail — it names an event that
+      cannot be in any consumed set, and the assertion passes for the wrong
+      reason, which is the one outcome a conformance suite must not have. The
+      runner encodes these itself. */
+  let standsDownOn: array<Spec.event>
   let isLocation: Slice.inboundCommand => bool
   let isVerdict: Slice.inboundCommand => bool
 }
