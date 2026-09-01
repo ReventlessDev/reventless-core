@@ -113,12 +113,19 @@ trait's constructors fix the word `Address` and the type `string`; a host that c
 the field something else, or types it differently, declares its own arms instead and
 gets the same rules, the same contract and the same conformance suite.
 
-Why this works for an aggregate and not for a DCB slice: an aggregate's event stream
-is entity-scoped and its commands dispatch per component channel, so two aggregates
-can and do share an event name. A DCB plugin has one flat namespace for commands and
-for events, and **both names are routing keys** — a query selects on the event type
-name, a command is routed by its tag — so a trait that shipped constructors there
-would collide with the next host that used it.
+Why this works for an aggregate and not for a DCB slice: in a DCB plugin a command
+name and an event name are **routing keys over the whole plugin**, while in the
+aggregate approach they are scoped to the component that declares them. A spread
+cannot rename what it splices, so a trait shipping constructors into a DCB slice
+would put its own fixed names into that shared namespace and collide with the next
+host — which is exactly why the emitter writes them instead, host-qualified
+(`AttachProductImage` / `AttachCategoryImage`), and why one trait can be grafted
+onto two entities of the same plugin.
+
+[Aggregate vs DCB: Naming](./aggregate-vs-dcb-decision-guide.md#naming-what-a-name-means-in-each-approach)
+has the mechanism, including the part that matters if you ever consider qualifying
+those names: commands and events are both routing keys for *opposite* reasons, and
+only one of them could be changed.
 
 ### Emit
 

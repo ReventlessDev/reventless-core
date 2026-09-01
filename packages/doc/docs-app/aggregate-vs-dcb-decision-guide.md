@@ -292,6 +292,80 @@ Does the command need state from multiple entity types?
 
 ---
 
+## Naming: what a name means in each approach
+
+The last table says a DCB plugin has one shared CommandTopic and one shared
+EventTopic where the aggregate approach has one of each per aggregate. That is a
+deployment fact with a modelling consequence people meet late, so it is worth
+saying directly:
+
+> **In a DCB plugin, a command name and an event name are routing keys, and the
+> namespace is the whole plugin. In the aggregate approach they are scoped to the
+> component that declares them.**
+
+### What that changes
+
+**Aggregates may repeat each other's names.** Commands are addressed per component
+channel, and an aggregate's event stream is entity-scoped — consumers bind the
+source module (`Mapping.Make(Product, …)`) rather than matching a bare name. So
+`Category.Added` and `Product.Added` coexist in the shipped aggregates example and
+nobody has to think about it.
+
+**DCB slices may not.** The runtime builds one `handlersByType` map across every
+StateChangeSlice in the plugin and dispatches on the incoming command's TAG alone.
+A DCB query selects on the event type name the same way.
+
+**The GraphQL surface shows the difference**, which is usually where it is first
+noticed:
+
+```graphql
+Ordering_Customer_Register(...)   # aggregate: plugin, component, command
+Ordering_Subscribe(...)           # DCB slice: plugin, command
+```
+
+### Commands and events are not the same case
+
+They are both routing keys, but for opposite reasons, and it matters if you ever
+consider qualifying them:
+
+- A **command** has exactly one handler by definition. Its flat namespace is an
+  implementation choice, and a duplicate is simply a bug.
+- An **event** has as many readers as care to consume it — `PlaceOrder` reads
+  `CatalogProductSynced`, produced by a different slice entirely. **A flat event
+  namespace is what a dynamic consistency boundary *is*.** Qualifying event names
+  by component would couple every reader to its producer, which is the thing DCB
+  exists not to do.
+
+So the two constraints feel alike and are not: one is a detail, the other is the
+model.
+
+### What a duplicate command name does
+
+Nothing, at first. The second registration overwrites the first and the plugin
+deploys; the losing slice is simply never reached, and the runtime notices only
+later, when it goes to stamp owner fields on a command it cannot attribute.
+
+The plugin structure therefore **refuses it at build time**, naming the command
+and both slices. Aggregates are exempt and are not checked.
+
+### How to avoid it
+
+Qualify names you might repeat, with whatever the slice is about:
+
+```
+AttachProductImage   ProductImageAttached   ProductImages
+AttachCategoryImage  CategoryImageAttached  CategoryImages
+```
+
+That is not a style rule invented for this page — it is what the
+[domain traits](./domain-traits.md) emitters do, and it is why one trait can be
+grafted onto two entities of the same plugin. It is also the reason a trait cannot
+hand a DCB slice its own constructors the way it can hand them to an aggregate: a
+spread cannot rename what it splices, so the trait's fixed names would land in the
+plugin-wide namespace and collide with the next host.
+
+---
+
 ## Reference: Component Mapping
 
 | Aggregate Approach | DCB Approach | Purpose |

@@ -1061,6 +1061,49 @@ let make = (
     }
   }
 
+  // ── One command name, one handler ──────────────────────────────────────────
+  //
+  // A DCB plugin routes a command by its bare type name: the runtime builds
+  // `handlersByType[typeName]` across every StateChangeSlice in the plugin and
+  // dispatches on the incoming command's TAG alone. Two slices declaring one name
+  // therefore have one handler between them — the second registration overwrites
+  // the first, and the plugin deploys.
+  //
+  // Refused here rather than logged there. The runtime notices only when it goes
+  // to stamp owner fields, by which point the deploy has succeeded and the losing
+  // slice is silently unreachable; a name is a compile-time fact and this is the
+  // last place that can see all of them at once.
+  //
+  // Aggregates are exempt and are not checked: their commands are addressed per
+  // component channel, so two aggregates sharing a command name is ordinary.
+  let dcbCommandOwners: dict<array<string>> = Dict.make()
+  stateChangeSlices->Array.forEach((module(SCS: ReventlessInfra.StateChangeSlice.T)) =>
+    Reventless.DcbTag.extractAllVariantNames(
+      SCS.Spec.commandSchema->S.castToUnknown,
+    )->Array.forEach(cmd => {
+      let owners = dcbCommandOwners->Dict.get(cmd)->Option.getOr([])
+      dcbCommandOwners->Dict.set(cmd, Array.concat(owners, [SCS.Spec.name]))
+    })
+  )
+  let clashes =
+    dcbCommandOwners
+    ->Dict.toArray
+    ->Array.filter(((_, owners)) => owners->Array.length > 1)
+    ->Array.toSorted((((a, _)), ((b, _))) => String.compare(a, b))
+  if clashes->Array.length > 0 {
+    JsError.throwWithMessage(
+      `${name}: ` ++
+      clashes
+      ->Array.map((((cmd, owners))) =>
+        `${owners->Array.join(" and ")} both declare the command "${cmd}"`
+      )
+      ->Array.join("; ") ++
+      `.\n  A DCB plugin routes a command by its bare name, so one of these would never run. ` ++
+      `Qualify them — the shipped traits' emitters prefix every name with the host they are ` ++
+      `grafted onto, for exactly this reason.`,
+    )
+  }
+
   // One list feeds both the store collection and the lint below, so a field is
   // read exactly once by either.
   let storeDeclarationSites: array<(string, S.t<unknown>)> =

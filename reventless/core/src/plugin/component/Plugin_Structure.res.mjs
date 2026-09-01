@@ -792,6 +792,17 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       return Primitive_string.compare(a.field, b.field);
     }
   };
+  let dcbCommandOwners = {};
+  stateChangeSlices.forEach(SCS => {
+    DcbTag$Reventless.extractAllVariantNames(SCS.Spec.commandSchema).forEach(cmd => {
+      let owners = Stdlib_Option.getOr(dcbCommandOwners[cmd], []);
+      dcbCommandOwners[cmd] = owners.concat([SCS.Spec.name]);
+    });
+  });
+  let clashes = Object.entries(dcbCommandOwners).filter(param => param[1].length > 1).toSorted((param, param$1) => Primitive_string.compare(param[0], param$1[0]));
+  if (clashes.length !== 0) {
+    Stdlib_JsError.throwWithMessage(name + `: ` + clashes.map(param => param[1].join(" and ") + ` both declare the command "` + param[0] + `"`).join("; ") + `.\n  A DCB plugin routes a command by its bare name, so one of these would never run. Qualify them — the shipped traits' emitters prefix every name with the host they are grafted onto, for exactly this reason.`);
+  }
   let storeDeclarationSites = [
     aggregates.flatMap(A => [
       [

@@ -1893,3 +1893,54 @@ describe("the subscriber's half of the table", () => {
     )->toBe(1)
   )
 })
+
+// ── One command name, one handler ────────────────────────────────────────────
+//
+// A DCB plugin routes a command by its bare type name, so two slices declaring
+// one name have one handler between them. The runtime notices only when it goes
+// to stamp owner fields — by which point the deploy has succeeded and the losing
+// slice is silently unreachable — so the structure refuses it instead.
+
+describe("duplicate DCB command names", () => {
+  // The same slice twice is the smallest possible collision, and it needs no
+  // fixture that exists only to collide.
+  testSync("two slices declaring one command are refused", () =>
+    expect(
+      switch Plugin_Structure.make(
+        ~name="TestPlugin",
+        ~stateChangeSlices=[module(PsShipOrderSlice), module(PsShipOrderSlice)],
+      ) {
+      | _ => false
+      | exception _ => true
+      },
+    )->toBe(true)
+  )
+
+  testSync("the refusal names the command and both slices", () =>
+    switch Plugin_Structure.make(
+      ~name="TestPlugin",
+      ~stateChangeSlices=[module(PsShipOrderSlice), module(PsShipOrderSlice)],
+    ) {
+    | _ => expect("no refusal")->toBe("a refusal naming the command")
+    | exception JsExn(e) =>
+      let message = e->JsExn.message->Option.getOr("")
+      expect((
+        message->String.includes("ShipOrder"),
+        message->String.includes("routes a command by its bare name"),
+      ))->toEqual((true, true))
+    }
+  )
+
+  // Distinct names are the ordinary case and must stay silent.
+  testSync("distinct command names are fine", () =>
+    expect(
+      switch Plugin_Structure.make(
+        ~name="TestPlugin",
+        ~stateChangeSlices=[module(PsPlaceOrderSlice), module(PsShipOrderSlice)],
+      ) {
+      | _ => true
+      | exception _ => false
+      },
+    )->toBe(true)
+  )
+})
