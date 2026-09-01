@@ -1,8 +1,8 @@
 # Plan: the product attachment set, and the attachment traits
 
 > 📌 **[2026-08-31] The two parts are now two separate traits with separate names.** Part A shipped
-> as `@reventlessdev/trait-file-attachment-set` (`traits/file-attachment-set`, namespace
-> `TraitFileAttachmentSet`) — an attachment *set*, which reads no bytes. Part B, scanning and
+> as `@reventlessdev/trait-attachments` (`traits/attachments`, namespace
+> `TraitAttachments`) — an attachment *set*, which reads no bytes. Part B, scanning and
 > retention, keeps the `FileAttachment` name every analysis uses for it and is unbuilt. This file
 > stays whole because the split it makes in §1 is the reason the two names exist.
 
@@ -75,7 +75,7 @@ picture is not a set.
 - **A4 — gallery UI.** `GalleryView`, the auto-mode and `StatusBadge` exist, so this is wiring:
   gallery with primary selection and alt-text entry, replacing the single-image control.
 - **A5 — extract.** Strip the woven-in implementation, watch the example fail its own GWTs, then
-  bring it back as a consumption of `@reventlessdev/trait-file-attachment-set`. Never both
+  bring it back as a consumption of `@reventlessdev/trait-attachments`. Never both
   implementations side by side.
 
 Exit: products and categories carry multi-image sets with a primary and alt text; the gallery
@@ -102,7 +102,7 @@ their image, and `ChangeProductImage` / `ChangeCategoryImage` are gone.
   one field of the store* (`AutoSetterCommand`, tier 2) — with four such commands on the slice it
   abstains, so an empty tile no longer opens an upload. A declared setter (`x-reventless-setter`)
   has no core-side annotation yet; that is the fix on this side.
-- **A5 / D1** — `traits/file-attachment-set` (`@reventlessdev/trait-file-attachment-set`), Shape A again:
+- **A5 / D1** — `traits/attachments` (`@reventlessdev/trait-attachments`), Shape A again:
   `module type Binding` over an abstract `ref` and a StateChangeSlice host; a 14-assertion
   conformance suite green against **both** hosts (R3 answered); three templates. No posture flag —
   this competency is self-contained, the fork the extraction plan anticipated. In the pack check.
@@ -111,7 +111,7 @@ their image, and `ChangeProductImage` / `ChangeCategoryImage` are gone.
   catalog command as "declares no lifecycle field").
 
 **Still to do from Part A:** the alpha wipe itself is a deploy step (`seed:reset`) after this
-lands, and the two UI limits above. The set's rules moved into a trait-owned `FileAttachmentSet_Rules`
+lands, and the two UI limits above. The set's rules moved into a trait-owned `Attachments_Rules`
 both hosts call on 2026-08-31 — [trait-rules-as-modules.md](./done/trait-rules-as-modules.md).
 
 ## 4. Part B — scan and retention (gated)
