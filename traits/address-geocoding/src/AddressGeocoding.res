@@ -24,6 +24,49 @@ no error. A host that spells this reaches a deploy-time refusal instead.
 */
 let capabilityNeeds: array<Reventless.CapabilityNeed.t> = [Geocoding]
 
+/**
+The four facts the graft appends, as real constructors a host splices into its own
+event type:
+
+```rescript
+type event =
+  | Registered({email: string, address: string})
+  | ...TraitAddressGeocoding.AddressGeocoding.events
+  | Deactivated
+```
+
+The host's `evolve` then matches `LocationSet`, `AddressUpdated` and the rest
+unqualified, and sury splices the schema flat — the wire format and the generated
+GraphQL are identical to hand-written arms, not nested. This is what a spread
+replaces: four declarations that every host copied and could mistype.
+
+**Concrete, where `Binding` is abstract.** `Binding.subject` is abstract so the
+trait's *rules* hold for any address-shaped thing; these constructors fix
+`address: string` and fix the word "Address", because a spread cannot rename what
+it splices. A host whose subject is not a string, or that calls it something else,
+does not spread — it applies the spec fragment and keeps its own vocabulary. The
+rules, the contract and the conformance suite are the same either way.
+
+Aggregate state is deliberately not here: it is snapshotted, so a trait-owned
+record inside it would turn every reshaping release into a migration.
+*/
+@schema
+type events =
+  /** A new address invalidates what was resolved, which is what puts the row back
+      in front of the slice. */
+  | AddressUpdated({address: string})
+  /** `resolvedFrom` is provenance, not the address of record; it is what makes "is
+      the pin still current?" decidable rather than assumed. */
+  | LocationSet({location: Reventless.GeoPoint.t, resolvedFrom: string})
+  /** Both halves from a client. Deliberately not `AddressUpdated` + `LocationSet`:
+      the slice collects the former, so emitting it here would spend a request
+      re-geocoding an address a human just pinned, then race the machine's answer
+      against theirs. This event is not in the slice's consumed set — the stand-down. */
+  | AddressLocated({address: string, location: Reventless.GeoPoint.t})
+  /** A fact, not an absence: `location: None` already means "not looked up yet",
+      and one state meaning two things is one nobody can act on. */
+  | AddressUnresolvable({address: string, reason: string})
+
 /** One host, bound. Written over an abstract `subject` (the address) so retyping it
     is a re-instantiation of this module, not a break in the trait. */
 module type Binding = {

@@ -3,6 +3,7 @@
 import * as Sury from "sury";
 import * as Api$ReventlessInfra from "@reventlessdev/reventless-infra/src/components/Api.res.mjs";
 import * as GeoPoint$Reventless from "@reventlessdev/reventless-spec/src/semantic/GeoPoint.res.mjs";
+import * as AddressGeocoding$TraitAddressGeocoding from "@reventlessdev/trait-address-geocoding/src/AddressGeocoding.res.mjs";
 
 let commandSchema = Sury.union([
   Sury.$schema(s => ({
@@ -47,28 +48,9 @@ let eventSchema = Sury.union([
     TAG: "EmailUpdated",
     email: s.m(Sury.string)
   })),
-  Sury.$schema(s => ({
-    TAG: "AddressUpdated",
-    address: s.m(Sury.string)
-  })),
-  Sury.$schema(s => ({
-    TAG: "LocationSet",
-    location: s.m(GeoPoint$Reventless.schema),
-    resolvedFrom: s.m(Sury.string)
-  })),
-  Sury.$schema(s => ({
-    TAG: "AddressLocated",
-    address: s.m(Sury.string),
-    location: s.m(GeoPoint$Reventless.schema)
-  })),
-  Sury.$schema(s => ({
-    TAG: "AddressUnresolvable",
-    address: s.m(Sury.string),
-    reason: s.m(Sury.string)
-  })),
   Sury.literal("Deactivated"),
   Sury.literal("Reactivated")
-]);
+].concat(AddressGeocoding$TraitAddressGeocoding.eventsSchema.type === "anyOf" ? AddressGeocoding$TraitAddressGeocoding.eventsSchema.anyOf : [AddressGeocoding$TraitAddressGeocoding.eventsSchema]));
 
 let errorSchema = Sury.union([
   Sury.literal("CustomerAlreadyRegistered"),

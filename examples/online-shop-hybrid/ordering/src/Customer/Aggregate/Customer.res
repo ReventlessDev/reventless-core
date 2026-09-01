@@ -70,22 +70,11 @@ type command =
 type event =
   | Registered({email: string, address: string})
   | EmailUpdated({email: string})
-  | AddressUpdated({address: string})
-  // `resolvedFrom` is the address this point was derived from — provenance, not
-  // the address of record. Keeping it separate is what makes "is the pin still
-  // current?" a decidable question instead of an assumption, and it is what the
-  // slice reads to know whether an address still needs geocoding.
-  | LocationSet({location: Reventless.GeoPoint.t, resolvedFrom: string})
-  // A client supplied both halves at once. Deliberately *not* `AddressUpdated` +
-  // `LocationSet`: the geocoding slice collects `AddressUpdated`, so emitting it
-  // here would spend a request re-geocoding an address a human just pinned by
-  // hand, then race the machine's answer against theirs. This event is not in
-  // the slice's consumed set, so the slice stands down.
-  | AddressLocated({address: string, location: Reventless.GeoPoint.t})
-  // The geocoder answered and had nothing usable. A fact rather than an absence:
-  // `location: None` already means "not looked up yet", and one state meaning
-  // two things is one nobody can act on.
-  | AddressUnresolvable({address: string, reason: string})
+  // The geocoding graft's four facts, spliced from the trait rather than copied:
+  // `AddressUpdated`, `LocationSet`, `AddressLocated`, `AddressUnresolvable`.
+  // They are matched unqualified below and in the projections, and sury splices
+  // the schema flat, so the wire format is what hand-written arms produced.
+  | ...TraitAddressGeocoding.AddressGeocoding.events
   | Deactivated
   | Reactivated
 

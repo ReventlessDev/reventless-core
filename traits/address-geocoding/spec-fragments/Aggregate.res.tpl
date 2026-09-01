@@ -19,6 +19,18 @@
   | @noApi Mark{{Subject}}Unresolvable({ {{subject}}: string, reason: string})
 
 // --- event arms --------------------------------------------------------------
+// A host whose subject is a `string` called "address" does not paste these: it
+// splices the trait's own constructors and gets all four, with their annotations
+// and their schema, from one line.
+//
+//   | ...TraitAddressGeocoding.AddressGeocoding.events
+//
+// `evolve` and the projections then match them unqualified, exactly as below, and
+// sury splices the schema flat — the wire format is what these arms produced.
+//
+// Paste them only when the spread cannot serve: a subject that is not a `string`,
+// or a host that calls it something other than "address". A spread cannot rename
+// what it splices.
   | {{Subject}}Updated({ {{subject}}: string})
   // `resolvedFrom` is provenance, not the {{subject}} of record; it is what makes
   // "is the pin still current?" decidable.
