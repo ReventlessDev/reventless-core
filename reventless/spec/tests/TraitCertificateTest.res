@@ -77,3 +77,37 @@ describe("TraitCertificate", () => {
     )
   })
 })
+
+// The manifest's one piece of inference: which config fields a graft must be
+// given. Read off the emitter's own schema rather than listed by hand, so a
+// field added there appears without anyone remembering to say so.
+
+@schema
+type sampleConfig = {
+  entity: string,
+  noun: string,
+  authorize?: string,
+  refA?: string,
+}
+
+describe("TraitManifest.configFieldsOf", () => {
+  let fields = TraitManifest.configFieldsOf(sampleConfigSchema->S.castToUnknown)
+
+  testSync("every declared field is listed, sorted by name", () =>
+    expect(fields->Array.map(f => f.name))->toEqual(["authorize", "entity", "noun", "refA"])
+  )
+
+  // The half worth asserting: sury models `?` as a union with undefined, and
+  // reading that wrong would publish an optional field as mandatory — a listing
+  // telling a consumer to supply something the emitter defaults.
+  testSync("an optional field is not required", () =>
+    expect(fields->Array.filter(f => !f.required)->Array.map(f => f.name))->toEqual([
+      "authorize",
+      "refA",
+    ])
+  )
+
+  testSync("a schema that is not an object yields nothing rather than throwing", () =>
+    expect(TraitManifest.configFieldsOf(S.string->S.castToUnknown))->toEqual([])
+  )
+})

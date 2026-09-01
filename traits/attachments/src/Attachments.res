@@ -7,6 +7,18 @@ through a host by `Attachments_Conformance`; the spec surface the host maps onto
 them is written by `Attachments_Scaffold`.
 */
 
+/**
+The platform capabilities a host of this trait needs: **none**.
+
+Not an oversight and not a placeholder. What this trait needs is an object
+*store*, and a store need is declared by the field that carries `@storageRef` —
+it travels as `pluginStructure.requiredStores`, keyed by `(plugin, store)`, and
+`CapabilityNeed` deliberately excludes it. So the empty list is the true answer,
+and stating it lets a listing distinguish "needs nothing brokered" from "nobody
+has said".
+*/
+let capabilityNeeds: array<Reventless.CapabilityNeed.t> = []
+
 /** One host, bound. `ref` is the stored file's reference (a `StorageRef` today),
     abstract so a richer attachment identity is a re-instantiation, not a break. */
 module type Binding = {

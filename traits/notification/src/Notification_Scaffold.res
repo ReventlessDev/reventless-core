@@ -478,7 +478,7 @@ let sendSpec = (c: config): string => {
     ``,
     `// Declared, so a deployment that provisions no sender fails rather than queueing`,
     `// every message until it is abandoned.`,
-    `let capabilityNeeds: array<Reventless.CapabilityNeed.t> = [Messaging]`,
+    `let capabilityNeeds = TraitNotification.Notification.capabilityNeeds`,
     ``,
   ])
 }

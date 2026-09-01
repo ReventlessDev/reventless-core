@@ -20,6 +20,21 @@ never told there was an order. That is why the two relays are the only files a
 graft has to be given, and everything else can be handed over whole.
 */
 
+/**
+The platform capabilities a host of this trait needs, for its send slice's
+`capabilityNeeds` to name.
+
+Exported as a value rather than written into the emitted text, for the reason the
+geocoding trait exports its own: forgetting it is silent. An unprovisioned sender
+answers `Unavailable`, every send retries its budget, and every message this host
+was ever asked for is recorded as failed — a permanent wrong outcome with no error
+anywhere. A host that spells this gets a deploy-time refusal instead.
+
+It is also what lets a listing say what the trait needs without running the
+emitter: a literal buried in generated text is not a fact anything can read.
+*/
+let capabilityNeeds: array<Reventless.CapabilityNeed.t> = [Messaging]
+
 /** One host, bound.
 
     `category` is abstract: a host's kinds are its own vocabulary, and the rules

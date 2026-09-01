@@ -389,7 +389,7 @@ function sendSpec(c) {
     ``,
     `// Declared, so a deployment that provisions no sender fails rather than queueing`,
     `// every message until it is abandoned.`,
-    `let capabilityNeeds: array<Reventless.CapabilityNeed.t> = [Messaging]`,
+    `let capabilityNeeds = TraitNotification.Notification.capabilityNeeds`,
     ``
   ].join("\n");
 }

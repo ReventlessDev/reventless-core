@@ -181,6 +181,24 @@ for (const [traitDir, spec] of Object.entries(specimens)) {
     run("pnpm", ["exec", "rescript", "build"], host)
     console.log(`[check-trait-pack] ok: ${traitPkg.name} builds from its tarball`)
 
+    // The listing metadata, derived from the installed trait rather than written
+    // beside it. Run against the TARBALL, which is the check that matters: a
+    // manifest that derives in the workspace and not from the published package
+    // means the `files` allowlist dropped something a consumer needs.
+    const manifestBin = join(modules, "@reventlessdev", "reventless-spec", "run-trait-manifest.mjs")
+    const manifestPath = join(scratch, "trait.json")
+    run("node", [manifestBin, traitPkg.name, "--out", manifestPath], host)
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"))
+    if (manifest.trait !== traitPkg.name || manifest.version !== traitPkg.version) {
+      throw new Error(`manifest identity does not match the package: ${JSON.stringify(manifest)}`)
+    }
+    // Every trait here ships an emitter, so an empty config surface means the
+    // schema was not read — the failure this would otherwise publish silently.
+    if (!manifest.scaffolded || manifest.config.length === 0) {
+      throw new Error(`manifest reports no config surface: ${JSON.stringify(manifest)}`)
+    }
+    console.log(`[check-trait-pack] ok: ${traitPkg.name}'s manifest derives from the package`)
+
     if (spec.graft) {
       // pack → install → EMIT → generate-plugin → build → conform.
       for (const owned of spec.graft.remove ?? []) {
