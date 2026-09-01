@@ -155,7 +155,7 @@ arrive as `TODO(graft)` markers, and you write ReScript, which is better at this
 any config could be. A graft with no extra refusal is a complete graft, so leaving a
 marker alone is legitimate.
 
-## The two traits
+## The three traits
 
 ### `@reventlessdev/trait-address-geocoding`
 
@@ -205,14 +205,46 @@ fields (`<file>?` for the primary, `<file>s: array<{…}>` for the set). Unlike 
 geocoding trait it writes nothing back into another component — the graft *is*
 the host's slice.
 
+### `@reventlessdev/trait-notification`
+
+**Telling somebody something happened.** A per-recipient contact directory, a
+kind × channel subscription matrix, and the decision — per request — whether that
+becomes an addressed message. Delivery is the platform's: the send slice reaches
+`Reventless.Capabilities.messaging` and takes its retry split from
+`Reventless.Messaging.retriable`. The trait owns the decision, in
+`Notification_Rules`:
+
+- **The address is resolved when the message is composed**, off the directory, not
+  carried by the occurrence. Putting it on the occurrence would freeze a mutable
+  fact into an append-only log, so a recipient who changed their address would have
+  old occurrences confirmed to the old one.
+- **An absent choice falls back to a posture the host supplies.** The rule is the
+  trait's; the table is not — whether an unheard-from recipient should be notified
+  is per kind and per host.
+- **Three ways to send nothing, and they stay three facts.** Declined is
+  `Suppressed`; enabled-but-unaddressable and never-announced are both
+  `Undeliverable`. One fact for all of them would hide every delivery gap behind a
+  legitimate preference.
+- **Re-announcing an address already on file appends nothing** — safe because the
+  relay's row completes on the publish rather than on an event coming back.
+
+Shape: this is the trait that **brings its own components** rather than adding arms
+to something the host had — a `StateChangeSlice`, an `OutboundTranslationSlice` for
+the send, and two views, none of which existed before. So the emitter writes five
+files whole and the host's part shrinks to two **relays**: one saying which of its
+events announce a contact, one saying which occurrence earns a notification and
+what it says. Those are printed, not written — what a host's events mean is the one
+thing a trait cannot be told in names. It writes nothing back into the host at all.
+
 ## How the online-shop example uses them
 
-The hybrid example (`examples/online-shop-hybrid`) is the specimen host of both.
+The hybrid example (`examples/online-shop-hybrid`) is the specimen host of all three.
 
 | Trait | Host | Graft | Conformance binding |
 |---|---|---|---|
 | address-geocoding | `Customer` aggregate (Ordering) | the `SetLocation` / `MarkAddressUnresolvable` commands, `LocationSet` / `AddressLocated` / `AddressUnresolvable` events, the `GeocodeCustomerAddress` outbound slice, `Customers.geolocation` | `ordering/tests/Customer/AddressGeocodingConformance_GWT.res` |
 | attachments | `Product` (Catalog) | the `ProductImages` slice, `Products.productImage` + `Products.productImages` | `catalog/tests/Product/ProductImagesConformance_GWT.res` |
+| notification | Ordering, no host component at all | the `NotificationPreferences` slice, `SendNotification`, and the `NotificationDeliveries` / `NotificationSubscriptions` views — plus the two relays the host writes | `ordering/tests/Notification/NotificationConformance_GWT.res` |
 | attachments | `Category` (Catalog) | the `CategoryImages` slice, `Categories.categoryImage` + `Categories.categoryImages` | `catalog/tests/Category/CategoryImagesConformance_GWT.res` |
 
 Two hosts for the attachment trait is deliberate: a contract validated against one
@@ -382,5 +414,13 @@ if you cannot get it, the residue is telling you which part of the graft is real
 host policy.
 
 **What is still asserted rather than demonstrated:** that this generalises. It is
-written from two traits extracted by the same person in the same fortnight. The first
-trait built by *installing* rather than extracting is the real test of it.
+written from three traits extracted by the same person in the same fortnight. The
+first trait built by *installing* rather than extracting is the real test of it.
+
+The third one did put the procedure under some strain, and both places are worth
+knowing about. Step 1 held — the rules separated from the host on the first
+attempt — but step 2 needed a member no other trait has: `posture`, the host's
+answer to a question the rules cannot settle. A binding is not only constructors.
+And step 5's "everything that is a name becomes config" broke once: which of a
+host's events *mean* something is not a name, so those two files are printed with
+their shape filled in and their meaning marked, rather than written.

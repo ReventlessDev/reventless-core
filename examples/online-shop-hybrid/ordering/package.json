@@ -38,6 +38,7 @@
     "@reventlessdev/reventless-local": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*",
     "@reventlessdev/trait-address-geocoding": "workspace:*",
+    "@reventlessdev/trait-notification": "workspace:*",
     "sury": "11.0.0-rc.2"
   },
   "devDependencies": {

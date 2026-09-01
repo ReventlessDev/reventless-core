@@ -214,6 +214,30 @@
     "scenarios": 4
   },
   {
+    "component": "NotificationPreferences",
+    "command": "RecordDelivery",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 1
+  },
+  {
+    "component": "NotificationPreferences",
+    "command": "RecordDeliveryFailure",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 1
+  },
+  {
+    "component": "NotificationPreferences",
+    "command": "RequestNotification",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 1
+  },
+  {
     "component": "PlaceOrder",
     "command": "PlaceOrder",
     "level": "Collection",

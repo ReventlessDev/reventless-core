@@ -29,6 +29,7 @@
     "@reventlessdev/reventless-local",
     "@reventlessdev/reventless-gwt",
     "@reventlessdev/trait-address-geocoding",
+    "@reventlessdev/trait-notification",
     "@reventlessdev/rescript-pulumi-pulumi",
     "@reventlessdev/online-shop-hybrid-ordering-spec",
     "@reventlessdev/online-shop-hybrid-catalog-spec"

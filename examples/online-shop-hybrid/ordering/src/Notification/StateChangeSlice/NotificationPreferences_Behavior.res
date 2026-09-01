@@ -1,141 +1,142 @@
 @@reventless.behavior
 
-// One recipient's row: where to reach them, and the cells of the kind × channel
-// matrix they have an explicit opinion about. Only explicit choices are stored —
-// the rest is `defaultPosture`, so a category added later starts at its intended
-// posture for everybody instead of at whatever an absent record decodes to.
-type choice = {category: category, channel: channel, enabled: bool}
+// The directory, the matrix and the dispatch decision are the trait's; this file
+// is the mapping onto them plus the two things the trait has no opinion about —
+// which kinds this shop offers, and whether an unheard-from shopper gets them.
+module Rules = TraitNotification.Notification_Rules
 
-type state = {email: option<string>, choices: array<choice>}
-
-let initialState = {email: None, choices: []}
-
-// Whether a recipient who has said nothing should be notified.
+// Whether a recipient who has said nothing should be notified. Per category,
+// never globally: a confirmation is one they asked for by placing the order, and
+// withholding it until they opt in would be a broken shop; marketing is the
+// opposite, and one global default forces both onto whichever answer is worse for
+// the other.
 //
-// Per category, never globally. A transactional confirmation is one they asked
-// for by placing the order — withholding it until they opt in would be a broken
-// shop, not a courtesy — while marketing is the opposite, and one global default
-// forces both onto whichever answer is worse for the other.
-//
-// Email only: a channel a recipient has not chosen is not a channel they gave an
+// Email only. A channel a shopper has not chosen is not a channel they gave an
 // address for, so defaulting SMS on would mean guessing where to send.
-let defaultPosture = (category, channel) =>
+let posture = (category: string, channel: Rules.channel) =>
   switch (category, channel) {
-  | (OrderConfirmation, Email)
-  | (ShippingUpdate, Email) => true
-  | (OrderConfirmation | ShippingUpdate, Sms | Push)
-  | (Marketing, _) => false
+  | ("OrderConfirmation", Email)
+  | ("ShippingUpdate", Email) => true
+  | _ => false
   }
 
-let enabled = (state, category, channel) =>
-  switch state.choices->Array.find(c => c.category == category && c.channel == channel) {
-  | Some({enabled}) => enabled
-  | None => defaultPosture(category, channel)
+let categoryKey = (category: category) =>
+  switch category {
+  | OrderConfirmation => "OrderConfirmation"
+  | ShippingUpdate => "ShippingUpdate"
+  | Marketing => "Marketing"
   }
 
-let withChoice = (state, category, channel, isEnabled) => {
-  ...state,
-  choices: Array.concat(
-    state.choices->Array.filter(c => !(c.category == category && c.channel == channel)),
-    [{category, channel, enabled: isEnabled}],
-  ),
-}
+let categoryOf = (key: string) =>
+  switch key {
+  | "ShippingUpdate" => ShippingUpdate
+  | "Marketing" => Marketing
+  // The transactional default. A key this build does not know can only come from
+  // an event an older or newer version of this slice wrote, and confirming an
+  // order the shopper placed is the safer of the two ways to be wrong.
+  | _ => OrderConfirmation
+  }
 
-// The address for a channel, or `None` when the directory holds none.
-//
-// One arm has an answer and two do not, and that asymmetry is the honest state
-// of this trait rather than an oversight: an email is one address per person,
-// while push is one *per device* — a set that churns as installs come and go —
-// and neither a number nor a device token is announced by anything the host
-// publishes today. A recipient who enabled one of those has said what they want
-// and cannot be served, which is recorded as undeliverable below rather than
-// quietly skipped.
-let addressFor = (state, channel) =>
+let channelKey = (channel: channel): Rules.channel =>
   switch channel {
-  | Email => state.email
-  | Sms | Push => None
+  | Email => Email
+  | Sms => Sms
+  | Push => Push
   }
+
+let channelOf = (channel: Rules.channel): channel =>
+  switch channel {
+  | Email => Email
+  | Sms => Sms
+  | Push => Push
+  }
+
+// The trait's own value, refolded per decision. The host stores nothing else:
+// what the shop knows about a recipient's notification preferences IS the trait's
+// directory, so a second record beside it would be a second source of truth.
+type state = Rules.t
+
+let initialState = Rules.empty
 
 let evolve = (state, event: consumedEvent) =>
   switch event {
-  | RecipientAnnounced({email}) => {...state, email: Some(email)}
-  | NotificationSubscribed({category, channel}) => withChoice(state, category, channel, true)
-  | NotificationUnsubscribed({category, channel}) => withChoice(state, category, channel, false)
+  | RecipientAnnounced({email}) => state->Rules.evolve(Announced({channel: Email, address: email}))
+  | NotificationSubscribed({category, channel}) =>
+    state->Rules.evolve(Subscribed({category: categoryKey(category), channel: channelKey(channel)}))
+  | NotificationUnsubscribed({category, channel}) =>
+    state->Rules.evolve(
+      Unsubscribed({category: categoryKey(category), channel: channelKey(channel)}),
+    )
   }
 
-let allChannels = [Email, Sms, Push]
+// The trait decides; this names what it decided in the shop's own vocabulary.
+let named = (recipientId, fact: Rules.fact) =>
+  switch fact {
+  | Announced({address}) => RecipientAnnounced({recipientId, email: address})
+  | Subscribed({category, channel}) =>
+    NotificationSubscribed({
+      recipientId,
+      category: categoryOf(category),
+      channel: channelOf(channel),
+    })
+  | Unsubscribed({category, channel}) =>
+    NotificationUnsubscribed({
+      recipientId,
+      category: categoryOf(category),
+      channel: channelOf(channel),
+    })
+  | Requested({category, reference, channel, address}) =>
+    NotificationRequested({
+      recipientId,
+      category: categoryOf(category),
+      reference,
+      channel: channelOf(channel),
+      address,
+      // Composed by the requester and carried through untouched — the trait has
+      // no opinion about wording, and this slice is not where it would acquire
+      // one. `subject`/`body` ride on the command; see `decide`.
+      subject: "",
+      body: "",
+    })
+  | Suppressed({category, reference}) =>
+    NotificationSuppressed({recipientId, category: categoryOf(category), reference})
+  | Undeliverable({category, reference}) =>
+    NotificationUndeliverable({recipientId, category: categoryOf(category), reference})
+  }
+
+let through = (state, recipientId, op) =>
+  switch state->Rules.decide(op, ~posture) {
+  | Ok(facts) => Ok(facts->Array.map(named(recipientId, _)))
+  | Error(#RecipientUnknown) => Error(RecipientUnknown)
+  }
 
 let decide = (state, command) =>
   switch command {
-  // Idempotent, which it can afford to be: the relay that publishes this is an
-  // outbound slice, whose row completes on the publish rather than on an event
-  // coming back. A re-announced address that is already the one on file is work
-  // already done, and recording it again would put a change in the log where
-  // nothing changed.
   | AnnounceRecipient({recipientId, email}) =>
-    state.email == Some(email) ? Ok([]) : Ok([RecipientAnnounced({recipientId, email})])
-
-  // A person is at the other end of these two, so a recipient the directory has
-  // never heard of is refused rather than recorded: they can be told, and told
-  // is better than a fact nobody reads.
+    through(state, recipientId, Announce({channel: Email, address: email}))
   | Subscribe({recipientId, category, channel}) =>
-    switch state.email {
-    | None => Error(RecipientUnknown)
-    | Some(_) =>
-      enabled(state, category, channel)
-        ? Ok([])
-        : Ok([NotificationSubscribed({recipientId, category, channel})])
-    }
+    through(state, recipientId, Subscribe({category: categoryKey(category), channel: channelKey(channel)}))
   | Unsubscribe({recipientId, category, channel}) =>
-    switch state.email {
-    | None => Error(RecipientUnknown)
-    | Some(_) =>
-      enabled(state, category, channel)
-        ? Ok([NotificationUnsubscribed({recipientId, category, channel})])
-        : Ok([])
-    }
+    through(state, recipientId, Unsubscribe({category: categoryKey(category), channel: channelKey(channel)}))
 
-  // The dispatch decision, and the only place the directory and the matrix are
-  // read together. Exactly one outcome is published whatever happens, because
-  // the relay upstream resolves on it — an outcome-free path is a row that
-  // retries until it is abandoned.
-  //
-  // No dedupe on `reference`: the relay is a TODO list, which publishes once per
-  // item and resolves on the outcome, so a second request for one occurrence
-  // would be the framework's guarantee failing rather than this rule's. Keeping
-  // every reference ever seen in a snapshotted state to re-check that guarantee
-  // would cost more than it buys.
+  // The one arm the mapping cannot be pure about: the words belong to the
+  // requester, and the trait's `Requested` fact does not carry them because the
+  // trait has no business holding a sentence. So the fact is named as usual and
+  // the wording is put back on the way out.
   | RequestNotification({recipientId, category, reference, subject, body}) =>
-    switch state.email {
-    | None => Ok([NotificationUndeliverable({recipientId, category, reference})])
-    | Some(_) =>
-      let addressed =
-        allChannels
-        ->Array.filter(channel => enabled(state, category, channel))
-        ->Array.filterMap(channel =>
-          addressFor(state, channel)->Option.map(address => NotificationRequested({
-            recipientId,
-            category,
-            reference,
-            channel,
-            address,
-            subject,
-            body,
-          }))
-        )
-      switch addressed {
-      // Nothing to send, and the two reasons are not the same fact. Every channel
-      // switched off is the recipient's decision working; every enabled channel
-      // lacking an address is this trait falling short, and reporting both as
-      // "suppressed" would hide the second behind the first for good.
-      | [] =>
-        allChannels->Array.some(channel => enabled(state, category, channel))
-          ? Ok([NotificationUndeliverable({recipientId, category, reference})])
-          : Ok([NotificationSuppressed({recipientId, category, reference})])
-      | events => Ok(events)
-      }
-    }
+    through(state, recipientId, Request({category: categoryKey(category), reference}))->Result.map(
+      events =>
+        events->Array.map(event =>
+          switch event {
+          | NotificationRequested(fields) => NotificationRequested({...fields, subject, body})
+          | other => other
+          }
+        ),
+    )
 
+  // Reported by the send slice once the provider has settled. No rule to state —
+  // the outcome is whatever the provider said — so these stay here rather than
+  // being pushed through a trait that would only pass them along.
   | RecordDelivery({recipientId, reference, providerRef}) =>
     Ok([NotificationDelivered({recipientId, reference, providerRef})])
   | RecordDeliveryFailure({recipientId, reference, reason}) =>

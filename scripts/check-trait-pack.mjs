@@ -9,7 +9,7 @@
 // Usage: node scripts/check-trait-pack.mjs   (exit 1 on failure)
 
 import { execFileSync } from "node:child_process"
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync } from "node:fs"
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -73,6 +73,32 @@ const specimens = {
       conformance: "tests/Gadget/GadgetImagesConformance_GWT.res.mjs",
     },
   },
+  // The SelfContained shape: the graft is a set of new components rather than
+  // arms on something the host already had, so a fresh chapter of a host that
+  // has never heard of notifications is the honest emit target. Nothing here
+  // exists in the catalog plugin, which is the point — what compiles and conforms
+  // afterwards was written by the trait alone.
+  //
+  // The two relays are printed rather than written, so they are not in this
+  // check's blast radius: what a host's events MEAN is the part a trait cannot be
+  // told in names, and a check that emitted them would be checking a guess.
+  "traits/notification": {
+    host: "examples/online-shop-hybrid/catalog",
+    graft: {
+      args: [
+        "--chapter", "Subscriber", "--noun", "Subscriber",
+        "--categories", "StockAlert,PriceDrop,Marketing",
+        "--transactional", "StockAlert",
+        "--contactSource", "Product", "--contactEvents", "ProductAdded",
+        "--contactField", "email",
+        "--occurrence", "ProductAdded", "--occurrenceId", "productId",
+        "--occurrenceRecipient", "subscriberId", "--occurrenceCategory", "StockAlert",
+      ],
+      into: "src/Subscriber",
+      tests: "tests/Subscriber",
+      conformance: "tests/Subscriber/NotificationConformance_GWT.res.mjs",
+    },
+  },
 }
 
 const run = (cmd, args, cwd) => execFileSync(cmd, args, { cwd, stdio: "inherit" })
@@ -130,6 +156,20 @@ for (const [traitDir, spec] of Object.entries(specimens)) {
     // walk up, so a `generate-plugin` one directory higher is invisible to
     // `pnpm run generate`. Node and rescript resolve either way; pnpm does not.
     symlinkSync(modules, join(host, "node_modules"))
+    // Declare the dependency, the way `pnpm add` would. A host that already
+    // binds the trait has both lines; a host meeting it for the first time has
+    // neither, and adding them here is what makes that case checkable at all —
+    // otherwise a trait can only ever be proven against a host already wired for
+    // it, which is the reverse of what install is supposed to demonstrate.
+    for (const [file, add] of [
+      ["rescript.json", (j) => { if (!j.dependencies.includes(traitPkg.name)) j.dependencies.push(traitPkg.name) }],
+      ["package.json", (j) => { j.dependencies[traitPkg.name] ??= "workspace:*" }],
+    ]) {
+      const path = join(host, file)
+      const json = JSON.parse(readFileSync(path, "utf8"))
+      add(json)
+      writeFileSync(path, JSON.stringify(json, null, 2) + "\n")
+    }
     // No `lib/` is shipped: the consumer compiles the trait from its sources.
     if (existsSync(join(installed, "lib"))) throw new Error("tarball ships lib/")
     run("pnpm", ["exec", "rescript", "build"], host)

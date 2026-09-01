@@ -1,6 +1,7 @@
 @@reventless.projection
 
-module Rules = NotificationPreferences_Behavior
+module Rules = TraitNotification.Notification_Rules
+module Host = NotificationPreferences_Behavior
 
 let categories: array<NotificationPreferences.category> = [
   OrderConfirmation,
@@ -8,23 +9,25 @@ let categories: array<NotificationPreferences.category> = [
   Marketing,
 ]
 
-// The full grid at its default setting, read from the same function the write
+// The full grid at its default setting, read from the same posture the write
 // side decides with — so a posture changed there changes here, and the screen
 // cannot show a switch that means something else when it is used.
 //
-// `deliverable` is asked of a state carrying only the email, because that is what
-// a freshly announced recipient has. The cells it marks undeliverable are the
-// ones no address exists for at all, which is a property of the channel today
-// rather than of this recipient.
-let defaultMatrix = email =>
+// `deliverable` is asked of a directory holding only the announced address,
+// because that is what a freshly announced recipient has. The cells it marks
+// undeliverable are the ones no address exists for at all, which is a property of
+// the channel today rather than of this recipient.
+let defaultMatrix = email => {
+  let announced = Rules.empty->Rules.evolve(Announced({channel: Email, address: email}))
   categories->Array.flatMap(category =>
-    Rules.allChannels->Array.map(channel => {
+    Rules.channels->Array.map(channel => {
       NotificationSubscriptions.category,
-      channel,
-      enabled: Rules.defaultPosture(category, channel),
-      deliverable: Rules.addressFor({email: Some(email), choices: []}, channel)->Option.isSome,
+      channel: Host.channelOf(channel),
+      enabled: Host.posture(Host.categoryKey(category), channel),
+      deliverable: announced->Rules.addressFor(channel)->Option.isSome,
     })
   )
+}
 
 let withCell = (state: NotificationSubscriptions.state, category, channel, enabled) => {
   ...state,

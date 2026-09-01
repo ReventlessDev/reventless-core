@@ -1,0 +1,40 @@
+{
+  "name": "@reventlessdev/trait-notification",
+  "version": "1.0.0-alpha.0",
+  "description": "Notification domain trait: rules, host contract, conformance suite and emitter for a per-recipient contact directory, a kind x channel subscription matrix, and the decision to send, suppress or record a message as undeliverable",
+  "license": "Apache-2.0",
+  "files": [
+    "src/**/*.res",
+    "src/**/*.resi",
+    "src/**/*.res.mjs",
+    "rescript.json",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "rescript build",
+    "start": "rescript watch",
+    "clean": "rescript clean",
+    "rebuild": "pnpm run clean && pnpm run build",
+    "test": "echo \"The conformance suite runs in its hosts; see README.md.\""
+  },
+  "dependencies": {
+    "@reventlessdev/reventless-gwt": "workspace:*",
+    "@reventlessdev/reventless-spec": "workspace:*",
+    "sury": "11.0.0-rc.2",
+    "sury-ppx": "11.0.0-rc.2"
+  },
+  "devDependencies": {
+    "rescript": "12.3.0"
+  },
+  "peerDependencies": {
+    "rescript": "12.3.0"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ReventlessDev/reventless-core.git",
+    "directory": "traits/notification"
+  }
+}
