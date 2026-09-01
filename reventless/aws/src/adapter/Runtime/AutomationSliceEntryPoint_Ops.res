@@ -226,7 +226,9 @@ public unauthenticated endpoint for an unattended path.
 Resolved per call rather than captured once, so a Lambda whose configuration is
 updated does not need a cold start to see it. An unset `PLACE_INDEX_NAME` reaches
 `Geocoder_AwsLocation_Backend` as `""`, which answers `Unavailable` — a retryable
-outcome, not a verdict on the address.
+outcome, not a verdict on the address. `MESSAGING_EMAIL_SENDER` is read the same
+way, and empty yields a provider with no channels rather than one that claims a
+channel it cannot send on.
 */
 let capabilities = (): Reventless.Capabilities.t => {
   geocode: (~text) =>
@@ -234,6 +236,9 @@ let capabilities = (): Reventless.Capabilities.t => {
       ~indexName=NodeProcess.env->Dict.get("PLACE_INDEX_NAME")->Option.getOr(""),
       ~text,
     ),
+  messaging: Messaging_Ses_Backend.provider(
+    ~sender=NodeProcess.env->Dict.get("MESSAGING_EMAIL_SENDER")->Option.getOr(""),
+  ),
 }
 
 // ── Phase-1/phase-2 pipelines ───────────────────────────────────────────────

@@ -11,6 +11,7 @@ import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output
 import * as Pulumi$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Pulumi.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
+import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Plugin$ReventlessAws from "./components/Plugin.res.mjs";
@@ -136,6 +137,10 @@ function getObjectStoreEndpoints() {
 }
 
 let geocoderPlaceIndexRef = {
+  contents: Pulumi.output("")
+};
+
+let messagingEmailSenderRef = {
   contents: Pulumi.output("")
 };
 
@@ -1149,6 +1154,19 @@ function MakeWithConfig(Config) {
       if (capabilities.includes("Geocoding") && Stdlib_Option.isNone(hostUiBundle.geocoderPlaceIndex)) {
         Stdlib_JsError.throwWithMessage(`A plugin of this deployment declares the Geocoding capability, but this platform provisions no place index.\n  Add \`let placeIndex = ReventlessAws.Capability_Geocoding_AwsLocation.make(~name=…)\` and pass \`~geocoderPlaceIndex=placeIndex\` in \`~hostUiBundle\`.\n  The declaration is generated from the plugins' capabilities.json — regenerate with \`pnpm run generate:platform\` if it is stale.`);
       }
+      let match$5 = hostUiBundle.messagingSender;
+      let messagingEmailSenderFlat;
+      if (match$5 !== undefined) {
+        let sender = match$5.emailSender;
+        messagingEmailSenderFlat = sender !== undefined ? sender : Pulumi.output("");
+      } else {
+        messagingEmailSenderFlat = Pulumi.output("");
+      }
+      Pulumi$Pulumi.$$export("messagingEmailSender", messagingEmailSenderFlat);
+      messagingEmailSenderRef.contents = messagingEmailSenderFlat;
+      if (capabilities.includes("Messaging") && Stdlib_Option.isNone(hostUiBundle.messagingSender)) {
+        Stdlib_JsError.throwWithMessage(`A plugin of this deployment declares the Messaging capability, but this platform provisions no sender.\n  Add \`let sender = ReventlessAws.Capability_Messaging_Ses.make(~name=…, ~email=…)\` and pass \`~messagingSender=sender\` in \`~hostUiBundle\`.\n  The declaration is generated from the plugins' capabilities.json — regenerate with \`pnpm run generate:platform\` if it is stale.`);
+      }
       let configJsonContent = Pulumi.all([
         Pulumi.all([
           resolvedDomainApiEndpoint,
@@ -1218,9 +1236,9 @@ function MakeWithConfig(Config) {
           contentType: "application/json"
         });
       }
-      let match$5 = hostUiBundle.bakedManifest;
-      if (componentDefinitions !== undefined && match$5 !== undefined) {
-        let manifestKeys = Platform_BakedManifest$ReventlessCore.files(match$5).map(param => param[0]);
+      let match$6 = hostUiBundle.bakedManifest;
+      if (componentDefinitions !== undefined && match$6 !== undefined) {
+        let manifestKeys = Platform_BakedManifest$ReventlessCore.files(match$6).map(param => param[0]);
         let manifestKey = Stdlib_Option.getOr(manifestKeys[0], Platform_BakedManifest$ReventlessCore.defaultKey);
         Pulumi.all([
           componentDefinitions.roleId,
@@ -1301,6 +1319,9 @@ function MakeWithConfig(Config) {
     let geocoderPlaceIndex = platformStackRef !== undefined ? Primitive_option.valFromOption(platformStackRef).getOutput("geocoderPlaceIndex").apply(o => Stdlib_Option.getOr(o, "")) : geocoderPlaceIndexRef.contents;
     PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv("PLACE_INDEX_NAME", geocoderPlaceIndex);
     PluginRuntime_Builder$ReventlessAws.registerGeocoderPlaceIndex(geocoderPlaceIndex);
+    let messagingEmailSender = platformStackRef !== undefined ? Primitive_option.valFromOption(platformStackRef).getOutput("messagingEmailSender").apply(o => Stdlib_Option.getOr(o, "")) : messagingEmailSenderRef.contents;
+    PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv("MESSAGING_EMAIL_SENDER", messagingEmailSender);
+    PluginRuntime_Builder$ReventlessAws.registerMessagingSender(messagingEmailSender);
     let pluginComponent = plugin.make();
     Plugin_Helpers$ReventlessCore.clearOffload();
     currentDeployTarget.contents = "Domain";
@@ -1357,15 +1378,25 @@ function MakeWithConfig(Config) {
       let capabilityGate = Pulumi.all([
         pluginOutputs.pluginStructure,
         stackRef.getOutput("objectStores"),
-        geocoderPlaceIndex
+        geocoderPlaceIndex,
+        messagingEmailSender
       ]).apply(param => {
         let structure = param[0];
         let missing = CapabilityNeed$Reventless.unmet(Stdlib_Option.getOr(Stdlib_Option.flatMap(structure, s => s.requiredCapabilities), []).map(d => [
           d.capability,
           d.component
-        ]), param[2] === "" ? [] : ["Geocoding"]);
+        ]), (
+          param[2] === "" ? [] : ["Geocoding"]
+        ).concat(param[3] === "" ? [] : ["Messaging"]));
         if (missing.length !== 0) {
-          Stdlib_JsError.throwWithMessage(CapabilityNeed$Reventless.unmetMessage(missing) + `\n  Geocoding is \`Capability_Geocoding_AwsLocation.make\`, passed to the platform as \`~geocoderPlaceIndex\`.`);
+          Stdlib_JsError.throwWithMessage(CapabilityNeed$Reventless.unmetMessage(missing) + Belt_SetString.toArray(Belt_SetString.fromArray(missing.map(u => {
+            let match = u.need;
+            if (match === "Geocoding") {
+              return `\n  Geocoding is \`Capability_Geocoding_AwsLocation.make\`, passed to the platform as \`~geocoderPlaceIndex\`.`;
+            } else {
+              return `\n  Messaging is \`Capability_Messaging_Ses.make\`, passed to the platform as \`~messagingSender\`.`;
+            }
+          }))).join(""));
         }
         let required = Stdlib_Option.getOr(Stdlib_Option.flatMap(structure, s => s.requiredStores), []);
         let provisioned = Stdlib_Option.getOr(Stdlib_Option.map(Stdlib_Option.flatMap(param[1], Stdlib_JSON.Decode.object), prim => Object.keys(prim)), []);
@@ -2457,6 +2488,19 @@ function Make($star) {
       if (capabilities.includes("Geocoding") && Stdlib_Option.isNone(hostUiBundle.geocoderPlaceIndex)) {
         Stdlib_JsError.throwWithMessage(`A plugin of this deployment declares the Geocoding capability, but this platform provisions no place index.\n  Add \`let placeIndex = ReventlessAws.Capability_Geocoding_AwsLocation.make(~name=…)\` and pass \`~geocoderPlaceIndex=placeIndex\` in \`~hostUiBundle\`.\n  The declaration is generated from the plugins' capabilities.json — regenerate with \`pnpm run generate:platform\` if it is stale.`);
       }
+      let match$5 = hostUiBundle.messagingSender;
+      let messagingEmailSenderFlat;
+      if (match$5 !== undefined) {
+        let sender = match$5.emailSender;
+        messagingEmailSenderFlat = sender !== undefined ? sender : Pulumi.output("");
+      } else {
+        messagingEmailSenderFlat = Pulumi.output("");
+      }
+      Pulumi$Pulumi.$$export("messagingEmailSender", messagingEmailSenderFlat);
+      messagingEmailSenderRef.contents = messagingEmailSenderFlat;
+      if (capabilities.includes("Messaging") && Stdlib_Option.isNone(hostUiBundle.messagingSender)) {
+        Stdlib_JsError.throwWithMessage(`A plugin of this deployment declares the Messaging capability, but this platform provisions no sender.\n  Add \`let sender = ReventlessAws.Capability_Messaging_Ses.make(~name=…, ~email=…)\` and pass \`~messagingSender=sender\` in \`~hostUiBundle\`.\n  The declaration is generated from the plugins' capabilities.json — regenerate with \`pnpm run generate:platform\` if it is stale.`);
+      }
       let configJsonContent = Pulumi.all([
         Pulumi.all([
           resolvedDomainApiEndpoint,
@@ -2526,9 +2570,9 @@ function Make($star) {
           contentType: "application/json"
         });
       }
-      let match$5 = hostUiBundle.bakedManifest;
-      if (componentDefinitions !== undefined && match$5 !== undefined) {
-        let manifestKeys = Platform_BakedManifest$ReventlessCore.files(match$5).map(param => param[0]);
+      let match$6 = hostUiBundle.bakedManifest;
+      if (componentDefinitions !== undefined && match$6 !== undefined) {
+        let manifestKeys = Platform_BakedManifest$ReventlessCore.files(match$6).map(param => param[0]);
         let manifestKey = Stdlib_Option.getOr(manifestKeys[0], Platform_BakedManifest$ReventlessCore.defaultKey);
         Pulumi.all([
           componentDefinitions.roleId,
@@ -2607,6 +2651,9 @@ function Make($star) {
     let geocoderPlaceIndex = platformStackRef !== undefined ? Primitive_option.valFromOption(platformStackRef).getOutput("geocoderPlaceIndex").apply(o => Stdlib_Option.getOr(o, "")) : geocoderPlaceIndexRef.contents;
     PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv("PLACE_INDEX_NAME", geocoderPlaceIndex);
     PluginRuntime_Builder$ReventlessAws.registerGeocoderPlaceIndex(geocoderPlaceIndex);
+    let messagingEmailSender = platformStackRef !== undefined ? Primitive_option.valFromOption(platformStackRef).getOutput("messagingEmailSender").apply(o => Stdlib_Option.getOr(o, "")) : messagingEmailSenderRef.contents;
+    PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv("MESSAGING_EMAIL_SENDER", messagingEmailSender);
+    PluginRuntime_Builder$ReventlessAws.registerMessagingSender(messagingEmailSender);
     let pluginComponent = plugin.make();
     Plugin_Helpers$ReventlessCore.clearOffload();
     currentDeployTarget.contents = "Domain";
@@ -2663,15 +2710,25 @@ function Make($star) {
       let capabilityGate = Pulumi.all([
         pluginOutputs.pluginStructure,
         stackRef.getOutput("objectStores"),
-        geocoderPlaceIndex
+        geocoderPlaceIndex,
+        messagingEmailSender
       ]).apply(param => {
         let structure = param[0];
         let missing = CapabilityNeed$Reventless.unmet(Stdlib_Option.getOr(Stdlib_Option.flatMap(structure, s => s.requiredCapabilities), []).map(d => [
           d.capability,
           d.component
-        ]), param[2] === "" ? [] : ["Geocoding"]);
+        ]), (
+          param[2] === "" ? [] : ["Geocoding"]
+        ).concat(param[3] === "" ? [] : ["Messaging"]));
         if (missing.length !== 0) {
-          Stdlib_JsError.throwWithMessage(CapabilityNeed$Reventless.unmetMessage(missing) + `\n  Geocoding is \`Capability_Geocoding_AwsLocation.make\`, passed to the platform as \`~geocoderPlaceIndex\`.`);
+          Stdlib_JsError.throwWithMessage(CapabilityNeed$Reventless.unmetMessage(missing) + Belt_SetString.toArray(Belt_SetString.fromArray(missing.map(u => {
+            let match = u.need;
+            if (match === "Geocoding") {
+              return `\n  Geocoding is \`Capability_Geocoding_AwsLocation.make\`, passed to the platform as \`~geocoderPlaceIndex\`.`;
+            } else {
+              return `\n  Messaging is \`Capability_Messaging_Ses.make\`, passed to the platform as \`~messagingSender\`.`;
+            }
+          }))).join(""));
         }
         let required = Stdlib_Option.getOr(Stdlib_Option.flatMap(structure, s => s.requiredStores), []);
         let provisioned = Stdlib_Option.getOr(Stdlib_Option.map(Stdlib_Option.flatMap(param[1], Stdlib_JSON.Decode.object), prim => Object.keys(prim)), []);
@@ -2789,6 +2846,7 @@ export {
   objectStoreEndpointsRef,
   getObjectStoreEndpoints,
   geocoderPlaceIndexRef,
+  messagingEmailSenderRef,
   MakeWithConfig,
   Make,
 }

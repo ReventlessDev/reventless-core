@@ -97,6 +97,31 @@ let capabilities: array<ReventlessInfra.Platform.capability> = [
     }
   })
 
+  // Two slice-declared capabilities in one deployment. They are independent
+  // arms, keyed by their own names, and neither collapses into the other.
+  testSync("two different capabilities render as two arms", () => {
+    let ordering: PlatformCodegen.pluginManifest = {
+      pluginName: "ordering",
+      manifest: {
+        capabilities: [
+          {kind: Geocoding, key: "Geocoding", declaredBy: [{component: "GeocodeCustomerAddress"}]},
+          {kind: Messaging, key: "Messaging", declaredBy: [{component: "SendOrderConfirmation"}]},
+        ],
+      },
+    }
+    switch PlatformCodegen.render([ordering]) {
+    | Ok(source) => {
+        expect(source->String.includes("  // ordering: GeocodeCustomerAddress\n  Geocoding,"))->toBe(
+          true,
+        )
+        expect(source->String.includes("  // ordering: SendOrderConfirmation\n  Messaging,"))->toBe(
+          true,
+        )
+      }
+    | Error(_) => expect(true)->toBe(false)
+    }
+  })
+
   testSync("no plugin declaring anything renders an empty list, not an absent binding", () => {
     let rendered = PlatformCodegen.render([
       {pluginName: "catalog", manifest: {capabilities: []}},

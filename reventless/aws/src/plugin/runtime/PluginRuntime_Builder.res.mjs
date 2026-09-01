@@ -68,6 +68,27 @@ function geocoderProvisioned() {
   return geocoderProvisionedRef.contents;
 }
 
+let messagingSenderRef = {
+  contents: Pulumi.output("")
+};
+
+let messagingProvisionedRef = {
+  contents: false
+};
+
+function registerMessagingSender(sender) {
+  messagingSenderRef.contents = sender;
+  messagingProvisionedRef.contents = true;
+}
+
+function messagingSender() {
+  return messagingSenderRef.contents;
+}
+
+function messagingProvisioned() {
+  return messagingProvisionedRef.contents;
+}
+
 let dcbConfigRef = {
   contents: {
     pluginName: "",
@@ -544,6 +565,11 @@ export {
   registerGeocoderPlaceIndex,
   geocoderPlaceIndex,
   geocoderProvisioned,
+  messagingSenderRef,
+  messagingProvisionedRef,
+  registerMessagingSender,
+  messagingSender,
+  messagingProvisioned,
   dcbConfigRef,
   registeredSliceModulePaths,
   registerStateChangeSliceSpec,

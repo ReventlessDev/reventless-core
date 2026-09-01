@@ -77,6 +77,20 @@ let registerGeocoderPlaceIndex = (indexName: Pulumi.Output.t<string>) => {
 let geocoderPlaceIndex = () => geocoderPlaceIndexRef.contents
 let geocoderProvisioned = () => geocoderProvisionedRef.contents
 
+/** The messaging sender, carried for the same reason and in the same shape: a
+    slice Lambda sending mail needs `ses:SendEmail` on the identity, and the
+    identity is what the address names. */
+let messagingSenderRef: ref<Pulumi.Output.t<string>> = ref(Pulumi.Output.make(""))
+let messagingProvisionedRef = ref(false)
+
+let registerMessagingSender = (sender: Pulumi.Output.t<string>) => {
+  messagingSenderRef := sender
+  messagingProvisionedRef := true
+}
+
+let messagingSender = () => messagingSenderRef.contents
+let messagingProvisioned = () => messagingProvisionedRef.contents
+
 type sliceModulePaths = {
   specPath: string,
   behaviorPath: string,

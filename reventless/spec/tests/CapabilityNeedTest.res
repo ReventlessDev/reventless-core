@@ -10,7 +10,7 @@ open JestGlobals
 
 describe("CapabilityNeed", () => {
   describe("round trip", () => {
-    let all: array<CapabilityNeed.t> = [Geocoding]
+    let all: array<CapabilityNeed.t> = [Geocoding, Messaging]
 
     testSync("every arm survives toString → fromString", () =>
       expect(all->Array.map(n => n->CapabilityNeed.toString->CapabilityNeed.fromString))->toEqual(
@@ -57,6 +57,18 @@ describe("CapabilityNeed", () => {
           ~provisioned=[],
         )->Array.map(u => u.component),
       )->toEqual(["GeocodeCustomerAddress", "GeocodeDropOff"])
+    )
+
+    // A platform provisioning one capability and not the other. The arms are
+    // independent, and the refusal has to name only the one that is missing —
+    // a gate that failed on the provisioned one too would be unfixable.
+    testSync("one provisioned capability does not cover another", () =>
+      expect(
+        CapabilityNeed.unmet(
+          ~declared=[("Geocoding", "GeocodeCustomerAddress"), ("Messaging", "SendOrderConfirmation")],
+          ~provisioned=[Geocoding],
+        ),
+      )->toEqual([({need: Messaging, component: "SendOrderConfirmation"}: CapabilityNeed.unmet)])
     )
   })
 

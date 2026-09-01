@@ -5,6 +5,7 @@ import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 import * as DcbDecode$Reventless from "@reventlessdev/reventless-spec/src/components/DcbDecode.res.mjs";
 import * as Outcome$ReventlessGwt from "@reventlessdev/reventless-gwt/src/Outcome.res.mjs";
+import * as Capabilities$Reventless from "@reventlessdev/reventless-spec/src/semantic/Capabilities.res.mjs";
 import * as Behavior_GWT$ReventlessGwt from "@reventlessdev/reventless-gwt/src/Behavior_GWT.res.mjs";
 import * as OutboundTranslation_GWT$ReventlessGwt from "@reventlessdev/reventless-gwt/src/OutboundTranslation_GWT.res.mjs";
 
@@ -22,11 +23,10 @@ function Make(B) {
   let entityId = "entity-1";
   let todoKey = subject => entityId + `:` + B.subjectText(subject);
   let geocoder = answer => ({
-    geocode: param => Promise.resolve(answer)
+    geocode: param => Promise.resolve(answer),
+    messaging: Capabilities$Reventless.none.messaging
   });
-  let translateWith = answer => ((id, item) => B.translate(id, item, {
-    geocode: param => Promise.resolve(answer)
-  }));
+  let translateWith = answer => ((id, item) => B.translate(id, item, geocoder(answer)));
   let describeCommand = cmd => JSON.stringify(Message$Reventless.encode(cmd, B.Slice.inboundCommandSchema));
   let thenReports = async (pending, expected, predicate) => {
     let match = await pending;
@@ -110,7 +110,8 @@ function Make(B) {
       geocode: param => Promise.resolve({
         TAG: "Error",
         _0: "NoMatch"
-      })
+      }),
+      messaging: Capabilities$Reventless.none.messaging
     })), "a verdict", B.isVerdict));
     S.test("an outage leaves the TODO pending", undefined, () => S.thenTodoStatus(S.whenTranslateMocked(S.givenTodo(todoKey(B.subjectA), B.item(entityId, B.subjectA)), (id, item) => B.translate(id, item, {
       geocode: param => Promise.resolve({
@@ -119,7 +120,8 @@ function Make(B) {
           TAG: "Unavailable",
           _0: "502"
         }
-      })
+      }),
+      messaging: Capabilities$Reventless.none.messaging
     })), todoKey(B.subjectA), "Pending"));
   });
   return {

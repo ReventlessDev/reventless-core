@@ -109,6 +109,7 @@ store, and reaching another plugin's store is the qualified form.
 type capability =
   | ObjectStore({plugin: string, store: string})
   | Geocoding
+  | Messaging
 
 // A provisioned geocoding place index, as returned by the framework's geocoding
 // capability helper. A record rather than a bare name so the handle can grow
@@ -180,6 +181,20 @@ type bakedManifest = {
 }
 
 type geocoderIndex = {indexName: Pulumi.Input.t<string>}
+
+/**
+A provisioned messaging sender, as returned by the framework's messaging
+capability helper.
+
+`emailSender` is the verified address messages are sent *from* — a provider-side
+identity, not something an application picks per message, which is why it is a
+deploy-time handle rather than a field on `Messaging.message`. Absent when the
+deployment provisions no email channel.
+
+The channel set is derived from which senders are present rather than declared
+beside them, so a handle carrying no sender at all cannot claim a channel.
+*/
+type messagingSender = {emailSender?: Pulumi.Input.t<string>}
 
 // Options for the shell's map view mode. Written to config.json flat, beside
 // `viewModes`, because that is where the shell reads them; carried on the arm
@@ -426,6 +441,12 @@ module type T = {
     // on the platform API — and exports the index name for the unattended slice
     // path. Unset ⇒ no resolver, no export. In-memory platforms ignore this.
     geocoderPlaceIndex?: geocoderIndex,
+    // Optional messaging sender. When set, the deploy exports the verified
+    // sender address for the unattended slice path and grants those Lambdas the
+    // right to send from it. No client door — a browser has no business sending
+    // from the deployment's identity. Unset ⇒ no export, no grant. In-memory
+    // platforms ignore this.
+    messagingSender?: messagingSender,
     // Optional object store for direct-to-store uploads. When set, the deploy
     // provisions a presign service against it, threads that service's URL into
     // config.json as `uploadEndpoint`, and serves the store read-only from the

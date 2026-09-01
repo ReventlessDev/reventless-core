@@ -14,6 +14,7 @@ import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/U
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src/util/EffectLogger.res.mjs";
 import * as DynamoDb_Error$ReventlessAws from "../../errors/DynamoDb_Error.res.mjs";
+import * as Messaging_Ses_Backend$ReventlessAws from "../Messaging/Messaging_Ses_Backend.res.mjs";
 import * as Util_DynamoDb_Runtime$ReventlessAws from "../../util/Util_DynamoDb_Runtime.res.mjs";
 import * as AutomationSlice_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/AutomationSlice/AutomationSlice_Callback.res.mjs";
 import * as StreamRoutedEntryPoint_Ops$ReventlessAws from "./StreamRoutedEntryPoint_Ops.res.mjs";
@@ -151,7 +152,8 @@ function makeLoadTodoItems(queryDbTableName, todoItems, rowSchema, comp) {
 
 function capabilities() {
   return {
-    geocode: text => Geocoder_AwsLocation_Backend$ReventlessAws.search(Stdlib_Option.getOr(process.env["PLACE_INDEX_NAME"], ""), text, undefined)
+    geocode: text => Geocoder_AwsLocation_Backend$ReventlessAws.search(Stdlib_Option.getOr(process.env["PLACE_INDEX_NAME"], ""), text, undefined),
+    messaging: Messaging_Ses_Backend$ReventlessAws.provider(Stdlib_Option.getOr(process.env["MESSAGING_EMAIL_SENDER"], ""))
   };
 }
 
@@ -185,9 +187,7 @@ function makeOutboundJsonEventsHandler(consumedEventSchema, callback, publishJso
     await loadTodoItems();
     callback.phase1(events);
     await syncTodoItems();
-    await callback.phase2(publishJsons, {
-      geocode: text => Geocoder_AwsLocation_Backend$ReventlessAws.search(Stdlib_Option.getOr(process.env["PLACE_INDEX_NAME"], ""), text, undefined)
-    });
+    await callback.phase2(publishJsons, capabilities());
     return await syncTodoItems();
   }));
 }
@@ -223,9 +223,7 @@ function makeOutboundRegisteredHandler(entry, sliceName, consumedEventSchema, ca
     },
     sweep: async () => {
       await loadTodoItems();
-      await callback.phase2(publishJsons, {
-        geocode: text => Geocoder_AwsLocation_Backend$ReventlessAws.search(Stdlib_Option.getOr(process.env["PLACE_INDEX_NAME"], ""), text, undefined)
-      });
+      await callback.phase2(publishJsons, capabilities());
       return await syncTodoItems();
     },
     comp: comp

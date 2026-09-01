@@ -62,23 +62,30 @@ function renderComments(entry) {
 
 function renderEntry(entry) {
   let match = entry.kind;
-  if (match !== "ObjectStore") {
-    return {
-      TAG: "Ok",
-      _0: renderComments(entry).concat(["  Geocoding,"])
-    };
-  }
-  let match$1 = splitKey(entry.key);
-  if (match$1 !== undefined) {
-    return {
-      TAG: "Ok",
-      _0: renderComments(entry).concat([`  ObjectStore({plugin: ` + JSON.stringify(match$1[0]) + `, store: ` + JSON.stringify(match$1[1]) + `}),`])
-    };
-  } else {
-    return {
-      TAG: "Error",
-      _0: `malformed capability key ` + JSON.stringify(entry.key) + ` — expected "{plugin}.{store}" (is the plugin's capabilities.json hand-edited?)`
-    };
+  switch (match) {
+    case "ObjectStore" :
+      let match$1 = splitKey(entry.key);
+      if (match$1 !== undefined) {
+        return {
+          TAG: "Ok",
+          _0: renderComments(entry).concat([`  ObjectStore({plugin: ` + JSON.stringify(match$1[0]) + `, store: ` + JSON.stringify(match$1[1]) + `}),`])
+        };
+      } else {
+        return {
+          TAG: "Error",
+          _0: `malformed capability key ` + JSON.stringify(entry.key) + ` — expected "{plugin}.{store}" (is the plugin's capabilities.json hand-edited?)`
+        };
+      }
+    case "Geocoding" :
+      return {
+        TAG: "Ok",
+        _0: renderComments(entry).concat(["  Geocoding,"])
+      };
+    case "Messaging" :
+      return {
+        TAG: "Ok",
+        _0: renderComments(entry).concat(["  Messaging,"])
+      };
   }
 }
 

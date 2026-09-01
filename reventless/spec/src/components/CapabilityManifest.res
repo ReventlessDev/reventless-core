@@ -19,6 +19,9 @@ type kind =
   /** Address geocoding, reached through `Capabilities.geocode`. Declared by a
       slice rather than by a field, so its entry carries no `field`. */
   | Geocoding
+  /** Sending a message, reached through `Capabilities.messaging`. Slice-declared
+      like `Geocoding`, and for the same reason carries no `field`. */
+  | Messaging
 
 /** The declaration site: the component's spec name, and — for a store — the field
     carrying the `@storageRef` annotation plus the store exactly as that field
@@ -77,6 +80,7 @@ let fromStructure = (structure: Plugin.pluginStructure): t => {
     CapabilityNeed.fromString(key)->Option.map(need => {
       kind: switch need {
       | Geocoding => Geocoding
+      | Messaging => Messaging
       },
       key,
       declaredBy: needs->Array.filterMap(d =>

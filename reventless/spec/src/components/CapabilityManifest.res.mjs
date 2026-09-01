@@ -9,7 +9,8 @@ import * as CapabilityNeed$Reventless from "../semantic/CapabilityNeed.res.mjs";
 
 let kindSchema = Sury.union([
   Sury.literal("ObjectStore"),
-  Sury.literal("Geocoding")
+  Sury.literal("Geocoding"),
+  Sury.literal("Messaging")
 ]);
 
 let provenanceSchema = Sury.$schema(s => ({
@@ -45,17 +46,21 @@ function fromStructure(structure) {
   }));
   let needs = Stdlib_Option.getOr(structure.requiredCapabilities, []);
   let capabilityKeys = Belt_SetString.toArray(Belt_SetString.fromArray(needs.map(d => d.capability)));
-  let capabilities = Stdlib_Array.filterMap(capabilityKeys, key => Stdlib_Option.map(CapabilityNeed$Reventless.fromString(key), need => ({
-    kind: "Geocoding",
-    key: key,
-    declaredBy: Stdlib_Array.filterMap(needs, d => {
-      if (d.capability === key) {
-        return {
-          component: d.component
-        };
-      }
-    })
-  })));
+  let capabilities = Stdlib_Array.filterMap(capabilityKeys, key => Stdlib_Option.map(CapabilityNeed$Reventless.fromString(key), need => {
+    let tmp;
+    tmp = need === "Geocoding" ? "Geocoding" : "Messaging";
+    return {
+      kind: tmp,
+      key: key,
+      declaredBy: Stdlib_Array.filterMap(needs, d => {
+        if (d.capability === key) {
+          return {
+            component: d.component
+          };
+        }
+      })
+    };
+  }));
   return {
     capabilities: stores.concat(capabilities)
   };

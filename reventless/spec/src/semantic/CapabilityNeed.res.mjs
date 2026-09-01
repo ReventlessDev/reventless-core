@@ -3,12 +3,21 @@
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 
 function toString(need) {
-  return "Geocoding";
+  if (need === "Geocoding") {
+    return "Geocoding";
+  } else {
+    return "Messaging";
+  }
 }
 
 function fromString(name) {
-  if (name === "Geocoding") {
-    return "Geocoding";
+  switch (name) {
+    case "Geocoding" :
+      return "Geocoding";
+    case "Messaging" :
+      return "Messaging";
+    default:
+      return;
   }
 }
 
@@ -25,7 +34,7 @@ function unmet(declared, provisioned) {
 }
 
 function unmetMessage(unmet) {
-  return `Plugin declares capabilit(ies) the platform does not provision: ` + (unmet.map(u => "Geocoding" + ` (` + u.component + `)`).join(", ") + `.\n`) + `  Provision them in the platform stack and redeploy the platform first.\n  Without it every call answers Unavailable, the slice exhausts its retries, and a permanent verdict is recorded against data that is fine — no error anywhere.`;
+  return `Plugin declares capabilit(ies) the platform does not provision: ` + (unmet.map(u => toString(u.need) + ` (` + u.component + `)`).join(", ") + `.\n`) + `  Provision them in the platform stack and redeploy the platform first.\n  Without it every call answers Unavailable, the slice exhausts its retries, and a permanent verdict is recorded against data that is fine — no error anywhere.`;
 }
 
 export {

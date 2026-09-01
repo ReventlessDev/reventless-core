@@ -19,7 +19,11 @@ let vienna: Reventless.GeoPoint.t = {lat: 48.2082, lng: 16.3738}
 // The real `translate`, driven by a stub geocoder. `whenTranslateMocked` takes any
 // (id, item) => promise<translateResult>, so no DSL verb is needed to reach it.
 let withGeocoder = (answer: result<array<Reventless.Geocoding.candidate>, Reventless.Geocoding.failure>) => {
+  // Spread `none` and override the one capability under test: a literal record
+  // would have to name every other capability the framework grows, and this test
+  // has nothing to say about them.
   let capabilities: Reventless.Capabilities.t = {
+    ...Reventless.Capabilities.none,
     geocode: (~text as _) => Promise.resolve(answer),
   }
   (id, item) => GeocodeCustomerAddress_Translation.translate(id, item, ~capabilities)

@@ -16,7 +16,14 @@ carries the needs that no field can express.
 A real variant, so a trait exports its need as a value the compiler checks
 rather than a string a README repeats.
 */
-type t = Geocoding
+type t =
+  | Geocoding
+  | /** Sending a message to a person, reached through `Capabilities.messaging`.
+        One need however many channels the platform provisions — which channels
+        those are is a runtime answer the provider publishes, not a second
+        declaration, because a plugin that named `Sms` would fail a deploy it
+        could have run on email. */
+  Messaging
 
 /** The spelling carried in `pluginStructure` and in `capabilities.json`.
     Persisted structures hold strings, not enum members, so a plugin built
@@ -24,6 +31,7 @@ type t = Geocoding
 let toString = (need: t): string =>
   switch need {
   | Geocoding => "Geocoding"
+  | Messaging => "Messaging"
   }
 
 /** The inverse, for readers of a persisted structure or a committed manifest.
@@ -32,6 +40,7 @@ let toString = (need: t): string =>
 let fromString = (name: string): option<t> =>
   switch name {
   | "Geocoding" => Some(Geocoding)
+  | "Messaging" => Some(Messaging)
   | _ => None
   }
 

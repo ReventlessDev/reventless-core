@@ -24,6 +24,9 @@ leaves every `translate` reading `capabilities.geocode` untouched.
 type t = {
   /** Turn an address into ranked candidates. See `Geocoding.search`. */
   geocode: Geocoding.search,
+  /** Send a message to a person, and say which channels this deployment can
+      attempt at all. See `Messaging.provider`. */
+  messaging: Messaging.provider,
 }
 
 /**
@@ -40,4 +43,17 @@ a blank.
 */
 let none: t = {
   geocode: async (~text as _) => Error(Unavailable("no geocoder is configured for this platform")),
+  // `channels: []` and a retryable `send` say two different true things, and both
+  // are needed. The empty list is what a deploy gate reads and what a preference
+  // centre renders — offering a channel nothing can deliver on would collect a
+  // subscription that never arrives. The send stays `Unavailable` rather than
+  // `UnsupportedChannel` because a caller that got this far is looking at a
+  // deployment gap, not at a fact about the recipient, and abandoning the message
+  // would record the second.
+  messaging: {
+    channels: [],
+    send: async (~recipient as _, ~message as _) => Error(
+      Unavailable("no messaging provider is configured for this platform"),
+    ),
+  },
 }

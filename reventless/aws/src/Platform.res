@@ -99,6 +99,10 @@ let getObjectStoreEndpoints = () => objectStoreEndpointsRef.contents
     the same sentinel, as `PluginRuntime_Builder.inboundSliceReg.auditTableName`. */
 let geocoderPlaceIndexRef: ref<Pulumi.Output.t<string>> = ref(Pulumi.Output.make(""))
 
+/** The verified sender address, for the same single-program case and with the
+    same `""` sentinel and the same reason. */
+let messagingEmailSenderRef: ref<Pulumi.Output.t<string>> = ref(Pulumi.Output.make(""))
+
 module MakeWithConfig = (
   Config: {
     let splitApi: bool
@@ -1174,6 +1178,12 @@ module MakeWithConfig = (
     // on the domain API (`Geocoder_AwsLocation_Resolver`, split mode) — and exports
     // the index name for the unattended slice path. Unset ⇒ no resolver, no export.
     geocoderPlaceIndex?: ReventlessInfra.Platform.geocoderIndex,
+    // Optional messaging sender, as returned by `Capability_Messaging_Ses.make`.
+    // When set, the deploy exports the verified `From:` address for the
+    // unattended slice path and grants those Lambdas `ses:SendEmail`. No client
+    // door: unlike geocoding, a browser has no business sending mail from the
+    // deployment's identity. Unset ⇒ no export, no grant.
+    messagingSender?: ReventlessInfra.Platform.messagingSender,
     // Optional object store for direct-to-S3 uploads, as returned by
     // `Capability_ObjectStore_S3.make`. When set, the deploy registers it with
     // the platform's one Upload service (`Upload_Presign_S3`) under the `uploads`
@@ -1726,7 +1736,8 @@ module MakeWithConfig = (
       ->Array.filterMap(c =>
         switch c {
         | ObjectStore({plugin, store}) => Some((plugin, store))
-        | Geocoding => None
+        | Geocoding
+        | Messaging => None
         }
       )
       ->Array.reduce([], (acc, (plugin, store)) =>
@@ -2159,6 +2170,29 @@ module MakeWithConfig = (
         )
       }
 
+      // The verified sender, exported for the same reason and read the same way.
+      let messagingEmailSenderFlat = switch cfg.messagingSender {
+      | Some({emailSender: ?Some(sender)}) => sender->Pulumi.Output.fromInput
+      | _ => Pulumi.Output.make("")
+      }
+      Pulumi.Pulumi.export("messagingEmailSender", messagingEmailSenderFlat)
+      messagingEmailSenderRef := messagingEmailSenderFlat
+
+      // Same gate as geocoding's, and the failure it prevents is worse: an
+      // unprovisioned mailer answers `Unavailable` on every send, so the messages
+      // queue and retry and are eventually abandoned — a notification nobody
+      // receives and no error names.
+      if capabilities->Array.includes(Messaging) && cfg.messagingSender->Option.isNone {
+        JsError.throwWithMessage(
+          `A plugin of this deployment declares the Messaging capability, but this platform ` ++
+          `provisions no sender.\n` ++
+          `  Add \`let sender = ReventlessAws.Capability_Messaging_Ses.make(~name=…, ~email=…)\` ` ++
+          `and pass \`~messagingSender=sender\` in \`~hostUiBundle\`.\n` ++
+          `  The declaration is generated from the plugins' capabilities.json — regenerate with ` ++
+          `\`pnpm run generate:platform\` if it is stale.`,
+        )
+      }
+
       // Presign endpoints are no longer written to config.json: under route B the
       // client calls the platform API's `Upload_Presign` mutation (reachable from
       // `platformApiEndpoint`, already present) with the store it declares, so there
@@ -2467,6 +2501,21 @@ module MakeWithConfig = (
     PluginRuntime_Builder.registerCapabilityEnv("PLACE_INDEX_NAME", geocoderPlaceIndex)
     PluginRuntime_Builder.registerGeocoderPlaceIndex(geocoderPlaceIndex)
 
+    // The verified `From:` address, read across the same two halves and carrying
+    // the same `""`-means-unprovisioned convention. Registered twice for the same
+    // reason the place index is: the Lambda reads the address, and its role has to
+    // be allowed to send from the identity that address names.
+    let messagingEmailSender: Pulumi.Output.t<string> = switch platformStackRef {
+    | Some(stackRef) =>
+      (
+        stackRef->Pulumi.StackReference.getOutput("messagingEmailSender"):
+          Pulumi.Output.t<option<string>>
+      )->Pulumi.Output.apply(o => o->Option.getOr(""))
+    | None => messagingEmailSenderRef.contents
+    }
+    PluginRuntime_Builder.registerCapabilityEnv("MESSAGING_EMAIL_SENDER", messagingEmailSender)
+    PluginRuntime_Builder.registerMessagingSender(messagingEmailSender)
+
     module P = unpack(plugin)
     let pluginComponent = P.make()
     ReventlessCore.Plugin_Helpers.clearOffload()
@@ -2602,11 +2651,13 @@ module MakeWithConfig = (
           pluginOutputs.pluginStructure,
           stackRef->Pulumi.StackReference.getOutput("objectStores"),
           geocoderPlaceIndex,
+          messagingEmailSender,
         )
-        ->Pulumi.Output.all3
-        ->Pulumi.Output.apply((((structure, objectStores, placeIndex): (
+        ->Pulumi.Output.all4
+        ->Pulumi.Output.apply((((structure, objectStores, placeIndex, emailSender): (
           _,
           option<JSON.t>,
+          string,
           string,
         ))) => {
           // ── Declared capabilities ──────────────────────────────────────────
@@ -2628,18 +2679,34 @@ module MakeWithConfig = (
             ->Option.flatMap(s => s.requiredCapabilities)
             ->Option.getOr([])
             ->Array.map(d => (d.capability, d.component)),
-            // The place index the slice Lambdas are actually handed, so this
-            // reads the value that decides the outcome rather than a second
-            // record of the same intent. `""` is what an unprovisioned platform
-            // exports.
-            ~provisioned=placeIndex == "" ? [] : [Geocoding],
+            // The values the slice Lambdas are actually handed, so this reads
+            // what decides the outcome rather than a second record of the same
+            // intent. `""` is what an unprovisioned platform exports.
+            ~provisioned=Array.concat(
+              placeIndex == "" ? [] : [Reventless.CapabilityNeed.Geocoding],
+              emailSender == "" ? [] : [Reventless.CapabilityNeed.Messaging],
+            ),
           ) {
           | [] => ()
           | missing =>
             JsError.throwWithMessage(
               Reventless.CapabilityNeed.unmetMessage(missing) ++
-              `\n  Geocoding is \`Capability_Geocoding_AwsLocation.make\`, passed to the platform ` ++
-              `as \`~geocoderPlaceIndex\`.`,
+              missing
+              ->Array.map(u =>
+                switch u.need {
+                | Geocoding =>
+                  `\n  Geocoding is \`Capability_Geocoding_AwsLocation.make\`, passed to the ` ++
+                  `platform as \`~geocoderPlaceIndex\`.`
+                | Messaging =>
+                  `\n  Messaging is \`Capability_Messaging_Ses.make\`, passed to the platform ` ++
+                  `as \`~messagingSender\`.`
+                }
+              )
+              // One line per capability, not per declaring component: two slices
+              // missing the same provider need telling once.
+              ->Belt.Set.String.fromArray
+              ->Belt.Set.String.toArray
+              ->Array.join(""),
             )
           }
 

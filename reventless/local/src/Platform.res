@@ -1462,6 +1462,7 @@ module MakeWithConfig = (
     // signature; the in-memory platform provisions no infrastructure and
     // ignores them.
     geocoderPlaceIndex?: ReventlessInfra.Platform.geocoderIndex,
+    messagingSender?: ReventlessInfra.Platform.messagingSender,
     uploadBucket?: ReventlessInfra.Platform.objectStore,
     // Still ignored: a mode is a shell *build* input locally, turned on in the
     // host-shell package's own `public/config.json`, where the AWS deploy has to

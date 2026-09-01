@@ -150,6 +150,23 @@ function makeGeocoderGrant(runtime, opts) {
   }, customOpts);
 }
 
+function makeMessagingGrant(runtime, opts) {
+  if (!PluginRuntime_Builder$ReventlessAws.messagingProvisioned()) {
+    return;
+  }
+  let customOpts = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
+  let policyJson = PluginRuntime_Builder$ReventlessAws.messagingSender().apply(sender => PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, "AllAutomationSlicesSendEmail", [{
+      Sid: "AllowSendEmail",
+      Effect: "Allow",
+      Action: "ses:SendEmail",
+      Resource: `arn:aws:ses:*:*:identity/` + sender
+    }])));
+  new (Aws.iam.RolePolicy)("AllAutomationSlicesSendEmail", {
+    policy: policyJson,
+    role: runtime.parts.lambdaRole.id
+  }, customOpts);
+}
+
 let finished = {
   contents: false
 };
@@ -327,6 +344,7 @@ function finishWithDcbEventLog(dcbEventLog) {
         }], runtime, opts);
       makeSweepSchedule(runtime, opts);
       makeGeocoderGrant(runtime, opts);
+      makeMessagingGrant(runtime, opts);
     } else {
       log.warn("AutomationSliceRuntime_Builder_Single", undefined, "finishWithDcbEventLog: DCB EventLog has no parent");
     }
@@ -357,6 +375,7 @@ export {
   sweepIntervalMinutes,
   makeSweepSchedule,
   makeGeocoderGrant,
+  makeMessagingGrant,
   finished,
   finish,
   finishWithDcbEventLog,

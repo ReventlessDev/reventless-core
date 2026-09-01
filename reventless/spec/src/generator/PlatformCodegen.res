@@ -121,6 +121,7 @@ let renderEntry = (entry: unionEntry): result<array<string>, string> =>
   // A capability with no per-plugin identity: one arm however many slices
   // declared it, with every declaring slice kept as provenance.
   | Geocoding => Ok(renderComments(entry)->Array.concat(["  Geocoding,"]))
+  | Messaging => Ok(renderComments(entry)->Array.concat(["  Messaging,"]))
   }
 
 /**

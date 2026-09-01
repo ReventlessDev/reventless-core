@@ -296,6 +296,43 @@ let makeGeocoderGrant = (~runtime: ReventlessCore.Runtime.environment<runtimePar
     )
   }
 
+// Least-privilege `ses:SendEmail` on the platform's verified sender identity,
+// for the slices that send through the injected messaging capability. Built the
+// same way as the geocoder grant above, and for the same three reasons: the
+// provisioned bit is a plain bool, the address is an Output, and the RolePolicy
+// is created at top level rather than inside an `apply`.
+let makeMessagingGrant = (~runtime: ReventlessCore.Runtime.environment<runtimeParts>, ~opts) =>
+  if PluginRuntime_Builder.messagingProvisioned() {
+    let customOpts =
+      opts->ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
+    let policyJson =
+      PluginRuntime_Builder.messagingSender()->Pulumi.Output.apply(sender => {
+        open PulumiAws.PolicyDocument
+        PulumiAws.PolicyDocument.make(
+          ~id="AllAutomationSlicesSendEmail",
+          ~statements=[
+            {
+              sid: "AllowSendEmail",
+              effect: Allow,
+              // SESv2's SendEmail authorizes against the v1 action name, and the
+              // resource is the identity the message is sent FROM — not the
+              // recipient, which is why one grant covers every destination.
+              actions: Action("ses:SendEmail"),
+              resources: Resource(`arn:aws:ses:*:*:identity/${sender}`),
+            },
+          ],
+        )->PulumiAws.PolicyDocument.toJsonString
+      })
+    let _ = PulumiAws.IAM.RolePolicy.make(
+      ~name="AllAutomationSlicesSendEmail",
+      ~args={
+        policy: policyJson->Pulumi.Output.asInput,
+        role: runtime.parts.lambdaRole.id->Pulumi.Output.asInput,
+      },
+      ~opts=customOpts,
+    )
+  }
+
 let finished = ref(false)
 
 // Legacy finalizer, kept only to satisfy `EventCollectorRuntime_Builder.T`.
@@ -619,6 +656,7 @@ let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) 
 
         makeSweepSchedule(~runtime, ~opts)
         makeGeocoderGrant(~runtime, ~opts)
+        makeMessagingGrant(~runtime, ~opts)
       | None =>
         log.warn(
           ~comp="AutomationSliceRuntime_Builder_Single",
