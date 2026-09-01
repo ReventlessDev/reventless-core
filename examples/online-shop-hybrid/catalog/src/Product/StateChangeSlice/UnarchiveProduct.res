@@ -16,12 +16,22 @@ type consumedEvent =
 
 @schema
 type command =
-  | @authorize(AllowGroups(["Admin", "Merchandiser"]))
-  @transition(([Products.Archived]) => Products.Listed)
-  UnarchiveProduct({productId: string})
+  | @authorize(AllowGroups(["Admin", "Merchandiser"])) UnarchiveProduct({productId: string})
 
 @schema
 type error = ProductNotFound | ProductIsDiscontinued
 
 @schema
 type event = ProductUnarchived({productId: string})
+
+// The edge that makes the two withdrawals different: this is the only command
+// naming `Archived` as a from-state, so a diagram draws the way back from there
+// and none out of `Discontinued`.
+type lifecycleState = Products.shelfStatus
+
+let commandTransition = (command: command): Reventless.Transition.t<lifecycleState> => {
+  open Reventless.Transition
+  switch command {
+  | UnarchiveProduct(_) => Moves([Products.Archived], Products.Listed)
+  }
+}

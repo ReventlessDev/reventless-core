@@ -183,12 +183,12 @@ jobs:
         if: steps.build.outcome == 'success'
         run: pnpm run check:graphql
 
-      # `@transition` is authored and, until this ran, checked only for naming
-      # real states. Harvest the lifecycle model the examples' own GWT scenarios
-      # describe and compare it to what the annotations claim. A contradiction
-      # between the two fails; an edge no scenario covers is a warning, so a
-      # thinning corpus is visible without blocking on it.
-      - name: Check lifecycle model against @transition
+      # A command's declared edge is authored and, until this ran, checked only
+      # for naming real states. Harvest the lifecycle model the examples' own GWT
+      # scenarios describe and compare it to what the switches claim. A
+      # contradiction between the two fails; an edge no scenario covers is a
+      # warning, so a thinning corpus is visible without blocking on it.
+      - name: Check lifecycle model against declared edges
         if: steps.build.outcome == 'success'
         run: pnpm run check:lifecycle -- --reuse-sidecars
 

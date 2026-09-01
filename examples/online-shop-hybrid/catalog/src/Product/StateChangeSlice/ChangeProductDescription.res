@@ -11,12 +11,9 @@ type consumedEvent =
   | ProductUnarchived
   | ProductDiscontinued
 
-// Legal while the product is on the shelf and while it is archived; refused once
-// it is discontinued, which is terminal.
 @schema
 type command =
   | @authorize(AllowGroups(["Admin", "Merchandiser"]))
-  @transition([Products.Listed, Products.Archived])
   ChangeProductDescription({productId: string, description: string})
 
 @schema
@@ -30,3 +27,14 @@ type event =
       productId: string,
       description: string,
     })
+
+// Legal while the product is on the shelf and while it is archived; refused once
+// it is discontinued, which is terminal.
+type lifecycleState = Products.shelfStatus
+
+let commandTransition = (command: command): Reventless.Transition.t<lifecycleState> => {
+  open Reventless.Transition
+  switch command {
+  | ChangeProductDescription(_) => Guards([Products.Listed, Products.Archived])
+  }
+}

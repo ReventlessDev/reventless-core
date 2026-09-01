@@ -17,14 +17,22 @@ type consumedEvent =
 
 @schema
 type command =
-  // Both live states, because the decision is about the product's future rather
-  // than about where it sits today.
-  | @authorize(AllowGroups(["Admin", "Merchandiser"]))
-  @transition(([Products.Listed, Products.Archived]) => Products.Discontinued)
-  DiscontinueProduct({productId: string})
+  | @authorize(AllowGroups(["Admin", "Merchandiser"])) DiscontinueProduct({productId: string})
 
 @schema
 type error = ProductNotFound
 
 @schema
 type event = ProductDiscontinued({productId: string})
+
+// Both live states, because the decision is about the product's future rather
+// than about where it sits today.
+type lifecycleState = Products.shelfStatus
+
+let commandTransition = (command: command): Reventless.Transition.t<lifecycleState> => {
+  open Reventless.Transition
+  switch command {
+  | DiscontinueProduct(_) =>
+    Moves([Products.Listed, Products.Archived], Products.Discontinued)
+  }
+}

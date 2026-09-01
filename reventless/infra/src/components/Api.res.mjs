@@ -9,10 +9,6 @@ let noApiVariantsId = Sury.$Metadata_Id_make("api", "noApiVariants");
 
 let noApiVariantId = Sury.$Metadata_Id_make("api", "noApiVariant");
 
-let allowedStatesId = Sury.$Metadata_Id_make("api", "allowedStates");
-
-let targetStateId = Sury.$Metadata_Id_make("api", "targetState");
-
 function markNoApi(schema) {
   return Sury.$Metadata_set(schema, noApiId, true);
 }
@@ -54,24 +50,12 @@ function markNoApiVariants(schema, variants) {
   return Sury.$Metadata_set(marked, noApiVariantsId, excluded);
 }
 
-function markAllowedStates(schema, entries) {
-  return Sury.$Metadata_set(schema, allowedStatesId, Object.fromEntries(entries));
-}
-
-function markTargetState(schema, entries) {
-  return Sury.$Metadata_set(schema, targetStateId, Object.fromEntries(entries));
-}
-
 export {
   noApiId,
   noApiVariantsId,
   noApiVariantId,
-  allowedStatesId,
-  targetStateId,
   markNoApi,
   variantNameOf,
   markNoApiVariants,
-  markAllowedStates,
-  markTargetState,
 }
 /* noApiId Not a pure module */

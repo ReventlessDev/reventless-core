@@ -94,8 +94,8 @@ module type Spec = {
 
   /** The lifecycle edge each command owns, read while the plugin structure is
       assembled. Auto-injected as `_ => Unrestricted` by `@@reventless.spec`,
-      which leaves `@transition` in charge; a host that writes the switch by
-      hand takes charge instead, and gets an exhaustive one over typed states.
+      so a component whose commands guard nothing needs no line; a host that
+      writes the switch by hand gets an exhaustive one over typed states.
       See `Transition`. */
   let commandTransition: command => Transition.t<lifecycleState>
 

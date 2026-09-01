@@ -5,9 +5,10 @@
 // lands in `consumedEventTypes`, overlapping the Orders view's consumed events.
 // That is what links this slice to Orders (`consistencyRead=Orders`) so AutoUI's
 // board offers it — shipping is a manual operator action on the Orders board, not
-// automation-only. `@transition` declares the whole edge outright — the states
-// the command is legal in and the one it lands in — so the board resolves the
-// drop from the declaration rather than guessing it from the command's name.
+// automation-only. `commandTransition` below declares the whole edge outright —
+// the states the command is legal in and the one it lands in — so the board
+// resolves the drop from the declaration rather than guessing it from the
+// command's name.
 
 @@reventless.spec
 
@@ -23,8 +24,7 @@ type consumedEvent =
 
 @schema
 type command =
-  | @transition(([Orders.Placed]) => Orders.Shipped)
-  @authorize(AllowGroups(["Admin", "Fulfilment"])) ShipOrder({orderId: string})
+  | @authorize(AllowGroups(["Admin", "Fulfilment"])) ShipOrder({orderId: string})
 
 @schema
 type error =
@@ -34,3 +34,12 @@ type error =
 @schema
 type event =
   | OrderShipped({orderId: string})
+
+type lifecycleState = Orders.lifecycle
+
+let commandTransition = (command: command): Reventless.Transition.t<lifecycleState> => {
+  open Reventless.Transition
+  switch command {
+  | ShipOrder(_) => Moves([Orders.Placed], Orders.Shipped)
+  }
+}

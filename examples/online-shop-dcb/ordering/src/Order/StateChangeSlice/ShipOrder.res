@@ -10,7 +10,7 @@ type consumedEvent =
 
 @schema
 type command =
-  | @transition(([Orders.Placed]) => Orders.Shipped) ShipOrder({orderId: string})
+  | ShipOrder({orderId: string})
 
 @schema
 type error =
@@ -19,3 +19,12 @@ type error =
 
 @schema
 type event = OrderShipped({orderId: string})
+
+type lifecycleState = Orders.lifecycle
+
+let commandTransition = (command: command): Reventless.Transition.t<lifecycleState> => {
+  open Reventless.Transition
+  switch command {
+  | ShipOrder(_) => Moves([Orders.Placed], Orders.Shipped)
+  }
+}

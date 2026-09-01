@@ -12,11 +12,9 @@ type consumedEvent =
 
 @schema
 type command =
-  | @transition(([Orders.Placed]) => Orders.Cancelled) CancelOrder({orderId: string})
-  // Internal: admin/automation only. The way back out of `Cancelled`, and a real
-  // edge of the lifecycle — being unreachable from the API does not make it less
-  // of one, and leaving it undeclared is what let the reopened order go nowhere.
-  | @noApi @transition(([Orders.Cancelled]) => Orders.Placed) ReopenOrder({orderId: string})
+  | CancelOrder({orderId: string})
+  // Internal: admin/automation only.
+  | @noApi ReopenOrder({orderId: string})
 
 @schema
 type error =
@@ -30,3 +28,16 @@ type event =
       productIds: array<string>,
     })
   | OrderReopened({orderId: string})
+
+// `ReopenOrder` is the way back out of `Cancelled`, and a real edge of the
+// lifecycle — being unreachable from the API does not make it less of one, and
+// leaving it undeclared is what let the reopened order go nowhere.
+type lifecycleState = Orders.lifecycle
+
+let commandTransition = (command: command): Reventless.Transition.t<lifecycleState> => {
+  open Reventless.Transition
+  switch command {
+  | CancelOrder(_) => Moves([Orders.Placed], Orders.Cancelled)
+  | ReopenOrder(_) => Moves([Orders.Cancelled], Orders.Placed)
+  }
+}

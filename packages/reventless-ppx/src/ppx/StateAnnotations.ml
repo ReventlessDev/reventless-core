@@ -1267,7 +1267,7 @@ let validate_visibility_annotations (fields : label_declaration list) : unit =
     Each of those makes some generated surface name the field: `@id` and the
     sub-id markers key a query, `@index` keys a GSI query field, `@owner` and
     `@retired` key the server's narrowing of a read, `@lifecycle` names the enum a
-    board draws its columns from and a command's `@transition` is written
+    board draws its columns from and a command's declared edge is written
     against. A field that is not on the SDL cannot be named by any of them, so the
     pair would generate a surface referring to a field the schema does not have —
     and the failure would land at query time, in the generated document, a long

@@ -70,8 +70,8 @@ type error =
   | CustomerAlreadyDeactivated
 
 // Which lifecycle edge each command owns, as a switch rather than as
-// `@transition` on the constructors. Two things follow that the annotation
-// cannot give here.
+// an attribute on the constructors. Two things follow that an attribute
+// could not give here.
 //
 // It is **exhaustive**, so the two commands spliced from the geocoding trait
 // have to be answered. An annotation cannot reach them at all — it lowers to a

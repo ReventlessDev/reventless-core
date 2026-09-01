@@ -1,13 +1,12 @@
 // The lifecycle edge a command owns, declared as a value rather than as an
 // attribute on the constructor.
 //
-// `@transition([Orders.Placed] => Orders.Shipped)` says the same thing and is
-// still the shorter spelling for a command a host declares itself. It cannot say
-// it for a command a host did NOT declare: a variant spread splices members,
-// while the annotation lowers to a dict on the parent union, so a spliced
-// command arrives carrying no edge at all. Nor can the annotation be checked —
-// the PPX extracts leaf identifiers as strings, and the states belong to another
-// component's enum, so a misspelling survives to the plugin structure.
+// The attribute this replaces could not say it for a command a host did NOT
+// declare: a variant spread splices members, while the attribute lowered to a
+// dict on the parent union, so a spliced command arrived carrying no edge at
+// all. Nor could it be checked — the PPX extracts leaf identifiers as strings,
+// and the states belong to another component's enum, so a misspelling survived
+// to the plugin structure.
 //
 // A `command => t<'state>` switch answers both. It is exhaustive, so a spliced
 // constructor is a compile error until the host says what it does; and `'state`

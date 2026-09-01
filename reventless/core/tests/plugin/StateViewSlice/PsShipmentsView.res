@@ -1,4 +1,4 @@
-// Test fixture spec for the @transition cross-check.
+// Test fixture spec for the declared-edge cross-check.
 // A view that declares a lifecycle, so a command's declared states have
 // something to be checked against. `PsOrdersView` deliberately declares none —
 // the two together cover both the checked and the unvalidated path.

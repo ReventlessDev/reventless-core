@@ -70,10 +70,11 @@ module type Spec = {
   type lifecycleState
 
   /** The lifecycle edge each command owns, read while the plugin structure is
-      assembled. Auto-injected as `_ => Unrestricted` by `@@reventless.spec`,
-      which leaves `@transition` in charge; a host that writes the switch by
-      hand takes charge instead, and gets an exhaustive one over typed states.
-      See `Transition`. */
+      assembled. Auto-injected as `_ => Unrestricted` by `@@reventless.spec`, so
+      a component whose commands guard nothing needs no line; a host that writes
+      the switch by hand gets an exhaustive one over typed states. Refused rather
+      than injected when the command type splices, since a spliced command must
+      be answered for. See `Transition`. */
   let commandTransition: command => Transition.t<lifecycleState>
 
   /** The domain traits grafted into this component, as values the trait packages

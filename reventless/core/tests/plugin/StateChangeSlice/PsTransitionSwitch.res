@@ -1,18 +1,13 @@
-// Test fixture spec for `commandTransition` — the edge declared as a switch
-// rather than as an attribute.
+// Test fixture spec for `commandTransition` — the three shapes of a declared
+// edge, in one command type:
 //
-// Three cases in one command type:
-//
-//   `Book`     declares only through the switch, which is the case
-//              `@transition` cannot serve for a spliced constructor.
-//   `Rebook`   carries BOTH. The switch says `Booked`, the attribute says
-//              `Draft`; the switch is what must reach the commandDef, because
-//              two sources of truth need a stated winner.
-//   `Abandon`  declares nothing in either, and must stay unconstrained.
+//   `Book`     moves the row: a from-set and a target.
+//   `Rebook`   guards only: a from-set and no target, which is the positive
+//              claim that the command moves the row nowhere.
+//   `Abandon`  declares nothing, and must stay unconstrained.
 //
 // The states go in as constructors of this file's own enum, so the compiler
-// resolves them. `@transition` on `Rebook` cannot — it is stripped before the
-// typechecker runs, which is why `PsDispatchShipment` can carry a typo at all.
+// resolves them.
 
 @@reventless.spec("TransitionSwitch")
 
@@ -29,7 +24,7 @@ let initialState = false
 @schema
 type command =
   | Book({bookingId: string})
-  | @transition(([Draft]) => Draft) Rebook({bookingId: string})
+  | Rebook({bookingId: string})
   | Abandon({bookingId: string})
 
 @schema

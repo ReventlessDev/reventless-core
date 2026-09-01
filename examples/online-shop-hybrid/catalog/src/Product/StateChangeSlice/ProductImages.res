@@ -15,25 +15,19 @@ type consumedEvent =
   | ProductUnarchived
   | ProductDiscontinued
 
-// Legal while the product is on the shelf and while it is archived; refused once
-// it is discontinued, which is terminal.
 @schema
 type command =
   | @authorize(AllowGroups(["Admin", "Merchandiser"]))
-  @transition([Products.Listed, Products.Archived])
   AttachProductImage({
       productId: string,
       productImage: Reventless.UploadableImage.t,
       altText?: string,
     })
   | @authorize(AllowGroups(["Admin", "Merchandiser"]))
-  @transition([Products.Listed, Products.Archived])
   RemoveProductImage({productId: string, productImage: Reventless.UploadableImage.t})
   | @authorize(AllowGroups(["Admin", "Merchandiser"]))
-  @transition([Products.Listed, Products.Archived])
   SetPrimaryProductImage({productId: string, productImage: Reventless.UploadableImage.t})
   | @authorize(AllowGroups(["Admin", "Merchandiser"]))
-  @transition([Products.Listed, Products.Archived])
   SetProductImageAltText({
       productId: string,
       productImage: Reventless.UploadableImage.t,
@@ -60,6 +54,22 @@ type event =
       productImage: Reventless.UploadableImage.t,
       altText: string,
     })
+
+// Legal while the product is on the shelf and while it is archived; refused once
+// it is discontinued, which is terminal. Four from-sets and no target: an
+// attachment is not where the product sits, so none of these move it.
+type lifecycleState = Products.shelfStatus
+
+let commandTransition = (command: command): Reventless.Transition.t<lifecycleState> => {
+  open Reventless.Transition
+  switch command {
+  | AttachProductImage(_)
+  | RemoveProductImage(_)
+  | SetPrimaryProductImage(_)
+  | SetProductImageAltText(_) =>
+    Guards([Products.Listed, Products.Archived])
+  }
+}
 
 // Grafted, and this is the only record of it that survives into a deployed
 // plugin — every other signal (the dependency, the spread, the rules alias, the

@@ -24,8 +24,8 @@ and a host that needs it says so.
 
 **What it does not do.** It never writes the host's policy. Which states an
 address may be changed in, who may change it, what a host's own commands refuse
-— those are `@transition` and `@authorize` over the host's own lifecycle, which
-a trait cannot know. They are config when the host supplies them and absent
+— those are `commandTransition` and `@authorize` over the host's own lifecycle,
+which a trait cannot know. They are config when the host supplies them and absent
 when it does not.
 */
 
@@ -358,8 +358,8 @@ let conformanceBinding = (c: config): string => {
 // host choice: a report must be legal in every state, or an answer landing after
 // the entity moved on parks a TODO row forever. The two public commands are the
 // host's call, so they are printed as a marked hole. That split is the same one
-// the whole scaffold runs on, and it is why `@transition` could not serve here:
-// an attribute cannot be attached to a constructor the host did not declare.
+// the whole scaffold runs on, and it is why an attribute could not serve here:
+// one cannot be attached to a constructor the host did not declare.
 let transitionArms = (c: config): array<string> => {
   let n = namesOf(c)
   [

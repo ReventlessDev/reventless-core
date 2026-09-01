@@ -13,17 +13,24 @@ type consumedEvent =
 
 @schema
 type command =
-  // Meaningful only on a category still on the shelf. `@transition` names states
-  // of the view's lifecycle, which is the same field `@retired` marks — one
-  // vocabulary, so a menu offers this and `UnarchiveCategory` on opposite sides
-  // of the same fact, and the edge between them is drawn from the declaration
-  // rather than guessed from the command's name.
-  | @authorize(AllowGroups(["Admin", "Merchandiser"]))
-  @transition(([Categories.Listed]) => Categories.Archived)
-  ArchiveCategory({categoryId: string})
+  | @authorize(AllowGroups(["Admin", "Merchandiser"])) ArchiveCategory({categoryId: string})
 
 @schema
 type error = CategoryNotFound
 
 @schema
 type event = CategoryArchived({categoryId: string})
+
+// Meaningful only on a category still on the shelf. The states are the view's
+// own constructors, which is the same field `@retired` marks — one vocabulary,
+// so a menu offers this and `UnarchiveCategory` on opposite sides of the same
+// fact, and the edge between them is drawn from the declaration rather than
+// guessed from the command's name.
+type lifecycleState = Categories.shelfStatus
+
+let commandTransition = (command: command): Reventless.Transition.t<lifecycleState> => {
+  open Reventless.Transition
+  switch command {
+  | ArchiveCategory(_) => Moves([Categories.Listed], Categories.Archived)
+  }
+}

@@ -194,7 +194,7 @@ describe("Products StateViewSliceStream", () => {
   )
 
   // The three events that move the shelf, and the reason they are worth a
-  // scenario each: `shelfStatus` is the field every `@transition` in this plugin
+  // scenario each: `shelfStatus` is the field every declared edge in this plugin
   // is written in terms of, so it is the view — not the slices — that says what
   // "archived" means. A slice claiming it may run on an archived product is
   // claiming something about a row only this fold produces.

@@ -133,9 +133,9 @@ let refTypeOf = (c: config) => c.refType->Option.getOr("Reventless.UploadableIma
 //
 // The rule survives being emitted as an annotation because the PPX lowers it
 // into a `switch` whose arms are ordinary expressions: `AllowGroupz` does not
-// compile. `@transition` has no such second chance — it is stripped before the
-// typechecker runs — so the states go out through `commandTransition` below
-// instead, where the compiler resolves them.
+// compile. A stripped-before-the-typechecker attribute had no such second
+// chance, which is why the states go out through `commandTransition` below,
+// where the compiler resolves them.
 let commandAttributes = (c: config): string =>
   switch c.authorize {
   | Some(a) => `  | @authorize(${a})\n  `
@@ -146,8 +146,8 @@ let commandAttributes = (c: config): string =>
 // slice is a file the trait writes.
 //
 // The states arrive as config either way; what changes is where they land. In
-// `@transition([Products.Listed])` they are stripped before the typechecker and
-// matched as strings at plugin assembly; in `Guards([Products.Listed])` they are
+// the removed `@transition([Products.Listed])` they were stripped before the
+// typechecker and matched as strings at assembly; in `Guards([Products.Listed])` they are
 // constructor references the compiler resolves, so a config typo is a build
 // error naming it. Same input, and the difference is only who checks it.
 let commandTransitionBinding = (c: config): array<string> => {

@@ -25,8 +25,6 @@ import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src
 import * as ApiNoApiHelpers$ReventlessCore from "../../components/Api/ApiNoApiHelpers.res.mjs";
 import * as SuryToJsonSchema$ReventlessCore from "../../components/Api/SuryToJsonSchema.res.mjs";
 import * as Capability_Inference$ReventlessCore from "./Capability_Inference.res.mjs";
-import * as ApiTargetStateHelpers$ReventlessCore from "../../components/Api/ApiTargetStateHelpers.res.mjs";
-import * as ApiAllowedStatesHelpers$ReventlessCore from "../../components/Api/ApiAllowedStatesHelpers.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "../../components/Api/GraphQL_FragmentGenerator.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
@@ -122,7 +120,7 @@ function checkRetiredValue(entityName, stateSchema) {
   let named = values.join(", ");
   let lifecycle = lifecycleFieldFromStateSchema(entityName, stateSchema);
   if (Primitive_object.notequal(lifecycle, field)) {
-    log.warn("Plugin_Structure", undefined, entityName + `: @retired(` + named + `) is on "` + field + `", which is not this record's lifecycle field` + Stdlib_Option.getOr(Stdlib_Option.map(lifecycle, f => ` (that is "` + f + `")`), " (it declares none)") + `. A retirement state no command's @transition can name loses the command filtering the state form exists for.`);
+    log.warn("Plugin_Structure", undefined, entityName + `: @retired(` + named + `) is on "` + field + `", which is not this record's lifecycle field` + Stdlib_Option.getOr(Stdlib_Option.map(lifecycle, f => ` (that is "` + f + `")`), " (it declares none)") + `. A retirement state no command's declared edge can name loses the command filtering the state form exists for.`);
   }
   let declared;
   declared = stateSchema.type === "object" ? Stdlib_Option.getOr(Stdlib_Option.map(stateSchema.properties[field], schema => {
@@ -602,14 +600,8 @@ function toCommandDef(isAggregate, mutationFieldFor, parentSchema, commandAuthor
         TAG: variantName
       }) : variantName;
     let declared = commandTransition(syntheticCommand);
-    let match$1;
-    match$1 = typeof declared !== "object" ? [
-        ApiAllowedStatesHelpers$ReventlessCore.getAllowedStates(parentSchema, variantName),
-        ApiTargetStateHelpers$ReventlessCore.getTargetState(parentSchema, variantName)
-      ] : [
-        Transition$Reventless.allowedStates(declared),
-        Transition$Reventless.targetState(declared)
-      ];
+    let allowedStates = Transition$Reventless.allowedStates(declared);
+    let targetState = Transition$Reventless.targetState(declared);
     let apiExposed = false;
     if (!ApiNoApiHelpers$ReventlessCore.isNoApi(parentSchema)) {
       let excluded = ApiNoApiHelpers$ReventlessCore.getExcludedVariants(parentSchema);
@@ -626,8 +618,8 @@ function toCommandDef(isAggregate, mutationFieldFor, parentSchema, commandAuthor
       aggregateIdField: match[1],
       mutationField: mutationField,
       references: references,
-      allowedStates: match$1[0],
-      targetState: match$1[1],
+      allowedStates: allowedStates,
+      targetState: targetState,
       apiExposed: apiExposed,
       requiredAccess: requiredAccess,
       ownerField: Owner$Reventless.fieldNamesOfProperties(properties)[0]

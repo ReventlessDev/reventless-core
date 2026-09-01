@@ -2,7 +2,6 @@
 
 import * as Sury from "sury";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
-import * as Api$ReventlessInfra from "@reventlessdev/reventless-infra/src/components/Api.res.mjs";
 import * as UploadableImage$Reventless from "@reventlessdev/reventless-spec/src/semantic/UploadableImage.res.mjs";
 import * as Attachments$TraitAttachments from "@reventlessdev/trait-attachments/src/Attachments.res.mjs";
 
@@ -89,38 +88,17 @@ let eventSchema = Sury.union([
   }))
 ]);
 
-let traits = [Attachments$TraitAttachments.declaration];
+function commandTransition(command) {
+  return {
+    TAG: "Guards",
+    _0: [
+      "Listed",
+      "Archived"
+    ]
+  };
+}
 
-let commandSchema$1 = Api$ReventlessInfra.markAllowedStates(commandSchema, [
-  [
-    "AttachProductImage",
-    [
-      "Listed",
-      "Archived"
-    ]
-  ],
-  [
-    "RemoveProductImage",
-    [
-      "Listed",
-      "Archived"
-    ]
-  ],
-  [
-    "SetPrimaryProductImage",
-    [
-      "Listed",
-      "Archived"
-    ]
-  ],
-  [
-    "SetProductImageAltText",
-    [
-      "Listed",
-      "Archived"
-    ]
-  ]
-]);
+let traits = [Attachments$TraitAttachments.declaration];
 
 function commandAuthorization(command) {
   switch (command.TAG) {
@@ -138,10 +116,6 @@ function commandAuthorization(command) {
   }
 }
 
-function commandTransition(param) {
-  return "Unrestricted";
-}
-
 let name = "ProductImages";
 
 let Id;
@@ -154,13 +128,13 @@ export {
   name,
   Id,
   consumedEventSchema,
+  commandSchema,
   errorSchema,
   eventSchema,
+  commandTransition,
   traits,
-  commandSchema$1 as commandSchema,
   moduleUrl,
   commandAuthorization,
   readConsistency,
-  commandTransition,
 }
 /* consumedEventSchema Not a pure module */

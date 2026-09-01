@@ -6,9 +6,9 @@
 @schema
 type command =
   | Place({customerId: string, @ref("AvailableProducts") @noDcbTag productIds: array<string>})
-  | @transition(([Orders.Placed]) => Orders.Shipped) Ship
-  | @transition(([Orders.Placed]) => Orders.Cancelled) Cancel
-  | @transition(([Orders.Cancelled]) => Orders.Refunded) Refund({reason: string})
+  | Ship
+  | Cancel
+  | Refund({reason: string})
 
 @schema
 type event =
@@ -25,3 +25,17 @@ type error =
   | OrderAlreadyCancelled
   | OrderNotCancelled
   | OrderAlreadyRefunded
+
+// `Place` brings the row into existence, so it names no from-state; the read
+// model derives the status it lands in.
+type lifecycleState = Orders.lifecycle
+
+let commandTransition = (command: command): Reventless.Transition.t<lifecycleState> => {
+  open Reventless.Transition
+  switch command {
+  | Place(_) => Unrestricted
+  | Ship => Moves([Orders.Placed], Orders.Shipped)
+  | Cancel => Moves([Orders.Placed], Orders.Cancelled)
+  | Refund(_) => Moves([Orders.Cancelled], Orders.Refunded)
+  }
+}

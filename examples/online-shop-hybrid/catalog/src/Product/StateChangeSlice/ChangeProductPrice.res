@@ -15,15 +15,9 @@ type consumedEvent =
   | ProductUnarchived
   | ProductDiscontinued
 
-// Repricing is legal on a listed product and on an archived one — a product
-// pulled for a season is coming back, and its price should be right when it
-// does. It is not legal on a discontinued one, which is terminal. Two
-// from-states and no target: the price is not where the product sits, so this
-// command moves nothing.
 @schema
 type command =
   | @authorize(AllowGroups(["Admin", "Merchandiser"]))
-  @transition([Products.Listed, Products.Archived])
   ChangeProductPrice({productId: string, price: Reventless.Money.t})
 
 @schema
@@ -34,3 +28,16 @@ type error =
 @schema
 type event =
   | ProductPriceChanged({productId: string, price: Reventless.Money.t})
+
+// Repricing is legal on a listed product and on an archived one — a product
+// pulled for a season is coming back, and its price should be right when it
+// does. It is not legal on a discontinued one, which is terminal. `Guards`
+// rather than `Moves`: the price is not where the product sits.
+type lifecycleState = Products.shelfStatus
+
+let commandTransition = (command: command): Reventless.Transition.t<lifecycleState> => {
+  open Reventless.Transition
+  switch command {
+  | ChangeProductPrice(_) => Guards([Products.Listed, Products.Archived])
+  }
+}

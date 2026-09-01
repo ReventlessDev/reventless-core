@@ -92,6 +92,52 @@ let errorSchema = Sury.union([
   Sury.literal("IsInactive")
 ]);
 
+function commandTransition(command) {
+  switch (command.TAG) {
+    case "Connect" :
+      return {
+        TAG: "Creates",
+        _0: "Connected"
+      };
+    case "Disconnect" :
+      return {
+        TAG: "Moves",
+        _0: ["Connected"],
+        _1: "Disconnected"
+      };
+    case "Activate" :
+      return {
+        TAG: "Moves",
+        _0: [
+          "Inactive",
+          "Retired"
+        ],
+        _1: "Connected"
+      };
+    case "Deactivate" :
+      return {
+        TAG: "Moves",
+        _0: [
+          "Connected",
+          "Disconnected"
+        ],
+        _1: "Inactive"
+      };
+    case "Retire" :
+      return {
+        TAG: "Moves",
+        _0: [
+          "Connected",
+          "Disconnected",
+          "Inactive"
+        ],
+        _1: "Retired"
+      };
+    default:
+      return "Unrestricted";
+  }
+}
+
 let commandSchema$1 = Api$ReventlessInfra.markNoApiVariants(commandSchema, [
   "Connect",
   "ReportIncompatibility",
@@ -100,64 +146,8 @@ let commandSchema$1 = Api$ReventlessInfra.markNoApiVariants(commandSchema, [
   "Disconnect"
 ]);
 
-let commandSchema$2 = Api$ReventlessInfra.markAllowedStates(commandSchema$1, [
-  [
-    "Disconnect",
-    ["Connected"]
-  ],
-  [
-    "Activate",
-    [
-      "Inactive",
-      "Retired"
-    ]
-  ],
-  [
-    "Deactivate",
-    [
-      "Connected",
-      "Disconnected"
-    ]
-  ],
-  [
-    "Retire",
-    [
-      "Connected",
-      "Disconnected",
-      "Inactive"
-    ]
-  ]
-]);
-
-let commandSchema$3 = Api$ReventlessInfra.markTargetState(commandSchema$2, [
-  [
-    "Connect",
-    "Connected"
-  ],
-  [
-    "Disconnect",
-    "Disconnected"
-  ],
-  [
-    "Activate",
-    "Connected"
-  ],
-  [
-    "Deactivate",
-    "Inactive"
-  ],
-  [
-    "Retire",
-    "Retired"
-  ]
-]);
-
 function commandAuthorization(param) {
   return "AllowAuthenticated";
-}
-
-function commandTransition(param) {
-  return "Unrestricted";
 }
 
 let traits = [];
@@ -177,10 +167,10 @@ export {
   versionSupersededDataSchema,
   eventSchema,
   errorSchema,
-  commandSchema$3 as commandSchema,
+  commandTransition,
+  commandSchema$1 as commandSchema,
   moduleUrl,
   commandAuthorization,
-  commandTransition,
   traits,
 }
 /* commandSchema Not a pure module */

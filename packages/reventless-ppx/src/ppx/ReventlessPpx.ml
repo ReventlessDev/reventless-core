@@ -881,8 +881,8 @@ let transform (str : structure) : structure =
       in
       (* commandTransition auto-injection (command carriers). Appends
          [let commandTransition = _ => Reventless.Transition.Unrestricted] when the
-         spec does not declare the switch itself, so the Spec field is satisfied
-         without a manual binding and @transition stays in charge. Idempotent. *)
+         spec does not declare the switch itself, so a component whose commands
+         guard nothing satisfies the Spec field without a line. Idempotent. *)
       let transition_suffix =
         AuthorizationInjection.command_transition_suffix ~loc loc.loc_start.pos_fname body
       in

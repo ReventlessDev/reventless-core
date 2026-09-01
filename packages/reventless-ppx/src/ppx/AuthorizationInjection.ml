@@ -366,18 +366,14 @@ let gen_external_system ~loc =
    lifecycle edge each command owns, as a value rather than as a per-constructor
    attribute.
 
-   Injected rather than generated FROM [@transition], and that is the whole
-   point: the PPX holds the states as strings and cannot emit
-   [Customers.Active], because a reference it introduces does not survive
-   ReScript's dependency analysis — which runs before this. A host that wants
-   the typed, exhaustive form writes the switch itself, and then this injection
-   stands aside. A host that does not keeps [@transition], which still lowers to
-   the same metadata.
+   Injected rather than generated, and that is the whole point: the PPX would
+   have to emit [Customers.Active] as a reference, and a reference it introduces
+   does not survive ReScript's dependency analysis — which runs before this. The
+   switch is host-written, which is what makes its states typed at all.
 
-   So the default is [Unrestricted]: "this spec says nothing here", which leaves
-   the annotation in charge. It is not a claim that the commands are legal
-   everywhere — [Plugin_Structure] reads the annotation when the switch declares
-   no edge. *)
+   So the default is [Unrestricted]: "this spec declares no edges", which is the
+   honest answer for a component whose commands guard nothing. It is refused
+   rather than injected where the command type splices — see below. *)
 (* [type lifecycleState = unit] — the enum a spec's edges are drawn from.
 
    Injected beside the default below and gated on the same check, because the
@@ -437,12 +433,10 @@ let command_type_spreads (body : structure) : bool =
 
 (* Refuse a spliced command type that says nothing about its lifecycle edges.
 
-   The injected default is [_ => Unrestricted], which leaves [@transition] in
-   charge — correct for a spec that declared all its own constructors, and
-   silently wrong for one that spliced some. The annotation cannot reach a
-   spliced member (it lowers to a dict on the parent union), so a graft would
-   compile with its trait's commands carrying no policy at all, and nothing
-   would say so.
+   The injected default is [_ => Unrestricted] — an honest answer for a spec
+   whose commands declare no edge, and silently wrong for one that spliced some.
+   A graft would compile with its trait's commands carrying no policy at all,
+   and nothing would say so.
 
    Writing the switch is what closes that, because it is exhaustive: the
    compiler names the spliced commands until the host answers for them.
@@ -453,9 +447,8 @@ let raise_spread_needs_transition ~loc =
   Location.raise_errorf ~loc
     "[reventless-ppx] this command type splices another type's constructors, so \
      it must declare `commandTransition` itself.\n\n\
-     `@transition` cannot reach a spliced constructor — it is recorded on the \
-     union, and a spread splices members — so the commands you spliced would \
-     carry no lifecycle policy and nothing would report it.\n\n\
+     A default injected here would be a claim nobody made: the commands you \
+     spliced would carry no lifecycle policy, and nothing would report it.\n\n\
      Add an exhaustive switch; the compiler will name every constructor you \
      have not answered for:\n\n\
     \  type lifecycleState = YourView.someLifecycle\n\

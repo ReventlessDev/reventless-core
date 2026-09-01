@@ -2,7 +2,6 @@
 
 import * as Sury from "sury";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
-import * as Api$ReventlessInfra from "@reventlessdev/reventless-infra/src/components/Api.res.mjs";
 
 let consumedEventSchema = Sury.union([
   Sury.literal("ProductAdded"),
@@ -26,15 +25,13 @@ let eventSchema = Sury.$schema(s => ({
   productId: s.m(DcbTag$Reventless.string)
 }));
 
-let commandSchema$1 = Api$ReventlessInfra.markAllowedStates(commandSchema, [[
-    "UnarchiveProduct",
-    ["Archived"]
-  ]]);
-
-let commandSchema$2 = Api$ReventlessInfra.markTargetState(commandSchema$1, [[
-    "UnarchiveProduct",
-    "Listed"
-  ]]);
+function commandTransition(command) {
+  return {
+    TAG: "Moves",
+    _0: ["Archived"],
+    _1: "Listed"
+  };
+}
 
 function commandAuthorization(command) {
   return {
@@ -44,10 +41,6 @@ function commandAuthorization(command) {
       "Merchandiser"
     ]
   };
-}
-
-function commandTransition(param) {
-  return "Unrestricted";
 }
 
 let traits = [];
@@ -64,13 +57,13 @@ export {
   name,
   Id,
   consumedEventSchema,
+  commandSchema,
   errorSchema,
   eventSchema,
-  commandSchema$2 as commandSchema,
+  commandTransition,
   moduleUrl,
   commandAuthorization,
   readConsistency,
-  commandTransition,
   traits,
 }
 /* consumedEventSchema Not a pure module */

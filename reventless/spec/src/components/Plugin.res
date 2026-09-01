@@ -137,10 +137,10 @@ type commandDef = {
   aggregateIdField: @s.matches(stringOptionSchema) option<string>,
   mutationField: string,
   references: array<fieldReference>,
-  /** The `@transition` *from* set — lifecycle states this command is meaningful in.
+  /** The declared *from* set — lifecycle states this command is meaningful in.
       `None` means always available; `Some([])` means never show. */
   allowedStates: @s.matches(stringArrayOptionSchema) option<array<string>>,
-  /** The `@transition` *to* state this command's handler writes. `None` with a
+  /** The declared *to* state this command's handler writes. `None` with a
       from-set present means the command does not move the row. */
   targetState: @s.matches(stringOptionSchema) option<string>,
   /** Whether the variant is exposed in the generated API (non-`@noApi`). */

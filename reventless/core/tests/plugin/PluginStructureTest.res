@@ -304,11 +304,11 @@ describe("lifecycle topology", () => {
 })
 
 describe("commandTransition — the edge as a switch", () => {
-  // The seam a variant spread needs. `@transition` lowers to a dict on the
-  // parent union keyed by variant name, and a spread splices members, so a
-  // command a host did not declare cannot be annotated at all. A switch over the
-  // command reaches every constructor, spliced or not, and the compiler makes
-  // it exhaustive.
+  // The seam a variant spread needs. The removed attribute lowered to a dict on
+  // the parent union keyed by variant name, and a spread splices members, so a
+  // command a host did not declare could not be annotated at all. A switch over
+  // the command reaches every constructor, spliced or not, and the compiler
+  // makes it exhaustive.
   let structure = Plugin_Structure.make(
     ~name="TransitionSwitchPlugin",
     ~stateChangeSlices=[module(PsTransitionSwitchSlice)],
@@ -325,19 +325,13 @@ describe("commandTransition — the edge as a switch", () => {
   })
 
   testSync("a guard declares its from-set and no target", () => {
-    // The same positive claim the one-sided `@transition` makes: legal in these
-    // states, and it moves the row nowhere.
+    // A positive claim rather than an omission: legal in these states, and it
+    // moves the row nowhere. Distinguishable on the wire from both fields being
+    // None, and consumers are expected to honour it.
     expect((
       byName("Rebook")->Option.flatMap(c => c.allowedStates),
       byName("Rebook")->Option.flatMap(c => c.targetState),
     ))->toEqual((Some(["Booked"]), None))
-  })
-
-  testSync("the switch wins over an @transition on the same command", () => {
-    // `Rebook` carries both, and they disagree on purpose: the attribute says
-    // Draft. Two sources of truth need a stated winner, and it is the one the
-    // compiler checked.
-    expect(byName("Rebook")->Option.flatMap(c => c.allowedStates))->toEqual(Some(["Booked"]))
   })
 
   testSync("Unrestricted declares nothing, leaving the command unconstrained", () => {
@@ -384,12 +378,14 @@ describe("traitDeclarations — a graft leaves a trace", () => {
   })
 })
 
-describe("@transition cross-check", () => {
+describe("declared-edge cross-check", () => {
   // The exit criterion: a state no linked view declares stops the build, and the
   // message says which command, which state, and what it was checked against.
   // `DispatchShipment` produces `ShipmentDispatched`, which the `Shipments` view
   // consumes — so the two are linked, the view's lifecycle is in hand, and
-  // "Dispatchd" has somewhere to be wrong.
+  // "Dispatchd" has somewhere to be wrong. It compiles because the switch names
+  // the slice's OWN enum: the typechecker cannot see that the wrong lifecycle
+  // was picked, and this is the check that can.
   let buildBad = () =>
     try {
       Plugin_Structure.make(
@@ -504,11 +500,10 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
       ))->toEqual((Some(true), Some(false)))
     })
 
-    testSync("ShipOrder: @transition's target flows through the PPX to commandDef.targetState", () => {
-      // End-to-end: the reventless-ppx @transition annotation → markTargetState
-      // metadata → ApiTargetStateHelpers.getTargetState → commandDef. The
-      // un-annotated CancelShipment carries None (resolver falls back to
-      // name-stem).
+    testSync("ShipOrder: the switch's target flows through to commandDef.targetState", () => {
+      // End-to-end: the spec's `commandTransition`, evaluated per constructor
+      // against a synthetic command → commandDef. `CancelShipment` answers
+      // `Unrestricted` and carries None (resolver falls back to name-stem).
       let shipOrder = structure.stateChangeSlices->Array.getUnsafe(1)
       let byName = name => shipOrder.commands->Array.find(c => c.name == name)
       expect((
@@ -517,10 +512,10 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
       ))->toEqual((Some("Shipped"), None))
     })
 
-    testSync("ShipOrder: @transition's from-set flows through to commandDef.allowedStates", () => {
-      // The other half of the same annotation, which the removed pair spelled
-      // separately: one attribute now fills both fields, so a command that
-      // declares a target cannot end up without the states it may run from.
+    testSync("ShipOrder: the switch's from-set flows through to commandDef.allowedStates", () => {
+      // The other half of the same declaration. An edge is one value, so a
+      // command that declares a target cannot end up without the states it may
+      // run from — the two fields are read off it together.
       let shipOrder = structure.stateChangeSlices->Array.getUnsafe(1)
       let byName = name => shipOrder.commands->Array.find(c => c.name == name)
       expect((

@@ -54,7 +54,7 @@ otherwise see the same negative marker on every record they can read.
   two-valued enum.
 - `Some(v)` — the **state** form. The row is retired when the field equals `v`,
   and the field is the record's `@lifecycle` field. One field then carries the
-  fact once instead of twice, and `@transition(([Deactivated]) => Active)` on the
+  fact once instead of twice, and `Moves([Deactivated], Active)` on the
   way-back command is enough to make a generated menu offer it there and nowhere
   else —
   because retirement is finally expressible in the vocabulary that stance is
@@ -158,7 +158,7 @@ type stateAnnotationSpec = {
   metric: array<(string, metricSpec)>,
   /**
   Field annotated `@lifecycle` on the state record (PPX-emitted) — the enum a
-  command's `@transition` is written in terms of, a board draws its columns
+  command's declared edge is written in terms of, a board draws its columns
   from and a state diagram renders. `Some(name)` when one such annotation
   exists; the PPX errors on duplicate `@lifecycle` annotations within the same
   record. Codegen consumes this to populate `queryableDef.lifecycleField`, and

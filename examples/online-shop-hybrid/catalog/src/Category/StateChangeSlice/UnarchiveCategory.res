@@ -18,12 +18,19 @@ type consumedEvent =
 
 @schema
 type command =
-  | @authorize(AllowGroups(["Admin", "Merchandiser"]))
-  @transition(([Categories.Archived]) => Categories.Listed)
-  UnarchiveCategory({categoryId: string})
+  | @authorize(AllowGroups(["Admin", "Merchandiser"])) UnarchiveCategory({categoryId: string})
 
 @schema
 type error = CategoryNotFound
 
 @schema
 type event = CategoryUnarchived({categoryId: string})
+
+type lifecycleState = Categories.shelfStatus
+
+let commandTransition = (command: command): Reventless.Transition.t<lifecycleState> => {
+  open Reventless.Transition
+  switch command {
+  | UnarchiveCategory(_) => Moves([Categories.Archived], Categories.Listed)
+  }
+}

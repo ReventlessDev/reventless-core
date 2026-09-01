@@ -939,13 +939,11 @@ let project = event => switch event {
 }
 EOF
 
-# ─── Fixture: @transition (lifecycle edge, all three forms) ────────────
+# ─── Fixture: a command carrier that declares no edge ──────────────────
 
-# Every form on one command type. `Ship` moves the row and declares the arrow;
-# `Rename` guards only — its absence from the targetState metadata is what tells
-# a consumer the command moves nothing, so the test asserts on that absence too;
-# `Open` creates the row and declares a target with an empty from-set, so it must
-# reach markTargetState and NOT markAllowedStates.
+# Declares all its own constructors and no `commandTransition`, so the PPX
+# injects the standing-aside default. The path every spec that guards nothing
+# is on.
 cat > "$PLUGIN/src/Aggregate/TransitionOrder.res" <<'EOF'
 @@reventless.spec
 
@@ -958,10 +956,10 @@ let initialState = { orderId: "", note: "" }
 
 @schema
 type command =
-  | @transition(([Placed]) => Shipped) Ship({orderId: string})
-  | @transition(([Placed, Shipped]) => Cancelled) Cancel({orderId: string})
-  | @transition([Placed]) Rename({orderId: string, note: string})
-  | @transition(() => Placed) Open({orderId: string})
+  | Ship({orderId: string})
+  | Cancel({orderId: string})
+  | Rename({orderId: string, note: string})
+  | Open({orderId: string})
   | Place({orderId: string})
 
 @schema
@@ -976,15 +974,10 @@ EOF
 
 # ─── Fixture: a variant spread beside the two command-policy seams ─────
 
-# The one shape a trait graft makes and nothing else in this suite does. What is
-# asserted downstream is the split between the two seams:
-#
-#   @authorize   lowers to a `switch` over the command, so the spliced members
-#                are real cases the compiler resolves — the rule travels.
-#   @transition  lowers to a dict on the PARENT union keyed by variant name, and
-#                a spread splices members, so the spliced ones reach the metadata
-#                carrying nothing. `commandTransition` is the answer to that, and
-#                the PPX injects the standing-aside default here.
+# The one shape a trait graft makes and nothing else in this suite does. Both
+# command-policy seams are values here rather than attributes, and this asserts
+# that both reach a constructor the host did not declare: `@authorize` lowers to
+# a generated `switch`, and `commandTransition` is one the host writes.
 
 cat > "$PLUGIN/src/Aggregate/SpreadOrder.res" <<'EOF'
 @@reventless.spec
@@ -1003,7 +996,7 @@ let initialState = { orderId: "" }
 
 @schema
 type command =
-  | @authorize(AllowGroups(["Admin"])) @transition([Placed]) Ship({orderId: string})
+  | @authorize(AllowGroups(["Admin"])) Ship({orderId: string})
   | ...reportCommands
 
 @schema
@@ -2782,16 +2775,8 @@ assert_js_not_contains "$JS" 'visibility: "Public"' "Public visibility omitted f
 assert_js_not_contains "$JS" 'visibility: "Internal"' "Internal visibility absent from default-visibility ReadModel"
 
 echo ""
-echo "=== Test: @transition arrow form → both from-set and target lowered ==="
+echo "=== Test: both command-policy seams reach a spliced constructor ==="
 JS="$PLUGIN/src/Aggregate/TransitionOrder.res.mjs"
-assert_js_contains "$JS" 'markAllowedStates' "markAllowedStates binding emitted from @transition"
-assert_js_contains "$JS" 'markTargetState' "markTargetState binding emitted from @transition"
-assert_js_contains "$JS" '"Ship"' "moving command present in the metadata"
-assert_js_contains "$JS" '"Shipped"' "arrow target lowered to the metadata"
-
-echo ""
-echo ""
-echo "=== Test: @authorize survives a variant spread, @transition does not ==="
 PJS="$PLUGIN/src/Aggregate/SpreadOrder.res.mjs"
 
 # The authorization switch is generated ReScript matching real constructors, so
@@ -2803,29 +2788,24 @@ else
   fail "spread authorization" "commandAuthorization does not answer for the spliced constructors"
 fi
 
-# The transition metadata is a dict on the parent union, so it cannot: this is
-# the gap `commandTransition` exists to close, asserted so it stays visible.
-ALLOWED_SPREAD=$(sed -n '/markAllowedStates/,/]);/p' "$PJS")
-if echo "$ALLOWED_SPREAD" | grep -q '"Ship"'; then
-  pass "the host's own command reaches the transition metadata"
+# The host's own switch reaches them because it is exhaustive over the command,
+# which is the property the removed attribute could not have.
+TRANS_SPREAD=$(sed -n '/function commandTransition/,/^}/p' "$PJS")
+if echo "$TRANS_SPREAD" | grep -q '"Reported"' && echo "$TRANS_SPREAD" | grep -q '"Failed"'; then
+  pass "spliced constructors reach commandTransition"
 else
-  fail "spread transition" "Ship missing from markAllowedStates"
-fi
-if echo "$ALLOWED_SPREAD" | grep -qE '"Reported"|"Failed"'; then
-  fail "spread transition" "a spliced constructor must not appear — the annotation cannot reach it"
-else
-  pass "spliced constructors absent from the transition metadata (the gap commandTransition closes)"
+  fail "spread transition" "commandTransition does not answer for the spliced constructors"
 fi
 
 echo ""
 echo "=== Test: commandTransition is injected where the spec declares none ==="
-# TransitionOrder declares all its own constructors, so the default is injected
-# and @transition stays in charge — the path every un-grafted spec is on.
+# TransitionOrder declares all its own constructors and no switch, so the
+# standing-aside default is injected — the path every unguarded spec is on.
 TJS="$PLUGIN/src/Aggregate/TransitionOrder.res.mjs"
 assert_js_contains "$TJS" 'function commandTransition' "commandTransition injected on a command carrier"
 TRANS_BLOCK=$(sed -n '/function commandTransition/,/^}/p' "$TJS")
 if echo "$TRANS_BLOCK" | grep -q 'Unrestricted'; then
-  pass "the injected default stands aside, leaving @transition in charge"
+  pass "the injected default declares no edge"
 else
   fail "commandTransition default" "injected binding does not return Unrestricted"
 fi
@@ -2869,8 +2849,8 @@ else
   else
     fail "spliced command without commandTransition" "error did not name commandTransition: $OUTPUT"
   fi
-  if echo "$OUTPUT" | grep -q "spread splices members"; then
-    pass "the refusal says why @transition is not the answer"
+  if echo "$OUTPUT" | grep -q "a claim nobody made"; then
+    pass "the refusal says why a default cannot be injected"
   else
     fail "spliced command refusal" "error did not explain the spread: $OUTPUT"
   fi
@@ -2894,79 +2874,44 @@ else
   pass "no runtime import of the view (so the reference cannot cycle)"
 fi
 
-echo ""
-echo "=== Test: @transition multi-state from-set keeps every state ==="
-assert_js_contains "$JS" '"Cancelled"' "second command's target lowered"
-
-# The guard-only claim is carried by an ABSENCE — `Rename` must appear in the
-# from-set metadata and NOT in the target metadata. Asserted by slicing the
-# markTargetState call out of the generated module and grepping inside it, so a
-# `Rename` mentioned elsewhere in the file cannot satisfy the check.
-echo ""
-echo "=== Test: @transition one-sided form declares no target ==="
-if grep -q '"Rename"' "$JS"; then
-  pass "guard-only command reaches the from-set metadata"
-else
-  fail "guard-only from-set" "Rename missing from generated metadata"
-fi
-TARGET_BLOCK=$(sed -n '/markTargetState/,/]);/p' "$JS")
-if echo "$TARGET_BLOCK" | grep -q '"Rename"'; then
-  fail "guard-only target" "Rename must not appear in markTargetState — its absence is the claim"
-else
-  pass "guard-only command absent from markTargetState (declares no target)"
-fi
-# `Place` carries no annotation at all: it must reach neither binding.
-if echo "$TARGET_BLOCK" | grep -q '"Place"'; then
-  fail "unannotated command" "Place must not appear in markTargetState"
-else
-  pass "unannotated command absent from the transition metadata"
-fi
-
-# The creating form's claim is the mirror image of the guard-only one: a target
-# and NO from-set. An entry in markAllowedStates would be `allowedStates: Some([])`
-# — legal in no state — and would hide the command that brings the row into being.
-echo ""
-echo "=== Test: @transition creating form declares a target and no from-set ==="
-if echo "$TARGET_BLOCK" | grep -q '"Open"'; then
-  pass "creating command reaches markTargetState"
-else
-  fail "creating target" "Open missing from markTargetState"
-fi
-ALLOWED_BLOCK=$(sed -n '/markAllowedStates/,/]);/p' "$JS")
-if echo "$ALLOWED_BLOCK" | grep -q '"Open"'; then
-  fail "creating from-set" "Open must not appear in markAllowedStates — the empty from-set is the claim"
-else
-  pass "creating command absent from markAllowedStates"
-fi
+# ── The three removed command-edge attributes ───────────────────────────────
+#
+# Each raises rather than being ignored. A silently-dropped attribute would leave
+# an author believing a guard was declared when none was, which is the failure
+# the switch exists to end — so the refusal has to name the replacement.
 
 echo ""
-echo "=== Test: an empty bracketed from-set is refused, naming () ==="
+echo "=== Test: the removed @transition raises, naming commandTransition ==="
 mkdir -p "$ERROR/src/Aggregate"
-cat > "$ERROR/src/Aggregate/EmptyBracketed.res" <<'EOF'
+cat > "$ERROR/src/Aggregate/LegacyTransition.res" <<'EOF'
 @@reventless.spec
 
-type lifecycle = Placed
+type lifecycle = Placed | Shipped
 
 @schema
 type state = { @id orderId: string }
 
 @schema
-type command = @transition(([]) => Placed) Open({orderId: string})
+type command = @transition(([Placed]) => Shipped) Ship({orderId: string})
 EOF
 if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
-  fail "empty bracketed from-set" "expected compilation to fail but it succeeded"
+  fail "removed @transition" "expected compilation to fail but it succeeded"
 else
-  if echo "$OUTPUT" | grep -q "()"; then
-    pass "empty bracketed from-set fails the build and names the () spelling"
+  if echo "$OUTPUT" | grep -q "commandTransition"; then
+    pass "leftover @transition fails the build and names commandTransition"
   else
-    fail "empty bracketed from-set" "error did not name the () spelling: $OUTPUT"
+    fail "removed @transition" "error did not name the replacement: $OUTPUT"
+  fi
+  if echo "$OUTPUT" | grep -q "Moves("; then
+    pass "the refusal spells the replacement's own constructors"
+  else
+    fail "removed @transition" "error did not show the switch's forms: $OUTPUT"
   fi
 fi
-rm -f "$ERROR/src/Aggregate/EmptyBracketed.res"
+rm -f "$ERROR/src/Aggregate/LegacyTransition.res"
 
 echo ""
-echo "=== Test: the removed @allowedStates raises, naming @transition ==="
-mkdir -p "$ERROR/src/Aggregate"
+echo "=== Test: the removed @allowedStates raises, naming commandTransition ==="
 cat > "$ERROR/src/Aggregate/LegacyAllowed.res" <<'EOF'
 @@reventless.spec
 
@@ -2981,8 +2926,8 @@ EOF
 if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
   fail "removed @allowedStates" "expected compilation to fail but it succeeded"
 else
-  if echo "$OUTPUT" | grep -q "@transition"; then
-    pass "leftover @allowedStates fails the build and names @transition"
+  if echo "$OUTPUT" | grep -q "commandTransition"; then
+    pass "leftover @allowedStates fails the build and names commandTransition"
   else
     fail "removed @allowedStates" "error did not name the replacement: $OUTPUT"
   fi
@@ -2990,7 +2935,7 @@ fi
 rm -f "$ERROR/src/Aggregate/LegacyAllowed.res"
 
 echo ""
-echo "=== Test: the removed @targetState raises, naming @transition ==="
+echo "=== Test: the removed @targetState raises, naming commandTransition ==="
 cat > "$ERROR/src/Aggregate/LegacyTarget.res" <<'EOF'
 @@reventless.spec
 
@@ -3005,33 +2950,13 @@ EOF
 if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
   fail "removed @targetState" "expected compilation to fail but it succeeded"
 else
-  if echo "$OUTPUT" | grep -q "@transition"; then
-    pass "leftover @targetState fails the build and names @transition"
+  if echo "$OUTPUT" | grep -q "commandTransition"; then
+    pass "leftover @targetState fails the build and names commandTransition"
   else
     fail "removed @targetState" "error did not name the replacement: $OUTPUT"
   fi
 fi
 rm -f "$ERROR/src/Aggregate/LegacyTarget.res"
-
-echo ""
-echo "=== Test: a string state name is refused ==="
-cat > "$ERROR/src/Aggregate/StringState.res" <<'EOF'
-@@reventless.spec
-
-type lifecycle = Placed | Shipped
-
-@schema
-type state = { @id orderId: string }
-
-@schema
-type command = @transition((["Placed"]) => Shipped) Ship({orderId: string})
-EOF
-if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
-  fail "string state name" "expected compilation to fail but it succeeded"
-else
-  pass "a string state name is refused rather than silently accepted"
-fi
-rm -f "$ERROR/src/Aggregate/StringState.res"
 
 echo ""
 echo "=== Test: @live(false) on ReadModel state → metadata carries live: false ==="

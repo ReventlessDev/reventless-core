@@ -19,16 +19,6 @@ let noApiVariantsId: S.Metadata.Id.t<Set.t<string>> =
 let noApiVariantId: S.Metadata.Id.t<bool> =
   S.Metadata.Id.make(~namespace="api", ~name="noApiVariant")
 
-/** Internal sury metadata ID storing per-variant allowed-state lists for AutoUI command filtering.
-    Maps variant name → set of status values under which the command is meaningful. */
-let allowedStatesId: S.Metadata.Id.t<dict<array<string>>> =
-  S.Metadata.Id.make(~namespace="api", ~name="allowedStates")
-
-/** Internal sury metadata ID storing per-variant target-state values for AutoUI board
-    transitions. Maps variant name → the single status the command's handler writes. */
-let targetStateId: S.Metadata.Id.t<dict<string>> =
-  S.Metadata.Id.make(~namespace="api", ~name="targetState")
-
 /** PPX helper: attaches the noApi flag to a command schema. Called by generated code. */
 let markNoApi = (schema: S.t<'a>): S.t<'a> =>
   schema->S.Metadata.set(~id=noApiId, true)
@@ -87,20 +77,6 @@ let markNoApiVariants = (schema: S.t<'a>, variants: array<string>): S.t<'a> => {
   }
   marked->S.Metadata.set(~id=noApiVariantsId, excluded)
 }
-
-/** PPX helper: attaches per-variant allowedStates to a command schema. Called by generated code
-    emitted from the from-set of an @transition attribute. Each entry is (variantName, allowedStateNames). */
-let markAllowedStates = (
-  schema: S.t<'a>,
-  entries: array<(string, array<string>)>,
-): S.t<'a> => schema->S.Metadata.set(~id=allowedStatesId, Dict.fromArray(entries))
-
-/** PPX helper: attaches per-variant targetState to a command schema. Called by generated code
-    emitted from the target of an @transition attribute. Each entry is (variantName, targetStateName). */
-let markTargetState = (
-  schema: S.t<'a>,
-  entries: array<(string, string)>,
-): S.t<'a> => schema->S.Metadata.set(~id=targetStateId, Dict.fromArray(entries))
 
 /** Type alias for schema fragments (re-exports Plugin.apiSchemaFragment). */
 type schemaFragment = Reventless.Plugin.apiSchemaFragment

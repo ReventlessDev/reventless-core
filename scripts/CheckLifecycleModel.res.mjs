@@ -460,11 +460,11 @@ function deriveCommands(component, observations, labelled) {
 function allUnverified(cmd, add, why) {
   let states = cmd.allowedStates;
   if (states !== undefined && states.length !== 0) {
-    add("unverified", `@transition names ` + states.join(", ") + `, and ` + why);
+    add("unverified", `the switch names ` + states.join(", ") + `, and ` + why);
   }
   let target = cmd.targetState;
   if (target !== undefined) {
-    return add("unverified", `@transition targets "` + target + `", and ` + why);
+    return add("unverified", `the switch targets "` + target + `", and ` + why);
   }
 }
 
@@ -487,36 +487,36 @@ function compare(plugin, writable, derived, findings) {
       if (derived.allowedStates.includes(state)) {
         return;
       } else if (derived.inertStates.includes(state)) {
-        return add("contradicted", `@transition names "` + state + `", and a scenario from "` + state + `" shows it refused or producing nothing`);
+        return add("contradicted", `the switch names "` + state + `", and a scenario from "` + state + `" shows it refused or producing nothing`);
       } else {
-        return add("unverified", `@transition names "` + state + `", and no scenario starts there`);
+        return add("unverified", `the switch names "` + state + `", and no scenario starts there`);
       }
     });
     derived.allowedStates.forEach(state => {
       if (!states.includes(state)) {
-        return add("contradicted", `a scenario shows it taking effect from "` + state + `", which its @transition ` + (`from-set (` + states.join(", ") + `) excludes`));
+        return add("contradicted", `a scenario shows it taking effect from "` + state + `", which its declared ` + (`from-set (` + states.join(", ") + `) excludes`));
       }
     });
     if (states.length !== 0 && derived.allowedStates.length === 0) {
-      add("unverified", `@transition declares ` + states.length.toString() + ` state(s) and no scenario shows the command taking effect anywhere`);
+      add("unverified", `the switch declares ` + states.length.toString() + ` state(s) and no scenario shows the command taking effect anywhere`);
     }
   } else if (derived.allowedStates.length !== 0) {
-    add("undeclared", `scenarios show it taking effect from ` + derived.allowedStates.join(", ") + `, and it declares no @transition`);
+    add("undeclared", `scenarios show it taking effect from ` + derived.allowedStates.join(", ") + `, and it declares no edge`);
   }
   let match = declared.targetState;
   let match$1 = derived.targets;
   if (match !== undefined) {
     if (match$1.length !== 0) {
       if (!match$1.includes(match)) {
-        add("contradicted", `@transition targets "` + match + `", and scenarios land in ` + match$1.join(", "));
+        add("contradicted", `the switch targets "` + match + `", and scenarios land in ` + match$1.join(", "));
       }
       match$1.forEach(state => {
         if (state !== match) {
-          return add("contradicted", `@transition targets "` + match + `", and a scenario lands in "` + state + `" — the published targetState carries one state, so this edge cannot be expressed`);
+          return add("contradicted", `the switch targets "` + match + `", and a scenario lands in "` + state + `" — the published targetState carries one state, so this edge cannot be expressed`);
         }
       });
     } else {
-      add("unverified", `@transition targets "` + match + `", and no scenario shows an edge`);
+      add("unverified", `the switch targets "` + match + `", and no scenario shows an edge`);
     }
   }
   if (derived.level !== "" && declared.level !== "" && derived.level !== declared.level) {

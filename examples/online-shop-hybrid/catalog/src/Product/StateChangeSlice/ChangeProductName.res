@@ -11,13 +11,9 @@ type consumedEvent =
   | ProductUnarchived
   | ProductDiscontinued
 
-// Legal on a listed product and on an archived one — correcting a name while a
-// product is off the shelf is exactly when it wants correcting. Not legal on a
-// discontinued one, which is terminal.
 @schema
 type command =
   | @authorize(AllowGroups(["Admin", "Merchandiser"]))
-  @transition([Products.Listed, Products.Archived])
   ChangeProductName({productId: string, name: string})
 
 @schema
@@ -28,3 +24,15 @@ type error =
 @schema
 type event =
   | ProductNameChanged({productId: string, name: string})
+
+// Legal on a listed product and on an archived one — correcting a name while a
+// product is off the shelf is exactly when it wants correcting. Not legal on a
+// discontinued one, which is terminal, and it moves the product nowhere.
+type lifecycleState = Products.shelfStatus
+
+let commandTransition = (command: command): Reventless.Transition.t<lifecycleState> => {
+  open Reventless.Transition
+  switch command {
+  | ChangeProductName(_) => Guards([Products.Listed, Products.Archived])
+  }
+}

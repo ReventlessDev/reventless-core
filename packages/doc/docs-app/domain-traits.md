@@ -116,10 +116,10 @@ gets the same rules, the same contract and the same conformance suite.
 #### Policy on a command you did not declare
 
 `@noApi` travels with a spread because the exclusion is recorded on each member, and
-a spread splices members. `@transition` is recorded on the *parent* union, so it does
-not — and could not, because it names states belonging to **your** lifecycle, which
-the trait has never heard of. That is why a spreading host used to keep the trait's
-public commands hand-written: there was nowhere to put their guard.
+a spread splices members. A command's lifecycle edge cannot be recorded that way — it
+names states belonging to **your** lifecycle, which the trait has never heard of. That
+is why a spreading host used to keep the trait's public commands hand-written: there
+was nowhere to put their guard.
 
 Declare the edge as a switch instead, and the constructor's origin stops mattering:
 
@@ -158,11 +158,11 @@ naming the file. There is no safe default: leaving the trait's commands unguarde
 leaving them deliberately unrestricted look identical from outside, and only one of
 those is a decision. `Unrestricted` is a perfectly good answer, but it has to be given.
 
-`@transition` still works and is still the shorter spelling for a command you declared
-yourself; the injected default stands aside for it. Where both are present on one
-command the switch wins, because an edge is one declaration and the compiler checked
-that one. `@authorize` needs none of this: it already lowers to a switch over the
-command, so your spliced constructors are real cases in it.
+The switch is the only way to declare an edge. `@transition`, the per-constructor
+attribute it replaces, is refused with a message naming it — a silently-ignored
+attribute would leave you believing a guard was declared when none was. `@authorize`
+needs none of this: it already lowers to a switch over the command, so your spliced
+constructors are real cases in it.
 
 Why this works for an aggregate and not for a DCB slice: in a DCB plugin a command
 name and an event name are **routing keys over the whole plugin**, while in the
@@ -213,7 +213,7 @@ arrive as `TODO(graft)` markers, and you write ReScript, which is better at this
 any config could be. A graft with no extra refusal is a complete graft, so leaving a
 marker alone is legitimate.
 
-The geocoding emitter used to take the host's `@transition` and `@authorize` as
+The geocoding emitter used to take the host's lifecycle edge and `@authorize` as
 config strings and splice them verbatim, which is that rule broken in the one place
 it was hardest to see: the strings were policy, and nothing checked them. It prints a
 marked `commandTransition` arm now instead, and the two commands it once printed for

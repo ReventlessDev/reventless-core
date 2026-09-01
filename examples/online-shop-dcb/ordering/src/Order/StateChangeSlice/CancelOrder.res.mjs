@@ -2,7 +2,6 @@
 
 import * as Sury from "sury";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
-import * as Api$ReventlessInfra from "@reventlessdev/reventless-infra/src/components/Api.res.mjs";
 
 let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
@@ -29,22 +28,16 @@ let eventSchema = Sury.$schema(s => ({
   productIds: s.m(Sury.array(DcbTag$Reventless.stringForKey("productId")))
 }));
 
-let commandSchema$1 = Api$ReventlessInfra.markAllowedStates(commandSchema, [[
-    "CancelOrder",
-    ["Placed"]
-  ]]);
-
-let commandSchema$2 = Api$ReventlessInfra.markTargetState(commandSchema$1, [[
-    "CancelOrder",
-    "Cancelled"
-  ]]);
+function commandTransition(command) {
+  return {
+    TAG: "Moves",
+    _0: ["Placed"],
+    _1: "Cancelled"
+  };
+}
 
 function commandAuthorization(param) {
   return "AllowAuthenticated";
-}
-
-function commandTransition(param) {
-  return "Unrestricted";
 }
 
 let traits = [];
@@ -61,13 +54,13 @@ export {
   name,
   Id,
   consumedEventSchema,
+  commandSchema,
   errorSchema,
   eventSchema,
-  commandSchema$2 as commandSchema,
+  commandTransition,
   moduleUrl,
   commandAuthorization,
   readConsistency,
-  commandTransition,
   traits,
 }
 /* consumedEventSchema Not a pure module */

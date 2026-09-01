@@ -42,36 +42,26 @@ let eventSchema = Sury.union([
   }))
 ]);
 
+function commandTransition(command) {
+  if (command.TAG === "CancelOrder") {
+    return {
+      TAG: "Moves",
+      _0: ["Placed"],
+      _1: "Cancelled"
+    };
+  } else {
+    return {
+      TAG: "Moves",
+      _0: ["Cancelled"],
+      _1: "Placed"
+    };
+  }
+}
+
 let commandSchema$1 = Api$ReventlessInfra.markNoApiVariants(commandSchema, ["ReopenOrder"]);
-
-let commandSchema$2 = Api$ReventlessInfra.markAllowedStates(commandSchema$1, [
-  [
-    "CancelOrder",
-    ["Placed"]
-  ],
-  [
-    "ReopenOrder",
-    ["Cancelled"]
-  ]
-]);
-
-let commandSchema$3 = Api$ReventlessInfra.markTargetState(commandSchema$2, [
-  [
-    "CancelOrder",
-    "Cancelled"
-  ],
-  [
-    "ReopenOrder",
-    "Placed"
-  ]
-]);
 
 function commandAuthorization(param) {
   return "AllowAuthenticated";
-}
-
-function commandTransition(param) {
-  return "Unrestricted";
 }
 
 let traits = [];
@@ -90,11 +80,11 @@ export {
   consumedEventSchema,
   errorSchema,
   eventSchema,
-  commandSchema$3 as commandSchema,
+  commandTransition,
+  commandSchema$1 as commandSchema,
   moduleUrl,
   commandAuthorization,
   readConsistency,
-  commandTransition,
   traits,
 }
 /* consumedEventSchema Not a pure module */

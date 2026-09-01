@@ -102,11 +102,11 @@ The two commands a caller changes the address through, as constructors a host
 splices into its own command type.
 
 These are public, and that is what kept them out of the trait until now. Both
-are legal only while the entity is in some state the HOST names, and a
-`@transition` cannot be attached to a constructor a host did not declare — it
-lowers to a dict on the parent union, and a spread splices members. So the pair
-stayed hand-written in every host, which is the whole of what a spreading host
-still had to transcribe.
+are legal only while the entity is in some state the HOST names, and the
+attribute that used to declare that could not be attached to a constructor a
+host did not declare — it lowered to a dict on the parent union, and a spread
+splices members. So the pair stayed hand-written in every host, which is the
+whole of what a spreading host still had to transcribe.
 
 `commandTransition` is what freed them: the host answers for them in an
 exhaustive switch, in its own lifecycle vocabulary, and the compiler will not let

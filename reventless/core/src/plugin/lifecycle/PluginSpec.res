@@ -2,8 +2,9 @@
 
 open Reventless.Plugin
 
-// Alias, not `open`: the PPX strips `@transition` before the typechecker, so the
-// state constructors never reach it and an `open` would warn as unused.
+// Alias, not `open`: the lifecycle states are named qualified in
+// `commandTransition` below, and an `open` would pull the whole view's namespace
+// in for four constructors.
 module Plugins = PluginsReadModelSpec
 
 // The Plugin aggregate is keyed by plugin **name** (not name@version). One
@@ -15,10 +16,7 @@ module Plugins = PluginsReadModelSpec
 // more same-shaped ones, so the `pluginDefinition` pair must lead (DZakh/sury#392).
 @schema
 type command =
-  // The handshake brings the version's row into being, so it runs from no state
-  // — `decide` accepts it against an unknown version and against every status
-  // but `Connected`, where it is a definition refresh rather than a move.
-  | @noApi @transition(() => Plugins.Connected) Connect(pluginDefinition)
+  | @noApi Connect(pluginDefinition)
   // Records a protocol-version incompatibility without changing connection state.
   | @noApi ReportIncompatibility(pluginDefinition)
   | @noApi Heartbeat(version)
@@ -26,28 +24,20 @@ type command =
   // re-run for an already-connected version so its definition is refreshed on the
   // row — unlike Heartbeat, which no-ops a connected keep-alive.
   | @noApi Redetect(version)
-  // A heartbeat timing out is the only way a row reaches `Disconnected`, and
-  // `decide` moves the row for exactly one status — anything else is a stray
-  // disconnect it tolerates without emitting.
-  | @noApi @transition(([Plugins.Connected]) => Plugins.Disconnected) Disconnect(version)
+  | @noApi Disconnect(version)
   // Admin lifecycle commands — API-exposed (auto-derived admin mutations,
   // Cognito group-gated). `version` selects which known version to act on.
-  // The `@transition` edges must agree with `decide` below; `Platform_Admin_Structure`
-  // reads them off this schema rather than restating them.
   //
   // Inline records, unlike the `@noApi` commands above, and the difference is the
   // API. A positional payload publishes its argument as `_0`, which names nothing:
   // a caller cannot match it against a field it holds, and a coercion failure says
   // `Variable '_0'` rather than what was missing. These three are the ones a person
   // calls, so their argument carries its own name.
-  | @transition(([Plugins.Inactive, Plugins.Retired]) => Plugins.Connected)
-  Activate({version: version})
-  | @transition(([Plugins.Connected, Plugins.Disconnected]) => Plugins.Inactive)
-  Deactivate({version: version})
+  | Activate({version: version})
+  | Deactivate({version: version})
   // Manual admin retirement of a specific version (archive). Distinct from the
   // automatic `Superseded` transition (which is decided, not commanded).
-  | @transition(([Plugins.Connected, Plugins.Disconnected, Plugins.Inactive]) => Plugins.Retired)
-  Retire({version: version})
+  | Retire({version: version})
 
 // Carries both the superseded and the superseding version's full definition —
 // a deterministic trigger for version-to-version schema/data migrations
@@ -91,3 +81,28 @@ type error =
   | AlreadyConnected
   | IsDisconnected
   | IsInactive
+
+// The edges must agree with `decide`; `Platform_Admin_Structure` reads them off
+// the assembled structure rather than restating them.
+type lifecycleState = Plugins.status
+
+let commandTransition = (command: command): Reventless.Transition.t<lifecycleState> => {
+  open Reventless.Transition
+  switch command {
+  // The handshake brings the version's row into being, so it runs from no state
+  // — `decide` accepts it against an unknown version and against every status
+  // but `Connected`, where it is a definition refresh rather than a move.
+  | Connect(_) => Creates(Plugins.Connected)
+  // Neither records a move: an incompatibility is noted beside the row, and a
+  // heartbeat or a re-detect refreshes one that is already where it belongs.
+  | ReportIncompatibility(_) | Heartbeat(_) | Redetect(_) => Unrestricted
+  // A heartbeat timing out is the only way a row reaches `Disconnected`, and
+  // `decide` moves the row for exactly one status — anything else is a stray
+  // disconnect it tolerates without emitting.
+  | Disconnect(_) => Moves([Plugins.Connected], Plugins.Disconnected)
+  | Activate(_) => Moves([Plugins.Inactive, Plugins.Retired], Plugins.Connected)
+  | Deactivate(_) => Moves([Plugins.Connected, Plugins.Disconnected], Plugins.Inactive)
+  | Retire(_) =>
+    Moves([Plugins.Connected, Plugins.Disconnected, Plugins.Inactive], Plugins.Retired)
+  }
+}

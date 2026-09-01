@@ -15,7 +15,7 @@ type consumedEvent =
   | CategoryUnarchived({categoryId: string})
 
 // Where a category is in its life in the catalog. A state rather than a flag
-// beside one, so a command's `@transition` can name it: that is the whole of "offer
+// beside one, so a command's declared edge can name it: that is the whole of "offer
 // Unarchive on an archived category and Archive on a listed one".
 //
 // `@retired` sits on the state it names. Archiving withdraws a category from the
@@ -45,7 +45,7 @@ type categoryAttachment = {
 type state = {
   categoryId: string,
   name: string,
-  // `@lifecycle` is what makes this the field a command's `@transition` is
+  // `@lifecycle` is what makes this the field a command's declared edge is
   // written in terms of, so the way back is offered exactly where it applies.
   // The retirement is on `shelfStatus`'s own constructor and needs no second
   // annotation here.

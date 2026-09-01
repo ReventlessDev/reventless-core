@@ -1,13 +1,13 @@
 /**
 The lifecycle model each example's own scenarios describe, and what it says about
-the `@transition` annotations written beside them.
+the edges each command declares beside them.
 
-`@transition(([Placed]) => Shipped)` is authored, and until now nothing compared
-it to behaviour. The platform checks the state *names* are real — that each is a
-case of the linked view's lifecycle enum — which is a much weaker property than
-agreement: a command can declare `[Deactivated] => Active` while its `decide`
-accepts an active row, or emit an event the view folds into something else, and
-every static check still passes.
+`Moves([Placed], Shipped)` is authored, and until now nothing compared it to
+behaviour. The compiler resolves the state constructors and the platform checks
+they belong to the linked view — both much weaker properties than agreement: a
+command can declare `Moves([Deactivated], Active)` while its `decide` accepts an
+active row, or emit an event the view folds into something else, and every static
+check still passes.
 
 The scenarios already answer this. Each `@@reventless.gwt` file is a corpus of
 `given / when / then`, and the PPX writes it out as a `<Stem>.gwt.json` sidecar
@@ -26,7 +26,7 @@ trustworthy:
 - **It keys on effect, not on acceptance.** A command is in a state's from-set
   when a scenario shows it *emitting* there. The repository's `Ok([])`-on-no-change
   convention means `decide` accepts commands a menu should not offer, so keying
-  on acceptance would derive a from-set that disagrees with every annotation.
+  on acceptance would derive a from-set that disagrees with every declaration.
 
 Report-only: nothing published changes. Contradictions fail the run; unverified
 edges are warnings, counted so a corpus getting thinner is visible.
@@ -54,7 +54,7 @@ let update = NodeProcess.argv->Array.includes("--update")
 let reuseSidecars = NodeProcess.argv->Array.includes("--reuse-sidecars")
 
 /** The label a state carries when no row exists yet. Not a lifecycle case — no
-    enum declares it — so it is spelled in a way no annotation can name, and a
+    enum declares it — so it is spelled in a way no constructor can name, and a
     command whose successful scenarios all start here is creating rather than
     guarding. */
 let noRow = "(none)"
@@ -598,15 +598,15 @@ type finding = {
     Reached two ways, and both are the same statement: a command with no
     scenarios at all, and a command whose corpus cannot be labelled because its
     views declare no lifecycle. In neither case has anything ever exercised what
-    the annotation claims, which is exactly what a warning is for. */
+    the declaration claims, which is exactly what a warning is for. */
 let allUnverified = (~cmd: declaredCommand, ~add: (string, string) => unit, ~why: string): unit => {
   switch cmd.allowedStates {
   | Some(states) if Array.length(states) > 0 =>
-    add("unverified", `@transition names ${states->Array.join(", ")}, and ${why}`)
+    add("unverified", `the switch names ${states->Array.join(", ")}, and ${why}`)
   | _ => ()
   }
   switch cmd.targetState {
-  | Some(target) => add("unverified", `@transition targets "${target}", and ${why}`)
+  | Some(target) => add("unverified", `the switch targets "${target}", and ${why}`)
   | None => ()
   }
 }
@@ -632,7 +632,7 @@ let compare = (
         add(
           "undeclared",
           `scenarios show it taking effect from ${derived.allowedStates->Array.join(", ")}, ` ++
-          `and it declares no @transition`,
+          `and it declares no edge`,
         )
       }
     | Some(states) =>
@@ -642,18 +642,18 @@ let compare = (
         } else if derived.inertStates->Array.includes(state) {
           add(
             "contradicted",
-            `@transition names "${state}", and a scenario from "${state}" shows it ` ++
+            `the switch names "${state}", and a scenario from "${state}" shows it ` ++
             `refused or producing nothing`,
           )
         } else {
-          add("unverified", `@transition names "${state}", and no scenario starts there`)
+          add("unverified", `the switch names "${state}", and no scenario starts there`)
         }
       )
       derived.allowedStates->Array.forEach(state =>
         if !(states->Array.includes(state)) {
           add(
             "contradicted",
-            `a scenario shows it taking effect from "${state}", which its @transition ` ++
+            `a scenario shows it taking effect from "${state}", which its declared ` ++
             `from-set (${states->Array.join(", ")}) excludes`,
           )
         }
@@ -661,7 +661,7 @@ let compare = (
       if Array.length(states) > 0 && Array.length(derived.allowedStates) == 0 {
         add(
           "unverified",
-          `@transition declares ${Array.length(states)->Int.toString} state(s) and ` ++
+          `the switch declares ${Array.length(states)->Int.toString} state(s) and ` ++
           `no scenario shows the command taking effect anywhere`,
         )
       }
@@ -670,12 +670,12 @@ let compare = (
     switch (cmd.targetState, derived.targets) {
     | (None, _) => ()
     | (Some(target), []) =>
-      add("unverified", `@transition targets "${target}", and no scenario shows an edge`)
+      add("unverified", `the switch targets "${target}", and no scenario shows an edge`)
     | (Some(target), observed) =>
       if !(observed->Array.includes(target)) {
         add(
           "contradicted",
-          `@transition targets "${target}", and scenarios land in ` ++
+          `the switch targets "${target}", and scenarios land in ` ++
           `${observed->Array.join(", ")}`,
         )
       }
@@ -683,7 +683,7 @@ let compare = (
         if state != target {
           add(
             "contradicted",
-            `@transition targets "${target}", and a scenario lands in "${state}" — ` ++
+            `the switch targets "${target}", and a scenario lands in "${state}" — ` ++
             `the published targetState carries one state, so this edge cannot be expressed`,
           )
         }

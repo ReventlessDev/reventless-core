@@ -8,7 +8,7 @@
 @@reventless.authorize(AllowGroups(["Admin", "Fulfilment"]))
 
 // A state rather than a flag beside one, so a command can say where it belongs:
-// `@transition(([Deactivated]) => Active)` on `Reactivate`. `@retired` withdraws
+// `Moves([Deactivated], Active)` on `Reactivate`. `@retired` withdraws
 // the row from ordinary reads without deleting it.
 @schema
 type accountStatus =

@@ -117,7 +117,7 @@ let checkRetiredValue = (~entityName: string, stateSchema: S.t<unknown>): retire
           ->Option.map(f => ` (that is "${f}")`)
           ->Option.getOr(
             " (it declares none)",
-          )}. A retirement state no command's @transition can name loses the command filtering the state form exists for.`,
+          )}. A retirement state no command's declared edge can name loses the command filtering the state form exists for.`,
       )
     }
     let declared = switch stateSchema {
@@ -179,8 +179,9 @@ let reportRetiredStates = (
   }
 }
 
-// The states a record's lifecycle field can hold — the field `@transition` is
-// written in terms of. `None`: no lifecycle; `Some([])`: one with no cases.
+// The states a record's lifecycle field can hold — the field a command's
+// declared edge is written in terms of. `None`: no lifecycle; `Some([])`: one
+// with no cases.
 let lifecycleStatesFromStateSchema = (
   ~entityName: string,
   stateSchema: S.t<unknown>,
@@ -373,18 +374,17 @@ let reportTranslationTables = (
   }
 }
 
-// A command's declared edge names states belonging to another component's enum.
-// From `@transition` the PPX only ever sees names, so a misspelling compiles clean
-// and produces a command legal in a state no row is in. Both sides are in hand
-// here. A state the linked views do not declare raises (this runs at assembly,
+// A command's declared edge names states belonging to another component's enum,
+// and nothing forces a spec to pick the one its linked view declares. Both sides
+// are in hand here. A state the linked views do not declare raises (this runs at assembly,
 // never in a Lambda, so that is a failed deploy); no resolvable view only warns.
 // Checked against the UNION of the linked views: a slice feeding two is not
 // claiming which one.
 //
-// A `commandTransition` switch comes through the same `commandDef` fields and is
-// checked the same way. The compiler has already resolved its constructors, so
-// what survives to here is naming the wrong enum rather than misspelling one —
-// which this catches for the same reason and with the same message.
+// The compiler has already resolved the switch's constructors, so what survives
+// to here is a component naming the wrong lifecycle enum rather than misspelling
+// a state — the half of the check `lifecycleState` cannot make, since nothing
+// forces a spec to pick its linked view's enum.
 let checkDeclaredTransitions = (
   ~pluginName: string,
   ~writables: array<Reventless.Plugin.writableDef>,
@@ -714,9 +714,8 @@ let toCommandDef = (
   // component-level shortcut would gate `AddProduct` and `PlaceOrder` alike.
   ~commandAuthorization: unknown => Reventless.Authorization.permission,
   // The spec's `command => Transition.t<_>`, evaluated per variant the same way
-  // `commandAuthorization` is. It wins over the `@transition` metadata where it
-  // declares an edge, and stands aside where it says `Unrestricted` — which is
-  // what the PPX injects for a spec that never wrote the switch.
+  // `commandAuthorization` is, and the only declaration of an edge there is —
+  // the PPX injects `Unrestricted` for a spec that writes no switch.
   //
   // Read at `t<string>` because this is the erasure boundary: the spec declares
   // its edges over the linked view's own lifecycle enum, whose arms are
@@ -740,34 +739,15 @@ let toCommandDef = (
       Reventless.DcbTag.isVariantPayloadBearing(parentSchema, variantName)
         ? {"TAG": variantName}->Obj.magic
         : variantName->Obj.magic
-    // The spec's own switch, which is the only form that can speak for a
-    // constructor the host did not declare: `@transition` lowers to a dict on
-    // the parent union, and a variant spread splices members, so a spliced
-    // command reaches the metadata below carrying nothing.
-    let declared = commandTransition(syntheticCommand)
-    // An edge is ONE declaration, so the two fields are chosen together. Taking
-    // them separately would let `Guards(…)` — which positively claims the
-    // command moves the row nowhere — inherit a target from an annotation it
-    // was written to replace.
+    // The spec's own switch, which is exhaustive — so it also speaks for a
+    // constructor the host did not declare but spliced from a trait.
     //
-    // The `@transition` metadata is per-variant but attached by the PPX to the
-    // *parent* schema as one dict. It is consulted only where the switch
-    // declares no edge at all: a spec that never wrote one answers
-    // `Unrestricted` for every command, which is how the annotation stays in
-    // charge for the hosts that still use it.
-    //
+    // An edge is ONE declaration, so the two fields are read off it together.
     // `targetState: None` ⇒ AutoUI's board resolver falls back to its name-stem
     // heuristic.
-    let (allowedStates, targetState) = switch declared {
-    | Unrestricted => (
-        ApiAllowedStatesHelpers.getAllowedStates(parentSchema, ~variantName),
-        ApiTargetStateHelpers.getTargetState(parentSchema, ~variantName),
-      )
-    | _ => (
-        Reventless.Transition.allowedStates(declared),
-        Reventless.Transition.targetState(declared),
-      )
-    }
+    let declared = commandTransition(syntheticCommand)
+    let allowedStates = Reventless.Transition.allowedStates(declared)
+    let targetState = Reventless.Transition.targetState(declared)
     // API-exposed iff the whole command isn't @noApi and this variant
     // isn't in its @noApi-variants set — mirrors the API-generation filter
     // (Plugin_Helpers / PluginBaseFragment). Drives the event-graph API badge.

@@ -10,7 +10,7 @@ type consumedEvent =
 
 @schema
 type command =
-  | @transition(([Orders.Placed]) => Orders.Cancelled) CancelOrder({orderId: string})
+  | CancelOrder({orderId: string})
 
 @schema
 type error =
@@ -23,3 +23,12 @@ type event = OrderCancelled({
   @partitionTag orderId: string,
   productIds: array<string>,
 })
+
+type lifecycleState = Orders.lifecycle
+
+let commandTransition = (command: command): Reventless.Transition.t<lifecycleState> => {
+  open Reventless.Transition
+  switch command {
+  | CancelOrder(_) => Moves([Orders.Placed], Orders.Cancelled)
+  }
+}

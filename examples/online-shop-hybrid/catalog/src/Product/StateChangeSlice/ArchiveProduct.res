@@ -15,13 +15,7 @@ type consumedEvent =
 
 @schema
 type command =
-  // Meaningful only on a product still on the shelf. `@transition` names states
-  // of the view's lifecycle, which is the same field the retirement is declared
-  // on — one vocabulary, so a menu offers this and `UnarchiveProduct` on
-  // opposite sides of the same fact.
-  | @authorize(AllowGroups(["Admin", "Merchandiser"]))
-  @transition(([Products.Listed]) => Products.Archived)
-  ArchiveProduct({productId: string})
+  | @authorize(AllowGroups(["Admin", "Merchandiser"])) ArchiveProduct({productId: string})
 
 // Refused rather than idempotent: `Discontinued` is terminal, and archiving out
 // of it would quietly make it reversible — the one thing the second state exists
@@ -31,3 +25,16 @@ type error = ProductNotFound | ProductIsDiscontinued
 
 @schema
 type event = ProductArchived({productId: string})
+
+// The lifecycle edge, over the view's own constructors: meaningful only on a
+// product still on the shelf, and it lands one in `Archived`. Same field the
+// retirement is declared on — one vocabulary, so a menu offers this and
+// `UnarchiveProduct` on opposite sides of the same fact.
+type lifecycleState = Products.shelfStatus
+
+let commandTransition = (command: command): Reventless.Transition.t<lifecycleState> => {
+  open Reventless.Transition
+  switch command {
+  | ArchiveProduct(_) => Moves([Products.Listed], Products.Archived)
+  }
+}

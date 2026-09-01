@@ -14,25 +14,19 @@ type consumedEvent =
   // The refusal is on `archived`, so the slice has to hear when that stops.
   | CategoryUnarchived
 
-// Guard-only, as `RenameCategory`: legal on a listed category, refused on an
-// archived one, and it moves nothing.
 @schema
 type command =
   | @authorize(AllowGroups(["Admin", "Merchandiser"]))
-  @transition([Categories.Listed])
   AttachCategoryImage({
       categoryId: string,
       categoryImage: Reventless.UploadableImage.t,
       altText?: string,
     })
   | @authorize(AllowGroups(["Admin", "Merchandiser"]))
-  @transition([Categories.Listed])
   RemoveCategoryImage({categoryId: string, categoryImage: Reventless.UploadableImage.t})
   | @authorize(AllowGroups(["Admin", "Merchandiser"]))
-  @transition([Categories.Listed])
   SetPrimaryCategoryImage({categoryId: string, categoryImage: Reventless.UploadableImage.t})
   | @authorize(AllowGroups(["Admin", "Merchandiser"]))
-  @transition([Categories.Listed])
   SetCategoryImageAltText({
       categoryId: string,
       categoryImage: Reventless.UploadableImage.t,
@@ -59,6 +53,22 @@ type event =
       categoryImage: Reventless.UploadableImage.t,
       altText: string,
     })
+
+// Guard-only, as `RenameCategory`: legal on a listed category, refused on an
+// archived one, and it moves nothing. Narrower than the product host's, which
+// allows the archived shelf too — the same trait, two hosts' policies.
+type lifecycleState = Categories.shelfStatus
+
+let commandTransition = (command: command): Reventless.Transition.t<lifecycleState> => {
+  open Reventless.Transition
+  switch command {
+  | AttachCategoryImage(_)
+  | RemoveCategoryImage(_)
+  | SetPrimaryCategoryImage(_)
+  | SetCategoryImageAltText(_) =>
+    Guards([Categories.Listed])
+  }
+}
 
 // Grafted, and this is the only record of it that survives into a deployed
 // plugin — every other signal (the dependency, the spread, the rules alias, the
