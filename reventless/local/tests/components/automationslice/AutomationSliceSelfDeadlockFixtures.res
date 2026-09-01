@@ -142,7 +142,7 @@ module FromDcb = AutomationSlice.Mapping.Make(
   DcbSource,
   AutoShipSpec,
   {
-    let collect = (event: DcbSource.event, _ctx) =>
+    let collect = (event: DcbSource.event, ~sourceId as _, _ctx) =>
       switch event {
       | Placed({orderId}) => [(orderId, ({orderId: orderId}: AutoShipSpec.todoItem))]
       | Shipped(_) => []

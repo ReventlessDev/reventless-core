@@ -48,7 +48,7 @@ let OrderingDcbSource = {
   eventSchema: eventSchema
 };
 
-function collect(event, _ctx) {
+function collect(event, param, _ctx) {
   if (event.TAG !== "OrderPlaced") {
     return [];
   }

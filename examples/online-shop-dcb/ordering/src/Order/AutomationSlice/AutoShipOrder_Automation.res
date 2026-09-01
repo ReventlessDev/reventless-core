@@ -15,7 +15,7 @@ module FromOrderingDcb = Mapping.Make(
   {
     open OrderingDcbSource
 
-    let collect = (event, _ctx) =>
+    let collect = (event, ~sourceId as _, _ctx) =>
       switch event {
       | OrderPlaced({orderId}) => [(orderId, ({orderId: orderId}: AutoShipOrder.todoItem))]
       | OrderShipped(_) => []

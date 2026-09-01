@@ -65,11 +65,19 @@ module AutoFulfillSpec = {
 // Mapping 1: Aggregate source → todoItem (with `fromAggregate=true`)
 // ─────────────────────────────────────────────────────────────
 
+// What `collect` was handed as `~sourceId`. Recorded rather than keyed on,
+// because the envelope id and this payload's own `orderId` are deliberately
+// different here — so a test can assert the ENVELOPE's id arrived, which is the
+// whole point of the argument for an aggregate source whose payload does not
+// repeat it.
+let lastAggregateSourceId: ref<string> = ref("")
+
 module FromOrderAggregate = AutomationSlice.Mapping.Make(
   OrderAggregateSource,
   AutoFulfillSpec,
   {
-    let collect = (event: OrderAggregateSource.event, _ctx) =>
+    let collect = (event: OrderAggregateSource.event, ~sourceId, _ctx) => {
+      lastAggregateSourceId := sourceId
       switch event {
       | OrderShipped({orderId, productId}) => [
           (
@@ -78,6 +86,7 @@ module FromOrderAggregate = AutomationSlice.Mapping.Make(
           ),
         ]
       }
+    }
     let resolve = (_event: OrderAggregateSource.event) => None
   },
 )
@@ -91,7 +100,7 @@ module FromInventoryDcb = AutomationSlice.Mapping.Make(
   InventoryDcbSource,
   AutoFulfillSpec,
   {
-    let collect = (event: InventoryDcbSource.event, _ctx) =>
+    let collect = (event: InventoryDcbSource.event, ~sourceId as _, _ctx) =>
       switch event {
       | StockReserved({orderId, productId}) => [
           (

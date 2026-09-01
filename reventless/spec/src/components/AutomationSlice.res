@@ -84,21 +84,15 @@ module type Spec = {
 // the slice's `Automation` module since it operates on `todoItem` regardless of
 // the originating source.
 //
-// **Only for source events that name their own subject.** `collect` is handed
-// the event and the ambient `context` and nothing else — no entity id — so a
-// mapping can key its todo item only on what the payload carries. A DCB event
-// usually names its subject (`OrderPlaced({orderId, …})`) and is fine. An
-// Aggregate's event generally does not, because the aggregate id is what
-// addressed it: `Registered({email, address})` gives a mapping no way to say
-// which customer it is for, and nothing refuses the mapping — it compiles and
-// produces todo rows that cannot be keyed.
+// `collect` is handed `~sourceId` alongside the event, so a mapping over an
+// Aggregate source can key its todo item even though the payload does not repeat
+// the id that addressed it — `Registered({email, address})` is the case this
+// exists for. A DCB event usually names its own subject and can ignore it.
 //
-// Until that is closed, an aggregate whose events do not name their subject is
-// reached with an `OutboundTranslationSlice` instead, whose `collect` does take
-// `~sourceId`. That is not only a workaround: its item completes when the
-// command is published rather than when an answering event arrives, so the
-// target command is free to be idempotent instead of having to emit a fact to
-// close the row.
+// An `OutboundTranslationSlice` remains the better shape for a relay that simply
+// forwards: its item completes when the command is published rather than when an
+// answering event arrives, so the target command is free to be idempotent instead
+// of having to emit a fact whose only job is closing the row.
 
 /**
 Ambient deployment context plumbed to every mapping function.
@@ -141,7 +135,15 @@ module type Mapping = {
   type command
   let sourceEventSchema: S.t<sourceEvent>
   let sourceName: string
-  let collect: (sourceEvent, context) => array<(string, todoItem)>
+  /**
+  `~sourceId` is the id of the entity the event was published for — the
+  envelope's `id`, not part of the event payload. A DCB event usually names its
+  own subject (`OrderPlaced({orderId, …})`) and can ignore this; an Aggregate's
+  event generally does not, because the aggregate id is what addressed it in the
+  first place. Without it a mapping over `Registered({email, address})` would
+  have no way to say which customer its todo item is for.
+  */
+  let collect: (sourceEvent, ~sourceId: string, context) => array<(string, todoItem)>
   let resolve: sourceEvent => option<string>
 }
 
@@ -215,7 +217,15 @@ module type MappingImpl = {
   type sourceEvent
   type todoItem
   type command
-  let collect: (sourceEvent, context) => array<(string, todoItem)>
+  /**
+  `~sourceId` is the id of the entity the event was published for — the
+  envelope's `id`, not part of the event payload. A DCB event usually names its
+  own subject (`OrderPlaced({orderId, …})`) and can ignore this; an Aggregate's
+  event generally does not, because the aggregate id is what addressed it in the
+  first place. Without it a mapping over `Registered({email, address})` would
+  have no way to say which customer its todo item is for.
+  */
+  let collect: (sourceEvent, ~sourceId: string, context) => array<(string, todoItem)>
   let resolve: sourceEvent => option<string>
 }
 
@@ -258,7 +268,7 @@ module FromOrderShipped = Reventless.AutomationSlice.Mapping.Make(
   OrderSpec,                    // Source: Aggregate spec module
   AutoFulfillmentSpec,          // Target: this slice's spec
   {
-    let collect = (event, _ctx) =>
+    let collect = (event, ~sourceId as _, _ctx) =>
       switch event {
       | OrderSpec.OrderShipped({orderId, productId}) =>
         [(orderId ++ ":" ++ productId, {AutoFulfillmentSpec.orderId, productId})]

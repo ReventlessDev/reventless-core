@@ -57,14 +57,14 @@ function Make(Spec) {
     };
     let dispatches = Automation.mappings.map(M => {
       let decoder = DcbDecode$Reventless.makeDecoder(M.sourceEventSchema);
-      let handle = (json, ctx) => {
+      let handle = (json, sourceId, ctx) => {
         let match = Message$ReventlessCore.splitMessage(json);
         let event = decoder.decode(match[0], match[1]);
         if (event === undefined) {
           return;
         }
         let event$1 = Primitive_option.valFromOption(event);
-        M.collect(event$1, ctx).forEach(param => {
+        M.collect(event$1, sourceId, ctx).forEach(param => {
           let id = param[0];
           let match = todoItems[id];
           if (match !== undefined) {
@@ -105,7 +105,7 @@ function Make(Spec) {
         let eventPayload = dict !== undefined ? Stdlib_Option.getOr(dict["event"], json) : json;
         dispatches.forEach(d => {
           if (d.sourceName === sourceName) {
-            return d.handle(eventPayload, ctx);
+            return d.handle(eventPayload, context.id, ctx);
           }
         });
       });

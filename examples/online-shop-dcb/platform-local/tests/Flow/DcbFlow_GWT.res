@@ -27,7 +27,7 @@ module AutoShipOrderSlice = {
   include OrderingPlugin.AutoShipOrder
   type consumedEvent = OrderingPlugin.AutoShipOrder_Automation.FromOrderingDcb.sourceEvent
   let consumedEventSchema = OrderingPlugin.AutoShipOrder_Automation.FromOrderingDcb.sourceEventSchema
-  let collect = e => OrderingPlugin.AutoShipOrder_Automation.FromOrderingDcb.collect(e, testContext)
+  let collect = e => OrderingPlugin.AutoShipOrder_Automation.FromOrderingDcb.collect(e, ~sourceId="", testContext)
   let resolve = OrderingPlugin.AutoShipOrder_Automation.FromOrderingDcb.resolve
   let process = OrderingPlugin.AutoShipOrder_Automation.process
 }

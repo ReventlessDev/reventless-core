@@ -28,7 +28,7 @@ module AutoShipOrderSlice = {
   include AutoShipOrder
   type consumedEvent = AutoShipOrder_Automation.FromOrderingDcb.sourceEvent
   let consumedEventSchema = AutoShipOrder_Automation.FromOrderingDcb.sourceEventSchema
-  let collect = e => AutoShipOrder_Automation.FromOrderingDcb.collect(e, contextFor("AutoShipOrder"))
+  let collect = e => AutoShipOrder_Automation.FromOrderingDcb.collect(e, ~sourceId="", contextFor("AutoShipOrder"))
   let resolve = AutoShipOrder_Automation.FromOrderingDcb.resolve
   let process = AutoShipOrder_Automation.process
 }
@@ -40,7 +40,7 @@ module NotificationIntakeSlice = {
   type consumedEvent = NotificationIntake_Automation.FromOrderingDcb.sourceEvent
   let consumedEventSchema = NotificationIntake_Automation.FromOrderingDcb.sourceEventSchema
   let collect = e =>
-    NotificationIntake_Automation.FromOrderingDcb.collect(e, contextFor("NotificationIntake"))
+    NotificationIntake_Automation.FromOrderingDcb.collect(e, ~sourceId="", contextFor("NotificationIntake"))
   let resolve = NotificationIntake_Automation.FromOrderingDcb.resolve
   let process = NotificationIntake_Automation.process
 }

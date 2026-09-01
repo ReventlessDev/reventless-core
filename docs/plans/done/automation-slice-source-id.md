@@ -1,13 +1,23 @@
 # Plan: an AutomationSlice cannot read an aggregate it is allowed to name
 
 **Date:** 2026-09-01<br/>
-**Status:** OPEN, deliberately deferred. **The misleading documentation is fixed** (2026-09-01) —
-`AutomationSlice`'s module doc now says which sources a mapping can key on and what to reach for
-instead — so the trap for a reader is closed. What remains is the signature change below, and it is
-scheduled behind the work that would have used it, because that work does not want it: the
-`OutboundTranslationSlice` alternative completes its item on the publish rather than on an answering
-event, which lets the target command stay idempotent. Resolve §Falsifier before starting; it decides
-whether this is a signature change or a dispatch change.
+**Status:** ✅ **DONE 2026-09-01.** The falsifier resolved in favour of the cheap answer, and the
+change was made.
+
+`AutomationSlice_Callback`'s `phase1` already decodes the envelope —
+`json->Message.decode(Message.contextSchema)`, where `context = {id, meta}` — and uses only
+`context.meta.service`, discarding `context.id` one line before dispatch. So the value was present at
+the dispatch point all along: **a signature change, not a dispatch change**, exactly as §Falsifier
+hoped rather than feared.
+
+`Mapping.collect` and `MappingImpl.collect` now take `~sourceId: string`, `phase1` passes
+`context.id`, and every existing mapping gained `~sourceId as _`. A regression test asserts the
+envelope's id reaches `collect` against a fixture whose envelope id (`"env-a1"`) is deliberately not
+any value in the payload; passing `""` instead of `context.id` turns it red.
+
+The documentation qualification added while this was open is deleted — it described a limit that no
+longer exists. What stays is the note that an `OutboundTranslationSlice` is still the better shape
+for a pure relay, which is about item completion rather than about ids.
 
 ## The gap
 

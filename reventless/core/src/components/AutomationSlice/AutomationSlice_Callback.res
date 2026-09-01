@@ -169,19 +169,19 @@ module Make = (
   // Per-source erased dispatch — pre-compile decoders once at module init.
   type dispatch = {
     sourceName: string,
-    handle: (JSON.t, Reventless.AutomationSlice.context) => unit,
+    handle: (JSON.t, ~sourceId: string, Reventless.AutomationSlice.context) => unit,
   }
 
   let dispatches: array<dispatch> = Automation.mappings->Array.map((
     module(M: Automation.Mapping),
   ) => {
     let decoder = Reventless.DcbDecode.makeDecoder(M.sourceEventSchema)
-    let handle = (json: JSON.t, ctx: Reventless.AutomationSlice.context) => {
+    let handle = (json: JSON.t, ~sourceId: string, ctx: Reventless.AutomationSlice.context) => {
       let (eventType, dataDict) = json->Message.splitMessage
       switch decoder.decode(~eventType, ~data=dataDict) {
       | Some(event) =>
         // Collect — append new items keyed by ID; first writer wins (idempotent).
-        M.collect(event, ctx)->Array.forEach(((id, item)) => {
+        M.collect(event, ~sourceId, ctx)->Array.forEach(((id, item)) => {
           switch todoItems->Dict.get(id) {
           | Some(_) => () // Already exists — skip
           | None =>
@@ -225,7 +225,7 @@ module Make = (
       // Multiple mappings can share a sourceName; all matching dispatches run.
       dispatches->Array.forEach(d => {
         if d.sourceName == sourceName {
-          d.handle(eventPayload, ctx)
+          d.handle(eventPayload, ~sourceId=context.id, ctx)
         }
       })
     })

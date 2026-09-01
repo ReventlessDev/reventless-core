@@ -39,6 +39,17 @@ describe("MixedSource AutomationSlice", () => {
     expect(cmd.id)->toBe("o1:p1")
   })
 
+  // The argument an aggregate mapping cannot work without. `OrderShipped` names
+  // its own subject, so this fixture keys on the payload — but an aggregate's
+  // event generally does not, and then the envelope's id is the only thing that
+  // says which entity the todo row belongs to. Asserted against `"env-a1"`,
+  // which is deliberately not any value in the payload.
+  testPromise("collect is handed the envelope's id, not just the payload", async () => {
+    lastAggregateSourceId := ""
+    let _ = await publishAggregateEvent("env-a1", OrderShipped({orderId: "o1", productId: "p1"}))
+    expect(lastAggregateSourceId.contents)->toBe("env-a1")
+  })
+
   testPromise("DCB-source StockReserved creates a TODO and produces a command", async () => {
     publishedCommands := []
     let _ = await publishDcbEvent(

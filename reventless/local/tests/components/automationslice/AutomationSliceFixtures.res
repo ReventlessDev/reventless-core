@@ -74,7 +74,7 @@ module ShipOrderMapping = Reventless.AutomationSlice.Mapping.Make(
   ShipOrderSource,
   ShipOrderSpec,
   {
-    let collect = (event: ShipOrderSource.event, _ctx) =>
+    let collect = (event: ShipOrderSource.event, ~sourceId as _, _ctx) =>
       switch event {
       | OrderPlaced({orderId, address}) => [(orderId, ({orderId, address}: ShipOrderSpec.todoItem))]
       | ShipmentCreated(_) => []
@@ -91,7 +91,7 @@ module SkipProcessMapping = Reventless.AutomationSlice.Mapping.Make(
   SkipProcessSource,
   SkipProcessSpec,
   {
-    let collect = (event: SkipProcessSource.event, _ctx) =>
+    let collect = (event: SkipProcessSource.event, ~sourceId as _, _ctx) =>
       switch event {
       | OrderPlaced({orderId}) => [(orderId, ({orderId: orderId}: SkipProcessSpec.todoItem))]
       | ShipmentCreated(_) => []

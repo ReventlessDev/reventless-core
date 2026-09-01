@@ -29,7 +29,7 @@ module FromOrderingDcb = Mapping.Make(
     // claim that this slice owes an action. Admitting Standard and Pickup and
     // then declining them in `process` would leave rows Pending forever, so the
     // todo view would show a backlog that is never worked off.
-    let collect = (event, _ctx) =>
+    let collect = (event, ~sourceId as _, _ctx) =>
       switch event {
       | OrderPlaced({orderId, shippingMethod: Express}) => [
           (orderId, ({orderId: orderId}: AutoShipOrder.todoItem)),
