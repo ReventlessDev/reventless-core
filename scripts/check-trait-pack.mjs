@@ -28,8 +28,36 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 // Deliberately not a diff against the committed specimen host: reproducing that
 // would mean the emitter knowing about `Product`'s shelf and `Category`'s
 // boolean, and modelling host policy is exactly what makes scaffolders rot.
+//
+// `graft.remove` is the aggregate-host variant of the same claim. An aggregate
+// graft cannot land on a fresh entity — its conformance binding names the host's
+// own `Spec` and `Behavior`, and those carry the lifecycle policy a trait must
+// not write. So instead of emitting beside the specimen, the check DELETES the
+// files the trait owns and emits them back. Nothing is diffed; the files have to
+// build and conform, which is the property that matters. The aggregate and its
+// behavior — the half the trait only prints patches for — stay untouched, so
+// what is proven is exactly the emitted half.
 const specimens = {
-  "traits/address-geocoding": { host: "examples/online-shop-hybrid/ordering" },
+  "traits/address-geocoding": {
+    host: "examples/online-shop-hybrid/ordering",
+    graft: {
+      args: [
+        "--entity", "Customer", "--entityId", "customerId", "--created", "Registered",
+        "--createdFields", "email: string", "--createdValues", 'email: "alice@x.y"',
+        "--externalSystem", "AwsLocation", "--transition", "Customers.Active",
+      ],
+      into: "src/Customer",
+      tests: "tests/Customer",
+      // Written by the trait, so removed before the emit: `graft-trait` refuses
+      // to overwrite, and a skipped write would leave the check proving nothing.
+      remove: [
+        "src/Customer/OutboundTranslationSlice/GeocodeCustomerAddress.res",
+        "src/Customer/OutboundTranslationSlice/GeocodeCustomerAddress_Translation.res",
+        "tests/Customer/AddressGeocodingConformance_GWT.res",
+      ],
+      conformance: "tests/Customer/AddressGeocodingConformance_GWT.res.mjs",
+    },
+  },
   "traits/attachments": {
     host: "examples/online-shop-hybrid/catalog",
     graft: {
@@ -97,6 +125,11 @@ for (const [traitDir, spec] of Object.entries(specimens)) {
       recursive: true,
       filter: (p) => !p.includes("/node_modules") && !p.includes("/lib/"),
     })
+    // The host needs `node_modules` at its OWN root, not merely above it: pnpm
+    // builds a script's PATH from `<cwd>/node_modules/.bin` alone and does not
+    // walk up, so a `generate-plugin` one directory higher is invisible to
+    // `pnpm run generate`. Node and rescript resolve either way; pnpm does not.
+    symlinkSync(modules, join(host, "node_modules"))
     // No `lib/` is shipped: the consumer compiles the trait from its sources.
     if (existsSync(join(installed, "lib"))) throw new Error("tarball ships lib/")
     run("pnpm", ["exec", "rescript", "build"], host)
@@ -104,6 +137,10 @@ for (const [traitDir, spec] of Object.entries(specimens)) {
 
     if (spec.graft) {
       // pack → install → EMIT → generate-plugin → build → conform.
+      for (const owned of spec.graft.remove ?? []) {
+        rmSync(join(host, owned), { force: true })
+        rmSync(join(host, owned.replace(/\.res$/, ".res.mjs")), { force: true })
+      }
       const graftBin = join(modules, "@reventlessdev", "reventless-spec", "run-graft-trait.mjs")
       run("node", [graftBin, traitPkg.name,
         "--into", spec.graft.into, "--tests", spec.graft.tests, ...spec.graft.args], host)
