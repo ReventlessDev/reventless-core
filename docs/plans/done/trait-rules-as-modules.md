@@ -35,7 +35,7 @@ per decision and never stored, so the attachment hosts may embed the trait's sta
 
 ## Steps
 
-- **F1 — `FileAttachment_Set`** in `traits/file-attachment`: `type t`, `empty`, `op`, `fact`,
+- **F1 — `FileAttachmentSet_Rules`** in `traits/file-attachment-set`: `type t`, `empty`, `op`, `fact`,
   `decide: (t, op) => result<option<fact>, [#NotAttached]>`, `evolve`, `effectivePrimary`. The
   set's rules stated once.
 - **F2 — hosts delegate.** `ProductImages_Behavior` / `CategoryImages_Behavior` become their own
@@ -69,7 +69,7 @@ move); docs page committed.
 
 ## Outcome
 
-Every exit condition met. `FileAttachment_Set` carries the set's `op`/`fact`/`decide`/`evolve` and
+Every exit condition met. `FileAttachmentSet_Rules` carries the set's `op`/`fact`/`decide`/`evolve` and
 the `primaryOf` fallback both the decision side and the two projections now call;
 `AddressGeocoding_Guards` carries the four verdicts and `AddressGeocoding_Translate` the geocoder
 call plus `exhaustedReason`. The four host bodies became mapping and refusal only. Both conformance
