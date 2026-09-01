@@ -41,6 +41,30 @@
           "scopedLabel": "My Orders",
           "order": 20
         }
+      },
+      "NotificationSubscriptions": {
+        "nav": {
+          "group": "Shop",
+          "label": "Notification Preferences",
+          "scopedLabel": "My Notifications",
+          "order": 25
+        },
+        "mode": "matrix",
+        "matrix": {
+          "available": "deliverable"
+        }
+      }
+    },
+    "fields": {
+      "NotificationSubscriptions.subscriptions": {
+        "category": {
+          "OrderConfirmation": "Order confirmation",
+          "ShippingUpdate": "When your order ships",
+          "Marketing": "Deals and offers"
+        },
+        "channel": {
+          "Sms": "SMS"
+        }
       }
     }
   }
