@@ -19,6 +19,8 @@ let examplesDir = Nodepath.join(repoRoot, "examples");
 
 let update = process.argv.includes("--update");
 
+let reuseSidecars = process.argv.includes("--reuse-sidecars");
+
 let noRow = "(none)";
 
 function asObj(j) {
@@ -158,12 +160,32 @@ function filesUnder(dir, suffix) {
   });
 }
 
+function gwtSources(pluginDirs) {
+  return pluginDirs.flatMap(dir => filesUnder(Nodepath.join(dir, "tests"), "_GWT.res"));
+}
+
+function sidecarOf(gwt) {
+  return gwt.replace("_GWT.res", "_GWT.gwt.json");
+}
+
+function checkSidecars(pluginDirs) {
+  if (gwtSources(pluginDirs).some(f => Nodefs.existsSync(f.replace("_GWT.res", "_GWT.gwt.json")))) {
+    return {
+      TAG: "Ok",
+      _0: undefined
+    };
+  } else {
+    return {
+      TAG: "Error",
+      _0: "--reuse-sidecars was passed, but no scenario sidecar exists. Build with REVENTLESS_EMIT_SIDECAR=1 first, or drop the flag."
+    };
+  }
+}
+
 function emitSidecars(pluginDirs) {
   let now = Date.now() / 1000.0;
-  pluginDirs.forEach(dir => {
-    filesUnder(Nodepath.join(dir, "tests"), "_GWT.res").forEach(f => {
-      Nodefs.utimesSync(f, now, now);
-    });
+  gwtSources(pluginDirs).forEach(f => {
+    Nodefs.utimesSync(f, now, now);
   });
   let env = Object.fromEntries(Object.entries(process.env).concat([[
       "REVENTLESS_EMIT_SIDECAR",
@@ -683,7 +705,7 @@ async function main() {
   let failures = [];
   let drifted = [];
   let allPluginDirs = examples.flatMap(example => pluginDirsIn(Nodepath.join(examplesDir, example)));
-  let msg = emitSidecars(allPluginDirs);
+  let msg = reuseSidecars ? checkSidecars(allPluginDirs) : emitSidecars(allPluginDirs);
   if (msg.TAG !== "Ok") {
     console.error(msg._0);
     process.exit(1);
@@ -771,6 +793,7 @@ export {
   repoRoot,
   examplesDir,
   update,
+  reuseSidecars,
   noRow,
   asObj,
   getStr,
@@ -787,6 +810,9 @@ export {
   scenarioOf,
   readCorpus,
   filesUnder,
+  gwtSources,
+  sidecarOf,
+  checkSidecars,
   emitSidecars,
   levelOf,
   declaredCommandOf,

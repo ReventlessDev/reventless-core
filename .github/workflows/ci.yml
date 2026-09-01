@@ -156,10 +156,17 @@ jobs:
         if: steps.affected.outputs.select != 'none'
         run: pnpm install --frozen-lockfile
 
+      # The GWT scenario sidecars are a side effect of *parsing*, so a cold
+      # checkout writes them all here and the lifecycle check below can read them
+      # instead of driving a second build chain over a warm tree — which cleaned
+      # artifacts belonging to packages outside the root it was building and
+      # intermittently failed on a stale `.cmi`.
       - name: Build all packages
         id: build
         if: steps.affected.outputs.select != 'none'
         run: pnpm run build
+        env:
+          REVENTLESS_EMIT_SIDECAR: "1"
 
       # A jest project whose test outputs are missing discovers 0 suites and exits 0
       # — a silent pass. Guard against that before trusting the test result below.
@@ -183,7 +190,7 @@ jobs:
       # thinning corpus is visible without blocking on it.
       - name: Check lifecycle model against @transition
         if: steps.build.outcome == 'success'
-        run: pnpm run check:lifecycle
+        run: pnpm run check:lifecycle -- --reuse-sidecars
 
       - name: Run unit tests (all)
         if: steps.build.outcome == 'success' && steps.affected.outputs.select == 'all'

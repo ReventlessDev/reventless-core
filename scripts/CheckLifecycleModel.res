@@ -36,6 +36,7 @@ Usage:
 ```
 pnpm run check:lifecycle           # fail on contradictions or golden drift
 pnpm run check:lifecycle:update    # rewrite the goldens
+pnpm run check:lifecycle -- --reuse-sidecars   # read what a prior build wrote
 ```
 */
 
@@ -44,6 +45,13 @@ pnpm run check:lifecycle:update    # rewrite the goldens
 let repoRoot = NodeProcess.cwd()
 let examplesDir = NodePath.join([repoRoot, "examples"])
 let update = NodeProcess.argv->Array.includes("--update")
+
+/** Read the sidecars a prior build already wrote instead of driving one. CI's
+    build step sets `REVENTLESS_EMIT_SIDECAR=1`, so by the time this runs the
+    corpus is on disk; a second pass over a warm tree buys nothing and costs the
+    multi-root build chain's habit of cleaning artifacts outside the root it is
+    building, which lands intermittently on a stale `.cmi`. */
+let reuseSidecars = NodeProcess.argv->Array.includes("--reuse-sidecars")
 
 /** The label a state carries when no row exists yet. Not a lifecycle case — no
     enum declares it — so it is spelled in a way no annotation can name, and a
@@ -202,6 +210,26 @@ let rec filesUnder = (dir: string, ~suffix: string): array<string> =>
 
 // ── Driving the build that writes the sidecars ──────────────────────────────
 
+let gwtSources = (~pluginDirs: array<string>): array<string> =>
+  pluginDirs->Array.flatMap(dir => filesUnder(NodePath.join([dir, "tests"]), ~suffix="_GWT.res"))
+
+let sidecarOf = (gwt: string): string => gwt->String.replace("_GWT.res", "_GWT.gwt.json")
+
+/** A build that never set `REVENTLESS_EMIT_SIDECAR` leaves no corpus at all, and
+    an empty corpus reads as every edge `unverified` — a warning, so the run
+    would pass having checked nothing. Say so instead.
+
+    Only the empty case is checked, not sidecar-per-file: a GWT file whose
+    `describe` argument is not a string literal legitimately emits none, and the
+    committed goldens are what catch a corpus that merely got thinner. */
+let checkSidecars = (~pluginDirs: array<string>): result<unit, string> =>
+  gwtSources(~pluginDirs)->Array.some(f => f->sidecarOf->NodeFs.existsSync)
+    ? Ok()
+    : Error(
+        "--reuse-sidecars was passed, but no scenario sidecar exists. Build with " ++
+        "REVENTLESS_EMIT_SIDECAR=1 first, or drop the flag.",
+      )
+
 /** Sidecars are gitignored build artifacts, so the harvest produces its own
     rather than trusting whatever a previous build happened to leave behind.
 
@@ -219,11 +247,7 @@ let rec filesUnder = (dir: string, ~suffix: string): array<string> =>
     leaves the tree exactly as it found it. */
 let emitSidecars = (~pluginDirs: array<string>): result<unit, string> => {
   let now = Date.now() /. 1000.0
-  pluginDirs->Array.forEach(dir =>
-    filesUnder(NodePath.join([dir, "tests"]), ~suffix="_GWT.res")->Array.forEach(f =>
-      NodeFs.utimesSync(f, now, now)
-    )
-  )
+  gwtSources(~pluginDirs)->Array.forEach(f => NodeFs.utimesSync(f, now, now))
 
   let env =
     NodeProcess.env
@@ -852,7 +876,9 @@ let main = async () => {
   let allPluginDirs =
     examples->Array.flatMap(example => pluginDirsIn(NodePath.join([examplesDir, example])))
 
-  switch emitSidecars(~pluginDirs=allPluginDirs) {
+  switch reuseSidecars
+    ? checkSidecars(~pluginDirs=allPluginDirs)
+    : emitSidecars(~pluginDirs=allPluginDirs) {
   | Error(msg) =>
     Console.error(msg)
     NodeProcess.exit(1)
