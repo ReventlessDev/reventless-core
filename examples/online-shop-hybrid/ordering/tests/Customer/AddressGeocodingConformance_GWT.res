@@ -1,5 +1,6 @@
-// The address-geocoding trait's conformance suite, bound to `Customer`. The graft
-// rules are asserted by the trait; this file only says what the host calls things.
+// The address-geocoding trait's conformance suite, bound to `Customer`. The
+// graft rules are asserted by the trait; this file only says what the host calls
+// things. Emitted whole: every name here is one the graft already declared.
 
 module Binding = {
   type subject = string
@@ -13,9 +14,12 @@ module Binding = {
 
   let created = address => [Customer.Registered({email: "alice@x.y", address})]
   let subjectChanged = address => Customer.AddressUpdated({address: address})
-  let located = (~point, ~resolvedFrom) => Customer.LocationSet({location: point, resolvedFrom})
-  let unresolvable = (~subject, ~reason) => Customer.AddressUnresolvable({address: subject, reason})
-  let setLocation = (~point, ~resolvedFrom) => Customer.SetLocation({location: point, resolvedFrom})
+  let located = (~point, ~resolvedFrom) =>
+    Customer.LocationSet({location: point, resolvedFrom})
+  let unresolvable = (~subject, ~reason) =>
+    Customer.AddressUnresolvable({address: subject, reason})
+  let setLocation = (~point, ~resolvedFrom) =>
+    Customer.SetLocation({location: point, resolvedFrom})
   let markUnresolvable = (~subject, ~reason) =>
     Customer.MarkAddressUnresolvable({address: subject, reason})
 
@@ -24,12 +28,21 @@ module Binding = {
     let collect = GeocodeCustomerAddress_Translation.collect
   }
   let translate = GeocodeCustomerAddress_Translation.translate
-  let item = (~entityId, ~subject) => {GeocodeCustomerAddress.customerId: entityId, address: subject}
+  let item = (~entityId, ~subject) => {
+    GeocodeCustomerAddress.customerId: entityId,
+    address: subject,
+  }
+  // Every event type the slice consumes appears here — the consumed set may
+  // not be wider than its triggers, and the suite checks exactly that.
   let triggers = address => [
     GeocodeCustomerAddress.Registered({email: "alice@x.y", address}),
     GeocodeCustomerAddress.AddressUpdated({address: address}),
   ]
-  let standsDownOn = [Customer.AddressLocated({address: subjectA, location: {lat: 0.0, lng: 0.0}})]
+  // The stand-down, as a real constructor rather than a type name: a
+  // misspelled name would pass the assertion for the wrong reason.
+  let standsDownOn = [
+    Customer.AddressLocated({address: subjectA, location: {lat: 0.0, lng: 0.0}}),
+  ]
   let isLocation = (cmd: GeocodeCustomerAddress.inboundCommand) =>
     switch cmd {
     | SetLocation(_) => true
