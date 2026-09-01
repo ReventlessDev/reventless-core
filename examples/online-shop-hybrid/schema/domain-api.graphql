@@ -358,7 +358,9 @@ type Mutation {
   Ordering_PlaceOrder(customerId: ID!, deliveryWindow: DateRangeInput, orderId: ID!, productIds: [ID!]!, shippingMethod: Ordering_PlaceOrderShippingMethod!): CommandResult!
   Ordering_RelistSyncedProduct(productId: ID!): CommandResult!
   Ordering_ShipOrder(orderId: ID!): CommandResult!
+  Ordering_Subscribe(category: Ordering_SubscribeCategory!, channel: Ordering_SubscribeChannel!, recipientId: ID!): CommandResult!
   Ordering_SyncNewProduct(name: String!, price: MoneyInput!, productId: ID!): CommandResult!
+  Ordering_Unsubscribe(category: Ordering_UnsubscribeCategory!, channel: Ordering_UnsubscribeChannel!, recipientId: ID!): CommandResult!
   Ordering_WithdrawSyncedProduct(productId: ID!): CommandResult!
   Platform_Plugin_Activate(_0: String!, id: ID!): CommandResult!
   Platform_Plugin_Deactivate(_0: String!, id: ID!): CommandResult!
@@ -375,6 +377,54 @@ type OrderingEventLogEvent {
   eventType: String!
   payload: AWSJSON!
   position: String!
+}
+
+type Ordering_AnnounceRecipientContactTodo implements Node {
+  completedAt: String
+  createdAt: String!
+  id: ID!
+  item: Ordering_AnnounceRecipientContactTodoItem!
+  lastError: String
+  maxRetries: Float
+  processedAt: String
+  retryCount: Float!
+  status: Ordering_AnnounceRecipientContactTodoStatus!
+}
+
+type Ordering_AnnounceRecipientContactTodoConnection {
+  edges: [Ordering_AnnounceRecipientContactTodoEdge!]!
+  pageInfo: PageInfo!
+}
+
+type Ordering_AnnounceRecipientContactTodoEdge {
+  cursor: String!
+  node: Ordering_AnnounceRecipientContactTodo!
+}
+
+input Ordering_AnnounceRecipientContactTodoFilter {
+  ids: [ID!]
+  search: String
+  searchPrefix: String
+}
+
+type Ordering_AnnounceRecipientContactTodoItem {
+  email: String!
+  recipientId: ID!
+}
+
+type Ordering_AnnounceRecipientContactTodoRef {
+  id: ID!
+  label: String!
+  retired: Boolean!
+  retiredState: String
+}
+
+enum Ordering_AnnounceRecipientContactTodoStatus {
+  Abandoned
+  Completed
+  Failed
+  Pending
+  Processing
 }
 
 type Ordering_AutoShipOrderTodo implements Node {
@@ -589,6 +639,172 @@ enum Ordering_GeocodeCustomerAddressTodoStatus {
   Processing
 }
 
+type Ordering_NotificationDelivery implements Node {
+  category: Ordering_NotificationDeliveryCategory!
+  channel: String!
+  decidedAt: String!
+  detail: String!
+  id: ID!
+  outcome: Ordering_NotificationDeliveryOutcome!
+  recipientId: ID!
+  reference: String!
+  settledAt: String!
+}
+
+enum Ordering_NotificationDeliveryCategory {
+  Marketing
+  OrderConfirmation
+  ShippingUpdate
+}
+
+type Ordering_NotificationDeliveryConnection {
+  edges: [Ordering_NotificationDeliveryEdge!]!
+  pageInfo: PageInfo!
+}
+
+type Ordering_NotificationDeliveryEdge {
+  cursor: String!
+  node: Ordering_NotificationDelivery!
+}
+
+input Ordering_NotificationDeliveryFilter {
+  ids: [ID!]
+  recipientIdEq: ID
+  search: String
+  searchPrefix: String
+}
+
+input Ordering_NotificationDeliveryOrderBy {
+  direction: SortOrder!
+  field: Ordering_NotificationDeliveryOrderField!
+}
+
+enum Ordering_NotificationDeliveryOrderField {
+  recipientId
+}
+
+enum Ordering_NotificationDeliveryOutcome {
+  Delivered
+  Failed
+  Requested
+  Suppressed
+  Undeliverable
+}
+
+type Ordering_NotificationDeliveryRef {
+  id: ID!
+  label: String!
+  retired: Boolean!
+  retiredState: String
+}
+
+type Ordering_NotificationIntakeTodo implements Node {
+  completedAt: String
+  createdAt: String!
+  id: ID!
+  item: Ordering_NotificationIntakeTodoItem!
+  maxRetries: Float
+  processedAt: String
+  retryCount: Float!
+  status: Ordering_NotificationIntakeTodoStatus!
+}
+
+type Ordering_NotificationIntakeTodoConnection {
+  edges: [Ordering_NotificationIntakeTodoEdge!]!
+  pageInfo: PageInfo!
+}
+
+type Ordering_NotificationIntakeTodoEdge {
+  cursor: String!
+  node: Ordering_NotificationIntakeTodo!
+}
+
+input Ordering_NotificationIntakeTodoFilter {
+  ids: [ID!]
+  search: String
+  searchPrefix: String
+}
+
+type Ordering_NotificationIntakeTodoItem {
+  orderId: ID!
+  recipientId: ID!
+}
+
+type Ordering_NotificationIntakeTodoRef {
+  id: ID!
+  label: String!
+  retired: Boolean!
+  retiredState: String
+}
+
+enum Ordering_NotificationIntakeTodoStatus {
+  Abandoned
+  Completed
+  Failed
+  Pending
+  Processing
+}
+
+type Ordering_NotificationSubscription implements Node {
+  displayName: String
+  email: String!
+  id: ID!
+  recipientId: ID!
+  subscriptions: [Ordering_NotificationSubscriptionSubscriptions!]!
+}
+
+type Ordering_NotificationSubscriptionConnection {
+  edges: [Ordering_NotificationSubscriptionEdge!]!
+  pageInfo: PageInfo!
+}
+
+type Ordering_NotificationSubscriptionEdge {
+  cursor: String!
+  node: Ordering_NotificationSubscription!
+}
+
+input Ordering_NotificationSubscriptionFilter {
+  ids: [ID!]
+  recipientIdEq: ID
+  search: String
+  searchPrefix: String
+}
+
+input Ordering_NotificationSubscriptionOrderBy {
+  direction: SortOrder!
+  field: Ordering_NotificationSubscriptionOrderField!
+}
+
+enum Ordering_NotificationSubscriptionOrderField {
+  recipientId
+}
+
+type Ordering_NotificationSubscriptionRef {
+  id: ID!
+  label: String!
+  retired: Boolean!
+  retiredState: String
+}
+
+type Ordering_NotificationSubscriptionSubscriptions {
+  category: Ordering_NotificationSubscriptionSubscriptionsCategory!
+  channel: Ordering_NotificationSubscriptionSubscriptionsChannel!
+  deliverable: Boolean!
+  enabled: Boolean!
+}
+
+enum Ordering_NotificationSubscriptionSubscriptionsCategory {
+  Marketing
+  OrderConfirmation
+  ShippingUpdate
+}
+
+enum Ordering_NotificationSubscriptionSubscriptionsChannel {
+  Email
+  Push
+  Sms
+}
+
 type Ordering_Order implements Node {
   customerId: ID!
   deliveryWindow: DateRange
@@ -681,52 +897,86 @@ enum Ordering_PlaceOrderShippingMethod {
   Standard
 }
 
-type Ordering_SendOrderConfirmationTodo implements Node {
+type Ordering_SendNotificationTodo implements Node {
   completedAt: String
   createdAt: String!
   id: ID!
-  item: Ordering_SendOrderConfirmationTodoItem!
+  item: Ordering_SendNotificationTodoItem!
   lastError: String
   maxRetries: Float
   processedAt: String
   retryCount: Float!
-  status: Ordering_SendOrderConfirmationTodoStatus!
+  status: Ordering_SendNotificationTodoStatus!
 }
 
-type Ordering_SendOrderConfirmationTodoConnection {
-  edges: [Ordering_SendOrderConfirmationTodoEdge!]!
+type Ordering_SendNotificationTodoConnection {
+  edges: [Ordering_SendNotificationTodoEdge!]!
   pageInfo: PageInfo!
 }
 
-type Ordering_SendOrderConfirmationTodoEdge {
+type Ordering_SendNotificationTodoEdge {
   cursor: String!
-  node: Ordering_SendOrderConfirmationTodo!
+  node: Ordering_SendNotificationTodo!
 }
 
-input Ordering_SendOrderConfirmationTodoFilter {
+input Ordering_SendNotificationTodoFilter {
   ids: [ID!]
   search: String
   searchPrefix: String
 }
 
-type Ordering_SendOrderConfirmationTodoItem {
-  customerId: ID!
-  orderId: ID!
+type Ordering_SendNotificationTodoItem {
+  address: String!
+  body: String!
+  channel: Ordering_SendNotificationTodoItemChannel!
+  recipientId: ID!
+  reference: String!
+  subject: String!
 }
 
-type Ordering_SendOrderConfirmationTodoRef {
+enum Ordering_SendNotificationTodoItemChannel {
+  Email
+  Push
+  Sms
+}
+
+type Ordering_SendNotificationTodoRef {
   id: ID!
   label: String!
   retired: Boolean!
   retiredState: String
 }
 
-enum Ordering_SendOrderConfirmationTodoStatus {
+enum Ordering_SendNotificationTodoStatus {
   Abandoned
   Completed
   Failed
   Pending
   Processing
+}
+
+enum Ordering_SubscribeCategory {
+  Marketing
+  OrderConfirmation
+  ShippingUpdate
+}
+
+enum Ordering_SubscribeChannel {
+  Email
+  Push
+  Sms
+}
+
+enum Ordering_UnsubscribeCategory {
+  Marketing
+  OrderConfirmation
+  ShippingUpdate
+}
+
+enum Ordering_UnsubscribeChannel {
+  Email
+  Push
+  Sms
 }
 
 type PageInfo {
@@ -896,6 +1146,10 @@ type Query {
   Catalog_Products(after: String, before: String, filter: Catalog_ProductFilter, first: Int, includeRetired: Boolean, last: Int, orderBy: Catalog_ProductOrderBy): Catalog_ProductConnection!
   Catalog_ProductsByIds(ids: [String!]!, includeRetired: Boolean): [Catalog_Product!]!
   Catalog_ProductsRefs(ids: [ID!]!): [Catalog_ProductRef!]!
+  Ordering_AnnounceRecipientContactTodo(id: ID!, includeRetired: Boolean): Ordering_AnnounceRecipientContactTodo
+  Ordering_AnnounceRecipientContactTodos(after: String, before: String, filter: Ordering_AnnounceRecipientContactTodoFilter, first: Int, includeRetired: Boolean, last: Int): Ordering_AnnounceRecipientContactTodoConnection!
+  Ordering_AnnounceRecipientContactTodosByIds(ids: [String!]!, includeRetired: Boolean): [Ordering_AnnounceRecipientContactTodo!]!
+  Ordering_AnnounceRecipientContactTodosRefs(ids: [ID!]!): [Ordering_AnnounceRecipientContactTodoRef!]!
   Ordering_AutoShipOrderTodo(id: ID!, includeRetired: Boolean): Ordering_AutoShipOrderTodo
   Ordering_AutoShipOrderTodos(after: String, before: String, filter: Ordering_AutoShipOrderTodoFilter, first: Int, includeRetired: Boolean, last: Int): Ordering_AutoShipOrderTodoConnection!
   Ordering_AutoShipOrderTodosByIds(ids: [String!]!, includeRetired: Boolean): [Ordering_AutoShipOrderTodo!]!
@@ -913,15 +1167,27 @@ type Query {
   Ordering_GeocodeCustomerAddressTodos(after: String, before: String, filter: Ordering_GeocodeCustomerAddressTodoFilter, first: Int, includeRetired: Boolean, last: Int): Ordering_GeocodeCustomerAddressTodoConnection!
   Ordering_GeocodeCustomerAddressTodosByIds(ids: [String!]!, includeRetired: Boolean): [Ordering_GeocodeCustomerAddressTodo!]!
   Ordering_GeocodeCustomerAddressTodosRefs(ids: [ID!]!): [Ordering_GeocodeCustomerAddressTodoRef!]!
+  Ordering_NotificationDeliveries(after: String, before: String, filter: Ordering_NotificationDeliveryFilter, first: Int, includeRetired: Boolean, last: Int, orderBy: Ordering_NotificationDeliveryOrderBy): Ordering_NotificationDeliveryConnection!
+  Ordering_NotificationDeliveriesByIds(ids: [String!]!, includeRetired: Boolean): [Ordering_NotificationDelivery!]!
+  Ordering_NotificationDeliveriesRefs(ids: [ID!]!): [Ordering_NotificationDeliveryRef!]!
+  Ordering_NotificationDelivery(id: ID!, includeRetired: Boolean): Ordering_NotificationDelivery
+  Ordering_NotificationIntakeTodo(id: ID!, includeRetired: Boolean): Ordering_NotificationIntakeTodo
+  Ordering_NotificationIntakeTodos(after: String, before: String, filter: Ordering_NotificationIntakeTodoFilter, first: Int, includeRetired: Boolean, last: Int): Ordering_NotificationIntakeTodoConnection!
+  Ordering_NotificationIntakeTodosByIds(ids: [String!]!, includeRetired: Boolean): [Ordering_NotificationIntakeTodo!]!
+  Ordering_NotificationIntakeTodosRefs(ids: [ID!]!): [Ordering_NotificationIntakeTodoRef!]!
+  Ordering_NotificationSubscription(id: ID!, includeRetired: Boolean): Ordering_NotificationSubscription
+  Ordering_NotificationSubscriptions(after: String, before: String, filter: Ordering_NotificationSubscriptionFilter, first: Int, includeRetired: Boolean, last: Int, orderBy: Ordering_NotificationSubscriptionOrderBy): Ordering_NotificationSubscriptionConnection!
+  Ordering_NotificationSubscriptionsByIds(ids: [String!]!, includeRetired: Boolean): [Ordering_NotificationSubscription!]!
+  Ordering_NotificationSubscriptionsRefs(ids: [ID!]!): [Ordering_NotificationSubscriptionRef!]!
   Ordering_Order(id: ID!, includeRetired: Boolean): Ordering_Order
   Ordering_OrderingEventHistory(after: String, before: String, filter: Ordering_OrderingEventHistoryFilter, first: Int, last: Int): Ordering_OrderingEventRecordConnection!
   Ordering_Orders(after: String, before: String, filter: Ordering_OrderFilter, first: Int, includeRetired: Boolean, last: Int, orderBy: Ordering_OrderOrderBy): Ordering_OrderConnection!
   Ordering_OrdersByIds(ids: [String!]!, includeRetired: Boolean): [Ordering_Order!]!
   Ordering_OrdersRefs(ids: [ID!]!): [Ordering_OrderRef!]!
-  Ordering_SendOrderConfirmationTodo(id: ID!, includeRetired: Boolean): Ordering_SendOrderConfirmationTodo
-  Ordering_SendOrderConfirmationTodos(after: String, before: String, filter: Ordering_SendOrderConfirmationTodoFilter, first: Int, includeRetired: Boolean, last: Int): Ordering_SendOrderConfirmationTodoConnection!
-  Ordering_SendOrderConfirmationTodosByIds(ids: [String!]!, includeRetired: Boolean): [Ordering_SendOrderConfirmationTodo!]!
-  Ordering_SendOrderConfirmationTodosRefs(ids: [ID!]!): [Ordering_SendOrderConfirmationTodoRef!]!
+  Ordering_SendNotificationTodo(id: ID!, includeRetired: Boolean): Ordering_SendNotificationTodo
+  Ordering_SendNotificationTodos(after: String, before: String, filter: Ordering_SendNotificationTodoFilter, first: Int, includeRetired: Boolean, last: Int): Ordering_SendNotificationTodoConnection!
+  Ordering_SendNotificationTodosByIds(ids: [String!]!, includeRetired: Boolean): [Ordering_SendNotificationTodo!]!
+  Ordering_SendNotificationTodosRefs(ids: [ID!]!): [Ordering_SendNotificationTodoRef!]!
   Platform_UiFragment(id: ID!, includeRetired: Boolean): Platform_UiFragment
   Platform_UiFragments(after: String, before: String, filter: Platform_UiFragmentFilter, first: Int, includeRetired: Boolean, last: Int, orderBy: Platform_UiFragmentOrderBy): Platform_UiFragmentConnection!
   Platform_UiFragmentsByIds(ids: [String!]!, includeRetired: Boolean): [Platform_UiFragment!]!
@@ -970,7 +1236,9 @@ type Subscription {
   onOrdering_PlaceOrder(id: ID): CommandResult
   onOrdering_RelistSyncedProduct(id: ID): CommandResult
   onOrdering_ShipOrder(id: ID): CommandResult
+  onOrdering_Subscribe(id: ID): CommandResult
   onOrdering_SyncNewProduct(id: ID): CommandResult
+  onOrdering_Unsubscribe(id: ID): CommandResult
   onOrdering_WithdrawSyncedProduct(id: ID): CommandResult
 }
 

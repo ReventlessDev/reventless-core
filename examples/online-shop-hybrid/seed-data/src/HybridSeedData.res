@@ -27,7 +27,18 @@ let views = [
   Seed.Runner.Seeded("Ordering_Orders"),
   Seed.Runner.Seeded("Ordering_Customers"),
   Seed.Runner.Seeded("Ordering_AutoShipOrderTodos"),
-  Seed.Runner.Seeded("Ordering_SendOrderConfirmationTodos"),
+  // The notification chain, in the order the seeded commands drive it: every
+  // registered customer is announced, every placed order asks for a
+  // confirmation, and each answer opens a delivery row.
+  Seed.Runner.Seeded("Ordering_AnnounceRecipientContactTodos"),
+  Seed.Runner.Seeded("Ordering_NotificationIntakeTodos"),
+  Seed.Runner.Seeded("Ordering_NotificationSubscriptions"),
+  Seed.Runner.Seeded("Ordering_NotificationDeliveries"),
+  // Seeded, not `Unfillable`: a send TODO row is opened when the request is
+  // collected, before any provider is asked. A platform with no mailer leaves
+  // those rows Pending rather than leaving the view empty, which is the outcome
+  // the sweep is there to show.
+  Seed.Runner.Seeded("Ordering_SendNotificationTodos"),
 ]
 
 // The fresh-store guard probes these before sending any command — the `Seeded`

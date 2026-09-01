@@ -5,20 +5,25 @@
 module Make = (Platform: ReventlessInfra.Platform.T) => {
   // StateChangeSlices
   module CancelOrderSlice = Platform.StateChangeSlice.Make(CancelOrder, CancelOrder_Behavior)
+  module NotificationPreferencesSlice = Platform.StateChangeSlice.Make(NotificationPreferences, NotificationPreferences_Behavior)
   module PlaceOrderSlice = Platform.StateChangeSlice.Make(PlaceOrder, PlaceOrder_Behavior)
   module ShipOrderSlice = Platform.StateChangeSlice.Make(ShipOrder, ShipOrder_Behavior)
   module SyncCatalogProductSlice = Platform.StateChangeSlice.Make(SyncCatalogProduct, SyncCatalogProduct_Behavior)
 
   // StateViewSliceStreams
   module AvailableProductsStreamSlice = Platform.StateViewSliceStream.Make(AvailableProducts, AvailableProducts_Projection)
+  module NotificationDeliveriesStreamSlice = Platform.StateViewSliceStream.Make(NotificationDeliveries, NotificationDeliveries_Projection)
+  module NotificationSubscriptionsStreamSlice = Platform.StateViewSliceStream.Make(NotificationSubscriptions, NotificationSubscriptions_Projection)
   module OrdersStreamSlice = Platform.StateViewSliceStream.Make(Orders, Orders_Projection)
 
   // AutomationSlices
   module AutoShipOrderSlice = Platform.AutomationSlice.Make(AutoShipOrder, AutoShipOrder_Automation)
+  module NotificationIntakeSlice = Platform.AutomationSlice.Make(NotificationIntake, NotificationIntake_Automation)
 
   // OutboundTranslationSlices
+  module AnnounceRecipientContactSlice = Platform.OutboundTranslationSlice.Make(AnnounceRecipientContact, AnnounceRecipientContact_Translation)
   module GeocodeCustomerAddressSlice = Platform.OutboundTranslationSlice.Make(GeocodeCustomerAddress, GeocodeCustomerAddress_Translation)
-  module SendOrderConfirmationSlice = Platform.OutboundTranslationSlice.Make(SendOrderConfirmation, SendOrderConfirmation_Translation)
+  module SendNotificationSlice = Platform.OutboundTranslationSlice.Make(SendNotification, SendNotification_Translation)
 
   // Aggregates
   module CustomerAggregate = Platform.Aggregate.Make(
@@ -40,13 +45,13 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     ~name="Ordering",
     ~aggregates=[module(CustomerAggregate)],
     ~readModels=[module(CustomersReadModel)],
-    ~stateViewSlices=[module(AvailableProductsStreamSlice), module(OrdersStreamSlice)],
-    ~stateChangeSlices=[module(CancelOrderSlice), module(PlaceOrderSlice), module(ShipOrderSlice), module(SyncCatalogProductSlice)],
-    ~automationSlices=[module(AutoShipOrderSlice)],
-    ~outboundTranslationSlices=[module(GeocodeCustomerAddressSlice), module(SendOrderConfirmationSlice)],
+    ~stateViewSlices=[module(AvailableProductsStreamSlice), module(NotificationDeliveriesStreamSlice), module(NotificationSubscriptionsStreamSlice), module(OrdersStreamSlice)],
+    ~stateChangeSlices=[module(CancelOrderSlice), module(NotificationPreferencesSlice), module(PlaceOrderSlice), module(ShipOrderSlice), module(SyncCatalogProductSlice)],
+    ~automationSlices=[module(AutoShipOrderSlice), module(NotificationIntakeSlice)],
+    ~outboundTranslationSlices=[module(AnnounceRecipientContactSlice), module(GeocodeCustomerAddressSlice), module(SendNotificationSlice)],
     ~extensions=[module(Products_Extension)],
     ~extensionPoints=[module(Orders_ExtensionPointMapping)],
-    ~componentChapters=Dict.fromArray([("AutoShipOrder", "Order"), ("AvailableProducts", "CatalogProduct"), ("CancelOrder", "Order"), ("Customer", "Customer"), ("Customers", "Customer"), ("GeocodeCustomerAddress", "Customer"), ("Orders", "Order"), ("PlaceOrder", "Order"), ("SendOrderConfirmation", "Order"), ("ShipOrder", "Order"), ("SyncCatalogProduct", "CatalogProduct")]),
+    ~componentChapters=Dict.fromArray([("AnnounceRecipientContact", "Notification"), ("AutoShipOrder", "Order"), ("AvailableProducts", "CatalogProduct"), ("CancelOrder", "Order"), ("Customer", "Customer"), ("Customers", "Customer"), ("GeocodeCustomerAddress", "Customer"), ("NotificationDeliveries", "Notification"), ("NotificationIntake", "Notification"), ("NotificationPreferences", "Notification"), ("NotificationSubscriptions", "Notification"), ("Orders", "Order"), ("PlaceOrder", "Order"), ("SendNotification", "Notification"), ("ShipOrder", "Order"), ("SyncCatalogProduct", "CatalogProduct")]),
   )
 
   let make = () =>
@@ -57,10 +62,10 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ~extensions=[module(Products_Extension)],
       ~aggregates=[module(CustomerAggregate)],
       ~readModels=[module(CustomersReadModel)],
-      ~stateChangeSlices=[module(CancelOrderSlice), module(PlaceOrderSlice), module(ShipOrderSlice), module(SyncCatalogProductSlice)],
-      ~stateViewSlices=[module(AvailableProductsStreamSlice), module(OrdersStreamSlice)],
-      ~automationSlices=[module(AutoShipOrderSlice)],
-      ~outboundTranslationSlices=[module(GeocodeCustomerAddressSlice), module(SendOrderConfirmationSlice)],
+      ~stateChangeSlices=[module(CancelOrderSlice), module(NotificationPreferencesSlice), module(PlaceOrderSlice), module(ShipOrderSlice), module(SyncCatalogProductSlice)],
+      ~stateViewSlices=[module(AvailableProductsStreamSlice), module(NotificationDeliveriesStreamSlice), module(NotificationSubscriptionsStreamSlice), module(OrdersStreamSlice)],
+      ~automationSlices=[module(AutoShipOrderSlice), module(NotificationIntakeSlice)],
+      ~outboundTranslationSlices=[module(AnnounceRecipientContactSlice), module(GeocodeCustomerAddressSlice), module(SendNotificationSlice)],
       ~pluginStructure=pluginStructure,
       ~componentRuntime=Dict.fromArray([("Customers", {ReventlessInfra.RuntimeHints.memorySize: Some(2048), timeout: None}), ("Customer", {ReventlessInfra.RuntimeHints.memorySize: Some(1536), timeout: None}), ("PlaceOrder", {ReventlessInfra.RuntimeHints.memorySize: Some(768), timeout: Some(60)}), ("Orders", {ReventlessInfra.RuntimeHints.memorySize: Some(1024), timeout: None})]),
       ~uiFragments=?uiBundleUrl->Option.map(url =>

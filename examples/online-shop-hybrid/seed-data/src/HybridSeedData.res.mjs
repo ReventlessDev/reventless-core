@@ -46,7 +46,23 @@ let views = [
   },
   {
     TAG: "Seeded",
-    _0: "Ordering_SendOrderConfirmationTodos"
+    _0: "Ordering_AnnounceRecipientContactTodos"
+  },
+  {
+    TAG: "Seeded",
+    _0: "Ordering_NotificationIntakeTodos"
+  },
+  {
+    TAG: "Seeded",
+    _0: "Ordering_NotificationSubscriptions"
+  },
+  {
+    TAG: "Seeded",
+    _0: "Ordering_NotificationDeliveries"
+  },
+  {
+    TAG: "Seeded",
+    _0: "Ordering_SendNotificationTodos"
   }
 ];
 

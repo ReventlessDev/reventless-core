@@ -10,9 +10,11 @@ import * as PlaceOrder$OrderingPlugin from "./Order/StateChangeSlice/PlaceOrder.
 import * as CancelOrder$OrderingPlugin from "./Order/StateChangeSlice/CancelOrder.res.mjs";
 import * as AutoShipOrder$OrderingPlugin from "./Order/AutomationSlice/AutoShipOrder.res.mjs";
 import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
+import * as SendNotification$OrderingPlugin from "./Notification/OutboundTranslationSlice/SendNotification.res.mjs";
 import * as AvailableProducts$OrderingPlugin from "./CatalogProduct/StateViewSliceStream/AvailableProducts.res.mjs";
 import * as Customer_Behavior$OrderingPlugin from "./Customer/Aggregate/Customer_Behavior.res.mjs";
 import * as Orders_Projection$OrderingPlugin from "./Order/StateViewSliceStream/Orders_Projection.res.mjs";
+import * as NotificationIntake$OrderingPlugin from "./Notification/AutomationSlice/NotificationIntake.res.mjs";
 import * as Products_Extension$OrderingPlugin from "./Extension/Products_Extension.res.mjs";
 import * as ShipOrder_Behavior$OrderingPlugin from "./Order/StateChangeSlice/ShipOrder_Behavior.res.mjs";
 import * as SyncCatalogProduct$OrderingPlugin from "./CatalogProduct/StateChangeSlice/SyncCatalogProduct.res.mjs";
@@ -21,14 +23,22 @@ import * as PlaceOrder_Behavior$OrderingPlugin from "./Order/StateChangeSlice/Pl
 import * as CancelOrder_Behavior$OrderingPlugin from "./Order/StateChangeSlice/CancelOrder_Behavior.res.mjs";
 import * as Products_ExtensionPoint$CatalogSpec from "@reventlessdev/online-shop-hybrid-catalog-spec/src/Products_ExtensionPoint.res.mjs";
 import * as Customers_Projections$OrderingPlugin from "./Customer/ReadModelStream/Customers_Projections.res.mjs";
-import * as SendOrderConfirmation$OrderingPlugin from "./Order/OutboundTranslationSlice/SendOrderConfirmation.res.mjs";
 import * as GeocodeCustomerAddress$OrderingPlugin from "./Customer/OutboundTranslationSlice/GeocodeCustomerAddress.res.mjs";
+import * as NotificationDeliveries$OrderingPlugin from "./Notification/StateViewSliceStream/NotificationDeliveries.res.mjs";
+import * as NotificationPreferences$OrderingPlugin from "./Notification/StateChangeSlice/NotificationPreferences.res.mjs";
+import * as AnnounceRecipientContact$OrderingPlugin from "./Notification/OutboundTranslationSlice/AnnounceRecipientContact.res.mjs";
 import * as AutoShipOrder_Automation$OrderingPlugin from "./Order/AutomationSlice/AutoShipOrder_Automation.res.mjs";
+import * as NotificationSubscriptions$OrderingPlugin from "./Notification/StateViewSliceStream/NotificationSubscriptions.res.mjs";
 import * as SyncCatalogProduct_Behavior$OrderingPlugin from "./CatalogProduct/StateChangeSlice/SyncCatalogProduct_Behavior.res.mjs";
 import * as AvailableProducts_Projection$OrderingPlugin from "./CatalogProduct/StateViewSliceStream/AvailableProducts_Projection.res.mjs";
 import * as Orders_ExtensionPointMapping$OrderingPlugin from "./ExtensionPoint/Orders_ExtensionPointMapping.res.mjs";
-import * as SendOrderConfirmation_Translation$OrderingPlugin from "./Order/OutboundTranslationSlice/SendOrderConfirmation_Translation.res.mjs";
+import * as SendNotification_Translation$OrderingPlugin from "./Notification/OutboundTranslationSlice/SendNotification_Translation.res.mjs";
+import * as NotificationIntake_Automation$OrderingPlugin from "./Notification/AutomationSlice/NotificationIntake_Automation.res.mjs";
+import * as NotificationPreferences_Behavior$OrderingPlugin from "./Notification/StateChangeSlice/NotificationPreferences_Behavior.res.mjs";
+import * as NotificationDeliveries_Projection$OrderingPlugin from "./Notification/StateViewSliceStream/NotificationDeliveries_Projection.res.mjs";
 import * as GeocodeCustomerAddress_Translation$OrderingPlugin from "./Customer/OutboundTranslationSlice/GeocodeCustomerAddress_Translation.res.mjs";
+import * as AnnounceRecipientContact_Translation$OrderingPlugin from "./Notification/OutboundTranslationSlice/AnnounceRecipientContact_Translation.res.mjs";
+import * as NotificationSubscriptions_Projection$OrderingPlugin from "./Notification/StateViewSliceStream/NotificationSubscriptions_Projection.res.mjs";
 
 function Make(Platform) {
   let CancelOrderSlice = Platform.StateChangeSlice.Make({
@@ -46,6 +56,22 @@ function Make(Platform) {
     evolve: CancelOrder_Behavior$OrderingPlugin.evolve,
     decide: CancelOrder_Behavior$OrderingPlugin.decide,
     moduleUrl: CancelOrder_Behavior$OrderingPlugin.moduleUrl
+  });
+  let NotificationPreferencesSlice = Platform.StateChangeSlice.Make({
+    name: NotificationPreferences$OrderingPlugin.name,
+    moduleUrl: NotificationPreferences$OrderingPlugin.moduleUrl,
+    Id: Id$Reventless.$$String,
+    consumedEventSchema: NotificationPreferences$OrderingPlugin.consumedEventSchema,
+    errorSchema: NotificationPreferences$OrderingPlugin.errorSchema,
+    eventSchema: NotificationPreferences$OrderingPlugin.eventSchema,
+    commandSchema: NotificationPreferences$OrderingPlugin.commandSchema,
+    commandAuthorization: NotificationPreferences$OrderingPlugin.commandAuthorization,
+    readConsistency: NotificationPreferences$OrderingPlugin.readConsistency
+  })({
+    initialState: NotificationPreferences_Behavior$OrderingPlugin.initialState,
+    evolve: NotificationPreferences_Behavior$OrderingPlugin.evolve,
+    decide: NotificationPreferences_Behavior$OrderingPlugin.decide,
+    moduleUrl: NotificationPreferences_Behavior$OrderingPlugin.moduleUrl
   });
   let PlaceOrderSlice = Platform.StateChangeSlice.Make({
     name: PlaceOrder$OrderingPlugin.name,
@@ -108,6 +134,32 @@ function Make(Platform) {
     project: AvailableProducts_Projection$OrderingPlugin.project,
     moduleUrl: AvailableProducts_Projection$OrderingPlugin.moduleUrl
   });
+  let NotificationDeliveriesStreamSlice = Platform.StateViewSliceStream.Make({
+    name: NotificationDeliveries$OrderingPlugin.name,
+    moduleUrl: NotificationDeliveries$OrderingPlugin.moduleUrl,
+    stateSchema: NotificationDeliveries$OrderingPlugin.stateSchema,
+    consumedEventSchema: NotificationDeliveries$OrderingPlugin.consumedEventSchema,
+    config: NotificationDeliveries$OrderingPlugin.config,
+    subIdConfig: undefined,
+    authorization: NotificationDeliveries$OrderingPlugin.authorization,
+    visibility: NotificationDeliveries$OrderingPlugin.visibility
+  })({
+    project: NotificationDeliveries_Projection$OrderingPlugin.project,
+    moduleUrl: NotificationDeliveries_Projection$OrderingPlugin.moduleUrl
+  });
+  let NotificationSubscriptionsStreamSlice = Platform.StateViewSliceStream.Make({
+    name: NotificationSubscriptions$OrderingPlugin.name,
+    moduleUrl: NotificationSubscriptions$OrderingPlugin.moduleUrl,
+    stateSchema: NotificationSubscriptions$OrderingPlugin.stateSchema,
+    consumedEventSchema: NotificationSubscriptions$OrderingPlugin.consumedEventSchema,
+    config: NotificationSubscriptions$OrderingPlugin.config,
+    subIdConfig: undefined,
+    authorization: NotificationSubscriptions$OrderingPlugin.authorization,
+    visibility: NotificationSubscriptions$OrderingPlugin.visibility
+  })({
+    project: NotificationSubscriptions_Projection$OrderingPlugin.project,
+    moduleUrl: NotificationSubscriptions_Projection$OrderingPlugin.moduleUrl
+  });
   let OrdersStreamSlice = Platform.StateViewSliceStream.Make({
     name: Orders$OrderingPlugin.name,
     moduleUrl: Orders$OrderingPlugin.moduleUrl,
@@ -135,6 +187,38 @@ function Make(Platform) {
     moduleUrl: AutoShipOrder_Automation$OrderingPlugin.moduleUrl,
     mappings: AutoShipOrder_Automation$OrderingPlugin.mappings
   });
+  let NotificationIntakeSlice = Platform.AutomationSlice.Make({
+    name: NotificationIntake$OrderingPlugin.name,
+    moduleUrl: NotificationIntake$OrderingPlugin.moduleUrl,
+    todoItemSchema: NotificationIntake$OrderingPlugin.todoItemSchema,
+    commandSchema: NotificationIntake$OrderingPlugin.commandSchema,
+    maxRetries: NotificationIntake$OrderingPlugin.maxRetries,
+    heartbeatInterval: NotificationIntake$OrderingPlugin.heartbeatInterval,
+    targetName: NotificationIntake$OrderingPlugin.targetName
+  })({
+    process: NotificationIntake_Automation$OrderingPlugin.process,
+    onExhausted: NotificationIntake_Automation$OrderingPlugin.onExhausted,
+    moduleUrl: NotificationIntake_Automation$OrderingPlugin.moduleUrl,
+    mappings: NotificationIntake_Automation$OrderingPlugin.mappings
+  });
+  let AnnounceRecipientContactSlice = Platform.OutboundTranslationSlice.Make({
+    name: AnnounceRecipientContact$OrderingPlugin.name,
+    moduleUrl: AnnounceRecipientContact$OrderingPlugin.moduleUrl,
+    consumedEventSchema: AnnounceRecipientContact$OrderingPlugin.consumedEventSchema,
+    outboundItemSchema: AnnounceRecipientContact$OrderingPlugin.outboundItemSchema,
+    inboundCommandSchema: AnnounceRecipientContact$OrderingPlugin.inboundCommandSchema,
+    maxRetries: AnnounceRecipientContact$OrderingPlugin.maxRetries,
+    heartbeatInterval: AnnounceRecipientContact$OrderingPlugin.heartbeatInterval,
+    targetName: AnnounceRecipientContact$OrderingPlugin.targetName,
+    sourceNames: AnnounceRecipientContact$OrderingPlugin.sourceNames,
+    externalSystem: undefined,
+    capabilityNeeds: AnnounceRecipientContact$OrderingPlugin.capabilityNeeds
+  })({
+    collect: AnnounceRecipientContact_Translation$OrderingPlugin.collect,
+    translate: AnnounceRecipientContact_Translation$OrderingPlugin.translate,
+    onExhausted: AnnounceRecipientContact_Translation$OrderingPlugin.onExhausted,
+    moduleUrl: AnnounceRecipientContact_Translation$OrderingPlugin.moduleUrl
+  });
   let GeocodeCustomerAddressSlice = Platform.OutboundTranslationSlice.Make({
     name: GeocodeCustomerAddress$OrderingPlugin.name,
     moduleUrl: GeocodeCustomerAddress$OrderingPlugin.moduleUrl,
@@ -153,23 +237,23 @@ function Make(Platform) {
     onExhausted: GeocodeCustomerAddress_Translation$OrderingPlugin.onExhausted,
     moduleUrl: GeocodeCustomerAddress_Translation$OrderingPlugin.moduleUrl
   });
-  let SendOrderConfirmationSlice = Platform.OutboundTranslationSlice.Make({
-    name: SendOrderConfirmation$OrderingPlugin.name,
-    moduleUrl: SendOrderConfirmation$OrderingPlugin.moduleUrl,
-    consumedEventSchema: SendOrderConfirmation$OrderingPlugin.consumedEventSchema,
-    outboundItemSchema: SendOrderConfirmation$OrderingPlugin.outboundItemSchema,
-    inboundCommandSchema: SendOrderConfirmation$OrderingPlugin.inboundCommandSchema,
-    maxRetries: SendOrderConfirmation$OrderingPlugin.maxRetries,
-    heartbeatInterval: SendOrderConfirmation$OrderingPlugin.heartbeatInterval,
-    targetName: undefined,
-    sourceNames: SendOrderConfirmation$OrderingPlugin.sourceNames,
-    externalSystem: SendOrderConfirmation$OrderingPlugin.externalSystem,
-    capabilityNeeds: SendOrderConfirmation$OrderingPlugin.capabilityNeeds
+  let SendNotificationSlice = Platform.OutboundTranslationSlice.Make({
+    name: SendNotification$OrderingPlugin.name,
+    moduleUrl: SendNotification$OrderingPlugin.moduleUrl,
+    consumedEventSchema: SendNotification$OrderingPlugin.consumedEventSchema,
+    outboundItemSchema: SendNotification$OrderingPlugin.outboundItemSchema,
+    inboundCommandSchema: SendNotification$OrderingPlugin.inboundCommandSchema,
+    maxRetries: SendNotification$OrderingPlugin.maxRetries,
+    heartbeatInterval: SendNotification$OrderingPlugin.heartbeatInterval,
+    targetName: SendNotification$OrderingPlugin.targetName,
+    sourceNames: SendNotification$OrderingPlugin.sourceNames,
+    externalSystem: SendNotification$OrderingPlugin.externalSystem,
+    capabilityNeeds: SendNotification$OrderingPlugin.capabilityNeeds
   })({
-    collect: SendOrderConfirmation_Translation$OrderingPlugin.collect,
-    translate: SendOrderConfirmation_Translation$OrderingPlugin.translate,
-    onExhausted: SendOrderConfirmation_Translation$OrderingPlugin.onExhausted,
-    moduleUrl: SendOrderConfirmation_Translation$OrderingPlugin.moduleUrl
+    collect: SendNotification_Translation$OrderingPlugin.collect,
+    translate: SendNotification_Translation$OrderingPlugin.translate,
+    onExhausted: SendNotification_Translation$OrderingPlugin.onExhausted,
+    moduleUrl: SendNotification_Translation$OrderingPlugin.moduleUrl
   });
   let CustomerAggregate = Platform.Aggregate.Make({
     Id: Id$Reventless.$$String,
@@ -252,15 +336,22 @@ function Make(Platform) {
   });
   let pluginStructure = Platform.Plugin.makePluginDefinition("Ordering", [CustomerAggregate], [CustomersReadModel], [
     AvailableProductsStreamSlice,
+    NotificationDeliveriesStreamSlice,
+    NotificationSubscriptionsStreamSlice,
     OrdersStreamSlice
   ], [
     CancelOrderSlice,
+    NotificationPreferencesSlice,
     PlaceOrderSlice,
     ShipOrderSlice,
     SyncCatalogProductSlice
-  ], [AutoShipOrderSlice], [
+  ], [
+    AutoShipOrderSlice,
+    NotificationIntakeSlice
+  ], [
+    AnnounceRecipientContactSlice,
     GeocodeCustomerAddressSlice,
-    SendOrderConfirmationSlice
+    SendNotificationSlice
   ], undefined, [Products_Extension], [{
       ExtensionPoint: {
         name: Orders_ExtensionPoint$OrderingSpec.name,
@@ -284,6 +375,10 @@ function Make(Platform) {
       publishedEvents: Orders_ExtensionPointMapping$OrderingPlugin.publishedEvents,
       acceptedCommands: Orders_ExtensionPointMapping$OrderingPlugin.acceptedCommands
     }], Object.fromEntries([
+    [
+      "AnnounceRecipientContact",
+      "Notification"
+    ],
     [
       "AutoShipOrder",
       "Order"
@@ -309,6 +404,22 @@ function Make(Platform) {
       "Customer"
     ],
     [
+      "NotificationDeliveries",
+      "Notification"
+    ],
+    [
+      "NotificationIntake",
+      "Notification"
+    ],
+    [
+      "NotificationPreferences",
+      "Notification"
+    ],
+    [
+      "NotificationSubscriptions",
+      "Notification"
+    ],
+    [
       "Orders",
       "Order"
     ],
@@ -317,8 +428,8 @@ function Make(Platform) {
       "Order"
     ],
     [
-      "SendOrderConfirmation",
-      "Order"
+      "SendNotification",
+      "Notification"
     ],
     [
       "ShipOrder",
@@ -331,15 +442,22 @@ function Make(Platform) {
   ]));
   let make = () => Platform.Plugin.make("Ordering", 5, [Orders_ExtensionPoint], [Products_Extension], [CustomerAggregate], [CustomersReadModel], undefined, [
     CancelOrderSlice,
+    NotificationPreferencesSlice,
     PlaceOrderSlice,
     ShipOrderSlice,
     SyncCatalogProductSlice
   ], [
     AvailableProductsStreamSlice,
+    NotificationDeliveriesStreamSlice,
+    NotificationSubscriptionsStreamSlice,
     OrdersStreamSlice
-  ], [AutoShipOrderSlice], [
+  ], [
+    AutoShipOrderSlice,
+    NotificationIntakeSlice
+  ], [
+    AnnounceRecipientContactSlice,
     GeocodeCustomerAddressSlice,
-    SendOrderConfirmationSlice
+    SendNotificationSlice
   ], undefined, undefined, Object.fromEntries([
     [
       "Customers",
@@ -372,14 +490,19 @@ function Make(Platform) {
   ]), Stdlib_Option.map(process.env.ORDERING_UI_BUNDLE_URL, url => Platform.Plugin.makeAutoUIManifest(url, "Ordering", pluginStructure, ["platform-summary"], ["resource-detail"])), pluginStructure, undefined);
   return {
     CancelOrderSlice: CancelOrderSlice,
+    NotificationPreferencesSlice: NotificationPreferencesSlice,
     PlaceOrderSlice: PlaceOrderSlice,
     ShipOrderSlice: ShipOrderSlice,
     SyncCatalogProductSlice: SyncCatalogProductSlice,
     AvailableProductsStreamSlice: AvailableProductsStreamSlice,
+    NotificationDeliveriesStreamSlice: NotificationDeliveriesStreamSlice,
+    NotificationSubscriptionsStreamSlice: NotificationSubscriptionsStreamSlice,
     OrdersStreamSlice: OrdersStreamSlice,
     AutoShipOrderSlice: AutoShipOrderSlice,
+    NotificationIntakeSlice: NotificationIntakeSlice,
+    AnnounceRecipientContactSlice: AnnounceRecipientContactSlice,
     GeocodeCustomerAddressSlice: GeocodeCustomerAddressSlice,
-    SendOrderConfirmationSlice: SendOrderConfirmationSlice,
+    SendNotificationSlice: SendNotificationSlice,
     CustomerAggregate: CustomerAggregate,
     CustomersReadModel: CustomersReadModel,
     Orders_ExtensionPoint: Orders_ExtensionPoint,

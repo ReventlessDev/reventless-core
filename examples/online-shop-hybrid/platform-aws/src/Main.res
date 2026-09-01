@@ -19,6 +19,21 @@ module Platform = ReventlessAws.Platform.Make()
 // browser reaches.
 let placeIndex = ReventlessAws.Capability_Geocoding_AwsLocation.make(~name="online-shop-geocoder")
 
+// Backs the notification competency's email channel. Unlike the geocoder there
+// is no client door: a browser has no business sending mail from this
+// deployment's identity, so the only caller is the send slice's Lambda, which
+// reaches SES through the injected capability record.
+//
+// **Provisioning it is not the same as being able to send.** Creating the
+// identity asks AWS to mail this address; until somebody follows that link SES
+// refuses everything, and the deploy will have succeeded regardless. The first
+// confirmations queue and are swept rather than being written off, which is the
+// behaviour that makes a pending verification survivable.
+let messagingSender = ReventlessAws.Capability_Messaging_Ses.make(
+  ~name="online-shop-sender",
+  ~email="orders@example.com",
+)
+
 // The stores the plugins' fields declare, generated from their committed
 // `capabilities.json` manifests — the capability's `plugin` and the plugin's
 // registered name are one spelling by construction, which is what retires the
@@ -52,6 +67,7 @@ let default = Platform.deployPlatform(
   ~hostUiBundle={
     viewModes: [Map({}), Graph({})],
     geocoderPlaceIndex: placeIndex,
+    messagingSender,
     // The storefront's surface, shared with the in-memory root that hosts the
     // same shop. Declaring it is what points the shell at a static manifest for
     // its non-elevated audience; `elevatedGroups` below is what keeps an

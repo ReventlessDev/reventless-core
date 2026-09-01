@@ -12,7 +12,8 @@ let capabilities = [
     plugin: "Catalog",
     store: "productImages"
   },
-  "Geocoding"
+  "Geocoding",
+  "Messaging"
 ];
 
 export {

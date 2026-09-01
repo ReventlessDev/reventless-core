@@ -4,7 +4,12 @@
 //   PlaceOrder ─→ OrderPlaced
 //     ├─ AutoShipOrder reacts → ShipOrder ─→ OrderShipped
 //     ├─ Orders (view) : status Placed → Shipped
-//     └─ SendOrderConfirmation : confirmation effect fired
+//     └─ NotificationIntake reacts → RequestNotification
+//
+// The order lane ends where the notification competency begins. What happens to
+// the request — which channels it goes out on, or why it does not — is decided
+// against a recipient's own directory row, and belongs to that chapter's flow
+// rather than this one.
 //
 // PlaceOrder only succeeds because the referenced product was synced first, so
 // the flow seeds a CatalogProductSynced event before placing the order.
@@ -12,25 +17,32 @@
 
 // Compose the automation onto a flat slice — the production split keeps
 // collect/resolve inside the per-source mapping; the GWT needs them together.
-let testContext: Reventless.AutomationSlice.context = {
+let contextFor = (sliceName): Reventless.AutomationSlice.context => {
   environment: "test",
   platformName: "test",
   pluginName: "ordering",
-  sliceName: "AutoShipOrder",
+  sliceName,
 }
 
 module AutoShipOrderSlice = {
   include AutoShipOrder
   type consumedEvent = AutoShipOrder_Automation.FromOrderingDcb.sourceEvent
   let consumedEventSchema = AutoShipOrder_Automation.FromOrderingDcb.sourceEventSchema
-  let collect = e => AutoShipOrder_Automation.FromOrderingDcb.collect(e, testContext)
+  let collect = e => AutoShipOrder_Automation.FromOrderingDcb.collect(e, contextFor("AutoShipOrder"))
   let resolve = AutoShipOrder_Automation.FromOrderingDcb.resolve
   let process = AutoShipOrder_Automation.process
 }
 
-module ConfirmSlice = {
-  include SendOrderConfirmation
-  let collect = SendOrderConfirmation_Translation.collect
+// The DCB half of the intake relay. Its Customer-aggregate half announces
+// contacts and has nothing to do with an order, so this flow does not thread it.
+module NotificationIntakeSlice = {
+  include NotificationIntake
+  type consumedEvent = NotificationIntake_Automation.FromOrderingDcb.sourceEvent
+  let consumedEventSchema = NotificationIntake_Automation.FromOrderingDcb.sourceEventSchema
+  let collect = e =>
+    NotificationIntake_Automation.FromOrderingDcb.collect(e, contextFor("NotificationIntake"))
+  let resolve = NotificationIntake_Automation.FromOrderingDcb.resolve
+  let process = NotificationIntake_Automation.process
 }
 
 module Sync = CommandStep(SyncCatalogProduct, SyncCatalogProduct_Behavior)
@@ -38,7 +50,7 @@ module Place = CommandStep(PlaceOrder, PlaceOrder_Behavior)
 module Auto = AutomationStep(AutoShipOrderSlice)
 module Ship = CommandStep(ShipOrder, ShipOrder_Behavior)
 module OrdersView = ViewStep(Orders, Orders_Projection)
-module Confirm = OutboundStep(ConfirmSlice)
+module Notify = AutomationStep(NotificationIntakeSlice)
 
 // Prices are money, so a test writes the amount a person would say and converts
 // it once. `ofMajor` scales by the currency's own exponent, which is what keeps
@@ -95,7 +107,19 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
         deliveryWindow: Some(window),
       },
     )
-    ->Confirm.thenOutbound([("o1", {SendOrderConfirmation.orderId: "o1", customerId: "c1"})])
+    // The relay asks for a confirmation and says nothing about how it goes out.
+    // `reference` is the relay's own key for this occurrence, echoed back on the
+    // outcome so the row it opened can be closed.
+    ->Notify.whenReacts
+    ->Notify.thenIssuesCommand(
+      NotificationIntake.RequestNotification({
+        recipientId: "c1",
+        category: OrderConfirmation,
+        reference: "confirm:o1",
+        subject: "Your order o1 is confirmed",
+        body: "Thanks — we have your order o1 and will let you know when it ships.",
+      }),
+    )
   })
 
   test("placing an order for an unsynced product is rejected", () =>

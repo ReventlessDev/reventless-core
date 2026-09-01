@@ -14,4 +14,6 @@ let capabilities: array<ReventlessInfra.Platform.capability> = [
   ObjectStore({plugin: "Catalog", store: "productImages"}),
   // ordering: GeocodeCustomerAddress
   Geocoding,
+  // ordering: SendNotification
+  Messaging,
 ]
