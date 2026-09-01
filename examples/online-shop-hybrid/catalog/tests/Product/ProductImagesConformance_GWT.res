@@ -1,4 +1,4 @@
-// The file-attachment trait's conformance suite, bound to `ProductImages`.
+// The attachment-set trait's conformance suite, bound to `ProductImages`.
 
 module Binding = {
   type ref = string
@@ -31,6 +31,6 @@ module Binding = {
   let notAttached = ProductImages.ProductImageNotAttached
 }
 
-module Conformance = TraitFileAttachment.FileAttachment_Conformance.Make(Binding)
+module Conformance = TraitFileAttachmentSet.FileAttachmentSet_Conformance.Make(Binding)
 
 Conformance.register()

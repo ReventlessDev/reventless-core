@@ -1,5 +1,5 @@
 // CategoryImages StateChangeSlice: a category's attachment set — the second host
-// of the file-attachment trait, so its rules are proven to survive a host swap.
+// of the attachment-set trait, so its rules are proven to survive a host swap.
 
 @@reventless.spec
 

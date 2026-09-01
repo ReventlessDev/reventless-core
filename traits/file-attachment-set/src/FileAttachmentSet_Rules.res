@@ -5,7 +5,7 @@ until one is chosen, and a caption belongs to a member.
 
 A host maps its own constructors onto `op` and `fact` and keeps the spec surface —
 the variants, their annotations, its own refusals. Nothing here knows what an
-entity is. `FileAttachment_Conformance` asserts these rules through a host.
+entity is. `FileAttachmentSet_Conformance` asserts these rules through a host.
 */
 
 /** The stored file's reference. A `StorageRef` path today, so `string` carries it

@@ -1,4 +1,4 @@
-# @reventlessdev/trait-file-attachment
+# @reventlessdev/trait-file-attachment-set
 
 A **domain trait**: an ordered set of stored files on an entity — attach, remove,
 choose the primary, caption — as domain facts. The rules are a module the host calls;
@@ -6,12 +6,12 @@ the types are the host's own:
 
 | Part | Where |
 |---|---|
-| The set's rules | `src/FileAttachment_Set.res` (`empty`, `op`, `fact`, `decide`, `evolve`, `primaryOf`) |
-| The host contract, as a type | `src/FileAttachment.res` (`module type Binding`) |
-| The conformance suite | `src/FileAttachment_Conformance.res` (`Make(Binding).register()`) |
+| The set's rules | `src/FileAttachmentSet_Rules.res` (`empty`, `op`, `fact`, `decide`, `evolve`, `primaryOf`) |
+| The host contract, as a type | `src/FileAttachmentSet.res` (`module type Binding`) |
+| The conformance suite | `src/FileAttachmentSet_Conformance.res` (`Make(Binding).register()`) |
 | Spec fragments for the graft | `spec-fragments/*.res.tpl` |
 
-`FileAttachment_Set` is compiled code a host imports at runtime, so a change to it is a
+`FileAttachmentSet_Rules` is compiled code a host imports at runtime, so a change to it is a
 behavior change for every host: version it `fix:`/`feat:` accordingly. The fragments are
 the declarative residue that cannot come from a module — variant constructors, their
 annotations, the state fields — and are still pasted and edited by hand.
@@ -52,7 +52,7 @@ module Binding = {
   // … the remaining constructors, see `module type Binding`
 }
 
-TraitFileAttachment.FileAttachment_Conformance.Make(Binding).register()
+TraitFileAttachmentSet.FileAttachmentSet_Conformance.Make(Binding).register()
 ```
 
 The specimen hosts are `examples/online-shop-hybrid/catalog`'s `ProductImages` and

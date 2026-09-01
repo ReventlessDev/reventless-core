@@ -1,10 +1,10 @@
 // Fragment: the slice body. Paste as `StateChangeSlice/{{Entity}}Images_Behavior.res`.
-// The set's rules live in `FileAttachment_Set` — what is written here is the host's
+// The set's rules live in `FileAttachmentSet_Rules` — what is written here is the host's
 // own refusal and the mapping between its constructors and the trait's ops and facts.
 
 @@reventless.behavior
 
-module Attachments = TraitFileAttachment.FileAttachment_Set
+module Attachments = TraitFileAttachmentSet.FileAttachmentSet_Rules
 
 // The set is embedded directly: a StateChangeSlice's state is refolded per decision
 // and never stored, so a trait release that reshapes it costs no migration.

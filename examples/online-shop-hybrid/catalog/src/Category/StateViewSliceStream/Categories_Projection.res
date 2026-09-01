@@ -4,7 +4,7 @@
 // view's own rows so a card never shows no image while the set holds one.
 let withPrimary = (state: Categories.state, chosen: option<string>) => {
   ...state,
-  categoryImage: ?TraitFileAttachment.FileAttachment_Set.primaryOf(
+  categoryImage: ?TraitFileAttachmentSet.FileAttachmentSet_Rules.primaryOf(
     ~chosen,
     ~attached=state.categoryImages->Array.map(a => a.categoryImage),
   ),

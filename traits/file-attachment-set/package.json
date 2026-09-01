@@ -1,7 +1,7 @@
 {
-  "name": "@reventlessdev/trait-file-attachment",
+  "name": "@reventlessdev/trait-file-attachment-set",
   "version": "1.0.0-alpha.0",
-  "description": "File-attachment domain trait: rules, host contract, conformance suite and spec fragments for an ordered attachment set with a primary and captions",
+  "description": "Attachment-set domain trait: rules, host contract, conformance suite and spec fragments for an ordered set of stored files with a primary and captions",
   "license": "Apache-2.0",
   "files": [
     "src/**/*.res",
@@ -35,6 +35,6 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ReventlessDev/reventless-core.git",
-    "directory": "traits/file-attachment"
+    "directory": "traits/file-attachment-set"
   }
 }

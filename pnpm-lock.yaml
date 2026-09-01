@@ -653,9 +653,9 @@ importers:
       '@reventlessdev/reventless-spec':
         specifier: workspace:*
         version: link:../../../reventless/spec
-      '@reventlessdev/trait-file-attachment':
+      '@reventlessdev/trait-file-attachment-set':
         specifier: workspace:*
-        version: link:../../../traits/file-attachment
+        version: link:../../../traits/file-attachment-set
       sury:
         specifier: 11.0.0-rc.2
         version: 11.0.0-rc.2(rescript@12.3.0)
@@ -1688,7 +1688,7 @@ importers:
         specifier: 12.3.0
         version: 12.3.0
 
-  traits/file-attachment:
+  traits/file-attachment-set:
     dependencies:
       '@reventlessdev/reventless-gwt':
         specifier: workspace:*

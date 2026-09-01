@@ -1,5 +1,5 @@
 // ProductImages StateChangeSlice: a product's attachment set — attach, remove,
-// choose the primary, caption. The graft of the file-attachment trait; the set's
+// choose the primary, caption. The graft of the attachment-set trait; the set's
 // rules are asserted by the trait's conformance suite, bound in the tests.
 
 @@reventless.spec

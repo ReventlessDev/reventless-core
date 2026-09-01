@@ -2,7 +2,7 @@
 
 // The set's rules are the trait's; what is left here is the archived refusal and
 // the mapping between this host's constructors and the trait's ops and facts.
-module Attachments = TraitFileAttachment.FileAttachment_Set
+module Attachments = TraitFileAttachmentSet.FileAttachmentSet_Rules
 
 type state = {exists: bool, archived: bool, images: Attachments.t}
 

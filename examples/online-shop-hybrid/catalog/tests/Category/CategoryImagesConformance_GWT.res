@@ -1,4 +1,4 @@
-// The file-attachment trait's conformance suite, bound to `CategoryImages` — the
+// The attachment-set trait's conformance suite, bound to `CategoryImages` — the
 // second host, which is what makes the trait's rules a contract rather than a
 // description of one slice.
 
@@ -35,6 +35,6 @@ module Binding = {
   let notAttached = CategoryImages.CategoryImageNotAttached
 }
 
-module Conformance = TraitFileAttachment.FileAttachment_Conformance.Make(Binding)
+module Conformance = TraitFileAttachmentSet.FileAttachmentSet_Conformance.Make(Binding)
 
 Conformance.register()
