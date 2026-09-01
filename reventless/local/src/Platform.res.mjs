@@ -1490,7 +1490,7 @@ function MakeWithConfig(Config) {
         });
       }
     };
-    let argVersion = args => Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["_0"]), Stdlib_JSON.Decode.string);
+    let argVersion = args => Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["version"]), Stdlib_JSON.Decode.string);
     let dispatchLifecycle = (field, args, makeCommand) => {
       let msgId = Message$ReventlessCore.uuid();
       let pluginName = argId(args);
@@ -1510,15 +1510,15 @@ function MakeWithConfig(Config) {
     let mutationResolvers = {};
     mutationResolvers[activateField] = async (_root, args, _ctx) => dispatchLifecycle(activateField, args, v => ({
       TAG: "Activate",
-      _0: v
+      version: v
     }));
     mutationResolvers[deactivateField] = async (_root, args, _ctx) => dispatchLifecycle(deactivateField, args, v => ({
       TAG: "Deactivate",
-      _0: v
+      version: v
     }));
     mutationResolvers[retireField] = async (_root, args, _ctx) => dispatchLifecycle(retireField, args, v => ({
       TAG: "Retire",
-      _0: v
+      version: v
     }));
     adminMutationFieldNames.forEach(field => {
       if (Stdlib_Option.isNone(mutationResolvers[field])) {
@@ -3219,7 +3219,7 @@ function Make($star) {
         });
       }
     };
-    let argVersion = args => Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["_0"]), Stdlib_JSON.Decode.string);
+    let argVersion = args => Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["version"]), Stdlib_JSON.Decode.string);
     let dispatchLifecycle = (field, args, makeCommand) => {
       let msgId = Message$ReventlessCore.uuid();
       let pluginName = argId(args);
@@ -3239,15 +3239,15 @@ function Make($star) {
     let mutationResolvers = {};
     mutationResolvers[activateField] = async (_root, args, _ctx) => dispatchLifecycle(activateField, args, v => ({
       TAG: "Activate",
-      _0: v
+      version: v
     }));
     mutationResolvers[deactivateField] = async (_root, args, _ctx) => dispatchLifecycle(deactivateField, args, v => ({
       TAG: "Deactivate",
-      _0: v
+      version: v
     }));
     mutationResolvers[retireField] = async (_root, args, _ctx) => dispatchLifecycle(retireField, args, v => ({
       TAG: "Retire",
-      _0: v
+      version: v
     }));
     adminMutationFieldNames.forEach(field => {
       if (Stdlib_Option.isNone(mutationResolvers[field])) {

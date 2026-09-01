@@ -1943,15 +1943,15 @@ module MakeWithConfig = (
         )
       | None => None
       }
-    // The admin Plugin lifecycle SDL is `<field>(id: ID!, _0: String!)` — `id` is the
-    // plugin name (aggregate id) and `_0` is the target version (the command payload,
-    // e.g. `Activate(version)`). Use the caller-supplied `_0` when present; fall back
-    // to the plugin's current version from the Plugins read model for callers that
-    // omit it.
+    // The admin Plugin lifecycle SDL is `<field>(id: ID!, version: String!)` — `id`
+    // is the plugin name (aggregate id) and `version` is the target version (the
+    // command payload, e.g. `Activate({version})`). Use the caller-supplied version
+    // when present; fall back to the plugin's current version from the Plugins read
+    // model for callers that omit it.
     let argVersion = (args: JSON.t) =>
       args
       ->JSON.Decode.object
-      ->Option.flatMap(d => d->Dict.get("_0"))
+      ->Option.flatMap(d => d->Dict.get("version"))
       ->Option.flatMap(JSON.Decode.string)
     let dispatchLifecycle = (
       ~field: string,
@@ -1977,13 +1977,13 @@ module MakeWithConfig = (
     let retireField = ReventlessCore.Api_Naming.adminField(~name="Plugin_Retire")
     let mutationResolvers = Dict.make()
     mutationResolvers->Dict.set(activateField, async (_root, args, _ctx): JSON.t =>
-      dispatchLifecycle(~field=activateField, args, v => ReventlessCore.PluginSpec.Activate(v))
+      dispatchLifecycle(~field=activateField, args, v => ReventlessCore.PluginSpec.Activate({version: v}))
     )
     mutationResolvers->Dict.set(deactivateField, async (_root, args, _ctx): JSON.t =>
-      dispatchLifecycle(~field=deactivateField, args, v => ReventlessCore.PluginSpec.Deactivate(v))
+      dispatchLifecycle(~field=deactivateField, args, v => ReventlessCore.PluginSpec.Deactivate({version: v}))
     )
     mutationResolvers->Dict.set(retireField, async (_root, args, _ctx): JSON.t =>
-      dispatchLifecycle(~field=retireField, args, v => ReventlessCore.PluginSpec.Retire(v))
+      dispatchLifecycle(~field=retireField, args, v => ReventlessCore.PluginSpec.Retire({version: v}))
     )
     // Remaining admin mutations (e.g., Clone) are no-ops in-memory.
     adminMutationFieldNames->Array.forEach(field =>

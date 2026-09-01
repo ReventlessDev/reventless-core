@@ -120,24 +120,24 @@ describe("PluginBehavior:", () => {
   // ── Admin deactivate / activate ─────────────────────────────────────────────
   test("Deactivate the current version", () =>
     givenEvents([VersionConnected(pluginDefinition)])
-    ->whenCmd(Deactivate("1"))
+    ->whenCmd(Deactivate({version: "1"}))
     ->thenEvents([VersionDeactivated(pluginDefinition)])
   )
 
   test("Activate a deactivated version", () =>
     givenEvents([VersionConnected(pluginDefinition), VersionDeactivated(pluginDefinition)])
-    ->whenCmd(Activate("1"))
+    ->whenCmd(Activate({version: "1"}))
     ->thenEvents([VersionActivated(pluginDefinition)])
   )
 
   test("Activate an unknown version errors", () =>
-    givenEvents([])->whenCmd(Activate("9"))->thenError(UnknownVersion)
+    givenEvents([])->whenCmd(Activate({version: "9"}))->thenError(UnknownVersion)
   )
 
   // ── Manual retire + un-retire (decision A) ─────────────────────────────────
   test("Retire the current version", () =>
     givenEvents([VersionConnected(pluginDefinition)])
-    ->whenCmd(Retire("1"))
+    ->whenCmd(Retire({version: "1"}))
     ->thenEvents([VersionRetired(pluginDefinition)])
   )
 
@@ -149,7 +149,7 @@ describe("PluginBehavior:", () => {
 
   test("Un-retire: admin Activate revives a retired version", () =>
     givenEvents([VersionConnected(pluginDefinition), VersionRetired(pluginDefinition)])
-    ->whenCmd(Activate("1"))
+    ->whenCmd(Activate({version: "1"}))
     ->thenEvents([VersionActivated(pluginDefinition)])
   )
 

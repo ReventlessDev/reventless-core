@@ -34,12 +34,20 @@ type command =
   // Cognito group-gated). `version` selects which known version to act on.
   // The `@transition` edges must agree with `decide` below; `Platform_Admin_Structure`
   // reads them off this schema rather than restating them.
-  | @transition(([Plugins.Inactive, Plugins.Retired]) => Plugins.Connected) Activate(version)
-  | @transition(([Plugins.Connected, Plugins.Disconnected]) => Plugins.Inactive) Deactivate(version)
+  //
+  // Inline records, unlike the `@noApi` commands above, and the difference is the
+  // API. A positional payload publishes its argument as `_0`, which names nothing:
+  // a caller cannot match it against a field it holds, and a coercion failure says
+  // `Variable '_0'` rather than what was missing. These three are the ones a person
+  // calls, so their argument carries its own name.
+  | @transition(([Plugins.Inactive, Plugins.Retired]) => Plugins.Connected)
+  Activate({version: version})
+  | @transition(([Plugins.Connected, Plugins.Disconnected]) => Plugins.Inactive)
+  Deactivate({version: version})
   // Manual admin retirement of a specific version (archive). Distinct from the
   // automatic `Superseded` transition (which is decided, not commanded).
   | @transition(([Plugins.Connected, Plugins.Disconnected, Plugins.Inactive]) => Plugins.Retired)
-  Retire(version)
+  Retire({version: version})
 
 // Carries both the superseded and the superseding version's full definition —
 // a deterministic trigger for version-to-version schema/data migrations

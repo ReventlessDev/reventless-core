@@ -159,19 +159,19 @@ let decide = (state, command) =>
       Ok(Array.concat([VersionDisconnected(definition)], promoteEvents(state, v)))
     | _ => Ok([]) // not connected / unknown → tolerate stray disconnect
     }
-  | Activate(v) =>
-    switch state.known->Dict.get(v) {
+  | Activate({version}) =>
+    switch state.known->Dict.get(version) {
     | Some({status: Inactive | Retired, definition}) =>
       let base = [VersionActivated(definition)]
-      let supersede = if currentAfterConnect(state.known, v) == v {
+      let supersede = if currentAfterConnect(state.known, version) == version {
         switch state.current {
-        | Some(c) if c != v =>
+        | Some(c) if c != version =>
           switch state.known->Dict.get(c) {
           | Some({definition: defC}) => [
               VersionSuperseded({
                 supersededVersion: c,
                 supersededDefinition: defC,
-                newVersion: v,
+                newVersion: version,
                 newDefinition: definition,
               }),
             ]
@@ -187,18 +187,18 @@ let decide = (state, command) =>
     | Some({status: Disconnected}) => Error(IsDisconnected)
     | None => Error(UnknownVersion)
     }
-  | Deactivate(v) =>
-    switch state.known->Dict.get(v) {
+  | Deactivate({version}) =>
+    switch state.known->Dict.get(version) {
     | Some({status: Connected | Disconnected, definition}) =>
-      Ok(Array.concat([VersionDeactivated(definition)], promoteEvents(state, v)))
+      Ok(Array.concat([VersionDeactivated(definition)], promoteEvents(state, version)))
     | Some({status: Inactive | Retired}) => Ok([]) // idempotent / archived no-op
     | None => Error(UnknownVersion)
     }
-  | Retire(v) =>
-    switch state.known->Dict.get(v) {
+  | Retire({version}) =>
+    switch state.known->Dict.get(version) {
     | Some({status: Retired}) => Ok([]) // idempotent
     | Some({definition}) =>
-      Ok(Array.concat([VersionRetired(definition)], promoteEvents(state, v)))
+      Ok(Array.concat([VersionRetired(definition)], promoteEvents(state, version)))
     | None => Error(UnknownVersion)
     }
   | ReportIncompatibility(def) => Ok([IncompatiblePluginDetected(def)])

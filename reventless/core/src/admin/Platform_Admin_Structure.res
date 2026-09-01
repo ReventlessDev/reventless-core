@@ -24,7 +24,7 @@ let commandSchema = PluginSpec.commandSchema->S.castToUnknown
 // Every variant of `PluginSpec.command`, walked by the same `extractCommandDefs`
 // an ordinary aggregate goes through. The hand-written alternative described the
 // arguments with a local `{id}` schema while the generated SDL declared
-// `Platform_Plugin_Activate(_0: String!, id: ID!)`, so AutoUI built a mutation
+// `Platform_Plugin_Activate(id: ID!, version: String!)`, so AutoUI built a mutation
 // missing a required argument and every admin row action was rejected before it
 // reached the aggregate. Deriving from `commandSchema` — the same schema the SDL
 // is generated from — cannot reproduce that class of fault.

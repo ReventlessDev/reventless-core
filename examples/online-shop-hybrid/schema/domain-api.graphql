@@ -362,9 +362,9 @@ type Mutation {
   Ordering_SyncNewProduct(name: String!, price: MoneyInput!, productId: ID!): CommandResult!
   Ordering_Unsubscribe(category: Ordering_UnsubscribeCategory!, channel: Ordering_UnsubscribeChannel!, recipientId: ID!): CommandResult!
   Ordering_WithdrawSyncedProduct(productId: ID!): CommandResult!
-  Platform_Plugin_Activate(_0: String!, id: ID!): CommandResult!
-  Platform_Plugin_Deactivate(_0: String!, id: ID!): CommandResult!
-  Platform_Plugin_Retire(_0: String!, id: ID!): CommandResult!
+  Platform_Plugin_Activate(id: ID!, version: String!): CommandResult!
+  Platform_Plugin_Deactivate(id: ID!, version: String!): CommandResult!
+  Platform_Plugin_Retire(id: ID!, version: String!): CommandResult!
   Upload_Presign(contentType: String, fileName: String!, store: ID!): Upload_Ticket
   Upload_Release(storageRef: String!, store: ID!): Upload_ReleaseResult
 }

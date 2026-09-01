@@ -232,8 +232,8 @@ function decide(state, command) {
         };
       }
     case "Activate" :
-      let v$4 = command._0;
-      let match$4 = state.known[v$4];
+      let version = command.version;
+      let match$4 = state.known[version];
       if (match$4 === undefined) {
         return {
           TAG: "Error",
@@ -261,17 +261,17 @@ function decide(state, command) {
           _0: definition
         }];
       let supersede;
-      if (currentAfterConnect(state.known, v$4) === v$4) {
+      if (currentAfterConnect(state.known, version) === version) {
         let c = state.current;
         if (c !== undefined) {
-          if (c !== v$4) {
+          if (c !== version) {
             let match$5 = state.known[c];
             supersede = match$5 !== undefined ? [{
                   TAG: "VersionSuperseded",
                   _0: {
                     supersededVersion: c,
                     supersededDefinition: match$5.definition,
-                    newVersion: v$4,
+                    newVersion: version,
                     newDefinition: definition
                   }
                 }] : [];
@@ -290,8 +290,8 @@ function decide(state, command) {
       };
       break;
     case "Deactivate" :
-      let v$5 = command._0;
-      let match$6 = state.known[v$5];
+      let version$1 = command.version;
+      let match$6 = state.known[version$1];
       if (match$6 === undefined) {
         return {
           TAG: "Error",
@@ -314,12 +314,12 @@ function decide(state, command) {
         _0: [{
             TAG: "VersionDeactivated",
             _0: match$6.definition
-          }].concat(promoteEvents(state, v$5))
+          }].concat(promoteEvents(state, version$1))
       };
       break;
     case "Retire" :
-      let v$6 = command._0;
-      let match$7 = state.known[v$6];
+      let version$2 = command.version;
+      let match$7 = state.known[version$2];
       if (match$7 !== undefined) {
         if (match$7.status === "Retired") {
           return {
@@ -332,7 +332,7 @@ function decide(state, command) {
             _0: [{
                 TAG: "VersionRetired",
                 _0: match$7.definition
-              }].concat(promoteEvents(state, v$6))
+              }].concat(promoteEvents(state, version$2))
           };
         }
       } else {

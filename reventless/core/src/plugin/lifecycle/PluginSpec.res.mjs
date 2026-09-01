@@ -27,15 +27,15 @@ let commandSchema = Sury.union([
   })),
   Sury.$schema(s => ({
     TAG: "Activate",
-    _0: s.m(Plugin$Reventless.versionSchema)
+    version: s.m(Plugin$Reventless.versionSchema)
   })),
   Sury.$schema(s => ({
     TAG: "Deactivate",
-    _0: s.m(Plugin$Reventless.versionSchema)
+    version: s.m(Plugin$Reventless.versionSchema)
   })),
   Sury.$schema(s => ({
     TAG: "Retire",
-    _0: s.m(Plugin$Reventless.versionSchema)
+    version: s.m(Plugin$Reventless.versionSchema)
   }))
 ]);
 

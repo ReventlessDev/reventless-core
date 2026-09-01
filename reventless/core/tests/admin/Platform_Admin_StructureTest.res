@@ -111,13 +111,18 @@ describe("the admin structure's declared transitions are checked", () => {
 
 // The drift that made deriving these defs worth doing rather than tidy. The
 // hand-written arg schema described only `id`, while the SDL generated off the
-// same `commandSchema` declares `Platform_Plugin_Activate(_0: String!, id: ID!)`.
+// same `commandSchema` declares `Platform_Plugin_Activate(id: ID!, version: String!)`.
 // AutoUI builds its mutation document from the published schema, so it sent a
 // document missing a required argument and every admin row action was rejected at
 // GraphQL validation, before the aggregate saw it.
 describe("the Plugin command defs carry every argument the SDL requires", () => {
-  testSync("the version argument is published", () =>
-    expect(activate().schema->String.includes(`"_0"`))->toEqual(true)
+  // Named, not positional. A caller can match `version` against a field it holds;
+  // `_0` is a name only the encoder ever chose.
+  testSync("the version argument is published, under its own name", () =>
+    expect((
+      activate().schema->String.includes(`"version"`),
+      activate().schema->String.includes(`"_0"`),
+    ))->toEqual((true, false))
   )
 
   testSync("and so is the aggregate id", () => {
