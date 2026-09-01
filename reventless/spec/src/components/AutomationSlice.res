@@ -83,6 +83,22 @@ module type Spec = {
 // validation step run before each command publish. `process` remains shared in
 // the slice's `Automation` module since it operates on `todoItem` regardless of
 // the originating source.
+//
+// **Only for source events that name their own subject.** `collect` is handed
+// the event and the ambient `context` and nothing else — no entity id — so a
+// mapping can key its todo item only on what the payload carries. A DCB event
+// usually names its subject (`OrderPlaced({orderId, …})`) and is fine. An
+// Aggregate's event generally does not, because the aggregate id is what
+// addressed it: `Registered({email, address})` gives a mapping no way to say
+// which customer it is for, and nothing refuses the mapping — it compiles and
+// produces todo rows that cannot be keyed.
+//
+// Until that is closed, an aggregate whose events do not name their subject is
+// reached with an `OutboundTranslationSlice` instead, whose `collect` does take
+// `~sourceId`. That is not only a workaround: its item completes when the
+// command is published rather than when an answering event arrives, so the
+// target command is free to be idempotent instead of having to emit a fact to
+// close the row.
 
 /**
 Ambient deployment context plumbed to every mapping function.

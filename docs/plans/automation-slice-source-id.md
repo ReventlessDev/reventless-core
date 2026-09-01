@@ -1,7 +1,13 @@
 # Plan: an AutomationSlice cannot read an aggregate it is allowed to name
 
 **Date:** 2026-09-01<br/>
-**Status:** OPEN — found while building a plugin that relays aggregate events into a DCB slice.
+**Status:** OPEN, deliberately deferred. **The misleading documentation is fixed** (2026-09-01) —
+`AutomationSlice`'s module doc now says which sources a mapping can key on and what to reach for
+instead — so the trap for a reader is closed. What remains is the signature change below, and it is
+scheduled behind the work that would have used it, because that work does not want it: the
+`OutboundTranslationSlice` alternative completes its item on the publish rather than on an answering
+event, which lets the target command stay idempotent. Resolve §Falsifier before starting; it decides
+whether this is a signature change or a dispatch change.
 
 ## The gap
 
@@ -24,6 +30,9 @@ its todo item is for, and cannot build a per-entity todo key.
 The result is not a compile error. The mapping is declarable, it type-checks, and it produces todo
 rows that are wrong or unkeyable. The support is real only for sources whose events happen to name
 their own subject, which in practice means DCB events.
+
+*[2026-09-01] The doc quoted above now carries that qualification, so this section describes the
+signature, not a claim still being made.*
 
 ## The framework already solved this next door
 
