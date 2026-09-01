@@ -12,6 +12,14 @@
   | Update{{Subject}}({ {{subject}}: string})
   // Change the {{subject}} *and* say where it is. Suppresses the geocoder for it.
   | Set{{Subject}}Location({ {{subject}}: string, location: Reventless.GeoPoint.t})
+  // The two the slice reports through are the trait's, spliced rather than pasted:
+  //
+  //   | ...TraitAddressGeocoding.AddressGeocoding.reportCommands
+  //
+  // Both are `@noApi`, and the exclusion travels — it is recorded on each member,
+  // not only on the union it was declared in — so neither is published. Paste the
+  // two arms below instead only when the spread cannot serve (see the events).
+  //
   // `resolvedFrom` is a staleness token: an answer for a {{subject}} that has since
   // changed is dropped rather than applied. Deliberately unguarded — legal in every
   // state, `Ok([])` on a retired entity, so an in-flight answer never parks a TODO.

@@ -24,19 +24,9 @@ let commandSchema = Sury.union([
     address: s.m(Sury.string),
     location: s.m(GeoPoint$Reventless.schema)
   })),
-  Sury.$schema(s => ({
-    TAG: "SetLocation",
-    location: s.m(GeoPoint$Reventless.schema),
-    resolvedFrom: s.m(Sury.string)
-  })),
-  Sury.$schema(s => ({
-    TAG: "MarkAddressUnresolvable",
-    address: s.m(Sury.string),
-    reason: s.m(Sury.string)
-  })),
   Sury.literal("Deactivate"),
   Sury.literal("Reactivate")
-]);
+].concat(AddressGeocoding$TraitAddressGeocoding.reportCommandsSchema.type === "anyOf" ? AddressGeocoding$TraitAddressGeocoding.reportCommandsSchema.anyOf : [AddressGeocoding$TraitAddressGeocoding.reportCommandsSchema]));
 
 let eventSchema = Sury.union([
   Sury.$schema(s => ({
@@ -58,12 +48,7 @@ let errorSchema = Sury.union([
   Sury.literal("CustomerAlreadyDeactivated")
 ]);
 
-let commandSchema$1 = Api$ReventlessInfra.markNoApiVariants(commandSchema, [
-  "SetLocation",
-  "MarkAddressUnresolvable"
-]);
-
-let commandSchema$2 = Api$ReventlessInfra.markAllowedStates(commandSchema$1, [
+let commandSchema$1 = Api$ReventlessInfra.markAllowedStates(commandSchema, [
   [
     "UpdateEmail",
     ["Active"]
@@ -86,7 +71,7 @@ let commandSchema$2 = Api$ReventlessInfra.markAllowedStates(commandSchema$1, [
   ]
 ]);
 
-let commandSchema$3 = Api$ReventlessInfra.markTargetState(commandSchema$2, [
+let commandSchema$2 = Api$ReventlessInfra.markTargetState(commandSchema$1, [
   [
     "Deactivate",
     "Deactivated"
@@ -112,7 +97,7 @@ export {
   Id,
   eventSchema,
   errorSchema,
-  commandSchema$3 as commandSchema,
+  commandSchema$2 as commandSchema,
   moduleUrl,
   commandAuthorization,
 }

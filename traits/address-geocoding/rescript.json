@@ -6,6 +6,7 @@
   },
   "namespace": "TraitAddressGeocoding",
   "ppx-flags": [
+    "@reventlessdev/reventless-ppx/bin",
     "sury-ppx/bin"
   ],
   "warnings": {
@@ -20,6 +21,7 @@
   "dependencies": [
     "sury",
     "@reventlessdev/reventless-spec",
+    "@reventlessdev/reventless-infra",
     "@reventlessdev/reventless-gwt"
   ],
   "compiler-flags": [],

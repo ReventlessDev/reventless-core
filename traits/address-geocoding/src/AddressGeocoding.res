@@ -67,6 +67,22 @@ type events =
       and one state meaning two things is one nobody can act on. */
   | AddressUnresolvable({address: string, reason: string})
 
+/**
+The two commands the outbound slice reports its answer through, as constructors a
+host splices into its own command type.
+
+Both are `@noApi`: they are the slice's shape, not a caller's. `SetLocation`
+carries a `resolvedFrom` staleness token that only the slice can supply, and a
+client correcting a row does it through the host's own public command instead.
+
+The exclusion travels with the spread — it is recorded on each member, not only
+on this union — so a host that splices these does not publish them.
+*/
+@schema
+type reportCommands =
+  | @noApi SetLocation({location: Reventless.GeoPoint.t, resolvedFrom: string})
+  | @noApi MarkAddressUnresolvable({address: string, reason: string})
+
 /** One host, bound. Written over an abstract `subject` (the address) so retyping it
     is a re-instantiation of this module, not a break in the trait. */
 module type Binding = {

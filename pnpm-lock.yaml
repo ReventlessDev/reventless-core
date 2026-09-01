@@ -1677,6 +1677,12 @@ importers:
       '@reventlessdev/reventless-gwt':
         specifier: workspace:*
         version: link:../../reventless/gwt
+      '@reventlessdev/reventless-infra':
+        specifier: workspace:*
+        version: link:../../reventless/infra
+      '@reventlessdev/reventless-ppx':
+        specifier: workspace:*
+        version: link:../../packages/reventless-ppx
       '@reventlessdev/reventless-spec':
         specifier: workspace:*
         version: link:../../reventless/spec

@@ -49,8 +49,10 @@ type command =
   // return `Ok([])` rather than refusing, so an in-flight geocode landing after
   // deactivation does not park a TODO row in Failed forever — which makes them
   // legal in every state, and a from-set naming every state says nothing.
-  | @noApi SetLocation({location: Reventless.GeoPoint.t, resolvedFrom: string})
-  | @noApi MarkAddressUnresolvable({address: string, reason: string})
+  //
+  // Spliced from the trait, `@noApi` and all: the exclusion is recorded on each
+  // member, so it survives the spread and neither is published.
+  | ...TraitAddressGeocoding.AddressGeocoding.reportCommands
   | @transition(([Customers.Active]) => Customers.Deactivated) Deactivate
   // The way back. Deactivation withdraws a customer from ordinary use; it does
   // not erase them, so restoring one needs no payload — the profile is still in
