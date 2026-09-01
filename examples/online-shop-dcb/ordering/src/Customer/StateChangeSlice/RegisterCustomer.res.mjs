@@ -25,6 +25,10 @@ function commandAuthorization(param) {
   return "AllowAuthenticated";
 }
 
+function commandTransition(param) {
+  return "Unrestricted";
+}
+
 let name = "RegisterCustomer";
 
 let Id;
@@ -43,5 +47,6 @@ export {
   moduleUrl,
   commandAuthorization,
   readConsistency,
+  commandTransition,
 }
 /* consumedEventSchema Not a pure module */

@@ -15,6 +15,7 @@ import * as Reference$Reventless from "@reventlessdev/reventless-spec/src/compon
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as StorageRef$Reventless from "@reventlessdev/reventless-spec/src/semantic/StorageRef.res.mjs";
+import * as Transition$Reventless from "@reventlessdev/reventless-spec/src/types/Transition.res.mjs";
 import * as DisplayName$Reventless from "@reventlessdev/reventless-spec/src/components/DisplayName.res.mjs";
 import * as Api_Naming$ReventlessCore from "../../components/Api/Api_Naming.res.mjs";
 import * as CapabilityNeed$Reventless from "@reventlessdev/reventless-spec/src/semantic/CapabilityNeed.res.mjs";
@@ -344,16 +345,16 @@ function checkDeclaredTransitions(pluginName, writables, lifecycleStatesByView) 
         unvalidated.contents = unvalidated.contents + 1 | 0;
       } else {
         declared.filter(state => !known.includes(state)).forEach(state => {
-          failures.push(w.name + `.` + cmd.name + `: @transition names "` + state + `", which none of its ` + (`linked views declare — ` + w.linkedViews.join(", ") + ` know ` + known.join(", ") + `.`));
+          failures.push(w.name + `.` + cmd.name + ` declares state "` + state + `", which none of its ` + (`linked views declare — ` + w.linkedViews.join(", ") + ` know ` + known.join(", ") + `.`));
         });
       }
     });
   });
   if (unvalidated.contents > 0) {
-    log.warn("Plugin_Structure", undefined, pluginName + `: ` + unvalidated.contents.toString() + ` command(s) declare a @transition but no linked view declares a lifecycle to check it against.`);
+    log.warn("Plugin_Structure", undefined, pluginName + `: ` + unvalidated.contents.toString() + ` command(s) declare a transition but no linked view declares a lifecycle to check it against.`);
   }
   if (failures.length !== 0) {
-    return Stdlib_JsError.throwWithMessage(pluginName + `: @transition names states that do not exist.\n` + failures.join("\n"));
+    return Stdlib_JsError.throwWithMessage(pluginName + `: a declared transition names states that do not exist.\n` + failures.join("\n"));
   }
 }
 
@@ -592,20 +593,27 @@ function annotateArgTypes(schema, argTypes) {
   return schema;
 }
 
-function toCommandDef(isAggregate, mutationFieldFor, parentSchema, commandAuthorization, v) {
+function toCommandDef(isAggregate, mutationFieldFor, parentSchema, commandAuthorization, commandTransition, v) {
   let mkDef = (variantName, properties) => {
     let match = commandLevelAndId(isAggregate, variantName, properties);
     let references = extractReferences(properties);
-    let allowedStates = ApiAllowedStatesHelpers$ReventlessCore.getAllowedStates(parentSchema, variantName);
-    let targetState = ApiTargetStateHelpers$ReventlessCore.getTargetState(parentSchema, variantName);
+    let syntheticCommand = DcbTag$Reventless.isVariantPayloadBearing(parentSchema, variantName) ? ({
+        TAG: variantName
+      }) : variantName;
+    let declared = commandTransition(syntheticCommand);
+    let match$1;
+    match$1 = typeof declared !== "object" ? [
+        ApiAllowedStatesHelpers$ReventlessCore.getAllowedStates(parentSchema, variantName),
+        ApiTargetStateHelpers$ReventlessCore.getTargetState(parentSchema, variantName)
+      ] : [
+        Transition$Reventless.allowedStates(declared),
+        Transition$Reventless.targetState(declared)
+      ];
     let apiExposed = false;
     if (!ApiNoApiHelpers$ReventlessCore.isNoApi(parentSchema)) {
       let excluded = ApiNoApiHelpers$ReventlessCore.getExcludedVariants(parentSchema);
       apiExposed = excluded !== undefined ? !excluded.has(variantName) : true;
     }
-    let syntheticCommand = DcbTag$Reventless.isVariantPayloadBearing(parentSchema, variantName) ? ({
-        TAG: variantName
-      }) : variantName;
     let requiredAccess = accessKeysFor(commandAuthorization(syntheticCommand));
     let mutationField = apiExposed ? mutationFieldFor(variantName) : "";
     let jsonSchema = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(v);
@@ -617,8 +625,8 @@ function toCommandDef(isAggregate, mutationFieldFor, parentSchema, commandAuthor
       aggregateIdField: match[1],
       mutationField: mutationField,
       references: references,
-      allowedStates: allowedStates,
-      targetState: targetState,
+      allowedStates: match$1[0],
+      targetState: match$1[1],
       apiExposed: apiExposed,
       requiredAccess: requiredAccess,
       ownerField: Owner$Reventless.fieldNamesOfProperties(properties)[0]
@@ -648,11 +656,11 @@ function toCommandDef(isAggregate, mutationFieldFor, parentSchema, commandAuthor
   }
 }
 
-function extractCommandDefs(isAggregate, mutationFieldFor, commandAuthorization, commandSchema) {
+function extractCommandDefs(isAggregate, mutationFieldFor, commandAuthorization, commandTransition, commandSchema) {
   if (commandSchema.type === "anyOf") {
-    return Stdlib_Array.filterMap(commandSchema.anyOf, v => toCommandDef(isAggregate, mutationFieldFor, commandSchema, commandAuthorization, v));
+    return Stdlib_Array.filterMap(commandSchema.anyOf, v => toCommandDef(isAggregate, mutationFieldFor, commandSchema, commandAuthorization, commandTransition, v));
   } else {
-    return Stdlib_Option.mapOr(toCommandDef(isAggregate, mutationFieldFor, commandSchema, commandAuthorization, commandSchema), [], def => [def]);
+    return Stdlib_Option.mapOr(toCommandDef(isAggregate, mutationFieldFor, commandSchema, commandAuthorization, commandTransition, commandSchema), [], def => [def]);
   }
 }
 
@@ -1001,7 +1009,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     let consumed = match$1[1];
     return {
       name: SCS.Spec.name,
-      commands: extractCommandDefs(false, variantName => Api_Naming$ReventlessCore.sliceMutationFieldFor(name, SCS.Spec.name, SCS.Spec.commandSchema, variantName), SCS.Spec.commandAuthorization, SCS.Spec.commandSchema),
+      commands: extractCommandDefs(false, variantName => Api_Naming$ReventlessCore.sliceMutationFieldFor(name, SCS.Spec.name, SCS.Spec.commandSchema, variantName), SCS.Spec.commandAuthorization, SCS.Spec.commandTransition, SCS.Spec.commandSchema),
       producedEventTypes: produced,
       consumedEventTypes: consumed,
       linkedViews: linkedSvsFor(produced),
@@ -1016,7 +1024,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     let produced = match[1];
     return {
       name: A.Spec.name,
-      commands: extractCommandDefs(true, variantName => Api_Naming$ReventlessCore.aggregateMutationField(name, A.Spec.name, variantName), A.Spec.commandAuthorization, A.Spec.commandSchema),
+      commands: extractCommandDefs(true, variantName => Api_Naming$ReventlessCore.aggregateMutationField(name, A.Spec.name, variantName), A.Spec.commandAuthorization, A.Spec.commandTransition, A.Spec.commandSchema),
       producedEventTypes: produced,
       consumedEventTypes: [],
       linkedViews: linkedSvsFor(produced).concat(linkedReadModelsFor(A.Spec.name)),

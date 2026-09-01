@@ -144,6 +144,10 @@ function commandAuthorization(param) {
   return "AllowAuthenticated";
 }
 
+function commandTransition(param) {
+  return "Unrestricted";
+}
+
 let name = "NotificationPreferences";
 
 let Id;
@@ -164,5 +168,6 @@ export {
   moduleUrl,
   commandAuthorization,
   readConsistency,
+  commandTransition,
 }
 /* categorySchema Not a pure module */

@@ -640,6 +640,7 @@ function MakeWithConfig(Config) {
     eventSchema: UiFragmentRegistry$ReventlessCore.eventSchema,
     commandSchema: UiFragmentRegistry$ReventlessCore.commandSchema,
     commandAuthorization: UiFragmentRegistry$ReventlessCore.commandAuthorization,
+    commandTransition: UiFragmentRegistry$ReventlessCore.commandTransition,
     readConsistency: UiFragmentRegistry$ReventlessCore.readConsistency
   };
   let Behavior = {
@@ -741,7 +742,8 @@ function MakeWithConfig(Config) {
     errorSchema: PluginSpec$ReventlessCore.errorSchema,
     commandSchema: PluginSpec$ReventlessCore.commandSchema,
     moduleUrl: PluginSpec$ReventlessCore.moduleUrl,
-    commandAuthorization: PluginSpec$ReventlessCore.commandAuthorization
+    commandAuthorization: PluginSpec$ReventlessCore.commandAuthorization,
+    commandTransition: PluginSpec$ReventlessCore.commandTransition
   })({
     initialState: PluginBehavior$ReventlessCore.initialState,
     evolve: PluginBehavior$ReventlessCore.evolve,
@@ -2370,6 +2372,7 @@ function Make($star) {
     eventSchema: UiFragmentRegistry$ReventlessCore.eventSchema,
     commandSchema: UiFragmentRegistry$ReventlessCore.commandSchema,
     commandAuthorization: UiFragmentRegistry$ReventlessCore.commandAuthorization,
+    commandTransition: UiFragmentRegistry$ReventlessCore.commandTransition,
     readConsistency: UiFragmentRegistry$ReventlessCore.readConsistency
   };
   let Behavior = {
@@ -2471,7 +2474,8 @@ function Make($star) {
     errorSchema: PluginSpec$ReventlessCore.errorSchema,
     commandSchema: PluginSpec$ReventlessCore.commandSchema,
     moduleUrl: PluginSpec$ReventlessCore.moduleUrl,
-    commandAuthorization: PluginSpec$ReventlessCore.commandAuthorization
+    commandAuthorization: PluginSpec$ReventlessCore.commandAuthorization,
+    commandTransition: PluginSpec$ReventlessCore.commandTransition
   })({
     initialState: PluginBehavior$ReventlessCore.initialState,
     evolve: PluginBehavior$ReventlessCore.evolve,

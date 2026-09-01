@@ -974,6 +974,77 @@ let decide = (_state, _command): result<array<event>, error> => Ok([])
 let evolve = (state, _event) => state
 EOF
 
+# ─── Fixture: a variant spread beside the two command-policy seams ─────
+
+# The one shape a trait graft makes and nothing else in this suite does. What is
+# asserted downstream is the split between the two seams:
+#
+#   @authorize   lowers to a `switch` over the command, so the spliced members
+#                are real cases the compiler resolves — the rule travels.
+#   @transition  lowers to a dict on the PARENT union keyed by variant name, and
+#                a spread splices members, so the spliced ones reach the metadata
+#                carrying nothing. `commandTransition` is the answer to that, and
+#                the PPX injects the standing-aside default here.
+
+cat > "$PLUGIN/src/Aggregate/SpreadOrder.res" <<'EOF'
+@@reventless.spec
+
+type lifecycle = Placed | Shipped
+
+@schema
+type reportCommands =
+  | @noApi Reported({orderId: string})
+  | @noApi Failed({orderId: string})
+
+@schema
+type state = { @id orderId: string }
+
+let initialState = { orderId: "" }
+
+@schema
+type command =
+  | @authorize(AllowGroups(["Admin"])) @transition([Placed]) Ship({orderId: string})
+  | ...reportCommands
+
+@schema
+type event = Shipped2({orderId: string})
+
+@schema
+type error = NotFound
+
+// Required, not optional: this command type splices, so the PPX refuses the
+// standing-aside default. The two spliced constructors have to be answered for,
+// and the compiler names them until they are.
+type lifecycleState = SpreadView.rowStatus
+
+let commandTransition = (command: command): Reventless.Transition.t<lifecycleState> => {
+  open Reventless.Transition
+  switch command {
+  | Ship(_) => Guards([SpreadView.Open])
+  | Reported(_) | Failed(_) => Unrestricted
+  }
+}
+
+// A command carrier naming its view's lifecycle enum as REAL constructors —
+// what a hand-written `commandTransition` needs. The view spec holds no
+// reference back, so it is acyclic, and the arms are payload-less, so it erases
+// to plain strings and imports nothing.
+let probeStates: array<SpreadView.rowStatus> = [Open, Closed]
+
+let decide = (_state, _command): result<array<event>, error> => Ok([])
+let evolve = (state, _event) => state
+EOF
+
+cat > "$PLUGIN/src/ReadModel/SpreadView.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type rowStatus = Open | Closed
+
+@schema
+type state = { @id orderId: string, @lifecycle rowStatus: rowStatus }
+EOF
+
 # ─── Fixture: @live on the state declaration (live-updates hint) ──
 
 # @live(false) on a ReadModel state declaration
@@ -1506,7 +1577,7 @@ module FromDcb = Mapping.Make(
   MergedAutomation,
   {
     open MergedAutomationDcbSource
-    let collect = (event, _ctx) => switch event {
+    let collect = (event, ~sourceId as _, _ctx) => switch event {
       | Triggered({mergedId}) =>
         [(mergedId, ({mergedId: mergedId}: MergedAutomation.todoItem))]
     }
@@ -2717,6 +2788,111 @@ assert_js_contains "$JS" 'markAllowedStates' "markAllowedStates binding emitted 
 assert_js_contains "$JS" 'markTargetState' "markTargetState binding emitted from @transition"
 assert_js_contains "$JS" '"Ship"' "moving command present in the metadata"
 assert_js_contains "$JS" '"Shipped"' "arrow target lowered to the metadata"
+
+echo ""
+echo ""
+echo "=== Test: @authorize survives a variant spread, @transition does not ==="
+PJS="$PLUGIN/src/Aggregate/SpreadOrder.res.mjs"
+
+# The authorization switch is generated ReScript matching real constructors, so
+# the compiler resolves the spliced members and they get the file default.
+AUTH_BLOCK=$(sed -n '/function commandAuthorization/,/^}/p' "$PJS")
+if echo "$AUTH_BLOCK" | grep -q '"Reported"' && echo "$AUTH_BLOCK" | grep -q '"Failed"'; then
+  pass "spliced constructors reach commandAuthorization"
+else
+  fail "spread authorization" "commandAuthorization does not answer for the spliced constructors"
+fi
+
+# The transition metadata is a dict on the parent union, so it cannot: this is
+# the gap `commandTransition` exists to close, asserted so it stays visible.
+ALLOWED_SPREAD=$(sed -n '/markAllowedStates/,/]);/p' "$PJS")
+if echo "$ALLOWED_SPREAD" | grep -q '"Ship"'; then
+  pass "the host's own command reaches the transition metadata"
+else
+  fail "spread transition" "Ship missing from markAllowedStates"
+fi
+if echo "$ALLOWED_SPREAD" | grep -qE '"Reported"|"Failed"'; then
+  fail "spread transition" "a spliced constructor must not appear — the annotation cannot reach it"
+else
+  pass "spliced constructors absent from the transition metadata (the gap commandTransition closes)"
+fi
+
+echo ""
+echo "=== Test: commandTransition is injected where the spec declares none ==="
+# TransitionOrder declares all its own constructors, so the default is injected
+# and @transition stays in charge — the path every un-grafted spec is on.
+TJS="$PLUGIN/src/Aggregate/TransitionOrder.res.mjs"
+assert_js_contains "$TJS" 'function commandTransition' "commandTransition injected on a command carrier"
+TRANS_BLOCK=$(sed -n '/function commandTransition/,/^}/p' "$TJS")
+if echo "$TRANS_BLOCK" | grep -q 'Unrestricted'; then
+  pass "the injected default stands aside, leaving @transition in charge"
+else
+  fail "commandTransition default" "injected binding does not return Unrestricted"
+fi
+
+echo ""
+echo "=== Test: a spliced command type must declare commandTransition ==="
+# The default is NOT injected for a spliced type: it would leave the spliced
+# commands with no policy and say nothing. Refused instead, and the message has
+# to explain why the annotation is not the answer.
+mkdir -p "$ERROR/src/Aggregate"
+cat > "$ERROR/src/Aggregate/SpreadNoTransition.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type reportCommands = @noApi Reported({orderId: string})
+
+@schema
+type state = { @id orderId: string }
+
+let initialState = { orderId: "" }
+
+@schema
+type command =
+  | Ship({orderId: string})
+  | ...reportCommands
+
+@schema
+type event = Shipped2({orderId: string})
+
+@schema
+type error = NotFound
+
+let decide = (_state, _command): result<array<event>, error> => Ok([])
+let evolve = (state, _event) => state
+EOF
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "spliced command without commandTransition" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q "commandTransition"; then
+    pass "a spliced command type without commandTransition fails the build"
+  else
+    fail "spliced command without commandTransition" "error did not name commandTransition: $OUTPUT"
+  fi
+  if echo "$OUTPUT" | grep -q "spread splices members"; then
+    pass "the refusal says why @transition is not the answer"
+  else
+    fail "spliced command refusal" "error did not explain the spread: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/Aggregate/SpreadNoTransition.res"
+
+echo ""
+echo "=== Test: a lifecycle reference erases to its own names, importing nothing ==="
+# Why the typed form costs nothing downstream: payload-less arms compile to
+# their names, so the framework reads the same strings the annotation produced,
+# and the aggregate takes on no dependency that could cycle with its view.
+STATES_BLOCK=$(sed -n '/let probeStates/,/];/p' "$PJS")
+if echo "$STATES_BLOCK" | grep -q '"Open"' && echo "$STATES_BLOCK" | grep -q '"Closed"'; then
+  pass "lifecycle constructors erase to their own names"
+else
+  fail "lifecycle erasure" "probeStates did not compile to the state names: $STATES_BLOCK"
+fi
+if grep -q 'SpreadView' "$PJS"; then
+  fail "lifecycle erasure" "the aggregate imported its view — the reference must be compile-time only"
+else
+  pass "no runtime import of the view (so the reference cannot cycle)"
+fi
 
 echo ""
 echo "=== Test: @transition multi-state from-set keeps every state ==="

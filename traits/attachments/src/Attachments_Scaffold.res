@@ -56,7 +56,7 @@ type config = {
   /** Whether that event carries the entity id. `false` for a payload-less
       creation like `CategoryAdded`, which both shipped hosts differ on. */
   createdCarriesEntityId?: bool,
-  /** The view whose lifecycle states `@transition` names: `"Products"`. */
+  /** The view whose lifecycle states `transition` names: `"Products"`. */
   view: string,
   /** The semantic type of the reference. `Reventless.UploadableImage.t` unless
       the host attaches something other than pictures. */
@@ -64,8 +64,12 @@ type config = {
   /** Spliced verbatim between the parentheses of `@authorize(…)` on every
       command. Omitted ⇒ no annotation, and the host's default applies. */
   authorize?: string,
-  /** Spliced verbatim into `@transition([…])`. Omitted ⇒ no annotation, which
-      is the honest default: which states an attachment may change in is policy. */
+  /** The states the four commands are legal in, as the linked view's own
+      constructors: `["Products.Listed", "Products.Archived"]`. Emitted into a
+      `commandTransition` switch, not an annotation, so the compiler resolves
+      them and a typo here is a build error rather than a dead menu entry.
+      Omitted ⇒ a `TODO(graft)` marker, which is the honest default: which
+      states an attachment may change in is this host's policy. */
   transition?: array<string>,
   /** Two distinct references for the conformance fixtures. Defaulted when absent
       — they are test data, not a decision. */
@@ -123,18 +127,61 @@ let namesOf = (c: config): names => {
 
 let refTypeOf = (c: config) => c.refType->Option.getOr("Reventless.UploadableImage.t")
 
-// `@authorize` and `@transition` are the host's policy, so an absent one emits
-// nothing at all rather than a permissive default — a graft that silently
-// declared "anyone, in any state" would be worse than one that declares nothing.
-let commandAttributes = (c: config): string => {
-  let lines =
-    [
-      c.authorize->Option.map(a => `  | @authorize(${a})`),
-      c.transition->Option.map(states => `  @transition([${states->Array.join(", ")}])`),
-    ]->Array.filterMap(l => l)
-  switch lines {
-  | [] => "  | "
-  | ls => ls->Array.join("\n") ++ "\n  "
+// `@authorize` is the host's policy, so an absent one emits nothing at all rather
+// than a permissive default — a graft that silently declared "anyone" would be
+// worse than one that declares nothing.
+//
+// The rule survives being emitted as an annotation because the PPX lowers it
+// into a `switch` whose arms are ordinary expressions: `AllowGroupz` does not
+// compile. `@transition` has no such second chance — it is stripped before the
+// typechecker runs — so the states go out through `commandTransition` below
+// instead, where the compiler resolves them.
+let commandAttributes = (c: config): string =>
+  switch c.authorize {
+  | Some(a) => `  | @authorize(${a})\n  `
+  | None => "  | "
+  }
+
+// The four commands' `commandTransition`, emitted whole because this graft's
+// slice is a file the trait writes.
+//
+// The states arrive as config either way; what changes is where they land. In
+// `@transition([Products.Listed])` they are stripped before the typechecker and
+// matched as strings at plugin assembly; in `Guards([Products.Listed])` they are
+// constructor references the compiler resolves, so a config typo is a build
+// error naming it. Same input, and the difference is only who checks it.
+let commandTransitionBinding = (c: config): array<string> => {
+  let n = namesOf(c)
+  let arms = [n.attachCmd, n.removeCmd, n.setPrimaryCmd, n.setAltTextCmd]
+    ->Array.map(cmd => `  | ${cmd}(_)`)
+    ->Array.join("\n")
+  switch c.transition {
+  | Some(states) => [
+      `type lifecycleState = ${c.view}.<lifecycle>  // TODO(graft): the enum's name`,
+      `let commandTransition = (command: command): Reventless.Transition.t<lifecycleState> => {`,
+      `  open Reventless.Transition`,
+      `  switch command {`,
+      arms ++ ` =>`,
+      `    Guards([${states->Array.join(", ")}])`,
+      `  }`,
+      `}`,
+      ``,
+    ]
+  | None => [
+      `// TODO(graft): the states this host allows its attachment set to change in,`,
+      `// as constructors of the linked view's lifecycle enum. Delete this binding`,
+      `// outright if the answer is "any state" — the framework's default says so.`,
+      `//`,
+      `//   type lifecycleState = ${c.view}.<lifecycle>`,
+      `//   let commandTransition = (command: command): Reventless.Transition.t<lifecycleState> => {`,
+      `//     open Reventless.Transition`,
+      `//     switch command {`,
+      arms->String.replaceAll("  | ", "//     | ") ++ ` =>`,
+      `//       Guards([${c.view}.<State>])`,
+      `//     }`,
+      `//   }`,
+      ``,
+    ]
   }
 }
 
@@ -190,6 +237,7 @@ let sliceSpec = (c: config): string => {
     `  | ${n.primarySet}({ ${c.entityId}: string, ${c.file}: ${ref}})`,
     `  | ${n.altTextSet}({ ${c.entityId}: string, ${c.file}: ${ref}, altText: string})`,
     ``,
+    ...commandTransitionBinding(c),
   ])
 }
 

@@ -82,14 +82,6 @@ type config = {
       `<Entity>s`. */
   view?: string,
 
-  /** Spliced verbatim into `@transition([…])` on the two public commands.
-      Omitted ⇒ no annotation, which is the honest default: which states an
-      address may change in is this host's policy. */
-  transition?: array<string>,
-  /** Spliced verbatim between the parentheses of `@authorize(…)` on the same two.
-      Omitted ⇒ no annotation, and the host's default applies. */
-  authorize?: string,
-
   /** Two subjects that differ, for the histories in which the address changes.
       Defaulted when absent — they are test data, not a decision. */
   subjectA?: string,
@@ -160,21 +152,6 @@ let createdPayload = (c: config, ~n: names, ~values: bool) => {
   let extra = values ? c.createdValues->Option.getOr([]) : c.createdFields->Option.getOr([])
   let own = values ? n.subject : n.subject ++ ": string"
   Array.concat(extra, [own])->Array.join(", ")
-}
-
-// `@authorize` and `@transition` are the host's policy, so an absent one emits
-// nothing at all rather than a permissive default — a graft that silently
-// declared "anyone, in any state" would be worse than one that declares nothing.
-let commandAttributes = (c: config): string => {
-  let parts =
-    [
-      c.authorize->Option.map(a => `@authorize(${a})`),
-      c.transition->Option.map(states => `@transition([${states->Array.join(", ")}])`),
-    ]->Array.filterMap(p => p)
-  switch parts {
-  | [] => ""
-  | ps => ps->Array.join(" ") ++ " "
-  }
 }
 
 // ── The slice spec ───────────────────────────────────────────────────────────
@@ -369,29 +346,49 @@ let conformanceBinding = (c: config): string => {
 // are the host's own. Which of the two forms below is printed is the one
 // decision this module makes rather than transcribes — see `names.spreadable`.
 
+// The four commands' arms for the host's `commandTransition`, which is where an
+// aggregate graft's policy now lives.
+//
+// The two reports are answered outright — `Unrestricted` is a trait fact, not a
+// host choice: a report must be legal in every state, or an answer landing after
+// the entity moved on parks a TODO row forever. The two public commands are the
+// host's call, so they are printed as a marked hole. That split is the same one
+// the whole scaffold runs on, and it is why `@transition` could not serve here:
+// an attribute cannot be attached to a constructor the host did not declare.
+let transitionArms = (c: config): array<string> => {
+  let n = namesOf(c)
+  [
+    `// The switch is exhaustive, so these four arms are not optional — the`,
+    `// compiler will name whichever you leave out.`,
+    `| SetLocation(_) | ${n.markUnresolvableCmd}(_) => Unrestricted`,
+    `// TODO(graft): the states this host allows an ${n.subject} change in, as`,
+    `// constructors of the linked view's lifecycle enum — the compiler resolves`,
+    `// them, so a misspelling is a build error rather than a dead menu entry.`,
+    `//`,
+    `//   type lifecycleState = ${n.view}.<lifecycle>`,
+    `//`,
+    `//   | ${n.updateCmd}(_) | ${n.suppliedPairCmd}(_) => Guards([${n.view}.<State>])`,
+  ]
+}
+
 let aggregatePatch = (c: config): patch => {
   let n = namesOf(c)
-  let attrs = commandAttributes(c)
   let commandArms = n.spreadable
     ? [
-        `  // Change the ${n.subject} and let the geocoder find the point.`,
-        `  | ${attrs}${n.updateCmd}({${n.subject}: string})`,
-        `  // Change the ${n.subject} *and* say where it is — a client that already has`,
-        `  // a point. Suppresses the geocoder, because there is nothing left to look up.`,
-        `  | ${attrs}${n.suppliedPairCmd}({${n.subject}: string, location: Reventless.GeoPoint.t})`,
-        `  // The two the slice reports through, spliced from the trait rather than`,
-        `  // copied. Both are \`@noApi\`, and the exclusion is recorded on each member,`,
-        `  // so it survives the spread and neither is published.`,
-        `  //`,
-        `  // Deliberately unguarded: they are legal in every state, \`Ok([])\` on a`,
-        `  // retired entity, so an in-flight answer never parks a TODO row forever.`,
+        `  // The two public ${n.subject} commands, spliced from the trait. Their`,
+        `  // lifecycle guard lives in \`commandTransition\` below, not on the`,
+        `  // constructors — which is what lets the trait own them at all.`,
+        `  | ...TraitAddressGeocoding.AddressGeocoding.addressCommands`,
+        `  // The two the slice reports through, likewise spliced. Both are \`@noApi\`,`,
+        `  // and the exclusion is recorded on each member, so it survives the spread`,
+        `  // and neither is published.`,
         `  | ...TraitAddressGeocoding.AddressGeocoding.reportCommands`,
       ]
     : [
         `  // Spelled out rather than spliced: this host calls the subject`,
         `  // "${n.subject}", and a spread cannot rename what it splices.`,
-        `  | ${attrs}${n.updateCmd}({${n.subject}: string})`,
-        `  | ${attrs}${n.suppliedPairCmd}({${n.subject}: string, location: Reventless.GeoPoint.t})`,
+        `  | ${n.updateCmd}({${n.subject}: string})`,
+        `  | ${n.suppliedPairCmd}({${n.subject}: string, location: Reventless.GeoPoint.t})`,
         `  // Deliberately unguarded — legal in every state, \`Ok([])\` on a retired`,
         `  // entity, so an in-flight answer never parks a TODO row forever.`,
         `  | @noApi SetLocation({location: Reventless.GeoPoint.t, resolvedFrom: string})`,
@@ -429,6 +426,8 @@ let aggregatePatch = (c: config): patch => {
           commandArms,
           [``, `// --- type event --------------------------------------------------------------`],
           eventArms,
+          [``, `// --- commandTransition -------------------------------------------------------`],
+          transitionArms(c),
         ],
       ),
     ),

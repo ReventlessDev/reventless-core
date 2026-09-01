@@ -147,6 +147,8 @@ module NoDelegate = {
   let moduleUrl: string = %raw(`import.meta.url`)
   let commandAuthorization = (_: command): Reventless.Authorization.permission =>
     AllowAuthenticated
+  type lifecycleState = unit
+  let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> => Unrestricted
 }
 
 

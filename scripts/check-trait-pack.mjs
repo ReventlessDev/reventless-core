@@ -44,7 +44,7 @@ const specimens = {
       args: [
         "--entity", "Customer", "--entityId", "customerId", "--created", "Registered",
         "--createdFields", "email: string", "--createdValues", 'email: "alice@x.y"',
-        "--externalSystem", "AwsLocation", "--transition", "Customers.Active",
+        "--externalSystem", "AwsLocation",
       ],
       into: "src/Customer",
       tests: "tests/Customer",

@@ -405,7 +405,8 @@ function Make(Spec) {
       errorSchema: PluginSpec$ReventlessCore.errorSchema,
       commandSchema: PluginSpec$ReventlessCore.commandSchema,
       moduleUrl: PluginSpec$ReventlessCore.moduleUrl,
-      commandAuthorization: PluginSpec$ReventlessCore.commandAuthorization
+      commandAuthorization: PluginSpec$ReventlessCore.commandAuthorization,
+      commandTransition: PluginSpec$ReventlessCore.commandTransition
     },
     moduleUrl: PluginExtensionPointSpec$ReventlessInfra.moduleUrl,
     mapIncomingCommand: mapIncomingCommand,

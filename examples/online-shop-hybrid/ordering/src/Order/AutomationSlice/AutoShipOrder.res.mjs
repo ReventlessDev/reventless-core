@@ -16,6 +16,10 @@ function commandAuthorization(param) {
   return "AllowAuthenticated";
 }
 
+function commandTransition(param) {
+  return "Unrestricted";
+}
+
 let name = "AutoShipOrder";
 
 let Id;
@@ -38,5 +42,6 @@ export {
   targetName,
   moduleUrl,
   commandAuthorization,
+  commandTransition,
 }
 /* todoItemSchema Not a pure module */

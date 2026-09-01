@@ -113,6 +113,57 @@ trait's constructors fix the word `Address` and the type `string`; a host that c
 the field something else, or types it differently, declares its own arms instead and
 gets the same rules, the same contract and the same conformance suite.
 
+#### Policy on a command you did not declare
+
+`@noApi` travels with a spread because the exclusion is recorded on each member, and
+a spread splices members. `@transition` is recorded on the *parent* union, so it does
+not — and could not, because it names states belonging to **your** lifecycle, which
+the trait has never heard of. That is why a spreading host used to keep the trait's
+public commands hand-written: there was nowhere to put their guard.
+
+Declare the edge as a switch instead, and the constructor's origin stops mattering:
+
+```rescript
+type lifecycleState = Customers.accountStatus
+
+let commandTransition = (command: command): Reventless.Transition.t<lifecycleState> => {
+  open Reventless.Transition
+  switch command {
+  | Register(_) => Unrestricted
+  | UpdateEmail(_) | UpdateAddress(_) | SetAddressLocation(_) => Guards([Customers.Active])
+  | SetLocation(_) | MarkAddressUnresolvable(_) => Unrestricted
+  | Deactivate => Moves([Customers.Active], Customers.Deactivated)
+  | Reactivate => Moves([Customers.Deactivated], Customers.Active)
+  }
+}
+```
+
+Three things follow, and they are why this is worth the extra lines over an attribute.
+The switch is **exhaustive**, so a command you spliced and did not answer for is a
+build error naming it — where an annotation is optional and its absence says nothing.
+The states are your view's own **constructors**, so a misspelling is a build error
+too; the attribute form is stripped before the typechecker runs, and its names are
+checked later, at plugin assembly, against whatever the linked views happen to
+declare. And naming the enum once means **every arm draws on one lifecycle** — a
+from-set out of one view with a target out of another does not compile, which no
+number of separate annotations could tell you.
+
+The typed reference costs nothing. A lifecycle arm is payload-less, so
+`[Customers.Active]` compiles to `["Active"]` and your aggregate imports nothing from
+its view — which is also why it cannot cycle, since a view spec holds no reference
+back to the aggregate it projects.
+
+**A command type that splices must declare the switch** — the build refuses it otherwise,
+naming the file. There is no safe default: leaving the trait's commands unguarded and
+leaving them deliberately unrestricted look identical from outside, and only one of
+those is a decision. `Unrestricted` is a perfectly good answer, but it has to be given.
+
+`@transition` still works and is still the shorter spelling for a command you declared
+yourself; the injected default stands aside for it. Where both are present on one
+command the switch wins, because an edge is one declaration and the compiler checked
+that one. `@authorize` needs none of this: it already lowers to a switch over the
+command, so your spliced constructors are real cases in it.
+
 Why this works for an aggregate and not for a DCB slice: in a DCB plugin a command
 name and an event name are **routing keys over the whole plugin**, while in the
 aggregate approach they are scoped to the component that declares them. A spread
@@ -162,6 +213,12 @@ arrive as `TODO(graft)` markers, and you write ReScript, which is better at this
 any config could be. A graft with no extra refusal is a complete graft, so leaving a
 marker alone is legitimate.
 
+The geocoding emitter used to take the host's `@transition` and `@authorize` as
+config strings and splice them verbatim, which is that rule broken in the one place
+it was hardest to see: the strings were policy, and nothing checked them. It prints a
+marked `commandTransition` arm now instead, and the two commands it once printed for
+you to guard are spliced from the trait.
+
 ## The three traits
 
 ### `@reventlessdev/trait-address-geocoding`
@@ -183,9 +240,11 @@ is **grafted** onto an aggregate:
   found, and tried-and-found-wanting do not fit in one `option`.
 
 The first four are `AddressGeocoding_Guards` and `AddressGeocoding_Translate`; the
-fifth is a shape your state carries. Shape: two `@noApi` commands and three events on
-the host aggregate, one `OutboundTranslationSlice` keyed `{entityId}:{address}`, one
-`Geolocation.t` field on the read model. Requires the `geocode` capability from the
+fifth is a shape your state carries. Shape: four commands and four events spliced into
+the host aggregate — two public (`UpdateAddress`, `SetAddressLocation`) and two
+`@noApi` reports — one `OutboundTranslationSlice` keyed `{entityId}:{address}`, one
+`Geolocation.t` field on the read model. The public pair's lifecycle guard is yours,
+in `commandTransition`; everything else about them is the trait's. Requires the `geocode` capability from the
 platform (`Capability_Geocoding_AwsLocation` on AWS; the local platform answers
 `Unavailable`, which keeps the work queued and visible).
 
@@ -336,7 +395,7 @@ the pair-supplying events.
   the attachment slice has four. Attach through the command form instead.
 - **Conformance scenarios are not harvested** by the lifecycle-model check, which
   reads the sidecar the ppx writes for `@@reventless.gwt` files. Keep your host's
-  own `@transition`-bearing scenarios in ordinary GWT files, spelled as literals.
+  own lifecycle-declaring scenarios in ordinary GWT files, spelled as literals.
 
 ### Where the packages live
 

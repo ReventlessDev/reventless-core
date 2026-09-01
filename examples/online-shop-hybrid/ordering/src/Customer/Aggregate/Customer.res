@@ -25,23 +25,14 @@
 // wins. That is the whole reason `resolvedFrom` exists.
 @schema
 type command =
-  // No `@transition`: registration creates the row, so there is no state to
-  // come *from*. A creating command declares nothing rather than declaring an
-  // empty from-set.
   | Register({email: string, address: string})
-  // The three editing commands below carry a from-set and no target, which is
-  // the whole of "legal on an active customer, and it does not move them". Each
-  // one is `Error(CustomerAlreadyDeactivated)` on a deactivated customer, so the
-  // declaration says exactly what `decide` already enforces — it only stops a
-  // menu offering what the write side would refuse.
-  | @transition([Customers.Active]) UpdateEmail({email: string})
-  // Change the address and let the geocoder find the point.
-  | @transition([Customers.Active]) UpdateAddress({address: string})
-  // Change the address *and* say where it is — a client that already has a point
-  // (it geocoded, or a human dragged the pin). Suppresses the geocoder for this
-  // address, because there is nothing left to look up.
-  | @transition([Customers.Active])
-  SetAddressLocation({address: string, location: Reventless.GeoPoint.t})
+  | UpdateEmail({email: string})
+  // The two public address commands, spliced from the trait: `UpdateAddress` and
+  // `SetAddressLocation`. They stayed hand-written here for as long as their
+  // lifecycle guard had to live on the constructor; `commandTransition` below
+  // answers for them instead, so the trait owns the shape and this file owns
+  // only the policy.
+  | ...TraitAddressGeocoding.AddressGeocoding.addressCommands
   // `resolvedFrom` is a staleness token as much as provenance: an answer for an
   // address that has since changed is dropped rather than applied.
   //
@@ -53,20 +44,12 @@ type command =
   // Spliced from the trait, `@noApi` and all: the exclusion is recorded on each
   // member, so it survives the spread and neither is published.
   | ...TraitAddressGeocoding.AddressGeocoding.reportCommands
-  | @transition(([Customers.Active]) => Customers.Deactivated) Deactivate
+  | Deactivate
   // The way back. Deactivation withdraws a customer from ordinary use; it does
   // not erase them, so restoring one needs no payload — the profile is still in
   // the state, and asking a caller to re-supply an email they never changed
   // would be a second chance to get it wrong.
-  //
-  // `@transition(([Deactivated]) => Active)` is the whole of "offer this on a
-  // deactivated customer and nowhere else, and it puts them back". It works
-  // because the view's retirement IS a state of its lifecycle rather than a
-  // boolean beside one, so the states a command names and the states a row can
-  // be in are the same vocabulary. The refusal still lives in `decide`; this
-  // only stops a menu offering what the write side would reject, and tells a
-  // board which command answers the move.
-  | @transition(([Customers.Deactivated]) => Customers.Active) Reactivate
+  | Reactivate
 
 @schema
 type event =
@@ -85,3 +68,51 @@ type error =
   | CustomerAlreadyRegistered
   | CustomerNotFound
   | CustomerAlreadyDeactivated
+
+// Which lifecycle edge each command owns, as a switch rather than as
+// `@transition` on the constructors. Two things follow that the annotation
+// cannot give here.
+//
+// It is **exhaustive**, so the two commands spliced from the geocoding trait
+// have to be answered. An annotation cannot reach them at all — it lowers to a
+// dict on this union, and a spread splices members — so before this the graft's
+// commands silently carried no policy.
+//
+// And the states are `Customers`' own constructors, checked by the compiler
+// rather than matched as strings at plugin assembly. The reference costs
+// nothing: a lifecycle arm is payload-less, so `[Customers.Active]` compiles to
+// `["Active"]` and this module imports nothing from the view — which is also
+// why it cannot cycle, since a view spec holds no reference back to the
+// aggregate it projects.
+//
+// Named once, so every arm speaks of one lifecycle: a from-set out of this enum
+// with a target out of another does not compile.
+type lifecycleState = Customers.accountStatus
+
+let commandTransition = (command: command): Reventless.Transition.t<lifecycleState> => {
+  open Reventless.Transition
+  switch command {
+  // Registration brings the row into existence, so there is no state it could
+  // come from — and it names no target either, because the row's status is the
+  // view's to derive.
+  | Register(_) => Unrestricted
+  // A from-set and no target: legal on an active customer, and it does not move
+  // them. Each is `Error(CustomerAlreadyDeactivated)` on a deactivated one, so
+  // this says exactly what `decide` already enforces — it only stops a menu
+  // offering what the write side would refuse.
+  | UpdateEmail(_)
+  | UpdateAddress(_)
+  | SetAddressLocation(_) =>
+    Guards([Customers.Active])
+  // The trait's two reports, deliberately legal in every state: an in-flight
+  // geocode landing after deactivation returns `Ok([])` rather than refusing, so
+  // it does not park a TODO row in Failed forever.
+  | SetLocation(_) | MarkAddressUnresolvable(_) => Unrestricted
+  | Deactivate => Moves([Customers.Active], Customers.Deactivated)
+  // Works because the view's retirement IS a state of its lifecycle rather than
+  // a boolean beside one, so the states a command names and the states a row can
+  // be in are one vocabulary. The refusal still lives in `decide`; this tells a
+  // board which command answers the move.
+  | Reactivate => Moves([Customers.Deactivated], Customers.Active)
+  }
+}

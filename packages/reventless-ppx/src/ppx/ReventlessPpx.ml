@@ -249,10 +249,21 @@ let transform_delegate_module ~loc ~specifier (mb : module_binding) : module_bin
       if Util.has_let_binding "commandAuthorization" body then []
       else [AuthorizationInjection.gen_command_authorization ~loc (AuthorizationInjection.default_rule_expr ~loc)]
     in
+    (* A delegate wraps no lifecycle of its own — it is the event face of one —
+       so it declares no edge, the same answer the synthesised `command = unit`
+       above gives. *)
+    let transition_suffix =
+      if Util.has_let_binding "commandTransition" body then []
+      else [
+        AuthorizationInjection.gen_lifecycle_state_type ~loc;
+        AuthorizationInjection.gen_command_transition ~loc;
+      ]
+    in
     let suffix =
       (if not (Util.has_type_binding "error" body) then [gen_schema_unit_type ~loc "error"] else [])
       @ (if not (Util.has_let_binding "moduleUrl" body) then [ModuleUrl.gen_module_url ~loc specifier] else [])
       @ auth_suffix
+      @ transition_suffix
     in
     let new_body = { mb.pmb_expr with pmod_desc = Pmod_structure (prefix @ body @ suffix) } in
     { mb with pmb_expr = new_body; pmb_attributes = attrs }
@@ -861,6 +872,13 @@ let transform (str : structure) : structure =
       let ext_suffix =
         AuthorizationInjection.external_system_suffix ~loc loc.loc_start.pos_fname body
       in
+      (* commandTransition auto-injection (command carriers). Appends
+         [let commandTransition = _ => Reventless.Transition.Unrestricted] when the
+         spec does not declare the switch itself, so the Spec field is satisfied
+         without a manual binding and @transition stays in charge. Idempotent. *)
+      let transition_suffix =
+        AuthorizationInjection.command_transition_suffix ~loc loc.loc_start.pos_fname body
+      in
       (* The port's two translation tables, read off the arms of `mapOutgoingEvent`
          and `mapIncomingCommand` — see TranslationTable. *)
       let table_suffix =
@@ -872,7 +890,7 @@ let transform (str : structure) : structure =
       in
       !prefix @ authz_prefix @ vis_prefix @ rc_prefix @ body
         @ readmodel_suffix @ suffix @ authz_suffix @ vis_suffix @ rc_suffix @ ext_suffix
-        @ table_suffix
+        @ transition_suffix @ table_suffix
 
     | Implementation (kind, spec_name_opt) ->
       let fname = loc.loc_start.pos_fname in

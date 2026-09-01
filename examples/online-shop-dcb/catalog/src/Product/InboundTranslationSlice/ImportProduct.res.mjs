@@ -23,6 +23,10 @@ function commandAuthorization(param) {
   return "AllowAuthenticated";
 }
 
+function commandTransition(param) {
+  return "Unrestricted";
+}
+
 let name = "ImportProduct";
 
 let Id;
@@ -42,5 +46,6 @@ export {
   externalSystem,
   moduleUrl,
   commandAuthorization,
+  commandTransition,
 }
 /* externalInputSchema Not a pure module */

@@ -185,6 +185,19 @@ module PsDispatchShipmentSlice: ReventlessInfra.StateChangeSlice.T = {
   type component = scsComponent
   let make = (~dcbEventLog as _, ~publishJsons as _, ~tagKeysByEventType as _=?, ~crossPartitionTagKeys as _=?, ~runtime as _=?, ~opts as _=?): component => Obj.magic(0)
 }
+module PsTransitionSwitchSlice: ReventlessInfra.StateChangeSlice.T = {
+  module Spec = PsTransitionSwitch
+  module Behavior = {
+    type state = PsTransitionSwitch.state
+    let initialState = PsTransitionSwitch.initialState
+    let evolve = PsTransitionSwitch.evolve
+    let decide = PsTransitionSwitch.decide
+    let moduleUrl = PsTransitionSwitch.moduleUrl
+  }
+  let isAsync = false
+  type component = scsComponent
+  let make = (~dcbEventLog as _, ~publishJsons as _, ~tagKeysByEventType as _=?, ~crossPartitionTagKeys as _=?, ~runtime as _=?, ~opts as _=?): component => Obj.magic(0)
+}
 module PsShipmentsViewSlice: ReventlessInfra.StateViewSlice.T = {
   module Spec = PsShipmentsView
   module Projection = {
@@ -287,6 +300,53 @@ describe("lifecycle topology", () => {
       ~lifecycleStatesByView=ordersStates,
     )
     expect(findings->Array.length)->toBe(0)
+  })
+})
+
+describe("commandTransition — the edge as a switch", () => {
+  // The seam a variant spread needs. `@transition` lowers to a dict on the
+  // parent union keyed by variant name, and a spread splices members, so a
+  // command a host did not declare cannot be annotated at all. A switch over the
+  // command reaches every constructor, spliced or not, and the compiler makes
+  // it exhaustive.
+  let structure = Plugin_Structure.make(
+    ~name="TransitionSwitchPlugin",
+    ~stateChangeSlices=[module(PsTransitionSwitchSlice)],
+    ~stateViewSlices=[],
+  )
+  let slice = structure.stateChangeSlices->Array.getUnsafe(0)
+  let byName = name => slice.commands->Array.find(c => c.name == name)
+
+  testSync("the switch fills allowedStates and targetState", () => {
+    expect((
+      byName("Book")->Option.flatMap(c => c.allowedStates),
+      byName("Book")->Option.flatMap(c => c.targetState),
+    ))->toEqual((Some(["Draft"]), Some("Booked")))
+  })
+
+  testSync("a guard declares its from-set and no target", () => {
+    // The same positive claim the one-sided `@transition` makes: legal in these
+    // states, and it moves the row nowhere.
+    expect((
+      byName("Rebook")->Option.flatMap(c => c.allowedStates),
+      byName("Rebook")->Option.flatMap(c => c.targetState),
+    ))->toEqual((Some(["Booked"]), None))
+  })
+
+  testSync("the switch wins over an @transition on the same command", () => {
+    // `Rebook` carries both, and they disagree on purpose: the attribute says
+    // Draft. Two sources of truth need a stated winner, and it is the one the
+    // compiler checked.
+    expect(byName("Rebook")->Option.flatMap(c => c.allowedStates))->toEqual(Some(["Booked"]))
+  })
+
+  testSync("Unrestricted declares nothing, leaving the command unconstrained", () => {
+    // Distinct from a from-set naming every state, which says the same thing to
+    // a menu and something different to a reader.
+    expect((
+      byName("Abandon")->Option.flatMap(c => c.allowedStates),
+      byName("Abandon")->Option.flatMap(c => c.targetState),
+    ))->toEqual((None, None))
   })
 })
 

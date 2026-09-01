@@ -56,6 +56,8 @@ type event =
 let name = "EpCompositeSlice"
 let moduleUrl = "ep-test://EpCompositeSlice"
 let commandAuthorization = (_: command): Reventless.Authorization.permission => AllowAnonymous
+type lifecycleState = unit
+let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> => Unrestricted
 let readConsistency = Reventless.ReadConsistency.EscalateOnRetry
 
 // `module Id = Reventless.Id.String` — patched in by `patchSpecId` at runtime.

@@ -47,6 +47,8 @@ module ProductDelegate = {
 
   let moduleUrl = ""
   let commandAuthorization = (_: command): Reventless.Authorization.permission => AllowAuthenticated
+  type lifecycleState = unit
+  let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> => Unrestricted
 }
 
 module ProductsEpMapping = {
@@ -132,6 +134,8 @@ module OrderDelegate = {
 
   let moduleUrl = ""
   let commandAuthorization = (_: command): Reventless.Authorization.permission => AllowAuthenticated
+  type lifecycleState = unit
+  let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> => Unrestricted
 }
 
 module OrdersEpMapping = {
@@ -199,6 +203,8 @@ module SyncDelegate = {
 
   let moduleUrl = ""
   let commandAuthorization = (_: command): Reventless.Authorization.permission => AllowAuthenticated
+  type lifecycleState = unit
+  let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> => Unrestricted
 }
 
 module ProductsExtMapping = {
@@ -275,6 +281,8 @@ module StockDelegate = {
 
   let moduleUrl = ""
   let commandAuthorization = (_: command): Reventless.Authorization.permission => AllowAuthenticated
+  type lifecycleState = unit
+  let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> => Unrestricted
 }
 
 module InventoryEpMapping = {
@@ -335,6 +343,8 @@ module SyncedDelegate = {
 
   let moduleUrl = ""
   let commandAuthorization = (_: command): Reventless.Authorization.permission => AllowAuthenticated
+  type lifecycleState = unit
+  let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> => Unrestricted
 }
 
 module FeedbackExtMapping = {

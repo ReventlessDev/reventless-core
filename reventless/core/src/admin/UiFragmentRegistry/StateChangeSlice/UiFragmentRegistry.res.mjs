@@ -46,6 +46,10 @@ function commandAuthorization(param) {
   return "AllowAuthenticated";
 }
 
+function commandTransition(param) {
+  return "Unrestricted";
+}
+
 let name = "UiFragmentRegistry";
 
 let Id;
@@ -66,5 +70,6 @@ export {
   moduleUrl,
   commandAuthorization,
   readConsistency,
+  commandTransition,
 }
 /* commandSchema Not a pure module */

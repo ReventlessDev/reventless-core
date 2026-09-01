@@ -32,6 +32,10 @@ function commandAuthorization() {
   return "AllowAuthenticated";
 }
 
+function commandTransition() {
+  return "Unrestricted";
+}
+
 let NoDelegate = {
   name: "NoDelegate",
   Id: Id,
@@ -39,7 +43,8 @@ let NoDelegate = {
   errorSchema: errorSchema,
   commandSchema: commandSchema,
   moduleUrl: moduleUrl,
-  commandAuthorization: commandAuthorization
+  commandAuthorization: commandAuthorization,
+  commandTransition: commandTransition
 };
 
 function Make(MappingImpl) {

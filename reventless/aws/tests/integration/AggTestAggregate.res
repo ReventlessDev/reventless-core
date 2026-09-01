@@ -19,3 +19,5 @@ type error = AlreadyExists
 let name = "AggTestAggregate"
 let moduleUrl = "agg-test://AggTestAggregate"
 let commandAuthorization = (_: command): Reventless.Authorization.permission => AllowAnonymous
+type lifecycleState = unit
+let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> => Unrestricted

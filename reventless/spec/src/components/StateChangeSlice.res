@@ -85,6 +85,20 @@ module type Spec = {
       `@@reventless.authorize(<rule>)`. */
   let commandAuthorization: command => Authorization.permission
 
+  /** The lifecycle enum this component's commands move a row through — the
+      linked view's own, e.g. `type lifecycleState = Customers.accountStatus`.
+      Auto-injected as `unit` alongside the default below; a host that declares
+      `commandTransition` declares this too, and the pair is what makes every
+      edge name one lifecycle. */
+  type lifecycleState
+
+  /** The lifecycle edge each command owns, read while the plugin structure is
+      assembled. Auto-injected as `_ => Unrestricted` by `@@reventless.spec`,
+      which leaves `@transition` in charge; a host that writes the switch by
+      hand takes charge instead, and gets an exhaustive one over typed states.
+      See `Transition`. */
+  let commandTransition: command => Transition.t<lifecycleState>
+
   /** Decision-read consistency mode for this slice's optimistic-concurrency
       retry loop. Auto-injected by `@@reventless.spec` and on
       structurally-detected inline spec modules — defaults to

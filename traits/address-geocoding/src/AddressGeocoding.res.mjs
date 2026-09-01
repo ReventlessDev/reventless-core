@@ -41,6 +41,18 @@ let reportCommandsSchema = Sury.union([
   }))
 ]);
 
+let addressCommandsSchema = Sury.union([
+  Sury.$schema(s => ({
+    TAG: "UpdateAddress",
+    address: s.m(Sury.string)
+  })),
+  Sury.$schema(s => ({
+    TAG: "SetAddressLocation",
+    address: s.m(Sury.string),
+    location: s.m(GeoPoint$Reventless.schema)
+  }))
+]);
+
 let reportCommandsSchema$1 = Api$ReventlessInfra.markNoApiVariants(reportCommandsSchema, [
   "SetLocation",
   "MarkAddressUnresolvable"
@@ -49,6 +61,7 @@ let reportCommandsSchema$1 = Api$ReventlessInfra.markNoApiVariants(reportCommand
 export {
   capabilityNeeds,
   eventsSchema,
+  addressCommandsSchema,
   reportCommandsSchema$1 as reportCommandsSchema,
 }
 /* eventsSchema Not a pure module */

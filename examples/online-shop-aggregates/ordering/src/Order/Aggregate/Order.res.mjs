@@ -78,6 +78,10 @@ function commandAuthorization(param) {
   return "AllowAuthenticated";
 }
 
+function commandTransition(param) {
+  return "Unrestricted";
+}
+
 let name = "Order";
 
 let Id;
@@ -92,5 +96,6 @@ export {
   commandSchema$2 as commandSchema,
   moduleUrl,
   commandAuthorization,
+  commandTransition,
 }
 /* commandSchema Not a pure module */

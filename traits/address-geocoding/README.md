@@ -47,16 +47,22 @@ pnpm exec graft-trait @reventlessdev/trait-address-geocoding \
   --into src/Customer --tests tests/Customer \
   --entity Customer --entityId customerId --created Registered \
   --createdFields 'email: string' --createdValues 'email: "alice@x.y"' \
-  --externalSystem AwsLocation --transition Customers.Active
+  --externalSystem AwsLocation
 ```
 
    It writes the slice, its translation body and the conformance binding — whole, so
    the suite below needs no hand-written file — and prints three patches.
 
-2. Paste the three patches. The aggregate's is two spread lines and two public
-   commands; the behavior's is the state fields and the `evolve` / `decide` arms; the
-   projection's is the view's `geolocation` field and its arms. `@transition` and
-   `@authorize` are yours: pass them as config or add them here.
+2. Paste the three patches. The aggregate's is two spread lines plus the arms for
+   `commandTransition`; the behavior's is the state fields and the `evolve` / `decide`
+   arms; the projection's is the view's `geolocation` field and its arms.
+
+   Policy is yours and is not config. Which states an address may change in goes in
+   the `commandTransition` switch, over a `type lifecycleState = <YourView>.<enum>`
+   you declare beside it — the compiler resolves the constructors, the switch is
+   exhaustive so it names any spliced command you have not answered for, and every
+   arm has to draw on that one lifecycle. Who may send the commands goes in
+   `commandAuthorization` the same way.
 
    A host whose subject is not called `address`, or is not a `string`, gets the same
    graft with the constructors spelled out instead of spliced — pass `--subject`, and

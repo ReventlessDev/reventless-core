@@ -32,6 +32,10 @@ function commandAuthorization(command) {
   };
 }
 
+function commandTransition(param) {
+  return "Unrestricted";
+}
+
 let name = "AddCategory";
 
 let Id;
@@ -50,5 +54,6 @@ export {
   moduleUrl,
   commandAuthorization,
   readConsistency,
+  commandTransition,
 }
 /* consumedEventSchema Not a pure module */

@@ -38,6 +38,7 @@ let pluginCommands: array<commandDef> = Plugin_Structure.extractCommandDefs(
   ~mutationFieldFor=variantName =>
     Api_Naming.adminField(~name=PluginSpec.name ++ "_" ++ variantName),
   ~commandAuthorization=PluginSpec.commandAuthorization->Obj.magic,
+  ~commandTransition=PluginSpec.commandTransition->Obj.magic,
   commandSchema,
 )
 

@@ -25,6 +25,10 @@ function commandAuthorization(param) {
   return "AllowAuthenticated";
 }
 
+function commandTransition(param) {
+  return "Unrestricted";
+}
+
 let Delegate = {
   Id: undefined,
   commandSchema: commandSchema,
@@ -32,7 +36,8 @@ let Delegate = {
   eventSchema: eventSchema,
   errorSchema: errorSchema,
   moduleUrl: "@reventlessdev/online-shop-dcb-ordering/src/ExtensionPoint/Orders_ExtensionPointMapping.res.mjs",
-  commandAuthorization: commandAuthorization
+  commandAuthorization: commandAuthorization,
+  commandTransition: commandTransition
 };
 
 function mapIncomingCommand(_id, _command, _meta) {

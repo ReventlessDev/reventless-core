@@ -32,6 +32,10 @@ function commandAuthorization(param) {
   return "AllowAuthenticated";
 }
 
+function commandTransition(param) {
+  return "Unrestricted";
+}
+
 let name = "ChangeProductPrice";
 
 let Id;
@@ -50,5 +54,6 @@ export {
   moduleUrl,
   commandAuthorization,
   readConsistency,
+  commandTransition,
 }
 /* consumedEventSchema Not a pure module */

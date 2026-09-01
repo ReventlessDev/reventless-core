@@ -43,6 +43,10 @@ function commandAuthorization(command) {
   }
 }
 
+function commandTransition(param) {
+  return "Unrestricted";
+}
+
 let name = "Category";
 
 let Id;
@@ -57,5 +61,6 @@ export {
   errorSchema,
   moduleUrl,
   commandAuthorization,
+  commandTransition,
 }
 /* commandSchema Not a pure module */

@@ -78,6 +78,8 @@ module ProductDelegate = {
   @schema type error = NoError
   let moduleUrl = ""
   let commandAuthorization = (_: command): Reventless.Authorization.permission => AllowAuthenticated
+  type lifecycleState = unit
+  let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> => Unrestricted
 }
 
 module ProductsEpMapping = {
@@ -112,6 +114,8 @@ module OrderDelegate = {
   @schema type error = NoError
   let moduleUrl = ""
   let commandAuthorization = (_: command): Reventless.Authorization.permission => AllowAuthenticated
+  type lifecycleState = unit
+  let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> => Unrestricted
 }
 
 module OrdersEpMapping = {
@@ -146,6 +150,8 @@ module RecordDemandSlice = {
     DemandRecorded({productId: @s.matches(Reventless.DcbTag.string) string, orderId: string})
   let moduleUrl = ""
   let commandAuthorization = (_: command): Reventless.Authorization.permission => AllowAuthenticated
+  type lifecycleState = unit
+  let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> => Unrestricted
 }
 
 module RecordDemandBehavior = {
@@ -195,6 +201,8 @@ module SyncProductSlice = {
     ProductSynced({productId: @s.matches(Reventless.DcbTag.string) string, name: string, price: float})
   let moduleUrl = ""
   let commandAuthorization = (_: command): Reventless.Authorization.permission => AllowAuthenticated
+  type lifecycleState = unit
+  let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> => Unrestricted
 }
 
 module SyncProductBehavior = {

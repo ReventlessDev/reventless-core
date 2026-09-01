@@ -75,7 +75,8 @@ function Make(Spec) {
       errorSchema: ExtensionMapping$ReventlessInfra.NoDelegate.errorSchema,
       commandSchema: ExtensionMapping$ReventlessInfra.NoDelegate.commandSchema,
       moduleUrl: ExtensionMapping$ReventlessInfra.NoDelegate.moduleUrl,
-      commandAuthorization: ExtensionMapping$ReventlessInfra.NoDelegate.commandAuthorization
+      commandAuthorization: ExtensionMapping$ReventlessInfra.NoDelegate.commandAuthorization,
+      commandTransition: ExtensionMapping$ReventlessInfra.NoDelegate.commandTransition
     },
     moduleUrl: PluginExtensionPointSpec$ReventlessInfra.moduleUrl,
     delegateModuleUrl: delegateModuleUrl,

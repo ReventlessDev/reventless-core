@@ -58,6 +58,15 @@ open Ppxlib
    where both sides are in hand — at plugin-structure assembly, beside the
    retirement cross-check that validates the same way. Not here.
 
+   A spec that wants the compiler to check them writes [commandTransition]
+   instead: a [command => Reventless.Transition.t] switch, whose states go in as
+   the view's own constructors. That form is also the only one that can speak
+   for a SPLICED constructor — this attribute lowers to a dict on the parent
+   union, and a variant spread splices members — so a host grafting a trait's
+   commands has to use it. It is host-written rather than generated for the
+   reason above: a reference the PPX introduces does not survive ReScript's
+   dependency analysis, which runs before this.
+
    Only constructor references are accepted. The removed @targetState took a
    bare string "for leniency"; a stringly-typed state name is precisely the
    unguarded path that form left open, and it would leave the structure-side

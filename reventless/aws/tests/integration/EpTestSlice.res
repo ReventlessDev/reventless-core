@@ -22,6 +22,8 @@ type event = WidgetAdded({widgetId: @s.matches(Reventless.DcbTag.partition) stri
 let name = "EpTestSlice"
 let moduleUrl = "ep-test://EpTestSlice"
 let commandAuthorization = (_: command): Reventless.Authorization.permission => AllowAnonymous
+type lifecycleState = unit
+let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> => Unrestricted
 let readConsistency = Reventless.ReadConsistency.EscalateOnRetry
 
 // `module Id = Reventless.Id.String` — patched in by `patchSpecId` at runtime,

@@ -373,12 +373,18 @@ let reportTranslationTables = (
   }
 }
 
-// `@transition` names states belonging to another component's enum, which the PPX
-// only ever sees as names — so a misspelling compiles clean and produces a command
-// legal in a state no row is in. Both sides are in hand here. A state the linked
-// views do not declare raises (this runs at assembly, never in a Lambda, so that is
-// a failed deploy); no resolvable view only warns. Checked against the UNION of the
-// linked views: a slice feeding two is not claiming which one.
+// A command's declared edge names states belonging to another component's enum.
+// From `@transition` the PPX only ever sees names, so a misspelling compiles clean
+// and produces a command legal in a state no row is in. Both sides are in hand
+// here. A state the linked views do not declare raises (this runs at assembly,
+// never in a Lambda, so that is a failed deploy); no resolvable view only warns.
+// Checked against the UNION of the linked views: a slice feeding two is not
+// claiming which one.
+//
+// A `commandTransition` switch comes through the same `commandDef` fields and is
+// checked the same way. The compiler has already resolved its constructors, so
+// what survives to here is naming the wrong enum rather than misspelling one —
+// which this catches for the same reason and with the same message.
 let checkDeclaredTransitions = (
   ~pluginName: string,
   ~writables: array<Reventless.Plugin.writableDef>,
@@ -412,7 +418,7 @@ let checkDeclaredTransitions = (
           ->Array.forEach(state =>
             failures
             ->Array.push(
-              `${w.name}.${cmd.name}: @transition names "${state}", which none of its ` ++
+              `${w.name}.${cmd.name} declares state "${state}", which none of its ` ++
               `linked views declare — ${w.linkedViews->Array.join(
                   ", ",
                 )} know ${known->Array.join(", ")}.`,
@@ -430,14 +436,14 @@ let checkDeclaredTransitions = (
   if unvalidated.contents > 0 {
     log.warn(
       ~comp="Plugin_Structure",
-      `${pluginName}: ${unvalidated.contents->Int.toString} command(s) declare a @transition ` ++
+      `${pluginName}: ${unvalidated.contents->Int.toString} command(s) declare a transition ` ++
       `but no linked view declares a lifecycle to check it against.`,
     )
   }
 
   if Array.length(failures) > 0 {
     JsError.throwWithMessage(
-      `${pluginName}: @transition names states that do not exist.\n` ++
+      `${pluginName}: a declared transition names states that do not exist.\n` ++
       failures->Array.join("\n"),
     )
   }
@@ -707,6 +713,18 @@ let toCommandDef = (
   // one aggregate carries commands with very different audiences, and a
   // component-level shortcut would gate `AddProduct` and `PlaceOrder` alike.
   ~commandAuthorization: unknown => Reventless.Authorization.permission,
+  // The spec's `command => Transition.t<_>`, evaluated per variant the same way
+  // `commandAuthorization` is. It wins over the `@transition` metadata where it
+  // declares an edge, and stands aside where it says `Unrestricted` — which is
+  // what the PPX injects for a spec that never wrote the switch.
+  //
+  // Read at `t<string>` because this is the erasure boundary: the spec declares
+  // its edges over the linked view's own lifecycle enum, whose arms are
+  // payload-less and therefore ARE their own names at run time. The one cast
+  // that says so is the same `->Obj.magic` every spec member arrives through
+  // (see the call sites below), so `Transition` itself asserts nothing about
+  // representation and stays parameterised all the way down.
+  ~commandTransition: unknown => Reventless.Transition.t<string>,
   v: S.t<unknown>,
 ): option<Reventless.Plugin.commandDef> => {
   // Build a commandDef for one variant. `properties` is the variant's field dict —
@@ -715,12 +733,41 @@ let toCommandDef = (
   let mkDef = (~variantName, ~properties) => {
     let (level, aggregateIdField) = commandLevelAndId(~isAggregate, ~variantName, properties)
     let references = extractReferences(properties)
-    // Per-variant, but attached by the PPX to the *parent* schema as one dict.
-    let allowedStates = ApiAllowedStatesHelpers.getAllowedStates(parentSchema, ~variantName)
-    // The `@transition` target (the command's *to* status), read the same way
-    // as allowedStates. None ⇒ AutoUI's board resolver falls back to its
-    // name-stem heuristic.
-    let targetState = ApiTargetStateHelpers.getTargetState(parentSchema, ~variantName)
+    // Evaluated against a synthetic value per constructor, the same shape the
+    // resolver builds at call time: a payload-bearing variant compiles to
+    // `{TAG, ...}`, a payload-less one to a bare string.
+    let syntheticCommand: unknown =
+      Reventless.DcbTag.isVariantPayloadBearing(parentSchema, variantName)
+        ? {"TAG": variantName}->Obj.magic
+        : variantName->Obj.magic
+    // The spec's own switch, which is the only form that can speak for a
+    // constructor the host did not declare: `@transition` lowers to a dict on
+    // the parent union, and a variant spread splices members, so a spliced
+    // command reaches the metadata below carrying nothing.
+    let declared = commandTransition(syntheticCommand)
+    // An edge is ONE declaration, so the two fields are chosen together. Taking
+    // them separately would let `Guards(…)` — which positively claims the
+    // command moves the row nowhere — inherit a target from an annotation it
+    // was written to replace.
+    //
+    // The `@transition` metadata is per-variant but attached by the PPX to the
+    // *parent* schema as one dict. It is consulted only where the switch
+    // declares no edge at all: a spec that never wrote one answers
+    // `Unrestricted` for every command, which is how the annotation stays in
+    // charge for the hosts that still use it.
+    //
+    // `targetState: None` ⇒ AutoUI's board resolver falls back to its name-stem
+    // heuristic.
+    let (allowedStates, targetState) = switch declared {
+    | Unrestricted => (
+        ApiAllowedStatesHelpers.getAllowedStates(parentSchema, ~variantName),
+        ApiTargetStateHelpers.getTargetState(parentSchema, ~variantName),
+      )
+    | _ => (
+        Reventless.Transition.allowedStates(declared),
+        Reventless.Transition.targetState(declared),
+      )
+    }
     // API-exposed iff the whole command isn't @noApi and this variant
     // isn't in its @noApi-variants set — mirrors the API-generation filter
     // (Plugin_Helpers / PluginBaseFragment). Drives the event-graph API badge.
@@ -730,13 +777,6 @@ let toCommandDef = (
       | Some(excluded) => !(excluded->Set.has(variantName))
       | None => true
       }
-    // Evaluated against a synthetic value per constructor, the same shape the
-    // resolver builds at call time: a payload-bearing variant compiles to
-    // `{TAG, ...}`, a payload-less one to a bare string.
-    let syntheticCommand: unknown =
-      Reventless.DcbTag.isVariantPayloadBearing(parentSchema, variantName)
-        ? {"TAG": variantName}->Obj.magic
-        : variantName->Obj.magic
     let requiredAccess = accessKeysFor(commandAuthorization(syntheticCommand))
     // See the note on the record's `mutationField` for why a non-exposed
     // variant gets the empty sentinel. It has no callable field, and the
@@ -796,6 +836,7 @@ let extractCommandDefs = (
   ~isAggregate,
   ~mutationFieldFor: string => string,
   ~commandAuthorization: unknown => Reventless.Authorization.permission,
+  ~commandTransition: unknown => Reventless.Transition.t<string>,
   commandSchema: S.t<unknown>,
 ): array<Reventless.Plugin.commandDef> =>
   switch commandSchema {
@@ -806,6 +847,7 @@ let extractCommandDefs = (
         ~mutationFieldFor,
         ~parentSchema=commandSchema,
         ~commandAuthorization,
+        ~commandTransition,
         v,
       )
     )
@@ -816,6 +858,7 @@ let extractCommandDefs = (
       ~mutationFieldFor,
       ~parentSchema=commandSchema,
       ~commandAuthorization,
+      ~commandTransition,
       commandSchema,
     )->Option.mapOr([], def => [def])
   }
@@ -1321,6 +1364,7 @@ let make = (
               ~variant=variantName,
             ),
           ~commandAuthorization=SCS.Spec.commandAuthorization->Obj.magic,
+          ~commandTransition=SCS.Spec.commandTransition->Obj.magic,
           SCS.Spec.commandSchema->S.castToUnknown,
         ),
         producedEventTypes: produced,
@@ -1345,6 +1389,7 @@ let make = (
           ~isAggregate=true,
           ~mutationFieldFor=variantName => Api_Naming.aggregateMutationField(~plugin=name, ~aggregate=A.Spec.name, ~command=variantName),
           ~commandAuthorization=A.Spec.commandAuthorization->Obj.magic,
+          ~commandTransition=A.Spec.commandTransition->Obj.magic,
           A.Spec.commandSchema->S.castToUnknown,
         ),
         producedEventTypes: produced,

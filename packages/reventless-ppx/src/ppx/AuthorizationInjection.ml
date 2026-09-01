@@ -361,6 +361,133 @@ let gen_external_system ~loc =
   Ast_builder.Default.pstr_value ~loc Nonrecursive
     [Ast_builder.Default.value_binding ~loc ~pat ~expr:none]
 
+(* commandTransition auto-injection for command carriers ---------------------- *)
+(* [let commandTransition = _ => Reventless.Transition.Unrestricted] — the
+   lifecycle edge each command owns, as a value rather than as a per-constructor
+   attribute.
+
+   Injected rather than generated FROM [@transition], and that is the whole
+   point: the PPX holds the states as strings and cannot emit
+   [Customers.Active], because a reference it introduces does not survive
+   ReScript's dependency analysis — which runs before this. A host that wants
+   the typed, exhaustive form writes the switch itself, and then this injection
+   stands aside. A host that does not keeps [@transition], which still lowers to
+   the same metadata.
+
+   So the default is [Unrestricted]: "this spec says nothing here", which leaves
+   the annotation in charge. It is not a claim that the commands are legal
+   everywhere — [Plugin_Structure] reads the annotation when the switch declares
+   no edge. *)
+(* [type lifecycleState = unit] — the enum a spec's edges are drawn from.
+
+   Injected beside the default below and gated on the same check, because the
+   two are one declaration: a spec that says nothing about its edges has no
+   lifecycle to name, and a spec that writes the switch names its own. Unit is
+   the honest stand-in — `Unrestricted` carries no state, so nothing is ever
+   read at this type. *)
+let gen_lifecycle_state_type ~loc =
+  let unit_lid = { txt = Lident "unit"; loc } in
+  let unit_type = { ptyp_desc = Ptyp_constr (unit_lid, []);
+                    ptyp_loc = loc; ptyp_loc_stack = []; ptyp_attributes = [] } in
+  let type_decl = { ptype_name = { txt = "lifecycleState"; loc };
+                    ptype_params = [];
+                    ptype_cstrs = [];
+                    ptype_kind = Ptype_abstract;
+                    ptype_private = Public;
+                    ptype_manifest = Some unit_type;
+                    ptype_attributes = [];
+                    ptype_loc = loc } in
+  { pstr_desc = Pstr_type (Nonrecursive, [type_decl]); pstr_loc = loc }
+
+let gen_command_transition ~loc =
+  let unrestricted =
+    Ast_builder.Default.pexp_construct
+      ~loc
+      { txt = Ldot (Ldot (Lident "Reventless", "Transition"), "Unrestricted"); loc }
+      None
+  in
+  let wildcard = Ast_builder.Default.ppat_any ~loc in
+  let fn = Ast_builder.Default.pexp_fun ~loc Nolabel None wildcard unrestricted in
+  let pat = Ast_builder.Default.ppat_var ~loc { txt = "commandTransition"; loc } in
+  Ast_builder.Default.pstr_value ~loc Nonrecursive
+    [Ast_builder.Default.value_binding ~loc ~pat ~expr:fn]
+
+(* Suffix to splice after a command-carrier spec body — [] unless the binding is
+   missing. Shares the [is_spec_namespace_pkg] skip with [inject]. *)
+(* Whether the `@schema type command` splices another type's constructors.
+
+   A variant spread reaches the parsetree as an ordinary constructor whose name
+   is literally "...", which is how a member the host never declared is
+   identifiable at all. *)
+let command_type_spreads (body : structure) : bool =
+  List.exists (fun (item : structure_item) ->
+    match item.pstr_desc with
+    | Pstr_type (_, decls) ->
+      List.exists (fun (td : type_declaration) ->
+        String.equal td.ptype_name.txt "command"
+        && Util.has_attr "schema" td.ptype_attributes
+        && (match td.ptype_kind with
+            | Ptype_variant ctors ->
+              List.exists (fun (cd : constructor_declaration) ->
+                String.equal cd.pcd_name.txt "...") ctors
+            | _ -> false)
+      ) decls
+    | _ -> false
+  ) body
+
+(* Refuse a spliced command type that says nothing about its lifecycle edges.
+
+   The injected default is [_ => Unrestricted], which leaves [@transition] in
+   charge — correct for a spec that declared all its own constructors, and
+   silently wrong for one that spliced some. The annotation cannot reach a
+   spliced member (it lowers to a dict on the parent union), so a graft would
+   compile with its trait's commands carrying no policy at all, and nothing
+   would say so.
+
+   Writing the switch is what closes that, because it is exhaustive: the
+   compiler names the spliced commands until the host answers for them.
+   [Unrestricted] is a legitimate answer — a report a slice publishes must be
+   legal in every state — but it has to be *given*, since "needs no guard" and
+   "nobody said" are different claims and only one of them is safe to assume. *)
+let raise_spread_needs_transition ~loc =
+  Location.raise_errorf ~loc
+    "[reventless-ppx] this command type splices another type's constructors, so \
+     it must declare `commandTransition` itself.\n\n\
+     `@transition` cannot reach a spliced constructor — it is recorded on the \
+     union, and a spread splices members — so the commands you spliced would \
+     carry no lifecycle policy and nothing would report it.\n\n\
+     Add an exhaustive switch; the compiler will name every constructor you \
+     have not answered for:\n\n\
+    \  type lifecycleState = YourView.someLifecycle\n\
+    \  let commandTransition = (command: command): Reventless.Transition.t<lifecycleState> => {\n\
+    \    open Reventless.Transition\n\
+    \    switch command {\n\
+    \    | YourCommand(_) => Guards([YourView.SomeState])\n\
+    \    | SplicedCommand(_) => Unrestricted\n\
+    \    }\n\
+    \  }"
+
+let command_transition_suffix ~loc fname (body : structure) : structure_item list =
+  if is_spec_namespace_pkg loc then []
+  else
+    let kind = match detect_kind fname with
+      | Other -> detect_kind_by_structure body
+      | k -> k
+    in
+    match kind with
+    | CommandCarrier when not (Util.has_let_binding "commandTransition" body) ->
+      if command_type_spreads body then raise_spread_needs_transition ~loc
+      else [gen_lifecycle_state_type ~loc; gen_command_transition ~loc]
+    | _ -> []
+
+let inject_command_transition_into_inner_module ~loc (mb : module_binding) : module_binding =
+  match mb.pmb_expr.pmod_desc with
+  | Pmod_structure body when not (Util.has_let_binding "commandTransition" body) ->
+    if command_type_spreads body then raise_spread_needs_transition ~loc;
+    let new_body = body @ [gen_lifecycle_state_type ~loc; gen_command_transition ~loc] in
+    { mb with pmb_expr = { mb.pmb_expr with pmod_desc = Pmod_structure new_body } }
+  | _ -> mb
+
 let is_translation_folder fname =
   Util.is_in_folder fname "InboundTranslationSlice"
   || Util.is_in_folder fname "InboundTranslationSlices"
@@ -508,6 +635,7 @@ let walk_inline_specs (str : structure) : structure =
          command): inject commandAuthorization AND, when it's a translation,
          externalSystem. *)
       let mb' = inject_into_inner_module ~loc ~is_command_carrier:true mb in
+      let mb' = inject_command_transition_into_inner_module ~loc mb' in
       let mb' =
         if inner_module_is_translation_spec mb'
         then inject_external_system_into_inner_module ~loc mb'
