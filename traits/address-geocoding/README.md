@@ -10,12 +10,18 @@ the types are the host's own. What it ships:
 | The slice body | `src/AddressGeocoding_Translate.res` (`translate`, `exhaustedReason`) |
 | The host contract, as a type | `src/AddressGeocoding.res` (`module type Binding`) |
 | The conformance suite | `src/AddressGeocoding_Conformance.res` (`Make(Binding).register()`) |
-| Spec fragments for the graft | `spec-fragments/*.res.tpl` |
+| The emitter | `src/AddressGeocoding_Scaffold.res` (`emit(~config, ~into, ~tests)`) |
 
 The rule modules are compiled code a host imports at runtime, so a change to them is a
-behavior change for every host: version it `fix:`/`feat:` accordingly. The fragments are
-the declarative residue that cannot come from a module — variant constructors, their
-annotations, the state fields — and are still pasted and edited by hand.
+behavior change for every host: version it `fix:`/`feat:` accordingly.
+
+Most of this graft is not emitted at all. The four facts and the two `@noApi` report
+commands are real constructors the host **splices** — `...AddressGeocoding.events` and
+`...AddressGeocoding.reportCommands` — so the compiler carries them, annotations and
+schema included. The emitter writes the outbound slice, which the host does not have
+yet, and prints the arms that belong inside the aggregate, its behavior and the
+projection: those interleave with the host's own state machine, and placing an arm in
+an ordered `switch` is an AST operation a text splice gets silently wrong.
 
 The confidence rule — what a geocoder's reply *means* — is core's
 (`Reventless.Geocoding`, `Reventless.Geolocation`). This package owns how that reply is
@@ -33,31 +39,35 @@ grafted onto an aggregate:
 
 ## Grafting a host
 
-1. Paste the `spec-fragments/` into the aggregate, its behavior, an outbound translation
-   slice and the read model, replacing `{{Entity}}`, `{{entityId}}`, `{{Subject}}`,
-   `{{subject}}`, `{{Created}}` and `{{Slice}}`. The spec surface is by hand on purpose;
-   the guards and the geocoder call the fragments delegate to are not copied.
-2. Bind the host in a `_GWT.res` test file and run the suite:
+1. Run the emitter. Every `--key` is a field of its config, and it validates them, so
+   run it once to be told what it wants:
 
-```rescript
-module Binding = {
-  type subject = string
-  let subjectText = s => s
-  let subjectA = "Stephansplatz 1, Vienna"
-  let subjectB = "Kärntner Straße 1, Vienna"
-  let posture = TraitAddressGeocoding.AddressGeocoding.WritesBack
-
-  module Spec = Customer
-  module Behavior = Customer_Behavior
-  let created = address => [Customer.Registered({email: "a@x.y", address})]
-  // … the remaining constructors, see `module type Binding`
-}
-
-TraitAddressGeocoding.AddressGeocoding_Conformance.Make(Binding).register()
+```sh
+pnpm exec graft-trait @reventlessdev/trait-address-geocoding \
+  --into src/Customer --tests tests/Customer \
+  --entity Customer --entityId customerId --created Registered \
+  --createdFields 'email: string' --createdValues 'email: "alice@x.y"' \
+  --externalSystem AwsLocation --transition Customers.Active
 ```
 
-3. Declare the capability on the outbound slice's spec, so the deployment is
-   checked rather than trusted:
+   It writes the slice, its translation body and the conformance binding — whole, so
+   the suite below needs no hand-written file — and prints three patches.
+
+2. Paste the three patches. The aggregate's is two spread lines and two public
+   commands; the behavior's is the state fields and the `evolve` / `decide` arms; the
+   projection's is the view's `geolocation` field and its arms. `@transition` and
+   `@authorize` are yours: pass them as config or add them here.
+
+   A host whose subject is not called `address`, or is not a `string`, gets the same
+   graft with the constructors spelled out instead of spliced — pass `--subject`, and
+   the printed patch says which of the two you got.
+
+3. Run the emitted conformance binding — `tests/<…>/AddressGeocodingConformance_GWT.res`
+   registers the suite as it stands, and it goes green once the patches are in. 13
+   assertions, over your constructors, not the trait's.
+
+4. Keep the capability declaration the emitter wrote onto the slice's spec, so the
+   deployment is checked rather than trusted:
 
 ```rescript
 let capabilityNeeds = TraitAddressGeocoding.AddressGeocoding.capabilityNeeds

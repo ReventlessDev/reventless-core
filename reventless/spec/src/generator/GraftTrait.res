@@ -157,7 +157,7 @@ let main = async () => {
             fail(
               `${traitPackage} ships no scaffold (looked for ${specifier}).\n` ++
               `  Not every trait has one — a trait whose graft is all patches has nothing to write.\n` ++
-              `  Apply its spec fragments by hand instead; see the package README.`,
+              `  Write the graft by hand instead; its README says what the host must declare.`,
             )
             %raw(`undefined`)
           }

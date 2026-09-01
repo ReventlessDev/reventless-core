@@ -5,7 +5,9 @@
 plugin it is extracted from.
 **Status:** In progress — G1–G6 landed 2026-08-30. The rules moved behind
 `AddressGeocoding_Guards` / `AddressGeocoding_Translate` and `templates/` became `spec-fragments/`
-on 2026-08-31 — [trait-rules-as-modules.md](./done/trait-rules-as-modules.md).
+on 2026-08-31 — [trait-rules-as-modules.md](./done/trait-rules-as-modules.md). The fragments are
+**gone** as of 2026-09-01: the events and the two `@noApi` report commands are spread from the
+trait, and the rest is written by `AddressGeocoding_Scaffold`, an emitter the pack check runs.
 **Builds on:**
 [customer-address-backend-geocoding.md](./customer-address-backend-geocoding.md) — **the plan that
 built this feature.** Steps 1–9 deployed and proven; its D3 round calibrated `0.97`/`0.01` against

@@ -115,7 +115,7 @@ async function main() {
         try {
           scaffold = await import(Nodeurl.pathToFileURL(modulePath).href);
         } catch (exn$1) {
-          fail(traitPackage + ` ships no scaffold (looked for ` + specifier + `).\n  Not every trait has one — a trait whose graft is all patches has nothing to write.\n  Apply its spec fragments by hand instead; see the package README.`);
+          fail(traitPackage + ` ships no scaffold (looked for ` + specifier + `).\n  Not every trait has one — a trait whose graft is all patches has nothing to write.\n  Write the graft by hand instead; its README says what the host must declare.`);
           scaffold = undefined;
         }
         let listFields = arrayFieldNames(scaffold.configSchema);

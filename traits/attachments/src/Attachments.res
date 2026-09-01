@@ -4,7 +4,7 @@ an entity, with a primary and a caption per member. Unlike the geocoding trait t
 one writes nothing back — the graft *is* a StateChangeSlice of the host — so the
 contract is over that slice. The rules live in `Attachments_Rules` and are asserted
 through a host by `Attachments_Conformance`; the spec surface the host maps onto
-them is scaffolded from `spec-fragments/`.
+them is written by `Attachments_Scaffold`.
 */
 
 /** One host, bound. `ref` is the stored file's reference (a `StorageRef` today),

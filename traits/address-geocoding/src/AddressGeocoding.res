@@ -4,7 +4,7 @@ outbound slice expose so the graft rules can be checked against them. The rules 
 staleness, redelivery, an outage is not a verdict, the stand-down — live in
 `AddressGeocoding_Guards` and `AddressGeocoding_Translate` and are asserted through a
 host by `AddressGeocoding_Conformance`; the confidence rule stays core's
-(`Reventless.Geocoding`). The spec surface is scaffolded from `spec-fragments/`.
+(`Reventless.Geocoding`). The spec surface is written by `AddressGeocoding_Scaffold`.
 */
 
 /** Whether the graft reports back into its host. This trait does — the two `@noApi`
@@ -44,8 +44,8 @@ replaces: four declarations that every host copied and could mistype.
 trait's *rules* hold for any address-shaped thing; these constructors fix
 `address: string` and fix the word "Address", because a spread cannot rename what
 it splices. A host whose subject is not a string, or that calls it something else,
-does not spread — it applies the spec fragment and keeps its own vocabulary. The
-rules, the contract and the conformance suite are the same either way.
+does not spread — it declares its own arms, which the scaffold's patch prints for
+it. The rules, the contract and the conformance suite are the same either way.
 
 Aggregate state is deliberately not here: it is snapshotted, so a trait-owned
 record inside it would turn every reshaping release into a migration.

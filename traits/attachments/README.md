@@ -9,12 +9,15 @@ the types are the host's own:
 | The set's rules | `src/Attachments_Rules.res` (`empty`, `op`, `fact`, `decide`, `evolve`, `primaryOf`) |
 | The host contract, as a type | `src/Attachments.res` (`module type Binding`) |
 | The conformance suite | `src/Attachments_Conformance.res` (`Make(Binding).register()`) |
-| Spec fragments for the graft | `spec-fragments/*.res.tpl` |
+| The emitter | `src/Attachments_Scaffold.res` (`emit(~config, ~into, ~tests)`) |
 
 `Attachments_Rules` is compiled code a host imports at runtime, so a change to it is a
-behavior change for every host: version it `fix:`/`feat:` accordingly. The fragments are
-the declarative residue that cannot come from a module — variant constructors, their
-annotations, the state fields — and are still pasted and edited by hand.
+behavior change for every host: version it `fix:`/`feat:` accordingly.
+
+The graft *is* a StateChangeSlice, so the emitter writes nearly all of it: the slice
+spec, its behavior and the conformance binding, whole. Only the view's projection is
+printed as a patch — the view already exists, and placing an arm in an ordered `switch`
+is an AST operation a text splice gets silently wrong.
 
 Storage is the platform's (`UploadableImage.t` names the store; mint, presign and
 pending-expiry are shipped). This package owns the rules of the *set*:
@@ -34,26 +37,26 @@ Unlike the geocoding trait this one writes nothing back into its host: the graft
 
 ## Grafting a host
 
-1. Paste the `spec-fragments/` into a `StateChangeSlice/<Entity>Images.res` pair and the
-   view's projection, replacing `{{Entity}}`, `{{entity}}`, `{{entityId}}`,
-   `{{file}}` (`productImage` — the field is named for its store), `{{Created}}`
-   and `{{View}}`; add the host's own refusal to `decide`. The set's rules are not
-   copied — the behavior fragment maps this host's constructors onto them.
-2. Bind the host in a `_GWT.res` file and run the suite:
+1. Run the emitter. Every `--key` is a field of its config, and it validates them, so
+   run it once to be told what it wants:
 
-```rescript
-module Binding = {
-  type ref = string
-  let refA = "/uploads/…/a.jpg"
-  let refB = "/uploads/…/b.jpg"
-  module Spec = ProductImages
-  module Behavior = ProductImages_Behavior
-  let created = [ProductImages.ProductAdded({productId: "p1"})]
-  // … the remaining constructors, see `module type Binding`
-}
-
-TraitAttachments.Attachments_Conformance.Make(Binding).register()
+```sh
+pnpm exec graft-trait @reventlessdev/trait-attachments \
+  --into src/Product --tests tests/Product \
+  --entity Product --entityId productId --noun Image \
+  --file productImage --created ProductAdded --view Products
 ```
+
+   The field is named for the store it draws from, and `--noun` is what this host calls
+   one attachment — it runs through every name the graft declares.
+
+2. Fill the `TODO(graft)` markers. They are the host's own policy: the events its
+   refusal turns on, the error it raises, and the `else if` in `decide` that raises it
+   ahead of the set's rules. A graft with no extra refusal is a complete graft, so
+   leaving them is legitimate.
+
+3. Paste the projection patch, and run the emitted conformance binding — 14 assertions,
+   over your constructors, not the trait's.
 
 The specimen hosts are `examples/online-shop-hybrid/catalog`'s `ProductImages` and
 `CategoryImages`.

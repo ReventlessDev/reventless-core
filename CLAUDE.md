@@ -245,7 +245,7 @@ From the codebase documentation:
 - `examples/online-shop-dcb/` — DCB-based plugin examples
 
 **`traits/` — Domain traits (framework packages never import one; only examples do):**
-- `trait-address-geocoding` — host contract, spec fragments and conformance suite for grafting address geocoding onto an aggregate; specimen host is `examples/online-shop-hybrid/ordering` (`Customer`). Exports `capabilityNeeds`, which its host names on the outbound slice's spec so the deploy gate can check it.
+- `trait-address-geocoding` — host contract, emitter and conformance suite for grafting address geocoding onto an aggregate; specimen host is `examples/online-shop-hybrid/ordering` (`Customer`). Exports `capabilityNeeds`, which its host names on the outbound slice's spec so the deploy gate can check it.
 - `trait-attachments` — the same shape for an ordered attachment set with a primary and captions on a StateChangeSlice; specimen hosts are the catalog's `ProductImages` and `CategoryImages`. Named for the *set*: `FileAttachment` is reserved for the unbuilt scanning-and-retention trait every analysis uses that name for.
 - `pnpm run check:traits` packs each trait and builds its specimen host from the tarball (`scripts/check-trait-pack.mjs` lists the pairs).
 
