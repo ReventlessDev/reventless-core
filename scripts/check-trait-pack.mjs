@@ -16,10 +16,35 @@ import { fileURLToPath } from "node:url"
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 
-// trait dir → the host that binds it. Add a row per trait.
+// trait dir → the host that binds it, and — for a trait that ships a scaffold —
+// the graft to emit into a scratch copy of that host.
+//
+// `graft` turns the check from "the package installs" into the stronger claim
+// the emitter exists to support: that what it writes COMPILES and SATISFIES THE
+// TRAIT'S OWN RULES, with no host policy written at all. A graft with no extra
+// refusal is a complete graft, so a policy-free emit is a legitimate one — which
+// is what makes it checkable without modelling anyone's policy.
+//
+// Deliberately not a diff against the committed specimen host: reproducing that
+// would mean the emitter knowing about `Product`'s shelf and `Category`'s
+// boolean, and modelling host policy is exactly what makes scaffolders rot.
 const specimens = {
-  "traits/address-geocoding": "examples/online-shop-hybrid/ordering",
-  "traits/attachments": "examples/online-shop-hybrid/catalog",
+  "traits/address-geocoding": { host: "examples/online-shop-hybrid/ordering" },
+  "traits/attachments": {
+    host: "examples/online-shop-hybrid/catalog",
+    graft: {
+      // A fresh entity, so the emit collides with nothing the host already owns
+      // and the conformance suite runs against emitted code alone.
+      args: [
+        "--entity", "Gadget", "--entityId", "gadgetId", "--noun", "Image",
+        "--file", "gadgetImage", "--created", "GadgetAdded", "--view", "Gadgets",
+      ],
+      into: "src/Gadget",
+      tests: "tests/Gadget",
+      // The suite the emitted binding registers, run against what was emitted.
+      conformance: "tests/Gadget/GadgetImagesConformance_GWT.res.mjs",
+    },
+  },
 }
 
 const run = (cmd, args, cwd) => execFileSync(cmd, args, { cwd, stdio: "inherit" })
@@ -44,7 +69,8 @@ const linkNodeModules = (from, into) => {
 }
 
 let failed = false
-for (const [traitDir, hostDir] of Object.entries(specimens)) {
+for (const [traitDir, spec] of Object.entries(specimens)) {
+  const hostDir = spec.host
   const traitPkg = JSON.parse(readFileSync(join(root, traitDir, "package.json"), "utf8"))
   const scratch = mkdtempSync(join(tmpdir(), "trait-pack-"))
   console.log(`\n[check-trait-pack] ${traitPkg.name} → ${hostDir}  (${scratch})`)
@@ -75,6 +101,32 @@ for (const [traitDir, hostDir] of Object.entries(specimens)) {
     if (existsSync(join(installed, "lib"))) throw new Error("tarball ships lib/")
     run("pnpm", ["exec", "rescript", "build"], host)
     console.log(`[check-trait-pack] ok: ${traitPkg.name} builds from its tarball`)
+
+    if (spec.graft) {
+      // pack → install → EMIT → generate-plugin → build → conform.
+      const graftBin = join(modules, "@reventlessdev", "reventless-spec", "run-graft-trait.mjs")
+      run("node", [graftBin, traitPkg.name,
+        "--into", spec.graft.into, "--tests", spec.graft.tests, ...spec.graft.args], host)
+
+      // The graft declares components, so the composition root must see them.
+      run("pnpm", ["exec", "rescript", "build"], host)
+      const generate = JSON.parse(readFileSync(join(host, "package.json"), "utf8")).scripts?.generate
+      if (generate) run("pnpm", ["run", "generate"], host)
+      run("pnpm", ["exec", "rescript", "build"], host)
+      console.log(`[check-trait-pack] ok: ${traitPkg.name}'s emitted graft compiles`)
+
+      // …and satisfies the trait's own rules. The binding was emitted whole, so
+      // nothing between the trait's assertions and the emitted code was written
+      // by a human.
+      const suite = join(host, spec.graft.conformance)
+      if (!existsSync(suite)) throw new Error(`emitted conformance suite missing: ${spec.graft.conformance}`)
+      // `lib/bs/` holds a compiled copy of the same suite; without ignoring it
+      // jest runs each assertion twice and the count stops meaning anything.
+      run("node", ["--experimental-vm-modules", join(root, "node_modules", "jest", "bin", "jest.js"),
+        "--rootDir", host, "--testMatch", `**/${spec.graft.conformance.split("/").pop()}`,
+        "--testPathIgnorePatterns", "/lib/", "--testEnvironment", "node"], host)
+      console.log(`[check-trait-pack] ok: ${traitPkg.name}'s emitted graft passes its conformance suite`)
+    }
   } catch (err) {
     failed = true
     console.error(`[check-trait-pack] FAILED: ${traitPkg.name} — ${err.message}`)
