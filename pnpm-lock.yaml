@@ -1013,11 +1013,11 @@ importers:
   packages/reventless-ppx:
     optionalDependencies:
       '@reventlessdev/reventless-ppx-darwin-arm64':
-        specifier: ^1.0.0-alpha.74
-        version: 1.0.0-alpha.74
+        specifier: ^1.0.0-alpha.75
+        version: 1.0.0-alpha.75
       '@reventlessdev/reventless-ppx-linux-x64':
-        specifier: ^1.0.0-alpha.74
-        version: 1.0.0-alpha.74
+        specifier: ^1.0.0-alpha.75
+        version: 1.0.0-alpha.75
 
   rescript/aws-sdk:
     dependencies:
@@ -4765,13 +4765,13 @@ packages:
     resolution: {integrity: sha512-VB7rad+w5Bcz6grr7r1JEGzv/6PFWSQbzBSJ5uW5Z+m3SYE1FCy6d1GMz9tv4dg38s+S/IvJJUrNIW0XIIKZng==}
     hasBin: true
 
-  '@reventlessdev/reventless-ppx-darwin-arm64@1.0.0-alpha.74':
-    resolution: {integrity: sha512-OVCd0nbw7D7MtUCH6oq/L8baT1HRn3lKoDzyKTPwLG5avCVfd/BiK98Z+H6LK+mQRU5jQOUSYUYKTtaR7AJCdg==}
+  '@reventlessdev/reventless-ppx-darwin-arm64@1.0.0-alpha.75':
+    resolution: {integrity: sha512-SbYMi+KLuWAGwuy03e91rOL7v6KIYgCDDSCRvLQ6oaEBh1sM7NZGTZStzo1w6qskJWskvkxb3X/ybEKvnIQUXw==}
     cpu: [arm64]
     os: [darwin]
 
-  '@reventlessdev/reventless-ppx-linux-x64@1.0.0-alpha.74':
-    resolution: {integrity: sha512-s9Ip4DYZxyHYgaMLsDfV1HviMBx0sZzbgD3S1xMQt3zV/O1S0j6/ssFxyyon7PrVz69VOQdK03diwEAUBGi3OQ==}
+  '@reventlessdev/reventless-ppx-linux-x64@1.0.0-alpha.75':
+    resolution: {integrity: sha512-lTWz8i+mvA3Wz9b0v0BGwihojPJDLd9eAeneGyXdMRNPBKLhDq84xnrLf+7ONpEY1y8U/TxTzNS6F2CEUVaBRA==}
     cpu: [x64]
     os: [linux]
 
@@ -17726,10 +17726,10 @@ snapshots:
       - vue-tsc
       - yaml
 
-  '@reventlessdev/reventless-ppx-darwin-arm64@1.0.0-alpha.74':
+  '@reventlessdev/reventless-ppx-darwin-arm64@1.0.0-alpha.75':
     optional: true
 
-  '@reventlessdev/reventless-ppx-linux-x64@1.0.0-alpha.74':
+  '@reventlessdev/reventless-ppx-linux-x64@1.0.0-alpha.75':
     optional: true
 
   '@rollup/rollup-android-arm-eabi@4.60.2':
