@@ -718,6 +718,20 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-09-01
+- feat(spec): a command declares its lifecycle edge as a value ([40eee9f](https://github.com/ReventlessDev/reventless-core/commit/40eee9f7723dc05e418be680528f01967d074da4))
+- feat(plugin): refuse two DCB slices that declare one command name ([8c6ec39](https://github.com/ReventlessDev/reventless-core/commit/8c6ec39cb3c6768446f46d0fc6dc04c256e2e9d9))
+- feat(traits): package the notification competency ([480993b](https://github.com/ReventlessDev/reventless-core/commit/480993b007ed4cb7fc1c98feeb750655df9f9f16))
+- docs(traits): how a graft arrives, and how to extract one ([8e9aac4](https://github.com/ReventlessDev/reventless-core/commit/8e9aac47fa84f63e2a11acbd55894cc5956d4a9b))
+
+### 2026-08-31
+- docs(traits): retitle the trait scaffolds as spec fragments and publish the domain-traits page ([989787f](https://github.com/ReventlessDev/reventless-core/commit/989787f93a3499ff4c299a27e19752e36ddbec65))
+
+### 2026-08-30
+- feat(example)!: model product and category images as attachment sets ([6ae18d8](https://github.com/ReventlessDev/reventless-core/commit/6ae18d896215b448177ba0516e74bfda5f88d2db))
+
+### 2026-08-31
+- docs: stop styling TODO statuses as though they were components ([ff448cf](https://github.com/ReventlessDev/reventless-core/commit/ff448cfc0b9f4b753d736a8eb6f1d6dbf804d5d8))
 ### 2026-08-31
 - docs: correct the inbound translation slice's transport story ([04ff975](https://github.com/ReventlessDev/reventless-core/commit/04ff9756042bc1a0c9f35ada5cb1be0765baf5ee))
 
