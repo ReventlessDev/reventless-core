@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.230 (2026-09-02)
+
+### Features
+
+* **notifications:** a shipped order notifies the customer who placed it ([4280274](https://github.com/ReventlessDev/reventless-core/commit/428027471fc98cc60c1ab12dbcd5c70b9f33e545))
+
+
 # 1.0.0-alpha.229 (2026-09-02)
 
 ### Features
