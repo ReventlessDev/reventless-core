@@ -61,6 +61,8 @@ let commandSchema = Sury.union([
     recipientId: s.m(DcbTag$Reventless.string),
     category: s.m(categorySchema),
     reference: s.m(Sury.string),
+    subjectType: s.m(Sury.string),
+    subjectRef: s.m(Sury.string),
     subject: s.m(Sury.string),
     body: s.m(Sury.string)
   })),
@@ -105,6 +107,8 @@ let eventSchema = Sury.union([
     reference: s.m(Sury.string),
     channel: s.m(channelSchema),
     address: s.m(Sury.string),
+    subjectType: s.m(Sury.string),
+    subjectRef: s.m(Sury.string),
     subject: s.m(Sury.string),
     body: s.m(Sury.string)
   })),
@@ -112,13 +116,17 @@ let eventSchema = Sury.union([
     TAG: "NotificationSuppressed",
     recipientId: s.m(DcbTag$Reventless.string),
     category: s.m(categorySchema),
-    reference: s.m(Sury.string)
+    reference: s.m(Sury.string),
+    subjectType: s.m(Sury.string),
+    subjectRef: s.m(Sury.string)
   })),
   Sury.$schema(s => ({
     TAG: "NotificationUndeliverable",
     recipientId: s.m(DcbTag$Reventless.string),
     category: s.m(categorySchema),
-    reference: s.m(Sury.string)
+    reference: s.m(Sury.string),
+    subjectType: s.m(Sury.string),
+    subjectRef: s.m(Sury.string)
   })),
   Sury.$schema(s => ({
     TAG: "NotificationDelivered",

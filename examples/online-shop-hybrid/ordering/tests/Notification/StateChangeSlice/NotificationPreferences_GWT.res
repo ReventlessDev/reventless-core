@@ -16,17 +16,19 @@ describe("NotificationPreferences StateChangeSlice", () => {
   ]
 
   // The trait's `Requested` fact carries a recipient, a kind, a reference, a
-  // channel and an address — and no sentence, because a trait has no business
-  // holding one. So the wording travels on the command and is put back after the
-  // decision, which is host code and is the one part of this mapping that is not
-  // a rename.
-  test("the requester's own wording survives the decision", () =>
+  // channel and an address — no sentence, because a trait has no business holding
+  // one, and no subject, because it refuses to know what an occurrence is. So
+  // both travel on the command and are put back after the decision, which is host
+  // code and is the one part of this mapping that is not a rename.
+  test("the requester's own wording and subject survive the decision", () =>
     givenEvents(announced)
     ->whenCmd(
       RequestNotification({
         recipientId: "c1",
         category: OrderConfirmation,
         reference: "confirm:o1",
+        subjectType: "Order",
+        subjectRef: "o1",
         subject: "Your order o1 is confirmed",
         body: "Thanks — we have your order o1 and will let you know when it ships.",
       }),
@@ -38,8 +40,37 @@ describe("NotificationPreferences StateChangeSlice", () => {
         reference: "confirm:o1",
         channel: Email,
         address: "buyer@example.com",
+        subjectType: "Order",
+        subjectRef: "o1",
         subject: "Your order o1 is confirmed",
         body: "Thanks — we have your order o1 and will let you know when it ships.",
+      }),
+    )
+  )
+
+  // The subject rides through a decision NOT to send as well. A suppressed row
+  // that could not say what it was about would leave the view able to report that
+  // something was withheld and not which order it concerned.
+  test("a suppressed request still records what it was about", () =>
+    givenEvents(announced)
+    ->whenCmd(
+      RequestNotification({
+        recipientId: "c1",
+        category: Marketing,
+        reference: "promo:o1",
+        subjectType: "Order",
+        subjectRef: "o1",
+        subject: "Deals for you",
+        body: "Have a look.",
+      }),
+    )
+    ->thenEvent(
+      NotificationSuppressed({
+        recipientId: "c1",
+        category: Marketing,
+        reference: "promo:o1",
+        subjectType: "Order",
+        subjectRef: "o1",
       }),
     )
   )

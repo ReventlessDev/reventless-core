@@ -344,6 +344,26 @@ auditable. Do not ship the vocabulary as configuration without that.
 
 ## 14b. P5 — the delivery row stops carrying an address, and starts naming its subject
 
+**Status: ✅ DELIVERED [2026-09-02].** Both halves shipped, with the two §17 assertions, the
+scaffold emitting the same shape, and the GraphQL and lifecycle goldens refreshed alongside.
+Two corrections to what is written below:
+
+- **The field is `subjectRef`, not `subjectId`.** Two separate inferences read id fields by
+  **name**: `GraphQL_FragmentGenerator.resolveKeyField` (which supplied this view's filter and
+  `orderBy` off its "sole `*Id` field" rung) and `DcbTag.idFieldsOfProperties` feeding
+  `DcbScopeInference` (which picks the DCB partition). A second `*Id` on the row makes the first
+  ambiguous — silently dropping `recipientIdEq` and the whole `orderBy` from the SDL — and the
+  second unresolvable. Neither has an escape hatch: `@noDcbTag` is documented as *not* reaching
+  the scope inference, and `@partitionTag` is **boundary-wide unique** (`orderId` already holds it
+  for this plugin), so annotating around it is not available. The name is the fix.
+- **`recipientId` now carries `@scan @scanSort`.** The view's filter and sort surface was an
+  artifact of that inference rather than anything declared. Declared, it no longer depends on how
+  many fields happen to end in `Id`. No SDL change.
+
+Worth its own plan, and not scoped here: an inference that silently removes a queryable's filter
+and ordering when an unrelated field is added is a trap any view can fall into. A deploy-time
+warning when `resolveKeyField` goes ambiguous on a state with no `@id` would surface it.
+
 Two changes to `NotificationDeliveries`, one removing data and one adding it. Independent of
 P0–P4 and safe to do first.
 
@@ -486,10 +506,21 @@ schema-drift check of its own, run against the deployed plugin structures rather
 ```
 P0 rules-as-data ─┬─> P2 origin + deferred ──> P3 handover ──> P4 open vocabulary
                   └─> P1 renderer
-P5 address out / subject in   (independent of P0–P4; P0 makes it tidier, not possible)
+P5 address out / subject in   ✅ DONE [2026-09-02]
 15.1 @sensitive               (independent, any time)
 15.2 raw posture              (independent; needed by a second requester, not by P0–P4)
 ```
+
+⚠️ **P0 cannot meet its own acceptance criterion without P1.** §10's deliverable is that the two
+notifications are unchanged, but today's wording is interpolated (`Your order ${item.orderId} is
+confirmed`) and P0's `content` holds plain strings — turning `orderId` back into that sentence *is*
+the renderer. So "P0 changes only the graft file and the scaffold" below is wrong: P0 either pulls
+in P1, and with it `reventless/spec`, or ships a stopgap interpolator P1 then replaces. Settle that
+before scheduling either.
+
+⚠️ **P1 before 15.1 is backwards.** The renderer interpolates arbitrary field paths of an event
+payload into text a person receives; `@sensitive` is the marking that says which fields must not go.
+Building the capability and deferring its guard is the wrong order regardless of the schedule.
 
 P1 is additive and safe at any point; P0 changes only the graft file and the scaffold.
 **P2, P3, P4 and P5 each change a published event shape or a projected view's state**, and their
@@ -498,11 +529,12 @@ so each is a single-commit change with the host updated in the same commit. Once
 alpha or a host outside this repository grafts it, the same four become migrations with event
 healing and a projection rebuild.
 
-**Do P2–P5 in the next piece of work on this trait.** Nothing else here has a deadline.
-
-**P5 first if only one gets done.** It is the only one that removes personal data rather than adding
-capability, it is independent of the other four, and every day it waits is more rows carrying an
-address that should not be in a read model.
+**P5 is done. P2–P4 remain the deadline work**, on the same reasoning: the trait is still
+`alpha.3` with one host, both in this repository, so each is a single-commit change with the host
+updated alongside. **P2+P3 together next** — their shared acceptance criterion is that behaviour is
+bit-for-bit unchanged when nothing claims anything, which is only verifiable when nothing else moves
+in the same step. **P4 stays blocked** until §14's ⚠️ is answered: who may write `posture`, and how
+that write is audited. That is a decision, not code, and it is not specified anywhere here.
 
 ## 17. Verification
 
@@ -516,10 +548,17 @@ address that should not be in a read model.
   P3 requires (identical reference-key derivation; a claimed source defers a `Default` request).
 - For P2/P3 specifically: assert the empty-claim-set path explicitly, so "behaviour is unchanged when
   nothing claims anything" is a test rather than a belief.
-- For P5: an assertion that placing **and then shipping** one order leaves **two** delivery rows.
+- ✅ For P5: an assertion that placing **and then shipping** one order leaves **two** delivery rows.
+  Shipped as `tests/Notification/StateViewSliceStream/NotificationDeliveries_GWT.res` — two
+  scenarios, written and run green against the unchanged code first, then re-run with both
+  reference keys collapsed to the bare order id to confirm both go red. The expected store is keyed
+  by **literal** strings, not by the relay's key functions: a dict built from the derived values
+  collapses to one entry exactly when the relay does, and the scenario would keep passing while a
+  notification went missing.
   That is the regression the reference key exists to prevent (§14b.3), it is currently guarded by
   nothing but a comment, and it fails silently — one row where two belong, with the later outcome
   overwriting the earlier. Write it before touching the reference at all, so it is a test that was
   green first rather than one written to match whatever the change produced.
-- For P5: a check that `address` appears in no view state — the point of the change is that it is
-  absent from the read side, and only the event carries it.
+- ✅ For P5: a check that `address` appears in no view state. The GraphQL contract golden is that
+  check — `Ordering_NotificationDelivery` no longer declares it, and `check:graphql` fails if it
+  comes back. The field stays on `NotificationRequested`, which the send slice consumes.

@@ -20,6 +20,8 @@ let commandSchema = Sury.$schema(s => ({
   recipientId: s.m(DcbTag$Reventless.string),
   category: s.m(NotificationPreferences$OrderingPlugin.categorySchema),
   reference: s.m(Sury.string),
+  subjectType: s.m(Sury.string),
+  subjectRef: s.m(Sury.string),
   subject: s.m(Sury.string),
   body: s.m(Sury.string)
 }));

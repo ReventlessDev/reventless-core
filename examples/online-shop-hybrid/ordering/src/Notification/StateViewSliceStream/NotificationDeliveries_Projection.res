@@ -13,7 +13,7 @@ let channelName = (channel: NotificationPreferences.channel) =>
 // dropping it is what makes that visible instead of fabricating a half-row.
 let project = ({event, meta}) =>
   switch event {
-  | NotificationRequested({recipientId, category, reference, channel, address}) => [
+  | NotificationRequested({recipientId, category, reference, channel, subjectType, subjectRef}) => [
       Set(
         reference,
         {
@@ -22,7 +22,8 @@ let project = ({event, meta}) =>
           category,
           outcome: Requested,
           channel: channelName(channel),
-          address,
+          subjectType,
+          subjectRef,
           detail: "",
           decidedAt: meta.time,
           settledAt: "",
@@ -32,7 +33,7 @@ let project = ({event, meta}) =>
   // Decided and settled in the same breath — nothing follows a decision not to
   // send, so these rows carry both timestamps from the start rather than sitting
   // open forever waiting for a settlement that is not coming.
-  | NotificationSuppressed({recipientId, category, reference}) => [
+  | NotificationSuppressed({recipientId, category, reference, subjectType, subjectRef}) => [
       Set(
         reference,
         {
@@ -41,14 +42,15 @@ let project = ({event, meta}) =>
           category,
           outcome: Suppressed,
           channel: "",
-          address: "",
+          subjectType,
+          subjectRef,
           detail: "the recipient is not subscribed to this notification",
           decidedAt: meta.time,
           settledAt: meta.time,
         },
       ),
     ]
-  | NotificationUndeliverable({recipientId, category, reference}) => [
+  | NotificationUndeliverable({recipientId, category, reference, subjectType, subjectRef}) => [
       Set(
         reference,
         {
@@ -57,7 +59,8 @@ let project = ({event, meta}) =>
           category,
           outcome: Undeliverable,
           channel: "",
-          address: "",
+          subjectType,
+          subjectRef,
           detail: "no address on file for a channel the recipient wants",
           decidedAt: meta.time,
           settledAt: meta.time,

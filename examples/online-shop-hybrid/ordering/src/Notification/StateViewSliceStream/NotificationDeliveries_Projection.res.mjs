@@ -27,7 +27,8 @@ function project(param) {
             category: event.category,
             outcome: "Requested",
             channel: channelName(event.channel),
-            address: event.address,
+            subjectType: event.subjectType,
+            subjectRef: event.subjectRef,
             detail: "",
             decidedAt: meta.time,
             settledAt: ""
@@ -44,7 +45,8 @@ function project(param) {
             category: event.category,
             outcome: "Suppressed",
             channel: "",
-            address: "",
+            subjectType: event.subjectType,
+            subjectRef: event.subjectRef,
             detail: "the recipient is not subscribed to this notification",
             decidedAt: meta.time,
             settledAt: meta.time
@@ -61,7 +63,8 @@ function project(param) {
             category: event.category,
             outcome: "Undeliverable",
             channel: "",
-            address: "",
+            subjectType: event.subjectType,
+            subjectRef: event.subjectRef,
             detail: "no address on file for a channel the recipient wants",
             decidedAt: meta.time,
             settledAt: meta.time
@@ -78,7 +81,8 @@ function project(param) {
             category: state.category,
             outcome: "Delivered",
             channel: state.channel,
-            address: state.address,
+            subjectType: state.subjectType,
+            subjectRef: state.subjectRef,
             detail: providerRef,
             decidedAt: state.decidedAt,
             settledAt: meta.time
@@ -95,7 +99,8 @@ function project(param) {
             category: state.category,
             outcome: "Failed",
             channel: state.channel,
-            address: state.address,
+            subjectType: state.subjectType,
+            subjectRef: state.subjectRef,
             detail: reason,
             decidedAt: state.decidedAt,
             settledAt: meta.time

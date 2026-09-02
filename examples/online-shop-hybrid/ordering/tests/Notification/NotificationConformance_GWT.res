@@ -43,13 +43,15 @@ module Binding = {
     Spec.Subscribe({recipientId, category, channel: Behavior.channelOf(channel)})
   let unsubscribe = (category, channel) =>
     Spec.Unsubscribe({recipientId, category, channel: Behavior.channelOf(channel)})
-  // The wording is this host's and the trait carries none, so the suite supplies
-  // whatever it likes and asserts nothing about it.
+  // The wording and the subject are this host's and the trait carries neither, so
+  // the suite supplies whatever it likes and asserts nothing about them.
   let request = (category, reference) =>
     Spec.RequestNotification({
       recipientId,
       category,
       reference,
+      subjectType: "Order",
+      subjectRef: "o1",
       subject: "subject",
       body: "body",
     })
@@ -66,13 +68,30 @@ module Binding = {
       reference,
       channel: Behavior.channelOf(channel),
       address,
+      subjectType: "Order",
+      subjectRef: "o1",
       subject: "subject",
       body: "body",
     })
+  // The subject rides through the two decisions not to send as well: what a
+  // suppressed or undeliverable notification was about is the whole reason those
+  // rows are worth reading.
   let suppressed = (category, reference) =>
-    Spec.NotificationSuppressed({recipientId, category, reference})
+    Spec.NotificationSuppressed({
+      recipientId,
+      category,
+      reference,
+      subjectType: "Order",
+      subjectRef: "o1",
+    })
   let undeliverable = (category, reference) =>
-    Spec.NotificationUndeliverable({recipientId, category, reference})
+    Spec.NotificationUndeliverable({
+      recipientId,
+      category,
+      reference,
+      subjectType: "Order",
+      subjectRef: "o1",
+    })
 
   let recipientUnknown = Spec.RecipientUnknown
 

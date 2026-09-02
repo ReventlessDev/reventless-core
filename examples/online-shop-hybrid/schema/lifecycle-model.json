@@ -235,7 +235,7 @@
     "level": "",
     "allowedStates": [],
     "targets": [],
-    "scenarios": 1
+    "scenarios": 2
   },
   {
     "component": "PlaceOrder",

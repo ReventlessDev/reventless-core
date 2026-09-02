@@ -93,15 +93,30 @@ let named = (recipientId, fact: Rules.fact) =>
       channel: channelOf(channel),
       address,
       // Composed by the requester and carried through untouched — the trait has
-      // no opinion about wording, and this slice is not where it would acquire
-      // one. `subject`/`body` ride on the command; see `decide`.
+      // no opinion about wording or about what an occurrence is, so neither the
+      // sentence nor the subject is on its fact. All four ride on the command and
+      // are put back in `decide`.
+      subjectType: "",
+      subjectRef: "",
       subject: "",
       body: "",
     })
   | Suppressed({category, reference}) =>
-    NotificationSuppressed({recipientId, category: categoryOf(category), reference})
+    NotificationSuppressed({
+      recipientId,
+      category: categoryOf(category),
+      reference,
+      subjectType: "",
+      subjectRef: "",
+    })
   | Undeliverable({category, reference}) =>
-    NotificationUndeliverable({recipientId, category: categoryOf(category), reference})
+    NotificationUndeliverable({
+      recipientId,
+      category: categoryOf(category),
+      reference,
+      subjectType: "",
+      subjectRef: "",
+    })
   }
 
 let through = (state, recipientId, op) =>
@@ -119,16 +134,25 @@ let decide = (state, command) =>
   | Unsubscribe({recipientId, category, channel}) =>
     through(state, recipientId, Unsubscribe({category: categoryKey(category), channel: channelKey(channel)}))
 
-  // The one arm the mapping cannot be pure about: the words belong to the
-  // requester, and the trait's `Requested` fact does not carry them because the
-  // trait has no business holding a sentence. So the fact is named as usual and
-  // the wording is put back on the way out.
-  | RequestNotification({recipientId, category, reference, subject, body}) =>
+  // The one arm the mapping cannot be pure about: the words and the subject
+  // belong to the requester, and the trait's facts carry neither, because a trait
+  // has no business holding a sentence and refuses to know what an occurrence is.
+  // So the facts are named as usual and both are put back on the way out.
+  //
+  // All three outcomes get the subject, not just the sent one: what a suppressed
+  // or undeliverable notification was about is exactly what makes those rows
+  // worth reading.
+  | RequestNotification({recipientId, category, reference, subjectType, subjectRef, subject, body}) =>
     through(state, recipientId, Request({category: categoryKey(category), reference}))->Result.map(
       events =>
         events->Array.map(event =>
           switch event {
-          | NotificationRequested(fields) => NotificationRequested({...fields, subject, body})
+          | NotificationRequested(fields) =>
+            NotificationRequested({...fields, subjectType, subjectRef, subject, body})
+          | NotificationSuppressed(fields) =>
+            NotificationSuppressed({...fields, subjectType, subjectRef})
+          | NotificationUndeliverable(fields) =>
+            NotificationUndeliverable({...fields, subjectType, subjectRef})
           | other => other
           }
         ),

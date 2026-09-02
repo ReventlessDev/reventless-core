@@ -67,6 +67,15 @@ type command =
       recipientId: string,
       category: category,
       reference: string,
+      // What the notification is about. `reference` is a correlation key whose
+      // format is the requester's own business; these two name the thing plainly,
+      // so a row can be read back without decoding somebody else's string.
+      // `subjectType` is the referenced component's name as the deployment
+      // registers it, `subjectRef` that row's own id. Empty is legal — a
+      // notification about nothing in particular is a real case, and a fabricated
+      // subject is worse than an absent one.
+      subjectType: string,
+      subjectRef: string,
       subject: string,
       body: string,
     })
@@ -94,7 +103,15 @@ type event =
       category: category,
       reference: string,
       channel: channel,
+      // Kept on the event and deliberately not on the delivery view: the send
+      // slice cannot deliver without it, and this is the record of the address a
+      // message actually went to, as opposed to the address of record the
+      // directory holds. Answering "where was this confirmation sent" therefore
+      // means reading the log, which is the right reach for personal data —
+      // available to an investigation, not to every reader of a view.
       address: string,
+      subjectType: string,
+      subjectRef: string,
       subject: string,
       body: string,
     })
@@ -102,8 +119,20 @@ type event =
   // A recipient who declined is the system working; a recipient with no address
   // is the system missing something, and one fact for both would hide every
   // delivery gap behind a legitimate preference.
-  | NotificationSuppressed({recipientId: string, category: category, reference: string})
-  | NotificationUndeliverable({recipientId: string, category: category, reference: string})
+  | NotificationSuppressed({
+      recipientId: string,
+      category: category,
+      reference: string,
+      subjectType: string,
+      subjectRef: string,
+    })
+  | NotificationUndeliverable({
+      recipientId: string,
+      category: category,
+      reference: string,
+      subjectType: string,
+      subjectRef: string,
+    })
   | NotificationDelivered({recipientId: string, reference: string, providerRef: string})
   | NotificationFailed({recipientId: string, reference: string, reason: string})
 

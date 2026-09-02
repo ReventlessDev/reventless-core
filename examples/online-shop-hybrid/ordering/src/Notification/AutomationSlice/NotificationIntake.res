@@ -30,6 +30,8 @@ type command =
     recipientId: string,
     category: NotificationPreferences.category,
     reference: string,
+    subjectType: string,
+    subjectRef: string,
     subject: string,
     body: string,
   })

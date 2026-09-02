@@ -85,6 +85,12 @@ let compose = (item: NotificationIntake.todoItem) =>
     )
   }
 
+// What the notification is about, stated plainly beside the reference. The
+// reference is a correlation key — one per occurrence, prefixed, and its format
+// is this relay's own business; the subject is the order itself, so a delivery
+// row can name what it concerned without anybody decoding that string.
+let subjectType = "Order"
+
 let process = (id, item: NotificationIntake.todoItem) => {
   let (category, subject, body) = compose(item)
   Some((
@@ -93,6 +99,8 @@ let process = (id, item: NotificationIntake.todoItem) => {
       recipientId: item.recipientId,
       category,
       reference: id,
+      subjectType,
+      subjectRef: item.orderId,
       subject,
       body,
     }),

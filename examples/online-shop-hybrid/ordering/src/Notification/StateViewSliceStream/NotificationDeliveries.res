@@ -27,25 +27,32 @@ type state = {
   reference: string,
   // Whose notification this is. A recipient reading this view sees only their
   // own rows; an operator sees all of them.
-  @owner recipientId: string,
+  //
+  // `@scan`/`@scanSort` declare the filter and sort surface the key-field
+  // inference used to supply on its own. With no `@id` here it picked this field
+  // for being the only one named `*Id` — so a second such name anywhere on the
+  // row silently took the recipient filter and the whole orderBy off the list
+  // query. Declared, the surface no longer depends on that count.
+  @owner @scan @scanSort recipientId: string,
   category: NotificationPreferences.category,
   @lifecycle outcome: outcome,
   // Empty until a channel was actually chosen — a suppressed notification never
   // picked one, and naming one anyway would claim a decision that was not made.
   channel: string,
-  // Where it was actually sent: the inbox, the number, the device token. Whatever
-  // the chosen channel addresses, which is why this is one field and not three —
-  // the channel beside it says how to read it.
+  // What the notification was about. Without these a row is only readable against
+  // `reference`, whose format is the requester's private business — so the view
+  // could say a notification happened and how it ended, but not what it concerned.
+  // `subjectType` is the component's registered name, `subjectRef` that row's id.
+  // Both may be empty: a fabricated subject is worse than an absent one.
   //
-  // Recorded rather than looked up, and that is the point of keeping it here. The
-  // directory holds the address of *record*, which changes; this is the address a
-  // message went to at the time. A support conversation about a confirmation
-  // nobody received is about the second, and joining to the first would answer a
-  // different question convincingly.
+  // Named `*Ref` rather than `*Id` because two inferences read id fields by name
+  // — see `recipientId` above, and the DCB partition on the slice that writes it.
   //
-  // Empty on the same terms as `channel` — a notification that was suppressed, or
-  // that had no address to reach, never had one.
-  address: string,
+  // No address here, deliberately. Where a message actually went is on
+  // `NotificationRequested`, reachable through the per-log event history with its
+  // audit metadata: available to an investigation, not to every reader of a view.
+  subjectType: string,
+  subjectRef: string,
   // The provider's own id once it accepted, or the reason it did not. One field
   // because exactly one of them is ever true, and the outcome says which.
   detail: string,
@@ -53,6 +60,9 @@ type state = {
   settledAt: @s.matches(Reventless.DateTime.string) string,
 }
 
+// `address` is on the published event and is not read here — a consumed variant
+// declares only what the projection uses, so leaving it out is what keeps it off
+// the row.
 @schema
 type consumedEvent =
   | NotificationRequested({
@@ -60,17 +70,22 @@ type consumedEvent =
       category: NotificationPreferences.category,
       reference: string,
       channel: NotificationPreferences.channel,
-      address: string,
+      subjectType: string,
+      subjectRef: string,
     })
   | NotificationSuppressed({
       recipientId: string,
       category: NotificationPreferences.category,
       reference: string,
+      subjectType: string,
+      subjectRef: string,
     })
   | NotificationUndeliverable({
       recipientId: string,
       category: NotificationPreferences.category,
       reference: string,
+      subjectType: string,
+      subjectRef: string,
     })
   | NotificationDelivered({recipientId: string, reference: string, providerRef: string})
   | NotificationFailed({recipientId: string, reference: string, reason: string})

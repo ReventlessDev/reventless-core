@@ -21,7 +21,8 @@ let stateSchema = Sury.$schema(s => ({
   category: s.m(NotificationPreferences$OrderingPlugin.categorySchema),
   outcome: s.m(outcomeSchema),
   channel: s.m(Sury.string),
-  address: s.m(Sury.string),
+  subjectType: s.m(Sury.string),
+  subjectRef: s.m(Sury.string),
   detail: s.m(Sury.string),
   decidedAt: s.m(DateTime$Reventless.string),
   settledAt: s.m(DateTime$Reventless.string)
@@ -34,19 +35,24 @@ let consumedEventSchema = Sury.union([
     category: s.m(NotificationPreferences$OrderingPlugin.categorySchema),
     reference: s.m(Sury.string),
     channel: s.m(NotificationPreferences$OrderingPlugin.channelSchema),
-    address: s.m(Sury.string)
+    subjectType: s.m(Sury.string),
+    subjectRef: s.m(Sury.string)
   })),
   Sury.$schema(s => ({
     TAG: "NotificationSuppressed",
     recipientId: s.m(Sury.string),
     category: s.m(NotificationPreferences$OrderingPlugin.categorySchema),
-    reference: s.m(Sury.string)
+    reference: s.m(Sury.string),
+    subjectType: s.m(Sury.string),
+    subjectRef: s.m(Sury.string)
   })),
   Sury.$schema(s => ({
     TAG: "NotificationUndeliverable",
     recipientId: s.m(Sury.string),
     category: s.m(NotificationPreferences$OrderingPlugin.categorySchema),
-    reference: s.m(Sury.string)
+    reference: s.m(Sury.string),
+    subjectType: s.m(Sury.string),
+    subjectRef: s.m(Sury.string)
   })),
   Sury.$schema(s => ({
     TAG: "NotificationDelivered",
@@ -83,8 +89,8 @@ let stateSchema$1 = Sury.$Metadata_set(stateSchema, StateAnnotations$Reventless.
   drillTargets: [],
   drillTargetKeys: [],
   collapsed: [],
-  scan: [],
-  scanSort: [],
+  scan: ["recipientId"],
+  scanSort: ["recipientId"],
   semantic: [],
   metric: [],
   lifecycle: "outcome",

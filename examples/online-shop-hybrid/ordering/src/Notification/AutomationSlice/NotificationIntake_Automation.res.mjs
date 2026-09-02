@@ -130,6 +130,8 @@ function compose(item) {
   }
 }
 
+let subjectType = "Order";
+
 function process(id, item) {
   let match = compose(item);
   return [
@@ -139,6 +141,8 @@ function process(id, item) {
       recipientId: item.recipientId,
       category: match[0],
       reference: id,
+      subjectType: subjectType,
+      subjectRef: item.orderId,
       subject: match[1],
       body: match[2]
     }
@@ -162,6 +166,7 @@ export {
   FromOrderingDcb,
   mappings,
   compose,
+  subjectType,
   process,
   onExhausted,
   moduleUrl,

@@ -640,7 +640,6 @@ enum Ordering_GeocodeCustomerAddressTodoStatus {
 }
 
 type Ordering_NotificationDelivery implements Node {
-  address: String!
   category: Ordering_NotificationDeliveryCategory!
   channel: String!
   decidedAt: String!
@@ -650,6 +649,8 @@ type Ordering_NotificationDelivery implements Node {
   recipientId: ID!
   reference: String!
   settledAt: String!
+  subjectRef: String!
+  subjectType: String!
 }
 
 enum Ordering_NotificationDeliveryCategory {

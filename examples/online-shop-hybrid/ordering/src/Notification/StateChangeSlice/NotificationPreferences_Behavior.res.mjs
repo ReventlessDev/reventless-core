@@ -123,6 +123,8 @@ function named(recipientId, fact) {
         reference: fact.reference,
         channel: channelOf(fact.channel),
         address: fact.address,
+        subjectType: "",
+        subjectRef: "",
         subject: "",
         body: ""
       };
@@ -131,14 +133,18 @@ function named(recipientId, fact) {
         TAG: "NotificationSuppressed",
         recipientId: recipientId,
         category: categoryOf(fact.category),
-        reference: fact.reference
+        reference: fact.reference,
+        subjectType: "",
+        subjectRef: ""
       };
     case "Undeliverable" :
       return {
         TAG: "NotificationUndeliverable",
         recipientId: recipientId,
         category: categoryOf(fact.category),
-        reference: fact.reference
+        reference: fact.reference,
+        subjectType: "",
+        subjectRef: ""
       };
   }
 }
@@ -181,24 +187,47 @@ function decide(state, command) {
     case "RequestNotification" :
       let body = command.body;
       let subject = command.subject;
+      let subjectRef = command.subjectRef;
+      let subjectType = command.subjectType;
       return Stdlib_Result.map(through(state, command.recipientId, {
         TAG: "Request",
         category: categoryKey(command.category),
         reference: command.reference
       }), events => events.map(event => {
-        if (event.TAG === "NotificationRequested") {
-          return {
-            TAG: "NotificationRequested",
-            recipientId: event.recipientId,
-            category: event.category,
-            reference: event.reference,
-            channel: event.channel,
-            address: event.address,
-            subject: subject,
-            body: body
-          };
-        } else {
-          return event;
+        switch (event.TAG) {
+          case "NotificationRequested" :
+            return {
+              TAG: "NotificationRequested",
+              recipientId: event.recipientId,
+              category: event.category,
+              reference: event.reference,
+              channel: event.channel,
+              address: event.address,
+              subjectType: subjectType,
+              subjectRef: subjectRef,
+              subject: subject,
+              body: body
+            };
+          case "NotificationSuppressed" :
+            return {
+              TAG: "NotificationSuppressed",
+              recipientId: event.recipientId,
+              category: event.category,
+              reference: event.reference,
+              subjectType: subjectType,
+              subjectRef: subjectRef
+            };
+          case "NotificationUndeliverable" :
+            return {
+              TAG: "NotificationUndeliverable",
+              recipientId: event.recipientId,
+              category: event.category,
+              reference: event.reference,
+              subjectType: subjectType,
+              subjectRef: subjectRef
+            };
+          default:
+            return event;
         }
       }));
     case "RecordDelivery" :
