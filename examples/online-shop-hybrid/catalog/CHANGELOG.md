@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.231 (2026-09-02)
+
+### Bug Fixes
+
+* **traits:** a graft's consumed arms name the type its events carry ([e63e448](https://github.com/ReventlessDev/reventless-core/commit/e63e448df84f8b75d5f89f4fb4dd08728f30d5e5))
+### Features
+
+* **dcb:** a boundary that cannot derive its scope says so ([db79969](https://github.com/ReventlessDev/reventless-core/commit/db79969df36bd90607425f6a22b4624227cfc4a0))
+
+
 # 1.0.0-alpha.230 (2026-09-01)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-catalog

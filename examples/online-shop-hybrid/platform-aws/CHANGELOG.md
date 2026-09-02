@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.283 (2026-09-02)
+
+* feat(aws)!: the messaging sender is configuration, and a stack can choose to only log ([23b8b4b](https://github.com/ReventlessDev/reventless-core/commit/23b8b4bfe9c70555de4d74266ca686cb427485ca))
+
+### BREAKING CHANGES
+
+* `Capability_Messaging_Ses.make` is replaced by
+`Capability_Messaging.make(~name)`, which reads the transport and the address
+from config; the SES module keeps only `emailSender`. A deployment that named its
+sender in code must move it to `platform:messagingEmailSender` or the deploy is
+refused.
+
+
+
 # 1.0.0-alpha.282 (2026-09-02)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-platform-aws

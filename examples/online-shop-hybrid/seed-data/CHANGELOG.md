@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.79 (2026-09-02)
+
+### Features
+
+* **examples:** the shop's notification preferences reach the people who own them ([111e2fd](https://github.com/ReventlessDev/reventless-core/commit/111e2fda3f5ffcb098eafa22b1fa1b00a0f2fe2d))
+
+
 # 1.0.0-alpha.78 (2026-09-01)
 
 ### Bug Fixes

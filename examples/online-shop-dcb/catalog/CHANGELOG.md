@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.235 (2026-09-02)
+
+### Features
+
+* **dcb:** a boundary that cannot derive its scope says so ([db79969](https://github.com/ReventlessDev/reventless-core/commit/db79969df36bd90607425f6a22b4624227cfc4a0))
+
+
 # 1.0.0-alpha.234 (2026-09-01)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-dcb-catalog

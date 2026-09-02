@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.229 (2026-09-02)
+
+### Features
+
+* **dcb:** a boundary that cannot derive its scope says so ([db79969](https://github.com/ReventlessDev/reventless-core/commit/db79969df36bd90607425f6a22b4624227cfc4a0))
+* **examples:** a notification delivery records where the message went ([2a02430](https://github.com/ReventlessDev/reventless-core/commit/2a02430472224ec7f533e515eaaa2bca20ab14db))
+
+
 # 1.0.0-alpha.228 (2026-09-01)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-ordering
