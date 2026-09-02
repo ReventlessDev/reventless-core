@@ -93,6 +93,13 @@ let forMismatch = (~slice="<slice>", m: Outcome.mismatch): t =>
       branch: None,
       message: "The ExtensionPoint mapping / Extension delegate published a different set of events or commands than expected. Check the variant match arms and the one-to-many fan-out.",
     }
+  | ScopeDegraded({dropped}) => {
+      locus: `${slice} (DCB boundary)`,
+      branch: None,
+      message: `A slice in this boundary has no derivable partition key, so the derived DCB scope was discarded for all of them and the cross-partition reads of [${dropped->Array.join(
+          ", ",
+        )}] were lost. A slice referencing another entity by one of these keys now decides against an empty history and rejects valid commands. Fix the named slice — usually a consumed arm declaring the id the slice is already partitioned by.`,
+    }
   | Throw({error}) => {
       locus: `${slice}`,
       branch: None,

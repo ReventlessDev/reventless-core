@@ -379,10 +379,7 @@ module Make = (
         // (DcbCommandTopicEntryPoint.mjs) route through `DcbTag.deriveEffectiveScope`
         // so the runtime decision query cannot drift from this scope — see
         // docs/analysis/dcb-runtime-scope-annotation-drift.md.
-        let {
-          crossPartitionTagKeys: effectiveCrossPartitionTagKeys,
-          tagKeysByEventType: effectiveTagKeysByEventType,
-        } = Reventless.DcbTag.deriveEffectiveScope(
+        let effective = Reventless.DcbTag.deriveEffectiveScope(
           stateChangeSlices->Array.map((module(Sc: StateChangeSlice.T)) => {
             Reventless.DcbTag.name: Sc.Spec.name,
             commandSchema: Sc.Spec.commandSchema->S.castToUnknown,
@@ -390,6 +387,26 @@ module Make = (
             eventSchema: Sc.Spec.eventSchema->S.castToUnknown,
           }),
         )
+        let effectiveCrossPartitionTagKeys = effective.crossPartitionTagKeys
+        let effectiveTagKeysByEventType = effective.tagKeysByEventType
+
+        // An ambiguity is a warning above because a boundary can fall back and
+        // lose nothing. Losing a cross-partition key is not that: the decision
+        // read for every slice that references another entity silently narrows to
+        // its own partition, so it decides against an empty history and rejects a
+        // command whose facts are sitting in the log. Nothing downstream fails —
+        // the wrong answer *is* the failure — so this is the only place it can be
+        // said, and it is said at error level naming the slice to fix.
+        if effective.droppedCrossPartitionTagKeys->Array.length > 0 {
+          log.error(
+            ~comp="Dcb_Builder",
+            `DCB scope degraded (${name}): cross-partition reads of [${effective.droppedCrossPartitionTagKeys->Array.join(
+                ", ",
+              )}] were derived but dropped — an ambiguous slice forced the boundary onto @crossPartition annotations that do not carry them. Slices referencing another entity by these keys will decide against an empty history and reject valid commands. Resolve: ${effective.ambiguities
+              ->Array.map(((slice, reason)) => `${slice} (${reason})`)
+              ->Array.join(" | ")}`,
+          )
+        }
 
         module DcbEventLog = DcbEventLog_Builder.Make(
           DcbEventLogStorage,

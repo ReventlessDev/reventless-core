@@ -4,9 +4,13 @@
 
 @@reventless.spec
 
+// `ProductAdded` carries no `productId` here: the id is the partition this slice
+// reads, not payload it folds. Declaring it reads as "this id comes from a
+// foreign producer", leaving the slice with no partition of its own — an
+// ambiguity that drops the derived scope for the whole boundary.
 @schema
 type consumedEvent =
-  | ProductAdded({productId: string})
+  | ProductAdded
   | ProductImageAttached({productImage: string})
   | ProductImageRemoved({productImage: string})
   | ProductPrimaryImageSet({productImage: string})

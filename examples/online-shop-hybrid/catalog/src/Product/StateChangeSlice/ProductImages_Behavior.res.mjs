@@ -16,6 +16,12 @@ function evolve(state, event) {
   });
   if (typeof event !== "object") {
     switch (event) {
+      case "ProductAdded" :
+        return {
+          exists: true,
+          shelf: state.shelf,
+          images: state.images
+        };
       case "ProductArchived" :
         return {
           exists: state.exists,
@@ -37,12 +43,6 @@ function evolve(state, event) {
     }
   } else {
     switch (event.TAG) {
-      case "ProductAdded" :
-        return {
-          exists: true,
-          shelf: state.shelf,
-          images: state.images
-        };
       case "ProductImageAttached" :
         return fold({
           TAG: "Attached",

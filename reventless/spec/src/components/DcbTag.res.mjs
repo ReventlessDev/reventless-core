@@ -636,7 +636,9 @@ function deriveEffectiveScope(slices) {
   let useInferred = inferred.ambiguities.length === 0;
   return {
     crossPartitionTagKeys: useInferred ? inferred.crossPartitionTagKeys : annotatedCross,
-    tagKeysByEventType: useInferred ? inferred.tagKeysByEventType : annotatedTagKeys
+    tagKeysByEventType: useInferred ? inferred.tagKeysByEventType : annotatedTagKeys,
+    ambiguities: inferred.ambiguities,
+    droppedCrossPartitionTagKeys: useInferred ? [] : inferred.crossPartitionTagKeys.filter(k => !annotatedCross.includes(k))
   };
 }
 

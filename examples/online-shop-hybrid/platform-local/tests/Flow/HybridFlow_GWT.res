@@ -151,4 +151,18 @@ describe("Hybrid cross-plugin flow", () => {
       CatalogPlugin.RecordProductDemand.ProductDemandRecorded({productId: "p1", orderId: "o1"}),
     )
   )
+
+  // The steps above name the slices a scenario walks through. These two name
+  // every slice in each plugin, because the property is the boundary's and not
+  // any slice's: one slice that cannot resolve its partition discards the
+  // derived scope for all of them, and `AddProduct`'s category check silently
+  // stops reading categories. Both plugins pass their own per-slice tests
+  // throughout, which is why the assertion belongs here.
+  test("the Catalog boundary derives its DCB scope", () =>
+    start->thenBoundaryScopeResolves(~name="Catalog", CatalogPlugin.Plugin.dcbSliceSchemas)
+  )
+
+  test("the Ordering boundary derives its DCB scope", () =>
+    start->thenBoundaryScopeResolves(~name="Ordering", OrderingPlugin.Plugin.dcbSliceSchemas)
+  )
 })

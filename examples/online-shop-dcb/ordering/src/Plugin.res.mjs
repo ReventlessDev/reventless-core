@@ -33,6 +33,57 @@ import * as AvailableProducts_Projection$OrderingPlugin from "./CatalogProduct/S
 import * as Orders_ExtensionPointMapping$OrderingPlugin from "./ExtensionPoint/Orders_ExtensionPointMapping.res.mjs";
 import * as SendOrderConfirmation_Translation$OrderingPlugin from "./Order/OutboundTranslationSlice/SendOrderConfirmation_Translation.res.mjs";
 
+let dcbSliceSchemas = [
+  {
+    name: CancelOrder$OrderingPlugin.name,
+    commandSchema: CancelOrder$OrderingPlugin.commandSchema,
+    consumedEventSchema: CancelOrder$OrderingPlugin.consumedEventSchema,
+    eventSchema: CancelOrder$OrderingPlugin.eventSchema
+  },
+  {
+    name: ChangeAddress$OrderingPlugin.name,
+    commandSchema: ChangeAddress$OrderingPlugin.commandSchema,
+    consumedEventSchema: ChangeAddress$OrderingPlugin.consumedEventSchema,
+    eventSchema: ChangeAddress$OrderingPlugin.eventSchema
+  },
+  {
+    name: ChangeEmail$OrderingPlugin.name,
+    commandSchema: ChangeEmail$OrderingPlugin.commandSchema,
+    consumedEventSchema: ChangeEmail$OrderingPlugin.consumedEventSchema,
+    eventSchema: ChangeEmail$OrderingPlugin.eventSchema
+  },
+  {
+    name: DeactivateCustomer$OrderingPlugin.name,
+    commandSchema: DeactivateCustomer$OrderingPlugin.commandSchema,
+    consumedEventSchema: DeactivateCustomer$OrderingPlugin.consumedEventSchema,
+    eventSchema: DeactivateCustomer$OrderingPlugin.eventSchema
+  },
+  {
+    name: PlaceOrder$OrderingPlugin.name,
+    commandSchema: PlaceOrder$OrderingPlugin.commandSchema,
+    consumedEventSchema: PlaceOrder$OrderingPlugin.consumedEventSchema,
+    eventSchema: PlaceOrder$OrderingPlugin.eventSchema
+  },
+  {
+    name: RegisterCustomer$OrderingPlugin.name,
+    commandSchema: RegisterCustomer$OrderingPlugin.commandSchema,
+    consumedEventSchema: RegisterCustomer$OrderingPlugin.consumedEventSchema,
+    eventSchema: RegisterCustomer$OrderingPlugin.eventSchema
+  },
+  {
+    name: ShipOrder$OrderingPlugin.name,
+    commandSchema: ShipOrder$OrderingPlugin.commandSchema,
+    consumedEventSchema: ShipOrder$OrderingPlugin.consumedEventSchema,
+    eventSchema: ShipOrder$OrderingPlugin.eventSchema
+  },
+  {
+    name: SyncCatalogProduct$OrderingPlugin.name,
+    commandSchema: SyncCatalogProduct$OrderingPlugin.commandSchema,
+    consumedEventSchema: SyncCatalogProduct$OrderingPlugin.consumedEventSchema,
+    eventSchema: SyncCatalogProduct$OrderingPlugin.eventSchema
+  }
+];
+
 function Make(Platform) {
   let CancelOrderSlice = Platform.StateChangeSlice.Make({
     name: CancelOrder$OrderingPlugin.name,
@@ -428,6 +479,7 @@ function Make(Platform) {
 }
 
 export {
+  dcbSliceSchemas,
   Make,
 }
 /* Id-Reventless Not a pure module */

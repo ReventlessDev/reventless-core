@@ -2,6 +2,17 @@
 
 @val external uiBundleUrl: option<string> = "process.env.ORDERING_UI_BUNDLE_URL"
 
+let dcbSliceSchemas: array<Reventless.DcbTag.sliceSchemas> = [
+  {name: CancelOrder.name, commandSchema: CancelOrder.commandSchema->S.castToUnknown, consumedEventSchema: CancelOrder.consumedEventSchema->S.castToUnknown, eventSchema: CancelOrder.eventSchema->S.castToUnknown},
+  {name: ChangeAddress.name, commandSchema: ChangeAddress.commandSchema->S.castToUnknown, consumedEventSchema: ChangeAddress.consumedEventSchema->S.castToUnknown, eventSchema: ChangeAddress.eventSchema->S.castToUnknown},
+  {name: ChangeEmail.name, commandSchema: ChangeEmail.commandSchema->S.castToUnknown, consumedEventSchema: ChangeEmail.consumedEventSchema->S.castToUnknown, eventSchema: ChangeEmail.eventSchema->S.castToUnknown},
+  {name: DeactivateCustomer.name, commandSchema: DeactivateCustomer.commandSchema->S.castToUnknown, consumedEventSchema: DeactivateCustomer.consumedEventSchema->S.castToUnknown, eventSchema: DeactivateCustomer.eventSchema->S.castToUnknown},
+  {name: PlaceOrder.name, commandSchema: PlaceOrder.commandSchema->S.castToUnknown, consumedEventSchema: PlaceOrder.consumedEventSchema->S.castToUnknown, eventSchema: PlaceOrder.eventSchema->S.castToUnknown},
+  {name: RegisterCustomer.name, commandSchema: RegisterCustomer.commandSchema->S.castToUnknown, consumedEventSchema: RegisterCustomer.consumedEventSchema->S.castToUnknown, eventSchema: RegisterCustomer.eventSchema->S.castToUnknown},
+  {name: ShipOrder.name, commandSchema: ShipOrder.commandSchema->S.castToUnknown, consumedEventSchema: ShipOrder.consumedEventSchema->S.castToUnknown, eventSchema: ShipOrder.eventSchema->S.castToUnknown},
+  {name: SyncCatalogProduct.name, commandSchema: SyncCatalogProduct.commandSchema->S.castToUnknown, consumedEventSchema: SyncCatalogProduct.consumedEventSchema->S.castToUnknown, eventSchema: SyncCatalogProduct.eventSchema->S.castToUnknown},
+]
+
 module Make = (Platform: ReventlessInfra.Platform.T) => {
   // StateChangeSlices
   module CancelOrderSlice = Platform.StateChangeSlice.Make(CancelOrder, CancelOrder_Behavior)

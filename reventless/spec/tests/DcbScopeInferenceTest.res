@@ -155,3 +155,51 @@ describe("DcbScopeInference.infer", () => {
     expect(d.tagKeysByEventType->Dict.get("OrderPlaced"))->toEqual(Some(["orderId"]))
   })
 })
+
+// A slice reading its own entity's lifecycle — `ProductImages` folding
+// `ProductAdded` to learn the product exists. Declaring the id on that arm makes
+// the slice's own partition look foreign and leaves it with none, which drops the
+// derived scope for the whole boundary. The shape is easy to write and the
+// consequence lands on a slice nobody touched, so both halves are pinned.
+let imagesReadingOwnLifecycle = slice(
+  ~name="ProductImages",
+  ~command=[id("productId")],
+  ~consumed=[ev("ProductAdded", [id("productId")]), ev("ProductImageAttached", [])],
+  ~produced=[ev("ProductImageAttached", [id("productId")])],
+)
+
+describe("DcbScopeInference.partitionBlockers", () => {
+  testSync("names the foreign arm that claimed the slice's only produced key", () =>
+    expect(I.partitionBlockers(imagesReadingOwnLifecycle))->toEqual([
+      ("productId", ["ProductAdded"]),
+    ])
+  )
+
+  testSync("a slice with a partition has nothing to explain", () =>
+    expect(I.partitionBlockers(orderSlice))->toEqual([])
+  )
+})
+
+describe("DcbScopeInference.infer — a lifecycle arm that costs a slice its partition", () => {
+  testSync("leaves the slice with no partition and names the arm in the reason", () => {
+    let d = I.infer([imagesReadingOwnLifecycle])
+    expect(d.partitionBySlice->Dict.get("ProductImages"))->toEqual(None)
+    expect(
+      d.ambiguities->Array.some(((slice, reason)) =>
+        slice == "ProductImages" && reason->String.includes("ProductAdded declares productId")
+      ),
+    )->toEqual(true)
+  })
+
+  testSync("dropping the field from the consumed arm resolves it", () => {
+    let fixed = slice(
+      ~name="ProductImages",
+      ~command=[id("productId")],
+      ~consumed=[ev("ProductAdded", []), ev("ProductImageAttached", [])],
+      ~produced=[ev("ProductImageAttached", [id("productId")])],
+    )
+    let d = I.infer([fixed])
+    expect(d.partitionBySlice->Dict.get("ProductImages"))->toEqual(Some("productId"))
+    expect(d.ambiguities)->toEqual([])
+  })
+})

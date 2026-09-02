@@ -50,6 +50,24 @@ function foreignConsumedKeys(s) {
   }));
 }
 
+function partitionBlockers(s) {
+  let foreign = foreignConsumedKeys(s);
+  let ownProduced = new Set();
+  s.produced.forEach(e => {
+    ownProduced.add(e.eventType);
+  });
+  return producedKeys(s).filter(k => foreign.includes(k)).map(k => [
+    k,
+    s.consumed.filter(e => {
+      if (ownProduced.has(e.eventType)) {
+        return false;
+      } else {
+        return e.idFields.map(tagKeyOf).includes(k);
+      }
+    }).map(e => e.eventType)
+  ]);
+}
+
 function crossPartitionForSlice(s) {
   let foreign = foreignConsumedKeys(s);
   let scalar = commandScalarKeys(s);
@@ -93,12 +111,13 @@ function infer(slices) {
           s.sliceName,
           `multiple candidate partition keys (` + many.join(", ") + `) — add an explicit @partitionTag`
         ]);
-      } else {
-        ambiguities.push([
-          s.sliceName,
-          "no own partition key — every produced *Id is read from a foreign producer (pure join?); add an explicit @partitionTag"
-        ]);
+        return;
       }
+      let blame = partitionBlockers(s).map(param => param[1].join("/") + ` declares ` + param[0]).join("; ");
+      ambiguities.push([
+        s.sliceName,
+        `no own partition key — every produced *Id is read from a foreign producer (` + blame + `). If that field is this slice's own partition, remove it from the consumed arm; if the slice really is a pure join, add an explicit @partitionTag`
+      ]);
       return;
     }
     let single = many[0];
@@ -171,6 +190,7 @@ export {
   consumedKeys,
   commandScalarKeys,
   foreignConsumedKeys,
+  partitionBlockers,
   crossPartitionForSlice,
   infer,
 }

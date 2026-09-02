@@ -399,6 +399,14 @@ function renderComposition(config, resolved, componentChapters) {
   lines.push("// AUTO-GENERATED — do not edit. Run `npm run generate` to update.");
   lines.push("");
   lines.push("@val external uiBundleUrl: option<string> = \"process.env." + pluginNameToEnvBase(config.name) + "_UI_BUNDLE_URL\"");
+  if (resolved.stateChangeSlices.length !== 0) {
+    lines.push("");
+    lines.push("let dcbSliceSchemas: array<Reventless.DcbTag.sliceSchemas> = [");
+    resolved.stateChangeSlices.forEach(stem => {
+      lines.push("  {" + (`name: ` + stem + `.name, `) + (`commandSchema: ` + stem + `.commandSchema->S.castToUnknown, `) + (`consumedEventSchema: ` + stem + `.consumedEventSchema->S.castToUnknown, `) + (`eventSchema: ` + stem + `.eventSchema->S.castToUnknown`) + "},");
+    });
+    lines.push("]");
+  }
   lines.push("");
   lines.push("module Make = (Platform: ReventlessInfra.Platform.T) => {");
   let push = sectionLines => {

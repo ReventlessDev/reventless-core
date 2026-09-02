@@ -1,0 +1,33 @@
+{
+  "catalog": {
+    "partitionBySlice": {
+      "AddCategory": "categoryId",
+      "AddProduct": "productId",
+      "ArchiveCategory": "categoryId",
+      "ArchiveProduct": "productId",
+      "CategoryImages": "categoryId",
+      "ChangeProductDescription": "productId",
+      "ChangeProductName": "productId",
+      "ChangeProductPrice": "productId",
+      "DiscontinueProduct": "productId",
+      "ProductImages": "productId",
+      "RecordProductDemand": "productId",
+      "RenameCategory": "categoryId",
+      "UnarchiveCategory": "categoryId",
+      "UnarchiveProduct": "productId"
+    },
+    "crossPartitionTagKeys": [
+      "categoryId"
+    ]
+  },
+  "ordering": {
+    "partitionBySlice": {
+      "CancelOrder": "orderId",
+      "NotificationPreferences": "recipientId",
+      "PlaceOrder": "orderId",
+      "ShipOrder": "orderId",
+      "SyncCatalogProduct": "productId"
+    },
+    "crossPartitionTagKeys": []
+  }
+}

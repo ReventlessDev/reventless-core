@@ -2,6 +2,17 @@
 
 @val external uiBundleUrl: option<string> = "process.env.CATALOG_UI_BUNDLE_URL"
 
+let dcbSliceSchemas: array<Reventless.DcbTag.sliceSchemas> = [
+  {name: AddCategory.name, commandSchema: AddCategory.commandSchema->S.castToUnknown, consumedEventSchema: AddCategory.consumedEventSchema->S.castToUnknown, eventSchema: AddCategory.eventSchema->S.castToUnknown},
+  {name: AddProduct.name, commandSchema: AddProduct.commandSchema->S.castToUnknown, consumedEventSchema: AddProduct.consumedEventSchema->S.castToUnknown, eventSchema: AddProduct.eventSchema->S.castToUnknown},
+  {name: ArchiveCategory.name, commandSchema: ArchiveCategory.commandSchema->S.castToUnknown, consumedEventSchema: ArchiveCategory.consumedEventSchema->S.castToUnknown, eventSchema: ArchiveCategory.eventSchema->S.castToUnknown},
+  {name: ChangeProductDescription.name, commandSchema: ChangeProductDescription.commandSchema->S.castToUnknown, consumedEventSchema: ChangeProductDescription.consumedEventSchema->S.castToUnknown, eventSchema: ChangeProductDescription.eventSchema->S.castToUnknown},
+  {name: ChangeProductName.name, commandSchema: ChangeProductName.commandSchema->S.castToUnknown, consumedEventSchema: ChangeProductName.consumedEventSchema->S.castToUnknown, eventSchema: ChangeProductName.eventSchema->S.castToUnknown},
+  {name: ChangeProductPrice.name, commandSchema: ChangeProductPrice.commandSchema->S.castToUnknown, consumedEventSchema: ChangeProductPrice.consumedEventSchema->S.castToUnknown, eventSchema: ChangeProductPrice.eventSchema->S.castToUnknown},
+  {name: RecordProductDemand.name, commandSchema: RecordProductDemand.commandSchema->S.castToUnknown, consumedEventSchema: RecordProductDemand.consumedEventSchema->S.castToUnknown, eventSchema: RecordProductDemand.eventSchema->S.castToUnknown},
+  {name: RenameCategory.name, commandSchema: RenameCategory.commandSchema->S.castToUnknown, consumedEventSchema: RenameCategory.consumedEventSchema->S.castToUnknown, eventSchema: RenameCategory.eventSchema->S.castToUnknown},
+]
+
 module Make = (Platform: ReventlessInfra.Platform.T) => {
   // StateChangeSlices
   module AddCategorySlice = Platform.StateChangeSlice.Make(AddCategory, AddCategory_Behavior)

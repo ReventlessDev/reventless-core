@@ -608,6 +608,27 @@ let renderComposition = (
     pluginNameToEnvBase(config.name) ++
     "_UI_BUNDLE_URL\"",
   )
+  // The DCB boundary's slices as schemas, outside `Make` because the scope they
+  // determine is a property of the specs and not of any platform. Emitted rather
+  // than hand-listed so a slice added tomorrow is in it: this is the only value
+  // from which the whole boundary's scope can be derived without applying the
+  // functor, which is what lets a test — and the repo's scope check — assert that
+  // it resolves. A per-slice test cannot: one slice never has a boundary.
+  if resolved.stateChangeSlices->Array.length > 0 {
+    lines->Array.push("")
+    lines->Array.push("let dcbSliceSchemas: array<Reventless.DcbTag.sliceSchemas> = [")
+    resolved.stateChangeSlices->Array.forEach(stem =>
+      lines->Array.push(
+        "  {" ++
+        `name: ${stem}.name, ` ++
+        `commandSchema: ${stem}.commandSchema->S.castToUnknown, ` ++
+        `consumedEventSchema: ${stem}.consumedEventSchema->S.castToUnknown, ` ++
+        `eventSchema: ${stem}.eventSchema->S.castToUnknown` ++ "},",
+      )
+    )
+    lines->Array.push("]")
+  }
+
   lines->Array.push("")
   lines->Array.push("module Make = (Platform: ReventlessInfra.Platform.T) => {")
 

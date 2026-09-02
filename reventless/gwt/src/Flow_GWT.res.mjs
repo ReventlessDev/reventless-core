@@ -131,6 +131,18 @@ function test(name, timeout, body) {
   JestBind$ReventlessGwt.testPromise("Flow", name, timeout, async () => (await body()).outcome);
 }
 
+async function thenBoundaryScopeResolves(flowP, name, slices) {
+  let s = await flowP;
+  let scope = DcbTag$Reventless.deriveEffectiveScope(slices);
+  let outcome = scope.droppedCrossPartitionTagKeys.length !== 0 ? Outcome$ReventlessGwt.fail({
+      TAG: "ScopeDegraded",
+      boundary: name,
+      dropped: scope.droppedCrossPartitionTagKeys,
+      ambiguities: scope.ambiguities.map(param => param[0] + `: ` + param[1])
+    }) : Outcome$ReventlessGwt.pass;
+  return recordOutcome(s, outcome);
+}
+
 function CommandStep(Spec) {
   return Behavior => {
     let consumedDecoder = DcbDecode$Reventless.makeDecoder(Spec.consumedEventSchema);
@@ -589,6 +601,7 @@ export {
   decodeAggregateMatching,
   describe,
   test,
+  thenBoundaryScopeResolves,
   CommandStep,
   AggregateCommandStep,
   AutomationStep,

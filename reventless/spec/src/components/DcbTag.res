@@ -1008,6 +1008,15 @@ The DCB decision-read scope threaded into every StateChangeSlice callback:
 type effectiveScope = {
   crossPartitionTagKeys: array<string>,
   tagKeysByEventType: dict<array<string>>,
+  /** Slices whose partition did not resolve, as `(slice, reason)` — non-empty
+      means the two fields above are the *annotated* fallback, not the derivation. */
+  ambiguities: array<(string, string)>,
+  /** Cross-partition keys the inference found that the fallback does not carry.
+      Non-empty is the harmful case and only that: a reference read silently
+      narrows to its own partition, so a slice decides against events it cannot
+      see and rejects a command whose facts are in the log. Empty (even with
+      ambiguities) means the fallback happens to agree and nothing is lost. */
+  droppedCrossPartitionTagKeys: array<string>,
 }
 
 /**
@@ -1023,6 +1032,12 @@ the runtime decision query cannot diverge from the storage/GSI scope. Before thi
 existed the entry point re-derived scope from annotations alone, silently dropping
 inferred cross-partition reference reads — see
 `docs/analysis/dcb-runtime-scope-annotation-drift.md`.
+
+The fallback reports itself. `ambiguities` says it happened and
+`droppedCrossPartitionTagKeys` says whether it cost anything, so a caller can
+distinguish a fallback that agrees with the derivation from one that quietly
+narrows a reference read — the second is a wrong answer waiting for the first
+command that needs the key, and callers are expected to raise it.
 */
 let deriveEffectiveScope = (slices: array<sliceSchemas>): effectiveScope => {
   let producedSchemas = slices->Array.map(s => s.eventSchema)
@@ -1055,6 +1070,10 @@ let deriveEffectiveScope = (slices: array<sliceSchemas>): effectiveScope => {
   {
     crossPartitionTagKeys: useInferred ? inferred.crossPartitionTagKeys : annotatedCross,
     tagKeysByEventType: useInferred ? inferred.tagKeysByEventType : annotatedTagKeys,
+    ambiguities: inferred.ambiguities,
+    droppedCrossPartitionTagKeys: useInferred
+      ? []
+      : inferred.crossPartitionTagKeys->Array.filter(k => !(annotatedCross->Array.includes(k))),
   }
 }
 

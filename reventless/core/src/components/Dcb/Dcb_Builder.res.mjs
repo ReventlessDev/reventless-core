@@ -231,14 +231,17 @@ function Make(DcbEventLogStorage) {
       let scopeIssues = DcbValidation$Reventless.validateScopeVsInference(scopeAnnotations, inferred);
       scopeIssues.contradictions.forEach(e => log.warn("Dcb_Builder", undefined, `DCB scope contradiction (` + e.sliceName + `): ` + e.message));
       scopeIssues.redundancies.forEach(e => log.info("Dcb_Builder", undefined, `DCB scope (` + e.sliceName + `): ` + e.message));
-      let match = DcbTag$Reventless.deriveEffectiveScope(stateChangeSlices.map(Sc => ({
+      let effective = DcbTag$Reventless.deriveEffectiveScope(stateChangeSlices.map(Sc => ({
         name: Sc.Spec.name,
         commandSchema: Sc.Spec.commandSchema,
         consumedEventSchema: Sc.Spec.consumedEventSchema,
         eventSchema: Sc.Spec.eventSchema
       })));
-      let effectiveTagKeysByEventType = match.tagKeysByEventType;
-      let effectiveCrossPartitionTagKeys = match.crossPartitionTagKeys;
+      let effectiveCrossPartitionTagKeys = effective.crossPartitionTagKeys;
+      let effectiveTagKeysByEventType = effective.tagKeysByEventType;
+      if (effective.droppedCrossPartitionTagKeys.length !== 0) {
+        log.error("Dcb_Builder", undefined, `DCB scope degraded (` + name + `): cross-partition reads of [` + effective.droppedCrossPartitionTagKeys.join(", ") + `] were derived but dropped — an ambiguous slice forced the boundary onto @crossPartition annotations that do not carry them. Slices referencing another entity by these keys will decide against an empty history and reject valid commands. Resolve: ` + effective.ambiguities.map(param => param[0] + ` (` + param[1] + `)`).join(" | "));
+      }
       let DcbEventLog = DcbEventLog_Builder$ReventlessCore.Make(DcbEventLogStorage)(DcbEventTopicPublisher);
       let dcbEventLog = DcbEventLog.make(name, indexes$1, partitionTag, effectiveCrossPartitionTagKeys, opts);
       Stdlib_Option.forEach(HooksConfig.hooks.onDcbEventLogCreated, hook => hook(dcbEventLog));

@@ -6,10 +6,7 @@ import * as UploadableImage$Reventless from "@reventlessdev/reventless-spec/src/
 import * as Attachments$TraitAttachments from "@reventlessdev/trait-attachments/src/Attachments.res.mjs";
 
 let consumedEventSchema = Sury.union([
-  Sury.$schema(s => ({
-    TAG: "ProductAdded",
-    productId: s.m(DcbTag$Reventless.string)
-  })),
+  Sury.literal("ProductAdded"),
   Sury.$schema(s => ({
     TAG: "ProductImageAttached",
     productImage: s.m(Sury.string)

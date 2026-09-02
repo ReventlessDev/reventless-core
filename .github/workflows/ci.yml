@@ -192,6 +192,15 @@ jobs:
         if: steps.build.outcome == 'success'
         run: pnpm run check:lifecycle -- --reuse-sidecars
 
+      # A DCB boundary derives its tag scope all-or-nothing: one slice whose
+      # partition does not resolve drops the derivation for every slice beside
+      # it, and a reference read silently narrows to its own partition. Every
+      # slice keeps passing its own tests while the platform starts rejecting
+      # valid commands, so the property has to be checked over the whole set.
+      - name: Check DCB scope resolves for every boundary
+        if: steps.build.outcome == 'success'
+        run: pnpm run check:dcb-scope
+
       - name: Run unit tests (all)
         if: steps.build.outcome == 'success' && steps.affected.outputs.select == 'all'
         run: pnpm run test

@@ -218,6 +218,45 @@ let test = (name, ~timeout=?, body: unit => flow) =>
     s.outcome
   })
 
+// -- Boundary scope ----------------------------------------------------------
+
+// Assert that a DCB consistency boundary derives its tag scope.
+//
+// Every other step here tests slices; this one tests the set of them, and it is
+// in the flow DSL because a flow is the only test kind that already reasons
+// about more than one slice at a time. The rest of the harness derives scope
+// per slice (`DcbScopeInference.crossPartitionForSlice`), which cannot fail the
+// way a boundary fails: a single slice always resolves, so the all-or-nothing
+// fallback in `deriveEffectiveScope` — one unresolvable slice discarding the
+// derived scope for every slice beside it — has no per-slice symptom at all. The
+// slices keep passing their own tests and the platform rejects valid commands.
+//
+// Takes the generated `<Plugin>.Plugin.dcbSliceSchemas`, so it asserts over the
+// boundary as deployed rather than over the steps a given flow happens to name.
+let thenBoundaryScopeResolves = async (
+  flowP: flow,
+  ~name: string,
+  slices: array<Reventless.DcbTag.sliceSchemas>,
+) => {
+  let s = await flowP
+  let scope = Reventless.DcbTag.deriveEffectiveScope(slices)
+  // An ambiguity that costs nothing is not a failure: a boundary whose fallback
+  // carries every derived key reads exactly as the derivation would. What fails
+  // is losing a key, because that is the case where the runtime answers wrongly.
+  let outcome = if scope.droppedCrossPartitionTagKeys->Array.length > 0 {
+    Outcome.fail(
+      ScopeDegraded({
+        boundary: name,
+        dropped: scope.droppedCrossPartitionTagKeys,
+        ambiguities: scope.ambiguities->Array.map(((slice, reason)) => `${slice}: ${reason}`),
+      }),
+    )
+  } else {
+    Outcome.pass
+  }
+  s->recordOutcome(outcome)
+}
+
 // -- CommandStep: a StateChangeSlice / Aggregate decider ---------------------
 
 module CommandStep = (

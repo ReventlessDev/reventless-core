@@ -29,6 +29,8 @@ function kindName(m) {
       return "QueryRowsMismatch";
     case "PublishedActionsMismatch" :
       return "PublishedActionsMismatch";
+    case "ScopeDegraded" :
+      return "ScopeDegraded";
     case "Throw" :
       return "Throw";
   }
@@ -71,6 +73,8 @@ function format(m) {
       return `QueryRowsMismatch:\n  expected: ` + stringifyJsonArray(m.expected) + `\n  actual:   ` + stringifyJsonArray(m.actual);
     case "PublishedActionsMismatch" :
       return `PublishedActionsMismatch:\n  expected: ` + stringifyJsonArray(m.expected) + `\n  actual:   ` + stringifyJsonArray(m.actual);
+    case "ScopeDegraded" :
+      return `ScopeDegraded:\n  boundary: ` + m.boundary + `\n  dropped:  ` + m.dropped.join(", ") + `\n  cause:    ` + m.ambiguities.join(" | ");
     case "Throw" :
       return `Throw: ` + m.error + `\n` + m.stack;
   }

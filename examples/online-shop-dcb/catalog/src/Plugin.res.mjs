@@ -34,6 +34,57 @@ import * as RecordProductDemand_Behavior$CatalogPlugin from "./ProductDemand/Sta
 import * as Products_ExtensionPointMapping$CatalogPlugin from "./ExtensionPoint/Products_ExtensionPointMapping.res.mjs";
 import * as ChangeProductDescription_Behavior$CatalogPlugin from "./Product/StateChangeSlice/ChangeProductDescription_Behavior.res.mjs";
 
+let dcbSliceSchemas = [
+  {
+    name: AddCategory$CatalogPlugin.name,
+    commandSchema: AddCategory$CatalogPlugin.commandSchema,
+    consumedEventSchema: AddCategory$CatalogPlugin.consumedEventSchema,
+    eventSchema: AddCategory$CatalogPlugin.eventSchema
+  },
+  {
+    name: AddProduct$CatalogPlugin.name,
+    commandSchema: AddProduct$CatalogPlugin.commandSchema,
+    consumedEventSchema: AddProduct$CatalogPlugin.consumedEventSchema,
+    eventSchema: AddProduct$CatalogPlugin.eventSchema
+  },
+  {
+    name: ArchiveCategory$CatalogPlugin.name,
+    commandSchema: ArchiveCategory$CatalogPlugin.commandSchema,
+    consumedEventSchema: ArchiveCategory$CatalogPlugin.consumedEventSchema,
+    eventSchema: ArchiveCategory$CatalogPlugin.eventSchema
+  },
+  {
+    name: ChangeProductDescription$CatalogPlugin.name,
+    commandSchema: ChangeProductDescription$CatalogPlugin.commandSchema,
+    consumedEventSchema: ChangeProductDescription$CatalogPlugin.consumedEventSchema,
+    eventSchema: ChangeProductDescription$CatalogPlugin.eventSchema
+  },
+  {
+    name: ChangeProductName$CatalogPlugin.name,
+    commandSchema: ChangeProductName$CatalogPlugin.commandSchema,
+    consumedEventSchema: ChangeProductName$CatalogPlugin.consumedEventSchema,
+    eventSchema: ChangeProductName$CatalogPlugin.eventSchema
+  },
+  {
+    name: ChangeProductPrice$CatalogPlugin.name,
+    commandSchema: ChangeProductPrice$CatalogPlugin.commandSchema,
+    consumedEventSchema: ChangeProductPrice$CatalogPlugin.consumedEventSchema,
+    eventSchema: ChangeProductPrice$CatalogPlugin.eventSchema
+  },
+  {
+    name: RecordProductDemand$CatalogPlugin.name,
+    commandSchema: RecordProductDemand$CatalogPlugin.commandSchema,
+    consumedEventSchema: RecordProductDemand$CatalogPlugin.consumedEventSchema,
+    eventSchema: RecordProductDemand$CatalogPlugin.eventSchema
+  },
+  {
+    name: RenameCategory$CatalogPlugin.name,
+    commandSchema: RenameCategory$CatalogPlugin.commandSchema,
+    consumedEventSchema: RenameCategory$CatalogPlugin.consumedEventSchema,
+    eventSchema: RenameCategory$CatalogPlugin.eventSchema
+  }
+];
+
 function Make(Platform) {
   let AddCategorySlice = Platform.StateChangeSlice.Make({
     name: AddCategory$CatalogPlugin.name,
@@ -428,6 +479,7 @@ function Make(Platform) {
 }
 
 export {
+  dcbSliceSchemas,
   Make,
 }
 /* Id-Reventless Not a pure module */

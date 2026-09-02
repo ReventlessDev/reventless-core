@@ -93,4 +93,50 @@ describe("DcbTag.deriveEffectiveScope (inference vs annotation drift)", () => {
     // annotation-based derivation the entry point used yields [].
     expect(DcbTag.extractCrossPartitionTagKeys(productAddedEventSchema->S.castToUnknown))->toEqual([])
   )
+  testSync("a healthy boundary reports nothing lost", () => {
+    let scope = DcbTag.deriveEffectiveScope(catalogSlices)
+    expect(scope.ambiguities)->toEqual([])
+    expect(scope.droppedCrossPartitionTagKeys)->toEqual([])
+  })
+})
+
+// The fallback is all-or-nothing, so one unresolvable slice decides the scope of
+// every slice beside it. Here a fourth slice reads its own entity's lifecycle arm
+// *with* the id on it, which leaves it no partition — and `AddProduct`, untouched,
+// loses the `categoryId` read its category check depends on.
+
+@schema
+type imagesCommand = AttachProductImage({productId: string, productImage: string})
+@schema
+type imagesConsumed =
+  | ProductAdded({productId: string})
+  | ProductImageAttached({productImage: string})
+@schema
+type imagesEvent = ProductImageAttached({productId: string, productImage: string})
+
+let withUnresolvableSlice: array<DcbTag.sliceSchemas> = catalogSlices->Array.concat([
+  {
+    DcbTag.name: "ProductImages",
+    commandSchema: imagesCommandSchema->S.castToUnknown,
+    consumedEventSchema: imagesConsumedSchema->S.castToUnknown,
+    eventSchema: imagesEventSchema->S.castToUnknown,
+  },
+])
+
+describe("DcbTag.deriveEffectiveScope (one unresolvable slice degrades the boundary)", () => {
+  testSync("falls back to the annotations, which carry no cross-partition key", () =>
+    expect((DcbTag.deriveEffectiveScope(withUnresolvableSlice)).crossPartitionTagKeys)->toEqual([])
+  )
+  testSync("reports the slice that caused it", () =>
+    expect(
+      (DcbTag.deriveEffectiveScope(withUnresolvableSlice)).ambiguities->Array.map(((s, _)) => s),
+    )->toEqual(["ProductImages"])
+  )
+  testSync("reports categoryId as lost — the harmful part, and what a caller raises on", () =>
+    expect(
+      (DcbTag.deriveEffectiveScope(withUnresolvableSlice)).droppedCrossPartitionTagKeys->Array.includes(
+        "categoryId",
+      ),
+    )->toEqual(true)
+  )
 })

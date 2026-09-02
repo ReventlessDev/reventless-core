@@ -131,6 +131,40 @@ let foreignConsumedKeys = (s: sliceShape): array<string> => {
 }
 
 /**
+Which consumed arms cost a slice its partition — the actionable half of the
+"no own partition key" ambiguity.
+
+Rule 1 subtracts `foreignConsumedKeys` from `producedKeys`, so a slice whose only
+produced key is also declared on a consumed arm it does not itself produce is left
+with nothing. In practice that is almost always one mistake: a *lifecycle* arm
+naming the id it is already partitioned by (`ProductAdded({productId})` on a slice
+whose every event carries `productId`), which reads as "this id comes from a
+foreign producer" when it is in fact this slice's own partition.
+
+The ambiguity message can only say a partition was not found. This says which arm
+to delete, which is the whole difference between a diagnostic and a puzzle — so it
+is here, beside the rule that produces the ambiguity, rather than duplicated by
+each surface that reports one.
+
+Returns one entry per produced key that a foreign arm claims, naming those arms.
+Empty when the slice has a partition (nothing to explain) or when the produced
+keys are simply too many (a different ambiguity, answered by `@partitionTag`).
+*/
+let partitionBlockers = (s: sliceShape): array<(string, array<string>)> => {
+  let foreign = foreignConsumedKeys(s)
+  let ownProduced = Set.make()
+  s.produced->Array.forEach(e => ownProduced->Set.add(e.eventType))
+  producedKeys(s)
+  ->Array.filter(k => foreign->Array.includes(k))
+  ->Array.map(k => (
+    k,
+    s.consumed
+    ->Array.filter(e => !(ownProduced->Set.has(e.eventType)) && e->keysOfEvent->Array.includes(k))
+    ->Array.map(e => e.eventType),
+  ))
+}
+
+/**
 Per-slice cross-partition keys for the test harness, which has no global owner
 map: a foreign-read key that is not the slice's own partition is read across
 partitions. Matches `infer`'s global rule 2 for the common "reference another
@@ -169,9 +203,16 @@ let infer = (slices: array<sliceShape>): derived => {
       switch produced->Array.filter(k => !(foreign->Array.includes(k))) {
       | [single] => partitionBySlice->Dict.set(s.sliceName, single)
       | [] =>
+        // Name the arms that took the key. Almost always a lifecycle arm
+        // declaring the id the slice is already partitioned by, where the fix is
+        // to drop the field rather than to annotate around it.
+        let blame =
+          partitionBlockers(s)
+          ->Array.map(((key, arms)) => `${arms->Array.join("/")} declares ${key}`)
+          ->Array.join("; ")
         let _ = ambiguities->Array.push((
           s.sliceName,
-          "no own partition key — every produced *Id is read from a foreign producer (pure join?); add an explicit @partitionTag",
+          `no own partition key — every produced *Id is read from a foreign producer (${blame}). If that field is this slice's own partition, remove it from the consumed arm; if the slice really is a pure join, add an explicit @partitionTag`,
         ))
       | many =>
         let _ = ambiguities->Array.push((

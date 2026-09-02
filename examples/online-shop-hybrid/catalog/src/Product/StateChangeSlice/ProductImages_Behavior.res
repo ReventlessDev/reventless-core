@@ -13,7 +13,7 @@ let initialState = {exists: false, shelf: Listed, images: Attachments.empty}
 let evolve = (state, event) => {
   let fold = fact => {...state, images: state.images->Attachments.evolve(fact)}
   switch event {
-  | ProductAdded(_) => {...state, exists: true}
+  | ProductAdded => {...state, exists: true}
   | ProductImageAttached({productImage}) => fold(Attached({ref: productImage, altText: None}))
   | ProductImageRemoved({productImage}) => fold(Removed({ref: productImage}))
   | ProductPrimaryImageSet({productImage}) => fold(PrimarySet({ref: productImage}))

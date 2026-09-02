@@ -9,7 +9,7 @@ module Binding = {
   module Behavior = ProductImages_Behavior
 
   // Annotated: the slice consumes and emits same-named constructors.
-  let created: array<ProductImages.consumedEvent> = [ProductAdded({productId: "p1"})]
+  let created: array<ProductImages.consumedEvent> = [ProductAdded]
   let attachedC = (ref): ProductImages.consumedEvent => ProductImageAttached({productImage: ref})
   let removedC = (ref): ProductImages.consumedEvent => ProductImageRemoved({productImage: ref})
   let primarySetC = (ref): ProductImages.consumedEvent =>

@@ -89,6 +89,12 @@ function forMismatch(sliceOpt, m) {
         branch: undefined,
         message: "The ExtensionPoint mapping / Extension delegate published a different set of events or commands than expected. Check the variant match arms and the one-to-many fan-out."
       };
+    case "ScopeDegraded" :
+      return {
+        locus: slice + ` (DCB boundary)`,
+        branch: undefined,
+        message: `A slice in this boundary has no derivable partition key, so the derived DCB scope was discarded for all of them and the cross-partition reads of [` + m.dropped.join(", ") + `] were lost. A slice referencing another entity by one of these keys now decides against an empty history and rejects valid commands. Fix the named slice — usually a consumed arm declaring the id the slice is already partitioned by.`
+      };
     case "Throw" :
       return {
         locus: slice,

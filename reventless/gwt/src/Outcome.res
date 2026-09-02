@@ -26,6 +26,13 @@ type mismatch =
   // one-to-many fan-out (one inbound message → N published actions). Used by
   // `Delegate_GWT` and the cross-plugin `Flow_GWT` boundary steps.
   | PublishedActionsMismatch({expected: array<JSON.t>, actual: array<JSON.t>})
+  // A DCB consistency boundary could not derive its tag scope, so the runtime
+  // falls back to `@crossPartition` annotations and loses the cross-partition
+  // reference reads named in `dropped`. Not a mismatch between an expectation
+  // and a value — every slice in it still behaves correctly in isolation, which
+  // is exactly why it needs its own outcome: the defect is in the composition,
+  // and nothing that tests one slice can see it.
+  | ScopeDegraded({boundary: string, dropped: array<string>, ambiguities: array<string>})
   | Throw({error: string, stack: string})
 
 type outcome = result<unit, mismatch>
@@ -44,6 +51,7 @@ let kindName = (m: mismatch) =>
   | TranslateError(_) => "TranslateError"
   | QueryRowsMismatch(_) => "QueryRowsMismatch"
   | PublishedActionsMismatch(_) => "PublishedActionsMismatch"
+  | ScopeDegraded(_) => "ScopeDegraded"
   | Throw(_) => "Throw"
   }
 
@@ -93,5 +101,7 @@ let format = (m: mismatch) =>
     `PublishedActionsMismatch:\n  expected: ${stringifyJsonArray(expected)}\n  actual:   ${stringifyJsonArray(
         actual,
       )}`
+  | ScopeDegraded({boundary, dropped, ambiguities}) =>
+    `ScopeDegraded:\n  boundary: ${boundary}\n  dropped:  ${dropped->Array.join(", ")}\n  cause:    ${ambiguities->Array.join(" | ")}`
   | Throw({error, stack}) => `Throw: ${error}\n${stack}`
   }

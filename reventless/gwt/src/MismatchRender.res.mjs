@@ -82,6 +82,18 @@ function normalize(m) {
         }
       ];
       break;
+    case "ScopeDegraded" :
+      fields = [
+        {
+          TAG: "Expected",
+          _0: m.boundary + `: cross-partition reads [` + m.dropped.join(", ") + `] derived`
+        },
+        {
+          TAG: "Actual",
+          _0: m.ambiguities.join(" | ")
+        }
+      ];
+      break;
     case "Throw" :
       fields = [
         {
