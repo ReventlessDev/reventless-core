@@ -14,10 +14,16 @@ let manifest_components = [
   },
   {
     plugin: "Ordering",
-    views: ["Orders"],
+    views: [
+      "Orders",
+      "NotificationSubscriptions",
+      "NotificationDeliveries"
+    ],
     commands: [
       "PlaceOrder",
-      "CancelOrder"
+      "CancelOrder",
+      "Subscribe",
+      "Unsubscribe"
     ],
     derived: []
   }
@@ -47,10 +53,16 @@ let manifest_journeys = [
     group: "Fulfilment",
     components: [{
         plugin: "Ordering",
-        views: ["Orders"],
+        views: [
+          "Orders",
+          "NotificationSubscriptions",
+          "NotificationDeliveries"
+        ],
         commands: [
           "ShipOrder",
-          "CancelOrder"
+          "CancelOrder",
+          "Subscribe",
+          "Unsubscribe"
         ],
         derived: [
           "lifecycles",

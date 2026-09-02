@@ -46,12 +46,20 @@
         "nav": {
           "group": "Shop",
           "label": "Notification Preferences",
-          "scopedLabel": "My Notifications",
+          "scopedLabel": "My Notification Preferences",
           "order": 25
         },
         "mode": "matrix",
         "matrix": {
           "available": "deliverable"
+        }
+      },
+      "NotificationDeliveries": {
+        "nav": {
+          "group": "Shop",
+          "label": "Notification Deliveries",
+          "scopedLabel": "My Notifications",
+          "order": 26
         }
       }
     },

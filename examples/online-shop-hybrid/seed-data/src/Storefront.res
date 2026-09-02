@@ -27,10 +27,14 @@
 let manifest: ReventlessInfra.Platform.bakedManifest = {
   components: [
     {plugin: "Catalog", views: ["Products", "Categories"], commands: [], derived: []},
+    // Both notification views are storefront surfaces, not operator ones: each
+    // row is the caller's own — the kind × channel matrix they manage, and the
+    // record of what was sent to them — and `Subscribe` / `Unsubscribe` are
+    // commands a person aims at themselves.
     {
       plugin: "Ordering",
-      views: ["Orders"],
-      commands: ["PlaceOrder", "CancelOrder"],
+      views: ["Orders", "NotificationSubscriptions", "NotificationDeliveries"],
+      commands: ["PlaceOrder", "CancelOrder", "Subscribe", "Unsubscribe"],
       derived: [],
     },
   ],
@@ -65,15 +69,26 @@ let manifest: ReventlessInfra.Platform.bakedManifest = {
     {
       group: "Fulfilment",
       components: [
+        // The notification views are here for the half of the job that is not
+        // the board: a customer who says they heard nothing is answered by
+        // reading what was sent to them and what they had asked for, and put
+        // right with the same `Subscribe` / `Unsubscribe` the storefront offers.
+        // The commands are the same ones and the difference is the caller —
+        // elevation exempts this role from the `@owner` stamp, so its
+        // `recipientId` is honoured rather than overwritten. That is what makes
+        // acting on somebody's behalf possible here and impossible from the
+        // storefront, without a second pair of commands to keep in step.
         {
           plugin: "Ordering",
-          views: ["Orders"],
-          commands: ["ShipOrder", "CancelOrder"],
+          views: ["Orders", "NotificationSubscriptions", "NotificationDeliveries"],
+          commands: ["ShipOrder", "CancelOrder", "Subscribe", "Unsubscribe"],
           // The board this role works: `Orders` carries a status and the
           // commands that move it, so the lifecycle diagram is a picture of the
           // job, and its delivery windows make a calendar of the same rows.
           // Both are what the storefront declines, which is the point of the
-          // list being per-journey rather than per-deployment.
+          // list being per-journey rather than per-deployment. `derived` is
+          // per-plugin, so the diagram now covers `NotificationDeliveries`
+          // outcomes too — the same picture for the same reason.
           derived: ["lifecycles", "canvas"],
         },
       ],
