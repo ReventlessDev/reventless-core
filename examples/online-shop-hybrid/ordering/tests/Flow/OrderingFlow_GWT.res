@@ -4,7 +4,8 @@
 //   PlaceOrder ─→ OrderPlaced
 //     ├─ AutoShipOrder reacts → ShipOrder ─→ OrderShipped
 //     ├─ Orders (view) : status Placed → Shipped
-//     └─ NotificationIntake reacts → RequestNotification
+//     └─ NotificationIntake reacts → RequestNotification ×2
+//          (OrderConfirmation for the placement, ShippingUpdate for the shipment)
 //
 // The order lane ends where the notification competency begins. What happens to
 // the request — which channels it goes out on, or why it does not — is decided
@@ -93,7 +94,7 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
     ->Auto.whenReacts
     ->Auto.thenIssuesCommand(AutoShipOrder.ShipOrder({orderId: "o1"}))
     ->Ship.whenCommand(ShipOrder.ShipOrder({orderId: "o1"}))
-    ->Ship.thenEvent(ShipOrder.OrderShipped({orderId: "o1"}))
+    ->Ship.thenEvent(ShipOrder.OrderShipped({orderId: "o1", customerId: "c1"}))
     ->OrdersView.thenViewState(
       "o1",
       {
@@ -107,11 +108,16 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
         deliveryWindow: Some(window),
       },
     )
-    // The relay asks for a confirmation and says nothing about how it goes out.
-    // `reference` is the relay's own key for this occurrence, echoed back on the
-    // outcome so the row it opened can be closed.
+    // The relay asks for the notifications and says nothing about how they go
+    // out. `reference` is the relay's own key for each occurrence, echoed back on
+    // the outcome so the row it opened can be closed — one key per occurrence, so
+    // the confirmation's outcome cannot close the shipping update's row.
+    //
+    // Two commands from one sweep is the point: the order lane produced two
+    // notifiable facts, and the relay carries both across without either one
+    // knowing what the other's category is.
     ->Notify.whenReacts
-    ->Notify.thenIssuesCommand(
+    ->Notify.thenIssuesCommands([
       NotificationIntake.RequestNotification({
         recipientId: "c1",
         category: OrderConfirmation,
@@ -119,7 +125,14 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
         subject: "Your order o1 is confirmed",
         body: "Thanks — we have your order o1 and will let you know when it ships.",
       }),
-    )
+      NotificationIntake.RequestNotification({
+        recipientId: "c1",
+        category: ShippingUpdate,
+        reference: "ship:o1",
+        subject: "Your order o1 is on its way",
+        body: "Good news — order o1 has shipped.",
+      }),
+    ])
   })
 
   test("placing an order for an unsynced product is rejected", () =>

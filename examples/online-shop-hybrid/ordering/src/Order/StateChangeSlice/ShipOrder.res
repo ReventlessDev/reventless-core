@@ -9,12 +9,18 @@
 // the states the command is legal in and the one it lands in — so the board
 // resolves the drop from the declaration rather than guessing it from the
 // command's name.
+//
+// `OrderShipped` names its customer for the same reason `OrderPlaced` does: an
+// automation can only react to an occurrence that says whom it concerns. The
+// value is folded across from `OrderPlaced` rather than decided here — this
+// slice never reads it — so the shipment fact carries a recipient without the
+// log ever holding an address.
 
 @@reventless.spec
 
 @schema
 type consumedEvent =
-  | OrderPlaced({productIds: array<string>})
+  | OrderPlaced({productIds: array<string>, customerId: string})
   | OrderShipped
   | OrderCancelled
   // The slice refuses on a cancellation, so it has to hear when one is undone.
@@ -33,7 +39,7 @@ type error =
 
 @schema
 type event =
-  | OrderShipped({orderId: string})
+  | OrderShipped({@partitionTag orderId: string, customerId: string})
 
 type lifecycleState = Orders.lifecycle
 

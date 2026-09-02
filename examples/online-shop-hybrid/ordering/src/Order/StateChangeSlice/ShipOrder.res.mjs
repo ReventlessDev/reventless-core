@@ -6,7 +6,8 @@ import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/component
 let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "OrderPlaced",
-    productIds: s.m(Sury.array(DcbTag$Reventless.stringForKey("productId")))
+    productIds: s.m(Sury.array(DcbTag$Reventless.stringForKey("productId"))),
+    customerId: s.m(DcbTag$Reventless.string)
   })),
   Sury.literal("OrderShipped"),
   Sury.literal("OrderCancelled"),
@@ -25,7 +26,8 @@ let errorSchema = Sury.union([
 
 let eventSchema = Sury.$schema(s => ({
   TAG: "OrderShipped",
-  orderId: s.m(DcbTag$Reventless.string)
+  orderId: s.m(DcbTag$Reventless.partition),
+  customerId: s.m(DcbTag$Reventless.string)
 }));
 
 function commandTransition(command) {

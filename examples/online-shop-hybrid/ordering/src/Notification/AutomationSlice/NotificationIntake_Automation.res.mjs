@@ -20,11 +20,20 @@ function confirmationKey(orderId) {
   return `confirm:` + orderId;
 }
 
+function shippingKey(orderId) {
+  return `ship:` + orderId;
+}
+
 let name = "OrderingDcbEventLog";
 
 let eventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "OrderPlaced",
+    orderId: s.m(DcbTag$Reventless.string),
+    customerId: s.m(DcbTag$Reventless.string)
+  })),
+  Sury.$schema(s => ({
+    TAG: "OrderShipped",
     orderId: s.m(DcbTag$Reventless.string),
     customerId: s.m(DcbTag$Reventless.string)
   })),
@@ -49,24 +58,39 @@ let OrderingDcbSource = {
 };
 
 function collect(event, param, _ctx) {
-  if (event.TAG !== "OrderPlaced") {
-    return [];
+  switch (event.TAG) {
+    case "OrderPlaced" :
+      let orderId = event.orderId;
+      return [[
+          confirmationKey(orderId),
+          {
+            recipientId: event.customerId,
+            orderId: orderId,
+            occurrence: "Placed"
+          }
+        ]];
+    case "OrderShipped" :
+      let orderId$1 = event.orderId;
+      return [[
+          shippingKey(orderId$1),
+          {
+            recipientId: event.customerId,
+            orderId: orderId$1,
+            occurrence: "Shipped"
+          }
+        ]];
+    default:
+      return [];
   }
-  let orderId = event.orderId;
-  return [[
-      confirmationKey(orderId),
-      {
-        recipientId: event.customerId,
-        orderId: orderId
-      }
-    ]];
 }
 
 function resolve(event) {
-  if (event.TAG === "OrderPlaced") {
-    return;
-  } else {
-    return event.reference;
+  switch (event.TAG) {
+    case "OrderPlaced" :
+    case "OrderShipped" :
+      return;
+    default:
+      return event.reference;
   }
 }
 
@@ -89,16 +113,34 @@ let FromOrderingDcb = AutomationSlice$Reventless.Mapping.Make({
 
 let mappings = [FromOrderingDcb];
 
+function compose(item) {
+  let match = item.occurrence;
+  if (match === "Placed") {
+    return [
+      "OrderConfirmation",
+      `Your order ` + item.orderId + ` is confirmed`,
+      `Thanks — we have your order ` + item.orderId + ` and will let you know when it ships.`
+    ];
+  } else {
+    return [
+      "ShippingUpdate",
+      `Your order ` + item.orderId + ` is on its way`,
+      `Good news — order ` + item.orderId + ` has shipped.`
+    ];
+  }
+}
+
 function process(id, item) {
+  let match = compose(item);
   return [
     item.recipientId,
     {
       TAG: "RequestNotification",
       recipientId: item.recipientId,
-      category: "OrderConfirmation",
+      category: match[0],
       reference: id,
-      subject: `Your order ` + item.orderId + ` is confirmed`,
-      body: `Thanks — we have your order ` + item.orderId + ` and will let you know when it ships.`
+      subject: match[1],
+      body: match[2]
     }
   ];
 }
@@ -115,9 +157,11 @@ export {
   Spec,
   M,
   confirmationKey,
+  shippingKey,
   OrderingDcbSource,
   FromOrderingDcb,
   mappings,
+  compose,
   process,
   onExhausted,
   moduleUrl,

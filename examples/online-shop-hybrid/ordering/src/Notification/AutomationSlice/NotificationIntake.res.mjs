@@ -4,9 +4,15 @@ import * as Sury from "sury";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as NotificationPreferences$OrderingPlugin from "../StateChangeSlice/NotificationPreferences.res.mjs";
 
+let occurrenceSchema = Sury.union([
+  Sury.literal("Placed"),
+  Sury.literal("Shipped")
+]);
+
 let todoItemSchema = Sury.$schema(s => ({
   recipientId: s.m(Sury.string),
-  orderId: s.m(Sury.string)
+  orderId: s.m(Sury.string),
+  occurrence: s.m(occurrenceSchema)
 }));
 
 let commandSchema = Sury.$schema(s => ({
@@ -43,6 +49,7 @@ let moduleUrl = "@reventlessdev/online-shop-hybrid-ordering/src/Notification/Aut
 export {
   name,
   Id,
+  occurrenceSchema,
   todoItemSchema,
   commandSchema,
   maxRetries,
@@ -53,4 +60,4 @@ export {
   commandTransition,
   traits,
 }
-/* todoItemSchema Not a pure module */
+/* occurrenceSchema Not a pure module */
