@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.333 (2026-09-02)
+
+### Bug Fixes
+
+* **automation:** the slice registry rides in the archive, not the environment ([d03b42c](https://github.com/ReventlessDev/reventless-core/commit/d03b42cc074181fb6506f00e40205d617bc70ddb))
+
+
 # 3.0.0-alpha.332 (2026-09-01)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws
