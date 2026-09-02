@@ -296,6 +296,48 @@ Currently consumed by:
 | `hostUiHostedZoneId` | `REVENTLESS_HOST_UI_HOSTED_ZONE_ID` | same | Keeps `*.cloudfront.net` default URL |
 | `hostUiBaseName` | `REVENTLESS_HOST_UI_BASE_NAME` | same | Defaults to `Pulumi.getProjectName()` |
 | `hostUiProdStacks` | `REVENTLESS_HOST_UI_PROD_STACKS` (CSV) | same | Defaults to `["prod", "main"]` |
+| `messagingEmailProvider` | `REVENTLESS_MESSAGING_EMAIL_PROVIDER` | `Capability_Messaging.make` (which email transport) | `ses` — a real SES identity |
+| `messagingEmailSender` | `REVENTLESS_MESSAGING_EMAIL_SENDER` | same (the `From:` address) | **No email channel** — and the deploy is refused if a plugin declares the Messaging capability |
+| `messagingEmailSenderName` | `REVENTLESS_MESSAGING_EMAIL_SENDER_NAME` | same (`From:` display name) | `From:` carries the bare address |
+| `messagingSmsSender` | `REVENTLESS_MESSAGING_SMS_SENDER` | same (origination number / sender id) | No SMS channel — and none today regardless, see below |
+
+**`messagingEmailProvider` picks the transport**, per channel rather than per
+capability — SMS and push are separate channels and will each bring their own key,
+so choosing a mail sink must not also decide how texts go out. Two values:
+
+| Value | What it does |
+|---|---|
+| `ses` (default) | Provisions a verified SES identity and really sends. |
+| `log` | Provisions nothing; every message is written to the Lambda's log in full and none is sent. |
+
+Default `ses`, so a deployment that says nothing still mails — a stack that means
+*not* to send says so, rather than silence meaning it. An unrecognised value fails
+the deploy naming the key: defaulting a typo to `ses` would provision a real
+identity for a stack that asked only to log, which is the mistake the key exists to
+prevent. `log` is what the shop's `alpha` and `beta` stacks use.
+
+The messaging **senders** are the keys above with **no default**, and deliberately so.
+An address is one verified identity per AWS account, so a repository cannot name
+one that is true for every stack built from it — and a placeholder is worse than
+nothing: it provisions an identity nobody can verify, after which every send is
+refused at the sender while reading like a delivery problem.
+
+Unset is therefore a real answer rather than a fallback, and it is checked. A
+platform whose plugins declare the Messaging capability and whose stack names no
+sender is **refused at deploy time**, naming the key — so a mail-less deployment
+cannot reach production as silence. A platform no plugin of which needs messaging
+deploys fine with all three unset.
+
+Under `ses`, setting the address is half the job: it has to be verified (AWS mails
+it a link, and until somebody follows it SES refuses every send), and an account in
+the SES sandbox can send only *to* verified recipients regardless. Under `log` the
+address is only a header — nothing verifies it, and it defaults if unset.
+
+`messagingSmsSender` is carried but **no transport reads it yet**. It exists so a
+stack can state the number where the other senders live; the SMS channel appears
+when a backend does, not when this is set. Claiming a channel ahead of its
+transport would collect preferences that silently deliver nothing, which is the
+failure the derived channel set exists to prevent.
 
 Any future deploy-time helper reading via `Util_LocalConfig.get("…")` automatically participates in the same precedence ladder.
 

@@ -103,6 +103,10 @@ let geocoderPlaceIndexRef: ref<Pulumi.Output.t<string>> = ref(Pulumi.Output.make
     same `""` sentinel and the same reason. */
 let messagingEmailSenderRef: ref<Pulumi.Output.t<string>> = ref(Pulumi.Output.make(""))
 
+/** The email transport behind that address, carried the same way for the same case.
+    `""` means the platform named none, which the runtime reads as its default. */
+let messagingEmailProviderRef: ref<Pulumi.Output.t<string>> = ref(Pulumi.Output.make(""))
+
 module MakeWithConfig = (
   Config: {
     let splitApi: bool
@@ -2178,16 +2182,57 @@ module MakeWithConfig = (
       Pulumi.Pulumi.export("messagingEmailSender", messagingEmailSenderFlat)
       messagingEmailSenderRef := messagingEmailSenderFlat
 
+      // Which transport is behind that sender. Exported and threaded exactly like
+      // the address, because a plugin stack's Lambdas need both and read them the
+      // same way — the address alone would leave a runtime guessing what to send
+      // it with. `""` means "the platform did not say", which the runtime reads as
+      // the default rather than as an error.
+      let messagingEmailProviderFlat = switch cfg.messagingSender {
+      | Some({emailProvider: ?Some(name)}) => name->Pulumi.Output.fromInput
+      | _ => Pulumi.Output.make("")
+      }
+      Pulumi.Pulumi.export("messagingEmailProvider", messagingEmailProviderFlat)
+      messagingEmailProviderRef := messagingEmailProviderFlat
+
+      // Exported but not handed to a Lambda: nothing reads an SMS sender yet, and
+      // an env var no runtime consults is a setting that looks wired. The export
+      // is how a stack can see what it configured.
+      Pulumi.Pulumi.export(
+        "messagingSmsSender",
+        switch cfg.messagingSender {
+        | Some({smsSender: ?Some(sender)}) => sender->Pulumi.Output.fromInput
+        | _ => Pulumi.Output.make("")
+        },
+      )
+
       // Same gate as geocoding's, and the failure it prevents is worse: an
       // unprovisioned mailer answers `Unavailable` on every send, so the messages
       // queue and retry and are eventually abandoned — a notification nobody
       // receives and no error names.
-      if capabilities->Array.includes(Messaging) && cfg.messagingSender->Option.isNone {
+      //
+      // The test is the *sender*, not the handle. Since the address became
+      // configuration with no default, a root that calls the helper hands over a
+      // record either way — one carrying no sender when the stack named none — so
+      // a gate reading `Option.isNone` would pass a deployment with no mailer.
+      // Whether the field is present is known here, without resolving the Output
+      // behind it, which is what keeps this refusal at graph-construction time
+      // rather than in the `apply` further down: the same gap caught there fails
+      // the deploy midway, and is skipped entirely by `pulumi preview`.
+      let emailSenderProvisioned = switch cfg.messagingSender {
+      | Some({emailSender: ?Some(_)}) => true
+      | _ => false
+      }
+      if capabilities->Array.includes(Messaging) && !emailSenderProvisioned {
         JsError.throwWithMessage(
           `A plugin of this deployment declares the Messaging capability, but this platform ` ++
-          `provisions no sender.\n` ++
-          `  Add \`let sender = ReventlessAws.Capability_Messaging_Ses.make(~name=…, ~email=…)\` ` ++
-          `and pass \`~messagingSender=sender\` in \`~hostUiBundle\`.\n` ++
+          `provisions no email sender.\n` ++
+          `  The sender is configuration and has no default: set ` ++
+          `\`platform:messagingEmailSender\` in Pulumi.<stack>.yaml (or the env var ` ++
+          `REVENTLESS_MESSAGING_EMAIL_SENDER), then verify the address with SES.\n` ++
+          `  A stack that should not mail anybody sets \`platform:messagingEmailProvider: log\` ` ++
+          `instead — every message is logged and none is sent, and the address is optional.\n` ++
+          `  The root must also pass \`~messagingSender\` in \`~hostUiBundle\`, from ` ++
+          `\`ReventlessAws.Capability_Messaging.make(~name=…)\`.\n` ++
           `  The declaration is generated from the plugins' capabilities.json — regenerate with ` ++
           `\`pnpm run generate:platform\` if it is stale.`,
         )
@@ -2516,6 +2561,23 @@ module MakeWithConfig = (
     PluginRuntime_Builder.registerCapabilityEnv("MESSAGING_EMAIL_SENDER", messagingEmailSender)
     PluginRuntime_Builder.registerMessagingSender(messagingEmailSender)
 
+    // The transport, read across the same two halves. Only the env var: the IAM
+    // grant below keys off the address, and a log-transport deployment wants the same
+    // grant anyway — a stack that switches back to SES should not need its roles
+    // rebuilt.
+    let messagingEmailProvider: Pulumi.Output.t<string> = switch platformStackRef {
+    | Some(stackRef) =>
+      (
+        stackRef->Pulumi.StackReference.getOutput("messagingEmailProvider"):
+          Pulumi.Output.t<option<string>>
+      )->Pulumi.Output.apply(o => o->Option.getOr(""))
+    | None => messagingEmailProviderRef.contents
+    }
+    PluginRuntime_Builder.registerCapabilityEnv(
+      "MESSAGING_EMAIL_PROVIDER",
+      messagingEmailProvider,
+    )
+
     module P = unpack(plugin)
     let pluginComponent = P.make()
     ReventlessCore.Plugin_Helpers.clearOffload()
@@ -2698,8 +2760,11 @@ module MakeWithConfig = (
                   `\n  Geocoding is \`Capability_Geocoding_AwsLocation.make\`, passed to the ` ++
                   `platform as \`~geocoderPlaceIndex\`.`
                 | Messaging =>
-                  `\n  Messaging is \`Capability_Messaging_Ses.make\`, passed to the platform ` ++
-                  `as \`~messagingSender\`.`
+                  `\n  Messaging is \`Capability_Messaging.make\`, passed to the platform ` ++
+                  `as \`~messagingSender\`. The sender itself is configuration and has no ` ++
+                  `default: set \`platform:messagingEmailSender\` in Pulumi.<stack>.yaml (or ` ++
+                  `REVENTLESS_MESSAGING_EMAIL_SENDER), then verify the address with SES — or ` ++
+                  `\`platform:messagingEmailProvider: log\` to log every message and send none.`
                 }
               )
               // One line per capability, not per declaring component: two slices

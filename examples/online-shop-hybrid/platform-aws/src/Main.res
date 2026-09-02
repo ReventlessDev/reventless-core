@@ -24,15 +24,31 @@ let placeIndex = ReventlessAws.Capability_Geocoding_AwsLocation.make(~name="onli
 // deployment's identity, so the only caller is the send slice's Lambda, which
 // reaches SES through the injected capability record.
 //
-// **Provisioning it is not the same as being able to send.** Creating the
-// identity asks AWS to mail this address; until somebody follows that link SES
+// **Neither the transport nor the address is here, and that is the point.**
+// Whether a stack mails anybody is a per-environment decision — alpha and beta
+// use the log transport, which prints each message and sends nothing — and a
+// verified identity per AWS account, so this file cannot name one true for every
+// stack built from it. Naming a placeholder address would be worse than naming
+// nothing: it provisions an identity nobody can verify, after which every send is
+// refused at the sender while reading like a delivery problem. The stack states
+// both:
+//
+//   platform:messagingEmailProvider    ses | log                 (default: ses)
+//   platform:messagingEmailSender      orders@your-shop.example  (required for ses)
+//   platform:messagingEmailSenderName  Your Shop                 (optional From:)
+//
+// `SendNotification` declares the Messaging capability, so a stack choosing `ses`
+// and naming no address is refused at deploy time naming the key, rather than
+// deploying green and dropping every confirmation.
+//
+// **Provisioning SES is not the same as being able to send.** Creating the
+// identity asks AWS to mail the address; until somebody follows that link SES
 // refuses everything, and the deploy will have succeeded regardless. The first
 // confirmations queue and are swept rather than being written off, which is the
-// behaviour that makes a pending verification survivable.
-let messagingSender = ReventlessAws.Capability_Messaging_Ses.make(
-  ~name="online-shop-sender",
-  ~email="orders@example.com",
-)
+// behaviour that makes a pending verification survivable. Reaching unverified
+// recipients additionally means leaving the SES sandbox, which is an
+// account-level request rather than anything this deploy can do.
+let messagingSender = ReventlessAws.Capability_Messaging.make(~name="online-shop-sender")
 
 // The stores the plugins' fields declare, generated from their committed
 // `capabilities.json` manifests — the capability's `plugin` and the plugin's

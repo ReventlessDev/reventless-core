@@ -2,17 +2,16 @@
 
 import * as Aws from "@pulumi/aws";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
+import * as Messaging$Reventless from "@reventlessdev/reventless-spec/src/semantic/Messaging.res.mjs";
 
-function make(name, email, opts) {
+function emailSender(name, address, displayName, opts) {
   let identity = new (Aws.ses.EmailIdentity)(name, {
-    email: email
+    email: address
   }, opts !== undefined ? Primitive_option.valFromOption(opts) : undefined);
-  return {
-    emailSender: identity.email
-  };
+  return identity.email.apply(verified => Messaging$Reventless.fromHeader(displayName, verified));
 }
 
 export {
-  make,
+  emailSender,
 }
 /* @pulumi/aws Not a pure module */

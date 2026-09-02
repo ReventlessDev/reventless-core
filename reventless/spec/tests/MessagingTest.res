@@ -95,3 +95,34 @@ describe("Messaging", () => {
     })
   })
 })
+
+describe("Messaging.fromHeader", () => {
+  // One formatter for every transport: SES applies it to a verified address, the
+  // logging transport to a hard-coded one, and neither may present the same
+  // deployment under a differently-escaped name.
+  testSync("no display name leaves the address bare", () =>
+    expect(Messaging.fromHeader(~displayName=None, ~address="mail@shop.test"))->toBe(
+      "mail@shop.test",
+    )
+  )
+
+  testSync("a display name is quoted in front of the address", () =>
+    expect(
+      Messaging.fromHeader(~displayName=Some("Online Shop"), ~address="mail@shop.test"),
+    )->toBe(`"Online Shop" <mail@shop.test>`)
+  )
+
+  // Quoted unconditionally, so the names needing it are not exceptions somebody
+  // has to remember: a comma alone splits the header into two addresses.
+  testSync("a name carrying a comma stays one address", () =>
+    expect(Messaging.fromHeader(~displayName=Some("Shop, Inc."), ~address="mail@shop.test"))->toBe(
+      `"Shop, Inc." <mail@shop.test>`,
+    )
+  )
+
+  testSync("quotes and backslashes in a name are escaped", () =>
+    expect(
+      Messaging.fromHeader(~displayName=Some(`The "Big" Shop\\Co`), ~address="mail@shop.test"),
+    )->toBe(`"The \\"Big\\" Shop\\\\Co" <mail@shop.test>`)
+  )
+})

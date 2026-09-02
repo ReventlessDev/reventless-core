@@ -1491,6 +1491,20 @@ module MakeWithConfig = (
         `backend: sqlite (${path}${resetOnStart ? ", resetOnStart" : ""})`
       },
     )
+    // The infrastructure half of `~hostUiBundle` that this platform does NOT
+    // ignore. A capability is the one kind of deployment declaration that has a
+    // local counterpart — the slice reaching it runs in this process, so there is
+    // something real to provide — and the seam is the AWS one: a handle from a
+    // `Capability_*` helper, registered before a slice can ask for it. `Input.t`
+    // is the identity function off Pulumi, so what comes back out is the string.
+    switch hostUiBundle->Option.flatMap(cfg => cfg.messagingSender) {
+    | Some({emailSender: ?Some(sender)}) =>
+      let address = sender->Pulumi.Output.fromInput->Pulumi.Output.unwrap
+      LocalCapabilities.registerMessagingSender(address)
+      log.info(~comp="Platform", `messaging: log transport as ${address} (nothing is sent)`)
+    | _ => ()
+    }
+
     // Runtime extension seam. Fired before anything is built, so an extension's
     // interception and publish hooks are registered before the first command or
     // query can reach them.

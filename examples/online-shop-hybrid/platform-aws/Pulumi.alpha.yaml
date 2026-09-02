@@ -4,3 +4,12 @@ config:
   # alpha is a disposable dev stack: opt it into `pnpm run seed:reset`. Prod-like
   # stacks (main) deliberately omit this, so the reset refuses them.
   reventless:wipeable: "true"
+  # A dev stack must not mail customers, so it only logs: every message is
+  # written to the Lambda's log in full and none is sent. No SES identity is
+  # provisioned, so nothing is left pending verification and no send is spent
+  # being refused. Switch to `ses` and name a verified address to actually deliver.
+  platform:messagingEmailProvider: log
+  # Only the `From:` the logged messages carry — nothing verifies it under this
+  # provider. `example.com` is IANA-reserved, so it is nobody's real inbox.
+  platform:messagingEmailSender: orders@example.com
+  platform:messagingEmailSenderName: Online Shop

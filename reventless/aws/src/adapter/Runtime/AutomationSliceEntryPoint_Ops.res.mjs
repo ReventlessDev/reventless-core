@@ -16,6 +16,7 @@ import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src
 import * as DynamoDb_Error$ReventlessAws from "../../errors/DynamoDb_Error.res.mjs";
 import * as Messaging_Ses_Backend$ReventlessAws from "../Messaging/Messaging_Ses_Backend.res.mjs";
 import * as Util_DynamoDb_Runtime$ReventlessAws from "../../util/Util_DynamoDb_Runtime.res.mjs";
+import * as Messaging_Log_Backend$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Messaging/Messaging_Log_Backend.res.mjs";
 import * as AutomationSlice_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/AutomationSlice/AutomationSlice_Callback.res.mjs";
 import * as StreamRoutedEntryPoint_Ops$ReventlessAws from "./StreamRoutedEntryPoint_Ops.res.mjs";
 import * as Geocoder_AwsLocation_Backend$ReventlessAws from "../Geocoder/Geocoder_AwsLocation_Backend.res.mjs";
@@ -185,10 +186,20 @@ function makeLoadTodoItems(queryDbTableName, todoItems, rowSchema, comp) {
   };
 }
 
+function messagingEmailProvider() {
+  let sender = Stdlib_Option.getOr(process.env["MESSAGING_EMAIL_SENDER"], "");
+  let match = Stdlib_Option.getOr(process.env["MESSAGING_EMAIL_PROVIDER"], "");
+  if (match === "log") {
+    return Messaging_Log_Backend$ReventlessCore.provider(sender);
+  } else {
+    return Messaging_Ses_Backend$ReventlessAws.provider(sender);
+  }
+}
+
 function capabilities() {
   return {
     geocode: text => Geocoder_AwsLocation_Backend$ReventlessAws.search(Stdlib_Option.getOr(process.env["PLACE_INDEX_NAME"], ""), text, undefined),
-    messaging: Messaging_Ses_Backend$ReventlessAws.provider(Stdlib_Option.getOr(process.env["MESSAGING_EMAIL_SENDER"], ""))
+    messaging: messagingEmailProvider()
   };
 }
 
@@ -290,6 +301,7 @@ export {
   makePublishJsons,
   makeSyncTodoItems,
   makeLoadTodoItems,
+  messagingEmailProvider,
   capabilities,
   makeAutomationJsonEventsHandler,
   makeOutboundJsonEventsHandler,

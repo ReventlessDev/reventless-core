@@ -23,6 +23,14 @@ function channelToString(channel) {
   }
 }
 
+function fromHeader(displayName, address) {
+  if (displayName === undefined) {
+    return address;
+  }
+  let escaped = displayName.replaceAll("\\", "\\\\").replaceAll("\"", "\\\"");
+  return `"` + escaped + `" <` + address + `>`;
+}
+
 function retriable(failure) {
   switch (failure.TAG) {
     case "Unavailable" :
@@ -50,6 +58,7 @@ function supports(provider, recipient) {
 export {
   channelOf,
   channelToString,
+  fromHeader,
   retriable,
   failureReason,
   supports,

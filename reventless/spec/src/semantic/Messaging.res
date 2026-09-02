@@ -46,6 +46,30 @@ let channelToString = (channel: channel): string =>
   }
 
 /**
+The `From:` header a deployment's email sender presents as: the bare address, or
+a display name in front of it.
+
+Provider-neutral for the reason everything else here is — the header is the
+RFC's, not a transport's, and two backends formatting it apart would present the
+same deployment under two names. It is applied where the sender is *provisioned*
+rather than at the send, so a transport receives one string and never has to know
+whether a name was configured.
+
+Quoted and escaped unconditionally rather than only when the name looks like it
+needs it. The unquoted form excludes characters an ordinary shop name carries — a
+comma above all, which would otherwise split the header into two addresses — and a
+rule applied only where it looks necessary is a rule that gets the exceptions
+wrong.
+*/
+let fromHeader = (~displayName: option<string>, ~address: string): string =>
+  switch displayName {
+  | None => address
+  | Some(name) =>
+    let escaped = name->String.replaceAll("\\", "\\\\")->String.replaceAll("\"", "\\\"")
+    `"${escaped}" <${address}>`
+  }
+
+/**
 What to say.
 
 `subject` is carried for the channels that have one — an email header, a push

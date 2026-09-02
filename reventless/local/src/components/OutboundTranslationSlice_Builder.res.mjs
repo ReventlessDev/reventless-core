@@ -33,7 +33,9 @@ function Make(Bus) {
     make: QueryDbStorage.make
   })({
     make: QueryDbResolvers.make
-  })(EventCollectorChannel)(EventCollectorRuntimeBuilder)(Api)(LocalCapabilities$ReventlessLocal);
+  })(EventCollectorChannel)(EventCollectorRuntimeBuilder)(Api)({
+    capabilities: LocalCapabilities$ReventlessLocal.capabilities
+  });
   let Make$1 = Spec => (Translation => {
     let Inner = CoreMaker.Make(Spec)(Translation);
     return {

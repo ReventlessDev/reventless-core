@@ -6,10 +6,13 @@ import * as Plugin$OrderingPlugin from "@reventlessdev/online-shop-hybrid-orderi
 import * as Platform$ReventlessLocal from "@reventlessdev/reventless-local/src/Platform.res.mjs";
 import * as PackageVersion$Reventless from "@reventlessdev/reventless-spec/src/PackageVersion.res.mjs";
 import * as Storefront$OnlineShopHybridSeed from "@reventlessdev/online-shop-hybrid-seed/src/Storefront.res.mjs";
+import * as Capability_Messaging_Log$ReventlessLocal from "@reventlessdev/reventless-local/src/capability/Capability_Messaging_Log.res.mjs";
 
 let Platform = Platform$ReventlessLocal.Make({});
 
 OwnerScope$Reventless.setElevatedGroups(Storefront$OnlineShopHybridSeed.elevatedGroups);
+
+let messagingSender = Capability_Messaging_Log$ReventlessLocal.make();
 
 let Catalog = Plugin$CatalogPlugin.Make(Platform);
 
@@ -25,6 +28,7 @@ Platform.makePlatform(PackageVersion$Reventless.fromCwd(), [
 ], {
   uiHintsFile: Storefront$OnlineShopHybridSeed.uiHintsFile,
   bakedManifest: Storefront$OnlineShopHybridSeed.manifest,
+  messagingSender: messagingSender,
   shellConfig: Object.fromEntries([
     [
       "appName",
@@ -45,6 +49,7 @@ Platform.startServers();
 
 export {
   Platform,
+  messagingSender,
   Catalog,
   Ordering,
 }

@@ -297,15 +297,30 @@ outcome, not a verdict on the address. `MESSAGING_EMAIL_SENDER` is read the same
 way, and empty yields a provider with no channels rather than one that claims a
 channel it cannot send on.
 */
+/** The email transport this deployment chose.
+
+    Read per call like the sender beside it, and defaulting to SES on anything it
+    does not recognise — including the empty string a platform that named nothing
+    exports. The deploy already refuses an unknown value (`Capability_Messaging`
+    parses it there, where a human is watching); defaulting again here is for the
+    case that cannot be refused, a Lambda whose variable was edited by hand. SES
+    is the safe direction: a message that should have been logged and was sent is
+    recoverable, a customer notification silently swallowed by a log line is not. */
+let messagingEmailProvider = (): Reventless.Messaging.provider => {
+  let sender = NodeProcess.env->Dict.get("MESSAGING_EMAIL_SENDER")->Option.getOr("")
+  switch NodeProcess.env->Dict.get("MESSAGING_EMAIL_PROVIDER")->Option.getOr("") {
+  | "log" => ReventlessCore.Messaging_Log_Backend.provider(~sender)
+  | _ => Messaging_Ses_Backend.provider(~sender)
+  }
+}
+
 let capabilities = (): Reventless.Capabilities.t => {
   geocode: (~text) =>
     Geocoder_AwsLocation_Backend.search(
       ~indexName=NodeProcess.env->Dict.get("PLACE_INDEX_NAME")->Option.getOr(""),
       ~text,
     ),
-  messaging: Messaging_Ses_Backend.provider(
-    ~sender=NodeProcess.env->Dict.get("MESSAGING_EMAIL_SENDER")->Option.getOr(""),
-  ),
+  messaging: messagingEmailProvider(),
 }
 
 // ── Phase-1/phase-2 pipelines ───────────────────────────────────────────────

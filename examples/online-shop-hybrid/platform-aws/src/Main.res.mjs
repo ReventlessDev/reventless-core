@@ -4,14 +4,14 @@ import * as PlatformCapabilities from "./PlatformCapabilities.res.mjs";
 import * as Platform$ReventlessAws from "@reventlessdev/reventless-aws/src/Platform.res.mjs";
 import * as PackageVersion$Reventless from "@reventlessdev/reventless-spec/src/PackageVersion.res.mjs";
 import * as Storefront$OnlineShopHybridSeed from "@reventlessdev/online-shop-hybrid-seed/src/Storefront.res.mjs";
-import * as Capability_Messaging_Ses$ReventlessAws from "@reventlessdev/reventless-aws/src/capability/Capability_Messaging_Ses.res.mjs";
+import * as Capability_Messaging$ReventlessAws from "@reventlessdev/reventless-aws/src/capability/Capability_Messaging.res.mjs";
 import * as Capability_Geocoding_AwsLocation$ReventlessAws from "@reventlessdev/reventless-aws/src/capability/Capability_Geocoding_AwsLocation.res.mjs";
 
 let Platform = Platform$ReventlessAws.Make({});
 
 let placeIndex = Capability_Geocoding_AwsLocation$ReventlessAws.make("online-shop-geocoder", undefined);
 
-let messagingSender = Capability_Messaging_Ses$ReventlessAws.make("online-shop-sender", "orders@example.com", undefined);
+let messagingSender = Capability_Messaging$ReventlessAws.make("online-shop-sender", undefined);
 
 let $$default = Platform.deployPlatform(PackageVersion$Reventless.fromCaller(), {
   uiHintsFile: Storefront$OnlineShopHybridSeed.uiHintsFile,

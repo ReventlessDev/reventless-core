@@ -52,6 +52,7 @@ import * as Platform_AdminApi$ReventlessCore from "@reventlessdev/reventless-cor
 import * as PluginsProjection$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginsProjection.res.mjs";
 import * as Scheduler_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Scheduler/Scheduler_Builder.res.mjs";
 import * as Aggregate_Builder$ReventlessLocal from "./components/Aggregate_Builder.res.mjs";
+import * as LocalCapabilities$ReventlessLocal from "./adapter/LocalCapabilities.res.mjs";
 import * as LocalClonerRunner$ReventlessLocal from "./adapter/Cloner/LocalClonerRunner.res.mjs";
 import * as PluginBaseFragment$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/api/PluginBaseFragment.res.mjs";
 import * as ProjectionPending$ReventlessLocal from "./adapter/ProjectionPending.res.mjs";
@@ -1230,6 +1231,14 @@ function MakeWithConfig(Config) {
           ) + `)` : `backend: postgres (` + match.connection + `, event-logs only)`
       );
     log.info("Platform", undefined, tmp);
+    let match$1 = Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.messagingSender);
+    if (match$1 !== undefined) {
+      let sender = match$1.emailSender;
+      if (sender !== undefined) {
+        LocalCapabilities$ReventlessLocal.registerMessagingSender(sender);
+        log.info("Platform", undefined, `messaging: log transport as ` + sender + ` (nothing is sent)`);
+      }
+    }
     RuntimeExtension$ReventlessCore.notifyColdStart("Platform", "LocalPlatform", ResourceAttribution$ReventlessCore.current.contents.plugin, ResourceAttribution$ReventlessCore.current.contents.platform);
     let projectionCatchup = Stdlib_Option.map(BackendState$ReventlessLocal.getSqliteDb(), db => [
       db,
@@ -2959,6 +2968,14 @@ function Make($star) {
           ) + `)` : `backend: postgres (` + backend.connection + `, event-logs only)`
       );
     log.info("Platform", undefined, tmp);
+    let match = Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.messagingSender);
+    if (match !== undefined) {
+      let sender = match.emailSender;
+      if (sender !== undefined) {
+        LocalCapabilities$ReventlessLocal.registerMessagingSender(sender);
+        log.info("Platform", undefined, `messaging: log transport as ` + sender + ` (nothing is sent)`);
+      }
+    }
     RuntimeExtension$ReventlessCore.notifyColdStart("Platform", "LocalPlatform", ResourceAttribution$ReventlessCore.current.contents.plugin, ResourceAttribution$ReventlessCore.current.contents.platform);
     let projectionCatchup = Stdlib_Option.map(BackendState$ReventlessLocal.getSqliteDb(), db => [
       db,

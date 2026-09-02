@@ -189,12 +189,33 @@ capability helper.
 `emailSender` is the verified address messages are sent *from* — a provider-side
 identity, not something an application picks per message, which is why it is a
 deploy-time handle rather than a field on `Messaging.message`. Absent when the
-deployment provisions no email channel.
+deployment provisions no email channel. It carries the whole `From:` header, so
+a deployment that configured a display name has it here rather than at the send.
 
 The channel set is derived from which senders are present rather than declared
 beside them, so a handle carrying no sender at all cannot claim a channel.
+
+`smsSender` is the origination number or sender id, on the same terms — with the
+difference that **no transport reads it yet**. It is carried so a stack can state
+the number where the other senders live, and so the field exists before the
+backend that needs it; the SMS channel appears when that backend does, not when
+this is set. A channel claimed ahead of its transport would collect preferences
+that silently deliver nothing, which is the failure the derived channel set above
+exists to prevent.
+
+`emailProvider` names the transport behind the email sender — the value a runtime
+reads to decide which backend to build. Per channel, like the senders themselves:
+an SMS transport is a separate choice, and one key for both would make choosing a
+mail sink also choose how texts go out. On the handle rather than resolved separately at
+each end, so the address and the thing that will send it are provisioned as one
+answer: a platform that read the choice from config itself could disagree with
+the helper that read the address.
 */
-type messagingSender = {emailSender?: Pulumi.Input.t<string>}
+type messagingSender = {
+  emailSender?: Pulumi.Input.t<string>,
+  smsSender?: Pulumi.Input.t<string>,
+  emailProvider?: Pulumi.Input.t<string>,
+}
 
 // Options for the shell's map view mode. Written to config.json flat, beside
 // `viewModes`, because that is where the shell reads them; carried on the arm

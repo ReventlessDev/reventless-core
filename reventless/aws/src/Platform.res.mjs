@@ -144,6 +144,10 @@ let messagingEmailSenderRef = {
   contents: Pulumi.output("")
 };
 
+let messagingEmailProviderRef = {
+  contents: Pulumi.output("")
+};
+
 function MakeWithConfig(Config) {
   Stdlib_Option.forEach(Config.commandHandlerConfig.aggregates, param => {
     Stdlib_Option.forEach(param.sync, AggregateRuntime_Builder_Single$ReventlessAws.setConfig);
@@ -1168,8 +1172,29 @@ function MakeWithConfig(Config) {
       }
       Pulumi$Pulumi.$$export("messagingEmailSender", messagingEmailSenderFlat);
       messagingEmailSenderRef.contents = messagingEmailSenderFlat;
-      if (capabilities.includes("Messaging") && Stdlib_Option.isNone(hostUiBundle.messagingSender)) {
-        Stdlib_JsError.throwWithMessage(`A plugin of this deployment declares the Messaging capability, but this platform provisions no sender.\n  Add \`let sender = ReventlessAws.Capability_Messaging_Ses.make(~name=…, ~email=…)\` and pass \`~messagingSender=sender\` in \`~hostUiBundle\`.\n  The declaration is generated from the plugins' capabilities.json — regenerate with \`pnpm run generate:platform\` if it is stale.`);
+      let match$6 = hostUiBundle.messagingSender;
+      let messagingEmailProviderFlat;
+      if (match$6 !== undefined) {
+        let name = match$6.emailProvider;
+        messagingEmailProviderFlat = name !== undefined ? name : Pulumi.output("");
+      } else {
+        messagingEmailProviderFlat = Pulumi.output("");
+      }
+      Pulumi$Pulumi.$$export("messagingEmailProvider", messagingEmailProviderFlat);
+      messagingEmailProviderRef.contents = messagingEmailProviderFlat;
+      let match$7 = hostUiBundle.messagingSender;
+      let tmp$2;
+      if (match$7 !== undefined) {
+        let sender$1 = match$7.smsSender;
+        tmp$2 = sender$1 !== undefined ? sender$1 : Pulumi.output("");
+      } else {
+        tmp$2 = Pulumi.output("");
+      }
+      Pulumi$Pulumi.$$export("messagingSmsSender", tmp$2);
+      let match$8 = hostUiBundle.messagingSender;
+      let emailSenderProvisioned = match$8 !== undefined ? match$8.emailSender !== undefined : false;
+      if (capabilities.includes("Messaging") && !emailSenderProvisioned) {
+        Stdlib_JsError.throwWithMessage(`A plugin of this deployment declares the Messaging capability, but this platform provisions no email sender.\n  The sender is configuration and has no default: set \`platform:messagingEmailSender\` in Pulumi.<stack>.yaml (or the env var REVENTLESS_MESSAGING_EMAIL_SENDER), then verify the address with SES.\n  A stack that should not mail anybody sets \`platform:messagingEmailProvider: log\` instead — every message is logged and none is sent, and the address is optional.\n  The root must also pass \`~messagingSender\` in \`~hostUiBundle\`, from \`ReventlessAws.Capability_Messaging.make(~name=…)\`.\n  The declaration is generated from the plugins' capabilities.json — regenerate with \`pnpm run generate:platform\` if it is stale.`);
       }
       let configJsonContent = Pulumi.all([
         Pulumi.all([
@@ -1240,9 +1265,9 @@ function MakeWithConfig(Config) {
           contentType: "application/json"
         });
       }
-      let match$6 = hostUiBundle.bakedManifest;
-      if (componentDefinitions !== undefined && match$6 !== undefined) {
-        let manifestKeys = Platform_BakedManifest$ReventlessCore.files(match$6).map(param => param[0]);
+      let match$9 = hostUiBundle.bakedManifest;
+      if (componentDefinitions !== undefined && match$9 !== undefined) {
+        let manifestKeys = Platform_BakedManifest$ReventlessCore.files(match$9).map(param => param[0]);
         let manifestKey = Stdlib_Option.getOr(manifestKeys[0], Platform_BakedManifest$ReventlessCore.defaultKey);
         Pulumi.all([
           componentDefinitions.roleId,
@@ -1326,6 +1351,8 @@ function MakeWithConfig(Config) {
     let messagingEmailSender = platformStackRef !== undefined ? Primitive_option.valFromOption(platformStackRef).getOutput("messagingEmailSender").apply(o => Stdlib_Option.getOr(o, "")) : messagingEmailSenderRef.contents;
     PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv("MESSAGING_EMAIL_SENDER", messagingEmailSender);
     PluginRuntime_Builder$ReventlessAws.registerMessagingSender(messagingEmailSender);
+    let messagingEmailProvider = platformStackRef !== undefined ? Primitive_option.valFromOption(platformStackRef).getOutput("messagingEmailProvider").apply(o => Stdlib_Option.getOr(o, "")) : messagingEmailProviderRef.contents;
+    PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv("MESSAGING_EMAIL_PROVIDER", messagingEmailProvider);
     let pluginComponent = plugin.make();
     Plugin_Helpers$ReventlessCore.clearOffload();
     currentDeployTarget.contents = "Domain";
@@ -1398,7 +1425,7 @@ function MakeWithConfig(Config) {
             if (match === "Geocoding") {
               return `\n  Geocoding is \`Capability_Geocoding_AwsLocation.make\`, passed to the platform as \`~geocoderPlaceIndex\`.`;
             } else {
-              return `\n  Messaging is \`Capability_Messaging_Ses.make\`, passed to the platform as \`~messagingSender\`.`;
+              return `\n  Messaging is \`Capability_Messaging.make\`, passed to the platform as \`~messagingSender\`. The sender itself is configuration and has no default: set \`platform:messagingEmailSender\` in Pulumi.<stack>.yaml (or REVENTLESS_MESSAGING_EMAIL_SENDER), then verify the address with SES — or \`platform:messagingEmailProvider: log\` to log every message and send none.`;
             }
           }))).join(""));
         }
@@ -2506,8 +2533,29 @@ function Make($star) {
       }
       Pulumi$Pulumi.$$export("messagingEmailSender", messagingEmailSenderFlat);
       messagingEmailSenderRef.contents = messagingEmailSenderFlat;
-      if (capabilities.includes("Messaging") && Stdlib_Option.isNone(hostUiBundle.messagingSender)) {
-        Stdlib_JsError.throwWithMessage(`A plugin of this deployment declares the Messaging capability, but this platform provisions no sender.\n  Add \`let sender = ReventlessAws.Capability_Messaging_Ses.make(~name=…, ~email=…)\` and pass \`~messagingSender=sender\` in \`~hostUiBundle\`.\n  The declaration is generated from the plugins' capabilities.json — regenerate with \`pnpm run generate:platform\` if it is stale.`);
+      let match$6 = hostUiBundle.messagingSender;
+      let messagingEmailProviderFlat;
+      if (match$6 !== undefined) {
+        let name = match$6.emailProvider;
+        messagingEmailProviderFlat = name !== undefined ? name : Pulumi.output("");
+      } else {
+        messagingEmailProviderFlat = Pulumi.output("");
+      }
+      Pulumi$Pulumi.$$export("messagingEmailProvider", messagingEmailProviderFlat);
+      messagingEmailProviderRef.contents = messagingEmailProviderFlat;
+      let match$7 = hostUiBundle.messagingSender;
+      let tmp$2;
+      if (match$7 !== undefined) {
+        let sender$1 = match$7.smsSender;
+        tmp$2 = sender$1 !== undefined ? sender$1 : Pulumi.output("");
+      } else {
+        tmp$2 = Pulumi.output("");
+      }
+      Pulumi$Pulumi.$$export("messagingSmsSender", tmp$2);
+      let match$8 = hostUiBundle.messagingSender;
+      let emailSenderProvisioned = match$8 !== undefined ? match$8.emailSender !== undefined : false;
+      if (capabilities.includes("Messaging") && !emailSenderProvisioned) {
+        Stdlib_JsError.throwWithMessage(`A plugin of this deployment declares the Messaging capability, but this platform provisions no email sender.\n  The sender is configuration and has no default: set \`platform:messagingEmailSender\` in Pulumi.<stack>.yaml (or the env var REVENTLESS_MESSAGING_EMAIL_SENDER), then verify the address with SES.\n  A stack that should not mail anybody sets \`platform:messagingEmailProvider: log\` instead — every message is logged and none is sent, and the address is optional.\n  The root must also pass \`~messagingSender\` in \`~hostUiBundle\`, from \`ReventlessAws.Capability_Messaging.make(~name=…)\`.\n  The declaration is generated from the plugins' capabilities.json — regenerate with \`pnpm run generate:platform\` if it is stale.`);
       }
       let configJsonContent = Pulumi.all([
         Pulumi.all([
@@ -2578,9 +2626,9 @@ function Make($star) {
           contentType: "application/json"
         });
       }
-      let match$6 = hostUiBundle.bakedManifest;
-      if (componentDefinitions !== undefined && match$6 !== undefined) {
-        let manifestKeys = Platform_BakedManifest$ReventlessCore.files(match$6).map(param => param[0]);
+      let match$9 = hostUiBundle.bakedManifest;
+      if (componentDefinitions !== undefined && match$9 !== undefined) {
+        let manifestKeys = Platform_BakedManifest$ReventlessCore.files(match$9).map(param => param[0]);
         let manifestKey = Stdlib_Option.getOr(manifestKeys[0], Platform_BakedManifest$ReventlessCore.defaultKey);
         Pulumi.all([
           componentDefinitions.roleId,
@@ -2662,6 +2710,8 @@ function Make($star) {
     let messagingEmailSender = platformStackRef !== undefined ? Primitive_option.valFromOption(platformStackRef).getOutput("messagingEmailSender").apply(o => Stdlib_Option.getOr(o, "")) : messagingEmailSenderRef.contents;
     PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv("MESSAGING_EMAIL_SENDER", messagingEmailSender);
     PluginRuntime_Builder$ReventlessAws.registerMessagingSender(messagingEmailSender);
+    let messagingEmailProvider = platformStackRef !== undefined ? Primitive_option.valFromOption(platformStackRef).getOutput("messagingEmailProvider").apply(o => Stdlib_Option.getOr(o, "")) : messagingEmailProviderRef.contents;
+    PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv("MESSAGING_EMAIL_PROVIDER", messagingEmailProvider);
     let pluginComponent = plugin.make();
     Plugin_Helpers$ReventlessCore.clearOffload();
     currentDeployTarget.contents = "Domain";
@@ -2734,7 +2784,7 @@ function Make($star) {
             if (match === "Geocoding") {
               return `\n  Geocoding is \`Capability_Geocoding_AwsLocation.make\`, passed to the platform as \`~geocoderPlaceIndex\`.`;
             } else {
-              return `\n  Messaging is \`Capability_Messaging_Ses.make\`, passed to the platform as \`~messagingSender\`.`;
+              return `\n  Messaging is \`Capability_Messaging.make\`, passed to the platform as \`~messagingSender\`. The sender itself is configuration and has no default: set \`platform:messagingEmailSender\` in Pulumi.<stack>.yaml (or REVENTLESS_MESSAGING_EMAIL_SENDER), then verify the address with SES — or \`platform:messagingEmailProvider: log\` to log every message and send none.`;
             }
           }))).join(""));
         }
@@ -2855,6 +2905,7 @@ export {
   getObjectStoreEndpoints,
   geocoderPlaceIndexRef,
   messagingEmailSenderRef,
+  messagingEmailProviderRef,
   MakeWithConfig,
   Make,
 }

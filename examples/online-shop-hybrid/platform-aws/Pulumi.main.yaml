@@ -1,2 +1,15 @@
 config:
   aws:region: eu-west-1
+  # No `platform:messagingEmailProvider`: main takes the default, SES, and so actually
+  # sends. It is the one stack that should — alpha and beta only log.
+  #
+  # Ordering.SendNotification declares the Messaging capability, so this stack is
+  # refused at deploy time without an address.
+  #
+  # ⚠️ PLACEHOLDER. `example.com` is IANA-reserved, so this identity can never be
+  # verified and this stack sends nothing — deliberately, so main deploys rather
+  # than half-deploying, and so nothing is mailed from an address nobody chose.
+  # Replace both keys with a verified identity before main is expected to notify
+  # anyone; until then `messagingEmailProvider: log` would be the more honest setting.
+  platform:messagingEmailSender: orders@example.com
+  platform:messagingEmailSenderName: Online Shop

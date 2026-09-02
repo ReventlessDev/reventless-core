@@ -4,6 +4,14 @@ module Platform = ReventlessLocal.Platform.Make()
 // owner-scoped resolvers read it. Set afterwards it would be set for nothing.
 Reventless.OwnerScope.setElevatedGroups(OnlineShopHybridSeed.Storefront.elevatedGroups)
 
+// Backs the notification competency's email channel, the way the AWS root backs
+// it with SES — same helper shape, same `~messagingSender` field, same injected
+// record reaching `SendNotification`'s `translate`. This one accepts every
+// message, prints it to the log and delivers nothing, so the shop's deliveries
+// read `Delivered` locally instead of the three-retries-then-failed a platform
+// with no mailer produces.
+let messagingSender = ReventlessLocal.Capability_Messaging_Log.make()
+
 module Catalog = CatalogPlugin.Plugin.Make(Platform)
 module Ordering = OrderingPlugin.Plugin.Make(Platform)
 
@@ -26,6 +34,7 @@ Platform.makePlatform(
     // storefront's nav would read right locally for a reason nothing here
     // states, and read wrong the moment it is deployed.
     uiHintsFile: OnlineShopHybridSeed.Storefront.uiHintsFile,
+    messagingSender,
     shellConfig: Dict.fromArray([
       ("appName", JSON.Encode.string("Online Shop")),
       // The shop opens on the shop. Per-deployment rather than a nav hint: an
