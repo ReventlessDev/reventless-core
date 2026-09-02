@@ -349,6 +349,126 @@ let isRuntimeProvided = (specifier: string, ~pkgName: string): bool =>
     }
   )
 
+// Memo for isFrameworkPackage — one require.resolve per package name per deploy.
+let frameworkPackageCache: dict<bool> = Dict.make()
+
+/**
+ * Whether the framework's own module resolution reaches this package: the
+ * deploy-time stand-in for "the Lambda layer already carries it", since the
+ * layer is built from reventless-aws's dependency closure.
+ *
+ * Deliberately framework-rooted only — no Pulumi-project fallback. The question
+ * here is the opposite of `resolvePackageRoot`'s: a package the *project*
+ * resolves but the framework does not is precisely a user package, which is
+ * what the closure walk below must treat as a starting point rather than as
+ * something the runtime provides.
+ */
+let isFrameworkPackage = (pkgName: string): bool =>
+  switch frameworkPackageCache->Dict.get(pkgName) {
+  | Some(known) => known
+  | None =>
+    let known = try {
+      let _ = localRequire->NodeModule.requireResolve(pkgName ++ "/package.json")
+      true
+    } catch {
+    | _ => false
+    }
+    frameworkPackageCache->Dict.set(pkgName, known)
+    known
+  }
+
+// The distinct bare packages a package's own bundled files import, memoised per
+// package root: the same file set the archive carries, so what is scanned is
+// what is deployed.
+let importedPackagesCache: dict<array<string>> = Dict.make()
+let importedPackages = (packageRoot: string): array<string> =>
+  switch importedPackagesCache->Dict.get(packageRoot) {
+  | Some(names) => names
+  | None =>
+    let assets: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
+    let paths: array<(string, string)> = []
+    walkDir(~dir=packageRoot, ~prefix="", ~assets, ~paths)
+    let names: array<string> = []
+    paths->Array.forEach(((relPath, absPath)) =>
+      if relPath->String.endsWith(".mjs") || relPath->String.endsWith(".js") {
+        NodeFs.readFileSync(absPath)
+        ->staticImportSpecifiers
+        ->Array.forEach(specifier =>
+          if isBareSpecifier(specifier) {
+            let name = extractPackageName(specifier)
+            if !(names->Array.includes(name)) {
+              names->Array.push(name)
+            }
+          }
+        )
+      }
+    )
+    importedPackagesCache->Dict.set(packageRoot, names)
+    names
+  }
+
+/**
+ * Resolve a package root as the importing package would — from that package's
+ * own directory. Under pnpm a plugin's dependency is reachable only from the
+ * plugin, never from the framework or the Pulumi project, so this is the one
+ * rooting that finds it. `None` when nothing is installed there: the archive
+ * cannot carry what is not on disk, and a package the code truly imported at
+ * runtime would already be failing today.
+ */
+let resolvePackageRootFrom = (~fromRoot: string, pkgName: string): option<string> =>
+  try {
+    Some(
+      NodePath.dirname(
+        NodeModule.createRequire(NodePath.join([fromRoot, "index.js"]))
+        ->NodeModule.requireResolve(pkgName ++ "/package.json"),
+      ),
+    )
+  } catch {
+  | _ => None
+  }
+
+/**
+ * Carry every package a bundled *user* package imports into the archive, and
+ * every package those import in turn.
+ *
+ * A plugin package rides in `/var/task/node_modules/<plugin>`, but its own
+ * dependencies do not: the layer holds reventless-aws's closure, which a domain
+ * trait or any other plugin-level library is by definition outside of. The
+ * import then fails at the first command the slice handles — a green deploy and
+ * a `Cannot find package` at runtime.
+ *
+ * Framework packages are the starting points that are skipped, not walked:
+ * their closure is the layer's, and their sources reach deploy-time-only
+ * imports (the @pulumi bindings) that no Lambda loads — walking them would add
+ * tens of megabytes to every archive.
+ */
+let addImportedPackageClosure = (packageDirs: dict<string>): unit => {
+  let pending =
+    packageDirs->Dict.toArray->Array.filter(((pkgName, _)) => !isFrameworkPackage(pkgName))
+  let next = ref(0)
+  while next.contents < pending->Array.length {
+    let (_, pkgRoot) = pending->Array.getUnsafe(next.contents)
+    next := next.contents + 1
+    importedPackages(pkgRoot)->Array.forEach(dep =>
+      if (
+        !(packageDirs->Dict.has(dep)) &&
+        !(dep->String.startsWith("node:")) &&
+        !(nodeBuiltins->Set.has(dep)) &&
+        !(dep->String.startsWith("@aws-sdk/")) &&
+        !(dep->String.startsWith("@smithy/")) &&
+        !isFrameworkPackage(dep)
+      ) {
+        switch resolvePackageRootFrom(~fromRoot=pkgRoot, dep) {
+        | Some(depRoot) =>
+          packageDirs->Dict.set(dep, depRoot)
+          pending->Array.push((dep, depRoot))
+        | None => ()
+        }
+      }
+    )
+  }
+}
+
 /**
  * Deploy-time guard: every bare package statically imported by a bundled
  * runtime-extension (or companion) package must either be in the archive
@@ -451,7 +571,12 @@ let buildCodeArchive = (
   // deploy whose extensions are silently skipped.
   if bundleRuntimeExtensions {
     let extensionPackages = allPackageDirs->addRuntimeExtensionPackages
+    // The closure runs first so a companion package that is simply a static
+    // import of the extension is already bundled by the time the guard looks.
+    allPackageDirs->addImportedPackageClosure
     assertRuntimeExtensionImportsResolvable(~extensionPackages, ~bundledPackages=allPackageDirs)
+  } else {
+    allPackageDirs->addImportedPackageClosure
   }
   let packageContentHashes: ref<array<string>> = ref([])
   allPackageDirs->Dict.forEachWithKey((pkgRoot, pkgName) => {

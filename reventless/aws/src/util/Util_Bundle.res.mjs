@@ -232,6 +232,87 @@ function isRuntimeProvided(specifier, pkgName) {
   }
 }
 
+let frameworkPackageCache = {};
+
+function isFrameworkPackage(pkgName) {
+  let known = frameworkPackageCache[pkgName];
+  if (known !== undefined) {
+    return known;
+  }
+  let known$1;
+  try {
+    localRequire.resolve(pkgName + "/package.json");
+    known$1 = true;
+  } catch (exn) {
+    known$1 = false;
+  }
+  frameworkPackageCache[pkgName] = known$1;
+  return known$1;
+}
+
+let importedPackagesCache = {};
+
+function importedPackages(packageRoot) {
+  let names = importedPackagesCache[packageRoot];
+  if (names !== undefined) {
+    return names;
+  }
+  let assets = {};
+  let paths = [];
+  walkDir(packageRoot, "", assets, paths);
+  let names$1 = [];
+  paths.forEach(param => {
+    let relPath = param[0];
+    if (relPath.endsWith(".mjs") || relPath.endsWith(".js")) {
+      staticImportSpecifiers(Nodefs.readFileSync(param[1], "utf8")).forEach(specifier => {
+        if (!isBareSpecifier(specifier)) {
+          return;
+        }
+        let name = extractPackageName(specifier);
+        if (!names$1.includes(name)) {
+          names$1.push(name);
+          return;
+        }
+      });
+      return;
+    }
+  });
+  importedPackagesCache[packageRoot] = names$1;
+  return names$1;
+}
+
+function resolvePackageRootFrom(fromRoot, pkgName) {
+  try {
+    return Nodepath.dirname(Nodemodule.createRequire(Nodepath.join(fromRoot, "index.js")).resolve(pkgName + "/package.json"));
+  } catch (exn) {
+    return;
+  }
+}
+
+function addImportedPackageClosure(packageDirs) {
+  let pending = Object.entries(packageDirs).filter(param => !isFrameworkPackage(param[0]));
+  let next = 0;
+  while (next < pending.length) {
+    let match = pending[next];
+    let pkgRoot = match[1];
+    next = next + 1 | 0;
+    importedPackages(pkgRoot).forEach(dep => {
+      if (dep in packageDirs || dep.startsWith("node:") || nodeBuiltins.has(dep) || dep.startsWith("@aws-sdk/") || dep.startsWith("@smithy/") || isFrameworkPackage(dep)) {
+        return;
+      }
+      let depRoot = resolvePackageRootFrom(pkgRoot, dep);
+      if (depRoot !== undefined) {
+        packageDirs[dep] = depRoot;
+        pending.push([
+          dep,
+          depRoot
+        ]);
+        return;
+      }
+    });
+  };
+}
+
 function assertRuntimeExtensionImportsResolvable(extensionPackages, bundledPackages) {
   Stdlib_Dict.forEachWithKey(extensionPackages, (pkgRoot, pkgName) => {
     let assets = {};
@@ -275,7 +356,10 @@ function buildCodeArchive(entryPointModule, packageDirs, extraStringAssetsOpt, b
   }
   if (bundleRuntimeExtensions) {
     let extensionPackages = addRuntimeExtensionPackages(allPackageDirs);
+    addImportedPackageClosure(allPackageDirs);
     assertRuntimeExtensionImportsResolvable(extensionPackages, allPackageDirs);
+  } else {
+    addImportedPackageClosure(allPackageDirs);
   }
   let packageContentHashes = {
     contents: []
@@ -326,6 +410,12 @@ export {
   isBareSpecifier,
   nodeBuiltins,
   isRuntimeProvided,
+  frameworkPackageCache,
+  isFrameworkPackage,
+  importedPackagesCache,
+  importedPackages,
+  resolvePackageRootFrom,
+  addImportedPackageClosure,
   assertRuntimeExtensionImportsResolvable,
   buildCodeArchive,
 }
