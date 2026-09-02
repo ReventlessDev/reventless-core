@@ -333,6 +333,10 @@ it a link, and until somebody follows it SES refuses every send), and an account
 the SES sandbox can send only *to* verified recipients regardless. Under `log` the
 address is only a header — nothing verifies it, and it defaults if unset.
 
+These keys configure one of the deployment's three capabilities; for the roster,
+how a plugin declares a need, and the deploy-time refusals that follow, see
+[Platform Capabilities](/app/platform-capabilities).
+
 `messagingSmsSender` is carried but **no transport reads it yet**. It exists so a
 stack can state the number where the other senders live; the SMS channel appears
 when a backend does, not when this is set. Claiming a channel ahead of its

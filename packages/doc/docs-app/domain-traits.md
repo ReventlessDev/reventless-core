@@ -370,7 +370,9 @@ kept in parallel, so each rule has one source of truth.
    capability on the platform, which its emitted slice declares as `capabilityNeeds`
    so a deploy that provisions nothing is refused rather than silently degraded; the
    attachment trait needs the object store the field name derives, which the plugin's
-   capability manifest declares for you.
+   capability manifest declares for you. See
+   [Platform Capabilities](./platform-capabilities.md) for the full roster and the
+   two ways a need is declared.
 
 ### What the suite does and does not check
 

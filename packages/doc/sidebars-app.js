@@ -90,6 +90,7 @@ const sidebars = {
         'mixed-source-readmodel',
         'mixed-source-automationslice',
         'concepts/directives',
+        'platform-capabilities',
         'platform-and-plugin-guide',
         {
           type: 'category',
