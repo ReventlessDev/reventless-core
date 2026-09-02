@@ -21,6 +21,7 @@ let stateSchema = Sury.$schema(s => ({
   category: s.m(NotificationPreferences$OrderingPlugin.categorySchema),
   outcome: s.m(outcomeSchema),
   channel: s.m(Sury.string),
+  address: s.m(Sury.string),
   detail: s.m(Sury.string),
   decidedAt: s.m(DateTime$Reventless.string),
   settledAt: s.m(DateTime$Reventless.string)
@@ -32,7 +33,8 @@ let consumedEventSchema = Sury.union([
     recipientId: s.m(Sury.string),
     category: s.m(NotificationPreferences$OrderingPlugin.categorySchema),
     reference: s.m(Sury.string),
-    channel: s.m(NotificationPreferences$OrderingPlugin.channelSchema)
+    channel: s.m(NotificationPreferences$OrderingPlugin.channelSchema),
+    address: s.m(Sury.string)
   })),
   Sury.$schema(s => ({
     TAG: "NotificationSuppressed",

@@ -33,6 +33,19 @@ type state = {
   // Empty until a channel was actually chosen — a suppressed notification never
   // picked one, and naming one anyway would claim a decision that was not made.
   channel: string,
+  // Where it was actually sent: the inbox, the number, the device token. Whatever
+  // the chosen channel addresses, which is why this is one field and not three —
+  // the channel beside it says how to read it.
+  //
+  // Recorded rather than looked up, and that is the point of keeping it here. The
+  // directory holds the address of *record*, which changes; this is the address a
+  // message went to at the time. A support conversation about a confirmation
+  // nobody received is about the second, and joining to the first would answer a
+  // different question convincingly.
+  //
+  // Empty on the same terms as `channel` — a notification that was suppressed, or
+  // that had no address to reach, never had one.
+  address: string,
   // The provider's own id once it accepted, or the reason it did not. One field
   // because exactly one of them is ever true, and the outcome says which.
   detail: string,
@@ -47,6 +60,7 @@ type consumedEvent =
       category: NotificationPreferences.category,
       reference: string,
       channel: NotificationPreferences.channel,
+      address: string,
     })
   | NotificationSuppressed({
       recipientId: string,
