@@ -542,6 +542,12 @@ let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) 
         }
 
         let handlerOutputs: array<Pulumi.Output.t<string>> = []
+        // The static half of each slice's config — module paths and context, all
+        // known synchronously. Rides in the code archive rather than the
+        // environment: two module specifiers per slice is the term that grows
+        // with the plugin, and it is what pushed this Lambda past AWS's 4KB env
+        // limit. Keyed by slice name, which is what the compact env entry names.
+        let sliceModuleEntries: array<string> = []
         let packageDirs: dict<string> = Dict.make()
         let allQueryDbResources: array<ReventlessInfra.Adapter.resource> = []
         // Whether any slice publishes to the DCB fallback rather than a target
@@ -549,7 +555,7 @@ let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) 
         // too, once, below the loop.
         let anyDcbFallback = ref(false)
 
-        bundledInfos->Dict.forEachWithKey((info, _name) => {
+        bundledInfos->Dict.forEachWithKey((info, name) => {
           info.queryDbResources->Array.forEach(r => allQueryDbResources->Array.push(r)->ignore)
           // The queue this slice publishes its command to. An Aggregate registers
           // its CommandTopic while plugin construction is still synchronous —
@@ -582,6 +588,12 @@ let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) 
           | None => ""
           }
 
+          let nameJson = name->JSON.stringifyAny->Option.getOr(`""`)
+          let _ =
+            sliceModuleEntries->Array.push(
+              `${nameJson}:{"specModule":${specModule},"bodyModule":${bodyModule},"callbackType":${callbackType}${contextFragment}}`,
+            )
+
           // Per slice, not plugin-wide: an outbound slice targeting an Aggregate
           // publishes to that aggregate's CommandTopic. Everything else keeps the
           // DCB topic, which is what the field has always meant — and with it the
@@ -590,17 +602,23 @@ let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) 
           | Some({queueUrl, isFifo}) => (queueUrl, isFifo)
           | None => (dcbQueueUrl, dcbQueueIsFifo.contents)
           }
+          // What each slice may override is decided structurally, not from the
+          // resolved values: a slice listening only on the plugin's DCB log, and
+          // publishing to the DCB fallback, repeats the shared urn and queue URL
+          // exactly — so it emits neither and inherits both.
+          let hasOwnUrns =
+            !(info.consumesDcbLog) || info.sourceTopics->Dict.keysToArray->Array.length > 0
           let handlerJson =
             Pulumi.Output.all3((info.queryDbTableName, commandQueueUrl, sourceUrnsFor(info)))
             ->Pulumi.Output.apply(((tableName, queueUrl, urns)) => {
-              let urnsJson =
-                urns->Array.map(JSON.Encode.string)->JSON.Encode.array->JSON.stringify
-              // `sourceUrn` stays beside `sourceUrns` so a handler config read by
-              // an entry point that predates multi-source still routes its first
-              // stream rather than none.
-              let firstUrn = urns->Array.get(0)->Option.getOr("")
-              let fifoJson = commandQueueIsFifo ? "true" : "false"
-              `{"specModule":${specModule},"bodyModule":${bodyModule},"callbackType":${callbackType},"queryDbTableName":"${tableName}","dcbQueueUrl":"${queueUrl}","commandQueueIsFifo":${fifoJson},"sourceUrn":"${firstUrn}","sourceUrns":${urnsJson}${contextFragment}}`
+              let urnsFragment = hasOwnUrns
+                ? `,"u":${urns->Array.map(JSON.Encode.string)->JSON.Encode.array->JSON.stringify}`
+                : ""
+              let queueFragment = switch target {
+              | Some(_) => `,"k":"${queueUrl}","f":${commandQueueIsFifo ? "true" : "false"}`
+              | None => ""
+              }
+              `{"n":${nameJson},"q":"${tableName}"${urnsFragment}${queueFragment}}`
             })
           let _ = handlerOutputs->Array.push(handlerJson)
         })
@@ -613,9 +631,24 @@ let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) 
           dcbQueueResources->Array.forEach(r => allQueryDbResources->Array.push(r)->ignore)
         }
 
+        // The defaults every non-overriding slice inherits, carried once.
+        let sharedOutput =
+          Pulumi.Output.all2((dcbQueueUrl, dcbSourceUrn))->Pulumi.Output.apply(((
+            queueUrl,
+            urn,
+          )) => {
+            let fifoJson = dcbQueueIsFifo.contents ? "true" : "false"
+            let urnJson = urn->JSON.stringifyAny->Option.getOr(`""`)
+            `"queueUrl":"${queueUrl}","commandQueueIsFifo":${fifoJson},"urns":[${urnJson}]`
+          })
+
         let handlerConfigOutput =
-          Pulumi.Output.all(handlerOutputs)
-          ->Pulumi.Output.apply(handlers => `{"handlers":[${handlers->Array.join(",")}]}`)
+          Pulumi.Output.all2((sharedOutput, Pulumi.Output.all(handlerOutputs)))
+          ->Pulumi.Output.apply(((shared, handlers)) => {
+            let json = `{${shared},"handlers":[${handlers->Array.join(",")}]}`
+            Util_LambdaEnvBudget.check(~lambdaName="AllAutomationSlices", ~handlerConfigJson=json)
+            json
+          })
 
         let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
         envVars->Dict.set("HANDLER_CONFIG", handlerConfigOutput->Pulumi.Output.asInput)
@@ -630,9 +663,18 @@ let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) 
           envVars->Dict.set(name, value->Pulumi.Output.asInput)
         )
 
+        // Carries no Pulumi Output, so the archive is still built synchronously —
+        // the table names and urns that do are what stays in HANDLER_CONFIG.
+        let extraStringAssets = Dict.make()
+        extraStringAssets->Dict.set(
+          "automationSliceModules.json",
+          `{${sliceModuleEntries->Array.join(",")}}`,
+        )
+
         let {code, sourceCodeHash} = Util_Bundle.buildCodeArchive(
           ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Runtime/AutomationSliceEntryPoint.mjs",
           ~packageDirs,
+          ~extraStringAssets,
         )
 
         let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(

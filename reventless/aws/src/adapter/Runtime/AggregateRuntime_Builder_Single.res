@@ -278,9 +278,11 @@ let finish = () =>
 
         let handlerConfigOutput =
           Pulumi.Output.all(handlerOutputs)
-          ->Pulumi.Output.apply(handlers =>
-            `{"handlers":[${handlers->Array.join(",")}]}`
-          )
+          ->Pulumi.Output.apply(handlers => {
+            let json = `{"handlers":[${handlers->Array.join(",")}]}`
+            Util_LambdaEnvBudget.check(~lambdaName="AllAggregatesCmdHandler", ~handlerConfigJson=json)
+            json
+          })
 
         let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
         envVars->Dict.set("HANDLER_CONFIG", handlerConfigOutput->Pulumi.Output.asInput)

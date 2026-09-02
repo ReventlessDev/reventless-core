@@ -49,12 +49,47 @@ function decodeEntry(json) {
   }));
 }
 
-function parseHandlerConfig(rawJson) {
+function decodeCompactEntry(modules, sharedQueueUrl, sharedIsFifo, sharedUrns, h, name) {
+  let m = Stdlib_Option.getOr(Stdlib_Option.flatMap(modules[name], Stdlib_JSON.Decode.object), {});
+  let urns = Stdlib_Option.getOr(Stdlib_Option.map(Stdlib_Option.flatMap(h["u"], Stdlib_JSON.Decode.array), a => Stdlib_Array.filterMap(a, Stdlib_JSON.Decode.string)), sharedUrns);
+  let f = Stdlib_Option.flatMap(h["f"], Stdlib_JSON.Decode.bool);
+  return {
+    specModule: Stdlib_Option.getOr(strOf(m, "specModule"), ""),
+    bodyModule: Stdlib_Option.getOr(strOf(m, "bodyModule"), ""),
+    callbackType: Stdlib_Option.getOr(strOf(m, "callbackType"), "automation"),
+    queryDbTableName: Stdlib_Option.getOr(strOf(h, "q"), ""),
+    dcbQueueUrl: Stdlib_Option.getOr(strOf(h, "k"), sharedQueueUrl),
+    commandQueueIsFifo: f !== undefined ? f : sharedIsFifo,
+    sourceUrn: Stdlib_Option.getOr(urns[0], ""),
+    context: Stdlib_Option.flatMap(m["context"], decodeContext)
+  };
+}
+
+function parseHandlerConfigWithModules(modulesJson, rawJson) {
   if (rawJson === "") {
     return [];
-  } else {
-    return Stdlib_Array.filterMap(Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(JSON.parse(rawJson)), obj => obj["handlers"]), Stdlib_JSON.Decode.array), []), decodeEntry);
   }
+  let obj = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(JSON.parse(rawJson)), {});
+  let modules = modulesJson === "" ? ({}) : Stdlib_Option.getOr(Stdlib_JSON.Decode.object(JSON.parse(modulesJson)), {});
+  let sharedQueueUrl = Stdlib_Option.getOr(strOf(obj, "queueUrl"), "");
+  let sharedIsFifo = Stdlib_Option.flatMap(obj["commandQueueIsFifo"], Stdlib_JSON.Decode.bool);
+  let sharedUrns = Stdlib_Option.getOr(Stdlib_Option.map(Stdlib_Option.flatMap(obj["urns"], Stdlib_JSON.Decode.array), a => Stdlib_Array.filterMap(a, Stdlib_JSON.Decode.string)), []);
+  return Stdlib_Array.filterMap(Stdlib_Option.getOr(Stdlib_Option.flatMap(obj["handlers"], Stdlib_JSON.Decode.array), []), item => {
+    let h = Stdlib_JSON.Decode.object(item);
+    if (h === undefined) {
+      return;
+    }
+    let name = strOf(h, "n");
+    if (name !== undefined) {
+      return decodeCompactEntry(modules, sharedQueueUrl, sharedIsFifo, sharedUrns, h, name);
+    } else {
+      return decodeEntry(item);
+    }
+  });
+}
+
+function parseHandlerConfig(rawJson) {
+  return parseHandlerConfigWithModules("", rawJson);
 }
 
 function warnMissingBodyModule(entry) {
@@ -247,6 +282,8 @@ export {
   strOf,
   decodeContext,
   decodeEntry,
+  decodeCompactEntry,
+  parseHandlerConfigWithModules,
   parseHandlerConfig,
   warnMissingBodyModule,
   defaultContext,

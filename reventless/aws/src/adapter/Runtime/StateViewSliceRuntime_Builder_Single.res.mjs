@@ -18,6 +18,7 @@ import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/
 import * as QueryDbBackend$ReventlessAws from "../QueryDb/QueryDbBackend.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
 import * as PgProjectionFeed$ReventlessAws from "../Postgres/PgProjectionFeed.res.mjs";
+import * as Util_LambdaEnvBudget$ReventlessAws from "../../util/Util_LambdaEnvBudget.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../EventCollector/EventCollectorChannel_DynamoDbStream.res.mjs";
 
@@ -144,7 +145,9 @@ function buildLambda(parent, handlerOutputs, packageDirs, channelSpecs, feedQueu
     }).join(",");
     let baseJson = Stdlib_Option.getOr(JSON.stringify(base), `""`);
     let urnJson = Stdlib_Option.getOr(JSON.stringify(sharedUrn), `""`);
-    return `{"v":2,"base":` + baseJson + `,"sourceUrn":` + urnJson + `,"handlers":[` + entries + `]` + param[1] + `}`;
+    let json = `{"v":2,"base":` + baseJson + `,"sourceUrn":` + urnJson + `,"handlers":[` + entries + `]` + param[1] + `}`;
+    Util_LambdaEnvBudget$ReventlessAws.check("AllStateViewSlices", json, undefined);
+    return json;
   });
   let envVars = {};
   envVars["HANDLER_CONFIG"] = handlerConfigOutput;

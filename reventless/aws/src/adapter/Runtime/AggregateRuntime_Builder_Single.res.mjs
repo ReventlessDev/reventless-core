@@ -14,6 +14,7 @@ import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as PgConnection$ReventlessAws from "../Postgres/PgConnection.res.mjs";
 import * as EventLogBackend$ReventlessAws from "../EventLog/EventLogBackend.res.mjs";
 import * as Util_LogAttribution$ReventlessAws from "../../util/Util_LogAttribution.res.mjs";
+import * as Util_LambdaEnvBudget$ReventlessAws from "../../util/Util_LambdaEnvBudget.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 import * as CommandTopicChannel_SQS_Sync$ReventlessAws from "../CommandTopic/CommandTopicChannel_SQS_Sync.res.mjs";
 import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../EventCollector/EventCollectorChannel_DynamoDbStream.res.mjs";
@@ -184,7 +185,11 @@ function finish() {
         ]).apply(param => `{"specModule":` + specModule + `,"behaviorModule":` + behaviorModule + `,"eventLogTable":"` + param[0] + `","queueUrl":"` + param[1] + `","queueArn":"` + param[2] + `"` + pluginFragment + param[3] + `}`);
         handlerOutputs.push(handlerJson);
       });
-      let handlerConfigOutput = Pulumi.all(handlerOutputs).apply(handlers => `{"handlers":[` + handlers.join(",") + `]}`);
+      let handlerConfigOutput = Pulumi.all(handlerOutputs).apply(handlers => {
+        let json = `{"handlers":[` + handlers.join(",") + `]}`;
+        Util_LambdaEnvBudget$ReventlessAws.check("AllAggregatesCmdHandler", json, undefined);
+        return json;
+      });
       let envVars = {};
       envVars["HANDLER_CONFIG"] = handlerConfigOutput;
       let tableName = pluginRmTableName.contents;

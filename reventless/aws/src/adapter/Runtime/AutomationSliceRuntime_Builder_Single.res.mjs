@@ -18,6 +18,7 @@ import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/
 import * as Cloudwatch_EventRule$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Cloudwatch/Cloudwatch_EventRule.res.mjs";
 import * as Cloudwatch_EventTarget$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Cloudwatch/Cloudwatch_EventTarget.res.mjs";
 import * as CommandTopicRegistry$ReventlessAws from "../CommandTopic/CommandTopicRegistry.res.mjs";
+import * as Util_LambdaEnvBudget$ReventlessAws from "../../util/Util_LambdaEnvBudget.res.mjs";
 import * as PluginRuntime_Builder$ReventlessAws from "../../plugin/runtime/PluginRuntime_Builder.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../EventCollector/EventCollectorChannel_DynamoDbStream.res.mjs";
@@ -279,12 +280,13 @@ function finishWithDcbEventLog(dcbEventLog) {
       let url = dcbQueueUrlRef.contents;
       let dcbQueueUrl = url !== undefined ? url : Pulumi.output("NOT_AVAILABLE");
       let handlerOutputs = [];
+      let sliceModuleEntries = [];
       let packageDirs = {};
       let allQueryDbResources = [];
       let anyDcbFallback = {
         contents: false
       };
-      Stdlib_Dict.forEachWithKey(bundledInfos, (info, _name) => {
+      Stdlib_Dict.forEachWithKey(bundledInfos, (info, name) => {
         info.queryDbResources.forEach(r => {
           allQueryDbResources.push(r);
         });
@@ -303,6 +305,8 @@ function finishWithDcbEventLog(dcbEventLog) {
         let callbackType = Stdlib_Option.getOr(JSON.stringify(info.callbackType), `""`);
         let context = info.context;
         let contextFragment = context !== undefined ? Stdlib_Option.getOr(Stdlib_Option.map(JSON.stringify(context), json => `,"context":` + json), "") : "";
+        let nameJson = Stdlib_Option.getOr(JSON.stringify(name), `""`);
+        sliceModuleEntries.push(nameJson + `:{"specModule":` + specModule + `,"bodyModule":` + bodyModule + `,"callbackType":` + callbackType + contextFragment + `}`);
         let match = target !== undefined ? [
             target.queueUrl,
             target.isFifo
@@ -311,16 +315,17 @@ function finishWithDcbEventLog(dcbEventLog) {
             dcbQueueIsFifo.contents
           ];
         let commandQueueIsFifo = match[1];
+        let hasOwnUrns = !info.consumesDcbLog || Object.keys(info.sourceTopics).length !== 0;
         let handlerJson = Pulumi.all([
           info.queryDbTableName,
           match[0],
           sourceUrnsFor(info)
         ]).apply(param => {
-          let urns = param[2];
-          let urnsJson = JSON.stringify(urns.map(prim => prim));
-          let firstUrn = Stdlib_Option.getOr(urns[0], "");
-          let fifoJson = commandQueueIsFifo ? "true" : "false";
-          return `{"specModule":` + specModule + `,"bodyModule":` + bodyModule + `,"callbackType":` + callbackType + `,"queryDbTableName":"` + param[0] + `","dcbQueueUrl":"` + param[1] + `","commandQueueIsFifo":` + fifoJson + `,"sourceUrn":"` + firstUrn + `","sourceUrns":` + urnsJson + contextFragment + `}`;
+          let urnsFragment = hasOwnUrns ? `,"u":` + JSON.stringify(param[2].map(prim => prim)) : "";
+          let queueFragment = target !== undefined ? `,"k":"` + param[1] + `","f":` + (
+              commandQueueIsFifo ? "true" : "false"
+            ) : "";
+          return `{"n":` + nameJson + `,"q":"` + param[0] + `"` + urnsFragment + queueFragment + `}`;
         });
         handlerOutputs.push(handlerJson);
       });
@@ -329,13 +334,30 @@ function finishWithDcbEventLog(dcbEventLog) {
           allQueryDbResources.push(r);
         });
       }
-      let handlerConfigOutput = Pulumi.all(handlerOutputs).apply(handlers => `{"handlers":[` + handlers.join(",") + `]}`);
+      let sharedOutput = Pulumi.all([
+        dcbQueueUrl,
+        dcbSourceUrn
+      ]).apply(param => {
+        let fifoJson = dcbQueueIsFifo.contents ? "true" : "false";
+        let urnJson = Stdlib_Option.getOr(JSON.stringify(param[1]), `""`);
+        return `"queueUrl":"` + param[0] + `","commandQueueIsFifo":` + fifoJson + `,"urns":[` + urnJson + `]`;
+      });
+      let handlerConfigOutput = Pulumi.all([
+        sharedOutput,
+        Pulumi.all(handlerOutputs)
+      ]).apply(param => {
+        let json = `{` + param[0] + `,"handlers":[` + param[1].join(",") + `]}`;
+        Util_LambdaEnvBudget$ReventlessAws.check("AllAutomationSlices", json, undefined);
+        return json;
+      });
       let envVars = {};
       envVars["HANDLER_CONFIG"] = handlerConfigOutput;
       PluginRuntime_Builder$ReventlessAws.capabilityEnv().forEach(param => {
         envVars[param[0]] = param[1];
       });
-      let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/AutomationSliceEntryPoint.mjs", packageDirs, undefined, undefined);
+      let extraStringAssets = {};
+      extraStringAssets["automationSliceModules.json"] = `{` + sliceModuleEntries.join(",") + `}`;
+      let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/AutomationSliceEntryPoint.mjs", packageDirs, extraStringAssets, undefined);
       let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset("AllAutomationSlices", "Reactor", "AutomationSlice", match.code, match.sourceCodeHash, envVars, 1024, 30, undefined, undefined, undefined, undefined, undefined, opts);
       EventCollectorChannel_DynamoDbStream$ReventlessAws.connect("AllAutomationSlices", [{
           channel: channel,

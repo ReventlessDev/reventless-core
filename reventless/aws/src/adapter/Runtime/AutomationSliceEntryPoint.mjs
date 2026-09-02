@@ -18,8 +18,20 @@ import { Make as outboundTranslationSliceCallbackMake } from "@reventlessdev/rev
 import * as StreamOps from "./StreamRoutedEntryPoint_Ops.res.mjs";
 import * as Ops from "./AutomationSliceEntryPoint_Ops.res.mjs";
 import { runtimeExtensionsReady } from "./HandlerFactoryHelpers.mjs";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 const dynamicImport = (specifier) => import('/var/task/node_modules/' + specifier);
+
+// Absent whenever the config is full-key (tests, and any pre-split deployment),
+// which is why a missing file is not an error.
+const readSliceModules = () => {
+  try {
+    return readFileSync(join(process.cwd(), "automationSliceModules.json"), "utf-8");
+  } catch {
+    return "";
+  }
+};
 
 async function buildAllHandlers() {
   // Runtime extension seam: any registered out-of-tree extension gets its
@@ -29,7 +41,15 @@ async function buildAllHandlers() {
   await runtimeExtensionsReady;
   const handlers = {};
   const sweeps = [];
-  const entries = Ops.parseHandlerConfig(process.env["HANDLER_CONFIG"] || "");
+  // The slice registry rides in the archive, not the environment — two module
+  // specifiers per slice outgrow Lambda's 4KB env-var ceiling (see the asset in
+  // AutomationSliceRuntime_Builder_Single). A full-key config still wins, so a
+  // caller that supplies one — every test that drives a config directly — needs
+  // no asset on disk. process.cwd() is /var/task, where the archive unpacks.
+  const entries = Ops.parseHandlerConfigWithModules(
+    readSliceModules(),
+    process.env["HANDLER_CONFIG"] || "",
+  );
 
   await Promise.all(entries.map(async (entry) => {
     if (!entry.bodyModule) {

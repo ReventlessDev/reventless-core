@@ -62,16 +62,83 @@ let decodeEntry = (json: JSON.t): option<handlerEntry> =>
     context: h->Dict.get("context")->Option.flatMap(decodeContext),
   })
 
-let parseHandlerConfig = (rawJson: string): array<handlerEntry> =>
+// A compact entry names its slice and carries only what the deploy resolved;
+// the module paths and context live in the archive registry, keyed by the same
+// name (AutomationSliceRuntime_Builder_Single). Shared `queueUrl` /
+// `commandQueueIsFifo` / `urns` are hoisted out of the per-entry keys, since a
+// slice publishing to the DCB fallback and reading its plugin's log repeats
+// both verbatim — which is what outgrew the 4KB env limit.
+let decodeCompactEntry = (
+  ~modules: dict<JSON.t>,
+  ~sharedQueueUrl: string,
+  ~sharedIsFifo: option<bool>,
+  ~sharedUrns: array<string>,
+  h: dict<JSON.t>,
+  name: string,
+): handlerEntry => {
+  let m = modules->Dict.get(name)->Option.flatMap(JSON.Decode.object)->Option.getOr(Dict.make())
+  let urns =
+    h
+    ->Dict.get("u")
+    ->Option.flatMap(JSON.Decode.array)
+    ->Option.map(a => a->Array.filterMap(JSON.Decode.string))
+    ->Option.getOr(sharedUrns)
+  {
+    specModule: m->strOf("specModule")->Option.getOr(""),
+    bodyModule: m->strOf("bodyModule")->Option.getOr(""),
+    callbackType: m->strOf("callbackType")->Option.getOr("automation"),
+    queryDbTableName: h->strOf("q")->Option.getOr(""),
+    dcbQueueUrl: h->strOf("k")->Option.getOr(sharedQueueUrl),
+    commandQueueIsFifo: switch h->Dict.get("f")->Option.flatMap(JSON.Decode.bool) {
+    | Some(f) => Some(f)
+    | None => sharedIsFifo
+    },
+    // Only the first, which is all the shell registers today. The remaining
+    // urns stay in the config for the multi-source registration to use.
+    sourceUrn: urns->Array.get(0)->Option.getOr(""),
+    context: m->Dict.get("context")->Option.flatMap(decodeContext),
+  }
+}
+
+/** `modulesJson` is the archive-side slice registry (`""` when there is none);
+    an entry carrying its own `specModule` is a full-key config and needs it. */
+let parseHandlerConfigWithModules = (modulesJson: string, rawJson: string): array<handlerEntry> =>
   rawJson == ""
     ? []
-    : rawJson
-      ->JSON.parseOrThrow
-      ->JSON.Decode.object
-      ->Option.flatMap(obj => obj->Dict.get("handlers"))
-      ->Option.flatMap(JSON.Decode.array)
-      ->Option.getOr([])
-      ->Array.filterMap(decodeEntry)
+    : {
+        let obj = rawJson->JSON.parseOrThrow->JSON.Decode.object->Option.getOr(Dict.make())
+        let modules =
+          modulesJson == ""
+            ? Dict.make()
+            : modulesJson->JSON.parseOrThrow->JSON.Decode.object->Option.getOr(Dict.make())
+        let sharedQueueUrl = obj->strOf("queueUrl")->Option.getOr("")
+        let sharedIsFifo = obj->Dict.get("commandQueueIsFifo")->Option.flatMap(JSON.Decode.bool)
+        let sharedUrns =
+          obj
+          ->Dict.get("urns")
+          ->Option.flatMap(JSON.Decode.array)
+          ->Option.map(a => a->Array.filterMap(JSON.Decode.string))
+          ->Option.getOr([])
+        obj
+        ->Dict.get("handlers")
+        ->Option.flatMap(JSON.Decode.array)
+        ->Option.getOr([])
+        ->Array.filterMap(item =>
+          switch item->JSON.Decode.object {
+          | None => None
+          | Some(h) =>
+            switch h->strOf("n") {
+            | Some(name) =>
+              Some(decodeCompactEntry(~modules, ~sharedQueueUrl, ~sharedIsFifo, ~sharedUrns, h, name))
+            | None => decodeEntry(item)
+            }
+          }
+        )
+      }
+
+/** The full-key form, for a config that carries its own module paths. */
+let parseHandlerConfig = (rawJson: string): array<handlerEntry> =>
+  parseHandlerConfigWithModules("", rawJson)
 
 // A pre-`bodyModule` config entry cannot rebuild the callback (the spec module
 // alone lacks the mappings/process). Warn and skip rather than crash the whole

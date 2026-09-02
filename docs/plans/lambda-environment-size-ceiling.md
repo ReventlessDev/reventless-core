@@ -1,9 +1,16 @@
 # Plan: stop the Lambda environment growing with the plugin
 
-**Status.** Not started. The two commits that prompted this —
-`3cda4cb78` (DCB slice registry → `sliceModules.json`) and the EventCollector
-map move — are relocations that bought headroom, not fixes. This plan is about
-not needing a third one.
+**Status.** Not started, and now overtaken by a fourth occurrence. The two
+commits that prompted this — `3cda4cb78` (DCB slice registry →
+`sliceModules.json`) and the EventCollector map move — are relocations that
+bought headroom, not fixes. This plan is about not needing a third one; it got a
+fourth (`AllAutomationSlices`, 2026-09-01) before any of its steps were taken,
+which is the strongest argument yet for step 4.
+
+What has landed since: `Util_LambdaEnvBudget.check` is now called by every
+builder that renders a shared Lambda, so the next overage fails the build with a
+message naming the term rather than being discovered by AWS mid-deploy. That is
+a detection improvement only — the invariant below is still unenforced.
 
 ## The problem
 
@@ -21,7 +28,7 @@ By the time it fires, the surrounding resources have already moved, so the stack
 is left half-updated and the next run opens with `recovered raw state does not
 byte-for-byte match the original raw state`.
 
-This has now happened three times, each time to a different Lambda, each time
+This has now happened four times, each time to a different Lambda, each time
 because a term that scales with the size of the plugin was being carried in the
 environment:
 
@@ -30,10 +37,18 @@ environment:
 | earlier | `<Plugin>PluginEventColl` | `pluginDefinition` inline in `HANDLER_CONFIG` | → `pluginDefinition.json` asset |
 | 2026-08-16 | `CatalogDcbCmdHandler` | one `{spec, behavior}` pair per StateChangeSlice (4451 B) | → `sliceModules.json` asset |
 | 2026-08-16 | `CatalogPluginEventColl` | `publishToAggregates` map + the `PTA_*` vars it names (4477 B) | map → `queueUrls.json`; **vars still in the environment** |
+| 2026-09-01 | `AllAutomationSlices` (ordering) | two module specifiers per slice, plus a queue URL and source URN repeated verbatim in every entry (4307 B) | statics → `automationSliceModules.json`; shared terms hoisted, per StateViewSlice's compact form |
 
-All three were triggered by ordinary domain work — the third by adding
-Archive/Unarchive slices to the example shop. Nothing about those commits was
-unusual; the plugin simply got bigger, which is what plugins do.
+All four were triggered by ordinary domain work — the third by adding
+Archive/Unarchive slices to the example shop, the fourth by adding the
+notification slices to ordering, taking it from two automation slices to five.
+Nothing about those commits was unusual; the plugin simply got bigger, which is
+what plugins do.
+
+The fourth is the clearest illustration of why relocation is not a fix: at ~795
+bytes per slice, the ceiling was five slices, and nothing in the failure told
+anyone that until AWS did. Post-fix it is ~101 bytes per slice — better by a
+factor of eight, and still O(slices).
 
 ## Why it keeps recurring
 
@@ -41,7 +56,11 @@ Three things compound, and only the first has been addressed:
 
 1. **Nothing enforced the ceiling.** It was discovered by AWS, mid-deploy.
    `Util_LambdaEnvBudget` now checks it at deploy time, but see step 4 — as
-   shipped it warns in the case that matters most.
+   shipped it warns in the case that matters most. It was also only *called* by
+   two builders until 2026-09-01; `AllAutomationSlices` was one of the five that
+   never invoked it, which is why the fourth occurrence was found the same way as
+   the first three despite the guard existing. Every shared-Lambda builder calls
+   it now.
 
 2. **The environment is being used as a transport for deploy-time data.** None
    of what overflowed is secret or runtime-variable. It is a registry computed
@@ -132,11 +151,22 @@ This removes ~1800 bytes from the catalog EventCollector and, more to the point,
 removes the last term in that Lambda that scales with the plugin.
 
 **3 — Audit the remaining Lambdas.**
-The three incidents were found by deploying. Enumerate every `makeFromCodeAsset`
+The four incidents were found by deploying. Enumerate every `makeFromCodeAsset`
 call site, and for each one list which environment terms scale with plugin size.
 `CatalogProductsExtPointCmdHandler` and the aggregate command handlers have not
 been measured and are the obvious next candidates. Expected output: a short table
 in this file, and an issue per Lambda that violates the invariant.
+
+Partly served already: every builder rendering a shared Lambda now calls
+`Util_LambdaEnvBudget.check`, so the next violation reports itself with a byte
+count and the name of the Lambda. That substitutes measurement-on-demand for the
+table, but not the table — a term that scales is still only visible once a plugin
+grows enough to expose it.
+
+Known still-O(slices) after the 2026-09-01 fix: `AllAutomationSlices` carries a
+todo-table name and a slice name per slice (~101 B). Fine for ~29 more slices,
+and exactly the kind of remaining term step 4 is meant to make impossible rather
+than merely survivable.
 
 **4 — Make the invariant enforceable.**
 `Util_LambdaEnvBudget` currently throws only when the *exact* portion exceeds

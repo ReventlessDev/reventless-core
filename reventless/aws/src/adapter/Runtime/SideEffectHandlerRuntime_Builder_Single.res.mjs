@@ -11,6 +11,7 @@ import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/co
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as Util_LogAttribution$ReventlessAws from "../../util/Util_LogAttribution.res.mjs";
+import * as Util_LambdaEnvBudget$ReventlessAws from "../../util/Util_LambdaEnvBudget.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../EventCollector/EventCollectorChannel_DynamoDbStream.res.mjs";
 
@@ -109,7 +110,11 @@ function finish() {
         });
         handlerOutputs.push(handlerJson);
       });
-      let handlerConfigOutput = Pulumi.all(handlerOutputs).apply(handlers => `{"handlers":[` + handlers.join(",") + `]}`);
+      let handlerConfigOutput = Pulumi.all(handlerOutputs).apply(handlers => {
+        let json = `{"handlers":[` + handlers.join(",") + `]}`;
+        Util_LambdaEnvBudget$ReventlessAws.check("AllSideEffectHandlers", json, undefined);
+        return json;
+      });
       let envVars = {};
       envVars["HANDLER_CONFIG"] = handlerConfigOutput;
       Stdlib_Dict.forEachWithKey(extraEnvVarsAll, (v, k) => {

@@ -83,6 +83,128 @@ describe("AutomationSliceEntryPoint_Ops.parseHandlerConfig", () => {
   })
 })
 
+// The compact form the builder emits: module paths and context ride in the
+// archive registry, and the DCB queue + source urn are hoisted out of every
+// entry that does not override them. Together these are what keep the Lambda's
+// environment under AWS's 4KB ceiling as a plugin gains slices.
+describe("AutomationSliceEntryPoint_Ops.parseHandlerConfigWithModules", () => {
+  let modules =
+    obj([
+      (
+        "Restock",
+        obj([
+          ("specModule", str("@x/plugin/src/Order/AutomationSlice/Restock.res.mjs")),
+          ("bodyModule", str("@x/plugin/src/Order/AutomationSlice/Restock_Automation.res.mjs")),
+          ("callbackType", str("automation")),
+          (
+            "context",
+            obj([
+              ("environment", str("alpha")),
+              ("platformName", str("OnlineShop")),
+              ("pluginName", str("Ordering")),
+              ("sliceName", str("Restock")),
+            ]),
+          ),
+        ]),
+      ),
+      (
+        "Ship",
+        obj([
+          ("specModule", str("@x/plugin/src/Order/OutboundTranslationSlice/Ship.res.mjs")),
+          ("bodyModule", str("@x/plugin/src/Order/OutboundTranslationSlice/Ship_Translation.res.mjs")),
+          ("callbackType", str("outbound")),
+        ]),
+      ),
+    ])->JSON.stringify
+
+  let compactConfig = handlers =>
+    obj([
+      ("queueUrl", str("https://sqs/dcb")),
+      ("commandQueueIsFifo", JSON.Encode.bool(false)),
+      ("urns", JSON.Encode.array([str("arn:dcb:log")])),
+      ("handlers", JSON.Encode.array(handlers)),
+    ])->JSON.stringify
+
+  testSync("a compact entry takes its modules from the registry and the shared defaults", () => {
+    let config = compactConfig([obj([("n", str("Restock")), ("q", str("RestockTodo-abc"))])])
+    let e =
+      AutomationSliceEntryPoint_Ops.parseHandlerConfigWithModules(
+        modules,
+        config,
+      )->Array.getUnsafe(0)
+    expect(e.specModule)->toBe("@x/plugin/src/Order/AutomationSlice/Restock.res.mjs")
+    expect(e.bodyModule)->toBe("@x/plugin/src/Order/AutomationSlice/Restock_Automation.res.mjs")
+    expect(e.callbackType)->toBe("automation")
+    expect(e.queryDbTableName)->toBe("RestockTodo-abc")
+    expect(e.dcbQueueUrl)->toBe("https://sqs/dcb")
+    expect(e.commandQueueIsFifo)->toEqual(Some(false))
+    expect(e.sourceUrn)->toBe("arn:dcb:log")
+    switch e.context {
+    | Some(ctx) => expect(ctx.sliceName)->toBe("Restock")
+    | None => JsError.throwWithMessage("expected Some(context)")
+    }
+  })
+
+  testSync("per-entry queue and urn override the shared defaults", () => {
+    let config = compactConfig([
+      obj([
+        ("n", str("Ship")),
+        ("q", str("ShipTodo-abc")),
+        ("u", JSON.Encode.array([str("arn:aggregate:orders"), str("arn:dcb:log")])),
+        ("k", str("https://sqs/orders.fifo")),
+        ("f", JSON.Encode.bool(true)),
+      ]),
+    ])
+    let e =
+      AutomationSliceEntryPoint_Ops.parseHandlerConfigWithModules(
+        modules,
+        config,
+      )->Array.getUnsafe(0)
+    expect(e.callbackType)->toBe("outbound")
+    expect(e.dcbQueueUrl)->toBe("https://sqs/orders.fifo")
+    expect(e.commandQueueIsFifo)->toEqual(Some(true))
+    // The first of its own urns, not the shared one.
+    expect(e.sourceUrn)->toBe("arn:aggregate:orders")
+    expect(e.context->Option.isNone)->toBe(true)
+  })
+
+  testSync("a compact entry with no registry match yields no bodyModule to skip on", () => {
+    let config = compactConfig([obj([("n", str("Gone")), ("q", str("GoneTodo-abc"))])])
+    let e =
+      AutomationSliceEntryPoint_Ops.parseHandlerConfigWithModules(
+        modules,
+        config,
+      )->Array.getUnsafe(0)
+    expect(e.specModule)->toBe("")
+    expect(e.bodyModule)->toBe("")
+  })
+
+  testSync("full-key entries still decode when a registry is present", () => {
+    let config = obj([
+      (
+        "handlers",
+        JSON.Encode.array([
+          obj([
+            ("specModule", str("a.res.mjs")),
+            ("bodyModule", str("b.res.mjs")),
+            ("callbackType", str("outbound")),
+            ("queryDbTableName", str("t")),
+            ("dcbQueueUrl", str("u")),
+            ("sourceUrn", str("arn")),
+          ]),
+        ]),
+      ),
+    ])->JSON.stringify
+    let e =
+      AutomationSliceEntryPoint_Ops.parseHandlerConfigWithModules(
+        modules,
+        config,
+      )->Array.getUnsafe(0)
+    expect(e.specModule)->toBe("a.res.mjs")
+    expect(e.dcbQueueUrl)->toBe("u")
+  })
+})
+
 // Shared stubs — the pipelines only touch phase1/phase2 plus the injected
 // sync/publish, so the callback records carry empty TODO dicts.
 let noopPublish: ReventlessCore.CommandTopic.publishJsons = async _ => ()

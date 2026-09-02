@@ -222,7 +222,9 @@ let buildLambda = (
         ->Array.join(",")
       let baseJson = base->JSON.stringifyAny->Option.getOr(`""`)
       let urnJson = sharedUrn->JSON.stringifyAny->Option.getOr(`""`)
-      `{"v":2,"base":${baseJson},"sourceUrn":${urnJson},"handlers":[${entries}]${pgFragment}}`
+      let json = `{"v":2,"base":${baseJson},"sourceUrn":${urnJson},"handlers":[${entries}]${pgFragment}}`
+      Util_LambdaEnvBudget.check(~lambdaName="AllStateViewSlices", ~handlerConfigJson=json)
+      json
     })
 
   let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
