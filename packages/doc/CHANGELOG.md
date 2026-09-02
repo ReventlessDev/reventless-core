@@ -719,6 +719,8 @@ This file tracks changes to the documentation. Since the doc package is not vers
 ## Changes
 
 ### 2026-09-02
+- feat(aws)!: the messaging sender is configuration, and a stack can choose to only log ([23b8b4b](https://github.com/ReventlessDev/reventless-core/commit/23b8b4bfe9c70555de4d74266ca686cb427485ca))
+### 2026-09-02
 - refactor(spec): a command's lifecycle edge is declared one way ([dbf4a97](https://github.com/ReventlessDev/reventless-core/commit/dbf4a97194c9445cbf92fedbf0ea629a7e266ebf))
 ### 2026-09-01
 - feat(spec): a command declares its lifecycle edge as a value ([40eee9f](https://github.com/ReventlessDev/reventless-core/commit/40eee9f7723dc05e418be680528f01967d074da4))
