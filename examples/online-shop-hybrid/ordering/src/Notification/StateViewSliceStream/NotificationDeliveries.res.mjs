@@ -23,6 +23,7 @@ let stateSchema = Sury.$schema(s => ({
   channel: s.m(Sury.string),
   subjectType: s.m(Sury.string),
   subjectRef: s.m(Sury.string),
+  origin: s.m(Sury.string),
   detail: s.m(Sury.string),
   decidedAt: s.m(DateTime$Reventless.string),
   settledAt: s.m(DateTime$Reventless.string)
@@ -36,7 +37,8 @@ let consumedEventSchema = Sury.union([
     reference: s.m(Sury.string),
     channel: s.m(NotificationPreferences$OrderingPlugin.channelSchema),
     subjectType: s.m(Sury.string),
-    subjectRef: s.m(Sury.string)
+    subjectRef: s.m(Sury.string),
+    origin: s.m(NotificationPreferences$OrderingPlugin.originSchema)
   })),
   Sury.$schema(s => ({
     TAG: "NotificationSuppressed",
@@ -44,7 +46,8 @@ let consumedEventSchema = Sury.union([
     category: s.m(NotificationPreferences$OrderingPlugin.categorySchema),
     reference: s.m(Sury.string),
     subjectType: s.m(Sury.string),
-    subjectRef: s.m(Sury.string)
+    subjectRef: s.m(Sury.string),
+    origin: s.m(NotificationPreferences$OrderingPlugin.originSchema)
   })),
   Sury.$schema(s => ({
     TAG: "NotificationUndeliverable",
@@ -52,7 +55,8 @@ let consumedEventSchema = Sury.union([
     category: s.m(NotificationPreferences$OrderingPlugin.categorySchema),
     reference: s.m(Sury.string),
     subjectType: s.m(Sury.string),
-    subjectRef: s.m(Sury.string)
+    subjectRef: s.m(Sury.string),
+    origin: s.m(NotificationPreferences$OrderingPlugin.originSchema)
   })),
   Sury.$schema(s => ({
     TAG: "NotificationDelivered",

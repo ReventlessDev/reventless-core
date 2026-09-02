@@ -35,6 +35,21 @@ let channels = [Email, Sms, Push]
     vocabulary — this module never enumerates them. */
 type category = string
 
+/** Which stream of occurrences a request came from, as `"<log>:<eventType>"`.
+    Opaque here: the competency never parses it, it only compares it against what
+    has been claimed. */
+type source = string
+
+/** Why a request exists. The compiled table that ships with a host, or a rule
+    somebody configured on top of it.
+
+    No payload on `Configured`: the trait needs exactly one thing from this — which
+    of the two yields when a source has been taken over — and *which* rule it was
+    is the host's fact to record on its own event. */
+type origin =
+  | Default
+  | Configured
+
 /** Refolded per decision, never stored — the host's slice state is. */
 type t = {
   /** One address per channel. An array rather than a single address because the
@@ -44,9 +59,16 @@ type t = {
   contacts: array<(channel, string)>,
   /** Only the cells a recipient has an opinion about; the rest is `~posture`. */
   choices: array<(category, channel, bool)>,
+  /** Sources a second producer has taken over, and who took each one. Empty for
+      every host with one producer, which is what makes the deferral below inert
+      until something actually claims a source. */
+  claims: array<(source, string)>,
 }
 
-let empty = {contacts: [], choices: []}
+let empty = {contacts: [], choices: [], claims: []}
+
+let claimedBy = (t, source) =>
+  t.claims->Array.find(((s, _)) => s == source)->Option.map(((_, by)) => by)
 
 /** What a host asks the competency to do. */
 type op =
@@ -58,8 +80,15 @@ type op =
   | Unsubscribe({category: category, channel: channel})
   | /** Something worth telling them about happened. `reference` is the caller's
         own key for it, echoed back on whichever outcome follows, so the relay
-        that asked can tell its work is finished. Opaque here on purpose. */
-  Request({category: category, reference: string})
+        that asked can tell its work is finished. Opaque here on purpose.
+
+        `source` says which stream it came from and `origin` says who is asking;
+        together they are the whole of the handover — see `decide`. */
+  Request({category: category, reference: string, source: source, origin: origin})
+  | /** A second producer takes over one source. Relayed like `Announce`: a
+        client that could claim a source would be silencing somebody else's mail. */
+  Claim({source: source, by: string})
+  | Release({source: source})
 
 /** What the competency decided, for the host to name in its own events. */
 type fact =
@@ -77,6 +106,19 @@ type fact =
         reporting both the same way hides every delivery gap behind a legitimate
         preference. */
   Undeliverable({category: category, reference: string})
+  | /** Not acted on because another producer owns this source. A third way of
+        not sending, and its own fact for the same reason `Suppressed` and
+        `Undeliverable` are two rather than one: "they declined", "nobody was
+        reachable" and "somebody else has this" are three different things, and a
+        shared fact would hide two of them behind whichever name it took.
+
+        It is also load-bearing rather than tidy. The relay upstream resolves its
+        TODO row on an outcome; without a fourth one a deferred request retries
+        its whole budget and lands in `onExhausted`, which is a slow silent
+        failure with nothing in the log to explain it. */
+  Deferred({reference: string, source: source})
+  | Claimed({source: source, by: string})
+  | Released({source: source})
 
 let addressFor = (t, channel) =>
   t.contacts->Array.find(((c, _)) => c == channel)->Option.map(((_, address)) => address)
@@ -108,13 +150,22 @@ let evolve = (t, fact) =>
     }
   | Subscribed({category, channel}) => withChoice(t, category, channel, true)
   | Unsubscribed({category, channel}) => withChoice(t, category, channel, false)
+  // Claims are per source and not per recipient, so they arrive from outside this
+  // recipient's own history — the host reads them across partitions, which is why
+  // the request carries the source it came from.
+  | Claimed({source, by}) => {
+      ...t,
+      claims: Array.concat(t.claims->Array.filter(((s, _)) => s != source), [(source, by)]),
+    }
+  | Released({source}) => {...t, claims: t.claims->Array.filter(((s, _)) => s != source)}
   // Neither the outcome of a request nor a delivery report changes who somebody
   // is or what they want, so the fold ignores them. What a host must NOT do is
   // read them back as consumed events to make this state bigger — the directory
   // is snapshotted, and a set of every reference ever seen would grow forever.
   | Requested(_)
   | Suppressed(_)
-  | Undeliverable(_) => t
+  | Undeliverable(_)
+  | Deferred(_) => t
   }
 
 /** The whole competency, in one function.
@@ -149,6 +200,26 @@ let decide = (t, op, ~posture: (category, channel) => bool): result<
       : enabled(t, ~posture, category, channel)
       ? Ok([Unsubscribed({category, channel})])
       : Ok([])
+
+  | Claim({source: src, by}) =>
+    claimedBy(t, src) == Some(by) ? Ok([]) : Ok([Claimed({source: src, by})])
+
+  | Release({source: src}) =>
+    switch claimedBy(t, src) {
+    | None => Ok([])
+    | Some(_) => Ok([Released({source: src})])
+    }
+
+  // The handover, and the whole of it. A `Configured` request is the second
+  // producer's own and always goes through; a `Default` one is the compiled
+  // table still firing for a source somebody else has taken over, and it yields.
+  //
+  // Precedence has to be per source rather than per deployment, which is why this
+  // is folded state and not a swapped-in implementation: a second producer that
+  // takes over some of the table and leaves the rest compiled cannot be expressed
+  // by choosing one of two implementations at build time.
+  | Request({source, origin: Default, reference}) if claimedBy(t, source) != None =>
+    Ok([Deferred({reference, source})])
 
   | Request({category, reference}) =>
     let wanted = channels->Array.filter(channel => enabled(t, ~posture, category, channel))

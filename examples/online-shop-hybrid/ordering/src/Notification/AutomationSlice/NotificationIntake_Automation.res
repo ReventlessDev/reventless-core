@@ -18,12 +18,17 @@ module OrderingDcbSource = {
   type event =
     | OrderPlaced({orderId: string, customerId: string})
     | OrderShipped({orderId: string, customerId: string})
-    // Every way a request can end. All three resolve the row, because all three
+    // Every way a request can end. All four resolve the row, because all four
     // mean the decision was made — a suppressed notification is a finished piece
-    // of work, not a failed one.
+    // of work, not a failed one, and a deferred one is somebody else's work.
+    //
+    // Missing the fourth is not a missing nicety: an unresolved row retries its
+    // whole budget and lands in `onExhausted`, so a handover would look like a
+    // slow failure with nothing in the log to explain it.
     | NotificationRequested({reference: string})
     | NotificationSuppressed({reference: string})
     | NotificationUndeliverable({reference: string})
+    | NotificationDeferred({reference: string})
 }
 
 module FromOrderingDcb = Mapping.Make(
@@ -48,14 +53,16 @@ module FromOrderingDcb = Mapping.Make(
         ]
       | NotificationRequested(_)
       | NotificationSuppressed(_)
-      | NotificationUndeliverable(_) => []
+      | NotificationUndeliverable(_)
+      | NotificationDeferred(_) => []
       }
 
     let resolve = event =>
       switch event {
       | NotificationRequested({reference})
       | NotificationSuppressed({reference})
-      | NotificationUndeliverable({reference}) =>
+      | NotificationUndeliverable({reference})
+      | NotificationDeferred({reference}) =>
         Some(reference)
       | OrderPlaced(_)
       | OrderShipped(_) => None
@@ -91,6 +98,15 @@ let compose = (item: NotificationIntake.todoItem) =>
 // row can name what it concerned without anybody decoding that string.
 let subjectType = "Order"
 
+// Which stream each request came from, as `"<log>:<eventType>"`. This is what a
+// second producer claims to take an entry over, so the two must derive it the
+// same way or the claim protects nothing — the format is the whole agreement.
+let sourceOf = (occurrence: NotificationIntake.occurrence) =>
+  switch occurrence {
+  | Placed => `${OrderingDcbSource.name}:OrderPlaced`
+  | Shipped => `${OrderingDcbSource.name}:OrderShipped`
+  }
+
 let process = (id, item: NotificationIntake.todoItem) => {
   let (category, subject, body) = compose(item)
   Some((
@@ -103,6 +119,10 @@ let process = (id, item: NotificationIntake.todoItem) => {
       subjectRef: item.orderId,
       subject,
       body,
+      sourceId: sourceOf(item.occurrence),
+      // This relay IS the compiled table, so every request it makes is the
+      // default one — the arm that yields when somebody else claims the source.
+      origin: Default,
     }),
   ))
 }

@@ -113,6 +113,65 @@ module Make = (B: Notification.Binding) => {
         ->G.thenEvent(B.undeliverable(B.transactional, "ref-4"))
       )
 
+      // ── The handover ────────────────────────────────────────────────────────
+      //
+      // A second producer takes over one source and the compiled table yields on
+      // that source alone. The first of these is the one that matters most: it is
+      // the assertion that a host with nobody claiming anything behaves exactly as
+      // it did before any of this existed.
+
+      G.test("with nothing claimed, a default request is decided as usual", () =>
+        G.givenEvents(announced)
+        ->G.whenCmd(
+          B.requestFrom(B.transactional, "ref-6", ~source=B.defaultSource, ~origin=Default),
+        )
+        ->G.thenEvent(B.requested(B.transactional, "ref-6", B.announcedChannel, B.addressA))
+      )
+
+      G.test("a default request for a claimed source is deferred", () =>
+        G.givenEvents(Array.concat(announced, [B.claimedC("other:Source", "second-producer")]))
+        ->G.whenCmd(
+          B.requestFrom(B.transactional, "ref-7", ~source="other:Source", ~origin=Default),
+        )
+        ->G.thenEvent(B.deferred("ref-7", "other:Source"))
+      )
+
+      // The claim is per source, not per recipient or per deployment: the table
+      // keeps firing everywhere it was not taken over. Without this, a single
+      // claim would silence the whole competency.
+      G.test("a claim on one source leaves every other source alone", () =>
+        G.givenEvents(Array.concat(announced, [B.claimedC("other:Source", "second-producer")]))
+        ->G.whenCmd(
+          B.requestFrom(B.transactional, "ref-8", ~source=B.defaultSource, ~origin=Default),
+        )
+        ->G.thenEvent(B.requested(B.transactional, "ref-8", B.announcedChannel, B.addressA))
+      )
+
+      // The producer that owns the source is the one that must get through, or
+      // the handover would silence the entry rather than move it.
+      G.test("a configured request for a claimed source goes through", () =>
+        G.givenEvents(Array.concat(announced, [B.claimedC("other:Source", "second-producer")]))
+        ->G.whenCmd(
+          B.requestFrom(B.transactional, "ref-9", ~source="other:Source", ~origin=Configured),
+        )
+        ->G.thenEvent(
+          B.requestedConfigured(B.transactional, "ref-9", B.announcedChannel, B.addressA),
+        )
+      )
+
+      G.test("a released source stops deferring", () =>
+        G.givenEvents(
+          Array.concat(
+            announced,
+            [B.claimedC("other:Source", "second-producer"), B.releasedC("other:Source")],
+          ),
+        )
+        ->G.whenCmd(
+          B.requestFrom(B.transactional, "ref-10", ~source="other:Source", ~origin=Default),
+        )
+        ->G.thenEvent(B.requested(B.transactional, "ref-10", B.announcedChannel, B.addressA))
+      )
+
       // Wanted, and unreachable — the distinction the whole `Undeliverable` arm
       // exists for. Skipped by a host that announces an address for every channel
       // it offers, because there is then no way to be in this state.

@@ -23,7 +23,9 @@ let commandSchema = Sury.$schema(s => ({
   subjectType: s.m(Sury.string),
   subjectRef: s.m(Sury.string),
   subject: s.m(Sury.string),
-  body: s.m(Sury.string)
+  body: s.m(Sury.string),
+  sourceId: s.m(DcbTag$Reventless.string),
+  origin: s.m(NotificationPreferences$OrderingPlugin.originSchema)
 }));
 
 function commandAuthorization(param) {

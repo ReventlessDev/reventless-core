@@ -28,6 +28,7 @@ import * as NotificationDeliveries$OrderingPlugin from "./Notification/StateView
 import * as NotificationPreferences$OrderingPlugin from "./Notification/StateChangeSlice/NotificationPreferences.res.mjs";
 import * as AnnounceRecipientContact$OrderingPlugin from "./Notification/OutboundTranslationSlice/AnnounceRecipientContact.res.mjs";
 import * as AutoShipOrder_Automation$OrderingPlugin from "./Order/AutomationSlice/AutoShipOrder_Automation.res.mjs";
+import * as NotificationSourceClaims$OrderingPlugin from "./Notification/StateChangeSlice/NotificationSourceClaims.res.mjs";
 import * as NotificationSubscriptions$OrderingPlugin from "./Notification/StateViewSliceStream/NotificationSubscriptions.res.mjs";
 import * as SyncCatalogProduct_Behavior$OrderingPlugin from "./CatalogProduct/StateChangeSlice/SyncCatalogProduct_Behavior.res.mjs";
 import * as AvailableProducts_Projection$OrderingPlugin from "./CatalogProduct/StateViewSliceStream/AvailableProducts_Projection.res.mjs";
@@ -36,6 +37,7 @@ import * as SendNotification_Translation$OrderingPlugin from "./Notification/Out
 import * as NotificationIntake_Automation$OrderingPlugin from "./Notification/AutomationSlice/NotificationIntake_Automation.res.mjs";
 import * as NotificationPreferences_Behavior$OrderingPlugin from "./Notification/StateChangeSlice/NotificationPreferences_Behavior.res.mjs";
 import * as NotificationDeliveries_Projection$OrderingPlugin from "./Notification/StateViewSliceStream/NotificationDeliveries_Projection.res.mjs";
+import * as NotificationSourceClaims_Behavior$OrderingPlugin from "./Notification/StateChangeSlice/NotificationSourceClaims_Behavior.res.mjs";
 import * as GeocodeCustomerAddress_Translation$OrderingPlugin from "./Customer/OutboundTranslationSlice/GeocodeCustomerAddress_Translation.res.mjs";
 import * as AnnounceRecipientContact_Translation$OrderingPlugin from "./Notification/OutboundTranslationSlice/AnnounceRecipientContact_Translation.res.mjs";
 import * as NotificationSubscriptions_Projection$OrderingPlugin from "./Notification/StateViewSliceStream/NotificationSubscriptions_Projection.res.mjs";
@@ -52,6 +54,12 @@ let dcbSliceSchemas = [
     commandSchema: NotificationPreferences$OrderingPlugin.commandSchema,
     consumedEventSchema: NotificationPreferences$OrderingPlugin.consumedEventSchema,
     eventSchema: NotificationPreferences$OrderingPlugin.eventSchema
+  },
+  {
+    name: NotificationSourceClaims$OrderingPlugin.name,
+    commandSchema: NotificationSourceClaims$OrderingPlugin.commandSchema,
+    consumedEventSchema: NotificationSourceClaims$OrderingPlugin.consumedEventSchema,
+    eventSchema: NotificationSourceClaims$OrderingPlugin.eventSchema
   },
   {
     name: PlaceOrder$OrderingPlugin.name,
@@ -109,6 +117,24 @@ function Make(Platform) {
     evolve: NotificationPreferences_Behavior$OrderingPlugin.evolve,
     decide: NotificationPreferences_Behavior$OrderingPlugin.decide,
     moduleUrl: NotificationPreferences_Behavior$OrderingPlugin.moduleUrl
+  });
+  let NotificationSourceClaimsSlice = Platform.StateChangeSlice.Make({
+    name: NotificationSourceClaims$OrderingPlugin.name,
+    moduleUrl: NotificationSourceClaims$OrderingPlugin.moduleUrl,
+    Id: Id$Reventless.$$String,
+    consumedEventSchema: NotificationSourceClaims$OrderingPlugin.consumedEventSchema,
+    errorSchema: NotificationSourceClaims$OrderingPlugin.errorSchema,
+    eventSchema: NotificationSourceClaims$OrderingPlugin.eventSchema,
+    commandSchema: NotificationSourceClaims$OrderingPlugin.commandSchema,
+    commandAuthorization: NotificationSourceClaims$OrderingPlugin.commandAuthorization,
+    commandTransition: NotificationSourceClaims$OrderingPlugin.commandTransition,
+    traits: NotificationSourceClaims$OrderingPlugin.traits,
+    readConsistency: NotificationSourceClaims$OrderingPlugin.readConsistency
+  })({
+    initialState: NotificationSourceClaims_Behavior$OrderingPlugin.initialState,
+    evolve: NotificationSourceClaims_Behavior$OrderingPlugin.evolve,
+    decide: NotificationSourceClaims_Behavior$OrderingPlugin.decide,
+    moduleUrl: NotificationSourceClaims_Behavior$OrderingPlugin.moduleUrl
   });
   let PlaceOrderSlice = Platform.StateChangeSlice.Make({
     name: PlaceOrder$OrderingPlugin.name,
@@ -394,6 +420,7 @@ function Make(Platform) {
   ], [
     CancelOrderSlice,
     NotificationPreferencesSlice,
+    NotificationSourceClaimsSlice,
     PlaceOrderSlice,
     ShipOrderSlice,
     SyncCatalogProductSlice
@@ -470,6 +497,10 @@ function Make(Platform) {
       "Notification"
     ],
     [
+      "NotificationSourceClaims",
+      "Notification"
+    ],
+    [
       "NotificationSubscriptions",
       "Notification"
     ],
@@ -497,6 +528,7 @@ function Make(Platform) {
   let make = () => Platform.Plugin.make("Ordering", 5, [Orders_ExtensionPoint], [Products_Extension], [CustomerAggregate], [CustomersReadModel], undefined, [
     CancelOrderSlice,
     NotificationPreferencesSlice,
+    NotificationSourceClaimsSlice,
     PlaceOrderSlice,
     ShipOrderSlice,
     SyncCatalogProductSlice
@@ -545,6 +577,7 @@ function Make(Platform) {
   return {
     CancelOrderSlice: CancelOrderSlice,
     NotificationPreferencesSlice: NotificationPreferencesSlice,
+    NotificationSourceClaimsSlice: NotificationSourceClaimsSlice,
     PlaceOrderSlice: PlaceOrderSlice,
     ShipOrderSlice: ShipOrderSlice,
     SyncCatalogProductSlice: SyncCatalogProductSlice,

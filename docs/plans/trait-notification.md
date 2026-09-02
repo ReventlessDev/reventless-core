@@ -5,7 +5,7 @@
 `online-shop-hybrid` ordering plugin.
 **Status:** **Part 1 DELIVERED. Part 2 is the open work.** Everything §1–§6 called blocking has
 shipped — see the correction box below. Part 2 turns the competency's wording from code into data,
-and lets a deployment compose from a configured table instead of the compiled one.
+and lets a second producer take over one stream of occurrences at a time.
 **Builds on:**
 [domain-trait-extraction-online-shop-hybrid.md](./domain-trait-extraction-online-shop-hybrid.md)
 Part 1 (the messaging capability — a hard dependency) ·
@@ -148,7 +148,7 @@ of several further competencies (verification, reminders, alerting, digests, sub
 
 ---
 
-# Part 2 — the wording becomes data, and a deployment can bring its own table
+# Part 2 — the wording becomes data, and a second producer can take one stream at a time
 
 **Date:** 2026-09-02
 
@@ -188,8 +188,9 @@ Both are worth doing on their own terms:
 - **Provenance** answers a question nothing can answer today: which wording was in force when this
   message was sent. One field, useful whether or not anything else in Part 2 is ever built.
 
-Where a rule table might come from *other* than the compiled array is a separate question, and a
-much smaller one than an earlier draft of this plan made it — §9 and §13.
+How a *second* producer takes over part of that array without double-sending is §13; why the
+decision has to live where it does is §9; and the simpler design that was weighed against it is
+§13b.
 
 ## 9. The constraint that decides the shape
 
@@ -204,15 +205,16 @@ So a compiled composer has no door through which to ask "is somebody else handli
 design in which it *stands aside* has to move that decision downstream into the slice, and paying
 for that is what turned an earlier draft of this plan into a claim protocol (§13b).
 
-The way out is not to ask the question at runtime. **Which rule table a deployment composes from is
-a property of the deployment, not of a request** — one producer, always, with per-notification
-granularity living *inside* the table rather than between two of them. Nothing to arbitrate, nothing
-to fence, and a duplicate send is impossible by construction rather than prevented by a mechanism.
+**So the decision to stand aside has to be made downstream, by the component that already decides.**
+`NotificationPreferences` folds its own log before every decision; it is the one place that can know
+both that a request arrived and that somebody else owns the source it came from. That is what §13
+builds, and the constraint above is the whole reason it is built there rather than in the composer
+where it would read more naturally.
 
-That also puts this closer to `done/monitoring-hook-seam.md` than it first appeared — a default that
-does the whole job, and a replacement that takes over — with the difference that what is replaced
-here is a *table of values*, so the replacement can start as a copy of the default and be edited one
-row at a time. That is what an administrator actually wants, and it needs no protocol.
+The alternative is to never ask the question — one rule table per deployment, chosen when the
+deployment is assembled, with per-notification granularity living inside that table. That is the
+shape `done/monitoring-hook-seam.md` established for this repository, and it is genuinely simpler.
+It was weighed and not taken; §13b records why.
 
 ## 10. P0 — the rule becomes a value
 
@@ -280,7 +282,7 @@ a `percent`/`duration`/`bytes` by its own rule — with no formatter written in 
 the whole argument for rendering on top of an annotated schema rather than raw JSON, and it is
 cheap only because the annotations are already there.
 
-## 12. P2 — provenance
+## 12. P2 — provenance, and a fourth outcome
 
 One field. `RequestNotification` gains
 
@@ -301,97 +303,133 @@ moment the decision is made; reconstructing it afterwards is not possible at all
 composes from the compiled table — and it stays a real answer forever, because a deployment that
 never configures anything is the intended steady state, not an unfinished one.
 
-An earlier draft paired this with a fourth non-send outcome, `NotificationDeferred`, so a compiled
-composer could stand aside for a configured one. That outcome is gone with the protocol that needed
-it — §13b.
+**S2 — a fourth non-send outcome.** `NotificationDeferred({recipientId, reference, sourceKey})`.
+The trait is already strict that the ways of not sending stay distinct facts: `Suppressed` (they
+declined) and `Undeliverable` (nobody reachable) exist separately because collapsing them "would
+hide every delivery gap behind a legitimate preference". A request not acted on because *another
+producer owns this source* is a third thing by the same argument.
 
-## 13. P3 — one producer, and where its rules come from
+It is load-bearing rather than tidy. The relay resolves its TODO row on an outcome; without this one
+a deferred request spends its whole retry budget and is abandoned with nothing in the log to say
+why.
 
-The rule table a deployment composes from is either the compiled array of §10 or a configured one.
-**Never both**, and which it is, is settled when the deployment is assembled.
+⚠️ **The field is `sourceKey`, not `sourceId`, and this is the one place the two names differ.**
+A produced `sourceId` here would give the slice two candidate partitions — it already produces
+`recipientId` — so it would resolve to neither; and worse, it would stop `sourceId` counting as a
+*consumed-but-not-produced* key, which is precisely what makes the claim read cross partitions at
+all (§13). The value is identical; only the fact is descriptive. Same class of trap as `subjectRef`
+in §14b.
 
-Concretely: the host's compiled intake automation composes from `defaultRules`. A deployment that
-wants its wording configured instead deploys a component that composes from a table it folds itself
-— a slice can hold state where an automation cannot (§9) — and the host's compiled intake is not
-deployed alongside it. One producer is wired at a time.
+## 13. P3 — the handover
 
-Everything downstream is untouched. Both producers publish the same `RequestNotification`, differing
-only in `origin`; `NotificationPreferences` decides, `SendNotification` delivers, and neither knows
-or cares which one asked.
+**Status: substantially built [2026-09-02], one gap open — §13.4.**
 
-### 13.1 Seeding, so nothing goes quiet
+A second producer of notification requests takes over a *stream of occurrences* — one
+`"<log>:<eventType>"` at a time — and the compiled table of §10 stands aside for exactly that stream
+and no other. Everything unclaimed keeps being served by the compiled table, with no configuration
+anywhere and no behavioural change.
 
-A configured table that starts empty means every notification the deployment used to send stops the
-day it is switched over. It has to start as a **copy of the compiled defaults**, which are then
-edited one row at a time.
+### 13.1 Two slices, and the split is forced
 
-The compiled array lives in the host plugin and cannot be imported across a plugin boundary, so it
-has to travel as data. Two ways:
+The claim set lives in its own `NotificationSourceClaims` StateChangeSlice, **not** on
+`NotificationPreferences` which is the component that reads it. That looks like one slice too many
+until the reason is stated:
 
-| | How | Cost |
+> A slice's DCB partition is inferred from the `*Id` fields its **own events** declare. A slice
+> producing both `recipientId` and `sourceId` facts has two candidate partitions and resolves to
+> neither.
+
+Split, each side produces one key — preferences are per recipient, claims are per source. The
+reading side then sees `sourceId` as a key it **consumes but does not produce**, and that is exactly
+the shape from which the framework infers a cross-partition read. The split is not tidiness; it is
+what makes the read happen at all.
+
+Both slices fold the *same* `Notification_Rules.t` value, with `Claimed` / `Released` added to the
+trait's own `op` and `fact`. The claims slice consults no posture — no arm reads one — but still goes
+through `Rules.decide`, so the idempotence rule lives in the trait rather than being restated per
+host.
+
+### 13.2 What each piece does
+
+| Piece | Where | Role |
 |---|---|---|
-| **Publish the defaults** | The host publishes `defaultRules` as data when it connects, the way other registries here are populated by lifecycle events | Real work, and the right shape — the same event-sourced-configuration move used elsewhere in this repository |
-| **Start empty** | Whoever configures the deployment writes the rules | Free, and worse: a switchover silently stops every notification until someone notices |
+| `ClaimNotificationSource({sourceId, by})` | claims slice, `@noApi` | A second producer takes over a source. `by` is provenance |
+| `ReleaseNotificationSource({sourceId})` | claims slice, `@noApi` | Hands it back; the compiled table resumes on the next occurrence |
+| `origin` on the request | preferences slice | `Default` (compiled table) or `Configured({ruleId, ruleVersion})` — §12 |
+| `NotificationDeferred` | preferences slice | The compiled table standing aside, as a fact — §12 |
 
-**Recommended: publish the defaults.** The second option's failure is silence, which is the failure
-mode this whole competency is most careful about everywhere else.
+`decide` answers a `Default`-origin request for a claimed source with `Deferred`; a `Configured`
+request always goes through. Both claim commands are idempotent — re-claiming what you hold and
+releasing what nobody holds each publish nothing — so there is no refusal to make, which is why
+`ClaimRefused` is declared but unreachable.
 
-### 13.2 ⚠️ The invariant, and that nothing enforces it
+Neither command is a client door. A caller who could claim a source would be silencing everybody
+else's notifications from it.
 
-**Two producers wired at once means duplicate notifications, and there is no mechanism here to stop
-it** — that is the deliberate trade for not building the protocol in §13b. The invariant is an
-assembly-time one: the host plugin's component list contains the compiled intake *or* a configured
-composer, never both.
+### 13.3 The acceptance criterion
 
-Give it a fail-fast rather than a comment. The natural place is wherever the plugin's components are
-assembled, refusing two components that publish `RequestNotification` to the same
-`NotificationPreferences`; a check that runs at deploy time is worth more than a rule in a document,
-because the symptom — a customer receiving two identical confirmations — is one that reaches a
-person before it reaches a log.
+**With nothing claimed, every `Default` request is decided exactly as before.** It is asserted in
+`Notification_Conformance` rather than assumed, alongside a claim on one source leaving every other
+source alone — the assertion that says the mechanism is per source and not a table-wide off switch.
 
-### 13.3 What this deliberately does not support
+### 13.4 ⚠️ Open: nothing releases a claim
 
-Compiled and configured rules serving different entries **at the same time**, switchable at runtime.
-Under this design a deployment is on one table or the other, and per-notification granularity lives
-inside the configured table — an administrator edits one row and leaves the rest at their seeded
-defaults, which is the same outcome by simpler means.
+`ReleaseNotificationSource` exists, is idempotent and is exercised by the GWT suite, but **no
+production code calls it** — the only references outside `lib/` are tests. A claimed source therefore
+stays claimed for as long as the deployment lives, and a claimant that goes away takes its
+notifications silent with it.
 
-The cost is **drift**: a seeded row stops tracking later improvements to the compiled default it was
-copied from. That is the ordinary cost of forking a value on adopt, it applies per row rather than
-wholesale, and it is worth naming in whatever surface presents the table.
+Silence is the failure this competency is careful about everywhere else — it is the whole reason
+`Suppressed` and `Undeliverable` are separate facts — so leaving this open contradicts the trait's
+own standard. The plugin lifecycle already does this exact shape for UI fragments, where
+deregistration rides **both** graceful disconnect and heartbeat timeout; a claim wants the same two
+triggers for the same reason.
 
-## 13b. Rejected — a claim protocol between two live producers
+**Do this before the mechanism is used for anything.**
 
-Recorded so it is not re-invented. An earlier draft had the compiled and configured producers both
-running, negotiating per entry through claims:
+### 13.5 Do not grow it
 
-- `RequestNotification` carried a `sourceKey` (`"<log>:<eventType>"`), auto-tagged as a DCB tag.
-- `NotificationSourceClaimed({sourceKey, by})` / `NotificationSourceReleased({sourceKey})` were folded
-  by `NotificationPreferences`.
-- `decide` answered a `Default`-origin request for a claimed key with `NotificationDeferred` instead
-  of putting it through `Rules.decide`; a `Configured` request always went through.
+No claim expiry, no priorities between claimants, no partial or conditional claims. The mechanism
+serves one future feature well — batching, where a scheduler-driven producer legitimately needs
+per-event sends for a source to stand down — and it is not a general foundation. In particular it is
+**deployment-scoped**: a `sourceId` carries no tenant, so a source cannot be claimed for one tenant
+and left compiled for another. Per-tenant configuration belongs in a rule table, not in the claim
+key.
 
-**It works.** The DCB mechanics are sound: adding `sourceKey` to the command widens the conditional
-read (the tags are extracted from the command and OR'd — `StateChangeSlice_Callback.res:198`), so the
-claim is visible at the decision; and because that read is also the concurrency fence, a claim landing
-mid-flight forces in-flight requests to re-decide, making the handover atomic.
+## 13b. Rejected — one table per deployment
 
-**It was dropped because it solves a harder problem than the requirement.** The requirement is that
-an administrator can configure each notification individually. Two live producers negotiating at
-runtime is strictly more than that, and it costs: a fourth non-send outcome, a fourth arm on the
-automation's `resolve`, a tag on every request, two claim events, a fold, a branch in `decide`,
-release-on-uninstall, and two conformance assertions. A merged table reached the same
-per-notification granularity with none of it.
+The simpler design, weighed and not taken. Recorded because it is the obvious question to ask of
+§13, and because it would have been the right answer at a different moment.
 
-Two findings from that draft are worth keeping if anyone revives it:
+**What it was.** No claims, no `Deferred`, no `sourceKey`. A deployment composes from the compiled
+array *or* from a configured table, never both, decided when the deployment is assembled — the
+`done/monitoring-hook-seam.md` shape, with a table of values in place of an implementation. The
+configured table starts as a copy of the compiled defaults, and per-notification granularity lives
+inside it: an administrator edits one row and leaves the rest at their seeded values.
 
-- **`NotificationDeferred` must not be projected into `NotificationDeliveries`.** The view keys rows
-  with `Set(reference, …)`, so a deferral and a real outcome carrying the same reference would fight
-  over one row. A deferral is not a delivery outcome — it is one producer standing aside, which is
-  invisible to the domain.
-- **The two producers do *not* need to derive the reference key identically.** An earlier version of
-  this section claimed they did; the deferral keys on `sourceKey`, not on `reference`, so it holds
-  either way. The requirement was never real.
+**Why it is attractive.** It reaches the same administrator experience — the two are indistinguishable
+from the console — with none of §13's surface: no fourth outcome, no fourth arm on the relay's
+`resolve`, no second slice, no cross-partition read, no claim events. Fewer concepts for every future
+reader of the trait.
+
+**Why it was not taken.**
+
+- **It needs a seeding mechanism that does not exist.** The compiled array lives in the host plugin
+  and cannot be imported across a plugin boundary, so the defaults would have to be published as data
+  at connect time. Without that, a switchover silently stops every notification the deployment used
+  to send — the same silence §13.4 warns about, but by construction rather than by omission.
+- **It needs an assembly-time check that does not exist.** Two producers wired at once means
+  duplicate notifications with nothing to stop them, so the invariant "compiled intake *or* configured
+  composer, never both" needs a fail-fast to be real.
+- **Seeded rows drift.** A copied rule stops tracking later improvements to the compiled default;
+  under §13 an unclaimed source keeps tracking it forever, with no bookkeeping.
+- **§13 was already built and correct** when the comparison was made. Replacing working, tested code
+  with a design carrying two unbuilt pieces and one unenforced invariant is more work for a slightly
+  smaller concept count.
+
+**The honest summary:** greenfield, this was the better call — §13 solves a harder problem than the
+requirement, and the extra capability (per-entry switching at runtime, reversible with no redeploy)
+is invisible to an administrator. It lost on cost-to-finish, not on merit.
 
 ## 14. P4 — the category vocabulary opens
 
@@ -577,11 +615,10 @@ schema-drift check of its own, run against the deployed plugin structures rather
 ```
 P0 rules-as-data ─┬─> P4 open vocabulary
                   └─> P1 renderer
-P2 provenance                 (independent, one field, any time)
-P3 configured table           (a deployment shape, not a code change to P0's producer)
-P5 address out / subject in   ✅ DONE [2026-09-02]
-15.1 @sensitive               (independent, any time)
-15.2 raw posture              (independent; needed by a configured composer, not by P0–P4)
+P2 provenance + deferred ──> P3 handover   ◐ SUBSTANTIALLY BUILT — gap at §13.4
+P5 address out / subject in                ✅ DONE [2026-09-02]
+15.1 @sensitive                            (independent, any time)
+15.2 raw posture                           (independent; needed by a second producer, not by P0–P4)
 ```
 
 ⚠️ **P0 cannot meet its own acceptance criterion without P1.** §10's deliverable is that the two
@@ -603,15 +640,13 @@ a single-commit change with the host updated in the same commit. Once the trait 
 host outside this repository grafts it, the same three become migrations with event healing and a
 projection rebuild.
 
-**P3 is not on that list any more.** With the claim protocol dropped (§13b) it adds no field and no
-event — it is a statement about which components a deployment wires, plus the fail-fast in §13.2. It
-can happen whenever a configured composer actually exists, and never needs to happen at all for a
-deployment that is content with its compiled table.
+**P5 is done, and P2+P3 are substantially built** — wired into `Plugin.res` on both paths, with the
+conformance assertions written. **What remains is §13.4: nothing releases a claim.** Finish that
+before the mechanism is used for anything; a claimant that disappears currently takes its
+notifications silent with it.
 
-**P5 is done. P2 is next**, and it is one field: small, independent, and on the deadline only because
-it touches a published event. **P4 stays blocked** until §14's ⚠️ is answered: who may write
-`posture`, and how that write is audited. That is a decision, not code, and it is not specified
-anywhere here.
+**P4 stays blocked** until §14's ⚠️ is answered: who may write `posture`, and how that write is
+audited. That is a decision, not code, and it is not specified anywhere here.
 
 ## 17. Verification
 
@@ -623,13 +658,14 @@ anywhere here.
   acceptance is that these are unchanged and still green.
 - `Notification_Conformance` through the `online-shop-hybrid` binding — unchanged by P2 and P3, and
   that is the check: neither may alter what the competency does, only what it records about itself.
-- For P2: assert `origin = Default` reaches the delivery row on a message the compiled table
-  produced. A field that is written but never read back is how provenance quietly stops being
-  recorded.
-- For P3: the assembly-time fail-fast of §13.2 — a plugin wiring both a compiled intake and a
-  configured composer must be refused at build or deploy time. Test the refusal, not just the happy
-  path; the invariant exists precisely because the failure it prevents is invisible until a customer
-  receives two identical emails.
+- ✅ For P2/P3: the four `Notification_Conformance` assertions — nothing claimed decides as usual, a
+  claimed source defers a `Default` request, a claim on one source leaves others alone, and a
+  `Configured` request goes through a claimed source. The first is the acceptance criterion; the
+  third is what proves the mechanism is per source rather than a table-wide off switch.
+- For §13.4, when it lands: assert that a claimant disconnecting releases its claims and the compiled
+  table resumes. Test the **timeout** path as well as the graceful one — a producer that crashes is
+  the case the release exists for, and it is the one a graceful-disconnect-only test will not
+  reach.
 - ✅ For P5: an assertion that placing **and then shipping** one order leaves **two** delivery rows.
   Shipped as `tests/Notification/StateViewSliceStream/NotificationDeliveries_GWT.res` — two
   scenarios, written and run green against the unchanged code first, then re-run with both

@@ -48,6 +48,10 @@ let eventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "NotificationUndeliverable",
     reference: s.m(Sury.string)
+  })),
+  Sury.$schema(s => ({
+    TAG: "NotificationDeferred",
+    reference: s.m(Sury.string)
   }))
 ]);
 
@@ -132,6 +136,14 @@ function compose(item) {
 
 let subjectType = "Order";
 
+function sourceOf(occurrence) {
+  if (occurrence === "Placed") {
+    return name + `:OrderPlaced`;
+  } else {
+    return name + `:OrderShipped`;
+  }
+}
+
 function process(id, item) {
   let match = compose(item);
   return [
@@ -144,7 +156,9 @@ function process(id, item) {
       subjectType: subjectType,
       subjectRef: item.orderId,
       subject: match[1],
-      body: match[2]
+      body: match[2],
+      sourceId: sourceOf(item.occurrence),
+      origin: "Default"
     }
   ];
 }
@@ -167,6 +181,7 @@ export {
   mappings,
   compose,
   subjectType,
+  sourceOf,
   process,
   onExhausted,
   moduleUrl,

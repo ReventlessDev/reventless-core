@@ -14,10 +14,17 @@ let empty_contacts = [];
 
 let empty_choices = [];
 
+let empty_claims = [];
+
 let empty = {
   contacts: empty_contacts,
-  choices: empty_choices
+  choices: empty_choices,
+  claims: empty_claims
 };
+
+function claimedBy(t, source) {
+  return Stdlib_Option.map(t.claims.find(param => param[0] === source), param => param[1]);
+}
 
 function addressFor(t, channel) {
   return Stdlib_Option.map(t.contacts.find(param => param[0] === channel), param => param[1]);
@@ -45,7 +52,8 @@ function withChoice(t, category, channel, isEnabled) {
         category,
         channel,
         isEnabled
-      ]])
+      ]]),
+    claims: t.claims
   };
 }
 
@@ -58,12 +66,30 @@ function evolve(t, fact) {
             channel,
             fact.address
           ]]),
-        choices: t.choices
+        choices: t.choices,
+        claims: t.claims
       };
     case "Subscribed" :
       return withChoice(t, fact.category, fact.channel, true);
     case "Unsubscribed" :
       return withChoice(t, fact.category, fact.channel, false);
+    case "Claimed" :
+      let source = fact.source;
+      return {
+        contacts: t.contacts,
+        choices: t.choices,
+        claims: t.claims.filter(param => param[0] !== source).concat([[
+            source,
+            fact.by
+          ]])
+      };
+    case "Released" :
+      let source$1 = fact.source;
+      return {
+        contacts: t.contacts,
+        choices: t.choices,
+        claims: t.claims.filter(param => param[0] !== source$1)
+      };
     default:
       return t;
   }
@@ -138,8 +164,19 @@ function decide(t, op, posture) {
         };
       }
     case "Request" :
+      let source = op.source;
       let reference = op.reference;
       let category$2 = op.category;
+      if (op.origin === "Default" && claimedBy(t, source) !== undefined) {
+        return {
+          TAG: "Ok",
+          _0: [{
+              TAG: "Deferred",
+              reference: reference,
+              source: source
+            }]
+        };
+      }
       let wanted = channels.filter(channel => enabled(t, posture, category$2, channel));
       let addressed = Stdlib_Array.filterMap(wanted, channel => Stdlib_Option.map(addressFor(t, channel), address => ({
         TAG: "Requested",
@@ -172,12 +209,48 @@ function decide(t, op, posture) {
             }]
         };
       }
+    case "Claim" :
+      let by = op.by;
+      let src = op.source;
+      if (Primitive_object.equal(claimedBy(t, src), by)) {
+        return {
+          TAG: "Ok",
+          _0: []
+        };
+      } else {
+        return {
+          TAG: "Ok",
+          _0: [{
+              TAG: "Claimed",
+              source: src,
+              by: by
+            }]
+        };
+      }
+    case "Release" :
+      let src$1 = op.source;
+      let match = claimedBy(t, src$1);
+      if (match !== undefined) {
+        return {
+          TAG: "Ok",
+          _0: [{
+              TAG: "Released",
+              source: src$1
+            }]
+        };
+      } else {
+        return {
+          TAG: "Ok",
+          _0: []
+        };
+      }
   }
 }
 
 export {
   channels,
   empty,
+  claimedBy,
   addressFor,
   enabled,
   withChoice,

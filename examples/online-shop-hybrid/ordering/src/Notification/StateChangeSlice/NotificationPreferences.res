@@ -37,14 +37,24 @@ type channel =
   | Sms
   | Push
 
-// Its own past facts, and nothing else. What lets one component hold the
-// directory and make the dispatch decision without either half reaching for the
-// other's state.
+// Why a request exists: the compiled table in `NotificationIntake`, or a rule
+// somebody configured on top of it. Recorded on the request that goes out, so
+// "which wording was in force when this was sent" has an answer.
+@schema
+type origin =
+  | Default
+  | Configured({ruleId: string, ruleVersion: string})
+
+// Its own past facts, plus the claim set from `NotificationSourceClaims`. The
+// claims are per source and this slice is per recipient, so they come from
+// another partition — see `RequestNotification` for what makes that read happen.
 @schema
 type consumedEvent =
   | RecipientAnnounced({recipientId: string, email: string})
   | NotificationSubscribed({recipientId: string, category: category, channel: channel})
   | NotificationUnsubscribed({recipientId: string, category: category, channel: channel})
+  | NotificationSourceClaimed({sourceId: string, by: string})
+  | NotificationSourceReleased({sourceId: string})
 
 @schema
 type command =
@@ -78,6 +88,18 @@ type command =
       subjectRef: string,
       subject: string,
       body: string,
+      // Which stream this came from, `"<log>:<eventType>"`, and who is asking.
+      // Together they are the handover: a `Default` request for a source another
+      // producer has claimed yields, a `Configured` one always goes through.
+      //
+      // `sourceId` is a DCB tag, and it has to be — the decision must read the
+      // claim facts, which live in another partition (they are per source, this
+      // slice is per recipient). Because the slice consumes `sourceId` without
+      // producing it, the framework infers the cross-partition read from the
+      // slice graph, and the claim write fences in-flight requests for that
+      // source. Renaming it off the `*Id` convention would silently drop both.
+      sourceId: string,
+      origin: origin,
     })
   // Reported by the send slice once the provider has settled. Trait-owned state,
   // so this is not a host side effect — the host is never written to at all.
@@ -114,6 +136,9 @@ type event =
       subjectRef: string,
       subject: string,
       body: string,
+      // What was in force when this went out. A message should record why it was
+      // sent, and until this field existed nothing did.
+      origin: origin,
     })
   // Both of the ways not to send, kept apart because they mean opposite things.
   // A recipient who declined is the system working; a recipient with no address
@@ -125,6 +150,7 @@ type event =
       reference: string,
       subjectType: string,
       subjectRef: string,
+      origin: origin,
     })
   | NotificationUndeliverable({
       recipientId: string,
@@ -132,7 +158,21 @@ type event =
       reference: string,
       subjectType: string,
       subjectRef: string,
+      origin: origin,
     })
+  // The third way of not sending: another producer owns this source. Its own
+  // fact for the same reason the two above are two — and load-bearing besides,
+  // because the relay resolves its TODO row on an outcome, and without this one a
+  // deferred request retries its whole budget and is abandoned with nothing in
+  // the log to say why.
+  //
+  // `sourceKey` and not `sourceId`, deliberately, and this is the one place the
+  // two names differ: the slice's partition is derived from the `*Id` fields its
+  // own events declare, so a produced `sourceId` here would give it two candidate
+  // partitions, resolve to neither, and — worse — stop `sourceId` counting as a
+  // consumed-but-not-produced key, which is what makes the claim read cross
+  // partitions at all. The value is the same; only the fact is descriptive.
+  | NotificationDeferred({recipientId: string, reference: string, sourceKey: string})
   | NotificationDelivered({recipientId: string, reference: string, providerRef: string})
   | NotificationFailed({recipientId: string, reference: string, reason: string})
 

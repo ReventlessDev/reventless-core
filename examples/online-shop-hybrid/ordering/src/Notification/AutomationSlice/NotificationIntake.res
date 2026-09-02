@@ -34,6 +34,8 @@ type command =
     subjectRef: string,
     subject: string,
     body: string,
+    sourceId: string,
+    origin: NotificationPreferences.origin,
   })
 
 let maxRetries = 3

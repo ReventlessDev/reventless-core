@@ -126,6 +126,8 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
         subjectRef: "o1",
         subject: "Your order o1 is confirmed",
         body: "Thanks — we have your order o1 and will let you know when it ships.",
+        sourceId: "OrderingDcbEventLog:OrderPlaced",
+        origin: Default,
       }),
       NotificationIntake.RequestNotification({
         recipientId: "c1",
@@ -135,6 +137,8 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
         subjectRef: "o1",
         subject: "Your order o1 is on its way",
         body: "Good news — order o1 has shipped.",
+        sourceId: "OrderingDcbEventLog:OrderShipped",
+        origin: Default,
       }),
     ])
   })

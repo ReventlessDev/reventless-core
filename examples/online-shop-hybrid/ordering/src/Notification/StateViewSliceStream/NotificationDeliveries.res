@@ -53,6 +53,15 @@ type state = {
   // audit metadata: available to an investigation, not to every reader of a view.
   subjectType: string,
   subjectRef: string,
+  // Which wording was in force when this went out: the compiled table, or the id
+  // and version of a rule somebody configured. `"Default"` is a real answer and
+  // stays one — a deployment that configures nothing is the intended steady
+  // state, not an unfinished one — so this is never empty on a decided row.
+  //
+  // A flat string rather than the command's variant: the view is read by people
+  // and by a console, and `Default` / `<ruleId>@<ruleVersion>` says the whole of
+  // it without a union to select through.
+  origin: string,
   // The provider's own id once it accepted, or the reason it did not. One field
   // because exactly one of them is ever true, and the outcome says which.
   detail: string,
@@ -72,6 +81,7 @@ type consumedEvent =
       channel: NotificationPreferences.channel,
       subjectType: string,
       subjectRef: string,
+      origin: NotificationPreferences.origin,
     })
   | NotificationSuppressed({
       recipientId: string,
@@ -79,6 +89,7 @@ type consumedEvent =
       reference: string,
       subjectType: string,
       subjectRef: string,
+      origin: NotificationPreferences.origin,
     })
   | NotificationUndeliverable({
       recipientId: string,
@@ -86,6 +97,7 @@ type consumedEvent =
       reference: string,
       subjectType: string,
       subjectRef: string,
+      origin: NotificationPreferences.origin,
     })
   | NotificationDelivered({recipientId: string, reference: string, providerRef: string})
   | NotificationFailed({recipientId: string, reference: string, reason: string})

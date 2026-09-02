@@ -238,6 +238,22 @@
     "scenarios": 2
   },
   {
+    "component": "NotificationSourceClaims",
+    "command": "ClaimNotificationSource",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 3
+  },
+  {
+    "component": "NotificationSourceClaims",
+    "command": "ReleaseNotificationSource",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 2
+  },
+  {
     "component": "PlaceOrder",
     "command": "PlaceOrder",
     "level": "Collection",

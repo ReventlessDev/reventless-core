@@ -24,10 +24,13 @@
     "partitionBySlice": {
       "CancelOrder": "orderId",
       "NotificationPreferences": "recipientId",
+      "NotificationSourceClaims": "sourceId",
       "PlaceOrder": "orderId",
       "ShipOrder": "orderId",
       "SyncCatalogProduct": "productId"
     },
-    "crossPartitionTagKeys": []
+    "crossPartitionTagKeys": [
+      "sourceId"
+    ]
   }
 }

@@ -21,6 +21,7 @@ let requested = (category, reference) =>
     channel: NotificationPreferences.Email,
     subjectType: "Order",
     subjectRef: "o1",
+    origin: NotificationPreferences.Default,
   })
 
 let row = (category, reference, outcome, detail, settledAt): state => {
@@ -31,6 +32,7 @@ let row = (category, reference, outcome, detail, settledAt): state => {
   channel: "Email",
   subjectType: "Order",
   subjectRef: "o1",
+  origin: "Default",
   detail,
   decidedAt: "time",
   settledAt,

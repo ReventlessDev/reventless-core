@@ -74,12 +74,27 @@ module type Binding = {
   let announcedC: string => Spec.consumedEvent
   let subscribedC: (category, Notification_Rules.channel) => Spec.consumedEvent
   let unsubscribedC: (category, Notification_Rules.channel) => Spec.consumedEvent
+  /** A source taken over, as the slice reads it back. Claims are per source and
+      not per recipient, so a host produces these from wherever it keeps them —
+      what this contract requires is only that the decision can see them. */
+  let claimedC: (string, string) => Spec.consumedEvent
+  let releasedC: string => Spec.consumedEvent
 
   let announce: string => Spec.command
   let subscribe: (category, Notification_Rules.channel) => Spec.command
   let unsubscribe: (category, Notification_Rules.channel) => Spec.command
-  /** `reference` is the requester's key, echoed on whichever outcome follows. */
+  /** `reference` is the requester's key, echoed on whichever outcome follows.
+      The host's own relay's request: `Default` origin, from `defaultSource`. */
   let request: (category, string) => Spec.command
+  /** The same, with the two fields the handover turns on spelled out. */
+  let requestFrom: (
+    category,
+    string,
+    ~source: string,
+    ~origin: Notification_Rules.origin,
+  ) => Spec.command
+  /** The source `request` above comes from, and one nothing ever claims. */
+  let defaultSource: string
 
   /** The competency's facts, as the slice emits them. */
   let announced: string => Spec.event
@@ -88,6 +103,17 @@ module type Binding = {
   let requested: (category, string, Notification_Rules.channel, string) => Spec.event
   let suppressed: (category, string) => Spec.event
   let undeliverable: (category, string) => Spec.event
+  /** `(reference, source)` — the request another producer owns. */
+  let deferred: (string, string) => Spec.event
+  /** `requested` as it comes out for a `Configured` request. A separate member
+      because *which* rule asked is the host's own shape — the trait's fact
+      carries no origin at all, so it cannot construct this one. */
+  let requestedConfigured: (
+    category,
+    string,
+    Notification_Rules.channel,
+    string,
+  ) => Spec.event
 
   /** The refusal for managing preferences for somebody nobody has announced. */
   let recipientUnknown: Spec.error

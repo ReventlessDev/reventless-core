@@ -18,6 +18,15 @@ let channelSchema = Sury.union([
   Sury.literal("Push")
 ]);
 
+let originSchema = Sury.union([
+  Sury.literal("Default"),
+  Sury.$schema(s => ({
+    TAG: "Configured",
+    ruleId: s.m(DcbTag$Reventless.string),
+    ruleVersion: s.m(Sury.string)
+  }))
+]);
+
 let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "RecipientAnnounced",
@@ -35,6 +44,15 @@ let consumedEventSchema = Sury.union([
     recipientId: s.m(DcbTag$Reventless.string),
     category: s.m(categorySchema),
     channel: s.m(channelSchema)
+  })),
+  Sury.$schema(s => ({
+    TAG: "NotificationSourceClaimed",
+    sourceId: s.m(DcbTag$Reventless.string),
+    by: s.m(Sury.string)
+  })),
+  Sury.$schema(s => ({
+    TAG: "NotificationSourceReleased",
+    sourceId: s.m(DcbTag$Reventless.string)
   }))
 ]);
 
@@ -64,7 +82,9 @@ let commandSchema = Sury.union([
     subjectType: s.m(Sury.string),
     subjectRef: s.m(Sury.string),
     subject: s.m(Sury.string),
-    body: s.m(Sury.string)
+    body: s.m(Sury.string),
+    sourceId: s.m(DcbTag$Reventless.string),
+    origin: s.m(originSchema)
   })),
   Sury.$schema(s => ({
     TAG: "RecordDelivery",
@@ -110,7 +130,8 @@ let eventSchema = Sury.union([
     subjectType: s.m(Sury.string),
     subjectRef: s.m(Sury.string),
     subject: s.m(Sury.string),
-    body: s.m(Sury.string)
+    body: s.m(Sury.string),
+    origin: s.m(originSchema)
   })),
   Sury.$schema(s => ({
     TAG: "NotificationSuppressed",
@@ -118,7 +139,8 @@ let eventSchema = Sury.union([
     category: s.m(categorySchema),
     reference: s.m(Sury.string),
     subjectType: s.m(Sury.string),
-    subjectRef: s.m(Sury.string)
+    subjectRef: s.m(Sury.string),
+    origin: s.m(originSchema)
   })),
   Sury.$schema(s => ({
     TAG: "NotificationUndeliverable",
@@ -126,7 +148,14 @@ let eventSchema = Sury.union([
     category: s.m(categorySchema),
     reference: s.m(Sury.string),
     subjectType: s.m(Sury.string),
-    subjectRef: s.m(Sury.string)
+    subjectRef: s.m(Sury.string),
+    origin: s.m(originSchema)
+  })),
+  Sury.$schema(s => ({
+    TAG: "NotificationDeferred",
+    recipientId: s.m(DcbTag$Reventless.string),
+    reference: s.m(Sury.string),
+    sourceKey: s.m(Sury.string)
   })),
   Sury.$schema(s => ({
     TAG: "NotificationDelivered",
@@ -172,6 +201,7 @@ export {
   Id,
   categorySchema,
   channelSchema,
+  originSchema,
   consumedEventSchema,
   errorSchema,
   eventSchema,

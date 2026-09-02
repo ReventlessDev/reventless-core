@@ -645,6 +645,7 @@ type Ordering_NotificationDelivery implements Node {
   decidedAt: String!
   detail: String!
   id: ID!
+  origin: String!
   outcome: Ordering_NotificationDeliveryOutcome!
   recipientId: ID!
   reference: String!

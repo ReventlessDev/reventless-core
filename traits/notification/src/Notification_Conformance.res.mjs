@@ -28,6 +28,14 @@ function Make(B) {
     G.test("an optional request is suppressed with no explicit subscription", () => G.thenEvent(G.whenCmd(G.givenEvents(announced), B.request(B.optional, "ref-2")), B.suppressed(B.optional, "ref-2")));
     G.test("a recipient who opted out is suppressed", () => G.thenEvent(G.whenCmd(G.givenEvents(announced.concat([B.unsubscribedC(B.transactional, B.announcedChannel)])), B.request(B.transactional, "ref-3")), B.suppressed(B.transactional, "ref-3")));
     G.test("a request for a recipient nobody announced is undeliverable", () => G.thenEvent(G.whenCmd(G.givenEvents(B.created), B.request(B.transactional, "ref-4")), B.undeliverable(B.transactional, "ref-4")));
+    G.test("with nothing claimed, a default request is decided as usual", () => G.thenEvent(G.whenCmd(G.givenEvents(announced), B.requestFrom(B.transactional, "ref-6", B.defaultSource, "Default")), B.requested(B.transactional, "ref-6", B.announcedChannel, B.addressA)));
+    G.test("a default request for a claimed source is deferred", () => G.thenEvent(G.whenCmd(G.givenEvents(announced.concat([B.claimedC("other:Source", "second-producer")])), B.requestFrom(B.transactional, "ref-7", "other:Source", "Default")), B.deferred("ref-7", "other:Source")));
+    G.test("a claim on one source leaves every other source alone", () => G.thenEvent(G.whenCmd(G.givenEvents(announced.concat([B.claimedC("other:Source", "second-producer")])), B.requestFrom(B.transactional, "ref-8", B.defaultSource, "Default")), B.requested(B.transactional, "ref-8", B.announcedChannel, B.addressA)));
+    G.test("a configured request for a claimed source goes through", () => G.thenEvent(G.whenCmd(G.givenEvents(announced.concat([B.claimedC("other:Source", "second-producer")])), B.requestFrom(B.transactional, "ref-9", "other:Source", "Configured")), B.requestedConfigured(B.transactional, "ref-9", B.announcedChannel, B.addressA)));
+    G.test("a released source stops deferring", () => G.thenEvent(G.whenCmd(G.givenEvents(announced.concat([
+      B.claimedC("other:Source", "second-producer"),
+      B.releasedC("other:Source")
+    ])), B.requestFrom(B.transactional, "ref-10", "other:Source", "Default")), B.requested(B.transactional, "ref-10", B.announcedChannel, B.addressA)));
     let channel = B.unreachableChannel;
     if (channel !== undefined) {
       return G.test("a channel with no address on file is undeliverable, not suppressed", () => G.thenEvent(G.whenCmd(G.givenEvents(announced.concat([

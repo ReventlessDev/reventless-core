@@ -31,6 +31,8 @@ describe("NotificationPreferences StateChangeSlice", () => {
         subjectRef: "o1",
         subject: "Your order o1 is confirmed",
         body: "Thanks — we have your order o1 and will let you know when it ships.",
+        sourceId: "OrderingDcbEventLog:OrderPlaced",
+        origin: Default,
       }),
     )
     ->thenEvent(
@@ -44,6 +46,7 @@ describe("NotificationPreferences StateChangeSlice", () => {
         subjectRef: "o1",
         subject: "Your order o1 is confirmed",
         body: "Thanks — we have your order o1 and will let you know when it ships.",
+        origin: Default,
       }),
     )
   )
@@ -62,6 +65,8 @@ describe("NotificationPreferences StateChangeSlice", () => {
         subjectRef: "o1",
         subject: "Deals for you",
         body: "Have a look.",
+        sourceId: "OrderingDcbEventLog:OrderPlaced",
+        origin: Default,
       }),
     )
     ->thenEvent(
@@ -71,6 +76,7 @@ describe("NotificationPreferences StateChangeSlice", () => {
         reference: "promo:o1",
         subjectType: "Order",
         subjectRef: "o1",
+        origin: Default,
       }),
     )
   )

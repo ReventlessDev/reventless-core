@@ -37,6 +37,11 @@ module Binding = {
       category,
       channel: Behavior.channelOf(channel),
     })
+  // Written by NotificationSourceClaims next door and read here across
+  // partitions — this slice consumes them and produces neither.
+  let claimedC = (source, by): Spec.consumedEvent =>
+    NotificationSourceClaimed({sourceId: source, by})
+  let releasedC = (source): Spec.consumedEvent => NotificationSourceReleased({sourceId: source})
 
   let announce = email => Spec.AnnounceRecipient({recipientId, email})
   let subscribe = (category, channel) =>
@@ -45,7 +50,12 @@ module Binding = {
     Spec.Unsubscribe({recipientId, category, channel: Behavior.channelOf(channel)})
   // The wording and the subject are this host's and the trait carries neither, so
   // the suite supplies whatever it likes and asserts nothing about them.
-  let request = (category, reference) =>
+  //
+  // One source nothing ever claims, so the fourteen assertions that predate the
+  // handover keep deciding exactly as they did.
+  let defaultSource = "OrderingDcbEventLog:OrderPlaced"
+
+  let requestFrom = (category, reference, ~source, ~origin) =>
     Spec.RequestNotification({
       recipientId,
       category,
@@ -54,7 +64,15 @@ module Binding = {
       subjectRef: "o1",
       subject: "subject",
       body: "body",
+      sourceId: source,
+      origin: switch (origin: TraitNotification.Notification_Rules.origin) {
+      | Default => Default
+      | Configured => Configured({ruleId: "rule-1", ruleVersion: "1"})
+      },
     })
+
+  let request = (category, reference) =>
+    requestFrom(category, reference, ~source=defaultSource, ~origin=Default)
 
   let announced = email => Spec.RecipientAnnounced({recipientId, email})
   let subscribed = (category, channel) =>
@@ -72,7 +90,24 @@ module Binding = {
       subjectRef: "o1",
       subject: "subject",
       body: "body",
+      origin: Default,
     })
+  let requestedConfigured = (category, reference, channel, address) =>
+    Spec.NotificationRequested({
+      recipientId,
+      category,
+      reference,
+      channel: Behavior.channelOf(channel),
+      address,
+      subjectType: "Order",
+      subjectRef: "o1",
+      subject: "subject",
+      body: "body",
+      // Matches what `requestFrom(~origin=Configured)` above sends in.
+      origin: Configured({ruleId: "rule-1", ruleVersion: "1"}),
+    })
+  let deferred = (reference, source) =>
+    Spec.NotificationDeferred({recipientId, reference, sourceKey: source})
   // The subject rides through the two decisions not to send as well: what a
   // suppressed or undeliverable notification was about is the whole reason those
   // rows are worth reading.
@@ -83,6 +118,7 @@ module Binding = {
       reference,
       subjectType: "Order",
       subjectRef: "o1",
+      origin: Default,
     })
   let undeliverable = (category, reference) =>
     Spec.NotificationUndeliverable({
@@ -91,6 +127,7 @@ module Binding = {
       reference,
       subjectType: "Order",
       subjectRef: "o1",
+      origin: Default,
     })
 
   let recipientUnknown = Spec.RecipientUnknown
