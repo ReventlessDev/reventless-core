@@ -6,10 +6,10 @@
 @schema
 type consumedEvent =
   | CategoryAdded
-  | CategoryImageAttached({categoryImage: string})
-  | CategoryImageRemoved({categoryImage: string})
-  | CategoryPrimaryImageSet({categoryImage: string})
-  | CategoryImageAltTextSet({categoryImage: string, altText: string})
+  | CategoryImageAttached({categoryImage: Reventless.UploadableImage.t})
+  | CategoryImageRemoved({categoryImage: Reventless.UploadableImage.t})
+  | CategoryPrimaryImageSet({categoryImage: Reventless.UploadableImage.t})
+  | CategoryImageAltTextSet({categoryImage: Reventless.UploadableImage.t, altText: string})
   | CategoryArchived
   // The refusal is on `archived`, so the slice has to hear when that stops.
   | CategoryUnarchived

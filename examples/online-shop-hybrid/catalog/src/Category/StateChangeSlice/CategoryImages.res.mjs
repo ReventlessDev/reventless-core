@@ -9,19 +9,19 @@ let consumedEventSchema = Sury.union([
   Sury.literal("CategoryAdded"),
   Sury.$schema(s => ({
     TAG: "CategoryImageAttached",
-    categoryImage: s.m(Sury.string)
+    categoryImage: s.m(UploadableImage$Reventless.forField(undefined, "categoryImages"))
   })),
   Sury.$schema(s => ({
     TAG: "CategoryImageRemoved",
-    categoryImage: s.m(Sury.string)
+    categoryImage: s.m(UploadableImage$Reventless.forField(undefined, "categoryImages"))
   })),
   Sury.$schema(s => ({
     TAG: "CategoryPrimaryImageSet",
-    categoryImage: s.m(Sury.string)
+    categoryImage: s.m(UploadableImage$Reventless.forField(undefined, "categoryImages"))
   })),
   Sury.$schema(s => ({
     TAG: "CategoryImageAltTextSet",
-    categoryImage: s.m(Sury.string),
+    categoryImage: s.m(UploadableImage$Reventless.forField(undefined, "categoryImages")),
     altText: s.m(Sury.string)
   })),
   Sury.literal("CategoryArchived"),

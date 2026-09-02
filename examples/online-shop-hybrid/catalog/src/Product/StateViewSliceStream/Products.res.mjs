@@ -33,23 +33,23 @@ let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "ProductImageAttached",
     productId: s.m(Sury.string),
-    productImage: s.m(Sury.string),
+    productImage: s.m(UploadableImage$Reventless.forField(undefined, "productImages")),
     altText: s.m(Sury.$option(Sury.string))
   })),
   Sury.$schema(s => ({
     TAG: "ProductImageRemoved",
     productId: s.m(Sury.string),
-    productImage: s.m(Sury.string)
+    productImage: s.m(UploadableImage$Reventless.forField(undefined, "productImages"))
   })),
   Sury.$schema(s => ({
     TAG: "ProductPrimaryImageSet",
     productId: s.m(Sury.string),
-    productImage: s.m(Sury.string)
+    productImage: s.m(UploadableImage$Reventless.forField(undefined, "productImages"))
   })),
   Sury.$schema(s => ({
     TAG: "ProductImageAltTextSet",
     productId: s.m(Sury.string),
-    productImage: s.m(Sury.string),
+    productImage: s.m(UploadableImage$Reventless.forField(undefined, "productImages")),
     altText: s.m(Sury.string)
   })),
   Sury.$schema(s => ({

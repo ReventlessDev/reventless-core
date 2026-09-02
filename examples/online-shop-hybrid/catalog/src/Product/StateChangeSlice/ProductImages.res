@@ -11,10 +11,10 @@
 @schema
 type consumedEvent =
   | ProductAdded
-  | ProductImageAttached({productImage: string})
-  | ProductImageRemoved({productImage: string})
-  | ProductPrimaryImageSet({productImage: string})
-  | ProductImageAltTextSet({productImage: string, altText: string})
+  | ProductImageAttached({productImage: Reventless.UploadableImage.t})
+  | ProductImageRemoved({productImage: Reventless.UploadableImage.t})
+  | ProductPrimaryImageSet({productImage: Reventless.UploadableImage.t})
+  | ProductImageAltTextSet({productImage: Reventless.UploadableImage.t, altText: string})
   | ProductArchived
   | ProductUnarchived
   | ProductDiscontinued

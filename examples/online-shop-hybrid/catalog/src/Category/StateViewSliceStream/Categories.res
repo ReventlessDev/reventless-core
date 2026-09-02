@@ -7,10 +7,10 @@
 type consumedEvent =
   | CategoryAdded({categoryId: string, name: string})
   | CategoryRenamed({categoryId: string, name: string})
-  | CategoryImageAttached({categoryId: string, categoryImage: string, altText?: string})
-  | CategoryImageRemoved({categoryId: string, categoryImage: string})
-  | CategoryPrimaryImageSet({categoryId: string, categoryImage: string})
-  | CategoryImageAltTextSet({categoryId: string, categoryImage: string, altText: string})
+  | CategoryImageAttached({categoryId: string, categoryImage: Reventless.UploadableImage.t, altText?: string})
+  | CategoryImageRemoved({categoryId: string, categoryImage: Reventless.UploadableImage.t})
+  | CategoryPrimaryImageSet({categoryId: string, categoryImage: Reventless.UploadableImage.t})
+  | CategoryImageAltTextSet({categoryId: string, categoryImage: Reventless.UploadableImage.t, altText: string})
   | CategoryArchived({categoryId: string})
   | CategoryUnarchived({categoryId: string})
 

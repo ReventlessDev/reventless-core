@@ -19,23 +19,23 @@ let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "CategoryImageAttached",
     categoryId: s.m(Sury.string),
-    categoryImage: s.m(Sury.string),
+    categoryImage: s.m(UploadableImage$Reventless.forField(undefined, "categoryImages")),
     altText: s.m(Sury.$option(Sury.string))
   })),
   Sury.$schema(s => ({
     TAG: "CategoryImageRemoved",
     categoryId: s.m(Sury.string),
-    categoryImage: s.m(Sury.string)
+    categoryImage: s.m(UploadableImage$Reventless.forField(undefined, "categoryImages"))
   })),
   Sury.$schema(s => ({
     TAG: "CategoryPrimaryImageSet",
     categoryId: s.m(Sury.string),
-    categoryImage: s.m(Sury.string)
+    categoryImage: s.m(UploadableImage$Reventless.forField(undefined, "categoryImages"))
   })),
   Sury.$schema(s => ({
     TAG: "CategoryImageAltTextSet",
     categoryId: s.m(Sury.string),
-    categoryImage: s.m(Sury.string),
+    categoryImage: s.m(UploadableImage$Reventless.forField(undefined, "categoryImages")),
     altText: s.m(Sury.string)
   })),
   Sury.$schema(s => ({
