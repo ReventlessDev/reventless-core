@@ -175,6 +175,45 @@ let isPunctuation = (line: string): bool =>
   | _ => false
   }
 
+/**
+Every comparable line of a schema, qualified by the declaration it sits in.
+
+`Type.field: String!` rather than `field: String!`, and the qualification is what
+makes the comparison correct rather than only the report readable. A bare field
+line is not unique across a 42-type schema — `address: String!` belongs to two
+types here — so a multiset keyed on the raw text lets an unrelated type's
+identical line answer for the one that actually changed. The count came out
+right and the name came out wrong: adding `address` to `NotificationDelivery`
+was reported against `SendNotificationTodoItem`, sending a reader to a file
+nothing had touched.
+
+Punctuation is dropped rather than carried, since it is never reported: a `}`
+qualified by its owner would only add keys that cannot appear in a diff.
+*/
+let comparableLines = (sdl: string): array<string> => {
+  let lines = []
+  let declaration = ref(None)
+  sdl
+  ->String.split("\n")
+  ->Array.forEach(line => {
+    switch declarationName(line) {
+    | Some(_) as name => declaration := name
+    | None => ()
+    }
+    if !isPunctuation(line) {
+      let body = line->String.trim
+      lines->Array.push(
+        switch (declarationName(line), declaration.contents) {
+        | (Some(_), _) => body
+        | (None, Some(owner)) => `${owner}.${body}`
+        | (None, None) => body
+        },
+      )
+    }
+  })
+  lines
+}
+
 /** The lines one side has that the other does not, each named by the declaration
     it belongs to.
 
@@ -187,36 +226,19 @@ let isPunctuation = (line: string): bool =>
     `actual: ownerField: String`: a replacement that never happened. */
 let exclusiveTo = (~from: string, ~other: string): array<string> => {
   let remaining = Dict.make()
-  other
-  ->String.split("\n")
-  ->Array.forEach(line => remaining->Dict.set(line, remaining->Dict.get(line)->Option.getOr(0) + 1))
+  comparableLines(other)->Array.forEach(key =>
+    remaining->Dict.set(key, remaining->Dict.get(key)->Option.getOr(0) + 1)
+  )
 
   let found = []
-  let declaration = ref(None)
-  from
-  ->String.split("\n")
-  ->Array.forEach(line => {
-    switch declarationName(line) {
-    | Some(_) as name => declaration := name
-    | None => ()
-    }
-    switch remaining->Dict.get(line) {
+  comparableLines(from)->Array.forEach(key =>
+    switch remaining->Dict.get(key) {
     // Present on both sides — spend one of the other side's copies, so a line
     // that appears twice here and once there still reports one occurrence.
-    | Some(count) if count > 0 => remaining->Dict.set(line, count - 1)
-    | _ =>
-      if !isPunctuation(line) {
-        let body = line->String.trim
-        found->Array.push(
-          switch (declarationName(line), declaration.contents) {
-          | (Some(_), _) => body
-          | (None, Some(owner)) => `${owner}.${body}`
-          | (None, None) => body
-          },
-        )
-      }
+    | Some(count) if count > 0 => remaining->Dict.set(key, count - 1)
+    | _ => found->Array.push(key)
     }
-  })
+  )
   found
 }
 

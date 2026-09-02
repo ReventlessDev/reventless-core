@@ -167,24 +167,15 @@ function isPunctuation(line) {
   }
 }
 
-function exclusiveTo(from, other) {
-  let remaining = {};
-  other.split("\n").forEach(line => {
-    remaining[line] = Stdlib_Option.getOr(remaining[line], 0) + 1 | 0;
-  });
-  let found = [];
+function comparableLines(sdl) {
+  let lines = [];
   let declaration = {
     contents: undefined
   };
-  from.split("\n").forEach(line => {
+  sdl.split("\n").forEach(line => {
     let name = declarationName(line);
     if (name !== undefined) {
       declaration.contents = name;
-    }
-    let count = remaining[line];
-    if (count !== undefined && count > 0) {
-      remaining[line] = count - 1 | 0;
-      return;
     }
     if (isPunctuation(line)) {
       return;
@@ -192,7 +183,24 @@ function exclusiveTo(from, other) {
     let body = line.trim();
     let match = declarationName(line);
     let match$1 = declaration.contents;
-    found.push(match !== undefined || match$1 === undefined ? body : match$1 + `.` + body);
+    lines.push(match !== undefined || match$1 === undefined ? body : match$1 + `.` + body);
+  });
+  return lines;
+}
+
+function exclusiveTo(from, other) {
+  let remaining = {};
+  comparableLines(other).forEach(key => {
+    remaining[key] = Stdlib_Option.getOr(remaining[key], 0) + 1 | 0;
+  });
+  let found = [];
+  comparableLines(from).forEach(key => {
+    let count = remaining[key];
+    if (count !== undefined && count > 0) {
+      remaining[key] = count - 1 | 0;
+    } else {
+      found.push(key);
+    }
   });
   return found;
 }
@@ -325,6 +333,7 @@ export {
   reportLimit,
   declarationName,
   isPunctuation,
+  comparableLines,
   exclusiveTo,
   describe,
   driftReport,
