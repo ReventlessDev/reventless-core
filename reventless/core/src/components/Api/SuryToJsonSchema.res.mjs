@@ -304,18 +304,38 @@ function withSemantic(fieldSchema, sem) {
   obj["x-reventless-semantic-source"] = "type";
   let match = sem.payload;
   if (typeof match === "object") {
-    if (match.TAG === "ReferenceTo") {
-      let match$1 = match._0;
-      obj["x-reventless-semantic-target"] = Object.fromEntries(withOptionalPlugin([[
-          "entity",
-          match$1.entity
-        ]], match$1.plugin));
-    } else {
-      let match$2 = match._0;
-      obj["x-reventless-semantic-target"] = Object.fromEntries(withOptionalPlugin([[
-          "store",
-          match$2.store
-        ]], match$2.plugin));
+    switch (match.TAG) {
+      case "ReferenceTo" :
+        let match$1 = match._0;
+        obj["x-reventless-semantic-target"] = Object.fromEntries(withOptionalPlugin([[
+            "entity",
+            match$1.entity
+          ]], match$1.plugin));
+        break;
+      case "StoredIn" :
+        let match$2 = match._0;
+        obj["x-reventless-semantic-target"] = Object.fromEntries(withOptionalPlugin([[
+            "store",
+            match$2.store
+          ]], match$2.plugin));
+        break;
+      case "MemberOf" :
+        let match$3 = match._0;
+        let optional = (pairs, key, value) => {
+          if (value !== undefined) {
+            return pairs.concat([[
+                key,
+                value
+              ]]);
+          } else {
+            return pairs;
+          }
+        };
+        obj["x-reventless-semantic-target"] = Object.fromEntries(optional(optional(withOptionalPlugin([[
+            "field",
+            match$3.field
+          ]], match$3.plugin), "view", match$3.view), "content", match$3.content));
+        break;
     }
   }
   return obj;

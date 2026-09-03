@@ -70,7 +70,7 @@ function getStore(schema) {
     return;
   }
   let target = match.payload;
-  if (typeof target !== "object" || target.TAG === "ReferenceTo") {
+  if (typeof target !== "object" || target.TAG !== "StoredIn") {
     return;
   } else {
     return target._0;

@@ -999,6 +999,91 @@ describe("SuryToJsonSchema:", () => {
     })
   })
 
+  // A selection, not an input. The whole point of the id is that it travels the
+  // same channel as a store declaration and says something a store declaration
+  // cannot: the candidates are on the row, so nothing is provisioned for it.
+  describe("a member-reference field:", () => {
+    let targetOf = (json, name) =>
+      getPropertyOf(json, name)->Option.flatMap(s =>
+        getProperty(s, "x-reventless-semantic-target")
+      )
+
+    testSync("carries the collection, the view holding it, and what a member is", () => {
+      let json = SuryToJsonSchema.deriveObjectSchema(
+        S.schema(s =>
+          {
+            "productImage": s.matches(
+              Reventless.MemberRef.of_(
+                ~view="Products",
+                ~content=Reventless.Semantic.Id.imageRef,
+                ~field="productImages",
+              ),
+            ),
+          }
+        )->S.castToUnknown,
+      )
+      expect(
+        getPropertyOf(json, "productImage")->Option.flatMap(s =>
+          getProperty(s, "x-reventless-semantic")
+        ),
+      )->toEqual(Some(JSON.Encode.string("memberRef")))
+      expect(targetOf(json, "productImage"))->toEqual(
+        Some(
+          JSON.Encode.object(
+            Dict.fromArray([
+              ("field", JSON.Encode.string("productImages")),
+              ("view", JSON.Encode.string("Products")),
+              ("content", JSON.Encode.string("imageRef")),
+            ]),
+          ),
+        ),
+      )
+    })
+
+    // The second position: a declaration on a view's own state, where the
+    // collection is on the same record and naming a view would invite the reader
+    // to think another one could be meant.
+    testSync("omits the view where the collection is on this very record", () =>
+      expect(
+        targetOf(
+          SuryToJsonSchema.deriveObjectSchema(
+            S.schema(s =>
+              {"productImage": s.matches(Reventless.MemberRef.of_(~field="productImages"))}
+            )->S.castToUnknown,
+          ),
+          "productImage",
+        ),
+      )->toEqual(
+        Some(JSON.Encode.object(Dict.fromArray([("field", JSON.Encode.string("productImages"))]))),
+      )
+    )
+
+    // The assertion the whole design rests on, and the one a reader will want to
+    // see rather than infer: a `memberRef` field declares NO store, so the
+    // provisioning walk passes it by and no upload endpoint is bound. This is
+    // exactly what `imageRef` gets today, reached through a different payload.
+    testSync("declares no store, so nothing is provisioned for it", () =>
+      expect(
+        Reventless.StorageRef.getFieldStore(
+          Reventless.MemberRef.of_(~view="Products", ~field="productImages"),
+        ),
+      )->toBe(None)
+    )
+
+    testSync("stays a plain string on the wire", () =>
+      expect(
+        getPropertyOf(
+          SuryToJsonSchema.deriveObjectSchema(
+            S.schema(s =>
+              {"productImage": s.matches(Reventless.MemberRef.of_(~field="productImages"))}
+            )->S.castToUnknown,
+          ),
+          "productImage",
+        )->Option.flatMap(s => getProperty(s, "type")),
+      )->toEqual(Some(JSON.Encode.string("string")))
+    )
+  })
+
   // The claim the branded scalars rest on: marking a field adds an annotation,
   // not a shape. A string stays a string and a number stays a number on the
   // wire, which is what makes them retrofittable onto a log that already has

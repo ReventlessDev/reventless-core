@@ -110,7 +110,7 @@ function getStore(schema) {
     return;
   }
   let target = match.payload;
-  if (typeof target !== "object" || target.TAG === "ReferenceTo" || match.id !== Semantic$Reventless.Id.offload) {
+  if (typeof target !== "object" || target.TAG !== "StoredIn" || match.id !== Semantic$Reventless.Id.offload) {
     return;
   } else {
     return target._0;
@@ -123,7 +123,7 @@ function getThreshold(schema) {
     return;
   }
   let match$1 = match.payload;
-  if (typeof match$1 !== "object" || match$1.TAG === "ReferenceTo" || match.id !== Semantic$Reventless.Id.offload) {
+  if (typeof match$1 !== "object" || match$1.TAG !== "StoredIn" || match.id !== Semantic$Reventless.Id.offload) {
     return;
   } else {
     return match$1._0.threshold;

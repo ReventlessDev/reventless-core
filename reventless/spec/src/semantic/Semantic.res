@@ -18,11 +18,39 @@ type referenceTarget = {entity: string, plugin: option<string>}
     when it defers to the platform default. */
 type storeTarget = {plugin: option<string>, store: string, threshold: option<int>}
 
+/**
+Which collection a value names a member of.
+
+`field` is the collection's field name on the row — the only thing a consumer
+needs, because the candidates are already loaded. `view` names the view that
+collection belongs to and is absent where the answer is "the row this field is
+on", which is every declaration made on a view's own state. `plugin` is absent
+for the declaring plugin's own view, as everywhere else here.
+
+Unlike `referenceTarget` this is deliberately not resolvable by query: the
+members are on the row, so a consumer that went looking for a table has
+misread it.
+
+`content` names what a member *is* — an `imageRef`/`fileRef` id — and is the one
+part of this that is not about the collection. It rides here for the reason
+`uploadableImage` exists at all rather than `storageRef` beside a content
+annotation: the collection's own element type already says it, but a consumer
+holding one field's schema cannot reach a sibling's, and one that renders a cell
+holds exactly that. Absent leaves the reader to its own rules, which is what a
+host attaching something the vocabulary has no word for should get. */
+type memberTarget = {
+  view: option<string>,
+  field: string,
+  plugin: option<string>,
+  content: option<string>,
+}
+
 /** Per-semantic detail, for the semantics that carry any. */
 type payload =
   | Plain
   | ReferenceTo(referenceTarget)
   | StoredIn(storeTarget)
+  | MemberOf(memberTarget)
 
 /** A field's semantic: the vocabulary id, plus its detail. */
 type t = {id: string, payload: payload}
@@ -44,6 +72,11 @@ module Id = {
   // The same content facts with no store — nothing is provisioned.
   let imageRef = "imageRef"
   let fileRef = "fileRef"
+
+  // A selection rather than an input: the value names a member of a collection
+  // the row already holds. Declares no store, so nothing is provisioned and no
+  // upload endpoint is bound — the distinction `uploadableImage` could not make.
+  let memberRef = "memberRef"
 
   // Branded scalars: a refinement, so adopting one changes nothing stored.
   let email = "email"

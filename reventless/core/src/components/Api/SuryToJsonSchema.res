@@ -271,6 +271,24 @@ and withSemantic = (fieldSchema: JSON.t, sem: Reventless.Semantic.t): JSON.t =>
         "x-reventless-semantic-target",
         jsonObject(withOptionalPlugin([("store", str(store))], plugin)),
       )
+    | MemberOf({plugin, view, field, content}) =>
+      // Same channel as the two above, and `view` and `content` are omitted on
+      // the same terms as `plugin`: absent means the collection is on the row
+      // this field is already part of, and that the member's kind is the
+      // reader's own to work out.
+      let optional = (pairs, key, value) =>
+        switch value {
+        | Some(v) => Array.concat(pairs, [(key, str(v))])
+        | None => pairs
+        }
+      obj->Dict.set(
+        "x-reventless-semantic-target",
+        jsonObject(
+          withOptionalPlugin([("field", str(field))], plugin)
+          ->optional("view", view)
+          ->optional("content", content),
+        ),
+      )
     }
     JSON.Encode.object(obj)
   }
