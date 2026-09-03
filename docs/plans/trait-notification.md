@@ -258,8 +258,37 @@ are the check.
 
 ## 11. P1 — the renderer
 
+**Status: ✅ DELIVERED [2026-09-03].** `Reventless.Template` in
+`reventless/spec/src/semantic/Template.res`, with 30 assertions in
+`reventless/spec/tests/TemplateTest.res`. Four corrections to what is written below:
+
+- **It reads the sury schema, not a derived JSON Schema.** §11 said the default formatter comes
+  from what `SuryToJsonSchema.deriveObjectSchema` carries. That is the same mistake §15.1 already
+  corrected for `@sensitive`, and for the same reason: `deriveObjectSchema`'s annotation path reads
+  `StateAnnotations`, which exists only for a queryable's `@schema type state`, while the renderer
+  reads **event payloads**. `Semantic.getFrom` and `Sensitive.isFieldSensitive` read the field's own
+  sury metadata, so command and event variants are covered. `Template.variantSchema` takes the arm,
+  since a message is about one occurrence.
+- **There is no locale or zone handling, and `dateTime` renders as stored.** Formatting is
+  locale-independent, which is the rule `Money.format` already states for every formatter here.
+  Nothing in the framework carries a recipient timezone, so "a `dateTime` in the recipient's zone"
+  had no input to read. Locale belongs where §10 already puts it — choosing which `content` entry
+  is rendered, not how a number is shaped — so the renderer takes no locale argument at all.
+- **The override vocabulary *is* the semantic vocabulary**, so §11's sketched `| currency` is
+  `| money`: the formatter names are `Semantic.Id.*` plus `raw`. A second table of formatter names
+  is a second thing to drift, and `currency` already means `Currency.t` in this repo.
+- **Withholding shipped with it**, per §16's ordering rule. A path whose schema is marked
+  `@sensitive` — or carries the `email`/`phone` semantic — renders `[withheld: <path>]`. A *guard*
+  on such a field still renders its body: it emits no value, and refusing it would silently drop
+  the body of `{{# if customer.email }}`.
+
+Delivered alongside, because the renderer needed them and they belong on the types: `format` on
+`Percent`, `Bytes` and `Duration` (`Money`, `DateRange` and `GeoPoint` already had one), and
+`Semantic.unionVariant`, extracted from `Sensitive.variantFieldNames` so both readers find an arm
+the same way.
+
 New in `reventless/spec/src/semantic` — **not** in the trait. It is a pure function of
-(template, payload, field schema, locale) and it reads the semantic vocabulary that already lives
+(template, payload, field schema) and it reads the semantic vocabulary that already lives
 there; putting it in the trait would make every other future consumer depend on a trait.
 
 Grammar, and deliberately nothing more:
@@ -274,6 +303,12 @@ Grammar, and deliberately nothing more:
 Total, pure, no evaluation of caller-supplied code. A path that does not resolve renders a visible
 placeholder and never throws — a rule can outlive the shape of the event it reads, and the send path
 is not where that should surface as an exception.
+
+Iteration is **bounded** (`Template.maxItems`, 100) and says how many items it left, so a template
+rendered against an unexpected list cannot compose a message of unbounded length. A path is refused
+at *parse* time when it is item-relative outside an `each`, when an `each` nests inside an `each`,
+when a block is left open or closed by the wrong word, and when a formatter is outside the
+vocabulary — the error names the offending token in each case.
 
 **The part worth building carefully.** The *default* formatter comes from the field's semantic
 annotation, which `SuryToJsonSchema.deriveObjectSchema` already carries (it is annotation-aware,
@@ -655,26 +690,25 @@ schema-drift check of its own, run against the deployed plugin structures rather
 ## 16. Order, and the one deadline
 
 ```
-P0 rules-as-data ─┬─> P4 open vocabulary
-                  └─> P1 renderer
+P0 rules-as-data ───> P4 open vocabulary   ← NEXT; unblocked, P1 is its renderer
+P1 renderer                                ✅ DONE [2026-09-03]
 P2 provenance + deferred ──> P3 handover   ◐ SUBSTANTIALLY BUILT — gap at §13.4, and see §13a
 P5 address out / subject in                ✅ DONE [2026-09-02]
 15.1 @sensitive                            ✅ DONE [2026-09-03]
 15.2 raw posture                           (independent; needed by a second producer, not by P0–P4)
 ```
 
-⚠️ **P0 cannot meet its own acceptance criterion without P1.** §10's deliverable is that the two
+**P0's dependency on P1 is settled: P1 shipped first.** §10's deliverable is that the two
 notifications are unchanged, but today's wording is interpolated (`Your order ${item.orderId} is
 confirmed`) and P0's `content` holds plain strings — turning `orderId` back into that sentence *is*
-the renderer. So "P0 changes only the graft file and the scaffold" below is wrong: P0 either pulls
-in P1, and with it `reventless/spec`, or ships a stopgap interpolator P1 then replaces. Settle that
-before scheduling either.
+the renderer. `Reventless.Template` is now that renderer, so P0 uses it rather than shipping a
+stopgap interpolator; the wording moves from a ReScript template literal to
+`Your order {{ orderId }} is confirmed`.
 
-⚠️ **P1 before 15.1 is backwards.** The renderer interpolates arbitrary field paths of an event
-payload into text a person receives; `@sensitive` is the marking that says which fields must not go.
-Building the capability and deferring its guard is the wrong order regardless of the schedule.
-
-P1 is additive and safe at any point.
+⚠️ **P1 before 15.1 would have been backwards**, and was not: `@sensitive` landed first and the
+renderer withholds on it. The renderer interpolates arbitrary field paths of an event payload into
+text a person receives, so building the capability and deferring its guard would have been the
+wrong order regardless of the schedule.
 
 **P2, P4 and P5 change a published event shape or a projected view's state**, and their cost is a
 function of adoption: today the trait is `alpha.3` with one host, both in this repository, so each is
@@ -682,8 +716,10 @@ a single-commit change with the host updated in the same commit. Once the trait 
 host outside this repository grafts it, the same three become migrations with event healing and a
 projection rebuild.
 
-**P5 is done, and P2+P3 are substantially built** — wired into `Plugin.res` on both paths, with the
-conformance assertions written. **What remains is §13.4: nothing releases a claim.** Finish that
+**P1, P5 and 15.1 are done, and P2+P3 are substantially built** — wired into `Plugin.res` on both
+paths, with the conformance assertions written. **P0 is the next buildable step**, and it is now
+unblocked in both directions: the renderer exists, and `@sensitive` guards it. **What is still open
+on the handover is §13.4: nothing releases a claim.** Finish that
 before the mechanism is used for anything; a claimant that disappears currently takes its
 notifications silent with it.
 
@@ -722,3 +758,10 @@ audited. That is a decision, not code, and it is not specified anywhere here.
 - ✅ For P5: a check that `address` appears in no view state. The GraphQL contract golden is that
   check — `Ordering_NotificationDelivery` no longer declares it, and `check:graphql` fails if it
   comes back. The field stays on `NotificationRequested`, which the send slice consumes.
+- ✅ For P1: `reventless/spec/tests/TemplateTest.res`. The two load-bearing properties are asserted
+  directly rather than left to inspection — **totality** (a missing path, a path through a scalar
+  and an `each` over a non-list each render a placeholder; a parse failure is a `result`, never a
+  throw) and **withholding** (an annotated field, an annotated *optional* field whose marker sits
+  inside sury's wrapper, an unannotated `email`, and one arm of an event union). The formatter
+  assertions drive `Money` / `Percent` / `Bytes` / `Duration` through a template with no formatter
+  written, which is the claim §11 makes about rendering on an annotated schema.

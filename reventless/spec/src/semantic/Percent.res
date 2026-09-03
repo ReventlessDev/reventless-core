@@ -1,24 +1,9 @@
 /**
-Marks a `float` field as a percentage, expressed **0–100**.
+Marks a `float` field as a percentage, expressed **0–100**, not 0–1.
 
-## Why 0–100 and not 0–1
-
-Both conventions are defensible in the abstract, so the tie is broken by the
-consumer that already exists: the dashboard gauges a field with this semantic
-against fixed bounds of 0 and 100, and formats `42.0` as `"42%"`. Under a 0–1
-convention every value would render as a rounding error near zero — a gauge
-pinned at empty and a label reading `"0.42%"`.
-
-That failure is quiet, and it is quiet in the worst way: the numbers are
-*present* and *wrong*, and the layer at fault is not the one showing the symptom.
-Agreeing with the renderer costs nothing; disagreeing costs an afternoon.
-
-A fraction is still perfectly good arithmetic — it just multiplies by 100 before
-it becomes this type.
-
-## The grammar
-
-A finite number in `[0, 100]`. Fractions are allowed: `99.95` is a percentage.
+The scale is what every consumer gauges and formats against, so a fraction
+multiplies by 100 before it becomes this type. A finite number in `[0, 100]`;
+fractions are allowed — `99.95` is a percentage.
 
 @example
 ```rescript
@@ -30,7 +15,7 @@ A finite number in `[0, 100]`. Fractions are allowed: `99.95` is a percentage.
 */
 
 /** The percentage's representation. Transparent `float`: the marker refines an
-    existing numeric field rather than replacing it, so nothing stored changes. */
+    existing numeric field, so nothing stored changes. */
 type t = float
 
 external unsafe: float => t = "%identity"
@@ -51,3 +36,7 @@ let fromFloat = (raw: float): result<t, string> =>
 
 /** The sury schema for a percentage field. Use with `@s.matches(Reventless.Percent.schema)`. */
 let schema: S.t<t> = S.float->Semantic.refined(~id=Semantic.Id.percent, ~check=fromFloat)
+
+/** The percentage as text — `"42%"`, `"99.95%"`. Locale-independent, the way
+    `Money.format` is. */
+let format = (p: t): string => Float.toString(p) ++ "%"

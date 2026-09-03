@@ -31,8 +31,43 @@ function fromFloat(raw) {
 
 let schema = Semantic$Reventless.refined(Sury.float, Semantic$Reventless.Id.bytes, fromFloat);
 
+let units = [
+  "B",
+  "KB",
+  "MB",
+  "GB",
+  "TB",
+  "PB"
+];
+
+function format(b) {
+  let last = units.length - 1 | 0;
+  let reduce = (_value, _index) => {
+    while (true) {
+      let index = _index;
+      let value = _value;
+      if (value < 1024.0 || index >= last) {
+        return [
+          value,
+          units[index]
+        ];
+      }
+      _index = index + 1 | 0;
+      _value = value / 1024.0;
+      continue;
+    };
+  };
+  let match = reduce(b, 0);
+  return (Math.round(match[0] * 10.0) / 10.0).toString() + " " + match[1];
+}
+
+let step = 1024.0;
+
 export {
   fromFloat,
   schema,
+  step,
+  units,
+  format,
 }
 /* schema Not a pure module */

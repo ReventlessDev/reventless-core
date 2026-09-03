@@ -1,26 +1,9 @@
 /**
-Marks a numeric field as a count of bytes.
+Marks a numeric field as a count of bytes: finite, whole, zero or greater.
 
-## Why `float` and not `int`
-
-A byte count is a whole number and cannot be negative, so `int` is the type it
-wants to be. It is the wrong one here anyway: ReScript's `int` is int32, and
-sury enforces that, so an `int` byte count silently caps at 2,147,483,647 — just
-under 2 GiB. A type whose stated job is file sizes cannot stop at 2 GB.
-
-`float` is a JS number, exact for every integer up to 2^53 — nine petabytes,
-which is enough. The discreteness `int` would have given for free is recovered
-by checking it: the grammar below rejects a fractional byte count, so the type
-still means what `int` meant, minus the ceiling.
-
-The wire is unaffected either way — both are JSON numbers — so this is a source
-choice, not a format one. A field genuinely bounded below 2 GiB can still be
-declared `int` and left unmarked; this type is for the ones that are not.
-
-## The grammar
-
-A finite, whole number, zero or greater. Zero is a real byte count — an empty
-object — so it is accepted.
+`float` rather than `int` because ReScript's `int` is int32, which caps a byte
+count just under 2 GiB; wholeness is recovered by the grammar below. The wire is
+a JSON number either way.
 
 @example
 ```rescript
@@ -52,3 +35,20 @@ let fromFloat = (raw: float): result<t, string> =>
 
 /** The sury schema for a byte-count field. Use with `@s.matches(Reventless.Bytes.schema)`. */
 let schema: S.t<t> = S.float->Semantic.refined(~id=Semantic.Id.bytes, ~check=fromFloat)
+
+/** Binary, because a byte count is what a filesystem reports. */
+let step = 1024.0
+let units = ["B", "KB", "MB", "GB", "TB", "PB"]
+
+/** The count as text — `"512 B"`, `"1.5 KB"`, `"2 MB"`. Locale-independent, the
+    way `Money.format` is, so one value reads the same everywhere. */
+let format = (b: t): string => {
+  let last = Array.length(units) - 1
+  let rec reduce = (value: float, index: int): (float, string) =>
+    value < step || index >= last
+      ? (value, units->Array.getUnsafe(index))
+      : reduce(value /. step, index + 1)
+  let (value, unit) = reduce(b, 0)
+  // One decimal, and only when it says something: 2097152 is "2 MB", not "2.0 MB".
+  Float.toString(Math.round(value *. 10.0) /. 10.0) ++ " " ++ unit
+}

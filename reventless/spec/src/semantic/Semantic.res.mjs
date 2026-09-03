@@ -67,6 +67,42 @@ function unwrapOptional(schema) {
   }
 }
 
+function unionVariant(schema, variant) {
+  let isVariant = properties => {
+    let match = properties["TAG"];
+    if (match === undefined) {
+      return false;
+    }
+    if (match.type !== "string") {
+      return false;
+    }
+    let name = match.const;
+    if (name !== undefined) {
+      return name === variant;
+    } else {
+      return false;
+    }
+  };
+  switch (schema.type) {
+    case "object" :
+      if (isVariant(schema.properties)) {
+        return schema;
+      } else {
+        return;
+      }
+    case "anyOf" :
+      return schema.anyOf.find(arm => {
+        if (arm.type === "object") {
+          return isVariant(arm.properties);
+        } else {
+          return false;
+        }
+      });
+    default:
+      return;
+  }
+}
+
 function getFrom(schema) {
   let found = Sury.$Metadata_get(schema, semanticId);
   if (found !== undefined) {
@@ -94,6 +130,7 @@ export {
   refined,
   showString,
   unwrapOptional,
+  unionVariant,
   getFrom,
   get,
   has,

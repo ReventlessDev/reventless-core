@@ -48,46 +48,7 @@ function fieldNames(schema) {
 }
 
 function variantFieldNames(schema, variant) {
-  let isVariant = properties => {
-    let match = properties["TAG"];
-    if (match === undefined) {
-      return false;
-    }
-    if (match.type !== "string") {
-      return false;
-    }
-    let name = match.const;
-    if (name !== undefined) {
-      return name === variant;
-    } else {
-      return false;
-    }
-  };
-  switch (schema.type) {
-    case "object" :
-      let properties = schema.properties;
-      if (isVariant(properties)) {
-        return fieldNamesOfProperties(properties);
-      } else {
-        return [];
-      }
-    case "anyOf" :
-      return Stdlib_Option.mapOr(schema.anyOf.find(v => {
-        if (v.type === "object") {
-          return isVariant(v.properties);
-        } else {
-          return false;
-        }
-      }), [], v => {
-        if (v.type === "object") {
-          return fieldNamesOfProperties(v.properties);
-        } else {
-          return [];
-        }
-      });
-    default:
-      return [];
-  }
+  return Stdlib_Option.mapOr(Semantic$Reventless.unionVariant(schema, variant), [], fieldNames);
 }
 
 function impliedBySemantic(semanticId) {

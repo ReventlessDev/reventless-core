@@ -26,8 +26,13 @@ function fromFloat(raw) {
 
 let schema = Semantic$Reventless.refined(Sury.float, Semantic$Reventless.Id.percent, fromFloat);
 
+function format(p) {
+  return p.toString() + "%";
+}
+
 export {
   fromFloat,
   schema,
+  format,
 }
 /* schema Not a pure module */

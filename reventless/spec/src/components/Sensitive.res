@@ -121,36 +121,8 @@ template from consulting the wrong arm.
 Answers `[]` for an unknown tag and for a payload-less variant, both of which
 mean the same thing to a caller: nothing on this event is withheld.
 */
-let variantFieldNames = (schema: S.t<unknown>, ~variant: string): array<string> => {
-  let isVariant = (properties: dict<S.t<unknown>>) =>
-    switch properties->Dict.get("TAG") {
-    | Some(String({const: ?Some(name)})) => name == variant
-    | _ => false
-    }
-  switch schema {
-  | AnyOf({anyOf}) =>
-    anyOf
-    ->Array.find(v =>
-      switch v {
-      | Object({properties}) => isVariant(properties)
-      | _ => false
-      }
-    )
-    ->Option.mapOr([], v =>
-      switch v {
-      | Object({properties}) => fieldNamesOfProperties(properties)
-      | _ => []
-      }
-    )
-  // A union with exactly one constructor is emitted as a bare object carrying
-  // the TAG rather than a one-element `AnyOf`. Matching only `AnyOf` would
-  // answer "nothing is sensitive" for every single-event spec — which is a
-  // common shape, and one where the answer would be wrong in the leaking
-  // direction.
-  | Object({properties}) => isVariant(properties) ? fieldNamesOfProperties(properties) : []
-  | _ => []
-  }
-}
+let variantFieldNames = (schema: S.t<unknown>, ~variant: string): array<string> =>
+  schema->Semantic.unionVariant(~variant)->Option.mapOr([], fieldNames)
 
 /**
 The semantics that are sensitive without an annotation.

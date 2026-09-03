@@ -117,6 +117,31 @@ let unwrapOptional = (schema: S.t<unknown>): option<S.t<unknown>> =>
   }
 
 /**
+One arm of a command or event union, found by its tag.
+
+A union with exactly one constructor is emitted as a bare object carrying the
+TAG rather than a one-element `AnyOf`, so both shapes are matched.
+*/
+let unionVariant = (schema: S.t<unknown>, ~variant: string): option<S.t<unknown>> => {
+  let isVariant = (properties: dict<S.t<unknown>>) =>
+    switch properties->Dict.get("TAG") {
+    | Some(String({const: ?Some(name)})) => name == variant
+    | _ => false
+    }
+  switch schema {
+  | AnyOf({anyOf}) =>
+    anyOf->Array.find(arm =>
+      switch arm {
+      | Object({properties}) => isVariant(properties)
+      | _ => false
+      }
+    )
+  | Object({properties}) => isVariant(properties) ? Some(schema) : None
+  | _ => None
+  }
+}
+
+/**
 The semantic a field's schema carries, if any.
 
 An optional field keeps its marker inside the wrapper, so reading only the outer
