@@ -1,5 +1,11 @@
 scalar AWSJSON
 
+type CaptionedImage {
+  altText: String
+  caption: String
+  ref: String!
+}
+
 type CatalogEventLogEvent {
   eventType: String!
   payload: AWSJSON!
@@ -37,8 +43,7 @@ type Catalog_CatalogEventRecordEdge {
 
 type Catalog_Category implements Node {
   categoryId: ID!
-  categoryImage: String
-  categoryImageAltText: String
+  categoryImage: CaptionedImage
   id: ID!
   name: String!
   shelfStatus: Catalog_CategoryShelfStatus!
@@ -127,9 +132,7 @@ type Catalog_Product implements Node {
   name: String!
   price: Money!
   productId: ID!
-  productImage: String
-  productImageAltText: String
-  productImages: [Catalog_ProductProductImages!]!
+  productImages: [CaptionedImage!]!
   shelfStatus: Catalog_ProductShelfStatus!
 }
 
@@ -200,11 +203,6 @@ input Catalog_ProductOrderBy {
 enum Catalog_ProductOrderField {
   categoryId
   productId
-}
-
-type Catalog_ProductProductImages {
-  altText: String
-  productImage: String!
 }
 
 type Catalog_ProductRef {

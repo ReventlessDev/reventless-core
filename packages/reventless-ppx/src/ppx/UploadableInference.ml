@@ -1,8 +1,8 @@
 open Ppxlib
 
-(** Uploadable semantic types — a field typed [UploadableImage.t] /
-    [UploadableFile.t] declares both what its value is and which object store it
-    lives in, and injects
+(** Store-declaring semantic types — a field typed [UploadableImage.t] /
+    [UploadableFile.t] / [CaptionedImage.t] declares both what its value is and
+    which object store it lives in, and injects
     [@s.matches(Reventless.UploadableImage.forField(~store="..."))] on the
     field's type expression.
 
@@ -11,8 +11,14 @@ open Ppxlib
       productImage: UploadableImage.t                        (* -> productImages *)
       productImage?: UploadableImage.t                       (* -> productImages *)
       productImages: array<UploadableImage.t>                (* -> productImages *)
+      categoryImage?: CaptionedImage.t                       (* -> categoryImages *)
+      productImages: array<CaptionedImage.t>                 (* -> productImages *)
       @storageRef("catalog.productImagery") productImage: UploadableImage.t
     ]}
+
+    The derivation is idempotent through the singular stem, which is what lets
+    the last two spell the same store: a field holding many images is named
+    plurally, and a field holding one is not.
 
     The store is derived from the field name ({!Util.derive_store_name}), so the
     type takes no store argument. An explicit [@storageRef("...")] on an

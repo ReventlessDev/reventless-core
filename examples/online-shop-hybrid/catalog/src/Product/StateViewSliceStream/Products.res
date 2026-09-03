@@ -37,19 +37,6 @@ type shelfStatus =
   | @retired Archived
   | @retired Discontinued
 
-// One member of the attachment set. The field is named for its store, as the
-// single image was, so the same `productImages` store is provisioned.
-@schema
-type productAttachment = {
-  productImage: Reventless.UploadableImage.t,
-  altText?: string,
-}
-
-// The scalar below is the distinguished member of the set beside it — the fact a
-// detail page needs to draw one gallery where it would otherwise draw a field
-// and a table of the set underneath it.
-let distinguished = Reventless.MemberRef.of_(~content=Reventless.Semantic.Id.imageRef, ~field="productImages")
-
 // A product that leaves the shelf keeps its name. An order names the products it
 // bought, and a shopper reading their own order is holding a pointer the platform
 // gave them — archiving the product should not turn that into a bare id. The
@@ -62,17 +49,13 @@ type state = {
   name: string,
   description: string,
   price: Reventless.Money.t,
-  // The primary, as one string: the image a card, a gallery tile and a reference
-  // cell draw. Chosen explicitly, else the first attached. Everywhere but the
-  // detail page still reads it as the one image-semantic string per row it is.
-  productImage?: @s.matches(distinguished) Reventless.UploadableImage.t,
-  // The primary's caption. Beside the scalar for the reason the scalar is here:
-  // the primary is the one image a reader actually sees, and its alternative
-  // text was sitting in the set's rows where nothing drawing the hero could
-  // reach it — an accessibility hole in the projection, not in the log.
-  productImageAltText?: string,
-  // The whole set, in attachment order.
-  productImages: array<productAttachment>,
+  // The attachment set, primary first. One field where there were three: the
+  // scalar every card and tile used to read, its caption, and the set itself.
+  // A card, a gallery tile and a list cell take `[0]`; the detail page draws the
+  // whole set. The alternative text rides inside each member, which is what puts
+  // it where a cell renderer — handed a field and a value, never the row — can
+  // reach it. Named for its store, so `productImages` is what is provisioned.
+  productImages: array<Reventless.CaptionedImage.t>,
   // Indexed so the server can answer "the products in this category" — a
   // `categoryIdEq` filter on the connection, rather than a client narrowing one
   // loaded page.

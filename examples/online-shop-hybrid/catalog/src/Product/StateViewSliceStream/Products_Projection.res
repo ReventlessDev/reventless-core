@@ -1,18 +1,16 @@
 @@reventless.projection
 
-// The primary a reader should show and the caption that goes with it: the chosen
-// member, else the first attached — the trait's own rule, applied here over the
-// view's rows so a card never shows no image while the set holds one. Every arm
-// below goes through this rather than assigning the scalar itself, so the two
-// cannot drift apart on one arm and not another.
-let withPrimary = (state: Products.state, chosen: option<string>) => {
-  let (productImage, productImageAltText) = TraitAttachments.Attachments_Rules.primaryWithAltText(
+// The primary a reader should show is the first member, so choosing one is
+// reordering the set — the trait's rule, applied here over the view's rows. No
+// scalar to assign and none to keep in step: attach appends, remove filters, and
+// the head moves only where somebody moved it.
+let primaryFirst = (state: Products.state, chosen: string) => {
+  ...state,
+  productImages: TraitAttachments.Attachments_Rules.primaryFirst(
     ~chosen,
     ~members=state.productImages,
-    ~ref=a => a.productImage,
-    ~altText=a => a.altText,
-  )
-  {...state, productImage: ?productImage, productImageAltText: ?productImageAltText}
+    ~ref=a => a.ref,
+  ),
 }
 
 let project = ({event}) =>
@@ -28,45 +26,36 @@ let project = ({event}) =>
       Update(productId, state => {...state, description}),
     ]
   | ProductPriceChanged({productId, price}) => [Update(productId, state => {...state, price})]
+  // Appended, so the first member attached is the primary until one is chosen.
   | ProductImageAttached({productId, productImage, altText: ?altText}) => [
       Update(productId, state =>
-        state.productImages->Array.some(a => a.productImage == productImage)
+        state.productImages->Array.some(a => a.ref == productImage)
           ? state
-          : withPrimary(
-              {
-                ...state,
-                productImages: state.productImages->Array.concat([{productImage, altText: ?altText}]),
-              },
-              state.productImage,
-            )
+          : {
+              ...state,
+              productImages: state.productImages->Array.concat([
+                {ref: productImage, altText: ?altText},
+              ]),
+            }
       ),
     ]
+  // Removing the head promotes the next member with no arm to say so.
   | ProductImageRemoved({productId, productImage}) => [
-      Update(productId, state =>
-        withPrimary(
-          {...state, productImages: state.productImages->Array.filter(a => a.productImage != productImage)},
-          state.productImage == Some(productImage) ? None : state.productImage,
-        )
-      ),
+      Update(productId, state => {
+        ...state,
+        productImages: state.productImages->Array.filter(a => a.ref != productImage),
+      }),
     ]
   | ProductPrimaryImageSet({productId, productImage}) => [
-      Update(productId, state => withPrimary(state, Some(productImage))),
+      Update(productId, state => primaryFirst(state, productImage)),
     ]
-  // Through `withPrimary` like every other arm: captioning the member that
-  // happens to be the primary has to reach the scalar's caption too, and an arm
-  // that only rewrote the set's row is how the hero image ended up with none.
   | ProductImageAltTextSet({productId, productImage, altText}) => [
-      Update(productId, state =>
-        withPrimary(
-          {
-            ...state,
-            productImages: state.productImages->Array.map(a =>
-              a.productImage == productImage ? {...a, altText} : a
-            ),
-          },
-          state.productImage,
-        )
-      ),
+      Update(productId, state => {
+        ...state,
+        productImages: state.productImages->Array.map(a =>
+          a.ref == productImage ? {...a, altText} : a
+        ),
+      }),
     ]
   // The row stays and moves along its lifecycle rather than being deleted: an
   // order still references a withdrawn product, and a merchandiser still needs

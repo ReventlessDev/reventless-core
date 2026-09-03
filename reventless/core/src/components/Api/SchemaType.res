@@ -60,6 +60,7 @@ let semanticCompositeNames = [
   (Reventless.Semantic.Id.money, "Money"),
   (Reventless.Semantic.Id.dateRange, "DateRange"),
   (Reventless.Semantic.Id.geoPoint, "GeoPoint"),
+  (Reventless.Semantic.Id.captionedImage, "CaptionedImage"),
 ]
 
 let canonicalName = (id: string): option<string> =>

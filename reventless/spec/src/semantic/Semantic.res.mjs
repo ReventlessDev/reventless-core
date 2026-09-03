@@ -13,6 +13,7 @@ let Id = {
   uploadableFile: "uploadableFile",
   imageRef: "imageRef",
   fileRef: "fileRef",
+  captionedImage: "captionedImage",
   memberRef: "memberRef",
   email: "email",
   phone: "phone",

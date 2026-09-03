@@ -67,8 +67,8 @@ type op =
         maps onto — with one member there is nothing to name. It is not
         bounded-only, though: the primary is the one image a reader actually
         sees, so "caption the hero" is a command an unbounded host wants too,
-        and resolving it here is what keeps the answer the same as the one
-        `primaryWithAltText` gives a projection. */
+        and resolving it here through `effectivePrimary` is what keeps the
+        answer the same as the member a projection puts first. */
   SetPrimaryAltText({altText: string})
 
 /** What the set decided, for the host to name in its own event. */
@@ -92,39 +92,31 @@ let effectivePrimary = t => primaryOf(~chosen=t.primary, ~attached=t.attached)
 let altTextOf = (t, ref) => t.altTexts->Array.find(((r, _)) => r == ref)->Option.map(((_, t)) => t)
 
 /**
-The primary and *its caption*, for a read model projecting the set onto a row.
+The set with the chosen member first, for a read model projecting it onto a row.
 
-The caption half is the reason this exists beside `primaryOf`. A view carries the
-primary as a scalar because a card, a gallery tile and a reference cell each read
-one image-semantic string per row — and it used to carry only the string, so the
-caption stayed in the set's rows and the one image a reader actually sees, the
-hero on the detail page, was the one image with no alternative text on it. An
-accessibility hole produced by a projection, not by a missing command: the
-caption was in the log the whole time.
+This is where `primaryOf`'s rule lands on a view. The view carries the set and
+nothing beside it, so *being first* is how the row says which member is the
+primary — and "the chosen one, else the first attached" then needs no second
+field to hold the answer and no rule to keep that field in step. Attach appends,
+remove filters, and both leave the head alone unless they moved it; only this
+reorders.
 
-Parameterised on accessors rather than owning the member type, because the field
-holding a member's ref is named for the host's store (`productImage`) and the
-member record is the host's own `@schema` type. `~ref` and `~altText` are the two
-questions this rule has of a member, and passing them is what lets the rule be
-compiled once while the shape stays the host's.
+Sound for a projection because the order is derived: the events fully determine
+it, so a replay reproduces it. What it costs is that attachment order stops being
+readable off the view — the log still has it, and a consumer that wanted it back
+would have to be given it deliberately.
 
-Takes `~chosen` — the explicitly chosen primary — rather than reading it off the
-row, because a projection holds the scalar and the scalar is already the
-fallback's answer. Passing the scalar back in is what makes "chosen, else the
-first attached" stable across a remove that took the chosen one away.
+Parameterised on `~ref` rather than owning the member type, for the reason
+`primaryOf` takes two arrays: the member record is the host's own `@schema` type
+and the field holding its reference is named for the host's store. A `chosen` the
+set does not hold leaves the order alone — a `SetPrimary` naming a member a
+removal already took away must not empty the row.
 */
-let primaryWithAltText = (
-  ~chosen: option<ref>,
-  ~members: array<'m>,
-  ~ref: 'm => ref,
-  ~altText: 'm => option<string>,
-): (option<ref>, option<string>) => {
-  let primary = primaryOf(~chosen, ~attached=members->Array.map(ref))
-  (
-    primary,
-    primary->Option.flatMap(p => members->Array.find(m => ref(m) == p)->Option.flatMap(altText)),
-  )
-}
+let primaryFirst = (~chosen: ref, ~members: array<'m>, ~ref: 'm => ref): array<'m> =>
+  switch members->Array.find(m => ref(m) == chosen) {
+  | Some(primary) => Array.concat([primary], members->Array.filter(m => ref(m) != chosen))
+  | None => members
+  }
 
 let evolve = (t, fact) =>
   switch fact {

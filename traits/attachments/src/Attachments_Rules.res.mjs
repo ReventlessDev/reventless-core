@@ -3,6 +3,7 @@
 import * as Sury from "sury";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
+import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 
 let cardinalitySchema = Sury.union([
   Sury.literal("Many"),
@@ -35,12 +36,13 @@ function altTextOf(t, ref) {
   return Stdlib_Option.map(t.altTexts.find(param => param[0] === ref), param => param[1]);
 }
 
-function primaryWithAltText(chosen, members, ref, altText) {
-  let primary = primaryOf(chosen, members.map(ref));
-  return [
-    primary,
-    Stdlib_Option.flatMap(primary, p => Stdlib_Option.flatMap(members.find(m => ref(m) === p), altText))
-  ];
+function primaryFirst(chosen, members, ref) {
+  let primary = members.find(m => ref(m) === chosen);
+  if (primary !== undefined) {
+    return [Primitive_option.valFromOption(primary)].concat(members.filter(m => ref(m) !== chosen));
+  } else {
+    return members;
+  }
 }
 
 function evolve(t, fact) {
@@ -213,7 +215,7 @@ export {
   primaryOf,
   effectivePrimary,
   altTextOf,
-  primaryWithAltText,
+  primaryFirst,
   evolve,
   setAltText,
   decide,

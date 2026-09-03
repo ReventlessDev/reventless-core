@@ -55,7 +55,8 @@ describe("Products StateViewSliceStream", () => {
   )
 
   // The first attachment is the primary until one is chosen, so a card never
-  // shows no image while the set has one.
+  // shows no image while the set has one. Being first IS being the primary —
+  // there is no second field to say so, and none to fall out of step.
   test("the first ProductImageAttached becomes the primary", () =>
     givenEvents([
       ProductAdded({productId: "p1", name: "Laptop", description: "x", price: eur(999.99), categoryId: "cat1"}),
@@ -70,18 +71,16 @@ describe("Products StateViewSliceStream", () => {
         name: "Laptop",
         description: "x",
         price: eur(999.99),
-        productImage: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg",
-        // The caption reaches the scalar too: the primary is the one image the
-        // hero draws, and it used to be the one image with no alternative text.
-        productImageAltText: "front",
-        productImages: [{productImage: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg", altText: "front"}],
+        // The caption arrives inside the member, which is where a cell renderer
+        // can reach it — it used to sit in a sibling field no cell is handed.
+        productImages: [{ref: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg", altText: "front"}],
         categoryId: "cat1",
         shelfStatus: Listed,
       },
     )
   )
 
-  test("a second attachment extends the set and leaves the primary", () =>
+  test("a second attachment extends the set and leaves the primary first", () =>
     givenEvents([
       ProductAdded({productId: "p1", name: "Laptop", description: "x", price: eur(999.99), categoryId: "cat1"}),
       ProductImageAttached({productId: "p1", productImage: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg"}),
@@ -96,10 +95,9 @@ describe("Products StateViewSliceStream", () => {
         name: "Laptop",
         description: "x",
         price: eur(999.99),
-        productImage: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg",
         productImages: [
-          {productImage: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg"},
-          {productImage: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg"},
+          {ref: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg"},
+          {ref: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg"},
         ],
         categoryId: "cat1",
         shelfStatus: Listed,
@@ -107,7 +105,10 @@ describe("Products StateViewSliceStream", () => {
     )
   )
 
-  test("ProductPrimaryImageSet chooses the primary", () =>
+  // What "choose the primary" is on the view: the chosen member moves to the
+  // front. This is the assertion that changed shape — the set is now ordered,
+  // and attachment order is no longer readable off the row.
+  test("ProductPrimaryImageSet moves the chosen member to the front", () =>
     givenEvents([
       ProductAdded({productId: "p1", name: "Laptop", description: "x", price: eur(999.99), categoryId: "cat1"}),
       ProductImageAttached({productId: "p1", productImage: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg"}),
@@ -123,10 +124,9 @@ describe("Products StateViewSliceStream", () => {
         name: "Laptop",
         description: "x",
         price: eur(999.99),
-        productImage: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg",
         productImages: [
-          {productImage: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg"},
-          {productImage: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg"},
+          {ref: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg"},
+          {ref: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg"},
         ],
         categoryId: "cat1",
         shelfStatus: Listed,
@@ -134,7 +134,9 @@ describe("Products StateViewSliceStream", () => {
     )
   )
 
-  test("removing the primary falls back to the first remaining", () =>
+  // No arm says so: removing the head leaves the next member at the head, which
+  // is the whole of "the chosen one, else the first attached" on this shape.
+  test("removing the primary promotes the next member", () =>
     givenEvents([
       ProductAdded({productId: "p1", name: "Laptop", description: "x", price: eur(999.99), categoryId: "cat1"}),
       ProductImageAttached({productId: "p1", productImage: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg"}),
@@ -151,8 +153,7 @@ describe("Products StateViewSliceStream", () => {
         name: "Laptop",
         description: "x",
         price: eur(999.99),
-        productImage: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg",
-        productImages: [{productImage: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg"}],
+        productImages: [{ref: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg"}],
         categoryId: "cat1",
         shelfStatus: Listed,
       },
@@ -188,18 +189,16 @@ describe("Products StateViewSliceStream", () => {
         name: "Laptop",
         description: "x",
         price: eur(999.99),
-        productImage: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg",
-        productImageAltText: "front view",
-        productImages: [{productImage: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg", altText: "front view"}],
+        productImages: [{ref: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg", altText: "front view"}],
         categoryId: "cat1",
         shelfStatus: Listed,
       },
     )
   )
 
-  // Captioning a member that is NOT the primary leaves the scalar's caption
-  // alone — the pair on the row is the primary's, not the set's last edit.
-  test("captioning a non-primary member does not caption the hero", () =>
+  // Captioning is not choosing: the member is rewritten where it stands, so the
+  // primary is whatever it already was.
+  test("captioning a non-primary member leaves the order alone", () =>
     givenEvents([
       ProductAdded({productId: "p1", name: "Laptop", description: "x", price: eur(999.99), categoryId: "cat1"}),
       ProductImageAttached({productId: "p1", productImage: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg"}),
@@ -215,10 +214,9 @@ describe("Products StateViewSliceStream", () => {
         name: "Laptop",
         description: "x",
         price: eur(999.99),
-        productImage: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg",
         productImages: [
-          {productImage: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg"},
-          {productImage: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg", altText: "side view"},
+          {ref: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg"},
+          {ref: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg", altText: "side view"},
         ],
         categoryId: "cat1",
         shelfStatus: Listed,

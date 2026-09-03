@@ -59,8 +59,8 @@ type config = {
   `Single` emits `Set{Entity}{Noun}` (which replaces), a `Remove{Entity}{Noun}`
   that names no reference — there is only one, and asking a caller to name it is
   asking them to repeat what the row already says — and no primary command at
-  all, because a set of one has nothing to choose between. The view fields
-  change with them: a scalar and its caption, no array.
+  all, because a set of one has nothing to choose between. The view field
+  changes with them: one captioned image, not an array of them.
   */
   cardinality?: Attachments_Rules.cardinality,
   /** The host event that brings the entity into existence: `"ProductAdded"`. */
@@ -158,6 +158,17 @@ let namesOf = (c: config): names => {
 }
 
 let refTypeOf = (c: config) => c.refType->Option.getOr("Reventless.UploadableImage.t")
+
+// What the VIEW holds, as against what an event's reference field holds. An
+// event names a file; a view holds that file together with the text that goes
+// with it, because a cell renderer is handed a field and a value and never the
+// row — so a caption in a sibling field is a caption no cell can draw.
+//
+// Read off the reference type by name, as `contentArgOf` is. A host attaching
+// something the vocabulary has no composite for keeps the bare reference, which
+// is the shape it has today rather than a guess at one it does not.
+let viewTypeOf = (c: config): string =>
+  refTypeOf(c)->String.includes("Image") ? "Reventless.CaptionedImage.t" : refTypeOf(c)
 
 // The collection field a member-selecting command picks out of. Named for the
 // plural of the attachment field, which is what the view calls it.
@@ -585,9 +596,9 @@ let conformanceBinding = (c: config): string => {
 // module deliberately does not automate.
 
 // The bounded set's projection, which is a different patch rather than the same
-// one with a branch in it: with one attachment the view carries the reference
-// itself and no collection at all, so there is no set to fold over, no primary
-// to resolve and no `withPrimary` to route through. Three assignments.
+// one with a branch in it: with one attachment the view carries the value itself
+// and no collection at all, so there is no set to fold over and no primary to
+// put first. Three assignments.
 //
 // The removal and the caption both guard on the reference they name. A
 // replacement decides two facts — the old leaves, then the new arrives — and the
@@ -595,110 +606,98 @@ let conformanceBinding = (c: config): string => {
 // those two reaching the projection in the order they were decided.
 let singleProjectionPatch = (c: config): patch => {
   let n = namesOf(c)
-  let alt = c.file ++ "AltText"
   {
     into: `StateViewSliceStream/${c.view}_Projection.res`,
-    at: `the projection's \`switch\`, and two fields on \`${c.view}\`'s state`,
+    at: `the projection's \`switch\`, and one field on \`${c.view}\`'s state`,
     contents: lines([
-      `// On the view's state, two fields — the reference and its caption. No`,
-      `// collection: this entity holds one attachment, so the field a card, a gallery`,
-      `// tile and a reference cell read IS the whole of what it has.`,
+      `// On the view's state, one field — the reference and its text, in one value.`,
+      `// No collection: this entity holds one attachment, so the field a card, a`,
+      `// gallery tile and a list cell read IS the whole of what it has.`,
       `//`,
-      `//   ${c.file}?: ${refTypeOf(c)},`,
-      `//   ${alt}?: string,`,
+      `//   ${c.file}?: ${viewTypeOf(c)},`,
       ``,
       `| ${n.attached}({${c.entityId}, ${c.file}, altText: ?altText}) =>`,
-      `  Update(${c.entityId}, state => {...state, ${c.file}, ${alt}: ?altText})`,
+      `  Update(${c.entityId}, state => {`,
+      `    ...state,`,
+      `    ${c.file}: {ref: ${c.file}, altText: ?altText},`,
+      `  })`,
       `| ${n.removed}({${c.entityId}, ${c.file}}) =>`,
       `  Update(${c.entityId}, state =>`,
       `    // Guarded on the reference: a removal that names something this row no`,
       `    // longer holds — the first half of a replacement, arriving late — must not`,
       `    // blank the one it does.`,
-      `    state.${c.file} == Some(${c.file}) ? {...state, ${c.file}: ?None, ${alt}: ?None} : state`,
+      `    heldRef(state) == Some(${c.file}) ? {...state, ${c.file}: ?None} : state`,
       `  )`,
       `| ${n.altTextSet}({${c.entityId}, ${c.file}, altText}) =>`,
       `  Update(${c.entityId}, state =>`,
-      `    state.${c.file} == Some(${c.file}) ? {...state, ${alt}: altText} : state`,
+      `    switch state.${c.file} {`,
+      `    | Some(held) if held.ref == ${c.file} => {...state, ${c.file}: {...held, altText}}`,
+      `    | _ => state`,
+      `    }`,
       `  )`,
+      ``,
+      `// The reference this row holds, if it holds one. Named because both guards`,
+      `// above ask the same question of a value that is no longer the reference itself.`,
+      `let heldRef = (state: ${c.view}.state) => state.${c.file}->Option.map(held => held.ref)`,
     ]),
   }
 }
 
 let manyProjectionPatch = (c: config): patch => {
   let n = namesOf(c)
-  let alt = c.file ++ "AltText"
   let set = setFieldOf(c)
   {
     into: `StateViewSliceStream/${c.view}_Projection.res`,
-    at: `the projection's \`switch\`, and three fields on \`${c.view}\`'s state`,
+    at: `the projection's \`switch\`, and one field on \`${c.view}\`'s state`,
     contents: lines([
-      `// On the view's state, three fields — the set, its primary as one string, and`,
-      `// that primary's caption.`,
+      `// On the view's state, one field — the set, primary first.`,
       `//`,
-      `// The scalar is not redundancy: a card, a gallery tile and a reference cell each`,
-      `// read one image-semantic string per row, so without it every tile is blank. It`,
-      `// declares itself the distinguished member of the set, which is what lets a`,
-      `// detail page draw one gallery where it would otherwise draw a field and a table.`,
+      `// The primary is the FIRST member rather than a scalar beside the set. That is`,
+      `// what a card, a gallery tile and a list cell read, so there is no second field`,
+      `// to keep in step with the set and no arm that can forget to. The text rides`,
+      `// inside each member for the same reason: a cell renderer is handed a field and`,
+      `// a value and never the row, so a caption in a sibling field is one no cell can`,
+      `// draw.`,
       `//`,
-      `// The caption is beside it for the same reason the scalar is: the primary is the`,
-      `// one image a reader actually sees, and its alternative text was sitting in the`,
-      `// set's rows where nothing drawing the hero could reach it.`,
+      `// What it costs, stated plainly: attachment order stops being readable off the`,
+      `// view. The log still has it.`,
       `//`,
-      `// The scalar's declaration is a binding for the reason the commands' is: an`,
-      `// \`@s.matches(…)\` attribute has to fit on one line to parse.`,
-      `//`,
-      `//   let distinguished = Reventless.MemberRef.of_(${contentArgOf(c)}~field="${set}")`,
-      `//`,
-      `//   ${set}: array<{${c.file}: ${refTypeOf(c)}, altText?: string}>,`,
-      `//   ${c.file}?: @s.matches(distinguished) ${refTypeOf(c)},`,
-      `//   ${alt}?: string,`,
+      `//   ${set}: array<${viewTypeOf(c)}>,`,
       ``,
+      `// Appended, so the first attached is the primary until one is chosen.`,
       `| ${n.attached}({${c.entityId}, ${c.file}, altText: ?altText}) =>`,
       `  Update(${c.entityId}, state =>`,
-      `    state.${set}->Array.some(m => m.${c.file} == ${c.file})`,
+      `    state.${set}->Array.some(m => m.ref == ${c.file})`,
       `      ? state`,
-      `      : withPrimary(`,
-      `          {`,
-      `            ...state,`,
-      `            ${set}: state.${set}->Array.concat([{${c.file}: ${c.file}, altText: ?altText}]),`,
-      `          },`,
-      `          state.${c.file},`,
-      `        )`,
+      `      : {`,
+      `          ...state,`,
+      `          ${set}: state.${set}->Array.concat([{ref: ${c.file}, altText: ?altText}]),`,
+      `        }`,
       `  )`,
+      `// Removing the head promotes the next member with no arm to say so.`,
       `| ${n.removed}({${c.entityId}, ${c.file}}) =>`,
-      `  Update(${c.entityId}, state =>`,
-      `    withPrimary(`,
-      `      {...state, ${set}: state.${set}->Array.filter(m => m.${c.file} != ${c.file})},`,
-      `      state.${c.file} == Some(${c.file}) ? None : state.${c.file},`,
-      `    )`,
-      `  )`,
+      `  Update(${c.entityId}, state => {`,
+      `    ...state,`,
+      `    ${set}: state.${set}->Array.filter(m => m.ref != ${c.file}),`,
+      `  })`,
       `| ${n.primarySet}({${c.entityId}, ${c.file}}) =>`,
-      `  Update(${c.entityId}, state => withPrimary(state, Some(${c.file})))`,
+      `  Update(${c.entityId}, state => primaryFirst(state, ${c.file}))`,
       `| ${n.altTextSet}({${c.entityId}, ${c.file}, altText}) =>`,
-      `  Update(${c.entityId}, state =>`,
-      `    withPrimary(`,
-      `      {`,
-      `        ...state,`,
-      `        ${set}: state.${set}->Array.map(m =>`,
-      `          m.${c.file} == ${c.file} ? {...m, altText} : m`,
-      `        ),`,
-      `      },`,
-      `      state.${c.file},`,
-      `    )`,
-      `  )`,
+      `  Update(${c.entityId}, state => {`,
+      `    ...state,`,
+      `    ${set}: state.${set}->Array.map(m => m.ref == ${c.file} ? {...m, altText} : m),`,
+      `  })`,
       ``,
-      `// The primary a reader should show and the caption that goes with it: the`,
-      `// chosen member, else the first attached — the trait's own rule, applied over`,
-      `// the view's rows. Every arm above goes through this rather than assigning the`,
-      `// scalar itself, so the pair cannot drift apart on one arm and not another.`,
-      `let withPrimary = (state: ${c.view}.state, chosen) => {`,
-      `  let (${c.file}, ${alt}) = TraitAttachments.Attachments_Rules.primaryWithAltText(`,
+      `// Choosing the primary is moving it to the front — the trait's rule, applied`,
+      `// over the view's rows. The only arm that reorders; the rest leave the head`,
+      `// where they found it.`,
+      `let primaryFirst = (state: ${c.view}.state, chosen) => {`,
+      `  ...state,`,
+      `  ${set}: TraitAttachments.Attachments_Rules.primaryFirst(`,
       `    ~chosen,`,
       `    ~members=state.${set},`,
-      `    ~ref=m => m.${c.file},`,
-      `    ~altText=m => m.altText,`,
-      `  )`,
-      `  {...state, ${c.file}: ?${c.file}, ${alt}: ?${alt}}`,
+      `    ~ref=m => m.ref,`,
+      `  ),`,
       `}`,
     ]),
   }

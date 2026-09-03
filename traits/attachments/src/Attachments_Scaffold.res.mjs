@@ -53,6 +53,14 @@ function refTypeOf(c) {
   return Stdlib_Option.getOr(c.refType, "Reventless.UploadableImage.t");
 }
 
+function viewTypeOf(c) {
+  if (Stdlib_Option.getOr(c.refType, "Reventless.UploadableImage.t").includes("Image")) {
+    return "Reventless.CaptionedImage.t";
+  } else {
+    return Stdlib_Option.getOr(c.refType, "Reventless.UploadableImage.t");
+  }
+}
+
 function setFieldOf(c) {
   return c.file + "s";
 }
@@ -407,110 +415,98 @@ function conformanceBinding(c) {
 
 function singleProjectionPatch(c) {
   let n = namesOf(c);
-  let alt = c.file + "AltText";
   return {
     into: `StateViewSliceStream/` + c.view + `_Projection.res`,
-    at: `the projection's \`switch\`, and two fields on \`` + c.view + `\`'s state`,
+    at: `the projection's \`switch\`, and one field on \`` + c.view + `\`'s state`,
     contents: [
-      `// On the view's state, two fields — the reference and its caption. No`,
-      `// collection: this entity holds one attachment, so the field a card, a gallery`,
-      `// tile and a reference cell read IS the whole of what it has.`,
+      `// On the view's state, one field — the reference and its text, in one value.`,
+      `// No collection: this entity holds one attachment, so the field a card, a`,
+      `// gallery tile and a list cell read IS the whole of what it has.`,
       `//`,
-      `//   ` + c.file + `?: ` + Stdlib_Option.getOr(c.refType, "Reventless.UploadableImage.t") + `,`,
-      `//   ` + alt + `?: string,`,
+      `//   ` + c.file + `?: ` + viewTypeOf(c) + `,`,
       ``,
       `| ` + n.attached + `({` + c.entityId + `, ` + c.file + `, altText: ?altText}) =>`,
-      `  Update(` + c.entityId + `, state => {...state, ` + c.file + `, ` + alt + `: ?altText})`,
+      `  Update(` + c.entityId + `, state => {`,
+      `    ...state,`,
+      `    ` + c.file + `: {ref: ` + c.file + `, altText: ?altText},`,
+      `  })`,
       `| ` + n.removed + `({` + c.entityId + `, ` + c.file + `}) =>`,
       `  Update(` + c.entityId + `, state =>`,
       `    // Guarded on the reference: a removal that names something this row no`,
       `    // longer holds — the first half of a replacement, arriving late — must not`,
       `    // blank the one it does.`,
-      `    state.` + c.file + ` == Some(` + c.file + `) ? {...state, ` + c.file + `: ?None, ` + alt + `: ?None} : state`,
+      `    heldRef(state) == Some(` + c.file + `) ? {...state, ` + c.file + `: ?None} : state`,
       `  )`,
       `| ` + n.altTextSet + `({` + c.entityId + `, ` + c.file + `, altText}) =>`,
       `  Update(` + c.entityId + `, state =>`,
-      `    state.` + c.file + ` == Some(` + c.file + `) ? {...state, ` + alt + `: altText} : state`,
-      `  )`
+      `    switch state.` + c.file + ` {`,
+      `    | Some(held) if held.ref == ` + c.file + ` => {...state, ` + c.file + `: {...held, altText}}`,
+      `    | _ => state`,
+      `    }`,
+      `  )`,
+      ``,
+      `// The reference this row holds, if it holds one. Named because both guards`,
+      `// above ask the same question of a value that is no longer the reference itself.`,
+      `let heldRef = (state: ` + c.view + `.state) => state.` + c.file + `->Option.map(held => held.ref)`
     ].join("\n")
   };
 }
 
 function manyProjectionPatch(c) {
   let n = namesOf(c);
-  let alt = c.file + "AltText";
   let set = c.file + "s";
   return {
     into: `StateViewSliceStream/` + c.view + `_Projection.res`,
-    at: `the projection's \`switch\`, and three fields on \`` + c.view + `\`'s state`,
+    at: `the projection's \`switch\`, and one field on \`` + c.view + `\`'s state`,
     contents: [
-      `// On the view's state, three fields — the set, its primary as one string, and`,
-      `// that primary's caption.`,
+      `// On the view's state, one field — the set, primary first.`,
       `//`,
-      `// The scalar is not redundancy: a card, a gallery tile and a reference cell each`,
-      `// read one image-semantic string per row, so without it every tile is blank. It`,
-      `// declares itself the distinguished member of the set, which is what lets a`,
-      `// detail page draw one gallery where it would otherwise draw a field and a table.`,
+      `// The primary is the FIRST member rather than a scalar beside the set. That is`,
+      `// what a card, a gallery tile and a list cell read, so there is no second field`,
+      `// to keep in step with the set and no arm that can forget to. The text rides`,
+      `// inside each member for the same reason: a cell renderer is handed a field and`,
+      `// a value and never the row, so a caption in a sibling field is one no cell can`,
+      `// draw.`,
       `//`,
-      `// The caption is beside it for the same reason the scalar is: the primary is the`,
-      `// one image a reader actually sees, and its alternative text was sitting in the`,
-      `// set's rows where nothing drawing the hero could reach it.`,
+      `// What it costs, stated plainly: attachment order stops being readable off the`,
+      `// view. The log still has it.`,
       `//`,
-      `// The scalar's declaration is a binding for the reason the commands' is: an`,
-      `// \`@s.matches(…)\` attribute has to fit on one line to parse.`,
-      `//`,
-      `//   let distinguished = Reventless.MemberRef.of_(` + contentArgOf(c) + `~field="` + set + `")`,
-      `//`,
-      `//   ` + set + `: array<{` + c.file + `: ` + Stdlib_Option.getOr(c.refType, "Reventless.UploadableImage.t") + `, altText?: string}>,`,
-      `//   ` + c.file + `?: @s.matches(distinguished) ` + Stdlib_Option.getOr(c.refType, "Reventless.UploadableImage.t") + `,`,
-      `//   ` + alt + `?: string,`,
+      `//   ` + set + `: array<` + viewTypeOf(c) + `>,`,
       ``,
+      `// Appended, so the first attached is the primary until one is chosen.`,
       `| ` + n.attached + `({` + c.entityId + `, ` + c.file + `, altText: ?altText}) =>`,
       `  Update(` + c.entityId + `, state =>`,
-      `    state.` + set + `->Array.some(m => m.` + c.file + ` == ` + c.file + `)`,
+      `    state.` + set + `->Array.some(m => m.ref == ` + c.file + `)`,
       `      ? state`,
-      `      : withPrimary(`,
-      `          {`,
-      `            ...state,`,
-      `            ` + set + `: state.` + set + `->Array.concat([{` + c.file + `: ` + c.file + `, altText: ?altText}]),`,
-      `          },`,
-      `          state.` + c.file + `,`,
-      `        )`,
+      `      : {`,
+      `          ...state,`,
+      `          ` + set + `: state.` + set + `->Array.concat([{ref: ` + c.file + `, altText: ?altText}]),`,
+      `        }`,
       `  )`,
+      `// Removing the head promotes the next member with no arm to say so.`,
       `| ` + n.removed + `({` + c.entityId + `, ` + c.file + `}) =>`,
-      `  Update(` + c.entityId + `, state =>`,
-      `    withPrimary(`,
-      `      {...state, ` + set + `: state.` + set + `->Array.filter(m => m.` + c.file + ` != ` + c.file + `)},`,
-      `      state.` + c.file + ` == Some(` + c.file + `) ? None : state.` + c.file + `,`,
-      `    )`,
-      `  )`,
+      `  Update(` + c.entityId + `, state => {`,
+      `    ...state,`,
+      `    ` + set + `: state.` + set + `->Array.filter(m => m.ref != ` + c.file + `),`,
+      `  })`,
       `| ` + n.primarySet + `({` + c.entityId + `, ` + c.file + `}) =>`,
-      `  Update(` + c.entityId + `, state => withPrimary(state, Some(` + c.file + `)))`,
+      `  Update(` + c.entityId + `, state => primaryFirst(state, ` + c.file + `))`,
       `| ` + n.altTextSet + `({` + c.entityId + `, ` + c.file + `, altText}) =>`,
-      `  Update(` + c.entityId + `, state =>`,
-      `    withPrimary(`,
-      `      {`,
-      `        ...state,`,
-      `        ` + set + `: state.` + set + `->Array.map(m =>`,
-      `          m.` + c.file + ` == ` + c.file + ` ? {...m, altText} : m`,
-      `        ),`,
-      `      },`,
-      `      state.` + c.file + `,`,
-      `    )`,
-      `  )`,
+      `  Update(` + c.entityId + `, state => {`,
+      `    ...state,`,
+      `    ` + set + `: state.` + set + `->Array.map(m => m.ref == ` + c.file + ` ? {...m, altText} : m),`,
+      `  })`,
       ``,
-      `// The primary a reader should show and the caption that goes with it: the`,
-      `// chosen member, else the first attached — the trait's own rule, applied over`,
-      `// the view's rows. Every arm above goes through this rather than assigning the`,
-      `// scalar itself, so the pair cannot drift apart on one arm and not another.`,
-      `let withPrimary = (state: ` + c.view + `.state, chosen) => {`,
-      `  let (` + c.file + `, ` + alt + `) = TraitAttachments.Attachments_Rules.primaryWithAltText(`,
+      `// Choosing the primary is moving it to the front — the trait's rule, applied`,
+      `// over the view's rows. The only arm that reorders; the rest leave the head`,
+      `// where they found it.`,
+      `let primaryFirst = (state: ` + c.view + `.state, chosen) => {`,
+      `  ...state,`,
+      `  ` + set + `: TraitAttachments.Attachments_Rules.primaryFirst(`,
       `    ~chosen,`,
       `    ~members=state.` + set + `,`,
-      `    ~ref=m => m.` + c.file + `,`,
-      `    ~altText=m => m.altText,`,
-      `  )`,
-      `  {...state, ` + c.file + `: ?` + c.file + `, ` + alt + `: ?` + alt + `}`,
+      `    ~ref=m => m.ref,`,
+      `  ),`,
       `}`
     ].join("\n")
   };
@@ -551,6 +547,7 @@ export {
   isSingle,
   namesOf,
   refTypeOf,
+  viewTypeOf,
   setFieldOf,
   selectionBinding,
   selectionTypeOf,

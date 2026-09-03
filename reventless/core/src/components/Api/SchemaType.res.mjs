@@ -40,6 +40,10 @@ let semanticCompositeNames = [
   [
     Semantic$Reventless.Id.geoPoint,
     "GeoPoint"
+  ],
+  [
+    Semantic$Reventless.Id.captionedImage,
+    "CaptionedImage"
   ]
 ];
 

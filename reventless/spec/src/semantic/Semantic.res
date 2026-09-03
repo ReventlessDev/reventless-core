@@ -73,6 +73,11 @@ module Id = {
   let imageRef = "imageRef"
   let fileRef = "fileRef"
 
+  // An image and the text that goes with it, in one value. Declares its store
+  // the way `uploadableImage` does, on the record rather than on the reference
+  // inside it, so a field reader finds it through an array wrapper.
+  let captionedImage = "captionedImage"
+
   // A selection rather than an input: the value names a member of a collection
   // the row already holds. Declares no store, so nothing is provisioned and no
   // upload endpoint is bound — the distinction `uploadableImage` could not make.

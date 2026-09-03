@@ -41,11 +41,9 @@ type state = {
   // The retirement is on `shelfStatus`'s own constructor and needs no second
   // annotation here.
   @lifecycle shelfStatus: shelfStatus,
-  // The image, as one string, for the card and the gallery tile. No collection
-  // beside it: a category holds one picture, so the field every surface already
-  // reads IS the whole of what it has, and a set of one is a table with one row
-  // on a detail page and a cardinality nothing enforces.
-  categoryImage?: Reventless.UploadableImage.t,
-  // Its caption, so the one image a reader actually sees has alternative text.
-  categoryImageAltText?: string,
+  // The image and its text, in one value. A scalar rather than the set Products
+  // carries: this host holds one picture, so there is nothing for a member to be
+  // first among, and a one-element array would say something the domain does
+  // not. Named for its store, so `categoryImages` is what is provisioned.
+  categoryImage?: Reventless.CaptionedImage.t,
 }

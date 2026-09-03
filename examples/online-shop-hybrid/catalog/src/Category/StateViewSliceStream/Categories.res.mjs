@@ -2,6 +2,7 @@
 
 import * as Sury from "sury";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
+import * as CaptionedImage$Reventless from "@reventlessdev/reventless-spec/src/semantic/CaptionedImage.res.mjs";
 import * as UploadableImage$Reventless from "@reventlessdev/reventless-spec/src/semantic/UploadableImage.res.mjs";
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 
@@ -52,8 +53,7 @@ let stateSchema = Sury.$schema(s => ({
   categoryId: s.m(Sury.string),
   name: s.m(Sury.string),
   shelfStatus: s.m(shelfStatusSchema),
-  categoryImage: s.m(Sury.$option(UploadableImage$Reventless.forField(undefined, "categoryImages"))),
-  categoryImageAltText: s.m(Sury.$option(Sury.string))
+  categoryImage: s.m(Sury.$option(CaptionedImage$Reventless.forField(undefined, "categoryImages")))
 }));
 
 let config = ReadModel$Reventless.config(undefined, undefined, undefined);

@@ -18,7 +18,7 @@ describe("Categories StateViewSliceStream", () => {
         categoryId: "c1",
         name: "Electronics",
         shelfStatus: Listed,
-        categoryImage: "/uploads/cat/c1.svg",
+        categoryImage: {ref: "/uploads/cat/c1.svg"},
       },
     )
   )
@@ -41,12 +41,12 @@ describe("Categories StateViewSliceStream", () => {
         categoryId: "c1",
         name: "Electronics",
         shelfStatus: Listed,
-        categoryImage: "/uploads/cat/c1-banner.svg",
+        categoryImage: {ref: "/uploads/cat/c1-banner.svg"},
       },
     )
   )
 
-  test("CategoryImageRemoved empties the image and its caption", () =>
+  test("CategoryImageRemoved empties the image, caption and all", () =>
     givenEvents([
       CategoryAdded({categoryId: "c1", name: "Electronics"}),
       CategoryImageAttached({categoryId: "c1", categoryImage: "/uploads/cat/c1.svg"}),
@@ -78,8 +78,7 @@ describe("Categories StateViewSliceStream", () => {
         categoryId: "c1",
         name: "Electronics",
         shelfStatus: Listed,
-        categoryImage: "/uploads/cat/c1.svg",
-        categoryImageAltText: "banner",
+        categoryImage: {ref: "/uploads/cat/c1.svg", altText: "banner"},
       },
     )
   )

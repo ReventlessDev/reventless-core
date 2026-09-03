@@ -36,9 +36,9 @@ to re-read a value the caller is holding. `Reference.toWithoutDcbTag` is the
 precedent that a payload can be reused without dragging DCB tagging along; this
 is the converse — a payload that resolves locally.
 
-## Two positions, one declaration
+## Where it goes
 
-**On a command field** it means *pick one of these*:
+**On a command field**, and there it means *pick one of these*:
 
 ```rescript
 @schema type command =
@@ -48,17 +48,12 @@ is the converse — a payload that resolves locally.
     })
 ```
 
-**On a view's own state** it means *this scalar is the distinguished member of
-that collection*, which is what lets a detail page draw one gallery where it
-otherwise draws a field and a table:
-
-```rescript
-productImage?: @s.matches(Reventless.MemberRef.of_(~field="productImages")) string,
-```
-
-`~view` is omitted in the second position because the collection is on the same
-record. Naming it there would invite a reader to think a different view's field
-could be meant, which is not a thing this resolves.
+`~view` names the collection's view. Omit it on a declaration made *on* that
+view's own state, where the answer is "this record" — the wrapper walk below
+supports that position, and `getFieldTarget` reads it. Nothing in the framework
+declares one there today: a view that carried a scalar *and* the set it was
+drawn from needed a marker saying the two were one thing, and a view whose
+primary is simply the first member has no second field to reconcile.
 */
 
 /** Transparent `string`, as every ref-shaped semantic here is: the marker

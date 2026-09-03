@@ -90,8 +90,9 @@ let drop_trailing_s name =
   else name
 
 (* ── Store-name derivation for the uploadable family ──────────────────────
-   A field typed [UploadableImage.t] / [UploadableFile.t] declares the store its
-   value lives in by being named: the store is the field name, pluralised.
+   A field typed [UploadableImage.t] / [UploadableFile.t] / [CaptionedImage.t]
+   declares the store its value lives in by being named: the store is the field
+   name, pluralised.
 
    This is the ONLY place a store name is derived. Everything downstream —
    the capability manifest, provisioning, the presign endpoints, the wipe
@@ -150,18 +151,29 @@ let derive_store_name field =
          field)
   else Ok (canonical_plural field)
 
-(* The uploadable semantic types, by module name. [Some name] for a type
+(* The store-declaring semantic types, by module name. [Some name] for a type
    expression that is one of them ([UploadableImage.t], or qualified as
    [Reventless.UploadableImage.t]); [None] for anything else.
+
+   [CaptionedImage] is a record rather than a reference, and belongs here for
+   the one reason that matters to this pass: it declares its store the same way,
+   through a [forField] taking the derived name. The record's own marker sits on
+   the record — not on the [ref] inside it — so a field reader finds the store
+   through an array wrapper without looking a level deeper.
+
+   Matched on the SPELLING of the type under an empty type-argument list, which
+   is why none of these can be generic: an [Attachment.t<'ref>] would not match
+   and would derive no store at all, in silence.
 
    Lives here rather than in [UploadableInference] so [StorageRefInference] can
    consult it — it must leave these fields alone, including the ones carrying an
    explicit [@storageRef] override, which the later pass consumes. *)
 let uploadable_module_of_type (ct : core_type) : string option =
   let module_of = function
-    | Ldot (Lident ("UploadableImage" | "UploadableFile" as m), "t") -> Some m
+    | Ldot (Lident ("UploadableImage" | "UploadableFile" | "CaptionedImage" as m), "t") -> Some m
     (* Qualified through the package namespace. *)
-    | Ldot (Ldot (_, ("UploadableImage" | "UploadableFile" as m)), "t") -> Some m
+    | Ldot (Ldot (_, ("UploadableImage" | "UploadableFile" | "CaptionedImage" as m)), "t") ->
+      Some m
     | _ -> None
   in
   match ct.ptyp_desc with
