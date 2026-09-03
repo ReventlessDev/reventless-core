@@ -1300,6 +1300,28 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
       )->toBe(Some("currency"))
     })
 
+    testSync("@sensitive flows through the PPX to x-reventless-sensitive", () => {
+      expect(
+        annotatedSchema
+        ->getPropertyOf("contact")
+        ->Option.flatMap(s => getProperty(s, "x-reventless-sensitive"))
+        ->Option.flatMap(JSON.Decode.bool),
+      )->toBe(Some(true))
+    })
+
+    // The case the marker exists for. A renderer composes from an event payload,
+    // and the annotation path `deriveObjectSchema` reads for state is
+    // state-only — so a marker that lived there would be absent exactly where
+    // the value is about to be interpolated into a message.
+    testSync("@sensitive reaches an event variant's payload, not only state", () =>
+      expect(
+        Reventless.Sensitive.variantFieldNames(
+          PsAnnotatedView.consumedEventSchema->S.castToUnknown,
+          ~variant="ItemRecorded",
+        ),
+      )->toEqual(["contact"])
+    )
+
     testSync("@metric flows through the PPX to x-reventless-metric {aggregate,label}", () => {
       let metricObj =
         annotatedSchema

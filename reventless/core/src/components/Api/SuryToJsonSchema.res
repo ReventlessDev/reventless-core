@@ -291,10 +291,15 @@ and withSemantic = (fieldSchema: JSON.t, sem: Reventless.Semantic.t): JSON.t =>
 // belongs to, leaving the field a plain string either way. Threading it here
 // also keeps it available on command variants, which carry no annotation spec
 // for `mergeAnnotations` to read.
+// `sensitive` rides here on the same reasoning as `owners`, and is read the same
+// way — off the sury schema by the caller. What it marks is a field whose value
+// must not be rendered into content somebody receives, which is a property of
+// the domain model rather than of the field's shape.
 and objectRefToJsonSchema = (
   ~annotations: option<Reventless.StateAnnotations.stateAnnotationSpec>=?,
   ~optional: array<string>=[],
   ~owners: array<string>=[],
+  ~sensitive: array<string>=[],
   fields: dict<SchemaType.schemaType>,
 ): JSON.t => {
   let props = Dict.make()
@@ -327,6 +332,23 @@ and objectRefToJsonSchema = (
       }
     } else {
       withAnnotations
+    }
+    // Last, so it can read the semantic both earlier paths may have written. A
+    // field whose semantic is a way of reaching a particular person is sensitive
+    // whether or not anybody marked it — the annotation is for the values a type
+    // cannot betray.
+    let withAnnotations = switch withAnnotations->JSON.Decode.object {
+    | Some(obj) =>
+      let bySemantic =
+        obj
+        ->Dict.get("x-reventless-semantic")
+        ->Option.flatMap(JSON.Decode.string)
+        ->Option.mapOr(false, Reventless.Sensitive.impliedBySemantic)
+      if sensitive->Array.includes(fieldName) || bySemantic {
+        obj->Dict.set("x-reventless-sensitive", JSON.Encode.bool(true))
+      }
+      JSON.Encode.object(obj)
+    | None => withAnnotations
     }
     props->Dict.set(fieldName, withAnnotations)
     // Optional two ways, because neither source answers alone. `optional` is
@@ -362,6 +384,7 @@ let deriveObjectSchema = (schema: S.t<unknown>): JSON.t =>
       ~annotations?,
       ~optional=SchemaType.optionalFieldNames(schema),
       ~owners=Reventless.Owner.fieldNames(schema),
+      ~sensitive=Reventless.Sensitive.fieldNames(schema),
       fields,
     )
     // Surface component-level hints on the top-level object schema.

@@ -396,6 +396,32 @@ per-event sends for a source to stand down — and it is not a general foundatio
 and left compiled for another. Per-tenant configuration belongs in a rule table, not in the claim
 key.
 
+## 13a. 🚨 [2026-09-03] The two designs answer different questions
+
+§13 and §13b read as if only one of them can be right, and the record disagrees with itself about
+which: the commit that introduced §13b (*"the wording table is a deployment's choice, not a
+negotiation between two producers"*) rejected the claim protocol, while the text below rejects the
+table. Both were written in good faith about **different questions**, and neither wins outright:
+
+- **Where the wording comes from** — §13b's answer, and it is the right one. §9's constraint holds:
+  a composing automation cannot read configuration, so per-notification granularity belongs *inside*
+  one table rather than between two producers. Nothing to arbitrate.
+- **How a scheduler-driven producer stands down the per-event sends** — §13's answer, and the table
+  cannot give it. `admin-configurable-notifications.md` §8.1 is explicit: *"a digest cannot simply be
+  another row in the rule table — it is scheduler-driven rather than event-driven, so it is
+  necessarily a separate component."*
+
+So "one producer, always" is true for rules and false once digests exist. §13 stands as built; §13b's
+argument is carried into P0, where it belongs. Read §13b as *rejected for the wording table*, not as
+a rejection of the claim protocol.
+
+⚠️ **The prerequisite neither section names: there is no door.** The competency exposes no
+ExtensionPoint — *no trait in the repo ships one* — `RequestNotification` is `@noApi`, and an
+Extension's write actions reach only its own plugin's delegate. Nothing in any of the four repos
+designs how a foreign plugin issues a `Configured` request, and nothing constructs one outside tests.
+So the claim mechanism has no possible counterparty today, and **the door comes before §13.4**:
+releasing claims that nothing can make guards nothing.
+
 ## 13b. Rejected — one table per deployment
 
 The simpler design, weighed and not taken. Recorded because it is the obvious question to ask of
@@ -554,6 +580,22 @@ own plan; neither should be scoped as a notification feature.
 
 ### 15.1 `@sensitive` — a field says it must not leave
 
+**Status: ✅ DELIVERED [2026-09-03].** `Reventless.Sensitive` in spec, `SensitiveInference` in the
+ppx, `x-reventless-sensitive` out of `SuryToJsonSchema`, and the `email`/`phone` default. Two
+corrections to what is written below:
+
+- **It is not a `deriveObjectSchema` *annotation*, and could not be.** That function's annotation
+  path reads `StateAnnotations`, which exists only for `@schema type state` on a queryable — while
+  P1 renders from **event payloads**. A marker carried that way would be absent from exactly the
+  schemas the renderer reads. It follows the `Owner` mechanism instead: sury metadata on the field's
+  own schema, threaded into the walk as `~sensitive` beside `~owners`, so it reaches command and
+  event variant fields too. `Sensitive.variantFieldNames` is the form the renderer wants — one
+  occurrence, one arm.
+- **It composes rather than replaces, and runs after `OwnerInference`.** Same reasoning as `@owner`
+  running after the tag passes: a field carries at most one `@s.matches`, so a pass that injected
+  early would be skipped by the auto-tagger and silently drop the field's DCB tag. Unlike `@owner`,
+  any number of fields per record may carry it.
+
 An annotation in the ppx, emitted as `x-reventless-sensitive` beside the existing
 `x-reventless-semantic` keys in `SuryToJsonSchema.deriveObjectSchema`. It marks a field whose value
 must not be rendered into outbound content, and it is read by anything that composes text a person
@@ -615,9 +657,9 @@ schema-drift check of its own, run against the deployed plugin structures rather
 ```
 P0 rules-as-data ─┬─> P4 open vocabulary
                   └─> P1 renderer
-P2 provenance + deferred ──> P3 handover   ◐ SUBSTANTIALLY BUILT — gap at §13.4
+P2 provenance + deferred ──> P3 handover   ◐ SUBSTANTIALLY BUILT — gap at §13.4, and see §13a
 P5 address out / subject in                ✅ DONE [2026-09-02]
-15.1 @sensitive                            (independent, any time)
+15.1 @sensitive                            ✅ DONE [2026-09-03]
 15.2 raw posture                           (independent; needed by a second producer, not by P0–P4)
 ```
 

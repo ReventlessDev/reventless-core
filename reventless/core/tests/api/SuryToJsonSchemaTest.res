@@ -119,6 +119,78 @@ describe("SuryToJsonSchema:", () => {
     })
   })
 
+  describe("deriveObjectSchema with a sensitive field:", () => {
+    let sensitiveOf = (json, name) =>
+      getPropertyOf(json, name)->Option.flatMap(s => getProperty(s, "x-reventless-sensitive"))
+    let ownerOf = (json, name) =>
+      getPropertyOf(json, name)->Option.flatMap(s => getProperty(s, "x-reventless-owner"))
+
+    let json = SuryToJsonSchema.deriveObjectSchema(
+      S.schema(s =>
+        {
+          "resetToken": s.matches(Reventless.Sensitive.string),
+          "note": s.matches(S.string),
+          "contact": s.matches(Reventless.Email.schema),
+        }
+      )->S.castToUnknown,
+    )
+
+    testSync("the marked field carries x-reventless-sensitive", () =>
+      expect(sensitiveOf(json, "resetToken"))->toEqual(Some(JSON.Encode.bool(true)))
+    )
+
+    // The control. Absent means "not stated", and a reader that misses the
+    // marker renders the value — so a bug that marked everything would look like
+    // caution while a bug that marked nothing leaks. Both need catching, and
+    // only this assertion catches the first.
+    testSync("an unmarked string field carries nothing", () =>
+      expect(sensitiveOf(json, "note"))->toBe(None)
+    )
+
+    // A contact detail is sensitive whether or not anybody wrote it down: the
+    // whole meaning of the semantic is "how to reach a particular person".
+    testSync("an email field is sensitive with no annotation", () =>
+      expect(sensitiveOf(json, "contact"))->toEqual(Some(JSON.Encode.bool(true)))
+    )
+
+    testSync("the field is still a plain string on the wire", () =>
+      expect(
+        getPropertyOf(json, "resetToken")->Option.flatMap(s => getProperty(s, "type")),
+      )->toEqual(Some(JSON.Encode.string("string")))
+    )
+
+    // Same trap as the owner case, and worse in consequence: a reader that only
+    // inspects the outer schema answers "not sensitive" for an optional field,
+    // and the value goes into a message.
+    testSync("an optional sensitive field is still recognised", () => {
+      let optJson = SuryToJsonSchema.deriveObjectSchema(
+        S.schema(s =>
+          {
+            "resetToken": s.matches(S.option(Reventless.Sensitive.string)),
+          }
+        )->S.castToUnknown,
+      )
+      expect(sensitiveOf(optJson, "resetToken"))->toEqual(Some(JSON.Encode.bool(true)))
+    })
+
+    // The composition rule. `mark` wraps rather than replaces, so a field that
+    // is both an owner and sensitive keeps both — a marker that silently
+    // replaced the other would unscope a view or unmask a value.
+    testSync("sensitivity composes with ownership on one field", () => {
+      let bothJson = SuryToJsonSchema.deriveObjectSchema(
+        S.schema(s =>
+          {
+            "customerId": s.matches(Reventless.Sensitive.mark(Reventless.Owner.string)),
+          }
+        )->S.castToUnknown,
+      )
+      expect((sensitiveOf(bothJson, "customerId"), ownerOf(bothJson, "customerId")))->toEqual((
+        Some(JSON.Encode.bool(true)),
+        Some(JSON.Encode.bool(true)),
+      ))
+    })
+  })
+
   describe("deriveObjectSchema with stateAnnotations metadata:", () => {
     let withSpec = (schema, spec) =>
       schema->S.Metadata.set(~id=Reventless.StateAnnotations.stateAnnotationsId, spec)

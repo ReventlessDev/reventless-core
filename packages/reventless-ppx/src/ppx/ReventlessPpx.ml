@@ -748,6 +748,10 @@ let transform (str : structure) : structure =
        field ended up with rather than replacing it, so an owner field keeps the
        tag it would otherwise have had. See OwnerInference's header. *)
     let body = OwnerInference.transform_structure body in
+    (* After OwnerInference for the same reason it runs after the tag passes:
+       [@sensitive] wraps whatever schema the field ended up with, so a field
+       that is both the owner and sensitive keeps both. *)
+    let body = SensitiveInference.transform_structure body in
     let body = DisplayNameInference.transform_structure body in
     let body = NoApiAnnotation.transform ~loc body in
     let body = TransitionAnnotation.transform ~loc body in

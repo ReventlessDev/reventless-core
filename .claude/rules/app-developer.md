@@ -102,6 +102,17 @@ Place these **before the field name** (`@offload("s") structure: option<x>`), li
   - The reference door itself is emitted for **every** view, annotated or not, on the same reasoning as `includeRetired`: a field that appears and disappears with an annotation makes adding or removing it a breaking schema change. Without the annotation it narrows retirement exactly as the other doors do.
   - **Does not need or imply `@scan`** — the predicate is the resolver's, not a client filter. Deploy-time warning when the field keys no index (`FilterExpression` after the page read ⇒ pages shrink as the archive grows); `@scan` does not silence it.
 
+### Sensitivity marker (values that must not leave)
+
+- `@sensitive` — names a field whose value must not be rendered into content a person receives. Placed **before the field name**, on any `@schema` record or variant payload field: state, command, and **event** alike. Emits `x-reventless-sensitive: true` on the property, read by anything that composes outbound text.
+  - **It is a property of the domain model**, declared where the field is declared, which is why it lives in core rather than beside whichever consumer needs it first: a marking that exists in one consumer is one the rest of the system cannot honour.
+  - **Composes, never subtracts.** `SensitiveInference` runs *after* every DCB-tag pass **and after `OwnerInference`**, wrapping whatever schema the field resolved to in `Sensitive.mark(...)` — so a sensitive field keeps its auto-`*Id` tag, its `@partitionTag`, and its `@owner`. A pass that ran early would be skipped by the auto-tagger (which passes over fields already carrying `@s.matches`) and the tag would vanish silently.
+  - **Any number per record**, unlike `@owner`. A record has one owner because one read predicate resolves to one field; any number of its values can be things that must not leave, and nothing downstream picks "the" sensitive one.
+  - **Shorthand covers `string` / `option<string>`**; it composes onto *any* field that already carries an `@s.matches`. A bare field of another type is a compile error pointing at `@s.matches(Reventless.Sensitive.mark(<schema>))` — guessing an inner schema by convention would be a second, quieter way to get a field's shape wrong.
+  - **`email` and `phone` semantics are sensitive with no annotation** (`Sensitive.impliedBySemantic`) — the whole meaning of those semantics is "how to reach a particular person". Read off `x-reventless-semantic` after both semantic paths have written, so an `@semantic("email")` annotation implies it as well as the branded type. Kept deliberately short: a postal address or a display name is sensitive *in context*, and context is what the annotation is for.
+  - **Absent means "not stated", not "safe".** A reader that misses the marker renders the value, so the failure is open — which is why `Sensitive.isFieldSensitive` follows the optional wrapper (a marker on `token?: string` sits *inside* it) and `variantFieldNames` handles the single-constructor union that sury compiles to a bare object. Object properties are deliberately not followed: a marker on a nested record's field belongs to that field.
+  - Needs a `@@reventless.spec` / `@@reventless.behavior` file — elsewhere no pass runs and the attribute reaches the compiler as an unknown one; hand-write `@s.matches(Reventless.Sensitive.string)` there.
+
 ### Schema annotations
 
 - `@schema` on all serializable types (command, event, error, state)

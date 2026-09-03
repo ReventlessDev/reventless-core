@@ -3,6 +3,7 @@
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Owner$Reventless from "@reventlessdev/reventless-spec/src/components/Owner.res.mjs";
+import * as Sensitive$Reventless from "@reventlessdev/reventless-spec/src/components/Sensitive.res.mjs";
 import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as SchemaType$ReventlessCore from "./SchemaType.res.mjs";
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
@@ -232,7 +233,7 @@ function fromSchemaType(st) {
           ]
         ]);
       case "ObjectRef" :
-        return objectRefToJsonSchema(undefined, undefined, undefined, st._1);
+        return objectRefToJsonSchema(undefined, undefined, undefined, undefined, st._1);
       case "Enum" :
         return Object.fromEntries([
           [
@@ -269,7 +270,7 @@ function armToJsonSchema(tag, armType) {
   if (armType.TAG !== "ObjectRef") {
     return fromSchemaType(armType);
   }
-  let base = objectRefToJsonSchema(undefined, undefined, undefined, armType._1);
+  let base = objectRefToJsonSchema(undefined, undefined, undefined, undefined, armType._1);
   let obj = Stdlib_JSON.Decode.object(base);
   if (obj === undefined) {
     return base;
@@ -320,9 +321,10 @@ function withSemantic(fieldSchema, sem) {
   return obj;
 }
 
-function objectRefToJsonSchema(annotations, optionalOpt, ownersOpt, fields) {
+function objectRefToJsonSchema(annotations, optionalOpt, ownersOpt, sensitiveOpt, fields) {
   let optional = optionalOpt !== undefined ? optionalOpt : [];
   let owners = ownersOpt !== undefined ? ownersOpt : [];
+  let sensitive = sensitiveOpt !== undefined ? sensitiveOpt : [];
   let props = {};
   let required = [];
   let internal = Stdlib_Option.getOr(Stdlib_Option.flatMap(annotations, spec => spec.internal), []);
@@ -343,7 +345,18 @@ function objectRefToJsonSchema(annotations, optionalOpt, ownersOpt, fields) {
     } else {
       withAnnotations$1 = withAnnotations;
     }
-    props[fieldName] = withAnnotations$1;
+    let obj$1 = Stdlib_JSON.Decode.object(withAnnotations$1);
+    let withAnnotations$2;
+    if (obj$1 !== undefined) {
+      let bySemantic = Stdlib_Option.mapOr(Stdlib_Option.flatMap(obj$1["x-reventless-semantic"], Stdlib_JSON.Decode.string), false, Sensitive$Reventless.impliedBySemantic);
+      if (sensitive.includes(fieldName) || bySemantic) {
+        obj$1["x-reventless-sensitive"] = true;
+      }
+      withAnnotations$2 = obj$1;
+    } else {
+      withAnnotations$2 = withAnnotations$1;
+    }
+    props[fieldName] = withAnnotations$2;
     if (!optional.includes(fieldName) && !isNullableType(fieldType)) {
       required.push(fieldName);
       return;
@@ -377,7 +390,7 @@ function deriveObjectSchema(schema) {
       ]]);
   }
   let annotations = StateAnnotations$Reventless.getSpec(schema);
-  let objSchema = objectRefToJsonSchema(annotations, SchemaType$ReventlessCore.optionalFieldNames(schema), Owner$Reventless.fieldNames(schema), fields);
+  let objSchema = objectRefToJsonSchema(annotations, SchemaType$ReventlessCore.optionalFieldNames(schema), Owner$Reventless.fieldNames(schema), Sensitive$Reventless.fieldNames(schema), fields);
   if (annotations === undefined) {
     return objSchema;
   }
