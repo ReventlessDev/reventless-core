@@ -3,15 +3,18 @@
 import * as Sury from "sury";
 import * as Belt_Array from "@rescript/runtime/lib/es6/Belt_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Attachments_Rules$TraitAttachments from "./Attachments_Rules.res.mjs";
 
 let configSchema = Sury.$schema(s => ({
   entity: s.m(Sury.string),
   entityId: s.m(Sury.string),
   noun: s.m(Sury.string),
   file: s.m(Sury.string),
+  cardinality: s.m(Sury.$option(Attachments_Rules$TraitAttachments.cardinalitySchema)),
   created: s.m(Sury.string),
   createdCarriesEntityId: s.m(Sury.$option(Sury.bool)),
   view: s.m(Sury.string),
+  lifecycleType: s.m(Sury.$option(Sury.string)),
   refType: s.m(Sury.$option(Sury.string)),
   authorize: s.m(Sury.$option(Sury.string)),
   transition: s.m(Sury.$option(Sury.array(Sury.string))),
@@ -19,11 +22,21 @@ let configSchema = Sury.$schema(s => ({
   refB: s.m(Sury.$option(Sury.string))
 }));
 
+function cardinalityOf(c) {
+  return Stdlib_Option.getOr(c.cardinality, "Many");
+}
+
+function isSingle(c) {
+  return Stdlib_Option.getOr(c.cardinality, "Many") === "Single";
+}
+
 function namesOf(c) {
   let subject = c.entity + c.noun;
   return {
     slice: subject + "s",
-    attachCmd: "Attach" + subject,
+    attachCmd: (
+      Stdlib_Option.getOr(c.cardinality, "Many") === "Single" ? "Set" : "Attach"
+    ) + subject,
     removeCmd: "Remove" + subject,
     setPrimaryCmd: "SetPrimary" + subject,
     setAltTextCmd: "Set" + subject + "AltText",
@@ -40,6 +53,27 @@ function refTypeOf(c) {
   return Stdlib_Option.getOr(c.refType, "Reventless.UploadableImage.t");
 }
 
+function setFieldOf(c) {
+  return c.file + "s";
+}
+
+let selectionBinding = "selected";
+
+function selectionTypeOf(_c) {
+  return `@s.matches(` + selectionBinding + `) string`;
+}
+
+function contentArgOf(c) {
+  let ref = Stdlib_Option.getOr(c.refType, "Reventless.UploadableImage.t");
+  if (ref.includes("Image")) {
+    return `~content=Reventless.Semantic.Id.imageRef, `;
+  } else if (ref.includes("File")) {
+    return `~content=Reventless.Semantic.Id.fileRef, `;
+  } else {
+    return "";
+  }
+}
+
 function commandAttributes(c) {
   let a = c.authorize;
   if (a !== undefined) {
@@ -49,18 +83,32 @@ function commandAttributes(c) {
   }
 }
 
-function commandTransitionBinding(c) {
+function commandNames(c) {
   let n = namesOf(c);
-  let arms = [
-    n.attachCmd,
-    n.removeCmd,
-    n.setPrimaryCmd,
-    n.setAltTextCmd
-  ].map(cmd => `  | ` + cmd + `(_)`).join("\n");
+  if (Stdlib_Option.getOr(c.cardinality, "Many") === "Single") {
+    return [
+      n.attachCmd,
+      n.removeCmd,
+      n.setAltTextCmd
+    ];
+  } else {
+    return [
+      n.attachCmd,
+      n.removeCmd,
+      n.setPrimaryCmd,
+      n.setAltTextCmd
+    ];
+  }
+}
+
+function commandTransitionBinding(c) {
+  let arms = commandNames(c).map(cmd => `  | ` + cmd + `(_)`).join("\n");
+  let t = c.lifecycleType;
+  let lifecycleType = t !== undefined ? c.view + `.` + t : c.view + `.<lifecycle>  // TODO(graft): the enum's name`;
   let states = c.transition;
   if (states !== undefined) {
     return [
-      `type lifecycleState = ` + c.view + `.<lifecycle>  // TODO(graft): the enum's name`,
+      `type lifecycleState = ` + lifecycleType,
       `let commandTransition = (command: command): Reventless.Transition.t<lifecycleState> => {`,
       `  open Reventless.Transition`,
       `  switch command {`,
@@ -96,13 +144,28 @@ function lines(ls) {
 function sliceSpec(c) {
   let n = namesOf(c);
   let ref = Stdlib_Option.getOr(c.refType, "Reventless.UploadableImage.t");
+  let sel = selectionTypeOf(c);
+  let single = Stdlib_Option.getOr(c.cardinality, "Many") === "Single";
   let attrs = commandAttributes(c);
   let createdArm = Stdlib_Option.getOr(c.createdCarriesEntityId, true) ? `  | ` + c.created + `({ ` + c.entityId + `: string})` : `  | ` + c.created;
-  return Belt_Array.concatMany([
-    [
+  let primaryArm = prefix => {
+    if (single) {
+      return [];
+    } else {
+      return [`  | ` + n.primarySet + `({ ` + prefix + c.file + `: ` + ref + `})`];
+    }
+  };
+  let headline = single ? [
+      `// ` + n.slice + ` StateChangeSlice: ` + c.entity + `'s single attachment — set it, remove`,
+      `// it, caption it. A graft of the Attachments trait; the set's rules are the`
+    ] : [
       `// ` + n.slice + ` StateChangeSlice: ` + c.entity + `'s attachment set — attach, remove,`,
-      `// choose the primary, caption. A graft of the Attachments trait; the set's rules`,
-      `// are the trait's and are asserted by its conformance suite, bound in the tests.`,
+      `// choose the primary, caption. A graft of the Attachments trait; the rules are`
+    ];
+  return Belt_Array.concatMany([
+    headline,
+    [
+      `// trait's and are asserted by its conformance suite, bound in the tests.`,
       `//`,
       `// Emitted by the trait. Everything below is this host's own vocabulary, so it is`,
       `// ordinary source from here on — edit it freely.`,
@@ -113,18 +176,42 @@ function sliceSpec(c) {
       `type consumedEvent =`,
       createdArm,
       `  | ` + n.attached + `({ ` + c.file + `: ` + ref + `})`,
-      `  | ` + n.removed + `({ ` + c.file + `: ` + ref + `})`,
-      `  | ` + n.primarySet + `({ ` + c.file + `: ` + ref + `})`,
+      `  | ` + n.removed + `({ ` + c.file + `: ` + ref + `})`
+    ],
+    primaryArm(""),
+    [
       `  | ` + n.altTextSet + `({ ` + c.file + `: ` + ref + `, altText: string})`,
       `  // TODO(graft): add the events this host's own refusal turns on — whatever`,
       `  // moves it into a state where attachments may not be changed.`,
-      ``,
+      ``
+    ],
+    single ? [
+        `// One reference field, on ` + n.attachCmd + `, and it accepts a new file — so`,
+        `// it is typed as the uploadable it is and a form binds an upload input to it.`,
+        `// Neither other command names a reference: with one attachment there is`,
+        `// nothing to choose between, and asking a caller to name it would be asking`,
+        `// them to repeat what the row already says.`
+      ] : [
+        `// The reference fields divide into two kinds, and the division is the point.`,
+        `// The one on ` + n.attachCmd + ` accepts a new file, so it is typed as the`,
+        `// uploadable it is and a form binds an upload input to it. The others name a`,
+        `// file the row ALREADY holds, so they are typed as selections out of`,
+        `// \`` + (c.file + "s") + `\` and a form offers those instead of an uploader.`,
+        `//`,
+        `// Bound once rather than spelled three times: the collection is one answer,`,
+        `// and three copies are three chances for one to name a field that has moved.`,
+        `let ` + selectionBinding + ` = Reventless.MemberRef.of_(~view="` + c.view + `", ` + contentArgOf(c) + `~field="` + (c.file + "s") + `")`,
+        ``
+      ],
+    [
       `@schema`,
       `type command =`,
       attrs + n.attachCmd + `({ ` + c.entityId + `: string, ` + c.file + `: ` + ref + `, altText?: string})`,
-      attrs + n.removeCmd + `({ ` + c.entityId + `: string, ` + c.file + `: ` + ref + `})`,
-      attrs + n.setPrimaryCmd + `({ ` + c.entityId + `: string, ` + c.file + `: ` + ref + `})`,
-      attrs + n.setAltTextCmd + `({ ` + c.entityId + `: string, ` + c.file + `: ` + ref + `, altText: string})`,
+      single ? attrs + n.removeCmd + `({ ` + c.entityId + `: string})` : attrs + n.removeCmd + `({ ` + c.entityId + `: string, ` + c.file + `: ` + sel + `})`
+    ],
+    single ? [] : [attrs + n.setPrimaryCmd + `({ ` + c.entityId + `: string, ` + c.file + `: ` + sel + `})`],
+    [
+      single ? attrs + n.setAltTextCmd + `({ ` + c.entityId + `: string, altText: string})` : attrs + n.setAltTextCmd + `({ ` + c.entityId + `: string, ` + c.file + `: ` + sel + `, altText: string})`,
       ``,
       `@schema`,
       `type error =`,
@@ -135,8 +222,10 @@ function sliceSpec(c) {
       `@schema`,
       `type event =`,
       `  | ` + n.attached + `({ ` + c.entityId + `: string, ` + c.file + `: ` + ref + `, altText?: string})`,
-      `  | ` + n.removed + `({ ` + c.entityId + `: string, ` + c.file + `: ` + ref + `})`,
-      `  | ` + n.primarySet + `({ ` + c.entityId + `: string, ` + c.file + `: ` + ref + `})`,
+      `  | ` + n.removed + `({ ` + c.entityId + `: string, ` + c.file + `: ` + ref + `})`
+    ],
+    primaryArm(c.entityId + `: string, `),
+    [
       `  | ` + n.altTextSet + `({ ` + c.entityId + `: string, ` + c.file + `: ` + ref + `, altText: string})`,
       ``
     ],
@@ -153,168 +242,286 @@ function sliceSpec(c) {
 
 function sliceBehavior(c) {
   let n = namesOf(c);
-  return [
-    `@@reventless.behavior`,
-    ``,
-    `// The set's rules are the trait's. What is left here is this host's own refusal`,
-    `// and the mapping between its constructors and the trait's ops and facts.`,
-    `module Attachments = TraitAttachments.Attachments_Rules`,
-    ``,
-    `type state = {exists: bool, attachments: Attachments.t}`,
-    ``,
-    `let initialState = {exists: false, attachments: Attachments.empty}`,
-    ``,
-    `let evolve = (state, event) => {`,
-    `  let fold = fact => {...state, attachments: state.attachments->Attachments.evolve(fact)}`,
-    `  switch event {`,
-    `  | ` + c.created + `(_) => {...state, exists: true}`,
-    `  | ` + n.attached + `({` + c.file + `}) => fold(Attached({ref: ` + c.file + `, altText: None}))`,
-    `  | ` + n.removed + `({` + c.file + `}) => fold(Removed({ref: ` + c.file + `}))`,
-    `  | ` + n.primarySet + `({` + c.file + `}) => fold(PrimarySet({ref: ` + c.file + `}))`,
-    `  | ` + n.altTextSet + `({` + c.file + `, altText}) => fold(AltTextSet({ref: ` + c.file + `, altText}))`,
-    `  // TODO(graft): fold this host's own events into its own state.`,
-    `  }`,
-    `}`,
-    ``,
-    `let toOp = command =>`,
-    `  switch command {`,
-    `  | ` + n.attachCmd + `({` + c.entityId + `, ` + c.file + `, altText: ?altText}) => (`,
-    `      ` + c.entityId + `,`,
-    `      Attachments.Attach({ref: ` + c.file + `, altText}),`,
-    `    )`,
-    `  | ` + n.removeCmd + `({` + c.entityId + `, ` + c.file + `}) => (`,
-    `      ` + c.entityId + `,`,
-    `      Attachments.Remove({ref: ` + c.file + `}),`,
-    `    )`,
-    `  | ` + n.setPrimaryCmd + `({` + c.entityId + `, ` + c.file + `}) => (`,
-    `      ` + c.entityId + `,`,
-    `      Attachments.SetPrimary({ref: ` + c.file + `}),`,
-    `    )`,
-    `  | ` + n.setAltTextCmd + `({` + c.entityId + `, ` + c.file + `, altText}) => (`,
-    `      ` + c.entityId + `,`,
-    `      Attachments.SetAltText({ref: ` + c.file + `, altText}),`,
-    `    )`,
-    `  }`,
-    ``,
-    `let toEvent = (` + c.entityId + `, fact) =>`,
-    `  switch fact {`,
-    `  | Attachments.Attached({ref, altText}) =>`,
-    `    ` + n.attached + `({` + c.entityId + `, ` + c.file + `: ref, altText: ?altText})`,
-    `  | Attachments.Removed({ref}) => ` + n.removed + `({` + c.entityId + `, ` + c.file + `: ref})`,
-    `  | Attachments.PrimarySet({ref}) => ` + n.primarySet + `({` + c.entityId + `, ` + c.file + `: ref})`,
-    `  | Attachments.AltTextSet({ref, altText}) =>`,
-    `    ` + n.altTextSet + `({` + c.entityId + `, ` + c.file + `: ref, altText})`,
-    `  }`,
-    ``,
-    `let decide = (state, command) =>`,
-    `  if !state.exists {`,
-    `    Error(` + n.notFound + `)`,
-    `  } else {`,
-    `    // TODO(graft): this host's own refusal goes here, ahead of the set's rules —`,
-    `    // an \`else if\` returning the error added above. A graft with no extra refusal`,
-    `    // is a complete graft, so leaving this is legitimate.`,
-    `    let (` + c.entityId + `, op) = toOp(command)`,
-    `    switch state.attachments->Attachments.decide(op) {`,
-    `    | Error(#NotAttached) => Error(` + n.notAttached + `)`,
-    `    | Ok(None) => Ok([])`,
-    `    | Ok(Some(fact)) => Ok([toEvent(` + c.entityId + `, fact)])`,
-    `    }`,
-    `  }`,
-    ``
-  ].join("\n");
+  let single = Stdlib_Option.getOr(c.cardinality, "Many") === "Single";
+  return Belt_Array.concatMany([
+    [
+      `@@reventless.behavior`,
+      ``,
+      `// The set's rules are the trait's. What is left here is this host's own refusal`,
+      `// and the mapping between its constructors and the trait's ops and facts.`,
+      `module Attachments = TraitAttachments.Attachments_Rules`,
+      ``,
+      `type state = {exists: bool, attachments: Attachments.t}`,
+      ``,
+      `let initialState = {exists: false, attachments: Attachments.empty}`,
+      ``,
+      `let evolve = (state, event) => {`,
+      `  let fold = fact => {...state, attachments: state.attachments->Attachments.evolve(fact)}`,
+      `  switch event {`,
+      Stdlib_Option.getOr(c.createdCarriesEntityId, true) ? `  | ` + c.created + `(_) => {...state, exists: true}` : `  | ` + c.created + ` => {...state, exists: true}`,
+      `  | ` + n.attached + `({` + c.file + `}) => fold(Attached({ref: ` + c.file + `, altText: None}))`,
+      `  | ` + n.removed + `({` + c.file + `}) => fold(Removed({ref: ` + c.file + `}))`
+    ],
+    single ? [] : [`  | ` + n.primarySet + `({` + c.file + `}) => fold(PrimarySet({ref: ` + c.file + `}))`],
+    [
+      `  | ` + n.altTextSet + `({` + c.file + `, altText}) => fold(AltTextSet({ref: ` + c.file + `, altText}))`,
+      `  // TODO(graft): fold this host's own events into its own state.`,
+      `  }`,
+      `}`,
+      ``,
+      `let toOp = command =>`,
+      `  switch command {`,
+      `  | ` + n.attachCmd + `({` + c.entityId + `, ` + c.file + `, altText: ?altText}) => (`,
+      `      ` + c.entityId + `,`,
+      `      Attachments.Attach({ref: ` + c.file + `, altText}),`,
+      `    )`
+    ],
+    single ? [`  | ` + n.removeCmd + `({` + c.entityId + `}) => (` + c.entityId + `, Attachments.Clear)`] : [
+        `  | ` + n.removeCmd + `({` + c.entityId + `, ` + c.file + `}) => (`,
+        `      ` + c.entityId + `,`,
+        `      Attachments.Remove({ref: ` + c.file + `}),`,
+        `    )`,
+        `  | ` + n.setPrimaryCmd + `({` + c.entityId + `, ` + c.file + `}) => (`,
+        `      ` + c.entityId + `,`,
+        `      Attachments.SetPrimary({ref: ` + c.file + `}),`,
+        `    )`
+      ],
+    single ? [
+        `  | ` + n.setAltTextCmd + `({` + c.entityId + `, altText}) => (`,
+        `      ` + c.entityId + `,`,
+        `      Attachments.SetPrimaryAltText({altText: altText}),`,
+        `    )`
+      ] : [
+        `  | ` + n.setAltTextCmd + `({` + c.entityId + `, ` + c.file + `, altText}) => (`,
+        `      ` + c.entityId + `,`,
+        `      Attachments.SetAltText({ref: ` + c.file + `, altText}),`,
+        `    )`
+      ],
+    [
+      `  }`,
+      ``,
+      `let toEvent = (` + c.entityId + `, fact) =>`,
+      `  switch fact {`,
+      `  | Attachments.Attached({ref, altText}) =>`,
+      `    ` + (
+        single ? "Some(" : ""
+      ) + n.attached + `({` + c.entityId + `, ` + c.file + `: ref, altText: ?altText})` + (
+        single ? ")" : ""
+      ),
+      `  | Attachments.Removed({ref}) => ` + (
+        single ? `Some(` + n.removed + `({` + c.entityId + `, ` + c.file + `: ref}))` : n.removed + `({` + c.entityId + `, ` + c.file + `: ref})`
+      )
+    ],
+    single ? [
+        `  // Unreachable: no command of this graft chooses a primary, because a set`,
+        `  // of one has nothing to choose between. It contributes no event.`,
+        `  | Attachments.PrimarySet(_) => None`
+      ] : [`  | Attachments.PrimarySet({ref}) => ` + n.primarySet + `({` + c.entityId + `, ` + c.file + `: ref})`],
+    [
+      `  | Attachments.AltTextSet({ref, altText}) =>`,
+      `    ` + (
+        single ? "Some(" : ""
+      ) + n.altTextSet + `({` + c.entityId + `, ` + c.file + `: ref, altText})` + (
+        single ? ")" : ""
+      ),
+      `  }`,
+      ``,
+      `let decide = (state, command) =>`,
+      `  if !state.exists {`,
+      `    Error(` + n.notFound + `)`,
+      `  } else {`,
+      `    // TODO(graft): this host's own refusal goes here, ahead of the set's rules —`,
+      `    // an \`else if\` returning the error added above. A graft with no extra refusal`,
+      `    // is a complete graft, so leaving this is legitimate.`,
+      `    let (` + c.entityId + `, op) = toOp(command)`,
+      single ? `    switch state.attachments->Attachments.decide(~cardinality=Single, op) {` : `    switch state.attachments->Attachments.decide(op) {`,
+      `    | Error(#NotAttached) => Error(` + n.notAttached + `)`,
+      single ? `    | Ok(facts) => Ok(facts->Array.filterMap(toEvent(` + c.entityId + `, _)))` : `    | Ok(facts) => Ok(facts->Array.map(toEvent(` + c.entityId + `, _)))`,
+      `    }`,
+      `  }`,
+      ``
+    ]
+  ]).join("\n");
 }
 
 function conformanceBinding(c) {
   let n = namesOf(c);
+  let single = Stdlib_Option.getOr(c.cardinality, "Many") === "Single";
   let id = "e1";
   let refA = Stdlib_Option.getOr(c.refA, `/uploads/00000000-0000-4000-8000-000000000001/a`);
   let refB = Stdlib_Option.getOr(c.refB, `/uploads/00000000-0000-4000-8000-000000000002/b`);
   let createdValue = Stdlib_Option.getOr(c.createdCarriesEntityId, true) ? c.created + `({ ` + c.entityId + `: "` + id + `"})` : c.created;
-  return [
-    `// The Attachments trait's conformance suite, bound to \`` + n.slice + `\`.`,
-    `// Emitted whole: every name here is one the graft already declared.`,
-    ``,
-    `module Binding = {`,
-    `  type ref = string`,
-    `  let refA = "` + refA + `"`,
-    `  let refB = "` + refB + `"`,
-    ``,
-    `  module Spec = ` + n.slice,
-    `  module Behavior = ` + n.slice + `_Behavior`,
-    ``,
-    `  // Annotated: the slice consumes and emits same-named constructors.`,
-    `  let created: array<` + n.slice + `.consumedEvent> = [` + createdValue + `]`,
-    `  let attachedC = (ref): ` + n.slice + `.consumedEvent => ` + n.attached + `({ ` + c.file + `: ref})`,
-    `  let removedC = (ref): ` + n.slice + `.consumedEvent => ` + n.removed + `({ ` + c.file + `: ref})`,
-    `  let primarySetC = (ref): ` + n.slice + `.consumedEvent => ` + n.primarySet + `({ ` + c.file + `: ref})`,
-    `  let altTextSetC = (ref, altText): ` + n.slice + `.consumedEvent =>`,
-    `    ` + n.altTextSet + `({ ` + c.file + `: ref, altText})`,
-    ``,
-    `  let attach = ref => ` + n.slice + `.` + n.attachCmd + `({ ` + c.entityId + `: "` + id + `", ` + c.file + `: ref})`,
-    `  let remove = ref => ` + n.slice + `.` + n.removeCmd + `({ ` + c.entityId + `: "` + id + `", ` + c.file + `: ref})`,
-    `  let setPrimary = ref =>`,
-    `    ` + n.slice + `.` + n.setPrimaryCmd + `({ ` + c.entityId + `: "` + id + `", ` + c.file + `: ref})`,
-    `  let setAltText = (ref, altText) =>`,
-    `    ` + n.slice + `.` + n.setAltTextCmd + `({ ` + c.entityId + `: "` + id + `", ` + c.file + `: ref, altText})`,
-    ``,
-    `  let attached = ref => ` + n.slice + `.` + n.attached + `({ ` + c.entityId + `: "` + id + `", ` + c.file + `: ref})`,
-    `  let removed = ref => ` + n.slice + `.` + n.removed + `({ ` + c.entityId + `: "` + id + `", ` + c.file + `: ref})`,
-    `  let primarySet = ref =>`,
-    `    ` + n.slice + `.` + n.primarySet + `({ ` + c.entityId + `: "` + id + `", ` + c.file + `: ref})`,
-    `  let altTextSet = (ref, altText) =>`,
-    `    ` + n.slice + `.` + n.altTextSet + `({ ` + c.entityId + `: "` + id + `", ` + c.file + `: ref, altText})`,
-    `  let notAttached = ` + n.slice + `.` + n.notAttached,
-    `}`,
-    ``,
-    `module Conformance = TraitAttachments.Attachments_Conformance.Make(Binding)`,
-    ``,
-    `Conformance.register()`,
-    ``
-  ].join("\n");
+  return Belt_Array.concatMany([
+    [
+      `// The Attachments trait's conformance suite, bound to \`` + n.slice + `\`.`,
+      `// Emitted whole: every name here is one the graft already declared.`,
+      ``,
+      `module Binding = {`,
+      `  type ref = string`,
+      `  let refA = "` + refA + `"`,
+      `  let refB = "` + refB + `"`,
+      ``,
+      `  module Spec = ` + n.slice,
+      `  module Behavior = ` + n.slice + `_Behavior`,
+      ``,
+      `  // Annotated: the slice consumes and emits same-named constructors.`,
+      `  let created: array<` + n.slice + `.consumedEvent> = [` + createdValue + `]`,
+      `  let attachedC = (ref): ` + n.slice + `.consumedEvent => ` + n.attached + `({ ` + c.file + `: ref})`,
+      `  let removedC = (ref): ` + n.slice + `.consumedEvent => ` + n.removed + `({ ` + c.file + `: ref})`
+    ],
+    single ? [] : [`  let primarySetC = (ref): ` + n.slice + `.consumedEvent => ` + n.primarySet + `({ ` + c.file + `: ref})`],
+    [
+      `  let altTextSetC = (ref, altText): ` + n.slice + `.consumedEvent =>`,
+      `    ` + n.altTextSet + `({ ` + c.file + `: ref, altText})`,
+      ``,
+      `  let attach = ref => ` + n.slice + `.` + n.attachCmd + `({ ` + c.entityId + `: "` + id + `", ` + c.file + `: ref})`
+    ],
+    single ? [`  let clear = ` + n.slice + `.` + n.removeCmd + `({ ` + c.entityId + `: "` + id + `"})`] : [
+        `  let remove = ref => ` + n.slice + `.` + n.removeCmd + `({ ` + c.entityId + `: "` + id + `", ` + c.file + `: ref})`,
+        `  let setPrimary = ref =>`,
+        `    ` + n.slice + `.` + n.setPrimaryCmd + `({ ` + c.entityId + `: "` + id + `", ` + c.file + `: ref})`
+      ],
+    [
+      single ? `  let setAltText = altText => ` + n.slice + `.` + n.setAltTextCmd + `({ ` + c.entityId + `: "` + id + `", altText})` : `  let setAltText = (ref, altText) =>\n    ` + n.slice + `.` + n.setAltTextCmd + `({ ` + c.entityId + `: "` + id + `", ` + c.file + `: ref, altText})`,
+      ``,
+      `  let attached = ref => ` + n.slice + `.` + n.attached + `({ ` + c.entityId + `: "` + id + `", ` + c.file + `: ref})`,
+      `  let removed = ref => ` + n.slice + `.` + n.removed + `({ ` + c.entityId + `: "` + id + `", ` + c.file + `: ref})`
+    ],
+    single ? [] : [
+        `  let primarySet = ref =>`,
+        `    ` + n.slice + `.` + n.primarySet + `({ ` + c.entityId + `: "` + id + `", ` + c.file + `: ref})`
+      ],
+    [
+      `  let altTextSet = (ref, altText) =>`,
+      `    ` + n.slice + `.` + n.altTextSet + `({ ` + c.entityId + `: "` + id + `", ` + c.file + `: ref, altText})`,
+      `  let notAttached = ` + n.slice + `.` + n.notAttached,
+      `}`,
+      ``,
+      single ? `module Conformance = TraitAttachments.Attachments_Conformance.MakeSingle(Binding)` : `module Conformance = TraitAttachments.Attachments_Conformance.Make(Binding)`,
+      ``,
+      `Conformance.register()`,
+      ``
+    ]
+  ]).join("\n");
 }
 
-function projectionPatch(c) {
+function singleProjectionPatch(c) {
   let n = namesOf(c);
+  let alt = c.file + "AltText";
   return {
     into: `StateViewSliceStream/` + c.view + `_Projection.res`,
     at: `the projection's \`switch\`, and two fields on \`` + c.view + `\`'s state`,
     contents: [
-      `// On the view's state, two fields — the set, and its primary as one string.`,
-      `// The second is not redundancy: a card, a gallery tile and a reference cell`,
-      `// each read one image-semantic string per row, so without it every tile is blank.`,
+      `// On the view's state, two fields — the reference and its caption. No`,
+      `// collection: this entity holds one attachment, so the field a card, a gallery`,
+      `// tile and a reference cell read IS the whole of what it has.`,
       `//`,
-      `//   ` + c.file + `s: array<{` + c.file + `: ` + Stdlib_Option.getOr(c.refType, "Reventless.UploadableImage.t") + `, altText?: string}>,`,
       `//   ` + c.file + `?: ` + Stdlib_Option.getOr(c.refType, "Reventless.UploadableImage.t") + `,`,
+      `//   ` + alt + `?: string,`,
       ``,
       `| ` + n.attached + `({` + c.entityId + `, ` + c.file + `, altText: ?altText}) =>`,
-      `  Update(` + c.entityId + `, state => {`,
-      `    let ` + c.file + `s = Array.concat(state.` + c.file + `s, [{` + c.file + `: ` + c.file + `, altText: ?altText}])`,
-      `    {...state, ` + c.file + `s, ` + c.file + `: ?withPrimary(` + c.file + `s, state.primaryChosen)}`,
-      `  })`,
+      `  Update(` + c.entityId + `, state => {...state, ` + c.file + `, ` + alt + `: ?altText})`,
       `| ` + n.removed + `({` + c.entityId + `, ` + c.file + `}) =>`,
-      `  Update(` + c.entityId + `, state => {`,
-      `    let ` + c.file + `s = state.` + c.file + `s->Array.filter(m => m.` + c.file + ` != ` + c.file + `)`,
-      `    {...state, ` + c.file + `s, ` + c.file + `: ?withPrimary(` + c.file + `s, state.primaryChosen)}`,
-      `  })`,
-      `| ` + n.primarySet + `({` + c.entityId + `, ` + c.file + `}) =>`,
-      `  Update(` + c.entityId + `, state => {...state, ` + c.file + `: Some(` + c.file + `)})`,
+      `  Update(` + c.entityId + `, state =>`,
+      `    // Guarded on the reference: a removal that names something this row no`,
+      `    // longer holds — the first half of a replacement, arriving late — must not`,
+      `    // blank the one it does.`,
+      `    state.` + c.file + ` == Some(` + c.file + `) ? {...state, ` + c.file + `: ?None, ` + alt + `: ?None} : state`,
+      `  )`,
       `| ` + n.altTextSet + `({` + c.entityId + `, ` + c.file + `, altText}) =>`,
-      `  Update(` + c.entityId + `, state => {`,
-      `    ...state,`,
-      `    ` + c.file + `s: state.` + c.file + `s->Array.map(m =>`,
-      `      m.` + c.file + ` == ` + c.file + ` ? {...m, altText} : m`,
-      `    ),`,
-      `  })`,
-      ``,
-      `// The primary a reader should show: the one chosen, else the first attached —`,
-      `// the same rule the trait applies, over the view's own rows.`,
-      `let withPrimary = (members, chosen) =>`,
-      `  TraitAttachments.Attachments_Rules.primaryOf(`,
-      `    ~chosen,`,
-      `    ~attached=members->Array.map(m => m.` + c.file + `),`,
+      `  Update(` + c.entityId + `, state =>`,
+      `    state.` + c.file + ` == Some(` + c.file + `) ? {...state, ` + alt + `: altText} : state`,
       `  )`
     ].join("\n")
   };
+}
+
+function manyProjectionPatch(c) {
+  let n = namesOf(c);
+  let alt = c.file + "AltText";
+  let set = c.file + "s";
+  return {
+    into: `StateViewSliceStream/` + c.view + `_Projection.res`,
+    at: `the projection's \`switch\`, and three fields on \`` + c.view + `\`'s state`,
+    contents: [
+      `// On the view's state, three fields — the set, its primary as one string, and`,
+      `// that primary's caption.`,
+      `//`,
+      `// The scalar is not redundancy: a card, a gallery tile and a reference cell each`,
+      `// read one image-semantic string per row, so without it every tile is blank. It`,
+      `// declares itself the distinguished member of the set, which is what lets a`,
+      `// detail page draw one gallery where it would otherwise draw a field and a table.`,
+      `//`,
+      `// The caption is beside it for the same reason the scalar is: the primary is the`,
+      `// one image a reader actually sees, and its alternative text was sitting in the`,
+      `// set's rows where nothing drawing the hero could reach it.`,
+      `//`,
+      `// The scalar's declaration is a binding for the reason the commands' is: an`,
+      `// \`@s.matches(…)\` attribute has to fit on one line to parse.`,
+      `//`,
+      `//   let distinguished = Reventless.MemberRef.of_(` + contentArgOf(c) + `~field="` + set + `")`,
+      `//`,
+      `//   ` + set + `: array<{` + c.file + `: ` + Stdlib_Option.getOr(c.refType, "Reventless.UploadableImage.t") + `, altText?: string}>,`,
+      `//   ` + c.file + `?: @s.matches(distinguished) ` + Stdlib_Option.getOr(c.refType, "Reventless.UploadableImage.t") + `,`,
+      `//   ` + alt + `?: string,`,
+      ``,
+      `| ` + n.attached + `({` + c.entityId + `, ` + c.file + `, altText: ?altText}) =>`,
+      `  Update(` + c.entityId + `, state =>`,
+      `    state.` + set + `->Array.some(m => m.` + c.file + ` == ` + c.file + `)`,
+      `      ? state`,
+      `      : withPrimary(`,
+      `          {`,
+      `            ...state,`,
+      `            ` + set + `: state.` + set + `->Array.concat([{` + c.file + `: ` + c.file + `, altText: ?altText}]),`,
+      `          },`,
+      `          state.` + c.file + `,`,
+      `        )`,
+      `  )`,
+      `| ` + n.removed + `({` + c.entityId + `, ` + c.file + `}) =>`,
+      `  Update(` + c.entityId + `, state =>`,
+      `    withPrimary(`,
+      `      {...state, ` + set + `: state.` + set + `->Array.filter(m => m.` + c.file + ` != ` + c.file + `)},`,
+      `      state.` + c.file + ` == Some(` + c.file + `) ? None : state.` + c.file + `,`,
+      `    )`,
+      `  )`,
+      `| ` + n.primarySet + `({` + c.entityId + `, ` + c.file + `}) =>`,
+      `  Update(` + c.entityId + `, state => withPrimary(state, Some(` + c.file + `)))`,
+      `| ` + n.altTextSet + `({` + c.entityId + `, ` + c.file + `, altText}) =>`,
+      `  Update(` + c.entityId + `, state =>`,
+      `    withPrimary(`,
+      `      {`,
+      `        ...state,`,
+      `        ` + set + `: state.` + set + `->Array.map(m =>`,
+      `          m.` + c.file + ` == ` + c.file + ` ? {...m, altText} : m`,
+      `        ),`,
+      `      },`,
+      `      state.` + c.file + `,`,
+      `    )`,
+      `  )`,
+      ``,
+      `// The primary a reader should show and the caption that goes with it: the`,
+      `// chosen member, else the first attached — the trait's own rule, applied over`,
+      `// the view's rows. Every arm above goes through this rather than assigning the`,
+      `// scalar itself, so the pair cannot drift apart on one arm and not another.`,
+      `let withPrimary = (state: ` + c.view + `.state, chosen) => {`,
+      `  let (` + c.file + `, ` + alt + `) = TraitAttachments.Attachments_Rules.primaryWithAltText(`,
+      `    ~chosen,`,
+      `    ~members=state.` + set + `,`,
+      `    ~ref=m => m.` + c.file + `,`,
+      `    ~altText=m => m.altText,`,
+      `  )`,
+      `  {...state, ` + c.file + `: ?` + c.file + `, ` + alt + `: ?` + alt + `}`,
+      `}`
+    ].join("\n")
+  };
+}
+
+function projectionPatch(c) {
+  if (Stdlib_Option.getOr(c.cardinality, "Many") === "Single") {
+    return singleProjectionPatch(c);
+  } else {
+    return manyProjectionPatch(c);
+  }
 }
 
 function emit(config, into, tests) {
@@ -340,14 +547,23 @@ function emit(config, into, tests) {
 
 export {
   configSchema,
+  cardinalityOf,
+  isSingle,
   namesOf,
   refTypeOf,
+  setFieldOf,
+  selectionBinding,
+  selectionTypeOf,
+  contentArgOf,
   commandAttributes,
+  commandNames,
   commandTransitionBinding,
   lines,
   sliceSpec,
   sliceBehavior,
   conformanceBinding,
+  singleProjectionPatch,
+  manyProjectionPatch,
   projectionPatch,
   emit,
 }

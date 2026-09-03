@@ -28,11 +28,6 @@ let consumedEventSchema = Sury.union([
     categoryImage: s.m(UploadableImage$Reventless.forField(undefined, "categoryImages"))
   })),
   Sury.$schema(s => ({
-    TAG: "CategoryPrimaryImageSet",
-    categoryId: s.m(Sury.string),
-    categoryImage: s.m(UploadableImage$Reventless.forField(undefined, "categoryImages"))
-  })),
-  Sury.$schema(s => ({
     TAG: "CategoryImageAltTextSet",
     categoryId: s.m(Sury.string),
     categoryImage: s.m(UploadableImage$Reventless.forField(undefined, "categoryImages")),
@@ -53,17 +48,12 @@ let shelfStatusSchema = Sury.union([
   Sury.literal("Archived")
 ]);
 
-let categoryAttachmentSchema = Sury.$schema(s => ({
-  categoryImage: s.m(UploadableImage$Reventless.forField(undefined, "categoryImages")),
-  altText: s.m(Sury.$option(Sury.string))
-}));
-
 let stateSchema = Sury.$schema(s => ({
   categoryId: s.m(Sury.string),
   name: s.m(Sury.string),
   shelfStatus: s.m(shelfStatusSchema),
   categoryImage: s.m(Sury.$option(UploadableImage$Reventless.forField(undefined, "categoryImages"))),
-  categoryImages: s.m(Sury.array(categoryAttachmentSchema))
+  categoryImageAltText: s.m(Sury.$option(Sury.string))
 }));
 
 let config = ReadModel$Reventless.config(undefined, undefined, undefined);
@@ -114,7 +104,6 @@ export {
   Id,
   consumedEventSchema,
   shelfStatusSchema,
-  categoryAttachmentSchema,
   config,
   subIdConfig,
   stateSchema$1 as stateSchema,

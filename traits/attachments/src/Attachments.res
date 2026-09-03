@@ -64,3 +64,53 @@ module type Binding = {
   /** The refusal for a primary or caption on a ref that is not in the set. */
   let notAttached: Spec.error
 }
+
+/**
+One host of the **bounded** cardinality, bound.
+
+A separate contract rather than optional members on {!Binding}, because what
+`Attachments_Rules.Single` changes is the host's command surface and not just a
+rule: there is no primary to choose between one member, so the graft declares no
+such command, and there is no ref for a remove to name, so it declares none.
+Both absences are facts a module type states better than a test does — a
+`Single` graft that grew a `SetPrimary` command would fail to satisfy this
+signature, which is the check, and it happens at compile time.
+
+Everything the two contracts share is spelled identically on purpose: a reader
+comparing them should find the difference in what is missing, not in how the
+common half is phrased.
+*/
+module type SingleBinding = {
+  type ref
+  /** Two refs that differ — the second is what replaces the first. */
+  let refA: ref
+  let refB: ref
+
+  module Spec: ReventlessGwt.Behavior_GWT.BehaviorSpec
+  module Behavior: ReventlessGwt.Behavior_GWT.Behavior with module Spec = Spec
+
+  /** History that brings the entity into existence with an empty set. */
+  let created: array<Spec.consumedEvent>
+  /** The set's own facts, as the slice consumes them. No `primarySetC`: nothing
+      emits one. */
+  let attachedC: ref => Spec.consumedEvent
+  let removedC: ref => Spec.consumedEvent
+  let altTextSetC: (ref, string) => Spec.consumedEvent
+
+  let attach: ref => Spec.command
+  /** Remove whatever is held. Takes no ref — there is only one, and asking the
+      caller to name it is asking them to repeat what the row already says. */
+  let clear: Spec.command
+  /** Caption whatever is held. Ref-less for `clear`'s reason, and there is a
+      second one here: a bounded host's view carries the reference as a scalar
+      and no collection at all, so there is no field for a selection to be a
+      member *of*. */
+  let setAltText: string => Spec.command
+
+  /** The set's facts, as the slice emits them. */
+  let attached: ref => Spec.event
+  let removed: ref => Spec.event
+  let altTextSet: (ref, string) => Spec.event
+  /** The refusal for a caption on a ref that is not held. */
+  let notAttached: Spec.error
+}

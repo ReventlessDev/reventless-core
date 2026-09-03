@@ -1,0 +1,48 @@
+{
+  "note": "The config each grafted trait was emitted from, kept so a re-emit is a command rather than an archaeology exercise. Nothing reads this file: the emitted components are the host's source from the moment they land, and no check diffs them against a fresh emit. What it buys is that the diff CAN be taken — by hand, by someone who has changed the scaffold and wants to see what moved. Written by hand today; `graft-trait` persisting it is the mechanised half and is not built yet.",
+  "grafts": [
+    {
+      "trait": "@reventlessdev/trait-attachments",
+      "into": "src/Product",
+      "tests": "tests/Product",
+      "config": {
+        "entity": "Product",
+        "entityId": "productId",
+        "noun": "Image",
+        "file": "productImage",
+        "created": "ProductAdded",
+        "createdCarriesEntityId": false,
+        "view": "Products",
+        "lifecycleType": "shelfStatus",
+        "cardinality": "Many",
+        "authorize": "AllowGroups([\"Admin\", \"Merchandiser\"])",
+        "transition": [
+          "Products.Listed",
+          "Products.Archived"
+        ]
+      },
+      "handEdits": "The shelf refusal (ProductIsDiscontinued) and the three shelf events it folds — the host policy the scaffold deliberately leaves as TODO(graft)."
+    },
+    {
+      "trait": "@reventlessdev/trait-attachments",
+      "into": "src/Category",
+      "tests": "tests/Category",
+      "config": {
+        "entity": "Category",
+        "entityId": "categoryId",
+        "noun": "Image",
+        "file": "categoryImage",
+        "created": "CategoryAdded",
+        "createdCarriesEntityId": false,
+        "view": "Categories",
+        "lifecycleType": "shelfStatus",
+        "cardinality": "Single",
+        "authorize": "AllowGroups([\"Admin\", \"Merchandiser\"])",
+        "transition": [
+          "Categories.Listed"
+        ]
+      },
+      "handEdits": "The archived refusal (CategoryAlreadyArchived) and the two archive events it folds."
+    }
+  ]
+}

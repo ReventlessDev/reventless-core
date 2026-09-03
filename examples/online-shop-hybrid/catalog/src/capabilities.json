@@ -24,11 +24,6 @@
           "component": "ProductImages",
           "field": "productImage",
           "annotation": "productImages"
-        },
-        {
-          "component": "Products",
-          "field": "productImage",
-          "annotation": "productImages"
         }
       ]
     }

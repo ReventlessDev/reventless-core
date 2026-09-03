@@ -16,10 +16,6 @@ let consumedEventSchema = Sury.union([
     categoryImage: s.m(UploadableImage$Reventless.forField(undefined, "categoryImages"))
   })),
   Sury.$schema(s => ({
-    TAG: "CategoryPrimaryImageSet",
-    categoryImage: s.m(UploadableImage$Reventless.forField(undefined, "categoryImages"))
-  })),
-  Sury.$schema(s => ({
     TAG: "CategoryImageAltTextSet",
     categoryImage: s.m(UploadableImage$Reventless.forField(undefined, "categoryImages")),
     altText: s.m(Sury.string)
@@ -30,25 +26,18 @@ let consumedEventSchema = Sury.union([
 
 let commandSchema = Sury.union([
   Sury.$schema(s => ({
-    TAG: "AttachCategoryImage",
+    TAG: "SetCategoryImage",
     categoryId: s.m(DcbTag$Reventless.string),
     categoryImage: s.m(UploadableImage$Reventless.forField(undefined, "categoryImages")),
     altText: s.m(Sury.$option(Sury.string))
   })),
   Sury.$schema(s => ({
     TAG: "RemoveCategoryImage",
-    categoryId: s.m(DcbTag$Reventless.string),
-    categoryImage: s.m(UploadableImage$Reventless.forField(undefined, "categoryImages"))
-  })),
-  Sury.$schema(s => ({
-    TAG: "SetPrimaryCategoryImage",
-    categoryId: s.m(DcbTag$Reventless.string),
-    categoryImage: s.m(UploadableImage$Reventless.forField(undefined, "categoryImages"))
+    categoryId: s.m(DcbTag$Reventless.string)
   })),
   Sury.$schema(s => ({
     TAG: "SetCategoryImageAltText",
     categoryId: s.m(DcbTag$Reventless.string),
-    categoryImage: s.m(UploadableImage$Reventless.forField(undefined, "categoryImages")),
     altText: s.m(Sury.string)
   }))
 ]);
@@ -72,11 +61,6 @@ let eventSchema = Sury.union([
     categoryImage: s.m(UploadableImage$Reventless.forField(undefined, "categoryImages"))
   })),
   Sury.$schema(s => ({
-    TAG: "CategoryPrimaryImageSet",
-    categoryId: s.m(DcbTag$Reventless.string),
-    categoryImage: s.m(UploadableImage$Reventless.forField(undefined, "categoryImages"))
-  })),
-  Sury.$schema(s => ({
     TAG: "CategoryImageAltTextSet",
     categoryId: s.m(DcbTag$Reventless.string),
     categoryImage: s.m(UploadableImage$Reventless.forField(undefined, "categoryImages")),
@@ -95,9 +79,8 @@ let traits = [Attachments$TraitAttachments.declaration];
 
 function commandAuthorization(command) {
   switch (command.TAG) {
-    case "AttachCategoryImage" :
+    case "SetCategoryImage" :
     case "RemoveCategoryImage" :
-    case "SetPrimaryCategoryImage" :
     case "SetCategoryImageAltText" :
       return {
         TAG: "AllowGroups",

@@ -42,8 +42,48 @@ function Make(B) {
   };
 }
 
+function MakeSingle(B) {
+  let $$let = B.Behavior;
+  let G = Behavior_GWT$ReventlessGwt.Make(B.Spec)({
+    initialState: $$let.initialState,
+    evolve: $$let.evolve,
+    decide: $$let.decide
+  });
+  let withA = B.created.concat([B.attachedC(B.refA)]);
+  let register = () => G.describe(suiteName(B.Spec.name), () => {
+    G.test("the first attachment is appended", () => G.thenEvent(G.whenCmd(G.givenEvents(B.created), B.attach(B.refA)), B.attached(B.refA)));
+    G.test("attaching the ref already held is a no-op", () => G.thenNoEvent(G.whenCmd(G.givenEvents(withA), B.attach(B.refA))));
+    G.test("a second ref replaces the first rather than joining it", () => G.thenEvents(G.whenCmd(G.givenEvents(withA), B.attach(B.refB)), [
+      B.removed(B.refA),
+      B.attached(B.refB)
+    ]));
+    G.test("clearing a held set removes what it holds", () => G.thenEvent(G.whenCmd(G.givenEvents(withA), B.clear), B.removed(B.refA)));
+    G.test("clearing an empty set is a no-op", () => G.thenNoEvent(G.whenCmd(G.givenEvents(B.created), B.clear)));
+    G.test("a replaced ref can be attached again", () => G.thenEvents(G.whenCmd(G.givenEvents(withA.concat([
+      B.removedC(B.refA),
+      B.attachedC(B.refB)
+    ])), B.attach(B.refA)), [
+      B.removed(B.refB),
+      B.attached(B.refA)
+    ]));
+    G.test("a caption lands on the ref that is held", () => G.thenEvent(G.whenCmd(G.givenEvents(withA), B.setAltText("front")), B.altTextSet(B.refA, "front")));
+    G.test("a caption follows a replacement onto the new ref", () => G.thenEvent(G.whenCmd(G.givenEvents(withA.concat([
+      B.removedC(B.refA),
+      B.attachedC(B.refB)
+    ])), B.setAltText("side")), B.altTextSet(B.refB, "side")));
+    G.test("captioning an empty set is refused", () => G.thenError(G.whenCmd(G.givenEvents(B.created), B.setAltText("front")), B.notAttached));
+    G.test("repeating the caption is a no-op", () => G.thenNoEvent(G.whenCmd(G.givenEvents(withA.concat([B.altTextSetC(B.refA, "front")])), B.setAltText("front"))));
+  });
+  return {
+    G: G,
+    withA: withA,
+    register: register
+  };
+}
+
 export {
   suiteName,
   Make,
+  MakeSingle,
 }
 /* Behavior_GWT-ReventlessGwt Not a pure module */

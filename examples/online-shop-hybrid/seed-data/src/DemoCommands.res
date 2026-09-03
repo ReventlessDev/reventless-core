@@ -41,11 +41,11 @@ let addCategory = (command: CatalogPlugin.AddCategory.command): Seed.mutation =>
     Seed.mutation(catalog("AddCategory"), [("categoryId", Id(categoryId)), ("name", String(name))])
   }
 
-// The attachment set. Only the arms the seed drives are encoded; the alt text is
-// optional on Attach and sent only when present.
+// A category's single image. Only the arms the seed drives are encoded; the alt
+// text is optional on the set command and sent only when present.
 let categoryImages = (command: CatalogPlugin.CategoryImages.command): Seed.mutation =>
   switch command {
-  | AttachCategoryImage({categoryId, categoryImage, altText: ?altText}) =>
+  | SetCategoryImage({categoryId, categoryImage, altText: ?altText}) =>
     let base: array<(string, Seed.value)> = [
       ("categoryId", Id(categoryId)),
       ("categoryImage", String(categoryImage)),
@@ -54,16 +54,15 @@ let categoryImages = (command: CatalogPlugin.CategoryImages.command): Seed.mutat
     | Some(text) => [("altText", String(text))]
     | None => []
     }
-    Seed.mutation(catalog("AttachCategoryImage"), Array.concat(base, alt))
-  | SetPrimaryCategoryImage({categoryId, categoryImage}) =>
-    Seed.mutation(
-      catalog("SetPrimaryCategoryImage"),
-      [("categoryId", Id(categoryId)), ("categoryImage", String(categoryImage))],
-    )
+    Seed.mutation(catalog("SetCategoryImage"), Array.concat(base, alt))
   | RemoveCategoryImage(_) | SetCategoryImageAltText(_) =>
     throw(Seed.Failed("the seed does not drive RemoveCategoryImage / SetCategoryImageAltText"))
   }
 
+// Every arm of the product's set, unlike the category's. The seeded catalog is
+// what the gallery is looked at on, and a gallery with one member per product
+// exercises none of what the set is for — so the seed chooses a primary and
+// captions the members it attaches.
 let productImages = (command: CatalogPlugin.ProductImages.command): Seed.mutation =>
   switch command {
   | AttachProductImage({productId, productImage, altText: ?altText}) =>
@@ -76,8 +75,22 @@ let productImages = (command: CatalogPlugin.ProductImages.command): Seed.mutatio
     | None => []
     }
     Seed.mutation(catalog("AttachProductImage"), Array.concat(base, alt))
-  | RemoveProductImage(_) | SetPrimaryProductImage(_) | SetProductImageAltText(_) =>
-    throw(Seed.Failed("the seed only attaches product images"))
+  | SetPrimaryProductImage({productId, productImage}) =>
+    Seed.mutation(
+      catalog("SetPrimaryProductImage"),
+      [("productId", Id(productId)), ("productImage", String(productImage))],
+    )
+  | SetProductImageAltText({productId, productImage, altText}) =>
+    Seed.mutation(
+      catalog("SetProductImageAltText"),
+      [
+        ("productId", Id(productId)),
+        ("productImage", String(productImage)),
+        ("altText", String(altText)),
+      ],
+    )
+  | RemoveProductImage(_) =>
+    throw(Seed.Failed("the seed does not drive RemoveProductImage"))
   }
 
 let renameCategory = (command: CatalogPlugin.RenameCategory.command): Seed.mutation =>

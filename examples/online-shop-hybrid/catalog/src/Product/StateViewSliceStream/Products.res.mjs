@@ -2,6 +2,8 @@
 
 import * as Sury from "sury";
 import * as Money$Reventless from "@reventlessdev/reventless-spec/src/semantic/Money.res.mjs";
+import * as Semantic$Reventless from "@reventlessdev/reventless-spec/src/semantic/Semantic.res.mjs";
+import * as MemberRef$Reventless from "@reventlessdev/reventless-spec/src/semantic/MemberRef.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 import * as UploadableImage$Reventless from "@reventlessdev/reventless-spec/src/semantic/UploadableImage.res.mjs";
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
@@ -77,12 +79,15 @@ let productAttachmentSchema = Sury.$schema(s => ({
   altText: s.m(Sury.$option(Sury.string))
 }));
 
+let distinguished = MemberRef$Reventless.of_(undefined, undefined, Semantic$Reventless.Id.imageRef, "productImages");
+
 let stateSchema = Sury.$schema(s => ({
   productId: s.m(Sury.string),
   name: s.m(Sury.string),
   description: s.m(Sury.string),
   price: s.m(Money$Reventless.schema),
-  productImage: s.m(Sury.$option(UploadableImage$Reventless.forField(undefined, "productImages"))),
+  productImage: s.m(Sury.$option(distinguished)),
+  productImageAltText: s.m(Sury.$option(Sury.string)),
   productImages: s.m(Sury.array(productAttachmentSchema)),
   categoryId: s.m(Sury.string),
   shelfStatus: s.m(shelfStatusSchema)
@@ -147,6 +152,7 @@ export {
   consumedEventSchema,
   shelfStatusSchema,
   productAttachmentSchema,
+  distinguished,
   config,
   subIdConfig,
   stateSchema$1 as stateSchema,

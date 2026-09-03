@@ -44,7 +44,7 @@ let manifest_journeys = [
           "ChangeProductPrice",
           "AddCategory",
           "RenameCategory",
-          "AttachCategoryImage"
+          "SetCategoryImage"
         ],
         derived: []
       }]

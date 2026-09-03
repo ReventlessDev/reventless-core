@@ -9,7 +9,6 @@ type consumedEvent =
   | CategoryRenamed({categoryId: string, name: string})
   | CategoryImageAttached({categoryId: string, categoryImage: Reventless.UploadableImage.t, altText?: string})
   | CategoryImageRemoved({categoryId: string, categoryImage: Reventless.UploadableImage.t})
-  | CategoryPrimaryImageSet({categoryId: string, categoryImage: Reventless.UploadableImage.t})
   | CategoryImageAltTextSet({categoryId: string, categoryImage: Reventless.UploadableImage.t, altText: string})
   | CategoryArchived({categoryId: string})
   | CategoryUnarchived({categoryId: string})
@@ -27,14 +26,6 @@ type shelfStatus =
   | Listed
   | @retired Archived
 
-// One member of the attachment set, named for its store — `categoryImages`, the
-// categories' own, not the products'.
-@schema
-type categoryAttachment = {
-  categoryImage: Reventless.UploadableImage.t,
-  altText?: string,
-}
-
 // An archived category keeps its name, for the reason the retirement above
 // already gives: the products filed under it still name it, and a live product
 // showing `cat-08` where it means "Clearance" is a pointer the platform handed
@@ -50,7 +41,11 @@ type state = {
   // The retirement is on `shelfStatus`'s own constructor and needs no second
   // annotation here.
   @lifecycle shelfStatus: shelfStatus,
-  // The primary, as one string, for the card and the gallery tile.
+  // The image, as one string, for the card and the gallery tile. No collection
+  // beside it: a category holds one picture, so the field every surface already
+  // reads IS the whole of what it has, and a set of one is a table with one row
+  // on a detail page and a cardinality nothing enforces.
   categoryImage?: Reventless.UploadableImage.t,
-  categoryImages: array<categoryAttachment>,
+  // Its caption, so the one image a reader actually sees has alternative text.
+  categoryImageAltText?: string,
 }

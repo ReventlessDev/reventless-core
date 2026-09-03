@@ -54,21 +54,25 @@ let probeViews =
 
 // ── Phases ──────────────────────────────────────────────────────────────────
 
-// Creation and the first attachment are two facts, so two commands: the uploaded
-// ref is attached after the category exists, and becomes its primary by being first.
+// Creation and the image are two facts, so two commands: the uploaded ref is set
+// after the category exists. A category holds one image, so setting a second
+// replaces the first rather than joining it — which is what the edit phase's
+// re-image exercises.
 let seedCategories = async (categories: array<DemoData.category>, ~client: Seed.Client.t) => {
   await client->Seed.Client.sendAll(
     categories->Array.map(c => DemoCommands.addCategory(AddCategory({categoryId: c.id, name: c.name}))),
   )
   let attached = categories->Array.filterMap(c =>
     c.categoryImage->Option.map(categoryImage =>
-      DemoCommands.categoryImages(AttachCategoryImage({categoryId: c.id, categoryImage}))
+      DemoCommands.categoryImages(
+        SetCategoryImage({categoryId: c.id, categoryImage, altText: `${c.name} banner`}),
+      )
     )
   )
   await client->Seed.Client.sendAll(attached)
   Seed.Runner.report(
     `categories: ${(categories->Array.length)->Int.toString} added, ${(attached->Array.length)
-        ->Int.toString} images attached`,
+        ->Int.toString} images set`,
   )
 }
 
@@ -179,6 +183,39 @@ let seedProducts = async (products: array<DemoData.product>, ~client: Seed.Clien
   )
 }
 
+// A product's set with more than one member in it, which no seeded product had
+// before: one image each exercised the append arm and nothing else, so the
+// gallery, the choice of primary and the per-member caption were all code no run
+// ever reached. `extra` is `(productId, ref)` pairs — a second and third view of
+// products the caller picked — and each pair is attached with its own caption,
+// then the last of a product's extras is made the primary.
+let seedProductGallery = async (
+  ~client: Seed.Client.t,
+  ~extra: array<(string, string, string)>,
+) => {
+  await client->Seed.Client.sendAll(
+    extra->Array.map(((productId, productImage, altText)) =>
+      DemoCommands.productImages(AttachProductImage({productId, productImage, altText}))
+    ),
+  )
+  // The primary is chosen rather than left to the first-attached fallback, so a
+  // reader can tell the two apart: a row whose primary is its *second* image is
+  // the only evidence the choice was honoured.
+  let chosen =
+    extra
+    ->Array.filterMap(((productId, productImage, _)) =>
+      productImage->String.endsWith("-v2.svg") ? Some((productId, productImage)) : None
+    )
+    ->Array.map(((productId, productImage)) =>
+      DemoCommands.productImages(SetPrimaryProductImage({productId, productImage}))
+    )
+  await client->Seed.Client.sendAll(chosen)
+  Seed.Runner.report(
+    `product galleries: ${(extra->Array.length)->Int.toString} extra images attached, ${(chosen
+        ->Array.length)->Int.toString} primaries chosen`,
+  )
+}
+
 // One command the domain must refuse, sent on purpose: re-adding a productId
 // that already exists. It comes back as CommandRejected/ProductAlreadyExists and
 // appends nothing, so the run shows the rejection path next to the accepted
@@ -249,15 +286,17 @@ let seedCatalogEdits = async (
       }),
     ),
   ])
-  // Re-image one live category, so the set's paths are exercised next to the
-  // rename: a second image attached, then chosen as the primary. The ref must
-  // differ from the first — attaching the same ref is the idempotent arm and
-  // appends nothing, which would leave this phase reporting work it did not do.
+  // Re-image one live category, so the replacement path is exercised next to the
+  // rename: one command, and the log shows the old ref leaving before the new one
+  // arrives. The ref must differ from the first — setting the same ref is the
+  // idempotent arm and appends nothing, which would leave this phase reporting
+  // work it did not do.
   await client->Seed.Client.sendAll(
-    reimage->Array.flatMap(((categoryId, categoryImage)) => [
-      DemoCommands.categoryImages(AttachCategoryImage({categoryId, categoryImage})),
-      DemoCommands.categoryImages(SetPrimaryCategoryImage({categoryId, categoryImage})),
-    ]),
+    reimage->Array.map(((categoryId, categoryImage)) =>
+      DemoCommands.categoryImages(
+        SetCategoryImage({categoryId, categoryImage, altText: "updated banner"}),
+      )
+    ),
   )
 
   let archived = categories->Array.filter(c => c.archive)
@@ -631,6 +670,47 @@ let run = async (
     }
   | _ => []
   }
+  // Two more views of the first few products, so at least some rows have a
+  // gallery rather than a single image. Uploaded here for `reimage`'s reason —
+  // this is where the store and the skip flag already are — and deliberately a
+  // subset: a catalog where every row has three images cannot show that the
+  // one-image case still renders.
+  let extraProductImages = switch connection.uploadsSkipped {
+  | true => []
+  | false =>
+    let out = []
+    let picked = products->Array.slice(~start=0, ~end=3)
+    for i in 0 to picked->Array.length - 1 {
+      switch picked->Array.get(i) {
+      | Some(p) =>
+        // `-v2` then `-v3`, and the suffix is read back by `seedProductGallery`
+        // to decide which one becomes the primary.
+        let views = [("v2", "back", 200 + i), ("v3", "detail", 300 + i)]
+        for v in 0 to views->Array.length - 1 {
+          switch views->Array.get(v) {
+          | Some((suffix, angle, index)) =>
+            switch await Seed.Upload.uploadAsset(
+              ~client,
+              ~store=productImageStore,
+              ~bytes=DemoData.productSvg(~name=`${p.name} (${angle})`, ~index),
+              ~fileName=`${p.id}-${suffix}.svg`,
+              ~contentType="image/svg+xml",
+            ) {
+            | Ok(servedRef) => out->Array.push((p.id, servedRef, `${p.name}, ${angle}`))
+            | Error(msg) =>
+              throw(Seed.Failed(`extra product image upload for ${p.id} failed: ${msg}`))
+            }
+          | None => ()
+          }
+        }
+      | None => ()
+      }
+    }
+    Seed.Runner.report(
+      `extra product images: ${(out->Array.length)->Int.toString} uploaded to the served bucket`,
+    )
+    out
+  }
   let generatedCustomers = DemoData.buildCustomers(~count=customerCount, ())
   // The demo logins are registered as customers but are deliberately NOT part of
   // the weighted draw below: their order counts are fixed by index, and letting
@@ -640,6 +720,7 @@ let run = async (
 
   await seedCategories(categories, ~client)
   await seedProducts(products, ~client)
+  await seedProductGallery(~client, ~extra=extraProductImages)
   await seedRejectedDuplicate(products, ~client)
   await seedCatalogEdits(products, categories, ~client, ~reimage)
   await seedSupplierFeed(~client)

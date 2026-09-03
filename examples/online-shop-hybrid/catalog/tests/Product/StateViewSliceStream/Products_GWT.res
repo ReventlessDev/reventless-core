@@ -71,6 +71,9 @@ describe("Products StateViewSliceStream", () => {
         description: "x",
         price: eur(999.99),
         productImage: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg",
+        // The caption reaches the scalar too: the primary is the one image the
+        // hero draws, and it used to be the one image with no alternative text.
+        productImageAltText: "front",
         productImages: [{productImage: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg", altText: "front"}],
         categoryId: "cat1",
         shelfStatus: Listed,
@@ -186,7 +189,37 @@ describe("Products StateViewSliceStream", () => {
         description: "x",
         price: eur(999.99),
         productImage: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg",
+        productImageAltText: "front view",
         productImages: [{productImage: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg", altText: "front view"}],
+        categoryId: "cat1",
+        shelfStatus: Listed,
+      },
+    )
+  )
+
+  // Captioning a member that is NOT the primary leaves the scalar's caption
+  // alone — the pair on the row is the primary's, not the set's last edit.
+  test("captioning a non-primary member does not caption the hero", () =>
+    givenEvents([
+      ProductAdded({productId: "p1", name: "Laptop", description: "x", price: eur(999.99), categoryId: "cat1"}),
+      ProductImageAttached({productId: "p1", productImage: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg"}),
+      ProductImageAttached({productId: "p1", productImage: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg"}),
+    ])
+    ->whenEvent(
+      ProductImageAltTextSet({productId: "p1", productImage: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg", altText: "side view"}),
+    )
+    ->thenStateWithId(
+      "p1",
+      {
+        productId: "p1",
+        name: "Laptop",
+        description: "x",
+        price: eur(999.99),
+        productImage: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg",
+        productImages: [
+          {productImage: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg"},
+          {productImage: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg", altText: "side view"},
+        ],
         categoryId: "cat1",
         shelfStatus: Listed,
       },

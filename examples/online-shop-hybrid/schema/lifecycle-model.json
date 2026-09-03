@@ -69,16 +69,6 @@
   },
   {
     "component": "CategoryImages",
-    "command": "AttachCategoryImage",
-    "level": "Instance",
-    "allowedStates": [
-      "Listed"
-    ],
-    "targets": [],
-    "scenarios": 4
-  },
-  {
-    "component": "CategoryImages",
     "command": "RemoveCategoryImage",
     "level": "Instance",
     "allowedStates": [
@@ -89,17 +79,17 @@
   },
   {
     "component": "CategoryImages",
-    "command": "SetCategoryImageAltText",
+    "command": "SetCategoryImage",
     "level": "Instance",
     "allowedStates": [
       "Listed"
     ],
     "targets": [],
-    "scenarios": 1
+    "scenarios": 5
   },
   {
     "component": "CategoryImages",
-    "command": "SetPrimaryCategoryImage",
+    "command": "SetCategoryImageAltText",
     "level": "Instance",
     "allowedStates": [
       "Listed"

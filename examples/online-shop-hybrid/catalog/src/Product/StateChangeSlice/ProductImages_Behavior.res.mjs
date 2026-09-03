@@ -153,23 +153,17 @@ function decide(state, command) {
     };
   }
   let match = toOp(command);
-  let match$1 = Attachments_Rules$TraitAttachments.decide(state.images, match[1]);
-  if (match$1.TAG !== "Ok") {
-    return {
-      TAG: "Error",
-      _0: "ProductImageNotAttached"
-    };
-  }
-  let fact = match$1._0;
-  if (fact !== undefined) {
+  let productId = match[0];
+  let facts = Attachments_Rules$TraitAttachments.decide(state.images, undefined, match[1]);
+  if (facts.TAG === "Ok") {
     return {
       TAG: "Ok",
-      _0: [toEvent(match[0], fact)]
+      _0: facts._0.map(__x => toEvent(productId, __x))
     };
   } else {
     return {
-      TAG: "Ok",
-      _0: []
+      TAG: "Error",
+      _0: "ProductImageNotAttached"
     };
   }
 }
@@ -190,4 +184,4 @@ export {
   decide,
   moduleUrl,
 }
-/* No side effect */
+/* Attachments_Rules-TraitAttachments Not a pure module */

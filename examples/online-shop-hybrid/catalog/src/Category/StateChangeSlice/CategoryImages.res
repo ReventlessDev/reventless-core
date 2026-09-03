@@ -1,5 +1,7 @@
-// CategoryImages StateChangeSlice: a category's attachment set — the second host
-// of the attachments trait, so its rules are proven to survive a host swap.
+// CategoryImages StateChangeSlice: a category's single image — the second host of
+// the attachments trait, so its rules are proven to survive a host swap. It is
+// also the bounded host: a category has one picture, not a gallery, and the trait
+// enforces that rather than the projection hoping for it.
 
 @@reventless.spec
 
@@ -8,30 +10,29 @@ type consumedEvent =
   | CategoryAdded
   | CategoryImageAttached({categoryImage: Reventless.UploadableImage.t})
   | CategoryImageRemoved({categoryImage: Reventless.UploadableImage.t})
-  | CategoryPrimaryImageSet({categoryImage: Reventless.UploadableImage.t})
   | CategoryImageAltTextSet({categoryImage: Reventless.UploadableImage.t, altText: string})
   | CategoryArchived
   // The refusal is on `archived`, so the slice has to hear when that stops.
   | CategoryUnarchived
 
+// One reference field, on `SetCategoryImage`, and it accepts a new file — so it
+// is typed as the uploadable it is and a form binds an upload input to it.
+// Neither other command names a reference: a category holds one image, so there
+// is nothing to choose between, and asking a caller to name it would be asking
+// them to repeat what the row already says. That is the whole of the bounded
+// cardinality's effect on the surface.
 @schema
 type command =
   | @authorize(AllowGroups(["Admin", "Merchandiser"]))
-  AttachCategoryImage({
+  SetCategoryImage({
       categoryId: string,
       categoryImage: Reventless.UploadableImage.t,
       altText?: string,
     })
   | @authorize(AllowGroups(["Admin", "Merchandiser"]))
-  RemoveCategoryImage({categoryId: string, categoryImage: Reventless.UploadableImage.t})
+  RemoveCategoryImage({categoryId: string})
   | @authorize(AllowGroups(["Admin", "Merchandiser"]))
-  SetPrimaryCategoryImage({categoryId: string, categoryImage: Reventless.UploadableImage.t})
-  | @authorize(AllowGroups(["Admin", "Merchandiser"]))
-  SetCategoryImageAltText({
-      categoryId: string,
-      categoryImage: Reventless.UploadableImage.t,
-      altText: string,
-    })
+  SetCategoryImageAltText({categoryId: string, altText: string})
 
 @schema
 type error =
@@ -39,6 +40,9 @@ type error =
   | CategoryAlreadyArchived
   | CategoryImageNotAttached
 
+// `CategoryImageRemoved` still names what left. Setting a second image decides
+// two facts — the old one leaves, then the new one arrives — and a removal that
+// named nothing would leave a log nobody could replay into a row.
 @schema
 type event =
   | CategoryImageAttached({
@@ -47,7 +51,6 @@ type event =
       altText?: string,
     })
   | CategoryImageRemoved({categoryId: string, categoryImage: Reventless.UploadableImage.t})
-  | CategoryPrimaryImageSet({categoryId: string, categoryImage: Reventless.UploadableImage.t})
   | CategoryImageAltTextSet({
       categoryId: string,
       categoryImage: Reventless.UploadableImage.t,
@@ -62,9 +65,8 @@ type lifecycleState = Categories.shelfStatus
 let commandTransition = (command: command): Reventless.Transition.t<lifecycleState> => {
   open Reventless.Transition
   switch command {
-  | AttachCategoryImage(_)
+  | SetCategoryImage(_)
   | RemoveCategoryImage(_)
-  | SetPrimaryCategoryImage(_)
   | SetCategoryImageAltText(_) =>
     Guards([Categories.Listed])
   }

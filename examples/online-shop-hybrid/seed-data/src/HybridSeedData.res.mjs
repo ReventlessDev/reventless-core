@@ -79,12 +79,13 @@ async function seedCategories(categories, client) {
     name: c.name
   })));
   let attached = Stdlib_Array.filterMap(categories, c => Stdlib_Option.map(c.categoryImage, categoryImage => DemoCommands$OnlineShopHybridSeed.categoryImages({
-    TAG: "AttachCategoryImage",
+    TAG: "SetCategoryImage",
     categoryId: c.id,
-    categoryImage: categoryImage
+    categoryImage: categoryImage,
+    altText: c.name + ` banner`
   })));
   await Seed_Client$ReventlessSeed.sendAll(client, attached);
-  return Seed_Runner$ReventlessSeed.report(`categories: ` + categories.length.toString() + ` added, ` + attached.length.toString() + ` images attached`);
+  return Seed_Runner$ReventlessSeed.report(`categories: ` + categories.length.toString() + ` added, ` + attached.length.toString() + ` images set`);
 }
 
 let productImageStore = "Catalog.productImages";
@@ -169,6 +170,30 @@ async function seedProducts(products, client) {
   return Seed_Runner$ReventlessSeed.report(`products: ` + products.length.toString() + ` added, ` + attached.length.toString() + ` images attached`);
 }
 
+async function seedProductGallery(client, extra) {
+  await Seed_Client$ReventlessSeed.sendAll(client, extra.map(param => DemoCommands$OnlineShopHybridSeed.productImages({
+    TAG: "AttachProductImage",
+    productId: param[0],
+    productImage: param[1],
+    altText: param[2]
+  })));
+  let chosen = Stdlib_Array.filterMap(extra, param => {
+    let productImage = param[1];
+    if (productImage.endsWith("-v2.svg")) {
+      return [
+        param[0],
+        productImage
+      ];
+    }
+  }).map(param => DemoCommands$OnlineShopHybridSeed.productImages({
+    TAG: "SetPrimaryProductImage",
+    productId: param[0],
+    productImage: param[1]
+  }));
+  await Seed_Client$ReventlessSeed.sendAll(client, chosen);
+  return Seed_Runner$ReventlessSeed.report(`product galleries: ` + extra.length.toString() + ` extra images attached, ` + chosen.length.toString() + ` primaries chosen`);
+}
+
 async function seedRejectedDuplicate(products, client) {
   let p = products[0];
   if (p === undefined) {
@@ -210,22 +235,12 @@ async function seedCatalogEdits(products, categories, client, reimage) {
       categoryId: DemoData$OnlineShopHybridSeed.renamedCategoryId,
       name: DemoData$OnlineShopHybridSeed.renamedCategoryName
     })]);
-  await Seed_Client$ReventlessSeed.sendAll(client, reimage.flatMap(param => {
-    let categoryImage = param[1];
-    let categoryId = param[0];
-    return [
-      DemoCommands$OnlineShopHybridSeed.categoryImages({
-        TAG: "AttachCategoryImage",
-        categoryId: categoryId,
-        categoryImage: categoryImage
-      }),
-      DemoCommands$OnlineShopHybridSeed.categoryImages({
-        TAG: "SetPrimaryCategoryImage",
-        categoryId: categoryId,
-        categoryImage: categoryImage
-      })
-    ];
-  }));
+  await Seed_Client$ReventlessSeed.sendAll(client, reimage.map(param => DemoCommands$OnlineShopHybridSeed.categoryImages({
+    TAG: "SetCategoryImage",
+    categoryId: param[0],
+    categoryImage: param[1],
+    altText: "updated banner"
+  })));
   let archived = categories.filter(c => c.archive);
   await Seed_Client$ReventlessSeed.sendAll(client, archived.map(c => DemoCommands$OnlineShopHybridSeed.archiveCategory({
     TAG: "ArchiveCategory",
@@ -444,11 +459,58 @@ async function run(connection, productCount, customerCount, orderCount) {
   } else {
     reimage = [];
   }
+  let extraProductImages;
+  if (connection.uploadsSkipped) {
+    extraProductImages = [];
+  } else {
+    let out = [];
+    let picked = products.slice(0, 3);
+    for (let i = 0, i_finish = picked.length; i < i_finish; ++i) {
+      let p = picked[i];
+      if (p !== undefined) {
+        let views$1 = [
+          [
+            "v2",
+            "back",
+            200 + i | 0
+          ],
+          [
+            "v3",
+            "detail",
+            300 + i | 0
+          ]
+        ];
+        for (let v = 0, v_finish = views$1.length; v < v_finish; ++v) {
+          let match$2 = views$1[v];
+          if (match$2 !== undefined) {
+            let angle = match$2[1];
+            let servedRef$1 = await Seed_Upload$ReventlessSeed.uploadAsset(client, productImageStore, DemoData$OnlineShopHybridSeed.productSvg(p.name + ` (` + angle + `)`, match$2[2]), p.id + `-` + match$2[0] + `.svg`, "image/svg+xml");
+            if (servedRef$1.TAG === "Ok") {
+              out.push([
+                p.id,
+                servedRef$1._0,
+                p.name + `, ` + angle
+              ]);
+            } else {
+              throw {
+                RE_EXN_ID: Seed$ReventlessSeed.Failed,
+                _1: `extra product image upload for ` + p.id + ` failed: ` + servedRef$1._0,
+                Error: new Error()
+              };
+            }
+          }
+        }
+      }
+    }
+    Seed_Runner$ReventlessSeed.report(`extra product images: ` + out.length.toString() + ` uploaded to the served bucket`);
+    extraProductImages = out;
+  }
   let generatedCustomers = DemoData$OnlineShopHybridSeed.buildCustomers(customerCount, undefined);
   let customers = generatedCustomers.concat(DemoData$OnlineShopHybridSeed.demoCustomers);
   let orders = DemoData$OnlineShopHybridSeed.buildOrders(products, generatedCustomers, orderCount, undefined);
   await seedCategories(categories, client);
   await seedProducts(products, client);
+  await seedProductGallery(client, extraProductImages);
   await seedRejectedDuplicate(products, client);
   await seedCatalogEdits(products, categories, client, reimage);
   await seedSupplierFeed(client);
@@ -489,6 +551,7 @@ export {
   uploadProductImages,
   uploadCategoryImages,
   seedProducts,
+  seedProductGallery,
   seedRejectedDuplicate,
   seedCatalogEdits,
   seedSupplierFeed,

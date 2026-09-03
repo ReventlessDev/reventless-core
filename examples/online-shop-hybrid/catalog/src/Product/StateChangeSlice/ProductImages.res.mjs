@@ -2,6 +2,8 @@
 
 import * as Sury from "sury";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as Semantic$Reventless from "@reventlessdev/reventless-spec/src/semantic/Semantic.res.mjs";
+import * as MemberRef$Reventless from "@reventlessdev/reventless-spec/src/semantic/MemberRef.res.mjs";
 import * as UploadableImage$Reventless from "@reventlessdev/reventless-spec/src/semantic/UploadableImage.res.mjs";
 import * as Attachments$TraitAttachments from "@reventlessdev/trait-attachments/src/Attachments.res.mjs";
 
@@ -29,6 +31,8 @@ let consumedEventSchema = Sury.union([
   Sury.literal("ProductDiscontinued")
 ]);
 
+let selected = MemberRef$Reventless.of_(undefined, "Products", Semantic$Reventless.Id.imageRef, "productImages");
+
 let commandSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "AttachProductImage",
@@ -39,17 +43,17 @@ let commandSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "RemoveProductImage",
     productId: s.m(DcbTag$Reventless.string),
-    productImage: s.m(UploadableImage$Reventless.forField(undefined, "productImages"))
+    productImage: s.m(selected)
   })),
   Sury.$schema(s => ({
     TAG: "SetPrimaryProductImage",
     productId: s.m(DcbTag$Reventless.string),
-    productImage: s.m(UploadableImage$Reventless.forField(undefined, "productImages"))
+    productImage: s.m(selected)
   })),
   Sury.$schema(s => ({
     TAG: "SetProductImageAltText",
     productId: s.m(DcbTag$Reventless.string),
-    productImage: s.m(UploadableImage$Reventless.forField(undefined, "productImages")),
+    productImage: s.m(selected),
     altText: s.m(Sury.string)
   }))
 ]);
@@ -125,6 +129,7 @@ export {
   name,
   Id,
   consumedEventSchema,
+  selected,
   commandSchema,
   errorSchema,
   eventSchema,

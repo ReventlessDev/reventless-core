@@ -55,7 +55,7 @@ let manifest: ReventlessInfra.Platform.bakedManifest = {
             "ChangeProductPrice",
             "AddCategory",
             "RenameCategory",
-            "AttachCategoryImage",
+            "SetCategoryImage",
           ],
           // A catalog has no lifecycle and no dated view, so nothing here is
           // generated today. Said anyway, because the alternative is that the

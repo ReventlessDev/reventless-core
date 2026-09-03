@@ -62,21 +62,48 @@ const specimens = {
       certifies: "Customer",
     },
   },
+  // Two grafts, because this trait's cardinality changes the *shape* of what it
+  // emits rather than a rule inside it: the bounded one declares no primary
+  // command, a remove that names no reference and a different conformance suite.
+  // One specimen would leave whichever cardinality it did not pick emitting code
+  // nothing ever compiled.
   "traits/attachments": {
     host: "examples/online-shop-hybrid/catalog",
-    graft: {
-      // A fresh entity, so the emit collides with nothing the host already owns
-      // and the conformance suite runs against emitted code alone.
-      args: [
-        "--entity", "Gadget", "--entityId", "gadgetId", "--noun", "Image",
-        "--file", "gadgetImage", "--created", "GadgetAdded", "--view", "Gadgets",
-      ],
-      into: "src/Gadget",
-      tests: "tests/Gadget",
-      // The suite the emitted binding registers, run against what was emitted.
-      conformance: "tests/Gadget/GadgetImagesConformance_GWT.res.mjs",
-      certifies: "GadgetImages",
-    },
+    grafts: [
+      {
+        // A fresh entity, so the emit collides with nothing the host already owns
+        // and the conformance suite runs against emitted code alone.
+        args: [
+          "--entity", "Gadget", "--entityId", "gadgetId", "--noun", "Image",
+          "--file", "gadgetImage", "--created", "GadgetAdded", "--view", "Gadgets",
+        ],
+        into: "src/Gadget",
+        tests: "tests/Gadget",
+        // The suite the emitted binding registers, run against what was emitted.
+        conformance: "tests/Gadget/GadgetImagesConformance_GWT.res.mjs",
+        certifies: "GadgetImages",
+      },
+      {
+        // Also the only specimen that supplies `transition`, which is a second
+        // branch of the emitter and not a second setting: with states given, the
+        // graft emits a `lifecycleState` binding and a `commandTransition`
+        // switch, and with none it emits both commented out. Both real hosts
+        // take the first branch, and it went uncovered long enough to ship a
+        // line that does not compile. It points at `Products` because the
+        // specimen host has that view and a fresh entity has no lifecycle of its
+        // own — what is under test is that the emitted text compiles.
+        args: [
+          "--entity", "Badge", "--entityId", "badgeId", "--noun", "Image",
+          "--file", "badgeImage", "--created", "BadgeAdded", "--view", "Products",
+          "--cardinality", "Single",
+          "--transition", "Products.Listed", "--lifecycleType", "shelfStatus",
+        ],
+        into: "src/Badge",
+        tests: "tests/Badge",
+        conformance: "tests/Badge/BadgeImagesConformance_GWT.res.mjs",
+        certifies: "BadgeImages",
+      },
+    ],
   },
   // The SelfContained shape: the graft is a set of new components rather than
   // arms on something the host already had, so a fresh chapter of a host that
@@ -199,15 +226,19 @@ for (const [traitDir, spec] of Object.entries(specimens)) {
     }
     console.log(`[check-trait-pack] ok: ${traitPkg.name}'s manifest derives from the package`)
 
-    if (spec.graft) {
+    // One trait may have several specimens — see the attachments entry for why.
+    // Each runs the full emit → build → conform → certify chain in the same
+    // scratch host, so a second graft also proves the first one's components did
+    // not make the host unable to accept another.
+    for (const graft of spec.grafts ?? (spec.graft ? [spec.graft] : [])) {
       // pack → install → EMIT → generate-plugin → build → conform.
-      for (const owned of spec.graft.remove ?? []) {
+      for (const owned of graft.remove ?? []) {
         rmSync(join(host, owned), { force: true })
         rmSync(join(host, owned.replace(/\.res$/, ".res.mjs")), { force: true })
       }
       const graftBin = join(modules, "@reventlessdev", "reventless-spec", "run-graft-trait.mjs")
       run("node", [graftBin, traitPkg.name,
-        "--into", spec.graft.into, "--tests", spec.graft.tests, ...spec.graft.args], host)
+        "--into", graft.into, "--tests", graft.tests, ...graft.args], host)
 
       // The graft declares components, so the composition root must see them.
       run("pnpm", ["exec", "rescript", "build"], host)
@@ -226,7 +257,7 @@ for (const [traitDir, spec] of Object.entries(specimens)) {
       // under test is that the SCAFFOLD writes it. That the structure then
       // collects it is `PluginStructureTest`'s job, against a fixture that needs
       // no pack.
-      const emittedDir = join(host, spec.graft.into)
+      const emittedDir = join(host, graft.into)
       const emitted = readdirSync(emittedDir, { recursive: true })
         .filter((p) => String(p).endsWith(".res"))
         .map((p) => readFileSync(join(emittedDir, String(p)), "utf8"))
@@ -241,13 +272,13 @@ for (const [traitDir, spec] of Object.entries(specimens)) {
       // …and satisfies the trait's own rules. The binding was emitted whole, so
       // nothing between the trait's assertions and the emitted code was written
       // by a human.
-      const suite = join(host, spec.graft.conformance)
-      if (!existsSync(suite)) throw new Error(`emitted conformance suite missing: ${spec.graft.conformance}`)
+      const suite = join(host, graft.conformance)
+      if (!existsSync(suite)) throw new Error(`emitted conformance suite missing: ${graft.conformance}`)
       // `lib/bs/` holds a compiled copy of the same suite; without ignoring it
       // jest runs each assertion twice and the count stops meaning anything.
-      const report = join(scratch, "conformance-report.json")
+      const report = join(scratch, `conformance-report-${graft.certifies}.json`)
       run("node", ["--experimental-vm-modules", join(root, "node_modules", "jest", "bin", "jest.js"),
-        "--rootDir", host, "--testMatch", `**/${spec.graft.conformance.split("/").pop()}`,
+        "--rootDir", host, "--testMatch", `**/${graft.conformance.split("/").pop()}`,
         "--testPathIgnorePatterns", "/lib/", "--testEnvironment", "node",
         "--json", "--outputFile", report], host)
       console.log(`[check-trait-pack] ok: ${traitPkg.name}'s emitted graft passes its conformance suite`)
@@ -259,8 +290,8 @@ for (const [traitDir, spec] of Object.entries(specimens)) {
       // exits non-zero if the suite is missing from the report, which is the
       // failure a green console cannot distinguish from success.
       const certifyBin = join(modules, "@reventlessdev", "reventless-spec", "run-certify-trait.mjs")
-      const certificate = join(scratch, "conformance.json")
-      run("node", [certifyBin, traitPkg.name, "--host", spec.graft.certifies,
+      const certificate = join(scratch, `conformance-${graft.certifies}.json`)
+      run("node", [certifyBin, traitPkg.name, "--host", graft.certifies,
         "--report", report, "--out", certificate], host)
       const parsed = JSON.parse(readFileSync(certificate, "utf8"))
       if (!(parsed.failed === 0 && parsed.assertions.length > 0)) {

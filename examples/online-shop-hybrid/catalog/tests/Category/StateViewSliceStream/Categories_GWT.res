@@ -3,16 +3,13 @@
 // Literals throughout: the lifecycle check harvests `shelfStatus` from the
 // sidecar the PPX writes, and it can only read what is spelled out.
 describe("Categories StateViewSliceStream", () => {
-  test("CategoryAdded creates a row with an empty set", () =>
+  test("CategoryAdded creates a row with no image", () =>
     givenEvents([])
     ->whenEvent(CategoryAdded({categoryId: "c1", name: "Electronics"}))
-    ->thenStateWithId(
-      "c1",
-      {categoryId: "c1", name: "Electronics", shelfStatus: Listed, categoryImages: []},
-    )
+    ->thenStateWithId("c1", {categoryId: "c1", name: "Electronics", shelfStatus: Listed})
   )
 
-  test("the first CategoryImageAttached becomes the primary", () =>
+  test("CategoryImageAttached fills the image", () =>
     givenEvents([CategoryAdded({categoryId: "c1", name: "Electronics"})])
     ->whenEvent(CategoryImageAttached({categoryId: "c1", categoryImage: "/uploads/cat/c1.svg"}))
     ->thenStateWithId(
@@ -22,18 +19,22 @@ describe("Categories StateViewSliceStream", () => {
         name: "Electronics",
         shelfStatus: Listed,
         categoryImage: "/uploads/cat/c1.svg",
-        categoryImages: [{categoryImage: "/uploads/cat/c1.svg"}],
       },
     )
   )
 
-  test("CategoryPrimaryImageSet chooses the primary", () =>
+  // The two facts of a replacement, in the order the slice decides them. The
+  // removal names the old reference, so the arm that would otherwise blank the
+  // row leaves the one just attached alone.
+  test("a replacement's removal leaves the new image standing", () =>
     givenEvents([
       CategoryAdded({categoryId: "c1", name: "Electronics"}),
       CategoryImageAttached({categoryId: "c1", categoryImage: "/uploads/cat/c1.svg"}),
-      CategoryImageAttached({categoryId: "c1", categoryImage: "/uploads/cat/c1-banner.svg"}),
+      CategoryImageRemoved({categoryId: "c1", categoryImage: "/uploads/cat/c1.svg"}),
     ])
-    ->whenEvent(CategoryPrimaryImageSet({categoryId: "c1", categoryImage: "/uploads/cat/c1-banner.svg"}))
+    ->whenEvent(
+      CategoryImageAttached({categoryId: "c1", categoryImage: "/uploads/cat/c1-banner.svg"}),
+    )
     ->thenStateWithId(
       "c1",
       {
@@ -41,41 +42,35 @@ describe("Categories StateViewSliceStream", () => {
         name: "Electronics",
         shelfStatus: Listed,
         categoryImage: "/uploads/cat/c1-banner.svg",
-        categoryImages: [
-          {categoryImage: "/uploads/cat/c1.svg"},
-          {categoryImage: "/uploads/cat/c1-banner.svg"},
-        ],
       },
     )
   )
 
-  test("removing the primary falls back to the first remaining", () =>
+  test("CategoryImageRemoved empties the image and its caption", () =>
     givenEvents([
       CategoryAdded({categoryId: "c1", name: "Electronics"}),
       CategoryImageAttached({categoryId: "c1", categoryImage: "/uploads/cat/c1.svg"}),
-      CategoryImageAttached({categoryId: "c1", categoryImage: "/uploads/cat/c1-banner.svg"}),
-      CategoryPrimaryImageSet({categoryId: "c1", categoryImage: "/uploads/cat/c1-banner.svg"}),
-    ])
-    ->whenEvent(CategoryImageRemoved({categoryId: "c1", categoryImage: "/uploads/cat/c1-banner.svg"}))
-    ->thenStateWithId(
-      "c1",
-      {
+      CategoryImageAltTextSet({
         categoryId: "c1",
-        name: "Electronics",
-        shelfStatus: Listed,
         categoryImage: "/uploads/cat/c1.svg",
-        categoryImages: [{categoryImage: "/uploads/cat/c1.svg"}],
-      },
-    )
+        altText: "banner",
+      }),
+    ])
+    ->whenEvent(CategoryImageRemoved({categoryId: "c1", categoryImage: "/uploads/cat/c1.svg"}))
+    ->thenStateWithId("c1", {categoryId: "c1", name: "Electronics", shelfStatus: Listed})
   )
 
-  test("CategoryImageAltTextSet captions one member", () =>
+  test("CategoryImageAltTextSet captions the image", () =>
     givenEvents([
       CategoryAdded({categoryId: "c1", name: "Electronics"}),
       CategoryImageAttached({categoryId: "c1", categoryImage: "/uploads/cat/c1.svg"}),
     ])
     ->whenEvent(
-      CategoryImageAltTextSet({categoryId: "c1", categoryImage: "/uploads/cat/c1.svg", altText: "banner"}),
+      CategoryImageAltTextSet({
+        categoryId: "c1",
+        categoryImage: "/uploads/cat/c1.svg",
+        altText: "banner",
+      }),
     )
     ->thenStateWithId(
       "c1",
@@ -84,7 +79,7 @@ describe("Categories StateViewSliceStream", () => {
         name: "Electronics",
         shelfStatus: Listed,
         categoryImage: "/uploads/cat/c1.svg",
-        categoryImages: [{categoryImage: "/uploads/cat/c1.svg", altText: "banner"}],
+        categoryImageAltText: "banner",
       },
     )
   )
@@ -92,19 +87,13 @@ describe("Categories StateViewSliceStream", () => {
   test("CategoryRenamed updates the name", () =>
     givenEvents([CategoryAdded({categoryId: "c1", name: "Electronics"})])
     ->whenEvent(CategoryRenamed({categoryId: "c1", name: "Consumer Electronics"}))
-    ->thenStateWithId(
-      "c1",
-      {categoryId: "c1", name: "Consumer Electronics", shelfStatus: Listed, categoryImages: []},
-    )
+    ->thenStateWithId("c1", {categoryId: "c1", name: "Consumer Electronics", shelfStatus: Listed})
   )
 
   test("CategoryArchived sets archived flag", () =>
     givenEvents([CategoryAdded({categoryId: "c1", name: "Electronics"})])
     ->whenEvent(CategoryArchived({categoryId: "c1"}))
-    ->thenStateWithId(
-      "c1",
-      {categoryId: "c1", name: "Electronics", shelfStatus: Archived, categoryImages: []},
-    )
+    ->thenStateWithId("c1", {categoryId: "c1", name: "Electronics", shelfStatus: Archived})
   )
 
   // The way back, so the lifecycle harvest knows an unarchived category is listed.
@@ -114,9 +103,6 @@ describe("Categories StateViewSliceStream", () => {
       CategoryArchived({categoryId: "c1"}),
     ])
     ->whenEvent(CategoryUnarchived({categoryId: "c1"}))
-    ->thenStateWithId(
-      "c1",
-      {categoryId: "c1", name: "Electronics", shelfStatus: Listed, categoryImages: []},
-    )
+    ->thenStateWithId("c1", {categoryId: "c1", name: "Electronics", shelfStatus: Listed})
   )
 })

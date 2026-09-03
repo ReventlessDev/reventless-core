@@ -64,7 +64,6 @@ let decide = (state, command) =>
     let (productId, op) = toOp(command)
     switch state.images->Attachments.decide(op) {
     | Error(#NotAttached) => Error(ProductImageNotAttached)
-    | Ok(None) => Ok([])
-    | Ok(Some(fact)) => Ok([toEvent(productId, fact)])
+    | Ok(facts) => Ok(facts->Array.map(toEvent(productId, _)))
     }
   }

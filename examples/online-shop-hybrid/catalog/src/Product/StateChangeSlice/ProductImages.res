@@ -19,6 +19,18 @@ type consumedEvent =
   | ProductUnarchived
   | ProductDiscontinued
 
+// The reference fields divide into two kinds, and the division is the point.
+// `AttachProductImage`'s accepts a new file, so it is typed as the uploadable it
+// is and a form binds an upload input to it. The other three name a file the row
+// ALREADY holds, so they are selections out of `productImages` and a form offers
+// those instead — which on a remove command is the difference between doing what
+// it says and offering the one thing it cannot do.
+//
+// Bound once rather than spelled three times: the collection is one answer, and
+// three copies of it are three chances for one of them to name a field that no
+// longer exists.
+let selected = Reventless.MemberRef.of_(~view="Products", ~content=Reventless.Semantic.Id.imageRef, ~field="productImages")
+
 @schema
 type command =
   | @authorize(AllowGroups(["Admin", "Merchandiser"]))
@@ -28,13 +40,13 @@ type command =
       altText?: string,
     })
   | @authorize(AllowGroups(["Admin", "Merchandiser"]))
-  RemoveProductImage({productId: string, productImage: Reventless.UploadableImage.t})
+  RemoveProductImage({productId: string, productImage: @s.matches(selected) string})
   | @authorize(AllowGroups(["Admin", "Merchandiser"]))
-  SetPrimaryProductImage({productId: string, productImage: Reventless.UploadableImage.t})
+  SetPrimaryProductImage({productId: string, productImage: @s.matches(selected) string})
   | @authorize(AllowGroups(["Admin", "Merchandiser"]))
   SetProductImageAltText({
       productId: string,
-      productImage: Reventless.UploadableImage.t,
+      productImage: @s.matches(selected) string,
       altText: string,
     })
 

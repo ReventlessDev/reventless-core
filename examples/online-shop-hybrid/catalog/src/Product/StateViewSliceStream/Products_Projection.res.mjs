@@ -4,8 +4,10 @@ import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js
 import * as Attachments_Rules$TraitAttachments from "@reventlessdev/trait-attachments/src/Attachments_Rules.res.mjs";
 
 function withPrimary(state, chosen) {
+  let match = Attachments_Rules$TraitAttachments.primaryWithAltText(chosen, state.productImages, a => a.productImage, a => a.altText);
   let newrecord = {...state};
-  newrecord.productImage = Attachments_Rules$TraitAttachments.primaryOf(chosen, state.productImages.map(a => a.productImage));
+  newrecord.productImageAltText = match[1];
+  newrecord.productImage = match[0];
   return newrecord;
 }
 
@@ -92,11 +94,7 @@ function project(param) {
       return [{
           TAG: "Update",
           _0: event.productId,
-          _1: state => {
-            let newrecord = {...state};
-            newrecord.productImage = productImage$2;
-            return newrecord;
-          }
+          _1: state => withPrimary(state, productImage$2)
         }];
     case "ProductImageAltTextSet" :
       let altText$1 = event.altText;
@@ -106,15 +104,14 @@ function project(param) {
           _0: event.productId,
           _1: state => {
             let newrecord = {...state};
-            newrecord.productImages = state.productImages.map(a => {
+            return withPrimary((newrecord.productImages = state.productImages.map(a => {
               if (a.productImage !== productImage$3) {
                 return a;
               }
               let newrecord = {...a};
               newrecord.altText = altText$1;
               return newrecord;
-            });
-            return newrecord;
+            }), newrecord), state.productImage);
           }
         }];
     case "ProductArchived" :
@@ -160,4 +157,4 @@ export {
   project,
   moduleUrl,
 }
-/* No side effect */
+/* Attachments_Rules-TraitAttachments Not a pure module */

@@ -38,15 +38,10 @@ type Catalog_CatalogEventRecordEdge {
 type Catalog_Category implements Node {
   categoryId: ID!
   categoryImage: String
-  categoryImages: [Catalog_CategoryCategoryImages!]!
+  categoryImageAltText: String
   id: ID!
   name: String!
   shelfStatus: Catalog_CategoryShelfStatus!
-}
-
-type Catalog_CategoryCategoryImages {
-  altText: String
-  categoryImage: String!
 }
 
 type Catalog_CategoryConnection {
@@ -133,6 +128,7 @@ type Catalog_Product implements Node {
   price: Money!
   productId: ID!
   productImage: String
+  productImageAltText: String
   productImages: [Catalog_ProductProductImages!]!
   shelfStatus: Catalog_ProductShelfStatus!
 }
@@ -331,18 +327,17 @@ type Mutation {
   Catalog_AddProduct(categoryId: ID!, description: String!, name: String!, price: MoneyInput!, productId: ID!): CommandResult!
   Catalog_ArchiveCategory(categoryId: ID!): CommandResult!
   Catalog_ArchiveProduct(productId: ID!): CommandResult!
-  Catalog_AttachCategoryImage(altText: String, categoryId: ID!, categoryImage: String!): CommandResult!
   Catalog_AttachProductImage(altText: String, productId: ID!, productImage: String!): CommandResult!
   Catalog_ChangeProductDescription(description: String!, productId: ID!): CommandResult!
   Catalog_ChangeProductName(name: String!, productId: ID!): CommandResult!
   Catalog_ChangeProductPrice(price: MoneyInput!, productId: ID!): CommandResult!
   Catalog_DiscontinueProduct(productId: ID!): CommandResult!
   Catalog_ImportProduct(category: String!, currency: String!, desc: String!, sku: String!, title: String!, unitPrice: Float!): CommandResult!
-  Catalog_RemoveCategoryImage(categoryId: ID!, categoryImage: String!): CommandResult!
+  Catalog_RemoveCategoryImage(categoryId: ID!): CommandResult!
   Catalog_RemoveProductImage(productId: ID!, productImage: String!): CommandResult!
   Catalog_RenameCategory(categoryId: ID!, name: String!): CommandResult!
-  Catalog_SetCategoryImageAltText(altText: String!, categoryId: ID!, categoryImage: String!): CommandResult!
-  Catalog_SetPrimaryCategoryImage(categoryId: ID!, categoryImage: String!): CommandResult!
+  Catalog_SetCategoryImage(altText: String, categoryId: ID!, categoryImage: String!): CommandResult!
+  Catalog_SetCategoryImageAltText(altText: String!, categoryId: ID!): CommandResult!
   Catalog_SetPrimaryProductImage(productId: ID!, productImage: String!): CommandResult!
   Catalog_SetProductImageAltText(altText: String!, productId: ID!, productImage: String!): CommandResult!
   Catalog_UnarchiveCategory(categoryId: ID!): CommandResult!
@@ -1211,7 +1206,6 @@ type Subscription {
   onCatalog_AddProduct(id: ID): CommandResult
   onCatalog_ArchiveCategory(id: ID): CommandResult
   onCatalog_ArchiveProduct(id: ID): CommandResult
-  onCatalog_AttachCategoryImage(id: ID): CommandResult
   onCatalog_AttachProductImage(id: ID): CommandResult
   onCatalog_ChangeProductDescription(id: ID): CommandResult
   onCatalog_ChangeProductName(id: ID): CommandResult
@@ -1221,8 +1215,8 @@ type Subscription {
   onCatalog_RemoveCategoryImage(id: ID): CommandResult
   onCatalog_RemoveProductImage(id: ID): CommandResult
   onCatalog_RenameCategory(id: ID): CommandResult
+  onCatalog_SetCategoryImage(id: ID): CommandResult
   onCatalog_SetCategoryImageAltText(id: ID): CommandResult
-  onCatalog_SetPrimaryCategoryImage(id: ID): CommandResult
   onCatalog_SetPrimaryProductImage(id: ID): CommandResult
   onCatalog_SetProductImageAltText(id: ID): CommandResult
   onCatalog_UnarchiveCategory(id: ID): CommandResult

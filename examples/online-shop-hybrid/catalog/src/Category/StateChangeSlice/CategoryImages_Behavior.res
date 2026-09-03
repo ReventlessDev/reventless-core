@@ -14,7 +14,6 @@ let evolve = (state, event) => {
   | CategoryAdded => {...state, exists: true, archived: false}
   | CategoryImageAttached({categoryImage}) => fold(Attached({ref: categoryImage, altText: None}))
   | CategoryImageRemoved({categoryImage}) => fold(Removed({ref: categoryImage}))
-  | CategoryPrimaryImageSet({categoryImage}) => fold(PrimarySet({ref: categoryImage}))
   | CategoryImageAltTextSet({categoryImage, altText}) =>
     fold(AltTextSet({ref: categoryImage, altText}))
   | CategoryArchived => {...state, archived: true}
@@ -22,34 +21,33 @@ let evolve = (state, event) => {
   }
 }
 
+// The two ref-less commands map onto the two ref-less ops. Neither has to look
+// the image up: resolving "whichever one is held" is the trait's job, and doing
+// it here would be a second copy of a rule the conformance suite asserts once.
 let toOp = command =>
   switch command {
-  | AttachCategoryImage({categoryId, categoryImage, altText: ?altText}) => (
+  | SetCategoryImage({categoryId, categoryImage, altText: ?altText}) => (
       categoryId,
       Attachments.Attach({ref: categoryImage, altText}),
     )
-  | RemoveCategoryImage({categoryId, categoryImage}) => (
+  | RemoveCategoryImage({categoryId}) => (categoryId, Attachments.Clear)
+  | SetCategoryImageAltText({categoryId, altText}) => (
       categoryId,
-      Attachments.Remove({ref: categoryImage}),
-    )
-  | SetPrimaryCategoryImage({categoryId, categoryImage}) => (
-      categoryId,
-      Attachments.SetPrimary({ref: categoryImage}),
-    )
-  | SetCategoryImageAltText({categoryId, categoryImage, altText}) => (
-      categoryId,
-      Attachments.SetAltText({ref: categoryImage, altText}),
+      Attachments.SetPrimaryAltText({altText: altText}),
     )
   }
 
 let toEvent = (categoryId, fact) =>
   switch fact {
   | Attachments.Attached({ref, altText}) =>
-    CategoryImageAttached({categoryId, categoryImage: ref, altText: ?altText})
-  | Attachments.Removed({ref}) => CategoryImageRemoved({categoryId, categoryImage: ref})
-  | Attachments.PrimarySet({ref}) => CategoryPrimaryImageSet({categoryId, categoryImage: ref})
+    Some(CategoryImageAttached({categoryId, categoryImage: ref, altText: ?altText}))
+  | Attachments.Removed({ref}) => Some(CategoryImageRemoved({categoryId, categoryImage: ref}))
+  // Unreachable: no command of this graft chooses a primary, because one image
+  // is nothing to choose between. It contributes no event rather than being
+  // fabricated into some other one to keep the switch total.
+  | Attachments.PrimarySet(_) => None
   | Attachments.AltTextSet({ref, altText}) =>
-    CategoryImageAltTextSet({categoryId, categoryImage: ref, altText})
+    Some(CategoryImageAltTextSet({categoryId, categoryImage: ref, altText}))
   }
 
 let decide = (state, command) =>
@@ -59,9 +57,8 @@ let decide = (state, command) =>
     Error(CategoryAlreadyArchived)
   } else {
     let (categoryId, op) = toOp(command)
-    switch state.images->Attachments.decide(op) {
+    switch state.images->Attachments.decide(~cardinality=Single, op) {
     | Error(#NotAttached) => Error(CategoryImageNotAttached)
-    | Ok(None) => Ok([])
-    | Ok(Some(fact)) => Ok([toEvent(categoryId, fact)])
+    | Ok(facts) => Ok(facts->Array.filterMap(toEvent(categoryId, _)))
     }
   }

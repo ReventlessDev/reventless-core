@@ -1,13 +1,18 @@
 @@reventless.projection
 
-// The fallback to the first attached is the trait's rule, applied here over the
-// view's own rows so a card never shows no image while the set holds one.
+// The primary a reader should show and the caption that goes with it: the chosen
+// member, else the first attached — the trait's own rule, applied here over the
+// view's rows so a card never shows no image while the set holds one. Every arm
+// below goes through this rather than assigning the scalar itself, so the two
+// cannot drift apart on one arm and not another.
 let withPrimary = (state: Products.state, chosen: option<string>) => {
-  ...state,
-  productImage: ?TraitAttachments.Attachments_Rules.primaryOf(
+  let (productImage, productImageAltText) = TraitAttachments.Attachments_Rules.primaryWithAltText(
     ~chosen,
-    ~attached=state.productImages->Array.map(a => a.productImage),
-  ),
+    ~members=state.productImages,
+    ~ref=a => a.productImage,
+    ~altText=a => a.altText,
+  )
+  {...state, productImage: ?productImage, productImageAltText: ?productImageAltText}
 }
 
 let project = ({event}) =>
@@ -45,15 +50,23 @@ let project = ({event}) =>
       ),
     ]
   | ProductPrimaryImageSet({productId, productImage}) => [
-      Update(productId, state => {...state, productImage}),
+      Update(productId, state => withPrimary(state, Some(productImage))),
     ]
+  // Through `withPrimary` like every other arm: captioning the member that
+  // happens to be the primary has to reach the scalar's caption too, and an arm
+  // that only rewrote the set's row is how the hero image ended up with none.
   | ProductImageAltTextSet({productId, productImage, altText}) => [
-      Update(productId, state => {
-        ...state,
-        productImages: state.productImages->Array.map(a =>
-          a.productImage == productImage ? {...a, altText} : a
-        ),
-      }),
+      Update(productId, state =>
+        withPrimary(
+          {
+            ...state,
+            productImages: state.productImages->Array.map(a =>
+              a.productImage == productImage ? {...a, altText} : a
+            ),
+          },
+          state.productImage,
+        )
+      ),
     ]
   // The row stays and moves along its lifecycle rather than being deleted: an
   // order still references a withdrawn product, and a merchandiser still needs

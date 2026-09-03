@@ -77,7 +77,7 @@ function addCategory(command) {
 
 function categoryImages(command) {
   switch (command.TAG) {
-    case "AttachCategoryImage" :
+    case "SetCategoryImage" :
       let altText = command.altText;
       let base = [
         [
@@ -102,24 +102,7 @@ function categoryImages(command) {
               _0: altText
             }
           ]] : [];
-      return Seed$ReventlessSeed.mutation(`Catalog_` + "AttachCategoryImage", base.concat(alt));
-    case "SetPrimaryCategoryImage" :
-      return Seed$ReventlessSeed.mutation(`Catalog_` + "SetPrimaryCategoryImage", [
-        [
-          "categoryId",
-          {
-            TAG: "Id",
-            _0: command.categoryId
-          }
-        ],
-        [
-          "categoryImage",
-          {
-            TAG: "String",
-            _0: command.categoryImage
-          }
-        ]
-      ]);
+      return Seed$ReventlessSeed.mutation(`Catalog_` + "SetCategoryImage", base.concat(alt));
     case "RemoveCategoryImage" :
     case "SetCategoryImageAltText" :
       throw {
@@ -131,38 +114,81 @@ function categoryImages(command) {
 }
 
 function productImages(command) {
-  if (command.TAG === "AttachProductImage") {
-    let altText = command.altText;
-    let base = [
-      [
-        "productId",
-        {
-          TAG: "Id",
-          _0: command.productId
-        }
-      ],
-      [
-        "productImage",
-        {
-          TAG: "String",
-          _0: command.productImage
-        }
-      ]
-    ];
-    let alt = altText !== undefined ? [[
+  switch (command.TAG) {
+    case "AttachProductImage" :
+      let altText = command.altText;
+      let base = [
+        [
+          "productId",
+          {
+            TAG: "Id",
+            _0: command.productId
+          }
+        ],
+        [
+          "productImage",
+          {
+            TAG: "String",
+            _0: command.productImage
+          }
+        ]
+      ];
+      let alt = altText !== undefined ? [[
+            "altText",
+            {
+              TAG: "String",
+              _0: altText
+            }
+          ]] : [];
+      return Seed$ReventlessSeed.mutation(`Catalog_` + "AttachProductImage", base.concat(alt));
+    case "RemoveProductImage" :
+      throw {
+        RE_EXN_ID: Seed$ReventlessSeed.Failed,
+        _1: "the seed does not drive RemoveProductImage",
+        Error: new Error()
+      };
+    case "SetPrimaryProductImage" :
+      return Seed$ReventlessSeed.mutation(`Catalog_` + "SetPrimaryProductImage", [
+        [
+          "productId",
+          {
+            TAG: "Id",
+            _0: command.productId
+          }
+        ],
+        [
+          "productImage",
+          {
+            TAG: "String",
+            _0: command.productImage
+          }
+        ]
+      ]);
+    case "SetProductImageAltText" :
+      return Seed$ReventlessSeed.mutation(`Catalog_` + "SetProductImageAltText", [
+        [
+          "productId",
+          {
+            TAG: "Id",
+            _0: command.productId
+          }
+        ],
+        [
+          "productImage",
+          {
+            TAG: "String",
+            _0: command.productImage
+          }
+        ],
+        [
           "altText",
           {
             TAG: "String",
-            _0: altText
+            _0: command.altText
           }
-        ]] : [];
-    return Seed$ReventlessSeed.mutation(`Catalog_` + "AttachProductImage", base.concat(alt));
+        ]
+      ]);
   }
-  throw {
-    RE_EXN_ID: Seed$ReventlessSeed.Failed,
-    _1: "the seed only attaches product images",
-    Error: new Error()
-  };
 }
 
 function renameCategory(command) {
