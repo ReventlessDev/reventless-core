@@ -244,30 +244,59 @@ function isKeyFieldName(name) {
   }
 }
 
-function resolveKeyField(entityName, schema) {
+function classifyKeyField(entityName, schema) {
   let match = StateAnnotations$Reventless.getSpec(schema);
   let declared = match !== undefined ? match.ids[0] : undefined;
   if (declared !== undefined) {
-    return [
-      declared,
-      "annotation"
-    ];
+    return {
+      TAG: "Resolved",
+      field: declared,
+      rung: "annotation"
+    };
   }
   let candidates = Object.keys(Stdlib_Option.getOr(SchemaType$ReventlessCore.fromSuryObject("", schema), {})).filter(isKeyFieldName);
   let singular = Api_Naming$ReventlessCore.singularize(Api_Naming$ReventlessCore.stripViewSuffix(entityName));
   let conventional = singular.slice(0, 1).toLowerCase() + singular.slice(1, singular.length) + "Id";
   if (candidates.includes(conventional)) {
-    return [
-      conventional,
-      "convention"
-    ];
+    return {
+      TAG: "Resolved",
+      field: conventional,
+      rung: "convention"
+    };
   } else if (candidates.length === 1) {
-    return [
-      candidates[0],
-      "sole"
-    ];
+    return {
+      TAG: "Resolved",
+      field: candidates[0],
+      rung: "sole"
+    };
+  } else if (candidates.length === 0) {
+    return "NoCandidate";
   } else {
+    return {
+      TAG: "Ambiguous",
+      candidates: candidates,
+      conventional: conventional
+    };
+  }
+}
+
+function resolveKeyField(entityName, schema) {
+  let match = classifyKeyField(entityName, schema);
+  if (typeof match !== "object" || match.TAG !== "Resolved") {
     return;
+  } else {
+    return [
+      match.field,
+      match.rung
+    ];
+  }
+}
+
+function keyFieldGapMessage(resolution) {
+  if (typeof resolution !== "object" || resolution.TAG === "Resolved") {
+    return;
+  } else {
+    return `has no row key: it declares no @id and its \`*Id\` fields ` + (`(` + resolution.candidates.join(", ") + `) include no "` + resolution.conventional + `" for the name to `) + `pick. Adding a second \`*Id\` field to a view that had one is what lands here, and it costs the view its filter and its whole orderBy in the schema. Declare @id on the field that identifies a row.`;
   }
 }
 
@@ -655,7 +684,9 @@ export {
   emptyCapability,
   scalarOfSchemaType,
   isKeyFieldName,
+  classifyKeyField,
   resolveKeyField,
+  keyFieldGapMessage,
   entityNameOf,
   deriveServerCapability,
   validateScanSortAlignment,

@@ -1282,6 +1282,13 @@ let make = (
     | Checked(failures) => failures->Array.forEach(f => retiredFailures->Array.push(f)->ignore)
     }
 
+  // Warned rather than refused: an unkeyed view still answers, just without a
+  // filter or an ordering, and a lint that stops a deploy gets silenced.
+  let recordKeyField = (~entityName, stateSchema) =>
+    GraphQL_FragmentGenerator.classifyKeyField(~entityName, stateSchema)
+    ->GraphQL_FragmentGenerator.keyFieldGapMessage
+    ->Option.forEach(why => log.warn(~comp="Plugin_Structure", `${name}/${entityName} ${why}`))
+
   let readModelDefs =
     readModels
     ->Array.map((
@@ -1300,6 +1307,7 @@ let make = (
       let consumed = qualify(~prefix=name, R.consumedEventNames)
       recordRetired(~entityName=R.Spec.name, stateSchema)
       recordLifecycle(~entityName=R.Spec.name, stateSchema)
+      recordKeyField(~entityName=R.Spec.name, stateSchema)
       ({
         Reventless.Plugin.name: R.Spec.name,
         queryField: qf.listFieldName,
@@ -1340,6 +1348,7 @@ let make = (
       )
       recordRetired(~entityName=SVS.Spec.name, stateSchema)
       recordLifecycle(~entityName=SVS.Spec.name, stateSchema)
+      recordKeyField(~entityName=SVS.Spec.name, stateSchema)
       ({
         Reventless.Plugin.name: SVS.Spec.name,
         queryField: qf.listFieldName,

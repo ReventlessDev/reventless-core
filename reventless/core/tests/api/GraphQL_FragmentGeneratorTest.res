@@ -139,6 +139,53 @@ describe("resolveKeyField — the ladder", () => {
   })
 })
 
+// Losing the key is invisible — the view keeps every field and every row, and
+// drops its `<field>Eq` filter and its whole `orderBy` from the SDL. These pin
+// which of the two ways to lose it is worth saying out loud.
+describe("keyFieldGapMessage — which gap is worth a warning", () => {
+  let gapFor = (~entityName, schema) =>
+    GraphQL_FragmentGenerator.classifyKeyField(~entityName, schema->S.castToUnknown)
+    ->GraphQL_FragmentGenerator.keyFieldGapMessage
+
+  // The accident §14b.2 named: the view had `productId` alone and somebody added
+  // `categoryId`, so `sole` stopped firing and the name matches neither.
+  testSync("a second `*Id` field taking the key away is named, with both fields", () => {
+    let schema = S.schema(s =>
+      {"productId": s.matches(S.string), "categoryId": s.matches(S.string)}
+    )
+    let message = gapFor(~entityName="ProductDemand", schema)->Option.getOr("")
+    expect(message->String.includes("productId, categoryId"))->toBe(true)
+    expect(message->String.includes("productDemandId"))->toBe(true)
+  })
+
+  // A read model over an aggregate keeps the row's id on the row key, not in its
+  // state. Warning here would fire on most of them and get the rule silenced —
+  // six views across the example plugins are exactly this shape.
+  testSync("a state with no `*Id` field at all is silent, not warned about", () =>
+    expect(
+      gapFor(
+        ~entityName="Customers",
+        S.schema(s => {"email": s.matches(S.string), "address": s.matches(S.string)}),
+      ),
+    )->toEqual(None)
+  )
+
+  testSync("a resolved key says nothing", () =>
+    expect(
+      gapFor(~entityName="Orders", S.schema(s => {"orderId": s.matches(S.string)})),
+    )->toEqual(None)
+  )
+
+  testSync("an @id-less view whose name picks one of its `*Id` fields is fine", () =>
+    expect(
+      gapFor(
+        ~entityName="Products",
+        S.schema(s => {"productId": s.matches(S.string), "categoryId": s.matches(S.string)}),
+      ),
+    )->toEqual(None)
+  )
+})
+
 describe("deriveServerCapability — inferred keys reach the SDL surface", () => {
   let capabilityFor = (~entityName, schema) =>
     GraphQL_FragmentGenerator.deriveServerCapability(~entityName, schema->S.castToUnknown)

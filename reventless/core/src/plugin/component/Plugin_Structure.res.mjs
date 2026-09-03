@@ -962,6 +962,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       retiredFailures.push(f);
     });
   };
+  let recordKeyField = (entityName, stateSchema) => Stdlib_Option.forEach(GraphQL_FragmentGenerator$ReventlessCore.keyFieldGapMessage(GraphQL_FragmentGenerator$ReventlessCore.classifyKeyField(entityName, stateSchema)), why => log.warn("Plugin_Structure", undefined, name + `/` + entityName + ` ` + why));
   let readModelDefs = readModels.map(R => {
     let qf = Api_Naming$ReventlessCore.queryFieldNamesForReadModel(name, R.Spec.name, undefined);
     let stateSchema = R.Spec.stateSchema;
@@ -970,6 +971,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     let consumed = qualify(name, R.consumedEventNames);
     recordRetired(R.Spec.name, stateSchema);
     recordLifecycle(R.Spec.name, stateSchema);
+    recordKeyField(R.Spec.name, stateSchema);
     return {
       name: R.Spec.name,
       queryField: qf.listFieldName,
@@ -1001,6 +1003,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     let keyField = GraphQL_FragmentGenerator$ReventlessCore.resolveKeyField(SVS.Spec.name, stateSchema);
     recordRetired(SVS.Spec.name, stateSchema);
     recordLifecycle(SVS.Spec.name, stateSchema);
+    recordKeyField(SVS.Spec.name, stateSchema);
     return {
       name: SVS.Spec.name,
       queryField: qf.listFieldName,

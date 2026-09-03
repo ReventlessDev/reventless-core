@@ -300,28 +300,34 @@ let rec scalarOfSchemaType = (st: SchemaType.schemaType): string =>
 let isKeyFieldName = (name: string): bool =>
   name->String.length > 2 && name->String.endsWith("Id")
 
+/** What the ladder below concluded. The two ways to have no key are opposite
+    mistakes, so they are kept apart rather than collapsed into `None`. */
+type keyFieldResolution =
+  | Resolved({field: string, rung: string})
+  | /** Several `*Id` fields and none matching the name — usually a field
+        somebody added to a view that used to have exactly one. */
+  Ambiguous({candidates: array<string>, conventional: string})
+  | NoCandidate
+
 /**
 The field that identifies a row, and which rung answered:
 
 - `"annotation"` — the state declares `@id`. Nothing outranks it.
 - `"convention"` — a field named `<singular entity name>Id` exists
-  (`Products` → `productId`). A guess, but one that can only fire on a field
-  that is actually there.
-- `"sole"` — the state has exactly one `*Id` field, so there is nothing else it
-  could be (`AvailableProducts` → `productId`).
+  (`Products` → `productId`).
+- `"sole"` — the state has exactly one `*Id` field (`AvailableProducts`).
 
-`None` is the honest answer for a state with several `*Id` fields and no name
-match (`ProductDemand`: `productId` + `categoryId`), or with none at all — those
-need `@id`. Convention outranks sole so a view carrying one foreign key and no
-key of its own is not keyed by the foreign key.
+Convention outranks sole so a view carrying one foreign key and no key of its own
+is not keyed by the foreign key. `resolveKeyField` is this, with both gaps
+flattened to `None`.
 */
-let resolveKeyField = (~entityName: string, schema: S.t<unknown>): option<(string, string)> => {
+let classifyKeyField = (~entityName: string, schema: S.t<unknown>): keyFieldResolution => {
   let declared = switch Reventless.StateAnnotations.getSpec(schema) {
   | Some({ids}) => ids->Array.get(0)
   | None => None
   }
   switch declared {
-  | Some(field) => Some((field, "annotation"))
+  | Some(field) => Resolved({field, rung: "annotation"})
   | None =>
     let candidates =
       SchemaType.fromSuryObject(~typeName="", schema)
@@ -333,14 +339,49 @@ let resolveKeyField = (~entityName: string, schema: S.t<unknown>): option<(strin
       singular->String.slice(~start=0, ~end=1)->String.toLowerCase ++
       singular->String.slice(~start=1, ~end=singular->String.length) ++ "Id"
     if candidates->Array.includes(conventional) {
-      Some((conventional, "convention"))
+      Resolved({field: conventional, rung: "convention"})
     } else if candidates->Array.length == 1 {
-      Some((candidates->Array.getUnsafe(0), "sole"))
+      Resolved({field: candidates->Array.getUnsafe(0), rung: "sole"})
+    } else if Array.length(candidates) == 0 {
+      NoCandidate
     } else {
-      None
+      Ambiguous({candidates, conventional})
     }
   }
 }
+
+let resolveKeyField = (~entityName: string, schema: S.t<unknown>): option<(string, string)> =>
+  switch classifyKeyField(~entityName, schema) {
+  | Resolved({field, rung}) => Some((field, rung))
+  | Ambiguous(_) | NoCandidate => None
+  }
+
+/**
+What losing the key costs this view, said where the ladder is so a caller only
+has to report it.
+
+Invisible otherwise: the view keeps every field and every row, and loses its
+`<field>Eq` filter and its whole `orderBy` from the schema, so a client's
+narrowing silently becomes a page fetched and filtered on the client.
+
+`None` for `NoCandidate` as well as for a resolved key, and that is the whole
+judgement here. A read model over an aggregate keeps the row's id on the row key
+rather than in its state, so having no `*Id` field is its ordinary shape — warning
+about it would fire on most of them and get the rule silenced. `Ambiguous` is the
+accident: the view HAD a key and a second `*Id` field took it away.
+*/
+let keyFieldGapMessage = (resolution: keyFieldResolution): option<string> =>
+  switch resolution {
+  | Resolved(_) | NoCandidate => None
+  | Ambiguous({candidates, conventional}) =>
+    Some(
+      `has no row key: it declares no @id and its \`*Id\` fields ` ++
+      `(${candidates->Array.join(", ")}) include no "${conventional}" for the name to ` ++
+      `pick. Adding a second \`*Id\` field to a view that had one is what lands here, ` ++
+      `and it costs the view its filter and its whole orderBy in the schema. Declare ` ++
+      `@id on the field that identifies a row.`,
+    )
+  }
 
 // The component name the key-field convention is read against. `specName` is the
 // read model's own `Spec.name`; without it, `returnTypeName` minus its plugin

@@ -574,6 +574,19 @@ Worth its own plan, and not scoped here: an inference that silently removes a qu
 and ordering when an unrelated field is added is a trap any view can fall into. A deploy-time
 warning when `resolveKeyField` goes ambiguous on a state with no `@id` would surface it.
 
+**✅ [2026-09-03] That warning is built.** `GraphQL_FragmentGenerator.classifyKeyField` splits the
+ladder's `None` into `Ambiguous` and `NoCandidate`, `keyFieldGapMessage` says what the gap costs,
+and `Plugin_Structure` warns per view beside `recordRetired` / `recordLifecycle`. `resolveKeyField`
+keeps its signature, so no call site moved.
+
+⚠️ **It warns on `Ambiguous` only, and the measurement is why.** The over-broad first cut — warning
+on `NoCandidate` too — fired on six views across the example plugins, and every one was correct and
+none was a defect: a read model over an aggregate keeps the row's id on the **row key** rather than
+in its state, so having no `*Id` field is its ordinary shape. A rule that fires on most read models
+gets silenced, and then it is not guarding the case it was built for. `Ambiguous` is the accident
+this section describes — the view *had* a key and a second `*Id` field took it away — and it fires
+nowhere in this repository today, which is what a guard against a future mistake should do.
+
 Two changes to `NotificationDeliveries`, one removing data and one adding it. Independent of
 P0–P4 and safe to do first.
 
