@@ -729,14 +729,9 @@ input Ordering_NotificationIntakeTodoFilter {
 }
 
 type Ordering_NotificationIntakeTodoItem {
-  occurrence: Ordering_NotificationIntakeTodoItemOccurrence!
   orderId: ID!
   recipientId: ID!
-}
-
-enum Ordering_NotificationIntakeTodoItemOccurrence {
-  Placed
-  Shipped
+  ruleId: ID!
 }
 
 type Ordering_NotificationIntakeTodoRef {

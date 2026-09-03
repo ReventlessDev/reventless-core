@@ -253,6 +253,14 @@ let step = (scope: scope, segment: string): scope => {
 let resolve = (path: path, ~root: scope, ~item: option<scope>): scope =>
   path.segments->Array.reduce(path.relative ? item->Option.getOr(nothing) : root, step)
 
+/** A dotted path looked up in a payload, with no schema and no item scope — the
+    same walk a template does, for a caller that is not rendering one. */
+let lookup = (payload: JSON.t, dotted: string): option<JSON.t> =>
+  dotted
+  ->String.split(".")
+  ->Array.reduce({value: Some(payload), schema: None}, step)
+  ->(scope => scope.value)
+
 /** Absent means "not stated", not "safe": a schema this walk cannot follow
     renders, the open failure `Sensitive` documents. */
 let isWithheld = (schema: option<S.t<unknown>>): bool =>

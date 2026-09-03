@@ -3,8 +3,11 @@
 import * as Sury from "sury";
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as AutomationSlice$Reventless from "@reventlessdev/reventless-spec/src/components/AutomationSlice.res.mjs";
 import * as NotificationIntake$OrderingPlugin from "./NotificationIntake.res.mjs";
+import * as Notification_Rule$TraitNotification from "@reventlessdev/trait-notification/src/Notification_Rule.res.mjs";
+import * as NotificationPreferences_Behavior$OrderingPlugin from "../StateChangeSlice/NotificationPreferences_Behavior.res.mjs";
 
 let M = AutomationSlice$Reventless.Mappings.Make({
   name: NotificationIntake$OrderingPlugin.name,
@@ -15,14 +18,6 @@ let M = AutomationSlice$Reventless.Mappings.Make({
   heartbeatInterval: NotificationIntake$OrderingPlugin.heartbeatInterval,
   targetName: NotificationIntake$OrderingPlugin.targetName
 });
-
-function confirmationKey(orderId) {
-  return `confirm:` + orderId;
-}
-
-function shippingKey(orderId) {
-  return `ship:` + orderId;
-}
 
 let name = "OrderingDcbEventLog";
 
@@ -61,28 +56,62 @@ let OrderingDcbSource = {
   eventSchema: eventSchema
 };
 
+let defaultRules = [
+  {
+    id: "confirm",
+    version: "1",
+    source: {
+      log: name,
+      eventType: "OrderPlaced"
+    },
+    filter: "Always",
+    category: "OrderConfirmation",
+    recipientPath: "recipientId",
+    subjectType: "Order",
+    subjectPath: "orderId",
+    content: [{
+        locale: "en",
+        subject: "Your order {{ orderId }} is confirmed",
+        body: "Thanks — we have your order {{ orderId }} and will let you know when it ships."
+      }]
+  },
+  {
+    id: "ship",
+    version: "1",
+    source: {
+      log: name,
+      eventType: "OrderShipped"
+    },
+    filter: "Always",
+    category: "ShippingUpdate",
+    recipientPath: "recipientId",
+    subjectType: "Order",
+    subjectPath: "orderId",
+    content: [{
+        locale: "en",
+        subject: "Your order {{ orderId }} is on its way",
+        body: "Good news — order {{ orderId }} has shipped."
+      }]
+  }
+];
+
+function todosFor(eventType, recipientId, orderId) {
+  return Notification_Rule$TraitNotification.forEvent(defaultRules, name, eventType).map(rule => [
+    Notification_Rule$TraitNotification.reference(rule, orderId),
+    {
+      ruleId: rule.id,
+      recipientId: recipientId,
+      orderId: orderId
+    }
+  ]);
+}
+
 function collect(event, param, _ctx) {
   switch (event.TAG) {
     case "OrderPlaced" :
-      let orderId = event.orderId;
-      return [[
-          confirmationKey(orderId),
-          {
-            recipientId: event.customerId,
-            orderId: orderId,
-            occurrence: "Placed"
-          }
-        ]];
+      return todosFor("OrderPlaced", event.customerId, event.orderId);
     case "OrderShipped" :
-      let orderId$1 = event.orderId;
-      return [[
-          shippingKey(orderId$1),
-          {
-            recipientId: event.customerId,
-            orderId: orderId$1,
-            occurrence: "Shipped"
-          }
-        ]];
+      return todosFor("OrderShipped", event.customerId, event.orderId);
     default:
       return [];
   }
@@ -117,47 +146,33 @@ let FromOrderingDcb = AutomationSlice$Reventless.Mapping.Make({
 
 let mappings = [FromOrderingDcb];
 
-function compose(item) {
-  let match = item.occurrence;
-  if (match === "Placed") {
-    return [
-      "OrderConfirmation",
-      `Your order ` + item.orderId + ` is confirmed`,
-      `Thanks — we have your order ` + item.orderId + ` and will let you know when it ships.`
-    ];
-  } else {
-    return [
-      "ShippingUpdate",
-      `Your order ` + item.orderId + ` is on its way`,
-      `Good news — order ` + item.orderId + ` has shipped.`
-    ];
-  }
-}
-
-let subjectType = "Order";
-
-function sourceOf(occurrence) {
-  if (occurrence === "Placed") {
-    return name + `:OrderPlaced`;
-  } else {
-    return name + `:OrderShipped`;
-  }
-}
-
 function process(id, item) {
-  let match = compose(item);
+  let rule = Notification_Rule$TraitNotification.byId(defaultRules, item.ruleId);
+  if (rule === undefined) {
+    return;
+  }
+  let payload = Util_Sury$Reventless.toJson(item, NotificationIntake$OrderingPlugin.todoItemSchema);
+  let match = Notification_Rule$TraitNotification.matches(rule.filter, payload);
+  let match$1 = Notification_Rule$TraitNotification.recipientOf(rule, payload);
+  if (!match) {
+    return;
+  }
+  if (match$1 === undefined) {
+    return;
+  }
+  let match$2 = Notification_Rule$TraitNotification.compose(rule, payload, NotificationIntake$OrderingPlugin.todoItemSchema, undefined);
   return [
-    item.recipientId,
+    match$1,
     {
       TAG: "RequestNotification",
-      recipientId: item.recipientId,
-      category: match[0],
+      recipientId: match$1,
+      category: NotificationPreferences_Behavior$OrderingPlugin.categoryOf(rule.category),
       reference: id,
-      subjectType: subjectType,
-      subjectRef: item.orderId,
-      subject: match[1],
-      body: match[2],
-      sourceId: sourceOf(item.occurrence),
+      subjectType: rule.subjectType,
+      subjectRef: Notification_Rule$TraitNotification.subjectOf(rule, payload),
+      subject: match$2[0],
+      body: match$2[1],
+      sourceId: Notification_Rule$TraitNotification.sourceId(rule),
       origin: "Default"
     }
   ];
@@ -169,19 +184,19 @@ function onExhausted(_id, _item) {
 
 let Spec;
 
+let Rule;
+
 let moduleUrl = "@reventlessdev/online-shop-hybrid-ordering/src/Notification/AutomationSlice/NotificationIntake_Automation.res.mjs";
 
 export {
   Spec,
   M,
-  confirmationKey,
-  shippingKey,
+  Rule,
   OrderingDcbSource,
+  defaultRules,
+  todosFor,
   FromOrderingDcb,
   mappings,
-  compose,
-  subjectType,
-  sourceOf,
   process,
   onExhausted,
   moduleUrl,

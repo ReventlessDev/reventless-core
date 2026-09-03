@@ -175,6 +175,12 @@ knows nothing about orders; the channel is already a per-recipient runtime prefe
 the host's. **The competency's delivery half is data-driven and its intake half is hand-written**,
 and that asymmetry is the whole subject of Part 2.
 
+**[2026-09-03] Four of those six rows are now data** (P0, §10). What remains in code is the first —
+which host events are notifiable — because `AutomationSlice` consumes through a closed `@schema`
+variant and cannot do otherwise until 15.2; and the last, the category vocabulary, which is P4. The
+idempotency key stopped being hand-written without becoming configuration: it is derived from the
+rule's id, so the two key functions collapsed into one derivation.
+
 ## 8. What Part 2 changes, in one sentence
 
 The graft file stops containing a `switch` and starts containing **an array of rule values**, and a
@@ -217,6 +223,40 @@ shape `done/monitoring-hook-seam.md` established for this repository, and it is 
 It was weighed and not taken; §13b records why.
 
 ## 10. P0 — the rule becomes a value
+
+**Status: ✅ DELIVERED [2026-09-03].** `TraitNotification.Notification_Rule`, the graft's
+`defaultRules`, the scaffold emitting the same shape, and
+`tests/Notification/AutomationSlice/NotificationIntake_GWT.res`. The two notifications are
+unchanged, and so are their reference keys. Six corrections to what is written below:
+
+- **`recipientSource` collapsed to a `recipientPath: string`.** `FixedAddress` was dropped:
+  `RequestNotification` addresses a *recipient* and the directory resolves the address, so a fixed
+  address is a different door — alerting, §5 — and an arm the host cannot honour is worse than an
+  absent one. With one arm left, the variant was noise.
+- **The rule carries four fields §10 did not name**, each because something concrete needed it:
+  `version`, because §12's `Configured({ruleId, ruleVersion})` has nowhere else to read one;
+  `subjectType` and `subjectPath`, which is §14b.3's own note made real (a per-rule constant and a
+  field path); and `locale` on each `content`, which `contentFor` selects on.
+- **A rule's id *is* the namespace of the references it writes.** §14b.3 says the reference key
+  stays derived, and deriving it as `"<ruleId>:<subject>"` reproduces `confirm:o1` / `ship:o1`
+  byte-for-byte — so the delivery-view goldens are unchanged — while collapsing the two hand-written
+  key functions into one derivation. The cost is that renaming a rule re-keys its delivery rows,
+  which is said on the field.
+- **`collect` still switches, and cannot stop until 15.2.** An `AutomationSlice` consumes through a
+  closed `@schema` variant, so "which host events are notifiable" stays code. What changed is that
+  the switch only *destructures*: the dispatch is `Rule.forEvent`, so a second rule on an
+  already-notifiable event is a table entry with no arm to add, and two rules on one event are two
+  notifications.
+- **The wording renders against the todo item, not the raw event.** The item is encoded through its
+  own `@schema`, so every field of it is a template path — and the renderer's semantic formatting
+  and `@sensitive` withholding apply to it. Rendering from raw events is 15.2's shape, not this one.
+- **A row naming a rule this build no longer carries publishes nothing** and is abandoned in
+  `onExhausted`, which is what a deployment that dropped a rule asked for. It is the one reachable
+  `None` in `process`, and it is asserted.
+
+Fixed in passing: the scaffold emitted an automation `collect` of the wrong arity
+(`(event, _ctx)` rather than `(event, ~sourceId as _, _ctx)`), so an emitted intake relay would not
+have compiled. Pre-existing, and in text this change rewrote anyway.
 
 New in `traits/notification/src`:
 
@@ -690,7 +730,8 @@ schema-drift check of its own, run against the deployed plugin structures rather
 ## 16. Order, and the one deadline
 
 ```
-P0 rules-as-data ───> P4 open vocabulary   ← NEXT; unblocked, P1 is its renderer
+P0 rules-as-data                           ✅ DONE [2026-09-03]
+  └─> P4 open vocabulary                   blocked on §14's decision, not on P0
 P1 renderer                                ✅ DONE [2026-09-03]
 P2 provenance + deferred ──> P3 handover   ◐ SUBSTANTIALLY BUILT — gap at §13.4, and see §13a
 P5 address out / subject in                ✅ DONE [2026-09-02]
@@ -698,12 +739,11 @@ P5 address out / subject in                ✅ DONE [2026-09-02]
 15.2 raw posture                           (independent; needed by a second producer, not by P0–P4)
 ```
 
-**P0's dependency on P1 is settled: P1 shipped first.** §10's deliverable is that the two
-notifications are unchanged, but today's wording is interpolated (`Your order ${item.orderId} is
-confirmed`) and P0's `content` holds plain strings — turning `orderId` back into that sentence *is*
-the renderer. `Reventless.Template` is now that renderer, so P0 uses it rather than shipping a
-stopgap interpolator; the wording moves from a ReScript template literal to
-`Your order {{ orderId }} is confirmed`.
+**P0's dependency on P1 was settled by shipping P1 first**, and no stopgap interpolator was needed.
+§10's deliverable was that the two notifications are unchanged, and their wording moved from a
+ReScript template literal (`Your order ${item.orderId} is confirmed`) to a rule's `content` string
+(`Your order {{ orderId }} is confirmed`) rendered by `Reventless.Template` — same sentence, same
+delivery rows, same reference keys.
 
 ⚠️ **P1 before 15.1 would have been backwards**, and was not: `@sensitive` landed first and the
 renderer withholds on it. The renderer interpolates arbitrary field paths of an event payload into
@@ -716,10 +756,9 @@ a single-commit change with the host updated in the same commit. Once the trait 
 host outside this repository grafts it, the same three become migrations with event healing and a
 projection rebuild.
 
-**P1, P5 and 15.1 are done, and P2+P3 are substantially built** — wired into `Plugin.res` on both
-paths, with the conformance assertions written. **P0 is the next buildable step**, and it is now
-unblocked in both directions: the renderer exists, and `@sensitive` guards it. **What is still open
-on the handover is §13.4: nothing releases a claim.** Finish that
+**P0, P1, P5 and 15.1 are done, and P2+P3 are substantially built** — wired into `Plugin.res` on
+both paths, with the conformance assertions written. **What is still open on the handover is §13.4:
+nothing releases a claim.** Finish that
 before the mechanism is used for anything; a claimant that disappears currently takes its
 notifications silent with it.
 
@@ -731,9 +770,22 @@ audited. That is a decision, not code, and it is not specified anywhere here.
 - `pnpm --filter @reventlessdev/trait-notification build`, then a full root build — the scaffold's
   emitted text is compiled by its host, so a scaffold change that does not compile fails in the
   example, not in the trait.
-- The notification GWT suites under
+- ✅ The notification GWT suites under
   `examples/online-shop-hybrid/ordering/tests/Notification/` plus `Flow/OrderingFlow_GWT` — P0's
-  acceptance is that these are unchanged and still green.
+  acceptance was that these are unchanged and still green, and they are, with one exception that
+  had to move: `NotificationDeliveries_GWT` derived its two keys from the relay's
+  `confirmationKey` / `shippingKey`, which the rule table replaced. It now derives them through
+  `Rule.byId`, so it still asserts derived keys against **literal** expectations — a rule id that
+  no longer exists yields a reference matching neither literal, rather than a lookup passing
+  quietly.
+- ✅ For P0: `tests/Notification/AutomationSlice/NotificationIntake_GWT.res`, which mirrors the
+  relay 1:1 as example-plugin tests do. Written against the finished table and then verified
+  *negatively* — an unparseable template and a mistyped category key were introduced, and three
+  scenarios went red with the reason named. The category assertion is load-bearing because
+  `categoryOf` falls back to the first kind declared, so only a rule whose kind is **not** that one
+  can catch a typo; the shipping rule is that assertion. One scenario covers the whole table rather
+  than the two rules with scenarios, so a third rule added with a broken template cannot ship in
+  silence.
 - `Notification_Conformance` through the `online-shop-hybrid` binding — unchanged by P2 and P3, and
   that is the check: neither may alter what the competency does, only what it records about itself.
 - ✅ For P2/P3: the four `Notification_Conformance` assertions — nothing claimed decides as usual, a

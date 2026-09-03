@@ -12,17 +12,14 @@
 
 @@reventless.spec
 
-// Which of this host's occurrences a row stands for. The todo carries the
-// occurrence, not the finished sentence: the category and the wording are chosen
-// from it in one place, so a second notifiable event cannot quietly reuse the
-// first one's category.
+// The row a rule composes from. It carries the rule's id rather than a kind of
+// occurrence: the rule holds the category, the subject and the wording, so a
+// second notifiable event is a second entry in the table next door.
+//
+// It is also the payload the wording is rendered against, so every field here is
+// a path a template may name — `{{ orderId }}`.
 @schema
-type occurrence =
-  | Placed
-  | Shipped
-
-@schema
-type todoItem = {recipientId: string, orderId: string, occurrence: occurrence}
+type todoItem = {ruleId: string, recipientId: string, orderId: string}
 
 @schema
 type command =

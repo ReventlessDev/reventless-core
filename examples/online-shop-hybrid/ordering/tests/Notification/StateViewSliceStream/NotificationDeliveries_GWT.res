@@ -2,16 +2,24 @@
 // key is the only thing keeping them apart — it is this view's row key, the
 // intake relay's TODO id, and how that TODO row is resolved, all at once.
 //
-// Driven by the relay's own key functions rather than by string literals: a
-// change that made the reference the bare order id would collapse both
-// notifications onto one row and let the second outcome overwrite the first,
-// with no error anywhere. That is the failure these two scenarios exist to make
-// loud.
+// Driven by the relay's own rule table rather than by string literals: a change
+// that made the reference the bare order id would collapse both notifications
+// onto one row and let the second outcome overwrite the first, with no error
+// anywhere. That is the failure these two scenarios exist to make loud.
 
 @@reventless.gwt
 
-let confirm = NotificationIntake_Automation.confirmationKey("o1")
-let ship = NotificationIntake_Automation.shippingKey("o1")
+module Rule = TraitNotification.Notification_Rule
+
+// A rule id that no longer exists yields a reference matching neither expected
+// key, so the literals below fail rather than the lookup passing quietly.
+let referenceOf = ruleId =>
+  NotificationIntake_Automation.defaultRules
+  ->Rule.byId(ruleId)
+  ->Option.mapOr("no such rule", rule => Rule.reference(rule, ~subject="o1"))
+
+let confirm = referenceOf("confirm")
+let ship = referenceOf("ship")
 
 let requested = (category, reference) =>
   NotificationRequested({

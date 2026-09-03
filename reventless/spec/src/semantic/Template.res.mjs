@@ -323,6 +323,13 @@ function resolve(path, root, item) {
   return Stdlib_Array.reduce(path.segments, path.relative ? Stdlib_Option.getOr(item, nothing) : root, step);
 }
 
+function lookup(payload, dotted) {
+  return Stdlib_Array.reduce(dotted.split("."), {
+    value: payload,
+    schema: undefined
+  }, step).value;
+}
+
 function isWithheld(schema) {
   if (schema === undefined) {
     return false;
@@ -523,6 +530,7 @@ export {
   elementOf,
   step,
   resolve,
+  lookup,
   isWithheld,
   parseSafely,
   formatBySemantic,

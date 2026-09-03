@@ -1,11 +1,6 @@
 @@reventless.automation
 
-// A TODO id is also the `reference` the request carries, so the outcome event
-// echoes back exactly what resolves the row. One key per occurrence, not per
-// order: an order that is placed and then ships is two notifications, and a
-// shared key would let the first one's outcome close the second one's row.
-let confirmationKey = orderId => `confirm:${orderId}`
-let shippingKey = orderId => `ship:${orderId}`
+module Rule = TraitNotification.Notification_Rule
 
 // One source: this plugin's DCB log, which is where the occurrence is and where
 // every outcome lands. Both order events name their own customer, which is what
@@ -31,6 +26,60 @@ module OrderingDcbSource = {
     | NotificationDeferred({reference: string})
 }
 
+// The one place this host's occurrences are given a kind and a wording, and it
+// is a table of values rather than a switch. A trait cannot write this: the
+// categories are ones the trait declares, but which of the host's events earns
+// which — and what the sentence says — is the host's.
+//
+// A rule's id is also the namespace of the references it writes, so an order
+// that is placed and then ships is two notifications and two delivery rows.
+let defaultRules: array<Rule.t> = [
+  {
+    id: "confirm",
+    version: "1",
+    source: {log: OrderingDcbSource.name, eventType: "OrderPlaced"},
+    filter: Always,
+    category: "OrderConfirmation",
+    recipientPath: "recipientId",
+    subjectType: "Order",
+    subjectPath: "orderId",
+    content: [
+      {
+        locale: "en",
+        subject: "Your order {{ orderId }} is confirmed",
+        body: "Thanks — we have your order {{ orderId }} and will let you know when it ships.",
+      },
+    ],
+  },
+  {
+    id: "ship",
+    version: "1",
+    source: {log: OrderingDcbSource.name, eventType: "OrderShipped"},
+    filter: Always,
+    category: "ShippingUpdate",
+    recipientPath: "recipientId",
+    subjectType: "Order",
+    subjectPath: "orderId",
+    content: [
+      {
+        locale: "en",
+        subject: "Your order {{ orderId }} is on its way",
+        body: "Good news — order {{ orderId }} has shipped.",
+      },
+    ],
+  },
+]
+
+// The dispatch is the table's, so the switch below only takes an event apart.
+// Two rules on one event type are two notifications, with no arm to add.
+let todosFor = (~eventType, ~recipientId, ~orderId) =>
+  defaultRules
+  ->Rule.forEvent(~log=OrderingDcbSource.name, ~eventType)
+  ->Array.map(rule => (
+    Rule.reference(rule, ~subject=orderId),
+    ({ruleId: rule.id, recipientId, orderId}: NotificationIntake.todoItem),
+  ))
+
 module FromOrderingDcb = Mapping.Make(
   OrderingDcbSource,
   NotificationIntake,
@@ -39,18 +88,10 @@ module FromOrderingDcb = Mapping.Make(
 
     let collect = (event, ~sourceId as _, _ctx) =>
       switch event {
-      | OrderPlaced({orderId, customerId}) => [
-          (
-            confirmationKey(orderId),
-            ({recipientId: customerId, orderId, occurrence: Placed}: NotificationIntake.todoItem),
-          ),
-        ]
-      | OrderShipped({orderId, customerId}) => [
-          (
-            shippingKey(orderId),
-            ({recipientId: customerId, orderId, occurrence: Shipped}: NotificationIntake.todoItem),
-          ),
-        ]
+      | OrderPlaced({orderId, customerId}) =>
+        todosFor(~eventType="OrderPlaced", ~recipientId=customerId, ~orderId)
+      | OrderShipped({orderId, customerId}) =>
+        todosFor(~eventType="OrderShipped", ~recipientId=customerId, ~orderId)
       | NotificationRequested(_)
       | NotificationSuppressed(_)
       | NotificationUndeliverable(_)
@@ -72,60 +113,35 @@ module FromOrderingDcb = Mapping.Make(
 
 let mappings: array<module(Mapping)> = [module(FromOrderingDcb)]
 
-// The one place this host's occurrences are given a kind and a wording. A trait
-// cannot write this: the categories are ones the trait declares, but which of the
-// host's events earns which, and what the sentence says, is the host's.
-//
-// One switch over the occurrence, so adding a notifiable event means adding an
-// arm here rather than remembering to change a category further down.
-let compose = (item: NotificationIntake.todoItem) =>
-  switch item.occurrence {
-  | Placed => (
-      NotificationPreferences.OrderConfirmation,
-      `Your order ${item.orderId} is confirmed`,
-      `Thanks — we have your order ${item.orderId} and will let you know when it ships.`,
-    )
-  | Shipped => (
-      NotificationPreferences.ShippingUpdate,
-      `Your order ${item.orderId} is on its way`,
-      `Good news — order ${item.orderId} has shipped.`,
-    )
+let process = (id, item: NotificationIntake.todoItem) =>
+  switch defaultRules->Rule.byId(item.ruleId) {
+  // A rule this build no longer carries. Its rows retry and are abandoned in
+  // `onExhausted`, which is what a deployment that dropped a rule asked for.
+  | None => None
+  | Some(rule) =>
+    let payload = item->Reventless.Util_Sury.toJson(NotificationIntake.todoItemSchema)
+    switch (Rule.matches(rule.filter, ~payload), Rule.recipientOf(rule, ~payload)) {
+    | (false, _) | (_, None) => None
+    | (true, Some(recipientId)) =>
+      let (subject, body) = Rule.compose(rule, ~payload, ~schema=NotificationIntake.todoItemSchema)
+      Some((
+        recipientId,
+        NotificationIntake.RequestNotification({
+          recipientId,
+          category: NotificationPreferences_Behavior.categoryOf(rule.category),
+          reference: id,
+          subjectType: rule.subjectType,
+          subjectRef: Rule.subjectOf(rule, ~payload),
+          subject,
+          body,
+          sourceId: Rule.sourceId(rule),
+          // This relay IS the compiled table, so every request it makes is the
+          // default one — the arm that yields when somebody else claims the source.
+          origin: Default,
+        }),
+      ))
+    }
   }
-
-// What the notification is about, stated plainly beside the reference. The
-// reference is a correlation key — one per occurrence, prefixed, and its format
-// is this relay's own business; the subject is the order itself, so a delivery
-// row can name what it concerned without anybody decoding that string.
-let subjectType = "Order"
-
-// Which stream each request came from, as `"<log>:<eventType>"`. This is what a
-// second producer claims to take an entry over, so the two must derive it the
-// same way or the claim protects nothing — the format is the whole agreement.
-let sourceOf = (occurrence: NotificationIntake.occurrence) =>
-  switch occurrence {
-  | Placed => `${OrderingDcbSource.name}:OrderPlaced`
-  | Shipped => `${OrderingDcbSource.name}:OrderShipped`
-  }
-
-let process = (id, item: NotificationIntake.todoItem) => {
-  let (category, subject, body) = compose(item)
-  Some((
-    item.recipientId,
-    NotificationIntake.RequestNotification({
-      recipientId: item.recipientId,
-      category,
-      reference: id,
-      subjectType,
-      subjectRef: item.orderId,
-      subject,
-      body,
-      sourceId: sourceOf(item.occurrence),
-      // This relay IS the compiled table, so every request it makes is the
-      // default one — the arm that yields when somebody else claims the source.
-      origin: Default,
-    }),
-  ))
-}
 
 // Nothing to say. A relay that gave up published no command, so the notification
 // competency never heard of the occurrence — and a delivery-failed fact for a
