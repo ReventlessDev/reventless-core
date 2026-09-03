@@ -35,6 +35,45 @@ The module holding a component's state machine, annotated `@@reventless.behavior
 (state × command → events or error). Paired with a **Spec**, which holds the
 types the behavior operates on.
 
+## Business capability
+
+**Not a framework concept.** A term from enterprise architecture and business
+analysis (TOGAF, ArchiMate, BIZBOK) for *what an organisation is able to do* —
+"Order Fulfilment", "Customer Management" — named so it stays stable while the
+systems realizing it change. Capability maps decompose these into levels and are
+used to plan investment, not to describe software.
+
+It is listed here because readers arrive with it and because three framework
+words sit near it without meaning it:
+
+- A **[plugin](#plugin)** is a bounded context. One usually realizes part of a
+  business capability, but the two are not the same unit and do not have to line
+  up.
+- A **[competency](#competency)** is a *supporting* capability packaged as
+  compiled rules — notification, attachments. Below a business capability in
+  granularity, and beside it in kind.
+- A **[platform capability](#platform-capability)** is infrastructure, a whole
+  layer down, and unrelated except by the shared word.
+
+Nothing in the framework declares, stores or checks a business capability.
+
+## Competency
+
+Something the **domain** does that recurs across domains — deciding whether to
+notify a recipient, keeping an ordered set of attachments, turning an address
+into a map point. A [domain trait](#domain-trait) packages one as compiled rules
+a host calls.
+
+Not a [platform capability](#platform-capability), and the distinction is worth
+keeping sharp: a competency is domain behaviour, a platform capability is
+infrastructure the deployment provides, and a trait that needs one *declares* it.
+`trait-notification` is a competency, and it declares the `Messaging` platform
+capability.
+
+Not a [business capability](#business-capability) either — that term belongs to
+enterprise architecture, where it names what an organisation does at the
+strategic altitude; a competency is a *supporting* one packaged as code.
+
 ## Consumed event
 
 An event a slice reads in order to decide — declared as `type consumedEvent` on
@@ -56,6 +95,14 @@ builds a decision model from what it reads, and appends new events conditioned o
 nothing having changed underneath it. The consistency boundary is per command,
 not per entity — which is what lets one entity's decision depend on another's
 events. See [What is a DCB?](/app/concepts/dcb).
+
+## Domain trait
+
+A package holding a [competency](#competency): the rules as a module your host
+imports and calls, while the types stay yours. Adopting one is a graft — the
+trait emits components and prints the relays only you can write — so fixing a
+rule is a release of the trait rather than an edit to every host that copied it.
+See [Domain Traits](./domain-traits.md).
 
 ## Extension
 
@@ -110,6 +157,23 @@ placement.
 The top-level deployment unit that assembles one or more plugins and creates the
 shared infrastructure they use (admin components, runtime, API). Built by
 `Platform.makePlatform`.
+
+## Platform capability
+
+Infrastructure a plugin needs but does not provision — an object store, a
+geocoder, a mail sender. The plugin **declares** it, the platform **provisions**
+it, and a deploy that declares one the platform does not provide is refused.
+Three are supported today, and the set is expected to grow. See
+[Platform Capabilities](./platform-capabilities.md).
+
+Called an **infrastructure capability** in enterprise-architecture and commercial
+material, where the contrast with business and component capabilities is the
+point and "platform" is claimed by platform engineering. The two name the same
+thing; this is the term used throughout the framework, because the type is
+`Platform.capability`.
+
+Distinct from a [competency](#competency), which is domain behaviour rather than
+infrastructure.
 
 ## Plugin
 
