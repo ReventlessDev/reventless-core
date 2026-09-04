@@ -55,7 +55,7 @@ let parseFlags = (args: array<string>): dict<JSON.t> => {
     switch args->Array.get(i) {
     | None => ()
     | Some(arg) if arg->String.startsWith("--") =>
-      let key = arg->String.sliceToEnd(~start=2)
+      let key = arg->String.slice(~start=2, ~end=arg->String.length)
       switch args->Array.get(i + 1) {
       | Some(value) if !(value->String.startsWith("--")) =>
         out->Dict.set(key, JSON.Encode.string(value))
@@ -107,14 +107,14 @@ let arrayFieldNames = (schema: S.t<unknown>): array<string> =>
 // ── Entry point ──────────────────────────────────────────────────────────────
 
 let main = async () => {
-  let argv = NodeProcess.argv->Array.sliceToEnd(~start=2)
+  let argv = NodeProcess.argv->Array.slice(~start=2, ~end=NodeProcess.argv->Array.length)
   switch argv->Array.get(0) {
   | None | Some("") | Some("--help") | Some("-h") => {
       Console.log(usage)
       NodeProcess.exit(argv->Array.length == 0 ? 1 : 0)
     }
   | Some(traitPackage) => {
-      let flags = parseFlags(argv->Array.sliceToEnd(~start=1))
+      let flags = parseFlags(argv->Array.slice(~start=1, ~end=argv->Array.length))
       let stringFlag = key => flags->Dict.get(key)->Option.flatMap(JSON.Decode.string)
       let into = stringFlag("into")
       let tests = stringFlag("tests")
@@ -136,7 +136,8 @@ let main = async () => {
             ->String.replace("trait-", "")
             ->String.split("-")
             ->Array.map(part =>
-              part->String.charAt(0)->String.toUpperCase ++ part->String.sliceToEnd(~start=1)
+              part->String.charAt(0)->String.toUpperCase ++
+                part->String.slice(~start=1, ~end=part->String.length)
             )
             ->Array.join("") ++ "_Scaffold"
           let specifier = `${traitPackage}/src/${scaffoldModule}.res.mjs`

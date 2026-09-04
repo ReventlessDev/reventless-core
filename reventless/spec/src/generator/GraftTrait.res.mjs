@@ -36,7 +36,7 @@ function parseFlags(args) {
         return;
       }
       if (arg.startsWith("--")) {
-        let key = arg.slice(2);
+        let key = arg.slice(2, arg.length);
         let value = args[i + 1 | 0];
         if (value !== undefined && !value.startsWith("--")) {
           out[key] = value;
@@ -83,7 +83,7 @@ function arrayFieldNames(schema) {
 }
 
 async function main() {
-  let argv = process.argv.slice(2);
+  let argv = process.argv.slice(2, process.argv.length);
   let traitPackage = argv[0];
   if (traitPackage !== undefined) {
     switch (traitPackage) {
@@ -92,7 +92,7 @@ async function main() {
       case "-h" :
         break;
       default:
-        let flags = parseFlags(argv.slice(1));
+        let flags = parseFlags(argv.slice(1, argv.length));
         let stringFlag = key => Stdlib_Option.flatMap(flags[key], Stdlib_JSON.Decode.string);
         let into = stringFlag("into");
         let tests = stringFlag("tests");
@@ -103,7 +103,7 @@ async function main() {
         if (tests === undefined) {
           return fail("--into and --tests are both required.\n\n" + usage);
         }
-        let scaffoldModule = Stdlib_Option.getOr(Stdlib_Array.last(traitPackage.split("/")), "").replace("trait-", "").split("-").map(part => part.charAt(0).toUpperCase() + part.slice(1)).join("") + "_Scaffold";
+        let scaffoldModule = Stdlib_Option.getOr(Stdlib_Array.last(traitPackage.split("/")), "").replace("trait-", "").split("-").map(part => part.charAt(0).toUpperCase() + part.slice(1, part.length)).join("") + "_Scaffold";
         let specifier = traitPackage + `/src/` + scaffoldModule + `.res.mjs`;
         let modulePath;
         try {
