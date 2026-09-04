@@ -2,6 +2,7 @@
 
 import * as Sury from "sury";
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
+import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as AutomationSlice$Reventless from "@reventlessdev/reventless-spec/src/components/AutomationSlice.res.mjs";
@@ -66,6 +67,7 @@ let defaultRules = [
     },
     filter: "Always",
     category: "OrderConfirmation",
+    delivery: "Immediate",
     recipientPath: "recipientId",
     subjectType: "Order",
     subjectPath: "orderId",
@@ -84,6 +86,7 @@ let defaultRules = [
     },
     filter: "Always",
     category: "ShippingUpdate",
+    delivery: "Immediate",
     recipientPath: "recipientId",
     subjectType: "Order",
     subjectPath: "orderId",
@@ -96,7 +99,7 @@ let defaultRules = [
 ];
 
 function todosFor(eventType, recipientId, orderId) {
-  return Notification_Rule$TraitNotification.forEvent(defaultRules, name, eventType).map(rule => [
+  return Notification_Rule$TraitNotification.forEvent(defaultRules, name, eventType).filter(Notification_Rule$TraitNotification.isImmediate).map(rule => [
     Notification_Rule$TraitNotification.reference(rule, orderId),
     {
       ruleId: rule.id,
@@ -147,7 +150,7 @@ let FromOrderingDcb = AutomationSlice$Reventless.Mapping.Make({
 let mappings = [FromOrderingDcb];
 
 function process(id, item) {
-  let rule = Notification_Rule$TraitNotification.byId(defaultRules, item.ruleId);
+  let rule = Stdlib_Option.filter(Notification_Rule$TraitNotification.byId(defaultRules, item.ruleId), Notification_Rule$TraitNotification.isImmediate);
   if (rule === undefined) {
     return;
   }

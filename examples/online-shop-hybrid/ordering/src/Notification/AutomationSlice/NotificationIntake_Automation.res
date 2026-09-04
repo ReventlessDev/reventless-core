@@ -40,6 +40,7 @@ let defaultRules: array<Rule.t> = [
     source: {log: OrderingDcbSource.name, eventType: "OrderPlaced"},
     filter: Always,
     category: "OrderConfirmation",
+    delivery: Immediate,
     recipientPath: "recipientId",
     subjectType: "Order",
     subjectPath: "orderId",
@@ -57,6 +58,7 @@ let defaultRules: array<Rule.t> = [
     source: {log: OrderingDcbSource.name, eventType: "OrderShipped"},
     filter: Always,
     category: "ShippingUpdate",
+    delivery: Immediate,
     recipientPath: "recipientId",
     subjectType: "Order",
     subjectPath: "orderId",
@@ -72,9 +74,13 @@ let defaultRules: array<Rule.t> = [
 
 // The dispatch is the table's, so the switch below only takes an event apart.
 // Two rules on one event type are two notifications, with no arm to add.
+//
+// Only the immediate half of the table: a digest rule's occurrences are gathered
+// by the component that sends the digest, so no row is opened for one here.
 let todosFor = (~eventType, ~recipientId, ~orderId) =>
   defaultRules
   ->Rule.forEvent(~log=OrderingDcbSource.name, ~eventType)
+  ->Array.filter(Rule.isImmediate)
   ->Array.map(rule => (
     Rule.reference(rule, ~subject=orderId),
     ({ruleId: rule.id, recipientId, orderId}: NotificationIntake.todoItem),
@@ -114,9 +120,12 @@ module FromOrderingDcb = Mapping.Make(
 let mappings: array<module(Mapping)> = [module(FromOrderingDcb)]
 
 let process = (id, item: NotificationIntake.todoItem) =>
-  switch defaultRules->Rule.byId(item.ruleId) {
-  // A rule this build no longer carries. Its rows retry and are abandoned in
-  // `onExhausted`, which is what a deployment that dropped a rule asked for.
+  // Two ways the table can have moved under a row that was already open: the rule
+  // is gone, or it has become a digest's and is no longer this relay's to send.
+  // Neither publishes anything, and either leaves the row Pending — a `None` from
+  // `process` spends no retry budget, so it is re-swept on every batch and never
+  // reaches `onExhausted`. Inert, but not self-clearing.
+  switch defaultRules->Rule.byId(item.ruleId)->Option.filter(Rule.isImmediate) {
   | None => None
   | Some(rule) =>
     let payload = item->Reventless.Util_Sury.toJson(NotificationIntake.todoItemSchema)

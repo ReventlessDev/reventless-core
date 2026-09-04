@@ -250,9 +250,12 @@ unchanged, and so are their reference keys. Six corrections to what is written b
 - **The wording renders against the todo item, not the raw event.** The item is encoded through its
   own `@schema`, so every field of it is a template path — and the renderer's semantic formatting
   and `@sensitive` withholding apply to it. Rendering from raw events is 15.2's shape, not this one.
-- **A row naming a rule this build no longer carries publishes nothing** and is abandoned in
-  `onExhausted`, which is what a deployment that dropped a rule asked for. It is the one reachable
-  `None` in `process`, and it is asserted.
+- **A row naming a rule this build no longer carries publishes nothing.** It is the one reachable
+  `None` in `process`, and it is asserted. ⚠️ **[2026-09-04] The second half of this bullet was
+  wrong** — it said such a row "is abandoned in `onExhausted`". It is not: a `None` from `process`
+  spends no retry budget (`AutomationSlice_Callback.res` increments `retryCount` only on an encode
+  or publish failure), so the row stays `Pending` and is re-swept forever. Corrected in the source
+  comment and the GWT. The behaviour itself is left alone — §19 explains why it is load-bearing.
 
 Fixed in passing: the scaffold emitted an automation `collect` of the wrong arity
 (`(event, _ctx)` rather than `(event, ~sourceId as _, _ctx)`), so an emitted intake relay would not
@@ -461,6 +464,13 @@ deregistration rides **both** graceful disconnect and heartbeat timeout; a claim
 triggers for the same reason.
 
 **Do this before the mechanism is used for anything.**
+
+⚠️ **[2026-09-04] Nothing will use it.** §19.1 settled routing on the rule table, so the claim
+mechanism has no counterparty and, on that design, never acquires one. It is **dormant, not
+incomplete**: `ClaimNotificationSource` / `ReleaseNotificationSource` stay built, tested and inert,
+and the four `Notification_Conformance` assertions still hold. Do **not** build a release trigger
+for it — that would be lifecycle machinery guarding nothing. Reopen this only if a producer in a
+*foreign* plugin ever needs a source, which is the case §13a's missing door describes.
 
 ### 13.5 Do not grow it
 
@@ -773,7 +783,9 @@ P5 address out / subject in                ✅ DONE [2026-09-02]
 15.1 @sensitive                            ✅ DONE [2026-09-03]
 15.2 consumedSources metadata              ✅ DONE [2026-09-04]
 15.2 raw posture                           LAST — nothing needs it until a rule table is configured
-§18 the digest, in-plugin                  ← NEXT: the claim mechanism's first counterparty
+§18 the digest, in-plugin                  SUPERSEDED by §19 — the rails do not allow it as scoped
+§19.1 rule routing field                   ✅ DONE [2026-09-04]
+§13 the claim mechanism                    DORMANT — no counterparty on the resolved design
 ```
 
 **P0's dependency on P1 was settled by shipping P1 first**, and no stopgap interpolator was needed.
@@ -859,6 +871,11 @@ audited. That is a decision, not code, and it is not specified anywhere here.
 
 ## 18. 🚨 [2026-09-04] The door §13a asks for may not be needed — build the digest instead
 
+**Status: superseded by §19 the same day.** Its reasoning about the door holds and is not withdrawn.
+Its instruction — *build the digest next* — does not: §19 reports the rails, and the digest as scoped
+here needs two new components the section did not account for. Read §18 for the argument, §19 for
+what was built.
+
 §13a stopped the P2/P3 line on one observation: nothing can issue a `Configured` request, because
 the competency exposes no ExtensionPoint. That is true and the conclusion drawn from it is too
 strong. **A second producer inside the same plugin needs no door at all.**
@@ -881,7 +898,8 @@ blocked on a decision nor speculative:
   is more likely a lease or a re-assertion, which §13.5's "no claim expiry" would have to bend for.
   Better to learn that from a claimant than to design a release for a lifecycle that does not apply.
 
-⚠️ **Watch for the outcome that vindicates §13b.** The digest may never need to claim anything: with
+⚠️ **Watch for the outcome that vindicates §13b** — §19 reports that it arrived before the first
+line of the digest was written. The digest may never need to claim anything: with
 rules as data (P0), a rule can say a source is the digest's and the per-event relay simply does not
 fire for it. Being scheduler-driven makes the digest a separate *component*; it does not stop the
 table from deciding whether the event-driven half runs — which is the step §13a's defence of §13
@@ -893,3 +911,80 @@ needs no raw consumption. The only thing that does is a rule table arriving at r
 types nobody compiled — which needs both the door *and* §14's vocabulary decision first. The
 metadata half shipped (§15.2) precisely so the posture, whenever it comes, lands in a slot that has
 already been checked against its out-of-repo consumer.
+
+---
+
+## 19. 🚨 [2026-09-04] What the rails actually allow the digest to be
+
+Investigated before building anything. Three facts about the framework, each read out of source,
+and together they change §18's shape.
+
+**1. No scheduler reaches a slice.** `Task_Builder` resolves the targets of `Task.PublishCommands`
+from `allAggregates->Aggregate.allCommandTopics` (`Task_Builder.res:124,141`), so a Task can address
+an Aggregate and nothing else. `NotificationPreferences` is a StateChangeSlice. A scheduled fire also
+arrives as an *event* on the side-effect handler's collector channel
+(`LocalScheduledPublisher.res`), never as a command. So the scheduler-driven producer §13a quotes has
+no rail into the competency's decision point at all. Building one is framework work, and §18 did not
+scope it.
+
+**2. An AutomationSlice TODO row cannot accumulate.** `collect` is first-writer-wins — a second item
+under an existing key is skipped outright (`AutomationSlice_Callback.res:184–197`). A row keyed
+`recipientId:window` therefore captures the first occurrence of the window and silently drops every
+one after it, which is exactly the half that makes a digest a digest.
+
+**3. But a TODO row can wait indefinitely, for free.** A `None` from `process` leaves the row
+`Pending` and spends no retry budget, and `phase2` runs after every event batch on the slice's topics
+(`AutomationSlice_Builder.res:159`). That is the same fact §10's corrected bullet reports as a
+defect, and it is also the only clock a same-plugin component has: a row carrying a `windowEndsAt`
+returns `None` until the window elapses and then emits its command. ⚠️ **So do not "fix" the
+forever-`Pending` row by charging it retry budget** without putting something else in its place —
+the digest window is what would break.
+
+So a same-plugin digest is **accumulation state plus a window timer**, and the rails supply only the
+second. The minimum shape is two new components and a rerouted relay:
+
+- a `NotificationDigest` **StateChangeSlice** — folds `DigestItemAdded` per recipient, composes on
+  `FlushDigest`, publishes `DigestComposed` (and a distinct empty-window fact, on the same reasoning
+  that keeps `Suppressed` and `Undeliverable` apart);
+- a **window AutomationSlice** — one open row per recipient × window, `process` returning `None`
+  until the window elapses, then `FlushDigest`;
+- the intake relay routing digest-mode rules to `AddDigestItem` rather than `RequestNotification`,
+  plus a relay turning `DigestComposed` back into a `RequestNotification`. An AutomationSlice has one
+  `targetName`, so that is two mappings and probably two slices.
+
+### 19.1 The fork §18 set up has already resolved
+
+**Status: ✅ the routing field is DELIVERED [2026-09-04]; the digest components are not built.**
+`Notification_Rule.delivery`, `Rule.isImmediate`, the relay filtering to the immediate half, the
+scaffold emitting the same shape, and `validate(~digestRouted)` refusing a digest rule this
+deployment cannot route. The two shipped notifications are unchanged — both are `Immediate`, and
+their reference keys and delivery rows are untouched. Three notes on what was built:
+
+- **`Digest` carries `windowSeconds` and nothing else.** Where a window *starts and ends* is the
+  gathering component's own — aligning to a local midnight is a decision the table has no input for,
+  and guessing it here would be the premature choice §19 was written to avoid.
+- **The relay passes over a digest rule in two places, and neither is silent by accident.**
+  `todosFor` opens no row for one, and `process` guards the lookup with `Option.filter(isImmediate)`
+  so a rule that *became* a digest under an already-open row is not sent by the old path either.
+  What keeps that from becoming silence is `validate`: a digest rule with nothing to gather it is a
+  refused table, not a quiet drop.
+- **⚠️ `validate` is the only guard, and it is a test-time one.** Nothing at deploy or boot rereads
+  it, so a table edited to `Digest` without a gathering component fails the host's GWT and nothing
+  else. That is enough while the table is compiled; it stops being enough the moment §14's
+  configured vocabulary lets a table arrive at runtime.
+
+Routing to the digest is a `delivery: Immediate | Digest({windowSeconds})` field on `Notification_Rule.t`:
+the relay reads it and publishes one command or the other. **No claim is made, nothing is deferred,
+and `NotificationSourceClaims` stays inert.** That is §18's own ⚠️ — *"a rule can say a source is the
+digest's and the per-event relay simply does not fire for it"* — and nothing found above argues
+against it. Being scheduler-driven makes the digest a separate component; it does not give it
+anything to negotiate.
+
+**Consequence, stated plainly:** §13.4 is a gap in code that has no counterparty and, on this
+design, never acquires one. The honest response is to leave the claim mechanism dormant and say so,
+not to grow a release trigger for it. §13a's *"the door comes before §13.4"* stands, and so does the
+observation that no door exists.
+
+**So the open question is no longer "claims or rules".** It is whether the digest earns two new
+components in an example plugin in order to demonstrate a routing field the rule table could carry
+without it.

@@ -44,6 +44,37 @@ describe("NotificationIntake AutomationSlice", () => {
     }
   )
 
+  // The routing field is only worth as much as the refusal behind it. A digest
+  // rule in a deployment with nothing to gather one is passed over by the relay
+  // and picked up by nobody, so it has to be loud here rather than at the point
+  // where a notification quietly fails to arrive.
+  test("the table refuses a digest rule where nothing gathers one, and takes it otherwise", () => {
+    let digestRule = {
+      ...NotificationIntake_Automation.defaultRules->Array.getUnsafe(0),
+      id: "daily",
+      delivery: Rule.Digest({windowSeconds: 86400}),
+    }
+    switch (
+      Rule.validate([digestRule], ~sample),
+      Rule.validate([digestRule], ~digestRouted=true, ~sample),
+    ) {
+    | ([], _) =>
+      ReventlessGwt.Outcome.fail(
+        EventsMismatch({
+          expected: ["a digest rule this deployment cannot route is refused"]->Array.map(
+            JSON.Encode.string,
+          ),
+          actual: [],
+        }),
+      )
+    | (_, []) => ReventlessGwt.Outcome.pass
+    | (_, routed) =>
+      ReventlessGwt.Outcome.fail(
+        EventsMismatch({expected: [], actual: routed->Array.map(JSON.Encode.string)}),
+      )
+    }
+  })
+
   test("collect: a placed order becomes one todo, keyed by its rule and the order", () =>
     givenEvent(OrderPlaced({orderId: "o1", customerId: "c1"}))
     ->whenCollect
@@ -112,7 +143,8 @@ describe("NotificationIntake AutomationSlice", () => {
   )
 
   // A row left over from a rule the deployment has dropped. Nothing to compose
-  // from, so nothing is published and the row is abandoned by `onExhausted`.
+  // from, so nothing is published — and the row stays Pending, since a `None`
+  // from `process` spends no retry budget.
   test("process: a row naming a rule this build no longer has publishes nothing", () =>
     givenTodo("gone:o1", {ruleId: "gone", recipientId: "c1", orderId: "o1"})
     ->whenProcess

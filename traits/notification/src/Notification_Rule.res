@@ -46,6 +46,22 @@ type content = {locale: string, subject: string, body: string}
 @schema
 type source = {log: string, eventType: string}
 
+/** How a rule's occurrences reach the recipient: one message each, or gathered
+    into one message per window.
+
+    Routing is a field on the rule and not a negotiation between producers. A
+    digest is scheduler-driven and therefore its own component, but *which*
+    occurrences are its to gather is a table entry — so a relay serves the half it
+    can deliver and leaves the rest, with nothing to arbitrate.
+
+    `windowSeconds` is the one thing a digest cannot read off the rule. Where a
+    window starts and ends is the gathering component's own, deliberately: aligning
+    to a local midnight is a decision this table has no input for. */
+@schema
+type delivery =
+  | Immediate
+  | Digest({windowSeconds: int})
+
 @schema
 type t = {
   /** Stable, because it is also the namespace of every reference this rule's
@@ -57,6 +73,7 @@ type t = {
   filter: predicate,
   /** The host's kind of notification, as a key — see `Notification_Rules.category`. */
   category: string,
+  delivery: delivery,
   /** Where in the payload the person to notify is named. */
   recipientPath: string,
   /** What the notification is about: the component's name as the deployment
@@ -76,6 +93,11 @@ let referenceFor = (~ruleId: string, ~subject: string) => `${ruleId}:${subject}`
 let reference = (rule: t, ~subject: string) => referenceFor(~ruleId=rule.id, ~subject)
 
 let byId = (rules: array<t>, id: string) => rules->Array.find(rule => rule.id == id)
+
+/** Whether the per-event relay is the one that delivers this rule. A digest's
+    occurrences are gathered by its own component, so the relay passes over them
+    rather than sending one message each. */
+let isImmediate = (rule: t) => rule.delivery == Immediate
 
 /** Every rule answering to one occurrence. Two rules on one event type are two
     notifications, which is what makes adding one a table change and not a code
@@ -181,8 +203,14 @@ The problems in a table, empty when it is sound.
 What a compiled table's own test asserts, so `compose`'s fallbacks and
 `recipientOf`'s `None` stay unreachable in a build rather than merely unlikely.
 `sample` is one payload of the shape the table's rules read.
+
+`~digestRouted` says whether this deployment has a component that gathers
+digests. It defaults to `false` because most do not, and there a `Digest` rule is
+a rule whose occurrences the per-event relay passes over and nobody else picks
+up — silence, which is the failure this competency is careful about everywhere
+else.
 */
-let validate = (rules: array<t>, ~sample: JSON.t): array<string> =>
+let validate = (rules: array<t>, ~digestRouted: bool=false, ~sample: JSON.t): array<string> =>
   rules->Array.flatMap(rule => {
     let problems = []
     let note = message => problems->Array.push(`${rule.id}: ${message}`)
@@ -205,6 +233,16 @@ let validate = (rules: array<t>, ~sample: JSON.t): array<string> =>
     }
     if stringAt(sample, rule.subjectPath) == None {
       note(`subjectPath "${rule.subjectPath}" resolves to nothing in the sample payload`)
+    }
+    switch rule.delivery {
+    | Immediate => ()
+    | Digest({windowSeconds}) =>
+      if !digestRouted {
+        note("delivered as a digest, and nothing in this deployment gathers one")
+      }
+      if windowSeconds <= 0 {
+        note(`a digest window of ${windowSeconds->Int.toString}s gathers nothing`)
+      }
     }
     problems
   })

@@ -64,12 +64,21 @@ let sourceSchema = Sury.$schema(s => ({
   eventType: s.m(Sury.string)
 }));
 
+let deliverySchema = Sury.union([
+  Sury.literal("Immediate"),
+  Sury.$schema(s => ({
+    TAG: "Digest",
+    windowSeconds: s.m(Sury.int)
+  }))
+]);
+
 let schema = Sury.$schema(s => ({
   id: s.m(Sury.string),
   version: s.m(Sury.string),
   source: s.m(sourceSchema),
   filter: s.m(predicateSchema),
   category: s.m(Sury.string),
+  delivery: s.m(deliverySchema),
   recipientPath: s.m(Sury.string),
   subjectType: s.m(Sury.string),
   subjectPath: s.m(Sury.string),
@@ -90,6 +99,10 @@ function reference(rule, subject) {
 
 function byId(rules, id) {
   return rules.find(rule => rule.id === id);
+}
+
+function isImmediate(rule) {
+  return rule.delivery === "Immediate";
 }
 
 function forEvent(rules, log, eventType) {
@@ -255,7 +268,8 @@ function compose(rule, payload, schema, locale) {
   }
 }
 
-function validate(rules, sample) {
+function validate(rules, digestRoutedOpt, sample) {
+  let digestRouted = digestRoutedOpt !== undefined ? digestRoutedOpt : false;
   return rules.flatMap(rule => {
     let problems = [];
     let note = message => {
@@ -293,6 +307,16 @@ function validate(rules, sample) {
     if (stringAt(sample, rule.subjectPath) === undefined) {
       note(`subjectPath "` + rule.subjectPath + `" resolves to nothing in the sample payload`);
     }
+    let match = rule.delivery;
+    if (typeof match === "object") {
+      let windowSeconds = match.windowSeconds;
+      if (!digestRouted) {
+        note("delivered as a digest, and nothing in this deployment gathers one");
+      }
+      if (windowSeconds <= 0) {
+        note(`a digest window of ` + windowSeconds.toString() + `s gathers nothing`);
+      }
+    }
     return problems;
   });
 }
@@ -303,11 +327,13 @@ export {
   predicateSchema,
   contentSchema,
   sourceSchema,
+  deliverySchema,
   schema,
   sourceId,
   referenceFor,
   reference,
   byId,
+  isImmediate,
   forEvent,
   compare,
   matches,
