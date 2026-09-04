@@ -10,10 +10,7 @@ import * as Stream from "effect/Stream";
 import * as Stdlib_Promise from "@rescript/runtime/lib/es6/Stdlib_Promise.js";
 import * as Deferred from "effect/Deferred";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
-
-function eventTapEnabled() {
-  return Stdlib_Option.isSome(process.env["REVENTLESS_EVENT_TAP"]);
-}
+import * as LocalEventTap$ReventlessLocal from "./LocalEventTap.res.mjs";
 
 let eventTapSeq = {
   contents: 0
@@ -25,6 +22,10 @@ function seedEventTapSeq(n) {
 
 function emitEventTap(topic, service, payload) {
   eventTapSeq.contents = eventTapSeq.contents + 1 | 0;
+  let toStdout = LocalEventTap$ReventlessLocal.stdoutEnabled(undefined);
+  if (!(toStdout || LocalEventTap$ReventlessLocal.hasReaders())) {
+    return;
+  }
   let line = Object.fromEntries([
     [
       "event",
@@ -51,7 +52,11 @@ function emitEventTap(topic, service, payload) {
       new Date().toISOString()
     ]
   ]);
-  console.log("@@RVLESS_EVT@@ " + JSON.stringify(line));
+  let tapLine = "@@RVLESS_EVT@@ " + JSON.stringify(line);
+  if (toStdout) {
+    console.log(tapLine);
+  }
+  LocalEventTap$ReventlessLocal.broadcast(tapLine);
 }
 
 function Impl(C) {
@@ -132,9 +137,7 @@ function Impl(C) {
     }), Queue.shutdown(queue))), queue => Stream.fromQueue(queue));
   };
   let publishEvent = async (topicName, service, meta, json) => {
-    if (Stdlib_Option.isSome(process.env["REVENTLESS_EVENT_TAP"])) {
-      emitEventTap(topicName, service, json);
-    }
+    emitEventTap(topicName, service, json);
     let hub = eventHubs.contents[topicName];
     if (hub === undefined) {
       return;
@@ -407,9 +410,7 @@ function Make($star) {
     }), Queue.shutdown(queue))), queue => Stream.fromQueue(queue));
   };
   let publishEvent = async (topicName, service, meta, json) => {
-    if (Stdlib_Option.isSome(process.env["REVENTLESS_EVENT_TAP"])) {
-      emitEventTap(topicName, service, json);
-    }
+    emitEventTap(topicName, service, json);
     let hub = eventHubs.contents[topicName];
     if (hub === undefined) {
       return;
@@ -682,9 +683,7 @@ function MakeSilent($star) {
     }), Queue.shutdown(queue))), queue => Stream.fromQueue(queue));
   };
   let publishEvent = async (topicName, service, meta, json) => {
-    if (Stdlib_Option.isSome(process.env["REVENTLESS_EVENT_TAP"])) {
-      emitEventTap(topicName, service, json);
-    }
+    emitEventTap(topicName, service, json);
     let hub = eventHubs.contents[topicName];
     if (hub === undefined) {
       return;
@@ -958,9 +957,7 @@ function MakeBounded(C) {
     }), Queue.shutdown(queue))), queue => Stream.fromQueue(queue));
   };
   let publishEvent = async (topicName, service, meta, json) => {
-    if (Stdlib_Option.isSome(process.env["REVENTLESS_EVENT_TAP"])) {
-      emitEventTap(topicName, service, json);
-    }
+    emitEventTap(topicName, service, json);
     let hub = eventHubs.contents[topicName];
     if (hub === undefined) {
       return;
@@ -1160,7 +1157,6 @@ function MakeBounded(C) {
 }
 
 export {
-  eventTapEnabled,
   eventTapSeq,
   seedEventTapSeq,
   emitEventTap,

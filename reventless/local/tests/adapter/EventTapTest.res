@@ -1,8 +1,7 @@
-// Tests for the opt-in NDJSON domain-event tap (features plan Phase 9 — the VS
-// Code local platform runner). The tap lives in LocalBus.publishEvent: when
-// REVENTLESS_EVENT_TAP is set it emits one sentinel-prefixed JSON line per
-// published event to stdout (console.log), with the event's real topic name and
-// payload. Off by default so normal runs stay quiet.
+// The tap's stdout sink, which is the opt-in half: REVENTLESS_EVENT_TAP puts one
+// sentinel-prefixed JSON line per published event on stdout, and stays off by
+// default so normal runs are quiet. The socket sink is default-on and covered by
+// LocalEventTapTest.
 
 open JestGlobals
 
@@ -84,8 +83,19 @@ describe("LocalBus event tap (Phase 9)", () => {
     expect(obj->Dict.get("topic")->Option.flatMap(JSON.Decode.string))->toEqual(
       Some("CatalogEventTopic"),
     )
-    expect(obj->Dict.get("seq")->Option.flatMap(JSON.Decode.float))->toEqual(Some(1.0))
     expect(obj->Dict.get("payload")->Option.isSome)->toBe(true)
+
+    // Consecutive, not absolute: `seq` is the event's ordinal in the store (it is
+    // seeded from the persisted count at startup and counts every publish, tapped
+    // or not), so a reader that connects late still sees the real event number.
+    // The counter is module-level, so an absolute assertion here would depend on
+    // what the rest of the file published first.
+    let seqOf = line => {
+      let j = line->String.slice(~start=sentinel->String.length, ~end=line->String.length)
+      j->JSON.parseOrThrow->JSON.Decode.object->Option.getOrThrow->Dict.get("seq")
+      ->Option.flatMap(JSON.Decode.float)->Option.getOr(0.)
+    }
+    expect(seqOf(lines->Array.getUnsafe(1)) -. seqOf(first))->toEqual(1.)
   })
 
   testPromise("tap emits even when the topic has no subscribers", async () => {

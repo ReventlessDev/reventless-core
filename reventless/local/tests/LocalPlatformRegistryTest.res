@@ -141,3 +141,64 @@ describe("LocalSeedTarget.storePath", () => {
     )->toEqual(true)
   })
 })
+
+describe("LocalPlatformRegistry.tapPort", () => {
+  // Optional on purpose: `list` DELETES an entry it cannot decode, so a required
+  // field would make every platform from an older build vanish from the seed
+  // tools rather than fail loudly.
+  testSync("reads an entry written before the field existed", () => {
+    let cwd = tempRoot()
+    let dir = LocalPlatformRegistry.runningDir(~cwd, ())
+    NodeFs.mkdirSync(dir, {recursive: true})
+    let path = NodePath.join([dir, "4000.json"])
+    NodeFs.writeFileSync(
+      path,
+      `{"app":"old","port":4000,"pid":${NodeProcess.pid->Int.toString},"endpoint":"http://localhost:4000/graphql","loginEndpoint":"http://localhost:4000/__inmemory/login","store":{"kind":"memory"},"startedAt":"2026-08-14T00:00:00.000Z"}`,
+    )
+
+    switch LocalPlatformRegistry.list(~cwd, ())->Array.get(0) {
+    | Some(entry) => expect(entry.tapPort)->toEqual(None)
+    | None => fail("an entry without tapPort must still be listed")
+    }
+    expect(NodeFs.existsSync(path))->toEqual(true)
+  })
+
+  // The socket binds asynchronously, so the entry is published first and the port
+  // filled in on the listen callback — which is what keeps it from ever naming a
+  // port that is not listening.
+  testSync("fills the port in on an entry already written", () => {
+    let cwd = tempRoot()
+    let _ = writeAt(~cwd, ~port=4000, ~store=memoryStore)
+    expect(LocalPlatformRegistry.list(~cwd, ())->Array.map(e => e.tapPort))->toEqual([None])
+
+    LocalPlatformRegistry.publishTapPort(~port=4000, ~tapPort=58909, ~cwd)
+
+    switch LocalPlatformRegistry.list(~cwd, ())->Array.get(0) {
+    | Some(entry) =>
+      expect(entry.tapPort)->toEqual(Some(58909))
+      // The rest of the entry survives the rewrite — a reader still finds the
+      // endpoint and store it came for.
+      expect(entry.endpoint)->toEqual("http://localhost:4000/graphql")
+      expect(entry.store.kind)->toEqual("memory")
+    | None => fail("the updated entry must still be listed")
+    }
+  })
+
+  testSync("ignores a platform that never published an entry", () =>
+    LocalPlatformRegistry.publishTapPort(~port=4000, ~tapPort=1, ~cwd=tempRoot())
+  )
+
+  testSync("round-trips the port a platform serving a tap publishes", () => {
+    let cwd = tempRoot()
+    let _ = LocalPlatformRegistry.write(
+      ~port=4000,
+      ~endpoint="http://localhost:4000/graphql",
+      ~loginEndpoint="http://localhost:4000/__inmemory/login",
+      ~store=memoryStore,
+      ~tapPort=4100,
+      ~cwd,
+    )
+
+    expect(LocalPlatformRegistry.list(~cwd, ())->Array.map(e => e.tapPort))->toEqual([Some(4100)])
+  })
+})

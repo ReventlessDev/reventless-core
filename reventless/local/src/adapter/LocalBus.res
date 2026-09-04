@@ -51,34 +51,39 @@ type queuedEvent = {
 // it is one of three implementations of a shared wire format and is covered by
 // its own parity test, so it stays out of the bus.
 
-// Opt-in NDJSON domain-event tap for the VS Code local platform runner (features
-// plan Phase 9). Enabled when REVENTLESS_EVENT_TAP is set; off by default so normal
-// runs stay quiet. Emitted from publishEvent so every event is captured with its
-// real topic name (the EventTopic resource name consumers subscribe to) — no need
-// to guess topic names from EventLog registry keys. Each line is sentinel-prefixed
-// so the runner's line parser can pick it out of the platform's ANSI log noise on
-// stdout. The emit is a plain Console.log, so it never perturbs publishEvent's
-// subscriber-countdown delivery semantics.
-// Read per publish (not once at import) so the runner can toggle it live and so
-// hermetic tests can flip it between cases. The cost is one dict lookup per event.
-let eventTapEnabled = () => NodeProcess.env->Dict.get("REVENTLESS_EVENT_TAP")->Option.isSome
+// NDJSON domain-event tap, emitted from publishEvent so each line carries the real
+// topic name, sentinel-prefixed so a parser can pick it out of the log noise.
+//
+// Two sinks with different costs, so different defaults: stdout is opt-in via
+// REVENTLESS_EVENT_TAP (a line per event would drown `pnpm run serve`), the socket
+// is on by default (see LocalEventTap). Read per publish, not at import, so it can
+// be toggled live.
 let eventTapSeq = ref(0)
-// Seed the in-memory tap counter from a persistent store's existing event count
-// so the timeline's #N continues across process restarts / app switches instead
-// of restarting at 1. Called once at platform startup for the sqlite backend.
+// Continues the timeline's #N across restarts for a persistent store.
 let seedEventTapSeq = (n: int) => eventTapSeq := n
 let emitEventTap = (~topic: string, ~service: string, ~payload: JSON.t) => {
+  // Counted even when nothing is listening, so the sequence a reader that connects
+  // later sees is the event's ordinal rather than the ordinal of its own arrival.
   eventTapSeq := eventTapSeq.contents + 1
-  let line =
-    Dict.fromArray([
-      ("event", JSON.Encode.string("domainEvent")),
-      ("seq", JSON.Encode.int(eventTapSeq.contents)),
-      ("topic", JSON.Encode.string(topic)),
-      ("service", JSON.Encode.string(service)),
-      ("payload", payload),
-      ("ts", JSON.Encode.string(Date.make()->Date.toISOString)),
-    ])->JSON.Encode.object
-  Console.log("@@RVLESS_EVT@@ " ++ line->JSON.stringify)
+  let toStdout = LocalEventTap.stdoutEnabled()
+  // The line is built only for somebody: serialising every event for no reader is
+  // pure cost on the publish path.
+  if toStdout || LocalEventTap.hasReaders() {
+    let line =
+      Dict.fromArray([
+        ("event", JSON.Encode.string("domainEvent")),
+        ("seq", JSON.Encode.int(eventTapSeq.contents)),
+        ("topic", JSON.Encode.string(topic)),
+        ("service", JSON.Encode.string(service)),
+        ("payload", payload),
+        ("ts", JSON.Encode.string(Date.make()->Date.toISOString)),
+      ])->JSON.Encode.object
+    let tapLine = "@@RVLESS_EVT@@ " ++ line->JSON.stringify
+    if toStdout {
+      Console.log(tapLine)
+    }
+    LocalEventTap.broadcast(tapLine)
+  }
 }
 
 module type T = {
@@ -327,9 +332,7 @@ module Impl = (C: BusConfig): T => {
   }
 
   let publishEvent = async (topicName, service, meta, json) => {
-    if eventTapEnabled() {
-      emitEventTap(~topic=topicName, ~service, ~payload=json)
-    }
+    emitEventTap(~topic=topicName, ~service, ~payload=json)
     switch eventHubs.contents->Dict.get(topicName) {
     | None => ()
     | Some(hub) =>

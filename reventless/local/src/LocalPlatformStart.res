@@ -1,7 +1,7 @@
 // What a starter asks the registry before it starts a local platform: whether a
 // reset would wipe a store something is serving, and whether to start at all.
 // Scoped to <cwd>/.reventless/running/, so another app's store file is not
-// covered. See docs/plans/one-local-platform-one-store.md.
+// covered. See docs/plans/done/one-local-platform-one-store.md.
 
 // Naming a port IS the statement that this platform is meant to coexist — the
 // escape hatch the runner and the e2e suites already take.

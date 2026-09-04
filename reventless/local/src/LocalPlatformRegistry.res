@@ -1,38 +1,14 @@
-// Where the local platforms running on this machine say who they are.
-//
-// A platform's store is otherwise invisible from outside its own process, so
-// every tool that wants to act on "the" store — `seed`, `seed:reset`, a `sqlite3`
-// poke — has to guess from its own environment. The guess is right exactly while
-// there is one platform and wrong exactly when there are two, which is the case
-// the tools exist for: a hand-started `pnpm run serve` on `local.db` beside the
-// VS Code runner's child on `runner.db`, same app, same directory. Both then
-// report success against different databases — a reset that empties an unserved
-// store, and a seed that refuses because the served one is full.
-//
-// So a platform publishes itself instead: one JSON entry per run, next to the
-// store it opened, removed on the way out. `LocalSeedTarget` turns that into the
-// answer to "which platform do you mean".
-//
-// ── Why one file per port ──────────────────────────────────────────────────
-//
-// The pair that broke is two platforms of the SAME app in the SAME package
-// directory, which is precisely what a single `platform.json` cannot represent.
-// The domain port is what already distinguishes them (`REVENTLESS_DOMAIN_PORT`,
-// added so the runner could start one child per app without colliding), so it
-// names the file.
-//
-// ── Why the path is absolute ───────────────────────────────────────────────
-//
-// `./.reventless/local.db` names a different file in every app. Relative to the
-// writer's cwd it is unambiguous and outside it means nothing, so the entry
-// carries the path `BackendState` resolved, not the env string it came from.
+// Where the local platforms running on this machine say who they are: one JSON
+// entry per run under `<cwd>/.reventless/running/<domainPort>.json`, removed on
+// exit. Keyed by domain port because the pair that broke is two platforms of the
+// SAME app in one directory. Paths are absolute — `./.reventless/local.db` names
+// a different file in every app. `LocalSeedTarget` turns this into the answer to
+// "which platform do you mean".
 
 @schema
 type store = {
-  // "sqlite" | "memory" | "postgres" — what a reader can DO with this platform's
-  // store, not which module implements it. A `:memory:` SQLite file reports
-  // "memory": it has nothing on disk to open, which is the only distinction a
-  // tool acting from outside can act on.
+  // What a reader can DO with the store, not which module implements it —
+  // "sqlite" | "memory" | "postgres". A `:memory:` SQLite file reports "memory".
   kind: string,
   // Some only for a store this machine can open by name.
   path: option<string>,
@@ -47,20 +23,21 @@ type entry = {
   loginEndpoint: string,
   store: store,
   startedAt: string,
+  // Where the NDJSON event tap is served, when it is. Must stay optional: `list`
+  // DELETES an entry it cannot decode, so requiring it would silently hide every
+  // platform from an older build. Absent ⇒ stdout only.
+  tapPort?: int,
 }
 
-// `~cwd` is the directory the platform was started from, which is where its
-// `.reventless/` already lives. Threaded rather than read at each use so the
-// tests can exercise a registry without moving the whole process.
+// Threaded rather than read at each use, so tests need not move the process.
 let runningDir = (~cwd=NodeProcess.cwd(), ()): string =>
   NodePath.join([cwd, ".reventless", "running"])
 
 let entryPath = (~port: int, ~cwd=NodeProcess.cwd()): string =>
   NodePath.join([runningDir(~cwd, ()), `${port->Int.toString}.json`])
 
-// The package this platform was started from, for the prompt line. Two platforms
-// of one app are told apart by port; the name is there for the case where they
-// are different apps and the port alone reads as an arbitrary number.
+// The package name, for the prompt line — port alone reads as an arbitrary
+// number when the platforms are different apps.
 let appName = (~cwd=NodeProcess.cwd(), ()): string => {
   let manifest = NodePath.join([cwd, "package.json"])
   let fromManifest = if NodeFs.existsSync(manifest) {
@@ -85,11 +62,8 @@ let removeQuietly = (path: string): unit =>
   | _ => ()
   }
 
-/** Whether a process is still there. Signal `0` performs no signalling — it only
-    runs the permission and existence checks and throws when either fails.
-
-    Liveness by pid rather than by probing the endpoint keeps this synchronous,
-    and prunes a wedged platform that holds its port but would never answer. */
+/** Signal `0` signals nothing — it runs the existence/permission checks and
+    throws when either fails. By pid, so a wedged platform is pruned too. */
 let alive = (pid: int): bool =>
   try {
     NodeProcess.kill(pid, 0)
@@ -103,12 +77,8 @@ let readEntry = (path: string): option<entry> =>
   | _ => None
   }
 
-/** Every platform currently running in this directory, oldest port first.
-
-    Removal on exit is best-effort — a `kill -9` leaves the entry behind — so
-    staleness is settled here, on read: an entry whose process is gone is deleted
-    rather than reported. A reader that trusted the file would offer a platform
-    nothing is serving, which is the failure this module exists to remove. */
+/** Every platform running here, lowest port first. Removal on exit is
+    best-effort (`kill -9`), so a dead entry is deleted here, on read. */
 let list = (~cwd=NodeProcess.cwd(), ()): array<entry> => {
   let dir = runningDir(~cwd, ())
   if !NodeFs.existsSync(dir) {
@@ -132,14 +102,14 @@ let list = (~cwd=NodeProcess.cwd(), ()): array<entry> => {
   }
 }
 
-/** Writes one entry and hands back the path it wrote, without touching the
-    process. Split from {!register} so a test can populate a registry without
-    installing exit handlers in the test runner. */
+/** Writes one entry and returns its path. Split from {!register} so a test can
+    populate a registry without installing exit handlers in the runner. */
 let write = (
   ~port: int,
   ~endpoint: string,
   ~loginEndpoint: string,
   ~store: store,
+  ~tapPort: option<int>=?,
   ~pid: int=NodeProcess.pid,
   ~cwd: string=NodeProcess.cwd(),
 ): string => {
@@ -152,6 +122,7 @@ let write = (
     loginEndpoint,
     store,
     startedAt: Date.make()->Date.toISOString,
+    ?tapPort,
   }
   try {
     NodeFs.mkdirSync(runningDir(~cwd, ()), {recursive: true})
@@ -160,23 +131,43 @@ let write = (
       entry->Reventless.Util_Sury.toJson(entrySchema)->JSON.stringify(~space=2),
     )
   } catch {
-  // A platform that cannot announce itself must still serve. The tools fall back
-  // to their endpoint default, which is what they did before this existed.
+  // A platform that cannot announce itself must still serve.
   | _ => ()
   }
   path
 }
 
-/** Publishes this process, and arranges for it to stop being published.
+/** Adds the tap port to an entry already written.
 
-    Both shutdown paths are covered because they are not the same event: `exit`
-    fires with the process already committed to leaving and may only do
-    synchronous work, while `SIGINT`/`SIGTERM` fire before that decision — and
-    registering a signal handler at all is what suppresses Node's default exit,
-    so each one has to leave explicitly (128 + signal number, as a shell reports
-    it). */
-let register = (~port: int, ~endpoint: string, ~loginEndpoint: string, ~store: store): unit => {
-  let path = write(~port, ~endpoint, ~loginEndpoint, ~store)
+    Separate from {!write} because the socket binds asynchronously: the entry is
+    published as soon as the servers are up, and this fills in the port once
+    `listen` calls back. So the entry only ever names a port that is genuinely
+    listening. A no-op when there is no entry to update. */
+let publishTapPort = (~port: int, ~tapPort: int, ~cwd=NodeProcess.cwd()): unit => {
+  let path = entryPath(~port, ~cwd)
+  switch readEntry(path) {
+  | None => ()
+  | Some(entry) =>
+    try NodeFs.writeFileSync(
+      path,
+      {...entry, tapPort}->Reventless.Util_Sury.toJson(entrySchema)->JSON.stringify(~space=2),
+    ) catch {
+    | _ => ()
+    }
+  }
+}
+
+/** Publishes this process, and unpublishes it on the way out. Both paths are
+    needed: `exit` is sync-only, and registering a signal handler suppresses
+    Node's default exit, so each signal must leave explicitly. */
+let register = (
+  ~port: int,
+  ~endpoint: string,
+  ~loginEndpoint: string,
+  ~store: store,
+  ~tapPort: option<int>=?,
+): unit => {
+  let path = write(~port, ~endpoint, ~loginEndpoint, ~store, ~tapPort?)
   NodeProcess.onExit(_ => removeQuietly(path))
   NodeProcess.onSignal(#SIGINT, () => {
     removeQuietly(path)

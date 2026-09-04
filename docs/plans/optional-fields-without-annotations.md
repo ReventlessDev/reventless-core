@@ -155,13 +155,15 @@ The blast radius is narrow: only stores carrying `pluginDefinition` /
    in one `.reventless/` share `objects/` — and `?reset` on either wipes it for
    both. Since an upload key carries a random UUID segment
    (`uploads/Catalog/productImages/<uuid>/prd-013.svg`), a reseed does not
-   reproduce the keys the other store's rows point at. So a directory holding two
-   stores can only have **one** of them reseeded with working image references;
-   the other has to be cleared, not reseeded. `runner.db` is the one to give up:
-   it belongs to the VS Code runner (tooling outside this repo), which recreates
-   it empty and re-registers on its next start. Delete it directly rather than
-   `?reset`-ing it — the orphaned-inode hazard applies only while a process holds
-   the file, and deleting the file alone leaves the shared object store intact.
+   reproduce the keys the other store's rows point at, so only **one** of two
+   stores in a directory can be reseeded with working image references.
+
+   This is why that migration cost an hour instead of a command. It no longer
+   applies: the runner and `pnpm run serve` now share `./.reventless/local.db`,
+   so a directory holds one store — see
+   [`one-local-platform-one-store.md`](done/one-local-platform-one-store.md). The
+   mechanism above is still true for anyone who deliberately puts two db files in
+   one directory.
 
 Domain plugins' own `pluginStructures` / `pluginApiFragments` prefixes survive a
 platform-scoped wipe, since object stores are qualified `{plugin}.{store}`. That is
@@ -204,6 +206,9 @@ Step 2's local arm is done for this working copy:
 - `dcb/.reventless/runner.db` — deleted; it held three stray DCB events from June
   and no plugin registrations. The app has no `seed` script, so there is nothing
   to reseed. Booted once to create `local.db` fresh: both plugins register clean.
+
+Neither `runner.db` comes back: the runner now opens `./.reventless/local.db` too,
+so a fresh working copy has one store per app to keep migrated.
 
 ## Step 3 — release and downstream consumers
 

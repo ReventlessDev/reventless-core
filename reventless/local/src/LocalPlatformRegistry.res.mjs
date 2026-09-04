@@ -21,7 +21,8 @@ let entrySchema = Sury.$schema(s => ({
   endpoint: s.m(Sury.string),
   loginEndpoint: s.m(Sury.string),
   store: s.m(storeSchema),
-  startedAt: s.m(Sury.string)
+  startedAt: s.m(Sury.string),
+  tapPort: s.m(Sury.$option(Sury.int))
 }));
 
 function runningDir(cwdOpt, param) {
@@ -108,7 +109,7 @@ function list(cwdOpt, param) {
   }).toSorted((a, b) => Primitive_int.compare(a.port, b.port));
 }
 
-function write(port, endpoint, loginEndpoint, store, pidOpt, cwdOpt) {
+function write(port, endpoint, loginEndpoint, store, tapPort, pidOpt, cwdOpt) {
   let pid = pidOpt !== undefined ? pidOpt : process.pid;
   let cwd = cwdOpt !== undefined ? cwdOpt : process.cwd();
   let path = entryPath(port, cwd);
@@ -121,7 +122,8 @@ function write(port, endpoint, loginEndpoint, store, pidOpt, cwdOpt) {
     endpoint: endpoint,
     loginEndpoint: loginEndpoint,
     store: store,
-    startedAt: entry_startedAt
+    startedAt: entry_startedAt,
+    tapPort: tapPort
   };
   try {
     Nodefs.mkdirSync(runningDir(cwd, undefined), {
@@ -134,8 +136,24 @@ function write(port, endpoint, loginEndpoint, store, pidOpt, cwdOpt) {
   return path;
 }
 
-function register(port, endpoint, loginEndpoint, store) {
-  let path = write(port, endpoint, loginEndpoint, store, undefined, undefined);
+function publishTapPort(port, tapPort, cwdOpt) {
+  let cwd = cwdOpt !== undefined ? cwdOpt : process.cwd();
+  let path = entryPath(port, cwd);
+  let entry = readEntry(path);
+  if (entry === undefined) {
+    return;
+  }
+  try {
+    let newrecord = {...entry};
+    Nodefs.writeFileSync(path, JSON.stringify(Util_Sury$Reventless.toJson((newrecord.tapPort = tapPort, newrecord), entrySchema), undefined, 2), "utf8");
+    return;
+  } catch (exn) {
+    return;
+  }
+}
+
+function register(port, endpoint, loginEndpoint, store, tapPort) {
+  let path = write(port, endpoint, loginEndpoint, store, tapPort, undefined, undefined);
   process.on("exit", param => removeQuietly(path));
   process.on("SIGINT", () => {
     removeQuietly(path);
@@ -158,6 +176,7 @@ export {
   readEntry,
   list,
   write,
+  publishTapPort,
   register,
 }
 /* storeSchema Not a pure module */

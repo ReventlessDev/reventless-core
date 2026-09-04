@@ -1320,6 +1320,12 @@ module MakeWithConfig = (
       ~loginEndpoint=`http://localhost:${domainPort->Int.toString}/__inmemory/login`,
       ~store={kind, path},
     )
+    // After the register, and it fills the tap port in once the socket is bound:
+    // the port is ephemeral by default, so it is not known until `listen` calls
+    // back. The entry therefore never names a port that is not listening.
+    LocalEventTap.start(~onBound=tapPort =>
+      LocalPlatformRegistry.publishTapPort(~port=domainPort, ~tapPort)
+    , ())
     // Fire onPlatformDeployed after all servers are started so late-deployed
     // plugins (e.g. PlatformInspector) have their handler refs populated.
     ReventlessCore.Plugin_Helpers.firePlatformDeployedHook({

@@ -108,6 +108,52 @@ pointing at *another* app's file is not caught.
 statement that this platform is meant to coexist, which is how the e2e suites and
 the VS Code runner start several in one directory.
 
+### Reading the event stream from outside
+
+Every local platform serves its domain events as NDJSON — one `@@RVLESS_EVT@@`
+line per published event — on a **loopback socket, by default**, and publishes the
+port it bound on its registry entry:
+
+```json
+{ "port": 4000, "endpoint": "…", "store": {…}, "tapPort": 58954 }
+```
+
+So a tool that did not start the platform can still read its live events: read the
+entry under `.reventless/running/`, connect to `tapPort`, split on newlines. That
+is how the VS Code runner shows a live timeline for a platform *you* started with
+`pnpm run serve`.
+
+There is nothing to switch on. The port is ephemeral — the OS picks it and the
+entry names the one that actually bound — because the registry is already how a
+reader finds this platform, so the port never needed to be well-known.
+
+| `REVENTLESS_EVENT_TAP` | socket | stdout |
+|---|---|---|
+| *unset* (default) | ✅ ephemeral port | — |
+| `ndjson` (or any non-port value) | ✅ ephemeral port | ✅ a line per event |
+| `47411` (1024–65535) | ✅ that exact port | ✅ a line per event |
+| `off` (or `false` / `none`) | — | — |
+
+**The stdout half stays opt-in** — a JSON line per event would drown `pnpm run
+serve`. The socket half is on by default because a listener nobody connects to
+costs nothing visible. Set an explicit port only when something needs a fixed one;
+`off` when you want no listener at all.
+
+Details worth knowing:
+
+- **Loopback only.** The socket binds `127.0.0.1`, never a routable interface.
+- **The line format is identical** on both sinks, so a consumer that parses stdout
+  reuses its parser and only changes where the bytes come from.
+- **`seq` is the event's ordinal in the store**, seeded at startup from the rows
+  already persisted — so a reader that connects late sees real event numbers, not
+  a count of its own arrivals.
+- **`tapPort` is optional and absent means no socket** — a platform from an older
+  build, or one started with `off`, is still listed; readers must cope.
+- **Diagnostic, never load-bearing.** The listener is `unref`ed so it cannot keep
+  the process alive, a reader whose socket dies is dropped without disturbing the
+  others, and a port that fails to bind is a warning, not a failed boot. Connect
+  defensively: a platform can exit between publishing its entry and your connect.
+
 ### Uploaded and offloaded objects
 
 The object store follows the same choice, so bytes never outlive — or fall short of — the events that reference them. Under SQLite it writes beside the database, in the directory the database file sits in:

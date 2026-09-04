@@ -35,6 +35,7 @@ import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/sr
 import * as SqliteDriver$ReventlessLocal from "./adapter/SqliteDriver.res.mjs";
 import * as Task_Builder$ReventlessLocal from "./components/Task_Builder.res.mjs";
 import * as BakedManifest$ReventlessLocal from "./BakedManifest.res.mjs";
+import * as LocalEventTap$ReventlessLocal from "./adapter/LocalEventTap.res.mjs";
 import * as Platform_Admin$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin.res.mjs";
 import * as PluginBehavior$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginBehavior.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
@@ -1119,7 +1120,8 @@ function MakeWithConfig(Config) {
     LocalPlatformRegistry$ReventlessLocal.register(domainPort, `http://localhost:` + domainPort.toString() + `/graphql`, `http://localhost:` + domainPort.toString() + `/__inmemory/login`, {
       kind: match[0],
       path: match[1]
-    });
+    }, undefined);
+    LocalEventTap$ReventlessLocal.start(undefined, tapPort => LocalPlatformRegistry$ReventlessLocal.publishTapPort(domainPort, tapPort, undefined), undefined);
     Plugin_Helpers$ReventlessCore.firePlatformDeployedHook({
       name: "local",
       environment: Pulumi.getStack(),
@@ -2858,7 +2860,8 @@ function Make($star) {
     LocalPlatformRegistry$ReventlessLocal.register(domainPort, `http://localhost:` + domainPort.toString() + `/graphql`, `http://localhost:` + domainPort.toString() + `/__inmemory/login`, {
       kind: match[0],
       path: match[1]
-    });
+    }, undefined);
+    LocalEventTap$ReventlessLocal.start(undefined, tapPort => LocalPlatformRegistry$ReventlessLocal.publishTapPort(domainPort, tapPort, undefined), undefined);
     Plugin_Helpers$ReventlessCore.firePlatformDeployedHook({
       name: "local",
       environment: Pulumi.getStack(),

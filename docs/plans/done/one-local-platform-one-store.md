@@ -1,9 +1,10 @@
 # Plan: one local platform per app, one store
 
-**Status.** Steps 1–2 DONE 2026-09-04 (`LocalPlatformStart`, wired into the
-functor's reset arm and into all three examples' `Main.res`). Step 3 is the
-extension's, and is now unblocked. Step 4 not started — still worth scoping on
-its own. Written 2026-09-04.
+**Status.** DONE 2026-09-04 (written the same day). Steps 1–2 landed as
+`LocalPlatformStart`; step 3 landed in the extension; step 4 landed as
+`LocalEventTap` plus a `tapPort` on the registry entry. The companion plan's
+remaining half — the runner consuming that port instead of the child's stdout —
+is tracked there, not here.
 
 **Goal.** At most one local platform running per app directory, serving one store,
 started by whoever gets there first — `pnpm run serve` or the VS Code runner — and
@@ -125,7 +126,56 @@ the developer's seeded store.
 After it lands, delete the `runner.db` handling from step 2 of the optional-fields
 plan's local arm and from `docs/guides/local-dev.md`'s worked example.
 
-## Step 4 — the event tap over a socket, not only stdout — NOT STARTED
+## Step 4 — the event tap over a socket, not only stdout — DONE
+
+Landed as `LocalEventTap` (loopback TCP, opt-in), a `tapPort` on the registry
+entry, and `NodeNet` bindings in `rescript-node`.
+
+**Decisions the sketch left open.**
+
+- **Socket, not SSE on the domain server.** SSE would have made the consumer speak
+  a second protocol to reach lines it already parses; a raw socket keeps
+  `PlatformRunner.classifyLine` untouched, which was the point of not changing the
+  line format.
+- **`tapPort` is optional, and had to be.** `readEntry` decodes with sury and
+  `list` *deletes* an entry it cannot read — a required field would have made
+  every platform from an older build vanish from `seed` and `seed:reset` silently,
+  rather than fail loudly.
+- **A port means 1024–65535.** The runner has passed `REVENTLESS_EVENT_TAP=ndjson`
+  since the tap existed, and someone writing `=1` means "on". Restricting the
+  range keeps both bare flags and makes the widening backward compatible.
+
+**Corrected the same day, and the correction is the more important half.** The
+first cut made the socket opt-in behind an explicit port, which gated *two*
+things on one variable: the stdout sink, whose cost is visible (a JSON line per
+event drowns `pnpm run serve`), and the socket, whose cost is not (a listener
+nobody connects to). Only the first has a reason to be opt-in — and gating both
+meant the common case, a plain `pnpm run serve`, stayed dark, which is the exact
+situation this step exists to fix. A feature that needs an env var remembered is
+a feature that is not used.
+
+So the socket now **defaults on, on an ephemeral port**, with `off` to disable:
+
+- **Ephemeral, not derived or fixed.** The registry is already how a reader finds
+  this platform, so the port never needed to be well-known — which is what let it
+  stop being configured. It also cannot collide with a parallel platform or with
+  an unrelated service.
+- **It removed a flaw rather than adding one.** The first cut reported the port
+  when the bind was *initiated*, since `listen` is async and the entry was written
+  synchronously right after — so a taken port would have been advertised as ours,
+  and a reader could have connected to somebody else's service. Now the entry is
+  published first and `publishTapPort` fills the port in from the `listen`
+  callback, so an entry can only ever name a port that is genuinely listening.
+- **`seq` now counts every published event**, not only tapped ones. It is seeded
+  at startup from the persisted row count, so it always meant "the event's ordinal
+  in this store"; with the sinks independent, counting all publishes is the only
+  reading that keeps a late-connecting reader's `#N` honest.
+- **The line is built only when somebody wants it** — stdout on, or a reader
+  connected — so the default-on socket costs nothing on the publish path while
+  nobody is attached.
+- **Diagnostic, never load-bearing.** The listener is `unref`ed, a reader whose
+  write throws is dropped without disturbing the others, and a failed bind is a
+  warning rather than a failed boot.
 
 The blocker to the runner *attaching* rather than refusing. Its timeline and
 inspector are fed by the child's stdout: `LocalBus.publishEvent` emits
@@ -144,6 +194,17 @@ This is the only step that is genuinely new machinery rather than a check, and i
 is worth scoping on its own before committing to it — steps 1–3 stand without it,
 and leave the runner refusing-with-a-reason instead of attaching, which is already
 better than killing the other process.
+
+**Verified live.** A platform started with `REVENTLESS_EVENT_TAP=47411` published
+`"tapPort": 47411` on its entry; a separate process read the entry, connected, and
+received `@@RVLESS_EVT@@` lines for `Catalog_AddCategory` / `Catalog_AddProduct`
+mutations driven through the GraphQL API — `#3 CatalogEventTopic`,
+`#4 CatalogEventTopic`, `#5 CatalogProductsExtPointEventTopic`. That is exactly
+the runner's attached case: a reader that spawned nothing, seeing live events.
+
+**What the tools side still needs:** `PlatformRunner` reads `tapPort` off the
+entry and connects instead of reading the child's stdout, falling back to today's
+dark timeline when the field is absent. `classifyLine` does not change.
 
 ## Verification
 
