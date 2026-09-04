@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.255 (2026-09-04)
+
+### Features
+
+* **api:** a view says when a second *Id field took its key away ([10b5a4e](https://github.com/ReventlessDev/reventless-core/commit/10b5a4e41b01cfd27146f7f596573af27e4937d9))
+* **plugin:** a slice publishes which topics it subscribes to ([c689695](https://github.com/ReventlessDev/reventless-core/commit/c6896957ecb636204678222ac5a26b30870439cb))
+* **spec,traits:** an image carries the text that goes with it, and a set's first member is its primary ([e4e5845](https://github.com/ReventlessDev/reventless-core/commit/e4e58458aee7b3db5564727d358a3a9767362ca4))
+* **spec:** a field can say it selects one of the values its row already holds ([2ae50c3](https://github.com/ReventlessDev/reventless-core/commit/2ae50c34deee48508a9f1f39e3eef6a5d2f5df00))
+* **spec:** a field can say its value must not be rendered into a message ([3183f53](https://github.com/ReventlessDev/reventless-core/commit/3183f53a0ae667f794bbd1a3d77acf362dfa8e57))
+
+
 # 3.0.0-alpha.254 (2026-09-02)
 
 * feat(aws)!: the messaging sender is configuration, and a stack can choose to only log ([23b8b4b](https://github.com/ReventlessDev/reventless-core/commit/23b8b4bfe9c70555de4d74266ca686cb427485ca))

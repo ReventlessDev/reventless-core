@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.186 (2026-09-04)
+
+### Bug Fixes
+
+* **deps:** follow the host UI to 3.0.0-alpha.94 ([7256832](https://github.com/ReventlessDev/reventless-core/commit/72568329413d4e53c4b37cb042a5453cc7857061))
+
+
 # 1.0.0-alpha.185 (2026-09-02)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-dcb-platform-aws

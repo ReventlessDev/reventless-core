@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.4 (2026-09-04)
+
+### Features
+
+* **spec,traits:** an image carries the text that goes with it, and a set's first member is its primary ([e4e5845](https://github.com/ReventlessDev/reventless-core/commit/e4e58458aee7b3db5564727d358a3a9767362ca4))
+* **trait-attachments:** a host can bound its set to one, and the primary carries its caption ([af5953b](https://github.com/ReventlessDev/reventless-core/commit/af5953b73000fc401295d2c78eac667c4c78bf40))
+
+
 # 1.0.0-alpha.3 (2026-09-02)
 
 ### Bug Fixes

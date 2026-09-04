@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.156 (2026-09-04)
+
+**Note:** Version bump only for package @reventlessdev/reventless-infra
+
+
+
+
+
 # 3.0.0-alpha.155 (2026-09-02)
 
 * feat(aws)!: the messaging sender is configuration, and a stack can choose to only log ([23b8b4b](https://github.com/ReventlessDev/reventless-core/commit/23b8b4bfe9c70555de4d74266ca686cb427485ca))

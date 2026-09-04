@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.81 (2026-09-04)
+
+### Features
+
+* **trait-attachments:** a host can bound its set to one, and the primary carries its caption ([af5953b](https://github.com/ReventlessDev/reventless-core/commit/af5953b73000fc401295d2c78eac667c4c78bf40))
+
+
 # 1.0.0-alpha.80 (2026-09-02)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-seed
