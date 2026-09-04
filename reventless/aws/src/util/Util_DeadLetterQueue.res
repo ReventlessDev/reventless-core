@@ -65,12 +65,32 @@ let lambdaRole = IAM.Role.makeWithDefaultPolicy(
 // target of its own, so it stays until retention expires) and keeps `Errors`
 // non-zero for as long as the condition lasts. Both are conventional alarm
 // subjects, and a monitoring backend attached through the `DeadLetterSink` seam
-// below now has something to attach to. Re-delivery re-logs the payload; on a
-// queue that is empty in normal operation, that repetition is the alert.
+// below now has something to attach to.
+//
+// What that costs is the redelivery: a failed batch returns to the queue and is
+// redelivered until retention expires, so a handler that logs the record on
+// every delivery writes it tens of thousands of times a day. Two poison messages
+// produced 1.26M invocations and 3.12 GB of logs over 14 days. The full record is
+// therefore written once — on the first delivery, which is the one carrying the
+// diagnostic — and every redelivery after it costs one identity line.
 let entryPointCode = `export const handler = async (event) => {
-  console.error("DEAD LETTER ITEM:", JSON.stringify(event));
+  const records = event?.Records ?? [];
+  for (const record of records) {
+    const attrs = record?.attributes ?? {};
+    const receiveCount = Number(attrs.ApproximateReceiveCount ?? 1);
+    const identity =
+      "messageId=" + (record?.messageId ?? "unknown") +
+      " source=" + (attrs.DeadLetterQueueSourceArn ?? record?.eventSourceARN ?? "unknown") +
+      " receiveCount=" + receiveCount +
+      " bodyBytes=" + (record?.body?.length ?? 0);
+    if (receiveCount <= 1) {
+      console.error("DEAD LETTER ITEM: " + identity, JSON.stringify(record));
+    } else {
+      console.error("DEAD LETTER REDELIVERY: " + identity);
+    }
+  }
   throw new Error(
-    "Dead-lettered " + (event?.Records?.length ?? 0) +
+    "Dead-lettered " + records.length +
     " message(s); see DEAD LETTER ITEM above. Failing so the messages are retained and Errors is non-zero."
   );
 };`

@@ -47,9 +47,23 @@ let opts = {
 let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name, Pulumi.output(AWS$ReventlessAws.Lambda.principal), AWS_Tags$ReventlessAws.make(name, "Plugin", "Identity", "Plugin", undefined, undefined, undefined, undefined), opts);
 
 let entryPointCode = `export const handler = async (event) => {
-  console.error("DEAD LETTER ITEM:", JSON.stringify(event));
+  const records = event?.Records ?? [];
+  for (const record of records) {
+    const attrs = record?.attributes ?? {};
+    const receiveCount = Number(attrs.ApproximateReceiveCount ?? 1);
+    const identity =
+      "messageId=" + (record?.messageId ?? "unknown") +
+      " source=" + (attrs.DeadLetterQueueSourceArn ?? record?.eventSourceARN ?? "unknown") +
+      " receiveCount=" + receiveCount +
+      " bodyBytes=" + (record?.body?.length ?? 0);
+    if (receiveCount <= 1) {
+      console.error("DEAD LETTER ITEM: " + identity, JSON.stringify(record));
+    } else {
+      console.error("DEAD LETTER REDELIVERY: " + identity);
+    }
+  }
   throw new Error(
-    "Dead-lettered " + (event?.Records?.length ?? 0) +
+    "Dead-lettered " + records.length +
     " message(s); see DEAD LETTER ITEM above. Failing so the messages are retained and Errors is non-zero."
   );
 };`;

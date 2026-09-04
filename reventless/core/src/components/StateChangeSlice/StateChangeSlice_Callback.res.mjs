@@ -164,7 +164,7 @@ function Make(Spec) {
         }), param => {
           let headPosition = param[1];
           let state = param[0];
-          return Effect.flatMap(EffectLogger$ReventlessCore.logDebug(comp, undefined, `deciding on state: ` + Stdlib_Option.getOr(JSON.stringify(state), "<unserializable>")), () => {
+          return Effect.flatMap(EffectLogger$ReventlessCore.logDebug(comp, undefined, `deciding: id=` + Stdlib_Option.getOr(entityId, "-") + ` head=` + Stdlib_Option.getOr(headPosition, "-") + ` cmd=` + LogFormat$ReventlessCore.cmdName(cmdJson)), () => {
             let newEvents = Behavior.decide(state, command$p.command);
             if (newEvents.TAG === "Ok") {
               let newEvents$1 = newEvents._0;

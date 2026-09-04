@@ -66,15 +66,25 @@ module Make = (
   // A domain rejection from Behavior.decide is recorded as `CmdRejected` (no state change,
   // surviving commands in the batch continue); a successful decide records `CmdOk(events)`
   // and advances state via `Behavior.evolve`.
-  let processCommand = (
+  //
+  // `~seq` is the replayed sequence number the batch decides from, carried in so
+  // the line below can name the state rather than serialise it.
+  let processCommand = (~seq: int) => (
     (state, outcomes): (Behavior.state, array<(string, cmdOutcome, Message.meta)>),
     topicItem: CommandTopic.topicItem<Message.command'<Spec.Id.t, Spec.command>>,
   ) => {
     let {reference, command: command'} = topicItem
     let meta = command'->updateMeta
+    let id = command'.id->Spec.Id.toString
+    // Identity, not content: the folded state grows with the entity's whole
+    // history, so serialising it here makes the line's size a function of how
+    // long the system has been in use. The state at decision time is a
+    // debugger's subject, not a log's.
+    let cmdName =
+      command'.command->Message.encode(Spec.commandSchema)->Message.variantNameOfJson->LogFormat.bold
     EffectLogger.logDebug(
       ~comp,
-      `deciding on state: ${state->JSON.stringifyAny->Option.getOr("<unserializable>")}`,
+      `deciding: id=${id} seq=${seq->Int.toString} cmd=${cmdName}`,
     )->Effect.runSync
     switch Behavior.decide(state, command'.command) {
     | Ok(generatedEvents) =>
@@ -89,7 +99,6 @@ module Make = (
         payloadDict->Dict.toArray->Array.length == 0
           ? ""
           : payloadDict->JSON.Encode.object->JSON.stringify
-      let id = command'.id->Spec.Id.toString
       EffectLogger.logError(
         ~comp,
         `decide rejected: ${errorCode} ${errorDetail} id=${id}`,
@@ -336,7 +345,7 @@ module Make = (
     readState
     ->Effect.flatMap(((initialState, sequenceNr)) => {
       let (finalState, outcomes) =
-        topicItemsForId->Array.reduce((initialState, []), processCommand)
+        topicItemsForId->Array.reduce((initialState, []), processCommand(~seq=sequenceNr))
 
       let eventsToAppend =
         outcomes

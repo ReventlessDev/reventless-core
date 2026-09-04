@@ -29,13 +29,15 @@ function Make(Spec) {
       Spec.Id.makeFromString(param[0]),
       param[1]
     ]));
-    let processCommand = (param, topicItem) => {
+    let processCommand = seq => ((param, topicItem) => {
       let reference = topicItem.reference;
       let command$p = topicItem.command;
       let outcomes = param[1];
       let state = param[0];
       let meta = Message$ReventlessCore.deriveMeta(command$p.meta, undefined);
-      Effect.runSync(EffectLogger$ReventlessCore.logDebug(comp, undefined, `deciding on state: ` + Stdlib_Option.getOr(JSON.stringify(state), "<unserializable>")));
+      let id = Spec.Id.toString(command$p.id);
+      let cmdName = LogFormat$ReventlessCore.bold(Message$ReventlessCore.variantNameOfJson(Message$ReventlessCore.encode(command$p.command, Spec.commandSchema)));
+      Effect.runSync(EffectLogger$ReventlessCore.logDebug(comp, undefined, `deciding: id=` + id + ` seq=` + seq.toString() + ` cmd=` + cmdName));
       let generatedEvents = Behavior.decide(state, command$p.command);
       if (generatedEvents.TAG === "Ok") {
         let generatedEvents$1 = generatedEvents._0;
@@ -57,7 +59,6 @@ function Make(Spec) {
       let match = Message$ReventlessCore.splitMessage(errorJson);
       let payloadDict = match[1];
       let errorDetail = Object.entries(payloadDict).length === 0 ? "" : JSON.stringify(payloadDict);
-      let id = Spec.Id.toString(command$p.id);
       Effect.runSync(EffectLogger$ReventlessCore.logError(comp, undefined, `decide rejected: ` + errorCode + ` ` + errorDetail + ` id=` + id));
       return [
         state,
@@ -71,7 +72,7 @@ function Make(Spec) {
             meta
           ]])
       ];
-    };
+    });
     let replayCache = Lru$ReventlessCore.make(100);
     let resetCache = () => Lru$ReventlessCore.clear(replayCache);
     let snapshotConfig = Behavior.snapshot;
@@ -249,7 +250,7 @@ function Make(Spec) {
         let match = Stdlib_Array.reduce(topicItemsForId, [
           initialState,
           []
-        ], processCommand);
+        ], processCommand(sequenceNr));
         let outcomes = match[1];
         let finalState = match[0];
         let eventsToAppend = outcomes.map(param => {

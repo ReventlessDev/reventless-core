@@ -313,9 +313,14 @@ module Make = (
         )
       })
       ->Effect.flatMap(((state, headPosition, _)) =>
+        // Identity, not content: the decision model folds the whole matched
+        // history, so serialising it here makes the line's size a function of
+        // how long the entity has been in use.
         EffectLogger.logDebug(
           ~comp,
-          `deciding on state: ${state->JSON.stringifyAny->Option.getOr("<unserializable>")}`,
+          `deciding: id=${entityId->Option.getOr("-")} head=${headPosition->Option.getOr(
+              "-",
+            )} cmd=${cmdJson->LogFormat.cmdName}`,
         )->Effect.flatMap(_ =>
           switch Behavior.decide(state, command'.command) {
           | Ok(newEvents) if newEvents->Array.length == 0 =>

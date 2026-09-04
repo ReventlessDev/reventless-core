@@ -1,8 +1,10 @@
 # Plan: a framework log line's size must not grow with the data it describes
 
 **Date:** 2026-09-04
-**Status:** Proposed — not started. Found by attributing a deployed alpha estate's
-CloudWatch bill to log groups and dividing by invocation count.
+**Status:** **Steps 1–4 implemented 2026-09-04, not yet deploy-verified.** Step 5 (bounding the
+redelivery itself) is open — it is infrastructure and needs a deploy, so it ships separately.
+Found by attributing a deployed alpha estate's CloudWatch bill to log groups and dividing by
+invocation count. Full build warning-free, 387 suites / 4169 tests green.
 **Repos:** `reventless-core` only.
 
 **Goal.** No log line the framework emits has a size that grows without bound. A line
@@ -150,15 +152,59 @@ No new work here; it is evidence for that plan, not a change to this one.
 
 ## Steps
 
-| # | Change | Effort |
-|---|--------|--------|
-| 1 | Fix B option 2 — guard the full-record dump on `ApproximateReceiveCount === 1` | ~2 lines |
-| 2 | Fix B option 1 — log identity fields instead of the record | small |
-| 3 | Fix A — replace both `deciding on state` lines with id/seq/command | small |
-| 4 | Audit `JSON.stringifyAny` in log positions across `reventless/*/src` | ~1h |
-| 5 | Fix B option 3 — bound redelivery via ESM retries or visibility timeout | infra, needs a deploy |
+| # | Change | Effort | State |
+|---|--------|--------|-------|
+| 1 | Fix B option 2 — guard the full-record dump on `ApproximateReceiveCount === 1` | ~2 lines | **done** |
+| 2 | Fix B option 1 — log identity fields instead of the record | small | **done** |
+| 3 | Fix A — replace both `deciding on state` lines with id/seq/command | small | **done** |
+| 4 | Audit `JSON.stringifyAny` in log positions across `reventless/*/src` | ~1h | **done** |
+| 5 | Fix B option 3 — bound redelivery via ESM retries or visibility timeout | infra, needs a deploy | open |
 
 Steps 1–3 are independent and each ships on its own.
+
+### What was built (steps 1–4)
+
+**Steps 1 + 2 shipped as one handler, not two passes.** Options 1 and 2 pull in opposite
+directions on the body — option 1 removes it entirely, option 2 keeps it on the first delivery —
+and option 2's own text resolves it: the first delivery carries the diagnostic, every redelivery
+after it carries one identity line. So
+[Util_DeadLetterQueue.res](../../reventless/aws/src/util/Util_DeadLetterQueue.res) now loops the
+records, and per record emits either `DEAD LETTER ITEM: <identity> <full record>` (when
+`ApproximateReceiveCount <= 1`) or `DEAD LETTER REDELIVERY: <identity>`, where identity is
+`messageId`, `DeadLetterQueueSourceArn` (falling back to `eventSourceARN`), `receiveCount` and the
+body's *length*. It still throws, so both alarm subjects are unchanged. Measured on the generated
+handler with two synthetic records: a redelivery line is ~110 bytes against ~2,500 before.
+
+The consequence worth stating: the payload still reaches CloudWatch once per message. That is the
+diagnostic the queue exists to preserve, but it is not nothing for anything personal in a body —
+step 5's retention half is what bounds how long it stays.
+
+**Step 3** replaces both lines with `deciding: id=… seq=… cmd=…`
+([Aggregate_Callback.res](../../reventless/core/src/components/Aggregate/Aggregate_Callback.res),
+[StateChangeSlice_Callback.res](../../reventless/core/src/components/StateChangeSlice/StateChangeSlice_Callback.res)).
+The aggregate's fold needed the sequence number carried in — `processCommand` takes `~seq` and is
+applied at the reduce — because the replayed seq is what makes the line say *which* state was
+decided against. The slice's equivalent of a sequence is the DCB head position, so it logs
+`id=… head=… cmd=…`. No opt-in flag was added for the full state: nothing asked for one, and a flag
+no one has needed is a second way to turn the defect back on.
+
+**Step 4 — the audit.** `JSON.stringifyAny` in a log position across `reventless/*/src` has seven
+hits; after step 3 the two unbounded ones are gone. Of the rest:
+
+- `QueryEngine_DynamoDb.res` (`queryByTableName` / `scanByTableName` params) — per-query, and the
+  params carry caller-supplied filter values. Now piped through `LogFormat.truncate`.
+- `Validation.res` `defaultErrorHandler` — serialised a whole `exn`. Now
+  `Util_Sury.exnMessage`, whose default fallback is the same `"unknown"` the site already used.
+- `Projection.res:134` — already truncated; the precedent the other two now follow.
+- `Message.log` — a generic `('a, string) => 'a` tap. Its three callers are FTP error paths, so
+  nothing unbounded reaches it today; left alone. Note it cannot use `LogFormat` (which depends on
+  `Message`), so bounding it would mean moving `truncate` down into `reventless-spec`.
+- `EffectLogger._messageToString` — the sink's own rendering of whatever it is handed. Deliberately
+  untouched: truncating there would silently cut lines a caller had already chosen to emit in full.
+
+The `~data=` sites (`Message.res:123`, `Util_QueryDb.res:10`, `Adapter.res:108`,
+`StateChangeSlice_Builder.res:25`) are out of scope — they are deploy-time or error-path, logged
+once rather than per invocation, so neither of this plan's two shapes applies.
 
 ## Verification
 

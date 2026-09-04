@@ -98,7 +98,11 @@ let queryByTableName = (
       limit,
     }
   }
-  ReventlessCore.EffectLogger.logDebug(~comp=__MODULE__, "queryByTableName params: " ++ params->JSON.stringifyAny->Option.getOr(""))
+  ReventlessCore.EffectLogger.logDebug(
+    ~comp=__MODULE__,
+    "queryByTableName params: " ++
+    params->JSON.stringifyAny->Option.getOr("")->ReventlessCore.LogFormat.truncate,
+  )
   ->Effect.flatMap(_ =>
     Util_DynamoDb_Runtime.queryStream(params)
     ->Stream.runCollect
@@ -130,7 +134,11 @@ let scanByTableName = (~tableName, ~filterConfigs, ~limit) => {
     expressionAttributeValues: ?attributeValues,
     limit,
   }
-  ReventlessCore.EffectLogger.logDebug(~comp=__MODULE__, "scanByTableName params: " ++ params->JSON.stringifyAny->Option.getOr(""))
+  ReventlessCore.EffectLogger.logDebug(
+    ~comp=__MODULE__,
+    "scanByTableName params: " ++
+    params->JSON.stringifyAny->Option.getOr("")->ReventlessCore.LogFormat.truncate,
+  )
   ->Effect.flatMap(_ =>
     Util_DynamoDb_Runtime.scanStream(params)
     ->Stream.runCollect
