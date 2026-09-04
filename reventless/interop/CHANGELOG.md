@@ -3,6 +3,43 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.35 (2026-09-04)
+
+* feat(spec)!: one optional encoding on the wire, with no annotation ([320f91d](https://github.com/ReventlessDev/reventless-core/commit/320f91daa8bd90812a6e82069e7a1cb473041930))
+
+### BREAKING CHANGES
+
+* the two encodings cannot read each other. Stored
+pluginDefinition / pluginStructure payloads and already-deployed plugins must
+go — wipe the platform scope (SEED_RESET_SCOPE=platform), quiesce, and
+redeploy the fleet from one commit. Domain plugin data is untouched.
+
+Two guards had to learn the new shape, both of which defined "optional" as
+has.null and so mistook an omitted key for something to invent:
+
+- Message.fillMissingDefaults reached `return undefined` only below two arms
+  that fire first — an enum's first const, and an object member filled with
+  zeros. Absent option<record> therefore healed to a zero-filled record, not
+  None: on the real schema, dcbEventLog became Some({name: "", eventTopicArn:
+  ""}), which manageSubscriptions would have read as a peer to subscribe to.
+  One line, mirroring the has.null guard, above both arms.
+- PluginDefinitionScalars' walker reported 16 optional fields as newly-added
+  bare required scalars. With both encodings understood, the golden list is
+  unchanged.
+
+The frozen lifecycle corpus holds five real payloads in the old encoding.
+Null-valued keys were stripped mechanically — the rewrite round-trips each
+file unchanged before editing, and a key-by-key diff shows null removals and
+nothing else. The README records it beside the account-id redaction and says
+why it is not a regeneration: no fixture was rebuilt from ReScript types, so
+every generation in its table is still pinned.
+
+check:graphql is unchanged, as expected: SchemaType.fromSury collapses Null
+and Undefined to the same Nullable, so the emitted schema never distinguished
+them.
+
+
+
 # 3.0.0-alpha.34 (2026-08-27)
 
 * feat(spec)!: drop the plugin protocol's reconnect event, which nothing published ([7549db6](https://github.com/ReventlessDev/reventless-core/commit/7549db6aac6ad3f94dbb8d72dac4b4e783756ad1))

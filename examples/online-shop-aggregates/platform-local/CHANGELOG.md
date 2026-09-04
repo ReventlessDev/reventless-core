@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.234 (2026-09-04)
+
+### Features
+
+* **local:** one platform per app directory, and a reset that refuses a served store ([e0fd219](https://github.com/ReventlessDev/reventless-core/commit/e0fd219a8c1bbda85589374ffa75aaab0f3e4fda))
+
+
 # 1.0.0-alpha.233 (2026-09-04)
 
 ### Bug Fixes

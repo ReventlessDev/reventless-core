@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.0.0-alpha.9 (2026-09-04)
+
+### Features
+
+* **local:** serve the event tap over a socket, on by default ([1babf96](https://github.com/ReventlessDev/reventless-core/commit/1babf960f032805418e3ac8f25d03ceb3dcd8d20))
+
+
 # 2.0.0-alpha.8 (2026-08-18)
 
 ### Features

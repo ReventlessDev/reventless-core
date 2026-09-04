@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/trait-attachments",
-  "version": "1.0.0-alpha.4",
+  "version": "1.0.0-alpha.5",
   "description": "Attachments domain trait: rules, host contract, conformance suite and emitter for an ordered set of stored files on an entity, with a primary and captions",
   "license": "Apache-2.0",
   "files": [

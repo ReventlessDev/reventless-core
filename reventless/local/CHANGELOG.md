@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.245 (2026-09-04)
+
+### Bug Fixes
+
+* **logging:** let a runtime declare whether a person reads its logs ([df7a6cb](https://github.com/ReventlessDev/reventless-core/commit/df7a6cbdff62b856ea6b9d1f169b913563ba13a1))
+### Features
+
+* **local:** one platform per app directory, and a reset that refuses a served store ([e0fd219](https://github.com/ReventlessDev/reventless-core/commit/e0fd219a8c1bbda85589374ffa75aaab0f3e4fda))
+* **local:** serve the event tap over a socket, on by default ([1babf96](https://github.com/ReventlessDev/reventless-core/commit/1babf960f032805418e3ac8f25d03ceb3dcd8d20))
+
+
 # 3.0.0-alpha.244 (2026-09-04)
 
 **Note:** Version bump only for package @reventlessdev/reventless-local
