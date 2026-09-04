@@ -62,11 +62,11 @@ external scanByTableName: (
 let exnMessage = (exn: exn): string =>
   exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown error")
 
-// ── js_nullable normalization ───────────────────────────────────────────────
-// pluginDefinition option fields use @s.matches(js_nullable): when the record
-// comes from a plain JSON.parse (not a sury parse), None is represented as
-// `null` — which ReScript's option (undefined-based) would misread as Some.
-// Normalize through Nullable so pattern matches see a real option.
+// ── Absent-field normalization ──────────────────────────────────────────────
+// pluginDefinition's optionals omit the key, so a plain JSON.parse (not a sury
+// parse) yields `undefined` and ReScript reads it as None unaided. Kept because
+// the same records also arrive from stores and peers written when an absent
+// field was `null`, which ReScript's option would misread as Some.
 
 external optionAsNullable: option<'a> => Nullable.t<'a> = "%identity"
 let jsOption = (v: option<'a>): option<'a> => v->optionAsNullable->Nullable.toOption
@@ -237,10 +237,9 @@ let parseHandlerConfig = (rawJson: string): handlerConfig => {
 
 // ── Plugin-RM row projection ────────────────────────────────────────────────
 // The subset of the Plugin read-model state the subscription manager needs.
-// Deliberately sidesteps sury: the state schema marks many fields
-// `@s.matches(js_nullable …)`, but DDB drops undefined attributes on write, so
-// the unmarshalled row arrives with those keys *missing* and sury's strict
-// parser rejects them. Field types reuse the spec's definition records — the
+// Deliberately sidesteps sury: DDB drops undefined attributes on write, so the
+// unmarshalled row can arrive with keys sury's strict parser still expects — the
+// offload fields among them, whose codec keeps its `null` arm. Field types reuse the spec's definition records — the
 // projection is a strict subset of Reventless.Plugin.pluginDefinition.
 
 type pluginProjection = {
@@ -325,8 +324,8 @@ let projectPluginRow = (row: JSON.t): option<pluginProjection> =>
 
 // A pluginDefinition viewed as a projection (the manage logic reads only the
 // shared subset; `status` is never read for the acting plugin). Array/option
-// fields stay js_nullable-normalized: a definition arriving over the wire, rather
-// than from loadPluginDefinition's decode, still carries null for an absent field.
+// fields stay normalized: a definition arriving over the wire, rather than from
+// loadPluginDefinition's decode, may still carry null for an absent field.
 let projectionOfDefinition = (d: Reventless.Plugin.pluginDefinition): pluginProjection => {
   id: d.id,
   status: "",

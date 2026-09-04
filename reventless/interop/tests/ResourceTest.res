@@ -1,10 +1,10 @@
 // Round-trips `Resource.resourceInfo` (and the enclosing `Resource.t`) through
-// sury JSON. The `StorageKeys` variant carries an `option<string>` sortKey; a
-// plain `option` inside a union payload compiles to `string | undefined`, which
-// sury rejects as non-jsonable, so `reverseConvertToJsonOrThrow` threw for EVERY
-// StorageKeys value until `sortKey` was switched to `js_nullable` (`string |
-// null`). Previously only the `NoInfo` case was exercised; the `Some(sortKey)`
-// AND `None` StorageKeys cases pin the fix.
+// sury JSON. The `StorageKeys` variant carries an `option<string>` sortKey. A
+// plain `option` inside a union payload once failed sury's jsonable validation,
+// so `reverseConvertToJsonOrThrow` threw for EVERY StorageKeys value; the bug was
+// fixed upstream in 11.0.0-alpha.11 and the field is back on the default encoding.
+// Previously only the `NoInfo` case was exercised; the `Some(sortKey)` AND `None`
+// StorageKeys cases pin that it round-trips either way.
 
 open JestGlobals
 

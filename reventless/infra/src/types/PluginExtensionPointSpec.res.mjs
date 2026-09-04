@@ -111,14 +111,6 @@ let apiTargetSchema = Plugin$Reventless.apiTargetSchema;
 
 let apiSchemaFragmentOffloadSchema = Plugin$Reventless.apiSchemaFragmentOffloadSchema;
 
-let dcbEventLogOptionSchema = Plugin$Reventless.dcbEventLogOptionSchema;
-
-let stringOptionSchema = Plugin$Reventless.stringOptionSchema;
-
-let stringArrayOptionSchema = Plugin$Reventless.stringArrayOptionSchema;
-
-let boolOptionSchema = Plugin$Reventless.boolOptionSchema;
-
 let panelManifestEntrySchema = Plugin$Reventless.panelManifestEntrySchema;
 
 let menuEntrySchema = Plugin$Reventless.menuEntrySchema;
@@ -151,37 +143,21 @@ let inboundTranslationSliceDefSchema = Plugin$Reventless.inboundTranslationSlice
 
 let publishedEventDefSchema = Plugin$Reventless.publishedEventDefSchema;
 
-let publishedEventDefArrayOptionSchema = Plugin$Reventless.publishedEventDefArrayOptionSchema;
-
 let acceptedCommandDefSchema = Plugin$Reventless.acceptedCommandDefSchema;
-
-let acceptedCommandDefArrayOptionSchema = Plugin$Reventless.acceptedCommandDefArrayOptionSchema;
 
 let handledEventDefSchema = Plugin$Reventless.handledEventDefSchema;
 
-let handledEventDefArrayOptionSchema = Plugin$Reventless.handledEventDefArrayOptionSchema;
-
 let issuedCommandDefSchema = Plugin$Reventless.issuedCommandDefSchema;
-
-let issuedCommandDefArrayOptionSchema = Plugin$Reventless.issuedCommandDefArrayOptionSchema;
 
 let extensionDefSchema = Plugin$Reventless.extensionDefSchema;
 
 let extensionPointDefSchema = Plugin$Reventless.extensionPointDefSchema;
 
-let extensionPointDefArrayOptionSchema = Plugin$Reventless.extensionPointDefArrayOptionSchema;
-
 let requiredStoreDeclarationSchema = Plugin$Reventless.requiredStoreDeclarationSchema;
-
-let requiredStoreDeclarationArrayOptionSchema = Plugin$Reventless.requiredStoreDeclarationArrayOptionSchema;
 
 let requiredCapabilityDeclarationSchema = Plugin$Reventless.requiredCapabilityDeclarationSchema;
 
-let requiredCapabilityDeclarationArrayOptionSchema = Plugin$Reventless.requiredCapabilityDeclarationArrayOptionSchema;
-
 let traitDeclarationSchema = Plugin$Reventless.traitDeclarationSchema;
-
-let traitDeclarationArrayOptionSchema = Plugin$Reventless.traitDeclarationArrayOptionSchema;
 
 let pluginStructureSchema = Plugin$Reventless.pluginStructureSchema;
 
@@ -201,10 +177,6 @@ export {
   apiSchemaFragmentSchema,
   apiTargetSchema,
   apiSchemaFragmentOffloadSchema,
-  dcbEventLogOptionSchema,
-  stringOptionSchema,
-  stringArrayOptionSchema,
-  boolOptionSchema,
   panelManifestEntrySchema,
   menuEntrySchema,
   pageManifestEntrySchema,
@@ -221,22 +193,14 @@ export {
   outboundTranslationSliceDefSchema,
   inboundTranslationSliceDefSchema,
   publishedEventDefSchema,
-  publishedEventDefArrayOptionSchema,
   acceptedCommandDefSchema,
-  acceptedCommandDefArrayOptionSchema,
   handledEventDefSchema,
-  handledEventDefArrayOptionSchema,
   issuedCommandDefSchema,
-  issuedCommandDefArrayOptionSchema,
   extensionDefSchema,
   extensionPointDefSchema,
-  extensionPointDefArrayOptionSchema,
   requiredStoreDeclarationSchema,
-  requiredStoreDeclarationArrayOptionSchema,
   requiredCapabilityDeclarationSchema,
-  requiredCapabilityDeclarationArrayOptionSchema,
   traitDeclarationSchema,
-  traitDeclarationArrayOptionSchema,
   pluginStructureSchema,
   pluginStructureOffloadSchema,
   pluginDefinitionSchema,

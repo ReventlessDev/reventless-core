@@ -187,29 +187,23 @@ describe("absent optional collections", () => {
   // The case the frozen corpus cannot reach: every fixture in it carries
   // `"outboundTranslationSlices":[]`, so no stored payload has an outbound slice
   // to be missing a field. A structure written before `consumedSources` existed
-  // has no such key, and the schema alone refuses it — `S.nullAsOption` is
-  // `T | null`, and the variant that also accepts `undefined` fails sury's
-  // jsonable validation inside a union payload, which is where a structure
-  // travels. `parseJsonTolerant` is what makes the absence survivable, and it is
-  // the path the Plugin aggregate replays through.
+  // has no such key. `parseJsonTolerant` is what makes the absence survivable,
+  // and it is the path the Plugin aggregate replays through.
   testSync("an outbound slice stored before consumedSources existed still replays", () =>
     expect(
-      (
-        `{"name":"ToShipper","consumedEventTypes":[],"inboundCommandTypes":[],` ++
-        `"targetName":null,"externalSystem":null,"chapter":null}`
-      )
+      `{"name":"ToShipper","consumedEventTypes":[],"inboundCommandTypes":[]}`
       ->JSON.parseOrThrow
       ->Reventless.Message.parseJsonTolerant(outboundTranslationSliceDefSchema)
       ->(slice => slice.consumedSources),
     )->toEqual(None)
   )
 
-  testSync("an explicit null decodes as None", () =>
+  // Absent needs no healer: an omitted key IS the optional encoding, so strict
+  // decode takes it. `parseJsonTolerant` above is for the fields a stale payload
+  // is missing that are NOT optional.
+  testSync("an omitted optional decodes as None on the strict path", () =>
     expect(
-      (
-        `{"name":"ToShipper","consumedEventTypes":[],"inboundCommandTypes":[],` ++
-        `"targetName":null,"externalSystem":null,"chapter":null,"consumedSources":null}`
-      )
+      `{"name":"ToShipper","consumedEventTypes":[],"inboundCommandTypes":[]}`
       ->JSON.parseOrThrow
       ->Reventless.Util_Sury.fromJson(outboundTranslationSliceDefSchema)
       ->(slice => slice.consumedSources),

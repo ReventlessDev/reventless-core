@@ -1,20 +1,21 @@
-# Removing the Per-Field Optional Annotations — What Blocks It, and Why the Fix Is Ours Not Sury's
+# Removing the Per-Field Optional Annotations — One Real Blocker, and Three That Were Not (One Half Was)
 
 **Scope.** Why every optional field on `pluginDefinition` / `pluginStructure` carries an
 `@s.matches(...OptionSchema)` annotation, whether sury or sury-ppx can be configured to avoid
-that (they cannot), and — given a willingness to discard stored alpha data — how to reach **zero
-annotations with the current sury version and no upstream request**. The remaining blocker turns
-out to be a missing guard in this repo's own schema healer, not a sury limitation. Written
-2026-09-04 against `sury@11.0.0-rc.2`.
+that (they cannot), and what actually stands in the way of deleting all 47. Answer: the wire
+format, and one line of the schema healer. Written 2026-09-04 against `sury@11.0.0-rc.2`; §6
+records three blockers this analysis first claimed and then disproved, because the instrument
+that produced them is an easy one to reach for again — and, since execution, how the first of
+those disproofs was itself half wrong.
 
 **Files reviewed**
-- [`Plugin.res`](../../reventless/spec/src/components/Plugin.res) — the 47 annotated sites and the four helper bindings
-- [`Message.res`](../../reventless/spec/src/types/Message.res) — `meta` (unannotated optionals), `fillMissingDefaults`, `parseJsonTolerant`
-- [`StoredEvent.res`](../../reventless/spec/src/types/StoredEvent.res) — `storedEvent.tags?` (unannotated optional field)
+- [`Plugin.res`](../../reventless/spec/src/components/Plugin.res) — the annotated sites (47 here, plus one in `PluginsReadModelSpec.res`) and the helper bindings
+- [`Resource.res`](../../reventless/interop/src/Resource.res) — the same rationale, duplicated, one site
+- [`Message.res`](../../reventless/spec/src/types/Message.res) — `fillMissingDefaults`, `parseJsonTolerant`
+- [`SuryToJsonSchema.res`](../../reventless/core/src/components/Api/SuryToJsonSchema.res) + [`SchemaType.res`](../../reventless/core/src/components/Api/SchemaType.res) — the repo's **own** JSON Schema emitter, which is what consumers actually see
+- [`StoredEvent.res`](../../reventless/spec/src/types/StoredEvent.res) — `storedEvent.tags?`, an unannotated optional on the EventLog row
 - [`PluginSpec.res`](../../reventless/core/src/plugin/lifecycle/PluginSpec.res) — `| Connect(pluginDefinition)`, the variant payload these records travel in
-- [`Util_Sury.res`](../../reventless/spec/src/util/Util_Sury.res) — the encode/decode path everything goes through
-- [`PluginDefinitionRequiredScalarsTest.res`](../../reventless/core/tests/plugin/PluginDefinitionRequiredScalarsTest.res) + `pluginDefinitionRequiredScalars.txt` — the schema-evolution rule
-- [`plugin-definition-schema-evolution-wedge.md`](./plugin-definition-schema-evolution-wedge.md) — the incident the rule came from
+- [`ReventlessSeedAws_Reset.res`](../../reventless/seed-aws/src/ReventlessSeedAws_Reset.res) — scope selection for the wipe
 - `node_modules/sury-ppx/README.md`, `node_modules/sury/index.mjs` — the configuration surface
 
 ---
@@ -28,18 +29,21 @@ annotation of any kind.
 
 ## 2. Verdict
 
-**Reachable today, with the current sury, and with no upstream request** — provided the
-null-encoded wire format is abandoned and stored alpha data is discarded.
+**Reachable today, with the current sury, and with no upstream request.** Sury's *default* for
+`option<'a>` already **is** the annotation-free encoding, so the goal is met by deleting the 47
+annotations and their four helper bindings rather than by adding a feature. It also makes the
+repo internally consistent: 53 optional-schema constructions already use the default form
+against 15 that do not.
 
-Sury's *default* for `option<'a>` is already the annotation-free form. So the goal is reached by
-**deleting** the 47 annotations and the four helper bindings, not by adding a feature. It also
-makes the repo internally consistent: 53 optional-schema constructions already use the default
-form against only 15 that do not (§4.1).
+**Exactly one thing blocks it: the wire format** (§5). Stored payloads carry explicit `null`,
+which the default encoding cannot parse. Discarding alpha data and redeploying the fleet removes
+it.
 
-Two blockers stand between here and there. One is removed by a data wipe (§4.2). The other is
-**not** — but it lives in this repo's own healer, and is a ~2-line fix (§4.3, §5).
+Nothing else does. In particular there is **no** UI work and **no** golden refresh (§6) — verified
+in execution, `check:graphql` did not move. A one-line healer fix *was* required after all, for
+`option<record>` and `option<enum>` only; §6.1 records what the first measurement missed.
 
-If the null-encoded format is instead kept, per-field annotation is unavoidable: there is no
+If the null encoding were instead kept, per-field annotation would be unavoidable — there is no
 configuration at any level (§3).
 
 ## 3. There is no sury configuration — three places checked
@@ -56,44 +60,49 @@ configuration at any level (§3).
 Neither concerns optional encoding. It is also a **runtime** override while schemas are
 constructed at module-init time, so any such knob would have to be set before every import in
 every Lambda entry point, test file and CLI tool — one miss producing a silent wire-format
-divergence. Even if the knob existed, this is the wrong mechanism for this data.
+divergence. Even if it existed, this is the wrong mechanism for this data.
 
 **sury-ppx configuration.** There is none. Install is `"ppx-flags": ["sury-ppx/bin"]` with no
-arguments, and the binary exposes only generic ppxlib driver flags (`-apply`, `-dont-apply`,
-`-cookie`, `-loc-filename`, `-no-merge`, …). ReScript's `ppx-flags` *does* accept an array form
-(`"ppx-specs": {"items": {"oneOf": [{"type":"string"}, {"type":"array", …}]}}`), so a compile-time
-flag would be a valid shape — sury-ppx simply doesn't read one.
+arguments, and the binary exposes only generic ppxlib driver flags. ReScript's `ppx-flags` *does*
+accept an array form, so a compile-time flag would be a valid shape — sury-ppx simply doesn't
+read one.
 
-**sury-ppx's API surface.** The complete reference is nine attributes: `@schema`, `@s.matches`,
-`@s.null`, `@s.nullable`, `@s.default`, `@s.defaultWith`, `@s.meta`, `@s.with`, and the
-`@s.strict` / `@s.strip` / `@s.deepStrict` / `@s.deepStrip` / `@s.noValidation` group. `@s.null`
-— which emits exactly what the helper bindings emit — is documented as applying to "option type
-expressions, optional record fields", i.e. field level only. There is no file-, module- or
-project-level default.
+**sury-ppx's API surface.** Nine attributes: `@schema`, `@s.matches`, `@s.null`, `@s.nullable`,
+`@s.default`, `@s.defaultWith`, `@s.meta`, `@s.with`, and the `@s.strict` / `@s.strip` /
+`@s.deepStrict` / `@s.deepStrip` / `@s.noValidation` group. `@s.null` — which emits exactly what
+the helper bindings emit — applies to "option type expressions, optional record fields", i.e.
+field level only. There is no file-, module- or project-level default.
 
-## 4. The two blockers
+## 4. The rationale in the file is stale
 
-### 4.1 The repo is already mostly annotation-free
+[`Plugin.res:76-77`](../../reventless/spec/src/components/Plugin.res#L76-L77), duplicated verbatim
+at [`Resource.res:5-10`](../../reventless/interop/src/Resource.res#L5-L10):
 
-Constructions in committed `src` output:
+> js_nullable (T | null) is the only optional that passes jsonableValidation inside union
+> variant payloads; nullableAsOption adds `undefined` and fails it.
 
-| | sites |
-|---|---|
-| undefined-encoded (`Sury.$option`) | **53** |
-| null-encoded (`nullAsOption`) | **15** |
-
-and the split runs *through* `reventless/spec/src`:
+**No longer true.** Measured on rc.2, reproducing the exact shape — a bare `S.option(S.string)`
+field inside a positional variant payload mirroring
+`PluginSpec.command = | Connect(pluginDefinition)`, encoded through `Util_Sury`'s own path:
 
 ```
-null-encoded:      Plugin.res (13), Offload.res (1)
-undefined-encoded: Message.res (7), StoredEvent.res, Identity.res,
-                   Owner.res, Sensitive.res, CapabilityManifest.res, CaptionedImage.res
+=== bare S.option (ppx-derived) ===
+  record   absent   -> json      : ok  {"name":"p"}
+  variant  absent   -> json      : ok  {"TAG":"Connect","_0":{"name":"p"}}
+  variant  absent   -> jsonString: ok  "{\"TAG\":\"Connect\",\"_0\":{\"name\":\"p\"}}"
+  variant  absent   round-trip  : ok  {"TAG":"Connect","_0":{"name":"p"}}
 ```
 
-`meta` is on every message and `storedEvent` *is* the EventLog row, so the annotation-free form
-demonstrably works on the wire in this codebase today. `Plugin.res` is the outlier, not the rule.
+All twenty cells pass. The failure was real on alpha.10 and was fixed by #311 in alpha.11. Both
+comments should be rewritten whichever way the decision goes.
 
-### 4.2 Wire format — removed by a data wipe
+Supporting evidence that the default form is fine on the wire: the repo already ships it on its
+two most-travelled types. [`Message.res:35`](../../reventless/spec/src/types/Message.res#L35)
+(`meta`, on every message) and
+[`StoredEvent.res:25`](../../reventless/spec/src/types/StoredEvent.res#L25) (`tags?`, on every
+EventLog row) use unannotated optionals. `Plugin.res` is the outlier, not the rule.
+
+## 5. The one real blocker — wire format
 
 The two encodings are mutually unreadable. Measured:
 
@@ -107,223 +116,192 @@ PARSE stored payloads back into ReScript values
 
 Everything reachable from `pluginDefinition` is persisted in the Plugin lifecycle aggregate's
 event log and replayed, and `pluginDefinition` also travels in the `ConnectPlugin` handshake
-between separately deployed plugins and the admin. So this blocks the change **only** while old
-data and old deployments exist. Discarding alpha data and redeploying the fleet from one commit
-removes it. See the migration checklist in §7.
+between separately deployed plugins and the admin. `reventless-spec` is published on every alpha
+push, so external consumers compile against whichever shape they installed.
 
-### 4.3 The healer fabricates `""` for absent optionals — NOT removed by a wipe
+This blocks the change **only** while old data and old deployments exist. See §7 for what has to
+go.
 
-This is the blocker that survives the wipe, and the real work the null shape was doing.
-`fillMissingDefaults` walks the JSON Schema, and the two encodings land in different branches:
+## 6. Three blockers that are not real (and the half of one that is)
+
+All three were claimed in an earlier draft of this analysis and then disproved. They share one
+cause: they were measured with **`Sury.toJSONSchema` on a hand-built schema**, which no part of
+this repo uses. Measure through the repo's own emitter and through the real functions instead.
+
+Execution then found the disproof in 6.1 too narrow: right about the branch, wrong that the
+branch had one answer.
+
+### 6.1 The healer does NOT fabricate `""` for absent optionals — but it did invent for `option<record>`
+
+**Half real. Corrected during execution; read the second half before relying on this section.**
+
+The original claim was that `S.option` emits a bare `{"type":"string"}`, so `fillMissingDefaults`
+takes its scalar branch and invents `""`, turning `None` into `Some("")`.
+
+**That much is wrong — the healer reads sury's *internal* schema object, not the emitted JSON
+Schema.** Internally:
+
+```
+S.option(string)       type="anyOf"  anyOf=["string","undefined"]  has={"string":true,"undefined":true}
+S.nullAsOption(string) type="anyOf"  anyOf=["string","null"]       has={"string":true,"null":true}
+```
+
+Both are `anyOf`, so neither reaches the scalar branch and no `""` is invented.
+
+**But `anyOf` was not a single answer.** `return undefined` sits at the *bottom* of that branch,
+below two arms that fire first:
 
 ```js
-case "anyOf": {                          // what nullAsOption emits
-  var has=schema.has||{};
-  if(value===undefined){
-    if(has.null) return null;            // absent → null → decodes to None ✓
-default: {                               // what bare S.option emits: {"type":"string"}
-  if(value!==undefined) return value;
-  var d=scalarDefault(schema);           // "" / 0 / false
-  scalarFills.push(path + " := " + JSON.stringify(d));
-  return d;                              // absent → "" → decodes to Some("") ✗
+if(has.null) return null;
+var c=firstConst(schema.anyOf); if(c!==undefined) return c;                  // option<enum>   → first variant
+var obj=(schema.anyOf||[]).find(s=>s.type==="object"); if(obj) return fill(obj,{},path);  // option<record> → zero-filled {}
+return undefined;                                                            // scalars and arrays only
 ```
 
-Because `S.option` emits a bare `{"type":"string"}`, the healer cannot distinguish an **absent
-optional** from a **missing required scalar**, and invents `""`. `None` silently becomes
-`Some("")` — on fields like `retiredField`, `ownerField` and `requiredAccess`, where empty and
-absent mean different things to the resolvers.
-
-The healer only runs after a first parse failure (`parseJsonTolerant`), but it then walks the
-*whole* message — so any one evolved field drags every absent optional in the payload through
-this branch. In an actively evolving framework that is routine, which is why this hazard is
-permanent rather than a legacy-data artifact.
-
-The JSON Schema difference that causes it:
+`S.option(S.string)` — the one shape measured above — passes both arms and heals to `None`. An
+optional **record** or **enum** does not. On the real `pluginDefinitionSchema`, with the
+annotations removed:
 
 ```
-bare         : "requiredAccess":{"type":"string"}
-               required:["name"]
-nullAsOption : "requiredAccess":{"anyOf":[{"type":"string"},{"type":"null"}]}
-               required:["name","requiredAccess"]
+option<string>  apiTarget    -> undefined  (None)  ✓
+option<record>  dcbEventLog  -> {"name":"","eventTopicArn":""}   invented 2 scalars  ✗
 ```
 
-## 5. The fix is ours, not sury's
+`dcbEventLog` is what `manageSubscriptions` reads to wire cross-plugin SNS subscriptions, so
+`Some({eventTopicArn: ""})` would have named a topic that does not exist — the failure mode the
+`""` claim described, arriving through a different branch.
 
-`fillMissingDefaults` is hand-written `%raw` JS in this repo, and the JSON Schema **already
-carries `required`** with the optional field correctly excluded. The object branch simply
-doesn't consult it:
+Fixed by one line mirroring the `has.null` guard — `if(has.undefined) return undefined;` — placed
+above the two guessing arms. The `required`-aware guard an earlier draft proposed would still have
+been a solution to nothing, and is not implementable besides: sury's internal `required` lists
+every declared property, optionals included (`["name","opt"]` for both encodings above).
 
-```js
-case "object": {
-  …
-  var props=schema.properties||{};
-  var names=Object.keys(props);
-  for(var i=0;i<names.length;i++){ var n=names[i]; value[n]=fill(props[n], value[n], path+"."+n); }
-  return value;
-}
+The same blind spot lived in `PluginDefinitionScalars`, whose walker also defined optional as
+`has.null`; it now reads both. **Lesson for §10:** measuring through the real function was
+necessary but not sufficient — the input has to cover the type shapes the change actually reaches,
+and `S.option(S.string)` was one probe standing in for four.
+
+### 6.2 The emitted JSON Schema does NOT change
+
+The repo does not use `Sury.toJSONSchema`. Queryable schemas are emitted by
+[`SuryToJsonSchema.deriveObjectSchema`](../../reventless/core/src/components/Api/SuryToJsonSchema.res),
+and [`SchemaType.fromSury`](../../reventless/core/src/components/Api/SchemaType.res#L144-L156)
+filters `Null(_) | Undefined(_)` **identically** — both collapse to `Nullable(...)`, which renders
+as `oneOf:[T, {type:"null"}]`. `optionalFieldNames` likewise matches both. Run through the real
+emitter:
+
+```
+S.option      : {"type":"object","properties":{"name":{"type":"string"},
+                 "opt":{"oneOf":[{"type":"string"},{"type":"null"}]}},"required":["name"]}
+nullAsOption  : {"type":"object","properties":{"name":{"type":"string"},
+                 "opt":{"oneOf":[{"type":"string"},{"type":"null"}]}},"required":["name"]}
+IDENTICAL
 ```
 
-Making it `required`-aware — skip filling a property that is absent and not listed in
-`schema.required` — restores the distinction:
+### 6.3 No UI work, and no golden refresh
 
-- absent **optional** → stays absent → decodes to `None` ✓
-- absent **required scalar** → filled and reported in `scalarFills` ✓ (unchanged; this is what
-  `PluginDefinitionRequiredScalarsTest` and its golden exist to police)
+Both follow from 6.2. `reventless-ui` reads schemas at runtime and
+[`SchemaShape.res`](../../../reventless-ui/reventless/ui/src/auto/SchemaShape.res) is built on
+"sury renders an optional field as a composition rather than a type" — which stays true, because
+the composition is produced by *core's emitter*, not by sury's raw encoding. `AutoUI.res:452`
+names the Plugin read model's `dcbEventLog` as its worked example of `anyOf:[<object>, null]`;
+that field keeps its shape. The five readers keying off `required` see no change either.
 
-With that guard in place the annotation-free form is safe, and no sury change is needed.
+Consequently `pnpm run check:graphql` should not move. If it does, something in this section is
+wrong and the change should stop until it is understood.
 
-## 6. What this means for an upstream request
+## 7. What has to be wiped
 
-**Nothing needs to be requested.** Earlier drafts of this analysis proposed a file-level
-`@@s.nullOptionals`, a type-declaration-level `@s.deepNull`, or a ppx build flag. All three were
-solving "how do we keep the null encoding cheaply". Dropping the null encoding makes sury's
-existing default the globally consistent, zero-annotation approach, and the only thing that made
-that default unsafe here was the missing guard in §5.
+**Narrower than "all data".** Only the 15 null-encoded constructions change: `Plugin.res` (13,
+serving the 47 fields), `Offload.res` (1 — stays; it is the union codec, not an optional wrapper)
+and `interop/Resource.res` (1). Domain plugin data is untouched.
 
-Retain the option to file it only if the decision goes the other way — i.e. if the null-encoded
-format is kept for `pluginDefinition`, in which case §3 shows per-field annotation is forced and
-a file-level default is the smallest ask that fixes it.
+### 7.1 Must be emptied
 
-## 7. Migration checklist
+| Store | What it holds |
+|---|---|
+| **Platform EventLog** (DynamoDB) | Plugin lifecycle aggregate — `Connect(pluginDefinition)`, `VersionConnected(pluginDefinition)`, … |
+| **Plugins QueryDb table** (DynamoDB) | `PluginsReadModelSpec` rows, incl. `structure` as untagged offload wire JSON |
+| **S3 `pluginStructures`** | Content-addressed offloaded `pluginStructure` blobs |
+| **S3 `pluginApiFragments`** | Content-addressed offloaded `apiSchemaFragment` blobs |
 
-1. Make `fillMissingDefaults` `required`-aware (§5). **Do this first and independently** — it is
-   a correctness fix on its own terms and is safe under either encoding.
-2. Delete the 47 `@s.matches` annotations and the four helper bindings (`stringOptionSchema`,
-   `stringArrayOptionSchema`, `boolOptionSchema`, `dcbEventLogOptionSchema`) from `Plugin.res`.
-   Leave the two `Offload` fields alone — those need the union codec, not an optional wrapper.
-3. Wipe the stores listed in §8; redeploy the whole fleet from one commit so no deployed
-   plugin is left registering in the old format.
-4. `feat!` — `reventless-spec` is published on every alpha push, so external consumers compile
-   against whichever shape they installed.
-5. Refresh the GraphQL contract goldens: the JSON Schema shape changes (`anyOf:[T,null]` +
-   required → plain `T`, not required), so `pnpm run check:graphql` will move.
-6. Rewrite `pluginDefinitionRequiredScalars.txt`'s guidance. Its current advice — *"If your new
-   field can be absent, give it the `js_nullable` (`T | null`) shape"* — becomes obsolete;
-   under the new rule the answer is "make it optional". The tripwire itself still works: optional
-   fields are not required scalars and stay off the list either way.
-7. Rewrite the stale comment at [`Plugin.res:76-77`](../../reventless/spec/src/components/Plugin.res#L76-L77) and its duplicate in [`Resource.res:5-10`](../../reventless/interop/src/Resource.res#L5-L10) (§10).
+`SEED_RESET_SCOPE=platform` on `ReventlessSeedAws_Reset` selects exactly this scope — the
+platform target is already declared (`{projectDir: ".", label: "platform", group: Platform}`).
+The S3 stores live in **shared-layout buckets**, so they are wiped by key prefix; the tool
+encodes that and refuses when declared prefixes overlap.
 
-## 8. What has to be wiped
+### 7.2 Must be drained, not emptied
 
-**The blast radius is narrower than "all data".** Only the 15 null-encoded constructions change:
-`Plugin.res` (13, serving the 47 fields), `Offload.res` (1 — stays, it is the union codec, not an
-optional wrapper) and `interop/Resource.res` (1). So only stores carrying `pluginDefinition` /
-`pluginStructure` are affected; **domain** plugin data is untouched.
+In-flight SQS `Connect` messages, and warm Lambda execution environments —
+`ReventlessSeedAws_Quiesce` documents why a truncate is not durable on its own: a slice runtime
+keeps its TODO list in a module-level dict and re-saves every row at the end of each invocation.
 
-### 8.1 Must be emptied
+### 7.3 Not affected
 
-| Store | What it holds | Why |
-|---|---|---|
-| **Platform EventLog** (DynamoDB) | Plugin lifecycle aggregate — `Connect(pluginDefinition)`, `VersionConnected(pluginDefinition)`, … | Every event payload embeds the changed record |
-| **Plugins QueryDb table** (DynamoDB) | `PluginsReadModelSpec` rows, incl. `structure` as untagged offload wire JSON | Projected from the above; rows carry the old encoding |
-| **S3 `pluginStructures`** | Content-addressed offloaded `pluginStructure` blobs | The offloaded blob's *inner* schema is the changed record |
-| **S3 `pluginApiFragments`** | Content-addressed offloaded `apiSchemaFragment` blobs | Same field group ([Plugin.res:496](../../reventless/spec/src/components/Plugin.res#L496), [:502](../../reventless/spec/src/components/Plugin.res#L502)) |
+Domain plugin EventLogs, the DcbEventLog, and domain QueryDb tables carry domain events, not
+`pluginDefinition`. This holds only while the change is confined to `Plugin.res`; the §9 sweep
+would pull them in.
 
-Both S3 stores live in **shared-layout buckets** — one bucket holds several plugins' stores under
-distinct key prefixes — so they must be wiped **by key prefix**, not by bucket.
-`ReventlessSeedAws_Reset` already encodes this and refuses when two declared stores' prefixes
-overlap or enclose one another.
+Domain plugins' own `pluginStructures` / `pluginApiFragments` prefixes survive a platform-scoped
+wipe, since object stores are qualified `{plugin}.{store}`. Acceptable: the blobs are
+content-addressed, each plugin re-offloads under a new hash, and nothing references the old keys
+once the aggregate is wiped. Orphans, not a correctness problem.
 
-### 8.2 Must be drained, not emptied
+### 7.4 Redeploy, not wipe
 
-- **In-flight SQS messages** carrying `Connect(pluginDefinition)` — a queued command written in
-  the old encoding will fail to decode after the change.
-- **Warm Lambda execution environments.** `ReventlessSeedAws_Quiesce` documents why a truncate is
-  not durable on its own: a slice runtime keeps its TODO list in a module-level dict and re-saves
-  every row it holds at the end of each invocation, so an emptied table is restored byte for byte
-  by the next sweep. The hold-then-recycle sequence there is required, not optional.
+`interop/Resource.res`'s `resourceInfo` is `Output.t`-free stack-export metadata read through
+StackReference — Pulumi state, not stored data. The plugin definition baked into the
+EventCollector Lambda asset is rebuilt by redeploy.
 
-### 8.3 Not affected — no wipe
+### 7.5 Local platforms
 
-- **Domain plugin EventLogs, the DcbEventLog, and domain QueryDb tables.** They carry domain
-  events and projections, not `pluginDefinition`. *Caveat:* this holds only while the change is
-  confined to `Plugin.res`. If the §9 `?:` sweep or a wider annotation removal reaches domain
-  specs, their stores come into scope and this row no longer applies.
+SQLite: `./.reventless/local.db` by default, or wherever `REVENTLESS_LOCAL_BACKEND` points —
+relative to each app, so **one file per example app**. Memory backend: nothing to do.
 
-### 8.4 Redeploy, not wipe
+## 8. Downstream consumers
 
-- **`interop/Resource.res`'s `resourceInfo`** is `Output.t`-free stack-export metadata resolved at
-  deploy time, read by consumers through StackReference — Pulumi stack state, not stored data.
-  `pulumi up` refreshes it.
-- **The plugin definition baked into the EventCollector Lambda asset** is rebuilt by redeploy.
+**No annotations to remove anywhere else.** Zero `nullAsOption` outside this repo. The
+`@s.matches` sites downstream are unrelated to optional encoding: tuple-arrays
+(`array<(string, exampleValue)>`) and recursive types sury cannot derive, one
+`@s.matches(S.option(S.json))` already on the default encoding, and some `DcbTag.string` on
+ppx-less test fixtures.
 
-### 8.5 Local platforms
-
-- **SQLite backend** — `./.reventless/local.db` by default, or wherever `REVENTLESS_LOCAL_BACKEND`
-  points. The path is relative to each app, so this is **one file per example app**, not one
-  shared store.
-- **Memory backend** — nothing to do; a restart clears it.
-
-### 8.6 Tooling
-
-Prefer `seed:reset` (`ReventlessSeedAws_Reset`) over hand-deleting tables: it discovers every
-DynamoDB table and S3 bucket for a stack by tag, is fail-closed, and offers a dry run plus a typed
-confirmation. `_Quiesce` performs the hold/recycle of §8.2 and `_Reconcile` verifies the result.
-[`clearing-aws-eventlog-querydb-tables.md`](./clearing-aws-eventlog-querydb-tables.md) covers the
-`pulumi destroy --target` alternative, which is the right tool when tables must be **recreated**
-(changed keys or GSIs) rather than emptied — not the case here.
-
-Given that alpha data is disposable and a targeted wipe risks missing a carrier, wiping
-everything in scope is the cheaper mistake.
+Exposure is rebuild-and-repin only: consumers depending on published core packages must be
+rebuilt against the `feat!` release, and any that pin published core deps in release-mode CI
+move that pin with it. The `@reventlessdev/reventless-ui` package needs nothing — it has no
+sury dependency, and per §6.3 the schema shape it reads does not change, so there is no UI
+change and no deploy ordering constraint.
 
 ## 9. Follow-on: `option<'a>` fields → optional (`?:`) fields
 
-Separate change, **identical on the wire**. Both spellings derive `S.option(...)`; the `?` only
-changes the ReScript-side representation. `StoredEvent.res` already demonstrates it
-(`tags?: array<DcbTag.tag>` → `s.f("tags", Sury.$option(...))`), and the encode probe confirms
-sury normalises an own-property `undefined` and an absent key to the same output.
+Separate change, **identical on the wire**. Both spellings derive `S.option(...)`;
+`StoredEvent.res` already demonstrates it, and the encode probe confirms sury normalises an
+own-property `undefined` and an absent key to the same output. Reads are unaffected (`r.foo`
+still yields an `option`); only construction changes — `{foo: None}` becomes an omitted field,
+`{foo: someOption}` becomes `{foo: ?someOption}`. There are ~137 `: None` sites across framework
+`src`, concentrated in `Platform_Admin_Structure` (11), `PluginRuntime_Builder` (9),
+`Plugin_Builder` (7) and `Dcb_Builder` (7).
 
-Reads are unaffected (`r.foo` still yields an `option`); only construction changes —
-`{foo: None}` becomes an omitted field, `{foo: someOption}` becomes `{foo: ?someOption}`. There
-are ~137 `: None` sites across framework `src`, concentrated in `Platform_Admin_Structure` (11),
-`PluginRuntime_Builder` (9), `Plugin_Builder` (7) and `Dcb_Builder` (7), so the readability win
-is real.
+Sequence it afterwards, package by package: it touches every construction site of every converted
+record across core, aws, spec, local, examples and tests, and buys ergonomics only.
 
-**Sequence it after §7, not with it.** The conversion touches every construction site of every
-converted record across core, aws, spec, local, examples and tests, and buys ergonomics only. If
-it lands in the same commit as the wire migration, a mistake in the wide mechanical sweep becomes
-indistinguishable from a problem with the migration.
+Verify first that the ppx handles `?:` fields identically inside **variant payloads** — these
+records travel as `Connect(pluginDefinition)`, and `Message.meta` is nested rather than a variant
+arm, so it is not the same evidence.
 
-One thing to verify first: that the ppx handles `?:` fields identically inside **variant
-payloads** — these records travel as `Connect(pluginDefinition)`, and `Message.meta` is nested
-rather than a variant arm, so it is not quite the same evidence. A compile-and-diff on one type
-settles it.
+## 10. Method note — measure through the repo's own path
 
-## 10. The rationale currently in the file is stale
+Every false blocker in §6 came from measuring a hand-built schema with `Sury.toJSONSchema`, a
+function this repo never calls. The corrections came from importing the real
+`fillMissingDefaults` and the real `deriveObjectSchema` and running both encodings through them.
 
-[`Plugin.res:76-77`](../../reventless/spec/src/components/Plugin.res#L76-L77) says:
+The probes used here are small standalone `.mjs` files needing no ReScript build, and are worth
+re-running on the next sury bump:
 
-> js_nullable (T | null) is the only optional that passes jsonableValidation inside union
-> variant payloads; nullableAsOption adds `undefined` and fails it.
-
-**No longer true.** Measured on rc.2, reproducing the exact shape — a record with a bare
-`S.option(S.string)` field inside a positional variant payload mirroring
-`PluginSpec.command = | Connect(pluginDefinition)`, encoded through `Util_Sury`'s own path:
-
-```
-=== bare S.option (ppx-derived) ===
-  record   absent   -> json      : ok  {"name":"p"}
-  record   absent   -> jsonString: ok  "{\"name\":\"p\"}"
-  variant  absent   -> json      : ok  {"TAG":"Connect","_0":{"name":"p"}}
-  variant  absent   -> jsonString: ok  "{\"TAG\":\"Connect\",\"_0\":{\"name\":\"p\"}}"
-  variant  absent   round-trip  : ok  {"TAG":"Connect","_0":{"name":"p"}}
-```
-
-All twenty cells pass. The failure was real on alpha.10 and was fixed by #311 in alpha.11; the
-comment outlived its cause. It should be rewritten whichever way the decision goes — it
-currently documents a fixed bug as the reason for a constraint that holds for the different
-reason in §4.3.
-
-## 11. Reproduction
-
-Two probes, both run against `sury@11.0.0-rc.2` with the encode path taken verbatim from
-`Util_Sury` (`S.decodeOrThrow(value, schema, Sury.json | Sury.jsonString)`):
-
-- **Encode probe** — bare `S.option` vs `S.nullAsOption` vs `S.nullableAsOption`, each as a
-  record field and inside a positional variant payload, absent and present, to `S.json` and
-  `S.jsonString`, plus round-trip. Establishes §10.
+- **Encode probe** — bare `S.option` vs `S.nullAsOption` vs `S.nullableAsOption`, as a record
+  field and inside a positional variant payload, absent and present, to `S.json` and
+  `S.jsonString`, plus round-trip. Establishes §4.
 - **Wire-compat probe** — cross-parsing a legacy `null`-carrying payload and an omitted-key
-  payload against both schemas, plus `Sury.toJSONSchema` on each. Establishes §4.2 and §4.3.
-
-Both are small standalone `.mjs` files importing sury directly; they need no ReScript build and
-are worth re-running on the next sury bump.
+  payload against both schemas. Establishes §5.
+- **Emitter probe** — `deriveObjectSchema` and `fillMissingDefaults` imported from the built
+  `.res.mjs`, both encodings compared. Establishes §6.

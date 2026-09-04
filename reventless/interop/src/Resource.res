@@ -2,17 +2,15 @@
 // Pulumi resolves all pending Output.t<string> fields before serializing stack exports,
 // so every field here is a plain string.
 
-// A plain `option<string>` field inside a union variant compiles to `string |
-// undefined`, which sury rejects as non-jsonable (jsonableValidation, flag 16) —
-// `reverseConvertToJsonOrThrow` on `resourceInfo` then throws for *every*
-// `StorageKeys` value, `sortKey` present or not. `js_nullable` produces `string
-// | null` instead, which is JSON-safe in a union payload. (Same fix as
-// `reventless-spec`'s `Plugin.res`.)
-let stringOptionSchema = S.string->S.nullAsOption
+// `sortKey` carries sury's default `option` encoding — the key is omitted rather than
+// written as `null` — matching `reventless-spec`'s `Plugin.res` and the rest of the repo.
+// The `T | null` it used to carry worked around a sury bug that rejected `undefined` in a
+// union variant payload as non-jsonable; fixed in 11.0.0-alpha.11. This is stack-export
+// metadata read through StackReference, so a `pulumi up` is all the change needs.
 
 @schema
 type resourceInfo =
-  | StorageKeys({partitionKey: string, sortKey: @s.matches(stringOptionSchema) option<string>})
+  | StorageKeys({partitionKey: string, sortKey: option<string>})
   | StreamSource({sourceUrn: string})
   | ApiResolver({typeName: string, fieldName: string})
   | NoInfo

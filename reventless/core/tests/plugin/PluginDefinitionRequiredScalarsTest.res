@@ -8,7 +8,7 @@
 // original two-day freeze go unnoticed, so the guard belongs here instead: in CI, at
 // the moment the field is declared.
 //
-// Adding a `js_nullable` / array / enum / object field leaves this list untouched.
+// Adding an optional / array / enum / object field leaves this list untouched.
 // Adding a bare required scalar changes it, and the diff is the conversation.
 
 open JestGlobals

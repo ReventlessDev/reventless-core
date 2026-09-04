@@ -71,7 +71,7 @@ type state = {
   // Admin's manageSubscriptions uses this to wire cross-plugin SNS subscriptions
   // from this plugin's DCB topic → peer EventCollectors (and vice-versa). None
   // for pure-aggregate plugins or for plugins persisted before Phase 4.
-  dcbEventLog: @s.matches(Reventless.Plugin.dcbEventLogOptionSchema) option<Reventless.Plugin.dcbEventLogDefinition>,
+  dcbEventLog: option<Reventless.Plugin.dcbEventLogDefinition>,
   // Business role of the plugin (from pluginDefinition.kind). Lets the admin Plugins
   // view segregate PlatformInfrastructure / Commercial / Marketplace from Domain.
   // @scan opts the field into server-side equality filtering so the connection gains

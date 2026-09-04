@@ -26,7 +26,7 @@ let stateSchema = Sury.$schema(s => ({
   apiSchemaFragment: s.m(Sury.$option(Sury.json)),
   apiTarget: s.m(Sury.$option(Sury.string)),
   structure: s.m(Sury.$option(Sury.json)),
-  dcbEventLog: s.m(Plugin$Reventless.dcbEventLogOptionSchema),
+  dcbEventLog: s.m(Sury.$option(Plugin$Reventless.dcbEventLogDefinitionSchema)),
   kind: s.m(Sury.$option(Plugin$Reventless.pluginKindSchema)),
   otherConnectedVersions: s.m(Sury.array(Plugin$Reventless.versionSchema))
 }));

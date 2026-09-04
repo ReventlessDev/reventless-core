@@ -37,8 +37,8 @@ module Make = (
     // Encode through the event schema (like the Aggregate path's Message.encode),
     // NOT JSON.stringifyAny: the runtime representation drops `None` option
     // fields entirely, while the consumer side (DcbDecode) parses with the sury
-    // schema — a js_nullable option field would reject the missing key and the
-    // event would be dropped as schema drift.
+    // schema — an encoding that writes `null` for an absent field would reject the
+    // missing key and the event would be dropped as schema drift.
     let json = event->Reventless.Util_Sury.toJson(Spec.eventSchema)
     let (eventType, data) = json->Message.splitMessage
     // Use `extractTagsExpanded` (not `extractTags`) so per-element tags on

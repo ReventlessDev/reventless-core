@@ -34,3 +34,15 @@ Each file is the decode-relevant part of the stored row — `{event, data}` — 
 One transformation was applied at extraction: the AWS account id in embedded ARNs and queue URLs
 was replaced with `000000000000`. The corpus asserts *shape*, and the shape of a string does not
 depend on its contents.
+
+A second was applied on 2026-09-04, when `pluginDefinition`'s optionals moved from `T | null` to
+sury's default encoding, where an absent value is an omitted key. Null-valued keys were removed
+from every entry — 18 to 36 per file — and nothing else was touched: the rewrite round-trips each
+file through `JSON.parse`/`stringify` unchanged before it edits, and a key-by-key diff against the
+previous revision reports null removals and no other difference. The two `Offload` fields keep
+their nulls, their codec being unaffected.
+
+This is the one edit the rule above permits, and only because it is not a regeneration: no fixture
+was rebuilt from ReScript types, so every generation in the table is still the one it was captured
+at, and each entry still pins exactly the absence it was kept for. What it stops pinning is the
+encoding that was deleted — which no longer exists to be pinned.

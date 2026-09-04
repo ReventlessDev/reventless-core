@@ -3,8 +3,8 @@
 // absent-vs-null audit: `tags` is `S.option(S.array(...))`. Unlike the union
 // case in interop's `Resource` (where a plain `option` payload broke
 // serialization), `tags` is an OPTIONAL RECORD FIELD inside `S.object`, where
-// `S.option` is the correct idiom — `js_nullable` is only needed inside union
-// variant payloads. These pin that both the DcbEventLog shape (`tags` present)
+// `S.option` is the correct idiom, and now the only one in this repo outside
+// `Offload`'s either-or codec. These pin that both the DcbEventLog shape (`tags` present)
 // and the Aggregate EventLog shape (`tags` absent) round-trip cleanly.
 
 open JestGlobals

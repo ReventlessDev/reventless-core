@@ -141,22 +141,23 @@ type commandJson = {
 
 // ── Schema-migration-on-read ──────────────────────────────────────────────────
 // Nested `@schema` types (notably `pluginDefinition`/`pluginStructure`) gain fields
-// over time — `kind`, `chapter`, `events`, `extensionPoints`, `apiExposed`, … Because
-// those types are JSON-encoded inside union-variant payloads, every optional field must
-// use the `js_nullable` (`T | null`) encoding: it is the only JSON-safe optional form,
-// since `S.option`/`nullableAsOption` carry `undefined`, which fails sury's
-// `jsonableValidation` inside a union variant. That encoding is *present-required on
-// decode*, so ONE message persisted before a field was added SuryError-bricks decode. For
-// an aggregate that rehydrates from its own event log (the Plugin lifecycle aggregate),
-// that single event then freezes EVERY later heartbeat/redetect/connect on that instance
-// — a silent lifecycle freeze with no error surfaced near the operator.
+// over time — `kind`, `chapter`, `events`, `extensionPoints`, `apiExposed`, … A field
+// that is not optional is *present-required on decode*, so ONE message persisted before
+// it was added SuryError-bricks decode. For an aggregate that rehydrates from its own
+// event log (the Plugin lifecycle aggregate), that single event then freezes EVERY later
+// heartbeat/redetect/connect on that instance — a silent lifecycle freeze with no error
+// surfaced near the operator.
 //
 // We heal on read. Strict decode stays the fast path (unchanged for every current
 // message); only when it throws do we schema-guide the raw JSON and retry once. The fill
 // walks the target sury schema and inserts, for any absent field, the value that field's
-// schema expects: `null` for a `T | null` union (→ `None`), `[]` for a missing array, the
+// schema expects: `null` for a `T | null` union (→ `None`), nothing at all for an
+// `option` (a union admitting `undefined` — also `None`), `[]` for a missing array, the
 // first variant of a mandatory enum (`kind` → `Domain`), a filled `{}` for a missing
-// nested object, and a zero value for a missing scalar. It descends only into values
+// nested object, and a zero value for a missing scalar. The `undefined` arm mirrors the
+// `null` one and must precede the enum/object guesses below it: an absent `option<enum>`
+// would otherwise heal to that enum's first variant and an absent `option<record>` to a
+// filled `{}`, turning `None` into a `Some` of an invented value. It descends only into values
 // actually present, matches tagged-union members by their `TAG` const, is purely additive
 // (clones via a JSON round-trip; never re-encodes through the schema), is idempotent on
 // valid data, and falls back to the ORIGINAL error when the fill doesn't resolve the
@@ -229,6 +230,7 @@ let fillMissingDefaults: (S.t<'a>, JSON.t, array<string>) => JSON.t = %raw(`func
         var has=schema.has||{};
         if(value===undefined){
           if(has.null) return null;
+          if(has.undefined) return undefined;
           var c=firstConst(schema.anyOf); if(c!==undefined) return c;
           var obj=(schema.anyOf||[]).find(function(s){return s.type==="object";}); if(obj) return fill(obj,{},path);
           return undefined;
@@ -273,7 +275,7 @@ let parseJsonTolerant = (json, schema) =>
             ->Int.toString} missing scalar field(s): ${scalarFills->Array.join(
               ", ",
             )}. A required scalar was added to a persisted type after this message was ` ++
-          `written; the value above is fabricated, not recovered. Prefer a js_nullable (T | null) field.`,
+          `written; the value above is fabricated, not recovered. Prefer an optional field.`,
         )
       }
       value

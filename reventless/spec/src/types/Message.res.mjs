@@ -87,6 +87,7 @@ let fillMissingDefaults = (function(schema, json, scalarFills){
         var has=schema.has||{};
         if(value===undefined){
           if(has.null) return null;
+          if(has.undefined) return undefined;
           var c=firstConst(schema.anyOf); if(c!==undefined) return c;
           var obj=(schema.anyOf||[]).find(function(s){return s.type==="object";}); if(obj) return fill(obj,{},path);
           return undefined;
@@ -126,7 +127,7 @@ function parseJsonTolerant(json, schema) {
       throw firstErr;
     }
     if (scalarFills.length !== 0) {
-      console.warn(`[reventless] decoded a stored message by inventing ` + scalarFills.length.toString() + ` missing scalar field(s): ` + scalarFills.join(", ") + `. A required scalar was added to a persisted type after this message was written; the value above is fabricated, not recovered. Prefer a js_nullable (T | null) field.`);
+      console.warn(`[reventless] decoded a stored message by inventing ` + scalarFills.length.toString() + ` missing scalar field(s): ` + scalarFills.join(", ") + `. A required scalar was added to a persisted type after this message was written; the value above is fabricated, not recovered. Prefer an optional field.`);
     }
     return value;
   }

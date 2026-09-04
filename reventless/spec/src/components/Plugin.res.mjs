@@ -49,26 +49,18 @@ let apiTargetSchema = Sury.union([
 
 let apiSchemaFragmentOffloadSchema = Offload$Reventless.optionSchema(undefined, "pluginApiFragments", undefined, apiSchemaFragmentSchema);
 
-let dcbEventLogOptionSchema = Sury.$nullAsOption(dcbEventLogDefinitionSchema);
-
-let stringOptionSchema = Sury.$nullAsOption(Sury.string);
-
-let stringArrayOptionSchema = Sury.$nullAsOption(Sury.array(Sury.string));
-
-let boolOptionSchema = Sury.$nullAsOption(Sury.bool);
-
 let panelManifestEntrySchema = Sury.$schema(s => ({
   fragmentId: s.m(Sury.string),
   title: s.m(Sury.string),
   description: s.m(Sury.string),
   positions: s.m(Sury.array(Sury.string)),
-  requiredAccess: s.m(stringOptionSchema)
+  requiredAccess: s.m(Sury.$option(Sury.string))
 }));
 
 let menuEntrySchema = Sury.$schema(s => ({
   label: s.m(Sury.string),
-  icon: s.m(stringOptionSchema),
-  group: s.m(stringOptionSchema),
+  icon: s.m(Sury.$option(Sury.string)),
+  group: s.m(Sury.$option(Sury.string)),
   sortOrder: s.m(Sury.int)
 }));
 
@@ -76,7 +68,7 @@ let pageManifestEntrySchema = Sury.$schema(s => ({
   fragmentId: s.m(Sury.string),
   title: s.m(Sury.string),
   menuEntry: s.m(menuEntrySchema),
-  requiredAccess: s.m(stringOptionSchema)
+  requiredAccess: s.m(Sury.$option(Sury.string))
 }));
 
 let uiFragmentManifestSchema = Sury.$schema(s => ({
@@ -85,7 +77,7 @@ let uiFragmentManifestSchema = Sury.$schema(s => ({
   pages: s.m(Sury.array(pageManifestEntrySchema))
 }));
 
-let uiFragmentManifestOptionSchema = Sury.$nullAsOption(uiFragmentManifestSchema);
+let uiFragmentManifestOptionSchema = Sury.$option(uiFragmentManifestSchema);
 
 let commandLevelSchema = Sury.union([
   Sury.literal("Collection"),
@@ -95,21 +87,21 @@ let commandLevelSchema = Sury.union([
 let fieldReferenceSchema = Sury.$schema(s => ({
   fieldName: s.m(Sury.string),
   entity: s.m(Sury.string),
-  plugin: s.m(stringOptionSchema)
+  plugin: s.m(Sury.$option(Sury.string))
 }));
 
 let commandDefSchema = Sury.$schema(s => ({
   name: s.m(Sury.string),
   schema: s.m(Sury.string),
   level: s.m(commandLevelSchema),
-  aggregateIdField: s.m(stringOptionSchema),
+  aggregateIdField: s.m(Sury.$option(Sury.string)),
   mutationField: s.m(Sury.string),
   references: s.m(Sury.array(fieldReferenceSchema)),
-  allowedStates: s.m(stringArrayOptionSchema),
-  targetState: s.m(stringOptionSchema),
-  apiExposed: s.m(boolOptionSchema),
-  requiredAccess: s.m(stringArrayOptionSchema),
-  ownerField: s.m(stringOptionSchema)
+  allowedStates: s.m(Sury.$option(Sury.array(Sury.string))),
+  targetState: s.m(Sury.$option(Sury.string)),
+  apiExposed: s.m(Sury.$option(Sury.bool)),
+  requiredAccess: s.m(Sury.$option(Sury.array(Sury.string))),
+  ownerField: s.m(Sury.$option(Sury.string))
 }));
 
 let queryableDefSchema = Sury.$schema(s => ({
@@ -120,18 +112,18 @@ let queryableDefSchema = Sury.$schema(s => ({
   linkedWriteSide: s.m(Sury.array(Sury.string)),
   labelField: s.m(Sury.string),
   searchableFields: s.m(Sury.array(Sury.string)),
-  labelFieldSource: s.m(stringOptionSchema),
-  lifecycleField: s.m(stringOptionSchema),
-  ownerField: s.m(stringOptionSchema),
-  retiredField: s.m(stringOptionSchema),
-  retiredValues: s.m(stringArrayOptionSchema),
-  namedWhenRetired: s.m(boolOptionSchema),
-  visibility: s.m(stringOptionSchema),
-  chapter: s.m(stringOptionSchema),
-  singleQueryField: s.m(stringOptionSchema),
-  idField: s.m(stringOptionSchema),
-  idFieldSource: s.m(stringOptionSchema),
-  requiredAccess: s.m(stringArrayOptionSchema)
+  labelFieldSource: s.m(Sury.$option(Sury.string)),
+  lifecycleField: s.m(Sury.$option(Sury.string)),
+  ownerField: s.m(Sury.$option(Sury.string)),
+  retiredField: s.m(Sury.$option(Sury.string)),
+  retiredValues: s.m(Sury.$option(Sury.array(Sury.string))),
+  namedWhenRetired: s.m(Sury.$option(Sury.bool)),
+  visibility: s.m(Sury.$option(Sury.string)),
+  chapter: s.m(Sury.$option(Sury.string)),
+  singleQueryField: s.m(Sury.$option(Sury.string)),
+  idField: s.m(Sury.$option(Sury.string)),
+  idFieldSource: s.m(Sury.$option(Sury.string)),
+  requiredAccess: s.m(Sury.$option(Sury.array(Sury.string)))
 }));
 
 let eventDefSchema = Sury.$schema(s => ({
@@ -152,10 +144,10 @@ let writableDefSchema = Sury.$schema(s => ({
   producedEventTypes: s.m(Sury.array(Sury.string)),
   consumedEventTypes: s.m(Sury.array(Sury.string)),
   linkedViews: s.m(Sury.array(Sury.string)),
-  consistencyRead: s.m(stringOptionSchema),
+  consistencyRead: s.m(Sury.$option(Sury.string)),
   events: s.m(Sury.array(eventDefSchema)),
   errors: s.m(Sury.array(errorDefSchema)),
-  chapter: s.m(stringOptionSchema)
+  chapter: s.m(Sury.$option(Sury.string))
 }));
 
 let automationSliceDefSchema = Sury.$schema(s => ({
@@ -163,25 +155,25 @@ let automationSliceDefSchema = Sury.$schema(s => ({
   consumedEventTypes: s.m(Sury.array(Sury.string)),
   producedCommandTypes: s.m(Sury.array(Sury.string)),
   targetName: s.m(Sury.string),
-  chapter: s.m(stringOptionSchema)
+  chapter: s.m(Sury.$option(Sury.string))
 }));
 
 let outboundTranslationSliceDefSchema = Sury.$schema(s => ({
   name: s.m(Sury.string),
   consumedEventTypes: s.m(Sury.array(Sury.string)),
   inboundCommandTypes: s.m(Sury.array(Sury.string)),
-  targetName: s.m(stringOptionSchema),
-  externalSystem: s.m(stringOptionSchema),
-  chapter: s.m(stringOptionSchema),
-  consumedSources: s.m(stringArrayOptionSchema)
+  targetName: s.m(Sury.$option(Sury.string)),
+  externalSystem: s.m(Sury.$option(Sury.string)),
+  chapter: s.m(Sury.$option(Sury.string)),
+  consumedSources: s.m(Sury.$option(Sury.array(Sury.string)))
 }));
 
 let inboundTranslationSliceDefSchema = Sury.$schema(s => ({
   name: s.m(Sury.string),
   commandTypes: s.m(Sury.array(Sury.string)),
   targetName: s.m(Sury.string),
-  externalSystem: s.m(stringOptionSchema),
-  chapter: s.m(stringOptionSchema)
+  externalSystem: s.m(Sury.$option(Sury.string)),
+  chapter: s.m(Sury.$option(Sury.string))
 }));
 
 let publishedEventDefSchema = Sury.$schema(s => ({
@@ -189,64 +181,50 @@ let publishedEventDefSchema = Sury.$schema(s => ({
   fromEventTypes: s.m(Sury.array(Sury.string))
 }));
 
-let publishedEventDefArrayOptionSchema = Sury.$nullAsOption(Sury.array(publishedEventDefSchema));
-
 let acceptedCommandDefSchema = Sury.$schema(s => ({
   name: s.m(Sury.string),
   toCommandTypes: s.m(Sury.array(Sury.string))
 }));
-
-let acceptedCommandDefArrayOptionSchema = Sury.$nullAsOption(Sury.array(acceptedCommandDefSchema));
 
 let handledEventDefSchema = Sury.$schema(s => ({
   name: s.m(Sury.string),
   toCommandTypes: s.m(Sury.array(Sury.string))
 }));
 
-let handledEventDefArrayOptionSchema = Sury.$nullAsOption(Sury.array(handledEventDefSchema));
-
 let issuedCommandDefSchema = Sury.$schema(s => ({
   name: s.m(Sury.string),
   fromEventTypes: s.m(Sury.array(Sury.string))
 }));
-
-let issuedCommandDefArrayOptionSchema = Sury.$nullAsOption(Sury.array(issuedCommandDefSchema));
 
 let extensionDefSchema = Sury.$schema(s => ({
   name: s.m(Sury.string),
   delegateNames: s.m(Sury.array(Sury.string)),
   eventTypes: s.m(Sury.array(Sury.string)),
   commandTypes: s.m(Sury.array(Sury.string)),
-  handledEvents: s.m(handledEventDefArrayOptionSchema),
-  issuedCommands: s.m(issuedCommandDefArrayOptionSchema)
+  handledEvents: s.m(Sury.$option(Sury.array(handledEventDefSchema))),
+  issuedCommands: s.m(Sury.$option(Sury.array(issuedCommandDefSchema)))
 }));
 
 let extensionPointDefSchema = Sury.$schema(s => ({
   name: s.m(Sury.string),
   delegateNames: s.m(Sury.array(Sury.string)),
   sourceEventTypes: s.m(Sury.array(Sury.string)),
-  commandTypes: s.m(stringArrayOptionSchema),
-  publishedEvents: s.m(publishedEventDefArrayOptionSchema),
-  acceptedCommands: s.m(acceptedCommandDefArrayOptionSchema)
+  commandTypes: s.m(Sury.$option(Sury.array(Sury.string))),
+  publishedEvents: s.m(Sury.$option(Sury.array(publishedEventDefSchema))),
+  acceptedCommands: s.m(Sury.$option(Sury.array(acceptedCommandDefSchema)))
 }));
-
-let extensionPointDefArrayOptionSchema = Sury.$nullAsOption(Sury.array(extensionPointDefSchema));
 
 let requiredStoreDeclarationSchema = Sury.$schema(s => ({
   store: s.m(Sury.string),
   component: s.m(Sury.string),
   field: s.m(Sury.string),
-  annotation: s.m(stringOptionSchema)
+  annotation: s.m(Sury.$option(Sury.string))
 }));
-
-let requiredStoreDeclarationArrayOptionSchema = Sury.$nullAsOption(Sury.array(requiredStoreDeclarationSchema));
 
 let requiredCapabilityDeclarationSchema = Sury.$schema(s => ({
   capability: s.m(Sury.string),
   component: s.m(Sury.string)
 }));
-
-let requiredCapabilityDeclarationArrayOptionSchema = Sury.$nullAsOption(Sury.array(requiredCapabilityDeclarationSchema));
 
 let traitDeclarationSchema = Sury.$schema(s => ({
   trait: s.m(Sury.string),
@@ -254,8 +232,6 @@ let traitDeclarationSchema = Sury.$schema(s => ({
   posture: s.m(Sury.string),
   component: s.m(Sury.string)
 }));
-
-let traitDeclarationArrayOptionSchema = Sury.$nullAsOption(Sury.array(traitDeclarationSchema));
 
 let pluginStructureSchema = Sury.$schema(s => ({
   readModels: s.m(Sury.array(queryableDefSchema)),
@@ -266,11 +242,11 @@ let pluginStructureSchema = Sury.$schema(s => ({
   outboundTranslationSlices: s.m(Sury.array(outboundTranslationSliceDefSchema)),
   inboundTranslationSlices: s.m(Sury.array(inboundTranslationSliceDefSchema)),
   extensions: s.m(Sury.array(extensionDefSchema)),
-  extensionPoints: s.m(extensionPointDefArrayOptionSchema),
-  requiredStores: s.m(stringArrayOptionSchema),
-  requiredStoreDeclarations: s.m(requiredStoreDeclarationArrayOptionSchema),
-  requiredCapabilities: s.m(requiredCapabilityDeclarationArrayOptionSchema),
-  traitDeclarations: s.m(traitDeclarationArrayOptionSchema)
+  extensionPoints: s.m(Sury.$option(Sury.array(extensionPointDefSchema))),
+  requiredStores: s.m(Sury.$option(Sury.array(Sury.string))),
+  requiredStoreDeclarations: s.m(Sury.$option(Sury.array(requiredStoreDeclarationSchema))),
+  requiredCapabilities: s.m(Sury.$option(Sury.array(requiredCapabilityDeclarationSchema))),
+  traitDeclarations: s.m(Sury.$option(Sury.array(traitDeclarationSchema)))
 }));
 
 let pluginStructureOffloadSchema = Offload$Reventless.optionSchema(undefined, "pluginStructures", undefined, pluginStructureSchema);
@@ -284,9 +260,9 @@ let pluginDefinitionSchema = Sury.$schema(s => ({
   eventCollector: s.m(Sury.string),
   extensionProtocols: s.m(Sury.array(extensionProtocolSchema)),
   apiSchemaFragment: s.m(apiSchemaFragmentOffloadSchema),
-  apiTarget: s.m(stringOptionSchema),
+  apiTarget: s.m(Sury.$option(Sury.string)),
   structure: s.m(pluginStructureOffloadSchema),
-  dcbEventLog: s.m(dcbEventLogOptionSchema),
+  dcbEventLog: s.m(Sury.$option(dcbEventLogDefinitionSchema)),
   kind: s.m(pluginKindSchema)
 }));
 
@@ -301,10 +277,6 @@ export {
   apiSchemaFragmentSchema,
   apiTargetSchema,
   apiSchemaFragmentOffloadSchema,
-  dcbEventLogOptionSchema,
-  stringOptionSchema,
-  stringArrayOptionSchema,
-  boolOptionSchema,
   panelManifestEntrySchema,
   menuEntrySchema,
   pageManifestEntrySchema,
@@ -321,22 +293,14 @@ export {
   outboundTranslationSliceDefSchema,
   inboundTranslationSliceDefSchema,
   publishedEventDefSchema,
-  publishedEventDefArrayOptionSchema,
   acceptedCommandDefSchema,
-  acceptedCommandDefArrayOptionSchema,
   handledEventDefSchema,
-  handledEventDefArrayOptionSchema,
   issuedCommandDefSchema,
-  issuedCommandDefArrayOptionSchema,
   extensionDefSchema,
   extensionPointDefSchema,
-  extensionPointDefArrayOptionSchema,
   requiredStoreDeclarationSchema,
-  requiredStoreDeclarationArrayOptionSchema,
   requiredCapabilityDeclarationSchema,
-  requiredCapabilityDeclarationArrayOptionSchema,
   traitDeclarationSchema,
-  traitDeclarationArrayOptionSchema,
   pluginStructureSchema,
   pluginStructureOffloadSchema,
   pluginDefinitionSchema,

@@ -6,20 +6,19 @@
 # one means every message stored before it decodes with a value this framework invented
 # (`""` / `0` / `false`), reported at runtime as a warning and nowhere else.
 #
-# So a diff here is a design decision, not a chore. If your new field can be absent, give
-# it the `js_nullable` (`T | null`) shape and this list does not change. If it genuinely
-# must be a required scalar, add the line and accept that older payloads carry a fabricated
-# value for it.
+# So a diff here is a design decision, not a chore. If your new field can be absent, make
+# it `option` and this list does not change. If it genuinely must be a required scalar, add
+# the line and accept that older payloads carry a fabricated value for it.
 #
 # Regenerate ONLY after making that call — never to make a red build green.
 # See docs/analysis/plugin-definition-schema-evolution-wedge.md.
 #
-# A `js_nullable` (`T | null`) scalar is NOT listed: absent heals to null, which is the
-# shape the rule asks for. A scalar nested inside a nullable object or array IS listed —
+# An optional scalar is NOT listed: absent stays absent and decodes to `None`, which is the
+# shape the rule asks for. A scalar nested inside an optional object or array IS listed —
 # when an old payload carries the parent, the new field still has to be invented. That is
-# how requiredStoreDeclarations[].annotation, a required string inside a nullable array,
+# how requiredStoreDeclarations[].annotation, a required string inside an optional array,
 # froze a plugin's registration for two days; it is absent from this list because it has
-# since been made `js_nullable`.
+# since been made optional.
 #
 # The `.$offload.*` lines are the reference arm of an `@offload` field. They are not new
 # fields — they have been persisted since `@offload` existed. They appear here because the
@@ -94,8 +93,8 @@
 .structure.inboundTranslationSlices[].name: string
 .structure.inboundTranslationSlices[].targetName: string
 .structure.outboundTranslationSlices[].consumedEventTypes[]: string
-# `consumedSources` is itself `js_nullable` and is NEW, so no persisted payload
-# carries the array: a stored structure heals to null and this line is never
+# `consumedSources` is itself optional and is NEW, so no persisted payload
+# carries the array: a stored structure heals to `None` and this line is never
 # reached — the same call `traitDeclarations` made below. Required inside it
 # because a source name is a topic key the slice subscribes to, and a fabricated
 # `""` would name a topic that does not exist rather than saying nothing.
@@ -111,15 +110,15 @@
 .structure.readModels[].retiredValues[]: string
 .structure.readModels[].schema: string
 .structure.readModels[].searchableFields[]: string
-# `requiredCapabilities` is itself `js_nullable` and is NEW, so no persisted payload
-# carries the array: a stored structure heals to null and these two are never reached.
+# `requiredCapabilities` is itself optional and is NEW, so no persisted payload
+# carries the array: a stored structure heals to `None` and these two are never reached.
 # Required inside it because a declaration naming no capability, or no declaring
 # component, is not a declaration — the same call `requiredStoreDeclarations` made for
 # `store`/`component`/`field`.
 .structure.requiredCapabilities[].capability: string
 .structure.requiredCapabilities[].component: string
-# `traitDeclarations` is itself `js_nullable` and is NEW, so no persisted payload
-# carries the array: a stored structure heals to null and these four are never
+# `traitDeclarations` is itself optional and is NEW, so no persisted payload
+# carries the array: a stored structure heals to `None` and these four are never
 # reached. Required inside it for the same reason the two above are — a graft
 # naming no trait, no version, no posture or no component is not a record of a
 # graft, and a fabricated `""` here would read as "grafted from nothing", which is

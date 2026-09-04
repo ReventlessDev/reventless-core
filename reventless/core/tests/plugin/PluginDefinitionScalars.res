@@ -10,15 +10,16 @@
 // A scalar is "bare required" when `Message.fillMissingDefaults` could not supply
 // a value for it from the schema alone. Everything else it CAN supply is skipped:
 //
-//   `T | null` union   → null          (the `js_nullable` shape the rule asks for)
+//   optional union     → absent        (the `option` shape the rule asks for —
+//                                       `T | undefined`, or legacy `T | null`)
 //   const / enum union → the literal
 //   array              → []
 //   object             → {} filled recursively
 //
-// A scalar arm of a nullable union is therefore not reported — but object and
-// array arms are still descended, nullable or not: when an old payload happens to
-// carry a nullable parent, a scalar added inside it still has to be invented.
-// `requiredStoreDeclarations[].annotation`, a required string inside a nullable
+// A scalar arm of an optional union is therefore not reported — but object and
+// array arms are still descended, optional or not: when an old payload happens to
+// carry an optional parent, a scalar added inside it still has to be invented.
+// `requiredStoreDeclarations[].annotation`, a required string inside an optional
 // array, is exactly that case and is how a plugin's registration once froze.
 
 let scalarName = (schema: S.t<unknown>): option<string> =>
@@ -58,16 +59,20 @@ let collect = (root: S.t<'a>): array<string> => {
         | Number({const: ?Some(_)})
         | Boolean({const: ?Some(_)})
         | BigInt({const: ?Some(_)})
+        | Undefined(_)
         | Null(_) => true
         | _ => false
         }
       )
       if !isEnum {
-        let nullable = has.null->Option.getOr(false)
+        // Either optional encoding: the healer leaves an absent `T | undefined`
+        // alone and writes `null` for a `T | null`, so neither invents a scalar.
+        let optional =
+          has.null->Option.getOr(false) || has.undefined->Option.getOr(false)
         anyOf->Array.forEach(member =>
           switch member {
-          | Null(_) => ()
-          | _ if nullable && isScalar(member) => ()
+          | Undefined(_) | Null(_) => ()
+          | _ if optional && isScalar(member) => ()
           | _ => walk(member, path)
           }
         )

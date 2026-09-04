@@ -2,13 +2,11 @@
 
 import * as Sury from "sury";
 
-let stringOptionSchema = Sury.$nullAsOption(Sury.string);
-
 let resourceInfoSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "StorageKeys",
     partitionKey: s.m(Sury.string),
-    sortKey: s.m(stringOptionSchema)
+    sortKey: s.m(Sury.$option(Sury.string))
   })),
   Sury.$schema(s => ({
     TAG: "StreamSource",
@@ -36,8 +34,7 @@ let schema = Sury.$schema(s => ({
 }));
 
 export {
-  stringOptionSchema,
   resourceInfoSchema,
   schema,
 }
-/* stringOptionSchema Not a pure module */
+/* resourceInfoSchema Not a pure module */
