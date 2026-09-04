@@ -13,6 +13,7 @@ import * as Effect from "effect/Effect";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_Promise from "@rescript/runtime/lib/es6/Stdlib_Promise.js";
 import * as Plugin$Reventless from "@reventlessdev/reventless-spec/src/components/Plugin.res.mjs";
+import * as AnsiStyle$Reventless from "@reventlessdev/reventless-spec/src/AnsiStyle.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
@@ -103,6 +104,8 @@ import * as LocalGraphQL_SubscriptionResolvers$ReventlessLocal from "./adapter/A
 import * as InboundTranslationResolvers_GraphQL$ReventlessLocal from "./adapter/CommandGenerator/InboundTranslationResolvers_GraphQL.res.mjs";
 
 EffectLogger$ReventlessCore.setDefaultMinLevel("Debug");
+
+AnsiStyle$Reventless.setDefaultFormat("text");
 
 let log = Logger$ReventlessCore.fromEnv();
 

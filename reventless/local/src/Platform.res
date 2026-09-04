@@ -17,6 +17,12 @@ let _ = ReventlessCore.EffectLogger.install
 // LOG_LEVEL env var still overrides this (e.g. LOG_LEVEL=info or =silent).
 ReventlessCore.EffectLogger.setDefaultMinLevel(ReventlessCore.Logger.Debug)
 
+// Same reasoning, for the format: a person reads these logs, including when
+// `dev:full`'s concurrently, `serve:watch`'s tsx or an IDE pipes them — which is
+// where the TTY probe alone concludes "log collector" and emits JSON. An explicit
+// REVENTLESS_LOG_FORMAT still wins.
+Reventless.AnsiStyle.setDefaultFormat(#text)
+
 let log = ReventlessCore.Logger.fromEnv()
 
 // Module-level ref to hold the platform GraphQL server instance in split mode.

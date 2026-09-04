@@ -44,6 +44,8 @@ pnpm run dev:full
 
 This gives **live reload**: edit a `.res` source anywhere in the framework or plugins and the backend recompiles and restarts automatically. A restart resets in-memory state — but with the default SQLite backend (below) your data survives the restart.
 
+**The backend's logs are human-readable text under every one of these scripts**, colour and all. That is not automatic from the shell's point of view: the framework picks its format from whether stdout is a TTY, and `dev:full`'s `concurrently`, `serve:watch`'s `tsx watch` and the VS Code runner all pipe the platform's output — a pipe that looks exactly like the one a log collector reads. So the local platform *declares* itself human-read at startup rather than being guessed at. A deployed platform declares nothing, keeps the TTY rule, and so still emits structured JSON to CloudWatch. `REVENTLESS_LOG_FORMAT=json` gets the structured form back locally.
+
 ### How the UI dev server is resolved
 
 `dev:full` internally calls `pnpm run dev:ui`, which picks the UI dev server in this order:
