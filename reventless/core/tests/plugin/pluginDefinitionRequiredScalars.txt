@@ -94,6 +94,12 @@
 .structure.inboundTranslationSlices[].name: string
 .structure.inboundTranslationSlices[].targetName: string
 .structure.outboundTranslationSlices[].consumedEventTypes[]: string
+# `consumedSources` is itself `js_nullable` and is NEW, so no persisted payload
+# carries the array: a stored structure heals to null and this line is never
+# reached — the same call `traitDeclarations` made below. Required inside it
+# because a source name is a topic key the slice subscribes to, and a fabricated
+# `""` would name a topic that does not exist rather than saying nothing.
+.structure.outboundTranslationSlices[].consumedSources[]: string
 .structure.outboundTranslationSlices[].inboundCommandTypes[]: string
 .structure.outboundTranslationSlices[].name: string
 .structure.readModels[].consumedEventTypes[]: string

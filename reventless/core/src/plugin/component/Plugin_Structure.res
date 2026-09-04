@@ -1461,6 +1461,10 @@ let make = (
       targetName: OTS.Spec.targetName,
       externalSystem: OTS.Spec.externalSystem,
       chapter: chapterOf(OTS.Spec.name),
+      // Published verbatim, `[]` included: `[]` is the declared default meaning
+      // this plugin's own DCB log, and resolving it here to a derived name would
+      // be a second place that name is spelled.
+      consumedSources: Some(OTS.Spec.sourceNames),
     }: Reventless.Plugin.outboundTranslationSliceDef))
 
   // ── Inbound translation slices ────────────────────────────────────────────

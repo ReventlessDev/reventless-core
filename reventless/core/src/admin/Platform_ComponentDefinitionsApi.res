@@ -31,7 +31,7 @@ let sdlTypes: array<string> = [
   // `idField` to report.
   `type Platform_ReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n  labelField: String!\n  searchableFields: [String!]!\n  labelFieldSource: String\n  lifecycleField: String\n  visibility: String\n  chapter: String\n  singleQueryField: String\n  idField: String\n  idFieldSource: String\n  requiredAccess: [String!]\n  ownerField: String\n  retiredField: String\n  retiredValues: [String!]\n  namedWhenRetired: Boolean!\n}`,
   `type Platform_AutomationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  producedCommandTypes: [String!]!\n  targetName: String\n  chapter: String\n}`,
-  `type Platform_OutboundTranslationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  inboundCommandTypes: [String!]!\n  targetName: String\n  externalSystem: String\n  chapter: String\n}`,
+  `type Platform_OutboundTranslationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  inboundCommandTypes: [String!]!\n  targetName: String\n  externalSystem: String\n  chapter: String\n  consumedSources: [String!]\n}`,
   `type Platform_InboundTranslationSliceDef {\n  name: String!\n  commandTypes: [String!]!\n  targetName: String\n  externalSystem: String\n  chapter: String\n}`,
   // The subscriber's half of the port's translation table — see `handledEventDef`.
   `type Platform_HandledEventDef {\n  name: String!\n  toCommandTypes: [String!]!\n}`,
@@ -193,6 +193,10 @@ let encodeOutboundTranslationSliceDef = (o: outboundTranslationSliceDef): JSON.t
     // the external-system boundary box without workspace access. None → null.
     ("externalSystem", o.externalSystem->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
     ("chapter", o.chapter->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
+    // Which topics this slice subscribes to, so a graph consumer can tell two
+    // topics carrying an event of the same name apart. `[]` means this plugin's
+    // own DCB log; null is a structure from before the field existed.
+    ("consumedSources", o.consumedSources->Option.mapOr(JSON.Encode.null, encodeStrings)),
   ])->JSON.Encode.object
 
 let encodeInboundTranslationSliceDef = (i: inboundTranslationSliceDef): JSON.t =>

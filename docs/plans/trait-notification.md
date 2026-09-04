@@ -699,6 +699,28 @@ without an annotation being added.
 
 ### 15.2 A raw-consumption posture on `OutboundTranslationSlice`
 
+**Status: ◐ the metadata half is DONE [2026-09-04]; the posture itself is deferred — see §18.**
+`outboundTranslationSliceDef.consumedSources` publishes `Spec.sourceNames` verbatim, `[]` included,
+and `[]` keeps its declared meaning of "this plugin's own DCB log". Two things follow:
+
+- **The third of §15.2's three work items is now a slot that already exists**, so the raw posture
+  no longer has to invent a shape for a consumer in another repository at the same time as it
+  changes the decoder. That was the whole reason to split it out — the Event Graph consumer lives
+  outside this repository, and a shape it cannot be tested against is the risky half.
+- **It earns its place without the raw posture.** `consumedEventTypes` names event types and not
+  where they came from, and §15.2 already notes that two sources sharing an event-type name are
+  indistinguishable. In `online-shop-hybrid/ordering` that is not hypothetical:
+  `AnnounceRecipientContact` and `GeocodeCustomerAddress` both consume `Ordering.Registered`, one
+  from the `Customer` aggregate's topic — and `SendNotification` reads `[]`, its own DCB log.
+
+⚠️ **Adding a field to `pluginStructure` is survivable but not free of thought.** The tripwire
+`PluginDefinitionRequiredScalarsTest` fires on the array's *element* — a bare required scalar — and
+the answer is the one `traitDeclarations` already recorded: the array is `js_nullable` and new, so
+no persisted payload carries it, a stored structure heals to null, and the element is never reached.
+The frozen corpus cannot vouch for that on its own: every fixture in it carries
+`"outboundTranslationSlices":[]`, so no stored payload has an outbound slice to be missing a field.
+That gap is now covered by an explicit `parseJsonTolerant` assertion beside the encoder tests.
+
 Today a slice consumes events through a closed `@schema` variant, so it cannot consume an event type
 chosen anywhere but at compile time. The posture: **subscribe to a declared allowlist of logs and
 hand the translation `(eventType, payload, meta)` as raw JSON.**
@@ -749,7 +771,9 @@ P1 renderer                                ✅ DONE [2026-09-03]
 P2 provenance + deferred ──> P3 handover   ◐ SUBSTANTIALLY BUILT — gap at §13.4, and see §13a
 P5 address out / subject in                ✅ DONE [2026-09-02]
 15.1 @sensitive                            ✅ DONE [2026-09-03]
-15.2 raw posture                           (independent; needed by a second producer, not by P0–P4)
+15.2 consumedSources metadata              ✅ DONE [2026-09-04]
+15.2 raw posture                           LAST — nothing needs it until a rule table is configured
+§18 the digest, in-plugin                  ← NEXT: the claim mechanism's first counterparty
 ```
 
 **P0's dependency on P1 was settled by shipping P1 first**, and no stopgap interpolator was needed.
@@ -830,3 +854,42 @@ audited. That is a decision, not code, and it is not specified anywhere here.
   inside sury's wrapper, an unannotated `email`, and one arm of an event union). The formatter
   assertions drive `Money` / `Percent` / `Bytes` / `Duration` through a template with no formatter
   written, which is the claim §11 makes about rendering on an annotated schema.
+
+---
+
+## 18. 🚨 [2026-09-04] The door §13a asks for may not be needed — build the digest instead
+
+§13a stopped the P2/P3 line on one observation: nothing can issue a `Configured` request, because
+the competency exposes no ExtensionPoint. That is true and the conclusion drawn from it is too
+strong. **A second producer inside the same plugin needs no door at all.**
+
+`RequestNotification` is `@noApi`, which closes the *client* door and nothing else. The intake relay
+already publishes it to `NotificationPreferences` from inside the ordering plugin; a digest
+component would publish it the same way, and claim its source through `NotificationSourceClaims`
+exactly as §13.2 describes. The door §13a names is needed only for a producer in a **foreign**
+plugin — and the feature the claim mechanism was built for (§13.5: batching) is a digest of *this*
+plugin's own notifications, which belongs in this plugin.
+
+**So the next step is the digest, not the door.** It is the only remaining item that is neither
+blocked on a decision nor speculative:
+
+- It gives the claim mechanism its first real counterparty, which is what §13a says has to come
+  before §13.4.
+- It makes the release question concrete, and it will probably **contradict §13.4's assumption**.
+  That section borrows the plugin-lifecycle shape — graceful disconnect plus heartbeat timeout — but
+  a same-plugin producer never disconnects; its claim outlives it as a fact in the log. The trigger
+  is more likely a lease or a re-assertion, which §13.5's "no claim expiry" would have to bend for.
+  Better to learn that from a claimant than to design a release for a lifecycle that does not apply.
+
+⚠️ **Watch for the outcome that vindicates §13b.** The digest may never need to claim anything: with
+rules as data (P0), a rule can say a source is the digest's and the per-event relay simply does not
+fire for it. Being scheduler-driven makes the digest a separate *component*; it does not stop the
+table from deciding whether the event-driven half runs — which is the step §13a's defence of §13
+skips. If that is what building it shows, the claim mechanism can be left dormant rather than
+extended, and §13.4 becomes a bug in unused code rather than a gap to close.
+
+**And 15.2 moves to last.** A same-plugin digest is compiled alongside the events it reads, so it
+needs no raw consumption. The only thing that does is a rule table arriving at runtime naming event
+types nobody compiled — which needs both the door *and* §14's vocabulary decision first. The
+metadata half shipped (§15.2) precisely so the posture, whenever it comes, lands in a slot that has
+already been checked against its out-of-repo consumer.

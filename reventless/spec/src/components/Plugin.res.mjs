@@ -172,7 +172,8 @@ let outboundTranslationSliceDefSchema = Sury.$schema(s => ({
   inboundCommandTypes: s.m(Sury.array(Sury.string)),
   targetName: s.m(stringOptionSchema),
   externalSystem: s.m(stringOptionSchema),
-  chapter: s.m(stringOptionSchema)
+  chapter: s.m(stringOptionSchema),
+  consumedSources: s.m(stringArrayOptionSchema)
 }));
 
 let inboundTranslationSliceDefSchema = Sury.$schema(s => ({

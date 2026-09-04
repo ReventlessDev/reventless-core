@@ -134,6 +134,7 @@ type Platform_IssuedCommandDef {
 type Platform_OutboundTranslationSliceDef {
   chapter: String
   consumedEventTypes: [String!]!
+  consumedSources: [String!]
   externalSystem: String
   inboundCommandTypes: [String!]!
   name: String!

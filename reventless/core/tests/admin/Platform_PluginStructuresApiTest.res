@@ -183,4 +183,36 @@ describe("absent optional collections", () => {
   testSync("encodes absent requiredStores as null", () =>
     expect(bareJson->String.includes("\"requiredStores\":null"))->toEqual(true)
   )
+
+  // The case the frozen corpus cannot reach: every fixture in it carries
+  // `"outboundTranslationSlices":[]`, so no stored payload has an outbound slice
+  // to be missing a field. A structure written before `consumedSources` existed
+  // has no such key, and the schema alone refuses it — `S.nullAsOption` is
+  // `T | null`, and the variant that also accepts `undefined` fails sury's
+  // jsonable validation inside a union payload, which is where a structure
+  // travels. `parseJsonTolerant` is what makes the absence survivable, and it is
+  // the path the Plugin aggregate replays through.
+  testSync("an outbound slice stored before consumedSources existed still replays", () =>
+    expect(
+      (
+        `{"name":"ToShipper","consumedEventTypes":[],"inboundCommandTypes":[],` ++
+        `"targetName":null,"externalSystem":null,"chapter":null}`
+      )
+      ->JSON.parseOrThrow
+      ->Reventless.Message.parseJsonTolerant(outboundTranslationSliceDefSchema)
+      ->(slice => slice.consumedSources),
+    )->toEqual(None)
+  )
+
+  testSync("an explicit null decodes as None", () =>
+    expect(
+      (
+        `{"name":"ToShipper","consumedEventTypes":[],"inboundCommandTypes":[],` ++
+        `"targetName":null,"externalSystem":null,"chapter":null,"consumedSources":null}`
+      )
+      ->JSON.parseOrThrow
+      ->Reventless.Util_Sury.fromJson(outboundTranslationSliceDefSchema)
+      ->(slice => slice.consumedSources),
+    )->toEqual(None)
+  )
 })

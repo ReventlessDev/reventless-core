@@ -128,6 +128,7 @@ let outbound: outboundTranslationSliceDef = {
   targetName: Some("Shipment"),
   externalSystem: Some("Shipper"),
   chapter: Some("Fulfilment"),
+  consumedSources: Some(["OrderingDcbEventLog"]),
 }
 
 let inbound: inboundTranslationSliceDef = {

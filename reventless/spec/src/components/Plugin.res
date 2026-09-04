@@ -261,6 +261,14 @@ type outboundTranslationSliceDef = {
   externalSystem: @s.matches(stringOptionSchema) option<string>,
   /** Chapter grouping band — see `queryableDef.chapter`. */
   chapter: @s.matches(stringOptionSchema) option<string>,
+  /** The topics this slice subscribes to, as `Spec.sourceNames` declares them —
+      an Aggregate's `Spec.name` or a DCB source name. `Some([])` is the declared
+      default and means this plugin's own DCB log; `None` is an older structure
+      that did not publish the field. A different fact from `consumedEventTypes`,
+      which names event types and not where they came from — two topics carrying
+      an event of the same name are indistinguishable there. Optional so an older
+      reader ignores it. */
+  consumedSources: @s.matches(stringArrayOptionSchema) option<array<string>>,
 }
 
 @schema

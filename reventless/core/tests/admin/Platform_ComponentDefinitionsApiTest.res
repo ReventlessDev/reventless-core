@@ -77,6 +77,7 @@ let structure: pluginStructure = {
       targetName: None,
       externalSystem: None,
       chapter: None,
+      consumedSources: None,
     },
   ],
   inboundTranslationSlices: [
@@ -227,6 +228,7 @@ describe("translation-slice externalSystem round-trip", () => {
         targetName: None,
         externalSystem: Some("ShipperGateway"),
         chapter: None,
+        consumedSources: None,
       },
     ],
     inboundTranslationSlices: [

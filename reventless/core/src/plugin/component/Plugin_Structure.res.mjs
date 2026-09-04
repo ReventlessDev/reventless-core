@@ -1074,7 +1074,8 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     inboundCommandTypes: qualify(name, DcbTag$Reventless.extractAllVariantNames(OTS.Spec.inboundCommandSchema)),
     targetName: OTS.Spec.targetName,
     externalSystem: OTS.Spec.externalSystem,
-    chapter: componentChapters[OTS.Spec.name]
+    chapter: componentChapters[OTS.Spec.name],
+    consumedSources: OTS.Spec.sourceNames
   }));
   let inboundTranslationSliceDefs = inboundTranslationSlices.map(ITS => ({
     name: ITS.Spec.name,
