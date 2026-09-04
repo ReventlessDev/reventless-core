@@ -76,6 +76,38 @@ REVENTLESS_LOCAL_BACKEND=memory pnpm run serve           # same as serve:memory
 REVENTLESS_LOCAL_BACKEND=sqlite:./.reventless/local.db?reset pnpm run serve
 ```
 
+### One platform per directory
+
+At most one platform serves an app directory, started by whoever gets there
+first. A second `pnpm run serve` says where the first one is and stops:
+
+```
+$ pnpm run serve
+→ already running at :4000  ·  sqlite .reventless/local.db  (pid 51055)
+  nothing started — http://localhost:4000/graphql is serving this directory.
+```
+
+A second `pnpm run serve:reset` **refuses** rather than starting, because a reset
+unlinks the store and wipes the object store beside it at construction, while the
+ports are bound at the very end of it — so it used to destroy the running
+platform's data and only then discover it could not listen. That one is always
+on, for every app:
+
+```
+Error: refusing to reset ./.reventless/local.db: it is the store of
+@reventlessdev/online-shop-hybrid-platform-local running at :4000 (pid 51055).
+Stop that platform first, or start this one without ?reset.
+```
+
+Both read `.reventless/running/`, the same registry the seed tools resolve their
+target from, so a platform that died without cleaning up is pruned rather than
+reported. Both are scoped to the current directory — a `REVENTLESS_LOCAL_BACKEND`
+pointing at *another* app's file is not caught.
+
+**Setting `REVENTLESS_DOMAIN_PORT` bypasses the check.** Naming a port is the
+statement that this platform is meant to coexist, which is how the e2e suites and
+the VS Code runner start several in one directory.
+
 ### Uploaded and offloaded objects
 
 The object store follows the same choice, so bytes never outlive — or fall short of — the events that reference them. Under SQLite it writes beside the database, in the directory the database file sits in:
@@ -123,15 +155,15 @@ pnpm run seed            # in a second shell
 **It asks a platform which store to empty.** Both `seed` and `seed:reset` resolve their target the same way — from the platforms actually running in this directory, which each publish their endpoint and store under `.reventless/running/` at startup:
 
 ```
-→ http://localhost:4000/graphql  ·  sqlite .reventless/runner.db  (online-shop-hybrid-platform-local)
+→ http://localhost:4000/graphql  ·  sqlite .reventless/local.db  (online-shop-hybrid-platform-local)
 ```
 
-With one platform up, that line is all you see. With several — a hand-started `pnpm run serve` beside the VS Code runner's child, say — you get a menu, and `SEED_PLATFORM` (a port, or a menu index) picks one non-interactively:
+With one platform up, that line is all you see. With several — a suite that starts a deliberate second one on its own port (`REVENTLESS_DOMAIN_PORT`), say — you get a menu, and `SEED_PLATFORM` (a port, or a menu index) picks one non-interactively:
 
 ```
 Platform:
 
-  1) :4000  online-shop-hybrid-platform-local  sqlite .reventless/runner.db
+  1) :4000  online-shop-hybrid-platform-local  sqlite .reventless/local.db
   2) :4010  online-shop-hybrid-platform-local  memory
 ```
 

@@ -1,3 +1,7 @@
+// One platform per app directory. Before Platform.Make(), which opens the store;
+// REVENTLESS_DOMAIN_PORT bypasses.
+ReventlessLocal.LocalPlatformStart.orAddressRunning()
+
 module Platform = ReventlessLocal.Platform.Make()
 
 // Before the plugins are built, because component construction is where the

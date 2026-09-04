@@ -4,6 +4,9 @@ import * as Plugin$CatalogPlugin from "@reventlessdev/online-shop-dcb-catalog/sr
 import * as Plugin$OrderingPlugin from "@reventlessdev/online-shop-dcb-ordering/src/Plugin.res.mjs";
 import * as Platform$ReventlessLocal from "@reventlessdev/reventless-local/src/Platform.res.mjs";
 import * as PackageVersion$Reventless from "@reventlessdev/reventless-spec/src/PackageVersion.res.mjs";
+import * as LocalPlatformStart$ReventlessLocal from "@reventlessdev/reventless-local/src/LocalPlatformStart.res.mjs";
+
+LocalPlatformStart$ReventlessLocal.orAddressRunning(undefined, undefined);
 
 let Platform = Platform$ReventlessLocal.Make({});
 
@@ -27,4 +30,4 @@ export {
   Catalog,
   Ordering,
 }
-/* Platform Not a pure module */
+/*  Not a pure module */

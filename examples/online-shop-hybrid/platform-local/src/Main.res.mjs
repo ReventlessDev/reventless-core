@@ -6,7 +6,10 @@ import * as Plugin$OrderingPlugin from "@reventlessdev/online-shop-hybrid-orderi
 import * as Platform$ReventlessLocal from "@reventlessdev/reventless-local/src/Platform.res.mjs";
 import * as PackageVersion$Reventless from "@reventlessdev/reventless-spec/src/PackageVersion.res.mjs";
 import * as Storefront$OnlineShopHybridSeed from "@reventlessdev/online-shop-hybrid-seed/src/Storefront.res.mjs";
+import * as LocalPlatformStart$ReventlessLocal from "@reventlessdev/reventless-local/src/LocalPlatformStart.res.mjs";
 import * as Capability_Messaging_Log$ReventlessLocal from "@reventlessdev/reventless-local/src/capability/Capability_Messaging_Log.res.mjs";
+
+LocalPlatformStart$ReventlessLocal.orAddressRunning(undefined, undefined);
 
 let Platform = Platform$ReventlessLocal.Make({});
 
@@ -53,4 +56,4 @@ export {
   Catalog,
   Ordering,
 }
-/* Platform Not a pure module */
+/*  Not a pure module */

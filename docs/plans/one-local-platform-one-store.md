@@ -1,6 +1,9 @@
 # Plan: one local platform per app, one store
 
-**Status.** NOT STARTED, written 2026-09-04.
+**Status.** Steps 1–2 DONE 2026-09-04 (`LocalPlatformStart`, wired into the
+functor's reset arm and into all three examples' `Main.res`). Step 3 is the
+extension's, and is now unblocked. Step 4 not started — still worth scoping on
+its own. Written 2026-09-04.
 
 **Goal.** At most one local platform running per app directory, serving one store,
 started by whoever gets there first — `pnpm run serve` or the VS Code runner — and
@@ -57,7 +60,10 @@ store on every launch — real, and answered by the tools plan's step 1 (flip
 platforms writing projections into one file would race", is dissolved by
 construction here: there is only ever one.
 
-## Step 1 — refuse a reset that would wipe a served store
+## Step 1 — refuse a reset that would wipe a served store — DONE
+
+Landed as `LocalPlatformStart.guardReset`, called from the `Backend.Sqlite` arm
+before `removeFileIfExists`.
 
 In the `Backend.Sqlite` arm of the functor body, before `removeFileIfExists`:
 resolve `path` to an absolute path and check `LocalPlatformRegistry.list()` for a
@@ -74,7 +80,18 @@ Best-effort by design: `list` is scoped to `<cwd>/.reventless/running/`, so a
 the right trade — it covers the collision that actually happens (same app, same
 directory, two starters) without pretending to a machine-wide lock.
 
-## Step 2 — start, or address the one already running
+## Step 2 — start, or address the one already running — DONE
+
+Landed as `LocalPlatformStart.orAddressRunning`, first line of all three
+examples' `Main.res`.
+
+**One thing the table missed, found in verification.** `serve:reset` reaches this
+helper before it reaches step 1's guard, so the "already running → exit 0" arm
+swallowed the reset: the operator asked for a wipe, got a success exit, and a
+`serve:reset && seed` would then have run against a store nothing emptied. So
+`orAddressRunning` checks the reset FIRST — reading the same `Backend.fromEnv()`
+the functor is about to read — and throws step 1's refusal. Exit 0 is for a start
+that was merely redundant, never for a destructive one that did not happen.
 
 A helper in `reventless-local` that each example's `Main.res` calls as its first
 line, **before** `ReventlessLocal.Platform.Make()`:
@@ -96,7 +113,7 @@ An explicit `REVENTLESS_DOMAIN_PORT` should bypass this — that is how the e2e
 suites and the runner already start deliberate parallel platforms, and it is the
 same escape hatch `REVENTLESS_GRAPHQL_ENDPOINT` is for the seed tools.
 
-## Step 3 — one store per app
+## Step 3 — one store per app — the extension's, now unblocked on this side
 
 Once steps 1–2 and the tools plan's step 1 have landed, the runner's store becomes
 `./.reventless/local.db` — a two-line change in the extension's
@@ -108,7 +125,7 @@ the developer's seeded store.
 After it lands, delete the `runner.db` handling from step 2 of the optional-fields
 plan's local arm and from `docs/guides/local-dev.md`'s worked example.
 
-## Step 4 — the event tap over a socket, not only stdout
+## Step 4 — the event tap over a socket, not only stdout — NOT STARTED
 
 The blocker to the runner *attaching* rather than refusing. Its timeline and
 inspector are fed by the child's stdout: `LocalBus.publishEvent` emits
@@ -130,16 +147,24 @@ better than killing the other process.
 
 ## Verification
 
-- `pnpm run build` with zero warnings; `pnpm test` and `pnpm run test:projects`
+- `pnpm run build` with zero warnings; `pnpm test` and `pnpm run test:projects` —
+  384 suites, 4137 tests, all green ✅
 - **Step 1:** start `pnpm run serve`, then run `pnpm run serve:reset` in a second
   shell — the second must refuse with the first's port and pid, and the first
   must still serve every row it had. This is the exact sequence that lost data.
+  ✅ Run against `online-shop-hybrid/platform-local`: the second exited 1 with
+  `refusing to reset ./.reventless/local.db: it is the store of … running at
+  :4000 (pid 54433)`; `local.db` kept its checksum, the uploads tree was intact,
+  and the first platform went on answering.
 - **Step 2:** the same pair, with `serve` second — it must print the running
-  platform's endpoint and store and exit 0.
+  platform's endpoint and store and exit 0. ✅ `→ already running at :4000 ·
+  sqlite .reventless/local.db (pid 54433)`.
 - **Step 3:** VS Code runner start, then `pnpm run seed` — one store, seeded once,
-  visible to both.
+  visible to both. — the extension's, not run here.
 - The e2e suites, which run several platforms in one directory on distinct ports,
   must be unaffected — the sharpest check that step 2's escape hatch is right.
+  ✅ `pnpm run check:graphql` starts its own platform on distinct ports with
+  `REVENTLESS_DOMAIN_PORT`, and passed *while* the :4000 platform was serving.
 
 ## What would stop this
 

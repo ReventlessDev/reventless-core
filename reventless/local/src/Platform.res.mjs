@@ -59,6 +59,7 @@ import * as ProjectionPending$ReventlessLocal from "./adapter/ProjectionPending.
 import * as ReadModel_Builder$ReventlessLocal from "./components/ReadModel_Builder.res.mjs";
 import * as UiFragmentRegistry$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateChangeSlice/UiFragmentRegistry.res.mjs";
 import * as LocalEvents_Server$ReventlessLocal from "./adapter/Api/LocalEvents_Server.res.mjs";
+import * as LocalPlatformStart$ReventlessLocal from "./LocalPlatformStart.res.mjs";
 import * as PlatformMCP_Server$ReventlessLocal from "./adapter/PlatformMCP_Server.res.mjs";
 import * as ResourceAttribution$ReventlessCore from "@reventlessdev/reventless-core/src/ResourceAttribution.res.mjs";
 import * as Auth_GraphqlContext$ReventlessLocal from "./adapter/Auth/Auth_GraphqlContext.res.mjs";
@@ -141,6 +142,7 @@ function MakeWithConfig(Config) {
     let resetOnStart = match.resetOnStart;
     let path = match.path;
     if (resetOnStart) {
+      LocalPlatformStart$ReventlessLocal.guardReset(path, undefined, undefined);
       Backend$ReventlessLocal.removeFileIfExists(path);
     }
     let db = SqliteDriver$ReventlessLocal.openDb(path);
@@ -1889,6 +1891,7 @@ function Make($star) {
     let resetOnStart = backend.resetOnStart;
     let path = backend.path;
     if (resetOnStart) {
+      LocalPlatformStart$ReventlessLocal.guardReset(path, undefined, undefined);
       Backend$ReventlessLocal.removeFileIfExists(path);
     }
     let db = SqliteDriver$ReventlessLocal.openDb(path);

@@ -114,6 +114,10 @@ module MakeWithConfig = (
   // full replay needs no checkpoint.
   | Backend.Sqlite({path, resetOnStart}) =>
     if resetOnStart {
+      // Before the unlink: the ports are bound at the very end of construction,
+      // so a second `serve:reset` used to wipe a served store and only then
+      // discover it could not listen.
+      LocalPlatformStart.guardReset(~path, ())
       Backend.removeFileIfExists(path)
     }
     let db = SqliteDriver.openDb(~path)
