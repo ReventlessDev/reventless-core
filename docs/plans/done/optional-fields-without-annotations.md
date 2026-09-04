@@ -1,12 +1,13 @@
 # Plan: stop annotating every optional field
 
-**Status.** IN PROGRESS 2026-09-04. Step 1 done and green, and now verified live
-against a fresh local store; steps 2–3 are the operational half — step 2's local
-arm is measured and its guidance corrected below, its AWS arm and step 3 wait on a
-push. Re-scoped once before execution after measuring through the repo's own
-emitter rather than sury's; then corrected again *during* execution, because one of
-the three blockers §6 of the analysis disproved turns out to be half real — see
-"What execution changed" below.
+**Status.** DONE 2026-09-04. Steps 1–4 are complete and verified on both a local
+store and alpha: the annotations are gone, both wire migrations ran, and the fleet
+redeployed and re-registered clean. Step 5 stays open as the separate follow-on it
+was always scoped as. Re-scoped once before execution after measuring through the
+repo's own emitter rather than sury's; then corrected twice *during* execution —
+one of the three blockers §6 of the analysis disproved turns out to be half real
+(see "What execution changed"), and step 2's ordering and blast radius were both
+wrong for AWS (see the two sections under step 2).
 
 **What execution changed**
 
@@ -117,18 +118,36 @@ remains outside `Offload.res`, `pnpm run build` is warning-free, `pnpm test` and
 The blast radius is narrow: only stores carrying `pluginDefinition` /
 `pluginStructure`. Domain plugin data is untouched.
 
-1. **Wipe the platform scope.** `SEED_RESET_SCOPE=platform` on
+**The deploy comes first, and the wipe second.** An earlier draft of this step had
+them the other way round, which is right only for a hand-triggered redeploy. Here
+every alpha push deploys the fleet, so the push *is* step 3's redeploy — and a
+wipe that lands before it is undone within one heartbeat interval, because the
+still-running old-code plugins re-register in the old encoding against the empty
+aggregate. Deploy, let it fail loud, then wipe.
+
+1. **Push, and let CI deploy the whole fleet from one commit**, so no deployed
+   plugin is left registering in the old format. The platform then crash-loops on
+   the old payloads — `SuryError: ... received null` out of
+   `EventLog_Operations.decodeEvent`, seconds after the Lambda looks healthy. That
+   is the expected signal, not a regression.
+2. **Wipe the platform scope.** `SEED_RESET_SCOPE=platform` on
    `ReventlessSeedAws_Reset` selects exactly the platform target
    (`{projectDir: ".", label: "platform", group: Platform}`) — the Plugin
    lifecycle EventLog, the Plugins QueryDb table, and the platform-qualified
    object stores (`pluginStructures`, `pluginApiFragments`). Prefer it to
    hand-deleting tables: it discovers by tag, is fail-closed, wipes shared-layout
-   buckets by key prefix, and offers a dry run plus typed confirmation.
-2. **Let the quiesce run.** A truncate is not durable while runtimes hold
+   buckets by key prefix, and offers a dry run plus typed confirmation. It reaches
+   DynamoDB and S3 by tag directly, so a crash-looping platform does not block it.
+3. **Let the quiesce run.** A truncate is not durable while runtimes hold
    module-level state and re-save it each invocation; `ReventlessSeedAws_Quiesce`
    performs the hold-and-recycle, and in-flight SQS `Connect` messages must drain.
-3. **Redeploy the whole fleet from one commit**, so no deployed plugin is left
-   registering in the old format.
+
+   **No second deploy is needed to re-register.** The wipe leaves the aggregate
+   with no known versions, so the next `Heartbeat(v)` takes
+   [`PluginBehavior.res`](../../reventless/core/src/plugin/lifecycle/PluginBehavior.res#L129-L135)'s
+   `None => VersionDetected(v)` arm and re-runs the whole connect handshake. Both
+   plugins come back in the new encoding on their own, within one heartbeat
+   interval.
 4. **Local platforms.** Start each example app once with `?reset` — `pnpm run
    serve:reset` (or `dev:full:reset`), i.e. `REVENTLESS_LOCAL_BACKEND=
    'sqlite:./.reventless/local.db?reset'`. **Do not delete the file**, which is
@@ -170,6 +189,52 @@ platform-scoped wipe, since object stores are qualified `{plugin}.{store}`. That
 acceptable: the blobs are content-addressed, each plugin re-offloads under a new
 hash, and nothing references the old keys once the aggregate is wiped.
 
+### The platform scope is wider than this plan assumed
+
+Two stores in the `platform` target are not the ones described above, and only one
+of them is harmless:
+
+- **`reventless-offload`** — a flat, content-addressed `sha256/` bucket. Emptying
+  it is fine on this plan's own reasoning, and it is *not* where the domain object
+  stores live: catalog and ordering images sit in a separate bucket under
+  `alpha-stores-.../Catalog/productImages/`, so a platform wipe cannot touch them.
+  The paragraph above is right about the outcome and wrong about the mechanism —
+  the separation is a different bucket, not a qualified prefix in a shared one.
+- **`host-ui-bundle`** — the deployed host UI shell, re-uploaded by the platform
+  deploy itself. `SEED_RESET_SCOPE` has no per-store narrowing, so `platform` takes
+  it, and the alpha UI is down until it is restored.
+
+**Restoring it needs a `pulumi refresh` first, and the `up` must come from CI.**
+The bundle is a set of Pulumi `BucketObject`s, so an out-of-band empty leaves state
+believing they exist and a plain `up` sees no diff. `pulumi refresh` records the 23
+deletions and the next deploy re-uploads them. Do **not** run `up` from a
+workstation to do it: without the config CI sets, the preview wants to take over
+the Cognito user pool (`cognitoUserPoolManaged: false => true`), swap
+`identityProviderManaged`, and replace the custom `hostShellUrl` with the raw
+CloudFront domain — 59 changes against 26 files worth of restore. Refresh locally,
+then re-run the deploy workflow.
+
+### Verified on AWS, 2026-09-04
+
+The failure mode on a stale AWS store is *not* the boot-time crash the local probe
+showed. All three Pulumi deploys succeed; the deploy fails later, at **Bake
+component manifest**, which waits for registrations that can never land and reports
+each plugin as `behind — expected sha256/…, row holds sha256/…`. The cause is in
+the platform's `AllAggregatesCmdHandler` log, not the deploy log:
+
+```
+Failed at ["_0"]["structure"]["stateViewSlices"]["0"]["visibility"]:
+    Expected string | undefined, received null
+```
+
+The `$offload` arm of that union fails only because it is the other branch — the
+`Offload` fields step 1 deliberately left alone are not implicated.
+
+After the wipe: both plugins re-registered to `Connected` on their own within a
+heartbeat, on a 4-event log (from 916), and the persisted payloads carry **zero**
+null-valued keys at any depth. No second deploy was needed to re-register, exactly
+as `PluginBehavior.res`'s `None => VersionDetected(v)` arm predicts.
+
 ### Verified locally, 2026-09-04
 
 Against a **fresh** SQLite store on an isolated port set (per
@@ -210,7 +275,7 @@ Step 2's local arm is done for this working copy:
 Neither `runner.db` comes back: the runner now opens `./.reventless/local.db` too,
 so a fresh working copy has one store per app to keep migrated.
 
-## Step 3 — release and downstream consumers
+## Step 3 — release and downstream consumers ✅ DONE for this repo
 
 `feat!` — `reventless-spec` is published on every alpha push, so external consumers
 compile against whichever shape they installed.
@@ -220,6 +285,12 @@ repo). Exposure is rebuild-and-repin only: consumers of the published core packa
 must be rebuilt against the release, and any that pin published core deps in
 release-mode CI move that pin with it. The `@reventlessdev/reventless-ui` package
 needs nothing — no sury dependency, and the schema shape it reads does not change.
+
+The release itself has shipped. **Still outstanding, in their own repos:** the
+sibling consumers that pin published core deps in release-mode CI have to move
+those pins onto this release and rebuild. Nothing in this repo blocks on it, and a
+stale pin there fails as a compile against the older shape rather than as a wire
+error.
 
 ## Step 4 — the guidance that has to move with it ✅ DONE
 
