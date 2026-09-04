@@ -718,6 +718,9 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-09-03
+- docs: four words that all sound alike, told apart in the glossary ([c196527](https://github.com/ReventlessDev/reventless-core/commit/c196527c395426cb9130be22d59873c8c774bcbd))
+- docs: the capabilities a plugin can declare are written down, and the list says it will grow ([764e7a2](https://github.com/ReventlessDev/reventless-core/commit/764e7a27029105d3c5c164fa19cdf686d393a68e))
 ### 2026-09-02
 - feat(aws)!: the messaging sender is configuration, and a stack can choose to only log ([23b8b4b](https://github.com/ReventlessDev/reventless-core/commit/23b8b4bfe9c70555de4d74266ca686cb427485ca))
 ### 2026-09-02
