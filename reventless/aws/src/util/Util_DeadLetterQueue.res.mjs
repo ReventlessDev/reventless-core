@@ -25,7 +25,7 @@ function queueTags(queueName) {
 let queue = new (Aws.sqs.Queue)(name, {
   messageRetentionSeconds: 1209600,
   tags: queueTags(name),
-  visibilityTimeoutSeconds: 180,
+  visibilityTimeoutSeconds: 900,
   sqsManagedSseEnabled: false
 });
 
@@ -34,7 +34,7 @@ let fifoQueue = new (Aws.sqs.Queue)(nameFifo, {
   fifoQueue: true,
   messageRetentionSeconds: 1209600,
   tags: queueTags(nameFifo),
-  visibilityTimeoutSeconds: 180,
+  visibilityTimeoutSeconds: 900,
   sqsManagedSseEnabled: false
 });
 
@@ -178,11 +178,14 @@ Pulumi.all([
 
 let retentionSeconds = 1209600;
 
+let visibilityTimeoutSeconds = 900;
+
 export {
   name,
   nameFifo,
   queueTags,
   retentionSeconds,
+  visibilityTimeoutSeconds,
   queue,
   fifoQueue,
   opts,

@@ -17,10 +17,19 @@ let queueTags = queueName =>
 // 4-day default can expire it over a long weekend before anyone reads it.
 let retentionSeconds = 14 * 24 * 60 * 60
 
+// A dead letter has no latency requirement, and the handler below fails on
+// purpose — so a message returns to the queue and is redelivered until retention
+// expires. At 180 s that is ~480 redeliveries per message per day, which outlives
+// the fault by however long nobody looks: seven heartbeats stranded by a since-fixed
+// decode error were still cycling twelve hours after the cause was cured. Fifteen
+// minutes cuts that 5× and costs nothing anybody is waiting on. It must stay above
+// the handler's timeout (30 s), which it is by a wide margin.
+let visibilityTimeoutSeconds = 15 * 60
+
 let queue = SQS.Queue.make(
   ~name,
   ~args={
-    SQS.Queue.visibilityTimeoutSeconds: 180->Pulumi.Input.make,
+    SQS.Queue.visibilityTimeoutSeconds: visibilityTimeoutSeconds->Pulumi.Input.make,
     messageRetentionSeconds: retentionSeconds->Pulumi.Input.make,
     sqsManagedSseEnabled: false->Pulumi.Input.make,
     tags: queueTags(name),
@@ -32,7 +41,7 @@ let fifoQueue = SQS.Queue.make(
   ~args={
     SQS.Queue.fifoQueue: true->Pulumi.Input.make,
     contentBasedDeduplication: true->Pulumi.Input.make,
-    visibilityTimeoutSeconds: 180->Pulumi.Input.make,
+    visibilityTimeoutSeconds: visibilityTimeoutSeconds->Pulumi.Input.make,
     messageRetentionSeconds: retentionSeconds->Pulumi.Input.make,
     sqsManagedSseEnabled: false->Pulumi.Input.make,
     tags: queueTags(nameFifo),

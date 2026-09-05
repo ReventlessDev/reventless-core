@@ -1,10 +1,11 @@
 # Plan: a framework log line's size must not grow with the data it describes
 
 **Date:** 2026-09-04
-**Status:** **Steps 1–4 implemented 2026-09-04, not yet deploy-verified.** Step 5 (bounding the
-redelivery itself) is open — it is infrastructure and needs a deploy, so it ships separately.
+**Status:** **All five steps implemented (1–4 on 2026-09-04, 5 on 2026-09-05), none deploy-verified.**
 Found by attributing a deployed alpha estate's CloudWatch bill to log groups and dividing by
-invocation count. Full build warning-free, 387 suites / 4169 tests green.
+invocation count. Steps 1–4: full build warning-free, 387 suites / 4169 tests green. Step 5 was
+verified against the `reventless-aws` package alone (69 suites / 814 tests) because an unrelated
+in-progress change had the workspace build red at the time.
 **Repos:** `reventless-core` only.
 
 **Goal.** No log line the framework emits has a size that grows without bound. A line
@@ -158,7 +159,7 @@ No new work here; it is evidence for that plan, not a change to this one.
 | 2 | Fix B option 1 — log identity fields instead of the record | small | **done** |
 | 3 | Fix A — replace both `deciding on state` lines with id/seq/command | small | **done** |
 | 4 | Audit `JSON.stringifyAny` in log positions across `reventless/*/src` | ~1h | **done** |
-| 5 | Fix B option 3 — bound redelivery via ESM retries or visibility timeout | infra, needs a deploy | open |
+| 5 | Fix B option 3 — bound redelivery via ESM retries or visibility timeout | infra, needs a deploy | **built, not deployed** |
 
 Steps 1–3 are independent and each ships on its own.
 
@@ -205,6 +206,41 @@ hits; after step 3 the two unbounded ones are gone. Of the rest:
 The `~data=` sites (`Message.res:123`, `Util_QueryDb.res:10`, `Adapter.res:108`,
 `StateChangeSlice_Builder.res:25`) are out of scope — they are deploy-time or error-path, logged
 once rather than per invocation, so neither of this plan's two shapes applies.
+
+### Step 5, and what the estate actually showed
+
+**Option 3's first half is not available.** `maximumRetryAttempts` is a stream-only event-source
+mapping parameter — this repo's two uses of it
+([StateTopic_AppSync.res:402](../../reventless/aws/src/adapter/StateTopic/StateTopic_AppSync.res#L402),
+[Upload_Claim_S3.res:330](../../reventless/aws/src/adapter/Upload/Upload_Claim_S3.res#L330)) are both
+DynamoDB stream mappings. For an SQS source the redelivery count is governed by the *queue's*
+`RedrivePolicy.maxReceiveCount`, and this queue deliberately has no redrive target. So step 5 is
+`visibilityTimeoutSeconds`, raised 180 s → **900 s** on both dead-letter queues: ~480 redeliveries per
+message per day become ~96, and nothing waits on a dead letter. It stays far above the handler's 30 s
+timeout.
+
+**The incident behind the numbers, read off the estate on 2026-09-05.** The dead letters were platform
+`Heartbeat` commands. The `Plugin` aggregate could not replay its own event log after a wire-format
+change — `SuryError: Failed at ["_0"]["structure"]` — so replay raised before `decide` and *every*
+command to that aggregate failed, heartbeats included. Five failures moved each one to the
+dead-letter queue.
+
+Three things follow, and the third is why step 5 is not symptom-treatment:
+
+1. **The cause was already fixed** the previous evening, by the platform wipe in
+   [done/optional-fields-without-annotations.md](done/optional-fields-without-annotations.md). No
+   decode failure in the aggregate's log since; the plugins heartbeat normally.
+2. **Seven messages stranded during the broken window were still cycling twelve hours later** — 0
+   visible, 7 in flight, receive counts 234–236, one redelivery each per 3 minutes — and would have
+   continued to the retention wall around Sept 18: ~44,000 further invocations and ~110 MB of further
+   logs, in groups whose retention is `None`. They were purged by hand on 2026-09-05; the diagnostics
+   survive in CloudWatch, which is where they were read from.
+3. So **the loop outlived its cause by two weeks minus the manual intervention.** That is a property
+   of the handler's design — fail forever on a transport that retries forever — not of this incident.
+   Bounding it is the fix; the wipe was the fix for something else.
+
+Nothing alarmed at any point in those twelve hours, which is a separate and larger finding:
+[no-monitoring-backend-on-deployed-stacks.md](no-monitoring-backend-on-deployed-stacks.md).
 
 ## Verification
 
