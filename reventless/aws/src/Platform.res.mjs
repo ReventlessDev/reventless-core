@@ -51,6 +51,7 @@ import * as AppSync_EventsApi$ReventlessAws from "./adapter/Api/AppSync_EventsAp
 import * as AppSync_MergedApi$ReventlessAws from "./components/Api/AppSync_MergedApi.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
+import * as Platform_UiSlots$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_UiSlots.res.mjs";
 import * as Upload_Presign_S3$ReventlessAws from "./adapter/Upload/Upload_Presign_S3.res.mjs";
 import * as Util_HostUiDomain$ReventlessAws from "./util/Util_HostUiDomain.res.mjs";
 import * as Util_StaticBundle$ReventlessAws from "./util/Util_StaticBundle.res.mjs";
@@ -1146,7 +1147,7 @@ function MakeWithConfig(Config) {
       let match$4 = Plugin_Stack$ReventlessAws.makeUiBundleDistribution("host-ui", Stdlib_Option.getOr(hostUiBundle.bundleVersion, version), Stdlib_Option.getOr(hostUiBundle.assetsDir, Util_Bundle$ReventlessAws.resolvePackageRoot(true, "@reventlessdev/reventless-host-shell") + "/dist"), true, undefined, true, [
         "config.json",
         "ui-hints.json",
-        "ui-slots.js"
+        Platform_UiSlots$ReventlessCore.fileName
       ], customDomain, servedBuckets);
       let bucketName = match$4.bucketName;
       let regionStr = Stdlib_Option.getOr(new Pulumi.Config("aws").get("region"), "unknown");
@@ -1248,7 +1249,7 @@ function MakeWithConfig(Config) {
               AppSync_EventsApi$ReventlessAws.clientNamespaceName
             ]
           ]) : computed;
-        return JSON.stringify(Util_ShellConfig$ReventlessAws.fields(withEvents, hostUiBundle.viewModes, hostUiBundle.bakedManifest, hostUiBundle.shellConfig));
+        return JSON.stringify(Util_ShellConfig$ReventlessAws.fields(withEvents, hostUiBundle.viewModes, hostUiBundle.bakedManifest, hostUiBundle.uiSlotsFile, hostUiBundle.shellConfig));
       });
       new (Aws.s3.BucketObject)("host-ui-config-json", {
         bucket: bucketName,
@@ -1271,7 +1272,7 @@ function MakeWithConfig(Config) {
         let slotsContent = Util_StaticBundle$ReventlessAws.readFileVerbatim(slotsPath, "host-ui ui-slots");
         new (Aws.s3.BucketObject)("host-ui-ui-slots-js", {
           bucket: bucketName,
-          key: "ui-slots.js",
+          key: Platform_UiSlots$ReventlessCore.fileName,
           content: slotsContent,
           contentType: "application/javascript; charset=utf-8"
         });
@@ -2518,7 +2519,7 @@ function Make($star) {
       let match$4 = Plugin_Stack$ReventlessAws.makeUiBundleDistribution("host-ui", Stdlib_Option.getOr(hostUiBundle.bundleVersion, version), Stdlib_Option.getOr(hostUiBundle.assetsDir, Util_Bundle$ReventlessAws.resolvePackageRoot(true, "@reventlessdev/reventless-host-shell") + "/dist"), true, undefined, true, [
         "config.json",
         "ui-hints.json",
-        "ui-slots.js"
+        Platform_UiSlots$ReventlessCore.fileName
       ], customDomain, servedBuckets);
       let bucketName = match$4.bucketName;
       let regionStr = Stdlib_Option.getOr(new Pulumi.Config("aws").get("region"), "unknown");
@@ -2620,7 +2621,7 @@ function Make($star) {
               AppSync_EventsApi$ReventlessAws.clientNamespaceName
             ]
           ]) : computed;
-        return JSON.stringify(Util_ShellConfig$ReventlessAws.fields(withEvents, hostUiBundle.viewModes, hostUiBundle.bakedManifest, hostUiBundle.shellConfig));
+        return JSON.stringify(Util_ShellConfig$ReventlessAws.fields(withEvents, hostUiBundle.viewModes, hostUiBundle.bakedManifest, hostUiBundle.uiSlotsFile, hostUiBundle.shellConfig));
       });
       new (Aws.s3.BucketObject)("host-ui-config-json", {
         bucket: bucketName,
@@ -2643,7 +2644,7 @@ function Make($star) {
         let slotsContent = Util_StaticBundle$ReventlessAws.readFileVerbatim(slotsPath, "host-ui ui-slots");
         new (Aws.s3.BucketObject)("host-ui-ui-slots-js", {
           bucket: bucketName,
-          key: "ui-slots.js",
+          key: Platform_UiSlots$ReventlessCore.fileName,
           content: slotsContent,
           contentType: "application/javascript; charset=utf-8"
         });

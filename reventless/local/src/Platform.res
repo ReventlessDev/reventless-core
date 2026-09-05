@@ -1672,6 +1672,10 @@ module MakeWithConfig = (
     // declaring anything.
     ShellConfig.emit(
       ~bakedManifest=hostUiBundle->Option.flatMap(cfg => cfg.bakedManifest),
+      // Names the module `UiSlots.emit` serves below. Both or neither: a key
+      // without the file is a 404 the shell survives quietly, and a file without
+      // the key is a module nothing imports.
+      ~uiSlotsFile=?hostUiBundle->Option.flatMap(cfg => cfg.uiSlotsFile),
       ~shellConfig=hostUiBundle->Option.flatMap(cfg => cfg.shellConfig),
     )
     // Unconditional for the same reason, and one file over: it is also what

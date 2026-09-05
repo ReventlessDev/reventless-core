@@ -2111,7 +2111,7 @@ module MakeWithConfig = (
         // such file today, and that is the point: were one ever added, it would
         // be a fallback for *appearance*, and a deployment inheriting a
         // stranger's appearance is exactly the failure that is hard to notice.
-        ~excludeFiles=["config.json", "ui-hints.json", "ui-slots.js"],
+        ~excludeFiles=["config.json", "ui-hints.json", ReventlessCore.Platform_UiSlots.fileName],
         ~customDomain?,
         // Served buckets front the host-shell distribution with `{prefix}/*`
         // read paths (private, OAC-read) — same origin as the SPA, so served
@@ -2314,6 +2314,7 @@ module MakeWithConfig = (
             ~computed=withEvents,
             ~viewModes=?cfg.viewModes,
             ~bakedManifest=?cfg.bakedManifest,
+            ~uiSlotsFile=?cfg.uiSlotsFile,
             ~shellConfig=?cfg.shellConfig,
           )
           ->JSON.Encode.object
@@ -2380,7 +2381,9 @@ module MakeWithConfig = (
           ~name="host-ui-ui-slots-js",
           ~args={
             bucket: bucketName->Pulumi.Output.asInput,
-            key: Pulumi.Input.make("ui-slots.js"),
+            // The same string the `uiSlotsUrl` above points at — see
+            // `Platform_UiSlots` for why it is stated once.
+            key: Pulumi.Input.make(ReventlessCore.Platform_UiSlots.fileName),
             content: Pulumi.Input.make(slotsContent),
             contentType: Pulumi.Input.make("application/javascript; charset=utf-8"),
           },

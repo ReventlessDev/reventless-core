@@ -8,6 +8,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as HostShellDist$ReventlessLocal from "./HostShellDist.res.mjs";
+import * as Platform_UiSlots$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_UiSlots.res.mjs";
 import * as Platform_BakedManifest$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_BakedManifest.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
@@ -24,11 +25,15 @@ let journeyManifestsKey = "journeyManifestUrls";
 
 let computedKeys = [
   "manifestUrl",
-  journeyManifestsKey
+  journeyManifestsKey,
+  Platform_UiSlots$ReventlessCore.configKey
 ];
 
-function overlay(bakedManifest, shellConfig) {
+function overlay(bakedManifest, uiSlotsFile, shellConfig) {
   let out = {};
+  Stdlib_Option.forEach(uiSlotsFile, param => {
+    out[Platform_UiSlots$ReventlessCore.configKey] = Platform_UiSlots$ReventlessCore.url;
+  });
   Stdlib_Option.forEach(bakedManifest, config => {
     out["manifestUrl"] = Platform_BakedManifest$ReventlessCore.urlForKey(config.key);
     let urls = Platform_BakedManifest$ReventlessCore.journeyUrls(config);
@@ -66,8 +71,8 @@ function readObject(path, label) {
   }
 }
 
-function emit(bakedManifest, shellConfig, dir) {
-  let overlay$1 = overlay(bakedManifest, shellConfig);
+function emit(bakedManifest, uiSlotsFile, shellConfig, dir) {
+  let overlay$1 = overlay(bakedManifest, uiSlotsFile, shellConfig);
   let dir$1 = dir !== undefined ? dir : HostShellDist$ReventlessLocal.dir();
   if (dir$1 === undefined) {
     if (Object.keys(overlay$1).length !== 0) {

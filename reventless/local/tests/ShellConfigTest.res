@@ -77,6 +77,47 @@ describe("ShellConfig.overlay", () => {
   )
 })
 
+// The key that makes the served module reachable. `UiSlots` writes the file and
+// this writes its name, and neither alone is the feature: a file nothing imports
+// and a key pointing at a 404 both leave every mode drawing its own regions,
+// which is what an undeclared deployment already does. Nothing about the running
+// app distinguishes the three.
+describe("ShellConfig.overlay — uiSlotsFile", () => {
+  testSync("unset ⇒ no uiSlotsUrl", () => {
+    let out = ShellConfig.overlay(~bakedManifest=None, ~shellConfig=None)
+    expect(out->Dict.get("uiSlotsUrl")->Option.isNone)->toBe(true)
+  })
+
+  testSync("declared ⇒ the URL the platform serves the module from", () => {
+    let out = ShellConfig.overlay(
+      ~bakedManifest=None,
+      ~uiSlotsFile="/src/storefront-slots.js",
+      ~shellConfig=None,
+    )
+    expect(out->Dict.get("uiSlotsUrl"))->toEqual(Some(JSON.Encode.string("/ui-slots.js")))
+  })
+
+  // Withdrawal has to clear the key as well as the file. The baseline is what
+  // does it — this pins that the overlay stops asserting the key, without which
+  // the shipped config could never come back.
+  testSync("withdrawn ⇒ the overlay stops naming it, so the baseline restores", () => {
+    let out = ShellConfig.overlay(~bakedManifest=None, ~shellConfig=None)
+    expect(out->Dict.keysToArray->Array.includes("uiSlotsUrl"))->toBe(false)
+  })
+
+  testSync("refuses a shellConfig key redirecting the computed module", () =>
+    expect(
+      threw(() =>
+        ShellConfig.overlay(
+          ~bakedManifest=None,
+          ~uiSlotsFile="/src/storefront-slots.js",
+          ~shellConfig=Some(Dict.fromArray([("uiSlotsUrl", JSON.Encode.string("/elsewhere.js"))])),
+        )->ignore
+      ),
+    )->toBe(true)
+  )
+})
+
 describe("ShellConfig.emit", () => {
   let shipped = `{\n  "apiEndpoint": "/graphql",\n  "appName": "Shipped"\n}`
 

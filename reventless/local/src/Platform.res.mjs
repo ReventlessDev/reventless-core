@@ -1315,7 +1315,7 @@ function MakeWithConfig(Config) {
       adminResources: []
     });
     subscribeToPluginEvents();
-    ShellConfig$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.shellConfig), undefined);
+    ShellConfig$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.shellConfig), undefined);
     UiHints$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiHintsFile), undefined);
     UiHints$ReventlessLocal.watch(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiHintsFile), undefined, LocalEvents_Server$ReventlessLocal.broadcastUiHintsChanged);
     UiSlots$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), undefined);
@@ -3056,7 +3056,7 @@ function Make($star) {
       adminResources: []
     });
     subscribeToPluginEvents();
-    ShellConfig$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.shellConfig), undefined);
+    ShellConfig$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.shellConfig), undefined);
     UiHints$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiHintsFile), undefined);
     UiHints$ReventlessLocal.watch(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiHintsFile), undefined, LocalEvents_Server$ReventlessLocal.broadcastUiHintsChanged);
     UiSlots$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), undefined);

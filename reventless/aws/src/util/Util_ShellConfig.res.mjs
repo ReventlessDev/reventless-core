@@ -4,6 +4,7 @@ import * as Pervasives from "@rescript/runtime/lib/es6/Pervasives.js";
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Platform$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/Platform.res.mjs";
+import * as Platform_UiSlots$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_UiSlots.res.mjs";
 import * as Platform_BakedManifest$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_BakedManifest.res.mjs";
 
 let journeyManifestsKey = "journeyManifestUrls";
@@ -56,8 +57,11 @@ function subscriptionEndpoint(httpsEndpoint) {
   return httpsEndpoint.replace("https://", "wss://").replace(".appsync-api.", ".appsync-realtime-api.");
 }
 
-function fields(computed, viewModes, bakedManifest, shellConfig) {
+function fields(computed, viewModes, bakedManifest, uiSlotsFile, shellConfig) {
   let out = Object.fromEntries(computed);
+  Stdlib_Option.forEach(uiSlotsFile, param => {
+    out[Platform_UiSlots$ReventlessCore.configKey] = Platform_UiSlots$ReventlessCore.url;
+  });
   Stdlib_Option.forEach(bakedManifest, bake => {
     out["manifestUrl"] = Platform_BakedManifest$ReventlessCore.urlForKey(bake.key);
     let urls = Platform_BakedManifest$ReventlessCore.journeyUrls(bake);

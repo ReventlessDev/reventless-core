@@ -93,9 +93,23 @@ let fields = (
   ~computed: array<(string, JSON.t)>,
   ~viewModes: option<array<Platform.viewMode>>=?,
   ~bakedManifest: option<Platform.bakedManifest>=?,
+  ~uiSlotsFile: option<string>=?,
   ~shellConfig: option<dict<JSON.t>>=?,
 ): dict<JSON.t> => {
   let out = computed->Dict.fromArray
+
+  // The shell imports the module this key names, and imports nothing when the
+  // key is absent — so writing the object without naming it here would ship a
+  // file nothing fetches. Computed rather than left to `shellConfig` for the
+  // reason `manifestUrl` is: the deploy decides where the object goes, and a
+  // passthrough pointing the shell elsewhere would be a 404 the shell is
+  // designed to survive quietly.
+  uiSlotsFile->Option.forEach(_ =>
+    out->Dict.set(
+      ReventlessCore.Platform_UiSlots.configKey,
+      JSON.Encode.string(ReventlessCore.Platform_UiSlots.url),
+    )
+  )
 
   // A declared bake is what turns the shell's non-elevated audience on: an
   // operator keeps the admin queries, everyone else discovers from this file.

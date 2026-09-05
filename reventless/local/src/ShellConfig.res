@@ -41,7 +41,11 @@ let manifestUrlOf = (config: ReventlessInfra.Platform.bakedManifest): string =>
 // caller matching no declared group gets and what every existing deployment has.
 let journeyManifestsKey = "journeyManifestUrls"
 
-let computedKeys = ["manifestUrl", journeyManifestsKey]
+let computedKeys = [
+  "manifestUrl",
+  journeyManifestsKey,
+  ReventlessCore.Platform_UiSlots.configKey,
+]
 
 /**
  The overlay this platform puts on top of the shipped `config.json`.
@@ -52,9 +56,22 @@ let computedKeys = ["manifestUrl", journeyManifestsKey]
  */
 let overlay = (
   ~bakedManifest: option<ReventlessInfra.Platform.bakedManifest>,
+  ~uiSlotsFile: option<string>=?,
   ~shellConfig: option<dict<JSON.t>>,
 ): dict<JSON.t> => {
   let out = Dict.make()
+
+  // `UiSlots` serves the module; this is what tells the shell to import it. The
+  // two are separate writes to separate files, which is exactly why the name
+  // they share is stated once in `Platform_UiSlots` — and why withdrawal has to
+  // clear both. The baseline does that half: drop the key here and the shipped
+  // `config.json` comes back without it.
+  uiSlotsFile->Option.forEach(_ =>
+    out->Dict.set(
+      ReventlessCore.Platform_UiSlots.configKey,
+      JSON.Encode.string(ReventlessCore.Platform_UiSlots.url),
+    )
+  )
 
   bakedManifest->Option.forEach(config => {
     out->Dict.set("manifestUrl", JSON.Encode.string(manifestUrlOf(config)))
@@ -108,13 +125,14 @@ let readObject = (~path: string, ~label: string): dict<JSON.t> =>
  */
 let emit = (
   ~bakedManifest: option<ReventlessInfra.Platform.bakedManifest>,
+  ~uiSlotsFile: option<string>=?,
   ~shellConfig: option<dict<JSON.t>>,
   // Test seam. The baseline dance is the part of this module with state behind
   // it — "boot twice and the second write still starts from the shipped file" is
   // not a property a pure function can carry.
   ~dir: option<string>=?,
 ) => {
-  let overlay = overlay(~bakedManifest, ~shellConfig)
+  let overlay = overlay(~bakedManifest, ~uiSlotsFile?, ~shellConfig)
 
   switch (
     switch dir {

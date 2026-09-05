@@ -837,10 +837,32 @@ renderers for the named regions a mode declares. The mode keeps everything else.
 let uiSlotsFile = NodePath.resolve([NodeImportMeta.dirname, "../storefront-slots.js"])
 ```
 
+The module exports one `register`, and is handed everything it needs:
+
+```js
+export function register({ h, slots }) {
+  slots.row("gallery.tile", ({ row, image, open }) =>
+    h("button", { className: "tile", onClick: open },
+      h("img", { src: image?.src, alt: image?.alt ?? "" }),
+      h("span", null, row.name)))
+}
+```
+
+`h` and the registry arrive as arguments, so a slot module needs no bundler, no
+ReScript and no dependency. `@reventlessdev/reventless-ui-slots` is what makes it
+*typed*, not what makes it *work*.
+
 The file is written verbatim — plain JavaScript, no bundler and no build step
 between an author and their own file. On AWS it is read at deploy time and
 written beside `config.json`; locally it is copied into the served bundle and
 watched, so saving a renderer is a browser refresh rather than a restart.
+
+Declaring the file also writes the `uiSlotsUrl` key that tells the shell to
+import it. That key is **computed, not passthrough**: naming it in `shellConfig`
+(§5.2) fails the build rather than redirecting it, because a shell pointed at a
+module the platform did not write has no way to notice — it treats the 404 as
+"no slots" and draws its own regions, which is what it does when nothing was
+declared at all.
 
 **A module in the bundle's own origin, rather than something served from the
 admin API.** The registry has to be populated for *every* caller, including one

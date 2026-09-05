@@ -9,34 +9,33 @@ import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as HostShellDist$ReventlessLocal from "./HostShellDist.res.mjs";
+import * as Platform_UiSlots$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_UiSlots.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
-
-let fileName = "ui-slots.js";
 
 function emit(uiSlotsFile, dir) {
   let declared = Stdlib_Option.map(uiSlotsFile, path => {
     try {
       return Nodefs.readFileSync(path, "utf8");
     } catch (exn) {
-      return Stdlib_JsError.throwWithMessage(`host UI ` + fileName + `: cannot read the declared uiSlotsFile at ` + path + ` — the shell imports this file at boot, so a declaration pointing nowhere registers no renderers and says nothing about why.`);
+      return Stdlib_JsError.throwWithMessage(`host UI ` + Platform_UiSlots$ReventlessCore.fileName + `: cannot read the declared uiSlotsFile at ` + path + ` — the shell imports this file at boot, so a declaration pointing nowhere registers no renderers and says nothing about why.`);
     }
   });
   let dir$1 = dir !== undefined ? dir : HostShellDist$ReventlessLocal.dir();
   if (dir$1 === undefined) {
     if (Stdlib_Option.isSome(declared)) {
-      return Stdlib_JsError.throwWithMessage(`host UI ` + fileName + `: cannot resolve ` + HostShellDist$ReventlessLocal.$$package + ` from ` + process.cwd() + ` — the local shell imports its slot renderers from that package's dist/, so declaring a uiSlotsFile without the package installed would write nothing and leave every mode drawing its own regions.`);
+      return Stdlib_JsError.throwWithMessage(`host UI ` + Platform_UiSlots$ReventlessCore.fileName + `: cannot resolve ` + HostShellDist$ReventlessLocal.$$package + ` from ` + process.cwd() + ` — the local shell imports its slot renderers from that package's dist/, so declaring a uiSlotsFile without the package installed would write nothing and leave every mode drawing its own regions.`);
     } else {
       return;
     }
   }
-  let path = Nodepath.join(dir$1, fileName);
+  let path = Nodepath.join(dir$1, Platform_UiSlots$ReventlessCore.fileName);
   if (declared !== undefined) {
     Nodefs.writeFileSync(path, declared, "utf8");
-    return log.info("UiSlots", undefined, `wrote ` + fileName + ` from the declared uiSlotsFile: ` + path);
+    return log.info("UiSlots", undefined, `wrote ` + Platform_UiSlots$ReventlessCore.fileName + ` from the declared uiSlotsFile: ` + path);
   } else if (Nodefs.existsSync(path)) {
     Nodefs.unlinkSync(path);
-    return log.info("UiSlots", undefined, `removed ` + fileName + `: no uiSlotsFile is declared`);
+    return log.info("UiSlots", undefined, `removed ` + Platform_UiSlots$ReventlessCore.fileName + `: no uiSlotsFile is declared`);
   } else {
     return;
   }
@@ -80,6 +79,8 @@ function watch(uiSlotsFile, dir, onReload) {
     log.warn("UiSlots", undefined, `not watching ` + base + `: ` + sourceDir + ` does not exist, so changes to the declared uiSlotsFile will need a restart`);
   });
 }
+
+let fileName = Platform_UiSlots$ReventlessCore.fileName;
 
 export {
   log,

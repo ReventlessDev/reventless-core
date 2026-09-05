@@ -11,9 +11,17 @@ open JestGlobals
 
 let _ = TestRunner.setup()
 
-let declared = `export const register = (r) => r.tile("Catalog_Products", () => null)
+// The shape the shell actually calls (`SlotModules.load`): one `register`
+// export, handed `h` and the registry. Nothing here evaluates it — the bytes are
+// what is under test — but a fixture that misstated the contract would be read
+// as documentation of it.
+let declared = `export function register({ h, slots }) {
+  slots.row("gallery.tile", ({ row }) => h("span", null, row.name))
+}
 `
-let edited = `export const register = (r) => r.face("Catalog_Products", () => null)
+let edited = `export function register({ h, slots }) {
+  slots.row("gallery.tile", ({ row }) => h("strong", null, row.name))
+}
 `
 
 let tmpdir = prefix => NodeFs.mkdtempSync(NodePath.join([NodeOs.tmpdir(), prefix]))

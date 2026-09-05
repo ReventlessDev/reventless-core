@@ -30,7 +30,9 @@
 
 let log = ReventlessCore.Logger.fromEnv()
 
-let fileName = "ui-slots.js"
+// Shared with the AWS deploy and with both `config.json` writers, because the
+// name the module is served under and the `uiSlotsUrl` naming it have to agree.
+let fileName = ReventlessCore.Platform_UiSlots.fileName
 
 /**
  Write the declared slot module into the served `dist/`, or remove a previously

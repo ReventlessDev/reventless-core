@@ -81,6 +81,48 @@ describe("Util_ShellConfig.fields — bakedManifest", () => {
   })
 })
 
+// The seam's two halves meet here. The deploy writes the module as an object and
+// names it with this key, and the shell imports nothing when the key is absent —
+// so a deploy that wrote the file without naming it would ship a module nothing
+// fetches, and the surface would draw its own regions exactly as it does when no
+// slots were declared. There is no symptom to notice, which is why it is pinned.
+describe("Util_ShellConfig.fields — uiSlotsFile", () => {
+  testSync("unset ⇒ no uiSlotsUrl, and the shell imports nothing", () => {
+    let out = Util_ShellConfig.fields(~computed)
+    expect(out->Dict.get("uiSlotsUrl")->Option.isNone)->toBe(true)
+  })
+
+  testSync("declared ⇒ the URL the deploy writes the module to", () => {
+    let out = Util_ShellConfig.fields(~computed, ~uiSlotsFile="/src/storefront-slots.js")
+    expect(out->get("uiSlotsUrl"))->toEqual(JSON.Encode.string("/ui-slots.js"))
+  })
+
+  // The declared path is where the file is *authored*; the URL is where it is
+  // *served*. Publishing the author's path would name a file no browser can
+  // reach, and on a laptop it would name someone's home directory.
+  testSync("names where the file is served, never where it was authored", () => {
+    let out = Util_ShellConfig.fields(~computed, ~uiSlotsFile="/home/me/prj/slots.js")
+    expect(out->get("uiSlotsUrl"))->toEqual(JSON.Encode.string("/ui-slots.js"))
+  })
+
+  testSync("a shellConfig uiSlotsUrl fails the deploy rather than redirecting it", () => {
+    let failure = try {
+      let _ = Util_ShellConfig.fields(
+        ~computed,
+        ~uiSlotsFile="/src/storefront-slots.js",
+        ~shellConfig=Dict.fromArray([("uiSlotsUrl", JSON.Encode.string("/elsewhere.js"))]),
+      )
+      None
+    } catch {
+    | Failure(message) => Some(message)
+    }
+    switch failure {
+    | Some(message) => expect(message->String.includes("uiSlotsUrl"))->toBe(true)
+    | None => fail("a shellConfig key redirecting the computed slots module must fail the deploy")
+    }
+  })
+})
+
 // ── Journeys ──────────────────────────────────────────────────────────────
 //
 // One curated surface per audience, beside the default one. The property under

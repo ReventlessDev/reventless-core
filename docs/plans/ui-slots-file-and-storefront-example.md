@@ -9,11 +9,23 @@ writes it beside `config.json`. §6 has the deployment half (`uiSlotsFile` in
 hint-side vocabulary it also names (`audiences`, `slots` per view) belongs to the
 host shell package and is written when that ships.
 
-**Still blocked: §5, the example.** The UI repo's registry plan
-(`audience-scoped-hints-and-slot-renderers.md`) is proposed and not started, so a
-slots file in `online-shop-hybrid` today would register into nothing and read as
-broken for a reason that has nothing to do with this repo. What this repo owes
-the example is finished; what remains is the pin.
+**The seam is connected.** The declaration writes two things, and needs both: the
+module as an object, and the `uiSlotsUrl` key naming it. `SlotModules.load`
+imports what that key names and imports nothing when it is absent, so the object
+alone was a file nothing fetched — with no symptom, because a shell that fetches
+no slots draws its own regions exactly as an undeclared deployment does. The key
+is computed on both platforms and refuses a `shellConfig` redirect, like
+`manifestUrl`; the string it shares with the written object lives in
+`ReventlessCore.Platform_UiSlots` so the four places that must agree cannot
+drift.
+
+**Still blocked: §5, the example — now on a release rather than on the work.**
+The UI half has landed (`reventless-ui` `49feb25`, plus the public
+`@reventlessdev/reventless-ui-slots` package) but is **unpublished**: the latest
+`reventless-host-shell` is `3.0.0-alpha.94`, which the example pins and which
+contains no slot loader. §5 needs that release and the pin bumped to it.
+Declaring a `uiSlotsFile` against `alpha.94` writes and serves the file
+correctly, and nothing imports it.
 
 This is the deliberate shape of the seam, not an accident of ordering: the file
 is served whether or not anything imports it, so the deployment half can land,
@@ -29,6 +41,12 @@ second file of the pair and copies its shape deliberately.
 means: the shell serves the module the deployment named, editing it is a browser
 refresh locally, and a deployment that names none behaves exactly as it does
 today.
+
+**One correction to §2–§4 as written below:** they describe the file and say
+nothing about naming it, which is a whole half of the seam. `uiHintsFile` is
+served at a fixed URL the shell already knows; a slot module is imported from
+whatever `config.uiSlotsUrl` names, so declaring the file has to write that key
+too. Read every "write the file" below as "write the file and name it".
 
 ---
 
