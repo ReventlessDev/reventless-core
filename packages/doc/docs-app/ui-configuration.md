@@ -817,6 +817,68 @@ which differs per platform and would make one declaration two different files:
 let uiHintsFile = NodePath.resolve([NodeImportMeta.dirname, "../ui-hints.json"])
 ```
 
+### 4.1 When a hint cannot say it — `uiSlotsFile`
+
+A hint carries the decisions that can be *stated*: which mode a view opens in,
+what the nav calls it, which command a row offers, where a click goes. It cannot
+carry the parts that have to be *drawn* — a tile with the name set over the
+picture, a card face in a different type scale, a step label under a tracker
+node.
+
+Until now the only way to change a tile was to write a whole view mode, which
+means taking ownership of paging, the window sentence, the action offers, the
+drill target and the live-update path — every one of which the mode you were
+otherwise happy with already had right.
+
+`uiSlotsFile` names an ES module the shell loads at boot, which registers
+renderers for the named regions a mode declares. The mode keeps everything else.
+
+```rescript
+let uiSlotsFile = NodePath.resolve([NodeImportMeta.dirname, "../storefront-slots.js"])
+```
+
+The file is written verbatim — plain JavaScript, no bundler and no build step
+between an author and their own file. On AWS it is read at deploy time and
+written beside `config.json`; locally it is copied into the served bundle and
+watched, so saving a renderer is a browser refresh rather than a restart.
+
+**A module in the bundle's own origin, rather than something served from the
+admin API.** The registry has to be populated for *every* caller, including one
+served from a baked manifest (§3), who issues no admin query at all.
+
+Two rules are worth stating because neither is guessable and both are
+load-bearing:
+
+- **A slot renders what it was handed and reads nothing else.** No queries of its
+  own, no hard-coded command names. A renderer that reaches past its payload has
+  stopped being a rendering of the generated data plane, and starts breaking on
+  deployments whose data differs from the one it was written against.
+- **Slots do not replace pages, routes or modes.** What this offers is custom
+  drawing inside the regions of standard components. A page of its own is a
+  different seam with a different cost — reach for it when what you need is not a
+  region of an existing view.
+
+Unset ⇒ no file is written, the shell treats the 404 as "no slots", and every
+mode draws its own regions — byte-identical to a deployment built before this
+existed. Withdrawing the declaration removes the file rather than restoring a
+default: the shell ships no slots module of its own, deliberately, because a
+fallback here would be a fallback for *appearance*, and inheriting a stranger's
+appearance is the kind of wrong that is hard to notice.
+
+Unlike the hints file, the content is not validated at deploy time. A module is
+only known to be good once a browser has evaluated it, and a check that ran only
+locally would let a file pass the loop it was authored in and fail the one it
+ships to. A declaration naming a file that does not exist still fails the build.
+The shell reports what it could not import and carries on drawing its own
+regions.
+
+:::note
+The slot vocabulary — which regions each mode declares, and the `slots` key that
+turns them on per view — belongs to the host shell package and ships with it.
+Declaring a `uiSlotsFile` against a shell release that predates the registry
+writes and serves the file, but nothing imports it.
+:::
+
 ---
 
 ## 5. Layer 4 — deployment choices
@@ -829,6 +891,7 @@ in-memory platform, which has no deploy step to hang them off.
 |---|---|
 | `bakedManifest` | the curated manifest of §3 |
 | `uiHintsFile` | the hints file of §4 |
+| `uiSlotsFile` | the slot-renderer module of §4.1 |
 | `shellConfig` | shell-owned `config.json` keys (see §5.2) |
 | `viewModes` *(AWS)* | optional view modes the shell loads at boot |
 | `geocoderPlaceIndex` *(AWS)* | provisions a `Query.geocode` resolver for address search |

@@ -450,8 +450,18 @@ module type T = {
     // Optional path to a static AutoUI `ui-hints.json`, read and written
     // verbatim as a BucketObject beside `config.json` at deploy time. Unset ⇒
     // no file written; the shell treats the 404 as "no hints" and boots
-    // unchanged. In-memory platforms ignore this.
+    // unchanged. In-memory platforms serve it too, out of the host-shell
+    // package's own dist/, and watch it so an edit is a browser refresh.
     uiHintsFile?: string,
+    // Optional path to an ES module registering AutoUI slot renderers, read and
+    // written verbatim beside `config.json` at deploy time. Unset ⇒ no file
+    // written; the shell treats the 404 as "no slots" and every mode draws its
+    // own regions. Served and watched in-memory exactly as `uiHintsFile` is.
+    //
+    // Verbatim, and for the same reason: this is a deployment's own source, and
+    // a build step over it would make the local watch a lie and put a bundler
+    // between an author and their own file.
+    uiSlotsFile?: string,
     // Optional baked component manifest. When set, the curated manifest is
     // written beside `config.json` at deploy time; the shell reads it through
     // its `manifestUrl` config key and never calls the platform's admin API.

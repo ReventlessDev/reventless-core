@@ -1145,7 +1145,8 @@ function MakeWithConfig(Config) {
       ).concat(declaredServedBuckets);
       let match$4 = Plugin_Stack$ReventlessAws.makeUiBundleDistribution("host-ui", Stdlib_Option.getOr(hostUiBundle.bundleVersion, version), Stdlib_Option.getOr(hostUiBundle.assetsDir, Util_Bundle$ReventlessAws.resolvePackageRoot(true, "@reventlessdev/reventless-host-shell") + "/dist"), true, undefined, true, [
         "config.json",
-        "ui-hints.json"
+        "ui-hints.json",
+        "ui-slots.js"
       ], customDomain, servedBuckets);
       let bucketName = match$4.bucketName;
       let regionStr = Stdlib_Option.getOr(new Pulumi.Config("aws").get("region"), "unknown");
@@ -1263,6 +1264,16 @@ function MakeWithConfig(Config) {
           key: "ui-hints.json",
           content: hintsContent,
           contentType: "application/json"
+        });
+      }
+      let slotsPath = hostUiBundle.uiSlotsFile;
+      if (slotsPath !== undefined) {
+        let slotsContent = Util_StaticBundle$ReventlessAws.readFileVerbatim(slotsPath, "host-ui ui-slots");
+        new (Aws.s3.BucketObject)("host-ui-ui-slots-js", {
+          bucket: bucketName,
+          key: "ui-slots.js",
+          content: slotsContent,
+          contentType: "application/javascript; charset=utf-8"
         });
       }
       let match$9 = hostUiBundle.bakedManifest;
@@ -2506,7 +2517,8 @@ function Make($star) {
       ).concat(declaredServedBuckets);
       let match$4 = Plugin_Stack$ReventlessAws.makeUiBundleDistribution("host-ui", Stdlib_Option.getOr(hostUiBundle.bundleVersion, version), Stdlib_Option.getOr(hostUiBundle.assetsDir, Util_Bundle$ReventlessAws.resolvePackageRoot(true, "@reventlessdev/reventless-host-shell") + "/dist"), true, undefined, true, [
         "config.json",
-        "ui-hints.json"
+        "ui-hints.json",
+        "ui-slots.js"
       ], customDomain, servedBuckets);
       let bucketName = match$4.bucketName;
       let regionStr = Stdlib_Option.getOr(new Pulumi.Config("aws").get("region"), "unknown");
@@ -2624,6 +2636,16 @@ function Make($star) {
           key: "ui-hints.json",
           content: hintsContent,
           contentType: "application/json"
+        });
+      }
+      let slotsPath = hostUiBundle.uiSlotsFile;
+      if (slotsPath !== undefined) {
+        let slotsContent = Util_StaticBundle$ReventlessAws.readFileVerbatim(slotsPath, "host-ui ui-slots");
+        new (Aws.s3.BucketObject)("host-ui-ui-slots-js", {
+          bucket: bucketName,
+          key: "ui-slots.js",
+          content: slotsContent,
+          contentType: "application/javascript; charset=utf-8"
         });
       }
       let match$9 = hostUiBundle.bakedManifest;

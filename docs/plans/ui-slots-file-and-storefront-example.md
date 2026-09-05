@@ -2,8 +2,22 @@
 
 **Date:** 2026-09-05
 
-**Status.** Open. Blocked on the UI repo's slot registry being released and
-pinned — this plan serves a file that nothing reads until then.
+**Status.** §2, §3 and §4 are done — the declaration exists on both platforms,
+the local platform serves and watches the declared module, and the AWS deploy
+writes it beside `config.json`. §6 has the deployment half (`uiSlotsFile` in
+`ui-configuration.md` §4.1, and the local watch loop in the local-dev guide); the
+hint-side vocabulary it also names (`audiences`, `slots` per view) belongs to the
+host shell package and is written when that ships.
+
+**Still blocked: §5, the example.** The UI repo's registry plan
+(`audience-scoped-hints-and-slot-renderers.md`) is proposed and not started, so a
+slots file in `online-shop-hybrid` today would register into nothing and read as
+broken for a reason that has nothing to do with this repo. What this repo owes
+the example is finished; what remains is the pin.
+
+This is the deliberate shape of the seam, not an accident of ordering: the file
+is served whether or not anything imports it, so the deployment half can land,
+be tested and be documented before the consumer exists.
 
 **Sibling work:** [`local-ui-hints-emission.md`](./local-ui-hints-emission.md) —
 the same seam, one file over. That plan taught the in-memory platform to serve
@@ -121,6 +135,14 @@ assume it — a slots file that silently fails to load on AWS and works locally 
 the worst shape this can take, and it is the shape it will take if the CSP
 question goes unasked.
 
+**Asked and answered:** this deploy sets no `Content-Security-Policy` at all —
+there is no `responseHeadersPolicy` anywhere in `reventless/aws/src`, so nothing
+restricts `script-src` and the same-origin module loads with no relaxation to
+make. What the deploy does owe is the content type, which is the difference
+between the shell importing the file and refusing it, so `ui-slots.js` is written
+with an explicit `application/javascript; charset=utf-8` rather than left to a
+default. Re-ask the CSP question if a headers policy is ever added.
+
 ---
 
 ## §5 — The example earns the seam
@@ -172,9 +194,19 @@ explicitly, because both are load-bearing and neither is guessable:
 - **Local.** Declared file served; edited file live on refresh; undeclared file
   → nothing served and the surface fully generated; a module that throws at
   import → the shell logs once and every mode draws its own regions.
+  **Done** — `UiSlotsTest` covers the emission (verbatim write, nothing written
+  when undeclared, the file *removed* on withdrawal, a missing declaration
+  failing the boot, the last good copy surviving a bad one) and the watch (real
+  `fs.watch` events, a re-serve on save, and a save that momentarily removes the
+  file reported rather than thrown). The last of these is the shell's half and
+  is verified there.
 - **AWS.** Declared file present beside `config.json` after a deploy and served
   with a JavaScript content type; undeclared → absent; the HTML-instead-of-404
   case above exercised deliberately, since it will not occur on demand later.
+  **Not yet run** — the emission compiles and an undeclared deployment is
+  unchanged by construction (the `switch` writes nothing), but no deploy has
+  declared a file, so "present, and served as JavaScript" is unobserved. Worth
+  doing on the deploy that carries the example, where there is a file to look at.
 - **The example, by hand.** One deployment, one login, one data set: switch role
   and watch the same views redraw. Then delete the audience block and save — the
   surface returns to the generated console with no reload and no deploy. That

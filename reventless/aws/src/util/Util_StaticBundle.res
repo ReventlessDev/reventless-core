@@ -74,6 +74,27 @@ let readJsonFileVerbatim = (~path: string, ~label: string): string => {
 }
 
 /**
+ * Read a file at deploy time and return its exact bytes as a string, with no
+ * opinion about what is in them. A missing file throws; a present one ships as
+ * written.
+ *
+ * The counterpart to `readJsonFileVerbatim` for content this deploy cannot
+ * validate. A JSON file either parses or it does not, and checking costs
+ * nothing. An ES module is only known to be good once a browser has evaluated
+ * it, and there is no cheap check in between: parsing it here would need a
+ * JavaScript parser this deploy does not have, and a syntax check would still
+ * say nothing about whether it registers anything. So the deploy checks the one
+ * thing it can — that the declared path names a file — and leaves the rest to
+ * the consumer, which reports what it could not use.
+ */
+let readFileVerbatim = (~path: string, ~label: string): string => {
+  if !NodeFs.existsSync(path) {
+    JsError.throwWithMessage(`${label}: file does not exist: ${path}`)
+  }
+  NodeFs.readFileSync(path)
+}
+
+/**
  * Replace `/` and `.` so a path can be used as a Pulumi resource URN segment.
  */
 let sanitizeName = (relativePath: string): string =>

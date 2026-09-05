@@ -104,6 +104,15 @@ function broadcastUiHintsChanged() {
     ]]));
 }
 
+let devUiSlotsChannel = "/default/dev/uiSlots";
+
+function broadcastUiSlotsChanged() {
+  broadcast(devUiSlotsChannel, frame([[
+      "kind",
+      "uiSlotsChanged"
+    ]]));
+}
+
 function broadcastStateChange(name, descriptor) {
   let entityKey = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(descriptor), o => o["id"]), Stdlib_JSON.Decode.string), "");
   if (entityKey === "") {
@@ -339,6 +348,8 @@ export {
   broadcast,
   devUiHintsChannel,
   broadcastUiHintsChanged,
+  devUiSlotsChannel,
+  broadcastUiSlotsChanged,
   broadcastStateChange,
   decodeStringField,
   handleFrame,

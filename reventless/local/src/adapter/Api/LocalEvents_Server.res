@@ -124,6 +124,24 @@ let broadcastUiHintsChanged = (): unit =>
     ~event=frame([("kind", JSON.Encode.string("uiHintsChanged"))]),
   )
 
+/** The channel a shell listens on to learn that this platform re-served its slot
+    module. A channel of its own rather than a second `kind` on the hints one,
+    because what a listener does about it differs: re-fetching hints is a data
+    refresh, while re-importing a module is not something a live page can
+    generally undo, and a listener has to be free to answer the two differently. */
+let devUiSlotsChannel = "/default/dev/uiSlots"
+
+/** Tell every connected shell that `ui-slots.js` has been re-served.
+
+    Carries no renderers, for the reason the hints signal carries no hints: this
+    is a cache-invalidation signal, not a second delivery path that could
+    disagree with the first. */
+let broadcastUiSlotsChanged = (): unit =>
+  broadcast(
+    ~channel=devUiSlotsChannel,
+    ~event=frame([("kind", JSON.Encode.string("uiSlotsChanged"))]),
+  )
+
 /** LocalBus bridge: a Source B change descriptor becomes a publish on the
     same channel the AWS StateTopic Lambda would use. No-op without matching
     subscribers, so wiring order against server start doesn't matter. */

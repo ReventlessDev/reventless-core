@@ -65,6 +65,13 @@ function readJsonFileVerbatim(path, label) {
   }
 }
 
+function readFileVerbatim(path, label) {
+  if (!Nodefs.existsSync(path)) {
+    Stdlib_JsError.throwWithMessage(label + `: file does not exist: ` + path);
+  }
+  return Nodefs.readFileSync(path, "utf8");
+}
+
 function sanitizeName(relativePath) {
   return relativePath.replaceAll("/", "-").replaceAll(".", "-");
 }
@@ -139,6 +146,7 @@ export {
   walkInto,
   walk,
   readJsonFileVerbatim,
+  readFileVerbatim,
   sanitizeName,
   extensionOf,
   contentTypeFor,

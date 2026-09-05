@@ -373,8 +373,33 @@ does on save:
   declaration that does not parse fails the boot, because there is no previous
   copy and nothing else to go on.
 - **`Storefront.res` is not this.** Editing the manifest, `derived`, or
-  `elevatedGroups` is ReScript: rebuild and restart. Only the hints file is
+  `elevatedGroups` is ReScript: rebuild and restart. Only the declared files are
   followed live.
+
+### The same loop for `uiSlotsFile`
+
+A declared `uiSlotsFile` — the ES module that draws the regions a hint can only
+point at — is served and watched beside the hints file, on its own channel:
+
+```
+$ pnpm run serve
+… watching …/seed-data/storefront-slots.js — edits are served without a restart
+# save the file
+… ui-slots.js changed — re-served
+```
+
+Two differences from the hints file, both following from it being a module
+rather than data:
+
+- **Nothing validates the content.** A module is only known to be good once a
+  browser has evaluated it, so a bad one is served as written and the shell
+  reports what it could not import. Only a file that cannot be *read* is caught
+  here — reported mid-session, fatal at boot, on the same rule as the hints file.
+- **Withdrawing the declaration removes the served file** rather than restoring a
+  default. The host-shell package ships no slots module, deliberately: a fallback
+  here would be a fallback for appearance, and inheriting one you did not write
+  is hard to notice. See
+  [UI configuration §4.1](/app/ui-configuration).
 
 ## Staying logged in across restarts
 

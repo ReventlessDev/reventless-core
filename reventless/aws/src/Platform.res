@@ -1172,6 +1172,18 @@ module MakeWithConfig = (
     // written; the shell treats the resulting 404 as "no hints" and boots
     // unchanged. Single-mode shape: one origin-relative file per deployment.
     uiHintsFile?: string,
+    // Optional ES module registering AutoUI slot renderers — the part of a
+    // surface that has to be drawn rather than said (a tile with the name over
+    // the picture, a card face in a different type scale). When set, the deploy
+    // reads it and writes it verbatim as a `ui-slots.js` BucketObject beside
+    // `config.json`. Unset ⇒ no file written; the shell treats the resulting 404
+    // as "no slots" and every mode draws its own regions.
+    //
+    // A module in the bundle's own origin rather than a fragment served from the
+    // admin API, because the registry has to be populated for *every* caller —
+    // including one served from a baked manifest, who issues no admin query and
+    // for whom federation overrides therefore never apply.
+    uiSlotsFile?: string,
     // Optional baked component manifest. Declared here so a deployment can state
     // it once; the emission that writes the file is not wired on this platform
     // yet, and a declaration without it writes nothing.
@@ -2090,11 +2102,16 @@ module MakeWithConfig = (
         ~stableName=true,
         // The explicit BucketObjects below write the production config.json
         // (resolved API endpoints + Cognito IDs) and, when configured, a
-        // ui-hints.json. The host-shell bundle's public/config.json and
-        // public/ui-hints.json are dev-mode fallbacks — exclude them from the
-        // bundle upload so the explicit BucketObjects don't race the bundle on
-        // the same S3 keys.
-        ~excludeFiles=["config.json", "ui-hints.json"],
+        // ui-hints.json and a ui-slots.js. The host-shell bundle's
+        // public/config.json and public/ui-hints.json are dev-mode fallbacks —
+        // exclude them from the bundle upload so the explicit BucketObjects
+        // don't race the bundle on the same S3 keys.
+        //
+        // `ui-slots.js` is excluded on the same rule though the shell ships no
+        // such file today, and that is the point: were one ever added, it would
+        // be a fallback for *appearance*, and a deployment inheriting a
+        // stranger's appearance is exactly the failure that is hard to notice.
+        ~excludeFiles=["config.json", "ui-hints.json", "ui-slots.js"],
         ~customDomain?,
         // Served buckets front the host-shell distribution with `{prefix}/*`
         // read paths (private, OAC-read) — same origin as the SPA, so served
@@ -2332,6 +2349,40 @@ module MakeWithConfig = (
             key: Pulumi.Input.make("ui-hints.json"),
             content: Pulumi.Input.make(hintsContent),
             contentType: Pulumi.Input.make("application/json"),
+          },
+        )
+      }
+
+      // Optional AutoUI slot renderers. Read verbatim and written beside the
+      // hints file above — same seam, one file over, and the same rule that an
+      // undeclared deployment writes nothing.
+      //
+      // Unlike the hints there is no content check at deploy time, because there
+      // is no cheap one (see `readFileVerbatim`): a module is known to be good
+      // once a browser has evaluated it. What the deploy owes instead is a
+      // correct content type, which is the difference between the shell
+      // importing this file and the shell refusing it — a module served as
+      // `application/octet-stream` is blocked before it is read.
+      //
+      // Same origin as the bundle, deliberately: it rides this distribution, so
+      // no CSP relaxation is involved and none is configured (this deploy sets
+      // no response-headers policy at all). A slots file that loads locally and
+      // silently fails on AWS is the worst shape this can take, and cross-origin
+      // is how it would take it.
+      switch cfg.uiSlotsFile {
+      | None => ()
+      | Some(slotsPath) =>
+        let slotsContent = Util_StaticBundle.readFileVerbatim(
+          ~path=slotsPath,
+          ~label="host-ui ui-slots",
+        )
+        let _ = PulumiAws.S3.BucketObject.make(
+          ~name="host-ui-ui-slots-js",
+          ~args={
+            bucket: bucketName->Pulumi.Output.asInput,
+            key: Pulumi.Input.make("ui-slots.js"),
+            content: Pulumi.Input.make(slotsContent),
+            contentType: Pulumi.Input.make("application/javascript; charset=utf-8"),
           },
         )
       }

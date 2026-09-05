@@ -1471,6 +1471,10 @@ module MakeWithConfig = (
     // `makePlatform` serves the declared file in place of the host-shell
     // package's own dev-mode fallback, which an undeclared platform keeps.
     uiHintsFile?: string,
+    // `makePlatform` serves the declared module beside the hints file. No
+    // fallback to keep here: the host-shell package ships no slots module, so an
+    // undeclared platform serves none.
+    uiSlotsFile?: string,
     // `makePlatform` writes the curated manifest where the local host-shell
     // serves its static assets from, and points `config.json` at it.
     bakedManifest?: ReventlessInfra.Platform.bakedManifest,
@@ -1686,6 +1690,15 @@ module MakeWithConfig = (
     let _ = UiHints.watch(
       ~uiHintsFile=hostUiBundle->Option.flatMap(cfg => cfg.uiHintsFile),
       ~onReload=LocalEvents_Server.broadcastUiHintsChanged,
+    )
+    // The same pair for the module that draws what a hint cannot say. Also
+    // unconditional, and for a reason the hints file does not have: this is what
+    // removes a module a platform has stopped declaring, and leaving one behind
+    // would go on drawing regions with nothing in the deployment to explain it.
+    UiSlots.emit(~uiSlotsFile=hostUiBundle->Option.flatMap(cfg => cfg.uiSlotsFile))
+    let _ = UiSlots.watch(
+      ~uiSlotsFile=hostUiBundle->Option.flatMap(cfg => cfg.uiSlotsFile),
+      ~onReload=LocalEvents_Server.broadcastUiSlotsChanged,
     )
     switch hostUiBundle->Option.flatMap(cfg => cfg.bakedManifest) {
     | None => ()
