@@ -26,6 +26,10 @@ let consumedEventSchema = Sury.union([
     productImage: s.m(UploadableImage$Reventless.forField(undefined, "productImages")),
     altText: s.m(Sury.string)
   })),
+  Sury.$schema(s => ({
+    TAG: "ProductEffectiveImageChanged",
+    productImage: s.m(Sury.$option(UploadableImage$Reventless.forField(undefined, "productImages")))
+  })),
   Sury.literal("ProductArchived"),
   Sury.literal("ProductUnarchived"),
   Sury.literal("ProductDiscontinued")
@@ -86,6 +90,11 @@ let eventSchema = Sury.union([
     productId: s.m(DcbTag$Reventless.string),
     productImage: s.m(UploadableImage$Reventless.forField(undefined, "productImages")),
     altText: s.m(Sury.string)
+  })),
+  Sury.$schema(s => ({
+    TAG: "ProductEffectiveImageChanged",
+    productId: s.m(DcbTag$Reventless.string),
+    productImage: s.m(Sury.$option(UploadableImage$Reventless.forField(undefined, "productImages")))
   }))
 ]);
 

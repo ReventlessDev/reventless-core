@@ -16,13 +16,19 @@ describe("ProductImages StateChangeSlice", () => {
   test("a listed product takes attachments", () =>
     givenEvents([ProductAdded])
     ->whenCmd(AttachProductImage({productId: "p1", productImage: img}))
-    ->thenEvent(ProductImageAttached({productId: "p1", productImage: img}))
+    ->thenEvents([
+      ProductImageAttached({productId: "p1", productImage: img}),
+      ProductEffectiveImageChanged({productId: "p1", productImage: img}),
+    ])
   )
 
   test("a listed product releases them", () =>
     givenEvents([ProductAdded, ProductImageAttached({productImage: img})])
     ->whenCmd(RemoveProductImage({productId: "p1", productImage: img}))
-    ->thenEvent(ProductImageRemoved({productId: "p1", productImage: img}))
+    ->thenEvents([
+      ProductImageRemoved({productId: "p1", productImage: img}),
+      ProductEffectiveImageChanged({productId: "p1"}),
+    ])
   )
 
   test("a listed product chooses its primary", () =>
@@ -34,9 +40,10 @@ describe("ProductImages StateChangeSlice", () => {
     ->whenCmd(
       SetPrimaryProductImage({productId: "p1", productImage: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg"}),
     )
-    ->thenEvent(
+    ->thenEvents([
       ProductPrimaryImageSet({productId: "p1", productImage: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg"}),
-    )
+      ProductEffectiveImageChanged({productId: "p1", productImage: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg"}),
+    ])
   )
 
   test("a listed product captions a member", () =>
@@ -48,13 +55,19 @@ describe("ProductImages StateChangeSlice", () => {
   test("an archived product still takes attachments", () =>
     givenEvents([ProductAdded, ProductArchived])
     ->whenCmd(AttachProductImage({productId: "p1", productImage: img}))
-    ->thenEvent(ProductImageAttached({productId: "p1", productImage: img}))
+    ->thenEvents([
+      ProductImageAttached({productId: "p1", productImage: img}),
+      ProductEffectiveImageChanged({productId: "p1", productImage: img}),
+    ])
   )
 
   test("an archived product still releases attachments", () =>
     givenEvents([ProductAdded, ProductImageAttached({productImage: img}), ProductArchived])
     ->whenCmd(RemoveProductImage({productId: "p1", productImage: img}))
-    ->thenEvent(ProductImageRemoved({productId: "p1", productImage: img}))
+    ->thenEvents([
+      ProductImageRemoved({productId: "p1", productImage: img}),
+      ProductEffectiveImageChanged({productId: "p1"}),
+    ])
   )
 
   test("an archived product chooses its primary", () =>
@@ -67,9 +80,10 @@ describe("ProductImages StateChangeSlice", () => {
     ->whenCmd(
       SetPrimaryProductImage({productId: "p1", productImage: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg"}),
     )
-    ->thenEvent(
+    ->thenEvents([
       ProductPrimaryImageSet({productId: "p1", productImage: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg"}),
-    )
+      ProductEffectiveImageChanged({productId: "p1", productImage: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg"}),
+    ])
   )
 
   test("an archived product captions a member", () =>

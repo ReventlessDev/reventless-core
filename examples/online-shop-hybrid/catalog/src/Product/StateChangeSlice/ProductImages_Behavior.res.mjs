@@ -65,6 +65,11 @@ function evolve(state, event) {
           ref: event.productImage,
           altText: event.altText
         });
+      case "ProductEffectiveImageChanged" :
+        return fold({
+          TAG: "EffectiveChanged",
+          ref: event.productImage
+        });
     }
   }
 }
@@ -135,6 +140,12 @@ function toEvent(productId, fact) {
         productId: productId,
         productImage: fact.ref,
         altText: fact.altText
+      };
+    case "EffectiveChanged" :
+      return {
+        TAG: "ProductEffectiveImageChanged",
+        productId: productId,
+        productImage: fact.ref
       };
   }
 }

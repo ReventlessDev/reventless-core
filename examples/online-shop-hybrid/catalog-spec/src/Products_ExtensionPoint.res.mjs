@@ -2,6 +2,7 @@
 
 import * as Sury from "sury";
 import * as Money$Reventless from "@reventlessdev/reventless-spec/src/semantic/Money.res.mjs";
+import * as UploadableImage$Reventless from "@reventlessdev/reventless-spec/src/semantic/UploadableImage.res.mjs";
 
 let commandSchema = Sury.$unit;
 
@@ -24,6 +25,11 @@ let eventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "ProductRelisted",
     productId: s.m(Sury.string)
+  })),
+  Sury.$schema(s => ({
+    TAG: "ProductImageChanged",
+    productId: s.m(Sury.string),
+    productImage: s.m(Sury.$option(UploadableImage$Reventless.forField(undefined, "productImages")))
   }))
 ]);
 

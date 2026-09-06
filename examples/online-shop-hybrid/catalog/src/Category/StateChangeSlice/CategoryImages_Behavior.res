@@ -16,6 +16,7 @@ let evolve = (state, event) => {
   | CategoryImageRemoved({categoryImage}) => fold(Removed({ref: categoryImage}))
   | CategoryImageAltTextSet({categoryImage, altText}) =>
     fold(AltTextSet({ref: categoryImage, altText}))
+  | CategoryEffectiveImageChanged({categoryImage: ?ref}) => fold(EffectiveChanged({ref: ref}))
   | CategoryArchived => {...state, archived: true}
   | CategoryUnarchived => {...state, archived: false}
   }
@@ -48,6 +49,8 @@ let toEvent = (categoryId, fact) =>
   | Attachments.PrimarySet(_) => None
   | Attachments.AltTextSet({ref, altText}) =>
     Some(CategoryImageAltTextSet({categoryId, categoryImage: ref, altText}))
+  | Attachments.EffectiveChanged({ref}) =>
+    Some(CategoryEffectiveImageChanged({categoryId, categoryImage: ?ref}))
   }
 
 let decide = (state, command) =>

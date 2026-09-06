@@ -12,9 +12,16 @@
 @schema
 type consumedEvent =
   | OrderPlaced({orderId: string})
-  | CatalogProductSynced({productId: string})
+  // `name` is read as well as `productId`, so the order can record what the
+  // product was called at the moment it was placed. The catalog publishes it on
+  // both arms already; this slice simply stopped ignoring it.
+  | CatalogProductSynced({productId: string, name: string})
   | CatalogProductWithdrawn({productId: string})
-  | CatalogProductRelisted({productId: string})
+  | CatalogProductRelisted({productId: string, name: string})
+  // The picture the shelf currently shows, folded for the same reason the name
+  // is: so a placement can copy it onto the order rather than the order having
+  // to ask the catalog later.
+  | CatalogProductImageChanged({productId: string, productImage?: Reventless.UploadableImage.t})
 
 // Declared in the order the UI should present them: the batched default first,
 // then the expedited option, then in-store collection.
@@ -57,4 +64,20 @@ type event =
     productIds: array<string>,
     shippingMethod: shippingMethod,
     deliveryWindow?: Reventless.DateRange.t,
+    // What the first product was called when this order was placed.
+    //
+    // **Captured, not looked up.** An order is a record of what somebody bought,
+    // and the catalog goes on changing afterwards — a rename, a withdrawal, a
+    // reshoot. Reading the name live would rewrite history every time the shop
+    // tidied its shelves, and would leave an order for a withdrawn product with
+    // nothing to show at all.
+    //
+    // Optional because every order placed before this field existed carries no
+    // key, which is what makes adding it cost the log nothing. A reader treats
+    // absent as "not recorded" rather than as a name.
+    firstProductName?: string,
+    // The picture as it was when the order was placed, frozen for the reason the
+    // name is. A reshoot, a withdrawal or a deletion afterwards leaves this
+    // order showing what the shopper actually bought.
+    firstProductImage?: Reventless.UploadableImage.t,
   })

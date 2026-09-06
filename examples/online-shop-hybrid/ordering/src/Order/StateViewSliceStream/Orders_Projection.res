@@ -2,7 +2,7 @@
 
 let project = ({event, meta}) =>
   switch event {
-  | OrderPlaced({orderId, customerId, productIds, shippingMethod, deliveryWindow}) => [
+  | OrderPlaced({orderId, customerId, productIds, shippingMethod, deliveryWindow, firstProductName, firstProductImage}) => [
       Set(
         orderId,
         {
@@ -14,6 +14,11 @@ let project = ({event, meta}) =>
           placedAt: meta.time,
           shippedAt: "",
           deliveryWindow,
+          // Copied straight through. The event is the record of what was bought;
+          // this view does not go and ask the catalog what the product is called
+          // now, which is the whole point of freezing it at placement.
+          firstProductName,
+          firstProductImage,
         },
       ),
     ]

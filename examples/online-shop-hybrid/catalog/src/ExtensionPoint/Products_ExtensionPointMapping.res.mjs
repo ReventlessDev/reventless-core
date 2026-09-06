@@ -3,6 +3,7 @@
 import * as Sury from "sury";
 import * as Money$Reventless from "@reventlessdev/reventless-spec/src/semantic/Money.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as UploadableImage$Reventless from "@reventlessdev/reventless-spec/src/semantic/UploadableImage.res.mjs";
 
 let commandSchema = Sury.$unit;
 
@@ -30,6 +31,11 @@ let eventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "ProductUnarchived",
     productId: s.m(DcbTag$Reventless.string)
+  })),
+  Sury.$schema(s => ({
+    TAG: "ProductEffectiveImageChanged",
+    productId: s.m(DcbTag$Reventless.string),
+    productImage: s.m(Sury.$option(UploadableImage$Reventless.forField(undefined, "productImages")))
   }))
 ]);
 
@@ -115,6 +121,17 @@ let mapOutgoingEvent = (_id, event, _meta, _queryEngine) => {
             productId: theId
           }
         }];
+    case "ProductEffectiveImageChanged" :
+      let productId$2 = event.productId;
+      return [{
+          TAG: "PublishEvent",
+          _0: productId$2,
+          _1: {
+            TAG: "ProductImageChanged",
+            productId: productId$2,
+            productImage: event.productImage
+          }
+        }];
   }
   let theId$1 = event.productId;
   return [{
@@ -146,6 +163,10 @@ let publishedEvents = [
   {
     name: "ProductRelisted",
     fromEventTypes: ["ProductUnarchived"]
+  },
+  {
+    name: "ProductImageChanged",
+    fromEventTypes: ["ProductEffectiveImageChanged"]
   }
 ];
 

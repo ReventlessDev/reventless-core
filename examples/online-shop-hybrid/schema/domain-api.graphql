@@ -342,6 +342,7 @@ type Mutation {
   Catalog_UnarchiveProduct(productId: ID!): CommandResult!
   Ordering_CancelOrder(orderId: ID!): CommandResult!
   Ordering_ChangeSyncedPrice(price: MoneyInput!, productId: ID!): CommandResult!
+  Ordering_ChangeSyncedProductImage(productId: ID!, productImage: String): CommandResult!
   Ordering_Customer_Deactivate(id: ID!): CommandResult!
   Ordering_Customer_Reactivate(id: ID!): CommandResult!
   Ordering_Customer_Register(address: String!, email: String!, id: ID!): CommandResult!
@@ -805,6 +806,9 @@ enum Ordering_NotificationSubscriptionSubscriptionsChannel {
 type Ordering_Order implements Node {
   customerId: ID!
   deliveryWindow: DateRange
+  displayName: String
+  firstProductImage: String
+  firstProductName: String
   id: ID!
   lifecycle: Ordering_OrderLifecycle!
   orderId: ID!
@@ -1223,6 +1227,7 @@ type Subscription {
   onOrderingEventLog_eventAppended: OrderingEventLogEvent
   onOrdering_CancelOrder(id: ID): CommandResult
   onOrdering_ChangeSyncedPrice(id: ID): CommandResult
+  onOrdering_ChangeSyncedProductImage(id: ID): CommandResult
   onOrdering_Customer_Deactivate(id: ID): CommandResult
   onOrdering_Customer_Reactivate(id: ID): CommandResult
   onOrdering_Customer_Register(id: ID): CommandResult

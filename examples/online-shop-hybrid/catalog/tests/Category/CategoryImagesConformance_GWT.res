@@ -19,6 +19,8 @@ module Binding = {
   let removedC = (ref): CategoryImages.consumedEvent => CategoryImageRemoved({categoryImage: ref})
   let altTextSetC = (ref, altText): CategoryImages.consumedEvent =>
     CategoryImageAltTextSet({categoryImage: ref, altText})
+  let effectiveChangedC = (ref): CategoryImages.consumedEvent =>
+    CategoryEffectiveImageChanged({categoryImage: ?ref})
 
   let attach = ref => CategoryImages.SetCategoryImage({categoryId: "c1", categoryImage: ref})
   let clear = CategoryImages.RemoveCategoryImage({categoryId: "c1"})
@@ -28,6 +30,8 @@ module Binding = {
   let removed = ref => CategoryImages.CategoryImageRemoved({categoryId: "c1", categoryImage: ref})
   let altTextSet = (ref, altText) =>
     CategoryImages.CategoryImageAltTextSet({categoryId: "c1", categoryImage: ref, altText})
+  let effectiveChanged = ref =>
+    CategoryImages.CategoryEffectiveImageChanged({categoryId: "c1", categoryImage: ?ref})
   let notAttached = CategoryImages.CategoryImageNotAttached
 }
 

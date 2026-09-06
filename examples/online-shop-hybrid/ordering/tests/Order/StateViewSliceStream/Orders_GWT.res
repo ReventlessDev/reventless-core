@@ -10,6 +10,8 @@ describe("Orders StateViewSlice", () => {
         productIds: ["p1", "p2"],
         shippingMethod: Standard,
         deliveryWindow: None,
+        firstProductName: None,
+        firstProductImage: None,
       }),
     )
     ->thenStateWithId(
@@ -23,6 +25,8 @@ describe("Orders StateViewSlice", () => {
         placedAt: "time",
         shippedAt: "",
         deliveryWindow: None,
+        firstProductName: None,
+        firstProductImage: None,
       },
     )
   )
@@ -43,6 +47,8 @@ describe("Orders StateViewSlice", () => {
         productIds: ["p1"],
         shippingMethod: Standard,
         deliveryWindow: Some(window),
+        firstProductName: None,
+        firstProductImage: None,
       }),
     )
     ->thenStateWithId(
@@ -56,6 +62,8 @@ describe("Orders StateViewSlice", () => {
         placedAt: "time",
         shippedAt: "",
         deliveryWindow: Some(window),
+        firstProductName: None,
+        firstProductImage: None,
       },
     )
   })
@@ -69,6 +77,8 @@ describe("Orders StateViewSlice", () => {
         productIds: ["p1"],
         shippingMethod: Pickup,
         deliveryWindow: None,
+        firstProductName: None,
+        firstProductImage: None,
       }),
     )
     ->thenStateWithId(
@@ -82,6 +92,8 @@ describe("Orders StateViewSlice", () => {
         placedAt: "time",
         shippedAt: "",
         deliveryWindow: None,
+        firstProductName: None,
+        firstProductImage: None,
       },
     )
   )
@@ -94,6 +106,8 @@ describe("Orders StateViewSlice", () => {
         productIds: ["p1"],
         shippingMethod: Express,
         deliveryWindow: None,
+        firstProductName: None,
+        firstProductImage: None,
       }),
     ])
     ->whenEvent(OrderShipped({orderId: "o1"}))
@@ -108,6 +122,8 @@ describe("Orders StateViewSlice", () => {
         placedAt: "time",
         shippedAt: "time",
         deliveryWindow: None,
+        firstProductName: None,
+        firstProductImage: None,
       },
     )
   )
@@ -120,6 +136,8 @@ describe("Orders StateViewSlice", () => {
         productIds: ["p1"],
         shippingMethod: Standard,
         deliveryWindow: None,
+        firstProductName: None,
+        firstProductImage: None,
       }),
     ])
     ->whenEvent(OrderCancelled({orderId: "o1"}))
@@ -134,6 +152,8 @@ describe("Orders StateViewSlice", () => {
         placedAt: "time",
         shippedAt: "",
         deliveryWindow: None,
+        firstProductName: None,
+        firstProductImage: None,
       },
     )
   )
@@ -151,6 +171,8 @@ describe("Orders StateViewSlice", () => {
         productIds: ["p1"],
         shippingMethod: Standard,
         deliveryWindow: None,
+        firstProductName: None,
+        firstProductImage: None,
       }),
       OrderCancelled({orderId: "o1"}),
     ])
@@ -166,6 +188,8 @@ describe("Orders StateViewSlice", () => {
         placedAt: "time",
         shippedAt: "",
         deliveryWindow: None,
+        firstProductName: None,
+        firstProductImage: None,
       },
     )
   )

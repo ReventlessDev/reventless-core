@@ -8,27 +8,40 @@ function evolve(state, event) {
       return {
         name: state.name,
         price: state.price,
-        withdrawn: true
+        withdrawn: true,
+        productImage: state.productImage
       };
     } else {
       return {
         name: state.name,
         price: state.price,
-        withdrawn: false
+        withdrawn: false,
+        productImage: state.productImage
       };
     }
-  } else if (event.TAG === "CatalogProductSynced") {
-    return {
-      name: event.name,
-      price: event.price,
-      withdrawn: false
-    };
-  } else {
-    return {
-      name: state.name,
-      price: event.price,
-      withdrawn: state.withdrawn
-    };
+  }
+  switch (event.TAG) {
+    case "CatalogProductSynced" :
+      return {
+        name: event.name,
+        price: event.price,
+        withdrawn: false,
+        productImage: state.productImage
+      };
+    case "CatalogProductPriceChanged" :
+      return {
+        name: state.name,
+        price: event.price,
+        withdrawn: state.withdrawn,
+        productImage: state.productImage
+      };
+    case "CatalogProductImageChanged" :
+      return {
+        name: state.name,
+        price: state.price,
+        withdrawn: state.withdrawn,
+        productImage: event.productImage
+      };
   }
 }
 
@@ -111,6 +124,23 @@ function decide(state, command) {
           _0: []
         };
       }
+    case "ChangeSyncedProductImage" :
+      let productImage = command.productImage;
+      if (Primitive_object.equal(state.productImage, productImage)) {
+        return {
+          TAG: "Ok",
+          _0: []
+        };
+      } else {
+        return {
+          TAG: "Ok",
+          _0: [{
+              TAG: "CatalogProductImageChanged",
+              productId: command.productId,
+              productImage: productImage
+            }]
+        };
+      }
   }
 }
 
@@ -119,7 +149,8 @@ let Spec;
 let initialState = {
   name: "",
   price: undefined,
-  withdrawn: false
+  withdrawn: false,
+  productImage: undefined
 };
 
 let moduleUrl = "@reventlessdev/online-shop-hybrid-ordering/src/CatalogProduct/StateChangeSlice/SyncCatalogProduct_Behavior.res.mjs";

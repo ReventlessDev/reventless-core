@@ -39,6 +39,15 @@ function mapIncomingEvent(_id, event, _meta, _pluginDef, _queryEngine) {
             productId: event.productId
           }
         }];
+    case "ProductImageChanged" :
+      return [{
+          TAG: "PublishStateChangeSliceCommand",
+          _0: {
+            TAG: "ChangeSyncedProductImage",
+            productId: event.productId,
+            productImage: event.productImage
+          }
+        }];
   }
 }
 
@@ -58,6 +67,10 @@ let handledEvents = [
   {
     name: "ProductRelisted",
     toCommandTypes: ["RelistSyncedProduct"]
+  },
+  {
+    name: "ProductImageChanged",
+    toCommandTypes: ["ChangeSyncedProductImage"]
   }
 ];
 

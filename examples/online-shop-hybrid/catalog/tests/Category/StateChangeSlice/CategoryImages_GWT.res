@@ -16,7 +16,10 @@ describe("CategoryImages StateChangeSlice", () => {
   test("a listed category takes an image", () =>
     givenEvents([CategoryAdded])
     ->whenCmd(SetCategoryImage({categoryId: "c1", categoryImage: img}))
-    ->thenEvent(CategoryImageAttached({categoryId: "c1", categoryImage: img}))
+    ->thenEvents([
+      CategoryImageAttached({categoryId: "c1", categoryImage: img}),
+      CategoryEffectiveImageChanged({categoryId: "c1", categoryImage: img}),
+    ])
   )
 
   // The bounded cardinality, through this host: a second image does not join the
@@ -28,13 +31,17 @@ describe("CategoryImages StateChangeSlice", () => {
     ->thenEvents([
       CategoryImageRemoved({categoryId: "c1", categoryImage: img}),
       CategoryImageAttached({categoryId: "c1", categoryImage: banner}),
+      CategoryEffectiveImageChanged({categoryId: "c1", categoryImage: banner}),
     ])
   )
 
   test("a listed category releases its image", () =>
     givenEvents([CategoryAdded, CategoryImageAttached({categoryImage: img})])
     ->whenCmd(RemoveCategoryImage({categoryId: "c1"}))
-    ->thenEvent(CategoryImageRemoved({categoryId: "c1", categoryImage: img}))
+    ->thenEvents([
+      CategoryImageRemoved({categoryId: "c1", categoryImage: img}),
+      CategoryEffectiveImageChanged({categoryId: "c1"}),
+    ])
   )
 
   test("a listed category captions its image", () =>
@@ -52,6 +59,9 @@ describe("CategoryImages StateChangeSlice", () => {
   test("an unarchived category takes an image again", () =>
     givenEvents([CategoryAdded, CategoryArchived, CategoryUnarchived])
     ->whenCmd(SetCategoryImage({categoryId: "c1", categoryImage: img}))
-    ->thenEvent(CategoryImageAttached({categoryId: "c1", categoryImage: img}))
+    ->thenEvents([
+      CategoryImageAttached({categoryId: "c1", categoryImage: img}),
+      CategoryEffectiveImageChanged({categoryId: "c1", categoryImage: img}),
+    ])
   )
 })

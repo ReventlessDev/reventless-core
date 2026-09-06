@@ -3,6 +3,15 @@
 
 @@reventless.spec
 
+// Catalog's store, named explicitly. The ppx would otherwise derive a store from
+// the field's name and declare an *Ordering* store nothing writes to; saying
+// whose it is states what is true — Ordering holds a reference to bytes it can
+// read and cannot put there.
+let catalogProductImage = Reventless.UploadableImage.forField(
+  ~plugin="Catalog",
+  ~store="productImages",
+)
+
 @schema
 type shippingMethod =
   | Standard
@@ -17,6 +26,8 @@ type consumedEvent =
       productIds: array<string>,
       shippingMethod: shippingMethod,
       deliveryWindow: option<Reventless.DateRange.t>,
+      firstProductName: option<string>,
+      firstProductImage: @s.matches(S.option(catalogProductImage)) option<Reventless.UploadableImage.t>,
     })
   | OrderShipped({orderId: string})
   | OrderCancelled({orderId: string})
@@ -48,7 +59,11 @@ type state = {
   // carry the time in the event payload. The `DateTime` marker surfaces
   // `format: "date-time"` on the state's JSON Schema, which the AutoUI date
   // views (Calendar/Timeline) key off. `shippedAt` is "" until the order ships.
-  placedAt: @s.matches(Reventless.DateTime.string) string,
+  // `@displayName` because an order has no name of its own and its id is a uuid
+  // for anything placed through the UI. When it was placed is what a customer
+  // recognises it by, so that is what every surface calls it — the tracker's
+  // heading, a card, and any other view referring to this order.
+  @displayName placedAt: @s.matches(Reventless.DateTime.string) string,
   shippedAt: @s.matches(Reventless.DateTime.string) string,
   // The requested delivery slot, carried straight from `OrderPlaced`. A declared
   // span — two ISO instants as one value — so a scheduler mode lays a bar out
@@ -56,4 +71,18 @@ type state = {
   // instead of guessing the pair from field names. `None` until (and unless) an
   // order requests one.
   deliveryWindow: option<Reventless.DateRange.t>,
+  // What the first product was called when the order was placed, carried on the
+  // event rather than read from the catalog — see `PlaceOrder`. Absent on orders
+  // placed before it was recorded, which is why it stays optional here too.
+  firstProductName: option<string>,
+  // The picture the order recorded, and the field the shell resolves as this
+  // row's own — which is what puts it on a card without a renderer asking the
+  // catalog for anything.
+  //
+  // The schema is written out rather than left to the ppx because the store is
+  // **Catalog's**: the ppx derives a store from the field name, which would
+  // declare an Ordering store nothing writes to. Naming the owning plugin says
+  // what is true — Ordering holds a reference to bytes it can read and cannot
+  // put there.
+  firstProductImage: @s.matches(S.option(catalogProductImage)) option<Reventless.UploadableImage.t>,
 }

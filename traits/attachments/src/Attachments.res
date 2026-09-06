@@ -49,6 +49,8 @@ module type Binding = {
   let attachedC: ref => Spec.consumedEvent
   let removedC: ref => Spec.consumedEvent
   let primarySetC: ref => Spec.consumedEvent
+  /** The conclusion, as the slice consumes it — see `Attachments_Rules.fact`. */
+  let effectiveChangedC: option<ref> => Spec.consumedEvent
   let altTextSetC: (ref, string) => Spec.consumedEvent
 
   let attach: ref => Spec.command
@@ -60,6 +62,10 @@ module type Binding = {
   let attached: ref => Spec.event
   let removed: ref => Spec.event
   let primarySet: ref => Spec.event
+  /** The member a reader should now show, or `None` where the set has none.
+      Every graft declares it, whatever its cardinality: a subscriber reading it
+      must not have to know how many members the host allows. */
+  let effectiveChanged: option<ref> => Spec.event
   let altTextSet: (ref, string) => Spec.event
   /** The refusal for a primary or caption on a ref that is not in the set. */
   let notAttached: Spec.error
@@ -96,6 +102,10 @@ module type SingleBinding = {
   let attachedC: ref => Spec.consumedEvent
   let removedC: ref => Spec.consumedEvent
   let altTextSetC: (ref, string) => Spec.consumedEvent
+  /** The conclusion, as the slice consumes it. Declared at this cardinality too
+      even though `attached`/`removed` already imply it here: a subscriber must
+      not have to know how many members a host allows to know what to read. */
+  let effectiveChangedC: option<ref> => Spec.consumedEvent
 
   let attach: ref => Spec.command
   /** Remove whatever is held. Takes no ref — there is only one, and asking the
@@ -111,6 +121,8 @@ module type SingleBinding = {
   let attached: ref => Spec.event
   let removed: ref => Spec.event
   let altTextSet: (ref, string) => Spec.event
+  /** The member a reader should now show, or `None` where nothing is held. */
+  let effectiveChanged: option<ref> => Spec.event
   /** The refusal for a caption on a ref that is not held. */
   let notAttached: Spec.error
 }

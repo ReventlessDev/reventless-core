@@ -55,6 +55,11 @@ function evolve(state, event) {
           ref: event.categoryImage,
           altText: event.altText
         });
+      case "CategoryEffectiveImageChanged" :
+        return fold({
+          TAG: "EffectiveChanged",
+          ref: event.categoryImage
+        });
     }
   }
 }
@@ -109,6 +114,12 @@ function toEvent(categoryId, fact) {
         categoryId: categoryId,
         categoryImage: fact.ref,
         altText: fact.altText
+      };
+    case "EffectiveChanged" :
+      return {
+        TAG: "CategoryEffectiveImageChanged",
+        categoryId: categoryId,
+        categoryImage: fact.ref
       };
   }
 }

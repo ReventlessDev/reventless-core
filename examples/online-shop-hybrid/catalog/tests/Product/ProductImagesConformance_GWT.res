@@ -16,6 +16,8 @@ module Binding = {
     ProductPrimaryImageSet({productImage: ref})
   let altTextSetC = (ref, altText): ProductImages.consumedEvent =>
     ProductImageAltTextSet({productImage: ref, altText})
+  let effectiveChangedC = (ref): ProductImages.consumedEvent =>
+    ProductEffectiveImageChanged({productImage: ?ref})
 
   let attach = ref => ProductImages.AttachProductImage({productId: "p1", productImage: ref})
   let remove = ref => ProductImages.RemoveProductImage({productId: "p1", productImage: ref})
@@ -28,6 +30,8 @@ module Binding = {
   let primarySet = ref => ProductImages.ProductPrimaryImageSet({productId: "p1", productImage: ref})
   let altTextSet = (ref, altText) =>
     ProductImages.ProductImageAltTextSet({productId: "p1", productImage: ref, altText})
+  let effectiveChanged = ref =>
+    ProductImages.ProductEffectiveImageChanged({productId: "p1", productImage: ?ref})
   let notAttached = ProductImages.ProductImageNotAttached
 }
 

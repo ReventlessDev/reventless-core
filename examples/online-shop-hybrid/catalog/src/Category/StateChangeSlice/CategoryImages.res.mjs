@@ -20,6 +20,10 @@ let consumedEventSchema = Sury.union([
     categoryImage: s.m(UploadableImage$Reventless.forField(undefined, "categoryImages")),
     altText: s.m(Sury.string)
   })),
+  Sury.$schema(s => ({
+    TAG: "CategoryEffectiveImageChanged",
+    categoryImage: s.m(Sury.$option(UploadableImage$Reventless.forField(undefined, "categoryImages")))
+  })),
   Sury.literal("CategoryArchived"),
   Sury.literal("CategoryUnarchived")
 ]);
@@ -65,6 +69,11 @@ let eventSchema = Sury.union([
     categoryId: s.m(DcbTag$Reventless.string),
     categoryImage: s.m(UploadableImage$Reventless.forField(undefined, "categoryImages")),
     altText: s.m(Sury.string)
+  })),
+  Sury.$schema(s => ({
+    TAG: "CategoryEffectiveImageChanged",
+    categoryId: s.m(DcbTag$Reventless.string),
+    categoryImage: s.m(Sury.$option(UploadableImage$Reventless.forField(undefined, "categoryImages")))
   }))
 ]);
 

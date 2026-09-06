@@ -5,6 +5,7 @@ import * as Owner$Reventless from "@reventlessdev/reventless-spec/src/components
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as DateRange$Reventless from "@reventlessdev/reventless-spec/src/semantic/DateRange.res.mjs";
 import * as Reference$Reventless from "@reventlessdev/reventless-spec/src/components/Reference.res.mjs";
+import * as UploadableImage$Reventless from "@reventlessdev/reventless-spec/src/semantic/UploadableImage.res.mjs";
 
 let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
@@ -13,7 +14,8 @@ let consumedEventSchema = Sury.union([
   })),
   Sury.$schema(s => ({
     TAG: "CatalogProductSynced",
-    productId: s.m(DcbTag$Reventless.string)
+    productId: s.m(DcbTag$Reventless.string),
+    name: s.m(Sury.string)
   })),
   Sury.$schema(s => ({
     TAG: "CatalogProductWithdrawn",
@@ -21,7 +23,13 @@ let consumedEventSchema = Sury.union([
   })),
   Sury.$schema(s => ({
     TAG: "CatalogProductRelisted",
-    productId: s.m(DcbTag$Reventless.string)
+    productId: s.m(DcbTag$Reventless.string),
+    name: s.m(Sury.string)
+  })),
+  Sury.$schema(s => ({
+    TAG: "CatalogProductImageChanged",
+    productId: s.m(DcbTag$Reventless.string),
+    productImage: s.m(Sury.$option(UploadableImage$Reventless.forField(undefined, "productImages")))
   }))
 ]);
 
@@ -54,7 +62,9 @@ let eventSchema = Sury.$schema(s => ({
   customerId: s.m(DcbTag$Reventless.string),
   productIds: s.m(Sury.array(DcbTag$Reventless.stringForKey("productId"))),
   shippingMethod: s.m(shippingMethodSchema),
-  deliveryWindow: s.m(Sury.$option(DateRange$Reventless.schema))
+  deliveryWindow: s.m(Sury.$option(DateRange$Reventless.schema)),
+  firstProductName: s.m(Sury.$option(Sury.string)),
+  firstProductImage: s.m(Sury.$option(UploadableImage$Reventless.forField(undefined, "firstProductImages")))
 }));
 
 function commandAuthorization(param) {

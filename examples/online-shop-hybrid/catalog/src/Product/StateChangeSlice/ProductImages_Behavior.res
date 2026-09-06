@@ -19,6 +19,7 @@ let evolve = (state, event) => {
   | ProductPrimaryImageSet({productImage}) => fold(PrimarySet({ref: productImage}))
   | ProductImageAltTextSet({productImage, altText}) =>
     fold(AltTextSet({ref: productImage, altText}))
+  | ProductEffectiveImageChanged({productImage: ?ref}) => fold(EffectiveChanged({ref: ref}))
   | ProductArchived => {...state, shelf: Archived}
   | ProductUnarchived => {...state, shelf: Listed}
   | ProductDiscontinued => {...state, shelf: Discontinued}
@@ -53,6 +54,8 @@ let toEvent = (productId, fact) =>
   | Attachments.PrimarySet({ref}) => ProductPrimaryImageSet({productId, productImage: ref})
   | Attachments.AltTextSet({ref, altText}) =>
     ProductImageAltTextSet({productId, productImage: ref, altText})
+  | Attachments.EffectiveChanged({ref}) =>
+    ProductEffectiveImageChanged({productId, productImage: ?ref})
   }
 
 let decide = (state, command) =>

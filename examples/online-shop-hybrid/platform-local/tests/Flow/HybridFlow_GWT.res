@@ -89,6 +89,9 @@ describe("Hybrid cross-plugin flow", () => {
         customerId: "c1",
         productIds: ["p1"],
         shippingMethod: Standard,
+        // Recorded off the catalog's own sync, which is the point of this tier:
+        // the name crossed the plugin boundary with the availability.
+        firstProductName: "Book",
       }),
     )
   )
@@ -134,6 +137,7 @@ describe("Hybrid cross-plugin flow", () => {
         customerId: "c1",
         productIds: ["p1", "p2"],
         shippingMethod: Standard,
+        firstProductName: "Book",
       }),
     )
     ->OrdersEp.whenPublishedThrough

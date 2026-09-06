@@ -9,6 +9,7 @@ type consumedEvent =
   | CatalogProductPriceChanged({price: Reventless.Money.t})
   | CatalogProductWithdrawn
   | CatalogProductRelisted
+  | CatalogProductImageChanged({productImage?: Reventless.UploadableImage.t})
 
 @schema
 type command =
@@ -20,6 +21,10 @@ type command =
   // Ordering owns rather than asking Catalog to re-send facts it already has.
   | WithdrawSyncedProduct({productId: string})
   | RelistSyncedProduct({productId: string})
+  // The picture Catalog says to show. Carried as the ref Catalog's store minted,
+  // so Ordering stores a path it can hand to a reader without knowing where the
+  // bytes live or being able to write there.
+  | ChangeSyncedProductImage({productId: string, productImage?: Reventless.UploadableImage.t})
 
 @schema
 type error = unit // always succeeds — sync is idempotent
@@ -44,4 +49,8 @@ type event =
       productId: string,
       name: string,
       price: Reventless.Money.t,
+    })
+  | CatalogProductImageChanged({
+      productId: string,
+      productImage?: Reventless.UploadableImage.t,
     })

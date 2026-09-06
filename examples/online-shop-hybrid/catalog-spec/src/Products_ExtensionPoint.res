@@ -38,6 +38,22 @@ type event =
   | ProductPriceChanged({productId: string, price: Reventless.Money.t})
   | ProductWithdrawn({productId: string})
   | ProductRelisted({productId: string})
+  // **A separate event, not a field on `ProductBecameAvailable`.** A product is
+  // added before it has a picture — the images are a slice of their own, and the
+  // first one is attached afterwards — so availability cannot carry one. Which
+  // of a product's pictures this is stays Catalog's business: a subscriber is
+  // told "the one to show", never the set or the ordering within it.
+  //
+  // The ref crosses as the origin-relative path Catalog's store minted, which is
+  // what makes it resolvable on the other side without Ordering knowing where
+  // the bytes live. **Optional**, because "there is none now" is as much a
+  // change as any other: a subscriber that could not be told it would keep
+  // showing a picture the catalog no longer holds.
+  //
+  // Per the note above this is the breaking kind of addition — a subscriber
+  // compiled against the old spec cannot decode this variant. Tolerable here
+  // only because `catalog` and `ordering` deploy together.
+  | ProductImageChanged({productId: string, productImage?: Reventless.UploadableImage.t})
 
 // Non-domain side effects an EP-side mapping can fire alongside its events.
 // Fired from the publishing side; not durable, not replayable, not routed to

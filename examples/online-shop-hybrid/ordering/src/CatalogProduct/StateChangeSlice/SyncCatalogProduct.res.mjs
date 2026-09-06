@@ -3,6 +3,7 @@
 import * as Sury from "sury";
 import * as Money$Reventless from "@reventlessdev/reventless-spec/src/semantic/Money.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as UploadableImage$Reventless from "@reventlessdev/reventless-spec/src/semantic/UploadableImage.res.mjs";
 
 let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
@@ -15,7 +16,11 @@ let consumedEventSchema = Sury.union([
     price: s.m(Money$Reventless.schema)
   })),
   Sury.literal("CatalogProductWithdrawn"),
-  Sury.literal("CatalogProductRelisted")
+  Sury.literal("CatalogProductRelisted"),
+  Sury.$schema(s => ({
+    TAG: "CatalogProductImageChanged",
+    productImage: s.m(Sury.$option(UploadableImage$Reventless.forField(undefined, "productImages")))
+  }))
 ]);
 
 let commandSchema = Sury.union([
@@ -37,6 +42,11 @@ let commandSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "RelistSyncedProduct",
     productId: s.m(DcbTag$Reventless.string)
+  })),
+  Sury.$schema(s => ({
+    TAG: "ChangeSyncedProductImage",
+    productId: s.m(DcbTag$Reventless.string),
+    productImage: s.m(Sury.$option(UploadableImage$Reventless.forField(undefined, "productImages")))
   }))
 ]);
 
@@ -63,6 +73,11 @@ let eventSchema = Sury.union([
     productId: s.m(DcbTag$Reventless.string),
     name: s.m(Sury.string),
     price: s.m(Money$Reventless.schema)
+  })),
+  Sury.$schema(s => ({
+    TAG: "CatalogProductImageChanged",
+    productId: s.m(DcbTag$Reventless.string),
+    productImage: s.m(Sury.$option(UploadableImage$Reventless.forField(undefined, "productImages")))
   }))
 ]);
 

@@ -15,6 +15,7 @@ type consumedEvent =
   | ProductImageRemoved({productImage: Reventless.UploadableImage.t})
   | ProductPrimaryImageSet({productImage: Reventless.UploadableImage.t})
   | ProductImageAltTextSet({productImage: Reventless.UploadableImage.t, altText: string})
+  | ProductEffectiveImageChanged({productImage?: Reventless.UploadableImage.t})
   | ProductArchived
   | ProductUnarchived
   | ProductDiscontinued
@@ -69,6 +70,13 @@ type event =
       productId: string,
       productImage: Reventless.UploadableImage.t,
       altText: string,
+    })
+  // The picture that now stands as this product's — the trait's conclusion,
+  // named here so anything outside the slice can follow it without re-deriving
+  // the set's rules. Absent means the product has none.
+  | ProductEffectiveImageChanged({
+      productId: string,
+      productImage?: Reventless.UploadableImage.t,
     })
 
 // Legal while the product is on the shelf and while it is archived; refused once

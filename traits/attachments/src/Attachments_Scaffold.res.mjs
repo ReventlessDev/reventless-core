@@ -43,6 +43,7 @@ function namesOf(c) {
     attached: subject + "Attached",
     removed: subject + "Removed",
     primarySet: c.entity + "Primary" + c.noun + "Set",
+    effectiveChanged: c.entity + "Effective" + c.noun + "Changed",
     altTextSet: subject + "AltTextSet",
     notFound: c.entity + "NotFound",
     notAttached: subject + "NotAttached"
@@ -189,6 +190,7 @@ function sliceSpec(c) {
     primaryArm(""),
     [
       `  | ` + n.altTextSet + `({ ` + c.file + `: ` + ref + `, altText: string})`,
+      `  | ` + n.effectiveChanged + `({ ` + c.file + `?: ` + ref + `})`,
       `  // TODO(graft): add the events this host's own refusal turns on — whatever`,
       `  // moves it into a state where attachments may not be changed.`,
       ``
@@ -235,6 +237,10 @@ function sliceSpec(c) {
     primaryArm(c.entityId + `: string, `),
     [
       `  | ` + n.altTextSet + `({ ` + c.entityId + `: string, ` + c.file + `: ` + ref + `, altText: string})`,
+      `  // The member a reader should now show, or none. A conclusion rather than a`,
+      `  // decision: most of the moves that change it — a first attachment, a removal`,
+      `  // promoting the next — are nobody's choice, so nothing else announces them.`,
+      `  | ` + n.effectiveChanged + `({ ` + c.entityId + `: string, ` + c.file + `?: ` + ref + `})`,
       ``
     ],
     commandTransitionBinding(c),
@@ -273,6 +279,7 @@ function sliceBehavior(c) {
     single ? [] : [`  | ` + n.primarySet + `({` + c.file + `}) => fold(PrimarySet({ref: ` + c.file + `}))`],
     [
       `  | ` + n.altTextSet + `({` + c.file + `, altText}) => fold(AltTextSet({ref: ` + c.file + `, altText}))`,
+      `  | ` + n.effectiveChanged + `({` + c.file + `: ?ref}) => fold(EffectiveChanged({ref: ref}))`,
       `  // TODO(graft): fold this host's own events into its own state.`,
       `  }`,
       `}`,
@@ -332,6 +339,12 @@ function sliceBehavior(c) {
       ) + n.altTextSet + `({` + c.entityId + `, ` + c.file + `: ref, altText})` + (
         single ? ")" : ""
       ),
+      `  | Attachments.EffectiveChanged({ref}) =>`,
+      `    ` + (
+        single ? "Some(" : ""
+      ) + n.effectiveChanged + `({` + c.entityId + `, ` + c.file + `: ?ref})` + (
+        single ? ")" : ""
+      ),
       `  }`,
       ``,
       `let decide = (state, command) =>`,
@@ -381,6 +394,8 @@ function conformanceBinding(c) {
     [
       `  let altTextSetC = (ref, altText): ` + n.slice + `.consumedEvent =>`,
       `    ` + n.altTextSet + `({ ` + c.file + `: ref, altText})`,
+      `  let effectiveChangedC = (ref): ` + n.slice + `.consumedEvent =>`,
+      `    ` + n.effectiveChanged + `({ ` + c.file + `: ?ref})`,
       ``,
       `  let attach = ref => ` + n.slice + `.` + n.attachCmd + `({ ` + c.entityId + `: "` + id + `", ` + c.file + `: ref})`
     ],
@@ -402,6 +417,8 @@ function conformanceBinding(c) {
     [
       `  let altTextSet = (ref, altText) =>`,
       `    ` + n.slice + `.` + n.altTextSet + `({ ` + c.entityId + `: "` + id + `", ` + c.file + `: ref, altText})`,
+      `  let effectiveChanged = ref =>`,
+      `    ` + n.slice + `.` + n.effectiveChanged + `({ ` + c.entityId + `: "` + id + `", ` + c.file + `: ?ref})`,
       `  let notAttached = ` + n.slice + `.` + n.notAttached,
       `}`,
       ``,

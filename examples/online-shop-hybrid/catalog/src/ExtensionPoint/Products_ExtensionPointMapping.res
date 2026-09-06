@@ -15,6 +15,14 @@ module Delegate = {
     | ProductArchived({productId: string})
     | ProductDiscontinued({productId: string})
     | ProductUnarchived({productId: string})
+    // One event, not the several that move the primary. Catalog resolves which
+    // picture stands and announces the conclusion, so this port never has to ask
+    // whether an attachment was the first, or what a removal left behind —
+    // questions a stateless mapping could not answer anyway.
+    | ProductEffectiveImageChanged({
+        productId: string,
+        productImage?: Reventless.UploadableImage.t,
+      })
 }
 
 let mapIncomingCommand = (_id, _command, _meta) => []
@@ -64,6 +72,19 @@ let mapOutgoingEvent = Some((_id, event, _meta, _queryEngine) =>
       PublishEvent(
         theId,
         CatalogSpec.Products_ExtensionPoint.ProductRelisted({productId: theId}),
+      ),
+    ]
+  // Absence travels too. A subscriber that could only be told about pictures
+  // would keep showing one the catalog no longer holds — and an order placed
+  // after the last picture was removed would freeze a file that was already
+  // gone, which is staleness rather than the record of a purchase.
+  | Delegate.ProductEffectiveImageChanged({productId, productImage: ?productImage}) => [
+      PublishEvent(
+        productId,
+        CatalogSpec.Products_ExtensionPoint.ProductImageChanged({
+          productId,
+          productImage: ?productImage,
+        }),
       ),
     ]
   }

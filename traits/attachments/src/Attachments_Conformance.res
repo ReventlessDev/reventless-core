@@ -23,7 +23,9 @@ module Make = (B: Attachments.Binding) => {
   let register = () =>
     G.describe(suiteName(B.Spec.name), () => {
       G.test("the first attachment is appended", () =>
-        G.givenEvents(B.created)->G.whenCmd(B.attach(B.refA))->G.thenEvent(B.attached(B.refA))
+        G.givenEvents(B.created)
+        ->G.whenCmd(B.attach(B.refA))
+        ->G.thenEvents([B.attached(B.refA), B.effectiveChanged(Some(B.refA))])
       )
 
       G.test("attaching a ref already in the set is a no-op", () =>
@@ -35,7 +37,9 @@ module Make = (B: Attachments.Binding) => {
       )
 
       G.test("removing an attached ref is appended", () =>
-        G.givenEvents(withA)->G.whenCmd(B.remove(B.refA))->G.thenEvent(B.removed(B.refA))
+        G.givenEvents(withA)
+        ->G.whenCmd(B.remove(B.refA))
+        ->G.thenEvents([B.removed(B.refA), B.effectiveChanged(None)])
       )
 
       G.test("removing a ref not in the set is a no-op", () =>
@@ -45,7 +49,7 @@ module Make = (B: Attachments.Binding) => {
       G.test("a removed ref can be attached again", () =>
         G.givenEvents(Array.concat(withA, [B.removedC(B.refA)]))
         ->G.whenCmd(B.attach(B.refA))
-        ->G.thenEvent(B.attached(B.refA))
+        ->G.thenEvents([B.attached(B.refA), B.effectiveChanged(Some(B.refA))])
       )
 
       G.test("the primary must be in the set", () =>
@@ -57,7 +61,9 @@ module Make = (B: Attachments.Binding) => {
       )
 
       G.test("choosing another primary is appended", () =>
-        G.givenEvents(withAB)->G.whenCmd(B.setPrimary(B.refB))->G.thenEvent(B.primarySet(B.refB))
+        G.givenEvents(withAB)
+        ->G.whenCmd(B.setPrimary(B.refB))
+        ->G.thenEvents([B.primarySet(B.refB), B.effectiveChanged(Some(B.refB))])
       )
 
       G.test("choosing the current primary is a no-op", () =>
@@ -72,12 +78,31 @@ module Make = (B: Attachments.Binding) => {
         ->G.thenNoEvent
       )
 
+      // The two moves nobody decides. Neither produces a fact of its own — the
+      // set simply resolves differently afterwards — which is why anything
+      // outside it could not follow the primary before this was announced.
+      G.test("removing the member that stood in promotes the next, and says so", () =>
+        G.givenEvents(withAB)
+        ->G.whenCmd(B.remove(B.refA))
+        ->G.thenEvents([B.removed(B.refA), B.effectiveChanged(Some(B.refB))])
+      )
+
+      G.test("removing the chosen primary announces the one that stands in", () =>
+        G.givenEvents(Array.concat(withAB, [B.primarySetC(B.refB)]))
+        ->G.whenCmd(B.remove(B.refB))
+        ->G.thenEvents([B.removed(B.refB), B.effectiveChanged(Some(B.refA))])
+      )
+
       G.test("a caption needs its ref in the set", () =>
         G.givenEvents(withA)
         ->G.whenCmd(B.setAltText(B.refB, "side"))
         ->G.thenError(B.notAttached)
       )
 
+      // One fact and no second one: a caption moves no file, so the conclusion
+      // is unchanged and must not be announced. This is what stops an
+      // implementation appending it after every command rather than after the
+      // ones that move it.
       G.test("a caption is appended", () =>
         G.givenEvents(withA)
         ->G.whenCmd(B.setAltText(B.refA, "front"))
@@ -113,7 +138,9 @@ module MakeSingle = (B: Attachments.SingleBinding) => {
   let register = () =>
     G.describe(suiteName(B.Spec.name), () => {
       G.test("the first attachment is appended", () =>
-        G.givenEvents(B.created)->G.whenCmd(B.attach(B.refA))->G.thenEvent(B.attached(B.refA))
+        G.givenEvents(B.created)
+        ->G.whenCmd(B.attach(B.refA))
+        ->G.thenEvents([B.attached(B.refA), B.effectiveChanged(Some(B.refA))])
       )
 
       G.test("attaching the ref already held is a no-op", () =>
@@ -126,11 +153,17 @@ module MakeSingle = (B: Attachments.SingleBinding) => {
       G.test("a second ref replaces the first rather than joining it", () =>
         G.givenEvents(withA)
         ->G.whenCmd(B.attach(B.refB))
-        ->G.thenEvents([B.removed(B.refA), B.attached(B.refB)])
+        ->G.thenEvents([
+          B.removed(B.refA),
+          B.attached(B.refB),
+          B.effectiveChanged(Some(B.refB)),
+        ])
       )
 
       G.test("clearing a held set removes what it holds", () =>
-        G.givenEvents(withA)->G.whenCmd(B.clear)->G.thenEvent(B.removed(B.refA))
+        G.givenEvents(withA)
+        ->G.whenCmd(B.clear)
+        ->G.thenEvents([B.removed(B.refA), B.effectiveChanged(None)])
       )
 
       G.test("clearing an empty set is a no-op", () =>
@@ -140,7 +173,11 @@ module MakeSingle = (B: Attachments.SingleBinding) => {
       G.test("a replaced ref can be attached again", () =>
         G.givenEvents(Array.concat(withA, [B.removedC(B.refA), B.attachedC(B.refB)]))
         ->G.whenCmd(B.attach(B.refA))
-        ->G.thenEvents([B.removed(B.refB), B.attached(B.refA)])
+        ->G.thenEvents([
+          B.removed(B.refB),
+          B.attached(B.refA),
+          B.effectiveChanged(Some(B.refA)),
+        ])
       )
 
       // The caption names no ref either, so what it lands on is whatever is

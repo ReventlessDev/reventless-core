@@ -11,6 +11,7 @@ type consumedEvent =
   | CategoryImageAttached({categoryImage: Reventless.UploadableImage.t})
   | CategoryImageRemoved({categoryImage: Reventless.UploadableImage.t})
   | CategoryImageAltTextSet({categoryImage: Reventless.UploadableImage.t, altText: string})
+  | CategoryEffectiveImageChanged({categoryImage?: Reventless.UploadableImage.t})
   | CategoryArchived
   // The refusal is on `archived`, so the slice has to hear when that stops.
   | CategoryUnarchived
@@ -55,6 +56,13 @@ type event =
       categoryId: string,
       categoryImage: Reventless.UploadableImage.t,
       altText: string,
+    })
+  // The picture that now stands as this category's, or none. Declared at this
+  // cardinality too though `attached`/`removed` already imply it: a subscriber
+  // reading it must not have to know how many pictures a host allows.
+  | CategoryEffectiveImageChanged({
+      categoryId: string,
+      categoryImage?: Reventless.UploadableImage.t,
     })
 
 // Guard-only, as `RenameCategory`: legal on a listed category, refused on an

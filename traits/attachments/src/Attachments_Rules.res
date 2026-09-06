@@ -77,6 +77,25 @@ type fact =
   | Removed({ref: ref})
   | PrimarySet({ref: ref})
   | AltTextSet({ref: ref, altText: string})
+  | /** The member a reader should now show, or `None` where the set has none.
+
+        **A conclusion, not a decision.** `PrimarySet` records that somebody
+        chose; this records what the set resolved to, however it got there —
+        which is a different fact, and the one anything outside the set can act
+        on. The two coincide on an explicit choice and diverge everywhere else:
+        the first attachment stands in with nobody choosing, and removing the
+        one that stood in promotes the next.
+
+        Emitted at **both** cardinalities even though a `Single` host could
+        derive it from its own `Attached`/`Removed` pair, for the reason
+        `decide` gives below for not collapsing those two: a fact that only some
+        grafts emit makes a subscriber ask how many members the host allows,
+        which is not its business.
+
+        Optional because "there is no longer one to show" is as much a change as
+        any other, and a subscriber that cannot be told it keeps showing a file
+        the set no longer holds. */
+  EffectiveChanged({ref: option<ref>})
 
 /** The primary a reader should show: the one chosen, else the first attached, so
     a set never shows no file while it holds one. The read model applies the same
@@ -137,6 +156,10 @@ let evolve = (t, fact) =>
       altTexts: t.altTexts->Array.filter(((r, _)) => r != ref),
     }
   | PrimarySet({ref}) => {...t, primary: Some(ref)}
+  // Carries no state of its own: it is what `effectivePrimary` already answers,
+  // said out loud. Folding it would be storing a derivation beside the values it
+  // derives from, which is the one way the two could disagree.
+  | EffectiveChanged(_) => t
   | AltTextSet({ref, altText}) => {
       ...t,
       altTexts: t.altTexts->Array.filter(((r, _)) => r != ref)->Array.concat([(ref, altText)]),
@@ -167,7 +190,7 @@ and an event log records both. Collapsing them into a single "replaced" fact
 would make a host declare an event that only bounded hosts have, which is one
 more way the two cardinalities' emitted surfaces could diverge.
 */
-let decide = (t, ~cardinality: cardinality=Many, op): result<array<fact>, [#NotAttached]> =>
+let decideFacts = (t, ~cardinality: cardinality=Many, op): result<array<fact>, [#NotAttached]> =>
   switch op {
   | Attach({ref, altText}) =>
     if t.attached->Array.includes(ref) {
@@ -205,4 +228,27 @@ let decide = (t, ~cardinality: cardinality=Many, op): result<array<fact>, [#NotA
     | Some(ref) => setAltText(t, ~ref, ~altText)
     | None => Error(#NotAttached)
     }
+  }
+
+/**
+The set's own facts, followed by `EffectiveChanged` when those facts moved which
+member a reader should show.
+
+Appended rather than woven into each arm because the question is the same one
+after every op: fold what was decided, ask `effectivePrimary` again, and say so
+if the answer differs. An arm that had to remember to announce would eventually
+be an arm that forgot — and the ops where it moves without anybody choosing (a
+first attachment, a removal that promotes the next) are exactly the ones where
+forgetting is easiest.
+*/
+let decide = (t, ~cardinality: cardinality=Many, op): result<array<fact>, [#NotAttached]> =>
+  switch decideFacts(t, ~cardinality, op) {
+  | Error(_) as e => e
+  | Ok(facts) =>
+    let after = facts->Array.reduce(t, evolve)
+    Ok(
+      effectivePrimary(t) == effectivePrimary(after)
+        ? facts
+        : facts->Array.concat([EffectiveChanged({ref: effectivePrimary(after)})]),
+    )
   }

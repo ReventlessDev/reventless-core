@@ -18,53 +18,41 @@ function project(param) {
             shippingMethod: event.shippingMethod,
             placedAt: meta.time,
             shippedAt: "",
-            deliveryWindow: event.deliveryWindow
+            deliveryWindow: event.deliveryWindow,
+            firstProductName: event.firstProductName,
+            firstProductImage: event.firstProductImage
           }
         }];
     case "OrderShipped" :
       return [{
           TAG: "Update",
           _0: event.orderId,
-          _1: state => ({
-            orderId: state.orderId,
-            customerId: state.customerId,
-            productIds: state.productIds,
-            lifecycle: "Shipped",
-            shippingMethod: state.shippingMethod,
-            placedAt: state.placedAt,
-            shippedAt: meta.time,
-            deliveryWindow: state.deliveryWindow
-          })
+          _1: state => {
+            let newrecord = {...state};
+            newrecord.shippedAt = meta.time;
+            newrecord.lifecycle = "Shipped";
+            return newrecord;
+          }
         }];
     case "OrderCancelled" :
       return [{
           TAG: "Update",
           _0: event.orderId,
-          _1: state => ({
-            orderId: state.orderId,
-            customerId: state.customerId,
-            productIds: state.productIds,
-            lifecycle: "Cancelled",
-            shippingMethod: state.shippingMethod,
-            placedAt: state.placedAt,
-            shippedAt: state.shippedAt,
-            deliveryWindow: state.deliveryWindow
-          })
+          _1: state => {
+            let newrecord = {...state};
+            newrecord.lifecycle = "Cancelled";
+            return newrecord;
+          }
         }];
     case "OrderReopened" :
       return [{
           TAG: "Update",
           _0: event.orderId,
-          _1: state => ({
-            orderId: state.orderId,
-            customerId: state.customerId,
-            productIds: state.productIds,
-            lifecycle: "Placed",
-            shippingMethod: state.shippingMethod,
-            placedAt: state.placedAt,
-            shippedAt: state.shippedAt,
-            deliveryWindow: state.deliveryWindow
-          })
+          _1: state => {
+            let newrecord = {...state};
+            newrecord.lifecycle = "Placed";
+            return newrecord;
+          }
         }];
   }
 }

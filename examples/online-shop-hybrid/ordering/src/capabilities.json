@@ -1,6 +1,39 @@
 {
   "capabilities": [
     {
+      "kind": "ObjectStore",
+      "key": "Catalog.productImages",
+      "declaredBy": [
+        {
+          "component": "Orders",
+          "field": "firstProductImage",
+          "annotation": "Catalog.productImages"
+        }
+      ]
+    },
+    {
+      "kind": "ObjectStore",
+      "key": "Ordering.firstProductImages",
+      "declaredBy": [
+        {
+          "component": "PlaceOrder",
+          "field": "firstProductImage",
+          "annotation": "firstProductImages"
+        }
+      ]
+    },
+    {
+      "kind": "ObjectStore",
+      "key": "Ordering.productImages",
+      "declaredBy": [
+        {
+          "component": "SyncCatalogProduct",
+          "field": "productImage",
+          "annotation": "productImages"
+        }
+      ]
+    },
+    {
       "kind": "Geocoding",
       "key": "Geocoding",
       "declaredBy": [

@@ -5,6 +5,10 @@ import * as Owner$Reventless from "@reventlessdev/reventless-spec/src/components
 import * as DateTime$Reventless from "@reventlessdev/reventless-spec/src/types/DateTime.res.mjs";
 import * as DateRange$Reventless from "@reventlessdev/reventless-spec/src/semantic/DateRange.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
+import * as DisplayName$Reventless from "@reventlessdev/reventless-spec/src/components/DisplayName.res.mjs";
+import * as UploadableImage$Reventless from "@reventlessdev/reventless-spec/src/semantic/UploadableImage.res.mjs";
+
+let catalogProductImage = UploadableImage$Reventless.forField("Catalog", "productImages");
 
 let shippingMethodSchema = Sury.union([
   Sury.literal("Standard"),
@@ -19,7 +23,9 @@ let consumedEventSchema = Sury.union([
     customerId: s.m(Sury.string),
     productIds: s.m(Sury.array(Sury.string)),
     shippingMethod: s.m(shippingMethodSchema),
-    deliveryWindow: s.m(Sury.$option(DateRange$Reventless.schema))
+    deliveryWindow: s.m(Sury.$option(DateRange$Reventless.schema)),
+    firstProductName: s.m(Sury.$option(Sury.string)),
+    firstProductImage: s.m(Sury.$option(catalogProductImage))
   })),
   Sury.$schema(s => ({
     TAG: "OrderShipped",
@@ -49,8 +55,16 @@ let stateSchema = Sury.$schema(s => ({
   shippingMethod: s.m(shippingMethodSchema),
   placedAt: s.m(DateTime$Reventless.string),
   shippedAt: s.m(DateTime$Reventless.string),
-  deliveryWindow: s.m(Sury.$option(DateRange$Reventless.schema))
+  deliveryWindow: s.m(Sury.$option(DateRange$Reventless.schema)),
+  firstProductName: s.m(Sury.$option(Sury.string)),
+  firstProductImage: s.m(Sury.$option(catalogProductImage)),
+  displayName: s.m(Sury.$option(Sury.string))
 }));
+
+let stateSchema$1 = Sury.$Metadata_set(stateSchema, DisplayName$Reventless.displayNameId, {
+  fields: ["placedAt"],
+  separator: " "
+});
 
 let config = ReadModel$Reventless.config(undefined, undefined, [{
     index: "_owner",
@@ -76,14 +90,15 @@ let visibility = "Public";
 export {
   name,
   Id,
+  catalogProductImage,
   shippingMethodSchema,
   consumedEventSchema,
   lifecycleSchema,
-  stateSchema,
+  stateSchema$1 as stateSchema,
   config,
   subIdConfig,
   moduleUrl,
   authorization,
   visibility,
 }
-/* shippingMethodSchema Not a pure module */
+/* catalogProductImage Not a pure module */

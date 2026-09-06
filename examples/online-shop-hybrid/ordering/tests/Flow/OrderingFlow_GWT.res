@@ -89,6 +89,9 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
         productIds: ["p1"],
         shippingMethod: Express,
         deliveryWindow: window,
+        // Captured off the shelf at placement — the same name the catalog
+        // synced above, now part of the order's own record.
+        firstProductName: "Book",
       }),
     )
     ->Auto.whenReacts
@@ -106,6 +109,8 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
         placedAt: "time",
         shippedAt: "time",
         deliveryWindow: Some(window),
+        firstProductName: Some("Book"),
+        firstProductImage: None,
       },
     )
     // The relay asks for the notifications and says nothing about how they go
