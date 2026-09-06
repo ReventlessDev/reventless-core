@@ -144,6 +144,18 @@
   },
   {
     "component": "Customer",
+    "command": "Reactivate",
+    "level": "Instance",
+    "allowedStates": [
+      "Deactivated"
+    ],
+    "targets": [
+      "Active"
+    ],
+    "scenarios": 3
+  },
+  {
+    "component": "Customer",
     "command": "Register",
     "level": "Collection",
     "allowedStates": [],

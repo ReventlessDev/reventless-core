@@ -73,6 +73,25 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
       orderCount: 0,
     })
   )
+
+  // The way back. Deactivation is not deletion, so the profile that comes back is
+  // the profile that went in — and the row lands in Active rather than being
+  // registered a second time.
+  CustomerGwt.test("Reactivated returns the row to active", () =>
+    CustomerGwt.givenEvents([
+      Customer.Registered({email: "alice@x.y", address: "123 Main"}),
+      Customer.Deactivated,
+    ])
+    ->CustomerGwt.whenEvent(Customer.Reactivated)
+    ->CustomerGwt.thenState({
+      Customers.customerId: "id",
+      email: "alice@x.y",
+      address: "123 Main",
+      geolocation: Pending({requestedFor: "123 Main"}),
+      accountStatus: Active,
+      orderCount: 0,
+    })
+  )
 })
 
 OrderGwt.describe("Customers ReadModel ← Ordering DCB log", () => {

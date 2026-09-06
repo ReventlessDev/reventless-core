@@ -87,4 +87,26 @@ describe("Customer Behavior", () => {
     ->whenCmd(Deactivate)
     ->thenNoEvent
   )
+
+  test("Reactivate on deactivated customer produces Reactivated", () =>
+    givenEvents([Registered({email: "alice@x.y", address: "123 Main"}), Deactivated])
+    ->whenCmd(Reactivate)
+    ->thenEvent(Reactivated)
+  )
+
+  // Accepted rather than refused, because commands are retried: a redelivered
+  // `Reactivate` must not fail the second time. It is still not a command to
+  // offer here, which is what the declared edge says and this scenario is what
+  // holds the two answers apart.
+  test("Reactivate on active customer produces no events (idempotent)", () =>
+    givenEvents([Registered({email: "alice@x.y", address: "123 Main"})])
+    ->whenCmd(Reactivate)
+    ->thenNoEvent
+  )
+
+  test("Reactivate on non-existent aggregate returns CustomerNotFound", () =>
+    givenEvents([])
+    ->whenCmd(Reactivate)
+    ->thenError(CustomerNotFound)
+  )
 })

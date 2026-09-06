@@ -25,6 +25,13 @@ let model = [
   },
   {
     component: "Customer",
+    command: "Reactivate",
+    level: "Instance",
+    allowedStates: ["Deactivated"],
+    targets: ["Active"]
+  },
+  {
+    component: "Customer",
     command: "Register",
     level: "Collection",
     allowedStates: [],

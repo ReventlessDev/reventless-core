@@ -273,6 +273,11 @@ Two findings remain, both correct: `Reactivate` (unverified, no scenarios) and
 `Customer.SetLocation` / `Customer.MarkAddressUnresolvable` taking effect from
 `Active` with no `@transition` written.
 
+*Both have since been closed — the trait's two reports by declaring
+`Unrestricted`, and `Reactivate` by writing the scenarios it never had. The
+corpus now confirms every declared edge in all three examples, and the check
+reports nothing.*
+
 ### A fourth rule, earned later: a verb the sidecar cannot see asserts nothing
 
 `thenEvents([A, B])` recorded an **empty** `then`. The `given` and `when` walks
