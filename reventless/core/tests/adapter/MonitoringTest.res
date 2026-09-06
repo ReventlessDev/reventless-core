@@ -6,10 +6,49 @@ open JestGlobals
 let stubResource: ReventlessInfra.Adapter.resource = %raw(`{}`)
 
 describe("Monitoring", () => {
-  testSync("Noop default: notify is silent and does not throw", () => {
-    // No backend registered — the default Noop backend swallows the call.
+  testSync("no backend registered: notify is silent and does not throw", () => {
     Monitoring.notify(~kind=CommandHandler, ~name="before", ~component=stubResource)
     expect(true)->toBe(true)
+    Monitoring.reset()
+  })
+
+  // The case the dead-letter sink is: a module that provisions at import time announces
+  // itself before any statement of the deploy program has run, so it is *always* earlier
+  // than the `use` call. Dropping those announcements made that one unit unmonitorable no
+  // matter what a backend did.
+  testSync("an announcement made before any backend is registered reaches the first one", () => {
+    let recorded: array<(Monitoring.unitKind, string, option<string>)> = []
+    module Late: Monitoring.Backend = {
+      let onProvisioned = (~kind, ~name, ~component as _, ~plugin, ~platform as _, ~logLocator as _) =>
+        recorded->Array.push((kind, name, plugin))
+    }
+
+    // Provisioned at import time, inside a construct scope that is long gone by the time
+    // anyone registers — so the owner must be captured now, not at delivery.
+    let prev = ResourceAttribution.enter(~platform="online-shop", ~plugin="Ordering")
+    Monitoring.notify(~kind=DeadLetterSink, ~name="DeadLetterQueue", ~component=stubResource)
+    ResourceAttribution.restore(prev)
+    Monitoring.notify(~kind=Scheduler, ~name="Heartbeat", ~component=stubResource)
+
+    expect(recorded)->toEqual([])
+
+    Monitoring.use(module(Late: Monitoring.Backend))
+
+    expect(recorded)->toEqual([
+      (Monitoring.DeadLetterSink, "DeadLetterQueue", Some("Ordering")),
+      (Monitoring.Scheduler, "Heartbeat", None),
+    ])
+
+    // Drained: a second registration does not receive them again.
+    let second: array<string> = []
+    module Other: Monitoring.Backend = {
+      let onProvisioned = (~kind as _, ~name, ~component as _, ~plugin as _, ~platform as _, ~logLocator as _) =>
+        second->Array.push(name)
+    }
+    Monitoring.use(module(Other: Monitoring.Backend))
+    expect(second)->toEqual([])
+
+    Monitoring.reset()
   })
 
   testSync("use registers a backend that receives every notify, role and name", () => {
@@ -32,8 +71,8 @@ describe("Monitoring", () => {
       (Monitoring.Other("Counter"), "ProductCounter"),
     ])
 
-    // Restore the default so registry state doesn't leak to other cases.
-    Monitoring.use(module(Monitoring.Noop))
+    // Restore the initial state so registry and buffer don't leak to other cases.
+    Monitoring.reset()
   })
 
   testSync("notify forwards the static name and component resource to the backend", () => {
@@ -50,7 +89,7 @@ describe("Monitoring", () => {
     | None => expect("no notify received")->toBe("a notify")
     }
 
-    Monitoring.use(module(Monitoring.Noop))
+    Monitoring.reset()
   })
 
   testSync("notify delivers the ambient plugin/platform inside a construct scope, None outside", () => {
@@ -78,7 +117,7 @@ describe("Monitoring", () => {
       (None, None),
     ])
 
-    Monitoring.use(module(Monitoring.Noop))
+    Monitoring.reset()
   })
 
   // Unlike the owner, the locator is not ambient — the seam only forwards what the provisioning
@@ -105,6 +144,6 @@ describe("Monitoring", () => {
 
     expect(seen)->toEqual([true, false])
 
-    Monitoring.use(module(Monitoring.Noop))
+    Monitoring.reset()
   })
 })

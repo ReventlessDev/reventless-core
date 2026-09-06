@@ -14,20 +14,60 @@ let backend = {
   contents: Noop
 };
 
+let registered = {
+  contents: false
+};
+
+let pending = {
+  contents: []
+};
+
+function deliver(B, a) {
+  B.onProvisioned(a.kind, a.name, a.component, a.plugin, a.platform, a.logLocator);
+}
+
 function use(b) {
   backend.contents = b;
+  registered.contents = true;
+  let replay = pending.contents;
+  pending.contents = [];
+  replay.forEach(a => deliver(b, a));
+}
+
+function reset() {
+  backend.contents = Noop;
+  registered.contents = false;
+  pending.contents = [];
 }
 
 function notify(kind, name, component, logLocator) {
-  let B = backend.contents;
   let match = ResourceAttribution$ReventlessCore.current.contents;
-  B.onProvisioned(kind, name, component, match.plugin, match.platform, logLocator);
+  let announcement_plugin = match.plugin;
+  let announcement_platform = match.platform;
+  let announcement = {
+    kind: kind,
+    name: name,
+    component: component,
+    plugin: announcement_plugin,
+    platform: announcement_platform,
+    logLocator: logLocator
+  };
+  if (registered.contents) {
+    return deliver(backend.contents, announcement);
+  } else {
+    pending.contents = pending.contents.concat([announcement]);
+    return;
+  }
 }
 
 export {
   Noop,
   backend,
+  registered,
+  pending,
+  deliver,
   use,
+  reset,
   notify,
 }
 /* No side effect */
