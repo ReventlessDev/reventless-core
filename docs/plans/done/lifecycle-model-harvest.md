@@ -1,8 +1,7 @@
 # Plan: read the lifecycle machine off the GWT corpus, and check `@transition` against it
 
-**Status.** 2026-08-17. **Phase 0 done** (came back negative — see §2), **Phase 1
-done and green**, Phase 2 not started. Phases 1 and 2 are independently shippable
-and Phase 1 is useful on its own.
+**Status.** 2026-09-06. **Done.** Phase 0 came back negative and was fixed
+(see §2); Phase 1 ships the checker; Phase 2 publishes the derived model.
 
 **Goal.** Derive each command's `allowedStates` / `targetState` /
 Collection-vs-Instance from the GWT scenarios that already exist, and report
@@ -13,15 +12,15 @@ obligation*.
 
 **Relates to:**
 
-- [`docs/analysis/lifecycle-model-from-gwt-corpus.md`](../analysis/lifecycle-model-from-gwt-corpus.md)
+- [`docs/analysis/lifecycle-model-from-gwt-corpus.md`](../../analysis/lifecycle-model-from-gwt-corpus.md)
   — the argument and the evidence. This plan implements its §7.
-- [`docs/analysis/given-when-then-specifications.md`](../analysis/given-when-then-specifications.md)
+- [`docs/analysis/given-when-then-specifications.md`](../../analysis/given-when-then-specifications.md)
   §5.6 — the closed-world gate, which constrains the *generation* pipeline and is
   explicitly out of scope here.
-- [`docs/plans/lifecycle-transition-annotation.md`](./lifecycle-transition-annotation.md)
+- [`docs/plans/lifecycle-transition-annotation.md`](../lifecycle-transition-annotation.md)
   — built `@transition` and its name check. This plan adds the behaviour check
   that plan's §6 called for and could not build.
-- [`docs/analysis/rejected/command-lifecycle-guard-defaults.md`](../analysis/rejected/command-lifecycle-guard-defaults.md)
+- [`docs/analysis/rejected/command-lifecycle-guard-defaults.md`](../../analysis/rejected/command-lifecycle-guard-defaults.md)
   — the four options this supersedes.
 
 ---
@@ -79,7 +78,7 @@ row. The corpus gets it right because it reads behaviour rather than a proxy.
 
 The PPX already emits a `<Stem>.gwt.json` sidecar beside every
 `@@reventless.gwt` file when `REVENTLESS_EMIT_SIDECAR=1`
-([SidecarEmit.ml](../../packages/reventless-ppx/src/ppx/SidecarEmit.ml),
+([SidecarEmit.ml](../../../packages/reventless-ppx/src/ppx/SidecarEmit.ml),
 `maybe_emit_gwt`). No PPX change is required for command slices. Shape, from
 `ChangeProductPrice_GWT.gwt.json`:
 
@@ -214,7 +213,7 @@ Automation, Inbound/OutboundTranslation, Mapping, Flow.
 ### Where it lives
 
 `scripts/CheckLifecycleModel.res` → `pnpm run check:lifecycle`, modelled on
-[`scripts/CheckGraphqlContract.res`](../../scripts/CheckGraphqlContract.res),
+[`scripts/CheckGraphqlContract.res`](../../../scripts/CheckGraphqlContract.res),
 which is the exact precedent: a ReScript script compiled to `.res.mjs`, run from
 the repo root, booting the hybrid example's local platform. Reuse its shape —
 including its `--update` golden flow.
@@ -326,6 +325,27 @@ runs the same ordered chain as `pnpm run build`.
    `"derived"`. Where none exists, the annotation stands alone, tagged
    `"declared"`. A component with neither publishes `None`, exactly as now. This
    keeps a plugin with no tests working unchanged rather than emptying its menus.
+
+   **An empty derivation is not a derivation.** "A corpus exists" has to mean it
+   yielded a from-state, not that scenarios were present — because the two come
+   apart, and when they do the failure is silent and total. A derived list that
+   is merely *wrong* still offers the command somewhere and somebody notices; an
+   empty one is `Some([])`, which matches no row tag in
+   `AutoTypes.visibleByLifecycle`, so the command is offered on **no row at
+   all** — while the annotation that would have been right sits unread beside it.
+   Step 4 sharpens this: with the level heuristic retired there is nothing left
+   to cover a blank derived level either.
+
+   This is not hypothetical. The `thenEvents` gap in §3 erased `allowedStates` to
+   `[]` and `level` to `""` for all five image commands, and a corpus *did* exist
+   — it read as empty. Published under the rule as first written, `Attach` /
+   `Remove` / `SetPrimaryProductImage` and both `CategoryImages` commands would
+   have disappeared from every product and category row's menu.
+
+   So: a derivation yielding no from-state falls back to the annotation, is
+   tagged `"declared"`, and is **reported** — the corpus not covering a command
+   is exactly the `unverified` verdict Phase 1 already emits, and publishing
+   "offered nowhere" is not a reading of silence anybody asked for.
 3. **Feed the model in as data, not as a filesystem read.** `buildStructure`
    must not read `tests/**` at deploy time — tests are not published with a
    plugin package. Emit the harvested model as a committed ReScript artifact (the
@@ -342,9 +362,44 @@ runs the same ordered chain as `pnpm run build`.
    corpus can label a history, so `commandLevelAndId`'s name-stem guess has
    nothing left to contribute where a corpus exists — but note it also supplies
    `aggregateIdField`, which the corpus does not, so only the level half goes.
-5. **`allowedStatesSource` must be optional and js_nullable.** A required field
-   added to `pluginStructure` wedges registration for any plugin whose persisted
+5. **`allowedStatesSource` must be optional.** A required field added to
+   `pluginStructure` wedges registration for any plugin whose persisted
    definition predates it.
+
+### Outcome — met, and one hazard the plan had not seen
+
+All five landed. `commandDef.allowedStatesSource` is `option<string>`, encoded as
+a nullable `String` on `Platform_CommandDef` beside the `labelFieldSource` /
+`idFieldSource` rungs it was modelled on. The hybrid ordering plugin now publishes
+`derived` for nine commands and `declared` for `Reactivate` — the one with no
+scenarios — which is the whole precedence rule visible in one plugin.
+
+**The check had to be told not to read its own answer.** Once the model is folded
+into `pluginStructure`, the "declared" side `check:lifecycle` reads back *is* its
+own last output: every edge confirms, and a real disagreement between an
+annotation and the corpus goes silent exactly when it matters. The harvest now
+sets `REVENTLESS_DECLARED_TRANSITIONS_ONLY`, which `Plugin_Structure` reads once
+and answers with the declarations alone. Nothing else sets it.
+
+Three smaller decisions worth keeping:
+
+- **The two halves of an edge resolve separately**, because they are silent
+  separately: a corpus routinely shows a command taking effect without showing
+  where it lands, and letting the derived from-set erase a declared target would
+  cost a consumer an edge it had. Phase 1 already reports the halves separately,
+  so this is the same rule at both ends. `allowedStatesSource` is named for the
+  from-set and speaks for it alone.
+- **The level heuristic survives as a fallback rather than being deleted.** It
+  answers where the corpus cannot label a history, and it still supplies
+  `aggregateIdField`, which the corpus does not.
+- **A command the corpus could label nothing about is left out of the artifact.**
+  An entry with no level, no from-set and no target reads exactly as an absent
+  one, and writing them all out made two thirds of each file say nothing.
+
+**A stale model now stops the build**, via the check that was already there:
+`checkDeclaredTransitions` runs over the *effective* edge, so a harvested state a
+view no longer declares fails with the state, the command and the reason named.
+That is the right failure — published, it would offer the command on no row.
 
 ---
 
@@ -367,8 +422,13 @@ runs the same ordered chain as `pnpm run build`.
 
 ## §6 — Interference
 
-- **`generate-plugin`** gains an output in Phase 2. Its prebuild contract and the
-  committed-`Plugin.res` convention are unchanged.
+- **`generate-plugin`** gains a *reference*, not an output: it emits
+  `~lifecycleModel=LifecycleModel.model` when `src/LifecycleModel.res` is on disk,
+  and `check:lifecycle:update` writes that file. Its prebuild contract and the
+  committed-`Plugin.res` convention are unchanged. Note that the root `build` is a
+  chain of `rescript build` invocations and never fires a package's `prebuild`, so
+  a first harvest needs `pnpm run generate` in the plugin before the reference
+  appears.
 - **PPX**: Phase 0 touched `SidecarEmit.ml` and the one line in `ReventlessPpx.ml`
   that calls it. No annotation syntax changed, so no example resweep, and the
   compiled output is identical — the emit is still gated on

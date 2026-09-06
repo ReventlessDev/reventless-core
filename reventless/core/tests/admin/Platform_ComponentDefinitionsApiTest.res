@@ -355,6 +355,7 @@ describe("allowedStates + lifecycleField populated", () => {
     references: [],
     allowedStates: Some(["Inactive"]),
     targetState: Some("Active"),
+    allowedStatesSource: "declared",
     apiExposed: Some(true),
     requiredAccess: None,
       ownerField: None,

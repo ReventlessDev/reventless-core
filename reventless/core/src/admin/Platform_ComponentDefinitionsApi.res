@@ -18,7 +18,7 @@ open Reventless.Plugin
 // consumers long after they were being encoded.
 let sdlTypes: array<string> = [
   `type Platform_FieldReference {\n  fieldName: String!\n  entity: String!\n  plugin: String\n}`,
-  `type Platform_CommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n  mutationField: String!\n  references: [Platform_FieldReference!]!\n  allowedStates: [String!]\n  targetState: String\n  apiExposed: Boolean\n  requiredAccess: [String!]\n  ownerField: String\n}`,
+  `type Platform_CommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n  mutationField: String!\n  references: [Platform_FieldReference!]!\n  allowedStates: [String!]\n  targetState: String\n  allowedStatesSource: String\n  apiExposed: Boolean\n  requiredAccess: [String!]\n  ownerField: String\n}`,
   `type Platform_EventDef {\n  name: String!\n  schema: String!\n  references: [Platform_FieldReference!]!\n}`,
   // Same fields as Platform_EventDef, kept a distinct type because a refusal is not
   // a fact: a caller selecting `errors` is asking what a command can be rejected
@@ -84,6 +84,10 @@ let encodeCommandDef = (c: commandDef): JSON.t =>
       c.allowedStates->Option.mapOr(JSON.Encode.null, encodeStrings),
     ),
     ("targetState", c.targetState->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
+    (
+      "allowedStatesSource",
+      c.allowedStatesSource->Option.mapOr(JSON.Encode.null, JSON.Encode.string),
+    ),
     ("apiExposed", c.apiExposed->Option.mapOr(JSON.Encode.null, JSON.Encode.bool)),
     // Null, not `[]`: a rule asking for nothing checkable and a def written
     // before the field existed are the same answer to a client — "no key gates

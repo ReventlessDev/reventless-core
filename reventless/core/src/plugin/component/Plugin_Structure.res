@@ -4,6 +4,10 @@
 
 let log = Logger.fromEnv()
 
+// Set by `check:lifecycle`, and by nothing else. See the note where it is read.
+@val external _declaredTransitionsOnly: option<string> = "process.env.REVENTLESS_DECLARED_TRANSITIONS_ONLY"
+let declaredTransitionsOnly = _declaredTransitionsOnly->Option.isSome
+
 // Whether a field can name a record, stated over `SchemaType`'s IR so every
 // shape it grows is excluded before it exists. `Nullable` unwraps; a `Semantic`
 // wrapper is refused — a bucket key or URL is not prose.
@@ -413,6 +417,15 @@ let checkDeclaredTransitions = (
         if Array.length(known) == 0 {
           unvalidated := unvalidated.contents + 1
         } else {
+          // Said, because the two are fixed differently: an authored edge is
+          // edited, a harvested one is re-derived. A harvested state the view no
+          // longer declares means the committed model went stale, and stopping is
+          // right — published, it would offer the command on no row at all.
+          let hint = switch cmd.allowedStatesSource {
+          | Some("derived") =>
+            " This edge came from the component's own scenarios, so the committed lifecycle model is stale."
+          | _ => ""
+          }
           declared
           ->Array.filter(state => !(known->Array.includes(state)))
           ->Array.forEach(state =>
@@ -421,7 +434,7 @@ let checkDeclaredTransitions = (
               `${w.name}.${cmd.name} declares state "${state}", which none of its ` ++
               `linked views declare — ${w.linkedViews->Array.join(
                   ", ",
-                )} know ${known->Array.join(", ")}.`,
+                )} know ${known->Array.join(", ")}.${hint}`,
             )
             ->ignore
           )
@@ -443,7 +456,7 @@ let checkDeclaredTransitions = (
 
   if Array.length(failures) > 0 {
     JsError.throwWithMessage(
-      `${pluginName}: a declared transition names states that do not exist.\n` ++
+      `${pluginName}: a transition names states that do not exist.\n` ++
       failures->Array.join("\n"),
     )
   }
@@ -645,6 +658,10 @@ let extractErrorDefs = (errorSchema: S.t<unknown>): array<Reventless.Plugin.erro
 
 // Aggregate commands that initialize a new aggregate instance are Collection-level
 // (shown as table-top buttons); all others are Instance-level (shown per-row).
+//
+// A guess from the command's name stem, and it misreads `Enroll`, `Provision`,
+// `Onboard`. It answers only where the harvested model does not: a plugin with no
+// corpus, or one whose linked views declare no lifecycle to label a history with.
 let isCreateCommandName = name =>
   ["Add", "Create", "Register", "Open", "Initialize", "Submit", "Start", "Place"]->Array.some(p =>
     name->String.startsWith(p)
@@ -732,13 +749,17 @@ let toCommandDef = (
   // (see the call sites below), so `Transition` itself asserts nothing about
   // representation and stays parameterised all the way down.
   ~commandTransition: unknown => Reventless.Transition.t<string>,
+  // What this component's own scenarios say about each command, harvested at
+  // build time and committed beside the plugin. `None` for a command no corpus
+  // covers, which is most of them in a plugin that ships no tests.
+  ~derivedEdgeFor: string => option<Reventless.Plugin.derivedEdge>,
   v: S.t<unknown>,
 ): option<Reventless.Plugin.commandDef> => {
   // Build a commandDef for one variant. `properties` is the variant's field dict —
   // empty for a payload-less variant (e.g. `| Archive`), which compiles to a bare
   // `S.literal("Archive")` string rather than an `{TAG, ...}` object.
   let mkDef = (~variantName, ~properties) => {
-    let (level, aggregateIdField) = commandLevelAndId(~isAggregate, ~variantName, properties)
+    let (guessedLevel, aggregateIdField) = commandLevelAndId(~isAggregate, ~variantName, properties)
     let references = extractReferences(properties)
     // Evaluated against a synthetic value per constructor, the same shape the
     // resolver builds at call time: a payload-bearing variant compiles to
@@ -750,12 +771,39 @@ let toCommandDef = (
     // The spec's own switch, which is exhaustive — so it also speaks for a
     // constructor the host did not declare but spliced from a trait.
     //
-    // An edge is ONE declaration, so the two fields are read off it together.
     // `targetState: None` ⇒ AutoUI's board resolver falls back to its name-stem
     // heuristic.
     let declared = commandTransition(syntheticCommand)
-    let allowedStates = Reventless.Transition.allowedStates(declared)
-    let targetState = Reventless.Transition.targetState(declared)
+    let derived = derivedEdgeFor(variantName)
+
+    // Where the scenarios answer, they answer; where they are silent, the
+    // annotation stands. The halves are resolved separately because they are
+    // silent separately — a corpus routinely shows a command taking effect
+    // without ever showing where it lands — and because an empty derivation is
+    // not a derivation: `Some([])` matches no row's lifecycle tag, so publishing
+    // one offers the command on no row at all while the annotation that would
+    // have been right sits unread beside it.
+    let (allowedStates, allowedStatesSource) = switch (
+      derived->Option.flatMap(d => Array.length(d.allowedStates) > 0 ? Some(d.allowedStates) : None),
+      Reventless.Transition.allowedStates(declared),
+    ) {
+    | (Some(observed), _) => (Some(observed), Some("derived"))
+    | (None, Some(states)) => (Some(states), Some("declared"))
+    | (None, None) => (None, None)
+    }
+    let targetState = switch derived->Option.flatMap(d =>
+      // Two observed targets are an edge `targetState` cannot express. Reported
+      // as a contradiction by the harvest; here the declaration is left to speak
+      // rather than one of the two picked.
+      switch d.targets {
+      | [only] => Some(only)
+      | _ => None
+      }
+    ) {
+    | Some(observed) => Some(observed)
+    | None => Reventless.Transition.targetState(declared)
+    }
+    let level = derived->Option.flatMap(d => d.level)->Option.getOr(guessedLevel)
     // API-exposed iff the whole command isn't @noApi and this variant
     // isn't in its @noApi-variants set — mirrors the API-generation filter
     // (Plugin_Helpers / PluginBaseFragment). Drives the event-graph API badge.
@@ -798,6 +846,7 @@ let toCommandDef = (
       references,
       allowedStates,
       targetState,
+      allowedStatesSource: ?allowedStatesSource,
       apiExposed: Some(apiExposed),
       requiredAccess,
       // Resolved from this constructor's own properties, not the union's: two
@@ -830,6 +879,7 @@ let extractCommandDefs = (
   ~mutationFieldFor: string => string,
   ~commandAuthorization: unknown => Reventless.Authorization.permission,
   ~commandTransition: unknown => Reventless.Transition.t<string>,
+  ~derivedEdgeFor: string => option<Reventless.Plugin.derivedEdge>=_ => None,
   commandSchema: S.t<unknown>,
 ): array<Reventless.Plugin.commandDef> =>
   switch commandSchema {
@@ -841,6 +891,7 @@ let extractCommandDefs = (
         ~parentSchema=commandSchema,
         ~commandAuthorization,
         ~commandTransition,
+        ~derivedEdgeFor,
         v,
       )
     )
@@ -852,6 +903,7 @@ let extractCommandDefs = (
       ~parentSchema=commandSchema,
       ~commandAuthorization,
       ~commandTransition,
+      ~derivedEdgeFor,
       commandSchema,
     )->Option.mapOr([], def => [def])
   }
@@ -924,8 +976,18 @@ let make = (
   // Component name → chapter, captured from each component's source folder by the
   // plugin generator. Keyed by `Spec.name`; no entry renders flat.
   ~componentChapters: dict<string>=Dict.make(),
+  // What the plugin's own scenarios say about each command's lifecycle edge,
+  // harvested by `check:lifecycle` and committed as `src/LifecycleModel.res`.
+  ~lifecycleModel: array<Reventless.Plugin.derivedEdge>=[],
 ): Reventless.Plugin.pluginStructure => {
   let chapterOf = (compName: string): option<string> => componentChapters->Dict.get(compName)
+  // The harvest compares its own reading of the corpus with the DECLARATION, so
+  // it needs a structure the model has not already been folded into. Reading a
+  // derived value back as though it were the claim would confirm every edge and
+  // hide exactly the disagreements the check exists to find.
+  let model = declaredTransitionsOnly ? [] : lifecycleModel
+  let derivedEdgeFor = (~component: string, command: string) =>
+    model->Array.find(e => e.component == component && e.command == command)
   // Payload-less variants dropped: the graph must not claim an edge a DCB lookup
   // cannot WHERE-clause on.
   let eventVariantNames = schema => Reventless.DcbTag.extractVariantNames(schema)
@@ -1404,6 +1466,7 @@ let make = (
             ),
           ~commandAuthorization=SCS.Spec.commandAuthorization->Obj.magic,
           ~commandTransition=SCS.Spec.commandTransition->Obj.magic,
+          ~derivedEdgeFor=derivedEdgeFor(~component=SCS.Spec.name, ...),
           SCS.Spec.commandSchema->S.castToUnknown,
         ),
         producedEventTypes: produced,
@@ -1429,6 +1492,7 @@ let make = (
           ~mutationFieldFor=variantName => Api_Naming.aggregateMutationField(~plugin=name, ~aggregate=A.Spec.name, ~command=variantName),
           ~commandAuthorization=A.Spec.commandAuthorization->Obj.magic,
           ~commandTransition=A.Spec.commandTransition->Obj.magic,
+          ~derivedEdgeFor=derivedEdgeFor(~component=A.Spec.name, ...),
           A.Spec.commandSchema->S.castToUnknown,
         ),
         producedEventTypes: produced,

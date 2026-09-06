@@ -8,6 +8,7 @@ import * as Products$CatalogPlugin from "./Product/ReadModel/Products.res.mjs";
 import * as Categories$CatalogPlugin from "./Category/ReadModel/Categories.res.mjs";
 import * as ProductDemand$CatalogPlugin from "./ProductDemand/Aggregate/ProductDemand.res.mjs";
 import * as ImportProducts$CatalogPlugin from "./Task/ImportProducts.res.mjs";
+import * as LifecycleModel$CatalogPlugin from "./LifecycleModel.res.mjs";
 import * as ProductDemands$CatalogPlugin from "./ProductDemand/ReadModel/ProductDemands.res.mjs";
 import * as Orders_Extension$CatalogPlugin from "./Extension/Orders_Extension.res.mjs";
 import * as Product_Behavior$CatalogPlugin from "./Product/Aggregate/Product_Behavior.res.mjs";
@@ -237,7 +238,7 @@ function Make(Platform) {
       "Products",
       "Product"
     ]
-  ]));
+  ]), LifecycleModel$CatalogPlugin.model);
   let make = () => Platform.Plugin.make("Catalog", 5, [Products_ExtensionPoint], [Orders_Extension], [
     CategoryAggregate,
     ProductAggregate,

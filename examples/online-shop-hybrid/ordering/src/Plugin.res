@@ -62,6 +62,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     ~extensions=[module(Products_Extension)],
     ~extensionPoints=[module(Orders_ExtensionPointMapping)],
     ~componentChapters=Dict.fromArray([("AnnounceRecipientContact", "Notification"), ("AutoShipOrder", "Order"), ("AvailableProducts", "CatalogProduct"), ("CancelOrder", "Order"), ("Customer", "Customer"), ("Customers", "Customer"), ("GeocodeCustomerAddress", "Customer"), ("NotificationDeliveries", "Notification"), ("NotificationIntake", "Notification"), ("NotificationPreferences", "Notification"), ("NotificationSourceClaims", "Notification"), ("NotificationSubscriptions", "Notification"), ("Orders", "Order"), ("PlaceOrder", "Order"), ("SendNotification", "Notification"), ("ShipOrder", "Order"), ("SyncCatalogProduct", "CatalogProduct")]),
+    ~lifecycleModel=LifecycleModel.model,
   )
 
   let make = () =>

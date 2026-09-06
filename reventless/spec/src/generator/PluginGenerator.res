@@ -34,7 +34,10 @@ let () = {
     let config = {...Config.read(~srcDir), variant}
     let discovered = Discovery.scan(~srcDir, ~exclude=config.exclude)
     let resolved = Pairing.resolve(discovered, ~srcDir)
-    let source = Codegen.render(~config, ~resolved, ~discovered)
+    // Sits at the src root rather than in a kind folder, so `Discovery` never
+    // sees it and it is not a component. Its presence is the whole question.
+    let hasLifecycleModel = NodePath.join([srcDir, "LifecycleModel.res"])->NodeFs.existsSync
+    let source = Codegen.render(~config, ~resolved, ~discovered, ~hasLifecycleModel)
 
     let outputDir = switch variant {
     | Config.Composition => srcDir

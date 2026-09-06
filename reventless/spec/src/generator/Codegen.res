@@ -350,6 +350,7 @@ let renderPluginStructureCall = (
   ~extensions: array<string>,
   ~extensionPoints: array<Pairing.extensionPointDef>,
   ~componentChapters: array<(string, string)>,
+  ~hasLifecycleModel: bool,
 ): option<array<string>> => {
   // The structure call carries the EP *mapping* files (one per Delegate
   // connection), not the wrapped ExtensionPoint module — Plugin_Structure reads
@@ -427,6 +428,15 @@ let renderPluginStructureCall = (
           "(\"" ++ stem ++ "\", \"" ++ chapter ++ "\")"
         )
       ls->Array.push("    ~componentChapters=Dict.fromArray([" ++ entries->Array.join(", ") ++ "]),")
+    }
+    // What the plugin's own scenarios say about each command's lifecycle edge.
+    // Written by `check:lifecycle:update`, not here: the sidecars it harvests are
+    // produced by the build this generator runs *before*, so a generator-written
+    // model would always be one build stale and a cold clone would have none at
+    // all. Referenced only when the file is on disk, so a plugin that has never
+    // been harvested keeps a byte-identical generated Plugin.res.
+    if hasLifecycleModel {
+      ls->Array.push("    ~lifecycleModel=LifecycleModel.model,")
     }
     ls->Array.push("  )")
     Some(ls)
@@ -595,6 +605,7 @@ let renderComposition = (
   ~config: Config.config,
   ~resolved: Pairing.resolved,
   ~componentChapters: array<(string, string)>,
+  ~hasLifecycleModel: bool,
 ): string => {
   let lines: array<string> = []
 
@@ -740,6 +751,7 @@ let renderComposition = (
     ~extensions=resolved.extensions,
     ~extensionPoints=resolved.extensionPoints,
     ~componentChapters,
+    ~hasLifecycleModel,
   )
   let hasPluginStructure = pluginStructureLines->Option.isSome
   switch pluginStructureLines {
@@ -833,6 +845,7 @@ let render = (
   ~config: Config.config,
   ~resolved: Pairing.resolved,
   ~discovered: array<Discovery.discoveredFile>,
+  ~hasLifecycleModel: bool=false,
 ): string => {
   validateUniqueSpecStems(~discovered)
   validateSliceTargets(~resolved)
@@ -858,6 +871,6 @@ let render = (
     )
   switch config.variant {
   | Aws({compositionNamespace}) => renderAwsWrapper(~compositionNamespace)
-  | Composition => renderComposition(~config, ~resolved, ~componentChapters)
+  | Composition => renderComposition(~config, ~resolved, ~componentChapters, ~hasLifecycleModel)
   }
 }

@@ -241,6 +241,7 @@ describe("lifecycle topology", () => {
     references: [],
     allowedStates,
     targetState,
+    allowedStatesSource: ?allowedStates->Option.map(_ => "declared"),
     apiExposed: None,
     requiredAccess: None,
     ownerField: None,
@@ -341,6 +342,104 @@ describe("commandTransition — the edge as a switch", () => {
       byName("Abandon")->Option.flatMap(c => c.allowedStates),
       byName("Abandon")->Option.flatMap(c => c.targetState),
     ))->toEqual((None, None))
+  })
+})
+
+describe("the harvested model against the switch", () => {
+  // The switch is a claim; the component's own scenarios are evidence. Where the
+  // evidence says something it wins and the structure records that it did, so a
+  // consumer can rank an observed edge against an authored one. Where it says
+  // nothing the claim stands — an empty derivation published as `Some([])` would
+  // match no row's lifecycle and offer the command nowhere at all, while the
+  // annotation that would have been right sat unread beside it.
+  let edge = (
+    ~command,
+    ~level: option<Reventless.Plugin.commandLevel>=?,
+    ~allowedStates=[],
+    ~targets=[],
+  ): Reventless.Plugin.derivedEdge => {
+    component: "TransitionSwitch",
+    command,
+    level: ?level,
+    allowedStates,
+    targets,
+  }
+  let build = lifecycleModel =>
+    Plugin_Structure.make(
+      ~name="HarvestPlugin",
+      ~stateChangeSlices=[module(PsTransitionSwitchSlice)],
+      ~stateViewSlices=[],
+      ~lifecycleModel,
+    )
+  let edgeOf = (model, name) => {
+    let slice = build(model).stateChangeSlices->Array.getUnsafe(0)
+    slice.commands
+    ->Array.find(c => c.name == name)
+    ->Option.map(c => (c.allowedStates, c.targetState, c.allowedStatesSource))
+  }
+
+  testSync("an observed from-set replaces the declared one, and says where it came from", () => {
+    expect(
+      edgeOf([edge(~command="Book", ~allowedStates=["Booked"], ~targets=["Abandoned"])], "Book"),
+    )->toEqual(Some((Some(["Booked"]), Some("Abandoned"), Some("derived"))))
+  })
+
+  testSync("a corpus that observed nothing leaves the switch standing", () => {
+    // Present in the model and empty is the same answer as absent from it: the
+    // scenarios did not reach this command.
+    expect(edgeOf([edge(~command="Book")], "Book"))->toEqual(
+      Some((Some(["Draft"]), Some("Booked"), Some("declared"))),
+    )
+  })
+
+  testSync("the two halves resolve separately", () => {
+    // A corpus routinely shows a command taking effect without ever showing
+    // where it lands, and erasing the declared target for that would cost a
+    // consumer the edge it had.
+    expect(edgeOf([edge(~command="Book", ~allowedStates=["Booked"])], "Book"))->toEqual(
+      Some((Some(["Booked"]), Some("Booked"), Some("derived"))),
+    )
+  })
+
+  testSync("two observed targets leave the declaration to speak", () => {
+    // `targetState` carries one state, so a branching command is an edge it
+    // cannot express. The harvest reports that as a contradiction; here the
+    // choice is between the declaration and picking one of the two arbitrarily.
+    expect(
+      edgeOf([edge(~command="Book", ~allowedStates=["Booked"], ~targets=["Booked", "Abandoned"])], "Book"),
+    )->toEqual(Some((Some(["Booked"]), Some("Booked"), Some("derived"))))
+  })
+
+  testSync("a command the model does not mention keeps its declaration", () => {
+    expect(edgeOf([edge(~command="Book", ~allowedStates=["Booked"])], "Rebook"))->toEqual(
+      Some((Some(["Booked"]), None, Some("declared"))),
+    )
+  })
+
+  testSync("and one that declares nothing either stays unconstrained", () => {
+    // No from-set means no source: the field is present exactly when there is
+    // something for it to speak for.
+    expect(edgeOf([], "Abandon"))->toEqual(Some((None, None, None)))
+  })
+
+  let levelOf = (model, name) => {
+    let slice = build(model).stateChangeSlices->Array.getUnsafe(0)
+    slice.commands->Array.find(c => c.name == name)->Option.map(c => c.level)
+  }
+
+  testSync("the level comes from the corpus where it has one", () => {
+    // `Abandon` starts with none of the create-command stems, so the name-stem
+    // guess makes it Instance-level. The scenarios say otherwise, and they have
+    // seen the histories.
+    expect(levelOf([edge(~command="Abandon", ~level=Collection)], "Abandon"))->toEqual(
+      Some(Reventless.Plugin.Collection),
+    )
+  })
+
+  testSync("and from the name stem where it does not", () => {
+    expect(levelOf([edge(~command="Abandon")], "Abandon"))->toEqual(
+      Some(Reventless.Plugin.Instance),
+    )
   })
 })
 

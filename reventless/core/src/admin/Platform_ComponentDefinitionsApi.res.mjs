@@ -6,7 +6,7 @@ import * as Plugin$ReventlessCore from "../plugin/component/Plugin.res.mjs";
 
 let sdlTypes = [
   `type Platform_FieldReference {\n  fieldName: String!\n  entity: String!\n  plugin: String\n}`,
-  `type Platform_CommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n  mutationField: String!\n  references: [Platform_FieldReference!]!\n  allowedStates: [String!]\n  targetState: String\n  apiExposed: Boolean\n  requiredAccess: [String!]\n  ownerField: String\n}`,
+  `type Platform_CommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n  mutationField: String!\n  references: [Platform_FieldReference!]!\n  allowedStates: [String!]\n  targetState: String\n  allowedStatesSource: String\n  apiExposed: Boolean\n  requiredAccess: [String!]\n  ownerField: String\n}`,
   `type Platform_EventDef {\n  name: String!\n  schema: String!\n  references: [Platform_FieldReference!]!\n}`,
   `type Platform_ErrorDef {\n  name: String!\n  schema: String!\n  references: [Platform_FieldReference!]!\n}`,
   `type Platform_WriteSideDef {\n  name: String!\n  commands: [Platform_CommandDef!]!\n  linkedViews: [String!]!\n  consistencyRead: String\n  producedEventTypes: [String!]!\n  consumedEventTypes: [String!]!\n  events: [Platform_EventDef!]!\n  errors: [Platform_ErrorDef!]!\n  chapter: String\n}`,
@@ -77,6 +77,10 @@ function encodeCommandDef(c) {
     [
       "targetState",
       Stdlib_Option.mapOr(c.targetState, null, prim => prim)
+    ],
+    [
+      "allowedStatesSource",
+      Stdlib_Option.mapOr(c.allowedStatesSource, null, prim => prim)
     ],
     [
       "apiExposed",

@@ -13,6 +13,8 @@ import * as Nodechild_process from "node:child_process";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as LoadPluginStructureMjs from "./loadPluginStructure.mjs";
 
+process.env["REVENTLESS_DECLARED_TRANSITIONS_ONLY"] = "1";
+
 let repoRoot = process.cwd();
 
 let examplesDir = Nodepath.join(repoRoot, "examples");
@@ -659,15 +661,19 @@ async function runPlugin(plugin, pluginDir, findings) {
   };
 }
 
-function goldenJson(derived) {
-  let entries = derived.toSorted((a, b) => {
+function byComponentThenCommand(derived) {
+  return derived.toSorted((a, b) => {
     let c = Primitive_string.compare(a.component, b.component);
     if (c !== 0) {
       return c;
     } else {
       return Primitive_string.compare(a.command, b.command);
     }
-  }).map(d => Object.fromEntries([
+  });
+}
+
+function goldenJson(derived) {
+  let entries = byComponentThenCommand(derived).map(d => Object.fromEntries([
     [
       "component",
       d.component
@@ -700,6 +706,69 @@ function goldenPath(example) {
   return Nodepath.join(examplesDir, example, "schema", "lifecycle-model.json");
 }
 
+function modelSource(plugin, derived) {
+  let saysSomething = d => {
+    if (d.level !== "" || d.allowedStates.length !== 0) {
+      return true;
+    } else {
+      return d.targets.length !== 0;
+    }
+  };
+  let quoted = xs => "[" + xs.map(s => `"` + s + `"`).join(", ") + "]";
+  let entries = byComponentThenCommand(derived.filter(saysSomething)).map(d => {
+    let match = d.level;
+    let level;
+    switch (match) {
+      case "Collection" :
+      case "Instance" :
+        level = `level: Reventless.Plugin.` + d.level + `, `;
+        break;
+      default:
+        level = "";
+    }
+    return `  {component: "` + d.component + `", command: "` + d.command + `", ` + level + (`allowedStates: ` + quoted(d.allowedStates) + `, targets: ` + quoted(d.targets) + `},`);
+  });
+  return [
+    [
+      `// AUTO-GENERATED — do not edit. Run \`pnpm run check:lifecycle:update\` to update.`,
+      `//`,
+      `// What ` + plugin + `'s own given/when/then scenarios say about each command: the`,
+      `// states one shows it taking effect from, the states those land in, and whether`,
+      `// it brings a row into existence. \`Plugin_Structure\` prefers this to the`,
+      `// \`@transition\` annotation where it says anything, and falls back to the`,
+      `// annotation where it is silent.`,
+      ``,
+      `let model: array<Reventless.Plugin.derivedEdge> = [`
+    ],
+    entries,
+    [
+      "]",
+      ""
+    ]
+  ].flat().join("\n");
+}
+
+function modelPath(pluginDir) {
+  return Nodepath.join(pluginDir, "src", "LifecycleModel.res");
+}
+
+function writeOrCompare(path, actual, label, drifted) {
+  let existed = Nodefs.existsSync(path);
+  if (update || !existed) {
+    Nodefs.writeFileSync(path, actual, "utf8");
+    console.log((
+      existed ? "updated" : "wrote"
+    ) + ` ` + label);
+    return;
+  } else if (Nodefs.readFileSync(path, "utf8") !== actual) {
+    drifted.push(label);
+    console.error(`\ndrift in ` + label);
+    return;
+  } else {
+    return;
+  }
+}
+
 async function main() {
   let findings = [];
   let failures = [];
@@ -722,9 +791,11 @@ async function main() {
           let plugin = Nodepath.basename(pluginDir);
           let commands = await runPlugin(example + `/` + plugin, pluginDir, findings);
           if (commands.TAG === "Ok") {
-            commands._0.forEach(c => {
+            let commands$1 = commands._0;
+            commands$1.forEach(c => {
               derived.push(c);
             });
+            writeOrCompare(modelPath(pluginDir), modelSource(plugin, commands$1), example + `/` + plugin + `/src/LifecycleModel.res`, drifted);
           } else {
             failures.push(example + `/` + plugin + `: ` + commands._0);
           }
@@ -737,20 +808,8 @@ async function main() {
             recursive: true
           });
         }
-        let path = goldenPath(example);
-        let actual = goldenJson(derived);
-        let existed = Nodefs.existsSync(path);
-        if (update || !existed) {
-          Nodefs.writeFileSync(path, actual, "utf8");
-          console.log((
-            existed ? "updated" : "wrote"
-          ) + ` ` + example + `/schema/lifecycle-model.json`);
-        } else if (Nodefs.readFileSync(path, "utf8") === actual) {
-          console.log(`ok ` + example + ` — ` + derived.length.toString() + ` commands derived from scenarios`);
-        } else {
-          drifted.push(example);
-          console.error(`\ndrift in ` + example + `/schema/lifecycle-model.json`);
-        }
+        writeOrCompare(goldenPath(example), goldenJson(derived), example + `/schema/lifecycle-model.json`, drifted);
+        console.log(`ok ` + example + ` — ` + derived.length.toString() + ` commands derived from scenarios`);
       }
     }
   }
@@ -779,7 +838,7 @@ async function main() {
     });
   }
   if (drifted.length !== 0) {
-    console.error(`\n` + drifted.length.toString() + ` lifecycle model(s) changed. If the change is intended, run\n  pnpm run check:lifecycle:update\nand commit the goldens alongside the change that moved them.`);
+    console.error(`\n` + drifted.length.toString() + ` lifecycle artifact(s) changed. If the change is intended, run\n  pnpm run check:lifecycle:update\nand commit them alongside the change that moved them.`);
   }
   if (contradicted.length !== 0 || drifted.length !== 0 || failures.length !== 0) {
     process.exit(1);
@@ -833,8 +892,12 @@ export {
   isViewPath,
   isWritablePath,
   runPlugin,
+  byComponentThenCommand,
   goldenJson,
   goldenPath,
+  modelSource,
+  modelPath,
+  writeOrCompare,
   main,
 }
-/* repoRoot Not a pure module */
+/*  Not a pure module */

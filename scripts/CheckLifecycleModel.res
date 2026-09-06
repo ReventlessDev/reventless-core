@@ -28,17 +28,30 @@ trustworthy:
   convention means `decide` accepts commands a menu should not offer, so keying
   on acceptance would derive a from-set that disagrees with every declaration.
 
-Report-only: nothing published changes. Contradictions fail the run; unverified
-edges are warnings, counted so a corpus getting thinner is visible.
+Contradictions fail the run; unverified edges are warnings, counted so a corpus
+getting thinner is visible.
+
+Two artifacts come out of the same derivation. `schema/lifecycle-model.json` is
+the reviewable golden, one per example. `src/LifecycleModel.res` is the value
+structure assembly reads, one per plugin — written here rather than by
+`generate-plugin`, which runs in `prebuild` and would therefore always be one
+build behind the sidecars it would have to read.
 
 Usage:
 
 ```
-pnpm run check:lifecycle           # fail on contradictions or golden drift
-pnpm run check:lifecycle:update    # rewrite the goldens
+pnpm run check:lifecycle           # fail on contradictions or artifact drift
+pnpm run check:lifecycle:update    # rewrite the goldens and the models
 pnpm run check:lifecycle -- --reuse-sidecars   # read what a prior build wrote
 ```
 */
+
+// The model this script writes is folded into `pluginStructure`, so by the time
+// it runs again the "declared" side it reads back would be its own last answer —
+// every edge confirmed, and a real disagreement between an annotation and the
+// corpus invisible. This asks the structure for the declarations alone. Set
+// before anything imports a plugin, because `Plugin_Structure` reads it once.
+NodeProcess.env->Dict.set("REVENTLESS_DECLARED_TRANSITIONS_ONLY", "1")
 
 // ── Where things live ───────────────────────────────────────────────────────
 
@@ -839,15 +852,18 @@ let runPlugin = async (~plugin: string, ~pluginDir: string, ~findings: array<fin
     diff in the pull request that causes it — the same contract the GraphQL
     goldens hold. A rule that stops holding for a corpus it was never validated
     against becomes a line in a diff instead of a silent change of answer. */
+let byComponentThenCommand = (derived: array<derivedCommand>): array<derivedCommand> =>
+  derived->Array.toSorted((a, b) =>
+    switch String.compare(a.component, b.component) {
+    | 0. => String.compare(a.command, b.command)
+    | c => c
+    }
+  )
+
 let goldenJson = (derived: array<derivedCommand>): string => {
   let entries =
     derived
-    ->Array.toSorted((a, b) =>
-      switch String.compare(a.component, b.component) {
-      | 0. => String.compare(a.command, b.command)
-      | c => c
-      }
-    )
+    ->byComponentThenCommand
     ->Array.map(d =>
       JSON.Encode.object(
         Dict.fromArray([
@@ -865,6 +881,67 @@ let goldenJson = (derived: array<derivedCommand>): string => {
 
 let goldenPath = (~example: string) =>
   NodePath.join([examplesDir, example, "schema", "lifecycle-model.json"])
+
+// ── The value structure assembly reads ──────────────────────────────────────
+
+/** The same derivation as a committed ReScript value, so `buildStructure` gets
+    the model as data. It cannot read the corpus itself: tests are not published
+    with a plugin package, and metadata that read them would make deleting a test
+    file change a production command menu.
+
+    Only what the structure resolves an edge from travels — a scenario count says
+    nothing to a menu, and belongs in the golden a person reads. A command the
+    corpus could label nothing about is left out for the same reason: an entry
+    that resolves to no level, no from-set and no target is read exactly as an
+    absent one, and writing it out would make most of the file say nothing. */
+let modelSource = (~plugin: string, ~derived: array<derivedCommand>): string => {
+  let saysSomething = (d: derivedCommand) =>
+    d.level != "" || Array.length(d.allowedStates) > 0 || Array.length(d.targets) > 0
+  let quoted = (xs: array<string>) =>
+    "[" ++ xs->Array.map(s => `"${s}"`)->Array.join(", ") ++ "]"
+  let entries = derived->Array.filter(saysSomething)->byComponentThenCommand->Array.map(d => {
+    // Omitted rather than written as an absent value: `level` is an optional
+    // field, and a corpus that could not label this command's histories has
+    // nothing to say about it.
+    let level = switch d.level {
+    | "Collection" | "Instance" => `level: Reventless.Plugin.${d.level}, `
+    | _ => ""
+    }
+    `  {component: "${d.component}", command: "${d.command}", ${level}` ++
+    `allowedStates: ${quoted(d.allowedStates)}, targets: ${quoted(d.targets)}},`
+  })
+  Array.flat([
+    [
+      `// AUTO-GENERATED — do not edit. Run \`pnpm run check:lifecycle:update\` to update.`,
+      `//`,
+      `// What ${plugin}'s own given/when/then scenarios say about each command: the`,
+      `// states one shows it taking effect from, the states those land in, and whether`,
+      `// it brings a row into existence. \`Plugin_Structure\` prefers this to the`,
+      `// \`@transition\` annotation where it says anything, and falls back to the`,
+      `// annotation where it is silent.`,
+      ``,
+      `let model: array<Reventless.Plugin.derivedEdge> = [`,
+    ],
+    entries,
+    ["]", ""],
+  ])->Array.join("\n")
+}
+
+let modelPath = (~pluginDir: string) => NodePath.join([pluginDir, "src", "LifecycleModel.res"])
+
+/** Rewrite under `--update`, and when nothing is there yet so a plugin harvested
+    for the first time is not a failure. Otherwise compare, and record the drift:
+    a derivation that moved belongs in the diff of the change that moved it. */
+let writeOrCompare = (~path: string, ~actual: string, ~label: string, ~drifted: array<string>) => {
+  let existed = path->NodeFs.existsSync
+  if update || !existed {
+    NodeFs.writeFileSync(path, actual)
+    Console.log(`${existed ? "updated" : "wrote"} ${label}`)
+  } else if path->NodeFs.readFileSync != actual {
+    drifted->Array.push(label)->ignore
+    Console.error(`\ndrift in ${label}`)
+  }
+}
 
 // ── Entry point ─────────────────────────────────────────────────────────────
 
@@ -899,7 +976,14 @@ let main = async () => {
         | Some(pluginDir) =>
           let plugin = NodePath.basename(pluginDir)
           switch await runPlugin(~plugin=`${example}/${plugin}`, ~pluginDir, ~findings) {
-          | Ok(commands) => commands->Array.forEach(c => derived->Array.push(c))
+          | Ok(commands) =>
+            commands->Array.forEach(c => derived->Array.push(c))
+            writeOrCompare(
+              ~path=modelPath(~pluginDir),
+              ~actual=modelSource(~plugin, ~derived=commands),
+              ~label=`${example}/${plugin}/src/LifecycleModel.res`,
+              ~drifted,
+            )
           | Error(msg) => failures->Array.push(`${example}/${plugin}: ${msg}`)->ignore
           }
         }
@@ -910,20 +994,15 @@ let main = async () => {
         if !(dir->NodeFs.existsSync) {
           NodeFs.mkdirSync(dir, {recursive: true})
         }
-        let path = goldenPath(~example)
-        let actual = goldenJson(derived)
-        let existed = path->NodeFs.existsSync
-        if update || !existed {
-          NodeFs.writeFileSync(path, actual)
-          Console.log(`${existed ? "updated" : "wrote"} ${example}/schema/lifecycle-model.json`)
-        } else if path->NodeFs.readFileSync == actual {
-          Console.log(
-            `ok ${example} — ${Array.length(derived)->Int.toString} commands derived from scenarios`,
-          )
-        } else {
-          drifted->Array.push(example)->ignore
-          Console.error(`\ndrift in ${example}/schema/lifecycle-model.json`)
-        }
+        writeOrCompare(
+          ~path=goldenPath(~example),
+          ~actual=goldenJson(derived),
+          ~label=`${example}/schema/lifecycle-model.json`,
+          ~drifted,
+        )
+        Console.log(
+          `ok ${example} — ${Array.length(derived)->Int.toString} commands derived from scenarios`,
+        )
       }
     }
   }
@@ -946,9 +1025,9 @@ let main = async () => {
 
   if Array.length(drifted) > 0 {
     Console.error(
-      `\n${Array.length(drifted)->Int.toString} lifecycle model(s) changed. If the change is ` ++
-      `intended, run\n  pnpm run check:lifecycle:update\nand commit the goldens alongside the ` ++
-      `change that moved them.`,
+      `\n${Array.length(drifted)->Int.toString} lifecycle artifact(s) changed. If the change is ` ++
+      `intended, run\n  pnpm run check:lifecycle:update\nand commit them alongside the change ` ++
+      `that moved them.`,
     )
   }
 

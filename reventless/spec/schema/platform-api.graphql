@@ -53,6 +53,7 @@ type Platform_AutomationSliceDef {
 type Platform_CommandDef {
   aggregateIdField: String
   allowedStates: [String!]
+  allowedStatesSource: String
   apiExposed: Boolean
   level: String!
   mutationField: String!

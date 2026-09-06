@@ -53,6 +53,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     ~extensions=[module(Orders_Extension)],
     ~extensionPoints=[module(Products_ExtensionPointMapping)],
     ~componentChapters=Dict.fromArray([("AddCategory", "Category"), ("AddProduct", "Product"), ("ArchiveCategory", "Category"), ("Categories", "Category"), ("CategoryActivity", "CategoryActivity"), ("ChangeProductDescription", "Product"), ("ChangeProductName", "Product"), ("ChangeProductPrice", "Product"), ("ImportProduct", "Product"), ("ProductDemand", "ProductDemand"), ("Products", "Product"), ("RecordProductDemand", "ProductDemand"), ("RenameCategory", "Category")]),
+    ~lifecycleModel=LifecycleModel.model,
   )
 
   let make = () =>

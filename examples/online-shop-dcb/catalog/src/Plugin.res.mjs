@@ -9,6 +9,7 @@ import * as AddCategory$CatalogPlugin from "./Category/StateChangeSlice/AddCateg
 import * as ImportProduct$CatalogPlugin from "./Product/InboundTranslationSlice/ImportProduct.res.mjs";
 import * as ProductDemand$CatalogPlugin from "./ProductDemand/StateViewSlice/ProductDemand.res.mjs";
 import * as ImportProducts$CatalogPlugin from "./Task/ImportProducts.res.mjs";
+import * as LifecycleModel$CatalogPlugin from "./LifecycleModel.res.mjs";
 import * as RenameCategory$CatalogPlugin from "./Category/StateChangeSlice/RenameCategory.res.mjs";
 import * as ArchiveCategory$CatalogPlugin from "./Category/StateChangeSlice/ArchiveCategory.res.mjs";
 import * as CategoryActivity$CatalogPlugin from "./CategoryActivity/ReadModel/CategoryActivity.res.mjs";
@@ -441,7 +442,7 @@ function Make(Platform) {
       "RenameCategory",
       "Category"
     ]
-  ]));
+  ]), LifecycleModel$CatalogPlugin.model);
   let make = () => Platform.Plugin.make("Catalog", 5, [Products_ExtensionPoint], [Orders_Extension], undefined, [CategoryActivityReadModel], [ImportProductsTask], [
     AddCategorySlice,
     AddProductSlice,

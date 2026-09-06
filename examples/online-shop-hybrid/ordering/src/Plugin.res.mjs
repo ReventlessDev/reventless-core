@@ -9,6 +9,7 @@ import * as ShipOrder$OrderingPlugin from "./Order/StateChangeSlice/ShipOrder.re
 import * as PlaceOrder$OrderingPlugin from "./Order/StateChangeSlice/PlaceOrder.res.mjs";
 import * as CancelOrder$OrderingPlugin from "./Order/StateChangeSlice/CancelOrder.res.mjs";
 import * as AutoShipOrder$OrderingPlugin from "./Order/AutomationSlice/AutoShipOrder.res.mjs";
+import * as LifecycleModel$OrderingPlugin from "./LifecycleModel.res.mjs";
 import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
 import * as SendNotification$OrderingPlugin from "./Notification/OutboundTranslationSlice/SendNotification.res.mjs";
 import * as AvailableProducts$OrderingPlugin from "./CatalogProduct/StateViewSliceStream/AvailableProducts.res.mjs";
@@ -524,7 +525,7 @@ function Make(Platform) {
       "SyncCatalogProduct",
       "CatalogProduct"
     ]
-  ]));
+  ]), LifecycleModel$OrderingPlugin.model);
   let make = () => Platform.Plugin.make("Ordering", 5, [Orders_ExtensionPoint], [Products_Extension], [CustomerAggregate], [CustomersReadModel], undefined, [
     CancelOrderSlice,
     NotificationPreferencesSlice,

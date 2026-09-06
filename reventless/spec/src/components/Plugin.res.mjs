@@ -99,6 +99,7 @@ let commandDefSchema = Sury.$schema(s => ({
   references: s.m(Sury.array(fieldReferenceSchema)),
   allowedStates: s.m(Sury.$option(Sury.array(Sury.string))),
   targetState: s.m(Sury.$option(Sury.string)),
+  allowedStatesSource: s.m(Sury.$option(Sury.string)),
   apiExposed: s.m(Sury.$option(Sury.bool)),
   requiredAccess: s.m(Sury.$option(Sury.array(Sury.string))),
   ownerField: s.m(Sury.$option(Sury.string))

@@ -12,6 +12,7 @@ import * as ProductImages$CatalogPlugin from "./Product/StateChangeSlice/Product
 import * as ArchiveProduct$CatalogPlugin from "./Product/StateChangeSlice/ArchiveProduct.res.mjs";
 import * as CategoryImages$CatalogPlugin from "./Category/StateChangeSlice/CategoryImages.res.mjs";
 import * as ImportProducts$CatalogPlugin from "./Task/ImportProducts.res.mjs";
+import * as LifecycleModel$CatalogPlugin from "./LifecycleModel.res.mjs";
 import * as RenameCategory$CatalogPlugin from "./Category/StateChangeSlice/RenameCategory.res.mjs";
 import * as ArchiveCategory$CatalogPlugin from "./Category/StateChangeSlice/ArchiveCategory.res.mjs";
 import * as Orders_Extension$CatalogPlugin from "./Extension/Orders_Extension.res.mjs";
@@ -608,7 +609,7 @@ function Make(Platform) {
       "UnarchiveProduct",
       "Product"
     ]
-  ]));
+  ]), LifecycleModel$CatalogPlugin.model);
   let make = () => Platform.Plugin.make("Catalog", 5, [Products_ExtensionPoint], [Orders_Extension], undefined, undefined, [ImportProductsTask], [
     AddCategorySlice,
     AddProductSlice,

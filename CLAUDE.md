@@ -138,6 +138,12 @@ Plugin packages (`examples/*/catalog/`, `examples/*/ordering/`, etc.) contain a 
 - The generator scans `src/` by folder name (e.g. `Aggregate/`, `StateChangeSlice/`) and wires all discovered components
 - `src/Plugin.res` is committed to git — CI compiles it directly without re-running the generator
 
+A second committed artifact sits beside it: `src/LifecycleModel.res`, what the plugin's own GWT scenarios say about each command's lifecycle edge (from-set, target, Collection-vs-Instance). `Plugin_Structure` prefers it to the `@transition` annotation where it says anything and falls back to the annotation where it is silent, publishing which side answered as `commandDef.allowedStatesSource`.
+
+- Written by **`pnpm run check:lifecycle:update`**, not by `generate-plugin` — the sidecars it harvests are produced by the build the generator runs *before*, so a generator-written model would always be one build stale. The generator only *references* it, and only when the file is on disk.
+- Refresh it in the commit that moves it, like the GraphQL goldens: `pnpm run check:lifecycle` fails on drift, and CI runs it.
+- After a first harvest, re-run `generate-plugin` (`pnpm run generate` in the plugin) so `src/Plugin.res` picks up `~lifecycleModel=LifecycleModel.model`. The root `build` is a chain of `rescript build` invocations and does **not** fire per-package `prebuild`.
+
 Plugin modules are referenced from the platform as `<Namespace>.Plugin.Make(Platform)` (e.g. `CatalogPlugin.Plugin.Make(Platform)`).
 
 **Convention:** Each `Extension/` file exposes its mapping as `module Mapping` (not a descriptively named variant). The generator references it as `ExtensionFile.Mapping`.

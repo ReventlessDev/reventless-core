@@ -95,7 +95,7 @@ function Make(Spec) {
         pages: pages
       };
     };
-    let makePluginDefinition = (name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChangeSlicesOpt, automationSlicesOpt, outboundTranslationSlicesOpt, inboundTranslationSlicesOpt, extensionsOpt, extensionPointsOpt, componentChaptersOpt) => {
+    let makePluginDefinition = (name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChangeSlicesOpt, automationSlicesOpt, outboundTranslationSlicesOpt, inboundTranslationSlicesOpt, extensionsOpt, extensionPointsOpt, componentChaptersOpt, lifecycleModelOpt) => {
       let aggregates = aggregatesOpt !== undefined ? aggregatesOpt : [];
       let readModels = readModelsOpt !== undefined ? readModelsOpt : [];
       let stateViewSlices = stateViewSlicesOpt !== undefined ? stateViewSlicesOpt : [];
@@ -106,7 +106,8 @@ function Make(Spec) {
       let extensions = extensionsOpt !== undefined ? extensionsOpt : [];
       let extensionPoints = extensionPointsOpt !== undefined ? extensionPointsOpt : [];
       let componentChapters = componentChaptersOpt !== undefined ? componentChaptersOpt : ({});
-      return Plugin_Structure$ReventlessCore.make(name, aggregates, readModels, stateViewSlices, stateChangeSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, extensions, extensionPoints, componentChapters);
+      let lifecycleModel = lifecycleModelOpt !== undefined ? lifecycleModelOpt : [];
+      return Plugin_Structure$ReventlessCore.make(name, aggregates, readModels, stateViewSlices, stateChangeSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, extensions, extensionPoints, componentChapters, lifecycleModel);
     };
     let make = (name, heartbeatInterval, extensionPointsOpt, extensionsOpt, aggregatesOpt, readModelsOpt, tasksOpt, stateChangeSlicesOpt, stateViewSlicesOpt, automationSlicesOpt, outboundTranslationSlicesOpt, inboundTranslationSlicesOpt, systemCallableComponentsOpt, componentRuntimeOpt, uiFragments, pluginStructure, opts) => {
       let extensionPoints = extensionPointsOpt !== undefined ? extensionPointsOpt : [];

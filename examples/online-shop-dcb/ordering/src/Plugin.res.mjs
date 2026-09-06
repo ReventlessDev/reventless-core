@@ -10,6 +10,7 @@ import * as CancelOrder$OrderingPlugin from "./Order/StateChangeSlice/CancelOrde
 import * as ChangeEmail$OrderingPlugin from "./Customer/StateChangeSlice/ChangeEmail.res.mjs";
 import * as AutoShipOrder$OrderingPlugin from "./Order/AutomationSlice/AutoShipOrder.res.mjs";
 import * as ChangeAddress$OrderingPlugin from "./Customer/StateChangeSlice/ChangeAddress.res.mjs";
+import * as LifecycleModel$OrderingPlugin from "./LifecycleModel.res.mjs";
 import * as RegisterCustomer$OrderingPlugin from "./Customer/StateChangeSlice/RegisterCustomer.res.mjs";
 import * as AvailableProducts$OrderingPlugin from "./CatalogProduct/StateViewSlice/AvailableProducts.res.mjs";
 import * as Orders_Projection$OrderingPlugin from "./Order/StateViewSlice/Orders_Projection.res.mjs";
@@ -442,7 +443,7 @@ function Make(Platform) {
       "SyncCatalogProduct",
       "CatalogProduct"
     ]
-  ]));
+  ]), LifecycleModel$OrderingPlugin.model);
   let make = () => Platform.Plugin.make("Ordering", 5, [Orders_ExtensionPoint], [Products_Extension], undefined, undefined, undefined, [
     CancelOrderSlice,
     ChangeAddressSlice,

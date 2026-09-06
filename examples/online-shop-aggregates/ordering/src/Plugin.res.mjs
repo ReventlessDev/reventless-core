@@ -7,6 +7,7 @@ import * as Orders$OrderingPlugin from "./Order/ReadModel/Orders.res.mjs";
 import * as Customer$OrderingPlugin from "./Customer/Aggregate/Customer.res.mjs";
 import * as Customers$OrderingPlugin from "./Customer/ReadModel/Customers.res.mjs";
 import * as CatalogProduct$OrderingPlugin from "./CatalogProduct/Aggregate/CatalogProduct.res.mjs";
+import * as LifecycleModel$OrderingPlugin from "./LifecycleModel.res.mjs";
 import * as Order_Behavior$OrderingPlugin from "./Order/Aggregate/Order_Behavior.res.mjs";
 import * as Order_Mappings$OrderingPlugin from "./Order/Aggregate/Order_Mappings.res.mjs";
 import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
@@ -238,7 +239,7 @@ function Make(Platform) {
       "Orders",
       "Order"
     ]
-  ]));
+  ]), LifecycleModel$OrderingPlugin.model);
   let make = () => Platform.Plugin.make("Ordering", 5, [Orders_ExtensionPoint], [Products_Extension], [
     CatalogProductAggregate,
     CustomerAggregate,

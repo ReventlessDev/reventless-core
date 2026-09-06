@@ -29,6 +29,8 @@ import * as GraphQL_FragmentGenerator$ReventlessCore from "../../components/Api/
 
 let log = Logger$ReventlessCore.fromEnv();
 
+let declaredTransitionsOnly = Stdlib_Option.isSome(process.env.REVENTLESS_DECLARED_TRANSITIONS_ONLY);
+
 function isLabelShape(_t) {
   while (true) {
     let t = _t;
@@ -342,18 +344,20 @@ function checkDeclaredTransitions(pluginName, writables, lifecycleStatesByView) 
       });
       if (known.length === 0) {
         unvalidated.contents = unvalidated.contents + 1 | 0;
-      } else {
-        declared.filter(state => !known.includes(state)).forEach(state => {
-          failures.push(w.name + `.` + cmd.name + ` declares state "` + state + `", which none of its ` + (`linked views declare — ` + w.linkedViews.join(", ") + ` know ` + known.join(", ") + `.`));
-        });
+        return;
       }
+      let match = cmd.allowedStatesSource;
+      let hint = match === "derived" ? " This edge came from the component's own scenarios, so the committed lifecycle model is stale." : "";
+      declared.filter(state => !known.includes(state)).forEach(state => {
+        failures.push(w.name + `.` + cmd.name + ` declares state "` + state + `", which none of its ` + (`linked views declare — ` + w.linkedViews.join(", ") + ` know ` + known.join(", ") + `.` + hint));
+      });
     });
   });
   if (unvalidated.contents > 0) {
     log.warn("Plugin_Structure", undefined, pluginName + `: ` + unvalidated.contents.toString() + ` command(s) declare a transition but no linked view declares a lifecycle to check it against.`);
   }
   if (failures.length !== 0) {
-    return Stdlib_JsError.throwWithMessage(pluginName + `: a declared transition names states that do not exist.\n` + failures.join("\n"));
+    return Stdlib_JsError.throwWithMessage(pluginName + `: a transition names states that do not exist.\n` + failures.join("\n"));
   }
 }
 
@@ -592,7 +596,7 @@ function annotateArgTypes(schema, argTypes) {
   return schema;
 }
 
-function toCommandDef(isAggregate, mutationFieldFor, parentSchema, commandAuthorization, commandTransition, v) {
+function toCommandDef(isAggregate, mutationFieldFor, parentSchema, commandAuthorization, commandTransition, derivedEdgeFor, v) {
   let mkDef = (variantName, properties) => {
     let match = commandLevelAndId(isAggregate, variantName, properties);
     let references = extractReferences(properties);
@@ -600,8 +604,35 @@ function toCommandDef(isAggregate, mutationFieldFor, parentSchema, commandAuthor
         TAG: variantName
       }) : variantName;
     let declared = commandTransition(syntheticCommand);
-    let allowedStates = Transition$Reventless.allowedStates(declared);
-    let targetState = Transition$Reventless.targetState(declared);
+    let derived = derivedEdgeFor(variantName);
+    let match$1 = Stdlib_Option.flatMap(derived, d => {
+      if (d.allowedStates.length !== 0) {
+        return d.allowedStates;
+      }
+    });
+    let match$2 = Transition$Reventless.allowedStates(declared);
+    let match$3 = match$1 !== undefined ? [
+        match$1,
+        "derived"
+      ] : (
+        match$2 !== undefined ? [
+            match$2,
+            "declared"
+          ] : [
+            undefined,
+            undefined
+          ]
+      );
+    let observed = Stdlib_Option.flatMap(derived, d => {
+      let match = d.targets;
+      if (match.length !== 1) {
+        return;
+      } else {
+        return match[0];
+      }
+    });
+    let targetState = observed !== undefined ? observed : Transition$Reventless.targetState(declared);
+    let level = Stdlib_Option.getOr(Stdlib_Option.flatMap(derived, d => d.level), match[0]);
     let apiExposed = false;
     if (!ApiNoApiHelpers$ReventlessCore.isNoApi(parentSchema)) {
       let excluded = ApiNoApiHelpers$ReventlessCore.getExcludedVariants(parentSchema);
@@ -614,12 +645,13 @@ function toCommandDef(isAggregate, mutationFieldFor, parentSchema, commandAuthor
     return {
       name: variantName,
       schema: JSON.stringify(annotatedSchema),
-      level: match[0],
+      level: level,
       aggregateIdField: match[1],
       mutationField: mutationField,
       references: references,
-      allowedStates: allowedStates,
+      allowedStates: match$3[0],
       targetState: targetState,
+      allowedStatesSource: match$3[1],
       apiExposed: apiExposed,
       requiredAccess: requiredAccess,
       ownerField: Owner$Reventless.fieldNamesOfProperties(properties)[0]
@@ -649,11 +681,12 @@ function toCommandDef(isAggregate, mutationFieldFor, parentSchema, commandAuthor
   }
 }
 
-function extractCommandDefs(isAggregate, mutationFieldFor, commandAuthorization, commandTransition, commandSchema) {
+function extractCommandDefs(isAggregate, mutationFieldFor, commandAuthorization, commandTransition, derivedEdgeForOpt, commandSchema) {
+  let derivedEdgeFor = derivedEdgeForOpt !== undefined ? derivedEdgeForOpt : param => {};
   if (commandSchema.type === "anyOf") {
-    return Stdlib_Array.filterMap(commandSchema.anyOf, v => toCommandDef(isAggregate, mutationFieldFor, commandSchema, commandAuthorization, commandTransition, v));
+    return Stdlib_Array.filterMap(commandSchema.anyOf, v => toCommandDef(isAggregate, mutationFieldFor, commandSchema, commandAuthorization, commandTransition, derivedEdgeFor, v));
   } else {
-    return Stdlib_Option.mapOr(toCommandDef(isAggregate, mutationFieldFor, commandSchema, commandAuthorization, commandTransition, commandSchema), [], def => [def]);
+    return Stdlib_Option.mapOr(toCommandDef(isAggregate, mutationFieldFor, commandSchema, commandAuthorization, commandTransition, derivedEdgeFor, commandSchema), [], def => [def]);
   }
 }
 
@@ -695,7 +728,7 @@ function queryableDefFromSpec(plugin, name, stateSchema, authorization, visibili
   };
 }
 
-function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChangeSlicesOpt, automationSlicesOpt, outboundTranslationSlicesOpt, inboundTranslationSlicesOpt, extensionsOpt, extensionPointsOpt, componentChaptersOpt) {
+function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChangeSlicesOpt, automationSlicesOpt, outboundTranslationSlicesOpt, inboundTranslationSlicesOpt, extensionsOpt, extensionPointsOpt, componentChaptersOpt, lifecycleModelOpt) {
   let aggregates = aggregatesOpt !== undefined ? aggregatesOpt : [];
   let readModels = readModelsOpt !== undefined ? readModelsOpt : [];
   let stateViewSlices = stateViewSlicesOpt !== undefined ? stateViewSlicesOpt : [];
@@ -706,6 +739,15 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
   let extensions = extensionsOpt !== undefined ? extensionsOpt : [];
   let extensionPoints = extensionPointsOpt !== undefined ? extensionPointsOpt : [];
   let componentChapters = componentChaptersOpt !== undefined ? componentChaptersOpt : ({});
+  let lifecycleModel = lifecycleModelOpt !== undefined ? lifecycleModelOpt : [];
+  let model = declaredTransitionsOnly ? [] : lifecycleModel;
+  let derivedEdgeFor = (component, command) => model.find(e => {
+    if (e.component === component) {
+      return e.command === command;
+    } else {
+      return false;
+    }
+  });
   let qualify = (prefix, names) => names.map(n => prefix + "." + n);
   let scsProduced = stateChangeSlices.map(SCS => [
     SCS.Spec.name,
@@ -1033,7 +1075,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     let consumed = match$1[1];
     return {
       name: SCS.Spec.name,
-      commands: extractCommandDefs(false, variantName => Api_Naming$ReventlessCore.sliceMutationFieldFor(name, SCS.Spec.name, SCS.Spec.commandSchema, variantName), SCS.Spec.commandAuthorization, SCS.Spec.commandTransition, SCS.Spec.commandSchema),
+      commands: extractCommandDefs(false, variantName => Api_Naming$ReventlessCore.sliceMutationFieldFor(name, SCS.Spec.name, SCS.Spec.commandSchema, variantName), SCS.Spec.commandAuthorization, SCS.Spec.commandTransition, extra => derivedEdgeFor(SCS.Spec.name, extra), SCS.Spec.commandSchema),
       producedEventTypes: produced,
       consumedEventTypes: consumed,
       linkedViews: linkedSvsFor(produced),
@@ -1048,7 +1090,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     let produced = match[1];
     return {
       name: A.Spec.name,
-      commands: extractCommandDefs(true, variantName => Api_Naming$ReventlessCore.aggregateMutationField(name, A.Spec.name, variantName), A.Spec.commandAuthorization, A.Spec.commandTransition, A.Spec.commandSchema),
+      commands: extractCommandDefs(true, variantName => Api_Naming$ReventlessCore.aggregateMutationField(name, A.Spec.name, variantName), A.Spec.commandAuthorization, A.Spec.commandTransition, extra => derivedEdgeFor(A.Spec.name, extra), A.Spec.commandSchema),
       producedEventTypes: produced,
       consumedEventTypes: [],
       linkedViews: linkedSvsFor(produced).concat(linkedReadModelsFor(A.Spec.name)),
@@ -1342,6 +1384,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
 
 export {
   log,
+  declaredTransitionsOnly,
   isLabelShape,
   isLifecycleShape,
   conventionalLabelNames,

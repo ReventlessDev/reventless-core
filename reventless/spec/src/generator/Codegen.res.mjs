@@ -239,7 +239,7 @@ function renderTaskMakeParam(tasks) {
   return "      ~tasks=[" + entries.join(", ") + "],";
 }
 
-function renderPluginStructureCall(name, aggregates, readModels, stateViewSlices, stateViewSlicesStream, stateChangeSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, extensions, extensionPoints, componentChapters) {
+function renderPluginStructureCall(name, aggregates, readModels, stateViewSlices, stateViewSlicesStream, stateChangeSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, extensions, extensionPoints, componentChapters, hasLifecycleModel) {
   let epMappingStems = extensionPoints.flatMap(param => param.mappings);
   let hasComponents = aggregates.length !== 0 || readModels.length !== 0 || stateViewSlices.length !== 0 || stateViewSlicesStream.length !== 0 || stateChangeSlices.length !== 0 || automationSlices.length !== 0 || outboundTranslationSlices.length !== 0 || inboundTranslationSlices.length !== 0 || extensions.length !== 0 || epMappingStems.length !== 0;
   if (!hasComponents) {
@@ -294,6 +294,9 @@ function renderPluginStructureCall(name, aggregates, readModels, stateViewSlices
   if (componentChapters.length !== 0) {
     let entries$8 = componentChapters.map(param => "(\"" + param[0] + "\", \"" + param[1] + "\")");
     ls.push("    ~componentChapters=Dict.fromArray([" + entries$8.join(", ") + "]),");
+  }
+  if (hasLifecycleModel) {
+    ls.push("    ~lifecycleModel=LifecycleModel.model,");
   }
   ls.push("  )");
   return ls;
@@ -394,7 +397,7 @@ function renderAwsWrapper(compositionNamespace) {
   ].join("\n");
 }
 
-function renderComposition(config, resolved, componentChapters) {
+function renderComposition(config, resolved, componentChapters, hasLifecycleModel) {
   let lines = [];
   lines.push("// AUTO-GENERATED — do not edit. Run `npm run generate` to update.");
   lines.push("");
@@ -459,7 +462,7 @@ function renderComposition(config, resolved, componentChapters) {
     lines.push("  // Extensions");
     push(renderExtensions(resolved.extensions));
   }
-  let pluginStructureLines = renderPluginStructureCall(config.name, resolved.aggregates, resolved.readModels, resolved.stateViewSlices, resolved.stateViewSlicesStream, resolved.stateChangeSlices, resolved.automationSlices, resolved.outboundTranslationSlices, resolved.inboundTranslationSlices, resolved.extensions, resolved.extensionPoints, componentChapters);
+  let pluginStructureLines = renderPluginStructureCall(config.name, resolved.aggregates, resolved.readModels, resolved.stateViewSlices, resolved.stateViewSlicesStream, resolved.stateChangeSlices, resolved.automationSlices, resolved.outboundTranslationSlices, resolved.inboundTranslationSlices, resolved.extensions, resolved.extensionPoints, componentChapters, hasLifecycleModel);
   let hasPluginStructure = Stdlib_Option.isSome(pluginStructureLines);
   if (pluginStructureLines !== undefined) {
     pluginStructureLines.forEach(l => {
@@ -517,7 +520,8 @@ function renderComposition(config, resolved, componentChapters) {
   return lines.join("\n");
 }
 
-function render(config, resolved, discovered) {
+function render(config, resolved, discovered, hasLifecycleModelOpt) {
+  let hasLifecycleModel = hasLifecycleModelOpt !== undefined ? hasLifecycleModelOpt : false;
   validateUniqueSpecStems(discovered);
   validateSliceTargets(resolved);
   let componentStems = [
@@ -533,7 +537,7 @@ function render(config, resolved, discovered) {
   let componentChapters = Discovery$Reventless.chaptersByStem(discovered).filter(param => componentStems.includes(param[0]));
   let match = config.variant;
   if (typeof match !== "object") {
-    return renderComposition(config, resolved, componentChapters);
+    return renderComposition(config, resolved, componentChapters, hasLifecycleModel);
   } else {
     return renderAwsWrapper(match.compositionNamespace);
   }

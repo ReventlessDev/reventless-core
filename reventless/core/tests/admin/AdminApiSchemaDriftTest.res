@@ -71,6 +71,7 @@ let cmd: commandDef = {
   references: [fieldRef],
   allowedStates: Some(["Draft"]),
   targetState: Some("Active"),
+  allowedStatesSource: "declared",
   apiExposed: Some(true),
   requiredAccess: Some(["catalog.write"]),
   ownerField: Some("ownerId"),

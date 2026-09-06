@@ -122,6 +122,32 @@ let uiFragmentManifestOptionSchema = S.option(uiFragmentManifestSchema)
 @schema
 type commandLevel = Collection | Instance
 
+/** One command's lifecycle edge as the component's own scenarios describe it:
+    where a scenario shows the command taking effect, where those scenarios land,
+    and whether it brings a row into existence or acts on one.
+
+    Harvested from the GWT corpus by `check:lifecycle` and committed beside the
+    plugin as `src/LifecycleModel.res`, so structure assembly reads a value rather
+    than the test tree — which is not published with a plugin package.
+
+    No `@schema`: nothing serialises this. It is read once, while the structure is
+    assembled, and what leaves is the `commandDef` fields it resolved. */
+type derivedEdge = {
+  /** The writable's `Spec.name`, which is what the structure knows it by. */
+  component: string,
+  command: string,
+  /** Absent where the corpus could not label a history — the honest answer when
+      the linked views declare no lifecycle field, and the reason the name-stem
+      guess is still there to fall back to. */
+  level?: commandLevel,
+  /** States a scenario shows the command taking effect from. Empty means the
+      corpus said nothing, NOT that the command belongs nowhere. */
+  allowedStates: array<string>,
+  /** States those scenarios land in. More than one is an edge a single
+      `targetState` cannot carry, so it is left to the declaration. */
+  targets: array<string>,
+}
+
 @schema
 type fieldReference = {
   fieldName: string,
@@ -137,12 +163,21 @@ type commandDef = {
   aggregateIdField: option<string>,
   mutationField: string,
   references: array<fieldReference>,
-  /** The declared *from* set — lifecycle states this command is meaningful in.
-      `None` means always available; `Some([])` means never show. */
+  /** The *from* set — lifecycle states this command is meaningful in. `None`
+      means always available; `Some([])` means never show. */
   allowedStates: option<array<string>>,
-  /** The declared *to* state this command's handler writes. `None` with a
-      from-set present means the command does not move the row. */
+  /** The *to* state this command's handler writes. `None` with a from-set present
+      means the command does not move the row. */
   targetState: option<string>,
+  /** Which side produced `allowedStates`: `"derived"` from the component's own
+      scenarios, `"declared"` from its `@transition` switch. Present exactly when
+      `allowedStates` is, and ranks an inherited edge against an authored one the
+      way `queryableDef.labelFieldSource` does for its field.
+
+      It speaks for the from-set only. The two halves of an edge are reported
+      separately because they fail separately: a corpus routinely shows a command
+      taking effect without ever showing where it lands. */
+  allowedStatesSource?: string,
   /** Whether the variant is exposed in the generated API (non-`@noApi`). */
   apiExposed: option<bool>,
   /** Access keys — any one of them — a caller needs to be *offered* this command.

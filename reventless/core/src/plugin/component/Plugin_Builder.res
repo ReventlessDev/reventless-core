@@ -1104,6 +1104,7 @@ module Make = (
     ~extensions: array<module(ReventlessInfra.Extension.Blueprint)>=[],
     ~extensionPoints: array<module(ReventlessInfra.ExtensionPointMapping.Mapping)>=[],
     ~componentChapters: dict<string>=Dict.make(),
+    ~lifecycleModel: array<Reventless.Plugin.derivedEdge>=[],
   ): Reventless.Plugin.pluginStructure =>
     Plugin_Structure.make(
       ~name,
@@ -1117,6 +1118,7 @@ module Make = (
       ~extensions,
       ~extensionPoints,
       ~componentChapters,
+      ~lifecycleModel,
     )
 
   let make = (
