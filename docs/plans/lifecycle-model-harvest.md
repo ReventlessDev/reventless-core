@@ -274,6 +274,40 @@ Two findings remain, both correct: `Reactivate` (unverified, no scenarios) and
 `Customer.SetLocation` / `Customer.MarkAddressUnresolvable` taking effect from
 `Active` with no `@transition` written.
 
+### A fourth rule, earned later: a verb the sidecar cannot see asserts nothing
+
+`thenEvents([A, B])` recorded an **empty** `then`. The `given` and `when` walks
+each expand an array literal into one step per element; the `then` walk did not,
+so `element_of_constructor` answered None for the array and the assertion was
+dropped — 102 scenarios across the examples.
+
+An empty `then` is not neutral here: it reads as a command that ran and produced
+nothing. So every such scenario was reported as *contradicting* the transition
+its own command declares, and the golden had erased `allowedStates` and `level`
+from all five image commands. It stayed hidden until `feat(catalog)` reshaped
+those slices onto the plural verb — which is the point worth keeping: the harvest
+is only as honest as its vocabulary, and a missing verb fails **loudly in the
+wrong direction** rather than quietly.
+
+Fixed in `SidecarEmit` by stating the expansion once (`steps_of_payload`) and
+routing all three walks through it, plus the plural verbs that were missing from
+the step list (`thenEvents`, `thenStates`, `thenStatesWithId`).
+
+**What the vocabulary still does not cover, for Phase 2.** These record their
+`given` and nothing else today. Consistent between singular and plural, so no
+check fails — the harvest simply sees less than the tests assert. Three shapes,
+and only the first is one the current walk handles:
+
+| Shape | Verbs | What is needed |
+|---|---|---|
+| constructor, or array of them | `thenIssuesCommand(s)`, `thenPublicEvent(s)`, `whenDelegateEvent`, `whenIncomingEvent` | add to the step list; `steps_of_payload` already reads them |
+| `array<(id, x)>` | `thenPublishesEvents`, `thenCommands` | a tuple case — take the second element; the id is routing, not the value |
+| payload-less pipeline step | `whenReacts`, `whenExtensionReacts`, `whenPublishedThrough` | a kind of their own, the way `thenNoEvent` has one |
+
+Deliberately not done piecemeal: each verb changes what the model harvests, and
+the model has no published consumer until Phase 2 — so the shapes are recorded
+here rather than guessed at one at a time.
+
 **The harvest drives one root build, not one per plugin.** Six per-plugin builds
 orphan the in-source test outputs of packages in their dependency graphs, which
 is not a build failure but a jest project that discovers nothing and passes. It
