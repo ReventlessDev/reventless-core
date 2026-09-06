@@ -377,13 +377,15 @@ let element_of_constructor (e : expression) : (string * Yojson.Safe.t list) opti
 
 let step_names =
   [ "givenEvents"; "givenEvent"; "whenCmd"; "whenCommand"; "whenInput";
-    "thenEvent"; "thenError"; "thenState"; "thenCommand"; "thenSideEffect";
+    "thenEvent"; "thenEvents"; "thenError"; "thenState"; "thenStates";
+    "thenCommand"; "thenSideEffect";
     (* The projection DSLs (`Projection_GWT`, `MultiSourceProjection_GWT`, and
        the StateViewSlice forms built on them) drive a fold with an event and
        assert a row, so their when/then verbs are not the command verbs above.
        Without them a projection scenario records its `given` and nothing else,
        which reads as a scenario that asserts nothing. *)
-    "whenEvent"; "whenEvents"; "thenStateWithId"; "thenNoState";
+    "whenEvent"; "whenEvents"; "thenStateWithId"; "thenStatesWithId";
+    "thenNoState";
     (* Carries no payload: `->thenNoEvent` asserts that a command was accepted
        and produced nothing. Pipe-first still makes it an apply — the argument is
        the chain it is piped from, not an element — so it needs its own case
@@ -432,6 +434,35 @@ let step_json ~kind ~element ~values : Yojson.Safe.t =
   `Assoc
     [ ("kind", `String kind); ("element", `String element); ("values", `List values) ]
 
+(* One step verb's payload → the steps it asserts.
+
+   An array literal is N steps of the same kind: `givenEvents([A, B])` and
+   `thenEvents([A, B])` are the same shape, and the plural form of a verb is the
+   only way to assert more than one. Stated once here because the `then` walk did
+   not have it — `element_of_constructor` answers None for an array, so a
+   `thenEvents` scenario recorded an EMPTY `then`, which downstream reads as a
+   command that ran and produced nothing. That is the opposite of what it
+   asserts, and it is why the lifecycle check called such a scenario a
+   contradiction of the transition the command declares. *)
+let steps_of_payload ~(kind : string) (payload : expression) : Yojson.Safe.t list =
+  let one el =
+    match element_of_constructor el with
+    | Some (element, values) -> Some (step_json ~kind ~element ~values)
+    | None -> None
+  in
+  match payload.pexp_desc with
+  | Pexp_array els -> List.filter_map one els
+  | _ -> ( match one payload with Some step -> [ step ] | None -> [])
+
+(* The same, for the verbs whose payload is a record rather than a constructor:
+   a projection asserts the row itself, so there is no element name to read and
+   `state` stands for every one of them. *)
+let state_steps_of_payload (payload : expression) : Yojson.Safe.t list =
+  let one el = step_json ~kind:"state" ~element:"state" ~values:(record_entries el) in
+  match payload.pexp_desc with
+  | Pexp_array els -> List.map one els
+  | _ -> [ one payload ]
+
 (* Build the given / when / then arrays for one test body. *)
 let extract_steps (body : expression) :
     Yojson.Safe.t list * Yojson.Safe.t list * Yojson.Safe.t list =
@@ -443,17 +474,7 @@ let extract_steps (body : expression) :
     match find [ "givenEvents"; "givenEvent" ] with
     | Some (_, args) -> (
       match last args with
-      | Some { pexp_desc = Pexp_array els; _ } ->
-        List.filter_map
-          (fun el ->
-            match element_of_constructor el with
-            | Some (element, values) -> Some (step_json ~kind:"event" ~element ~values)
-            | None -> None)
-          els
-      | Some single -> (
-        match element_of_constructor single with
-        | Some (element, values) -> [ step_json ~kind:"event" ~element ~values ]
-        | None -> [])
+      | Some payload -> steps_of_payload ~kind:"event" payload
       | None -> [])
     | None -> []
   in
@@ -469,25 +490,16 @@ let extract_steps (body : expression) :
       match last args with
       (* `whenEvents([..])` drives the fold with several events in order; each is
          a step of its own, the same way `givenEvents` expands. *)
-      | Some { pexp_desc = Pexp_array els; _ } ->
-        List.filter_map
-          (fun el ->
-            match element_of_constructor el with
-            | Some (element, values) -> Some (step_json ~kind ~element ~values)
-            | None -> None)
-          els
-      | Some payload -> (
-        match element_of_constructor payload with
-        | Some (element, values) -> [ step_json ~kind ~element ~values ]
-        | None -> [])
+      | Some payload -> steps_of_payload ~kind payload
       | None -> [])
     | None -> []
   in
   let then_ =
     match
       find
-        [ "thenEvent"; "thenError"; "thenState"; "thenStateWithId"; "thenNoState";
-          "thenCommand"; "thenSideEffect"; "thenNoEvent" ]
+        [ "thenEvent"; "thenEvents"; "thenError"; "thenState"; "thenStates";
+          "thenStateWithId"; "thenStatesWithId"; "thenNoState"; "thenCommand";
+          "thenSideEffect"; "thenNoEvent" ]
     with
     (* "Accepted, and emitted nothing." There is no element to name and no
        payload to walk, so it is emitted as a kind on its own. Recorded rather
@@ -507,9 +519,9 @@ let extract_steps (body : expression) :
         (* `thenStateWithId(id, record)` names the row it asserts. `last` picks
            the record either way, so the two share a case; the id is a routing
            detail of the fold, not part of the row's value. *)
-        | "thenState" | "thenStateWithId" ->
-          [ step_json ~kind:"state" ~element:"state" ~values:(record_entries payload) ]
-        | _ -> (
+        | "thenState" | "thenStateWithId" | "thenStates" | "thenStatesWithId" ->
+          state_steps_of_payload payload
+        | _ ->
           let kind =
             match name with
             | "thenError" -> "error"
@@ -517,9 +529,7 @@ let extract_steps (body : expression) :
             | "thenSideEffect" -> "sideEffect"
             | _ -> "event"
           in
-          match element_of_constructor payload with
-          | Some (element, values) -> [ step_json ~kind ~element ~values ]
-          | None -> []))
+          steps_of_payload ~kind payload)
       | None -> [])
     | None -> []
   in

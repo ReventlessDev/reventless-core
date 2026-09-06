@@ -87,7 +87,22 @@ let () =
               thenNoEvent
                 (whenCmd
                    (givenEvents [| ProductAdded { productId = "prod-1" } |])
-                   (RenameProduct { productId = "prod-1" }))))]
+                   (RenameProduct { productId = "prod-1" })));
+          (* The plural form. `thenEvents([A, B])` is the only way to assert
+             more than one event, and it used to record an EMPTY `then` —
+             `element_of_constructor` answers None for an array literal, so the
+             whole assertion was dropped. An empty `then` reads downstream as a
+             command that ran and produced nothing, which is the opposite of
+             what this asserts, and it made the lifecycle check call such a
+             scenario a contradiction of the transition the command declares. *)
+          test "Attaching an image reports what now stands" (fun () ->
+              thenEvents
+                (whenCmd
+                   (givenEvents [| ProductAdded { productId = "prod-1" } |])
+                   (AttachProductImage { productId = "prod-1" }))
+                [| ProductImageAttached { productId = "prod-1" }
+                 ; ProductEffectiveImageChanged { productId = "prod-1" }
+                |]))]
   in
   let gj =
     match
@@ -112,6 +127,11 @@ let () =
   gmust "then event element" "\"kind\":\"event\",\"element\":\"ProductAdded\"";
   gmust "then error element" "\"kind\":\"error\",\"element\":\"ProductAlreadyExists\"";
   gmust "then no-event step" "\"kind\":\"noEvent\",\"element\":\"\"";
+  (* Both of them, in order: a plural assertion that recorded only its first
+     event would still under-report what the scenario says. *)
+  gmust "then events — first" "\"kind\":\"event\",\"element\":\"ProductImageAttached\"";
+  gmust "then events — second"
+    "\"kind\":\"event\",\"element\":\"ProductEffectiveImageChanged\"";
   gmust "given event (duplicate scenario)" "\"kind\":\"event\",\"element\":\"ProductAdded\"";
   gmust "float example value" "\"kind\":\"float\",\"value\":9.99";
   gmust "string example value" "\"kind\":\"string\",\"value\":\"prod-1\"";

@@ -70,16 +70,20 @@
   {
     "component": "CategoryImages",
     "command": "RemoveCategoryImage",
-    "level": "",
-    "allowedStates": [],
+    "level": "Instance",
+    "allowedStates": [
+      "Listed"
+    ],
     "targets": [],
     "scenarios": 1
   },
   {
     "component": "CategoryImages",
     "command": "SetCategoryImage",
-    "level": "",
-    "allowedStates": [],
+    "level": "Instance",
+    "allowedStates": [
+      "Listed"
+    ],
     "targets": [],
     "scenarios": 5
   },
@@ -252,24 +256,33 @@
   {
     "component": "ProductImages",
     "command": "AttachProductImage",
-    "level": "",
-    "allowedStates": [],
+    "level": "Instance",
+    "allowedStates": [
+      "Archived",
+      "Listed"
+    ],
     "targets": [],
     "scenarios": 4
   },
   {
     "component": "ProductImages",
     "command": "RemoveProductImage",
-    "level": "",
-    "allowedStates": [],
+    "level": "Instance",
+    "allowedStates": [
+      "Archived",
+      "Listed"
+    ],
     "targets": [],
     "scenarios": 2
   },
   {
     "component": "ProductImages",
     "command": "SetPrimaryProductImage",
-    "level": "",
-    "allowedStates": [],
+    "level": "Instance",
+    "allowedStates": [
+      "Archived",
+      "Listed"
+    ],
     "targets": [],
     "scenarios": 2
   },
