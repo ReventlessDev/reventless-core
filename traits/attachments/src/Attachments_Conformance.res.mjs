@@ -14,10 +14,10 @@ function Make(B) {
     evolve: $$let.evolve,
     decide: $$let.decide
   });
-  let withA = B.created.concat([B.attachedC(B.refA)]);
-  let withAB = withA.concat([B.attachedC(B.refB)]);
+  let withA = B.Consumed.created.concat([B.Consumed.attached(B.refA)]);
+  let withAB = withA.concat([B.Consumed.attached(B.refB)]);
   let register = () => G.describe(suiteName(B.Spec.name), () => {
-    G.test("the first attachment is appended", () => G.thenEvents(G.whenCmd(G.givenEvents(B.created), B.attach(B.refA)), [
+    G.test("the first attachment is appended", () => G.thenEvents(G.whenCmd(G.givenEvents(B.Consumed.created), B.attach(B.refA)), [
       B.attached(B.refA),
       B.effectiveChanged(Primitive_option.some(B.refA))
     ]));
@@ -28,7 +28,7 @@ function Make(B) {
       B.effectiveChanged(undefined)
     ]));
     G.test("removing a ref not in the set is a no-op", () => G.thenNoEvent(G.whenCmd(G.givenEvents(withA), B.remove(B.refB))));
-    G.test("a removed ref can be attached again", () => G.thenEvents(G.whenCmd(G.givenEvents(withA.concat([B.removedC(B.refA)])), B.attach(B.refA)), [
+    G.test("a removed ref can be attached again", () => G.thenEvents(G.whenCmd(G.givenEvents(withA.concat([B.Consumed.removed(B.refA)])), B.attach(B.refA)), [
       B.attached(B.refA),
       B.effectiveChanged(Primitive_option.some(B.refA))
     ]));
@@ -38,22 +38,22 @@ function Make(B) {
       B.primarySet(B.refB),
       B.effectiveChanged(Primitive_option.some(B.refB))
     ]));
-    G.test("choosing the current primary is a no-op", () => G.thenNoEvent(G.whenCmd(G.givenEvents(withAB.concat([B.primarySetC(B.refB)])), B.setPrimary(B.refB))));
+    G.test("choosing the current primary is a no-op", () => G.thenNoEvent(G.whenCmd(G.givenEvents(withAB.concat([B.Consumed.primarySet(B.refB)])), B.setPrimary(B.refB))));
     G.test("removing the chosen primary lets the first remaining stand in", () => G.thenNoEvent(G.whenCmd(G.givenEvents(withAB.concat([
-      B.primarySetC(B.refB),
-      B.removedC(B.refB)
+      B.Consumed.primarySet(B.refB),
+      B.Consumed.removed(B.refB)
     ])), B.setPrimary(B.refA))));
     G.test("removing the member that stood in promotes the next, and says so", () => G.thenEvents(G.whenCmd(G.givenEvents(withAB), B.remove(B.refA)), [
       B.removed(B.refA),
       B.effectiveChanged(Primitive_option.some(B.refB))
     ]));
-    G.test("removing the chosen primary announces the one that stands in", () => G.thenEvents(G.whenCmd(G.givenEvents(withAB.concat([B.primarySetC(B.refB)])), B.remove(B.refB)), [
+    G.test("removing the chosen primary announces the one that stands in", () => G.thenEvents(G.whenCmd(G.givenEvents(withAB.concat([B.Consumed.primarySet(B.refB)])), B.remove(B.refB)), [
       B.removed(B.refB),
       B.effectiveChanged(Primitive_option.some(B.refA))
     ]));
     G.test("a caption needs its ref in the set", () => G.thenError(G.whenCmd(G.givenEvents(withA), B.setAltText(B.refB, "side")), B.notAttached));
     G.test("a caption is appended", () => G.thenEvent(G.whenCmd(G.givenEvents(withA), B.setAltText(B.refA, "front")), B.altTextSet(B.refA, "front")));
-    G.test("repeating the caption is a no-op", () => G.thenNoEvent(G.whenCmd(G.givenEvents(withA.concat([B.altTextSetC(B.refA, "front")])), B.setAltText(B.refA, "front"))));
+    G.test("repeating the caption is a no-op", () => G.thenNoEvent(G.whenCmd(G.givenEvents(withA.concat([B.Consumed.altTextSet(B.refA, "front")])), B.setAltText(B.refA, "front"))));
   });
   return {
     G: G,
@@ -70,9 +70,9 @@ function MakeSingle(B) {
     evolve: $$let.evolve,
     decide: $$let.decide
   });
-  let withA = B.created.concat([B.attachedC(B.refA)]);
+  let withA = B.Consumed.created.concat([B.Consumed.attached(B.refA)]);
   let register = () => G.describe(suiteName(B.Spec.name), () => {
-    G.test("the first attachment is appended", () => G.thenEvents(G.whenCmd(G.givenEvents(B.created), B.attach(B.refA)), [
+    G.test("the first attachment is appended", () => G.thenEvents(G.whenCmd(G.givenEvents(B.Consumed.created), B.attach(B.refA)), [
       B.attached(B.refA),
       B.effectiveChanged(Primitive_option.some(B.refA))
     ]));
@@ -86,10 +86,10 @@ function MakeSingle(B) {
       B.removed(B.refA),
       B.effectiveChanged(undefined)
     ]));
-    G.test("clearing an empty set is a no-op", () => G.thenNoEvent(G.whenCmd(G.givenEvents(B.created), B.clear)));
+    G.test("clearing an empty set is a no-op", () => G.thenNoEvent(G.whenCmd(G.givenEvents(B.Consumed.created), B.clear)));
     G.test("a replaced ref can be attached again", () => G.thenEvents(G.whenCmd(G.givenEvents(withA.concat([
-      B.removedC(B.refA),
-      B.attachedC(B.refB)
+      B.Consumed.removed(B.refA),
+      B.Consumed.attached(B.refB)
     ])), B.attach(B.refA)), [
       B.removed(B.refB),
       B.attached(B.refA),
@@ -97,11 +97,11 @@ function MakeSingle(B) {
     ]));
     G.test("a caption lands on the ref that is held", () => G.thenEvent(G.whenCmd(G.givenEvents(withA), B.setAltText("front")), B.altTextSet(B.refA, "front")));
     G.test("a caption follows a replacement onto the new ref", () => G.thenEvent(G.whenCmd(G.givenEvents(withA.concat([
-      B.removedC(B.refA),
-      B.attachedC(B.refB)
+      B.Consumed.removed(B.refA),
+      B.Consumed.attached(B.refB)
     ])), B.setAltText("side")), B.altTextSet(B.refB, "side")));
-    G.test("captioning an empty set is refused", () => G.thenError(G.whenCmd(G.givenEvents(B.created), B.setAltText("front")), B.notAttached));
-    G.test("repeating the caption is a no-op", () => G.thenNoEvent(G.whenCmd(G.givenEvents(withA.concat([B.altTextSetC(B.refA, "front")])), B.setAltText("front"))));
+    G.test("captioning an empty set is refused", () => G.thenError(G.whenCmd(G.givenEvents(B.Consumed.created), B.setAltText("front")), B.notAttached));
+    G.test("repeating the caption is a no-op", () => G.thenNoEvent(G.whenCmd(G.givenEvents(withA.concat([B.Consumed.altTextSet(B.refA, "front")])), B.setAltText("front"))));
   });
   return {
     G: G,

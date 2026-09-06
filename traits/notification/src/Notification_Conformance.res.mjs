@@ -13,34 +13,34 @@ function Make(B) {
     evolve: $$let.evolve,
     decide: $$let.decide
   });
-  let announced = B.created.concat([B.announcedC(B.addressA)]);
+  let announced = B.Consumed.created.concat([B.Consumed.announced(B.addressA)]);
   let register = () => G.describe(suiteName(B.Spec.name), () => {
-    G.test("an announced contact is recorded", () => G.thenEvent(G.whenCmd(G.givenEvents(B.created), B.announce(B.addressA)), B.announced(B.addressA)));
+    G.test("an announced contact is recorded", () => G.thenEvent(G.whenCmd(G.givenEvents(B.Consumed.created), B.announce(B.addressA)), B.announced(B.addressA)));
     G.test("re-announcing the address already on file is a no-op", () => G.thenNoEvent(G.whenCmd(G.givenEvents(announced), B.announce(B.addressA))));
     G.test("a changed address is recorded", () => G.thenEvent(G.whenCmd(G.givenEvents(announced), B.announce(B.addressB)), B.announced(B.addressB)));
-    G.test("managing preferences for an unannounced recipient is refused", () => G.thenError(G.whenCmd(G.givenEvents(B.created), B.subscribe(B.optional, B.announcedChannel)), B.recipientUnknown));
+    G.test("managing preferences for an unannounced recipient is refused", () => G.thenError(G.whenCmd(G.givenEvents(B.Consumed.created), B.subscribe(B.optional, B.announcedChannel)), B.recipientUnknown));
     G.test("opting in to a kind that is off by default is recorded", () => G.thenEvent(G.whenCmd(G.givenEvents(announced), B.subscribe(B.optional, B.announcedChannel)), B.subscribed(B.optional, B.announcedChannel)));
     G.test("subscribing to a kind already on by posture is a no-op", () => G.thenNoEvent(G.whenCmd(G.givenEvents(announced), B.subscribe(B.transactional, B.announcedChannel))));
     G.test("opting out of a kind that is on is recorded", () => G.thenEvent(G.whenCmd(G.givenEvents(announced), B.unsubscribe(B.transactional, B.announcedChannel)), B.unsubscribed(B.transactional, B.announcedChannel)));
     G.test("opting out of a kind already off is a no-op", () => G.thenNoEvent(G.whenCmd(G.givenEvents(announced), B.unsubscribe(B.optional, B.announcedChannel))));
     G.test("a transactional request goes out with no explicit subscription", () => G.thenEvent(G.whenCmd(G.givenEvents(announced), B.request(B.transactional, "ref-1")), B.requested(B.transactional, "ref-1", B.announcedChannel, B.addressA)));
-    G.test("the address on the request is the one currently on file", () => G.thenEvent(G.whenCmd(G.givenEvents(announced.concat([B.announcedC(B.addressB)])), B.request(B.transactional, "ref-1")), B.requested(B.transactional, "ref-1", B.announcedChannel, B.addressB)));
+    G.test("the address on the request is the one currently on file", () => G.thenEvent(G.whenCmd(G.givenEvents(announced.concat([B.Consumed.announced(B.addressB)])), B.request(B.transactional, "ref-1")), B.requested(B.transactional, "ref-1", B.announcedChannel, B.addressB)));
     G.test("an optional request is suppressed with no explicit subscription", () => G.thenEvent(G.whenCmd(G.givenEvents(announced), B.request(B.optional, "ref-2")), B.suppressed(B.optional, "ref-2")));
-    G.test("a recipient who opted out is suppressed", () => G.thenEvent(G.whenCmd(G.givenEvents(announced.concat([B.unsubscribedC(B.transactional, B.announcedChannel)])), B.request(B.transactional, "ref-3")), B.suppressed(B.transactional, "ref-3")));
-    G.test("a request for a recipient nobody announced is undeliverable", () => G.thenEvent(G.whenCmd(G.givenEvents(B.created), B.request(B.transactional, "ref-4")), B.undeliverable(B.transactional, "ref-4")));
+    G.test("a recipient who opted out is suppressed", () => G.thenEvent(G.whenCmd(G.givenEvents(announced.concat([B.Consumed.unsubscribed(B.transactional, B.announcedChannel)])), B.request(B.transactional, "ref-3")), B.suppressed(B.transactional, "ref-3")));
+    G.test("a request for a recipient nobody announced is undeliverable", () => G.thenEvent(G.whenCmd(G.givenEvents(B.Consumed.created), B.request(B.transactional, "ref-4")), B.undeliverable(B.transactional, "ref-4")));
     G.test("with nothing claimed, a default request is decided as usual", () => G.thenEvent(G.whenCmd(G.givenEvents(announced), B.requestFrom(B.transactional, "ref-6", B.defaultSource, "Default")), B.requested(B.transactional, "ref-6", B.announcedChannel, B.addressA)));
-    G.test("a default request for a claimed source is deferred", () => G.thenEvent(G.whenCmd(G.givenEvents(announced.concat([B.claimedC("other:Source", "second-producer")])), B.requestFrom(B.transactional, "ref-7", "other:Source", "Default")), B.deferred("ref-7", "other:Source")));
-    G.test("a claim on one source leaves every other source alone", () => G.thenEvent(G.whenCmd(G.givenEvents(announced.concat([B.claimedC("other:Source", "second-producer")])), B.requestFrom(B.transactional, "ref-8", B.defaultSource, "Default")), B.requested(B.transactional, "ref-8", B.announcedChannel, B.addressA)));
-    G.test("a configured request for a claimed source goes through", () => G.thenEvent(G.whenCmd(G.givenEvents(announced.concat([B.claimedC("other:Source", "second-producer")])), B.requestFrom(B.transactional, "ref-9", "other:Source", "Configured")), B.requestedConfigured(B.transactional, "ref-9", B.announcedChannel, B.addressA)));
+    G.test("a default request for a claimed source is deferred", () => G.thenEvent(G.whenCmd(G.givenEvents(announced.concat([B.Consumed.claimed("other:Source", "second-producer")])), B.requestFrom(B.transactional, "ref-7", "other:Source", "Default")), B.deferred("ref-7", "other:Source")));
+    G.test("a claim on one source leaves every other source alone", () => G.thenEvent(G.whenCmd(G.givenEvents(announced.concat([B.Consumed.claimed("other:Source", "second-producer")])), B.requestFrom(B.transactional, "ref-8", B.defaultSource, "Default")), B.requested(B.transactional, "ref-8", B.announcedChannel, B.addressA)));
+    G.test("a configured request for a claimed source goes through", () => G.thenEvent(G.whenCmd(G.givenEvents(announced.concat([B.Consumed.claimed("other:Source", "second-producer")])), B.requestFrom(B.transactional, "ref-9", "other:Source", "Configured")), B.requestedConfigured(B.transactional, "ref-9", B.announcedChannel, B.addressA)));
     G.test("a released source stops deferring", () => G.thenEvent(G.whenCmd(G.givenEvents(announced.concat([
-      B.claimedC("other:Source", "second-producer"),
-      B.releasedC("other:Source")
+      B.Consumed.claimed("other:Source", "second-producer"),
+      B.Consumed.released("other:Source")
     ])), B.requestFrom(B.transactional, "ref-10", "other:Source", "Default")), B.requested(B.transactional, "ref-10", B.announcedChannel, B.addressA)));
     let channel = B.unreachableChannel;
     if (channel !== undefined) {
       return G.test("a channel with no address on file is undeliverable, not suppressed", () => G.thenEvent(G.whenCmd(G.givenEvents(announced.concat([
-        B.subscribedC(B.transactional, channel),
-        B.unsubscribedC(B.transactional, B.announcedChannel)
+        B.Consumed.subscribed(B.transactional, channel),
+        B.Consumed.unsubscribed(B.transactional, B.announcedChannel)
       ])), B.request(B.transactional, "ref-5")), B.undeliverable(B.transactional, "ref-5")));
     }
   });

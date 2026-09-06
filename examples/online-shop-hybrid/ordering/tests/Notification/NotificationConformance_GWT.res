@@ -15,33 +15,34 @@ module Binding = {
   module Spec = NotificationPreferences
   module Behavior = NotificationPreferences_Behavior
 
-  // A DCB slice's entity comes into existence with its first fact, so there is
-  // no creation event to seed: an unannounced recipient is one with no history.
-  let created: array<Spec.consumedEvent> = []
-
   let recipientId = "recipient-1"
 
   // Annotated: this slice reads back exactly what it writes, so each of these
-  // three names a constructor of both unions and the later declaration would
-  // otherwise win. The `C` half is the history side.
-  let announcedC = (email): Spec.consumedEvent => RecipientAnnounced({recipientId, email})
-  let subscribedC = (category, channel): Spec.consumedEvent =>
-    NotificationSubscribed({
-      recipientId,
-      category,
-      channel: Behavior.channelOf(channel),
-    })
-  let unsubscribedC = (category, channel): Spec.consumedEvent =>
-    NotificationUnsubscribed({
-      recipientId,
-      category,
-      channel: Behavior.channelOf(channel),
-    })
-  // Written by NotificationSourceClaims next door and read here across
-  // partitions — this slice consumes them and produces neither.
-  let claimedC = (source, by): Spec.consumedEvent =>
-    NotificationSourceClaimed({sourceId: source, by})
-  let releasedC = (source): Spec.consumedEvent => NotificationSourceReleased({sourceId: source})
+  // names a constructor of both unions and the later declaration would
+  // otherwise win. This module is the history side.
+  module Consumed = {
+    // A DCB slice's entity comes into existence with its first fact, so there is
+    // no creation event to seed: an unannounced recipient is one with no history.
+    let created: array<Spec.consumedEvent> = []
+    let announced = (email): Spec.consumedEvent => RecipientAnnounced({recipientId, email})
+    let subscribed = (category, channel): Spec.consumedEvent =>
+      NotificationSubscribed({
+        recipientId,
+        category,
+        channel: Behavior.channelOf(channel),
+      })
+    let unsubscribed = (category, channel): Spec.consumedEvent =>
+      NotificationUnsubscribed({
+        recipientId,
+        category,
+        channel: Behavior.channelOf(channel),
+      })
+    // Written by NotificationSourceClaims next door and read here across
+    // partitions — this slice consumes them and produces neither.
+    let claimed = (source, by): Spec.consumedEvent =>
+      NotificationSourceClaimed({sourceId: source, by})
+    let released = (source): Spec.consumedEvent => NotificationSourceReleased({sourceId: source})
+  }
 
   let announce = email => Spec.AnnounceRecipient({recipientId, email})
   let subscribe = (category, channel) =>

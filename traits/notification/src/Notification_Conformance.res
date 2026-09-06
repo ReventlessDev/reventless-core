@@ -17,12 +17,12 @@ module Make = (B: Notification.Binding) => {
   module G = ReventlessGwt.Behavior_GWT.Make(B.Spec, B.Behavior)
   module R = Notification_Rules
 
-  let announced = Array.concat(B.created, [B.announcedC(B.addressA)])
+  let announced = Array.concat(B.Consumed.created, [B.Consumed.announced(B.addressA)])
 
   let register = () =>
     G.describe(suiteName(B.Spec.name), () => {
       G.test("an announced contact is recorded", () =>
-        G.givenEvents(B.created)->G.whenCmd(B.announce(B.addressA))->G.thenEvent(
+        G.givenEvents(B.Consumed.created)->G.whenCmd(B.announce(B.addressA))->G.thenEvent(
           B.announced(B.addressA),
         )
       )
@@ -44,7 +44,7 @@ module Make = (B: Notification.Binding) => {
       // A person is at the other end of this one, so they are told rather than
       // having a fact recorded about them.
       G.test("managing preferences for an unannounced recipient is refused", () =>
-        G.givenEvents(B.created)
+        G.givenEvents(B.Consumed.created)
         ->G.whenCmd(B.subscribe(B.optional, B.announcedChannel))
         ->G.thenError(B.recipientUnknown)
       )
@@ -87,7 +87,7 @@ module Make = (B: Notification.Binding) => {
       )
 
       G.test("the address on the request is the one currently on file", () =>
-        G.givenEvents(Array.concat(announced, [B.announcedC(B.addressB)]))
+        G.givenEvents(Array.concat(announced, [B.Consumed.announced(B.addressB)]))
         ->G.whenCmd(B.request(B.transactional, "ref-1"))
         ->G.thenEvent(B.requested(B.transactional, "ref-1", B.announcedChannel, B.addressB))
       )
@@ -100,7 +100,7 @@ module Make = (B: Notification.Binding) => {
 
       G.test("a recipient who opted out is suppressed", () =>
         G.givenEvents(
-          Array.concat(announced, [B.unsubscribedC(B.transactional, B.announcedChannel)]),
+          Array.concat(announced, [B.Consumed.unsubscribed(B.transactional, B.announcedChannel)]),
         )
         ->G.whenCmd(B.request(B.transactional, "ref-3"))
         ->G.thenEvent(B.suppressed(B.transactional, "ref-3"))
@@ -108,7 +108,7 @@ module Make = (B: Notification.Binding) => {
 
       // The case the directory exists for.
       G.test("a request for a recipient nobody announced is undeliverable", () =>
-        G.givenEvents(B.created)
+        G.givenEvents(B.Consumed.created)
         ->G.whenCmd(B.request(B.transactional, "ref-4"))
         ->G.thenEvent(B.undeliverable(B.transactional, "ref-4"))
       )
@@ -129,7 +129,7 @@ module Make = (B: Notification.Binding) => {
       )
 
       G.test("a default request for a claimed source is deferred", () =>
-        G.givenEvents(Array.concat(announced, [B.claimedC("other:Source", "second-producer")]))
+        G.givenEvents(Array.concat(announced, [B.Consumed.claimed("other:Source", "second-producer")]))
         ->G.whenCmd(
           B.requestFrom(B.transactional, "ref-7", ~source="other:Source", ~origin=Default),
         )
@@ -140,7 +140,7 @@ module Make = (B: Notification.Binding) => {
       // keeps firing everywhere it was not taken over. Without this, a single
       // claim would silence the whole competency.
       G.test("a claim on one source leaves every other source alone", () =>
-        G.givenEvents(Array.concat(announced, [B.claimedC("other:Source", "second-producer")]))
+        G.givenEvents(Array.concat(announced, [B.Consumed.claimed("other:Source", "second-producer")]))
         ->G.whenCmd(
           B.requestFrom(B.transactional, "ref-8", ~source=B.defaultSource, ~origin=Default),
         )
@@ -150,7 +150,7 @@ module Make = (B: Notification.Binding) => {
       // The producer that owns the source is the one that must get through, or
       // the handover would silence the entry rather than move it.
       G.test("a configured request for a claimed source goes through", () =>
-        G.givenEvents(Array.concat(announced, [B.claimedC("other:Source", "second-producer")]))
+        G.givenEvents(Array.concat(announced, [B.Consumed.claimed("other:Source", "second-producer")]))
         ->G.whenCmd(
           B.requestFrom(B.transactional, "ref-9", ~source="other:Source", ~origin=Configured),
         )
@@ -163,7 +163,7 @@ module Make = (B: Notification.Binding) => {
         G.givenEvents(
           Array.concat(
             announced,
-            [B.claimedC("other:Source", "second-producer"), B.releasedC("other:Source")],
+            [B.Consumed.claimed("other:Source", "second-producer"), B.Consumed.released("other:Source")],
           ),
         )
         ->G.whenCmd(
@@ -183,8 +183,8 @@ module Make = (B: Notification.Binding) => {
             Array.concat(
               announced,
               [
-                B.subscribedC(B.transactional, channel),
-                B.unsubscribedC(B.transactional, B.announcedChannel),
+                B.Consumed.subscribed(B.transactional, channel),
+                B.Consumed.unsubscribed(B.transactional, B.announcedChannel),
               ],
             ),
           )

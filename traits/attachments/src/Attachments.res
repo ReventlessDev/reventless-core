@@ -43,15 +43,27 @@ module type Binding = {
   module Spec: ReventlessGwt.Behavior_GWT.BehaviorSpec
   module Behavior: ReventlessGwt.Behavior_GWT.Behavior with module Spec = Spec
 
-  /** History that brings the entity into existence with an empty set. */
-  let created: array<Spec.consumedEvent>
-  /** The set's own facts, as the slice consumes them. */
-  let attachedC: ref => Spec.consumedEvent
-  let removedC: ref => Spec.consumedEvent
-  let primarySetC: ref => Spec.consumedEvent
-  /** The conclusion, as the slice consumes it — see `Attachments_Rules.fact`. */
-  let effectiveChangedC: option<ref> => Spec.consumedEvent
-  let altTextSetC: (ref, string) => Spec.consumedEvent
+  /** The same facts as the slice **consumes** them, for building history.
+
+      A slice declares `consumedEvent` and `event` separately and they differ —
+      the consumed form carries no entity id, because the partition already
+      says which entity it belongs to. So a suite needs both spellings of the
+      same fact: one to lay down history, one to assert what was emitted.
+
+      Grouped rather than suffixed. The pairs used to read `attachedC` against
+      `attached`, which said "consumed" only to someone who already knew — and
+      in a codebase where every binding also carries commands, a bare `C` reads
+      just as naturally as one. */
+  module Consumed: {
+    /** History that brings the entity into existence with an empty set. */
+    let created: array<Spec.consumedEvent>
+    let attached: ref => Spec.consumedEvent
+    let removed: ref => Spec.consumedEvent
+    let primarySet: ref => Spec.consumedEvent
+    /** The conclusion — see `Attachments_Rules.fact`. */
+    let effectiveChanged: option<ref> => Spec.consumedEvent
+    let altTextSet: (ref, string) => Spec.consumedEvent
+  }
 
   let attach: ref => Spec.command
   let remove: ref => Spec.command
@@ -95,17 +107,19 @@ module type SingleBinding = {
   module Spec: ReventlessGwt.Behavior_GWT.BehaviorSpec
   module Behavior: ReventlessGwt.Behavior_GWT.Behavior with module Spec = Spec
 
-  /** History that brings the entity into existence with an empty set. */
-  let created: array<Spec.consumedEvent>
-  /** The set's own facts, as the slice consumes them. No `primarySetC`: nothing
-      emits one. */
-  let attachedC: ref => Spec.consumedEvent
-  let removedC: ref => Spec.consumedEvent
-  let altTextSetC: (ref, string) => Spec.consumedEvent
-  /** The conclusion, as the slice consumes it. Declared at this cardinality too
-      even though `attached`/`removed` already imply it here: a subscriber must
-      not have to know how many members a host allows to know what to read. */
-  let effectiveChangedC: option<ref> => Spec.consumedEvent
+  /** The facts as the slice **consumes** them — see `Binding.Consumed`. No
+      `primarySet`: at this cardinality nothing emits one. */
+  module Consumed: {
+    /** History that brings the entity into existence with an empty set. */
+    let created: array<Spec.consumedEvent>
+    let attached: ref => Spec.consumedEvent
+    let removed: ref => Spec.consumedEvent
+    let altTextSet: (ref, string) => Spec.consumedEvent
+    /** Declared at this cardinality too even though `attached`/`removed` imply
+        it here: a subscriber must not have to know how many members a host
+        allows to know what to read. */
+    let effectiveChanged: option<ref> => Spec.consumedEvent
+  }
 
   let attach: ref => Spec.command
   /** Remove whatever is held. Takes no ref — there is only one, and asking the

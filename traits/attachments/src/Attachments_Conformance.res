@@ -17,13 +17,13 @@ let suiteName = (host: string) => `${host} conforms to the attachments trait`
 module Make = (B: Attachments.Binding) => {
   module G = ReventlessGwt.Behavior_GWT.Make(B.Spec, B.Behavior)
 
-  let withA = Array.concat(B.created, [B.attachedC(B.refA)])
-  let withAB = Array.concat(withA, [B.attachedC(B.refB)])
+  let withA = Array.concat(B.Consumed.created, [B.Consumed.attached(B.refA)])
+  let withAB = Array.concat(withA, [B.Consumed.attached(B.refB)])
 
   let register = () =>
     G.describe(suiteName(B.Spec.name), () => {
       G.test("the first attachment is appended", () =>
-        G.givenEvents(B.created)
+        G.givenEvents(B.Consumed.created)
         ->G.whenCmd(B.attach(B.refA))
         ->G.thenEvents([B.attached(B.refA), B.effectiveChanged(Some(B.refA))])
       )
@@ -47,7 +47,7 @@ module Make = (B: Attachments.Binding) => {
       )
 
       G.test("a removed ref can be attached again", () =>
-        G.givenEvents(Array.concat(withA, [B.removedC(B.refA)]))
+        G.givenEvents(Array.concat(withA, [B.Consumed.removed(B.refA)]))
         ->G.whenCmd(B.attach(B.refA))
         ->G.thenEvents([B.attached(B.refA), B.effectiveChanged(Some(B.refA))])
       )
@@ -67,13 +67,13 @@ module Make = (B: Attachments.Binding) => {
       )
 
       G.test("choosing the current primary is a no-op", () =>
-        G.givenEvents(Array.concat(withAB, [B.primarySetC(B.refB)]))
+        G.givenEvents(Array.concat(withAB, [B.Consumed.primarySet(B.refB)]))
         ->G.whenCmd(B.setPrimary(B.refB))
         ->G.thenNoEvent
       )
 
       G.test("removing the chosen primary lets the first remaining stand in", () =>
-        G.givenEvents(Array.concat(withAB, [B.primarySetC(B.refB), B.removedC(B.refB)]))
+        G.givenEvents(Array.concat(withAB, [B.Consumed.primarySet(B.refB), B.Consumed.removed(B.refB)]))
         ->G.whenCmd(B.setPrimary(B.refA))
         ->G.thenNoEvent
       )
@@ -88,7 +88,7 @@ module Make = (B: Attachments.Binding) => {
       )
 
       G.test("removing the chosen primary announces the one that stands in", () =>
-        G.givenEvents(Array.concat(withAB, [B.primarySetC(B.refB)]))
+        G.givenEvents(Array.concat(withAB, [B.Consumed.primarySet(B.refB)]))
         ->G.whenCmd(B.remove(B.refB))
         ->G.thenEvents([B.removed(B.refB), B.effectiveChanged(Some(B.refA))])
       )
@@ -110,7 +110,7 @@ module Make = (B: Attachments.Binding) => {
       )
 
       G.test("repeating the caption is a no-op", () =>
-        G.givenEvents(Array.concat(withA, [B.altTextSetC(B.refA, "front")]))
+        G.givenEvents(Array.concat(withA, [B.Consumed.altTextSet(B.refA, "front")]))
         ->G.whenCmd(B.setAltText(B.refA, "front"))
         ->G.thenNoEvent
       )
@@ -133,12 +133,12 @@ single image wants exactly as much as a gallery member does.
 module MakeSingle = (B: Attachments.SingleBinding) => {
   module G = ReventlessGwt.Behavior_GWT.Make(B.Spec, B.Behavior)
 
-  let withA = Array.concat(B.created, [B.attachedC(B.refA)])
+  let withA = Array.concat(B.Consumed.created, [B.Consumed.attached(B.refA)])
 
   let register = () =>
     G.describe(suiteName(B.Spec.name), () => {
       G.test("the first attachment is appended", () =>
-        G.givenEvents(B.created)
+        G.givenEvents(B.Consumed.created)
         ->G.whenCmd(B.attach(B.refA))
         ->G.thenEvents([B.attached(B.refA), B.effectiveChanged(Some(B.refA))])
       )
@@ -167,11 +167,11 @@ module MakeSingle = (B: Attachments.SingleBinding) => {
       )
 
       G.test("clearing an empty set is a no-op", () =>
-        G.givenEvents(B.created)->G.whenCmd(B.clear)->G.thenNoEvent
+        G.givenEvents(B.Consumed.created)->G.whenCmd(B.clear)->G.thenNoEvent
       )
 
       G.test("a replaced ref can be attached again", () =>
-        G.givenEvents(Array.concat(withA, [B.removedC(B.refA), B.attachedC(B.refB)]))
+        G.givenEvents(Array.concat(withA, [B.Consumed.removed(B.refA), B.Consumed.attached(B.refB)]))
         ->G.whenCmd(B.attach(B.refA))
         ->G.thenEvents([
           B.removed(B.refB),
@@ -190,17 +190,17 @@ module MakeSingle = (B: Attachments.SingleBinding) => {
       )
 
       G.test("a caption follows a replacement onto the new ref", () =>
-        G.givenEvents(Array.concat(withA, [B.removedC(B.refA), B.attachedC(B.refB)]))
+        G.givenEvents(Array.concat(withA, [B.Consumed.removed(B.refA), B.Consumed.attached(B.refB)]))
         ->G.whenCmd(B.setAltText("side"))
         ->G.thenEvent(B.altTextSet(B.refB, "side"))
       )
 
       G.test("captioning an empty set is refused", () =>
-        G.givenEvents(B.created)->G.whenCmd(B.setAltText("front"))->G.thenError(B.notAttached)
+        G.givenEvents(B.Consumed.created)->G.whenCmd(B.setAltText("front"))->G.thenError(B.notAttached)
       )
 
       G.test("repeating the caption is a no-op", () =>
-        G.givenEvents(Array.concat(withA, [B.altTextSetC(B.refA, "front")]))
+        G.givenEvents(Array.concat(withA, [B.Consumed.altTextSet(B.refA, "front")]))
         ->G.whenCmd(B.setAltText("front"))
         ->G.thenNoEvent
       )

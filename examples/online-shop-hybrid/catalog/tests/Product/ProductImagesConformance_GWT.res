@@ -8,16 +8,19 @@ module Binding = {
   module Spec = ProductImages
   module Behavior = ProductImages_Behavior
 
-  // Annotated: the slice consumes and emits same-named constructors.
-  let created: array<ProductImages.consumedEvent> = [ProductAdded]
-  let attachedC = (ref): ProductImages.consumedEvent => ProductImageAttached({productImage: ref})
-  let removedC = (ref): ProductImages.consumedEvent => ProductImageRemoved({productImage: ref})
-  let primarySetC = (ref): ProductImages.consumedEvent =>
-    ProductPrimaryImageSet({productImage: ref})
-  let altTextSetC = (ref, altText): ProductImages.consumedEvent =>
-    ProductImageAltTextSet({productImage: ref, altText})
-  let effectiveChangedC = (ref): ProductImages.consumedEvent =>
-    ProductEffectiveImageChanged({productImage: ?ref})
+  // Same constructor names on both sides; what differs is the type and the id —
+  // a consumed fact carries none, because the partition already says whose it is.
+  module Consumed = {
+    let created: array<ProductImages.consumedEvent> = [ProductAdded]
+    let attached = (ref): ProductImages.consumedEvent => ProductImageAttached({productImage: ref})
+    let removed = (ref): ProductImages.consumedEvent => ProductImageRemoved({productImage: ref})
+    let primarySet = (ref): ProductImages.consumedEvent =>
+      ProductPrimaryImageSet({productImage: ref})
+    let altTextSet = (ref, altText): ProductImages.consumedEvent =>
+      ProductImageAltTextSet({productImage: ref, altText})
+    let effectiveChanged = (ref): ProductImages.consumedEvent =>
+      ProductEffectiveImageChanged({productImage: ?ref})
+  }
 
   let attach = ref => ProductImages.AttachProductImage({productId: "p1", productImage: ref})
   let remove = ref => ProductImages.RemoveProductImage({productId: "p1", productImage: ref})

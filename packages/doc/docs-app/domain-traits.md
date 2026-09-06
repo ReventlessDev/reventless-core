@@ -442,6 +442,27 @@ rules reason about. Keep abstract whatever your host happens to have made concre
 the geocoding trait's `subject` is abstract so the rules hold for any address-shaped
 thing, even though its first host types it `string`.
 
+A binding usually needs each fact **twice**, because a slice declares
+`consumedEvent` and `event` separately and they differ: the consumed form carries no
+entity id, since the partition already says whose it is. One spelling lays down
+history for `givenEvents`, the other asserts what was emitted.
+
+**Put the consumed forms in a `Consumed` module** rather than suffixing their names:
+
+```rescript
+module Consumed: {
+  let created: array<Spec.consumedEvent>
+  let attached: ref => Spec.consumedEvent
+}
+let attached: ref => Spec.event
+```
+
+so a suite reads `B.Consumed.attached(refA)` against `B.attached(refA)`. These used
+to be spelled `attachedC`, which said "consumed" only to a reader who already knew —
+and in a binding that also carries commands, a bare `C` reads just as naturally as
+one. Grouping says it once instead of at every name, and leaves room for a third form
+without a second letter.
+
 **3. Promote your existing GWTs into the conformance functor.** You already wrote the
 scenarios; they are in your host's test files, spelled with your constructors. Rewrite
 each one over the binding instead. Then **delete the originals** — a rule the suite

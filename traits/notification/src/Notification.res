@@ -67,18 +67,30 @@ module type Binding = {
   module Spec: ReventlessGwt.Behavior_GWT.BehaviorSpec
   module Behavior: ReventlessGwt.Behavior_GWT.Behavior with module Spec = Spec
 
-  /** History that brings the recipient into existence with nothing on file. */
-  let created: array<Spec.consumedEvent>
+  /** The same facts as the slice **consumes** them, for building history.
 
-  /** The competency's own facts, as the slice consumes them. */
-  let announcedC: string => Spec.consumedEvent
-  let subscribedC: (category, Notification_Rules.channel) => Spec.consumedEvent
-  let unsubscribedC: (category, Notification_Rules.channel) => Spec.consumedEvent
-  /** A source taken over, as the slice reads it back. Claims are per source and
-      not per recipient, so a host produces these from wherever it keeps them —
-      what this contract requires is only that the decision can see them. */
-  let claimedC: (string, string) => Spec.consumedEvent
-  let releasedC: string => Spec.consumedEvent
+      A slice declares `consumedEvent` and `event` separately and they differ —
+      the consumed form carries no recipient id, because the partition already
+      says whose it is. So a suite needs both spellings of the same fact: one to
+      lay down history, one to assert what was emitted.
+
+      Grouped rather than suffixed. The pairs used to read `announcedC` against
+      `announced`, which said "consumed" only to someone who already knew — and
+      in a codebase where every binding also carries commands, a bare `C` reads
+      just as naturally as one. */
+  module Consumed: {
+    /** History that brings the recipient into existence with nothing on file. */
+    let created: array<Spec.consumedEvent>
+    let announced: string => Spec.consumedEvent
+    let subscribed: (category, Notification_Rules.channel) => Spec.consumedEvent
+    let unsubscribed: (category, Notification_Rules.channel) => Spec.consumedEvent
+    /** A source taken over, as the slice reads it back. Claims are per source
+        and not per recipient, so a host produces these from wherever it keeps
+        them — what this contract requires is only that the decision can see
+        them. */
+    let claimed: (string, string) => Spec.consumedEvent
+    let released: string => Spec.consumedEvent
+  }
 
   let announce: string => Spec.command
   let subscribe: (category, Notification_Rules.channel) => Spec.command

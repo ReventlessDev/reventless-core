@@ -13,14 +13,17 @@ module Binding = {
   module Spec = CategoryImages
   module Behavior = CategoryImages_Behavior
 
-  // Annotated: the slice consumes and emits same-named constructors.
-  let created: array<CategoryImages.consumedEvent> = [CategoryAdded]
-  let attachedC = (ref): CategoryImages.consumedEvent => CategoryImageAttached({categoryImage: ref})
-  let removedC = (ref): CategoryImages.consumedEvent => CategoryImageRemoved({categoryImage: ref})
-  let altTextSetC = (ref, altText): CategoryImages.consumedEvent =>
-    CategoryImageAltTextSet({categoryImage: ref, altText})
-  let effectiveChangedC = (ref): CategoryImages.consumedEvent =>
-    CategoryEffectiveImageChanged({categoryImage: ?ref})
+  // Same constructor names on both sides; what differs is the type and the id —
+  // a consumed fact carries none, because the partition already says whose it is.
+  module Consumed = {
+    let created: array<CategoryImages.consumedEvent> = [CategoryAdded]
+    let attached = (ref): CategoryImages.consumedEvent => CategoryImageAttached({categoryImage: ref})
+    let removed = (ref): CategoryImages.consumedEvent => CategoryImageRemoved({categoryImage: ref})
+    let altTextSet = (ref, altText): CategoryImages.consumedEvent =>
+      CategoryImageAltTextSet({categoryImage: ref, altText})
+    let effectiveChanged = (ref): CategoryImages.consumedEvent =>
+      CategoryEffectiveImageChanged({categoryImage: ?ref})
+  }
 
   let attach = ref => CategoryImages.SetCategoryImage({categoryId: "c1", categoryImage: ref})
   let clear = CategoryImages.RemoveCategoryImage({categoryId: "c1"})
