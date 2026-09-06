@@ -19,7 +19,7 @@
     "@reventlessdev/reventless-seed": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*",
     "sury": "11.0.0-rc.2",
-    "@reventlessdev/reventless-ui-slots": "3.0.0-alpha.2",
+    "@reventlessdev/reventless-ui-slots": "3.0.0-alpha.3",
     "@rescript/react": "^0.13.1"
   },
   "devDependencies": {

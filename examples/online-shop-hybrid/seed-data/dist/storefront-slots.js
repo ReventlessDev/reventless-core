@@ -2,6 +2,19 @@
 // This is the file a deployment serves at config.uiSlotsUrl.
 
 // node_modules/@rescript/runtime/lib/es6/Primitive_option.js
+function some(x) {
+  if (x === void 0) {
+    return {
+      BS_PRIVATE_NESTED_SOME_NONE: 0
+    };
+  } else if (x !== null && x.BS_PRIVATE_NESTED_SOME_NONE !== void 0) {
+    return {
+      BS_PRIVATE_NESTED_SOME_NONE: x.BS_PRIVATE_NESTED_SOME_NONE + 1 | 0
+    };
+  } else {
+    return x;
+  }
+}
 function valFromOption(x) {
   if (x === null || x.BS_PRIVATE_NESTED_SOME_NONE === void 0) {
     return x;
@@ -16,12 +29,34 @@ function valFromOption(x) {
   }
 }
 
+// node_modules/@rescript/runtime/lib/es6/Stdlib_Array.js
+function filterMap(a, f) {
+  let l = a.length;
+  let r = new Array(l);
+  let j = 0;
+  for (let i = 0; i < l; ++i) {
+    let v = a[i];
+    let v$1 = f(v);
+    if (v$1 !== void 0) {
+      r[j] = valFromOption(v$1);
+      j = j + 1 | 0;
+    }
+  }
+  r.length = j;
+  return r;
+}
+
 // node_modules/@rescript/runtime/lib/es6/Stdlib_Option.js
 function mapOr(opt, $$default, f) {
   if (opt !== void 0) {
     return f(valFromOption(opt));
   } else {
     return $$default;
+  }
+}
+function map(opt, f) {
+  if (opt !== void 0) {
+    return some(f(valFromOption(opt)));
   }
 }
 function getOr(opt, $$default) {
@@ -140,10 +175,21 @@ function day(iso) {
     return at.toLocaleDateString();
   }
 }
-var Format = {
-  money: money$1,
-  day
-};
+function pad(n) {
+  if (n < 10) {
+    return "0" + n.toString();
+  } else {
+    return n.toString();
+  }
+}
+function isoDay(iso) {
+  let at = new Date(iso);
+  if (Number.isNaN(at.getTime())) {
+    return "";
+  } else {
+    return at.getFullYear().toString() + "-" + pad(at.getMonth() + 1 | 0) + "-" + pad(at.getDate());
+  }
+}
 function titleOf(payload) {
   let label = payload.label;
   if (label !== void 0) {
@@ -192,13 +238,18 @@ var RowSlot = {
   detailAside,
   all
 };
+var Format = {
+  money: money$1,
+  day,
+  isoDay
+};
 
 // examples/online-shop-hybrid/seed-data/src/StorefrontSlots.res.mjs
 var styles = `
   .sf-tile { position: relative; display: block; width: 100%; padding: 0;
     border: 0; border-radius: 12px; overflow: hidden; cursor: pointer;
     background: #1b1b1f; aspect-ratio: 4 / 3; }
-  .sf-tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .sf-tile-img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .sf-tile figcaption { position: absolute; inset: auto 0 0 0;
     padding: 1.5rem .75rem .6rem; font-size: 1rem; font-weight: 600; color: #fff;
     text-align: left; background: linear-gradient(to top, rgba(0,0,0,.72), transparent); }
@@ -211,59 +262,83 @@ var styles = `
   .sf-face-actions { margin-top: auto; display: flex; gap: .5rem; flex-wrap: wrap; }
 
   .sf-media { display: grid; gap: .5rem; }
-  .sf-media img { width: 100%; border-radius: 12px; object-fit: cover; }
+  .sf-media-img { width: 100%; border-radius: 12px; object-fit: cover;
+    aspect-ratio: 1 / 1; }
   .sf-media figcaption { font-size: .8rem; opacity: .7; }
+
+  /* "This row has no picture", which is a different statement from a broken
+     image \u2014 and the one a half-entered catalogue should be making. Dashed so it
+     reads as a placeholder rather than as content. */
+  .sf-noimg { display: flex; align-items: center; justify-content: center;
+    background: repeating-linear-gradient(45deg, #f4f4f5, #f4f4f5 8px, #ececef 8px, #ececef 16px);
+    border: 1px dashed #c9c9cf; color: #6b6b76; font-size: .75rem;
+    letter-spacing: .02em; }
+  .sf-tile .sf-noimg { border: 0; }
 
   .sf-summary { font-size: .8rem; opacity: .7; font-variant-numeric: tabular-nums; }
 `;
 function register(arg) {
   ensureStyles("storefront-slots", styles);
   let h2 = (tag, props, children) => h(arg.h, tag, props, children);
-  arg.slots.row(RowSlot.galleryTile, (payload) => {
+  let picture = (className, payload) => {
     let image = payload.image;
-    let picture = image !== void 0 ? [h2("img", {
-      src: image.src,
-      alt: image.alt
-    }, [])] : [];
-    return h2("figure", {
-      className: "sf-tile",
-      onClick: payload.open,
-      role: "button"
-    }, picture.concat([h2("figcaption", {}, [titleOf(payload)])]));
-  });
+    if (image !== void 0) {
+      return h2("img", {
+        className,
+        src: image.src,
+        alt: image.alt
+      }, []);
+    } else {
+      return h2("div", {
+        className: className + " sf-noimg",
+        role: "img",
+        "aria-label": "No image"
+      }, [h2("span", {}, ["No image"])]);
+    }
+  };
+  arg.slots.row(RowSlot.galleryTile, (payload) => h2("figure", {
+    className: "sf-tile",
+    onClick: payload.open,
+    role: "button"
+  }, [
+    picture("sf-tile-img", payload),
+    h2("figcaption", {}, [titleOf(payload)])
+  ]));
   arg.slots.row(RowSlot.cardsFace, (payload) => {
-    let src = mapOr(payload.image, "", (image) => image.src);
-    let alt = mapOr(payload.image, "", (image) => image.alt);
-    let price = mapOr(Row.money(payload.row, "price"), "", Format.money);
+    let at = Row.text(payload.row, "placedAt");
+    let heading = at !== void 0 ? Format.isoDay(at) : titleOf(payload);
+    let items = map(Row.array(payload.row, "productIds"), (ids) => {
+      let match = Row.text(payload.row, "firstProductName");
+      let match$1 = ids.length;
+      if (match !== void 0) {
+        if (match$1 !== 1) {
+          return match + " + " + (match$1 - 1 | 0).toString() + " more";
+        } else {
+          return match;
+        }
+      } else if (match$1 !== 1) {
+        return match$1.toString() + " items";
+      } else {
+        return "1 item";
+      }
+    });
+    let summary = filterMap([
+      map(Row.money(payload.row, "price"), Format.money),
+      items
+    ], (line) => line);
     return h2("div", {
       className: "sf-face"
     }, [
-      h2("img", {
-        className: "sf-face-img",
-        src,
-        alt
-      }, []),
+      picture("sf-face-img", payload),
       h2("div", {
         className: "sf-face-name"
-      }, [titleOf(payload)]),
+      }, [heading]),
       h2("div", {
         className: "sf-face-price"
-      }, [price]),
-      h2("div", {
-        className: "sf-face-actions"
-      }, getOr(payload.actions, []).map((action) => h2("button", {
-        key: action.label,
-        onClick: action.run
-      }, [action.label])))
+      }, [summary.join(" \xB7 ")])
     ]);
   });
   arg.slots.row(RowSlot.detailMedia, (payload) => {
-    let image = payload.image;
-    if (image === void 0) {
-      return h2("div", {
-        className: "sf-media"
-      }, []);
-    }
     let match = Row.firstAttachment(payload.row, "productImages");
     let caption;
     if (match !== void 0) {
@@ -274,14 +349,11 @@ function register(arg) {
     }
     return h2("div", {
       className: "sf-media"
-    }, [h2("img", {
-      src: image.src,
-      alt: image.alt
-    }, [])].concat(caption));
+    }, [picture("sf-media-img", payload)].concat(caption));
   });
   arg.slots.row(RowSlot.trackerSummary, (payload) => {
-    let placed = mapOr(Row.text(payload.row, "placedAt"), [], (at) => ["Placed " + Format.day(at)]);
-    let shipped = mapOr(Row.text(payload.row, "shippedAt"), [], (at) => ["shipped " + Format.day(at)]);
+    let placed = mapOr(Row.text(payload.row, "placedAt"), [], (at) => ["Placed " + Format.isoDay(at)]);
+    let shipped = mapOr(Row.text(payload.row, "shippedAt"), [], (at) => ["shipped " + Format.isoDay(at)]);
     return h2("span", {
       className: "sf-summary"
     }, [placed.concat(shipped).join(" \xB7 ")]);

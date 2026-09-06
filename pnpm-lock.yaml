@@ -951,8 +951,8 @@ importers:
         specifier: workspace:*
         version: link:../../../reventless/spec
       '@reventlessdev/reventless-ui-slots':
-        specifier: 3.0.0-alpha.2
-        version: 3.0.0-alpha.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rescript@12.3.0)
+        specifier: 3.0.0-alpha.3
+        version: 3.0.0-alpha.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rescript@12.3.0)
       sury:
         specifier: 11.0.0-rc.2
         version: 11.0.0-rc.2(rescript@12.3.0)
@@ -4787,8 +4787,8 @@ packages:
     cpu: [x64]
     os: [linux]
 
-  '@reventlessdev/reventless-ui-slots@3.0.0-alpha.2':
-    resolution: {integrity: sha512-eCCELqeKwEBDPCuiujjkcEuDJqU2s7wlP2/ePoo9LZ2XoaEo79vBClrJUtHevC5Rt7SHTJjBabZu6wdet+Iw5Q==}
+  '@reventlessdev/reventless-ui-slots@3.0.0-alpha.3':
+    resolution: {integrity: sha512-qYVfC+wqNUqsSpj1piVxDO1OJyALVFmUcbvkVXczYT83Ez4bmGUl35XQUNOCR2nCFcsFAIFFYKDu39b8HwypYA==}
     peerDependencies:
       react: '>=18'
       rescript: ^12.3.0
@@ -17760,7 +17760,7 @@ snapshots:
   '@reventlessdev/reventless-ppx-linux-x64@1.0.0-alpha.77':
     optional: true
 
-  '@reventlessdev/reventless-ui-slots@3.0.0-alpha.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rescript@12.3.0)':
+  '@reventlessdev/reventless-ui-slots@3.0.0-alpha.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rescript@12.3.0)':
     dependencies:
       '@rescript/react': 0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
     optionalDependencies:

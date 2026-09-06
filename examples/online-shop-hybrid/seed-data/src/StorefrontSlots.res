@@ -50,7 +50,7 @@ let styles = `
   .sf-tile { position: relative; display: block; width: 100%; padding: 0;
     border: 0; border-radius: 12px; overflow: hidden; cursor: pointer;
     background: #1b1b1f; aspect-ratio: 4 / 3; }
-  .sf-tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .sf-tile-img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .sf-tile figcaption { position: absolute; inset: auto 0 0 0;
     padding: 1.5rem .75rem .6rem; font-size: 1rem; font-weight: 600; color: #fff;
     text-align: left; background: linear-gradient(to top, rgba(0,0,0,.72), transparent); }
@@ -63,8 +63,18 @@ let styles = `
   .sf-face-actions { margin-top: auto; display: flex; gap: .5rem; flex-wrap: wrap; }
 
   .sf-media { display: grid; gap: .5rem; }
-  .sf-media img { width: 100%; border-radius: 12px; object-fit: cover; }
+  .sf-media-img { width: 100%; border-radius: 12px; object-fit: cover;
+    aspect-ratio: 1 / 1; }
   .sf-media figcaption { font-size: .8rem; opacity: .7; }
+
+  /* "This row has no picture", which is a different statement from a broken
+     image — and the one a half-entered catalogue should be making. Dashed so it
+     reads as a placeholder rather than as content. */
+  .sf-noimg { display: flex; align-items: center; justify-content: center;
+    background: repeating-linear-gradient(45deg, #f4f4f5, #f4f4f5 8px, #ececef 8px, #ececef 16px);
+    border: 1px dashed #c9c9cf; color: #6b6b76; font-size: .75rem;
+    letter-spacing: .02em; }
+  .sf-tile .sf-noimg { border: 0; }
 
   .sf-summary { font-size: .8rem; opacity: .7; font-variant-numeric: tabular-nums; }
 `
@@ -79,46 +89,78 @@ let register = (arg: Slots.registerArg): unit => {
 
   let h = (tag, props, children) => Slots.h(arg.h, tag, props, children)
 
+  // The picture, or a panel that says there isn't one.
+  //
+  // An `<img>` with an empty `src` is a broken-image icon in every browser, and
+  // that reads as a deployment that is broken rather than a row that has no
+  // picture. A view whose rows mostly lack images — a shop mid-catalogue-entry —
+  // would otherwise look like a fault.
+  let picture = (~className: string, payload: Slots.rowPayload) =>
+    switch payload.image {
+    | Some(image) => h("img", {"className": className, "src": image.src, "alt": image.alt}, [])
+    | None =>
+      h(
+        "div",
+        {"className": className ++ " sf-noimg", "role": "img", "aria-label": "No image"},
+        [h("span", Object.make(), [React.string("No image")])],
+      )
+    }
+
   // A category, as a picture with its name over it. Drawn wherever a view opens
   // as a gallery — in this shop, Categories.
-  arg.slots.row(Slots.RowSlot.galleryTile, payload => {
-    let picture = switch payload.image {
-    | Some(image) => [h("img", {"src": image.src, "alt": image.alt}, [])]
-    | None => []
-    }
+  arg.slots.row(Slots.RowSlot.galleryTile, payload =>
     h(
       "figure",
       {"className": "sf-tile", "onClick": payload.openRow, "role": "button"},
-      picture->Array.concat([
+      [
+        picture(~className="sf-tile-img", payload),
         h("figcaption", Object.make(), [React.string(Slots.titleOf(payload))]),
-      ]),
+      ],
     )
-  })
+  )
 
-  // A product's card face: the picture, the name, the price, and whatever this
-  // caller may actually start from here. `actions` is already filtered — an
-  // empty list means this caller has nothing to offer on this row, not that the
-  // shop has no commands.
+  // A card face: the picture, a heading, and the one line of summary the row can
+  // honestly offer.
+  //
+  // **Written against the row, not against Products.** A slot id is registered
+  // once and drawn by every view that opens in that mode, so this face is what
+  // Orders gets the moment a caller switches to Cards — and a face that assumed
+  // a product showed an order a broken picture and a uuid. What it draws is
+  // whatever the row turns out to carry.
+  //
+  // Actions are deliberately absent: the mode draws the action row underneath
+  // the face, so rendering them here shows every offer twice.
   arg.slots.row(Slots.RowSlot.cardsFace, payload => {
-    let src = payload.image->Option.mapOr("", image => image.src)
-    let alt = payload.image->Option.mapOr("", image => image.alt)
-    let price = Slots.Row.money(payload.row, "price")->Option.mapOr("", Slots.Format.money)
+    // An order has no name of its own, so its label falls back to its id. A uuid
+    // is not a heading; when it was placed is the thing a person recognises.
+    let heading = switch Slots.Row.text(payload.row, "placedAt") {
+    | Some(at) => Slots.Format.isoDay(at)
+    | None => Slots.titleOf(payload)
+    }
+    // What the row can say about itself: a product says its price, an order says
+    // what was bought and how much of it. `firstProductName` is the name the
+    // order *recorded* at placement, not the catalog's current one — so an order
+    // still reads correctly after the product is renamed or withdrawn.
+    let items = Slots.Row.array(payload.row, "productIds")->Option.map(ids =>
+      switch (Slots.Row.text(payload.row, "firstProductName"), Array.length(ids)) {
+      | (Some(name), 1) => name
+      | (Some(name), n) => name ++ " + " ++ Int.toString(n - 1) ++ " more"
+      | (None, 1) => "1 item"
+      | (None, n) => Int.toString(n) ++ " items"
+      }
+    )
+    let summary =
+      [
+        Slots.Row.money(payload.row, "price")->Option.map(Slots.Format.money),
+        items,
+      ]->Array.filterMap(line => line)
     h(
       "div",
       {"className": "sf-face"},
       [
-        h("img", {"className": "sf-face-img", "src": src, "alt": alt}, []),
-        h("div", {"className": "sf-face-name"}, [React.string(Slots.titleOf(payload))]),
-        h("div", {"className": "sf-face-price"}, [React.string(price)]),
-        h(
-          "div",
-          {"className": "sf-face-actions"},
-          payload.actions
-          ->Option.getOr([])
-          ->Array.map(action =>
-            h("button", {"key": action.label, "onClick": action.run}, [React.string(action.label)])
-          ),
-        ),
+        picture(~className="sf-face-img", payload),
+        h("div", {"className": "sf-face-name"}, [React.string(heading)]),
+        h("div", {"className": "sf-face-price"}, [React.string(summary->Array.join(" · "))]),
       ],
     )
   })
@@ -135,22 +177,17 @@ let register = (arg: Slots.registerArg): unit => {
   //
   // Drawing the rest needs the payload to carry them resolved. That is a change
   // to the slot contract, not something to work around here.
-  arg.slots.row(Slots.RowSlot.detailMedia, payload =>
-    switch payload.image {
-    | None => h("div", {"className": "sf-media"}, [])
-    | Some(image) =>
-      let caption = switch Slots.Row.firstAttachment(payload.row, "productImages") {
-      | Some((_altText, Some(caption))) =>
-        [h("figcaption", Object.make(), [React.string(caption)])]
-      | Some(_) | None => []
-      }
-      h(
-        "div",
-        {"className": "sf-media"},
-        [h("img", {"src": image.src, "alt": image.alt}, [])]->Array.concat(caption),
-      )
+  arg.slots.row(Slots.RowSlot.detailMedia, payload => {
+    let caption = switch Slots.Row.firstAttachment(payload.row, "productImages") {
+    | Some((_altText, Some(caption))) => [h("figcaption", Object.make(), [React.string(caption)])]
+    | Some(_) | None => []
     }
-  )
+    h(
+      "div",
+      {"className": "sf-media"},
+      [picture(~className="sf-media-img", payload)]->Array.concat(caption),
+    )
+  })
 
   // The line beside an order's name on the tracker: when it was placed, and when
   // it shipped once it has.
@@ -163,8 +200,8 @@ let register = (arg: Slots.registerArg): unit => {
   // is the one thing the tracker exists to avoid. The mode already draws it
   // correctly; leaving it alone is the point of a slot.
   arg.slots.row(Slots.RowSlot.trackerSummary, payload => {
-    let placed = Slots.Row.text(payload.row, "placedAt")->Option.mapOr([], at => ["Placed " ++ Slots.Format.day(at)])
-    let shipped = Slots.Row.text(payload.row, "shippedAt")->Option.mapOr([], at => ["shipped " ++ Slots.Format.day(at)])
+    let placed = Slots.Row.text(payload.row, "placedAt")->Option.mapOr([], at => ["Placed " ++ Slots.Format.isoDay(at)])
+    let shipped = Slots.Row.text(payload.row, "shippedAt")->Option.mapOr([], at => ["shipped " ++ Slots.Format.isoDay(at)])
     h(
       "span",
       {"className": "sf-summary"},
