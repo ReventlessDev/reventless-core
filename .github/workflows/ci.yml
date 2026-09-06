@@ -206,6 +206,17 @@ jobs:
         if: steps.build.outcome == 'success'
         run: pnpm run check:dcb-scope
 
+      # A Pulumi Output is a Proxy that answers ReScript's nested-option probe,
+      # so any generic Option combinator over one replaces it with the
+      # {BS_PRIVATE_NESTED_SOME_NONE: 0} sentinel — a type-correct None the
+      # compiler is happy with. Construction is safe, which is what makes it
+      # slippery: a field can sit unharmed for years and break when someone adds
+      # one ->Option.map. It reaches nothing else — the hazard needs a live
+      # Pulumi runtime, so the jest suites cannot see it, and it has escaped to
+      # production twice. Runs without a build because it reads .res sources.
+      - name: Check no Pulumi Output reaches an option combinator
+        run: pnpm run check:pulumi-option
+
       # A declared slot module is imported by the browser straight from the
       # served origin, with no bundler and no import map — so it has to compile
       # to zero imports, and one `Option.getOr` where a `switch` would do is
