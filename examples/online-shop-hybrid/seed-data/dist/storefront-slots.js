@@ -30,6 +30,9 @@ function valFromOption(x) {
 }
 
 // node_modules/@rescript/runtime/lib/es6/Stdlib_Array.js
+function reduce(arr, init, f) {
+  return arr.reduce(f, init);
+}
 function filterMap(a, f) {
   let l = a.length;
   let r = new Array(l);
@@ -238,6 +241,20 @@ var RowSlot = {
   detailAside,
   all
 };
+var cardsEmpty = "cards.empty";
+var galleryEmpty = "gallery.empty";
+var listSelection = "list.selection";
+var all$1 = [
+  cardsEmpty,
+  galleryEmpty,
+  listSelection
+];
+var ViewSlot = {
+  cardsEmpty,
+  galleryEmpty,
+  listSelection,
+  all: all$1
+};
 var Format = {
   money: money$1,
   day,
@@ -276,6 +293,19 @@ var styles = `
   .sf-tile .sf-noimg { border: 0; }
 
   .sf-summary { font-size: .8rem; opacity: .7; font-variant-numeric: tabular-nums; }
+
+  .sf-basket { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap;
+    padding: .6rem .9rem; margin-bottom: .75rem; border-radius: 12px;
+    background: #1b1b1f; color: #fff; }
+  .sf-basket-count { font-weight: 600; white-space: nowrap; }
+  /* The names take the slack and the buttons keep their size, so a basket of
+     twelve does not push checkout off the end of the bar. */
+  .sf-basket-items { flex: 1 1 auto; min-width: 0; opacity: .8; font-size: .85rem;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sf-basket-total { font-variant-numeric: tabular-nums; font-weight: 600;
+    white-space: nowrap; }
+  .sf-basket-go { border: 0; border-radius: 999px; padding: .4rem 1.1rem;
+    background: #fff; color: #1b1b1f; font-weight: 600; cursor: pointer; }
 `;
 function register(arg) {
   ensureStyles("storefront-slots", styles);
@@ -350,6 +380,36 @@ function register(arg) {
     return h2("div", {
       className: "sf-media"
     }, [picture("sf-media-img", payload)].concat(caption));
+  });
+  arg.slots.view(ViewSlot.listSelection, (payload) => {
+    let picked = getOr(payload.picked, []);
+    let prices = filterMap(picked, (p) => Row.money(p.row, "price"));
+    let total;
+    if (prices.length !== picked.length || prices.length === 0) {
+      total = [];
+    } else {
+      let match = prices[0];
+      let currency = match[1];
+      total = prices.every((param) => param[1] === currency) ? [h2("span", {
+        className: "sf-basket-total"
+      }, [Format.money([
+        reduce(prices, 0, (sum, param) => sum + param[0]),
+        currency
+      ])])] : [];
+    }
+    return h2("div", {
+      className: "sf-basket"
+    }, [
+      h2("span", {
+        className: "sf-basket-count"
+      }, [picked.length.toString() + " in basket"]),
+      h2("span", {
+        className: "sf-basket-items"
+      }, [picked.map(titleOf).join(" \xB7 ")])
+    ].concat(total).concat([h2("button", {
+      className: "sf-basket-go",
+      onClick: payload.run
+    }, ["Checkout"])]));
   });
   arg.slots.row(RowSlot.trackerSummary, (payload) => {
     let placed = mapOr(Row.text(payload.row, "placedAt"), [], (at) => ["Placed " + Format.isoDay(at)]);

@@ -35,6 +35,19 @@ let styles = `
   .sf-tile .sf-noimg { border: 0; }
 
   .sf-summary { font-size: .8rem; opacity: .7; font-variant-numeric: tabular-nums; }
+
+  .sf-basket { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap;
+    padding: .6rem .9rem; margin-bottom: .75rem; border-radius: 12px;
+    background: #1b1b1f; color: #fff; }
+  .sf-basket-count { font-weight: 600; white-space: nowrap; }
+  /* The names take the slack and the buttons keep their size, so a basket of
+     twelve does not push checkout off the end of the bar. */
+  .sf-basket-items { flex: 1 1 auto; min-width: 0; opacity: .8; font-size: .85rem;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sf-basket-total { font-variant-numeric: tabular-nums; font-weight: 600;
+    white-space: nowrap; }
+  .sf-basket-go { border: 0; border-radius: 999px; padding: .4rem 1.1rem;
+    background: #fff; color: #1b1b1f; font-weight: 600; cursor: pointer; }
 `;
 
 function register(arg) {
@@ -110,6 +123,36 @@ function register(arg) {
     return h("div", {
       className: "sf-media"
     }, [picture("sf-media-img", payload)].concat(caption));
+  });
+  arg.slots.view(ReventlessSlots.ViewSlot.listSelection, payload => {
+    let picked = Stdlib_Option.getOr(payload.picked, []);
+    let prices = Stdlib_Array.filterMap(picked, p => ReventlessSlots.Row.money(p.row, "price"));
+    let total;
+    if (prices.length !== picked.length || prices.length === 0) {
+      total = [];
+    } else {
+      let match = prices[0];
+      let currency = match[1];
+      total = prices.every(param => param[1] === currency) ? [h("span", {
+            className: "sf-basket-total"
+          }, [ReventlessSlots.Format.money([
+              Stdlib_Array.reduce(prices, 0.0, (sum, param) => sum + param[0]),
+              currency
+            ])])] : [];
+    }
+    return h("div", {
+      className: "sf-basket"
+    }, [
+      h("span", {
+        className: "sf-basket-count"
+      }, [picked.length.toString() + " in basket"]),
+      h("span", {
+        className: "sf-basket-items"
+      }, [picked.map(ReventlessSlots.titleOf).join(" · ")])
+    ].concat(total).concat([h("button", {
+        className: "sf-basket-go",
+        onClick: payload.run
+      }, ["Checkout"])]));
   });
   arg.slots.row(ReventlessSlots.RowSlot.trackerSummary, payload => {
     let placed = Stdlib_Option.mapOr(ReventlessSlots.Row.text(payload.row, "placedAt"), [], at => ["Placed " + ReventlessSlots.Format.isoDay(at)]);

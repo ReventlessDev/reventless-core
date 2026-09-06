@@ -77,6 +77,19 @@ let styles = `
   .sf-tile .sf-noimg { border: 0; }
 
   .sf-summary { font-size: .8rem; opacity: .7; font-variant-numeric: tabular-nums; }
+
+  .sf-basket { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap;
+    padding: .6rem .9rem; margin-bottom: .75rem; border-radius: 12px;
+    background: #1b1b1f; color: #fff; }
+  .sf-basket-count { font-weight: 600; white-space: nowrap; }
+  /* The names take the slack and the buttons keep their size, so a basket of
+     twelve does not push checkout off the end of the bar. */
+  .sf-basket-items { flex: 1 1 auto; min-width: 0; opacity: .8; font-size: .85rem;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sf-basket-total { font-variant-numeric: tabular-nums; font-weight: 600;
+    white-space: nowrap; }
+  .sf-basket-go { border: 0; border-radius: 999px; padding: .4rem 1.1rem;
+    background: #fff; color: #1b1b1f; font-weight: 600; cursor: pointer; }
 `
 
 // ── The renderers ───────────────────────────────────────────────────────────
@@ -199,6 +212,76 @@ let register = (arg: Slots.registerArg): unit => {
   // path out as a list, which drifts silently the day a transition is added and
   // is the one thing the tracker exists to avoid. The mode already draws it
   // correctly; leaving it alone is the point of a slot.
+  // The basket: the rows a shopper picked out of the product grid, and the one
+  // command that takes the lot.
+  //
+  // Drawn from `picked` rather than `selection`. The ids alone would leave this
+  // with nothing to say — a list's window is replaced page by page, so a product
+  // picked on page 1 is gone from `rows` by page 3, and naming what is in the
+  // basket is the whole of this region's job.
+  //
+  // **No "Clear".** The payload carries no way to empty the selection — the
+  // shipped bar is handed one, a slot is not. Rows can still be unpicked one at
+  // a time from their checkboxes, so nothing is unreachable; drawing a button
+  // that cannot work would be worse. Like the tracker strip below, this wants a
+  // payload change rather than a workaround here.
+  arg.slots.view(Slots.ViewSlot.listSelection, payload => {
+    let picked = payload.picked->Option.getOr([])
+    let prices = picked->Array.filterMap(p => Slots.Row.money(p.row, "price"))
+    // A total only where one can be told truthfully. This catalogue prices in
+    // more than one currency, so adding the numbers would produce a figure in no
+    // currency at all. Shown when every picked row carries a price and they all
+    // agree on the currency; omitted otherwise, rather than quietly summing
+    // dollars into euros.
+    let total = if Array.length(prices) != Array.length(picked) || Array.length(prices) == 0 {
+      []
+    } else {
+      let (_, currency) = prices->Array.getUnsafe(0)
+      if prices->Array.every(((_, c)) => c == currency) {
+        [
+          h(
+            "span",
+            {"className": "sf-basket-total"},
+            [
+              React.string(
+                Slots.Format.money((
+                  prices->Array.reduce(0.0, (sum, (amount, _)) => sum +. amount),
+                  currency,
+                )),
+              ),
+            ],
+          ),
+        ]
+      } else {
+        []
+      }
+    }
+    h(
+      "div",
+      {"className": "sf-basket"},
+      [
+        h(
+          "span",
+          {"className": "sf-basket-count"},
+          [React.string(Int.toString(Array.length(picked)) ++ " in basket")],
+        ),
+        h(
+          "span",
+          {"className": "sf-basket-items"},
+          [React.string(picked->Array.map(Slots.titleOf)->Array.join(" · "))],
+        ),
+      ]
+      ->Array.concat(total)
+      ->Array.concat([
+        h(
+          "button",
+          {"className": "sf-basket-go", "onClick": payload.run},
+          [React.string("Checkout")],
+        ),
+      ]),
+    )
+  })
+
   arg.slots.row(Slots.RowSlot.trackerSummary, payload => {
     let placed = Slots.Row.text(payload.row, "placedAt")->Option.mapOr([], at => ["Placed " ++ Slots.Format.isoDay(at)])
     let shipped = Slots.Row.text(payload.row, "shippedAt")->Option.mapOr([], at => ["shipped " ++ Slots.Format.isoDay(at)])
