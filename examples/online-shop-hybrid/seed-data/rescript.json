@@ -23,7 +23,9 @@
     "@reventlessdev/online-shop-hybrid-catalog",
     "@reventlessdev/online-shop-hybrid-catalog-spec",
     "@reventlessdev/online-shop-hybrid-ordering",
-    "@reventlessdev/online-shop-hybrid-ordering-spec"
+    "@reventlessdev/online-shop-hybrid-ordering-spec",
+    "@reventlessdev/reventless-ui-slots",
+    "@rescript/react"
   ],
   "compiler-flags": [],
   "suffix": ".res.mjs"

@@ -6,6 +6,7 @@
           "group": "Shop",
           "order": 0
         },
+        "mode": "cards",
         "rowActions": [
           {
             "label": "Order",
@@ -21,13 +22,22 @@
         "nav": {
           "group": "Shop",
           "order": 10
-        }
+        },
+        "mode": "gallery"
       },
       "ProductDemand": {
         "nav": {
           "label": "Demand",
           "group": "Merchandising",
           "order": 30
+        }
+      }
+    },
+    "audiences": {
+      "Merchandiser": {
+        "views": {
+          "Products": { "mode": "table" },
+          "Categories": { "mode": "table" }
         }
       }
     }
@@ -40,7 +50,8 @@
           "label": "All Orders",
           "scopedLabel": "My Orders",
           "order": 20
-        }
+        },
+        "mode": "tracker"
       },
       "NotificationSubscriptions": {
         "nav": {
@@ -60,6 +71,13 @@
           "label": "Notification Deliveries",
           "scopedLabel": "My Notifications",
           "order": 26
+        }
+      }
+    },
+    "audiences": {
+      "Fulfilment": {
+        "views": {
+          "Orders": { "mode": "board" }
         }
       }
     },

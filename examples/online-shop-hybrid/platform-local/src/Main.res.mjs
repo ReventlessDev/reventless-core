@@ -30,6 +30,7 @@ Platform.makePlatform(PackageVersion$Reventless.fromCwd(), [
   }
 ], {
   uiHintsFile: Storefront$OnlineShopHybridSeed.uiHintsFile,
+  uiSlotsFile: Storefront$OnlineShopHybridSeed.uiSlotsFile,
   bakedManifest: Storefront$OnlineShopHybridSeed.manifest,
   messagingSender: messagingSender,
   shellConfig: Object.fromEntries([

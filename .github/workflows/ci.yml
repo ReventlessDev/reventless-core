@@ -201,6 +201,16 @@ jobs:
         if: steps.build.outcome == 'success'
         run: pnpm run check:dcb-scope
 
+      # A declared slot module is imported by the browser straight from the
+      # served origin, with no bundler and no import map — so it has to compile
+      # to zero imports, and one `Option.getOr` where a `switch` would do is
+      # enough to break it. Nothing else notices: the shell logs what it could
+      # not import and every mode draws its own regions, which looks exactly like
+      # a deployment that declared no slots.
+      - name: Check slot modules load in a browser
+        if: steps.build.outcome == 'success'
+        run: pnpm run check:slots
+
       - name: Run unit tests (all)
         if: steps.build.outcome == 'success' && steps.affected.outputs.select == 'all'
         run: pnpm run test

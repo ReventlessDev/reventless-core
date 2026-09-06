@@ -17,7 +17,7 @@
     "serve:watch": "REVENTLESS_LOCAL_BACKEND=${REVENTLESS_LOCAL_BACKEND:-sqlite:./.reventless/local.db} NODE_OPTIONS='--disable-warning=ExperimentalWarning' npx tsx watch --clear-screen=false --exclude '**/node_modules/**' --include '../catalog/src/**/*.res.mjs' --include '../catalog-spec/src/**/*.res.mjs' --include '../ordering/src/**/*.res.mjs' --include '../ordering-spec/src/**/*.res.mjs' --include '../../../reventless/core/src/**/*.res.mjs' --include '../../../reventless/local/src/**/*.res.mjs' --include '../../../reventless/spec/src/**/*.res.mjs' --include '../../../reventless/infra/src/**/*.res.mjs' src/Main.res.mjs",
     "dev": "REVENTLESS_LOCAL_BACKEND=${REVENTLESS_LOCAL_BACKEND:-sqlite:./.reventless/local.db} NODE_OPTIONS='--disable-warning=ExperimentalWarning' GRAPHQL_DEBUG=1 MCP_DEBUG=1 npx tsx src/Main.res.mjs",
     "dev:ui": "[ -d reventless-ui ] && pnpm --filter ./reventless-ui run dev:ui || reventless-host-shell",
-    "dev:full": "REVENTLESS_LOCAL_BACKEND=${REVENTLESS_LOCAL_BACKEND:-sqlite:./.reventless/local.db} concurrently --names rs,backend,ui --prefix-colors blue,cyan,magenta 'pnpm -w run watch' 'pnpm run serve:watch' 'npx wait-on tcp:4001 && pnpm run dev:ui'",
+    "dev:full": "REVENTLESS_LOCAL_BACKEND=${REVENTLESS_LOCAL_BACKEND:-sqlite:./.reventless/local.db} concurrently --names rs,slots,backend,ui --prefix-colors blue,green,cyan,magenta 'pnpm -w run watch' 'pnpm -w run watch:slots' 'pnpm run serve:watch' 'npx wait-on tcp:4001 && pnpm run dev:ui'",
     "dev:full:memory": "REVENTLESS_LOCAL_BACKEND=memory pnpm run dev:full",
     "dev:full:reset": "REVENTLESS_LOCAL_BACKEND='sqlite:./.reventless/local.db?reset' pnpm run dev:full",
     "seed:reset": "NODE_OPTIONS='--disable-warning=ExperimentalWarning' node src/SeedLocalReset.res.mjs"
@@ -39,7 +39,7 @@
     }
   },
   "optionalDependencies": {
-    "@reventlessdev/reventless-host-shell": "3.0.0-alpha.94"
+    "@reventlessdev/reventless-host-shell": "3.0.0-alpha.95"
   },
   "dependencies": {
     "@reventlessdev/online-shop-hybrid-catalog": "workspace:*",

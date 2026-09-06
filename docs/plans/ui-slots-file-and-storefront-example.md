@@ -2,12 +2,14 @@
 
 **Date:** 2026-09-05
 
-**Status.** §2, §3 and §4 are done — the declaration exists on both platforms,
-the local platform serves and watches the declared module, and the AWS deploy
-writes it beside `config.json`. §6 has the deployment half (`uiSlotsFile` in
-`ui-configuration.md` §4.1, and the local watch loop in the local-dev guide); the
-hint-side vocabulary it also names (`audiences`, `slots` per view) belongs to the
-host shell package and is written when that ships.
+**Status.** Done, bar one browser check (§7). Both platforms take the
+declaration, serve the module and name it; the hybrid example declares one and is
+pinned to the shell release that loads it; the guides carry the vocabulary.
+
+§6's "`slots` per view" turned out not to exist and should not: a region is
+offered by a **mode**, so a hint choosing `gallery` is what puts a tile on
+screen. That is what lets one module answer differently per audience, and it is
+documented as the mechanism rather than as a missing key.
 
 **The seam is connected.** The declaration writes two things, and needs both: the
 module as an object, and the `uiSlotsUrl` key naming it. `SlotModules.load`
@@ -19,13 +21,29 @@ is computed on both platforms and refuses a `shellConfig` redirect, like
 `ReventlessCore.Platform_UiSlots` so the four places that must agree cannot
 drift.
 
-**Still blocked: §5, the example — now on a release rather than on the work.**
-The UI half has landed (`reventless-ui` `49feb25`, plus the public
-`@reventlessdev/reventless-ui-slots` package) but is **unpublished**: the latest
-`reventless-host-shell` is `3.0.0-alpha.94`, which the example pins and which
-contains no slot loader. §5 needs that release and the pin bumped to it.
-Declaring a `uiSlotsFile` against `alpha.94` writes and serves the file
-correctly, and nothing imports it.
+**§5 is done.** `reventless-host-shell@3.0.0-alpha.95` carries the loader, the
+hybrid example is pinned to it, and `storefront-slots.js` is declared, served,
+watched and named on both roots. Verified against the running platform: the boot
+writes `config.json` with `uiSlotsUrl: "/ui-slots.js"`, serves the module
+byte-identical to its source, and re-serves it on save.
+
+**Two of the plan's own suggestions did not survive contact, both for the same
+reason — the payload does not carry what drawing them would need:**
+
+- **The tracker's step strip.** §5 asks for "a tracker step label", but a
+  tracker's steps come from the lifecycle's *declared transitions* and the row
+  payload does not carry them. Registering `tracker.steps` would mean writing the
+  path out as a list in the renderer, which drifts the day a transition is added
+  and is the one thing the tracker exists to avoid. The example registers
+  `tracker.summary` instead and says why in place.
+- **The rest of a product's image set.** `detail.media` draws only the resolved
+  primary. The other members hold storage *refs*, and rebasing one against the
+  deployment's asset origins is the producer's job — the same reaching-past-the-
+  payload the seam forbids.
+
+Both are the §5 rule ("keep the example honest about what it does not have")
+applied to cases §5 did not anticipate. Each wants a payload change, which is a
+slot-contract change, not a workaround.
 
 This is the deliberate shape of the seam, not an accident of ordering: the file
 is served whether or not anything imports it, so the deployment half can land,
@@ -172,6 +190,30 @@ change and run, which is the whole reason the seam is public rather than private
   ReScript, no dependency, exporting one `register`. It should be readable in one
   sitting: a category tile, a product face, a product media panel, a tracker step
   label, and a small stylesheet's worth of tokens.
+
+  **Written in ReScript instead** (`src/StorefrontSlots.res`), against the
+  published `@reventlessdev/reventless-ui-slots` contract, with
+  `scripts/bundle-slot-modules.mjs` producing the file the declaration names.
+
+  The payload shapes are what this file is easiest to get wrong —
+  `CaptionedImage` is `{ref, altText?, caption?}` where `ref` is a storage ref
+  rather than a URL, and `Money.amount` is minor units at a scale the currency
+  decides — and both *were* got wrong while writing a JavaScript version of it. A
+  compiler is a better place to find that than a browser. Using the package's own
+  types also means the slot ids are `RowSlot.galleryTile` rather than strings, so
+  a typo is a compile error instead of a console warning.
+
+  Bundling is what the contract package documents, and it buys the whole
+  contract: a zero-import module cannot use `ReventlessSlots.h` or the slot-id
+  constants (both are values, and every cross-module value emits an import), so
+  avoiding a bundler means retyping the contract locally and casting with
+  `%identity` — spending type safety to save a build step.
+
+  Two properties the bundle must have, both checked by `check:slots` because both
+  fail silently: **no surviving specifier** (the shell logs what it could not
+  import and every mode draws its own regions), and **no React** (a second copy
+  renders fine until a renderer calls a hook, where the dispatcher belongs to the
+  other copy).
 - **`seed-data/ui-hints.json`** — the audience block that switches them on,
   which is the part to keep small on purpose. The demonstration is that the file
   deciding what a caller sees is a JSON edit that can be made and reverted live.
@@ -230,6 +272,22 @@ explicitly, because both are load-bearing and neither is guessable:
   surface returns to the generated console with no reload and no deploy. That
   last step is the verification that matters; if it does not work live, the seam
   is not finished whatever the unit tests say.
+
+  **Partly done, and one sentence above needs correcting.** Verified against the
+  running platform: the module is served byte-identical, `config.json` names it,
+  and an edit re-serves in about a second with no restart. The module was also
+  driven directly — all four renderers draw, and none throws on a row with every
+  optional field missing.
+
+  What is *not* verified is the part needing a browser and a login: switching
+  role and watching the views redraw.
+
+  And the audience block is the wrong thing to delete. A storefront shopper acts
+  as no role, so it reads the **base** block — which is where the shop's modes
+  have to live, with `audiences` holding the *operator* overrides back to table
+  and board. Deleting the audience block returns the operators to the shop view;
+  it is deleting the base `mode` lines that returns everyone to the generated
+  console.
 
 ---
 

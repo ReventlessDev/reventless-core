@@ -843,8 +843,8 @@ importers:
         specifier: workspace:*
         version: link:../../../reventless/aws
       '@reventlessdev/reventless-host-shell':
-        specifier: 3.0.0-alpha.94
-        version: 3.0.0-alpha.94(@types/node@25.6.0)(jiti@1.21.7)(node-fetch@2.7.0(encoding@0.1.13))(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
+        specifier: 3.0.0-alpha.95
+        version: 3.0.0-alpha.95(@types/node@25.6.0)(jiti@1.21.7)(node-fetch@2.7.0(encoding@0.1.13))(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
       '@reventlessdev/reventless-infra':
         specifier: workspace:*
         version: link:../../../reventless/infra
@@ -918,11 +918,14 @@ importers:
         version: 11.0.0-rc.2(sury@11.0.0-rc.2(rescript@12.3.0))
     optionalDependencies:
       '@reventlessdev/reventless-host-shell':
-        specifier: 3.0.0-alpha.94
-        version: 3.0.0-alpha.94(@types/node@25.6.0)(jiti@1.21.7)(node-fetch@2.7.0(encoding@0.1.13))(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
+        specifier: 3.0.0-alpha.95
+        version: 3.0.0-alpha.95(@types/node@25.6.0)(jiti@1.21.7)(node-fetch@2.7.0(encoding@0.1.13))(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
 
   examples/online-shop-hybrid/seed-data:
     dependencies:
+      '@rescript/react':
+        specifier: ^0.13.1
+        version: 0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@reventlessdev/online-shop-hybrid-catalog':
         specifier: workspace:*
         version: link:../catalog
@@ -947,6 +950,9 @@ importers:
       '@reventlessdev/reventless-spec':
         specifier: workspace:*
         version: link:../../../reventless/spec
+      '@reventlessdev/reventless-ui-slots':
+        specifier: 3.0.0-alpha.2
+        version: 3.0.0-alpha.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rescript@12.3.0)
       sury:
         specifier: 11.0.0-rc.2
         version: 11.0.0-rc.2(rescript@12.3.0)
@@ -4749,6 +4755,12 @@ packages:
     cpu: [x64]
     os: [linux]
 
+  '@rescript/react@0.13.1':
+    resolution: {integrity: sha512-VIWtu/sAJyYmDVoAhit0LHDYQrW6RqZ6z8sh8san5cjEAT4klv8JWkiaSK3FGUfooUDkGUXXgKTkqyj8zRR21w==}
+    peerDependencies:
+      react: '>=18.0.0'
+      react-dom: '>=18.0.0'
+
   '@rescript/runtime@12.3.0':
     resolution: {integrity: sha512-8SRM2f6+LaWach8NJjYQVCCmu6KYmJCb+437L7YpaUpJBDyUOC1x0FF75shZ/Gid9guKPF3zMHrTNHLuyQkkiQ==}
 
@@ -4765,6 +4777,10 @@ packages:
     resolution: {integrity: sha512-9J//wcqxPPag5qhh8nL1nriBOmT0+4y7BH4lVDIYbY1OoiUbqHC2cYFNWcqDwsP9uvlmWDlnRSbBsj5CD+MheA==}
     hasBin: true
 
+  '@reventlessdev/reventless-host-shell@3.0.0-alpha.95':
+    resolution: {integrity: sha512-TuLF622grOtDairEAwNRTJxHobW1YGSaNjPbBQxelUtqAR82y9gtebnDV4Oyuc4DBeOLn/q0WACKdL1BH9N49g==}
+    hasBin: true
+
   '@reventlessdev/reventless-ppx-darwin-arm64@1.0.0-alpha.77':
     resolution: {integrity: sha512-7JmV7jhCInhfUuD8FlkssGbkeFvclRZJVhV2+ZNnKj1pSnb72KCv7ljeZ1e16WKKtEEK7THc1DUMJp/ym7tw0A==}
     cpu: [arm64]
@@ -4774,6 +4790,17 @@ packages:
     resolution: {integrity: sha512-XdjniS2RsYhcDxEpkEmdTI97bOsxKlniDwvcswZ0zfxzR+/JfYIYCfBrh74DVJq1yWnQTUbj3t+vXmPCJLInEQ==}
     cpu: [x64]
     os: [linux]
+
+  '@reventlessdev/reventless-ui-slots@3.0.0-alpha.2':
+    resolution: {integrity: sha512-eCCELqeKwEBDPCuiujjkcEuDJqU2s7wlP2/ePoo9LZ2XoaEo79vBClrJUtHevC5Rt7SHTJjBabZu6wdet+Iw5Q==}
+    peerDependencies:
+      react: '>=18'
+      rescript: ^12.3.0
+    peerDependenciesMeta:
+      react:
+        optional: true
+      rescript:
+        optional: true
 
   '@rollup/rollup-android-arm-eabi@4.60.2':
     resolution: {integrity: sha512-dnlp69efPPg6Uaw2dVqzWRfAWRnYVb1XJ8CyyhIbZeaq4CA5/mLeZ1IEt9QqQxmbdvagjLIm2ZL8BxXv5lH4Yw==}
@@ -17697,6 +17724,11 @@ snapshots:
   '@rescript/linux-x64@12.3.0':
     optional: true
 
+  '@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+    dependencies:
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
+
   '@rescript/runtime@12.3.0': {}
 
   '@rescript/std@11.1.4': {}
@@ -17726,11 +17758,42 @@ snapshots:
       - vue-tsc
       - yaml
 
+  '@reventlessdev/reventless-host-shell@3.0.0-alpha.95(@types/node@25.6.0)(jiti@1.21.7)(node-fetch@2.7.0(encoding@0.1.13))(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)':
+    dependencies:
+      '@module-federation/vite': 1.15.4(node-fetch@2.7.0(encoding@0.1.13))(typescript@5.9.3)(vite@6.4.2(@types/node@25.6.0)(jiti@1.21.7)(terser@5.46.1)(yaml@2.8.3))
+      vite: 6.4.2(@types/node@25.6.0)(jiti@1.21.7)(terser@5.46.1)(yaml@2.8.3)
+    transitivePeerDependencies:
+      - '@types/node'
+      - bufferutil
+      - jiti
+      - less
+      - lightningcss
+      - node-fetch
+      - sass
+      - sass-embedded
+      - stylus
+      - sugarss
+      - terser
+      - tsx
+      - typescript
+      - utf-8-validate
+      - vue-tsc
+      - yaml
+
   '@reventlessdev/reventless-ppx-darwin-arm64@1.0.0-alpha.77':
     optional: true
 
   '@reventlessdev/reventless-ppx-linux-x64@1.0.0-alpha.77':
     optional: true
+
+  '@reventlessdev/reventless-ui-slots@3.0.0-alpha.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rescript@12.3.0)':
+    dependencies:
+      '@rescript/react': 0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+    optionalDependencies:
+      react: 18.3.1
+      rescript: 12.3.0
+    transitivePeerDependencies:
+      - react-dom
 
   '@rollup/rollup-android-arm-eabi@4.60.2':
     optional: true

@@ -38,6 +38,11 @@ Platform.makePlatform(
     // storefront's nav would read right locally for a reason nothing here
     // states, and read wrong the moment it is deployed.
     uiHintsFile: OnlineShopHybridSeed.Storefront.uiHintsFile,
+    // Served beside the hints and watched the same way, so editing a renderer is
+    // a save and a refresh. `pnpm run dev:full` needs no extra process for it —
+    // and deliberately not `dev:ui`, which is for working on the shell's own
+    // source and would quietly move this example off the seam it demonstrates.
+    uiSlotsFile: OnlineShopHybridSeed.Storefront.uiSlotsFile,
     messagingSender,
     shellConfig: Dict.fromArray([
       ("appName", JSON.Encode.string("Online Shop")),

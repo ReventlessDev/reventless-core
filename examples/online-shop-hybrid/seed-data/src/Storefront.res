@@ -115,6 +115,33 @@ declaration two different files.
 let uiHintsFile = NodePath.resolve([NodeImportMeta.dirname, "../ui-hints.json"])
 
 /**
+The shop's own drawing, for the regions a hint can only point at.
+
+Beside the hints for the same reason, and resolved the same way — but it answers
+a different kind of question. A hint says *which* rendering a view gets; this
+says what one region of that rendering looks like. A tile with the name over the
+picture cannot be stated as a hint, and writing a whole view mode to get one
+means owning paging, the window sentence, the action offers and the drill target
+along with it.
+
+The two files work together: the module registers what a region draws, and
+`ui-hints.json` deciding a view opens as a gallery is what puts that region on
+the screen.
+
+**The bundle, not the source.** The browser imports this file straight from the
+served origin, so what is declared has to be what a browser can run.
+`StorefrontSlots.res` is ReScript and compiles to imports a browser cannot
+follow, so `scripts/bundle-slot-modules.mjs` resolves them into one file and that
+file is named here. `pnpm run check:slots` fails the build if a bare specifier
+ever survives into it — including `react`, which would mean a second copy of it
+in the page.
+*/
+let uiSlotsFile = NodePath.resolve([
+  NodeImportMeta.dirname,
+  "../dist/storefront-slots.js",
+])
+
+/**
 Groups whose members read across every customer.
 
 Here for the same reason the manifest is: it is a fact about this shop, not about

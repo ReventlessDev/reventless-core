@@ -852,6 +852,38 @@ export function register({ h, slots }) {
 ReScript and no dependency. `@reventlessdev/reventless-ui-slots` is what makes it
 *typed*, not what makes it *work*.
 
+**Writing it in ReScript.** `@reventlessdev/reventless-ui-slots` types the same
+contract for ReScript, and the hybrid example uses it
+(`seed-data/src/StorefrontSlots.res`):
+
+```rescript
+let register = (arg: ReventlessSlots.registerArg) =>
+  arg.slots.row(ReventlessSlots.RowSlot.galleryTile, p =>
+    ReventlessSlots.h(arg.h, "figure", {"className": "tile", "onClick": p.openRow}, [
+      ReventlessSlots.h(arg.h, "img", {"src": p.image->Option.mapOr("", i => i.src)}, []),
+    ])
+  )
+```
+
+The payload shapes and the slot ids come from the package, so a mistyped
+`gallery.tile` is a compile error rather than a console warning.
+
+Two things to know:
+
+- **Bundle it, and declare the bundle.** ReScript emits bare specifiers
+  (`@rescript/runtime/…`, the contract package) that a browser cannot resolve
+  from a served file, so bundle with esbuild or Vite and name the one file. This
+  repo does it in `scripts/bundle-slot-modules.mjs`.
+- **Build through `h`, not JSX.** React is the one thing a slot module must not
+  bring a second copy of: a foreign copy renders fine right until a renderer
+  calls a hook, where the dispatcher belongs to the other copy and it fails.
+  Built through `h` — the shell's own `createElement`, handed to `register` — the
+  module never imports React at all. JSX compiles to calls that do.
+
+Both are worth checking mechanically rather than by discipline, since a module
+that fails to load is one the shell logs and survives: `pnpm run check:slots`
+fails the build if any specifier, or React, survives into the bundle.
+
 The file is written verbatim — plain JavaScript, no bundler and no build step
 between an author and their own file. On AWS it is read at deploy time and
 written beside `config.json`; locally it is copied into the served bundle and
@@ -894,11 +926,21 @@ ships to. A declaration naming a file that does not exist still fails the build.
 The shell reports what it could not import and carries on drawing its own
 regions.
 
+**A mode is what puts a slot on screen.** There is no per-view `slots` key: a
+region is offered by a *mode*, so `gallery.tile` draws wherever a view opens as a
+gallery. That is what makes the seam answer per audience — the same module, and
+an `audiences` block choosing a different `mode` for a role, redraws the view
+without touching a renderer.
+
+The slot ids and their payloads belong to the host shell package and are
+versioned with it; `@reventlessdev/reventless-ui-slots` types them. A renderer
+registered for an id no mode offers is reported in the console rather than
+failing silently.
+
 :::note
-The slot vocabulary — which regions each mode declares, and the `slots` key that
-turns them on per view — belongs to the host shell package and ships with it.
 Declaring a `uiSlotsFile` against a shell release that predates the registry
-writes and serves the file, but nothing imports it.
+writes and serves the file, but nothing imports it. The loader ships in
+`@reventlessdev/reventless-host-shell` from `3.0.0-alpha.95`.
 :::
 
 ---

@@ -15,6 +15,7 @@ let messagingSender = Capability_Messaging$ReventlessAws.make("online-shop-sende
 
 let $$default = Platform.deployPlatform(PackageVersion$Reventless.fromCaller(), {
   uiHintsFile: Storefront$OnlineShopHybridSeed.uiHintsFile,
+  uiSlotsFile: Storefront$OnlineShopHybridSeed.uiSlotsFile,
   bakedManifest: Storefront$OnlineShopHybridSeed.manifest,
   geocoderPlaceIndex: placeIndex,
   messagingSender: messagingSender,

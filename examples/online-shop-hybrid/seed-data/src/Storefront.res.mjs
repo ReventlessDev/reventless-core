@@ -79,6 +79,8 @@ let manifest = {
 
 let uiHintsFile = Nodepath.resolve(import.meta.dirname, "../ui-hints.json");
 
+let uiSlotsFile = Nodepath.resolve(import.meta.dirname, "../dist/storefront-slots.js");
+
 let elevatedGroups = [
   "Admin",
   "Fulfilment"
@@ -87,6 +89,7 @@ let elevatedGroups = [
 export {
   manifest,
   uiHintsFile,
+  uiSlotsFile,
   elevatedGroups,
 }
 /* uiHintsFile Not a pure module */

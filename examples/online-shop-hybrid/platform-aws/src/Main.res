@@ -94,6 +94,10 @@ let default = Platform.deployPlatform(
     // host-shell package's own `ui-hints.json` as the dev-mode fallback it is,
     // so a deployed shop with nothing declared here has no curated nav at all.
     uiHintsFile: OnlineShopHybridSeed.Storefront.uiHintsFile,
+    // The same module the in-memory root serves. Written beside `config.json`
+    // and named by the `uiSlotsUrl` the deploy computes — both, because the file
+    // alone is one nothing imports.
+    uiSlotsFile: OnlineShopHybridSeed.Storefront.uiSlotsFile,
     shellConfig: Dict.fromArray([
       ("appName", JSON.Encode.string("Online Shop")),
       ("home", JSON.Encode.string("/Catalog/Products")),
