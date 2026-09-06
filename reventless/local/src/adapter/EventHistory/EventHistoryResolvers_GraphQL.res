@@ -133,6 +133,50 @@ let readFilter = (args: JSON.t): filter => {
   }
 }
 
+// The filter keys a caller did send. A caller that lost its entity id still
+// sends the rest, so naming them is what tells a reader which client this was.
+let suppliedFilterKeys = (f: filter): array<string> =>
+  [
+    ("entityId", f.entityId->Option.isSome),
+    ("tagKey", f.tagKey->Option.isSome),
+    ("tagValue", f.tagValue->Option.isSome),
+    ("eventTypes", f.eventTypes->Option.isSome),
+    ("user", f.user->Option.isSome),
+    ("timeFrom", f.timeFrom->Option.isSome),
+    ("timeTo", f.timeTo->Option.isSome),
+  ]->Array.filterMap(((key, supplied)) => supplied ? Some(key) : None)
+
+/**
+ Who asked, named the way the caller named itself: the GraphQL operation name
+ off yoga's request params, and the identity `buildAuthContext` resolved.
+
+ Both are best-effort. A context carrying neither still logs the field, because
+ a warning that needs a well-formed context to appear is a warning that goes
+ missing exactly when something is wrong.
+ */
+let callerOf = (ctx: JSON.t): string => {
+  let operation =
+    ctx
+    ->JSON.Decode.object
+    ->Option.flatMap(d => d->Dict.get("params"))
+    ->Option.flatMap(JSON.Decode.object)
+    ->Option.flatMap(d => d->Dict.get("operationName"))
+    ->Option.flatMap(JSON.Decode.string)
+  let user = Auth_GraphqlContext.extractIdentity(ctx).userId
+  switch operation {
+  | Some(name) => `operation "${name}" as ${user}`
+  | None => `an unnamed operation as ${user}`
+  }
+}
+
+// What the caller sent, in one clause: who asked and which filter keys came
+// with it.
+let describeCaller = (~ctx: JSON.t, ~filter: filter): string =>
+  switch suppliedFilterKeys(filter) {
+  | [] => `${callerOf(ctx)}, with no filter`
+  | keys => `${callerOf(ctx)}, with filter [${keys->Array.join(", ")}]`
+  }
+
 // The tag a caller means: the precise (tagKey, tagValue) pair when given,
 // otherwise the `entityId` shortcut matched against ANY tag value.
 let matchesTag = (r: record, f: filter): bool =>
@@ -305,7 +349,7 @@ module Make = (Bus: LocalBus.T) => {
         let resolver: ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn = async (
           _root,
           args,
-          _ctx,
+          ctx,
         ) => {
           let f = readFilter(args)
           let records = switch Bus.getEventLogReplay(entry.busKey) {
@@ -315,10 +359,13 @@ module Make = (Bus: LocalBus.T) => {
             | None =>
               // Not a silent empty page: an aggregate log genuinely cannot be
               // read without an id, and a caller who omitted one asked a
-              // question this log cannot answer.
+              // question this log cannot answer. Named, because the client that
+              // sent it is what a reader needs next and the warning alone sent
+              // them hunting.
               log.warn(
                 ~comp="EventHistoryResolvers_GraphQL",
-                `${fieldName}: ${displayName} is an aggregate event log — it can only be read per entity. Supply filter.entityId.`,
+                `${fieldName}: ${displayName} is an aggregate event log — it can only be read per entity. ` ++
+                `Supply filter.entityId. Asked by ${describeCaller(~ctx, ~filter=f)}.`,
               )
               []
             }

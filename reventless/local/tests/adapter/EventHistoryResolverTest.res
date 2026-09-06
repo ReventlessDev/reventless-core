@@ -206,3 +206,49 @@ describe("EventHistoryResolvers_GraphQL — pagination", () => {
     expect(page->hasNextPageOf)->toBe(false)
   })
 })
+
+// The clause the "supply filter.entityId" warning ends with. A caller that
+// cannot be named is the case that matters: the warning has to survive it.
+describe("EventHistoryResolvers_GraphQL — naming the caller", () => {
+  let ctxOf = (~operationName=?, ~userId=?, ()) => {
+    let d = Dict.make()
+    operationName->Option.forEach(name =>
+      d->Dict.set(
+        "params",
+        Dict.fromArray([("operationName", JSON.Encode.string(name))])->JSON.Encode.object,
+      )
+    )
+    userId->Option.forEach(id =>
+      d->Dict.set(
+        "identity",
+        Dict.fromArray([
+          ("userId", JSON.Encode.string(id)),
+          ("username", JSON.Encode.string(id)),
+          ("groups", []->JSON.Encode.array),
+        ])->JSON.Encode.object,
+      )
+    )
+    JSON.Encode.object(d)
+  }
+
+  testSync("name the operation, the user and the filter keys that did arrive", () =>
+    expect(
+      EH.describeCaller(
+        ~ctx=ctxOf(~operationName="AuditTrail", ~userId="local-admin", ()),
+        ~filter={eventTypes: ["OrderPlaced"], user: "alice"},
+      ),
+    )->toBe(`operation "AuditTrail" as local-admin, with filter [eventTypes, user]`)
+  )
+
+  testSync("say so when the caller sent no filter at all", () =>
+    expect(
+      EH.describeCaller(~ctx=ctxOf(~operationName="AuditTrail", ~userId="local-admin", ()), ~filter={}),
+    )->toBe(`operation "AuditTrail" as local-admin, with no filter`)
+  )
+
+  testSync("still describe a context carrying neither operation nor identity", () =>
+    expect(EH.describeCaller(~ctx=ctxOf(), ~filter={}))->toBe(
+      "an unnamed operation as anonymous, with no filter",
+    )
+  )
+})

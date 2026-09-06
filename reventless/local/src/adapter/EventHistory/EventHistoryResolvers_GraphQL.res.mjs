@@ -8,6 +8,7 @@ import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as QueryDbListQuery$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/QueryDbListQuery.res.mjs";
+import * as Auth_GraphqlContext$ReventlessLocal from "../Auth/Auth_GraphqlContext.res.mjs";
 import * as Plugin_EventQuerySchema$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_EventQuerySchema.res.mjs";
 
 function comparePosition(a, b) {
@@ -151,6 +152,62 @@ function readFilter(args) {
     timeFrom: s("timeFrom"),
     timeTo: s("timeTo")
   };
+}
+
+function suppliedFilterKeys(f) {
+  return Stdlib_Array.filterMap([
+    [
+      "entityId",
+      Stdlib_Option.isSome(f.entityId)
+    ],
+    [
+      "tagKey",
+      Stdlib_Option.isSome(f.tagKey)
+    ],
+    [
+      "tagValue",
+      Stdlib_Option.isSome(f.tagValue)
+    ],
+    [
+      "eventTypes",
+      Stdlib_Option.isSome(f.eventTypes)
+    ],
+    [
+      "user",
+      Stdlib_Option.isSome(f.user)
+    ],
+    [
+      "timeFrom",
+      Stdlib_Option.isSome(f.timeFrom)
+    ],
+    [
+      "timeTo",
+      Stdlib_Option.isSome(f.timeTo)
+    ]
+  ], param => {
+    if (param[1]) {
+      return param[0];
+    }
+  });
+}
+
+function callerOf(ctx) {
+  let operation = Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(ctx), d => d["params"]), Stdlib_JSON.Decode.object), d => d["operationName"]), Stdlib_JSON.Decode.string);
+  let user = Auth_GraphqlContext$ReventlessLocal.extractIdentity(ctx).userId;
+  if (operation !== undefined) {
+    return `operation "` + operation + `" as ` + user;
+  } else {
+    return `an unnamed operation as ` + user;
+  }
+}
+
+function describeCaller(ctx, filter) {
+  let keys = suppliedFilterKeys(filter);
+  if (keys.length !== 0) {
+    return callerOf(ctx) + `, with filter [` + keys.join(", ") + `]`;
+  } else {
+    return callerOf(ctx) + `, with no filter`;
+  }
 }
 
 function matchesTag(r, f) {
@@ -305,7 +362,7 @@ function Make(Bus) {
       }
       seen.add(displayName);
       let fieldName = Plugin_EventQuerySchema$ReventlessCore.historyFieldName(params.pluginName, displayName);
-      let resolver = async (_root, args, _ctx) => {
+      let resolver = async (_root, args, ctx) => {
         let f = readFilter(args);
         let replay = Bus.getEventLogReplay(entry.busKey);
         let records;
@@ -314,7 +371,7 @@ function Make(Bus) {
           if (entityId !== undefined) {
             records = await readAggregate(replay, entityId);
           } else {
-            log.warn("EventHistoryResolvers_GraphQL", undefined, fieldName + `: ` + displayName + ` is an aggregate event log — it can only be read per entity. Supply filter.entityId.`);
+            log.warn("EventHistoryResolvers_GraphQL", undefined, fieldName + `: ` + displayName + ` is an aggregate event log — it can only be read per entity. ` + (`Supply filter.entityId. Asked by ` + describeCaller(ctx, f) + `.`));
             records = [];
           }
         } else {
@@ -353,6 +410,9 @@ export {
   metaJsonFromEnvelope,
   recordJson,
   readFilter,
+  suppliedFilterKeys,
+  callerOf,
+  describeCaller,
   matchesTag,
   matchesFilter,
   paginate,
