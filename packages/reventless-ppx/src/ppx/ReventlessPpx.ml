@@ -241,6 +241,13 @@ let transform_delegate_module ~loc ~specifier (mb : module_binding) : module_bin
   match mb.pmb_expr.pmod_desc with
   | Pmod_structure body ->
     let body = DcbTagInference.transform_structure ~loc body in
+    (* A Delegate's events carry the same fields the slice's own events do, so a
+       field typed [UploadableImage.t] has to derive its store here too. Without
+       this the type compiles everywhere EXCEPT inside a Delegate, where sury
+       then looks for a [schema] the semantic type deliberately does not define —
+       and the author's only way out is to hand-write the [@s.matches] the ppx
+       exists to write for them. *)
+    let body = UploadableInference.transform_structure body in
     let prefix =
       (if not (Util.has_module_binding "Id" body) then [gen_module_id ~loc] else [])
       @ (if not (Util.has_type_binding "command" body) then [gen_schema_unit_type ~loc "command"] else [])
