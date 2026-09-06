@@ -24,6 +24,12 @@ let retentionSeconds = 14 * 24 * 60 * 60
 // decode error were still cycling twelve hours after the cause was cured. Fifteen
 // minutes cuts that 5× and costs nothing anybody is waiting on. It must stay above
 // the handler's timeout (30 s), which it is by a wide margin.
+//
+// It bounds the rate, not the count — the loop still ends only at retention. What
+// ends it early is an operator, and what fetches one is an alarm on this handler's
+// `Invocations` (an invocation here IS the incident). That the alarm does not
+// currently fire is a defect in when this module announces itself, not a reason
+// for the queue to carry a redrive target of its own.
 let visibilityTimeoutSeconds = 15 * 60
 
 let queue = SQS.Queue.make(
@@ -70,18 +76,23 @@ let lambdaRole = IAM.Role.makeWithDefaultPolicy(
 // plugin whose commands failed every 5 minutes for two days produced 217 dead
 // letters and no signal at all; it was found by a person noticing a stale UI.
 //
-// Failing instead keeps the message on the queue (this queue has no redrive
-// target of its own, so it stays until retention expires) and keeps `Errors`
-// non-zero for as long as the condition lasts. Both are conventional alarm
-// subjects, and a monitoring backend attached through the `DeadLetterSink` seam
-// below now has something to attach to.
+// Failing instead keeps the message on the queue and keeps `Errors` non-zero
+// while the condition lasts. Both are conventional alarm subjects, and a
+// monitoring backend attached through the `DeadLetterSink` seam below now has
+// something to attach to.
 //
-// What that costs is the redelivery: a failed batch returns to the queue and is
-// redelivered until retention expires, so a handler that logs the record on
-// every delivery writes it tens of thousands of times a day. Two poison messages
-// produced 1.26M invocations and 3.12 GB of logs over 14 days. The full record is
-// therefore written once — on the first delivery, which is the one carrying the
-// diagnostic — and every redelivery after it costs one identity line.
+// What that reasoning did not account for is that the transport retries by
+// design too: a failed batch returns to the queue and is redelivered until
+// retention expires. A handler that fails forever, on a transport that retries
+// forever, is a loop — and it outlives its cause, because nothing about a fixed
+// bug removes the message that was stranded by it. Seven of them were still
+// cycling twelve hours after the fix that made them impossible.
+//
+// What the loop costs is now a function of the line, not the count: the full
+// record is written once — on the first delivery, the one carrying the diagnostic
+// — and every redelivery after it costs a single identity line. A stranded
+// message is ~150 KB over a fortnight rather than ~17 MB, which is small enough
+// that ending the loop early is an operator's job rather than the topology's.
 let entryPointCode = `export const handler = async (event) => {
   const records = event?.Records ?? [];
   for (const record of records) {
@@ -118,6 +129,24 @@ let layers =
   ->Option.getOr([])
   ->Pulumi.Input.make
 
+// This is the one Lambda in the framework built by hand rather than through
+// `RuntimeEnvironment_Lambda`, and it was the one Lambda whose logs Lambda
+// auto-created a group for — which carries no retention, so every byte this
+// handler ever wrote was kept forever. On the estate that surfaced it, the three
+// such groups held 1.3 GB of a redelivery loop. Same managed group, same tiering
+// as every other handler.
+let logGroup = Util_LambdaLogging.makeManagedLogGroup(
+  ~name,
+  ~tags=AWS.Tags.make(
+    ~name=`${name}LogGroup`,
+    ~kind=ReventlessCore.ComponentType.Plugin,
+    ~role=Logs,
+    ~scope=Plugin,
+  ),
+  ~opts,
+  (),
+)
+
 let handler = Lambda.Function.make(
   ~name,
   ~args={
@@ -138,6 +167,7 @@ let handler = Lambda.Function.make(
         ]),
       }: Lambda.Function.functionEnvironment
     )->Pulumi.Input.make,
+    loggingConfig: ?Util_LambdaLogging.loggingConfigFor(logGroup),
   },
   ~opts,
 )
@@ -153,9 +183,7 @@ ReventlessCore.Monitoring.notify(
   ~kind=DeadLetterSink,
   ~name,
   ~component=deadLetterResource,
-  // This handler is built without a managed group, so its logs are in the one
-  // Lambda auto-creates from the physical name.
-  ~logLocator=Util_LambdaLogging.logLocatorFor(~logGroup=None, ~physicalName=deadLetterResource.name),
+  ~logLocator=Util_LambdaLogging.logLocatorFor(~logGroup, ~physicalName=deadLetterResource.name),
 )
 
 let lambda = handler->Pulumi.Output.make

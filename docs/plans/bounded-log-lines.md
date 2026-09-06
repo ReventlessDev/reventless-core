@@ -149,7 +149,17 @@ The `DeadLetterQueue-*` log groups carry **`retentionInDays: None`** while sibli
 groups are set to 7 days — so this volume is retained forever once written. That is the tail of
 [env-tiered-log-retention-and-levels.md](env-tiered-log-retention-and-levels.md) **Step 8**,
 which this finding independently confirms is still outstanding and now has a measured cost.
-No new work here; it is evidence for that plan, not a change to this one.
+
+**Fixed here after all**, because the cause turned out to be local rather than a gap in the tiering:
+this is the one Lambda in the framework built by hand instead of through `RuntimeEnvironment_Lambda`,
+so it was the one Lambda that never called `makeManagedLogGroup` and fell back to the group Lambda
+auto-creates, which carries no retention. It now takes the same managed group and the same tiering as
+every other handler, and its `logLocator` points at the real group rather than the hardcoded
+`~logGroup=None` that assumed the unmanaged shape.
+
+The three existing groups (1.3 GB) are left as they are: storage is ~$0.03/GB-month, so deleting them
+saves cents and destroys the only record of both incidents. The ingestion was the expensive part and
+is already paid.
 
 ## Steps
 
@@ -238,6 +248,37 @@ Three things follow, and the third is why step 5 is not symptom-treatment:
 3. So **the loop outlived its cause by two weeks minus the manual intervention.** That is a property
    of the handler's design — fail forever on a transport that retries forever — not of this incident.
    Bounding it is the fix; the wipe was the fix for something else.
+
+**A terminator was built and then removed, which is the more useful result.** The obvious complement
+to the timeout is a `RedrivePolicy` on the dead-letter queues themselves — `maxReceiveCount: 20` onto
+a parking queue nothing consumes — and it was implemented before the arithmetic was done. Per
+stranded message over a full retention period:
+
+| | deliveries | logs written |
+|---|---|---|
+| before | 6,720 | ~16.6 MB |
+| + the identity-line guard (step 1–2) | 6,720 | ~740 KB |
+| + the 900 s timeout (step 5) | 1,344 | ~150 KB |
+| + a parking queue | 20 | ~4.6 KB |
+
+The parking queue's marginal saving is **~145 KB and ~1,300 invocations per message — around
+$0.0004.** The 3.12 GB that opened this plan came from writing the whole record 630,000 times, and
+that is what steps 1–2 fixed; two extra queues per platform, permanently, is a poor trade for the
+remainder.
+
+It is also worse for the signal, which was the real argument. With the handler failing, `Errors`
+stays non-zero for as long as the incident is unresolved, so an alarm on it stays *in* alarm. Parking
+makes it fall quiet after ~5 hours while the problem persists.
+
+And the tempting alternative — drop the consumer, alarm on queue depth — does not work on this
+topology. A consumer that keeps failing keeps its messages **in flight**, so the queue reads
+`0 visible, 7 not visible`: `ApproximateNumberOfMessagesVisible` was zero throughout the incident. An
+`Invocations` alarm on the handler is the metric that matches the shape, which is what a backend
+consuming the seam already maps `DeadLetterSink` to.
+
+So the loop is bounded in cost rather than in count, and ending it early is an operator's job — for
+which they must first be told. That they currently are not is
+[no-monitoring-backend-on-deployed-stacks.md](no-monitoring-backend-on-deployed-stacks.md).
 
 Nothing alarmed at any point in those twelve hours, which is a separate and larger finding:
 [no-monitoring-backend-on-deployed-stacks.md](no-monitoring-backend-on-deployed-stacks.md).

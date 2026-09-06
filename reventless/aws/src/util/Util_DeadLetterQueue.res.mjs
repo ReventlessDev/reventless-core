@@ -78,6 +78,8 @@ let sourceCodeHash = Util_Bundle$ReventlessAws.hashString(entryPointCode);
 
 let layers = Stdlib_Option.getOr(Stdlib_Option.map(Lambda$PulumiAws.reventlessLayerArn, arn => [arn]), []);
 
+let logGroup = Util_LambdaLogging$ReventlessAws.makeManagedLogGroup(name, undefined, AWS_Tags$ReventlessAws.make(name + `LogGroup`, "Plugin", "Logs", "Plugin", undefined, undefined, undefined, undefined), opts, undefined);
+
 let handler = new (Aws.lambda.Function)(name, {
   handler: "index.handler",
   runtime: "nodejs22.x",
@@ -96,12 +98,13 @@ let handler = new (Aws.lambda.Function)(name, {
       Util_LambdaLogging$ReventlessAws.logLevelEntry()
     ])
   },
-  sourceCodeHash: sourceCodeHash
+  sourceCodeHash: sourceCodeHash,
+  loggingConfig: Util_LambdaLogging$ReventlessAws.loggingConfigFor(logGroup)
 }, opts);
 
 let deadLetterResource = Util_Lambda$ReventlessAws.functionToResource(AWS_Tags$ReventlessAws.make(name, "Plugin", "DeadLetter", "Plugin", undefined, undefined, undefined, undefined), handler);
 
-Monitoring$ReventlessCore.notify("DeadLetterSink", name, deadLetterResource, Util_LambdaLogging$ReventlessAws.logLocatorFor(undefined, deadLetterResource.name));
+Monitoring$ReventlessCore.notify("DeadLetterSink", name, deadLetterResource, Util_LambdaLogging$ReventlessAws.logLocatorFor(logGroup, deadLetterResource.name));
 
 let lambda = Pulumi.output(handler);
 
@@ -195,6 +198,7 @@ export {
   code,
   sourceCodeHash,
   layers,
+  logGroup,
   handler,
   deadLetterResource,
   lambda,
