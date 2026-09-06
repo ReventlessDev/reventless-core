@@ -160,7 +160,18 @@ function isNullableType(_st) {
   };
 }
 
-function fromSchemaType(st) {
+function withGraphqlInput(schema, name) {
+  let obj = Stdlib_JSON.Decode.object(schema);
+  if (obj !== undefined) {
+    obj["x-reventless-graphql-input"] = name;
+    return obj;
+  } else {
+    return schema;
+  }
+}
+
+function fromSchemaType(inputNamesOpt, st) {
+  let inputNames = inputNamesOpt !== undefined ? inputNamesOpt : false;
   if (typeof st !== "object") {
     switch (st) {
       case "ScalarNumber" :
@@ -173,6 +184,7 @@ function fromSchemaType(st) {
             "type",
             "boolean"
           ]]);
+      case "ScalarInt" :
       case "ScalarBigInt" :
         return Object.fromEntries([[
             "type",
@@ -210,7 +222,7 @@ function fromSchemaType(st) {
   } else {
     switch (st.TAG) {
       case "Nullable" :
-        let innerSchema = fromSchemaType(st._0);
+        let innerSchema = fromSchemaType(inputNames, st._0);
         return Object.fromEntries([[
             "oneOf",
             [
@@ -229,11 +241,16 @@ function fromSchemaType(st) {
           ],
           [
             "items",
-            fromSchemaType(st._0)
+            fromSchemaType(inputNames, st._0)
           ]
         ]);
       case "ObjectRef" :
-        return objectRefToJsonSchema(undefined, undefined, undefined, undefined, st._1);
+        let base = objectRefToJsonSchema(undefined, undefined, undefined, undefined, inputNames, st._1);
+        if (inputNames) {
+          return withGraphqlInput(base, st._0);
+        } else {
+          return base;
+        }
       case "Enum" :
         return Object.fromEntries([
           [
@@ -246,9 +263,14 @@ function fromSchemaType(st) {
           ]
         ]);
       case "Semantic" :
-        return withSemantic(fromSchemaType(st._1), st._0);
+        let inner = st._1;
+        let sem = st._0;
+        let base$1 = fromSchemaType(inputNames, inner);
+        let match = SchemaType$ReventlessCore.canonicalName(sem.id);
+        let base$2 = inputNames && match !== undefined && typeof inner === "object" && inner.TAG === "ObjectRef" ? withGraphqlInput(base$1, match + "Input") : base$1;
+        return withSemantic(base$2, sem);
       case "TaggedUnion" :
-        let members = st._1.map(param => armToJsonSchema(param[0], param[1]));
+        let members = st._1.map(param => armToJsonSchema(inputNames, param[0], param[1]));
         return Object.fromEntries([
           [
             "oneOf",
@@ -263,14 +285,15 @@ function fromSchemaType(st) {
   }
 }
 
-function armToJsonSchema(tag, armType) {
+function armToJsonSchema(inputNamesOpt, tag, armType) {
+  let inputNames = inputNamesOpt !== undefined ? inputNamesOpt : false;
   if (typeof armType !== "object") {
-    return fromSchemaType(armType);
+    return fromSchemaType(inputNames, armType);
   }
   if (armType.TAG !== "ObjectRef") {
-    return fromSchemaType(armType);
+    return fromSchemaType(inputNames, armType);
   }
-  let base = objectRefToJsonSchema(undefined, undefined, undefined, undefined, armType._1);
+  let base = objectRefToJsonSchema(undefined, undefined, undefined, undefined, inputNames, armType._1);
   let obj = Stdlib_JSON.Decode.object(base);
   if (obj === undefined) {
     return base;
@@ -341,17 +364,18 @@ function withSemantic(fieldSchema, sem) {
   return obj;
 }
 
-function objectRefToJsonSchema(annotations, optionalOpt, ownersOpt, sensitiveOpt, fields) {
+function objectRefToJsonSchema(annotations, optionalOpt, ownersOpt, sensitiveOpt, inputNamesOpt, fields) {
   let optional = optionalOpt !== undefined ? optionalOpt : [];
   let owners = ownersOpt !== undefined ? ownersOpt : [];
   let sensitive = sensitiveOpt !== undefined ? sensitiveOpt : [];
+  let inputNames = inputNamesOpt !== undefined ? inputNamesOpt : false;
   let props = {};
   let required = [];
   let internal = Stdlib_Option.getOr(Stdlib_Option.flatMap(annotations, spec => spec.internal), []);
   Object.entries(fields).filter(param => !internal.includes(param[0])).forEach(param => {
     let fieldType = param[1];
     let fieldName = param[0];
-    let baseSchema = fromSchemaType(fieldType);
+    let baseSchema = fromSchemaType(inputNames, fieldType);
     let withAnnotations = annotations !== undefined ? mergeAnnotations(baseSchema, fieldName, annotations) : baseSchema;
     let withAnnotations$1;
     if (owners.includes(fieldName)) {
@@ -401,8 +425,10 @@ function objectRefToJsonSchema(annotations, optionalOpt, ownersOpt, sensitiveOpt
   return Object.fromEntries(entries);
 }
 
-function deriveObjectSchema(schema) {
-  let fields = SchemaType$ReventlessCore.fromSuryObject("", schema);
+function deriveObjectSchema(inputNamesOpt, typeNameOpt, schema) {
+  let inputNames = inputNamesOpt !== undefined ? inputNamesOpt : false;
+  let typeName = typeNameOpt !== undefined ? typeNameOpt : "";
+  let fields = SchemaType$ReventlessCore.fromSuryObject(typeName, schema);
   if (fields === undefined) {
     return Object.fromEntries([[
         "type",
@@ -410,7 +436,7 @@ function deriveObjectSchema(schema) {
       ]]);
   }
   let annotations = StateAnnotations$Reventless.getSpec(schema);
-  let objSchema = objectRefToJsonSchema(annotations, SchemaType$ReventlessCore.optionalFieldNames(schema), Owner$Reventless.fieldNames(schema), Sensitive$Reventless.fieldNames(schema), fields);
+  let objSchema = objectRefToJsonSchema(annotations, SchemaType$ReventlessCore.optionalFieldNames(schema), Owner$Reventless.fieldNames(schema), Sensitive$Reventless.fieldNames(schema), inputNames, fields);
   if (annotations === undefined) {
     return objSchema;
   }
@@ -434,7 +460,7 @@ function deriveObjectSchema(schema) {
 }
 
 function toJsonSchema(schema) {
-  return fromSchemaType(SchemaType$ReventlessCore.fromSury("", "", schema));
+  return fromSchemaType(undefined, SchemaType$ReventlessCore.fromSury("", "", schema));
 }
 
 export {
@@ -444,6 +470,7 @@ export {
   withOptionalPlugin,
   mergeAnnotations,
   isNullableType,
+  withGraphqlInput,
   fromSchemaType,
   armToJsonSchema,
   withSemantic,

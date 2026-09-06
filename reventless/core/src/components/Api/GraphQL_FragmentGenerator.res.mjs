@@ -43,6 +43,8 @@ function fromSchemaType(_required, _asInputOpt, _st, collectedTypes, seenTypes) 
       switch (st) {
         case "ScalarNumber" :
           return `Float` + bang;
+        case "ScalarInt" :
+          return `Int` + bang;
         case "ScalarBoolean" :
           return `Boolean` + bang;
         case "EntityId" :
@@ -219,6 +221,8 @@ function scalarOfSchemaType(_st) {
       switch (st) {
         case "ScalarNumber" :
           return "Float";
+        case "ScalarInt" :
+          return "Int";
         case "ScalarBoolean" :
           return "Boolean";
         case "EntityId" :

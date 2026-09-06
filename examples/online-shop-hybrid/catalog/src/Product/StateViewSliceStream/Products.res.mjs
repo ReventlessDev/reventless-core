@@ -14,7 +14,8 @@ let consumedEventSchema = Sury.union([
     name: s.m(Sury.string),
     description: s.m(Sury.string),
     price: s.m(Money$Reventless.schema),
-    categoryId: s.m(Sury.string)
+    categoryId: s.m(Sury.string),
+    categoryName: s.m(Sury.$option(Sury.string))
   })),
   Sury.$schema(s => ({
     TAG: "ProductPriceChanged",
@@ -80,6 +81,7 @@ let stateSchema = Sury.$schema(s => ({
   price: s.m(Money$Reventless.schema),
   productImages: s.m(Sury.array(CaptionedImage$Reventless.forField(undefined, "productImages"))),
   categoryId: s.m(Sury.string),
+  categoryName: s.m(Sury.$option(Sury.string)),
   shelfStatus: s.m(shelfStatusSchema)
 }));
 
@@ -109,7 +111,7 @@ let stateSchema$1 = Sury.$Metadata_set(stateSchema, StateAnnotations$Reventless.
   semantic: [],
   metric: [],
   lifecycle: "shelfStatus",
-  groupBy: undefined,
+  groupBy: "categoryName",
   visibility: undefined,
   live: undefined,
   retired: {

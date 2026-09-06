@@ -181,11 +181,21 @@ let shippingMethod = (method: OrderingPlugin.PlaceOrder.shippingMethod): Seed.va
 
 let placeOrder = (command: OrderingPlugin.PlaceOrder.command): Seed.mutation =>
   switch command {
-  | PlaceOrder({orderId, customerId, productIds, shippingMethod: method, deliveryWindow: ?window}) =>
+  | PlaceOrder({orderId, customerId, lineItems, shippingMethod: method, deliveryWindow: ?window}) =>
     let base: array<(string, Seed.value)> = [
       ("orderId", Id(orderId)),
       ("customerId", Id(customerId)),
-      ("productIds", Seed.ids(productIds)),
+      // A list of input objects, which the transport renders as GraphQL literals
+      // — the same road `deliveryWindow` takes, one level of nesting further in.
+      (
+        "lineItems",
+        List(
+          lineItems->Array.map(({productId, quantity}) => Seed.Object([
+            ("productId", Id(productId)),
+            ("quantity", Int(quantity)),
+          ])),
+        ),
+      ),
       ("shippingMethod", shippingMethod(method)),
     ]
     // The delivery window is optional: send the (nested input object) arg only

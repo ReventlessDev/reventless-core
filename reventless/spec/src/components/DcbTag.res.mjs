@@ -8,6 +8,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
+import * as Semantic$Reventless from "../semantic/Semantic.res.mjs";
 import * as Util_Sury$Reventless from "../util/Util_Sury.res.mjs";
 import * as DcbScopeInference$Reventless from "./DcbScopeInference.res.mjs";
 
@@ -86,6 +87,62 @@ function isTaggedArray(fieldSchema) {
   }
 }
 
+function nestedRecordProperties(fieldSchema) {
+  let unwrapped = Stdlib_Option.getOr(Semantic$Reventless.unwrapOptional(fieldSchema), fieldSchema);
+  let match;
+  if (unwrapped.type === "array") {
+    let item = unwrapped.additionalItems;
+    match = item === "strip" || item === "strict" ? [
+        unwrapped,
+        false
+      ] : [
+        Stdlib_Option.getOr(Semantic$Reventless.unwrapOptional(item), item),
+        true
+      ];
+  } else {
+    match = [
+      unwrapped,
+      false
+    ];
+  }
+  let candidate = match[0];
+  if (candidate.type === "object") {
+    return [
+      candidate.properties,
+      match[1]
+    ];
+  }
+}
+
+function propertiesCarryTags(properties) {
+  return Object.entries(properties).some(param => {
+    let s = param[1];
+    if (Stdlib_Option.isSome(Sury.$Metadata_get(s, dcbTagId))) {
+      return true;
+    } else {
+      return isTaggedArray(s);
+    }
+  });
+}
+
+function isTaggedRecordArray(fieldSchema) {
+  let match = nestedRecordProperties(fieldSchema);
+  if (match !== undefined && match[1]) {
+    return propertiesCarryTags(match[0]);
+  } else {
+    return false;
+  }
+}
+
+function hasNestedTags(fieldSchema) {
+  let match = nestedRecordProperties(fieldSchema);
+  if (match !== undefined) {
+    return propertiesCarryTags(match[0]);
+  } else {
+    return false;
+  }
+}
+
 function isPartitionTag(fieldSchema) {
   return Stdlib_Option.isSome(Sury.$Metadata_get(fieldSchema, dcbPartitionTagId));
 }
@@ -139,17 +196,102 @@ function jsonValueToString(json) {
   }
 }
 
+function dedupeTags(tags) {
+  let seen = new Set();
+  return tags.filter(param => {
+    let identity = JSON.stringify(param.key) + param.value;
+    if (seen.has(identity)) {
+      return false;
+    } else {
+      seen.add(identity);
+      return true;
+    }
+  });
+}
+
+function flatFieldTagsExpanded(fieldName, fieldSchema, jsonDict) {
+  if (Stdlib_Option.isSome(Sury.$Metadata_get(fieldSchema, dcbTagId))) {
+    let jsonValue = jsonDict[fieldName];
+    if (jsonValue !== undefined) {
+      return [{
+          key: resolveTagKey(fieldName, fieldSchema),
+          value: jsonValueToString(jsonValue)
+        }];
+    } else {
+      return [];
+    }
+  }
+  if (!isTaggedArray(fieldSchema)) {
+    return [];
+  }
+  let match = jsonDict[fieldName];
+  if (match === undefined) {
+    return [];
+  }
+  if (!Array.isArray(match)) {
+    return [];
+  }
+  let tagKey = resolveArrayTagKey(fieldName, fieldSchema);
+  return match.map(element => ({
+    key: tagKey,
+    value: jsonValueToString(element)
+  }));
+}
+
+function flatTagsExpanded(properties, jsonDict) {
+  return Object.entries(properties).flatMap(param => flatFieldTagsExpanded(param[0], param[1], jsonDict));
+}
+
+function nestedRecordTags(fieldSchema, jsonValue) {
+  let match = nestedRecordProperties(fieldSchema);
+  if (match === undefined) {
+    return [];
+  }
+  let properties = match[0];
+  let ofObject = json => {
+    let elementDict = Stdlib_JSON.Decode.object(json);
+    if (elementDict !== undefined) {
+      return flatTagsExpanded(properties, elementDict);
+    } else {
+      return [];
+    }
+  };
+  if (match[1]) {
+    if (Array.isArray(jsonValue)) {
+      return jsonValue.flatMap(ofObject);
+    } else {
+      return [];
+    }
+  } else {
+    return ofObject(jsonValue);
+  }
+}
+
 function extractTagsFromProperties(properties, jsonDict) {
-  return Stdlib_Array.filterMap(Object.entries(properties), param => {
+  return dedupeTags(Object.entries(properties).flatMap(param => {
     let fieldSchema = param[1];
     let fieldName = param[0];
     if (Stdlib_Option.isSome(Sury.$Metadata_get(fieldSchema, dcbTagId))) {
-      return Stdlib_Option.map(jsonDict[fieldName], jsonValue => ({
-        key: resolveTagKey(fieldName, fieldSchema),
-        value: jsonValueToString(jsonValue)
-      }));
+      let jsonValue = jsonDict[fieldName];
+      if (jsonValue !== undefined) {
+        return [{
+            key: resolveTagKey(fieldName, fieldSchema),
+            value: jsonValueToString(jsonValue)
+          }];
+      } else {
+        return [];
+      }
     }
-  });
+    if (!hasNestedTags(fieldSchema)) {
+      return [];
+    }
+    let jsonValue$1 = jsonDict[fieldName];
+    if (jsonValue$1 !== undefined) {
+      return nestedRecordTags(fieldSchema, jsonValue$1);
+    } else {
+      return [];
+    }
+  }));
 }
 
 function variantTagName(properties) {
@@ -275,36 +417,22 @@ function isVariantPayloadBearing(schema, name) {
 }
 
 function extractTagsFromPropertiesExpanded(properties, jsonDict) {
-  return Object.entries(properties).flatMap(param => {
+  return dedupeTags(Object.entries(properties).flatMap(param => {
     let fieldSchema = param[1];
     let fieldName = param[0];
-    if (Stdlib_Option.isSome(Sury.$Metadata_get(fieldSchema, dcbTagId))) {
-      let jsonValue = jsonDict[fieldName];
-      if (jsonValue !== undefined) {
-        return [{
-            key: resolveTagKey(fieldName, fieldSchema),
-            value: jsonValueToString(jsonValue)
-          }];
-      } else {
-        return [];
-      }
+    if (Stdlib_Option.isSome(Sury.$Metadata_get(fieldSchema, dcbTagId)) || isTaggedArray(fieldSchema)) {
+      return flatFieldTagsExpanded(fieldName, fieldSchema, jsonDict);
     }
-    if (!isTaggedArray(fieldSchema)) {
+    if (!hasNestedTags(fieldSchema)) {
       return [];
     }
-    let match = jsonDict[fieldName];
-    if (match === undefined) {
+    let jsonValue = jsonDict[fieldName];
+    if (jsonValue !== undefined) {
+      return nestedRecordTags(fieldSchema, jsonValue);
+    } else {
       return [];
     }
-    if (!Array.isArray(match)) {
-      return [];
-    }
-    let tagKey = resolveArrayTagKey(fieldName, fieldSchema);
-    return match.map(element => ({
-      key: tagKey,
-      value: jsonValueToString(element)
-    }));
-  });
+  }));
 }
 
 function extractTagsFromJsonExpanded(schema, json) {
@@ -352,11 +480,25 @@ function extractTagsExpanded(schema, value) {
 function hasTaggedArrayFields(schema) {
   switch (schema.type) {
     case "object" :
-      return Object.entries(schema.properties).some(param => isTaggedArray(param[1]));
+      return Object.entries(schema.properties).some(param => {
+        let fieldSchema = param[1];
+        if (isTaggedArray(fieldSchema)) {
+          return true;
+        } else {
+          return isTaggedRecordArray(fieldSchema);
+        }
+      });
     case "anyOf" :
       return schema.anyOf.some(variantSchema => {
         if (variantSchema.type === "object") {
-          return Object.entries(variantSchema.properties).some(param => isTaggedArray(param[1]));
+          return Object.entries(variantSchema.properties).some(param => {
+            let fieldSchema = param[1];
+            if (isTaggedArray(fieldSchema)) {
+              return true;
+            } else {
+              return isTaggedRecordArray(fieldSchema);
+            }
+          });
         } else {
           return false;
         }
@@ -366,7 +508,7 @@ function hasTaggedArrayFields(schema) {
   }
 }
 
-function tagKeysOfProperties(properties) {
+function flatTagKeysOfProperties(properties) {
   return Stdlib_Array.filterMap(Object.entries(properties), param => {
     let fieldSchema = param[1];
     let fieldName = param[0];
@@ -376,6 +518,25 @@ function tagKeysOfProperties(properties) {
       return resolveArrayTagKey(fieldName, fieldSchema);
     } else {
       return;
+    }
+  });
+}
+
+function tagKeysOfProperties(properties) {
+  return Object.entries(properties).flatMap(param => {
+    let fieldSchema = param[1];
+    let fieldName = param[0];
+    if (Stdlib_Option.isSome(Sury.$Metadata_get(fieldSchema, dcbTagId))) {
+      return [resolveTagKey(fieldName, fieldSchema)];
+    }
+    if (isTaggedArray(fieldSchema)) {
+      return [resolveArrayTagKey(fieldName, fieldSchema)];
+    }
+    let match = nestedRecordProperties(fieldSchema);
+    if (match !== undefined) {
+      return flatTagKeysOfProperties(match[0]);
+    } else {
+      return [];
     }
   });
 }
@@ -530,17 +691,38 @@ function extractCrossPartitionTagKeys(schema) {
 }
 
 function idFieldsOfProperties(properties) {
-  return Stdlib_Array.filterMap(Object.entries(properties), param => {
-    let name = param[0];
-    if (!(name.endsWith("Ids") || name.endsWith("Id"))) {
-      return;
+  let isIdName = name => {
+    if (name.endsWith("Ids")) {
+      return true;
+    } else {
+      return name.endsWith("Id");
     }
-    let isList;
-    isList = param[1].type === "array";
-    return {
-      name: name,
-      isList: isList
-    };
+  };
+  return Object.entries(properties).flatMap(param => {
+    let fieldSchema = param[1];
+    let name = param[0];
+    if (isIdName(name)) {
+      let isList;
+      isList = fieldSchema.type === "array";
+      return [{
+          name: name,
+          isList: isList
+        }];
+    }
+    let match = nestedRecordProperties(fieldSchema);
+    if (match === undefined) {
+      return [];
+    }
+    let nestedIsList = match[1];
+    return Stdlib_Array.filterMap(Object.entries(match[0]), param => {
+      let nestedName = param[0];
+      if (isIdName(nestedName)) {
+        return {
+          name: nestedName,
+          isList: nestedIsList
+        };
+      }
+    });
   });
 }
 
@@ -862,12 +1044,20 @@ export {
   derivedPartitionTagSchema,
   isTagged,
   isTaggedArray,
+  nestedRecordProperties,
+  propertiesCarryTags,
+  isTaggedRecordArray,
+  hasNestedTags,
   isPartitionTag,
   isCrossPartitionTag,
   isCrossPartitionTaggedArray,
   resolveTagKey,
   resolveArrayTagKey,
   jsonValueToString,
+  dedupeTags,
+  flatFieldTagsExpanded,
+  flatTagsExpanded,
+  nestedRecordTags,
   extractTagsFromProperties,
   variantTagName,
   extractTagsFromJson,
@@ -879,6 +1069,7 @@ export {
   extractTagsFromJsonExpanded,
   extractTagsExpanded,
   hasTaggedArrayFields,
+  flatTagKeysOfProperties,
   tagKeysOfProperties,
   extractTagKeysByEventType,
   mergeTagKeysByEventType,

@@ -397,8 +397,29 @@ function placeOrder(command) {
       }
     ],
     [
-      "productIds",
-      Seed$ReventlessSeed.ids(command.productIds)
+      "lineItems",
+      {
+        TAG: "List",
+        _0: command.lineItems.map(param => ({
+          TAG: "Object",
+          _0: [
+            [
+              "productId",
+              {
+                TAG: "Id",
+                _0: param.productId
+              }
+            ],
+            [
+              "quantity",
+              {
+                TAG: "Int",
+                _0: param.quantity
+              }
+            ]
+          ]
+        }))
+      }
     ],
     [
       "shippingMethod",

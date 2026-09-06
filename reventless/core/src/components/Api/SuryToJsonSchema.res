@@ -176,33 +176,72 @@ let rec isNullableType = (st: SchemaType.schemaType): bool =>
   | _ => false
   }
 
-let rec fromSchemaType = (st: SchemaType.schemaType): JSON.t =>
+// The GraphQL **input** type name an object is declared under, written onto the
+// object's own JSON Schema wherever it occurs.
+//
+// A client that assembles a mutation must name its variables' types, and for a
+// *top-level* argument `x-reventless-graphql-type` already publishes the rendered
+// reference (`[Ordering_PlaceOrderLineItems!]!`, wrappers and all). That one is
+// keyed by argument name and so stops at the first level; this one travels with
+// the object, which is what a reader reaching an element schema inside a list has.
+//
+// The name is taken from the `ObjectRef` the SDL emitter names the type from, so
+// there is one source and the two cannot drift — but only when the caller rooted
+// the walk at the same prefix the emitter uses. That is what `inputNames` gates:
+// a schema walked from an unknown root would publish a name the SDL never
+// declares, and a plausible wrong name is worse than none.
+let withGraphqlInput = (schema: JSON.t, name: string): JSON.t =>
+  switch schema->JSON.Decode.object {
+  | None => schema
+  | Some(obj) =>
+    obj->Dict.set("x-reventless-graphql-input", str(name))
+    JSON.Encode.object(obj)
+  }
+
+let rec fromSchemaType = (~inputNames: bool=false, st: SchemaType.schemaType): JSON.t =>
   switch st {
   | ScalarString => jsonObject([("type", str("string"))])
   | ScalarNumber => jsonObject([("type", str("number"))])
+  | ScalarInt => jsonObject([("type", str("integer"))])
   | ScalarBoolean => jsonObject([("type", str("boolean"))])
   | ScalarBigInt => jsonObject([("type", str("integer"))])
   | EntityId => jsonObject([("type", str("string")), ("format", str("uuid"))])
   | DateTime => jsonObject([("type", str("string")), ("format", str("date-time"))])
   | Nullable(inner) =>
-    let innerSchema = fromSchemaType(inner)
+    let innerSchema = fromSchemaType(~inputNames, inner)
     jsonObject([("oneOf", JSON.Encode.array([innerSchema, jsonObject([("type", str("null"))])]))])
   | ArrayOf(item) =>
-    jsonObject([("type", str("array")), ("items", fromSchemaType(item))])
-  | ObjectRef(_, fields) => objectRefToJsonSchema(fields)
+    jsonObject([("type", str("array")), ("items", fromSchemaType(~inputNames, item))])
+  | ObjectRef(name, fields) =>
+    let base = objectRefToJsonSchema(~inputNames, fields)
+    inputNames ? base->withGraphqlInput(name) : base
   | Enum(_, values) =>
     jsonObject([
       ("type", str("string")),
       ("enum", JSON.Encode.array(values->Array.map(JSON.Encode.string))),
     ])
-  | Semantic(sem, inner) => fromSchemaType(inner)->withSemantic(sem)
+  // A semantic composite is one named type wherever it appears, and GraphQL
+  // forbids one name serving as both an object and an input — so in input
+  // position it is the `Input`-suffixed name that exists in the SDL, which is
+  // the one a client can paste into a variable declaration. Positionally-named
+  // objects take no suffix, so the `ObjectRef` branch above already published
+  // the right string for them.
+  | Semantic(sem, inner) =>
+    let base = fromSchemaType(~inputNames, inner)
+    let base = switch (inputNames, SchemaType.canonicalName(sem.id), inner) {
+    | (true, Some(name), ObjectRef(_, _)) => base->withGraphqlInput(name ++ "Input")
+    | _ => base
+    }
+    base->withSemantic(sem)
+  // A union has no input form — see the fragment generator, which emits `String`
+  // and says so — hence no name to publish on either arm.
   // A union is `oneOf` its arms, each an object carrying the `TAG` const it is
   // discriminated by. The discriminator is what tells a union apart from a
   // nullable object, which is also a `oneOf` of objects — a reader that misses
   // it selects one arm's fields as though they were the field's own and produces
   // a query that looks plausible and is invalid.
   | TaggedUnion(name, arms) =>
-    let members = arms->Array.map(((tag, armType)) => armToJsonSchema(~tag, armType))
+    let members = arms->Array.map(((tag, armType)) => armToJsonSchema(~inputNames, ~tag, armType))
     jsonObject([("oneOf", JSON.Encode.array(members)), ("x-reventless-union", str(name))])
   | Unknown => jsonObject([("type", str("string"))])
   }
@@ -212,10 +251,14 @@ let rec fromSchemaType = (st: SchemaType.schemaType): JSON.t =>
 // the payload that says which arm this is. The GraphQL member type name rides
 // alongside so a reader mapping a raw payload to a selection does not have to
 // re-derive the naming rule in a second repo.
-and armToJsonSchema = (~tag: string, armType: SchemaType.schemaType): JSON.t =>
+and armToJsonSchema = (
+  ~inputNames: bool=false,
+  ~tag: string,
+  armType: SchemaType.schemaType,
+): JSON.t =>
   switch armType {
   | ObjectRef(memberName, fields) =>
-    let base = objectRefToJsonSchema(fields)
+    let base = objectRefToJsonSchema(~inputNames, fields)
     switch base->JSON.Decode.object {
     | Some(obj) =>
       switch obj->Dict.get("properties")->Option.flatMap(JSON.Decode.object) {
@@ -232,7 +275,7 @@ and armToJsonSchema = (~tag: string, armType: SchemaType.schemaType): JSON.t =>
       JSON.Encode.object(obj)
     | None => base
     }
-  | other => fromSchemaType(other)
+  | other => fromSchemaType(~inputNames, other)
   }
 
 // Attach a type-carried semantic to a field's JSON Schema.
@@ -313,11 +356,17 @@ and withSemantic = (fieldSchema: JSON.t, sem: Reventless.Semantic.t): JSON.t =>
 // way — off the sury schema by the caller. What it marks is a field whose value
 // must not be rendered into content somebody receives, which is a property of
 // the domain model rather than of the field's shape.
+// `inputNames` says which side of the wire this schema describes. It changes only
+// the name a semantic composite is published under — `MoneyInput` where a command
+// takes one, `Money` where a view returns one — because GraphQL forbids one name
+// serving as both. Emitting the input name on a view would name a type that need
+// not exist in the SDL at all.
 and objectRefToJsonSchema = (
   ~annotations: option<Reventless.StateAnnotations.stateAnnotationSpec>=?,
   ~optional: array<string>=[],
   ~owners: array<string>=[],
   ~sensitive: array<string>=[],
+  ~inputNames: bool=false,
   fields: dict<SchemaType.schemaType>,
 ): JSON.t => {
   let props = Dict.make()
@@ -336,7 +385,7 @@ and objectRefToJsonSchema = (
   ->Dict.toArray
   ->Array.filter(((fieldName, _)) => !(internal->Array.includes(fieldName)))
   ->Array.forEach(((fieldName, fieldType)) => {
-    let baseSchema = fromSchemaType(fieldType)
+    let baseSchema = fromSchemaType(~inputNames, fieldType)
     let withAnnotations = switch annotations {
     | Some(spec) => mergeAnnotations(baseSchema, fieldName, spec)
     | None => baseSchema
@@ -394,8 +443,16 @@ and objectRefToJsonSchema = (
 
 // ── Public API (sury → JSON Schema via SchemaType) ───────────────────────
 
-let deriveObjectSchema = (schema: S.t<unknown>): JSON.t =>
-  switch SchemaType.fromSuryObject(~typeName="", schema) {
+// `typeName` roots the walk where the SDL emitter roots its own — the mutation
+// field name for a command — so the nested type names this publishes are the
+// ones the SDL declares. It is only consulted when `inputNames` asks for those
+// names; every other caller leaves both alone and gets today's schema exactly.
+let deriveObjectSchema = (
+  ~inputNames: bool=false,
+  ~typeName: string="",
+  schema: S.t<unknown>,
+): JSON.t =>
+  switch SchemaType.fromSuryObject(~typeName, schema) {
   | Some(fields) =>
     let annotations = Reventless.StateAnnotations.getSpec(schema)
     let objSchema = objectRefToJsonSchema(
@@ -403,6 +460,7 @@ let deriveObjectSchema = (schema: S.t<unknown>): JSON.t =>
       ~optional=SchemaType.optionalFieldNames(schema),
       ~owners=Reventless.Owner.fieldNames(schema),
       ~sensitive=Reventless.Sensitive.fieldNames(schema),
+      ~inputNames,
       fields,
     )
     // Surface component-level hints on the top-level object schema.

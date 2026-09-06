@@ -730,7 +730,7 @@ nav, and which cross-plugin actions a row offers. The hybrid shop's file:
             "pluginId": "Ordering",
             "slice": "PlaceOrder",
             "command": "PlaceOrder",
-            "field": "productIds",
+            "field": "lineItems[].productId",
             "then": "/Ordering/Orders"
           }
         ]
@@ -757,6 +757,11 @@ its group and its sort order. A `rowActions` entry turns a row into the start of
 command in another plugin: the row's key is carried into the named command's
 `field`, and `then` is where the user lands afterwards. A row and that row's own
 detail page offer the same set — a detail page is one of the view's rows.
+
+`field` takes a **path** where the command holds its ids inside records rather
+than as bare strings: `lineItems[].productId` is one line's product, `[]` reading
+"each element of" and `.` "property of" — the same vocabulary a nested `@ref`
+publishes itself under. A flat field is still its bare name.
 
 **Most of these the shell now works out for itself.** Where a command declares an
 explicit `@ref` naming the view being drawn and that field is required, the manifest
@@ -1084,10 +1089,10 @@ What each of the shop's components declares:
 | `Catalog/Products` | `Money.t` price; a `productImages` attachment set of `UploadableImage.t` members with a primary `productImage` beside it; `@index categoryId`, so a category's products can be asked for by category; nav group "Shop"; a row action that starts `Ordering.PlaceOrder` |
 | `Catalog/Categories` | a `categoryImages` attachment set — its own store, not the products' one — with a primary `categoryImage`; nav group "Shop" |
 | `Catalog/ProductDemand` | `@@reventless.authorize(AllowGroups(["Admin", "Merchandiser"]))`; `@id productId`; only in the `Merchandiser` journey, under its own nav group |
-| `Ordering/Orders` | `@owner customerId`; `lifecycle` by name; `DateTime` timestamps; `DateRange` delivery window; nav "All Orders", or "My Orders" for a caller reading only their own |
+| `Ordering/Orders` | `@owner customerId`; `lifecycle` by name; `DateTime` timestamps; `DateRange` delivery window; `@summary total`/`itemCount` with `@hidden productIds`; `@live(true)`; nav "All Orders", or "My Orders" for a caller reading only their own |
 | `Ordering/Customers` | `@@reventless.authorize`; `@displayName email`; `@lifecycle accountStatus` with `@retired Deactivated` on its own constructor; a `Geolocation` union carrying the geocoder's answer, whose `Located` arm holds the `GeoPoint` the map pin is drawn from |
 | `Ordering/AvailableProducts` | `@@reventless.visibility(Internal)` — reachable only as the `@ref` target of `PlaceOrder`'s product picker |
-| `Ordering/PlaceOrder` | `@owner customerId`; `@ref("AvailableProducts") productIds`; optional `DateRange` delivery window |
+| `Ordering/PlaceOrder` | `@owner customerId`; `lineItems: array<lineItem>`, whose `@ref("AvailableProducts") productId` sits one record in and is published as `lineItems[].productId`; optional `DateRange` delivery window |
 
 Note `AvailableProducts`: it is in no journey, yet it still reaches the shell,
 because `PlaceOrder` `@ref`s it. It rides along as a reference target for the

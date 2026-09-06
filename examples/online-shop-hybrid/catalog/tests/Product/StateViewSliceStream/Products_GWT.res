@@ -13,44 +13,44 @@ describe("Products StateViewSliceStream", () => {
   test("ProductAdded creates a row with an empty set", () =>
     givenEvents([])
     ->whenEvent(
-      ProductAdded({productId: "p1", name: "Laptop", description: "x", price: eur(999.99), categoryId: "cat1"}),
+      ProductAdded({productId: "p1", name: "Laptop", description: "x", price: eur(999.99), categoryId: "cat1", categoryName: Some("Peripherals")}),
     )
     ->thenStateWithId(
       "p1",
-      {productId: "p1", name: "Laptop", description: "x", price: eur(999.99), productImages: [], categoryId: "cat1", shelfStatus: Listed},
+      {productId: "p1", name: "Laptop", description: "x", price: eur(999.99), productImages: [], categoryId: "cat1", categoryName: Some("Peripherals"), shelfStatus: Listed},
     )
   )
 
   test("ProductNameChanged updates the name", () =>
     givenEvents([
-      ProductAdded({productId: "p1", name: "Laptop", description: "x", price: eur(999.99), categoryId: "cat1"}),
+      ProductAdded({productId: "p1", name: "Laptop", description: "x", price: eur(999.99), categoryId: "cat1", categoryName: Some("Peripherals")}),
     ])
     ->whenEvent(ProductNameChanged({productId: "p1", name: "Gaming Laptop"}))
     ->thenStateWithId(
       "p1",
-      {productId: "p1", name: "Gaming Laptop", description: "x", price: eur(999.99), productImages: [], categoryId: "cat1", shelfStatus: Listed},
+      {productId: "p1", name: "Gaming Laptop", description: "x", price: eur(999.99), productImages: [], categoryId: "cat1", categoryName: Some("Peripherals"), shelfStatus: Listed},
     )
   )
 
   test("ProductDescriptionChanged updates the description", () =>
     givenEvents([
-      ProductAdded({productId: "p1", name: "Laptop", description: "x", price: eur(999.99), categoryId: "cat1"}),
+      ProductAdded({productId: "p1", name: "Laptop", description: "x", price: eur(999.99), categoryId: "cat1", categoryName: Some("Peripherals")}),
     ])
     ->whenEvent(ProductDescriptionChanged({productId: "p1", description: "high-end"}))
     ->thenStateWithId(
       "p1",
-      {productId: "p1", name: "Laptop", description: "high-end", price: eur(999.99), productImages: [], categoryId: "cat1", shelfStatus: Listed},
+      {productId: "p1", name: "Laptop", description: "high-end", price: eur(999.99), productImages: [], categoryId: "cat1", categoryName: Some("Peripherals"), shelfStatus: Listed},
     )
   )
 
   test("ProductPriceChanged updates the price", () =>
     givenEvents([
-      ProductAdded({productId: "p1", name: "Laptop", description: "x", price: eur(999.99), categoryId: "cat1"}),
+      ProductAdded({productId: "p1", name: "Laptop", description: "x", price: eur(999.99), categoryId: "cat1", categoryName: Some("Peripherals")}),
     ])
     ->whenEvent(ProductPriceChanged({productId: "p1", price: eur(899.99)}))
     ->thenStateWithId(
       "p1",
-      {productId: "p1", name: "Laptop", description: "x", price: eur(899.99), productImages: [], categoryId: "cat1", shelfStatus: Listed},
+      {productId: "p1", name: "Laptop", description: "x", price: eur(899.99), productImages: [], categoryId: "cat1", categoryName: Some("Peripherals"), shelfStatus: Listed},
     )
   )
 
@@ -59,7 +59,7 @@ describe("Products StateViewSliceStream", () => {
   // there is no second field to say so, and none to fall out of step.
   test("the first ProductImageAttached becomes the primary", () =>
     givenEvents([
-      ProductAdded({productId: "p1", name: "Laptop", description: "x", price: eur(999.99), categoryId: "cat1"}),
+      ProductAdded({productId: "p1", name: "Laptop", description: "x", price: eur(999.99), categoryId: "cat1", categoryName: Some("Peripherals")}),
     ])
     ->whenEvent(
       ProductImageAttached({productId: "p1", productImage: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg", altText: "front"}),
@@ -75,6 +75,7 @@ describe("Products StateViewSliceStream", () => {
         // can reach it — it used to sit in a sibling field no cell is handed.
         productImages: [{ref: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg", altText: "front"}],
         categoryId: "cat1",
+        categoryName: Some("Peripherals"),
         shelfStatus: Listed,
       },
     )
@@ -82,7 +83,7 @@ describe("Products StateViewSliceStream", () => {
 
   test("a second attachment extends the set and leaves the primary first", () =>
     givenEvents([
-      ProductAdded({productId: "p1", name: "Laptop", description: "x", price: eur(999.99), categoryId: "cat1"}),
+      ProductAdded({productId: "p1", name: "Laptop", description: "x", price: eur(999.99), categoryId: "cat1", categoryName: Some("Peripherals")}),
       ProductImageAttached({productId: "p1", productImage: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg"}),
     ])
     ->whenEvent(
@@ -100,6 +101,7 @@ describe("Products StateViewSliceStream", () => {
           {ref: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg"},
         ],
         categoryId: "cat1",
+        categoryName: Some("Peripherals"),
         shelfStatus: Listed,
       },
     )
@@ -110,7 +112,7 @@ describe("Products StateViewSliceStream", () => {
   // and attachment order is no longer readable off the row.
   test("ProductPrimaryImageSet moves the chosen member to the front", () =>
     givenEvents([
-      ProductAdded({productId: "p1", name: "Laptop", description: "x", price: eur(999.99), categoryId: "cat1"}),
+      ProductAdded({productId: "p1", name: "Laptop", description: "x", price: eur(999.99), categoryId: "cat1", categoryName: Some("Peripherals")}),
       ProductImageAttached({productId: "p1", productImage: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg"}),
       ProductImageAttached({productId: "p1", productImage: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg"}),
     ])
@@ -129,6 +131,7 @@ describe("Products StateViewSliceStream", () => {
           {ref: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg"},
         ],
         categoryId: "cat1",
+        categoryName: Some("Peripherals"),
         shelfStatus: Listed,
       },
     )
@@ -138,7 +141,7 @@ describe("Products StateViewSliceStream", () => {
   // is the whole of "the chosen one, else the first attached" on this shape.
   test("removing the primary promotes the next member", () =>
     givenEvents([
-      ProductAdded({productId: "p1", name: "Laptop", description: "x", price: eur(999.99), categoryId: "cat1"}),
+      ProductAdded({productId: "p1", name: "Laptop", description: "x", price: eur(999.99), categoryId: "cat1", categoryName: Some("Peripherals")}),
       ProductImageAttached({productId: "p1", productImage: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg"}),
       ProductImageAttached({productId: "p1", productImage: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg"}),
       ProductPrimaryImageSet({productId: "p1", productImage: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg"}),
@@ -155,6 +158,7 @@ describe("Products StateViewSliceStream", () => {
         price: eur(999.99),
         productImages: [{ref: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg"}],
         categoryId: "cat1",
+        categoryName: Some("Peripherals"),
         shelfStatus: Listed,
       },
     )
@@ -162,7 +166,7 @@ describe("Products StateViewSliceStream", () => {
 
   test("removing the last attachment leaves no primary", () =>
     givenEvents([
-      ProductAdded({productId: "p1", name: "Laptop", description: "x", price: eur(999.99), categoryId: "cat1"}),
+      ProductAdded({productId: "p1", name: "Laptop", description: "x", price: eur(999.99), categoryId: "cat1", categoryName: Some("Peripherals")}),
       ProductImageAttached({productId: "p1", productImage: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg"}),
     ])
     ->whenEvent(
@@ -170,13 +174,13 @@ describe("Products StateViewSliceStream", () => {
     )
     ->thenStateWithId(
       "p1",
-      {productId: "p1", name: "Laptop", description: "x", price: eur(999.99), productImages: [], categoryId: "cat1", shelfStatus: Listed},
+      {productId: "p1", name: "Laptop", description: "x", price: eur(999.99), productImages: [], categoryId: "cat1", categoryName: Some("Peripherals"), shelfStatus: Listed},
     )
   )
 
   test("ProductImageAltTextSet captions one member", () =>
     givenEvents([
-      ProductAdded({productId: "p1", name: "Laptop", description: "x", price: eur(999.99), categoryId: "cat1"}),
+      ProductAdded({productId: "p1", name: "Laptop", description: "x", price: eur(999.99), categoryId: "cat1", categoryName: Some("Peripherals")}),
       ProductImageAttached({productId: "p1", productImage: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg"}),
     ])
     ->whenEvent(
@@ -191,6 +195,7 @@ describe("Products StateViewSliceStream", () => {
         price: eur(999.99),
         productImages: [{ref: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg", altText: "front view"}],
         categoryId: "cat1",
+        categoryName: Some("Peripherals"),
         shelfStatus: Listed,
       },
     )
@@ -200,7 +205,7 @@ describe("Products StateViewSliceStream", () => {
   // primary is whatever it already was.
   test("captioning a non-primary member leaves the order alone", () =>
     givenEvents([
-      ProductAdded({productId: "p1", name: "Laptop", description: "x", price: eur(999.99), categoryId: "cat1"}),
+      ProductAdded({productId: "p1", name: "Laptop", description: "x", price: eur(999.99), categoryId: "cat1", categoryName: Some("Peripherals")}),
       ProductImageAttached({productId: "p1", productImage: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg"}),
       ProductImageAttached({productId: "p1", productImage: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg"}),
     ])
@@ -219,6 +224,7 @@ describe("Products StateViewSliceStream", () => {
           {ref: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg", altText: "side view"},
         ],
         categoryId: "cat1",
+        categoryName: Some("Peripherals"),
         shelfStatus: Listed,
       },
     )
@@ -235,35 +241,35 @@ describe("Products StateViewSliceStream", () => {
   // the resolvers' answer, not this projection's.
   test("ProductArchived moves the product off the shelf", () =>
     givenEvents([
-      ProductAdded({productId: "p1", name: "Laptop", description: "x", price: eur(999.99), categoryId: "cat1"}),
+      ProductAdded({productId: "p1", name: "Laptop", description: "x", price: eur(999.99), categoryId: "cat1", categoryName: Some("Peripherals")}),
     ])
     ->whenEvent(ProductArchived({productId: "p1"}))
     ->thenStateWithId(
       "p1",
-      {productId: "p1", name: "Laptop", description: "x", price: eur(999.99), productImages: [], categoryId: "cat1", shelfStatus: Archived},
+      {productId: "p1", name: "Laptop", description: "x", price: eur(999.99), productImages: [], categoryId: "cat1", categoryName: Some("Peripherals"), shelfStatus: Archived},
     )
   )
 
   test("ProductUnarchived puts it back on the shelf", () =>
     givenEvents([
-      ProductAdded({productId: "p1", name: "Laptop", description: "x", price: eur(999.99), categoryId: "cat1"}),
+      ProductAdded({productId: "p1", name: "Laptop", description: "x", price: eur(999.99), categoryId: "cat1", categoryName: Some("Peripherals")}),
       ProductArchived({productId: "p1"}),
     ])
     ->whenEvent(ProductUnarchived({productId: "p1"}))
     ->thenStateWithId(
       "p1",
-      {productId: "p1", name: "Laptop", description: "x", price: eur(999.99), productImages: [], categoryId: "cat1", shelfStatus: Listed},
+      {productId: "p1", name: "Laptop", description: "x", price: eur(999.99), productImages: [], categoryId: "cat1", categoryName: Some("Peripherals"), shelfStatus: Listed},
     )
   )
 
   test("ProductDiscontinued is the end of the line", () =>
     givenEvents([
-      ProductAdded({productId: "p1", name: "Laptop", description: "x", price: eur(999.99), categoryId: "cat1"}),
+      ProductAdded({productId: "p1", name: "Laptop", description: "x", price: eur(999.99), categoryId: "cat1", categoryName: Some("Peripherals")}),
     ])
     ->whenEvent(ProductDiscontinued({productId: "p1"}))
     ->thenStateWithId(
       "p1",
-      {productId: "p1", name: "Laptop", description: "x", price: eur(999.99), productImages: [], categoryId: "cat1", shelfStatus: Discontinued},
+      {productId: "p1", name: "Laptop", description: "x", price: eur(999.99), productImages: [], categoryId: "cat1", categoryName: Some("Peripherals"), shelfStatus: Discontinued},
     )
   )
 })

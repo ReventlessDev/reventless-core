@@ -7,7 +7,7 @@
 // more same-shaped ones, so the `Money.t` pair must lead (DZakh/sury#392).
 @schema
 type consumedEvent =
-  | ProductAdded({productId: string, name: string, description: string, price: Reventless.Money.t, categoryId: string})
+  | ProductAdded({productId: string, name: string, description: string, price: Reventless.Money.t, categoryId: string, categoryName: option<string>})
   | ProductPriceChanged({productId: string, price: Reventless.Money.t})
   | ProductNameChanged({productId: string, name: string})
   | ProductDescriptionChanged({productId: string, description: string})
@@ -60,6 +60,12 @@ type state = {
   // `categoryIdEq` filter on the connection, rather than a client narrowing one
   // loaded page.
   @index categoryId: string,
+  // What the category was called when the product was added, so a shopper reads
+  // "Desk accessories" where the row would otherwise show `cat-03`. Captured
+  // rather than resolved: this view is keyed by `productId` and could not rewrite
+  // every row of a renamed category anyway. `@groupBy` sections the list by it.
+  // Optional for products added before the name was recorded.
+  @groupBy categoryName: option<string>,
   // `@lifecycle` makes this the field commands' declared edges are written in
   // terms of; the retirements are on the constructors above.
   @lifecycle shelfStatus: shelfStatus,

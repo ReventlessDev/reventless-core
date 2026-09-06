@@ -1,5 +1,26 @@
 @@reventless.gwt
 
+// Minor units, the way `Money` counts them: 2500 is €25.00. The lines are the
+// write side's own — this view copies them through rather than deriving anything
+// from them, apart from `itemCount`.
+let eur = amount => Reventless.Money.make(~amount, ~currency=EUR)
+
+let dockLine: orderLine = {
+  productId: "p1",
+  name: "Fathom Dock",
+  quantity: 1,
+  unitPrice: eur(2500.0),
+  lineTotal: eur(2500.0),
+}
+
+let chargerLine: orderLine = {
+  productId: "p2",
+  name: "Cirrus Charger",
+  quantity: 2,
+  unitPrice: eur(1000.0),
+  lineTotal: eur(2000.0),
+}
+
 describe("Orders StateViewSlice", () => {
   test("OrderPlaced creates a row with status Placed", () =>
     givenEvents([])
@@ -8,6 +29,8 @@ describe("Orders StateViewSlice", () => {
         orderId: "o1",
         customerId: "c1",
         productIds: ["p1", "p2"],
+        lines: [dockLine, chargerLine],
+        total: eur(4500.0),
         shippingMethod: Standard,
         deliveryWindow: None,
         firstProductName: None,
@@ -20,6 +43,9 @@ describe("Orders StateViewSlice", () => {
         orderId: "o1",
         customerId: "c1",
         productIds: ["p1", "p2"],
+        lines: [dockLine, chargerLine],
+        total: eur(4500.0),
+        itemCount: 3,
         lifecycle: Placed,
         shippingMethod: Standard,
         placedAt: "time",
@@ -45,6 +71,8 @@ describe("Orders StateViewSlice", () => {
         orderId: "o1",
         customerId: "c1",
         productIds: ["p1"],
+        lines: [dockLine],
+        total: eur(2500.0),
         shippingMethod: Standard,
         deliveryWindow: Some(window),
         firstProductName: None,
@@ -57,6 +85,9 @@ describe("Orders StateViewSlice", () => {
         orderId: "o1",
         customerId: "c1",
         productIds: ["p1"],
+        lines: [dockLine],
+        total: eur(2500.0),
+        itemCount: 1,
         lifecycle: Placed,
         shippingMethod: Standard,
         placedAt: "time",
@@ -75,6 +106,8 @@ describe("Orders StateViewSlice", () => {
         orderId: "o1",
         customerId: "c1",
         productIds: ["p1"],
+        lines: [dockLine],
+        total: eur(2500.0),
         shippingMethod: Pickup,
         deliveryWindow: None,
         firstProductName: None,
@@ -87,6 +120,9 @@ describe("Orders StateViewSlice", () => {
         orderId: "o1",
         customerId: "c1",
         productIds: ["p1"],
+        lines: [dockLine],
+        total: eur(2500.0),
+        itemCount: 1,
         lifecycle: Placed,
         shippingMethod: Pickup,
         placedAt: "time",
@@ -104,6 +140,8 @@ describe("Orders StateViewSlice", () => {
         orderId: "o1",
         customerId: "c1",
         productIds: ["p1"],
+        lines: [dockLine],
+        total: eur(2500.0),
         shippingMethod: Express,
         deliveryWindow: None,
         firstProductName: None,
@@ -117,6 +155,9 @@ describe("Orders StateViewSlice", () => {
         orderId: "o1",
         customerId: "c1",
         productIds: ["p1"],
+        lines: [dockLine],
+        total: eur(2500.0),
+        itemCount: 1,
         lifecycle: Shipped,
         shippingMethod: Express,
         placedAt: "time",
@@ -134,6 +175,8 @@ describe("Orders StateViewSlice", () => {
         orderId: "o1",
         customerId: "c1",
         productIds: ["p1"],
+        lines: [dockLine],
+        total: eur(2500.0),
         shippingMethod: Standard,
         deliveryWindow: None,
         firstProductName: None,
@@ -147,6 +190,9 @@ describe("Orders StateViewSlice", () => {
         orderId: "o1",
         customerId: "c1",
         productIds: ["p1"],
+        lines: [dockLine],
+        total: eur(2500.0),
+        itemCount: 1,
         lifecycle: Cancelled,
         shippingMethod: Standard,
         placedAt: "time",
@@ -169,6 +215,8 @@ describe("Orders StateViewSlice", () => {
         orderId: "o1",
         customerId: "c1",
         productIds: ["p1"],
+        lines: [dockLine],
+        total: eur(2500.0),
         shippingMethod: Standard,
         deliveryWindow: None,
         firstProductName: None,
@@ -183,6 +231,9 @@ describe("Orders StateViewSlice", () => {
         orderId: "o1",
         customerId: "c1",
         productIds: ["p1"],
+        lines: [dockLine],
+        total: eur(2500.0),
+        itemCount: 1,
         lifecycle: Placed,
         shippingMethod: Standard,
         placedAt: "time",

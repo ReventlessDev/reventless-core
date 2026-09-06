@@ -88,7 +88,7 @@ enum Catalog_CategoryShelfStatus {
 }
 
 type Catalog_ImportProductAudit implements Node {
-  commandCount: Float
+  commandCount: Int
   error: String
   id: ID!
   input: String!
@@ -127,6 +127,7 @@ enum Catalog_ImportProductAuditStatus {
 
 type Catalog_Product implements Node {
   categoryId: ID!
+  categoryName: String
   description: String!
   id: ID!
   name: String!
@@ -145,7 +146,7 @@ type Catalog_ProductDemand implements Node {
   categoryId: ID!
   id: ID!
   name: String!
-  orderCount: Float!
+  orderCount: Int!
   productId: ID!
 }
 
@@ -330,7 +331,7 @@ type Mutation {
   Catalog_ChangeProductName(name: String!, productId: ID!): CommandResult!
   Catalog_ChangeProductPrice(price: MoneyInput!, productId: ID!): CommandResult!
   Catalog_DiscontinueProduct(productId: ID!): CommandResult!
-  Catalog_ImportProduct(category: String!, currency: String!, desc: String!, sku: String!, title: String!, unitPrice: Float!): CommandResult!
+  Catalog_ImportProduct(category: String!, currency: String!, desc: String!, sku: String!, title: String!, unitPrice: Int!): CommandResult!
   Catalog_RemoveCategoryImage(categoryId: ID!): CommandResult!
   Catalog_RemoveProductImage(productId: ID!, productImage: String!): CommandResult!
   Catalog_RenameCategory(categoryId: ID!, name: String!): CommandResult!
@@ -349,7 +350,7 @@ type Mutation {
   Ordering_Customer_SetAddressLocation(address: String!, id: ID!, location: GeoPointInput!): CommandResult!
   Ordering_Customer_UpdateAddress(address: String!, id: ID!): CommandResult!
   Ordering_Customer_UpdateEmail(email: String!, id: ID!): CommandResult!
-  Ordering_PlaceOrder(customerId: ID!, deliveryWindow: DateRangeInput, orderId: ID!, productIds: [ID!]!, shippingMethod: Ordering_PlaceOrderShippingMethod!): CommandResult!
+  Ordering_PlaceOrder(customerId: ID!, deliveryWindow: DateRangeInput, lineItems: [Ordering_PlaceOrderLineItems!]!, orderId: ID!, shippingMethod: Ordering_PlaceOrderShippingMethod!): CommandResult!
   Ordering_RelistSyncedProduct(productId: ID!): CommandResult!
   Ordering_ShipOrder(orderId: ID!): CommandResult!
   Ordering_Subscribe(category: Ordering_SubscribeCategory!, channel: Ordering_SubscribeChannel!, recipientId: ID!): CommandResult!
@@ -379,9 +380,9 @@ type Ordering_AnnounceRecipientContactTodo implements Node {
   id: ID!
   item: Ordering_AnnounceRecipientContactTodoItem!
   lastError: String
-  maxRetries: Float
+  maxRetries: Int
   processedAt: String
-  retryCount: Float!
+  retryCount: Int!
   status: Ordering_AnnounceRecipientContactTodoStatus!
 }
 
@@ -426,9 +427,9 @@ type Ordering_AutoShipOrderTodo implements Node {
   createdAt: String!
   id: ID!
   item: Ordering_AutoShipOrderTodoItem!
-  maxRetries: Float
+  maxRetries: Int
   processedAt: String
-  retryCount: Float!
+  retryCount: Int!
   status: Ordering_AutoShipOrderTodoStatus!
 }
 
@@ -515,7 +516,7 @@ type Ordering_Customer implements Node {
   email: String!
   geolocation: Geolocation!
   id: ID!
-  orderCount: Float!
+  orderCount: Int!
 }
 
 enum Ordering_CustomerAccountStatus {
@@ -591,9 +592,9 @@ type Ordering_GeocodeCustomerAddressTodo implements Node {
   id: ID!
   item: Ordering_GeocodeCustomerAddressTodoItem!
   lastError: String
-  maxRetries: Float
+  maxRetries: Int
   processedAt: String
-  retryCount: Float!
+  retryCount: Int!
   status: Ordering_GeocodeCustomerAddressTodoStatus!
 }
 
@@ -700,9 +701,9 @@ type Ordering_NotificationIntakeTodo implements Node {
   createdAt: String!
   id: ID!
   item: Ordering_NotificationIntakeTodoItem!
-  maxRetries: Float
+  maxRetries: Int
   processedAt: String
-  retryCount: Float!
+  retryCount: Int!
   status: Ordering_NotificationIntakeTodoStatus!
 }
 
@@ -810,12 +811,15 @@ type Ordering_Order implements Node {
   firstProductImage: String
   firstProductName: String
   id: ID!
+  itemCount: Int!
   lifecycle: Ordering_OrderLifecycle!
+  lines: [Ordering_OrderLines!]!
   orderId: ID!
   placedAt: String!
   productIds: [ID!]!
   shippedAt: String!
   shippingMethod: Ordering_OrderShippingMethod!
+  total: Money!
 }
 
 type Ordering_OrderConnection {
@@ -839,6 +843,14 @@ enum Ordering_OrderLifecycle {
   Cancelled
   Placed
   Shipped
+}
+
+type Ordering_OrderLines {
+  lineTotal: Money!
+  name: String!
+  productId: ID!
+  quantity: Int!
+  unitPrice: Money!
 }
 
 input Ordering_OrderOrderBy {
@@ -892,6 +904,11 @@ type Ordering_OrderingEventRecordEdge {
   node: Ordering_OrderingEventRecord!
 }
 
+input Ordering_PlaceOrderLineItems {
+  productId: ID!
+  quantity: Int!
+}
+
 enum Ordering_PlaceOrderShippingMethod {
   Express
   Pickup
@@ -904,9 +921,9 @@ type Ordering_SendNotificationTodo implements Node {
   id: ID!
   item: Ordering_SendNotificationTodoItem!
   lastError: String
-  maxRetries: Float
+  maxRetries: Int
   processedAt: String
-  retryCount: Float!
+  retryCount: Int!
   status: Ordering_SendNotificationTodoStatus!
 }
 
@@ -1110,7 +1127,7 @@ type Platform_UiFragmentPagesMenuEntry {
   group: String
   icon: String
   label: String!
-  sortOrder: Float!
+  sortOrder: Int!
 }
 
 type Platform_UiFragmentPanels {

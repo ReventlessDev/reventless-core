@@ -398,7 +398,7 @@ A lightweight shadow copy of Catalog product data, kept in sync via Catalog's Ex
 
 **Why Order + CatalogProduct share DCB?** Both entities benefit from living in the same event log. The shared log means CatalogProduct sync events and Order events are available together, enabling the framework to deliver both in filtered reads for projections like `AvailableProductsView`.
 
-**Cross-entity validation:** The `PlaceOrder` command uses an array reference field (`@ref("AvailableProducts") productIds: array<string>`) to reference product IDs. The runtime automatically builds a multi-clause OR query that fetches both Order events (by `orderId`) and CatalogProduct events (by each `productId`) into the same decision model — enabling PlaceOrder to reject orders referencing unknown products.
+**Cross-entity validation:** The `PlaceOrder` command carries its basket as `lineItems: array<lineItem>`, and the reference is declared one record in — `@ref("AvailableProducts") productId: string` on the line. The framework follows it there: the runtime automatically builds a multi-clause OR query that fetches both Order events (by `orderId`) and CatalogProduct events (by each `productId`) into the same decision model — enabling PlaceOrder to reject orders referencing unknown products. The tag key comes from the *nested* field's name, which is what makes it the same `productId` tag `CatalogProductSynced` writes.
 
 ### The shared Ordering DCB event log
 
@@ -413,7 +413,7 @@ Conceptually, the events flowing through the shared Ordering DCB log are:
 // Illustrative union — assembled from the slices, not a file you write.
 @schema
 type event =
-  | OrderPlaced({orderId: @s.matches(DcbTag.string) string, productIds: array<string>, /* … */})
+  | OrderPlaced({orderId: @s.matches(DcbTag.string) string, lines: array<orderLine>, total: Reventless.Money.t, /* … */})
   | OrderShipped({orderId: @s.matches(DcbTag.string) string})
   // … OrderCancelled
   | CatalogProductSynced({productId: @s.matches(DcbTag.string) string, name: string, price: float})

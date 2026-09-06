@@ -332,7 +332,7 @@ let newAddress = () => address()
 type order = {
   id: string,
   customerId: string,
-  productIds: array<string>,
+  lineItems: array<OrderingPlugin.PlaceOrder.lineItem>,
   shippingMethod: OrderingPlugin.PlaceOrder.shippingMethod,
   // The requested delivery slot, as one declared `DateRange` — not a guessed
   // `start*`/`end*` field pair. `None` for Pickup (collected in store) and for
@@ -397,9 +397,20 @@ let buildOrders = (
       ->Array.get(0)
       ->Option.mapOr("cust-01", c => c.id)
     }
-    let productIds =
-      ReventlessSeed.Seed.Random.sampleWeighted(random, productWeights, ~count=size)
-      ->Array.map(p => p.id)
+    // Mostly one of a thing, occasionally two or three — enough that the demo's
+    // totals differ from one another rather than all being a single unit price.
+    let lineItems =
+      ReventlessSeed.Seed.Random.sampleWeighted(random, productWeights, ~count=size)->Array.map(p => {
+        let quantityRoll = ReventlessSeed.Seed.Random.float(random)
+        let quantity = if quantityRoll < 0.7 {
+          1
+        } else if quantityRoll < 0.92 {
+          2
+        } else {
+          3
+        }
+        ({productId: p.id, quantity}: OrderingPlugin.PlaceOrder.lineItem)
+      })
     // Drives the whole downstream lifecycle: Express is auto-shipped by the
     // AutoShipOrder automation, Standard waits for the batch dispatch, Pickup
     // never ships. This split is what gives the board three columns.
@@ -422,7 +433,7 @@ let buildOrders = (
         ->Option.getOr(("2026-03-02T09:00:00Z", "2026-03-02T12:00:00Z"))
       Some(Reventless.DateRange.make(~start, ~end_)->Result.getOrThrow)
     }
-    {id: `ord-${pad(i + 1, 3)}`, customerId, productIds, shippingMethod, deliveryWindow}
+    {id: `ord-${pad(i + 1, 3)}`, customerId, lineItems, shippingMethod, deliveryWindow}
   })
 }
 

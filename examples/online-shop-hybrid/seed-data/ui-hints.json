@@ -13,7 +13,7 @@
             "pluginId": "Ordering",
             "slice": "PlaceOrder",
             "command": "PlaceOrder",
-            "field": "productIds",
+            "field": "lineItems[].productId",
             "then": "/Ordering/Orders"
           }
         ]

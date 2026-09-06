@@ -1859,13 +1859,41 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
 
     // Scalar and plural in one command: the plural forms are the regression, the
     // scalar one is here so a fix that reaches them by breaking it cannot pass.
+    // The nested one rides alongside, named by its path rather than by the field
+    // that holds it.
     testSync("a command collects its array refs alongside its scalar one", () => {
       let cmd = slice.commands->Array.getUnsafe(0)
       expect(cmd.references->referencesOf)->toEqual([
         ("customerId", "Customers"),
         ("productIds", "AvailableProducts"),
         ("warehouseIds", "Warehouses"),
+        ("lineItems[].productId", "AvailableProducts"),
       ])
+    })
+
+    // A reference declared on a field of a record the command holds belongs to
+    // *that* field, so it is named by its path: `[]` for "each element of", `.`
+    // for "property of". Attributing it to `lineItems` would name a field that
+    // declares nothing, and dropping it would leave the consuming side free to
+    // guess an entity from the name.
+    testSync("a reference on a nested record's field is named by its path", () => {
+      let cmd = slice.commands->Array.getUnsafe(0)
+      expect(
+        cmd.references->Array.find(({fieldName}) => fieldName == "lineItems[].productId"),
+      )->toEqual(
+        Some({
+          Reventless.Plugin.fieldName: "lineItems[].productId",
+          entity: "AvailableProducts",
+          plugin: None,
+        }),
+      )
+    })
+
+    // The other half of the path contract: a flat field keeps its bare name, so
+    // nothing reading today's paths has to learn the new form to go on working.
+    testSync("a flat reference in the same variant keeps its bare name", () => {
+      let cmd = slice.commands->Array.getUnsafe(0)
+      expect(cmd.references->Array.some(({fieldName}) => fieldName == "customerId"))->toBe(true)
     })
 
     // Optionality is a statement about presence. An optional array puts the
@@ -1883,6 +1911,26 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
     testSync("an event collects its array ref too", () => {
       let evt = slice.events->Array.getUnsafe(0)
       expect(evt.references->referencesOf)->toEqual([("productIds", "AvailableProducts")])
+    })
+
+    // A client assembling this mutation declares a variable per argument, and
+    // for `lineItems` it needs the *element* input type by name. The rendered
+    // reference `x-reventless-graphql-type` publishes is keyed by argument, so it
+    // stops at the top level; this one travels with the object itself, which is
+    // what a reader that has descended into the list has in hand.
+    //
+    // The name is composed from the mutation field by a server-side convention,
+    // so nothing downstream of the JSON Schema could reconstruct it.
+    testSync("a nested input object publishes the type name the SDL declares", () => {
+      let cmd = slice.commands->Array.getUnsafe(0)
+      let itemName =
+        cmd.schema
+        ->JSON.parseOrThrow
+        ->getPropertyOf("lineItems")
+        ->Option.flatMap(s => getProperty(s, "items"))
+        ->Option.flatMap(s => getProperty(s, "x-reventless-graphql-input"))
+        ->Option.flatMap(JSON.Decode.string)
+      expect(itemName)->toEqual(Some(cmd.mutationField ++ "LineItems"))
     })
 
     // The declared entity, not the one `productIds` reads like. Before the

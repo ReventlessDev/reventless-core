@@ -2,13 +2,28 @@
 
 let project = ({event, meta}) =>
   switch event {
-  | OrderPlaced({orderId, customerId, productIds, shippingMethod, deliveryWindow, firstProductName, firstProductImage}) => [
+  | OrderPlaced({
+      orderId,
+      customerId,
+      productIds,
+      lines,
+      total,
+      shippingMethod,
+      deliveryWindow,
+      firstProductName,
+      firstProductImage,
+    }) => [
       Set(
         orderId,
         {
           orderId,
           customerId,
           productIds,
+          lines,
+          total,
+          // Summed here rather than carried on the event: it is a restatement of
+          // the lines, and a projection that derives it cannot disagree with them.
+          itemCount: lines->Array.reduce(0, (count, line) => count + line.quantity),
           lifecycle: Placed,
           shippingMethod,
           placedAt: meta.time,

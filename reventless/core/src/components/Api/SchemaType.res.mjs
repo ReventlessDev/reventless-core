@@ -85,7 +85,17 @@ function shapeOf(parentName, fieldName, schema) {
         return "ScalarString";
       }
     case "number" :
-      return "ScalarNumber";
+      let match = schema.format;
+      if (match === undefined) {
+        return "ScalarNumber";
+      }
+      switch (match) {
+        case "int32" :
+        case "port" :
+          return "ScalarInt";
+        case "integer" :
+          return "ScalarNumber";
+      }
     case "bigint" :
       return "ScalarBigInt";
     case "boolean" :
@@ -168,12 +178,12 @@ function shapeOf(parentName, fieldName, schema) {
           return $$enum;
         }
       }
-      let match = TaggedUnion$Reventless.classify(schema);
-      if (match === undefined) {
+      let match$1 = TaggedUnion$Reventless.classify(schema);
+      if (match$1 === undefined) {
         return "Unknown";
       }
-      let unionName = match[0];
-      let armTypes = match[1].map(param => {
+      let unionName = match$1[0];
+      let armTypes = match$1[1].map(param => {
         let armSchema = param.schema;
         let tag = param.tag;
         let memberName = TaggedUnion$Reventless.memberTypeName(unionName, tag);

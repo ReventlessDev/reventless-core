@@ -18,12 +18,26 @@ type shippingMethod =
   | Express
   | Pickup
 
+// One priced line of a placed order, carried straight from `OrderPlaced`. The
+// name and the prices are the ones the write side froze at placement — this view
+// does not go and ask the catalog what anything is called or costs now.
+@schema
+type orderLine = {
+  productId: string,
+  name: string,
+  quantity: int,
+  unitPrice: Reventless.Money.t,
+  lineTotal: Reventless.Money.t,
+}
+
 @schema
 type consumedEvent =
   | OrderPlaced({
       orderId: string,
       customerId: string,
       productIds: array<string>,
+      lines: array<orderLine>,
+      total: Reventless.Money.t,
       shippingMethod: shippingMethod,
       deliveryWindow: option<Reventless.DateRange.t>,
       firstProductName: option<string>,
@@ -43,6 +57,9 @@ type lifecycle =
   | Shipped
   | Cancelled
 
+// An order list is operational, not investigative — an `AutoShipOrder` flips a
+// row while the shopper is looking at it — so the Live control is offered.
+@live(true)
 @schema
 type state = {
   orderId: string,
@@ -50,7 +67,16 @@ type state = {
   // `customerId` matches their own identity; a caller in an elevated group sees
   // every row. Enforced in the resolver, not by the client asking nicely.
   @owner customerId: string,
-  productIds: array<string>,
+  // Correct on the event — it is what the extension point decomposes — and noise
+  // in a grid, where `lines` says the same thing with names and quantities.
+  @hidden productIds: array<string>,
+  lines: array<orderLine>,
+  // What the order cost, as the write side computed it at placement. Summary
+  // fields because they are the two numbers a list column can usefully show.
+  @summary total: Reventless.Money.t,
+  // How many things this is, summed across the lines — a shopper's own reading
+  // of the size of an order, which the number of lines does not give.
+  @summary itemCount: int,
   // No annotation: the field name is the declaration. `@lifecycle` exists for
   // records whose lifecycle field is honestly called something else.
   lifecycle: lifecycle,

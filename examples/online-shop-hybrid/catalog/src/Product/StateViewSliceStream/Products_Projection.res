@@ -15,10 +15,19 @@ let primaryFirst = (state: Products.state, chosen: string) => {
 
 let project = ({event}) =>
   switch event {
-  | ProductAdded({productId, name, description, price, categoryId}) => [
+  | ProductAdded({productId, name, description, price, categoryId, categoryName}) => [
       Set(
         productId,
-        {productId, name, description, price, productImages: [], categoryId, shelfStatus: Listed},
+        {
+          productId,
+          name,
+          description,
+          price,
+          productImages: [],
+          categoryId,
+          categoryName,
+          shelfStatus: Listed,
+        },
       ),
     ]
   | ProductNameChanged({productId, name}) => [Update(productId, state => {...state, name})]

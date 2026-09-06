@@ -77,7 +77,7 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
       PlaceOrder.PlaceOrder({
         orderId: "o1",
         customerId: "c1",
-        productIds: ["p1"],
+        lineItems: [{productId: "p1", quantity: 2}],
         shippingMethod: Express,
         deliveryWindow: window,
       }),
@@ -87,6 +87,19 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
         orderId: "o1",
         customerId: "c1",
         productIds: ["p1"],
+        // The line is priced from the shelf the placement read, and the total is
+        // the sum of the lines — two of a €9.99 book is €19.98, computed by
+        // `Money` rather than by the behaviour.
+        lines: [
+          {
+            productId: "p1",
+            name: "Book",
+            quantity: 2,
+            unitPrice: eur(9.99),
+            lineTotal: eur(19.98),
+          },
+        ],
+        total: eur(19.98),
         shippingMethod: Express,
         deliveryWindow: window,
         // Captured off the shelf at placement — the same name the catalog
@@ -104,6 +117,17 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
         Orders.orderId: "o1",
         customerId: "c1",
         productIds: ["p1"],
+        lines: [
+          {
+            productId: "p1",
+            name: "Book",
+            quantity: 2,
+            unitPrice: eur(9.99),
+            lineTotal: eur(19.98),
+          },
+        ],
+        total: eur(19.98),
+        itemCount: 2,
         lifecycle: Shipped,
         shippingMethod: Express,
         placedAt: "time",
@@ -154,7 +178,7 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
       PlaceOrder.PlaceOrder({
         orderId: "o1",
         customerId: "c1",
-        productIds: ["p1"],
+        lineItems: [{productId: "p1", quantity: 1}],
         shippingMethod: Standard,
       }),
     )

@@ -1,6 +1,11 @@
 type rec schemaType =
   | ScalarString
   | ScalarNumber
+  | /** A number the schema says is whole. sury carries the fact on the number's
+        `format`, and it was being dropped here — so every `int` in the domain
+        reached the SDL as `Float` and JSON Schema as `"number"`, and a quantity
+        was a field a client could legally send `2.5` in. */
+  ScalarInt
   | ScalarBoolean
   | ScalarBigInt
   | EntityId
@@ -103,6 +108,9 @@ and shapeOf = (~parentName: string, ~fieldName: string, schema: S.t<unknown>): s
     | String({const: ?Some(_)}) => ScalarString
     | String(_) if isDateTime(schema) => DateTime
     | String(_) => isIdFieldName(fieldName) ? EntityId : ScalarString
+    // `Int32` and `Port` are both whole-number formats; anything else (or no
+    // format at all) is a `float` as far as the schema is concerned.
+    | Number({format: ?Some(Int32 | Port)}) => ScalarInt
     | Number(_) => ScalarNumber
     | Boolean(_) => ScalarBoolean
     | BigInt(_) => ScalarBigInt

@@ -62,6 +62,11 @@ Only wrappers around the field's own value are followed — the optional union a
 the array element, to any depth. Object properties are not: a reference declared
 on a nested record's field belongs to that field, and attributing it to the
 enclosing one would name the wrong field.
+
+That is still the right answer to the question this asks. A caller collecting
+*every* reference a command or event declares — including the ones on the fields
+of records it holds — wants [`collectFieldTargets`], which names each one by its
+own path.
 */
 let rec getFieldTarget = (schema: S.t<unknown>): option<target> =>
   switch getTarget(schema) {
@@ -72,6 +77,49 @@ let rec getFieldTarget = (schema: S.t<unknown>): option<target> =>
     switch schema->Semantic.unwrapOptional->Option.getOr(schema) {
     | Array({additionalItems: Schema(item)}) => getFieldTarget(item)
     | _ => None
+    }
+  }
+
+/**
+Every reference a field declares, each paired with the path that names it.
+
+A reference on the field's own value keeps the bare field name (`customerId`), so
+nothing that reads today's paths has to learn the new form to go on working. One
+declared on a field of a record the field holds is named by its path:
+`lineItems[].productId` — `[]` for "each element of", `.` for "property of", and
+no index, because a marker lives on the element *schema* and so applies to every
+element or to none.
+
+⚠️ A path is a **widened** contract, not a compatible one, for a consumer that
+uses the name as a dictionary key into a value's properties: such a consumer
+simply misses a nested reference and falls back to whatever it does for an
+unreferenced field. That degradation is the correct one, but it is a degradation.
+
+Only one record deep, matching [`DcbTag.nestedRecordProperties`], which is the
+walk shared with the tag extraction so a marker is found in the same places by
+both.
+*/
+let collectFieldTargets = (
+  fieldName: string,
+  schema: S.t<unknown>,
+): array<(string, target)> =>
+  switch getFieldTarget(schema) {
+  | Some(target) => [(fieldName, target)]
+  | None =>
+    switch DcbTag.nestedRecordProperties(schema) {
+    | None => []
+    | Some((properties, isList)) =>
+      let prefix = isList ? fieldName ++ "[]" : fieldName
+      properties
+      ->Dict.toArray
+      ->Array.filterMap(((propName, propSchema)) =>
+        propName === "TAG"
+          ? None
+          : getFieldTarget(propSchema)->Option.map(target => (
+              `${prefix}.${propName}`,
+              target,
+            ))
+      )
     }
   }
 

@@ -449,14 +449,14 @@ function labelFieldsFromStateSchema(entityName, stateSchema) {
 }
 
 function extractReferences(properties) {
-  return Stdlib_Array.filterMap(Object.entries(properties), param => {
-    let fieldName = param[0];
-    return Stdlib_Option.map(Reference$Reventless.getFieldTarget(param[1]), target => ({
-      fieldName: fieldName,
+  return Object.entries(properties).flatMap(param => Reference$Reventless.collectFieldTargets(param[0], param[1]).map(param => {
+    let target = param[1];
+    return {
+      fieldName: param[0],
       entity: target.entity,
       plugin: target.plugin
-    }));
-  });
+    };
+  }));
 }
 
 function toEventDef(v) {
@@ -464,7 +464,7 @@ function toEventDef(v) {
     let references = extractReferences(properties);
     return {
       name: variantName,
-      schema: JSON.stringify(SuryToJsonSchema$ReventlessCore.deriveObjectSchema(v)),
+      schema: JSON.stringify(SuryToJsonSchema$ReventlessCore.deriveObjectSchema(undefined, undefined, v)),
       references: references
     };
   };
@@ -609,7 +609,7 @@ function toCommandDef(isAggregate, mutationFieldFor, parentSchema, commandAuthor
     }
     let requiredAccess = accessKeysFor(commandAuthorization(syntheticCommand));
     let mutationField = apiExposed ? mutationFieldFor(variantName) : "";
-    let jsonSchema = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(v);
+    let jsonSchema = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(apiExposed, mutationField, v);
     let annotatedSchema = apiExposed ? Stdlib_Option.mapOr(GraphQL_FragmentGenerator$ReventlessCore.mutationArgTypes(mutationField, v), jsonSchema, __x => annotateArgTypes(jsonSchema, __x)) : jsonSchema;
     return {
       name: variantName,
@@ -675,7 +675,7 @@ function queryableDefFromSpec(plugin, name, stateSchema, authorization, visibili
   return {
     name: name,
     queryField: qf.listFieldName,
-    schema: JSON.stringify(SuryToJsonSchema$ReventlessCore.deriveObjectSchema(stateSchema)),
+    schema: JSON.stringify(SuryToJsonSchema$ReventlessCore.deriveObjectSchema(undefined, undefined, stateSchema)),
     consumedEventTypes: consumedEventTypes,
     linkedWriteSide: linkedWriteSide,
     labelField: label.field,
@@ -975,7 +975,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     return {
       name: R.Spec.name,
       queryField: qf.listFieldName,
-      schema: JSON.stringify(SuryToJsonSchema$ReventlessCore.deriveObjectSchema(stateSchema)),
+      schema: JSON.stringify(SuryToJsonSchema$ReventlessCore.deriveObjectSchema(undefined, undefined, stateSchema)),
       consumedEventTypes: consumed,
       linkedWriteSide: linkedWriteSideFor(consumed),
       labelField: label.field,
@@ -1007,7 +1007,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     return {
       name: SVS.Spec.name,
       queryField: qf.listFieldName,
-      schema: JSON.stringify(SuryToJsonSchema$ReventlessCore.deriveObjectSchema(stateSchema)),
+      schema: JSON.stringify(SuryToJsonSchema$ReventlessCore.deriveObjectSchema(undefined, undefined, stateSchema)),
       consumedEventTypes: consumed,
       linkedWriteSide: linkedWriteSideFor(consumed),
       labelField: label.field,

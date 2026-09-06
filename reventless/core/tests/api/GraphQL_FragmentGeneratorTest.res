@@ -357,11 +357,13 @@ describe("GraphQL_FragmentGenerator.mutationArgTypes", () => {
     expect((typeOf("tip"), typeOf("total")))->toEqual((Some("MoneyInput"), Some("MoneyInput!")))
   )
 
-  // Both of these differ from what the JSON-Schema type alone suggests —
-  // `orderId` is a plain string there and `itemCount` an integer — which is the
-  // narrower reason a client cannot derive even the scalars itself.
+  // `orderId` differs from what the JSON-Schema type alone suggests — a plain
+  // string there, an `ID!` here — which is the narrower reason a client cannot
+  // derive even the scalars itself. `itemCount` is an `Int!` on both sides: sury
+  // carries the whole-number format and the walk now keeps it, so a quantity is
+  // no longer a field a client could legally send `2.5` in.
   testSync("reports the scalar the server chose, not the JSON-Schema one", () =>
-    expect((typeOf("orderId"), typeOf("itemCount")))->toEqual((Some("ID!"), Some("Float!")))
+    expect((typeOf("orderId"), typeOf("itemCount")))->toEqual((Some("ID!"), Some("Int!")))
   )
 
   // The property that makes publishing worth more than re-deriving downstream:

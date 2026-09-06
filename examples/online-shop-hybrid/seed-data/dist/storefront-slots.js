@@ -337,23 +337,13 @@ function register(arg) {
   arg.slots.row(RowSlot.cardsFace, (payload) => {
     let at = Row.text(payload.row, "placedAt");
     let heading = at !== void 0 ? Format.isoDay(at) : titleOf(payload);
-    let items = map(Row.array(payload.row, "productIds"), (ids) => {
-      let match = Row.text(payload.row, "firstProductName");
-      let match$1 = ids.length;
-      if (match !== void 0) {
-        if (match$1 !== 1) {
-          return match + " + " + (match$1 - 1 | 0).toString() + " more";
-        } else {
-          return match;
-        }
-      } else if (match$1 !== 1) {
-        return match$1.toString() + " items";
-      } else {
-        return "1 item";
-      }
-    });
+    let lineCount = map(Row.array(payload.row, "lines"), (prim) => prim.length);
+    let itemCount = map(Row.float(payload.row, "itemCount"), (prim) => prim | 0);
+    let match = Row.text(payload.row, "firstProductName");
+    let items = match !== void 0 ? lineCount !== void 0 && lineCount !== 1 ? match + " + " + (lineCount - 1 | 0).toString() + " more" : match : itemCount !== void 0 ? itemCount !== 1 ? itemCount.toString() + " items" : "1 item" : void 0;
     let summary = filterMap([
       map(Row.money(payload.row, "price"), Format.money),
+      map(Row.money(payload.row, "total"), Format.money),
       items
     ], (line) => line);
     return h2("div", {

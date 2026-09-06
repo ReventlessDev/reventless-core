@@ -80,23 +80,19 @@ function register(arg) {
   arg.slots.row(ReventlessSlots.RowSlot.cardsFace, payload => {
     let at = ReventlessSlots.Row.text(payload.row, "placedAt");
     let heading = at !== undefined ? ReventlessSlots.Format.isoDay(at) : ReventlessSlots.titleOf(payload);
-    let items = Stdlib_Option.map(ReventlessSlots.Row.array(payload.row, "productIds"), ids => {
-      let match = ReventlessSlots.Row.text(payload.row, "firstProductName");
-      let match$1 = ids.length;
-      if (match !== undefined) {
-        if (match$1 !== 1) {
-          return match + " + " + (match$1 - 1 | 0).toString() + " more";
-        } else {
-          return match;
-        }
-      } else if (match$1 !== 1) {
-        return match$1.toString() + " items";
-      } else {
-        return "1 item";
-      }
-    });
+    let lineCount = Stdlib_Option.map(ReventlessSlots.Row.array(payload.row, "lines"), prim => prim.length);
+    let itemCount = Stdlib_Option.map(ReventlessSlots.Row.float(payload.row, "itemCount"), prim => prim | 0);
+    let match = ReventlessSlots.Row.text(payload.row, "firstProductName");
+    let items = match !== undefined ? (
+        lineCount !== undefined && lineCount !== 1 ? match + " + " + (lineCount - 1 | 0).toString() + " more" : match
+      ) : (
+        itemCount !== undefined ? (
+            itemCount !== 1 ? itemCount.toString() + " items" : "1 item"
+          ) : undefined
+      );
     let summary = Stdlib_Array.filterMap([
       Stdlib_Option.map(ReventlessSlots.Row.money(payload.row, "price"), ReventlessSlots.Format.money),
+      Stdlib_Option.map(ReventlessSlots.Row.money(payload.row, "total"), ReventlessSlots.Format.money),
       items
     ], line => line);
     return h("div", {

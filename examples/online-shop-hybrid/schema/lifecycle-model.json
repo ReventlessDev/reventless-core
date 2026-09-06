@@ -17,7 +17,7 @@
     "targets": [
       "Listed"
     ],
-    "scenarios": 5
+    "scenarios": 6
   },
   {
     "component": "ArchiveCategory",
@@ -247,7 +247,7 @@
     "targets": [
       "Placed"
     ],
-    "scenarios": 17
+    "scenarios": 24
   },
   {
     "component": "ProductImages",

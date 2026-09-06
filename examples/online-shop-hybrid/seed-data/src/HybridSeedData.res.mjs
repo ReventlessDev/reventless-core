@@ -309,7 +309,7 @@ async function seedOrders(orders, client) {
         TAG: "PlaceOrder",
         orderId: order.id,
         customerId: order.customerId,
-        productIds: order.productIds,
+        lineItems: order.lineItems,
         shippingMethod: order.shippingMethod,
         deliveryWindow: order.deliveryWindow
       }), undefined);

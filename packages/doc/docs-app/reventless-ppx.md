@@ -199,6 +199,59 @@ type event =
 
 ---
 
+### Markers on a record inside an array
+
+A command or event field may hold a list of **records** — an order line, a
+shipment row, an approval step — and the markers on those records' fields are
+still found. A `@ref` on a nested field resolves to a picker, a DCB tag on one
+routes the decision read and indexes the write, and the enclosing field's GraphQL
+input type is named for a client to declare.
+
+```rescript
+// A NAMED record type, not an inline one: the PPX walks a type declaration,
+// which is what puts the `@ref` (and with it the DCB tag) on `productId`.
+@schema
+type lineItem = {
+  @ref("AvailableProducts") productId: string,
+  quantity: int,
+}
+
+@schema
+type command =
+  PlaceOrder({
+    @partitionTag orderId: string,
+    lineItems: array<lineItem>,
+  })
+```
+
+Two rules decide whether this works, and both are silent if got wrong:
+
+- **The tag key is the nested field's name**, never the enclosing one.
+  `lineItems[].productId` produces key `productId`, which is what makes it the
+  *same* tag the producing slice writes. A key derived from `lineItems` would
+  name a tag nobody writes and the decision read would come back empty — the
+  identical symptom to extracting no tags at all. `@dcbTag("explicitKey")` on the
+  nested field still overrides it.
+- **Duplicate keys collapse by value.** Two lines for the same product yield one
+  tag, so a decision query carries the clause once and the written event carries
+  one index entry.
+
+Everything else is unchanged: a nested tag is the same tag as a flat one, with
+the same key and the same scope rules; only the place the walk finds it moves.
+
+**Naming.** A reference is published under its path — `lineItems[].productId`,
+`[]` for "each element of" and `.` for "property of", with no index, because a
+marker lives on the element *schema* and so applies to every element or to none.
+A flat field keeps its bare name. The item's GraphQL input type name rides on the
+command's JSON Schema as `x-reventless-graphql-input`, so a client assembling the
+mutation can declare the variable without knowing the server's naming rule.
+
+**Depth stops at one record.** The walk follows exactly the wrappers a field's
+own value can wear — `option`, `array`, and one record inside them. A marker two
+records deep is not found.
+
+---
+
 ### `@compositePartitionTag` — composite DCB partition key
 
 `@compositePartitionTag` lets you form the DynamoDB partition key from multiple fields, concatenated in declaration order with a configurable separator. Use it when a single field is too coarse for partitioning and a composite identity (e.g. `environment/platform/plugin`) distributes events better across partitions.

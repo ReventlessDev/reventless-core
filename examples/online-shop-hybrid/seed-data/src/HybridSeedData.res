@@ -401,7 +401,7 @@ let seedOrders = async (orders: array<DemoData.order>, ~client: Seed.Client.t) =
           PlaceOrder({
             orderId: order.id,
             customerId: order.customerId,
-            productIds: order.productIds,
+            lineItems: order.lineItems,
             shippingMethod: order.shippingMethod,
             deliveryWindow: ?order.deliveryWindow,
           }),

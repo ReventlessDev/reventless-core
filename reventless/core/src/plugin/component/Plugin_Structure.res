@@ -580,10 +580,18 @@ let extractReferences = (properties: dict<S.t<unknown>>): array<
 > =>
   properties
   ->Dict.toArray
-  ->Array.filterMap(((fieldName, fieldSchema)) =>
-    Reventless.Reference.getFieldTarget(fieldSchema)->Option.map(target => (
+  ->Array.flatMap(((fieldName, fieldSchema)) =>
+    // `collectFieldTargets`, not `getFieldTarget`: a reference declared on a field
+    // of a record the field holds (an order line's `productId`) is one this
+    // command declares, and it arrives named by its own path. Commands and events
+    // both come through here, which is what stops one of them learning about
+    // nesting and the other not.
+    Reventless.Reference.collectFieldTargets(fieldName, fieldSchema)->Array.map(((
+      path,
+      target,
+    )) => (
       {
-        Reventless.Plugin.fieldName,
+        Reventless.Plugin.fieldName: path,
         entity: target.entity,
         plugin: target.plugin,
       }: Reventless.Plugin.fieldReference
@@ -763,7 +771,12 @@ let toCommandDef = (
     // argument type names are composed *from* that field name, so there is
     // nothing to publish for it either.
     let mutationField = apiExposed ? mutationFieldFor(variantName) : ""
-    let jsonSchema = v->SuryToJsonSchema.deriveObjectSchema
+    // Rooted at the mutation field, and asking for the input type names, so an
+    // object nested inside an argument (an order line inside `lineItems`) carries
+    // the name the SDL declares it under — which `x-reventless-graphql-type`, keyed
+    // by top-level argument, has no place to put.
+    let jsonSchema =
+      v->SuryToJsonSchema.deriveObjectSchema(~inputNames=apiExposed, ~typeName=mutationField)
     let annotatedSchema = if apiExposed {
       GraphQL_FragmentGenerator.mutationArgTypes(~fieldName=mutationField, v)->Option.mapOr(
         jsonSchema,

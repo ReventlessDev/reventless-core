@@ -273,6 +273,56 @@ let isTaggedArray = (fieldSchema: S.t<unknown>) =>
   | _ => false
   }
 
+/**
+The properties of the record a field's value holds, when it holds records rather
+than scalars — `record`, `option<record>`, `array<record>`, `option<array<record>>`
+— with `true` for the array forms, which fan out into one contribution per element.
+
+This is the single wrapper walk the nested-marker walks share, so a marker means
+the same thing whichever of them finds it. It follows exactly the wrappers a
+field's own value can wear and stops at the first record: a marker two records
+deep is a shape no domain here has, and reaching it is a different and much more
+expensive walk than this one.
+*/
+let nestedRecordProperties = (fieldSchema: S.t<unknown>): option<(dict<S.t<unknown>>, bool)> => {
+  let unwrapped = fieldSchema->Semantic.unwrapOptional->Option.getOr(fieldSchema)
+  let (candidate, isList) = switch unwrapped {
+  | Array({additionalItems: Schema(item)}) => (
+      item->Semantic.unwrapOptional->Option.getOr(item),
+      true,
+    )
+  | other => (other, false)
+  }
+  switch candidate {
+  | Object({properties}) => Some((properties, isList))
+  | _ => None
+  }
+}
+
+/** Returns `true` if a record's own properties carry at least one DCB tag. */
+let propertiesCarryTags = (properties: dict<S.t<unknown>>): bool =>
+  properties->Dict.toArray->Array.some(((_, s)) => isTagged(s) || isTaggedArray(s))
+
+/**
+Returns `true` if the schema is an array of records at least one of whose fields
+is DCB-tagged — `array<lineItem>` where `lineItem` carries a `@ref` or a `*Id`.
+
+Distinguished from [`hasNestedTags`] because an array is the case that *fans out*:
+it decides the query mode, exactly as a tagged scalar array does.
+*/
+let isTaggedRecordArray = (fieldSchema: S.t<unknown>): bool =>
+  switch nestedRecordProperties(fieldSchema) {
+  | Some((properties, true)) => propertiesCarryTags(properties)
+  | _ => false
+  }
+
+/** Returns `true` if the schema holds a record — in an array or not — carrying tags. */
+let hasNestedTags = (fieldSchema: S.t<unknown>): bool =>
+  switch nestedRecordProperties(fieldSchema) {
+  | Some((properties, _)) => propertiesCarryTags(properties)
+  | None => false
+  }
+
 /** Returns `true` if the schema was annotated with `DcbTag.partition`. */
 let isPartitionTag = (fieldSchema: S.t<unknown>) =>
   S.Metadata.get(fieldSchema, ~id=dcbPartitionTagId)->Option.isSome
@@ -319,24 +369,126 @@ let jsonValueToString = json =>
   }
 
 /**
+Collapses repeated `(key, value)` pairs, keeping the first of each.
+
+Two order lines for the same product carry the same tag twice. A flat field could
+never produce that, which is why nothing downstream guards against it: a repeated
+clause in a decision query and a repeated entry in a write index are both created
+here, so both are collapsed here. The key is JSON-quoted before the value is
+appended, so the boundary between the two is unambiguous.
+*/
+let dedupeTags = (tags: array<tag>): array<tag> => {
+  let seen = Set.make()
+  tags->Array.filter(({key, value}) => {
+    let identity = key->JSON.Encode.string->JSON.stringify ++ value
+    if seen->Set.has(identity) {
+      false
+    } else {
+      seen->Set.add(identity)
+      true
+    }
+  })
+}
+
+/**
+The tags one object's *own* properties carry: every scalar tagged field, and one
+tag per element of every tagged scalar array.
+
+Shared by the top-level expanded walk and by the nested-record descent below, so
+a marker means the same thing at either depth.
+*/
+let flatFieldTagsExpanded = (
+  fieldName: string,
+  fieldSchema: S.t<unknown>,
+  jsonDict: dict<JSON.t>,
+): array<tag> =>
+  if isTagged(fieldSchema) {
+    switch jsonDict->Dict.get(fieldName) {
+    | Some(jsonValue) => [
+        {key: resolveTagKey(fieldName, fieldSchema), value: jsonValue->jsonValueToString},
+      ]
+    | None => []
+    }
+  } else if isTaggedArray(fieldSchema) {
+    switch jsonDict->Dict.get(fieldName) {
+    | Some(JSON.Array(elements)) =>
+      let tagKey = resolveArrayTagKey(fieldName, fieldSchema)
+      elements->Array.map(element => {key: tagKey, value: element->jsonValueToString})
+    | _ => []
+    }
+  } else {
+    []
+  }
+
+let flatTagsExpanded = (properties: dict<S.t<unknown>>, jsonDict: dict<JSON.t>): array<tag> =>
+  properties
+  ->Dict.toArray
+  ->Array.flatMap(((fieldName, fieldSchema)) =>
+    flatFieldTagsExpanded(fieldName, fieldSchema, jsonDict)
+  )
+
+/**
+The tags carried by the records a field holds — one contribution per element for
+an array, one for a plain nested record.
+
+**The key comes from the nested field's name, never the enclosing one.**
+`lineItems[].productId` produces `productId`, which is what makes it the *same*
+tag the catalog's own events write. A key derived from `lineItems` would name a
+tag no producer has ever written, and the decision read would come back empty —
+the identical symptom to extracting no tags at all, from a different cause. An
+author who wants another key still writes `DcbTag.stringForKey` on the nested
+field, which `resolveTagKey` honours here as it does at the top level.
+*/
+let nestedRecordTags = (fieldSchema: S.t<unknown>, jsonValue: JSON.t): array<tag> =>
+  switch nestedRecordProperties(fieldSchema) {
+  | None => []
+  | Some((properties, isList)) =>
+    let ofObject = json =>
+      switch json->JSON.Decode.object {
+      | Some(elementDict) => flatTagsExpanded(properties, elementDict)
+      | None => []
+      }
+    if isList {
+      switch jsonValue {
+      | JSON.Array(elements) => elements->Array.flatMap(ofObject)
+      | _ => []
+      }
+    } else {
+      ofObject(jsonValue)
+    }
+  }
+
+/**
 Extracts tags from a flat JSON object given a map of field schemas.
 Only fields whose schema is tagged (via `DcbTag.string` / `DcbTag.int`) are extracted.
+
+A field holding *records* is descended into, and this is the one case where this
+walk and [`extractTagsFromPropertiesExpanded`] agree: they differ on a scalar
+array (one stringified tag here, one tag per element there) because a stringified
+array is at least a value, whereas a stringified line-item list is nothing any
+producer could match. A reader must not generalise the difference.
 */
 let extractTagsFromProperties = (properties: dict<S.t<unknown>>, jsonDict: dict<JSON.t>) =>
   properties
   ->Dict.toArray
-  ->Array.filterMap(((fieldName, fieldSchema)) =>
+  ->Array.flatMap(((fieldName, fieldSchema)) =>
     if isTagged(fieldSchema) {
-      jsonDict
-      ->Dict.get(fieldName)
-      ->Option.map(jsonValue => {
-        key: resolveTagKey(fieldName, fieldSchema),
-        value: jsonValue->jsonValueToString,
-      })
+      switch jsonDict->Dict.get(fieldName) {
+      | Some(jsonValue) => [
+          {key: resolveTagKey(fieldName, fieldSchema), value: jsonValue->jsonValueToString},
+        ]
+      | None => []
+      }
+    } else if hasNestedTags(fieldSchema) {
+      switch jsonDict->Dict.get(fieldName) {
+      | Some(jsonValue) => nestedRecordTags(fieldSchema, jsonValue)
+      | None => []
+      }
     } else {
-      None
+      []
     }
   )
+  ->dedupeTags
 
 // Extract the discriminating TAG constructor name from a variant Object schema's
 // `properties`. sury (11) compiles a record-payload variant `Foo({...})` to an
@@ -517,6 +669,10 @@ For scalar tagged fields, behaves identically to `extractTagsFromProperties`.
 For array tagged fields, produces one tag per element. Tag keys honour an optional
 `DcbTag.stringForKey(~key=...)` override on the (inner) schema; otherwise the field
 name is used.
+
+Fields holding records are descended into on the same terms as in
+`extractTagsFromProperties` — the two walks agree there and differ only on scalar
+arrays; see that function.
 */
 let extractTagsFromPropertiesExpanded = (
   properties: dict<S.t<unknown>>,
@@ -525,25 +681,18 @@ let extractTagsFromPropertiesExpanded = (
   properties
   ->Dict.toArray
   ->Array.flatMap(((fieldName, fieldSchema)) =>
-    if isTagged(fieldSchema) {
+    if isTagged(fieldSchema) || isTaggedArray(fieldSchema) {
+      flatFieldTagsExpanded(fieldName, fieldSchema, jsonDict)
+    } else if hasNestedTags(fieldSchema) {
       switch jsonDict->Dict.get(fieldName) {
-      | Some(jsonValue) => [
-          {key: resolveTagKey(fieldName, fieldSchema), value: jsonValue->jsonValueToString},
-        ]
+      | Some(jsonValue) => nestedRecordTags(fieldSchema, jsonValue)
       | None => []
-      }
-    } else if isTaggedArray(fieldSchema) {
-      switch jsonDict->Dict.get(fieldName) {
-      | Some(JSON.Array(elements)) => {
-          let tagKey = resolveArrayTagKey(fieldName, fieldSchema)
-          elements->Array.map(element => {key: tagKey, value: element->jsonValueToString})
-        }
-      | _ => []
       }
     } else {
       []
     }
   )
+  ->dedupeTags
 
 /**
 Extracts DCB tags from an event JSON value, expanding array values into per-element tags.
@@ -605,8 +754,9 @@ let extractTagsExpanded = (schema: S.t<'a>, value: 'a): array<tag> =>
 // --- Automatic query construction from command schema ---
 
 /**
-Returns `true` if any field in the schema is a tagged array
-(`array<@s.matches(DcbTag.string) string>`).
+Returns `true` if any field in the schema fans out into several tags — a tagged
+scalar array (`array<@s.matches(DcbTag.string) string>`) or an array of records
+carrying tags (`array<lineItem>`).
 Used to automatically determine whether to build single-clause or multi-clause queries.
 */
 let hasTaggedArrayFields = (schema: S.t<'a>): bool =>
@@ -615,21 +765,30 @@ let hasTaggedArrayFields = (schema: S.t<'a>): bool =>
     anyOf->Array.some(variantSchema =>
       switch variantSchema {
       | Object({properties}) =>
-        properties->Dict.toArray->Array.some(((_, fieldSchema)) => isTaggedArray(fieldSchema))
+        properties
+        ->Dict.toArray
+        ->Array.some(((_, fieldSchema)) =>
+          isTaggedArray(fieldSchema) || isTaggedRecordArray(fieldSchema)
+        )
       | _ => false
       }
     )
   | Object({properties}) =>
-    properties->Dict.toArray->Array.some(((_, fieldSchema)) => isTaggedArray(fieldSchema))
+    properties
+    ->Dict.toArray
+    ->Array.some(((_, fieldSchema)) =>
+      isTaggedArray(fieldSchema) || isTaggedRecordArray(fieldSchema)
+    )
   | _ => false
   }
 
 /**
 Collects the produced tag keys of one event-schema variant: the resolved tag key
-of every scalar tagged field plus the resolved (override-aware) tag key of every
-tagged-array field.
+of every scalar tagged field, the resolved (override-aware) tag key of every
+tagged-array field, and the keys of the tagged fields of any records the variant
+holds — under the nested field's own name, as the extraction resolves them.
 */
-let tagKeysOfProperties = (properties: dict<S.t<unknown>>): array<string> =>
+let flatTagKeysOfProperties = (properties: dict<S.t<unknown>>): array<string> =>
   properties
   ->Dict.toArray
   ->Array.filterMap(((fieldName, fieldSchema)) =>
@@ -639,6 +798,22 @@ let tagKeysOfProperties = (properties: dict<S.t<unknown>>): array<string> =>
       Some(resolveArrayTagKey(fieldName, fieldSchema))
     } else {
       None
+    }
+  )
+
+let tagKeysOfProperties = (properties: dict<S.t<unknown>>): array<string> =>
+  properties
+  ->Dict.toArray
+  ->Array.flatMap(((fieldName, fieldSchema)) =>
+    if isTagged(fieldSchema) {
+      [resolveTagKey(fieldName, fieldSchema)]
+    } else if isTaggedArray(fieldSchema) {
+      [resolveArrayTagKey(fieldName, fieldSchema)]
+    } else {
+      switch nestedRecordProperties(fieldSchema) {
+      | Some((nested, _)) => flatTagKeysOfProperties(nested)
+      | None => []
+      }
     }
   )
 
@@ -882,21 +1057,43 @@ let extractCrossPartitionTagKeys = (schema: S.t<'event>): array<string> => {
 Collects the `*Id` / `*Ids`-shaped fields of one object-variant's properties as
 `DcbScopeInference.idField`s — by **name**, independent of any DCB tag flag. This
 is the un-annotated structural view the scope inference consumes.
+
+A field holding records contributes the `*Id`-shaped fields of those records
+under their **own** names, and a field reached through an array is reported as a
+list whichever container it came from: the inference reasons about keys, and a
+key reached per line fans out exactly as a key reached per array element does.
+Reporting it as single-valued would derive the wrong partition for the slice.
+
+That `DcbScopeInference.idField` needs no change to carry this is the evidence
+the boundary was drawn in the right place — the descent is a fact about schemas,
+which is this module's half of the split.
 */
-let idFieldsOfProperties = (properties: dict<S.t<unknown>>): array<DcbScopeInference.idField> =>
+let idFieldsOfProperties = (properties: dict<S.t<unknown>>): array<DcbScopeInference.idField> => {
+  let isIdName = (name: string) => name->String.endsWith("Ids") || name->String.endsWith("Id")
   properties
   ->Dict.toArray
-  ->Array.filterMap(((name, fieldSchema)) =>
-    if name->String.endsWith("Ids") || name->String.endsWith("Id") {
+  ->Array.flatMap(((name, fieldSchema)) =>
+    if isIdName(name) {
       let isList = switch fieldSchema {
       | Array(_) => true
       | _ => false
       }
-      Some({DcbScopeInference.name, isList})
+      [{DcbScopeInference.name, isList}]
     } else {
-      None
+      switch nestedRecordProperties(fieldSchema) {
+      | Some((nested, nestedIsList)) =>
+        nested
+        ->Dict.toArray
+        ->Array.filterMap(((nestedName, _)) =>
+          isIdName(nestedName)
+            ? Some({DcbScopeInference.name: nestedName, isList: nestedIsList})
+            : None
+        )
+      | None => []
+      }
     }
   )
+}
 
 /**
 Extracts the `DcbScopeInference.eventShape`s (variant name + `*Id` fields) from a

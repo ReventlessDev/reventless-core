@@ -51,6 +51,9 @@ describe("Hybrid cross-plugin flow", () => {
         description: "A good book",
         price: eur(9.99),
         categoryId: "cat1",
+        // Captured off the category the fold saw, so a shopper reads a name
+        // where the row would otherwise show `cat1`.
+        categoryName: "Books",
       }),
     )
     ->ProductsEp.whenPublishedThrough
@@ -79,7 +82,7 @@ describe("Hybrid cross-plugin flow", () => {
       OrderingPlugin.PlaceOrder.PlaceOrder({
         orderId: "o1",
         customerId: "c1",
-        productIds: ["p1"],
+        lineItems: [{productId: "p1", quantity: 2}],
         shippingMethod: Standard,
       }),
     )
@@ -88,6 +91,19 @@ describe("Hybrid cross-plugin flow", () => {
         orderId: "o1",
         customerId: "c1",
         productIds: ["p1"],
+        // The price crossed the boundary with the name and the availability, so
+        // the total is computed on the Ordering side with no read back into
+        // Catalog — two of a EUR 9.99 book.
+        lines: [
+          {
+            productId: "p1",
+            name: "Book",
+            quantity: 2,
+            unitPrice: eur(9.99),
+            lineTotal: eur(19.98),
+          },
+        ],
+        total: eur(19.98),
         shippingMethod: Standard,
         // Recorded off the catalog's own sync, which is the point of this tier:
         // the name crossed the plugin boundary with the availability.
@@ -102,7 +118,7 @@ describe("Hybrid cross-plugin flow", () => {
       OrderingPlugin.PlaceOrder.PlaceOrder({
         orderId: "o1",
         customerId: "c1",
-        productIds: ["p1"],
+        lineItems: [{productId: "p1", quantity: 1}],
         shippingMethod: Standard,
       }),
     )
@@ -127,7 +143,7 @@ describe("Hybrid cross-plugin flow", () => {
       OrderingPlugin.PlaceOrder.PlaceOrder({
         orderId: "o1",
         customerId: "c1",
-        productIds: ["p1", "p2"],
+        lineItems: [{productId: "p1", quantity: 1}, {productId: "p2", quantity: 3}],
         shippingMethod: Standard,
       }),
     )
@@ -136,6 +152,23 @@ describe("Hybrid cross-plugin flow", () => {
         orderId: "o1",
         customerId: "c1",
         productIds: ["p1", "p2"],
+        lines: [
+          {
+            productId: "p1",
+            name: "Book",
+            quantity: 1,
+            unitPrice: eur(9.99),
+            lineTotal: eur(9.99),
+          },
+          {
+            productId: "p2",
+            name: "Pen",
+            quantity: 3,
+            unitPrice: eur(1.5),
+            lineTotal: eur(4.5),
+          },
+        ],
+        total: eur(14.49),
         shippingMethod: Standard,
         firstProductName: "Book",
       }),

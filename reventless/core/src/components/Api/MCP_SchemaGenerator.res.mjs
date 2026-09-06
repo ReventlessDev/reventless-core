@@ -24,7 +24,7 @@ function generateTools(pluginName, mutationEntries) {
         if (fieldName.length <= 0) {
           return;
         }
-        let inputSchema = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema);
+        let inputSchema = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(undefined, undefined, schema);
         let base = entryDescription.length > 0 ? entryDescription : `Execute ` + fieldName + ` on ` + pluginName;
         let desc = buildDescriptionSuffix(base, entry);
         tools.push({
@@ -39,7 +39,7 @@ function generateTools(pluginName, mutationEntries) {
           if (fieldName.length <= 0) {
             return;
           }
-          let inputSchema = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(variantSchema);
+          let inputSchema = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(undefined, undefined, variantSchema);
           let obj = Stdlib_JSON.Decode.object(inputSchema);
           let withId;
           if (obj !== undefined) {

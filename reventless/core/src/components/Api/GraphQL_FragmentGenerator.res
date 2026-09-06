@@ -42,6 +42,7 @@ let rec fromSchemaType = (
   switch st {
   | ScalarString => `String${bang}`
   | ScalarNumber => `Float${bang}`
+  | ScalarInt => `Int${bang}`
   | ScalarBoolean => `Boolean${bang}`
   | ScalarBigInt => `String${bang}`
   | EntityId => `ID${bang}`
@@ -286,6 +287,7 @@ let rec scalarOfSchemaType = (st: SchemaType.schemaType): string =>
   switch st {
   | ScalarString => "String"
   | ScalarNumber => "Float"
+  | ScalarInt => "Int"
   | ScalarBoolean => "Boolean"
   | ScalarBigInt => "String"
   | EntityId => "ID"

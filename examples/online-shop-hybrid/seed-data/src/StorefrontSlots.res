@@ -154,17 +154,28 @@ let register = (arg: Slots.registerArg): unit => {
     // what was bought and how much of it. `firstProductName` is the name the
     // order *recorded* at placement, not the catalog's current one — so an order
     // still reads correctly after the product is renamed or withdrawn.
-    let items = Slots.Row.array(payload.row, "productIds")->Option.map(ids =>
-      switch (Slots.Row.text(payload.row, "firstProductName"), Array.length(ids)) {
-      | (Some(name), 1) => name
-      | (Some(name), n) => name ++ " + " ++ Int.toString(n - 1) ++ " more"
-      | (None, 1) => "1 item"
-      | (None, n) => Int.toString(n) ++ " items"
-      }
-    )
+    //
+    // Two counts, and they are not the same question. "+ N more" counts the other
+    // *lines*, because that is what is not being named; the bare fallback counts
+    // `itemCount`, the summed quantity, because a shopper with no name to read
+    // counts things rather than lines.
+    let lineCount = Slots.Row.array(payload.row, "lines")->Option.map(Array.length)
+    let itemCount = Slots.Row.float(payload.row, "itemCount")->Option.map(Float.toInt)
+    let items = switch (Slots.Row.text(payload.row, "firstProductName"), lineCount, itemCount) {
+    | (Some(name), Some(1), _) => Some(name)
+    | (Some(name), Some(n), _) => Some(name ++ " + " ++ Int.toString(n - 1) ++ " more")
+    | (Some(name), None, _) => Some(name)
+    | (None, _, Some(1)) => Some("1 item")
+    | (None, _, Some(n)) => Some(Int.toString(n) ++ " items")
+    | (None, _, None) => None
+    }
     let summary =
       [
+        // A product's own money is its price; an order's is its total. A row
+        // carries one or the other, so both are offered and whichever is there
+        // is what shows.
         Slots.Row.money(payload.row, "price")->Option.map(Slots.Format.money),
+        Slots.Row.money(payload.row, "total")->Option.map(Slots.Format.money),
         items,
       ]->Array.filterMap(line => line)
     h(

@@ -471,7 +471,16 @@ function buildOrders(products, customers, countOpt, param) {
         i < 8 ? demoOperatorId : undefined
       );
     let customerId = demoOwner !== undefined ? demoOwner : Stdlib_Option.mapOr(Seed_Random$ReventlessSeed.sampleWeighted(random, customerWeights, 1)[0], "cust-01", c => c.id);
-    let productIds = Seed_Random$ReventlessSeed.sampleWeighted(random, productWeights, size).map(p => p.id);
+    let lineItems = Seed_Random$ReventlessSeed.sampleWeighted(random, productWeights, size).map(p => {
+      let quantityRoll = Seed_Random$ReventlessSeed.float(random);
+      let quantity = quantityRoll < 0.7 ? 1 : (
+          quantityRoll < 0.92 ? 2 : 3
+        );
+      return {
+        productId: p.id,
+        quantity: quantity
+      };
+    });
     let methodRoll = Seed_Random$ReventlessSeed.float(random);
     let shippingMethod = methodRoll < 0.35 ? "Express" : (
         methodRoll < 0.8 ? "Standard" : "Pickup"
@@ -490,7 +499,7 @@ function buildOrders(products, customers, countOpt, param) {
     return {
       id: `ord-` + pad(i + 1 | 0, 3),
       customerId: customerId,
-      productIds: productIds,
+      lineItems: lineItems,
       shippingMethod: shippingMethod,
       deliveryWindow: deliveryWindow
     };

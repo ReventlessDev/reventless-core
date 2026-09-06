@@ -1,4 +1,5 @@
-// Test fixture spec where every reference carrier is PLURAL.
+// Test fixture spec where every reference carrier is one the naive walk misses:
+// PLURAL, or declared on a field of a record the command holds.
 //
 // `Reference.to_` returns an *element* schema, so the ppx annotates the `string`
 // inside `array<string>` and the field's own schema carries no marker. A walk
@@ -11,6 +12,11 @@
 // shows up as one of the two disappearing rather than as an empty list, and
 // `warehouseIds?` covers the plural-inside-optional shape, where the array sits
 // one wrapper further down still.
+//
+// `lineItems` covers the other shape the walk has to descend into: a reference
+// declared on a field of a record the command holds, which belongs to that field
+// and is named by its path. A named record type, not an inline one — the ppx
+// walks a type declaration, which is what puts the marker on `productId` at all.
 
 @@reventless.spec("ReserveStock")
 
@@ -23,12 +29,19 @@ type consumedEvent = StockReserved({reservationId: string})
 let evolve = (_state, _event) => true
 
 @schema
+type lineItem = {
+  @ref("AvailableProducts") productId: string,
+  quantity: int,
+}
+
+@schema
 type command =
   | ReserveStock({
       @partitionTag reservationId: string,
       @ref("Customers") customerId: string,
       @ref("AvailableProducts") productIds: array<string>,
       @ref("Warehouses") warehouseIds?: array<string>,
+      lineItems: array<lineItem>,
     })
 
 @schema
