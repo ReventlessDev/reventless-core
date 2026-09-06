@@ -33,7 +33,10 @@ type lifecycleState = Orders.lifecycle
 let commandTransition = (command: command): Reventless.Transition.t<lifecycleState> => {
   open Reventless.Transition
   switch command {
-  | Place(_) => Unrestricted
+  // Brings the row into existence, so there is no state it could come from.
+  // Not `Unrestricted`: the scenarios show it inert on an order already placed,
+  // shipped or cancelled, which is the opposite of legal in every state.
+  | Place(_) => Creates(Orders.Placed)
   | Ship => Moves([Orders.Placed], Orders.Shipped)
   | Cancel => Moves([Orders.Placed], Orders.Cancelled)
   | Refund(_) => Moves([Orders.Cancelled], Orders.Refunded)

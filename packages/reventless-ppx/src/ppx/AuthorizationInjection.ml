@@ -362,7 +362,7 @@ let gen_external_system ~loc =
     [Ast_builder.Default.value_binding ~loc ~pat ~expr:none]
 
 (* commandTransition auto-injection for command carriers ---------------------- *)
-(* [let commandTransition = _ => Reventless.Transition.Unrestricted] — the
+(* [let commandTransition = _ => Reventless.Transition.Undeclared] — the
    lifecycle edge each command owns, as a value rather than as a per-constructor
    attribute.
 
@@ -371,15 +371,18 @@ let gen_external_system ~loc =
    does not survive ReScript's dependency analysis — which runs before this. The
    switch is host-written, which is what makes its states typed at all.
 
-   So the default is [Unrestricted]: "this spec declares no edges", which is the
-   honest answer for a component whose commands guard nothing. It is refused
-   rather than injected where the command type splices — see below. *)
+   So the default is [Undeclared] — "this spec said nothing" — and deliberately
+   NOT [Unrestricted], which is a host's claim that the command is legal in every
+   state. The two erase alike, but the harvested lifecycle model may answer for
+   silence and may not narrow a claim, so the injected default has to be
+   distinguishable from an authored one. It is refused rather than injected where
+   the command type splices — see below. *)
 (* [type lifecycleState = unit] — the enum a spec's edges are drawn from.
 
    Injected beside the default below and gated on the same check, because the
    two are one declaration: a spec that says nothing about its edges has no
    lifecycle to name, and a spec that writes the switch names its own. Unit is
-   the honest stand-in — `Unrestricted` carries no state, so nothing is ever
+   the honest stand-in — `Undeclared` carries no state, so nothing is ever
    read at this type. *)
 let gen_lifecycle_state_type ~loc =
   let unit_lid = { txt = Lident "unit"; loc } in
@@ -396,14 +399,14 @@ let gen_lifecycle_state_type ~loc =
   { pstr_desc = Pstr_type (Nonrecursive, [type_decl]); pstr_loc = loc }
 
 let gen_command_transition ~loc =
-  let unrestricted =
+  let undeclared =
     Ast_builder.Default.pexp_construct
       ~loc
-      { txt = Ldot (Ldot (Lident "Reventless", "Transition"), "Unrestricted"); loc }
+      { txt = Ldot (Ldot (Lident "Reventless", "Transition"), "Undeclared"); loc }
       None
   in
   let wildcard = Ast_builder.Default.ppat_any ~loc in
-  let fn = Ast_builder.Default.pexp_fun ~loc Nolabel None wildcard unrestricted in
+  let fn = Ast_builder.Default.pexp_fun ~loc Nolabel None wildcard undeclared in
   let pat = Ast_builder.Default.ppat_var ~loc { txt = "commandTransition"; loc } in
   Ast_builder.Default.pstr_value ~loc Nonrecursive
     [Ast_builder.Default.value_binding ~loc ~pat ~expr:fn]
@@ -433,10 +436,10 @@ let command_type_spreads (body : structure) : bool =
 
 (* Refuse a spliced command type that says nothing about its lifecycle edges.
 
-   The injected default is [_ => Unrestricted] — an honest answer for a spec
-   whose commands declare no edge, and silently wrong for one that spliced some.
-   A graft would compile with its trait's commands carrying no policy at all,
-   and nothing would say so.
+   The injected default is [_ => Undeclared] — an honest answer for a spec whose
+   commands declare no edge, and silently wrong for one that spliced some. A
+   graft would compile with its trait's commands carrying no policy at all, and
+   nothing would say so.
 
    Writing the switch is what closes that, because it is exhaustive: the
    compiler names the spliced commands until the host answers for them.

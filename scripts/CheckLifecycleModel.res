@@ -296,6 +296,10 @@ type declaredCommand = {
   aggregateIdField: option<string>,
   allowedStates: option<array<string>>,
   targetState: option<string>,
+  /** `"unrestricted"` is the one value this reads for: it is how a declared
+      "legal in every state" reaches here, since the from-set it publishes is
+      the same `None` as saying nothing at all. */
+  allowedStatesSource: option<string>,
 }
 
 type declaredWritable = {
@@ -328,6 +332,7 @@ let declaredCommandOf = (d: dict<JSON.t>): option<declaredCommand> =>
     aggregateIdField: d->getStr("aggregateIdField"),
     allowedStates: getStrsOpt(d, "allowedStates"),
     targetState: d->getStr("targetState"),
+    allowedStatesSource: d->getStr("allowedStatesSource"),
   })
 
 let declaredOf = (structure: JSON.t): option<declared> =>
@@ -640,6 +645,20 @@ let compare = (
   | None => ()
   | Some(cmd) =>
     switch cmd.allowedStates {
+    // "Legal in every state", declared. A scenario showing the command taking
+    // effect somewhere agrees with that rather than narrowing it — the corpus
+    // covers the states somebody wrote a scenario for, and silence about the
+    // rest is not refusal. What DOES refute the claim is a state the command was
+    // exercised in and did nothing: that is the switch and the behaviour
+    // disagreeing about the same row.
+    | None if cmd.allowedStatesSource == Some("unrestricted") =>
+      derived.inertStates->Array.forEach(state =>
+        add(
+          "contradicted",
+          `the switch declares it legal in every state, and a scenario from "${state}" ` ++
+          `shows it refused or producing nothing`,
+        )
+      )
     | None =>
       if Array.length(derived.allowedStates) > 0 {
         add(

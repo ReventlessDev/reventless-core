@@ -240,7 +240,8 @@ function declaredCommandOf(d) {
     level: levelOf(d),
     aggregateIdField: getStr(d, "aggregateIdField"),
     allowedStates: getStrsOpt(d, "allowedStates"),
-    targetState: getStr(d, "targetState")
+    targetState: getStr(d, "targetState"),
+    allowedStatesSource: getStr(d, "allowedStatesSource")
   }));
 }
 
@@ -502,6 +503,8 @@ function compare(plugin, writable, derived, findings) {
     if (states.length !== 0 && derived.allowedStates.length === 0) {
       add("unverified", `the switch declares ` + states.length.toString() + ` state(s) and no scenario shows the command taking effect anywhere`);
     }
+  } else if (Primitive_object.equal(declared.allowedStatesSource, "unrestricted")) {
+    derived.inertStates.forEach(state => add("contradicted", `the switch declares it legal in every state, and a scenario from "` + state + `" shows it refused or producing nothing`));
   } else if (derived.allowedStates.length !== 0) {
     add("undeclared", `scenarios show it taking effect from ` + derived.allowedStates.join(", ") + `, and it declares no edge`);
   }

@@ -129,7 +129,7 @@ type lifecycleState = Customers.accountStatus
 let commandTransition = (command: command): Reventless.Transition.t<lifecycleState> => {
   open Reventless.Transition
   switch command {
-  | Register(_) => Unrestricted
+  | Register(_) => Creates(Customers.Active)
   | UpdateEmail(_) | UpdateAddress(_) | SetAddressLocation(_) => Guards([Customers.Active])
   | SetLocation(_) | MarkAddressUnresolvable(_) => Unrestricted
   | Deactivate => Moves([Customers.Active], Customers.Deactivated)
@@ -154,9 +154,15 @@ its view — which is also why it cannot cycle, since a view spec holds no refer
 back to the aggregate it projects.
 
 **A command type that splices must declare the switch** — the build refuses it otherwise,
-naming the file. There is no safe default: leaving the trait's commands unguarded and
-leaving them deliberately unrestricted look identical from outside, and only one of
-those is a decision. `Unrestricted` is a perfectly good answer, but it has to be given.
+naming the file. There is no safe default: leaving the trait's commands unguarded is not
+a decision, and the compiler cannot tell one from the other unless you write the switch.
+`Unrestricted` is a perfectly good answer, but it has to be given.
+
+Give it deliberately, because it is a claim rather than a shrug. `Unrestricted` says the
+command is legal in *every* state — which is what the two geocoding reports above need,
+since a result landing after the customer was deactivated must be recorded rather than
+refused. A spec that writes no switch says nothing instead, and the two are kept apart:
+the framework may fill in an edge for silence, and never narrows a claim.
 
 The switch is the only way to declare an edge. `@transition`, the per-constructor
 attribute it replaces, is refused with a message naming it — a silently-ignored

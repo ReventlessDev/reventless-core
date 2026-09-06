@@ -59,7 +59,10 @@ function commandTransition(command) {
       };
     }
   } else if (command.TAG === "Place") {
-    return "Unrestricted";
+    return {
+      TAG: "Creates",
+      _0: "Placed"
+    };
   } else {
     return {
       TAG: "Moves",

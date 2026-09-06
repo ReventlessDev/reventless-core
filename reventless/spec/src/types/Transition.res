@@ -36,10 +36,23 @@
 // plugin structure is assembled, and what leaves is the pair of names the
 // structure already carried.
 type t<'state> =
-  /** No edge declared: legal in every state, moves the row nowhere. The honest
-      answer for a report a slice publishes, which must not be refused because
-      the row moved on while the report was in flight. */
+  /** Legal in every state, and moves the row nowhere. The honest answer for a
+      report a slice publishes, which must not be refused because the row moved
+      on while the report was in flight. A claim, not an omission — see
+      `Undeclared`, which is the omission. */
   | Unrestricted
+  /** The spec wrote no switch, and the ppx injected this. Never write it: say
+      `Unrestricted` if you mean the command is legal everywhere.
+
+      It reads exactly like `Unrestricted` — no from-set, no target — everywhere
+      but one place, and that place is why it exists. The harvested lifecycle
+      model may answer for silence; it may not narrow a claim. A corpus only
+      covers the states somebody wrote a scenario for, so letting it answer for
+      `Unrestricted` would shrink "legal in every state" down to an accident of
+      coverage, and the command would quietly stop being offered on the rows
+      nobody tested. With the two spelled apart, that shrinkage cannot happen and
+      a scenario that genuinely refutes the claim is a contradiction instead. */
+  | Undeclared
   /** Brings the row into existence, so there is no state it could come from.
       Distinct from `Unrestricted`, which draws no edge at all. */
   | Creates('state)
@@ -54,6 +67,7 @@ type t<'state> =
     tells apart. */
 let allowedStates = (transition: t<'state>): option<array<'state>> =>
   switch transition {
+  | Undeclared
   | Unrestricted
   | Creates(_) => None
   | Guards(states)
@@ -63,8 +77,21 @@ let allowedStates = (transition: t<'state>): option<array<'state>> =>
 /** The state the command's handler writes, or `None` for one that moves nothing. */
 let targetState = (transition: t<'state>): option<'state> =>
   switch transition {
+  | Undeclared
   | Unrestricted
   | Guards(_) => None
   | Creates(state)
   | Moves(_, state) => Some(state)
+  }
+
+/** Whether the command is claimed legal in every state, as opposed to nothing
+    being claimed at all. The two erase to the same pair of `None`s above, so this
+    is the only thing that can tell a reader of the erased form which it holds. */
+let isUnrestricted = (transition: t<'state>): bool =>
+  switch transition {
+  | Unrestricted => true
+  | Undeclared
+  | Creates(_)
+  | Guards(_)
+  | Moves(_, _) => false
   }

@@ -605,11 +605,12 @@ function toCommandDef(isAggregate, mutationFieldFor, parentSchema, commandAuthor
       }) : variantName;
     let declared = commandTransition(syntheticCommand);
     let derived = derivedEdgeFor(variantName);
-    let match$1 = Stdlib_Option.flatMap(derived, d => {
-      if (d.allowedStates.length !== 0) {
-        return d.allowedStates;
-      }
-    });
+    let unrestricted = Transition$Reventless.isUnrestricted(declared);
+    let match$1 = unrestricted ? undefined : Stdlib_Option.flatMap(derived, d => {
+        if (d.allowedStates.length !== 0) {
+          return d.allowedStates;
+        }
+      });
     let match$2 = Transition$Reventless.allowedStates(declared);
     let match$3 = match$1 !== undefined ? [
         match$1,
@@ -620,7 +621,7 @@ function toCommandDef(isAggregate, mutationFieldFor, parentSchema, commandAuthor
             "declared"
           ] : [
             undefined,
-            undefined
+            unrestricted ? "unrestricted" : undefined
           ]
       );
     let observed = Stdlib_Option.flatMap(derived, d => {

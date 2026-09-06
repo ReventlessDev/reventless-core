@@ -2804,10 +2804,14 @@ echo "=== Test: commandTransition is injected where the spec declares none ==="
 TJS="$PLUGIN/src/Aggregate/TransitionOrder.res.mjs"
 assert_js_contains "$TJS" 'function commandTransition' "commandTransition injected on a command carrier"
 TRANS_BLOCK=$(sed -n '/function commandTransition/,/^}/p' "$TJS")
-if echo "$TRANS_BLOCK" | grep -q 'Unrestricted'; then
-  pass "the injected default declares no edge"
+# `Undeclared`, not `Unrestricted`: both erase to "no from-set, no target", but
+# only the injected one is silence. The harvested lifecycle model may answer for
+# silence and may not narrow a host's claim that a command is legal everywhere,
+# so the default has to be tellable apart from an authored `Unrestricted`.
+if echo "$TRANS_BLOCK" | grep -q 'Undeclared'; then
+  pass "the injected default says nothing rather than claiming Unrestricted"
 else
-  fail "commandTransition default" "injected binding does not return Unrestricted"
+  fail "commandTransition default" "injected binding does not return Undeclared"
 fi
 
 echo ""

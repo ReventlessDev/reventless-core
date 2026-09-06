@@ -416,10 +416,47 @@ describe("the harvested model against the switch", () => {
     )
   })
 
-  testSync("and one that declares nothing either stays unconstrained", () => {
-    // No from-set means no source: the field is present exactly when there is
-    // something for it to speak for.
-    expect(edgeOf([], "Abandon"))->toEqual(Some((None, None, None)))
+  testSync("an authored Unrestricted publishes no from-set, and says it meant to", () => {
+    // Distinct from the field being absent, which is "nobody said". A consumer
+    // drawing a state machine can tell an edge left unconstrained on purpose
+    // from one nothing is known about.
+    expect(edgeOf([], "Abandon"))->toEqual(Some((None, None, Some("unrestricted"))))
+  })
+
+  testSync("and the scenarios may not narrow it", () => {
+    // "Legal in every state" is a claim; a corpus only covers the states
+    // somebody wrote a scenario for. Deriving a from-set here would shrink the
+    // claim to an accident of coverage and withdraw the command from every row
+    // nobody tested — which for `Customer.SetLocation`'s trait reports is the
+    // difference between a late geocode landing and a row parked in Failed.
+    expect(edgeOf([edge(~command="Abandon", ~allowedStates=["Booked"])], "Abandon"))->toEqual(
+      Some((None, None, Some("unrestricted"))),
+    )
+  })
+
+  testSync("a spec that wrote no switch is silence, which they may answer", () => {
+    // `PsPlaceOrder` declares no `commandTransition`, so the ppx injects
+    // `Undeclared`. It erases to the same pair of `None`s as `Unrestricted` and
+    // is the reason the two are separate constructors at all.
+    let structure = Plugin_Structure.make(
+      ~name="SilentPlugin",
+      ~stateChangeSlices=[module(PsPlaceOrderSlice)],
+      ~stateViewSlices=[],
+      ~lifecycleModel=[
+        {
+          component: "PlaceOrder",
+          command: "PlaceOrder",
+          allowedStates: ["Draft"],
+          targets: ["Placed"],
+        },
+      ],
+    )
+    let slice = structure.stateChangeSlices->Array.getUnsafe(0)
+    expect(
+      slice.commands
+      ->Array.find(c => c.name == "PlaceOrder")
+      ->Option.map(c => (c.allowedStates, c.targetState, c.allowedStatesSource)),
+    )->toEqual(Some((Some(["Draft"]), Some("Placed"), Some("derived"))))
   })
 
   let levelOf = (model, name) => {

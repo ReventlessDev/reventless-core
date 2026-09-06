@@ -169,10 +169,18 @@ type commandDef = {
   /** The *to* state this command's handler writes. `None` with a from-set present
       means the command does not move the row. */
   targetState: option<string>,
-  /** Which side produced `allowedStates`: `"derived"` from the component's own
-      scenarios, `"declared"` from its `@transition` switch. Present exactly when
-      `allowedStates` is, and ranks an inherited edge against an authored one the
-      way `queryableDef.labelFieldSource` does for its field.
+  /** Where the from-set came from, ranking an inherited edge against an authored
+      one the way `queryableDef.labelFieldSource` does for its field:
+
+      - `"derived"` — the component's own scenarios.
+      - `"declared"` — its `commandTransition` switch.
+      - `"unrestricted"` — the switch declares the command legal in *every*
+        state, so there is no from-set to publish and `allowedStates` is absent.
+
+      Absent means the command names no states to come from and nothing said that
+      was deliberate — a spec that wrote no switch, or one whose command creates
+      the row. So a consumer drawing a state machine can tell an edge left
+      unconstrained on purpose from one that simply has no from-set.
 
       It speaks for the from-set only. The two halves of an edge are reported
       separately because they fail separately: a corpus routinely shows a command

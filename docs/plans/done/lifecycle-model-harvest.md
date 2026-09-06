@@ -396,6 +396,22 @@ Three smaller decisions worth keeping:
   An entry with no level, no from-set and no target reads exactly as an absent
   one, and writing them all out made two thirds of each file say nothing.
 
+**A follow-up landed beside it: silence and a claim are now different values.**
+`Unrestricted` and "the spec wrote no switch" both erased to the same pair of
+`None`s, so the precedence rule could not tell a host's claim that a command is
+legal in *every* state from an author who said nothing — and would narrow the
+first to whatever states a corpus happened to cover. The ppx now injects
+`Transition.Undeclared`; a derived from-set may answer for that and may not
+answer for `Unrestricted`, which publishes `allowedStatesSource: "unrestricted"`
+instead. The target is deliberately not protected the same way: a from-set
+restricts, and narrowing one takes a command away from rows it belongs on, while
+a target only tells a diagram where an edge lands.
+
+It paid for itself on the first run, finding four contradictions the old shape
+could not express. `Order.Place` and `Customer.Register` were declared
+`Unrestricted` while their own scenarios show them inert on a row that already
+exists — they create, and now say so.
+
 **A stale model now stops the build**, via the check that was already there:
 `checkDeclaredTransitions` runs over the *effective* edge, so a harvested state a
 view no longer declares fails with the state, the command and the reason named.

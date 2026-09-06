@@ -7,11 +7,11 @@ function allowedStates(transition) {
     return;
   }
   switch (transition.TAG) {
-    case "Creates" :
-      return;
     case "Guards" :
     case "Moves" :
       return transition._0;
+    default:
+      return;
   }
 }
 
@@ -22,15 +22,24 @@ function targetState(transition) {
   switch (transition.TAG) {
     case "Creates" :
       return Primitive_option.some(transition._0);
-    case "Guards" :
-      return;
     case "Moves" :
       return Primitive_option.some(transition._1);
+    default:
+      return;
+  }
+}
+
+function isUnrestricted(transition) {
+  if (typeof transition !== "object") {
+    return transition === "Unrestricted";
+  } else {
+    return false;
   }
 }
 
 export {
   allowedStates,
   targetState,
+  isUnrestricted,
 }
 /* No side effect */

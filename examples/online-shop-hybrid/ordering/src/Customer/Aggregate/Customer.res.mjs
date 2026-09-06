@@ -55,6 +55,10 @@ function commandTransition(command) {
   }
   switch (command.TAG) {
     case "Register" :
+      return {
+        TAG: "Creates",
+        _0: "Active"
+      };
     case "SetLocation" :
     case "MarkAddressUnresolvable" :
       return "Unrestricted";

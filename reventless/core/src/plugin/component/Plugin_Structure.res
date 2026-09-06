@@ -783,14 +783,32 @@ let toCommandDef = (
     // not a derivation: `Some([])` matches no row's lifecycle tag, so publishing
     // one offers the command on no row at all while the annotation that would
     // have been right sits unread beside it.
+    //
+    // The one claim the scenarios may not answer for is `Unrestricted`: it says
+    // the command is legal in EVERY state, and a corpus only covers the states
+    // somebody wrote a scenario for, so deriving a from-set there would shrink a
+    // deliberate claim to an accident of coverage and withdraw the command from
+    // the rows nobody tested. `Undeclared` — the ppx's injected default — erases
+    // to the same pair of `None`s and is silence, which the scenarios may answer.
+    let unrestricted = Reventless.Transition.isUnrestricted(declared)
     let (allowedStates, allowedStatesSource) = switch (
-      derived->Option.flatMap(d => Array.length(d.allowedStates) > 0 ? Some(d.allowedStates) : None),
+      unrestricted
+        ? None
+        : derived->Option.flatMap(d =>
+            Array.length(d.allowedStates) > 0 ? Some(d.allowedStates) : None
+          ),
       Reventless.Transition.allowedStates(declared),
     ) {
     | (Some(observed), _) => (Some(observed), Some("derived"))
     | (None, Some(states)) => (Some(states), Some("declared"))
-    | (None, None) => (None, None)
+    | (None, None) => (None, unrestricted ? Some("unrestricted") : None)
     }
+    // The target is not protected the same way, because the two halves fail
+    // differently: a from-set RESTRICTS, and narrowing one wrongly takes a
+    // command away from rows it belongs on, while a target only tells a diagram
+    // where an edge lands. Supplying one the author left unstated adds
+    // information and withdraws nothing — which is what `Customer.Register`'s
+    // "the row's status is the view's to derive" asks for.
     let targetState = switch derived->Option.flatMap(d =>
       // Two observed targets are an edge `targetState` cannot express. Reported
       // as a contradiction by the harvest; here the declaration is left to speak

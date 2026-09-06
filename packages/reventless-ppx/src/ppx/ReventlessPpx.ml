@@ -891,7 +891,7 @@ let transform (str : structure) : structure =
         AuthorizationInjection.external_system_suffix ~loc loc.loc_start.pos_fname body
       in
       (* commandTransition auto-injection (command carriers). Appends
-         [let commandTransition = _ => Reventless.Transition.Unrestricted] when the
+         [let commandTransition = _ => Reventless.Transition.Undeclared] when the
          spec does not declare the switch itself, so a component whose commands
          guard nothing satisfies the Spec field without a line. Idempotent. *)
       let transition_suffix =

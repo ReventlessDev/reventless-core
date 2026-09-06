@@ -93,9 +93,10 @@ let commandTransition = (command: command): Reventless.Transition.t<lifecycleSta
   open Reventless.Transition
   switch command {
   // Registration brings the row into existence, so there is no state it could
-  // come from — and it names no target either, because the row's status is the
-  // view's to derive.
-  | Register(_) => Unrestricted
+  // come from. `Creates` rather than `Unrestricted`, which would claim it is
+  // legal on an already-registered customer — and the scenarios show it inert
+  // there. The target is the state the view puts a fresh row in.
+  | Register(_) => Creates(Customers.Active)
   // A from-set and no target: legal on an active customer, and it does not move
   // them. Each is `Error(CustomerAlreadyDeactivated)` on a deactivated one, so
   // this says exactly what `decide` already enforces — it only stops a menu

@@ -37,7 +37,7 @@ function commandAuthorization(param) {
 }
 
 function commandTransition(param) {
-  return "Unrestricted";
+  return "Undeclared";
 }
 
 let traits = [];
