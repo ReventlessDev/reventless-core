@@ -191,15 +191,43 @@ alarms.
 Step 0 stands alone and is worth having whatever is decided below: it is what makes a dead-letter
 sink monitorable *at all*, on this repo's stacks and on anyone else's. The rest is §2.
 
-| # | Change | Effort |
-|---|--------|--------|
-| 1 | `Monitoring_Alarms_Aws` in `reventless-aws`: `metricFor(kind)`, one alarm per unit, topic + subscription from stack config | ~half a day |
-| 2 | Alarm description carries plugin / platform / component / kind, so the notification names the unit — the SNS message carries the description but not the alarm's tags | small |
-| 3 | Opt the hybrid example's AWS deploy program in; add the config key to `Pulumi.alpha.yaml` only, so `main` is unchanged until deliberately opted in | small |
-| 4 | Unit tests: a stub backend asserting one alarm per provisioned unit and the `DeadLetterSink` metric override; a no-config stack provisions no monitoring resources | small |
-| 5 | Document the opt-in — what a stack gets, what it costs, and how to point it at an existing topic | small |
+| # | Change | Effort | State |
+|---|--------|--------|-------|
+| 1 | A CloudWatch backend in `reventless-aws`: per-kind alarm specs, one alarm per unit, topic + subscription from config | ~half a day | **done 2026-09-07** |
+| 2 | Alarm description carries plugin / platform / component / kind, so the notification names the unit — the SNS message carries the description but not the alarm's tags | small | **done** |
+| 3 | Opt the hybrid example's AWS deploy program in | small | **done** |
+| 4 | Unit tests over the per-kind decisions, including the `DeadLetterSink` metric override and the scheduler's silence alarm | small | **done** |
+| 5 | Document the opt-in — what a stack gets, what it costs, how to point it at an existing topic | small | **done** |
 
-Steps 1–2 are one commit; 3 needs a deploy to prove.
+### What was built
+
+**Split in two, following `Util_LogRetention` / `Util_LambdaLogging`.**
+[`Util_AlarmSpec`](../../reventless/aws/src/util/Util_AlarmSpec.res) holds every decision worth
+arguing with — which metric per kind, which comparison, how missing data is treated, the resource
+name, the description — as pure functions. [`Monitoring_CloudWatch`](../../reventless/aws/src/adapter/Monitoring/Monitoring_CloudWatch.res)
+turns them into resources. That split is what makes step 4 real: `@pulumi/pulumi`'s ESM entry cannot
+be imported under Jest, so anything mixed in with resource creation is untestable here.
+
+**The `metricFor` table became `forKind`, returning an array.** The open question below — that a
+scheduler which *stops* emits neither errors nor invocations, so the absence is the fault — cannot be
+answered by one metric per kind. A scheduler now gets its `Errors` alarm *and* a silence alarm
+(`Invocations < 1` over a configurable window, `treatMissingData: breaching`, which is the only
+combination that fires on a metric that stopped being published). Resolved in step 1 as the plan
+asked, rather than after.
+
+**The address is not committed, and this is the reason the estate is still quiet.** Where an alert
+goes is per-deployment and usually somebody's inbox, and this repository is public. All three keys
+read `REVENTLESS_ALARM_EMAIL` / a gitignored `Pulumi.local.yaml` / `platform:` stack config, in that
+order. The hybrid example calls `use()` unconditionally and provisions nothing until an address
+exists — so the commit turns monitoring into a config key rather than a code change, and **the next
+deploy still alarms nobody until someone sets one.**
+
+**`~logLocator` is used rather than ignored.** It goes into the description, because an alert names
+the unit and the metric but never where to read what happened, and no backend can derive that address
+— whether a unit's logs are in a managed group or Lambda's auto-created one is stack configuration
+the runtime resolved and did not record.
+
+Step 3 needs a deploy to prove; steps 1–5 are one commit.
 
 ## Verification
 
@@ -224,7 +252,15 @@ estate; there should be one per platform after the next deploy that registers a 
   estate, not to the framework. Step 1 should make the topic ARN configurable so a stack can point at
   something that already exists. Whatever it points at, it stays outside the estate — see the
   decision above.
-- **Alarming a scheduler is different from alarming a handler.** A heartbeat that *stops* produces no
-  errors and no invocations — the absence is the fault. `treatMissingData` and a `< 1` threshold
-  invert it, but that is a per-kind decision the `metricFor` table cannot express as it stands, and it
-  is exactly the case that caught this estate. Worth resolving in step 1 rather than after.
+- ~~**Alarming a scheduler is different from alarming a handler.**~~ **Resolved in step 1:** a kind
+  yields an *array* of alarm specs, and a scheduler gets two — `Errors >= 1`, plus a silence alarm on
+  `Invocations < 1` over `alarmSilenceWindowSeconds` (default an hour, twelve missed beats at the
+  default 5-minute `heartbeatInterval`) with missing data treated as breaching.
+- **Nothing verifies that every unit got an alarm.** The plan's own second check — alarm count equals
+  provisioned-unit count — is the check that would have caught the dead-letter sink missing its alarm
+  for as long as the seam existed, and it is still not automated. It cannot be a unit test (it is a
+  property of a deployed stack), so it wants a post-deploy assertion in CI.
+- **A non-Lambda execution unit would be mis-alarmed.** Every unit this seam announces on AWS today
+  is a Lambda, which is why one `AWS/Lambda` namespace and a `FunctionName` dimension suffice. A
+  future unit that is not a function needs the namespace and dimension to come from the announcement
+  rather than from the backend's assumption.

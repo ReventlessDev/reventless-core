@@ -5,6 +5,23 @@
 // browser can discover plugin UIs via Platform_UIFragments + Auto UI without
 // any per-plugin bundle.
 
+// Attach CloudWatch alarms to every execution unit this stack provisions —
+// command handlers, projections, reactors, collectors, tasks, the scheduler, the
+// dead-letter sink. Registered before anything is built, because the seam hands a
+// backend each unit as it is provisioned.
+//
+// It provisions nothing until the deployment names somewhere for alerts to go
+// (`alarmEmail` or `alarmTopicArn`), which this repository deliberately does not
+// commit: where an alert goes is per-deployment and usually somebody's inbox. Set
+// `REVENTLESS_ALARM_EMAIL` in CI, or `alarmEmail:` in a gitignored
+// `Pulumi.local.yaml`, and the next deploy grows a topic and one alarm per unit.
+//
+// Unconfigured, this line is free — and it is committed anyway so that turning an
+// estate's monitoring on is a config key rather than a code change nobody
+// remembers to make. An unwatched stack found its last two framework defects by
+// way of a CloudWatch bill.
+ReventlessAws.Monitoring_CloudWatch.use()
+
 module Platform = ReventlessAws.Platform.Make()
 
 // Backs the geo-point command input's address search. Provisioning it here

@@ -5,7 +5,10 @@ import * as Platform$ReventlessAws from "@reventlessdev/reventless-aws/src/Platf
 import * as PackageVersion$Reventless from "@reventlessdev/reventless-spec/src/PackageVersion.res.mjs";
 import * as Storefront$OnlineShopHybridSeed from "@reventlessdev/online-shop-hybrid-seed/src/Storefront.res.mjs";
 import * as Capability_Messaging$ReventlessAws from "@reventlessdev/reventless-aws/src/capability/Capability_Messaging.res.mjs";
+import * as Monitoring_CloudWatch$ReventlessAws from "@reventlessdev/reventless-aws/src/adapter/Monitoring/Monitoring_CloudWatch.res.mjs";
 import * as Capability_Geocoding_AwsLocation$ReventlessAws from "@reventlessdev/reventless-aws/src/capability/Capability_Geocoding_AwsLocation.res.mjs";
+
+Monitoring_CloudWatch$ReventlessAws.use();
 
 let Platform = Platform$ReventlessAws.Make({});
 
@@ -51,4 +54,4 @@ export {
   messagingSender,
   $$default as default,
 }
-/* Platform Not a pure module */
+/*  Not a pure module */
