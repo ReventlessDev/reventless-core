@@ -46,7 +46,7 @@ let commandSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "ChangeSyncedProductImage",
     productId: s.m(DcbTag$Reventless.string),
-    productImage: s.m(Sury.$option(UploadableImage$Reventless.forField(undefined, "productImages")))
+    productImage: s.m(Sury.$option(UploadableImage$Reventless.forField("Catalog", "productImages")))
   }))
 ]);
 
@@ -77,7 +77,7 @@ let eventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "CatalogProductImageChanged",
     productId: s.m(DcbTag$Reventless.string),
-    productImage: s.m(Sury.$option(UploadableImage$Reventless.forField(undefined, "productImages")))
+    productImage: s.m(Sury.$option(UploadableImage$Reventless.forField("Catalog", "productImages")))
   }))
 ]);
 

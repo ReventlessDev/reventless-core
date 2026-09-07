@@ -10,7 +10,10 @@ let capabilities: array<ReventlessInfra.Platform.capability> = [
   // catalog: CategoryImages.categoryImage → categoryImages
   ObjectStore({plugin: "Catalog", store: "categoryImages"}),
   // catalog: ProductImages.productImage → productImages
-  // catalog: Products.productImage → productImages
+  // catalog: Products.productImages → productImages
+  // ordering: Orders.firstProductImage → Catalog.productImages
+  // ordering: PlaceOrder.firstProductImage → Catalog.productImages
+  // ordering: SyncCatalogProduct.productImage → Catalog.productImages
   ObjectStore({plugin: "Catalog", store: "productImages"}),
   // ordering: GeocodeCustomerAddress
   Geocoding,

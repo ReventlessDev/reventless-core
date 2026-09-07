@@ -128,5 +128,5 @@ type event =
     // The picture as it was when the order was placed, frozen for the reason the
     // name is. A reshoot, a withdrawal or a deletion afterwards leaves this
     // order showing what the shopper actually bought.
-    firstProductImage?: Reventless.UploadableImage.t,
+    @storageRef("Catalog.productImages") firstProductImage?: Reventless.UploadableImage.t,
   })

@@ -23,8 +23,12 @@ type command =
   | RelistSyncedProduct({productId: string})
   // The picture Catalog says to show. Carried as the ref Catalog's store minted,
   // so Ordering stores a path it can hand to a reader without knowing where the
-  // bytes live or being able to write there.
-  | ChangeSyncedProductImage({productId: string, productImage?: Reventless.UploadableImage.t})
+  // bytes live or being able to write there — which is why the store is named
+  // rather than derived: the field's own name would declare an Ordering store.
+  | ChangeSyncedProductImage({
+      productId: string,
+      @storageRef("Catalog.productImages") productImage?: Reventless.UploadableImage.t,
+    })
 
 @schema
 type error = unit // always succeeds — sync is idempotent
@@ -52,5 +56,5 @@ type event =
     })
   | CatalogProductImageChanged({
       productId: string,
-      productImage?: Reventless.UploadableImage.t,
+      @storageRef("Catalog.productImages") productImage?: Reventless.UploadableImage.t,
     })

@@ -24,6 +24,11 @@
           "component": "ProductImages",
           "field": "productImage",
           "annotation": "productImages"
+        },
+        {
+          "component": "Products",
+          "field": "productImages",
+          "annotation": "productImages"
         }
       ]
     }

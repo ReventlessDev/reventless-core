@@ -97,7 +97,7 @@ let eventSchema = Sury.$schema(s => ({
   shippingMethod: s.m(shippingMethodSchema),
   deliveryWindow: s.m(Sury.$option(DateRange$Reventless.schema)),
   firstProductName: s.m(Sury.$option(Sury.string)),
-  firstProductImage: s.m(Sury.$option(UploadableImage$Reventless.forField(undefined, "firstProductImages")))
+  firstProductImage: s.m(Sury.$option(UploadableImage$Reventless.forField("Catalog", "productImages")))
 }));
 
 function commandAuthorization(param) {

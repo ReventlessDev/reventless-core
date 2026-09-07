@@ -8,28 +8,16 @@
           "component": "Orders",
           "field": "firstProductImage",
           "annotation": "Catalog.productImages"
-        }
-      ]
-    },
-    {
-      "kind": "ObjectStore",
-      "key": "Ordering.firstProductImages",
-      "declaredBy": [
+        },
         {
           "component": "PlaceOrder",
           "field": "firstProductImage",
-          "annotation": "firstProductImages"
-        }
-      ]
-    },
-    {
-      "kind": "ObjectStore",
-      "key": "Ordering.productImages",
-      "declaredBy": [
+          "annotation": "Catalog.productImages"
+        },
         {
           "component": "SyncCatalogProduct",
           "field": "productImage",
-          "annotation": "productImages"
+          "annotation": "Catalog.productImages"
         }
       ]
     },
