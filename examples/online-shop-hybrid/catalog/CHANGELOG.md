@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.235 (2026-09-07)
+
+### Bug Fixes
+
+* **example:** the catalog groups products by the category, not a copy of its name ([fdbd148](https://github.com/ReventlessDev/reventless-core/commit/fdbd148e11d86cf7dc01c91bb12702351940b62a))
+
+
 # 1.0.0-alpha.234 (2026-09-07)
 
 ### Bug Fixes

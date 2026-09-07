@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.252 (2026-09-07)
+
+### Bug Fixes
+
+* **deps:** follow the host UI to 3.0.0-alpha.100 ([b43606f](https://github.com/ReventlessDev/reventless-core/commit/b43606fc638c68243b18ca6107145dcf25c13c31))
+* **example:** the catalog groups products by the category, not a copy of its name ([fdbd148](https://github.com/ReventlessDev/reventless-core/commit/fdbd148e11d86cf7dc01c91bb12702351940b62a))
+
+
 # 1.0.0-alpha.251 (2026-09-07)
 
 * feat(dcb)!: a record inside an array is still a reference and a key ([bcb9b13](https://github.com/ReventlessDev/reventless-core/commit/bcb9b13958323d8319d7fcf25c055800e84150f3))

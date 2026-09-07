@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.131 (2026-09-07)
+
+### Features
+
+* **spec:** the lifecycle check reports as fields, and runs against any app ([c4cf78b](https://github.com/ReventlessDev/reventless-core/commit/c4cf78bff24384d876755c8e6677c1d2865014b0))
+
+
 # 3.0.0-alpha.130 (2026-09-07)
 
 * feat(dcb)!: a record inside an array is still a reference and a key ([bcb9b13](https://github.com/ReventlessDev/reventless-core/commit/bcb9b13958323d8319d7fcf25c055800e84150f3))

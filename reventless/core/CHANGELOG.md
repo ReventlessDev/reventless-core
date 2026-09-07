@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.258 (2026-09-07)
+
+### Bug Fixes
+
+* **core:** a state view slice composes its [@display](https://github.com/display)Name like a read model ([851aa1d](https://github.com/ReventlessDev/reventless-core/commit/851aa1d12ddae9dd39f91084f5719cd98fe1cbd4))
+
+
 # 3.0.0-alpha.257 (2026-09-07)
 
 ### Bug Fixes

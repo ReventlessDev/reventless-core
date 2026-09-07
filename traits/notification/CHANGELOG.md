@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.7 (2026-09-07)
+
+**Note:** Version bump only for package @reventlessdev/trait-notification
+
+
+
+
+
 # 1.0.0-alpha.6 (2026-09-07)
 
 * refactor(traits)!: consumed facts are grouped, not suffixed ([a844b7a](https://github.com/ReventlessDev/reventless-core/commit/a844b7a99349ca20633d68cf32b95cb7677d02a4))
