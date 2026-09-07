@@ -3,8 +3,11 @@
 **Date:** 2026-09-08
 **Status:** Not started. Every fact below was read from the code rather than assumed; the sury
 probes in D2/D3 were run against the pinned `sury@11.0.0-rc.2` and their output is quoted.
-**Repos:** `reventless-core` **and** `reventless-ui` — the sentinel retirement in step 3 changes a
-value the UI reads deliberately, and that reader lives in the other repo.
+**Repos:** `reventless-core`. Step 3 changes a value the UI reads deliberately, but not a value it
+breaks on — the reader already resolves absence the same way (D4), so `reventless-ui` owes one test,
+not a release ahead of this one. Step 7's `CalendarDate` is the part that genuinely needs the other
+repo first: it folds `format: "date"` into its date-time semantic today, so the type would render as
+an instant until that is separated.
 **Analysis:** the semantic table's date-time row — §4.2 (Group B, "already exists"), §3's
 type-vs-annotation table, and §5.7's factory shape — in the repo that owns the cross-repo
 semantic-type analysis.
@@ -139,10 +142,19 @@ encode threw:  {"a":""} — Failed at ["a"]: Expected UTC date-time
 So the sentinel is not a detail to tidy afterwards; it blocks the grammar. `option<DateTime.t>` is
 what the field always meant, and the type is what forces the admission.
 
-**This reaches the UI repo.** `AutoLifecyclePath` reads `shippedAt: ""` deliberately — there are
-tests named for it ("An order that has not shipped carries `shippedAt: \"\"` …",
-`AutoLifecyclePathTests.res:520`). The reader must learn `null`/absent before the writer stops
-emitting `""`, which is why step 3 is its own step and precedes step 5.
+**It touches the UI repo, but does not wait on it.** `AutoLifecyclePath` reads `shippedAt: ""`
+deliberately — there are tests named for it ("An order that has not shipped carries
+`shippedAt: \"\"` …", `AutoLifecyclePathTests.res:520`) — so the first reading of this was that the
+reader must learn `null`/absent before the writer stops sending `""`. It already has: the strip's own
+plan checked the path and found that stamp resolution "decodes a string and yields nothing for `null`
+or an absent key, by the same path that yields nothing for `\"\"` — so there is no blocker here, only
+a missing assertion"
+([reventless-ui `a-strip-reads-the-trail-it-was-given.md`](../../../reventless-ui/docs/plans/a-strip-reads-the-trail-it-was-given.md),
+§4). What the other repo owes is a sibling test for `null` beside the existing empty-string one, and
+that test is what lets step 3 land here without waiting on anything.
+
+So step 3 is its own step for the reason below it — a golden and an SDL nullability change should not
+ride along with a type refactor — not because it is gated across repos.
 
 Also `String!` → `String` in `examples/online-shop-hybrid/schema/domain-api.graphql` (lines 655, 831)
 — a golden refresh in the same commit, per the goldens convention.
@@ -216,9 +228,9 @@ No adopter changes yet — after this step the repo still compiles with every ex
 (`Orders_GWT.res`, `OrderingFlow_GWT.res`, the notification suite). D5.
 
 **3. Retire the sentinels.** `Orders.shippedAt` and `NotificationDeliveries.settledAt` become
-`option<...>`; projections write `None` instead of `""`; SDL goldens refresh in the same commit; the
-UI's `AutoLifecyclePath` learns absent-means-not-yet **before** this lands, per D4. Cross-repo, so
-this is where the sequencing matters — the reader ships first.
+`option<...>`; projections write `None` instead of `""`; SDL goldens refresh in the same commit. The
+UI already treats absence as not-yet (D4), so nothing gates this — tell that repo it can drop its
+`null` assertion in beside the empty-string one whenever it likes.
 
 **4. Turn the grammar on.** `schema` becomes `Semantic.refined` rather than `Semantic.mark`. Nothing
 in the tree violates it by now, which is the point of steps 2–3.
@@ -244,6 +256,15 @@ id `string` did.
 occurrence in `entry<'state>`; if that lands first, it converts here too, and if this lands first it
 should be written as `at: Reventless.DateTime.t` from the start.
 
+**One consumer outside this repo gets a fix rather than a migration.** `reventless-tools`' codegen
+emits a modelled date-time field as a bare `string` with no marker at all
+(`SpecEmitter.renderTypeRef`), so a generated spec loses `format: "date-time"` and every view keyed
+off it. Teaching that emitter to write annotations would be a mechanism; a nameable type makes it
+`DateTime => "Reventless.DateTime.t"`, one line. Recorded there, in
+`docs/plans/forward-codegen-pipeline.md` § *Known gap*, along with the matching one for step 7 — its
+import path collapses the source format's `Date` into `DateTime` because `Model.fieldKind` has no
+day, which is a distinction the upstream model was already making and this repo had nowhere to keep.
+
 **6. Delete `let string`** in the following release, once no caller remains.
 
 **7. `CalendarDate`.** `semantic/CalendarDate.res` on the same template, `grammar = S.isoDate`, new
@@ -256,6 +277,15 @@ published contract that predates the marker; a new semantic has no such history 
 speaking the current vocabulary as well as the standard keyword. No adopter in this repo yet — add
 one to the hybrid example only if a genuinely date-only field turns up; a contrived one would be
 worse than none.
+
+**The reader must be separated first, and this is a real prerequisite.** `AutoSemantics` folds the
+two formats into one semantic today —
+`| Some("date-time") | Some("date") => Some((DateTime, "format:date-time"))`
+([AutoSemantics.res:896](../../../reventless-ui/reventless/ui/src/auto/AutoSemantics.res#L896)) —
+so a `CalendarDate` field emitted with `format: "date"` renders as an instant, which is the midnight
+bug this type exists to prevent, arriving through the type meant to prevent it. Separating the two
+semantics in `reventless-ui` ships before any adopter, per the reader-first rule. Its natural home is
+that repo's `autoui-date-basis.md`, which owns the question of which date a view's date mode runs on.
 
 ## Verification
 
@@ -277,8 +307,10 @@ worse than none.
 
 ## Risks
 
-- **Step 3 is a two-repo sequence.** The reader must tolerate absence before the writer stops sending
-  `""`. Landing them the other way round shows a shipped order with no ship date.
+- **Step 3 changes a value another repo reads.** Checked, and it is not a sequence: the UI resolves
+  absence the same way it resolves `""` (D4). The risk that remains is a *second* reader nobody
+  checked — grep both repos for the field names before landing it, the way D4 was settled, rather
+  than assuming the strip is the only consumer.
 - **A refinement on the write path fails a projection, not a request.** If any timestamp anywhere is
   written from something other than `meta.time`, the failure surfaces as a projection error rather
   than a rejected command. Steps 2–4's ordering is the mitigation; grep for writers of every field in
