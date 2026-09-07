@@ -229,15 +229,38 @@ would be invisible until someone compared two rebuilds.
 
 ## 7. Migration in the shipped examples
 
-- **`Orders`** declares the trail. `placedAt` stays: it is the order's
-  `@displayName` and `@summary`, the field the list is *named* by, and that is not
-  a lifecycle question. `shippedAt` is the interesting one — after
-  `semantic-date-time`'s D4 it is an `option<Reventless.DateTime.t>` whose only
-  reader is the strip, and a trail answers it, so retiring it is a follow-up worth
-  considering on its own rather than folding in here. `OrderCancelled` needs no
-  projection edit to gain its date; the rule supplies it.
+- **`Orders`** declares the trail, and `OrderCancelled` needs no projection edit to
+  gain its date — the rule supplies it.
 - **`Products` / `Categories`** declare the trail and get dates for their
   `@retired` states, which have never had any.
+
+### Retiring the fields the trail replaces
+
+The point of the trail is that per-state timestamp fields stop being necessary,
+and they should go. Not all at once, and not all of them.
+
+**`shippedAt` retires with the trail.** It is an `option<Reventless.DateTime.t>`
+whose only readers ask when the order shipped, which is what the trail's `Shipped`
+entry says. Nothing else consults it.
+
+**`placedAt` is a decision, not a cleanup.** It carries `@displayName` and
+`@summary`, and those are not lifecycle questions — they are what the order is
+*named* by and what a list may column. Three things go with the field and do not
+come back from inside an array:
+
+- **A name.** An annotation points at a field. There is no spelling for "the `at`
+  of the entry whose state is `Placed`", and an order whose id is a uuid has
+  nothing else to be called.
+- **Sorting.** A list ordered by placement date is a query against a scalar
+  column. A read model does not index inside a nested array.
+- **Range filters.** "Placed last week" is the same problem.
+
+So retiring it means answering naming, sorting and filtering first — either by
+teaching those three to address a trail entry, or by keeping exactly one instant
+per view as a real field and letting the trail carry every other state. The second
+is cheaper and is what this plan assumes until someone builds the first. Either
+way it is its own piece of work, and doing it by deleting the field and seeing
+what breaks would take the list's own name with it.
 
 ## 8. Non-goals
 
