@@ -431,16 +431,25 @@ let register = (arg: Slots.registerArg): unit => {
     )
   })
 
-  // The line beside an order's name on the tracker: when it was placed, and when
-  // it shipped once it has. The dates the strip above cannot carry, since a step
-  // says which state a row reached and not when it got there.
+  // The line beside an order's name on the tracker: what is in it and what it
+  // cost.
+  //
+  // Not when it was placed and when it shipped. A step of the strip carries `at`
+  // — when the row reached that state — so each date is written over the state it
+  // belongs to, where a reader is already looking for it. Printing them again
+  // here would say the picture in words and leave this line saying nothing of its
+  // own, which is the one thing a summary beside a picture must not do.
   arg.slots.row(Slots.RowSlot.trackerSummary, payload => {
-    let placed = Slots.Row.text(payload.row, "placedAt")->Option.mapOr([], at => ["Placed " ++ Slots.Format.isoDay(at)])
-    let shipped = Slots.Row.text(payload.row, "shippedAt")->Option.mapOr([], at => ["shipped " ++ Slots.Format.isoDay(at)])
+    let items = switch Slots.Row.float(payload.row, "itemCount")->Option.map(Float.toInt) {
+    | Some(1) => ["1 item"]
+    | Some(n) => [Int.toString(n) ++ " items"]
+    | None => []
+    }
+    let total = Slots.Row.money(payload.row, "total")->Option.mapOr([], m => [Slots.Format.money(m)])
     h(
       "span",
       {"className": "sf-summary"},
-      [React.string(placed->Array.concat(shipped)->Array.join(" · "))],
+      [React.string(items->Array.concat(total)->Array.join(" · "))],
     )
   })
 }

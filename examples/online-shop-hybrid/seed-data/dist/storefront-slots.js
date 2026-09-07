@@ -530,11 +530,12 @@ function register(arg) {
     }, ["Checkout"])]));
   });
   arg.slots.row(RowSlot.trackerSummary, (payload) => {
-    let placed = mapOr(Row.text(payload.row, "placedAt"), [], (at) => ["Placed " + Format.isoDay(at)]);
-    let shipped = mapOr(Row.text(payload.row, "shippedAt"), [], (at) => ["shipped " + Format.isoDay(at)]);
+    let n = map(Row.float(payload.row, "itemCount"), (prim) => prim | 0);
+    let items = n !== void 0 ? n !== 1 ? [n.toString() + " items"] : ["1 item"] : [];
+    let total = mapOr(Row.money(payload.row, "total"), [], (m) => [Format.money(m)]);
     return h2("span", {
       className: "sf-summary"
-    }, [placed.concat(shipped).join(" \xB7 ")]);
+    }, [items.concat(total).join(" \xB7 ")]);
   });
 }
 var Slots;

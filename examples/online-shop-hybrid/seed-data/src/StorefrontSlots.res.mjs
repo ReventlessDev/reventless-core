@@ -232,11 +232,14 @@ function register(arg) {
       }, ["Checkout"])]));
   });
   arg.slots.row(ReventlessSlots.RowSlot.trackerSummary, payload => {
-    let placed = Stdlib_Option.mapOr(ReventlessSlots.Row.text(payload.row, "placedAt"), [], at => ["Placed " + ReventlessSlots.Format.isoDay(at)]);
-    let shipped = Stdlib_Option.mapOr(ReventlessSlots.Row.text(payload.row, "shippedAt"), [], at => ["shipped " + ReventlessSlots.Format.isoDay(at)]);
+    let n = Stdlib_Option.map(ReventlessSlots.Row.float(payload.row, "itemCount"), prim => prim | 0);
+    let items = n !== undefined ? (
+        n !== 1 ? [n.toString() + " items"] : ["1 item"]
+      ) : [];
+    let total = Stdlib_Option.mapOr(ReventlessSlots.Row.money(payload.row, "total"), [], m => [ReventlessSlots.Format.money(m)]);
     return h("span", {
       className: "sf-summary"
-    }, [placed.concat(shipped).join(" · ")]);
+    }, [items.concat(total).join(" · ")]);
   });
 }
 
