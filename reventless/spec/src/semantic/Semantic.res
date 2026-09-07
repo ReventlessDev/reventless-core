@@ -59,6 +59,9 @@ type t = {id: string, payload: payload}
     `x-reventless-semantic` carries, shared with the annotation path. */
 module Id = {
   let dateTime = "dateTime"
+  // A day with no instant in it. Separate from `dateTime` because storing one as
+  // an instant is what produces the midnight bug — see `CalendarDate`.
+  let date = "date"
   let reference = "reference"
   let storageRef = "storageRef"
   // Like `storageRef`, but inline-or-reference rather than always a ref path.

@@ -27,7 +27,7 @@ let project = ({event, meta}) =>
           lifecycle: Placed,
           shippingMethod,
           placedAt: meta.time,
-          shippedAt: "",
+          shippedAt: None,
           deliveryWindow,
           // Copied straight through. The event is the record of what was bought;
           // this view does not go and ask the catalog what the product is called
@@ -38,7 +38,7 @@ let project = ({event, meta}) =>
       ),
     ]
   | OrderShipped({orderId}) => [
-      Update(orderId, state => {...state, lifecycle: Shipped, shippedAt: meta.time}),
+      Update(orderId, state => {...state, lifecycle: Shipped, shippedAt: Some(meta.time)}),
     ]
   | OrderCancelled({orderId}) => [Update(orderId, state => {...state, lifecycle: Cancelled})]
   // Back to `Placed`, which is where a reopened order is: shippable again, and

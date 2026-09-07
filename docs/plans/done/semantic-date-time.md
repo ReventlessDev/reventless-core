@@ -1,8 +1,13 @@
 # Plan: `DateTime` as a semantic type, and `CalendarDate` beside it
 
 **Date:** 2026-09-08
-**Status:** Not started. Every fact below was read from the code rather than assumed; the sury
-probes in D2/D3 were run against the pinned `sury@11.0.0-rc.2` and their output is quoted.
+**Status:** Done, steps 1–5 and 7. Every fact below was read from the code rather than assumed; the
+sury probes in D2/D3 were run against the pinned `sury@11.0.0-rc.2` and their output is quoted, and
+re-run unchanged at build time. Step 6 (deleting `let string`) is deliberately left for the following
+release. One thing the plan did not foresee — a ppx check that reads the literal `string` keyword —
+is recorded as D7. `CalendarDate` shipped with **no adopter**, which is the form step 7 asks for and
+what keeps the reader-first rule intact: nothing emits `format: "date"` until `reventless-ui`
+separates the two semantics.
 **Repos:** `reventless-core`. Step 3 changes a value the UI reads deliberately, but not a value it
 breaks on — the reader already resolves absence the same way (D4), so `reventless-ui` owes one test,
 not a release ahead of this one. Step 7's `CalendarDate` is the part that genuinely needs the other
@@ -11,19 +16,19 @@ an instant until that is separated.
 **Analysis:** the semantic table's date-time row — §4.2 (Group B, "already exists"), §3's
 type-vs-annotation table, and §5.7's factory shape — in the repo that owns the cross-repo
 semantic-type analysis.
-**Builds on:** [done/semantic-type-marker-and-storage-ref.md](./done/semantic-type-marker-and-storage-ref.md)
+**Builds on:** [done/semantic-type-marker-and-storage-ref.md](./semantic-type-marker-and-storage-ref.md)
 — `Semantic.mark` / `Semantic.refined` are the mechanism — and
-[done/semantic-branded-scalars.md](./done/semantic-branded-scalars.md), whose module shape this
-follows exactly. [semantic-date-range.md](./semantic-date-range.md) is the consumer: its two parts
+[done/semantic-branded-scalars.md](./semantic-branded-scalars.md), whose module shape this
+follows exactly. [semantic-date-range.md](../semantic-date-range.md) is the consumer: its two parts
 are `DateTime` fields and change with it.
-**Defers:** [Backlog/semantic-time-of-day.md](./Backlog/semantic-time-of-day.md) — the third member
+**Defers:** [Backlog/semantic-time-of-day.md](../Backlog/semantic-time-of-day.md) — the third member
 of the trio, held back on the two blockers stated in D6.
 
 ## The gap: the one semantic that never became a type
 
 `DateTime` is the oldest member of the semantic family and the only one that is not a type. It
-still lives in `types/` rather than `semantic/`, and [reventless/spec/src/types/DateTime.res](../../reventless/spec/src/types/DateTime.res)
-exposes exactly one value:
+still lives in `types/` rather than `semantic/` — `reventless/spec/src/types/DateTime.res`, moved
+by step 1 — and exposes exactly one value:
 
 ```rescript
 let string: S.t<string> = S.string->Semantic.mark(~id=Semantic.Id.dateTime)
@@ -86,7 +91,7 @@ Adoption is then the thing this plan is for:
 The analysis (§5.7) leans abstract for the branded scalars. `Email` declined that and went
 transparent (its own D1), and `DateTime` has the same reason plus a sharper one: these fields are
 written from `meta.time`, a plain `string` on the message envelope
-([Message.res:32](../../reventless/spec/src/types/Message.res#L32)). An abstract `t` would put a
+([Message.res:32](../../../reventless/spec/src/types/Message.res#L32)). An abstract `t` would put a
 `DateTime.unsafe` call at every projection that stamps a row — noise at a hundred call sites to seal
 a value the framework itself produced. Transparent keeps `placedAt: meta.time` compiling untouched,
 which is what makes step 4 a type-annotation change and nothing else.
@@ -96,7 +101,7 @@ which is what makes step 4 a type-annotation change and nothing else.
 The current module doc says sury has no string-typed datetime format and that `S.datetime`
 transforms to `Js.Date.t`. That was true when it was written and is now stale — `sury@11.0.0-rc.2`
 binds `isoDateTime` as a plain `S.t<string>`
-([node_modules/sury/src/S.res:445](../../node_modules/sury/src/S.res#L445)) and emits
+([node_modules/sury/src/S.res:445](../../../node_modules/sury/src/S.res#L445)) and emits
 `format: "date-time"` from it natively. Probed:
 
 ```
@@ -112,7 +117,7 @@ So the branded-scalars rule holds unchanged: one grammar, somebody else's, never
 `"2026-03-02T09:00:00"` both fail. That is stricter than RFC 3339, and it is the right strictness to
 adopt rather than work around. Every instant the framework produces comes from
 `Message.nowAsISOString` — `Date.make()->Date.toISOString`
-([Message.res:92](../../reventless/core/src/Message.res#L92)) — which is always `Z`. A normalization
+([Message.res:92](../../../reventless/core/src/Message.res#L92)) — which is always `Z`. A normalization
 rule ("instants are stored in UTC") is a fact a reader can rely on; a tolerance rule ("we accept
 whatever offset arrived") pushes the zone question onto every consumer.
 
@@ -131,7 +136,7 @@ would now reject it:
 
 Refinement runs on the **write** path, not only on read. `QueryDb_Operations` encodes state with
 `Message.encode(ReadModelSpec.stateSchema)`
-([QueryDb_Operations.res:126](../../reventless/core/src/components/QueryDb/QueryDb_Operations.res#L126)),
+([QueryDb_Operations.res:126](../../../reventless/core/src/components/QueryDb/QueryDb_Operations.res#L126)),
 and a refined schema throws there — verified against sury directly:
 
 ```
@@ -149,7 +154,7 @@ reader must learn `null`/absent before the writer stops sending `""`. It already
 plan checked the path and found that stamp resolution "decodes a string and yields nothing for `null`
 or an absent key, by the same path that yields nothing for `\"\"` — so there is no blocker here, only
 a missing assertion"
-([reventless-ui `a-strip-reads-the-trail-it-was-given.md`](../../../reventless-ui/docs/plans/a-strip-reads-the-trail-it-was-given.md),
+([reventless-ui `a-strip-reads-the-trail-it-was-given.md`](../../../../reventless-ui/docs/plans/a-strip-reads-the-trail-it-was-given.md),
 §4). What the other repo owes is a sibling test for `null` beside the existing empty-string one, and
 that test is what lets step 3 land here without waiting on anything.
 
@@ -161,7 +166,7 @@ Also `String!` → `String` in `examples/online-shop-hybrid/schema/domain-api.gr
 
 ### D5. `TestFixtures.time` is `"time"`, and must become an instant
 
-[reventless/gwt/src/TestFixtures.res:6](../../reventless/gwt/src/TestFixtures.res#L6) stamps every
+[reventless/gwt/src/TestFixtures.res:6](../../../reventless/gwt/src/TestFixtures.res#L6) stamps every
 GWT message with `time: "time"`. That literal flows into projection expectations across the example
 suites (`placedAt: "time"`, `shippedAt: "time"`). The two other harness fixtures already use real
 instants (`StubRuntime.res:32`, `SideEffect_GWT.res:102`); this one is the outlier. Change it to a
@@ -175,7 +180,7 @@ value has no instant in it, and storing one as a `DateTime` creates the midnight
 localizes `2026-03-02T00:00:00Z` shows *March 1st* to anyone west of Greenwich. That is a wrong date
 on a screen, produced by a correct renderer, and no annotation can fix it because the value itself
 lost the distinction. The grammar is free — `S.isoDate` is bound
-([S.res:455](../../node_modules/sury/src/S.res#L455)), accepts `"2026-03-02"`, rejects `"09:00:00"`,
+([S.res:455](../../../node_modules/sury/src/S.res#L455)), accepts `"2026-03-02"`, rejects `"09:00:00"`,
 `"2026-03-02T09:00:00Z"`, `""` and `"2026-13-02"`, and emits `format: "date"`, which is the standard
 JSON Schema keyword a consumer already knows how to read.
 
@@ -195,27 +200,57 @@ short `"date"`; only the module name carries the qualifier.
   exists to avoid.
 - **A wall-clock time is meaningless without a zone, and nothing here carries one.** The notification
   trait already records this gap in its own words: "Nothing in the framework carries a recipient
-  timezone" ([trait-notification.md:317](./trait-notification.md#L317)). A `TimeOfDay` would declare
+  timezone" ([trait-notification.md:317](../trait-notification.md#L317)). A `TimeOfDay` would declare
   a value the platform cannot correctly render or compare — a type whose whole promise is that the
   declaration is trustworthy.
 
 Revisit when a field needs it (opening hours, a daily cutoff) *and* a timezone has somewhere to live.
 The right shape is then probably `TimeOfDay` beside a zone, not a bare one — which is a composite,
 and a composite is a different plan. It is written as one:
-[Backlog/semantic-time-of-day.md](./Backlog/semantic-time-of-day.md), which carries both blockers
+[Backlog/semantic-time-of-day.md](../Backlog/semantic-time-of-day.md), which carries both blockers
 above in full, the zone-location decision they turn on, and the fact this plan's own investigation
 turned up — `Schedule.rate` already holds a time of day as a positional `(hour, minute)` pair, which
 is the shape a type would replace.
+
+### D7. A ppx check read the literal `string` keyword, and the plan's own example tripped it
+
+Found in the build, not in the reading. `@displayName` is on `Orders.placedAt` — the field the plan
+quotes as its example of what adoption looks like — and `DisplayNameInference` refused it:
+
+```
+@displayName only supports string and option<string> fields
+```
+
+The check matched `Ptyp_constr (Lident "string")`, so it saw the brand rather than the string.
+`DateTime.t` *is* a `string` at runtime, and the joined display name reads it as one — the local
+round-trip below returns `displayName: "2026-09-07T22:59:19.102Z"`, taken straight off the branded
+field. Left as it was, declaring a field's semantic would have cost it whatever the check gates,
+which is exactly the trade a nameable type exists to remove.
+
+Fixed at the source rather than at the call site: `Util.is_branded_string_type` names the framework's
+transparent-string scalars (`DateTime`, `CalendarDate`, `Email`, `Phone`, `Url`, `Color`,
+`StorageRef` — not `Money`, a record, nor `Duration`, an int), matched through the package namespace
+as well as bare, and `DisplayNameInference` accepts them. A list rather than a rule because the ppx
+has only the syntax: it cannot see that `type t = string`, and guessing from the name would let
+`Money.t` through.
+
+`@owner`'s identical check is deliberately **not** changed. Nothing wants an owner on an instant,
+and widening a check on the strength of a case nobody has is how the next surprise gets in.
 
 ## Steps
 
 Ordered so the tree is green after each one, and so the grammar is never switched on while a known
 violation of it exists.
 
+They landed in one commit, and step 4 folded into step 1 as a consequence of that ordering: nothing
+reads `schema` until step 5 adopts it, so building it refined from the start switches the grammar on
+for no existing caller. The step remains written out because the *sequence* is what matters — a
+separate landing still has to do 2 and 3 before 5.
+
 **1. The module.** Move `types/DateTime.res` → `semantic/DateTime.res` with `git mv`, add `type t`,
 `unsafe`/`toString`, `grammar`, `fromString`, and `schema` per the shape above. `isDateTime` keeps its
 current body — it reads the marker, which `Semantic.refined` still sets, so
-`SchemaType.isDateTime` ([SchemaType.res:34](../../reventless/core/src/components/Api/SchemaType.res#L34))
+`SchemaType.isDateTime` ([SchemaType.res:34](../../../reventless/core/src/components/Api/SchemaType.res#L34))
 and everything downstream of it are untouched. Keep `let string` exported and deprecated. Rewrite the
 module doc: the "sury has no string-typed datetime format" paragraph is now false, and D3's UTC rule
 belongs there. Ops worth having, matching the family: `format`, and `compare`/`isBefore` (`DateRange`
@@ -252,7 +287,7 @@ build schemas by hand with `s.matches(...)` and take `Reventless.DateTime.schema
 (§"the two instants keep their own `dateTime` markers") is unchanged, since `schema` carries the same
 id `string` did.
 
-[lifecycle-trail-on-a-state-view.md:63](./lifecycle-trail-on-a-state-view.md#L63) proposes a sixth
+[lifecycle-trail-on-a-state-view.md:63](../lifecycle-trail-on-a-state-view.md#L63) proposes a sixth
 occurrence in `entry<'state>`; if that lands first, it converts here too, and if this lands first it
 should be written as `at: Reventless.DateTime.t` from the start.
 
@@ -271,7 +306,7 @@ day, which is a distinction the upstream model was already making and this repo 
 vocabulary id `Semantic.Id.date = "date"`. Emission: give it a `SchemaType` case so it surfaces
 `{type: "string", format: "date"}` the way `DateTime` surfaces `date-time` — but unlike `DateTime`,
 **do not** add it to the exclusion list at
-[SchemaType.res:84](../../reventless/core/src/components/Api/SchemaType.res#L84), so it also carries
+[SchemaType.res:84](../../../reventless/core/src/components/Api/SchemaType.res#L84), so it also carries
 `x-reventless-semantic: "date"`. `DateTime`'s exclusion exists because its bare-`format` output is a
 published contract that predates the marker; a new semantic has no such history and should arrive
 speaking the current vocabulary as well as the standard keyword. No adopter in this repo yet — add
@@ -281,7 +316,7 @@ worse than none.
 **The reader must be separated first, and this is a real prerequisite.** `AutoSemantics` folds the
 two formats into one semantic today —
 `| Some("date-time") | Some("date") => Some((DateTime, "format:date-time"))`
-([AutoSemantics.res:896](../../../reventless-ui/reventless/ui/src/auto/AutoSemantics.res#L896)) —
+([AutoSemantics.res:896](../../../../reventless-ui/reventless/ui/src/auto/AutoSemantics.res#L896)) —
 so a `CalendarDate` field emitted with `format: "date"` renders as an instant, which is the midnight
 bug this type exists to prevent, arriving through the type meant to prevent it. Separating the two
 semantics in `reventless-ui` ships before any adopter, per the reader-first rule. Its natural home is
@@ -289,32 +324,45 @@ that repo's `autoui-date-basis.md`, which owns the question of which date a view
 
 ## Verification
 
-- `DateTimeTest` on the module: the grammar's accepts and rejects from D2/D3 (including the offset
-  rejection, which is a decision and should be pinned as one), `fromString`'s error text, `format`,
-  `compare`.
-- `SuryToJsonSchemaTest`: a `DateTime.t` field emits exactly what a `@s.matches(DateTime.string)`
-  field emits today — `{"type": "string", "format": "date-time"}`, **no** `x-reventless-semantic`
-  key. This is the step-5 no-drift claim and is the one test that would catch the emission changing
-  by accident.
-- `CalendarDateTest` + its own emission block: `{type, format: "date"}` **plus** the semantic key, per
-  step 7's deliberate asymmetry.
-- `pnpm run check:graphql` — no golden movement from steps 1–2 and 4–5; the only movement is step 3's
-  two `String!` → `String`.
-- The hybrid ordering GWT suites, and a live local round-trip on the orders view: an order places,
-  ships, and the tracker still reads — the strip is what consumes `shippedAt`'s absence, so it is the
-  honest check on step 3.
-- Full `pnpm run build` with zero warnings, and `git ls-files --deleted` after the `git mv` in step 1.
+All of it ran. What each one said:
+
+- **`DateTimeTest`** (14) — the grammar's accepts and rejects from D2/D3, the offset rejection pinned
+  as the decision it is, `fromString`'s error text, `format`, `isBefore`/`compare`.
+- **`SuryToJsonSchemaTest`** — a `DateTime.t` field emits `{"type": "string", "format": "date-time"}`
+  and **no** `x-reventless-semantic` key, asserted as one tuple so the no-drift claim fails loudly
+  rather than in halves.
+- **`CalendarDateTest`** (10) + its emission block — `{type, format: "date"}` **plus** the semantic
+  key, per step 7's deliberate asymmetry, and a check that it does *not* answer to `isDateTime`.
+- **`pnpm run check:graphql`** — drift was exactly the two lines step 3 predicted and nothing else:
+  `Ordering_Order.shippedAt` and `Ordering_NotificationDelivery.settledAt`, `String!` → `String`.
+  Goldens refreshed in the same commit.
+- **`pnpm test`** — 395 suites, 4284 tests, all green; `check:lifecycle`, `check:dcb-scope`,
+  `check:traits` and `test:projects` likewise.
+- **A live local round-trip** on the hybrid platform (in-memory, alt ports): the SDL carries
+  `shippedAt: String`; a placed order reads
+  `{lifecycle: "Placed", placedAt: "2026-09-07T22:59:19.102Z", shippedAt: null}` and, after
+  `Ordering_ShipOrder`, `{lifecycle: "Shipped", shippedAt: "2026-09-07T22:59:25.570Z"}`. `displayName`
+  came back as the `placedAt` instant, which is what proves D7's fix on the real write path. No
+  projection error in the log — the risk below, checked rather than assumed.
+- **Full `pnpm run build`** with zero warnings, and `git ls-files --deleted` clean after the `git mv`.
 
 ## Risks
 
 - **Step 3 changes a value another repo reads.** Checked, and it is not a sequence: the UI resolves
-  absence the same way it resolves `""` (D4). The risk that remains is a *second* reader nobody
-  checked — grep both repos for the field names before landing it, the way D4 was settled, rather
-  than assuming the strip is the only consumer.
-- **A refinement on the write path fails a projection, not a request.** If any timestamp anywhere is
-  written from something other than `meta.time`, the failure surfaces as a projection error rather
-  than a rejected command. Steps 2–4's ordering is the mitigation; grep for writers of every field in
-  the step-5 table before turning the grammar on, not after.
+  absence the same way it resolves `""` (D4). The second-reader worry was settled by grepping both
+  repos — every UI path to a date value goes through a `decodeString` that yields nothing for `null`,
+  and `Orders` already carries three nullable fields (`deliveryWindow`, `firstProductName`,
+  `firstProductImage`), so the shape is one the shell exercises today.
+- **A refinement on the write path fails a projection, not a request.** Every writer of the five
+  fields was checked to be `meta.time` before the grammar went on, and the round-trip above wrote
+  both an instant and an absence through the refined schema with no projection error.
+- **`CalendarDate` has no adopter, and must not get one here first.** `reventless-ui` folds
+  `format: "date"` into its date-time semantic
+  ([`AutoSemantics.res:896`](../../../../reventless-ui/reventless/ui/src/auto/AutoSemantics.res#L896)),
+  so the first field to declare a day would render as an instant — the midnight bug arriving through
+  the type that exists to prevent it. Landing the type alone changes nothing emitted, which is why it
+  is safe now and why the gate is on the adopter, not on the module. That repo's
+  `autoui-date-basis.md` owns the separation and already states it.
 - **`S.isoDateTime` is from an RC pin** (`11.0.0-rc.2`). Its acceptance set is quoted above rather
   than described so a future sury bump has something to diff against. Note in passing: its `isoTime`
   rejects `"09:00:00.000"`, which looks like a bug — another reason D6 does not build on it yet.

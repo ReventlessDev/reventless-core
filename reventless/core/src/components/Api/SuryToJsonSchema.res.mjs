@@ -212,6 +212,17 @@ function fromSchemaType(inputNamesOpt, st) {
             "date-time"
           ]
         ]);
+      case "CalendarDate" :
+        return Object.fromEntries([
+          [
+            "type",
+            "string"
+          ],
+          [
+            "format",
+            "date"
+          ]
+        ]);
       case "ScalarString" :
       case "Unknown" :
         return Object.fromEntries([[

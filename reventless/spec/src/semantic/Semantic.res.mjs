@@ -6,6 +6,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 
 let Id = {
   dateTime: "dateTime",
+  date: "date",
   reference: "reference",
   storageRef: "storageRef",
   offload: "offload",

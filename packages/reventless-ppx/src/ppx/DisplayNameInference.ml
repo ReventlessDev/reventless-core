@@ -40,10 +40,13 @@ let get_display_name_sep (attrs : attributes) : string option =
      | PStr [{ pstr_desc = Pstr_eval ({pexp_desc = Pexp_constant (Pconst_string (s, _, _)); _}, _); _ }] -> Some s
      | _ -> None)
 
+(* A branded string counts: [placedAt: Reventless.DateTime.t] holds a string at
+   runtime, and the joined display name reads it as one. Refusing it would mean
+   a field could either say what it is or name its row, never both. *)
 let is_string_type (ct : core_type) =
   match ct.ptyp_desc with
   | Ptyp_constr ({ txt = Lident "string"; _ }, []) -> true
-  | _ -> false
+  | _ -> Util.is_branded_string_type ct
 
 let is_option_string_type (ct : core_type) =
   match ct.ptyp_desc with

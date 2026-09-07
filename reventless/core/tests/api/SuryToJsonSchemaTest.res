@@ -57,7 +57,7 @@ describe("SuryToJsonSchema:", () => {
     testSync("emits format:\"date-time\" for a DateTime-marked string field", () => {
       let schema = S.schema(s =>
         {
-          "placedAt": s.matches(Reventless.DateTime.string),
+          "placedAt": s.matches(Reventless.DateTime.schema),
           "name": s.matches(S.string),
         }
       )->S.castToUnknown
@@ -71,6 +71,38 @@ describe("SuryToJsonSchema:", () => {
       expect(
         getPropertyOf(json, "name")->Option.flatMap(s => getProperty(s, "format")),
       )->toBe(None)
+    })
+
+    // The no-drift claim behind writing `placedAt: Reventless.DateTime.t` in
+    // place of `@s.matches(DateTime.string) string`: the type emits exactly what
+    // the annotation emitted, semantic key still absent. This is the one test
+    // that would catch that output changing by accident.
+    testSync("a DateTime field emits format and no semantic key", () => {
+      let json = SuryToJsonSchema.deriveObjectSchema(
+        S.schema(s => {"placedAt": s.matches(Reventless.DateTime.schema)})->S.castToUnknown,
+      )
+      let keyOf = key => getPropertyOf(json, "placedAt")->Option.flatMap(s => getProperty(s, key))
+      expect((keyOf("type"), keyOf("format"), keyOf("x-reventless-semantic")))->toEqual((
+        Some(JSON.Encode.string("string")),
+        Some(JSON.Encode.string("date-time")),
+        None,
+      ))
+    })
+
+    // A calendar date speaks both vocabularies, and that asymmetry with
+    // `DateTime` is deliberate: `DateTime`'s bare-`format` output predates the
+    // generic marker and is a published contract, so it keeps it; a semantic
+    // arriving now has no such history and should say what it is as well.
+    testSync("a CalendarDate field emits format:\"date\" AND the semantic key", () => {
+      let json = SuryToJsonSchema.deriveObjectSchema(
+        S.schema(s => {"issuedOn": s.matches(Reventless.CalendarDate.schema)})->S.castToUnknown,
+      )
+      let keyOf = key => getPropertyOf(json, "issuedOn")->Option.flatMap(s => getProperty(s, key))
+      expect((keyOf("type"), keyOf("format"), keyOf("x-reventless-semantic")))->toEqual((
+        Some(JSON.Encode.string("string")),
+        Some(JSON.Encode.string("date")),
+        Some(JSON.Encode.string("date")),
+      ))
     })
   })
 
@@ -898,7 +930,7 @@ describe("SuryToJsonSchema:", () => {
       let schema = S.schema(s =>
         {
           "customerId": s.matches(Reventless.Reference.to_("Customer")),
-          "placedAt": s.matches(Reventless.DateTime.string),
+          "placedAt": s.matches(Reventless.DateTime.schema),
         }
       )->S.castToUnknown
       let json = SuryToJsonSchema.deriveObjectSchema(schema)
@@ -1203,7 +1235,7 @@ describe("SuryToJsonSchema:", () => {
       S.schema(s =>
         {
           "deliveryWindow": s.matches(Reventless.DateRange.schema),
-          "orderedAt": s.matches(Reventless.DateTime.string),
+          "orderedAt": s.matches(Reventless.DateTime.schema),
         }
       )->S.castToUnknown,
     )

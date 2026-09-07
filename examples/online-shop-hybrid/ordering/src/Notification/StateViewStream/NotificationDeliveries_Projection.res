@@ -35,7 +35,7 @@ let project = ({event, meta}) =>
           origin: originName(origin),
           detail: "",
           decidedAt: meta.time,
-          settledAt: "",
+          settledAt: None,
         },
       ),
     ]
@@ -56,7 +56,7 @@ let project = ({event, meta}) =>
           origin: originName(origin),
           detail: "the recipient is not subscribed to this notification",
           decidedAt: meta.time,
-          settledAt: meta.time,
+          settledAt: Some(meta.time),
         },
       ),
     ]
@@ -74,7 +74,7 @@ let project = ({event, meta}) =>
           origin: originName(origin),
           detail: "no address on file for a channel the recipient wants",
           decidedAt: meta.time,
-          settledAt: meta.time,
+          settledAt: Some(meta.time),
         },
       ),
     ]
@@ -83,10 +83,15 @@ let project = ({event, meta}) =>
         ...state,
         outcome: Delivered,
         detail: providerRef,
-        settledAt: meta.time,
+        settledAt: Some(meta.time),
       }),
     ]
   | NotificationFailed({reference, reason}) => [
-      Update(reference, state => {...state, outcome: Failed, detail: reason, settledAt: meta.time}),
+      Update(reference, state => {
+        ...state,
+        outcome: Failed,
+        detail: reason,
+        settledAt: Some(meta.time),
+      }),
     ]
   }

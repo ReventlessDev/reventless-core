@@ -3,7 +3,10 @@ let meta = {
   Reventless.Message.service: "service",
   user: "ProjectionTest",
   ip: "ip",
-  time: "time",
+  // A real instant, not the word: a projection stamping this into a `DateTime`
+  // field writes it through that field's grammar, and `"time"` is not one.
+  // Matches `StubRuntime.meta`, so the two harnesses agree on the producer clock.
+  time: "1970-01-01T00:00:00Z",
   msgId: "msgId",
   correlationId: "correlationId",
 }

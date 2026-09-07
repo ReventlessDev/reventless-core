@@ -207,6 +207,7 @@ let rec fromSchemaType = (~inputNames: bool=false, st: SchemaType.schemaType): J
   | ScalarBigInt => jsonObject([("type", str("integer"))])
   | EntityId => jsonObject([("type", str("string")), ("format", str("uuid"))])
   | DateTime => jsonObject([("type", str("string")), ("format", str("date-time"))])
+  | CalendarDate => jsonObject([("type", str("string")), ("format", str("date"))])
   | Nullable(inner) =>
     let innerSchema = fromSchemaType(~inputNames, inner)
     jsonObject([("oneOf", JSON.Encode.array([innerSchema, jsonObject([("type", str("null"))])]))])

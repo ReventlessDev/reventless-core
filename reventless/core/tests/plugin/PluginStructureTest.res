@@ -804,8 +804,8 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
       let schema = S.schema(s =>
         {
           "orderId": s.matches(Reventless.Reference.to_("Order")),
-          "placedAt": s.matches(Reventless.DateTime.string),
-          "shippedAt": s.matches(Reventless.DateTime.string),
+          "placedAt": s.matches(Reventless.DateTime.schema),
+          "shippedAt": s.matches(Reventless.DateTime.schema),
         }
       )
       expect(labelOf(schema))->toEqual(("id", []))
@@ -814,7 +814,7 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
     testSync("a DateTime is skipped, not fatal — a later plain string still wins", () => {
       let schema = S.schema(s =>
         {
-          "placedAt": s.matches(Reventless.DateTime.string),
+          "placedAt": s.matches(Reventless.DateTime.schema),
           "reference": s.matches(S.string),
         }
       )
@@ -988,7 +988,7 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
       let schema = S.schema(s =>
         {
           "orderId": s.matches(Reventless.Reference.to_("Order")),
-          "placedAt": s.matches(Reventless.DateTime.string),
+          "placedAt": s.matches(Reventless.DateTime.schema),
         }
       )
       expect(sourceOf(schema))->toEqual("fallback")

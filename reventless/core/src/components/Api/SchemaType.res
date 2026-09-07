@@ -10,6 +10,13 @@ type rec schemaType =
   | ScalarBigInt
   | EntityId
   | DateTime
+  | /** A calendar day, with no instant in it. A shape of its own rather than a
+        plain string so `format: "date"` reaches the JSON Schema — but, unlike
+        `DateTime`, it is not excluded from the generic semantic wrapper below,
+        so it carries `x-reventless-semantic` as well. `DateTime`'s exclusion
+        exists because its bare-`format` output predates the marker and is a
+        published contract; a new semantic has no such history. */
+  CalendarDate
   | Nullable(schemaType)
   | ArrayOf(schemaType)
   | ObjectRef(string, dict<schemaType>)
@@ -32,6 +39,7 @@ type rec schemaType =
 
 let isTagged = Reventless.DcbTag.isTagged
 let isDateTime = Reventless.DateTime.isDateTime
+let isCalendarDate = Reventless.CalendarDate.isCalendarDate
 
 let isIdFieldName = (name: string): bool => {
   let lower = String.toLowerCase(name)
@@ -107,6 +115,7 @@ and shapeOf = (~parentName: string, ~fieldName: string, schema: S.t<unknown>): s
     switch schema {
     | String({const: ?Some(_)}) => ScalarString
     | String(_) if isDateTime(schema) => DateTime
+    | String(_) if isCalendarDate(schema) => CalendarDate
     | String(_) => isIdFieldName(fieldName) ? EntityId : ScalarString
     // `Int32` and `Port` are both whole-number formats; anything else (or no
     // format at all) is a `float` as far as the schema is concerned.

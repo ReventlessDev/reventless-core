@@ -2,7 +2,7 @@
 
 import * as Sury from "sury";
 import * as Owner$Reventless from "@reventlessdev/reventless-spec/src/components/Owner.res.mjs";
-import * as DateTime$Reventless from "@reventlessdev/reventless-spec/src/types/DateTime.res.mjs";
+import * as DateTime$Reventless from "@reventlessdev/reventless-spec/src/semantic/DateTime.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 import * as NotificationPreferences$OrderingPlugin from "../StateChange/NotificationPreferences.res.mjs";
@@ -25,8 +25,8 @@ let stateSchema = Sury.$schema(s => ({
   subjectRef: s.m(Sury.string),
   origin: s.m(Sury.string),
   detail: s.m(Sury.string),
-  decidedAt: s.m(DateTime$Reventless.string),
-  settledAt: s.m(DateTime$Reventless.string)
+  decidedAt: s.m(DateTime$Reventless.schema),
+  settledAt: s.m(Sury.$option(DateTime$Reventless.schema))
 }));
 
 let consumedEventSchema = Sury.union([

@@ -65,8 +65,10 @@ type state = {
   // The provider's own id once it accepted, or the reason it did not. One field
   // because exactly one of them is ever true, and the outcome says which.
   detail: string,
-  decidedAt: @s.matches(Reventless.DateTime.string) string,
-  settledAt: @s.matches(Reventless.DateTime.string) string,
+  decidedAt: Reventless.DateTime.t,
+  // Absent while the row is still open. A decision that has not settled has no
+  // settlement time, and `""` said that with a value the instant grammar rejects.
+  settledAt: option<Reventless.DateTime.t>,
 }
 
 // `address` is on the published event and is not read here — a consumed variant

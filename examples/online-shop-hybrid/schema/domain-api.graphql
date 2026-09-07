@@ -652,7 +652,7 @@ type Ordering_NotificationDelivery implements Node {
   outcome: Ordering_NotificationDeliveryOutcome!
   recipientId: ID!
   reference: String!
-  settledAt: String!
+  settledAt: String
   subjectRef: String!
   subjectType: String!
 }
@@ -828,7 +828,7 @@ type Ordering_Order implements Node {
   orderId: ID!
   placedAt: String!
   productIds: [ID!]!
-  shippedAt: String!
+  shippedAt: String
   shippingMethod: Ordering_OrderShippingMethod!
   total: Money!
 }

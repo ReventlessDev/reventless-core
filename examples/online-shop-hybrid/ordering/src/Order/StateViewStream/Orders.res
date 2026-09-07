@@ -71,9 +71,11 @@ type state = {
   // in a grid, where `lines` says the same thing with names and quantities.
   @hidden productIds: array<string>,
   // Producer timestamps taken from the event envelope's `meta.time` — no need to
-  // carry the time in the event payload. The `DateTime` marker surfaces
+  // carry the time in the event payload. The declared type surfaces
   // `format: "date-time"` on the state's JSON Schema, which the AutoUI date
-  // views (Calendar/Timeline) key off. `shippedAt` is "" until the order ships.
+  // views (Calendar/Timeline) key off, and checks that what was written is an
+  // instant.
+  //
   // `@displayName` because an order has no name of its own and its id is a uuid
   // for anything placed through the UI. When it was placed is what a customer
   // recognises it by, so that is what every surface calls it — the tracker's
@@ -82,8 +84,11 @@ type state = {
   // `@summary` for the same reason: the field a row is *named* by belongs in the
   // set a list column may show, and a view that declares any summary field shows
   // only those.
-  @displayName @summary placedAt: @s.matches(Reventless.DateTime.string) string,
-  shippedAt: @s.matches(Reventless.DateTime.string) string,
+  @displayName @summary placedAt: Reventless.DateTime.t,
+  // Absent until the order ships, which is what the field always meant. It used
+  // to say so with `""` — a value the instant grammar rejects, and one every
+  // reader had to know was not a date.
+  shippedAt: option<Reventless.DateTime.t>,
   lines: array<orderLine>,
   // What the order cost, as the write side computed it at placement. Summary
   // fields because they are the two numbers a list column can usefully show.

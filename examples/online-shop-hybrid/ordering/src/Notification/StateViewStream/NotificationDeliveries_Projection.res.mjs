@@ -40,7 +40,7 @@ function project(param) {
             origin: originName(event.origin),
             detail: "",
             decidedAt: meta.time,
-            settledAt: ""
+            settledAt: undefined
           }
         }];
     case "NotificationSuppressed" :

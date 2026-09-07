@@ -17,7 +17,7 @@ function project(param) {
             customerId: event.customerId,
             productIds: event.productIds,
             placedAt: meta.time,
-            shippedAt: "",
+            shippedAt: undefined,
             lines: lines,
             total: event.total,
             itemCount: Stdlib_Array.reduce(lines, 0, (count, line) => count + line.quantity | 0),

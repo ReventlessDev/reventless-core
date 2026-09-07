@@ -6,7 +6,7 @@ let id = "id";
 
 let meta = {
   service: "service",
-  time: "time",
+  time: "1970-01-01T00:00:00Z",
   ip: "ip",
   user: "ProjectionTest",
   msgId: "msgId",
@@ -21,7 +21,7 @@ let context = {
 let statusChange_by = Stdlib_Option.getOr("ProjectionTest", "");
 
 let statusChange = {
-  at: "time",
+  at: "1970-01-01T00:00:00Z",
   by: statusChange_by
 };
 

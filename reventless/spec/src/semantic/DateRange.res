@@ -41,10 +41,10 @@ who assumes parity with `Money` assumes wrong. When sury fixes the record
 refinement the rule moves into the schema and `validate` stays as its single
 definition — the relationship `Money.validateAmount` has with `amountSchema`.
 
-Parsing is `Date.fromString` on each instant. A range whose strings do not parse
-is a decode-time problem the `DateTime` marker does not currently catch either,
-so there is no second validation layer here — a reversed *parseable* range is
-what `validate` catches, and an unparseable one is out of both their scope.
+The *parts* are checked, though, and by their own type rather than by anything
+here: each is a `DateTime`, so a string that is not a UTC instant is rejected at
+decode. What is left for `validate` is the one rule that relates the two — a
+range whose instants both parse, the earlier one second.
 
 ## How a field declares it
 
@@ -70,12 +70,12 @@ projection rebuild. It costs a log something only if it *collapses* an existing
 @schema
 type t = {
   /** The instant the range opens, inclusive. */
-  start: @s.matches(DateTime.string) string,
+  start: DateTime.t,
   /** The instant the range closes, **exclusive** — the range does not contain
       it. `@as("end")` puts `end` on the wire (where the UI's own `GanttChart`
       already spells it that way); `end_` is the source spelling because `end`
       is awkward as a bare ReScript field. */
-  @as("end") end_: @s.matches(DateTime.string) string,
+  @as("end") end_: DateTime.t,
 }
 
 /** The sury schema for a date-range field, carrying the `dateRange` semantic.
@@ -85,10 +85,10 @@ type t = {
     is deliberately *not* refined in here — see the module doc. */
 let schema: S.t<t> = schema->Semantic.mark(~id=Semantic.Id.dateRange)
 
-/** An instant as milliseconds since the epoch — `NaN` if it does not parse. The
-    one place a range's strings become numbers, so end-exclusivity and the
-    ordering rule are all expressed against a single parse. */
-let millis = (instant: string): float => instant->Date.fromString->Date.getTime
+/** An instant as milliseconds since the epoch. `DateTime`'s, so end-exclusivity
+    and the ordering rule are expressed against the same single parse the type
+    itself uses rather than a second copy of it here. */
+let millis = DateTime.millis
 
 /**
 Validate a range's ordering, saying why when it is reversed.

@@ -4,7 +4,7 @@
 decision the framework has never had to make (§ *Blocker 1*), and on a grammar that does not exist
 to borrow (§ *Blocker 2*). Both are stated here so that whoever picks it up starts from the
 decision rather than from the module.
-**Deferred from:** [semantic-date-time.md](../semantic-date-time.md) § D6, which introduces
+**Deferred from:** [semantic-date-time.md](../done/semantic-date-time.md) § D6, which introduces
 `DateTime` and `CalendarDate` and explains why the third member of the trio does not follow them.
 **Prior art:** [done/semantic-branded-scalars.md](../done/semantic-branded-scalars.md) — the module
 template and the one-grammar rule this type cannot currently satisfy;

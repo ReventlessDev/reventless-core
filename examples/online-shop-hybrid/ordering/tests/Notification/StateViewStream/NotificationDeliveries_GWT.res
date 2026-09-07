@@ -42,7 +42,7 @@ let row = (category, reference, outcome, detail, settledAt): state => {
   subjectRef: "o1",
   origin: "Default",
   detail,
-  decidedAt: "time",
+  decidedAt: "1970-01-01T00:00:00Z",
   settledAt,
 }
 
@@ -61,8 +61,11 @@ describe("NotificationDeliveries StateViewSliceStream", () => {
     ])
     ->thenAllStates(
       Dict.fromArray([
-        ("confirm:o1", [row(NotificationPreferences.OrderConfirmation, confirm, Requested, "", "")]),
-        ("ship:o1", [row(NotificationPreferences.ShippingUpdate, ship, Requested, "", "")]),
+        (
+          "confirm:o1",
+          [row(NotificationPreferences.OrderConfirmation, confirm, Requested, "", None)],
+        ),
+        ("ship:o1", [row(NotificationPreferences.ShippingUpdate, ship, Requested, "", None)]),
       ]),
     )
   )
@@ -88,11 +91,11 @@ describe("NotificationDeliveries StateViewSliceStream", () => {
               confirm,
               Delivered,
               "provider-1",
-              "time",
+              Some("1970-01-01T00:00:00Z"),
             ),
           ],
         ),
-        (ship, [row(NotificationPreferences.ShippingUpdate, ship, Requested, "", "")]),
+        (ship, [row(NotificationPreferences.ShippingUpdate, ship, Requested, "", None)]),
       ]),
     )
   )

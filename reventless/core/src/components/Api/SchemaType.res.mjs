@@ -3,10 +3,11 @@
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
-import * as DateTime$Reventless from "@reventlessdev/reventless-spec/src/types/DateTime.res.mjs";
+import * as DateTime$Reventless from "@reventlessdev/reventless-spec/src/semantic/DateTime.res.mjs";
 import * as Semantic$Reventless from "@reventlessdev/reventless-spec/src/semantic/Semantic.res.mjs";
 import * as Reference$Reventless from "@reventlessdev/reventless-spec/src/components/Reference.res.mjs";
 import * as TaggedUnion$Reventless from "@reventlessdev/reventless-spec/src/components/TaggedUnion.res.mjs";
+import * as CalendarDate$Reventless from "@reventlessdev/reventless-spec/src/semantic/CalendarDate.res.mjs";
 
 function isIdFieldName(name) {
   let lower = name.toLowerCase();
@@ -79,6 +80,8 @@ function shapeOf(parentName, fieldName, schema) {
         return "ScalarString";
       } else if (DateTime$Reventless.isDateTime(schema)) {
         return "DateTime";
+      } else if (CalendarDate$Reventless.isCalendarDate(schema)) {
+        return "CalendarDate";
       } else if (isIdFieldName(fieldName)) {
         return "EntityId";
       } else {
@@ -343,11 +346,14 @@ let isTagged = DcbTag$Reventless.isTagged;
 
 let isDateTime = DateTime$Reventless.isDateTime;
 
+let isCalendarDate = CalendarDate$Reventless.isCalendarDate;
+
 let maxReportDepth = 12;
 
 export {
   isTagged,
   isDateTime,
+  isCalendarDate,
   isIdFieldName,
   isIdsFieldName,
   semanticCompositeNames,

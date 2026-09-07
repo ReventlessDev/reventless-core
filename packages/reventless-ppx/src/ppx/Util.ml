@@ -180,6 +180,26 @@ let uploadable_module_of_type (ct : core_type) : string option =
   | Ptyp_constr ({ txt; _ }, []) -> module_of txt
   | _ -> None
 
+(* The framework's branded string scalars: semantic types declared
+   [type t = string], so a field holding one holds a string at runtime. A check
+   written against the literal [string] keyword sees only the brand and refuses
+   the field, which would make declaring a field's semantic cost it whatever the
+   check gates. Only the transparent-string ones are here — [Money.t] is a
+   record and [Duration.t] an int. *)
+let branded_string_modules = [
+  "DateTime"; "CalendarDate"; "Email"; "Phone"; "Url"; "Color"; "StorageRef" ]
+
+let is_branded_string_type (ct : core_type) : bool =
+  let is_branded = function
+    | Ldot (Lident m, "t") -> List.mem m branded_string_modules
+    (* Qualified through the package namespace: [Reventless.DateTime.t]. *)
+    | Ldot (Ldot (_, m), "t") -> List.mem m branded_string_modules
+    | _ -> false
+  in
+  match ct.ptyp_desc with
+  | Ptyp_constr ({ txt; _ }, []) -> is_branded txt
+  | _ -> false
+
 (* The element type of [array<X>], if the type is one. *)
 let array_element (ct : core_type) : core_type option =
   match ct.ptyp_desc with
