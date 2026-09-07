@@ -272,23 +272,65 @@ let project = ({event}) =>
 // Be careful: relative deltas can double-count if events are re-delivered
 ```
 
-### 3. Denormalize for Read Efficiency
+### 3. Denormalize Only What This View Can Maintain
+
+A projection sees one row at a time, found by the view's `@id`. So it can keep a
+copy of another entity's value current only if every event that changes the
+original also names the row holding the copy. Copy a value that fails that test
+and nothing ever refreshes it: it is not a cache, it is a value frozen by
+accident, and the row ends up carrying two answers with nothing saying which one
+is current.
+
+Values the projection computes itself always pass — a running total is derived
+from the very events the view consumes.
 
 ```rescript
-// Good: denormalized read model
+// Good: pre-aggregated from the events this view already consumes
 type state = {
-  // Store computed values for fast reads
+  @id itemId: string,
   itemName: string,
-  categoryName: string,  // Denormalized from Category aggregate
-  totalQuantity: int,    // Pre-aggregated
+  totalQuantity: int,
 }
 
-// Avoid: requiring joins at read time
+// Good: frozen on purpose, because these are the terms of a transaction
 type state = {
-  itemId: string,
-  // This would require lookups at read time...
+  @id orderId: string,
+  // What the product was called and cost when the order was placed. The view
+  // must not go and ask the catalog what it costs now — a later price change
+  // did not change this sale.
+  productName: string,
+  unitPrice: Reventless.Money.t,
+}
+
+// Avoid: a copy this view has no way to refresh
+type state = {
+  @id productId: string,
+  categoryId: string,
+  // Keyed by `productId`, so a `CategoryRenamed` would have to rewrite every row
+  // filed under that category — which a single-key projection cannot do. And a
+  // rename is a correction to a label, which is exactly the case where the new
+  // value should be what everyone reads.
+  categoryName: string,
 }
 ```
+
+Where the value is a live classification rather than a recorded fact, carry the
+reference and let the reader resolve it:
+
+```rescript
+type state = {
+  @id productId: string,
+  // `@index` so the server can answer "the products in this category";
+  // `@groupBy` sections the list by it.
+  @index @groupBy categoryId: string,
+}
+```
+
+Resolving a reference at read time is not a join in the projection. Two doors do
+it: `@resolves({table, field})` puts the target row on this view's GraphQL type
+(see [Key Design Annotations](#key-design-annotations) above), and the
+`{list}Refs(ids)` query generated for every view answers `{id, label, retired}`
+for ids a client already holds.
 
 ### 4. Match `consumedEvent` Exhaustively
 
