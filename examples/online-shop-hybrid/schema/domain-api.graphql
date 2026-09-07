@@ -127,7 +127,6 @@ enum Catalog_ImportProductAuditStatus {
 
 type Catalog_Product implements Node {
   categoryId: ID!
-  categoryName: String
   description: String!
   id: ID!
   name: String!

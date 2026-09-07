@@ -1,7 +1,17 @@
 # Plan: the Products view stops carrying a copy of the category's name
 
-**Status.** Planned 2026-09-07. Scoped to `examples/online-shop-hybrid` — this is
+**Status.** Done 2026-09-07. Scoped to `examples/online-shop-hybrid` — this is
 domain modelling in the example, not a framework capability.
+
+Two things went further than §4 said, both because the field they served left
+with `categoryName`: `CategoryAdded`'s `name` is gone from `AddProduct`'s
+`consumedEvent` (the `naming` fold was its only reader), and the GWT case
+"a category renamed before the product is added is captured under the new name"
+is deleted rather than shrunk — `CategoryRenamed` is no longer a consumed
+constructor, so the scenario has no `given` to write. The other `AddProduct`
+cases shrank as §6 asked. The derived lifecycle edge is unchanged
+(`AddProduct → Listed`); only its scenario count moved, 6 → 5, which is §6's
+"no decision outcome changed" confirmed by the artifact.
 
 **Goal.** `Products` names its category by the id it already holds. The
 `categoryName` copy leaves the state, the event and the decision model, and
@@ -63,7 +73,7 @@ live classification, not a recorded fact about a purchase.
 | `AddProduct_Behavior.res` | Drop `categoryNames` from `state` and `initialState`, drop the `naming` helper, drop the lookup in `decide`. `CategoryAdded` and `CategoryArchived` stay — `liveCategoryIds` is a real decision input. `CategoryRenamed` no longer needs to be consumed at all. |
 | GWTs | `Products_GWT.res`, `AddProduct_GWT.res`, `HybridFlow_GWT.res` — remove the field from every given/then. |
 | `schema/domain-api.graphql` | Remove `categoryName: String` (line 130). |
-| `Products.model.json` | Regenerate. Note it does **not** currently contain `categoryName`, which suggests the committed snapshot is already stale — worth confirming what regenerates it as part of this. |
+| `Products.model.json` | Nothing to do: the ppx emits it as a build sidecar and it is untracked, so it was already stale for other reasons and the build rewrites it. |
 
 `@groupBy` and `@index` on one field is legal: the ppx's only rule is at most one
 `@groupBy` per record ([`StateAnnotations.ml:1892-1901`](../../packages/reventless-ppx/src/ppx/StateAnnotations.ml#L1892-L1901)),

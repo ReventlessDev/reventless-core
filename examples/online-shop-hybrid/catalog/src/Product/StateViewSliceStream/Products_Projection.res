@@ -15,7 +15,7 @@ let primaryFirst = (state: Products.state, chosen: string) => {
 
 let project = ({event}) =>
   switch event {
-  | ProductAdded({productId, name, description, price, categoryId, categoryName}) => [
+  | ProductAdded({productId, name, description, price, categoryId}) => [
       Set(
         productId,
         {
@@ -25,7 +25,6 @@ let project = ({event}) =>
           price,
           productImages: [],
           categoryId,
-          categoryName,
           shelfStatus: Listed,
         },
       ),

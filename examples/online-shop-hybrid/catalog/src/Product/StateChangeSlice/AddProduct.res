@@ -4,16 +4,14 @@
 
 @@reventless.spec
 
-// The category's `name` is read as well as its id, so a product can record what
-// its category was called when it was added. A rename *before* the addition is
-// therefore captured; one after it is not, which is the event-sourced answer: a
-// projection keyed by `productId` cannot rewrite every row of a renamed category,
-// so the tempting version of this is not the cheap one.
+// A category is read for whether it exists and is live, which is the whole of
+// what this command decides on. What it is *called* is not read: the emitted
+// event carries the reference, and a reader resolves the name from the category
+// itself, where a rename is immediately visible.
 @schema
 type consumedEvent =
   | ProductAdded({productId: string})
-  | CategoryAdded({categoryId: string, name: string})
-  | CategoryRenamed({categoryId: string, name: string})
+  | CategoryAdded({categoryId: string})
   | CategoryArchived({categoryId: string})
 
 @schema
@@ -42,8 +40,4 @@ type event =
       description: string,
       price: Reventless.Money.t,
       categoryId: string,
-      // What the category was called at the moment this product was added.
-      // Optional because every product added before this field existed carries no
-      // key, which is what makes adding it cost the log nothing.
-      categoryName?: string,
     })

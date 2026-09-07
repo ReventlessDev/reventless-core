@@ -7,7 +7,7 @@
 // more same-shaped ones, so the `Money.t` pair must lead (DZakh/sury#392).
 @schema
 type consumedEvent =
-  | ProductAdded({productId: string, name: string, description: string, price: Reventless.Money.t, categoryId: string, categoryName: option<string>})
+  | ProductAdded({productId: string, name: string, description: string, price: Reventless.Money.t, categoryId: string})
   | ProductPriceChanged({productId: string, price: Reventless.Money.t})
   | ProductNameChanged({productId: string, name: string})
   | ProductDescriptionChanged({productId: string, description: string})
@@ -56,16 +56,18 @@ type state = {
   // it where a cell renderer — handed a field and a value, never the row — can
   // reach it. Named for its store, so `productImages` is what is provisioned.
   productImages: array<Reventless.CaptionedImage.t>,
+  // The reference itself is what the row carries, and `@groupBy` sections the
+  // list by it: a reader resolves the id to the category's current name the same
+  // way it resolves any other reference. A captured copy of that name would be
+  // one this view could never refresh — it is keyed by `productId`, so a rename
+  // would have to rewrite every row of the category — and a rename is a
+  // correction to a label, which is exactly the case where the new value should
+  // be what everybody reads.
+  //
   // Indexed so the server can answer "the products in this category" — a
   // `categoryIdEq` filter on the connection, rather than a client narrowing one
   // loaded page.
-  @index categoryId: string,
-  // What the category was called when the product was added, so a shopper reads
-  // "Desk accessories" where the row would otherwise show `cat-03`. Captured
-  // rather than resolved: this view is keyed by `productId` and could not rewrite
-  // every row of a renamed category anyway. `@groupBy` sections the list by it.
-  // Optional for products added before the name was recorded.
-  @groupBy categoryName: option<string>,
+  @index @groupBy categoryId: string,
   // `@lifecycle` makes this the field commands' declared edges are written in
   // terms of; the retirements are on the constructors above.
   @lifecycle shelfStatus: shelfStatus,

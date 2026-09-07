@@ -10,7 +10,6 @@ function primaryFirst(state, chosen) {
     price: state.price,
     productImages: Attachments_Rules$TraitAttachments.primaryFirst(chosen, state.productImages, a => a.ref),
     categoryId: state.categoryId,
-    categoryName: state.categoryName,
     shelfStatus: state.shelfStatus
   };
 }
@@ -30,7 +29,6 @@ function project(param) {
             price: event.price,
             productImages: [],
             categoryId: event.categoryId,
-            categoryName: event.categoryName,
             shelfStatus: "Listed"
           }
         }];
@@ -46,7 +44,6 @@ function project(param) {
             price: price,
             productImages: state.productImages,
             categoryId: state.categoryId,
-            categoryName: state.categoryName,
             shelfStatus: state.shelfStatus
           })
         }];
@@ -62,7 +59,6 @@ function project(param) {
             price: state.price,
             productImages: state.productImages,
             categoryId: state.categoryId,
-            categoryName: state.categoryName,
             shelfStatus: state.shelfStatus
           })
         }];
@@ -78,7 +74,6 @@ function project(param) {
             price: state.price,
             productImages: state.productImages,
             categoryId: state.categoryId,
-            categoryName: state.categoryName,
             shelfStatus: state.shelfStatus
           })
         }];
@@ -102,7 +97,6 @@ function project(param) {
                     altText: altText
                   }]),
                 categoryId: state.categoryId,
-                categoryName: state.categoryName,
                 shelfStatus: state.shelfStatus
               };
             }
@@ -120,7 +114,6 @@ function project(param) {
             price: state.price,
             productImages: state.productImages.filter(a => a.ref !== productImage$1),
             categoryId: state.categoryId,
-            categoryName: state.categoryName,
             shelfStatus: state.shelfStatus
           })
         }];
@@ -151,7 +144,6 @@ function project(param) {
               return newrecord;
             }),
             categoryId: state.categoryId,
-            categoryName: state.categoryName,
             shelfStatus: state.shelfStatus
           })
         }];
@@ -166,7 +158,6 @@ function project(param) {
             price: state.price,
             productImages: state.productImages,
             categoryId: state.categoryId,
-            categoryName: state.categoryName,
             shelfStatus: "Archived"
           })
         }];
@@ -181,7 +172,6 @@ function project(param) {
             price: state.price,
             productImages: state.productImages,
             categoryId: state.categoryId,
-            categoryName: state.categoryName,
             shelfStatus: "Listed"
           })
         }];
@@ -196,7 +186,6 @@ function project(param) {
             price: state.price,
             productImages: state.productImages,
             categoryId: state.categoryId,
-            categoryName: state.categoryName,
             shelfStatus: "Discontinued"
           })
         }];

@@ -12,13 +12,7 @@ let consumedEventSchema = Sury.union([
   })),
   Sury.$schema(s => ({
     TAG: "CategoryAdded",
-    categoryId: s.m(DcbTag$Reventless.string),
-    name: s.m(Sury.string)
-  })),
-  Sury.$schema(s => ({
-    TAG: "CategoryRenamed",
-    categoryId: s.m(DcbTag$Reventless.string),
-    name: s.m(Sury.string)
+    categoryId: s.m(DcbTag$Reventless.string)
   })),
   Sury.$schema(s => ({
     TAG: "CategoryArchived",
@@ -46,8 +40,7 @@ let eventSchema = Sury.$schema(s => ({
   name: s.m(Sury.string),
   description: s.m(Sury.string),
   price: s.m(Money$Reventless.schema),
-  categoryId: s.m(DcbTag$Reventless.string),
-  categoryName: s.m(Sury.$option(Sury.string))
+  categoryId: s.m(DcbTag$Reventless.string)
 }));
 
 function commandAuthorization(command) {

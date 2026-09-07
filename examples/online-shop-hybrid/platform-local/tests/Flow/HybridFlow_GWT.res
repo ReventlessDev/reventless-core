@@ -51,9 +51,6 @@ describe("Hybrid cross-plugin flow", () => {
         description: "A good book",
         price: eur(9.99),
         categoryId: "cat1",
-        // Captured off the category the fold saw, so a shopper reads a name
-        // where the row would otherwise show `cat1`.
-        categoryName: "Books",
       }),
     )
     ->ProductsEp.whenPublishedThrough

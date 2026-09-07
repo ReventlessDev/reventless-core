@@ -17,7 +17,7 @@
     "targets": [
       "Listed"
     ],
-    "scenarios": 6
+    "scenarios": 5
   },
   {
     "component": "ArchiveCategory",
