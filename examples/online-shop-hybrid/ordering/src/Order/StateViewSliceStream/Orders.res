@@ -89,7 +89,11 @@ type state = {
   // for anything placed through the UI. When it was placed is what a customer
   // recognises it by, so that is what every surface calls it — the tracker's
   // heading, a card, and any other view referring to this order.
-  @displayName placedAt: @s.matches(Reventless.DateTime.string) string,
+  //
+  // `@summary` for the same reason: the field a row is *named* by belongs in the
+  // set a list column may show, and a view that declares any summary field shows
+  // only those.
+  @displayName @summary placedAt: @s.matches(Reventless.DateTime.string) string,
   shippedAt: @s.matches(Reventless.DateTime.string) string,
   // The requested delivery slot, carried straight from `OrderPlaced`. A declared
   // span — two ISO instants as one value — so a scheduler mode lays a bar out

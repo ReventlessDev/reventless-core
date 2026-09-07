@@ -47,7 +47,9 @@ module Make = (
           ~detail=raw.data,
           `handling event ${idx.contents->Int.toString}/${count}: ${LogFormat.bold(raw.eventType)}(${id}) ${actionsStr}`,
         )->Effect.runSync
-        allActions->Array.pushMany(actions)
+        allActions->Array.pushMany(
+          actions->Array.map(FrameworkProjection.rewriteAction(_, Spec.stateSchema)),
+        )
         Some(event)
       | None => None
       }

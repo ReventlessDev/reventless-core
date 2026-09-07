@@ -154,11 +154,16 @@ module Make = (
               })
               ->Array.flat
               ->Array.reduce(Effect.succeed(), (acc, action) =>
-                acc->Effect.flatMap(_ =>
+                acc->Effect.flatMap(_ => {
+                  // A slice's state carries the same synthetic `displayName` the
+                  // ppx injects for a read model's, so it is composed on the same
+                  // terms — without this the column stays null and every surface
+                  // names the row by its id.
+                  let action = FrameworkProjection.rewriteAction(action, Spec.stateSchema)
                   Effect.promise(() =>
                     FrameworkProjection.handleAction(~comp, action, projectionOps, Spec.subIdConfig)
                   )->Effect.map(_ => ())
-                )
+                })
               )
             })
 
