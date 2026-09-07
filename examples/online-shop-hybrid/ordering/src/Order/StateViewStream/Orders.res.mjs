@@ -63,13 +63,13 @@ let stateSchema = Sury.$schema(s => ({
   orderId: s.m(Sury.string),
   customerId: s.m(Owner$Reventless.string),
   productIds: s.m(Sury.array(Sury.string)),
+  placedAt: s.m(DateTime$Reventless.string),
+  shippedAt: s.m(DateTime$Reventless.string),
   lines: s.m(Sury.array(orderLineSchema)),
   total: s.m(Money$Reventless.schema),
   itemCount: s.m(Sury.int),
   lifecycle: s.m(lifecycleSchema),
   shippingMethod: s.m(shippingMethodSchema),
-  placedAt: s.m(DateTime$Reventless.string),
-  shippedAt: s.m(DateTime$Reventless.string),
   deliveryWindow: s.m(Sury.$option(DateRange$Reventless.schema)),
   firstProductName: s.m(Sury.$option(Sury.string)),
   firstProductImage: s.m(Sury.$option(catalogProductImage)),
@@ -98,9 +98,9 @@ let stateSchema$2 = Sury.$Metadata_set(stateSchema$1, StateAnnotations$Reventles
   indexes: [],
   hidden: ["productIds"],
   summary: [
+    "placedAt",
     "total",
-    "itemCount",
-    "placedAt"
+    "itemCount"
   ],
   internal: [],
   drillTargets: [],

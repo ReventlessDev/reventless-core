@@ -41,7 +41,8 @@ type consumedEvent =
       shippingMethod: shippingMethod,
       deliveryWindow: option<Reventless.DateRange.t>,
       firstProductName: option<string>,
-      firstProductImage: @s.matches(S.option(catalogProductImage)) option<Reventless.UploadableImage.t>,
+      firstProductImage: @s.matches(S.option(catalogProductImage))
+      option<Reventless.UploadableImage.t>,
     })
   | OrderShipped({orderId: string})
   | OrderCancelled({orderId: string})
@@ -59,8 +60,7 @@ type lifecycle =
 
 // An order list is operational, not investigative — an `AutoShipOrder` flips a
 // row while the shopper is looking at it — so the Live control is offered.
-@live(true)
-@schema
+@live(true) @schema
 type state = {
   orderId: string,
   // The order's owner. A shopper reading this view sees only the rows whose
@@ -70,17 +70,6 @@ type state = {
   // Correct on the event — it is what the extension point decomposes — and noise
   // in a grid, where `lines` says the same thing with names and quantities.
   @hidden productIds: array<string>,
-  lines: array<orderLine>,
-  // What the order cost, as the write side computed it at placement. Summary
-  // fields because they are the two numbers a list column can usefully show.
-  @summary total: Reventless.Money.t,
-  // How many things this is, summed across the lines — a shopper's own reading
-  // of the size of an order, which the number of lines does not give.
-  @summary itemCount: int,
-  // No annotation: the field name is the declaration. `@lifecycle` exists for
-  // records whose lifecycle field is honestly called something else.
-  lifecycle: lifecycle,
-  shippingMethod: shippingMethod,
   // Producer timestamps taken from the event envelope's `meta.time` — no need to
   // carry the time in the event payload. The `DateTime` marker surfaces
   // `format: "date-time"` on the state's JSON Schema, which the AutoUI date
@@ -95,6 +84,17 @@ type state = {
   // only those.
   @displayName @summary placedAt: @s.matches(Reventless.DateTime.string) string,
   shippedAt: @s.matches(Reventless.DateTime.string) string,
+  lines: array<orderLine>,
+  // What the order cost, as the write side computed it at placement. Summary
+  // fields because they are the two numbers a list column can usefully show.
+  @summary total: Reventless.Money.t,
+  // How many things this is, summed across the lines — a shopper's own reading
+  // of the size of an order, which the number of lines does not give.
+  @summary itemCount: int,
+  // No annotation: the field name is the declaration. `@lifecycle` exists for
+  // records whose lifecycle field is honestly called something else.
+  lifecycle: lifecycle,
+  shippingMethod: shippingMethod,
   // The requested delivery slot, carried straight from `OrderPlaced`. A declared
   // span — two ISO instants as one value — so a scheduler mode lays a bar out
   // from it directly, with `customerId` beside it as the row's resource ref,

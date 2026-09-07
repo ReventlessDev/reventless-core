@@ -16,13 +16,13 @@ function project(param) {
             orderId: orderId,
             customerId: event.customerId,
             productIds: event.productIds,
+            placedAt: meta.time,
+            shippedAt: "",
             lines: lines,
             total: event.total,
             itemCount: Stdlib_Array.reduce(lines, 0, (count, line) => count + line.quantity | 0),
             lifecycle: "Placed",
             shippingMethod: event.shippingMethod,
-            placedAt: meta.time,
-            shippedAt: "",
             deliveryWindow: event.deliveryWindow,
             firstProductName: event.firstProductName,
             firstProductImage: event.firstProductImage
@@ -34,8 +34,8 @@ function project(param) {
           _0: event.orderId,
           _1: state => {
             let newrecord = {...state};
-            newrecord.shippedAt = meta.time;
             newrecord.lifecycle = "Shipped";
+            newrecord.shippedAt = meta.time;
             return newrecord;
           }
         }];
