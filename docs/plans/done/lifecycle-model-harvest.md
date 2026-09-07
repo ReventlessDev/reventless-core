@@ -218,6 +218,13 @@ which is the exact precedent: a ReScript script compiled to `.res.mjs`, run from
 the repo root, booting the hybrid example's local platform. Reuse its shape —
 including its `--update` golden flow.
 
+> **Moved 2026-09-07.** It now lives at
+> [`reventless/spec/src/lifecycle/CheckLifecycleModel.res`](../../../reventless/spec/src/lifecycle/CheckLifecycleModel.res)
+> and ships as the `check-lifecycle` binary of `@reventlessdev/reventless-spec`,
+> so a consumer outside this repository can run it against an app root. The
+> `pnpm run check:lifecycle` entry point and its behaviour with no arguments are
+> unchanged.
+
 ### Pipeline
 
 1. Build with `REVENTLESS_EMIT_SIDECAR=1`; collect `**/*.gwt.json`.

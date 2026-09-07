@@ -21,7 +21,23 @@ let examplesDir = Nodepath.join(repoRoot, "examples");
 
 let update = process.argv.includes("--update");
 
+function flagValues(flag) {
+  let argv = process.argv;
+  let out = [];
+  for (let i = 0, i_finish = argv.length; i < i_finish; ++i) {
+    if (Primitive_object.equal(argv[i], flag)) {
+      let value = argv[i + 1 | 0];
+      if (value !== undefined && !value.startsWith("--")) {
+        out.push(value);
+      }
+    }
+  }
+  return out;
+}
+
 let reuseSidecars = process.argv.includes("--reuse-sidecars");
+
+let json = process.argv.includes("--json");
 
 let noRow = "(none)";
 
@@ -170,8 +186,12 @@ function sidecarOf(gwt) {
   return gwt.replace("_GWT.res", "_GWT.gwt.json");
 }
 
+function hasCorpus(pluginDirs) {
+  return gwtSources(pluginDirs).some(f => Nodefs.existsSync(f.replace("_GWT.res", "_GWT.gwt.json")));
+}
+
 function checkSidecars(pluginDirs) {
-  if (gwtSources(pluginDirs).some(f => Nodefs.existsSync(f.replace("_GWT.res", "_GWT.gwt.json")))) {
+  if (hasCorpus(pluginDirs)) {
     return {
       TAG: "Ok",
       _0: undefined
@@ -341,7 +361,10 @@ function lifecycleMapFor(scenarios, field, ambiguities, view) {
         let existing = map[event];
         if (existing !== undefined) {
           if (existing !== match$1) {
-            ambiguities.push(view + `: ` + event + ` is projected as both "` + existing + `" and "` + match$1 + `" ` + (`(seen in "` + title + `") — the harvest keeps "` + existing + `"`));
+            ambiguities.push([
+              view,
+              view + `: ` + event + ` is projected as both "` + existing + `" and "` + match$1 + `" ` + (`(seen in "` + title + `") — the harvest keeps "` + existing + `"`)
+            ]);
             return;
           } else {
             return;
@@ -463,20 +486,23 @@ function deriveCommands(component, observations, labelled) {
 function allUnverified(cmd, add, why) {
   let states = cmd.allowedStates;
   if (states !== undefined && states.length !== 0) {
-    add("unverified", `the switch names ` + states.join(", ") + `, and ` + why);
+    add("unverified", states, `the switch names ` + states.join(", ") + `, and ` + why);
   }
   let target = cmd.targetState;
   if (target !== undefined) {
-    return add("unverified", `the switch targets "` + target + `", and ` + why);
+    return add("unverified", [target], `the switch targets "` + target + `", and ` + why);
   }
 }
 
 function compare(plugin, writable, derived, findings) {
   let where = plugin + `/` + writable.name + `.` + derived.command;
-  let add = (severity, message) => {
+  let add = (severity, states, message) => {
     findings.push({
       severity: severity,
       plugin: plugin,
+      component: writable.name,
+      command: derived.command,
+      states: states,
       message: where + `: ` + message
     });
   };
@@ -490,42 +516,45 @@ function compare(plugin, writable, derived, findings) {
       if (derived.allowedStates.includes(state)) {
         return;
       } else if (derived.inertStates.includes(state)) {
-        return add("contradicted", `the switch names "` + state + `", and a scenario from "` + state + `" shows it refused or producing nothing`);
+        return add("contradicted", [state], `the switch names "` + state + `", and a scenario from "` + state + `" shows it refused or producing nothing`);
       } else {
-        return add("unverified", `the switch names "` + state + `", and no scenario starts there`);
+        return add("unverified", [state], `the switch names "` + state + `", and no scenario starts there`);
       }
     });
     derived.allowedStates.forEach(state => {
       if (!states.includes(state)) {
-        return add("contradicted", `a scenario shows it taking effect from "` + state + `", which its declared ` + (`from-set (` + states.join(", ") + `) excludes`));
+        return add("contradicted", [state], `a scenario shows it taking effect from "` + state + `", which its declared ` + (`from-set (` + states.join(", ") + `) excludes`));
       }
     });
     if (states.length !== 0 && derived.allowedStates.length === 0) {
-      add("unverified", `the switch declares ` + states.length.toString() + ` state(s) and no scenario shows the command taking effect anywhere`);
+      add("unverified", states, `the switch declares ` + states.length.toString() + ` state(s) and no scenario shows the command taking effect anywhere`);
     }
   } else if (Primitive_object.equal(declared.allowedStatesSource, "unrestricted")) {
-    derived.inertStates.forEach(state => add("contradicted", `the switch declares it legal in every state, and a scenario from "` + state + `" shows it refused or producing nothing`));
+    derived.inertStates.forEach(state => add("contradicted", [state], `the switch declares it legal in every state, and a scenario from "` + state + `" shows it refused or producing nothing`));
   } else if (derived.allowedStates.length !== 0) {
-    add("undeclared", `scenarios show it taking effect from ` + derived.allowedStates.join(", ") + `, and it declares no edge`);
+    add("undeclared", derived.allowedStates, `scenarios show it taking effect from ` + derived.allowedStates.join(", ") + `, and it declares no edge`);
   }
   let match = declared.targetState;
   let match$1 = derived.targets;
   if (match !== undefined) {
     if (match$1.length !== 0) {
       if (!match$1.includes(match)) {
-        add("contradicted", `the switch targets "` + match + `", and scenarios land in ` + match$1.join(", "));
+        add("contradicted", [match], `the switch targets "` + match + `", and scenarios land in ` + match$1.join(", "));
       }
       match$1.forEach(state => {
         if (state !== match) {
-          return add("contradicted", `the switch targets "` + match + `", and a scenario lands in "` + state + `" — the published targetState carries one state, so this edge cannot be expressed`);
+          return add("contradicted", [
+            match,
+            state
+          ], `the switch targets "` + match + `", and a scenario lands in "` + state + `" — the published targetState carries one state, so this edge cannot be expressed`);
         }
       });
     } else {
-      add("unverified", `the switch targets "` + match + `", and no scenario shows an edge`);
+      add("unverified", [match], `the switch targets "` + match + `", and no scenario shows an edge`);
     }
   }
   if (derived.level !== "" && declared.level !== "" && derived.level !== declared.level) {
-    return add("level", `scenarios make it ` + derived.level + `-level; the published metadata says ` + declared.level);
+    return add("level", [], `scenarios make it ` + derived.level + `-level; the published metadata says ` + declared.level);
   }
 }
 
@@ -547,23 +576,40 @@ function pluginDirsIn(exampleDir) {
   });
 }
 
-let examples;
-
-let exit = 0;
-
-let entries;
-
-try {
-  entries = Nodefs.readdirSync(examplesDir, {
-    withFileTypes: true
-  });
-  exit = 1;
-} catch (exn) {
-  examples = [];
+if (process.argv.includes("--root") && flagValues("--root").length === 0) {
+  console.error("--root needs a directory after it");
+  process.exit(1);
 }
 
-if (exit === 1) {
-  examples = entries.filter(e => e.isDirectory()).map(e => e.name).toSorted(Primitive_string.compare);
+let given = flagValues("--root");
+
+let roots;
+
+if (given.length !== 0) {
+  roots = given.map(given => {
+    let dir = Nodepath.resolve(given);
+    return {
+      label: Nodepath.basename(dir),
+      dir: dir
+    };
+  });
+} else {
+  let exit = 0;
+  let entries;
+  try {
+    entries = Nodefs.readdirSync(examplesDir, {
+      withFileTypes: true
+    });
+    exit = 1;
+  } catch (exn) {
+    roots = [];
+  }
+  if (exit === 1) {
+    roots = entries.filter(e => e.isDirectory()).map(e => e.name).toSorted(Primitive_string.compare).map(name => ({
+      label: name,
+      dir: Nodepath.join(examplesDir, name)
+    }));
+  }
 }
 
 function isViewPath(path) {
@@ -582,7 +628,7 @@ function isWritablePath(path) {
   ].some(seg => path.includes(seg));
 }
 
-async function runPlugin(plugin, pluginDir, findings) {
+async function runPlugin(plugin, pluginDir, findings, opaque) {
   let msg = await readDeclared(pluginDir);
   if (msg.TAG !== "Ok") {
     return {
@@ -592,6 +638,19 @@ async function runPlugin(plugin, pluginDir, findings) {
   }
   let declared = msg._0;
   let corpora = Stdlib_Array.filterMap(filesUnder(Nodepath.join(pluginDir, "tests"), ".gwt.json"), readCorpus);
+  corpora.forEach(c => {
+    let unreadable = c.scenarios.filter(s => s.whenElements.length === 0);
+    if (unreadable.length !== 0) {
+      opaque.push({
+        plugin: plugin,
+        component: c.component,
+        path: c.path,
+        scenarios: c.scenarios.length,
+        unreadable: unreadable.length
+      });
+      return;
+    }
+  });
   let mapsByView = {};
   let ambiguities = [];
   corpora.forEach(c => {
@@ -608,11 +667,14 @@ async function runPlugin(plugin, pluginDir, findings) {
       return;
     }
   });
-  ambiguities.forEach(message => {
+  ambiguities.forEach(param => {
     findings.push({
       severity: "ambiguous",
       plugin: plugin,
-      message: message
+      component: param[0],
+      command: "",
+      states: [],
+      message: param[1]
     });
   });
   let derived = [];
@@ -648,10 +710,13 @@ async function runPlugin(plugin, pluginDir, findings) {
       if (labelled && commands.some(d => d.command === cmd.command)) {
         return;
       } else {
-        return allUnverified(cmd, (severity, message) => {
+        return allUnverified(cmd, (severity, states, message) => {
           findings.push({
             severity: severity,
             plugin: plugin,
+            component: writable.name,
+            command: cmd.command,
+            states: states,
             message: plugin + `/` + writable.name + `.` + cmd.command + `: ` + message
           });
         }, why);
@@ -705,8 +770,118 @@ function goldenJson(derived) {
   return JSON.stringify(entries, undefined, 2) + "\n";
 }
 
-function goldenPath(example) {
-  return Nodepath.join(examplesDir, example, "schema", "lifecycle-model.json");
+function goldenPath(root) {
+  return Nodepath.join(root.dir, "schema", "lifecycle-model.json");
+}
+
+function reportJson(findings, opaque, derived, failures) {
+  let findingJson = f => Object.fromEntries([
+    [
+      "verdict",
+      f.severity
+    ],
+    [
+      "plugin",
+      f.plugin
+    ],
+    [
+      "component",
+      f.component
+    ],
+    [
+      "command",
+      f.command
+    ],
+    [
+      "states",
+      f.states.map(prim => prim)
+    ],
+    [
+      "message",
+      f.message
+    ]
+  ]);
+  let commandJson = param => {
+    let d = param[1];
+    return Object.fromEntries([
+      [
+        "plugin",
+        param[0]
+      ],
+      [
+        "component",
+        d.component
+      ],
+      [
+        "command",
+        d.command
+      ],
+      [
+        "level",
+        d.level
+      ],
+      [
+        "allowedStates",
+        d.allowedStates.map(prim => prim)
+      ],
+      [
+        "inertStates",
+        d.inertStates.map(prim => prim)
+      ],
+      [
+        "targets",
+        d.targets.map(prim => prim)
+      ],
+      [
+        "scenarios",
+        d.scenarios
+      ]
+    ]);
+  };
+  let opaqueJson = o => Object.fromEntries([
+    [
+      "plugin",
+      o.plugin
+    ],
+    [
+      "component",
+      o.component
+    ],
+    [
+      "path",
+      o.path
+    ],
+    [
+      "scenarios",
+      o.scenarios
+    ],
+    [
+      "unreadable",
+      o.unreadable
+    ]
+  ]);
+  return JSON.stringify(Object.fromEntries([
+    [
+      "version",
+      1
+    ],
+    [
+      "findings",
+      findings.map(findingJson)
+    ],
+    [
+      "commands",
+      derived.map(commandJson)
+    ],
+    [
+      "opaque",
+      opaque.map(opaqueJson)
+    ],
+    [
+      "unreadable",
+      failures.map(prim => prim)
+    ]
+  ]), undefined, 2) + "\n";
 }
 
 function modelSource(plugin, derived) {
@@ -774,74 +949,96 @@ function writeOrCompare(path, actual, label, drifted) {
 
 async function main() {
   let findings = [];
+  let opaque = [];
   let failures = [];
   let drifted = [];
-  let allPluginDirs = examples.flatMap(example => pluginDirsIn(Nodepath.join(examplesDir, example)));
+  let allDerived = [];
+  let allPluginDirs = roots.flatMap(root => pluginDirsIn(root.dir));
+  if (allPluginDirs.length === 0) {
+    console.error(`no plugins found under ` + roots.map(r => r.dir).join(", ") + ` — a plugin is a directory with both src/Plugin.res and tests/`);
+    process.exit(1);
+  }
   let msg = reuseSidecars ? checkSidecars(allPluginDirs) : emitSidecars(allPluginDirs);
   if (msg.TAG !== "Ok") {
     console.error(msg._0);
     process.exit(1);
   }
-  for (let i = 0, i_finish = examples.length; i < i_finish; ++i) {
-    let example = examples[i];
-    if (example !== undefined) {
-      let exampleDir = Nodepath.join(examplesDir, example);
+  if (!hasCorpus(allPluginDirs)) {
+    console.error(`no scenario sidecar exists under ` + roots.map(r => r.dir).join(", ") + ` after the build. Build that tree with REVENTLESS_EMIT_SIDECAR=1 and pass --reuse-sidecars.`);
+    process.exit(1);
+  }
+  for (let i = 0, i_finish = roots.length; i < i_finish; ++i) {
+    let root = roots[i];
+    if (root !== undefined) {
+      let example = root.label;
+      let exampleDir = root.dir;
       let derived = [];
       let dirs = pluginDirsIn(exampleDir);
       for (let j = 0, j_finish = dirs.length; j < j_finish; ++j) {
         let pluginDir = dirs[j];
         if (pluginDir !== undefined) {
           let plugin = Nodepath.basename(pluginDir);
-          let commands = await runPlugin(example + `/` + plugin, pluginDir, findings);
+          let qualified = example + `/` + plugin;
+          let commands = await runPlugin(qualified, pluginDir, findings, opaque);
           if (commands.TAG === "Ok") {
             let commands$1 = commands._0;
             commands$1.forEach(c => {
               derived.push(c);
+              allDerived.push([
+                qualified,
+                c
+              ]);
             });
-            writeOrCompare(modelPath(pluginDir), modelSource(plugin, commands$1), example + `/` + plugin + `/src/LifecycleModel.res`, drifted);
+            if (!json) {
+              writeOrCompare(modelPath(pluginDir), modelSource(plugin, commands$1), example + `/` + plugin + `/src/LifecycleModel.res`, drifted);
+            }
           } else {
             failures.push(example + `/` + plugin + `: ` + commands._0);
           }
         }
       }
-      if (dirs.length !== 0) {
+      if (dirs.length !== 0 && !json) {
         let dir = Nodepath.join(exampleDir, "schema");
         if (!Nodefs.existsSync(dir)) {
           Nodefs.mkdirSync(dir, {
             recursive: true
           });
         }
-        writeOrCompare(goldenPath(example), goldenJson(derived), example + `/schema/lifecycle-model.json`, drifted);
+        writeOrCompare(goldenPath(root), goldenJson(derived), example + `/schema/lifecycle-model.json`, drifted);
         console.log(`ok ` + example + ` — ` + derived.length.toString() + ` commands derived from scenarios`);
       }
     }
   }
   let of_ = severity => findings.filter(f => f.severity === severity);
   let contradicted = of_("contradicted");
-  [
-    "contradicted",
-    "unverified",
-    "undeclared",
-    "level",
-    "ambiguous"
-  ].forEach(severity => {
-    let group = of_(severity);
-    if (group.length !== 0) {
-      console.log(`\n` + severity + ` (` + group.length.toString() + `)`);
-      group.forEach(f => {
-        console.log(`  ` + f.message);
-      });
-      return;
-    }
-  });
-  if (failures.length !== 0) {
+  if (json) {
+    console.log(reportJson(findings, opaque, allDerived, failures));
+  } else {
+    [
+      "contradicted",
+      "unverified",
+      "undeclared",
+      "level",
+      "ambiguous"
+    ].forEach(severity => {
+      let group = of_(severity);
+      if (group.length !== 0) {
+        console.log(`\n` + severity + ` (` + group.length.toString() + `)`);
+        group.forEach(f => {
+          console.log(`  ` + f.message);
+        });
+        return;
+      }
+    });
+  }
+  if (failures.length !== 0 && !json) {
     console.error(`\ncould not read:`);
     failures.forEach(f => {
       console.error(`  ` + f);
     });
   }
   if (drifted.length !== 0) {
-    console.error(`\n` + drifted.length.toString() + ` lifecycle artifact(s) changed. If the change is intended, run\n  pnpm run check:lifecycle:update\nand commit them alongside the change that moved them.`);
+    console.error(`\n` + drifted.length.toString() + ` lifecycle artifact(s) changed. If the change is intended, re-run with --update and commit them alongside the change that moved them.`);
   }
   if (contradicted.length !== 0 || drifted.length !== 0 || failures.length !== 0) {
     process.exit(1);
@@ -855,7 +1052,9 @@ export {
   repoRoot,
   examplesDir,
   update,
+  flagValues,
   reuseSidecars,
+  json,
   noRow,
   asObj,
   getStr,
@@ -874,6 +1073,7 @@ export {
   filesUnder,
   gwtSources,
   sidecarOf,
+  hasCorpus,
   checkSidecars,
   emitSidecars,
   levelOf,
@@ -891,13 +1091,14 @@ export {
   allUnverified,
   compare,
   pluginDirsIn,
-  examples,
+  roots,
   isViewPath,
   isWritablePath,
   runPlugin,
   byComponentThenCommand,
   goldenJson,
   goldenPath,
+  reportJson,
   modelSource,
   modelPath,
   writeOrCompare,

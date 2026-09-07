@@ -8,7 +8,8 @@
     "generate-platform": "./run-platform-generator.mjs",
     "graft-trait": "./run-graft-trait.mjs",
     "certify-trait": "./run-certify-trait.mjs",
-    "trait-manifest": "./run-trait-manifest.mjs"
+    "trait-manifest": "./run-trait-manifest.mjs",
+    "check-lifecycle": "./run-check-lifecycle.mjs"
   },
   "scripts": {
     "build": "rescript build",

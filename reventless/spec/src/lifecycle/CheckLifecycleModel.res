@@ -32,17 +32,32 @@ Contradictions fail the run; unverified edges are warnings, counted so a corpus
 getting thinner is visible.
 
 Two artifacts come out of the same derivation. `schema/lifecycle-model.json` is
-the reviewable golden, one per example. `src/LifecycleModel.res` is the value
+the reviewable golden, one per app. `src/LifecycleModel.res` is the value
 structure assembly reads, one per plugin — written here rather than by
 `generate-plugin`, which runs in `prebuild` and would therefore always be one
 build behind the sidecars it would have to read.
 
-Usage:
+An **app root** is a directory whose immediate subdirectories are plugins, a
+plugin being a directory with both a composition root (`src/Plugin.res`) and a
+corpus (`tests/`). `examples/online-shop-hybrid` is one; so is the root of an app
+`create-app` generated. With no `--root`, every subdirectory of `<cwd>/examples`
+is taken as one, which is what this repository's own gate wants and was for a
+while the only thing this could do.
+
+Usage, in this repository:
 
 ```
 pnpm run check:lifecycle           # fail on contradictions or artifact drift
 pnpm run check:lifecycle:update    # rewrite the goldens and the models
 pnpm run check:lifecycle -- --reuse-sidecars   # read what a prior build wrote
+pnpm run check:lifecycle -- --reuse-sidecars --json   # the same run, machine-readable
+```
+
+and against an app, through the `check-lifecycle` binary this package ships:
+
+```
+check-lifecycle --root . --reuse-sidecars --json
+check-lifecycle --root . --update     # write this app's models and golden
 ```
 */
 
@@ -59,12 +74,50 @@ let repoRoot = NodeProcess.cwd()
 let examplesDir = NodePath.join([repoRoot, "examples"])
 let update = NodeProcess.argv->Array.includes("--update")
 
+/** Every `<flag> <value>` pair on the command line, so a flag can be repeated.
+
+    A value that looks like another flag is not consumed, so `--root --json`
+    reports no roots rather than silently checking a directory named `--json`. */
+let flagValues = (flag: string): array<string> => {
+  let argv = NodeProcess.argv
+  let out = []
+  for i in 0 to Array.length(argv) - 1 {
+    if argv->Array.get(i) == Some(flag) {
+      switch argv->Array.get(i + 1) {
+      | Some(value) if !(value->String.startsWith("--")) => out->Array.push(value)->ignore
+      | _ => ()
+      }
+    }
+  }
+  out
+}
+
+/** An app whose plugins are checked together, and the name it is reported under.
+
+    The golden is per app because a command's edge is only meaningful beside the
+    other plugins it shares an event log with. */
+type appRoot = {label: string, dir: string}
+
 /** Read the sidecars a prior build already wrote instead of driving one. CI's
     build step sets `REVENTLESS_EMIT_SIDECAR=1`, so by the time this runs the
     corpus is on disk; a second pass over a warm tree buys nothing and costs the
     multi-root build chain's habit of cleaning artifacts outside the root it is
     building, which lands intermittently on a stale `.cmi`. */
 let reuseSidecars = NodeProcess.argv->Array.includes("--reuse-sidecars")
+
+/** Report the run as one JSON document on stdout instead of the grouped prose.
+
+    For a consumer that has to place a finding somewhere — an editor putting a
+    squiggle on the arm that made the claim — rather than read it. The prose
+    bakes component, command and state into a sentence; this keeps them as
+    fields, so the consumer does not parse English back into a range.
+
+    Artifacts are neither written nor compared under `--json`: a reader asking
+    what the corpus says now must not, as a side effect, rewrite what the
+    repository says it said — nor fail because the two have drifted, which is a
+    fact about the repository rather than about the corpus it was asked to
+    report. A contradiction still exits non-zero, so this composes with a gate. */
+let json = NodeProcess.argv->Array.includes("--json")
 
 /** The label a state carries when no row exists yet. Not a lifecycle case — no
     enum declares it — so it is spelled in a way no constructor can name, and a
@@ -235,8 +288,11 @@ let sidecarOf = (gwt: string): string => gwt->String.replace("_GWT.res", "_GWT.g
     Only the empty case is checked, not sidecar-per-file: a GWT file whose
     `describe` argument is not a string literal legitimately emits none, and the
     committed goldens are what catch a corpus that merely got thinner. */
-let checkSidecars = (~pluginDirs: array<string>): result<unit, string> =>
+let hasCorpus = (~pluginDirs: array<string>): bool =>
   gwtSources(~pluginDirs)->Array.some(f => f->sidecarOf->NodeFs.existsSync)
+
+let checkSidecars = (~pluginDirs: array<string>): result<unit, string> =>
+  hasCorpus(~pluginDirs)
     ? Ok()
     : Error(
         "--reuse-sidecars was passed, but no scenario sidecar exists. Build with " ++
@@ -257,7 +313,13 @@ let checkSidecars = (~pluginDirs: array<string>): result<unit, string> =>
     per-plugin builds would leave several packages' test outputs deleted, which
     is not a build failure — it is a jest project that discovers nothing and
     passes. So the harvest drives the same ordered chain everyone else does, and
-    leaves the tree exactly as it found it. */
+    leaves the tree exactly as it found it.
+
+    **The chain it drives is the working directory's**, not each root's. That is
+    right for the ordinary invocations — this repository's gate, and `--root .`
+    from an app — and wrong for a `--root` pointing somewhere else, which is why
+    the caller checks for a corpus afterwards either way rather than trusting
+    that a build it did not target wrote one. */
 let emitSidecars = (~pluginDirs: array<string>): result<unit, string> => {
   let now = Date.now() /. 1000.0
   gwtSources(~pluginDirs)->Array.forEach(f => NodeFs.utimesSync(f, now, now))
@@ -408,7 +470,7 @@ let lifecycleValue = (values: array<(string, JSON.t)>, ~field: string): option<s
 let lifecycleMapFor = (
   ~scenarios: array<scenario>,
   ~field: string,
-  ~ambiguities: array<string>,
+  ~ambiguities: array<(string, string)>,
   ~view: string,
 ): dict<string> => {
   let map = Dict.make()
@@ -428,10 +490,11 @@ let lifecycleMapFor = (
       // than resolved: picking one would invent a precision the corpus does not
       // have, and the honest answer is that the view needs another scenario.
       ambiguities
-      ->Array.push(
+      ->Array.push((
+        view,
         `${view}: ${event} is projected as both "${existing}" and "${value}" ` ++
         `(seen in "${title}") — the harvest keeps "${existing}"`,
-      )
+      ))
       ->ignore
     | Some(_) => ()
     | None => map->Dict.set(event, value)
@@ -606,9 +669,41 @@ let deriveCommands = (
 // ── The three verdicts ──────────────────────────────────────────────────────
 
 type finding = {
-  severity: string, // "contradicted" | "unverified" | "undeclared" | "ambiguous"
+  severity: string, // "contradicted" | "unverified" | "undeclared" | "level" | "ambiguous"
   plugin: string,
+  /** The component the finding is about: the writable whose switch made the
+      claim, or — for `ambiguous` — the view whose corpus disagrees with itself.
+      Kept beside `message` rather than only inside it, because a consumer has to
+      find the file before it can say anything about it. */
+  component: string,
+  /** Empty for a finding that is about the component rather than one command. */
+  command: string,
+  /** The lifecycle state(s) the finding names, where it names any. This is what
+      a generated scenario's `given` has to fold to, so it is the one part of the
+      sentence a consumer cannot re-derive. */
+  states: array<string>,
   message: string,
+}
+
+/** A corpus the walk can only partly read.
+
+    Several DSL verbs record their `given` and nothing else — `thenIssuesCommand`,
+    `whenReacts`, `whenPublishedThrough` and the rest — and so does a readable
+    verb handed a let-bound value rather than a literal, since the sidecar records
+    the constructor application it can see. Either way the scenario reaches here
+    with an empty `when`, and the walk has nothing to exercise.
+
+    Counted per component and published, because the distinction a consumer MUST
+    keep is "not covered" against "not analysed": a slice with twenty thorough
+    scenarios and no readable `when` is not an untested slice, and rendering it as
+    one is the fastest way to teach people to ignore the warning. */
+type opaque = {
+  plugin: string,
+  component: string,
+  path: string,
+  scenarios: int,
+  /** Of those, the ones whose `when` the sidecar recorded as empty. */
+  unreadable: int,
 }
 
 /** Everything a declared command claims, reported as unverified.
@@ -617,14 +712,18 @@ type finding = {
     scenarios at all, and a command whose corpus cannot be labelled because its
     views declare no lifecycle. In neither case has anything ever exercised what
     the declaration claims, which is exactly what a warning is for. */
-let allUnverified = (~cmd: declaredCommand, ~add: (string, string) => unit, ~why: string): unit => {
+let allUnverified = (
+  ~cmd: declaredCommand,
+  ~add: (string, array<string>, string) => unit,
+  ~why: string,
+): unit => {
   switch cmd.allowedStates {
   | Some(states) if Array.length(states) > 0 =>
-    add("unverified", `the switch names ${states->Array.join(", ")}, and ${why}`)
+    add("unverified", states, `the switch names ${states->Array.join(", ")}, and ${why}`)
   | _ => ()
   }
   switch cmd.targetState {
-  | Some(target) => add("unverified", `the switch targets "${target}", and ${why}`)
+  | Some(target) => add("unverified", [target], `the switch targets "${target}", and ${why}`)
   | None => ()
   }
 }
@@ -636,8 +735,17 @@ let compare = (
   ~findings: array<finding>,
 ): unit => {
   let where = `${plugin}/${writable.name}.${derived.command}`
-  let add = (severity, message) =>
-    findings->Array.push({severity, plugin, message: `${where}: ${message}`})->ignore
+  let add = (severity, states, message) =>
+    findings
+    ->Array.push({
+      severity,
+      plugin,
+      component: writable.name,
+      command: derived.command,
+      states,
+      message: `${where}: ${message}`,
+    })
+    ->ignore
 
   let declared = writable.commands->Array.find(c => c.command == derived.command)
 
@@ -655,6 +763,7 @@ let compare = (
       derived.inertStates->Array.forEach(state =>
         add(
           "contradicted",
+          [state],
           `the switch declares it legal in every state, and a scenario from "${state}" ` ++
           `shows it refused or producing nothing`,
         )
@@ -663,6 +772,7 @@ let compare = (
       if Array.length(derived.allowedStates) > 0 {
         add(
           "undeclared",
+          derived.allowedStates,
           `scenarios show it taking effect from ${derived.allowedStates->Array.join(", ")}, ` ++
           `and it declares no edge`,
         )
@@ -674,17 +784,19 @@ let compare = (
         } else if derived.inertStates->Array.includes(state) {
           add(
             "contradicted",
+            [state],
             `the switch names "${state}", and a scenario from "${state}" shows it ` ++
             `refused or producing nothing`,
           )
         } else {
-          add("unverified", `the switch names "${state}", and no scenario starts there`)
+          add("unverified", [state], `the switch names "${state}", and no scenario starts there`)
         }
       )
       derived.allowedStates->Array.forEach(state =>
         if !(states->Array.includes(state)) {
           add(
             "contradicted",
+            [state],
             `a scenario shows it taking effect from "${state}", which its declared ` ++
             `from-set (${states->Array.join(", ")}) excludes`,
           )
@@ -693,6 +805,7 @@ let compare = (
       if Array.length(states) > 0 && Array.length(derived.allowedStates) == 0 {
         add(
           "unverified",
+          states,
           `the switch declares ${Array.length(states)->Int.toString} state(s) and ` ++
           `no scenario shows the command taking effect anywhere`,
         )
@@ -702,11 +815,12 @@ let compare = (
     switch (cmd.targetState, derived.targets) {
     | (None, _) => ()
     | (Some(target), []) =>
-      add("unverified", `the switch targets "${target}", and no scenario shows an edge`)
+      add("unverified", [target], `the switch targets "${target}", and no scenario shows an edge`)
     | (Some(target), observed) =>
       if !(observed->Array.includes(target)) {
         add(
           "contradicted",
+          [target],
           `the switch targets "${target}", and scenarios land in ` ++
           `${observed->Array.join(", ")}`,
         )
@@ -715,6 +829,7 @@ let compare = (
         if state != target {
           add(
             "contradicted",
+            [target, state],
             `the switch targets "${target}", and a scenario lands in "${state}" — ` ++
             `the published targetState carries one state, so this edge cannot be expressed`,
           )
@@ -725,17 +840,18 @@ let compare = (
     if derived.level != "" && cmd.level != "" && derived.level != cmd.level {
       add(
         "level",
+        [],
         `scenarios make it ${derived.level}-level; the published metadata says ${cmd.level}`,
       )
     }
   }
 }
 
-// ── Per-example run ─────────────────────────────────────────────────────────
+// ── Per-app run ─────────────────────────────────────────────────────────────
 
 /** A plugin is a directory with both a composition root and a corpus. Found
-    rather than listed so a new example, or a new plugin in one, is covered
-    without this file being edited. */
+    rather than listed so a new app, or a new plugin in one, is covered without
+    this file being edited. */
 let pluginDirsIn = (exampleDir: string): array<string> =>
   switch NodeFs.readdirSync(exampleDir, {withFileTypes: true}) {
   | entries =>
@@ -749,13 +865,36 @@ let pluginDirsIn = (exampleDir: string): array<string> =>
   | exception _ => []
   }
 
-let examples = switch NodeFs.readdirSync(examplesDir, {withFileTypes: true}) {
-| entries =>
-  entries
-  ->Array.filter(e => e->NodeFs.isDirectory)
-  ->Array.map(e => e->NodeFs.direntName)
-  ->Array.toSorted(String.compare)
-| exception _ => []
+/** The apps to check: every `--root`, or — with none — every subdirectory of
+    `<cwd>/examples`, which is what this repository's own gate passes nothing to
+    get. A `--root` is resolved against the working directory so a relative one
+    means what the person who typed it meant, and labelled by its basename so the
+    prose reads the same either way. */
+// `--root` typed with nothing usable after it — `--root --json`, or a trailing
+// `--root`. Falling back to the default scan below would check the whole examples
+// tree while the person believed they had narrowed it to one app, so refuse here
+// rather than answer a question nobody asked.
+if NodeProcess.argv->Array.includes("--root") && Array.length(flagValues("--root")) == 0 {
+  Console.error("--root needs a directory after it")
+  NodeProcess.exit(1)
+}
+
+let roots: array<appRoot> = switch flagValues("--root") {
+| [] =>
+  switch NodeFs.readdirSync(examplesDir, {withFileTypes: true}) {
+  | entries =>
+    entries
+    ->Array.filter(e => e->NodeFs.isDirectory)
+    ->Array.map(e => e->NodeFs.direntName)
+    ->Array.toSorted(String.compare)
+    ->Array.map(name => {label: name, dir: NodePath.join([examplesDir, name])})
+  | exception _ => []
+  }
+| given =>
+  given->Array.map(given => {
+    let dir = NodePath.resolve([given])
+    {label: NodePath.basename(dir), dir}
+  })
 }
 
 /** Sidecar paths that describe a queryable, and those that describe a writable.
@@ -769,10 +908,12 @@ let isViewPath = (path: string) =>
 let isWritablePath = (path: string) =>
   ["/Aggregate/", "/StateChangeSlice/"]->Array.some(seg => path->String.includes(seg))
 
-let runPlugin = async (~plugin: string, ~pluginDir: string, ~findings: array<finding>): result<
-  array<derivedCommand>,
-  string,
-> =>
+let runPlugin = async (
+  ~plugin: string,
+  ~pluginDir: string,
+  ~findings: array<finding>,
+  ~opaque: array<opaque>,
+): result<array<derivedCommand>, string> =>
   switch await readDeclared(~pluginDir) {
   | Error(msg) => Error(msg)
   | Ok(declared) =>
@@ -780,6 +921,25 @@ let runPlugin = async (~plugin: string, ~pluginDir: string, ~findings: array<fin
         filesUnder(NodePath.join([pluginDir, "tests"]), ~suffix=".gwt.json")->Array.filterMap(
           readCorpus,
         )
+
+      // Every corpus, not only the ones the walk goes on to use: the kinds that
+      // are unreadable in full — extension points, automation and translation
+      // slices — are exactly the ones that sit outside the view/writable folders
+      // below, and they are the ones a coverage UI would otherwise slander.
+      corpora->Array.forEach(c => {
+        let unreadable = c.scenarios->Array.filter(s => Array.length(s.whenElements) == 0)
+        if Array.length(unreadable) > 0 {
+          opaque
+          ->Array.push({
+            plugin,
+            component: c.component,
+            path: c.path,
+            scenarios: Array.length(c.scenarios),
+            unreadable: Array.length(unreadable),
+          })
+          ->ignore
+        }
+      })
 
       // Views first: a command's history cannot be labelled until the events in
       // it have somewhere to land.
@@ -799,8 +959,17 @@ let runPlugin = async (~plugin: string, ~pluginDir: string, ~findings: array<fin
           }
         }
       )
-      ambiguities->Array.forEach(message =>
-        findings->Array.push({severity: "ambiguous", plugin, message})->ignore
+      ambiguities->Array.forEach(((view, message)) =>
+        findings
+        ->Array.push({
+          severity: "ambiguous",
+          plugin,
+          component: view,
+          command: "",
+          states: [],
+          message,
+        })
+        ->ignore
       )
 
       let derived = []
@@ -848,11 +1017,14 @@ let runPlugin = async (~plugin: string, ~pluginDir: string, ~findings: array<fin
               if labelled && commands->Array.some(d => d.command == cmd.command) {
                 ()
               } else {
-                allUnverified(~cmd, ~why, ~add=(severity, message) =>
+                allUnverified(~cmd, ~why, ~add=(severity, states, message) =>
                   findings
                   ->Array.push({
                     severity,
                     plugin,
+                    component: writable.name,
+                    command: cmd.command,
+                    states,
                     message: `${plugin}/${writable.name}.${cmd.command}: ${message}`,
                   })
                   ->ignore
@@ -898,8 +1070,77 @@ let goldenJson = (derived: array<derivedCommand>): string => {
   JSON.stringify(JSON.Encode.array(entries), ~space=2) ++ "\n"
 }
 
-let goldenPath = (~example: string) =>
-  NodePath.join([examplesDir, example, "schema", "lifecycle-model.json"])
+let goldenPath = (~root: appRoot) => NodePath.join([root.dir, "schema", "lifecycle-model.json"])
+
+// ── The machine-readable run ────────────────────────────────────────────────
+
+/** The same run as the prose, as fields.
+
+    Three things travel here that the prose does not carry, each because a
+    consumer cannot recover it from the sentence:
+
+    - `states` on a finding — the state a generated scenario's `given` has to
+      fold to. The sentence names it; parsing it back out is the thing this
+      exists to avoid.
+    - `inertStates` on a command — internal to the check until now. With it, a
+      state in neither `allowedStates` nor `inertStates` is one no scenario has
+      ever exercised, which is a sharper "missing scenario" than a verdict.
+    - `opaque` — the corpora the walk cannot read, so a consumer can say "not
+      analysed" where it would otherwise say "not covered".
+
+    `str` is the schema's own version, bumped when a consumer would have to
+    change. */
+let reportJson = (
+  ~findings: array<finding>,
+  ~opaque: array<opaque>,
+  ~derived: array<(string, derivedCommand)>,
+  ~failures: array<string>,
+): string => {
+  let strs = xs => JSON.Encode.array(xs->Array.map(JSON.Encode.string))
+  let obj = pairs => JSON.Encode.object(Dict.fromArray(pairs))
+
+  let findingJson = (f: finding) =>
+    obj([
+      ("verdict", JSON.Encode.string(f.severity)),
+      ("plugin", JSON.Encode.string(f.plugin)),
+      ("component", JSON.Encode.string(f.component)),
+      ("command", JSON.Encode.string(f.command)),
+      ("states", strs(f.states)),
+      ("message", JSON.Encode.string(f.message)),
+    ])
+
+  let commandJson = ((plugin, d): (string, derivedCommand)) =>
+    obj([
+      ("plugin", JSON.Encode.string(plugin)),
+      ("component", JSON.Encode.string(d.component)),
+      ("command", JSON.Encode.string(d.command)),
+      ("level", JSON.Encode.string(d.level)),
+      ("allowedStates", strs(d.allowedStates)),
+      ("inertStates", strs(d.inertStates)),
+      ("targets", strs(d.targets)),
+      ("scenarios", JSON.Encode.int(d.scenarios)),
+    ])
+
+  let opaqueJson = (o: opaque) =>
+    obj([
+      ("plugin", JSON.Encode.string(o.plugin)),
+      ("component", JSON.Encode.string(o.component)),
+      ("path", JSON.Encode.string(o.path)),
+      ("scenarios", JSON.Encode.int(o.scenarios)),
+      ("unreadable", JSON.Encode.int(o.unreadable)),
+    ])
+
+  JSON.stringify(
+    obj([
+      ("version", JSON.Encode.int(1)),
+      ("findings", JSON.Encode.array(findings->Array.map(findingJson))),
+      ("commands", JSON.Encode.array(derived->Array.map(commandJson))),
+      ("opaque", JSON.Encode.array(opaque->Array.map(opaqueJson))),
+      ("unreadable", strs(failures)),
+    ]),
+    ~space=2,
+  ) ++ "\n"
+}
 
 // ── The value structure assembly reads ──────────────────────────────────────
 
@@ -966,11 +1207,22 @@ let writeOrCompare = (~path: string, ~actual: string, ~label: string, ~drifted: 
 
 let main = async () => {
   let findings = []
+  let opaque = []
   let failures = []
   let drifted = []
+  let allDerived = []
 
-  let allPluginDirs =
-    examples->Array.flatMap(example => pluginDirsIn(NodePath.join([examplesDir, example])))
+  let allPluginDirs = roots->Array.flatMap(root => pluginDirsIn(root.dir))
+
+  // A run that found nothing to check is a mistyped `--root` far more often than
+  // an app with no plugins, and reporting "ok" for it is how that typo survives.
+  if Array.length(allPluginDirs) == 0 {
+    Console.error(
+      `no plugins found under ${roots->Array.map(r => r.dir)->Array.join(", ")} — a plugin is a ` ++
+      `directory with both src/Plugin.res and tests/`,
+    )
+    NodeProcess.exit(1)
+  }
 
   switch reuseSidecars
     ? checkSidecars(~pluginDirs=allPluginDirs)
@@ -981,11 +1233,25 @@ let main = async () => {
   | Ok() => ()
   }
 
-  for i in 0 to Array.length(examples) - 1 {
-    switch examples->Array.get(i) {
+  // The build above is the working directory's, so a `--root` elsewhere can come
+  // back successful having emitted nothing for the tree actually being checked.
+  // An empty corpus reads as every edge unverified — a warning — so without this
+  // the run would pass having checked nothing, which is the one outcome worth
+  // refusing outright.
+  if !hasCorpus(~pluginDirs=allPluginDirs) {
+    Console.error(
+      `no scenario sidecar exists under ${roots->Array.map(r => r.dir)->Array.join(", ")} after ` ++
+      `the build. Build that tree with REVENTLESS_EMIT_SIDECAR=1 and pass --reuse-sidecars.`,
+    )
+    NodeProcess.exit(1)
+  }
+
+  for i in 0 to Array.length(roots) - 1 {
+    switch roots->Array.get(i) {
     | None => ()
-    | Some(example) =>
-      let exampleDir = NodePath.join([examplesDir, example])
+    | Some(root) =>
+      let example = root.label
+      let exampleDir = root.dir
       let derived = []
       let dirs = pluginDirsIn(exampleDir)
 
@@ -994,27 +1260,33 @@ let main = async () => {
         | None => ()
         | Some(pluginDir) =>
           let plugin = NodePath.basename(pluginDir)
-          switch await runPlugin(~plugin=`${example}/${plugin}`, ~pluginDir, ~findings) {
+          let qualified = `${example}/${plugin}`
+          switch await runPlugin(~plugin=qualified, ~pluginDir, ~findings, ~opaque) {
           | Ok(commands) =>
-            commands->Array.forEach(c => derived->Array.push(c))
-            writeOrCompare(
-              ~path=modelPath(~pluginDir),
-              ~actual=modelSource(~plugin, ~derived=commands),
-              ~label=`${example}/${plugin}/src/LifecycleModel.res`,
-              ~drifted,
-            )
+            commands->Array.forEach(c => {
+              derived->Array.push(c)
+              allDerived->Array.push((qualified, c))
+            })
+            if !json {
+              writeOrCompare(
+                ~path=modelPath(~pluginDir),
+                ~actual=modelSource(~plugin, ~derived=commands),
+                ~label=`${example}/${plugin}/src/LifecycleModel.res`,
+                ~drifted,
+              )
+            }
           | Error(msg) => failures->Array.push(`${example}/${plugin}: ${msg}`)->ignore
           }
         }
       }
 
-      if Array.length(dirs) > 0 {
+      if Array.length(dirs) > 0 && !json {
         let dir = NodePath.join([exampleDir, "schema"])
         if !(dir->NodeFs.existsSync) {
           NodeFs.mkdirSync(dir, {recursive: true})
         }
         writeOrCompare(
-          ~path=goldenPath(~example),
+          ~path=goldenPath(~root),
           ~actual=goldenJson(derived),
           ~label=`${example}/schema/lifecycle-model.json`,
           ~drifted,
@@ -1029,15 +1301,19 @@ let main = async () => {
   let of_ = severity => findings->Array.filter(f => f.severity == severity)
   let contradicted = of_("contradicted")
 
-  ["contradicted", "unverified", "undeclared", "level", "ambiguous"]->Array.forEach(severity => {
-    let group = of_(severity)
-    if Array.length(group) > 0 {
-      Console.log(`\n${severity} (${Array.length(group)->Int.toString})`)
-      group->Array.forEach(f => Console.log(`  ${f.message}`))
-    }
-  })
+  if json {
+    Console.log(reportJson(~findings, ~opaque, ~derived=allDerived, ~failures))
+  } else {
+    ["contradicted", "unverified", "undeclared", "level", "ambiguous"]->Array.forEach(severity => {
+      let group = of_(severity)
+      if Array.length(group) > 0 {
+        Console.log(`\n${severity} (${Array.length(group)->Int.toString})`)
+        group->Array.forEach(f => Console.log(`  ${f.message}`))
+      }
+    })
+  }
 
-  if Array.length(failures) > 0 {
+  if Array.length(failures) > 0 && !json {
     Console.error(`\ncould not read:`)
     failures->Array.forEach(f => Console.error(`  ${f}`))
   }
@@ -1045,8 +1321,7 @@ let main = async () => {
   if Array.length(drifted) > 0 {
     Console.error(
       `\n${Array.length(drifted)->Int.toString} lifecycle artifact(s) changed. If the change is ` ++
-      `intended, run\n  pnpm run check:lifecycle:update\nand commit them alongside the change ` ++
-      `that moved them.`,
+      `intended, re-run with --update and commit them alongside the change that moved them.`,
     )
   }
 

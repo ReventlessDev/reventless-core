@@ -284,7 +284,7 @@ cluster and negligible where they don't, which is the whole split:
   `lifecycle`, `groupBy`, `visibility`, `live`, `retired`, `values`. Between them these account for
   ~60 of the `: None` sites (`visibility` 16, `values` 16, `live` 12, `groupBy` 11) — the densest
   ergonomic win outside `Plugin.res`.
-- **[`scripts/CheckLifecycleModel.res`](../../scripts/CheckLifecycleModel.res) — 4.**
+- **[`reventless/spec/src/lifecycle/CheckLifecycleModel.res`](../../reventless/spec/src/lifecycle/CheckLifecycleModel.res) — 4.**
   `declaredCommand` mirrors `Plugin.commandDef` field-for-field; convert **with** Tier 1 to keep the
   two in step, not separately.
 - **[`…/DcbEventLogStorage_DynamoDb_Runtime.res`](../../reventless/aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res) — 4.**
