@@ -2,9 +2,12 @@
 
 **Date:** 2026-09-05
 
-**Status.** Done, bar one browser check (§7). Both platforms take the
-declaration, serve the module and name it; the hybrid example declares one and is
-pinned to the shell release that loads it; the guides carry the vocabulary.
+**Status.** Written and landed in full; **two of §7's three verifications are
+outstanding, and one of them is now known to be blocked rather than merely
+unrun.** Both platforms take the declaration, serve the module and name it; the
+hybrid example declares one and registers five renderers; the guides carry the
+vocabulary. What has not happened is a deploy carrying any of it (§7) and a
+browser session switching role against it (§7).
 
 §6's "`slots` per view" turned out not to exist and should not: a region is
 offered by a **mode**, so a hint choosing `gallery` is what puts a tile on
@@ -27,7 +30,7 @@ watched and named on both roots. Verified against the running platform: the boot
 writes `config.json` with `uiSlotsUrl: "/ui-slots.js"`, serves the module
 byte-identical to its source, and re-serves it on save.
 
-**Two of the plan's own suggestions did not survive contact, both for the same
+**Three things the example wants to draw are not drawn, all for the same
 reason — the payload does not carry what drawing them would need:**
 
 - **The tracker's step strip.** §5 asks for "a tracker step label", but a
@@ -40,10 +43,14 @@ reason — the payload does not carry what drawing them would need:**
   primary. The other members hold storage *refs*, and rebasing one against the
   deployment's asset origins is the producer's job — the same reaching-past-the-
   payload the seam forbids.
+- **A "Clear" on the basket.** The shipped selection bar is handed a way to empty
+  the selection; `ViewSlot.listSelection`'s payload is not. Rows can still be
+  unpicked one at a time from their checkboxes, so nothing is unreachable, and a
+  button that cannot work would be worse than none.
 
-Both are the §5 rule ("keep the example honest about what it does not have")
-applied to cases §5 did not anticipate. Each wants a payload change, which is a
-slot-contract change, not a workaround.
+All three are the §5 rule ("keep the example honest about what it does not
+have") applied to cases §5 did not anticipate. Each wants a payload change,
+which is a slot-contract change, not a workaround.
 
 This is the deliberate shape of the seam, not an accident of ordering: the file
 is served whether or not anything imports it, so the deployment half can land,
@@ -195,6 +202,17 @@ change and run, which is the whole reason the seam is public rather than private
   published `@reventlessdev/reventless-ui-slots` contract, with
   `scripts/bundle-slot-modules.mjs` producing the file the declaration names.
 
+  **What it registers, which is five rather than the four listed above.**
+  `RowSlot.galleryTile` (the category tile), `RowSlot.cardsFace` (the card face,
+  written against the *row* rather than against Products, so Orders in Cards
+  mode gets something truthful), `RowSlot.detailMedia` (the primary picture and
+  its caption), `RowSlot.trackerSummary` (placed, and shipped once it has) and
+  `ViewSlot.listSelection` — the basket bar, which this section did not
+  anticipate and which turned out to be the renderer that best earns the seam: a
+  shopper picks rows out of the product grid and one command takes the lot,
+  drawn from `picked` because a list's window is replaced page by page and the
+  ids alone would leave it nothing to name.
+
   The payload shapes are what this file is easiest to get wrong —
   `CaptionedImage` is `{ref, altText?, caption?}` where `ref` is a storage ref
   rather than a URL, and `Money.amount` is minor units at a scale the currency
@@ -263,10 +281,30 @@ explicitly, because both are load-bearing and neither is guessable:
 - **AWS.** Declared file present beside `config.json` after a deploy and served
   with a JavaScript content type; undeclared → absent; the HTML-instead-of-404
   case above exercised deliberately, since it will not occur on demand later.
-  **Not yet run** — the emission compiles and an undeclared deployment is
-  unchanged by construction (the `switch` writes nothing), but no deploy has
-  declared a file, so "present, and served as JavaScript" is unobserved. Worth
-  doing on the deploy that carries the example, where there is a file to look at.
+  **Not yet run, and now known to be blocked on a deploy rather than on
+  attention.** The live alpha stack was built from `fd35e2aa8`, which predates
+  `b43828ca5` — so the deployment carrying this work has never gone out. Its
+  `config.json` holds `manifestUrl` and `journeyManifestUrls` and no
+  `uiSlotsUrl`, exactly as an undeclared deployment should.
+
+  **What that accidentally verified is the §4 hazard, and it is real.** Asking
+  the live distribution for `/ui-slots.js` returns **`200 text/html`** whose body
+  begins `<!doctype html>` — the SPA fallback, not a 404. So this plan's own
+  prose is wrong wherever it says the shell "treats the 404 as no slots": on this
+  deploy there is no 404 to treat, and a shell that only checked the status code
+  would hand `<!doctype` to the module parser. The content-type check §4 asks for
+  is not a precaution against a rare policy-clobber; it is the **ordinary** path
+  for every undeclared deployment. Worth writing down before the deploy, because
+  after it the case stops being reproducible on demand.
+
+  Two other places inherited the same wrong sentence and should be corrected with
+  the deploy that settles this: the `uiSlotsFile` comment on
+  `reventless/infra/src/types/Platform.res`, and `ui-configuration.md`'s §4.1.
+  Neither changes behaviour; both tell a reader to expect a status code that does
+  not arrive.
+
+  Still unobserved: "present beside `config.json`, and served as JavaScript",
+  which needs the deploy that carries the example.
 - **The example, by hand.** One deployment, one login, one data set: switch role
   and watch the same views redraw. Then delete the audience block and save — the
   surface returns to the generated console with no reload and no deploy. That
@@ -276,7 +314,7 @@ explicitly, because both are load-bearing and neither is guessable:
   **Partly done, and one sentence above needs correcting.** Verified against the
   running platform: the module is served byte-identical, `config.json` names it,
   and an edit re-serves in about a second with no restart. The module was also
-  driven directly — all four renderers draw, and none throws on a row with every
+  driven directly — all five renderers draw, and none throws on a row with every
   optional field missing.
 
   What is *not* verified is the part needing a browser and a login: switching

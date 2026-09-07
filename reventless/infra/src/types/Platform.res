@@ -449,14 +449,18 @@ module type T = {
     bundleVersion?: string,
     // Optional path to a static AutoUI `ui-hints.json`, read and written
     // verbatim as a BucketObject beside `config.json` at deploy time. Unset ⇒
-    // no file written; the shell treats the 404 as "no hints" and boots
-    // unchanged. In-memory platforms serve it too, out of the host-shell
-    // package's own dist/, and watch it so an edit is a browser refresh.
+    // no file written and the shell boots unchanged. In-memory platforms serve
+    // it too, out of the host-shell package's own dist/, and watch it so an
+    // edit is a browser refresh.
     uiHintsFile?: string,
     // Optional path to an ES module registering AutoUI slot renderers, read and
     // written verbatim beside `config.json` at deploy time. Unset ⇒ no file
-    // written; the shell treats the 404 as "no slots" and every mode draws its
-    // own regions. Served and watched in-memory exactly as `uiHintsFile` is.
+    // written and every mode draws its own regions. Served and watched
+    // in-memory exactly as `uiHintsFile` is.
+    //
+    // Absent does not mean 404: the bundle's SPA fallback answers any missing
+    // path with index.html under a 200, so a reader of either file has to judge
+    // it by content type. Observed on alpha, not hypothetical.
     //
     // Verbatim, and for the same reason: this is a deployment's own source, and
     // a build step over it would make the local watch a lie and put a bundler

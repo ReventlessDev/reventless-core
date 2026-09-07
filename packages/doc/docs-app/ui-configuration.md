@@ -897,9 +897,9 @@ watched, so saving a renderer is a browser refresh rather than a restart.
 Declaring the file also writes the `uiSlotsUrl` key that tells the shell to
 import it. That key is **computed, not passthrough**: naming it in `shellConfig`
 (§5.2) fails the build rather than redirecting it, because a shell pointed at a
-module the platform did not write has no way to notice — it treats the 404 as
-"no slots" and draws its own regions, which is what it does when nothing was
-declared at all.
+module the platform did not write has no way to notice — it finds no module
+there and draws its own regions, which is what it does when nothing was declared
+at all.
 
 **A module in the bundle's own origin, rather than something served from the
 admin API.** The registry has to be populated for *every* caller, including one
@@ -917,12 +917,20 @@ load-bearing:
   different seam with a different cost — reach for it when what you need is not a
   region of an existing view.
 
-Unset ⇒ no file is written, the shell treats the 404 as "no slots", and every
-mode draws its own regions — byte-identical to a deployment built before this
-existed. Withdrawing the declaration removes the file rather than restoring a
-default: the shell ships no slots module of its own, deliberately, because a
-fallback here would be a fallback for *appearance*, and inheriting a stranger's
-appearance is the kind of wrong that is hard to notice.
+Unset ⇒ no file is written and every mode draws its own regions — byte-identical
+to a deployment built before this existed. Withdrawing the declaration removes
+the file rather than restoring a default: the shell ships no slots module of its
+own, deliberately, because a fallback here would be a fallback for *appearance*,
+and inheriting a stranger's appearance is the kind of wrong that is hard to
+notice.
+
+**"Not declared" does not arrive as a 404.** The bundle is served by a
+single-page app whose fallback answers *any* unmatched path with `index.html`
+under a **200** — so a request for an undeclared `ui-slots.js` returns HTML, not
+an error, and a loader that only checked the status code would hand `<!doctype`
+to the module parser. The shell judges the response by content type instead. It
+is worth knowing when reading a failed load in a browser console: the parse error
+names the first line of an HTML document and says nothing about your deployment.
 
 Unlike the hints file, the content is not validated at deploy time. A module is
 only known to be good once a browser has evaluated it, and a check that ran only
