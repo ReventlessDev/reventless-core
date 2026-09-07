@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.235 (2026-09-07)
+
+### Features
+
+* **core:** a command's lifecycle edge comes from its scenarios, not its claim ([1879d05](https://github.com/ReventlessDev/reventless-core/commit/1879d0570a981e7fae5bcd3808f8a36e898bd0fd))
+
+
 # 3.0.0-alpha.234 (2026-09-04)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-aggregates-ordering

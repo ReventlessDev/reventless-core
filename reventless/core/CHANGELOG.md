@@ -3,6 +3,27 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.257 (2026-09-07)
+
+### Bug Fixes
+
+* **core:** hold a monitoring announcement until someone is listening ([9cc4526](https://github.com/ReventlessDev/reventless-core/commit/9cc4526d3a21ce130e219b6da88fd4f3201974bd))
+* **logging:** log a message's identity, not its serialisation ([cd7467a](https://github.com/ReventlessDev/reventless-core/commit/cd7467abdc59609279f16f358cdd8884cc49f063))
+* **ui:** a declared slot module is named, not only written ([de000ba](https://github.com/ReventlessDev/reventless-core/commit/de000baf428249f64cfc719ed52df3760198b82a))
+* feat(dcb)!: a record inside an array is still a reference and a key ([bcb9b13](https://github.com/ReventlessDev/reventless-core/commit/bcb9b13958323d8319d7fcf25c055800e84150f3))
+### Features
+
+* **core:** a command's lifecycle edge comes from its scenarios, not its claim ([1879d05](https://github.com/ReventlessDev/reventless-core/commit/1879d0570a981e7fae5bcd3808f8a36e898bd0fd))
+
+### BREAKING CHANGES
+
+* an `int` field is now `Int` in the generated SDL and
+`"integer"` in JSON Schema, where it was `Float`/`"number"`. A client
+declaring `$retryCount: Float!` against one of these fields must move to
+`Int!`.
+
+
+
 # 3.0.0-alpha.256 (2026-09-04)
 
 * feat(spec)!: one optional encoding on the wire, with no annotation ([320f91d](https://github.com/ReventlessDev/reventless-core/commit/320f91daa8bd90812a6e82069e7a1cb473041930))

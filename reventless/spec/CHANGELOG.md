@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.130 (2026-09-07)
+
+* feat(dcb)!: a record inside an array is still a reference and a key ([bcb9b13](https://github.com/ReventlessDev/reventless-core/commit/bcb9b13958323d8319d7fcf25c055800e84150f3))
+### Features
+
+* **core:** a command's lifecycle edge comes from its scenarios, not its claim ([1879d05](https://github.com/ReventlessDev/reventless-core/commit/1879d0570a981e7fae5bcd3808f8a36e898bd0fd))
+
+### BREAKING CHANGES
+
+* an `int` field is now `Int` in the generated SDL and
+`"integer"` in JSON Schema, where it was `Float`/`"number"`. A client
+declaring `$retryCount: Float!` against one of these fields must move to
+`Int!`.
+
+
+
 # 3.0.0-alpha.129 (2026-09-04)
 
 ### Bug Fixes

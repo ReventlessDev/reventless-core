@@ -3,6 +3,27 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.83 (2026-09-07)
+
+### Bug Fixes
+
+* **example:** a row without a picture says so, and an order says what it is ([20d21c2](https://github.com/ReventlessDev/reventless-core/commit/20d21c2748bd60e1d8a46433cd624407623a6a2e))
+* feat(dcb)!: a record inside an array is still a reference and a key ([bcb9b13](https://github.com/ReventlessDev/reventless-core/commit/bcb9b13958323d8319d7fcf25c055800e84150f3))
+### Features
+
+* **example:** the shop draws its own basket, and declines to invent a total ([a5c459e](https://github.com/ReventlessDev/reventless-core/commit/a5c459e7001fc5958e138d8bc73390e69f49b89c))
+* **example:** the shop draws its own tiles, faces and captions ([641f9ee](https://github.com/ReventlessDev/reventless-core/commit/641f9ee5d627c186e8c7ab60a937f31978af6154))
+* **example:** the three regions that could not be drawn are drawn ([43899b7](https://github.com/ReventlessDev/reventless-core/commit/43899b7e21f2683ddd1103fc47c417ff4865b2b0))
+
+### BREAKING CHANGES
+
+* an `int` field is now `Int` in the generated SDL and
+`"integer"` in JSON Schema, where it was `Float`/`"number"`. A client
+declaring `$retryCount: Float!` against one of these fields must move to
+`Int!`.
+
+
+
 # 1.0.0-alpha.82 (2026-09-04)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-seed

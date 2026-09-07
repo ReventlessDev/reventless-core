@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.338 (2026-09-07)
+
+### Bug Fixes
+
+* **aws:** give the dead-letter handler a managed log group ([8631bd4](https://github.com/ReventlessDev/reventless-core/commit/8631bd457d168a5996c42e48db3c66d353bdda34))
+* **aws:** stop a dead letter from being redelivered every three minutes ([1ae3a06](https://github.com/ReventlessDev/reventless-core/commit/1ae3a0686003c05079214a4eeeb60a38fcb775af))
+* **aws:** the alarm backend stops wrapping Outputs in options ([476d974](https://github.com/ReventlessDev/reventless-core/commit/476d974223748024ae637b6cd5a6ebee95c21354))
+* **logging:** log a message's identity, not its serialisation ([cd7467a](https://github.com/ReventlessDev/reventless-core/commit/cd7467abdc59609279f16f358cdd8884cc49f063))
+* **ui:** a declared slot module is named, not only written ([de000ba](https://github.com/ReventlessDev/reventless-core/commit/de000baf428249f64cfc719ed52df3760198b82a))
+### Features
+
+* **aws:** alarm every execution unit a stack provisions ([46614af](https://github.com/ReventlessDev/reventless-core/commit/46614af92efb9596a09d3e7a15699712707b7ca6))
+* **ui:** a deployment can name the module that draws its own surfaces ([b43828c](https://github.com/ReventlessDev/reventless-core/commit/b43828ca50cddd31f7aefae016669fcb7c059838))
+
+
 # 3.0.0-alpha.337 (2026-09-04)
 
 * feat(spec)!: one optional encoding on the wire, with no annotation ([320f91d](https://github.com/ReventlessDev/reventless-core/commit/320f91daa8bd90812a6e82069e7a1cb473041930))

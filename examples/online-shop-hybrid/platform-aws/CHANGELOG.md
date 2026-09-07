@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.287 (2026-09-07)
+
+### Bug Fixes
+
+* **example:** ordering names catalog's image store instead of minting its own ([c155060](https://github.com/ReventlessDev/reventless-core/commit/c1550609ed861367107327d1edf84f40018f4773))
+### Features
+
+* **aws:** alarm every execution unit a stack provisions ([46614af](https://github.com/ReventlessDev/reventless-core/commit/46614af92efb9596a09d3e7a15699712707b7ca6))
+* **example:** the shop draws its own basket, and declines to invent a total ([a5c459e](https://github.com/ReventlessDev/reventless-core/commit/a5c459e7001fc5958e138d8bc73390e69f49b89c))
+* **example:** the shop draws its own tiles, faces and captions ([641f9ee](https://github.com/ReventlessDev/reventless-core/commit/641f9ee5d627c186e8c7ab60a937f31978af6154))
+
+
 # 1.0.0-alpha.286 (2026-09-04)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-platform-aws

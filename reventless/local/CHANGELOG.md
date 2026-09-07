@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.246 (2026-09-07)
+
+### Bug Fixes
+
+* **local:** the event-history warning names the caller that asked ([53df2dc](https://github.com/ReventlessDev/reventless-core/commit/53df2dc71a8b4c434c4c5b8c9589c5154315d2e8))
+* **ui:** a declared slot module is named, not only written ([de000ba](https://github.com/ReventlessDev/reventless-core/commit/de000baf428249f64cfc719ed52df3760198b82a))
+### Features
+
+* **ui:** a deployment can name the module that draws its own surfaces ([b43828c](https://github.com/ReventlessDev/reventless-core/commit/b43828ca50cddd31f7aefae016669fcb7c059838))
+
+
 # 3.0.0-alpha.245 (2026-09-04)
 
 ### Bug Fixes

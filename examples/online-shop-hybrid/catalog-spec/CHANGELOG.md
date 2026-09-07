@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.126 (2026-09-07)
+
+### Features
+
+* **catalog:** the set says which member now stands, and orders freeze it ([79d882d](https://github.com/ReventlessDev/reventless-core/commit/79d882d094c11b35a1cb42958a89fc63561e43ab))
+
+
 # 1.0.0-alpha.125 (2026-09-04)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-catalog-spec

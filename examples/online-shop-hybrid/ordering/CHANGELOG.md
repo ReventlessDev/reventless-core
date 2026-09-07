@@ -3,6 +3,30 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.233 (2026-09-07)
+
+### Bug Fixes
+
+* **example:** ordering names catalog's image store instead of minting its own ([c155060](https://github.com/ReventlessDev/reventless-core/commit/c1550609ed861367107327d1edf84f40018f4773))
+* feat(dcb)!: a record inside an array is still a reference and a key ([bcb9b13](https://github.com/ReventlessDev/reventless-core/commit/bcb9b13958323d8319d7fcf25c055800e84150f3))
+* refactor(traits)!: consumed facts are grouped, not suffixed ([a844b7a](https://github.com/ReventlessDev/reventless-core/commit/a844b7a99349ca20633d68cf32b95cb7677d02a4))
+### Features
+
+* **catalog:** the set says which member now stands, and orders freeze it ([79d882d](https://github.com/ReventlessDev/reventless-core/commit/79d882d094c11b35a1cb42958a89fc63561e43ab))
+* **core:** a command's lifecycle edge comes from its scenarios, not its claim ([1879d05](https://github.com/ReventlessDev/reventless-core/commit/1879d0570a981e7fae5bcd3808f8a36e898bd0fd))
+
+### BREAKING CHANGES
+
+* an `int` field is now `Int` in the generated SDL and
+`"integer"` in JSON Schema, where it was `Float`/`"number"`. A client
+declaring `$retryCount: Float!` against one of these fields must move to
+`Int!`.
+* a graft's `Binding` must expose `Consumed` instead of the
+`*C` bindings. The scaffolds emit the new shape, so a regenerated graft is
+already correct; a hand-written one moves its consumed builders into a module.
+
+
+
 # 1.0.0-alpha.232 (2026-09-04)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-ordering

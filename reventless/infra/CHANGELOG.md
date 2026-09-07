@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.158 (2026-09-07)
+
+### Features
+
+* **core:** a command's lifecycle edge comes from its scenarios, not its claim ([1879d05](https://github.com/ReventlessDev/reventless-core/commit/1879d0570a981e7fae5bcd3808f8a36e898bd0fd))
+* **ui:** a deployment can name the module that draws its own surfaces ([b43828c](https://github.com/ReventlessDev/reventless-core/commit/b43828ca50cddd31f7aefae016669fcb7c059838))
+
+
 # 3.0.0-alpha.157 (2026-09-04)
 
 * feat(spec)!: one optional encoding on the wire, with no annotation ([320f91d](https://github.com/ReventlessDev/reventless-core/commit/320f91daa8bd90812a6e82069e7a1cb473041930))

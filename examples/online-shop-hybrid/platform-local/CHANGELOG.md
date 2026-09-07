@@ -3,6 +3,24 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.251 (2026-09-07)
+
+* feat(dcb)!: a record inside an array is still a reference and a key ([bcb9b13](https://github.com/ReventlessDev/reventless-core/commit/bcb9b13958323d8319d7fcf25c055800e84150f3))
+### Features
+
+* **catalog:** the set says which member now stands, and orders freeze it ([79d882d](https://github.com/ReventlessDev/reventless-core/commit/79d882d094c11b35a1cb42958a89fc63561e43ab))
+* **example:** the shop draws its own basket, and declines to invent a total ([a5c459e](https://github.com/ReventlessDev/reventless-core/commit/a5c459e7001fc5958e138d8bc73390e69f49b89c))
+* **example:** the shop draws its own tiles, faces and captions ([641f9ee](https://github.com/ReventlessDev/reventless-core/commit/641f9ee5d627c186e8c7ab60a937f31978af6154))
+
+### BREAKING CHANGES
+
+* an `int` field is now `Int` in the generated SDL and
+`"integer"` in JSON Schema, where it was `Float`/`"number"`. A client
+declaring `$retryCount: Float!` against one of these fields must move to
+`Int!`.
+
+
+
 # 1.0.0-alpha.250 (2026-09-04)
 
 ### Features
