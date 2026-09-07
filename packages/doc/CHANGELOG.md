@@ -718,6 +718,18 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-09-07
+- docs: the undeclared slots path answers 200, not 404 ([7134c55](https://github.com/ReventlessDev/reventless-core/commit/7134c55df8262f429495cbae31bde17d0bcf0d79))
+
+### 2026-09-06
+- feat(ppx)!: a spec that says nothing is not a spec claiming everything ([5b18cc9](https://github.com/ReventlessDev/reventless-core/commit/5b18cc9c8c6344f6813acd1f6498f5a9c0a0b130))
+- feat(dcb)!: a record inside an array is still a reference and a key ([bcb9b13](https://github.com/ReventlessDev/reventless-core/commit/bcb9b13958323d8319d7fcf25c055800e84150f3))
+- refactor(traits)!: consumed facts are grouped, not suffixed ([a844b7a](https://github.com/ReventlessDev/reventless-core/commit/a844b7a99349ca20633d68cf32b95cb7677d02a4))
+- feat(example): the shop draws its own tiles, faces and captions ([641f9ee](https://github.com/ReventlessDev/reventless-core/commit/641f9ee5d627c186e8c7ab60a937f31978af6154))
+
+### 2026-09-05
+- fix(ui): a declared slot module is named, not only written ([de000ba](https://github.com/ReventlessDev/reventless-core/commit/de000baf428249f64cfc719ed52df3760198b82a))
+- feat(ui): a deployment can name the module that draws its own surfaces ([b43828c](https://github.com/ReventlessDev/reventless-core/commit/b43828ca50cddd31f7aefae016669fcb7c059838))
 ### 2026-09-03
 - docs: four words that all sound alike, told apart in the glossary ([c196527](https://github.com/ReventlessDev/reventless-core/commit/c196527c395426cb9130be22d59873c8c774bcbd))
 - docs: the capabilities a plugin can declare are written down, and the list says it will grow ([764e7a2](https://github.com/ReventlessDev/reventless-core/commit/764e7a27029105d3c5c164fa19cdf686d393a68e))
