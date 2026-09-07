@@ -34,19 +34,25 @@ function silenceWindowSeconds() {
 let topicName = "ReventlessAlarms";
 
 let resolvedTopic = {
-  contents: undefined
+  contents: "Unresolved"
 };
 
 function ensureTopicArn() {
   let resolved = resolvedTopic.contents;
-  if (resolved !== undefined) {
+  if (typeof resolved === "object") {
     return resolved;
+  }
+  if (resolved !== "Unresolved") {
+    return "NoTopic";
   }
   let match = configured("alarmTopicArn");
   let match$1 = configured("alarmEmail");
   let resolved$1;
   if (match !== undefined) {
-    resolved$1 = Pulumi.output(match);
+    resolved$1 = {
+      TAG: "Topic",
+      _0: Pulumi.output(match)
+    };
   } else if (match$1 !== undefined) {
     let topic = new (Aws.sns.Topic)(topicName, {
       tags: AWS_Tags$ReventlessAws.make(topicName, "Plugin", {
@@ -59,9 +65,12 @@ function ensureTopicArn() {
       topic: topic.arn,
       protocol: "email"
     }, undefined);
-    resolved$1 = topic.arn;
+    resolved$1 = {
+      TAG: "Topic",
+      _0: topic.arn
+    };
   } else {
-    resolved$1 = undefined;
+    resolved$1 = "NoTopic";
   }
   resolvedTopic.contents = resolved$1;
   return resolved$1;
@@ -70,8 +79,10 @@ function ensureTopicArn() {
 function alarmFor(spec, kind, name, component, plugin, platform, logLocator, topicArn) {
   let resourceName = Util_AlarmSpec$ReventlessAws.resourceName(kind, name, plugin, spec.suffix);
   let actions = [topicArn];
-  let describe = logs => Util_AlarmSpec$ReventlessAws.description(kind, name, plugin, platform, spec, logs);
-  let alarmDescription = logLocator !== undefined ? Output$Pulumi.map(logLocator, g => describe(g)) : describe(undefined);
+  let alarmDescription = Output$Pulumi.map(logLocator, g => {
+    let logs = g === "" ? undefined : g;
+    return Util_AlarmSpec$ReventlessAws.description(kind, name, plugin, platform, spec, logs);
+  });
   return new (Aws.cloudwatch.MetricAlarm)(resourceName, {
     comparisonOperator: spec.comparisonOperator,
     evaluationPeriods: spec.evaluationPeriods,
@@ -96,13 +107,15 @@ function alarmFor(spec, kind, name, component, plugin, platform, logLocator, top
 }
 
 function onProvisioned(kind, name, component, plugin, platform, logLocator) {
+  let logLocator$1 = logLocator !== undefined ? logLocator : Pulumi.output("");
   let topicArn = ensureTopicArn();
-  if (topicArn !== undefined) {
-    Util_AlarmSpec$ReventlessAws.forKind(kind, silenceWindowSeconds()).forEach(spec => {
-      alarmFor(spec, kind, name, component, plugin, platform, logLocator, topicArn);
-    });
+  if (typeof topicArn !== "object") {
     return;
   }
+  let topicArn$1 = topicArn._0;
+  Util_AlarmSpec$ReventlessAws.forKind(kind, silenceWindowSeconds()).forEach(spec => {
+    alarmFor(spec, kind, name, component, plugin, platform, logLocator$1, topicArn$1);
+  });
 }
 
 let Backend = {

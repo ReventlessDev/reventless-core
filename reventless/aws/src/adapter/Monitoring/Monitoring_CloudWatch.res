@@ -51,19 +51,30 @@ let silenceWindowSeconds = () =>
 
 let topicName = "ReventlessAlarms"
 
+// The memo's three states, spelled as a variant rather than an option: an
+// `option<Pulumi.Output.t<_>>` is banned repo-wide because an Output is a Proxy
+// that answers ReScript's nested-option probe, so one generic combinator on it
+// silently yields None. "Not asked yet" and "asked, nothing configured" are
+// distinct here anyway, which an option cannot say.
+type topic =
+  | Unresolved
+  | NoTopic
+  | Topic(Pulumi.Output.t<string>)
+
 // Resolved once, on the first alarm — so a stack that provisions no units, or one
 // that has not configured an address, creates no topic either.
-let resolvedTopic: ref<option<Pulumi.Output.t<string>>> = ref(None)
+let resolvedTopic: ref<topic> = ref(Unresolved)
 
 // An ARN the stack already owns wins over creating one: an estate with somewhere
 // for alerts to go (a chat relay, a pager, one topic shared by several stacks)
 // should point at it rather than accumulate a topic per stack that nobody reads.
-let ensureTopicArn = (): option<Pulumi.Output.t<string>> =>
+let ensureTopicArn = (): topic =>
   switch resolvedTopic.contents {
-  | Some(_) as resolved => resolved
-  | None =>
+  | Topic(_) as resolved => resolved
+  | NoTopic => NoTopic
+  | Unresolved =>
     let resolved = switch (configuredTopicArn(), configuredEmail()) {
-    | (Some(arn), _) => Some(arn->Pulumi.Output.make)
+    | (Some(arn), _) => Topic(arn->Pulumi.Output.make)
     | (None, Some(email)) =>
       let topic = SNS.Topic.make(
         ~name=topicName,
@@ -85,8 +96,8 @@ let ensureTopicArn = (): option<Pulumi.Output.t<string>> =>
         },
         ~opts=None,
       )
-      Some(topic.arn)
-    | (None, None) => None
+      Topic(topic.arn)
+    | (None, None) => NoTopic
     }
     resolvedTopic := resolved
     resolved
@@ -99,7 +110,7 @@ let alarmFor = (
   ~component: ReventlessInfra.Adapter.resource,
   ~plugin: option<string>,
   ~platform: option<string>,
-  ~logLocator: option<Pulumi.Output.t<string>>,
+  ~logLocator: Pulumi.Output.t<string>,
   ~topicArn: Pulumi.Output.t<string>,
 ) => {
   let resourceName = Util_AlarmSpec.resourceName(~kind, ~name, ~plugin, ~suffix=spec.suffix)
@@ -108,13 +119,13 @@ let alarmFor = (
   // The description is the only field a state-change message carries, so it is
   // also where the log group goes — an alert names the unit and the metric and
   // never where to read what happened. `~logLocator` is an Output, so the whole
-  // description resolves late; a unit with no logs of its own keeps a plain one.
+  // description resolves late; `""` is a unit with no logs of its own.
   let describe = logs =>
     Util_AlarmSpec.description(~kind, ~name, ~plugin, ~platform, ~spec, ~logs)
-  let alarmDescription = switch logLocator {
-  | Some(locator) => locator->Pulumi.Output.map(g => describe(Some(g)))->Pulumi.Output.asInput
-  | None => describe(None)->Pulumi.Input.make
-  }
+  let alarmDescription =
+    logLocator
+    ->Pulumi.Output.map(g => describe(g == "" ? None : Some(g)))
+    ->Pulumi.Output.asInput
 
   Cloudwatch.MetricAlarm.make(
     ~name=resourceName,
@@ -151,10 +162,16 @@ let alarmFor = (
 }
 
 module Backend: M.Backend = {
-  let onProvisioned = (~kind, ~name, ~component, ~plugin, ~platform, ~logLocator) =>
+  let onProvisioned = (~kind, ~name, ~component, ~plugin, ~platform, ~logLocator) => {
+    // The seam hands the log address as an option; collapse it here, at the one
+    // boundary that has to, so no `option<Pulumi.Output.t<_>>` travels further.
+    let logLocator = switch logLocator {
+    | Some(locator) => locator
+    | None => ""->Pulumi.Output.make
+    }
     switch ensureTopicArn() {
-    | None => ()
-    | Some(topicArn) =>
+    | Unresolved | NoTopic => ()
+    | Topic(topicArn) =>
       Util_AlarmSpec.forKind(~kind, ~silenceWindowSeconds=silenceWindowSeconds())->Array.forEach(
         spec => {
           let _alarm = alarmFor(
@@ -170,6 +187,7 @@ module Backend: M.Backend = {
         },
       )
     }
+  }
 }
 
 /** Register this backend. Call it before building the platform — announcements
