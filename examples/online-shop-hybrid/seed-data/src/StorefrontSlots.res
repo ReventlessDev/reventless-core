@@ -90,6 +90,19 @@ let styles = `
   .sf-step.is-current .sf-step-dot { box-shadow: 0 0 0 3px rgba(27,27,31,.18); }
   .sf-step.is-current .sf-step-label { color: #1b1b1f; font-weight: 600; }
 
+  /* A row that ended rather than arrived. Drawn on the line the strip would have
+     used, so a list keeps one rhythm whether a row is on its way or done with —
+     and as a chip rather than a stop, because a cancelled order is not standing
+     anywhere on the path. It sits in a column flex item, so an inline-flex chip
+     stretches the whole width of the row unless it says otherwise, and a pill as
+     wide as the strip it replaced reads as a bar rather than as a state. */
+  .sf-outcome { display: inline-flex; align-items: center; gap: .4rem;
+    align-self: flex-start; width: fit-content;
+    padding: .15rem .55rem; border-radius: 999px; background: #ececef;
+    color: #4a4a52; font-size: .75rem; }
+  .sf-outcome::before { content: ""; width: .4rem; height: .4rem;
+    border-radius: 50%; background: #9a9aa2; }
+
   /* "This row has no picture", which is a different statement from a broken
      image — and the one a half-entered catalogue should be making. Dashed so it
      reads as a placeholder rather than as content. */
@@ -302,39 +315,46 @@ let register = (arg: Slots.registerArg): unit => {
   // An unrecognised `state` reads as upcoming rather than throwing. The strip
   // is a picture of where a row has got to, and a picture that renders one node
   // plainly is better than a region that renders nothing.
-  arg.slots.row(Slots.RowSlot.trackerSteps, payload =>
-    switch payload.steps {
-    // A row that LEFT the path has an outcome rather than a position on one,
-    // and so does a view declaring no ordered lifecycle. Neither has a strip to
-    // draw; the summary beside it still says what happened.
-    | None | Some([]) => React.null
-    | Some(steps) =>
-      h(
-        "ol",
-        {"className": "sf-steps"},
-        steps->Array.map(step => {
-          let current = step.state == "current"
-          let stateClass = switch step.state {
-          | "done" => " is-done"
-          | "current" => " is-current"
-          | _ => " is-upcoming"
-          }
-          h(
-            "li",
-            {
-              "className": "sf-step" ++ stateClass,
-              "key": step.key,
-              "aria-current": current ? "step" : "false",
-            },
-            [
-              h("span", {"className": "sf-step-dot"}, []),
-              h("span", {"className": "sf-step-label"}, [React.string(step.label)]),
-            ],
-          )
-        }),
-      )
-    }
-  )
+  // arg.slots.row(Slots.RowSlot.trackerSteps, payload =>
+  //   switch payload.steps {
+  //   // A row that LEFT the path has an outcome rather than a position on one, and
+  //   // so does a view declaring no ordered lifecycle. Neither has a strip to draw
+  //   // — but rendering nothing leaves a cancelled order looking like one still on
+  //   // its way with the picture missing, so its own state is drawn as the end of
+  //   // the line instead. Read off the row, so this still names no state: what a
+  //   // row ended in is the row's to say.
+  //   | None | Some([]) =>
+  //     switch Slots.Row.text(payload.row, "lifecycle") {
+  //     | None => React.null
+  //     | Some(state) => h("span", {"className": "sf-outcome"}, [React.string(state)])
+  //     }
+  //   | Some(steps) =>
+  //     h(
+  //       "ol",
+  //       {"className": "sf-steps"},
+  //       steps->Array.map(step => {
+  //         let current = step.state == "current"
+  //         let stateClass = switch step.state {
+  //         | "done" => " is-done"
+  //         | "current" => " is-current"
+  //         | _ => " is-upcoming"
+  //         }
+  //         h(
+  //           "li",
+  //           {
+  //             "className": "sf-step" ++ stateClass,
+  //             "key": step.key,
+  //             "aria-current": current ? "step" : "false",
+  //           },
+  //           [
+  //             h("span", {"className": "sf-step-dot"}, []),
+  //             h("span", {"className": "sf-step-label"}, [React.string(step.label)]),
+  //           ],
+  //         )
+  //       }),
+  //     )
+  //   }
+  // )
 
   // The basket: the rows a shopper picked out of the product grid, and the one
   // command that takes the lot.

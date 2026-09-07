@@ -48,6 +48,19 @@ let styles = `
   .sf-step.is-current .sf-step-dot { box-shadow: 0 0 0 3px rgba(27,27,31,.18); }
   .sf-step.is-current .sf-step-label { color: #1b1b1f; font-weight: 600; }
 
+  /* A row that ended rather than arrived. Drawn on the line the strip would have
+     used, so a list keeps one rhythm whether a row is on its way or done with —
+     and as a chip rather than a stop, because a cancelled order is not standing
+     anywhere on the path. It sits in a column flex item, so an inline-flex chip
+     stretches the whole width of the row unless it says otherwise, and a pill as
+     wide as the strip it replaced reads as a bar rather than as a state. */
+  .sf-outcome { display: inline-flex; align-items: center; gap: .4rem;
+    align-self: flex-start; width: fit-content;
+    padding: .15rem .55rem; border-radius: 999px; background: #ececef;
+    color: #4a4a52; font-size: .75rem; }
+  .sf-outcome::before { content: ""; width: .4rem; height: .4rem;
+    border-radius: 50%; background: #9a9aa2; }
+
   /* "This row has no picture", which is a different statement from a broken
      image — and the one a half-entered catalogue should be making. Dashed so it
      reads as a placeholder rather than as content. */
@@ -183,42 +196,6 @@ function register(arg) {
     return h("div", {
       className: "sf-media"
     }, primary.concat(more));
-  });
-  arg.slots.row(ReventlessSlots.RowSlot.trackerSteps, payload => {
-    let steps = payload.steps;
-    if (steps !== undefined && steps.length !== 0) {
-      return h("ol", {
-        className: "sf-steps"
-      }, steps.map(step => {
-        let current = step.state === "current";
-        let match = step.state;
-        let stateClass;
-        switch (match) {
-          case "current" :
-            stateClass = " is-current";
-            break;
-          case "done" :
-            stateClass = " is-done";
-            break;
-          default:
-            stateClass = " is-upcoming";
-        }
-        return h("li", {
-          className: "sf-step" + stateClass,
-          key: step.key,
-          "aria-current": current ? "step" : "false"
-        }, [
-          h("span", {
-            className: "sf-step-dot"
-          }, []),
-          h("span", {
-            className: "sf-step-label"
-          }, [step.label])
-        ]);
-      }));
-    } else {
-      return null;
-    }
   });
   arg.slots.view(ReventlessSlots.ViewSlot.listSelection, payload => {
     let picked = Stdlib_Option.getOr(payload.picked, []);
