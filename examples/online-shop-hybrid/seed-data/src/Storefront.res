@@ -31,10 +31,26 @@ let manifest: ReventlessInfra.Platform.bakedManifest = {
     // row is the caller's own — the kind × channel matrix they manage, and the
     // record of what was sent to them — and `Subscribe` / `Unsubscribe` are
     // commands a person aims at themselves.
+    // `ShipOrder` and `ReopenOrder` are here for the EDGE each declares, not for
+    // the button. A shopper runs neither — one is authorized to Admin and
+    // Fulfilment, the other is `@noApi` — and the access filter drops what they
+    // may not run before any of it reaches a menu. What survives is the
+    // transitions, which is what a customer's order page is drawn from: the path
+    // an order travels is `Placed → Shipped`, and a manifest carrying only the
+    // commands a shopper may click hands the tracker one edge, `Placed →
+    // Cancelled`, and lets it read as the journey. Curating a surface must not
+    // curate the domain it is a picture of.
     {
       plugin: "Ordering",
       views: ["Orders", "NotificationSubscriptions", "NotificationDeliveries"],
-      commands: ["PlaceOrder", "CancelOrder", "Subscribe", "Unsubscribe"],
+      commands: [
+        "PlaceOrder",
+        "CancelOrder",
+        "ShipOrder",
+        "ReopenOrder",
+        "Subscribe",
+        "Unsubscribe",
+      ],
       derived: [],
     },
   ],
@@ -81,7 +97,11 @@ let manifest: ReventlessInfra.Platform.bakedManifest = {
         {
           plugin: "Ordering",
           views: ["Orders", "NotificationSubscriptions", "NotificationDeliveries"],
-          commands: ["ShipOrder", "CancelOrder", "Subscribe", "Unsubscribe"],
+          // `ReopenOrder` for the diagram below rather than for the board: it is
+          // the way back out of `Cancelled` and `@noApi`, so it is drawn as a
+          // trigger and clicked by nobody. Leaving it out is what makes a
+          // lifecycle picture end at a state the platform moves rows out of.
+          commands: ["ShipOrder", "CancelOrder", "ReopenOrder", "Subscribe", "Unsubscribe"],
           // The board this role works: `Orders` carries a status and the
           // commands that move it, so the lifecycle diagram is a picture of the
           // job, and its delivery windows make a calendar of the same rows.

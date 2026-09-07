@@ -22,6 +22,8 @@ let manifest_components = [
     commands: [
       "PlaceOrder",
       "CancelOrder",
+      "ShipOrder",
+      "ReopenOrder",
       "Subscribe",
       "Unsubscribe"
     ],
@@ -61,6 +63,7 @@ let manifest_journeys = [
         commands: [
           "ShipOrder",
           "CancelOrder",
+          "ReopenOrder",
           "Subscribe",
           "Unsubscribe"
         ],
