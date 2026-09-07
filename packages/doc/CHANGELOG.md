@@ -719,6 +719,8 @@ This file tracks changes to the documentation. Since the doc package is not vers
 ## Changes
 
 ### 2026-09-07
+- docs: a StateViewSlice denormalizes what its projection can maintain ([43847c2](https://github.com/ReventlessDev/reventless-core/commit/43847c22f4ca9f198af9adf7d193189bfaa29405))
+### 2026-09-07
 - docs: the undeclared slots path answers 200, not 404 ([7134c55](https://github.com/ReventlessDev/reventless-core/commit/7134c55df8262f429495cbae31bde17d0bcf0d79))
 
 ### 2026-09-06
