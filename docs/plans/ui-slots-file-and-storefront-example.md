@@ -5,8 +5,9 @@
 **Status.** Written and landed in full; **two of §7's three verifications are
 outstanding, and one of them is now known to be blocked rather than merely
 unrun.** Both platforms take the declaration, serve the module and name it; the
-hybrid example declares one and registers five renderers; the guides carry the
-vocabulary. What has not happened is a deploy carrying any of it (§7) and a
+hybrid example declares one and registers **six** renderers — every region the
+shipped modes offer that this shop has something to say about; the guides carry
+the vocabulary. What has not happened is a deploy carrying any of it (§7) and a
 browser session switching role against it (§7).
 
 §6's "`slots` per view" turned out not to exist and should not: a region is
@@ -30,27 +31,40 @@ watched and named on both roots. Verified against the running platform: the boot
 writes `config.json` with `uiSlotsUrl: "/ui-slots.js"`, serves the module
 byte-identical to its source, and re-serves it on save.
 
-**Three things the example wants to draw are not drawn, all for the same
-reason — the payload does not carry what drawing them would need:**
+**Three things the example wanted to draw could not be, all for the same
+reason — the payload did not carry what drawing them would need. All three are
+now drawn**, because the contract grew the fields rather than the example
+growing a workaround (`@reventlessdev/reventless-ui-slots@3.0.0-alpha.6`):
 
 - **The tracker's step strip.** §5 asks for "a tracker step label", but a
   tracker's steps come from the lifecycle's *declared transitions* and the row
-  payload does not carry them. Registering `tracker.steps` would mean writing the
-  path out as a list in the renderer, which drifts the day a transition is added
-  and is the one thing the tracker exists to avoid. The example registers
-  `tracker.summary` instead and says why in place.
-- **The rest of a product's image set.** `detail.media` draws only the resolved
+  payload did not carry them. Registering `tracker.steps` would have meant
+  writing the path out as a list in the renderer, which drifts the day a
+  transition is added and is the one thing the tracker exists to avoid.
+  **`rowPayload.steps` now carries the path already classified** as
+  `done`/`current`/`upcoming`, so the strip is drawn without naming a single
+  state and a state added to the domain appears on its own. Absent for a row
+  that *left* the path — it has an outcome, not a position on one — where the
+  renderer draws nothing and the summary beside it still says what happened.
+- **The rest of a product's image set.** `detail.media` drew only the resolved
   primary. The other members hold storage *refs*, and rebasing one against the
   deployment's asset origins is the producer's job — the same reaching-past-the-
-  payload the seam forbids.
+  payload the seam forbids. **`rowPayload.images` now arrives rebased**, every
+  member, so the column draws the set. The *captions* are still the row's, since
+  only the pictures are resolved: they are paired by position and only when the
+  two line up, because a filtered set would otherwise caption each picture with
+  its neighbour's words, which reads as correct and is not.
 - **A "Clear" on the basket.** The shipped selection bar is handed a way to empty
-  the selection; `ViewSlot.listSelection`'s payload is not. Rows can still be
-  unpicked one at a time from their checkboxes, so nothing is unreachable, and a
-  button that cannot work would be worse than none.
+  the selection; `ViewSlot.listSelection`'s payload was not. **`viewPayload.clear`
+  now carries one**, and the button is drawn only where it arrives — a region
+  offering no picking is handed none, and a button that cannot work is still
+  worse than none.
 
-All three are the §5 rule ("keep the example honest about what it does not
-have") applied to cases §5 did not anticipate. Each wants a payload change,
-which is a slot-contract change, not a workaround.
+All three were the §5 rule ("keep the example honest about what it does not
+have") applied to cases §5 did not anticipate, and the record of them is worth
+keeping: each was a payload gap that the example declining to draw made visible.
+An example that had faked any of the three would have produced a renderer that
+worked until a transition, an asset origin or a selection changed under it.
 
 This is the deliberate shape of the seam, not an accident of ordering: the file
 is served whether or not anything imports it, so the deployment half can land,
@@ -202,11 +216,13 @@ change and run, which is the whole reason the seam is public rather than private
   published `@reventlessdev/reventless-ui-slots` contract, with
   `scripts/bundle-slot-modules.mjs` producing the file the declaration names.
 
-  **What it registers, which is five rather than the four listed above.**
+  **What it registers, which is six rather than the four listed above.**
   `RowSlot.galleryTile` (the category tile), `RowSlot.cardsFace` (the card face,
   written against the *row* rather than against Products, so Orders in Cards
-  mode gets something truthful), `RowSlot.detailMedia` (the primary picture and
-  its caption), `RowSlot.trackerSummary` (placed, and shipped once it has) and
+  mode gets something truthful), `RowSlot.detailMedia` (the picture set,
+  captioned where the captions line up), `RowSlot.trackerSteps` (the progress
+  strip, drawn from the classified path so it names no state),
+  `RowSlot.trackerSummary` (placed, and shipped once it has) and
   `ViewSlot.listSelection` — the basket bar, which this section did not
   anticipate and which turned out to be the renderer that best earns the seam: a
   shopper picks rows out of the product grid and one command takes the lot,
@@ -314,8 +330,12 @@ explicitly, because both are load-bearing and neither is guessable:
   **Partly done, and one sentence above needs correcting.** Verified against the
   running platform: the module is served byte-identical, `config.json` names it,
   and an edit re-serves in about a second with no restart. The module was also
-  driven directly — all five renderers draw, and none throws on a row with every
-  optional field missing.
+  driven directly — all six renderers draw, and none throws on a row with every
+  optional field missing. The three regions that grew payload fields are driven
+  at their edges too: a row that left the lifecycle path, an image set whose
+  captions do not line up with its pictures, a set with no pictures at all, a
+  selection region handed no `clear`, and a step whose `state` is a string this
+  renderer does not know.
 
   What is *not* verified is the part needing a browser and a login: switching
   role and watching the views redraw.

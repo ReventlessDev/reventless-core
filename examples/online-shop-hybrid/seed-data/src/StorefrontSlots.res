@@ -8,9 +8,10 @@ region. Every slot is optional: register none and the mode draws its own.
 
 Every renderer here obeys the one rule that makes the seam safe: **it draws what
 it was handed and reads nothing else.** No queries, no command names, no routes.
-`openRow` and `actions` arrive already resolved against this deployment's
-declarations, the caller's permissions and the row's lifecycle — a renderer that
-re-derived any of them would get them wrong the first time a rule changed.
+`openRow`, `actions`, the pictures and the lifecycle steps all arrive already
+resolved against this deployment's declarations, the caller's permissions and
+the row's own state — a renderer that re-derived any of them would get them
+wrong the first time a rule, an asset origin or a transition changed.
 
 Which views these draw is not decided here. A region is offered by a *mode*, so
 `ui-hints.json` deciding a view opens as a gallery is what puts a tile on the
@@ -66,6 +67,28 @@ let styles = `
   .sf-media-img { width: 100%; border-radius: 12px; object-fit: cover;
     aspect-ratio: 1 / 1; }
   .sf-media figcaption { font-size: .8rem; opacity: .7; }
+  .sf-media-more { display: flex; gap: .5rem; flex-wrap: wrap; }
+  .sf-media-thumb { width: 4.5rem; height: 4.5rem; object-fit: cover;
+    border-radius: 8px; }
+
+  /* The strip runs left to right and the connector is drawn on each node after
+     the first, reaching back to the one before it — so it colours with the node
+     it leads into and no separate element has to be kept in step. */
+  .sf-steps { display: flex; align-items: flex-start; gap: 0;
+    list-style: none; margin: 0; padding: 0; }
+  .sf-step { position: relative; flex: 1 1 0; min-width: 0; display: flex;
+    flex-direction: column; align-items: center; gap: .35rem; }
+  .sf-step + .sf-step::before { content: ""; position: absolute; z-index: 0;
+    top: .45rem; right: 50%; left: -50%; height: 2px; background: #d6d6dc; }
+  .sf-step-dot { position: relative; z-index: 1; box-sizing: border-box;
+    width: 1rem; height: 1rem; border-radius: 50%; background: #d6d6dc;
+    border: 2px solid #fff; }
+  .sf-step-label { font-size: .75rem; text-align: center; color: #6b6b76;
+    overflow-wrap: anywhere; }
+  .sf-step.is-done .sf-step-dot, .sf-step.is-current .sf-step-dot { background: #1b1b1f; }
+  .sf-step.is-done::before, .sf-step.is-current::before { background: #1b1b1f; }
+  .sf-step.is-current .sf-step-dot { box-shadow: 0 0 0 3px rgba(27,27,31,.18); }
+  .sf-step.is-current .sf-step-label { color: #1b1b1f; font-weight: 600; }
 
   /* "This row has no picture", which is a different statement from a broken
      image — and the one a half-entered catalogue should be making. Dashed so it
@@ -90,6 +113,10 @@ let styles = `
     white-space: nowrap; }
   .sf-basket-go { border: 0; border-radius: 999px; padding: .4rem 1.1rem;
     background: #fff; color: #1b1b1f; font-weight: 600; cursor: pointer; }
+  .sf-basket-clear { border: 0; background: transparent; color: inherit;
+    font: inherit; opacity: .7; text-decoration: underline; cursor: pointer;
+    padding: .4rem .5rem; white-space: nowrap; }
+  .sf-basket-clear:hover { opacity: 1; }
 `
 
 // ── The renderers ───────────────────────────────────────────────────────────
@@ -189,40 +216,126 @@ let register = (arg: Slots.registerArg): unit => {
     )
   })
 
-  // The media column of a product's detail page.
+  // The media column of a product's detail page: the whole set, primary first.
   //
-  // **Only the primary picture, and that is not an oversight.** The row carries
-  // the whole set in `productImages`, but each member holds a storage *ref* —
-  // not a URL. Turning one into something an `<img>` can load means rebasing it
-  // against this deployment's asset origins, which is the producer's job and
-  // exactly the kind of reaching-past-the-payload that makes a renderer break
-  // the first time the origins change. `image` is the one the view already
-  // resolved, so it is the one that can honestly be drawn.
+  // Every member arrives already rebased for this deployment's asset origins,
+  // which is what makes drawing them a renderer's business at all — the row's
+  // own `productImages` hold storage *refs*, and turning one into something an
+  // `<img>` can load is the producer's job.
   //
-  // Drawing the rest needs the payload to carry them resolved. That is a change
-  // to the slot contract, not something to work around here.
+  // The captions are still the row's, because only the pictures are resolved.
+  // They are paired by position and only when the two line up: a set whose
+  // members were filtered on the way out would otherwise caption each picture
+  // with its neighbour's words, which reads as correct and is not.
   arg.slots.row(Slots.RowSlot.detailMedia, payload => {
-    let caption = switch Slots.Row.firstAttachment(payload.row, "productImages") {
-    | Some((_altText, Some(caption))) => [h("figcaption", Object.make(), [React.string(caption)])]
-    | Some(_) | None => []
+    let images = switch payload.images {
+    | Some(images) if Array.length(images) > 0 => images
+    | _ => payload.image->Option.mapOr([], image => [image])
     }
-    h(
-      "div",
-      {"className": "sf-media"},
-      [picture(~className="sf-media-img", payload)]->Array.concat(caption),
-    )
+    let members = Slots.Row.array(payload.row, "productImages")->Option.getOr([])
+    let captionAt = index =>
+      Array.length(members) == Array.length(images)
+        ? members
+          ->Array.get(index)
+          ->Option.flatMap(JSON.Decode.object)
+          ->Option.flatMap(member => member->Dict.get("caption"))
+          ->Option.flatMap(JSON.Decode.string)
+          ->Option.flatMap(caption => caption == "" ? None : Some(caption))
+        : None
+
+    switch images {
+    // No picture at all still says so, rather than leaving the column blank.
+    | [] => h("div", {"className": "sf-media"}, [picture(~className="sf-media-img", payload)])
+    | _ =>
+      let first = images->Array.getUnsafe(0)
+      let primary = [
+        h(
+          "figure",
+          Object.make(),
+          [
+            h("img", {"className": "sf-media-img", "src": first.src, "alt": first.alt}, []),
+          ]->Array.concat(
+            switch captionAt(0) {
+            | Some(caption) => [h("figcaption", Object.make(), [React.string(caption)])]
+            | None => []
+            },
+          ),
+        ),
+      ]
+      // The rest as thumbnails. A caption becomes the tooltip rather than a
+      // second line — at this size the words would be wider than the picture.
+      let rest = images->Array.slice(~start=1, ~end=Array.length(images))
+      let more = Array.length(rest) == 0
+        ? []
+        : [
+            h(
+              "div",
+              {"className": "sf-media-more"},
+              rest->Array.mapWithIndex((image, index) =>
+                h(
+                  "img",
+                  {
+                    "className": "sf-media-thumb",
+                    "src": image.src,
+                    "alt": image.alt,
+                    "key": image.src,
+                    "title": captionAt(index + 1)->Option.getOr(image.alt),
+                  },
+                  [],
+                )
+              ),
+            ),
+          ]
+      h("div", {"className": "sf-media"}, primary->Array.concat(more))
+    }
   })
 
-  // The line beside an order's name on the tracker: when it was placed, and when
-  // it shipped once it has.
+  // An order's progress along its own lifecycle.
   //
-  // **`trackerSteps` is deliberately not registered**, though it is the slot this
-  // file most obviously wants. The strip's steps come from the lifecycle's
-  // *declared transitions* — the same graph the Lifecycles page reads — and the
-  // payload does not carry them. Drawing the strip here would mean writing the
-  // path out as a list, which drifts silently the day a transition is added and
-  // is the one thing the tracker exists to avoid. The mode already draws it
-  // correctly; leaving it alone is the point of a slot.
+  // The steps arrive already ordered and already classified against where this
+  // row stands, which is the whole reason this can be drawn: the order comes
+  // from the commands' declared transitions, so a state added to the domain
+  // appears here on its own. Writing the path out as a list would have drifted
+  // the day someone added one, and that is the one thing a tracker exists not
+  // to do — so nothing below names a state.
+  //
+  // An unrecognised `state` reads as upcoming rather than throwing. The strip
+  // is a picture of where a row has got to, and a picture that renders one node
+  // plainly is better than a region that renders nothing.
+  arg.slots.row(Slots.RowSlot.trackerSteps, payload =>
+    switch payload.steps {
+    // A row that LEFT the path has an outcome rather than a position on one,
+    // and so does a view declaring no ordered lifecycle. Neither has a strip to
+    // draw; the summary beside it still says what happened.
+    | None | Some([]) => React.null
+    | Some(steps) =>
+      h(
+        "ol",
+        {"className": "sf-steps"},
+        steps->Array.map(step => {
+          let current = step.state == "current"
+          let stateClass = switch step.state {
+          | "done" => " is-done"
+          | "current" => " is-current"
+          | _ => " is-upcoming"
+          }
+          h(
+            "li",
+            {
+              "className": "sf-step" ++ stateClass,
+              "key": step.key,
+              "aria-current": current ? "step" : "false",
+            },
+            [
+              h("span", {"className": "sf-step-dot"}, []),
+              h("span", {"className": "sf-step-label"}, [React.string(step.label)]),
+            ],
+          )
+        }),
+      )
+    }
+  )
+
   // The basket: the rows a shopper picked out of the product grid, and the one
   // command that takes the lot.
   //
@@ -231,11 +344,8 @@ let register = (arg: Slots.registerArg): unit => {
   // picked on page 1 is gone from `rows` by page 3, and naming what is in the
   // basket is the whole of this region's job.
   //
-  // **No "Clear".** The payload carries no way to empty the selection — the
-  // shipped bar is handed one, a slot is not. Rows can still be unpicked one at
-  // a time from their checkboxes, so nothing is unreachable; drawing a button
-  // that cannot work would be worse. Like the tracker strip below, this wants a
-  // payload change rather than a workaround here.
+  // "Clear" is drawn only where the payload carries one. A region offering no
+  // picking is handed none, and a button that cannot work is worse than none.
   arg.slots.view(Slots.ViewSlot.listSelection, payload => {
     let picked = payload.picked->Option.getOr([])
     let prices = picked->Array.filterMap(p => Slots.Row.money(p.row, "price"))
@@ -283,6 +393,14 @@ let register = (arg: Slots.registerArg): unit => {
         ),
       ]
       ->Array.concat(total)
+      ->Array.concat(
+        switch payload.clear {
+        | Some(clear) => [
+            h("button", {"className": "sf-basket-clear", "onClick": clear}, [React.string("Clear")]),
+          ]
+        | None => []
+        },
+      )
       ->Array.concat([
         h(
           "button",
@@ -293,6 +411,9 @@ let register = (arg: Slots.registerArg): unit => {
     )
   })
 
+  // The line beside an order's name on the tracker: when it was placed, and when
+  // it shipped once it has. The dates the strip above cannot carry, since a step
+  // says which state a row reached and not when it got there.
   arg.slots.row(Slots.RowSlot.trackerSummary, payload => {
     let placed = Slots.Row.text(payload.row, "placedAt")->Option.mapOr([], at => ["Placed " ++ Slots.Format.isoDay(at)])
     let shipped = Slots.Row.text(payload.row, "shippedAt")->Option.mapOr([], at => ["shipped " ++ Slots.Format.isoDay(at)])
