@@ -96,6 +96,7 @@ let makeBinding = (
   ~retiredField=None,
   ~retiredValues=None,
   ~namedWhenRetired=false,
+  ~imageSource=None,
   (),
 ): PgQueryResolver_Lambda.binding => {
   ops,
@@ -113,6 +114,7 @@ let makeBinding = (
   retiredField,
   retiredValues,
   namedWhenRetired,
+  imageSource,
 }
 
 let mkPayload = (
@@ -697,6 +699,7 @@ let geoBinding = (): PgQueryResolver_Lambda.binding => {
   retiredField: None,
   retiredValues: None,
   namedWhenRetired: false,
+  imageSource: None,
 }
 
 // The member type of the first row a door answers with, whatever shape it took.

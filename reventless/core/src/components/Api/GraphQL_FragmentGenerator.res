@@ -594,8 +594,18 @@ let deriveByIdsQueryField = (
 // is not whether the door exists but whether a *retired* row comes through it —
 // without it this is a cheap label read that narrows exactly as every other door
 // does.
+// `image` travels beside `label` for the reason the label does: a card or a tile
+// drawing a reference wants the row's picture as well as its name, and the
+// alternative is a second query per grid asking the referenced view for one
+// field. It stays inside the narrowness above — a ref path is what a reference
+// already publishes, and a caller still cannot ask for anything else — and it is
+// `null` for the views (most of them) that declare no picture.
+//
+// Emitted unconditionally for the same reason the door itself is: a field that
+// appears once a view adopts an image would make adopting one a breaking schema
+// change for every client that had learned this type's shape.
 let deriveRefTypeSdl = (~returnTypeName: string): string =>
-  `type ${returnTypeName}Ref {\n  id: ID!\n  label: String!\n  retired: Boolean!\n  retiredState: String\n}`
+  `type ${returnTypeName}Ref {\n  id: ID!\n  label: String!\n  image: String\n  retired: Boolean!\n  retiredState: String\n}`
 
 // `retiredState` is null in two cases that do not need telling apart by a
 // consumer: a live row, and a boolean-form retirement, where the field is the

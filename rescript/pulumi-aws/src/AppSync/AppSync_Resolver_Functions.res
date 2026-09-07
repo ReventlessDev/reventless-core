@@ -1529,6 +1529,11 @@ let refsByIds = (
   ~retiredField: option<string>,
   ~retiredValues: option<array<string>>,
   ~namedWhenRetired: bool,
+  // The picture a reference shows this row by, already read off the state schema
+  // by `Reventless.RowImage` — this template only bakes in the expression it
+  // hands over. `None` for a view that declares none, which emits a literal
+  // `null`, exactly what the nullable field promises.
+  ~imageExpr: option<string>=?,
   ~ownerField: option<string>=?,
   ~elevatedGroups: array<string>=[],
 ) => (tableName: string) => {
@@ -1584,6 +1589,7 @@ export function response(ctx) {
     .map(row => ({
       id: row.id,
       label: row['${labelField}'] ?? row.id,
+      image: ${imageExpr->Option.getOr("null")},
       retired: _retired(row),
       retiredState: ${stateExpr},
     }));

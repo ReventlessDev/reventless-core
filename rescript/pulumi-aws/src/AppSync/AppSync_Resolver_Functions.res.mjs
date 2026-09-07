@@ -1052,7 +1052,7 @@ export function response(ctx) {
   };
 }
 
-function refsByIds(labelField, retiredField, retiredValues, namedWhenRetired, ownerField, $staropt$star) {
+function refsByIds(labelField, retiredField, retiredValues, namedWhenRetired, imageExpr, ownerField, $staropt$star) {
   return tableName => {
     let elevatedGroups = $staropt$star !== undefined ? $staropt$star : [];
     let ownerGuard = ownerField !== undefined ? ownerGuardPreamble(ownerField, elevatedGroups) : "\n  const _owns = (row) => true;";
@@ -1095,6 +1095,7 @@ export function response(ctx) {
     .map(row => ({
       id: row.id,
       label: row['` + labelField + `'] ?? row.id,
+      image: ` + Stdlib_Option.getOr(imageExpr, "null") + `,
       retired: _retired(row),
       retiredState: ` + stateExpr + `,
     }));

@@ -10,6 +10,7 @@ import * as Stdlib_Nullable from "@rescript/runtime/lib/es6/Stdlib_Nullable.js";
 import * as Owner$Reventless from "@reventlessdev/reventless-spec/src/components/Owner.res.mjs";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
+import * as RowImage$Reventless from "@reventlessdev/reventless-spec/src/semantic/RowImage.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types/OwnerScope.res.mjs";
 import * as Api_Ids$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Ids.res.mjs";
@@ -106,6 +107,7 @@ function Make(Bus) {
       return Stdlib_Option.mapOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[field]), Stdlib_JSON.Decode.string), false, v => v === required);
     };
     let retiredSpecOf = () => Stdlib_Option.flatMap(Stdlib_Option.flatMap(Plugin_Helpers$ReventlessCore.stateSchemaRegistry[name], StateAnnotations$Reventless.getSpec), spec => spec.retired);
+    let imageSourceOf = () => Stdlib_Option.flatMap(Plugin_Helpers$ReventlessCore.stateSchemaRegistry[name], RowImage$Reventless.sourceFrom);
     let askedForRetired = args => Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["includeRetired"]), Stdlib_JSON.Decode.bool), false);
     let retiredDecision = (ctx, args) => OwnerScope$Reventless.decideRetired(extractIdentity(ctx), Stdlib_Option.map(retiredSpecOf(), r => r.field), Stdlib_Option.flatMap(retiredSpecOf(), r => r.values), askedForRetired(args), undefined);
     let retiredAllows = (ctx, args, item) => {
@@ -289,6 +291,9 @@ function Make(Bus) {
               return;
             }
             let label = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[labelField]), Stdlib_JSON.Decode.string), id);
+            let match$1 = imageSourceOf();
+            let match$2 = Stdlib_JSON.Decode.object(item);
+            let image = match$1 !== undefined && match$2 !== undefined ? RowImage$Reventless.refFrom(match$2, match$1) : undefined;
             return Object.fromEntries([
               [
                 "id",
@@ -297,6 +302,10 @@ function Make(Bus) {
               [
                 "label",
                 label
+              ],
+              [
+                "image",
+                Stdlib_Option.mapOr(image, null, prim => prim)
               ],
               [
                 "retired",

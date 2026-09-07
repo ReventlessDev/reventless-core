@@ -4,6 +4,7 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_String from "@rescript/runtime/lib/es6/Stdlib_String.js";
 import * as Owner$Reventless from "@reventlessdev/reventless-spec/src/components/Owner.res.mjs";
+import * as RowImage$Reventless from "@reventlessdev/reventless-spec/src/semantic/RowImage.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types/OwnerScope.res.mjs";
@@ -181,7 +182,7 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
     if (includeIdParam && subIdField === undefined) {
       let storage$1 = storageResource(undefined, name$1);
       let refsField = fieldNameForAll + "Refs";
-      resolverRefs = makeQueryResolver(Stdlib_String.capitalize(refsField), refsField, generateCode(storage$1, AppSync_Resolver_Functions$PulumiAws.refsByIds(labelField, retiredField, retiredValues, Stdlib_Option.mapOr(retiredSpec, false, r => r.namedWhenRetired), ownerField, elevatedGroups)));
+      resolverRefs = makeQueryResolver(Stdlib_String.capitalize(refsField), refsField, generateCode(storage$1, AppSync_Resolver_Functions$PulumiAws.refsByIds(labelField, retiredField, retiredValues, Stdlib_Option.mapOr(retiredSpec, false, r => r.namedWhenRetired), Stdlib_Option.map(Stdlib_Option.flatMap(stateSchemaOpt, RowImage$Reventless.sourceFrom), source => RowImage$Reventless.jsExpr("row", source)), ownerField, elevatedGroups)));
     } else {
       resolverRefs = undefined;
     }

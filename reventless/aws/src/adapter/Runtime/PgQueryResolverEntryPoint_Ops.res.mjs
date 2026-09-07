@@ -4,6 +4,7 @@ import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Owner$Reventless from "@reventlessdev/reventless-spec/src/components/Owner.res.mjs";
+import * as RowImage$Reventless from "@reventlessdev/reventless-spec/src/semantic/RowImage.res.mjs";
 import * as PgRuntime$ReventlessAws from "../Postgres/PgRuntime.res.mjs";
 import * as HandlerFactoryHelpersMjs from "./HandlerFactoryHelpers.mjs";
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
@@ -78,7 +79,8 @@ function registerBinding(pushdowns, pgConnection, entry, spec) {
     ownerField: Owner$Reventless.fieldNames(spec.stateSchema)[0],
     retiredField: Stdlib_Option.map(Stdlib_Option.flatMap(StateAnnotations$Reventless.getSpec(spec.stateSchema), a => a.retired), r => r.field),
     retiredValues: Stdlib_Option.flatMap(Stdlib_Option.flatMap(StateAnnotations$Reventless.getSpec(spec.stateSchema), a => a.retired), r => r.values),
-    namedWhenRetired: Stdlib_Option.mapOr(Stdlib_Option.flatMap(StateAnnotations$Reventless.getSpec(spec.stateSchema), a => a.retired), false, r => r.namedWhenRetired)
+    namedWhenRetired: Stdlib_Option.mapOr(Stdlib_Option.flatMap(StateAnnotations$Reventless.getSpec(spec.stateSchema), a => a.retired), false, r => r.namedWhenRetired),
+    imageSource: RowImage$Reventless.sourceFrom(spec.stateSchema)
   });
   HandlerFactoryHelpersMjs.log.debug("registered resolver binding for " + entry.readModelName, {
     comp: "PgQueryResolver"

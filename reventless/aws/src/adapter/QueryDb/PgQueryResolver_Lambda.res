@@ -103,6 +103,10 @@ type binding = {
       name — the `@namedWhenRetired` opt-in. Read only by the reference door;
       every other door narrows as it always did. */
   namedWhenRetired: bool,
+  /** The field a reference shows this row's picture from, derived from the same
+      schema as `capability` by `Reventless.RowImage`. `None` for a view that
+      declares no picture, which is most of them. */
+  imageSource: option<Reventless.RowImage.source>,
 }
 
 // -- arg helpers -------------------------------------------------------------
@@ -308,6 +312,15 @@ let dispatch = async (
                     ->Option.flatMap(JSON.Decode.string)
                     ->Option.getOr(id),
                   ),
+                ),
+                // The picture travels with the name, so a retired row that keeps
+                // one keeps the other.
+                (
+                  "image",
+                  switch (binding.imageSource, item->JSON.Decode.object) {
+                  | (Some(source), Some(d)) => d->Reventless.RowImage.refFrom(source)
+                  | _ => None
+                  }->Option.mapOr(JSON.Encode.null, JSON.Encode.string),
                 ),
                 ("retired", JSON.Encode.bool(retired)),
                 ("retiredState", state->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),

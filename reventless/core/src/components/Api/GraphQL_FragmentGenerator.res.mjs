@@ -455,7 +455,7 @@ function deriveByIdsQueryField(listFieldName, returnTypeName) {
 }
 
 function deriveRefTypeSdl(returnTypeName) {
-  return `type ` + returnTypeName + `Ref {\n  id: ID!\n  label: String!\n  retired: Boolean!\n  retiredState: String\n}`;
+  return `type ` + returnTypeName + `Ref {\n  id: ID!\n  label: String!\n  image: String\n  retired: Boolean!\n  retiredState: String\n}`;
 }
 
 function deriveRefsQueryField(listFieldName, returnTypeName) {

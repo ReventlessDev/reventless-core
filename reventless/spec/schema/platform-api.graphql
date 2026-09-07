@@ -201,6 +201,7 @@ enum Platform_PluginKind {
 
 type Platform_PluginRef {
   id: ID!
+  image: String
   label: String!
   retired: Boolean!
   retiredState: String

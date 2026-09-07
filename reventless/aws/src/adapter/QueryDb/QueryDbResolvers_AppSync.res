@@ -548,6 +548,13 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
               ~retiredField,
               ~retiredValues,
               ~namedWhenRetired=retiredSpec->Option.mapOr(false, r => r.namedWhenRetired),
+              // Derived at deploy time from the same schema every other backend
+              // derives it from at runtime — this is the one resolver that is
+              // generated source rather than a function, so it takes the read as
+              // an expression instead of doing it.
+              ~imageExpr=?stateSchemaOpt
+              ->Option.flatMap(Reventless.RowImage.sourceFrom)
+              ->Option.map(source => Reventless.RowImage.jsExpr(~row="row", source)),
               ~ownerField?,
               ~elevatedGroups,
             ),

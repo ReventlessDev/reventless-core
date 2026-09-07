@@ -169,6 +169,7 @@ let registerBinding = (
       ->Reventless.StateAnnotations.getSpec
       ->Option.flatMap(a => a.retired)
       ->Option.mapOr(false, r => r.namedWhenRetired),
+      imageSource: spec.stateSchema->Reventless.RowImage.sourceFrom,
     },
   )
   logDebug("registered resolver binding for " ++ entry.readModelName, {comp: "PgQueryResolver"})

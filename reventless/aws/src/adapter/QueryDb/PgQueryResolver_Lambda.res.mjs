@@ -5,6 +5,7 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
+import * as RowImage$Reventless from "@reventlessdev/reventless-spec/src/semantic/RowImage.res.mjs";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types/OwnerScope.res.mjs";
 import * as Api_Ids$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Ids.res.mjs";
@@ -218,6 +219,8 @@ async function dispatch(binding, lookupBindingOpt, payload) {
           }
           let get = key => Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[key]);
           let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(get("id"), Stdlib_JSON.Decode.string), "");
+          let match$1 = binding.imageSource;
+          let match$2 = Stdlib_JSON.Decode.object(item);
           return Object.fromEntries([
             [
               "id",
@@ -226,6 +229,10 @@ async function dispatch(binding, lookupBindingOpt, payload) {
             [
               "label",
               Stdlib_Option.getOr(Stdlib_Option.flatMap(get(binding.labelField), Stdlib_JSON.Decode.string), id)
+            ],
+            [
+              "image",
+              Stdlib_Option.mapOr(match$1 !== undefined && match$2 !== undefined ? RowImage$Reventless.refFrom(match$2, match$1) : undefined, null, prim => prim)
             ],
             [
               "retired",

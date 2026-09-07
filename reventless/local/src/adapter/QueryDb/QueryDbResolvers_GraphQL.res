@@ -190,6 +190,14 @@ module Make = (Bus: LocalBus.T) => {
       ->Option.flatMap(Reventless.StateAnnotations.getSpec)
       ->Option.flatMap(spec => spec.retired)
 
+    // The picture a reference to one of these rows shows it by, derived once for
+    // every backend in `Reventless.RowImage`. Read per request for the same
+    // reason the two above are.
+    let imageSourceOf = () =>
+      Plugin_Helpers.stateSchemaRegistry
+      ->Dict.get(name)
+      ->Option.flatMap(Reventless.RowImage.sourceFrom)
+
     // `includeRetired` is the caller asking; `decideRetired` decides whether the
     // asking counts. Read here rather than inside the decision so the argument
     // stays an argument — the door reports what was asked, the classifier says
@@ -500,10 +508,19 @@ module Make = (Bus: LocalBus.T) => {
                       // A view with no label field resolves to its id, which is
                       // what `labelField`'s own fallback already decided.
                       ->Option.getOr(id)
+                    // The picture travels with the name, so a retired row that
+                    // keeps one keeps the other: an archived product reads as
+                    // itself on the order that bought it.
+                    let image =
+                      switch (imageSourceOf(), item->JSON.Decode.object) {
+                      | (Some(source), Some(d)) => d->Reventless.RowImage.refFrom(source)
+                      | _ => None
+                      }
                     Some(
                       Dict.fromArray([
                         ("id", JSON.Encode.string(id)),
                         ("label", JSON.Encode.string(label)),
+                        ("image", image->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
                         ("retired", JSON.Encode.bool(retired)),
                         (
                           "retiredState",
