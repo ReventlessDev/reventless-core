@@ -93,7 +93,12 @@ type state = {
   @summary itemCount: int,
   // No annotation: the field name is the declaration. `@lifecycle` exists for
   // records whose lifecycle field is honestly called something else.
-  lifecycle: lifecycle,
+  //
+  // `@summary` because where an order has got to is the one thing a shopper
+  // scanning the list is looking for. A view that declares any summary field
+  // shows only those, so without it the state a row is in is readable on the
+  // detail page and nowhere else.
+  @summary lifecycle: lifecycle,
   shippingMethod: shippingMethod,
   // The requested delivery slot, carried straight from `OrderPlaced`. A declared
   // span — two ISO instants as one value — so a scheduler mode lays a bar out

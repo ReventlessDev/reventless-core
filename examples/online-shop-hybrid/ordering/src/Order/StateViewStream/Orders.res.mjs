@@ -100,7 +100,8 @@ let stateSchema$2 = Sury.$Metadata_set(stateSchema$1, StateAnnotations$Reventles
   summary: [
     "placedAt",
     "total",
-    "itemCount"
+    "itemCount",
+    "lifecycle"
   ],
   internal: [],
   drillTargets: [],
