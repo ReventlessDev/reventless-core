@@ -11,6 +11,7 @@ import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as Nodechild_process from "node:child_process";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as ComponentKind$Reventless from "../components/ComponentKind.res.mjs";
 import * as LoadPluginStructureMjs from "./loadPluginStructure.mjs";
 
 process.env["REVENTLESS_DECLARED_TRANSITIONS_ONLY"] = "1";
@@ -612,20 +613,45 @@ if (given.length !== 0) {
   }
 }
 
+function kindOfPath(path) {
+  return Stdlib_Array.reduce(path.split("/"), undefined, (found, segment) => {
+    let kind = ComponentKind$Reventless.folderToKind(segment);
+    if (kind !== undefined) {
+      return kind;
+    } else {
+      return found;
+    }
+  });
+}
+
 function isViewPath(path) {
-  return [
-    "/ReadModel/",
-    "/ReadModelStream/",
-    "/StateViewSlice/",
-    "/StateViewSliceStream/"
-  ].some(seg => path.includes(seg));
+  let match = kindOfPath(path);
+  if (match === undefined) {
+    return false;
+  }
+  switch (match) {
+    case "StateViewSlice" :
+    case "StateViewSliceStream" :
+    case "ReadModel" :
+    case "ReadModelStream" :
+      return true;
+    default:
+      return false;
+  }
 }
 
 function isWritablePath(path) {
-  return [
-    "/Aggregate/",
-    "/StateChangeSlice/"
-  ].some(seg => path.includes(seg));
+  let match = kindOfPath(path);
+  if (match === undefined) {
+    return false;
+  }
+  switch (match) {
+    case "StateChangeSlice" :
+    case "Aggregate" :
+      return true;
+    default:
+      return false;
+  }
 }
 
 async function runPlugin(plugin, pluginDir, findings, opaque) {
@@ -1092,6 +1118,7 @@ export {
   compare,
   pluginDirsIn,
   roots,
+  kindOfPath,
   isViewPath,
   isWritablePath,
   runPlugin,

@@ -71,7 +71,7 @@ Plugins never depend on each other directly. Cross-plugin communication flows th
 | Event storage | One stream per entity instance | One shared log per bounded context |
 | Write-side | `Behavior` (`initialState`/`evolve`/`decide`) | `StateChangeSlice` spec + `_Behavior` (`initialState`/`evolve`/`decide`) |
 | Read-side | `ReadModel` + `Projection` mappings | `StateViewSlice` spec + `_Projection` (`project`) |
-| Entity filtering | Implicit (stream scoped to ID) | Implicit inside `*Slice/` folders — `@s.matches(DcbTag.string)` is auto-injected on `*Id` fields |
+| Entity filtering | Implicit (stream scoped to ID) | Implicit inside slice folders — `@s.matches(DcbTag.string)` is auto-injected on `*Id` fields |
 | Best for | Self-contained entities with clear lifecycle | Commands that span multiple entity types |
 
 ---
@@ -495,7 +495,7 @@ the folder name and the platform factory the generator picks.
   StateTopic Lambda per read model.
 
 Switching is a folder rename — the spec/projection code stays the same. The same
-choice for DCB read-side views is `StateViewSlice/` vs `StateViewSliceStream/`
+choice for DCB read-side views is `StateView/` vs `StateViewStream/`
 (see [StateViewSliceStream](#stateviewslicestream)). See
 [AppSync Events & Live Updates](/infrastructure/appsync-events-live-updates) for the full
 publisher/subscriber contract.
@@ -624,7 +624,7 @@ Place `src/plugin.json` to override defaults:
 {
   "name": "Catalog",
   "heartbeatInterval": 60,
-  "exclude": ["Product/StateChangeSlice/Experimental.res"]
+  "exclude": ["Product/StateChange/Experimental.res"]
 }
 ```
 
@@ -737,7 +737,7 @@ The generated file is **committed to git** — changes are visible in code revie
 
 In the **DCB** (Dynamic Consistency Boundary) approach all events for a bounded context share a single event log. Commands are handled by **StateChangeSlices** (write-side) using a minimal decision model built by filtering the shared log by entity tag. Queries are handled by **StateViewSlices** (read-side) that project the same log into a query database. Use this approach when a command's validity depends on multiple entity types or the consistency boundary varies per command.
 
-A DCB plugin's slices live under per-entity chapter folders (`Product/StateChangeSlice/`, `Product/StateViewSliceStream/`, etc.). There is **no shared event-log file**: each slice declares the typed subset of events it reads (`consumedEvent`) and the events it appends (`event`), and the runtime stitches them into one log per bounded context. The hybrid example (`examples/online-shop-hybrid/`) demonstrates DCB slices alongside aggregates in the same plugin.
+A DCB plugin's slices live under per-entity chapter folders (`Product/StateChange/`, `Product/StateViewStream/`, etc.). There is **no shared event-log file**: each slice declares the typed subset of events it reads (`consumedEvent`) and the events it appends (`event`), and the runtime stitches them into one log per bounded context. The hybrid example (`examples/online-shop-hybrid/`) demonstrates DCB slices alongside aggregates in the same plugin.
 
 ### Key differences from the aggregate approach
 
@@ -746,7 +746,7 @@ A DCB plugin's slices live under per-entity chapter folders (`Product/StateChang
 | Event storage | One event stream per aggregate instance | One shared event log per bounded context |
 | Write-side | Behavior (`initialState`/`evolve`/`decide`) | StateChangeSlice spec + `_Behavior` (`initialState`/`evolve`/`decide`) |
 | Read-side | ReadModel + Projection mappings | StateViewSlice spec + `_Projection` (`project`) |
-| Entity filtering | Implicit (stream per ID) | Implicit inside `*Slice/` folders — `@s.matches(DcbTag.string)` is auto-injected on `*Id` fields |
+| Entity filtering | Implicit (stream per ID) | Implicit inside slice folders — `@s.matches(DcbTag.string)` is auto-injected on `*Id` fields |
 | State model | Full aggregate state rebuilt from events | Minimal decision model — only what's needed to accept/reject |
 
 ---
@@ -760,7 +760,7 @@ In DCB all events for a bounded context share a single event log — but there i
 
 The runtime stitches every slice's `event` and `consumedEvent` declarations into one per-plugin log and tags entries by entity ID.
 
-**Tagging is automatic inside `*Slice/` folders.** The `@@reventless.spec` PPX auto-injects `@s.matches(Reventless.DcbTag.string)` on all `*Id: string`, `*Id: array<string>`, and `*Ids: array<string>` fields in `@schema` types — on both `command`/`event` and `consumedEvent`. You never write `@s.matches` by hand in a slice file. Use `@partitionTag` (and `@noDcbTag`, `@dcbTag`) only to disambiguate when a variant has more than one `*Id` field (see [StateChangeSlice](#statechangeslice) and the [PPX guide](reventless-ppx.md)).
+**Tagging is automatic inside slice folders.** The `@@reventless.spec` PPX auto-injects `@s.matches(Reventless.DcbTag.string)` on all `*Id: string`, `*Id: array<string>`, and `*Ids: array<string>` fields in `@schema` types — on both `command`/`event` and `consumedEvent`. You never write `@s.matches` by hand in a slice file. Use `@partitionTag` (and `@noDcbTag`, `@dcbTag`) only to disambiguate when a variant has more than one `*Id` field (see [StateChangeSlice](#statechangeslice) and the [PPX guide](reventless-ppx.md)).
 
 ---
 
@@ -822,7 +822,7 @@ let decide = (state, command) =>
   }
 ```
 
-Because `AddProduct.res` is in a `StateChangeSlice/` folder, `@@reventless.spec` automatically applies DCB tag injection — no `@@reventless.dcbTags` annotation and no manual `@s.matches` are needed. The PPX auto-injects `@s.matches(Reventless.DcbTag.string)` on all `*Id: string`, `*Id: array<string>`, and `*Ids: array<string>` fields in `@schema` types (`command`, `event`, and `consumedEvent`).
+Because `AddProduct.res` is in a `StateChange/` folder, `@@reventless.spec` automatically applies DCB tag injection — no `@@reventless.dcbTags` annotation and no manual `@s.matches` are needed. The PPX auto-injects `@s.matches(Reventless.DcbTag.string)` on all `*Id: string`, `*Id: array<string>`, and `*Ids: array<string>` fields in `@schema` types (`command`, `event`, and `consumedEvent`).
 
 If a variant has multiple `*Id` fields and only one is the partition key, use the `@partitionTag` field annotation to disambiguate (mirror `PlaceOrder.res`, which tags `@partitionTag orderId` so its `productIds` array fans out without colliding with the order tag — see the [PPX guide](reventless-ppx.md#partitiontag-nodcbtag-dcbtag--field-level-dcb-tag-control)).
 
@@ -889,7 +889,7 @@ This fetches Order events (by `orderId`) AND CatalogProduct events (by each `pro
 - Commands with only scalar tagged fields produce single-clause AND queries (standard behavior, unchanged)
 - The append condition automatically covers all queried entities for optimistic concurrency
 
-See `examples/online-shop-hybrid/ordering/src/Order/StateChangeSlice/PlaceOrder.res` for a complete cross-entity example.
+See `examples/online-shop-hybrid/ordering/src/Order/StateChange/PlaceOrder.res` for a complete cross-entity example.
 
 ---
 
@@ -946,8 +946,8 @@ The `project` function uses the same operations as aggregate projections, but re
 
 | Folder | Generator emits | Builder used (AWS) |
 |--------|------------------|--------------------|
-| `StateViewSlice/` | `Platform.StateViewSlice.Make(Spec, Projection)` | `StateViewSlice_Builder` (plain DynamoDB QueryDb) |
-| `StateViewSliceStream/` | `Platform.StateViewSliceStream.Make(Spec, Projection)` | `StateViewSlice_Builder_Stream` (DynamoDB QueryDb **with stream enabled**) |
+| `StateView/` | `Platform.StateViewSlice.Make(Spec, Projection)` | `StateViewSlice_Builder` (plain DynamoDB QueryDb) |
+| `StateViewStream/` | `Platform.StateViewSliceStream.Make(Spec, Projection)` | `StateViewSlice_Builder_Stream` (DynamoDB QueryDb **with stream enabled**) |
 
 **What the stream variant adds (AWS):**
 
@@ -963,18 +963,18 @@ The `project` function uses the same operations as aggregate projections, but re
 **Example layout:**
 
 ```
-src/Product/StateViewSliceStream/
+src/Product/StateViewStream/
 ├── Products.res                  // Spec — identical shape to a StateViewSlice spec
 └── Products_Projection.res
-src/ProductDemand/StateViewSliceStream/
+src/ProductDemand/StateViewStream/
 ├── ProductDemand.res
 └── ProductDemand_Projection.res
 ```
 
 **Choosing between the two:**
 
-- Plain `StateViewSlice/` — query-only views (typical read models). Cheaper: no DynamoDB Stream, no extra Lambda.
-- `StateViewSliceStream/` — views clients live-subscribe to via GraphQL subscriptions on the AppSync Events API.
+- Plain `StateView/` — query-only views (typical read models). Cheaper: no DynamoDB Stream, no extra Lambda.
+- `StateViewStream/` — views clients live-subscribe to via GraphQL subscriptions on the AppSync Events API.
 
 Switching is a folder rename — the spec/projection code stays the same.
 
@@ -1116,20 +1116,20 @@ online-shop-dcb/
 │   ├── rescript.json
 │   └── src/
 │       ├── Product/
-│       │   ├── StateChangeSlice/
+│       │   ├── StateChange/
 │       │   │   ├── AddProduct.res            # Slice spec (types)
 │       │   │   ├── AddProduct_Behavior.res   # Slice behavior (state machine)
 │       │   │   ├── ChangeProductName.res
 │       │   │   ├── ChangeProductName_Behavior.res
 │       │   │   └── ...
-│       │   └── StateViewSlice/
+│       │   └── StateView/
 │       │       ├── Products.res              # View spec (state + consumedEvent)
 │       │       ├── Products_Projection.res   # View projection
 │       │       ├── ProductDemand.res
 │       │       └── ProductDemand_Projection.res
 │       ├── Category/
-│       │   ├── StateChangeSlice/
-│       │   └── StateViewSlice/
+│       │   ├── StateChange/
+│       │   └── StateView/
 │       ├── ExtensionPoint/
 │       │   └── Products_ExtensionPointMapping.res
 │       ├── Extension/
@@ -1145,8 +1145,8 @@ online-shop-dcb/
 ```
 
 **Compared to aggregates:**
-- `Aggregate/` → `<Entity>/StateChangeSlice/` (one slice per command, not per aggregate)
-- `ReadModel/` → `<Entity>/StateViewSlice/` (view replaces read model + projection)
+- `Aggregate/` → `<Entity>/StateChange/` (one slice per command, not per aggregate)
+- `ReadModel/` → `<Entity>/StateView/` (view replaces read model + projection)
 - No shared event-log file — each slice declares its own `consumedEvent` (what it reads) and `event` (what it appends)
 - Slices are still split spec + behavior: `<Name>.res` (`@@reventless.spec`) + `<Name>_Behavior.res` (`@@reventless.behavior`), exactly like aggregates
 
@@ -1366,21 +1366,21 @@ Other plugins see the extension point API and never know whether the source is a
 catalog/
 ├── src/
 │   ├── Category/
-│   │   ├── StateChangeSlice/
+│   │   ├── StateChange/
 │   │   │   ├── AddCategory.res            # Slice spec (consumedEvent/command/error/event)
 │   │   │   ├── AddCategory_Behavior.res   # Slice behavior (state/initialState/evolve/decide)
 │   │   │   ├── RenameCategory.res
 │   │   │   └── ArchiveCategory.res
-│   │   └── StateViewSliceStream/
+│   │   └── StateViewStream/
 │   │       ├── Categories.res             # View spec (state + consumedEvent)
 │   │       └── Categories_Projection.res  # View projection
 │   ├── Product/
-│   │   ├── StateChangeSlice/
+│   │   ├── StateChange/
 │   │   │   ├── AddProduct.res             # Slice spec — verifies categoryId exists
 │   │   │   ├── AddProduct_Behavior.res    # Slice behavior (state/initialState/evolve/decide)
 │   │   │   ├── ChangeProductName.res
 │   │   │   └── ChangeProductName_Behavior.res
-│   │   └── StateViewSliceStream/
+│   │   └── StateViewStream/
 │   │       ├── Products.res               # View spec (state + consumedEvent)
 │   │       └── Products_Projection.res    # View projection
 │   ├── ExtensionPoint/

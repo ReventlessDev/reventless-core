@@ -111,10 +111,10 @@ The function is **synchronous** (no external calls needed) since all the externa
 ### Example 1: Payment Webhook
 
 The **spec file**. `@@reventless.spec` injects `name`, `module Id`, and
-`moduleUrl` from the filename; inside a `*Slice/` folder it auto-applies DCB tags
+`moduleUrl` from the filename; inside a slice folder it auto-applies DCB tags
 to `*Id` fields — never write `@s.matches(...)` by hand:
 
-```rescript title="Payment/InboundTranslationSlice/PaymentWebhook.res" showLineNumbers
+```rescript title="Payment/InboundTranslation/PaymentWebhook.res" showLineNumbers
 @@reventless.spec
 
 @schema
@@ -138,7 +138,7 @@ let targetName = "ConfirmPayment"
 The **translation file** (`@@reventless.translation`) holds the synchronous
 `translate`, returning an array of `(targetId, command)` pairs:
 
-```rescript title="Payment/InboundTranslationSlice/PaymentWebhook_Translation.res" showLineNumbers
+```rescript title="Payment/InboundTranslation/PaymentWebhook_Translation.res" showLineNumbers
 @@reventless.translation
 
 let translate = (input: externalInput) =>
@@ -163,7 +163,7 @@ let translate = (input: externalInput) =>
 
 ### Example 2: Shipping Update Webhook
 
-```rescript title="Shipping/InboundTranslationSlice/ShippingUpdate.res" showLineNumbers
+```rescript title="Shipping/InboundTranslation/ShippingUpdate.res" showLineNumbers
 @@reventless.spec
 
 @schema
@@ -184,7 +184,7 @@ type command = UpdateShipmentStatus({
 let targetName = "UpdateShipmentStatus"
 ```
 
-```rescript title="Shipping/InboundTranslationSlice/ShippingUpdate_Translation.res" showLineNumbers
+```rescript title="Shipping/InboundTranslation/ShippingUpdate_Translation.res" showLineNumbers
 @@reventless.translation
 
 let translate = (input: externalInput) =>
@@ -207,7 +207,7 @@ let translate = (input: externalInput) =>
 ### Plugin Wiring
 
 You never register or wire InboundTranslationSlices by hand. The plugin generator
-scans the `InboundTranslationSlice/` folder and emits the wiring into the
+scans the `InboundTranslation/` folder and emits the wiring into the
 **generated** `Plugin.res` using the two-arg factory
 `Platform.InboundTranslationSlice.Make(Spec, Translation)`:
 
@@ -289,7 +289,7 @@ Ordering_PaymentWebhook(amount: Float!, orderId: ID!, paymentId: ID!, status: St
 ```
 
 Arguments are emitted alphabetically, and `orderId` / `paymentId` render as `ID!`
-because the PPX auto-tags `*Id` fields inside a `*Slice/` folder. See the
+because the PPX auto-tags `*Id` fields inside a slice folder. See the
 [GraphQL API guide](../graphql-api-guide.md#53-from-an-inboundtranslationslice)
 for the full mapping.
 

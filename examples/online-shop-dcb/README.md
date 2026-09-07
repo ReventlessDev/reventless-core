@@ -85,16 +85,16 @@ Cognito + host-shell settings.
 
 | Pattern | Where |
 |---|---|
-| StateChangeSlice | `catalog/src/Category/StateChangeSlice/`, `catalog/src/Product/StateChangeSlice/`, `ordering/src/Order/StateChangeSlice/`, … |
-| StateViewSlice | `catalog/src/*/StateViewSlice/`, `ordering/src/*/StateViewSlice/` |
-| AutomationSlice | `ordering/src/Order/AutomationSlice/` |
-| InboundTranslationSlice | `catalog/src/Product/InboundTranslationSlice/` |
-| OutboundTranslationSlice | `ordering/src/Order/OutboundTranslationSlice/` |
+| StateChangeSlice | `catalog/src/Category/StateChange/`, `catalog/src/Product/StateChange/`, `ordering/src/Order/StateChange/`, … |
+| StateViewSlice | `catalog/src/*/StateView/`, `ordering/src/*/StateView/` |
+| AutomationSlice | `ordering/src/Order/Automation/` |
+| InboundTranslationSlice | `catalog/src/Product/InboundTranslation/` |
+| OutboundTranslationSlice | `ordering/src/Order/OutboundTranslation/` |
 | Multi-source ReadModel | `catalog/src/CategoryActivity/ReadModel/` |
 | ExtensionPoint | `catalog/src/ExtensionPoint/`, `ordering/src/ExtensionPoint/` |
 | Extension | `catalog/src/Extension/`, `ordering/src/Extension/` |
 | Task | `catalog/src/Task/` |
-| `@@reventless.visibility(Internal)` | `ordering/src/CatalogProduct/StateViewSlice/AvailableProducts/` |
+| `@@reventless.visibility(Internal)` | `ordering/src/CatalogProduct/StateView/AvailableProducts/` |
 | `@authorize` | one Category command annotated for the `Admin` group |
 | `@displayName` | Customer's `email` field |
 | Cross-plugin Flow test | `platform-local/tests/Flow/DcbFlow_GWT.res` |

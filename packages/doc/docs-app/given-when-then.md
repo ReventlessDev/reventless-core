@@ -60,7 +60,7 @@ Two cross-cutting DSLs round out the surface:
    | Source                                | Test                                        |
    |---------------------------------------|---------------------------------------------|
    | `src/StateChange/AddCategory.res`       | `tests/StateChange/AddCategory_GWT.res`     |
-   | `src/StateViewSlice/Categories.res`     | `tests/StateViewSlice/Categories_GWT.res`   |
+   | `src/StateView/Categories.res`     | `tests/StateView/Categories_GWT.res`   |
    | `src/Projections/CategoriesProjection.res` | `tests/Projections/CategoriesProjection_GWT.res` |
 
    Kind inference accepts the short folder form (`StateChange`,

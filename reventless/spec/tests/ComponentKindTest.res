@@ -15,7 +15,10 @@ describe("ComponentKind.folderToKind", () => {
   let spellings: array<(K.t, array<string>)> = [
     (StateChangeSlice, ["StateChangeSlice", "StateChangeSlices", "StateChange", "StateChanges"]),
     (StateViewSlice, ["StateViewSlice", "StateViewSlices", "StateView", "StateViews"]),
-    (StateViewSliceStream, ["StateViewSliceStream", "StateViewSliceStreams"]),
+    (
+      StateViewSliceStream,
+      ["StateViewSliceStream", "StateViewSliceStreams", "StateViewStream", "StateViewStreams"],
+    ),
     (AutomationSlice, ["AutomationSlice", "AutomationSlices", "Automation", "Automations"]),
     (
       InboundTranslationSlice,

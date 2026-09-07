@@ -629,7 +629,7 @@ let conformanceBinding = (c: config): string => {
 let singleProjectionPatch = (c: config): patch => {
   let n = namesOf(c)
   {
-    into: `StateViewSliceStream/${c.view}_Projection.res`,
+    into: `StateViewStream/${c.view}_Projection.res`,
     at: `the projection's \`switch\`, and one field on \`${c.view}\`'s state`,
     contents: lines([
       `// On the view's state, one field — the reference and its text, in one value.`,
@@ -669,7 +669,7 @@ let manyProjectionPatch = (c: config): patch => {
   let n = namesOf(c)
   let set = setFieldOf(c)
   {
-    into: `StateViewSliceStream/${c.view}_Projection.res`,
+    into: `StateViewStream/${c.view}_Projection.res`,
     at: `the projection's \`switch\`, and one field on \`${c.view}\`'s state`,
     contents: lines([
       `// On the view's state, one field — the set, primary first.`,
@@ -738,9 +738,9 @@ let emit = (~config: config, ~into: string, ~tests: string): output => {
   let n = namesOf(config)
   {
     files: [
-      {path: `${into}/StateChangeSlice/${n.slice}.res`, contents: sliceSpec(config)},
+      {path: `${into}/StateChange/${n.slice}.res`, contents: sliceSpec(config)},
       {
-        path: `${into}/StateChangeSlice/${n.slice}_Behavior.res`,
+        path: `${into}/StateChange/${n.slice}_Behavior.res`,
         contents: sliceBehavior(config),
       },
       {

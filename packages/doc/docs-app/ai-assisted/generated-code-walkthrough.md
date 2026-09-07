@@ -22,14 +22,14 @@ catalog/                               # Plugin implementation
 ├── __mocks__/emptyModule.js
 └── src/
     ├── Product/
-    │   ├── StateChangeSlice/
+    │   ├── StateChange/
     │   │   ├── AddProduct.res             # Command spec: add a product
     │   │   ├── AddProduct_Behavior.res    # state / evolve / decide
     │   │   ├── ChangeProductName.res      # Command spec: rename
     │   │   ├── ChangeProductName_Behavior.res
     │   │   ├── ChangeProductPrice.res     # Command spec: reprice
     │   │   └── ChangeProductPrice_Behavior.res
-    │   └── StateViewSlice/
+    │   └── StateView/
     │       ├── Products.res               # Query spec: product listings
     │       └── Products_Projection.res    # project function
     ├── ExtensionPoint/

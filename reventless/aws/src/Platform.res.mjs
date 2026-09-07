@@ -30,7 +30,7 @@ import * as CapabilityNeed$Reventless from "@reventlessdev/reventless-spec/src/s
 import * as PluginSpec$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginSpec.res.mjs";
 import * as Util_Bundle$ReventlessAws from "./util/Util_Bundle.res.mjs";
 import * as Plugin_Stack$ReventlessAws from "./plugin/stack/Plugin_Stack.res.mjs";
-import * as UiFragments$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateViewSlice/UiFragments.res.mjs";
+import * as UiFragments$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateView/UiFragments.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as Platform_Casts$ReventlessAws from "./Platform_Casts.res.mjs";
 import * as Platform_Stack$ReventlessAws from "./Platform_Stack.res.mjs";
@@ -61,7 +61,7 @@ import * as Platform_AdminApi$ReventlessCore from "@reventlessdev/reventless-cor
 import * as PluginsProjection$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginsProjection.res.mjs";
 import * as StateTopic_AppSync$ReventlessAws from "./adapter/StateTopic/StateTopic_AppSync.res.mjs";
 import * as AppSync_SdlDecorate$ReventlessAws from "./components/Api/AppSync_SdlDecorate.res.mjs";
-import * as UiFragmentRegistry$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateChangeSlice/UiFragmentRegistry.res.mjs";
+import * as UiFragmentRegistry$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateChange/UiFragmentRegistry.res.mjs";
 import * as Util_ResourceNaming$ReventlessAws from "./util/Util_ResourceNaming.res.mjs";
 import * as Auth_ActiveRoleStore$ReventlessAws from "./adapter/Auth/Auth_ActiveRoleStore.res.mjs";
 import * as ClonerRunner_Fargate$ReventlessAws from "./plugin/cloner/ClonerRunner_Fargate.res.mjs";
@@ -77,7 +77,7 @@ import * as EventTopicPublisher_SNS$ReventlessAws from "./adapter/EventTopic/Eve
 import * as ExtensionPointMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionPointMapping.res.mjs";
 import * as PgQueryResolver_Builder$ReventlessAws from "./adapter/QueryDb/PgQueryResolver_Builder.res.mjs";
 import * as Platform_BakedManifest$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_BakedManifest.res.mjs";
-import * as UiFragments_Projection$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateViewSlice/UiFragments_Projection.res.mjs";
+import * as UiFragments_Projection$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateView/UiFragments_Projection.res.mjs";
 import * as Aggregate_Builder_Single$ReventlessAws from "./components/Aggregate_Builder_Single.res.mjs";
 import * as ReadModel_Builder_Single$ReventlessAws from "./components/ReadModel_Builder_Single.res.mjs";
 import * as StateChangeSlice_Builder$ReventlessAws from "./components/StateChangeSlice_Builder.res.mjs";
@@ -89,7 +89,7 @@ import * as PluginExtensionPointSpec$ReventlessInfra from "@reventlessdev/revent
 import * as Platform_UIFragments_Lambda$ReventlessAws from "./adapter/Api/Platform_UIFragments_Lambda.res.mjs";
 import * as CommandTopicChannel_SQS_Sync$ReventlessAws from "./adapter/CommandTopic/CommandTopicChannel_SQS_Sync.res.mjs";
 import * as EventLogSubscription_AppSync$ReventlessAws from "./adapter/EventLogSubscription/EventLogSubscription_AppSync.res.mjs";
-import * as UiFragmentRegistry_Behavior$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateChangeSlice/UiFragmentRegistry_Behavior.res.mjs";
+import * as UiFragmentRegistry_Behavior$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateChange/UiFragmentRegistry_Behavior.res.mjs";
 import * as CommandTopicChannel_SQS_Async$ReventlessAws from "./adapter/CommandTopic/CommandTopicChannel_SQS_Async.res.mjs";
 import * as Geocoder_AwsLocation_Resolver$ReventlessAws from "./adapter/Geocoder/Geocoder_AwsLocation_Resolver.res.mjs";
 import * as Plugin_ExtensionPoint_Builder$ReventlessAws from "./plugin/stack/Plugin_ExtensionPoint_Builder.res.mjs";

@@ -44,7 +44,7 @@ StateViewSliceStream** (single-id + list queries), add the file-level attribute
 to the spec file:
 
 ```rescript
-// StateChangeSlice/SyncComponent.res
+// StateChange/SyncComponent.res
 @@reventless.spec
 @@reventless.systemCallable
 

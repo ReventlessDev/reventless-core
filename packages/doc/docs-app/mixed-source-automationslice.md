@@ -19,10 +19,10 @@ automation observes both and emits the command.
 
 ## Anatomy
 
-A mixed-source automation slice is **two files** in an `AutomationSlice/` folder:
+A mixed-source automation slice is **two files** in an `Automation/` folder:
 
 ```
-AutomationSlice/
+Automation/
   AutoFulfill.res             // Spec — types and config
   AutoFulfill_Automation.res  // Source modules + per-source Mapping.Make + mappings + process
 ```
@@ -122,7 +122,7 @@ The `context` record is intentionally narrow. Extending it requires an explicit 
 There's no per-mapping validation hook. Push validation to the layer that owns the data:
 
 - **`collect` returns `[]`** for events that shouldn't enter the TODO list. This is the cheapest gate — invalid items never get persisted.
-- **DCB tags on the command schema** enforce DCB-tag invariants at encode time. Inside an `AutomationSlice/` folder `@s.matches(Reventless.DcbTag.string)` is auto-applied to `*Id` fields; add `@compositePartitionTag` to disambiguate a composite partition key. Sury-encode failures mark the item `Failed` (counts toward `maxRetries`) — the same retry path as publish failures. Use this for partition-key validation.
+- **DCB tags on the command schema** enforce DCB-tag invariants at encode time. Inside an `Automation/` folder `@s.matches(Reventless.DcbTag.string)` is auto-applied to `*Id` fields; add `@compositePartitionTag` to disambiguate a composite partition key. Sury-encode failures mark the item `Failed` (counts toward `maxRetries`) — the same retry path as publish failures. Use this for partition-key validation.
 - **Deployment-time checks** for `context` invariants (e.g., "platformName is non-empty") belong in `Plugin_Builder.Spec` validation, not per-item — a misconfigured deployment fails every item, so fail it once at startup.
 
 ## Plugin assembly
@@ -180,4 +180,4 @@ A single-source slice is a special case where the `mappings` array has exactly o
 - Builder: [`reventless-core/src/components/AutomationSlice/AutomationSlice_Builder.res`](https://github.com/ReventlessDev/reventless-core/blob/alpha/reventless/core/src/components/AutomationSlice/AutomationSlice_Builder.res)
 - Callback (per-source dispatch + retry): [`reventless-core/src/components/AutomationSlice/AutomationSlice_Callback.res`](https://github.com/ReventlessDev/reventless-core/blob/alpha/reventless/core/src/components/AutomationSlice/AutomationSlice_Callback.res)
 - Integration test (canonical demo): [`reventless-local/tests/components/automationslice/MixedSourceAutomationSlice*.res`](https://github.com/ReventlessDev/reventless-core/tree/alpha/reventless/local/tests/components/automationslice/)
-- Single-source example slice: [`examples/online-shop-hybrid/ordering/src/Order/AutomationSlice/`](https://github.com/ReventlessDev/reventless-core/tree/alpha/examples/online-shop-hybrid/ordering/src/Order/AutomationSlice/)
+- Single-source example slice: [`examples/online-shop-hybrid/ordering/src/Order/Automation/`](https://github.com/ReventlessDev/reventless-core/tree/alpha/examples/online-shop-hybrid/ordering/src/Order/Automation/)

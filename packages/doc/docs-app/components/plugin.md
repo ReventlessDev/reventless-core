@@ -256,7 +256,7 @@ This definition enables:
 
 You never hand-write a Plugin composition root. The plugin generator
 (`generate-plugin`, run by the `prebuild` script) scans your plugin's `src/`
-folder by component-folder name (`Aggregate/`, `ReadModel/`, `StateChangeSlice/`,
+folder by component-folder name (`Aggregate/`, `ReadModel/`, `StateChange/`,
 `ExtensionPoint/`, `Extension/`, `Task/`, …) and emits `src/Plugin.res`. That file
 is committed to git and compiled directly by CI. An optional `src/plugin.json`
 sets the plugin name and heartbeat interval.

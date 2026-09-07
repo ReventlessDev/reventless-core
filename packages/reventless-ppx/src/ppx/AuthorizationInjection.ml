@@ -36,16 +36,10 @@ type kind =
 
 let detect_kind fname =
   if Util.is_in_aggregate_folder fname
-     || Util.is_in_folder fname "StateChangeSlice"
-     || Util.is_in_folder fname "StateChangeSlices"
-     || Util.is_in_folder fname "InboundTranslationSlice"
-     || Util.is_in_folder fname "InboundTranslationSlices"
+     || Util.is_in_slice_folder_named fname "StateChange"
+     || Util.is_in_slice_folder_named fname "InboundTranslation"
   then CommandCarrier
-  else if Util.is_in_readmodel_folder fname
-       || Util.is_in_folder fname "StateViewSlice"
-       || Util.is_in_folder fname "StateViewSliceStream"
-       || Util.is_in_folder fname "StateViewSlices"
-       || Util.is_in_folder fname "StateViewSliceStreams"
+  else if Util.is_in_readmodel_folder fname || Util.is_in_stateview_folder fname
   then QueryCarrier
   else Other
 
@@ -516,10 +510,8 @@ let gen_traits ~loc =
    graft onto. Widening this list is additive and costs one folder name. *)
 let is_graft_target_folder fname =
   Util.is_in_aggregate_folder fname
-  || Util.is_in_folder fname "StateChangeSlice"
-  || Util.is_in_folder fname "StateChangeSlices"
-  || Util.is_in_folder fname "OutboundTranslationSlice"
-  || Util.is_in_folder fname "OutboundTranslationSlices"
+  || Util.is_in_slice_folder_named fname "StateChange"
+  || Util.is_in_slice_folder_named fname "OutboundTranslation"
 
 let traits_suffix ~loc fname (body : structure) : structure_item list =
   if is_spec_namespace_pkg loc then []
@@ -542,10 +534,8 @@ let inject_traits_into_inner_module ~loc (mb : module_binding) : module_binding 
   | _ -> mb
 
 let is_translation_folder fname =
-  Util.is_in_folder fname "InboundTranslationSlice"
-  || Util.is_in_folder fname "InboundTranslationSlices"
-  || Util.is_in_folder fname "OutboundTranslationSlice"
-  || Util.is_in_folder fname "OutboundTranslationSlices"
+  Util.is_in_slice_folder_named fname "InboundTranslation"
+  || Util.is_in_slice_folder_named fname "OutboundTranslation"
 
 (* Suffix to splice after the spec body — [] unless this is a translation spec
    missing the binding. Shares the [is_spec_namespace_pkg] skip with [inject]. *)

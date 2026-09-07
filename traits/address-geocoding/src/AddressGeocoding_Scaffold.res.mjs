@@ -414,11 +414,11 @@ function emit(config, into, tests) {
   return {
     files: [
       {
-        path: into + `/OutboundTranslationSlice/` + n.slice + `.res`,
+        path: into + `/OutboundTranslation/` + n.slice + `.res`,
         contents: sliceSpec(config)
       },
       {
-        path: into + `/OutboundTranslationSlice/` + n.slice + `_Translation.res`,
+        path: into + `/OutboundTranslation/` + n.slice + `_Translation.res`,
         contents: sliceTranslation(config)
       },
       {

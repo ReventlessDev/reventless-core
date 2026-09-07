@@ -40,7 +40,7 @@ An **InboundTranslationSlice** is an anti-corruption layer that receives externa
 | `ImportProduct` | Supplier product JSON | `AddProduct` |
 
 ```rescript
-// Product/InboundTranslationSlice/ImportProduct.res
+// Product/InboundTranslation/ImportProduct.res
 @@reventless.spec
 
 @schema
@@ -64,7 +64,7 @@ let targetName = "AddProduct"
 ```
 
 ```rescript
-// Product/InboundTranslationSlice/ImportProduct_Translation.res
+// Product/InboundTranslation/ImportProduct_Translation.res
 @@reventless.translation
 
 let translate = input =>
@@ -87,7 +87,7 @@ let translate = input =>
   }
 ```
 
-`translate` performs three validations (currency, price, SKU) before producing the command. It returns an **array** of `(id, command)` pairs — one slice invocation can fan out into several commands. The price is converted from cents to dollars. The SKU becomes the `productId` of the produced command, linking the imported product to the `AddProduct` StateChangeSlice (named via `targetName`) for duplicate detection. Inside a `*Slice/` folder the `@s.matches(Reventless.DcbTag.string)` tag annotation is applied automatically by `@@reventless.spec` — you never write it by hand.
+`translate` performs three validations (currency, price, SKU) before producing the command. It returns an **array** of `(id, command)` pairs — one slice invocation can fan out into several commands. The price is converted from cents to dollars. The SKU becomes the `productId` of the produced command, linking the imported product to the `AddProduct` StateChangeSlice (named via `targetName`) for duplicate detection. Inside a slice folder the `@s.matches(Reventless.DcbTag.string)` tag annotation is applied automatically by `@@reventless.spec` — you never write it by hand.
 
 The framework automatically exposes `Catalog_ImportProduct` as a GraphQL mutation. The `externalInput` fields become the mutation arguments (`sku`, `title`, `desc`, `unitPrice`, `currency`). No manual API wiring is needed — the resolver handles parsing, validation, translation, and command publishing internally.
 
@@ -183,7 +183,7 @@ An **AutomationSlice** implements the TODO list pattern: it collects pending ite
 The slice is split into a spec (the TODO item, command, and tuning) and an `_Automation.res` body. The body declares one or more **source modules** (each a `Mapping.Make` over the events it consumes) plus the `process` function. The consumed-event set is derived from the source mappings — there is no hand-written event-log union.
 
 ```rescript
-// Order/AutomationSlice/AutoShipOrder.res
+// Order/Automation/AutoShipOrder.res
 @@reventless.spec
 
 @schema
@@ -198,7 +198,7 @@ let targetName = "ShipOrder"
 ```
 
 ```rescript
-// Order/AutomationSlice/AutoShipOrder_Automation.res
+// Order/Automation/AutoShipOrder_Automation.res
 @@reventless.automation
 
 // Single DCB source — events from the ordering plugin's own event log.
@@ -248,7 +248,7 @@ An **OutboundTranslationSlice** bridges internal events to external systems. Lik
 | `SendOrderConfirmation` | `OrderPlaced` | Send email via `EmailService` |
 
 ```rescript
-// Order/OutboundTranslationSlice/SendOrderConfirmation.res
+// Order/OutboundTranslation/SendOrderConfirmation.res
 @@reventless.spec
 
 @schema
@@ -267,7 +267,7 @@ let targetName = None
 ```
 
 ```rescript
-// Order/OutboundTranslationSlice/SendOrderConfirmation_Translation.res
+// Order/OutboundTranslation/SendOrderConfirmation_Translation.res
 @@reventless.translation
 
 let collect = event =>
@@ -308,7 +308,7 @@ As with the aggregate-based approach, `Order` references products by `ProductId`
 
 The following walkthrough uses the **Catalog** Plugin from `examples/online-shop-dcb/catalog/` — the `Product` chapter with its StateChangeSlices and StateViewSlices, the `ProductDemand` chapter that tracks demand, the `Products_ExtensionPoint`, the `Orders_Extension`, and the generated `Plugin` that wires everything together.
 
-There is **no hand-written event-log spec file**. In the DCB approach the plugin's event log is simply the union of the events declared by its slices — each slice owns the events it produces (`event`) and the events it reads (`consumedEvent`). The framework assembles the shared log from these declarations. Every slice is **split** into a spec file (`@@reventless.spec`, the types) and a body file (`_Behavior.res`, `_Projection.res`, `_Translation.res`, or `_Automation.res`, the logic). Because the files live inside a `*Slice/` folder, `@@reventless.spec` automatically applies `@s.matches(Reventless.DcbTag.string)` to every `*Id` field — you never write the tag annotation by hand.
+There is **no hand-written event-log spec file**. In the DCB approach the plugin's event log is simply the union of the events declared by its slices — each slice owns the events it produces (`event`) and the events it reads (`consumedEvent`). The framework assembles the shared log from these declarations. Every slice is **split** into a spec file (`@@reventless.spec`, the types) and a body file (`_Behavior.res`, `_Projection.res`, `_Translation.res`, or `_Automation.res`, the logic). Because the files live inside a slice folder, `@@reventless.spec` automatically applies `@s.matches(Reventless.DcbTag.string)` to every `*Id` field — you never write the tag annotation by hand.
 
 ### 1. StateChangeSlices
 
@@ -333,7 +333,7 @@ The **behavior** (`_Behavior.res`, `@@reventless.behavior`) declares:
 `AddProduct` creates a new product. The decision state only needs to know whether a product with this `productId` already exists. If it does, the command is rejected.
 
 ```rescript
-// Product/StateChangeSlice/AddProduct.res
+// Product/StateChange/AddProduct.res
 @@reventless.spec
 
 @schema
@@ -363,7 +363,7 @@ type event =
 ```
 
 ```rescript
-// Product/StateChangeSlice/AddProduct_Behavior.res
+// Product/StateChange/AddProduct_Behavior.res
 @@reventless.behavior
 
 type state = {exists: bool}
@@ -393,7 +393,7 @@ The `consumedEvent` type lists only `ProductAdded` — the framework delivers ju
 `ChangeProductPrice` modifies an existing product's price. The decision state tracks both existence and the current price, allowing the handler to reject unknown products and skip writes when the price has not changed.
 
 ```rescript
-// Product/StateChangeSlice/ChangeProductPrice.res
+// Product/StateChange/ChangeProductPrice.res
 @@reventless.spec
 
 @schema
@@ -412,7 +412,7 @@ type event = ProductPriceChanged({productId: string, price: float})
 ```
 
 ```rescript
-// Product/StateChangeSlice/ChangeProductPrice_Behavior.res
+// Product/StateChange/ChangeProductPrice_Behavior.res
 @@reventless.behavior
 
 type state = {exists: bool, currentPrice: float}
@@ -445,7 +445,7 @@ let decide = (state, command) =>
 `RecordProductDemand` is not called by UI clients. It is dispatched internally by the `Orders_Extension` whenever Ordering's Extension Point emits an `ItemOrdered` or `ItemOrderCancelled` event. The decision state tracks which order IDs have already been recorded to make the operation idempotent. Because this slice is the **target of an Extension**, its produced events mark `productId` with `@partitionTag` so the framework can derive the FIFO grouping id from the command.
 
 ```rescript
-// ProductDemand/StateChangeSlice/RecordProductDemand.res
+// ProductDemand/StateChange/RecordProductDemand.res
 @@reventless.spec
 
 @schema
@@ -474,7 +474,7 @@ type event =
 ```
 
 ```rescript
-// ProductDemand/StateChangeSlice/RecordProductDemand_Behavior.res
+// ProductDemand/StateChange/RecordProductDemand_Behavior.res
 @@reventless.behavior
 
 type state = {recordedOrderIds: array<string>}
@@ -520,7 +520,7 @@ The view spec is named after the read model it produces — `Products`, not `Pro
 #### Products
 
 ```rescript
-// Product/StateViewSlice/Products.res
+// Product/StateView/Products.res
 @@reventless.spec
 
 @schema
@@ -535,7 +535,7 @@ type consumedEvent =
 ```
 
 ```rescript
-// Product/StateViewSlice/Products_Projection.res
+// Product/StateView/Products_Projection.res
 @@reventless.projection
 
 let project = ({event}) =>
@@ -558,7 +558,7 @@ let project = ({event}) =>
 A StateViewSlice can consume events from multiple chapters in the same shared log. `ProductDemand` reads both `ProductAdded` (to initialise the entry with the product name) and the demand events (to maintain the order count). `UpdateWithDefault` seeds the row on first sight and folds in later updates:
 
 ```rescript
-// ProductDemand/StateViewSlice/ProductDemand.res
+// ProductDemand/StateView/ProductDemand.res
 @@reventless.spec
 
 @schema
@@ -572,7 +572,7 @@ type consumedEvent =
 ```
 
 ```rescript
-// ProductDemand/StateViewSlice/ProductDemand_Projection.res
+// ProductDemand/StateView/ProductDemand_Projection.res
 @@reventless.projection
 
 let project = ({event}) =>

@@ -217,7 +217,7 @@ If an aggregate has no event mappings, the generator wires `ReventlessInfra.NoEv
 
 ### Step 6: Let the Generator Assemble the Plugin
 
-You don't write the composition root by hand. Before every build, `generate-plugin src/` (wired as the `prebuild` script, also runnable via `pnpm run generate`) scans `src/` by folder name — `Aggregate/`, `ReadModel/`, `StateChangeSlice/`, … — and wires every component it discovers into a **generated** `src/Plugin.res`. The plugin is a [module function](./rescript-syntax.md#functors) over `Platform.T`, which keeps your application code decoupled from the AWS infrastructure — only the composition root touches the platform.
+You don't write the composition root by hand. Before every build, `generate-plugin src/` (wired as the `prebuild` script, also runnable via `pnpm run generate`) scans `src/` by folder name — `Aggregate/`, `ReadModel/`, `StateChange/`, … — and wires every component it discovers into a **generated** `src/Plugin.res`. The plugin is a [module function](./rescript-syntax.md#functors) over `Platform.T`, which keeps your application code decoupled from the AWS infrastructure — only the composition root touches the platform.
 
 For the Catalog plugin built above, the generator emits roughly:
 

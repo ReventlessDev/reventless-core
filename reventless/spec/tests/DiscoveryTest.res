@@ -19,7 +19,7 @@ describe("Discovery.chapterOf", () => {
   )
 
   testSync("DCB slice under a chapter folder", () =>
-    expect(D.chapterOf("Order/StateChangeSlice/PlaceOrder.res"))->toEqual(Some("Order"))
+    expect(D.chapterOf("Order/StateChange/PlaceOrder.res"))->toEqual(Some("Order"))
   )
 
   // A component directly under a kind-folder carries no chapter.

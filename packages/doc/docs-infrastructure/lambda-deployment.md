@@ -245,8 +245,8 @@ ordering/                          # Platform-agnostic (Layer 1+2)
 ├── src/
 │   ├── Order/                     # Domain specs (Layer 1)
 │   │   ├── Aggregate/
-│   │   ├── StateChangeSlice/
-│   │   └── StateViewSlice/
+│   │   ├── StateChange/
+│   │   └── StateView/
 │   └── Plugin.res                 # Auto-generated (Layer 2)
 ├── tests/
 │   └── E2E/OrderingE2ETest.res    # Uses local platform

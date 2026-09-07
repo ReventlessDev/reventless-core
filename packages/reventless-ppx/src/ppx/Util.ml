@@ -291,8 +291,9 @@ let kind_for_base base =
    Falls back to substring matching for non-slice kinds (Projection,
    Behavior) and for filenames like "AutomationGwtTest" or
    "StateChangeSliceGwtTest" that bundle the kind with a test suffix.
-   StateChange* / StateView* substrings map to Behavior / Projection per
-   Plan 02 Phase 3b. *)
+   The StateChange* / StateView* substrings map to Behavior / Projection —
+   which is also what carries [StateViewStream] (and the older
+   [StateViewSliceStream]), since the stream variant shares the DSL. *)
 let dsl_kind_of_segment part : string option =
   if part = "Aggregate" || part = "Aggregates" then Some "Behavior"
   else if part = "ReadModel" || part = "ReadModels"
@@ -340,8 +341,8 @@ let dsl_kind_of_segment part : string option =
     if contains_substring part "OutboundTranslation" then Some "OutboundTranslation"
     else if contains_substring part "InboundTranslation" then Some "InboundTranslation"
     else if contains_substring part "Automation" then Some "Automation"
-    else if contains_substring part "StateChangeSlice" then Some "Behavior"
-    else if contains_substring part "StateViewSlice" then Some "Projection"
+    else if contains_substring part "StateChange" then Some "Behavior"
+    else if contains_substring part "StateView" then Some "Projection"
     else if contains_substring part "Projection" then Some "Projection"
     else if contains_substring part "Behavior" then Some "Behavior"
     (* ExtensionPoint before Extension — the former contains the latter. Catches
@@ -422,15 +423,27 @@ let is_in_folder_prefix fname prefix =
     (fun part -> String.length part >= plen && String.sub part 0 plen = prefix)
     dir_parts
 
+(* Every folder spelling denoting the slice kind [base]: the canonical short form
+   the naming conventions use, its plural, and the older [Slice]-suffixed pair.
+   Mirrors [ComponentKind.folderToKind] in reventless-spec — change both. *)
+let slice_folder_spellings base =
+  [base; base ^ "s"; base ^ "Slice"; base ^ "Slices"]
+
+let is_in_slice_folder_named fname base =
+  List.exists (is_in_folder fname) (slice_folder_spellings base)
+
+(* StateView folders, including the stream variant that shares the kind's specs. *)
+let is_in_stateview_folder fname =
+  is_in_slice_folder_named fname "StateView"
+  || List.exists (is_in_folder fname)
+       ["StateViewStream"; "StateViewStreams";
+        "StateViewSliceStream"; "StateViewSliceStreams"]
+
 let is_in_aggregate_folder fname = is_in_folder fname "Aggregate"
 let is_in_readmodel_folder fname = is_in_folder_prefix fname "ReadModel"
 let is_in_extension_folder fname = is_in_folder fname "Extension"
 let is_in_task_folder fname = is_in_folder fname "Task"
-let is_in_automationslice_folder fname =
-  let dir_parts = String.split_on_char '/' (Filename.dirname fname) in
-  List.exists (fun part ->
-    String.equal part "AutomationSlice" || String.equal part "AutomationSlices"
-  ) dir_parts
+let is_in_automationslice_folder fname = is_in_slice_folder_named fname "Automation"
 
 let filename_to_name fname =
   let base = Filename.basename fname in

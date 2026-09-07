@@ -24,13 +24,13 @@ open Ppxlib
     Supported DSL kinds (canonical tokens, shared with [@@reventless.spec]
     via [Util.derive_gwt_kind]):
     {ul
-      {- [Automation]                 (was [AutomationSlice], Plan 01)}
-      {- [InboundTranslation]         (was [InboundTranslationSlice], Plan 01)}
-      {- [OutboundTranslation]        (was [OutboundTranslationSlice], Plan 01)}
+      {- [Automation]                 ([Automation/] folder)}
+      {- [InboundTranslation]         ([InboundTranslation/] folder)}
+      {- [OutboundTranslation]        ([OutboundTranslation/] folder)}
       {- [Behavior]                   (Aggregate folder uses
-                                       [MakeFromAggregate]; StateChangeSlice
+                                       [MakeFromAggregate]; [StateChange/]
                                        folder uses [Make])}
-      {- [Projection]                 (StateViewSlice, Plan 02 Phase 3b)}
+      {- [Projection]                 ([StateView/] and [StateViewStream/])}
       {- [MultiSourceProjection]      (Aggregate-pattern ReadModel folder.
                                        Requires an explicit Mapping payload —
                                        e.g.

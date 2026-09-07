@@ -60,8 +60,8 @@ and Jest re-runs the affected suites within seconds.
 Mirror `src/` under `tests/`, one scenario file per spec:
 
 ```
-src/Category/StateChangeSlice/AddCategory.res
-tests/Category/StateChangeSlice/AddCategory_GWT.res
+src/Category/StateChange/AddCategory.res
+tests/Category/StateChange/AddCategory_GWT.res
 ```
 
 The `_GWT` suffix is what wires the file up: the file-level `@@reventless.gwt`

@@ -14,7 +14,7 @@ Validates a Reventless project for correctness, completeness, and convention com
 - Plugin composition root exists (`*Plugin.res` with `Make` functor)
 - Platform `Main.res` exists and references all plugins
 - Spec packages exist for plugins with extension points
-- Directory structure follows conventions (Aggregate/ or Entity/StateChangeSlice/)
+- Directory structure follows conventions (Aggregate/ or Entity/StateChange/)
 
 ### 2. Naming Conventions
 

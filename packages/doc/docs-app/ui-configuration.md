@@ -614,7 +614,7 @@ Cognito groups.
 the API:
 
 ```rescript
-// Ordering/Order/StateChangeSlice/ShipOrder.res — operator-only
+// Ordering/Order/StateChange/ShipOrder.res — operator-only
 @authorize(AllowGroups(["Admin", "Fulfilment"])) ShipOrder({orderId: string})
 
 // Ordering/Customer/ReadModelStream/Customers.res — file-level, whole view
@@ -628,7 +628,7 @@ Note the two forms: `@authorize` on a **command variant** gates that one command
 so the `@owner` field narrows every read to the caller's own orders:
 
 ```rescript
-// Ordering/Order/StateViewSliceStream/Orders.res
+// Ordering/Order/StateViewStream/Orders.res
 @owner customerId: string,
 ```
 

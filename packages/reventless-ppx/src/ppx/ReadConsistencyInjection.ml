@@ -28,8 +28,7 @@ type kind =
   | NotEligible
 
 let detect_kind fname =
-  if Util.is_in_folder fname "StateChangeSlice"
-     || Util.is_in_folder fname "StateChangeSlices"
+  if Util.is_in_slice_folder_named fname "StateChange"
   then StateChangeCarrier
   else NotEligible
 

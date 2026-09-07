@@ -437,7 +437,7 @@ function conformanceBinding(c) {
 function singleProjectionPatch(c) {
   let n = namesOf(c);
   return {
-    into: `StateViewSliceStream/` + c.view + `_Projection.res`,
+    into: `StateViewStream/` + c.view + `_Projection.res`,
     at: `the projection's \`switch\`, and one field on \`` + c.view + `\`'s state`,
     contents: [
       `// On the view's state, one field — the reference and its text, in one value.`,
@@ -477,7 +477,7 @@ function manyProjectionPatch(c) {
   let n = namesOf(c);
   let set = c.file + "s";
   return {
-    into: `StateViewSliceStream/` + c.view + `_Projection.res`,
+    into: `StateViewStream/` + c.view + `_Projection.res`,
     at: `the projection's \`switch\`, and one field on \`` + c.view + `\`'s state`,
     contents: [
       `// On the view's state, one field — the set, primary first.`,
@@ -546,11 +546,11 @@ function emit(config, into, tests) {
   return {
     files: [
       {
-        path: into + `/StateChangeSlice/` + n.slice + `.res`,
+        path: into + `/StateChange/` + n.slice + `.res`,
         contents: sliceSpec(config)
       },
       {
-        path: into + `/StateChangeSlice/` + n.slice + `_Behavior.res`,
+        path: into + `/StateChange/` + n.slice + `_Behavior.res`,
         contents: sliceBehavior(config)
       },
       {

@@ -97,7 +97,7 @@ Use this when the spec module name doesn't match `{Filename minus Behavior}` —
 
 ### `@@reventless.dcbTags`
 
-Use on **DCB slice files** outside `*Slice/` folders that have entity ID fields in `@schema` types. Files inside any `*Slice/` folder (StateChangeSlice, StateViewSlice, AutomationSlice, InboundTranslationSlice, OutboundTranslationSlice) get dcbTags automatically via `@@reventless.spec` — no explicit `@@reventless.dcbTags` needed.
+Use on **DCB slice files** outside a slice folder that have entity ID fields in `@schema` types. Files inside any slice folder (`StateChange/`, `StateView/` incl. `StateViewStream/`, `Automation/`, `InboundTranslation/`, `OutboundTranslation/`) get dcbTags automatically via `@@reventless.spec` — no explicit `@@reventless.dcbTags` needed.
 
 **What it does:** Scans all `@schema`-annotated variant types and injects `@s.matches(Reventless.DcbTag.string)` on fields that match these rules (unless `@s.matches(...)` is already present):
 
@@ -816,7 +816,7 @@ Two things follow, both enforced server-side:
 - **On a queryable's state:** reads of that view are narrowed to the caller's own rows, on every transport.
 
 ```rescript
-// StateChangeSlice/PlaceOrder.res
+// StateChange/PlaceOrder.res
 @schema
 type command =
   PlaceOrder({
@@ -824,7 +824,7 @@ type command =
     @noDcbTag @owner customerId: string,
   })
 
-// StateViewSliceStream/Orders.res
+// StateViewStream/Orders.res
 @schema
 type state = {
   orderId: string,
@@ -1193,7 +1193,7 @@ File-level attribute on `<Plural>_Projections.res` (multi-source ReadModel proje
 **What it injects** (at the top of the file):
 | Binding | Condition | Value |
 |---------|-----------|-------|
-| `open Reventless.<Domain>` | Not already opened | `Projection` (in `ReadModel/`) or `EventMapping` (in `Aggregate/`) or `AutomationSlice` (in `AutomationSlice/`) |
+| `open Reventless.<Domain>` | Not already opened | `Projection` (in `ReadModel/`) or `EventMapping` (in `Aggregate/`) or `AutomationSlice` (in `Automation/`) |
 | `open Reventless.Message` | In `ReadModel/` and not already opened | — |
 | `module Target` | Not already declared | Alias to the spec module (`<Stem>` with `_Mappings` / `_Projections` suffix stripped) |
 | `module M` | Not already declared | `Reventless.<Domain>.Mappings.Make(Target)` |
@@ -1305,7 +1305,7 @@ The developer only writes `let name` and the `@schema type event`. Everything el
 | `let name = "Category"` | Derived from filename |
 | `let moduleUrl: string = %raw(\`import.meta.url\`)` | Computed at compile time |
 | `open Spec; module Spec = Spec` | Auto-injected by `@@reventless.behavior` |
-| `@s.matches(DcbTag.string)` on `*Id`/`*Ids` fields | Auto-injected by `@@reventless.dcbTags` (or automatically in `*Slice/` folders) |
+| `@s.matches(DcbTag.string)` on `*Id`/`*Ids` fields | Auto-injected by `@@reventless.dcbTags` (or automatically in slice folders) |
 | `@s.matches(DcbTag.partition)` on partition key field | Use `@partitionTag` field annotation |
 | `@s.matches(DcbTag.string)` on non-`*Id` field | Use `@dcbTag` field annotation |
 | Suppress auto-tagging on a `*Id` field | Use `@noDcbTag` field annotation |

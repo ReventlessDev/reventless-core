@@ -36,15 +36,17 @@ let all = [
 ]
 
 // The canonical (singular) folder name for a kind — the spelling the naming
-// conventions and the graph `kind` field use.
+// conventions and the graph `kind` field use. A slice folder drops the `Slice`
+// the kind carries: the folder already sits inside a plugin's `src/`, so the
+// suffix only lengthened every path. The suffixed spellings stay accepted below.
 let folderName = (t: t): string =>
   switch t {
-  | StateChangeSlice => "StateChangeSlice"
-  | StateViewSlice => "StateViewSlice"
-  | StateViewSliceStream => "StateViewSliceStream"
-  | AutomationSlice => "AutomationSlice"
-  | InboundTranslationSlice => "InboundTranslationSlice"
-  | OutboundTranslationSlice => "OutboundTranslationSlice"
+  | StateChangeSlice => "StateChange"
+  | StateViewSlice => "StateView"
+  | StateViewSliceStream => "StateViewStream"
+  | AutomationSlice => "Automation"
+  | InboundTranslationSlice => "InboundTranslation"
+  | OutboundTranslationSlice => "OutboundTranslation"
   | Aggregate => "Aggregate"
   | ReadModel => "ReadModel"
   | ReadModelStream => "ReadModelStream"
@@ -60,7 +62,11 @@ let folderToKind = (folder: string): option<t> =>
   | "StateChange" | "StateChanges" | "StateChangeSlice" | "StateChangeSlices" =>
     Some(StateChangeSlice)
   | "StateView" | "StateViews" | "StateViewSlice" | "StateViewSlices" => Some(StateViewSlice)
-  | "StateViewSliceStream" | "StateViewSliceStreams" => Some(StateViewSliceStream)
+  | "StateViewStream"
+  | "StateViewStreams"
+  | "StateViewSliceStream"
+  | "StateViewSliceStreams" =>
+    Some(StateViewSliceStream)
   | "Automation" | "Automations" | "AutomationSlice" | "AutomationSlices" => Some(AutomationSlice)
   | "InboundTranslation"
   | "InboundTranslations"

@@ -208,11 +208,11 @@ the record, as it is for an email that could not be sent.
 ### Example 1: Fire-and-Forget (Send Tracking Email)
 
 The **spec file**. `@@reventless.spec` injects `name`, `module Id`, and
-`moduleUrl` from the filename, and inside a `*Slice/` folder auto-applies DCB tags
+`moduleUrl` from the filename, and inside a slice folder auto-applies DCB tags
 to `*Id` fields — never write `@s.matches(...)` by hand. `targetName = None`
 signals fire-and-forget:
 
-```rescript title="Order/OutboundTranslationSlice/SendTrackingEmail.res" showLineNumbers
+```rescript title="Order/OutboundTranslation/SendTrackingEmail.res" showLineNumbers
 @@reventless.spec
 
 @schema
@@ -238,7 +238,7 @@ The **translation file** (`@@reventless.translation`) holds `collect` and the
 async `translate`. `OrderShipped` carries its own `orderId`, so this `collect`
 ignores `~sourceId`:
 
-```rescript title="Order/OutboundTranslationSlice/SendTrackingEmail_Translation.res" showLineNumbers
+```rescript title="Order/OutboundTranslation/SendTrackingEmail_Translation.res" showLineNumbers
 @@reventless.translation
 
 let collect = (event, ~sourceId as _) =>
@@ -257,7 +257,7 @@ let translate = async (_id, item) => {
 Here `targetName = Some("ConfirmPayment")` routes the optional command back into
 the domain:
 
-```rescript title="Payment/OutboundTranslationSlice/ProcessPayment.res" showLineNumbers
+```rescript title="Payment/OutboundTranslation/ProcessPayment.res" showLineNumbers
 @@reventless.spec
 
 @schema
@@ -280,7 +280,7 @@ let sourceNames: array<string> = []
 let externalSystem = Some("PaymentGateway")
 ```
 
-```rescript title="Payment/OutboundTranslationSlice/ProcessPayment_Translation.res" showLineNumbers
+```rescript title="Payment/OutboundTranslation/ProcessPayment_Translation.res" showLineNumbers
 @@reventless.translation
 
 let collect = (event, ~sourceId as _) =>
@@ -304,7 +304,7 @@ let translate = async (id, item) => {
 ### Plugin Wiring
 
 You never register or wire OutboundTranslationSlices by hand. The plugin generator
-scans the `OutboundTranslationSlice/` folder and emits the wiring into the
+scans the `OutboundTranslation/` folder and emits the wiring into the
 **generated** `Plugin.res` using the two-arg factory
 `Platform.OutboundTranslationSlice.Make(Spec, Translation)`:
 
@@ -331,7 +331,7 @@ CommandTopic.
 `sourceNames` names the Aggregate, and `~sourceId` supplies the customer id that
 the event payload does not carry:
 
-```rescript title="Customer/OutboundTranslationSlice/GeocodeCustomerAddress.res" showLineNumbers
+```rescript title="Customer/OutboundTranslation/GeocodeCustomerAddress.res" showLineNumbers
 @@reventless.spec
 
 @schema
@@ -359,7 +359,7 @@ let sourceNames = ["Customer"]
 let externalSystem = Some("AwsLocation")
 ```
 
-```rescript title="Customer/OutboundTranslationSlice/GeocodeCustomerAddress_Translation.res" showLineNumbers
+```rescript title="Customer/OutboundTranslation/GeocodeCustomerAddress_Translation.res" showLineNumbers
 @@reventless.translation
 
 let collect = (event, ~sourceId) =>

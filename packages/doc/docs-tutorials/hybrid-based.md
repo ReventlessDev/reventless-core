@@ -22,7 +22,7 @@ package. Two things differ from a hand-written sketch:
 
 - **`Plugin.res` is generated**, not hand-written. A `prebuild` step runs
   `generate-plugin src/`, which scans the plugin's `src/` folders by name
-  (`Aggregate/`, `StateChangeSlice/`, `StateViewSliceStream/`, `ReadModel/`,
+  (`Aggregate/`, `StateChange/`, `StateViewStream/`, `ReadModel/`,
   `Task/`, …) and wires every component it finds. You add a folder + file; the
   generator does the wiring. See [Plugin composition](#plugin-composition) below.
 - **There is no `*EventLog.res` file.** The shared DCB event log is *implied* by
@@ -76,7 +76,7 @@ which is what a card or gallery tile draws. `Category` has the same graft
 [Domain Traits](/app/domain-traits) for what the trait is and how to lift it into your
 own application.
 
-In the source these live in `catalog/src/Product/StateViewSliceStream/` — the
+In the source these live in `catalog/src/Product/StateViewStream/` — the
 **Stream** variant projects into a live-updating view that pushes changes to
 subscribed clients. (Use the non-stream `StateViewSlice` when you don't need
 live updates.)
@@ -220,7 +220,7 @@ worth noticing:
   silently accepted.
 
 The matching scenarios live in
-`catalog/tests/Product/StateChangeSlice/AddProduct_GWT.res`, in the same
+`catalog/tests/Product/StateChange/AddProduct_GWT.res`, in the same
 vocabulary: given a `CategoryAdded`, when `AddProduct`, then `ProductAdded`.
 
 ### The shared Catalog DCB event log
@@ -469,19 +469,19 @@ The generator maps each folder to a functor and a `Plugin.make` argument:
 | Folder | Generated as | `Plugin.make` argument |
 |---|---|---|
 | `Aggregate/` | `Platform.Aggregate.Make(Spec, Behavior, …)` | `~aggregates` |
-| `StateChangeSlice/` | `Platform.StateChangeSlice.Make(Spec, Behavior)` | `~stateChangeSlices` |
-| `StateViewSliceStream/` | `Platform.StateViewSliceStream.Make(Spec, Projection)` | `~stateViewSlices` |
+| `StateChange/` | `Platform.StateChangeSlice.Make(Spec, Behavior)` | `~stateChangeSlices` |
+| `StateViewStream/` | `Platform.StateViewSliceStream.Make(Spec, Projection)` | `~stateViewSlices` |
 | `ReadModel/` | `Platform.ReadModel.Make(Spec, Projections)` | `~readModels` |
 | `ReadModelStream/` | `Platform.ReadModelStream.Make(Spec, Projections)` | `~readModels` |
-| `InboundTranslationSlice/` | `Platform.InboundTranslationSlice.Make(Spec, Translation)` | `~inboundTranslationSlices` |
-| `AutomationSlice/` | `Platform.AutomationSlice.Make(Spec, Automation)` | `~automationSlices` |
-| `OutboundTranslationSlice/` | `Platform.OutboundTranslationSlice.Make(Spec, Translation)` | `~outboundTranslationSlices` |
+| `InboundTranslation/` | `Platform.InboundTranslationSlice.Make(Spec, Translation)` | `~inboundTranslationSlices` |
+| `Automation/` | `Platform.AutomationSlice.Make(Spec, Automation)` | `~automationSlices` |
+| `OutboundTranslation/` | `Platform.OutboundTranslationSlice.Make(Spec, Translation)` | `~outboundTranslationSlices` |
 | `Task/` | `Platform.Task.Make(Spec)` | `~tasks` |
 | `ExtensionPoint/` | `Platform.ExtensionPoint.Make(Mapping)` | `~extensionPoints` |
 | `Extension/` | `Platform.Extension.Make(Mapping)` | `~extensions` |
 
 The "hybrid" is invisible in your source: a plugin that has both an `Aggregate/`
-folder **and** `StateChangeSlice/` folders gets a generated `Plugin.make` call
+folder **and** `StateChange/` folders gets a generated `Plugin.make` call
 that simply receives both `~aggregates` **and** the DCB slice arrays. The
 framework routes aggregate commands to per-instance event logs and DCB commands
 to the shared (implied) DCB log. **Ordering** is exactly this shape — a Customer

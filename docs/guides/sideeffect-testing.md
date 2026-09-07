@@ -123,7 +123,7 @@ at the top of the file.
 
 If your example needs to test both styles, see
 `examples/online-shop-aggregates/ordering/tests/Order/SideEffect/` and
-`examples/online-shop-hybrid/ordering/tests/.../OutboundTranslationSlice/`.
+`examples/online-shop-hybrid/ordering/tests/.../OutboundTranslation/`.
 
 ## Why not refactor `SideEffect.T` for DI?
 

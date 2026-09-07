@@ -28,7 +28,7 @@ import * as Api_Naming$ReventlessCore from "@reventlessdev/reventless-core/src/c
 import * as PluginSpec$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginSpec.res.mjs";
 import * as UserStore$ReventlessLocal from "./adapter/Auth/UserStore.res.mjs";
 import * as TestRunner$ReventlessLocal from "./test/TestRunner.res.mjs";
-import * as UiFragments$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateViewSlice/UiFragments.res.mjs";
+import * as UiFragments$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateView/UiFragments.res.mjs";
 import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
 import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src/util/EffectLogger.res.mjs";
 import * as ShellConfig$ReventlessLocal from "./ShellConfig.res.mjs";
@@ -60,7 +60,7 @@ import * as LocalClonerRunner$ReventlessLocal from "./adapter/Cloner/LocalCloner
 import * as PluginBaseFragment$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/api/PluginBaseFragment.res.mjs";
 import * as ProjectionPending$ReventlessLocal from "./adapter/ProjectionPending.res.mjs";
 import * as ReadModel_Builder$ReventlessLocal from "./components/ReadModel_Builder.res.mjs";
-import * as UiFragmentRegistry$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateChangeSlice/UiFragmentRegistry.res.mjs";
+import * as UiFragmentRegistry$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateChange/UiFragmentRegistry.res.mjs";
 import * as LocalEvents_Server$ReventlessLocal from "./adapter/Api/LocalEvents_Server.res.mjs";
 import * as LocalPlatformStart$ReventlessLocal from "./LocalPlatformStart.res.mjs";
 import * as PlatformMCP_Server$ReventlessLocal from "./adapter/PlatformMCP_Server.res.mjs";
@@ -76,7 +76,7 @@ import * as ProjectionCheckpoint$ReventlessLocal from "./adapter/ProjectionCheck
 import * as ExtensionPointMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionPointMapping.res.mjs";
 import * as LocalGeocodeResolvers$ReventlessLocal from "./adapter/LocalGeocodeResolvers.res.mjs";
 import * as LocalPlatformRegistry$ReventlessLocal from "./LocalPlatformRegistry.res.mjs";
-import * as UiFragments_Projection$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateViewSlice/UiFragments_Projection.res.mjs";
+import * as UiFragments_Projection$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateView/UiFragments_Projection.res.mjs";
 import * as EventLogStorage_Sqlite$ReventlessLocal from "./adapter/EventLog/EventLogStorage_Sqlite.res.mjs";
 import * as ExtensionPoint_Builder$ReventlessLocal from "./components/ExtensionPoint_Builder.res.mjs";
 import * as PlatformGraphQL_Server$ReventlessLocal from "./adapter/PlatformGraphQL_Server.res.mjs";
@@ -94,7 +94,7 @@ import * as StateChangeSlice_Builder$ReventlessLocal from "./components/StateCha
 import * as DcbEventLogStorage_Sqlite$ReventlessLocal from "./adapter/DcbEventLog/DcbEventLogStorage_Sqlite.res.mjs";
 import * as LocalEventCollectorChannel$ReventlessLocal from "./adapter/EventCollector/LocalEventCollectorChannel.res.mjs";
 import * as PluginRuntime_Builder_Micro$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Runtime/PluginRuntime_Builder_Micro.res.mjs";
-import * as UiFragmentRegistry_Behavior$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateChangeSlice/UiFragmentRegistry_Behavior.res.mjs";
+import * as UiFragmentRegistry_Behavior$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateChange/UiFragmentRegistry_Behavior.res.mjs";
 import * as Platform_PluginStructuresApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_PluginStructuresApi.res.mjs";
 import * as EventHistoryResolvers_GraphQL$ReventlessLocal from "./adapter/EventHistory/EventHistoryResolvers_GraphQL.res.mjs";
 import * as InboundTranslationSlice_Builder$ReventlessLocal from "./components/InboundTranslationSlice_Builder.res.mjs";

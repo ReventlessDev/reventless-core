@@ -334,17 +334,17 @@ plugin-name/
 ├── rescript.json
 ├── src/
 │   ├── EntityName/
-│   │   ├── StateChangeSlice/
+│   │   ├── StateChange/
 │   │   │   ├── AddEntityName.res
 │   │   │   ├── ChangeEntityField.res
 │   │   │   └── ...
-│   │   ├── StateViewSlice/
+│   │   ├── StateView/
 │   │   │   └── EntityNamesView.res
-│   │   ├── AutomationSlice/        # if needed
+│   │   ├── Automation/        # if needed
 │   │   │   └── AutoProcessName.res
-│   │   ├── InboundTranslationSlice/ # if needed
+│   │   ├── InboundTranslation/ # if needed
 │   │   │   └── ImportEntityName.res
-│   │   └── OutboundTranslationSlice/ # if needed
+│   │   └── OutboundTranslation/ # if needed
 │   │       └── SendNotification.res
 │   ├── Extension/
 │   │   └── ExternalExtension.res
@@ -356,9 +356,9 @@ plugin-name/
 │       └── EmailService.res
 └── tests/
     ├── EntityName/
-    │   ├── StateChangeSlice/
+    │   ├── StateChange/
     │   │   └── *DecisionTest.res
-    │   └── StateViewSlice/
+    │   └── StateView/
     │       └── *ViewTest.res
     └── E2E/
         └── *E2ETest.res

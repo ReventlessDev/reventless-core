@@ -48,7 +48,7 @@ describe("ProductBehavior:", () => {
 Tests the `decide` function directly:
 
 ```rescript
-// tests/Product/StateChangeSlice/AddProductDecisionTest.res
+// tests/Product/StateChange/AddProductDecisionTest.res
 
 open Jest
 open Expect
@@ -132,7 +132,7 @@ describe("ProductsProjections:", () => {
 ## StateViewSlice Test
 
 ```rescript
-// tests/Product/StateViewSlice/ProductsViewTest.res
+// tests/Product/StateView/ProductsViewTest.res
 
 open Jest
 open Expect
@@ -180,10 +180,10 @@ tests/
 ```
 tests/
 ├── EntityName/
-│   ├── StateChangeSlice/
+│   ├── StateChange/
 │   │   ├── AddEntityDecisionTest.res    # Unit: decide function
 │   │   └── ChangeFieldDecisionTest.res
-│   └── StateViewSlice/
+│   └── StateView/
 │       └── EntityViewTest.res           # Unit: project function
 └── E2E/
     └── EntityE2ETest.res                # Integration: full pipeline

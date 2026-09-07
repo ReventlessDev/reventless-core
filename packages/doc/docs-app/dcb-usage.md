@@ -234,7 +234,7 @@ module type T = {
 
 ### 1. Define state change slice specs
 
-Each slice is a pair of files in a `StateChangeSlice/` folder. The spec file declares the slice's own `consumedEvent` (what it reads) and `event` (what it writes) — no shared event log spec module is needed. The PPX auto-injects `let name`, `module Id`, `let moduleUrl`, and applies `@s.matches(Reventless.DcbTag.string)` to every `*Id` field.
+Each slice is a pair of files in a `StateChange/` folder. The spec file declares the slice's own `consumedEvent` (what it reads) and `event` (what it writes) — no shared event log spec module is needed. The PPX auto-injects `let name`, `module Id`, `let moduleUrl`, and applies `@s.matches(Reventless.DcbTag.string)` to every `*Id` field.
 
 ```rescript
 // AddProduct.res
@@ -314,7 +314,7 @@ The command still executes normally when called programmatically or by internal 
 
 ### 2. Define state view slice specs
 
-A view slice is two files in a `StateViewSliceStream/` folder. The spec file declares `consumedEvent` and the read model `state`:
+A view slice is two files in a `StateViewStream/` folder. The spec file declares `consumedEvent` and the read model `state`:
 
 ```rescript
 // Categories.res
@@ -470,7 +470,7 @@ When a single event variant has multiple tagged fields, one must be designated a
 
 **`@partitionTag` field annotation (recommended in slice files):**
 
-In files where `@@reventless.dcbTags` is active (including all `*Slice/` folders), use the `@partitionTag` field annotation — the PPX transforms it to `@s.matches(DcbTag.partition)`:
+In files where `@@reventless.dcbTags` is active (including all slice folders), use the `@partitionTag` field annotation — the PPX transforms it to `@s.matches(DcbTag.partition)`:
 
 ```rescript
 // In a StateChangeSlice file

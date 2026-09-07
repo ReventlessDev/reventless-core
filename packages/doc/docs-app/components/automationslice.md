@@ -119,10 +119,10 @@ This example automates order shipping. When an `OrderPlaced` event arrives, a TO
 
 The **spec file** declares the `todoItem`, `command`, sweep config, and
 `targetName`. `@@reventless.spec` injects `name`, `module Id`, and `moduleUrl`
-from the filename; inside a `*Slice/` folder it also auto-applies DCB tags to
+from the filename; inside a slice folder it also auto-applies DCB tags to
 `*Id` fields — never write `@s.matches(...)` by hand:
 
-```rescript title="Order/AutomationSlice/AutoShipOrder.res" showLineNumbers
+```rescript title="Order/Automation/AutoShipOrder.res" showLineNumbers
 @@reventless.spec
 
 @schema
@@ -141,7 +141,7 @@ and `resolve`), the `mappings` array, and the source-agnostic `process`.
 `@@reventless.automation` injects the `Mappings.Make` wrapper (`module type Mapping`)
 and DCB tags on the Source module's `*Id` fields:
 
-```rescript title="Order/AutomationSlice/AutoShipOrder_Automation.res" showLineNumbers
+```rescript title="Order/Automation/AutoShipOrder_Automation.res" showLineNumbers
 @@reventless.automation
 
 // Single DCB source. `name` MUST equal `<pluginName>DcbEventLog` so the dispatch
@@ -182,7 +182,7 @@ let process = (id, _item) => Some((id, ShipOrder({orderId: id})))
 ### Plugin Wiring
 
 You never register or wire AutomationSlices by hand. The plugin generator scans
-the `AutomationSlice/` folder and emits the wiring into the **generated**
+the `Automation/` folder and emits the wiring into the **generated**
 `Plugin.res` using the two-arg factory `Platform.AutomationSlice.Make(Spec, Automation)`:
 
 ```rescript title="src/Plugin.res (generated — do not edit)"

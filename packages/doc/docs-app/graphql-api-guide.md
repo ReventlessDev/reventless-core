@@ -61,14 +61,14 @@ Use the local platform while you build and test your plugins, and switch to the 
 
 Every type and field in the schema is derived from one of:
 
-- a `@schema` declaration in a component spec (`Aggregate/`, `ReadModel/`, `StateChangeSlice/`, `StateViewSlice/`, `StateViewSliceStream/`, `InboundTranslationSlice/`);
+- a `@schema` declaration in a component spec (`Aggregate/`, `ReadModel/`, `StateChange/`, `StateView/`, `StateViewStream/`, `InboundTranslation/`);
 - a field-level annotation on a state schema that shapes filtering and sorting (`@id`, `@compositeId`, `@subId`, `@compositeSubId`, `@index`, `@indexSubId`, `@scan`, `@scanSort`, `@displayName`);
-- a tag annotation on a command/event/state field that promotes a `String` scalar to an `ID` (`@s.matches(Reventless.DcbTag.string)` — auto-applied inside `*Slice/` folders).
+- a tag annotation on a command/event/state field that promotes a `String` scalar to an `ID` (`@s.matches(Reventless.DcbTag.string)` — auto-applied inside slice folders).
 
 Components whose role is purely internal contribute **no GraphQL surface**:
 
-- `AutomationSlice/`
-- `OutboundTranslationSlice/`
+- `Automation/`
+- `OutboundTranslation/`
 - `ExtensionPoint/` (the spec and mapping files)
 - `Extension/`
 - `Task/`
@@ -81,11 +81,11 @@ Mutation and query field names, and the GraphQL type names they return, are alwa
 
 | Component                            | Mutation field            | Query field (single) | Query field (list)   | GraphQL type name      |
 | ------------------------------------ | ------------------------- | -------------------- | -------------------- | ---------------------- |
-| `StateChangeSlice/AddCategory.res`   | `Catalog_AddCategory`     | —                    | —                    | —                      |
-| `StateChangeSlice/AddProduct.res`    | `Catalog_AddProduct`      | —                    | —                    | —                      |
-| `StateViewSliceStream/Categories.res` | —                        | `Catalog_Category`   | `Catalog_Categories` | `Catalog_Category`     |
-| `StateViewSliceStream/Products.res`  | —                         | `Catalog_Product`    | `Catalog_Products`   | `Catalog_Product`      |
-| `StateViewSliceStream/ProductDemand.res` | —                     | `Catalog_ProductDemand` | `Catalog_ProductDemands` | `Catalog_ProductDemand` |
+| `StateChange/AddCategory.res`   | `Catalog_AddCategory`     | —                    | —                    | —                      |
+| `StateChange/AddProduct.res`    | `Catalog_AddProduct`      | —                    | —                    | —                      |
+| `StateViewStream/Categories.res` | —                        | `Catalog_Category`   | `Catalog_Categories` | `Catalog_Category`     |
+| `StateViewStream/Products.res`  | —                         | `Catalog_Product`    | `Catalog_Products`   | `Catalog_Product`      |
+| `StateViewStream/ProductDemand.res` | —                     | `Catalog_ProductDemand` | `Catalog_ProductDemands` | `Catalog_ProductDemand` |
 
 Connection plumbing (`<Type>Edge`, `<Type>Connection`, `<Type>Filter`, `<Type>OrderField`, `<Type>OrderBy`) attaches to the GraphQL type name — e.g. `Catalog_CategoryEdge`, `Catalog_CategoryConnection`, `Catalog_CategoryFilter`, `Catalog_CategoryOrderField`, `Catalog_CategoryOrderBy`.
 
@@ -140,12 +140,12 @@ extend type Mutation {
 }
 ```
 
-### 5.2 From a `StateChangeSlice/` (DCB)
+### 5.2 From a `StateChange/` (DCB)
 
 A single-object command produces **one** mutation field. The slice file name becomes the field name. The command's record fields become the mutation arguments — **no `id` is prepended**, because the command already carries every key it needs (its DCB tags).
 
 ```rescript
-// catalog/src/Product/StateChangeSlice/AddProduct.res
+// catalog/src/Product/StateChange/AddProduct.res
 @@reventless.spec
 
 @schema
@@ -164,7 +164,7 @@ extend type Mutation {
 }
 ```
 
-(`productId` becomes `ID!` because, inside `*Slice/` folders, the PPX automatically applies the DCB tag matcher to `*Id` fields.)
+(`productId` becomes `ID!` because, inside slice folders, the PPX automatically applies the DCB tag matcher to `*Id` fields.)
 
 Multi-key commands work the same way. `Ordering_PlaceOrder` carries an order id, a customer id, and a list of product ids:
 
@@ -181,7 +181,7 @@ Ordering_PlaceOrder(orderId: ID!, customerId: ID!, productIds: [ID]!): CommandRe
 A `StateChangeSlice` may also use a union command, in which case it emits one field per variant (still without a prepended `id`). The variant name replaces the slice name — a DCB command constructor already names the operation, so the field is `<Plugin>_<Variant>`, **not** the aggregate-style `<Plugin>_<Slice>_<Variant>`:
 
 ```rescript
-// ordering/src/CatalogProduct/StateChangeSlice/SyncCatalogProduct.res
+// ordering/src/CatalogProduct/StateChange/SyncCatalogProduct.res
 @schema
 type command =
   | SyncNewProduct({productId: string, name: string, price: float})
@@ -195,12 +195,12 @@ Ordering_ChangeSyncedPrice(productId: ID!, price: Float!): CommandResult!
 
 A single-constructor slice keeps the `<Plugin>_<Slice>` name instead, which is why `Catalog_AddProduct` above is not `Catalog_AddProduct_AddProduct`. Both forms are checked at build time against AppSync's 50-character subscription-field cap (each mutation `f` produces an `on<f>` subscription), failing with an actionable message rather than an opaque deploy-time error.
 
-### 5.3 From an `InboundTranslationSlice/`
+### 5.3 From an `InboundTranslation/`
 
 An inbound translation slice exposes a mutation whose argument list comes from `@schema type externalInput` — **not** the internal `command`. The slice's translation function maps the external shape into the internal command before publishing it. The field is `<Plugin>_<Slice>`:
 
 ```rescript
-// catalog/src/Product/InboundTranslationSlice/ImportProduct.res
+// catalog/src/Product/InboundTranslation/ImportProduct.res
 @@reventless.spec
 
 @schema
@@ -284,7 +284,7 @@ extend type Query {
 A `StateViewSliceStream` follows the same shape — the only practical difference is that the state schema typically carries its own entity id field:
 
 ```rescript
-// catalog/src/Product/StateViewSliceStream/Products.res
+// catalog/src/Product/StateViewStream/Products.res
 @schema
 type state = {productId: string, name: string, description: string, price: float}
 ```
@@ -451,7 +451,7 @@ The two annotations let your query expand an id (or list of ids) into the full t
 #### Example: order references its customer and the products it contains
 
 ```rescript
-// ordering/src/Order/StateViewSlice/Orders.res
+// ordering/src/Order/StateView/Orders.res
 @@reventless.spec
 
 @schema

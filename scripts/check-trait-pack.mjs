@@ -51,8 +51,8 @@ const specimens = {
       // Written by the trait, so removed before the emit: `graft-trait` refuses
       // to overwrite, and a skipped write would leave the check proving nothing.
       remove: [
-        "src/Customer/OutboundTranslationSlice/GeocodeCustomerAddress.res",
-        "src/Customer/OutboundTranslationSlice/GeocodeCustomerAddress_Translation.res",
+        "src/Customer/OutboundTranslation/GeocodeCustomerAddress.res",
+        "src/Customer/OutboundTranslation/GeocodeCustomerAddress_Translation.res",
         "tests/Customer/AddressGeocodingConformance_GWT.res",
       ],
       conformance: "tests/Customer/AddressGeocodingConformance_GWT.res.mjs",

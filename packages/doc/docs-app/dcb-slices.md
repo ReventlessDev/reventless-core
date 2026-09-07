@@ -44,7 +44,7 @@ ViewSlice1 -> QueryDb: project { class: projection-flow }
 
 ### DCB Tags
 
-Fields ending in `Id` with type `string` are automatically annotated as DCB tags — no manual work needed. Inside any `*Slice/` folder this happens automatically via `@@reventless.spec`; for files outside such folders, opt in with the `@@reventless.dcbTags` annotation. Under the hood, each tagged field gets `@s.matches(Reventless.DcbTag.string)`. This also applies to `*Id: array<string>` and `*Ids: array<string>` fields (element types are tagged). Tags are indexed in the shared event log, allowing each slice to efficiently query only the events relevant to its state (e.g., all events for a specific `itemId`).
+Fields ending in `Id` with type `string` are automatically annotated as DCB tags — no manual work needed. Inside any slice folder this happens automatically via `@@reventless.spec`; for files outside such folders, opt in with the `@@reventless.dcbTags` annotation. Under the hood, each tagged field gets `@s.matches(Reventless.DcbTag.string)`. This also applies to `*Id: array<string>` and `*Ids: array<string>` fields (element types are tagged). Tags are indexed in the shared event log, allowing each slice to efficiently query only the events relevant to its state (e.g., all events for a specific `itemId`).
 
 When a variant has multiple `*Id` fields, use `@partitionTag` on the field that should be the partition key. For a composite key built from multiple fields joined in declaration order, use `@compositePartitionTag` on each contributing field — see [PPX annotations](./rescript-syntax.md#reventless-ppx-annotations).
 
@@ -66,7 +66,7 @@ There is no separate event log spec file. The framework creates one shared event
 
 ### Step 1: Implement StateChangeSlice Specs
 
-Each `StateChangeSlice` lives in two files inside a `StateChangeSlice/` folder:
+Each `StateChangeSlice` lives in two files inside a `StateChange/` folder:
 
 - **`<Name>.res`** (`@@reventless.spec`) — declares `consumedEvent`, `command`, `error`, and `event`
 - **`<Name>_Behavior.res`** (`@@reventless.behavior`) — declares `state`, `initialState`, `evolve`, and `decide`
@@ -79,7 +79,7 @@ What each type means:
 - **`event`** — the event type this slice can emit
 - **`decide`** — accepts or rejects the command, returning events or an error
 
-The `@schema` annotation on `type command` automatically generates the command schema, which the framework uses to route commands to the correct slice. Inside a `StateChangeSlice/` folder, `@s.matches(Reventless.DcbTag.string)` is auto-applied to every `*Id` field.
+The `@schema` annotation on `type command` automatically generates the command schema, which the framework uses to route commands to the correct slice. Inside a `StateChange/` folder, `@s.matches(Reventless.DcbTag.string)` is auto-applied to every `*Id` field.
 
 ```rescript
 // AddProduct.res
@@ -175,7 +175,7 @@ let decide = (state, command) =>
 
 ### Step 2: Implement a StateViewSlice
 
-A `StateViewSlice` projects events from the shared log into a queryable read model. Like a StateChangeSlice it is two files, inside a `StateViewSliceStream/` folder:
+A `StateViewSlice` projects events from the shared log into a queryable read model. Like a StateChangeSlice it is two files, inside a `StateViewStream/` folder:
 
 - **`<Name>.res`** (`@@reventless.spec`) — declares `consumedEvent` and the read model `state`
 - **`<Name>_Projection.res`** (`@@reventless.projection`) — declares `project`

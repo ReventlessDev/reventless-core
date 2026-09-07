@@ -897,16 +897,32 @@ let roots: array<appRoot> = switch flagValues("--root") {
   })
 }
 
-/** Sidecar paths that describe a queryable, and those that describe a writable.
-    Told apart by the folder the source sits in, which is the same vocabulary the
-    plugin generator and the PPX already read a component's kind from. */
-let isViewPath = (path: string) =>
-  ["/ReadModel/", "/ReadModelStream/", "/StateViewSlice/", "/StateViewSliceStream/"]->Array.some(
-    seg => path->String.includes(seg),
+/** The kind a sidecar's source folder names, read through `ComponentKind` — the
+    one vocabulary the plugin generator and the PPX already classify a folder by,
+    so every accepted spelling (short, plural, `Slice`-suffixed) lands here too.
+    The innermost matching segment wins, as it does everywhere else. */
+let kindOfPath = (path: string): option<ComponentKind.t> =>
+  path
+  ->String.split("/")
+  ->Array.reduce(None, (found, segment) =>
+    switch ComponentKind.folderToKind(segment) {
+    | Some(_) as kind => kind
+    | None => found
+    }
   )
 
+/** Sidecar paths that describe a queryable, and those that describe a writable. */
+let isViewPath = (path: string) =>
+  switch kindOfPath(path) {
+  | Some(ReadModel | ReadModelStream | StateViewSlice | StateViewSliceStream) => true
+  | _ => false
+  }
+
 let isWritablePath = (path: string) =>
-  ["/Aggregate/", "/StateChangeSlice/"]->Array.some(seg => path->String.includes(seg))
+  switch kindOfPath(path) {
+  | Some(Aggregate | StateChangeSlice) => true
+  | _ => false
+  }
 
 let runPlugin = async (
   ~plugin: string,

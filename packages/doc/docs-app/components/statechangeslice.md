@@ -286,7 +286,7 @@ Use `@compositePartitionTag(":")` to set a different separator after a field. Ca
 
 ### Cross-Entity Queries with Tagged Arrays
 
-When a command references multiple entities, use a `*Id: array<string>` field (singular name). Inside a `StateChangeSlice/` folder the PPX auto-applies `@s.matches(Reventless.DcbTag.string)` to the element type:
+When a command references multiple entities, use a `*Id: array<string>` field (singular name). Inside a `StateChange/` folder the PPX auto-applies `@s.matches(Reventless.DcbTag.string)` to the element type:
 
 ```rescript
 @schema
@@ -350,7 +350,7 @@ let decide = (state, command) =>
 
 ### 4. Tag Only What's Needed
 
-DCB tags are auto-applied to `*Id` fields inside `StateChangeSlice/` folders. For a payload field that happens to end in `Id` but is **not** a query key, suppress tagging with `@noDcbTag`:
+DCB tags are auto-applied to `*Id` fields inside `StateChange/` folders. For a payload field that happens to end in `Id` but is **not** a query key, suppress tagging with `@noDcbTag`:
 
 ```rescript
 // Good: *Id fields are tagged automatically; suppress the ones that are payload only

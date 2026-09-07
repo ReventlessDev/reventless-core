@@ -20,17 +20,17 @@ let all = [
 function folderName(t) {
   switch (t) {
     case "StateChangeSlice" :
-      return "StateChangeSlice";
+      return "StateChange";
     case "StateViewSlice" :
-      return "StateViewSlice";
+      return "StateView";
     case "StateViewSliceStream" :
-      return "StateViewSliceStream";
+      return "StateViewStream";
     case "AutomationSlice" :
-      return "AutomationSlice";
+      return "Automation";
     case "InboundTranslationSlice" :
-      return "InboundTranslationSlice";
+      return "InboundTranslation";
     case "OutboundTranslationSlice" :
-      return "OutboundTranslationSlice";
+      return "OutboundTranslation";
     case "Aggregate" :
       return "Aggregate";
     case "ReadModel" :
@@ -85,6 +85,8 @@ function folderToKind(folder) {
       return "StateChangeSlice";
     case "StateViewSliceStream" :
     case "StateViewSliceStreams" :
+    case "StateViewStream" :
+    case "StateViewStreams" :
       return "StateViewSliceStream";
     case "StateView" :
     case "StateViewSlice" :

@@ -87,7 +87,7 @@ A StateViewSlice is **split into two files**:
 The spec file. `@@reventless.spec` injects `name`, `module Id`, `moduleUrl`,
 `let config = config()`, and `let subIdConfig = None`:
 
-```rescript title="Item/StateViewSliceStream/Items.res" showLineNumbers
+```rescript title="Item/StateViewStream/Items.res" showLineNumbers
 @@reventless.spec
 
 @schema
@@ -108,7 +108,7 @@ payload. `meta` is `Reventless.Message.meta` (producer info incl. `meta.time`, t
 producer timestamp, and `meta.user`) and `recordedAt: string` is the storage
 timestamp:
 
-```rescript title="Item/StateViewSliceStream/Items_Projection.res" showLineNumbers
+```rescript title="Item/StateViewStream/Items_Projection.res" showLineNumbers
 @@reventless.projection
 
 let project = ({event}) =>
@@ -168,7 +168,7 @@ In the `_Projection.res` file, `@@reventless.projection` injects
 `open Reventless.Projection`, so the action constructors (`Set`, `Update`,
 `UpdateWithDefault`, `Delete`) are in scope unqualified:
 
-```rescript title="Item/StateViewSliceStream/Items_Projection.res"
+```rescript title="Item/StateViewStream/Items_Projection.res"
 @@reventless.projection
 
 let project = ({event}) =>
@@ -186,7 +186,7 @@ let project = ({event}) =>
 
 StateViewSlice supports the same PPX annotations on `@schema type state` as ReadModel. Annotations on state fields automatically generate `let makeId`, `let subIdConfig`, and `let config`. These annotations go on the spec file's `@schema type state`:
 
-```rescript title="OrderLineItems/StateViewSliceStream/OrderLineItems.res" showLineNumbers
+```rescript title="OrderLineItems/StateViewStream/OrderLineItems.res" showLineNumbers
 @@reventless.spec
 
 @schema
@@ -208,7 +208,7 @@ The `project` function lives in the sibling `_Projection.res` file, where
 `@@reventless.projection` injects `open Reventless.Projection` (so `Set`,
 `Update`, `UpdateWithDefault`, and `Delete` are in scope unqualified):
 
-```rescript title="OrderLineItems/StateViewSliceStream/OrderLineItems_Projection.res" showLineNumbers
+```rescript title="OrderLineItems/StateViewStream/OrderLineItems_Projection.res" showLineNumbers
 @@reventless.projection
 
 let project = ({event}) =>

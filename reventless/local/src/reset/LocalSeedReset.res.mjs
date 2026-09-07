@@ -8,7 +8,7 @@ import * as Offload$Reventless from "@reventlessdev/reventless-spec/src/semantic
 import * as Backend$ReventlessLocal from "../adapter/Backend.res.mjs";
 import * as PluginSpec$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginSpec.res.mjs";
 import * as Seed_Prompt$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Prompt.res.mjs";
-import * as UiFragments$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateViewSlice/UiFragments.res.mjs";
+import * as UiFragments$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateView/UiFragments.res.mjs";
 import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/src/ComponentType.res.mjs";
 import * as SqliteDriver$ReventlessLocal from "../adapter/SqliteDriver.res.mjs";
 import * as LocalSeedTarget$ReventlessLocal from "../LocalSeedTarget.res.mjs";

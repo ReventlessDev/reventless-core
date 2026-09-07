@@ -29,7 +29,7 @@ Run these checks before implementing any Reventless component. Scale to complexi
 ## File Structure
 
 - [L1+] Aggregate: `EntityName.res` (spec) + `EntityNameBehavior.res` (logic)
-- [L1+] DCB: one file per command in `StateChangeSlice/`, one file per view in `StateViewSlice/`
+- [L1+] DCB: one file per command in `StateChange/`, one file per view in `StateView/`
 - [L1+] ReadModel: `EntityReadModel.res` (spec) + `EntityProjections.res` (mappings)
 - [L2] Plugin composition root: `PluginNamePlugin.res` with `Make` functor
 - [L2] Spec package: separate package with `<Plugin>Spec` namespace

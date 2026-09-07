@@ -462,10 +462,10 @@ let mapOutgoingEvent = Some((_id, event, _meta, _queryEngine) =>
 )
 EOF
 
-# Phase 8 + 9: file in StateChangeSlice/ folder — dcbTags auto-applied;
+# File in a StateChange/ folder — dcbTags auto-applied;
 # *Id: array<string> and *Ids: array<string> also annotated on inner element
-mkdir -p "$DCB/src/StateChangeSlice"
-cat > "$DCB/src/StateChangeSlice/TransferItems.res" <<'EOF'
+mkdir -p "$DCB/src/StateChange"
+cat > "$DCB/src/StateChange/TransferItems.res" <<'EOF'
 @@reventless.spec
 
 @schema
@@ -481,7 +481,7 @@ type error = NotFound
 EOF
 
 # @partitionTag + @noTag + @dcbTag: in a slice folder (dcbTags auto-enabled)
-cat > "$DCB/src/StateChangeSlice/RecordDemand.res" <<'EOF'
+cat > "$DCB/src/StateChange/RecordDemand.res" <<'EOF'
 @@reventless.spec
 
 @schema
@@ -504,7 +504,7 @@ EOF
 # @crossPartition: marks a tag as a cross-partition (secondary-tag) read, in a
 # slice folder (dcbTags auto-enabled). courseId is the partition; studentId is
 # cross-partition.
-cat > "$DCB/src/StateChangeSlice/SubscribeStudent.res" <<'EOF'
+cat > "$DCB/src/StateChange/SubscribeStudent.res" <<'EOF'
 @@reventless.spec
 
 @schema
@@ -526,7 +526,7 @@ EOF
 
 # Slice file whose name ends in a top-level-only suffix (Plugin)
 # Entity name must retain the suffix
-cat > "$DCB/src/StateChangeSlice/SyncPlugin.res" <<'EOF'
+cat > "$DCB/src/StateChange/SyncPlugin.res" <<'EOF'
 @@reventless.spec
 
 @schema
@@ -538,7 +538,7 @@ type error = unit
 EOF
 
 # @noDcbTag: suppresses auto-tagging on *Id field that is not a DCB key
-cat > "$DCB/src/StateChangeSlice/OrderPlacement.res" <<'EOF'
+cat > "$DCB/src/StateChange/OrderPlacement.res" <<'EOF'
 @@reventless.spec
 
 @schema
@@ -554,7 +554,7 @@ EOF
 # - plural *Ids array @ref must singularise the tag key (productIds → productId)
 #   so it shares a key with singular-named producers (Reference.to_ ~key)
 # - @ref + @noDcbTag drops the DCB tag (toWithoutDcbTag), so no key is emitted
-cat > "$DCB/src/StateChangeSlice/OrderPicker.res" <<'EOF'
+cat > "$DCB/src/StateChange/OrderPicker.res" <<'EOF'
 @@reventless.spec
 
 @schema
@@ -580,7 +580,7 @@ EOF
 # - sellerId    → @ref survives              (Owner.mark(Reference.to_(...)))
 # - agentId     → @noDcbTag leaves it bare   (Owner.string)
 # - onBehalfOf? → optional field             (S.option(Owner.string))
-cat > "$DCB/src/StateChangeSlice/OwnedOrder.res" <<'EOF'
+cat > "$DCB/src/StateChange/OwnedOrder.res" <<'EOF'
 @@reventless.spec
 
 @schema
@@ -597,9 +597,23 @@ type error = unit
 EOF
 
 # readConsistency: @@reventless.consistency(AlwaysStrong) build-time override
-cat > "$DCB/src/StateChangeSlice/ConsistencyStrong.res" <<'EOF'
+cat > "$DCB/src/StateChange/ConsistencyStrong.res" <<'EOF'
 @@reventless.spec
 @@reventless.consistency(AlwaysStrong)
+
+@schema
+type command = Bump({widgetId: string})
+@schema
+type event = Bumped({widgetId: string})
+@schema
+type error = unit
+EOF
+
+# The folder spelling that predates the `Slice`-suffix drop still classifies as
+# a StateChange slice: dcbTags auto-enabled, readConsistency injected.
+mkdir -p "$DCB/src/StateChangeSlice"
+cat > "$DCB/src/StateChangeSlice/LegacyFolderSpelling.res" <<'EOF'
+@@reventless.spec
 
 @schema
 type command = Bump({widgetId: string})
@@ -689,10 +703,10 @@ EOF
 
 # (ProductsReadModel.res already defined above — has no @subId)
 
-# ─── Fixture: StateViewSlice with @subId ──────────────────────────
+# ─── Fixture: StateView slice with @subId ──────────────────────────
 
-mkdir -p "$PLUGIN/src/StateViewSlice"
-cat > "$PLUGIN/src/StateViewSlice/TimelineView.res" <<'EOF'
+mkdir -p "$PLUGIN/src/StateView"
+cat > "$PLUGIN/src/StateView/TimelineView.res" <<'EOF'
 @@reventless.spec
 
 @schema
@@ -924,7 +938,7 @@ type state = { @id id: string, name: string }
 EOF
 
 # @@reventless.visibility(Internal) on a StateViewSlice
-cat > "$PLUGIN/src/StateViewSlice/VisibilityInternalView.res" <<'EOF'
+cat > "$PLUGIN/src/StateView/VisibilityInternalView.res" <<'EOF'
 @@reventless.spec
 @@reventless.visibility(Internal)
 
@@ -1051,7 +1065,7 @@ EOF
 
 # @live(true) on a StateViewSlice state declaration (no field annotations —
 # the metadata binding must be emitted from @live alone)
-cat > "$PLUGIN/src/StateViewSlice/LiveOnView.res" <<'EOF'
+cat > "$PLUGIN/src/StateView/LiveOnView.res" <<'EOF'
 @@reventless.spec
 
 @live(true)
@@ -1290,9 +1304,9 @@ type state = {
 }
 EOF
 
-# ─── Fixture: StateViewSlice without @subId ───────────────────────
+# ─── Fixture: StateView slice without @subId ───────────────────────
 
-cat > "$PLUGIN/src/StateViewSlice/SimpleView.res" <<'EOF'
+cat > "$PLUGIN/src/StateView/SimpleView.res" <<'EOF'
 @@reventless.spec
 
 @schema
@@ -1306,10 +1320,10 @@ let project = event => switch event {
 }
 EOF
 
-# ─── Fixture: split-form StateViewSlice (@@reventless.projection) ──
+# ─── Fixture: split-form StateView slice (@@reventless.projection) ──
 
 # Spec — types only, no project function
-cat > "$PLUGIN/src/StateViewSlice/SplitView.res" <<'EOF'
+cat > "$PLUGIN/src/StateView/SplitView.res" <<'EOF'
 @@reventless.spec
 
 @schema
@@ -1323,7 +1337,7 @@ EOF
 #   open SplitView; module Spec = SplitView; let moduleUrl = ...
 # and (because the file lives inside a StateView* folder)
 #   open Reventless.Projection (so Set/Update/etc. constructors are in scope).
-cat > "$PLUGIN/src/StateViewSlice/SplitView_Projection.res" <<'EOF'
+cat > "$PLUGIN/src/StateView/SplitView_Projection.res" <<'EOF'
 @@reventless.projection
 
 let project = (event: consumedEvent) => switch event {
@@ -1332,7 +1346,7 @@ let project = (event: consumedEvent) => switch event {
 EOF
 
 # Explicit Spec module name form
-cat > "$PLUGIN/src/StateViewSlice/AltView.res" <<'EOF'
+cat > "$PLUGIN/src/StateView/AltView.res" <<'EOF'
 @@reventless.spec
 
 @schema
@@ -1342,7 +1356,7 @@ type state = { id: string }
 type consumedEvent = Created({ id: string })
 EOF
 
-cat > "$PLUGIN/src/StateViewSlice/AltProjection.res" <<'EOF'
+cat > "$PLUGIN/src/StateView/AltProjection.res" <<'EOF'
 @@reventless.projection(AltView)
 
 let project = (event: consumedEvent) => switch event {
@@ -1350,10 +1364,10 @@ let project = (event: consumedEvent) => switch event {
 }
 EOF
 
-# ─── Fixture: split-form AutomationSlice (@@reventless.automation) ──
+# ─── Fixture: split-form Automation slice (@@reventless.automation) ──
 
-mkdir -p "$PLUGIN/src/AutomationSlice"
-cat > "$PLUGIN/src/AutomationSlice/Sweep.res" <<'EOF'
+mkdir -p "$PLUGIN/src/Automation"
+cat > "$PLUGIN/src/Automation/Sweep.res" <<'EOF'
 @@reventless.spec
 
 @schema
@@ -1370,7 +1384,7 @@ let heartbeatInterval = 60
 let targetName = "Doer"
 EOF
 
-cat > "$PLUGIN/src/AutomationSlice/Sweep_Automation.res" <<'EOF'
+cat > "$PLUGIN/src/Automation/Sweep_Automation.res" <<'EOF'
 @@reventless.automation
 
 let collect = (event: consumedEvent) => switch event {
@@ -1380,10 +1394,10 @@ let resolve = (_event: consumedEvent) => None
 let process = (id, item: todoItem) => Some((id, DoIt({id: item.id})))
 EOF
 
-# ─── Fixture: split-form InboundTranslationSlice ────────────────────
+# ─── Fixture: split-form InboundTranslation slice ────────────────────
 
-mkdir -p "$PLUGIN/src/InboundTranslationSlice"
-cat > "$PLUGIN/src/InboundTranslationSlice/Hook.res" <<'EOF'
+mkdir -p "$PLUGIN/src/InboundTranslation"
+cat > "$PLUGIN/src/InboundTranslation/Hook.res" <<'EOF'
 @@reventless.spec
 
 @schema
@@ -1393,17 +1407,17 @@ type externalInput = { id: string, value: int }
 type command = Apply({ id: string, value: int })
 EOF
 
-cat > "$PLUGIN/src/InboundTranslationSlice/Hook_Translation.res" <<'EOF'
+cat > "$PLUGIN/src/InboundTranslation/Hook_Translation.res" <<'EOF'
 @@reventless.translation
 
 let translate = (input: externalInput) =>
   Ok([(input.id, Apply({id: input.id, value: input.value}))])
 EOF
 
-# ─── Fixture: split-form OutboundTranslationSlice ───────────────────
+# ─── Fixture: split-form OutboundTranslation slice ───────────────────
 
-mkdir -p "$PLUGIN/src/OutboundTranslationSlice"
-cat > "$PLUGIN/src/OutboundTranslationSlice/Notify.res" <<'EOF'
+mkdir -p "$PLUGIN/src/OutboundTranslation"
+cat > "$PLUGIN/src/OutboundTranslation/Notify.res" <<'EOF'
 @@reventless.spec
 
 @schema
@@ -1416,7 +1430,7 @@ type outboundItem = { id: string }
 type inboundCommand = Done({ id: string })
 EOF
 
-cat > "$PLUGIN/src/OutboundTranslationSlice/Notify_Translation.res" <<'EOF'
+cat > "$PLUGIN/src/OutboundTranslation/Notify_Translation.res" <<'EOF'
 @@reventless.translation
 
 let collect = (event: consumedEvent) => switch event {
@@ -1542,7 +1556,7 @@ EOF
 # A merged AutomationSlice file with process + a per-source Mapping.Make call
 # + let mappings. The PPX should inject the AutomationSlice.Mappings.Make
 # wrapper alongside the existing classic injections.
-cat > "$PLUGIN/src/AutomationSlice/MergedAutomation.res" <<'EOF'
+cat > "$PLUGIN/src/Automation/MergedAutomation.res" <<'EOF'
 @@reventless.spec
 
 @schema
@@ -1555,7 +1569,7 @@ let heartbeatInterval = 1
 let targetName = "MergedTarget"
 EOF
 
-cat > "$PLUGIN/src/AutomationSlice/MergedAutomation_Automation.res" <<'EOF'
+cat > "$PLUGIN/src/Automation/MergedAutomation_Automation.res" <<'EOF'
 @@reventless.automation
 
 // Inner DCB Source — `module Id` and dcbTags should be auto-injected.
@@ -1905,7 +1919,7 @@ esac
 
 echo ""
 echo "=== Test: Phase 8 — slice folder auto-applies dcbTags (no @@reventless.dcbTags needed) ==="
-JS="$DCB/src/StateChangeSlice/TransferItems.res.mjs"
+JS="$DCB/src/StateChange/TransferItems.res.mjs"
 assert_js_contains "$JS" 'DcbTag'                         "slice folder: DcbTag auto-injected"
 # fromId + toId each in command+event = 4 *Id refs; itemIds element in command+event = 2 more
 # fromId+toId (x2 types) + productId array elems (x2 types) + itemIds array elems (x2 types)
@@ -1918,22 +1932,28 @@ fi
 
 echo ""
 echo "=== Test: slice folder — top-level-only suffix NOT stripped (Plugin retained) ==="
-JS="$DCB/src/StateChangeSlice/SyncPlugin.res.mjs"
+JS="$DCB/src/StateChange/SyncPlugin.res.mjs"
 assert_js_contains "$JS" 'let name = "SyncPlugin"'  "Plugin suffix retained inside slice folder"
 
 echo ""
 echo "=== Test: readConsistency — StateChangeSlice default is EscalateOnRetry ==="
-JS="$DCB/src/StateChangeSlice/TransferItems.res.mjs"
+JS="$DCB/src/StateChange/TransferItems.res.mjs"
 assert_js_contains "$JS" 'readConsistency'  "slice: readConsistency binding injected"
 assert_js_contains "$JS" 'EscalateOnRetry'  "slice: default readConsistency is EscalateOnRetry"
 
 echo ""
 echo "=== Test: readConsistency — @@reventless.consistency(AlwaysStrong) override ==="
-JS="$DCB/src/StateChangeSlice/ConsistencyStrong.res.mjs"
+JS="$DCB/src/StateChange/ConsistencyStrong.res.mjs"
 assert_js_contains     "$JS" 'readConsistency'  "override: readConsistency binding present"
 assert_js_contains     "$JS" 'AlwaysStrong'     "override: AlwaysStrong emitted"
 assert_js_not_contains "$JS" 'EscalateOnRetry'  "override: default not emitted when overridden"
 assert_js_not_contains "$JS" 'consistency'      "override: @@reventless.consistency attribute stripped"
+
+echo ""
+echo "=== Test: the legacy StateChangeSlice/ folder spelling still classifies ==="
+JS="$DCB/src/StateChangeSlice/LegacyFolderSpelling.res.mjs"
+assert_js_contains "$JS" 'readConsistency' "legacy folder: readConsistency binding injected"
+assert_js_contains "$JS" 'DcbTag'          "legacy folder: dcbTags auto-enabled"
 
 echo ""
 echo "=== Test: readConsistency — NOT injected on an Aggregate (slice-only field) ==="
@@ -1942,7 +1962,7 @@ assert_js_not_contains "$PLUGIN/src/Aggregate/Category.res.mjs" 'readConsistency
 
 echo ""
 echo "=== Test: @partitionTag injects DcbTag.partition; @noTag suppresses auto-tag ==="
-JS="$DCB/src/StateChangeSlice/RecordDemand.res.mjs"
+JS="$DCB/src/StateChange/RecordDemand.res.mjs"
 assert_js_contains    "$JS" 'partition'  "@partitionTag: DcbTag.partition injected"
 assert_js_not_contains "$JS" 'partitionTag' "@partitionTag: field attr stripped"
 # orderId ends in Id but has @noTag — should NOT appear as DcbTag.string
@@ -1962,7 +1982,7 @@ assert_js_not_contains "$JS" 'DcbTag.string' "@noTag: DcbTag.string absent (orde
 
 echo ""
 echo "=== Test: @crossPartition injects DcbTag.crossPartition ==="
-JS="$DCB/src/StateChangeSlice/SubscribeStudent.res.mjs"
+JS="$DCB/src/StateChange/SubscribeStudent.res.mjs"
 assert_js_contains     "$JS" 'crossPartition' "@crossPartition: DcbTag.crossPartition injected"
 assert_js_not_contains "$JS" 'partitionTag'   "@crossPartition: @partitionTag field attr stripped (courseId)"
 # studentId ends in Id but is @crossPartition — must use crossPartition, not plain DcbTag.string
@@ -1971,7 +1991,7 @@ assert_js_not_contains "$JS" 'DcbTag.string'         "@crossPartition: studentId
 
 echo ""
 echo "=== Test: @noDcbTag suppresses auto-tagging on *Id field ==="
-JS="$DCB/src/StateChangeSlice/OrderPlacement.res.mjs"
+JS="$DCB/src/StateChange/OrderPlacement.res.mjs"
 assert_js_not_contains "$JS" 'noDcbTag'  "@noDcbTag: annotation stripped from output"
 # customerId ends in Id but has @noDcbTag — must not produce a DcbTag.string ref
 # orderId has @partitionTag — produces a DcbTag.partition ref
@@ -1986,14 +2006,14 @@ assert_js_not_contains "$JS" 'dcbTag'   "@dcbTag: field attr stripped"
 
 echo ""
 echo "=== Test: *Ids: array<string> auto-singularises tag key via stringForKey ==="
-JS="$DCB/src/StateChangeSlice/TransferItems.res.mjs"
+JS="$DCB/src/StateChange/TransferItems.res.mjs"
 # itemIds should be tagged via DcbTag.stringForKey(~key="itemId")
 assert_js_contains "$JS" 'stringForKey' "*Ids array: stringForKey constructor emitted"
 assert_js_contains "$JS" '"itemId"'      "*Ids array: singularised key 'itemId' present in output"
 
 echo ""
 echo "=== Test: @ref composes with DCB tag — scalar field-name key, plural *Ids singularised, @noDcbTag drops tag ==="
-JS="$DCB/src/StateChangeSlice/OrderPicker.res.mjs"
+JS="$DCB/src/StateChange/OrderPicker.res.mjs"
 assert_js_contains     "$JS" 'Reference'           "@ref: Reference module referenced in output"
 assert_js_contains     "$JS" '"AvailableProducts"' "@ref: array ref entity 'AvailableProducts' present"
 # productIds is a plural *Ids array — its DCB tag key MUST be singularised to
@@ -2008,7 +2028,7 @@ assert_js_not_contains "$JS" 'noDcbTag'             "@ref: @noDcbTag field attr 
 
 echo ""
 echo "=== Test: @owner composes with the DCB passes instead of replacing them ==="
-JS="$DCB/src/StateChangeSlice/OwnedOrder.res.mjs"
+JS="$DCB/src/StateChange/OwnedOrder.res.mjs"
 # The whole point of running last: an owner field keeps whatever schema it would
 # otherwise have had. If this pass ran early, the auto-*Id tagger would skip the
 # field (it skips anything already carrying @s.matches) and customerId would
@@ -2081,7 +2101,7 @@ assert_js_contains "$JS" 'subIdConfig'             "no annotation: subIdConfig s
 
 echo ""
 echo "=== Test: StateViewSlice with @subId ==="
-JS="$PLUGIN/src/StateViewSlice/TimelineView.res.mjs"
+JS="$PLUGIN/src/StateView/TimelineView.res.mjs"
 assert_js_contains "$JS" 'subIdConfig'             "SV @subId: subIdConfig generated"
 assert_js_contains "$JS" '"timestamp"'             "SV @subId: field name 'timestamp' in config"
 assert_js_contains "$JS" 'getSubId'                "SV @subId: getSubId accessor generated"
@@ -2091,7 +2111,7 @@ assert_js_not_contains "$JS" 'Reventless_Projection' "SV @subId: Projection auto
 
 echo ""
 echo "=== Test: StateViewSlice without @subId → subIdConfig = None ==="
-JS="$PLUGIN/src/StateViewSlice/SimpleView.res.mjs"
+JS="$PLUGIN/src/StateView/SimpleView.res.mjs"
 assert_js_contains "$JS" 'subIdConfig'             "SV no annotation: subIdConfig defined"
 assert_js_not_contains "$JS" 'getSubId'            "SV no annotation: no getSubId"
 assert_js_contains "$JS" 'let name = "Simple"'     "SV no annotation: View suffix stripped"
@@ -2344,8 +2364,8 @@ assert_js_not_contains "$JS" '@collapsed'                  "@collapsed: annotati
 
 echo ""
 echo "=== Test: @@reventless.projection (split-form StateViewSlice) ==="
-JS="$PLUGIN/src/StateViewSlice/SplitView_Projection.res.mjs"
-assert_js_contains "$JS" 'StateViewSlice/SplitView_Projection.res.mjs' "projection moduleUrl"
+JS="$PLUGIN/src/StateView/SplitView_Projection.res.mjs"
+assert_js_contains "$JS" 'StateView/SplitView_Projection.res.mjs' "projection moduleUrl"
 # open Spec + module Spec are compile-time only — successful compile proves
 # they were injected (the project body references `consumedEvent` and `Set`
 # which are only in scope after `open SplitView` and `open Reventless.Projection`)
@@ -2353,26 +2373,26 @@ pass "projection compiles (open Spec + module Spec injected; _Projection suffix 
 
 echo ""
 echo "=== Test: @@reventless.projection(Spec) explicit name ==="
-JS="$PLUGIN/src/StateViewSlice/AltProjection.res.mjs"
-assert_js_contains "$JS" 'StateViewSlice/AltProjection.res.mjs' "explicit-spec projection moduleUrl"
+JS="$PLUGIN/src/StateView/AltProjection.res.mjs"
+assert_js_contains "$JS" 'StateView/AltProjection.res.mjs' "explicit-spec projection moduleUrl"
 pass "projection with explicit Spec module name compiles"
 
 echo ""
 echo "=== Test: @@reventless.automation (split-form AutomationSlice) ==="
-JS="$PLUGIN/src/AutomationSlice/Sweep_Automation.res.mjs"
-assert_js_contains "$JS" 'AutomationSlice/Sweep_Automation.res.mjs' "automation moduleUrl"
+JS="$PLUGIN/src/Automation/Sweep_Automation.res.mjs"
+assert_js_contains "$JS" 'Automation/Sweep_Automation.res.mjs' "automation moduleUrl"
 pass "automation compiles (open Spec + module Spec injected; _Automation suffix stripped)"
 
 echo ""
 echo "=== Test: @@reventless.translation (split-form InboundTranslationSlice) ==="
-JS="$PLUGIN/src/InboundTranslationSlice/Hook_Translation.res.mjs"
-assert_js_contains "$JS" 'InboundTranslationSlice/Hook_Translation.res.mjs' "inbound translation moduleUrl"
+JS="$PLUGIN/src/InboundTranslation/Hook_Translation.res.mjs"
+assert_js_contains "$JS" 'InboundTranslation/Hook_Translation.res.mjs' "inbound translation moduleUrl"
 pass "inbound translation compiles (sync translate function)"
 
 echo ""
 echo "=== Test: @@reventless.translation (split-form OutboundTranslationSlice) ==="
-JS="$PLUGIN/src/OutboundTranslationSlice/Notify_Translation.res.mjs"
-assert_js_contains "$JS" 'OutboundTranslationSlice/Notify_Translation.res.mjs' "outbound translation moduleUrl"
+JS="$PLUGIN/src/OutboundTranslation/Notify_Translation.res.mjs"
+assert_js_contains "$JS" 'OutboundTranslation/Notify_Translation.res.mjs' "outbound translation moduleUrl"
 pass "outbound translation compiles (sync collect + async translate)"
 
 echo ""
@@ -2394,8 +2414,8 @@ assert_js_contains "$JS" 'DcbTag' "Source scan: DcbTag referenced in inner Sourc
 
 echo ""
 echo "=== Test: @@reventless.automation (merged form — Mappings.Make wrapper auto-injected) ==="
-JS="$PLUGIN/src/AutomationSlice/MergedAutomation_Automation.res.mjs"
-assert_js_contains "$JS" 'AutomationSlice/MergedAutomation_Automation.res.mjs' "merged automation: moduleUrl injected"
+JS="$PLUGIN/src/Automation/MergedAutomation_Automation.res.mjs"
+assert_js_contains "$JS" 'Automation/MergedAutomation_Automation.res.mjs' "merged automation: moduleUrl injected"
 assert_js_contains "$JS" 'DcbTag' "merged automation: inner DCB Source got dcbTags"
 pass "merged automation: file compiles with one Mapping.Make + let mappings + process (Mappings.Make wrapper auto-injected)"
 
@@ -2758,7 +2778,7 @@ assert_js_not_contains "$JS" 'reventless.visibility' "@@reventless.visibility at
 
 echo ""
 echo "=== Test: @@reventless.visibility(Internal) on StateViewSlice → Internal ==="
-JS="$PLUGIN/src/StateViewSlice/VisibilityInternalView.res.mjs"
+JS="$PLUGIN/src/StateView/VisibilityInternalView.res.mjs"
 assert_js_contains "$JS" 'let visibility = "Internal"' "Internal visibility binding emitted on StateViewSlice"
 
 echo ""
@@ -2970,7 +2990,7 @@ assert_js_contains "$JS" 'live: false' "live: false recorded in stateAnnotations
 
 echo ""
 echo "=== Test: @live(true) on StateViewSlice state → metadata from @live alone ==="
-JS="$PLUGIN/src/StateViewSlice/LiveOnView.res.mjs"
+JS="$PLUGIN/src/StateView/LiveOnView.res.mjs"
 assert_js_contains "$JS" 'stateAnnotationsId' "stateAnnotations binding emitted from @live alone"
 assert_js_contains "$JS" 'live: true' "live: true recorded in stateAnnotations metadata"
 

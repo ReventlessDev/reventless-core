@@ -1005,7 +1005,7 @@ let contactRelayPatch = (c: config): patch => {
   let n = namesOf(c)
   let id = n.recipientId
   {
-    into: `${c.chapter}/OutboundTranslationSlice/${n.relay}.res (new, plus its _Translation)`,
+    into: `${c.chapter}/OutboundTranslation/${n.relay}.res (new, plus its _Translation)`,
     at: `a new file — the trait cannot write what this host's events mean`,
     contents: lines(
       Array.flatMap(
@@ -1085,7 +1085,7 @@ let intakeRelayPatch = (c: config): patch => {
   let n = namesOf(c)
   let id = n.recipientId
   {
-    into: `${c.chapter}/AutomationSlice/${n.intake}.res (new, plus its _Automation)`,
+    into: `${c.chapter}/Automation/${n.intake}.res (new, plus its _Automation)`,
     at: `a new file — the wording is this host's sentence, not the trait's`,
     contents: lines([
       `// Turns one of this host's occurrences into a request to notify somebody.`,
@@ -1266,16 +1266,16 @@ let emit = (~config: config, ~into: string, ~tests: string): output => {
   let n = namesOf(config)
   {
     files: [
-      {path: `${into}/StateChangeSlice/${n.slice}.res`, contents: sliceSpec(config)},
-      {path: `${into}/StateChangeSlice/${n.slice}_Behavior.res`, contents: sliceBehavior(config)},
-      {path: `${into}/StateChangeSlice/${n.claims}.res`, contents: claimsSpec(config)},
+      {path: `${into}/StateChange/${n.slice}.res`, contents: sliceSpec(config)},
+      {path: `${into}/StateChange/${n.slice}_Behavior.res`, contents: sliceBehavior(config)},
+      {path: `${into}/StateChange/${n.claims}.res`, contents: claimsSpec(config)},
       {
-        path: `${into}/StateChangeSlice/${n.claims}_Behavior.res`,
+        path: `${into}/StateChange/${n.claims}_Behavior.res`,
         contents: claimsBehavior(config),
       },
-      {path: `${into}/OutboundTranslationSlice/${n.send}.res`, contents: sendSpec(config)},
+      {path: `${into}/OutboundTranslation/${n.send}.res`, contents: sendSpec(config)},
       {
-        path: `${into}/OutboundTranslationSlice/${n.send}_Translation.res`,
+        path: `${into}/OutboundTranslation/${n.send}_Translation.res`,
         contents: sendTranslation(config),
       },
       {path: `${tests}/NotificationConformance_GWT.res`, contents: conformanceBinding(config)},

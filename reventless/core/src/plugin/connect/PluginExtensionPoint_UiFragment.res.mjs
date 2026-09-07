@@ -2,7 +2,7 @@
 
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Plugin$ReventlessCore from "../component/Plugin.res.mjs";
-import * as UiFragmentRegistry$ReventlessCore from "../../admin/UiFragmentRegistry/StateChangeSlice/UiFragmentRegistry.res.mjs";
+import * as UiFragmentRegistry$ReventlessCore from "../../admin/UiFragmentRegistry/StateChange/UiFragmentRegistry.res.mjs";
 import * as ExtensionPointMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionPointMapping.res.mjs";
 import * as PluginExtensionPointSpec$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs";
 

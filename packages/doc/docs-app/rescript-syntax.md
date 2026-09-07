@@ -569,10 +569,10 @@ Used in DCB (Dynamic Consistency Boundary) contexts to mark fields as queryable 
 
 #### PPX Auto-Injection (Normal Case)
 
-Files inside any `*Slice/` folder (StateChangeSlice, StateViewSlice, AutomationSlice, etc.) automatically get DCB tags applied by `@@reventless.spec`. Fields named `*Id: string` and `*Ids: array<string>` are tagged without any manual annotation:
+Files inside any slice folder (`StateChange/`, `StateView/`, `Automation/`, etc.) automatically get DCB tags applied by `@@reventless.spec`. Fields named `*Id: string` and `*Ids: array<string>` are tagged without any manual annotation:
 
 ```rescript
-// ItemStateChangeSlice/ItemSpec.res
+// StateChange/Item.res
 @@reventless.spec
 
 @schema type command = | CreateItem({itemId: string, name: string})

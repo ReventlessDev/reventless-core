@@ -6,11 +6,11 @@
 //   - `X_<Kind>.res`   — Implementation only (`@@reventless.<kind>`)
 //
 // Slice folder → implementation kind:
-//   StateChangeSlice/         → Behavior
-//   StateViewSlice/           → Projection
-//   AutomationSlice/          → Automation
-//   InboundTranslationSlice/  → Translation
-//   OutboundTranslationSlice/ → Translation
+//   StateChange/         → Behavior
+//   StateView/           → Projection
+//   Automation/          → Automation
+//   InboundTranslation/  → Translation
+//   OutboundTranslation/ → Translation
 //
 // Per-kind binding classification follows D2 in the plan.
 //
@@ -31,7 +31,7 @@ import process from 'node:process';
 // -------------------------------------------------------------- taxonomy ----
 
 const SLICE_KINDS = {
-  StateChangeSlice: {
+  StateChange: {
     implKind: 'Behavior',
     implAttr: '@@reventless.behavior',
     specBindings: new Set([
@@ -42,7 +42,7 @@ const SLICE_KINDS = {
       'state', 'initialState', 'evolve', 'decide',
     ]),
   },
-  StateViewSlice: {
+  StateView: {
     implKind: 'Projection',
     implAttr: '@@reventless.projection',
     specBindings: new Set([
@@ -51,7 +51,7 @@ const SLICE_KINDS = {
     ]),
     implBindings: new Set(['project']),
   },
-  StateViewSliceStream: {
+  StateViewStream: {
     implKind: 'Projection',
     implAttr: '@@reventless.projection',
     specBindings: new Set([
@@ -60,7 +60,7 @@ const SLICE_KINDS = {
     ]),
     implBindings: new Set(['project']),
   },
-  AutomationSlice: {
+  Automation: {
     implKind: 'Automation',
     implAttr: '@@reventless.automation',
     specBindings: new Set([
@@ -70,7 +70,7 @@ const SLICE_KINDS = {
     ]),
     implBindings: new Set(['collect', 'resolve', 'process']),
   },
-  InboundTranslationSlice: {
+  InboundTranslation: {
     implKind: 'Translation',
     implAttr: '@@reventless.translation',
     specBindings: new Set([
@@ -79,7 +79,7 @@ const SLICE_KINDS = {
     ]),
     implBindings: new Set(['translate']),
   },
-  OutboundTranslationSlice: {
+  OutboundTranslation: {
     implKind: 'Translation',
     implAttr: '@@reventless.translation',
     specBindings: new Set([
@@ -98,11 +98,23 @@ const IMPL_ATTRS = new Set([
   '@@reventless.translation',
 ]);
 
+// Folder spellings predating the `Slice`-suffix drop, mapped to the canonical
+// short name the taxonomy above is keyed by.
+const LEGACY_FOLDERS = {
+  StateChangeSlice: 'StateChange',
+  StateViewSlice: 'StateView',
+  StateViewSliceStream: 'StateViewStream',
+  AutomationSlice: 'Automation',
+  InboundTranslationSlice: 'InboundTranslation',
+  OutboundTranslationSlice: 'OutboundTranslation',
+};
+
 function detectSliceKind(filePath) {
   const dir = path.dirname(path.resolve(filePath));
   const parts = dir.split(path.sep);
   for (let i = parts.length - 1; i >= 0; i--) {
-    if (SLICE_KINDS[parts[i]]) return parts[i];
+    const name = LEGACY_FOLDERS[parts[i]] ?? parts[i];
+    if (SLICE_KINDS[name]) return name;
   }
   return null;
 }

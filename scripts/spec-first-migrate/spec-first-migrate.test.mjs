@@ -38,7 +38,7 @@ function describe(name, fn) {
 // ----- Fixtures: minimal merged-form sources for each slice kind -----
 
 const FIXTURES = {
-  StateChangeSlice: `// AddCategory StateChangeSlice.
+  StateChange: `// AddCategory StateChangeSlice.
 // Adds a new category iff one doesn't already exist.
 @@reventless.spec
 
@@ -75,7 +75,7 @@ let decide = (state, command) =>
   }
 `,
 
-  StateViewSlice: `// CategoriesView StateViewSlice.
+  StateView: `// CategoriesView StateViewSlice.
 @@reventless.spec
 
 @schema
@@ -91,7 +91,7 @@ let project = event =>
   }
 `,
 
-  AutomationSlice: `// AutoShipOrder AutomationSlice.
+  Automation: `// AutoShipOrder AutomationSlice.
 @@reventless.spec
 
 @schema
@@ -124,7 +124,7 @@ let heartbeatInterval = 60
 let targetName = "ShipOrder"
 `,
 
-  InboundTranslationSlice: `// ImportProduct InboundTranslationSlice.
+  InboundTranslation: `// ImportProduct InboundTranslationSlice.
 @@reventless.spec
 
 @schema
@@ -139,7 +139,7 @@ let translate = input =>
   Ok([(input.sku, AddProduct({productId: input.sku, name: input.title}))])
 `,
 
-  OutboundTranslationSlice: `// SendEmail OutboundTranslationSlice.
+  OutboundTranslation: `// SendEmail OutboundTranslationSlice.
 @@reventless.spec
 
 @schema

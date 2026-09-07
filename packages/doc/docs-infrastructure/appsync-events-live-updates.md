@@ -472,10 +472,10 @@ server-side change journal, descriptor-level catch-up
 > | Component | Query-only (no live updates) | Live updates |
 > |---|---|---|
 > | Classic aggregate-projection read model | `ReadModel/` | `ReadModelStream/` |
-> | DCB read-side view | `StateViewSlice/` | `StateViewSliceStream/` |
+> | DCB read-side view | `StateView/` | `StateViewStream/` |
 > | Counter | — | always streamed |
 >
-> A read model in a plain `ReadModel/` / `StateViewSlice/` folder writes its rows
+> A read model in a plain `ReadModel/` / `StateView/` folder writes its rows
 > to DynamoDB but no StateTopic Lambda exists for it, so the AutoUI list refreshes
 > only on a full page reload. Move it to the `*Stream` folder (a folder rename;
 > the spec/projection files are unchanged) to get live updates.

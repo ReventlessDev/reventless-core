@@ -26,11 +26,7 @@ type kind =
   | NotEligible
 
 let detect_kind fname =
-  if Util.is_in_readmodel_folder fname
-     || Util.is_in_folder fname "StateViewSlice"
-     || Util.is_in_folder fname "StateViewSliceStream"
-     || Util.is_in_folder fname "StateViewSlices"
-     || Util.is_in_folder fname "StateViewSliceStreams"
+  if Util.is_in_readmodel_folder fname || Util.is_in_stateview_folder fname
   then QueryCarrier
   else NotEligible
 
