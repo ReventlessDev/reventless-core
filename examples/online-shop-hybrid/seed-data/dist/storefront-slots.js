@@ -289,15 +289,18 @@ var RowSlot = {
 var cardsEmpty = "cards.empty";
 var galleryEmpty = "gallery.empty";
 var listSelection = "list.selection";
+var relatedSelection = "related.selection";
 var all$1 = [
   cardsEmpty,
   galleryEmpty,
-  listSelection
+  listSelection,
+  relatedSelection
 ];
 var ViewSlot = {
   cardsEmpty,
   galleryEmpty,
   listSelection,
+  relatedSelection,
   all: all$1
 };
 var Format = {
