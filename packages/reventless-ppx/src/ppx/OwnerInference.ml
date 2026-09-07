@@ -127,10 +127,23 @@ let transform_label_decl (ld : label_declaration) : label_declaration =
       else if is_option_string_type ty then
         apply (owner_constructor_attr ~loc "optionString")
       else
-        Location.raise_errorf ~loc
-          "@owner only supports string and option<string> fields. A row has one \
-           owner, so an array field cannot be one; give the owning id its own \
-           field."
+        (* A branded string — an owner named by [Email.t] rather than by a bare
+           id. Its schema is the one sury-ppx derives from the type name, and
+           this pass cannot see it, so it composes onto that name instead of
+           injecting [Owner.string] over it. Substituting would type-check and
+           silently drop the brand's grammar, which is the one thing this pass
+           is built not to do. *)
+        match Util.branded_string_schema_lident ty with
+        | Some lid ->
+          apply (owner_mark_attr ~loc
+                   (Ast_builder.Default.pexp_ident ~loc { txt = lid; loc }))
+        | None ->
+          Location.raise_errorf ~loc
+            "@owner only supports string, option<string> and a semantic whose \
+             type is a string (Email.t and the like). A row has one owner, so \
+             an array field cannot be one; give the owning id its own field. \
+             For option<Email.t> and other wrapped forms, compose by hand with \
+             @s.matches(Reventless.Owner.mark(<schema>))."
   end
 
 (** Rejects a second [@owner] in one record or one variant payload.

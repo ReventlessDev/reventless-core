@@ -180,25 +180,66 @@ let uploadable_module_of_type (ct : core_type) : string option =
   | Ptyp_constr ({ txt; _ }, []) -> module_of txt
   | _ -> None
 
-(* The framework's branded string scalars: semantic types declared
-   [type t = string], so a field holding one holds a string at runtime. A check
-   written against the literal [string] keyword sees only the brand and refuses
-   the field, which would make declaring a field's semantic cost it whatever the
-   check gates. Only the transparent-string ones are here — [Money.t] is a
-   record and [Duration.t] an int. *)
-let branded_string_modules = [
-  "DateTime"; "CalendarDate"; "Email"; "Phone"; "Url"; "Color"; "StorageRef" ]
+(* Every [type t = string] in reventless-spec's [semantic/]: a semantic whose
+   field holds a string at runtime. A check written against the literal [string]
+   keyword sees only the brand and refuses the field, which would make declaring
+   a field's semantic cost it whatever that check gates. The types that are not
+   strings are deliberately absent — [Money.t] is a record, [Duration.t] an int,
+   [Percent.t] and [Bytes.t] floats.
 
-let is_branded_string_type (ct : core_type) : bool =
-  let is_branded = function
-    | Ldot (Lident m, "t") -> List.mem m branded_string_modules
+   Hand-maintained, because the ppx has only the syntax: it cannot see through
+   [type t = string], and guessing from the module name would admit [Money].
+   Adding a transparent-string semantic means adding it here —
+   [grep -l '^type t = string' reventless/spec/src/semantic/*.res] is the list.
+
+   The flag says whether the module also exposes the [let schema] that sury-ppx
+   resolves [X.t] to by convention. The four [false]s build their schema from a
+   function instead ([forStore] / [forField] / [forCollection]) because it takes
+   arguments, so a field of one of those types always carries an explicit
+   [@s.matches] and there is no name a pass could derive. *)
+let branded_string_modules = [
+  "DateTime", true; "CalendarDate", true; "Email", true; "Phone", true;
+  "Url", true; "Color", true; "FileRef", true; "ImageRef", true;
+  "MemberRef", false; "StorageRef", false;
+  "UploadableFile", false; "UploadableImage", false ]
+
+(* The module name a [<Module>.t] type refers to, qualified or not. *)
+let branded_string_module (ct : core_type) : string option =
+  let module_of = function
+    | Ldot (Lident m, "t")
     (* Qualified through the package namespace: [Reventless.DateTime.t]. *)
-    | Ldot (Ldot (_, m), "t") -> List.mem m branded_string_modules
-    | _ -> false
+    | Ldot (Ldot (_, m), "t") when List.mem_assoc m branded_string_modules -> Some m
+    | _ -> None
   in
   match ct.ptyp_desc with
-  | Ptyp_constr ({ txt; _ }, []) -> is_branded txt
-  | _ -> false
+  | Ptyp_constr ({ txt; _ }, []) -> module_of txt
+  | _ -> None
+
+(* Whether the field holds a string at runtime. The question a pass that never
+   touches the field's schema asks — [@displayName] joins the values. *)
+let is_branded_string_type (ct : core_type) : bool =
+  branded_string_module ct <> None
+
+(* Map a type's Longident to its sury schema binding, by sury-ppx convention:
+   [t] -> [schema], [foo] -> [fooSchema], preserving any module prefix. *)
+let schema_lident_of_type_lident (lid : Longident.t) : Longident.t option =
+  let schema_name n = if String.equal n "t" then "schema" else n ^ "Schema" in
+  match lid with
+  | Lident n -> Some (Lident (schema_name n))
+  | Ldot (p, n) -> Some (Ldot (p, schema_name n))
+  | Lapply _ -> None
+
+(* The schema binding a branded field resolves to, for a pass that has to
+   *compose* onto it rather than replace it: [Reventless.Email.t] ->
+   [Reventless.Email.schema]. The same convention [@offload] derives its inner
+   schema by, held once. [None] for the four whose schema is a function call —
+   there is no name to derive. *)
+let branded_string_schema_lident (ct : core_type) : Longident.t option =
+  match branded_string_module ct, ct.ptyp_desc with
+  | Some m, Ptyp_constr ({ txt; _ }, [])
+    when List.assoc_opt m branded_string_modules = Some true ->
+    schema_lident_of_type_lident txt
+  | _ -> None
 
 (* The element type of [array<X>], if the type is one. *)
 let array_element (ct : core_type) : core_type option =

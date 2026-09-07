@@ -227,15 +227,53 @@ round-trip below returns `displayName: "2026-09-07T22:59:19.102Z"`, taken straig
 field. Left as it was, declaring a field's semantic would have cost it whatever the check gates,
 which is exactly the trade a nameable type exists to remove.
 
-Fixed at the source rather than at the call site: `Util.is_branded_string_type` names the framework's
-transparent-string scalars (`DateTime`, `CalendarDate`, `Email`, `Phone`, `Url`, `Color`,
-`StorageRef` — not `Money`, a record, nor `Duration`, an int), matched through the package namespace
-as well as bare, and `DisplayNameInference` accepts them. A list rather than a rule because the ppx
-has only the syntax: it cannot see that `type t = string`, and guessing from the name would let
-`Money.t` through.
+Fixed at the source rather than at the call site: `Util.branded_string_modules` names every
+`type t = string` in `semantic/` — all twelve — matched through the package namespace as well as
+bare. A list rather than a rule because the ppx has only the syntax: it cannot see that
+`type t = string`, and guessing from the module name would let `Money.t` through. The types that are
+not strings are absent for that reason and not by oversight: `Money` is a record, `Duration` an int,
+`Percent` and `Bytes` floats.
 
-`@owner`'s identical check is deliberately **not** changed. Nothing wants an owner on an instant,
-and widening a check on the strength of a case nobody has is how the next surprise gets in.
+`@displayName` takes any of the twelve. Whether an `ImageRef` reads as a row's *name* is not a
+question this pass should answer — an explicit `@displayName` is the author saying which field names
+the row, and `Plugin_Structure.isLabelShape` already makes the "not prose" judgement on the path
+where nobody said (it warns and falls back to `id`). Trusting the declaration and judging the
+inference is a distinction the codebase already draws.
+
+**`@owner` was widened too, and the first version of this note was wrong about it.** It said nothing
+wants an owner on an instant — true of `DateTime`, and it does not carry to the rest of the list:
+`@owner email: Reventless.Email.t` is an ordinary shape, and it was a compile error.
+
+Widening it is *not* the one-line change `@displayName` was, and the difference is the reason to
+write this down. `@displayName` never touches the field's schema — it collects names and joins
+values. `@owner` injects an `@s.matches`, and on a bare `Email.t` the schema it would replace is the
+one sury-ppx derives from the type name, which this pass cannot see. Taking the existing
+`Owner.string` branch would have type-checked, satisfied any "is the field marked" test, and left
+the field a plain owner-marked string with the address grammar gone — breaking the *composes, never
+subtracts* rule the pass is built on, silently. So a branded field takes the composing branch
+instead, deriving the schema name by the sury convention `@offload` already uses (now held once, in
+`Util.schema_lident_of_type_lident`):
+
+```rescript
+email: s.m(Owner.mark(Email.schema))   // not: s.m(Owner.string)
+```
+
+Four of the twelve — `MemberRef`, `StorageRef`, `UploadableFile`, `UploadableImage` — build their
+schema from a function (`forStore` / `forField` / `forCollection`) because it takes arguments, so
+there is no name to derive and no convention to follow. The list carries a flag saying so, and
+`@owner` still refuses them; in practice such a field always carries an explicit `@s.matches`, which
+reaches the composing branch anyway.
+
+`@ref`, `@storageRef` and `@sensitive` keep their literal-`string` checks. `@ref` on a `Color.t` is a
+mistake rather than a use case, and `email`/`phone` are already sensitive with no annotation via
+`Sensitive.impliedBySemantic` — widening on the strength of a case nobody has is how the next
+surprise gets in. Two passes skip a branded field silently rather than refusing it —
+`DcbTagInference`'s auto-tag and `SidecarEmit`'s `autoString` role — but both are reachable only
+through a `*Id`-named field of a branded type, and no brand in the list is an id.
+
+`BrandedMarkerCompositionTest` pins the part that would otherwise fail in silence: the field is the
+owner, it keeps the `email` semantic, **and it still rejects `"buyer"`**. The marker assertion alone
+would pass under the substituting fix; the rejection is what says the brand survived.
 
 ## Steps
 
@@ -344,6 +382,8 @@ All of it ran. What each one said:
   `Ordering_ShipOrder`, `{lifecycle: "Shipped", shippedAt: "2026-09-07T22:59:25.570Z"}`. `displayName`
   came back as the `placedAt` instant, which is what proves D7's fix on the real write path. No
   projection error in the log — the risk below, checked rather than assumed.
+- **`BrandedMarkerCompositionTest`** — `@owner` and `@displayName` on branded fields, with the
+  emitted schema checked by what it *rejects* rather than by what it carries. See D7.
 - **Full `pnpm run build`** with zero warnings, and `git ls-files --deleted` clean after the `git mv`.
 
 ## Risks

@@ -114,14 +114,6 @@ let has_s_matches_attr (attrs : attributes) =
     String.equal attr.attr_name.txt "s.matches"
   ) attrs
 
-(* Map a type's Longident to its sury schema binding, by sury-ppx convention:
-   [t] -> [schema], [foo] -> [fooSchema], preserving any module prefix. *)
-let schema_lident_of_type_lident (lid : Longident.t) : Longident.t option =
-  let schema_name n = if String.equal n "t" then "schema" else n ^ "Schema" in
-  match lid with
-  | Lident n -> Some (Lident (schema_name n))
-  | Ldot (p, n) -> Some (Ldot (p, schema_name n))
-  | Lapply _ -> None
 
 (* If [ct] is already [Offload.payload<X>] (in any of its accepted spellings),
    return the [X]; otherwise [None]. Keeps the pass idempotent when a field is
@@ -201,7 +193,7 @@ let transform_label_decl (ld : label_declaration) : label_declaration =
         in
         match real_inner.ptyp_desc with
         | Ptyp_constr ({ txt = lid; _ }, []) ->
-          (match schema_lident_of_type_lident lid with
+          (match Util.schema_lident_of_type_lident lid with
            | None ->
              Location.raise_errorf ~loc
                "@offload cannot derive the inner schema for this field's type; \
