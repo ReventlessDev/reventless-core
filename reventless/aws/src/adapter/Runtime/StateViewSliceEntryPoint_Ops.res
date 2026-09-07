@@ -190,7 +190,9 @@ let makeRegisteredHandler = (
     ~stateTopicName=entry.stateTopicName,
     ~indexes=ProjectionEntryPoint_Ops.indexesOf(modules.config),
     ~subIdField=ProjectionEntryPoint_Ops.subIdFieldOf(modules.subIdConfig),
-  )->ProjectionEntryPoint_Ops.withUnionMemberTypes(~stateSchema=modules.stateSchema)
+  )
+  ->ProjectionEntryPoint_Ops.withUnionMemberTypes(~stateSchema=modules.stateSchema)
+  ->ProjectionEntryPoint_Ops.withDisplayName(~stateSchema=modules.stateSchema)
   {
     handler: StreamRoutedEntryPoint_Ops.toStreamHandler(
       makeJsonEventsHandler(

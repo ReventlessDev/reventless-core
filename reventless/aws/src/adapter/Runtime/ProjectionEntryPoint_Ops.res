@@ -86,6 +86,45 @@ let withUnionMemberTypes = (
     }
   }
 
+/**
+Composes the synthetic `displayName` column a `@displayName` state declares.
+
+`Projection.rewriteAction` does this for the typed paths — the local platform
+and the GWT harness rewrite the projection's actions before applying them — but
+a deployed state-view slice assembles its own JSON-level pipeline here, so the
+overlay never ran on AWS and every surface named the row by its id.
+
+Applied at save rather than on the action: the state reaching the table is the
+one an `Update`'s function already produced, so every action shape is covered
+without enumerating them. `None` — a spec with no annotation, or one that
+predates the metadata — leaves rows exactly as they were.
+*/
+let withDisplayName = (
+  base: ReventlessCore.QueryDb_Adapter.operations,
+  ~stateSchema: option<S.t<unknown>>,
+): ReventlessCore.QueryDb_Adapter.operations =>
+  switch stateSchema->Option.flatMap(Reventless.DisplayName.getSpec) {
+  | None => base
+  | Some(spec) =>
+    let compose = (state: JSON.t) => {
+      switch state->JSON.Decode.object {
+      | Some(stateDict) =>
+        stateDict->Dict.set(
+          "displayName",
+          JSON.Encode.string(Reventless.DisplayName.computeLabel(spec, stateDict)),
+        )
+      | None => ()
+      }
+      state
+    }
+    {
+      ...base,
+      save: (id, state, saveMode, ttl) => base.save(id, compose(state), saveMode, ttl),
+      saveBatch: items =>
+        base.saveBatch(items->Array.map(((id, state, ttl)) => (id, compose(state), ttl))),
+    }
+  }
+
 let makeQueryDbOps = (
   ~queryDbTableName: string,
   ~pgConnection: option<PgConnection.connectionConfig>,
