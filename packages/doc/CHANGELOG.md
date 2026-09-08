@@ -718,6 +718,11 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-09-08
+- feat(core): a state view records when it reached each state ([5216f71](https://github.com/ReventlessDev/reventless-core/commit/5216f71b8dcafcb2f0c991923ebcf2438b27e347))
+
+### 2026-09-07
+- feat: a slice folder is named for its kind, without the Slice ([a400555](https://github.com/ReventlessDev/reventless-core/commit/a400555121b023823983ebe846e99cda27063c1f))
 ### 2026-09-07
 - docs: a StateViewSlice denormalizes what its projection can maintain ([43847c2](https://github.com/ReventlessDev/reventless-core/commit/43847c22f4ca9f198af9adf7d193189bfaa29405))
 ### 2026-09-07
