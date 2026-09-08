@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.248 (2026-09-08)
+
+### Features
+
+* a slice folder is named for its kind, without the Slice ([a400555](https://github.com/ReventlessDev/reventless-core/commit/a400555121b023823983ebe846e99cda27063c1f))
+* **core:** a reference names a row and shows its picture ([2b40d04](https://github.com/ReventlessDev/reventless-core/commit/2b40d0418bba2bf83463f446e94e372ea0c9898c))
+
+
 # 3.0.0-alpha.247 (2026-09-07)
 
 ### Bug Fixes

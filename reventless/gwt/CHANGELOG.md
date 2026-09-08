@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.206 (2026-09-08)
+
+### Features
+
+* **core:** a state view records when it reached each state ([5216f71](https://github.com/ReventlessDev/reventless-core/commit/5216f71b8dcafcb2f0c991923ebcf2438b27e347))
+* **spec:** an instant is a type, and a calendar day is a different one ([a60bebc](https://github.com/ReventlessDev/reventless-core/commit/a60bebc20fe5f3413f9252be36f94ba2a9fb620d))
+
+
 # 1.0.0-alpha.205 (2026-09-07)
 
 **Note:** Version bump only for package @reventlessdev/reventless-gwt

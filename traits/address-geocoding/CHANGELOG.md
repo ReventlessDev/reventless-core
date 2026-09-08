@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.8 (2026-09-08)
+
+### Features
+
+* a slice folder is named for its kind, without the Slice ([a400555](https://github.com/ReventlessDev/reventless-core/commit/a400555121b023823983ebe846e99cda27063c1f))
+
+
 # 1.0.0-alpha.7 (2026-09-07)
 
 **Note:** Version bump only for package @reventlessdev/trait-address-geocoding

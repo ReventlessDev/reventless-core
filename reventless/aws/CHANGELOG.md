@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.340 (2026-09-08)
+
+### Bug Fixes
+
+* **aws:** a deployed state view slice composes its [@display](https://github.com/display)Name ([05ba7c5](https://github.com/ReventlessDev/reventless-core/commit/05ba7c531e605c5eb8d190a1fcb4f3d99888253d))
+### Features
+
+* a slice folder is named for its kind, without the Slice ([a400555](https://github.com/ReventlessDev/reventless-core/commit/a400555121b023823983ebe846e99cda27063c1f))
+* **core:** a reference names a row and shows its picture ([2b40d04](https://github.com/ReventlessDev/reventless-core/commit/2b40d0418bba2bf83463f446e94e372ea0c9898c))
+* **core:** a state view records when it reached each state ([5216f71](https://github.com/ReventlessDev/reventless-core/commit/5216f71b8dcafcb2f0c991923ebcf2438b27e347))
+
+
 # 3.0.0-alpha.339 (2026-09-07)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws

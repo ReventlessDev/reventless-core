@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.235 (2026-09-08)
+
+### Features
+
+* a slice folder is named for its kind, without the Slice ([a400555](https://github.com/ReventlessDev/reventless-core/commit/a400555121b023823983ebe846e99cda27063c1f))
+* **core:** a state view records when it reached each state ([5216f71](https://github.com/ReventlessDev/reventless-core/commit/5216f71b8dcafcb2f0c991923ebcf2438b27e347))
+* **example:** an order's list says where the order has got to ([a1b3a81](https://github.com/ReventlessDev/reventless-core/commit/a1b3a81befb64af25371d189c22fde07c72b7b3d))
+* **spec:** an instant is a type, and a calendar day is a different one ([a60bebc](https://github.com/ReventlessDev/reventless-core/commit/a60bebc20fe5f3413f9252be36f94ba2a9fb620d))
+
+
 # 1.0.0-alpha.234 (2026-09-07)
 
 ### Bug Fixes

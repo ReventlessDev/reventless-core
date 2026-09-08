@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.85 (2026-09-08)
+
+### Features
+
+* a slice folder is named for its kind, without the Slice ([a400555](https://github.com/ReventlessDev/reventless-core/commit/a400555121b023823983ebe846e99cda27063c1f))
+* **deps:** the example shells read the lifecycle trail their views record ([99fd00c](https://github.com/ReventlessDev/reventless-core/commit/99fd00c0584c3aef06ad5ed7b00c9003e9fc4a2d))
+* **example:** the storefront carries the edges its lifecycle is drawn from ([7de7604](https://github.com/ReventlessDev/reventless-core/commit/7de760464fc9637893b2ca1ed8b6ff3e7f41d210))
+
+
 # 1.0.0-alpha.84 (2026-09-07)
 
 ### Bug Fixes

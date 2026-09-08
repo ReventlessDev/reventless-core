@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.237 (2026-09-08)
+
+### Features
+
+* **deps:** the example shells read the lifecycle trail their views record ([99fd00c](https://github.com/ReventlessDev/reventless-core/commit/99fd00c0584c3aef06ad5ed7b00c9003e9fc4a2d))
+
+
 # 1.0.0-alpha.236 (2026-09-07)
 
 ### Bug Fixes
