@@ -2,6 +2,7 @@
 
 import * as Aws from "@pulumi/aws";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
+import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
@@ -413,7 +414,7 @@ function Make(EventCollectorChannel) {
         eventTopics: eventTopics,
         resources: resources
       }], runtime, opts);
-    eventCollectorReadyRef.contents = runtime.parts.lambda.apply(param => {});
+    eventCollectorReadyRef.contents = Output$Pulumi.flatMap(runtime.parts.lambda, fn => fn.arn).apply(param => {});
     let isAdminEventCollector = Stdlib_Option.isNone(Plugin_Helpers$ReventlessCore.eventCollectorContextRef.contents[name]);
     if (isAdminEventCollector) {
       new (Aws.iam.RolePolicy)(name + `-snsManageSubs`, {
