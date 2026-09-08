@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.20 (2026-09-08)
+
+### Features
+
+* **seed:** a run says which identity its token carries, not which one it asked for ([063da61](https://github.com/ReventlessDev/reventless-core/commit/063da6110a2d89333bd3d99f4c7cb1bc579d78f0))
+
+
 # 1.0.0-alpha.19 (2026-09-04)
 
 **Note:** Version bump only for package @reventlessdev/reventless-seed

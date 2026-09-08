@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.16 (2026-09-08)
+
+### Bug Fixes
+
+* **aws:** the boot files a deploy rewrites in place carry no-cache ([01a4d21](https://github.com/ReventlessDev/reventless-core/commit/01a4d21a50a7890fcbd541f8a336b1333100148a))
+
+
 # 3.0.0-alpha.15 (2026-09-04)
 
 **Note:** Version bump only for package @reventlessdev/rescript-aws-sdk

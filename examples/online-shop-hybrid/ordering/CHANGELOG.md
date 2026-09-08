@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.236 (2026-09-08)
+
+### Features
+
+* **spec:** a field declares the value a form opens it on ([1d541fe](https://github.com/ReventlessDev/reventless-core/commit/1d541fe497e1df2ff48b72e26a06a1b8fd3c9e06))
+
+
 # 1.0.0-alpha.235 (2026-09-08)
 
 ### Features
