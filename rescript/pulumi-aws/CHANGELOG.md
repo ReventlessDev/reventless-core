@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.11 (2026-09-08)
+
+### Bug Fixes
+
+* **aws:** the collector gate waits on the one property an update changes ([2c48193](https://github.com/ReventlessDev/reventless-core/commit/2c481934d58c64b8e637d0df1b051b03cf59a35c))
+
+
 # 3.0.0-alpha.10 (2026-09-08)
 
 **Note:** Version bump only for package @reventlessdev/rescript-pulumi-aws
