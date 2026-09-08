@@ -677,13 +677,12 @@ module Make = (
       ~opts,
     )
 
-    // Through an output property, not the resource. `apply` receives the Function
-    // record as soon as the outer Output carries it — at construction, fields
-    // still unresolved — so discarding it reported ready mid-update, and the
-    // re-detect reached a Lambda still serving the previous bundle. `flatMap`
-    // returns the Output itself, which Pulumi awaits.
-    eventCollectorReadyRef :=
-      runtime.parts.lambda->Pulumi.Output.flatMap(fn => fn.arn)->Pulumi.Output.apply(_ => ())
+    // Not the resource, and not one of its identifiers: both are known before the
+    // update lands, so either opens the gate while the collector is still serving
+    // the previous bundle — and the re-detect that follows is answered with the
+    // previous definition. `updateLanded` depends on the one property that cannot
+    // be known early.
+    eventCollectorReadyRef := runtime.parts.lambda->Util_Lambda.updateLanded
 
     // Admin-only cross-plugin SNS subscription permissions. The admin EC
     // Lambda's manageSubscriptions hook (Phase 3 Step 1) creates SNS

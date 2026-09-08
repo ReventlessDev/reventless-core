@@ -26,7 +26,20 @@ let fromOutput = (output: Pulumi.Output.t<PulumiAws.Lambda.Function.t>) => {
   id: output->Pulumi.Output.flatMap(({id}) => id),
   name: output->Pulumi.Output.flatMap(({name}) => name),
   invokeArn: output->Pulumi.Output.flatMap(({invokeArn}) => invokeArn),
+  lastModified: output->Pulumi.Output.flatMap(({lastModified}) => lastModified),
 }
+
+/** Resolves once the function's update has actually landed — the barrier a
+    deploy-time handshake needs before it may publish to that function.
+
+    It must depend on `lastModified`. The identifiers (`arn`, `id`, `name`,
+    `invokeArn`) are equal before and after a code update, so the engine resolves
+    them from existing state and a gate built on one of them opens while the
+    update is still in flight — measurably, about a second before it even starts.
+    `sourceCodeHash` is no better: it is also an input, so it can be known in
+    advance for the same reason. */
+let updateLanded = (lambda: Pulumi.Output.t<PulumiAws.Lambda.Function.t>): Pulumi.Output.t<unit> =>
+  lambda->Pulumi.Output.flatMap(({lastModified}) => lastModified)->Pulumi.Output.apply(_ => ())
 
 let functionToResource = (~tags=?, {id, name, arn}: PulumiAws.Lambda.Function.t): ReventlessInfra.Adapter.resource =>
   ReventlessInfra.Adapter.make(

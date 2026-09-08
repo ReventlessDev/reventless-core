@@ -2,7 +2,6 @@
 
 import * as Aws from "@pulumi/aws";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
-import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
@@ -15,6 +14,7 @@ import * as Heartbeat$ReventlessCore from "@reventlessdev/reventless-core/src/co
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as PluginSpec$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginSpec.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
+import * as Util_Lambda$ReventlessAws from "../../util/Util_Lambda.res.mjs";
 import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/src/ComponentType.res.mjs";
 import * as EventCollector$ReventlessCore from "@reventlessdev/reventless-core/src/components/EventCollector/EventCollector.res.mjs";
 import * as EventLogBackend$ReventlessAws from "../../adapter/EventLog/EventLogBackend.res.mjs";
@@ -414,7 +414,7 @@ function Make(EventCollectorChannel) {
         eventTopics: eventTopics,
         resources: resources
       }], runtime, opts);
-    eventCollectorReadyRef.contents = Output$Pulumi.flatMap(runtime.parts.lambda, fn => fn.arn).apply(param => {});
+    eventCollectorReadyRef.contents = Util_Lambda$ReventlessAws.updateLanded(runtime.parts.lambda);
     let isAdminEventCollector = Stdlib_Option.isNone(Plugin_Helpers$ReventlessCore.eventCollectorContextRef.contents[name]);
     if (isAdminEventCollector) {
       new (Aws.iam.RolePolicy)(name + `-snsManageSubs`, {

@@ -26,8 +26,13 @@ function fromOutput(output) {
     arn: Output$Pulumi.flatMap(output, param => param.arn),
     id: Output$Pulumi.flatMap(output, param => param.id),
     name: Output$Pulumi.flatMap(output, param => param.name),
-    invokeArn: Output$Pulumi.flatMap(output, param => param.invokeArn)
+    invokeArn: Output$Pulumi.flatMap(output, param => param.invokeArn),
+    lastModified: Output$Pulumi.flatMap(output, param => param.lastModified)
   };
+}
+
+function updateLanded(lambda) {
+  return Output$Pulumi.flatMap(lambda, param => param.lastModified).apply(param => {});
 }
 
 function functionToResource(tags, param) {
@@ -40,6 +45,7 @@ export {
   toResource,
   fromResource,
   fromOutput,
+  updateLanded,
   functionToResource,
 }
 /* @pulumi/aws Not a pure module */

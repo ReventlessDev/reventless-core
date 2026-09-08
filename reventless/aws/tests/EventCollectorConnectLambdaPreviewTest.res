@@ -110,6 +110,7 @@ let lambda: Pulumi.Output.t<PulumiAws.Lambda.Function.t> = Pulumi.Output.make({
   id: "AllStateViewSlices"->Pulumi.Output.make,
   name: "AllStateViewSlices"->Pulumi.Output.make,
   invokeArn: "arn:aws:apigateway:invoke"->Pulumi.Output.make,
+  lastModified: "2026-01-01T00:00:00.000+0000"->Pulumi.Output.make,
 })
 
 // ── Tests ────────────────────────────────────────────────────────────────────

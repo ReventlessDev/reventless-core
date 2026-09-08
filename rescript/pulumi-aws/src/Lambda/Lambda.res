@@ -253,6 +253,12 @@ module Function = {
     id: Pulumi.Output.t<string>,
     name: Pulumi.Output.t<string>,
     invokeArn: Pulumi.Output.t<string>,
+    /** When AWS last wrote the function. Server-computed and different after
+        every code update, which is what separates it from the four identifiers
+        above: those are equal before and after, so the engine can resolve them
+        from existing state without waiting for the update. Depend on this one to
+        wait for the new code to actually be live. */
+    lastModified: Pulumi.Output.t<string>,
   }
 
   @module("@pulumi/aws") @scope("lambda") @new
