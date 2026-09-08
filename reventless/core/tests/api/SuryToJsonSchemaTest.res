@@ -1356,4 +1356,60 @@ describe("SuryToJsonSchema:", () => {
     )
   })
 
+  // The value a field opens with is JSON Schema's own keyword, not an
+  // `x-reventless-` extension — and it rides on the field's schema, so it
+  // survives the one place a name-keyed annotation spec cannot reach: a record
+  // nested inside a command.
+  describe("a field declaring a default:", () => {
+    let defaultOf = (json, ~field) =>
+      getPropertyOf(json, field)->Option.flatMap(s => getProperty(s, "default"))
+
+    let json = SuryToJsonSchema.deriveObjectSchema(
+      S.schema(s =>
+        {
+          "quantity": s.matches(S.int->Reventless.FieldDefault.int(1)),
+          "shippingMethod": s.matches(S.string->Reventless.FieldDefault.string("Standard")),
+          "plain": s.matches(S.int),
+        }
+      )->S.castToUnknown,
+    )
+
+    testSync("carries it as `default`", () =>
+      expect(defaultOf(json, ~field="quantity"))->toEqual(Some(JSON.Encode.int(1)))
+    )
+
+    testSync("keeps the shape the value actually has", () =>
+      expect(
+        getPropertyOf(json, "quantity")->Option.flatMap(s => getProperty(s, "type")),
+      )->toEqual(Some(JSON.Encode.string("integer")))
+    )
+
+    testSync("carries a string default the same way", () =>
+      expect(defaultOf(json, ~field="shippingMethod"))
+      ->toEqual(Some(JSON.Encode.string("Standard")))
+    )
+
+    testSync("while a field declaring none says nothing", () =>
+      expect(defaultOf(json, ~field="plain"))->toBe(None)
+    )
+
+    // The case the whole marker exists for: a name-keyed annotation spec speaks
+    // for a record's own fields, and an order's line items are one level in.
+    testSync("and reaches a field of a nested record", () => {
+      let lineItem = S.schema(s =>
+        {
+          "productId": s.matches(S.string),
+          "quantity": s.matches(S.int->Reventless.FieldDefault.int(1)),
+        }
+      )
+      let nested = SuryToJsonSchema.deriveObjectSchema(
+        S.schema(s => {"lineItems": s.matches(S.array(lineItem))})->S.castToUnknown,
+      )
+      expect(
+        getPropertyOf(nested, "lineItems")
+        ->Option.flatMap(a => getProperty(a, "items"))
+        ->Option.flatMap(i => defaultOf(i, ~field="quantity")),
+      )->toEqual(Some(JSON.Encode.int(1)))
+    })
+  })
 })

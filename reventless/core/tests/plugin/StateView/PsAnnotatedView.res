@@ -16,6 +16,7 @@ type consumedEvent =
       // On the event, not just the state: a renderer composes from an event
       // payload, so this is the case the marker has to reach.
       @sensitive contact: string,
+      @default(1) quantity: int,
     })
 
 @live(false)
@@ -27,10 +28,11 @@ type state = {
   name: string,
   @semantic("currency") @metric({aggregate: "sum", label: "Revenue"}) total: float,
   @sensitive contact: string,
+  @default(1) quantity: int,
 }
 
 let project = ({event}: Reventless.StateViewSlice.consumed<consumedEvent>) =>
   switch event {
-  | ItemRecorded({itemId, ownerId, version, name, total, contact}) =>
-    [Set(itemId, {itemId, ownerId, version, name, total, contact})]
+  | ItemRecorded({itemId, ownerId, version, name, total, contact, quantity}) =>
+    [Set(itemId, {itemId, ownerId, version, name, total, contact, quantity})]
   }

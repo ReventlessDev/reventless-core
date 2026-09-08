@@ -170,130 +170,144 @@ function withGraphqlInput(schema, name) {
   }
 }
 
-function fromSchemaType(inputNamesOpt, st) {
-  let inputNames = inputNamesOpt !== undefined ? inputNamesOpt : false;
-  if (typeof st !== "object") {
-    switch (st) {
-      case "ScalarNumber" :
-        return Object.fromEntries([[
-            "type",
-            "number"
-          ]]);
-      case "ScalarBoolean" :
-        return Object.fromEntries([[
-            "type",
-            "boolean"
-          ]]);
-      case "ScalarInt" :
-      case "ScalarBigInt" :
-        return Object.fromEntries([[
-            "type",
-            "integer"
-          ]]);
-      case "EntityId" :
-        return Object.fromEntries([
-          [
-            "type",
-            "string"
-          ],
-          [
-            "format",
-            "uuid"
-          ]
-        ]);
-      case "DateTime" :
-        return Object.fromEntries([
-          [
-            "type",
-            "string"
-          ],
-          [
-            "format",
-            "date-time"
-          ]
-        ]);
-      case "CalendarDate" :
-        return Object.fromEntries([
-          [
-            "type",
-            "string"
-          ],
-          [
-            "format",
-            "date"
-          ]
-        ]);
-      case "ScalarString" :
-      case "Unknown" :
-        return Object.fromEntries([[
-            "type",
-            "string"
-          ]]);
-    }
-  } else {
-    switch (st.TAG) {
-      case "Nullable" :
-        let innerSchema = fromSchemaType(inputNames, st._0);
-        return Object.fromEntries([[
-            "oneOf",
+function fromSchemaType(_inputNamesOpt, _st) {
+  while (true) {
+    let inputNamesOpt = _inputNamesOpt;
+    let st = _st;
+    let inputNames = inputNamesOpt !== undefined ? inputNamesOpt : false;
+    if (typeof st !== "object") {
+      switch (st) {
+        case "ScalarNumber" :
+          return Object.fromEntries([[
+              "type",
+              "number"
+            ]]);
+        case "ScalarBoolean" :
+          return Object.fromEntries([[
+              "type",
+              "boolean"
+            ]]);
+        case "ScalarInt" :
+        case "ScalarBigInt" :
+          return Object.fromEntries([[
+              "type",
+              "integer"
+            ]]);
+        case "EntityId" :
+          return Object.fromEntries([
             [
-              innerSchema,
-              Object.fromEntries([[
-                  "type",
-                  "null"
-                ]])
+              "type",
+              "string"
+            ],
+            [
+              "format",
+              "uuid"
             ]
-          ]]);
-      case "ArrayOf" :
-        return Object.fromEntries([
-          [
-            "type",
-            "array"
-          ],
-          [
-            "items",
-            fromSchemaType(inputNames, st._0)
-          ]
-        ]);
-      case "ObjectRef" :
-        let base = objectRefToJsonSchema(undefined, undefined, undefined, undefined, inputNames, st._1);
-        if (inputNames) {
-          return withGraphqlInput(base, st._0);
-        } else {
-          return base;
-        }
-      case "Enum" :
-        return Object.fromEntries([
-          [
-            "type",
-            "string"
-          ],
-          [
-            "enum",
-            st._1.map(prim => prim)
-          ]
-        ]);
-      case "Semantic" :
-        let inner = st._1;
-        let sem = st._0;
-        let base$1 = fromSchemaType(inputNames, inner);
-        let match = SchemaType$ReventlessCore.canonicalName(sem.id);
-        let base$2 = inputNames && match !== undefined && typeof inner === "object" && inner.TAG === "ObjectRef" ? withGraphqlInput(base$1, match + "Input") : base$1;
-        return withSemantic(base$2, sem);
-      case "TaggedUnion" :
-        let members = st._1.map(param => armToJsonSchema(inputNames, param[0], param[1]));
-        return Object.fromEntries([
-          [
-            "oneOf",
-            members
-          ],
-          [
-            "x-reventless-union",
-            st._0
-          ]
-        ]);
+          ]);
+        case "DateTime" :
+          return Object.fromEntries([
+            [
+              "type",
+              "string"
+            ],
+            [
+              "format",
+              "date-time"
+            ]
+          ]);
+        case "CalendarDate" :
+          return Object.fromEntries([
+            [
+              "type",
+              "string"
+            ],
+            [
+              "format",
+              "date"
+            ]
+          ]);
+        case "ScalarString" :
+        case "Unknown" :
+          return Object.fromEntries([[
+              "type",
+              "string"
+            ]]);
+      }
+    } else {
+      switch (st.TAG) {
+        case "Nullable" :
+          let innerSchema = fromSchemaType(inputNames, st._0);
+          return Object.fromEntries([[
+              "oneOf",
+              [
+                innerSchema,
+                Object.fromEntries([[
+                    "type",
+                    "null"
+                  ]])
+              ]
+            ]]);
+        case "ArrayOf" :
+          return Object.fromEntries([
+            [
+              "type",
+              "array"
+            ],
+            [
+              "items",
+              fromSchemaType(inputNames, st._0)
+            ]
+          ]);
+        case "ObjectRef" :
+          let base = objectRefToJsonSchema(undefined, undefined, undefined, undefined, inputNames, st._1);
+          if (inputNames) {
+            return withGraphqlInput(base, st._0);
+          } else {
+            return base;
+          }
+        case "Enum" :
+          return Object.fromEntries([
+            [
+              "type",
+              "string"
+            ],
+            [
+              "enum",
+              st._1.map(prim => prim)
+            ]
+          ]);
+        case "Semantic" :
+          let inner = st._1;
+          let sem = st._0;
+          let base$1 = fromSchemaType(inputNames, inner);
+          let match = SchemaType$ReventlessCore.canonicalName(sem.id);
+          let base$2 = inputNames && match !== undefined && typeof inner === "object" && inner.TAG === "ObjectRef" ? withGraphqlInput(base$1, match + "Input") : base$1;
+          return withSemantic(base$2, sem);
+        case "Defaulted" :
+          let inner$1 = st._1;
+          let obj = Stdlib_JSON.Decode.object(fromSchemaType(inputNames, inner$1));
+          if (obj !== undefined) {
+            obj["default"] = st._0;
+            return obj;
+          }
+          _st = inner$1;
+          _inputNamesOpt = inputNames;
+          continue;
+        case "TaggedUnion" :
+          let members = st._1.map(param => armToJsonSchema(inputNames, param[0], param[1]));
+          return Object.fromEntries([
+            [
+              "oneOf",
+              members
+            ],
+            [
+              "x-reventless-union",
+              st._0
+            ]
+          ]);
+      }
     }
-  }
+  };
 }
 
 function armToJsonSchema(inputNamesOpt, tag, armType) {

@@ -1458,6 +1458,25 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
       )->toEqual(["contact"])
     )
 
+    // JSON Schema's own keyword rather than an `x-reventless-` one, so a client
+    // that knows nothing about Reventless reads it.
+    testSync("@default flows through the PPX to JSON Schema's `default`", () => {
+      expect(
+        annotatedSchema
+        ->getPropertyOf("quantity")
+        ->Option.flatMap(s => getProperty(s, "default")),
+      )->toEqual(Some(JSON.Encode.int(1)))
+    })
+
+    testSync("@default leaves the field's own shape alone", () => {
+      expect(
+        annotatedSchema
+        ->getPropertyOf("quantity")
+        ->Option.flatMap(s => getProperty(s, "type"))
+        ->Option.flatMap(JSON.Decode.string),
+      )->toBe(Some("integer"))
+    })
+
     testSync("@metric flows through the PPX to x-reventless-metric {aggregate,label}", () => {
       let metricObj =
         annotatedSchema

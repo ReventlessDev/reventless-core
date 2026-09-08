@@ -99,6 +99,10 @@ function fromSchemaType(_required, _asInputOpt, _st, collectedTypes, seenTypes) 
           _st = inner;
           _asInputOpt = asInput;
           continue;
+        case "Defaulted" :
+          _st = st._1;
+          _asInputOpt = asInput;
+          continue;
         case "TaggedUnion" :
           let name$3 = st._0;
           if (asInput) {
@@ -232,11 +236,14 @@ function scalarOfSchemaType(_st) {
           return "String";
       }
     } else {
-      if (st.TAG !== "Semantic") {
-        return "String";
+      switch (st.TAG) {
+        case "Semantic" :
+        case "Defaulted" :
+          _st = st._1;
+          continue;
+        default:
+          return "String";
       }
-      _st = st._1;
-      continue;
     }
   };
 }

@@ -47,7 +47,9 @@ type shippingMethod =
 @schema
 type lineItem = {
   @ref("AvailableProducts") productId: string,
-  quantity: int,
+  // A line is for one of the thing unless the shopper says otherwise. Without
+  // it a checkout seeded from a picked shelf opens each line blank.
+  @default(1) quantity: int,
 }
 
 @schema

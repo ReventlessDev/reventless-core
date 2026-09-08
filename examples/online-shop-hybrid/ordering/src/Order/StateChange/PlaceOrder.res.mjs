@@ -6,6 +6,7 @@ import * as Owner$Reventless from "@reventlessdev/reventless-spec/src/components
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as DateRange$Reventless from "@reventlessdev/reventless-spec/src/semantic/DateRange.res.mjs";
 import * as Reference$Reventless from "@reventlessdev/reventless-spec/src/components/Reference.res.mjs";
+import * as FieldDefault$Reventless from "@reventlessdev/reventless-spec/src/components/FieldDefault.res.mjs";
 import * as UploadableImage$Reventless from "@reventlessdev/reventless-spec/src/semantic/UploadableImage.res.mjs";
 
 let consumedEventSchema = Sury.union([
@@ -49,7 +50,7 @@ let shippingMethodSchema = Sury.union([
 
 let lineItemSchema = Sury.$schema(s => ({
   productId: s.m(Reference$Reventless.to_(undefined, undefined, "AvailableProducts")),
-  quantity: s.m(Sury.int)
+  quantity: s.m(FieldDefault$Reventless.int(Sury.int, 1))
 }));
 
 let commandSchema = Sury.$schema(s => ({

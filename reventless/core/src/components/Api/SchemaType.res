@@ -27,6 +27,10 @@ type rec schemaType =
         are *not* expressed this way: they long predate the generic marker and
         their JSON Schema `format` output is a published contract. */
   Semantic(Reventless.Semantic.t, schemaType)
+  | /** A field whose type declares the value it opens with. Wraps the shape the
+        value has, as `Semantic` does, so a consumer that cares only about shape
+        unwraps: a default changes where a form starts, never what the field is. */
+  Defaulted(JSON.t, schemaType)
   | /** A variant used as a field: the union's name, and one arm per constructor
         keyed by the `TAG` sury discriminates on. Each arm is the `ObjectRef` its
         member type is emitted from, so the arm's own name travels with it and
@@ -82,6 +86,17 @@ let canonicalName = (id: string): option<string> =>
   ->Option.map(((_, name)) => name)
 
 let rec fromSury = (~parentName: string, ~fieldName: string, schema: S.t<unknown>): schemaType => {
+  // Outermost, so it wraps whatever the field turns out to be, a semantic
+  // composite included — the other order buries the marker under a shape whose
+  // consumers unwrap it.
+  let shape = withoutDefault(~parentName, ~fieldName, schema)
+  switch Reventless.FieldDefault.getFrom(schema) {
+  | Some(value) => Defaulted(value, shape)
+  | None => shape
+  }
+}
+
+and withoutDefault = (~parentName: string, ~fieldName: string, schema: S.t<unknown>): schemaType => {
   // Semantics the IR already has a dedicated shape for keep it: `dateTime` and
   // `reference` are read below via `isDateTime` / `getTarget`, both of which now
   // consult the generic marker, and their `format` output is a published

@@ -234,6 +234,15 @@ let rec fromSchemaType = (~inputNames: bool=false, st: SchemaType.schemaType): J
     | _ => base
     }
     base->withSemantic(sem)
+  // JSON Schema's own keyword, not an `x-reventless-` extension: the vocabulary
+  // already has a word for this one, so any client reads it.
+  | Defaulted(value, inner) =>
+    switch fromSchemaType(~inputNames, inner)->JSON.Decode.object {
+    | Some(obj) =>
+      obj->Dict.set("default", value)
+      JSON.Encode.object(obj)
+    | None => fromSchemaType(~inputNames, inner)
+    }
   // A union has no input form — see the fragment generator, which emits `String`
   // and says so — hence no name to publish on either arm.
   // A union is `oneOf` its arms, each an object carrying the `TAG` const it is

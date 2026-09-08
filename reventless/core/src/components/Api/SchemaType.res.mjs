@@ -9,6 +9,7 @@ import * as Lifecycle$Reventless from "@reventlessdev/reventless-spec/src/types/
 import * as Reference$Reventless from "@reventlessdev/reventless-spec/src/components/Reference.res.mjs";
 import * as TaggedUnion$Reventless from "@reventlessdev/reventless-spec/src/components/TaggedUnion.res.mjs";
 import * as CalendarDate$Reventless from "@reventlessdev/reventless-spec/src/semantic/CalendarDate.res.mjs";
+import * as FieldDefault$Reventless from "@reventlessdev/reventless-spec/src/components/FieldDefault.res.mjs";
 
 function isIdFieldName(name) {
   let lower = name.toLowerCase();
@@ -54,6 +55,20 @@ function canonicalName(id) {
 }
 
 function fromSury(parentName, fieldName, schema) {
+  let shape = withoutDefault(parentName, fieldName, schema);
+  let value = FieldDefault$Reventless.getFrom(schema);
+  if (value !== undefined) {
+    return {
+      TAG: "Defaulted",
+      _0: value,
+      _1: shape
+    };
+  } else {
+    return shape;
+  }
+}
+
+function withoutDefault(parentName, fieldName, schema) {
   let sem = Semantic$Reventless.get(schema);
   if (sem === undefined) {
     return shapeOf(parentName, fieldName, schema);
@@ -415,6 +430,7 @@ export {
   semanticCompositeNames,
   canonicalName,
   fromSury,
+  withoutDefault,
   shapeOf,
   maxReportDepth,
   collectUnclassifiedUnions,

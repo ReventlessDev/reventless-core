@@ -89,6 +89,9 @@ let rec fromSchemaType = (
   // reaches the UI through the field's JSON Schema, which is the channel that
   // can express it.
   | Semantic(_, inner) => fromSchemaType(~required, ~asInput, inner, collectedTypes, seenTypes)
+  // The SDL type is the wrapped shape's. A GraphQL default value here instead
+  // would make the field optional on the wire — a different claim.
+  | Defaulted(_, inner) => fromSchemaType(~required, ~asInput, inner, collectedTypes, seenTypes)
   // A union declares one object type per arm and a `union` naming them. Both
   // names come from the schema — see `Reventless.TaggedUnion` — so the same union
   // is the same type wherever it appears, which is what lets AppSync merge each
@@ -292,7 +295,7 @@ let rec scalarOfSchemaType = (st: SchemaType.schemaType): string =>
   | ScalarBoolean => "Boolean"
   | ScalarBigInt => "String"
   | EntityId => "ID"
-  | Semantic(_, inner) => scalarOfSchemaType(inner)
+  | Semantic(_, inner) | Defaulted(_, inner) => scalarOfSchemaType(inner)
   | _ => "String"
   }
 

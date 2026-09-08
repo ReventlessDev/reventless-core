@@ -173,7 +173,34 @@ its schema alone.
 `aggregate` is one of `count`, `sum`, `avg`. An omitted `label` lets the UI derive
 one from the field name.
 
-### 2.6 Semantics — what a value *is*
+### 2.6 The value a field opens with
+
+**`@default`** declares what a generated form starts a field on, published as
+JSON Schema's own `default` keyword — so any client reads it, not only AutoUI.
+
+```rescript
+@schema
+type lineItem = {
+  @ref("AvailableProducts") productId: string,
+  @default(1) quantity: int,
+}
+```
+
+The shorthand takes an `int`, `float`, `string` or `bool` literal, and composes
+with whatever else the field declares — a tag, an owner, a reference. A default
+whose type does not match the field's is a compile error. For anything else,
+write it by hand with `@s.matches(Reventless.FieldDefault.mark(<schema>, <json>))`.
+
+The marker rides on the **field's own schema**, not in a record-level annotation
+spec keyed by field name. That is what makes it work at any depth: a record
+nested inside a command — an order's line items — carries no annotation spec for a
+name-keyed reader to consult, and its fields are exactly the ones a repeating
+group opens blank when a caller picks rows into it.
+
+A form invents nothing on its own: a field that declares no default opens blank,
+and a required blank is refused at submit, which is where the asking belongs.
+
+### 2.7 Semantics — what a value *is*
 
 The strongest form of UI configuration is a typed field. A semantic type carries
 its meaning in the type system, so the compiler checks it and it cannot drift from
@@ -200,7 +227,7 @@ for it when you are not in a position to change the type; the vocabulary is the
 UI's, so a name it does not know is not caught at compile time. Where a field has
 both, the type wins and the disagreement is logged rather than quietly resolved.
 
-### 2.7 References and object stores
+### 2.8 References and object stores
 
 **`@ref("Entity")`** (or `@ref("Plugin.Entity")`) marks a `string` or
 `array<string>` field as a cross-entity reference. The generated command form
@@ -221,7 +248,7 @@ an upload control. See
 [`@storageRef`, `@offload`](./reventless-ppx.md) in the PPX guide for the field
 markers, and §5 for the deployment side that provisions the store.
 
-### 2.8 Query capability — what the UI can filter and sort by
+### 2.9 Query capability — what the UI can filter and sort by
 
 These shape the generated GraphQL surface, and therefore what the list view can
 offer:
@@ -256,7 +283,7 @@ for it when inference has nothing to go on:
 type state = {@id productId: string, name: string, categoryId: string, orderCount: int}
 ```
 
-### 2.9 Component-level declarations
+### 2.10 Component-level declarations
 
 **`@@reventless.visibility(Internal)`** keeps a read model or state-view slice out
 of the generated UI — no page, no panel, no menu entry. It stays queryable, and
@@ -278,7 +305,7 @@ type state = { … }
 stating next to the hints because the two are easy to confuse. `visibility`
 decides what a menu shows; `authorize` decides what the server answers.
 
-### 2.10 Ownership
+### 2.11 Ownership
 
 **`@owner`** names the field holding the id of the principal a record belongs to.
 On a command the write path overwrites it with the authenticated caller's id; on a
@@ -297,7 +324,7 @@ field or supplies it, and whether an owner column is worth showing. Who is exemp
 is deployment configuration (`elevatedGroups`), never part of the annotation —
 see §5.3.
 
-### 2.11 Retirement
+### 2.12 Retirement
 
 **`@retired`** names the state that withdraws a row from ordinary use — a
 deactivated customer, an archived category. It has two forms, and which one a
@@ -397,7 +424,7 @@ the boolean form as their home. There is no fallback by field name — a boolean
 called `archived` that nobody annotated hides nothing, and neither does a
 constructor called `Archived`.
 
-### 2.12 Tagged unions — one fact with several shapes
+### 2.13 Tagged unions — one fact with several shapes
 
 A field may hold a variant, which is the honest way to say a fact that takes
 several shapes — the geocoder's answer is *pending on an address*, or *a point*,
@@ -415,7 +442,7 @@ type state = {@id customerId: string, geolocation: geolocation}
 ```
 
 The alternative — a point field, a status enum and a note field, with nine of the
-twelve combinations illegal — is the same shape of mistake §2.11 removes for
+twelve combinations illegal — is the same shape of mistake §2.12 removes for
 retirement: several fields stating one fact, kept in step by hand.
 
 **On the wire it is a GraphQL union**, one object type per arm, named
@@ -1037,8 +1064,8 @@ Omit it and the shell assumes nothing is scoped.
 
 The declaration answers **exactly one question** — who reads past the narrowing
 the framework applies to ordinary callers. That covers both rules that narrow a
-read: `@owner`, whose rows a query returns (§2.10), and `@retired`, who may ask
-for the archive with `includeRetired` (§2.11). One list for both, deliberately —
+read: `@owner`, whose rows a query returns (§2.11), and `@retired`, who may ask
+for the archive with `includeRetired` (§2.12). One list for both, deliberately —
 two would eventually disagree about who an operator is, and the gap would surface
 one view at a time.
 

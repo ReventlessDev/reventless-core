@@ -759,6 +759,9 @@ let transform (str : structure) : structure =
        [@sensitive] wraps whatever schema the field ended up with, so a field
        that is both the owner and sensitive keeps both. *)
     let body = SensitiveInference.transform_structure body in
+    (* Last of the wrapping passes, for the reason the two above it run late: it
+       wraps whatever schema the field ended up with rather than replacing it. *)
+    let body = DefaultInference.transform_structure body in
     let body = DisplayNameInference.transform_structure body in
     let body = NoApiAnnotation.transform ~loc body in
     let body = TransitionAnnotation.transform ~loc body in
