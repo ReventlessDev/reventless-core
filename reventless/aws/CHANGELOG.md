@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.341 (2026-09-08)
+
+### Bug Fixes
+
+* **aws:** the readiness gate waits for the collector's update, not its record ([c5a1d27](https://github.com/ReventlessDev/reventless-core/commit/c5a1d273be2c499bf1d1297a416d2cf6fce85ccf))
+
+
 # 3.0.0-alpha.340 (2026-09-08)
 
 ### Bug Fixes
