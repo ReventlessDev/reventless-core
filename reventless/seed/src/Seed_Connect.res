@@ -38,6 +38,13 @@ let make = async (
   let token = await login(~username, ~password)
   let client = Seed_Client.make(~config={endpoint: endpoint})
   client->Seed_Client.useToken(token)
+  // What the bearer grants, which is not always what the account list showed: a
+  // token narrowed to one role presents that role alone. Said at login so the
+  // run starts from the identity it will actually be refused or served under.
+  switch Seed_Client.identitySummary(client) {
+  | Some(summary) => Console.log(`Acting as: ${summary}`)
+  | None => ()
+  }
   {client, uploadsSkipped, label}
 }
 

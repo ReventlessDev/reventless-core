@@ -57,3 +57,101 @@ describe("Seed_Client.isTransient:", () => {
     expect(Seed_Client.isTransient(JSON.Encode.null))->toBe(false)
   })
 })
+
+// An account's listed groups are not what authorizes it — the token's are. Both
+// platforms narrow a token to the single role the caller last chose, so a seed
+// can log in as an account the user list shows as `[Admin, Shopper]` and present
+// a token carrying `Shopper` alone. The refusal that follows names the field and
+// not the caller, and the account list cannot explain it either. These pin the
+// reading-back that turns that into a sentence.
+
+let b64url = payload =>
+  payload
+  ->NodeBuffer.fromStringUtf8
+  ->NodeBuffer.toStringBase64Url
+
+let jwt = claims =>
+  `header.${b64url(JSON.stringify(JSON.Encode.object(Dict.fromArray(claims))))}.signature`
+
+let localToken = claims =>
+  `${b64url(JSON.stringify(JSON.Encode.object(Dict.fromArray(claims))))}.signature`
+
+let strings = values => JSON.Encode.array(values->Array.map(JSON.Encode.string))
+
+let clientWith = token => {
+  let c = Seed_Client.make(~config={endpoint: "http://example.invalid/graphql"})
+  c->Seed_Client.useToken(token)
+  c
+}
+
+describe("Seed_Client.effectiveGroups:", () => {
+  // A Cognito id token carries its payload in the second segment, a local dev
+  // token in the first. Neither platform should have to announce which it is.
+  testSync("reads the payload wherever the provider put it", () => {
+    expect(
+      clientWith(jwt([("cognito:groups", strings(["Admin", "Shopper"]))]))->Seed_Client.effectiveGroups,
+    )->toEqual(Some(["Admin", "Shopper"]))
+    expect(
+      clientWith(localToken([("groups", strings(["Merchandiser"]))]))->Seed_Client.effectiveGroups,
+    )->toEqual(Some(["Merchandiser"]))
+  })
+
+  // An opaque bearer is not an error — it just means this can add nothing, and
+  // the failure reports what it always did.
+  testSync("says nothing about a token it cannot read", () => {
+    expect(clientWith("not-a-token")->Seed_Client.effectiveGroups)->toEqual(None)
+    expect(
+      Seed_Client.make(~config={endpoint: "http://example.invalid/graphql"})
+      ->Seed_Client.effectiveGroups,
+    )->toEqual(None)
+  })
+})
+
+describe("Seed_Client.identitySummary:", () => {
+  // The case that cost the debugging: eligible in the user list, refused by the
+  // token. Naming what it was narrowed FROM is what points at the role switch.
+  testSync("names the membership a narrowed token gave up", () =>
+    expect(
+      clientWith(
+        jwt([
+          ("cognito:groups", strings(["Shopper"])),
+          ("availableRoles", JSON.Encode.string("Admin,Shopper")),
+        ]),
+      )->Seed_Client.identitySummary,
+    )->toEqual(Some("Shopper — narrowed to this role from Admin, Shopper"))
+  )
+
+  // An ordinary login is not narrowed and has nothing to explain.
+  testSync("stays quiet about an unnarrowed token", () =>
+    expect(
+      clientWith(jwt([("cognito:groups", strings(["Admin", "Shopper"]))]))
+      ->Seed_Client.identitySummary,
+    )->toEqual(Some("Admin, Shopper"))
+  )
+
+  // A token granting nothing reads as a sentence rather than an empty string.
+  testSync("says so when the token carries no groups at all", () =>
+    expect(
+      clientWith(jwt([("cognito:groups", strings([]))]))->Seed_Client.identitySummary,
+    )->toEqual(Some("no groups"))
+  )
+})
+
+describe("Seed_Client.isDenied:", () => {
+  // AppSync types it; the local server carries it in the message.
+  testSync("recognises a refusal in either platform's vocabulary", () => {
+    expect(Seed_Client.isDenied(errors([errorOfType("Unauthorized")])))->toBe(true)
+    expect(
+      Seed_Client.isDenied(
+        errors([Dict.fromArray([("message", JSON.Encode.string("Not Authorized to access X"))])]),
+      ),
+    )->toBe(true)
+  })
+
+  // Attaching an identity to an unrelated failure would point the reader at the
+  // wrong thing.
+  testSync("leaves every other failure alone", () => {
+    expect(Seed_Client.isDenied(errors([errorOfType("ValidationException")])))->toBe(false)
+    expect(Seed_Client.isDenied(errors([])))->toBe(false)
+  })
+})

@@ -15,6 +15,10 @@ async function make(label, endpoint, login, localDefaultsOpt) {
     endpoint: endpoint
   });
   Seed_Client$ReventlessSeed.useToken(client, token);
+  let summary = Seed_Client$ReventlessSeed.identitySummary(client);
+  if (summary !== undefined) {
+    console.log(`Acting as: ` + summary);
+  }
   return {
     client: client,
     uploadsSkipped: uploadsSkipped,

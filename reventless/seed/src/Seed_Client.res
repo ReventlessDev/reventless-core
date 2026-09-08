@@ -52,6 +52,87 @@ let endpoint = (t: t): string => t.config.endpoint
     token is a valid bearer for `endpoint`. */
 let useToken = (t: t, token: string): unit => t.token = Some(token)
 
+// ── What the bearer actually grants ─────────────────────────────────────────
+//
+// An account's listed groups are not necessarily the ones its token carries:
+// both platforms narrow a token to the single role the caller last chose to act
+// as. So a seed can log in as an account that looks eligible and be refused, and
+// the account list cannot explain it — only the token can.
+
+/** Claim names a narrowed token carries. These mirror the cross-provider
+    contract in `ReventlessCore.Auth_ActiveRole`; spelled out rather than
+    imported because this harness deliberately depends on no framework package. */
+let activeRoleClaim = "activeRole"
+let availableRolesClaim = "availableRoles"
+
+/** Group claim per provider, tried in order. */
+let groupClaimNames = ["cognito:groups", "groups"]
+
+let decodeSegment = (segment: string): option<dict<JSON.t>> =>
+  try {
+    segment
+    ->NodeBuffer.fromStringBase64Url
+    ->NodeBuffer.toStringUtf8
+    ->JSON.parseOrThrow
+    ->JSON.Decode.object
+  } catch {
+  | _ => None
+  }
+
+/** The bearer's payload, from whichever segment carries it — a Cognito JWT puts
+    it second and a local dev token first, so trying each in turn saves this from
+    having to know which platform signed the token. A segment that is not a JSON
+    object (a signature) simply does not decode. */
+let claims = (t: t): option<dict<JSON.t>> =>
+  t.token->Option.flatMap(token =>
+    token
+    ->String.split(".")
+    ->Array.reduce(None, (found, segment) =>
+      switch found {
+      | Some(_) => found
+      | None => decodeSegment(segment)
+      }
+    )
+  )
+
+// Arrays on the group claim, comma-joined on `availableRoles`.
+let asStrings = (value: JSON.t): option<array<string>> =>
+  switch value {
+  | Array(entries) => Some(entries->Array.filterMap(JSON.Decode.string))
+  | String(joined) =>
+    Some(joined->String.split(",")->Array.map(String.trim)->Array.filter(s => s != ""))
+  | _ => None
+  }
+
+let claimStrings = (t: t, name: string): option<array<string>> =>
+  t->claims->Option.flatMap(c => c->Dict.get(name))->Option.flatMap(asStrings)
+
+/** The groups the bearer actually presents — what every enforcement point reads.
+    `None` when the token is opaque to us, which is not an error: it just means
+    this cannot add anything. */
+let effectiveGroups = (t: t): option<array<string>> =>
+  groupClaimNames->Array.reduce(None, (found, name) =>
+    switch found {
+    | Some(_) => found
+    | None => t->claimStrings(name)
+    }
+  )
+
+/** One line naming the identity the bearer carries, and — when it was narrowed —
+    the membership it was narrowed from. The second half is the point: without it
+    a refusal looks like a misconfigured grant rather than a role switch. */
+let identitySummary = (t: t): option<string> =>
+  t
+  ->effectiveGroups
+  ->Option.map(groups => {
+    let held = groups->Array.length == 0 ? "no groups" : groups->Array.join(", ")
+    switch t->claimStrings(availableRolesClaim) {
+    | Some(available) if available->Array.length > 0 =>
+      `${held} — narrowed to this role from ${available->Array.join(", ")}`
+    | _ => held
+    }
+  })
+
 // ── JSON helpers ────────────────────────────────────────────────────────────
 
 let field = (json: JSON.t, key: string): option<JSON.t> =>
@@ -138,6 +219,21 @@ let isTransient = (errors: JSON.t): bool =>
     )
   }
 
+/** An authorization refusal, in either platform's vocabulary — AppSync answers
+    `errorType: "Unauthorized"`, the local server carries it in the message. */
+let isDenied = (errors: JSON.t): bool =>
+  switch errors->JSON.Decode.array {
+  | None => false
+  | Some(entries) =>
+    entries->Array.some(e =>
+      switch (e->nodeString("errorType"), e->nodeString("message")) {
+      | (Some(errorType), _) if errorType->String.includes("Unauthorized") => true
+      | (_, Some(message)) => message->String.includes("Not Authorized")
+      | _ => false
+      }
+    )
+  }
+
 let attempts = 4
 
 /**
@@ -180,8 +276,19 @@ let gql = async (t: t, ~query: string, ~label: string): JSON.t => {
         await attempt(n + 1)
       } else {
         let tried = n > 1 ? `\n  gave up after ${n->Int.toString} attempts` : ""
+        // A refusal is the one failure the response cannot explain on its own:
+        // it names the field, never the caller. The account list can't either —
+        // it holds membership, and a narrowed token carries less.
+        let identity = switch isDenied(errors) ? t->identitySummary : None {
+        | Some(summary) => `\n  identity: ${summary}`
+        | None => ""
+        }
         throw(
-          Failed(`${label} failed\n  query: ${query}\n  response: ${JSON.stringify(errors)}${tried}`),
+          Failed(
+            `${label} failed\n  query: ${query}\n  response: ${JSON.stringify(
+                errors,
+              )}${identity}${tried}`,
+          ),
         )
       }
     | None => json->field("data")->Option.getOr(JSON.Encode.null)

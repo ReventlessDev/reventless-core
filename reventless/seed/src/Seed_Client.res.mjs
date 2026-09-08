@@ -30,6 +30,69 @@ function useToken(t, token) {
   t.token = token;
 }
 
+let availableRolesClaim = "availableRoles";
+
+let groupClaimNames = [
+  "cognito:groups",
+  "groups"
+];
+
+function decodeSegment(segment) {
+  try {
+    return Stdlib_JSON.Decode.object(JSON.parse(Buffer.from(segment, "base64url").toString("utf8")));
+  } catch (exn) {
+    return;
+  }
+}
+
+function claims(t) {
+  return Stdlib_Option.flatMap(t.token, token => Stdlib_Array.reduce(token.split("."), undefined, (found, segment) => {
+    if (found !== undefined) {
+      return found;
+    } else {
+      return decodeSegment(segment);
+    }
+  }));
+}
+
+function asStrings(value) {
+  if (Array.isArray(value)) {
+    return Stdlib_Array.filterMap(value, Stdlib_JSON.Decode.string);
+  }
+  switch (typeof value) {
+    case "string" :
+      return value.split(",").map(prim => prim.trim()).filter(s => s !== "");
+    default:
+      return;
+  }
+}
+
+function claimStrings(t, name) {
+  return Stdlib_Option.flatMap(Stdlib_Option.flatMap(claims(t), c => c[name]), asStrings);
+}
+
+function effectiveGroups(t) {
+  return Stdlib_Array.reduce(groupClaimNames, undefined, (found, name) => {
+    if (found !== undefined) {
+      return found;
+    } else {
+      return claimStrings(t, name);
+    }
+  });
+}
+
+function identitySummary(t) {
+  return Stdlib_Option.map(effectiveGroups(t), groups => {
+    let held = groups.length === 0 ? "no groups" : groups.join(", ");
+    let available = claimStrings(t, availableRolesClaim);
+    if (available !== undefined && available.length !== 0) {
+      return held + ` — narrowed to this role from ` + available.join(", ");
+    } else {
+      return held;
+    }
+  });
+}
+
 function field(json, key) {
   if (typeof json === "object" && json !== null && !Array.isArray(json)) {
     return json[key];
@@ -125,6 +188,31 @@ function isTransient(errors) {
   }
 }
 
+function isDenied(errors) {
+  let entries = Stdlib_JSON.Decode.array(errors);
+  if (entries !== undefined) {
+    return entries.some(e => {
+      let match = nodeString(e, "errorType");
+      let match$1 = nodeString(e, "message");
+      if (match !== undefined) {
+        if (match.includes("Unauthorized")) {
+          return true;
+        } else if (match$1 !== undefined) {
+          return match$1.includes("Not Authorized");
+        } else {
+          return false;
+        }
+      } else if (match$1 !== undefined) {
+        return match$1.includes("Not Authorized");
+      } else {
+        return false;
+      }
+    });
+  } else {
+    return false;
+  }
+}
+
 async function gql(t, query, label) {
   let headers = Object.fromEntries([[
       "content-type",
@@ -163,9 +251,11 @@ async function gql(t, query, label) {
       return await attempt(n + 1 | 0);
     }
     let tried = n > 1 ? `\n  gave up after ` + n.toString() + ` attempts` : "";
+    let summary = isDenied(errors) ? identitySummary(t) : undefined;
+    let identity = summary !== undefined ? `\n  identity: ` + summary : "";
     throw {
       RE_EXN_ID: Seed_Types$ReventlessSeed.Failed,
-      _1: label + ` failed\n  query: ` + query + `\n  response: ` + JSON.stringify(errors) + tried,
+      _1: label + ` failed\n  query: ` + query + `\n  response: ` + JSON.stringify(errors) + identity + tried,
       Error: new Error()
     };
   };
@@ -304,6 +394,8 @@ async function waitForIds(t, fieldName, ids, timeoutMsOpt) {
   return Stdlib_Option.getOr(result, 0);
 }
 
+let activeRoleClaim = "activeRole";
+
 let attempts = 4;
 
 export {
@@ -312,12 +404,22 @@ export {
   currentToken,
   endpoint,
   useToken,
+  activeRoleClaim,
+  availableRolesClaim,
+  groupClaimNames,
+  decodeSegment,
+  claims,
+  asStrings,
+  claimStrings,
+  effectiveGroups,
+  identitySummary,
   field,
   asString,
   nodeString,
   login,
   transientErrorTypes,
   isTransient,
+  isDenied,
   attempts,
   gql,
   commandResultSelection,

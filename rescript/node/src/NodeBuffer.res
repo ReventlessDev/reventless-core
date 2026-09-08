@@ -17,5 +17,14 @@ external concat: array<t> => t = "concat"
 @val @scope("Buffer")
 external fromStringUtf8: (string, @as("utf8") _) => t = "from"
 
+/** Base64url, the alphabet a bearer token's segments are encoded in. Decoding
+    never throws — a segment that is not base64url yields whatever bytes it can,
+    so callers judge the result by whether it parses. */
+@val @scope("Buffer")
+external fromStringBase64Url: (string, @as("base64url") _) => t = "from"
+
 @send
 external toStringUtf8: (t, @as("utf8") _) => string = "toString"
+
+@send
+external toStringBase64Url: (t, @as("base64url") _) => string = "toString"
