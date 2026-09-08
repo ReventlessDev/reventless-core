@@ -28,11 +28,8 @@ function Make(ReadModelSpec) {
         let actionsStr = LogFormat$ReventlessCore.actionNames(actions);
         let idxStr = (idx + 1 | 0).toString();
         Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, json, `handling event ` + idxStr + `/` + total + ` from ` + sourceName + `: ` + LogFormat$ReventlessCore.eventDetail(json) + ` actions:` + actionsStr));
-        return actions;
-      }).flat(), Effect.succeed(), (acc, action) => Effect.flatMap(acc, () => {
-        let action$1 = Projection$ReventlessCore.rewriteAction(action, ReadModelSpec.stateSchema);
-        return Effect.map(Effect.promise(() => Projection$ReventlessCore.handleAction(comp, action$1, Spec.operations, ReadModelSpec.subIdConfig)), param => {});
-      }));
+        return actions.map(__x => Projection$ReventlessCore.rewriteAction(__x, context.meta.time, ReadModelSpec.stateSchema));
+      }).flat(), Effect.succeed(), (acc, action) => Effect.flatMap(acc, () => Effect.map(Effect.promise(() => Projection$ReventlessCore.handleAction(comp, action, Spec.operations, ReadModelSpec.subIdConfig)), param => {})));
     });
     return {
       EventProjector: EventProjector,

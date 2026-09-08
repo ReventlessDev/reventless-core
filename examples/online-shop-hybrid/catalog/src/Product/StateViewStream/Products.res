@@ -19,29 +19,19 @@ type consumedEvent =
   | ProductUnarchived({productId: string})
   | ProductDiscontinued({productId: string})
 
-// Where a product is on the shelf. Two ways off it, and the difference is the
-// point: both withdraw the row from ordinary reads identically, and what they
-// disagree about is whether it can come back.
-//
-// `Archived` is reversible — a product pulled from the catalog for a season, or
-// while its supplier is sorted out. `Moves([Archived], Listed)` on
-// `UnarchiveProduct` offers the way back exactly where it exists.
-//
-// `Discontinued` is not. No command names it as a from-state, so the generated
-// lifecycle diagram draws it terminal and no surface offers a way out. A boolean
-// could express the exclusion and nothing else; the second state is what carries
-// "can this come back", and a command's declared edge reads it for free.
+// Two ways off the shelf: both withdraw the row identically, and what they
+// disagree about is whether it can come back. `Moves([Archived], Listed)` on
+// `UnarchiveProduct` offers the way back; nothing names `Discontinued` as a
+// from-state, so the generated diagram draws it terminal.
 @schema
 type shelfStatus =
   | Listed
   | @retired Archived
   | @retired Discontinued
 
-// A product that leaves the shelf keeps its name. An order names the products it
-// bought, and a shopper reading their own order is holding a pointer the platform
-// gave them — archiving the product should not turn that into a bare id. The
-// annotation opens one door and only for what a reference needs: id, name, and
-// the shelf state the row is in. The catalog list itself stays closed.
+// A product that leaves the shelf keeps its name — an order names the products
+// it bought. The annotation opens one door and only for what a reference needs:
+// id, name and shelf state. The catalog list itself stays closed.
 @schema
 @namedWhenRetired
 type state = {
@@ -49,26 +39,19 @@ type state = {
   name: string,
   description: string,
   price: Reventless.Money.t,
-  // The attachment set, primary first. One field where there were three: the
-  // scalar every card and tile used to read, its caption, and the set itself.
-  // A card, a gallery tile and a list cell take `[0]`; the detail page draws the
-  // whole set. The alternative text rides inside each member, which is what puts
-  // it where a cell renderer — handed a field and a value, never the row — can
-  // reach it. Named for its store, so `productImages` is what is provisioned.
+  // The attachment set, primary first. A card, tile or list cell takes `[0]`;
+  // the detail page draws the whole set. The alternative text rides inside each
+  // member, where a cell renderer — handed a field and a value, never the row —
+  // can reach it. Named for its store, so `productImages` is provisioned.
   productImages: array<Reventless.CaptionedImage.t>,
-  // The reference itself is what the row carries, and `@groupBy` sections the
-  // list by it: a reader resolves the id to the category's current name the same
-  // way it resolves any other reference. A captured copy of that name would be
-  // one this view could never refresh — it is keyed by `productId`, so a rename
-  // would have to rewrite every row of the category — and a rename is a
-  // correction to a label, which is exactly the case where the new value should
-  // be what everybody reads.
-  //
-  // Indexed so the server can answer "the products in this category" — a
-  // `categoryIdEq` filter on the connection, rather than a client narrowing one
-  // loaded page.
+  // The reference, not a captured name: this view is keyed by `productId`, so a
+  // copy could never be refreshed on a category rename. `@index` lets the server
+  // answer `categoryIdEq` rather than a client narrowing one loaded page.
   @index @groupBy categoryId: string,
   // `@lifecycle` makes this the field commands' declared edges are written in
   // terms of; the retirements are on the constructors above.
   @lifecycle shelfStatus: shelfStatus,
+  // When this product reached each shelf state, appended by the projection
+  // machinery. The withdrawals finally have dates; they never had any.
+  trail: Reventless.Lifecycle.Trail.t<shelfStatus>,
 }

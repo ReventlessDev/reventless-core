@@ -35,7 +35,7 @@ function Make(Spec) {
         });
         let actionsStr = LogFormat$ReventlessCore.actionNames(actions);
         Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, raw.data, `handling event ` + idx.contents.toString() + `/` + count + `: ` + LogFormat$ReventlessCore.bold(raw.eventType) + `(` + id + `) ` + actionsStr));
-        allActions.push(...actions.map(__x => Projection$ReventlessCore.rewriteAction(__x, Spec.stateSchema)));
+        allActions.push(...actions.map(__x => Projection$ReventlessCore.rewriteAction(__x, raw.meta.time, Spec.stateSchema)));
         return Primitive_option.some(event);
       });
       let skipped = rawEvents.length - events.length | 0;

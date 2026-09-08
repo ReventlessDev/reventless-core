@@ -59,19 +59,26 @@ function decodeEnvelope(json) {
   return {
     event: tmp,
     meta: Stdlib_Option.flatMap(fields, f => f["meta"]),
-    recordedAt: Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(fields, f => f["recordedAt"]), Stdlib_JSON.Decode.string), "")
+    recordedAt: Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(fields, f => f["recordedAt"]), Stdlib_JSON.Decode.string), ""),
+    producerTime: Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(fields, f => f["meta"]), Stdlib_JSON.Decode.object), m => m["time"]), Stdlib_JSON.Decode.string), "")
   };
 }
 
-function makeJsonEventsHandler(sliceName, eventSchema, project, queryDbOps, subIdConfig) {
+function makeJsonEventsHandler(sliceName, eventSchema, project, queryDbOps, subIdConfig, stateSchema) {
   return stream => Stream.runForEach(Stream.flatMap(Stream.mapEffect(stream, json => Effect.sync(() => {
     try {
       let match = decodeEnvelope(json);
-      return project({
+      let producerTime = match.producerTime;
+      let actions = project({
         event: Util_Sury$Reventless.fromJson(match.event, eventSchema),
         meta: match.meta,
         recordedAt: match.recordedAt
       });
+      if (producerTime === "") {
+        return actions;
+      } else {
+        return actions.map(__x => Projection$ReventlessCore.rewriteJsonAction(__x, producerTime, stateSchema));
+      }
     } catch (raw_exn) {
       let exn = Primitive_exceptions.internalToException(raw_exn);
       StreamRoutedEntryPoint_Ops$ReventlessAws.logError("failed to decode event", {
@@ -86,7 +93,7 @@ function makeJsonEventsHandler(sliceName, eventSchema, project, queryDbOps, subI
 function makeRegisteredHandler(entry, modules) {
   let queryDbOps = ProjectionEntryPoint_Ops$ReventlessAws.withDisplayName(ProjectionEntryPoint_Ops$ReventlessAws.withUnionMemberTypes(ProjectionEntryPoint_Ops$ReventlessAws.makeQueryDbOps(entry.queryDbTableName, entry.pgConnection, entry.stateTopicName, ProjectionEntryPoint_Ops$ReventlessAws.indexesOf(modules.config), ProjectionEntryPoint_Ops$ReventlessAws.subIdFieldOf(modules.subIdConfig)), modules.stateSchema), modules.stateSchema);
   return {
-    handler: StreamRoutedEntryPoint_Ops$ReventlessAws.toStreamHandler(makeJsonEventsHandler(modules.name, modules.consumedEventSchema, modules.project, queryDbOps, modules.subIdConfig)),
+    handler: StreamRoutedEntryPoint_Ops$ReventlessAws.toStreamHandler(makeJsonEventsHandler(modules.name, modules.consumedEventSchema, modules.project, queryDbOps, modules.subIdConfig, modules.stateSchema)),
     comp: `StateViewSlice(` + modules.name + `)`
   };
 }

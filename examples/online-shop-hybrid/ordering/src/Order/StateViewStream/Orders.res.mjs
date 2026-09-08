@@ -5,6 +5,7 @@ import * as Money$Reventless from "@reventlessdev/reventless-spec/src/semantic/M
 import * as Owner$Reventless from "@reventlessdev/reventless-spec/src/components/Owner.res.mjs";
 import * as DateTime$Reventless from "@reventlessdev/reventless-spec/src/semantic/DateTime.res.mjs";
 import * as DateRange$Reventless from "@reventlessdev/reventless-spec/src/semantic/DateRange.res.mjs";
+import * as Lifecycle$Reventless from "@reventlessdev/reventless-spec/src/types/Lifecycle.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 import * as DisplayName$Reventless from "@reventlessdev/reventless-spec/src/components/DisplayName.res.mjs";
 import * as UploadableImage$Reventless from "@reventlessdev/reventless-spec/src/semantic/UploadableImage.res.mjs";
@@ -64,7 +65,7 @@ let stateSchema = Sury.$schema(s => ({
   customerId: s.m(Owner$Reventless.string),
   productIds: s.m(Sury.array(Sury.string)),
   placedAt: s.m(DateTime$Reventless.schema),
-  shippedAt: s.m(Sury.$option(DateTime$Reventless.schema)),
+  trail: s.m(Lifecycle$Reventless.Trail.schema(lifecycleSchema)),
   lines: s.m(Sury.array(orderLineSchema)),
   total: s.m(Money$Reventless.schema),
   itemCount: s.m(Sury.int),

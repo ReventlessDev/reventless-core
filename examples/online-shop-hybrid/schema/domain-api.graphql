@@ -47,6 +47,7 @@ type Catalog_Category implements Node {
   id: ID!
   name: String!
   shelfStatus: Catalog_CategoryShelfStatus!
+  trail: [Catalog_CategoryTrail!]!
 }
 
 type Catalog_CategoryConnection {
@@ -86,6 +87,12 @@ type Catalog_CategoryRef {
 enum Catalog_CategoryShelfStatus {
   Archived
   Listed
+}
+
+type Catalog_CategoryTrail {
+  afterGap: Boolean
+  at: String!
+  state: Catalog_CategoryShelfStatus!
 }
 
 type Catalog_ImportProductAudit implements Node {
@@ -136,6 +143,7 @@ type Catalog_Product implements Node {
   productId: ID!
   productImages: [CaptionedImage!]!
   shelfStatus: Catalog_ProductShelfStatus!
+  trail: [Catalog_ProductTrail!]!
 }
 
 type Catalog_ProductConnection {
@@ -220,6 +228,12 @@ enum Catalog_ProductShelfStatus {
   Archived
   Discontinued
   Listed
+}
+
+type Catalog_ProductTrail {
+  afterGap: Boolean
+  at: String!
+  state: Catalog_ProductShelfStatus!
 }
 
 type CommandAccepted {
@@ -828,9 +842,9 @@ type Ordering_Order implements Node {
   orderId: ID!
   placedAt: String!
   productIds: [ID!]!
-  shippedAt: String
   shippingMethod: Ordering_OrderShippingMethod!
   total: Money!
+  trail: [Ordering_OrderTrail!]!
 }
 
 type Ordering_OrderConnection {
@@ -885,6 +899,12 @@ enum Ordering_OrderShippingMethod {
   Express
   Pickup
   Standard
+}
+
+type Ordering_OrderTrail {
+  afterGap: Boolean
+  at: String!
+  state: Ordering_OrderLifecycle!
 }
 
 input Ordering_OrderingEventHistoryFilter {

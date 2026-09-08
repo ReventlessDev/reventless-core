@@ -131,7 +131,13 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
         lifecycle: Shipped,
         shippingMethod: Express,
         placedAt: "1970-01-01T00:00:00Z",
-        shippedAt: Some("1970-01-01T00:00:00Z"),
+        // Both entries at the harness's fixed producer time: the machinery
+        // stamps each envelope's own `meta.time`, and every event here carries
+        // the same one.
+        trail: [
+          {state: Placed, at: "1970-01-01T00:00:00Z"},
+          {state: Shipped, at: "1970-01-01T00:00:00Z"},
+        ],
         deliveryWindow: Some(window),
         firstProductName: Some("Book"),
         firstProductImage: None,

@@ -104,6 +104,11 @@ module Id = {
   // A lat/lng pair. Cheapest to adopt: `{lat, lng}` is already the stored shape.
   let geoPoint = "geoPoint"
 
+  // The ordered record of the states a row has been through. Marks a shape
+  // rather than a scalar's meaning, and rides here anyway: this is the marker
+  // the schema walk emits, so anything else would be invisible on the wire.
+  let lifecycleTrail = "lifecycleTrail"
+
   // The first composite that is a union rather than an object. Collapses fields,
   // so adopting it changes the wire and rebuilds a derived view.
   let geolocation = "geolocation"

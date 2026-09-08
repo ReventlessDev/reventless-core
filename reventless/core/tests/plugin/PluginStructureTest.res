@@ -1086,7 +1086,7 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
 
   describe("lifecycleField — the name rule and the shape rule", () => {
     let lifecycleOf = schema =>
-      Plugin_Structure.lifecycleFieldFromStateSchema(~entityName="Test", schema->S.castToUnknown)
+      Plugin_Structure.lifecycleFieldFromStateSchema(schema->S.castToUnknown)
 
     let withLifecycle = (schema, ~field) =>
       schema->S.castToUnknown->S.Metadata.set(

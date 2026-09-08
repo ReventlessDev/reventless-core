@@ -12,6 +12,7 @@ import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js
 import * as Trait$Reventless from "@reventlessdev/reventless-spec/src/types/Trait.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
+import * as Lifecycle$Reventless from "@reventlessdev/reventless-spec/src/types/Lifecycle.res.mjs";
 import * as Reference$Reventless from "@reventlessdev/reventless-spec/src/components/Reference.res.mjs";
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
@@ -47,24 +48,6 @@ function isLabelShape(_t) {
   };
 }
 
-function isLifecycleShape(_t) {
-  while (true) {
-    let t = _t;
-    if (typeof t !== "object") {
-      return false;
-    }
-    switch (t.TAG) {
-      case "Nullable" :
-        _t = t._0;
-        continue;
-      case "Enum" :
-        return true;
-      default:
-        return false;
-    }
-  };
-}
-
 let conventionalLabelNames = [
   "name",
   "title",
@@ -73,22 +56,6 @@ let conventionalLabelNames = [
 ];
 
 let shapeOfField = SchemaType$ReventlessCore.fromSury;
-
-function lifecycleFieldFromStateSchema(entityName, stateSchema) {
-  let spec = StateAnnotations$Reventless.getSpec(stateSchema);
-  let annotated = spec !== undefined ? spec.lifecycle : undefined;
-  if (annotated !== undefined) {
-    return annotated;
-  } else if (stateSchema.type === "object") {
-    return Stdlib_Option.flatMap(stateSchema.properties["lifecycle"], schema => {
-      if (isLifecycleShape(SchemaType$ReventlessCore.fromSury(entityName, "lifecycle", schema))) {
-        return "lifecycle";
-      }
-    });
-  } else {
-    return;
-  }
-}
 
 function retiredFromStateSchema(stateSchema) {
   let spec = StateAnnotations$Reventless.getSpec(stateSchema);
@@ -120,7 +87,7 @@ function checkRetiredValue(entityName, stateSchema) {
   }
   let field = match.field;
   let named = values.join(", ");
-  let lifecycle = lifecycleFieldFromStateSchema(entityName, stateSchema);
+  let lifecycle = Lifecycle$Reventless.fieldName(stateSchema);
   if (Primitive_object.notequal(lifecycle, field)) {
     log.warn("Plugin_Structure", undefined, entityName + `: @retired(` + named + `) is on "` + field + `", which is not this record's lifecycle field` + Stdlib_Option.getOr(Stdlib_Option.map(lifecycle, f => ` (that is "` + f + `")`), " (it declares none)") + `. A retirement state no command's declared edge can name loses the command filtering the state form exists for.`);
   }
@@ -169,7 +136,7 @@ function reportRetiredStates(pluginName, failures, unchecked) {
 }
 
 function lifecycleStatesFromStateSchema(entityName, stateSchema) {
-  return Stdlib_Option.flatMap(lifecycleFieldFromStateSchema(entityName, stateSchema), field => {
+  return Stdlib_Option.flatMap(Lifecycle$Reventless.fieldName(stateSchema), field => {
     if (stateSchema.type === "object") {
       return Stdlib_Option.map(stateSchema.properties[field], schema => {
         let match = SchemaType$ReventlessCore.fromSury(entityName, field, schema);
@@ -715,7 +682,7 @@ function queryableDefFromSpec(plugin, name, stateSchema, authorization, visibili
     labelField: label.field,
     searchableFields: label.searchableFields,
     labelFieldSource: labelFieldSourceToString(label.source),
-    lifecycleField: lifecycleFieldFromStateSchema(name, stateSchema),
+    lifecycleField: Lifecycle$Reventless.fieldName(stateSchema),
     ownerField: Owner$Reventless.fieldNames(stateSchema)[0],
     retiredField: retiredFieldFromStateSchema(stateSchema),
     retiredValues: retiredValuesFromStateSchema(stateSchema),
@@ -1024,7 +991,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       labelField: label.field,
       searchableFields: label.searchableFields,
       labelFieldSource: labelFieldSourceToString(label.source),
-      lifecycleField: lifecycleFieldFromStateSchema(R.Spec.name, stateSchema),
+      lifecycleField: Lifecycle$Reventless.fieldName(stateSchema),
       ownerField: Owner$Reventless.fieldNames(stateSchema)[0],
       retiredField: retiredFieldFromStateSchema(stateSchema),
       retiredValues: retiredValuesFromStateSchema(stateSchema),
@@ -1056,7 +1023,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       labelField: label.field,
       searchableFields: label.searchableFields,
       labelFieldSource: labelFieldSourceToString(label.source),
-      lifecycleField: lifecycleFieldFromStateSchema(SVS.Spec.name, stateSchema),
+      lifecycleField: Lifecycle$Reventless.fieldName(stateSchema),
       ownerField: Owner$Reventless.fieldNames(stateSchema)[0],
       retiredField: retiredFieldFromStateSchema(stateSchema),
       retiredValues: retiredValuesFromStateSchema(stateSchema),
@@ -1383,11 +1350,12 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
   };
 }
 
+let lifecycleFieldFromStateSchema = Lifecycle$Reventless.fieldName;
+
 export {
   log,
   declaredTransitionsOnly,
   isLabelShape,
-  isLifecycleShape,
   conventionalLabelNames,
   shapeOfField,
   lifecycleFieldFromStateSchema,

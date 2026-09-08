@@ -357,15 +357,71 @@ let optionalFieldNames = (schema: S.t<unknown>): array<string> =>
   | _ => []
   }
 
+// A lifecycle trail's entries are `{state, at}`, and `state` holds the record's
+// own lifecycle. Walked under the lifecycle field's name so it resolves to the
+// enum that field already emits, rather than a second copy under the trail's
+// path — the trail and the current state must read as one vocabulary.
+let trailShape = (
+  ~parentName: string,
+  ~trailField: string,
+  ~lifecycleField: string,
+  schema: S.t<unknown>,
+): schemaType => {
+  let entryName =
+    parentName ++
+    trailField->String.charAt(0)->String.toUpperCase ++
+    trailField->String.slice(~start=1, ~end=trailField->String.length)
+  let entrySchema = switch schema {
+  | Array({additionalItems: Schema(item)}) => Some(item)
+  | _ => None
+  }
+  switch entrySchema {
+  | Some(Object({properties})) =>
+    let fields = Dict.make()
+    properties
+    ->Dict.toArray
+    ->Array.forEach(((propName, propSchema)) =>
+      fields->Dict.set(
+        propName,
+        propName === "state"
+          ? fromSury(~parentName, ~fieldName=lifecycleField, propSchema)
+          : fromSury(~parentName=entryName, ~fieldName=propName, propSchema),
+      )
+    )
+    let shape = ArrayOf(ObjectRef(entryName, fields))
+    // Walking the entries by shape skips the semantic dispatch `fromSury` does,
+    // so the marker is re-applied here. Without it the trail reaches a consumer
+    // as an unremarkable array of objects, and recognising it would come down to
+    // the field's name.
+    switch Reventless.Semantic.get(schema) {
+    | Some(sem) => Semantic(sem, shape)
+    | None => shape
+    }
+  | _ => fromSury(~parentName, ~fieldName=trailField, schema)
+  }
+}
+
 let fromSuryObject = (~typeName: string, schema: S.t<unknown>): option<dict<schemaType>> =>
   switch schema {
   | Object({properties}) =>
+    let trail = switch (
+      Reventless.Lifecycle.Trail.fieldName(schema),
+      Reventless.Lifecycle.fieldName(schema),
+    ) {
+    | (Some(trailField), Some(lifecycleField)) => Some((trailField, lifecycleField))
+    | _ => None
+    }
     let fields = Dict.make()
     properties
     ->Dict.toArray
     ->Array.forEach(((propName, propSchema)) => {
       if propName !== "TAG" {
-        fields->Dict.set(propName, fromSury(~parentName=typeName, ~fieldName=propName, propSchema))
+        let shape = switch trail {
+        | Some((trailField, lifecycleField)) if trailField === propName =>
+          trailShape(~parentName=typeName, ~trailField, ~lifecycleField, propSchema)
+        | _ => fromSury(~parentName=typeName, ~fieldName=propName, propSchema)
+        }
+        fields->Dict.set(propName, shape)
       }
     })
     Some(fields)

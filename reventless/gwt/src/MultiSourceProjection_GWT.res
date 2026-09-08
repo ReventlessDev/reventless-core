@@ -124,8 +124,17 @@ module Make = (Projection: Reventless.Projection.Mapping): (
     }
 
   let update = async (store, events') => {
+    // Rewritten the way both runtimes rewrite: a lifecycle trail is filled by
+    // the machinery, so a harness that skipped this would assert an empty one.
     await events'
-    ->Array.map(event' => event'->Projection.project)
+    ->Array.map(event' =>
+      event'
+      ->Projection.project
+      ->ReventlessCore.Projection.rewriteTrail(
+        ~at=event'.meta.time,
+        Projection.targetStateSchema,
+      )
+    )
     ->handleActions({
       load: load(store, ...),
       loadStream: id => store->states(id)->Stream.fromIterable,

@@ -120,11 +120,8 @@ function Make(RuntimeEnvironment) {
               let f = Object.entries(dataDict).map(param => param[0] + `:` + JSON.stringify(param[1])).join(",");
               let fieldsStr = f === "" ? "" : `({` + f + `})`;
               Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, dataDict, `handling event ` + idxStr + `/` + total + `: ` + LogFormat$ReventlessCore.bold(eventType) + fieldsStr + ` ` + actionsStr));
-              return actions;
-            }).flat(), Effect.succeed(), (acc, action) => Effect.flatMap(acc, () => {
-              let action$1 = Projection$ReventlessCore.rewriteAction(action, Spec.stateSchema);
-              return Effect.map(Effect.promise(() => Projection$ReventlessCore.handleAction(comp, action$1, projectionOps, Spec.subIdConfig)), param => {});
-            }));
+              return actions.map(__x => Projection$ReventlessCore.rewriteAction(__x, meta.time, Spec.stateSchema));
+            }).flat(), Effect.succeed(), (acc, action) => Effect.flatMap(acc, () => Effect.map(Effect.promise(() => Projection$ReventlessCore.handleAction(comp, action, projectionOps, Spec.subIdConfig)), param => {})));
           });
           let handler = SpecificEventCollector.makeHandler(ec, jsonEventsHandler);
           let resources = Component$ReventlessCore.outputs(queryDb).resources;

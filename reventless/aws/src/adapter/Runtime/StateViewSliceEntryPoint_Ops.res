@@ -97,6 +97,10 @@ type envelope<'event> = {
   event: JSON.t,
   meta: Reventless.Message.meta,
   recordedAt: string,
+  // The producer time, read off the JSON rather than through `asMeta` — that
+  // cast admits `undefined`, so `meta.time` throws on an envelope without one.
+  // "" where the producer wrote none, which appends no trail entry.
+  producerTime: string,
 }
 
 let decodeEnvelope = (json: JSON.t): envelope<'event> => {
@@ -109,6 +113,12 @@ let decodeEnvelope = (json: JSON.t): envelope<'event> => {
     meta: fields->Option.flatMap(f => f->Dict.get("meta"))->asMeta,
     recordedAt: fields
     ->Option.flatMap(f => f->Dict.get("recordedAt"))
+    ->Option.flatMap(JSON.Decode.string)
+    ->Option.getOr(""),
+    producerTime: fields
+    ->Option.flatMap(f => f->Dict.get("meta"))
+    ->Option.flatMap(JSON.Decode.object)
+    ->Option.flatMap(m => m->Dict.get("time"))
     ->Option.flatMap(JSON.Decode.string)
     ->Option.getOr(""),
   }
@@ -129,14 +139,27 @@ let makeJsonEventsHandler = (
   >,
   ~queryDbOps: ReventlessCore.QueryDb_Adapter.operations,
   ~subIdConfig: option<Reventless.ReadModel.subIdConfig<JSON.t>>,
+  ~stateSchema: option<S.t<unknown>>,
 ): ReventlessCore.EventCollector.jsonEventsHandler =>
   stream =>
     stream
     ->Stream.mapEffect(json =>
       Effect.sync(() =>
         try {
-          let {event, meta, recordedAt} = decodeEnvelope(json)
-          project({event: event->Reventless.Util_Sury.fromJson(eventSchema), meta, recordedAt})
+          let {event, meta, recordedAt, producerTime} = decodeEnvelope(json)
+          let actions = project({
+            event: event->Reventless.Util_Sury.fromJson(eventSchema),
+            meta,
+            recordedAt,
+          })
+          // The deployed slice assembles JSON-level operations rather than going
+          // through the typed rewrite, so the trail is appended here — with this
+          // envelope's own time, which the apply below no longer has.
+          producerTime === ""
+            ? actions
+            : actions->Array.map(
+                ReventlessCore.Projection.rewriteJsonAction(_, ~at=producerTime, ~stateSchema),
+              )
         } catch {
         | exn =>
           StreamRoutedEntryPoint_Ops.logError(
@@ -201,6 +224,7 @@ let makeRegisteredHandler = (
         ~project=modules.project,
         ~queryDbOps,
         ~subIdConfig=modules.subIdConfig,
+        ~stateSchema=modules.stateSchema,
       ),
     ),
     // Matches the `StateViewSlice(<name>)` shape the rest of the framework

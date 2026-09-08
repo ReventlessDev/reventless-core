@@ -325,9 +325,8 @@ build schemas by hand with `s.matches(...)` and take `Reventless.DateTime.schema
 (§"the two instants keep their own `dateTime` markers") is unchanged, since `schema` carries the same
 id `string` did.
 
-[lifecycle-trail-on-a-state-view.md:63](../lifecycle-trail-on-a-state-view.md#L63) proposes a sixth
-occurrence in `entry<'state>`; if that lands first, it converts here too, and if this lands first it
-should be written as `at: Reventless.DateTime.t` from the start.
+[lifecycle-trail-on-a-state-view.md](./lifecycle-trail-on-a-state-view.md) added a sixth occurrence
+in `entry<'state>`. It landed second, so `at: Reventless.DateTime.t` was written bare from the start.
 
 **One consumer outside this repo gets a fix rather than a migration.** `reventless-tools`' codegen
 emits a modelled date-time field as a bare `string` with no marker at all

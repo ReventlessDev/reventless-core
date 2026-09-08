@@ -221,6 +221,62 @@ let project = ({event}) =>
 
 For the full annotation reference, see [PPX annotations](../rescript-syntax.md#reventless-ppx-annotations).
 
+## Recording When a Row Reached Each State
+
+A view's lifecycle field says which state a row is **in**. Declare a trail field
+beside it and the projection machinery also records when it got there — every
+state entered, with the instant, in the order it happened:
+
+```rescript
+@schema
+type lifecycle =
+  | Placed
+  | Shipped
+  | Cancelled
+
+@schema
+type state = {
+  @id orderId: string,
+  lifecycle: lifecycle,
+  trail: Reventless.Lifecycle.Trail.t<lifecycle>,
+}
+```
+
+That is the whole of the domain's work. The projection writes `trail: []` in the
+action that creates the row and never touches the field again:
+
+```rescript
+let project = ({event}) =>
+  switch event {
+  | OrderPlaced({orderId}) => [Set(orderId, {orderId, lifecycle: Placed, trail: []})]
+  // No `shippedAt` to remember — the trail's `Shipped` entry is the date.
+  | OrderShipped({orderId}) => [Update(orderId, state => {...state, lifecycle: Shipped})]
+  | OrderCancelled({orderId}) => [Update(orderId, state => {...state, lifecycle: Cancelled})]
+  }
+```
+
+Whenever an action changes the lifecycle field, `{state, at}` is appended, with
+`at` taken from the event envelope's own `meta.time` — never a clock, so a
+rebuild reproduces the trail exactly. A state a row never reached has no entry.
+
+Four things worth knowing:
+
+- **Which field is the lifecycle** is the usual rule: `@lifecycle`, else a field
+  literally named `lifecycle` holding an enum. A view with no lifecycle field
+  records nothing.
+- **The trail is ordered, not keyed by state.** A lifecycle that revisits a state
+  — a reopened order back to `Placed` — carries both visits, at their own
+  instants.
+- **On the wire** an entry is `{"state": "Placed", "at": "…"}`, and `state` emits
+  the same GraphQL enum the lifecycle field emits.
+- **It replaces per-state timestamp fields.** Adding a state costs no new field,
+  no schema change and no projection edit — which is what a `shippedAt` beside a
+  `cancelledAt` that nobody remembered to add cost before.
+
+Sub-state rows (a view with `@subId`, projected with `UpdateMultiState`) are the
+one exception: pairing a before-row with an after-row needs the sub-id, which is
+not resolved until the action is applied, so those actions record no entry.
+
 ## Comparison with ReadModel
 
 | Aspect | ReadModel | StateViewSlice |

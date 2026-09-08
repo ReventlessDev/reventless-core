@@ -63,7 +63,7 @@ function Make(Spec) {
         event: ev,
         meta: TestFixtures$ReventlessGwt.meta,
         recordedAt: TestFixtures$ReventlessGwt.recordedAt
-      })).flat();
+      }).map(__x => Projection$ReventlessCore.rewriteTrail(__x, TestFixtures$ReventlessGwt.meta.time, Spec.stateSchema))).flat();
       await runActions(actions, {
         load: extra => Promise.resolve({
           TAG: "Ok",

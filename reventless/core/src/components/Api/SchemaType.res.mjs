@@ -5,6 +5,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as DateTime$Reventless from "@reventlessdev/reventless-spec/src/semantic/DateTime.res.mjs";
 import * as Semantic$Reventless from "@reventlessdev/reventless-spec/src/semantic/Semantic.res.mjs";
+import * as Lifecycle$Reventless from "@reventlessdev/reventless-spec/src/types/Lifecycle.res.mjs";
 import * as Reference$Reventless from "@reventlessdev/reventless-spec/src/components/Reference.res.mjs";
 import * as TaggedUnion$Reventless from "@reventlessdev/reventless-spec/src/components/TaggedUnion.res.mjs";
 import * as CalendarDate$Reventless from "@reventlessdev/reventless-spec/src/semantic/CalendarDate.res.mjs";
@@ -327,17 +328,72 @@ function optionalFieldNames(schema) {
   }
 }
 
+function trailShape(parentName, trailField, lifecycleField, schema) {
+  let entryName = parentName + trailField.charAt(0).toUpperCase() + trailField.slice(1, trailField.length);
+  let entrySchema;
+  if (schema.type === "array") {
+    let item = schema.additionalItems;
+    entrySchema = item === "strip" || item === "strict" ? undefined : item;
+  } else {
+    entrySchema = undefined;
+  }
+  if (entrySchema === undefined) {
+    return fromSury(parentName, trailField, schema);
+  }
+  if (entrySchema.type !== "object") {
+    return fromSury(parentName, trailField, schema);
+  }
+  let fields = {};
+  Object.entries(entrySchema.properties).forEach(param => {
+    let propSchema = param[1];
+    let propName = param[0];
+    fields[propName] = propName === "state" ? fromSury(parentName, lifecycleField, propSchema) : fromSury(entryName, propName, propSchema);
+  });
+  let shape = {
+    TAG: "ArrayOf",
+    _0: {
+      TAG: "ObjectRef",
+      _0: entryName,
+      _1: fields
+    }
+  };
+  let sem = Semantic$Reventless.get(schema);
+  if (sem !== undefined) {
+    return {
+      TAG: "Semantic",
+      _0: sem,
+      _1: shape
+    };
+  } else {
+    return shape;
+  }
+}
+
 function fromSuryObject(typeName, schema) {
   if (schema.type !== "object") {
     return;
   }
+  let match = Lifecycle$Reventless.Trail.fieldName(schema);
+  let match$1 = Lifecycle$Reventless.fieldName(schema);
+  let trail = match !== undefined && match$1 !== undefined ? [
+      match,
+      match$1
+    ] : undefined;
   let fields = {};
   Object.entries(schema.properties).forEach(param => {
     let propName = param[0];
-    if (propName !== "TAG") {
-      fields[propName] = fromSury(typeName, propName, param[1]);
+    if (propName === "TAG") {
       return;
     }
+    let propSchema = param[1];
+    let shape;
+    if (trail !== undefined) {
+      let trailField = trail[0];
+      shape = trailField === propName ? trailShape(typeName, trailField, trail[1], propSchema) : fromSury(typeName, propName, propSchema);
+    } else {
+      shape = fromSury(typeName, propName, propSchema);
+    }
+    fields[propName] = shape;
   });
   return fields;
 }
@@ -364,6 +420,7 @@ export {
   collectUnclassifiedUnions,
   unclassifiedUnions,
   optionalFieldNames,
+  trailShape,
   fromSuryObject,
 }
 /* DcbTag-Reventless Not a pure module */

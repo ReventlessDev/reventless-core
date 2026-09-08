@@ -26,6 +26,7 @@ let Id = {
   money: "money",
   dateRange: "dateRange",
   geoPoint: "geoPoint",
+  lifecycleTrail: "lifecycleTrail",
   geolocation: "geolocation"
 };
 

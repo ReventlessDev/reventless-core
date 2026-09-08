@@ -10,7 +10,8 @@ function primaryFirst(state, chosen) {
     price: state.price,
     productImages: Attachments_Rules$TraitAttachments.primaryFirst(chosen, state.productImages, a => a.ref),
     categoryId: state.categoryId,
-    shelfStatus: state.shelfStatus
+    shelfStatus: state.shelfStatus,
+    trail: state.trail
   };
 }
 
@@ -29,7 +30,8 @@ function project(param) {
             price: event.price,
             productImages: [],
             categoryId: event.categoryId,
-            shelfStatus: "Listed"
+            shelfStatus: "Listed",
+            trail: []
           }
         }];
     case "ProductPriceChanged" :
@@ -44,7 +46,8 @@ function project(param) {
             price: price,
             productImages: state.productImages,
             categoryId: state.categoryId,
-            shelfStatus: state.shelfStatus
+            shelfStatus: state.shelfStatus,
+            trail: state.trail
           })
         }];
     case "ProductNameChanged" :
@@ -59,7 +62,8 @@ function project(param) {
             price: state.price,
             productImages: state.productImages,
             categoryId: state.categoryId,
-            shelfStatus: state.shelfStatus
+            shelfStatus: state.shelfStatus,
+            trail: state.trail
           })
         }];
     case "ProductDescriptionChanged" :
@@ -74,7 +78,8 @@ function project(param) {
             price: state.price,
             productImages: state.productImages,
             categoryId: state.categoryId,
-            shelfStatus: state.shelfStatus
+            shelfStatus: state.shelfStatus,
+            trail: state.trail
           })
         }];
     case "ProductImageAttached" :
@@ -97,7 +102,8 @@ function project(param) {
                     altText: altText
                   }]),
                 categoryId: state.categoryId,
-                shelfStatus: state.shelfStatus
+                shelfStatus: state.shelfStatus,
+                trail: state.trail
               };
             }
           }
@@ -114,7 +120,8 @@ function project(param) {
             price: state.price,
             productImages: state.productImages.filter(a => a.ref !== productImage$1),
             categoryId: state.categoryId,
-            shelfStatus: state.shelfStatus
+            shelfStatus: state.shelfStatus,
+            trail: state.trail
           })
         }];
     case "ProductPrimaryImageSet" :
@@ -144,7 +151,8 @@ function project(param) {
               return newrecord;
             }),
             categoryId: state.categoryId,
-            shelfStatus: state.shelfStatus
+            shelfStatus: state.shelfStatus,
+            trail: state.trail
           })
         }];
     case "ProductArchived" :
@@ -158,7 +166,8 @@ function project(param) {
             price: state.price,
             productImages: state.productImages,
             categoryId: state.categoryId,
-            shelfStatus: "Archived"
+            shelfStatus: "Archived",
+            trail: state.trail
           })
         }];
     case "ProductUnarchived" :
@@ -172,7 +181,8 @@ function project(param) {
             price: state.price,
             productImages: state.productImages,
             categoryId: state.categoryId,
-            shelfStatus: "Listed"
+            shelfStatus: "Listed",
+            trail: state.trail
           })
         }];
     case "ProductDiscontinued" :
@@ -186,7 +196,8 @@ function project(param) {
             price: state.price,
             productImages: state.productImages,
             categoryId: state.categoryId,
-            shelfStatus: "Discontinued"
+            shelfStatus: "Discontinued",
+            trail: state.trail
           })
         }];
   }

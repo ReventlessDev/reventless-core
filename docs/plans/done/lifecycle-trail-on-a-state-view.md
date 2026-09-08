@@ -1,6 +1,7 @@
 # Plan: a state view records when it reached each state, not just which one it is in
 
-**Status.** 2026-09-08. **Proposed.**
+**Status.** 2026-09-08. **Done.** The relative links below are written from
+`docs/plans/done/`.
 
 **Goal.** One declared field on a state view carries the row's lifecycle trail —
 each state it entered and when — filled by the projection machinery rather than
@@ -9,14 +10,14 @@ state and without a line of per-domain code.
 
 **Relates to:**
 
-- [`docs/plans/semantic-date-time.md`](./semantic-date-time.md) — **builds on it.**
+- [`docs/plans/done/semantic-date-time.md`](./semantic-date-time.md) — **builds on it.**
   An entry's instant is a `Reventless.DateTime.t`, written bare, which is the
   spelling that plan's step 5 introduces. Its D4 also retires the `""` sentinel,
   and §1 below is what a domain declares once that admission is made.
-- [`docs/plans/done/lifecycle-model-harvest.md`](./done/lifecycle-model-harvest.md)
+- [`docs/plans/done/lifecycle-model-harvest.md`](./lifecycle-model-harvest.md)
   — derives each command's `allowedStates` / `targetState` from the GWT corpus.
   That is the lifecycle as *declared*; this is the lifecycle as *travelled*.
-- [`docs/plans/lifecycle-transition-annotation.md`](./lifecycle-transition-annotation.md)
+- [`docs/plans/lifecycle-transition-annotation.md`](../lifecycle-transition-annotation.md)
   — `@transition` names the edges. Nothing yet records that a row took one.
 
 ---
@@ -165,21 +166,14 @@ type state = {
 One line, once, naming the state type it is a trail of, and it never changes again
 as states are added — which is the property that makes this worth building at all.
 
-**Phase 0 verifies the declaration compiles to a schema.** The type is
-parameterised by the domain's own variant, so the `@schema` ppx has to derive a
-schema for the type argument and inline it. If it does, the line above is the
-whole of the domain's work. If it does not, in preference order:
-
-1. **Synthesise the field from an annotation on the state field** —
-   `@trailed lifecycle: lifecycle` and the ppx emits the trail field with the right
-   type. One declaration, no duplication, and the trail cannot name a state the
-   lifecycle does not.
-2. **A per-view entry type the domain declares** — `type entry = {state: lifecycle,
-   at: string}`. Still fully typed, at the cost of a type per view.
-
-What is not acceptable is falling back to a trail of strings. That is the thing
-§1 rejects, and a workaround for a ppx limitation is not a reason to give up the
-lifecycle's vocabulary.
+**Phase 0 verified the declaration compiles to a schema, and it does.** sury-ppx
+derives `entrySchema: S.t<'state> => S.t<entry<'state>>` for the parameterised
+record and resolves the field's declared type `Trail.t<lifecycle>` to
+`Trail.schema(lifecycleSchema)` by its own `X.t` → `X.schema` convention. So the
+line above is the whole of the domain's work: no `@s.matches`, no annotation, and
+no change to reventless-ppx. Neither fallback (a `@trailed` marker, a per-view
+entry type) was needed, and a trail of strings — the thing §1 rejects — was never
+reached for.
 
 Automatic for every stateful view was considered and is rejected: it would change
 the shape — and the published GraphQL contract — of every existing read model
@@ -241,7 +235,15 @@ and they should go. Not all at once, and not all of them.
 
 **`shippedAt` retires with the trail.** It is an `option<Reventless.DateTime.t>`
 whose only readers ask when the order shipped, which is what the trail's `Shipped`
-entry says. Nothing else consults it.
+entry says.
+
+"Nothing else consults it" was written here and is **not quite true**, and the
+correction is the one thing this retirement costs. `AutoLifecyclePath` in the UI
+stamps a date on each lifecycle step by *field-name convention* — state `Shipped`
+→ field `shippedAt` — so with the field gone the Shipped step renders without its
+date until the UI learns to read the trail instead. Nothing breaks: an unstamped
+step is a step the strip already draws, and the data is in the trail waiting. The
+UI side is UI-repo work and is not blocked by anything here.
 
 **`placedAt` is a decision, not a cleanup.** It carries `@displayName` and
 `@summary`, and those are not lifecycle questions — they are what the order is
@@ -270,3 +272,62 @@ what breaks would take the list's own name with it.
   row reached a state, and conflating them would make the cheap thing expensive.
 - No inference. A view that declares no trail has none, and nothing anywhere
   reconstructs one from timestamps that happen to look right.
+
+## 9. What shipped
+
+`Reventless.Lifecycle` (`reventless/spec/src/types/Lifecycle.res`) holds both
+halves: `fieldName`, the single rule for which field is a record's lifecycle, and
+`Trail`, the declared type plus its schema marker. `Plugin_Structure` now
+delegates to `fieldName` rather than restating the rule, so the field a trail
+entry records against and the field a command's declared edge is written in terms
+of cannot disagree.
+
+The rule itself lives in `Projection.rewriteAction`, beside the `@displayName`
+overlay it now shares a JSON round trip with. **Four paths apply it**, and the
+count is the point — the displayName overlay had shipped to only two of them:
+
+| Path | Entry point |
+|---|---|
+| Local platform / in-process slice | `StateViewSlice_Builder`, `StateViewSlice_Callback` |
+| Read models (incl. deployed) | `ReadModel_Callback` |
+| Deployed state-view slice | `StateViewSliceEntryPoint_Ops.makeJsonEventsHandler` |
+| GWT harnesses | `Projection_GWT`, `MultiSourceProjection_GWT` |
+
+Four decisions the build made that the plan did not anticipate:
+
+- **The deployed state-view slice needed its own hook.** It assembles JSON-level
+  operations instead of going through the typed rewrite — the same gap that once
+  left `displayName` unset on AWS. `rewriteJsonAction` closes it at the action,
+  not at save, because only the action has a before-state to compare against.
+  It reads the producer time off the envelope JSON rather than through the
+  `asMeta` cast, which admits `undefined`; no producer time means no entry rather
+  than an instant the read path would refuse.
+- **The GWT harnesses apply the trail and nothing else.** `displayName` lives in
+  the state schema and not in the record, so composing it there would produce a
+  state no `thenStateWithId` expectation could spell. That is `rewriteTrail`.
+- **The harness stamps one fixed producer time**, so the distinct-instant cases —
+  the reopened order above all — are unit tests of the rule
+  (`reventless/core/tests/projection/LifecycleTrailTest.res`) rather than GWTs.
+  Every example GWT still asserts the trail's *contents and order*.
+- **Multi-state actions get no trail entry.** Pairing a before-row with an
+  after-row needs the sub-id, which is not resolved until the action is applied,
+  and pairing by position would credit one row's transition to another. Stated in
+  `Projection.res` where the decision is; no shipped view is affected.
+
+The trail declares itself with the **shared** `Semantic` marker
+(`Semantic.Id.lifecycleTrail`) rather than a metadata id of its own. That marker
+is the one the JSON Schema walk emits, so a private id would have left the trail
+indistinguishable on the wire from any other array of objects, and recognising it
+would have come down to matching a field called `trail` by name. It costs one
+re-application: `SchemaType.trailShape` walks the entries by shape and so skips
+`fromSury`'s semantic dispatch, which is the drop a test now catches.
+
+On the wire the entry's `state` emits the record's **own** lifecycle enum —
+`Ordering_OrderTrail.state: Ordering_OrderLifecycle!`, not a second copy under
+the trail's field path. `SchemaType.fromSuryObject` is the one place a record's
+properties are walked, so it resolves the lifecycle field there and walks the
+trail's `state` under that field's name; `seenTypes` then dedupes the enum to one
+definition. That is §1's "one vocabulary, published once", checked by the golden.
+
+`afterGap?: bool` is on the entry from the start, unused, so §4's middle-dropping
+cap is an implementation rather than a contract change.

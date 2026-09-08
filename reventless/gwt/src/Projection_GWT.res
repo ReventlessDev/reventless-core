@@ -167,6 +167,9 @@ module Make = (
     // feed them through handleActions against the dict store. Each bare event is
     // wrapped in the `consumed` envelope with the deterministic test `meta` /
     // `recordedAt` so a projection reading `meta.time` asserts a fixed value.
+    //
+    // Rewritten the way both runtimes rewrite: a lifecycle trail is filled by
+    // the machinery, so a harness that skipped this would assert an empty one.
     let actions =
       events
       ->Array.map(ev =>
@@ -174,7 +177,11 @@ module Make = (
           Reventless.StateViewSlice.event: ev,
           meta: TestFixtures.meta,
           recordedAt: TestFixtures.recordedAt,
-        }->Projection.project
+        }
+        ->Projection.project
+        ->Array.map(
+          ReventlessCore.Projection.rewriteTrail(_, ~at=TestFixtures.meta.time, Spec.stateSchema),
+        )
       )
       ->Array.flat
     await actions->runActions({

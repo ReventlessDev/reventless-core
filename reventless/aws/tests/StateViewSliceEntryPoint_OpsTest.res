@@ -14,6 +14,19 @@ open JestGlobals
 let str = JSON.Encode.string
 let obj = pairs => JSON.Encode.object(Dict.fromArray(pairs))
 
+@schema
+type trailedLifecycle =
+  | Placed
+  | Shipped
+
+// A view declaring a trail, for the pipeline cases below. The states this path
+// writes are JSON, so only the schema says where the trail and the lifecycle are.
+@schema
+type trailedState = {
+  lifecycle: trailedLifecycle,
+  trail: Reventless.Lifecycle.Trail.t<trailedLifecycle>,
+}
+
 describe("StateViewSliceEntryPoint_Ops.parseHandlerConfig", () => {
   testSync("empty raw config yields no handlers", () => {
     expect(StateViewSliceEntryPoint_Ops.parseHandlerConfig("")->Array.length)->toBe(0)
@@ -141,6 +154,7 @@ describe("StateViewSliceEntryPoint_Ops.makeJsonEventsHandler", () => {
       ~project,
       ~queryDbOps=makeStub(saved),
       ~subIdConfig=None,
+      ~stateSchema=None,
     )
     let envelope = obj([("event", str("row-1")), ("recordedAt", str("2026-07-27"))])
     let bare = str("row-2")
@@ -156,6 +170,7 @@ describe("StateViewSliceEntryPoint_Ops.makeJsonEventsHandler", () => {
       ~project,
       ~queryDbOps=makeStub(saved),
       ~subIdConfig=None,
+      ~stateSchema=None,
     )
     // A number cannot parse as S.string → logged and skipped; the following
     // record still projects.
@@ -163,5 +178,57 @@ describe("StateViewSliceEntryPoint_Ops.makeJsonEventsHandler", () => {
     ->handler
     ->Effect.runPromise
     expect(saved)->toEqual([("row-after", str(""))])
+  })
+
+  // The deployed slice assembles JSON-level operations instead of going through
+  // the typed rewrite, so the trail has to be appended on this path too — the
+  // same gap `withDisplayName` was written to close.
+  test("appends a trail entry from the envelope's producer time", async () => {
+    let saved = []
+    let handler = StateViewSliceEntryPoint_Ops.makeJsonEventsHandler(
+      ~sliceName="TrailSlice",
+      ~eventSchema=S.string,
+      ~project=({event, _}) => [
+        Set(event, obj([("lifecycle", str("Placed")), ("trail", JSON.Encode.array([]))])),
+      ],
+      ~queryDbOps=makeStub(saved),
+      ~subIdConfig=None,
+      ~stateSchema=Some(trailedStateSchema->S.castToUnknown),
+    )
+    await Stream.fromIterable([
+      obj([("event", str("row-1")), ("meta", obj([("time", str("2026-03-02T09:00:00Z"))]))]),
+    ])
+    ->handler
+    ->Effect.runPromise
+    expect(saved)->toEqual([
+      (
+        "row-1",
+        obj([
+          ("lifecycle", str("Placed")),
+          ("trail", JSON.Encode.array([obj([("state", str("Placed")), ("at", str("2026-03-02T09:00:00Z"))])])),
+        ]),
+      ),
+    ])
+  })
+
+  // Without a producer time there is no instant to stamp, so the row is written
+  // as the projection produced it rather than with an entry the read path would
+  // refuse.
+  test("appends nothing when the envelope carries no producer time", async () => {
+    let saved = []
+    let handler = StateViewSliceEntryPoint_Ops.makeJsonEventsHandler(
+      ~sliceName="TrailSlice",
+      ~eventSchema=S.string,
+      ~project=({event, _}) => [
+        Set(event, obj([("lifecycle", str("Placed")), ("trail", JSON.Encode.array([]))])),
+      ],
+      ~queryDbOps=makeStub(saved),
+      ~subIdConfig=None,
+      ~stateSchema=Some(trailedStateSchema->S.castToUnknown),
+    )
+    await Stream.fromIterable([obj([("event", str("row-1"))])])->handler->Effect.runPromise
+    expect(saved)->toEqual([
+      ("row-1", obj([("lifecycle", str("Placed")), ("trail", JSON.Encode.array([]))])),
+    ])
   })
 })

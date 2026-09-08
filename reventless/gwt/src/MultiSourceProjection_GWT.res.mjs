@@ -45,7 +45,7 @@ function Make(Projection) {
   };
   let handleActions = (actions, operations) => Projection$ReventlessCore.handleActions(undefined, actions, operations, Projection.subIdConfig);
   let update = async (store, events$p) => {
-    await handleActions(events$p.map(event$p => Projection.project(event$p)), {
+    await handleActions(events$p.map(event$p => Projection$ReventlessCore.rewriteTrail(Projection.project(event$p), event$p.meta.time, Projection.targetStateSchema)), {
       load: extra => Promise.resolve({
         TAG: "Ok",
         _0: states(store, extra)

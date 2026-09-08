@@ -2,6 +2,7 @@
 
 import * as Sury from "sury";
 import * as Money$Reventless from "@reventlessdev/reventless-spec/src/semantic/Money.res.mjs";
+import * as Lifecycle$Reventless from "@reventlessdev/reventless-spec/src/types/Lifecycle.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 import * as CaptionedImage$Reventless from "@reventlessdev/reventless-spec/src/semantic/CaptionedImage.res.mjs";
 import * as UploadableImage$Reventless from "@reventlessdev/reventless-spec/src/semantic/UploadableImage.res.mjs";
@@ -80,7 +81,8 @@ let stateSchema = Sury.$schema(s => ({
   price: s.m(Money$Reventless.schema),
   productImages: s.m(Sury.array(CaptionedImage$Reventless.forField(undefined, "productImages"))),
   categoryId: s.m(Sury.string),
-  shelfStatus: s.m(shelfStatusSchema)
+  shelfStatus: s.m(shelfStatusSchema),
+  trail: s.m(Lifecycle$Reventless.Trail.schema(shelfStatusSchema))
 }));
 
 let config = ReadModel$Reventless.config(undefined, undefined, [{

@@ -21,20 +21,6 @@ let rec isLabelShape = (t: SchemaType.schemaType): bool =>
   | _ => false
   }
 
-// Whether a field can hold a lifecycle: a closed set of values, or an optional
-// one. A free-text `lifecycle: string` is not a lifecycle — filtering a command
-// menu against `allowedStates` needs states to compare with.
-let rec isLifecycleShape = (t: SchemaType.schemaType): bool =>
-  switch t {
-  | Enum(_, _) => true
-  | Nullable(inner) => isLifecycleShape(inner)
-  // A union is a closed set of *shapes*, not of values, and `allowedStates`
-  // compares values. The same answer the ppx gives `@lifecycle` on a union
-  // field, which is a compile error — this is the convention rung agreeing.
-  | TaggedUnion(_, _) => false
-  | _ => false
-  }
-
 // Field names that say "this one is the record's name" in the only way
 // available short of the `@displayName` annotation. Matched case-insensitively
 // and *exactly*: `customerName` holds a customer's name, not this record's.
@@ -43,33 +29,10 @@ let conventionalLabelNames = ["name", "title", "label", "displayname"]
 let shapeOfField = (~entityName: string, ~name: string, schema: S.t<unknown>): SchemaType.schemaType =>
   SchemaType.fromSury(~parentName=entityName, ~fieldName=name, schema)
 
-// The field holding the entity's lifecycle, for filtering a per-row command menu:
-// `@lifecycle`, else an enum field literally named `lifecycle`, else None. Not
-// keyed on `status` — a promiscuous name that would guess, and guess often.
-let lifecycleFieldFromStateSchema = (
-  ~entityName: string,
-  stateSchema: S.t<unknown>,
-): option<string> => {
-  let annotated = switch Reventless.StateAnnotations.getSpec(stateSchema) {
-  | Some(spec) => spec.lifecycle
-  | None => None
-  }
-  switch annotated {
-  | Some(_) as some => some
-  | None =>
-    switch stateSchema {
-    | Object({properties}) =>
-      properties
-      ->Dict.get("lifecycle")
-      ->Option.flatMap(schema =>
-        isLifecycleShape(shapeOfField(~entityName, ~name="lifecycle", schema))
-          ? Some("lifecycle")
-          : None
-      )
-    | _ => None
-    }
-  }
-}
+// The field holding the entity's lifecycle, for filtering a per-row command
+// menu. One rule, stated in `Reventless.Lifecycle` — the projection machinery
+// resolves the field a trail entry records against from the same place.
+let lifecycleFieldFromStateSchema = Reventless.Lifecycle.fieldName
 
 // The field whose truth withdraws a row from ordinary reads. Annotation-only —
 // no convention rung, since guessing wrong here makes rows vanish.
@@ -113,7 +76,7 @@ let checkRetiredValue = (~entityName: string, stateSchema: S.t<unknown>): retire
   | None | Some({values: None}) => NotDeclared
   | Some({field, values: Some(values)}) =>
     let named = values->Array.join(", ")
-    let lifecycle = lifecycleFieldFromStateSchema(~entityName, stateSchema)
+    let lifecycle = lifecycleFieldFromStateSchema(stateSchema)
     if lifecycle != Some(field) {
       log.warn(
         ~comp="Plugin_Structure",
@@ -190,7 +153,7 @@ let lifecycleStatesFromStateSchema = (
   ~entityName: string,
   stateSchema: S.t<unknown>,
 ): option<array<string>> =>
-  lifecycleFieldFromStateSchema(~entityName, stateSchema)->Option.flatMap(field =>
+  lifecycleFieldFromStateSchema(stateSchema)->Option.flatMap(field =>
     switch stateSchema {
     | Object({properties}) =>
       properties
@@ -965,7 +928,7 @@ let queryableDefFromSpec = (
     labelField: label.field,
     searchableFields: label.searchableFields,
     labelFieldSource: Some(labelFieldSourceToString(label.source)),
-    lifecycleField: lifecycleFieldFromStateSchema(~entityName=name, stateSchema),
+    lifecycleField: lifecycleFieldFromStateSchema(stateSchema),
     ownerField: Reventless.Owner.fieldNames(stateSchema)->Array.get(0),
     retiredField: retiredFieldFromStateSchema(stateSchema),
     retiredValues: retiredValuesFromStateSchema(stateSchema),
@@ -1410,7 +1373,7 @@ let make = (
         labelField: label.field,
         searchableFields: label.searchableFields,
         labelFieldSource: Some(labelFieldSourceToString(label.source)),
-        lifecycleField: lifecycleFieldFromStateSchema(~entityName=R.Spec.name, stateSchema),
+        lifecycleField: lifecycleFieldFromStateSchema(stateSchema),
         // Same schema `lifecycleField` reads, so the two cannot disagree about which
         // fields this view has.
         ownerField: Reventless.Owner.fieldNames(stateSchema)->Array.get(0),
@@ -1451,7 +1414,7 @@ let make = (
         labelField: label.field,
         searchableFields: label.searchableFields,
         labelFieldSource: Some(labelFieldSourceToString(label.source)),
-        lifecycleField: lifecycleFieldFromStateSchema(~entityName=SVS.Spec.name, stateSchema),
+        lifecycleField: lifecycleFieldFromStateSchema(stateSchema),
         ownerField: Reventless.Owner.fieldNames(stateSchema)->Array.get(0),
         retiredField: retiredFieldFromStateSchema(stateSchema),
         retiredValues: retiredValuesFromStateSchema(stateSchema),

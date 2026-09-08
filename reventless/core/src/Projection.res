@@ -21,54 +21,172 @@ module Mapping = {
 // hot path at the default Info level.
 let logAction = makeStr => log.debugLazy(~comp="Projection", makeStr)
 
-// ── @displayName overlay ────────────────────────────────────────────────────
-// When a read model's state schema carries DisplayName metadata, every state
-// written by a projection action gets its [displayName] field overwritten with
-// the composite label derived from the annotated source fields. The overlay
-// encodes via sury, mutates the JSON dict, and parses back — unlocks fine
-// work on partial/option fields without duplicating the record shape here.
+// ── Schema-driven state overlays ────────────────────────────────────────────
+// Two things every state a projection writes carries that the domain does not
+// write: the composite `@displayName` label, and a lifecycle trail entry for an
+// action that moved the row's lifecycle field. Both are read off the state
+// schema and applied to one JSON round trip per written state.
 
-let overlayDisplayName = (
-  state: 'state,
-  stateSchema: S.t<'state>,
-  spec: Reventless.DisplayName.displayNameSpec,
-): 'state => {
-  let json = state->Reventless.Util_Sury.toJson(stateSchema)
-  switch json->JSON.Decode.object {
-  | None => state
-  | Some(stateDict) =>
-    let label = Reventless.DisplayName.computeLabel(spec, stateDict)
-    stateDict->Dict.set("displayName", JSON.Encode.string(label))
-    stateDict->JSON.Encode.object->Reventless.Util_Sury.fromJson(stateSchema)
+type overlays = {
+  displayName: option<Reventless.DisplayName.displayNameSpec>,
+  // (trail field, lifecycle field). A trail with no lifecycle field to follow
+  // records nothing — there is no value to append.
+  trail: option<(string, string)>,
+}
+
+let overlaysFor = (stateSchema: S.t<unknown>): option<overlays> => {
+  let displayName = Reventless.DisplayName.getSpec(stateSchema)
+  let trail = switch (
+    Reventless.Lifecycle.Trail.fieldName(stateSchema),
+    Reventless.Lifecycle.fieldName(stateSchema),
+  ) {
+  | (Some(trailField), Some(lifecycleField)) => Some((trailField, lifecycleField))
+  | _ => None
+  }
+  displayName->Option.isNone && trail->Option.isNone ? None : Some({displayName, trail})
+}
+
+// `priorLifecycle` is what the row's lifecycle field held before the action.
+// `None` where the row is created — that is a change from nothing, and it opens
+// the trail. `at` is the envelope's own time, never a clock: a projection that
+// read one would produce a different trail on every replay.
+let applyOverlays = (
+  stateDict: dict<JSON.t>,
+  {displayName, trail}: overlays,
+  ~priorLifecycle: option<JSON.t>,
+  ~at: string,
+): unit => {
+  displayName->Option.forEach(spec =>
+    stateDict->Dict.set(
+      "displayName",
+      JSON.Encode.string(Reventless.DisplayName.computeLabel(spec, stateDict)),
+    )
+  )
+  trail->Option.forEach(((trailField, lifecycleField)) =>
+    switch stateDict->Dict.get(lifecycleField) {
+    | Some(value) if Some(value) != priorLifecycle =>
+      stateDict->Reventless.Lifecycle.Trail.record(~field=trailField, ~state=value, ~at)
+    | _ => ()
+    }
+  )
+}
+
+// The action shapes, once, over a lens onto whatever a state is on this path:
+// a typed record encoded through sury, or JSON that already is one.
+//
+// Multi-state actions get the label but no trail entry: pairing a before-row
+// with an after-row needs the sub-id, which is not resolved until the action is
+// applied, and pairing by position would credit one row's transition to another.
+let rewriteActionWith = (
+  action: action<'id, 'state>,
+  ~overlays: overlays,
+  ~toDict: 'state => option<dict<JSON.t>>,
+  ~fromDict: dict<JSON.t> => 'state,
+  ~at: string,
+): action<'id, 'state> => {
+  // Read before the update function runs, so a projection that returns its
+  // argument mutated cannot make the prior state look like the new one.
+  let priorLifecycleOf = state =>
+    switch overlays.trail {
+    | None => None
+    | Some((_, lifecycleField)) => toDict(state)->Option.flatMap(Dict.get(_, lifecycleField))
+    }
+  let apply = (state, ~overlays, ~priorLifecycle) =>
+    switch toDict(state) {
+    | None => state
+    | Some(stateDict) =>
+      applyOverlays(stateDict, overlays, ~priorLifecycle, ~at)
+      fromDict(stateDict)
+    }
+  // `Set` opens a trail rather than extending one: it replaces the whole row,
+  // the trail included, so there is no prior value left to compare against.
+  let created = state => apply(state, ~overlays, ~priorLifecycle=None)
+  let updated = (fn, state) =>
+    apply(fn(state), ~overlays, ~priorLifecycle=priorLifecycleOf(state))
+  let labelled = state => apply(state, ~overlays={...overlays, trail: None}, ~priorLifecycle=None)
+  switch action {
+  | Create(id, state) => Create(id, created(state))
+  | CreateMany(pairs) => CreateMany(pairs->Array.map(((id, s)) => (id, created(s))))
+  | Set(id, state) => Set(id, created(state))
+  | SetMany(ids, fn) => SetMany(ids, id => created(fn(id)))
+  | Update(id, fn) => Update(id, state => updated(fn, state))
+  | UpdateMany(ids, fn) => UpdateMany(ids, (id, s) => updated(state => fn(id, state), s))
+  | UpdateWithDefault(id, default, fn) =>
+    UpdateWithDefault(id, created(default), state => updated(fn, state))
+  | UpdateManyWithDefault(ids, defFn, fn) =>
+    UpdateManyWithDefault(
+      ids,
+      id => created(defFn(id)),
+      (id, s) => updated(state => fn(id, state), s),
+    )
+  | CreateMultiState(id, states) => CreateMultiState(id, states->Array.map(labelled))
+  | UpdateMultiState(id, fn) => UpdateMultiState(id, states => states->fn->Array.map(labelled))
+  | UpdateManyMultiStates(ids, fn) =>
+    UpdateManyMultiStates(ids, (id, states) => fn(id, states)->Array.map(labelled))
+  | Delete(_) | DeleteMany(_) | DeleteIf(_, _) | DeleteManyIf(_, _) | Ignore => action
   }
 }
 
 let rewriteAction = (
   action: action<'id, 'state>,
+  ~at: string,
   stateSchema: S.t<'state>,
 ): action<'id, 'state> =>
-  switch Reventless.DisplayName.getSpec(stateSchema->S.castToUnknown) {
+  switch overlaysFor(stateSchema->S.castToUnknown) {
   | None => action
-  | Some(spec) =>
-    let overlay = state => overlayDisplayName(state, stateSchema, spec)
-    switch action {
-    | Create(id, state) => Create(id, overlay(state))
-    | CreateMany(pairs) => CreateMany(pairs->Array.map(((id, s)) => (id, overlay(s))))
-    | Set(id, state) => Set(id, overlay(state))
-    | SetMany(ids, fn) => SetMany(ids, id => overlay(fn(id)))
-    | Update(id, fn) => Update(id, state => overlay(fn(state)))
-    | UpdateMany(ids, fn) => UpdateMany(ids, (id, s) => overlay(fn(id, s)))
-    | UpdateWithDefault(id, default, fn) =>
-      UpdateWithDefault(id, overlay(default), state => overlay(fn(state)))
-    | UpdateManyWithDefault(ids, defFn, fn) =>
-      UpdateManyWithDefault(ids, id => overlay(defFn(id)), (id, s) => overlay(fn(id, s)))
-    | CreateMultiState(id, states) => CreateMultiState(id, states->Array.map(overlay))
-    | UpdateMultiState(id, fn) =>
-      UpdateMultiState(id, states => states->fn->Array.map(overlay))
-    | UpdateManyMultiStates(ids, fn) =>
-      UpdateManyMultiStates(ids, (id, states) => fn(id, states)->Array.map(overlay))
-    | Delete(_) | DeleteMany(_) | DeleteIf(_, _) | DeleteManyIf(_, _) | Ignore => action
-    }
+  | Some(overlays) =>
+    action->rewriteActionWith(
+      ~overlays,
+      ~at,
+      ~toDict=state => state->Reventless.Util_Sury.toJson(stateSchema)->JSON.Decode.object,
+      ~fromDict=stateDict =>
+        stateDict->JSON.Encode.object->Reventless.Util_Sury.fromJson(stateSchema),
+    )
+  }
+
+// The trail alone, for the two callers that must not compose `displayName`.
+let trailOverlays = (stateSchema: option<S.t<unknown>>): option<overlays> =>
+  switch stateSchema->Option.flatMap(overlaysFor) {
+  | Some({trail: Some(_)} as overlays) => Some({...overlays, displayName: None})
+  | _ => None
+  }
+
+/**
+The rewrite a test harness applies: the trail and nothing else. `displayName`
+lives in the state schema and not in the record, so composing it would produce a
+state no expectation can spell.
+*/
+let rewriteTrail = (
+  action: action<'id, 'state>,
+  ~at: string,
+  stateSchema: S.t<'state>,
+): action<'id, 'state> =>
+  switch trailOverlays(Some(stateSchema->S.castToUnknown)) {
+  | None => action
+  | Some(overlays) =>
+    action->rewriteActionWith(
+      ~overlays,
+      ~at,
+      ~toDict=state => state->Reventless.Util_Sury.toJson(stateSchema)->JSON.Decode.object,
+      ~fromDict=stateDict =>
+        stateDict->JSON.Encode.object->Reventless.Util_Sury.fromJson(stateSchema),
+    )
+  }
+
+/**
+The same, for the JSON-level pipeline a deployed state-view slice assembles,
+whose states are already JSON. `@displayName` is composed at save there
+(`ProjectionEntryPoint_Ops.withDisplayName`).
+*/
+let rewriteJsonAction = (
+  action: action<'id, JSON.t>,
+  ~at: string,
+  ~stateSchema: option<S.t<unknown>>,
+): action<'id, JSON.t> =>
+  switch trailOverlays(stateSchema) {
+  | None => action
+  | Some(overlays) =>
+    action->rewriteActionWith(~overlays, ~at, ~toDict=JSON.Decode.object, ~fromDict=JSON.Encode.object)
   }
 
 let applyChanges = async (

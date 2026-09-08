@@ -21,6 +21,14 @@ let chargerLine: orderLine = {
   lineTotal: eur(2000.0),
 }
 
+// Every event a projection GWT feeds carries the harness's fixed producer time,
+// so every trail entry below is stamped with that one instant.
+let trail = (states: array<lifecycle>) =>
+  states->Array.map((state): Reventless.Lifecycle.Trail.entry<lifecycle> => {
+    state,
+    at: "1970-01-01T00:00:00Z",
+  })
+
 describe("Orders StateViewSlice", () => {
   test("OrderPlaced creates a row with status Placed", () =>
     givenEvents([])
@@ -49,7 +57,7 @@ describe("Orders StateViewSlice", () => {
         lifecycle: Placed,
         shippingMethod: Standard,
         placedAt: "1970-01-01T00:00:00Z",
-        shippedAt: None,
+        trail: trail([Placed]),
         deliveryWindow: None,
         firstProductName: None,
         firstProductImage: None,
@@ -91,7 +99,7 @@ describe("Orders StateViewSlice", () => {
         lifecycle: Placed,
         shippingMethod: Standard,
         placedAt: "1970-01-01T00:00:00Z",
-        shippedAt: None,
+        trail: trail([Placed]),
         deliveryWindow: Some(window),
         firstProductName: None,
         firstProductImage: None,
@@ -126,7 +134,7 @@ describe("Orders StateViewSlice", () => {
         lifecycle: Placed,
         shippingMethod: Pickup,
         placedAt: "1970-01-01T00:00:00Z",
-        shippedAt: None,
+        trail: trail([Placed]),
         deliveryWindow: None,
         firstProductName: None,
         firstProductImage: None,
@@ -161,7 +169,7 @@ describe("Orders StateViewSlice", () => {
         lifecycle: Shipped,
         shippingMethod: Express,
         placedAt: "1970-01-01T00:00:00Z",
-        shippedAt: Some("1970-01-01T00:00:00Z"),
+        trail: trail([Placed, Shipped]),
         deliveryWindow: None,
         firstProductName: None,
         firstProductImage: None,
@@ -196,7 +204,7 @@ describe("Orders StateViewSlice", () => {
         lifecycle: Cancelled,
         shippingMethod: Standard,
         placedAt: "1970-01-01T00:00:00Z",
-        shippedAt: None,
+        trail: trail([Placed, Cancelled]),
         deliveryWindow: None,
         firstProductName: None,
         firstProductImage: None,
@@ -237,7 +245,7 @@ describe("Orders StateViewSlice", () => {
         lifecycle: Placed,
         shippingMethod: Standard,
         placedAt: "1970-01-01T00:00:00Z",
-        shippedAt: None,
+        trail: trail([Placed, Cancelled, Placed]),
         deliveryWindow: None,
         firstProductName: None,
         firstProductImage: None,

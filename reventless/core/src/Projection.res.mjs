@@ -11,6 +11,7 @@ import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
+import * as Lifecycle$Reventless from "@reventlessdev/reventless-spec/src/types/Lifecycle.res.mjs";
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Logger$ReventlessCore from "./util/Logger.res.mjs";
 import * as DisplayName$Reventless from "@reventlessdev/reventless-spec/src/components/DisplayName.res.mjs";
@@ -37,23 +38,59 @@ function logAction(makeStr) {
   log.debugLazy("Projection", makeStr);
 }
 
-function overlayDisplayName(state, stateSchema, spec) {
-  let json = Util_Sury$Reventless.toJson(state, stateSchema);
-  let stateDict = Stdlib_JSON.Decode.object(json);
-  if (stateDict === undefined) {
-    return state;
+function overlaysFor(stateSchema) {
+  let displayName = DisplayName$Reventless.getSpec(stateSchema);
+  let match = Lifecycle$Reventless.Trail.fieldName(stateSchema);
+  let match$1 = Lifecycle$Reventless.fieldName(stateSchema);
+  let trail = match !== undefined && match$1 !== undefined ? [
+      match,
+      match$1
+    ] : undefined;
+  if (Stdlib_Option.isNone(displayName) && Stdlib_Option.isNone(trail)) {
+    return;
+  } else {
+    return {
+      displayName: displayName,
+      trail: trail
+    };
   }
-  let label = DisplayName$Reventless.computeLabel(spec, stateDict);
-  stateDict["displayName"] = label;
-  return Util_Sury$Reventless.fromJson(stateDict, stateSchema);
 }
 
-function rewriteAction(action, stateSchema) {
-  let spec = DisplayName$Reventless.getSpec(stateSchema);
-  if (spec === undefined) {
-    return action;
-  }
-  let overlay = state => overlayDisplayName(state, stateSchema, spec);
+function applyOverlays(stateDict, param, priorLifecycle, at) {
+  Stdlib_Option.forEach(param.displayName, spec => {
+    stateDict["displayName"] = DisplayName$Reventless.computeLabel(spec, stateDict);
+  });
+  Stdlib_Option.forEach(param.trail, param => {
+    let value = stateDict[param[1]];
+    if (value !== undefined && Primitive_object.notequal(value, priorLifecycle)) {
+      return Lifecycle$Reventless.Trail.record(stateDict, param[0], value, at);
+    }
+  });
+}
+
+function rewriteActionWith(action, overlays, toDict, fromDict, at) {
+  let priorLifecycleOf = state => {
+    let match = overlays.trail;
+    if (match === undefined) {
+      return;
+    }
+    let lifecycleField = match[1];
+    return Stdlib_Option.flatMap(toDict(state), __x => __x[lifecycleField]);
+  };
+  let apply = (state, overlays, priorLifecycle) => {
+    let stateDict = toDict(state);
+    if (stateDict !== undefined) {
+      applyOverlays(stateDict, overlays, priorLifecycle, at);
+      return fromDict(stateDict);
+    } else {
+      return state;
+    }
+  };
+  let updated = (fn, state) => apply(fn(state), overlays, priorLifecycleOf(state));
+  let labelled = state => apply(state, {
+    displayName: overlays.displayName,
+    trail: undefined
+  }, undefined);
   if (typeof action !== "object") {
     return action;
   }
@@ -62,14 +99,14 @@ function rewriteAction(action, stateSchema) {
       return {
         TAG: "Create",
         _0: action._0,
-        _1: overlayDisplayName(action._1, stateSchema, spec)
+        _1: apply(action._1, overlays, undefined)
       };
     case "CreateMany" :
       return {
         TAG: "CreateMany",
         _0: action._0.map(param => [
           param[0],
-          overlayDisplayName(param[1], stateSchema, spec)
+          apply(param[1], overlays, undefined)
         ])
       };
     case "Update" :
@@ -77,22 +114,22 @@ function rewriteAction(action, stateSchema) {
       return {
         TAG: "Update",
         _0: action._0,
-        _1: state => overlayDisplayName(fn(state), stateSchema, spec)
+        _1: state => updated(fn, state)
       };
     case "UpdateMany" :
       let fn$1 = action._1;
       return {
         TAG: "UpdateMany",
         _0: action._0,
-        _1: (id, s) => overlayDisplayName(fn$1(id, s), stateSchema, spec)
+        _1: (id, s) => updated(state => fn$1(id, state), s)
       };
     case "UpdateWithDefault" :
       let fn$2 = action._2;
       return {
         TAG: "UpdateWithDefault",
         _0: action._0,
-        _1: overlayDisplayName(action._1, stateSchema, spec),
-        _2: state => overlayDisplayName(fn$2(state), stateSchema, spec)
+        _1: apply(action._1, overlays, undefined),
+        _2: state => updated(fn$2, state)
       };
     case "UpdateManyWithDefault" :
       let fn$3 = action._2;
@@ -100,44 +137,81 @@ function rewriteAction(action, stateSchema) {
       return {
         TAG: "UpdateManyWithDefault",
         _0: action._0,
-        _1: id => overlayDisplayName(defFn(id), stateSchema, spec),
-        _2: (id, s) => overlayDisplayName(fn$3(id, s), stateSchema, spec)
+        _1: id => apply(defFn(id), overlays, undefined),
+        _2: (id, s) => updated(state => fn$3(id, state), s)
       };
     case "Set" :
       return {
         TAG: "Set",
         _0: action._0,
-        _1: overlayDisplayName(action._1, stateSchema, spec)
+        _1: apply(action._1, overlays, undefined)
       };
     case "SetMany" :
       let fn$4 = action._1;
       return {
         TAG: "SetMany",
         _0: action._0,
-        _1: id => overlayDisplayName(fn$4(id), stateSchema, spec)
+        _1: id => apply(fn$4(id), overlays, undefined)
       };
     case "CreateMultiState" :
       return {
         TAG: "CreateMultiState",
         _0: action._0,
-        _1: action._1.map(overlay)
+        _1: action._1.map(labelled)
       };
     case "UpdateMultiState" :
       let fn$5 = action._1;
       return {
         TAG: "UpdateMultiState",
         _0: action._0,
-        _1: states => fn$5(states).map(overlay)
+        _1: states => fn$5(states).map(labelled)
       };
     case "UpdateManyMultiStates" :
       let fn$6 = action._1;
       return {
         TAG: "UpdateManyMultiStates",
         _0: action._0,
-        _1: (id, states) => fn$6(id, states).map(overlay)
+        _1: (id, states) => fn$6(id, states).map(labelled)
       };
     default:
       return action;
+  }
+}
+
+function rewriteAction(action, at, stateSchema) {
+  let overlays = overlaysFor(stateSchema);
+  if (overlays !== undefined) {
+    return rewriteActionWith(action, overlays, state => Stdlib_JSON.Decode.object(Util_Sury$Reventless.toJson(state, stateSchema)), stateDict => Util_Sury$Reventless.fromJson(stateDict, stateSchema), at);
+  } else {
+    return action;
+  }
+}
+
+function trailOverlays(stateSchema) {
+  let overlays = Stdlib_Option.flatMap(stateSchema, overlaysFor);
+  if (overlays !== undefined && overlays.trail !== undefined) {
+    return {
+      displayName: undefined,
+      trail: overlays.trail
+    };
+  }
+}
+
+function rewriteTrail(action, at, stateSchema) {
+  let overlays = trailOverlays(stateSchema);
+  if (overlays !== undefined) {
+    return rewriteActionWith(action, overlays, state => Stdlib_JSON.Decode.object(Util_Sury$Reventless.toJson(state, stateSchema)), stateDict => Util_Sury$Reventless.fromJson(stateDict, stateSchema), at);
+  } else {
+    return action;
+  }
+}
+
+function rewriteJsonAction(action, at, stateSchema) {
+  let overlays = trailOverlays(stateSchema);
+  if (overlays !== undefined) {
+    return rewriteActionWith(action, overlays, Stdlib_JSON.Decode.object, prim => prim, at);
+  } else {
+    return action;
   }
 }
 
@@ -714,8 +788,13 @@ export {
   log,
   Mapping,
   logAction,
-  overlayDisplayName,
+  overlaysFor,
+  applyOverlays,
+  rewriteActionWith,
   rewriteAction,
+  trailOverlays,
+  rewriteTrail,
+  rewriteJsonAction,
   applyChanges,
   stateToString,
   statesToString,

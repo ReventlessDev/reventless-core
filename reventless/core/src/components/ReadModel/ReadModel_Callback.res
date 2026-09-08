@@ -31,13 +31,16 @@ module Make = (
               json,
             )} actions:${actionsStr}`,
         )->Effect.runSync
-        actions
+        // Rewritten here rather than at the apply below: a trail entry is
+        // stamped with this envelope's own time.
+        actions->Array.map(
+          Projection.rewriteAction(_, ~at=context.meta.time, ReadModelSpec.stateSchema),
+        )
       })
       ->Array.flat
       ->Array.reduce(Effect.succeed(), (acc, action) =>
         acc->Effect.flatMap(
           _ => {
-            let action = Projection.rewriteAction(action, ReadModelSpec.stateSchema)
             Effect.promise(
               () => Projection.handleAction(~comp, action, Spec.operations, ReadModelSpec.subIdConfig),
             )->Effect.map(_ => ())

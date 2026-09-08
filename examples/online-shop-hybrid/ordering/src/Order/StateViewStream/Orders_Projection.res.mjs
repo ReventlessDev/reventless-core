@@ -3,7 +3,6 @@
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 
 function project(param) {
-  let meta = param.meta;
   let event = param.event;
   switch (event.TAG) {
     case "OrderPlaced" :
@@ -16,8 +15,8 @@ function project(param) {
             orderId: orderId,
             customerId: event.customerId,
             productIds: event.productIds,
-            placedAt: meta.time,
-            shippedAt: undefined,
+            placedAt: param.meta.time,
+            trail: [],
             lines: lines,
             total: event.total,
             itemCount: Stdlib_Array.reduce(lines, 0, (count, line) => count + line.quantity | 0),
@@ -35,7 +34,6 @@ function project(param) {
           _1: state => {
             let newrecord = {...state};
             newrecord.lifecycle = "Shipped";
-            newrecord.shippedAt = meta.time;
             return newrecord;
           }
         }];

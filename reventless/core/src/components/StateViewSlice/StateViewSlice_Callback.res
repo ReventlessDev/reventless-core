@@ -48,7 +48,9 @@ module Make = (
           `handling event ${idx.contents->Int.toString}/${count}: ${LogFormat.bold(raw.eventType)}(${id}) ${actionsStr}`,
         )->Effect.runSync
         allActions->Array.pushMany(
-          actions->Array.map(FrameworkProjection.rewriteAction(_, Spec.stateSchema)),
+          actions->Array.map(
+            FrameworkProjection.rewriteAction(_, ~at=raw.meta.time, Spec.stateSchema),
+          ),
         )
         Some(event)
       | None => None

@@ -18,7 +18,8 @@ function project(param) {
           _1: {
             categoryId: categoryId,
             name: event.name,
-            shelfStatus: "Listed"
+            shelfStatus: "Listed",
+            trail: []
           }
         }];
     case "CategoryRenamed" :

@@ -290,7 +290,7 @@ Ordering_PaymentWebhook(amount: Float!, orderId: ID!, paymentId: ID!, status: St
 
 Arguments are emitted alphabetically, and `orderId` / `paymentId` render as `ID!`
 because the PPX auto-tags `*Id` fields inside a slice folder. See the
-[GraphQL API guide](../graphql-api-guide.md#53-from-an-inboundtranslationslice)
+[GraphQL API guide](../graphql-api-guide.md#53-from-an-inboundtranslation)
 for the full mapping.
 
 There is no opt-out. Unlike a StateChangeSlice command, an inbound slice honours

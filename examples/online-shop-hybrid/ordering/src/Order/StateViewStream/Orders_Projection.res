@@ -27,7 +27,9 @@ let project = ({event, meta}) =>
           lifecycle: Placed,
           shippingMethod,
           placedAt: meta.time,
-          shippedAt: None,
+          // Opened by the machinery from this envelope's time, like every later
+          // entry — the projection never appends to it by hand.
+          trail: [],
           deliveryWindow,
           // Copied straight through. The event is the record of what was bought;
           // this view does not go and ask the catalog what the product is called
@@ -37,11 +39,9 @@ let project = ({event, meta}) =>
         },
       ),
     ]
-  | OrderShipped({orderId}) => [
-      Update(orderId, state => {...state, lifecycle: Shipped, shippedAt: Some(meta.time)}),
-    ]
+  | OrderShipped({orderId}) => [Update(orderId, state => {...state, lifecycle: Shipped})]
   | OrderCancelled({orderId}) => [Update(orderId, state => {...state, lifecycle: Cancelled})]
   // Back to `Placed`, which is where a reopened order is: shippable again, and
-  // not carrying a `shippedAt` it never earned.
+  // carrying both visits to `Placed` in its trail.
   | OrderReopened({orderId}) => [Update(orderId, state => {...state, lifecycle: Placed})]
   }

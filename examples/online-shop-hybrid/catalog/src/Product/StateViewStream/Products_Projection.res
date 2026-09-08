@@ -26,6 +26,7 @@ let project = ({event}) =>
           productImages: [],
           categoryId,
           shelfStatus: Listed,
+          trail: [],
         },
       ),
     ]

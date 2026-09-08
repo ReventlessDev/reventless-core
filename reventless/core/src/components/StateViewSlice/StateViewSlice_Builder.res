@@ -148,18 +148,19 @@ module Make = (
                     ~detail=eventData,
                     `handling event ${idxStr}/${total}: ${LogFormat.bold(eventType)}${fieldsStr} ${actionsStr}`,
                   )->Effect.runSync
-                  actions
+                  // A slice's state carries the same synthetic `displayName` the
+                  // ppx injects for a read model's, and the same lifecycle trail.
+                  // Rewritten here rather than at the apply below because the
+                  // trail entry is stamped with this envelope's own time.
+                  actions->Array.map(
+                    FrameworkProjection.rewriteAction(_, ~at=meta.time, Spec.stateSchema),
+                  )
                 | None => []
                 }
               })
               ->Array.flat
               ->Array.reduce(Effect.succeed(), (acc, action) =>
                 acc->Effect.flatMap(_ => {
-                  // A slice's state carries the same synthetic `displayName` the
-                  // ppx injects for a read model's, so it is composed on the same
-                  // terms — without this the column stays null and every surface
-                  // names the row by its id.
-                  let action = FrameworkProjection.rewriteAction(action, Spec.stateSchema)
                   Effect.promise(() =>
                     FrameworkProjection.handleAction(~comp, action, projectionOps, Spec.subIdConfig)
                   )->Effect.map(_ => ())

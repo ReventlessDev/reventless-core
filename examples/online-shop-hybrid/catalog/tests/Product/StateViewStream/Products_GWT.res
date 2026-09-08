@@ -9,6 +9,15 @@ let eur = amount => Reventless.Money.ofMajor(~amount, ~currency=EUR)
 // Written out as literals rather than through a row helper: the lifecycle check
 // harvests `shelfStatus` from the sidecar the PPX writes, and it can only read
 // what is spelled out.
+
+// Every event a projection GWT feeds carries the harness's fixed producer time,
+// so every trail entry below is stamped with that one instant.
+let trail = (states: array<shelfStatus>) =>
+  states->Array.map((state): Reventless.Lifecycle.Trail.entry<shelfStatus> => {
+    state,
+    at: "1970-01-01T00:00:00Z",
+  })
+
 describe("Products StateViewSliceStream", () => {
   test("ProductAdded creates a row with an empty set", () =>
     givenEvents([])
@@ -17,7 +26,7 @@ describe("Products StateViewSliceStream", () => {
     )
     ->thenStateWithId(
       "p1",
-      {productId: "p1", name: "Laptop", description: "x", price: eur(999.99), productImages: [], categoryId: "cat1", shelfStatus: Listed},
+      {productId: "p1", name: "Laptop", description: "x", price: eur(999.99), productImages: [], categoryId: "cat1", shelfStatus: Listed, trail: trail([Listed])},
     )
   )
 
@@ -28,7 +37,7 @@ describe("Products StateViewSliceStream", () => {
     ->whenEvent(ProductNameChanged({productId: "p1", name: "Gaming Laptop"}))
     ->thenStateWithId(
       "p1",
-      {productId: "p1", name: "Gaming Laptop", description: "x", price: eur(999.99), productImages: [], categoryId: "cat1", shelfStatus: Listed},
+      {productId: "p1", name: "Gaming Laptop", description: "x", price: eur(999.99), productImages: [], categoryId: "cat1", shelfStatus: Listed, trail: trail([Listed])},
     )
   )
 
@@ -39,7 +48,7 @@ describe("Products StateViewSliceStream", () => {
     ->whenEvent(ProductDescriptionChanged({productId: "p1", description: "high-end"}))
     ->thenStateWithId(
       "p1",
-      {productId: "p1", name: "Laptop", description: "high-end", price: eur(999.99), productImages: [], categoryId: "cat1", shelfStatus: Listed},
+      {productId: "p1", name: "Laptop", description: "high-end", price: eur(999.99), productImages: [], categoryId: "cat1", shelfStatus: Listed, trail: trail([Listed])},
     )
   )
 
@@ -50,7 +59,7 @@ describe("Products StateViewSliceStream", () => {
     ->whenEvent(ProductPriceChanged({productId: "p1", price: eur(899.99)}))
     ->thenStateWithId(
       "p1",
-      {productId: "p1", name: "Laptop", description: "x", price: eur(899.99), productImages: [], categoryId: "cat1", shelfStatus: Listed},
+      {productId: "p1", name: "Laptop", description: "x", price: eur(899.99), productImages: [], categoryId: "cat1", shelfStatus: Listed, trail: trail([Listed])},
     )
   )
 
@@ -76,6 +85,7 @@ describe("Products StateViewSliceStream", () => {
         productImages: [{ref: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg", altText: "front"}],
         categoryId: "cat1",
         shelfStatus: Listed,
+        trail: trail([Listed]),
       },
     )
   )
@@ -101,6 +111,7 @@ describe("Products StateViewSliceStream", () => {
         ],
         categoryId: "cat1",
         shelfStatus: Listed,
+        trail: trail([Listed]),
       },
     )
   )
@@ -130,6 +141,7 @@ describe("Products StateViewSliceStream", () => {
         ],
         categoryId: "cat1",
         shelfStatus: Listed,
+        trail: trail([Listed]),
       },
     )
   )
@@ -156,6 +168,7 @@ describe("Products StateViewSliceStream", () => {
         productImages: [{ref: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg"}],
         categoryId: "cat1",
         shelfStatus: Listed,
+        trail: trail([Listed]),
       },
     )
   )
@@ -170,7 +183,7 @@ describe("Products StateViewSliceStream", () => {
     )
     ->thenStateWithId(
       "p1",
-      {productId: "p1", name: "Laptop", description: "x", price: eur(999.99), productImages: [], categoryId: "cat1", shelfStatus: Listed},
+      {productId: "p1", name: "Laptop", description: "x", price: eur(999.99), productImages: [], categoryId: "cat1", shelfStatus: Listed, trail: trail([Listed])},
     )
   )
 
@@ -192,6 +205,7 @@ describe("Products StateViewSliceStream", () => {
         productImages: [{ref: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg", altText: "front view"}],
         categoryId: "cat1",
         shelfStatus: Listed,
+        trail: trail([Listed]),
       },
     )
   )
@@ -220,6 +234,7 @@ describe("Products StateViewSliceStream", () => {
         ],
         categoryId: "cat1",
         shelfStatus: Listed,
+        trail: trail([Listed]),
       },
     )
   )
@@ -240,7 +255,7 @@ describe("Products StateViewSliceStream", () => {
     ->whenEvent(ProductArchived({productId: "p1"}))
     ->thenStateWithId(
       "p1",
-      {productId: "p1", name: "Laptop", description: "x", price: eur(999.99), productImages: [], categoryId: "cat1", shelfStatus: Archived},
+      {productId: "p1", name: "Laptop", description: "x", price: eur(999.99), productImages: [], categoryId: "cat1", shelfStatus: Archived, trail: trail([Listed, Archived])},
     )
   )
 
@@ -252,7 +267,7 @@ describe("Products StateViewSliceStream", () => {
     ->whenEvent(ProductUnarchived({productId: "p1"}))
     ->thenStateWithId(
       "p1",
-      {productId: "p1", name: "Laptop", description: "x", price: eur(999.99), productImages: [], categoryId: "cat1", shelfStatus: Listed},
+      {productId: "p1", name: "Laptop", description: "x", price: eur(999.99), productImages: [], categoryId: "cat1", shelfStatus: Listed, trail: trail([Listed, Archived, Listed])},
     )
   )
 
@@ -263,7 +278,7 @@ describe("Products StateViewSliceStream", () => {
     ->whenEvent(ProductDiscontinued({productId: "p1"}))
     ->thenStateWithId(
       "p1",
-      {productId: "p1", name: "Laptop", description: "x", price: eur(999.99), productImages: [], categoryId: "cat1", shelfStatus: Discontinued},
+      {productId: "p1", name: "Laptop", description: "x", price: eur(999.99), productImages: [], categoryId: "cat1", shelfStatus: Discontinued, trail: trail([Listed, Discontinued])},
     )
   )
 })
