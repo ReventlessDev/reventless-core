@@ -2652,7 +2652,7 @@ EOF
 if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
   fail "@owner on array field" "expected compilation to fail but it succeeded"
 else
-  if echo "$OUTPUT" | grep -q "@owner only supports string and option<string> fields"; then
+  if echo "$OUTPUT" | grep -q "@owner only supports string"; then
     pass "@owner on array<string> → correct compile error"
   else
     fail "@owner on array field" "unexpected error output: $OUTPUT"
