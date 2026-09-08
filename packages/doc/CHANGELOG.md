@@ -719,6 +719,8 @@ This file tracks changes to the documentation. Since the doc package is not vers
 ## Changes
 
 ### 2026-09-08
+- feat(spec): a field declares the value a form opens it on ([1d541fe](https://github.com/ReventlessDev/reventless-core/commit/1d541fe497e1df2ff48b72e26a06a1b8fd3c9e06))
+### 2026-09-08
 - feat(core): a state view records when it reached each state ([5216f71](https://github.com/ReventlessDev/reventless-core/commit/5216f71b8dcafcb2f0c991923ebcf2438b27e347))
 
 ### 2026-09-07
