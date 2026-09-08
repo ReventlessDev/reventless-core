@@ -1251,11 +1251,13 @@ function MakeWithConfig(Config) {
           ]) : computed;
         return JSON.stringify(Util_ShellConfig$ReventlessAws.fields(withEvents, hostUiBundle.viewModes, hostUiBundle.bakedManifest, hostUiBundle.uiSlotsFile, hostUiBundle.shellConfig));
       });
+      let bootFileCacheControl = "no-cache";
       new (Aws.s3.BucketObject)("host-ui-config-json", {
         bucket: bucketName,
         key: "config.json",
         content: configJsonContent,
-        contentType: "application/json"
+        contentType: "application/json",
+        cacheControl: bootFileCacheControl
       });
       let hintsPath = hostUiBundle.uiHintsFile;
       if (hintsPath !== undefined) {
@@ -1264,7 +1266,8 @@ function MakeWithConfig(Config) {
           bucket: bucketName,
           key: "ui-hints.json",
           content: hintsContent,
-          contentType: "application/json"
+          contentType: "application/json",
+          cacheControl: bootFileCacheControl
         });
       }
       let slotsPath = hostUiBundle.uiSlotsFile;
@@ -1274,7 +1277,8 @@ function MakeWithConfig(Config) {
           bucket: bucketName,
           key: Platform_UiSlots$ReventlessCore.fileName,
           content: slotsContent,
-          contentType: "application/javascript; charset=utf-8"
+          contentType: "application/javascript; charset=utf-8",
+          cacheControl: bootFileCacheControl
         });
       }
       let match$9 = hostUiBundle.bakedManifest;
@@ -2623,11 +2627,13 @@ function Make($star) {
           ]) : computed;
         return JSON.stringify(Util_ShellConfig$ReventlessAws.fields(withEvents, hostUiBundle.viewModes, hostUiBundle.bakedManifest, hostUiBundle.uiSlotsFile, hostUiBundle.shellConfig));
       });
+      let bootFileCacheControl = "no-cache";
       new (Aws.s3.BucketObject)("host-ui-config-json", {
         bucket: bucketName,
         key: "config.json",
         content: configJsonContent,
-        contentType: "application/json"
+        contentType: "application/json",
+        cacheControl: bootFileCacheControl
       });
       let hintsPath = hostUiBundle.uiHintsFile;
       if (hintsPath !== undefined) {
@@ -2636,7 +2642,8 @@ function Make($star) {
           bucket: bucketName,
           key: "ui-hints.json",
           content: hintsContent,
-          contentType: "application/json"
+          contentType: "application/json",
+          cacheControl: bootFileCacheControl
         });
       }
       let slotsPath = hostUiBundle.uiSlotsFile;
@@ -2646,7 +2653,8 @@ function Make($star) {
           bucket: bucketName,
           key: Platform_UiSlots$ReventlessCore.fileName,
           content: slotsContent,
-          contentType: "application/javascript; charset=utf-8"
+          contentType: "application/javascript; charset=utf-8",
+          cacheControl: bootFileCacheControl
         });
       }
       let match$9 = hostUiBundle.bakedManifest;

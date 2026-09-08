@@ -234,6 +234,7 @@ module PutObjectCommand = {
     body: body,
     @as("ContentLength") contentLength?: int,
     @as("ContentType") contentType?: string,
+    @as("CacheControl") cacheControl?: string,
   }
 
   type output = {@as("ETag") eTag: string, @as("VersionId") versionId: string}

@@ -645,6 +645,11 @@ let runBake = async (
         key,
         body: AwsSdk.S3.PutObjectCommand.bodyFromString(body),
         contentType: "application/json",
+        // Stable-named, rewritten in place every deploy — `Plugin_Stack.cacheControlFor`'s
+        // rule. This file needs it most: it is written AFTER the deploy's `/*`
+        // invalidation, so nothing else dislodges a stale copy, and a shell
+        // holding one queries fields the API no longer has.
+        cacheControl: "no-cache",
       })->AwsSdk.S3.PutObjectCommand.send
       let report = Dict.fromArray([
         ("baked", JSON.Encode.bool(true)),

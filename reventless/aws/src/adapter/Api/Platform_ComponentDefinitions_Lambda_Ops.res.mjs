@@ -550,7 +550,8 @@ async function runBake(target, structures) {
       Bucket: target.bucket,
       Key: key,
       Body: body,
-      ContentType: "application/json"
+      ContentType: "application/json",
+      CacheControl: "no-cache"
     }));
     let report = Object.fromEntries([
       [

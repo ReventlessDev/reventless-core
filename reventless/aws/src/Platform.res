@@ -2321,6 +2321,11 @@ module MakeWithConfig = (
           ->JSON.stringify
         })
 
+      // `Plugin_Stack.cacheControlFor`'s rule, for this file and the two below:
+      // the content changes across deploys while the URL does not, so without it
+      // CloudFront and the browser serve the previous deploy's answer.
+      let bootFileCacheControl = Pulumi.Input.make("no-cache")
+
       let _ = PulumiAws.S3.BucketObject.make(
         ~name="host-ui-config-json",
         ~args={
@@ -2328,6 +2333,7 @@ module MakeWithConfig = (
           key: Pulumi.Input.make("config.json"),
           content: configJsonContent->Pulumi.Output.asInput,
           contentType: Pulumi.Input.make("application/json"),
+          cacheControl: bootFileCacheControl,
         },
       )
 
@@ -2350,6 +2356,7 @@ module MakeWithConfig = (
             key: Pulumi.Input.make("ui-hints.json"),
             content: Pulumi.Input.make(hintsContent),
             contentType: Pulumi.Input.make("application/json"),
+            cacheControl: bootFileCacheControl,
           },
         )
       }
@@ -2386,6 +2393,7 @@ module MakeWithConfig = (
             key: Pulumi.Input.make(ReventlessCore.Platform_UiSlots.fileName),
             content: Pulumi.Input.make(slotsContent),
             contentType: Pulumi.Input.make("application/javascript; charset=utf-8"),
+            cacheControl: bootFileCacheControl,
           },
         )
       }
