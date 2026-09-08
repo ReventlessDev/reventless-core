@@ -56,6 +56,13 @@ const RETIREMENTS = [
   ['lifecycle', ['Archived', 'Discontinued']],
 ]
 const ELEVATED = ['Admin']
+// A view that declares no row image, and the most involved expression
+// `RowImage.jsExpr` emits — a member read off the first element of an array
+// field. Both are pasted into the reference door's response as source.
+const IMAGES = [
+  ['none', undefined],
+  ['member', "(row['images'] ?? [])[0]?.['url'] ?? null"],
+]
 
 /** @returns {Array<[string, string]>} [name, code] for every unit to validate. */
 const generateUnits = () => {
@@ -81,9 +88,14 @@ const generateUnits = () => {
       push(`queryByIndexSortFiltered__${tag}`, F.queryByIndexSortFiltered('byCust', 'custId', owner, 'placedAt', retiredField, retiredValues, ELEVATED))
       push(`listAllItemsConnection__${tag}`, F.listAllItemsConnection('name', ['kind'], ['price'], ['name'], false, owner, ELEVATED, retiredField, retiredValues))
       // `namedWhenRetired` changes which rows the reference door lets through,
-      // so both arms are generated code worth compiling.
+      // and `imageExpr` is pasted into the response body verbatim, so all four
+      // arms are generated code worth compiling. The argument order is the
+      // ReScript signature's, positionally — an optional label added in the
+      // middle of `refsByIds` silently shifts every one of these.
       for (const named of [true, false])
-        push(`refsByIds__${tag}_named${named}`, F.refsByIds('name', retiredField, retiredValues, named, owner, ELEVATED)('TestTable'))
+        for (const [imageTag, imageExpr] of IMAGES)
+          push(`refsByIds__${tag}_named${named}_image${imageTag}`,
+            F.refsByIds('name', retiredField, retiredValues, named, imageExpr, owner, ELEVATED)('TestTable'))
       // `@resolvesMany` carries the target's guards, and a target with a sort
       // key builds a two-part BatchGetItem key — both arms are generated code.
       for (const sort of [undefined, 'sk'])
