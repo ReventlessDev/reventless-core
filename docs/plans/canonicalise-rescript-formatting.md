@@ -118,8 +118,15 @@ green.
 
 ```bash
 pnpm run format:res
+pnpm run format:res:check           # MUST be clean before committing — see below
 git status --short | wc -l          # expect ~984 modified .res/.resi
 ```
+
+**Run the formatter until the check is clean, not once.** `format(format(x)) == format(x)` holds
+for a file that is already canonical, but a single pass does not always reach the fixpoint *from*
+a non-canonical one: a trailing comment inside a call argument can need two passes to settle onto
+its own line. It converges — this is a fixpoint reached in two iterations, not a cycle — but
+commit the one-pass output and CI goes red on a file the formatter itself just wrote.
 
 Commit as a single mechanical change, nothing else in it:
 
@@ -152,6 +159,22 @@ Add that line to whatever the repo's setup path is (`scripts/setup.mjs` is the n
 so a fresh clone picks it up. Treat the file as **append-only**: every future re-canonicalisation
 adds a line, and rewriting the step-2 commit silently invalidates the entry.
 
+**Set the config before the reprint lands, not after.** GitLens supports the file — it passes
+`--ignore-revs-file` — but caches the resolution for two hours (`accessTTL: 72e5`) on top of its
+per-document blame cache. Configure it afterwards and the editor keeps crediting reprinted lines
+to the reprint for hours while command-line `git blame` is already correct, which looks exactly
+like the ignore file not working. `Developer: Reload Window` clears it.
+
+**Calibrate what this file actually buys — it is less than it looks.** Git's own content matching
+already credits the original author for the large majority of reprinted lines, unaided. What
+defeats blame is not the reprint per se but *re-indentation*, which turns short generic lines
+(`)`, `| _ =>`, a bare identifier) into whitespace-only changes git cannot uniquely match — and
+`--ignore-revs-file` cannot recover those either, because the line's content did not exist in the
+parent. The lever that recovers them is whitespace-insensitive blame (`git blame -w`, and the
+editor setting in step 5), not this file. Keep the file regardless: GitHub's web blame reads it
+independently of local config and it costs nothing. But if a line still blames to the reprint,
+check the editor's whitespace setting and cache before suspecting this.
+
 ### 4. The CI guard
 
 Without this the tree drifts straight back and the bill is paid twice. In
@@ -172,16 +195,33 @@ covers everything.
 
 ### 5. State the position in the editor config
 
-Append to `.vscode/settings.json`:
+**First: `.vscode` is ignored wholesale (`.gitignore` line 5), so nothing in this step can be
+committed as things stand.** Git does not descend into an ignored directory, so a negation on its
+own is inert — the directory pattern itself has to give way:
+
+```
+.vscode/*
+!.vscode/settings.json
+```
+
+That keeps every other file in `.vscode/` ignored exactly as before. Then append to
+`.vscode/settings.json`:
 
 ```json
   "[rescript]": {
     "editor.formatOnSave": true
-  }
+  },
+  "gitlens.blame.ignoreWhitespace": true
 ```
 
-Once the tree is canonical this is correct for everyone, and committing it makes the position
+Once the tree is canonical the first is correct for everyone, and committing it makes the position
 a repo fact rather than a per-user accident. Commit with step 1.
+
+**The second line is what actually protects `git blame` through the reprint** — more than step 3
+does. GitLens defaults `blame.ignoreWhitespace` to **false**, so out of the box it credits every
+re-indented line to the reprint. Turning it on moves roughly two thirds of those lines back to
+whoever wrote them; what survives is bracket and blank lines, which nobody selects. Reload the
+window after committing it, since the setting is read once and cached.
 
 ### 6. Verification
 
