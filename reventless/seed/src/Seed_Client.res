@@ -301,7 +301,19 @@ let attempts = 4
  * fixed delay would have the whole batch retry in lockstep and rebuild the same
  * burst that provoked the fault.
  */
-let gql = async (t: t, ~query: string, ~label: string): JSON.t => {
+/** What a document came back as. `Errors` carries both the raw array — so a
+    caller can classify it, e.g. as a refusal — and the message `gql` would have
+    thrown, so the two paths cannot describe the same failure differently. */
+type failure = {errors: JSON.t, message: string}
+type outcome = Data(JSON.t) | Errors(failure)
+
+/**
+ * Sends one document and reports what came back, resending a transient fault
+ * along the way. Returning the errors rather than throwing is what lets a caller
+ * treat a refusal as an *answer* — which the authorization probe needs and
+ * seeding must never do.
+ */
+let gqlOutcome = async (t: t, ~query: string, ~label: string): outcome => {
   let headers = Dict.fromArray([("content-type", "application/json")])
   switch t.token {
   | Some(token) => headers->Dict.set("authorization", `Bearer ${token}`)
@@ -310,7 +322,7 @@ let gql = async (t: t, ~query: string, ~label: string): JSON.t => {
   let body = JSON.stringify(
     JSON.Encode.object(Dict.fromArray([("query", JSON.Encode.string(query))])),
   )
-  let rec attempt = async (n: int): JSON.t => {
+  let rec attempt = async (n: int): outcome => {
     let res = try await fetch(t.config.endpoint, {method: "POST", headers, body}) catch {
     | _ =>
       throw(Failed(`${label}: cannot reach ${t.config.endpoint} — is the platform running?`))
@@ -330,19 +342,51 @@ let gql = async (t: t, ~query: string, ~label: string): JSON.t => {
         | Some(summary) => `\n  identity: ${summary}`
         | None => ""
         }
-        throw(
-          Failed(
-            `${label} failed\n  query: ${query}\n  response: ${JSON.stringify(
-                errors,
-              )}${identity}${tried}`,
-          ),
-        )
+        Errors({
+          errors,
+          message: `${label} failed\n  query: ${query}\n  response: ${JSON.stringify(
+              errors,
+            )}${identity}${tried}`,
+        })
       }
-    | None => json->field("data")->Option.getOr(JSON.Encode.null)
+    | None => Data(json->field("data")->Option.getOr(JSON.Encode.null))
     }
   }
   await attempt(1)
 }
+
+let gql = async (t: t, ~query: string, ~label: string): JSON.t =>
+  switch await gqlOutcome(t, ~query, ~label) {
+  | Data(data) => data
+  | Errors({message}) => throw(Failed(message))
+  }
+
+/**
+ * Whether the endpoint let this caller through, for a probe that means to find
+ * out rather than to succeed.
+ *
+ * Three outcomes and not two: "not refused" and "worked" are different claims,
+ * and collapsing them would let a misspelled field name read as a passing
+ * authorization check. `Granted` covers a domain rejection too — a
+ * `CommandRejected` arrives inside `data` with no GraphQL error, which is
+ * precisely how a probe confirms access without writing anything.
+ */
+type access =
+  | Granted
+  | Refused
+  | // Served, and carrying nothing. Its own case because the two platforms deny a
+    // read differently: AppSync answers `Unauthorized`, while the local resolver's
+    // interceptor returns an empty connection — so on local an unauthorized read
+    // and an empty view are the same response, and no caller can tell them apart.
+    // Naming it lets a probe say "consistent with a denial" instead of guessing.
+    Empty
+  | Broke(string)
+
+let checkAccess = async (t: t, ~query: string, ~label: string): access =>
+  switch await gqlOutcome(t, ~query, ~label) {
+  | Data(_) => Granted
+  | Errors({errors, message}) => errors->isDenied ? Refused : Broke(message)
+  }
 
 // ── Commands ────────────────────────────────────────────────────────────────
 
@@ -372,6 +416,61 @@ let send = async (t: t, m: mutation, ~tolerate: array<string>=[]): option<string
       throw(Failed(`${label} was rejected\n  errorCode: ${code}\n  errorDetail: ${detail}`))
     }
   | _ => None
+  }
+}
+
+/**
+ * Whether this caller may issue one command — asked with the very document
+ * `send` would have sent, so what the probe tests is what the seed actually
+ * uses rather than a hand-built lookalike.
+ *
+ * Pair it with a payload the domain would refuse anyway. Then `Granted` arrives
+ * as a `CommandRejected` inside `data`, which appends nothing: the probe learns
+ * that the door opened without walking through it, and a regression that wrongly
+ * opens a door still writes no events.
+ */
+/** Refusal codes a command result carries. The two platforms answer a refused
+    command differently — AppSync rejects at the field and produces a GraphQL
+    `Unauthorized` error, while the local resolver runs the command handler and
+    answers `CommandRejected { errorCode: "Forbidden" }` inside `data`. Reading
+    only the first reports the second as allowed. */
+let deniedCommandCodes = ["Forbidden", "Unauthorized", "AccessDenied"]
+
+let isDeniedResult = (result: JSON.t): bool =>
+  switch (result->nodeString("errorCode"), result->nodeString("errorDetail")) {
+  | (Some(code), _) if deniedCommandCodes->Array.includes(code) => true
+  | (_, Some(detail)) => detail->String.toLowerCase->String.includes("not authorized")
+  | _ => false
+  }
+
+let checkCommandAccess = async (t: t, m: mutation): access =>
+  switch await gqlOutcome(
+    t,
+    ~query=`mutation { r: ${m.field}(${m.args->renderArgs}) { ${commandResultSelection} } }`,
+    ~label=m->describe,
+  ) {
+  | Errors({errors, message}) => errors->isDenied ? Refused : Broke(message)
+  // No GraphQL error is not yet a grant: the local platform's refusal lives in
+  // the command result, so the domain's own answer has to be read too. Any other
+  // rejection IS a grant — the door opened and the domain refused what came
+  // through it, which is exactly the outcome a non-writing probe wants.
+  | Data(data) =>
+    data->field("r")->Option.getOr(JSON.Encode.null)->isDeniedResult ? Refused : Granted
+  }
+
+/** Whether this caller may read one connection field. One row is enough: the
+    door is answered by the first request, not by the page behind it — but
+    whether a row came back is what separates a grant from a silent denial. */
+let checkQueryAccess = async (t: t, ~field as fieldName: string): access => {
+  let query = `{ ${fieldName}(first: 1) { edges { node { id } } } }`
+  switch await gqlOutcome(t, ~query, ~label=fieldName) {
+  | Errors({errors, message}) => errors->isDenied ? Refused : Broke(message)
+  | Data(data) =>
+    let edges = switch data->field(fieldName)->Option.flatMap(c => c->field("edges")) {
+    | Some(Array(rows)) => rows->Array.length
+    | _ => 0
+    }
+    edges > 0 ? Granted : Empty
   }
 }
 

@@ -243,7 +243,7 @@ function isDenied(errors) {
   }
 }
 
-async function gql(t, query, label) {
+async function gqlOutcome(t, query, label) {
   let headers = Object.fromEntries([[
       "content-type",
       "application/json"
@@ -274,7 +274,10 @@ async function gql(t, query, label) {
     let json = await res.json();
     let errors = field(json, "errors");
     if (errors === undefined) {
-      return Stdlib_Option.getOr(field(json, "data"), null);
+      return {
+        TAG: "Data",
+        _0: Stdlib_Option.getOr(field(json, "data"), null)
+      };
     }
     if (isTransient(errors) && n < 4) {
       await sleep((250 * (1 << (n - 1 | 0)) | 0) + (Math.random() * 250 | 0) | 0);
@@ -283,13 +286,43 @@ async function gql(t, query, label) {
     let tried = n > 1 ? `\n  gave up after ` + n.toString() + ` attempts` : "";
     let summary = isDenied(errors) ? identitySummary(t) : undefined;
     let identity = summary !== undefined ? `\n  identity: ` + summary : "";
-    throw {
-      RE_EXN_ID: Seed_Types$ReventlessSeed.Failed,
-      _1: label + ` failed\n  query: ` + query + `\n  response: ` + JSON.stringify(errors) + identity + tried,
-      Error: new Error()
+    return {
+      TAG: "Errors",
+      _0: {
+        errors: errors,
+        message: label + ` failed\n  query: ` + query + `\n  response: ` + JSON.stringify(errors) + identity + tried
+      }
     };
   };
   return await attempt(1);
+}
+
+async function gql(t, query, label) {
+  let data = await gqlOutcome(t, query, label);
+  if (data.TAG === "Data") {
+    return data._0;
+  }
+  throw {
+    RE_EXN_ID: Seed_Types$ReventlessSeed.Failed,
+    _1: data._0.message,
+    Error: new Error()
+  };
+}
+
+async function checkAccess(t, query, label) {
+  let match = await gqlOutcome(t, query, label);
+  if (match.TAG === "Data") {
+    return "Granted";
+  }
+  let match$1 = match._0;
+  if (isDenied(match$1.errors)) {
+    return "Refused";
+  } else {
+    return {
+      TAG: "Broke",
+      _0: match$1.message
+    };
+  }
 }
 
 let commandResultSelection = `__typename
@@ -319,6 +352,68 @@ async function send(t, m, tolerateOpt) {
     _1: label + ` was rejected\n  errorCode: ` + code + `\n  errorDetail: ` + detail,
     Error: new Error()
   };
+}
+
+let deniedCommandCodes = [
+  "Forbidden",
+  "Unauthorized",
+  "AccessDenied"
+];
+
+function isDeniedResult(result) {
+  let match = nodeString(result, "errorCode");
+  let match$1 = nodeString(result, "errorDetail");
+  if (match !== undefined && deniedCommandCodes.includes(match)) {
+    return true;
+  }
+  if (match$1 !== undefined) {
+    return match$1.toLowerCase().includes("not authorized");
+  } else {
+    return false;
+  }
+}
+
+async function checkCommandAccess(t, m) {
+  let data = await gqlOutcome(t, `mutation { r: ` + m.field + `(` + Seed_Types$ReventlessSeed.renderArgs(m.args) + `) { ` + commandResultSelection + ` } }`, Seed_Types$ReventlessSeed.describe(m));
+  if (data.TAG === "Data") {
+    if (isDeniedResult(Stdlib_Option.getOr(field(data._0, "r"), null))) {
+      return "Refused";
+    } else {
+      return "Granted";
+    }
+  }
+  let match = data._0;
+  if (isDenied(match.errors)) {
+    return "Refused";
+  } else {
+    return {
+      TAG: "Broke",
+      _0: match.message
+    };
+  }
+}
+
+async function checkQueryAccess(t, fieldName) {
+  let query = `{ ` + fieldName + `(first: 1) { edges { node { id } } } }`;
+  let data = await gqlOutcome(t, query, fieldName);
+  if (data.TAG === "Data") {
+    let match = Stdlib_Option.flatMap(field(data._0, fieldName), c => field(c, "edges"));
+    let edges = Array.isArray(match) ? match.length : 0;
+    if (edges > 0) {
+      return "Granted";
+    } else {
+      return "Empty";
+    }
+  }
+  let match$1 = data._0;
+  if (isDenied(match$1.errors)) {
+    return "Refused";
+  } else {
+    return {
+      TAG: "Broke",
+      _0: match$1.message
+    };
+  }
 }
 
 async function sendAll(t, mutations) {
@@ -455,9 +550,15 @@ export {
   isTransient,
   isDenied,
   attempts,
+  gqlOutcome,
   gql,
+  checkAccess,
   commandResultSelection,
   send,
+  deniedCommandCodes,
+  isDeniedResult,
+  checkCommandAccess,
+  checkQueryAccess,
   sendAll,
   queryAllNodes,
   countNodes,
