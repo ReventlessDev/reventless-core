@@ -2,7 +2,8 @@
 .merlin
 .env
 .history
-.vscode
+.vscode/*
+!.vscode/settings.json
 npm-debug.log
 **/lib
 /node_modules/

@@ -1,0 +1,13 @@
+{
+  "ocaml.sandbox": {
+    "kind": "opam",
+    "switch": "5.2.1"
+  },
+  "rescript.settings.incrementalTypechecking.enable": false,
+  "todo-tree.ripgrep.ripgrep": "/opt/homebrew/bin/rg",
+  "commentTranslate.hover.enabled": false,
+  "[rescript]": {
+    "editor.formatOnSave": true
+  },
+  "gitlens.blame.ignoreWhitespace": true
+}
