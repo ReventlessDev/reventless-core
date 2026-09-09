@@ -223,8 +223,17 @@ jobs:
       # one ->Option.map. It reaches nothing else — the hazard needs a live
       # Pulumi runtime, so the jest suites cannot see it, and it has escaped to
       # production twice. Runs without a build because it reads .res sources.
+      #
+      # Invoked as plain `node`, and so the one unguarded step in this job. Via
+      # `pnpm run` it was unguarded but not actually runnable: every setup step
+      # above is conditional, so a commit affecting no test project — scripts or
+      # docs alone — skipped `Setup pnpm` and reached this line with no pnpm on
+      # PATH, failing the build at 127 while checking nothing. The script imports
+      # only node builtins and shells to `git ls-files`, so it needs neither
+      # node_modules nor the pinned toolchain, and now runs on every commit as
+      # the comment above always claimed.
       - name: Check no Pulumi Output reaches an option combinator
-        run: pnpm run check:pulumi-option
+        run: node ./scripts/check-pulumi-option.mjs
 
       # A declared slot module is imported by the browser straight from the
       # served origin, with no bundler and no import map — so it has to compile
