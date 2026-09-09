@@ -123,9 +123,63 @@ const DECL_OPTION = /(?:^|[\s~({,])([a-z_][A-Za-z0-9_']*)\s*:\s*((?:ref<)?option
 const DECL_OPTIONAL = /(?:^|[\s~({,])([a-z_][A-Za-z0-9_']*)\s*\?\s*:\s*([^\n]*)/
 const isOutput = (type) => /(?:Pulumi\.)?(?:Output|Input)\./.test(type)
 
+// Angle-bracket depth, ignoring the two operators that merely contain a bracket.
+// `>=` is deliberately NOT one of them: in ReScript that is a closing bracket
+// meeting an argument default (`option<T>=?`, `option<T>=None`), and reading it
+// as a comparison leaves the type looking unclosed — which pulls the NEXT
+// declaration's type in and reports the wrong name.
+const angleDepth = (s) => {
+  const t = s.replace(/->|=>/g, "")
+  return (t.match(/</g) || []).length - (t.match(/>/g) || []).length
+}
+
+// `[^\n]*` is greedy to end of line, so a capture runs past the declaration's
+// own type — in `(logGroup: option<LogGroup.t>): option<Pulumi.Input.t<_>>` it
+// swallows the RETURN type and reports it against `logGroup`. Cutting at the
+// matching close keeps each name judged on its own type. Arrows become spaces
+// rather than vanishing, so the slice index still lines up with the input.
+const truncateAtClose = (s) => {
+  const t = s.replace(/->|=>/g, "  ")
+  let depth = 0
+  for (let k = 0; k < t.length; k++) {
+    if (t[k] === "<") depth++
+    else if (t[k] === ">" && --depth === 0) return s.slice(0, k + 1)
+  }
+  return s
+}
+
+// The formatter wraps a long annotation, so a type can span lines:
+//
+//   let handlerConfigsInput: option<
+//     Pulumi.Input.t<ChannelNamespace.handlerConfigsArgs>,
+//   > = …
+//
+// Read one line at a time that captures the bare `option<` and classifies it as
+// an option of something else — which loses the site AND poisons
+// `namesOtherOption`, silently disabling Rule 2 for the name everywhere. So a
+// type left open at end of line pulls in its continuations before classifying;
+// only unbalanced types extend, so single-line declarations are untouched.
+const declaredType = (lines, i, type) => {
+  let joined = type
+  for (let j = i + 1; angleDepth(joined) > 0 && j < lines.length && j - i <= 12; j++) {
+    joined += " " + lines[j].replace(/\/\/.*$/, "").trim()
+  }
+  return truncateAtClose(joined)
+}
+
 const declaredOutput = new Map() // "file::name" -> {file, name, line}
+// Every name seen in a declaration position, however it was classified. This is
+// what lets a missing allowlist entry be diagnosed instead of assumed: a name
+// still declared here but absent from `declaredOutput` was READ and rejected,
+// which is a different event from a name that is gone.
+const declaredAny = new Map() // "file::name" -> {file, name, line, type}
 const namesOutput = new Set()
 const namesOtherOption = new Set()
+
+const noteDeclaration = (file, name, line, type) => {
+  const key = `${file}::${name}`
+  if (!declaredAny.has(key)) declaredAny.set(key, { file, name, line, type })
+}
 
 for (const file of sources) {
   const lines = fs.readFileSync(path.join(ROOT, file), "utf8").split("\n")
@@ -135,7 +189,9 @@ for (const file of sources) {
 
     const opt = DECL_OPTION.exec(line)
     if (opt) {
-      const [, name, type] = opt
+      const [, name, rawType] = opt
+      const type = declaredType(lines, i, rawType)
+      noteDeclaration(file, name, i + 1, type)
       if (/option<\s*(?:Pulumi\.)?(?:Output|Input)\./.test(type)) {
         // Rule 1's population: the spelling CLAUDE.md bans.
         declaredOutput.set(`${file}::${name}`, { file, name, line: i + 1 })
@@ -148,7 +204,9 @@ for (const file of sources) {
 
     const optional = DECL_OPTIONAL.exec(line)
     if (optional) {
-      const [, name, type] = optional
+      const [, name, rawType] = optional
+      const type = declaredType(lines, i, rawType)
+      noteDeclaration(file, name, i + 1, type)
       // A `name?: NonOutput` declaration is what disambiguates: it proves the
       // name is used for an option of something that is not a Proxy, so Rule 2
       // must not claim it. `name?: Pulumi.Input.t<…>` contributes nothing — it
@@ -192,8 +250,25 @@ for (const file of sources) {
   })
 }
 
-// Allowlist entries whose site is gone: the population shrank, so the list should.
-const stale = [...ALLOWLIST].filter((k) => !declaredOutput.has(k))
+// An allowlist entry can fall out of `declaredOutput` two ways, and they call
+// for opposite responses — so the check must not report one as the other.
+//
+//   gone         the name is not declared in that file any more. The ratchet
+//                working as designed: the site was removed, so remove the entry.
+//
+//   unrecognised the declaration is still sitting there, and the scanner read it
+//                and did not classify it as `option<Pulumi.Output.t<_>>`.
+//
+// The second is what a formatter reflow produced here: wrapping a long
+// annotation across lines left two live sites unreadable, and — because an
+// unclassified name lands in `namesOtherOption` — silently switched Rule 2 off
+// for them repo-wide. The old message called both "the site is gone, remove
+// them", so following it would have retired two working guards and gone green
+// forever. Whatever the scanner actually parsed is printed with the second kind,
+// because that string is the evidence for which of the two you are looking at.
+const missing = [...ALLOWLIST].filter((k) => !declaredOutput.has(k))
+const stale = missing.filter((k) => !declaredAny.has(k))
+const unrecognised = missing.filter((k) => declaredAny.has(k)).map((k) => declaredAny.get(k))
 
 let failed = false
 
@@ -228,9 +303,32 @@ if (newDeclarations.length) {
 
 if (stale.length) {
   failed = true
-  console.error(`\n${stale.length} stale allowlist entr(ies) — the site is gone, remove them:\n`)
+  console.error(
+    `\n${stale.length} stale allowlist entr(ies) — the name is no longer declared ` +
+      `in that file, remove them:\n`,
+  )
   for (const k of stale) console.error(`  ${k}`)
   console.error("")
+}
+
+if (unrecognised.length) {
+  failed = true
+  console.error(
+    `\n${unrecognised.length} allowlisted site(s) still declared, but no longer ` +
+      `read as option<Pulumi.Output.t<_>>:\n`,
+  )
+  for (const u of unrecognised) {
+    console.error(`  ${u.file}:${u.line}  ${u.name}`)
+    console.error(`    parsed as: ${u.type}`)
+  }
+  console.error(
+    "\nRead the declaration before touching the allowlist. If the type genuinely\n" +
+      "changed, the entry has done its job — drop it. If it still spells\n" +
+      "option<Pulumi.Output.t<_>>, this scanner has stopped seeing it: fix the\n" +
+      "scanner, because an unclassified name also falls out of Rule 2, so the\n" +
+      "->Option.map guard is off for it everywhere until the type parses again.\n" +
+      "Deleting the entry here would make that permanent, and green.\n",
+  )
 }
 
 if (failed) process.exit(1)
