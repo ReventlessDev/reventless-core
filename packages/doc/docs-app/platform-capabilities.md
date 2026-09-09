@@ -248,7 +248,7 @@ defined; **one has a transport today**:
 |---|---|---|
 | `Email` | `Email.t` | Provisioned — SES, or a log transport that prints and sends nothing |
 | `Sms` | `Phone.t` | No transport. `messagingSmsSender` is carried so a stack can state the number, but nothing reads it |
-| `Push` | `{deviceToken: string}` | Defined only |
+| `Push` | `Messaging.pushAddress` | Defined only |
 
 A channel appears when a transport does, not when its config key exists — claiming
 one ahead of its backend would collect preferences that silently deliver nothing.
@@ -257,29 +257,71 @@ addressed and routed, and what is missing in each case is the provider binding.
 
 A `(channel, address)` pair can be built wrong — `Sms` beside an email address
 compiles and fails at the provider — so `recipient` fuses them and the channel is
-read back off the value that carries it. A send answers a receipt or one of three
+read back off the value that carries it. A send answers a receipt or one of four
 failures, and the split is the retry rule: `Unavailable` retries, while
-`UnsupportedChannel` and `Refused` do not. Everything that sweeps a failed send
-derives from `Messaging.retriable` rather than re-reading the constructors.
+`UnsupportedChannel`, `UnsupportedPushService` and `Refused` do not. Everything
+that sweeps a failed send derives from `Messaging.retriable` rather than re-reading
+the constructors.
+
+### Push is one channel and three provisionings
+
+`Push` is the one channel whose address is a variant rather than a branded scalar,
+because the shapes do not agree:
+
+| Arm | Shape | Issued by |
+|---|---|---|
+| `Apns` | `{deviceToken: string}` | Apple, against a signing key, team id and bundle id |
+| `Fcm` | `{registrationToken: string}` | Google, against a service-account credential |
+| `WebPush` | `{endpoint, p256dh, auth}` | the browser, sealed with a VAPID keypair |
+
+Email needs no such split: one sender provisioning reaches every mailbox, because
+SMTP routes off the address. **Push has no routing layer.** Which service can reach
+a device is fixed by which credential the deployment holds, and there is nothing in
+the address to route on — so provisioning one gives you none of the others, and they
+fail independently.
+
+The channel deliberately stays one arm anyway. Splitting it three ways would offer a
+person a choice between notification services, which is not a choice anyone has: an
+app knows its own token, and nobody prefers APNs. So the selector keeps three arms
+and the discrimination lives one level down, on the address and on what a provider
+publishes.
 
 ### Read `provider.channels` before offering a choice
 
-The provider publishes what it can attempt:
+The provider publishes what it can attempt — twice, at two granularities:
 
 ```rescript
 type provider = {
   channels: array<Messaging.channel>,
+  pushServices: array<Messaging.pushService>,
   send: send,
 }
 ```
 
-**A preference centre must render that list, not the three above.** Offering a
+**A capability publishes what it can reach, at the granularity a caller must choose
+at — and when those two granularities differ, it publishes both.** That is the
+general rule, not a fact about messaging: it recurs anywhere one selector is served
+by several independently provisioned providers. Push is the worked example. A person
+picks a channel, so `channels` is what a preference centre renders; a token is
+reachable only through its own service, so `pushServices` is what
+`Messaging.supports` checks a `ToPush` against. Answering push off `channels` would
+call an APNs token supported on a deployment holding only an FCM credential, and
+leave the caller to find out by spending a real message.
+
+The two cannot disagree, because `channels` is **derived**: build a provider through
+`Messaging.makeProvider`, which appends `Push` exactly when `pushServices` is
+non-empty. Stating that as an invariant beside two independently written fields is
+how it stops being true.
+
+**A preference centre must render `channels`, not the three above.** Offering a
 channel nothing can deliver on collects a subscription that never arrives, and
-discovering a channel by failing on it costs a real message. `Messaging.supports`
-is the check, and it applies the same rule the provider applies internally, so the
-two cannot disagree. An empty list means no channel at all — which is the shape
-`Capabilities.none` takes, and what the deploy gate exists to catch before it
-ships.
+discovering a channel by failing on it costs a real message. `Messaging.supports` is
+the check, and it applies the same rule the provider applies internally, so the two
+cannot disagree. An empty list means no channel at all — which is the shape
+`Capabilities.none` takes, and what the deploy gate exists to catch before it ships.
+A deployment that provisions *some* push but not this address's service gets
+`UnsupportedPushService`, which names the service; `UnsupportedChannel(Push)` keeps
+its narrower meaning of no push at all.
 
 This matters because the domain side has its own copy. The notification trait's
 `Notification_Rules.channel` mirrors all three — it is the domain's vocabulary,
@@ -289,6 +331,14 @@ a recipient *can* be recorded as subscribed on a channel this deployment will th
 answer `UnsupportedChannel` for. Nothing is wrong with that: the record is a
 preference, and the guard is reading `provider.channels` at the point a choice is
 offered.
+
+The trait's recipient directory also shows what un-fusing a recipient costs. It
+stores a channel beside one flat `address: string` and re-fuses them on send, which
+round-trips for email and SMS and cannot round-trip push at all — one string names
+neither the issuing service nor a Web Push subscription's keys. So the generated
+`recipientFor` refuses `Push` and records a delivery failure saying why, rather than
+guessing a service. A push transport arrives with the stored shape it needs, in the
+commit that justifies the columns.
 
 ## Configuration
 

@@ -76,8 +76,13 @@ let send = async (
   }
 
 /** The port, closed over the deployment's sender. What a Lambda entry point puts
-    on `Capabilities.messaging`. */
-let provider = (~sender: string): Reventless.Messaging.provider => {
-  channels: channels(~sender),
-  send: (~recipient, ~message) => send(~sender, ~recipient, ~message),
-}
+    on `Capabilities.messaging`.
+
+    No push service, so `makeProvider` publishes no `Push` channel. SES is an email
+    transport; a push one would be a separate provisioning with its own
+    credential. */
+let provider = (~sender: string): Reventless.Messaging.provider =>
+  Reventless.Messaging.makeProvider(~emailAndSms=channels(~sender), ~pushServices=[], ~send=(
+    ~recipient,
+    ~message,
+  ) => send(~sender, ~recipient, ~message))

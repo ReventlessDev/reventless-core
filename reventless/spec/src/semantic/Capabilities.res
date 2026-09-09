@@ -50,10 +50,8 @@ let none: t = {
   // `UnsupportedChannel` because a caller that got this far is looking at a
   // deployment gap, not at a fact about the recipient, and abandoning the message
   // would record the second.
-  messaging: {
-    channels: [],
-    send: async (~recipient as _, ~message as _) => Error(
-      Unavailable("no messaging provider is configured for this platform"),
-    ),
-  },
+  messaging: Messaging.makeProvider(~emailAndSms=[], ~pushServices=[], ~send=async (
+    ~recipient as _,
+    ~message as _,
+  ) => Error(Unavailable("no messaging provider is configured for this platform"))),
 }

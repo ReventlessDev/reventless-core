@@ -90,8 +90,12 @@ let send = async (
   }
 
 /** The port, closed over the sender this platform was given. What a platform's
-    capability record carries when logging is the chosen transport. */
-let provider = (~sender: string): Reventless.Messaging.provider => {
-  channels: channels(~sender),
-  send: (~recipient, ~message) => send(~sender, ~recipient, ~message),
-}
+    capability record carries when logging is the chosen transport.
+
+    No push service, so `makeProvider` publishes no `Push` channel — the same
+    empty answer this transport gives for SMS, and for the same reason. */
+let provider = (~sender: string): Reventless.Messaging.provider =>
+  Reventless.Messaging.makeProvider(~emailAndSms=channels(~sender), ~pushServices=[], ~send=(
+    ~recipient,
+    ~message,
+  ) => send(~sender, ~recipient, ~message))

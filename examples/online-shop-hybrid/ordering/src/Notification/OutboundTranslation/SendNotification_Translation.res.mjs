@@ -36,11 +36,8 @@ function recipientFor(item) {
       }));
     case "Push" :
       return {
-        TAG: "Ok",
-        _0: {
-          TAG: "ToPush",
-          deviceToken: item.address
-        }
+        TAG: "Error",
+        _0: "a push address names its issuing service, and the directory stores one flat address"
       };
   }
 }

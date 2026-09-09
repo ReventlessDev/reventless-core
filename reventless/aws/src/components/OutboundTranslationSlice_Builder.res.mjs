@@ -92,4 +92,4 @@ export {
   DeployTimeCapabilities,
   Make,
 }
-/* Component-ReventlessCore Not a pure module */
+/* Capabilities-Reventless Not a pure module */

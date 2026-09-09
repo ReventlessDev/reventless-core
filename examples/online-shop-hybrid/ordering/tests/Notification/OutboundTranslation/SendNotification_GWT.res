@@ -23,10 +23,10 @@ let item: SendNotification.outboundItem = {
 let withProvider = (answer: result<Reventless.Messaging.receipt, Reventless.Messaging.failure>) => {
   let capabilities: Reventless.Capabilities.t = {
     ...Reventless.Capabilities.none,
-    messaging: {
-      channels: [Email],
-      send: (~recipient as _, ~message as _) => Promise.resolve(answer),
-    },
+    messaging: Reventless.Messaging.makeProvider(~emailAndSms=[Email], ~pushServices=[], ~send=(
+      ~recipient as _,
+      ~message as _,
+    ) => Promise.resolve(answer)),
   }
   (id, item) => SendNotification_Translation.translate(id, item, ~capabilities)
 }
@@ -76,6 +76,23 @@ describe("SendNotification OutboundTranslationSlice", () => {
         recipientId: "c1",
         reference: "confirm:o1",
         reason: "this deployment provisions no Sms channel",
+      }),
+    )
+  )
+
+  // A push preference the directory cannot address. One flat string names neither
+  // the issuing service nor a Web Push subscription's keys, so there is nothing to
+  // re-fuse and the provider is never asked. Recorded rather than retried: the row
+  // needs a real push address, and no attempt supplies one.
+  test("a push preference the directory cannot address is recorded, not sent", () =>
+    givenTodo("confirm:o1", {...item, channel: Push, address: "device-token"})
+    ->whenTranslateMocked(withProvider(Ok({ref: "must-not-be-used"})))
+    ->thenCommand(
+      "c1",
+      RecordDeliveryFailure({
+        recipientId: "c1",
+        reference: "confirm:o1",
+        reason: "a push address names its issuing service, and the directory stores one flat address",
       }),
     )
   )

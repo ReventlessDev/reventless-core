@@ -3,6 +3,7 @@
 import * as SES$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/SES.res.mjs";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Messaging$Reventless from "@reventlessdev/reventless-spec/src/semantic/Messaging.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as ClientSesv2 from "@aws-sdk/client-sesv2";
 
@@ -103,10 +104,7 @@ async function send(sender, recipient, message) {
 }
 
 function provider(sender) {
-  return {
-    channels: channels(sender),
-    send: (recipient, message) => send(sender, recipient, message)
-  };
+  return Messaging$Reventless.makeProvider(channels(sender), [], (recipient, message) => send(sender, recipient, message));
 }
 
 let Send;

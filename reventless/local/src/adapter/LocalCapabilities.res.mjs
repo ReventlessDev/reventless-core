@@ -23,4 +23,4 @@ export {
   registerMessagingSender,
   capabilities,
 }
-/* Messaging_Log_Backend-ReventlessCore Not a pure module */
+/* Capabilities-Reventless Not a pure module */
