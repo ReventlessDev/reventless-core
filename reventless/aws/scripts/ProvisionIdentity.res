@@ -38,6 +38,7 @@ module Schema = Auth_ActiveRoleStore_Schema
 type args = {
   poolName: string,
   providerId: option<string>,
+  loginIdentifier: Auth_LoginIdentifier.t,
   help: bool,
 }
 
@@ -47,7 +48,14 @@ let defaultPoolName = "ReventlessIdentity"
   `--provider-id` that parsed as "absent" would create a *second* pool beside the
   one the operator meant to extend. */
 let parseArgs = (argv: array<string>): result<args, string> => {
-  let acc = ref(Ok({poolName: defaultPoolName, providerId: None, help: false}))
+  let acc = ref(
+    Ok({
+      poolName: defaultPoolName,
+      providerId: None,
+      loginIdentifier: Auth_LoginIdentifier.default,
+      help: false,
+    }),
+  )
   let i = ref(0)
   let count = argv->Array.length
   while i.contents < count {
@@ -61,10 +69,19 @@ let parseArgs = (argv: array<string>): result<args, string> => {
     | (Ok(a), "--provider-id", Some(v)) =>
       acc := Ok({...a, providerId: Some(v)})
       i := i.contents + 2
+    | (Ok(a), "--login-identifier", Some(v)) =>
+      acc :=
+        Auth_LoginIdentifier.parse(Some(v))->Result.map(loginIdentifier => {
+          ...a,
+          loginIdentifier,
+        })
+      i := i.contents + 2
     | (Ok(a), "--help", _) | (Ok(a), "-h", _) =>
       acc := Ok({...a, help: true})
       i := i.contents + 1
-    | (Ok(_), "--name", None) | (Ok(_), "--provider-id", None) =>
+    | (Ok(_), "--name", None)
+    | (Ok(_), "--provider-id", None)
+    | (Ok(_), "--login-identifier", None) =>
       acc := Error(`${flag} needs a value`)
     | (Ok(_), unknown, _) => acc := Error(`unknown argument "${unknown}"`)
     }
@@ -72,12 +89,21 @@ let parseArgs = (argv: array<string>): result<args, string> => {
   acc.contents
 }
 
+let _loginIdentifiers =
+  Auth_LoginIdentifier.all->Array.map(Auth_LoginIdentifier.toString)->Array.join(" | ")
+
+let _defaultLoginIdentifier = Auth_LoginIdentifier.toString(Auth_LoginIdentifier.default)
+
 let usage = `
 Provision a Reventless identity provider and its active-role store.
 
   --name <name>          Pool name to create or adopt (default: ${defaultPoolName})
   --provider-id <id>     Use this existing pool instead of creating one; only the
                          store is provisioned
+  --login-identifier <a> Sign-in attribute for a pool this creates: ${_loginIdentifiers}
+                         (default: ${_defaultLoginIdentifier}). Fixed at creation —
+                         no later change is possible without replacing the pool
+                         and losing every account in it.
 
 Creates nothing that a platform stack owns, and never attaches a trigger.
 Region and credentials come from the environment, as for any AWS SDK call.
@@ -85,15 +111,19 @@ Region and credentials come from the environment, as for any AWS SDK call.
 
 // ── The pool ─────────────────────────────────────────────────────────────────
 
-/** SPA-friendly defaults, matching what auto mode declares: email sign-in, a
-  12-character password policy, no MFA, admin-only user creation. An operator
-  wanting something else edits the pool afterwards rather than having this script
-  grow a flag per Cognito setting. */
+/** SPA-friendly defaults, matching what auto mode declares: a 12-character
+  password policy, no MFA, admin-only user creation. An operator wanting
+  something else edits the pool afterwards rather than having this script grow a
+  flag per Cognito setting.
+
+  The sign-in attribute is the exception, and has a flag, because it is the one
+  setting no later edit can reach — Cognito offers no update for it. */
 let poolSettings = (
   ~poolName: string,
+  ~loginIdentifier: Auth_LoginIdentifier.t,
 ): CognitoIdentityServiceProvider.CreateUserPoolCommand.input => {
   poolName,
-  usernameAttributes: ["email"],
+  usernameAttributes: loginIdentifier->Auth_LoginIdentifier.usernameAttributes,
   mfaConfiguration: "OFF",
   adminCreateUserConfig: {allowAdminCreateUserOnly: true},
   policies: {
@@ -169,12 +199,16 @@ let resolvePool = async (~args: args): result<string, string> =>
       Ok(existing)
     | Ok(None) =>
       let created = await CognitoIdentityServiceProvider.CreateUserPoolCommand.make(
-        poolSettings(~poolName=args.poolName),
+        poolSettings(~poolName=args.poolName, ~loginIdentifier=args.loginIdentifier),
       )->CognitoIdentityServiceProvider.CreateUserPoolCommand.send
       switch created.userPool->Option.flatMap(p => p.id) {
       | None => Error("CreateUserPool returned no pool id")
       | Some(id) =>
-        Console.log(`pool     ${id} (created, named "${args.poolName}")`)
+        Console.log(
+          `pool     ${id} (created, named "${args.poolName}", sign-in on ${Auth_LoginIdentifier.toString(
+              args.loginIdentifier,
+            )})`,
+        )
         Ok(id)
       }
     }

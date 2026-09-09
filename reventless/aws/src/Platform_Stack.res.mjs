@@ -4,10 +4,12 @@ import * as Aws from "@pulumi/aws";
 import * as Pulumi$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Pulumi.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
+import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as AWS_Tags$ReventlessAws from "./adapter/AWS_Tags.res.mjs";
 import * as Util_LocalConfig$ReventlessAws from "./util/Util_LocalConfig.res.mjs";
 import * as Auth_ActiveRoleStore$ReventlessAws from "./adapter/Auth/Auth_ActiveRoleStore.res.mjs";
+import * as Auth_LoginIdentifier$ReventlessAws from "./adapter/Auth/Auth_LoginIdentifier.res.mjs";
 import * as Auth_ActiveRoleTrigger$ReventlessAws from "./adapter/Auth/Auth_ActiveRoleTrigger.res.mjs";
 import * as Auth_ActiveRolePoolAttachment$ReventlessAws from "./adapter/Auth/Auth_ActiveRolePoolAttachment.res.mjs";
 
@@ -32,6 +34,17 @@ function _identityProviderId(cfg) {
       log.warn("Platform_Stack", undefined, `platform:` + _deprecatedPoolIdKey + ` (REVENTLESS_COGNITO_USER_POOL_ID) is deprecated — rename it to platform:identityProviderId (REVENTLESS_IDENTITY_PROVIDER_ID). Still honoured, because dropping it silently would deploy in auto mode and create a NEW user pool.`);
       return id;
     });
+  }
+}
+
+function _loginIdentifier(cfg) {
+  let v = Util_LocalConfig$ReventlessAws.get("loginIdentifier");
+  let raw = v !== undefined ? v : cfg.get("loginIdentifier");
+  let identifier = Auth_LoginIdentifier$ReventlessAws.parse(raw);
+  if (identifier.TAG === "Ok") {
+    return identifier._0;
+  } else {
+    return Stdlib_JsError.throwWithMessage(identifier._0);
   }
 }
 
@@ -77,9 +90,11 @@ function _resolveUncached() {
       clientId: client.id,
       poolArn: lookup.apply(r => r.arn),
       managed: false,
-      activeRoleTable: activeRoleTable
+      activeRoleTable: activeRoleTable,
+      loginIdentifier: undefined
     };
   } else {
+    let loginIdentifier = _loginIdentifier(cfg);
     let adminConfig = {
       allowAdminCreateUserOnly: true
     };
@@ -98,7 +113,7 @@ function _resolveUncached() {
         preTokenGeneration: activeRoleTrigger.functionArn
       },
       adminCreateUserConfig: adminConfig,
-      usernameAttributes: ["email"],
+      usernameAttributes: Auth_LoginIdentifier$ReventlessAws.usernameAttributes(loginIdentifier).map(prim => prim),
       passwordPolicy: pwdPolicy,
       mfaConfiguration: "OFF",
       tags: AWS_Tags$ReventlessAws.make("HostUiPool", "Platform", "Auth", "Platform", undefined, undefined, undefined, undefined)
@@ -129,18 +144,22 @@ function _resolveUncached() {
       clientId: client$1.id,
       poolArn: pool.arn,
       managed: true,
-      activeRoleTable: activeRoleTable
+      activeRoleTable: activeRoleTable,
+      loginIdentifier: loginIdentifier
     };
   }
   Auth_ActiveRoleTrigger$ReventlessAws.grantInvoke(activeRoleTrigger, result.poolArn, undefined, {});
   let regionStr = Stdlib_Option.getOr(new Pulumi.Config("aws").get("region"), "unknown");
   let managedStr = Pulumi.output(result.managed ? "true" : "false");
   let regionOutput = Pulumi.output(regionStr);
+  let identifier = result.loginIdentifier;
+  let loginIdentifierStr = Pulumi.output(identifier !== undefined ? Auth_LoginIdentifier$ReventlessAws.toString(identifier) : "unknown");
   Pulumi$Pulumi.$$export("identityProviderId", result.poolId);
   Pulumi$Pulumi.$$export("identityProviderClientId", result.clientId);
   Pulumi$Pulumi.$$export("identityProviderArn", result.poolArn);
   Pulumi$Pulumi.$$export("identityProviderRegion", regionOutput);
   Pulumi$Pulumi.$$export("identityProviderManaged", managedStr);
+  Pulumi$Pulumi.$$export("identityProviderLoginIdentifier", loginIdentifierStr);
   Pulumi$Pulumi.$$export("cognitoUserPoolId", result.poolId);
   Pulumi$Pulumi.$$export("cognitoUserPoolClientId", result.clientId);
   Pulumi$Pulumi.$$export("cognitoUserPoolArn", result.poolArn);
@@ -168,6 +187,7 @@ export {
   log,
   _deprecatedPoolIdKey,
   _identityProviderId,
+  _loginIdentifier,
   _resolveUncached,
   _cached,
   resolveCognitoUserPool,

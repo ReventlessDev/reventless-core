@@ -16,6 +16,7 @@ describe("ProvisionIdentity.parseArgs", () => {
       Ok({
         Provision.poolName: Provision.defaultPoolName,
         providerId: None,
+        loginIdentifier: Auth_LoginIdentifier.Email,
         help: false,
       }),
     )
@@ -26,6 +27,7 @@ describe("ProvisionIdentity.parseArgs", () => {
       Ok({
         Provision.poolName: Provision.defaultPoolName,
         providerId: Some("eu-west-1_AbCdEfGhI"),
+        loginIdentifier: Auth_LoginIdentifier.Email,
         help: false,
       }),
     )
@@ -33,14 +35,39 @@ describe("ProvisionIdentity.parseArgs", () => {
 
   testSync("--name selects which pool to adopt by name", () =>
     expect(Provision.parseArgs(["--name", "examples-dev"]))->toEqual(
-      Ok({Provision.poolName: "examples-dev", providerId: None, help: false}),
+      Ok({
+        Provision.poolName: "examples-dev",
+        providerId: None,
+        loginIdentifier: Auth_LoginIdentifier.Email,
+        help: false,
+      }),
     )
   )
 
   testSync("both together are accepted, and the id wins at resolve time", () =>
     expect(Provision.parseArgs(["--name", "ignored", "--provider-id", "eu-west-1_x"]))->toEqual(
-      Ok({Provision.poolName: "ignored", providerId: Some("eu-west-1_x"), help: false}),
+      Ok({
+        Provision.poolName: "ignored",
+        providerId: Some("eu-west-1_x"),
+        loginIdentifier: Auth_LoginIdentifier.Email,
+        help: false,
+      }),
     )
+  )
+
+  testSync("--login-identifier picks the sign-in attribute", () =>
+    expect(
+      Provision.parseArgs(["--login-identifier", "emailOrPhone"])->Result.map(a =>
+        a.loginIdentifier
+      ),
+    )->toEqual(Ok(Auth_LoginIdentifier.EmailOrPhone))
+  )
+
+  // 🚨 The sign-in attribute cannot be changed once the pool exists, so a typo
+  // that fell back to the default would create a pool the operator has to
+  // rebuild — and re-register every account in — to correct.
+  testSync("an unrecognised sign-in attribute is refused, never defaulted", () =>
+    expect(Provision.parseArgs(["--login-identifier", "e-mail"])->Result.isError)->toBe(true)
   )
 
   // 🚨 The reason unknown flags are refused rather than skipped. A misspelled
@@ -60,6 +87,12 @@ describe("ProvisionIdentity.parseArgs", () => {
 
   testSync("--name with no value is refused too", () =>
     expect(Provision.parseArgs(["--name"]))->toEqual(Error("--name needs a value"))
+  )
+
+  testSync("--login-identifier with no value is refused too", () =>
+    expect(Provision.parseArgs(["--login-identifier"]))->toEqual(
+      Error("--login-identifier needs a value"),
+    )
   )
 
   testSync("--help and -h both ask for the usage text", () =>
@@ -83,7 +116,10 @@ describe("ProvisionIdentity.parseArgs", () => {
 // touches it — so its settings are not a detail an operator can revise cheaply
 // once accounts exist in it.
 describe("ProvisionIdentity.poolSettings", () => {
-  let settings = Provision.poolSettings(~poolName="MyIdentity")
+  let settings = Provision.poolSettings(
+    ~poolName="MyIdentity",
+    ~loginIdentifier=Auth_LoginIdentifier.default,
+  )
 
   testSync("carries the name it was asked for", () => expect(settings.poolName)->toBe("MyIdentity"))
 
@@ -93,6 +129,15 @@ describe("ProvisionIdentity.poolSettings", () => {
       settings.mfaConfiguration,
       settings.adminCreateUserConfig->Option.flatMap(c => c.allowAdminCreateUserOnly),
     ))->toEqual((Some(["email"]), Some("OFF"), Some(true)))
+  )
+
+  testSync("a phone pool is created signing in on phone_number", () =>
+    expect(
+      Provision.poolSettings(
+        ~poolName="MyIdentity",
+        ~loginIdentifier=Auth_LoginIdentifier.Phone,
+      ).usernameAttributes,
+    )->toEqual(Some(["phone_number"]))
   )
 
   testSync("keeps the 12-character password policy", () =>

@@ -12,14 +12,19 @@ type cognitoUserPool = {
     is declared with the trigger's ARN), while the mutation that writes it is
     provisioned after the API — see [Auth_ActiveRoleStore.res]. */
   activeRoleTable: Auth_ActiveRoleStore.storeTable,
+  /** The sign-in attribute this stack created the pool with. `None` in BYO mode:
+    the pool's own choice was made elsewhere and no lookup here reads it back,
+    so reporting one would be a guess. */
+  loginIdentifier: option<Auth_LoginIdentifier.t>,
 }
 
 /**
  * Resolve the Cognito UserPool used by AppSync auth. Two modes:
  *
  * - **Auto**: no `platform:identityProviderId` config — create a fresh UserPool
- *   with SPA-friendly defaults (email username, 12-char password policy, no
- *   MFA, admin-only user creation). Caller is responsible for creating
+ *   with SPA-friendly defaults (email sign-in unless `platform:loginIdentifier`
+ *   says otherwise, 12-char password policy, no MFA, admin-only user creation).
+ *   Caller is responsible for creating
  *   groups (`Admin`, `User`, …) and users via the AWS console / CLI.
  *
  * - **BYO**: provider ID provided — skip pool creation, look up the existing
@@ -38,10 +43,15 @@ type cognitoUserPool = {
  * Pulumi can destroy without touching the parent pool).
  *
  * Always exports `identityProviderId`, `identityProviderClientId`,
- * `identityProviderArn`, `identityProviderRegion`, `identityProviderManaged` and
- * `activeRoleStore` as stack outputs so downstream stacks (and Stage D AppSync
- * wiring) can read them via `StackReference` — plus, for one release, the
- * deprecated `cognito*` spellings of the first five.
+ * `identityProviderArn`, `identityProviderRegion`, `identityProviderManaged`,
+ * `identityProviderLoginIdentifier` and `activeRoleStore` as stack outputs so
+ * downstream stacks (and Stage D AppSync wiring) can read them via
+ * `StackReference` — plus, for one release, the deprecated `cognito*` spellings
+ * of the first five.
+ *
+ * 🚨 In auto mode `platform:loginIdentifier` picks the sign-in attribute, and it
+ * is the one setting no later deploy can correct: changing it replaces the pool
+ * and empties it. Absent means `email`. See [Auth_LoginIdentifier].
  *
  * Also provisions the role-state table and the pre-token-generation trigger that
  * narrows `cognito:groups` to a caller's chosen role. They belong here rather
@@ -83,6 +93,23 @@ let _identityProviderId = (~cfg: Pulumi.Config.t): option<string> => {
       )
       id
     })
+  }
+}
+
+/** The sign-in attribute for a pool this stack creates, from
+  `platform:loginIdentifier` (or `REVENTLESS_LOGIN_IDENTIFIER` / the sidecar).
+
+  Absent means `email`, which is what every pool so far was created with. An
+  unrecognised spelling fails the deploy — see [Auth_LoginIdentifier] for why
+  defaulting past a typo here is unrecoverable. */
+let _loginIdentifier = (~cfg: Pulumi.Config.t): Auth_LoginIdentifier.t => {
+  let raw = switch Util_LocalConfig.get("loginIdentifier") {
+  | Some(_) as v => v
+  | None => cfg->Pulumi.Config.get("loginIdentifier")
+  }
+  switch Auth_LoginIdentifier.parse(raw) {
+  | Ok(identifier) => identifier
+  | Error(message) => JsError.throwWithMessage(message)
   }
 }
 
@@ -183,9 +210,11 @@ let _resolveUncached = (): cognitoUserPool => {
       poolArn: lookup->Pulumi.Output.apply(r => r.arn),
       managed: false,
       activeRoleTable,
+      loginIdentifier: None,
     }
 
   | None =>
+    let loginIdentifier = _loginIdentifier(~cfg)
     let adminConfig: PulumiAws.Cognito.UserPool.adminCreateUserConfig = {
       allowAdminCreateUserOnly: Pulumi.Input.make(true),
     }
@@ -204,7 +233,13 @@ let _resolveUncached = (): cognitoUserPool => {
       ~name="HostUiPool",
       ~args={
         adminCreateUserConfig: Pulumi.Input.make(adminConfig),
-        usernameAttributes: Pulumi.Input.make([Pulumi.Input.make("email")]),
+        // 🚨 Changing this on a live stack replaces the pool and empties it —
+        // Cognito has no update for the sign-in attribute. Chosen once, here.
+        usernameAttributes: Pulumi.Input.make(
+          loginIdentifier
+          ->Auth_LoginIdentifier.usernameAttributes
+          ->Array.map(Pulumi.Input.make),
+        ),
         passwordPolicy: Pulumi.Input.make(pwdPolicy),
         mfaConfiguration: Pulumi.Input.make("OFF"),
         lambdaConfig: Pulumi.Input.make({
@@ -247,6 +282,7 @@ let _resolveUncached = (): cognitoUserPool => {
       poolArn: pool.arn,
       managed: true,
       activeRoleTable,
+      loginIdentifier: Some(loginIdentifier),
     }
   }
 
@@ -279,11 +315,23 @@ let _resolveUncached = (): cognitoUserPool => {
   let managedStr = Pulumi.Output.make(result.managed ? "true" : "false")
   let regionOutput = Pulumi.Output.make(regionStr)
 
+  // The sign-in attribute is unchangeable after creation, so the value a pool was
+  // born with has to be readable somewhere other than the source that has since
+  // moved on. `unknown` for a BYO pool: this stack did not choose it and does not
+  // read it back.
+  let loginIdentifierStr = Pulumi.Output.make(
+    switch result.loginIdentifier {
+    | Some(identifier) => Auth_LoginIdentifier.toString(identifier)
+    | None => "unknown"
+    },
+  )
+
   Pulumi.Pulumi.export("identityProviderId", result.poolId)
   Pulumi.Pulumi.export("identityProviderClientId", result.clientId)
   Pulumi.Pulumi.export("identityProviderArn", result.poolArn)
   Pulumi.Pulumi.export("identityProviderRegion", regionOutput)
   Pulumi.Pulumi.export("identityProviderManaged", managedStr)
+  Pulumi.Pulumi.export("identityProviderLoginIdentifier", loginIdentifierStr)
 
   // Deprecated spellings — see above.
   Pulumi.Pulumi.export("cognitoUserPoolId", result.poolId)
