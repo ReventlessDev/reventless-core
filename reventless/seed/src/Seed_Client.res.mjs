@@ -50,12 +50,20 @@ function decodeSegment(segment) {
   }
 }
 
+function isJoseHeader(obj) {
+  return Stdlib_Option.isSome(obj["alg"]);
+}
+
 function claims(t) {
   return Stdlib_Option.flatMap(t.token, token => Stdlib_Array.reduce(token.split("."), undefined, (found, segment) => {
     if (found !== undefined) {
       return found;
+    }
+    let obj = decodeSegment(segment);
+    if (obj !== undefined && Stdlib_Option.isSome(obj["alg"])) {
+      return;
     } else {
-      return decodeSegment(segment);
+      return obj;
     }
   }));
 }
@@ -424,6 +432,7 @@ export {
   groupClaimNames,
   callerIdClaimNames,
   decodeSegment,
+  isJoseHeader,
   claims,
   asStrings,
   claimStrings,

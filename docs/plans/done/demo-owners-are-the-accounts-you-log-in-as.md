@@ -16,7 +16,13 @@ All five steps are implemented. Verified against an isolated local platform
   own narrowed token.
 - **arm 2** — the bearer: on the `REVENTLESS_DEMO_USER`/`REVENTLESS_DEMO_PASSWORD`
   path the operator resolves from the run's own token, and Step 5 skips without
-  failing.
+  failing. **Verified locally only, and it did not work on AWS as first shipped**
+  — `Seed_Client.claims` took the first segment that decoded to a JSON object,
+  and a JWT's JOSE header is one, so on every real Cognito token it read
+  `{kid, alg}` as the claims set. `callerId` therefore answered `None` there, and
+  so had `effectiveGroups` and `identitySummary` since long before this plan.
+  Fixed by skipping a decoded segment carrying `alg`; the test helper's fake
+  header did not decode, which is why no test could express the bug.
 - **arm 3** — the fallback literal: reported and warned.
 - **the regression itself** — a deliberately stale `userId` seeds 40 orders and 10
   subscription rows that `verifyViews` counts happily, and Step 5 fails naming

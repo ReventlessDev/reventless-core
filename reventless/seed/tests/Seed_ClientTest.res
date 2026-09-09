@@ -70,8 +70,15 @@ let b64url = payload =>
   ->NodeBuffer.fromStringUtf8
   ->NodeBuffer.toStringBase64Url
 
+// A REAL JOSE header, not the literal string "header". The difference is the
+// whole bug: `{"kid":…,"alg":"RS256"}` is base64url JSON and decodes exactly as
+// the payload does, so `claims` took it as the claims set and found no groups
+// and no id in any Cognito token ever issued. A fake header that happened not to
+// decode is what let every assertion below pass against broken code.
+let joseHeader = b64url(`{"kid":"abc123","alg":"RS256"}`)
+
 let jwt = claims =>
-  `header.${b64url(JSON.stringify(JSON.Encode.object(Dict.fromArray(claims))))}.signature`
+  `${joseHeader}.${b64url(JSON.stringify(JSON.Encode.object(Dict.fromArray(claims))))}.signature`
 
 let localToken = claims =>
   `${b64url(JSON.stringify(JSON.Encode.object(Dict.fromArray(claims))))}.signature`
@@ -83,6 +90,33 @@ let clientWith = token => {
   c->Seed_Client.useToken(token)
   c
 }
+
+describe("Seed_Client.claims:", () => {
+  // The regression this file could not previously express. A JWT header is a
+  // decodable JSON object sitting in front of the payload, so "the first segment
+  // that parses" is the header on every real token — and the seed then reported
+  // no groups, printed no `Acting as:` line, and attached no identity to a
+  // refusal, which is exactly the diagnosis it exists to give.
+  testSync("skips the JOSE header and reads the payload behind it", () =>
+    expect(
+      clientWith(jwt([("sub", JSON.Encode.string("real-sub"))]))
+      ->Seed_Client.claims
+      ->Option.flatMap(c => c->Dict.get("sub"))
+      ->Option.flatMap(JSON.Decode.string),
+    )->toEqual(Some("real-sub"))
+  )
+
+  // The header is identified by `alg`, not by position — a two-segment local dev
+  // token has no header at all, and its payload must not be mistaken for one.
+  testSync("takes the first segment when there is no header", () =>
+    expect(
+      clientWith(localToken([("userId", JSON.Encode.string("local-shopper"))]))
+      ->Seed_Client.claims
+      ->Option.flatMap(c => c->Dict.get("userId"))
+      ->Option.flatMap(JSON.Decode.string),
+    )->toEqual(Some("local-shopper"))
+  )
+})
 
 describe("Seed_Client.effectiveGroups:", () => {
   // A Cognito id token carries its payload in the second segment, a local dev

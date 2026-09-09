@@ -85,10 +85,22 @@ let decodeSegment = (segment: string): option<dict<JSON.t>> =>
   | _ => None
   }
 
+/**
+ * A JOSE header rather than a claims set.
+ *
+ * RFC 7515 requires `alg` on the header, and nothing puts it on a payload. The
+ * test matters because a JWT header is base64url JSON exactly as the payload is,
+ * so it decodes just as readily — and it comes first.
+ */
+let isJoseHeader = (obj: dict<JSON.t>): bool => obj->Dict.get("alg")->Option.isSome
+
 /** The bearer's payload, from whichever segment carries it — a Cognito JWT puts
     it second and a local dev token first, so trying each in turn saves this from
     having to know which platform signed the token. A segment that is not a JSON
-    object (a signature) simply does not decode. */
+    object (a signature) simply does not decode, and a JOSE header is skipped:
+    it IS a decodable JSON object, so taking the first one that parsed read a
+    real Cognito token's `{kid, alg}` as its claims and found no groups and no
+    id in it — silently, since an unreadable token is not an error here. */
 let claims = (t: t): option<dict<JSON.t>> =>
   t.token->Option.flatMap(token =>
     token
@@ -96,7 +108,11 @@ let claims = (t: t): option<dict<JSON.t>> =>
     ->Array.reduce(None, (found, segment) =>
       switch found {
       | Some(_) => found
-      | None => decodeSegment(segment)
+      | None =>
+        switch decodeSegment(segment) {
+        | Some(obj) if obj->isJoseHeader => None
+        | decoded => decoded
+        }
       }
     )
   )
