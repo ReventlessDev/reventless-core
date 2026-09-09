@@ -14,7 +14,8 @@ function registerMessagingSender(sender) {
 function capabilities() {
   return {
     geocode: Capabilities$Reventless.none.geocode,
-    messaging: Messaging_Log_Backend$ReventlessCore.provider(messagingSenderRef.contents)
+    messaging: Messaging_Log_Backend$ReventlessCore.provider(messagingSenderRef.contents),
+    identityProvider: Capabilities$Reventless.none.identityProvider
   };
 }
 

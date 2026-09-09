@@ -86,6 +86,11 @@ function renderEntry(entry) {
         TAG: "Ok",
         _0: renderComments(entry).concat(["  Messaging,"])
       };
+    case "IdentityProvider" :
+      return {
+        TAG: "Ok",
+        _0: renderComments(entry).concat(["  IdentityProvider,"])
+      };
   }
 }
 

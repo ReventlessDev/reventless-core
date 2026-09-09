@@ -328,6 +328,10 @@ let capabilities = (): Reventless.Capabilities.t => {
       ~text,
     ),
   messaging: messagingEmailProvider(),
+  // Refusing until the Cognito backend lands. The pool is provisioned, but the
+  // store mapping a domain user id to a provider handle is not, and creating a
+  // principal before that exists would write a handle with nowhere to live.
+  identityProvider: Reventless.Capabilities.none.identityProvider,
 }
 
 // ── Phase-1/phase-2 pipelines ───────────────────────────────────────────────

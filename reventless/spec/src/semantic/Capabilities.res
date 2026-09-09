@@ -27,6 +27,10 @@ type t = {
   /** Send a message to a person, and say which channels this deployment can
       attempt at all. See `Messaging.provider`. */
   messaging: Messaging.provider,
+  /** Make, group and unmake principals, and say which of those this
+      deployment's provider can do at all. Administrative only — authenticating
+      one is `Auth_Adapter.Provider`'s. See `IdentityProvider.t`. */
+  identityProvider: IdentityProvider.t,
 }
 
 /**
@@ -54,4 +58,7 @@ let none: t = {
     ~recipient as _,
     ~message as _,
   ) => Error(Unavailable("no messaging provider is configured for this platform"))),
+  identityProvider: IdentityProvider.unavailable(
+    ~reason="no identity provider is configured for this platform",
+  ),
 }

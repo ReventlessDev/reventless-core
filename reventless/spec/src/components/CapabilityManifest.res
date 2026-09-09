@@ -21,6 +21,9 @@ type kind =
   /** Sending a message, reached through `Capabilities.messaging`. Slice-declared
       like `Geocoding`, and for the same reason carries no `field`. */
   | Messaging
+  /** Making, grouping and unmaking principals, reached through
+      `Capabilities.identityProvider`. Slice-declared, so no `field`. */
+  | IdentityProvider
 
 /** The declaration site: the component's spec name, and — for a store — the field
     carrying the `@storageRef` annotation plus the store exactly as that field
@@ -80,6 +83,7 @@ let fromStructure = (structure: Plugin.pluginStructure): t => {
       kind: switch need {
       | Geocoding => Geocoding
       | Messaging => Messaging
+      | IdentityProvider => IdentityProvider
       },
       key,
       declaredBy: needs->Array.filterMap(

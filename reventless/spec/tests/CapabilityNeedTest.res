@@ -10,7 +10,7 @@ open JestGlobals
 
 describe("CapabilityNeed", () => {
   describe("round trip", () => {
-    let all: array<CapabilityNeed.t> = [Geocoding, Messaging]
+    let all: array<CapabilityNeed.t> = [Geocoding, Messaging, IdentityProvider]
 
     testSync(
       "every arm survives toString → fromString",
@@ -85,6 +85,24 @@ describe("CapabilityNeed", () => {
             ~provisioned=[Geocoding],
           ),
         )->toEqual([({need: Messaging, component: "SendOrderConfirmation"}: CapabilityNeed.unmet)]),
+    )
+
+    // 🚨 No platform provisions an identity provider yet — both pass the
+    // refusing arm — so a plugin declaring this need must fail the deploy rather
+    // than reach a `createPrincipal` that can only answer `Unavailable`. Asserted
+    // here so that the day a backend lands, adding it to `provisioned` is a
+    // deliberate act with a failing test behind it.
+    testSync(
+      "a declared identity provider is unmet while nothing provisions one",
+      () =>
+        expect(
+          CapabilityNeed.unmet(
+            ~declared=[("IdentityProvider", "RegisterPrincipal")],
+            ~provisioned=[Geocoding, Messaging],
+          ),
+        )->toEqual([
+          ({need: IdentityProvider, component: "RegisterPrincipal"}: CapabilityNeed.unmet),
+        ]),
     )
   })
 

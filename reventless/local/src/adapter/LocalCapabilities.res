@@ -27,4 +27,9 @@ let registerMessagingSender = (sender: string) => messagingSenderRef := sender
 let capabilities = (): Reventless.Capabilities.t => {
   geocode: Reventless.Capabilities.none.geocode,
   messaging: ReventlessCore.Messaging_Log_Backend.provider(~sender=messagingSenderRef.contents),
+  // Refusing rather than absent: the seam exists so a deployment can be asked
+  // what it provisions. Nothing writes back to the local user store yet, and
+  // answering `Unavailable` leaves the work queued and visible instead of
+  // recording a verdict against a person who has done nothing wrong.
+  identityProvider: Reventless.Capabilities.none.identityProvider,
 }

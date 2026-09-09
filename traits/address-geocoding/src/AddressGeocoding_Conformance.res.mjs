@@ -28,7 +28,8 @@ function Make(B) {
   let todoKey = subject => entityId + `:` + B.subjectText(subject);
   let geocoder = answer => ({
     geocode: param => Promise.resolve(answer),
-    messaging: Capabilities$Reventless.none.messaging
+    messaging: Capabilities$Reventless.none.messaging,
+    identityProvider: Capabilities$Reventless.none.identityProvider
   });
   let translateWith = answer => ((id, item) => B.translate(id, item, geocoder(answer)));
   let describeCommand = cmd => JSON.stringify(Message$Reventless.encode(cmd, B.Slice.inboundCommandSchema));
@@ -115,7 +116,8 @@ function Make(B) {
         TAG: "Error",
         _0: "NoMatch"
       }),
-      messaging: Capabilities$Reventless.none.messaging
+      messaging: Capabilities$Reventless.none.messaging,
+      identityProvider: Capabilities$Reventless.none.identityProvider
     })), "a verdict", B.isVerdict));
     S.test("an outage leaves the TODO pending", undefined, () => S.thenTodoStatus(S.whenTranslateMocked(S.givenTodo(todoKey(B.subjectA), B.item(entityId, B.subjectA)), (id, item) => B.translate(id, item, {
       geocode: param => Promise.resolve({
@@ -125,7 +127,8 @@ function Make(B) {
           _0: "502"
         }
       }),
-      messaging: Capabilities$Reventless.none.messaging
+      messaging: Capabilities$Reventless.none.messaging,
+      identityProvider: Capabilities$Reventless.none.identityProvider
     })), todoKey(B.subjectA), "Pending"));
   });
   return {

@@ -1439,10 +1439,13 @@ function MakeWithConfig(Config) {
         if (missing.length !== 0) {
           Stdlib_JsError.throwWithMessage(CapabilityNeed$Reventless.unmetMessage(missing) + Belt_SetString.toArray(Belt_SetString.fromArray(missing.map(u => {
             let match = u.need;
-            if (match === "Geocoding") {
-              return `\n  Geocoding is \`Capability_Geocoding_AwsLocation.make\`, passed to the platform as \`~geocoderPlaceIndex\`.`;
-            } else {
-              return `\n  Messaging is \`Capability_Messaging.make\`, passed to the platform as \`~messagingSender\`. The sender itself is configuration and has no default: set \`platform:messagingEmailSender\` in Pulumi.<stack>.yaml (or REVENTLESS_MESSAGING_EMAIL_SENDER), then verify the address with SES — or \`platform:messagingEmailProvider: log\` to log every message and send none.`;
+            switch (match) {
+              case "Geocoding" :
+                return `\n  Geocoding is \`Capability_Geocoding_AwsLocation.make\`, passed to the platform as \`~geocoderPlaceIndex\`.`;
+              case "Messaging" :
+                return `\n  Messaging is \`Capability_Messaging.make\`, passed to the platform as \`~messagingSender\`. The sender itself is configuration and has no default: set \`platform:messagingEmailSender\` in Pulumi.<stack>.yaml (or REVENTLESS_MESSAGING_EMAIL_SENDER), then verify the address with SES — or \`platform:messagingEmailProvider: log\` to log every message and send none.`;
+              case "IdentityProvider" :
+                return `\n  IdentityProvider has no backend on any platform yet — the seam and the refusal exist, the Cognito and local implementations do not. A plugin declaring this need cannot be deployed until one lands; nothing about this deployment's configuration will change that.`;
             }
           }))).join(""));
         }
@@ -2814,10 +2817,13 @@ function Make($star) {
         if (missing.length !== 0) {
           Stdlib_JsError.throwWithMessage(CapabilityNeed$Reventless.unmetMessage(missing) + Belt_SetString.toArray(Belt_SetString.fromArray(missing.map(u => {
             let match = u.need;
-            if (match === "Geocoding") {
-              return `\n  Geocoding is \`Capability_Geocoding_AwsLocation.make\`, passed to the platform as \`~geocoderPlaceIndex\`.`;
-            } else {
-              return `\n  Messaging is \`Capability_Messaging.make\`, passed to the platform as \`~messagingSender\`. The sender itself is configuration and has no default: set \`platform:messagingEmailSender\` in Pulumi.<stack>.yaml (or REVENTLESS_MESSAGING_EMAIL_SENDER), then verify the address with SES — or \`platform:messagingEmailProvider: log\` to log every message and send none.`;
+            switch (match) {
+              case "Geocoding" :
+                return `\n  Geocoding is \`Capability_Geocoding_AwsLocation.make\`, passed to the platform as \`~geocoderPlaceIndex\`.`;
+              case "Messaging" :
+                return `\n  Messaging is \`Capability_Messaging.make\`, passed to the platform as \`~messagingSender\`. The sender itself is configuration and has no default: set \`platform:messagingEmailSender\` in Pulumi.<stack>.yaml (or REVENTLESS_MESSAGING_EMAIL_SENDER), then verify the address with SES — or \`platform:messagingEmailProvider: log\` to log every message and send none.`;
+              case "IdentityProvider" :
+                return `\n  IdentityProvider has no backend on any platform yet — the seam and the refusal exist, the Cognito and local implementations do not. A plugin declaring this need cannot be deployed until one lands; nothing about this deployment's configuration will change that.`;
             }
           }))).join(""));
         }

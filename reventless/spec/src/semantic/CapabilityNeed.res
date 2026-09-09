@@ -24,6 +24,16 @@ type t =
         declaration, because a plugin that named `Sms` would fail a deploy it
         could have run on email. */
   | Messaging
+  /** Making, grouping and unmaking principals, reached through
+        `Capabilities.identityProvider`. No payload, for the reason `Geocoding`
+        has none: one identity provider per deployment is a real answer, and a
+        deployment wanting a second pool is the `{alternatives, min}` question
+        `Messaging` already answers by publishing what it provisioned.
+
+        Not authentication. Token issuance and session handling are
+        `Auth_Adapter.Provider`'s, read at a different time — two seams over one
+        provider, the way this type and `Capabilities.t` are already two. */
+  | IdentityProvider
 
 /** The spelling carried in `pluginStructure` and in `capabilities.json`.
     Persisted structures hold strings, not enum members, so a plugin built
@@ -32,6 +42,7 @@ let toString = (need: t): string =>
   switch need {
   | Geocoding => "Geocoding"
   | Messaging => "Messaging"
+  | IdentityProvider => "IdentityProvider"
   }
 
 /** The inverse, for readers of a persisted structure or a committed manifest.
@@ -41,6 +52,7 @@ let fromString = (name: string): option<t> =>
   switch name {
   | "Geocoding" => Some(Geocoding)
   | "Messaging" => Some(Messaging)
+  | "IdentityProvider" => Some(IdentityProvider)
   | _ => None
   }
 

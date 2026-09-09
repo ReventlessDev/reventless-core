@@ -3,10 +3,13 @@
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 
 function toString(need) {
-  if (need === "Geocoding") {
-    return "Geocoding";
-  } else {
-    return "Messaging";
+  switch (need) {
+    case "Geocoding" :
+      return "Geocoding";
+    case "Messaging" :
+      return "Messaging";
+    case "IdentityProvider" :
+      return "IdentityProvider";
   }
 }
 
@@ -14,6 +17,8 @@ function fromString(name) {
   switch (name) {
     case "Geocoding" :
       return "Geocoding";
+    case "IdentityProvider" :
+      return "IdentityProvider";
     case "Messaging" :
       return "Messaging";
     default:

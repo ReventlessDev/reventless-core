@@ -1759,7 +1759,8 @@ module MakeWithConfig = (
         switch c {
         | ObjectStore({plugin, store}) => Some((plugin, store))
         | Geocoding
-        | Messaging =>
+        | Messaging
+        | IdentityProvider =>
           None
         }
       )
@@ -2826,6 +2827,10 @@ module MakeWithConfig = (
                   `as \`~messagingSender\`. The sender itself is configuration and has no ` ++
                   `default: set \`platform:messagingEmailSender\` in Pulumi.<stack>.yaml (or ` ++
                   `REVENTLESS_MESSAGING_EMAIL_SENDER), then verify the address with SES — or ` ++ `\`platform:messagingEmailProvider: log\` to log every message and send none.`
+                | IdentityProvider =>
+                  `\n  IdentityProvider has no backend on any platform yet — the seam and the ` ++
+                  `refusal exist, the Cognito and local implementations do not. A plugin ` ++
+                  `declaring this need cannot be deployed until one lands; nothing about this ` ++ `deployment's configuration will change that.`
                 }
               )
               // One line per capability, not per declaring component: two slices
