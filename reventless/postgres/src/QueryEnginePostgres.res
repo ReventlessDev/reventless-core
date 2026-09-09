@@ -327,7 +327,8 @@ module Make = (
       | Some(f) => jsonTextC(f)
       | None => idExprC
       }
-      switch argsDict->Dict.get("after")->Option.flatMap(JSON.Decode.string) {
+      let afterCursor = argsDict->Dict.get("after")->Option.flatMap(JSON.Decode.string)
+      switch afterCursor {
       | Some(c) =>
         whereParts->Array.push(
           `${cursorExpr} ${isDesc ? "<" : ">"} ${b->param(
@@ -362,7 +363,10 @@ module Make = (
         ReventlessCore.QueryDbListQuery.buildConnection(
           ~pageItems,
           ~hasNextPage=hasMore,
-          ~hasPreviousPage=false,
+          // Same rule the spec uses, because the parity suite compares them: a
+          // forward page reached by a cursor has one behind it. Hardcoding false
+          // made Prev disappear on exactly the pages that have a previous one.
+          ~hasPreviousPage=afterCursor->Option.isSome,
           ~cursorValueOf,
         ),
       )

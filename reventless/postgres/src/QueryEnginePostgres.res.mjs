@@ -235,11 +235,11 @@ function Make(P) {
     let orderByField = Stdlib_Option.flatMap(Stdlib_Option.flatMap(orderByDict, ob => ob["field"]), Stdlib_JSON.Decode.string);
     let isDesc = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(orderByDict, ob => ob["direction"]), Stdlib_JSON.Decode.string), "ASC") === "DESC";
     let cursorExpr = orderByField !== undefined ? jsonTextC(orderByField) : idExprC;
-    let c = Stdlib_Option.flatMap(argsDict["after"], Stdlib_JSON.Decode.string);
-    if (c !== undefined) {
+    let afterCursor = Stdlib_Option.flatMap(argsDict["after"], Stdlib_JSON.Decode.string);
+    if (afterCursor !== undefined) {
       whereParts.push(cursorExpr + ` ` + (
         isDesc ? "<" : ">"
-      ) + ` ` + param(b, QueryDbListQuery$ReventlessCore.decodeCursor(c)));
+      ) + ` ` + param(b, QueryDbListQuery$ReventlessCore.decodeCursor(afterCursor)));
     }
     let orderClause = orderByField !== undefined ? jsonTextC(orderByField) + ` ` + (
         isDesc ? "DESC" : "ASC"
@@ -251,7 +251,7 @@ function Make(P) {
     let pageItems = rows.slice(0, pageSize);
     let cursorField = Stdlib_Option.getOr(orderByField, "id");
     let cursorValueOf = item => Stdlib_Option.getOr(QueryDbListQuery$ReventlessCore.getFieldString(item, cursorField), QueryDbListQuery$ReventlessCore.getId(item));
-    return QueryDbListQuery$ReventlessCore.buildConnection(pageItems, hasMore, false, cursorValueOf);
+    return QueryDbListQuery$ReventlessCore.buildConnection(pageItems, hasMore, Stdlib_Option.isSome(afterCursor), cursorValueOf);
   };
   let itemsPage = async (readModelName, param$1, id, argsDict, ownerScope, retiredScope) => {
     let table = QueryDbStorage_Postgres_Ops$ReventlessPostgres.tableName(readModelName);
