@@ -718,6 +718,8 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-09-09
+- fix(aws): the archive asks what the layer holds, not what resolves ([fca352f](https://github.com/ReventlessDev/reventless-core/commit/fca352f7a19f0518a84944d4efd23eb98285f6bf))
 ### 2026-09-08
 - feat(spec): a field declares the value a form opens it on ([1d541fe](https://github.com/ReventlessDev/reventless-core/commit/1d541fe497e1df2ff48b72e26a06a1b8fd3c9e06))
 ### 2026-09-08
