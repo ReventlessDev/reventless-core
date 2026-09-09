@@ -10,6 +10,7 @@ import * as Seed_Runner$ReventlessSeed from "@reventlessdev/reventless-seed/src/
 import * as Seed_Upload$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Upload.res.mjs";
 import * as Seed_Connect$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Connect.res.mjs";
 import * as DemoData$OnlineShopHybridSeed from "./DemoData.res.mjs";
+import * as AuthzProbe$OnlineShopHybridSeed from "./AuthzProbe.res.mjs";
 import * as DemoCommands$OnlineShopHybridSeed from "./DemoCommands.res.mjs";
 
 let views = [
@@ -615,7 +616,8 @@ let dataSets = [
     label: "sample — 16 products, 8 customers, 40 orders",
     seed: connection => run(connection, 16, 8, 40),
     probeViews: probeViews
-  }
+  },
+  AuthzProbe$OnlineShopHybridSeed.dataSet
 ];
 
 export {

@@ -928,4 +928,8 @@ let dataSets: array<Seed.dataSet> = [
     seed: connection => run(connection, ~productCount=16, ~customerCount=8, ~orderCount=40),
     probeViews,
   },
+  // Not a data set in the "fills a store" sense, and offered here anyway: this
+  // is the menu an operator already reaches for, and a check nobody can find is
+  // a check nobody runs. It asserts rather than seeds, and says so in its label.
+  AuthzProbe.dataSet,
 ]
