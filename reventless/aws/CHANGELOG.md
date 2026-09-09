@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.344 (2026-09-09)
+
+### Bug Fixes
+
+* **aws:** the archive asks what the layer holds, not what resolves ([fca352f](https://github.com/ReventlessDev/reventless-core/commit/fca352f7a19f0518a84944d4efd23eb98285f6bf))
+
+
 # 3.0.0-alpha.343 (2026-09-08)
 
 ### Bug Fixes
