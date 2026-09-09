@@ -1,7 +1,7 @@
 # Plan: canonicalise ReScript formatting
 
 **Date:** 2026-09-09
-**Status:** Planned — not started
+**Status:** Done — 2026-09-09. See *Outcome* at the foot.
 **Scope:** this repo only. Every step is self-contained; nothing here depends on another
 repository.
 
@@ -295,3 +295,36 @@ the un-canonical tree.
   this lands. Leaving it stale reintroduces the mixture from one side.
 - The tracked `.res.mjs` outputs are the same defect in a different extension — a derived form
   of the file stored in git with more than one producer. Worth the same treatment separately.
+
+## Outcome (2026-09-09)
+
+Executed as three commits. 1001 of 1718 files were non-canonical (the plan
+measured 984; the tree had moved). Two passes were needed to reach the fixpoint,
+exactly as step 2 warned — 20 files still moved after the first.
+
+Two of the plan's assumptions turned out to be wrong, both worth recording:
+
+- **"Pure reprint, no behaviour change" is not true of this formatter.**
+  `rescript format` strips the parentheses from a ternary used as another
+  ternary's condition, so `(a ? b : c) ? d : e` was reprinted as
+  `a ? b : (c ? d : e)` — a different program. One occurrence, in
+  `reventless/aws/src/Platform.res`; the branch types differed so the compiler
+  caught it, but with matching types it would have been silent. Rewritten as a
+  `let` binding, which round-trips. A repo-wide scan across line breaks found no
+  other instance. Note that the obvious single-line grep **misses** this shape.
+- **"Compiled output carries no source line references" is not true either.**
+  `__LOC__` expands to one, so `Util_Promise.res.mjs` moved when the reprint
+  moved its line. Both `.res.mjs` movements went into the reprint commit as the
+  plan required.
+
+Deviation from step 4: the CI guard carries the same
+`if: steps.affected.outputs.select != 'none'` as every other step in the job.
+It needs `node_modules`, and when nothing is affected there is no install — and
+no build or test either, so the guard is not weakened relative to the rest.
+
+Verification: build green with zero warnings, 400 suites / 4342 tests passing,
+and `check:outputs`, `check:graphql`, `check:unions`, `check:resolvers`,
+`check:slots`, `test:projects` all green.
+
+The release blast radius under *Release blast radius* was **not** exercised —
+the three commits are unpushed, so that decision is still open.

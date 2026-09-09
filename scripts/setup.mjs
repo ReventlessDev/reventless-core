@@ -3,12 +3,14 @@
 // re-run. Performs, in order:
 //
 //   1. Create pnpm-workspace.yaml (gitignored symlink → pnpm-workspace.base.yaml)
-//   2. pnpm install
-//   3. Ensure a ReScript PPX binary exists for this platform (prebuilt from the
+//   2. Point git blame at .git-blame-ignore-revs so whole-tree reprints don't
+//      mask authorship
+//   3. pnpm install
+//   4. Ensure a ReScript PPX binary exists for this platform (prebuilt from the
 //      registry if available, otherwise built from source via opam/dune)
-//   4. Seed the hybrid example's .reventless/users.yaml from its committed
+//   5. Seed the hybrid example's .reventless/users.yaml from its committed
 //      users.example.yaml so local login works out of the box
-//   5. Build the hybrid in-memory example (unless --no-build)
+//   6. Build the hybrid in-memory example (unless --no-build)
 //
 // Usage:
 //   node scripts/setup.mjs            # full bootstrap
@@ -31,7 +33,7 @@ const NO_BUILD = process.argv.includes('--no-build')
 
 const run = (cmd, opts = {}) =>
   execSync(cmd, { cwd: ROOT, stdio: 'inherit', ...opts })
-const step = (n, msg) => console.log(`\n[setup ${n}/5] ${msg}`)
+const step = (n, msg) => console.log(`\n[setup ${n}/6] ${msg}`)
 const ok = (msg) => console.log(`  ✓ ${msg}`)
 const warn = (msg) => console.warn(`  ⚠ ${msg}`)
 
@@ -39,23 +41,27 @@ const warn = (msg) => console.warn(`  ⚠ ${msg}`)
 step(1, 'Workspace config (pnpm-workspace.yaml)')
 run('node scripts/workspace-setup.mjs')
 
-// ── 2. Install ──────────────────────────────────────────────────────────────
-step(2, 'Installing dependencies (pnpm install)')
+// ── 2. Blame ignore file ────────────────────────────────────────────────────
+step(2, 'git blame ignore file')
+configureBlameIgnore()
+
+// ── 3. Install ──────────────────────────────────────────────────────────────
+step(3, 'Installing dependencies (pnpm install)')
 run('pnpm install')
 
-// ── 3. PPX binary ───────────────────────────────────────────────────────────
-step(3, 'ReScript PPX binary')
+// ── 4. PPX binary ───────────────────────────────────────────────────────────
+step(4, 'ReScript PPX binary')
 ensurePpx()
 
-// ── 4. Seed example users ───────────────────────────────────────────────────
-step(4, 'Local dev users for the hybrid example')
+// ── 5. Seed example users ───────────────────────────────────────────────────
+step(5, 'Local dev users for the hybrid example')
 seedUsers()
 
-// ── 5. Build the example ────────────────────────────────────────────────────
+// ── 6. Build the example ────────────────────────────────────────────────────
 if (NO_BUILD) {
-  step(5, 'Skipping example build (--no-build)')
+  step(6, 'Skipping example build (--no-build)')
 } else {
-  step(5, 'Building the hybrid in-memory example')
+  step(6, 'Building the hybrid in-memory example')
   run('pnpm --filter ./examples/online-shop-hybrid/platform-local run build')
 }
 
@@ -117,6 +123,24 @@ function ensurePpx() {
   copyFileSync(join(ppxDir, 'src/_build/default/bin/bin.exe'), join(ppxDir, local))
   chmodSync(join(ppxDir, local), 0o755)
   ok(`built ${local} from source for ${PLATFORM}`)
+}
+
+// Git reads .git-blame-ignore-revs only when pointed at it. Without this a
+// whole-tree reprint credits every re-indented line to the reprint.
+function configureBlameIgnore() {
+  if (!existsSync(join(ROOT, '.git-blame-ignore-revs'))) {
+    warn('.git-blame-ignore-revs not found — skipping')
+    return
+  }
+  try {
+    execSync('git config blame.ignoreRevsFile .git-blame-ignore-revs', {
+      cwd: ROOT,
+      stdio: 'ignore',
+    })
+    ok('blame.ignoreRevsFile set')
+  } catch {
+    warn('could not set blame.ignoreRevsFile (not a git checkout?)')
+  }
 }
 
 function hasOpam() {

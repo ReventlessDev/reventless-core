@@ -1,0 +1,9 @@
+# Revisions to skip when attributing lines. Append-only: rewriting a commit
+# listed here silently invalidates its entry.
+#
+# Opt a local clone in with:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+# GitHub reads this file from the default branch on its own.
+
+# Whole-tree formatter reprint, no behaviour change.
+5f7a10a4aec56bbcc48acfdcc83faa241e5628fd

@@ -156,6 +156,15 @@ jobs:
         if: steps.affected.outputs.select != 'none'
         run: pnpm install --frozen-lockfile
 
+      # A non-canonical source makes rescript format rewrite the whole file on
+      # the next save, so a one-line edit lands as a hundred-line diff and
+      # collides with anything touching the same region. Keep the tree canonical.
+      # Guarded like every step here because it needs node_modules; when nothing
+      # is affected, nothing is installed and nothing is built either.
+      - name: Check ReScript sources are formatter-canonical
+        if: steps.affected.outputs.select != 'none'
+        run: pnpm run format:res:check
+
       # The GWT scenario sidecars are a side effect of *parsing*, so a cold
       # checkout writes them all here and the lifecycle check below can read them
       # instead of driving a second build chain over a warm tree — which cleaned
