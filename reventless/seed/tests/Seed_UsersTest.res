@@ -50,6 +50,22 @@ describe("Seed_Users.parseString:", () => {
     ])
   })
 
+  // The half that was dropped, and the reason owner-scoped demo rows were keyed
+  // to ids nobody on a Cognito deployment holds: the file records the id the
+  // platform stamps, and reading it only for a password threw that away.
+  //
+  // Absent stays absent rather than defaulting to the username — a local file
+  // may omit it and let the auth adapter default it, and an AWS file records a
+  // sub no default could invent. Guessing here would look like an answer.
+  testSync("keeps the userId an entry declares, and reads a missing one as absent", () => {
+    let users = Seed_Users.parseString(document)
+    expect(users->Array.map(u => u.Seed_Users.userId))->Expect.toEqual([
+      Some("local-admin"),
+      None,
+      None,
+    ])
+  })
+
   // An entry half-written by hand is the likely flaw in this file. Dropping it
   // keeps the other accounts selectable; failing the parse would not.
   testSync("skips an entry that names no password", () => {
@@ -82,11 +98,32 @@ describe("Seed_Users.load:", () => {
 describe("Seed_Users.label:", () => {
   testSync("names the groups an account carries", () => {
     expect(
-      Seed_Users.label({username: "admin", password: "x", groups: ["Admin", "Shopper"]}),
+      Seed_Users.label({
+        username: "admin",
+        password: "x",
+        groups: ["Admin", "Shopper"],
+        userId: None,
+      }),
     )->Expect.toBe("admin  [Admin, Shopper]")
   })
 
   testSync("is the bare username when the file records no groups", () => {
-    expect(Seed_Users.label({username: "admin", password: "x", groups: []}))->Expect.toBe("admin")
+    expect(
+      Seed_Users.label({username: "admin", password: "x", groups: [], userId: None}),
+    )->Expect.toBe("admin")
+  })
+
+  // The menu is unchanged by the id: an operator picks an account by name and
+  // membership, and a Cognito sub in the list would be noise at the one moment
+  // they are choosing a login.
+  testSync("says nothing about the userId", () => {
+    expect(
+      Seed_Users.label({
+        username: "admin",
+        password: "x",
+        groups: ["Admin"],
+        userId: Some("4275e4a4-00c1-70e1-1cb5-363b06b992b5"),
+      }),
+    )->Expect.toBe("admin  [Admin]")
   })
 })

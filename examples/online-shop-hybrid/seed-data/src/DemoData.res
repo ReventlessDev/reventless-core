@@ -272,30 +272,157 @@ type customer = {
 The demo logins, as customers.
 
 An order's `customerId` is the authenticated caller's id, so a demo login can
-only have orders if a customer row exists under that exact id. These match the
-`userId` values in `users.example.yaml`; changing one without the other gives a
-shopper a working login and an empty shop.
+only have orders if a customer row exists under that exact id — which means the
+id has to be one the platform being seeded actually mints. Locally that is the
+`userId` a users.yaml entry declares; on a Cognito deployment it is the `sub` the
+pool minted, and no literal can name it. So the two owners are *resolved* against
+the accounts file and the run's own bearer rather than written down here.
 
 Their order counts are fixed and different on purpose. "The shopper sees no
 other orders" is satisfied equally by correct scoping and by scoping that
 matches nothing, so the check that means anything is an exact non-zero count per
 owner, with a third party holding the rest.
 */
-let demoShopperId = "local-shopper"
-let demoOperatorId = "local-admin"
 let demoShopperOrderCount = 5
 let demoOperatorOrderCount = 3
 
-let demoCustomers: array<customer> = [
+// Which account stands in for each demo owner. Domain knowledge, and the reason
+// this mapping is here rather than in the harness: the harness knows which
+// account a run logged in as, not which of them this shop means by "the
+// shopper".
+let demoShopperUsername = "shopper"
+let demoOperatorUsername = "admin"
+
+// The `userId` values the local `users.example.yaml` declares. Kept only as the
+// last arm of the resolution below, so a platform that supplies nothing still
+// seeds the walkthrough it always did — locally the file and these agree, which
+// is why local behaviour is unchanged.
+let fallbackShopperId = "local-shopper"
+let fallbackOperatorId = "local-admin"
+
+/** Where a demo owner's id came from. */
+type ownerSource =
+  | // The accounts file declares a `userId` for that account — the id the
+    // platform stamps, whichever account this run logged in as.
+    AccountsFile
+  | // The run authenticated AS that account, so its own bearer carries the id.
+    // The only source on a platform that keeps no accounts file.
+    Bearer
+  | // Nothing on this platform supplied one.
+    Fallback
+
+type demoOwner = {role: string, username: string, id: string, source: ownerSource}
+
+type owners = {shopper: demoOwner, operator: demoOwner}
+
+// One entry of the platform's accounts file, as the harness parses it.
+type account = ReventlessSeed.Seed.Users.user
+
+let resolveOwner = (
+  ~role: string,
+  ~username: string,
+  ~fallback: string,
+  ~accounts: array<account>,
+  ~caller: account,
+  ~callerId: option<string>,
+): demoOwner => {
+  let declared = accounts->Array.find(u => u.username == username)->Option.flatMap(u => u.userId)
+  switch declared {
+  | Some(id) => {role, username, id, source: AccountsFile}
+  | None =>
+    switch caller.username == username ? callerId : None {
+    | Some(id) => {role, username, id, source: Bearer}
+    | None => {role, username, id: fallback, source: Fallback}
+    }
+  }
+}
+
+let resolveOwners = (
+  ~accounts: array<account>,
+  ~caller: account,
+  ~callerId: option<string>,
+): owners => {
+  shopper: resolveOwner(
+    ~role="shopper",
+    ~username=demoShopperUsername,
+    ~fallback=fallbackShopperId,
+    ~accounts,
+    ~caller,
+    ~callerId,
+  ),
+  operator: resolveOwner(
+    ~role="operator",
+    ~username=demoOperatorUsername,
+    ~fallback=fallbackOperatorId,
+    ~accounts,
+    ~caller,
+    ~callerId,
+  ),
+}
+
+/** One line per demo owner, naming the id it seeds under and where that came
+    from. Silence is what turned an unreadable view into a browser-side mystery,
+    so the resolution is stated on every run and not only when it goes wrong. */
+let describeOwner = (o: demoOwner): string => {
+  let from = switch o.source {
+  | AccountsFile => `the userId the accounts file records for "${o.username}"`
+  | Bearer => `the bearer this run logged in with, as "${o.username}"`
+  | Fallback => `a fallback literal — nothing on this platform names "${o.username}"`
+  }
+  `demo ${o.role}: ${o.id} (${from})`
+}
+
+/**
+ * What is wrong with a resolution, phrased for someone who has not yet opened a
+ * browser to find out.
+ *
+ * `Fallback` always warns, because a fallback IS the guess: nothing on the
+ * platform named an id for that account, so the literal is right only where it
+ * happens to match — and where it does not, the notification chain, the
+ * projection and the owner resolver all work perfectly and produce a view that
+ * is full for the seeder and empty for every human.
+ *
+ * Whether a literal "looks like" a platform's ids is deliberately not the test.
+ * The only sample of that is the run's OWN id, which belongs to a different
+ * account and so is supposed to differ — comparing the two would warn on every
+ * correct run and stay quiet on some wrong ones.
+ *
+ * The second arm is the stale accounts file: the run holds the id the platform
+ * actually minted for the account it logged in as, so a file that disagrees
+ * about that one account is answerable rather than merely suspicious.
+ */
+let ownerWarning = (o: demoOwner, ~caller: account, ~callerId: option<string>): option<string> =>
+  switch (o.source, callerId) {
+  | (Fallback, _) =>
+    let stamps = switch callerId {
+    | Some(id) => ` This run's own bearer carries "${id}", which is what an id looks like here.`
+    | None => ""
+    }
+    Some(
+      `the demo ${o.role} fell back to the literal "${o.id}" — nothing on this platform names an ` ++
+      `id for "${o.username}", so that is a guess.${stamps} Owner-scoped rows seeded under the ` ++
+      `wrong id are invisible to every account on this deployment: record a userId for ` ++
+      `"${o.username}" in the accounts file and re-seed.`,
+    )
+  | (AccountsFile, Some(id)) if caller.username == o.username && id != o.id =>
+    Some(
+      `the accounts file records userId "${o.id}" for "${o.username}", but the bearer this run ` ++
+      `logged in with as that same account carries "${id}" — the file is stale, and the demo ` ++
+      `${o.role}'s rows are being seeded under an id nobody holds.`,
+    )
+  | _ => None
+  }
+
+let demoCustomers = (owners: owners): array<customer> => [
   {
-    id: demoShopperId,
+    id: owners.shopper.id,
     email: "shopper@example.com",
     address: "Nordbahnstrasse 36, 1020 Vienna, Austria",
     lat: 48.2265,
     lng: 16.3897,
   },
   {
-    id: demoOperatorId,
+    id: owners.operator.id,
     email: "admin@example.com",
     address: "Praterstrasse 1, 1020 Vienna, Austria",
     lat: 48.2135,
@@ -353,6 +480,7 @@ let deliverySlots = [
 let buildOrders = (
   products: array<product>,
   customers: array<customer>,
+  ~owners: owners,
   ~count=orderCount,
   (),
 ): array<order> => {
@@ -384,9 +512,9 @@ let buildOrders = (
     // sample. Everything after them is distributed as before, over the generated
     // customers only, so neither demo owner picks up extra rows.
     let demoOwner = if i < demoShopperOrderCount {
-      Some(demoShopperId)
+      Some(owners.shopper.id)
     } else if i < demoShopperOrderCount + demoOperatorOrderCount {
-      Some(demoOperatorId)
+      Some(owners.operator.id)
     } else {
       None
     }

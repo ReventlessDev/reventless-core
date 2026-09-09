@@ -260,7 +260,8 @@ async function run() {
   console.log(`\nEvents API:   ` + eventsEndpoint);
   console.log(`Log in to ` + region + ` pool client ` + clientId + `\n`);
   let match = await Seed_Prompt$ReventlessSeed.credentials(undefined);
-  let idToken = await ReventlessSeedAws.cognito(region, clientId)(match[0], match[1]);
+  let caller = match.caller;
+  let idToken = await ReventlessSeedAws.cognito(region, clientId)(caller.username, caller.password);
   console.log("\nGot an IdToken. Running assertions:\n");
   let ns = Stdlib_Option.getOr(namespace, "client");
   let runId = `verify-` + randomSuffix();

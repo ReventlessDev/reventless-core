@@ -10,7 +10,8 @@ async function make(label, endpoint, login, localDefaultsOpt) {
   let localDefaults = localDefaultsOpt !== undefined ? localDefaultsOpt : false;
   let uploadsSkipped = Seed_Upload$ReventlessSeed.uploadsSkipped();
   let match = await Seed_Prompt$ReventlessSeed.credentials(localDefaults);
-  let token = await login(match[0], match[1]);
+  let caller = match.caller;
+  let token = await login(caller.username, caller.password);
   let client = Seed_Client$ReventlessSeed.make({
     endpoint: endpoint
   });
@@ -22,8 +23,21 @@ async function make(label, endpoint, login, localDefaultsOpt) {
   return {
     client: client,
     uploadsSkipped: uploadsSkipped,
-    label: label
+    label: label,
+    accounts: match.accounts,
+    caller: caller,
+    callerId: Seed_Client$ReventlessSeed.callerId(client),
+    login: login
   };
+}
+
+async function clientFor(c, account) {
+  let token = await c.login(account.username, account.password);
+  let client = Seed_Client$ReventlessSeed.make({
+    endpoint: Seed_Client$ReventlessSeed.endpoint(c.client)
+  });
+  Seed_Client$ReventlessSeed.useToken(client, token);
+  return client;
 }
 
 function viaLoginEndpoint(loginEndpoint) {
@@ -59,6 +73,7 @@ function local(graphql, login, param) {
 
 export {
   make,
+  clientFor,
   viaLoginEndpoint,
   envOr,
   local,

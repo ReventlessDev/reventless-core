@@ -515,6 +515,139 @@ let seedProductRetirements = async (products: array<DemoData.product>, ~client: 
   )
 }
 
+// ── Demo owners ─────────────────────────────────────────────────────────────
+
+// Resolve the two demo owners against the platform being seeded, and say what
+// was resolved and from where. `DemoData` owns which account stands for which
+// owner; the connection owns which accounts exist and who this run is. Reported
+// on every run, warning included, because the failure this prevents is silent:
+// the notification chain, the projection and the owner resolver all work, and
+// the view is full for the seeder and empty for every human.
+let resolveDemoOwners = (connection: Seed.connection): DemoData.owners => {
+  let owners = DemoData.resolveOwners(
+    ~accounts=connection.accounts,
+    ~caller=connection.caller,
+    ~callerId=connection.callerId,
+  )
+  Seed.Runner.heading("Demo owners:")
+  [owners.shopper, owners.operator]->Array.forEach(o =>
+    Seed.Runner.report(DemoData.describeOwner(o))
+  )
+  let warnings =
+    [owners.shopper, owners.operator]->Array.filterMap(o =>
+      DemoData.ownerWarning(o, ~caller=connection.caller, ~callerId=connection.callerId)
+    )
+  if warnings->Array.length > 0 {
+    Seed.Runner.heading("WARNING — the demo owners cannot be keyed to this platform:")
+    warnings->Array.forEach(w => Console.log(`  - ${w}`))
+  }
+  owners
+}
+
+// ── Owner-scoped acceptance ─────────────────────────────────────────────────
+
+// How many rows an owner-scoped view must hold for the account it belongs to.
+// `Exactly` is the point: correct scoping and scoping that matches nothing are
+// both satisfied by a non-zero total held elsewhere, so only a count that names
+// the owner's share distinguishes them.
+type owned = Exactly(int) | AtLeast(int)
+
+let ownedSatisfied = (o: owned, n: int): bool =>
+  switch o {
+  | Exactly(k) => n == k
+  | AtLeast(k) => n >= k
+  }
+
+let ownedDescribe = (o: owned): string =>
+  switch o {
+  | Exactly(k) => `exactly ${k->Int.toString}`
+  | AtLeast(k) => `at least ${k->Int.toString}`
+  }
+
+let expectOwned = async (
+  client: Seed.Client.t,
+  ~field: string,
+  ~expected: owned,
+  ~who: string,
+  ~ownerId: string,
+) => {
+  let _ = await client->Seed.Client.queryAllNodesUntil(
+    ~field,
+    ~selection="id",
+    ~satisfied=nodes => expected->ownedSatisfied(nodes->Array.length),
+    ~onTimeout=nodes => {
+      let saw = (nodes->Array.length)->Int.toString
+      let cause = nodes->Array.length == 0
+        ? `Nothing in this view is keyed to "${ownerId}". The rows were seeded under a ` ++
+          `different id than the one this account's bearer presents — see the demo-owner ` ++
+          `resolution reported at the start of the run.`
+        : `The seeding account may not be exempt from owner scoping, in which case every row ` ++
+          `landed on it rather than on the owner the data set named.`
+      `owner-scoped read: "${who}" sees ${saw} row(s) in ${field}, expected ${expected
+        ->ownedDescribe}.\n  ${cause}`
+    },
+  )
+  Seed.Runner.report(`${field}: ${expected->ownedDescribe} for ${who} ✓`)
+}
+
+/**
+ * Reads the owner-scoped views back as the demo shopper, under its own narrowed
+ * token.
+ *
+ * `verifyViews` counts every view with the SEEDING client, which is elevated —
+ * so it answers for all owners at once and reports success on a data set no
+ * account on the deployment can read. That is the same "is it broken or is it
+ * empty?" ambiguity the harness exists to remove, reproduced one layer up. This
+ * is the assertion that fails when it regresses.
+ *
+ * Skipped when no accounts file supplied the demo shopper's password: a run on
+ * the non-interactive path has one identity and cannot mint a second.
+ */
+let verifyOwnerScopedReads = async (connection: Seed.connection, ~owners: DemoData.owners) => {
+  Seed.Runner.heading("Owner-scoped reads, as the demo shopper:")
+  switch connection.accounts->Array.find(u => u.username == DemoData.demoShopperUsername) {
+  | None =>
+    Seed.Runner.report(
+      `skipped — no accounts file supplied a password for "${DemoData.demoShopperUsername}", ` ++
+      `so this run holds one identity and cannot read as a second.`,
+    )
+  | Some(account) =>
+    let client = await Seed.Connect.clientFor(connection, ~account)
+    let who = `${account.username} (${owners.shopper.id})`
+    switch Seed.Client.identitySummary(client) {
+    | Some(summary) => Seed.Runner.report(`reading as ${who} — ${summary}`)
+    | None => Seed.Runner.report(`reading as ${who}`)
+    }
+    let ownerId = owners.shopper.id
+    await expectOwned(
+      client,
+      ~field="Ordering_Orders",
+      ~expected=Exactly(DemoData.demoShopperOrderCount),
+      ~who,
+      ~ownerId,
+    )
+    // One row per recipient, materialised in full by the subscriptions view.
+    await expectOwned(
+      client,
+      ~field="Ordering_NotificationSubscriptions",
+      ~expected=Exactly(1),
+      ~who,
+      ~ownerId,
+    )
+    // Not an exact count: how many notifications an order produces is the
+    // notification domain's business, and pinning it here would make this
+    // assertion fail on a change that has nothing to do with owner scoping.
+    // Suppressed rows are `@retired` and withheld from this caller anyway.
+    await expectOwned(
+      client,
+      ~field="Ordering_NotificationDeliveries",
+      ~expected=AtLeast(1),
+      ~who,
+      ~ownerId,
+    )
+  }
+}
+
 // ── Summary ─────────────────────────────────────────────────────────────────
 
 let summarise = async (~client: Seed.Client.t, ~counts: dict<int>) => {
@@ -636,6 +769,10 @@ let run = async (
   ~orderCount: int,
 ): unit => {
   let client = connection.client
+  // Before anything is built: the demo customers and the orders assigned to them
+  // are both keyed by these ids, and an id resolved after the fact is an id the
+  // commands already went out without.
+  let owners = resolveDemoOwners(connection)
 
   let built = DemoData.buildProducts(~count=productCount, ())
   let products = switch connection.uploadsSkipped {
@@ -715,8 +852,8 @@ let run = async (
   // The demo logins are registered as customers but are deliberately NOT part of
   // the weighted draw below: their order counts are fixed by index, and letting
   // them also be sampled would make those counts approximate again.
-  let customers = generatedCustomers->Array.concat(DemoData.demoCustomers)
-  let orders = DemoData.buildOrders(products, generatedCustomers, ~count=orderCount, ())
+  let customers = generatedCustomers->Array.concat(DemoData.demoCustomers(owners))
+  let orders = DemoData.buildOrders(products, generatedCustomers, ~owners, ~count=orderCount, ())
 
   await seedCategories(categories, ~client)
   await seedProducts(products, ~client)
@@ -742,6 +879,7 @@ let run = async (
   await seedProductRetirements(products, ~client)
 
   let counts = await Seed.Runner.verifyViews(client, ~views)
+  await verifyOwnerScopedReads(connection, ~owners)
   await summarise(~client, ~counts)
 }
 

@@ -37,6 +37,11 @@ let groupClaimNames = [
   "groups"
 ];
 
+let callerIdClaimNames = [
+  "sub",
+  "userId"
+];
+
 function decodeSegment(segment) {
   try {
     return Stdlib_JSON.Decode.object(JSON.parse(Buffer.from(segment, "base64url").toString("utf8")));
@@ -77,6 +82,16 @@ function effectiveGroups(t) {
       return found;
     } else {
       return claimStrings(t, name);
+    }
+  });
+}
+
+function callerId(t) {
+  return Stdlib_Array.reduce(callerIdClaimNames, undefined, (found, name) => {
+    if (found !== undefined) {
+      return found;
+    } else {
+      return Stdlib_Option.flatMap(Stdlib_Option.flatMap(claims(t), c => c[name]), Stdlib_JSON.Decode.string);
     }
   });
 }
@@ -407,11 +422,13 @@ export {
   activeRoleClaim,
   availableRolesClaim,
   groupClaimNames,
+  callerIdClaimNames,
   decodeSegment,
   claims,
   asStrings,
   claimStrings,
   effectiveGroups,
+  callerId,
   identitySummary,
   field,
   asString,

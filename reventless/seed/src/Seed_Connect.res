@@ -17,6 +17,21 @@ type connection = {
   client: Seed_Client.t,
   uploadsSkipped: bool,
   label: string,
+  // Every account the platform's accounts file declares — `[]` when there was no
+  // file, since the `REVENTLESS_DEMO_USER`/`REVENTLESS_DEMO_PASSWORD` path
+  // bypasses it entirely. A data set resolves a demo owner through this, so the
+  // id it seeds is the id the platform stamps rather than a literal that only
+  // happens to match one platform's accounts.
+  accounts: array<Seed_Users.user>,
+  // The account this run authenticated as, and the id its bearer actually
+  // carries — which is the only id available when there is no accounts file.
+  caller: Seed_Users.user,
+  callerId: option<string>,
+  // The login this run authenticated with, kept so a data set can mint a second
+  // client for another account. An owner-scoped read is only ever verified by
+  // the account the rows belong to: the seeding client is elevated, and an
+  // elevated token answers for every owner at once.
+  login: (~username: string, ~password: string) => promise<string>,
 }
 
 /**
@@ -34,8 +49,8 @@ let make = async (
   // skip a broken/absent upload path without editing the data set. The data set reads
   // `connection.uploadsSkipped` and reports the skip.
   let uploadsSkipped = Seed_Upload.uploadsSkipped()
-  let (username, password) = await Seed_Prompt.credentials(~localDefaults)
-  let token = await login(~username, ~password)
+  let {caller, accounts} = await Seed_Prompt.credentials(~localDefaults)
+  let token = await login(~username=caller.username, ~password=caller.password)
   let client = Seed_Client.make(~config={endpoint: endpoint})
   client->Seed_Client.useToken(token)
   // What the bearer grants, which is not always what the account list showed: a
@@ -45,7 +60,31 @@ let make = async (
   | Some(summary) => Console.log(`Acting as: ${summary}`)
   | None => ()
   }
-  {client, uploadsSkipped, label}
+  {
+    client,
+    uploadsSkipped,
+    label,
+    accounts,
+    caller,
+    callerId: Seed_Client.callerId(client),
+    login,
+  }
+}
+
+/**
+ * A second authenticated client, for one of the accounts the platform's accounts
+ * file declares. Same endpoint, same login route, a different bearer.
+ *
+ * It exists so a data set can read back what it seeded as the account the rows
+ * belong to. The seeding client cannot answer that question: it is elevated, so
+ * an owner-scoped view counts every owner's rows for it and reads non-empty
+ * whether or not a single row is reachable by the person it was seeded for.
+ */
+let clientFor = async (c: connection, ~account: Seed_Users.user): Seed_Client.t => {
+  let token = await c.login(~username=account.username, ~password=account.password)
+  let client = Seed_Client.make(~config={endpoint: Seed_Client.endpoint(c.client)})
+  client->Seed_Client.useToken(token)
+  client
 }
 
 /**

@@ -31,7 +31,8 @@ function userOf(json) {
   return {
     username: match,
     password: match$1,
-    groups: groups
+    groups: groups,
+    userId: Stdlib_Option.flatMap(json["userId"], asString)
   };
 }
 

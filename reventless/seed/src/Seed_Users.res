@@ -11,8 +11,20 @@
 
 @module("yaml") external parseYaml: string => JSON.t = "parse"
 
-/** One account: what to log in as, and what to send with it. */
-type user = {username: string, password: string, groups: array<string>}
+/**
+ * One account: what to log in as, what to send with it, and — when the file
+ * records one — the id the platform stamps on rows this account writes.
+ *
+ * `userId` is optional because absence is normal on both platforms: a local file
+ * may omit it and let the auth adapter default it to the username, and a
+ * hand-maintained AWS file records subs the pool minted, so it can lag.
+ */
+type user = {
+  username: string,
+  password: string,
+  groups: array<string>,
+  userId: option<string>,
+}
 
 let asString = (json: JSON.t): option<string> =>
   switch json {
@@ -32,7 +44,7 @@ let userOf = (json: JSON.t): option<user> =>
       | Some(JSON.Array(items)) => items->Array.filterMap(asString)
       | _ => []
       }
-      Some({username, password, groups})
+      Some({username, password, groups, userId: obj->Dict.get("userId")->Option.flatMap(asString)})
     | _ => None
     }
   | _ => None

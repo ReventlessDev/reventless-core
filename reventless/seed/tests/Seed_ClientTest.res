@@ -107,6 +107,56 @@ describe("Seed_Client.effectiveGroups:", () => {
   })
 })
 
+// The id an `@owner` field is stamped with. A seed that cannot read it can only
+// key owner-scoped rows to a literal, and a literal matches one platform's
+// accounts at most — which is how a demo shopper came to be registered on a
+// deployment where nobody can ever be that shopper.
+
+describe("Seed_Client.callerId:", () => {
+  // A Cognito id token says `sub`; the local dev token is a base64url
+  // `Identity.t`, whose field is `userId`. Neither platform announces which.
+  testSync("reads the id under whichever name the provider gave it", () => {
+    expect(
+      clientWith(jwt([("sub", JSON.Encode.string("4275e4a4-00c1-70e1"))]))->Seed_Client.callerId,
+    )->toEqual(Some("4275e4a4-00c1-70e1"))
+    expect(
+      clientWith(localToken([("userId", JSON.Encode.string("local-shopper"))]))
+      ->Seed_Client.callerId,
+    )->toEqual(Some("local-shopper"))
+  })
+
+  // `sub` first, so a token carrying both is read the way the pool that minted
+  // it means it.
+  testSync("prefers sub when a token carries both names", () =>
+    expect(
+      clientWith(
+        jwt([
+          ("sub", JSON.Encode.string("f215e4b4-30f1-700c")),
+          ("userId", JSON.Encode.string("local-shopper")),
+        ]),
+      )->Seed_Client.callerId,
+    )->toEqual(Some("f215e4b4-30f1-700c"))
+  )
+
+  // `None` is not an error — it means this cannot add anything, and the caller
+  // falls back to whatever the accounts file declared.
+  testSync("says nothing about a token it cannot read, or one naming no id", () => {
+    expect(clientWith("not-a-token")->Seed_Client.callerId)->toEqual(None)
+    expect(clientWith(jwt([("cognito:groups", strings(["Admin"]))]))->Seed_Client.callerId)
+    ->toEqual(None)
+    expect(
+      Seed_Client.make(~config={endpoint: "http://example.invalid/graphql"})
+      ->Seed_Client.callerId,
+    )->toEqual(None)
+  })
+
+  // A claim of the wrong shape is not an id. Taking the array's first element
+  // would be a guess, and a guessed owner id seeds rows nobody can read.
+  testSync("refuses a claim that is not a single string", () =>
+    expect(clientWith(jwt([("sub", strings(["a", "b"]))]))->Seed_Client.callerId)->toEqual(None)
+  )
+})
+
 describe("Seed_Client.identitySummary:", () => {
   // The case that cost the debugging: eligible in the user list, refused by the
   // token. Naming what it was narrowed FROM is what points at the role switch.

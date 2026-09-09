@@ -183,11 +183,30 @@ let select = async (
     }
   }
 
+/**
+ * The account a run authenticated as, alongside every account the platform's
+ * accounts file declares.
+ *
+ * `accounts` is `[]` whenever no file was read — the
+ * `REVENTLESS_DEMO_USER`/`REVENTLESS_DEMO_PASSWORD` path bypasses it entirely,
+ * and so does typing both halves — so a consumer must handle empty rather than
+ * assume the file was there. `caller` is always populated, but carries no
+ * `groups` and no `userId` on those paths: nothing read them off a file.
+ */
+type resolved = {caller: Seed_Users.user, accounts: array<Seed_Users.user>}
+
+let typedUser = (~username: string, ~password: string): Seed_Users.user => {
+  username,
+  password,
+  groups: [],
+  userId: None,
+}
+
 // Typing both halves is the fallback, not the first offer: it is what happens
 // when the platform keeps no accounts file. `envUser` is threaded in so a
 // `REVENTLESS_DEMO_USER` that named nobody in the file still skips the username
 // prompt rather than asking for a name that was already given.
-let askCredentials = async (~localDefaults: bool, ~envUser: option<string>): (string, string) => {
+let askCredentials = async (~localDefaults: bool, ~envUser: option<string>): Seed_Users.user => {
   let username = switch envUser {
   | Some(u) => u
   | None =>
@@ -202,7 +221,7 @@ let askCredentials = async (~localDefaults: bool, ~envUser: option<string>): (st
     let entered = await askHidden(localDefaults ? "Password [admin]: " : "Password: ")
     entered == "" && localDefaults ? "admin" : entered
   }
-  (username, password)
+  typedUser(~username, ~password)
 }
 
 // The accounts file the platform already keeps (`.reventless/users.yaml`, or
@@ -212,7 +231,12 @@ let askCredentials = async (~localDefaults: bool, ~envUser: option<string>): (st
 // A named `REVENTLESS_DEMO_USER` picks its entry directly; otherwise the file's
 // accounts are offered in the order it defines them, first as the default.
 // `None` means the file has nothing to offer and the caller should ask.
-let fromUsersFile = async (~envUser: option<string>): option<(string, string)> =>
+//
+// The whole list travels back with the chosen account, not just the credentials
+// it supplied: the file is also the only place a demo owner's id can be looked
+// up, and reading it once to pick a login and never again is what let a data set
+// seed rows under ids nobody on the platform holds.
+let fromUsersFile = async (~envUser: option<string>): option<resolved> =>
   switch Seed_Users.load(~path=?envValue("SEED_USERS_FILE")) {
   | None => None
   | Some((path, users)) =>
@@ -233,7 +257,7 @@ let fromUsersFile = async (~envUser: option<string>): option<(string, string)> =
     // operator checks when owner-scoped rows turn up under the wrong account.
     chosen->Option.map(u => {
       Console.log(`Logging in as ${u.username} (from ${path})`)
-      (u.username, u.password)
+      {caller: u, accounts: users}
     })
   }
 
@@ -245,19 +269,22 @@ let fromUsersFile = async (~envUser: option<string>): option<(string, string)> =
  * `.reventless/users.yaml` supplies the accounts to choose from, and only a
  * platform without one falls back to typing both halves — where, with
  * `localDefaults`, empty input means `admin`/`admin`.
+ *
+ * Returns the resolved account rather than a pair, and the accounts file
+ * alongside it when there was one — see `resolved`.
  */
-let credentials = async (~localDefaults: bool=false): (string, string) => {
+let credentials = async (~localDefaults: bool=false): resolved => {
   let envUser = envValue("REVENTLESS_DEMO_USER")
-  let (username, password) = switch (envUser, envValue("REVENTLESS_DEMO_PASSWORD")) {
-  | (Some(u), Some(p)) => (u, p)
+  let resolved = switch (envUser, envValue("REVENTLESS_DEMO_PASSWORD")) {
+  | (Some(username), Some(password)) => {caller: typedUser(~username, ~password), accounts: []}
   | _ =>
     switch await fromUsersFile(~envUser) {
-    | Some(pair) => pair
-    | None => await askCredentials(~localDefaults, ~envUser)
+    | Some(resolved) => resolved
+    | None => {caller: await askCredentials(~localDefaults, ~envUser), accounts: []}
     }
   }
-  if username == "" || password == "" {
+  if resolved.caller.username == "" || resolved.caller.password == "" {
     throw(Failed("username and password are required."))
   }
-  (username, password)
+  resolved
 }

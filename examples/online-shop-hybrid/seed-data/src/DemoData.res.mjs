@@ -383,26 +383,101 @@ function discountedPrice(p) {
   return Money$Reventless.make(Math.round(p.price.amount * 0.85), p.price.currency);
 }
 
-let demoShopperId = "local-shopper";
+let demoShopperUsername = "shopper";
 
-let demoOperatorId = "local-admin";
+let demoOperatorUsername = "admin";
 
-let demoCustomers = [
-  {
-    id: demoShopperId,
-    email: "shopper@example.com",
-    address: "Nordbahnstrasse 36, 1020 Vienna, Austria",
-    lat: 48.2265,
-    lng: 16.3897
-  },
-  {
-    id: demoOperatorId,
-    email: "admin@example.com",
-    address: "Praterstrasse 1, 1020 Vienna, Austria",
-    lat: 48.2135,
-    lng: 16.3849
+let fallbackShopperId = "local-shopper";
+
+let fallbackOperatorId = "local-admin";
+
+function resolveOwner(role, username, fallback, accounts, caller, callerId) {
+  let declared = Stdlib_Option.flatMap(accounts.find(u => u.username === username), u => u.userId);
+  if (declared !== undefined) {
+    return {
+      role: role,
+      username: username,
+      id: declared,
+      source: "AccountsFile"
+    };
   }
-];
+  let id = caller.username === username ? callerId : undefined;
+  if (id !== undefined) {
+    return {
+      role: role,
+      username: username,
+      id: id,
+      source: "Bearer"
+    };
+  } else {
+    return {
+      role: role,
+      username: username,
+      id: fallback,
+      source: "Fallback"
+    };
+  }
+}
+
+function resolveOwners(accounts, caller, callerId) {
+  return {
+    shopper: resolveOwner("shopper", demoShopperUsername, fallbackShopperId, accounts, caller, callerId),
+    operator: resolveOwner("operator", demoOperatorUsername, fallbackOperatorId, accounts, caller, callerId)
+  };
+}
+
+function describeOwner(o) {
+  let match = o.source;
+  let from;
+  switch (match) {
+    case "AccountsFile" :
+      from = `the userId the accounts file records for "` + o.username + `"`;
+      break;
+    case "Bearer" :
+      from = `the bearer this run logged in with, as "` + o.username + `"`;
+      break;
+    case "Fallback" :
+      from = `a fallback literal — nothing on this platform names "` + o.username + `"`;
+      break;
+  }
+  return `demo ` + o.role + `: ` + o.id + ` (` + from + `)`;
+}
+
+function ownerWarning(o, caller, callerId) {
+  let match = o.source;
+  switch (match) {
+    case "AccountsFile" :
+      if (callerId !== undefined && caller.username === o.username && callerId !== o.id) {
+        return `the accounts file records userId "` + o.id + `" for "` + o.username + `", but the bearer this run ` + (`logged in with as that same account carries "` + callerId + `" — the file is stale, and the demo `) + (o.role + `'s rows are being seeded under an id nobody holds.`);
+      } else {
+        return;
+      }
+    case "Bearer" :
+      return;
+    case "Fallback" :
+      let stamps = callerId !== undefined ? ` This run's own bearer carries "` + callerId + `", which is what an id looks like here.` : "";
+      return `the demo ` + o.role + ` fell back to the literal "` + o.id + `" — nothing on this platform names an ` + (`id for "` + o.username + `", so that is a guess.` + stamps + ` Owner-scoped rows seeded under the `) + `wrong id are invisible to every account on this deployment: record a userId for ` + (`"` + o.username + `" in the accounts file and re-seed.`);
+  }
+}
+
+function demoCustomers(owners) {
+  return [
+    {
+      id: owners.shopper.id,
+      email: "shopper@example.com",
+      address: "Nordbahnstrasse 36, 1020 Vienna, Austria",
+      lat: 48.2265,
+      lng: 16.3897
+    },
+    {
+      id: owners.operator.id,
+      email: "admin@example.com",
+      address: "Praterstrasse 1, 1020 Vienna, Austria",
+      lat: 48.2135,
+      lng: 16.3849
+    }
+  ];
+}
 
 function buildCustomers(countOpt, param) {
   let count = countOpt !== undefined ? countOpt : 20;
@@ -452,7 +527,7 @@ let deliverySlots = [
   ]
 ];
 
-function buildOrders(products, customers, countOpt, param) {
+function buildOrders(products, customers, owners, countOpt, param) {
   let count = countOpt !== undefined ? countOpt : 150;
   let shuffled = Seed_Random$ReventlessSeed.sampleWeighted(random, products.map(p => [
     p,
@@ -467,8 +542,8 @@ function buildOrders(products, customers, countOpt, param) {
             sizeRoll < 0.9 ? 3 : 4
           )
       );
-    let demoOwner = i < 5 ? demoShopperId : (
-        i < 8 ? demoOperatorId : undefined
+    let demoOwner = i < 5 ? owners.shopper.id : (
+        i < 8 ? owners.operator.id : undefined
       );
     let customerId = demoOwner !== undefined ? demoOwner : Stdlib_Option.mapOr(Seed_Random$ReventlessSeed.sampleWeighted(random, customerWeights, 1)[0], "cust-01", c => c.id);
     let lineItems = Seed_Random$ReventlessSeed.sampleWeighted(random, productWeights, size).map(p => {
@@ -574,10 +649,16 @@ export {
   archivedProducts,
   discontinuedProducts,
   discountedPrice,
-  demoShopperId,
-  demoOperatorId,
   demoShopperOrderCount,
   demoOperatorOrderCount,
+  demoShopperUsername,
+  demoOperatorUsername,
+  fallbackShopperId,
+  fallbackOperatorId,
+  resolveOwner,
+  resolveOwners,
+  describeOwner,
+  ownerWarning,
   demoCustomers,
   buildCustomers,
   movedCustomers,

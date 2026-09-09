@@ -142,6 +142,15 @@ async function select(title, options, env, defaultIndex) {
   return await pick();
 }
 
+function typedUser(username, password) {
+  return {
+    username: username,
+    password: password,
+    groups: [],
+    userId: undefined
+  };
+}
+
 async function askCredentials(localDefaults, envUser) {
   let username;
   if (envUser !== undefined) {
@@ -160,10 +169,7 @@ async function askCredentials(localDefaults, envUser) {
     let entered$1 = await askHidden(localDefaults ? "Password [admin]: " : "Password: ");
     password = entered$1 === "" && localDefaults ? "admin" : entered$1;
   }
-  return [
-    username,
-    password
-  ];
+  return typedUser(username, password);
 }
 
 async function fromUsersFile(envUser) {
@@ -179,10 +185,10 @@ async function fromUsersFile(envUser) {
     ]), "SEED_USER", 0);
   return Stdlib_Option.map(chosen, u => {
     console.log(`Logging in as ` + u.username + ` (from ` + path + `)`);
-    return [
-      u.username,
-      u.password
-    ];
+    return {
+      caller: u,
+      accounts: users
+    };
   });
 }
 
@@ -190,33 +196,31 @@ async function credentials(localDefaultsOpt) {
   let localDefaults = localDefaultsOpt !== undefined ? localDefaultsOpt : false;
   let envUser = envValue("REVENTLESS_DEMO_USER");
   let match = envValue("REVENTLESS_DEMO_PASSWORD");
-  let match$1;
+  let resolved;
   let exit = 0;
   if (envUser !== undefined && match !== undefined) {
-    match$1 = [
-      envUser,
-      match
-    ];
+    resolved = {
+      caller: typedUser(envUser, match),
+      accounts: []
+    };
   } else {
     exit = 1;
   }
   if (exit === 1) {
-    let pair = await fromUsersFile(envUser);
-    match$1 = pair !== undefined ? pair : await askCredentials(localDefaults, envUser);
+    let resolved$1 = await fromUsersFile(envUser);
+    resolved = resolved$1 !== undefined ? resolved$1 : ({
+        caller: await askCredentials(localDefaults, envUser),
+        accounts: []
+      });
   }
-  let password = match$1[1];
-  let username = match$1[0];
-  if (username === "" || password === "") {
+  if (resolved.caller.username === "" || resolved.caller.password === "") {
     throw {
       RE_EXN_ID: Seed_Types$ReventlessSeed.Failed,
       _1: "username and password are required.",
       Error: new Error()
     };
   }
-  return [
-    username,
-    password
-  ];
+  return resolved;
 }
 
 export {
@@ -230,6 +234,7 @@ export {
   askHidden,
   isAffirmative,
   select,
+  typedUser,
   askCredentials,
   fromUsersFile,
   credentials,

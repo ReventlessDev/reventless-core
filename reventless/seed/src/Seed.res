@@ -16,12 +16,17 @@ module Connect = Seed_Connect
 exception Failed = Seed_Types.Failed
 
 // A live target a data set seeds against: an authenticated client, whether uploads
-// are skipped this run, and a label. Uploads mint through the domain API's
-// `Upload_Presign` mutation on the client (route B), so no upload endpoint is carried.
+// are skipped this run, a label, and who the run is acting as. Uploads mint through
+// the domain API's `Upload_Presign` mutation on the client (route B), so no upload
+// endpoint is carried.
 type connection = Seed_Connect.connection = {
   client: Seed_Client.t,
   uploadsSkipped: bool,
   label: string,
+  accounts: array<Seed_Users.user>,
+  caller: Seed_Users.user,
+  callerId: option<string>,
+  login: (~username: string, ~password: string) => promise<string>,
 }
 
 // A named, seedable data set. `seed` owns everything domain-specific.

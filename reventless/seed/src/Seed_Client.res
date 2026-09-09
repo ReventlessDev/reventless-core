@@ -68,6 +68,12 @@ let availableRolesClaim = "availableRoles"
 /** Group claim per provider, tried in order. */
 let groupClaimNames = ["cognito:groups", "groups"]
 
+/** Claim carrying the caller's id, per provider, tried in order. A Cognito JWT
+    says `sub`; the local dev token is a base64url `Identity.t`, whose field is
+    `userId`. Same shape as `groupClaimNames`, for the same reason: this harness
+    depends on no framework package and must not learn who signed the token. */
+let callerIdClaimNames = ["sub", "userId"]
+
 let decodeSegment = (segment: string): option<dict<JSON.t>> =>
   try {
     segment
@@ -115,6 +121,17 @@ let effectiveGroups = (t: t): option<array<string>> =>
     switch found {
     | Some(_) => found
     | None => t->claimStrings(name)
+    }
+  )
+
+/** The id the bearer presents — what an `@owner` field is stamped with, and so
+    the only id a seed can key owner-scoped rows to and have an account read them
+    back. `None` when the token is opaque to us or names no id. */
+let callerId = (t: t): option<string> =>
+  callerIdClaimNames->Array.reduce(None, (found, name) =>
+    switch found {
+    | Some(_) => found
+    | None => t->claims->Option.flatMap(c => c->Dict.get(name))->Option.flatMap(JSON.Decode.string)
     }
   )
 

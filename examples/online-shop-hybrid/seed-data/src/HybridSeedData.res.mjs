@@ -8,6 +8,7 @@ import * as Seed$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed.re
 import * as Seed_Client$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Client.res.mjs";
 import * as Seed_Runner$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Runner.res.mjs";
 import * as Seed_Upload$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Upload.res.mjs";
+import * as Seed_Connect$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Connect.res.mjs";
 import * as DemoData$OnlineShopHybridSeed from "./DemoData.res.mjs";
 import * as DemoCommands$OnlineShopHybridSeed from "./DemoCommands.res.mjs";
 
@@ -378,6 +379,80 @@ async function seedProductRetirements(products, client) {
   return Seed_Runner$ReventlessSeed.report(`catalog retirements: ` + archived.length.toString() + ` archived, ` + discontinued.length.toString() + ` discontinued`);
 }
 
+function resolveDemoOwners(connection) {
+  let owners = DemoData$OnlineShopHybridSeed.resolveOwners(connection.accounts, connection.caller, connection.callerId);
+  Seed_Runner$ReventlessSeed.heading("Demo owners:");
+  [
+    owners.shopper,
+    owners.operator
+  ].forEach(o => Seed_Runner$ReventlessSeed.report(DemoData$OnlineShopHybridSeed.describeOwner(o)));
+  let warnings = Stdlib_Array.filterMap([
+    owners.shopper,
+    owners.operator
+  ], o => DemoData$OnlineShopHybridSeed.ownerWarning(o, connection.caller, connection.callerId));
+  if (warnings.length !== 0) {
+    Seed_Runner$ReventlessSeed.heading("WARNING — the demo owners cannot be keyed to this platform:");
+    warnings.forEach(w => {
+      console.log(`  - ` + w);
+    });
+  }
+  return owners;
+}
+
+function ownedSatisfied(o, n) {
+  if (o.TAG === "Exactly") {
+    return n === o._0;
+  } else {
+    return n >= o._0;
+  }
+}
+
+function ownedDescribe(o) {
+  if (o.TAG === "Exactly") {
+    return `exactly ` + o._0.toString();
+  } else {
+    return `at least ` + o._0.toString();
+  }
+}
+
+async function expectOwned(client, field, expected, who, ownerId) {
+  await Seed_Client$ReventlessSeed.queryAllNodesUntil(client, field, "id", undefined, nodes => ownedSatisfied(expected, nodes.length), nodes => {
+    let saw = nodes.length.toString();
+    let cause = nodes.length === 0 ? `Nothing in this view is keyed to "` + ownerId + `". The rows were seeded under a different id than the one this account's bearer presents — see the demo-owner resolution reported at the start of the run.` : `The seeding account may not be exempt from owner scoping, in which case every row landed on it rather than on the owner the data set named.`;
+    return `owner-scoped read: "` + who + `" sees ` + saw + ` row(s) in ` + field + `, expected ` + ownedDescribe(expected) + `.\n  ` + cause;
+  }, undefined);
+  return Seed_Runner$ReventlessSeed.report(field + `: ` + ownedDescribe(expected) + ` for ` + who + ` ✓`);
+}
+
+async function verifyOwnerScopedReads(connection, owners) {
+  Seed_Runner$ReventlessSeed.heading("Owner-scoped reads, as the demo shopper:");
+  let account = connection.accounts.find(u => u.username === DemoData$OnlineShopHybridSeed.demoShopperUsername);
+  if (account === undefined) {
+    return Seed_Runner$ReventlessSeed.report(`skipped — no accounts file supplied a password for "` + DemoData$OnlineShopHybridSeed.demoShopperUsername + `", so this run holds one identity and cannot read as a second.`);
+  }
+  let client = await Seed_Connect$ReventlessSeed.clientFor(connection, account);
+  let who = account.username + ` (` + owners.shopper.id + `)`;
+  let summary = Seed_Client$ReventlessSeed.identitySummary(client);
+  if (summary !== undefined) {
+    Seed_Runner$ReventlessSeed.report(`reading as ` + who + ` — ` + summary);
+  } else {
+    Seed_Runner$ReventlessSeed.report(`reading as ` + who);
+  }
+  let ownerId = owners.shopper.id;
+  await expectOwned(client, "Ordering_Orders", {
+    TAG: "Exactly",
+    _0: DemoData$OnlineShopHybridSeed.demoShopperOrderCount
+  }, who, ownerId);
+  await expectOwned(client, "Ordering_NotificationSubscriptions", {
+    TAG: "Exactly",
+    _0: 1
+  }, who, ownerId);
+  return await expectOwned(client, "Ordering_NotificationDeliveries", {
+    TAG: "AtLeast",
+    _0: 1
+  }, who, ownerId);
+}
+
 async function summarise(client, counts) {
   let orders = await Seed_Client$ReventlessSeed.queryAllNodes(client, "Ordering_Orders", "lifecycle shippingMethod", undefined);
   let lifecycles = [
@@ -434,6 +509,7 @@ async function summarise(client, counts) {
 
 async function run(connection, productCount, customerCount, orderCount) {
   let client = connection.client;
+  let owners = resolveDemoOwners(connection);
   let built = DemoData$OnlineShopHybridSeed.buildProducts(productCount, undefined);
   let products = connection.uploadsSkipped ? (Seed_Runner$ReventlessSeed.report(`product images: skipped (SEED_SKIP_UPLOADS) — productImage left absent`), built) : await uploadProductImages(built, client, productImageStore);
   let categories = connection.uploadsSkipped ? (Seed_Runner$ReventlessSeed.report(`category images: skipped (SEED_SKIP_UPLOADS) — categoryImage left absent`), DemoData$OnlineShopHybridSeed.categories) : await uploadCategoryImages(DemoData$OnlineShopHybridSeed.categories, client, categoryImageStore);
@@ -506,8 +582,8 @@ async function run(connection, productCount, customerCount, orderCount) {
     extraProductImages = out;
   }
   let generatedCustomers = DemoData$OnlineShopHybridSeed.buildCustomers(customerCount, undefined);
-  let customers = generatedCustomers.concat(DemoData$OnlineShopHybridSeed.demoCustomers);
-  let orders = DemoData$OnlineShopHybridSeed.buildOrders(products, generatedCustomers, orderCount, undefined);
+  let customers = generatedCustomers.concat(DemoData$OnlineShopHybridSeed.demoCustomers(owners));
+  let orders = DemoData$OnlineShopHybridSeed.buildOrders(products, generatedCustomers, owners, orderCount, undefined);
   await seedCategories(categories, client);
   await seedProducts(products, client);
   await seedProductGallery(client, extraProductImages);
@@ -524,6 +600,7 @@ async function run(connection, productCount, customerCount, orderCount) {
   await seedDeactivations(customers, client);
   await seedProductRetirements(products, client);
   let counts = await Seed_Runner$ReventlessSeed.verifyViews(client, views);
+  await verifyOwnerScopedReads(connection, owners);
   return await summarise(client, counts);
 }
 
@@ -561,6 +638,11 @@ export {
   seedCancellations,
   seedDeactivations,
   seedProductRetirements,
+  resolveDemoOwners,
+  ownedSatisfied,
+  ownedDescribe,
+  expectOwned,
+  verifyOwnerScopedReads,
   summarise,
   run,
   dataSets,

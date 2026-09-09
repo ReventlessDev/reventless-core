@@ -278,8 +278,11 @@ let run = async () => {
   Console.log(`\nEvents API:   ${eventsEndpoint}`)
   Console.log(`Log in to ${region} pool client ${clientId}\n`)
 
-  let (username, password) = await Seed.Prompt.credentials()
-  let idToken = await ReventlessSeedAws.cognito(~region, ~clientId)(~username, ~password)
+  let {caller} = await Seed.Prompt.credentials()
+  let idToken = await ReventlessSeedAws.cognito(~region, ~clientId)(
+    ~username=caller.username,
+    ~password=caller.password,
+  )
   Console.log("\nGot an IdToken. Running assertions:\n")
 
   let ns = namespace->Option.getOr("client")
