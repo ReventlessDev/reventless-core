@@ -15,12 +15,17 @@
 # seed as, first as the default, and takes the password from here.
 #
 # It also reads `userId`, and that half is load-bearing. The demo data registers
-# a customer for `shopper` and one for `admin` and gives each a fixed number of
+# a customer for `shopper`, `admin` and `merch`, each with a fixed number of
 # orders; those rows are owner-scoped, so they are only readable by the account
 # whose id they carry. The seed resolves that id from the `userId` below —
 # falling back to a literal, and warning that it did, when an entry declares
 # none. Delete a `userId` here and the matching account's demo rows become
 # invisible to it.
+#
+# `fulfil` deliberately gets no row of its own: it is elevated (see
+# `Storefront.elevatedGroups`), so it reads across every customer and its screens
+# are full without one. `merch` is not elevated, which is exactly why it needs
+# one — otherwise it logs in to an empty storefront that looks like a bug.
 #
 # The shop's four roles, and what makes them different from each other:
 #

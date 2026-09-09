@@ -382,14 +382,8 @@ async function seedProductRetirements(products, client) {
 function resolveDemoOwners(connection) {
   let owners = DemoData$OnlineShopHybridSeed.resolveOwners(connection.accounts, connection.caller, connection.callerId);
   Seed_Runner$ReventlessSeed.heading("Demo owners:");
-  [
-    owners.shopper,
-    owners.operator
-  ].forEach(o => Seed_Runner$ReventlessSeed.report(DemoData$OnlineShopHybridSeed.describeOwner(o)));
-  let warnings = Stdlib_Array.filterMap([
-    owners.shopper,
-    owners.operator
-  ], o => DemoData$OnlineShopHybridSeed.ownerWarning(o, connection.caller, connection.callerId));
+  DemoData$OnlineShopHybridSeed.all(owners).forEach(o => Seed_Runner$ReventlessSeed.report(DemoData$OnlineShopHybridSeed.describeOwner(o)));
+  let warnings = Stdlib_Array.filterMap(DemoData$OnlineShopHybridSeed.all(owners), o => DemoData$OnlineShopHybridSeed.ownerWarning(o, connection.caller, connection.callerId));
   if (warnings.length !== 0) {
     Seed_Runner$ReventlessSeed.heading("WARNING — the demo owners cannot be keyed to this platform:");
     warnings.forEach(w => {
@@ -424,24 +418,23 @@ async function expectOwned(client, field, expected, who, ownerId) {
   return Seed_Runner$ReventlessSeed.report(field + `: ` + ownedDescribe(expected) + ` for ` + who + ` ✓`);
 }
 
-async function verifyOwnerScopedReads(connection, owners) {
-  Seed_Runner$ReventlessSeed.heading("Owner-scoped reads, as the demo shopper:");
-  let account = connection.accounts.find(u => u.username === DemoData$OnlineShopHybridSeed.demoShopperUsername);
+async function verifyOwnerScopedRead(connection, owner, orderCount) {
+  let account = connection.accounts.find(u => u.username === owner.username);
   if (account === undefined) {
-    return Seed_Runner$ReventlessSeed.report(`skipped — no accounts file supplied a password for "` + DemoData$OnlineShopHybridSeed.demoShopperUsername + `", so this run holds one identity and cannot read as a second.`);
+    return Seed_Runner$ReventlessSeed.report(owner.role + `: skipped — no accounts file supplied a password for ` + (`"` + owner.username + `", so this run cannot read as it.`));
   }
   let client = await Seed_Connect$ReventlessSeed.clientFor(connection, account);
-  let who = account.username + ` (` + owners.shopper.id + `)`;
+  let who = account.username + ` (` + owner.id + `)`;
   let summary = Seed_Client$ReventlessSeed.identitySummary(client);
   if (summary !== undefined) {
     Seed_Runner$ReventlessSeed.report(`reading as ` + who + ` — ` + summary);
   } else {
     Seed_Runner$ReventlessSeed.report(`reading as ` + who);
   }
-  let ownerId = owners.shopper.id;
+  let ownerId = owner.id;
   await expectOwned(client, "Ordering_Orders", {
     TAG: "Exactly",
-    _0: DemoData$OnlineShopHybridSeed.demoShopperOrderCount
+    _0: orderCount
   }, who, ownerId);
   await expectOwned(client, "Ordering_NotificationSubscriptions", {
     TAG: "Exactly",
@@ -451,6 +444,12 @@ async function verifyOwnerScopedReads(connection, owners) {
     TAG: "AtLeast",
     _0: 1
   }, who, ownerId);
+}
+
+async function verifyOwnerScopedReads(connection, owners) {
+  Seed_Runner$ReventlessSeed.heading("Owner-scoped reads, as each demo account:");
+  await verifyOwnerScopedRead(connection, owners.shopper, DemoData$OnlineShopHybridSeed.demoShopperOrderCount);
+  return await verifyOwnerScopedRead(connection, owners.merchandiser, DemoData$OnlineShopHybridSeed.demoMerchandiserOrderCount);
 }
 
 async function summarise(client, counts) {
@@ -642,6 +641,7 @@ export {
   ownedSatisfied,
   ownedDescribe,
   expectOwned,
+  verifyOwnerScopedRead,
   verifyOwnerScopedReads,
   summarise,
   run,

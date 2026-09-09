@@ -275,16 +275,25 @@ An order's `customerId` is the authenticated caller's id, so a demo login can
 only have orders if a customer row exists under that exact id — which means the
 id has to be one the platform being seeded actually mints. Locally that is the
 `userId` a users.yaml entry declares; on a Cognito deployment it is the `sub` the
-pool minted, and no literal can name it. So the two owners are *resolved* against
+pool minted, and no literal can name it. So the owners are *resolved* against
 the accounts file and the run's own bearer rather than written down here.
 
 Their order counts are fixed and different on purpose. "The shopper sees no
 other orders" is satisfied equally by correct scoping and by scoping that
 matches nothing, so the check that means anything is an exact non-zero count per
 owner, with a third party holding the rest.
+
+**Every account that can open the storefront gets a row.** `merch` is here for
+that reason and not because a merchandiser goes shopping: it holds `Shopper`
+alongside `Merchandiser`, and `Merchandiser` is deliberately absent from
+`Storefront.elevatedGroups`, so without a row of its own it logs in to an empty
+*My Orders* and an empty *My Notifications* — indistinguishable at the screen
+from the defect this whole resolution exists to prevent. `fulfil` needs no row:
+it is elevated, so it reads across owners and its screens are full regardless.
 */
 let demoShopperOrderCount = 5
 let demoOperatorOrderCount = 3
+let demoMerchandiserOrderCount = 2
 
 // Which account stands in for each demo owner. Domain knowledge, and the reason
 // this mapping is here rather than in the harness: the harness knows which
@@ -292,6 +301,7 @@ let demoOperatorOrderCount = 3
 // shopper".
 let demoShopperUsername = "shopper"
 let demoOperatorUsername = "admin"
+let demoMerchandiserUsername = "merch"
 
 // The `userId` values the local `users.example.yaml` declares. Kept only as the
 // last arm of the resolution below, so a platform that supplies nothing still
@@ -299,6 +309,7 @@ let demoOperatorUsername = "admin"
 // is why local behaviour is unchanged.
 let fallbackShopperId = "local-shopper"
 let fallbackOperatorId = "local-admin"
+let fallbackMerchandiserId = "local-merch"
 
 /** Where a demo owner's id came from. */
 type ownerSource =
@@ -313,7 +324,11 @@ type ownerSource =
 
 type demoOwner = {role: string, username: string, id: string, source: ownerSource}
 
-type owners = {shopper: demoOwner, operator: demoOwner}
+type owners = {shopper: demoOwner, operator: demoOwner, merchandiser: demoOwner}
+
+/** The owners in report order — so a caller adding a fourth does not have to
+    remember every place that walks them. */
+let all = (o: owners): array<demoOwner> => [o.shopper, o.operator, o.merchandiser]
 
 // One entry of the platform's accounts file, as the harness parses it.
 type account = ReventlessSeed.Seed.Users.user
@@ -354,6 +369,14 @@ let resolveOwners = (
     ~role="operator",
     ~username=demoOperatorUsername,
     ~fallback=fallbackOperatorId,
+    ~accounts,
+    ~caller,
+    ~callerId,
+  ),
+  merchandiser: resolveOwner(
+    ~role="merchandiser",
+    ~username=demoMerchandiserUsername,
+    ~fallback=fallbackMerchandiserId,
     ~accounts,
     ~caller,
     ~callerId,
@@ -427,6 +450,13 @@ let demoCustomers = (owners: owners): array<customer> => [
     address: "Praterstrasse 1, 1020 Vienna, Austria",
     lat: 48.2135,
     lng: 16.3849,
+  },
+  {
+    id: owners.merchandiser.id,
+    email: "merch@example.com",
+    address: "Taborstrasse 12, 1020 Vienna, Austria",
+    lat: 48.2189,
+    lng: 16.3812,
   },
 ]
 
@@ -515,6 +545,8 @@ let buildOrders = (
       Some(owners.shopper.id)
     } else if i < demoShopperOrderCount + demoOperatorOrderCount {
       Some(owners.operator.id)
+    } else if i < demoShopperOrderCount + demoOperatorOrderCount + demoMerchandiserOrderCount {
+      Some(owners.merchandiser.id)
     } else {
       None
     }

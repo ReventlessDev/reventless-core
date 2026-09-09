@@ -387,9 +387,21 @@ let demoShopperUsername = "shopper";
 
 let demoOperatorUsername = "admin";
 
+let demoMerchandiserUsername = "merch";
+
 let fallbackShopperId = "local-shopper";
 
 let fallbackOperatorId = "local-admin";
+
+let fallbackMerchandiserId = "local-merch";
+
+function all(o) {
+  return [
+    o.shopper,
+    o.operator,
+    o.merchandiser
+  ];
+}
 
 function resolveOwner(role, username, fallback, accounts, caller, callerId) {
   let declared = Stdlib_Option.flatMap(accounts.find(u => u.username === username), u => u.userId);
@@ -422,7 +434,8 @@ function resolveOwner(role, username, fallback, accounts, caller, callerId) {
 function resolveOwners(accounts, caller, callerId) {
   return {
     shopper: resolveOwner("shopper", demoShopperUsername, fallbackShopperId, accounts, caller, callerId),
-    operator: resolveOwner("operator", demoOperatorUsername, fallbackOperatorId, accounts, caller, callerId)
+    operator: resolveOwner("operator", demoOperatorUsername, fallbackOperatorId, accounts, caller, callerId),
+    merchandiser: resolveOwner("merchandiser", demoMerchandiserUsername, fallbackMerchandiserId, accounts, caller, callerId)
   };
 }
 
@@ -475,6 +488,13 @@ function demoCustomers(owners) {
       address: "Praterstrasse 1, 1020 Vienna, Austria",
       lat: 48.2135,
       lng: 16.3849
+    },
+    {
+      id: owners.merchandiser.id,
+      email: "merch@example.com",
+      address: "Taborstrasse 12, 1020 Vienna, Austria",
+      lat: 48.2189,
+      lng: 16.3812
     }
   ];
 }
@@ -543,7 +563,9 @@ function buildOrders(products, customers, owners, countOpt, param) {
           )
       );
     let demoOwner = i < 5 ? owners.shopper.id : (
-        i < 8 ? owners.operator.id : undefined
+        i < 8 ? owners.operator.id : (
+            i < 10 ? owners.merchandiser.id : undefined
+          )
       );
     let customerId = demoOwner !== undefined ? demoOwner : Stdlib_Option.mapOr(Seed_Random$ReventlessSeed.sampleWeighted(random, customerWeights, 1)[0], "cust-01", c => c.id);
     let lineItems = Seed_Random$ReventlessSeed.sampleWeighted(random, productWeights, size).map(p => {
@@ -615,6 +637,8 @@ let demoShopperOrderCount = 5;
 
 let demoOperatorOrderCount = 3;
 
+let demoMerchandiserOrderCount = 2;
+
 export {
   random,
   productCount,
@@ -651,10 +675,14 @@ export {
   discountedPrice,
   demoShopperOrderCount,
   demoOperatorOrderCount,
+  demoMerchandiserOrderCount,
   demoShopperUsername,
   demoOperatorUsername,
+  demoMerchandiserUsername,
   fallbackShopperId,
   fallbackOperatorId,
+  fallbackMerchandiserId,
+  all,
   resolveOwner,
   resolveOwners,
   describeOwner,

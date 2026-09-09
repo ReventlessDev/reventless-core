@@ -530,11 +530,11 @@ let resolveDemoOwners = (connection: Seed.connection): DemoData.owners => {
     ~callerId=connection.callerId,
   )
   Seed.Runner.heading("Demo owners:")
-  [owners.shopper, owners.operator]->Array.forEach(o =>
-    Seed.Runner.report(DemoData.describeOwner(o))
-  )
+  owners->DemoData.all->Array.forEach(o => Seed.Runner.report(DemoData.describeOwner(o)))
   let warnings =
-    [owners.shopper, owners.operator]->Array.filterMap(o =>
+    owners
+    ->DemoData.all
+    ->Array.filterMap(o =>
       DemoData.ownerWarning(o, ~caller=connection.caller, ~callerId=connection.callerId)
     )
   if warnings->Array.length > 0 {
@@ -600,29 +600,32 @@ let expectOwned = async (
  * empty?" ambiguity the harness exists to remove, reproduced one layer up. This
  * is the assertion that fails when it regresses.
  *
- * Skipped when no accounts file supplied the demo shopper's password: a run on
- * the non-interactive path has one identity and cannot mint a second.
+ * Skipped per owner when no accounts file supplied that account's password: a
+ * run on the non-interactive path has one identity and cannot mint a second.
  */
-let verifyOwnerScopedReads = async (connection: Seed.connection, ~owners: DemoData.owners) => {
-  Seed.Runner.heading("Owner-scoped reads, as the demo shopper:")
-  switch connection.accounts->Array.find(u => u.username == DemoData.demoShopperUsername) {
+let verifyOwnerScopedRead = async (
+  connection: Seed.connection,
+  ~owner: DemoData.demoOwner,
+  ~orderCount: int,
+) =>
+  switch connection.accounts->Array.find(u => u.username == owner.username) {
   | None =>
     Seed.Runner.report(
-      `skipped — no accounts file supplied a password for "${DemoData.demoShopperUsername}", ` ++
-      `so this run holds one identity and cannot read as a second.`,
+      `${owner.role}: skipped — no accounts file supplied a password for ` ++
+      `"${owner.username}", so this run cannot read as it.`,
     )
   | Some(account) =>
     let client = await Seed.Connect.clientFor(connection, ~account)
-    let who = `${account.username} (${owners.shopper.id})`
+    let who = `${account.username} (${owner.id})`
     switch Seed.Client.identitySummary(client) {
     | Some(summary) => Seed.Runner.report(`reading as ${who} — ${summary}`)
     | None => Seed.Runner.report(`reading as ${who}`)
     }
-    let ownerId = owners.shopper.id
+    let ownerId = owner.id
     await expectOwned(
       client,
       ~field="Ordering_Orders",
-      ~expected=Exactly(DemoData.demoShopperOrderCount),
+      ~expected=Exactly(orderCount),
       ~who,
       ~ownerId,
     )
@@ -646,6 +649,27 @@ let verifyOwnerScopedReads = async (connection: Seed.connection, ~owners: DemoDa
       ~ownerId,
     )
   }
+
+// Every owner-scoped account, each under its own token. `admin` is checked too
+// even though it is elevated — `Storefront.elevatedGroups` exempts it from the
+// narrowing, so it should see EVERY order, and asserting its own 3 here would
+// fail. What its row proves is the other half: that its customer, subscription
+// and delivery rows exist at all, which is what its storefront screens render.
+let verifyOwnerScopedReads = async (connection: Seed.connection, ~owners: DemoData.owners) => {
+  Seed.Runner.heading("Owner-scoped reads, as each demo account:")
+  await verifyOwnerScopedRead(
+    connection,
+    ~owner=owners.shopper,
+    ~orderCount=DemoData.demoShopperOrderCount,
+  )
+  // The account that had a working login and an empty shop: it holds `Shopper`
+  // but not an elevated group, so nothing but a row of its own fills its
+  // storefront.
+  await verifyOwnerScopedRead(
+    connection,
+    ~owner=owners.merchandiser,
+    ~orderCount=DemoData.demoMerchandiserOrderCount,
+  )
 }
 
 // ── Summary ─────────────────────────────────────────────────────────────────

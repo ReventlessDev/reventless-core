@@ -28,6 +28,13 @@ All five steps are implemented. Verified against an isolated local platform
   subscription rows that `verifyViews` counts happily, and Step 5 fails naming
   the cause. That is the assertion nobody had written.
 
+**Extended afterwards to a third owner.** `merch` holds `Shopper` but is not in
+`Storefront.elevatedGroups`, so with no row of its own it logged in to an empty
+storefront — the same unreadable screen this plan is about, arrived at from the
+other direction. It now gets a customer and 2 orders, and Step 5 checks it under
+its own token. `fulfil` still gets none and needs none: it is elevated, so it
+reads across owners.
+
 Acceptance items 2 and 3 are the deployed halves and need a stack; the local
 equivalents of both passed. One rough edge left as-is: a Step 5 failure prints
 `Seed_Runner.run`'s generic "the store is now half-seeded" line, which is
