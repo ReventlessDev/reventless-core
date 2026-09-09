@@ -232,22 +232,28 @@ function isRuntimeProvided(specifier, pkgName) {
   }
 }
 
-let frameworkPackageCache = {};
+let filePath = new URL(import.meta.url).pathname;
 
-function isFrameworkPackage(pkgName) {
-  let known = frameworkPackageCache[pkgName];
-  if (known !== undefined) {
-    return known;
+let dirRef = Nodepath.dirname(filePath);
+
+let foundRef;
+
+while (dirRef !== "/" && Stdlib_Option.isNone(foundRef)) {
+  if (Nodefs.existsSync(Nodepath.join(dirRef, "package.json"))) {
+    foundRef = dirRef;
+  } else {
+    dirRef = Nodepath.dirname(dirRef);
   }
-  let known$1;
+};
+
+let frameworkPackageRoot = Stdlib_Option.getOr(foundRef, Nodepath.dirname(filePath));
+
+function declaredDependencies(packageRoot) {
   try {
-    localRequire.resolve(pkgName + "/package.json");
-    known$1 = true;
+    return Stdlib_Option.mapOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(JSON.parse(Nodefs.readFileSync(Nodepath.join(packageRoot, "package.json"), "utf8"))), o => o["dependencies"]), Stdlib_JSON.Decode.object), [], prim => Object.keys(prim));
   } catch (exn) {
-    known$1 = false;
+    return [];
   }
-  frameworkPackageCache[pkgName] = known$1;
-  return known$1;
 }
 
 let importedPackagesCache = {};
@@ -286,6 +292,47 @@ function resolvePackageRootFrom(fromRoot, pkgName) {
     return Nodepath.dirname(Nodemodule.createRequire(Nodepath.join(fromRoot, "index.js")).resolve(pkgName + "/package.json"));
   } catch (exn) {
     return;
+  }
+}
+
+let layerIncludedModules = new Set(["@rescript/runtime"]);
+
+let frameworkClosureCache = {
+  contents: undefined
+};
+
+function frameworkPackages() {
+  let closure = frameworkClosureCache.contents;
+  if (closure !== undefined) {
+    return closure;
+  }
+  let closure$1 = {};
+  let pending = [frameworkPackageRoot];
+  let next = 0;
+  while (next < pending.length) {
+    let root = pending[next];
+    next = next + 1 | 0;
+    declaredDependencies(root).forEach(dep => {
+      if (dep in closure$1) {
+        return;
+      }
+      closure$1[dep] = true;
+      let depRoot = resolvePackageRootFrom(root, dep);
+      if (depRoot !== undefined) {
+        pending.push(depRoot);
+        return;
+      }
+    });
+  };
+  frameworkClosureCache.contents = closure$1;
+  return closure$1;
+}
+
+function isFrameworkPackage(pkgName) {
+  if (pkgName === "@reventlessdev/reventless-aws" || layerIncludedModules.has(pkgName)) {
+    return true;
+  } else {
+    return pkgName in frameworkPackages();
   }
 }
 
@@ -410,11 +457,15 @@ export {
   isBareSpecifier,
   nodeBuiltins,
   isRuntimeProvided,
-  frameworkPackageCache,
-  isFrameworkPackage,
+  frameworkPackageRoot,
+  declaredDependencies,
   importedPackagesCache,
   importedPackages,
   resolvePackageRootFrom,
+  layerIncludedModules,
+  frameworkClosureCache,
+  frameworkPackages,
+  isFrameworkPackage,
   addImportedPackageClosure,
   assertRuntimeExtensionImportsResolvable,
   buildCodeArchive,

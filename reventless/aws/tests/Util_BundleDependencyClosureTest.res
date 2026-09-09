@@ -100,6 +100,32 @@ describe("Util_Bundle — bundled user packages carry their imports", () => {
     expect(bundled->Array.includes("@fixture/never-installed"))->toBe(false)
   })
 
+  testSync("a package the framework merely resolves is still bundled", () => {
+    // The layer carries reventless-aws's dependency closure and nothing else.
+    // A consumer with a hoisted node_modules puts every package at the root,
+    // where the framework's own resolution reaches it by walking up — so
+    // resolvability said "the layer has it" about packages the layer has never
+    // held, and they were dropped from the archive. `sury` above is genuinely a
+    // framework dependency; these are not, and must ride along.
+    expect(Util_Bundle.isFrameworkPackage("@fixture/closure-trait"))->toBe(false)
+    // A real, published, @reventlessdev-scoped package that is not a dependency
+    // of reventless-aws: scope is not what decides this.
+    expect(Util_Bundle.isFrameworkPackage("@reventlessdev/reventless-local"))->toBe(false)
+  })
+
+  testSync("the framework's own closure is recognised", () => {
+    expect(Util_Bundle.isFrameworkPackage("@reventlessdev/reventless-aws"))->toBe(true)
+    expect(Util_Bundle.isFrameworkPackage("sury"))->toBe(true)
+  })
+
+  testSync("a package the layer adds outside that closure counts as the layer's", () => {
+    // @rescript/runtime is a transitive of `rescript`, which the layer excludes
+    // as a build tool, so it is absent from the production closure while the
+    // layer carries it explicitly. Every compiled ReScript file imports it, and
+    // it is 19 MB — treating it as a user package puts that in every archive.
+    expect(Util_Bundle.isFrameworkPackage("@rescript/runtime"))->toBe(true)
+  })
+
   testSync("framework packages are starting points, not walked", () => {
     // Walking reventless-aws would reach its deploy-time-only imports (the
     // @pulumi bindings) and add tens of megabytes to every archive.

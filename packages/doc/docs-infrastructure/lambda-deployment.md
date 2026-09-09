@@ -216,6 +216,23 @@ All Lambda handlers share a pre-built Lambda Layer (`reventless-layer-builder`) 
 
 The layer is published to AWS Lambda via CI/CD and attached to all Lambda functions. This avoids duplicating 13+ MB of dependencies in every handler's zip archive.
 
+#### What the layer holds, and what the archive must carry
+
+The layer builder runs a production npm install of `@reventlessdev/reventless-aws`, so the layer holds **exactly that package's transitive `dependencies`** — nothing else. Anything a *plugin* package imports is outside it by definition: a domain trait, a shared rules library, any plugin-level dependency.
+
+Those ride in the per-Lambda code archive instead. `Util_Bundle.addImportedPackageClosure` walks what each bundled user package actually imports, transitively, resolving each specifier from the importing package's own directory — the only rooting that finds a pnpm-installed plugin dependency.
+
+The split between the two is decided by `isFrameworkPackage`, and it asks **whether the package is in reventless-aws's dependency closure** — not whether the framework can resolve it. The distinction matters in any consumer repo with a hoisted `node_modules`: Node's resolution walks *up*, so every package at the workspace root is resolvable from everywhere, including plugin packages and their traits. A resolvability test therefore answers "the layer has it" about packages the layer has never held, drops them from the archive, and additionally filters plugin packages out of the closure walk's starting points so their imports are never walked at all.
+
+The symptom is a green deploy whose slice dies at its first command:
+
+```
+Cannot find package '@reventlessdev/trait-attachments' imported from
+/var/task/node_modules/<plugin>/src/<Component>/StateChange/<Slice>.res.mjs
+```
+
+Scope is not a signal here. A `@reventlessdev/`-scoped package is not necessarily in the layer, and a package outside that scope may well be.
+
 ### Handler Consolidation Strategies
 
 Runtime builders consolidate multiple components into fewer Lambdas:

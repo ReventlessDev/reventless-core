@@ -349,32 +349,35 @@ let isRuntimeProvided = (specifier: string, ~pkgName: string): bool =>
     }
   )
 
-// Memo for isFrameworkPackage — one require.resolve per package name per deploy.
-let frameworkPackageCache: dict<bool> = Dict.make()
-
-/**
- * Whether the framework's own module resolution reaches this package: the
- * deploy-time stand-in for "the Lambda layer already carries it", since the
- * layer is built from reventless-aws's dependency closure.
- *
- * Deliberately framework-rooted only — no Pulumi-project fallback. The question
- * here is the opposite of `resolvePackageRoot`'s: a package the *project*
- * resolves but the framework does not is precisely a user package, which is
- * what the closure walk below must treat as a starting point rather than as
- * something the runtime provides.
- */
-let isFrameworkPackage = (pkgName: string): bool =>
-  switch frameworkPackageCache->Dict.get(pkgName) {
-  | Some(known) => known
-  | None =>
-    let known = try {
-      let _ = localRequire->NodeModule.requireResolve(pkgName ++ "/package.json")
-      true
-    } catch {
-    | _ => false
+/** The framework's own package root: this module ships inside reventless-aws, so
+    the nearest package.json walking up from it is reventless-aws's own. */
+let frameworkPackageRoot: string = {
+  let filePath = newURL(%raw("import.meta.url"))->pathname
+  let dirRef = ref(NodePath.dirname(filePath))
+  let foundRef: ref<option<string>> = ref(None)
+  while dirRef.contents != "/" && foundRef.contents->Option.isNone {
+    if NodeFs.existsSync(NodePath.join([dirRef.contents, "package.json"])) {
+      foundRef := Some(dirRef.contents)
+    } else {
+      dirRef := NodePath.dirname(dirRef.contents)
     }
-    frameworkPackageCache->Dict.set(pkgName, known)
-    known
+  }
+  foundRef.contents->Option.getOr(NodePath.dirname(filePath))
+}
+
+/** The `dependencies` a package declares — the edges the layer's own npm install
+    follows. devDependencies are deliberately not read: the layer is a production
+    install, so a dev-only package is not in it. */
+let declaredDependencies = (packageRoot: string): array<string> =>
+  try {
+    NodeFs.readFileSync(NodePath.join([packageRoot, "package.json"]))
+    ->JSON.parseOrThrow
+    ->JSON.Decode.object
+    ->Option.flatMap(o => o->Dict.get("dependencies"))
+    ->Option.flatMap(JSON.Decode.object)
+    ->Option.mapOr([], Dict.keysToArray)
+  } catch {
+  | _ => []
   }
 
 // The distinct bare packages a package's own bundled files import, memoised per
@@ -426,6 +429,76 @@ let resolvePackageRootFrom = (~fromRoot: string, pkgName: string): option<string
   } catch {
   | _ => None
   }
+
+/** Packages the layer carries that reventless-aws does not declare, mirroring
+    `includeModules` in the layer builder's config. `@rescript/runtime` is the
+    case that matters: it is a transitive of `rescript`, which the layer excludes
+    as a build tool, so the production closure misses it while the layer holds
+    it. Without this the walk would add 19 MB to every archive.
+
+    The layer's `excludeModules` are deliberately NOT mirrored. Those are
+    deploy-time-only packages (the @pulumi bindings, esbuild, the SSH stack); the
+    walk is import-driven, so a package no runtime file imports never comes up. */
+let layerIncludedModules = Set.fromArray(["@rescript/runtime"])
+
+// Memo for the framework's dependency closure — one walk per deploy.
+let frameworkClosureCache: ref<option<dict<bool>>> = ref(None)
+
+/**
+ * The packages the Lambda layer carries: reventless-aws and its transitive
+ * `dependencies`, which is exactly what the layer builder npm-installs.
+ *
+ * Membership rather than resolvability, and the distinction is the whole point.
+ * Resolvability asked whether `require.resolve` reaches a package from this
+ * module — but Node resolution walks *up*, so in a consumer repo with a hoisted
+ * `node_modules` every package at the workspace root answers yes, including the
+ * plugin packages and their traits. That made this predicate true for packages
+ * the layer has never held: they were dropped from the archive as
+ * layer-provided, and the plugin package itself was filtered out of the closure
+ * walk's starting points, so its imports were never walked at all. The failure
+ * lands at the first command as `Cannot find package`, on a green deploy.
+ *
+ * Declared edges are followed from the declaring package's own directory, so a
+ * pnpm layout resolves the same way the runtime would. A dependency that is
+ * declared but not installed still counts as the layer's: the archive is not the
+ * place to compensate for an incomplete install.
+ */
+let frameworkPackages = (): dict<bool> =>
+  switch frameworkClosureCache.contents {
+  | Some(closure) => closure
+  | None =>
+    let closure = Dict.make()
+    let pending = [frameworkPackageRoot]
+    let next = ref(0)
+    while next.contents < pending->Array.length {
+      let root = pending->Array.getUnsafe(next.contents)
+      next := next.contents + 1
+      declaredDependencies(root)->Array.forEach(dep =>
+        if !(closure->Dict.has(dep)) {
+          closure->Dict.set(dep, true)
+          switch resolvePackageRootFrom(~fromRoot=root, dep) {
+          | Some(depRoot) => pending->Array.push(depRoot)
+          | None => ()
+          }
+        }
+      )
+    }
+    frameworkClosureCache := Some(closure)
+    closure
+  }
+
+/**
+ * Whether the deployed runtime already carries this package, so the archive
+ * need not: reventless-aws itself, or anything in its dependency closure.
+ *
+ * A package the *project* resolves but this does not is precisely a user
+ * package, which the closure walk below must treat as a starting point rather
+ * than as something the runtime provides.
+ */
+let isFrameworkPackage = (pkgName: string): bool =>
+  pkgName == "@reventlessdev/reventless-aws" ||
+  layerIncludedModules->Set.has(pkgName) ||
+  frameworkPackages()->Dict.has(pkgName)
 
 /**
  * Carry every package a bundled *user* package imports into the archive, and
