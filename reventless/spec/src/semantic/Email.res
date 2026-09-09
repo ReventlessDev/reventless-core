@@ -28,7 +28,6 @@ check can honestly do.
     })
 ```
 */
-
 /** The address's representation. Transparent `string`: the marker refines an
     existing field rather than replacing it, so nothing stored changes. */
 type t = string

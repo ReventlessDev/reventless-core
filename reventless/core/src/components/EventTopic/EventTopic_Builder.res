@@ -35,7 +35,7 @@ module Make = (Spec: ReventlessInfra.EventTopic.T, Publisher: EventTopic_Adapter
         {
           publishJson,
           publish: Operations.publish,
-          publishJsonStream: publishJsonStream,
+          publishJsonStream,
         }
       }),
     )

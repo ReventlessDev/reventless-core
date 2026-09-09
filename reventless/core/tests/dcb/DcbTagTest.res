@@ -417,7 +417,11 @@ describe("DcbTag:", () => {
           DcbFixtures.compositeEventSchema,
         )
         expect(fields->Array.length)->toBe(3)->ignore
-        expect(fields->Array.map(f => f.name))->toEqual(["environment", "platformName", "pluginName"])
+        expect(fields->Array.map(f => f.name))->toEqual([
+          "environment",
+          "platformName",
+          "pluginName",
+        ])
       },
     )
 
@@ -601,10 +605,12 @@ describe("DcbTag:", () => {
         | JsExn(err) =>
           threw := true
           expect(
-            JsExn.message(err)->Option.getOr("")->String.includes(
-              "mixes @compositePartitionTag and @partitionTag",
-            ),
-          )->toBe(true)->ignore
+            JsExn.message(err)
+            ->Option.getOr("")
+            ->String.includes("mixes @compositePartitionTag and @partitionTag"),
+          )
+          ->toBe(true)
+          ->ignore
         }
         expect(threw.contents)->toBe(true)
       },
@@ -623,7 +629,9 @@ describe("DcbTag:", () => {
           threw := true
           expect(
             JsExn.message(err)->Option.getOr("")->String.includes("at least 2 annotated fields"),
-          )->toBe(true)->ignore
+          )
+          ->toBe(true)
+          ->ignore
         }
         expect(threw.contents)->toBe(true)
       },
@@ -636,7 +644,9 @@ describe("DcbTag:", () => {
       () =>
         expect(
           Reventless.DcbTag.isCompositePartitionMember(
-            Reventless.DcbTag.compositePartitionMember(~position=0)->Reventless.DcbTag.toUnknownSchema,
+            Reventless.DcbTag.compositePartitionMember(
+              ~position=0,
+            )->Reventless.DcbTag.toUnknownSchema,
           ),
         )->toBe(true),
     )
@@ -655,9 +665,7 @@ describe("DcbTag:", () => {
       "returns false for plain S.string",
       () =>
         expect(
-          Reventless.DcbTag.isCompositePartitionMember(
-            S.string->Reventless.DcbTag.toUnknownSchema,
-          ),
+          Reventless.DcbTag.isCompositePartitionMember(S.string->Reventless.DcbTag.toUnknownSchema),
         )->toBe(false),
     )
   })
@@ -844,7 +852,10 @@ describe("DcbTag:", () => {
             ~crossPartitionTagKeys=["studentId"],
           ),
         )->toEqual([
-          {Reventless.DcbTag.eventTypes: ["StudentSubscribed"], tags: [{key: "courseId", value: "C1"}]},
+          {
+            Reventless.DcbTag.eventTypes: ["StudentSubscribed"],
+            tags: [{key: "courseId", value: "C1"}],
+          },
           {eventTypes: ["StudentSubscribed"], tags: [{key: "studentId", value: "S1"}]},
         ]),
     )

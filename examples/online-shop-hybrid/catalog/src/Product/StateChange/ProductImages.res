@@ -30,7 +30,11 @@ type consumedEvent =
 // Bound once rather than spelled three times: the collection is one answer, and
 // three copies of it are three chances for one of them to name a field that no
 // longer exists.
-let selected = Reventless.MemberRef.of_(~view="Products", ~content=Reventless.Semantic.Id.imageRef, ~field="productImages")
+let selected = Reventless.MemberRef.of_(
+  ~view="Products",
+  ~content=Reventless.Semantic.Id.imageRef,
+  ~field="productImages",
+)
 
 @schema
 type command =
@@ -41,9 +45,15 @@ type command =
       altText?: string,
     })
   | @authorize(AllowGroups(["Admin", "Merchandiser"]))
-  RemoveProductImage({productId: string, productImage: @s.matches(selected) string})
+  RemoveProductImage({
+      productId: string,
+      productImage: @s.matches(selected) string,
+    })
   | @authorize(AllowGroups(["Admin", "Merchandiser"]))
-  SetPrimaryProductImage({productId: string, productImage: @s.matches(selected) string})
+  SetPrimaryProductImage({
+      productId: string,
+      productImage: @s.matches(selected) string,
+    })
   | @authorize(AllowGroups(["Admin", "Merchandiser"]))
   SetProductImageAltText({
       productId: string,
@@ -74,10 +84,7 @@ type event =
   // The picture that now stands as this product's — the trait's conclusion,
   // named here so anything outside the slice can follow it without re-deriving
   // the set's rules. Absent means the product has none.
-  | ProductEffectiveImageChanged({
-      productId: string,
-      productImage?: Reventless.UploadableImage.t,
-    })
+  | ProductEffectiveImageChanged({productId: string, productImage?: Reventless.UploadableImage.t})
 
 // Legal while the product is on the shelf and while it is archived; refused once
 // it is discontinued, which is terminal. Four from-sets and no target: an

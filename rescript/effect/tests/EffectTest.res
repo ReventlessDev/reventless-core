@@ -22,17 +22,18 @@ describe("Effect — construction", () => {
   })
 
   testPromise("tryPromise succeeds when no throw", async () => {
-    let exit = await Effect.tryPromise(~catch=_err => "caught", () => Promise.resolve(99))
-      ->Effect.runPromiseExit
+    let exit = await Effect.tryPromise(
+      ~catch=_err => "caught",
+      () => Promise.resolve(99),
+    )->Effect.runPromiseExit
     expect(exit->Exit.isSuccess)->toBe(true)
   })
 
   testPromise("tryPromise catches thrown errors", async () => {
-    let exit =
-      await Effect.tryPromise(
-        ~catch=_err => "caught",
-        () => Promise.reject(JsError.make("oops")->Obj.magic),
-      )->Effect.runPromiseExit
+    let exit = await Effect.tryPromise(
+      ~catch=_err => "caught",
+      () => Promise.reject(JsError.make("oops")->Obj.magic),
+    )->Effect.runPromiseExit
     expect(exit->Exit.isFailure)->toBe(true)
   })
 
@@ -48,18 +49,22 @@ describe("Effect — construction", () => {
 
   testSync("trySync catches thrown exceptions", () => {
     let exit =
-      Effect.trySync(~catch=_exn => "caught", () => JSON.parseOrThrow("not json"))
-      ->Effect.runSyncExit
+      Effect.trySync(
+        ~catch=_exn => "caught",
+        () => JSON.parseOrThrow("not json"),
+      )->Effect.runSyncExit
     expect(exit->Exit.isFailure)->toBe(true)
   })
 
   testSync("trySync maps caught exception to typed error catchable via catchAll", () => {
     let caught = ref("")
     Effect.trySync(~catch=_exn => "parse failed", () => JSON.parseOrThrow("not json"))
-    ->Effect.catchAll(msg => {
-      caught := msg
-      Effect.succeed(JSON.Encode.null)
-    })
+    ->Effect.catchAll(
+      msg => {
+        caught := msg
+        Effect.succeed(JSON.Encode.null)
+      },
+    )
     ->Effect.runSync
     ->ignore
     expect(caught.contents)->toBe("parse failed")
@@ -73,7 +78,8 @@ describe("Effect — transformation", () => {
   })
 
   testSync("flatMap chains effects", () => {
-    let v = Effect.succeed(5)
+    let v =
+      Effect.succeed(5)
       ->Effect.flatMap(n => Effect.succeed(n + 1))
       ->Effect.runSync
     expect(v)->toBe(6)
@@ -81,8 +87,9 @@ describe("Effect — transformation", () => {
 
   testSync("tap runs side effect and passes value through", () => {
     let sideEffect = ref(0)
-    let v = Effect.succeed(10)
-      ->Effect.tap(n => Effect.sync(() => { sideEffect := n }))
+    let v =
+      Effect.succeed(10)
+      ->Effect.tap(n => Effect.sync(() => {sideEffect := n}))
       ->Effect.runSync
     expect(v)->toBe(10)
     expect(sideEffect.contents)->toBe(10)
@@ -101,7 +108,8 @@ describe("Effect — transformation", () => {
 
 describe("Effect — error handling", () => {
   testSync("catchAll recovers from failure", () => {
-    let v = Effect.fail("err")
+    let v =
+      Effect.fail("err")
       ->Effect.catchAll(_e => Effect.succeed("recovered"))
       ->Effect.runSync
     expect(v)->toBe("recovered")
@@ -122,23 +130,23 @@ describe("Effect — resource management", () => {
   testPromise("ensuring runs finalizer on success", async () => {
     let ran = ref(false)
     let _ = await Effect.succeed(1)
-      ->Effect.ensuring(Effect.sync(() => { ran := true }))
-      ->Effect.runPromise
+    ->Effect.ensuring(Effect.sync(() => {ran := true}))
+    ->Effect.runPromise
     expect(ran.contents)->toBe(true)
   })
 
   testPromise("ensuring runs finalizer on failure", async () => {
     let ran = ref(false)
     let _ = await Effect.fail("err")
-      ->Effect.ensuring(Effect.sync(() => { ran := true }))
-      ->Effect.runPromiseExit
+    ->Effect.ensuring(Effect.sync(() => {ran := true}))
+    ->Effect.runPromiseExit
     expect(ran.contents)->toBe(true)
   })
 
   testPromise("ensuring preserves the original result", async () => {
     let result = await Effect.succeed(42)
-      ->Effect.ensuring(Effect.succeed(()))
-      ->Effect.runPromise
+    ->Effect.ensuring(Effect.succeed())
+    ->Effect.runPromise
     expect(result)->toBe(42)
   })
 })
@@ -179,17 +187,22 @@ describe("Effect — concurrency", () => {
     // With concurrency 1 the effects execute one at a time. Each effect appends its
     // index to a shared array and reads the current length — the reads must be monotonic.
     let log: ref<array<int>> = ref([])
-    let effects = [0, 1, 2, 3]->Array.map(i =>
-      Effect.promise(async () => {
-        log := log.contents->Array.concat([i])
-        log.contents->Array.length
-      })
+    let effects = [0, 1, 2, 3]->Array.map(
+      i =>
+        Effect.promise(
+          async () => {
+            log := log.contents->Array.concat([i])
+            log.contents->Array.length
+          },
+        ),
     )
     let lengths = await Effect.all(effects, {"concurrency": 1})->Effect.runPromise
     // Each length should be strictly greater than the previous — no overlap
-    let isMonotonic = lengths->Array.reduceWithIndex(true, (ok, len, idx) =>
-      ok && (idx == 0 || len > lengths->Array.getUnsafe(idx - 1))
-    )
+    let isMonotonic =
+      lengths->Array.reduceWithIndex(
+        true,
+        (ok, len, idx) => ok && (idx == 0 || len > lengths->Array.getUnsafe(idx - 1)),
+      )
     expect(isMonotonic)->toBe(true)
   })
 
@@ -206,15 +219,18 @@ describe("Effect — concurrency", () => {
     // then decrements. With concurrency 2 and 6 effects, peak must be at most 2.
     let active = ref(0)
     let peak = ref(0)
-    let effects = Array.make(~length=6, ())->Array.map(_ =>
-      Effect.promise(async () => {
-        active := active.contents + 1
-        if active.contents > peak.contents {
-          peak := active.contents
-        }
-        let _ = await Promise.resolve()
-        active := active.contents - 1
-      })
+    let effects = Array.make(~length=6, ())->Array.map(
+      _ =>
+        Effect.promise(
+          async () => {
+            active := active.contents + 1
+            if active.contents > peak.contents {
+              peak := active.contents
+            }
+            let _ = await Promise.resolve()
+            active := active.contents - 1
+          },
+        ),
     )
     let _ = await Effect.all(effects, {"concurrency": 2})->Effect.runPromise
     expect(peak.contents <= 2)->toBe(true)
@@ -222,9 +238,9 @@ describe("Effect — concurrency", () => {
 
   testPromise("fork + Fiber.join completes the forked effect", async () => {
     let result = await Effect.succeed(99)
-      ->Effect.fork
-      ->Effect.flatMap(fiber => Fiber.join(fiber))
-      ->Effect.runPromise
+    ->Effect.fork
+    ->Effect.flatMap(fiber => Fiber.join(fiber))
+    ->Effect.runPromise
     expect(result)->toBe(99)
   })
 

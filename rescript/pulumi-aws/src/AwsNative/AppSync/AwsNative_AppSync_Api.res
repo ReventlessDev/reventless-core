@@ -1,11 +1,10 @@
+// ── Auth types ────────────────────────────────────────────────────────────────
+
 /** @pulumi/aws-native/appsync/Api — AppSync Events (Pub/Sub) API.
     Distinct from AppSync GraphQL API (`aws.appsync.GraphQLApi`).
     Used for real-time server-to-client event push via AppSync Events channels.
     See: https://www.pulumi.com/registry/packages/aws-native/api-docs/appsync/api
 */
-
-// ── Auth types ────────────────────────────────────────────────────────────────
-
 /** Authentication mode for connections / publish / subscribe. */
 type authMode = {
   /** Auth type string — use the `authType` constants below. */

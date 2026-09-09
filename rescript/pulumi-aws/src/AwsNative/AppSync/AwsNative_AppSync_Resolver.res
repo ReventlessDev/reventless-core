@@ -32,8 +32,5 @@ type args = {
 }
 
 @module("@pulumi/aws-native") @scope("appsync") @new
-external make: (
-  ~name: string,
-  ~args: args,
-  ~opts: option<Pulumi.CustomResourceOptions.t>=?,
-) => t = "Resolver"
+external make: (~name: string, ~args: args, ~opts: option<Pulumi.CustomResourceOptions.t>=?) => t =
+  "Resolver"

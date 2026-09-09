@@ -9,12 +9,9 @@
 
 open JestGlobals
 
-
 describe("ExtensionPointEntryPoint_Ops.parseHandlerConfig", () => {
   testSync("reads the builder's field names", () => {
-    let config = ExtensionPointEntryPoint_Ops.parseHandlerConfig(
-      `{"specModule":"@x/spec/src/Products_ExtensionPoint.res.mjs","mappingsModule":"@x/p/src/ExtensionPoint/Products_ExtensionPointMapping.res.mjs","queueUrl":"https://sqs/ep","publishToAggregates":{"Product":"EP_TEST_PRODUCT_QUEUE"}}`,
-    )
+    let config = ExtensionPointEntryPoint_Ops.parseHandlerConfig(`{"specModule":"@x/spec/src/Products_ExtensionPoint.res.mjs","mappingsModule":"@x/p/src/ExtensionPoint/Products_ExtensionPointMapping.res.mjs","queueUrl":"https://sqs/ep","publishToAggregates":{"Product":"EP_TEST_PRODUCT_QUEUE"}}`)
     expect(config.specModule)->toEqual(Some("@x/spec/src/Products_ExtensionPoint.res.mjs"))
     expect(config.queueUrl)->toEqual(Some("https://sqs/ep"))
     expect(config.publishToAggregates->Option.flatMap(d => d->Dict.get("Product")))->toEqual(

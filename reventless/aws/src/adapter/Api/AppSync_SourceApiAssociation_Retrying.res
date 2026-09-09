@@ -33,7 +33,6 @@
     state, and `Effect` (used by the in-process `AppSync_Error` retry) fails
     that serialisation, so the SDK is lazily imported and the backoff loop is
     hand-rolled here. */
-
 let log = ReventlessCore.Logger.fromEnv()
 
 // ── AWS SDK bindings (lazily imported — see AppSync_Resolver_Retrying) ─────────
@@ -187,17 +186,23 @@ let rec runWithRetry = async (
     let name = jsExn->Option.flatMap(exnName)->Option.getOr("(no name)")
     let msg = jsExn->Option.flatMap(JsExn.message)->Option.getOr("(no message)")
     let isRetryable =
-      attempt < maxAttempts &&
-      jsExn->Option.mapOr(false, isRetryableAssociationError)
+      attempt < maxAttempts && jsExn->Option.mapOr(false, isRetryableAssociationError)
     if isRetryable {
       log.info(
         ~comp="AppSync_SourceApiAssociation_Retrying",
-        `attempt ${(attempt + 1)->Int.toString}/${maxAttempts->Int.toString} failed, retrying in ${delayMs->Int.toString}ms: ${name}: ${msg}`,
+        `attempt ${(attempt + 1)
+            ->Int.toString}/${maxAttempts->Int.toString} failed, retrying in ${delayMs->Int.toString}ms: ${name}: ${msg}`,
       )
       let _ = await Promise.make((resolve, _) => setTimeout(resolve, delayMs)->ignore)
       let nextDelay = delayMs * 2
       let cappedDelay = nextDelay > maxDelayMs ? maxDelayMs : nextDelay
-      await runWithRetry(~attempt=attempt + 1, ~maxAttempts, ~delayMs=cappedDelay, ~maxDelayMs, makeCall)
+      await runWithRetry(
+        ~attempt=attempt + 1,
+        ~maxAttempts,
+        ~delayMs=cappedDelay,
+        ~maxDelayMs,
+        makeCall,
+      )
     } else {
       if attempt > 0 {
         log.warn(
@@ -286,9 +291,7 @@ let extractIds = (resp: createResult): (string, string) =>
   switch resp.sourceApiAssociation {
   | Some({associationArn: ?Some(arn), associationId: ?Some(aid)}) => (arn, aid)
   | _ =>
-    JsError.throwWithMessage(
-      "AssociateSourceGraphqlApi returned no associationArn / associationId",
-    )
+    JsError.throwWithMessage("AssociateSourceGraphqlApi returned no associationArn / associationId")
   }
 
 let create = async (inputs: providerInputs): createResultOut => {

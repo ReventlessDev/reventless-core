@@ -4,7 +4,10 @@ open ReventlessInfra.Adapter
 
 let log = ReventlessCore.Logger.fromEnv()
 
-let toResourceInfo: table => Pulumi.Output.t<ReventlessInfra.Adapter.resourceInfo> = ({hashKey, rangeKey}) =>
+let toResourceInfo: table => Pulumi.Output.t<ReventlessInfra.Adapter.resourceInfo> = ({
+  hashKey,
+  rangeKey,
+}) =>
   (hashKey, rangeKey)
   ->Pulumi.Output.all2
   ->Pulumi.Output.apply(((hashKey, rangeKey)) => ReventlessInfra.Adapter.StorageKeys({
@@ -33,9 +36,8 @@ let toResource = (~tags=?, {id, name, arn} as table) =>
     ~service=name->Pulumi.Output.apply(_ => AWS.DynamoDb.service),
     ~resourceInfo=table->toResourceInfo,
     ~resourceType="aws:dynamodb:Table"->Pulumi.Output.make,
-    ~tags=?tags,
+    ~tags?,
   )
-
 
 let arn2tableName = arn =>
   switch arn->String.split(":") {

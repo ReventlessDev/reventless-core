@@ -71,23 +71,20 @@ let create = (
     let name = schedule.name->resourceNaming.validateName
     let schedule = {...schedule, name}
     let createSchedule = scheduler.createSchedule
-    let exit =
-      await Effect.tryPromise(
-        ~catch=err => Util.Error.messageFromUnknown(err, "schedule create"),
-        () => createSchedule(channelResources, schedule),
+    let exit = await Effect.tryPromise(
+      ~catch=err => Util.Error.messageFromUnknown(err, "schedule create"),
+      () => createSchedule(channelResources, schedule),
+    )
+    ->Effect.tap(_ =>
+      EffectLogger.logInfo(
+        ~comp=__MODULE__,
+        `create: created ${schedule->JSON.stringifyAny->Option.getOr("")}`,
       )
-      ->Effect.tap(_ =>
-        EffectLogger.logInfo(
-          ~comp=__MODULE__,
-          `create: created ${schedule->JSON.stringifyAny->Option.getOr("")}`,
-        )
-      )
-      ->Effect.runPromiseExit
+    )
+    ->Effect.runPromiseExit
     if !(exit->Exit.isSuccess) {
-      let errMsg = exit->Exit.match(
-        ~onFailure=cause => cause->Cause.pretty,
-        ~onSuccess=_ => "unknown",
-      )
+      let errMsg =
+        exit->Exit.match(~onFailure=cause => cause->Cause.pretty, ~onSuccess=_ => "unknown")
       EffectLogger.logError(
         ~comp=__MODULE__,
         `create: couldn't create ${schedule
@@ -106,19 +103,19 @@ let delete = (
   async name => {
     let name = name->resourceNaming.validateName
     let deleteSchedule = scheduler.deleteSchedule
-    let exit =
-      await Effect.tryPromise(
-        ~catch=err => Util.Error.messageFromUnknown(err, "schedule delete"),
-        () => deleteSchedule(channelResources, name),
-      )
-      ->Effect.tap(_ => EffectLogger.logInfo(~comp=__MODULE__, `delete: deleted ${name}`))
-      ->Effect.runPromiseExit
+    let exit = await Effect.tryPromise(
+      ~catch=err => Util.Error.messageFromUnknown(err, "schedule delete"),
+      () => deleteSchedule(channelResources, name),
+    )
+    ->Effect.tap(_ => EffectLogger.logInfo(~comp=__MODULE__, `delete: deleted ${name}`))
+    ->Effect.runPromiseExit
     if !(exit->Exit.isSuccess) {
-      let errMsg = exit->Exit.match(
-        ~onFailure=cause => cause->Cause.pretty,
-        ~onSuccess=_ => "unknown",
-      )
-      EffectLogger.logError(~comp=__MODULE__, `delete: couldn't delete ${name}: ${errMsg}`)->Effect.runSync
+      let errMsg =
+        exit->Exit.match(~onFailure=cause => cause->Cause.pretty, ~onSuccess=_ => "unknown")
+      EffectLogger.logError(
+        ~comp=__MODULE__,
+        `delete: couldn't delete ${name}: ${errMsg}`,
+      )->Effect.runSync
       throw(ScheduleNotDeleted(name))
     }
   }

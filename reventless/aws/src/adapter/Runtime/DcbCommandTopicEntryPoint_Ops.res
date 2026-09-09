@@ -176,7 +176,9 @@ type sliceCallback = {
     >,
   ) => Effect.t<array<result<string, string>>, string, unit>,
 }
-@module("@reventlessdev/reventless-core/src/components/StateChangeSlice/StateChangeSlice_Callback.res.mjs")
+@module(
+  "@reventlessdev/reventless-core/src/components/StateChangeSlice/StateChangeSlice_Callback.res.mjs"
+)
 external makeSliceCallback: specModule => behaviorModule => sliceCallback = "Make"
 
 // Builds the per-slice JSON-command handler: decode each topic item's JSON
@@ -192,9 +194,11 @@ let buildSliceHandler = (
 ) => {
   let callback = makeSliceCallback(spec)(behavior)
   let commandSchema = spec->specCommandSchemaTyped
-  (
-    jsonStream: Stream.t<ReventlessInfra.CommandTopic.topicItem<JSON.t>, string, unit>,
-  ): Effect.t<array<result<string, string>>, string, unit> => {
+  (jsonStream: Stream.t<ReventlessInfra.CommandTopic.topicItem<JSON.t>, string, unit>): Effect.t<
+    array<result<string, string>>,
+    string,
+    unit,
+  > => {
     let decodedStream =
       jsonStream
       ->Stream.mapEffect(topicItem =>
@@ -240,7 +244,9 @@ type inboundCallback = {
   ) => promise<ReventlessInfra.InboundTranslationSlice.receiveResult>,
   auditLog: dict<ReventlessCore.InboundTranslationSlice_Callback.auditRow>,
 }
-@module("@reventlessdev/reventless-core/src/components/InboundTranslationSlice/InboundTranslationSlice_Callback.res.mjs")
+@module(
+  "@reventlessdev/reventless-core/src/components/InboundTranslationSlice/InboundTranslationSlice_Callback.res.mjs"
+)
 external makeInboundCallback: specModule => translationModule => inboundCallback = "Make"
 
 // Builds the inbound receive handler: run the slice's `receive` (which validates
@@ -263,9 +269,10 @@ let buildInboundReceiver = (
       let id = result->ReventlessCore.InboundTranslationSlice_Callback.requestIdOf
       switch callback.auditLog->ReventlessCore.InboundTranslationSlice_Callback.takeAuditRow(id) {
       | Some(row) =>
-        let json = row->Reventless.Util_Sury.toJson(
-          ReventlessCore.InboundTranslationSlice_Callback.auditRowSchema,
-        )
+        let json =
+          row->Reventless.Util_Sury.toJson(
+            ReventlessCore.InboundTranslationSlice_Callback.auditRowSchema,
+          )
         // A failed audit write must not fail the mutation (the command was
         // already published), but it must not vanish either. `save` RESOLVES
         // with `Error(_)` on a storage failure (it does not throw), so the
@@ -278,8 +285,7 @@ let buildInboundReceiver = (
           | Error(err) =>
             ReventlessCore.EffectLogger.logError(
               ~comp="InboundTranslationSlice.audit",
-              `failed to persist audit row ${id}: ${err
-                ->ReventlessCore.QueryDb.storageErrorToString}`,
+              `failed to persist audit row ${id}: ${err->ReventlessCore.QueryDb.storageErrorToString}`,
             )->Effect.runSync
           }
         } catch {

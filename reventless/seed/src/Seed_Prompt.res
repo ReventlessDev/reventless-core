@@ -72,8 +72,7 @@ let requireTty = (): unit =>
   if !hasTty() {
     throw(
       Failed(
-        "no TTY for an interactive prompt — set the documented SEED_* / REVENTLESS_DEMO_* " ++
-        "env vars to run non-interactively.",
+        "no TTY for an interactive prompt — set the documented SEED_* / REVENTLESS_DEMO_* " ++ "env vars to run non-interactively.",
       ),
     )
   }
@@ -130,12 +129,7 @@ let isAffirmative = (answer: string): bool =>
  * `defaultIndex` makes Enter a valid answer, selecting that 0-based option;
  * without one every reply must name a choice.
  */
-let select = async (
-  ~title: string,
-  ~options: array<(string, 'a)>,
-  ~env=?,
-  ~defaultIndex=?,
-): 'a =>
+let select = async (~title: string, ~options: array<(string, 'a)>, ~env=?, ~defaultIndex=?): 'a =>
   switch options {
   | [(_, only)] => only
   | _ =>
@@ -168,9 +162,7 @@ let select = async (
       | _ => ""
       }
       let rec pick = async (): 'a => {
-        let answer = await ask(
-          `\nSelect [1-${(options->Array.length)->Int.toString}]${hint}: `,
-        )
+        let answer = await ask(`\nSelect [1-${options->Array.length->Int.toString}]${hint}: `)
         switch (answer, fallback) {
         | ("", Some((_, value))) => value
         | _ =>

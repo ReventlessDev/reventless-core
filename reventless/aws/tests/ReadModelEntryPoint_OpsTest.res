@@ -18,32 +18,33 @@ describe("ReadModelEntryPoint_Ops.parseHandlerConfig", () => {
   })
 
   testSync("decodes a full entry incl. attribution and Postgres fields", () => {
-    let config = obj([
-      (
-        "handlers",
-        JSON.Encode.array([
-          obj([
-            ("specModule", str("@x/spec/src/ReadModel/Products.res.mjs")),
-            ("mappingsModule", str("@x/spec/src/ReadModel/Products_Projections.res.mjs")),
-            ("queryDbTableName", str("Products-abc")),
-            ("sourceUrn", str("arn:aws:sqs:eu-west-1:1:q")),
-            ("comp", str("EventCollector(ProductsEC)")),
-            ("plugin", str("Catalog")),
-            ("stateTopicName", str("catalogProducts")),
-            (
-              "pgConnection",
-              obj([
-                ("host", str("db.local")),
-                ("port", JSON.Encode.int(5432)),
-                ("database", str("app")),
-                ("username", str("master")),
-                ("secretArn", str("arn:secret")),
-              ]),
-            ),
+    let config =
+      obj([
+        (
+          "handlers",
+          JSON.Encode.array([
+            obj([
+              ("specModule", str("@x/spec/src/ReadModel/Products.res.mjs")),
+              ("mappingsModule", str("@x/spec/src/ReadModel/Products_Projections.res.mjs")),
+              ("queryDbTableName", str("Products-abc")),
+              ("sourceUrn", str("arn:aws:sqs:eu-west-1:1:q")),
+              ("comp", str("EventCollector(ProductsEC)")),
+              ("plugin", str("Catalog")),
+              ("stateTopicName", str("catalogProducts")),
+              (
+                "pgConnection",
+                obj([
+                  ("host", str("db.local")),
+                  ("port", JSON.Encode.int(5432)),
+                  ("database", str("app")),
+                  ("username", str("master")),
+                  ("secretArn", str("arn:secret")),
+                ]),
+              ),
+            ]),
           ]),
-        ]),
-      ),
-    ])->JSON.stringify
+        ),
+      ])->JSON.stringify
     let entries = ReadModelEntryPoint_Ops.parseHandlerConfig(config)
     expect(entries->Array.length)->toBe(1)
     let e = entries->Array.getUnsafe(0)
@@ -65,20 +66,21 @@ describe("ReadModelEntryPoint_Ops.parseHandlerConfig", () => {
   })
 
   testSync("optional fields default to None; null pgConnection maps to None", () => {
-    let config = obj([
-      (
-        "handlers",
-        JSON.Encode.array([
-          obj([
-            ("specModule", str("a.res.mjs")),
-            ("mappingsModule", str("b.res.mjs")),
-            ("queryDbTableName", str("t")),
-            ("sourceUrn", str("u")),
-            ("pgConnection", JSON.Null),
+    let config =
+      obj([
+        (
+          "handlers",
+          JSON.Encode.array([
+            obj([
+              ("specModule", str("a.res.mjs")),
+              ("mappingsModule", str("b.res.mjs")),
+              ("queryDbTableName", str("t")),
+              ("sourceUrn", str("u")),
+              ("pgConnection", JSON.Null),
+            ]),
           ]),
-        ]),
-      ),
-    ])->JSON.stringify
+        ),
+      ])->JSON.stringify
     let e = ReadModelEntryPoint_Ops.parseHandlerConfig(config)->Array.getUnsafe(0)
     expect(e.comp->Option.isNone)->toBe(true)
     expect(e.plugin->Option.isNone)->toBe(true)
@@ -99,9 +101,9 @@ describe("ReadModelEntryPoint_Ops.injectId", () => {
 
   testSync("passes non-object states through unchanged", () => {
     expect(ReadModelEntryPoint_Ops.injectId("p-1", str("scalar")))->toEqual(str("scalar"))
-    expect(
-      ReadModelEntryPoint_Ops.injectId("p-1", JSON.Encode.array([str("a")])),
-    )->toEqual(JSON.Encode.array([str("a")]))
+    expect(ReadModelEntryPoint_Ops.injectId("p-1", JSON.Encode.array([str("a")])))->toEqual(
+      JSON.Encode.array([str("a")]),
+    )
     expect(ReadModelEntryPoint_Ops.injectId("p-1", JSON.Null))->toEqual(JSON.Null)
   })
 })

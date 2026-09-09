@@ -30,16 +30,17 @@ describe("state-change descriptor parity", () => {
     let cases = await buildAll()
     // A silent zero-case run would pass while asserting nothing.
     expect(cases->Array.length)->toBe(11)
-    cases->Array.forEach(c => {
-      expect((c.name, c.relay))->toEqual((c.name, c.local))
-      expect((c.name, c.postgres))->toEqual((c.name, c.local))
-    })
+    cases->Array.forEach(
+      c => {
+        expect((c.name, c.relay))->toEqual((c.name, c.local))
+        expect((c.name, c.postgres))->toEqual((c.name, c.local))
+      },
+    )
   })
 
   testAsync("a save carries the row, a delete carries none", async () => {
     let cases = await buildAll()
-    let stateOf = (d: JSON.t) =>
-      d->JSON.Decode.object->Option.flatMap(o => o->Dict.get("state"))
+    let stateOf = (d: JSON.t) => d->JSON.Decode.object->Option.flatMap(o => o->Dict.get("state"))
     let byName = name => cases->Array.find(c => c.name == name)
 
     switch byName("single-key save with updatedAt") {
@@ -102,26 +103,27 @@ describe("state-change descriptor parity", () => {
     [
       "row in the first retired state degrades to metadata only",
       "row in the second retired state degrades to metadata only",
-    ]->Array.forEach(name =>
-      switch byName(name) {
-      | Some(c) =>
-        expect((name, keyOf(c.local, "state"), keyOf(c.local, "sortKeyValue")))->toEqual((
-          name,
-          None,
-          None,
-        ))
-        expect((name, keyOf(c.relay, "state"), keyOf(c.relay, "sortKeyValue")))->toEqual((
-          name,
-          None,
-          None,
-        ))
-        expect((name, keyOf(c.postgres, "state"), keyOf(c.postgres, "sortKeyValue")))->toEqual((
-          name,
-          None,
-          None,
-        ))
-      | None => expect(name ++ " missing")->toBe("present")
-      }
+    ]->Array.forEach(
+      name =>
+        switch byName(name) {
+        | Some(c) =>
+          expect((name, keyOf(c.local, "state"), keyOf(c.local, "sortKeyValue")))->toEqual((
+            name,
+            None,
+            None,
+          ))
+          expect((name, keyOf(c.relay, "state"), keyOf(c.relay, "sortKeyValue")))->toEqual((
+            name,
+            None,
+            None,
+          ))
+          expect((name, keyOf(c.postgres, "state"), keyOf(c.postgres, "sortKeyValue")))->toEqual((
+            name,
+            None,
+            None,
+          ))
+        | None => expect(name ++ " missing")->toBe("present")
+        },
     )
 
     // The control for the state form: a live state on the same lifecycle, so an

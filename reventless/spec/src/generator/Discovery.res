@@ -18,7 +18,12 @@ type componentType = ComponentKind.t =
   | Extension
 
 // relPath: path relative to srcDir (e.g. "ReadModel/ProductsProjections.res")
-type discoveredFile = {stem: string, componentType: componentType, epGroup: option<string>, relPath: string}
+type discoveredFile = {
+  stem: string,
+  componentType: componentType,
+  epGroup: option<string>,
+  relPath: string,
+}
 
 let folderToComponentType = ComponentKind.folderToKind
 
@@ -32,6 +37,7 @@ let folderToComponentType = ComponentKind.folderToKind
 // docs/plans/done/deployed-chapter-grouping.md.
 let chapterOf = (relPath: string): option<string> => {
   let segments = relPath->String.split("/")
+
   // Need at least one directory segment before the filename.
   if segments->Array.length < 2 {
     None
@@ -76,7 +82,7 @@ let isAlwaysExcludedDir = (name: string): bool =>
 let matchesGlob = (path: string, pattern: string): bool =>
   if pattern === "**" {
     true
-  } else if not(pattern->String.includes("*")) {
+  } else if !(pattern->String.includes("*")) {
     // Exact file match or directory prefix
     path === pattern || path->String.startsWith(pattern ++ "/")
   } else if pattern->String.endsWith("/**") {
@@ -85,9 +91,11 @@ let matchesGlob = (path: string, pattern: string): bool =>
   } else if pattern->String.endsWith("/*") {
     let prefix = pattern->String.slice(~start=0, ~end=pattern->String.length - 2)
     path->String.startsWith(prefix ++ "/") &&
-      !(path
-      ->String.slice(~start=prefix->String.length + 1, ~end=path->String.length)
-      ->String.includes("/"))
+      !(
+        path
+        ->String.slice(~start=prefix->String.length + 1, ~end=path->String.length)
+        ->String.includes("/")
+      )
   } else {
     path === pattern
   }
@@ -103,14 +111,14 @@ let stemOf = (filename: string): option<string> =>
   }
 
 let isSkipped = (stem: string): bool =>
-  stem->String.endsWith("Test")
-  || stem->String.endsWith("Fixtures")
+  stem->String.endsWith("Test") ||
+  stem->String.endsWith("Fixtures") ||
   // `_EventMappings` and `_Mappings` files in per-entity Aggregate/ folders
   // are picked up by the dedicated [Pairing.findEventMappings] walker;
   // treating them as Aggregate specs would hunt for a non-existent
   // `_EventMappingsBehavior` / `_MappingsBehavior`.
-  || stem->String.endsWith("_EventMappings")
-  || stem->String.endsWith("_Mappings")
+  stem->String.endsWith("_EventMappings") ||
+  stem->String.endsWith("_Mappings")
 
 // Collect .res files directly in dir (non-recursive) into acc.
 let collectFiles = (
@@ -124,7 +132,11 @@ let collectFiles = (
   Generator_Node.readDir(dir)->Array.forEach(entry => {
     if entry->NodeFs.isFile {
       let filename = entry->NodeFs.direntName
-      let relPath = if relDir === "" {filename} else {relDir ++ "/" ++ filename}
+      let relPath = if relDir === "" {
+        filename
+      } else {
+        relDir ++ "/" ++ filename
+      }
       if !isExcluded(relPath, exclude) {
         switch stemOf(filename) {
         | Some(stem) if !isSkipped(stem) => acc->Array.push({stem, componentType, epGroup, relPath})
@@ -145,7 +157,11 @@ let rec walkDir = (
 ): unit =>
   Generator_Node.readDir(dir)->Array.forEach(entry => {
     let entryName = entry->NodeFs.direntName
-    let relPath = if relDir === "" {entryName} else {relDir ++ "/" ++ entryName}
+    let relPath = if relDir === "" {
+      entryName
+    } else {
+      relDir ++ "/" ++ entryName
+    }
 
     if isExcluded(relPath, exclude) {
       ()
@@ -215,7 +231,8 @@ let rec walkDir = (
         let filename = entryName
         if !isExcluded(relPath, exclude) {
           switch stemOf(filename) {
-          | Some(stem) if !isSkipped(stem) => acc->Array.push({stem, componentType: ct, epGroup, relPath})
+          | Some(stem) if !isSkipped(stem) =>
+            acc->Array.push({stem, componentType: ct, epGroup, relPath})
           | _ => ()
           }
         }

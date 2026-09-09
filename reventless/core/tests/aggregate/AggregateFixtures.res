@@ -1,4 +1,3 @@
-
 // ─────────────────────────────────────────────────────────────
 // Aggregate spec
 // ─────────────────────────────────────────────────────────────
@@ -49,7 +48,10 @@ module TestBehavior = {
     | AggSpec.Renamed({newName}) => Created({name: newName})
     }
 
-  let decide = (state: state, command: AggSpec.command): result<array<AggSpec.event>, AggSpec.error> =>
+  let decide = (state: state, command: AggSpec.command): result<
+    array<AggSpec.event>,
+    AggSpec.error,
+  > =>
     switch (state, command) {
     | (NotCreated, Create({name})) => Ok([AggSpec.Created({name: name})])
     | (NotCreated, Rename(_)) => Error(NotFound)
@@ -63,7 +65,11 @@ module TestBehavior = {
 // ─────────────────────────────────────────────────────────────
 
 type mockEL = {
-  appendFn: (int, string, array<Message.event'<string, AggSpec.event>>) => promise<result<unit, EventLog.appendError>>,
+  appendFn: (
+    int,
+    string,
+    array<Message.event'<string, AggSpec.event>>,
+  ) => promise<result<unit, EventLog.appendError>>,
   replayFn: string => promise<array<AggSpec.event>>,
   replayStreamFn: string => Stream.t<AggSpec.event, string, unit>,
   getAll: unit => array<Message.event'<string, AggSpec.event>>,
@@ -81,7 +87,7 @@ let makeMockEL = (): mockEL => {
       Error(EventLog.StorageFailure("append failed"))
     } else {
       storedRef := storedRef.contents->Array.concat(newEvents)
-      Ok(())
+      Ok()
     }
 
   let replayFn = async id =>
@@ -135,7 +141,11 @@ module TestOps = {
       ) => promise<result<unit, EventLog.appendError>>,
       replay: string => promise<array<AggSpec.event>>,
       replayStream: (string, ~fromSeq: int=?) => Stream.t<AggSpec.event, string, unit>,
-      appendStream: (int, string, Stream.t<AggSpec.event, string, unit>) => Effect.t<unit, string, unit>,
+      appendStream: (
+        int,
+        string,
+        Stream.t<AggSpec.event, string, unit>,
+      ) => Effect.t<unit, string, unit>,
       latestSnapshot: string => promise<result<option<EventLog.snapshot>, string>>,
       writeSnapshot: (string, EventLog.snapshot) => promise<result<unit, string>>,
     }

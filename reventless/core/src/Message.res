@@ -83,7 +83,11 @@ let encodeCommand' = (command', idSchema, commandSchema) =>
 let uuid = Uuid.v4
 
 let log: ('a, string) => 'a = (value, str) => {
-  logger.debug(~comp="Message", ~data=value->JSON.stringifyAny->Option.getOr("")->JSON.Encode.string, str)
+  logger.debug(
+    ~comp="Message",
+    ~data=value->JSON.stringifyAny->Option.getOr("")->JSON.Encode.string,
+    str,
+  )
   value
 }
 
@@ -205,7 +209,6 @@ let hrtimeToString: (~hrtime: hrtime, ~now: float) => string = (~hrtime, ~now) =
   now->Float.toString ++ ("-" ++ (String.repeat("0", 9 - milLength) ++ milString))
 }
 
-
 let generateMeta = (
   ~service,
   ~ip=?,
@@ -222,12 +225,12 @@ let generateMeta = (
     time: nowAsISOString(),
     msgId,
     correlationId: correlationId->Option.getOr(msgId),
-    ip: ?ip,
-    user: ?user,
-    causationId: ?causationId,
-    traceparent: ?traceparent,
-    schemaVersion: ?schemaVersion,
-    headers: ?headers,
+    ?ip,
+    ?user,
+    ?causationId,
+    ?traceparent,
+    ?schemaVersion,
+    ?headers,
   }
 }
 
@@ -332,13 +335,13 @@ let storedEventToFlatJson = (
 }
 
 /** Decode the flat on-disk JSON shape into a typed `StoredEvent`. */
-let flatJsonToStoredEvent = (
-  json: JSON.t,
-  idSchema: S.t<'id>,
-): Reventless.StoredEvent.storedEvent<'id> => {
+let flatJsonToStoredEvent = (json: JSON.t, idSchema: S.t<'id>): Reventless.StoredEvent.storedEvent<
+  'id,
+> => {
   let dict = json->JSON.Decode.object->Option.getOrThrow
   let id = dict->Dict.get("id")->Option.getOrThrow->Reventless.Util_Sury.fromJson(idSchema)
-  let position = dict->Dict.get("position")->Option.getOrThrow->JSON.Decode.string->Option.getOrThrow
+  let position =
+    dict->Dict.get("position")->Option.getOrThrow->JSON.Decode.string->Option.getOrThrow
   let event = dict->Dict.get("event")->Option.getOrThrow->JSON.Decode.string->Option.getOrThrow
   let data = dict->Dict.get("data")->Option.getOrThrow
   let recordedAt =
@@ -348,7 +351,7 @@ let flatJsonToStoredEvent = (
     dict
     ->Dict.get("tags")
     ->Option.map(t => t->Reventless.Util_Sury.fromJson(S.array(Reventless.DcbTag.tagSchema)))
-  {id, position, event, data, recordedAt, meta, tags: ?tags}
+  {id, position, event, data, recordedAt, meta, ?tags}
 }
 
 // type decoder<'a> = JSON.t => result<'a, Decco.decodeError>

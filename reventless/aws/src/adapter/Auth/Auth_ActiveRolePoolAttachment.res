@@ -37,7 +37,6 @@
     [AppSync_SourceApiAssociation_Retrying.res]: Pulumi serialises a dynamic
     provider's whole captured closure into stack state, so the SDK is imported
     lazily and nothing here captures a Pulumi Output. */
-
 let log = ReventlessCore.Logger.fromEnv()
 
 // ── The merge ────────────────────────────────────────────────────────────────

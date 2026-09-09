@@ -23,10 +23,19 @@ external signedHeadersJs: (
 let get = (d, k) => d->Dict.get(k)->Option.getOr("<missing>")
 
 // Compare the ReScript signer to the JS reference for one input tuple.
-let assertParity = (~host, ~path, ~body, ~region, ~isoNow, ~accessKeyId, ~secretAccessKey, ~sessionToken) => {
+let assertParity = (
+  ~host,
+  ~path,
+  ~body,
+  ~region,
+  ~isoNow,
+  ~accessKeyId,
+  ~secretAccessKey,
+  ~sessionToken,
+) => {
   let creds: AppSyncEventsSigner_Ops.creds = {accessKeyId, secretAccessKey, sessionToken}
   let mine = AppSyncEventsSigner_Ops.signedHeaders(~host, ~path, ~body, ~region, ~isoNow, ~creds)
-  let jsCreds: jsCreds = {accessKeyId, secretAccessKey, sessionToken: ?sessionToken}
+  let jsCreds: jsCreds = {accessKeyId, secretAccessKey, ?sessionToken}
   let ref = signedHeadersJs(~host, ~path, ~body, ~region, ~isoNow, ~creds=jsCreds)
   expect(mine->get("Authorization"))->toBe(ref->get("Authorization"))
   expect(mine->get("x-amz-date"))->toBe(ref->get("x-amz-date"))

@@ -27,16 +27,20 @@
 // — without the wrapper, anonymous callers could trigger admin mutations
 // (Plugin_Activate / _Deactivate, etc.) just by hitting the platform port.
 
-let instance: ReventlessGraphqlServer.GraphQL_ServerInstance.t = ReventlessGraphqlServer.GraphQL_ServerInstance.make(~label="GraphQL:Platform")
+let instance: ReventlessGraphqlServer.GraphQL_ServerInstance.t = ReventlessGraphqlServer.GraphQL_ServerInstance.make(
+  ~label="GraphQL:Platform",
+)
 
 // Wrap a resolver dict so every value enforces the Admin group. Keys are
 // preserved; resolvers fall through to the underlying instance once the
 // group check passes.
-let wrapAdmin = (
-  resolvers: dict<ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn>,
-): dict<ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn> => {
+let wrapAdmin = (resolvers: dict<ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn>): dict<
+  ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn,
+> => {
   let wrapped = Dict.make()
-  resolvers->Dict.toArray->Array.forEach(((k, v)) =>
+  resolvers
+  ->Dict.toArray
+  ->Array.forEach(((k, v)) =>
     wrapped->Dict.set(k, Auth_GraphqlContext.requireGroup(~group="Admin", v))
   )
   wrapped

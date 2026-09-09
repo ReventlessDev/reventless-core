@@ -51,7 +51,10 @@ type pluginExports = {"Make": platform => builtPlugin}
 let packageNameToPluginName = Reventless.PluginName.fromPackageName
 
 let strField = (json, key) =>
-  json->JSON.Decode.object->Option.flatMap(d => d->Dict.get(key))->Option.flatMap(JSON.Decode.string)
+  json
+  ->JSON.Decode.object
+  ->Option.flatMap(d => d->Dict.get(key))
+  ->Option.flatMap(JSON.Decode.string)
 
 let readJson = path =>
   try Some(NodeFs.readFileSync(path)->JSON.parseOrThrow) catch {
@@ -63,13 +66,13 @@ let readJson = path =>
 // reads the two raw fields with the local node bindings.
 let derivePluginName = (~pluginSrcDir: string): string => {
   let pluginJson = NodePath.join([pluginSrcDir, "plugin.json"])
-  let pluginJsonName =
-    NodeFs.existsSync(pluginJson)
-      ? readJson(pluginJson)->Option.flatMap(j => strField(j, "name"))
-      : None
+  let pluginJsonName = NodeFs.existsSync(pluginJson)
+    ? readJson(pluginJson)->Option.flatMap(j => strField(j, "name"))
+    : None
   let packageJsonName =
-    readJson(NodePath.join([NodePath.dirname(pluginSrcDir), "package.json"]))
-    ->Option.flatMap(j => strField(j, "name"))
+    readJson(NodePath.join([NodePath.dirname(pluginSrcDir), "package.json"]))->Option.flatMap(j =>
+      strField(j, "name")
+    )
   Reventless.PluginName.resolve(~pluginJsonName, ~packageJsonName)
 }
 
@@ -92,8 +95,9 @@ let discover = (~packageDirs: array<string>): array<pluginRef> =>
 let localPlatformSpecifier = "@reventlessdev/reventless-local/src/Platform.res.mjs"
 let resolveLocalPlatform = (~fromPackageDir: string): option<string> =>
   try Some(
-    NodeModule.createRequire(NodePath.join([fromPackageDir, "package.json"]))
-    ->NodeModule.requireResolve(localPlatformSpecifier),
+    NodeModule.createRequire(
+      NodePath.join([fromPackageDir, "package.json"]),
+    )->NodeModule.requireResolve(localPlatformSpecifier),
   ) catch {
   | _ => None
   }

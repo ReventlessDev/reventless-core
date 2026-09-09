@@ -57,7 +57,9 @@ describe("encodeUIFragmentEntry", () => {
 
   testSync("encodes remoteEntryUrl", () =>
     expect(
-      json->String.includes("\"remoteEntryUrl\":\"https://cdn.example.com/catalog@1.0/remoteEntry.js\""),
+      json->String.includes(
+        "\"remoteEntryUrl\":\"https://cdn.example.com/catalog@1.0/remoteEntry.js\"",
+      ),
     )->toEqual(true)
   )
 
@@ -80,8 +82,9 @@ describe("encodeUIFragmentEntry", () => {
 
 describe("Platform_UIFragmentsApi.sdl", () => {
   testSync("query field declares the list type", () =>
-    expect(Platform_UIFragmentsApi.sdlQueryField->String.includes("[Platform_UIFragmentEntry!]!"))
-    ->toEqual(true)
+    expect(
+      Platform_UIFragmentsApi.sdlQueryField->String.includes("[Platform_UIFragmentEntry!]!"),
+    )->toEqual(true)
   )
 
   testSync("sdlTypes includes Platform_UIFragmentEntry", () => {

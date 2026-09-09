@@ -15,7 +15,7 @@ type mockResult = {
 }
 
 @module("@pulumi/pulumi") @scope("runtime")
-external setMocks: ({"newResource": mockArgs => mockResult, "call": mockArgs => JSON.t}) => unit =
+external setMocks: {"newResource": mockArgs => mockResult, "call": mockArgs => JSON.t} => unit =
   "setMocks"
 
 // Activate Pulumi mock mode. Must be called once before any Platform.Make() or component creation.

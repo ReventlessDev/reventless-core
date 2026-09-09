@@ -12,4 +12,3 @@ type state = {
   address: string,
   deactivated: bool,
 }
-

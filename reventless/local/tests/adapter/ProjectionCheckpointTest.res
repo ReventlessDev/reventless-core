@@ -50,7 +50,12 @@ let makeHandler = () => {
 }
 
 // A DCB raw stored event with a deterministic msgId.
-let dcbEvent = (~eventType, ~tags, ~data=[], ~msgId): ReventlessCore.DcbEventLog_Adapter.rawStoredEvent => {
+let dcbEvent = (
+  ~eventType,
+  ~tags,
+  ~data=[],
+  ~msgId,
+): ReventlessCore.DcbEventLog_Adapter.rawStoredEvent => {
   eventType,
   data: JSON.Encode.object(Dict.fromArray(data)),
   tags,
@@ -124,21 +129,22 @@ describe("ProjectionCheckpoint", () => {
       },
     )
 
-    testPromise("appendStream batches never enter the pending set", async () => {
-      ProjectionPending.reset()
-      ProjectionPending.enableTracking()
-      module TestBus = LocalBus.Make()
-      module DbProvider = {
-        let db = makeFreshDb()
-      }
-      module Storage = EventLogStorage_Sqlite.Make(TestBus, DbProvider)
-      let s = Storage.make(~name="agg", ~owner=None, ~opts)
-      let ops = await s.operations->TestRunner.resolve
+    testPromise(
+      "appendStream batches never enter the pending set",
+      async () => {
+        ProjectionPending.reset()
+        ProjectionPending.enableTracking()
+        module TestBus = LocalBus.Make()
+        module DbProvider = {
+          let db = makeFreshDb()
+        }
+        module Storage = EventLogStorage_Sqlite.Make(TestBus, DbProvider)
+        let s = Storage.make(~name="agg", ~owner=None, ~opts)
+        let ops = await s.operations->TestRunner.resolve
 
-      // Bulk replay path: no publish cycle will ever resolve these, so they
-      // must not pin the low-watermark.
-      let _ =
-        await ops.appendStream(
+        // Bulk replay path: no publish cycle will ever resolve these, so they
+        // must not pin the low-watermark.
+        let _ = await ops.appendStream(
           0,
           "id-bulk",
           Stream.fromIterable([
@@ -147,171 +153,211 @@ describe("ProjectionCheckpoint", () => {
           ]),
         )->Effect.runPromise
 
-      expect(ProjectionPending.minPending(ProjectionPending.Aggregate))->toEqual(None)
+        expect(ProjectionPending.minPending(ProjectionPending.Aggregate))->toEqual(None)
 
-      // With nothing pending the watermark covers the bulk rows.
-      let db = DbProvider.db
-      ProjectionCheckpoint.setPosition(db, "RM", 0)
-      ProjectionCheckpoint.completePublished(db, [])
-      expect(ProjectionCheckpoint.getPosition(db, "RM"))->toBe(2)
-      ProjectionPending.reset()
-    })
+        // With nothing pending the watermark covers the bulk rows.
+        let db = DbProvider.db
+        ProjectionCheckpoint.setPosition(db, "RM", 0)
+        ProjectionCheckpoint.completePublished(db, [])
+        expect(ProjectionCheckpoint.getPosition(db, "RM"))->toBe(2)
+        ProjectionPending.reset()
+      },
+    )
   })
 
   describe("catchupEnvelope", () => {
-    testSync("rebuilds the live {id, meta, event} envelope from a stored row", () => {
-      let flat = flatEvent(
-        ~id="p-1",
-        ~seq=4,
-        ~eventType="Created",
-        ~data=[("name", JSON.Encode.string("Widget"))],
-        ~msgId="m-1",
-      )
-      switch ProjectionCheckpoint.catchupEnvelope(flat) {
-      | None => expect("envelope")->toBe("None")
-      | Some(envelope) =>
-        let dict = envelope->JSON.Decode.object->Option.getOrThrow
-        expect(dict->Dict.get("id"))->toEqual(Some(JSON.Encode.string("p-1")))
-        expect(msgIdOfEnvelope(envelope))->toBe("m-1")
-        // Payload-bearing variant: TAG + payload fields (splitMessage reversed).
-        expect(dict->Dict.get("event"))->toEqual(
-          Some(
-            JSON.Encode.object(
-              Dict.fromArray([
-                ("TAG", JSON.Encode.string("Created")),
-                ("name", JSON.Encode.string("Widget")),
-              ]),
-            ),
-          ),
+    testSync(
+      "rebuilds the live {id, meta, event} envelope from a stored row",
+      () => {
+        let flat = flatEvent(
+          ~id="p-1",
+          ~seq=4,
+          ~eventType="Created",
+          ~data=[("name", JSON.Encode.string("Widget"))],
+          ~msgId="m-1",
         )
-      }
-    })
+        switch ProjectionCheckpoint.catchupEnvelope(flat) {
+        | None => expect("envelope")->toBe("None")
+        | Some(envelope) =>
+          let dict = envelope->JSON.Decode.object->Option.getOrThrow
+          expect(dict->Dict.get("id"))->toEqual(Some(JSON.Encode.string("p-1")))
+          expect(msgIdOfEnvelope(envelope))->toBe("m-1")
+          // Payload-bearing variant: TAG + payload fields (splitMessage reversed).
+          expect(dict->Dict.get("event"))->toEqual(
+            Some(
+              JSON.Encode.object(
+                Dict.fromArray([
+                  ("TAG", JSON.Encode.string("Created")),
+                  ("name", JSON.Encode.string("Widget")),
+                ]),
+              ),
+            ),
+          )
+        }
+      },
+    )
 
-    testSync("payload-less variants come back as a bare JSON string", () => {
-      let flat = flatEvent(~id="p-1", ~seq=0, ~eventType="Deleted", ~msgId="m-2")
-      let event =
-        ProjectionCheckpoint.catchupEnvelope(flat)
-        ->Option.flatMap(JSON.Decode.object)
-        ->Option.flatMap(d => d->Dict.get("event"))
-      expect(event)->toEqual(Some(JSON.Encode.string("Deleted")))
-    })
+    testSync(
+      "payload-less variants come back as a bare JSON string",
+      () => {
+        let flat = flatEvent(~id="p-1", ~seq=0, ~eventType="Deleted", ~msgId="m-2")
+        let event =
+          ProjectionCheckpoint.catchupEnvelope(flat)
+          ->Option.flatMap(JSON.Decode.object)
+          ->Option.flatMap(d => d->Dict.get("event"))
+        expect(event)->toEqual(Some(JSON.Encode.string("Deleted")))
+      },
+    )
 
-    testSync("malformed stored rows yield None instead of throwing", () => {
-      // Missing the required meta fields (composeMeta would throw).
-      let flat = JSON.Encode.object(
-        Dict.fromArray([
-          ("id", JSON.Encode.string("p-1")),
-          ("event", JSON.Encode.string("Created")),
-        ]),
-      )
-      expect(ProjectionCheckpoint.catchupEnvelope(flat))->toEqual(None)
-      expect(ProjectionCheckpoint.catchupEnvelope(JSON.Encode.string("junk")))->toEqual(None)
-    })
+    testSync(
+      "malformed stored rows yield None instead of throwing",
+      () => {
+        // Missing the required meta fields (composeMeta would throw).
+        let flat = JSON.Encode.object(
+          Dict.fromArray([
+            ("id", JSON.Encode.string("p-1")),
+            ("event", JSON.Encode.string("Created")),
+          ]),
+        )
+        expect(ProjectionCheckpoint.catchupEnvelope(flat))->toEqual(None)
+        expect(ProjectionCheckpoint.catchupEnvelope(JSON.Encode.string("junk")))->toEqual(None)
+      },
+    )
   })
 
   describe("runCatchup", () => {
-    testPromise("delivers the missed range in rowid order, exactly once", async () => {
-      ProjectionPending.reset()
-      module TestBus = LocalBus.Make()
-      module DbProvider = {
-        let db = makeFreshDb()
-      }
-      module Storage = EventLogStorage_Sqlite.Make(TestBus, DbProvider)
-      let s = Storage.make(~name="agg", ~owner=None, ~opts)
-      let ops = await s.operations->TestRunner.resolve
-      let db = DbProvider.db
+    testPromise(
+      "delivers the missed range in rowid order, exactly once",
+      async () => {
+        ProjectionPending.reset()
+        module TestBus = LocalBus.Make()
+        module DbProvider = {
+          let db = makeFreshDb()
+        }
+        module Storage = EventLogStorage_Sqlite.Make(TestBus, DbProvider)
+        let s = Storage.make(~name="agg", ~owner=None, ~opts)
+        let ops = await s.operations->TestRunner.resolve
+        let db = DbProvider.db
 
-      // Interleaved appends across two aggregates — global order is rowid
-      // order (m1, m2, m3), not per-aggregate grouping.
-      let _ = await ops.append(0, "id-1", [flatEvent(~id="id-1", ~seq=0, ~eventType="Created", ~msgId="m1")])
-      let _ = await ops.append(0, "id-2", [flatEvent(~id="id-2", ~seq=0, ~eventType="Created", ~msgId="m2")])
-      let _ = await ops.append(1, "id-1", [flatEvent(~id="id-1", ~seq=1, ~eventType="Renamed", ~msgId="m3")])
-
-      let (receivedA, handlerA) = makeHandler()
-      let (receivedB, handlerB) = makeHandler()
-      let upperBound = ProjectionCheckpoint.maxPosition(db, ProjectionPending.Aggregate)
-      expect(upperBound)->toBe(3)
-
-      await ProjectionCheckpoint.runCatchup(
-        ~db,
-        ~upperBound,
-        ~dcbUpperBound=0,
-        ~handlers=[("RM-A", handlerA), ("RM-B", handlerB)],
-      )
-
-      expect(receivedA->Array.map(msgIdOfEnvelope))->toEqual(["m1", "m2", "m3"])
-      expect(receivedB->Array.map(msgIdOfEnvelope))->toEqual(["m1", "m2", "m3"])
-      expect(ProjectionCheckpoint.getPosition(db, "RM-A"))->toBe(3)
-      expect(ProjectionCheckpoint.getPosition(db, "RM-B"))->toBe(3)
-
-      // Second startup: checkpoints are current — nothing is redelivered.
-      await ProjectionCheckpoint.runCatchup(
-        ~db,
-        ~upperBound=ProjectionCheckpoint.maxPosition(db, ProjectionPending.Aggregate),
-        ~dcbUpperBound=0,
-        ~handlers=[("RM-A", handlerA), ("RM-B", handlerB)],
-      )
-      expect(receivedA->Array.length)->toBe(3)
-      expect(receivedB->Array.length)->toBe(3)
-    })
-
-    testPromise("a fresh database still stamps checkpoint rows at 0", async () => {
-      // Regression (caught by the platform smoke run): with upperBound = 0 and
-      // no events, runCatchup must still CREATE the rows — the runtime
-      // advanceAll only lifts existing rows, so a missing row would make every
-      // subsequent startup redeliver the whole history.
-      ProjectionPending.reset()
-      let db = makeFreshDb()
-      let (_, handler) = makeHandler()
-      await ProjectionCheckpoint.runCatchup(~db, ~upperBound=0, ~dcbUpperBound=0, ~handlers=[("RM-Fresh", handler)])
-      let stamped =
-        db
-        ->SqliteDriver.prepare(
-          "SELECT COUNT(*) AS c FROM projection_checkpoint WHERE read_model = ?",
+        // Interleaved appends across two aggregates — global order is rowid
+        // order (m1, m2, m3), not per-aggregate grouping.
+        let _ = await ops.append(
+          0,
+          "id-1",
+          [flatEvent(~id="id-1", ~seq=0, ~eventType="Created", ~msgId="m1")],
         )
-        ->SqliteDriver.get([JSON.Encode.string("RM-Fresh")])
-      expect(stamped->Option.flatMap(r => r->Dict.get("c")))->toEqual(
-        Some(JSON.Encode.float(1.0)),
-      )
-      expect(ProjectionCheckpoint.getPosition(db, "RM-Fresh"))->toBe(0)
-    })
+        let _ = await ops.append(
+          0,
+          "id-2",
+          [flatEvent(~id="id-2", ~seq=0, ~eventType="Created", ~msgId="m2")],
+        )
+        let _ = await ops.append(
+          1,
+          "id-1",
+          [flatEvent(~id="id-1", ~seq=1, ~eventType="Renamed", ~msgId="m3")],
+        )
 
-    testPromise("a read model without a checkpoint row is seeded from history", async () => {
-      ProjectionPending.reset()
-      module TestBus = LocalBus.Make()
-      module DbProvider = {
+        let (receivedA, handlerA) = makeHandler()
+        let (receivedB, handlerB) = makeHandler()
+        let upperBound = ProjectionCheckpoint.maxPosition(db, ProjectionPending.Aggregate)
+        expect(upperBound)->toBe(3)
+
+        await ProjectionCheckpoint.runCatchup(
+          ~db,
+          ~upperBound,
+          ~dcbUpperBound=0,
+          ~handlers=[("RM-A", handlerA), ("RM-B", handlerB)],
+        )
+
+        expect(receivedA->Array.map(msgIdOfEnvelope))->toEqual(["m1", "m2", "m3"])
+        expect(receivedB->Array.map(msgIdOfEnvelope))->toEqual(["m1", "m2", "m3"])
+        expect(ProjectionCheckpoint.getPosition(db, "RM-A"))->toBe(3)
+        expect(ProjectionCheckpoint.getPosition(db, "RM-B"))->toBe(3)
+
+        // Second startup: checkpoints are current — nothing is redelivered.
+        await ProjectionCheckpoint.runCatchup(
+          ~db,
+          ~upperBound=ProjectionCheckpoint.maxPosition(db, ProjectionPending.Aggregate),
+          ~dcbUpperBound=0,
+          ~handlers=[("RM-A", handlerA), ("RM-B", handlerB)],
+        )
+        expect(receivedA->Array.length)->toBe(3)
+        expect(receivedB->Array.length)->toBe(3)
+      },
+    )
+
+    testPromise(
+      "a fresh database still stamps checkpoint rows at 0",
+      async () => {
+        // Regression (caught by the platform smoke run): with upperBound = 0 and
+        // no events, runCatchup must still CREATE the rows — the runtime
+        // advanceAll only lifts existing rows, so a missing row would make every
+        // subsequent startup redeliver the whole history.
+        ProjectionPending.reset()
         let db = makeFreshDb()
-      }
-      module Storage = EventLogStorage_Sqlite.Make(TestBus, DbProvider)
-      let s = Storage.make(~name="agg", ~owner=None, ~opts)
-      let ops = await s.operations->TestRunner.resolve
-      let db = DbProvider.db
+        let (_, handler) = makeHandler()
+        await ProjectionCheckpoint.runCatchup(
+          ~db,
+          ~upperBound=0,
+          ~dcbUpperBound=0,
+          ~handlers=[("RM-Fresh", handler)],
+        )
+        let stamped =
+          db
+          ->SqliteDriver.prepare(
+            "SELECT COUNT(*) AS c FROM projection_checkpoint WHERE read_model = ?",
+          )
+          ->SqliteDriver.get([JSON.Encode.string("RM-Fresh")])
+        expect(stamped->Option.flatMap(r => r->Dict.get("c")))->toEqual(
+          Some(JSON.Encode.float(1.0)),
+        )
+        expect(ProjectionCheckpoint.getPosition(db, "RM-Fresh"))->toBe(0)
+      },
+    )
 
-      let _ = await ops.append(0, "id-1", [flatEvent(~id="id-1", ~seq=0, ~eventType="Created", ~msgId="m1")])
+    testPromise(
+      "a read model without a checkpoint row is seeded from history",
+      async () => {
+        ProjectionPending.reset()
+        module TestBus = LocalBus.Make()
+        module DbProvider = {
+          let db = makeFreshDb()
+        }
+        module Storage = EventLogStorage_Sqlite.Make(TestBus, DbProvider)
+        let s = Storage.make(~name="agg", ~owner=None, ~opts)
+        let ops = await s.operations->TestRunner.resolve
+        let db = DbProvider.db
 
-      // First session knows only RM-A.
-      let (receivedA, handlerA) = makeHandler()
-      await ProjectionCheckpoint.runCatchup(
-        ~db,
-        ~upperBound=ProjectionCheckpoint.maxPosition(db, ProjectionPending.Aggregate),
-        ~dcbUpperBound=0,
-        ~handlers=[("RM-A", handlerA)],
-      )
-      expect(receivedA->Array.length)->toBe(1)
+        let _ = await ops.append(
+          0,
+          "id-1",
+          [flatEvent(~id="id-1", ~seq=0, ~eventType="Created", ~msgId="m1")],
+        )
 
-      // A read model added later starts at 0 and receives the full history;
-      // the existing one stays quiet.
-      let (receivedNew, handlerNew) = makeHandler()
-      await ProjectionCheckpoint.runCatchup(
-        ~db,
-        ~upperBound=ProjectionCheckpoint.maxPosition(db, ProjectionPending.Aggregate),
-        ~dcbUpperBound=0,
-        ~handlers=[("RM-A", handlerA), ("RM-New", handlerNew)],
-      )
-      expect(receivedA->Array.length)->toBe(1)
-      expect(receivedNew->Array.map(msgIdOfEnvelope))->toEqual(["m1"])
-      expect(ProjectionCheckpoint.getPosition(db, "RM-New"))->toBe(1)
-    })
+        // First session knows only RM-A.
+        let (receivedA, handlerA) = makeHandler()
+        await ProjectionCheckpoint.runCatchup(
+          ~db,
+          ~upperBound=ProjectionCheckpoint.maxPosition(db, ProjectionPending.Aggregate),
+          ~dcbUpperBound=0,
+          ~handlers=[("RM-A", handlerA)],
+        )
+        expect(receivedA->Array.length)->toBe(1)
+
+        // A read model added later starts at 0 and receives the full history;
+        // the existing one stays quiet.
+        let (receivedNew, handlerNew) = makeHandler()
+        await ProjectionCheckpoint.runCatchup(
+          ~db,
+          ~upperBound=ProjectionCheckpoint.maxPosition(db, ProjectionPending.Aggregate),
+          ~dcbUpperBound=0,
+          ~handlers=[("RM-A", handlerA), ("RM-New", handlerNew)],
+        )
+        expect(receivedA->Array.length)->toBe(1)
+        expect(receivedNew->Array.map(msgIdOfEnvelope))->toEqual(["m1"])
+        expect(ProjectionCheckpoint.getPosition(db, "RM-New"))->toBe(1)
+      },
+    )
   })
 
   describe("DCB axis", () => {
@@ -382,41 +428,50 @@ describe("ProjectionCheckpoint", () => {
       },
     )
 
-    testPromise("the two axes' watermarks are independent", async () => {
-      ProjectionPending.reset()
-      ProjectionPending.enableTracking()
-      module TestBus = LocalBus.Make()
-      module DbProvider = {
-        let db = makeFreshDb()
-      }
-      module AggStorage = EventLogStorage_Sqlite.Make(TestBus, DbProvider)
-      let aggS = AggStorage.make(~name="agg", ~owner=None, ~opts)
-      let aggOps = await aggS.operations->TestRunner.resolve
-      let db = DbProvider.db
-      let dcbOps = await makeDcbStorage(db, ~name="dcb-log")
+    testPromise(
+      "the two axes' watermarks are independent",
+      async () => {
+        ProjectionPending.reset()
+        ProjectionPending.enableTracking()
+        module TestBus = LocalBus.Make()
+        module DbProvider = {
+          let db = makeFreshDb()
+        }
+        module AggStorage = EventLogStorage_Sqlite.Make(TestBus, DbProvider)
+        let aggS = AggStorage.make(~name="agg", ~owner=None, ~opts)
+        let aggOps = await aggS.operations->TestRunner.resolve
+        let db = DbProvider.db
+        let dcbOps = await makeDcbStorage(db, ~name="dcb-log")
 
-      // One pending append on each axis.
-      let _ = await aggOps.append(
-        0,
-        "id-1",
-        [flatEvent(~id="id-1", ~seq=0, ~eventType="Created", ~msgId="agg1")],
-      )
-      let _ = await dcbOps.append(
-        [dcbEvent(~eventType="OrderPlaced", ~tags=[{key: "orderId", value: "o-1"}], ~msgId="dcb1")],
-        ~condition=?None,
-      )
-      ProjectionCheckpoint.setPosition(db, "RM", 0)
-      ProjectionCheckpoint.setPosition(db, "dcb:RM", 0)
+        // One pending append on each axis.
+        let _ = await aggOps.append(
+          0,
+          "id-1",
+          [flatEvent(~id="id-1", ~seq=0, ~eventType="Created", ~msgId="agg1")],
+        )
+        let _ = await dcbOps.append(
+          [
+            dcbEvent(
+              ~eventType="OrderPlaced",
+              ~tags=[{key: "orderId", value: "o-1"}],
+              ~msgId="dcb1",
+            ),
+          ],
+          ~condition=?None,
+        )
+        ProjectionCheckpoint.setPosition(db, "RM", 0)
+        ProjectionCheckpoint.setPosition(db, "dcb:RM", 0)
 
-      // Only the DCB batch completes: its axis advances, the aggregate axis
-      // stays capped by its own pending append.
-      ProjectionCheckpoint.completePublished(db, ["dcb1"])
-      expect(ProjectionCheckpoint.getPosition(db, "dcb:RM"))->toBe(1)
-      expect(ProjectionCheckpoint.getPosition(db, "RM"))->toBe(0)
+        // Only the DCB batch completes: its axis advances, the aggregate axis
+        // stays capped by its own pending append.
+        ProjectionCheckpoint.completePublished(db, ["dcb1"])
+        expect(ProjectionCheckpoint.getPosition(db, "dcb:RM"))->toBe(1)
+        expect(ProjectionCheckpoint.getPosition(db, "RM"))->toBe(0)
 
-      ProjectionCheckpoint.completePublished(db, ["agg1"])
-      expect(ProjectionCheckpoint.getPosition(db, "RM"))->toBe(1)
-      ProjectionPending.reset()
-    })
+        ProjectionCheckpoint.completePublished(db, ["agg1"])
+        expect(ProjectionCheckpoint.getPosition(db, "RM"))->toBe(1)
+        ProjectionPending.reset()
+      },
+    )
   })
 })

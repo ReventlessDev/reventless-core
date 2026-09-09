@@ -27,7 +27,10 @@ describe("Util_LogGroup_Adopting.isAlreadyExistsError", () => {
   testSync("true for the error this provider exists to absorb", () =>
     expect(
       Adopting.isAlreadyExistsError(
-        mkErr(~name="ResourceAlreadyExistsException", ~message="The specified log group already exists"),
+        mkErr(
+          ~name="ResourceAlreadyExistsException",
+          ~message="The specified log group already exists",
+        ),
       ),
     )->toBe(true)
   )
@@ -42,7 +45,9 @@ describe("Util_LogGroup_Adopting.isAlreadyExistsError", () => {
 
   testSync("false for a permission failure, which must still fail loudly", () =>
     expect(
-      Adopting.isAlreadyExistsError(mkErr(~name="AccessDeniedException", ~message="not authorized")),
+      Adopting.isAlreadyExistsError(
+        mkErr(~name="AccessDeniedException", ~message="not authorized"),
+      ),
     )->toBe(false)
   )
 })
@@ -85,9 +90,9 @@ describe("Util_LogGroup_Adopting.sameTags", () => {
   )
 
   testSync("sees a changed value", () =>
-    expect(
-      Adopting.sameTags(Dict.fromArray([("a", "1")]), Dict.fromArray([("a", "2")])),
-    )->toBe(false)
+    expect(Adopting.sameTags(Dict.fromArray([("a", "1")]), Dict.fromArray([("a", "2")])))->toBe(
+      false,
+    )
   )
 
   testSync("sees an added key", () =>

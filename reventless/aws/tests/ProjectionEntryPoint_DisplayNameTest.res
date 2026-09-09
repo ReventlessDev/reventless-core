@@ -53,8 +53,9 @@ let labelOf = (json: JSON.t) =>
   ->Option.flatMap(JSON.Decode.string)
 
 let row = (~placedAt="2026-09-07T13:57:46.593Z"): JSON.t =>
-  ({orderId: "o1", placedAt, shippedAt: "", displayName: None}: rowState)
-  ->ReventlessCore.Message.encode(rowStateSchema)
+  (
+    {orderId: "o1", placedAt, shippedAt: "", displayName: None}: rowState
+  )->ReventlessCore.Message.encode(rowStateSchema)
 
 describe("ProjectionEntryPoint_Ops.withDisplayName", () => {
   testPromise("composes the label on save", async () => {
@@ -75,7 +76,10 @@ describe("ProjectionEntryPoint_Ops.withDisplayName", () => {
       base->ProjectionEntryPoint_Ops.withDisplayName(
         ~stateSchema=Some(rowStateSchema->S.castToUnknown),
       )
-    let _ = await ops.saveBatch([("o1", row(), None), ("o2", row(~placedAt="2026-09-08T09:00:00Z"), None)])
+    let _ = await ops.saveBatch([
+      ("o1", row(), None),
+      ("o2", row(~placedAt="2026-09-08T09:00:00Z"), None),
+    ])
     expect(saved->Array.map(labelOf))->toEqual([
       Some("2026-09-07T13:57:46.593Z"),
       Some("2026-09-08T09:00:00Z"),

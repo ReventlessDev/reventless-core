@@ -45,13 +45,14 @@ let forCommandTopic = (
     publishToAggregatesEnvVars
     ->Dict.toArray
     ->Array.map(((aggName, envVar)) =>
-      `${aggName->JSON.stringifyAny->Option.getOr(`""`)}: ${envVar->JSON.stringifyAny->Option.getOr(`""`)}`
+      `${aggName->JSON.stringifyAny->Option.getOr(`""`)}: ${envVar
+        ->JSON.stringifyAny
+        ->Option.getOr(`""`)}`
     )
     ->Array.join(",")
 
   let handlerConfigJson =
-    queue.id
-    ->Pulumi.Output.apply(queueUrl =>
+    queue.id->Pulumi.Output.apply(queueUrl =>
       `{"specModule":${specModule},"mappingsModule":${mappingsModule},"queueUrl":"${queueUrl}","publishToAggregates":{${publishToAggregatesJson}}}`
     )
   envVars->Dict.set("HANDLER_CONFIG", handlerConfigJson->Pulumi.Output.asInput)

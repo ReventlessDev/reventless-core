@@ -4,10 +4,7 @@ describe("Products StateViewSlice", () => {
   test("ProductAdded creates a row", () =>
     givenEvents([])
     ->whenEvent(ProductAdded({productId: "p1", name: "Laptop", description: "x", price: 999.99}))
-    ->thenStateWithId(
-      "p1",
-      {productId: "p1", name: "Laptop", description: "x", price: 999.99},
-    )
+    ->thenStateWithId("p1", {productId: "p1", name: "Laptop", description: "x", price: 999.99})
   )
 
   test("ProductNameChanged updates the name", () =>
@@ -31,9 +28,6 @@ describe("Products StateViewSlice", () => {
   test("ProductPriceChanged updates the price", () =>
     givenEvents([ProductAdded({productId: "p1", name: "Laptop", description: "x", price: 999.99})])
     ->whenEvent(ProductPriceChanged({productId: "p1", price: 899.99}))
-    ->thenStateWithId(
-      "p1",
-      {productId: "p1", name: "Laptop", description: "x", price: 899.99},
-    )
+    ->thenStateWithId("p1", {productId: "p1", name: "Laptop", description: "x", price: 899.99})
   )
 })

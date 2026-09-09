@@ -10,7 +10,6 @@
     Entry module: use `Web.Fetch.fetch`, `Web.Socket.make`, and so on. The
     submodules are also importable directly (`Web_Fetch`) when only one is
     needed. */
-
 module Fetch = Web_Fetch
 module Socket = Web_Socket
 module Timers = Web_Timers

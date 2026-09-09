@@ -29,13 +29,11 @@ let defaultId: S.Metadata.Id.t<JSON.t> = S.Metadata.Id.make(
 /** Layers a default onto whatever the field already resolved to. Wraps rather
     than replaces, for the reason `Sensitive.mark` does: a field carries at most
     one `@s.matches`. */
-let mark = (schema: S.t<'a>, value: JSON.t): S.t<'a> =>
-  schema->S.Metadata.set(~id=defaultId, value)
+let mark = (schema: S.t<'a>, value: JSON.t): S.t<'a> => schema->S.Metadata.set(~id=defaultId, value)
 
 let int = (schema: S.t<int>, value: int): S.t<int> => schema->mark(JSON.Encode.int(value))
 
-let float = (schema: S.t<float>, value: float): S.t<float> =>
-  schema->mark(JSON.Encode.float(value))
+let float = (schema: S.t<float>, value: float): S.t<float> => schema->mark(JSON.Encode.float(value))
 
 let string = (schema: S.t<string>, value: string): S.t<string> =>
   schema->mark(JSON.Encode.string(value))

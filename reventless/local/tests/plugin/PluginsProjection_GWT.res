@@ -1,7 +1,9 @@
 open ReventlessCore
 open PluginSpec
 open Plugin_Fixtures
-module PluginsProjectionTest = ReventlessGwt.MultiSourceProjection_GWT.Make(PluginsProjection.PluginMapping)
+module PluginsProjectionTest = ReventlessGwt.MultiSourceProjection_GWT.Make(
+  PluginsProjection.PluginMapping,
+)
 open PluginsProjectionTest
 
 // Current view (one row per plugin name). The displayed row tracks the current

@@ -32,9 +32,7 @@ let enableTracking = () => enabled := true
 
 let trackAppended = (~axis: axis, entries: array<(string, int)>) =>
   if enabled.contents {
-    entries->Array.forEach(((msgId, position)) =>
-      pendingByMsgId->Dict.set(msgId, (axis, position))
-    )
+    entries->Array.forEach(((msgId, position)) => pendingByMsgId->Dict.set(msgId, (axis, position)))
   }
 
 let resolve = (msgIds: array<string>) =>

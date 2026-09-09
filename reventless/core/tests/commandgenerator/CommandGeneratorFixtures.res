@@ -1,4 +1,3 @@
-
 // ─────────────────────────────────────────────────────────────
 // Aggregate spec for CommandGenerator tests
 // ─────────────────────────────────────────────────────────────
@@ -13,7 +12,7 @@ module CmdGenAggSpec = {
   type command =
     | Create
     | CreateWithName({name: string})
-    | Invalid  // used for schema validation tests
+    | Invalid // used for schema validation tests
 
   @schema
   type event =
@@ -21,7 +20,7 @@ module CmdGenAggSpec = {
     | CreatedWithName({name: string})
 
   @schema
-  type error = | InvalidCommand
+  type error = InvalidCommand
 
   let moduleUrl: string = %raw(`import.meta.url`)
 }
@@ -40,7 +39,10 @@ module CmdGenBehavior = {
 
   let evolve = (_state: state, _event: CmdGenAggSpec.event): state => ()
 
-  let decide = (_state: state, command: CmdGenAggSpec.command): result<array<CmdGenAggSpec.event>, CmdGenAggSpec.error> =>
+  let decide = (_state: state, command: CmdGenAggSpec.command): result<
+    array<CmdGenAggSpec.event>,
+    CmdGenAggSpec.error,
+  > =>
     switch command {
     | Create => Ok([CmdGenAggSpec.Created])
     | CreateWithName({name}) => Ok([CmdGenAggSpec.CreatedWithName({name: name})])
@@ -89,11 +91,7 @@ type compositeTagCommand =
 // nulls are data and must survive.
 @schema
 type optionalFieldCommand =
-  StoreItem({
-    itemId: @s.matches(Reventless.DcbTag.string) string,
-    data: JSON.t,
-    note?: string,
-  })
+  StoreItem({itemId: @s.matches(Reventless.DcbTag.string) string, data: JSON.t, note?: string})
 
 let optionalFieldSliceGen = CommandGenerator_Callback.makeGenerateCommand(
   ~publishJsons=MockPublishSpec.publishJsons,
@@ -144,10 +142,7 @@ let makeOneParamPayload = (~id, ~command, ~paramName, ~paramValue): CommandGener
   Obj.magic({
     "command": command,
     "arguments": Obj.magic(
-      Dict.fromArray([
-        ("id", JSON.Encode.string(id)),
-        (paramName, JSON.Encode.string(paramValue)),
-      ]),
+      Dict.fromArray([("id", JSON.Encode.string(id)), (paramName, JSON.Encode.string(paramValue))]),
     ),
     "meta": {"ip": ["127.0.0.1"], "user": "test-user", "info": ""},
   })

@@ -25,7 +25,10 @@ let defaultIntendedUse = "SingleUse"
 
 /** Create a place index with framework attribution tags and config-driven
     provider/retention settings. */
-let make = (~name: string, ~opts: option<Pulumi.CustomResourceOptions.t>=?): ReventlessInfra.Platform.geocoderIndex => {
+let make = (
+  ~name: string,
+  ~opts: option<Pulumi.CustomResourceOptions.t>=?,
+): ReventlessInfra.Platform.geocoderIndex => {
   let dataSource = Util_LocalConfig.get("geocoderDataSource")->Option.getOr(defaultDataSource)
   let intendedUse = Util_LocalConfig.get("geocoderIntendedUse")->Option.getOr(defaultIntendedUse)
 

@@ -27,63 +27,58 @@ module type Spec = {
 }
 
 module Make = (Spec: Spec) => {
-  module ConnectPluginMapping = ExtensionMapping.Make(
-    {
-      module ExtensionPoint = PluginExtensionPointSpec
-      module Delegate = ReventlessInfra.ExtensionMapping.NoDelegate
+  module ConnectPluginMapping = ExtensionMapping.Make({
+    module ExtensionPoint = PluginExtensionPointSpec
+    module Delegate = ReventlessInfra.ExtensionMapping.NoDelegate
 
-      // Unused by ExtensionMapping.Make (it reads Delegate.moduleUrl, not the
-      // arg's); present only to satisfy the input module type. The actually
-      // dynamic-imported specifier is the file-level `moduleUrl` (@@reventless.spec
-      // injected, move-safe) referenced from Plugin_Helpers.
-      let moduleUrl = PluginExtensionPointSpec.moduleUrl
+    // Unused by ExtensionMapping.Make (it reads Delegate.moduleUrl, not the
+    // arg's); present only to satisfy the input module type. The actually
+    // dynamic-imported specifier is the file-level `moduleUrl` (@@reventless.spec
+    // injected, move-safe) referenced from Plugin_Helpers.
+    let moduleUrl = PluginExtensionPointSpec.moduleUrl
 
-      let delegateModuleUrl = Delegate.moduleUrl
+    let delegateModuleUrl = Delegate.moduleUrl
 
-      let mapIncomingEvent: ReventlessInfra.ExtensionMapping.mapIncomingEvent<
-        PluginExtensionPointSpec.event,
-        Delegate.command,
-        PluginExtensionPointSpec.command,
-        PluginExtensionPointSpec.directive,
-      > = (pluginId, event, _meta, _pluginDef, _queryEngine) => {
-        let pluginDefinition = Spec.pluginDefinition
-        let id = pluginDefinition.id
+    let mapIncomingEvent: ReventlessInfra.ExtensionMapping.mapIncomingEvent<
+      PluginExtensionPointSpec.event,
+      Delegate.command,
+      PluginExtensionPointSpec.command,
+      PluginExtensionPointSpec.directive,
+    > = (pluginId, event, _meta, _pluginDef, _queryEngine) => {
+      let pluginDefinition = Spec.pluginDefinition
+      let id = pluginDefinition.id
 
-        switch event {
-        // Answer the handshake, and — when this plugin ships a UI-fragment manifest — register
-        // it with the admin UiFragmentRegistry slice in the same step (the admin EP's
-        // UI-fragment mapping routes RegisterUiFragment to the slice). Nested switch (not
-        // Array.concat) so the outer branch's expected type disambiguates the bare
-        // PublishExtensionPointCommand constructor.
-        | PluginExtensionPointSpec.UnknownPluginDetected if pluginId == id =>
-          switch Spec.uiFragments {
-          | Some(manifest) => [
-              PublishExtensionPointCommand(
-                id,
-                PluginExtensionPointSpec.ConnectPlugin(pluginDefinition),
-              ),
-              PublishExtensionPointCommand(
-                id,
-                PluginExtensionPointSpec.RegisterUiFragment(manifest),
-              ),
-            ]
-          | None => [
-              PublishExtensionPointCommand(
-                id,
-                PluginExtensionPointSpec.ConnectPlugin(pluginDefinition),
-              ),
-            ]
-          }
-        // A peer's PluginConnected / PluginDeactivated used to subscribe or
-        // unsubscribe this plugin's own queue to peer EP topics. Admin owns that
-        // now (manageSubscriptions), so these drop to no-ops.
-        | _ => []
+      switch event {
+      // Answer the handshake, and — when this plugin ships a UI-fragment manifest — register
+      // it with the admin UiFragmentRegistry slice in the same step (the admin EP's
+      // UI-fragment mapping routes RegisterUiFragment to the slice). Nested switch (not
+      // Array.concat) so the outer branch's expected type disambiguates the bare
+      // PublishExtensionPointCommand constructor.
+      | PluginExtensionPointSpec.UnknownPluginDetected if pluginId == id =>
+        switch Spec.uiFragments {
+        | Some(manifest) => [
+            PublishExtensionPointCommand(
+              id,
+              PluginExtensionPointSpec.ConnectPlugin(pluginDefinition),
+            ),
+            PublishExtensionPointCommand(id, PluginExtensionPointSpec.RegisterUiFragment(manifest)),
+          ]
+        | None => [
+            PublishExtensionPointCommand(
+              id,
+              PluginExtensionPointSpec.ConnectPlugin(pluginDefinition),
+            ),
+          ]
         }
+      // A peer's PluginConnected / PluginDeactivated used to subscribe or
+      // unsubscribe this plugin's own queue to peer EP topics. Admin owns that
+      // now (manageSubscriptions), so these drop to no-ops.
+      | _ => []
       }
+    }
 
-      let mapOutgoingEvent = None
-    },
-  )
+    let mapOutgoingEvent = None
+  })
 
   module ConnectPluginMappings = {
     module Spec = PluginExtensionPointSpec

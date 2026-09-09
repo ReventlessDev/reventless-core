@@ -2,7 +2,6 @@
 The conformance suite, run by a host against its own graft. `Make(Binding).register()`
 inside a Jest test file registers one `describe` block over the binding.
 */
-
 /** The suite's title, composed once and read twice: the suite registers it,
     and `certify-trait` computes the same string to find the run's assertions in
     a test report. Exported rather than inlined so neither side parses the
@@ -73,7 +72,9 @@ module Make = (B: Attachments.Binding) => {
       )
 
       G.test("removing the chosen primary lets the first remaining stand in", () =>
-        G.givenEvents(Array.concat(withAB, [B.Consumed.primarySet(B.refB), B.Consumed.removed(B.refB)]))
+        G.givenEvents(
+          Array.concat(withAB, [B.Consumed.primarySet(B.refB), B.Consumed.removed(B.refB)]),
+        )
         ->G.whenCmd(B.setPrimary(B.refA))
         ->G.thenNoEvent
       )
@@ -153,11 +154,7 @@ module MakeSingle = (B: Attachments.SingleBinding) => {
       G.test("a second ref replaces the first rather than joining it", () =>
         G.givenEvents(withA)
         ->G.whenCmd(B.attach(B.refB))
-        ->G.thenEvents([
-          B.removed(B.refA),
-          B.attached(B.refB),
-          B.effectiveChanged(Some(B.refB)),
-        ])
+        ->G.thenEvents([B.removed(B.refA), B.attached(B.refB), B.effectiveChanged(Some(B.refB))])
       )
 
       G.test("clearing a held set removes what it holds", () =>
@@ -171,13 +168,11 @@ module MakeSingle = (B: Attachments.SingleBinding) => {
       )
 
       G.test("a replaced ref can be attached again", () =>
-        G.givenEvents(Array.concat(withA, [B.Consumed.removed(B.refA), B.Consumed.attached(B.refB)]))
+        G.givenEvents(
+          Array.concat(withA, [B.Consumed.removed(B.refA), B.Consumed.attached(B.refB)]),
+        )
         ->G.whenCmd(B.attach(B.refA))
-        ->G.thenEvents([
-          B.removed(B.refB),
-          B.attached(B.refA),
-          B.effectiveChanged(Some(B.refA)),
-        ])
+        ->G.thenEvents([B.removed(B.refB), B.attached(B.refA), B.effectiveChanged(Some(B.refA))])
       )
 
       // The caption names no ref either, so what it lands on is whatever is
@@ -190,13 +185,17 @@ module MakeSingle = (B: Attachments.SingleBinding) => {
       )
 
       G.test("a caption follows a replacement onto the new ref", () =>
-        G.givenEvents(Array.concat(withA, [B.Consumed.removed(B.refA), B.Consumed.attached(B.refB)]))
+        G.givenEvents(
+          Array.concat(withA, [B.Consumed.removed(B.refA), B.Consumed.attached(B.refB)]),
+        )
         ->G.whenCmd(B.setAltText("side"))
         ->G.thenEvent(B.altTextSet(B.refB, "side"))
       )
 
       G.test("captioning an empty set is refused", () =>
-        G.givenEvents(B.Consumed.created)->G.whenCmd(B.setAltText("front"))->G.thenError(B.notAttached)
+        G.givenEvents(B.Consumed.created)
+        ->G.whenCmd(B.setAltText("front"))
+        ->G.thenError(B.notAttached)
       )
 
       G.test("repeating the caption is a no-op", () =>

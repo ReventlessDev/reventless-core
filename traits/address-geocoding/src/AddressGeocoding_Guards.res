@@ -8,7 +8,6 @@ record in it would make every release that reshapes it a migration — and build
 `resolution` per call from the fields it already holds. What comes back is a
 verdict on one command, which the host names in its own event.
 */
-
 /** The three fields the rules read, as the host holds them. Its invariant, which
     every host arm must preserve: `resolvedFrom` is `None` or equal to `subject`. */
 type resolution = {

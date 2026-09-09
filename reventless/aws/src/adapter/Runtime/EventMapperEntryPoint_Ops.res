@@ -95,32 +95,26 @@ let makeStreamHandler = (
 // mapper Lambda serves a single target: every source group runs the same
 // handler, attributed `EventMapper(<Target>)`.
 
-let makeHandler = (
-  buildPromise: promise<(StreamRoutedEntryPoint_Ops.streamHandler, string)>,
-) =>
+let makeHandler = (buildPromise: promise<(StreamRoutedEntryPoint_Ops.streamHandler, string)>) =>
   async (event: PulumiAws.Lambda.CallbackFunction.event, context: PulumiAws.Lambda.context) => {
     StreamRoutedEntryPoint_Ops.setRequestId(context.awsRequestId)
     let (streamHandler, comp) = await buildPromise
-    let _ =
-      await StreamRoutedEntryPoint_Ops.groupBySource(event.records)
-      ->Dict.toArray
-      ->Array.map(async ((arn, subRecords)) => {
-        StreamRoutedEntryPoint_Ops.logDebug("processing " ++ arn, {comp: "EventMapperRuntime"})
-        let subEvent: PulumiAws.Lambda.CallbackFunction.event = {records: subRecords}
-        await StreamRoutedEntryPoint_Ops.runEffect(
-          streamHandler(subEvent, context),
-          {
-            correlationId: ?StreamRoutedEntryPoint_Ops.extractMetaField(
-              subRecords,
-              "correlationId",
-            ),
-            causationId: ?StreamRoutedEntryPoint_Ops.extractMetaField(subRecords, "causationId"),
-            comp,
-            timestamp: ?StreamRoutedEntryPoint_Ops.extractSentTimestamp(subRecords),
-            retryCount: StreamRoutedEntryPoint_Ops.extractRetryCount(subRecords),
-          },
-        )
-      })
-      ->Promise.all
+    let _ = await StreamRoutedEntryPoint_Ops.groupBySource(event.records)
+    ->Dict.toArray
+    ->Array.map(async ((arn, subRecords)) => {
+      StreamRoutedEntryPoint_Ops.logDebug("processing " ++ arn, {comp: "EventMapperRuntime"})
+      let subEvent: PulumiAws.Lambda.CallbackFunction.event = {records: subRecords}
+      await StreamRoutedEntryPoint_Ops.runEffect(
+        streamHandler(subEvent, context),
+        {
+          correlationId: ?StreamRoutedEntryPoint_Ops.extractMetaField(subRecords, "correlationId"),
+          causationId: ?StreamRoutedEntryPoint_Ops.extractMetaField(subRecords, "causationId"),
+          comp,
+          timestamp: ?StreamRoutedEntryPoint_Ops.extractSentTimestamp(subRecords),
+          retryCount: StreamRoutedEntryPoint_Ops.extractRetryCount(subRecords),
+        },
+      )
+    })
+    ->Promise.all
     ""
   }

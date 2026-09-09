@@ -123,10 +123,12 @@ let readFilter = (args: JSON.t): filter => {
     entityId: ?s("entityId"),
     tagKey: ?s("tagKey"),
     tagValue: ?s("tagValue"),
-    eventTypes: ?f
-    ->Dict.get("eventTypes")
-    ->Option.flatMap(JSON.Decode.array)
-    ->Option.map(a => a->Array.filterMap(JSON.Decode.string)),
+    eventTypes: ?(
+      f
+      ->Dict.get("eventTypes")
+      ->Option.flatMap(JSON.Decode.array)
+      ->Option.map(a => a->Array.filterMap(JSON.Decode.string))
+    ),
     user: ?s("user"),
     timeFrom: ?s("timeFrom"),
     timeTo: ?s("timeTo"),
@@ -193,7 +195,10 @@ let matchesTag = (r: record, f: filter): bool =>
 
 let matchesFilter = (r: record, f: filter): bool => {
   let userOf = () =>
-    r.meta->JSON.Decode.object->Option.flatMap(d => d->Dict.get("user"))->Option.flatMap(JSON.Decode.string)
+    r.meta
+    ->JSON.Decode.object
+    ->Option.flatMap(d => d->Dict.get("user"))
+    ->Option.flatMap(JSON.Decode.string)
   let timeOf = () =>
     r.meta
     ->JSON.Decode.object
@@ -309,8 +314,7 @@ module Make = (Bus: LocalBus.T) => {
     envelopes->Array.mapWithIndex((json, i) => {
       let obj = json->JSON.Decode.object->Option.getOr(Dict.make())
       let event = obj->Dict.get("event")->Option.getOr(JSON.Encode.null)
-      let id =
-        obj->Dict.get("id")->Option.flatMap(JSON.Decode.string)->Option.getOr(entityId)
+      let id = obj->Dict.get("id")->Option.flatMap(JSON.Decode.string)->Option.getOr(entityId)
       let meta = metaJsonFromEnvelope(obj)
       let time =
         meta
@@ -386,11 +390,10 @@ module Make = (Bus: LocalBus.T) => {
         // not disagree about arguments or return type. (The supporting types
         // reach the server separately, via `schemaTypeRegistrationHook` over
         // the fragment's `types`.)
-        let sdlFields =
-          Plugin_EventQuerySchema.generate(
-            ~plugin=params.pluginName,
-            ~eventLogEntries=[entry],
-          ).queryFields
+        let sdlFields = Plugin_EventQuerySchema.generate(
+          ~plugin=params.pluginName,
+          ~eventLogEntries=[entry],
+        ).queryFields
 
         server.registerQueries(~sdlFields, ~resolvers=Dict.fromArray([(fieldName, resolver)]))
       }

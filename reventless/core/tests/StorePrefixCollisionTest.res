@@ -33,7 +33,8 @@ describe("collisionsFor", () => {
         store(~qualified="Ordering.productImages", ~prefix="productImages"),
       ],
     ) {
-    | [c] => expect((c.first.qualified, c.second.qualified, c.nested))->toEqual((
+    | [c] =>
+      expect((c.first.qualified, c.second.qualified, c.nested))->toEqual((
         "Catalog.productImages",
         "Ordering.productImages",
         false,

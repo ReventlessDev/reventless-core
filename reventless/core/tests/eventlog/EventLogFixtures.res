@@ -1,4 +1,3 @@
-
 // ─────────────────────────────────────────────────────────────
 // Test event spec
 // ─────────────────────────────────────────────────────────────
@@ -8,7 +7,7 @@ module ItemEventLogSpec = {
   let name = "TestItemEventLog"
 
   @schema
-  type event = | ItemCreated({name: string}) | ItemDeleted({id: string})
+  type event = ItemCreated({name: string}) | ItemDeleted({id: string})
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -83,7 +82,8 @@ module MockEventTopic: EventTopic.T
     publishJsonStream: ReventlessInfra.EventTopic.publishJsonStream,
   }
   type component = Component.t<EventTopic.t, EventTopic.outputs, operations>
-  let make = (~name as _, ~storageResources as _, ~owner as _=?, ~opts as _=?): component => Obj.magic(0)
+  let make = (~name as _, ~storageResources as _, ~owner as _=?, ~opts as _=?): component =>
+    Obj.magic(0)
 }
 
 let mockEventTopicOps: MockEventTopic.operations = {
@@ -91,7 +91,7 @@ let mockEventTopicOps: MockEventTopic.operations = {
     capturedPublishes := capturedPublishes.contents->Array.concat(events)
   },
   publishJson: async (_service, _meta, _json) => (),
-  publishJsonStream: _stream => Effect.succeed(()),
+  publishJsonStream: _stream => Effect.succeed(),
 }
 
 // ─────────────────────────────────────────────────────────────

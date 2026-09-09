@@ -42,7 +42,11 @@ let queryEntries: array<querySchemaEntry> = [
     // No `excludeFields`: the three fields this entry used to name are declared
     // `@internal` on the spec, and `deriveObjectTypeWithNested` reads that off the
     // schema itself.
-    subIdField: ?PluginsReadModelSpec.subIdConfig->Option.map((c: Reventless.ReadModel.subIdConfig<_>) => c.subIdField),
+    subIdField: ?(
+      PluginsReadModelSpec.subIdConfig->Option.map((c: Reventless.ReadModel.subIdConfig<_>) =>
+        c.subIdField
+      )
+    ),
     indexQueries: ?indexQueriesOfConfig(PluginsReadModelSpec.config),
   },
 ]
@@ -67,8 +71,10 @@ let queryEntries: array<querySchemaEntry> = [
 let pluginAggregateMutationEntries: array<mutationSchemaEntry> = {
   let commandSchema = PluginSpec.commandSchema->S.castToUnknown
   let constructorNames = Reventless.DcbTag.extractAllVariantNames(PluginSpec.commandSchema)
-  let filteredConstructorNames =
-    ApiNoApiHelpers.filterNoApiVariants(constructorNames, commandSchema)
+  let filteredConstructorNames = ApiNoApiHelpers.filterNoApiVariants(
+    constructorNames,
+    commandSchema,
+  )
   let fieldNames =
     filteredConstructorNames->Array.map(cname =>
       Api_Naming.adminField(~name=PluginSpec.name ++ "_" ++ cname)

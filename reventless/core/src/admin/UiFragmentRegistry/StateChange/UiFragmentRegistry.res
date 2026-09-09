@@ -31,7 +31,7 @@ type command =
 
 // The registry never rejects (idempotent register/deregister); this variant is never returned.
 @schema
-type error = | RegistryError
+type error = RegistryError
 
 @schema
 type event =

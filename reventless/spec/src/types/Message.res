@@ -1,4 +1,3 @@
-
 /** Identifies the service that produced or is addressed by a message. */
 @schema
 type service = string
@@ -179,7 +178,11 @@ type commandJson = {
 //
 // `scalarFills` is an out-parameter: the walker pushes `path := value` for each scalar it
 // invented.
-let fillMissingDefaults: (S.t<'a>, JSON.t, array<string>) => JSON.t = %raw(`function(schema, json, scalarFills){
+let fillMissingDefaults: (
+  S.t<'a>,
+  JSON.t,
+  array<string>,
+) => JSON.t = %raw(`function(schema, json, scalarFills){
   function isSchema(x){ return x && typeof x === "object" && typeof x.type === "string"; }
   function firstConst(anyOf){ var m=(anyOf||[]).find(function(s){return s.const!==undefined;}); return m ? m.const : undefined; }
   // Which object-typed member of an anyOf a plain (untagged) object value belongs to.
@@ -274,8 +277,7 @@ let parseJsonTolerant = (json, schema) =>
             ->Array.length
             ->Int.toString} missing scalar field(s): ${scalarFills->Array.join(
               ", ",
-            )}. A required scalar was added to a persisted type after this message was ` ++
-          `written; the value above is fabricated, not recovered. Prefer an optional field.`,
+            )}. A required scalar was added to a persisted type after this message was ` ++ `written; the value above is fabricated, not recovered. Prefer an optional field.`,
         )
       }
       value

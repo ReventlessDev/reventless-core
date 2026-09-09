@@ -25,10 +25,11 @@ describe("DcbEventLog.appendStream (in-memory adapter)", () => {
 
   testPromise("appendStream writes all events from stream", async () => {
     let ops = await eventLog->ReventlessCore.Component.operations->TestRunner.resolve
-    let stream = [
-      encodeEvent(DcbFixtures.ItemEventLog.ItemAdded({id: "as-w1", name: "Widget1"})),
-      encodeEvent(DcbFixtures.ItemEventLog.ItemAdded({id: "as-w1", name: "Widget2"})),
-    ]->Stream.fromIterable
+    let stream =
+      [
+        encodeEvent(DcbFixtures.ItemEventLog.ItemAdded({id: "as-w1", name: "Widget1"})),
+        encodeEvent(DcbFixtures.ItemEventLog.ItemAdded({id: "as-w1", name: "Widget2"})),
+      ]->Stream.fromIterable
     let result = await ops.appendStream(stream)->Effect.runPromise
     let isOk = switch result {
     | Ok(_) => true
@@ -52,10 +53,12 @@ describe("DcbEventLog.appendStream (in-memory adapter)", () => {
 
   testPromise("readStream → appendStream pipeline copies events", async () => {
     let ops = await eventLog->ReventlessCore.Component.operations->TestRunner.resolve
-    let _ = await ops.append([encodeEvent(DcbFixtures.ItemEventLog.ItemAdded({id: "as-src", name: "Source"}))])
+    let _ = await ops.append([
+      encodeEvent(DcbFixtures.ItemEventLog.ItemAdded({id: "as-src", name: "Source"})),
+    ])
     // readStream returns rawSequencedEvent; extract bare rawEvent for appendStream
-    let srcStream =
-      ops.readStream(~query=tagQuery("as-src"))->Stream.map(se => {
+    let srcStream = ops.readStream(~query=tagQuery("as-src"))->Stream.map(
+      se => {
         let rawEvent: ReventlessInfra.DcbEventLog.rawEvent = {
           eventType: se.eventType,
           data: se.data,
@@ -63,7 +66,8 @@ describe("DcbEventLog.appendStream (in-memory adapter)", () => {
           meta: se.meta,
         }
         rawEvent
-      })
+      },
+    )
     let _ = await ops.appendStream(srcStream)->Effect.runPromise
     let dst = await ops.read(~query=tagQuery("as-src"))
     // 1 original + 1 copy = 2 events for the same tag

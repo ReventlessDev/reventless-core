@@ -16,9 +16,11 @@ module Make = (Bus: LocalBus.T) => {
     ~indexes: array<string>=?,
     ~partitionTag: Reventless.DcbTag.derivedPartitionTag,
     ~opts: Pulumi.ComponentResource.options=?,
-  ) => component = Inner.make->Obj.magic
+  ) => component =
+    Inner.make->Obj.magic
   // Expose `operations` so callers can resolve the Output chain
   // (e.g. in beforeAllAsync to register handlers).
-  let operations: component => Pulumi.Output.t<ReventlessInfra.DcbEventLog.operations> =
-    ReventlessInfra.Component.operations
+  let operations: component => Pulumi.Output.t<
+    ReventlessInfra.DcbEventLog.operations,
+  > = ReventlessInfra.Component.operations
 }

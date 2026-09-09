@@ -21,11 +21,11 @@ let implSuffixForTranslation = "_Translation"
 let mappingsSuffixForAutomation = "_Mappings"
 
 let isImplStem = (stem: string): bool =>
-  stem->String.endsWith(implSuffixForStateChange)
-  || stem->String.endsWith(implSuffixForStateView)
-  || stem->String.endsWith(implSuffixForAutomation)
-  || stem->String.endsWith(implSuffixForTranslation)
-  || stem->String.endsWith(mappingsSuffixForAutomation)
+  stem->String.endsWith(implSuffixForStateChange) ||
+  stem->String.endsWith(implSuffixForStateView) ||
+  stem->String.endsWith(implSuffixForAutomation) ||
+  stem->String.endsWith(implSuffixForTranslation) ||
+  stem->String.endsWith(mappingsSuffixForAutomation)
 
 type aggregateDef = {spec: string, behavior: string, eventMappings: option<string>, isAsync: bool}
 // readModelDef pairs a ReadModel spec with its sibling `_Projections.res`
@@ -119,7 +119,15 @@ let findEventMappings = (~srcDir: string): Dict.t<string> => {
 }
 
 let sortedStems = (stems: array<string>): array<string> =>
-  stems->Array.toSorted((a, b) => if a < b {-1.0} else if a > b {1.0} else {0.0})
+  stems->Array.toSorted((a, b) =>
+    if a < b {
+      -1.0
+    } else if a > b {
+      1.0
+    } else {
+      0.0
+    }
+  )
 
 // Read a slice spec file and extract the value of `let targetName = ...`.
 // Returns Some(name) for string literals (including inside Some("...")),
@@ -128,7 +136,9 @@ let extractTargetName = (filePath: string): option<string> => {
   try {
     let content = NodeFs.readFileSync(filePath)
     let result = ref(None)
-    content->String.split("\n")->Array.forEach(line => {
+    content
+    ->String.split("\n")
+    ->Array.forEach(line => {
       let trimmed = line->String.trimStart
       if trimmed->String.startsWith("let targetName = ") {
         let firstQuote = trimmed->String.indexOf("\"")
@@ -153,8 +163,11 @@ let hasFileAttribute = (filePath: string, ~attr: string): bool => {
   try {
     let content = NodeFs.readFileSync(filePath)
     let found = ref(false)
-    content->String.split("\n")->Array.forEach(line => {
+    content
+    ->String.split("\n")
+    ->Array.forEach(line => {
       let trimmed = line->String.trimStart
+
       // Match the bare attribute and tolerate a payload arg in the future.
       if (
         trimmed->String.startsWith(attr ++ " ") ||
@@ -189,7 +202,9 @@ let effectiveSpecName = (filePath: string, ~stem: string): string => {
   try {
     let content = NodeFs.readFileSync(filePath)
     let name = ref(None)
-    content->String.split("\n")->Array.forEach(line => {
+    content
+    ->String.split("\n")
+    ->Array.forEach(line => {
       let trimmed = line->String.trimStart
       if trimmed->String.startsWith("@@reventless.spec(") {
         let firstQuote = trimmed->String.indexOf("\"")
@@ -356,7 +371,14 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
           isAsync,
         })
       | None =>
-        Console.warn("Generator: Aggregate spec `" ++ spec ++ "` has no matching `" ++ underscored ++ "` or `" ++ bare ++ "` — skipping")
+        Console.warn(
+          "Generator: Aggregate spec `" ++
+          spec ++
+          "` has no matching `" ++
+          underscored ++
+          "` or `" ++
+          bare ++ "` — skipping",
+        )
         None
       }
     })
@@ -377,10 +399,14 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
     let underscoredProj = baseName ++ "_Projections"
     switch Dict.get(projectionsByRelPath, underscoredProj) {
     | None =>
-      Console.warn("Generator: ReadModel `" ++ rm ++ "` has no matching `" ++ underscoredProj ++ ".res` — skipping")
+      Console.warn(
+        "Generator: ReadModel `" ++
+        rm ++
+        "` has no matching `" ++
+        underscoredProj ++ ".res` — skipping",
+      )
       None
-    | Some(_) =>
-      Some({readModel: rm, projections: underscoredProj, stream})
+    | Some(_) => Some({readModel: rm, projections: underscoredProj, stream})
     }
   }
   let readModels = Array.concat(

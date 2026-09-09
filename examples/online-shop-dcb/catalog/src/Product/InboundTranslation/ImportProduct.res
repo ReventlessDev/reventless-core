@@ -13,12 +13,7 @@ type externalInput = {
 }
 
 @schema
-type command = AddProduct({
-  productId: string,
-  name: string,
-  description: string,
-  price: float,
-})
+type command = AddProduct({productId: string, name: string, description: string, price: float})
 
 let targetName = "AddProduct"
 // Foreign system this anti-corruption slice receives product data from — drawn as an

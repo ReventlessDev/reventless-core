@@ -120,8 +120,7 @@ let alarmFor = (
   // also where the log group goes — an alert names the unit and the metric and
   // never where to read what happened. `~logLocator` is an Output, so the whole
   // description resolves late; `""` is a unit with no logs of its own.
-  let describe = logs =>
-    Util_AlarmSpec.description(~kind, ~name, ~plugin, ~platform, ~spec, ~logs)
+  let describe = logs => Util_AlarmSpec.description(~kind, ~name, ~plugin, ~platform, ~spec, ~logs)
   let alarmDescription =
     logLocator
     ->Pulumi.Output.map(g => describe(g == "" ? None : Some(g)))
@@ -172,20 +171,21 @@ module Backend: M.Backend = {
     switch ensureTopicArn() {
     | Unresolved | NoTopic => ()
     | Topic(topicArn) =>
-      Util_AlarmSpec.forKind(~kind, ~silenceWindowSeconds=silenceWindowSeconds())->Array.forEach(
-        spec => {
-          let _alarm = alarmFor(
-            ~spec,
-            ~kind,
-            ~name,
-            ~component,
-            ~plugin,
-            ~platform,
-            ~logLocator,
-            ~topicArn,
-          )
-        },
-      )
+      Util_AlarmSpec.forKind(
+        ~kind,
+        ~silenceWindowSeconds=silenceWindowSeconds(),
+      )->Array.forEach(spec => {
+        let _alarm = alarmFor(
+          ~spec,
+          ~kind,
+          ~name,
+          ~component,
+          ~plugin,
+          ~platform,
+          ~logLocator,
+          ~topicArn,
+        )
+      })
     }
   }
 }

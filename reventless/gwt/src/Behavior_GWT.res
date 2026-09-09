@@ -70,10 +70,7 @@ module type T = {
   let thenError: (array<Spec.event>, Spec.error) => Outcome.outcome
 
   // DCB optimistic-concurrency assertions.
-  let thenAppendsConditionedOn: (
-    array<Spec.event>,
-    Reventless.DcbTag.query,
-  ) => Outcome.outcome
+  let thenAppendsConditionedOn: (array<Spec.event>, Reventless.DcbTag.query) => Outcome.outcome
   let thenAppendsConditionedOnExactly: (
     array<Spec.event>,
     Reventless.DcbTag.appendCondition,
@@ -171,9 +168,7 @@ module AssertionCore = (Spec: CoreSpec) => {
     } else if events->encEvents == expectedEvents->encEvents {
       Outcome.pass
     } else {
-      Outcome.fail(
-        EventsMismatch({expected: expectedEvents->encEvents, actual: events->encEvents}),
-      )
+      Outcome.fail(EventsMismatch({expected: expectedEvents->encEvents, actual: events->encEvents}))
     }
 
   let compareEventsWith = (events, expectedEvents, cmp) =>
@@ -185,9 +180,7 @@ module AssertionCore = (Spec: CoreSpec) => {
     ) {
       Outcome.pass
     } else {
-      Outcome.fail(
-        EventsMismatch({expected: expectedEvents->encEvents, actual: events->encEvents}),
-      )
+      Outcome.fail(EventsMismatch({expected: expectedEvents->encEvents, actual: events->encEvents}))
     }
 
   let compareNoEvent = events =>
@@ -235,19 +228,16 @@ module AssertionCore = (Spec: CoreSpec) => {
   }
 }
 
-module Make = (
-  Spec: BehaviorSpec,
-  Behavior: Behavior with module Spec := Spec,
-): (T with module Spec = Spec) => {
+module Make = (Spec: BehaviorSpec, Behavior: Behavior with module Spec := Spec): (
+  T with module Spec = Spec
+) => {
   module Spec = Spec
-
 
   let describe = JestBind.describe
   let todo = JestBind.todo
   let test = (name, body) => JestBind.test(~slice=Spec.name, name, body)
 
-  let currentState = consumed =>
-    consumed->Array.reduce(Behavior.initialState, Behavior.evolve)
+  let currentState = consumed => consumed->Array.reduce(Behavior.initialState, Behavior.evolve)
 
   module Core = AssertionCore(Spec)
   let errors = Core.errors
@@ -262,8 +252,7 @@ module Make = (
   // their own checks; [thenAppends*] bypass it.
   let appendConditionFailure: ref<option<Outcome.mismatch>> = ref(None)
 
-  let consumedEventTypes =
-    Reventless.DcbDecode.makeDecoder(Spec.consumedEventSchema).eventTypes
+  let consumedEventTypes = Reventless.DcbDecode.makeDecoder(Spec.consumedEventSchema).eventTypes
 
   // Scope derived from this slice's schemas, mirroring the StateChangeSlice runtime.
   let scopeShape = Reventless.DcbTag.sliceShapeFromSchemas(
@@ -290,8 +279,7 @@ module Make = (
   // Per-event indexed-tag map so a foreign reference key on this slice's *own*
   // emitted event (payload, not a read key) is narrowed out of a cross-partition
   // clause — the same dead-clause removal the runtime threads.
-  let tagKeysByEventType =
-    Reventless.DcbScopeInference.infer([scopeShape]).tagKeysByEventType
+  let tagKeysByEventType = Reventless.DcbScopeInference.infer([scopeShape]).tagKeysByEventType
 
   // Reachability guard inputs. The event types this slice *emits* are its own
   // history — read with composite AND clauses, which is fine. A *foreign* event
@@ -305,10 +293,8 @@ module Make = (
   // carries its productIds over to the cancel event). Flow_GWT catches this
   // because it threads a real tagged log; this lets the per-slice GWT catch it
   // too, rather than folding an unreachable event straight through.
-  let emittedEventTypes =
-    Reventless.DcbDecode.makeDecoder(Spec.eventSchema).eventTypes
-  let consumedTagKeysByType =
-    Reventless.DcbTag.extractTagKeysByEventType(Spec.consumedEventSchema)
+  let emittedEventTypes = Reventless.DcbDecode.makeDecoder(Spec.eventSchema).eventTypes
+  let consumedTagKeysByType = Reventless.DcbTag.extractTagKeysByEventType(Spec.consumedEventSchema)
 
   let queryTagKeys = (query: Reventless.DcbTag.query): array<string> =>
     query->Array.flatMap(qi => qi.tags->Option.mapOr([], tags => tags->Array.map(t => t.key)))
@@ -340,9 +326,7 @@ module Make = (
   }
 
   let queryTagsTotal = (q: Reventless.DcbTag.query): int =>
-    q->Array.reduce(0, (acc, qi) =>
-      acc + qi.tags->Option.mapOr(0, t => t->Array.length)
-    )
+    q->Array.reduce(0, (acc, qi) => acc + qi.tags->Option.mapOr(0, t => t->Array.length))
 
   let exec = (history, command): array<Spec.event> => {
     errors := []
@@ -530,18 +514,15 @@ module type AggregateT = {
   let thenError: (array<Spec.event>, Spec.error) => Outcome.outcome
 }
 
-module MakeFromAggregate = (
-  Spec: AggregateSpec,
-  Behavior: Behavior.T with module Spec = Spec,
-): (AggregateT with module Spec = Spec) => {
+module MakeFromAggregate = (Spec: AggregateSpec, Behavior: Behavior.T with module Spec = Spec): (
+  AggregateT with module Spec = Spec
+) => {
   module Spec = Spec
-
 
   let describe = JestBind.describe
   let test = (name, body) => JestBind.test(~slice=Spec.name, name, body)
 
-  let currentState = events =>
-    events->Array.reduce(Behavior.initialState, Behavior.evolve)
+  let currentState = events => events->Array.reduce(Behavior.initialState, Behavior.evolve)
 
   module Core = AssertionCore(Spec)
   let errors = Core.errors

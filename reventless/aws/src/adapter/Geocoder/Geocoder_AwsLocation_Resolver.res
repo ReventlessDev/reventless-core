@@ -31,8 +31,7 @@ type serviceOutputs = {resources: array<Pulumi.Output.t<string>>}
 // forwarded — geocoding is not scoped per caller (any authenticated user may
 // resolve any address), unlike the upload service which namespaces objects by the
 // verified `sub`.
-let invokeCode: Pulumi.Input.t<string> =
-  `import { util } from '@aws-appsync/utils';
+let invokeCode: Pulumi.Input.t<string> = `import { util } from '@aws-appsync/utils';
 export function request(ctx) {
   return { operation: 'Invoke', payload: { arguments: ctx.args } };
 }
@@ -79,7 +78,11 @@ let make = (
               {
                 sid: "AllowLambdaLogging",
                 effect: Allow,
-                actions: Actions(["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]),
+                actions: Actions([
+                  "logs:CreateLogGroup",
+                  "logs:CreateLogStream",
+                  "logs:PutLogEvents",
+                ]),
                 resources: Resource("arn:aws:logs:*:*:*"),
               },
               {

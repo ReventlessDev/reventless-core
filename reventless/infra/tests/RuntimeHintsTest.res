@@ -12,10 +12,14 @@ describe("RuntimeHints.resolveMemory", () => {
     expect(RH.resolveMemory(None, ~default=1024))->toBe(1024)
   })
   testSync("an override above the default wins", () => {
-    expect(RH.resolveMemory(Some({memorySize: Some(2048), timeout: None}), ~default=1024))->toBe(2048)
+    expect(RH.resolveMemory(Some({memorySize: Some(2048), timeout: None}), ~default=1024))->toBe(
+      2048,
+    )
   })
   testSync("an override below the default is clamped up to the floor", () => {
-    expect(RH.resolveMemory(Some({memorySize: Some(256), timeout: None}), ~default=1024))->toBe(1024)
+    expect(RH.resolveMemory(Some({memorySize: Some(256), timeout: None}), ~default=1024))->toBe(
+      1024,
+    )
   })
   testSync("an absent memorySize field falls through to the default", () => {
     expect(RH.resolveMemory(Some({memorySize: None, timeout: Some(60)}), ~default=1024))->toBe(1024)

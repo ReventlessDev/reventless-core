@@ -23,17 +23,17 @@ type todoItem = {ruleId: string, recipientId: string, orderId: string}
 
 @schema
 type command =
-  RequestNotification({
-    recipientId: string,
-    category: NotificationPreferences.category,
-    reference: string,
-    subjectType: string,
-    subjectRef: string,
-    subject: string,
-    body: string,
-    sourceId: string,
-    origin: NotificationPreferences.origin,
-  })
+  | RequestNotification({
+      recipientId: string,
+      category: NotificationPreferences.category,
+      reference: string,
+      subjectType: string,
+      subjectRef: string,
+      subject: string,
+      body: string,
+      sourceId: string,
+      origin: NotificationPreferences.origin,
+    })
 
 let maxRetries = 3
 let heartbeatInterval = 60

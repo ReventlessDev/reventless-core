@@ -5,9 +5,9 @@ type outputs = ReventlessInfra.AutomationSlice.outputs
 type operations = ReventlessInfra.AutomationSlice.operations
 type component = Component.t<t, outputs, operations>
 
-let toResolvedOutputs = (
-  outputs: outputs,
-): Pulumi.Output.t<ReventlessInterop.AutomationSlice.resolvedOutputs> =>
+let toResolvedOutputs = (outputs: outputs): Pulumi.Output.t<
+  ReventlessInterop.AutomationSlice.resolvedOutputs,
+> =>
   (
     outputs.resources->Adapter.resourcesToInterop,
     outputs.queryDb.resources->Adapter.resourcesToInterop,
@@ -15,7 +15,7 @@ let toResolvedOutputs = (
   ->Pulumi.Output.all2
   ->Pulumi.Output.apply(((resources, queryDbResources)) => {
     let resolved: ReventlessInterop.AutomationSlice.resolvedOutputs = {
-      resources: resources,
+      resources,
       queryDb: {resources: queryDbResources},
     }
     resolved

@@ -30,10 +30,12 @@ type command =
       categoryImage: Reventless.UploadableImage.t,
       altText?: string,
     })
+  | @authorize(AllowGroups(["Admin", "Merchandiser"])) RemoveCategoryImage({categoryId: string})
   | @authorize(AllowGroups(["Admin", "Merchandiser"]))
-  RemoveCategoryImage({categoryId: string})
-  | @authorize(AllowGroups(["Admin", "Merchandiser"]))
-  SetCategoryImageAltText({categoryId: string, altText: string})
+  SetCategoryImageAltText({
+      categoryId: string,
+      altText: string,
+    })
 
 @schema
 type error =

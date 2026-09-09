@@ -40,7 +40,7 @@ module Raw = {
     when the service throttles it, rather than retrying into the same wall, which
     is what the control plane wants. */
 let client = (~region: option<string>=?, ()): client =>
-  Raw.client(~options={region: ?region, maxAttempts: 10, retryMode: "adaptive"}, ())
+  Raw.client(~options={?region, maxAttempts: 10, retryMode: "adaptive"}, ())
 
 /** A function's environment variables, in the shape both the get and the update
     use. `variables` absent and `variables` empty are different: sending an empty

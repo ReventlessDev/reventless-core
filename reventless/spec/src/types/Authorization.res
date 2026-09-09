@@ -18,6 +18,5 @@ let isAllowed = (rule: permission, identity: Identity.t): bool =>
   | DenyAll => false
   | AllowAnonymous => true
   | AllowAuthenticated => identity.userId !== "anonymous"
-  | AllowGroups(groups) =>
-    groups->Array.some(group => identity.groups->Array.includes(group))
+  | AllowGroups(groups) => groups->Array.some(group => identity.groups->Array.includes(group))
   }

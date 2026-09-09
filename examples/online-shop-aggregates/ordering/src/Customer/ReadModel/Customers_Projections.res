@@ -9,8 +9,7 @@ module CustomerMapping = Mapping.Make(
     open Customer
     let project = ({event, id, _}) =>
       switch event {
-      | Registered({email, address}) =>
-        Set(id, {Customers.email: email, address, deactivated: false})
+      | Registered({email, address}) => Set(id, {Customers.email, address, deactivated: false})
       | EmailUpdated({email}) => Update(id, state => {...state, email})
       | AddressUpdated({address}) => Update(id, state => {...state, address})
       | Deactivated => Update(id, state => {...state, deactivated: true})

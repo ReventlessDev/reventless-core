@@ -7,10 +7,10 @@
 type api = unit
 type role = unit
 
-let makeApiResource = (
-  ~name as _: string,
-  ~opts as _: Pulumi.ComponentResource.options,
-): (Pulumi.Output.t<api>, Pulumi.Output.t<role>) => (Pulumi.Output.make(()), Pulumi.Output.make(()))
+let makeApiResource = (~name as _: string, ~opts as _: Pulumi.ComponentResource.options): (
+  Pulumi.Output.t<api>,
+  Pulumi.Output.t<role>,
+) => (Pulumi.Output.make(), Pulumi.Output.make())
 
 let generateFragment = (
   ~mutationEntries: array<ReventlessInfra.Api.mutationSchemaEntry>,

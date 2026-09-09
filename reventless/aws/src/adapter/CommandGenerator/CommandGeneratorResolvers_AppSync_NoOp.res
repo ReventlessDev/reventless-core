@@ -5,7 +5,9 @@ type api = Types.AppSync.api
 type runtimeParts = Util.Lambda.runtimeParts
 
 let handleResolversEvent = (_generateCommand: ReventlessCore.CommandGenerator.commandGenerator) =>
-  Pulumi.Output.make((_event, _context) => Effect.succeed(ReventlessCore.CommandTopic.Pending({msgId: ""})))
+  Pulumi.Output.make((_event, _context) =>
+    Effect.succeed(ReventlessCore.CommandTopic.Pending({msgId: ""}))
+  )
 
 let make: ReventlessCore.CommandGenerator_Adapter.resolversMaker<api, runtimeParts> = (
   ~name as _,

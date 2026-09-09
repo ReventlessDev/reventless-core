@@ -53,7 +53,9 @@ let withRetry = async (~label, ~maxAttempts=10, fn) => {
       if isTransient(exn) && attempt < maxAttempts {
         let idx = attempt - 1
         let delayMs =
-          backoffMs->Array.get(idx)->Option.getOr(backoffMs->Array.getUnsafe(backoffMs->Array.length - 1))
+          backoffMs
+          ->Array.get(idx)
+          ->Option.getOr(backoffMs->Array.getUnsafe(backoffMs->Array.length - 1))
         Console.warn(
           "[registry-retry] " ++
           label ++

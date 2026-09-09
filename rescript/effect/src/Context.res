@@ -18,7 +18,6 @@ useService
 ->Effect.runPromise
 ```
 */
-
 /**
 An opaque tag that identifies a service of type `'a`.
 

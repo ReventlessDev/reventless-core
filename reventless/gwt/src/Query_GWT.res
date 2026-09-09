@@ -87,7 +87,6 @@ module type T = {
 module Make = (Spec: QueryableSpec): (T with module Spec = Spec) => {
   module Spec = Spec
 
-
   let describe = JestBind.describe
   let test = (name, body) => JestBind.test(~slice=Spec.name, name, body)
 
@@ -97,8 +96,7 @@ module Make = (Spec: QueryableSpec): (T with module Spec = Spec) => {
   let encState = (s: Spec.state): JSON.t => s->Reventless.Util_Sury.toJson(Spec.stateSchema)
   let encStates = arr => arr->Array.map(encState)
 
-  let givenStore = pairs =>
-    pairs->Array.map(((id, state)) => {id, subId: None, state})
+  let givenStore = pairs => pairs->Array.map(((id, state)) => {id, subId: None, state})
 
   let givenCompositeStore = triples =>
     triples->Array.map(((id, subId, state)) => {id, subId: Some(subId), state})
@@ -106,7 +104,13 @@ module Make = (Spec: QueryableSpec): (T with module Spec = Spec) => {
   // `whenQueryById` ignores `subId` — returns the first row with the given id.
   // Callers who want composite-id lookup go through `whenQueryByCompositeId`.
   let whenQueryById = (s: store, id) =>
-    s->Array.findMap(r => if r.id == id {Some(r.state)} else {None})
+    s->Array.findMap(r =>
+      if r.id == id {
+        Some(r.state)
+      } else {
+        None
+      }
+    )
 
   let whenQueryByCompositeId = (s: store, {id, subId}: compositeId): result<
     option<Spec.state>,
@@ -116,9 +120,11 @@ module Make = (Spec: QueryableSpec): (T with module Spec = Spec) => {
     | None =>
       Error(
         Outcome.QueryRowsMismatch({
-          expected: [JSON.Encode.string(
-            `composite-id lookup requires subIdConfig = Some({subIdField, getSubId}) in ${Spec.name}.config`,
-          )],
+          expected: [
+            JSON.Encode.string(
+              `composite-id lookup requires subIdConfig = Some({subIdField, getSubId}) in ${Spec.name}.config`,
+            ),
+          ],
           actual: [],
         }),
       )
@@ -219,9 +225,7 @@ module Make = (Spec: QueryableSpec): (T with module Spec = Spec) => {
       if actual == expected {
         Outcome.pass
       } else {
-        Outcome.fail(
-          QueryRowsMismatch({expected: encStates(expected), actual: encStates(actual)}),
-        )
+        Outcome.fail(QueryRowsMismatch({expected: encStates(expected), actual: encStates(actual)}))
       }
     }
 
@@ -267,7 +271,6 @@ module Make = (Spec: QueryableSpec): (T with module Spec = Spec) => {
 // field — so a test fails if the `@resolves` annotation is missing, exactly as
 // `whenQuery` validates a named index.
 module MakeResolver = (Primary: QueryableSpec, Target: QueryableSpec) => {
-
   let describe = JestBind.describe
   let sliceName = `${Primary.name}→${Target.name}`
   let test = (name, body) => JestBind.test(~slice=sliceName, name, body)
@@ -282,13 +285,11 @@ module MakeResolver = (Primary: QueryableSpec, Target: QueryableSpec) => {
   let encTarget = (s: Target.state): JSON.t => s->Reventless.Util_Sury.toJson(Target.stateSchema)
   let encTargets = arr => arr->Array.map(encTarget)
 
-  let resolverFor = field =>
-    Primary.config.idResolvers->Array.find(r => r.source.idField == field)
+  let resolverFor = field => Primary.config.idResolvers->Array.find(r => r.source.idField == field)
   let resolverManyFor = field =>
     Primary.config.idsResolvers->Array.find(r => r.source.idsField == field)
 
-  let missing = msg =>
-    Outcome.QueryRowsMismatch({expected: [JSON.Encode.string(msg)], actual: []})
+  let missing = msg => Outcome.QueryRowsMismatch({expected: [JSON.Encode.string(msg)], actual: []})
 
   // Read a JSON field off the primary row's encoded state.
   let readField = (state: Primary.state, field): option<JSON.t> =>
@@ -313,7 +314,9 @@ module MakeResolver = (Primary: QueryableSpec, Target: QueryableSpec) => {
   > =>
     switch resolverFor(field) {
     | None =>
-      Error(missing(`@resolves on field "${field}" is missing from ${Primary.name}.config.idResolvers`))
+      Error(
+        missing(`@resolves on field "${field}" is missing from ${Primary.name}.config.idResolvers`),
+      )
     | Some(_) =>
       switch scenario.primary->Array.findMap(((id, st)) => id == primaryId ? Some(st) : None) {
       | None => Ok(None)
@@ -332,7 +335,9 @@ module MakeResolver = (Primary: QueryableSpec, Target: QueryableSpec) => {
     switch resolverManyFor(field) {
     | None =>
       Error(
-        missing(`@resolvesMany on field "${field}" is missing from ${Primary.name}.config.idsResolvers`),
+        missing(
+          `@resolvesMany on field "${field}" is missing from ${Primary.name}.config.idsResolvers`,
+        ),
       )
     | Some(_) =>
       switch scenario.primary->Array.findMap(((id, st)) => id == primaryId ? Some(st) : None) {
@@ -340,7 +345,9 @@ module MakeResolver = (Primary: QueryableSpec, Target: QueryableSpec) => {
       | Some(pstate) =>
         switch readField(pstate, field) {
         | Some(JSON.Array(arr)) =>
-          Ok(arr->Array.map(jsonToStr)->Array.filterMap(fkId => lookupTarget(scenario.target, fkId)))
+          Ok(
+            arr->Array.map(jsonToStr)->Array.filterMap(fkId => lookupTarget(scenario.target, fkId)),
+          )
         | _ => Ok([])
         }
       }
@@ -372,6 +379,8 @@ module MakeResolver = (Primary: QueryableSpec, Target: QueryableSpec) => {
     | Ok(actual) =>
       actual == expected
         ? Outcome.pass
-        : Outcome.fail(QueryRowsMismatch({expected: encTargets(expected), actual: encTargets(actual)}))
+        : Outcome.fail(
+            QueryRowsMismatch({expected: encTargets(expected), actual: encTargets(actual)}),
+          )
     }
 }

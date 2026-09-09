@@ -19,20 +19,16 @@ let joinPath = (prefix, segment) =>
 let rec walk = (~path="", expected: JSON.t, actual: JSON.t, acc: array<entry>) =>
   switch (expected, actual) {
   | (Object(e), Object(a)) =>
-    let keys =
-      Array.concat(e->Dict.keysToArray, a->Dict.keysToArray)
-      ->Array.reduce([], (uniq, k) =>
-        if Array.includes(uniq, k) {
-          uniq
-        } else {
-          Array.concat(uniq, [k])
-        }
-      )
+    let keys = Array.concat(e->Dict.keysToArray, a->Dict.keysToArray)->Array.reduce([], (uniq, k) =>
+      if Array.includes(uniq, k) {
+        uniq
+      } else {
+        Array.concat(uniq, [k])
+      }
+    )
     keys->Array.reduce(acc, (acc, k) => {
-      let childExpected =
-        e->Dict.get(k)->Option.getOr(JSON.Encode.null)
-      let childActual =
-        a->Dict.get(k)->Option.getOr(JSON.Encode.null)
+      let childExpected = e->Dict.get(k)->Option.getOr(JSON.Encode.null)
+      let childActual = a->Dict.get(k)->Option.getOr(JSON.Encode.null)
       walk(~path=joinPath(path, k), childExpected, childActual, acc)
     })
   | (Array(e), Array(a)) =>
@@ -43,16 +39,9 @@ let rec walk = (~path="", expected: JSON.t, actual: JSON.t, acc: array<entry>) =
       if i >= len {
         acc
       } else {
-        let childExpected =
-          e->Array.get(i)->Option.getOr(JSON.Encode.null)
-        let childActual =
-          a->Array.get(i)->Option.getOr(JSON.Encode.null)
-        let acc = walk(
-          ~path=joinPath(path, Int.toString(i)),
-          childExpected,
-          childActual,
-          acc,
-        )
+        let childExpected = e->Array.get(i)->Option.getOr(JSON.Encode.null)
+        let childActual = a->Array.get(i)->Option.getOr(JSON.Encode.null)
+        let acc = walk(~path=joinPath(path, Int.toString(i)), childExpected, childActual, acc)
         loop(i + 1, acc)
       }
     loop(0, acc)
@@ -73,8 +62,7 @@ let rec walk = (~path="", expected: JSON.t, actual: JSON.t, acc: array<entry>) =
     }
   }
 
-let diff = (expected: JSON.t, actual: JSON.t): array<entry> =>
-  walk(expected, actual, [])
+let diff = (expected: JSON.t, actual: JSON.t): array<entry> => walk(expected, actual, [])
 
 let diffArrays = (expected: array<JSON.t>, actual: array<JSON.t>): array<entry> =>
   walk(JSON.Encode.array(expected), JSON.Encode.array(actual), [])
@@ -87,5 +75,4 @@ let toJson = (e: entry): JSON.t => {
   JSON.Encode.object(obj)
 }
 
-let toJsonArray = (entries: array<entry>): JSON.t =>
-  entries->Array.map(toJson)->JSON.Encode.array
+let toJsonArray = (entries: array<entry>): JSON.t => entries->Array.map(toJson)->JSON.Encode.array

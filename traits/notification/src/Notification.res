@@ -19,7 +19,6 @@ What an occurrence *is*. It is told a recipient, a kind, and a reference; it is
 never told there was an order. That is why the two relays are the only files a
 graft has to be given, and everything else can be handed over whole.
 */
-
 /**
 This trait's own account of itself — see `AddressGeocoding.declaration` for why the
 version is read rather than written.
@@ -120,12 +119,7 @@ module type Binding = {
   /** `requested` as it comes out for a `Configured` request. A separate member
       because *which* rule asked is the host's own shape — the trait's fact
       carries no origin at all, so it cannot construct this one. */
-  let requestedConfigured: (
-    category,
-    string,
-    Notification_Rules.channel,
-    string,
-  ) => Spec.event
+  let requestedConfigured: (category, string, Notification_Rules.channel, string) => Spec.event
 
   /** The refusal for managing preferences for somebody nobody has announced. */
   let recipientUnknown: Spec.error

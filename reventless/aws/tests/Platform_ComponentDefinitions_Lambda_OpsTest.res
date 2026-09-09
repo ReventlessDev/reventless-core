@@ -38,9 +38,8 @@ let preErrorsSlice = JSON.parseOrThrow(`{
   "events": []
 }`)
 
-let preErrorsStructure = Dict.fromArray([
-  ("stateChangeSlices", JSON.Encode.array([preErrorsSlice])),
-])->JSON.Encode.object
+let preErrorsStructure =
+  Dict.fromArray([("stateChangeSlices", JSON.Encode.array([preErrorsSlice]))])->JSON.Encode.object
 
 describe("toEntryWith heals a structure persisted before a required list existed", () => {
   testSync("fills the absent list on the component", () => {
@@ -48,9 +47,7 @@ describe("toEntryWith heals a structure persisted before a required list existed
       entry(~filter=false, preErrorsStructure)
       ->Option.map(members(_, "stateChangeSlices"))
       ->Option.flatMap(Array.get(_, 0))
-    expect(slice->Option.flatMap(s => s->Dict.get("errors")))->toEqual(
-      Some(JSON.Encode.array([])),
-    )
+    expect(slice->Option.flatMap(s => s->Dict.get("errors")))->toEqual(Some(JSON.Encode.array([])))
   })
 
   testSync("fills the absent list one level down, on a command's references", () => {
@@ -69,9 +66,7 @@ describe("toEntryWith heals a structure persisted before a required list existed
 
   testSync("fills an absent collection, which is a non-null list of its own", () => {
     let e = entry(~filter=false, preErrorsStructure)
-    expect(e->Option.flatMap(o => o->Dict.get("aggregates")))->toEqual(
-      Some(JSON.Encode.array([])),
-    )
+    expect(e->Option.flatMap(o => o->Dict.get("aggregates")))->toEqual(Some(JSON.Encode.array([])))
   })
 
   testSync("leaves a present list untouched", () => {
@@ -89,21 +84,20 @@ describe("toEntryWith heals a structure persisted before a required list existed
       entry(~filter=true, preErrorsStructure)
       ->Option.map(members(_, "stateChangeSlices"))
       ->Option.flatMap(Array.get(_, 0))
-    expect(slice->Option.flatMap(s => s->Dict.get("errors")))->toEqual(
-      Some(JSON.Encode.array([])),
-    )
+    expect(slice->Option.flatMap(s => s->Dict.get("errors")))->toEqual(Some(JSON.Encode.array([])))
   })
 
   testSync("still drops Internal read models when filtering", () => {
-    let structure = Dict.fromArray([
-      (
-        "readModels",
-        JSON.Encode.array([
-          JSON.parseOrThrow(`{"name": "Orders", "visibility": "Internal"}`),
-          JSON.parseOrThrow(`{"name": "Products"}`),
-        ]),
-      ),
-    ])->JSON.Encode.object
+    let structure =
+      Dict.fromArray([
+        (
+          "readModels",
+          JSON.Encode.array([
+            JSON.parseOrThrow(`{"name": "Orders", "visibility": "Internal"}`),
+            JSON.parseOrThrow(`{"name": "Products"}`),
+          ]),
+        ),
+      ])->JSON.Encode.object
     let names =
       entry(~filter=true, structure)
       ->Option.map(members(_, "readModels"))
@@ -120,18 +114,19 @@ describe("toEntryWith heals a structure persisted before a required list existed
 // sections, progress trackers and state diagrams all go quiet. Asserted because
 // the shim is the one part of the rename with nothing to fail at compile time.
 describe("toEntryWith reads a pre-rename structure's lifecycle field", () => {
-  let legacyStructure = Dict.fromArray([
-    (
-      "readModels",
-      JSON.Encode.array([
-        JSON.parseOrThrow(`{"name": "Customers", "statusField": "locationStatus"}`),
-      ]),
-    ),
-    (
-      "stateViewSlices",
-      JSON.Encode.array([JSON.parseOrThrow(`{"name": "Orders", "statusField": "status"}`)]),
-    ),
-  ])->JSON.Encode.object
+  let legacyStructure =
+    Dict.fromArray([
+      (
+        "readModels",
+        JSON.Encode.array([
+          JSON.parseOrThrow(`{"name": "Customers", "statusField": "locationStatus"}`),
+        ]),
+      ),
+      (
+        "stateViewSlices",
+        JSON.Encode.array([JSON.parseOrThrow(`{"name": "Orders", "statusField": "status"}`)]),
+      ),
+    ])->JSON.Encode.object
 
   let fieldOf = (~collection) =>
     entry(~filter=false, legacyStructure)
@@ -140,9 +135,7 @@ describe("toEntryWith reads a pre-rename structure's lifecycle field", () => {
     ->Option.flatMap(c => c->Dict.get("lifecycleField"))
 
   testSync("a read model's legacy key answers on the new name", () =>
-    expect(fieldOf(~collection="readModels"))->toEqual(
-      Some(JSON.Encode.string("locationStatus")),
-    )
+    expect(fieldOf(~collection="readModels"))->toEqual(Some(JSON.Encode.string("locationStatus")))
   )
 
   testSync("so does a state view slice's", () =>
@@ -150,14 +143,15 @@ describe("toEntryWith reads a pre-rename structure's lifecycle field", () => {
   )
 
   testSync("a post-rename structure is left alone", () => {
-    let current = Dict.fromArray([
-      (
-        "readModels",
-        JSON.Encode.array([
-          JSON.parseOrThrow(`{"name": "Orders", "lifecycleField": "lifecycle", "statusField": "stale"}`),
-        ]),
-      ),
-    ])->JSON.Encode.object
+    let current =
+      Dict.fromArray([
+        (
+          "readModels",
+          JSON.Encode.array([
+            JSON.parseOrThrow(`{"name": "Orders", "lifecycleField": "lifecycle", "statusField": "stale"}`),
+          ]),
+        ),
+      ])->JSON.Encode.object
     let field =
       entry(~filter=false, current)
       ->Option.map(members(_, "readModels"))
@@ -167,9 +161,10 @@ describe("toEntryWith reads a pre-rename structure's lifecycle field", () => {
   })
 
   testSync("a structure declaring neither still answers nothing", () => {
-    let neither = Dict.fromArray([
-      ("readModels", JSON.Encode.array([JSON.parseOrThrow(`{"name": "Products"}`)])),
-    ])->JSON.Encode.object
+    let neither =
+      Dict.fromArray([
+        ("readModels", JSON.Encode.array([JSON.parseOrThrow(`{"name": "Products"}`)])),
+      ])->JSON.Encode.object
     let component =
       entry(~filter=false, neither)
       ->Option.map(members(_, "readModels"))
@@ -184,21 +179,22 @@ describe("toEntryWith reads a pre-rename structure's lifecycle field", () => {
 // transport gets working pickers locally and silent text inputs when deployed —
 // which is why the split is asserted here as well as in core.
 describe("toEntryWith carries Internal queryables on the filtered field", () => {
-  let mixed = Dict.fromArray([
-    (
-      "readModels",
-      JSON.Encode.array([
-        JSON.parseOrThrow(`{"name": "AvailableProducts", "visibility": "Internal"}`),
-        JSON.parseOrThrow(`{"name": "Products"}`),
-      ]),
-    ),
-    (
-      "stateViewSlices",
-      JSON.Encode.array([
-        JSON.parseOrThrow(`{"name": "PendingShipments", "visibility": "Internal"}`),
-      ]),
-    ),
-  ])->JSON.Encode.object
+  let mixed =
+    Dict.fromArray([
+      (
+        "readModels",
+        JSON.Encode.array([
+          JSON.parseOrThrow(`{"name": "AvailableProducts", "visibility": "Internal"}`),
+          JSON.parseOrThrow(`{"name": "Products"}`),
+        ]),
+      ),
+      (
+        "stateViewSlices",
+        JSON.Encode.array([
+          JSON.parseOrThrow(`{"name": "PendingShipments", "visibility": "Internal"}`),
+        ]),
+      ),
+    ])->JSON.Encode.object
 
   let namesAt = (~filter, collection) =>
     entry(~filter, mixed)
@@ -229,10 +225,11 @@ describe("toEntryWith carries Internal queryables on the filtered field", () => 
   // A structure persisted before the field existed has no key for it, and must not
   // grow one from its own contents — the complement is always recomputed.
   testSync("computes the complement rather than reading it off the structure", () => {
-    let stale = Dict.fromArray([
-      ("internalQueryables", JSON.parseOrThrow(`[{"name": "Stale"}]`)),
-      ("readModels", JSON.parseOrThrow(`[{"name": "Products"}]`)),
-    ])->JSON.Encode.object
+    let stale =
+      Dict.fromArray([
+        ("internalQueryables", JSON.parseOrThrow(`[{"name": "Stale"}]`)),
+        ("readModels", JSON.parseOrThrow(`[{"name": "Products"}]`)),
+      ])->JSON.Encode.object
     let names =
       entry(~filter=true, stale)
       ->Option.map(members(_, "internalQueryables"))
@@ -272,10 +269,9 @@ describe("bakeTargetOf", () => {
 
   testSync("takes an explicit key", () =>
     expect(
-      target(`{"bake": true, "bucket": "host-ui", "key": "storefront.json"}`)->Option.map(t => (
-        t.bucket,
-        t.key,
-      )),
+      target(`{"bake": true, "bucket": "host-ui", "key": "storefront.json"}`)->Option.map(
+        t => (t.bucket, t.key),
+      ),
     )->toEqual(Some(("host-ui", "storefront.json")))
   )
 })
@@ -319,9 +315,9 @@ describe("bakeJourney", () => {
       "key": "component-manifest-fulfilment.json",
       "components": [{"plugin": "Ordering", "views": ["Orders"], "derived": ["lifecycles"]}]
     }`)
-    expect(decoded->Option.map(j => (j.group, j.key, j.selections->Array.map(s => s.plugin))))->toEqual(
-      Some(("Fulfilment", "component-manifest-fulfilment.json", ["Ordering"])),
-    )
+    expect(
+      decoded->Option.map(j => (j.group, j.key, j.selections->Array.map(s => s.plugin))),
+    )->toEqual(Some(("Fulfilment", "component-manifest-fulfilment.json", ["Ordering"])))
     expect(
       decoded->Option.flatMap(j => j.selections->Array.get(0))->Option.flatMap(s => s.derived),
     )->toEqual(Some(["lifecycles"]))
@@ -439,10 +435,11 @@ describe("registrations", () => {
   // the failure used to report a name and nothing else, and the four causes it
   // could have had were told apart by reading the read model out of band.
   testSync("reports the expected key, the found key and when the row was written", () => {
-    let r = regs(
-      [row(~name="Ordering", ~key="sha256/old", ~at="2026-08-27T09:00:00Z", ())],
-      [("Ordering", "sha256/new")],
-    )->Array.get(0)
+    let r =
+      regs(
+        [row(~name="Ordering", ~key="sha256/old", ~at="2026-08-27T09:00:00Z", ())],
+        [("Ordering", "sha256/new")],
+      )->Array.get(0)
     expect((
       r->Option.map(r => r.expected),
       r->Option.flatMap(r => r.found),
@@ -456,79 +453,92 @@ describe("registrations", () => {
     let after = "2026-08-27T10:05:00Z"
 
     // The distinction §4 exists for: this plugin proves the chain works.
-    testSync("a matching key on a row this deploy wrote is registered", () =>
-      expect(
-        stateOf(
-          [row(~name="Ordering", ~key="sha256/a", ~at=after, ())],
-          [("Ordering", "sha256/a")],
-          ~since,
-        ),
-      )->toEqual(Some("registered"))
+    testSync(
+      "a matching key on a row this deploy wrote is registered",
+      () =>
+        expect(
+          stateOf(
+            [row(~name="Ordering", ~key="sha256/a", ~at=after, ())],
+            [("Ordering", "sha256/a")],
+            ~since,
+          ),
+        )->toEqual(Some("registered")),
     )
 
     // Correct, and vacuous — an unchanged structure converges against a
     // completely broken chain, which is why it is not counted as evidence.
-    testSync("a matching key on a row that predates the deploy is unchanged", () =>
-      expect(
-        stateOf(
-          [row(~name="Ordering", ~key="sha256/a", ~at=before, ())],
-          [("Ordering", "sha256/a")],
-          ~since,
-        ),
-      )->toEqual(Some("unchanged"))
+    testSync(
+      "a matching key on a row that predates the deploy is unchanged",
+      () =>
+        expect(
+          stateOf(
+            [row(~name="Ordering", ~key="sha256/a", ~at=before, ())],
+            [("Ordering", "sha256/a")],
+            ~since,
+          ),
+        )->toEqual(Some("unchanged")),
     )
 
-    testSync("a matching key with no deploy instant to date it against is matched", () =>
-      expect(
-        stateOf(
-          [row(~name="Ordering", ~key="sha256/a", ~at=after, ())],
-          [("Ordering", "sha256/a")],
-        ),
-      )->toEqual(Some("matched"))
+    testSync(
+      "a matching key with no deploy instant to date it against is matched",
+      () =>
+        expect(
+          stateOf(
+            [row(~name="Ordering", ~key="sha256/a", ~at=after, ())],
+            [("Ordering", "sha256/a")],
+          ),
+        )->toEqual(Some("matched")),
     )
 
     // Retrying is for this one.
-    testSync("a stale row that predates the deploy is behind", () =>
-      expect(
-        stateOf(
-          [row(~name="Ordering", ~key="sha256/old", ~at=before, ())],
-          [("Ordering", "sha256/new")],
-          ~since,
-        ),
-      )->toEqual(Some("behind"))
+    testSync(
+      "a stale row that predates the deploy is behind",
+      () =>
+        expect(
+          stateOf(
+            [row(~name="Ordering", ~key="sha256/old", ~at=before, ())],
+            [("Ordering", "sha256/new")],
+            ~since,
+          ),
+        )->toEqual(Some("behind")),
     )
 
     // And never for this one: the plugin answered during this deploy and produced
     // a structure other than the one the deploy hashed, so the keys cannot
     // converge and every remaining attempt is spent on something that cannot happen.
-    testSync("a stale row this deploy wrote is diverged", () =>
-      expect(
-        stateOf(
-          [row(~name="Ordering", ~key="sha256/other", ~at=after, ())],
-          [("Ordering", "sha256/new")],
-          ~since,
-        ),
-      )->toEqual(Some("diverged"))
+    testSync(
+      "a stale row this deploy wrote is diverged",
+      () =>
+        expect(
+          stateOf(
+            [row(~name="Ordering", ~key="sha256/other", ~at=after, ())],
+            [("Ordering", "sha256/new")],
+            ~since,
+          ),
+        )->toEqual(Some("diverged")),
     )
 
     // The scan filters on Connected, so a version that dropped out mid-deploy
     // leaves no row to compare against — indistinguishable, before this, from a
     // projection that had merely not landed yet, and waited on for the full
     // retry budget either way.
-    testSync("no Connected row at all is missing, not behind", () =>
-      expect(stateOf([], [("Ordering", "sha256/new")], ~since))->toEqual(Some("missing"))
+    testSync(
+      "no Connected row at all is missing, not behind",
+      () => expect(stateOf([], [("Ordering", "sha256/new")], ~since))->toEqual(Some("missing")),
     )
 
     // An unparseable stamp must not read as fresh: reporting `registered` off a
     // date nobody could read would credit the chain for work it may not have done.
-    testSync("an unreadable row date does not count as written by this deploy", () =>
-      expect(
-        stateOf(
-          [row(~name="Ordering", ~key="sha256/a", ~at="not-a-date", ())],
-          [("Ordering", "sha256/a")],
-          ~since,
-        ),
-      )->toEqual(Some("unchanged"))
+    testSync(
+      "an unreadable row date does not count as written by this deploy",
+      () =>
+        expect(
+          stateOf(
+            [row(~name="Ordering", ~key="sha256/a", ~at="not-a-date", ())],
+            [("Ordering", "sha256/a")],
+            ~since,
+          ),
+        )->toEqual(Some("unchanged")),
     )
   })
 })
@@ -562,9 +572,7 @@ describe("resolveStructure", () => {
       item(offloaded),
     )
     ->Promise.thenResolve(_ => None)
-    ->Promise.catch(e =>
-      Promise.resolve(e->JsExn.fromException->Option.flatMap(JsExn.message))
-    )
+    ->Promise.catch(e => Promise.resolve(e->JsExn.fromException->Option.flatMap(JsExn.message)))
     expect(failed)->toEqual(
       Some("offloaded structure for plugin Ordering is unreadable at sha256/abc: AccessDenied"),
     )

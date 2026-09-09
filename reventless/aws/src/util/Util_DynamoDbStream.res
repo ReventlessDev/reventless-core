@@ -1,5 +1,7 @@
 let toResourceInfo = (table: PulumiAws.DynamoDb.Table.t) =>
-  table.streamArn->Pulumi.Output.apply(streamArn => ReventlessInfra.Adapter.StreamSource({sourceUrn: streamArn}))
+  table.streamArn->Pulumi.Output.apply(streamArn => ReventlessInfra.Adapter.StreamSource({
+    sourceUrn: streamArn,
+  }))
 
 // The table name rides IN the apply rather than being read with `Output.get` on
 // the failure arm: `get` throws "Cannot call '.get' during update or preview" on
@@ -23,10 +25,12 @@ let toResource = (~tags=?, table: PulumiAws.DynamoDb.Table.t): ReventlessInfra.A
     ~service=table.name->Pulumi.Output.apply(_ => AWS.DynamoDbStream.service),
     ~resourceInfo=table->toResourceInfo,
     ~resourceType="aws:dynamodb:Table"->Pulumi.Output.make,
-    ~tags=?tags,
+    ~tags?,
   )
 
-let toStreamResource = (table: ReventlessInfra.Adapter.resource): ReventlessInfra.Adapter.resource => {
+let toStreamResource = (
+  table: ReventlessInfra.Adapter.resource,
+): ReventlessInfra.Adapter.resource => {
   let streamArn = table->streamArnFromDynamoDbTableResource
 
   ReventlessInfra.Adapter.make(

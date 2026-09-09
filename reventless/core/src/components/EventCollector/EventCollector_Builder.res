@@ -15,7 +15,8 @@ let makeStreamHandler = (
     )
     ->jsonEventsHandler
 
-  let channel: EventCollector_Adapter.channel<_, _, _> = eventCollector->EventCollector_Adapter.channel
+  let channel: EventCollector_Adapter.channel<_, _, _> =
+    eventCollector->EventCollector_Adapter.channel
   channel.handleChannelEvent(jsonHandler)
 }
 

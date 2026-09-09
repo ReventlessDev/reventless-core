@@ -49,7 +49,10 @@ module Make = (Spec: Spec): T => {
       | exception err =>
         let errMsg =
           err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-        EffectLogger.logError(~comp="SideEffects", `map: Couldn't decode meta: ${errMsg}`)->Effect.runSync
+        EffectLogger.logError(
+          ~comp="SideEffects",
+          `map: Couldn't decode meta: ${errMsg}`,
+        )->Effect.runSync
         None
       | _ =>
         EffectLogger.logError(~comp="SideEffects", "map: Invalid JSON object")->Effect.runSync
@@ -107,7 +110,7 @@ module Make = (Spec: Spec): T => {
               )
             }
           )
-          ->Effect.catchAll(errMsg => EffectLogger.logError(~comp="SideEffectHandler", errMsg))
+          ->Effect.catchAll(errMsg => EffectLogger.logError(~comp="SideEffectHandler", errMsg)),
         )
       | None => Effect.succeed()
       }

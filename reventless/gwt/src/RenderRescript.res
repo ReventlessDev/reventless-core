@@ -112,8 +112,7 @@ let renderMany = (arr: array<JSON.t>): string =>
   | [] => "[]"
   | [one] => "[" ++ render(one) ++ "]"
   | _ =>
-    let inner =
-      arr->Array.map(v => indent(1) ++ render(~level=1, v))->Array.join(",\n")
+    let inner = arr->Array.map(v => indent(1) ++ render(~level=1, v))->Array.join(",\n")
     "[\n" ++ inner ++ ",\n]"
   }
 

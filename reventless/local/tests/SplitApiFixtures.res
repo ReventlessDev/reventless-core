@@ -31,7 +31,9 @@ let extractSdlFieldName = (sdlField: string): string => {
 let adminGraphQL = ReventlessGraphqlServer.GraphQL_ServerInstance.make(~label="GraphQL:Admin")
 
 // Build admin SDL — authoritative source for field names.
-let baseParts = ReventlessCore.GraphQL_Stitcher.decode(ReventlessCore.Platform_AdminApi.baseFragment(~cloner=true))
+let baseParts = ReventlessCore.GraphQL_Stitcher.decode(
+  ReventlessCore.Platform_AdminApi.baseFragment(~cloner=true),
+)
 let () = adminGraphQL.registerTypes(~sdlTypes=baseParts.types)
 
 // Derive query/mutation field names directly from SDL so that any SDL
@@ -45,16 +47,23 @@ let singleQueryField = adminQueryEntry.singleFieldName
 let listQueryField = adminQueryEntry.listFieldName
 
 let adminQueryResolvers = Dict.make()
-let () = adminQueryFieldNames->Array.forEach(field =>
-  adminQueryResolvers->Dict.set(field, async (_root, _args, _ctx): JSON.t => JSON.Encode.null)
-)
+let () =
+  adminQueryFieldNames->Array.forEach(field =>
+    adminQueryResolvers->Dict.set(field, async (_root, _args, _ctx): JSON.t => JSON.Encode.null)
+  )
 let () = adminGraphQL.registerQueries(~sdlFields=baseParts.queries, ~resolvers=adminQueryResolvers)
 
 let adminMutationResolvers = Dict.make()
-let () = adminMutationFieldNames->Array.forEach(field =>
-  adminMutationResolvers->Dict.set(field, async (_root, _args, _ctx): JSON.t => JSON.Encode.string("ok"))
+let () =
+  adminMutationFieldNames->Array.forEach(field =>
+    adminMutationResolvers->Dict.set(field, async (_root, _args, _ctx): JSON.t =>
+      JSON.Encode.string("ok")
+    )
+  )
+let () = adminGraphQL.registerMutations(
+  ~sdlFields=baseParts.mutations,
+  ~resolvers=adminMutationResolvers,
 )
-let () = adminGraphQL.registerMutations(~sdlFields=baseParts.mutations, ~resolvers=adminMutationResolvers)
 
 // ─────────────────────────────────────────────────────────────
 // Register fake plugin schema into the singleton (plugin server)
@@ -66,8 +75,18 @@ let pluginTypes = [`type SplitTestPlugin_SplitTestItem { id: ID!, name: String! 
 let () = GraphQL_Server.registerTypes(~sdlTypes=pluginTypes)
 
 let pluginQueryResolvers = Dict.make()
-let () = pluginQueryResolvers->Dict.set("SplitTestPlugin_SplitTestItem", async (_root, _args, _ctx): JSON.t => JSON.Encode.null)
-let () = pluginQueryResolvers->Dict.set("SplitTestPlugin_SplitTestItems", async (_root, _args, _ctx): JSON.t => JSON.Encode.null)
+let () =
+  pluginQueryResolvers->Dict.set("SplitTestPlugin_SplitTestItem", async (
+    _root,
+    _args,
+    _ctx,
+  ): JSON.t => JSON.Encode.null)
+let () =
+  pluginQueryResolvers->Dict.set("SplitTestPlugin_SplitTestItems", async (
+    _root,
+    _args,
+    _ctx,
+  ): JSON.t => JSON.Encode.null)
 let () = GraphQL_Server.registerQueries(
   ~sdlFields=[
     `SplitTestPlugin_SplitTestItem(id: ID!): SplitTestPlugin_SplitTestItem`,
@@ -77,7 +96,12 @@ let () = GraphQL_Server.registerQueries(
 )
 
 let pluginMutationResolvers = Dict.make()
-let () = pluginMutationResolvers->Dict.set("SplitTestPlugin_SplitTestItem_CreateItem", async (_root, _args, _ctx): JSON.t => JSON.Encode.string("ok"))
+let () =
+  pluginMutationResolvers->Dict.set("SplitTestPlugin_SplitTestItem_CreateItem", async (
+    _root,
+    _args,
+    _ctx,
+  ): JSON.t => JSON.Encode.string("ok"))
 let () = GraphQL_Server.registerMutations(
   ~sdlFields=[`SplitTestPlugin_SplitTestItem_CreateItem(id: ID!, name: String!): String`],
   ~resolvers=pluginMutationResolvers,

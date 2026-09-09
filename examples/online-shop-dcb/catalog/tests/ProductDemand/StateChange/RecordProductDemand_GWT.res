@@ -25,10 +25,12 @@ describe("RecordProductDemand StateChangeSlice", () => {
     ->thenNoEvent
   )
 
-  test("RevokeDemand for unrecorded orderId on existing product produces no events (idempotent)", () =>
-    givenEvents([ProductDemandRecorded({orderId: "order-1"})])
-    ->whenCmd(RevokeDemand({productId: "p1", orderId: "order-2"}))
-    ->thenNoEvent
+  test(
+    "RevokeDemand for unrecorded orderId on existing product produces no events (idempotent)",
+    () =>
+      givenEvents([ProductDemandRecorded({orderId: "order-1"})])
+      ->whenCmd(RevokeDemand({productId: "p1", orderId: "order-2"}))
+      ->thenNoEvent,
   )
 
   test("RevokeDemand for recorded orderId produces ProductDemandRevoked", () =>

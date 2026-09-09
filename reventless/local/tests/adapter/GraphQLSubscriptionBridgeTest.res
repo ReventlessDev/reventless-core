@@ -65,7 +65,9 @@ describe("GraphQL_SubscriptionBridge — injected PubSub seam", () => {
       ~server,
       ~sdlFields=[sdlField],
       ~sourceAEntries=[],
-      ~sourceBEntries=[{fieldName: "onCatalogProduct_stateChanged", topic: "onCatalogProduct_stateChanged"}],
+      ~sourceBEntries=[
+        {fieldName: "onCatalogProduct_stateChanged", topic: "onCatalogProduct_stateChanged"},
+      ],
       ~pubSub,
     )
 
@@ -85,8 +87,7 @@ describe("GraphQL_SubscriptionBridge — injected PubSub seam", () => {
     let consumerPromise = startConsumer(iter, 1000)
     await yieldTick()
 
-    let payload =
-      JSON.Encode.object(Dict.fromArray([("id", JSON.Encode.string("prod-1"))]))
+    let payload = JSON.Encode.object(Dict.fromArray([("id", JSON.Encode.string("prod-1"))]))
     Bridge.publish(~pubSub, topic, payload)
 
     let received = await consumerPromise

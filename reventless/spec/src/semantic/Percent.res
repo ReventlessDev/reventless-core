@@ -13,7 +13,6 @@ fractions are allowed — `99.95` is a percentage.
 }
 ```
 */
-
 /** The percentage's representation. Transparent `float`: the marker refines an
     existing numeric field, so nothing stored changes. */
 type t = float
@@ -27,8 +26,9 @@ let fromFloat = (raw: float): result<t, string> =>
     Error(`a percentage must be a finite number, got ${Float.toString(raw)}`)
   } else if raw < 0.0 || raw > 100.0 {
     Error(
-      `a percentage runs from 0 to 100, got ${Float.toString(raw)}. ` ++
-      `This scale is 0–100, not 0–1 — a fraction multiplies by 100 first.`,
+      `a percentage runs from 0 to 100, got ${Float.toString(
+          raw,
+        )}. ` ++ `This scale is 0–100, not 0–1 — a fraction multiplies by 100 first.`,
     )
   } else {
     Ok(raw)

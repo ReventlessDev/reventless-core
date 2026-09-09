@@ -16,7 +16,6 @@
 // records fix the shapes; scheduler/queryEngine still throw by design (not
 // available in the bundled handler).
 
-
 // ── Shim bindings (HandlerFactoryHelpers.mjs), typed for SQS records ────────
 @module("./HandlerFactoryHelpers.mjs")
 external setRequestId: string => unit = "setRequestId"
@@ -106,10 +105,7 @@ let makeCallbackSpec = (config: handlerConfig): callbackSpec => {
 
 type built = {
   comp: string,
-  sqsHandler: (
-    PulumiAws.SQS.Queue.event,
-    PulumiAws.Lambda.context,
-  ) => Effect.t<unit, string, unit>,
+  sqsHandler: (PulumiAws.SQS.Queue.event, PulumiAws.Lambda.context) => Effect.t<unit, string, unit>,
 }
 
 let makeBuilt = (

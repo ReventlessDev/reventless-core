@@ -73,7 +73,9 @@ let alive = (pid: int): bool =>
   }
 
 let readEntry = (path: string): option<entry> =>
-  try Some(path->NodeFs.readFileSync->JSON.parseOrThrow->Reventless.Util_Sury.fromJson(entrySchema)) catch {
+  try Some(
+    path->NodeFs.readFileSync->JSON.parseOrThrow->Reventless.Util_Sury.fromJson(entrySchema),
+  ) catch {
   | _ => None
   }
 

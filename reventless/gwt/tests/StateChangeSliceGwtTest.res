@@ -118,10 +118,7 @@ module MissingTagBehavior = {
 
   let evolve = (state: state, _event: Spec.consumedEvent): state => state
 
-  let decide = (
-    _state: state,
-    cmd: Spec.command,
-  ): result<array<Spec.event>, Spec.error> =>
+  let decide = (_state: state, cmd: Spec.command): result<array<Spec.event>, Spec.error> =>
     switch cmd {
     | Do({id}) => Ok([Spec.Done({id: id})])
     }
@@ -130,23 +127,27 @@ module MissingTagBehavior = {
 module MissingTagGwt = Behavior_GWT.Make(MissingTagSlice, MissingTagBehavior)
 
 MissingTagGwt.describe("MissingTag slice implicit check", () => {
-  MissingTagGwt.test("thenEvent surfaces AppendConditionMismatch when command lacks DCB tag", () => {
-    let outcome =
-      MissingTagGwt.givenEvents([])
-      ->MissingTagGwt.whenCmd(Do({id: "x1"}))
-      ->MissingTagGwt.thenEvent(Done({id: "x1"}))
-    switch outcome {
-    | Error(AppendConditionMismatch(_)) => Outcome.pass
-    | Error(other) =>
-      Outcome.fail(
-        Throw({error: "expected AppendConditionMismatch, got: " ++ Outcome.kindName(other), stack: ""}),
-      )
-    | Ok() =>
-      Outcome.fail(
-        Throw({error: "expected AppendConditionMismatch, got pass", stack: ""}),
-      )
-    }
-  })
+  MissingTagGwt.test(
+    "thenEvent surfaces AppendConditionMismatch when command lacks DCB tag",
+    () => {
+      let outcome =
+        MissingTagGwt.givenEvents([])
+        ->MissingTagGwt.whenCmd(Do({id: "x1"}))
+        ->MissingTagGwt.thenEvent(Done({id: "x1"}))
+      switch outcome {
+      | Error(AppendConditionMismatch(_)) => Outcome.pass
+      | Error(other) =>
+        Outcome.fail(
+          Throw({
+            error: "expected AppendConditionMismatch, got: " ++ Outcome.kindName(other),
+            stack: "",
+          }),
+        )
+      | Ok() =>
+        Outcome.fail(Throw({error: "expected AppendConditionMismatch, got pass", stack: ""}))
+      }
+    },
+  )
 
   MissingTagGwt.test(
     "thenAppendsConditionedOnExactly bypasses implicit check (still passes with derived)",

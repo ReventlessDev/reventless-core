@@ -14,14 +14,12 @@ open Reventless.ReadModel
 let tableName = (name: string): string => "qdb_" ++ name->String.replaceAll("-", "_")
 
 // Collapse anything outside [A-Za-z0-9_] to _ — predictable, injection-safe idents.
-let sanitizeIdent = (s: string): string =>
-  s->String.replaceRegExp(%re("/[^A-Za-z0-9_]/g"), "_")
+let sanitizeIdent = (s: string): string => s->String.replaceRegExp(/[^A-Za-z0-9_]/g, "_")
 
 let notExpiredClause = "(expires_at IS NULL OR expires_at > extract(epoch from now()))"
 
 // JSONB text extraction for a single top-level field.
-let jsonField = (field: string): string =>
-  `(item->>'${field->String.replaceAll("'", "''")}')`
+let jsonField = (field: string): string => `(item->>'${field->String.replaceAll("'", "''")}')`
 
 let compositeExpr = (fields: array<string>, sep: string): string => {
   let escapedSep = sep->String.replaceAll("'", "''")
@@ -120,10 +118,13 @@ let makeOperations = (
 
   let rowsFor = async (id: string): array<JSON.t> => {
     await ready()
-    (await pool->PgDriver.query(
-      `SELECT item FROM ${table} WHERE partition_key = $1 AND ${notExpiredClause} ORDER BY sub_key ASC`,
-      [JSON.Encode.string(id)],
-    ))->Array.map(decodeItem)
+
+    (
+      await pool->PgDriver.query(
+        `SELECT item FROM ${table} WHERE partition_key = $1 AND ${notExpiredClause} ORDER BY sub_key ASC`,
+        [JSON.Encode.string(id)],
+      )
+    )->Array.map(decodeItem)
   }
 
   let saveOne = async (id: string, state: JSON.t, ttl: option<int>) => {
@@ -149,11 +150,10 @@ let makeOperations = (
 
   let load: QueryDb.load<string, JSON.t> = async id => Ok(await rowsFor(id))
 
-  let loadStream: QueryDb.loadStream<string, JSON.t> =
-    id =>
-      Effect.promise(() => rowsFor(id))
-      ->Stream.fromEffect
-      ->Stream.flatMap(arr => Stream.fromIterable(arr))
+  let loadStream: QueryDb.loadStream<string, JSON.t> = id =>
+    Effect.promise(() => rowsFor(id))
+    ->Stream.fromEffect
+    ->Stream.flatMap(arr => Stream.fromIterable(arr))
 
   let save: QueryDb.save<string, JSON.t> = async (id, state, _saveMode, ttl) => {
     await saveOne(id, state, ttl)

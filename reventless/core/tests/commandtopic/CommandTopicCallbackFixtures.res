@@ -1,4 +1,3 @@
-
 // ─────────────────────────────────────────────────────────────
 // Command spec for CommandTopic_Callback tests
 // ─────────────────────────────────────────────────────────────
@@ -43,9 +42,11 @@ module TestOps: CommandTopic_Callback.Ops with module Spec = TestSpec = {
       }
       capturedItems :=
         capturedItems.contents->Array.concat(
-          items->Array.map((item: ReventlessInfra.CommandTopic.topicItem<
-            Message.command'<TestSpec.Id.t, TestSpec.command>,
-          >) => {
+          items->Array.map((
+            item: ReventlessInfra.CommandTopic.topicItem<
+              Message.command'<TestSpec.Id.t, TestSpec.command>,
+            >,
+          ) => {
             reference: item.reference,
             command: item.command.command,
           }),

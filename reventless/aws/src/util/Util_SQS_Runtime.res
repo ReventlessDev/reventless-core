@@ -31,25 +31,24 @@ let sendFifoMessage = (queue, ~delay=?, ~messageGroupId, messageBody) =>
 
 let send = (queue, queueService, commandJson) => {
   let messageBody = commandJson->toMessageBody
-  Effect.tryPromise(
-    ~catch=SQS_Error.classify,
-    () =>
-      if queueService == AWS.SQS_FIFO {
-        queue->sendFifoMessage(
-          ~messageGroupId=safeGroupId(commandJson.id),
-          ~delay=?commandJson.delay,
-          messageBody,
-        )
-      } else {
-        queue->sendMessage(~delay=?commandJson.delay, messageBody)
-      },
+  Effect.tryPromise(~catch=SQS_Error.classify, () =>
+    if queueService == AWS.SQS_FIFO {
+      queue->sendFifoMessage(
+        ~messageGroupId=safeGroupId(commandJson.id),
+        ~delay=?commandJson.delay,
+        messageBody,
+      )
+    } else {
+      queue->sendMessage(~delay=?commandJson.delay, messageBody)
+    }
   )
   ->Effect.map(_ => ())
   ->Effect.retry(SQS_Error.sendRetrySchedule)
   ->Effect.catchAll(err => {
     let msg = SQS_Error.message(err)
-    ReventlessCore.EffectLogger.logError(~comp=__MODULE__, "send: " ++ msg)
-    ->Effect.flatMap(_ => Effect.fail(msg))
+    ReventlessCore.EffectLogger.logError(~comp=__MODULE__, "send: " ++ msg)->Effect.flatMap(_ =>
+      Effect.fail(msg)
+    )
   })
 }
 
@@ -58,7 +57,12 @@ let makeEntry = (queueService, commandJson) => {
   let messageBody = commandJson->toMessageBody
 
   if queueService == AWS.SQS_FIFO {
-    SQS_Helpers.makeBatchEntryFifo(~groupId=safeGroupId(id), ~messageId, ~messageBody, ~delay=?commandJson.delay)
+    SQS_Helpers.makeBatchEntryFifo(
+      ~groupId=safeGroupId(id),
+      ~messageId,
+      ~messageBody,
+      ~delay=?commandJson.delay,
+    )
   } else {
     SQS_Helpers.makeBatchEntry(~messageId, ~messageBody, ~delay=?commandJson.delay)
   }
@@ -68,12 +72,10 @@ let sendMessagesMaxRetries = 5
 
 let sendMessages = (queue, queueService, commandJsons) => {
   let rec attempt = (retry, toSend) =>
-    Effect.tryPromise(
-      ~catch=SQS_Error.classify,
-      () =>
-        toSend
-        ->Array.map(commandJson => makeEntry(queueService, commandJson))
-        ->SQS_Helpers.sendMessagesParallel(~queueId=queue.id),
+    Effect.tryPromise(~catch=SQS_Error.classify, () =>
+      toSend
+      ->Array.map(commandJson => makeEntry(queueService, commandJson))
+      ->SQS_Helpers.sendMessagesParallel(~queueId=queue.id)
     )
     ->Effect.retry(SQS_Error.retrySchedule)
     ->Effect.flatMap(result =>
@@ -88,19 +90,19 @@ let sendMessages = (queue, queueService, commandJsons) => {
           ReventlessCore.EffectLogger.logInfo(
             ~comp=__MODULE__,
             `sendMessages: ${failedIds->Array.length->Int.toString} failed ids, retrying subset`,
-          )
-          ->Effect.flatMap(_ => attempt(retry + 1, commandJsonsToRetry))
+          )->Effect.flatMap(_ => attempt(retry + 1, commandJsonsToRetry))
         } else {
           let ids = failedIds->Array.joinUnsafe(", ")
           Effect.fail(SQS_Error.Permanent(`sendMessages failed for ids: ${ids}`))
         }
       }
     )
-  attempt(0, commandJsons)
-  ->Effect.catchAll(err => {
+  attempt(0, commandJsons)->Effect.catchAll(err => {
     let msg = SQS_Error.message(err)
-    ReventlessCore.EffectLogger.logError(~comp=__MODULE__, `sendMessages: ${msg}`)
-    ->Effect.flatMap(_ => Effect.fail(msg))
+    ReventlessCore.EffectLogger.logError(
+      ~comp=__MODULE__,
+      `sendMessages: ${msg}`,
+    )->Effect.flatMap(_ => Effect.fail(msg))
   })
 }
 
@@ -117,9 +119,8 @@ let deleteMessagesMaxRetries = 5
 
 let deleteMessages = (entries, queue) => {
   let rec attempt = (retry, toDelete) =>
-    Effect.tryPromise(
-      ~catch=SQS_Error.classify,
-      () => SQS_Helpers.deleteMessagesParallel(~queueId=queue.id, toDelete),
+    Effect.tryPromise(~catch=SQS_Error.classify, () =>
+      SQS_Helpers.deleteMessagesParallel(~queueId=queue.id, toDelete)
     )
     ->Effect.retry(SQS_Error.retrySchedule)
     ->Effect.flatMap(result =>
@@ -140,19 +141,19 @@ let deleteMessages = (entries, queue) => {
           ReventlessCore.EffectLogger.logInfo(
             ~comp=__MODULE__,
             `deleteMessages: ${failedIds->Array.length->Int.toString} failed ids, retrying subset`,
-          )
-          ->Effect.flatMap(_ => attempt(retry + 1, entriesToRetry))
+          )->Effect.flatMap(_ => attempt(retry + 1, entriesToRetry))
         } else {
           let ids = failedIds->Array.joinUnsafe(", ")
           Effect.fail(SQS_Error.Permanent(`deleteMessages failed for ids: ${ids}`))
         }
       }
     )
-  attempt(0, entries)
-  ->Effect.catchAll(err => {
+  attempt(0, entries)->Effect.catchAll(err => {
     let msg = SQS_Error.message(err)
-    ReventlessCore.EffectLogger.logError(~comp=__MODULE__, `deleteMessages: ${msg}`)
-    ->Effect.flatMap(_ => Effect.fail(msg))
+    ReventlessCore.EffectLogger.logError(
+      ~comp=__MODULE__,
+      `deleteMessages: ${msg}`,
+    )->Effect.flatMap(_ => Effect.fail(msg))
   })
 }
 

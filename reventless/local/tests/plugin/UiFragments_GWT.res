@@ -33,7 +33,12 @@ describe("UiFragments StateViewSlice projection", () => {
   test("UiFragmentUpdated updates manifest fields + updatedAt, keeps registeredAt", () =>
     givenEvents([UiFragmentRegistered({pluginId: "p1", manifest: uiManifest, at: "t0"})])
     ->whenEvent(
-      UiFragmentUpdated({pluginId: "p1", previousManifest: uiManifest, newManifest: manifest2, at: "t1"}),
+      UiFragmentUpdated({
+        pluginId: "p1",
+        previousManifest: uiManifest,
+        newManifest: manifest2,
+        at: "t1",
+      }),
     )
     ->thenStateWithId(
       "p1",

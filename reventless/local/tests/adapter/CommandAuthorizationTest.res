@@ -49,14 +49,11 @@ let userIdentity: Reventless.Identity.t = {
 }
 
 let ctxFor = (identity: Reventless.Identity.t): JSON.t =>
-  JSON.Encode.object(
-    Dict.fromArray([("identity", (identity: Reventless.Identity.t)->Obj.magic)]),
-  )
+  JSON.Encode.object(Dict.fromArray([("identity", (identity: Reventless.Identity.t)->Obj.magic)]))
 
-let anonymousCtx: JSON.t =
-  JSON.Encode.object(
-    Dict.fromArray([("identity", (Reventless.Identity.anonymous: Reventless.Identity.t)->Obj.magic)]),
-  )
+let anonymousCtx: JSON.t = JSON.Encode.object(
+  Dict.fromArray([("identity", (Reventless.Identity.anonymous: Reventless.Identity.t)->Obj.magic)]),
+)
 
 let getTypename = (response: JSON.t): string =>
   response
@@ -125,16 +122,22 @@ describe("CommandGeneratorResolvers_GraphQL — per-constructor authorization", 
 
   testPromise("admin invoking payload-less Archive succeeds", async () => {
     let (_, _, archiveResolver, calls) = buildFixture(~namespace="Cat1")
-    let response =
-      await archiveResolver(JSON.Encode.null, JSON.Encode.object(Dict.make()), ctxFor(adminIdentity))
+    let response = await archiveResolver(
+      JSON.Encode.null,
+      JSON.Encode.object(Dict.make()),
+      ctxFor(adminIdentity),
+    )
     expect(getTypename(response))->toEqual("CommandAccepted")
     expect(calls.contents)->toEqual(["Archive"])
   })
 
   testPromise("regular user invoking Archive is rejected with Forbidden", async () => {
     let (_, _, archiveResolver, calls) = buildFixture(~namespace="Cat2")
-    let response =
-      await archiveResolver(JSON.Encode.null, JSON.Encode.object(Dict.make()), ctxFor(userIdentity))
+    let response = await archiveResolver(
+      JSON.Encode.null,
+      JSON.Encode.object(Dict.make()),
+      ctxFor(userIdentity),
+    )
     expect(getTypename(response))->toEqual("CommandRejected")
     expect(getErrorCode(response))->toEqual("Forbidden")
     expect(calls.contents)->toEqual([])
@@ -142,8 +145,11 @@ describe("CommandGeneratorResolvers_GraphQL — per-constructor authorization", 
 
   testPromise("anonymous invoking Archive is rejected with Forbidden", async () => {
     let (_, _, archiveResolver, calls) = buildFixture(~namespace="Cat3")
-    let response =
-      await archiveResolver(JSON.Encode.null, JSON.Encode.object(Dict.make()), anonymousCtx)
+    let response = await archiveResolver(
+      JSON.Encode.null,
+      JSON.Encode.object(Dict.make()),
+      anonymousCtx,
+    )
     expect(getTypename(response))->toEqual("CommandRejected")
     expect(getErrorCode(response))->toEqual("Forbidden")
     expect(calls.contents)->toEqual([])
@@ -151,24 +157,22 @@ describe("CommandGeneratorResolvers_GraphQL — per-constructor authorization", 
 
   testPromise("regular user invoking Add (default AllowAuthenticated) succeeds", async () => {
     let (addResolver, _, _, calls) = buildFixture(~namespace="Cat4")
-    let response =
-      await addResolver(
-        JSON.Encode.null,
-        JSON.Encode.object(Dict.fromArray([("name", JSON.Encode.string("Books"))])),
-        ctxFor(userIdentity),
-      )
+    let response = await addResolver(
+      JSON.Encode.null,
+      JSON.Encode.object(Dict.fromArray([("name", JSON.Encode.string("Books"))])),
+      ctxFor(userIdentity),
+    )
     expect(getTypename(response))->toEqual("CommandAccepted")
     expect(calls.contents)->toEqual(["Add"])
   })
 
   testPromise("anonymous invoking Add is rejected (AllowAuthenticated default)", async () => {
     let (addResolver, _, _, calls) = buildFixture(~namespace="Cat5")
-    let response =
-      await addResolver(
-        JSON.Encode.null,
-        JSON.Encode.object(Dict.fromArray([("name", JSON.Encode.string("Books"))])),
-        anonymousCtx,
-      )
+    let response = await addResolver(
+      JSON.Encode.null,
+      JSON.Encode.object(Dict.fromArray([("name", JSON.Encode.string("Books"))])),
+      anonymousCtx,
+    )
     expect(getTypename(response))->toEqual("CommandRejected")
     expect(getErrorCode(response))->toEqual("Forbidden")
     expect(calls.contents)->toEqual([])
@@ -176,12 +180,11 @@ describe("CommandGeneratorResolvers_GraphQL — per-constructor authorization", 
 
   testPromise("admin invoking Add also succeeds (admin has User group too)", async () => {
     let (addResolver, _, _, calls) = buildFixture(~namespace="Cat6")
-    let response =
-      await addResolver(
-        JSON.Encode.null,
-        JSON.Encode.object(Dict.fromArray([("name", JSON.Encode.string("Books"))])),
-        ctxFor(adminIdentity),
-      )
+    let response = await addResolver(
+      JSON.Encode.null,
+      JSON.Encode.object(Dict.fromArray([("name", JSON.Encode.string("Books"))])),
+      ctxFor(adminIdentity),
+    )
     expect(getTypename(response))->toEqual("CommandAccepted")
     expect(calls.contents)->toEqual(["Add"])
   })
@@ -246,10 +249,10 @@ describe("CommandGeneratorResolvers_GraphQL — a failure the caller may read", 
   })
 
   testPromise("a caller-fault failure is rethrown as an unmasked GraphQL error", async () => {
-    let resolver = failingFixture(~namespace="Fault1", ~failWith=() =>
-      ReventlessCore.Plugin_ResolverError.throwCallerFault(
-        `Error: Couldn't decode: Expected string | undefined, received null`,
-      )
+    let resolver = failingFixture(
+      ~namespace="Fault1",
+      ~failWith=() =>
+        ReventlessCore.Plugin_ResolverError.throwCallerFault(`Error: Couldn't decode: Expected string | undefined, received null`),
     )
     let caught = await invoke(resolver)
     expect((
@@ -261,10 +264,12 @@ describe("CommandGeneratorResolvers_GraphQL — a failure the caller may read", 
   // The reason is the point: masked, the caller learns only that something
   // went wrong on a request that is theirs to fix.
   testPromise("and carries the reason it was given", async () => {
-    let resolver = failingFixture(~namespace="Fault2", ~failWith=() =>
-      ReventlessCore.Plugin_ResolverError.throwCallerFault(
-        "Expected string | undefined, received null",
-      )
+    let resolver = failingFixture(
+      ~namespace="Fault2",
+      ~failWith=() =>
+        ReventlessCore.Plugin_ResolverError.throwCallerFault(
+          "Expected string | undefined, received null",
+        ),
     )
     let caught = await invoke(resolver)
     expect(
@@ -277,8 +282,9 @@ describe("CommandGeneratorResolvers_GraphQL — a failure the caller may read", 
   // The control, and the reason the mark exists: an internal failure is not the
   // caller's business and must keep being masked.
   testPromise("an unmarked failure is left to be masked", async () => {
-    let resolver = failingFixture(~namespace="Fault3", ~failWith=() =>
-      JsError.throwWithMessage("connection to the event store was reset")
+    let resolver = failingFixture(
+      ~namespace="Fault3",
+      ~failWith=() => JsError.throwWithMessage("connection to the event store was reset"),
     )
     let caught = await invoke(resolver)
     expect(caught->Option.flatMap(JsExn.name))->not_->toEqual(Some("GraphQLError"))

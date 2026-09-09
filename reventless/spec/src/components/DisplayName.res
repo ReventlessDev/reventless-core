@@ -14,8 +14,10 @@ type displayNameSpec = {
 }
 
 /** Sury metadata ID used to attach a `displayNameSpec` to a state schema. */
-let displayNameId: S.Metadata.Id.t<displayNameSpec> =
-  S.Metadata.Id.make(~namespace="reventless", ~name="displayName")
+let displayNameId: S.Metadata.Id.t<displayNameSpec> = S.Metadata.Id.make(
+  ~namespace="reventless",
+  ~name="displayName",
+)
 
 /** Returns the spec attached to a state schema, if any. */
 let getSpec = (schema: S.t<unknown>): option<displayNameSpec> =>

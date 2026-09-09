@@ -11,9 +11,7 @@ describe("CaptionedImage:", () => {
   let field = CaptionedImage.forField(~store="productImages")
 
   testSync("carries the captioned-image semantic", () =>
-    expect(Semantic.get(field)->Option.map(s => s.id))->toEqual(
-      Some(Semantic.Id.captionedImage),
-    )
+    expect(Semantic.get(field)->Option.map(s => s.id))->toEqual(Some(Semantic.Id.captionedImage))
   )
 
   testSync("declares the store it was built for", () =>
@@ -34,12 +32,14 @@ describe("CaptionedImage:", () => {
     let store = schema =>
       StorageRef.getFieldStore(schema)->Option.map(((target, arity)) => (target.store, arity))
 
-    testSync("a bounded host's scalar declares one", () =>
-      expect(store(S.option(field)))->toEqual(Some(("productImages", StorageRef.Single)))
+    testSync(
+      "a bounded host's scalar declares one",
+      () => expect(store(S.option(field)))->toEqual(Some(("productImages", StorageRef.Single))),
     )
 
-    testSync("a set declares many", () =>
-      expect(store(S.array(field)))->toEqual(Some(("productImages", StorageRef.Multiple)))
+    testSync(
+      "a set declares many",
+      () => expect(store(S.array(field)))->toEqual(Some(("productImages", StorageRef.Multiple))),
     )
   })
 
@@ -47,20 +47,25 @@ describe("CaptionedImage:", () => {
   describe("the text that replaces the image:", () => {
     let ref = UploadableImage.unsafe("/uploads/00000000-0000-4000-8000-000000000001/a")
 
-    testSync("is the alt text when there is one", () =>
-      expect(CaptionedImage.altTextOf({ref, altText: "Blue shoe", caption: "Front view"}))->toEqual(
-        Some("Blue shoe"),
-      )
+    testSync(
+      "is the alt text when there is one",
+      () =>
+        expect(
+          CaptionedImage.altTextOf({ref, altText: "Blue shoe", caption: "Front view"}),
+        )->toEqual(Some("Blue shoe")),
     )
 
     // Deliberately impure: the pure rule would emit `alt=""` on a photo a host
     // captioned, which declares it decorative.
-    testSync("falls back to the caption rather than to nothing", () =>
-      expect(CaptionedImage.altTextOf({ref, caption: "Front view"}))->toEqual(Some("Front view"))
+    testSync(
+      "falls back to the caption rather than to nothing",
+      () =>
+        expect(CaptionedImage.altTextOf({ref, caption: "Front view"}))->toEqual(Some("Front view")),
     )
 
-    testSync("is absent when the member carries neither", () =>
-      expect(CaptionedImage.altTextOf({ref: ref}))->toEqual(None)
+    testSync(
+      "is absent when the member carries neither",
+      () => expect(CaptionedImage.altTextOf({ref: ref}))->toEqual(None),
     )
   })
 })

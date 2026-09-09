@@ -205,7 +205,10 @@ let make = (
   // 4096-byte UpdateFunctionConfiguration limit. Its content participates in
   // `sourceCodeHash`, so a change to the admin structure redeploys the code.
   let packageDirs = Dict.fromArray([
-    ("@reventlessdev/reventless-aws", Util_Bundle.resolvePackageRoot("@reventlessdev/reventless-aws")),
+    (
+      "@reventlessdev/reventless-aws",
+      Util_Bundle.resolvePackageRoot("@reventlessdev/reventless-aws"),
+    ),
   ])
   let {code, sourceCodeHash} = Util_Bundle.buildCodeArchive(
     ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Api/Platform_ComponentDefinitions_Lambda_Ops.res.mjs",
@@ -245,7 +248,12 @@ let make = (
       memorySize: 512->Pulumi.Input.make,
       timeout: 30->Pulumi.Input.make,
       layers,
-      tags: AWS.Tags.make(~name=name ++ "Lambda", ~kind=ReventlessCore.ComponentType.Platform, ~role=Runtime, ~scope=Platform),
+      tags: AWS.Tags.make(
+        ~name=name ++ "Lambda",
+        ~kind=ReventlessCore.ComponentType.Platform,
+        ~role=Runtime,
+        ~scope=Platform,
+      ),
       environment: (
         {
           Lambda.Function.variables: Dict.fromArray([

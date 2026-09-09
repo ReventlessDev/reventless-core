@@ -30,9 +30,9 @@ module type T = {
   let finish: unit => unit
 }
 
-let toResolvedOutputs = (
-  outputs: outputs,
-): Pulumi.Output.t<ReventlessInterop.ReadModel.resolvedOutputs> =>
+let toResolvedOutputs = (outputs: outputs): Pulumi.Output.t<
+  ReventlessInterop.ReadModel.resolvedOutputs,
+> =>
   outputs.queryDb.resources
   ->Adapter.resourcesToInterop
   ->Pulumi.Output.apply(queryDbResources => {

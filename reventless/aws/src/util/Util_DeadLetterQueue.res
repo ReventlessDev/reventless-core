@@ -158,7 +158,12 @@ let handler = Lambda.Function.make(
     memorySize: 128->Pulumi.Input.make,
     timeout: 30->Pulumi.Input.make,
     layers,
-    tags: AWS.Tags.make(~name, ~kind=ReventlessCore.ComponentType.Plugin, ~role=DeadLetter, ~scope=Plugin),
+    tags: AWS.Tags.make(
+      ~name,
+      ~kind=ReventlessCore.ComponentType.Plugin,
+      ~role=DeadLetter,
+      ~scope=Plugin,
+    ),
     environment: (
       {
         Lambda.Function.variables: Dict.fromArray([
@@ -176,7 +181,12 @@ let handler = Lambda.Function.make(
 // kind, mechanism-agnostic resource — no-op unless a backend is registered.
 let deadLetterResource = Util_Lambda.functionToResource(
   handler,
-  ~tags=AWS.Tags.make(~name, ~kind=ReventlessCore.ComponentType.Plugin, ~role=DeadLetter, ~scope=Plugin)->Pulumi.Output.fromInput,
+  ~tags=AWS.Tags.make(
+    ~name,
+    ~kind=ReventlessCore.ComponentType.Plugin,
+    ~role=DeadLetter,
+    ~scope=Plugin,
+  )->Pulumi.Output.fromInput,
 )
 
 ReventlessCore.Monitoring.notify(

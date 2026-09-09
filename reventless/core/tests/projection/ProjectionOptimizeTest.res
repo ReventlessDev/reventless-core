@@ -14,25 +14,29 @@ describe("Projection.optimizeActions", () => {
     let optimized = Projection.optimizeActions([Delete("a"), Update("a", x => x + 1), Set("a", 99)])
     // Was 3 (with a duplicated Update("a")) before the fix.
     expect(optimized->Array.length)->toBe(2)
-    let sets =
-      optimized->Array.filterMap(a =>
+    let sets = optimized->Array.filterMap(
+      a =>
         switch a {
         | Set(id, s) => Some((id, s))
         | _ => None
-        }
-      )
+        },
+    )
     expect(sets)->toEqual([("a", 99)])
   })
 
   testSync("merges a same-id Create+Update chain into a single Create", () => {
-    let optimized = Projection.optimizeActions([Create("a", 0), Update("a", x => x + 1), Update("a", x => x + 10)])
-    let creates =
-      optimized->Array.filterMap(a =>
+    let optimized = Projection.optimizeActions([
+      Create("a", 0),
+      Update("a", x => x + 1),
+      Update("a", x => x + 10),
+    ])
+    let creates = optimized->Array.filterMap(
+      a =>
         switch a {
         | Create(id, s) => Some((id, s))
         | _ => None
-        }
-      )
+        },
+    )
     expect(creates)->toEqual([("a", 11)])
   })
 })

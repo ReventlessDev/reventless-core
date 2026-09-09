@@ -73,24 +73,21 @@ let collisionMessage = (c: collision): string => {
     | None => ""
     }
   let sites = site(c.first) ++ site(c.second)
-  let where = sites == ""
-    ? `  Both keys appear in the platform's generated capability file, which records each ` ++
-      `declaring component and field as a comment.\n`
-    : sites
+  let where =
+    sites == ""
+      ? `  Both keys appear in the platform's generated capability file, which records each ` ++ `declaring component and field as a comment.\n`
+      : sites
   if c.nested {
     `Object store "${c.first.qualified}" is rooted at "${c.first.prefix}/", which encloses ` ++
     `"${c.second.qualified}" at "${c.second.prefix}/".\n` ++
     where ++
-    `  One store's objects would sit inside the other's — for serving, for upload grants and ` ++
-    `for a store wipe alike. Rename one of them.`
+    `  One store's objects would sit inside the other's — for serving, for upload grants and ` ++ `for a store wipe alike. Rename one of them.`
   } else {
     `Object stores "${c.first.qualified}" and "${c.second.qualified}" both root their objects ` ++
     `at "${c.first.prefix}/".\n` ++
     where ++
     `  A platform serves one cache behavior per prefix and scopes upload grants by prefix, so ` ++
     `two stores cannot share one.\n` ++
-    `  Rename one store, or — if they were meant to be one shared store — qualify the ` ++
-    `\`@storageRef\` annotation with the owning plugin.`
+    `  Rename one store, or — if they were meant to be one shared store — qualify the ` ++ `\`@storageRef\` annotation with the owning plugin.`
   }
 }
-

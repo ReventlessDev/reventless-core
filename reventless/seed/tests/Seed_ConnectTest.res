@@ -30,18 +30,22 @@ describe("Seed_Connect.roleFromEnv:", () => {
   )
 
   testSync("reads a named role as a narrowing to it", () =>
-    withEnv(Some("Shopper"), () =>
-      expect(Seed_Connect.roleFromEnv())->Expect.toEqual(Some(Seed_Connect.Narrowed("Shopper")))
+    withEnv(
+      Some("Shopper"),
+      () =>
+        expect(Seed_Connect.roleFromEnv())->Expect.toEqual(Some(Seed_Connect.Narrowed("Shopper"))),
     )
   )
 
   // Every spelling of "everything" an operator might reach for. They all mean
   // clear the stored choice, which is what seeding wants.
   testSync("takes each spelling of full membership as a clear", () =>
-    ["full", "all", "none", "clear", "FULL", "All"]->Array.forEach(v =>
-      withEnv(Some(v), () =>
-        expect(Seed_Connect.roleFromEnv())->Expect.toEqual(Some(Seed_Connect.Full))
-      )
+    ["full", "all", "none", "clear", "FULL", "All"]->Array.forEach(
+      v =>
+        withEnv(
+          Some(v),
+          () => expect(Seed_Connect.roleFromEnv())->Expect.toEqual(Some(Seed_Connect.Full)),
+        ),
     )
   )
 
@@ -49,10 +53,12 @@ describe("Seed_Connect.roleFromEnv:", () => {
   // so a named role is passed through untouched — only the clear vocabulary is
   // case-folded.
   testSync("passes a role name through with its case intact", () =>
-    withEnv(Some("Merchandiser"), () =>
-      expect(Seed_Connect.roleFromEnv())->Expect.toEqual(
-        Some(Seed_Connect.Narrowed("Merchandiser")),
-      )
+    withEnv(
+      Some("Merchandiser"),
+      () =>
+        expect(Seed_Connect.roleFromEnv())->Expect.toEqual(
+          Some(Seed_Connect.Narrowed("Merchandiser")),
+        ),
     )
   )
 })

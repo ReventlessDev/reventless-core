@@ -34,8 +34,7 @@ module type T = {
   // collect bodies too, but only after a manual `Promise.resolve` wrapper.
   let testSync: (string, unit => Outcome.outcome) => unit
 
-  type translateResult =
-    result<option<(string, Spec.inboundCommand)>, string>
+  type translateResult = result<option<(string, Spec.inboundCommand)>, string>
 
   // The state the pipeline carries after a translate attempt. `retries` counts
   // the number of failed re-attempts (0 for a single `whenTranslateMocked`).
@@ -68,11 +67,7 @@ module type T = {
     ~maxRetries: int,
     (string, Spec.outboundItem) => promise<translateResult>,
   ) => promise<attempt>
-  let thenCommand: (
-    promise<attempt>,
-    string,
-    Spec.inboundCommand,
-  ) => promise<Outcome.outcome>
+  let thenCommand: (promise<attempt>, string, Spec.inboundCommand) => promise<Outcome.outcome>
   let thenNoCommand: promise<attempt> => promise<Outcome.outcome>
   let thenRetryRecorded: (promise<attempt>, int) => promise<Outcome.outcome>
   let thenTodoStatus: (promise<attempt>, string, todoStatus) => promise<Outcome.outcome>
@@ -81,14 +76,12 @@ module type T = {
 module Make = (Spec: SliceSpec): (T with module Spec = Spec) => {
   module Spec = Spec
 
-
   let describe = JestBind.describe
   let test = (name, ~timeout=?, body) =>
     JestBind.testPromise(~slice=Spec.name, name, ~timeout?, body)
   let testSync = (name, body) => JestBind.test(~slice=Spec.name, name, body)
 
-  type translateResult =
-    result<option<(string, Spec.inboundCommand)>, string>
+  type translateResult = result<option<(string, Spec.inboundCommand)>, string>
 
   type attempt = {
     id: string,
@@ -100,8 +93,7 @@ module Make = (Spec: SliceSpec): (T with module Spec = Spec) => {
   let encItem = (i: Spec.outboundItem) => i->Message.encode(Spec.outboundItemSchema)
   let encItems = (arr: array<(string, Spec.outboundItem)>) =>
     arr->Array.map(((id, i)) => (id, encItem(i)))
-  let encInbound = (c: Spec.inboundCommand) =>
-    c->Message.encode(Spec.inboundCommandSchema)
+  let encInbound = (c: Spec.inboundCommand) => c->Message.encode(Spec.inboundCommandSchema)
 
   // Unit: collect
   //
@@ -139,7 +131,7 @@ module Make = (Spec: SliceSpec): (T with module Spec = Spec) => {
       }
     while failed() && retries.contents < maxRetries {
       retries := retries.contents + 1
-      result := await mock(id, item)
+      result := (await mock(id, item))
     }
     {id, item, result: result.contents, retries: retries.contents}
   }
@@ -169,10 +161,7 @@ module Make = (Spec: SliceSpec): (T with module Spec = Spec) => {
           actual: [],
         }),
       )
-    | Error(msg) =>
-      Outcome.fail(
-        TranslateError({expected: "(command)", actual: Some(msg)}),
-      )
+    | Error(msg) => Outcome.fail(TranslateError({expected: "(command)", actual: Some(msg)}))
     }
   }
 
@@ -180,12 +169,8 @@ module Make = (Spec: SliceSpec): (T with module Spec = Spec) => {
     let {result, _} = await pending
     switch result {
     | Ok(None) => Outcome.pass
-    | Ok(Some((id, cmd))) =>
-      Outcome.fail(NoEventExpected({actual: [commandPairJson(id, cmd)]}))
-    | Error(msg) =>
-      Outcome.fail(
-        TranslateError({expected: "(no command)", actual: Some(msg)}),
-      )
+    | Ok(Some((id, cmd))) => Outcome.fail(NoEventExpected({actual: [commandPairJson(id, cmd)]}))
+    | Error(msg) => Outcome.fail(TranslateError({expected: "(no command)", actual: Some(msg)}))
     }
   }
 
@@ -215,11 +200,10 @@ module Make = (Spec: SliceSpec): (T with module Spec = Spec) => {
 
   let thenTodoStatus = async (pending, expectedId, expectedStatus) => {
     let {id, result, _} = await pending
-    let actualStatus: todoStatus =
-      switch result {
-      | Ok(_) => #Completed
-      | Error(_) => #Pending
-      }
+    let actualStatus: todoStatus = switch result {
+    | Ok(_) => #Completed
+    | Error(_) => #Pending
+    }
     if id == expectedId && actualStatus == expectedStatus {
       Outcome.pass
     } else {

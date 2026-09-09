@@ -15,7 +15,6 @@ is the one thing a trait cannot be told in names.
 says is the host's sentence, so the emitted rule table carries a `TODO(graft)`
 marker in place of one — it compiles, runs, and is obvious in a diff.
 */
-
 /**
 The names a graft needs, and nothing else.
 
@@ -137,8 +136,8 @@ let namesOf = (c: config): names => {
     delivered: "NotificationDelivered",
     failed: "NotificationFailed",
     unknownError: n ++ "Unknown",
-    recipientId: (n->String.slice(~start=0, ~end=1))->String.toLowerCase ++
-      n->String.slice(~start=1, ~end=n->String.length) ++ "Id",
+    recipientId: n->String.slice(~start=0, ~end=1)->String.toLowerCase ++
+    n->String.slice(~start=1, ~end=n->String.length) ++ "Id",
   }
 }
 
@@ -154,13 +153,14 @@ let addressB = (c: config) => c.addressB->Option.getOr("new@example.com")
     graft, so a host whose component is registered under another name edits one
     line rather than discovering the convention. */
 let subjectTypeOf = (c: config) => {
-  let stem = c.occurrenceId->String.endsWith("Id")
-    ? c.occurrenceId->String.slice(~start=0, ~end=c.occurrenceId->String.length - 2)
-    : c.occurrenceId
+  let stem =
+    c.occurrenceId->String.endsWith("Id")
+      ? c.occurrenceId->String.slice(~start=0, ~end=c.occurrenceId->String.length - 2)
+      : c.occurrenceId
   switch stem {
   | "" => "Subject"
   | s =>
-    (s->String.slice(~start=0, ~end=1))->String.toUpperCase ++
+    s->String.slice(~start=0, ~end=1)->String.toUpperCase ++
       s->String.slice(~start=1, ~end=s->String.length)
   }
 }
@@ -373,19 +373,9 @@ let sliceBehavior = (c: config): string => {
           `  switch (category, channel) {`,
         ],
         postureArms(c),
-        [
-          `  }`,
-          ``,
-          `let categoryKey = (category: category) =>`,
-          `  switch category {`,
-        ],
+        [`  }`, ``, `let categoryKey = (category: category) =>`, `  switch category {`],
         c.categories->Array.map(cat => `  | ${cat} => "${cat}"`),
-        [
-          `  }`,
-          ``,
-          `let categoryOf = (key: string) =>`,
-          `  switch key {`,
-        ],
+        [`  }`, ``, `let categoryOf = (key: string) =>`, `  switch key {`],
         c.categories
         ->Array.filter(cat => cat != first)
         ->Array.map(cat => `  | "${cat}" => ${cat}`),

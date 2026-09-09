@@ -49,7 +49,9 @@ let readBatch = async (
     ~after=after->Option.flatMap(Dcb.decodeCursor),
     ~applyFence=true,
   )
-  let sql = `SELECT ${Dcb.selectColumns} FROM dcb_event WHERE ${where} ORDER BY transaction_id ASC, position ASC LIMIT ${Int.toString(limit)}`
+  let sql = `SELECT ${Dcb.selectColumns} FROM dcb_event WHERE ${where} ORDER BY transaction_id ASC, position ASC LIMIT ${Int.toString(
+      limit,
+    )}`
   let rows = await pool->PgDriver.query(sql, b.params)
   let events = rows->Array.map(Dcb.rowToEvent)
   let cursor = switch events->Array.get(events->Array.length - 1) {
@@ -63,10 +65,9 @@ let readBatch = async (
 
 // The persisted checkpoint for `subscriber`, encoded as a cursor, or None if the
 // subscriber has never committed (→ replay from the beginning).
-let loadCheckpoint = async (
-  pool: PgDriver.pool,
-  ~subscriber: string,
-): option<DcbTag.sequencePosition> =>
+let loadCheckpoint = async (pool: PgDriver.pool, ~subscriber: string): option<
+  DcbTag.sequencePosition,
+> =>
   switch await pool->PgDriver.queryOne(
     "SELECT lpad(last_tx::text, 20, '0') || ':' || lpad(last_position::text, 20, '0') AS cursor
        FROM dcb_subscription WHERE subscriber = $1 AND last_position > 0",
@@ -105,8 +106,9 @@ let saveCheckpoint = async (
 // dedicated client (caller owns it — release via PgDriver.unlisten). Pair with a
 // low-frequency fallback tick in the consumer loop so a missed NOTIFY only adds
 // latency, never a permanent stall.
-let listen = (pool: PgDriver.pool, ~logName: string, ~onWake: unit => unit): promise<PgDriver.client> =>
-  pool->PgDriver.listen(~channel="dcb_" ++ logName, ~onNotify=_ => onWake())
+let listen = (pool: PgDriver.pool, ~logName: string, ~onWake: unit => unit): promise<
+  PgDriver.client,
+> => pool->PgDriver.listen(~channel="dcb_" ++ logName, ~onNotify=_ => onWake())
 
 let unlisten = (client: PgDriver.client, ~logName: string): promise<unit> =>
   client->PgDriver.unlisten(~channel="dcb_" ++ logName)
@@ -129,7 +131,12 @@ let drain = async (
   let cursor = ref(await loadCheckpoint(pool, ~subscriber))
   let continue = ref(true)
   while continue.contents {
-    let {events, cursor: newCursor} = await readBatch(pool, ~logName, ~after=?cursor.contents, ~limit)
+    let {events, cursor: newCursor} = await readBatch(
+      pool,
+      ~logName,
+      ~after=?cursor.contents,
+      ~limit,
+    )
     if events->Array.length == 0 {
       continue := false
     } else {

@@ -5,14 +5,13 @@ Three arms rather than `option<GeoPoint.t>`, whose `None` means both "has not ru
 and "ran and failed". Emitted as a GraphQL union (see `Reventless.TaggedUnion`).
 Replacing a point/status/note trio with it is wire-breaking.
 */
-
 @schema
 type t =
-  | /** `requestedFor` is the address asked about, so a stale answer is detectable. */
-  Pending({requestedFor: string})
+  /** `requestedFor` is the address asked about, so a stale answer is detectable. */
+  | Pending({requestedFor: string})
   | Located({point: GeoPoint.t})
-  | /** Answered, with nothing storable unattended. A verdict for a human. */
-  Unresolvable({reason: string})
+  /** Answered, with nothing storable unattended. A verdict for a human. */
+  | Unresolvable({reason: string})
 
 /** Adds the two markers the shape cannot carry: the semantic, and the union name
     the SDL and the `__typename` stamp share. */
@@ -59,8 +58,7 @@ let ofSearch = (
     | Unscored(top) =>
       Some(
         Unresolvable({
-          reason: `the geocoder returned "${top.label}" for "${requestedFor}" without scoring it, ` ++
-          `and an unscored answer cannot be accepted unattended`,
+          reason: `the geocoder returned "${top.label}" for "${requestedFor}" without scoring it, ` ++ `and an unscored answer cannot be accepted unattended`,
         }),
       )
     | LowRelevance({top, score, floor}) =>
@@ -73,8 +71,7 @@ let ofSearch = (
     | Ambiguous({top, runnerUp}) =>
       Some(
         Unresolvable({
-          reason: `"${requestedFor}" matched "${top.label}" and "${runnerUp.label}" ` ++
-          `about equally well`,
+          reason: `"${requestedFor}" matched "${top.label}" and "${runnerUp.label}" ` ++ `about equally well`,
         }),
       )
     }

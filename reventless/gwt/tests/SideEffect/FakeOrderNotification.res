@@ -17,7 +17,6 @@ let moduleUrl = "test://FakeOrderNotification"
 
 let execute = async (id, _meta, event, _queryEngine) =>
   switch event {
-  | Source.Placed({email}) =>
-    MockEmail.recordSend(~email, ~orderId=Source.Id.toString(id))
+  | Source.Placed({email}) => MockEmail.recordSend(~email, ~orderId=Source.Id.toString(id))
   | Source.Shipped => ()
   }

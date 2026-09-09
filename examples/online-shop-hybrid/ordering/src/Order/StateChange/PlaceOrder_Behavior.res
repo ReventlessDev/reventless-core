@@ -60,7 +60,7 @@ let evolve = (state, event: consumedEvent) =>
   // Clears as well as sets. A product whose last picture was removed *before*
   // an order is placed must record no picture — freezing the one it used to have
   // would not be a record of the purchase, it would be staleness.
-  | CatalogProductImageChanged({productId, productImage: ?productImage}) => {
+  | CatalogProductImageChanged({productId, ?productImage}) => {
       ...state,
       productImages: switch productImage {
       | Some(image) => state.productImages->replacing(productId, image)
@@ -116,7 +116,7 @@ let priceLines = (state, lineItems: array<lineItem>): result<array<orderLine>, e
 
 let decide = (state, command) =>
   switch command {
-  | PlaceOrder({orderId, customerId, lineItems, shippingMethod, deliveryWindow: ?deliveryWindow}) =>
+  | PlaceOrder({orderId, customerId, lineItems, shippingMethod, ?deliveryWindow}) =>
     if state.placedOrderIds->Array.includes(orderId) {
       Error(OrderAlreadyPlaced)
     } else if lineItems->Array.length == 0 {
@@ -154,8 +154,7 @@ let decide = (state, command) =>
               // names were carried.
               let first = lines->Array.get(0)->Option.map(line => line.productId)
               let firstProductName = lines->Array.get(0)->Option.map(line => line.name)
-              let firstProductImage =
-                first->Option.flatMap(id => state.productImages->lookup(id))
+              let firstProductImage = first->Option.flatMap(id => state.productImages->lookup(id))
               Ok([
                 OrderPlaced({
                   orderId,
@@ -164,9 +163,9 @@ let decide = (state, command) =>
                   lines,
                   total,
                   shippingMethod,
-                  deliveryWindow: ?deliveryWindow,
-                  firstProductName: ?firstProductName,
-                  firstProductImage: ?firstProductImage,
+                  ?deliveryWindow,
+                  ?firstProductName,
+                  ?firstProductImage,
                 }),
               ])
             }

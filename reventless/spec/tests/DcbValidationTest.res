@@ -23,17 +23,25 @@ describe("DcbValidation.schemasAreCompatible", () => {
   testSync("identical object shapes are compatible", () =>
     expect(DcbValidation.schemasAreCompatible(u(flatSchema), u(flatSameShapeSchema)))->toEqual(true)
   )
-  testSync("a differing field type is incompatible (the A8 fix — not every Object pair passes)", () =>
-    expect(DcbValidation.schemasAreCompatible(u(flatSchema), u(flatTypeDriftSchema)))->toEqual(false)
+  testSync(
+    "a differing field type is incompatible (the A8 fix — not every Object pair passes)",
+    () =>
+      expect(DcbValidation.schemasAreCompatible(u(flatSchema), u(flatTypeDriftSchema)))->toEqual(
+        false,
+      ),
   )
   testSync("a differing field name is incompatible", () =>
-    expect(DcbValidation.schemasAreCompatible(u(flatSchema), u(flatNameDriftSchema)))->toEqual(false)
+    expect(DcbValidation.schemasAreCompatible(u(flatSchema), u(flatNameDriftSchema)))->toEqual(
+      false,
+    )
   )
   testSync("identical nested payloads are compatible", () =>
     expect(DcbValidation.schemasAreCompatible(u(nestedSchema), u(nestedSchema)))->toEqual(true)
   )
   testSync("nested payload drift is caught by the recursion", () =>
-    expect(DcbValidation.schemasAreCompatible(u(nestedSchema), u(nestedDriftSchema)))->toEqual(false)
+    expect(DcbValidation.schemasAreCompatible(u(nestedSchema), u(nestedDriftSchema)))->toEqual(
+      false,
+    )
   )
 })
 

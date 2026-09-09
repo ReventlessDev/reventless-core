@@ -9,7 +9,6 @@
     `dirname` and `filename` are Node's own additions and are defined only for
     `file:` URLs; a bundler that rewrites modules to CommonJS drops them. `url`
     is the portable form and the one to reach for when either could apply. */
-
 @val @scope(("import", "meta"))
 external url: string = "url"
 

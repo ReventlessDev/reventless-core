@@ -407,11 +407,11 @@ let logInfo = (msg: string) =>
   Effect.serviceWith(Logger.tag, logger => logger.info(msg))
 ```
 */
-// `effect` exports no `serviceWith` function: since v3 a `Tag` *is* an effect
+external // `effect` exports no `serviceWith` function: since v3 a `Tag` *is* an effect
 // that yields its service, so reading one is a plain `map` over the tag. Binding
 // the name directly compiles but dies at call time with "not a function" — it did,
 // which is how this was found.
-external tagAsEffect: Context.tag<'service> => t<'service, 'e, 'service> = "%identity"
+tagAsEffect: Context.tag<'service> => t<'service, 'e, 'service> = "%identity"
 
 let serviceWith = (tag: Context.tag<'service>, f: 'service => 'b): t<'b, 'e, 'service> =>
   tag->tagAsEffect->map(f)
@@ -427,10 +427,11 @@ let logInfo = (msg: string) =>
   Effect.serviceWithEffect(Logger.tag, logger => logger.info(msg))
 ```
 */
-let serviceWithEffect = (
-  tag: Context.tag<'service>,
-  f: 'service => t<'a, 'e, 'service>,
-): t<'a, 'e, 'service> => tag->tagAsEffect->flatMap(f)
+let serviceWithEffect = (tag: Context.tag<'service>, f: 'service => t<'a, 'e, 'service>): t<
+  'a,
+  'e,
+  'service,
+> => tag->tagAsEffect->flatMap(f)
 
 /**
 Satisfies a single service requirement by supplying a concrete implementation.

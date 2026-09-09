@@ -23,14 +23,12 @@ module CounterMaker = Counter_Builder.Make(Bus)
 
 let counterEvents: ref<array<JSON.t>> = ref([])
 
-let counter = CounterMaker.make(
-  ~name="TestCounter",
-  ~jsonEventsHandler=stream =>
-    stream
-    ->Stream.runCollect
-    ->Effect.map(chunk => {
-      counterEvents := counterEvents.contents->Array.concat(chunk)
-    }),
+let counter = CounterMaker.make(~name="TestCounter", ~jsonEventsHandler=stream =>
+  stream
+  ->Stream.runCollect
+  ->Effect.map(chunk => {
+    counterEvents := counterEvents.contents->Array.concat(chunk)
+  })
 )
 
 // ─────────────────────────────────────────────────────────────

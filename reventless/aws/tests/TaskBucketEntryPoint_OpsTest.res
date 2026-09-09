@@ -11,7 +11,6 @@ open JestGlobals
 let str = JSON.Encode.string
 let obj = pairs => JSON.Encode.object(Dict.fromArray(pairs))
 
-
 describe("TaskBucketEntryPoint_Ops.parseHandlerConfig", () => {
   testSync("empty raw config decodes to empty defaults", () => {
     let c = TaskBucketEntryPoint_Ops.parseHandlerConfig("")
@@ -21,18 +20,19 @@ describe("TaskBucketEntryPoint_Ops.parseHandlerConfig", () => {
   })
 
   testSync("decodes callbackModule, publishToAggregates, and scheduler env names", () => {
-    let config = obj([
-      ("callbackModule", str("@x/plugin/src/Task/ImportCatalog.res.mjs")),
-      ("publishToAggregates", obj([("Product", str("PTA_Product_QUEUE_URL"))])),
-      (
-        "scheduler",
-        obj([
-          ("roleArnEnv", str("SCHEDULER_ROLE_ARN")),
-          ("targetArnEnv", str("SCHEDULER_TARGET_ARN")),
-          ("targetNameEnv", str("SCHEDULER_TARGET_NAME")),
-        ]),
-      ),
-    ])->JSON.stringify
+    let config =
+      obj([
+        ("callbackModule", str("@x/plugin/src/Task/ImportCatalog.res.mjs")),
+        ("publishToAggregates", obj([("Product", str("PTA_Product_QUEUE_URL"))])),
+        (
+          "scheduler",
+          obj([
+            ("roleArnEnv", str("SCHEDULER_ROLE_ARN")),
+            ("targetArnEnv", str("SCHEDULER_TARGET_ARN")),
+            ("targetNameEnv", str("SCHEDULER_TARGET_NAME")),
+          ]),
+        ),
+      ])->JSON.stringify
     let c = TaskBucketEntryPoint_Ops.parseHandlerConfig(config)
     expect(c.callbackModule)->toBe("@x/plugin/src/Task/ImportCatalog.res.mjs")
     expect(c.publishToAggregates->Dict.get("Product"))->toEqual(Some("PTA_Product_QUEUE_URL"))

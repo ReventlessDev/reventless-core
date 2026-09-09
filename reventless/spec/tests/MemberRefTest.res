@@ -56,34 +56,42 @@ describe("MemberRef:", () => {
   describe("through the wrappers around a field's value:", () => {
     let fieldTarget = schema => MemberRef.getFieldTarget(schema->S.castToUnknown)
 
-    testSync("an optional field keeps its declaration", () =>
-      expect(
-        fieldTarget(S.option(MemberRef.of_(~field="productImages")))->Option.map(t => t.field),
-      )->toEqual(Some("productImages"))
+    testSync(
+      "an optional field keeps its declaration",
+      () =>
+        expect(
+          fieldTarget(S.option(MemberRef.of_(~field="productImages")))->Option.map(t => t.field),
+        )->toEqual(Some("productImages")),
     )
 
-    testSync("an array field's element declaration is the field's", () =>
-      expect(
-        fieldTarget(S.array(MemberRef.of_(~field="productImages")))->Option.map(t => t.field),
-      )->toEqual(Some("productImages"))
+    testSync(
+      "an array field's element declaration is the field's",
+      () =>
+        expect(
+          fieldTarget(S.array(MemberRef.of_(~field="productImages")))->Option.map(t => t.field),
+        )->toEqual(Some("productImages")),
     )
 
-    testSync("an optional array is followed through both wrappers", () =>
-      expect(
-        fieldTarget(S.option(S.array(MemberRef.of_(~field="productImages"))))->Option.map(t =>
-          t.field
-        ),
-      )->toEqual(Some("productImages"))
+    testSync(
+      "an optional array is followed through both wrappers",
+      () =>
+        expect(
+          fieldTarget(S.option(S.array(MemberRef.of_(~field="productImages"))))->Option.map(
+            t => t.field,
+          ),
+        )->toEqual(Some("productImages")),
     )
 
-    testSync("a plain string field declares nothing", () =>
-      expect(fieldTarget(S.string))->toBe(None)
+    testSync(
+      "a plain string field declares nothing",
+      () => expect(fieldTarget(S.string))->toBe(None),
     )
 
     // A field of some *other* semantic must not read as a selection — the two
     // travel the same marker and are told apart by their payload alone.
-    testSync("a store-declaring field is not a selection", () =>
-      expect(fieldTarget(UploadableImage.forField(~store="productImages")))->toBe(None)
+    testSync(
+      "a store-declaring field is not a selection",
+      () => expect(fieldTarget(UploadableImage.forField(~store="productImages")))->toBe(None),
     )
   })
 })

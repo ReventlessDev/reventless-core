@@ -21,7 +21,7 @@ type awsCredentials = {
 // defaultProvider() returns a credential-provider function.
 // It resolves credentials from env vars → SSO → ini files → IMDSv2.
 @module("@aws-sdk/credential-provider-node")
-external defaultProvider: unit => (unit => promise<awsCredentials>) = "defaultProvider"
+external defaultProvider: unit => unit => promise<awsCredentials> = "defaultProvider"
 
 // ── SigV4 signer ──────────────────────────────────────────────────────────────
 
@@ -139,10 +139,12 @@ let buildQuery = (
 
 // Signs and sends a GraphQL query; returns the `data` object or None on error.
 // ~queryString must be a complete "query { field(...) { ... } }" string.
-let sendQuery = async (~endpoint: string, ~region: string, ~queryString: string): option<JSON.t> => {
+let sendQuery = async (~endpoint: string, ~region: string, ~queryString: string): option<
+  JSON.t,
+> => {
   let url = parseUrl(endpoint)
-  let hostname: string = (url)["hostname"]
-  let path: string = (url)["pathname"]
+  let hostname: string = url["hostname"]
+  let path: string = url["pathname"]
 
   let body =
     Dict.fromArray([("query", queryString->JSON.Encode.string)])
@@ -186,19 +188,18 @@ let sendMutation = async (
   ~variables: 'a,
 ) => {
   let url = parseUrl(endpoint)
-  let hostname: string = (url)["hostname"]
-  let path: string = (url)["pathname"]
+  let hostname: string = url["hostname"]
+  let path: string = url["pathname"]
 
   // Normalise variables to a JSON.t dict (strips undefined optional fields)
-  let variablesDict: dict<JSON.t> =
-    switch variables->JSON.stringifyAny {
-    | Some(str) =>
-      switch str->JSON.parseOrThrow {
-      | Object(d) => d
-      | _ => Dict.make()
-      }
-    | None => Dict.make()
+  let variablesDict: dict<JSON.t> = switch variables->JSON.stringifyAny {
+  | Some(str) =>
+    switch str->JSON.parseOrThrow {
+    | Object(d) => d
+    | _ => Dict.make()
     }
+  | None => Dict.make()
+  }
 
   let query = buildQuery(~mutation, ~selection, ~variablesDict)
   let body =

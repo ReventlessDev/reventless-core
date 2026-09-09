@@ -38,9 +38,15 @@ module Make = (
     }
 
     module SpecificQueryDb = QueryDb_Builder.Make(SvQueryDbSpec, QueryDbStorage, QueryDbResolvers)
-    module SpecificEventCollector = EventCollector_Builder.Make(RuntimeEnvironment, EventCollectorChannel)
+    module SpecificEventCollector = EventCollector_Builder.Make(
+      RuntimeEnvironment,
+      EventCollectorChannel,
+    )
 
-    let toProjectionOps = (ops: SpecificQueryDb.operations): QueryDb.operations<string, Spec.state> => {
+    let toProjectionOps = (ops: SpecificQueryDb.operations): QueryDb.operations<
+      string,
+      Spec.state,
+    > => {
       load: id => ops.load(id->Reventless.Id.String.makeFromString),
       loadStream: id => ops.loadStream(id->Reventless.Id.String.makeFromString),
       save: (id, s, sm, ttl) => ops.save(id->Reventless.Id.String.makeFromString, s, sm, ttl),
@@ -94,32 +100,31 @@ module Make = (
             ->Effect.flatMap(events => {
               let total = events->Array.length->Int.toString
               events
-              ->Array.mapWithIndex((json, i) => {
-                let envelopeDict = json->JSON.Decode.object->Option.getOr(Dict.make())
-                let rawEvent = envelopeDict->Dict.get("event")->Option.getOr(json)
-                // Events arrive as `{id, meta, recordedAt, event}` envelopes
-                // (Message.composeEventJson' / ProjectionCheckpoint catch-up).
-                // Surface `meta` + `recordedAt` to the projection as `consumed`;
-                // fall back defensively so a malformed envelope never drops the event.
-                let meta = switch envelopeDict->Dict.get("meta") {
-                | Some(m) =>
-                  switch m->Reventless.Util_Sury.fromJson(Message.metaSchema) {
-                  | parsed => parsed
-                  | exception _ => Message.generateMeta(~service=Spec.name)
+              ->Array.mapWithIndex(
+                (json, i) => {
+                  let envelopeDict = json->JSON.Decode.object->Option.getOr(Dict.make())
+                  let rawEvent = envelopeDict->Dict.get("event")->Option.getOr(json)
+                  // Events arrive as `{id, meta, recordedAt, event}` envelopes
+                  // (Message.composeEventJson' / ProjectionCheckpoint catch-up).
+                  // Surface `meta` + `recordedAt` to the projection as `consumed`;
+                  // fall back defensively so a malformed envelope never drops the event.
+                  let meta = switch envelopeDict->Dict.get("meta") {
+                  | Some(m) =>
+                    switch m->Reventless.Util_Sury.fromJson(Message.metaSchema) {
+                    | parsed => parsed
+                    | exception _ => Message.generateMeta(~service=Spec.name)
+                    }
+                  | None => Message.generateMeta(~service=Spec.name)
                   }
-                | None => Message.generateMeta(~service=Spec.name)
-                }
-                let recordedAt =
-                  envelopeDict
-                  ->Dict.get("recordedAt")
-                  ->Option.flatMap(JSON.Decode.string)
-                  ->Option.getOr("")
-                let (eventType, dataDict) = rawEvent->Message.splitMessage
-                switch decoder.decode(~eventType, ~data=dataDict) {
-                | Some(event) =>
-                  let actions =
-                    try Projection.project({event, meta, recordedAt})
-                    catch {
+                  let recordedAt =
+                    envelopeDict
+                    ->Dict.get("recordedAt")
+                    ->Option.flatMap(JSON.Decode.string)
+                    ->Option.getOr("")
+                  let (eventType, dataDict) = rawEvent->Message.splitMessage
+                  switch decoder.decode(~eventType, ~data=dataDict) {
+                  | Some(event) =>
+                    let actions = try Projection.project({event, meta, recordedAt}) catch {
                     | exn =>
                       let errMsg =
                         exn
@@ -132,46 +137,56 @@ module Make = (
                       )->Effect.runSync
                       []
                     }
-                  let idxStr = (i + 1)->Int.toString
-                  let actionsStr = LogFormat.actionNames(actions)
-                  let eventData = dataDict->JSON.Encode.object
-                  let fieldsStr = {
-                    let f =
-                      dataDict
-                      ->Dict.toArray
-                      ->Array.map(((k, v)) => `${k}:${v->JSON.stringify}`)
-                      ->Array.join(",")
-                    f == "" ? "" : `({${f}})`
+                    let idxStr = (i + 1)->Int.toString
+                    let actionsStr = LogFormat.actionNames(actions)
+                    let eventData = dataDict->JSON.Encode.object
+                    let fieldsStr = {
+                      let f =
+                        dataDict
+                        ->Dict.toArray
+                        ->Array.map(((k, v)) => `${k}:${v->JSON.stringify}`)
+                        ->Array.join(",")
+                      f == "" ? "" : `({${f}})`
+                    }
+                    EffectLogger.logInfo(
+                      ~comp,
+                      ~detail=eventData,
+                      `handling event ${idxStr}/${total}: ${LogFormat.bold(
+                          eventType,
+                        )}${fieldsStr} ${actionsStr}`,
+                    )->Effect.runSync
+                    // A slice's state carries the same synthetic `displayName` the
+                    // ppx injects for a read model's, and the same lifecycle trail.
+                    // Rewritten here rather than at the apply below because the
+                    // trail entry is stamped with this envelope's own time.
+                    actions->Array.map(
+                      FrameworkProjection.rewriteAction(_, ~at=meta.time, Spec.stateSchema),
+                    )
+                  | None => []
                   }
-                  EffectLogger.logInfo(
-                    ~comp,
-                    ~detail=eventData,
-                    `handling event ${idxStr}/${total}: ${LogFormat.bold(eventType)}${fieldsStr} ${actionsStr}`,
-                  )->Effect.runSync
-                  // A slice's state carries the same synthetic `displayName` the
-                  // ppx injects for a read model's, and the same lifecycle trail.
-                  // Rewritten here rather than at the apply below because the
-                  // trail entry is stamped with this envelope's own time.
-                  actions->Array.map(
-                    FrameworkProjection.rewriteAction(_, ~at=meta.time, Spec.stateSchema),
-                  )
-                | None => []
-                }
-              })
+                },
+              )
               ->Array.flat
-              ->Array.reduce(Effect.succeed(), (acc, action) =>
-                acc->Effect.flatMap(_ => {
-                  Effect.promise(() =>
-                    FrameworkProjection.handleAction(~comp, action, projectionOps, Spec.subIdConfig)
-                  )->Effect.map(_ => ())
-                })
+              ->Array.reduce(
+                Effect.succeed(),
+                (acc, action) =>
+                  acc->Effect.flatMap(
+                    _ => {
+                      Effect.promise(
+                        () =>
+                          FrameworkProjection.handleAction(
+                            ~comp,
+                            action,
+                            projectionOps,
+                            Spec.subIdConfig,
+                          ),
+                      )->Effect.map(_ => ())
+                    },
+                  ),
               )
             })
 
-          let handler = SpecificEventCollector.makeHandler(
-            ~eventCollector=ec,
-            ~jsonEventsHandler,
-          )
+          let handler = SpecificEventCollector.makeHandler(~eventCollector=ec, ~jsonEventsHandler)
           let resources = (queryDb->Component.outputs).resources
           ec->EventCollectorRuntimeBuilder.forEventCollector(
             ~handler,
@@ -199,11 +214,7 @@ module Make = (
       self->Component.setOutputs(outputs)
     }
 
-    let make = (
-      ~dcbEventLog,
-      ~runtime=?,
-      ~opts=?,
-    ): StateViewSlice.component =>
+    let make = (~dcbEventLog, ~runtime=?, ~opts=?): StateViewSlice.component =>
       Component.make(
         ~componentType=StateViewSlice.componentType->ComponentType.toString,
         ~name=Spec.name,

@@ -8,29 +8,38 @@ describe("Logger.debugLazy", () => {
   testSync("does NOT invoke the thunk at the default Info level", () => {
     let called = ref(false)
     let log = Logger.makeLogger(~minLevel=Logger.Info)
-    log.debugLazy(~comp="Test", () => {
-      called := true
-      "should never be built"
-    })
+    log.debugLazy(
+      ~comp="Test",
+      () => {
+        called := true
+        "should never be built"
+      },
+    )
     expect(called.contents)->toEqual(false)
   })
 
   testSync("invokes the thunk when debug output is enabled", () => {
     let called = ref(false)
     let log = Logger.makeLogger(~minLevel=Logger.Debug)
-    log.debugLazy(~comp="Test", () => {
-      called := true
-      "built"
-    })
+    log.debugLazy(
+      ~comp="Test",
+      () => {
+        called := true
+        "built"
+      },
+    )
     expect(called.contents)->toEqual(true)
   })
 
   testSync("the silent logger never invokes the thunk", () => {
     let called = ref(false)
-    Logger.silent.debugLazy(~comp="Test", () => {
-      called := true
-      "x"
-    })
+    Logger.silent.debugLazy(
+      ~comp="Test",
+      () => {
+        called := true
+        "x"
+      },
+    )
     expect(called.contents)->toEqual(false)
   })
 })

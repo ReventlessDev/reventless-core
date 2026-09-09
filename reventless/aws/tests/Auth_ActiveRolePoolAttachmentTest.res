@@ -51,10 +51,7 @@ let describedPool = () =>
         ),
       ])->JSON.Encode.object,
     ),
-    (
-      "UserPoolTags",
-      Dict.fromArray([("CostCentre", str("identity"))])->JSON.Encode.object,
-    ),
+    ("UserPoolTags", Dict.fromArray([("CostCentre", str("identity"))])->JSON.Encode.object),
     (
       "LambdaConfig",
       Dict.fromArray([
@@ -73,8 +70,7 @@ let merged = (~preTokenGenerationArn) =>
 
 let triggerArn = "arn:aws:lambda:eu-west-1:1:function:ActiveRoleTrigger"
 
-let lambdaConfigOf = input =>
-  input->Dict.get("LambdaConfig")->Option.flatMap(JSON.Decode.object)
+let lambdaConfigOf = input => input->Dict.get("LambdaConfig")->Option.flatMap(JSON.Decode.object)
 
 /** The `PreTokenGenerationConfig` an attach is expected to write: our ARN, at the
     only version the trigger handler implements. */
@@ -159,10 +155,16 @@ describe("Auth_ActiveRolePoolAttachment.mergedUpdateInput — shaping for the AP
 
   testSync("read-only fields UpdateUserPool rejects are not sent", () =>
     expect(
-      ["Id", "Arn", "Status", "CreationDate", "LastModifiedDate", "SchemaAttributes",
-       "UsernameAttributes", "EstimatedNumberOfUsers"]->Array.filter(k =>
-        input->Dict.get(k)->Option.isSome
-      ),
+      [
+        "Id",
+        "Arn",
+        "Status",
+        "CreationDate",
+        "LastModifiedDate",
+        "SchemaAttributes",
+        "UsernameAttributes",
+        "EstimatedNumberOfUsers",
+      ]->Array.filter(k => input->Dict.get(k)->Option.isSome),
     )->toEqual([])
   )
 })
@@ -211,98 +213,102 @@ describe("Auth_ActiveRolePoolAttachment.mergedUpdateInput — a pool with nothin
 // in two fields, and `UpdateUserPool` rejects the call when both are present
 // naming different functions. Nothing in this suite carried a
 // `PreTokenGenerationConfig` before, which is exactly why it shipped.
-describe("Auth_ActiveRolePoolAttachment.mergedUpdateInput — a pool already on the V2 field", () => {
-  let theirArn = "arn:aws:lambda:eu-west-1:1:function:TheirOwnPreToken"
+describe(
+  "Auth_ActiveRolePoolAttachment.mergedUpdateInput — a pool already on the V2 field",
+  () => {
+    let theirArn = "arn:aws:lambda:eu-west-1:1:function:TheirOwnPreToken"
 
-  let describedWithConfig = (~version) =>
-    Dict.fromArray([
-      ("Name", str("CustomerPool")),
-      (
-        "LambdaConfig",
-        Dict.fromArray([
-          ("PreSignUp", str("arn:aws:lambda:eu-west-1:1:function:TheirPreSignUp")),
-          ("PreTokenGeneration", str(theirArn)),
-          (
-            "PreTokenGenerationConfig",
-            Dict.fromArray([
-              ("LambdaArn", str(theirArn)),
-              ("LambdaVersion", str(version)),
-            ])->JSON.Encode.object,
-          ),
-        ])->JSON.Encode.object,
-      ),
-    ])
+    let describedWithConfig = (~version) =>
+      Dict.fromArray([
+        ("Name", str("CustomerPool")),
+        (
+          "LambdaConfig",
+          Dict.fromArray([
+            ("PreSignUp", str("arn:aws:lambda:eu-west-1:1:function:TheirPreSignUp")),
+            ("PreTokenGeneration", str(theirArn)),
+            (
+              "PreTokenGenerationConfig",
+              Dict.fromArray([
+                ("LambdaArn", str(theirArn)),
+                ("LambdaVersion", str(version)),
+              ])->JSON.Encode.object,
+            ),
+          ])->JSON.Encode.object,
+        ),
+      ])
 
-  let attachOnto = (~version) =>
-    Attachment.mergedUpdateInput(
-      ~described=describedWithConfig(~version),
-      ~userPoolId="eu-west-1_abc123",
-      ~preTokenGenerationArn=Some(triggerArn),
-    )
-
-  // The property AWS enforces, asserted directly rather than through its error
-  // text: the two fields must name the same function.
-  testSync("both fields name our trigger, and the same one", () => {
-    let config = lambdaConfigOf(attachOnto(~version="V1_0"))
-    expect((
-      config->Option.flatMap(c => c->Dict.get("PreTokenGeneration")),
-      config
-      ->Option.flatMap(c => c->Dict.get("PreTokenGenerationConfig"))
-      ->Option.flatMap(JSON.Decode.object)
-      ->Option.flatMap(c => c->Dict.get("LambdaArn")),
-    ))->toEqual((Some(str(triggerArn)), Some(str(triggerArn))))
-  })
-
-  // A pool left on V2_0 does not fail — the handler answers in V1_0 shape and
-  // Cognito ignores it, so tokens mint un-narrowed and nothing reports it.
-  testSync("a pool that arrived on V2_0 is pinned back to the version we implement", () =>
-    expect(
-      lambdaConfigOf(attachOnto(~version="V2_0"))
-      ->Option.flatMap(c => c->Dict.get("PreTokenGenerationConfig"))
-      ->Option.flatMap(JSON.Decode.object)
-      ->Option.flatMap(c => c->Dict.get("LambdaVersion")),
-    )->toEqual(Some(str("V1_0")))
-  )
-
-  testSync("the customer's other triggers still survive", () =>
-    expect(
-      lambdaConfigOf(attachOnto(~version="V1_0"))->Option.flatMap(c => c->Dict.get("PreSignUp")),
-    )->toEqual(Some(str("arn:aws:lambda:eu-west-1:1:function:TheirPreSignUp")))
-  )
-
-  testSync("detaching removes both fields, not just the legacy one", () => {
-    let config = lambdaConfigOf(
+    let attachOnto = (~version) =>
       Attachment.mergedUpdateInput(
-        ~described=describedWithConfig(~version="V1_0"),
+        ~described=describedWithConfig(~version),
         ~userPoolId="eu-west-1_abc123",
-        ~preTokenGenerationArn=None,
-      ),
-    )
-    expect((
-      config->Option.flatMap(c => c->Dict.get("PreTokenGeneration")),
-      config->Option.flatMap(c => c->Dict.get("PreTokenGenerationConfig")),
-    ))->toEqual((None, None))
-  })
+        ~preTokenGenerationArn=Some(triggerArn),
+      )
 
-  // The fixpoint property, and the one that would have caught this: AWS
-  // materialises whichever field the merge did not write, so the merge has to
-  // accept its own output unchanged or a later deploy fails with nothing altered
-  // but the service normalising its own record.
-  testSync("feeding the merge its own output back changes nothing", () => {
-    let once = attachOnto(~version="V1_0")
-    let twice = Attachment.mergedUpdateInput(
-      ~described=once,
-      ~userPoolId="eu-west-1_abc123",
-      ~preTokenGenerationArn=Some(triggerArn),
+    // The property AWS enforces, asserted directly rather than through its error
+    // text: the two fields must name the same function.
+    testSync("both fields name our trigger, and the same one", () => {
+      let config = lambdaConfigOf(attachOnto(~version="V1_0"))
+      expect((
+        config->Option.flatMap(c => c->Dict.get("PreTokenGeneration")),
+        config
+        ->Option.flatMap(c => c->Dict.get("PreTokenGenerationConfig"))
+        ->Option.flatMap(JSON.Decode.object)
+        ->Option.flatMap(c => c->Dict.get("LambdaArn")),
+      ))->toEqual((Some(str(triggerArn)), Some(str(triggerArn))))
+    })
+
+    // A pool left on V2_0 does not fail — the handler answers in V1_0 shape and
+    // Cognito ignores it, so tokens mint un-narrowed and nothing reports it.
+    testSync("a pool that arrived on V2_0 is pinned back to the version we implement", () =>
+      expect(
+        lambdaConfigOf(attachOnto(~version="V2_0"))
+        ->Option.flatMap(c => c->Dict.get("PreTokenGenerationConfig"))
+        ->Option.flatMap(JSON.Decode.object)
+        ->Option.flatMap(c => c->Dict.get("LambdaVersion")),
+      )->toEqual(Some(str("V1_0")))
     )
-    expect(lambdaConfigOf(twice))->toEqual(lambdaConfigOf(once))
-  })
-})
+
+    testSync("the customer's other triggers still survive", () =>
+      expect(
+        lambdaConfigOf(attachOnto(~version="V1_0"))->Option.flatMap(c => c->Dict.get("PreSignUp")),
+      )->toEqual(Some(str("arn:aws:lambda:eu-west-1:1:function:TheirPreSignUp")))
+    )
+
+    testSync("detaching removes both fields, not just the legacy one", () => {
+      let config = lambdaConfigOf(
+        Attachment.mergedUpdateInput(
+          ~described=describedWithConfig(~version="V1_0"),
+          ~userPoolId="eu-west-1_abc123",
+          ~preTokenGenerationArn=None,
+        ),
+      )
+      expect((
+        config->Option.flatMap(c => c->Dict.get("PreTokenGeneration")),
+        config->Option.flatMap(c => c->Dict.get("PreTokenGenerationConfig")),
+      ))->toEqual((None, None))
+    })
+
+    // The fixpoint property, and the one that would have caught this: AWS
+    // materialises whichever field the merge did not write, so the merge has to
+    // accept its own output unchanged or a later deploy fails with nothing altered
+    // but the service normalising its own record.
+    testSync("feeding the merge its own output back changes nothing", () => {
+      let once = attachOnto(~version="V1_0")
+      let twice = Attachment.mergedUpdateInput(
+        ~described=once,
+        ~userPoolId="eu-west-1_abc123",
+        ~preTokenGenerationArn=Some(triggerArn),
+      )
+      expect(lambdaConfigOf(twice))->toEqual(lambdaConfigOf(once))
+    })
+  },
+)
 
 describe("Auth_ActiveRolePoolAttachment.attachedTrigger", () => {
   testSync("reports the trigger a described pool carries", () =>
-    expect(Attachment.attachedTrigger(~described=merged(~preTokenGenerationArn=Some(triggerArn))))
-    ->toEqual(Some(triggerArn))
+    expect(
+      Attachment.attachedTrigger(~described=merged(~preTokenGenerationArn=Some(triggerArn))),
+    )->toEqual(Some(triggerArn))
   )
 
   testSync("reports none when the pool carries no trigger", () =>
@@ -317,7 +323,9 @@ describe("Auth_ActiveRolePoolAttachment.attachedTrigger", () => {
         ~described=Dict.fromArray([
           (
             "LambdaConfig",
-            Dict.fromArray([("PreTokenGenerationConfig", v1Config(triggerArn))])->JSON.Encode.object,
+            Dict.fromArray([
+              ("PreTokenGenerationConfig", v1Config(triggerArn)),
+            ])->JSON.Encode.object,
           ),
         ]),
       ),
@@ -439,9 +447,7 @@ describe("Auth_ActiveRolePoolAttachment.probeEvent", () => {
 
   // Both halves of the key must miss every real row, not just the subject.
   testSync("the probe's subject and client cannot collide with a real row", () =>
-    expect(
-      Attachment.probeSubject == Attachment.probeClientId,
-    )->toBe(false)
+    expect(Attachment.probeSubject == Attachment.probeClientId)->toBe(false)
   )
 })
 
@@ -470,8 +476,9 @@ describe("Auth_ActiveRolePoolAttachment.attachedTriggerArn", () => {
     ])
 
   testSync("an empty pool holds nothing", () =>
-    expect(Attachment.attachedTriggerArn(~described=Dict.fromArray([("Name", str("Bare"))])))
-    ->toEqual(None)
+    expect(
+      Attachment.attachedTriggerArn(~described=Dict.fromArray([("Name", str("Bare"))])),
+    )->toEqual(None)
   )
 
   testSync("reports the trigger a pool carries", () =>
@@ -539,8 +546,9 @@ describe("Auth_ActiveRolePoolAttachment.classifySlot", () => {
   // halves. Unreachable by configuration now that the store is derived — reachable
   // by version skew, while an older release is still on its stack-scoped table.
   testSync("another deployment's trigger on a different store is the defect", () =>
-    expect(classify(~attachedArn=Some(theirs), ~attachedStore=Some("ActiveRoleStore-829c96f")))
-    ->toEqual(Attachment.DifferentStore({arn: theirs, theirStore: "ActiveRoleStore-829c96f"}))
+    expect(
+      classify(~attachedArn=Some(theirs), ~attachedStore=Some("ActiveRoleStore-829c96f")),
+    )->toEqual(Attachment.DifferentStore({arn: theirs, theirStore: "ActiveRoleStore-829c96f"}))
   )
 
   // Reading the store rather than matching a name is what makes this a check on
@@ -568,13 +576,12 @@ describe("Auth_ActiveRolePoolAttachment.refusalFor", () => {
   // Both stores named, because an operator cannot act on this without knowing
   // which two are in disagreement.
   testSync("a disagreeing store is refused, naming both stores", () => {
-    let message =
-      refusal(
-        Attachment.DifferentStore({
-          arn: "arn:aws:lambda:eu-west-1:1:function:Other",
-          theirStore: "ActiveRoleStore-829c96f",
-        }),
-      )->Option.getOr("")
+    let message = refusal(
+      Attachment.DifferentStore({
+        arn: "arn:aws:lambda:eu-west-1:1:function:Other",
+        theirStore: "ActiveRoleStore-829c96f",
+      }),
+    )->Option.getOr("")
     expect((
       message->String.includes(store),
       message->String.includes("ActiveRoleStore-829c96f"),

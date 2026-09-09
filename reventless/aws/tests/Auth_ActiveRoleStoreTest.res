@@ -18,8 +18,9 @@ describe("Auth_ActiveRoleStore_Ops.mayActAs — the conformance table", () => {
     // path, exercised against the handler rather than the predicate.
     | None => ()
     | Some(role) =>
-      testSync(label, () =>
-        expect(Ops.mayActAs(~membership, ~requested=role))->toBe(expected->Option.isSome)
+      testSync(
+        label,
+        () => expect(Ops.mayActAs(~membership, ~requested=role))->toBe(expected->Option.isSome),
       )
     }
   )
@@ -48,7 +49,9 @@ describe("Auth_ActiveRoleStore_Ops.mayActAs — narrowing only", () => {
 describe("Auth_ActiveRoleStore_Ops.cognitoLookupName", () => {
   testSync("the username is what addresses Cognito when the authorizer sent one", () =>
     expect(
-      Ops.cognitoLookupName(~identity={sub: "d265d464-2091-706a-e5f9-3afafe7be29c", username: Value("merch")}),
+      Ops.cognitoLookupName(
+        ~identity={sub: "d265d464-2091-706a-e5f9-3afafe7be29c", username: Value("merch")},
+      ),
     )->toEqual(Some("merch"))
   )
 
@@ -85,10 +88,9 @@ describe("Auth_ActiveRoleStore.chooseStore", () => {
   )
 
   testSync("a stack given a provider reads that provider's derived store", () =>
-    expect(Auth_ActiveRoleStore.chooseStore(~identityProviderId=Some("eu-west-1_CQTwafSeX")))
-    ->toEqual(
-      Auth_ActiveRoleStore.ProviderScoped("ReventlessActiveRoleStore-eu-west-1_CQTwafSeX"),
-    )
+    expect(
+      Auth_ActiveRoleStore.chooseStore(~identityProviderId=Some("eu-west-1_CQTwafSeX")),
+    )->toEqual(Auth_ActiveRoleStore.ProviderScoped("ReventlessActiveRoleStore-eu-west-1_CQTwafSeX"))
   )
 
   // 🚨 The defect, expressed as the property that now prevents it. Two platform
@@ -97,8 +99,9 @@ describe("Auth_ActiveRoleStore.chooseStore", () => {
   // doing nothing. There is no configuration either could carry that would make
   // them disagree.
   testSync("two deployments on one provider cannot choose different stores", () =>
-    expect(Auth_ActiveRoleStore.chooseStore(~identityProviderId=Some("eu-west-1_Shared")))
-    ->toEqual(Auth_ActiveRoleStore.chooseStore(~identityProviderId=Some("eu-west-1_Shared")))
+    expect(Auth_ActiveRoleStore.chooseStore(~identityProviderId=Some("eu-west-1_Shared")))->toEqual(
+      Auth_ActiveRoleStore.chooseStore(~identityProviderId=Some("eu-west-1_Shared")),
+    )
   )
 })
 

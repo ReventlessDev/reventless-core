@@ -26,7 +26,10 @@ module Make = (Spec: Spec, Config: Config) => {
       try await promise catch {
       | JsExn(e) =>
         let errMsg = e->JsExn.message->Option.getOr("unknown")
-        EffectLogger.logError(~comp="CommandPublisher", `Couldn't publish commands: ${errMsg}`)->Effect.runSync
+        EffectLogger.logError(
+          ~comp="CommandPublisher",
+          `Couldn't publish commands: ${errMsg}`,
+        )->Effect.runSync
       }
     }
 
@@ -72,7 +75,11 @@ module Make = (Spec: Spec, Config: Config) => {
         let promise = Config.publishCommands(Spec.name, commandsToSend->toJsons)
         running := Some(promise)
         switch await promise {
-        | () => EffectLogger.logDebug(~comp="CommandPublisher", `send: finished chunk ${chunkCountStr}: ${sizeStr}`)->Effect.runSync
+        | () =>
+          EffectLogger.logDebug(
+            ~comp="CommandPublisher",
+            `send: finished chunk ${chunkCountStr}: ${sizeStr}`,
+          )->Effect.runSync
         | exception JsExn(e) =>
           let errorMessage = e->JsExn.message->Option.getOr("unknown Error")
           EffectLogger.logError(

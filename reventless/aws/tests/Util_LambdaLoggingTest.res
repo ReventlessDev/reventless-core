@@ -21,9 +21,9 @@ describe("Util_LambdaLogging.logGroupNameFor", () => {
   })
 
   testSync("is stack-scoped, so environments of one project cannot collide", () =>
-    expect(nameFor(~stack="pr-42", ~name="AllReadModels"))->not_->toBe(
-      nameFor(~stack="alpha", ~name="AllReadModels"),
-    )
+    expect(nameFor(~stack="pr-42", ~name="AllReadModels"))
+    ->not_
+    ->toBe(nameFor(~stack="alpha", ~name="AllReadModels"))
   )
 
   // The regression this scoping exists for. Every plugin of one platform is its
@@ -54,17 +54,18 @@ describe("Util_LambdaLogging.logGroupNameFor", () => {
 // the estate and send an operator to a nonexistent group on the other half.
 describe("Util_LambdaLogging.autoCreatedLogGroupNameFor", () => {
   testSync("is the group Lambda makes from the PHYSICAL name, suffix and all", () =>
-    expect(Util_LambdaLogging.autoCreatedLogGroupNameFor(~physicalName="AllReadModels-0287438"))
-    ->toBe("/aws/lambda/AllReadModels-0287438")
+    expect(
+      Util_LambdaLogging.autoCreatedLogGroupNameFor(~physicalName="AllReadModels-0287438"),
+    )->toBe("/aws/lambda/AllReadModels-0287438")
   )
 
   // The two shapes must not converge: the managed name is chosen from the static
   // name so it survives a replacement, the auto-created one is not. If these ever
   // matched, the managed group would be racing the auto-create it exists to avoid.
   testSync("never equals the managed name for the same unit", () =>
-    expect(
-      Util_LambdaLogging.autoCreatedLogGroupNameFor(~physicalName="AllReadModels-0287438"),
-    )->not_->toBe(
+    expect(Util_LambdaLogging.autoCreatedLogGroupNameFor(~physicalName="AllReadModels-0287438"))
+    ->not_
+    ->toBe(
       Util_LambdaLogging.logGroupNameFor(
         ~project="online-shop-catalog-aws",
         ~stack="alpha",

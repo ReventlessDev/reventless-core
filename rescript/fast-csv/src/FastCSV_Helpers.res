@@ -10,11 +10,16 @@ let toError: (FastCSV.callback, FastCSV.reason) => FastCSV.calledBack = (cb, rea
   cb(Nullable.make(FastCSV.makeError(reason)), false, Some(reason))
 
 /** Call the transformation-callback function for a valid transformation */
-let toValidTransformation: (FastCSV.transformCallback, FastCSV.row) => FastCSV.transformCalledBack = (cb, row) =>
-  cb(Nullable.null, Some(row))
+let toValidTransformation: (
+  FastCSV.transformCallback,
+  FastCSV.row,
+) => FastCSV.transformCalledBack = (cb, row) => cb(Nullable.null, Some(row))
 
 /** Call the transformation-callback function for an error in the transformation */
-let toErrorTransformation: (FastCSV.transformCallback, FastCSV.reason) => FastCSV.transformCalledBack = (cb, reason) =>
+let toErrorTransformation: (
+  FastCSV.transformCallback,
+  FastCSV.reason,
+) => FastCSV.transformCalledBack = (cb, reason) =>
   cb(Nullable.make(FastCSV.makeError(reason)), None)
 
 /** Add callback for validation to Result - to be used in validation function */
@@ -26,22 +31,24 @@ let fromImporterValidation: FastCSV.importerValidation => FastCSV.validation = v
     }
 
 /** Register multiple validation-functions, which will be called separately */
-let validateMultiple: (array<FastCSV.validation>, FastCSV.csvParserStream) => FastCSV.csvParserStream = (
-  validations,
-  parser,
-) => validations->Array.reduce(parser, (parser', validation) => parser'->FastCSV.validate(validation))
+let validateMultiple: (
+  array<FastCSV.validation>,
+  FastCSV.csvParserStream,
+) => FastCSV.csvParserStream = (validations, parser) =>
+  validations->Array.reduce(parser, (parser', validation) => parser'->FastCSV.validate(validation))
 
 /** Register a single validation function based on result */
-let validateResult: (FastCSV.csvParserStream, FastCSV.importerValidation) => FastCSV.csvParserStream = (
-  parser,
-  validation,
-) => parser->FastCSV.validate(validation->fromImporterValidation)
+let validateResult: (
+  FastCSV.csvParserStream,
+  FastCSV.importerValidation,
+) => FastCSV.csvParserStream = (parser, validation) =>
+  parser->FastCSV.validate(validation->fromImporterValidation)
 
 /** Register multiple result based validation functions, which will be called separately */
-let validateMultipleResults: (FastCSV.csvParserStream, array<FastCSV.importerValidation>) => FastCSV.csvParserStream = (
-  parser,
-  validations,
-) =>
+let validateMultipleResults: (
+  FastCSV.csvParserStream,
+  array<FastCSV.importerValidation>,
+) => FastCSV.csvParserStream = (parser, validations) =>
   validations
   ->Array.map(validation => validation->fromImporterValidation)
   ->validateMultiple(parser)

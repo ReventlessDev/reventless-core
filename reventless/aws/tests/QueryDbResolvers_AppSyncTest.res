@@ -20,21 +20,27 @@ describe("QueryDbResolvers_AppSync.internalRowRequiredAttr", () => {
 })
 
 describe("AppSync_Resolver_Retrying.Functions.listAllItemsConnection", () => {
-  testSync("with ~requireAttribute emits an attribute_exists filter that excludes internal rows", () => {
-    let code =
-      AppSync_Resolver_Retrying.Functions.listAllItemsConnection(
-        ~labelField="name",
-        ~requireAttribute="name",
-      )->codeOf
-    expect(code->String.includes("attribute_exists(#name)"))->toBe(true)
-    expect(code->String.includes("names['#name'] = 'name'"))->toBe(true)
-  })
+  testSync(
+    "with ~requireAttribute emits an attribute_exists filter that excludes internal rows",
+    () => {
+      let code =
+        AppSync_Resolver_Retrying.Functions.listAllItemsConnection(
+          ~labelField="name",
+          ~requireAttribute="name",
+        )->codeOf
+      expect(code->String.includes("attribute_exists(#name)"))->toBe(true)
+      expect(code->String.includes("names['#name'] = 'name'"))->toBe(true)
+    },
+  )
 
-  testSync("without ~requireAttribute emits no attribute_exists filter (default read models unchanged)", () => {
-    let code =
-      AppSync_Resolver_Retrying.Functions.listAllItemsConnection(~labelField="name")->codeOf
-    expect(code->String.includes("attribute_exists"))->toBe(false)
-  })
+  testSync(
+    "without ~requireAttribute emits no attribute_exists filter (default read models unchanged)",
+    () => {
+      let code =
+        AppSync_Resolver_Retrying.Functions.listAllItemsConnection(~labelField="name")->codeOf
+      expect(code->String.includes("attribute_exists"))->toBe(false)
+    },
+  )
 })
 
 // Tripwires for the Scan connection's paging. The behaviour itself is exercised
@@ -56,8 +62,9 @@ describe("listAllItemsConnection — paging", () => {
     expect(
       code->String.includes("parts.length > 0 ? ((_backward ? _upTo : _first + _from) > 1000"),
     )->toBe(true)
-    expect(code->String.includes("const _page = _backward ? _rest : _rest.slice(0, _first);"))
-    ->toBe(true)
+    expect(
+      code->String.includes("const _page = _backward ? _rest : _rest.slice(0, _first);"),
+    )->toBe(true)
     expect(code->String.includes("hasNextPage: _more || !!_next,"))->toBe(true)
   })
 

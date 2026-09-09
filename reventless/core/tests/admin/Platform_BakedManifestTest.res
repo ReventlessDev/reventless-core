@@ -91,8 +91,7 @@ let structure: pluginStructure = {
 
 let structures = [("Ordering@1.0.0", structure)]
 
-let bake = selections =>
-  Platform_BakedManifest.curate(~structures, ~selections)
+let bake = selections => Platform_BakedManifest.curate(~structures, ~selections)
 
 // Every case below varies one include-list and means "everything" by the rest,
 // which is exactly what an omitted labelled argument says.
@@ -112,7 +111,10 @@ let names = (entry: JSON.t, field: string) =>
   ->Option.flatMap(JSON.Decode.array)
   ->Option.getOr([])
   ->Array.filterMap(v =>
-    v->JSON.Decode.object->Option.flatMap(d => d->Dict.get("name"))->Option.flatMap(JSON.Decode.string)
+    v
+    ->JSON.Decode.object
+    ->Option.flatMap(d => d->Dict.get("name"))
+    ->Option.flatMap(JSON.Decode.string)
   )
 
 let firstEntry = (r: result<JSON.t, Platform_BakedManifest.error>) =>
@@ -146,15 +148,13 @@ describe("curate", () => {
   // from, so an Internal view a kept command points at has to survive the bake.
   testSync("carries an Internal view referenced by an included command", () => {
     let entry =
-      bake([sel(~plugin="Ordering", ~views=["Orders"], ~commands=["PlaceOrder"])])
-      ->firstEntry
+      bake([sel(~plugin="Ordering", ~views=["Orders"], ~commands=["PlaceOrder"])])->firstEntry
     expect(entry->names("internalQueryables"))->toEqual(["AvailableProducts"])
   })
 
   testSync("omits an Internal view no included command references", () => {
     let entry =
-      bake([sel(~plugin="Ordering", ~views=["Orders"], ~commands=["ImportOrders"])])
-      ->firstEntry
+      bake([sel(~plugin="Ordering", ~views=["Orders"], ~commands=["ImportOrders"])])->firstEntry
     expect(entry->names("internalQueryables"))->toEqual([])
   })
 
@@ -193,9 +193,9 @@ describe("curate", () => {
   )
 
   testSync("accepts a kind this plugin generates no page for", () =>
-    expect(
-      bake([sel(~plugin="Ordering", ~derived=["scheduler"])])->firstEntry->derivedOf,
-    )->toEqual(Some(["scheduler"]))
+    expect(bake([sel(~plugin="Ordering", ~derived=["scheduler"])])->firstEntry->derivedOf)->toEqual(
+      Some(["scheduler"]),
+    )
   )
 
   testSync("an Internal view is never selectable as a view", () =>
@@ -228,27 +228,26 @@ describe("curate", () => {
   })
 
   testSync("one entry per selection, in declaration order", () => {
-    let json =
-      Platform_BakedManifest.curate(
-        ~structures=[("Ordering@1.0.0", structure), ("Catalog@1.0.0", structure)],
-        ~selections=[
-          sel(~plugin="Catalog", ~views=[], ~commands=[]),
-          sel(~plugin="Ordering", ~views=[], ~commands=[]),
-        ],
-      )
-    let ids =
-      switch json {
-      | Ok(j) =>
-        j
-        ->entries
-        ->Array.filterMap(e =>
+    let json = Platform_BakedManifest.curate(
+      ~structures=[("Ordering@1.0.0", structure), ("Catalog@1.0.0", structure)],
+      ~selections=[
+        sel(~plugin="Catalog", ~views=[], ~commands=[]),
+        sel(~plugin="Ordering", ~views=[], ~commands=[]),
+      ],
+    )
+    let ids = switch json {
+    | Ok(j) =>
+      j
+      ->entries
+      ->Array.filterMap(
+        e =>
           e
           ->JSON.Decode.object
           ->Option.flatMap(d => d->Dict.get("pluginId"))
-          ->Option.flatMap(JSON.Decode.string)
-        )
-      | Error(_) => []
-      }
+          ->Option.flatMap(JSON.Decode.string),
+      )
+    | Error(_) => []
+    }
     expect(ids)->toEqual(["Catalog", "Ordering"])
   })
 
@@ -258,8 +257,7 @@ describe("curate", () => {
   // makes this hold — the assertion guards that property, not a second code path.
   testSync("a curated entry carries the owner field the served entry carries", () => {
     let entry =
-      bake([sel(~plugin="Ordering", ~views=["Orders"], ~commands=["PlaceOrder"])])
-      ->firstEntry
+      bake([sel(~plugin="Ordering", ~views=["Orders"], ~commands=["PlaceOrder"])])->firstEntry
     let ownerOf = (key, name) =>
       entry
       ->JSON.Decode.object
@@ -267,9 +265,7 @@ describe("curate", () => {
       ->Option.flatMap(JSON.Decode.array)
       ->Option.getOr([])
       ->Array.filterMap(JSON.Decode.object)
-      ->Array.find(d =>
-        d->Dict.get("name")->Option.flatMap(JSON.Decode.string) == Some(name)
-      )
+      ->Array.find(d => d->Dict.get("name")->Option.flatMap(JSON.Decode.string) == Some(name))
       ->Option.flatMap(d => d->Dict.get("ownerField"))
       ->Option.flatMap(JSON.Decode.string)
     let commandOwner =
@@ -279,8 +275,8 @@ describe("curate", () => {
       ->Option.flatMap(JSON.Decode.array)
       ->Option.getOr([])
       ->Array.filterMap(JSON.Decode.object)
-      ->Array.flatMap(w =>
-        w->Dict.get("commands")->Option.flatMap(JSON.Decode.array)->Option.getOr([])
+      ->Array.flatMap(
+        w => w->Dict.get("commands")->Option.flatMap(JSON.Decode.array)->Option.getOr([]),
       )
       ->Array.filterMap(JSON.Decode.object)
       ->Array.get(0)

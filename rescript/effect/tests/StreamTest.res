@@ -156,8 +156,10 @@ describe("Stream bindings", () => {
     testPromise(
       "grouped on empty stream yields no groups",
       async () => {
-        let result: array<array<int>> =
-          await Stream.empty->Stream.grouped(3)->Stream.runCollect->Effect.runPromise
+        let result: array<array<int>> = await Stream.empty
+        ->Stream.grouped(3)
+        ->Stream.runCollect
+        ->Effect.runPromise
         expect(result)->toEqual([])
       },
     )

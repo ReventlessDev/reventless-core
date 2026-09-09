@@ -20,8 +20,7 @@ here — `Messaging.UnsupportedChannel` is what a caller gets, which is settled
 rather than retried, so a preference for a channel this deployment does not run
 costs one refusal and not a retry budget.
 */
-let channels = (~sender: string): array<Reventless.Messaging.channel> =>
-  sender == "" ? [] : [Email]
+let channels = (~sender: string): array<Reventless.Messaging.channel> => sender == "" ? [] : [Email]
 
 /**
 Send one message.

@@ -29,12 +29,16 @@ type consumedEvent =
 @schema
 type command =
   | AddResource({
-      environment: @s.matches(Reventless.DcbTag.compositePartitionMember(~position=0, ~sep="/")) string,
-      resourceName: @s.matches(Reventless.DcbTag.compositePartitionMember(~position=1, ~sep="/")) string,
+      environment: @s.matches(Reventless.DcbTag.compositePartitionMember(~position=0, ~sep="/"))
+      string,
+      resourceName: @s.matches(Reventless.DcbTag.compositePartitionMember(~position=1, ~sep="/"))
+      string,
     })
   | TouchResource({
-      environment: @s.matches(Reventless.DcbTag.compositePartitionMember(~position=0, ~sep="/")) string,
-      resourceName: @s.matches(Reventless.DcbTag.compositePartitionMember(~position=1, ~sep="/")) string,
+      environment: @s.matches(Reventless.DcbTag.compositePartitionMember(~position=0, ~sep="/"))
+      string,
+      resourceName: @s.matches(Reventless.DcbTag.compositePartitionMember(~position=1, ~sep="/"))
+      string,
     })
 
 @schema
@@ -45,12 +49,16 @@ type error =
 @schema
 type event =
   | ResourceAdded({
-      environment: @s.matches(Reventless.DcbTag.compositePartitionMember(~position=0, ~sep="/")) string,
-      resourceName: @s.matches(Reventless.DcbTag.compositePartitionMember(~position=1, ~sep="/")) string,
+      environment: @s.matches(Reventless.DcbTag.compositePartitionMember(~position=0, ~sep="/"))
+      string,
+      resourceName: @s.matches(Reventless.DcbTag.compositePartitionMember(~position=1, ~sep="/"))
+      string,
     })
   | ResourceTouched({
-      environment: @s.matches(Reventless.DcbTag.compositePartitionMember(~position=0, ~sep="/")) string,
-      resourceName: @s.matches(Reventless.DcbTag.compositePartitionMember(~position=1, ~sep="/")) string,
+      environment: @s.matches(Reventless.DcbTag.compositePartitionMember(~position=0, ~sep="/"))
+      string,
+      resourceName: @s.matches(Reventless.DcbTag.compositePartitionMember(~position=1, ~sep="/"))
+      string,
     })
 
 let name = "EpCompositeSlice"

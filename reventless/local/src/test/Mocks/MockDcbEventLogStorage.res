@@ -41,7 +41,11 @@ let matchesQuery = (event: DcbEventLog_Adapter.rawSequencedEvent, query: Reventl
     })
   }
 
-let make = (~name="mock-dcb-log", ~indexes: array<string>=[], ~opts: Pulumi.CustomResourceOptions.t={}) => {
+let make = (
+  ~name="mock-dcb-log",
+  ~indexes: array<string>=[],
+  ~opts: Pulumi.CustomResourceOptions.t={},
+) => {
   let _ = (name, indexes, opts)
   let events: ref<array<DcbEventLog_Adapter.rawSequencedEvent>> = ref([])
   let position = ref(0)

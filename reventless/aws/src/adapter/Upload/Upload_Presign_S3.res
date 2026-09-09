@@ -111,58 +111,60 @@ let make = (
   // presigned request runs with the *signer's* permissions, so tag-on-put fails
   // with AccessDenied without it — and an untagged object is one the sweep can
   // never reach.
-  let _policy =
-    resolvedStores->Pulumi.Output.apply(list => {
-      let arns = list->Array.map(((_, bucket, prefix)) => `arn:aws:s3:::${bucket}/${prefix}/*`)
-      let _ = IAM.RolePolicy.make(
-        ~name=name ++ "LambdaPolicy",
-        ~args={
-          policy: PolicyDocument.make(
-            ~id=name ++ "LambdaPolicy",
-            ~statements=[
-              {
-                sid: "AllowLambdaLogging",
-                effect: Allow,
-                actions: Actions(["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]),
-                resources: Resource("arn:aws:logs:*:*:*"),
-              },
-              {
-                sid: "AllowUploadObjectAccess",
-                effect: Allow,
-                actions: Actions([
-                  "s3:PutObject",
-                  "s3:PutObjectTagging",
-                  "s3:DeleteObject",
-                  "s3:GetObject",
-                ]),
-                resources: Resources(arns),
-              },
-            ],
-          )
-          ->PolicyDocument.toJsonString
-          ->Pulumi.Input.make,
-          role: lambdaRole.id->Pulumi.Output.asInput,
-        },
-        ~opts,
-      )
-    })
+  let _policy = resolvedStores->Pulumi.Output.apply(list => {
+    let arns = list->Array.map(((_, bucket, prefix)) => `arn:aws:s3:::${bucket}/${prefix}/*`)
+    let _ = IAM.RolePolicy.make(
+      ~name=name ++ "LambdaPolicy",
+      ~args={
+        policy: PolicyDocument.make(
+          ~id=name ++ "LambdaPolicy",
+          ~statements=[
+            {
+              sid: "AllowLambdaLogging",
+              effect: Allow,
+              actions: Actions([
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents",
+              ]),
+              resources: Resource("arn:aws:logs:*:*:*"),
+            },
+            {
+              sid: "AllowUploadObjectAccess",
+              effect: Allow,
+              actions: Actions([
+                "s3:PutObject",
+                "s3:PutObjectTagging",
+                "s3:DeleteObject",
+                "s3:GetObject",
+              ]),
+              resources: Resources(arns),
+            },
+          ],
+        )
+        ->PolicyDocument.toJsonString
+        ->Pulumi.Input.make,
+        role: lambdaRole.id->Pulumi.Output.asInput,
+      },
+      ~opts,
+    )
+  })
 
   // `UPLOAD_STORES` — the qualified-name → {bucket, prefix} map the handler resolves
   // the caller's `store` argument against.
-  let uploadStoresJson =
-    resolvedStores->Pulumi.Output.apply(list =>
-      list
-      ->Array.map(((qualified, bucket, prefix)) => (
-        qualified,
-        Dict.fromArray([
-          ("bucket", JSON.Encode.string(bucket)),
-          ("prefix", JSON.Encode.string(prefix)),
-        ])->JSON.Encode.object,
-      ))
-      ->Dict.fromArray
-      ->JSON.Encode.object
-      ->JSON.stringify
-    )
+  let uploadStoresJson = resolvedStores->Pulumi.Output.apply(list =>
+    list
+    ->Array.map(((qualified, bucket, prefix)) => (
+      qualified,
+      Dict.fromArray([
+        ("bucket", JSON.Encode.string(bucket)),
+        ("prefix", JSON.Encode.string(prefix)),
+      ])->JSON.Encode.object,
+    ))
+    ->Dict.fromArray
+    ->JSON.Encode.object
+    ->JSON.stringify
+  )
 
   // Bundle reventless-aws (the compiled `_Ops` handler lives inside it) and
   // re-export its `handler`; buildCodeArchive also ships the ESM resolve-hook.

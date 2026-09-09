@@ -36,7 +36,8 @@ let warningsFromProperties = (~component, properties: dict<S.t<unknown>>): array
   ->Dict.toArray
   ->Array.filterMap(((field, fieldSchema)) =>
     switch fieldSchema {
-    | String(_) if field != "TAG" &&
+    | String(_)
+      if field != "TAG" &&
       nameMatches(field) &&
       Reventless.StorageRef.getStore(fieldSchema)->Option.isNone =>
       Some({component, field})
@@ -64,8 +65,7 @@ let scanSchema = (~component: string, schema: S.t<unknown>): array<warning> => {
     and say what to do when the heuristic is wrong. */
 let message = (w: warning): string =>
   `${w.component}.${w.field} looks like a stored-object reference but declares no store — ` ++
-  `annotate it \`@storageRef("<store>")\` so the deployment provisions the store it needs, ` ++
-  `or rename the field if it holds an external URL. Heuristic matches are never provisioned.`
+  `annotate it \`@storageRef("<store>")\` so the deployment provisions the store it needs, ` ++ `or rename the field if it holds an external URL. Heuristic matches are never provisioned.`
 
 // ── Near-duplicate stores ──────────────────────────────────────────────────
 //
@@ -103,8 +103,7 @@ let withinOneEdit = (a: string, b: string): bool => {
     switch diffs {
     | [] => true
     | [_] => true
-    | [i, j] if j == i + 1 =>
-      charAt(a, i) == charAt(b, j) && charAt(a, j) == charAt(b, i)
+    | [i, j] if j == i + 1 => charAt(a, i) == charAt(b, j) && charAt(a, j) == charAt(b, i)
     | _ => false
     }
   } else if la - lb == 1 || lb - la == 1 {
@@ -147,9 +146,9 @@ Pairs of declared stores that are probably one store misspelled twice.
 Compared within an owning plugin only: two plugins may legitimately hold stores
 whose names are one edit apart, and neither can be a typo for the other.
 */
-let collisions = (
-  declarations: array<Reventless.Plugin.requiredStoreDeclaration>,
-): array<collision> => {
+let collisions = (declarations: array<Reventless.Plugin.requiredStoreDeclaration>): array<
+  collision,
+> => {
   // One entry per store, keeping the first declaration site as the one the
   // message names — several fields naming one store is ordinary, not a clash.
   let byStore: dict<Reventless.Plugin.requiredStoreDeclaration> = Dict.make()
@@ -181,5 +180,4 @@ let collisionMessage = (c: collision): string =>
   `${c.a.store} (${c.a.component}.${c.a.field}) and ${c.b.store} ` ++
   `(${c.b.component}.${c.b.field}) differ by one edit — one is probably a typo for ` ++
   `the other, and both would be provisioned, splitting objects across two stores. ` ++
-  `Fix the field name, or name the store explicitly with \`@storageRef("<store>")\` ` ++
-  `if the two really are separate stores.`
+  `Fix the field name, or name the store explicitly with \`@storageRef("<store>")\` ` ++ `if the two really are separate stores.`

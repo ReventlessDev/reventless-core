@@ -5,9 +5,9 @@ type outputs = ReventlessInfra.StateChangeSlice.outputs
 type operations = ReventlessInfra.StateChangeSlice.operations
 type component = Component.t<t, outputs, operations>
 
-let toResolvedOutputs = (
-  outputs: outputs,
-): Pulumi.Output.t<ReventlessInterop.StateChangeSlice.resolvedOutputs> =>
+let toResolvedOutputs = (outputs: outputs): Pulumi.Output.t<
+  ReventlessInterop.StateChangeSlice.resolvedOutputs,
+> =>
   outputs.resources
   ->Adapter.resourcesToInterop
   ->Pulumi.Output.apply(resources => {

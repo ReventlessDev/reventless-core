@@ -19,8 +19,7 @@ external isDryRun: unit => bool = "isDryRun"
 // values explicitly registered via Pulumi.export().
 let _outputs: dict<Output.t<JSON.t>> = Dict.make()
 
-let export = (name: string, value: Output.t<'a>): unit =>
-  _outputs->Dict.set(name, value->Obj.magic)
+let export = (name: string, value: Output.t<'a>): unit => _outputs->Dict.set(name, value->Obj.magic)
 
 @module("@pulumi/pulumi/runtime/index.js")
 external _getStackResource: unit => option<{..}> = "getStackResource"

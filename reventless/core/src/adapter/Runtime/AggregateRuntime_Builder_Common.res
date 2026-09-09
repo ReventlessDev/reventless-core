@@ -172,13 +172,18 @@ module Make = (
         (infos, handler)
         ->Pulumi.Output.all2
         ->Pulumi.Output.apply(((infos, handler)) => {
-          let infoStrs = infos->Array.filterMap(ri => switch ri {
-            | ReventlessInfra.Adapter.ApiResolver({typeName, fieldName}) => Some(`${typeName}.${fieldName}`)
+          let infoStrs = infos->Array.filterMap(ri =>
+            switch ri {
+            | ReventlessInfra.Adapter.ApiResolver({typeName, fieldName}) =>
+              Some(`${typeName}.${fieldName}`)
             | _ => None
-          })
+            }
+          )
           log.debug(
             ~comp="AggregateRuntime",
-            `forCommandGenerator ${commandGeneratorName}: set handler for ${infoStrs->Array.join(", ")}`,
+            `forCommandGenerator ${commandGeneratorName}: set handler for ${infoStrs->Array.join(
+                ", ",
+              )}`,
           )
           infoStrs->Array.map(info => commandGeneratorHandlers->Dict.set(info, handler))
         })
@@ -260,7 +265,9 @@ module Make = (
             let handlers = eventCollectorHandlers->Dict.get(urn)->Option.getOr([])
             eventCollectorHandlers->Dict.set(
               urn,
-              handlers->Array.concat([{comp, handler: handler->RuntimeEnvironment.asEffectHandler}]),
+              handlers->Array.concat([
+                {comp, handler: handler->RuntimeEnvironment.asEffectHandler},
+              ]),
             )
           })
         })

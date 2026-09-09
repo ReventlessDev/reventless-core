@@ -15,7 +15,6 @@ myEffect
 
 After providing, use `TestClock.adjust` to advance virtual time.
 */
-
 /** Opaque type for Effect `Layer`s — use via `Effect.provide`. */
 type layer
 

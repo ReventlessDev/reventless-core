@@ -26,9 +26,6 @@ pnpm run generate:currency
 The output is committed: it is read in review, and a currency appearing or
 disappearing is exactly the kind of change that has to show up in a diff.
 */
-
-// ── The curated set ─────────────────────────────────────────────────────────
-
 /**
 The currencies the type admits: the five most-traded worldwide (USD, EUR, JPY,
 GBP, CNY), the two other majors a global shop meets (AUD, CAD), and the three
@@ -38,7 +35,9 @@ JPY earns its place twice over — it is a major currency *and* the only one her
 with no decimal place at all, which is what keeps `exponent` load-bearing rather
 than a synonym for "two".
 */
-let active = ["AUD", "CAD", "CHF", "CNY", "EUR", "GBP", "JPY", "NOK", "SEK", "USD"]
+let // ── The curated set ─────────────────────────────────────────────────────────
+
+active = ["AUD", "CAD", "CHF", "CNY", "EUR", "GBP", "JPY", "NOK", "SEK", "USD"]
 
 // ── Where things live ───────────────────────────────────────────────────────
 
@@ -82,13 +81,15 @@ let rec readEntries = () =>
   switch entries->RegExp.exec(xml) {
   | None => ()
   | Some(result) =>
-    let entry = result->RegExp.Result.matches->Array.get(0)->Option.flatMap(x => x)->Option.getOr("")
+    let entry =
+      result->RegExp.Result.matches->Array.get(0)->Option.flatMap(x => x)->Option.getOr("")
     switch field(entry, "Ccy") {
     // Territories with no currency of their own (Antarctica) carry no <Ccy>.
     | None => ()
     | Some(code) =>
       let minorUnits = field(entry, "CcyMnrUnts")->Option.getOr("")
       let name = field(entry, "CcyNm")->Option.getOr(code)
+
       // A non-numeric minor unit means the entry has none at all: the precious
       // metals (XAU, XAG, XPD, XPT), the bond market units (XBA–XBD), XDR, XUA,
       // XSU, the testing code XTS and the "no currency" sentinel XXX. Admitting
@@ -123,13 +124,14 @@ let currencies =
   ->Array.toSorted((a, b) => String.compare(a.code, b.code))
 
 if currencies->Array.length < 100 {
-  die(`only ${currencies->Array.length->Int.toString} currencies parsed — the table did not parse`)
+  die(
+    `only ${currencies->Array.length->Int.toString} currencies parsed — the table did not parse`,
+  )
 }
 
 switch active->Array.filter(code => byCode->Dict.get(code)->Option.isNone) {
 | [] => ()
-| missing =>
-  die(`\`active\` names ${missing->Array.join(", ")}, which ISO 4217 does not list here`)
+| missing => die(`\`active\` names ${missing->Array.join(", ")}, which ISO 4217 does not list here`)
 }
 
 let admitted = currencies->Array.filter(c => active->Array.includes(c.code))
@@ -201,23 +203,21 @@ let exponentCounts =
   ->Array.reduce([], (acc, e) => acc->Array.includes(e) ? acc : Array.concat(acc, [e]))
   ->Array.toSorted((a, b) => Int.compare(a, b))
   ->Array.map(e =>
-    (admitted->Array.filter(c => c.exponent == e)->Array.length)->Int.toString ++
-      "×" ++
-      e->Int.toString
+    admitted->Array.filter(c => c.exponent == e)->Array.length->Int.toString ++
+    "×" ++
+    e->Int.toString
   )
   ->Array.join(", ")
 
 let out = lines([
   "// AUTO-GENERATED from ISO 4217 (published " ++
-  published->Option.getOr("unknown") ++
-  ") — do not edit.",
+  published->Option.getOr("unknown") ++ ") — do not edit.",
   "// Run `pnpm run generate:currency`, or see `scripts/GenerateCurrency.res` to",
   "// change which codes are admitted or to update the source table first.",
   "",
   "/**",
   "A currency, closed to the " ++
-  admitted->Array.length->Int.toString ++
-  " codes this framework admits today.",
+  admitted->Array.length->Int.toString ++ " codes this framework admits today.",
   "",
   "## Why a type and not a three-letter string",
   "",
@@ -230,19 +230,18 @@ let out = lines([
   "",
   "Generation buys the property that makes this type worth having: `exponent` comes",
   "from the *same* source as the codes, so it cannot drift from them (" ++
-  exponentCounts ++
-  " decimal",
+  exponentCounts ++ " decimal",
   "places across the set). That is what lets `Money` derive how many decimals an",
   "amount may carry instead of hardcoding two, and therefore what makes it correct",
   "for JPY without anyone remembering that JPY is special.",
   "",
   "The set is curated because the whole table is not a choice anyone makes: a picker",
   "holding " ++
-  currencies->Array.length->Int.toString ++
-  " codes asks a person to find theirs in a list nobody reads, and a",
+  currencies
+  ->Array.length
+  ->Int.toString ++ " codes asks a person to find theirs in a list nobody reads, and a",
   "domain that deals in ten does not become more correct for admitting the other " ++
-  (currencies->Array.length - admitted->Array.length)->Int.toString ++
-  ".",
+  (currencies->Array.length - admitted->Array.length)->Int.toString ++ ".",
   "",
   "Every one of those is written out below, commented, in each of the four blocks",
   "that mention a code — so admitting one is uncommenting four lines, or adding it",
@@ -253,8 +252,9 @@ let out = lines([
   "## What is deliberately absent",
   "",
   "The " ++
-  skipped->Array.length->Int.toString ++
-  " entries ISO lists with no minor unit at all: the precious metals",
+  skipped
+  ->Array.length
+  ->Int.toString ++ " entries ISO lists with no minor unit at all: the precious metals",
   "(XAG, XAU, XPD, XPT), the bond market units (XBA, XBB, XBC, XBD), the accounting",
   "units (XDR, XSU, XUA), the testing code XTS, and the \"no currency\" sentinel",
   "XXX. Each would make `exponent` partial, and a weight of gold is not an amount",

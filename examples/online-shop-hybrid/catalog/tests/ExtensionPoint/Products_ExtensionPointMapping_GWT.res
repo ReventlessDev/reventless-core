@@ -13,7 +13,12 @@ let eur = amount => Reventless.Money.ofMajor(~amount, ~currency=EUR)
 describe("Products ExtensionPoint mapping", () => {
   test("ProductAdded publishes ProductBecameAvailable", () =>
     whenDelegateEvent(
-      Delegate.ProductAdded({productId: "p1", name: "Book", description: "A good book", price: eur(9.99)}),
+      Delegate.ProductAdded({
+        productId: "p1",
+        name: "Book",
+        description: "A good book",
+        price: eur(9.99),
+      }),
     )->thenPublishesEvent(
       "p1",
       ExtensionPoint.ProductBecameAvailable({productId: "p1", name: "Book", price: eur(9.99)}),
@@ -22,12 +27,19 @@ describe("Products ExtensionPoint mapping", () => {
 
   test("ProductAdded raises no directive", () =>
     whenDelegateEvent(
-      Delegate.ProductAdded({productId: "p1", name: "Book", description: "A good book", price: eur(9.99)}),
+      Delegate.ProductAdded({
+        productId: "p1",
+        name: "Book",
+        description: "A good book",
+        price: eur(9.99),
+      }),
     )->thenHandlesNoDirective
   )
 
   test("ProductPriceChanged is forwarded to the extension point", () =>
-    whenDelegateEvent(Delegate.ProductPriceChanged({productId: "p1", price: eur(7.5)}))->thenPublishesEvent(
+    whenDelegateEvent(
+      Delegate.ProductPriceChanged({productId: "p1", price: eur(7.5)}),
+    )->thenPublishesEvent(
       "p1",
       ExtensionPoint.ProductPriceChanged({productId: "p1", price: eur(7.5)}),
     )
@@ -36,9 +48,7 @@ describe("Products ExtensionPoint mapping", () => {
   test("ProductPriceChanged also fires a pricing-update directive", () =>
     whenDelegateEvent(
       Delegate.ProductPriceChanged({productId: "p1", price: eur(7.5)}),
-    )->thenHandlesDirective(
-      ExtensionPoint.EmitPricingUpdate({productId: "p1", price: eur(7.5)}),
-    )
+    )->thenHandlesDirective(ExtensionPoint.EmitPricingUpdate({productId: "p1", price: eur(7.5)}))
   )
 
   // Both of Catalog's retirements collapse to the one fact Ordering needs. This

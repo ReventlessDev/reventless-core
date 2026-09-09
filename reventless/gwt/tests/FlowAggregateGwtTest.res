@@ -7,7 +7,6 @@
 //     command on `o2` does not see `o1`'s prior events.
 //   - The `Error` branch flows through `thenError` like the slice form.
 
-
 open Flow_GWT
 
 // -- Aggregate: CatalogProduct (one event family, no error) -----------------
@@ -16,12 +15,10 @@ module CatalogProductAggregate = {
   let name = "CatalogProduct"
 
   @schema
-  type command =
-    | SyncNewProduct({productId: string, name: string})
+  type command = SyncNewProduct({productId: string, name: string})
 
   @schema
-  type event =
-    | CatalogProductSynced({productId: string, name: string})
+  type event = CatalogProductSynced({productId: string, name: string})
 
   @schema
   type error = AlreadySynced

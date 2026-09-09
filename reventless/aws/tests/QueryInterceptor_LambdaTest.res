@@ -54,14 +54,12 @@ describe("interceptor handler", () => {
 
   testPromise("an allowing hook is consulted and the read proceeds", async () => {
     let seen = ref([])
-    QueryDb_Callback.registerQueryInterceptor(async (
-      ~identity as _,
-      ~readModelName,
-      ~args as _,
-    ) => {
-      seen := seen.contents->Array.concat([readModelName])
-      QueryDb_Callback.Allow
-    })
+    QueryDb_Callback.registerQueryInterceptor(
+      async (~identity as _, ~readModelName, ~args as _) => {
+        seen := seen.contents->Array.concat([readModelName])
+        QueryDb_Callback.Allow
+      },
+    )
     let allowed = await QueryInterceptor_Lambda.handler(read(~readModelName="Order"), context)
     expect((allowed, seen.contents))->toEqual((true, ["Order"]))
   })
@@ -70,11 +68,11 @@ describe("interceptor handler", () => {
     // The refusal has to surface as a thrown error: the pipeline's response
     // function turns `ctx.error` into a GraphQL field error, and a returned
     // `false` would read as a successful read of nothing.
-    QueryDb_Callback.registerQueryInterceptor(async (
-      ~identity as _,
-      ~readModelName as _,
-      ~args as _,
-    ) => QueryDb_Callback.Deny("over the allowance"))
+    QueryDb_Callback.registerQueryInterceptor(
+      async (~identity as _, ~readModelName as _, ~args as _) => QueryDb_Callback.Deny(
+        "over the allowance",
+      ),
+    )
     let message = try {
       let _ = await QueryInterceptor_Lambda.handler(read(), context)
       "did not throw"

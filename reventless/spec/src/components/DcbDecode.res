@@ -59,13 +59,17 @@ external unsafeCast: 'a => 'b = "%identity"
 // Build a map of TAG name -> constructed payload-less variant value
 // by encoding each payload-less variant through sury and storing the result.
 // This is done once per schema, not per event.
-let buildPayloadLessConstructors = (schema: S.t<'event>, lookup: dict<variantKind>): dict<'event> => {
+let buildPayloadLessConstructors = (schema: S.t<'event>, lookup: dict<variantKind>): dict<
+  'event,
+> => {
   let constructors = Dict.make()
   // For payload-less variants, we need to figure out what ReScript value
   // corresponds to each TAG name. sury's schema for a union with payload-less
   // variants encodes them as bare strings. So `| ItemCreated` serializes to
   // JSON string "ItemCreated". We can use Util_Sury.fromJson with the string.
-  lookup->Dict.toArray->Array.forEach(((tagName, kind)) =>
+  lookup
+  ->Dict.toArray
+  ->Array.forEach(((tagName, kind)) =>
     switch kind {
     | PayloadLess =>
       try {

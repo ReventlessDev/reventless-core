@@ -24,9 +24,10 @@ let makePkg = (name: string, files: array<(string, string)>): string => {
 
 let fileUrl = (absPath: string) => "file://" ++ absPath
 
-let extensionModule = (~companions: array<string>=[], url: string): module(
-  ReventlessCore.RuntimeExtension.Extension
-) => {
+let extensionModule = (
+  ~companions: array<string>=[],
+  url: string,
+): module(ReventlessCore.RuntimeExtension.Extension) => {
   module E = {
     let moduleUrl = url
     let companionModuleUrls = companions
@@ -104,8 +105,8 @@ describe("Util_Bundle — runtime-extension companion packages", () => {
   beforeEach(() => ReventlessCore.RuntimeExtension.reset())
   afterAll(() => {
     ReventlessCore.RuntimeExtension.reset()
-    [extRoot, companionRoot, badRoot]->Array.forEach(root =>
-      NodeFs.rmSync(root, {recursive: true, force: true})
+    [extRoot, companionRoot, badRoot]->Array.forEach(
+      root => NodeFs.rmSync(root, {recursive: true, force: true}),
     )
   })
 
@@ -135,10 +136,7 @@ describe("Util_Bundle — runtime-extension companion packages", () => {
 
     let companionFile = NodePath.join([companionRoot, "src/Companion.res.mjs"])
     let original = NodeFs.readFileSync(companionFile)
-    NodeFs.writeFileSync(
-      companionFile,
-      original ++ "export const changed = true;\n",
-    )
+    NodeFs.writeFileSync(companionFile, original ++ "export const changed = true;\n")
     let after = build().sourceCodeHash
     NodeFs.writeFileSync(companionFile, original)
 
@@ -147,21 +145,22 @@ describe("Util_Bundle — runtime-extension companion packages", () => {
 
   testSync("an empty registry leaves the archive byte-identical", () => {
     let withSeam = build().sourceCodeHash
-    let withoutSeam =
-      Util_Bundle.buildCodeArchive(
-        ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Runtime/Entry.res.mjs",
-        ~packageDirs=Dict.make(),
-        ~bundleRuntimeExtensions=false,
-      ).sourceCodeHash
+    let withoutSeam = Util_Bundle.buildCodeArchive(
+      ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Runtime/Entry.res.mjs",
+      ~packageDirs=Dict.make(),
+      ~bundleRuntimeExtensions=false,
+    ).sourceCodeHash
     expect(withSeam)->toBe(withoutSeam)
   })
 
   testSync("an undeclared, un-bundled import fails the archive build, naming the remedy", () => {
     ReventlessCore.RuntimeExtension.use(extensionModule(badUrl))
 
-    switch caughtMessage(() => {
-      let _ = build()
-    }) {
+    switch caughtMessage(
+      () => {
+        let _ = build()
+      },
+    ) {
     | None => JsError.throwWithMessage("expected buildCodeArchive to throw")
     | Some(message) =>
       expect(message->String.includes(badPkgName))->toBe(true)

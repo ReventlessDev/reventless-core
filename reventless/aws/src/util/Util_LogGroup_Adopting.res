@@ -38,7 +38,6 @@
     run the **serialised** version, not current source. A fix here reaches a
     given resource only once that resource is next created or updated. Keep each
     step able to handle state written by earlier versions. */
-
 let log = ReventlessCore.Logger.fromEnv()
 
 // ── AWS SDK bindings (lazily imported — see AppSync_SourceApiAssociation_Retrying) ──
@@ -266,9 +265,7 @@ let create = async (inputs: providerInputs): createResultOut => {
   let {logGroupName, retentionInDays, tags} = inputs
 
   let adopted = try {
-    await runWithRetry(() =>
-      client->sendCreate(newCommand(sdk.createCtor, {logGroupName, tags}))
-    )
+    await runWithRetry(() => client->sendCreate(newCommand(sdk.createCtor, {logGroupName, tags})))
     false
   } catch {
   | exn if exn->JsExn.fromException->Option.mapOr(false, isAlreadyExistsError) => true

@@ -52,9 +52,7 @@ describe("Util_AwsError.isNotFound", () => {
   // the original guard tested, and it is false for the real error.
   testSync("...and its message does not carry the code, which is why", () =>
     expect(
-      AwsError.describe(dynamoNotFound)->String.includes(
-        "Requested resource not found",
-      ),
+      AwsError.describe(dynamoNotFound)->String.includes("Requested resource not found"),
     )->toBe(true)
   )
 
@@ -118,10 +116,9 @@ describe("Util_AwsError.describe", () => {
   // failure with another.
   testSync("every shape yields something an operator can read", () =>
     expect(
-      [
-        awsError(~name="X", ~message="y"),
-        Not_found,
-      ]->Array.every(e => AwsError.describe(e)->String.length > 0),
+      [awsError(~name="X", ~message="y"), Not_found]->Array.every(
+        e => AwsError.describe(e)->String.length > 0,
+      ),
     )->toBe(true)
   )
 })

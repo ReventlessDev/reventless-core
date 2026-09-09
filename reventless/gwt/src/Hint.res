@@ -111,10 +111,7 @@ let forMismatch = (~slice="<slice>", m: Outcome.mismatch): t =>
 let toJson = (h: t): JSON.t => {
   let obj = Dict.make()
   obj->Dict.set("locus", JSON.Encode.string(h.locus))
-  obj->Dict.set(
-    "branch",
-    h.branch->Option.mapOr(JSON.Encode.null, JSON.Encode.string),
-  )
+  obj->Dict.set("branch", h.branch->Option.mapOr(JSON.Encode.null, JSON.Encode.string))
   obj->Dict.set("message", JSON.Encode.string(h.message))
   JSON.Encode.object(obj)
 }

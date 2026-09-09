@@ -15,15 +15,16 @@ open JestGlobals
 
 let errors = entries => JSON.Encode.array(entries->Array.map(JSON.Encode.object))
 
-let errorOfType = errorType =>
-  Dict.fromArray([("errorType", JSON.Encode.string(errorType))])
+let errorOfType = errorType => Dict.fromArray([("errorType", JSON.Encode.string(errorType))])
 
 describe("Seed_Client.isTransient:", () => {
   testSync("resends a fault on the endpoint's own side", () =>
-    ["InternalFailure", "ServiceUnavailable", "Throttling", "TooManyRequestsException"]
-    ->Array.forEach(t =>
-      expect(Seed_Client.isTransient(errors([errorOfType(t)])))->toBe(true)
-    )
+    [
+      "InternalFailure",
+      "ServiceUnavailable",
+      "Throttling",
+      "TooManyRequestsException",
+    ]->Array.forEach(t => expect(Seed_Client.isTransient(errors([errorOfType(t)])))->toBe(true))
   )
 
   // The exact payload the seed aborted on.
@@ -33,8 +34,8 @@ describe("Seed_Client.isTransient:", () => {
   })
 
   testSync("fails fast on an error that is an answer", () =>
-    ["ValidationException", "Unauthorized", "FieldUndefined"]->Array.forEach(t =>
-      expect(Seed_Client.isTransient(errors([errorOfType(t)])))->toBe(false)
+    ["ValidationException", "Unauthorized", "FieldUndefined"]->Array.forEach(
+      t => expect(Seed_Client.isTransient(errors([errorOfType(t)])))->toBe(false),
     )
   )
 
@@ -52,8 +53,9 @@ describe("Seed_Client.isTransient:", () => {
   // endpoint said errors but named none" into an endless resend.
   testSync("treats an empty or untyped error list as final", () => {
     expect(Seed_Client.isTransient(errors([])))->toBe(false)
-    expect(Seed_Client.isTransient(errors([Dict.fromArray([("message", JSON.Encode.string("boom"))])])))
-    ->toBe(false)
+    expect(
+      Seed_Client.isTransient(errors([Dict.fromArray([("message", JSON.Encode.string("boom"))])])),
+    )->toBe(false)
     expect(Seed_Client.isTransient(JSON.Encode.null))->toBe(false)
   })
 })
@@ -123,7 +125,9 @@ describe("Seed_Client.effectiveGroups:", () => {
   // token in the first. Neither platform should have to announce which it is.
   testSync("reads the payload wherever the provider put it", () => {
     expect(
-      clientWith(jwt([("cognito:groups", strings(["Admin", "Shopper"]))]))->Seed_Client.effectiveGroups,
+      clientWith(
+        jwt([("cognito:groups", strings(["Admin", "Shopper"]))]),
+      )->Seed_Client.effectiveGroups,
     )->toEqual(Some(["Admin", "Shopper"]))
     expect(
       clientWith(localToken([("groups", strings(["Merchandiser"]))]))->Seed_Client.effectiveGroups,
@@ -135,8 +139,9 @@ describe("Seed_Client.effectiveGroups:", () => {
   testSync("says nothing about a token it cannot read", () => {
     expect(clientWith("not-a-token")->Seed_Client.effectiveGroups)->toEqual(None)
     expect(
-      Seed_Client.make(~config={endpoint: "http://example.invalid/graphql"})
-      ->Seed_Client.effectiveGroups,
+      Seed_Client.make(
+        ~config={endpoint: "http://example.invalid/graphql"},
+      )->Seed_Client.effectiveGroups,
     )->toEqual(None)
   })
 })
@@ -154,8 +159,9 @@ describe("Seed_Client.callerId:", () => {
       clientWith(jwt([("sub", JSON.Encode.string("4275e4a4-00c1-70e1"))]))->Seed_Client.callerId,
     )->toEqual(Some("4275e4a4-00c1-70e1"))
     expect(
-      clientWith(localToken([("userId", JSON.Encode.string("local-shopper"))]))
-      ->Seed_Client.callerId,
+      clientWith(
+        localToken([("userId", JSON.Encode.string("local-shopper"))]),
+      )->Seed_Client.callerId,
     )->toEqual(Some("local-shopper"))
   })
 
@@ -176,11 +182,11 @@ describe("Seed_Client.callerId:", () => {
   // falls back to whatever the accounts file declared.
   testSync("says nothing about a token it cannot read, or one naming no id", () => {
     expect(clientWith("not-a-token")->Seed_Client.callerId)->toEqual(None)
-    expect(clientWith(jwt([("cognito:groups", strings(["Admin"]))]))->Seed_Client.callerId)
-    ->toEqual(None)
     expect(
-      Seed_Client.make(~config={endpoint: "http://example.invalid/graphql"})
-      ->Seed_Client.callerId,
+      clientWith(jwt([("cognito:groups", strings(["Admin"]))]))->Seed_Client.callerId,
+    )->toEqual(None)
+    expect(
+      Seed_Client.make(~config={endpoint: "http://example.invalid/graphql"})->Seed_Client.callerId,
     )->toEqual(None)
   })
 
@@ -208,8 +214,9 @@ describe("Seed_Client.identitySummary:", () => {
   // An ordinary login is not narrowed and has nothing to explain.
   testSync("stays quiet about an unnarrowed token", () =>
     expect(
-      clientWith(jwt([("cognito:groups", strings(["Admin", "Shopper"]))]))
-      ->Seed_Client.identitySummary,
+      clientWith(
+        jwt([("cognito:groups", strings(["Admin", "Shopper"]))]),
+      )->Seed_Client.identitySummary,
     )->toEqual(Some("Admin, Shopper"))
   )
 
@@ -241,11 +248,13 @@ describe("Seed_Client.narrowedFrom:", () => {
   // The case that must NOT prompt: a single-role account is not narrowed, it is
   // simply small. Asking it to choose would put a question in every run.
   testSync("says nothing about an unnarrowed token", () => {
-    expect(clientWith(jwt([("cognito:groups", strings(["Shopper"]))]))->Seed_Client.narrowedFrom)
-    ->toEqual(None)
     expect(
-      clientWith(jwt([("cognito:groups", strings(["Admin", "Shopper"]))]))
-      ->Seed_Client.narrowedFrom,
+      clientWith(jwt([("cognito:groups", strings(["Shopper"]))]))->Seed_Client.narrowedFrom,
+    )->toEqual(None)
+    expect(
+      clientWith(
+        jwt([("cognito:groups", strings(["Admin", "Shopper"]))]),
+      )->Seed_Client.narrowedFrom,
     )->toEqual(None)
   })
 

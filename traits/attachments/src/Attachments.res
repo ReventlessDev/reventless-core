@@ -6,7 +6,6 @@ contract is over that slice. The rules live in `Attachments_Rules` and are asser
 through a host by `Attachments_Conformance`; the spec surface the host maps onto
 them is written by `Attachments_Scaffold`.
 */
-
 /**
 This trait's own account of itself — see `AddressGeocoding.declaration` for why the
 version is read rather than written.

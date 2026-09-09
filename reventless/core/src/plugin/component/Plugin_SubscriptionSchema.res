@@ -24,9 +24,10 @@ open ReventlessInfra.Api
 // CommandAccepted | CommandRejected | CommandPending). AppSync requires the
 // subscription return type to be a strict subset of the linked mutation's
 // return type, so the subscription field has to declare CommandResult as well.
-let sourceCFields = (
-  ~mutationEntries: array<mutationSchemaEntry>,
-): (array<string>, array<GraphQL_Stitcher.subscriptionSource>) => {
+let sourceCFields = (~mutationEntries: array<mutationSchemaEntry>): (
+  array<string>,
+  array<GraphQL_Stitcher.subscriptionSource>,
+) => {
   let fields: array<string> = []
   let sources: array<GraphQL_Stitcher.subscriptionSource> = []
   let pushField = (fieldName: string) => {
@@ -77,9 +78,10 @@ let sourceCFields = (
 // Returns (subscriptionFields, supportingTypes) — the supporting type is the
 // {DisplayName}EventLogEvent type that carries position, eventType, and payload.
 
-let sourceAFieldsAndTypes = (
-  ~eventLogEntries: array<eventLogSchemaEntry>,
-): (array<string>, array<string>) => {
+let sourceAFieldsAndTypes = (~eventLogEntries: array<eventLogSchemaEntry>): (
+  array<string>,
+  array<string>,
+) => {
   let seen: Set.t<string> = Set.make()
   let fields: array<string> = []
   let types: array<string> = []

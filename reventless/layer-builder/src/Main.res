@@ -125,9 +125,7 @@ let config: DependencyBundler_Config.t = {
     "minizlib",
   ],
   // @reventlessdev/* are public on npmjs — anonymous install, no auth token.
-  registryOpts: Dict.fromArray([
-    ("@reventlessdev:registry", "https://registry.npmjs.org"),
-  ]),
+  registryOpts: Dict.fromArray([("@reventlessdev:registry", "https://registry.npmjs.org")]),
   rootPostProcess: DependencyBundler_PostProcess.reventlessAwsDeploytime,
   postProcess: Dict.fromArray([
     (">rescript", DependencyBundler_PostProcess.rescriptDependent),
@@ -142,9 +140,8 @@ let config: DependencyBundler_Config.t = {
 // Await the build and exit non-zero on failure. Discarding the promise (the
 // previous shape) surfaced failures only as an unhandledRejection, so CI saw a
 // green exit even when the layer build threw.
-let _ =
-  DependencyBundler.build(config)->Promise.catch(e => {
-    Console.error2("layer build failed:", e)
-    NodeProcess.exit(1)
-    Promise.resolve()
-  })
+let _ = DependencyBundler.build(config)->Promise.catch(e => {
+  Console.error2("layer build failed:", e)
+  NodeProcess.exit(1)
+  Promise.resolve()
+})

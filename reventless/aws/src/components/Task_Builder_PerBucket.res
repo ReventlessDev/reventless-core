@@ -17,14 +17,13 @@ module Defaults: ReventlessInfra.RuntimeDefaults.T = {
 
 module Make = (Spec: ReventlessCore.Task.Spec): (
   ReventlessCore.Task.T with module Spec = Spec
-) =>
-  ReventlessCore.Task_Builder.Make(
-    Spec,
-    RuntimeEnvironment,
-    EventCollectorChannel,
-    EventCollectorRuntimeBuilder,
-    TaskRuntimeBuilder,
-    TaskBucket,
-    SideEffectHandler,
-    Defaults,
-  )
+) => ReventlessCore.Task_Builder.Make(
+  Spec,
+  RuntimeEnvironment,
+  EventCollectorChannel,
+  EventCollectorRuntimeBuilder,
+  TaskRuntimeBuilder,
+  TaskBucket,
+  SideEffectHandler,
+  Defaults,
+)

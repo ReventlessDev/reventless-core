@@ -56,11 +56,9 @@ let make: ReventlessCore.Scheduler_Adapter.scheduledPublisherMaker = (~name, ~op
       ~service="CloudWatchEvents"->Pulumi.Output.make,
       ~resourceType="aws:cloudwatch:EventRule"->Pulumi.Output.make,
     ),
-    operations: role.arn->Pulumi.Output.apply(roleArn => (
-      {
-        createSchedule: ScheduledPublisher_CloudWatchEvents_Runtime.createSchedule(~roleArn),
-        deleteSchedule: ScheduledPublisher_CloudWatchEvents_Runtime.deleteSchedule,
-      }: ReventlessInfra.Scheduler.operations
-    )),
+    operations: role.arn->Pulumi.Output.apply((roleArn): ReventlessInfra.Scheduler.operations => {
+      createSchedule: ScheduledPublisher_CloudWatchEvents_Runtime.createSchedule(~roleArn),
+      deleteSchedule: ScheduledPublisher_CloudWatchEvents_Runtime.deleteSchedule,
+    }),
   }
 }

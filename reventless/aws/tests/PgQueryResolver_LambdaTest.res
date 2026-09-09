@@ -57,8 +57,7 @@ let lastRetiredScope: ref<option<Reventless.OwnerScope.retiredScope>> = ref(None
 let pushdowns: PgQueryResolver_Lambda.pushdowns = {
   indexLookup: async (~readModelName as _, field, value) =>
     allItems()->Array.filter(i => fieldEq(i, field, value)),
-  byIds: async (~readModelName as _, ids) =>
-    ids->Array.filterMap(id => store->Dict.get(id)),
+  byIds: async (~readModelName as _, ids) => ids->Array.filterMap(id => store->Dict.get(id)),
   listPage: async (
     ~readModelName as _,
     ~argsDict as _,
@@ -159,7 +158,11 @@ describe("PgQueryResolver_Lambda.dispatch", () => {
   testPromise("getById miss → null", async () => {
     let r = await PgQueryResolver_Lambda.dispatch(
       ~binding=makeBinding(),
-      ~payload=mkPayload(~kind="getById", ~args=objArgs([("id", JSON.Encode.string("absent"))]), ()),
+      ~payload=mkPayload(
+        ~kind="getById",
+        ~args=objArgs([("id", JSON.Encode.string("absent"))]),
+        (),
+      ),
     )
     expect(r)->toBe(JSON.Encode.null)
   })
@@ -231,7 +234,9 @@ describe("PgQueryResolver_Lambda.dispatch", () => {
       ~binding=makeBinding(),
       ~payload=mkPayload(~kind="items", ~args=objArgs([("id", JSON.Encode.string("p-2"))]), ()),
     )
-    expect(r->field("edges")->Option.flatMap(JSON.Decode.array)->Option.getOr([])->Array.length)->toBe(0)
+    expect(
+      r->field("edges")->Option.flatMap(JSON.Decode.array)->Option.getOr([])->Array.length,
+    )->toBe(0)
   })
 
   testPromise("authorization DenyAll → empty shape per kind", async () => {
@@ -241,8 +246,13 @@ describe("PgQueryResolver_Lambda.dispatch", () => {
       ~payload=mkPayload(~kind="getById", ~args=objArgs([("id", JSON.Encode.string("p-1"))]), ()),
     )
     expect(single)->toBe(JSON.Encode.null)
-    let list = await PgQueryResolver_Lambda.dispatch(~binding=b, ~payload=mkPayload(~kind="list", ()))
-    expect(list->field("edges")->Option.flatMap(JSON.Decode.array)->Option.getOr([])->Array.length)->toBe(0)
+    let list = await PgQueryResolver_Lambda.dispatch(
+      ~binding=b,
+      ~payload=mkPayload(~kind="list", ()),
+    )
+    expect(
+      list->field("edges")->Option.flatMap(JSON.Decode.array)->Option.getOr([])->Array.length,
+    )->toBe(0)
     let byIds = await PgQueryResolver_Lambda.dispatch(
       ~binding=b,
       ~payload=mkPayload(~kind="byIds", ~args=objArgs([("ids", JSON.Encode.array([]))]), ()),
@@ -251,8 +261,8 @@ describe("PgQueryResolver_Lambda.dispatch", () => {
   })
 
   testPromise("queryInterceptor hook Deny → empty shape (auth allowed)", async () => {
-    QueryDb_Callback.registerQueryInterceptor(async (~identity as _, ~readModelName as _, ~args as _) =>
-      Deny("nope")
+    QueryDb_Callback.registerQueryInterceptor(
+      async (~identity as _, ~readModelName as _, ~args as _) => Deny("nope"),
     )
     let r = await PgQueryResolver_Lambda.dispatch(
       ~binding=makeBinding(),
@@ -473,10 +483,7 @@ describe("id form — the typed doors take either", () => {
         ~args=objArgs([
           (
             "ids",
-            JSON.Encode.array([
-              JSON.Encode.string("p-1"),
-              JSON.Encode.string(globalIdFor("p-3")),
-            ]),
+            JSON.Encode.array([JSON.Encode.string("p-1"), JSON.Encode.string(globalIdFor("p-3"))]),
           ),
         ]),
         (),
@@ -492,9 +499,7 @@ describe("id form — the typed doors take either", () => {
       ~binding=makeBinding(),
       ~payload=mkPayload(
         ~kind="byIds",
-        ~args=objArgs([
-          ("ids", JSON.Encode.array(["p-1", "p-3"]->Array.map(JSON.Encode.string))),
-        ]),
+        ~args=objArgs([("ids", JSON.Encode.array(["p-1", "p-3"]->Array.map(JSON.Encode.string)))]),
         (),
       ),
     )
@@ -704,13 +709,13 @@ let geoBinding = (): PgQueryResolver_Lambda.binding => {
 
 // The member type of the first row a door answers with, whatever shape it took.
 let memberOf = (r: JSON.t): option<string> => {
-  let fromRow = row =>
-    row->field("geolocation")->Option.flatMap(g => g->str("__typename"))
+  let fromRow = row => row->field("geolocation")->Option.flatMap(g => g->str("__typename"))
   switch r->JSON.Decode.array {
   | Some(rows) => rows->Array.get(0)->Option.flatMap(fromRow)
   | None =>
     switch r->field("edges")->Option.flatMap(JSON.Decode.array) {
-    | Some(edges) => edges->Array.get(0)->Option.flatMap(e => e->field("node"))->Option.flatMap(fromRow)
+    | Some(edges) =>
+      edges->Array.get(0)->Option.flatMap(e => e->field("node"))->Option.flatMap(fromRow)
     | None => fromRow(r)
     }
   }
@@ -721,11 +726,20 @@ describe("PgQueryResolver — a nested union survives every door", () => {
     ("getById", mkPayload(~kind="getById", ~args=objArgs([("id", JSON.Encode.string("g-1"))]), ())),
     (
       "byIds",
-      mkPayload(~kind="byIds", ~args=objArgs([("ids", JSON.Encode.array([JSON.Encode.string("g-1")]))]), ()),
+      mkPayload(
+        ~kind="byIds",
+        ~args=objArgs([("ids", JSON.Encode.array([JSON.Encode.string("g-1")]))]),
+        (),
+      ),
     ),
     (
       "index",
-      mkPayload(~kind="index", ~index="byStatus", ~args=objArgs([("byStatus", JSON.Encode.string("active"))]), ()),
+      mkPayload(
+        ~kind="index",
+        ~index="byStatus",
+        ~args=objArgs([("byStatus", JSON.Encode.string("active"))]),
+        (),
+      ),
     ),
     ("list", mkPayload(~kind="list", ())),
     ("items", mkPayload(~kind="items", ~args=objArgs([("id", JSON.Encode.string("g-1"))]), ())),
@@ -759,10 +773,13 @@ describe("PgQueryResolver — a nested union survives every door", () => {
   ]
 
   doors->Array.forEach(((label, payload)) =>
-    testPromise(label ++ " hands the member type back as stored", async () => {
-      let r = await PgQueryResolver_Lambda.dispatch(~binding=geoBinding(), ~payload)
-      expect(memberOf(r))->toEqual(Some("GeolocationLocated"))
-    })
+    testPromise(
+      label ++ " hands the member type back as stored",
+      async () => {
+        let r = await PgQueryResolver_Lambda.dispatch(~binding=geoBinding(), ~payload)
+        expect(memberOf(r))->toEqual(Some("GeolocationLocated"))
+      },
+    )
   )
 
   // `node` is the one door that writes a `__typename` of its own, at the top

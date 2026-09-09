@@ -89,7 +89,9 @@ Region and credentials come from the environment, as for any AWS SDK call.
   12-character password policy, no MFA, admin-only user creation. An operator
   wanting something else edits the pool afterwards rather than having this script
   grow a flag per Cognito setting. */
-let poolSettings = (~poolName: string): CognitoIdentityServiceProvider.CreateUserPoolCommand.input => {
+let poolSettings = (
+  ~poolName: string,
+): CognitoIdentityServiceProvider.CreateUserPoolCommand.input => {
   poolName,
   usernameAttributes: ["email"],
   mfaConfiguration: "OFF",
@@ -140,7 +142,9 @@ let findPoolByName = async (~poolName: string): result<option<string>, string> =
   | [only] => Ok(Some(only))
   | several =>
     Error(
-      `${several->Array.length->Int.toString} user pools are named "${poolName}" (${several->Array.join(
+      `${several
+        ->Array.length
+        ->Int.toString} user pools are named "${poolName}" (${several->Array.join(
           ", ",
         )}). Pass --provider-id to say which one to use; this script will not guess.`,
     )
@@ -246,7 +250,8 @@ let provisionStore = async (~tableName: string): result<unit, string> =>
 
 /** Printed rather than assumed: nothing here owns these resources, so nothing
   here can wire them up either. */
-let nextSteps = (~providerId: string) => `
+let nextSteps = (~providerId: string) =>
+  `
 Configure each platform stack that should use this provider:
 
   pulumi config set platform:identityProviderId ${providerId}

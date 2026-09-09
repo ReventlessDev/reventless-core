@@ -41,14 +41,10 @@ let make = (
 
   let vpcConfig =
     securityGroupId
-    ->Pulumi.Output.apply(sgId =>
-      (
-        {
-          Lambda.Function.subnetIds: subnetIds->Pulumi.Input.make,
-          securityGroupIds: [sgId->Pulumi.Input.make]->Pulumi.Input.make,
-        }: Lambda.Function.vpcConfig
-      )
-    )
+    ->Pulumi.Output.apply((sgId): Lambda.Function.vpcConfig => {
+      Lambda.Function.subnetIds: subnetIds->Pulumi.Input.make,
+      securityGroupIds: [sgId->Pulumi.Input.make]->Pulumi.Input.make,
+    })
     ->Pulumi.Output.asInput
 
   let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(

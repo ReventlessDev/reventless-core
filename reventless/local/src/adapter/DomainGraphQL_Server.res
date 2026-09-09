@@ -37,7 +37,6 @@ type nodeResponse
 // mangled by utf8 decoding (setEncoding is deliberately NOT called).
 @send external _onDataBuf: (nodeRequest, @as("data") _, NodeBuffer.t => unit) => unit = "on"
 
-
 let readBody = (req: nodeRequest, onBody: string => unit): unit => {
   let buf = ref("")
   req->_setEncoding("utf8")
@@ -65,10 +64,7 @@ type requestHandler = (nodeRequest, nodeResponse) => unit
 // -- /__inmemory/login + /logout handlers -----------------------------------
 
 let _writeJson = (res: nodeResponse, ~status: int, body: JSON.t): unit => {
-  res->writeHead(
-    status,
-    {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
-  )
+  res->writeHead(status, {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"})
   res->end_(body->JSON.stringify)
 }
 
@@ -109,16 +105,12 @@ let handleLogin = (req: nodeRequest, res: nodeResponse): unit =>
           | Some(i) => i
           | None => Reventless.Identity.anonymous
           }
-          let identityJson =
-            identity->Reventless.Util_Sury.toJson(Reventless.Identity.schema)
+          let identityJson = identity->Reventless.Util_Sury.toJson(Reventless.Identity.schema)
           _writeJson(
             res,
             ~status=200,
             JSON.Encode.object(
-              Dict.fromArray([
-                ("token", JSON.Encode.string(token)),
-                ("identity", identityJson),
-              ]),
+              Dict.fromArray([("token", JSON.Encode.string(token)), ("identity", identityJson)]),
             ),
           )
         }
@@ -169,10 +161,7 @@ let handleSwitchRole = (req: nodeRequest, res: nodeResponse): unit =>
           JSON.Encode.object(
             Dict.fromArray([
               ("token", JSON.Encode.string(newToken)),
-              (
-                "identity",
-                identity->Reventless.Util_Sury.toJson(Reventless.Identity.schema),
-              ),
+              ("identity", identity->Reventless.Util_Sury.toJson(Reventless.Identity.schema)),
             ]),
           ),
         )
@@ -205,8 +194,7 @@ let _corsWriteHeaders = {
 }
 
 let handleObjectPut = (req: nodeRequest, res: nodeResponse, ~key: string): unit => {
-  let contentType =
-    req.headers->Dict.get("content-type")->Option.getOr("application/octet-stream")
+  let contentType = req.headers->Dict.get("content-type")->Option.getOr("application/octet-stream")
   readBodyBuf(req, bytes => {
     LocalObjectStore.put(~key, ~bytes, ~contentType)
     res->writeHead(200, _corsWriteHeaders)
@@ -239,17 +227,22 @@ let handleObjectGet = (res: nodeResponse, ~key: string): unit =>
 let _isInvalidBearer = (req: nodeRequest): bool =>
   switch req.headers->Dict.get("authorization") {
   | Some(h) if String.startsWith(h, "Bearer ") =>
-    let token =
-      String.slice(h, ~start=7, ~end=String.length(h))->String.trim
+    let token = String.slice(h, ~start=7, ~end=String.length(h))->String.trim
     LocalAuth.Login.verifyAndDecode(token)->Option.isNone
   | _ => false
   }
 
 // Shared dispatch for start(). Order matters: built-in
 // endpoints win over the yoga catch-all so they aren't shadowed by graphql.
-let _dispatch = (req: nodeRequest, res: nodeResponse, yoga: YG.yoga, getSdl: unit => string): unit => {
+let _dispatch = (
+  req: nodeRequest,
+  res: nodeResponse,
+  yoga: YG.yoga,
+  getSdl: unit => string,
+): unit => {
   // Strip query string before path matching.
   let path = req.url->String.split("?")->Array.get(0)->Option.getOr(req.url)
+
   // /__inmemory/login is the path that *issues* tokens — it never carries
   // one. Every other path must reject an unverifiable Bearer with 401 so
   // the host-shell's `on401` logout path can fire on stale tokens.
@@ -257,9 +250,7 @@ let _dispatch = (req: nodeRequest, res: nodeResponse, yoga: YG.yoga, getSdl: uni
     _writeJson(
       res,
       ~status=401,
-      JSON.Encode.object(
-        Dict.fromArray([("error", JSON.Encode.string("Invalid bearer token"))]),
-      ),
+      JSON.Encode.object(Dict.fromArray([("error", JSON.Encode.string("Invalid bearer token"))])),
     )
   } else if path == "/sdl" {
     res->writeHead(200, {"Content-Type": "text/plain", "Access-Control-Allow-Origin": "*"})
@@ -429,8 +420,7 @@ let relabelScope = (~from: string, ~to_: string) =>
         ->Dict.toArray
         ->Array.forEach(((typeName, byField)) =>
           switch existing.fieldResolvers->Dict.get(typeName) {
-          | Some(target) =>
-            byField->Dict.toArray->Array.forEach(((k, v)) => target->Dict.set(k, v))
+          | Some(target) => byField->Dict.toArray->Array.forEach(((k, v)) => target->Dict.set(k, v))
           | None => existing.fieldResolvers->Dict.set(typeName, byField)
           }
         )
@@ -483,7 +473,9 @@ let registerFieldResolvers = (~typeName: string, ~resolvers: dict<resolverFn>) =
 let getFieldResolver = (~typeName: string, fieldName: string): option<resolverFn> =>
   buckets.contents
   ->Dict.valuesToArray
-  ->Array.findMap(b => b.fieldResolvers->Dict.get(typeName)->Option.flatMap(d => d->Dict.get(fieldName)))
+  ->Array.findMap(b =>
+    b.fieldResolvers->Dict.get(typeName)->Option.flatMap(d => d->Dict.get(fieldName))
+  )
 
 /** Look up a registered mutation resolver by field name (used by MCP_Server).
     Searches all scope buckets. */
@@ -575,8 +567,7 @@ let assembleBucketSdl = (
     sections->Array.push(typeDefinitions->Array.join("\n\n"))
   }
   if withRootDefaults || queryFields->Array.length > 0 {
-    let queries =
-      queryFields->Array.length > 0 ? queryFields->Array.join("\n") : "  _noop: String"
+    let queries = queryFields->Array.length > 0 ? queryFields->Array.join("\n") : "  _noop: String"
     sections->Array.push(`type Query {\n${queries}\n}`)
   }
   if withRootDefaults || mutationFields->Array.length > 0 {
@@ -737,8 +728,14 @@ let start = (~port: int=4000, ~contextFactory as _: option<YG.contextFactory>=?,
   // original Error even when the client response is masked — is never swallowed
   // again), while verbose debug/info stay gated on GRAPHQL_DEBUG.
   let yogaLogging: YG.yogaLogger = {
-    debug: a => if debug { log.debug(~comp="GraphQL:Domain", YG.logArgToString(a)) },
-    info: a => if debug { log.info(~comp="GraphQL:Domain", YG.logArgToString(a)) },
+    debug: a =>
+      if debug {
+        log.debug(~comp="GraphQL:Domain", YG.logArgToString(a))
+      },
+    info: a =>
+      if debug {
+        log.info(~comp="GraphQL:Domain", YG.logArgToString(a))
+      },
     warn: a => log.warn(~comp="GraphQL:Domain", YG.logArgToString(a)),
     error: a => log.error(~comp="GraphQL:Domain", YG.logArgToString(a)),
   }
@@ -760,15 +757,19 @@ let start = (~port: int=4000, ~contextFactory as _: option<YG.contextFactory>=?,
     let detail = err->JsExn.message->Option.getOr("unknown error")
     log.error(
       ~comp="GraphQL:Domain",
-      `failed to bind port ${port->Int.toString}: ${detail} — ` ++
-      `is another server (dev server, prior test) already listening there?`,
+      `failed to bind port ${port->Int.toString}: ${detail} — ` ++ `is another server (dev server, prior test) already listening there?`,
     )
     // Re-raise so the failure is loud instead of a silently-unbound server whose
     // requests fall through to whatever else holds the port.
-    JsError.throwWithMessage(`DomainGraphQL_Server could not bind port ${port->Int.toString}: ${detail}`)
+    JsError.throwWithMessage(
+      `DomainGraphQL_Server could not bind port ${port->Int.toString}: ${detail}`,
+    )
   })
   server->YG.listen(port, () =>
-    log.info(~comp="GraphQL:Domain", `listening on http://localhost:${port->Int.toString}/graphql (SDL: /sdl)`)
+    log.info(
+      ~comp="GraphQL:Domain",
+      `listening on http://localhost:${port->Int.toString}/graphql (SDL: /sdl)`,
+    )
   )
   // Local AppSync Events transport (subscribe WS). Attached here so every
   // start mode (split, unified, replay) carries it.

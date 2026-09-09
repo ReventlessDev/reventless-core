@@ -16,8 +16,7 @@ let _ = TestRunner.setup()
 
 // Hand the provided context back as the handler's result — the assertions then
 // see exactly what an application handler would.
-let capture = (_event, _ctx) =>
-  Effect.serviceWith(ReventlessCore.RequestContext.tag, ctx => ctx)
+let capture = (_event, _ctx) => Effect.serviceWith(ReventlessCore.RequestContext.tag, ctx => ctx)
 
 let comp = "EventCollector(TestCollector)"
 

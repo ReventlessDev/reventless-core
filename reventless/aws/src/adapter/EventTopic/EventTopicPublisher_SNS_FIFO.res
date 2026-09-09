@@ -1,7 +1,17 @@
 open PulumiAws
 
-let make: ReventlessCore.EventTopic_Adapter.publisherMaker = (~name, ~storageResources as _, ~owner, ~opts) => {
-  let tags = AWS.Tags.make(~name, ~kind=ReventlessCore.EventTopic.componentType, ~role=EventTopic, ~owner?)
+let make: ReventlessCore.EventTopic_Adapter.publisherMaker = (
+  ~name,
+  ~storageResources as _,
+  ~owner,
+  ~opts,
+) => {
+  let tags = AWS.Tags.make(
+    ~name,
+    ~kind=ReventlessCore.EventTopic.componentType,
+    ~role=EventTopic,
+    ~owner?,
+  )
   let topic = SNS.Topic.make(
     ~name,
     ~args={
@@ -25,13 +35,15 @@ let make: ReventlessCore.EventTopic_Adapter.publisherMaker = (~name, ~storageRes
         stream
         ->Stream.grouped(10)
         ->Stream.runForEach(items =>
-          Effect.promise(() =>
-            items
-            ->Array.map(({ReventlessInfra.EventTopic.service, meta, json}) =>
-              publishJson(service, meta, json)
-            )
-            ->Promise.all
-            ->Promise.thenResolve(_ => ())
+          Effect.promise(
+            () =>
+              items
+              ->Array.map(
+                ({ReventlessInfra.EventTopic.service: service, meta, json}) =>
+                  publishJson(service, meta, json),
+              )
+              ->Promise.all
+              ->Promise.thenResolve(_ => ()),
           )
         )
     }),

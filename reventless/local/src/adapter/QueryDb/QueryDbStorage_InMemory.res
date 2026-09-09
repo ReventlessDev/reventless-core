@@ -73,7 +73,8 @@ module Make = (Bus: LocalBus.T) => {
     ~ttl as _=?,
     ~api as _,
     ~apiRole as _,
-    ~owner as _, ~opts as _,
+    ~owner as _,
+    ~opts as _,
   ) => {
     let store: ref<dict<dict<JSON.t>>> = ref(Dict.make())
     // Lazy flattened snapshot for the registered scan/stream closures. The old
@@ -199,7 +200,9 @@ module Make = (Bus: LocalBus.T) => {
         ~state=Some(state),
         ~seq=LocalStateChangeDescriptor.nextSequence(),
         ~retiredField=?LocalStateChangeDescriptor.retiredSpecFor(name)->Option.map(r => r.field),
-      ~retiredValues=?LocalStateChangeDescriptor.retiredSpecFor(name)->Option.flatMap(r => r.values),
+        ~retiredValues=?LocalStateChangeDescriptor.retiredSpecFor(name)->Option.flatMap(r =>
+          r.values
+        ),
       )
       Bus.publishStateChange(~name, ~descriptor)
     }
@@ -367,5 +370,4 @@ module Make = (Bus: LocalBus.T) => {
       operations: Pulumi.Output.make(ops),
     }
   }
-
 }

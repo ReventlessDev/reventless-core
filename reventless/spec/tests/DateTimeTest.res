@@ -35,7 +35,8 @@ describe("DateTime:", () => {
   testSync("says what it wanted and shows the value", () =>
     expect(
       switch DateTime.fromString("tomorrow") {
-      | Error(why) => why->String.includes("UTC ISO-8601 instant") && why->String.includes("tomorrow")
+      | Error(why) =>
+        why->String.includes("UTC ISO-8601 instant") && why->String.includes("tomorrow")
       | Ok(_) => false
       },
     )->toBe(true)
@@ -60,30 +61,37 @@ describe("DateTime:", () => {
     let earlier = "2026-03-02T09:00:00Z"
     let later = "2026-03-02T11:00:00Z"
 
-    testSync("isBefore is strict", () =>
-      expect((
-        DateTime.isBefore(earlier, later),
-        DateTime.isBefore(later, earlier),
-        DateTime.isBefore(earlier, earlier),
-      ))->toEqual((true, false, false))
+    testSync(
+      "isBefore is strict",
+      () =>
+        expect((
+          DateTime.isBefore(earlier, later),
+          DateTime.isBefore(later, earlier),
+          DateTime.isBefore(earlier, earlier),
+        ))->toEqual((true, false, false)),
     )
 
-    testSync("compare orders oldest first", () =>
-      expect(["2026-03-02T11:00:00Z", "2026-03-02T09:00:00Z"]->Array.toSorted(DateTime.compare))
-      ->toEqual([earlier, later])
+    testSync(
+      "compare orders oldest first",
+      () =>
+        expect(
+          ["2026-03-02T11:00:00Z", "2026-03-02T09:00:00Z"]->Array.toSorted(DateTime.compare),
+        )->toEqual([earlier, later]),
     )
   })
 
   describe("format:", () => {
-    testSync("reads to the minute, in UTC", () =>
-      expect(DateTime.format("2026-03-02T09:04:31.512Z"))->toBe("2026-03-02 09:04")
+    testSync(
+      "reads to the minute, in UTC",
+      () => expect(DateTime.format("2026-03-02T09:04:31.512Z"))->toBe("2026-03-02 09:04"),
     )
 
     // Transparent `t` means a value the grammar never saw can reach this. It
     // reads back unchanged rather than being sliced into something that looks
     // like a date and is not one.
-    testSync("hands back a value that is not an instant", () =>
-      expect(DateTime.format("time"))->toBe("time")
+    testSync(
+      "hands back a value that is not an instant",
+      () => expect(DateTime.format("time"))->toBe("time"),
     )
   })
 })

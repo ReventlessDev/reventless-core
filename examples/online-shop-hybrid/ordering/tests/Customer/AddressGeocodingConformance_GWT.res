@@ -14,14 +14,13 @@ module Binding = {
 
   let created = address => [Customer.Registered({email: "alice@x.y", address})]
   let subjectChanged = address => Customer.AddressUpdated({address: address})
-  let located = (~point, ~resolvedFrom) =>
-    Customer.LocationSet({location: point, resolvedFrom})
-  let unresolvable = (~subject, ~reason) =>
-    Customer.AddressUnresolvable({address: subject, reason})
-  let setLocation = (~point, ~resolvedFrom) =>
-    Customer.SetLocation({location: point, resolvedFrom})
-  let markUnresolvable = (~subject, ~reason) =>
-    Customer.MarkAddressUnresolvable({address: subject, reason})
+  let located = (~point, ~resolvedFrom) => Customer.LocationSet({location: point, resolvedFrom})
+  let unresolvable = (~subject, ~reason) => Customer.AddressUnresolvable({address: subject, reason})
+  let setLocation = (~point, ~resolvedFrom) => Customer.SetLocation({location: point, resolvedFrom})
+  let markUnresolvable = (~subject, ~reason) => Customer.MarkAddressUnresolvable({
+    address: subject,
+    reason,
+  })
 
   module Slice = {
     include GeocodeCustomerAddress
@@ -40,9 +39,7 @@ module Binding = {
   ]
   // The stand-down, as a real constructor rather than a type name: a
   // misspelled name would pass the assertion for the wrong reason.
-  let standsDownOn = [
-    Customer.AddressLocated({address: subjectA, location: {lat: 0.0, lng: 0.0}}),
-  ]
+  let standsDownOn = [Customer.AddressLocated({address: subjectA, location: {lat: 0.0, lng: 0.0}})]
   let isLocation = (cmd: GeocodeCustomerAddress.inboundCommand) =>
     switch cmd {
     | SetLocation(_) => true

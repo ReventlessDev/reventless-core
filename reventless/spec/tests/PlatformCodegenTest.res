@@ -31,8 +31,7 @@ let catalogManifest: PlatformCodegen.pluginManifest = {
 describe("PlatformCodegen.render", () => {
   testSync("renders header, provenance and the capability list", () => {
     expect(PlatformCodegen.render([catalogManifest]))->toEqual(
-      Ok(
-        `// AUTO-GENERATED — do not edit. Run \`pnpm run generate:platform\` to update.
+      Ok(`// AUTO-GENERATED — do not edit. Run \`pnpm run generate:platform\` to update.
 //
 // The platform's capability list, unioned from the committed
 // \`capabilities.json\` manifests of the plugins deploy-manifest.yaml names.
@@ -44,8 +43,7 @@ let capabilities: array<ReventlessInfra.Platform.capability> = [
   // catalog: Products.imageUrl → productImages
   ObjectStore({plugin: "Catalog", store: "productImages"}),
 ]
-`,
-      ),
+`),
     )
   })
 
@@ -67,9 +65,9 @@ let capabilities: array<ReventlessInfra.Platform.capability> = [
     }
     switch PlatformCodegen.render([catalogManifest, geocoding]) {
     | Ok(source) => {
-        expect(source->String.includes("  // ordering: GeocodeCustomerAddress\n  Geocoding,"))->toBe(
-          true,
-        )
+        expect(
+          source->String.includes("  // ordering: GeocodeCustomerAddress\n  Geocoding,"),
+        )->toBe(true)
         expect(source->String.includes("ObjectStore({plugin: \"Catalog\""))->toBe(true)
       }
     | Error(_) => expect(true)->toBe(false)
@@ -111,9 +109,9 @@ let capabilities: array<ReventlessInfra.Platform.capability> = [
     }
     switch PlatformCodegen.render([ordering]) {
     | Ok(source) => {
-        expect(source->String.includes("  // ordering: GeocodeCustomerAddress\n  Geocoding,"))->toBe(
-          true,
-        )
+        expect(
+          source->String.includes("  // ordering: GeocodeCustomerAddress\n  Geocoding,"),
+        )->toBe(true)
         expect(source->String.includes("  // ordering: SendOrderConfirmation\n  Messaging,"))->toBe(
           true,
         )
@@ -145,7 +143,16 @@ let capabilities: array<ReventlessInfra.Platform.capability> = [
       pluginName: "ordering",
       manifest: {
         capabilities: [
-          entry(~key="Catalog.productImages", ~declaredBy=[{component: "PlaceOrder", field: "receiptUpload", annotation: "Catalog.productImages"}]),
+          entry(
+            ~key="Catalog.productImages",
+            ~declaredBy=[
+              {
+                component: "PlaceOrder",
+                field: "receiptUpload",
+                annotation: "Catalog.productImages",
+              },
+            ],
+          ),
         ],
       },
     }
@@ -164,7 +171,10 @@ let capabilities: array<ReventlessInfra.Platform.capability> = [
       manifest: {
         capabilities: [
           entry(~key="Catalog.z", ~declaredBy=[{component: "C", field: "upload", annotation: "z"}]),
-          entry(~key="Catalog.a", ~declaredBy=[{component: "C", field: "attachment", annotation: "a"}]),
+          entry(
+            ~key="Catalog.a",
+            ~declaredBy=[{component: "C", field: "attachment", annotation: "a"}],
+          ),
         ],
       },
     }
@@ -179,7 +189,12 @@ let capabilities: array<ReventlessInfra.Platform.capability> = [
       pluginName: "catalog",
       manifest: {
         capabilities: [
-          entry(~key="branding.logos", ~declaredBy=[{component: "AttachInvoice", field: "logoUrl", annotation: "branding.logos"}]),
+          entry(
+            ~key="branding.logos",
+            ~declaredBy=[
+              {component: "AttachInvoice", field: "logoUrl", annotation: "branding.logos"},
+            ],
+          ),
         ],
       },
     }
@@ -188,9 +203,9 @@ let capabilities: array<ReventlessInfra.Platform.capability> = [
         expect(
           source->String.includes(`// catalog: AttachInvoice.logoUrl → branding.logos`),
         )->toBe(true)
-        expect(
-          source->String.includes(`ObjectStore({plugin: "branding", store: "logos"}),`),
-        )->toBe(true)
+        expect(source->String.includes(`ObjectStore({plugin: "branding", store: "logos"}),`))->toBe(
+          true,
+        )
       }
     | Error(_) => expect(true)->toBe(false)
     }
@@ -219,9 +234,7 @@ let capabilities: array<ReventlessInfra.Platform.capability> = [
     switch PlatformCodegen.render([inspector]) {
     | Ok(source) => {
         expect(
-          source->String.includes(
-            `// platform-inspector: SyncAlarmState.urn → inspectorSnapshots`,
-          ),
+          source->String.includes(`// platform-inspector: SyncAlarmState.urn → inspectorSnapshots`),
         )->toBe(true)
         expect(source->String.includes(`→ PlatformInspector.`))->toBe(false)
       }
@@ -236,7 +249,10 @@ let capabilities: array<ReventlessInfra.Platform.capability> = [
       pluginName: "catalog",
       manifest: {
         capabilities: [
-          entry(~key="Catalog.productImages", ~declaredBy=[{component: "AddProduct", field: "imageUrl"}]),
+          entry(
+            ~key="Catalog.productImages",
+            ~declaredBy=[{component: "AddProduct", field: "imageUrl"}],
+          ),
         ],
       },
     }
@@ -270,7 +286,10 @@ let capabilities: array<ReventlessInfra.Platform.capability> = [
       pluginName: "ordering",
       manifest: {
         capabilities: [
-          entry(~key="Ordering.receipts", ~declaredBy=[{component: "PlaceOrder", field: "receipt", annotation: "receipts"}]),
+          entry(
+            ~key="Ordering.receipts",
+            ~declaredBy=[{component: "PlaceOrder", field: "receipt", annotation: "receipts"}],
+          ),
         ],
       },
     }
@@ -280,8 +299,12 @@ let capabilities: array<ReventlessInfra.Platform.capability> = [
     )
     switch PlatformCodegen.render([catalogManifest, ordering]) {
     | Ok(source) => {
-        expect(source->String.includes(`ObjectStore({plugin: "Catalog", store: "productImages"}),`))->toBe(true)
-        expect(source->String.includes(`ObjectStore({plugin: "Ordering", store: "receipts"}),`))->toBe(true)
+        expect(
+          source->String.includes(`ObjectStore({plugin: "Catalog", store: "productImages"}),`),
+        )->toBe(true)
+        expect(
+          source->String.includes(`ObjectStore({plugin: "Ordering", store: "receipts"}),`),
+        )->toBe(true)
       }
     | Error(_) => expect(true)->toBe(false)
     }

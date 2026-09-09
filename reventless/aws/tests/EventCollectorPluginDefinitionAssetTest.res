@@ -80,16 +80,22 @@ describe("pluginDefinition.json write/read symmetry", () => {
     }
   })
 
-  testSync("a definition read back from the asset can be published to the Connect handshake", () => {
-    // The encode the old cast broke. Both arms, because only Offloaded diverges
-    // between wire and runtime shape and an Inline-only test would stay green.
-    [offloadedFragment, inlineFragment]->Array.forEach(def => {
-      let published =
-        ReventlessInfra.PluginExtensionPointSpec.ConnectPlugin(def->writeAsset->readAsset)
-        ->Reventless.Util_Sury.toJson(ReventlessInfra.PluginExtensionPointSpec.commandSchema)
-      expect(published->JSON.Decode.object->Option.isSome)->toBe(true)
-    })
-  })
+  testSync(
+    "a definition read back from the asset can be published to the Connect handshake",
+    () => {
+      // The encode the old cast broke. Both arms, because only Offloaded diverges
+      // between wire and runtime shape and an Inline-only test would stay green.
+      [offloadedFragment, inlineFragment]->Array.forEach(
+        def => {
+          let published =
+            ReventlessInfra.PluginExtensionPointSpec.ConnectPlugin(
+              def->writeAsset->readAsset,
+            )->Reventless.Util_Sury.toJson(ReventlessInfra.PluginExtensionPointSpec.commandSchema)
+          expect(published->JSON.Decode.object->Option.isSome)->toBe(true)
+        },
+      )
+    },
+  )
 
   testSync("the asset round-trips byte-identically, so no stored message shifts", () => {
     let once = offloadedFragment->writeAsset
@@ -108,7 +114,8 @@ describe("pluginDefinition.json write/read symmetry", () => {
   // hand-written JSON literal in PluginRuntime_Builder and fell two fields behind
   // (dcbEventLog, kind) with nothing to notice.
   testSync("the platform's own placeholder asset survives the same round trip", () => {
-    let def = ReventlessCore.Platform_Admin_Structure.internalPluginDefinition->writeAsset->readAsset
+    let def =
+      ReventlessCore.Platform_Admin_Structure.internalPluginDefinition->writeAsset->readAsset
     expect(def.id)->toBe(ReventlessCore.Platform_Admin_Structure.pluginId ++ "@INTERNAL")
     expect(def.kind)->toBe(Reventless.Plugin.Domain)
   })

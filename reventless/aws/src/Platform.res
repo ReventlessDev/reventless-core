@@ -201,8 +201,10 @@ module MakeWithConfig = (
       // A platform that provisions none omits the export entirely, which reads
       // as "no store to claim in" — the claimer then builds nothing, rather
       // than building something that can reach nothing.
-      (stackRef->Pulumi.StackReference.getOutput("objectStores"): Pulumi.Output.t<option<JSON.t>>)
-      ->Pulumi.Output.apply(objectStores =>
+
+      (
+        stackRef->Pulumi.StackReference.getOutput("objectStores"): Pulumi.Output.t<option<JSON.t>>
+      )->Pulumi.Output.apply(objectStores =>
         objectStores
         ->Option.flatMap(JSON.Decode.object)
         ->Option.getOr(Dict.make())
@@ -210,15 +212,16 @@ module MakeWithConfig = (
         ->Array.filterMap(((qualified, v)) =>
           v
           ->JSON.Decode.object
-          ->Option.flatMap(o =>
-            switch (
-              o->Dict.get("bucketName")->Option.flatMap(JSON.Decode.string),
-              o->Dict.get("keyPrefix")->Option.flatMap(JSON.Decode.string),
-            ) {
-            | (Some(bucketName), Some(servedPrefix)) =>
-              Some({Upload_Claim_S3.qualified: qualified, bucketName, servedPrefix})
-            | _ => None
-            }
+          ->Option.flatMap(
+            o =>
+              switch (
+                o->Dict.get("bucketName")->Option.flatMap(JSON.Decode.string),
+                o->Dict.get("keyPrefix")->Option.flatMap(JSON.Decode.string),
+              ) {
+              | (Some(bucketName), Some(servedPrefix)) =>
+                Some({Upload_Claim_S3.qualified, bucketName, servedPrefix})
+              | _ => None
+              },
           )
         )
       )
@@ -273,8 +276,9 @@ module MakeWithConfig = (
   // shared types win over every plugin source's standalone copy (divergence
   // is shadowed, not MERGE_FAILED — Phase-0 finding 1).
   let assembleCanonicalSourceSdl = (~baseFragment): string =>
-    AppSync_Adapter.stitchStandaloneWithAwsDirectives(~fragment=baseFragment)
-    ->AppSync_SdlDecorate.stampCanonicalTypes
+    AppSync_Adapter.stitchStandaloneWithAwsDirectives(
+      ~fragment=baseFragment,
+    )->AppSync_SdlDecorate.stampCanonicalTypes
 
   // Admin base as a source-API document — auth-decorated (all fields Admin,
   // Cognito-only; the deploy-time SigV4 system-caller fields died with the
@@ -289,7 +293,8 @@ module MakeWithConfig = (
 
   // Split-mode Domain source document: relay base types + Platform_ping — the
   // Domain merged API's canonical owner (plugin fields come from plugin sources).
-  let domainBaseSourceSdl = (): string => assembleCanonicalSourceSdl(~baseFragment=domainBaseFragment)
+  let domainBaseSourceSdl = (): string =>
+    assembleCanonicalSourceSdl(~baseFragment=domainBaseFragment)
 
   let (domainApi, domainApiRole, platformApi, platformApiRole) = switch platformStackRef {
   | None =>
@@ -337,37 +342,40 @@ module MakeWithConfig = (
         defaultOutput,
       )
       ->Pulumi.Output.all3
-      ->Pulumi.Output.apply(
-        (((directProviderId, directProviderRegion), (directPoolId, directRegion), default)) => {
-          let getFromDefault = key =>
-            default
-            ->Option.flatMap(d => d->JSON.Decode.object)
-            ->Option.flatMap(d => d->Dict.get(key))
-            ->Option.flatMap(v => v->JSON.Decode.string)
-          // New spelling first at both levels, then the deprecated one. In ESM
-          // mode exports arrive nested under "default", hence each pair.
-          let userPoolId =
-            directProviderId
-            ->Option.orElse(getFromDefault("identityProviderId"))
-            ->Option.orElse(directPoolId)
-            ->Option.orElse(getFromDefault("cognitoUserPoolId"))
-            ->Option.getOrThrow(
-              ~message="Platform stack exports neither 'identityProviderId' nor 'cognitoUserPoolId' — redeploy the platform stack first",
-            )
-          let awsRegion =
-            directProviderRegion
-            ->Option.orElse(getFromDefault("identityProviderRegion"))
-            ->Option.orElse(directRegion)
-            ->Option.orElse(getFromDefault("cognitoRegion"))
-          (
-            {
-              userPoolId,
-              ?awsRegion,
-              defaultAction: PulumiAws.AppSync.GraphQLApi.ALLOW,
-            }: PulumiAws.AppSync.GraphQLApi.userPoolConfig
+      ->Pulumi.Output.apply(((
+        (directProviderId, directProviderRegion),
+        (directPoolId, directRegion),
+        default,
+      )) => {
+        let getFromDefault = key =>
+          default
+          ->Option.flatMap(d => d->JSON.Decode.object)
+          ->Option.flatMap(d => d->Dict.get(key))
+          ->Option.flatMap(v => v->JSON.Decode.string)
+        // New spelling first at both levels, then the deprecated one. In ESM
+        // mode exports arrive nested under "default", hence each pair.
+        let userPoolId =
+          directProviderId
+          ->Option.orElse(getFromDefault("identityProviderId"))
+          ->Option.orElse(directPoolId)
+          ->Option.orElse(getFromDefault("cognitoUserPoolId"))
+          ->Option.getOrThrow(
+            ~message="Platform stack exports neither 'identityProviderId' nor 'cognitoUserPoolId' — redeploy the platform stack first",
           )
-        },
-      )
+        let awsRegion =
+          directProviderRegion
+          ->Option.orElse(getFromDefault("identityProviderRegion"))
+          ->Option.orElse(directRegion)
+          ->Option.orElse(getFromDefault("cognitoRegion"))
+
+        (
+          {
+            userPoolId,
+            ?awsRegion,
+            defaultAction: PulumiAws.AppSync.GraphQLApi.ALLOW,
+          }: PulumiAws.AppSync.GraphQLApi.userPoolConfig
+        )
+      })
     let (api, role) = AppSync_Adapter.makePluginSourceApiResource(
       ~name="PluginSourceApi",
       ~userPoolConfig,
@@ -384,72 +392,73 @@ module MakeWithConfig = (
   // Populate apiConfig with both domain and platform API references.
   // In platform/monolithic mode, platformApi starts as domainApi and is updated
   // by deployPlatform/makePlatform once the platform API resource is created (split mode).
-  let () = apiConfigRef := Some({
-    domainApi: domainApi,
-    domainApiRole: domainApiRole,
-    platformApi: platformApi,
-    platformApiRole: platformApiRole,
-  })
+  let () =
+    apiConfigRef :=
+      Some({
+        domainApi,
+        domainApiRole,
+        platformApi,
+        platformApiRole,
+      })
 
   // AppSync Events API — companion to the GraphQL API for Sources A and B subscriptions.
   // In platform/monolithic mode: created here as a real resource.
   // In plugin mode: reconstructed as a phantom from platform stack exports (eventsApiArn, eventsApiDns).
-  let domainEventsApiOpt: option<AppSync_EventsApi.t> =
-    switch platformStackRef {
-    | None =>
-      // Browser host-shell subscribes over WebSocket with a Cognito IdToken,
-      // so the Events API must carry a Cognito auth provider. The pool is the
-      // same process-cached one the GraphQL API + config.json use.
-      let cognitoPool = Platform_Stack.resolveCognitoUserPool()
-      let awsRegion =
-        Pulumi.Config.make(Some("aws"))->Pulumi.Config.get("region")->Option.getOr("unknown")
-      Some(
-        AppSync_EventsApi.make(
-          ~name="DomainEventsApi",
-          ~cognitoUserPoolId=cognitoPool.poolId->Pulumi.Output.asInput,
-          ~awsRegion,
-          ~opts={},
-        ),
+  let domainEventsApiOpt: option<AppSync_EventsApi.t> = switch platformStackRef {
+  | None =>
+    // Browser host-shell subscribes over WebSocket with a Cognito IdToken,
+    // so the Events API must carry a Cognito auth provider. The pool is the
+    // same process-cached one the GraphQL API + config.json use.
+    let cognitoPool = Platform_Stack.resolveCognitoUserPool()
+    let awsRegion =
+      Pulumi.Config.make(Some("aws"))->Pulumi.Config.get("region")->Option.getOr("unknown")
+    Some(
+      AppSync_EventsApi.make(
+        ~name="DomainEventsApi",
+        ~cognitoUserPoolId=cognitoPool.poolId->Pulumi.Output.asInput,
+        ~awsRegion,
+        ~opts={},
+      ),
+    )
+  | Some(stackRef) =>
+    let eventsApiArnOutput: Pulumi.Output.t<option<string>> =
+      stackRef->Pulumi.StackReference.getOutput("eventsApiArn")
+    let eventsApiDnsOutput: Pulumi.Output.t<option<string>> =
+      stackRef->Pulumi.StackReference.getOutput("eventsApiDns")
+    let defaultEventsOutput: Pulumi.Output.t<option<JSON.t>> =
+      stackRef->Pulumi.StackReference.getOutput("default")
+    let getFromDefault = (default, key) =>
+      default
+      ->Option.flatMap(d => d->JSON.Decode.object)
+      ->Option.flatMap(d => d->Dict.get(key))
+      ->Option.flatMap(v => v->JSON.Decode.string)
+    let apiArn =
+      (eventsApiArnOutput, defaultEventsOutput)
+      ->Pulumi.Output.all2
+      ->Pulumi.Output.apply(((direct, default)) =>
+        direct->Option.orElse(getFromDefault(default, "eventsApiArn"))
       )
-    | Some(stackRef) =>
-      let eventsApiArnOutput: Pulumi.Output.t<option<string>> =
-        stackRef->Pulumi.StackReference.getOutput("eventsApiArn")
-      let eventsApiDnsOutput: Pulumi.Output.t<option<string>> =
-        stackRef->Pulumi.StackReference.getOutput("eventsApiDns")
-      let defaultEventsOutput: Pulumi.Output.t<option<JSON.t>> =
-        stackRef->Pulumi.StackReference.getOutput("default")
-      let getFromDefault = (default, key) =>
-        default
-        ->Option.flatMap(d => d->JSON.Decode.object)
-        ->Option.flatMap(d => d->Dict.get(key))
-        ->Option.flatMap(v => v->JSON.Decode.string)
-      let apiArn =
-        (eventsApiArnOutput, defaultEventsOutput)
-        ->Pulumi.Output.all2
-        ->Pulumi.Output.apply(((direct, default)) =>
-          direct->Option.orElse(getFromDefault(default, "eventsApiArn"))
-        )
-      let dns =
-        (eventsApiDnsOutput, defaultEventsOutput)
-        ->Pulumi.Output.all2
-        ->Pulumi.Output.apply(((direct, default)) =>
-          direct->Option.orElse(getFromDefault(default, "eventsApiDns"))
-        )
-      let api: PulumiAws.AwsNative.AppSync.Api.t = {
-        apiId: Pulumi.Output.make(""),
-        apiArn: apiArn->Pulumi.Output.apply(v => v->Option.getOr("")),
-        dns: dns->Pulumi.Output.apply(dnsHttp => ({
-          PulumiAws.AwsNative.AppSync.Api.http: ?dnsHttp,
-        }: PulumiAws.AwsNative.AppSync.Api.dns)),
-        name: Pulumi.Output.make(""),
-      }
-      let eventsApi: AppSync_EventsApi.t = {
-        name: "DomainEventsApi",
-        api,
-        defaultNamespace: None,
-      }
-      Some(eventsApi)
+    let dns =
+      (eventsApiDnsOutput, defaultEventsOutput)
+      ->Pulumi.Output.all2
+      ->Pulumi.Output.apply(((direct, default)) =>
+        direct->Option.orElse(getFromDefault(default, "eventsApiDns"))
+      )
+    let api: PulumiAws.AwsNative.AppSync.Api.t = {
+      apiId: Pulumi.Output.make(""),
+      apiArn: apiArn->Pulumi.Output.apply(v => v->Option.getOr("")),
+      dns: dns->Pulumi.Output.apply((dnsHttp): PulumiAws.AwsNative.AppSync.Api.dns => {
+        PulumiAws.AwsNative.AppSync.Api.http: ?dnsHttp,
+      }),
+      name: Pulumi.Output.make(""),
     }
+    let eventsApi: AppSync_EventsApi.t = {
+      name: "DomainEventsApi",
+      api,
+      defaultNamespace: None,
+    }
+    Some(eventsApi)
+  }
 
   // B3.3: publish the events-API endpoint + ARN to the projection-Lambda runtime
   // builders, so a subscription-enabled Postgres read model / view slice gets the
@@ -509,8 +518,7 @@ module MakeWithConfig = (
       EventMappings: ReventlessInfra.EventMapper.Mappings with module Target := Spec,
     ): (
       ReventlessInfra.Aggregate.T with type api = Types.AppSync.api
-    ) =>
-      Aggregate_Builder_Single.Make(Spec, Behavior, EventMappings)
+    ) => Aggregate_Builder_Single.Make(Spec, Behavior, EventMappings)
     /** Async variant — uses FIFO SQS channel, commands return `CommandPending`. */
     module MakeAsync = (
       Spec: Reventless.Aggregate.Spec,
@@ -518,8 +526,7 @@ module MakeWithConfig = (
       EventMappings: ReventlessInfra.EventMapper.Mappings with module Target := Spec,
     ): (
       ReventlessInfra.Aggregate.T with type api = Types.AppSync.api
-    ) =>
-      Aggregate_Builder_Single_Async.Make(Spec, Behavior, EventMappings)
+    ) => Aggregate_Builder_Single_Async.Make(Spec, Behavior, EventMappings)
   }
 
   module ReadModel = {
@@ -531,8 +538,7 @@ module MakeWithConfig = (
         with module Spec = Spec
         and type api = Types.AppSync.api
         and type role = Types.AppSync.role
-    ) =>
-      ReadModel_Builder_Single.Make(Spec, Mappings)
+    ) => ReadModel_Builder_Single.Make(Spec, Mappings)
   }
 
   /** Stream-enabled read model — DynamoDB Stream + StateTopic Lambda for
@@ -546,8 +552,7 @@ module MakeWithConfig = (
         with module Spec = Spec
         and type api = Types.AppSync.api
         and type role = Types.AppSync.role
-    ) =>
-      ReadModel_Builder_Single_Stream.Make(Spec, Mappings)
+    ) => ReadModel_Builder_Single_Stream.Make(Spec, Mappings)
   }
 
   module ExtensionPoint = {
@@ -584,8 +589,7 @@ module MakeWithConfig = (
       module Mappings: ReventlessInfra.ExtensionPoint.Mappings with module Spec := Spec = {
         module type Mapping = ReventlessInfra.ExtensionPointMapping.T
           with module ExtensionPoint := Spec
-        let name =
-          Mapping1.Delegate.name ++ "+" ++ Mapping2.Delegate.name
+        let name = Mapping1.Delegate.name ++ "+" ++ Mapping2.Delegate.name
         // First mapping's URL — matches the user-extension merge convention.
         // See Make's moduleUrl comment for the %raw rationale.
         let moduleUrl = Mapping1.moduleUrl
@@ -610,11 +614,7 @@ module MakeWithConfig = (
         module type Mapping = ReventlessInfra.ExtensionPointMapping.T
           with module ExtensionPoint := Spec
         let name =
-          Mapping1.Delegate.name ++
-          "+" ++
-          Mapping2.Delegate.name ++
-          "+" ++
-          Mapping3.Delegate.name
+          Mapping1.Delegate.name ++ "+" ++ Mapping2.Delegate.name ++ "+" ++ Mapping3.Delegate.name
         // First mapping's URL — matches the user-extension merge convention.
         // See Make's moduleUrl comment for the %raw rationale.
         let moduleUrl = Mapping1.moduleUrl
@@ -636,14 +636,12 @@ module MakeWithConfig = (
     ): ReventlessInfra.Extension.Blueprint => {
       module Spec = Mapping.ExtensionPoint
       module CompiledMapping = ReventlessInfra.ExtensionMapping.Make(Mapping)
-      module type Mapping = ReventlessInfra.ExtensionMapping.T
-        with module ExtensionPoint := Spec
+      module type Mapping = ReventlessInfra.ExtensionMapping.T with module ExtensionPoint := Spec
       let name = Mapping.Delegate.name
       let moduleUrl = Mapping.moduleUrl
       let delegateModuleUrl = Mapping.delegateModuleUrl
       let mappings: array<module(Mapping)> = [module(CompiledMapping)]
     }
-
   }
 
   module Task = {
@@ -658,8 +656,9 @@ module MakeWithConfig = (
     module Make = (
       Spec: Reventless.StateChangeSlice.Spec,
       Behavior: Reventless.StateChangeSlice.Behavior with module Spec := Spec,
-    ): (ReventlessInfra.StateChangeSlice.T with module Spec = Spec) =>
-      StateChangeSlice_Builder.Make(Spec, Behavior)
+    ): (
+      ReventlessInfra.StateChangeSlice.T with module Spec = Spec
+    ) => StateChangeSlice_Builder.Make(Spec, Behavior)
     /** Async variant — uses FIFO SQS channel, commands return `CommandPending`. */
     module MakeAsync = (
       Spec: Reventless.StateChangeSlice.Spec,
@@ -742,7 +741,6 @@ module MakeWithConfig = (
     | None => resolveHookedApi()
     }
 
-
   let hooks: ReventlessCore.Plugin_Helpers.platformHooks = {
     // AWS uses Interstack for admin extension points — leave ref at empty dict.
     adminExtensionPoints: ref(Pulumi.Output.make(Dict.make())),
@@ -776,7 +774,6 @@ module MakeWithConfig = (
         ~opts,
       )
     },
-
     // Admin-side schema push, gated on admin DataSources via adminBarrier.
     // Platform_Admin.construct invokes this and chains createResolvers behind
     // the returned Output — so admin CreateResolver calls fire only after
@@ -793,7 +790,6 @@ module MakeWithConfig = (
     // before the resource resolves, so admin resolvers chained on the API are
     // already ordered after the schema is ACTIVE. No push.
     preAdminResolversSchemaHook: (~adminBarrier) => adminBarrier,
-
     // Push the plugin's standalone subgraph document to the plugin's OWN
     // source API — a single writer by construction. The returned Output gates
     // resolver creation and deployPlugin additionally sequences the
@@ -802,23 +798,24 @@ module MakeWithConfig = (
     // re-merges automatically.
     preResolversSchemaHook: (~name, ~version, pluginFragment) => {
       let sdl = AppSync_Adapter.stitchStandaloneWithAwsDirectives(~fragment=pluginFragment)
-      let pushed =
-        domainApi->Pulumi.Output.flatMap(api =>
-          api.id->Pulumi.Output.flatMap(apiId => {
-            log.info(
-              ~comp="preResolversSchemaHook",
-              `Pushing subgraph schema for ${name}@${version} to source API ${apiId}`,
-            )
-            let client = AppSync_Adapter.getClient()
-            client
-            ->AppSync_Adapter.startSchemaCreationRetrying({apiId, definition: sdl})
-            ->Promise.then(async _ => {
+      let pushed = domainApi->Pulumi.Output.flatMap(api =>
+        api.id->Pulumi.Output.flatMap(apiId => {
+          log.info(
+            ~comp="preResolversSchemaHook",
+            `Pushing subgraph schema for ${name}@${version} to source API ${apiId}`,
+          )
+          let client = AppSync_Adapter.getClient()
+          client
+          ->AppSync_Adapter.startSchemaCreationRetrying({apiId, definition: sdl})
+          ->Promise.then(
+            async _ => {
               await AppSync_Adapter.waitForSchemaActive(client, apiId)
               log.info(~comp="preResolversSchemaHook", "subgraph schema is ACTIVE")
-            })
-            ->Pulumi.Output.fromPromise
-          })
-        )
+            },
+          )
+          ->Pulumi.Output.fromPromise
+        })
+      )
       mergedSchemaPushedRef := Some(pushed)
       pushed
     },
@@ -864,98 +861,102 @@ module MakeWithConfig = (
           ~epQueueUrl=resource.id->Pulumi.Output.make,
           (),
         )
-      | None =>
-        log.warn(~comp="Platform", "heartbeat EP channel has no resources")
+      | None => log.warn(~comp="Platform", "heartbeat EP channel has no resources")
       }
     },
-
     // Phase 4 + 5: wire StateTopic and EventLogSubscription Lambdas per plugin.
     // Only active when the Events API resource exists (platform/monolithic mode).
-    subscriptionInfraHook: ?domainEventsApiOpt->Option.map(eventsApi =>
-      (params: ReventlessCore.Plugin_Helpers.subscriptionInfraParams) => {
-        let {pluginName, allQueryDbs, allEventTopics, eventLogEntries, opts} = params
-        let customOpts =
-          opts->ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
-        // StateTopic Lambda per stream-enabled QueryDb — publishes row changes
-        // to AppSync Events channels.  No GraphQL Subscription resolver is
-        // wired: Source B uses the Events WebSocket directly, not @aws_subscribe.
-        allQueryDbs->Dict.forEachWithKey((_queryDbOutputs, readModelName) => {
-          if QueryDbStorage_DynamoDbStream.streamRegistry->Set.has(readModelName) {
-            // Channel root MUST equal what the host-shell subscribes to. The
-            // AutoUI manifest sets queryableDef.queryField = listFieldName
-            // (plural, e.g. "Catalog_Products") and AutoLive subscribes on that.
-            // Publishing on the singular returnTypeName ("Catalog_Product")
-            // would land descriptors on a channel no client listens to.
-            let topicName =
-              ReventlessCore.Plugin_Helpers.queryFieldNamesRegistry
-              ->Dict.get(readModelName)
-              ->Option.map(qn => qn.listFieldName)
-              ->Option.getOr(readModelName)
-            StateTopic_AppSync.make(
-              ~readModelName,
-              ~topicName,
-              ~allQueryDbs,
-              ~eventsApi,
-              ~opts=customOpts,
-            )
-          }
-        })
-
-        // Phase 5: EventLogSubscription per SNS-backed event log entry.
-        // DynamoDB stream event topics (Category, DCB) are skipped — no SNS subscription needed.
-        eventLogEntries->Array.forEach(entry => {
-          // Aggregate EventTopics are keyed by Spec.name (= displayName).
-          // DCB EventTopic is keyed by busKey (= pluginName ++ "DcbEventLog").
-          let isSns =
-            EventTopicPublisher_SNS.snsRegistry->Set.has(entry.displayName) ||
-            EventTopicPublisher_SNS.snsRegistry->Set.has(entry.busKey)
-          let topicOutputs =
-            allEventTopics
-            ->Dict.get(entry.displayName)
-            ->Option.orElse(allEventTopics->Dict.get(entry.busKey))
-          isSns
-            ? topicOutputs->Option.forEach(outputs =>
-                EventLogSubscription_AppSync.make(
-                  ~name=entry.displayName,
-                  ~topicName=entry.displayName,
-                  ~eventTopicOutputs=outputs,
-                  ~eventsApi,
-                  ~opts=customOpts,
-                )
+    subscriptionInfraHook: ?(
+      domainEventsApiOpt->Option.map(eventsApi =>
+        (params: ReventlessCore.Plugin_Helpers.subscriptionInfraParams) => {
+          let {pluginName, allQueryDbs, allEventTopics, eventLogEntries, opts} = params
+          let customOpts =
+            opts->ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
+          // StateTopic Lambda per stream-enabled QueryDb — publishes row changes
+          // to AppSync Events channels.  No GraphQL Subscription resolver is
+          // wired: Source B uses the Events WebSocket directly, not @aws_subscribe.
+          allQueryDbs->Dict.forEachWithKey((_queryDbOutputs, readModelName) => {
+            if QueryDbStorage_DynamoDbStream.streamRegistry->Set.has(readModelName) {
+              // Channel root MUST equal what the host-shell subscribes to. The
+              // AutoUI manifest sets queryableDef.queryField = listFieldName
+              // (plural, e.g. "Catalog_Products") and AutoLive subscribes on that.
+              // Publishing on the singular returnTypeName ("Catalog_Product")
+              // would land descriptors on a channel no client listens to.
+              let topicName =
+                ReventlessCore.Plugin_Helpers.queryFieldNamesRegistry
+                ->Dict.get(readModelName)
+                ->Option.map(qn => qn.listFieldName)
+                ->Option.getOr(readModelName)
+              StateTopic_AppSync.make(
+                ~readModelName,
+                ~topicName,
+                ~allQueryDbs,
+                ~eventsApi,
+                ~opts=customOpts,
               )
-            : ()
-          // Register this event log with the upload claimer if — and only if —
-          // its events declare a `@storageRef` field. An event log that declares
-          // none is not registered, so a platform whose plugins declare no store
-          // provisions no claimer at all. `isSns` is the same synchronous answer
-          // the subscription above turns on, so the two cannot disagree about
-          // which channel an event log publishes through.
-          topicOutputs->Option.forEach(outputs =>
-            Upload_Claim_S3.make(
-              ~plugin=pluginName,
-              ~eventLogName=entry.displayName,
-              ~eventSchema=entry.eventSchema,
-              ~eventTopicOutputs=outputs,
-              ~isStreamBacked=!isSns,
+            }
+          })
+
+          // Phase 5: EventLogSubscription per SNS-backed event log entry.
+          // DynamoDB stream event topics (Category, DCB) are skipped — no SNS subscription needed.
+          eventLogEntries->Array.forEach(entry => {
+            // Aggregate EventTopics are keyed by Spec.name (= displayName).
+            // DCB EventTopic is keyed by busKey (= pluginName ++ "DcbEventLog").
+            let isSns =
+              EventTopicPublisher_SNS.snsRegistry->Set.has(entry.displayName) ||
+                EventTopicPublisher_SNS.snsRegistry->Set.has(entry.busKey)
+            let topicOutputs =
+              allEventTopics
+              ->Dict.get(entry.displayName)
+              ->Option.orElse(allEventTopics->Dict.get(entry.busKey))
+            isSns
+              ? topicOutputs->Option.forEach(
+                  outputs =>
+                    EventLogSubscription_AppSync.make(
+                      ~name=entry.displayName,
+                      ~topicName=entry.displayName,
+                      ~eventTopicOutputs=outputs,
+                      ~eventsApi,
+                      ~opts=customOpts,
+                    ),
+                )
+              : ()
+            // Register this event log with the upload claimer if — and only if —
+            // its events declare a `@storageRef` field. An event log that declares
+            // none is not registered, so a platform whose plugins declare no store
+            // provisions no claimer at all. `isSns` is the same synchronous answer
+            // the subscription above turns on, so the two cannot disagree about
+            // which channel an event log publishes through.
+            topicOutputs->Option.forEach(
+              outputs =>
+                Upload_Claim_S3.make(
+                  ~plugin=pluginName,
+                  ~eventLogName=entry.displayName,
+                  ~eventSchema=entry.eventSchema,
+                  ~eventTopicOutputs=outputs,
+                  ~isStreamBacked=!isSns,
+                ),
             )
-          )
-        })
-        // Finalize the shared StateTopic Lambda + IAM + per-stream ESMs from the
-        // entries the loop above just registered. Must run INSIDE this hook because
-        // Plugin_Builder fires it from inside a Pulumi.Output.apply chain — calling
-        // `finish` from deployPlugin (after P.make returns) would see the registry
-        // empty because the hook hasn't run yet. Admin's hook fires synchronously,
-        // but the call site is unified here so admin and plugins share one path.
-        StateTopic_AppSync.finish(~eventsApi, ~opts={})
-        // Same timing constraint, same reason: the claimer's registry is filled
-        // by the loop just above and drained here.
-        Upload_Claim_S3.finish(~plugin=pluginName, ~stores=claimStores, ~opts=customOpts)
-      }
+          })
+          // Finalize the shared StateTopic Lambda + IAM + per-stream ESMs from the
+          // entries the loop above just registered. Must run INSIDE this hook because
+          // Plugin_Builder fires it from inside a Pulumi.Output.apply chain — calling
+          // `finish` from deployPlugin (after P.make returns) would see the registry
+          // empty because the hook hasn't run yet. Admin's hook fires synchronously,
+          // but the call site is unified here so admin and plugins share one path.
+          StateTopic_AppSync.finish(~eventsApi, ~opts={})
+          // Same timing constraint, same reason: the claimer's registry is filled
+          // by the loop just above and drained here.
+          Upload_Claim_S3.finish(~plugin=pluginName, ~stores=claimStores, ~opts=customOpts)
+        }
+      )
     ),
   }
 
   // Apply Plugin functor with the platform hooks, then constrain the result to Plugin.T.
-  module PluginBuilderImpl = Plugin.Make({let hooks = hooks})
+  module PluginBuilderImpl = Plugin.Make({
+    let hooks = hooks
+  })
   module Plugin: ReventlessInfra.Plugin.T
     with type api = Types.AppSync.api
     and type role = Types.AppSync.role
@@ -995,9 +996,8 @@ module MakeWithConfig = (
   // via the auto-resolver flow. Internal-protocol variants (Heartbeat, Connect,
   // Disconnect, ReportIncompatibility) carry `@noApi` and are filtered out before
   // SDL/resolver generation.
-  module PluginAggregate: (
-    ReventlessInfra.Aggregate.T with type api = Types.AppSync.api
-  ) = Aggregate_Builder_Single.Make(
+  module PluginAggregate: ReventlessInfra.Aggregate.T
+    with type api = Types.AppSync.api = Aggregate_Builder_Single.Make(
     ReventlessCore.PluginSpec,
     ReventlessCore.PluginBehavior,
     ReventlessInfra.NoEventMappings.Make(ReventlessCore.PluginSpec),
@@ -1061,8 +1061,9 @@ module MakeWithConfig = (
     // this is how RM/SVS projections are fed. One subscriber per (feed, log)
     // keeps checkpoints isolated.
     let feedTargets = (~connectionConfig, ~logName, ~feed, ~isClassic) =>
-      PgProjectionFeed.getFeedQueues()->Array.filterMap(fq =>
-        (isClassic ? fq.includeClassic : fq.includeDcb)
+      PgProjectionFeed.getFeedQueues()->Array.filterMap(fq => {
+        let included = isClassic ? fq.includeClassic : fq.includeDcb
+        included
           ? Some({
               PgChangeFeedRelay_Builder.connectionConfig,
               logName,
@@ -1072,7 +1073,7 @@ module MakeWithConfig = (
               targetQueueArn: fq.arn,
             })
           : None
-      )
+      })
     let dcbLogs = switch DcbBackend.get() {
     | Some({connectionConfig}) =>
       DcbBackend.getRelayLogs()->Array.flatMap(entry => {
@@ -1249,11 +1250,9 @@ module MakeWithConfig = (
     // deployPlatform (staged) and each plugin with deployPlugin — makePlatform
     // predates the merge path and never gained merged wiring.
     failwith(
-      "makePlatform is not supported on AWS — deploy the platform with deployPlatform and " ++
-      "each plugin with deployPlugin (merged-API composition).",
+      "makePlatform is not supported on AWS — deploy the platform with deployPlatform and " ++ "each plugin with deployPlugin (merged-API composition).",
     )
   }
-
 
   // Merged-mode outputs of deployPlatform — the merged API(s), plus the
   // deploy-time merge gates (Outputs that resolve on MERGE_SUCCESS and fail
@@ -1358,12 +1357,13 @@ module MakeWithConfig = (
       splitApiOutputsRef := Some({platformApi, platformApiRole})
       switch apiConfigRef.contents {
       | Some(c) =>
-        apiConfigRef := Some({
-          domainApi: c.domainApi,
-          domainApiRole: c.domainApiRole,
-          platformApi: platformApi,
-          platformApiRole: platformApiRole,
-        })
+        apiConfigRef :=
+          Some({
+            domainApi: c.domainApi,
+            domainApiRole: c.domainApiRole,
+            platformApi,
+            platformApiRole,
+          })
       | None => ()
       }
     }
@@ -1434,21 +1434,18 @@ module MakeWithConfig = (
     // targets a non-existent ARN, breaking the
     // admin → plugin EventCollector → ConnectPlugin round-trip and leaving
     // the Plugin read model empty.
-    let pluginEpEventTopicArn =
-      admin.extensionPointsOutputs->Pulumi.Output.flatMap(eps =>
-        switch eps->Array.find(ep =>
-          ep.name == ReventlessInfra.PluginExtensionPointSpec.name
-        ) {
-        | Some(ep) =>
-          ep.eventTopic->Pulumi.Output.flatMap(et =>
-            switch et.resources->Array.get(0) {
-            | Some(r) => r.urn
-            | None => Pulumi.Output.make("NOT_AVAILABLE")
-            }
-          )
-        | None => Pulumi.Output.make("NOT_AVAILABLE")
-        }
-      )
+    let pluginEpEventTopicArn = admin.extensionPointsOutputs->Pulumi.Output.flatMap(eps =>
+      switch eps->Array.find(ep => ep.name == ReventlessInfra.PluginExtensionPointSpec.name) {
+      | Some(ep) =>
+        ep.eventTopic->Pulumi.Output.flatMap(et =>
+          switch et.resources->Array.get(0) {
+          | Some(r) => r.urn
+          | None => Pulumi.Output.make("NOT_AVAILABLE")
+          }
+        )
+      | None => Pulumi.Output.make("NOT_AVAILABLE")
+      }
+    )
 
     PluginRuntime_Builder.registerConfig(
       ~eventTopicArn=pluginEpEventTopicArn,
@@ -1555,7 +1552,10 @@ module MakeWithConfig = (
           api.uris->Pulumi.Output.apply(uris => uris.graphQL)
         ),
       )
-      Pulumi.Pulumi.export("platformApiRoleArn", platformApiRole->Pulumi.Output.flatMap(role => role.arn))
+      Pulumi.Pulumi.export(
+        "platformApiRoleArn",
+        platformApiRole->Pulumi.Output.flatMap(role => role.arn),
+      )
     } else {
       // Platform API exports (unified mode — same resource as Domain API).
       Pulumi.Pulumi.export("platformApiId", domainApi->Pulumi.Output.flatMap(api => api.id))
@@ -1565,16 +1565,17 @@ module MakeWithConfig = (
           api.uris->Pulumi.Output.apply(uris => uris.graphQL)
         ),
       )
-      Pulumi.Pulumi.export("platformApiRoleArn", domainApiRole->Pulumi.Output.flatMap(role => role.arn))
+      Pulumi.Pulumi.export(
+        "platformApiRoleArn",
+        domainApiRole->Pulumi.Output.flatMap(role => role.arn),
+      )
     }
 
     // Domain API exports.
     Pulumi.Pulumi.export("domainApiId", domainApi->Pulumi.Output.flatMap(api => api.id))
     Pulumi.Pulumi.export(
       "domainApiEndpoint",
-      domainApi->Pulumi.Output.flatMap(api =>
-        api.uris->Pulumi.Output.apply(uris => uris.graphQL)
-      ),
+      domainApi->Pulumi.Output.flatMap(api => api.uris->Pulumi.Output.apply(uris => uris.graphQL)),
     )
     Pulumi.Pulumi.export("domainApiRoleArn", domainApiRole->Pulumi.Output.flatMap(role => role.arn))
 
@@ -1587,10 +1588,7 @@ module MakeWithConfig = (
     switch mergedOutputs {
     | Some({domainMerged, platformMerged, domainMergeGate, platformMergeGate}) =>
       let mergeGatedArn = (merged: AppSync_MergedApi.t, gate: Pulumi.Output.t<unit>) =>
-        (
-          merged.api->Pulumi.Output.flatMap((api: PulumiAws.AppSync.GraphQLApi.t) => api.arn),
-          gate,
-        )
+        (merged.api->Pulumi.Output.flatMap((api: PulumiAws.AppSync.GraphQLApi.t) => api.arn), gate)
         ->Pulumi.Output.all2
         ->Pulumi.Output.apply(((arn, _)) => arn)
       let mergedEndpoint = (merged: AppSync_MergedApi.t) =>
@@ -1663,13 +1661,15 @@ module MakeWithConfig = (
     | Some({platformMerged}) => platformMerged.api
     | None => platformApi
     }
-    let resolvedDomainApiEndpoint = clientDomainApi->Pulumi.Output.flatMap(api =>
-      api.uris->Pulumi.Output.apply(uris => uris.graphQL)
-    )
+    let resolvedDomainApiEndpoint =
+      clientDomainApi->Pulumi.Output.flatMap(api =>
+        api.uris->Pulumi.Output.apply(uris => uris.graphQL)
+      )
     let resolvedDomainApiRoleArn = domainApiRole->Pulumi.Output.flatMap(role => role.arn)
-    let resolvedPlatformApiEndpoint = clientPlatformApi->Pulumi.Output.flatMap(api =>
-      api.uris->Pulumi.Output.apply(uris => uris.graphQL)
-    )
+    let resolvedPlatformApiEndpoint =
+      clientPlatformApi->Pulumi.Output.flatMap(api =>
+        api.uris->Pulumi.Output.apply(uris => uris.graphQL)
+      )
     let resolvedPlatformApiRoleArn = platformApiRole->Pulumi.Output.flatMap(role => role.arn)
     // Collect admin aggregate + read model resources.
     let adminResourcesOutput =
@@ -1709,7 +1709,13 @@ module MakeWithConfig = (
         adminResourcesOutput,
       )
       ->Pulumi.Output.all5
-      ->Pulumi.Output.apply(((domainApiEndpoint, domainApiRoleArn, platformApiEndpoint, platformApiRoleArn, adminResources)) => {
+      ->Pulumi.Output.apply(((
+        domainApiEndpoint,
+        domainApiRoleArn,
+        platformApiEndpoint,
+        platformApiRoleArn,
+        adminResources,
+      )) => {
         let region =
           Pulumi.Config.make(Some("aws"))->Pulumi.Config.get("region")->Option.getOr("unknown")
         ReventlessCore.Plugin_Helpers.firePlatformDeployedHook({
@@ -1753,7 +1759,8 @@ module MakeWithConfig = (
         switch c {
         | ObjectStore({plugin, store}) => Some((plugin, store))
         | Geocoding
-        | Messaging => None
+        | Messaging =>
+          None
         }
       )
       ->Array.reduce([], (acc, (plugin, store)) =>
@@ -1843,8 +1850,7 @@ module MakeWithConfig = (
         log.info(
           ~comp="Platform:deployPlatform",
           `object store ${plugin}.${store}: never-claimed uploads under ${prefix}/ expire after ` ++
-          `${days->Int.toString} days. Claimed objects and objects minted before the claim ` ++
-          `component existed carry no pending tag and are outside the rule.`,
+          `${days->Int.toString} days. Claimed objects and objects minted before the claim ` ++ `component existed carry no pending tag and are outside the rule.`,
         )
       })
     )
@@ -1897,8 +1903,9 @@ module MakeWithConfig = (
       ->Dict.get(bucketName)
       ->Option.map(b => {
         ReventlessInfra.Platform.id: bucketName,
-        prefixes: declaredStoreServices
-        ->Array.filterMap(((_, prefix, bn, _)) => bn == bucketName ? Some(prefix) : None),
+        prefixes: declaredStoreServices->Array.filterMap(
+          ((_, prefix, bn, _)) => bn == bucketName ? Some(prefix) : None,
+        ),
         bucketId: b.bucketId,
         bucketArn: b.bucketArn,
         bucketRegionalDomainName: b.bucketRegionalDomainName,
@@ -1956,7 +1963,7 @@ module MakeWithConfig = (
     let uploadServiceStores =
       declaredStoreServices
       ->Array.map(((qualified, keyPrefix, _logical, physicalBucketName)) => {
-        Upload_Presign_S3.qualified: qualified,
+        Upload_Presign_S3.qualified,
         bucketName: physicalBucketName,
         servedPrefix: keyPrefix,
       })
@@ -1993,10 +2000,10 @@ module MakeWithConfig = (
         "objectStores",
         declaredStoreEndpoints
         ->Array.map(e =>
-          Pulumi.Output.all2((e.bucketName, e.baseUrl->Pulumi.Output.allOpt))->Pulumi.Output.apply(((
-            bucketName,
-            baseUrl,
-          )) => (e, bucketName, baseUrl))
+          Pulumi.Output.all2((
+            e.bucketName,
+            e.baseUrl->Pulumi.Output.allOpt,
+          ))->Pulumi.Output.apply(((bucketName, baseUrl)) => (e, bucketName, baseUrl))
         )
         ->Pulumi.Output.all
         ->Pulumi.Output.apply(resolved =>
@@ -2053,12 +2060,7 @@ module MakeWithConfig = (
           Util_LocalConfig.get("hostUiProdStacks")
           ->Option.map(Util_HostUiDomain.parseProdStacks)
           ->Option.getOr(Util_HostUiDomain.defaultProdStacks)
-        let fqdn = Util_HostUiDomain.deriveFqdn(
-          ~baseName,
-          ~stack,
-          ~baseDomain=bd,
-          ~prodStacks,
-        )
+        let fqdn = Util_HostUiDomain.deriveFqdn(~baseName, ~stack, ~baseDomain=bd, ~prodStacks)
         Some({Plugin_Stack.fqdn, hostedZoneId: hz})
       | _ => None
       }
@@ -2186,8 +2188,7 @@ module MakeWithConfig = (
           `provisions no place index.\n` ++
           `  Add \`let placeIndex = ReventlessAws.Capability_Geocoding_AwsLocation.make(~name=…)\` ` ++
           `and pass \`~geocoderPlaceIndex=placeIndex\` in \`~hostUiBundle\`.\n` ++
-          `  The declaration is generated from the plugins' capabilities.json — regenerate with ` ++
-          `\`pnpm run generate:platform\` if it is stale.`,
+          `  The declaration is generated from the plugins' capabilities.json — regenerate with ` ++ `\`pnpm run generate:platform\` if it is stale.`,
         )
       }
 
@@ -2250,8 +2251,7 @@ module MakeWithConfig = (
           `instead — every message is logged and none is sent, and the address is optional.\n` ++
           `  The root must also pass \`~messagingSender\` in \`~hostUiBundle\`, from ` ++
           `\`ReventlessAws.Capability_Messaging.make(~name=…)\`.\n` ++
-          `  The declaration is generated from the plugins' capabilities.json — regenerate with ` ++
-          `\`pnpm run generate:platform\` if it is stale.`,
+          `  The declaration is generated from the plugins' capabilities.json — regenerate with ` ++ `\`pnpm run generate:platform\` if it is stale.`,
         )
       }
 
@@ -2514,7 +2514,11 @@ module MakeWithConfig = (
     // Expose deploy target via hooks so Plugin_Builder can stamp pluginDefinition.apiTarget.
     // This must be set before P.make() and is captured synchronously by Plugin_Builder
     // (same timing requirement as hooks.api/apiRole).
-    hooks.deployTarget := switch apiTarget { | Domain => "Domain" | Platform => "Platform" }
+    hooks.deployTarget :=
+      switch apiTarget {
+      | Domain => "Domain"
+      | Platform => "Platform"
+      }
     // Each plugin stack creates its own scheduler (closures can't cross stacks).
     let scheduler = makeScheduler()
     hooks.scheduler := Some(scheduler)
@@ -2532,8 +2536,9 @@ module MakeWithConfig = (
     // The bucket name comes from the platform stack (deploy the platform first).
     let offloadBucketName: Pulumi.Output.t<string> = switch platformStackRef {
     | Some(stackRef) =>
-      (stackRef->Pulumi.StackReference.getOutput("offloadBucket"): Pulumi.Output.t<option<string>>)
-      ->Pulumi.Output.apply(o => o->Option.getOr("OFFLOAD_BUCKET_PENDING_PLATFORM_DEPLOY"))
+      (
+        stackRef->Pulumi.StackReference.getOutput("offloadBucket"): Pulumi.Output.t<option<string>>
+      )->Pulumi.Output.apply(o => o->Option.getOr("OFFLOAD_BUCKET_PENDING_PLATFORM_DEPLOY"))
     | None => Pulumi.Output.make("OFFLOAD_BUCKET_PENDING_PLATFORM_DEPLOY")
     }
     // The key this deploy wrote for the plugin's structure, exported below. The
@@ -2600,8 +2605,9 @@ module MakeWithConfig = (
     let geocoderPlaceIndex: Pulumi.Output.t<string> = switch platformStackRef {
     | Some(stackRef) =>
       (
-        stackRef->Pulumi.StackReference.getOutput("geocoderPlaceIndex"):
-          Pulumi.Output.t<option<string>>
+        stackRef->Pulumi.StackReference.getOutput("geocoderPlaceIndex"): Pulumi.Output.t<
+          option<string>,
+        >
       )->Pulumi.Output.apply(o => o->Option.getOr(""))
     | None => geocoderPlaceIndexRef.contents
     }
@@ -2615,8 +2621,9 @@ module MakeWithConfig = (
     let messagingEmailSender: Pulumi.Output.t<string> = switch platformStackRef {
     | Some(stackRef) =>
       (
-        stackRef->Pulumi.StackReference.getOutput("messagingEmailSender"):
-          Pulumi.Output.t<option<string>>
+        stackRef->Pulumi.StackReference.getOutput("messagingEmailSender"): Pulumi.Output.t<
+          option<string>,
+        >
       )->Pulumi.Output.apply(o => o->Option.getOr(""))
     | None => messagingEmailSenderRef.contents
     }
@@ -2630,15 +2637,13 @@ module MakeWithConfig = (
     let messagingEmailProvider: Pulumi.Output.t<string> = switch platformStackRef {
     | Some(stackRef) =>
       (
-        stackRef->Pulumi.StackReference.getOutput("messagingEmailProvider"):
-          Pulumi.Output.t<option<string>>
+        stackRef->Pulumi.StackReference.getOutput("messagingEmailProvider"): Pulumi.Output.t<
+          option<string>,
+        >
       )->Pulumi.Output.apply(o => o->Option.getOr(""))
     | None => messagingEmailProviderRef.contents
     }
-    PluginRuntime_Builder.registerCapabilityEnv(
-      "MESSAGING_EMAIL_PROVIDER",
-      messagingEmailProvider,
-    )
+    PluginRuntime_Builder.registerCapabilityEnv("MESSAGING_EMAIL_PROVIDER", messagingEmailProvider)
 
     module P = unpack(plugin)
     let pluginComponent = P.make()
@@ -2687,8 +2692,7 @@ module MakeWithConfig = (
       let defaultOutput: Pulumi.Output.t<option<JSON.t>> =
         stackRef->Pulumi.StackReference.getOutput("default")
       let getMergedExport = (key: string): Pulumi.Output.t<string> => {
-        let direct: Pulumi.Output.t<option<string>> =
-          stackRef->Pulumi.StackReference.getOutput(key)
+        let direct: Pulumi.Output.t<option<string>> = stackRef->Pulumi.StackReference.getOutput(key)
         (direct, defaultOutput)
         ->Pulumi.Output.all2
         ->Pulumi.Output.apply(((direct, default)) =>
@@ -2778,12 +2782,9 @@ module MakeWithConfig = (
           messagingEmailSender,
         )
         ->Pulumi.Output.all4
-        ->Pulumi.Output.apply((((structure, objectStores, placeIndex, emailSender): (
-          _,
-          option<JSON.t>,
-          string,
-          string,
-        ))) => {
+        ->Pulumi.Output.apply((
+          (structure, objectStores, placeIndex, emailSender): (_, option<JSON.t>, string, string),
+        ) => {
           // ── Declared capabilities ──────────────────────────────────────────
           //
           // A slice that names `Geocoding` in `capabilityNeeds` says its
@@ -2819,14 +2820,12 @@ module MakeWithConfig = (
               ->Array.map(u =>
                 switch u.need {
                 | Geocoding =>
-                  `\n  Geocoding is \`Capability_Geocoding_AwsLocation.make\`, passed to the ` ++
-                  `platform as \`~geocoderPlaceIndex\`.`
+                  `\n  Geocoding is \`Capability_Geocoding_AwsLocation.make\`, passed to the ` ++ `platform as \`~geocoderPlaceIndex\`.`
                 | Messaging =>
                   `\n  Messaging is \`Capability_Messaging.make\`, passed to the platform ` ++
                   `as \`~messagingSender\`. The sender itself is configuration and has no ` ++
                   `default: set \`platform:messagingEmailSender\` in Pulumi.<stack>.yaml (or ` ++
-                  `REVENTLESS_MESSAGING_EMAIL_SENDER), then verify the address with SES — or ` ++
-                  `\`platform:messagingEmailProvider: log\` to log every message and send none.`
+                  `REVENTLESS_MESSAGING_EMAIL_SENDER), then verify the address with SES — or ` ++ `\`platform:messagingEmailProvider: log\` to log every message and send none.`
                 }
               )
               // One line per capability, not per declaring component: two slices
@@ -2837,8 +2836,7 @@ module MakeWithConfig = (
             )
           }
 
-          let required =
-            structure->Option.flatMap(s => s.requiredStores)->Option.getOr([])
+          let required = structure->Option.flatMap(s => s.requiredStores)->Option.getOr([])
           let provisioned =
             objectStores
             ->Option.flatMap(JSON.Decode.object)
@@ -2849,17 +2847,19 @@ module MakeWithConfig = (
           | NotAdopted(missing) =>
             log.warn(
               ~comp="Platform:deployPlugin",
-              `declares ${missing->Array.join(", ")} but the platform stack provisions no object stores — ` ++
-              `add them to the platform's ~capabilities and redeploy the platform first, ` ++
-              `or uploads will fall back to the legacy service and write to the wrong bucket`,
+              `declares ${missing->Array.join(
+                  ", ",
+                )} but the platform stack provisions no object stores — ` ++
+              `add them to the platform's ~capabilities and redeploy the platform first, ` ++ `or uploads will fall back to the legacy service and write to the wrong bucket`,
             )
           | Missing({missing, provisioned}) =>
             JsError.throwWithMessage(
-              `Plugin requires object store(s) the platform does not provision: ${missing->Array.join(", ")}.\n` ++
+              `Plugin requires object store(s) the platform does not provision: ${missing->Array.join(
+                  ", ",
+                )}.\n` ++
               `  The platform stack provisions: ${provisioned->Array.join(", ")}.\n` ++
               `  A store's key is {plugin}.{store}, where {plugin} is the name the plugin registers — ` ++
-              `check the capability's spelling and case against it.\n` ++
-              `  Add the missing entr(ies) to the platform's ~capabilities and redeploy the platform stack first.`,
+              `check the capability's spelling and case against it.\n` ++ `  Add the missing entr(ies) to the platform's ~capabilities and redeploy the platform stack first.`,
             )
           }
         })
@@ -2870,10 +2870,7 @@ module MakeWithConfig = (
         ->Pulumi.Output.all3
         ->Pulumi.Output.apply(((id, _, _)) => id),
       )
-      Pulumi.Pulumi.export(
-        "pluginSourceApiId",
-        domainApi->Pulumi.Output.flatMap(api => api.id),
-      )
+      Pulumi.Pulumi.export("pluginSourceApiId", domainApi->Pulumi.Output.flatMap(api => api.id))
       Pulumi.Pulumi.export(
         "pluginSourceApiEndpoint",
         domainApi->Pulumi.Output.flatMap(api =>
@@ -2926,8 +2923,10 @@ module MakeWithConfig = (
     // re-detect coming to correct it. Waiting on the heartbeat alone gated on a
     // Lambda that has no part in the answer.
     let redetectReady =
-      (pluginOutputs.heartbeat, PluginRuntime_Builder.eventCollectorReadyRef.contents)
-      ->Pulumi.Output.all2
+      (
+        pluginOutputs.heartbeat,
+        PluginRuntime_Builder.eventCollectorReadyRef.contents,
+      )->Pulumi.Output.all2
     let _ = redetectReady->Pulumi.Output.apply(_ => {
       let hbConfig = PluginRuntime_Builder.heartbeatConfigRef.contents
       switch (Pulumi.Pulumi.isDryRun(), hbConfig.epQueueUrl) {

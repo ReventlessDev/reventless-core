@@ -21,19 +21,17 @@ let translate = async (_id, item, ~capabilities: Reventless.Capabilities.t) =>
       ~capabilities,
       ~located=(~point, ~resolvedFrom) => SetLocation({location: point, resolvedFrom}),
       // A verdict for a human, not a coordinate.
-      ~unresolvable=(~subject, ~reason) =>
-        MarkAddressUnresolvable({address: subject, reason}),
+      ~unresolvable=(~subject, ~reason) => MarkAddressUnresolvable({address: subject, reason}),
     )
   )->Result.map(command => Some((item.customerId, command)))
 
 // The budget is spent and the geocoder never answered. Recording the verdict
 // beats leaving the TODO pending forever — and it is why the capability must be
 // declared, since an unprovisioned geocoder reaches here every time.
-let onExhausted = (_id, item: outboundItem, ~lastError) =>
-  Some((
-    item.customerId,
-    MarkAddressUnresolvable({
-      address: item.address,
-      reason: Geocode.exhaustedReason(lastError),
-    }),
-  ))
+let onExhausted = (_id, item: outboundItem, ~lastError) => Some((
+  item.customerId,
+  MarkAddressUnresolvable({
+    address: item.address,
+    reason: Geocode.exhaustedReason(lastError),
+  }),
+))

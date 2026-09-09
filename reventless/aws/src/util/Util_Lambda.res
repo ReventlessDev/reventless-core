@@ -3,16 +3,20 @@ type runtimeParts = {
   lambdaRole: PulumiAws.IAM.Role.t,
 }
 
-let findResource = resources => resources->ReventlessCore.Util.Adapter.findResource(AWS.Lambda.service)
+let findResource = resources =>
+  resources->ReventlessCore.Util.Adapter.findResource(AWS.Lambda.service)
 
-let toResource = (~tags=?, {id, name, arn}: PulumiAws.Lambda.Function.t): ReventlessInfra.Adapter.resource =>
+let toResource = (
+  ~tags=?,
+  {id, name, arn}: PulumiAws.Lambda.Function.t,
+): ReventlessInfra.Adapter.resource =>
   ReventlessInfra.Adapter.make(
     ~name,
     ~id,
     ~urn=arn,
     ~service=name->Pulumi.Output.apply(_ => AWS.Lambda.service),
     ~resourceType="aws:lambda:Function"->Pulumi.Output.make,
-    ~tags=?tags,
+    ~tags?,
   )
 
 let fromResource = ({id, name}: ReventlessInfra.Adapter.resource) => {
@@ -41,12 +45,15 @@ let fromOutput = (output: Pulumi.Output.t<PulumiAws.Lambda.Function.t>) => {
 let updateLanded = (lambda: Pulumi.Output.t<PulumiAws.Lambda.Function.t>): Pulumi.Output.t<unit> =>
   lambda->Pulumi.Output.flatMap(({lastModified}) => lastModified)->Pulumi.Output.apply(_ => ())
 
-let functionToResource = (~tags=?, {id, name, arn}: PulumiAws.Lambda.Function.t): ReventlessInfra.Adapter.resource =>
+let functionToResource = (
+  ~tags=?,
+  {id, name, arn}: PulumiAws.Lambda.Function.t,
+): ReventlessInfra.Adapter.resource =>
   ReventlessInfra.Adapter.make(
     ~name,
     ~id,
     ~urn=arn,
     ~service=name->Pulumi.Output.apply(_ => AWS.Lambda.service),
     ~resourceType="aws:lambda:Function"->Pulumi.Output.make,
-    ~tags=?tags,
+    ~tags?,
   )

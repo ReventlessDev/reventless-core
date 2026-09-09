@@ -30,7 +30,6 @@ a field that declares no store.
     })
 ```
 */
-
 /** Transparent `string`; see `Email.t`. */
 type t = string
 
@@ -48,4 +47,5 @@ let fromString = (raw: string): result<t, string> => Media_Ref.check(~what="imag
 
 /** The sury schema for an image-reference field.
     Use with `@s.matches(Reventless.ImageRef.schema)`. */
-let schema: S.t<t> = S.string->Semantic.refined(~id=Semantic.Id.imageRef, ~check=fromString)
+let schema: S.t<t> =
+  S.string->Semantic.refined(~id=Semantic.Id.imageRef, ~check=fromString)

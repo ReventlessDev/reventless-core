@@ -8,13 +8,14 @@ open JestGlobals
 describe("TestClock + TestContext", () => {
   testPromise("currentTimeMillis starts at 0", async () => {
     let t = await TestClock.currentTimeMillis
-      ->Effect.provide(TestContext.testContext)
-      ->Effect.runPromise
+    ->Effect.provide(TestContext.testContext)
+    ->Effect.runPromise
     expect(t)->toBe(0)
   })
 
   testPromise("adjust advances the virtual clock", async () => {
-    let program = TestClock.adjust(Duration.millis(1000))
+    let program =
+      TestClock.adjust(Duration.millis(1000))
       ->Effect.zipRight(TestClock.currentTimeMillis)
       ->Effect.provide(TestContext.testContext)
     let t = await program->Effect.runPromise
@@ -25,34 +26,35 @@ describe("TestClock + TestContext", () => {
     // Fork inside the TestContext scope so the fiber shares the virtual clock.
     // Then adjust the same clock and join the fiber — all in one pipeline.
     let _ = await Effect.sleep(Duration.millis(500))
-      ->Effect.fork
-      ->Effect.flatMap(fiber =>
-        TestClock.adjust(Duration.millis(500))
-        ->Effect.zipRight(Fiber.join(fiber))
-      )
-      ->Effect.provide(TestContext.testContext)
-      ->Effect.runPromise
-    expect(true)->toBe(true)  // Reached without error = sleep resolved
+    ->Effect.fork
+    ->Effect.flatMap(
+      fiber => TestClock.adjust(Duration.millis(500))->Effect.zipRight(Fiber.join(fiber)),
+    )
+    ->Effect.provide(TestContext.testContext)
+    ->Effect.runPromise
+    expect(true)->toBe(true) // Reached without error = sleep resolved
   })
 
   testPromise("Effect.sleep does not resolve before clock is advanced", async () => {
     // Use Fiber.poll (non-blocking check) to verify the fiber hasn't completed
     // after only a partial clock advance.
     let fiberPoll = await Effect.sleep(Duration.millis(1000))
-      ->Effect.fork
-      ->Effect.flatMap(fiber =>
+    ->Effect.fork
+    ->Effect.flatMap(
+      fiber =>
         TestClock.adjust(Duration.millis(999))
         ->Effect.zipRight(Effect.yieldNow())
-        ->Effect.zipRight(Fiber.poll(fiber))
-      )
-      ->Effect.provide(TestContext.testContext)
-      ->Effect.runPromise
+        ->Effect.zipRight(Fiber.poll(fiber)),
+    )
+    ->Effect.provide(TestContext.testContext)
+    ->Effect.runPromise
     // Fiber.poll returns None if the fiber hasn't completed yet
     expect(fiberPoll->Option.isNone)->toBe(true)
   })
 
   testPromise("multiple adjusts accumulate", async () => {
-    let program = TestClock.adjust(Duration.millis(300))
+    let program =
+      TestClock.adjust(Duration.millis(300))
       ->Effect.zipRight(TestClock.adjust(Duration.millis(200)))
       ->Effect.zipRight(TestClock.currentTimeMillis)
       ->Effect.provide(TestContext.testContext)

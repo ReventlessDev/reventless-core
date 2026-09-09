@@ -28,7 +28,6 @@ let test =
   ->Effect.runPromise
 ```
 */
-
 /**
 Advances the virtual clock by `duration`, running all scheduled effects on or before the new time.
 

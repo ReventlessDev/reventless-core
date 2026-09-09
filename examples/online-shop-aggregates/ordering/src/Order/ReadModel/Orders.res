@@ -18,4 +18,3 @@ type state = {
   // records whose lifecycle field is honestly called something else.
   lifecycle: lifecycle,
 }
-

@@ -90,11 +90,12 @@ let readBatch = async (
     params->Array.push(JSON.Encode.string(tx))
     params->Array.push(JSON.Encode.string(pos))
     where :=
-      where.contents ++
-      " AND (transaction_id > $2::xid8 OR (transaction_id = $2::xid8 AND global_seq > $3::bigint))"
+      where.contents ++ " AND (transaction_id > $2::xid8 OR (transaction_id = $2::xid8 AND global_seq > $3::bigint))"
   | None => ()
   }
-  let sql = `SELECT ${selectColumns} FROM event_log WHERE ${where.contents} ORDER BY transaction_id ASC, global_seq ASC LIMIT ${Int.toString(limit)}`
+  let sql = `SELECT ${selectColumns} FROM event_log WHERE ${where.contents} ORDER BY transaction_id ASC, global_seq ASC LIMIT ${Int.toString(
+      limit,
+    )}`
   let rows = await pool->PgDriver.query(sql, params)
   let events = rows->Array.map(rowToEvent)
   let cursor = switch events->Array.get(events->Array.length - 1) {
@@ -166,7 +167,12 @@ let drain = async (
   let cursor = ref(await loadCheckpoint(pool, ~subscriber))
   let continue = ref(true)
   while continue.contents {
-    let {events, cursor: newCursor} = await readBatch(pool, ~logName, ~after=?cursor.contents, ~limit)
+    let {events, cursor: newCursor} = await readBatch(
+      pool,
+      ~logName,
+      ~after=?cursor.contents,
+      ~limit,
+    )
     if events->Array.length == 0 {
       continue := false
     } else {

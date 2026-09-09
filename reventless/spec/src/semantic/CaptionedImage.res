@@ -59,7 +59,6 @@ value depicts, not in how a reference to it is written. It would carry no
 }
 ```
 */
-
 /** The record itself. No `@schema`: the derived schema would have to name a
     store, and the store is the host field's — so `forField` is the only way to
     a schema, and a field the ppx did not reach fails to compile rather than

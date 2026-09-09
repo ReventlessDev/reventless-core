@@ -50,7 +50,6 @@ wire format, or any stored value changing.
     })
 ```
 */
-
 /** The ref's representation. Transparent `string` on purpose: the marker refines
     an existing `string` field rather than replacing it, so the field's runtime
     representation — and therefore every stored event — is unchanged. A sealed
@@ -61,8 +60,7 @@ type t = string
 external unsafe: string => t = "%identity"
 external toString: t => string = "%identity"
 
-let segmentIsSafe = (segment: string) =>
-  segment !== "" && segment !== "." && segment !== ".."
+let segmentIsSafe = (segment: string) => segment !== "" && segment !== "." && segment !== ".."
 
 /**
 Validate a raw string as a storage ref, saying why when it is not one.
@@ -74,7 +72,9 @@ schema validation cannot drift apart.
 let fromString = (raw: string): result<t, string> =>
   if !String.startsWith(raw, "/") {
     Error(
-      `expected an origin-relative storage ref starting with "/", got ${raw->JSON.Encode.string->JSON.stringify}. External URLs and data: URIs are not storage refs.`,
+      `expected an origin-relative storage ref starting with "/", got ${raw
+        ->JSON.Encode.string
+        ->JSON.stringify}. External URLs and data: URIs are not storage refs.`,
     )
   } else if String.startsWith(raw, "//") {
     Error(`protocol-relative refs are not storage refs: ${raw}`)
@@ -94,7 +94,7 @@ The refinement a ref-holding field validates against, carrying no semantic yet.
 The `Uploadable*` types re-label this rather than restating the grammar, so a
 re-labelling cannot validate differently from what it re-labels.
 */
-// The empty string is admitted as the "no object" sentinel. The fields this
+let // The empty string is admitted as the "no object" sentinel. The fields this
 // marks are non-optional today, and a producer with nothing to reference —
 // a supplier feed carrying no image, say — already writes `""` to mean
 // absence. Rejecting it here would break a legitimate existing value and
@@ -107,16 +107,14 @@ re-labelling cannot validate differently from what it re-labels.
 // sury's refiner is a predicate with a fixed message, so the per-value reason
 // `fromString` returns is not threaded through; call `fromString` directly
 // when the caller needs to report which rule the value broke.
-let refinement: S.t<t> =
-  S.string->S.refine(
-    value =>
-      value === "" ||
-        switch fromString(value) {
-        | Ok(_) => true
-        | Error(_) => false
-        },
-    ~error=`expected an origin-relative storage ref: "/" followed by a prefix and an object path, or "" for no object`,
-  )
+refinement: S.t<t> =
+  S.string->S.refine(value =>
+    value === "" ||
+      switch fromString(value) {
+      | Ok(_) => true
+      | Error(_) => false
+      }
+  , ~error=`expected an origin-relative storage ref: "/" followed by a prefix and an object path, or "" for no object`)
 
 /**
 The sury schema for a field holding a ref into a named store.
@@ -139,8 +137,10 @@ let getStore = (schema: S.t<'a>): option<Semantic.storeTarget> =>
 
 /** How many refs one field holds. */
 type arity =
-  | /** A `string` field: one ref. */ Single
-  | /** An `array<string>` field: zero or more refs. */ Multiple
+  /** A `string` field: one ref. */
+  | Single
+  /** An `array<string>` field: zero or more refs. */
+  | Multiple
 
 /**
 The store a *field* declares, looking through an array wrapper, with the arity

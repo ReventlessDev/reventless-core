@@ -4,7 +4,6 @@
     Channels within the namespace are addressed as `/default/{channelName}`.
     See: https://www.pulumi.com/registry/packages/aws-native/api-docs/appsync/channelnamespace
 */
-
 type authMode = {
   authType?: Pulumi.Input.t<string>,
 }
@@ -74,8 +73,5 @@ type args = {
 }
 
 @module("@pulumi/aws-native") @scope("appsync") @new
-external make: (
-  ~name: string,
-  ~args: args,
-  ~opts: option<Pulumi.CustomResourceOptions.t>=?,
-) => t = "ChannelNamespace"
+external make: (~name: string, ~args: args, ~opts: option<Pulumi.CustomResourceOptions.t>=?) => t =
+  "ChannelNamespace"

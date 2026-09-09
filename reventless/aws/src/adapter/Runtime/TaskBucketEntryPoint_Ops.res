@@ -140,40 +140,36 @@ let dispatchTaskActions = async (
   ~publishCommands: dict<ReventlessCore.CommandTopic.publishJsons>,
   ~schedulerOps: unit => option<schedulerOps>,
 ): unit => {
-  let _ =
-    await actions
-    ->Array.map(async action =>
-      switch action {
-      | Reventless.Task.PublishCommands(aggregateName, cmdJsons) =>
-        switch publishCommands->Dict.get(aggregateName) {
-        | Some(publish) => await publish(cmdJsons)
-        | None =>
-          logWarn(
-            `no publish function for aggregate "${aggregateName}"`,
-            {comp: "TaskBucketRuntime"},
-          )
-        }
-      | CreateSchedule(schedule) =>
-        switch schedulerOps() {
-        | Some(ops) => await ops.createSchedule(schedule)
-        | None =>
-          logWarn(
-            "CreateSchedule skipped — no scheduler configured for this Task (add sideEffects to setup)",
-            {comp: "TaskBucketRuntime"},
-          )
-        }
-      | DeleteSchedule(name) =>
-        switch schedulerOps() {
-        | Some(ops) => await ops.deleteSchedule(name)
-        | None =>
-          logWarn(
-            "DeleteSchedule skipped — no scheduler configured for this Task (add sideEffects to setup)",
-            {comp: "TaskBucketRuntime"},
-          )
-        }
+  let _ = await actions
+  ->Array.map(async action =>
+    switch action {
+    | Reventless.Task.PublishCommands(aggregateName, cmdJsons) =>
+      switch publishCommands->Dict.get(aggregateName) {
+      | Some(publish) => await publish(cmdJsons)
+      | None =>
+        logWarn(`no publish function for aggregate "${aggregateName}"`, {comp: "TaskBucketRuntime"})
       }
-    )
-    ->Promise.all
+    | CreateSchedule(schedule) =>
+      switch schedulerOps() {
+      | Some(ops) => await ops.createSchedule(schedule)
+      | None =>
+        logWarn(
+          "CreateSchedule skipped — no scheduler configured for this Task (add sideEffects to setup)",
+          {comp: "TaskBucketRuntime"},
+        )
+      }
+    | DeleteSchedule(name) =>
+      switch schedulerOps() {
+      | Some(ops) => await ops.deleteSchedule(name)
+      | None =>
+        logWarn(
+          "DeleteSchedule skipped — no scheduler configured for this Task (add sideEffects to setup)",
+          {comp: "TaskBucketRuntime"},
+        )
+      }
+    }
+  )
+  ->Promise.all
 }
 
 // ── Exported Lambda handler ─────────────────────────────────────────────────
@@ -187,10 +183,8 @@ let makeHandler = (~callback: ReventlessCore.Task.bucketCallback, ~config: handl
   let publishCommands = buildPublishCommands(config.publishToAggregates)
   async (event: PulumiAws.S3.Bucket.event, context: PulumiAws.Lambda.context) => {
     let actions = await handleEvents(event, context)
-    await dispatchTaskActions(
-      ~actions,
-      ~publishCommands,
-      ~schedulerOps=() => makeSchedulerOps(config.scheduler),
+    await dispatchTaskActions(~actions, ~publishCommands, ~schedulerOps=() =>
+      makeSchedulerOps(config.scheduler)
     )
     ""
   }

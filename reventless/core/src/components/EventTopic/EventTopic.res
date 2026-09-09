@@ -32,9 +32,9 @@ module type T = {
   ) => component
 }
 
-let toResolvedOutputs = (
-  outputs: outputs,
-): Pulumi.Output.t<ReventlessInterop.EventTopic.resolvedOutputs> =>
+let toResolvedOutputs = (outputs: outputs): Pulumi.Output.t<
+  ReventlessInterop.EventTopic.resolvedOutputs,
+> =>
   outputs.resources
   ->Adapter.resourcesToInterop
   ->Pulumi.Output.apply(resources => {

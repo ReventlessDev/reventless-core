@@ -28,7 +28,6 @@ address may be changed in, who may change it, what a host's own commands refuse
 which a trait cannot know. They are config when the host supplies them and absent
 when it does not.
 */
-
 /**
 The names a graft needs, and nothing else.
 
@@ -46,7 +45,6 @@ type config = {
       one of the slice's two triggers, because an entity created with an address
       has never been geocoded. */
   created: string,
-
   /**
   What this host calls the thing being geocoded, lowercase: `"address"`.
 
@@ -58,7 +56,6 @@ type config = {
   spelled out. The emitted patch says which of the two you are getting.
   */
   subject?: string,
-
   /**
   The creation event's payload *beyond* the subject, as declarations:
   `["email: string"]`.
@@ -72,7 +69,6 @@ type config = {
       conformance binding's histories. Omitted ⇒ omitted from the fixtures, which
       only compiles when `createdFields` is omitted too. */
   createdValues?: array<string>,
-
   /** The slice component's name. Defaults to `Geocode<Entity><Subject>`. */
   slice?: string,
   /** The external box the Event Graph draws. Defaults to `"Geocoder"`; a host on
@@ -81,7 +77,6 @@ type config = {
   /** The read model the projection patch is addressed to. Defaults to
       `<Entity>s`. */
   view?: string,
-
   /** Two subjects that differ, for the histories in which the address changes.
       Defaulted when absent — they are test data, not a decision. */
   subjectA?: string,
@@ -227,8 +222,7 @@ let sliceTranslation = (c: config): string => {
     ", {" ++
     c.entityId ++
     ": sourceId, " ++
-    n.subject ++
-    "})]"
+    n.subject ++ "})]"
   lines([
     `@@reventless.translation`,
     ``,

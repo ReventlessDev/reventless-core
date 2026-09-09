@@ -2,7 +2,6 @@
 // Usage: generate-plugin <srcDir>
 //        generate-plugin --aws <Namespace> <srcDir>
 
-
 let () = {
   let argv2 = NodeProcess.argv->Array.get(2)->Option.getOr("")
   let argv3 = NodeProcess.argv->Array.get(3)->Option.getOr("")

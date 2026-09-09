@@ -164,4 +164,3 @@ module ListSubscriptionsByTopicCommand = {
 
   let send: t => promise<output> = command => Raw.send(client(), command)
 }
-

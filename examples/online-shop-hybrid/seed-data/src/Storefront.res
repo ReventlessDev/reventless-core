@@ -156,10 +156,7 @@ file is named here. `pnpm run check:slots` fails the build if a bare specifier
 ever survives into it — including `react`, which would mean a second copy of it
 in the page.
 */
-let uiSlotsFile = NodePath.resolve([
-  NodeImportMeta.dirname,
-  "../dist/storefront-slots.js",
-])
+let uiSlotsFile = NodePath.resolve([NodeImportMeta.dirname, "../dist/storefront-slots.js"])
 
 /**
 Groups whose members read across every customer.

@@ -1,6 +1,5 @@
 open JestGlobals
 
-
 // Driven through `makeGenerateCommand` rather than by calling `stampOwnerFields`
 // directly. The unit under test is not really the stamp — it is the claim that
 // the stamp is reached on the path a command actually takes, which is the half a
@@ -16,7 +15,10 @@ type command =
     })
   | // The control variant: same union, no owner. Whatever the caller sends here
   // must survive untouched, or the stamp is reaching across constructors.
-  ImportProducts({batchId: @s.matches(Reventless.DcbTag.string) string, source: string})
+  ImportProducts({
+      batchId: @s.matches(Reventless.DcbTag.string) string,
+      source: string,
+    })
 
 let published: ref<array<Message.commandJson>> = ref([])
 
@@ -86,30 +88,27 @@ describe("@owner stamping on the command path:", () => {
   // The decisive case. An implementation that fills only the absent field passes
   // every other test in this file and hands one customer another's orders.
   testPromise("a FORGED owner field is overwritten, not respected", async () => {
-    let _ =
-      await generate(
-        placeOrder(~customerId="cust-B", ~identity=cognito(~userId="cust-A", ~groups=["User"])),
-      )->Effect.runPromise
+    let _ = await generate(
+      placeOrder(~customerId="cust-B", ~identity=cognito(~userId="cust-A", ~groups=["User"])),
+    )->Effect.runPromise
     expect(lastPublished()->fieldOf("customerId"))->toEqual(Some(str("cust-A")))
   })
 
   testPromise("non-owner fields of the same command are untouched", async () => {
-    let _ =
-      await generate(
-        placeOrder(~customerId="cust-B", ~identity=cognito(~userId="cust-A", ~groups=["User"])),
-      )->Effect.runPromise
+    let _ = await generate(
+      placeOrder(~customerId="cust-B", ~identity=cognito(~userId="cust-A", ~groups=["User"])),
+    )->Effect.runPromise
     expect(lastPublished()->fieldOf("note"))->toEqual(Some(str("gift wrap")))
   })
 
   testPromise("a command in the same union with no owner field is left alone", async () => {
-    let _ =
-      await generate(
-        payload(
-          ~command="ImportProducts",
-          ~args=Dict.fromArray([("batchId", str("b-1")), ("source", str("acme"))]),
-          ~identity=cognito(~userId="cust-A", ~groups=["User"]),
-        ),
-      )->Effect.runPromise
+    let _ = await generate(
+      payload(
+        ~command="ImportProducts",
+        ~args=Dict.fromArray([("batchId", str("b-1")), ("source", str("acme"))]),
+        ~identity=cognito(~userId="cust-A", ~groups=["User"]),
+      ),
+    )->Effect.runPromise
     expect((lastPublished()->fieldOf("source"), lastPublished()->fieldOf("customerId")))->toEqual((
       Some(str("acme")),
       None,
@@ -119,21 +118,25 @@ describe("@owner stamping on the command path:", () => {
   describe("exempt callers keep the value they sent:", () => {
     // Acting on another principal's behalf must stay possible for those who may
     // — otherwise an operator can never correct or back-fill anything.
-    testPromise("an elevated caller's chosen customerId survives", async () => {
-      let _ =
-        await generate(
+    testPromise(
+      "an elevated caller's chosen customerId survives",
+      async () => {
+        let _ = await generate(
           placeOrder(~customerId="cust-B", ~identity=cognito(~userId="ops-1", ~groups=["Admin"])),
         )->Effect.runPromise
-      expect(lastPublished()->fieldOf("customerId"))->toEqual(Some(str("cust-B")))
-    })
+        expect(lastPublished()->fieldOf("customerId"))->toEqual(Some(str("cust-B")))
+      },
+    )
 
     // The IAM shape carries no userId at all. Stamping it would write
     // `undefined`; refusing it would break internal traffic. It is exempt.
-    testPromise("an IAM system caller's chosen customerId survives", async () => {
-      let _ =
-        await generate(placeOrder(~customerId="cust-B", ~identity=iam))->Effect.runPromise
-      expect(lastPublished()->fieldOf("customerId"))->toEqual(Some(str("cust-B")))
-    })
+    testPromise(
+      "an IAM system caller's chosen customerId survives",
+      async () => {
+        let _ = await generate(placeOrder(~customerId="cust-B", ~identity=iam))->Effect.runPromise
+        expect(lastPublished()->fieldOf("customerId"))->toEqual(Some(str("cust-B")))
+      },
+    )
   })
 
   describe("a caller that cannot be identified is refused:", () => {
@@ -143,45 +146,56 @@ describe("@owner stamping on the command path:", () => {
       | exception _ => true
       }
 
-    testPromise("an anonymous caller cannot place an owned command", async () =>
-      expect(
-        await refused(placeOrder(~customerId="cust-B", ~identity=Reventless.Identity.anonymous)),
-      )->toBe(true)
+    testPromise(
+      "an anonymous caller cannot place an owned command",
+      async () =>
+        expect(
+          await refused(placeOrder(~customerId="cust-B", ~identity=Reventless.Identity.anonymous)),
+        )->toBe(true),
     )
 
     // The refusal describes the caller's own request, so a transport is allowed
     // to report it. Unmarked it arrives as "Unexpected error", which tells a
     // caller who needs to authenticate nothing at all.
-    testPromise("the refusal is marked as the caller's fault", async () => {
-      let failure = switch await generate(
-        placeOrder(~customerId="cust-B", ~identity=Reventless.Identity.anonymous),
-      )->Effect.runPromise {
-      | _ => None
-      | exception e => Some(e)
-      }
-      expect(failure->Option.mapOr(false, Plugin_ResolverError.isCallerFault))->toBe(true)
-    })
+    testPromise(
+      "the refusal is marked as the caller's fault",
+      async () => {
+        let failure = switch await generate(
+          placeOrder(~customerId="cust-B", ~identity=Reventless.Identity.anonymous),
+        )->Effect.runPromise {
+        | _ => None
+        | exception e => Some(e)
+        }
+        expect(failure->Option.mapOr(false, Plugin_ResolverError.isCallerFault))->toBe(true)
+      },
+    )
 
-    testPromise("nothing is published when the caller is refused", async () => {
-      let _ = await refused(
-        placeOrder(~customerId="cust-B", ~identity=Reventless.Identity.anonymous),
-      )
-      expect(published.contents->Array.length)->toBe(0)
-    })
+    testPromise(
+      "nothing is published when the caller is refused",
+      async () => {
+        let _ = await refused(
+          placeOrder(~customerId="cust-B", ~identity=Reventless.Identity.anonymous),
+        )
+        expect(published.contents->Array.length)->toBe(0)
+      },
+    )
 
     // The refusal is scoped to commands that actually record an owner. An
     // anonymous caller invoking an unowned command has nothing to prove, and
     // refusing it here would silently narrow `AllowAnonymous`.
-    testPromise("an anonymous caller may still issue an unowned command", async () => {
-      let _ = await generate(
-        payload(
-          ~command="ImportProducts",
-          ~args=Dict.fromArray([("batchId", str("b-1")), ("source", str("acme"))]),
-          ~identity=Reventless.Identity.anonymous,
-        ),
-      )->Effect.runPromise
-      expect(lastPublished()->fieldOf("source"))->toEqual(Some(str("acme")))
-    })
+    testPromise(
+      "an anonymous caller may still issue an unowned command",
+      async () => {
+        let _ = await generate(
+          payload(
+            ~command="ImportProducts",
+            ~args=Dict.fromArray([("batchId", str("b-1")), ("source", str("acme"))]),
+            ~identity=Reventless.Identity.anonymous,
+          ),
+        )->Effect.runPromise
+        expect(lastPublished()->fieldOf("source"))->toEqual(Some(str("acme")))
+      },
+    )
   })
 })
 
@@ -207,10 +221,9 @@ describe("the schema a generator is built with must answer for its commands:", (
   )
 
   testPromise("a permissive schema silently stamps nothing — the defect, pinned", async () => {
-    let _ =
-      await permissive(
-        placeOrder(~customerId="cust-B", ~identity=cognito(~userId="cust-A", ~groups=["User"])),
-      )->Effect.runPromise
+    let _ = await permissive(
+      placeOrder(~customerId="cust-B", ~identity=cognito(~userId="cust-A", ~groups=["User"])),
+    )->Effect.runPromise
     // Not the behaviour we want anywhere — recorded so that a change making the
     // permissive path stamp correctly is a deliberate one, and so the contrast
     // with the case below cannot be read as incidental.
@@ -218,10 +231,9 @@ describe("the schema a generator is built with must answer for its commands:", (
   })
 
   testPromise("the real schema stamps, from the same payload and caller", async () => {
-    let _ =
-      await generate(
-        placeOrder(~customerId="cust-B", ~identity=cognito(~userId="cust-A", ~groups=["User"])),
-      )->Effect.runPromise
+    let _ = await generate(
+      placeOrder(~customerId="cust-B", ~identity=cognito(~userId="cust-A", ~groups=["User"])),
+    )->Effect.runPromise
     expect(lastPublished()->fieldOf("customerId"))->toEqual(Some(str("cust-A")))
   })
 
@@ -229,15 +241,18 @@ describe("the schema a generator is built with must answer for its commands:", (
   // maps now satisfy by construction: every command a spec exposes resolves to
   // its own owner fields through the schema that command will be dispatched
   // with. Reading `[]` here is exactly the state that stamps nothing.
-  testPromise("every command of a spec resolves its owner fields through that spec's schema", async () => {
-    let schema = commandSchema->S.castToUnknown
-    expect(Reventless.Owner.variantFieldNames(schema, ~variant="PlaceOrder"))->toEqual([
-      "customerId",
-    ])
-    expect(Reventless.Owner.variantFieldNames(schema, ~variant="ImportProducts"))->toEqual([])
-    // The substitution, asked the same question.
-    expect(
-      Reventless.Owner.variantFieldNames(S.json->S.castToUnknown, ~variant="PlaceOrder"),
-    )->toEqual([])
-  })
+  testPromise(
+    "every command of a spec resolves its owner fields through that spec's schema",
+    async () => {
+      let schema = commandSchema->S.castToUnknown
+      expect(Reventless.Owner.variantFieldNames(schema, ~variant="PlaceOrder"))->toEqual([
+        "customerId",
+      ])
+      expect(Reventless.Owner.variantFieldNames(schema, ~variant="ImportProducts"))->toEqual([])
+      // The substitution, asked the same question.
+      expect(
+        Reventless.Owner.variantFieldNames(S.json->S.castToUnknown, ~variant="PlaceOrder"),
+      )->toEqual([])
+    },
+  )
 })

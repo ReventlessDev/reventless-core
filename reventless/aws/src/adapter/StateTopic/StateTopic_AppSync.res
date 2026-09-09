@@ -126,7 +126,6 @@ let registry: dict<array<streamEntry>> = Dict.make()
 // Uses native Node.js crypto + fetch with SigV4 — no extra SDK packages needed.
 // Credentials come from the Lambda execution role via the process.env AWS_* variables.
 
-
 // ── Registration ──────────────────────────────────────────────────────────────
 
 /** Register any stream-enabled DynamoDB table with the relay. Read-model and
@@ -206,10 +205,7 @@ let make = (
 
 // ── Finalize: build the shared Lambda + IAM + ESMs ────────────────────────────
 
-let finish = (
-  ~eventsApi: AppSync_EventsApi.t,
-  ~opts: Pulumi.CustomResourceOptions.t,
-) => {
+let finish = (~eventsApi: AppSync_EventsApi.t, ~opts: Pulumi.CustomResourceOptions.t) => {
   let key = eventsApi.name
   switch registry->Dict.get(key) {
   | None => ()
@@ -231,8 +227,7 @@ let finish = (
     )
 
     // IAM policy: read from every stream + publish to the events API.
-    let streamArnsOutput =
-      entries->Array.map(e => e.streamArn)->Pulumi.Output.all
+    let streamArnsOutput = entries->Array.map(e => e.streamArn)->Pulumi.Output.all
     let _ =
       (streamArnsOutput, eventsApi.api.apiArn)
       ->Pulumi.Output.all2
@@ -306,13 +301,15 @@ let finish = (
         let dict = Dict.make()
         tableNames->Array.forEachWithIndex((tableName, i) => {
           let entry = entries->Array.getUnsafe(i)
-          entry.retiredField->Option.forEach(f => {
-            let obj = Dict.fromArray([("field", f->JSON.Encode.string)])
-            entry.retiredValues->Option.forEach(vs =>
-              obj->Dict.set("values", vs->Array.map(JSON.Encode.string)->JSON.Encode.array)
-            )
-            dict->Dict.set(tableName, obj->JSON.Encode.object)
-          })
+          entry.retiredField->Option.forEach(
+            f => {
+              let obj = Dict.fromArray([("field", f->JSON.Encode.string)])
+              entry.retiredValues->Option.forEach(
+                vs => obj->Dict.set("values", vs->Array.map(JSON.Encode.string)->JSON.Encode.array),
+              )
+              dict->Dict.set(tableName, obj->JSON.Encode.object)
+            },
+          )
         })
         dict->JSON.Encode.object->JSON.stringify
       })
@@ -324,7 +321,10 @@ let finish = (
     // buildCodeArchive ships the ESM resolve-hook so `@rescript/runtime` and the
     // handler's bare @aws-sdk/util-dynamodb resolve from layer / managed runtime.
     let packageDirs = Dict.fromArray([
-      ("@reventlessdev/reventless-aws", Util_Bundle.resolvePackageRoot("@reventlessdev/reventless-aws")),
+      (
+        "@reventlessdev/reventless-aws",
+        Util_Bundle.resolvePackageRoot("@reventlessdev/reventless-aws"),
+      ),
     ])
     let {code, sourceCodeHash} = Util_Bundle.buildCodeArchive(
       ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/StateTopic/StateTopic_AppSync_Ops.res.mjs",
@@ -365,7 +365,12 @@ let finish = (
         memorySize: 256->Pulumi.Input.make,
         timeout: 30->Pulumi.Input.make,
         layers,
-        tags: AWS.Tags.make(~name=name ++ "StateTopic", ~kind=ReventlessCore.QueryDb.componentType, ~role=StateTopic, ~component=name),
+        tags: AWS.Tags.make(
+          ~name=name ++ "StateTopic",
+          ~kind=ReventlessCore.QueryDb.componentType,
+          ~role=StateTopic,
+          ~component=name,
+        ),
         environment: (
           {
             Lambda.Function.variables: Dict.fromArray([

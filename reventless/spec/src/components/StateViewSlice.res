@@ -34,7 +34,6 @@ let project = ({event}) => switch event {
 }
 ```
 */
-
 /**
 The lean Spec for a StateViewSlice — types, identity, schemas, infra config.
 Per D2, `state` lives here (not in `Projection`) because the projected state
@@ -120,4 +119,3 @@ module type Projection = {
   /** File URL of this Projection module (`import.meta.url`). */
   let moduleUrl: string
 }
-

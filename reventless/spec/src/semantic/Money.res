@@ -66,7 +66,6 @@ rewrites the wire shape, so stored events no longer decode and projections must
 be rebuilt. Retyping a field in a log that has to survive needs an upcaster
 first; a log that can be discarded can take it today.
 */
-
 /**
 Validate a minor-unit amount, saying why when it is not one.
 
@@ -79,8 +78,9 @@ let validateAmount = (amount: float): result<float, string> =>
   } else if amount !== Math.trunc(amount) {
     Error(
       `an amount is a whole number of a currency's minor units, got ` ++
-      `${Float.toString(amount)}. There is no such thing as a fraction of the ` ++
-      `smallest unit — a major amount converts with Money.ofMajor.`,
+      `${Float.toString(
+          amount,
+        )}. There is no such thing as a fraction of the ` ++ `smallest unit — a major amount converts with Money.ofMajor.`,
     )
   } else {
     Ok(amount)
@@ -96,14 +96,12 @@ let validateAmount = (amount: float): result<float, string> =>
     threw `Cannot access 'v0' before initialization` — it is simply not what this
     check wants.) */
 let amountSchema: S.t<float> =
-  S.float->S.refine(
-    amount =>
-      switch validateAmount(amount) {
-      | Ok(_) => true
-      | Error(_) => false
-      },
-    ~error="expected a monetary amount",
-  )
+  S.float->S.refine(amount =>
+    switch validateAmount(amount) {
+    | Ok(_) => true
+    | Error(_) => false
+    }
+  , ~error="expected a monetary amount")
 
 @schema
 type t = {
@@ -117,7 +115,8 @@ type t = {
 
     Shadows the schema sury-ppx derived from the type above: the derived one is
     the shape, and this adds the marker the shape cannot carry. */
-let schema: S.t<t> = schema->Semantic.mark(~id=Semantic.Id.money)
+let schema: S.t<t> =
+  schema->Semantic.mark(~id=Semantic.Id.money)
 
 /** An amount already counted in minor units. */
 let make = (~amount: float, ~currency: Currency.t): t => {amount, currency}
@@ -208,8 +207,9 @@ let add = (a: t, b: t): result<t, string> =>
   a.currency == b.currency
     ? Ok({amount: a.amount +. b.amount, currency: a.currency})
     : Error(
-        `cannot add ${format(b)} to ${format(a)}: they are different currencies. ` ++
-        `Converting between them needs a rate, which is not something an amount carries.`,
+        `cannot add ${format(b)} to ${format(
+            a,
+          )}: they are different currencies. ` ++ `Converting between them needs a rate, which is not something an amount carries.`,
       )
 
 /** The largest whole number a `float` holds exactly, 2^53 - 1. Bound here
@@ -266,8 +266,9 @@ A negative amount splits away from zero the same way: -€10.00 into three is
 let allocate = (m: t, ~into: int): result<array<t>, string> =>
   if into <= 0 {
     Error(
-      `cannot split ${format(m)} into ${Int.toString(into)} parts: ` ++
-      `a split is into at least one part.`,
+      `cannot split ${format(m)} into ${Int.toString(
+          into,
+        )} parts: ` ++ `a split is into at least one part.`,
     )
   } else {
     let parts = Int.toFloat(into)
@@ -293,8 +294,10 @@ let allocate = (m: t, ~into: int): result<array<t>, string> =>
 let sum = (amounts: array<t>): option<result<t, string>> =>
   switch amounts {
   | [] => None
-  | _ => Some(amounts->Array.reduce(Ok(zero(~currency=(amounts->Array.getUnsafe(0)).currency)), (
-      acc,
-      m,
-    ) => acc->Result.flatMap(total => add(total, m))))
+  | _ =>
+    Some(
+      amounts->Array.reduce(Ok(zero(~currency=(amounts->Array.getUnsafe(0)).currency)), (acc, m) =>
+        acc->Result.flatMap(total => add(total, m))
+      ),
+    )
   }

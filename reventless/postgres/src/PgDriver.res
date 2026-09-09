@@ -47,8 +47,7 @@ type queryResult = {rows: array<dict<JSON.t>>}
 
 let query = async (pool, sql, params) => (await _query(pool, sql, params)).rows
 
-let queryOne = async (pool, sql, params) =>
-  (await _query(pool, sql, params)).rows->Array.get(0)
+let queryOne = async (pool, sql, params) => (await _query(pool, sql, params)).rows->Array.get(0)
 
 let exec = async (pool, sql) => {
   let _ = await _queryText(pool, sql)

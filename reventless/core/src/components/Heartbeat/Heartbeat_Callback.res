@@ -23,9 +23,9 @@ module Make = (Spec: Spec) => {
           msgId,
           correlationId: msgId,
         },
-        commandJson: PluginExtensionPointSpec.Heartbeat(
-          Spec.timeout,
-        )->Message.encode(PluginExtensionPointSpec.commandSchema),
+        commandJson: PluginExtensionPointSpec.Heartbeat(Spec.timeout)->Message.encode(
+          PluginExtensionPointSpec.commandSchema,
+        ),
       },
     ])
   }

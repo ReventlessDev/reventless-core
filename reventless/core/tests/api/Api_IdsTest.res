@@ -40,8 +40,9 @@ describe("Api_Ids.encode / decode", () => {
 
 describe("Api_Ids.alternateKey — the fallback a door tries on a miss", () => {
   testSync("a global id offers the storage key inside it", () =>
-    expect(Api_Ids.alternateKey(Api_Ids.encode(~typeName="Catalog_Product", ~localId="p-1")))
-    ->toEqual(Some("p-1"))
+    expect(
+      Api_Ids.alternateKey(Api_Ids.encode(~typeName="Catalog_Product", ~localId="p-1")),
+    )->toEqual(Some("p-1"))
   )
 
   testSync("a plain key offers nothing, so the lookup is never retried", () =>
@@ -83,8 +84,13 @@ describe("stamping an id onto a row leaves the stored row alone", () => {
       JSON.Encode.object(obj)
     }
     let idOf = j =>
-      j->JSON.Decode.object->Option.flatMap(d => d->Dict.get("id"))->Option.flatMap(JSON.Decode.string)
-    expect(idOf(stamped))->toEqual(Some(Api_Ids.encode(~typeName="Ordering_Customer", ~localId="cust-42")))
+      j
+      ->JSON.Decode.object
+      ->Option.flatMap(d => d->Dict.get("id"))
+      ->Option.flatMap(JSON.Decode.string)
+    expect(idOf(stamped))->toEqual(
+      Some(Api_Ids.encode(~typeName="Ordering_Customer", ~localId="cust-42")),
+    )
     // The stored row still carries its storage key.
     expect(idOf(row))->toEqual(Some("cust-42"))
   })

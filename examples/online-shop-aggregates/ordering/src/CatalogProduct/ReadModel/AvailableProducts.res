@@ -10,4 +10,3 @@
 
 @schema
 type state = {name: string, price: float}
-

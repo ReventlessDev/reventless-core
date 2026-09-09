@@ -1,8 +1,7 @@
 open JestGlobals
 
 let shortId = "environment:alpha#platformName:online-shop#pluginName:Catalog"
-let longId =
-  "componentName:DcbEventLog#environment:alpha#platformName:online-shop-platform-aws#pluginName:Catalog#resourceName:CatalogDcbEventLog-428c0a8"
+let longId = "componentName:DcbEventLog#environment:alpha#platformName:online-shop-platform-aws#pluginName:Catalog#resourceName:CatalogDcbEventLog-428c0a8"
 
 describe("Util_SQS_Runtime.safeGroupId", () => {
   testSync("returns id unchanged when ≤ 128 chars", () => {
@@ -19,12 +18,11 @@ describe("Util_SQS_Runtime.safeGroupId", () => {
   })
 
   testSync("returns different hashes for different long ids", () => {
-    let longId2 =
-      "componentName:Products#environment:alpha#platformName:online-shop-platform-aws#pluginName:Catalog#resourceName:ProductsTable-abc1234"
+    let longId2 = "componentName:Products#environment:alpha#platformName:online-shop-platform-aws#pluginName:Catalog#resourceName:ProductsTable-abc1234"
     expect(longId2->String.length > 128)->toBe(true)
-    expect(
-      Util_SQS_Runtime.safeGroupId(longId) == Util_SQS_Runtime.safeGroupId(longId2)
-    )->toBe(false)
+    expect(Util_SQS_Runtime.safeGroupId(longId) == Util_SQS_Runtime.safeGroupId(longId2))->toBe(
+      false,
+    )
   })
 
   testSync("returns same hash for the same long id (deterministic)", () => {

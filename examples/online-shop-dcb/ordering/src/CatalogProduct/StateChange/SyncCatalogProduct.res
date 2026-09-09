@@ -17,12 +17,5 @@ type error = unit // always succeeds — sync is idempotent
 
 @schema
 type event =
-  | CatalogProductSynced({
-      productId: string,
-      name: string,
-      price: float,
-    })
-  | CatalogProductPriceChanged({
-      productId: string,
-      price: float,
-    })
+  | CatalogProductSynced({productId: string, name: string, price: float})
+  | CatalogProductPriceChanged({productId: string, price: float})

@@ -89,14 +89,10 @@ let make = (
 
   let vpcConfig =
     securityGroupId
-    ->Pulumi.Output.apply(sgId =>
-      (
-        {
-          Lambda.Function.subnetIds: subnetIds->Pulumi.Input.make,
-          securityGroupIds: [sgId->Pulumi.Input.make]->Pulumi.Input.make,
-        }: Lambda.Function.vpcConfig
-      )
-    )
+    ->Pulumi.Output.apply((sgId): Lambda.Function.vpcConfig => {
+      Lambda.Function.subnetIds: subnetIds->Pulumi.Input.make,
+      securityGroupIds: [sgId->Pulumi.Input.make]->Pulumi.Input.make,
+    })
     ->Pulumi.Output.asInput
 
   let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
@@ -111,8 +107,7 @@ let make = (
   )
 
   // IAM: GetSecretValue on each log's DB secret + SendMessage on each target queue.
-  let secretArns =
-    logs->Array.map(l => l.connectionConfig->Pulumi.Output.apply(cc => cc.secretArn))
+  let secretArns = logs->Array.map(l => l.connectionConfig->Pulumi.Output.apply(cc => cc.secretArn))
   let queueArns = logs->Array.map(l => l.targetQueueArn)
   let _iam =
     (Pulumi.Output.all(secretArns), Pulumi.Output.all(queueArns), runtime.parts.lambdaRole.id)

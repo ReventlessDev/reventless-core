@@ -236,7 +236,9 @@ type event = {@as("Records") records: array<record>}
     in it. */
 let targetsOfRecord = (record: record): array<target> =>
   switch (
-    record.eventSourceARN->tableNameFromEventSourceArn->Option.flatMap(t => refFieldsByTable->Dict.get(t)),
+    record.eventSourceARN
+    ->tableNameFromEventSourceArn
+    ->Option.flatMap(t => refFieldsByTable->Dict.get(t)),
     record.dynamodb->Option.flatMap(d => d.newImage),
   ) {
   | (Some(byEventType), Some(image)) =>
@@ -269,7 +271,8 @@ let targetsOfRecord = (record: record): array<target> =>
 let handler = async (event: event): unit => {
   // An append-only log only ever inserts events; MODIFY rows are fence and
   // snapshot updates, which `targetsOfRecord` would drop anyway.
-  let targets = event.records->Array.filter(r => r.eventName == "INSERT")->Array.flatMap(targetsOfRecord)
+  let targets =
+    event.records->Array.filter(r => r.eventName == "INSERT")->Array.flatMap(targetsOfRecord)
   // Sequential: a batch carries a handful of refs at most, and a failure must
   // reach the ESM as a throw so the record is retried rather than silently
   // leaving an object tagged.

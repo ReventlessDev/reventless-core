@@ -19,24 +19,24 @@ let make: ReventlessCore.Counter_Adapter.handlerMaker = (
 
   let countsTableName = (countsDb.resources->Array.getUnsafe(0)).name
 
-  let targetSpecModule =
-    specModulePath->JSON.stringifyAny->Option.getOr(`""`)
-  let mappingsModule =
-    mappingsModulePath->JSON.stringifyAny->Option.getOr(`""`)
+  let targetSpecModule = specModulePath->JSON.stringifyAny->Option.getOr(`""`)
+  let mappingsModule = mappingsModulePath->JSON.stringifyAny->Option.getOr(`""`)
 
-  let handlerConfigJson =
-    Pulumi.Output.all3((countsTableName, publishChannelId, referencesStream.urn))
-    ->Pulumi.Output.apply(((table, queueUrl, refArn)) => {
-      let countsArn = "" // Will be set separately
-      `{"targetSpecModule":${targetSpecModule},"mappingsModule":${mappingsModule},"countsTableName":"${table}","publishChannelId":"${queueUrl}","referencesStreamArn":"${refArn}","countsStreamArn":"${countsArn}"}`
-    })
+  let handlerConfigJson = Pulumi.Output.all3((
+    countsTableName,
+    publishChannelId,
+    referencesStream.urn,
+  ))->Pulumi.Output.apply(((table, queueUrl, refArn)) => {
+    let countsArn = "" // Will be set separately
+    `{"targetSpecModule":${targetSpecModule},"mappingsModule":${mappingsModule},"countsTableName":"${table}","publishChannelId":"${queueUrl}","referencesStreamArn":"${refArn}","countsStreamArn":"${countsArn}"}`
+  })
 
   // countsStreamArn is in a separate Output — merge into config
   let fullHandlerConfigJson =
-    Pulumi.Output.all2((handlerConfigJson, countsStream.urn))
-    ->Pulumi.Output.apply(((config, countsArn)) =>
-      config->String.replace(`"countsStreamArn":""`, `"countsStreamArn":"${countsArn}"`)
-    )
+    Pulumi.Output.all2((handlerConfigJson, countsStream.urn))->Pulumi.Output.apply(((
+      config,
+      countsArn,
+    )) => config->String.replace(`"countsStreamArn":""`, `"countsStreamArn":"${countsArn}"`))
 
   envVars->Dict.set("HANDLER_CONFIG", fullHandlerConfigJson->Pulumi.Output.asInput)
 
@@ -73,7 +73,7 @@ let make: ReventlessCore.Counter_Adapter.handlerMaker = (
 
   let subscribe = (sourceName, source) =>
     Util_EventSourceMapping.subscribe(
-      ~lambda=lambda,
+      ~lambda,
       ~targetName=name,
       ~sourceName,
       ~source,

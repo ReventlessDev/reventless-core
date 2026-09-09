@@ -93,9 +93,9 @@ let addToRegistry = (
   | None => registry->Dict.set(sourceUrn, [handler])
   }
 
-let groupBySource = (
-  records: array<PulumiAws.Lambda.CallbackFunction.record>,
-): dict<array<PulumiAws.Lambda.CallbackFunction.record>> => {
+let groupBySource = (records: array<PulumiAws.Lambda.CallbackFunction.record>): dict<
+  array<PulumiAws.Lambda.CallbackFunction.record>,
+> => {
   let grouped = Dict.make()
   records->Array.forEach(record =>
     switch grouped->Dict.get(record.eventSourceARN) {
@@ -110,47 +110,42 @@ let groupBySource = (
 // handler registered for each source (independent storage, so concurrent is
 // safe). Each handler carries its own comp so the shared Lambda's log lines
 // stay separable per component.
-let makeRoutedHandler = (
-  ~comp: string,
-  registryPromise: promise<dict<array<registeredHandler>>>,
-) =>
+let makeRoutedHandler = (~comp: string, registryPromise: promise<dict<array<registeredHandler>>>) =>
   async (event: PulumiAws.Lambda.CallbackFunction.event, context: PulumiAws.Lambda.context) => {
     setRequestId(context.awsRequestId)
     let registry = await registryPromise
-    let _ =
-      await groupBySource(event.records)
-      ->Dict.toArray
-      ->Array.map(async ((arn, subRecords)) =>
-        switch registry->Dict.get(arn)->Option.filter(hs => hs->Array.length > 0) {
-        | Some(streamHandlers) =>
-          logDebug(
-            `found ${streamHandlers->Array.length->Int.toString} handler(s) for ${arn}`,
-            {comp: comp},
+    let _ = await groupBySource(event.records)
+    ->Dict.toArray
+    ->Array.map(async ((arn, subRecords)) =>
+      switch registry->Dict.get(arn)->Option.filter(hs => hs->Array.length > 0) {
+      | Some(streamHandlers) =>
+        logDebug(
+          `found ${streamHandlers->Array.length->Int.toString} handler(s) for ${arn}`,
+          {comp: comp},
+        )
+        let correlationId = extractMetaField(subRecords, "correlationId")
+        let causationId = extractMetaField(subRecords, "causationId")
+        let timestamp = extractSentTimestamp(subRecords)
+        let retryCount = extractRetryCount(subRecords)
+        let subEvent: PulumiAws.Lambda.CallbackFunction.event = {records: subRecords}
+        let _ = await streamHandlers
+        ->Array.map(registered =>
+          runEffect(
+            registered.handler(subEvent, context),
+            {
+              ?correlationId,
+              ?causationId,
+              comp: ?registered.comp,
+              plugin: ?registered.plugin,
+              ?timestamp,
+              retryCount,
+            },
           )
-          let correlationId = extractMetaField(subRecords, "correlationId")
-          let causationId = extractMetaField(subRecords, "causationId")
-          let timestamp = extractSentTimestamp(subRecords)
-          let retryCount = extractRetryCount(subRecords)
-          let subEvent: PulumiAws.Lambda.CallbackFunction.event = {records: subRecords}
-          let _ =
-            await streamHandlers
-            ->Array.map(registered =>
-              runEffect(
-                registered.handler(subEvent, context),
-                {
-                  correlationId: ?correlationId,
-                  causationId: ?causationId,
-                  comp: ?registered.comp,
-                  plugin: ?registered.plugin,
-                  timestamp: ?timestamp,
-                  retryCount,
-                },
-              )
-            )
-            ->Promise.all
-        | None => logWarn("no handler found: " ++ arn, {comp: comp})
-        }
-      )
-      ->Promise.all
+        )
+        ->Promise.all
+      | None => logWarn("no handler found: " ++ arn, {comp: comp})
+      }
+    )
+    ->Promise.all
     ""
   }

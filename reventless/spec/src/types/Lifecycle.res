@@ -6,10 +6,9 @@ consumer resolves it here rather than restating it. `Trail` is the one field a
 view declares to have each state it reaches recorded with the instant it was
 reached; the projection machinery fills it, not the domain.
 */
-
-// A wire enum: a union whose non-null members are all string constants. A
+let // A wire enum: a union whose non-null members are all string constants. A
 // tagged union's members are objects, so the same test excludes it.
-let isEnumSchema = (schema: S.t<unknown>): bool =>
+isEnumSchema = (schema: S.t<unknown>): bool =>
   switch schema {
   | AnyOf({anyOf}) =>
     let members = anyOf->Array.filter(v =>
@@ -80,8 +79,7 @@ module Trail = {
   let schema = (stateSchema: S.t<'state>): S.t<t<'state>> =>
     S.array(entrySchema(stateSchema))->Semantic.mark(~id=Semantic.Id.lifecycleTrail)
 
-  let isTrail = (schema: S.t<unknown>): bool =>
-    Semantic.has(schema, ~id=Semantic.Id.lifecycleTrail)
+  let isTrail = (schema: S.t<unknown>): bool => Semantic.has(schema, ~id=Semantic.Id.lifecycleTrail)
 
   /** The trail field declared on a state record, if it declares one. */
   let fieldName = (stateSchema: S.t<unknown>): option<string> =>
@@ -101,6 +99,9 @@ module Trail = {
     | _ => []
     }
     let entry = Dict.fromArray([("state", state), ("at", JSON.Encode.string(at))])
-    stateDict->Dict.set(field, entries->Array.concat([entry->JSON.Encode.object])->JSON.Encode.array)
+    stateDict->Dict.set(
+      field,
+      entries->Array.concat([entry->JSON.Encode.object])->JSON.Encode.array,
+    )
   }
 }

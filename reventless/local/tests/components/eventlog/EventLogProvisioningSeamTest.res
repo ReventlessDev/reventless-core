@@ -30,7 +30,9 @@ module Recorder: ReventlessCore.EventLogProvisioning.Backend = {
     })
 }
 
-ReventlessCore.EventLogProvisioning.use(module(Recorder: ReventlessCore.EventLogProvisioning.Backend))
+ReventlessCore.EventLogProvisioning.use(
+  module(Recorder: ReventlessCore.EventLogProvisioning.Backend),
+)
 
 module Bus = LocalBus.Make()
 
@@ -42,7 +44,7 @@ module SeamItemSpec = {
   let name = "SeamItemEventLog"
 
   @schema
-  type event = | SeamItemCreated({name: string})
+  type event = SeamItemCreated({name: string})
 }
 
 module ClassicMaker = ReventlessCore.EventLog_Builder.Make(
@@ -53,7 +55,10 @@ module ClassicMaker = ReventlessCore.EventLog_Builder.Make(
 
 // The plugin builder publishes this context around a plugin's construct; entering
 // it here is what a real plugin build does, so the seam should carry the names.
-let previousContext = ReventlessCore.ResourceAttribution.enter(~platform="seam-platform", ~plugin="SeamPlugin")
+let previousContext = ReventlessCore.ResourceAttribution.enter(
+  ~platform="seam-platform",
+  ~plugin="SeamPlugin",
+)
 
 let classicLog = ClassicMaker.make(
   ~name="SeamItem",
@@ -63,10 +68,7 @@ let classicLog = ClassicMaker.make(
 // ── DCB log ──────────────────────────────────────────────────
 module DcbMaker = DcbEventLog_Builder.Make(Bus)
 
-let dcbLog = DcbMaker.make(
-  ~name="SeamCatalog",
-  ~partitionTag=Reventless.DcbTag.Simple({key: "id"}),
-)
+let dcbLog = DcbMaker.make(~name="SeamCatalog", ~partitionTag=Reventless.DcbTag.Simple({key: "id"}))
 
 ReventlessCore.ResourceAttribution.restore(previousContext)
 
@@ -80,16 +82,27 @@ describe("EventLogProvisioning seam, driven by the real builders", () => {
 
   testSync("carries the owning element: the aggregate for classic, the plugin for DCB", () => {
     expect(provisioned->Array.map(r => r.owner))->toEqual([
-      Some(({kind: ReventlessCore.ComponentType.Aggregate, name: "SeamItem"}: ReventlessCore.ResourceAttribution.owner)),
-      Some(({kind: ReventlessCore.ComponentType.Plugin, name: "SeamCatalog"}: ReventlessCore.ResourceAttribution.owner)),
+      Some(
+        (
+          {
+            kind: ReventlessCore.ComponentType.Aggregate,
+            name: "SeamItem",
+          }: ReventlessCore.ResourceAttribution.owner
+        ),
+      ),
+      Some(
+        (
+          {
+            kind: ReventlessCore.ComponentType.Plugin,
+            name: "SeamCatalog",
+          }: ReventlessCore.ResourceAttribution.owner
+        ),
+      ),
     ])
   })
 
   testSync("carries the ambient plugin attribution the builder published", () => {
-    expect(provisioned->Array.map(r => r.plugin))->toEqual([
-      Some("SeamPlugin"),
-      Some("SeamPlugin"),
-    ])
+    expect(provisioned->Array.map(r => r.plugin))->toEqual([Some("SeamPlugin"), Some("SeamPlugin")])
   })
 
   testSync("carries the adapter's resources — empty for in-memory storage", () => {

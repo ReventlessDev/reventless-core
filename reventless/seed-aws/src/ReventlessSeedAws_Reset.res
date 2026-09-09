@@ -50,8 +50,6 @@ module S3 = AwsSdk.S3
 module Lambda = AwsSdk.Lambda
 module Quiesce = ReventlessSeedAws_Quiesce
 
-
-
 // The Pulumi project name, which the framework stamps as `reventless:platform` on
 // every resource (`Plugin.res`: `platformName = getProjectName()`). Discovery
 // MUST scope on this as well as the stack: `reventless:environment` carries only
@@ -72,7 +70,7 @@ let projectName = (~projectDir: string): string => {
     trimmed
     ->String.slice(~start=String.length("name:"), ~end=String.length(trimmed))
     ->String.trim
-    ->String.replaceRegExp(%re("/^[\"']|[\"']$/g"), "")
+    ->String.replaceRegExp(/^[\"']|[\"']$/g, "")
   | None => throw(Seed.Failed(`could not find a \`name:\` field in ${path}.`))
   }
 }
@@ -106,7 +104,7 @@ let chunk = (arr: array<'a>, size: int): array<array<'a>> => {
 
 // Fail-closed name allowlist. A denylist ("everything except prod") fails open
 // the day a new prod-like stack is added and forgotten; this fails closed.
-let nameAllowlist = %re("/^(alpha|dev|pr-.+)$/")
+let nameAllowlist = /^(alpha|dev|pr-.+)$/
 
 // The stack's fully-resolved Pulumi config, read once. Reading it whole (rather
 // than `pulumi config get <key>`, which exits non-zero for BOTH a missing key
@@ -114,21 +112,19 @@ let nameAllowlist = %re("/^(alpha|dev|pr-.+)$/")
 // unreadable config is a pulumi/backend problem; an absent flag is a missing
 // opt-in. `pulumi config --json` maps each key to `{value, secret}`.
 let readStackConfig = (~projectDir, ~backend, ~stack): result<dict<JSON.t>, string> =>
-  switch (
-    try Some(ReventlessSeedAws.pulumi(~projectDir, ~backend, ["config", "--json", "--stack", stack])) catch {
-    | _ => None
-    }
-  ) {
+  switch try Some(
+    ReventlessSeedAws.pulumi(~projectDir, ~backend, ["config", "--json", "--stack", stack]),
+  ) catch {
+  | _ => None
+  } {
   | None =>
     Error(
       `could not read the Pulumi config for stack "${stack}" — is pulumi logged in to the right backend, and is the stack deployed?`,
     )
   | Some(raw) =>
-    switch (
-      try Some(JSON.parseOrThrow(raw)) catch {
-      | _ => None
-      }
-    ) {
+    switch try Some(JSON.parseOrThrow(raw)) catch {
+    | _ => None
+    } {
     | Some(Object(obj)) => Ok(obj)
     | _ => Error(`could not parse \`pulumi config --json\` output for stack "${stack}".`)
     }
@@ -304,8 +300,7 @@ let parseObjectStores = (json: option<JSON.t>): result<array<objectStore>, strin
           Ok(Array.concat(stores, [{qualified, plugin, store, bucketName, keyPrefix}]))
         | _ =>
           Error(
-            `the platform stack's \`objectStores\` output has a malformed entry for "${qualified}" — ` ++
-            `expected a {plugin}.{store} key carrying bucketName and keyPrefix.`,
+            `the platform stack's \`objectStores\` output has a malformed entry for "${qualified}" — ` ++ `expected a {plugin}.{store} key carrying bucketName and keyPrefix.`,
           )
         }
       }
@@ -329,8 +324,7 @@ let validateStores = (stores: array<objectStore>): result<unit, string> =>
   switch stores->Array.find(s => s.keyPrefix == "" || s.store->String.includes("/")) {
   | Some(s) =>
     Error(
-      `store "${s.qualified}" has an unusable key prefix ("${s.keyPrefix}") — ` ++
-      `a store name may not be empty or contain "/".`,
+      `store "${s.qualified}" has an unusable key prefix ("${s.keyPrefix}") — ` ++ `a store name may not be empty or contain "/".`,
     )
   | None =>
     switch stores->Array.findMap(a =>
@@ -341,8 +335,7 @@ let validateStores = (stores: array<objectStore>): result<unit, string> =>
           Some(
             `stores "${a.qualified}" and "${b.qualified}" both live at ` ++
             `${a.bucketName}/${a.keyPrefix}/ — a prefix-scoped wipe cannot tell their objects ` ++
-            `apart. Rename one store, or qualify the \`@storageRef\` annotation if they were ` ++
-            `meant to be one shared store.`,
+            `apart. Rename one store, or qualify the \`@storageRef\` annotation if they were ` ++ `meant to be one shared store.`,
           )
         } else if b.keyPrefix->String.startsWith(a.keyPrefix ++ "/") {
           Some(
@@ -386,8 +379,8 @@ let countBucket = async (bucket: string, ~prefix: option<string>=?): int => {
     let out = await S3.ListObjectVersionsCommand.send(
       S3.ListObjectVersionsCommand.make({
         bucket,
-        prefix: ?prefix,
-        keyMarker: ?keyMarker,
+        ?prefix,
+        ?keyMarker,
         versionIdMarker: ?versionMarker,
       }),
     )
@@ -415,7 +408,13 @@ let rec sendBatch = async (
 ): unit =>
   if requests->Array.length > 0 {
     if attempt > 8 {
-      throw(Seed.Failed(`table ${table}: ${(requests->Array.length)->Int.toString} item(s) still unprocessed after 8 retries.`))
+      throw(
+        Seed.Failed(
+          `table ${table}: ${requests
+            ->Array.length
+            ->Int.toString} item(s) still unprocessed after 8 retries.`,
+        ),
+      )
     }
     let out = await Ddb.DocumentClient.BatchWriteCommand.send(
       Ddb.DocumentClient.BatchWriteCommand.make({
@@ -456,7 +455,9 @@ let truncateTable = async (table: string): unit => {
       ->Option.getOr([])
       ->Array.map(item => {
         let key =
-          keyAttrs->Array.filterMap(attr => item->field(attr)->Option.map(v => (attr, v)))->Dict.fromArray
+          keyAttrs
+          ->Array.filterMap(attr => item->field(attr)->Option.map(v => (attr, v)))
+          ->Dict.fromArray
         ({deleteRequest: {key: key}}: Ddb.DocumentClient.BatchWriteCommand.writeRequest)
       })
     let batches = chunk(requests, Ddb.DocumentClient.BatchWriteCommand.maxBatchSize)
@@ -481,15 +482,15 @@ let emptyBucket = async (bucket: string, ~prefix: option<string>=?): unit => {
     let out = await S3.ListObjectVersionsCommand.send(
       S3.ListObjectVersionsCommand.make({
         bucket,
-        prefix: ?prefix,
-        keyMarker: ?keyMarker,
+        ?prefix,
+        ?keyMarker,
         versionIdMarker: ?versionMarker,
       }),
     )
     let ids =
-      Array.concat(out.versions->Option.getOr([]), out.deleteMarkers->Option.getOr([]))->Array.map(v => (
-        {key: v.key, versionId: v.versionId}: S3.DeleteObjectsCommand.objectIdentifier
-      ))
+      Array.concat(out.versions->Option.getOr([]), out.deleteMarkers->Option.getOr([]))->Array.map((
+        v
+      ): S3.DeleteObjectsCommand.objectIdentifier => {key: v.key, versionId: v.versionId})
     if ids->Array.length > 0 {
       let res = await S3.DeleteObjectsCommand.send(
         S3.DeleteObjectsCommand.make({
@@ -501,7 +502,7 @@ let emptyBucket = async (bucket: string, ~prefix: option<string>=?): unit => {
       | Some(errs) if errs->Array.length > 0 =>
         throw(
           Seed.Failed(
-            `failed to delete ${(errs->Array.length)->Int.toString} object(s) from ${bucket}: ${errs
+            `failed to delete ${errs->Array.length->Int.toString} object(s) from ${bucket}: ${errs
               ->Array.get(0)
               ->Option.flatMap(e => e.message)
               ->Option.getOr("unknown")}`,
@@ -583,6 +584,7 @@ let chooseScope = async (~targets: array<target>): array<target> => {
     let options = []
     if domain->Array.length > 0 {
       options->Array.push((`domain — ${labelsOf(domain)}`, domain))
+
       // Single-plugin entries only when there is more than one, else they just
       // duplicate the `domain` entry.
       if domain->Array.length > 1 {
@@ -610,7 +612,9 @@ let gateTarget = (~target: target, ~backend, ~stack): string => {
   | Ok(c) => c
   | Error(message) => throw(Seed.Failed(message))
   }
-  switch configValue(cfg, "reventless:wipeable")->Option.map(v => v->String.trim->String.toLowerCase) {
+  switch configValue(cfg, "reventless:wipeable")->Option.map(v =>
+    v->String.trim->String.toLowerCase
+  ) {
   | Some("true") => ()
   | _ =>
     throw(
@@ -666,13 +670,11 @@ let refillMessage = (~refilled: array<(string, int)>, ~heldCount: int): string =
     ->Array.join("")
   let diagnosis = if heldCount > 0 {
     `\n\n  The wipe deleted these and something wrote them back. All ${heldCount->Int.toString} runtime(s) ` ++
-    `in scope were held at zero concurrency for the whole wipe, so the writer was an invocation already ` ++
-    `in flight when the hold took effect. Re-running clears it.`
+    `in scope were held at zero concurrency for the whole wipe, so the writer was an invocation already ` ++ `in flight when the hold took effect. Re-running clears it.`
   } else {
     `\n\n  The wipe deleted these and a running runtime wrote them back. The stack was NOT held ` ++
     `(SEED_RESET_NO_QUIESCE), so nothing stopped it, and re-running will not help: the writer keeps the ` ++
-    `state in memory and restores it on every invocation, identical each time. Re-run without ` ++
-    `SEED_RESET_NO_QUIESCE so the runtimes are held and recycled.`
+    `state in memory and restores it on every invocation, identical each time. Re-run without ` ++ `SEED_RESET_NO_QUIESCE so the runtimes are held and recycled.`
   }
   `${total->Int.toString} item(s)/object(s) came back after the wipe:${lines}${diagnosis}`
 }
@@ -700,6 +702,7 @@ let reportAll = (resolvedList: array<resolved>, ~stack, ~region): int => {
     if r.bucketCounts->Array.length == 0 {
       Console.log("      (none)")
     }
+
     // Declared stores get their own section rather than being folded in with the
     // plain buckets: the unit is a prefix inside a bucket that other plugins also
     // write to, and the operator needs to see which is which before confirming.
@@ -770,8 +773,7 @@ let run = (~stack=?, ~backend=?, ~targets: array<target>, ()): unit => {
         // this resolution exists to fix.
         Console.log("")
         Console.log(
-          "Note: no `platform` target is declared, so declared object stores could not be " ++
-          "resolved — any uploaded objects will be left in place.",
+          "Note: no `platform` target is declared, so declared object stores could not be " ++ "resolved — any uploaded objects will be left in place.",
         )
         []
       | Some(pt) =>
@@ -910,8 +912,7 @@ let run = (~stack=?, ~backend=?, ~targets: array<target>, ()): unit => {
       let interactive = NodeProcess.stdin->NodeProcess.isTTY->Option.getOr(false)
       let confirmed = if interactive {
         let typed = await Seed.Prompt.ask(
-          `About to permanently empty ${total->Int.toString} item(s)/object(s) across the selected scope of "${stack}". ` ++
-          `Type the stack name to confirm, or press Enter to keep this a dry run: `,
+          `About to permanently empty ${total->Int.toString} item(s)/object(s) across the selected scope of "${stack}". ` ++ `Type the stack name to confirm, or press Enter to keep this a dry run: `,
         )
         typed->String.trim == stack
       } else {
@@ -932,9 +933,10 @@ let run = (~stack=?, ~backend=?, ~targets: array<target>, ()): unit => {
       // durable while the runtimes that own the data are running — see
       // ReventlessSeedAws_Quiesce for the mechanism and for why emptying the
       // upstream stores first does not substitute for this.
-      let functionNames = resolvedList->Array.reduce([], (acc, r) =>
-        Array.concat(acc, r.functions->Array.filter(f => !(acc->Array.includes(f))))
-      )
+      let functionNames =
+        resolvedList->Array.reduce([], (acc, r) =>
+          Array.concat(acc, r.functions->Array.filter(f => !(acc->Array.includes(f))))
+        )
       let quiesce = !noQuiesce() && functionNames->Array.length > 0
       let lambdaClient = Lambda.client(~region, ())
       let held = if quiesce {
@@ -946,8 +948,7 @@ let run = (~stack=?, ~backend=?, ~targets: array<target>, ()): unit => {
         if functionNames->Array.length > 0 {
           Console.log("")
           Console.log(
-            "Note: SEED_RESET_NO_QUIESCE is set — the stack's runtimes keep running through the wipe. " ++
-            "A runtime that holds state across invocations can write it straight back over an emptied store.",
+            "Note: SEED_RESET_NO_QUIESCE is set — the stack's runtimes keep running through the wipe. " ++ "A runtime that holds state across invocations can write it straight back over an emptied store.",
           )
         }
         []
@@ -1078,7 +1079,9 @@ let run = (~stack=?, ~backend=?, ~targets: array<target>, ()): unit => {
       }
 
       Console.log("")
-      Console.log(`Reset complete — the selected scope of "${stack}" reads empty and is re-seedable.`)
+      Console.log(
+        `Reset complete — the selected scope of "${stack}" reads empty and is re-seedable.`,
+      )
       NodeProcess.exit(0)
     } catch {
     | Seed.Failed(message) =>
@@ -1090,7 +1093,9 @@ let run = (~stack=?, ~backend=?, ~targets: array<target>, ()): unit => {
       Seed.Prompt.close()
       Console.error("")
       Console.error("Reset aborted with an unexpected error:")
-      Console.error(exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown"))
+      Console.error(
+        exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown"),
+      )
       NodeProcess.exit(1)
     }
   }

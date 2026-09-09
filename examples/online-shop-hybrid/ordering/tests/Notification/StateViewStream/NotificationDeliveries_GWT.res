@@ -21,16 +21,15 @@ let referenceOf = ruleId =>
 let confirm = referenceOf("confirm")
 let ship = referenceOf("ship")
 
-let requested = (category, reference) =>
-  NotificationRequested({
-    recipientId: "c1",
-    category,
-    reference,
-    channel: NotificationPreferences.Email,
-    subjectType: "Order",
-    subjectRef: "o1",
-    origin: NotificationPreferences.Default,
-  })
+let requested = (category, reference) => NotificationRequested({
+  recipientId: "c1",
+  category,
+  reference,
+  channel: NotificationPreferences.Email,
+  subjectType: "Order",
+  subjectRef: "o1",
+  origin: NotificationPreferences.Default,
+})
 
 let row = (category, reference, outcome, detail, settledAt): state => {
   reference,

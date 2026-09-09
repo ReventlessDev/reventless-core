@@ -17,84 +17,123 @@ let _ = beforeEach(() => reset())
 describe("EventLog_Operations — retry:", () => {
   describe("isTransient predicate:", () => {
     let transient = msg => EventLog_Operations.isTransient(EventLog.StorageFailure(msg))
-    testPromise("ThrottlingException is transient", async () => {
-      expect(transient("ThrottlingException: Rate exceeded"))->toBe(true)
-    })
+    testPromise(
+      "ThrottlingException is transient",
+      async () => {
+        expect(transient("ThrottlingException: Rate exceeded"))->toBe(true)
+      },
+    )
 
-    testPromise("ProvisionedThroughputExceededException is transient", async () => {
-      expect(transient("ProvisionedThroughputExceededException"))->toBe(true)
-    })
+    testPromise(
+      "ProvisionedThroughputExceededException is transient",
+      async () => {
+        expect(transient("ProvisionedThroughputExceededException"))->toBe(true)
+      },
+    )
 
-    testPromise("ServiceUnavailable is transient", async () => {
-      expect(transient("ServiceUnavailable"))->toBe(true)
-    })
+    testPromise(
+      "ServiceUnavailable is transient",
+      async () => {
+        expect(transient("ServiceUnavailable"))->toBe(true)
+      },
+    )
 
-    testPromise("RequestLimitExceeded is transient", async () => {
-      expect(transient("RequestLimitExceeded"))->toBe(true)
-    })
+    testPromise(
+      "RequestLimitExceeded is transient",
+      async () => {
+        expect(transient("RequestLimitExceeded"))->toBe(true)
+      },
+    )
 
-    testPromise("InternalServerError is transient", async () => {
-      expect(transient("InternalServerError: something went wrong"))->toBe(true)
-    })
+    testPromise(
+      "InternalServerError is transient",
+      async () => {
+        expect(transient("InternalServerError: something went wrong"))->toBe(true)
+      },
+    )
 
-    testPromise("ValidationException is not transient", async () => {
-      expect(transient("ValidationException: invalid field"))->toBe(false)
-    })
+    testPromise(
+      "ValidationException is not transient",
+      async () => {
+        expect(transient("ValidationException: invalid field"))->toBe(false)
+      },
+    )
 
-    testPromise("generic mock storage failure is not transient", async () => {
-      expect(transient("mock storage failure"))->toBe(false)
-    })
+    testPromise(
+      "generic mock storage failure is not transient",
+      async () => {
+        expect(transient("mock storage failure"))->toBe(false)
+      },
+    )
 
-    testPromise("a Conflict is never transient (retried a layer up, not here)", async () => {
-      expect(EventLog_Operations.isTransient(EventLog.Conflict))->toBe(false)
-    })
+    testPromise(
+      "a Conflict is never transient (retried a layer up, not here)",
+      async () => {
+        expect(EventLog_Operations.isTransient(EventLog.Conflict))->toBe(false)
+      },
+    )
   })
 
   describe("permanent storage failure:", () => {
-    testPromise("returns Error immediately without retry", async () => {
-      failNextAppend := true // "mock storage failure" — not transient, no retry
-      let event' = makeEvent'("item-1", ItemEventLogSpec.ItemCreated({name: "Widget"}))
-      let result = await Ops.append(1, "item-1", [event'])
-      expect(Result.isError(result))->toBe(true)
-      // Exactly one attempt — permanent error is not retried
-      expect(appendCallCount.contents)->toBe(1)
-    })
+    testPromise(
+      "returns Error immediately without retry",
+      async () => {
+        failNextAppend := true // "mock storage failure" — not transient, no retry
+        let event' = makeEvent'("item-1", ItemEventLogSpec.ItemCreated({name: "Widget"}))
+        let result = await Ops.append(1, "item-1", [event'])
+        expect(Result.isError(result))->toBe(true)
+        // Exactly one attempt — permanent error is not retried
+        expect(appendCallCount.contents)->toBe(1)
+      },
+    )
 
-    testPromise("does not publish events after permanent storage failure", async () => {
-      failNextAppend := true
-      let event' = makeEvent'("item-1", ItemEventLogSpec.ItemCreated({name: "Widget"}))
-      let _ = await Ops.append(1, "item-1", [event'])
-      expect(capturedPublishes.contents->Array.length)->toBe(0)
-    })
+    testPromise(
+      "does not publish events after permanent storage failure",
+      async () => {
+        failNextAppend := true
+        let event' = makeEvent'("item-1", ItemEventLogSpec.ItemCreated({name: "Widget"}))
+        let _ = await Ops.append(1, "item-1", [event'])
+        expect(capturedPublishes.contents->Array.length)->toBe(0)
+      },
+    )
   })
 
   describe("transient storage failure — retry:", () => {
-    testPromise("1 transient failure retries and returns Ok", async () => {
-      failNextAppendsWithTransient := 1
-      let event' = makeEvent'("item-1", ItemEventLogSpec.ItemCreated({name: "Widget"}))
-      let result = await Ops.append(1, "item-1", [event'])
-      expect(Result.isOk(result))->toBe(true)
-      // 1 initial attempt + 1 retry = 2 total calls to storage.append
-      expect(appendCallCount.contents)->toBe(2)
-    })
+    testPromise(
+      "1 transient failure retries and returns Ok",
+      async () => {
+        failNextAppendsWithTransient := 1
+        let event' = makeEvent'("item-1", ItemEventLogSpec.ItemCreated({name: "Widget"}))
+        let result = await Ops.append(1, "item-1", [event'])
+        expect(Result.isOk(result))->toBe(true)
+        // 1 initial attempt + 1 retry = 2 total calls to storage.append
+        expect(appendCallCount.contents)->toBe(2)
+      },
+    )
 
-    testPromise("events are stored and published after successful retry", async () => {
-      failNextAppendsWithTransient := 1
-      let event' = makeEvent'("item-1", ItemEventLogSpec.ItemCreated({name: "Widget"}))
-      let _ = await Ops.append(1, "item-1", [event'])
-      let stored = storedEvents.contents->Dict.get("item-1")->Option.getOr([])
-      expect(stored->Array.length)->toBe(1)
-      expect(capturedPublishes.contents->Array.length)->toBe(1)
-    })
+    testPromise(
+      "events are stored and published after successful retry",
+      async () => {
+        failNextAppendsWithTransient := 1
+        let event' = makeEvent'("item-1", ItemEventLogSpec.ItemCreated({name: "Widget"}))
+        let _ = await Ops.append(1, "item-1", [event'])
+        let stored = storedEvents.contents->Dict.get("item-1")->Option.getOr([])
+        expect(stored->Array.length)->toBe(1)
+        expect(capturedPublishes.contents->Array.length)->toBe(1)
+      },
+    )
 
-    testPromise("2 transient failures retry twice and return Ok", async () => {
-      failNextAppendsWithTransient := 2
-      let event' = makeEvent'("item-1", ItemEventLogSpec.ItemCreated({name: "Widget"}))
-      let result = await Ops.append(1, "item-1", [event'])
-      expect(Result.isOk(result))->toBe(true)
-      // 1 initial + 2 retries = 3 total calls
-      expect(appendCallCount.contents)->toBe(3)
-    })
+    testPromise(
+      "2 transient failures retry twice and return Ok",
+      async () => {
+        failNextAppendsWithTransient := 2
+        let event' = makeEvent'("item-1", ItemEventLogSpec.ItemCreated({name: "Widget"}))
+        let result = await Ops.append(1, "item-1", [event'])
+        expect(Result.isOk(result))->toBe(true)
+        // 1 initial + 2 retries = 3 total calls
+        expect(appendCallCount.contents)->toBe(3)
+      },
+    )
   })
 
   describe("retry exhaustion:", () => {

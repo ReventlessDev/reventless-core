@@ -57,7 +57,10 @@ describe("DcbScopeInference.foreignConsumedKeys", () => {
       I.foreignConsumedKeys(
         slice(
           ~name="Product",
-          ~consumed=[ev("ProductAdded", [id("productId")]), ev("CategoryAdded", [id("categoryId")])],
+          ~consumed=[
+            ev("ProductAdded", [id("productId")]),
+            ev("CategoryAdded", [id("categoryId")]),
+          ],
           ~produced=[ev("ProductAdded", [id("productId")])],
         ),
       ),
@@ -185,8 +188,9 @@ describe("DcbScopeInference.infer — a lifecycle arm that costs a slice its par
     let d = I.infer([imagesReadingOwnLifecycle])
     expect(d.partitionBySlice->Dict.get("ProductImages"))->toEqual(None)
     expect(
-      d.ambiguities->Array.some(((slice, reason)) =>
-        slice == "ProductImages" && reason->String.includes("ProductAdded declares productId")
+      d.ambiguities->Array.some(
+        ((slice, reason)) =>
+          slice == "ProductImages" && reason->String.includes("ProductAdded declares productId"),
       ),
     )->toEqual(true)
   })

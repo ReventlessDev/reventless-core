@@ -24,7 +24,6 @@ they actually hold and render correctly on their own.
     })
 ```
 */
-
 /** The address's representation. Transparent `string`; see `Email.t`. */
 type t = string
 
@@ -56,8 +55,9 @@ let fromString = (raw: string): result<t, string> =>
       Ok(value)
     } else {
       Error(
-        `a URL field takes an http:// or https:// address, got ${Semantic.showString(raw)}. ` ++
-        `Use Email or Phone for mailto:/tel:, and a storage ref for an uploaded object.`,
+        `a URL field takes an http:// or https:// address, got ${Semantic.showString(
+            raw,
+          )}. ` ++ `Use Email or Phone for mailto:/tel:, and a storage ref for an uploaded object.`,
       )
     }
   | exception _ =>

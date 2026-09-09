@@ -40,33 +40,34 @@ type httpRes
 let postJson = (path: string, body: dict<JSON.t>): promise<(int, JSON.t)> =>
   Promise.make((resolve, reject) => {
     let bodyStr = body->JSON.Encode.object->JSON.stringify
-    let req =
-      _request(
-        {
-          hostname: "localhost",
-          port,
-          path,
-          method: "POST",
-          headers: Dict.fromArray([
-            ("content-type", "application/json"),
-            ("content-length", bodyStr->String.length->Int.toString),
-          ]),
-        },
-        res => {
-          let status = _resStatusCode(res)
-          let buf = ref("")
-          res->_resSetEncoding("utf8")
-          res->_resOnData(chunk => buf := buf.contents ++ Obj.magic(chunk))
-          res->_resOnEnd(() => {
+    let req = _request(
+      {
+        hostname: "localhost",
+        port,
+        path,
+        method: "POST",
+        headers: Dict.fromArray([
+          ("content-type", "application/json"),
+          ("content-length", bodyStr->String.length->Int.toString),
+        ]),
+      },
+      res => {
+        let status = _resStatusCode(res)
+        let buf = ref("")
+        res->_resSetEncoding("utf8")
+        res->_resOnData(chunk => buf := buf.contents ++ Obj.magic(chunk))
+        res->_resOnEnd(
+          () => {
             let parsed = try {
               buf.contents->JSON.parseOrThrow
             } catch {
             | _ => JSON.Encode.null
             }
             resolve((status, parsed))
-          })
-        },
-      )
+          },
+        )
+      },
+    )
     req->_reqOnError(err => reject(Obj.magic(err)))
     req->_reqWrite(bodyStr)
     req->_reqEnd
@@ -74,40 +75,38 @@ let postJson = (path: string, body: dict<JSON.t>): promise<(int, JSON.t)> =>
 
 let postEmpty = (path: string): promise<int> =>
   Promise.make((resolve, reject) => {
-    let req =
-      _request(
-        {hostname: "localhost", port, path, method: "POST", headers: Dict.make()},
-        res => {
-          let status = _resStatusCode(res)
-          // Drain (otherwise the socket may stay open under HTTP keep-alive).
-          res->_resOnData(_ => ())
-          res->_resOnEnd(() => resolve(status))
-        },
-      )
+    let req = _request(
+      {hostname: "localhost", port, path, method: "POST", headers: Dict.make()},
+      res => {
+        let status = _resStatusCode(res)
+        // Drain (otherwise the socket may stay open under HTTP keep-alive).
+        res->_resOnData(_ => ())
+        res->_resOnEnd(() => resolve(status))
+      },
+    )
     req->_reqOnError(err => reject(Obj.magic(err)))
     req->_reqEnd
   })
 
 let postRaw = (path: string, body: string): promise<int> =>
   Promise.make((resolve, reject) => {
-    let req =
-      _request(
-        {
-          hostname: "localhost",
-          port,
-          path,
-          method: "POST",
-          headers: Dict.fromArray([
-            ("content-type", "application/json"),
-            ("content-length", body->String.length->Int.toString),
-          ]),
-        },
-        res => {
-          let status = _resStatusCode(res)
-          res->_resOnData(_ => ())
-          res->_resOnEnd(() => resolve(status))
-        },
-      )
+    let req = _request(
+      {
+        hostname: "localhost",
+        port,
+        path,
+        method: "POST",
+        headers: Dict.fromArray([
+          ("content-type", "application/json"),
+          ("content-length", body->String.length->Int.toString),
+        ]),
+      },
+      res => {
+        let status = _resStatusCode(res)
+        res->_resOnData(_ => ())
+        res->_resOnEnd(() => resolve(status))
+      },
+    )
     req->_reqOnError(err => reject(Obj.magic(err)))
     req->_reqWrite(body)
     req->_reqEnd
@@ -148,14 +147,13 @@ afterAll(() => {
 // ── Tests ──────────────────────────────────────────────────────────────────
 
 testPromise("POST /__inmemory/login returns {token, identity} for valid credentials", async () => {
-  let (status, body) =
-    await postJson(
-      "/__inmemory/login",
-      Dict.fromArray([
-        ("username", JSON.Encode.string("alice")),
-        ("password", JSON.Encode.string("alice-pw")),
-      ]),
-    )
+  let (status, body) = await postJson(
+    "/__inmemory/login",
+    Dict.fromArray([
+      ("username", JSON.Encode.string("alice")),
+      ("password", JSON.Encode.string("alice-pw")),
+    ]),
+  )
   expect(status)->toEqual(200)
   let token = getString(body, "token")
   expect(token->String.length > 0)->toEqual(true)
@@ -171,27 +169,25 @@ testPromise("POST /__inmemory/login returns {token, identity} for valid credenti
 })
 
 testPromise("POST /__inmemory/login returns 401 for wrong password", async () => {
-  let (status, body) =
-    await postJson(
-      "/__inmemory/login",
-      Dict.fromArray([
-        ("username", JSON.Encode.string("alice")),
-        ("password", JSON.Encode.string("WRONG")),
-      ]),
-    )
+  let (status, body) = await postJson(
+    "/__inmemory/login",
+    Dict.fromArray([
+      ("username", JSON.Encode.string("alice")),
+      ("password", JSON.Encode.string("WRONG")),
+    ]),
+  )
   expect(status)->toEqual(401)
   expect(getString(body, "error")->String.length > 0)->toEqual(true)
 })
 
 testPromise("POST /__inmemory/login returns 401 for missing user", async () => {
-  let (status, _) =
-    await postJson(
-      "/__inmemory/login",
-      Dict.fromArray([
-        ("username", JSON.Encode.string("ghost")),
-        ("password", JSON.Encode.string("x")),
-      ]),
-    )
+  let (status, _) = await postJson(
+    "/__inmemory/login",
+    Dict.fromArray([
+      ("username", JSON.Encode.string("ghost")),
+      ("password", JSON.Encode.string("x")),
+    ]),
+  )
   expect(status)->toEqual(401)
 })
 
@@ -206,19 +202,17 @@ testPromise("POST /__inmemory/logout always returns 204", async () => {
 })
 
 testPromise("Bearer token issued via HTTP round-trips through authenticate", async () => {
-  let (_, body) =
-    await postJson(
-      "/__inmemory/login",
-      Dict.fromArray([
-        ("username", JSON.Encode.string("alice")),
-        ("password", JSON.Encode.string("alice-pw")),
-      ]),
-    )
+  let (_, body) = await postJson(
+    "/__inmemory/login",
+    Dict.fromArray([
+      ("username", JSON.Encode.string("alice")),
+      ("password", JSON.Encode.string("alice-pw")),
+    ]),
+  )
   let token = getString(body, "token")
-  let result =
-    await LocalAuth.authenticate({
-      headers: Dict.fromArray([("authorization", "Bearer " ++ token)]),
-    })
+  let result = await LocalAuth.authenticate({
+    headers: Dict.fromArray([("authorization", "Bearer " ++ token)]),
+  })
   switch result {
   | Authenticated(identity) =>
     expect(identity.username)->toEqual("alice")

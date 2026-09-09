@@ -14,33 +14,13 @@ type readModelInfo = {
 
 let readModelInfos: dict<readModelInfo> = Dict.make()
 
-let registerReadModel = (
-  ~readModelName,
-  ~specModulePath,
-  ~mappingsModulePath,
-  ~queryDbTableName,
-) =>
-  readModelInfos->Dict.set(
-    readModelName,
-    {specModulePath, mappingsModulePath, queryDbTableName},
-  )
+let registerReadModel = (~readModelName, ~specModulePath, ~mappingsModulePath, ~queryDbTableName) =>
+  readModelInfos->Dict.set(readModelName, {specModulePath, mappingsModulePath, queryDbTableName})
 
 let forEventCollector: ReventlessCore.Runtime.forEventCollector<
-  ReventlessCore.Runtime.effectHandler<
-    EventCollectorChannel.callbackEvent,
-    context,
-    unit,
-    string,
-  >,
+  ReventlessCore.Runtime.effectHandler<EventCollectorChannel.callbackEvent, context, unit, string>,
   ReventlessCore.EventCollector.component,
-> = (
-  ~handler as _,
-  ~eventTopics,
-  ~resources,
-  ~memorySize=1024,
-  ~timeout=30,
-  eventCollector,
-) => {
+> = (~handler as _, ~eventTopics, ~resources, ~memorySize=1024, ~timeout=30, eventCollector) => {
   let eventCollectorResource = eventCollector->ReventlessCore.Component.toPulumiResource
   let channel = eventCollector->ReventlessCore.EventCollector_Adapter.channel
   let eventCollectorName = eventCollectorResource.name->Option.getOr("Unnamed")
@@ -56,28 +36,28 @@ let forEventCollector: ReventlessCore.Runtime.forEventCollector<
         ->Array.map(({urn}) => urn)
         ->Pulumi.Output.all
 
-      let name = eventCollectorResource.name->ReventlessCore.ComponentType.nameOpt(
-        ReventlessCore.EventCollector.componentType,
-      )
+      let name =
+        eventCollectorResource.name->ReventlessCore.ComponentType.nameOpt(
+          ReventlessCore.EventCollector.componentType,
+        )
       let opts = {Pulumi.ComponentResource.parent: eventCollectorResource}
 
       // Build HANDLER_CONFIG with single handler
-      let specModule =
-        info.specModulePath->JSON.stringifyAny->Option.getOr(`""`)
-      let mappingsModule =
-        info.mappingsModulePath->JSON.stringifyAny->Option.getOr(`""`)
+      let specModule = info.specModulePath->JSON.stringifyAny->Option.getOr(`""`)
+      let mappingsModule = info.mappingsModulePath->JSON.stringifyAny->Option.getOr(`""`)
 
       // Same deploy-time log attribution as the shared-runtime builder: the
       // entry point annotates every invocation with these, and the `comp` string
       // must match the ReScript dispatch boundary's `EventCollector(<name>)`.
       let attribution = Util_LogAttribution.fragments(~comp=`EventCollector(${eventCollectorName})`)
 
-      let handlerConfigOutput =
-        Pulumi.Output.all2((info.queryDbTableName, sourceUrns))
-        ->Pulumi.Output.apply(((tableName, urns)) => {
-          let sourceUrn = urns->Array.getUnsafe(0)
-          `{"handlers":[{"specModule":${specModule},"mappingsModule":${mappingsModule},"queryDbTableName":"${tableName}","sourceUrn":"${sourceUrn}"${attribution}}]}`
-        })
+      let handlerConfigOutput = Pulumi.Output.all2((
+        info.queryDbTableName,
+        sourceUrns,
+      ))->Pulumi.Output.apply(((tableName, urns)) => {
+        let sourceUrn = urns->Array.getUnsafe(0)
+        `{"handlers":[{"specModule":${specModule},"mappingsModule":${mappingsModule},"queryDbTableName":"${tableName}","sourceUrn":"${sourceUrn}"${attribution}}]}`
+      })
 
       let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
       envVars->Dict.set("HANDLER_CONFIG", handlerConfigOutput->Pulumi.Output.asInput)

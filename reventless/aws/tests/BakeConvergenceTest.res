@@ -17,9 +17,10 @@ open JestGlobals
 
 // Mirrors the deploy-time hook in aws/src/Platform.res: content-addressed key, and
 // the key the stack exports as `pluginStructureRef` is the one the hook returned.
-let deployStructure = (
-  structure: Reventless.Plugin.pluginStructure,
-): (string, Reventless.Offload.payload<Reventless.Plugin.pluginStructure>) => {
+let deployStructure = (structure: Reventless.Plugin.pluginStructure): (
+  string,
+  Reventless.Offload.payload<Reventless.Plugin.pluginStructure>,
+) => {
   let exported = ref("")
   ReventlessCore.Plugin_Helpers.registerOffload((~store, ~bytes) => {
     let hash = NodeCrypto.sha256Hex(bytes)
@@ -125,9 +126,7 @@ describe("the bake converges when a plugin's structure changes", () => {
 
   // If this ever stops holding, the two keys can never converge and every retry is
   // spent waiting for something that cannot happen.
-  testSync("a changed structure hashes to a different key", () =>
-    expect(keyA == keyB)->toBe(false)
-  )
+  testSync("a changed structure hashes to a different key", () => expect(keyA == keyB)->toBe(false))
 
   // The invariant convergence rests on: the structure the deploy hashes and the
   // structure the plugin's registration carries are the same bytes, because they
@@ -135,9 +134,7 @@ describe("the bake converges when a plugin's structure changes", () => {
   // deploy's reference and hands it back.
   testSync("the key the deploy exported is the key the registration carries", () =>
     expect(
-      Platform_ComponentDefinitions_Lambda_Ops.structureRefKey(
-        row(shipped(defB), ~at=afterDeploy),
-      ),
+      Platform_ComponentDefinitions_Lambda_Ops.structureRefKey(row(shipped(defB), ~at=afterDeploy)),
     )->toEqual(Some(keyB))
   )
 
@@ -155,18 +152,18 @@ describe("the bake converges when a plugin's structure changes", () => {
   // definition must re-emit VersionConnected. `decide` is idempotent on an
   // unchanged one, so this is the step a broken chain silently skips.
   testSync("a redeploy with a changed structure re-emits VersionConnected", () => {
-    let connected = ReventlessCore.PluginBehavior.initialState->apply(connect(
-      ReventlessCore.PluginBehavior.initialState,
-      shipped(defA),
-    ))
+    let connected =
+      ReventlessCore.PluginBehavior.initialState->apply(
+        connect(ReventlessCore.PluginBehavior.initialState, shipped(defA)),
+      )
     expect(connect(connected, shipped(defB))->Array.length)->toBe(1)
   })
 
   testSync("once it lands, the plugin reads as registered by this deploy", () => {
-    let connected = ReventlessCore.PluginBehavior.initialState->apply(connect(
-      ReventlessCore.PluginBehavior.initialState,
-      shipped(defA),
-    ))
+    let connected =
+      ReventlessCore.PluginBehavior.initialState->apply(
+        connect(ReventlessCore.PluginBehavior.initialState, shipped(defA)),
+      )
     let redeployed = connected->apply(connect(connected, shipped(defB)))
     let def = switch redeployed.known->Dict.get("1.0.0") {
     | Some({definition}) => definition
@@ -182,10 +179,10 @@ describe("the bake converges when a plugin's structure changes", () => {
   // exercising the chain at all. Correct, and no evidence — which is why the bake
   // counts it apart from a plugin that did register.
   testSync("an unchanged structure passes without re-registering", () => {
-    let connected = ReventlessCore.PluginBehavior.initialState->apply(connect(
-      ReventlessCore.PluginBehavior.initialState,
-      shipped(defA),
-    ))
+    let connected =
+      ReventlessCore.PluginBehavior.initialState->apply(
+        connect(ReventlessCore.PluginBehavior.initialState, shipped(defA)),
+      )
     expect(connect(connected, shipped(defA)))->toEqual([])
     expect(
       stateOf(
@@ -200,10 +197,10 @@ describe("the bake converges when a plugin's structure changes", () => {
   // version; without it a redeploy of the same version never re-runs the handshake
   // and the changed structure never reaches the read model.
   testSync("a redeploy re-detects an already-connected version", () => {
-    let connected = ReventlessCore.PluginBehavior.initialState->apply(connect(
-      ReventlessCore.PluginBehavior.initialState,
-      shipped(defA),
-    ))
+    let connected =
+      ReventlessCore.PluginBehavior.initialState->apply(
+        connect(ReventlessCore.PluginBehavior.initialState, shipped(defA)),
+      )
     expect(
       ReventlessCore.PluginBehavior.decide(connected, ReventlessCore.PluginSpec.Redetect("1.0.0")),
     )->toEqual(Ok([ReventlessCore.PluginSpec.VersionDetected("1.0.0")]))

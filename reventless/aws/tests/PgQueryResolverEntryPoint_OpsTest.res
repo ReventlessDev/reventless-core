@@ -15,16 +15,12 @@ describe("PgQueryResolverEntryPoint_Ops.parseResolverConfig", () => {
   })
 
   testSync("null pgConnection decodes to None", () => {
-    let config = PgQueryResolverEntryPoint_Ops.parseResolverConfig(
-      `{"pgConnection":null,"handlers":[]}`,
-    )
+    let config = PgQueryResolverEntryPoint_Ops.parseResolverConfig(`{"pgConnection":null,"handlers":[]}`)
     expect(config.pgConnection->Option.isNone)->toBe(true)
   })
 
   testSync("decodes connection, handlers, and node types", () => {
-    let config = PgQueryResolverEntryPoint_Ops.parseResolverConfig(
-      `{"pgConnection":{"host":"db.local","port":5432,"database":"app","username":"master","secretArn":"arn:secret"},"handlers":[{"readModelName":"Products","specModule":"@x/p/src/ReadModel/Products.res.mjs","labelField":"name","includeIdParam":true},{"readModelName":"Orders","specModule":"@x/p/src/ReadModel/Orders.res.mjs","labelField":"id","includeIdParam":false}],"nodeTypes":{"Product":"Products"}}`,
-    )
+    let config = PgQueryResolverEntryPoint_Ops.parseResolverConfig(`{"pgConnection":{"host":"db.local","port":5432,"database":"app","username":"master","secretArn":"arn:secret"},"handlers":[{"readModelName":"Products","specModule":"@x/p/src/ReadModel/Products.res.mjs","labelField":"name","includeIdParam":true},{"readModelName":"Orders","specModule":"@x/p/src/ReadModel/Orders.res.mjs","labelField":"id","includeIdParam":false}],"nodeTypes":{"Product":"Products"}}`)
     expect(config.pgConnection->Option.map(cc => cc.host))->toEqual(Some("db.local"))
     expect(config.handlers->Array.length)->toBe(2)
     let first = config.handlers->Array.getUnsafe(0)

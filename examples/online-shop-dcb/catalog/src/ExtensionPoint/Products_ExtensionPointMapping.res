@@ -15,16 +15,20 @@ module Delegate = {
 
 let mapIncomingCommand = (_id, _command, _meta) => []
 
-let mapOutgoingEvent = Some((_id, event, _meta, _queryEngine) =>
-  switch event {
-  | Delegate.ProductAdded({productId, name, price}) => [
-      PublishEvent(
-        productId,
-        CatalogSpec.Products_ExtensionPoint.ProductBecameAvailable({productId, name, price}),
-      ),
-    ]
-  | Delegate.ProductPriceChanged({productId, price}) => [
-      PublishEvent(productId, CatalogSpec.Products_ExtensionPoint.ProductPriceChanged({productId, price})),
-    ]
-  }
+let mapOutgoingEvent = Some(
+  (_id, event, _meta, _queryEngine) =>
+    switch event {
+    | Delegate.ProductAdded({productId, name, price}) => [
+        PublishEvent(
+          productId,
+          CatalogSpec.Products_ExtensionPoint.ProductBecameAvailable({productId, name, price}),
+        ),
+      ]
+    | Delegate.ProductPriceChanged({productId, price}) => [
+        PublishEvent(
+          productId,
+          CatalogSpec.Products_ExtensionPoint.ProductPriceChanged({productId, price}),
+        ),
+      ]
+    },
 )

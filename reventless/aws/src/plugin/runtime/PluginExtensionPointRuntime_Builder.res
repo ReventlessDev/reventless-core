@@ -66,32 +66,30 @@ let forCommandTopic = (
     publishToAggregatesEnvVars
     ->Dict.toArray
     ->Array.map(((aggName, envVar)) =>
-      `${aggName->JSON.stringifyAny->Option.getOr(`""`)}: ${envVar->JSON.stringifyAny->Option.getOr(`""`)}`
+      `${aggName->JSON.stringifyAny->Option.getOr(`""`)}: ${envVar
+        ->JSON.stringifyAny
+        ->Option.getOr(`""`)}`
     )
     ->Array.join(",")
 
   // Build HANDLER_CONFIG JSON
   let queueName =
-    queue.id->Pulumi.Output.apply(id =>
-      id->String.split("/")->Array.at(-1)->Option.getOr(id)
-    )
+    queue.id->Pulumi.Output.apply(id => id->String.split("/")->Array.at(-1)->Option.getOr(id))
 
-  let handlerConfigJson =
-    Pulumi.Output.all([
-      queue.id,
-      extras.pluginReadModelTableName->outputOrPlaceholder->Obj.magic,
-      extras.schedulerRoleArn->outputOrPlaceholder->Obj.magic,
-      queue.arn,
-      queueName,
-    ])
-    ->Pulumi.Output.apply(values => {
-      let queueUrl = values->Array.getUnsafe(0)
-      let rmTable = values->Array.getUnsafe(1)
-      let schedRoleArn = values->Array.getUnsafe(2)
-      let schedQueueArn = values->Array.getUnsafe(3)
-      let schedQueueName = values->Array.getUnsafe(4)
-      `{"queueUrl":"${queueUrl}","pluginReadModelTableName":"${rmTable}","schedulerRoleArn":"${schedRoleArn}","schedulerQueueArn":"${schedQueueArn}","schedulerQueueName":"${schedQueueName}","publishToAggregates":{${publishToAggregatesJson}}}`
-    })
+  let handlerConfigJson = Pulumi.Output.all([
+    queue.id,
+    extras.pluginReadModelTableName->outputOrPlaceholder->Obj.magic,
+    extras.schedulerRoleArn->outputOrPlaceholder->Obj.magic,
+    queue.arn,
+    queueName,
+  ])->Pulumi.Output.apply(values => {
+    let queueUrl = values->Array.getUnsafe(0)
+    let rmTable = values->Array.getUnsafe(1)
+    let schedRoleArn = values->Array.getUnsafe(2)
+    let schedQueueArn = values->Array.getUnsafe(3)
+    let schedQueueName = values->Array.getUnsafe(4)
+    `{"queueUrl":"${queueUrl}","pluginReadModelTableName":"${rmTable}","schedulerRoleArn":"${schedRoleArn}","schedulerQueueArn":"${schedQueueArn}","schedulerQueueName":"${schedQueueName}","publishToAggregates":{${publishToAggregatesJson}}}`
+  })
   envVars->Dict.set("HANDLER_CONFIG", handlerConfigJson->Pulumi.Output.asInput)
 
   // No user packages — all framework imports are in the Layer

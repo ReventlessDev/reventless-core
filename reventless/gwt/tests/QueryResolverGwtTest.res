@@ -3,7 +3,6 @@
 // productId (and a productIds array) that resolve into a Products read model;
 // the resolver DSL follows those keys across the spec boundary.
 
-
 module RM = Reventless.ReadModel
 
 module ProductRow = {
@@ -61,9 +60,10 @@ R.describe("Cross-spec resolvers (MakeResolver)", () => {
   )
 
   R.test("resolving an unknown foreign key returns no row", () =>
-    R.givenStores([("order2", {OrderRow.orderId: "order2", productId: "px", productIds: []})], [
-      ("p1", book),
-    ])
+    R.givenStores(
+      [("order2", {OrderRow.orderId: "order2", productId: "px", productIds: []})],
+      [("p1", book)],
+    )
     ->R.whenResolve(~field="productId", "order2")
     ->R.thenResolved(None)
   )

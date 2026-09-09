@@ -48,7 +48,12 @@ let make: ReventlessCore.CommandTopic_Adapter.channelMaker<
   let opts =
     opts->Option.map(ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions)
 
-  let tags = AWS.Tags.make(~name, ~kind=ReventlessCore.CommandTopic.componentType, ~role=CommandTopic, ~owner?)
+  let tags = AWS.Tags.make(
+    ~name,
+    ~kind=ReventlessCore.CommandTopic.componentType,
+    ~role=CommandTopic,
+    ~owner?,
+  )
   let queue = PulumiAws.SQS.Queue.make(
     ~name,
     ~args={
@@ -82,9 +87,7 @@ let make: ReventlessCore.CommandTopic_Adapter.channelMaker<
       stream =>
         stream
         ->Stream.grouped(10)
-        ->Stream.runForEach(jsons =>
-          Effect.promise(() => publishJsons(jsons))
-        )
+        ->Stream.runForEach(jsons => Effect.promise(() => publishJsons(jsons)))
     }),
     publishJsonsAndWait: None->Pulumi.Output.make,
     connect,

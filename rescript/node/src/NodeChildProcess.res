@@ -1,6 +1,5 @@
 /** Bindings for
     [`node:child_process`](https://nodejs.org/api/child_process.html). */
-
 type execOptions = {
   cwd?: string,
   encoding?: string,

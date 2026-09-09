@@ -20,6 +20,6 @@ let mergeEventMappers: array<ReventlessInterop.EventMapper.resolvedOutputs> => P
   array<ReventlessInterop.EventMapper.resolvedOutputs>,
 >
 
-let mergeExtensionPoints: array<ReventlessInterop.ExtensionPoint.resolvedOutputs> => Pulumi.Output.t<
-  array<ReventlessInterop.ExtensionPoint.resolvedOutputs>,
->
+let mergeExtensionPoints: array<
+  ReventlessInterop.ExtensionPoint.resolvedOutputs,
+> => Pulumi.Output.t<array<ReventlessInterop.ExtensionPoint.resolvedOutputs>>

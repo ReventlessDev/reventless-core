@@ -1,6 +1,5 @@
 open JestGlobals
 
-
 // The point of the seam, end to end at the hook level: an extension that only
 // ever gets `onColdStart` can reach the framework's runtime callback hooks from
 // there, and they take effect on the requests that follow.
@@ -49,13 +48,15 @@ describe("RuntimeExtension reaches the runtime callback hooks", () => {
       let companionModuleUrls = []
       let onColdStart = (~runtimeKind as _, ~component, ~plugin as _, ~platform as _) => {
         seenAtColdStart->Array.push(component)
-        CommandGenerator_Callback.registerCommandInterceptor(async (
-          ~identity as _,
-          ~componentName,
-          ~componentKind as _,
-          ~tag,
-          ~args as _,
-        ) => CommandGenerator_Callback.Deny(`${componentName}.${tag} refused`))
+        CommandGenerator_Callback.registerCommandInterceptor(
+          async (
+            ~identity as _,
+            ~componentName,
+            ~componentKind as _,
+            ~tag,
+            ~args as _,
+          ) => CommandGenerator_Callback.Deny(`${componentName}.${tag} refused`),
+        )
       }
     }
     RuntimeExtension.use(module(Gatekeeper: RuntimeExtension.Extension))

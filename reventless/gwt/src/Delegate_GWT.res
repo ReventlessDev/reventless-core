@@ -72,10 +72,8 @@ module type T = {
 module Make = (D: Delegate): (T with type inbound = D.inbound) => {
   type inbound = D.inbound
 
-
   let describe = JestBind.describe
-  let test = (name, ~timeout=?, body) =>
-    JestBind.testPromise(~slice=D.name, name, ~timeout?, body)
+  let test = (name, ~timeout=?, body) => JestBind.testPromise(~slice=D.name, name, ~timeout?, body)
 
   let whenInput = ev => D.run(ev)
 
@@ -134,18 +132,17 @@ module FromExtensionPoint = (M: EPMapping.Mapping) => {
       switch M.mapOutgoingEvent {
       | None => []
       | Some(f) =>
-        let nested =
-          await f("gwt-id", event, StubRuntime.meta, StubRuntime.queryEngine)
-          ->Array.map(async action =>
-            switch action {
-            | EPMapping.PublishEvent(id, ev) => [encPublished(~target=id, encEvent(ev))]
-            | EPMapping.PublishEventAsync(p) =>
-              let (id, ev) = await p
-              [encPublished(~target=id, encEvent(ev))]
-            | EPMapping.HandleDirective(_, dir) => [encDirective(dir)]
-            }
-          )
-          ->Promise.all
+        let nested = await f("gwt-id", event, StubRuntime.meta, StubRuntime.queryEngine)
+        ->Array.map(async action =>
+          switch action {
+          | EPMapping.PublishEvent(id, ev) => [encPublished(~target=id, encEvent(ev))]
+          | EPMapping.PublishEventAsync(p) =>
+            let (id, ev) = await p
+            [encPublished(~target=id, encEvent(ev))]
+          | EPMapping.HandleDirective(_, dir) => [encDirective(dir)]
+          }
+        )
+        ->Promise.all
         nested->Array.flat
       }
   })
@@ -212,40 +209,39 @@ module FromExtension = (M: ExtMapping.Mapping) => {
     let name = M.Delegate.name
     type inbound = M.ExtensionPoint.event
     let run = async (event: M.ExtensionPoint.event) => {
-      let nested =
-        await M.mapIncomingEvent(
-          "gwt-id",
-          event,
-          StubRuntime.meta,
-          StubRuntime.pluginDefinition,
-          StubRuntime.queryEngine,
-        )
-        ->Array.map(async action =>
-          switch action {
-          | ExtMapping.PublishStateChangeSliceCommand(cmd) => [
-              encPublished(~target=M.Delegate.name, encCmd(cmd)),
-            ]
-          | ExtMapping.PublishStateChangeSliceCommandAsync(p) =>
-            let cmd = await p
-            [encPublished(~target=M.Delegate.name, encCmd(cmd))]
-          | ExtMapping.PublishStateChangeSliceCommandsAsync(p) =>
-            (await p)->Array.map(cmd => encPublished(~target=M.Delegate.name, encCmd(cmd)))
-          | ExtMapping.PublishAggregateCommand(id, cmd) => [encPublished(~target=id, encCmd(cmd))]
-          | ExtMapping.PublishAggregateCommandAsync(p) =>
-            let (id, cmd) = await p
-            [encPublished(~target=id, encCmd(cmd))]
-          | ExtMapping.PublishAggregateCommandsAsync(p) =>
-            (await p)->Array.map(((id, cmd)) => encPublished(~target=id, encCmd(cmd)))
-          | ExtMapping.PublishExtensionPointCommand(id, cmd) => [
-              encPublished(~target=id, encEpCmd(cmd)),
-            ]
-          | ExtMapping.ForwardCommand({extensionPointName, id, commandJson}) => [
-              encPublished(~target=`${extensionPointName}:${id}`, commandJson),
-            ]
-          | ExtMapping.HandleDirective(_, dir) => [encDirective(dir)]
-          }
-        )
-        ->Promise.all
+      let nested = await M.mapIncomingEvent(
+        "gwt-id",
+        event,
+        StubRuntime.meta,
+        StubRuntime.pluginDefinition,
+        StubRuntime.queryEngine,
+      )
+      ->Array.map(async action =>
+        switch action {
+        | ExtMapping.PublishStateChangeSliceCommand(cmd) => [
+            encPublished(~target=M.Delegate.name, encCmd(cmd)),
+          ]
+        | ExtMapping.PublishStateChangeSliceCommandAsync(p) =>
+          let cmd = await p
+          [encPublished(~target=M.Delegate.name, encCmd(cmd))]
+        | ExtMapping.PublishStateChangeSliceCommandsAsync(p) =>
+          (await p)->Array.map(cmd => encPublished(~target=M.Delegate.name, encCmd(cmd)))
+        | ExtMapping.PublishAggregateCommand(id, cmd) => [encPublished(~target=id, encCmd(cmd))]
+        | ExtMapping.PublishAggregateCommandAsync(p) =>
+          let (id, cmd) = await p
+          [encPublished(~target=id, encCmd(cmd))]
+        | ExtMapping.PublishAggregateCommandsAsync(p) =>
+          (await p)->Array.map(((id, cmd)) => encPublished(~target=id, encCmd(cmd)))
+        | ExtMapping.PublishExtensionPointCommand(id, cmd) => [
+            encPublished(~target=id, encEpCmd(cmd)),
+          ]
+        | ExtMapping.ForwardCommand({extensionPointName, id, commandJson}) => [
+            encPublished(~target=`${extensionPointName}:${id}`, commandJson),
+          ]
+        | ExtMapping.HandleDirective(_, dir) => [encDirective(dir)]
+        }
+      )
+      ->Promise.all
       nested->Array.flat
     }
   })
@@ -258,7 +254,12 @@ module FromExtension = (M: ExtMapping.Mapping) => {
       switch M.mapOutgoingEvent {
       | None => []
       | Some(f) =>
-        f("gwt-id", event, StubRuntime.meta, StubRuntime.pluginDefinition)->Array.filterMap(action =>
+        f(
+          "gwt-id",
+          event,
+          StubRuntime.meta,
+          StubRuntime.pluginDefinition,
+        )->Array.filterMap(action =>
           switch action {
           | ExtMapping.PublishExtensionPointCommand(id, cmd) =>
             Some(encPublished(~target=id, encEpCmd(cmd)))

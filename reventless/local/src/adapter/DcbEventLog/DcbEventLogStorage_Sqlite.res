@@ -37,9 +37,7 @@ let ensureSchema = (db: SqliteDriver.t) => {
   // Serves the per-position tag hydration (the `WHERE log_name = ? AND position
   // IN (...)` batch). The `_by_kv` index leads with tag_key/tag_value, so it
   // cannot answer a position lookup — without this the batch scanned dcb_tag.
-  db->SqliteDriver.exec(
-    "CREATE INDEX IF NOT EXISTS dcb_tag_by_pos ON dcb_tag(log_name, position)",
-  )
+  db->SqliteDriver.exec("CREATE INDEX IF NOT EXISTS dcb_tag_by_pos ON dcb_tag(log_name, position)")
 }
 
 let posToInt = (pos: string) => pos->Int.fromString->Option.getOr(0)
@@ -81,11 +79,10 @@ let sqlEscape = (s: string) => s->String.replaceAll("'", "''")
 // Build the WHERE clause and bound params for one query clause.
 // Returns (whereSql, params) where whereSql includes a leading `(`/trailing `)`
 // and uses `dcb_event` table aliases throughout.
-let buildClauseSql = (
-  ~logName: string,
-  ~clause: DcbTag.queryItem,
-  ~after: option<int>,
-): (string, array<JSON.t>) => {
+let buildClauseSql = (~logName: string, ~clause: DcbTag.queryItem, ~after: option<int>): (
+  string,
+  array<JSON.t>,
+) => {
   let parts = ref(["log_name = ?"])
   let params = ref([JSON.Encode.string(logName)])
 
@@ -126,11 +123,10 @@ let buildClauseSql = (
 // The WHERE expression (+ bound params) for a query — shared by the row-fetching
 // read path and the LIMIT-1 existence check the append-condition uses, so both
 // match the exact same rows.
-let buildQueryWhere = (
-  ~logName: string,
-  ~query: DcbTag.query,
-  ~after: option<int>,
-): (string, array<JSON.t>) => {
+let buildQueryWhere = (~logName: string, ~query: DcbTag.query, ~after: option<int>): (
+  string,
+  array<JSON.t>,
+) => {
   if query->Array.length == 0 {
     let baseWhere = switch after {
     | Some(_) => "log_name = ? AND position > ?"
@@ -150,11 +146,10 @@ let buildQueryWhere = (
   }
 }
 
-let buildQuerySql = (
-  ~logName: string,
-  ~query: DcbTag.query,
-  ~after: option<int>,
-): (string, array<JSON.t>) => {
+let buildQuerySql = (~logName: string, ~query: DcbTag.query, ~after: option<int>): (
+  string,
+  array<JSON.t>,
+) => {
   let (where, params) = buildQueryWhere(~logName, ~query, ~after)
   (
     `SELECT position, event_type, data, meta, recorded_at FROM dcb_event WHERE ${where} ORDER BY position ASC`,
@@ -171,19 +166,21 @@ let makeStorage = (
 ) => {
   ensureSchema(db)
 
-  let insertEventStmt = db->SqliteDriver.prepare(
-    "INSERT INTO dcb_event(log_name, position, event_type, data, meta, recorded_at) VALUES(?,?,?,?,?,?)",
-  )
+  let insertEventStmt =
+    db->SqliteDriver.prepare(
+      "INSERT INTO dcb_event(log_name, position, event_type, data, meta, recorded_at) VALUES(?,?,?,?,?,?)",
+    )
   let lastRowidStmt = db->SqliteDriver.prepare("SELECT last_insert_rowid() AS r")
-  let insertTagStmt = db->SqliteDriver.prepare(
-    "INSERT INTO dcb_tag(log_name, position, tag_key, tag_value) VALUES(?,?,?,?)",
-  )
-  let maxPositionStmt = db->SqliteDriver.prepare(
-    "SELECT COALESCE(MAX(position), 0) AS m FROM dcb_event WHERE log_name = ?",
-  )
-  let headPositionStmt = db->SqliteDriver.prepare(
-    "SELECT MAX(position) AS m FROM dcb_event WHERE log_name = ?",
-  )
+  let insertTagStmt =
+    db->SqliteDriver.prepare(
+      "INSERT INTO dcb_tag(log_name, position, tag_key, tag_value) VALUES(?,?,?,?)",
+    )
+  let maxPositionStmt =
+    db->SqliteDriver.prepare(
+      "SELECT COALESCE(MAX(position), 0) AS m FROM dcb_event WHERE log_name = ?",
+    )
+  let headPositionStmt =
+    db->SqliteDriver.prepare("SELECT MAX(position) AS m FROM dcb_event WHERE log_name = ?")
 
   // Prepared-statement cache keyed on SQL text. `runQuery`, the batched tag
   // hydration, and the conflict check all build SQL whose shape varies with the
@@ -218,8 +215,7 @@ let makeStorage = (
     if positions->Array.length > 0 {
       let placeholders = positions->Array.map(_ => "?")->Array.join(",")
       let sql = `SELECT position, tag_key, tag_value FROM dcb_tag WHERE log_name = ? AND position IN (${placeholders}) ORDER BY position ASC, rowid ASC`
-      let params =
-        [JSON.Encode.string(name)]->Array.concat(positions->Array.map(JSON.Encode.int))
+      let params = [JSON.Encode.string(name)]->Array.concat(positions->Array.map(JSON.Encode.int))
       preparedFor(sql)
       ->SqliteDriver.all(params)
       ->Array.forEach(row => {
@@ -249,7 +245,9 @@ let makeStorage = (
     byPos
   }
 
-  let runQuery = (~query: DcbTag.query, ~after: option<int>): array<DcbEventLog_Adapter.rawSequencedEvent> => {
+  let runQuery = (~query: DcbTag.query, ~after: option<int>): array<
+    DcbEventLog_Adapter.rawSequencedEvent,
+  > => {
     let (sql, params) = buildQuerySql(~logName=name, ~query, ~after)
     let rows = preparedFor(sql)->SqliteDriver.all(params)
     let positions = rows->Array.map(row =>
@@ -284,14 +282,17 @@ let makeStorage = (
       | Some(JSON.String(s)) => s
       | _ => ""
       }
-      ({
-        DcbEventLog_Adapter.position: Int.toString(position),
-        eventType,
-        data,
-        tags: tagsByPos->Dict.get(Int.toString(position))->Option.getOr([]),
-        meta,
-        recordedAt,
-      }: DcbEventLog_Adapter.rawSequencedEvent)
+
+      (
+        {
+          DcbEventLog_Adapter.position: Int.toString(position),
+          eventType,
+          data,
+          tags: tagsByPos->Dict.get(Int.toString(position))->Option.getOr([]),
+          meta,
+          recordedAt,
+        }: DcbEventLog_Adapter.rawSequencedEvent
+      )
     })
   }
 
@@ -305,10 +306,7 @@ let makeStorage = (
     ->Option.isSome
   }
 
-  let read = async (
-    ~query: DcbTag.query,
-    ~after=?,
-  ): DcbEventLog_Adapter.rawReadResult => {
+  let read = async (~query: DcbTag.query, ~after=?): DcbEventLog_Adapter.rawReadResult => {
     let afterInt = after->Option.map(posToInt)
     let events = runQuery(~query, ~after=afterInt)
     let head = currentMaxPosition()
@@ -319,10 +317,10 @@ let makeStorage = (
     }
   }
 
-  let append = async (
-    newEvents: array<DcbEventLog_Adapter.rawStoredEvent>,
-    ~condition=?,
-  ): result<DcbTag.sequencePosition, ReventlessInfra.DcbEventLog.appendError> => {
+  let append = async (newEvents: array<DcbEventLog_Adapter.rawStoredEvent>, ~condition=?): result<
+    DcbTag.sequencePosition,
+    ReventlessInfra.DcbEventLog.appendError,
+  > => {
     let result = ref(Ok(""))
     // (msgId, dcb_event rowid) per inserted event, for the projection
     // checkpoint's DCB-axis pending set. The rowid is read immediately after
@@ -363,14 +361,16 @@ let makeStorage = (
             }
           | None => ()
           }
-          event.tags->Array.forEach(tag => {
-            insertTagStmt->SqliteDriver.run([
-              JSON.Encode.string(name),
-              JSON.Encode.int(pos),
-              JSON.Encode.string(tag.key),
-              JSON.Encode.string(tag.value),
-            ])
-          })
+          event.tags->Array.forEach(
+            tag => {
+              insertTagStmt->SqliteDriver.run([
+                JSON.Encode.string(name),
+                JSON.Encode.int(pos),
+                JSON.Encode.string(tag.key),
+                JSON.Encode.string(tag.value),
+              ])
+            },
+          )
           lastPos := pos
         })
 

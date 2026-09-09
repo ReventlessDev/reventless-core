@@ -45,13 +45,11 @@ let startSchemaCreation = (client: appSyncClient, input: startSchemaCreationInpu
 // jittered exponential backoff so a losing call can wait for the in-progress
 // schema to finish and try again. Permanent errors (e.g. invalid SDL) are not
 // retried — see AppSync_Error.classify.
-let startSchemaCreationRetrying = (
-  client: appSyncClient,
-  input: startSchemaCreationInput,
-): promise<unit> => {
-  Effect.tryPromise(
-    ~catch=AppSync_Error.classify,
-    () => startSchemaCreation(client, input)->Promise.then(_ => Promise.resolve()),
+let startSchemaCreationRetrying = (client: appSyncClient, input: startSchemaCreationInput): promise<
+  unit,
+> => {
+  Effect.tryPromise(~catch=AppSync_Error.classify, () =>
+    startSchemaCreation(client, input)->Promise.then(_ => Promise.resolve())
   )
   ->Effect.retry(AppSync_Error.retrySchedule)
   ->Effect.runPromise
@@ -67,13 +65,13 @@ external makeGetSchemaCreationStatusCommand: getSchemaCreationStatusInput => get
   "GetSchemaCreationStatusCommand"
 
 @send
-external sendGetStatus: (appSyncClient, getSchemaCreationStatusCommand) => promise<getSchemaCreationStatusResult> =
-  "send"
+external sendGetStatus: (
+  appSyncClient,
+  getSchemaCreationStatusCommand,
+) => promise<getSchemaCreationStatusResult> = "send"
 
 let rec waitForSchemaActive = async (client, apiId, ~maxAttempts=30, ~attempt=0) => {
-  let result = await client->sendGetStatus(
-    {apiId: apiId}->makeGetSchemaCreationStatusCommand,
-  )
+  let result = await client->sendGetStatus({apiId: apiId}->makeGetSchemaCreationStatusCommand)
   switch result.status {
   | "ACTIVE" | "SUCCESS" => ()
   | "FAILED" =>
@@ -211,9 +209,9 @@ let rec waitForMergeSuccess = async (
 // and a least-privilege deploy-role policy — see
 // `docs/guides/appsync-iam-system-caller.md`.
 
-let _permissionToCognitoGroups = (
-  permission: Reventless.Authorization.permission,
-): option<array<string>> =>
+let _permissionToCognitoGroups = (permission: Reventless.Authorization.permission): option<
+  array<string>,
+> =>
   switch permission {
   | AllowGroups([]) => Some(["__deny_all__"])
   | AllowGroups(groups) => Some(groups)
@@ -249,7 +247,7 @@ let _formatDualAuthDirective = AppSync_SdlDecorate.formatDualAuthDirective
 let _typeDeclName = (decl: string): option<string> =>
   if decl->String.startsWith("type ") {
     let rest = decl->String.slice(~start=5, ~end=decl->String.length)
-    let end = switch rest->String.search(%re("/[\s{]/")) {
+    let end = switch rest->String.search(/[\s{]/) {
     | -1 => rest->String.length
     | i => i
     }
@@ -308,9 +306,7 @@ let injectAwsAuth = (
     }
     switch entry.authorization {
     | Some({group}) =>
-      entry.fieldNames->Array.forEach(fieldName =>
-        mutationAuthMap->Dict.set(fieldName, [group])
-      )
+      entry.fieldNames->Array.forEach(fieldName => mutationAuthMap->Dict.set(fieldName, [group]))
     | None => ()
     }
     switch entry.fieldPermissions {
@@ -507,8 +503,7 @@ let _makeApiResourceWith = (
   let iamRole = IAM.Role.make(
     ~name=`${name}-appsync-role`,
     ~args={
-      assumeRolePolicy: `{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"appsync.amazonaws.com"},"Action":"sts:AssumeRole"}]}`
-        ->Pulumi.Input.make,
+      assumeRolePolicy: `{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"appsync.amazonaws.com"},"Action":"sts:AssumeRole"}]}`->Pulumi.Input.make,
       tags: AWS.Tags.make(
         ~name=`${name}-appsync-role`,
         ~kind=ReventlessCore.ComponentType.Platform,
@@ -562,15 +557,13 @@ let _makeApiResourceWith = (
   let userPoolConfigOut = switch userPoolConfig {
   | Some(config) => config
   | None =>
-    Auth_Cognito.make(~name=`${name}-auth`)->Pulumi.Output.apply((c: Auth_Cognito.authConfig) =>
-      (
-        {
-          userPoolId: c.userPoolId,
-          awsRegion: c.region,
-          defaultAction: AppSync.GraphQLApi.ALLOW,
-        }: AppSync.GraphQLApi.userPoolConfig
-      )
-    )
+    Auth_Cognito.make(
+      ~name=`${name}-auth`,
+    )->Pulumi.Output.apply((c: Auth_Cognito.authConfig): AppSync.GraphQLApi.userPoolConfig => {
+      userPoolId: c.userPoolId,
+      awsRegion: c.region,
+      defaultAction: AppSync.GraphQLApi.ALLOW,
+    })
   }
 
   // Cognito as primary auth, AWS_IAM as additional provider for
@@ -588,12 +581,7 @@ let _makeApiResourceWith = (
     ]->Pulumi.Input.make,
     schema: ?(schema->Option.map(Pulumi.Input.make)),
     logConfig: appsyncLogConfig->Pulumi.Input.make,
-    tags: AWS.Tags.make(
-      ~name,
-      ~kind=ReventlessCore.ComponentType.Plugin,
-      ~role=Api,
-      ~scope=Plugin,
-    ),
+    tags: AWS.Tags.make(~name, ~kind=ReventlessCore.ComponentType.Plugin, ~role=Api, ~scope=Plugin),
   }
   let graphQLApi = AppSync.GraphQLApi.make(~name, ~args=apiArgs, ~opts=Some(customOpts))
 
@@ -640,11 +628,10 @@ let _makeApiResourceWith = (
   (graphQLApi->Pulumi.Output.make, iamRole->Pulumi.Output.make)
 }
 
-let makeApiResource = (
-  ~name: string,
-  ~opts: Pulumi.ComponentResource.options,
-): (Pulumi.Output.t<api>, Pulumi.Output.t<role>) =>
-  _makeApiResourceWith(~name, ~schema=None, ~userPoolConfig=None, ~opts)
+let makeApiResource = (~name: string, ~opts: Pulumi.ComponentResource.options): (
+  Pulumi.Output.t<api>,
+  Pulumi.Output.t<role>,
+) => _makeApiResourceWith(~name, ~schema=None, ~userPoolConfig=None, ~opts)
 
 // Merged-mode source API: same auth shape as makeApiResource but with a
 // DECLARATIVE inline schema — the provider runs StartSchemaCreation + poll

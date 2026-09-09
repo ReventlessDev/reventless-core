@@ -28,7 +28,12 @@ let make: ReventlessCore.CommandTopic_Adapter.channelMaker<
   let opts =
     opts->Option.map(ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions)
 
-  let tags = AWS.Tags.make(~name, ~kind=ReventlessCore.CommandTopic.componentType, ~role=CommandTopic, ~owner?)
+  let tags = AWS.Tags.make(
+    ~name,
+    ~kind=ReventlessCore.CommandTopic.componentType,
+    ~role=CommandTopic,
+    ~owner?,
+  )
   let queue = PulumiAws.SQS.Queue.make(
     ~name,
     ~args={
@@ -73,9 +78,9 @@ let make: ReventlessCore.CommandTopic_Adapter.channelMaker<
         | None =>
           // Handler not yet registered — fall back to fire-and-forget, return Pending
           let _ = await sendToSqs(jsons)
-          jsons->Array.map(cmdJson =>
-            ReventlessCore.CommandTopic.Pending({msgId: cmdJson.meta.msgId})
-          )
+          jsons->Array.map(cmdJson => ReventlessCore.CommandTopic.Pending({
+            msgId: cmdJson.meta.msgId,
+          }))
         | Some(handleCmds) =>
           await ReventlessCore.CommandTopic.runInlineAndCollect(jsons, handleCmds)
         }

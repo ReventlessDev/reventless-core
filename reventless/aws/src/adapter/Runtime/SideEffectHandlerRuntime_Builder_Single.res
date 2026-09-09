@@ -41,21 +41,9 @@ let storedSpecs: array<storedSpec> = []
 let grandParent = ref(None)
 
 let forEventCollector: ReventlessCore.Runtime.forEventCollector<
-  ReventlessCore.Runtime.effectHandler<
-    EventCollectorChannel.callbackEvent,
-    context,
-    unit,
-    string,
-  >,
+  ReventlessCore.Runtime.effectHandler<EventCollectorChannel.callbackEvent, context, unit, string>,
   ReventlessCore.EventCollector.component,
-> = (
-  ~handler as _,
-  ~eventTopics,
-  ~resources,
-  ~memorySize=1024,
-  ~timeout=30,
-  eventCollector,
-) => {
+> = (~handler as _, ~eventTopics, ~resources, ~memorySize=1024, ~timeout=30, eventCollector) => {
   let eventCollectorResource = eventCollector->ReventlessCore.Component.toPulumiResource
   let channel = eventCollector->ReventlessCore.EventCollector_Adapter.channel
   let eventCollectorName = eventCollectorResource.name->Option.getOr("Unnamed")
@@ -136,12 +124,10 @@ let finish = () =>
             let attribution = Util_LogAttribution.fragments(
               ~comp=`SideEffectHandler(${spec.componentName})`,
             )
-            let handlerJson =
-              spec.sourceUrns
-              ->Pulumi.Output.apply(urns => {
-                let sourceUrn = urns->Array.getUnsafe(0)
-                `{"sideEffectModules":[${modulesJson}],"sourceUrn":"${sourceUrn}"${attribution}}`
-              })
+            let handlerJson = spec.sourceUrns->Pulumi.Output.apply(urns => {
+              let sourceUrn = urns->Array.getUnsafe(0)
+              `{"sideEffectModules":[${modulesJson}],"sourceUrn":"${sourceUrn}"${attribution}}`
+            })
             let _ = handlerOutputs->Array.push(handlerJson)
           | None =>
             log.warn(
@@ -151,13 +137,13 @@ let finish = () =>
           }
         })
 
-        let handlerConfigOutput =
-          Pulumi.Output.all(handlerOutputs)
-          ->Pulumi.Output.apply(handlers => {
-            let json = `{"handlers":[${handlers->Array.join(",")}]}`
-            Util_LambdaEnvBudget.check(~lambdaName="AllSideEffectHandlers", ~handlerConfigJson=json)
-            json
-          })
+        let handlerConfigOutput = Pulumi.Output.all(
+          handlerOutputs,
+        )->Pulumi.Output.apply(handlers => {
+          let json = `{"handlers":[${handlers->Array.join(",")}]}`
+          Util_LambdaEnvBudget.check(~lambdaName="AllSideEffectHandlers", ~handlerConfigJson=json)
+          json
+        })
 
         let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
         envVars->Dict.set("HANDLER_CONFIG", handlerConfigOutput->Pulumi.Output.asInput)
@@ -225,10 +211,7 @@ let finish = () =>
           ~opts,
         )
       | None =>
-        log.warn(
-          ~comp="SideEffectHandlerRuntime_Builder_Single",
-          `finish: grandParent not set`,
-        )
+        log.warn(~comp="SideEffectHandlerRuntime_Builder_Single", `finish: grandParent not set`)
       }
     }
     finished := true

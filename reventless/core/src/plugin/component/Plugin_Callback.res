@@ -75,10 +75,14 @@ module Make = (Spec: Spec): T => {
           Spec.outgoingExtensionEventHandlers->Dict.get(serviceName)->Option.isSome ||
           Spec.incomingExtensionEventHandlers->Dict.get(serviceName)->Option.isSome
         if isHandled {
-          EffectLogger.logInfo(~comp=`Plugin(${id})`, `incoming event: ${LogFormat.eventSummary(eventJson')}`)
-          ->Effect.zipRight(
-            handleEventEffect(eventJson', Spec.incomingConnectExtensionEventHandlers)
-            ->Effect.zipRight(
+          EffectLogger.logInfo(
+            ~comp=`Plugin(${id})`,
+            `incoming event: ${LogFormat.eventSummary(eventJson')}`,
+          )->Effect.zipRight(
+            handleEventEffect(
+              eventJson',
+              Spec.incomingConnectExtensionEventHandlers,
+            )->Effect.zipRight(
               Effect.all(
                 [
                   handleEventEffect(eventJson', Spec.outgoingExtensionPointEventHandlers),
@@ -86,8 +90,8 @@ module Make = (Spec: Spec): T => {
                   handleEventEffect(eventJson', Spec.incomingExtensionEventHandlers),
                 ],
                 {"concurrency": "unbounded"},
-              )->Effect.map(_ => ())
-            )
+              )->Effect.map(_ => ()),
+            ),
           )
         } else {
           warnUnmatchedServiceOnce(~id, ~serviceName)

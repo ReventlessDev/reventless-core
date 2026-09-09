@@ -7,10 +7,14 @@ A host maps its own constructors onto `op` and `fact` and keeps the spec surface
 the variants, their annotations, its own refusals. Nothing here knows what an
 entity is. `Attachments_Conformance` asserts these rules through a host.
 */
-
 /** The stored file's reference. A `StorageRef` path today, so `string` carries it
     without a wrapper the host would have to unwrap on every arm. */
 type ref = string
+
+// `@schema` so `Attachments_Scaffold`'s config can take this very type rather
+// than a second spelling of it. A graft's config and the rule it selects being
+// the same value is the point: a config that could say `"single"` where the
+// rules say `Single` is a config that can be misspelled.
 
 /**
 How many members a host's set may hold.
@@ -27,14 +31,12 @@ resolves to a no-op through the rules it already has (the only member is already
 the effective primary), which is why `Single` needs no branch for it and why the
 scaffold simply declines to emit the command rather than the rules refusing it.
 */
-// `@schema` so `Attachments_Scaffold`'s config can take this very type rather
-// than a second spelling of it. A graft's config and the rule it selects being
-// the same value is the point: a config that could say `"single"` where the
-// rules say `Single` is a config that can be misspelled.
 @schema
 type cardinality =
-  | /** An unbounded, ordered set: a gallery. */ Many
-  | /** At most one member, replaced rather than added to. */ Single
+  /** An unbounded, ordered set: a gallery. */
+  | Many
+  /** At most one member, replaced rather than added to. */
+  | Single
 
 /** Refolded per decision, never stored — a StateChangeSlice's state is. */
 type t = {
@@ -48,20 +50,20 @@ let empty = {attached: [], primary: None, altTexts: []}
 
 /** What a host asks the set to do. */
 type op =
-  | /** `altText` is the caption a host may supply with the file itself. */
-  Attach({ref: ref, altText: option<string>})
+  /** `altText` is the caption a host may supply with the file itself. */
+  | Attach({ref: ref, altText: option<string>})
   | Remove({ref: ref})
-  | /** Empty the set, whatever it holds.
+  /** Empty the set, whatever it holds.
 
         The op a bounded set's remove command maps onto: with one member there is
         no ref for the caller to name, and naming it would be asking them to
         repeat what the row already says. Well defined at either cardinality —
         an unbounded host that wants a "remove them all" command gets it here
         rather than by looping its own remove. */
-  Clear
+  | Clear
   | SetPrimary({ref: ref})
   | SetAltText({ref: ref, altText: string})
-  | /** Caption whichever member is the primary, without naming it.
+  /** Caption whichever member is the primary, without naming it.
 
         The counterpart of `Clear`, and the op a bounded set's caption command
         maps onto — with one member there is nothing to name. It is not
@@ -69,7 +71,7 @@ type op =
         sees, so "caption the hero" is a command an unbounded host wants too,
         and resolving it here through `effectivePrimary` is what keeps the
         answer the same as the member a projection puts first. */
-  SetPrimaryAltText({altText: string})
+  | SetPrimaryAltText({altText: string})
 
 /** What the set decided, for the host to name in its own event. */
 type fact =
@@ -77,7 +79,7 @@ type fact =
   | Removed({ref: ref})
   | PrimarySet({ref: ref})
   | AltTextSet({ref: ref, altText: string})
-  | /** The member a reader should now show, or `None` where the set has none.
+  /** The member a reader should now show, or `None` where the set has none.
 
         **A conclusion, not a decision.** `PrimarySet` records that somebody
         chose; this records what the set resolved to, however it got there —
@@ -95,7 +97,7 @@ type fact =
         Optional because "there is no longer one to show" is as much a change as
         any other, and a subscriber that cannot be told it keeps showing a file
         the set no longer holds. */
-  EffectiveChanged({ref: option<ref>})
+  | EffectiveChanged({ref: option<ref>})
 
 /** The primary a reader should show: the one chosen, else the first attached, so
     a set never shows no file while it holds one. The read model applies the same
@@ -202,12 +204,7 @@ let decideFacts = (t, ~cardinality: cardinality=Many, op): result<array<fact>, [
       // individually rather than through `Clear` so the facts read the same
       // whether one was there or (through some history nothing produces) more.
       | Single =>
-        Ok(
-          Array.concat(
-            t.attached->Array.map(r => Removed({ref: r})),
-            [Attached({ref, altText})],
-          ),
-        )
+        Ok(Array.concat(t.attached->Array.map(r => Removed({ref: r})), [Attached({ref, altText})]))
       }
     }
   | Remove({ref}) => t.attached->Array.includes(ref) ? Ok([Removed({ref: ref})]) : Ok([])

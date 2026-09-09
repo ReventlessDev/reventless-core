@@ -7,9 +7,9 @@ type acceptedResult = ReventlessInfra.InboundTranslationSlice.acceptedResult
 type rejectedResult = ReventlessInfra.InboundTranslationSlice.rejectedResult
 type component = Component.t<t, outputs, operations>
 
-let toResolvedOutputs = (
-  outputs: outputs,
-): Pulumi.Output.t<ReventlessInterop.InboundTranslationSlice.resolvedOutputs> =>
+let toResolvedOutputs = (outputs: outputs): Pulumi.Output.t<
+  ReventlessInterop.InboundTranslationSlice.resolvedOutputs,
+> =>
   (
     outputs.resources->Adapter.resourcesToInterop,
     outputs.queryDb.resources->Adapter.resourcesToInterop,
@@ -17,7 +17,7 @@ let toResolvedOutputs = (
   ->Pulumi.Output.all2
   ->Pulumi.Output.apply(((resources, queryDbResources)) => {
     let resolved: ReventlessInterop.InboundTranslationSlice.resolvedOutputs = {
-      resources: resources,
+      resources,
       queryDb: {resources: queryDbResources},
     }
     resolved

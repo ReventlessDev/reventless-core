@@ -117,8 +117,7 @@ describe("Runtime snapshot item codec", () => {
     // The DynamoDB stream decoder drops rows without an `event` column (same
     // mechanism that filters DCB FENCE rows), so snapshot writes are invisible
     // to event collectors.
-    let asDict =
-      Runtime.snapshotItem("agg-1", snap)->JSON.Decode.object->Option.getOr(Dict.make())
+    let asDict = Runtime.snapshotItem("agg-1", snap)->JSON.Decode.object->Option.getOr(Dict.make())
     expect(Util_DynamoDbStream_Runtime.buildJsonEvent'(asDict))->toEqual(None)
   })
 })

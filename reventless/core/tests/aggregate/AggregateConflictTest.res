@@ -3,19 +3,18 @@
 
 open JestGlobals
 
-
 module AggSpec = {
   module Id = Reventless.Id.StringPure
   let name = "ConflictTestAggregate"
 
   @schema
-  type command = | Create({name: string})
+  type command = Create({name: string})
 
   @schema
-  type event = | Created({name: string})
+  type event = Created({name: string})
 
   @schema
-  type error = | AlreadyExists
+  type error = AlreadyExists
 
   let moduleUrl: string = %raw(`import.meta.url`)
 }
@@ -37,14 +36,21 @@ module TestBehavior = {
     | Created({name}) => {name: name}
     }
 
-  let decide = (_state: state, command: AggSpec.command): result<array<AggSpec.event>, AggSpec.error> =>
+  let decide = (_state: state, command: AggSpec.command): result<
+    array<AggSpec.event>,
+    AggSpec.error,
+  > =>
     switch command {
     | Create({name}) => Ok([AggSpec.Created({name: name})])
     }
 }
 
 type mockEL = {
-  appendFn: (int, string, array<Message.event'<string, AggSpec.event>>) => promise<result<unit, EventLog.appendError>>,
+  appendFn: (
+    int,
+    string,
+    array<Message.event'<string, AggSpec.event>>,
+  ) => promise<result<unit, EventLog.appendError>>,
   replayFn: string => promise<array<AggSpec.event>>,
   replayStreamFn: string => Stream.t<AggSpec.event, string, unit>,
   getAll: unit => array<Message.event'<string, AggSpec.event>>,
@@ -67,7 +73,7 @@ let makeMockEL = (): mockEL => {
       Error(EventLog.Conflict)
     } else {
       storedRef := storedRef.contents->Array.concat(newEvents)
-      Ok(())
+      Ok()
     }
   }
 
@@ -117,10 +123,18 @@ module TestOps = {
       type event = AggSpec.event
     }
     type operations = {
-      append: (int, string, array<Message.event'<string, AggSpec.event>>) => promise<result<unit, EventLog.appendError>>,
+      append: (
+        int,
+        string,
+        array<Message.event'<string, AggSpec.event>>,
+      ) => promise<result<unit, EventLog.appendError>>,
       replay: string => promise<array<AggSpec.event>>,
       replayStream: (string, ~fromSeq: int=?) => Stream.t<AggSpec.event, string, unit>,
-      appendStream: (int, string, Stream.t<AggSpec.event, string, unit>) => Effect.t<unit, string, unit>,
+      appendStream: (
+        int,
+        string,
+        Stream.t<AggSpec.event, string, unit>,
+      ) => Effect.t<unit, string, unit>,
       latestSnapshot: string => promise<result<option<EventLog.snapshot>, string>>,
       writeSnapshot: (string, EventLog.snapshot) => promise<result<unit, string>>,
     }
@@ -169,7 +183,9 @@ describe("Aggregate_Callback — conflict retry:", () => {
     mock.failNextAppendsWithConflict := 1
     let results = await Stream.fromIterable([
       makeTopicItem("ref-1", AggSpec.Create({name: "Widget"})),
-    ])->TestHandler.handleCommands->Effect.runPromise
+    ])
+    ->TestHandler.handleCommands
+    ->Effect.runPromise
     expect(results)->toEqual([Ok("ref-1")])
     // 1 initial append (conflict) + 1 retry append (success) = 2
     expect(mock.appendCallCount.contents)->toBe(2)
@@ -177,9 +193,9 @@ describe("Aggregate_Callback — conflict retry:", () => {
 
   testPromise("conflict triggers re-replay", async () => {
     mock.failNextAppendsWithConflict := 1
-    let _ = await Stream.fromIterable([
-      makeTopicItem("ref-1", AggSpec.Create({name: "Widget"})),
-    ])->TestHandler.handleCommands->Effect.runPromise
+    let _ = await Stream.fromIterable([makeTopicItem("ref-1", AggSpec.Create({name: "Widget"}))])
+    ->TestHandler.handleCommands
+    ->Effect.runPromise
     // 1 initial replay + 1 retry replay = 2
     expect(mock.replayCallCount.contents)->toBe(2)
   })
@@ -188,7 +204,9 @@ describe("Aggregate_Callback — conflict retry:", () => {
     mock.failNextAppendsWithConflict := 2
     let results = await Stream.fromIterable([
       makeTopicItem("ref-1", AggSpec.Create({name: "Widget"})),
-    ])->TestHandler.handleCommands->Effect.runPromise
+    ])
+    ->TestHandler.handleCommands
+    ->Effect.runPromise
     expect(results)->toEqual([Ok("ref-1")])
     expect(mock.appendCallCount.contents)->toBe(3)
   })
@@ -198,23 +216,27 @@ describe("Aggregate_Callback — conflict retry:", () => {
     mock.failNextAppendsWithConflict := 4
     let results = await Stream.fromIterable([
       makeTopicItem("ref-1", AggSpec.Create({name: "Widget"})),
-    ])->TestHandler.handleCommands->Effect.runPromise
+    ])
+    ->TestHandler.handleCommands
+    ->Effect.runPromise
     expect(results)->toEqual([Error("concurrent modification (3 retries exhausted): conflict")])
     expect(mock.appendCallCount.contents)->toBe(4)
   })
 
   testPromise("successful append after conflict stores event", async () => {
     mock.failNextAppendsWithConflict := 1
-    let _ = await Stream.fromIterable([
-      makeTopicItem("ref-1", AggSpec.Create({name: "Widget"})),
-    ])->TestHandler.handleCommands->Effect.runPromise
+    let _ = await Stream.fromIterable([makeTopicItem("ref-1", AggSpec.Create({name: "Widget"}))])
+    ->TestHandler.handleCommands
+    ->Effect.runPromise
     expect(mock.getAll()->Array.length)->toBe(1)
   })
 
   testPromise("no conflict does not retry", async () => {
     let results = await Stream.fromIterable([
       makeTopicItem("ref-1", AggSpec.Create({name: "Widget"})),
-    ])->TestHandler.handleCommands->Effect.runPromise
+    ])
+    ->TestHandler.handleCommands
+    ->Effect.runPromise
     expect(results)->toEqual([Ok("ref-1")])
     expect(mock.appendCallCount.contents)->toBe(1)
     expect(mock.replayCallCount.contents)->toBe(1)

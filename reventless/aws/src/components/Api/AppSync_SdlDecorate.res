@@ -44,9 +44,10 @@ let injectAwsSubscribe = (
             // leaves a trailing colon on the token — drop it (same rule as
             // GraphQL_Stitcher.rootTypeFieldNames).
             let name = ReventlessCore.GraphQL_Stitcher.extractLeadingName(line)
-            let name = name->String.endsWith(":")
-              ? name->String.slice(~start=0, ~end=name->String.length - 1)
-              : name
+            let name =
+              name->String.endsWith(":")
+                ? name->String.slice(~start=0, ~end=name->String.length - 1)
+                : name
             switch sourceByField->Dict.get(name) {
             | Some(mutations) =>
               let list = mutations->Array.map(m => `"${m}"`)->Array.join(", ")
@@ -126,17 +127,20 @@ let injectAwsAuthAll = (
     iamFieldNames->Array.includes(ReventlessCore.GraphQL_Stitcher.extractLeadingName(field))
   let cognitoOnly = formatCognitoGroupsDirective([group])
 
-  let augmentedMutations = parts.mutations->Array.map(field =>
-    isIam(field)
-      ? `${field}\n    ${formatDualAuthDirective(Some([group]))}`
-      : `${field}\n    ${cognitoOnly}`
-  )
-  let augmentedQueries = parts.queries->Array.map(field =>
-    isIam(field) ? `${field} ${formatDualAuthDirective(Some([group]))}` : `${field} ${cognitoOnly}`
-  )
-  let augmentedSubscriptions = parts.subscriptions->Array.map(field =>
-    `${field}\n    ${cognitoOnly}`
-  )
+  let augmentedMutations =
+    parts.mutations->Array.map(field =>
+      isIam(field)
+        ? `${field}\n    ${formatDualAuthDirective(Some([group]))}`
+        : `${field}\n    ${cognitoOnly}`
+    )
+  let augmentedQueries =
+    parts.queries->Array.map(field =>
+      isIam(field)
+        ? `${field} ${formatDualAuthDirective(Some([group]))}`
+        : `${field} ${cognitoOnly}`
+    )
+  let augmentedSubscriptions =
+    parts.subscriptions->Array.map(field => `${field}\n    ${cognitoOnly}`)
 
   ReventlessCore.GraphQL_Stitcher.encode({
     ...parts,
@@ -150,12 +154,7 @@ let injectAwsAuthAll = (
 // connections, injected by the stitcher) and the `CommandResult` members
 // (mutation returns). Stamped once on the ASSEMBLED SDL so an IAM system
 // caller (`@@reventless.systemCallable` fields) can traverse them.
-let sharedIamTypeNames = [
-  "PageInfo",
-  "CommandAccepted",
-  "CommandRejected",
-  "CommandPending",
-]
+let sharedIamTypeNames = ["PageInfo", "CommandAccepted", "CommandRejected", "CommandPending"]
 
 let stampSharedIamTypes = (sdl: string): string =>
   sharedIamTypeNames->Array.reduce(sdl, (acc, name) =>
@@ -260,7 +259,7 @@ let rootOperationTypes = ["Query", "Mutation", "Subscription"]
 let typeDeclNameOf = (line: string): option<string> =>
   if line->String.startsWith("type ") {
     let rest = line->String.slice(~start=5, ~end=line->String.length)
-    switch rest->String.search(%re("/[\s{]/")) {
+    switch rest->String.search(/[\s{]/) {
     | -1 => Some(rest)
     | i => Some(rest->String.slice(~start=0, ~end=i))
     }
@@ -271,7 +270,7 @@ let typeDeclNameOf = (line: string): option<string> =>
 // A root-operation field line: exactly two spaces of indent then a name. Deeper
 // indents are directive continuations of the field above.
 let fieldNameOf = (line: string): option<string> =>
-  switch line->String.match(%re("/^ {2}(\w+)/")) {
+  switch line->String.match(/^ {2}(\w+)/) {
   | Some(groups) => groups->Array.get(1)->Option.flatMap(x => x)
   | None => None
   }
@@ -388,7 +387,9 @@ let assertGateable = (sdl: string): string => {
   let problems = []
   if inertDirectives->Array.length > 0 {
     problems->Array.push(
-      `  ${inertDirectives->Array.length->Int.toString} field(s) carry @aws_auth, which AppSync IGNORES on a\n` ++
+      `  ${inertDirectives
+        ->Array.length
+        ->Int.toString} field(s) carry @aws_auth, which AppSync IGNORES on a\n` ++
       `  multi-auth API (this adapter always adds AWS_IAM as an additional provider).\n` ++
       `  They are gated by nothing. Emit @aws_cognito_user_pools(cognito_groups: [...])\n` ++
       `  instead — see AppSync_SdlDecorate.formatCognitoGroupsDirective.\n` ++
@@ -397,14 +398,18 @@ let assertGateable = (sdl: string): string => {
   }
   if bareFields->Array.length > 0 {
     problems->Array.push(
-      `  ${bareFields->Array.length->Int.toString} root field(s) carry no enforced auth directive, so they are\n` ++
+      `  ${bareFields
+        ->Array.length
+        ->Int.toString} root field(s) carry no enforced auth directive, so they are\n` ++
       `  reachable by ANY authenticated Cognito caller:\n` ++
       `    ${bareFields->Array.join(", ")}`,
     )
   }
   if bareTypes->Array.length > 0 {
     problems->Array.push(
-      `  ${bareTypes->Array.length->Int.toString} object type(s) carry no enforced auth directive:\n` ++
+      `  ${bareTypes
+        ->Array.length
+        ->Int.toString} object type(s) carry no enforced auth directive:\n` ++
       `    ${bareTypes->Array.join(", ")}`,
     )
   }
@@ -416,8 +421,7 @@ let assertGateable = (sdl: string): string => {
       `\n\nEvery field and type must carry @aws_cognito_user_pools (optionally with\n` ++
       `cognito_groups) and/or @aws_iam. The sweep in stampUndirectivedFields /\n` ++
       `stampAllTypesCognito should have covered this — a failure here means a schema\n` ++
-      `reached assembly by a path that bypasses them.\n` ++
-      `See docs/plans/appsync-group-authorization-unenforced.md.`,
+      `reached assembly by a path that bypasses them.\n` ++ `See docs/plans/appsync-group-authorization-unenforced.md.`,
     )
   }
   sdl
@@ -441,9 +445,13 @@ let stampCanonicalTypes = (sdl: string): string =>
   sdl
   ->String.split("\n")
   ->Array.map(line => {
-    let isObjectDef = canonicalTypeNames->Array.some(name => line->String.startsWith(`type ${name} `))
-    let isNodeDef = line->String.startsWith("interface Node ") || line->String.startsWith("interface Node{")
-    let isUnionDef = line->String.startsWith("union CommandResult ") || line->String.startsWith("union CommandResult=")
+    let isObjectDef =
+      canonicalTypeNames->Array.some(name => line->String.startsWith(`type ${name} `))
+    let isNodeDef =
+      line->String.startsWith("interface Node ") || line->String.startsWith("interface Node{")
+    let isUnionDef =
+      line->String.startsWith("union CommandResult ") ||
+        line->String.startsWith("union CommandResult=")
     if line->String.includes("@canonical") {
       line
     } else if isObjectDef || isNodeDef {

@@ -1,4 +1,3 @@
-
 // --- Test Event Log Spec (events with DCB tags) ---
 
 module TestEventLogSpec = {
@@ -339,9 +338,8 @@ type multiProductCommand =
 // Scalar field override — non-Id name remapped via @dcbTag("explicitKey") at the PPX
 // level; the runtime side is exercised here directly with stringForKey.
 @schema
-type customKeyEvent = ProductLabelled({
-  sku: @s.matches(Reventless.DcbTag.stringForKey(~key="productSku")) string,
-})
+type customKeyEvent =
+  ProductLabelled({sku: @s.matches(Reventless.DcbTag.stringForKey(~key="productSku")) string})
 
 // --- Composite partition tag test schemas ---
 
@@ -357,7 +355,8 @@ type compositeEvent =
 @schema
 type compositeEventCustomSep =
   | ConfigUpdated({
-      tenantId: @s.matches(Reventless.DcbTag.compositePartitionMember(~position=0, ~sep=":")) string,
+      tenantId: @s.matches(Reventless.DcbTag.compositePartitionMember(~position=0, ~sep=":"))
+      string,
       region: @s.matches(Reventless.DcbTag.compositePartitionMember(~position=1, ~sep="/")) string,
       service: @s.matches(Reventless.DcbTag.compositePartitionMember(~position=2)) string,
       value: string,

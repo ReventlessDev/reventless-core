@@ -49,21 +49,21 @@ module Make = (Spec: ReventlessInfra.CommandTopic.T, Channel: CommandTopic_Adapt
       let handlers = CommandTopic.getHandlers(typeName)
       Effect.promise(async () => {
         let allResults: array<result<string, string>> = []
-        let _ =
-          await handlers
-          ->Array.map(async handlerEntry => {
+        let _ = await handlers
+        ->Array.map(
+          async handlerEntry => {
             let {CommandTopic.handler: handler} = handlerEntry
             try {
-              let results =
-                await handler(
-                  Stream.fromIterable([{ReventlessInfra.CommandTopic.reference, command: json}]),
-                )->Effect.runPromise
+              let results = await handler(
+                Stream.fromIterable([{ReventlessInfra.CommandTopic.reference, command: json}]),
+              )->Effect.runPromise
               allResults->Array.pushMany(results)
             } catch {
             | _ => () // Skip if handler fails
             }
-          })
-          ->Promise.all
+          },
+        )
+        ->Promise.all
         allResults
       })
     })
@@ -89,7 +89,7 @@ module Make = (Spec: ReventlessInfra.CommandTopic.T, Channel: CommandTopic_Adapt
         {
           publish: Operations.publish,
           publishJsons: Operations.publishJsons,
-          publishJsonsStream: publishJsonsStream,
+          publishJsonsStream,
           publishJsonsAndWait,
         }
       }),

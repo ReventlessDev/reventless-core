@@ -56,11 +56,13 @@ describe("disconnectGrace", () => {
   testSync("always leaves at least a full interval of headroom past one beat", () => {
     // Grace must exceed the interval (else a single beat's cadence trips a
     // disconnect) and keep the historical ≥ +2 min floor for small intervals.
-    [1, 2, 5, 10, 30, 60, 120]->Array.forEach(interval => {
-      let grace = PluginExtensionPoint_Plugin.disconnectGrace(interval)
-      expect(grace > interval)->toBe(true)
-      expect(grace >= interval + 2)->toBe(true)
-    })
+    [1, 2, 5, 10, 30, 60, 120]->Array.forEach(
+      interval => {
+        let grace = PluginExtensionPoint_Plugin.disconnectGrace(interval)
+        expect(grace > interval)->toBe(true)
+        expect(grace >= interval + 2)->toBe(true)
+      },
+    )
   })
 
   testSync("a 60-min cadence gets far more than the old fixed +2 grace", () => {
@@ -71,28 +73,32 @@ describe("disconnectGrace", () => {
 
 describe("PluginExtensionPoint mapping arms the disconnect schedule from the beat interval", () => {
   testSync("Heartbeat(interval) → CreateDisconnectSchedule(_, disconnectGrace(interval))", () => {
-    [5, 10, 60]->Array.forEach(interval => {
-      let actions = TestMapping.PluginMapping.mapIncomingCommand(
-        "Test@1",
-        PluginExtensionPointSpec.Heartbeat(interval),
-        meta,
-      )
-      expect(actions->graceFromActions)->toEqual(
-        Some(PluginExtensionPoint_Plugin.disconnectGrace(interval)),
-      )
-    })
+    [5, 10, 60]->Array.forEach(
+      interval => {
+        let actions = TestMapping.PluginMapping.mapIncomingCommand(
+          "Test@1",
+          PluginExtensionPointSpec.Heartbeat(interval),
+          meta,
+        )
+        expect(actions->graceFromActions)->toEqual(
+          Some(PluginExtensionPoint_Plugin.disconnectGrace(interval)),
+        )
+      },
+    )
   })
 
   testSync("RedetectPlugin(interval) arms the same interval-derived grace as a heartbeat", () => {
-    [5, 10, 60]->Array.forEach(interval => {
-      let actions = TestMapping.PluginMapping.mapIncomingCommand(
-        "Test@1",
-        PluginExtensionPointSpec.RedetectPlugin(interval),
-        meta,
-      )
-      expect(actions->graceFromActions)->toEqual(
-        Some(PluginExtensionPoint_Plugin.disconnectGrace(interval)),
-      )
-    })
+    [5, 10, 60]->Array.forEach(
+      interval => {
+        let actions = TestMapping.PluginMapping.mapIncomingCommand(
+          "Test@1",
+          PluginExtensionPointSpec.RedetectPlugin(interval),
+          meta,
+        )
+        expect(actions->graceFromActions)->toEqual(
+          Some(PluginExtensionPoint_Plugin.disconnectGrace(interval)),
+        )
+      },
+    )
   })
 })

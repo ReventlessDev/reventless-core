@@ -7,7 +7,6 @@
     depend on it, so the sink decision lives here as the single source of
     truth. `useAnsi()` ⇒ TTY text mode (colour/bold); `isJsonSink()` ⇒
     structured JSON for any non-TTY collector (CloudWatch, Datadog, …). */
-
 @val external _isTty: option<bool> = "process.stdout.isTTY"
 @val external _logFormat: option<string> = "process.env.REVENTLESS_LOG_FORMAT"
 

@@ -44,13 +44,12 @@ let views = [
 // The fresh-store guard probes these before sending any command — the `Seeded`
 // view names, so the pre-flight refusal stays in lockstep with `verifyViews`.
 // `Catalog_Categories` leads, so a populated store aborts after one query.
-let probeViews =
-  views->Array.filterMap(v =>
-    switch v {
-    | Seed.Runner.Seeded(name) => Some(name)
-    | Seed.Runner.Unfillable(_, _) => None
-    }
-  )
+let probeViews = views->Array.filterMap(v =>
+  switch v {
+  | Seed.Runner.Seeded(name) => Some(name)
+  | Seed.Runner.Unfillable(_, _) => None
+  }
+)
 
 // ── Phases ──────────────────────────────────────────────────────────────────
 
@@ -60,19 +59,23 @@ let probeViews =
 // re-image exercises.
 let seedCategories = async (categories: array<DemoData.category>, ~client: Seed.Client.t) => {
   await client->Seed.Client.sendAll(
-    categories->Array.map(c => DemoCommands.addCategory(AddCategory({categoryId: c.id, name: c.name}))),
+    categories->Array.map(c =>
+      DemoCommands.addCategory(AddCategory({categoryId: c.id, name: c.name}))
+    ),
   )
-  let attached = categories->Array.filterMap(c =>
-    c.categoryImage->Option.map(categoryImage =>
-      DemoCommands.categoryImages(
-        SetCategoryImage({categoryId: c.id, categoryImage, altText: `${c.name} banner`}),
+  let attached =
+    categories->Array.filterMap(c =>
+      c.categoryImage->Option.map(categoryImage =>
+        DemoCommands.categoryImages(
+          SetCategoryImage({categoryId: c.id, categoryImage, altText: `${c.name} banner`}),
+        )
       )
     )
-  )
   await client->Seed.Client.sendAll(attached)
   Seed.Runner.report(
-    `categories: ${(categories->Array.length)->Int.toString} added, ${(attached->Array.length)
-        ->Int.toString} images set`,
+    `categories: ${categories->Array.length->Int.toString} added, ${attached
+      ->Array.length
+      ->Int.toString} images set`,
   )
 }
 
@@ -118,7 +121,7 @@ let uploadProductImages = async (
     }
   }
   Seed.Runner.report(
-    `product images: ${(out->Array.length)->Int.toString} uploaded to the served bucket`,
+    `product images: ${out->Array.length->Int.toString} uploaded to the served bucket`,
   )
   out
 }
@@ -150,7 +153,7 @@ let uploadCategoryImages = async (
     }
   }
   Seed.Runner.report(
-    `category images: ${(out->Array.length)->Int.toString} uploaded to the served bucket`,
+    `category images: ${out->Array.length->Int.toString} uploaded to the served bucket`,
   )
   out
 }
@@ -169,17 +172,19 @@ let seedProducts = async (products: array<DemoData.product>, ~client: Seed.Clien
       )
     ),
   )
-  let attached = products->Array.filterMap(p =>
-    p.productImage->Option.map(productImage =>
-      DemoCommands.productImages(
-        AttachProductImage({productId: p.id, productImage, altText: p.name}),
+  let attached =
+    products->Array.filterMap(p =>
+      p.productImage->Option.map(productImage =>
+        DemoCommands.productImages(
+          AttachProductImage({productId: p.id, productImage, altText: p.name}),
+        )
       )
     )
-  )
   await client->Seed.Client.sendAll(attached)
   Seed.Runner.report(
-    `products: ${(products->Array.length)->Int.toString} added, ${(attached->Array.length)
-        ->Int.toString} images attached`,
+    `products: ${products->Array.length->Int.toString} added, ${attached
+      ->Array.length
+      ->Int.toString} images attached`,
   )
 }
 
@@ -211,8 +216,9 @@ let seedProductGallery = async (
     )
   await client->Seed.Client.sendAll(chosen)
   Seed.Runner.report(
-    `product galleries: ${(extra->Array.length)->Int.toString} extra images attached, ${(chosen
-        ->Array.length)->Int.toString} primaries chosen`,
+    `product galleries: ${extra->Array.length->Int.toString} extra images attached, ${chosen
+      ->Array.length
+      ->Int.toString} primaries chosen`,
   )
 }
 
@@ -243,8 +249,7 @@ let seedRejectedDuplicate = async (products: array<DemoData.product>, ~client: S
     | None =>
       throw(
         Seed.Failed(
-          `duplicate guard: re-adding product ${p.id} was accepted — AddProduct is no longer ` ++
-          `rejecting an existing productId with ProductAlreadyExists`,
+          `duplicate guard: re-adding product ${p.id} was accepted — AddProduct is no longer ` ++ `rejecting an existing productId with ProductAlreadyExists`,
         ),
       )
     }
@@ -304,11 +309,13 @@ let seedCatalogEdits = async (
     archived->Array.map(c => DemoCommands.archiveCategory(ArchiveCategory({categoryId: c.id}))),
   )
   Seed.Runner.report(
-    `catalog edits: ${(repriced->Array.length)->Int.toString} repriced, ${(redescribed
-        ->Array.length)
-        ->Int.toString} redescribed, 1 renamed, ${(reimage->Array.length)
-        ->Int.toString} re-imaged, ${(archived->Array.length)
-        ->Int.toString} archived`,
+    `catalog edits: ${repriced->Array.length->Int.toString} repriced, ${redescribed
+      ->Array.length
+      ->Int.toString} redescribed, 1 renamed, ${reimage
+      ->Array.length
+      ->Int.toString} re-imaged, ${archived
+      ->Array.length
+      ->Int.toString} archived`,
   )
 }
 
@@ -318,6 +325,7 @@ let seedSupplierFeed = async (~client: Seed.Client.t) => {
     | Some(row) =>
       // One feed row is deliberately invalid, so a translation rejection is an
       // expected outcome here rather than a seeding failure.
+
       (
         await client->Seed.Client.send(
           DemoCommands.importProduct(row),
@@ -349,8 +357,8 @@ let seedSupplierFeed = async (~client: Seed.Client.t) => {
       let failures = audits->countWith("Failure")
       let total = audits->Array.length
       total == 0
-        ? `supplier feed: the import audit view (Catalog_ImportProductAudits) never became non-empty. All ${(DemoData.supplierFeed
-            ->Array.length)
+        ? `supplier feed: the import audit view (Catalog_ImportProductAudits) never became non-empty. All ${DemoData.supplierFeed
+            ->Array.length
             ->Int.toString} import commands were accepted by the API, yet no audit rows appeared — the ImportProduct slice is not persisting its audit log (or it is not queryable through this view). Expected ${expected}.`
         : `supplier feed: the audit view settled on ${successes->Int.toString} Success / ${failures->Int.toString} Failure (${total->Int.toString} rows), expected ${expected} — the feed produced a different set of outcomes than the seed data describes.`
     },
@@ -387,8 +395,9 @@ let seedCustomers = async (customers: array<DemoData.customer>, ~client: Seed.Cl
     ),
   )
   Seed.Runner.report(
-    `customers: ${(customers->Array.length)->Int.toString} registered, ${(moved->Array.length)
-        ->Int.toString} moved`,
+    `customers: ${customers->Array.length->Int.toString} registered, ${moved
+      ->Array.length
+      ->Int.toString} moved`,
   )
 }
 
@@ -396,20 +405,22 @@ let seedOrders = async (orders: array<DemoData.order>, ~client: Seed.Client.t) =
   for i in 0 to orders->Array.length - 1 {
     switch orders->Array.get(i) {
     | Some(order) =>
-      (await client->Seed.Client.send(
-        DemoCommands.placeOrder(
-          PlaceOrder({
-            orderId: order.id,
-            customerId: order.customerId,
-            lineItems: order.lineItems,
-            shippingMethod: order.shippingMethod,
-            deliveryWindow: ?order.deliveryWindow,
-          }),
-        ),
-      ))->ignore
+      (
+        await client->Seed.Client.send(
+          DemoCommands.placeOrder(
+            PlaceOrder({
+              orderId: order.id,
+              customerId: order.customerId,
+              lineItems: order.lineItems,
+              shippingMethod: order.shippingMethod,
+              deliveryWindow: ?order.deliveryWindow,
+            }),
+          ),
+        )
+      )->ignore
       if mod(i + 1, 50) == 0 {
         Seed.Runner.report(
-          `orders: ${(i + 1)->Int.toString}/${(orders->Array.length)->Int.toString} placed`,
+          `orders: ${(i + 1)->Int.toString}/${orders->Array.length->Int.toString} placed`,
         )
       }
     | None => ()
@@ -418,7 +429,7 @@ let seedOrders = async (orders: array<DemoData.order>, ~client: Seed.Client.t) =
   let countMethod = (method: OrderingPlugin.PlaceOrder.shippingMethod) =>
     orders->Array.filter(o => o.shippingMethod == method)->Array.length
   Seed.Runner.report(
-    `orders: ${(orders->Array.length)->Int.toString} placed (Standard ${countMethod(
+    `orders: ${orders->Array.length->Int.toString} placed (Standard ${countMethod(
         Standard,
       )->Int.toString}, Express ${countMethod(Express)->Int.toString}, Pickup ${countMethod(
         Pickup,
@@ -433,8 +444,9 @@ let dispatchStandardBatch = async (orders: array<DemoData.order>, ~client: Seed.
   )
   let standardTotal = orders->Array.filter(o => o.shippingMethod == Standard)->Array.length
   Seed.Runner.report(
-    `batch dispatch: ${(dispatched->Array.length)
-        ->Int.toString}/${standardTotal->Int.toString} Standard orders shipped, ${(standardTotal -
+    `batch dispatch: ${dispatched
+      ->Array.length
+      ->Int.toString}/${standardTotal->Int.toString} Standard orders shipped, ${(standardTotal -
       dispatched->Array.length)->Int.toString} left pending`,
   )
   dispatched->Array.map(o => o.id)
@@ -451,8 +463,9 @@ let seedCancellations = async (
     targets->Array.map(o => DemoCommands.cancelOrder(CancelOrder({orderId: o.id}))),
   )
   Seed.Runner.report(
-    `cancellations: ${(targets->Array.length)->Int.toString} of ${(cancellable->Array.length)
-        ->Int.toString} cancellable orders cancelled`,
+    `cancellations: ${targets->Array.length->Int.toString} of ${cancellable
+      ->Array.length
+      ->Int.toString} cancellable orders cancelled`,
   )
 }
 
@@ -461,7 +474,7 @@ let seedDeactivations = async (customers: array<DemoData.customer>, ~client: See
   await client->Seed.Client.sendAll(
     targets->Array.map(c => DemoCommands.customer(~id=c.id, Deactivate)),
   )
-  Seed.Runner.report(`customers: ${(targets->Array.length)->Int.toString} deactivated`)
+  Seed.Runner.report(`customers: ${targets->Array.length->Int.toString} deactivated`)
 }
 
 // The two ways a product leaves the shelf, run late for the reason the archived
@@ -509,9 +522,9 @@ let seedProductRetirements = async (products: array<DemoData.product>, ~client: 
         )->Int.toString}`,
   )
   Seed.Runner.report(
-    `catalog retirements: ${(archived->Array.length)->Int.toString} archived, ${(discontinued
-        ->Array.length)
-        ->Int.toString} discontinued`,
+    `catalog retirements: ${archived->Array.length->Int.toString} archived, ${discontinued
+      ->Array.length
+      ->Int.toString} discontinued`,
   )
 }
 
@@ -576,15 +589,13 @@ let expectOwned = async (
     ~selection="id",
     ~satisfied=nodes => expected->ownedSatisfied(nodes->Array.length),
     ~onTimeout=nodes => {
-      let saw = (nodes->Array.length)->Int.toString
-      let cause = nodes->Array.length == 0
-        ? `Nothing in this view is keyed to "${ownerId}". The rows were seeded under a ` ++
-          `different id than the one this account's bearer presents — see the demo-owner ` ++
-          `resolution reported at the start of the run.`
-        : `The seeding account may not be exempt from owner scoping, in which case every row ` ++
-          `landed on it rather than on the owner the data set named.`
-      `owner-scoped read: "${who}" sees ${saw} row(s) in ${field}, expected ${expected
-        ->ownedDescribe}.\n  ${cause}`
+      let saw = nodes->Array.length->Int.toString
+      let cause =
+        nodes->Array.length == 0
+          ? `Nothing in this view is keyed to "${ownerId}". The rows were seeded under a ` ++
+            `different id than the one this account's bearer presents — see the demo-owner ` ++ `resolution reported at the start of the run.`
+          : `The seeding account may not be exempt from owner scoping, in which case every row ` ++ `landed on it rather than on the owner the data set named.`
+      `owner-scoped read: "${who}" sees ${saw} row(s) in ${field}, expected ${expected->ownedDescribe}.\n  ${cause}`
     },
   )
   Seed.Runner.report(`${field}: ${expected->ownedDescribe} for ${who} ✓`)
@@ -745,8 +756,9 @@ let summarise = async (~client: Seed.Client.t, ~counts: dict<int>) => {
   )
   Console.log(`  demand head:   ${head}`)
   Console.log(
-    `  demand spread: ${(withDemand->Array.length)->Int.toString}/${(ranked->Array.length)
-        ->Int.toString} products ordered, tail min ${withDemand
+    `  demand spread: ${withDemand->Array.length->Int.toString}/${ranked
+      ->Array.length
+      ->Int.toString} products ordered, tail min ${withDemand
       ->Array.last
       ->Option.mapOr(0, orderCountOf)
       ->Int.toString}`,
@@ -770,8 +782,9 @@ let summarise = async (~client: Seed.Client.t, ~counts: dict<int>) => {
   let observedLifecycles = lifecycles->Array.filter(s => countLifecycle(s) > 0)
   let spreadWarning = if observedLifecycles->Array.length < 3 {
     [
-      `the board shows only ${(observedLifecycles->Array.length)
-          ->Int.toString} of the 3 order lifecycle states (${observedLifecycles->Array.join(
+      `the board shows only ${observedLifecycles
+        ->Array.length
+        ->Int.toString} of the 3 order lifecycle states (${observedLifecycles->Array.join(
           ", ",
         )}) — the shipping-method mix or the batch-dispatch share needs adjusting.`,
     ]
@@ -868,7 +881,7 @@ let run = async (
       }
     }
     Seed.Runner.report(
-      `extra product images: ${(out->Array.length)->Int.toString} uploaded to the served bucket`,
+      `extra product images: ${out->Array.length->Int.toString} uploaded to the served bucket`,
     )
     out
   }

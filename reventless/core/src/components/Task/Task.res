@@ -34,9 +34,9 @@ type maker = (
   ~opts: option<Pulumi.ComponentResource.options>,
 ) => component
 
-let toResolvedOutputs = (
-  outputs: outputs,
-): Pulumi.Output.t<ReventlessInterop.Task.resolvedOutputs> =>
+let toResolvedOutputs = (outputs: outputs): Pulumi.Output.t<
+  ReventlessInterop.Task.resolvedOutputs,
+> =>
   switch (outputs.bucketNames, outputs.sideEffectSources) {
   | (Some(bucketNames), Some(sideEffectSources)) =>
     bucketNames

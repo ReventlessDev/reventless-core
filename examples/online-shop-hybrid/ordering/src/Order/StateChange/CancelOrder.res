@@ -23,10 +23,7 @@ type error =
 
 @schema
 type event =
-  | OrderCancelled({
-      orderId: string,
-      productIds: array<string>,
-    })
+  | OrderCancelled({orderId: string, productIds: array<string>})
   | OrderReopened({orderId: string})
 
 // `ReopenOrder` is the way back out of `Cancelled`, and a real edge of the

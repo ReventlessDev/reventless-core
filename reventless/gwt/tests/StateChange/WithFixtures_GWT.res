@@ -20,4 +20,3 @@ describe("WithFixtures StateChangeSlice (companion fixtures auto-open)", () => {
     ->thenEvent((electronicsCategoryAdded :> event))
   )
 })
-

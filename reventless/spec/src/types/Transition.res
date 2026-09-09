@@ -69,9 +69,11 @@ let allowedStates = (transition: t<'state>): option<array<'state>> =>
   switch transition {
   | Undeclared
   | Unrestricted
-  | Creates(_) => None
+  | Creates(_) =>
+    None
   | Guards(states)
-  | Moves(states, _) => Some(states)
+  | Moves(states, _) =>
+    Some(states)
   }
 
 /** The state the command's handler writes, or `None` for one that moves nothing. */
@@ -79,9 +81,11 @@ let targetState = (transition: t<'state>): option<'state> =>
   switch transition {
   | Undeclared
   | Unrestricted
-  | Guards(_) => None
+  | Guards(_) =>
+    None
   | Creates(state)
-  | Moves(_, state) => Some(state)
+  | Moves(_, state) =>
+    Some(state)
   }
 
 /** Whether the command is claimed legal in every state, as opposed to nothing

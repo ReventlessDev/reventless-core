@@ -211,8 +211,10 @@ type stateAnnotationSpec = {
 }
 
 /** Sury metadata ID used to attach a `stateAnnotationSpec` to a state schema. */
-let stateAnnotationsId: S.Metadata.Id.t<stateAnnotationSpec> =
-  S.Metadata.Id.make(~namespace="reventless", ~name="stateAnnotations")
+let stateAnnotationsId: S.Metadata.Id.t<stateAnnotationSpec> = S.Metadata.Id.make(
+  ~namespace="reventless",
+  ~name="stateAnnotations",
+)
 
 /** Returns the spec attached to a state schema, if any. */
 let getSpec = (schema: S.t<unknown>): option<stateAnnotationSpec> =>

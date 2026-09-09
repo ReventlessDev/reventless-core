@@ -185,12 +185,16 @@ let probeAccount = async (connection: Seed.connection, ~account: Seed.Users.user
         )
       | (true, Refused) => (
           false,
-          `REFUSED, but ${describeRule(rule)} should be allowed — the deployed rule is narrower than the spec, or this token is narrower than the account`,
+          `REFUSED, but ${describeRule(
+              rule,
+            )} should be allowed — the deployed rule is narrower than the spec, or this token is narrower than the account`,
         )
       // The one unambiguous failure: rows handed to a caller the spec excludes.
       | (false, Granted) => (
           false,
-          `ALLOWED, but only ${describeRule(rule)} should be — the deployed rule is missing or wider than the spec`,
+          `ALLOWED, but only ${describeRule(
+              rule,
+            )} should be — the deployed rule is missing or wider than the spec`,
         )
       | (_, Broke(message)) => (false, `neither allowed nor refused: ${message}`)
       }
@@ -207,8 +211,7 @@ let run = async (connection: Seed.connection): unit => {
     throw(
       Seed.Failed(
         "the authorization check needs an accounts file: it reads each account's password to " ++
-        "ask the same questions as several callers. The REVENTLESS_DEMO_USER/PASSWORD path " ++
-        "supplies one identity, which cannot answer whether a door is closed to anybody else.",
+        "ask the same questions as several callers. The REVENTLESS_DEMO_USER/PASSWORD path " ++ "supplies one identity, which cannot answer whether a door is closed to anybody else.",
       ),
     )
   }
@@ -227,8 +230,8 @@ let run = async (connection: Seed.connection): unit => {
     }
   }
   Seed.Runner.heading(
-    `Checked ${(accounts->Array.length * cases->Array.length)->Int.toString} account × subject ` ++
-    `pairs against what the specs declare.`,
+    `Checked ${(accounts->Array.length * cases->Array.length)
+        ->Int.toString} account × subject ` ++ `pairs against what the specs declare.`,
   )
   if failures->Array.length > 0 {
     throw(

@@ -20,7 +20,7 @@ let make: Counter_Adapter.handlerMaker = (
   ~publishChannelId as _,
   ~opts as _,
 ) => {
-  addToCounterTarget: async ({ReventlessInfra.Counter.counterId, target, targetRef}) => {
+  addToCounterTarget: async ({ReventlessInfra.Counter.counterId: counterId, target, targetRef}) => {
     let refKey = counterId ++ ":" ++ targetRef
     switch targetRefStore.contents->Dict.get(refKey) {
     | Some(_) => () // Already counted this (counterId, targetRef) pair — skip

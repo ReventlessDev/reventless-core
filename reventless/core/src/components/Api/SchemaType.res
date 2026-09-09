@@ -1,44 +1,44 @@
 type rec schemaType =
   | ScalarString
   | ScalarNumber
-  | /** A number the schema says is whole. sury carries the fact on the number's
+  /** A number the schema says is whole. sury carries the fact on the number's
         `format`, and it was being dropped here — so every `int` in the domain
         reached the SDL as `Float` and JSON Schema as `"number"`, and a quantity
         was a field a client could legally send `2.5` in. */
-  ScalarInt
+  | ScalarInt
   | ScalarBoolean
   | ScalarBigInt
   | EntityId
   | DateTime
-  | /** A calendar day, with no instant in it. A shape of its own rather than a
+  /** A calendar day, with no instant in it. A shape of its own rather than a
         plain string so `format: "date"` reaches the JSON Schema — but, unlike
         `DateTime`, it is not excluded from the generic semantic wrapper below,
         so it carries `x-reventless-semantic` as well. `DateTime`'s exclusion
         exists because its bare-`format` output predates the marker and is a
         published contract; a new semantic has no such history. */
-  CalendarDate
+  | CalendarDate
   | Nullable(schemaType)
   | ArrayOf(schemaType)
   | ObjectRef(string, dict<schemaType>)
   | Enum(string, array<string>)
-  | /** A field whose type carries a semantic the IR has no dedicated shape for.
+  /** A field whose type carries a semantic the IR has no dedicated shape for.
         Wraps the shape the value actually has, so every consumer that only cares
         about shape unwraps and is otherwise unaffected. `DateTime` and `EntityId`
         are *not* expressed this way: they long predate the generic marker and
         their JSON Schema `format` output is a published contract. */
-  Semantic(Reventless.Semantic.t, schemaType)
-  | /** A field whose type declares the value it opens with. Wraps the shape the
+  | Semantic(Reventless.Semantic.t, schemaType)
+  /** A field whose type declares the value it opens with. Wraps the shape the
         value has, as `Semantic` does, so a consumer that cares only about shape
         unwraps: a default changes where a form starts, never what the field is. */
-  Defaulted(JSON.t, schemaType)
-  | /** A variant used as a field: the union's name, and one arm per constructor
+  | Defaulted(JSON.t, schemaType)
+  /** A variant used as a field: the union's name, and one arm per constructor
         keyed by the `TAG` sury discriminates on. Each arm is the `ObjectRef` its
         member type is emitted from, so the arm's own name travels with it and
         every consumer that can already render an object renders an arm.
 
         Only a *named* union reaches this case — see `Reventless.TaggedUnion`,
         which owns the name and the arm rules both. */
-  TaggedUnion(string, array<(string, schemaType)>)
+  | TaggedUnion(string, array<(string, schemaType)>)
   | Unknown
 
 let isTagged = Reventless.DcbTag.isTagged
@@ -96,7 +96,11 @@ let rec fromSury = (~parentName: string, ~fieldName: string, schema: S.t<unknown
   }
 }
 
-and withoutDefault = (~parentName: string, ~fieldName: string, schema: S.t<unknown>): schemaType => {
+and withoutDefault = (
+  ~parentName: string,
+  ~fieldName: string,
+  schema: S.t<unknown>,
+): schemaType => {
   // Semantics the IR already has a dedicated shape for keep it: `dateTime` and
   // `reference` are read below via `isDateTime` / `getTarget`, both of which now
   // consult the generic marker, and their `format` output is a published
@@ -150,9 +154,10 @@ and shapeOf = (~parentName: string, ~fieldName: string, schema: S.t<unknown>): s
         | _ => ScalarString
         }
       }
-      let itemType = (isIdsFieldName(fieldName) || isIdFieldName(fieldName)) && itemType == ScalarString
-        ? EntityId
-        : itemType
+      let itemType =
+        (isIdsFieldName(fieldName) || isIdFieldName(fieldName)) && itemType == ScalarString
+          ? EntityId
+          : itemType
       ArrayOf(itemType)
     | Object({properties}) =>
       let nestedName =
@@ -164,7 +169,10 @@ and shapeOf = (~parentName: string, ~fieldName: string, schema: S.t<unknown>): s
       ->Dict.toArray
       ->Array.forEach(((propName, propSchema)) => {
         if propName !== "TAG" {
-          fields->Dict.set(propName, fromSury(~parentName=nestedName, ~fieldName=propName, propSchema))
+          fields->Dict.set(
+            propName,
+            fromSury(~parentName=nestedName, ~fieldName=propName, propSchema),
+          )
         }
       })
       if fields->Dict.keysToArray->Array.length == 0 {
@@ -181,13 +189,7 @@ and shapeOf = (~parentName: string, ~fieldName: string, schema: S.t<unknown>): s
       )
       let isOptional = nonNullVariants->Array.length < anyOf->Array.length
       if nonNullVariants->Array.length == 1 {
-        Nullable(
-          fromSury(
-            ~parentName,
-            ~fieldName,
-            nonNullVariants->Array.getUnsafe(0),
-          ),
-        )
+        Nullable(fromSury(~parentName, ~fieldName, nonNullVariants->Array.getUnsafe(0)))
       } else {
         let constValues = nonNullVariants->Array.filterMap(v =>
           switch v {
@@ -195,7 +197,10 @@ and shapeOf = (~parentName: string, ~fieldName: string, schema: S.t<unknown>): s
           | _ => None
           }
         )
-        if constValues->Array.length == nonNullVariants->Array.length && constValues->Array.length > 0 {
+        if (
+          constValues->Array.length == nonNullVariants->Array.length &&
+            constValues->Array.length > 0
+        ) {
           let enumName =
             parentName ++
             fieldName->String.charAt(0)->String.toUpperCase ++

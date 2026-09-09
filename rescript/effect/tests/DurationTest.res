@@ -29,13 +29,12 @@ describe("Duration — constructors", () => {
     // All operations (fork, adjust, join) must be inside one pipeline with a single
     // Effect.provide(TestContext.testContext) so they share the same virtual clock.
     let _ = await Effect.sleep(Duration.millis(500))
-      ->Effect.fork
-      ->Effect.flatMap(fiber =>
-        TestClock.adjust(Duration.millis(500))
-        ->Effect.zipRight(Fiber.join(fiber))
-      )
-      ->Effect.provide(TestContext.testContext)
-      ->Effect.runPromise
-    expect(true)->toBe(true)  // Reached without error = sleep resolved
+    ->Effect.fork
+    ->Effect.flatMap(
+      fiber => TestClock.adjust(Duration.millis(500))->Effect.zipRight(Fiber.join(fiber)),
+    )
+    ->Effect.provide(TestContext.testContext)
+    ->Effect.runPromise
+    expect(true)->toBe(true) // Reached without error = sleep resolved
   })
 })

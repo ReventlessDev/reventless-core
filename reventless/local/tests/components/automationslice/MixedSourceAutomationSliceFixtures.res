@@ -14,8 +14,7 @@ module OrderAggregateSource = {
   module Id = Id.String
   let name = "OrderAggregateEventTopic"
   @schema
-  type event =
-    | OrderShipped({orderId: string, productId: string})
+  type event = OrderShipped({orderId: string, productId: string})
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -47,10 +46,11 @@ module AutoFulfillSpec = {
   }
 
   @schema
-  type command = MarkFulfilled({
-    orderId: @s.matches(DcbTag.string) string,
-    productId: @s.matches(DcbTag.string) string,
-  })
+  type command =
+    | MarkFulfilled({
+        orderId: @s.matches(DcbTag.string) string,
+        productId: @s.matches(DcbTag.string) string,
+      })
 
   let maxRetries = 3
   let heartbeatInterval = 60
@@ -122,10 +122,11 @@ module FromInventoryDcb = AutomationSlice.Mapping.Make(
 // Mappings collection
 // ─────────────────────────────────────────────────────────────
 
-module AutoFulfillAutomation: AutomationSlice.Automation
-  with module Spec := AutoFulfillSpec = {
-  let process = (id, item: AutoFulfillSpec.todoItem) =>
-    Some((id, AutoFulfillSpec.MarkFulfilled({orderId: item.orderId, productId: item.productId})))
+module AutoFulfillAutomation: AutomationSlice.Automation with module Spec := AutoFulfillSpec = {
+  let process = (id, item: AutoFulfillSpec.todoItem) => Some((
+    id,
+    AutoFulfillSpec.MarkFulfilled({orderId: item.orderId, productId: item.productId}),
+  ))
   let onExhausted = (_id, _item: AutoFulfillSpec.todoItem) => None
   let moduleUrl: string = %raw(`import.meta.url`)
   module M = AutomationSlice.Mappings.Make(AutoFulfillSpec)
@@ -168,10 +169,7 @@ let _ = TestRunner.setup()
 // ─────────────────────────────────────────────────────────────
 
 module AutomationSliceMaker = AutomationSlice_Builder.Make(Bus)
-module AutoFulfill = AutomationSliceMaker.Make(
-  AutoFulfillSpec,
-  AutoFulfillAutomation,
-)
+module AutoFulfill = AutomationSliceMaker.Make(AutoFulfillSpec, AutoFulfillAutomation)
 
 // Mirrors the context that `Plugin_Builder` constructs for local deployments
 // (environment from `LocalPluginSpec.environment`, platformName "local").

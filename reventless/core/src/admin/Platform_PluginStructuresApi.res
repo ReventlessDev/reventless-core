@@ -72,7 +72,10 @@ let encodeExtensionPointDef = (e: extensionPointDef): JSON.t =>
     ("sourceEventTypes", Platform_ComponentDefinitionsApi.encodeStrings(e.sourceEventTypes)),
     (
       "commandTypes",
-      e.commandTypes->Option.mapOr(JSON.Encode.null, Platform_ComponentDefinitionsApi.encodeStrings),
+      e.commandTypes->Option.mapOr(
+        JSON.Encode.null,
+        Platform_ComponentDefinitionsApi.encodeStrings,
+      ),
     ),
     (
       "publishedEvents",
@@ -81,10 +84,7 @@ let encodeExtensionPointDef = (e: extensionPointDef): JSON.t =>
         ->Array.map(p =>
           Dict.fromArray([
             ("name", JSON.Encode.string(p.name)),
-            (
-              "fromEventTypes",
-              Platform_ComponentDefinitionsApi.encodeStrings(p.fromEventTypes),
-            ),
+            ("fromEventTypes", Platform_ComponentDefinitionsApi.encodeStrings(p.fromEventTypes)),
           ])->JSON.Encode.object
         )
         ->JSON.Encode.array
@@ -97,10 +97,7 @@ let encodeExtensionPointDef = (e: extensionPointDef): JSON.t =>
         ->Array.map(a =>
           Dict.fromArray([
             ("name", JSON.Encode.string(a.name)),
-            (
-              "toCommandTypes",
-              Platform_ComponentDefinitionsApi.encodeStrings(a.toCommandTypes),
-            ),
+            ("toCommandTypes", Platform_ComponentDefinitionsApi.encodeStrings(a.toCommandTypes)),
           ])->JSON.Encode.object
         )
         ->JSON.Encode.array
@@ -130,7 +127,9 @@ let encodePluginStructureEntry = (~pluginId: string, def: pluginStructure): JSON
     ("pluginId", JSON.Encode.string(Plugin.name(pluginId))),
     (
       "readModels",
-      def.readModels->Array.map(Platform_ComponentDefinitionsApi.encodeQueryableDef)->JSON.Encode.array,
+      def.readModels
+      ->Array.map(Platform_ComponentDefinitionsApi.encodeQueryableDef)
+      ->JSON.Encode.array,
     ),
     (
       "stateViewSlices",
@@ -146,7 +145,9 @@ let encodePluginStructureEntry = (~pluginId: string, def: pluginStructure): JSON
     ),
     (
       "aggregates",
-      def.aggregates->Array.map(Platform_ComponentDefinitionsApi.encodeWritableDef)->JSON.Encode.array,
+      def.aggregates
+      ->Array.map(Platform_ComponentDefinitionsApi.encodeWritableDef)
+      ->JSON.Encode.array,
     ),
     (
       "automationSlices",
@@ -168,7 +169,9 @@ let encodePluginStructureEntry = (~pluginId: string, def: pluginStructure): JSON
     ),
     (
       "extensions",
-      def.extensions->Array.map(Platform_ComponentDefinitionsApi.encodeExtensionDef)->JSON.Encode.array,
+      def.extensions
+      ->Array.map(Platform_ComponentDefinitionsApi.encodeExtensionDef)
+      ->JSON.Encode.array,
     ),
     (
       "extensionPoints",

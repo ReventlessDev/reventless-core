@@ -45,7 +45,6 @@ structure: @s.matches(Offload.optionSchema(~store="pluginStructures", pluginStru
   option<Offload.payload<pluginStructure>>
 ```
 */
-
 /** The reference an offloaded value carries: which store holds it, the
     content-addressed key, the content hash (== the key's basis), and the byte
     length. `hash` is redundant with `key` today (`key` is `sha256/<hash>`) but
@@ -75,7 +74,7 @@ Parameterised by the inner value's schema because the `Inline` arm round-trips
 through it. The `Offloaded` arm round-trips through `offloadedRefSchema` under the
 sentinel key. See the module doc for why this is untagged.
 */
-// Both arms are *declared* (`S.object` / `S.shape`) rather than hand-written as
+let // Both arms are *declared* (`S.object` / `S.shape`) rather than hand-written as
 // `S.transform` pairs, and that is load-bearing, not a style choice. A transform
 // arm is opaque: sury cannot see what it accepts, so it must offer every value to
 // the arm's own serializer and let it reject. Two things follow, both of which bit
@@ -89,7 +88,7 @@ sentinel key. See the module doc for why this is untagged.
 // A declared arm has neither problem: sury derives both directions from the shape,
 // discriminates on it, and never runs user code to find out. One transform arm is
 // enough to bring both failures back, so keep every arm declarative.
-let schema = (inner: S.t<'a>): S.t<payload<'a>> => {
+schema = (inner: S.t<'a>): S.t<payload<'a>> => {
   // Offloaded arm: an object carrying the reserved sentinel key, tried first so an
   // offloaded value is never mistaken for an inline one.
   let offloadedArm = S.object(s => Offloaded(s.field(sentinelKey, offloadedRefSchema)))
@@ -115,7 +114,10 @@ let forStore = (
   ~threshold: option<int>=?,
   inner: S.t<'a>,
 ): S.t<payload<'a>> =>
-  schema(inner)->Semantic.mark(~id=Semantic.Id.offload, ~payload=StoredIn({plugin, store, threshold}))
+  schema(inner)->Semantic.mark(
+    ~id=Semantic.Id.offload,
+    ~payload=StoredIn({plugin, store, threshold}),
+  )
 
 /**
 The codec wrapped for an **optional** field, plus the `StoredIn` marker. This is

@@ -25,8 +25,10 @@ let toEventCollectorJson = (
   let item = Dict.make()
   item->Dict.set(
     "id",
-    DcbEventLogStorage_DynamoDb_Runtime.derivePartitionKey(~partitionTag?, event.tags)
-    ->JSON.Encode.string,
+    DcbEventLogStorage_DynamoDb_Runtime.derivePartitionKey(
+      ~partitionTag?,
+      event.tags,
+    )->JSON.Encode.string,
   )
   item->Dict.set("position", event.position->JSON.Encode.string)
   item->Dict.set("event", event.eventType->JSON.Encode.string)

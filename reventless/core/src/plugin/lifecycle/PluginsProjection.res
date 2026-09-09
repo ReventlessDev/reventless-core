@@ -24,7 +24,9 @@ module Util = {
   // Every version this row knows to be currently Connected — the `other` set
   // plus the row's own version when its status is Connected.
   let connectedVersions = (state: PluginsReadModelSpec.state): array<Reventless.Plugin.version> =>
-    isConnected(state.status) ? state.otherConnectedVersions->withVersion(state.version) : state.otherConnectedVersions
+    isConnected(state.status)
+      ? state.otherConnectedVersions->withVersion(state.version)
+      : state.otherConnectedVersions
 
   // Highest version (compareVersions) in the set, or None for an empty set.
   let highest = (versions: array<Reventless.Plugin.version>): option<Reventless.Plugin.version> =>
@@ -83,7 +85,7 @@ module PluginMapping = Reventless.Projection.Mapping.Make(
   PluginSpec,
   PluginsReadModelSpec,
   {
-    let project = ({event, id, meta: {time, user: ?user}}) => {
+    let project = ({event, id, meta: {time, ?user}}) => {
       let statusChange = {at: time, by: user->Option.getOr("")}
       switch event {
       // Handshake trigger, supersession record and incompatibility
@@ -133,7 +135,10 @@ module PluginMapping = Reventless.Projection.Mapping.Make(
           state =>
             state.version == def.version
               ? {...state, status: Disconnected, statusChange}
-              : {...state, otherConnectedVersions: state.otherConnectedVersions->Util.without(def.version)},
+              : {
+                  ...state,
+                  otherConnectedVersions: state.otherConnectedVersions->Util.without(def.version),
+                },
         )
       | VersionDeactivated(def) =>
         Reventless.Projection.UpdateWithDefault(
@@ -142,7 +147,10 @@ module PluginMapping = Reventless.Projection.Mapping.Make(
           state =>
             state.version == def.version
               ? {...state, status: Inactive, statusChange}
-              : {...state, otherConnectedVersions: state.otherConnectedVersions->Util.without(def.version)},
+              : {
+                  ...state,
+                  otherConnectedVersions: state.otherConnectedVersions->Util.without(def.version),
+                },
         )
       | VersionRetired(def) =>
         Reventless.Projection.UpdateWithDefault(
@@ -151,7 +159,10 @@ module PluginMapping = Reventless.Projection.Mapping.Make(
           state =>
             state.version == def.version
               ? {...state, status: Retired, statusChange}
-              : {...state, otherConnectedVersions: state.otherConnectedVersions->Util.without(def.version)},
+              : {
+                  ...state,
+                  otherConnectedVersions: state.otherConnectedVersions->Util.without(def.version),
+                },
         )
       }
     }

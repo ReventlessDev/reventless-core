@@ -14,14 +14,13 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     Customer_Behavior,
     ReventlessInfra.NoEventMappings.Make(Customer),
   )
-  module OrderAggregate = Platform.Aggregate.Make(
-    Order,
-    Order_Behavior,
-    Order_Mappings,
-  )
+  module OrderAggregate = Platform.Aggregate.Make(Order, Order_Behavior, Order_Mappings)
 
   // ReadModels
-  module AvailableProductsReadModel = Platform.ReadModel.Make(AvailableProducts, AvailableProducts_Projections)
+  module AvailableProductsReadModel = Platform.ReadModel.Make(
+    AvailableProducts,
+    AvailableProducts_Projections,
+  )
   module CustomersReadModel = Platform.ReadModel.Make(Customers, Customers_Projections)
   module OrdersReadModel = Platform.ReadModel.Make(Orders, Orders_Projections)
 
@@ -36,11 +35,26 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 
   let pluginStructure = Platform.Plugin.makePluginDefinition(
     ~name="Ordering",
-    ~aggregates=[module(CatalogProductAggregate), module(CustomerAggregate), module(OrderAggregate)],
-    ~readModels=[module(AvailableProductsReadModel), module(CustomersReadModel), module(OrdersReadModel)],
+    ~aggregates=[
+      module(CatalogProductAggregate),
+      module(CustomerAggregate),
+      module(OrderAggregate),
+    ],
+    ~readModels=[
+      module(AvailableProductsReadModel),
+      module(CustomersReadModel),
+      module(OrdersReadModel),
+    ],
     ~extensions=[module(Products_Extension)],
     ~extensionPoints=[module(Orders_ExtensionPointMapping)],
-    ~componentChapters=Dict.fromArray([("AvailableProducts", "CatalogProduct"), ("CatalogProduct", "CatalogProduct"), ("Customer", "Customer"), ("Customers", "Customer"), ("Order", "Order"), ("Orders", "Order")]),
+    ~componentChapters=Dict.fromArray([
+      ("AvailableProducts", "CatalogProduct"),
+      ("CatalogProduct", "CatalogProduct"),
+      ("Customer", "Customer"),
+      ("Customers", "Customer"),
+      ("Order", "Order"),
+      ("Orders", "Order"),
+    ]),
     ~lifecycleModel=LifecycleModel.model,
   )
 
@@ -50,10 +64,18 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ~heartbeatInterval=5,
       ~extensionPoints=[module(Orders_ExtensionPoint)],
       ~extensions=[module(Products_Extension)],
-      ~aggregates=[module(CatalogProductAggregate), module(CustomerAggregate), module(OrderAggregate)],
-      ~readModels=[module(AvailableProductsReadModel), module(CustomersReadModel), module(OrdersReadModel)],
+      ~aggregates=[
+        module(CatalogProductAggregate),
+        module(CustomerAggregate),
+        module(OrderAggregate),
+      ],
+      ~readModels=[
+        module(AvailableProductsReadModel),
+        module(CustomersReadModel),
+        module(OrdersReadModel),
+      ],
       ~tasks=[module(OrderNotificationsTask)],
-      ~pluginStructure=pluginStructure,
+      ~pluginStructure,
       ~uiFragments=?uiBundleUrl->Option.map(url =>
         Platform.Plugin.makeAutoUIManifest(
           ~remoteEntryUrl=url,

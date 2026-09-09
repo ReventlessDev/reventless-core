@@ -23,7 +23,6 @@
 //                 "kind"?: "classic",          // absent → DCB
 //                 "partitionTag"?: <derivedPartitionTag> } ] }  // DCB only
 
-
 // Structured JSON logging shared by every deployed entry point (HandlerFactoryHelpers).
 type logExtra = {comp?: string}
 @module("./HandlerFactoryHelpers.mjs") @scope("log")
@@ -78,7 +77,10 @@ let relayLog = async (l: relayLogConfig): unit => {
         ~sendBatch,
       )
     }
-    logDebug(`relayed ${count->Int.toString} event(s) for ${l.logName}`, {comp: "PgChangeFeedRelay"})
+    logDebug(
+      `relayed ${count->Int.toString} event(s) for ${l.logName}`,
+      {comp: "PgChangeFeedRelay"},
+    )
   } catch {
   | exn =>
     let msg = exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown error")

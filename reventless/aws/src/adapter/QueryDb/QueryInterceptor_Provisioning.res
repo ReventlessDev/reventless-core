@@ -28,7 +28,6 @@
     compose: that path bundles registered runtime extensions into the archive and
     writes `RUNTIME_EXTENSIONS`, so an extension registering its interceptor in
     `onColdStart` reaches this runtime without a second registration. */
-
 open PulumiAws
 
 // Memoised on the api handle itself — see the module docstring for why identity
@@ -46,9 +45,7 @@ let nameFor = () => {
   let owner = ReventlessCore.ResourceAttribution.current.contents.plugin->Option.getOr("Platform")
   let used = namesUsed->Dict.get(owner)->Option.getOr(0)
   namesUsed->Dict.set(owner, used + 1)
-  used == 0
-    ? owner ++ "QueryInterceptor"
-    : owner ++ "QueryInterceptor" ++ (used + 1)->Int.toString
+  used == 0 ? owner ++ "QueryInterceptor" : owner ++ "QueryInterceptor" ++ (used + 1)->Int.toString
 }
 
 let buildInterceptor = (~api: Types.AppSync.api, ~opts) => {

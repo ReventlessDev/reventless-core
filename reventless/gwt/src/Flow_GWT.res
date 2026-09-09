@@ -81,7 +81,6 @@ type flowState = {
 
 type flow = promise<flowState>
 
-
 let emptyState = {
   log: [],
   outcome: Outcome.pass,
@@ -295,8 +294,7 @@ module CommandStep = (
     )
     Array.fromIterator(set->Set.values)->Array.toSorted((a, b) => String.compare(a, b))
   }
-  let tagKeysByEventType =
-    Reventless.DcbScopeInference.infer([scopeShape]).tagKeysByEventType
+  let tagKeysByEventType = Reventless.DcbScopeInference.infer([scopeShape]).tagKeysByEventType
 
   let whenCommand = async (flowP: flow, command: Spec.command) => {
     let s = await flowP
@@ -477,7 +475,10 @@ module AutomationStep = (Spec: Automation_GWT.SliceSpec) => {
     let resolvedIds = events->Array.filterMap(e => e->Spec.resolve)
     let pending = collected->Array.filter(((id, _)) => !(resolvedIds->Array.includes(id)))
     let commands = pending->Array.filterMap(((id, todo)) => Spec.process(id, todo))
-    {...s, lastCommands: commands->Array.map(((_id, cmd)) => cmd->Message.encode(Spec.commandSchema))}
+    {
+      ...s,
+      lastCommands: commands->Array.map(((_id, cmd)) => cmd->Message.encode(Spec.commandSchema)),
+    }
   }
 
   let thenIssuesCommands = async (flowP: flow, expected: array<Spec.command>) => {
@@ -579,10 +580,9 @@ module ExtensionPointStep = (M: EPMapping.Mapping) => {
   // the first arg (e.g. catalog Product → ProductBecameAvailable uses it as
   // `productId`). DCB upstreams don't set `lastAggregateId` and fall back to
   // the synthetic `gwt-id` so existing DCB Flow tests keep their behaviour.
-  let runMapping = async (
-    sourceId: string,
-    events: array<M.Delegate.event>,
-  ): array<M.ExtensionPoint.event> =>
+  let runMapping = async (sourceId: string, events: array<M.Delegate.event>): array<
+    M.ExtensionPoint.event,
+  > =>
     switch M.mapOutgoingEvent {
     | None => []
     | Some(f) =>
@@ -590,31 +590,29 @@ module ExtensionPointStep = (M: EPMapping.Mapping) => {
         events
         ->Array.map(ev => f(sourceId, ev, StubRuntime.meta, StubRuntime.queryEngine))
         ->Array.flat
-      let nested =
-        await actions
-        ->Array.map(async action =>
-          switch action {
-          | EPMapping.PublishEvent(_id, e) => [e]
-          | EPMapping.PublishEventAsync(p) =>
-            let (_id, e) = await p
-            [e]
-          | EPMapping.HandleDirective(_, _) => []
-          }
-        )
-        ->Promise.all
+      let nested = await actions
+      ->Array.map(async action =>
+        switch action {
+        | EPMapping.PublishEvent(_id, e) => [e]
+        | EPMapping.PublishEventAsync(p) =>
+          let (_id, e) = await p
+          [e]
+        | EPMapping.HandleDirective(_, _) => []
+        }
+      )
+      ->Promise.all
       nested->Array.flat
     }
 
   let whenPublishedThrough = async (flowP: flow) => {
     let s = await flowP
-    let delegateEvents =
-      s.lastEvents->Array.filterMap(json => {
-        let data = switch json {
-        | Object(d) => d
-        | _ => Dict.make()
-        }
-        delegateDecoder.decode(~eventType=json->Reventless.Message.variantNameOfJson, ~data)
-      })
+    let delegateEvents = s.lastEvents->Array.filterMap(json => {
+      let data = switch json {
+      | Object(d) => d
+      | _ => Dict.make()
+      }
+      delegateDecoder.decode(~eventType=json->Reventless.Message.variantNameOfJson, ~data)
+    })
     let sourceId = s.lastAggregateId->Option.getOr("gwt-id")
     let publicEvents = await runMapping(sourceId, delegateEvents)
     {
@@ -647,14 +645,13 @@ module ExtensionStep = (M: ExtMapping.Mapping) => {
 
   let whenExtensionReacts = async (flowP: flow) => {
     let s = await flowP
-    let epEvents =
-      s.lastPublic->Array.filterMap(json => {
-        let data = switch json {
-        | Object(d) => d
-        | _ => Dict.make()
-        }
-        epDecoder.decode(~eventType=json->Reventless.Message.variantNameOfJson, ~data)
-      })
+    let epEvents = s.lastPublic->Array.filterMap(json => {
+      let data = switch json {
+      | Object(d) => d
+      | _ => Dict.make()
+      }
+      epDecoder.decode(~eventType=json->Reventless.Message.variantNameOfJson, ~data)
+    })
     let actions =
       epEvents
       ->Array.map(ev =>
@@ -667,27 +664,26 @@ module ExtensionStep = (M: ExtMapping.Mapping) => {
         )
       )
       ->Array.flat
-    let nested =
-      await actions
-      ->Array.map(async action =>
-        switch action {
-        | ExtMapping.PublishStateChangeSliceCommand(cmd) => [encCmd(cmd)]
-        | ExtMapping.PublishStateChangeSliceCommandAsync(p) =>
-          let cmd = await p
-          [encCmd(cmd)]
-        | ExtMapping.PublishStateChangeSliceCommandsAsync(p) => (await p)->Array.map(encCmd)
-        | ExtMapping.PublishAggregateCommand(_id, cmd) => [encCmd(cmd)]
-        | ExtMapping.PublishAggregateCommandAsync(p) =>
-          let (_id, cmd) = await p
-          [encCmd(cmd)]
-        | ExtMapping.PublishAggregateCommandsAsync(p) =>
-          (await p)->Array.map(((_id, cmd)) => encCmd(cmd))
-        | ExtMapping.PublishExtensionPointCommand(_, _)
-        | ExtMapping.ForwardCommand(_)
-        | ExtMapping.HandleDirective(_, _) => []
-        }
-      )
-      ->Promise.all
+    let nested = await actions
+    ->Array.map(async action =>
+      switch action {
+      | ExtMapping.PublishStateChangeSliceCommand(cmd) => [encCmd(cmd)]
+      | ExtMapping.PublishStateChangeSliceCommandAsync(p) =>
+        let cmd = await p
+        [encCmd(cmd)]
+      | ExtMapping.PublishStateChangeSliceCommandsAsync(p) => (await p)->Array.map(encCmd)
+      | ExtMapping.PublishAggregateCommand(_id, cmd) => [encCmd(cmd)]
+      | ExtMapping.PublishAggregateCommandAsync(p) =>
+        let (_id, cmd) = await p
+        [encCmd(cmd)]
+      | ExtMapping.PublishAggregateCommandsAsync(p) =>
+        (await p)->Array.map(((_id, cmd)) => encCmd(cmd))
+      | ExtMapping.PublishExtensionPointCommand(_, _)
+      | ExtMapping.ForwardCommand(_)
+      | ExtMapping.HandleDirective(_, _) => []
+      }
+    )
+    ->Promise.all
     {...s, lastCommands: nested->Array.flat}
   }
 

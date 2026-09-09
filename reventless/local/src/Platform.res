@@ -45,7 +45,9 @@ let decodePluginEventEnvelope = (eventJson: JSON.t): option<ReventlessCore.Plugi
   switch eventJson
   ->JSON.Decode.object
   ->Option.flatMap(d => d->Dict.get("event"))
-  ->Option.map(payload => payload->Reventless.Util_Sury.fromJson(ReventlessCore.PluginSpec.eventSchema)) {
+  ->Option.map(payload =>
+    payload->Reventless.Util_Sury.fromJson(ReventlessCore.PluginSpec.eventSchema)
+  ) {
   | result => result
   | exception _ => None
   }
@@ -54,9 +56,9 @@ let decodePluginEventEnvelope = (eventJson: JSON.t): option<ReventlessCore.Plugi
 // bus envelope — same {id, meta, event} shape as the aggregate topic above
 // (DcbEventLog_Operations publishes via Message.composeEventJson'). Top-level,
 // not inside the functor, so the decode is unit-testable.
-let decodeUiFragmentRegistryEventEnvelope = (
-  eventJson: JSON.t,
-): option<ReventlessCore.UiFragmentRegistry.event> =>
+let decodeUiFragmentRegistryEventEnvelope = (eventJson: JSON.t): option<
+  ReventlessCore.UiFragmentRegistry.event,
+> =>
   switch eventJson
   ->JSON.Decode.object
   ->Option.flatMap(d => d->Dict.get("event"))
@@ -128,6 +130,7 @@ module MakeWithConfig = (
     }
     let db = SqliteDriver.openDb(~path)
     BackendState.setSqlite(~db, ~path)
+
     // The object store persists beside the database under this backend (see
     // LocalObjectStore), so a reset that wipes the events wipes the bytes they
     // reference too — otherwise the session starts with orphaned uploads and
@@ -304,7 +307,13 @@ module MakeWithConfig = (
       EventHistoryResolvers.register(~server=resolveTargetGraphQL(), params),
     // MCP tools and resources — registered during plugin construction.
     // See the large lambda below; it references Bus for QueryDb lookups.
-    mcpSchemaRegistrationHook: ({pluginName, mutationEntries, queryEntries, eventLogEntries, subscriptionFields}) => {
+    mcpSchemaRegistrationHook: ({
+      pluginName,
+      mutationEntries,
+      queryEntries,
+      eventLogEntries,
+      subscriptionFields,
+    }) => {
       let mcp = resolveTargetMCP()
       mcp.registerToolsFromEntries(~pluginName, ~mutationEntries, ~commandHandler=async (
         toolName,
@@ -421,7 +430,9 @@ module MakeWithConfig = (
             let filtered = switch after {
             | Some(afterPos) =>
               let idx =
-                events->Array.findIndex(e => getPosition(e)->Option.mapOr(false, p => positionGt(p, afterPos)))
+                events->Array.findIndex(e =>
+                  getPosition(e)->Option.mapOr(false, p => positionGt(p, afterPos))
+                )
               if idx >= 0 {
                 events->Array.slice(~start=idx, ~end=events->Array.length)
               } else {
@@ -526,7 +537,7 @@ module MakeWithConfig = (
         )
 
         // Register subscription SDL fields and resolvers with the GraphQL server
-        let makeEntry = topic => ({fieldName: topic, topic}: subscriptionEntry)
+        let makeEntry = (topic): subscriptionEntry => {fieldName: topic, topic}
         let sourceAEntries = eventLogEntries->Array.map(e => makeEntry(sourceATopic(e.displayName)))
         registerAll(~server, ~sdlFields=subscriptionFields, ~sourceAEntries, ~sourceBEntries=[])
       }
@@ -618,8 +629,7 @@ module MakeWithConfig = (
       module Mappings: ReventlessInfra.ExtensionPoint.Mappings with module Spec := Spec = {
         module type Mapping = ReventlessInfra.ExtensionPointMapping.T
           with module ExtensionPoint := Spec
-        let name =
-          Mapping1.Delegate.name ++ "+" ++ Mapping2.Delegate.name
+        let name = Mapping1.Delegate.name ++ "+" ++ Mapping2.Delegate.name
         // First mapping's URL — matches the user-extension merge convention.
         let moduleUrl = Mapping1.moduleUrl
         let mappings: array<module(Mapping)> = [module(CM1), module(CM2)]
@@ -643,11 +653,7 @@ module MakeWithConfig = (
         module type Mapping = ReventlessInfra.ExtensionPointMapping.T
           with module ExtensionPoint := Spec
         let name =
-          Mapping1.Delegate.name ++
-          "+" ++
-          Mapping2.Delegate.name ++
-          "+" ++
-          Mapping3.Delegate.name
+          Mapping1.Delegate.name ++ "+" ++ Mapping2.Delegate.name ++ "+" ++ Mapping3.Delegate.name
         // First mapping's URL — matches the user-extension merge convention.
         let moduleUrl = Mapping1.moduleUrl
         let mappings: array<module(Mapping)> = [module(CM1), module(CM2), module(CM3)]
@@ -668,14 +674,12 @@ module MakeWithConfig = (
     ): ReventlessInfra.Extension.Blueprint => {
       module Spec = Mapping.ExtensionPoint
       module CompiledMapping = ReventlessInfra.ExtensionMapping.Make(Mapping)
-      module type Mapping = ReventlessInfra.ExtensionMapping.T
-        with module ExtensionPoint := Spec
+      module type Mapping = ReventlessInfra.ExtensionMapping.T with module ExtensionPoint := Spec
       let name = Mapping.Delegate.name
       let moduleUrl = Mapping.moduleUrl
       let delegateModuleUrl = Mapping.delegateModuleUrl
       let mappings: array<module(Mapping)> = [module(CompiledMapping)]
     }
-
   }
 
   module Task = {
@@ -690,8 +694,9 @@ module MakeWithConfig = (
     module Make = (
       Spec: Reventless.StateChangeSlice.Spec,
       Behavior: Reventless.StateChangeSlice.Behavior with module Spec := Spec,
-    ): (ReventlessInfra.StateChangeSlice.T with module Spec = Spec) =>
-      StateChangeSlice_Builder.Make(Spec, Behavior)
+    ): (
+      ReventlessInfra.StateChangeSlice.T with module Spec = Spec
+    ) => StateChangeSlice_Builder.Make(Spec, Behavior)
     /** Async variant — in-memory uses the same channel (no FIFO distinction). */
     module MakeAsync = (
       Spec: Reventless.StateChangeSlice.Spec,
@@ -706,8 +711,10 @@ module MakeWithConfig = (
     module Make = (
       Spec: Reventless.StateViewSlice.Spec,
       Projection: Reventless.StateViewSlice.Projection with module Spec := Spec,
-    ): (ReventlessInfra.StateViewSlice.T with module Spec = Spec) =>
-      StateViewSliceMaker.Make(Spec, Projection)
+    ): (ReventlessInfra.StateViewSlice.T with module Spec = Spec) => StateViewSliceMaker.Make(
+      Spec,
+      Projection,
+    )
   }
 
   // Admin UI-fragment registry (docs/plans/done/event-sourced-fragment-registries.md): the
@@ -727,32 +734,38 @@ module MakeWithConfig = (
     module Make = (
       Spec: Reventless.StateViewSlice.Spec,
       Projection: Reventless.StateViewSlice.Projection with module Spec := Spec,
-    ): (ReventlessInfra.StateViewSlice.T with module Spec = Spec) =>
-      StateViewSliceMaker.Make(Spec, Projection)
+    ): (ReventlessInfra.StateViewSlice.T with module Spec = Spec) => StateViewSliceMaker.Make(
+      Spec,
+      Projection,
+    )
   }
 
   module AutomationSlice = {
     module Make = (
       Spec: Reventless.AutomationSlice.Spec,
       Automation: Reventless.AutomationSlice.Automation with module Spec := Spec,
-    ): (ReventlessInfra.AutomationSlice.T with module Spec = Spec) =>
-      AutomationSliceMaker.Make(Spec, Automation)
+    ): (ReventlessInfra.AutomationSlice.T with module Spec = Spec) => AutomationSliceMaker.Make(
+      Spec,
+      Automation,
+    )
   }
 
   module OutboundTranslationSlice = {
     module Make = (
       Spec: Reventless.OutboundTranslationSlice.Spec,
       Translation: Reventless.OutboundTranslationSlice.Translation with module Spec := Spec,
-    ): (ReventlessInfra.OutboundTranslationSlice.T with module Spec = Spec) =>
-      OutboundTranslationSliceMaker.Make(Spec, Translation)
+    ): (
+      ReventlessInfra.OutboundTranslationSlice.T with module Spec = Spec
+    ) => OutboundTranslationSliceMaker.Make(Spec, Translation)
   }
 
   module InboundTranslationSlice = {
     module Make = (
       Spec: Reventless.InboundTranslationSlice.Spec,
       Translation: Reventless.InboundTranslationSlice.Translation with module Spec := Spec,
-    ): (ReventlessInfra.InboundTranslationSlice.T with module Spec = Spec) =>
-      InboundTranslationSliceMaker.Make(Spec, Translation)
+    ): (
+      ReventlessInfra.InboundTranslationSlice.T with module Spec = Spec
+    ) => InboundTranslationSliceMaker.Make(Spec, Translation)
   }
 
   module PluginMaker = Plugin_Builder.Make(
@@ -782,7 +795,8 @@ module MakeWithConfig = (
   // CommandGenerator auto-flow (same path user-plugin aggregates use). Internal-protocol
   // variants (Heartbeat, Connect, Disconnect, ReportIncompatibility) carry `@noApi` and
   // are filtered out before SDL/resolver generation.
-  module LocalPluginAggregate: ReventlessInfra.Aggregate.T with type api = unit = AggregateMaker.Make(
+  module LocalPluginAggregate: ReventlessInfra.Aggregate.T
+    with type api = unit = AggregateMaker.Make(
     ReventlessCore.PluginSpec,
     ReventlessCore.PluginBehavior,
     ReventlessInfra.NoEventMappings.Make(ReventlessCore.PluginSpec),
@@ -812,10 +826,7 @@ module MakeWithConfig = (
     EventCollectorChannel,
     QE,
     LocalClonerRunner,
-    ReventlessCore.PluginRuntime_Builder_Micro.Make(
-      LocalRuntimeEnvironment,
-      EventCollectorChannel,
-    ),
+    ReventlessCore.PluginRuntime_Builder_Micro.Make(LocalRuntimeEnvironment, EventCollectorChannel),
     LocalDcbEventLogStorage.Make(Bus),
     LocalEventTopicPublisher.Make(Bus),
     LocalCommandTopicChannel.Make(Bus),
@@ -930,15 +941,16 @@ module MakeWithConfig = (
             // Inside the apply, not after the forEach: the structure only exists
             // once the Output resolves, so anything reading
             // `pluginStructuresStore` synchronously below reads an empty dict.
-            declaredStoresOf(def)->Array.forEach(qualified =>
-              // Registering the store is what lets an uploaded object be attributed
-              // to the plugin that declared it, the way an S3 key's prefix does —
-              // under the served `uploads/` prefix locally, for the reason
-              // LocalObjectStore.localPrefixFor gives.
-              LocalObjectStore.registerStore(
-                ~qualified,
-                ~prefix=LocalObjectStore.localPrefixFor(~qualified),
-              )
+            declaredStoresOf(def)->Array.forEach(
+              qualified =>
+                // Registering the store is what lets an uploaded object be attributed
+                // to the plugin that declared it, the way an S3 key's prefix does —
+                // under the served `uploads/` prefix locally, for the reason
+                // LocalObjectStore.localPrefixFor gives.
+                LocalObjectStore.registerStore(
+                  ~qualified,
+                  ~prefix=LocalObjectStore.localPrefixFor(~qualified),
+                ),
             )
             // Two plugins declaring one store name is refused by the deployed
             // platform before it provisions anything. Local provisions no stores, so
@@ -950,12 +962,18 @@ module MakeWithConfig = (
             // Checked against every store registered so far rather than this
             // plugin's own, since a collision is by definition between two plugins.
             ReventlessCore.StorePrefixCollision.collisionsFor(
-              ~stores=LocalObjectStore.declaredStoreList()->Array.map(((qualified, prefix)) => {
-                ReventlessCore.StorePrefixCollision.qualified,
-                prefix,
-              }),
-            )->Array.forEach(c =>
-              log.warn(~comp="Platform:plugins", ReventlessCore.StorePrefixCollision.collisionMessage(c))
+              ~stores=LocalObjectStore.declaredStoreList()->Array.map(
+                ((qualified, prefix)) => {
+                  ReventlessCore.StorePrefixCollision.qualified,
+                  prefix,
+                },
+              ),
+            )->Array.forEach(
+              c =>
+                log.warn(
+                  ~comp="Platform:plugins",
+                  ReventlessCore.StorePrefixCollision.collisionMessage(c),
+                ),
             )
           | None => ()
           }
@@ -966,15 +984,17 @@ module MakeWithConfig = (
   // Bus keys for the admin Plugin aggregate (name-keyed). ComponentType.toName maps
   // CommandTopic → "CmdTopic" and EventTopic → "EventTopic".
   let pluginCmdTopicKey = ReventlessCore.PluginSpec.name ++ "Aggr" ++ "CmdTopic" // "PluginAggrCmdTopic"
-  let pluginEventTopicKey =
-    ReventlessCore.PluginSpec.name ++ "Aggr" ++ "EventTopic" // "PluginAggrEventTopic"
+  let pluginEventTopicKey = ReventlessCore.PluginSpec.name ++ "Aggr" ++ "EventTopic" // "PluginAggrEventTopic"
 
   // Dispatch a Plugin aggregate command in-process via the Bus command topic. The
   // body is the {id, meta, command} shape LocalCommandTopicChannel produces; the
   // aggregate id is the plugin NAME. dispatchCommand parks the command until the
   // aggregate's handler is registered (LocalBus pending-queue), so call-before-wire
   // is safe.
-  let dispatchPluginCommand = (~pluginName: string, ~command: ReventlessCore.PluginSpec.command) => {
+  let dispatchPluginCommand = (
+    ~pluginName: string,
+    ~command: ReventlessCore.PluginSpec.command,
+  ) => {
     let cmdJson: Reventless.Message.commandJson = {
       id: pluginName,
       meta: ReventlessCore.Message.generateMeta(~service=ReventlessCore.PluginSpec.name),
@@ -1104,7 +1124,11 @@ module MakeWithConfig = (
               ~manifest=manifestJson(newManifest),
             )
           | Some(UiFragmentDeregistered({pluginId})) =>
-            publishUIFragment(~name=pluginId, ~changeKind="Deregistered", ~manifest=JSON.Encode.null)
+            publishUIFragment(
+              ~name=pluginId,
+              ~changeKind="Deregistered",
+              ~manifest=JSON.Encode.null,
+            )
           | None => ()
           }
         }
@@ -1175,18 +1199,20 @@ module MakeWithConfig = (
               },
             ),
             extensionProtocols: [],
-            apiSchemaFragment: apiSchemaFragment->Option.map(f =>
-              f->ReventlessCore.Plugin_Helpers.offloadPayload(
-                ~schema=Reventless.Plugin.apiSchemaFragmentSchema,
-                ~store="pluginApiFragments",
-              )
+            apiSchemaFragment: apiSchemaFragment->Option.map(
+              f =>
+                f->ReventlessCore.Plugin_Helpers.offloadPayload(
+                  ~schema=Reventless.Plugin.apiSchemaFragmentSchema,
+                  ~store="pluginApiFragments",
+                ),
             ),
             apiTarget: None,
-            structure: pluginStructure->Option.map(s =>
-              s->ReventlessCore.Plugin_Helpers.offloadPayload(
-                ~schema=Reventless.Plugin.pluginStructureSchema,
-                ~store="pluginStructures",
-              )
+            structure: pluginStructure->Option.map(
+              s =>
+                s->ReventlessCore.Plugin_Helpers.offloadPayload(
+                  ~schema=Reventless.Plugin.pluginStructureSchema,
+                  ~store="pluginStructures",
+                ),
             ),
             dcbEventLog: None,
             kind: Domain,
@@ -1227,8 +1253,7 @@ module MakeWithConfig = (
       exts
       ->Dict.valuesToArray
       ->Array.map((ext: ReventlessInfra.Extension.outputs) => {
-        let providerPlugin =
-          ext.extensionPointName->String.split(".")->Array.getUnsafe(0)
+        let providerPlugin = ext.extensionPointName->String.split(".")->Array.getUnsafe(0)
         let wiring: ReventlessCore.Plugin_Helpers.extensionWiring = {
           extensionName: ext.name,
           extensionPointName: ext.extensionPointName,
@@ -1329,9 +1354,10 @@ module MakeWithConfig = (
     // After the register, and it fills the tap port in once the socket is bound:
     // the port is ephemeral by default, so it is not known until `listen` calls
     // back. The entry therefore never names a port that is not listening.
-    LocalEventTap.start(~onBound=tapPort =>
-      LocalPlatformRegistry.publishTapPort(~port=domainPort, ~tapPort)
-    , ())
+    LocalEventTap.start(
+      ~onBound=tapPort => LocalPlatformRegistry.publishTapPort(~port=domainPort, ~tapPort),
+      (),
+    )
     // Fire onPlatformDeployed after all servers are started so late-deployed
     // plugins (e.g. PlatformInspector) have their handler refs populated.
     ReventlessCore.Plugin_Helpers.firePlatformDeployedHook({
@@ -1377,7 +1403,10 @@ module MakeWithConfig = (
   let connectionResponse = (items: array<JSON.t>): JSON.t => {
     let edges =
       items->Array.mapWithIndex((item, i) =>
-        Dict.fromArray([("node", item), ("cursor", Int.toString(i)->JSON.Encode.string)])->JSON.Encode.object
+        Dict.fromArray([
+          ("node", item),
+          ("cursor", Int.toString(i)->JSON.Encode.string),
+        ])->JSON.Encode.object
       )
     let hasItems = edges->Array.length > 0
     Dict.fromArray([
@@ -1412,28 +1441,30 @@ module MakeWithConfig = (
       // `<single>Items(id, …)` — all rows under one partition (composite key).
       switch entry.subIdField {
       | Some(_) =>
-        queryResolvers->Dict.set(
-          entry.singleFieldName ++ "Items",
-          async (_root, args, _ctx): JSON.t =>
-            if !live {
-              connectionResponse([])
-            } else {
-              let id =
-                args
-                ->JSON.Decode.object
-                ->Option.flatMap(d => d->Dict.get("id"))
-                ->Option.flatMap(JSON.Decode.string)
-                ->Option.getOr("")
-              let items = switch Bus.getQueryDb(queryDbName) {
-              | Some(ops) =>
-                await ops.loadStream(id)
-                ->Stream.runCollect
-                ->Effect.catchAll(_ => Effect.succeed([]))
-                ->Effect.runPromise
-              | None => []
-              }
-              connectionResponse(items)
-            },
+        queryResolvers->Dict.set(entry.singleFieldName ++ "Items", async (
+          _root,
+          args,
+          _ctx,
+        ): JSON.t =>
+          if !live {
+            connectionResponse([])
+          } else {
+            let id =
+              args
+              ->JSON.Decode.object
+              ->Option.flatMap(d => d->Dict.get("id"))
+              ->Option.flatMap(JSON.Decode.string)
+              ->Option.getOr("")
+            let items = switch Bus.getQueryDb(queryDbName) {
+            | Some(ops) =>
+              await ops.loadStream(id)
+              ->Stream.runCollect
+              ->Effect.catchAll(_ => Effect.succeed([]))
+              ->Effect.runPromise
+            | None => []
+            }
+            connectionResponse(items)
+          }
         )
       | None => ()
       }
@@ -1450,8 +1481,9 @@ module MakeWithConfig = (
             ~singleFieldName=entry.singleFieldName,
             ~index=ic.index,
           )
-          queryResolvers->Dict.set(fieldName, async (_root, _args, _ctx): JSON.t =>
-            connectionResponse([])
+          queryResolvers->Dict.set(
+            fieldName,
+            async (_root, _args, _ctx): JSON.t => connectionResponse([]),
           )
         })
       | None => ()
@@ -1547,16 +1579,20 @@ module MakeWithConfig = (
     // BEFORE this session appends anything. Catch-up replays only (checkpoint,
     // bound] — this session's own events (Connect dispatches, user commands)
     // are live-delivered and must not be redelivered.
-    let projectionCatchup = BackendState.getSqliteDb()->Option.map(db => (
-      db,
-      ProjectionCheckpoint.maxPosition(db, ProjectionPending.Aggregate),
-      ProjectionCheckpoint.maxPosition(db, ProjectionPending.Dcb),
-    ))
+    let projectionCatchup =
+      BackendState.getSqliteDb()->Option.map(db => (
+        db,
+        ProjectionCheckpoint.maxPosition(db, ProjectionPending.Aggregate),
+        ProjectionCheckpoint.maxPosition(db, ProjectionPending.Dcb),
+      ))
     // Postgres: read models are in-memory (rebuilt on every start), so capture the
     // pre-session head NOW — before plugins build or this session appends — and
     // full-replay (0, head] after the plugins register their projection handlers.
     let pgProjectionCatchup =
-      BackendState.getPostgresPool()->Option.map(pool => (pool, PgProjectionCatchup.captureBounds(pool)))
+      BackendState.getPostgresPool()->Option.map(pool => (
+        pool,
+        PgProjectionCatchup.captureBounds(pool),
+      ))
 
     // Create scheduler and populate platform context refs.
     let scheduler = makeScheduler()
@@ -1610,9 +1646,8 @@ module MakeWithConfig = (
     // receiveRegistry entries are pre-populated (queuing forwarder) so calls
     // are parked and drained once bindReceive fires (async, via Output.apply).
     ReventlessCore.Plugin_Helpers.onPluginBuiltHook.contents = existingBuiltHook
-    let allPluginOutputs = plugins->Array.map(p =>
-      (ReventlessCore.Component.outputs(p): ReventlessInfra.Plugin.outputs)
-    )
+    let allPluginOutputs =
+      plugins->Array.map((p): ReventlessInfra.Plugin.outputs => ReventlessCore.Component.outputs(p))
     firePluginDeployedHooks(~builtInfos=builtInfos.contents, ~pluginOutputs=allPluginOutputs)
 
     // Wire cross-plugin Extension → EP EventTopic subscriptions.
@@ -1625,11 +1660,15 @@ module MakeWithConfig = (
         (outputs.eventCollector, outputs.extensions)
         ->Pulumi.Output.all2
         ->Pulumi.Output.apply(((eventCollector, extensions)) => {
-          extensions->Dict.toArray->Array.forEach(((_, ext: ReventlessInfra.Extension.outputs)) => {
-            let epTopicKey =
-              ext.extensionPointName->String.replace(".", "") ++ "ExtPointEventTopic"
-            Bus.subscribeEventCollectorToTopic(eventCollector.name, epTopicKey)
-          })
+          extensions
+          ->Dict.toArray
+          ->Array.forEach(
+            ((_, ext: ReventlessInfra.Extension.outputs)) => {
+              let epTopicKey =
+                ext.extensionPointName->String.replace(".", "") ++ "ExtPointEventTopic"
+              Bus.subscribeEventCollectorToTopic(eventCollector.name, epTopicKey)
+            },
+          )
         })
     })
     ReventlessCore.Plugin_Helpers.firePlatformDeployedHook({
@@ -1773,7 +1812,9 @@ module MakeWithConfig = (
         switch Bus.getQueryDbScan(pluginQueryDbName) {
         | Some(scanAll) =>
           scanAll()->Array.forEach(json =>
-            switch json->Reventless.Util_Sury.fromJson(ReventlessCore.PluginsReadModelSpec.stateSchema) {
+            switch json->Reventless.Util_Sury.fromJson(
+              ReventlessCore.PluginsReadModelSpec.stateSchema,
+            ) {
             | state => statusByName->Dict.set(state.name, state.status)
             | exception _ => ()
             }
@@ -1799,7 +1840,9 @@ module MakeWithConfig = (
     let adminQueryEntry = ReventlessCore.PluginBaseFragment.queryEntries->Array.getUnsafe(0)
     let singleQueryField = adminQueryEntry.singleFieldName
     let listQueryField = adminQueryEntry.listFieldName
-    let adminMutationEntries = ReventlessCore.Platform_AdminApi.mutationEntries(~cloner=Config.cloner)
+    let adminMutationEntries = ReventlessCore.Platform_AdminApi.mutationEntries(
+      ~cloner=Config.cloner,
+    )
     let adminMutationFieldNames = adminMutationEntries->Array.flatMap(entry => entry.fieldNames)
 
     // Register the admin Plugin aggregate's types/queries/mutations to the platform target.
@@ -1855,7 +1898,9 @@ module MakeWithConfig = (
         switch Bus.getQueryDbScan(pluginQueryDbName) {
         | Some(scanAll) =>
           scanAll()->Array.forEach(json =>
-            switch json->Reventless.Util_Sury.fromJson(ReventlessCore.PluginsReadModelSpec.stateSchema) {
+            switch json->Reventless.Util_Sury.fromJson(
+              ReventlessCore.PluginsReadModelSpec.stateSchema,
+            ) {
             | state =>
               let id = state.name ++ "@" ++ state.version
               dict->Dict.set(id, state.status)
@@ -1897,67 +1942,60 @@ module MakeWithConfig = (
       latestByName->Dict.valuesToArray->Array.map(((_, pair)) => pair)
     }
 
-    queryResolvers->Dict.set(
-      "Platform_ComponentDefinitions",
-      async (_root, _args, _ctx): JSON.t =>
-        connectedLatestStructures()
-        ->Array.map(((pluginId, def)) =>
-          ReventlessCore.Platform_ComponentDefinitionsApi.encodePluginStructureEntry(~pluginId, def)
-        )
-        ->JSON.Encode.array,
+    queryResolvers->Dict.set("Platform_ComponentDefinitions", async (_root, _args, _ctx): JSON.t =>
+      connectedLatestStructures()
+      ->Array.map(((pluginId, def)) =>
+        ReventlessCore.Platform_ComponentDefinitionsApi.encodePluginStructureEntry(~pluginId, def)
+      )
+      ->JSON.Encode.array
     )
 
     // Platform_PluginStructures resolver — the same plugins, encoded unfiltered for
     // developer tooling (Internal components kept, extension points carried).
-    queryResolvers->Dict.set(
-      "Platform_PluginStructures",
-      async (_root, _args, _ctx): JSON.t =>
-        connectedLatestStructures()
-        ->Array.map(((pluginId, def)) =>
-          ReventlessCore.Platform_PluginStructuresApi.encodePluginStructureEntry(~pluginId, def)
-        )
-        ->JSON.Encode.array,
+    queryResolvers->Dict.set("Platform_PluginStructures", async (_root, _args, _ctx): JSON.t =>
+      connectedLatestStructures()
+      ->Array.map(((pluginId, def)) =>
+        ReventlessCore.Platform_PluginStructuresApi.encodePluginStructureEntry(~pluginId, def)
+      )
+      ->JSON.Encode.array
     )
 
     // Platform_UIFragments resolver — reads the UiFragments StateViewSlice
     // QueryDb (populated by the UiFragmentRegistry slice's projection) and
     // encodes via the shared Platform_UIFragmentsApi encoder so AWS and
     // in-memory return the same JSON shape.
-    queryResolvers->Dict.set(
-      "Platform_UIFragments",
-      async (_root, _args, _ctx): JSON.t => {
-        let items = switch Bus.getQueryDbScan(uiFragmentQueryDbName) {
-        | Some(scanAll) => scanAll()
-        | None => []
-        }
-        // Collapse to one entry per plugin name (highest version). The registry is
-        // keyed by bare plugin name now (a no-op collapse), but rows persisted by
-        // the pre-slice registry were keyed name@version — keep the dedup so a
-        // mixed store never surfaces duplicates (mirrors Platform_UIFragments_Lambda.res).
-        let latestByName = Dict.make()
-        items->Array.forEach(item =>
-          switch item->S.parseOrThrow(~to=ReventlessCore.UiFragments.stateSchema) {
-          | state =>
-            let name = ReventlessCore.Plugin.name(state.pluginId)
-            let version = ReventlessCore.Plugin.version(state.pluginId)
-            switch latestByName->Dict.get(name) {
-            | Some((prevVersion, _)) =>
-              if ReventlessCore.Plugin.compareVersions(version, prevVersion) > 0 {
-                latestByName->Dict.set(name, (version, state))
-              }
-            | None => latestByName->Dict.set(name, (version, state))
+    queryResolvers->Dict.set("Platform_UIFragments", async (_root, _args, _ctx): JSON.t => {
+      let items = switch Bus.getQueryDbScan(uiFragmentQueryDbName) {
+      | Some(scanAll) => scanAll()
+      | None => []
+      }
+      // Collapse to one entry per plugin name (highest version). The registry is
+      // keyed by bare plugin name now (a no-op collapse), but rows persisted by
+      // the pre-slice registry were keyed name@version — keep the dedup so a
+      // mixed store never surfaces duplicates (mirrors Platform_UIFragments_Lambda.res).
+      let latestByName = Dict.make()
+      items->Array.forEach(item =>
+        switch item->S.parseOrThrow(~to=ReventlessCore.UiFragments.stateSchema) {
+        | state =>
+          let name = ReventlessCore.Plugin.name(state.pluginId)
+          let version = ReventlessCore.Plugin.version(state.pluginId)
+          switch latestByName->Dict.get(name) {
+          | Some((prevVersion, _)) =>
+            if ReventlessCore.Plugin.compareVersions(version, prevVersion) > 0 {
+              latestByName->Dict.set(name, (version, state))
             }
-          | exception _ => ()
+          | None => latestByName->Dict.set(name, (version, state))
           }
-        )
-        latestByName
-        ->Dict.valuesToArray
-        ->Array.map(((_, state)) =>
-          ReventlessCore.Platform_UIFragmentsApi.encodeUIFragmentEntry(state)
-        )
-        ->JSON.Encode.array
-      },
-    )
+        | exception _ => ()
+        }
+      )
+      latestByName
+      ->Dict.valuesToArray
+      ->Array.map(((_, state)) =>
+        ReventlessCore.Platform_UIFragmentsApi.encodeUIFragmentEntry(state)
+      )
+      ->JSON.Encode.array
+    })
     // Composite-key / index admin query fields. Live loads from the seeded QueryDb stores.
     registerAdminItemsAndIndexResolvers(~queryResolvers, ~live=true)
 
@@ -1982,7 +2020,9 @@ module MakeWithConfig = (
       switch Bus.getQueryDbScan(pluginQueryDbName) {
       | Some(scanAll) =>
         scanAll()->Array.findMap(json =>
-          switch json->Reventless.Util_Sury.fromJson(ReventlessCore.PluginsReadModelSpec.stateSchema) {
+          switch json->Reventless.Util_Sury.fromJson(
+            ReventlessCore.PluginsReadModelSpec.stateSchema,
+          ) {
           | state if state.name == pluginName => Some(state.version)
           | _ => None
           | exception _ => None
@@ -2013,9 +2053,16 @@ module MakeWithConfig = (
       }
       switch version {
       | Some(version) =>
-        log.info(~comp=ReventlessCore.Platform_Admin_Structure.pluginId, `${field}(${pluginName}@${version}): dispatching to aggregate`)
+        log.info(
+          ~comp=ReventlessCore.Platform_Admin_Structure.pluginId,
+          `${field}(${pluginName}@${version}): dispatching to aggregate`,
+        )
         let _ = dispatchPluginCommand(~pluginName, ~command=makeCommand(version))
-      | None => log.warn(~comp=ReventlessCore.Platform_Admin_Structure.pluginId, `${field}(${pluginName}): plugin not found`)
+      | None =>
+        log.warn(
+          ~comp=ReventlessCore.Platform_Admin_Structure.pluginId,
+          `${field}(${pluginName}): plugin not found`,
+        )
       }
       commandAccepted(~msgId, ~entityId=pluginName)
     }
@@ -2024,13 +2071,19 @@ module MakeWithConfig = (
     let retireField = ReventlessCore.Api_Naming.adminField(~name="Plugin_Retire")
     let mutationResolvers = Dict.make()
     mutationResolvers->Dict.set(activateField, async (_root, args, _ctx): JSON.t =>
-      dispatchLifecycle(~field=activateField, args, v => ReventlessCore.PluginSpec.Activate({version: v}))
+      dispatchLifecycle(~field=activateField, args, v => ReventlessCore.PluginSpec.Activate({
+        version: v,
+      }))
     )
     mutationResolvers->Dict.set(deactivateField, async (_root, args, _ctx): JSON.t =>
-      dispatchLifecycle(~field=deactivateField, args, v => ReventlessCore.PluginSpec.Deactivate({version: v}))
+      dispatchLifecycle(~field=deactivateField, args, v => ReventlessCore.PluginSpec.Deactivate({
+        version: v,
+      }))
     )
     mutationResolvers->Dict.set(retireField, async (_root, args, _ctx): JSON.t =>
-      dispatchLifecycle(~field=retireField, args, v => ReventlessCore.PluginSpec.Retire({version: v}))
+      dispatchLifecycle(~field=retireField, args, v => ReventlessCore.PluginSpec.Retire({
+        version: v,
+      }))
     )
     // Remaining admin mutations (e.g., Clone) are no-ops in-memory.
     adminMutationFieldNames->Array.forEach(field =>
@@ -2050,7 +2103,7 @@ module MakeWithConfig = (
           ("pluginId", JSON.Encode.string(ReventlessCore.Plugin.name(pluginId))),
           ("changeKind", JSON.Encode.string(changeKind)),
           ("manifest", manifest),
-        ])
+        ]),
       )
     let addUIFragmentMutation = (fieldName, changeKind) =>
       mutationResolvers->Dict.set(fieldName, async (_root, args, _ctx): JSON.t => {
@@ -2169,6 +2222,7 @@ module MakeWithConfig = (
     // Geocoding client door (D9 half 2) on the domain server — same mirror. A dev
     // stub (no real geocoder locally), so the map picker's search box works offline.
     LocalGeocodeResolvers.register(DomainGraphQL_Server.asInterface)
+
     // In split mode, inject Relay base types (Node interface, PageInfo) into the platform
     // server so SDL fragments compile. The node(id) query is Domain-only — the Platform
     // API is consumed by admin tools and agents, not Relay clients.
@@ -2187,7 +2241,6 @@ module MakeWithConfig = (
       DomainGraphQL_Server.start()
       DomainMCP_Server.start()
     }
-
   }
 
   let deployPlatform = (
@@ -2241,9 +2294,8 @@ module MakeWithConfig = (
     // Platform_UIFragments — empty in the platform-only path (no plugins
     // connected → no UI fragments registered). The SDL declares it as a
     // non-null array so we must register a resolver returning [].
-    queryResolvers->Dict.set(
-      "Platform_UIFragments",
-      async (_root, _args, _ctx): JSON.t => JSON.Encode.array([]),
+    queryResolvers->Dict.set("Platform_UIFragments", async (_root, _args, _ctx): JSON.t =>
+      JSON.Encode.array([])
     )
     // Composite-key / index admin query fields — empty stubs in the platform-only
     // path (no plugins connected → no QueryDb seeded).
@@ -2251,7 +2303,9 @@ module MakeWithConfig = (
     adminGraphQL.registerQueries(~sdlFields=baseParts.queries, ~resolvers=queryResolvers)
 
     let mutationResolvers = Dict.make()
-    let adminMutationEntries = ReventlessCore.Platform_AdminApi.mutationEntries(~cloner=Config.cloner)
+    let adminMutationEntries = ReventlessCore.Platform_AdminApi.mutationEntries(
+      ~cloner=Config.cloner,
+    )
     let adminMutationFieldNames = adminMutationEntries->Array.flatMap(entry => entry.fieldNames)
     adminMutationFieldNames->Array.forEach(field =>
       mutationResolvers->Dict.set(field, async (_root, _args, _ctx): JSON.t =>
@@ -2288,17 +2342,17 @@ module MakeWithConfig = (
       "Deregistered",
     )
     CommandGeneratorResolvers_GraphQL.ensureCommandResultTypes(adminGraphQL)
-    adminGraphQL.registerMutations(~sdlFields=adminMutationSdl(baseParts.mutations), ~resolvers=mutationResolvers)
+    adminGraphQL.registerMutations(
+      ~sdlFields=adminMutationSdl(baseParts.mutations),
+      ~resolvers=mutationResolvers,
+    )
     adminGraphQL.registerSubscriptions(
       ~sdlFields=[
         "  onUIFragmentChange: UIFragmentChangeEvent",
         "  onPluginStatusChange: PluginStatusChangeEvent",
       ],
       ~resolvers=Dict.fromArray([
-        (
-          "onUIFragmentChange",
-          LocalGraphQL_SubscriptionResolvers.makeFieldResolver(dpSubTopic),
-        ),
+        ("onUIFragmentChange", LocalGraphQL_SubscriptionResolvers.makeFieldResolver(dpSubTopic)),
         (
           "onPluginStatusChange",
           LocalGraphQL_SubscriptionResolvers.makeFieldResolver("onPluginStatusChange"),
@@ -2317,11 +2371,22 @@ module MakeWithConfig = (
     // server's `asInterface.start` accepts but ignores `~contextFactory`
     // because it always wires its own internal auth context.
     adminGraphQL.start(
-      ~port=if Config.splitApi { 4001 } else { 4000 },
+      ~port=if Config.splitApi {
+        4001
+      } else {
+        4000
+      },
       ~contextFactory=Auth_GraphqlContext.buildAuthContext,
       (),
     )
-    adminMCP.start(~port=if Config.splitApi { 3002 } else { 3001 }, ())
+    adminMCP.start(
+      ~port=if Config.splitApi {
+        3002
+      } else {
+        3001
+      },
+      (),
+    )
     if Config.splitApi {
       DomainGraphQL_Server.start()
       DomainMCP_Server.start()
@@ -2346,11 +2411,18 @@ module MakeWithConfig = (
   }
 
   let deployPlugin = (~plugin: module(PluginMaker), ~apiTarget=Domain) => {
-    log.info(~comp="Platform", `deployPlugin target=${switch apiTarget { | Domain => "Domain" | Platform => "Platform" }}`)
+    log.info(
+      ~comp="Platform",
+      `deployPlugin target=${switch apiTarget {
+        | Domain => "Domain"
+        | Platform => "Platform"
+        }}`,
+    )
 
     // Set the active deploy target so resolveTargetGraphQL/MCP() and QueryDb serverRef/relayRef
     // route registrations to the correct server. Mirrors AWS resolveTargetApi() pattern.
     currentDeployTarget.contents = apiTarget
+
     // Update QueryDb server/relay refs on the shared StateViewSliceMaker.QueryDbResolvers instance.
     // Do NOT create a new QueryDbResolvers_GraphQL.Make(Bus) here — that would be a different
     // module instance from the one StateViewSlice_Builder captured, leaving its refs unchanged.
@@ -2417,46 +2489,46 @@ module MakeWithConfig = (
 
       let queryResolvers = Dict.make()
       let adminQueryEntry = ReventlessCore.PluginBaseFragment.queryEntries->Array.getUnsafe(0)
-      queryResolvers->Dict.set(adminQueryEntry.singleFieldName, async (_root, _args, _ctx): JSON.t =>
-        JSON.Encode.null
-      )
+      queryResolvers->Dict.set(adminQueryEntry.singleFieldName, async (
+        _root,
+        _args,
+        _ctx,
+      ): JSON.t => JSON.Encode.null)
       queryResolvers->Dict.set(adminQueryEntry.listFieldName, async (_root, _args, _ctx): JSON.t =>
         connectionResponse([])
       )
       // Platform_UIFragments — single-plugin path. Populated by the
       // UiFragments StateViewSlice when the plugin registers a manifest through
       // the admin EP (connectPlugin below), otherwise scans an empty store.
-      queryResolvers->Dict.set(
-        "Platform_UIFragments",
-        async (_root, _args, _ctx): JSON.t => {
-          let items = switch Bus.getQueryDbScan(ReventlessCore.UiFragments.name) {
-          | Some(scanAll) => scanAll()
-          | None => []
+      queryResolvers->Dict.set("Platform_UIFragments", async (_root, _args, _ctx): JSON.t => {
+        let items = switch Bus.getQueryDbScan(ReventlessCore.UiFragments.name) {
+        | Some(scanAll) => scanAll()
+        | None => []
+        }
+        items
+        ->Array.filterMap(item =>
+          switch item->S.parseOrThrow(~to=ReventlessCore.UiFragments.stateSchema) {
+          | state => Some(ReventlessCore.Platform_UIFragmentsApi.encodeUIFragmentEntry(state))
+          | exception _ => None
           }
-          items
-          ->Array.filterMap(item =>
-            switch item->S.parseOrThrow(~to=ReventlessCore.UiFragments.stateSchema) {
-            | state =>
-              Some(ReventlessCore.Platform_UIFragmentsApi.encodeUIFragmentEntry(state))
-            | exception _ => None
-            }
-          )
-          ->JSON.Encode.array
-        },
-      )
+        )
+        ->JSON.Encode.array
+      })
       // Platform_ComponentDefinitions resolver — SDL is already stitched into baseParts via
       // Platform_AdminApi.baseFragment so we register only the resolver here. Uses the shared
       // encoder so the dynamic-plugin admin server emits the same canonical shape as
       // the main platform server (and as AWS).
-      queryResolvers->Dict.set(
-        "Platform_ComponentDefinitions",
-        async (_root, _args, _ctx): JSON.t =>
-          pluginStructuresStore.contents
-          ->Dict.toArray
-          ->Array.map(((pluginId, def)) =>
-            ReventlessCore.Platform_ComponentDefinitionsApi.encodePluginStructureEntry(~pluginId, def)
-          )
-          ->JSON.Encode.array,
+      queryResolvers->Dict.set("Platform_ComponentDefinitions", async (
+        _root,
+        _args,
+        _ctx,
+      ): JSON.t =>
+        pluginStructuresStore.contents
+        ->Dict.toArray
+        ->Array.map(((pluginId, def)) =>
+          ReventlessCore.Platform_ComponentDefinitionsApi.encodePluginStructureEntry(~pluginId, def)
+        )
+        ->JSON.Encode.array
       )
       // Composite-key / index admin query fields.
       // Live loads from the seeded QueryDb stores (empty when not yet seeded).
@@ -2464,7 +2536,9 @@ module MakeWithConfig = (
       adminGraphQL.registerQueries(~sdlFields=baseParts.queries, ~resolvers=queryResolvers)
 
       let mutationResolvers = Dict.make()
-      let adminMutationEntries = ReventlessCore.Platform_AdminApi.mutationEntries(~cloner=Config.cloner)
+      let adminMutationEntries = ReventlessCore.Platform_AdminApi.mutationEntries(
+        ~cloner=Config.cloner,
+      )
       let adminMutationFieldNames = adminMutationEntries->Array.flatMap(entry => entry.fieldNames)
       adminMutationFieldNames->Array.forEach(field =>
         mutationResolvers->Dict.set(field, async (_root, _args, _ctx): JSON.t =>
@@ -2501,14 +2575,14 @@ module MakeWithConfig = (
         "Deregistered",
       )
       CommandGeneratorResolvers_GraphQL.ensureCommandResultTypes(adminGraphQL)
-      adminGraphQL.registerMutations(~sdlFields=adminMutationSdl(baseParts.mutations), ~resolvers=mutationResolvers)
+      adminGraphQL.registerMutations(
+        ~sdlFields=adminMutationSdl(baseParts.mutations),
+        ~resolvers=mutationResolvers,
+      )
       adminGraphQL.registerSubscriptions(
         ~sdlFields=["  onUIFragmentChange: UIFragmentChangeEvent"],
         ~resolvers=Dict.fromArray([
-          (
-            "onUIFragmentChange",
-            LocalGraphQL_SubscriptionResolvers.makeFieldResolver(dpSubTopic2),
-          ),
+          ("onUIFragmentChange", LocalGraphQL_SubscriptionResolvers.makeFieldResolver(dpSubTopic2)),
         ]),
       )
       adminRegisteredServers.contents->Array.push(adminGraphQL)
@@ -2527,7 +2601,9 @@ module MakeWithConfig = (
     seedPluginStructuresStore(~pluginComponents=[pluginComponent])
 
     // Fire onPluginDeployed hooks so subscribers learn about this plugin.
-    let deployedPluginOutputs = [(ReventlessCore.Component.outputs(pluginComponent): ReventlessInfra.Plugin.outputs)]
+    let deployedPluginOutputs = [
+      (ReventlessCore.Component.outputs(pluginComponent): ReventlessInfra.Plugin.outputs),
+    ]
     firePluginDeployedHooks(~builtInfos=builtInfos.contents, ~pluginOutputs=deployedPluginOutputs)
 
     // Late-deployed plugins may register an onPlatformDeployed hook that missed

@@ -30,10 +30,6 @@ let _ = TestRunner.setup()
 
 module QDbStorage = LocalQueryDbStorage.Make(Bus)
 module QDbResolvers = ReventlessCore.QueryDb_Adapter.NoResolvers(QDbStorage)
-module QueryDbMaker = ReventlessCore.QueryDb_Builder.Make(
-  ItemQueryDbSpec,
-  QDbStorage,
-  QDbResolvers,
-)
+module QueryDbMaker = ReventlessCore.QueryDb_Builder.Make(ItemQueryDbSpec, QDbStorage, QDbResolvers)
 
 let queryDb = QueryDbMaker.make(~api=(), ~apiRole=())

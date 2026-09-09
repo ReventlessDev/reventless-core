@@ -55,7 +55,9 @@ describe("DependencyBundler_Filter.isNodeExcluded", () => {
 
 describe("DependencyBundler_Filter.hasDependency", () => {
   testSync("true when the node has an outgoing edge with that key", () =>
-    expect(F.hasDependency(node(~name="pkg", ~deps=["rescript", "sury"]), "rescript"))->toEqual(true)
+    expect(F.hasDependency(node(~name="pkg", ~deps=["rescript", "sury"]), "rescript"))->toEqual(
+      true,
+    )
   )
   testSync("false when the node lacks that dependency", () =>
     expect(F.hasDependency(node(~name="pkg", ~deps=["sury"]), "rescript"))->toEqual(false)
@@ -93,10 +95,14 @@ describe("DependencyBundler_Filter.isNecessary — exclusion reasons", () => {
     expect(base(node(~name="react", ~peer=true)))->toEqual(Some(F.Peer))
   )
   testSync("a node under an excluded scope is unnecessary (ScopeExcluded)", () =>
-    expect(base(~excludeScopes=["types"], node(~name="@types/node")))->toEqual(Some(F.ScopeExcluded))
+    expect(base(~excludeScopes=["types"], node(~name="@types/node")))->toEqual(
+      Some(F.ScopeExcluded),
+    )
   )
   testSync("an explicitly excluded module is unnecessary (ModuleExcluded)", () =>
-    expect(base(~excludeModules=["aws-sdk"], node(~name="aws-sdk")))->toEqual(Some(F.ModuleExcluded))
+    expect(base(~excludeModules=["aws-sdk"], node(~name="aws-sdk")))->toEqual(
+      Some(F.ModuleExcluded),
+    )
   )
   testSync("includeModules overrides every exclusion — even a dev dep is kept", () =>
     expect(base(~includeModules=["jest"], node(~name="jest", ~dev=true)))->toEqual(None)

@@ -10,13 +10,15 @@ type t = {mutable state: int}
 
 let make = (~seed: int): t => {state: seed}
 
-
 /** mulberry32 — small, fast, and stable across JS engines and Node versions. */
 let float = (r: t): float => {
   r.state = (r.state + 0x6d2b79f5)->Int.bitwiseOr(0)
   let a = r.state
   let b = imul(a->Int.bitwiseXor(a->Int.shiftRightUnsigned(15)), a->Int.bitwiseOr(1))
-  let c = b->Int.bitwiseXor(b + imul(b->Int.bitwiseXor(b->Int.shiftRightUnsigned(7)), b->Int.bitwiseOr(61)))
+  let c =
+    b->Int.bitwiseXor(
+      b + imul(b->Int.bitwiseXor(b->Int.shiftRightUnsigned(7)), b->Int.bitwiseOr(61)),
+    )
   let bits = c->Int.bitwiseXor(c->Int.shiftRightUnsigned(14))
   // `bits` is a signed 32-bit result; fold the sign bit back in to get the
   // unsigned value a `>>> 0` would produce.

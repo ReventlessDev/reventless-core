@@ -8,4 +8,3 @@ type state = {
   name: string,
   archived: bool,
 }
-

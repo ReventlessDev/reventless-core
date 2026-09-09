@@ -27,4 +27,3 @@ Handler for a batch of events sharing the same aggregate ID.
 Used by read model projections and extension points.
 */
 type eventsHandler<'id, 'event> = ('id, array<Message.event'<'id, 'event>>) => promise<unit>
-

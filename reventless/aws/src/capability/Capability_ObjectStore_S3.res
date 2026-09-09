@@ -138,13 +138,7 @@ let make = (
       corsRules: corsRules->Pulumi.Input.make,
       forceDestroy: forceDestroy->Pulumi.Input.make,
       lifecycleRules: lifecycleRules->Pulumi.Input.make,
-      tags: AWS.Tags.make(
-        ~name,
-        ~kind,
-        ~role=Other("ObjectStore"),
-        ~scope,
-        ~plugin?,
-      ),
+      tags: AWS.Tags.make(~name, ~kind, ~role=Other("ObjectStore"), ~scope, ~plugin?),
     },
     ~opts,
   )

@@ -14,7 +14,6 @@ the pair exists and what the grammar refuses.
     })
 ```
 */
-
 /** Transparent `string`; see `Email.t`. */
 type t = string
 
@@ -25,4 +24,5 @@ let fromString = (raw: string): result<t, string> => Media_Ref.check(~what="file
 
 /** The sury schema for a file-reference field.
     Use with `@s.matches(Reventless.FileRef.schema)`. */
-let schema: S.t<t> = S.string->Semantic.refined(~id=Semantic.Id.fileRef, ~check=fromString)
+let schema: S.t<t> =
+  S.string->Semantic.refined(~id=Semantic.Id.fileRef, ~check=fromString)

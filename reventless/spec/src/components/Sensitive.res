@@ -83,10 +83,10 @@ the enclosing one would withhold a whole record because one leaf is private.
 */
 let isFieldSensitive = (schema: S.t<unknown>): bool =>
   isSensitive(schema) ||
-    switch schema->Semantic.unwrapOptional {
-    | Some(inner) => isSensitive(inner)
-    | None => false
-    }
+  switch schema->Semantic.unwrapOptional {
+  | Some(inner) => isSensitive(inner)
+  | None => false
+  }
 
 /**
 The sensitive fields declared on an object schema, in declaration order.

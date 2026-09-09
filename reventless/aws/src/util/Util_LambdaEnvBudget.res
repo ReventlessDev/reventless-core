@@ -59,16 +59,16 @@ let check = (
       `${outputValuedKeys->Array.length->Int.toString} queue-URL vars are resolved, over the ` ++
       `${limit->Int.toString}-byte limit. HANDLER_CONFIG is ${handlerConfigBytes->Int.toString} ` ++
       `bytes of it — move the term that grows with the plugin into a code-archive asset ` ++
-      `(Util_Bundle.buildCodeArchive ~extraStringAssets), as pluginDefinition.json and ` ++
-      `sliceModules.json already are.`,
+      `(Util_Bundle.buildCodeArchive ~extraStringAssets), as pluginDefinition.json and ` ++ `sliceModules.json already are.`,
     )
   } else if estimated > limit {
     log.warn(
       ~comp="Util_LambdaEnvBudget",
       `${lambdaName}: Lambda environment is about ${estimated->Int.toString} bytes ` ++
-      `(${exact->Int.toString} exact + ${outputValuedKeys->Array.length->Int.toString} queue-URL ` ++
-      `vars), at or over the ${limit->Int.toString}-byte limit. The deploy may fail on ` ++
-      `UpdateFunctionConfiguration; move a plugin-sized term out of HANDLER_CONFIG.`,
+      `(${exact->Int.toString} exact + ${outputValuedKeys
+        ->Array.length
+        ->Int.toString} queue-URL ` ++
+      `vars), at or over the ${limit->Int.toString}-byte limit. The deploy may fail on ` ++ `UpdateFunctionConfiguration; move a plugin-sized term out of HANDLER_CONFIG.`,
     )
   }
 }

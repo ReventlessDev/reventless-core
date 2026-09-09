@@ -16,9 +16,10 @@ let make: ReventlessCore.EventLog_Adapter.storageMaker = (~name, ~owner as _, ~o
   // `event_log.log_name`. Register it so `makePlatform` can wire the change-feed
   // relay; the collector queue is attached later in forPluginEventCollector,
   // keyed by the aggregate name (the `~eventTopics` dict key).
-  let aggregateName = name->String.endsWith("EventLog")
-    ? name->String.slice(~start=0, ~end=name->String.length - 8)
-    : name
+  let aggregateName =
+    name->String.endsWith("EventLog")
+      ? name->String.slice(~start=0, ~end=name->String.length - 8)
+      : name
   EventLogBackend.registerRelayLog(~logName=name, ~aggregateName)
 
   let operations = switch EventLogBackend.get() {
@@ -28,7 +29,9 @@ let make: ReventlessCore.EventLog_Adapter.storageMaker = (~name, ~owner as _, ~o
     )
   | None =>
     // Selectable only routes here when a selection is set; guard defensively.
-    JsError.throwWithMessage("EventLogStorage_Postgres.make called without an EventLogBackend selection")
+    JsError.throwWithMessage(
+      "EventLogStorage_Postgres.make called without an EventLogBackend selection",
+    )
   }
   {
     ReventlessCore.EventLog_Adapter.resources: [],

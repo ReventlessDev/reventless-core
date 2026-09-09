@@ -58,7 +58,6 @@ external scanByTableName: (
   int,
 ) => promise<array<JSON.t>> = "scanByTableName"
 
-
 let exnMessage = (exn: exn): string =>
   exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown error")
 
@@ -124,7 +123,11 @@ type queueUrlNames = {
 let strOf = (obj: dict<JSON.t>, key: string): option<string> =>
   obj->Dict.get(key)->Option.flatMap(JSON.Decode.string)
 let strArrOf = (obj: dict<JSON.t>, key: string): array<string> =>
-  obj->Dict.get(key)->Option.flatMap(JSON.Decode.array)->Option.getOr([])->Array.filterMap(JSON.Decode.string)
+  obj
+  ->Dict.get(key)
+  ->Option.flatMap(JSON.Decode.array)
+  ->Option.getOr([])
+  ->Array.filterMap(JSON.Decode.string)
 let strDictOf = (obj: dict<JSON.t>, key: string): dict<string> =>
   obj
   ->Dict.get(key)
@@ -221,7 +224,9 @@ let parseHandlerConfig = (rawJson: string): handlerConfig => {
     ->Dict.fromArray
   {
     queueUrl: obj->strOf("queueUrl")->Option.getOr(""),
-    pluginExtensionPointCmdTopicUrl: obj->strOf("pluginExtensionPointCmdTopicUrl")->Option.getOr(""),
+    pluginExtensionPointCmdTopicUrl: obj
+    ->strOf("pluginExtensionPointCmdTopicUrl")
+    ->Option.getOr(""),
     eventTopicArn: obj->strOf("eventTopicArn")->Option.getOr(""),
     pluginReadModelTableName: obj->strOf("pluginReadModelTableName")->Option.getOr(""),
     appSyncApiId: obj->strOf("appSyncApiId")->Option.getOr(""),
@@ -279,11 +284,13 @@ let projectPluginRow = (row: JSON.t): option<pluginProjection> =>
           ->Option.flatMap(eo =>
             eo
             ->strOf("extensionPointName")
-            ->Option.map((extensionPointName): Reventless.Plugin.extensionDefinition => {
-              name: eo->strOf("name")->Option.getOr(""),
-              extensionPointName,
-              dcbSources: eo->strArrOf("dcbSources"),
-            })
+            ->Option.map(
+              (extensionPointName): Reventless.Plugin.extensionDefinition => {
+                name: eo->strOf("name")->Option.getOr(""),
+                extensionPointName,
+                dcbSources: eo->strArrOf("dcbSources"),
+              },
+            )
           )
         )
       let extensionPoints =
@@ -440,7 +447,8 @@ let makeManageSubscriptions = (tableName: string): option<
               for j in 0 to peers->Array.length - 1 {
                 let peer = peers->Array.getUnsafe(j)
                 switch peer.extensions->Array.find(e => e.extensionPointName == ep.name) {
-                | Some(_) => await op(peer.eventCollector, ep.eventTopic, `${ep.name} -> ${peer.id}`)
+                | Some(_) =>
+                  await op(peer.eventCollector, ep.eventTopic, `${ep.name} -> ${peer.id}`)
                 | None => ()
                 }
               }
@@ -495,10 +503,9 @@ let makeManageSubscriptions = (tableName: string): option<
 
 // The definition-typed view the admin EP functor expects
 // (PluginExtensionPoint_Plugin.Make's `manageSubscriptions` hook).
-let manageForDefinition = (
-  manage: option<(pluginProjection, action) => promise<unit>>,
-): option<(Reventless.Plugin.pluginDefinition, action) => promise<unit>> =>
-  manage->Option.map(m => (d, a) => m(projectionOfDefinition(d), a))
+let manageForDefinition = (manage: option<(pluginProjection, action) => promise<unit>>): option<
+  (Reventless.Plugin.pluginDefinition, action) => promise<unit>,
+> => manage->Option.map(m => (d, a) => m(projectionOfDefinition(d), a))
 
 // Cold-start reconciliation — scan the Plugin RM for every Connected plugin and
 // rerun manageSubscriptions(p, #connect) for each. Idempotent at the SNS level;
@@ -546,7 +553,7 @@ let runtimeOps: ReventlessCore.PluginRuntimeOperations.operations = {
   messagePublish: {sendMessageToChannel: Util_PluginMessage_Runtime.sendMessage},
 }
 
-let invalidNameChars = %re("/[^.\-_a-zA-Z0-9]/g")
+let invalidNameChars = /[^.\-_a-zA-Z0-9]/g
 let resourceNaming: ReventlessInfra.ResourceNaming.operations = {
   validateName: n => n->String.replaceRegExp(invalidNameChars, "_"),
   urnName: arn =>
@@ -610,7 +617,9 @@ let makePublishJsons = (queueUrl: string): ReventlessCore.CommandTopic.publishJs
 
 // aggregateName → publishJsons, resolving each queue URL via the env-var name
 // carried in HANDLER_CONFIG.publishToAggregates.
-let buildPublishToAggregates = (map: dict<string>): dict<ReventlessCore.CommandTopic.publishJsons> =>
+let buildPublishToAggregates = (map: dict<string>): dict<
+  ReventlessCore.CommandTopic.publishJsons,
+> =>
   map
   ->Dict.toArray
   ->Array.map(((aggName, envVarName)) => (

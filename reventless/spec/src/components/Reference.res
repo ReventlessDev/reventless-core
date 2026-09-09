@@ -99,10 +99,7 @@ Only one record deep, matching [`DcbTag.nestedRecordProperties`], which is the
 walk shared with the tag extraction so a marker is found in the same places by
 both.
 */
-let collectFieldTargets = (
-  fieldName: string,
-  schema: S.t<unknown>,
-): array<(string, target)> =>
+let collectFieldTargets = (fieldName: string, schema: S.t<unknown>): array<(string, target)> =>
   switch getFieldTarget(schema) {
   | Some(target) => [(fieldName, target)]
   | None =>
@@ -115,10 +112,7 @@ let collectFieldTargets = (
       ->Array.filterMap(((propName, propSchema)) =>
         propName === "TAG"
           ? None
-          : getFieldTarget(propSchema)->Option.map(target => (
-              `${prefix}.${propName}`,
-              target,
-            ))
+          : getFieldTarget(propSchema)->Option.map(target => (`${prefix}.${propName}`, target))
       )
     }
   }

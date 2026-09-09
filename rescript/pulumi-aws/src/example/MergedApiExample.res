@@ -8,9 +8,7 @@
 let mergedExecRole = IAM.Role.make(
   ~name="example-merged-exec-role",
   ~args={
-    assumeRolePolicy: Pulumi.Input.make(
-      `{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"appsync.amazonaws.com"},"Action":"sts:AssumeRole"}]}`,
-    ),
+    assumeRolePolicy: Pulumi.Input.make(`{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"appsync.amazonaws.com"},"Action":"sts:AssumeRole"}]}`),
   },
 )
 

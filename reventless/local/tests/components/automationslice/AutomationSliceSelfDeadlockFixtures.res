@@ -156,8 +156,7 @@ module FromDcb = AutomationSlice.Mapping.Make(
 )
 
 module AutoShipAutomation: AutomationSlice.Automation with module Spec := AutoShipSpec = {
-  let process = (id, _item: AutoShipSpec.todoItem) =>
-    Some((id, AutoShipSpec.Ship({orderId: id})))
+  let process = (id, _item: AutoShipSpec.todoItem) => Some((id, AutoShipSpec.Ship({orderId: id})))
   let onExhausted = (_id, _item: AutoShipSpec.todoItem) => None
   let moduleUrl: string = %raw(`import.meta.url`)
   module M = AutomationSlice.Mappings.Make(AutoShipSpec)
@@ -189,42 +188,40 @@ let dcbEventLog = DcbLogMaker.make(
 // ─────────────────────────────────────────────────────────────
 
 let publishJsons: ReventlessInfra.CommandTopic.publishJsons = async cmdJsons => {
-  let _ =
-    await cmdJsons
-    ->Array.map(async cmdJson => {
-      let typeName = switch cmdJson.commandJson {
-      | JSON.Object(dict) =>
-        dict
-        ->Dict.get("TAG")
-        ->Option.flatMap(j =>
-          switch j {
-          | JSON.String(s) => Some(s)
-          | _ => None
-          }
-        )
-        ->Option.getOr("")
-      | _ => ""
-      }
-      let fullBody = JSON.Encode.object(
-        Dict.fromArray([
-          ("id", JSON.Encode.string(cmdJson.id)),
-          ("meta", cmdJson.meta->Reventless.Util_Sury.toJson(Reventless.Message.metaSchema)),
-          ("command", cmdJson.commandJson),
-        ]),
+  let _ = await cmdJsons
+  ->Array.map(async cmdJson => {
+    let typeName = switch cmdJson.commandJson {
+    | JSON.Object(dict) =>
+      dict
+      ->Dict.get("TAG")
+      ->Option.flatMap(j =>
+        switch j {
+        | JSON.String(s) => Some(s)
+        | _ => None
+        }
       )
-      let handlers = ReventlessCore.CommandTopic.getHandlers(typeName)
-      let _ =
-        await handlers
-        ->Array.map(async entry => {
-          let item: ReventlessInfra.CommandTopic.topicItem<JSON.t> = {
-            reference: cmdJson.id,
-            command: fullBody,
-          }
-          let _ = await entry.handler(Stream.fromIterable([item]))->Effect.runPromise
-        })
-        ->Promise.all
+      ->Option.getOr("")
+    | _ => ""
+    }
+    let fullBody = JSON.Encode.object(
+      Dict.fromArray([
+        ("id", JSON.Encode.string(cmdJson.id)),
+        ("meta", cmdJson.meta->Reventless.Util_Sury.toJson(Reventless.Message.metaSchema)),
+        ("command", cmdJson.commandJson),
+      ]),
+    )
+    let handlers = ReventlessCore.CommandTopic.getHandlers(typeName)
+    let _ = await handlers
+    ->Array.map(async entry => {
+      let item: ReventlessInfra.CommandTopic.topicItem<JSON.t> = {
+        reference: cmdJson.id,
+        command: fullBody,
+      }
+      let _ = await entry.handler(Stream.fromIterable([item]))->Effect.runPromise
     })
     ->Promise.all
+  })
+  ->Promise.all
 }
 
 let publishJsonsOutput = publishJsons->Pulumi.Output.make
@@ -239,7 +236,9 @@ let _placeSlice = PlaceMaker.make(~dcbEventLog, ~publishJsons=publishJsonsOutput
 module ShipMaker = StateChangeSlice_Builder.Make(ShipSpec, ShipBehavior)
 let _shipSlice = ShipMaker.make(~dcbEventLog, ~publishJsons=publishJsonsOutput)
 
-let dcbTopicOutputs: ReventlessInfra.EventTopic.outputs = (dcbEventLog->ReventlessInfra.Component.outputs).eventTopic
+let dcbTopicOutputs: ReventlessInfra.EventTopic.outputs = (
+  dcbEventLog->ReventlessInfra.Component.outputs
+).eventTopic
 let allEventTopics: ReventlessInfra.EventTopic.allOutputs = Dict.fromArray([
   (DcbSource.name, dcbTopicOutputs),
 ])
@@ -266,8 +265,9 @@ let autoShipSlice = AutoShip.make(
 let placeCmdJson = (orderId: string): Reventless.Message.commandJson => {
   id: orderId,
   meta: testMeta,
-  commandJson: PlaceSpec.Place({orderId: orderId})
-    ->Reventless.Util_Sury.toJson(PlaceSpec.commandSchema),
+  commandJson: PlaceSpec.Place({orderId: orderId})->Reventless.Util_Sury.toJson(
+    PlaceSpec.commandSchema,
+  ),
 }
 
 // Promise-based timeout used to fail fast if the chain self-deadlocks.

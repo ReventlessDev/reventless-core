@@ -59,4 +59,3 @@ type config = {
   buckets?: array<bucketSpec>,
   sideEffects?: sideEffects,
 }
-

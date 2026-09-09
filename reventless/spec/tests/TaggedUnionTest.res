@@ -52,9 +52,7 @@ describe("TaggedUnion.armsOf", () => {
   })
 
   testSync("sees through the option wrapper's flattened anyOf", () => {
-    expect(tags(S.option(geolocationSchema)))->toEqual(
-      Some(["Pending", "Located", "Unresolvable"]),
-    )
+    expect(tags(S.option(geolocationSchema)))->toEqual(Some(["Pending", "Located", "Unresolvable"]))
   })
 
   // An enum is a different type with a different emission — not a union of
@@ -85,9 +83,9 @@ describe("TaggedUnion.stampInto", () => {
 
   testSync("writes the member type beside the TAG", () => {
     let json = JSON.parseOrThrow(`{"geolocation":{"TAG":"Located","lat":1,"lng":2}}`)
-    expect(stamped(~schema=stateSchema, json))->toBe(
-      `{"geolocation":{"TAG":"Located","lat":1,"lng":2,"__typename":"GeolocationLocated"}}`,
-    )
+    expect(
+      stamped(~schema=stateSchema, json),
+    )->toBe(`{"geolocation":{"TAG":"Located","lat":1,"lng":2,"__typename":"GeolocationLocated"}}`)
   })
 
   // Releasable ahead of any adopter: a row with no union field comes out of the

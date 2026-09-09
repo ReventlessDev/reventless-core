@@ -28,7 +28,7 @@ let evolve = (state, event) => {
 
 let toOp = command =>
   switch command {
-  | AttachProductImage({productId, productImage, altText: ?altText}) => (
+  | AttachProductImage({productId, productImage, ?altText}) => (
       productId,
       Attachments.Attach({ref: productImage, altText}),
     )
@@ -49,7 +49,7 @@ let toOp = command =>
 let toEvent = (productId, fact) =>
   switch fact {
   | Attachments.Attached({ref, altText}) =>
-    ProductImageAttached({productId, productImage: ref, altText: ?altText})
+    ProductImageAttached({productId, productImage: ref, ?altText})
   | Attachments.Removed({ref}) => ProductImageRemoved({productId, productImage: ref})
   | Attachments.PrimarySet({ref}) => ProductPrimaryImageSet({productId, productImage: ref})
   | Attachments.AltTextSet({ref, altText}) =>

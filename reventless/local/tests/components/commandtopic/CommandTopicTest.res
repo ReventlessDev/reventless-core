@@ -11,14 +11,17 @@ describe("CommandTopic (in-memory)", () => {
 
   testPromise("publishJsons succeeds without throwing", async () => {
     let ops = await cmdTopic->ReventlessCore.Component.operations->TestRunner.resolve
-    let commandJson = ItemSpec.CreateItem({name: "Widget"})->ReventlessCore.Message.encode(ItemSpec.commandSchema)
+    let commandJson =
+      ItemSpec.CreateItem({name: "Widget"})->ReventlessCore.Message.encode(ItemSpec.commandSchema)
     let didThrow = ref(false)
     try {
-      await ops.publishJsons([{
-        Reventless.Message.id: "item-1",
-        meta: testMeta,
-        commandJson,
-      }])
+      await ops.publishJsons([
+        {
+          Reventless.Message.id: "item-1",
+          meta: testMeta,
+          commandJson,
+        },
+      ])
     } catch {
     | _ => didThrow := true
     }
@@ -41,15 +44,21 @@ describe("CommandTopic (in-memory)", () => {
     // Verify the bus receives the command on the expected channel.
     // Channel name = make name ++ ComponentType.toName(CommandTopic) = "TestCommandTopic" ++ "CmdTopic"
     let received: ref<bool> = ref(false)
-    Bus.registerCommandHandler("TestCommandTopicCmdTopic", async (_json, _ctx) => {
-      received := true
-    })
-    let commandJson = ItemSpec.DeleteItem({id: "item-99"})->ReventlessCore.Message.encode(ItemSpec.commandSchema)
-    await ops.publishJsons([{
-      Reventless.Message.id: "item-99",
-      meta: testMeta,
-      commandJson,
-    }])
+    Bus.registerCommandHandler(
+      "TestCommandTopicCmdTopic",
+      async (_json, _ctx) => {
+        received := true
+      },
+    )
+    let commandJson =
+      ItemSpec.DeleteItem({id: "item-99"})->ReventlessCore.Message.encode(ItemSpec.commandSchema)
+    await ops.publishJsons([
+      {
+        Reventless.Message.id: "item-99",
+        meta: testMeta,
+        commandJson,
+      },
+    ])
     expect(received.contents)->toBe(true)
   })
 })

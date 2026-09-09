@@ -59,23 +59,21 @@ let truncate = (s: string): string => {
     s
   } else {
     `${s->String.slice(~start=0, ~end=maxValueChars)}…(+${(len - maxValueChars)
-      ->Int.toString} chars)`
+        ->Int.toString} chars)`
   }
 }
 
 // ─── Commands ────────────────────────────────────────────────────────────────
 
 // "Add"  (bold)
-let cmdName = (msg: Message.commandJson): string =>
-  msg.commandJson->Message.variantNameOfJson->bold
+let cmdName = (msg: Message.commandJson): string => msg.commandJson->Message.variantNameOfJson->bold
 
 // "[Add,Remove]"
 let cmdNames = (msgs: array<Message.commandJson>): string =>
   `[${msgs->Array.map(cmdName)->Array.join(",")}]`
 
 // "Add(1)"
-let cmdSummary = (msg: Message.commandJson): string =>
-  `${msg->cmdName}(${msg.id})`
+let cmdSummary = (msg: Message.commandJson): string => `${msg->cmdName}(${msg.id})`
 
 // "[Add(1),Remove(2)]"
 let cmdSummaries = (msgs: array<Message.commandJson>): string =>
@@ -150,8 +148,7 @@ let cmdFulls = (msgs: array<Message.commandJson>): string =>
 // ─── Events (JSON.t event' envelope) ─────────────────────────────────────────
 
 // "Added"  (bold)
-let eventName = (j: JSON.t): string =>
-  j->Message.eventNameOfEvent'Json->bold
+let eventName = (j: JSON.t): string => j->Message.eventNameOfEvent'Json->bold
 
 // "[Added,Removed]"
 let eventNames = (events: array<JSON.t>): string =>
@@ -260,8 +257,7 @@ let commandJsonsToLogMessages: array<Message.commandJson> => array<string> = cmd
     `${idx}/${count}: ${cmdJson->cmdSummary}: ${cmdJson->cmdFull}`
   })
 }
-let event'JsonToLogMessage = (j: JSON.t): string =>
-  `${j->eventSummary}: ${j->eventFull}`
+let event'JsonToLogMessage = (j: JSON.t): string => `${j->eventSummary}: ${j->eventFull}`
 
 // Legacy concise aliases
 let fmtCmd = cmdSummary

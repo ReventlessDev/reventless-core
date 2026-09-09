@@ -10,10 +10,9 @@ module ProductMapping = Mapping.Make(
     let project = ({event, id, _}) =>
       switch event {
       | Added({name, description, price, imageUrl}) =>
-        Set(id, {Products.name: name, description, price, imageUrl})
+        Set(id, {Products.name, description, price, imageUrl})
       | NameUpdated({name}) => Update(id, state => {...state, name})
-      | DescriptionUpdated({description}) =>
-        Update(id, state => {...state, description})
+      | DescriptionUpdated({description}) => Update(id, state => {...state, description})
       | PriceUpdated({price}) => Update(id, state => {...state, price})
       | ImageUpdated({imageUrl}) => Update(id, state => {...state, imageUrl})
       }

@@ -469,12 +469,8 @@ describe("moment", () => {
     "#defaultFormat",
     () => expect(moment("2016-01-01")->Moment.defaultFormat)->toContain("2016-01-01"),
   )
-  testSync("#utc", () =>
-    expect(momentUtc("2018-01-22")->Moment.isValid)->toBe(true)
-  )
-  testSync("#defaultUtc", () =>
-    expect(momentUtc("2018-01-22")->Moment.isValid)->toBe(true)
-  )
+  testSync("#utc", () => expect(momentUtc("2018-01-22")->Moment.isValid)->toBe(true))
+  testSync("#defaultUtc", () => expect(momentUtc("2018-01-22")->Moment.isValid)->toBe(true))
   testSync("#locale", () =>
     expect(
       moment("2018-01-01 00:00:00Z")->Moment.locale("da_DK")->Moment.format("MMMM Do YYYY"),
@@ -491,7 +487,9 @@ describe("moment", () => {
     testSync("invalid", () => expect(moment("9999-99-99")->Moment.toJSON)->toBe(None))
   })
   testSync("#toDate", () => expect(isJsDateValid(moment("2016-01-01")->Moment.toDate))->toBe(true))
-  testSync("#toUnix", () => expect(moment("6 Mar 2017 21:22:23 GMT")->Moment.toUnix)->toBe(1488835343))
+  testSync("#toUnix", () =>
+    expect(moment("6 Mar 2017 21:22:23 GMT")->Moment.toUnix)->toBe(1488835343)
+  )
   describe("#toISOString", () => {
     testSync(
       "default",
@@ -583,7 +581,9 @@ describe("moment duration", () => {
   testSync("get duration", () => expect(duration(2., #days))->toBeTruthy)
   testSync("get duration millis", () => expect(durationMillis(2.0))->toBeTruthy)
   testSync("get duration format", () => expect(durationFormat("P2D")->Duration.toJSON)->toBe("P2D"))
-  testSync("#milliseconds", () => expect(duration(2., #milliseconds)->Duration.milliseconds)->toBe(2))
+  testSync("#milliseconds", () =>
+    expect(duration(2., #milliseconds)->Duration.milliseconds)->toBe(2)
+  )
   testSync("#seconds", () => expect(duration(2., #seconds)->Duration.seconds)->toBe(2))
   testSync("#asSeconds", () => expect(duration(2., #seconds)->Duration.asSeconds)->toBe(2.))
   testSync("#minutes", () => expect(duration(2., #minutes)->Duration.minutes)->toBe(2))

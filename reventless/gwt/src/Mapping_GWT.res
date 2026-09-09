@@ -137,10 +137,7 @@ module type T = {
   // A scenario carries the source history plus the target per-id history
   // through the pipe chain. Pipe-first (`->`) places it as the first arg of
   // every subsequent combinator, so the chain reads top-to-bottom.
-  type scenario = (
-    array<Source.consumedEvent>,
-    array<(string, array<Target.consumedEvent>)>,
-  )
+  type scenario = (array<Source.consumedEvent>, array<(string, array<Target.consumedEvent>)>)
 
   let describe: (string, unit => unit) => unit
   let test: (string, ~timeout: int=?, unit => promise<Outcome.outcome>) => unit
@@ -184,11 +181,7 @@ module Make = (M: Mapping): (T with module Source = M.Source and module Target =
   module Source = M.Source
   module Target = M.Target
 
-  type scenario = (
-    array<Source.consumedEvent>,
-    array<(string, array<Target.consumedEvent>)>,
-  )
-
+  type scenario = (array<Source.consumedEvent>, array<(string, array<Target.consumedEvent>)>)
 
   let describe = JestBind.describe
   let sliceName = `${Source.name}→${Target.name}`
@@ -377,8 +370,7 @@ module Make = (M: Mapping): (T with module Source = M.Source and module Target =
       let ok =
         pairs->Array.length == 1 &&
           switch pairs->Array.get(0) {
-          | Some((actualId, [actualEvent])) =>
-            actualId == id && actualEvent == expectedTargetEvent
+          | Some((actualId, [actualEvent])) => actualId == id && actualEvent == expectedTargetEvent
           | _ => false
           }
       if ok {
@@ -401,10 +393,7 @@ module Make = (M: Mapping): (T with module Source = M.Source and module Target =
     let actualEvents = encDict(actualDict)
     let expectedJson = encSourceError(expectedError)
     switch sourceErrors.contents->Array.get(0) {
-    | None =>
-      Outcome.fail(
-        ErrorMismatch({expected: expectedJson, actual: None, actualEvents}),
-      )
+    | None => Outcome.fail(ErrorMismatch({expected: expectedJson, actual: None, actualEvents}))
     | Some(actual) if actual != expectedError =>
       Outcome.fail(
         ErrorMismatch({
@@ -422,10 +411,7 @@ module Make = (M: Mapping): (T with module Source = M.Source and module Target =
     let actualEvents = encDict(actualDict)
     let expectedJson = encTargetError(expectedError)
     switch targetErrors.contents->Array.get(0) {
-    | None =>
-      Outcome.fail(
-        ErrorMismatch({expected: expectedJson, actual: None, actualEvents}),
-      )
+    | None => Outcome.fail(ErrorMismatch({expected: expectedJson, actual: None, actualEvents}))
     | Some(actual) if actual != expectedError =>
       Outcome.fail(
         ErrorMismatch({
@@ -443,10 +429,7 @@ module Make = (M: Mapping): (T with module Source = M.Source and module Target =
     let actualEvents = encDict(actualDict)
     let expectedErrorJson = encTargetError(expectedError)
     switch targetErrors.contents->Array.get(0) {
-    | None =>
-      Outcome.fail(
-        ErrorMismatch({expected: expectedErrorJson, actual: None, actualEvents}),
-      )
+    | None => Outcome.fail(ErrorMismatch({expected: expectedErrorJson, actual: None, actualEvents}))
     | Some(actual) if actual != expectedError =>
       Outcome.fail(
         ErrorMismatch({

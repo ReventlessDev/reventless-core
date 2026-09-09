@@ -126,5 +126,9 @@ type component = Component.t<t, outputs, operations>
 
 module type T = {
   type component = component
-  let make: (~name: string, ~indexes: array<string>=?, ~opts: Pulumi.ComponentResource.options=?) => component
+  let make: (
+    ~name: string,
+    ~indexes: array<string>=?,
+    ~opts: Pulumi.ComponentResource.options=?,
+  ) => component
 }

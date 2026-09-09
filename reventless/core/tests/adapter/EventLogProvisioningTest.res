@@ -128,54 +128,57 @@ describe("EventLogProvisioning", () => {
     EventLogProvisioning.reset()
   })
 
-  testSync("notify delivers the ambient plugin/platform inside a construct scope, None outside", () => {
-    let seen: array<(option<string>, option<string>)> = []
-    module OwnerCapture: EventLogProvisioning.Backend = {
-      let onProvisioned = (
-        ~logStyle as _,
-        ~name as _,
-        ~owner as _,
-        ~plugin,
-        ~platform,
-        ~resources as _,
-        ~opts as _,
-      ) => seen->Array.push((plugin, platform))
-    }
-    EventLogProvisioning.use(module(OwnerCapture: EventLogProvisioning.Backend))
+  testSync(
+    "notify delivers the ambient plugin/platform inside a construct scope, None outside",
+    () => {
+      let seen: array<(option<string>, option<string>)> = []
+      module OwnerCapture: EventLogProvisioning.Backend = {
+        let onProvisioned = (
+          ~logStyle as _,
+          ~name as _,
+          ~owner as _,
+          ~plugin,
+          ~platform,
+          ~resources as _,
+          ~opts as _,
+        ) => seen->Array.push((plugin, platform))
+      }
+      EventLogProvisioning.use(module(OwnerCapture: EventLogProvisioning.Backend))
 
-    // Outside any plugin construct: both None.
-    EventLogProvisioning.notify(
-      ~logStyle=Classic,
-      ~name="ProductEventLog",
-      ~owner=Some(classicOwner),
-      ~resources=[],
-      ~opts=noOpts,
-    )
+      // Outside any plugin construct: both None.
+      EventLogProvisioning.notify(
+        ~logStyle=Classic,
+        ~name="ProductEventLog",
+        ~owner=Some(classicOwner),
+        ~resources=[],
+        ~opts=noOpts,
+      )
 
-    // Inside a construct scope (what Plugin_Builder.construct establishes): both delivered.
-    let prev = ResourceAttribution.enter(~platform="online-shop", ~plugin="Catalog")
-    EventLogProvisioning.notify(
-      ~logStyle=Dcb,
-      ~name="CatalogDcbEventLog",
-      ~owner=Some(dcbOwner),
-      ~resources=[],
-      ~opts=noOpts,
-    )
-    ResourceAttribution.restore(prev)
+      // Inside a construct scope (what Plugin_Builder.construct establishes): both delivered.
+      let prev = ResourceAttribution.enter(~platform="online-shop", ~plugin="Catalog")
+      EventLogProvisioning.notify(
+        ~logStyle=Dcb,
+        ~name="CatalogDcbEventLog",
+        ~owner=Some(dcbOwner),
+        ~resources=[],
+        ~opts=noOpts,
+      )
+      ResourceAttribution.restore(prev)
 
-    // After restore: back to None.
-    EventLogProvisioning.notify(
-      ~logStyle=Classic,
-      ~name="OrderEventLog",
-      ~owner=None,
-      ~resources=[],
-      ~opts=noOpts,
-    )
+      // After restore: back to None.
+      EventLogProvisioning.notify(
+        ~logStyle=Classic,
+        ~name="OrderEventLog",
+        ~owner=None,
+        ~resources=[],
+        ~opts=noOpts,
+      )
 
-    expect(seen)->toEqual([(None, None), (Some("Catalog"), Some("online-shop")), (None, None)])
+      expect(seen)->toEqual([(None, None), (Some("Catalog"), Some("online-shop")), (None, None)])
 
-    EventLogProvisioning.reset()
-  })
+      EventLogProvisioning.reset()
+    },
+  )
 
   testSync("use is single-slot: a second registration throws rather than silently winning", () => {
     module First: EventLogProvisioning.Backend = {

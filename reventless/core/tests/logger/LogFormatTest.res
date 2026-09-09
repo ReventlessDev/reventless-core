@@ -1,7 +1,6 @@
 open JestGlobals
 open LogFormat
 
-
 // Sink detection (Reventless.AnsiStyle) defaults a non-TTY stdout — Jest
 // included — to JSON, which no-ops `bold`/`fmtComp`. The human-format
 // assertions below expect ANSI, so force text mode for this file. The
@@ -141,34 +140,47 @@ describe("LogFormat", () => {
       type command = AddProduct({productId: string, name: string, imageUrl?: string})
     }
 
-    testSync("omits an absent optional field", () => {
-      let json =
-        OptionalFieldCmd.AddProduct({productId: "prd-1", name: "Cirrus"})
-        ->Message.encode(OptionalFieldCmd.commandSchema)
-      expect(variantFields(json))->toEqual(`, {productId:"prd-1",name:"Cirrus"}`)
-    })
+    testSync(
+      "omits an absent optional field",
+      () => {
+        let json =
+          OptionalFieldCmd.AddProduct({productId: "prd-1", name: "Cirrus"})->Message.encode(
+            OptionalFieldCmd.commandSchema,
+          )
+        expect(variantFields(json))->toEqual(`, {productId:"prd-1",name:"Cirrus"}`)
+      },
+    )
 
-    testSync("keeps a present optional field", () => {
-      let json =
-        OptionalFieldCmd.AddProduct({productId: "prd-1", name: "Cirrus", imageUrl: "/u/a.png"})
-        ->Message.encode(OptionalFieldCmd.commandSchema)
-      expect(variantFields(json))->toEqual(
-        `, {productId:"prd-1",name:"Cirrus",imageUrl:"/u/a.png"}`,
-      )
-    })
+    testSync(
+      "keeps a present optional field",
+      () => {
+        let json = OptionalFieldCmd.AddProduct({
+          productId: "prd-1",
+          name: "Cirrus",
+          imageUrl: "/u/a.png",
+        })->Message.encode(OptionalFieldCmd.commandSchema)
+        expect(
+          variantFields(json),
+        )->toEqual(`, {productId:"prd-1",name:"Cirrus",imageUrl:"/u/a.png"}`)
+      },
+    )
 
-    testSync("elides a value past the budget rather than dropping it", () => {
-      let long = String.repeat("x", maxValueChars + 20)
-      let json =
-        OptionalFieldCmd.AddProduct({productId: "prd-1", name: long})
-        ->Message.encode(OptionalFieldCmd.commandSchema)
-      let rendered = variantFields(json)
-      expect(rendered->String.includes("…(+22 chars)"))->toBe(true)
-      // The oversized value is capped, not the line: the neighbouring field that
-      // says which product this is stays intact.
-      expect(rendered->String.includes(long))->toBe(false)
-      expect(rendered->String.includes(`productId:"prd-1"`))->toBe(true)
-    })
+    testSync(
+      "elides a value past the budget rather than dropping it",
+      () => {
+        let long = String.repeat("x", maxValueChars + 20)
+        let json =
+          OptionalFieldCmd.AddProduct({productId: "prd-1", name: long})->Message.encode(
+            OptionalFieldCmd.commandSchema,
+          )
+        let rendered = variantFields(json)
+        expect(rendered->String.includes("…(+22 chars)"))->toBe(true)
+        // The oversized value is capped, not the line: the neighbouring field that
+        // says which product this is stays intact.
+        expect(rendered->String.includes(long))->toBe(false)
+        expect(rendered->String.includes(`productId:"prd-1"`))->toBe(true)
+      },
+    )
   })
 })
 
@@ -207,8 +219,7 @@ let validLevels = ["DEBUG", "INFO", "WARN", "ERROR"]
 // True when a captured line is a clean JSON log record: parses as JSON, carries
 // no ANSI escape anywhere, has a string `message` and a known `level`.
 let isCleanRecord = (line: string): bool =>
-  !hasAnsi(line) &&
-  (try {
+  !hasAnsi(line) && try {
     switch line->JSON.parseOrThrow->JSON.Decode.object {
     | Some(obj) =>
       let levelOk =
@@ -222,7 +233,7 @@ let isCleanRecord = (line: string): bool =>
     }
   } catch {
   | _ => false
-  })
+  }
 
 // Read a top-level string field off a captured JSON record (None if absent).
 let fieldOf = (line: string, key: string): option<string> =>
@@ -269,8 +280,8 @@ describe("JSON sink", () => {
     // Event-collector comps carry the component *resource* name (`<Spec><Kind>`),
     // while the registry holds the bare spec name — the prefix candidate bridges them.
     Logger.registerComponentPlugin(~componentName="Products", ~pluginName="Catalog")
-    let lines = captureLogs(() =>
-      log.info(~comp="EventCollector(ProductsReadModel)", "projecting event")
+    let lines = captureLogs(
+      () => log.info(~comp="EventCollector(ProductsReadModel)", "projecting event"),
     )
     let line = lines->Array.length == 1 ? lines->Array.getUnsafe(0) : ""
     expect(lines->Array.length == 1 && line->fieldOf("plugin") == Some("Catalog"))->toBe(true)
@@ -280,8 +291,8 @@ describe("JSON sink", () => {
     // `Order` (Ordering) must not win over `OrderLines` (Billing) for `OrderLinesReadModel`.
     Logger.registerComponentPlugin(~componentName="Order", ~pluginName="Ordering")
     Logger.registerComponentPlugin(~componentName="OrderLines", ~pluginName="Billing")
-    let lines = captureLogs(() =>
-      log.info(~comp="EventCollector(OrderLinesReadModel)", "projecting event")
+    let lines = captureLogs(
+      () => log.info(~comp="EventCollector(OrderLinesReadModel)", "projecting event"),
     )
     let line = lines->Array.length == 1 ? lines->Array.getUnsafe(0) : ""
     expect(lines->Array.length == 1 && line->fieldOf("plugin") == Some("Billing"))->toBe(true)
@@ -290,14 +301,15 @@ describe("JSON sink", () => {
   testSync("dispatch annotation carries comp onto a handler line that passes none", () => {
     // What makes two collectors in one runtime process separable: the element's comp
     // comes from the dispatch boundary, not from the application's own log call.
-    let lines = captureLogs(() =>
-      EffectLogger.logInfo("projected")
-      ->Runtime.annotateInvocation(
-        ~correlationId="cid-1",
-        ~causationId="parent-1",
-        ~comp="EventCollector(ProductsReadModel)",
-      )
-      ->Effect.runSync
+    let lines = captureLogs(
+      () =>
+        EffectLogger.logInfo("projected")
+        ->Runtime.annotateInvocation(
+          ~correlationId="cid-1",
+          ~causationId="parent-1",
+          ~comp="EventCollector(ProductsReadModel)",
+        )
+        ->Effect.runSync,
     )
     let line = lines->Array.length >= 1 ? lines->Array.getUnsafe(0) : ""
     let ok =
@@ -314,52 +326,56 @@ describe("JSON sink", () => {
   })
 
   testSync("Logger.error with ~data emits one clean JSON record", () => {
-    let lines = captureLogs(() =>
-      log.error(
-        ~comp="Util_AppSync_Caller",
-        ~data=JSON.parseOrThrow(`{"errors":["boom"]}`),
-        "query errors",
-      )
+    let lines = captureLogs(
+      () =>
+        log.error(
+          ~comp="Util_AppSync_Caller",
+          ~data=JSON.parseOrThrow(`{"errors":["boom"]}`),
+          "query errors",
+        ),
     )
     expect(lines->Array.length == 1 && isCleanRecord(lines->Array.getUnsafe(0)))->toBe(true)
   })
 
   testSync("EffectLogger.logInfo emits clean JSON through install()", () => {
-    let lines = captureLogs(() =>
-      EffectLogger.logInfo(~comp="Aggregate(Product)", "replay done")->Effect.runSync
+    let lines = captureLogs(
+      () => EffectLogger.logInfo(~comp="Aggregate(Product)", "replay done")->Effect.runSync,
     )
     let allClean = lines->Array.filter(l => !isCleanRecord(l))->Array.length == 0
     expect(lines->Array.length >= 1 && allClean)->toBe(true)
   })
 
   testSync("EffectLogger.logInfo carries ~comp + ~detail as structured fields (no \\x00)", () => {
-    let lines = captureLogs(() =>
-      EffectLogger.logInfo(
-        ~comp="Aggregate(Product)",
-        ~detail=JSON.parseOrThrow(`{"id":"p-1"}`),
-        "added",
-      )->Effect.runSync
+    let lines = captureLogs(
+      () =>
+        EffectLogger.logInfo(
+          ~comp="Aggregate(Product)",
+          ~detail=JSON.parseOrThrow(`{"id":"p-1"}`),
+          "added",
+        )->Effect.runSync,
     )
-    let ok = lines->Array.some(line =>
-      switch line->JSON.parseOrThrow->JSON.Decode.object {
-      | Some(obj) =>
-        obj->Dict.get("comp")->Option.flatMap(JSON.Decode.string) == Some("Aggregate(Product)") &&
-        obj
-        ->Dict.get("detail")
-        ->Option.flatMap(JSON.Decode.object)
-        ->Option.flatMap(d => d->Dict.get("id"))
-        ->Option.flatMap(JSON.Decode.string) == Some("p-1")
-      | None => false
-      }
+    let ok = lines->Array.some(
+      line =>
+        switch line->JSON.parseOrThrow->JSON.Decode.object {
+        | Some(obj) =>
+          obj->Dict.get("comp")->Option.flatMap(JSON.Decode.string) == Some("Aggregate(Product)") &&
+            obj
+            ->Dict.get("detail")
+            ->Option.flatMap(JSON.Decode.object)
+            ->Option.flatMap(d => d->Dict.get("id"))
+            ->Option.flatMap(JSON.Decode.string) == Some("p-1")
+        | None => false
+        },
     )
     expect(ok)->toBe(true)
   })
 
   testSync("Effect.annotateLogs(correlationId) surfaces as a top-level field", () => {
-    let lines = captureLogs(() =>
-      EffectLogger.logInfo(~comp="Aggregate(Product)", "handling")
-      ->Effect.annotateLogs("correlationId", "c-123")
-      ->Effect.runSync
+    let lines = captureLogs(
+      () =>
+        EffectLogger.logInfo(~comp="Aggregate(Product)", "handling")
+        ->Effect.annotateLogs("correlationId", "c-123")
+        ->Effect.runSync,
     )
     expect(lines->Array.some(line => line->fieldOf("correlationId") == Some("c-123")))->toBe(true)
   })
@@ -368,10 +384,11 @@ describe("JSON sink", () => {
     // The component is NOT registered against any plugin; without an explicit
     // ~plugin annotation, resolvePlugin would fall back through transformations
     // and emit no plugin field. With the annotation, plugin wins.
-    let lines = captureLogs(() =>
-      EffectLogger.logInfo(~comp="Aggregate(Unregistered)", "handling")
-      ->Effect.annotateLogs("plugin", "Ordering")
-      ->Effect.runSync
+    let lines = captureLogs(
+      () =>
+        EffectLogger.logInfo(~comp="Aggregate(Unregistered)", "handling")
+        ->Effect.annotateLogs("plugin", "Ordering")
+        ->Effect.runSync,
     )
     expect(lines->Array.some(line => line->fieldOf("plugin") == Some("Ordering")))->toBe(true)
   })
@@ -398,14 +415,17 @@ describe("JSON sink", () => {
     let detail = Dict.fromArray([("blob", JSON.Encode.string(big))])->JSON.Encode.object
     // ~detail flows through emit (Logger.t's ~data goes into the message instead).
     let direct = captureLogs(() => Logger.emit(~level=Info, ~comp="Platform", ~detail, "big"))
-    let ok = switch direct->Array.get(0)->Option.flatMap(l => l->JSON.parseOrThrow->JSON.Decode.object) {
+    let ok = switch direct
+    ->Array.get(0)
+    ->Option.flatMap(l => l->JSON.parseOrThrow->JSON.Decode.object) {
     | Some(obj) =>
       switch obj->Dict.get("detail")->Option.flatMap(JSON.Decode.object) {
       | Some(d) =>
         d->Dict.get("truncated")->Option.flatMap(JSON.Decode.bool) == Some(true) &&
-          d->Dict.get("preview")->Option.flatMap(JSON.Decode.string)->Option.mapOr(false, p =>
-            p->String.length <= 512
-          )
+          d
+          ->Dict.get("preview")
+          ->Option.flatMap(JSON.Decode.string)
+          ->Option.mapOr(false, p => p->String.length <= 512)
       | None => false
       }
     | None => false
@@ -425,7 +445,9 @@ describe("JSON sink", () => {
     let cmd: Message.commandJson = {
       Message.id: "0",
       meta,
-      commandJson: (Heartbeat("0.0.0"): PluginSpec.command)->Message.encode(PluginSpec.commandSchema),
+      commandJson: (Heartbeat("0.0.0"): PluginSpec.command)->Message.encode(
+        PluginSpec.commandSchema,
+      ),
     }
     let name = cmd->cmdName
     expect(!hasAnsi(name) && name == "Heartbeat")->toBe(true)

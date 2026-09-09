@@ -3,46 +3,158 @@
 @val external uiBundleUrl: option<string> = "process.env.CATALOG_UI_BUNDLE_URL"
 
 let dcbSliceSchemas: array<Reventless.DcbTag.sliceSchemas> = [
-  {name: AddCategory.name, commandSchema: AddCategory.commandSchema->S.castToUnknown, consumedEventSchema: AddCategory.consumedEventSchema->S.castToUnknown, eventSchema: AddCategory.eventSchema->S.castToUnknown},
-  {name: AddProduct.name, commandSchema: AddProduct.commandSchema->S.castToUnknown, consumedEventSchema: AddProduct.consumedEventSchema->S.castToUnknown, eventSchema: AddProduct.eventSchema->S.castToUnknown},
-  {name: ArchiveCategory.name, commandSchema: ArchiveCategory.commandSchema->S.castToUnknown, consumedEventSchema: ArchiveCategory.consumedEventSchema->S.castToUnknown, eventSchema: ArchiveCategory.eventSchema->S.castToUnknown},
-  {name: ArchiveProduct.name, commandSchema: ArchiveProduct.commandSchema->S.castToUnknown, consumedEventSchema: ArchiveProduct.consumedEventSchema->S.castToUnknown, eventSchema: ArchiveProduct.eventSchema->S.castToUnknown},
-  {name: CategoryImages.name, commandSchema: CategoryImages.commandSchema->S.castToUnknown, consumedEventSchema: CategoryImages.consumedEventSchema->S.castToUnknown, eventSchema: CategoryImages.eventSchema->S.castToUnknown},
-  {name: ChangeProductDescription.name, commandSchema: ChangeProductDescription.commandSchema->S.castToUnknown, consumedEventSchema: ChangeProductDescription.consumedEventSchema->S.castToUnknown, eventSchema: ChangeProductDescription.eventSchema->S.castToUnknown},
-  {name: ChangeProductName.name, commandSchema: ChangeProductName.commandSchema->S.castToUnknown, consumedEventSchema: ChangeProductName.consumedEventSchema->S.castToUnknown, eventSchema: ChangeProductName.eventSchema->S.castToUnknown},
-  {name: ChangeProductPrice.name, commandSchema: ChangeProductPrice.commandSchema->S.castToUnknown, consumedEventSchema: ChangeProductPrice.consumedEventSchema->S.castToUnknown, eventSchema: ChangeProductPrice.eventSchema->S.castToUnknown},
-  {name: DiscontinueProduct.name, commandSchema: DiscontinueProduct.commandSchema->S.castToUnknown, consumedEventSchema: DiscontinueProduct.consumedEventSchema->S.castToUnknown, eventSchema: DiscontinueProduct.eventSchema->S.castToUnknown},
-  {name: ProductImages.name, commandSchema: ProductImages.commandSchema->S.castToUnknown, consumedEventSchema: ProductImages.consumedEventSchema->S.castToUnknown, eventSchema: ProductImages.eventSchema->S.castToUnknown},
-  {name: RecordProductDemand.name, commandSchema: RecordProductDemand.commandSchema->S.castToUnknown, consumedEventSchema: RecordProductDemand.consumedEventSchema->S.castToUnknown, eventSchema: RecordProductDemand.eventSchema->S.castToUnknown},
-  {name: RenameCategory.name, commandSchema: RenameCategory.commandSchema->S.castToUnknown, consumedEventSchema: RenameCategory.consumedEventSchema->S.castToUnknown, eventSchema: RenameCategory.eventSchema->S.castToUnknown},
-  {name: UnarchiveCategory.name, commandSchema: UnarchiveCategory.commandSchema->S.castToUnknown, consumedEventSchema: UnarchiveCategory.consumedEventSchema->S.castToUnknown, eventSchema: UnarchiveCategory.eventSchema->S.castToUnknown},
-  {name: UnarchiveProduct.name, commandSchema: UnarchiveProduct.commandSchema->S.castToUnknown, consumedEventSchema: UnarchiveProduct.consumedEventSchema->S.castToUnknown, eventSchema: UnarchiveProduct.eventSchema->S.castToUnknown},
+  {
+    name: AddCategory.name,
+    commandSchema: AddCategory.commandSchema->S.castToUnknown,
+    consumedEventSchema: AddCategory.consumedEventSchema->S.castToUnknown,
+    eventSchema: AddCategory.eventSchema->S.castToUnknown,
+  },
+  {
+    name: AddProduct.name,
+    commandSchema: AddProduct.commandSchema->S.castToUnknown,
+    consumedEventSchema: AddProduct.consumedEventSchema->S.castToUnknown,
+    eventSchema: AddProduct.eventSchema->S.castToUnknown,
+  },
+  {
+    name: ArchiveCategory.name,
+    commandSchema: ArchiveCategory.commandSchema->S.castToUnknown,
+    consumedEventSchema: ArchiveCategory.consumedEventSchema->S.castToUnknown,
+    eventSchema: ArchiveCategory.eventSchema->S.castToUnknown,
+  },
+  {
+    name: ArchiveProduct.name,
+    commandSchema: ArchiveProduct.commandSchema->S.castToUnknown,
+    consumedEventSchema: ArchiveProduct.consumedEventSchema->S.castToUnknown,
+    eventSchema: ArchiveProduct.eventSchema->S.castToUnknown,
+  },
+  {
+    name: CategoryImages.name,
+    commandSchema: CategoryImages.commandSchema->S.castToUnknown,
+    consumedEventSchema: CategoryImages.consumedEventSchema->S.castToUnknown,
+    eventSchema: CategoryImages.eventSchema->S.castToUnknown,
+  },
+  {
+    name: ChangeProductDescription.name,
+    commandSchema: ChangeProductDescription.commandSchema->S.castToUnknown,
+    consumedEventSchema: ChangeProductDescription.consumedEventSchema->S.castToUnknown,
+    eventSchema: ChangeProductDescription.eventSchema->S.castToUnknown,
+  },
+  {
+    name: ChangeProductName.name,
+    commandSchema: ChangeProductName.commandSchema->S.castToUnknown,
+    consumedEventSchema: ChangeProductName.consumedEventSchema->S.castToUnknown,
+    eventSchema: ChangeProductName.eventSchema->S.castToUnknown,
+  },
+  {
+    name: ChangeProductPrice.name,
+    commandSchema: ChangeProductPrice.commandSchema->S.castToUnknown,
+    consumedEventSchema: ChangeProductPrice.consumedEventSchema->S.castToUnknown,
+    eventSchema: ChangeProductPrice.eventSchema->S.castToUnknown,
+  },
+  {
+    name: DiscontinueProduct.name,
+    commandSchema: DiscontinueProduct.commandSchema->S.castToUnknown,
+    consumedEventSchema: DiscontinueProduct.consumedEventSchema->S.castToUnknown,
+    eventSchema: DiscontinueProduct.eventSchema->S.castToUnknown,
+  },
+  {
+    name: ProductImages.name,
+    commandSchema: ProductImages.commandSchema->S.castToUnknown,
+    consumedEventSchema: ProductImages.consumedEventSchema->S.castToUnknown,
+    eventSchema: ProductImages.eventSchema->S.castToUnknown,
+  },
+  {
+    name: RecordProductDemand.name,
+    commandSchema: RecordProductDemand.commandSchema->S.castToUnknown,
+    consumedEventSchema: RecordProductDemand.consumedEventSchema->S.castToUnknown,
+    eventSchema: RecordProductDemand.eventSchema->S.castToUnknown,
+  },
+  {
+    name: RenameCategory.name,
+    commandSchema: RenameCategory.commandSchema->S.castToUnknown,
+    consumedEventSchema: RenameCategory.consumedEventSchema->S.castToUnknown,
+    eventSchema: RenameCategory.eventSchema->S.castToUnknown,
+  },
+  {
+    name: UnarchiveCategory.name,
+    commandSchema: UnarchiveCategory.commandSchema->S.castToUnknown,
+    consumedEventSchema: UnarchiveCategory.consumedEventSchema->S.castToUnknown,
+    eventSchema: UnarchiveCategory.eventSchema->S.castToUnknown,
+  },
+  {
+    name: UnarchiveProduct.name,
+    commandSchema: UnarchiveProduct.commandSchema->S.castToUnknown,
+    consumedEventSchema: UnarchiveProduct.consumedEventSchema->S.castToUnknown,
+    eventSchema: UnarchiveProduct.eventSchema->S.castToUnknown,
+  },
 ]
 
 module Make = (Platform: ReventlessInfra.Platform.T) => {
   // StateChangeSlices
   module AddCategorySlice = Platform.StateChangeSlice.Make(AddCategory, AddCategory_Behavior)
   module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct, AddProduct_Behavior)
-  module ArchiveCategorySlice = Platform.StateChangeSlice.Make(ArchiveCategory, ArchiveCategory_Behavior)
-  module ArchiveProductSlice = Platform.StateChangeSlice.Make(ArchiveProduct, ArchiveProduct_Behavior)
-  module CategoryImagesSlice = Platform.StateChangeSlice.Make(CategoryImages, CategoryImages_Behavior)
-  module ChangeProductDescriptionSlice = Platform.StateChangeSlice.Make(ChangeProductDescription, ChangeProductDescription_Behavior)
-  module ChangeProductNameSlice = Platform.StateChangeSlice.Make(ChangeProductName, ChangeProductName_Behavior)
-  module ChangeProductPriceSlice = Platform.StateChangeSlice.Make(ChangeProductPrice, ChangeProductPrice_Behavior)
-  module DiscontinueProductSlice = Platform.StateChangeSlice.Make(DiscontinueProduct, DiscontinueProduct_Behavior)
+  module ArchiveCategorySlice = Platform.StateChangeSlice.Make(
+    ArchiveCategory,
+    ArchiveCategory_Behavior,
+  )
+  module ArchiveProductSlice = Platform.StateChangeSlice.Make(
+    ArchiveProduct,
+    ArchiveProduct_Behavior,
+  )
+  module CategoryImagesSlice = Platform.StateChangeSlice.Make(
+    CategoryImages,
+    CategoryImages_Behavior,
+  )
+  module ChangeProductDescriptionSlice = Platform.StateChangeSlice.Make(
+    ChangeProductDescription,
+    ChangeProductDescription_Behavior,
+  )
+  module ChangeProductNameSlice = Platform.StateChangeSlice.Make(
+    ChangeProductName,
+    ChangeProductName_Behavior,
+  )
+  module ChangeProductPriceSlice = Platform.StateChangeSlice.Make(
+    ChangeProductPrice,
+    ChangeProductPrice_Behavior,
+  )
+  module DiscontinueProductSlice = Platform.StateChangeSlice.Make(
+    DiscontinueProduct,
+    DiscontinueProduct_Behavior,
+  )
   module ProductImagesSlice = Platform.StateChangeSlice.Make(ProductImages, ProductImages_Behavior)
-  module RecordProductDemandSlice = Platform.StateChangeSlice.Make(RecordProductDemand, RecordProductDemand_Behavior)
-  module RenameCategorySlice = Platform.StateChangeSlice.Make(RenameCategory, RenameCategory_Behavior)
-  module UnarchiveCategorySlice = Platform.StateChangeSlice.Make(UnarchiveCategory, UnarchiveCategory_Behavior)
-  module UnarchiveProductSlice = Platform.StateChangeSlice.Make(UnarchiveProduct, UnarchiveProduct_Behavior)
+  module RecordProductDemandSlice = Platform.StateChangeSlice.Make(
+    RecordProductDemand,
+    RecordProductDemand_Behavior,
+  )
+  module RenameCategorySlice = Platform.StateChangeSlice.Make(
+    RenameCategory,
+    RenameCategory_Behavior,
+  )
+  module UnarchiveCategorySlice = Platform.StateChangeSlice.Make(
+    UnarchiveCategory,
+    UnarchiveCategory_Behavior,
+  )
+  module UnarchiveProductSlice = Platform.StateChangeSlice.Make(
+    UnarchiveProduct,
+    UnarchiveProduct_Behavior,
+  )
 
   // StateViewSliceStreams
-  module CategoriesStreamSlice = Platform.StateViewSliceStream.Make(Categories, Categories_Projection)
-  module ProductDemandStreamSlice = Platform.StateViewSliceStream.Make(ProductDemand, ProductDemand_Projection)
+  module CategoriesStreamSlice = Platform.StateViewSliceStream.Make(
+    Categories,
+    Categories_Projection,
+  )
+  module ProductDemandStreamSlice = Platform.StateViewSliceStream.Make(
+    ProductDemand,
+    ProductDemand_Projection,
+  )
   module ProductsStreamSlice = Platform.StateViewSliceStream.Make(Products, Products_Projection)
 
   // InboundTranslationSlices
-  module ImportProductSlice = Platform.InboundTranslationSlice.Make(ImportProduct, ImportProduct_Translation)
+  module ImportProductSlice = Platform.InboundTranslationSlice.Make(
+    ImportProduct,
+    ImportProduct_Translation,
+  )
 
   // Tasks
   module ImportProductsTask = Platform.Task.Make(ImportProducts)
@@ -55,12 +167,50 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 
   let pluginStructure = Platform.Plugin.makePluginDefinition(
     ~name="Catalog",
-    ~stateViewSlices=[module(CategoriesStreamSlice), module(ProductDemandStreamSlice), module(ProductsStreamSlice)],
-    ~stateChangeSlices=[module(AddCategorySlice), module(AddProductSlice), module(ArchiveCategorySlice), module(ArchiveProductSlice), module(CategoryImagesSlice), module(ChangeProductDescriptionSlice), module(ChangeProductNameSlice), module(ChangeProductPriceSlice), module(DiscontinueProductSlice), module(ProductImagesSlice), module(RecordProductDemandSlice), module(RenameCategorySlice), module(UnarchiveCategorySlice), module(UnarchiveProductSlice)],
+    ~stateViewSlices=[
+      module(CategoriesStreamSlice),
+      module(ProductDemandStreamSlice),
+      module(ProductsStreamSlice),
+    ],
+    ~stateChangeSlices=[
+      module(AddCategorySlice),
+      module(AddProductSlice),
+      module(ArchiveCategorySlice),
+      module(ArchiveProductSlice),
+      module(CategoryImagesSlice),
+      module(ChangeProductDescriptionSlice),
+      module(ChangeProductNameSlice),
+      module(ChangeProductPriceSlice),
+      module(DiscontinueProductSlice),
+      module(ProductImagesSlice),
+      module(RecordProductDemandSlice),
+      module(RenameCategorySlice),
+      module(UnarchiveCategorySlice),
+      module(UnarchiveProductSlice),
+    ],
     ~inboundTranslationSlices=[module(ImportProductSlice)],
     ~extensions=[module(Orders_Extension)],
     ~extensionPoints=[module(Products_ExtensionPointMapping)],
-    ~componentChapters=Dict.fromArray([("AddCategory", "Category"), ("AddProduct", "Product"), ("ArchiveCategory", "Category"), ("ArchiveProduct", "Product"), ("Categories", "Category"), ("CategoryImages", "Category"), ("ChangeProductDescription", "Product"), ("ChangeProductName", "Product"), ("ChangeProductPrice", "Product"), ("DiscontinueProduct", "Product"), ("ImportProduct", "Product"), ("ProductDemand", "ProductDemand"), ("ProductImages", "Product"), ("Products", "Product"), ("RecordProductDemand", "ProductDemand"), ("RenameCategory", "Category"), ("UnarchiveCategory", "Category"), ("UnarchiveProduct", "Product")]),
+    ~componentChapters=Dict.fromArray([
+      ("AddCategory", "Category"),
+      ("AddProduct", "Product"),
+      ("ArchiveCategory", "Category"),
+      ("ArchiveProduct", "Product"),
+      ("Categories", "Category"),
+      ("CategoryImages", "Category"),
+      ("ChangeProductDescription", "Product"),
+      ("ChangeProductName", "Product"),
+      ("ChangeProductPrice", "Product"),
+      ("DiscontinueProduct", "Product"),
+      ("ImportProduct", "Product"),
+      ("ProductDemand", "ProductDemand"),
+      ("ProductImages", "Product"),
+      ("Products", "Product"),
+      ("RecordProductDemand", "ProductDemand"),
+      ("RenameCategory", "Category"),
+      ("UnarchiveCategory", "Category"),
+      ("UnarchiveProduct", "Product"),
+    ]),
     ~lifecycleModel=LifecycleModel.model,
   )
 
@@ -71,10 +221,29 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ~extensionPoints=[module(Products_ExtensionPoint)],
       ~extensions=[module(Orders_Extension)],
       ~tasks=[module(ImportProductsTask)],
-      ~stateChangeSlices=[module(AddCategorySlice), module(AddProductSlice), module(ArchiveCategorySlice), module(ArchiveProductSlice), module(CategoryImagesSlice), module(ChangeProductDescriptionSlice), module(ChangeProductNameSlice), module(ChangeProductPriceSlice), module(DiscontinueProductSlice), module(ProductImagesSlice), module(RecordProductDemandSlice), module(RenameCategorySlice), module(UnarchiveCategorySlice), module(UnarchiveProductSlice)],
-      ~stateViewSlices=[module(CategoriesStreamSlice), module(ProductDemandStreamSlice), module(ProductsStreamSlice)],
+      ~stateChangeSlices=[
+        module(AddCategorySlice),
+        module(AddProductSlice),
+        module(ArchiveCategorySlice),
+        module(ArchiveProductSlice),
+        module(CategoryImagesSlice),
+        module(ChangeProductDescriptionSlice),
+        module(ChangeProductNameSlice),
+        module(ChangeProductPriceSlice),
+        module(DiscontinueProductSlice),
+        module(ProductImagesSlice),
+        module(RecordProductDemandSlice),
+        module(RenameCategorySlice),
+        module(UnarchiveCategorySlice),
+        module(UnarchiveProductSlice),
+      ],
+      ~stateViewSlices=[
+        module(CategoriesStreamSlice),
+        module(ProductDemandStreamSlice),
+        module(ProductsStreamSlice),
+      ],
       ~inboundTranslationSlices=[module(ImportProductSlice)],
-      ~pluginStructure=pluginStructure,
+      ~pluginStructure,
       ~uiFragments=?uiBundleUrl->Option.map(url =>
         Platform.Plugin.makeAutoUIManifest(
           ~remoteEntryUrl=url,

@@ -78,8 +78,7 @@ let derivePartitionKey = (
       | None => tags->Array.getUnsafe(0)
       }
       `${tag.key}:${tag.value}`
-    | Some(Composite(spec)) =>
-      Reventless.DcbTag.getCompositePartitionKeyValue(tags, spec)
+    | Some(Composite(spec)) => Reventless.DcbTag.getCompositePartitionKeyValue(tags, spec)
     }
   }
 }
@@ -102,10 +101,7 @@ let toItem = (
 
   // Add tags array
   let tagsJson = event.tags->Array.map(tag =>
-    [
-      ("key", tag.key->JSON.Encode.string),
-      ("value", tag.value->JSON.Encode.string),
-    ]
+    [("key", tag.key->JSON.Encode.string), ("value", tag.value->JSON.Encode.string)]
     ->Dict.fromArray
     ->JSON.Encode.object
   )
@@ -150,36 +146,39 @@ let fromItem = (item: JSON.t): ReventlessCore.DcbEventLog_Adapter.rawSequencedEv
   switch item->JSON.Decode.object {
   | None => JsError.throwWithMessage("Invalid DcbEventLog item: not an object")
   | Some(obj) =>
-    let position = obj
-    ->Dict.get("position")
-    ->Option.flatMap(JSON.Decode.string)
-    ->Option.getOrThrow
+    let position =
+      obj
+      ->Dict.get("position")
+      ->Option.flatMap(JSON.Decode.string)
+      ->Option.getOrThrow
 
-    let eventType = obj
-    ->Dict.get("event")
-    ->Option.flatMap(JSON.Decode.string)
-    ->Option.getOrThrow
+    let eventType =
+      obj
+      ->Dict.get("event")
+      ->Option.flatMap(JSON.Decode.string)
+      ->Option.getOrThrow
 
     let data = obj->Dict.get("data")->Option.getOrThrow
 
-    let tags = obj
-    ->Dict.get("tags")
-    ->Option.flatMap(JSON.Decode.array)
-    ->Option.mapOr([], tagArray =>
-      tagArray->Array.filterMap(tagJson =>
-        switch tagJson->JSON.Decode.object {
-        | None => None
-        | Some(tagObj) => {
-            let key = tagObj->Dict.get("key")->Option.flatMap(JSON.Decode.string)
-            let value = tagObj->Dict.get("value")->Option.flatMap(JSON.Decode.string)
-            switch (key, value) {
-            | (Some(k), Some(v)) => Some({Reventless.DcbTag.key: k, value: v})
-            | _ => None
+    let tags =
+      obj
+      ->Dict.get("tags")
+      ->Option.flatMap(JSON.Decode.array)
+      ->Option.mapOr([], tagArray =>
+        tagArray->Array.filterMap(tagJson =>
+          switch tagJson->JSON.Decode.object {
+          | None => None
+          | Some(tagObj) => {
+              let key = tagObj->Dict.get("key")->Option.flatMap(JSON.Decode.string)
+              let value = tagObj->Dict.get("value")->Option.flatMap(JSON.Decode.string)
+              switch (key, value) {
+              | (Some(k), Some(v)) => Some({Reventless.DcbTag.key: k, value: v})
+              | _ => None
+              }
             }
           }
-        }
+        )
       )
-    )
 
     let recordedAt =
       obj
@@ -213,9 +212,7 @@ let queryByCompositeTags = async (
   let composite = compositeTagKey(tags)
   let indexName = "tag_composite"
 
-  let expressionAttributeValues = Dict.fromArray([
-    (":composite", composite->JSON.Encode.string),
-  ])
+  let expressionAttributeValues = Dict.fromArray([(":composite", composite->JSON.Encode.string)])
 
   let (keyConditionExpression, expressionAttributeNames) = switch after {
   | None => ("tag_composite = :composite", None)
@@ -227,9 +224,9 @@ let queryByCompositeTags = async (
 
   let queryParams: QueryCommand.input = {
     tableName: table.name,
-    indexName: indexName,
-    keyConditionExpression: keyConditionExpression,
-    expressionAttributeValues: expressionAttributeValues,
+    indexName,
+    keyConditionExpression,
+    expressionAttributeValues,
     ?expressionAttributeNames,
   }
 
@@ -315,9 +312,7 @@ let buildQueryByPartitionKeyInput = (
   ~after: option<string>=?,
   ~strongConsistency: bool=false,
 ): QueryCommand.input => {
-  let expressionAttributeValues = Dict.fromArray([
-    (":pk", partitionKey->JSON.Encode.string),
-  ])
+  let expressionAttributeValues = Dict.fromArray([(":pk", partitionKey->JSON.Encode.string)])
   let (keyConditionExpression, expressionAttributeNames) = switch after {
   | None => ("id = :pk", None)
   | Some(afterPos) => {
@@ -401,16 +396,13 @@ let queryBySingleTagCrossPartitionStreamIndexed = (
     expressionAttributeNames,
   }
   Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
-    Effect.tryPromise(
-      ~catch=DynamoDb_Error.classify,
-      () => {
-        let params = switch cursor {
-        | None => baseParams
-        | Some(key) => {...baseParams, exclusiveStartKey: key}
-        }
-        QueryCommand.send(params->QueryCommand.make)
-      },
-    )
+    Effect.tryPromise(~catch=DynamoDb_Error.classify, () => {
+      let params = switch cursor {
+      | None => baseParams
+      | Some(key) => {...baseParams, exclusiveStartKey: key}
+      }
+      QueryCommand.send(params->QueryCommand.make)
+    })
     ->Effect.retry(DynamoDb_Error.retrySchedule)
     ->Effect.catchAll(err => Effect.fail(DynamoDb_Error.message(err)))
     ->Effect.map(result => (
@@ -458,12 +450,10 @@ let executeQueryItem = async (
     await queryBySingleTagCrossPartitionStream(table, tag, ~after?)
     ->Stream.runCollect
     ->Effect.runPromise
-  | Some([tag]) =>
-    await queryByPartitionKey(table, `${tag.key}:${tag.value}`, ~after?)
+  | Some([tag]) => await queryByPartitionKey(table, `${tag.key}:${tag.value}`, ~after?)
 
   // Multiple tags: use composite GSI
-  | Some(tags) if tags->Array.length > 1 =>
-    await queryByCompositeTags(table, tags, ~after?)
+  | Some(tags) if tags->Array.length > 1 => await queryByCompositeTags(table, tags, ~after?)
 
   // No tags (or empty): fall back to scan
   | None | Some([]) | Some(_) =>
@@ -513,17 +503,13 @@ let initSlot = (
   Queue.bounded(1)->Effect.flatMap(queue => {
     let producer =
       stream
-      ->Stream.runForEach(event =>
-        Queue.offer(queue, Some(event))->Effect.map(_ => ())
-      )
+      ->Stream.runForEach(event => Queue.offer(queue, Some(event))->Effect.map(_ => ()))
       // Always push the None sentinel so the merge loop can detect exhaustion,
       // even if the stream fails (stream error is suppressed to prevent an
       // unhandled-fiber-failure warning).
       ->Effect.ensuring(Queue.offer(queue, None)->Effect.map(_ => ()))
-      ->Effect.catchAll(_ => Effect.succeed(()))
-    Effect.fork(producer)->Effect.flatMap(_ =>
-      Queue.take(queue)->Effect.map(head => {queue, head})
-    )
+      ->Effect.catchAll(_ => Effect.succeed())
+    Effect.fork(producer)->Effect.flatMap(_ => Queue.take(queue)->Effect.map(head => {queue, head}))
   })
 
 // Returns the index of the slot with the smallest position, or None if all exhausted.
@@ -536,8 +522,7 @@ let findMinSlotIdx = (slots: array<mergeSlot>) =>
       let minSlot = slots->Array.getUnsafe(minIdx)
       switch minSlot.head {
       | None => Some(idx)
-      | Some(minHead) =>
-        String.compare(head.position, minHead.position) < 0. ? Some(idx) : minOpt
+      | Some(minHead) => String.compare(head.position, minHead.position) < 0. ? Some(idx) : minOpt
       }
     }
   )
@@ -550,7 +535,7 @@ let dedupByPosition = (
   let lastPos: ref<option<string>> = ref(None)
   stream->Stream.filter(event =>
     switch lastPos.contents {
-    | Some(pos) when pos == event.position => false
+    | Some(pos) if pos == event.position => false
     | _ =>
       lastPos := Some(event.position)
       true
@@ -576,17 +561,20 @@ let mergeSortedEvents = (
       | Some(idx) =>
         let slot = slots->Array.getUnsafe(idx)
         let emitEvent = slot.head->Option.getOrThrow
-        Queue.take(slot.queue)->Effect.map(nextHead => {
-          let newSlots = slots->Array.mapWithIndex((s, i) =>
-            if i == idx {
-              {...s, head: nextHead}
-            } else {
-              s
-            }
-          )
-          let hasActive = newSlots->Array.some(s => s.head->Option.isSome)
-          ([emitEvent], hasActive ? Some(newSlots) : None)
-        })
+        Queue.take(slot.queue)->Effect.map(
+          nextHead => {
+            let newSlots = slots->Array.mapWithIndex(
+              (s, i) =>
+                if i == idx {
+                  {...s, head: nextHead}
+                } else {
+                  s
+                },
+            )
+            let hasActive = newSlots->Array.some(s => s.head->Option.isSome)
+            ([emitEvent], hasActive ? Some(newSlots) : None)
+          },
+        )
       }
     )
   )
@@ -594,10 +582,7 @@ let mergeSortedEvents = (
 // --- Main Operations ---
 
 let read = (table: resolvedTable, ~crossPartitionTagKeys: array<string>=[]) =>
-  async (
-    ~query: Reventless.DcbTag.query,
-    ~after=?,
-  ) => {
+  async (~query: Reventless.DcbTag.query, ~after=?) => {
     // Execute queries for each queryItem
     let queryResults = await query
     ->Array.map(queryItem => executeQueryItem(table, queryItem, ~after?, ~crossPartitionTagKeys))
@@ -609,15 +594,15 @@ let read = (table: resolvedTable, ~crossPartitionTagKeys: array<string>=[]) =>
     let deduplicatedEvents = deduplicateByPosition(allEvents)
 
     // Sort by position
-    let sortedEvents = deduplicatedEvents->Array.toSorted((a, b) =>
-      String.compare(a.position, b.position)
-    )
+    let sortedEvents =
+      deduplicatedEvents->Array.toSorted((a, b) => String.compare(a.position, b.position))
 
     // Get head position (latest position)
-    let headPosition = sortedEvents
-    ->Array.toReversed
-    ->Array.at(0)
-    ->Option.map(event => event.position)
+    let headPosition =
+      sortedEvents
+      ->Array.toReversed
+      ->Array.at(0)
+      ->Option.map(event => event.position)
 
     {
       ReventlessCore.DcbEventLog_Adapter.events: sortedEvents,
@@ -679,9 +664,9 @@ let collectQueryTags = (query: Reventless.DcbTag.query): array<Reventless.DcbTag
   acc
 }
 
-let collectEventTags = (
-  events: array<ReventlessCore.DcbEventLog_Adapter.rawStoredEvent>,
-): array<Reventless.DcbTag.tag> => {
+let collectEventTags = (events: array<ReventlessCore.DcbEventLog_Adapter.rawStoredEvent>): array<
+  Reventless.DcbTag.tag,
+> => {
   let seen = Set.make()
   let acc = []
   events->Array.forEach(event =>
@@ -722,9 +707,9 @@ let dedupStrings = (xs: array<string>): array<string> => {
 // tagKey ("key:value") -> distinct event types among `events` that CARRY the tag.
 // Used to advance the fences of composite query tags and cross-partition tags
 // (bumped by every carrier), and by `appendUnconditional`.
-let carriedTypesByTag = (
-  events: array<ReventlessCore.DcbEventLog_Adapter.rawStoredEvent>,
-): Dict.t<array<string>> => {
+let carriedTypesByTag = (events: array<ReventlessCore.DcbEventLog_Adapter.rawStoredEvent>): Dict.t<
+  array<string>,
+> => {
   let d = Dict.make()
   events->Array.forEach(e =>
     e.tags->Array.forEach((t: Reventless.DcbTag.tag) => {
@@ -897,7 +882,7 @@ let buildEventPuts = (
     let recordedAt = ReventlessCore.Message.nowAsISOString()
     let item = toItem(position, event, ~partitionTag?, ~recordedAt)
     let put: TransactWriteCommand.put = {
-      TransactWriteCommand.item: item,
+      TransactWriteCommand.item,
       tableName: table.name,
     }
     {TransactWriteCommand.put: put}
@@ -908,7 +893,9 @@ let runTransactWrite = async (
   basePosition: string,
   ~errorPrefix: string,
 ) =>
-  await Effect.tryPromise(~catch=DynamoDb_Error.classify, () => input->TransactWriteCommand.make->TransactWriteCommand.send)
+  await Effect.tryPromise(~catch=DynamoDb_Error.classify, () =>
+    input->TransactWriteCommand.make->TransactWriteCommand.send
+  )
   ->Effect.map(_ => Ok(basePosition))
   ->Effect.catchAll(err =>
     switch err {
@@ -945,20 +932,19 @@ let appendUnconditional = async (
     let basePosition = generatePosition()
     let carriedMap = carriedTypesByTag(events)
     let putItems = buildEventPuts(table, events, basePosition, ~partitionTag?)
-    let updateItems =
-      eventTags->Array.filterMap(tag => {
-        let producedTypes = carriedMap->Dict.get(`${tag.key}:${tag.value}`)->Option.getOr([])
-        producedTypes->Array.length == 0
-          ? None
-          : Some({
-              TransactWriteCommand.update: buildUnconditionalFenceUpdate(
-                table.name,
-                tag,
-                ~producedTypes,
-                ~newPosition=basePosition,
-              ),
-            })
-      })
+    let updateItems = eventTags->Array.filterMap(tag => {
+      let producedTypes = carriedMap->Dict.get(`${tag.key}:${tag.value}`)->Option.getOr([])
+      producedTypes->Array.length == 0
+        ? None
+        : Some({
+            TransactWriteCommand.update: buildUnconditionalFenceUpdate(
+              table.name,
+              tag,
+              ~producedTypes,
+              ~newPosition=basePosition,
+            ),
+          })
+    })
     let input: TransactWriteCommand.input = {
       transactItems: Array.concat(putItems, updateItems),
     }
@@ -1002,7 +988,8 @@ let eventPartitionTags = (
   | Some(Simple(pt)) =>
     switch event.tags->Array.find(t => t.key == pt.key) {
     | Some(t) => [t]
-    | None => switch event.tags->Array.get(0) {
+    | None =>
+      switch event.tags->Array.get(0) {
       | Some(t) => [t]
       | None => []
       }
@@ -1246,54 +1233,51 @@ let buildConditionalTransactItems = (
   })
 
   let putItems = buildEventPuts(table, events, basePosition, ~partitionTag?)
-  let updateItems =
-    conditionalUpdateTags->Array.filterMap(tag => {
-      let producedTypes = producedTypesFor(tag)
-      // A conditional Update must advance ≥1 produced type; partition / composite /
-      // cross-partition carriers always have one. If none (a misconfigured clause),
-      // skip rather than emit an empty `SET`.
-      producedTypes->Array.length == 0
-        ? None
-        : Some({
-            TransactWriteCommand.update: buildConditionalFenceUpdate(
-              table.name,
-              tag,
-              ~consumedTypes=consumedTypesFor(tag),
-              ~producedTypes,
-              ~newPosition=basePosition,
-              ~after=cond.after,
-            ),
-          })
-    })
-  let checkItems =
-    conditionCheckTags->Array.filterMap(tag => {
-      let consumedTypes = consumedTypesFor(tag)
-      // A vacuous clause (no consumed type carries the tag) matches nothing — skip.
-      consumedTypes->Array.length == 0
-        ? None
-        : Some({
-            TransactWriteCommand.conditionCheck: buildFenceConditionCheck(
-              table.name,
-              tag,
-              ~consumedTypes,
-              ~after=cond.after,
-            ),
-          })
-    })
-  let bumpItems =
-    bumpTags->Array.filterMap(tag => {
-      let producedTypes = producedTypesFor(tag)
-      producedTypes->Array.length == 0
-        ? None
-        : Some({
-            TransactWriteCommand.update: buildUnconditionalFenceUpdate(
-              table.name,
-              tag,
-              ~producedTypes,
-              ~newPosition=basePosition,
-            ),
-          })
-    })
+  let updateItems = conditionalUpdateTags->Array.filterMap(tag => {
+    let producedTypes = producedTypesFor(tag)
+    // A conditional Update must advance ≥1 produced type; partition / composite /
+    // cross-partition carriers always have one. If none (a misconfigured clause),
+    // skip rather than emit an empty `SET`.
+    producedTypes->Array.length == 0
+      ? None
+      : Some({
+          TransactWriteCommand.update: buildConditionalFenceUpdate(
+            table.name,
+            tag,
+            ~consumedTypes=consumedTypesFor(tag),
+            ~producedTypes,
+            ~newPosition=basePosition,
+            ~after=cond.after,
+          ),
+        })
+  })
+  let checkItems = conditionCheckTags->Array.filterMap(tag => {
+    let consumedTypes = consumedTypesFor(tag)
+    // A vacuous clause (no consumed type carries the tag) matches nothing — skip.
+    consumedTypes->Array.length == 0
+      ? None
+      : Some({
+          TransactWriteCommand.conditionCheck: buildFenceConditionCheck(
+            table.name,
+            tag,
+            ~consumedTypes,
+            ~after=cond.after,
+          ),
+        })
+  })
+  let bumpItems = bumpTags->Array.filterMap(tag => {
+    let producedTypes = producedTypesFor(tag)
+    producedTypes->Array.length == 0
+      ? None
+      : Some({
+          TransactWriteCommand.update: buildUnconditionalFenceUpdate(
+            table.name,
+            tag,
+            ~producedTypes,
+            ~newPosition=basePosition,
+          ),
+        })
+  })
 
   Array.concat(putItems, Array.concat(updateItems, Array.concat(checkItems, bumpItems)))
 }
@@ -1315,7 +1299,14 @@ let appendConditional = async (
     )
   } else {
     let basePosition = generatePosition()
-    let transactItems = buildConditionalTransactItems(table, events, cond, basePosition, ~partitionTag?, ~crossPartitionTagKeys)
+    let transactItems = buildConditionalTransactItems(
+      table,
+      events,
+      cond,
+      basePosition,
+      ~partitionTag?,
+      ~crossPartitionTagKeys,
+    )
     let totalItems = transactItems->Array.length
     if totalItems > transactWriteItemsLimit {
       Error(
@@ -1331,13 +1322,11 @@ let appendConditional = async (
 }
 
 let append = (table: resolvedTable, ~partitionTag=?, ~crossPartitionTagKeys: array<string>=[]) =>
-  async (
-    events: array<ReventlessCore.DcbEventLog_Adapter.rawStoredEvent>,
-    ~condition=?,
-  ) => {
+  async (events: array<ReventlessCore.DcbEventLog_Adapter.rawStoredEvent>, ~condition=?) => {
     switch condition {
     | None => await appendUnconditional(table, events, ~partitionTag?)
-    | Some(cond) => await appendConditional(table, events, cond, ~partitionTag?, ~crossPartitionTagKeys)
+    | Some(cond) =>
+      await appendConditional(table, events, cond, ~partitionTag?, ~crossPartitionTagKeys)
     }
   }
 
@@ -1349,23 +1338,15 @@ let queryByPartitionKeyStream = (
   ~after: option<string>=?,
   ~strongConsistency: bool=false,
 ) => {
-  let baseParams = buildQueryByPartitionKeyInput(
-    table,
-    partitionKey,
-    ~after?,
-    ~strongConsistency,
-  )
+  let baseParams = buildQueryByPartitionKeyInput(table, partitionKey, ~after?, ~strongConsistency)
   Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
-    Effect.tryPromise(
-      ~catch=DynamoDb_Error.classify,
-      () => {
-        let params = switch cursor {
-        | None => baseParams
-        | Some(key) => {...baseParams, exclusiveStartKey: key}
-        }
-        QueryCommand.send(params->QueryCommand.make)
-      },
-    )
+    Effect.tryPromise(~catch=DynamoDb_Error.classify, () => {
+      let params = switch cursor {
+      | None => baseParams
+      | Some(key) => {...baseParams, exclusiveStartKey: key}
+      }
+      QueryCommand.send(params->QueryCommand.make)
+    })
     ->Effect.retry(DynamoDb_Error.retrySchedule)
     ->Effect.catchAll(err => Effect.fail(DynamoDb_Error.message(err)))
     ->Effect.map(result => (
@@ -1381,9 +1362,7 @@ let queryByCompositeTagsStream = (
   ~after: option<string>=?,
 ) => {
   let composite = compositeTagKey(tags)
-  let expressionAttributeValues = Dict.fromArray([
-    (":composite", composite->JSON.Encode.string),
-  ])
+  let expressionAttributeValues = Dict.fromArray([(":composite", composite->JSON.Encode.string)])
   let (keyConditionExpression, expressionAttributeNames) = switch after {
   | None => ("tag_composite = :composite", None)
   | Some(afterPos) => {
@@ -1394,21 +1373,18 @@ let queryByCompositeTagsStream = (
   let baseParams: QueryCommand.input = {
     tableName: table.name,
     indexName: "tag_composite",
-    keyConditionExpression: keyConditionExpression,
-    expressionAttributeValues: expressionAttributeValues,
+    keyConditionExpression,
+    expressionAttributeValues,
     ?expressionAttributeNames,
   }
   Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
-    Effect.tryPromise(
-      ~catch=DynamoDb_Error.classify,
-      () => {
-        let params = switch cursor {
-        | None => baseParams
-        | Some(key) => {...baseParams, exclusiveStartKey: key}
-        }
-        QueryCommand.send(params->QueryCommand.make)
-      },
-    )
+    Effect.tryPromise(~catch=DynamoDb_Error.classify, () => {
+      let params = switch cursor {
+      | None => baseParams
+      | Some(key) => {...baseParams, exclusiveStartKey: key}
+      }
+      QueryCommand.send(params->QueryCommand.make)
+    })
     ->Effect.retry(DynamoDb_Error.retrySchedule)
     ->Effect.catchAll(err => Effect.fail(DynamoDb_Error.message(err)))
     ->Effect.map(result => (
@@ -1435,16 +1411,13 @@ let scanWithFilterStream = (
   // position cannot appear in FilterExpression (it is the table's sort key).
   // Filter by position in application code after each page is fetched.
   let baseStream = Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
-    Effect.tryPromise(
-      ~catch=DynamoDb_Error.classify,
-      () => {
-        let params = switch cursor {
-        | None => baseParams
-        | Some(key) => {...baseParams, exclusiveStartKey: key}
-        }
-        ScanCommand.send(ScanCommand.make(params))
-      },
-    )
+    Effect.tryPromise(~catch=DynamoDb_Error.classify, () => {
+      let params = switch cursor {
+      | None => baseParams
+      | Some(key) => {...baseParams, exclusiveStartKey: key}
+      }
+      ScanCommand.send(ScanCommand.make(params))
+    })
     ->Effect.retry(DynamoDb_Error.retrySchedule)
     ->Effect.catchAll(err => Effect.fail(DynamoDb_Error.message(err)))
     ->Effect.map(result => (
@@ -1483,16 +1456,10 @@ let executeQueryItemStream = (
   | Some([tag]) if crossPartitionTagKeys->Array.includes(tag.key) =>
     queryBySingleTagCrossPartitionStream(table, tag, ~after?)
   | Some([tag]) =>
-    queryByPartitionKeyStream(
-      table,
-      `${tag.key}:${tag.value}`,
-      ~after?,
-      ~strongConsistency,
-    )
+    queryByPartitionKeyStream(table, `${tag.key}:${tag.value}`, ~after?, ~strongConsistency)
 
   // Multiple tags: use composite GSI
-  | Some(tags) if tags->Array.length > 1 =>
-    queryByCompositeTagsStream(table, tags, ~after?)
+  | Some(tags) if tags->Array.length > 1 => queryByCompositeTagsStream(table, tags, ~after?)
 
   // No tags (or empty): fall back to scan
   | None | Some([]) | Some(_) =>
@@ -1511,7 +1478,7 @@ let readStream = (table: resolvedTable, ~crossPartitionTagKeys: array<string>=[]
       )
     switch streams->Array.length {
     | 0 => Stream.empty
-    | 1 => (streams->Array.getUnsafe(0))->Stream.map(fromItem)
+    | 1 => streams->Array.getUnsafe(0)->Stream.map(fromItem)
     | _ =>
       // Scan sub-queries (tags = None) return items in unspecified order, so
       // a lazy k-way merge is not possible. Fall back to eager collect + sort.
@@ -1531,8 +1498,7 @@ let readStream = (table: resolvedTable, ~crossPartitionTagKeys: array<string>=[]
         // All sub-streams are tag-based GSI queries — items arrive in position
         // order (rangeKey = "position"). Merge lazily: DynamoDB pages are only
         // fetched as the consumer requests more elements.
-        mergeSortedEvents(streams->Array.map(s => s->Stream.map(fromItem)))
-        ->dedupByPosition
+        mergeSortedEvents(streams->Array.map(s => s->Stream.map(fromItem)))->dedupByPosition
       }
     }
   }

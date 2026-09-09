@@ -36,8 +36,9 @@ let keyEl = (name, keyType) =>
 // full (ALL) projection; per-tag `tag_<key>` GSIs are KEYS_ONLY. Uses the same
 // predicate as the deploy-time `make` so the two never drift.
 let gsi = indexName => {
-  let projection =
-    DcbEventLogStorage_DynamoDb_Runtime.indexKeepsFullProjection(indexName) ? "ALL" : "KEYS_ONLY"
+  let projection = DcbEventLogStorage_DynamoDb_Runtime.indexKeepsFullProjection(indexName)
+    ? "ALL"
+    : "KEYS_ONLY"
   Dict.fromArray([
     ("IndexName", s(indexName)),
     ("KeySchema", [keyEl(indexName, "HASH"), keyEl("position", "RANGE")]->JSON.Encode.array),
@@ -81,8 +82,7 @@ let createDcbTableWithTagKeys = async (
   tableName,
   tagKeys: array<string>,
 ): Util_DynamoDb_Runtime.resolvedTable => {
-  let indexNames =
-    tagKeys->Array.map(k => `tag_${k}`)->Array.concat(["tag_composite"])
+  let indexNames = tagKeys->Array.map(k => `tag_${k}`)->Array.concat(["tag_composite"])
   let attributeDefinitions = Array.concat(
     [attrDef("id"), attrDef("position")],
     indexNames->Array.map(attrDef),
@@ -110,8 +110,8 @@ let createDcbTableWithTagKeys = async (
 // entity) rather than per-member `fence#<member>:…` rows.
 let scanFenceIds = async (table: Util_DynamoDb_Runtime.resolvedTable): array<string> => {
   let items = await Util_DynamoDb_Runtime.scanStream({tableName: table.name})
-    ->Stream.runCollect
-    ->Effect.runPromise
+  ->Stream.runCollect
+  ->Effect.runPromise
   items->Array.filterMap(item =>
     item
     ->JSON.Decode.object
@@ -126,8 +126,8 @@ let scanFenceIds = async (table: Util_DynamoDb_Runtime.resolvedTable): array<str
 // persisted — the signal that a composite slice could read back its own state.
 let scanEventTypes = async (table: Util_DynamoDb_Runtime.resolvedTable): array<string> => {
   let items = await Util_DynamoDb_Runtime.scanStream({tableName: table.name})
-    ->Stream.runCollect
-    ->Effect.runPromise
+  ->Stream.runCollect
+  ->Effect.runPromise
   items->Array.filterMap(item =>
     item
     ->JSON.Decode.object

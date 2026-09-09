@@ -1,10 +1,12 @@
 // InboundTranslationSlice_Builder (AWS)
 // Wires AWS adapters and delegates to the core ReventlessCore.InboundTranslationSlice_Builder.
 
-module Make = (Api: {
-  let api: unit => Types.AppSync.api
-  let apiRole: unit => Types.AppSync.role
-}) => {
+module Make = (
+  Api: {
+    let api: unit => Types.AppSync.api
+    let apiRole: unit => Types.AppSync.role
+  },
+) => {
   module Inner = ReventlessCore.InboundTranslationSlice_Builder.Make(
     QueryDbStorage.DynamoDb,
     QueryDbResolvers.AppSync,
@@ -39,10 +41,7 @@ module Make = (Api: {
         component->ReventlessCore.Component.outputs
       switch outputs.queryDb.resources->Array.get(0) {
       | Some(tableResource) =>
-        PluginRuntime_Builder.registerInboundAuditTableName(
-          ~specName=Spec.name,
-          tableResource.name,
-        )
+        PluginRuntime_Builder.registerInboundAuditTableName(~specName=Spec.name, tableResource.name)
       | None => ()
       }
       component

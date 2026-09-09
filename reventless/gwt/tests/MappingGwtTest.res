@@ -6,7 +6,6 @@
 // target-decide pipeline end-to-end against the unified `GwtSource`/`GwtTarget`
 // module types.
 
-
 // ---------------------------------------------------------------------------
 // Shared Aggregate specs + behaviours used by the Aggr→* cases below.
 // ---------------------------------------------------------------------------
@@ -98,9 +97,7 @@ module NotificationSlice = {
 
   @schema
   type consumedEvent =
-    | NotificationSent({
-        notificationId: @s.matches(Reventless.DcbTag.string) string,
-      })
+    NotificationSent({notificationId: @s.matches(Reventless.DcbTag.string) string})
 
   let evolve = (_state, event) =>
     switch event {
@@ -140,8 +137,7 @@ module InventorySlice = {
   let initialState = {reserved: false}
 
   @schema
-  type consumedEvent =
-    | StockReserved({itemId: @s.matches(Reventless.DcbTag.string) string})
+  type consumedEvent = StockReserved({itemId: @s.matches(Reventless.DcbTag.string) string})
 
   let evolve = (_state, event) =>
     switch event {
@@ -149,21 +145,13 @@ module InventorySlice = {
     }
 
   @schema
-  type command =
-    | ReserveStock({
-        itemId: @s.matches(Reventless.DcbTag.string) string,
-        quantity: int,
-      })
+  type command = ReserveStock({itemId: @s.matches(Reventless.DcbTag.string) string, quantity: int})
 
   @schema
   type error = OutOfStock
 
   @schema
-  type event =
-    | StockReserved({
-        itemId: @s.matches(Reventless.DcbTag.string) string,
-        quantity: int,
-      })
+  type event = StockReserved({itemId: @s.matches(Reventless.DcbTag.string) string, quantity: int})
 
   let decide = (state, command) =>
     switch command {
@@ -337,10 +325,7 @@ DcbToDcbGwt.describe("Inventory → Notification (DCB → DCB)", () => {
   DcbToDcbGwt.test("existing NotificationSent causes target decide to reject", () =>
     DcbToDcbGwt.givenSourceEvents([])
     ->DcbToDcbGwt.andTargetEvents([
-      (
-        "reserved-i7",
-        [NotificationSlice.NotificationSent({notificationId: "reserved-i7"})],
-      ),
+      ("reserved-i7", [NotificationSlice.NotificationSent({notificationId: "reserved-i7"})]),
     ])
     ->DcbToDcbGwt.whenSourceCmd("i7", ReserveStock({itemId: "i7", quantity: 2}))
     ->DcbToDcbGwt.thenTargetError(NotificationAlreadySent)

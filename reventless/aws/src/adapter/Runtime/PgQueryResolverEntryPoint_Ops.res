@@ -106,7 +106,8 @@ let makePushdowns = (
     byIds: Engine.byIds,
     listPage: Engine.listPage,
     itemsPage: Engine.itemsPage,
-    scanAll: (~readModelName) => Engine.scan(~readModelName, ~filterConfigs=[], ~limit=scanAllLimit),
+    scanAll: (~readModelName) =>
+      Engine.scan(~readModelName, ~filterConfigs=[], ~limit=scanAllLimit),
   }
 }
 
@@ -138,7 +139,7 @@ let registerBinding = (
         pgConnection,
         ~name=entry.readModelName,
         ~indexes,
-        ~subIdField=?subIdField,
+        ~subIdField?,
       ),
       pushdowns,
       indexes,

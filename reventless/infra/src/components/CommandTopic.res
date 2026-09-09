@@ -42,7 +42,11 @@ type publishJsons = array<Reventless.Message.commandJson> => promise<unit>
 Publishes a stream of serialized command envelopes as an `Effect.t`.
 Use this for high-throughput or streaming command pipelines.
 */
-type publishJsonsStream = Stream.t<Reventless.Message.commandJson, string, unit> => Effect.t<unit, string, unit>
+type publishJsonsStream = Stream.t<Reventless.Message.commandJson, string, unit> => Effect.t<
+  unit,
+  string,
+  unit,
+>
 
 /**
 A command together with an idempotency reference string.

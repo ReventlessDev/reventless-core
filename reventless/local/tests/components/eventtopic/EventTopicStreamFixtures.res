@@ -5,7 +5,7 @@ module ItemStreamSpec = {
   let name = "StreamEvtItem"
 
   @schema
-  type event = | ItemPublished({name: string}) | ItemRemoved({id: string})
+  type event = ItemPublished({name: string}) | ItemRemoved({id: string})
 }
 
 module StreamEvtBus = LocalBus.Make()
@@ -24,4 +24,3 @@ module StreamEvtTopicMaker = ReventlessCore.EventTopic_Builder.Make(
 )
 
 let evtTopic = StreamEvtTopicMaker.make(~name="StreamEvtTopic", ~storageResources=[])
-

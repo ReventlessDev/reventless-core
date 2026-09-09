@@ -18,13 +18,15 @@ type externalInput = {
 }
 
 @schema
-type command = @authorize(AllowGroups(["Admin", "Merchandiser"])) AddProduct({
-  productId: string,
-  name: string,
-  description: string,
-  price: Reventless.Money.t,
-  categoryId: string,
-})
+type command =
+  | @authorize(AllowGroups(["Admin", "Merchandiser"]))
+  AddProduct({
+      productId: string,
+      name: string,
+      description: string,
+      price: Reventless.Money.t,
+      categoryId: string,
+    })
 
 let targetName = "AddProduct"
 // Foreign system this anti-corruption slice receives product data from — drawn as an

@@ -28,10 +28,12 @@ module DeployTimeCapabilities = {
   let capabilities = () => Reventless.Capabilities.none
 }
 
-module Make = (Api: {
-  let api: unit => Types.AppSync.api
-  let apiRole: unit => Types.AppSync.role
-}) => {
+module Make = (
+  Api: {
+    let api: unit => Types.AppSync.api
+    let apiRole: unit => Types.AppSync.role
+  },
+) => {
   module Inner = ReventlessCore.OutboundTranslationSlice_Builder.Make(
     RuntimeEnvironment,
     QueryDbStorage.DynamoDb,
@@ -53,7 +55,13 @@ module Make = (Api: {
     type component = InnerMake.component
     let queryDbName = InnerMake.queryDbName
 
-    let make = (~dcbEventLog, ~allEventTopics=Dict.make(), ~publishJsons, ~runtime=?, ~opts=?): component => {
+    let make = (
+      ~dcbEventLog,
+      ~allEventTopics=Dict.make(),
+      ~publishJsons,
+      ~runtime=?,
+      ~opts=?,
+    ): component => {
       let ots = InnerMake.make(~dcbEventLog, ~allEventTopics, ~publishJsons, ~runtime?, ~opts?)
 
       let queryDbOutputs = (ots->ReventlessCore.Component.outputs).queryDb
@@ -67,9 +75,7 @@ module Make = (Api: {
       // not carry.
       let declaredSources = Spec.sourceNames
       let sourceTopics =
-        allEventTopics->ReventlessCore.EventTopic.filter(
-          declaredSources->Belt.Set.String.fromArray,
-        )
+        allEventTopics->ReventlessCore.EventTopic.filter(declaredSources->Belt.Set.String.fromArray)
       let consumesDcbLog =
         declaredSources->Array.length == 0 ||
           declaredSources->Array.some(name => !(allEventTopics->Dict.has(name)))

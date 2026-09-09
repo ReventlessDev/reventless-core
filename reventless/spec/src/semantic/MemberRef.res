@@ -55,7 +55,6 @@ declares one there today: a view that carried a scalar *and* the set it was
 drawn from needed a marker saying the two were one thing, and a view whose
 primary is simply the first member has no second field to reconcile.
 */
-
 /** Transparent `string`, as every ref-shaped semantic here is: the marker
     refines an existing field rather than replacing it, so nothing stored
     changes when a field adopts it. */

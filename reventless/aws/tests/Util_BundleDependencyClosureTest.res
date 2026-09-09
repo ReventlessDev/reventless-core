@@ -62,8 +62,17 @@ export const rule = () => Rules.check();
     ),
   ],
 )
-let _ = writePkg(~root=rulesRoot, ~name=rulesName, [("src/Rules.res.mjs", `export const check = () => true;
-`)])
+let _ = writePkg(
+  ~root=rulesRoot,
+  ~name=rulesName,
+  [
+    (
+      "src/Rules.res.mjs",
+      `export const check = () => true;
+`,
+    ),
+  ],
+)
 
 let closureOf = (packageDirs: dict<string>) => {
   Util_Bundle.addImportedPackageClosure(packageDirs)
@@ -130,7 +139,10 @@ describe("Util_Bundle — bundled user packages carry their imports", () => {
     // Walking reventless-aws would reach its deploy-time-only imports (the
     // @pulumi bindings) and add tens of megabytes to every archive.
     let packageDirs = Dict.fromArray([
-      ("@reventlessdev/reventless-aws", Util_Bundle.resolvePackageRoot("@reventlessdev/reventless-aws")),
+      (
+        "@reventlessdev/reventless-aws",
+        Util_Bundle.resolvePackageRoot("@reventlessdev/reventless-aws"),
+      ),
     ])
     expect(closureOf(packageDirs)->Dict.keysToArray->Array.length)->toBe(1)
   })

@@ -9,7 +9,6 @@ semantic is a new value rather than a new branch.
 The payload is a typed variant because the vocabulary is framework-owned and
 closed — which also keeps `Reference.getTarget` total.
 */
-
 /** Which entity a reference field points to. */
 type referenceTarget = {entity: string, plugin: option<string>}
 
@@ -122,18 +121,16 @@ let mark = (schema: S.t<'a>, ~id: string, ~payload: payload=Plain): S.t<'a> =>
 
 /** A schema that validates with `check` and carries the semantic `id`, derived
     from the constructor so no second grammar can drift from it. */
-// sury's refiner takes a fixed message, so `check`'s per-value reason is lost
+let // sury's refiner takes a fixed message, so `check`'s per-value reason is lost
 // here; call the scalar's own `fromString`/`fromFloat` to report which rule broke.
-let refined = (base: S.t<'a>, ~id: string, ~check: 'a => result<'a, string>): S.t<'a> =>
+refined = (base: S.t<'a>, ~id: string, ~check: 'a => result<'a, string>): S.t<'a> =>
   base
-  ->S.refine(
-    value =>
-      switch check(value) {
-      | Ok(_) => true
-      | Error(_) => false
-      },
-    ~error=`expected a valid ${id}`,
-  )
+  ->S.refine(value =>
+    switch check(value) {
+    | Ok(_) => true
+    | Error(_) => false
+    }
+  , ~error=`expected a valid ${id}`)
   ->mark(~id)
 
 /** A value as it should read back to whoever typed it — rejection messages quote

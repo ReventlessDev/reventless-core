@@ -180,9 +180,8 @@ external isInitializeRequest: JSON.t => bool = "isInitializeRequest"
 // ─── Node.js HTTP server ───────────────────────────────────────────────────
 
 @module("http")
-external createHttpServer: (
-  (incomingMessage, serverResponse) => unit,
-) => httpServer = "createServer"
+external createHttpServer: ((incomingMessage, serverResponse) => unit) => httpServer =
+  "createServer"
 
 @send
 external listen: (httpServer, int, unit => unit) => unit = "listen"

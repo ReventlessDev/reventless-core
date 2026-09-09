@@ -13,7 +13,12 @@
 let defaultProdStacks = ["prod", "main"]
 
 /** Pure FQDN derivation. */
-let deriveFqdn = (~baseName: string, ~stack: string, ~baseDomain: string, ~prodStacks: array<string>): string =>
+let deriveFqdn = (
+  ~baseName: string,
+  ~stack: string,
+  ~baseDomain: string,
+  ~prodStacks: array<string>,
+): string =>
   prodStacks->Array.includes(stack)
     ? `${baseName}.${baseDomain}`
     : `${baseName}-${stack}.${baseDomain}`

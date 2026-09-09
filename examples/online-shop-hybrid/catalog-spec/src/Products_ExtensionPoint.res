@@ -59,5 +59,4 @@ type event =
 // Fired from the publishing side; not durable, not replayable, not routed to
 // subscribers. See `catalog/src/ExtensionPoint/Products_ExtensionPointMapping.res`.
 @schema
-type directive =
-  | EmitPricingUpdate({productId: string, price: Reventless.Money.t})
+type directive = EmitPricingUpdate({productId: string, price: Reventless.Money.t})

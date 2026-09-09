@@ -1,9 +1,7 @@
 let platformStackReference =
   Pulumi.Config.make(Some("platform"))
   ->Pulumi.Config.get("stack")
-  ->Option.map(stack =>
-    Pulumi.StackReference.makeWithName(stack ++ "-interstack", {"name": stack})
-  )
+  ->Option.map(stack => Pulumi.StackReference.makeWithName(stack ++ "-interstack", {"name": stack}))
 
 // -----------------------------------------------------------------------
 // Typed, validated cross-stack queries using the reventless-interop engine.
@@ -21,11 +19,9 @@ module DefaultTaskQuery = ReventlessInterop.Query.Task.Make({
   let requiredFields = ["name"]
   let optionalFields = ["bucketNames", "sideEffectSources"]
   let fromJson = (json: JSON.t) =>
-    try Ok(json->S.parseOrThrow(~to=ReventlessInterop.Task.resolvedOutputsSchema))
-    catch {
+    try Ok(json->S.parseOrThrow(~to=ReventlessInterop.Task.resolvedOutputsSchema)) catch {
     | exn =>
-      let msg =
-        exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("parse error")
+      let msg = exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("parse error")
       Error(msg)
     }
 })
@@ -35,11 +31,9 @@ module DefaultEventMapperQuery = ReventlessInterop.Query.EventMapper.Make({
   let requiredFields = ["name", "eventCollector"]
   let optionalFields = ["counter"]
   let fromJson = (json: JSON.t) =>
-    try Ok(json->S.parseOrThrow(~to=ReventlessInterop.EventMapper.resolvedOutputsSchema))
-    catch {
+    try Ok(json->S.parseOrThrow(~to=ReventlessInterop.EventMapper.resolvedOutputsSchema)) catch {
     | exn =>
-      let msg =
-        exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("parse error")
+      let msg = exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("parse error")
       Error(msg)
     }
 })
@@ -54,11 +48,9 @@ module DefaultExtensionPointQuery = ReventlessInterop.Query.ExtensionPoint.Make(
   let requiredFields = ["name", "commandTopic", "eventTopic"]
   let optionalFields = []
   let fromJson = (json: JSON.t) =>
-    try Ok(json->S.parseOrThrow(~to=ReventlessInterop.ExtensionPoint.resolvedOutputsSchema))
-    catch {
+    try Ok(json->S.parseOrThrow(~to=ReventlessInterop.ExtensionPoint.resolvedOutputsSchema)) catch {
     | exn =>
-      let msg =
-        exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("parse error")
+      let msg = exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("parse error")
       Error(msg)
     }
 })

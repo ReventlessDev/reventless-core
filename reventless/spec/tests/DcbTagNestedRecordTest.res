@@ -21,10 +21,7 @@ type lineItem = {
 
 @schema
 type command =
-  PlaceOrder({
-    orderId: @s.matches(DcbTag.partition) string,
-    lineItems: array<lineItem>,
-  })
+  PlaceOrder({orderId: @s.matches(DcbTag.partition) string, lineItems: array<lineItem>})
 
 @schema
 type consumedEvent =
@@ -40,11 +37,7 @@ type orderLine = {
 // Declared after `consumedEvent` so its own `OrderPlaced` is the one an
 // unannotated literal below resolves to.
 @schema
-type event =
-  OrderPlaced({
-    orderId: @s.matches(DcbTag.partition) string,
-    lines: array<orderLine>,
-  })
+type event = OrderPlaced({orderId: @s.matches(DcbTag.partition) string, lines: array<orderLine>})
 
 // The key an author asked for rather than the one the field is called, at depth.
 module Renamed = {
@@ -124,9 +117,7 @@ describe("DcbTag over a record inside an array", () => {
 
   testSync("an explicit key override on a nested field is honoured", () => {
     let value = Renamed.Restock({members: [{sku: "p1"}]})
-    expect(DcbTag.extractTags(Renamed.commandSchema, value)->pairs)->toEqual([
-      ("productId", "p1"),
-    ])
+    expect(DcbTag.extractTags(Renamed.commandSchema, value)->pairs)->toEqual([("productId", "p1")])
   })
 
   // A plain nested record is the same descent without the fan-out, so its tag is
@@ -143,9 +134,9 @@ describe("DcbTag over a record inside an array", () => {
   // from a query. An event type whose only carrier of a key is a nested record
   // would otherwise be narrowed away from the clause that reads it.
   testSync("the produced tag keys include the nested one", () =>
-    expect(
-      DcbTag.extractTagKeysByEventType(eventSchema)->Dict.get("OrderPlaced"),
-    )->toEqual(Some(["orderId", "productId"]))
+    expect(DcbTag.extractTagKeysByEventType(eventSchema)->Dict.get("OrderPlaced"))->toEqual(
+      Some(["orderId", "productId"]),
+    )
   )
 })
 

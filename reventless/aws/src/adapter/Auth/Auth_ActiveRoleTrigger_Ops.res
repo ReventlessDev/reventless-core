@@ -137,7 +137,7 @@ let respond = (~event: event, ~decision: decision): event => {
         groupOverrideDetails: {
           groupsToOverride: groups,
           iamRolesToOverride,
-          preferredRole: ?preferredRole,
+          ?preferredRole,
         },
       },
     },
@@ -204,7 +204,10 @@ let handler = async (event: event): event => {
     ->Option.getOr([])
 
   let sub =
-    event.request->Option.flatMap(r => r.userAttributes)->Option.flatMap(u => u.sub)->Option.getOr("")
+    event.request
+    ->Option.flatMap(r => r.userAttributes)
+    ->Option.flatMap(u => u.sub)
+    ->Option.getOr("")
 
   let clientId = event.callerContext->Option.flatMap(c => c.clientId)->Option.getOr("")
 

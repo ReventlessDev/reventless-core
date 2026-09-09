@@ -168,9 +168,7 @@ let makeGenerateCommand = (
         | Some(idValue) => idValue
         | None =>
           try {
-            let derived = Reventless.DcbTag.derivePartitionTag([
-              (serviceName, "", commandSchema),
-            ])
+            let derived = Reventless.DcbTag.derivePartitionTag([(serviceName, "", commandSchema)])
             switch derived {
             | Simple(pt) =>
               let tags = Reventless.DcbTag.extractTagsFromJson(commandSchema, commandJson)
@@ -221,22 +219,23 @@ let makeGenerateCommand = (
           | Allow =>
             switch publishJsonsAndWait {
             | Some(publishAndWait) =>
-              Effect.promise(() => publishAndWait([{id, meta, commandJson}]))
-              ->Effect.map(outcomes => {
-                // For aggregates, entityId comes from the envelope id.
-                // DCB slices populate entityId via the side-channel; don't override it.
-                switch outcomes->Array.getUnsafe(0) {
-                | CommandTopic.Accepted(payload) when payload.entityId->Option.isNone =>
-                  CommandTopic.Accepted({...payload, entityId: id})
-                | outcome => outcome
-                }
-              })
+              Effect.promise(() => publishAndWait([{id, meta, commandJson}]))->Effect.map(
+                outcomes => {
+                  // For aggregates, entityId comes from the envelope id.
+                  // DCB slices populate entityId via the side-channel; don't override it.
+                  switch outcomes->Array.getUnsafe(0) {
+                  | CommandTopic.Accepted(payload) if payload.entityId->Option.isNone =>
+                    CommandTopic.Accepted({...payload, entityId: id})
+                  | outcome => outcome
+                  }
+                },
+              )
             | None =>
-              Effect.promise(() => publishJsons([{id, meta, commandJson}]))
-              ->Effect.map(_ => CommandTopic.Pending({msgId: meta.msgId}))
+              Effect.promise(() => publishJsons([{id, meta, commandJson}]))->Effect.map(
+                _ => CommandTopic.Pending({msgId: meta.msgId}),
+              )
             }
-          | Deny(msg) =>
-            JsError.throwWithMessage(msg)
+          | Deny(msg) => JsError.throwWithMessage(msg)
           }
         )
       | exception err =>
@@ -265,10 +264,7 @@ let makeGenerateCommand = (
     })
 }
 
-module Make = (
-  Spec: Spec,
-  AggregateSpec: Reventless.Aggregate.Spec,
-): T => {
+module Make = (Spec: Spec, AggregateSpec: Reventless.Aggregate.Spec): T => {
   let generateCommand = makeGenerateCommand(
     ~publishJsons=Spec.publishJsons,
     ~publishJsonsAndWait=?Spec.publishJsonsAndWait,

@@ -13,7 +13,6 @@ a JSON number either way.
 }
 ```
 */
-
 /** The count's representation. Transparent `float`; see the note above on why
     it is not `int`. */
 type t = float

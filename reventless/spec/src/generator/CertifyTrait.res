@@ -128,8 +128,7 @@ let main = async () => {
         ) catch {
         | _ =>
           fail(
-            `${traitPackage} ships no conformance suite (looked for ${specifier}).\n` ++
-            `  A trait without one cannot be certified — there is nothing to prove.`,
+            `${traitPackage} ships no conformance suite (looked for ${specifier}).\n` ++ `  A trait without one cannot be certified — there is nothing to prove.`,
           )
           %raw(`undefined`)
         }
@@ -149,8 +148,7 @@ let main = async () => {
         | [] =>
           fail(
             `the report contains no suite titled "${suite}".\n` ++
-            `  Either the conformance binding was never registered, or ${host} is not the ` ++
-            `name its Spec declares.`,
+            `  Either the conformance binding was never registered, or ${host} is not the ` ++ `name its Spec declares.`,
           )
         | results => {
             let resolveVersion = specifier =>

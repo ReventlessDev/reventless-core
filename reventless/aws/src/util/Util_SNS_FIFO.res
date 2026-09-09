@@ -5,7 +5,7 @@ let toResource = (~tags=?, {PulumiAws.SNS.Topic.id: id, name, arn}) =>
     ~urn=arn,
     ~service=name->Pulumi.Output.apply(_ => AWS.SNS_FIFO.service),
     ~resourceType="aws:sns:Topic"->Pulumi.Output.make,
-    ~tags=?tags,
+    ~tags?,
   )
 
 let findTopicInResolvedResources = resources =>

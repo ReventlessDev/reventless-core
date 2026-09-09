@@ -33,11 +33,10 @@ describe("Util_DynamoDbStream.toStreamResource", () => {
   })
 
   test("answers its own stream ARN", async () => {
-    let arn =
-      await tableResource
-      ->Util_DynamoDbStream.toStreamResource
-      ->Util_DynamoDbStream.streamArnFromDynamoDbTableResource
-      ->resolve
+    let arn = await tableResource
+    ->Util_DynamoDbStream.toStreamResource
+    ->Util_DynamoDbStream.streamArnFromDynamoDbTableResource
+    ->resolve
     expect(arn)->toBe(streamArn)
   })
 })

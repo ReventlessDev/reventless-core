@@ -31,19 +31,16 @@ let putWithRetries = (table, id, item) => {
       ReventlessCore.EffectLogger.logError(
         ~comp=__MODULE__,
         `putWithRetries: id=${id}: ${msg}`,
-      )
-      ->Effect.map(_ => Error(`put id=${id} failed: ${msg}`))
-    | StaleState(msg) =>
-      Effect.succeed(Error(`Stale State: id=${id}: ${msg}`))
+      )->Effect.map(_ => Error(`put id=${id} failed: ${msg}`))
+    | StaleState(msg) => Effect.succeed(Error(`Stale State: id=${id}: ${msg}`))
     }
   )
 }
 
 let putIfNotExistsWithRetries = (~idKey, ~sortKey=?, table, id, item) => {
   let item = item->injectId(idKey, id)
-  Effect.tryPromise(
-    ~catch=DynamoDb_Error.classify,
-    () => putIfNotExists(table.name, idKey, sortKey, item),
+  Effect.tryPromise(~catch=DynamoDb_Error.classify, () =>
+    putIfNotExists(table.name, idKey, sortKey, item)
   )
   ->Effect.map(_ => Ok())
   ->Effect.retry(DynamoDb_Error.retrySchedule)
@@ -54,8 +51,7 @@ let putIfNotExistsWithRetries = (~idKey, ~sortKey=?, table, id, item) => {
       ReventlessCore.EffectLogger.logError(
         ~comp=__MODULE__,
         `putIfNotExistsWithRetries: id=${id}: ${msg}`,
-      )
-      ->Effect.map(_ => Error(`putIfNotExists id=${id} failed: ${msg}`))
+      )->Effect.map(_ => Error(`putIfNotExists id=${id} failed: ${msg}`))
     }
   )
 }
@@ -65,10 +61,7 @@ let delete = (table, ~sort=?, id) => {
 }
 
 let deleteWithRetries = (~sort=?, table, id) =>
-  Effect.tryPromise(
-    ~catch=DynamoDb_Error.classify,
-    () => table->delete(id, ~sort?),
-  )
+  Effect.tryPromise(~catch=DynamoDb_Error.classify, () => table->delete(id, ~sort?))
   ->Effect.map(_ => Ok())
   ->Effect.retry(DynamoDb_Error.retrySchedule)
   ->Effect.catchAll(err => {
@@ -76,24 +69,20 @@ let deleteWithRetries = (~sort=?, table, id) =>
     ReventlessCore.EffectLogger.logError(
       ~comp=__MODULE__,
       `delete: id=${id}: ${msg}`,
-    )
-    ->Effect.map(_ => Error(`delete id=${id} failed: ${msg}`))
+    )->Effect.map(_ => Error(`delete id=${id} failed: ${msg}`))
   })
 
 // Streams all items matching a QueryCommand, fetching one DynamoDB page at a time.
 // Each page fetch retries independently on transient errors.
 let queryStream = (params: QueryCommand.input): Stream.t<JSON.t, DynamoDb_Error.t, unit> =>
   Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
-    Effect.tryPromise(
-      ~catch=DynamoDb_Error.classify,
-      () => {
-        let p = switch cursor {
-        | None => params
-        | Some(key) => {...params, exclusiveStartKey: key}
-        }
-        QueryCommand.send(p->QueryCommand.make)
-      },
-    )
+    Effect.tryPromise(~catch=DynamoDb_Error.classify, () => {
+      let p = switch cursor {
+      | None => params
+      | Some(key) => {...params, exclusiveStartKey: key}
+      }
+      QueryCommand.send(p->QueryCommand.make)
+    })
     ->Effect.retry(DynamoDb_Error.retrySchedule)
     ->Effect.map(res => (
       res.items->Option.getOr([]),
@@ -105,16 +94,13 @@ let queryStream = (params: QueryCommand.input): Stream.t<JSON.t, DynamoDb_Error.
 // Each page fetch retries independently on transient errors.
 let scanStream = (params: ScanCommand.input): Stream.t<JSON.t, DynamoDb_Error.t, unit> =>
   Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
-    Effect.tryPromise(
-      ~catch=DynamoDb_Error.classify,
-      () => {
-        let p = switch cursor {
-        | None => params
-        | Some(key) => {...params, exclusiveStartKey: key}
-        }
-        ScanCommand.send(ScanCommand.make(p))
-      },
-    )
+    Effect.tryPromise(~catch=DynamoDb_Error.classify, () => {
+      let p = switch cursor {
+      | None => params
+      | Some(key) => {...params, exclusiveStartKey: key}
+      }
+      ScanCommand.send(ScanCommand.make(p))
+    })
     ->Effect.retry(DynamoDb_Error.retrySchedule)
     ->Effect.map(res => (
       res.items->Option.getOr([]),
@@ -180,10 +166,7 @@ let hasUnprocessedItems = writeOutput =>
 let batchWriteWithRetries = batchWriteRequests => {
   let all = batchWriteRequests->Dict.valuesToArray->Array.flat->Array.length->Int.toString
   let rec attempt = (retry, requests) =>
-    Effect.tryPromise(
-      ~catch=DynamoDb_Error.classify,
-      () => batchWrite(requests),
-    )
+    Effect.tryPromise(~catch=DynamoDb_Error.classify, () => batchWrite(requests))
     ->Effect.retry(DynamoDb_Error.retrySchedule)
     ->Effect.flatMap(writeOutput =>
       if writeOutput->hasUnprocessedItems {
@@ -192,8 +175,7 @@ let batchWriteWithRetries = batchWriteRequests => {
         ReventlessCore.EffectLogger.logInfo(
           ~comp=__MODULE__,
           `batchWriteWithRetries: retry ${retry->Int.toString}: ${count} unprocessed items`,
-        )
-        ->Effect.flatMap(_ => attempt(retry + 1, unprocessedRequests))
+        )->Effect.flatMap(_ => attempt(retry + 1, unprocessedRequests))
       } else {
         Effect.succeed(Ok())
       }

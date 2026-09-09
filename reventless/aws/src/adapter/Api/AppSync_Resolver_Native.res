@@ -2,7 +2,6 @@
     `PulumiAws.AppSync.Resolver` that uses `@pulumi/aws-native` (Cloud Control
     API) so the CFN handler can internally wait out schema -> resolver
     propagation. See docs/plans/done/appsync-resolver-aws-native.md. */
-
 module Native = PulumiAws.AwsNative.AppSync.Resolver
 module Functions = PulumiAws.AppSync.Resolver.Functions
 
@@ -28,7 +27,7 @@ let makeUnitJsResolver = (
       code,
       runtime: Native.appsyncJs->Pulumi.Input.make,
     },
-    ~opts=opts,
+    ~opts,
   )
 
 let makeSubscriptionResolverCode = (~filter: option<string>): string => {
@@ -62,7 +61,7 @@ let makeSubscriptionResolver = (
       code: makeSubscriptionResolverCode(~filter=subscriptionFilter)->Pulumi.Input.make,
       runtime: Native.appsyncJs->Pulumi.Input.make,
     },
-    ~opts=opts,
+    ~opts,
   )
 
 let makePipelineJsResolver = (
@@ -89,5 +88,5 @@ let makePipelineJsResolver = (
         }: Native.pipelineConfig
       )->Pulumi.Input.make,
     },
-    ~opts=opts,
+    ~opts,
   )

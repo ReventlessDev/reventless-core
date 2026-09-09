@@ -75,7 +75,9 @@ let subscribeQueue2SnsTopic = (
       ~topic=resource->ReventlessCore.AdapterDeploytime.resolvedToResource,
       ~opts,
     )
-    subscription.id->Pulumi.Output.apply(id => log.debug(~comp="EventCollector", `created SNS subscription: ${id} ${name}`))
+    subscription.id->Pulumi.Output.apply(id =>
+      log.debug(~comp="EventCollector", `created SNS subscription: ${id} ${name}`)
+    )
   })
 }
 
@@ -143,7 +145,9 @@ let connectLambda = (
     ->Pulumi.Output.flatMap(((eventTopicResources, queueArns, resources)) => {
       log.debug(
         ~comp="EventCollector",
-        `connectLambda ${name}: ${eventTopicResources->Array.length->Int.toString} topic resource(s), ${resources->Array.length->Int.toString} resource(s)`,
+        `connectLambda ${name}: ${eventTopicResources
+          ->Array.length
+          ->Int.toString} topic resource(s), ${resources->Array.length->Int.toString} resource(s)`,
       )
 
       let dynamoDbStreamResources = eventTopicResources->dynamoDbStreamResources

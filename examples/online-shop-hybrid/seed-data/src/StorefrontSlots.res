@@ -209,15 +209,14 @@ let register = (arg: Slots.registerArg): unit => {
     | (None, _, Some(n)) => Some(Int.toString(n) ++ " items")
     | (None, _, None) => None
     }
-    let summary =
-      [
-        // A product's own money is its price; an order's is its total. A row
-        // carries one or the other, so both are offered and whichever is there
-        // is what shows.
-        Slots.Row.money(payload.row, "price")->Option.map(Slots.Format.money),
-        Slots.Row.money(payload.row, "total")->Option.map(Slots.Format.money),
-        items,
-      ]->Array.filterMap(line => line)
+    let summary = [
+      // A product's own money is its price; an order's is its total. A row
+      // carries one or the other, so both are offered and whichever is there
+      // is what shows.
+      Slots.Row.money(payload.row, "price")->Option.map(Slots.Format.money),
+      Slots.Row.money(payload.row, "total")->Option.map(Slots.Format.money),
+      items,
+    ]->Array.filterMap(line => line)
     h(
       "div",
       {"className": "sf-face"},
@@ -278,27 +277,28 @@ let register = (arg: Slots.registerArg): unit => {
       // The rest as thumbnails. A caption becomes the tooltip rather than a
       // second line — at this size the words would be wider than the picture.
       let rest = images->Array.slice(~start=1, ~end=Array.length(images))
-      let more = Array.length(rest) == 0
-        ? []
-        : [
-            h(
-              "div",
-              {"className": "sf-media-more"},
-              rest->Array.mapWithIndex((image, index) =>
-                h(
-                  "img",
-                  {
-                    "className": "sf-media-thumb",
-                    "src": image.src,
-                    "alt": image.alt,
-                    "key": image.src,
-                    "title": captionAt(index + 1)->Option.getOr(image.alt),
-                  },
-                  [],
-                )
+      let more =
+        Array.length(rest) == 0
+          ? []
+          : [
+              h(
+                "div",
+                {"className": "sf-media-more"},
+                rest->Array.mapWithIndex((image, index) =>
+                  h(
+                    "img",
+                    {
+                      "className": "sf-media-thumb",
+                      "src": image.src,
+                      "alt": image.alt,
+                      "key": image.src,
+                      "title": captionAt(index + 1)->Option.getOr(image.alt),
+                    },
+                    [],
+                  )
+                ),
               ),
-            ),
-          ]
+            ]
       h("div", {"className": "sf-media"}, primary->Array.concat(more))
     }
   })
@@ -416,7 +416,11 @@ let register = (arg: Slots.registerArg): unit => {
       ->Array.concat(
         switch payload.clear {
         | Some(clear) => [
-            h("button", {"className": "sf-basket-clear", "onClick": clear}, [React.string("Clear")]),
+            h(
+              "button",
+              {"className": "sf-basket-clear", "onClick": clear},
+              [React.string("Clear")],
+            ),
           ]
         | None => []
         },
@@ -445,7 +449,8 @@ let register = (arg: Slots.registerArg): unit => {
     | Some(n) => [Int.toString(n) ++ " items"]
     | None => []
     }
-    let total = Slots.Row.money(payload.row, "total")->Option.mapOr([], m => [Slots.Format.money(m)])
+    let total =
+      Slots.Row.money(payload.row, "total")->Option.mapOr([], m => [Slots.Format.money(m)])
     h(
       "span",
       {"className": "sf-summary"},

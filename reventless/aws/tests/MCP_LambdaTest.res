@@ -22,27 +22,18 @@ describe("MCP_Lambda.generateAdminConfig", () => {
   })
 
   testSync("produces resources from admin query entries", () => {
-    let config = MCP_Lambda.generateAdminConfig(
-      ~serverName="test",
-      ~serverVersion="1.0.0",
-    )
+    let config = MCP_Lambda.generateAdminConfig(~serverName="test", ~serverVersion="1.0.0")
     // PluginBaseFragment has one query entry → generates resources for single + list
     expect(config.resources->Array.length)->toBeGreaterThan(0)
   })
 
   testSync("server name has -admin suffix", () => {
-    let config = MCP_Lambda.generateAdminConfig(
-      ~serverName="my-platform",
-      ~serverVersion="2.0.0",
-    )
+    let config = MCP_Lambda.generateAdminConfig(~serverName="my-platform", ~serverVersion="2.0.0")
     expect(config.serverName)->toBe("my-platform-admin")
   })
 
   testSync("server version is passed through", () => {
-    let config = MCP_Lambda.generateAdminConfig(
-      ~serverName="test",
-      ~serverVersion="3.1.4",
-    )
+    let config = MCP_Lambda.generateAdminConfig(~serverName="test", ~serverVersion="3.1.4")
     expect(config.serverVersion)->toBe("3.1.4")
   })
 
@@ -52,21 +43,22 @@ describe("MCP_Lambda.generateAdminConfig", () => {
       ~serverVersion="1.0.0",
       ~cloner=true,
     )
-    config.tools->Array.forEach(tool => {
-      expect(tool.name->String.length)->toBeGreaterThan(0)
-      expect(tool.description->String.length)->toBeGreaterThan(0)
-    })
+    config.tools->Array.forEach(
+      tool => {
+        expect(tool.name->String.length)->toBeGreaterThan(0)
+        expect(tool.description->String.length)->toBeGreaterThan(0)
+      },
+    )
   })
 
   testSync("resources have non-empty names and URI templates", () => {
-    let config = MCP_Lambda.generateAdminConfig(
-      ~serverName="test",
-      ~serverVersion="1.0.0",
+    let config = MCP_Lambda.generateAdminConfig(~serverName="test", ~serverVersion="1.0.0")
+    config.resources->Array.forEach(
+      resource => {
+        expect(resource.name->String.length)->toBeGreaterThan(0)
+        expect(resource.uriTemplate->String.length)->toBeGreaterThan(0)
+      },
     )
-    config.resources->Array.forEach(resource => {
-      expect(resource.name->String.length)->toBeGreaterThan(0)
-      expect(resource.uriTemplate->String.length)->toBeGreaterThan(0)
-    })
   })
 
   testSync("commandTopicArns are mapped to tools", () => {
@@ -92,10 +84,7 @@ describe("MCP_Lambda.generateAdminConfig", () => {
   })
 
   testSync("event history resources default to empty", () => {
-    let config = MCP_Lambda.generateAdminConfig(
-      ~serverName="test",
-      ~serverVersion="1.0.0",
-    )
+    let config = MCP_Lambda.generateAdminConfig(~serverName="test", ~serverVersion="1.0.0")
     expect(config.eventHistoryResources)->toHaveLength(0)
   })
 })

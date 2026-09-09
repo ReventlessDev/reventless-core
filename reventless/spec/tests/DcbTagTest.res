@@ -79,19 +79,21 @@ let catalogSlices: array<DcbTag.sliceSchemas> = [
 
 describe("DcbTag.deriveEffectiveScope (inference vs annotation drift)", () => {
   testSync("infers the cross-partition @ref key (categoryId) into the scope", () =>
-    expect((DcbTag.deriveEffectiveScope(catalogSlices)).crossPartitionTagKeys)->toEqual([
+    expect(DcbTag.deriveEffectiveScope(catalogSlices).crossPartitionTagKeys)->toEqual([
       "categoryId",
     ])
   )
   testSync("indexes ProductAdded by its own partition only (categoryId is payload)", () =>
     expect(
-      (DcbTag.deriveEffectiveScope(catalogSlices)).tagKeysByEventType->Dict.get("ProductAdded"),
+      DcbTag.deriveEffectiveScope(catalogSlices).tagKeysByEventType->Dict.get("ProductAdded"),
     )->toEqual(Some(["productId"]))
   )
   testSync("annotation-only extraction misses it — the pre-fix runtime bug", () =>
     // No `@crossPartition` annotation exists (categoryId is `@ref`), so the old
     // annotation-based derivation the entry point used yields [].
-    expect(DcbTag.extractCrossPartitionTagKeys(productAddedEventSchema->S.castToUnknown))->toEqual([])
+    expect(
+      DcbTag.extractCrossPartitionTagKeys(productAddedEventSchema->S.castToUnknown),
+    )->toEqual([])
   )
   testSync("a healthy boundary reports nothing lost", () => {
     let scope = DcbTag.deriveEffectiveScope(catalogSlices)
@@ -125,18 +127,18 @@ let withUnresolvableSlice: array<DcbTag.sliceSchemas> = catalogSlices->Array.con
 
 describe("DcbTag.deriveEffectiveScope (one unresolvable slice degrades the boundary)", () => {
   testSync("falls back to the annotations, which carry no cross-partition key", () =>
-    expect((DcbTag.deriveEffectiveScope(withUnresolvableSlice)).crossPartitionTagKeys)->toEqual([])
+    expect(DcbTag.deriveEffectiveScope(withUnresolvableSlice).crossPartitionTagKeys)->toEqual([])
   )
   testSync("reports the slice that caused it", () =>
     expect(
-      (DcbTag.deriveEffectiveScope(withUnresolvableSlice)).ambiguities->Array.map(((s, _)) => s),
+      DcbTag.deriveEffectiveScope(withUnresolvableSlice).ambiguities->Array.map(((s, _)) => s),
     )->toEqual(["ProductImages"])
   )
   testSync("reports categoryId as lost — the harmful part, and what a caller raises on", () =>
     expect(
-      (DcbTag.deriveEffectiveScope(withUnresolvableSlice)).droppedCrossPartitionTagKeys->Array.includes(
-        "categoryId",
-      ),
+      DcbTag.deriveEffectiveScope(
+        withUnresolvableSlice,
+      ).droppedCrossPartitionTagKeys->Array.includes("categoryId"),
     )->toEqual(true)
   )
 })

@@ -19,12 +19,8 @@ describe("EventLogStorage_Sqlite", () => {
     let s = Storage.make(~name="agg", ~owner=None, ~opts)
     let ops = await s.operations->TestRunner.resolve
 
-    let event1 = JSON.Encode.object(
-      Dict.fromArray([("tag", JSON.Encode.string("Created"))]),
-    )
-    let event2 = JSON.Encode.object(
-      Dict.fromArray([("tag", JSON.Encode.string("Renamed"))]),
-    )
+    let event1 = JSON.Encode.object(Dict.fromArray([("tag", JSON.Encode.string("Created"))]))
+    let event2 = JSON.Encode.object(Dict.fromArray([("tag", JSON.Encode.string("Renamed"))]))
 
     let r1 = await ops.append(0, "id-1", [event1])
     expect(r1)->toEqual(Ok())
@@ -98,9 +94,11 @@ describe("EventLogStorage_Sqlite", () => {
     let ev = i => JSON.Encode.object(Dict.fromArray([("i", JSON.Encode.int(i))]))
     // Seed one event, then stream three more starting at seq 1.
     let _ = await ops.append(0, "id-s", [ev(0)])
-    let _ =
-      await ops.appendStream(1, "id-s", Stream.fromIterable([ev(1), ev(2), ev(3)]))
-      ->Effect.runPromise
+    let _ = await ops.appendStream(
+      1,
+      "id-s",
+      Stream.fromIterable([ev(1), ev(2), ev(3)]),
+    )->Effect.runPromise
     let replayed = await ops.replay("id-s")
     expect(replayed->Array.length)->toBe(4)
     expect(replayed->Array.getUnsafe(0))->toEqual(ev(0))
@@ -206,8 +204,9 @@ describe("EventLogStorage_Sqlite", () => {
   testPromise("events persist across a reopen of the database file", async () => {
     let path = `/tmp/reventless-test-eventlog-${Float.toString(Date.now())}.db`
 
-    // Session 1: write
     {
+      // Session 1: write
+
       module TestBus = LocalBus.Make()
       module DbProvider = {
         let db = SqliteDriver.openDb(~path)

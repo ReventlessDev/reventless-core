@@ -25,10 +25,7 @@ describe("MixedSource AutomationSlice", () => {
 
   testPromise("Aggregate-source event creates a TODO and produces a command", async () => {
     publishedCommands := []
-    let _ = await publishAggregateEvent(
-      "env-a1",
-      OrderShipped({orderId: "o1", productId: "p1"}),
-    )
+    let _ = await publishAggregateEvent("env-a1", OrderShipped({orderId: "o1", productId: "p1"}))
 
     // Trigger phase2 manually since we don't have a heartbeat in this test.
     let ops = await slice->ReventlessCore.Component.operations->TestRunner.resolve
@@ -52,10 +49,7 @@ describe("MixedSource AutomationSlice", () => {
 
   testPromise("DCB-source StockReserved creates a TODO and produces a command", async () => {
     publishedCommands := []
-    let _ = await publishDcbEvent(
-      "env-d1",
-      StockReserved({orderId: "o2", productId: "p2"}),
-    )
+    let _ = await publishDcbEvent("env-d1", StockReserved({orderId: "o2", productId: "p2"}))
 
     let ops = await slice->ReventlessCore.Component.operations->TestRunner.resolve
     await ops.processPending()
@@ -70,14 +64,8 @@ describe("MixedSource AutomationSlice", () => {
     // Reserve fires phase1+phase2 (inline) — produces 1 command, item becomes
     // Processing. StockReleased then resolves the item to Completed —
     // subsequent processPending calls produce no further commands for it.
-    let _ = await publishDcbEvent(
-      "env-d2",
-      StockReserved({orderId: "o3", productId: "p3"}),
-    )
-    let _ = await publishDcbEvent(
-      "env-d3",
-      StockReleased({orderId: "o3", productId: "p3"}),
-    )
+    let _ = await publishDcbEvent("env-d2", StockReserved({orderId: "o3", productId: "p3"}))
+    let _ = await publishDcbEvent("env-d3", StockReleased({orderId: "o3", productId: "p3"}))
 
     expect(publishedCommands.contents->Array.length)->toBe(1)
 
@@ -91,14 +79,8 @@ describe("MixedSource AutomationSlice", () => {
 
   testPromise("both sources can drive items into the same TODO list independently", async () => {
     publishedCommands := []
-    let _ = await publishAggregateEvent(
-      "env-a2",
-      OrderShipped({orderId: "o4", productId: "p4"}),
-    )
-    let _ = await publishDcbEvent(
-      "env-d4",
-      StockReserved({orderId: "o5", productId: "p5"}),
-    )
+    let _ = await publishAggregateEvent("env-a2", OrderShipped({orderId: "o4", productId: "p4"}))
+    let _ = await publishDcbEvent("env-d4", StockReserved({orderId: "o5", productId: "p5"}))
 
     let ops = await slice->ReventlessCore.Component.operations->TestRunner.resolve
     await ops.processPending()
@@ -112,14 +94,8 @@ describe("MixedSource AutomationSlice", () => {
   testPromise("first-writer-wins idempotency across mappings sharing an ID", async () => {
     publishedCommands := []
     // Both sources produce the same composite ID — second arrival is ignored.
-    let _ = await publishAggregateEvent(
-      "env-a3",
-      OrderShipped({orderId: "o6", productId: "p6"}),
-    )
-    let _ = await publishDcbEvent(
-      "env-d5",
-      StockReserved({orderId: "o6", productId: "p6"}),
-    )
+    let _ = await publishAggregateEvent("env-a3", OrderShipped({orderId: "o6", productId: "p6"}))
+    let _ = await publishDcbEvent("env-d5", StockReserved({orderId: "o6", productId: "p6"}))
 
     let ops = await slice->ReventlessCore.Component.operations->TestRunner.resolve
     await ops.processPending()

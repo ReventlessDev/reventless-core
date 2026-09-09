@@ -82,16 +82,18 @@ let makeStorage = (~name as _name, ~indexes as _, ~partitionTag as _, ~opts as _
       | Some(tags) if tags->Array.length > 0 =>
         // Events carrying ALL of the clause's tags = intersection of the tags'
         // posting lists; a missing tag ⇒ empty ⇒ this clause adds nothing.
-        let lists = tags->Array.map(t =>
-          byTag->Dict.get(tagPostingKey(t.key, t.value))->Option.getOr([])
-        )
+        let lists =
+          tags->Array.map(t => byTag->Dict.get(tagPostingKey(t.key, t.value))->Option.getOr([]))
         if lists->Array.some(l => l->Array.length == 0) {
           ()
         } else {
-          let sorted = lists->Array.toSorted((a, b) => Int.toFloat(a->Array.length - b->Array.length))
+          let sorted =
+            lists->Array.toSorted((a, b) => Int.toFloat(a->Array.length - b->Array.length))
           let acc0 = sorted->Array.getUnsafe(0)
           let folded =
-            sorted->Array.slice(~start=1, ~end=sorted->Array.length)->Array.reduce(acc0, intersectSorted)
+            sorted
+            ->Array.slice(~start=1, ~end=sorted->Array.length)
+            ->Array.reduce(acc0, intersectSorted)
           addAll(folded)
         }
       | _ =>
@@ -100,7 +102,8 @@ let makeStorage = (~name as _name, ~indexes as _, ~partitionTag as _, ~opts as _
         // clause is unconstrained and matches everything.
         switch clause.eventTypes {
         | Some(types) => types->Array.forEach(t => addAll(byType->Dict.get(t)->Option.getOr([])))
-        | None => events.contents->Array.forEachWithIndex((_, i) => acc->Dict.set(Int.toString(i), i))
+        | None =>
+          events.contents->Array.forEachWithIndex((_, i) => acc->Dict.set(Int.toString(i), i))
         }
       }
     })
@@ -147,21 +150,23 @@ let makeStorage = (~name as _name, ~indexes as _, ~partitionTag as _, ~opts as _
       Error(ReventlessInfra.DcbEventLog.Conflict)
     } else {
       let base = events.contents->Array.length
-      let storedEvents =
-        newEvents->Array.mapWithIndex((event: DcbEventLog_Adapter.rawStoredEvent, j) => {
-          position := position.contents + 1
-          let pos = position.contents->Int.toString
-          let stored: DcbEventLog_Adapter.rawSequencedEvent = {
-            position: pos,
-            eventType: event.eventType,
-            data: event.data,
-            tags: event.tags,
-            meta: event.meta,
-            recordedAt: Message.nowAsISOString(),
-          }
-          indexEvent(base + j, stored)
-          stored
-        })
+      let storedEvents = newEvents->Array.mapWithIndex((
+        event: DcbEventLog_Adapter.rawStoredEvent,
+        j,
+      ) => {
+        position := position.contents + 1
+        let pos = position.contents->Int.toString
+        let stored: DcbEventLog_Adapter.rawSequencedEvent = {
+          position: pos,
+          eventType: event.eventType,
+          data: event.data,
+          tags: event.tags,
+          meta: event.meta,
+          recordedAt: Message.nowAsISOString(),
+        }
+        indexEvent(base + j, stored)
+        stored
+      })
       events := events.contents->Array.concat(storedEvents)
       Ok(position.contents->Int.toString)
     }
@@ -191,7 +196,13 @@ let makeStorage = (~name as _name, ~indexes as _, ~partitionTag as _, ~opts as _
 // routing. The flag is accepted for interface parity and ignored.
 // Pure in-memory storageMaker (no BackendState dispatch, no Bus). Backend
 // selection lives in LocalDcbEventLogStorage.Make.
-let make: DcbEventLog_Adapter.storageMaker = (~name, ~indexes, ~partitionTag, ~crossPartitionTagKeys as _=?, ~opts) => {
+let make: DcbEventLog_Adapter.storageMaker = (
+  ~name,
+  ~indexes,
+  ~partitionTag,
+  ~crossPartitionTagKeys as _=?,
+  ~opts,
+) => {
   let (_, _, storage) = makeStorage(~name, ~indexes, ~partitionTag, ~opts)
   storage
 }

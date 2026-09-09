@@ -36,10 +36,7 @@ module type T = {
   // Unit combinators — collect
   let givenEvent: Spec.consumedEvent => Spec.consumedEvent
   let whenCollect: Spec.consumedEvent => array<(string, Spec.todoItem)>
-  let thenTodos: (
-    array<(string, Spec.todoItem)>,
-    array<(string, Spec.todoItem)>,
-  ) => Outcome.outcome
+  let thenTodos: (array<(string, Spec.todoItem)>, array<(string, Spec.todoItem)>) => Outcome.outcome
 
   // Unit combinators — resolve
   let whenResolve: Spec.consumedEvent => option<string>
@@ -61,7 +58,6 @@ module type T = {
 
 module Make = (Spec: SliceSpec): (T with module Spec = Spec) => {
   module Spec = Spec
-
 
   let describe = JestBind.describe
   let test = (name, body) => JestBind.test(~slice=Spec.name, name, body)
@@ -161,16 +157,12 @@ module Make = (Spec: SliceSpec): (T with module Spec = Spec) => {
   let whenSweep = events => {
     // Build the todo list by running collect, then drain any items that are
     // completed by resolve in the same input stream.
-    let collected =
-      events->Array.map(e => e->Spec.collect)->Array.flat
-    let resolvedIds =
-      events->Array.filterMap(e => e->Spec.resolve)
-    let pending =
-      collected->Array.filter(((id, _)) => !Array.includes(resolvedIds, id))
+    let collected = events->Array.map(e => e->Spec.collect)->Array.flat
+    let resolvedIds = events->Array.filterMap(e => e->Spec.resolve)
+    let pending = collected->Array.filter(((id, _)) => !Array.includes(resolvedIds, id))
 
     // Process each pending todo to produce commands.
-    let commands =
-      pending->Array.filterMap(((id, todo)) => Spec.process(id, todo))
+    let commands = pending->Array.filterMap(((id, todo)) => Spec.process(id, todo))
 
     {todos: pending, commands}
   }
@@ -195,10 +187,8 @@ module Make = (Spec: SliceSpec): (T with module Spec = Spec) => {
     }
 
   let andThenEvents = (scenario, events) => {
-    let resolvedIds =
-      events->Array.filterMap(e => e->Spec.resolve)
-    let remaining =
-      scenario.todos->Array.filter(((id, _)) => !Array.includes(resolvedIds, id))
+    let resolvedIds = events->Array.filterMap(e => e->Spec.resolve)
+    let remaining = scenario.todos->Array.filter(((id, _)) => !Array.includes(resolvedIds, id))
     {...scenario, todos: remaining}
   }
 

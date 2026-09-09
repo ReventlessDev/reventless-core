@@ -45,7 +45,9 @@
 // The "proper" fix — `inboundAppSyncResolverParams<'runtimeParts>` — would
 // require propagating `'runtimeParts` through `platformHooks`, `Plugin_Builder`,
 // and `Admin`.
-external asLambdaRuntime: ReventlessCore.Runtime.environment<unknown> => ReventlessCore.Runtime.environment<Util.Lambda.runtimeParts> = "%identity"
+external asLambdaRuntime: ReventlessCore.Runtime.environment<
+  unknown,
+> => ReventlessCore.Runtime.environment<Util.Lambda.runtimeParts> = "%identity"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CAST 2 — hook callback arguments (unknown → concrete component types)
@@ -62,8 +64,13 @@ external asLambdaRuntime: ReventlessCore.Runtime.environment<unknown> => Reventl
 // `reventless-core` cannot import `DcbEventLog.component`, `CommandTopic.component`,
 // or `CommandTopic_Adapter.remoteChannel`. The AWS platform registers these
 // callbacks and is the only caller, always passing the correct concrete value.
-external asDcbEventLogComponent: unknown => ReventlessCore.Component.t<unit, ReventlessCore.DcbEventLog.outputs, unit> = "%identity"
-external asDcbCommandTopicComponent: unknown => ReventlessCore.CommandTopic.component<unit> = "%identity"
+external asDcbEventLogComponent: unknown => ReventlessCore.Component.t<
+  unit,
+  ReventlessCore.DcbEventLog.outputs,
+  unit,
+> = "%identity"
+external asDcbCommandTopicComponent: unknown => ReventlessCore.CommandTopic.component<unit> =
+  "%identity"
 external asDcbEventLog: unknown => ReventlessCore.DcbEventLog.component = "%identity"
 external asRemoteChannel: unknown => ReventlessCore.CommandTopic_Adapter.remoteChannel = "%identity"
 
@@ -103,4 +110,6 @@ external asSqsChannelParts: 'a => Util.SQS.channelParts = "%identity"
 // level — it is a mismatch between ReScript's JS boxing convention and Pulumi's
 // Proxy-based lazy evaluation model.
 external _toUnknown: 'a => unknown = "%identity"
-let wrapHookedValue: 'a => ReventlessCore.Plugin_Helpers.hookedValue<unknown> = x => {val: x->_toUnknown}
+let wrapHookedValue: 'a => ReventlessCore.Plugin_Helpers.hookedValue<unknown> = x => {
+  val: x->_toUnknown,
+}

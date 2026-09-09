@@ -10,9 +10,7 @@ describe("Products Extension delegate", () => {
   test("ProductBecameAvailable issues SyncNewProduct", () =>
     whenIncomingEvent(
       ExtensionPoint.ProductBecameAvailable({productId: "p1", name: "Book", price: 9.99}),
-    )->thenPublishesCommand(
-      Delegate.SyncNewProduct({productId: "p1", name: "Book", price: 9.99}),
-    )
+    )->thenPublishesCommand(Delegate.SyncNewProduct({productId: "p1", name: "Book", price: 9.99}))
   )
 
   test("ProductPriceChanged issues ChangeSyncedPrice", () =>

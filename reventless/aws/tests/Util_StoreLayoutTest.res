@@ -4,11 +4,15 @@ let prodStacks = Util_HostUiDomain.defaultProdStacks
 
 describe("Util_StoreLayout.layoutFor", () => {
   testSync("a prod-named stack gets a bucket per store", () =>
-    expect(Util_StoreLayout.layoutFor(~stack="prod", ~prodStacks))->toEqual(Util_StoreLayout.PerStore)
+    expect(Util_StoreLayout.layoutFor(~stack="prod", ~prodStacks))->toEqual(
+      Util_StoreLayout.PerStore,
+    )
   )
 
   testSync("'main' is production too, by the shared prod list", () =>
-    expect(Util_StoreLayout.layoutFor(~stack="main", ~prodStacks))->toEqual(Util_StoreLayout.PerStore)
+    expect(Util_StoreLayout.layoutFor(~stack="main", ~prodStacks))->toEqual(
+      Util_StoreLayout.PerStore,
+    )
   )
 
   testSync("alpha shares one bucket", () =>
@@ -34,9 +38,9 @@ describe("Util_StoreLayout.layoutFor", () => {
   )
 
   testSync("adding it to the prod list is the fix", () =>
-    expect(Util_StoreLayout.layoutFor(~stack="production", ~prodStacks=["prod", "production"]))->toEqual(
-      Util_StoreLayout.PerStore,
-    )
+    expect(
+      Util_StoreLayout.layoutFor(~stack="production", ~prodStacks=["prod", "production"]),
+    )->toEqual(Util_StoreLayout.PerStore)
   )
 })
 
@@ -91,18 +95,18 @@ describe("Util_StoreLayout.coverageFor", () => {
   )
 
   testSync("declaring nothing is covered, whatever the platform provisions", () =>
-    expect(Util_StoreLayout.coverageFor(~required=[], ~provisioned=["Catalog.productImages"]))->toEqual(
-      Util_StoreLayout.Covered,
-    )
+    expect(
+      Util_StoreLayout.coverageFor(~required=[], ~provisioned=["Catalog.productImages"]),
+    )->toEqual(Util_StoreLayout.Covered)
   )
 
   // A platform provisioning nothing has not adopted capability provisioning.
   // Failing it would break deployments that work today, so this is the arm that
   // must NOT be a hard error.
   testSync("a platform provisioning nothing has not adopted, rather than got it wrong", () =>
-    expect(Util_StoreLayout.coverageFor(~required=["Catalog.productImages"], ~provisioned=[]))->toEqual(
-      Util_StoreLayout.NotAdopted(["Catalog.productImages"]),
-    )
+    expect(
+      Util_StoreLayout.coverageFor(~required=["Catalog.productImages"], ~provisioned=[]),
+    )->toEqual(Util_StoreLayout.NotAdopted(["Catalog.productImages"]))
   )
 
   // The case that shipped: the platform declared the store under a lowercased
@@ -282,7 +286,8 @@ describe("Util_StoreLayout.pendingExpiryFor", () => {
   // Guessing at what a typo meant, in the one setting that deletes objects, is
   // not a service — an unreadable entry leaves the store accumulating.
   testSync("a malformed or non-positive entry is ignored, not defaulted", () => {
-    let of_ = c => Util_StoreLayout.pendingExpiryFor(~config=Some(c), ~store="Catalog.productImages")
+    let of_ = c =>
+      Util_StoreLayout.pendingExpiryFor(~config=Some(c), ~store="Catalog.productImages")
     expect((
       of_("Catalog.productImages"),
       of_("Catalog.productImages="),

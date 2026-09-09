@@ -59,8 +59,7 @@ describe("QueryDb (in-memory)", () => {
   testPromise("loadStream emits saved states", async () => {
     let ops = await queryDb->ReventlessCore.Component.operations->TestRunner.resolve
     let _ = await ops.save("stream-item", {name: "Streamed", count: 42}, Init, None)
-    let arr =
-      await ops.loadStream("stream-item")->Stream.runCollect->Effect.runPromise
+    let arr = await ops.loadStream("stream-item")->Stream.runCollect->Effect.runPromise
     expect(arr->Array.length)->toBe(1)
     let s = arr->Array.getUnsafe(0)
     expect((s.name, s.count))->toEqual(("Streamed", 42))
@@ -68,8 +67,7 @@ describe("QueryDb (in-memory)", () => {
 
   testPromise("loadStream returns empty for unknown id", async () => {
     let ops = await queryDb->ReventlessCore.Component.operations->TestRunner.resolve
-    let arr =
-      await ops.loadStream("no-such-id")->Stream.runCollect->Effect.runPromise
+    let arr = await ops.loadStream("no-such-id")->Stream.runCollect->Effect.runPromise
     expect(arr->Array.length)->toBe(0)
   })
 

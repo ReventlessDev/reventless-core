@@ -29,8 +29,9 @@ describe("ExtensionPoint (in-memory)", () => {
     async () => {
       // Build the full command body: {id, meta, command}
       let forwardCmdJson =
-        TestEPSpec.Forward({targetId: "target-1"})
-        ->Reventless.Util_Sury.toJson(TestEPSpec.commandSchema)
+        TestEPSpec.Forward({targetId: "target-1"})->Reventless.Util_Sury.toJson(
+          TestEPSpec.commandSchema,
+        )
       let body = JSON.Encode.object(
         Dict.fromArray([
           ("id", JSON.Encode.string("ep-id-1")),

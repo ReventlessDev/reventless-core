@@ -184,13 +184,7 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
     // Batched-by-ids — single-key projections only (mirrors the SDL).
     let byIds = if includeIdParam && subIdField === None {
       let byIdsField = fieldNameForAll ++ "ByIds"
-      [
-        mkResolver(
-          ~resolverName=byIdsField->String.capitalize,
-          ~field=byIdsField,
-          ~kind="byIds",
-        ),
-      ]
+      [mkResolver(~resolverName=byIdsField->String.capitalize, ~field=byIdsField, ~kind="byIds")]
     } else {
       []
     }

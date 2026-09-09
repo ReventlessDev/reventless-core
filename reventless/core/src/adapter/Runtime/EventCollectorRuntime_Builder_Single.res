@@ -83,6 +83,7 @@ module Make = (
 
   let validateParent = (parent: Pulumi.Resource.t) => {
     let parentName = parent.name->Option.getOr("UnnamedParent")
+
     // Set grandParent synchronously so finish() can create resources
     // during the same build phase. Type validation defers to Output.apply.
     if grandParent.contents == None {
@@ -96,10 +97,12 @@ module Make = (
           parts->Array.getUnsafe(parts->Array.length - 1)
         })
         ->Option.getOr("Unknown")
-      log.debug(~comp="EventCollectorRuntime", `validateParent: parent ${parentName} type: ${pulumiType}`)
-      switch (parentType.contents) {
-      | None =>
-        parentType := Some(pulumiType)
+      log.debug(
+        ~comp="EventCollectorRuntime",
+        `validateParent: parent ${parentName} type: ${pulumiType}`,
+      )
+      switch parentType.contents {
+      | None => parentType := Some(pulumiType)
       | Some(existingType) if existingType != pulumiType =>
         JsError.throwWithMessage(
           `registerRuntimeSpec: parent ${parentName} has different type ${pulumiType} than ${existingType}`,
@@ -177,7 +180,9 @@ module Make = (
             let handlers = eventCollectorHandlers->Dict.get(urn)->Option.getOr([])
             eventCollectorHandlers->Dict.set(
               urn,
-              handlers->Array.concat([{comp, handler: handler->RuntimeEnvironment.asEffectHandler}]),
+              handlers->Array.concat([
+                {comp, handler: handler->RuntimeEnvironment.asEffectHandler},
+              ]),
             )
           })
         })
@@ -206,8 +211,7 @@ module Make = (
         let opts = {Pulumi.ComponentResource.parent: grandParent}
 
         let _connectResources = EventCollectorChannel.connect(~name, ~channelSpecs, ~runtime, ~opts)
-      | _ =>
-        // grandParent/parentType not set — either no handlers were registered
+      | _ => // grandParent/parentType not set — either no handlers were registered
         // (e.g. all StateViewSlices went through Bundled path) or Pulumi outputs
         // haven't resolved yet. Skip silently.
         ()

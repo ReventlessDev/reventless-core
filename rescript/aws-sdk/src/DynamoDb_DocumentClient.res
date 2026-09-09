@@ -832,7 +832,6 @@ module GetCommand = {
   let send: t => promise<output> = command => Raw.send(client(), command)
 }
 
-
 module ScanCommand = {
   /*** see: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/Package/-aws-sdk-lib-dynamodb/Class/ScanCommand/ */
 
@@ -902,4 +901,3 @@ module ScanCommand = {
 
   let send: t => promise<output> = command => Raw.send(client(), command)
 }
-

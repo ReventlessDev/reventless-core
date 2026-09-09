@@ -27,9 +27,12 @@ describe("EventCollector (in-memory)", () => {
     // The EventCollector itself doesn't expose a direct handler in our test setup —
     // verify the bus subscription mechanism works
     let received: ref<int> = ref(0)
-    Bus.subscribeToEvents(topicName, async (_, _, _) => {
-      received := received.contents + 1
-    })
+    Bus.subscribeToEvents(
+      topicName,
+      async (_, _, _) => {
+        received := received.contents + 1
+      },
+    )
     let testEvent = JSON.Encode.object(Dict.fromArray([("type", JSON.Encode.string("TestEvent"))]))
     await Bus.publishEvent(topicName, "test", testMeta, testEvent)
     expect(received.contents)->toBe(1)

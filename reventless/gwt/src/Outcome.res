@@ -10,11 +10,7 @@
 
 type mismatch =
   | EventsMismatch({expected: array<JSON.t>, actual: array<JSON.t>})
-  | ErrorMismatch({
-      expected: JSON.t,
-      actual: option<JSON.t>,
-      actualEvents: array<JSON.t>,
-    })
+  | ErrorMismatch({expected: JSON.t, actual: option<JSON.t>, actualEvents: array<JSON.t>})
   | StateMismatch({key: string, expected: option<JSON.t>, actual: option<JSON.t>})
   | NoEventExpected({actual: array<JSON.t>})
   | TodoMismatch({expected: array<(string, JSON.t)>, actual: array<(string, JSON.t)>})
@@ -71,9 +67,11 @@ let format = (m: mismatch) =>
         actual,
       )}`
   | ErrorMismatch({expected, actual, actualEvents}) =>
-    `ErrorMismatch:\n  expected error: ${stringifyJson(expected)}\n  actual error:   ${stringifyOptJson(
-        actual,
-      )}\n  actual events:  ${stringifyJsonArray(actualEvents)}`
+    `ErrorMismatch:\n  expected error: ${stringifyJson(
+        expected,
+      )}\n  actual error:   ${stringifyOptJson(actual)}\n  actual events:  ${stringifyJsonArray(
+        actualEvents,
+      )}`
   | StateMismatch({key, expected, actual}) =>
     `StateMismatch (key: ${key}):\n  expected: ${stringifyOptJson(
         expected,
@@ -94,14 +92,16 @@ let format = (m: mismatch) =>
   | TranslateError({expected, actual}) =>
     `TranslateError:\n  expected: ${expected}\n  actual:   ${actual->Option.getOr("(none)")}`
   | QueryRowsMismatch({expected, actual}) =>
-    `QueryRowsMismatch:\n  expected: ${stringifyJsonArray(expected)}\n  actual:   ${stringifyJsonArray(
-        actual,
-      )}`
+    `QueryRowsMismatch:\n  expected: ${stringifyJsonArray(
+        expected,
+      )}\n  actual:   ${stringifyJsonArray(actual)}`
   | PublishedActionsMismatch({expected, actual}) =>
-    `PublishedActionsMismatch:\n  expected: ${stringifyJsonArray(expected)}\n  actual:   ${stringifyJsonArray(
-        actual,
-      )}`
+    `PublishedActionsMismatch:\n  expected: ${stringifyJsonArray(
+        expected,
+      )}\n  actual:   ${stringifyJsonArray(actual)}`
   | ScopeDegraded({boundary, dropped, ambiguities}) =>
-    `ScopeDegraded:\n  boundary: ${boundary}\n  dropped:  ${dropped->Array.join(", ")}\n  cause:    ${ambiguities->Array.join(" | ")}`
+    `ScopeDegraded:\n  boundary: ${boundary}\n  dropped:  ${dropped->Array.join(
+        ", ",
+      )}\n  cause:    ${ambiguities->Array.join(" | ")}`
   | Throw({error, stack}) => `Throw: ${error}\n${stack}`
   }

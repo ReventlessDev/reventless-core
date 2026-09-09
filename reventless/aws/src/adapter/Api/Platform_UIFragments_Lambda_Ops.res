@@ -11,7 +11,6 @@
 // adapter's Platform_UIFragmentsApi.encodeUIFragmentEntry produces, so rows are
 // returned as-is (bar the name/version collapse).
 
-
 let str = (item: dict<JSON.t>, key: string): option<string> =>
   item->Dict.get(key)->Option.flatMap(JSON.Decode.string)
 
@@ -43,5 +42,9 @@ let handler = async (_event: JSON.t): array<JSON.t> =>
     []
   | Some(table) =>
     let items = await Platform_AdminScan_Ops.scanAll(~tableName=table)
-    Platform_AdminScan_Ops.latestByName(items, ~nameVersionOf=item => item->str("pluginId"), ~toEntry)
+    Platform_AdminScan_Ops.latestByName(
+      items,
+      ~nameVersionOf=item => item->str("pluginId"),
+      ~toEntry,
+    )
   }

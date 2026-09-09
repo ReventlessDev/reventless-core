@@ -26,10 +26,12 @@ describe("the derived owner index", () => {
   testSync("is provisioned projecting every attribute", () => {
     let gsis = QueryDbStorage_DynamoDb.globalSecondaryIndexes([ownerIndex])->unwrap
     expect(
-      gsis->Array.map(g => {
-        let g = g->unwrap
-        (g.name, g.hashKey, g.rangeKey, g.projectionType)
-      }),
+      gsis->Array.map(
+        g => {
+          let g = g->unwrap
+          (g.name, g.hashKey, g.rangeKey, g.projectionType)
+        },
+      ),
     )->toEqual([("_owner", "customerId", Some("id"), PulumiAws.DynamoDb.Table.ALL)])
   })
 

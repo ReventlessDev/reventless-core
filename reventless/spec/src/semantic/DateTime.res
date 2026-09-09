@@ -38,7 +38,6 @@ type state = {
 }
 ```
 */
-
 /** The instant's representation. Transparent `string`: the marker refines an
     existing field rather than replacing it, so nothing stored changes, and
     `placedAt: meta.time` keeps compiling. */
@@ -55,18 +54,19 @@ let grammar: S.t<string> = S.isoDateTime
 let fromString = (raw: string): result<t, string> =>
   switch raw->S.parseOrThrow(~to=grammar) {
   | value => Ok(value)
-  | exception _ =>
-    Error(`expected a UTC ISO-8601 instant, got ${Semantic.showString(raw)}`)
+  | exception _ => Error(`expected a UTC ISO-8601 instant, got ${Semantic.showString(raw)}`)
   }
 
 /** The sury schema for an instant field. Use with `@s.matches(Reventless.DateTime.schema)`,
     or write the field's type as `Reventless.DateTime.t` and let sury-ppx resolve it. */
-let schema: S.t<t> = S.string->Semantic.refined(~id=Semantic.Id.dateTime, ~check=fromString)
+let schema: S.t<t> =
+  S.string->Semantic.refined(~id=Semantic.Id.dateTime, ~check=fromString)
 
 /** A sury string schema annotated as an instant, without the grammar.
 
     @deprecated Use `schema`, which carries the same marker and checks the value. */
-let string: S.t<string> = S.string->Semantic.mark(~id=Semantic.Id.dateTime)
+let string: S.t<string> =
+  S.string->Semantic.mark(~id=Semantic.Id.dateTime)
 
 /** Whether a field schema carries the date-time marker. */
 let isDateTime = (fieldSchema: S.t<unknown>) => fieldSchema->Semantic.has(~id=Semantic.Id.dateTime)

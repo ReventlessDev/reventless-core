@@ -66,6 +66,7 @@ let emitEventTap = (~topic: string, ~service: string, ~payload: JSON.t) => {
   // later sees is the event's ordinal rather than the ordinal of its own arrival.
   eventTapSeq := eventTapSeq.contents + 1
   let toStdout = LocalEventTap.stdoutEnabled()
+
   // The line is built only for somebody: serialising every event for no reader is
   // pure cost on the publish path.
   if toStdout || LocalEventTap.hasReaders() {
@@ -296,8 +297,8 @@ module Impl = (C: BusConfig): T => {
           // draining, and run `done_` via `ensuring` so the countdown always
           // advances regardless of outcome.
           Effect.tryPromise(~catch=e => e, () => handler(msg.service, msg.meta, msg.json))
-          ->Effect.catchAll(err =>
-            Effect.sync(() => Console.error2("[LocalBus] subscriber handler failed:", err))
+          ->Effect.catchAll(
+            err => Effect.sync(() => Console.error2("[LocalBus] subscriber handler failed:", err)),
           )
           ->Effect.ensuring(msg.done_)
         )
@@ -404,11 +405,10 @@ module Impl = (C: BusConfig): T => {
       let pending = queue.contents
       queue.contents = []
       pending->Array.forEach(json => {
-        let _ =
-          handler(json, ())->Promise.catch(e => {
-            Console.error2("[LocalBus] parked command handler failed:", e)
-            Promise.resolve()
-          })
+        let _ = handler(json, ())->Promise.catch(e => {
+          Console.error2("[LocalBus] parked command handler failed:", e)
+          Promise.resolve()
+        })
       })
     | None => ()
     }
@@ -461,14 +461,14 @@ module Impl = (C: BusConfig): T => {
   // Cross-plugin subscriptions are fire-and-forget: the handler is started asynchronously
   // and done_ is called immediately. This prevents a deadlock where publishEvent on the
   // EP topic would block until the downstream aggregate command chain completes.
-  let makeFireAndForgetHandler = handler => (_, _, json) => {
-    let _ =
-      handler(json, ())->Promise.catch(e => {
+  let makeFireAndForgetHandler = handler =>
+    (_, _, json) => {
+      let _ = handler(json, ())->Promise.catch(e => {
         Console.error2("[LocalBus] fire-and-forget handler failed:", e)
         Promise.resolve()
       })
-    Promise.resolve()
-  }
+      Promise.resolve()
+    }
 
   let registerEventCollectorHandler = (ecName, handler) => {
     eventCollectorHandlers.contents->Dict.set(ecName, handler)

@@ -79,7 +79,10 @@ type apiTarget = Domain | Platform
 // nothing to annotate. The `T | null` these fields used to carry worked around a sury
 // bug — undefined failing jsonableValidation inside a union variant payload — fixed in
 // 11.0.0-alpha.11. `Offload` below is not an optional wrapper but an either-or codec.
-let apiSchemaFragmentOffloadSchema = Offload.optionSchema(~store="pluginApiFragments", apiSchemaFragmentSchema)
+let apiSchemaFragmentOffloadSchema = Offload.optionSchema(
+  ~store="pluginApiFragments",
+  apiSchemaFragmentSchema,
+)
 
 // ── UI fragment manifest types ────────────────────────────────────────────────
 
@@ -489,7 +492,10 @@ type pluginStructure = {
   traitDeclarations: option<array<traitDeclaration>>,
 }
 
-let pluginStructureOffloadSchema = Offload.optionSchema(~store="pluginStructures", pluginStructureSchema)
+let pluginStructureOffloadSchema = Offload.optionSchema(
+  ~store="pluginStructures",
+  pluginStructureSchema,
+)
 
 /**
 The self-description of a deployed plugin, persisted in the plugin's event store.
@@ -510,7 +516,8 @@ type pluginDefinition = {
   extensionProtocols: array<extensionProtocol>,
   // Offloadable: a large SDL fragment is content-addressed to the pluginApiFragments
   // store and carried by reference; a small one stays Inline.
-  apiSchemaFragment: @s.matches(apiSchemaFragmentOffloadSchema) option<Offload.payload<apiSchemaFragment>>,
+  apiSchemaFragment: @s.matches(apiSchemaFragmentOffloadSchema)
+  option<Offload.payload<apiSchemaFragment>>,
   // Schema routing in split-API mode: None/"Domain" → DomainApi, Some("Platform") →
   // PlatformApi (and excluded from the DomainApi runtime schema).
   apiTarget: option<string>,
@@ -524,4 +531,3 @@ type pluginDefinition = {
   // variant → a bare JSON string.
   kind: pluginKind,
 }
-

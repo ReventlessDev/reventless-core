@@ -24,4 +24,3 @@ module type Spec = {
   @schema
   type directive
 }
-

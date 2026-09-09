@@ -15,18 +15,18 @@ module Delegate = {
 
 let mapIncomingCommand = (_id, _command, _meta) => []
 
-let mapOutgoingEvent = Some((_id, event, _meta, _queryEngine) =>
-  switch event {
-  | Delegate.OrderPlaced({orderId, customerId, productIds}) =>
-    productIds->Array.map(pid =>
-      PublishEvent(
+let mapOutgoingEvent = Some(
+  (_id, event, _meta, _queryEngine) =>
+    switch event {
+    | Delegate.OrderPlaced({orderId, customerId, productIds}) =>
+      productIds->Array.map(pid => PublishEvent(
         pid,
         OrderingSpec.Orders_ExtensionPoint.ItemOrdered({productId: pid, orderId, customerId}),
-      )
-    )
-  | Delegate.OrderCancelled({orderId, productIds}) =>
-    productIds->Array.map(pid =>
-      PublishEvent(pid, OrderingSpec.Orders_ExtensionPoint.ItemOrderCancelled({productId: pid, orderId}))
-    )
-  }
+      ))
+    | Delegate.OrderCancelled({orderId, productIds}) =>
+      productIds->Array.map(pid => PublishEvent(
+        pid,
+        OrderingSpec.Orders_ExtensionPoint.ItemOrderCancelled({productId: pid, orderId}),
+      ))
+    },
 )

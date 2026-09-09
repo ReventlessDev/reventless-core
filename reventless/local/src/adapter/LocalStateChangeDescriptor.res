@@ -25,7 +25,8 @@
     Over the cap the state is dropped and the downgrade logged — a metadata-only
     descriptor still tells the client to refetch, where a failed publish would
     tell it nothing. */
-let maxStateChars = 60 * 1024
+let maxStateChars =
+  60 * 1024
 
 /** The `@retired` field of a registered read model, or `None`.
 

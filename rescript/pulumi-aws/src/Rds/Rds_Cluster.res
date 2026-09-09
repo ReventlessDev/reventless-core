@@ -4,7 +4,6 @@
   Aurora (incl. Aurora Serverless v2) Postgres cluster. Pair with one or more
   `Rds_ClusterInstance` — a cluster has no compute of its own.
 */
-
 /** See `Rds_Instance.masterUserSecret`. */
 type masterUserSecret = {
   kmsKeyId: string,

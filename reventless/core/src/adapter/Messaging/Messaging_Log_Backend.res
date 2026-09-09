@@ -40,8 +40,7 @@ deployment does. SMS and push are absent for the same reason they are absent
 there — no transport — and answer `UnsupportedChannel`, which is settled rather
 than retried.
 */
-let channels = (~sender: string): array<Reventless.Messaging.channel> =>
-  sender == "" ? [] : [Email]
+let channels = (~sender: string): array<Reventless.Messaging.channel> => sender == "" ? [] : [Email]
 
 /** The message as it would have gone out, headers and all.
 

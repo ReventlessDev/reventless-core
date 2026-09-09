@@ -36,8 +36,9 @@ describe("kebabCase", () => {
 
 describe("bucketResourceName", () => {
   testSync("qualifies a task's default bucket with its plugin", () =>
-    expect(Naming.bucketResourceName(~plugin=Some("Catalog"), ~task="ImportProducts", ~bucketId=None))
-    ->toBe("catalog-import-products")
+    expect(
+      Naming.bucketResourceName(~plugin=Some("Catalog"), ~task="ImportProducts", ~bucketId=None),
+    )->toBe("catalog-import-products")
   )
 
   testSync("appends a declared bucket id", () =>

@@ -37,20 +37,24 @@ describe("SqliteDriver", () => {
     let insert = db->SqliteDriver.prepare("INSERT INTO t(id) VALUES(?)")
     let countAll = db->SqliteDriver.prepare("SELECT COUNT(*) AS c FROM t")
 
-    db->SqliteDriver.transaction(() => {
-      insert->SqliteDriver.run([JSON.Encode.int(1)])
-      insert->SqliteDriver.run([JSON.Encode.int(2)])
-    })
+    db->SqliteDriver.transaction(
+      () => {
+        insert->SqliteDriver.run([JSON.Encode.int(1)])
+        insert->SqliteDriver.run([JSON.Encode.int(2)])
+      },
+    )
 
     let row = countAll->SqliteDriver.get([])->Option.getOrThrow
     expect(row->Dict.get("c")->Option.getOr(JSON.Encode.null))->toEqual(JSON.Encode.int(2))
 
     let didThrow = ref(false)
     try {
-      db->SqliteDriver.transaction(() => {
-        insert->SqliteDriver.run([JSON.Encode.int(3)])
-        throw(Failure("boom"))
-      })
+      db->SqliteDriver.transaction(
+        () => {
+          insert->SqliteDriver.run([JSON.Encode.int(3)])
+          throw(Failure("boom"))
+        },
+      )
     } catch {
     | Failure(_) => didThrow := true
     }
@@ -63,8 +67,7 @@ describe("SqliteDriver", () => {
   })
 
   testPromise("Backend.fromEnv parses sqlite path and reset flag", async () => {
-    let originalEnv =
-      NodeProcess.env->Dict.get("REVENTLESS_LOCAL_BACKEND")
+    let originalEnv = NodeProcess.env->Dict.get("REVENTLESS_LOCAL_BACKEND")
 
     NodeProcess.env->Dict.set("REVENTLESS_LOCAL_BACKEND", "sqlite:./local.db")
     let parsed = Backend.fromEnv()

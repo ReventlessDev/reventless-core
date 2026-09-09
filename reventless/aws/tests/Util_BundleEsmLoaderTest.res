@@ -22,9 +22,9 @@ describe("Util_Bundle ESM loader — env-var contract", () => {
 
 describe("Util_Bundle ESM loader — file cross-references", () => {
   testSync("register-hook registers exactly the layer-resolver filename", () => {
-    expect(Util_Bundle.registerHookSource->String.includes(Util_Bundle.layerResolverFileName))->toBe(
-      true,
-    )
+    expect(
+      Util_Bundle.registerHookSource->String.includes(Util_Bundle.layerResolverFileName),
+    )->toBe(true)
     expect(Util_Bundle.registerHookSource->String.includes("register("))->toBe(true)
   })
 

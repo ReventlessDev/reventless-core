@@ -49,8 +49,9 @@ let memberOf = (json: JSON.t) =>
   ->Option.flatMap(JSON.Decode.string)
 
 let row = (): JSON.t =>
-  ({customerId: "c1", geolocation: Located({lat: 1.0, lng: 2.0})}: rowState)
-  ->ReventlessCore.Message.encode(rowStateSchema)
+  (
+    {customerId: "c1", geolocation: Located({lat: 1.0, lng: 2.0})}: rowState
+  )->ReventlessCore.Message.encode(rowStateSchema)
 
 describe("ProjectionEntryPoint_Ops.withUnionMemberTypes", () => {
   testPromise("stamps the member type on save", async () => {

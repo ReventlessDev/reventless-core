@@ -4,12 +4,11 @@
     exported `request` and `response` functions, ready to be passed as the `code`
     field of AppSync_Resolver.makeUnitJsResolver / makePipelineJsResolver.
 */
-
-// ---------------------------------------------------------------------------
+let // ---------------------------------------------------------------------------
 // Shared response snippets (inlined into each resolver's template literal)
 // ---------------------------------------------------------------------------
 
-let resultResponseCode = `
+resultResponseCode = `
 export function response(ctx) {
   if (ctx.error) util.error(ctx.error.message, ctx.error.type);
   return ctx.result;
@@ -191,15 +190,18 @@ let ownerScopedResultResponse = (
   | _ =>
     let ownerPart = switch ownerField {
     // Takes the row it ignores: APPSYNC_JS type-checks the resolver, so a
-  // zero-parameter stub called as `_owns(row)` is TS2554 ("Expected 0
-  // arguments, but got 1") and AppSync rejects the whole resolver at create
-  // time with "The code contains one or more errors". Only a door that emits
-  // the call conditionally is safe with a bare `() => true`, and that is not a
-  // property worth relying on across three templates.
-  | None => "\n  const _owns = (row) => true;"
+    // zero-parameter stub called as `_owns(row)` is TS2554 ("Expected 0
+    // arguments, but got 1") and AppSync rejects the whole resolver at create
+    // time with "The code contains one or more errors". Only a door that emits
+    // the call conditionally is safe with a bare `() => true`, and that is not a
+    // property worth relying on across three templates.
+    | None => "\n  const _owns = (row) => true;"
     | Some(field) =>
       `
-  // ── owner scoping (generated) ──${ownerGuardPreamble(~ownerField=field, ~elevatedGroups)}`
+  // ── owner scoping (generated) ──${ownerGuardPreamble(
+          ~ownerField=field,
+          ~elevatedGroups,
+        )}`
     }
     let retiredPart = retiredGuardPreamble(
       ~retiredField,
@@ -210,7 +212,9 @@ let ownerScopedResultResponse = (
     `
 export function response(ctx) {
   if (ctx.error) util.error(ctx.error.message, ctx.error.type);${ownerPart}${retiredPart}
-  return _owns(ctx.result)${retiredField->Option.isSome ? " && _live(ctx.result)" : ""} ? ctx.result : null;
+  return _owns(ctx.result)${retiredField->Option.isSome
+        ? " && _live(ctx.result)"
+        : ""} ? ctx.result : null;
 }`
   }
 
@@ -226,15 +230,18 @@ let ownerScopedFirstResultResponse = (
   | _ =>
     let ownerPart = switch ownerField {
     // Takes the row it ignores: APPSYNC_JS type-checks the resolver, so a
-  // zero-parameter stub called as `_owns(row)` is TS2554 ("Expected 0
-  // arguments, but got 1") and AppSync rejects the whole resolver at create
-  // time with "The code contains one or more errors". Only a door that emits
-  // the call conditionally is safe with a bare `() => true`, and that is not a
-  // property worth relying on across three templates.
-  | None => "\n  const _owns = (row) => true;"
+    // zero-parameter stub called as `_owns(row)` is TS2554 ("Expected 0
+    // arguments, but got 1") and AppSync rejects the whole resolver at create
+    // time with "The code contains one or more errors". Only a door that emits
+    // the call conditionally is safe with a bare `() => true`, and that is not a
+    // property worth relying on across three templates.
+    | None => "\n  const _owns = (row) => true;"
     | Some(field) =>
       `
-  // ── owner scoping (generated) ──${ownerGuardPreamble(~ownerField=field, ~elevatedGroups)}`
+  // ── owner scoping (generated) ──${ownerGuardPreamble(
+          ~ownerField=field,
+          ~elevatedGroups,
+        )}`
     }
     let retiredPart = retiredGuardPreamble(
       ~retiredField,
@@ -255,8 +262,7 @@ export function response(ctx) {
 // ---------------------------------------------------------------------------
 
 /** Pipeline resolver code with no pre-processing and a standard error-check response. */
-let pipelinePassThrough =
-  `${importUtil}
+let pipelinePassThrough = `${importUtil}
 export function request(ctx) { return {}; }
 ${resultResponseCode}
 `->Pulumi.Input.make
@@ -329,8 +335,7 @@ export function request(ctx) {
 ${ownerScopedResultResponse(~ownerField, ~elevatedGroups, ~retiredField?, ~retiredValues?)}
 `->Pulumi.Input.make
 
-let queryById =
-  `${importUtil}
+let queryById = `${importUtil}
 export function request(ctx) {
   return {
     operation: 'Query',
@@ -348,11 +353,11 @@ ${resultResponseCode}
     Relay pagination: `first`/`after` (forward) or `last`/`before` (backward).
     Cursor is base64 of the sort key value.
     Returns a Relay `{ edges, pageInfo }` shape reusing the entity's `Connection` type. */
-// A list in everything but its name, so it scopes the way `listAllItemsConnection`
+let // A list in everything but its name, so it scopes the way `listAllItemsConnection`
 // does — a FilterExpression on the request, not a guard on the response. The
 // response is where the page is cut, and narrowing after that cut would report
 // `hasNextPage` from a count the caller was never allowed to see.
-let queryItemsWithSortConditions = (
+queryItemsWithSortConditions = (
   sortField: string,
   ~ownerField: option<string>=?,
   ~elevatedGroups: array<string>=[],
@@ -585,7 +590,8 @@ index among that window's matches (`n`). Pre-window cursors carried
 tag existed came off a Scan. Only a door with more than one read tests it — see
 `cursorPathGuard`.
 */
-let cursorDecode = (~args: string) => `
+let cursorDecode = (~args: string) =>
+  `
   let _window = null;
   let _from = 0;
   let _cursorPath = null;
@@ -779,7 +785,11 @@ export function request(ctx) {
       values[':' + key] = '' + value;
     }
   });
-${ownerFilterClause(~ownerField, ~elevatedGroups)}${retiredFilterClause(~retiredField, ~retiredValues, ~elevatedGroups)}${indexCursorPreamble}
+${ownerFilterClause(~ownerField, ~elevatedGroups)}${retiredFilterClause(
+      ~retiredField,
+      ~retiredValues,
+      ~elevatedGroups,
+    )}${indexCursorPreamble}
   const result = {
     operation: 'Query',
     query,
@@ -842,7 +852,11 @@ export function request(ctx) {
       values[':' + key] = '' + value;
     }
   });
-${ownerFilterClause(~ownerField, ~elevatedGroups)}${retiredFilterClause(~retiredField, ~retiredValues, ~elevatedGroups)}${indexCursorPreamble}
+${ownerFilterClause(~ownerField, ~elevatedGroups)}${retiredFilterClause(
+      ~retiredField,
+      ~retiredValues,
+      ~elevatedGroups,
+    )}${indexCursorPreamble}
   const result = {
     operation: 'Query',
     query,
@@ -863,8 +877,7 @@ ${indexConnectionResponseCode}
 // DynamoDB read — list all
 // ---------------------------------------------------------------------------
 
-let listAllItems =
-  `${importUtil}
+let listAllItems = `${importUtil}
 export function request(ctx) {
   return {
     operation: 'Scan',
@@ -928,7 +941,8 @@ let listAllItemsConnection = (
   // have nothing to name in the key condition.
   let ownerIndex = ownerField->Option.isSome ? ownerIndex : None
   let requireAttributeClause = switch requireAttribute {
-  | Some(attr) => `
+  | Some(attr) =>
+    `
   names['#${attr}'] = '${attr}';
   parts.push('attribute_exists(#${attr})');`
   | None => ""
@@ -986,7 +1000,8 @@ let listAllItemsConnection = (
     let elevatedLiteral = elevatedGroups->Array.map(g => `'${g}'`)->Array.join(", ")
     let exemptPrelude = switch ownerField {
     | Some(_) => ""
-    | None => `
+    | None =>
+      `
   const _id = ctx.identity;
   const _sub = _id == null ? null : _id.sub;
   const _groups = (_id != null && _id.claims != null && _id.claims['cognito:groups']) || [];
@@ -1007,10 +1022,13 @@ ${switch retiredValues {
       // once for the whole clause — a row that states no lifecycle is not
       // retired, the same reading every other adapter takes.
       | Some(states) =>
-        let placeholders = states->Array.mapWithIndex((state, i) => (`:retiredValue${Int.toString(i)}`, state))
+        let placeholders =
+          states->Array.mapWithIndex((state, i) => (`:retiredValue${Int.toString(i)}`, state))
         let assignments =
           placeholders
-          ->Array.map(((ph, state)) => `    values['${ph}'] = util.dynamodb.toDynamoDB('${state}');`)
+          ->Array.map(((ph, state)) =>
+            `    values['${ph}'] = util.dynamodb.toDynamoDB('${state}');`
+          )
           ->Array.join("\n")
         let comparisons =
           placeholders->Array.map(((ph, _)) => `#retired <> ${ph}`)->Array.join(" AND ")
@@ -1026,16 +1044,19 @@ ${switch retiredValues {
   }
   let filterClauses =
     filterFields
-    ->Array.map(f => `
+    ->Array.map(f =>
+      `
   if (filter.${f}Eq !== undefined && filter.${f}Eq !== null && filter.${f}Eq !== '') {
     names['#${f}'] = '${f}';
     values[':${f}Eq'] = util.dynamodb.toDynamoDB(filter.${f}Eq);
     parts.push('#${f} = :${f}Eq');
-  }`)
+  }`
+    )
     ->Array.join("")
   let rangeClauses =
     rangeFields
-    ->Array.map(f => `
+    ->Array.map(f =>
+      `
   if (filter.${f}From !== undefined && filter.${f}From !== null && filter.${f}From !== '') {
     names['#${f}'] = '${f}';
     values[':${f}From'] = util.dynamodb.toDynamoDB(filter.${f}From);
@@ -1045,10 +1066,10 @@ ${switch retiredValues {
     names['#${f}'] = '${f}';
     values[':${f}To'] = util.dynamodb.toDynamoDB(filter.${f}To);
     parts.push('#${f} <= :${f}To');
-  }`)
+  }`
+    )
     ->Array.join("")
-  let sortFieldsLiteral =
-    sortFields->Array.map(f => `'${f}'`)->Array.join(", ")
+  let sortFieldsLiteral = sortFields->Array.map(f => `'${f}'`)->Array.join(", ")
   // When the Query branch already ordered on the index's own sort key, the page
   // arrives globally ordered and re-sorting it here is the one way to break that
   // order — a sort over a page is not a sort over the caller's rows.
@@ -1090,8 +1111,7 @@ ${switch retiredValues {
   // halves, because both need it: the request to set `scanIndexForward`, the
   // response to leave an already-ordered page alone.
   let indexOrderedExpr = switch (ownerIndex, ownerIndexSortField) {
-  | (Some(_), Some(sf)) =>
-    `!_exempt && !!(ctx.args.orderBy && ctx.args.orderBy.field === '${sf}')`
+  | (Some(_), Some(sf)) => `!_exempt && !!(ctx.args.orderBy && ctx.args.orderBy.field === '${sf}')`
   | _ => "false"
   }
   // The two reads, chosen by the same test that used to choose a predicate.
@@ -1099,7 +1119,8 @@ ${switch retiredValues {
   // branch inside one resolver — no second field, no second data source, no
   // client change.
   let requestOperation = switch (ownerField, ownerIndex) {
-  | (Some(field), Some(index)) => `
+  | (Some(field), Some(index)) =>
+    `
   const _indexOrdered = ${indexOrderedExpr};
   const req = _exempt
     ? {
@@ -1119,7 +1140,8 @@ ${switch retiredValues {
         nextToken: _window,
         scanIndexForward: !(_indexOrdered && ctx.args.orderBy.direction === 'DESC'),
       };`
-  | _ => `
+  | _ =>
+    `
   const req = {
     operation: 'Scan',
     limit: ${listPageWindowBudget},
@@ -1130,7 +1152,8 @@ ${switch retiredValues {
   let requestPathGuard = ownerIndex->Option.isSome ? cursorPathGuard : ""
   let responsePathPreamble = switch ownerIndex {
   | None => ""
-  | Some(_) => `${ownerIdentityPreamble}
+  | Some(_) =>
+    `${ownerIdentityPreamble}
   const _path = _exempt ? 's' : 'q';
   const _indexOrdered = ${indexOrderedExpr};`
   }
@@ -1224,7 +1247,10 @@ let resolvedFieldResponse = (
     | None => "\n  const _owns = (row) => true;"
     | Some(field) =>
       `
-  // ── owner scoping (generated) ──${ownerGuardPreamble(~ownerField=field, ~elevatedGroups)}`
+  // ── owner scoping (generated) ──${ownerGuardPreamble(
+          ~ownerField=field,
+          ~elevatedGroups,
+        )}`
     }
     let retiredPart = retiredGuardPreamble(
       ~retiredField,
@@ -1427,13 +1453,14 @@ let resolveIds = (
   ~retiredField: option<string>=?,
   ~retiredValues: option<array<string>>=?,
   ~elevatedGroups: array<string>=[],
-) => (tableName: string) => {
-  let keysCode = switch sortField {
-  | Some(sf) =>
-    `id => ({ id: util.dynamodb.toString(id.id), ${sf}: util.dynamodb.toString(id.${sf}) })`
-  | None => `id => ({ id: util.dynamodb.toString(id) })`
-  }
-  `${importUtil}
+) =>
+  (tableName: string) => {
+    let keysCode = switch sortField {
+    | Some(sf) =>
+      `id => ({ id: util.dynamodb.toString(id.id), ${sf}: util.dynamodb.toString(id.${sf}) })`
+    | None => `id => ({ id: util.dynamodb.toString(id) })`
+    }
+    `${importUtil}
 import { runtime } from '@aws-appsync/utils';
 export function request(ctx) {
   const idList = ctx.source.${idsField} ?? [];
@@ -1450,21 +1477,21 @@ export function request(ctx) {
 }
 export function response(ctx) {
   if (ctx.error) util.error(ctx.error.message, ctx.error.type);${switch ownerField {
-    | None => ""
-    | Some(field) => ownerGuardPreamble(~ownerField=field, ~elevatedGroups)
-    }}${retiredGuardPreamble(
-      ~retiredField,
-      ~retiredValues,
-      ~elevatedGroups,
-      ~ownerScoped=ownerField->Option.isSome,
-    )}
+      | None => ""
+      | Some(field) => ownerGuardPreamble(~ownerField=field, ~elevatedGroups)
+      }}${retiredGuardPreamble(
+        ~retiredField,
+        ~retiredValues,
+        ~elevatedGroups,
+        ~ownerScoped=ownerField->Option.isSome,
+      )}
   return (ctx.result?.data?.['${tableName}'] ?? []).filter(item =>
     item !== null${ownerField->Option.isSome ? " && _owns(item)" : ""}${retiredField->Option.isSome
-      ? " && _live(item)"
-      : ""});
+        ? " && _live(item)"
+        : ""});
 }
 `
-}
+  }
 
 /** Batched-by-ids — reads `ctx.args.ids: [String!]!` through one BatchGetItem.
     Missing ids drop out; empty input short-circuits without hitting DDB. The
@@ -1475,8 +1502,9 @@ let batchGetItemsByIds = (
   ~retiredField: option<string>=?,
   ~retiredValues: option<array<string>>=?,
   ~elevatedGroups: array<string>=[],
-) => (tableName: string) =>
-  `${importUtil}
+) =>
+  (tableName: string) =>
+    `${importUtil}
 import { runtime } from '@aws-appsync/utils';
 export function request(ctx) {
   const ids = ctx.args.ids ?? [];
@@ -1501,18 +1529,18 @@ export function response(ctx) {
   // caller does not own is dropped rather than refused, for the reason the
   // single-key door answers null: distinguishing "not yours" from "not there"
   // would make this door an oracle for which ids exist.${switch ownerField {
-    | None => ""
-    | Some(field) => ownerGuardPreamble(~ownerField=field, ~elevatedGroups)
-    }}${retiredGuardPreamble(
-      ~retiredField,
-      ~retiredValues,
-      ~elevatedGroups,
-      ~ownerScoped=ownerField->Option.isSome,
-    )}
+      | None => ""
+      | Some(field) => ownerGuardPreamble(~ownerField=field, ~elevatedGroups)
+      }}${retiredGuardPreamble(
+        ~retiredField,
+        ~retiredValues,
+        ~elevatedGroups,
+        ~ownerScoped=ownerField->Option.isSome,
+      )}
   return (ctx.result?.data?.['${tableName}'] ?? []).filter(item =>
     item !== null${ownerField->Option.isSome ? " && _owns(item)" : ""}${retiredField->Option.isSome
-      ? " && _live(item)"
-      : ""});
+        ? " && _live(item)"
+        : ""});
 }
 `
 
@@ -1536,35 +1564,36 @@ let refsByIds = (
   ~imageExpr: option<string>=?,
   ~ownerField: option<string>=?,
   ~elevatedGroups: array<string>=[],
-) => (tableName: string) => {
-  let ownerGuard = switch ownerField {
-  // Takes the row it ignores: APPSYNC_JS type-checks the resolver, so a
-  // zero-parameter stub called as `_owns(row)` is TS2554 ("Expected 0
-  // arguments, but got 1") and AppSync rejects the whole resolver at create
-  // time with "The code contains one or more errors". Only a door that emits
-  // the call conditionally is safe with a bare `() => true`, and that is not a
-  // property worth relying on across three templates.
-  | None => "\n  const _owns = (row) => true;"
-  | Some(field) => ownerGuardPreamble(~ownerField=field, ~elevatedGroups)
-  }
-  // Retirement, in the vocabulary the row itself uses: a member test for the
-  // state form, truthiness for the boolean one. Absent keeps the row live, which
-  // is what a row written before the annotation is.
-  let retiredExpr = switch (retiredField, retiredValues) {
-  | (None, _) => "false"
-  | (Some(f), Some(values)) =>
-    let literal = values->Array.map(v => `'${v}'`)->Array.join(", ")
-    `[${literal}].indexOf(row['${f}']) >= 0`
-  | (Some(f), None) => `row['${f}'] === true`
-  }
-  // Only the state form has a state to name, and only a retired row reports one:
-  // this door names rows, it does not publish a lifecycle column to callers the
-  // list withholds.
-  let stateExpr = switch (retiredField, retiredValues) {
-  | (Some(f), Some(_)) => `_retired(row) ? (row['${f}'] ?? null) : null`
-  | _ => "null"
-  }
-  `${importUtil}
+) =>
+  (tableName: string) => {
+    let ownerGuard = switch ownerField {
+    // Takes the row it ignores: APPSYNC_JS type-checks the resolver, so a
+    // zero-parameter stub called as `_owns(row)` is TS2554 ("Expected 0
+    // arguments, but got 1") and AppSync rejects the whole resolver at create
+    // time with "The code contains one or more errors". Only a door that emits
+    // the call conditionally is safe with a bare `() => true`, and that is not a
+    // property worth relying on across three templates.
+    | None => "\n  const _owns = (row) => true;"
+    | Some(field) => ownerGuardPreamble(~ownerField=field, ~elevatedGroups)
+    }
+    // Retirement, in the vocabulary the row itself uses: a member test for the
+    // state form, truthiness for the boolean one. Absent keeps the row live, which
+    // is what a row written before the annotation is.
+    let retiredExpr = switch (retiredField, retiredValues) {
+    | (None, _) => "false"
+    | (Some(f), Some(values)) =>
+      let literal = values->Array.map(v => `'${v}'`)->Array.join(", ")
+      `[${literal}].indexOf(row['${f}']) >= 0`
+    | (Some(f), None) => `row['${f}'] === true`
+    }
+    // Only the state form has a state to name, and only a retired row reports one:
+    // this door names rows, it does not publish a lifecycle column to callers the
+    // list withholds.
+    let stateExpr = switch (retiredField, retiredValues) {
+    | (Some(f), Some(_)) => `_retired(row) ? (row['${f}'] ?? null) : null`
+    | _ => "null"
+    }
+    `${importUtil}
 import { runtime } from '@aws-appsync/utils';
 export function request(ctx) {
   const ids = ctx.args.ids ?? [];
@@ -1595,14 +1624,13 @@ export function response(ctx) {
     }));
 }
 `
-}
+  }
 
 // ---------------------------------------------------------------------------
 // DynamoDB write
 // ---------------------------------------------------------------------------
 
-let putItem =
-  `${importUtil}
+let putItem = `${importUtil}
 export function request(ctx) {
   return {
     operation: 'PutItem',
@@ -1629,8 +1657,7 @@ export function request(ctx) {
 ${resultResponseCode}
 `->Pulumi.Input.make
 
-let deleteItem =
-  `${importUtil}
+let deleteItem = `${importUtil}
 export function request(ctx) {
   return {
     operation: 'DeleteItem',
@@ -1773,8 +1800,7 @@ export function response(ctx) {
 let authorizeIndexedAccessRequest = authorizeIndexedAccess
 
 /** @deprecated The response check is now part of authorizeIndexedAccess. */
-let authorizeIndexedAccessResponse = (~group as _: string) =>
-  resultResponseCode->Pulumi.Input.make
+let authorizeIndexedAccessResponse = (~group as _: string) => resultResponseCode->Pulumi.Input.make
 
 // ---------------------------------------------------------------------------
 // Response-only helpers

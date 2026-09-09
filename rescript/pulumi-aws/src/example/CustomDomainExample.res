@@ -18,9 +18,8 @@ let cert = Acm.Certificate.make(
   ~opts={provider: usEast1},
 )
 
-let firstValidationOption = cert.domainValidationOptions->Pulumi.Output.apply(opts =>
-  opts->Array.getUnsafe(0)
-)
+let firstValidationOption =
+  cert.domainValidationOptions->Pulumi.Output.apply(opts => opts->Array.getUnsafe(0))
 
 let validationRecord = Route53.Record.make(
   ~name="example-cert-validation",

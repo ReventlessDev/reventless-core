@@ -24,7 +24,8 @@ module Selectable = {
     ~ttl=?,
     ~api,
     ~apiRole,
-    ~owner, ~opts,
+    ~owner,
+    ~opts,
   ) =>
     if QueryDbBackend.isPostgresFor(name) {
       Postgres.make(~name, ~indexes, ~subIdField?, ~ttl?, ~api, ~apiRole, ~owner, ~opts)
@@ -43,7 +44,8 @@ module SelectableStream = {
     ~ttl=?,
     ~api,
     ~apiRole,
-    ~owner, ~opts,
+    ~owner,
+    ~opts,
   ) =>
     if QueryDbBackend.isPostgresFor(name) {
       QueryDbBackend.postgresStreamRegistry->Set.add(name)

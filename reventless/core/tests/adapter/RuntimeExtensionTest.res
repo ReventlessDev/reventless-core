@@ -7,9 +7,11 @@ type call = {
   platform: option<string>,
 }
 
-let recorderNamed = (~companions: array<string>=[], label: string, into: array<(string, call)>): module(
-  RuntimeExtension.Extension
-) => {
+let recorderNamed = (
+  ~companions: array<string>=[],
+  label: string,
+  into: array<(string, call)>,
+): module(RuntimeExtension.Extension) => {
   module R = {
     let moduleUrl = `file:///pkg/${label}.res.mjs`
     let companionModuleUrls = companions

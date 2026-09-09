@@ -1,4 +1,3 @@
-
 // ─────────────────────────────────────────────────────────────
 // Shared captures — reset in beforeEach
 // ─────────────────────────────────────────────────────────────
@@ -14,7 +13,9 @@ let capturedEventBatches: ref<array<array<JSON.t>>> = ref([])
 
 let mockCountsDbCount: QueryDb.count<string> = async (id, field, delta) => {
   capturedCountCalls :=
-    capturedCountCalls.contents->Array.concat([(id->Reventless.Id.StringPure.toString, field, delta)])
+    capturedCountCalls.contents->Array.concat([
+      (id->Reventless.Id.StringPure.toString, field, delta),
+    ])
   Ok(0)
 }
 
@@ -26,8 +27,7 @@ let mockJsonEventsHandler: Counter.jsonEventsHandler = stream =>
   stream
   ->Stream.runCollect
   ->Effect.map(chunk => {
-    capturedEventBatches :=
-      capturedEventBatches.contents->Array.concat([chunk])
+    capturedEventBatches := capturedEventBatches.contents->Array.concat([chunk])
   })
 
 // ─────────────────────────────────────────────────────────────

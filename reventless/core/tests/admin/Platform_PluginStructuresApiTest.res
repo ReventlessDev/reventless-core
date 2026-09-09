@@ -84,7 +84,10 @@ let namesOf = (key): array<string> =>
   ->Option.flatMap(JSON.Decode.array)
   ->Option.getOr([])
   ->Array.filterMap(v =>
-    v->JSON.Decode.object->Option.flatMap(o => o->Dict.get("name"))->Option.flatMap(JSON.Decode.string)
+    v
+    ->JSON.Decode.object
+    ->Option.flatMap(o => o->Dict.get("name"))
+    ->Option.flatMap(JSON.Decode.string)
   )
 
 describe("Platform_PluginStructures entry", () => {
@@ -130,8 +133,7 @@ describe("Platform_PluginStructures entry", () => {
     expect(
       json->String.includes(
         "\"extensionPoints\":[{\"name\":\"Catalog.Products\",\"delegateNames\":[\"onAdded\"],\"sourceEventTypes\":[\"Catalog.ProductAdded\"],\"commandTypes\":null," ++
-          "\"publishedEvents\":[{\"name\":\"Catalog.Products.ProductBecameAvailable\",\"fromEventTypes\":[\"Catalog.ProductAdded\"]}]," ++
-          "\"acceptedCommands\":[{\"name\":\"Catalog.Products.Reserve\",\"toCommandTypes\":[\"Catalog.ReserveStock\"]}]}]",
+        "\"publishedEvents\":[{\"name\":\"Catalog.Products.ProductBecameAvailable\",\"fromEventTypes\":[\"Catalog.ProductAdded\"]}]," ++ "\"acceptedCommands\":[{\"name\":\"Catalog.Products.Reserve\",\"toCommandTypes\":[\"Catalog.ReserveStock\"]}]}]",
       ),
     )->toEqual(true)
   )

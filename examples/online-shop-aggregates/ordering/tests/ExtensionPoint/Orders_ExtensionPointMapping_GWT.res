@@ -13,21 +13,15 @@ describe("Orders ExtensionPoint mapping — per-product fan-out", () => {
   )
 
   test("Cancelled fans out to one ItemOrderCancelled per product", () =>
-    whenDelegateEvent(
-      Delegate.Cancelled({productIds: ["p1", "p2"]}),
-    )->thenPublishesEvents([
+    whenDelegateEvent(Delegate.Cancelled({productIds: ["p1", "p2"]}))->thenPublishesEvents([
       ("p1", ExtensionPoint.ItemOrderCancelled({productId: "p1", orderId: "gwt-id"})),
       ("p2", ExtensionPoint.ItemOrderCancelled({productId: "p2", orderId: "gwt-id"})),
     ])
   )
 
-  test("Shipped publishes nothing", () =>
-    whenDelegateEvent(Delegate.Shipped)->thenPublishesNothing
-  )
+  test("Shipped publishes nothing", () => whenDelegateEvent(Delegate.Shipped)->thenPublishesNothing)
 
   test("Refunded publishes nothing", () =>
-    whenDelegateEvent(
-      Delegate.Refunded({reason: "customer-changed-mind"}),
-    )->thenPublishesNothing
+    whenDelegateEvent(Delegate.Refunded({reason: "customer-changed-mind"}))->thenPublishesNothing
   )
 })

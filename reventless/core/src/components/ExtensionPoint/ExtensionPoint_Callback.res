@@ -70,8 +70,7 @@ module Make = (
           let _ = result()
           Ok(reference)
         },
-      )
-      ->Effect.catchAll(((errorResult, errMsg)) =>
+      )->Effect.catchAll(((errorResult, errMsg)) =>
         EffectLogger.logError(~comp="ExtensionPoint", errMsg)->Effect.map(_ => errorResult)
       )
     | AbstractHandleDirective(reference, handler) =>
@@ -102,9 +101,6 @@ module Make = (
           Spec.resourceNaming,
           Spec.commandTopicResources,
         )
-      Effect.all(
-        commandActions->Array.map(applyCommandAction),
-        {"concurrency": "unbounded"},
-      )
+      Effect.all(commandActions->Array.map(applyCommandAction), {"concurrency": "unbounded"})
     })
 }

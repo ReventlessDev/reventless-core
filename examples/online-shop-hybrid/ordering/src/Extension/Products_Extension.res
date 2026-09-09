@@ -25,10 +25,8 @@ module Mapping = {
     | ProductRelisted({productId: theId}) => [
         PublishStateChangeSliceCommand(RelistSyncedProduct({productId: theId})),
       ]
-    | ProductImageChanged({productId, productImage: ?productImage}) => [
-        PublishStateChangeSliceCommand(
-          ChangeSyncedProductImage({productId, productImage: ?productImage}),
-        ),
+    | ProductImageChanged({productId, ?productImage}) => [
+        PublishStateChangeSliceCommand(ChangeSyncedProductImage({productId, ?productImage})),
       ]
     }
 

@@ -101,8 +101,7 @@ let rewriteActionWith = (
   // `Set` opens a trail rather than extending one: it replaces the whole row,
   // the trail included, so there is no prior value left to compare against.
   let created = state => apply(state, ~overlays, ~priorLifecycle=None)
-  let updated = (fn, state) =>
-    apply(fn(state), ~overlays, ~priorLifecycle=priorLifecycleOf(state))
+  let updated = (fn, state) => apply(fn(state), ~overlays, ~priorLifecycle=priorLifecycleOf(state))
   let labelled = state => apply(state, ~overlays={...overlays, trail: None}, ~priorLifecycle=None)
   switch action {
   | Create(id, state) => Create(id, created(state))
@@ -127,11 +126,10 @@ let rewriteActionWith = (
   }
 }
 
-let rewriteAction = (
-  action: action<'id, 'state>,
-  ~at: string,
-  stateSchema: S.t<'state>,
-): action<'id, 'state> =>
+let rewriteAction = (action: action<'id, 'state>, ~at: string, stateSchema: S.t<'state>): action<
+  'id,
+  'state,
+> =>
   switch overlaysFor(stateSchema->S.castToUnknown) {
   | None => action
   | Some(overlays) =>
@@ -156,11 +154,10 @@ The rewrite a test harness applies: the trail and nothing else. `displayName`
 lives in the state schema and not in the record, so composing it would produce a
 state no expectation can spell.
 */
-let rewriteTrail = (
-  action: action<'id, 'state>,
-  ~at: string,
-  stateSchema: S.t<'state>,
-): action<'id, 'state> =>
+let rewriteTrail = (action: action<'id, 'state>, ~at: string, stateSchema: S.t<'state>): action<
+  'id,
+  'state,
+> =>
   switch trailOverlays(Some(stateSchema->S.castToUnknown)) {
   | None => action
   | Some(overlays) =>
@@ -186,7 +183,12 @@ let rewriteJsonAction = (
   switch trailOverlays(stateSchema) {
   | None => action
   | Some(overlays) =>
-    action->rewriteActionWith(~overlays, ~at, ~toDict=JSON.Decode.object, ~fromDict=JSON.Encode.object)
+    action->rewriteActionWith(
+      ~overlays,
+      ~at,
+      ~toDict=JSON.Decode.object,
+      ~fromDict=JSON.Encode.object,
+    )
   }
 
 let applyChanges = async (
@@ -219,8 +221,7 @@ let applyChanges = async (
   )
   let changedCount = changedStates->Array.length
 
-  let batchToSave =
-    changedStates->Array.concat(addedStates)->Array.map(state => (id, state, None))
+  let batchToSave = changedStates->Array.concat(addedStates)->Array.map(state => (id, state, None))
 
   let deletedSubIds = beforeSubIds->Set.diff(afterSubIds)->Set.toArray
   let batchToDelete = deletedSubIds->Array.map(subId => (id, Some((subIdField, subId))))
@@ -472,39 +473,60 @@ let optimizeActions = actions => {
           UpdateWithDefault(id1, g(defaultState1), state => g(f(state))),
         ])
       | (UpdateWithDefault(id1, defaultState1, f), Create(id2, _state2)) if id1 == id2 =>
-        log.warn(~comp="Projection", `optimizing Create after UpdateWithDefault for id=${id1}, ignoring the Create`)
+        log.warn(
+          ~comp="Projection",
+          `optimizing Create after UpdateWithDefault for id=${id1}, ignoring the Create`,
+        )
         previousActions->Array.concat([UpdateWithDefault(id1, defaultState1, f)])
       | (Create(id1, state1), Create(id2, state2)) if id1 == id2 =>
         log.warn(
           ~comp="Projection",
-          `optimizing 2 sequential Create for id=${id1}, ignoring second: ${state2->JSON.stringifyAny->Option.getOr("?")}`,
+          `optimizing 2 sequential Create for id=${id1}, ignoring second: ${state2
+            ->JSON.stringifyAny
+            ->Option.getOr("?")}`,
         )
         previousActions->Array.concat([Create(id1, state1)])
       | (Create(id1, state1), Delete(id2)) if id1 == id2 =>
         log.warn(
           ~comp="Projection",
-          `optimizing Delete after Create for id=${id1}, ignoring Create: ${state1->JSON.stringifyAny->Option.getOr("?")}`,
+          `optimizing Delete after Create for id=${id1}, ignoring Create: ${state1
+            ->JSON.stringifyAny
+            ->Option.getOr("?")}`,
         )
         previousActions->Array.concat([Delete(id1)])
       | (Update(id1, _f), Delete(id2)) if id1 == id2 =>
-        log.warn(~comp="Projection", `optimizing Delete after Update for id=${id1}, ignoring the Update`)
+        log.warn(
+          ~comp="Projection",
+          `optimizing Delete after Update for id=${id1}, ignoring the Update`,
+        )
         previousActions->Array.concat([Delete(id1)])
       | (UpdateWithDefault(id1, _defaultState1, _f), Delete(id2)) if id1 == id2 =>
-        log.warn(~comp="Projection", `optimizing Delete after UpdateWithDefault for id=${id1}, ignoring the UpdateWithDefault`)
+        log.warn(
+          ~comp="Projection",
+          `optimizing Delete after UpdateWithDefault for id=${id1}, ignoring the UpdateWithDefault`,
+        )
         previousActions->Array.concat([Delete(id1)])
       | (Delete(id1), Create(id2, state2)) if id1 == id2 =>
         previousActions->Array.concat([Set(id1, state2)])
       | (Create(id1, state1), Set(id2, state2)) if id1 == id2 =>
         log.warn(
           ~comp="Projection",
-          `optimizing Set after Create for id=${id1}, ignoring Create: ${state1->JSON.stringifyAny->Option.getOr("?")}`,
+          `optimizing Set after Create for id=${id1}, ignoring Create: ${state1
+            ->JSON.stringifyAny
+            ->Option.getOr("?")}`,
         )
         previousActions->Array.concat([Set(id1, state2)])
       | (Update(id1, _f), Set(id2, state2)) if id1 == id2 =>
-        log.warn(~comp="Projection", `optimizing Set after Update for id=${id1}, ignoring the Update`)
+        log.warn(
+          ~comp="Projection",
+          `optimizing Set after Update for id=${id1}, ignoring the Update`,
+        )
         previousActions->Array.concat([Set(id1, state2)])
       | (UpdateWithDefault(id1, _defaultState1, _f), Set(id2, state2)) if id1 == id2 =>
-        log.warn(~comp="Projection", `optimizing Set after UpdateWithDefault for id=${id1}, ignoring the UpdateWithDefault`)
+        log.warn(
+          ~comp="Projection",
+          `optimizing Set after UpdateWithDefault for id=${id1}, ignoring the UpdateWithDefault`,
+        )
         previousActions->Array.concat([Set(id1, state2)])
       // MULTI STATES
       /*
@@ -542,7 +564,9 @@ let optimizeActions = actions => {
         // any other action will be just appended
         log.warn(
           ~comp="Projection",
-          `actions not optimized: ${lastAction->JSON.stringifyAny->Option.getOr("?")} + ${action->JSON.stringifyAny->Option.getOr("?")}`,
+          `actions not optimized: ${lastAction->JSON.stringifyAny->Option.getOr("?")} + ${action
+            ->JSON.stringifyAny
+            ->Option.getOr("?")}`,
         )
         optimizedActions->Array.concat([action])
       }
@@ -571,7 +595,9 @@ let handleActions = async (~comp="Projection", actions, operations, subIdConfig)
       | Error(err) =>
         log.error(
           ~comp,
-          `storage error: ${err->Message.encode(ReventlessInfra.QueryDb.storageErrorSchema)->JSON.stringify}`,
+          `storage error: ${err
+            ->Message.encode(ReventlessInfra.QueryDb.storageErrorSchema)
+            ->JSON.stringify}`,
         )
       }
       await action->handleAction(~comp, operations, subIdConfig)

@@ -36,15 +36,20 @@ let make = (~name as _="mock-event-log", ~opts as _: Pulumi.CustomResourceOption
 
   let snapshots: dict<ReventlessCore.EventLog.snapshot> = Dict.make()
 
-  let latestSnapshot: ReventlessCore.EventLog.latestSnapshot<string> = async id =>
-    Ok(snapshots->Dict.get(id))
+  let latestSnapshot: ReventlessCore.EventLog.latestSnapshot<string> = async id => Ok(
+    snapshots->Dict.get(id),
+  )
 
   let writeSnapshot: ReventlessCore.EventLog.writeSnapshot<string> = async (id, snap) => {
     snapshots->Dict.set(id, snap)
     Ok()
   }
 
-  let appendStream: ReventlessCore.EventLog.appendStream<string, JSON.t> = (_startingSeqNr, id, stream) =>
+  let appendStream: ReventlessCore.EventLog.appendStream<string, JSON.t> = (
+    _startingSeqNr,
+    id,
+    stream,
+  ) =>
     stream->Stream.runForEach(json =>
       Effect.sync(() => {
         let existing = events.contents->Dict.get(id)->Option.getOr([])

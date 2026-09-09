@@ -10,9 +10,7 @@ let excludedByMembers = (commandSchema: S.t<unknown>): array<string> =>
   switch commandSchema {
   | AnyOf({anyOf}) =>
     anyOf->Array.filterMap(member =>
-      member->S.Metadata.get(~id=noApiVariantId)->Option.getOr(false)
-        ? variantNameOf(member)
-        : None
+      member->S.Metadata.get(~id=noApiVariantId)->Option.getOr(false) ? variantNameOf(member) : None
     )
   | _ => []
   }

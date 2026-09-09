@@ -30,7 +30,6 @@ which is the E.164 limit. No spaces, no punctuation, no leading zero after the
     })
 ```
 */
-
 /** The number's representation. Transparent `string`; see `Email.t`. */
 type t = string
 

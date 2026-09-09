@@ -56,11 +56,11 @@ let make = (
   ~claims=Dict.make(),
 ): t => {
   correlationId,
-  causationId: ?causationId,
-  component: ?component,
-  pluginName: ?pluginName,
-  timestamp: ?timestamp,
-  retryCount: ?retryCount,
+  ?causationId,
+  ?component,
+  ?pluginName,
+  ?timestamp,
+  ?retryCount,
   identity,
   claims,
 }
@@ -90,8 +90,7 @@ let fromOptions = (o: options): t =>
     ~retryCount=?o.retryCount,
   )
 
-let getClaim = (ctx: t, key: string): option<string> =>
-  ctx.claims->Dict.get(key)
+let getClaim = (ctx: t, key: string): option<string> => ctx.claims->Dict.get(key)
 
 let withClaim = (ctx: t, key: string, value: string): t => {
   let next = ctx.claims->Dict.toArray->Dict.fromArray
@@ -107,8 +106,8 @@ let test = (
   ~claims=Dict.make(),
 ): t => {
   correlationId,
-  timestamp: ?timestamp,
-  retryCount: ?retryCount,
+  ?timestamp,
+  ?retryCount,
   identity,
   claims,
 }

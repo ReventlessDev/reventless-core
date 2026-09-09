@@ -11,7 +11,7 @@ describe("Fiber", () => {
     // Fork a never-completing effect and interrupt it
     let fiber = Effect.never->Effect.runFork
     let exit = await Fiber.interrupt(fiber)->Effect.runPromise
-    expect(exit->Exit.isFailure)->toBe(true)  // interrupted = failure
+    expect(exit->Exit.isFailure)->toBe(true) // interrupted = failure
   })
 
   testPromise("joinAll collects results from multiple fibers", async () => {

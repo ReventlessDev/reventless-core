@@ -17,7 +17,6 @@ is the opposite. So the fallback *rule* lives here — an absent choice defers t
 the posture — and the *table* is passed in as `~posture`. A trait that hard-coded
 either answer would be wrong for half its hosts.
 */
-
 /** How a recipient is reached. Mirrors `Reventless.Messaging.channel`, which is
     the platform capability's vocabulary; this one is the domain's, so it carries
     a host's schema and travels on the wire. `Notification_Send` maps the two. */
@@ -72,22 +71,22 @@ let claimedBy = (t, source) =>
 
 /** What a host asks the competency to do. */
 type op =
-  | /** Relayed from whatever the host publishes when it learns where somebody is.
+  /** Relayed from whatever the host publishes when it learns where somebody is.
         Not a client's command: a caller who could announce another person's
         address would be redirecting their mail. */
-  Announce({channel: channel, address: string})
+  | Announce({channel: channel, address: string})
   | Subscribe({category: category, channel: channel})
   | Unsubscribe({category: category, channel: channel})
-  | /** Something worth telling them about happened. `reference` is the caller's
+  /** Something worth telling them about happened. `reference` is the caller's
         own key for it, echoed back on whichever outcome follows, so the relay
         that asked can tell its work is finished. Opaque here on purpose.
 
         `source` says which stream it came from and `origin` says who is asking;
         together they are the whole of the handover — see `decide`. */
-  Request({category: category, reference: string, source: source, origin: origin})
-  | /** A second producer takes over one source. Relayed like `Announce`: a
+  | Request({category: category, reference: string, source: source, origin: origin})
+  /** A second producer takes over one source. Relayed like `Announce`: a
         client that could claim a source would be silencing somebody else's mail. */
-  Claim({source: source, by: string})
+  | Claim({source: source, by: string})
   | Release({source: source})
 
 /** What the competency decided, for the host to name in its own events. */
@@ -95,18 +94,18 @@ type fact =
   | Announced({channel: channel, address: string})
   | Subscribed({category: category, channel: channel})
   | Unsubscribed({category: category, channel: channel})
-  | /** The addressed message. `address` is the snapshot delivery uses, which is
+  /** The addressed message. `address` is the snapshot delivery uses, which is
         why it is on the fact and not looked up again later. */
-  Requested({category: category, reference: string, channel: channel, address: string})
-  | /** They are reachable and said no. */
-  Suppressed({category: category, reference: string})
-  | /** They want it and nobody can be reached — no address on file for any
+  | Requested({category: category, reference: string, channel: channel, address: string})
+  /** They are reachable and said no. */
+  | Suppressed({category: category, reference: string})
+  /** They want it and nobody can be reached — no address on file for any
         channel they left enabled. A different fact from `Suppressed` on purpose:
         one is the system working and the other is the system falling short, and
         reporting both the same way hides every delivery gap behind a legitimate
         preference. */
-  Undeliverable({category: category, reference: string})
-  | /** Not acted on because another producer owns this source. A third way of
+  | Undeliverable({category: category, reference: string})
+  /** Not acted on because another producer owns this source. A third way of
         not sending, and its own fact for the same reason `Suppressed` and
         `Undeliverable` are two rather than one: "they declined", "nobody was
         reachable" and "somebody else has this" are three different things, and a
@@ -116,7 +115,7 @@ type fact =
         TODO row on an outcome; without a fourth one a deferred request retries
         its whole budget and lands in `onExhausted`, which is a slow silent
         failure with nothing in the log to explain it. */
-  Deferred({reference: string, source: source})
+  | Deferred({reference: string, source: source})
   | Claimed({source: source, by: string})
   | Released({source: source})
 
@@ -223,15 +222,14 @@ let decide = (t, op, ~posture: (category, channel) => bool): result<
 
   | Request({category, reference}) =>
     let wanted = channels->Array.filter(channel => enabled(t, ~posture, category, channel))
-    let addressed =
-      wanted->Array.filterMap(channel =>
-        addressFor(t, channel)->Option.map(address => Requested({
-          category,
-          reference,
-          channel,
-          address,
-        }))
-      )
+    let addressed = wanted->Array.filterMap(channel =>
+      addressFor(t, channel)->Option.map(address => Requested({
+        category,
+        reference,
+        channel,
+        address,
+      }))
+    )
     switch addressed {
     | [] =>
       // Wanted-but-unreachable and not-wanted are the two ways to send nothing,

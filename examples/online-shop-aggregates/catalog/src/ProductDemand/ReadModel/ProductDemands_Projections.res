@@ -11,8 +11,7 @@ module ProductMapping = Mapping.Make(
     open Product
     let project = ({event, id, _}) =>
       switch event {
-      | Added({name}) =>
-        Set(id, {ProductDemands.name: name, orderCount: 0})
+      | Added({name}) => Set(id, {ProductDemands.name, orderCount: 0})
       | _ => Ignore
       }
   },
@@ -28,7 +27,10 @@ module ProductDemandMapping = Mapping.Make(
       | Recorded(_) =>
         Update(id, (state: ProductDemands.state) => {...state, orderCount: state.orderCount + 1})
       | Revoked(_) =>
-        Update(id, (state: ProductDemands.state) => {...state, orderCount: max(0, state.orderCount - 1)})
+        Update(
+          id,
+          (state: ProductDemands.state) => {...state, orderCount: max(0, state.orderCount - 1)},
+        )
       }
   },
 )

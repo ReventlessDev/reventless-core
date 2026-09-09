@@ -32,7 +32,7 @@ module ItemEventSource = {
   let name = "TestItemEventTopic" // must match allEventTopics key AND meta.service in published events
 
   @schema
-  type event = | ItemCreated({name: string})
+  type event = ItemCreated({name: string})
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -114,8 +114,9 @@ let publishItemCreated = async (id, name) => {
       ("meta", testMeta->Reventless.Util_Sury.toJson(Message.metaSchema)),
       (
         "event",
-        ItemEventSource.ItemCreated({name: name})
-        ->Reventless.Util_Sury.toJson(ItemEventSource.eventSchema),
+        ItemEventSource.ItemCreated({name: name})->Reventless.Util_Sury.toJson(
+          ItemEventSource.eventSchema,
+        ),
       ),
     ]),
   )
@@ -128,11 +129,10 @@ let loadState = async id => {
   switch Bus.getQueryDb("TestItemReadModel") {
   | None => []
   | Some(ops) =>
-    let states =
-      await ops.loadStream(id)
-      ->Stream.runCollect
-      ->Effect.catchAll(_ => Effect.succeed([]))
-      ->Effect.runPromise
+    let states = await ops.loadStream(id)
+    ->Stream.runCollect
+    ->Effect.catchAll(_ => Effect.succeed([]))
+    ->Effect.runPromise
     states->Array.map(json => json->Reventless.Util_Sury.fromJson(ItemReadModelSpec.stateSchema))
   }
 }

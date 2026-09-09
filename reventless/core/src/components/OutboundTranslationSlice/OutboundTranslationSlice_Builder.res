@@ -129,8 +129,7 @@ module Make = (
             `OutboundTranslationSlice "${Spec.name}" declares sourceName "${sourceName}", ` ++
             `but no EventTopic with that key exists. ` ++
             `Available source names: [${availableNames}]. ` ++
-            `A source is an Aggregate Spec.name or a DCB source name ` ++
-            `(typically "<pluginName>DcbEventLog"); \`[]\` means this plugin's own DCB log.`,
+            `A source is an Aggregate Spec.name or a DCB source name ` ++ `(typically "<pluginName>DcbEventLog"); \`[]\` means this plugin's own DCB log.`,
           )
         }
       )
@@ -200,18 +199,20 @@ module Make = (
                   let _ =
                     Callback.phase2(publishJsonsFn, ~capabilities=Capabilities.capabilities())
                     ->Promise.then(() => syncToQueryDb(queryDbOps))
-                    ->Promise.catch(exn => {
-                      let errMsg =
-                        exn
-                        ->JsExn.fromException
-                        ->Option.flatMap(JsExn.message)
-                        ->Option.getOr("unknown")
-                      EffectLogger.logError(
-                        ~comp=`OutboundTranslationSlice(${Spec.name})`,
-                        `detached phase 2 error: ${errMsg}`,
-                      )->Effect.runSync
-                      Promise.resolve()
-                    })
+                    ->Promise.catch(
+                      exn => {
+                        let errMsg =
+                          exn
+                          ->JsExn.fromException
+                          ->Option.flatMap(JsExn.message)
+                          ->Option.getOr("unknown")
+                        EffectLogger.logError(
+                          ~comp=`OutboundTranslationSlice(${Spec.name})`,
+                          `detached phase 2 error: ${errMsg}`,
+                        )->Effect.runSync
+                        Promise.resolve()
+                      },
+                    )
                 },
               )
             )

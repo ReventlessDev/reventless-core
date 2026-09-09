@@ -18,111 +18,120 @@ describe("InboundTranslationSlice Callback", () => {
   })
 
   describe("receive", () => {
-    testPromise("valid input with completed status publishes command and returns Ok", async () => {
-      let publishedCommands = ref([])
-      let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
-        publishedCommands := cmds
-      }
+    testPromise(
+      "valid input with completed status publishes command and returns Ok",
+      async () => {
+        let publishedCommands = ref([])
+        let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
+          publishedCommands := cmds
+        }
 
-      let inputJson =
-        {
+        let inputJson = {
           "paymentId": "pay-123",
           "orderId": "ord-1",
           "status": "completed",
         }->Obj.magic
 
-      let result = await Callback.receive(mockPublish, inputJson)
+        let result = await Callback.receive(mockPublish, inputJson)
 
-      switch result {
-      | Ok({requestId, targetIds, commandCount}) =>
-        expect(targetIds)->toEqual(["ord-1"])
-        expect(commandCount)->toBe(1)
-        // requestId keys the audit row, so the caller can correlate the response.
-        expect(Callback.auditLog->Dict.get(requestId)->Option.isSome)->toBe(true)
-      | Error(_) => expect(true)->toBe(false)
-      }
-      expect(publishedCommands.contents->Array.length)->toBe(1)
-      let cmd = publishedCommands.contents->Array.getUnsafe(0)
-      expect(cmd.id)->toBe("ord-1")
+        switch result {
+        | Ok({requestId, targetIds, commandCount}) =>
+          expect(targetIds)->toEqual(["ord-1"])
+          expect(commandCount)->toBe(1)
+          // requestId keys the audit row, so the caller can correlate the response.
+          expect(Callback.auditLog->Dict.get(requestId)->Option.isSome)->toBe(true)
+        | Error(_) => expect(true)->toBe(false)
+        }
+        expect(publishedCommands.contents->Array.length)->toBe(1)
+        let cmd = publishedCommands.contents->Array.getUnsafe(0)
+        expect(cmd.id)->toBe("ord-1")
 
-      // Audit log should have one entry
-      let auditEntries = Callback.auditLog->Dict.toArray
-      expect(auditEntries->Array.length)->toBe(1)
-      let (_, auditRow) = auditEntries->Array.getUnsafe(0)
-      expect(auditRow.status)->toBe(ReventlessCore.InboundTranslationSlice_Callback.Success)
-      expect(auditRow.commandCount)->toBe(Some(1))
-    })
+        // Audit log should have one entry
+        let auditEntries = Callback.auditLog->Dict.toArray
+        expect(auditEntries->Array.length)->toBe(1)
+        let (_, auditRow) = auditEntries->Array.getUnsafe(0)
+        expect(auditRow.status)->toBe(ReventlessCore.InboundTranslationSlice_Callback.Success)
+        expect(auditRow.commandCount)->toBe(Some(1))
+      },
+    )
 
-    testPromise("translate returns Error — no command published, audit logged", async () => {
-      let publishedCommands = ref([])
-      let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
-        publishedCommands := cmds
-      }
+    testPromise(
+      "translate returns Error — no command published, audit logged",
+      async () => {
+        let publishedCommands = ref([])
+        let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
+          publishedCommands := cmds
+        }
 
-      let inputJson =
-        {
+        let inputJson = {
           "paymentId": "pay-123",
           "orderId": "ord-1",
           "status": "pending",
         }->Obj.magic
 
-      let result = await Callback.receive(mockPublish, inputJson)
+        let result = await Callback.receive(mockPublish, inputJson)
 
-      switch result {
-      | Error({error}) => expect(error)->toBe("Unknown payment status: pending")
-      | Ok(_) => expect(true)->toBe(false)
-      }
-      expect(publishedCommands.contents->Array.length)->toBe(0)
+        switch result {
+        | Error({error}) => expect(error)->toBe("Unknown payment status: pending")
+        | Ok(_) => expect(true)->toBe(false)
+        }
+        expect(publishedCommands.contents->Array.length)->toBe(0)
 
-      let auditEntries = Callback.auditLog->Dict.toArray
-      expect(auditEntries->Array.length)->toBe(1)
-      let (_, auditRow) = auditEntries->Array.getUnsafe(0)
-      expect(auditRow.status)->toBe(ReventlessCore.InboundTranslationSlice_Callback.Failure)
-    })
+        let auditEntries = Callback.auditLog->Dict.toArray
+        expect(auditEntries->Array.length)->toBe(1)
+        let (_, auditRow) = auditEntries->Array.getUnsafe(0)
+        expect(auditRow.status)->toBe(ReventlessCore.InboundTranslationSlice_Callback.Failure)
+      },
+    )
 
-    testPromise("invalid JSON input returns Error and audit logged", async () => {
-      let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async _cmds => ()
+    testPromise(
+      "invalid JSON input returns Error and audit logged",
+      async () => {
+        let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async _cmds => ()
 
-      // Missing required fields
-      let inputJson = {"unexpected": "data"}->Obj.magic
+        // Missing required fields
+        let inputJson = {"unexpected": "data"}->Obj.magic
 
-      let result = await Callback.receive(mockPublish, inputJson)
+        let result = await Callback.receive(mockPublish, inputJson)
 
-      switch result {
-      | Error(_) => expect(true)->toBe(true)
-      | Ok(_) => expect(true)->toBe(false)
-      }
+        switch result {
+        | Error(_) => expect(true)->toBe(true)
+        | Ok(_) => expect(true)->toBe(false)
+        }
 
-      let auditEntries = Callback.auditLog->Dict.toArray
-      expect(auditEntries->Array.length)->toBe(1)
-      let (_, auditRow) = auditEntries->Array.getUnsafe(0)
-      expect(auditRow.status)->toBe(ReventlessCore.InboundTranslationSlice_Callback.Failure)
-    })
+        let auditEntries = Callback.auditLog->Dict.toArray
+        expect(auditEntries->Array.length)->toBe(1)
+        let (_, auditRow) = auditEntries->Array.getUnsafe(0)
+        expect(auditRow.status)->toBe(ReventlessCore.InboundTranslationSlice_Callback.Failure)
+      },
+    )
 
-    testPromise("publishJsons failure returns Error and audit logged", async () => {
-      let failingPublish: ReventlessInfra.CommandTopic.publishJsons = async _cmds => {
-        JsError.throwWithMessage("publish failed")
-      }
+    testPromise(
+      "publishJsons failure returns Error and audit logged",
+      async () => {
+        let failingPublish: ReventlessInfra.CommandTopic.publishJsons = async _cmds => {
+          JsError.throwWithMessage("publish failed")
+        }
 
-      let inputJson =
-        {
+        let inputJson = {
           "paymentId": "pay-123",
           "orderId": "ord-1",
           "status": "completed",
         }->Obj.magic
 
-      let result = await Callback.receive(failingPublish, inputJson)
+        let result = await Callback.receive(failingPublish, inputJson)
 
-      switch result {
-      | Error({error}) => expect(error)->toBe("publish failed")
-      | Ok(_) => expect(true)->toBe(false)
-      }
+        switch result {
+        | Error({error}) => expect(error)->toBe("publish failed")
+        | Ok(_) => expect(true)->toBe(false)
+        }
 
-      let auditEntries = Callback.auditLog->Dict.toArray
-      expect(auditEntries->Array.length)->toBe(1)
-      let (_, auditRow) = auditEntries->Array.getUnsafe(0)
-      expect(auditRow.status)->toBe(ReventlessCore.InboundTranslationSlice_Callback.Failure)
-    })
+        let auditEntries = Callback.auditLog->Dict.toArray
+        expect(auditEntries->Array.length)->toBe(1)
+        let (_, auditRow) = auditEntries->Array.getUnsafe(0)
+        expect(auditRow.status)->toBe(ReventlessCore.InboundTranslationSlice_Callback.Failure)
+      },
+    )
   })
 
   // `auditLog` hands a row to whoever persists it and must not keep it: the dict
@@ -131,175 +140,188 @@ describe("InboundTranslationSlice Callback", () => {
   // every request — and, since the write overwrites by row id, would resurrect
   // rows deleted from the table in between. Persisting is per-request and takes.
   describe("draining the audit log", () => {
-    testPromise("taking a row leaves the log empty for the next request", async () => {
-      let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async _cmds => ()
-      let input = status =>
-        {"paymentId": "pay-1", "orderId": "ord-1", "status": status}->Obj.magic
+    testPromise(
+      "taking a row leaves the log empty for the next request",
+      async () => {
+        let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async _cmds => ()
+        let input = status =>
+          {"paymentId": "pay-1", "orderId": "ord-1", "status": status}->Obj.magic
 
-      let first = await Callback.receive(mockPublish, input("completed"))
-      let firstId = first->ReventlessCore.InboundTranslationSlice_Callback.requestIdOf
-      expect(
-        Callback.auditLog
-        ->ReventlessCore.InboundTranslationSlice_Callback.takeAuditRow(firstId)
-        ->Option.isSome,
-      )->toBe(true)
-      expect(Callback.auditLog->Dict.toArray->Array.length)->toBe(0)
+        let first = await Callback.receive(mockPublish, input("completed"))
+        let firstId = first->ReventlessCore.InboundTranslationSlice_Callback.requestIdOf
+        expect(
+          Callback.auditLog
+          ->ReventlessCore.InboundTranslationSlice_Callback.takeAuditRow(firstId)
+          ->Option.isSome,
+        )->toBe(true)
+        expect(Callback.auditLog->Dict.toArray->Array.length)->toBe(0)
 
-      // A second request drains only its own row — the first one is gone, so it
-      // cannot be written a second time.
-      let second = await Callback.receive(mockPublish, input("completed"))
-      let secondId = second->ReventlessCore.InboundTranslationSlice_Callback.requestIdOf
-      expect(secondId == firstId)->toBe(false)
-      expect(Callback.auditLog->Dict.toArray->Array.length)->toBe(1)
-      expect(
-        Callback.auditLog
-        ->ReventlessCore.InboundTranslationSlice_Callback.takeAuditRow(firstId)
-        ->Option.isSome,
-      )->toBe(false)
-      expect(
-        Callback.auditLog
-        ->ReventlessCore.InboundTranslationSlice_Callback.takeAuditRow(secondId)
-        ->Option.isSome,
-      )->toBe(true)
-    })
+        // A second request drains only its own row — the first one is gone, so it
+        // cannot be written a second time.
+        let second = await Callback.receive(mockPublish, input("completed"))
+        let secondId = second->ReventlessCore.InboundTranslationSlice_Callback.requestIdOf
+        expect(secondId == firstId)->toBe(false)
+        expect(Callback.auditLog->Dict.toArray->Array.length)->toBe(1)
+        expect(
+          Callback.auditLog
+          ->ReventlessCore.InboundTranslationSlice_Callback.takeAuditRow(firstId)
+          ->Option.isSome,
+        )->toBe(false)
+        expect(
+          Callback.auditLog
+          ->ReventlessCore.InboundTranslationSlice_Callback.takeAuditRow(secondId)
+          ->Option.isSome,
+        )->toBe(true)
+      },
+    )
 
-    testPromise("a rejected request's row is drained the same way", async () => {
-      let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async _cmds => ()
-      let result = await Callback.receive(
-        mockPublish,
-        {"paymentId": "pay-1", "orderId": "ord-1", "status": "pending"}->Obj.magic,
-      )
-      let id = result->ReventlessCore.InboundTranslationSlice_Callback.requestIdOf
-      switch Callback.auditLog->ReventlessCore.InboundTranslationSlice_Callback.takeAuditRow(id) {
-      | Some(row) =>
-        expect(row.status)->toBe(ReventlessCore.InboundTranslationSlice_Callback.Failure)
-      | None => expect(true)->toBe(false)
-      }
-      expect(Callback.auditLog->Dict.toArray->Array.length)->toBe(0)
-    })
+    testPromise(
+      "a rejected request's row is drained the same way",
+      async () => {
+        let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async _cmds => ()
+        let result = await Callback.receive(
+          mockPublish,
+          {"paymentId": "pay-1", "orderId": "ord-1", "status": "pending"}->Obj.magic,
+        )
+        let id = result->ReventlessCore.InboundTranslationSlice_Callback.requestIdOf
+        switch Callback.auditLog->ReventlessCore.InboundTranslationSlice_Callback.takeAuditRow(id) {
+        | Some(row) =>
+          expect(row.status)->toBe(ReventlessCore.InboundTranslationSlice_Callback.Failure)
+        | None => expect(true)->toBe(false)
+        }
+        expect(Callback.auditLog->Dict.toArray->Array.length)->toBe(0)
+      },
+    )
   })
 
   describe("multi-command", () => {
-    testPromise("translate returning multiple pairs publishes all commands", async () => {
-      // Use a spec that returns multiple commands
-      module MultiSpec = {
-        let name = "BatchWebhook"
-        let moduleUrl: string = %raw(`import.meta.url`)
+    testPromise(
+      "translate returning multiple pairs publishes all commands",
+      async () => {
+        // Use a spec that returns multiple commands
+        module MultiSpec = {
+          let name = "BatchWebhook"
+          let moduleUrl: string = %raw(`import.meta.url`)
 
-        @schema
-        type externalInput = {orderId: string, items: array<string>}
+          @schema
+          type externalInput = {orderId: string, items: array<string>}
 
-        @schema
-        type command = ConfirmPayment({
-          orderId: @s.matches(Reventless.DcbTag.string) string,
-          paymentId: string,
-        })
+          @schema
+          type command =
+            | ConfirmPayment({
+                orderId: @s.matches(Reventless.DcbTag.string) string,
+                paymentId: string,
+              })
 
-        let targetName = "ConfirmPayment"
-        let externalSystem = None
+          let targetName = "ConfirmPayment"
+          let externalSystem = None
 
-        let translate = (input: externalInput) =>
-          Ok(
-            input.items->Array.map(item => (
-              input.orderId,
-              ConfirmPayment({orderId: input.orderId, paymentId: item}),
-            )),
+          let translate = (input: externalInput) => Ok(
+            input.items->Array.map(
+              item => (input.orderId, ConfirmPayment({orderId: input.orderId, paymentId: item})),
+            ),
           )
 
-        let commandAuthorization = (_: command): Reventless.Authorization.permission =>
-          AllowAuthenticated
-        type lifecycleState = unit
-        let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> => Unrestricted
-      }
+          let commandAuthorization = (_: command): Reventless.Authorization.permission =>
+            AllowAuthenticated
+          type lifecycleState = unit
+          let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> =>
+            Unrestricted
+        }
 
-      module MultiTranslation = {
-        let translate = MultiSpec.translate
-        let moduleUrl = MultiSpec.moduleUrl
-      }
-      module MultiCallback = ReventlessCore.InboundTranslationSlice_Callback.Make(
-        MultiSpec,
-        MultiTranslation,
-      )
+        module MultiTranslation = {
+          let translate = MultiSpec.translate
+          let moduleUrl = MultiSpec.moduleUrl
+        }
+        module MultiCallback = ReventlessCore.InboundTranslationSlice_Callback.Make(
+          MultiSpec,
+          MultiTranslation,
+        )
 
-      let publishedCommands = ref([])
-      let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
-        publishedCommands := cmds
-      }
+        let publishedCommands = ref([])
+        let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
+          publishedCommands := cmds
+        }
 
-      let inputJson =
-        {
+        let inputJson = {
           "orderId": "ord-1",
           "items": ["pay-1", "pay-2", "pay-3"],
         }->Obj.magic
 
-      let result = await MultiCallback.receive(mockPublish, inputJson)
+        let result = await MultiCallback.receive(mockPublish, inputJson)
 
-      switch result {
-      | Ok({targetIds, commandCount}) =>
-        expect(targetIds)->toEqual(["ord-1", "ord-1", "ord-1"])
-        expect(commandCount)->toBe(3)
-      | Error(_) => expect(true)->toBe(false)
-      }
-      // All 3 commands published in one batch
-      expect(publishedCommands.contents->Array.length)->toBe(3)
+        switch result {
+        | Ok({targetIds, commandCount}) =>
+          expect(targetIds)->toEqual(["ord-1", "ord-1", "ord-1"])
+          expect(commandCount)->toBe(3)
+        | Error(_) => expect(true)->toBe(false)
+        }
+        // All 3 commands published in one batch
+        expect(publishedCommands.contents->Array.length)->toBe(3)
 
-      let auditEntries = MultiCallback.auditLog->Dict.toArray
-      expect(auditEntries->Array.length)->toBe(1)
-      let (_, auditRow) = auditEntries->Array.getUnsafe(0)
-      expect(auditRow.status)->toBe(ReventlessCore.InboundTranslationSlice_Callback.Success)
-      expect(auditRow.commandCount)->toBe(Some(3))
-    })
+        let auditEntries = MultiCallback.auditLog->Dict.toArray
+        expect(auditEntries->Array.length)->toBe(1)
+        let (_, auditRow) = auditEntries->Array.getUnsafe(0)
+        expect(auditRow.status)->toBe(ReventlessCore.InboundTranslationSlice_Callback.Success)
+        expect(auditRow.commandCount)->toBe(Some(3))
+      },
+    )
 
-    testPromise("translate returning empty array publishes nothing", async () => {
-      module EmptySpec = {
-        let name = "EmptyWebhook"
-        let moduleUrl: string = %raw(`import.meta.url`)
+    testPromise(
+      "translate returning empty array publishes nothing",
+      async () => {
+        module EmptySpec = {
+          let name = "EmptyWebhook"
+          let moduleUrl: string = %raw(`import.meta.url`)
 
-        @schema
-        type externalInput = {orderId: string}
+          @schema
+          type externalInput = {orderId: string}
 
-        @schema
-        type command = ConfirmPayment({
-          orderId: @s.matches(Reventless.DcbTag.string) string,
-          paymentId: string,
-        })
+          @schema
+          type command =
+            | ConfirmPayment({
+                orderId: @s.matches(Reventless.DcbTag.string) string,
+                paymentId: string,
+              })
 
-        let targetName = "ConfirmPayment"
-        let externalSystem = None
+          let targetName = "ConfirmPayment"
+          let externalSystem = None
 
-        let translate = (_input: externalInput) => Ok([])
+          let translate = (_input: externalInput) => Ok([])
 
-        let commandAuthorization = (_: command): Reventless.Authorization.permission =>
-          AllowAuthenticated
-        type lifecycleState = unit
-        let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> => Unrestricted
-      }
+          let commandAuthorization = (_: command): Reventless.Authorization.permission =>
+            AllowAuthenticated
+          type lifecycleState = unit
+          let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> =>
+            Unrestricted
+        }
 
-      module EmptyTranslation = {
-        let translate = EmptySpec.translate
-        let moduleUrl = EmptySpec.moduleUrl
-      }
-      module EmptyCallback = ReventlessCore.InboundTranslationSlice_Callback.Make(
-        EmptySpec,
-        EmptyTranslation,
-      )
+        module EmptyTranslation = {
+          let translate = EmptySpec.translate
+          let moduleUrl = EmptySpec.moduleUrl
+        }
+        module EmptyCallback = ReventlessCore.InboundTranslationSlice_Callback.Make(
+          EmptySpec,
+          EmptyTranslation,
+        )
 
-      let publishedCommands = ref([])
-      let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
-        publishedCommands := cmds
-      }
+        let publishedCommands = ref([])
+        let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
+          publishedCommands := cmds
+        }
 
-      let inputJson = {"orderId": "ord-1"}->Obj.magic
+        let inputJson = {"orderId": "ord-1"}->Obj.magic
 
-      let result = await EmptyCallback.receive(mockPublish, inputJson)
+        let result = await EmptyCallback.receive(mockPublish, inputJson)
 
-      switch result {
-      | Ok({targetIds, commandCount}) =>
-        expect(targetIds)->toEqual([])
-        expect(commandCount)->toBe(0)
-      | Error(_) => expect(true)->toBe(false)
-      }
-      expect(publishedCommands.contents->Array.length)->toBe(0)
-    })
+        switch result {
+        | Ok({targetIds, commandCount}) =>
+          expect(targetIds)->toEqual([])
+          expect(commandCount)->toBe(0)
+        | Error(_) => expect(true)->toBe(false)
+        }
+        expect(publishedCommands.contents->Array.length)->toBe(0)
+      },
+    )
   })
 })

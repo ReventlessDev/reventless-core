@@ -54,9 +54,7 @@ let highestConnected = (known: dict<knownVersion>): option<version> =>
   )
 
 // Highest Connected version other than `exclude`.
-let highestConnectedExcluding = (known: dict<knownVersion>, exclude: version): option<
-  version,
-> =>
+let highestConnectedExcluding = (known: dict<knownVersion>, exclude: version): option<version> =>
   known
   ->Dict.toArray
   ->Array.reduce(None, (acc, (v, kv)) =>
@@ -150,7 +148,8 @@ let decide = (state, command) =>
     // definition (e.g. a newly added `kind`, updated protocols) re-emit
     // VersionConnected to overwrite the stored def and re-project the row. The version
     // is already current, so connectEvents' supersede stays empty — a bare refresh.
-    | Some({status: Connected, definition}) => definition == def ? Ok([]) : Ok([VersionConnected(def)])
+    | Some({status: Connected, definition}) =>
+      definition == def ? Ok([]) : Ok([VersionConnected(def)])
     | _ => Ok(connectEvents(state, v, def))
     }
   | Disconnect(v) =>

@@ -66,7 +66,6 @@ projection rebuild. It costs a log something only if it *collapses* an existing
 `start*`/`end*` pair, which rewrites the wire shape the way `Money` rewrote
 `price: float`. That collapse belongs to whoever builds the upcaster.
 */
-
 @schema
 type t = {
   /** The instant the range opens, inclusive. */
@@ -83,7 +82,8 @@ type t = {
     Shadows the schema sury-ppx derived from the type above: the derived one is
     the shape, and this adds the marker the shape cannot carry. The ordering rule
     is deliberately *not* refined in here — see the module doc. */
-let schema: S.t<t> = schema->Semantic.mark(~id=Semantic.Id.dateRange)
+let schema: S.t<t> =
+  schema->Semantic.mark(~id=Semantic.Id.dateRange)
 
 /** An instant as milliseconds since the epoch. `DateTime`'s, so end-exclusivity
     and the ordering rule are expressed against the same single parse the type
@@ -101,8 +101,7 @@ that both parse, the earlier one second.
 let validate = (range: t): result<t, string> =>
   millis(range.start) > millis(range.end_)
     ? Error(
-        `a range ends before it starts: ${range.start} is after ${range.end_}. ` ++
-        `A range is [start, end) — the start is the earlier instant.`,
+        `a range ends before it starts: ${range.start} is after ${range.end_}. ` ++ `A range is [start, end) — the start is the earlier instant.`,
       )
     : Ok(range)
 

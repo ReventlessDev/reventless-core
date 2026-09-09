@@ -18,12 +18,12 @@ rather than a string a README repeats.
 */
 type t =
   | Geocoding
-  | /** Sending a message to a person, reached through `Capabilities.messaging`.
+  /** Sending a message to a person, reached through `Capabilities.messaging`.
         One need however many channels the platform provisions — which channels
         those are is a runtime answer the provider publishes, not a second
         declaration, because a plugin that named `Sms` would fail a deploy it
         could have run on email. */
-  Messaging
+  | Messaging
 
 /** The spelling carried in `pluginStructure` and in `capabilities.json`.
     Persisted structures hold strings, not enum members, so a plugin built
@@ -62,7 +62,7 @@ unprovisioned capability it never named degrades exactly as it always has, which
 is the modelled outcome for a deployment that simply does not have one.
 */
 let unmet = (~declared: array<(string, string)>, ~provisioned: array<t>): array<unmet> =>
-  declared->Array.filterMap((((capability, component))) =>
+  declared->Array.filterMap(((capability, component)) =>
     switch fromString(capability) {
     | Some(need) if !(provisioned->Array.includes(need)) => Some({need, component})
     | _ => None
@@ -77,5 +77,4 @@ let unmetMessage = (unmet: array<unmet>): string =>
     ->Array.map(u => `${toString(u.need)} (${u.component})`)
     ->Array.join(", ")}.\n` ++
   `  Provision them in the platform stack and redeploy the platform first.\n` ++
-  `  Without it every call answers Unavailable, the slice exhausts its retries, and a ` ++
-  `permanent verdict is recorded against data that is fine — no error anywhere.`
+  `  Without it every call answers Unavailable, the slice exhausts its retries, and a ` ++ `permanent verdict is recorded against data that is fine — no error anywhere.`

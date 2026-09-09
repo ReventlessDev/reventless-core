@@ -14,7 +14,6 @@ Stream.fromIterable([1, 2, 3])
 // resolves to [10, 20, 30]
 ```
 */
-
 /** Core stream type — matches `Stream<A, E, R>` in the Effect TypeScript library. */
 type t<'a, 'e, 'r>
 

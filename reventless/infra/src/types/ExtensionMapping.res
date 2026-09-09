@@ -145,13 +145,11 @@ module NoDelegate = {
 
   let commandSchema = S.unit
   let moduleUrl: string = %raw(`import.meta.url`)
-  let commandAuthorization = (_: command): Reventless.Authorization.permission =>
-    AllowAuthenticated
+  let commandAuthorization = (_: command): Reventless.Authorization.permission => AllowAuthenticated
   type lifecycleState = unit
   let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> => Unrestricted
   let traits: array<Reventless.Trait.t> = []
 }
-
 
 open PluginExtensionPointSpec
 
@@ -268,7 +266,12 @@ module Make = (MappingImpl: Mapping): (
     }
 
     let encodeExtensionPointCommandJson = (commandJson, ~id, ~extensionPointName, ~action) => {
-      compLog(`Extension(${extensionPointName})`, `${action}: ${commandJson->Reventless.Message.variantNameOfJson->Reventless.AnsiStyle.bold}(${id})`)
+      compLog(
+        `Extension(${extensionPointName})`,
+        `${action}: ${commandJson
+          ->Reventless.Message.variantNameOfJson
+          ->Reventless.AnsiStyle.bold}(${id})`,
+      )
       {
         Reventless.Message.id,
         meta: encodeMeta(meta, extensionPointName),
@@ -284,10 +287,7 @@ module Make = (MappingImpl: Mapping): (
     mapIncomingEventImpl(id, event, meta, pluginDef, queryEngine)->Array.map(x =>
       switch x {
       | PublishAggregateCommand(targetId, targetCmd) =>
-        AbstractPublishAggregateCommand(
-          delegateName,
-          targetCmd->encodeTargetCommandJson(targetId),
-        )
+        AbstractPublishAggregateCommand(delegateName, targetCmd->encodeTargetCommandJson(targetId))
       | PublishAggregateCommandAsync(promise) =>
         let toCommandJson = async promise => {
           let (targetId, targetCmd) = await promise
@@ -319,8 +319,7 @@ module Make = (MappingImpl: Mapping): (
             targetCmd->encodeTargetCommandJson(derivePartitionId(targetCmd)),
           ))
         AbstractPublishAggregateCommandsAsync(promise->toCommandJsons)
-      | PublishExtensionPointCommand(id, command)
-        if Spec.name == PluginExtensionPointSpec.name =>
+      | PublishExtensionPointCommand(id, command) if Spec.name == PluginExtensionPointSpec.name =>
         AbstractPublishPluginExtensionPointCommand(
           command->encodeExtensionPointCommand(
             ~id,
@@ -364,17 +363,20 @@ module Make = (MappingImpl: Mapping): (
 
   let doMapOutgoingEvent = (mapOutgoingEventImpl, targetEvent'Json, pluginDef) => {
     let tag = variantTagOfEnvelope(targetEvent'Json)
+
     // Not this mapping's concern — skip without decoding.
     if !(acceptedTags->Array.includes(tag)) {
       []
     } else {
       let {id, meta, event} =
-        targetEvent'Json->Reventless.Message.decodeEvent'(
-          Delegate.Id.schema,
-          Delegate.eventSchema,
-        )
+        targetEvent'Json->Reventless.Message.decodeEvent'(Delegate.Id.schema, Delegate.eventSchema)
       let encodeExtensionPointCommandJson = (commandJson, ~id, ~extensionPointName, ~action) => {
-        compLog(`Extension(${delegateName})`, `${action}: ${commandJson->Reventless.Message.variantNameOfJson->Reventless.AnsiStyle.bold}(${id})`)
+        compLog(
+          `Extension(${delegateName})`,
+          `${action}: ${commandJson
+            ->Reventless.Message.variantNameOfJson
+            ->Reventless.AnsiStyle.bold}(${id})`,
+        )
         {
           Reventless.Message.id,
           meta: encodeMeta(meta, extensionPointName),
@@ -389,8 +391,7 @@ module Make = (MappingImpl: Mapping): (
 
       mapOutgoingEventImpl(id->Delegate.Id.toString, event, meta, pluginDef)->Array.map(x =>
         switch x {
-        | PublishExtensionPointCommand(id, command)
-          if Spec.name == PluginExtensionPointSpec.name =>
+        | PublishExtensionPointCommand(id, command) if Spec.name == PluginExtensionPointSpec.name =>
           AbstractPublishPluginExtensionPointCommand(
             command->encodeExtensionPointCommand(
               ~id,

@@ -26,7 +26,11 @@ let makeStorage = (
 }
 
 // Standalone/deploy storage: inject the pool via a provider module.
-module Make = (P: {let pool: PgDriver.pool}) => {
+module Make = (
+  P: {
+    let pool: PgDriver.pool
+  },
+) => {
   type api = unit
   type role = unit
 
@@ -37,6 +41,7 @@ module Make = (P: {let pool: PgDriver.pool}) => {
     ~ttl as _=?,
     ~api as _,
     ~apiRole as _,
-    ~owner as _, ~opts as _,
+    ~owner as _,
+    ~opts as _,
   ) => makeStorage(~pool=P.pool, ~name, ~indexes, ~subIdField)
 }

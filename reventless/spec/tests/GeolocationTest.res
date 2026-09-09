@@ -133,8 +133,7 @@ describe("the Geolocation schema carries both markers:", () => {
 
 describe("Geolocation round-trips through its wire form:", () => {
   let encode = (value: Geolocation.t) => value->Util_Sury.toJson(Geolocation.schema)
-  let roundTrip = (value: Geolocation.t) =>
-    value->encode->S.parseOrThrow(~to=Geolocation.schema)
+  let roundTrip = (value: Geolocation.t) => value->encode->S.parseOrThrow(~to=Geolocation.schema)
 
   testSync("a located point survives", () => {
     let value: Geolocation.t = Located({point: {lat: 48.2082, lng: 16.3738}})

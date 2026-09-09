@@ -135,7 +135,12 @@ switch processEnv->Dict.get("PG_URL") {
 
   // Assert the push-down declines this shape (resolver falls back to the spec).
   let checkFallback = async args => {
-    let r = await Eng.listPage(~readModelName=name, ~argsDict=argsOf(args), ~capability, ~labelField="name")
+    let r = await Eng.listPage(
+      ~readModelName=name,
+      ~argsDict=argsOf(args),
+      ~capability,
+      ~labelField="name",
+    )
     expect(r->Option.isSome)->toBe(false)
   }
 
@@ -204,7 +209,9 @@ switch processEnv->Dict.get("PG_URL") {
       checkFallback([("filter", filterOf([("searchPrefix", JSON.Encode.string("A"))]))])
     )
     testPromise("ids → fallback", () =>
-      checkFallback([("filter", filterOf([("ids", JSON.Encode.array([JSON.Encode.string("p-1")]))]))])
+      checkFallback([
+        ("filter", filterOf([("ids", JSON.Encode.array([JSON.Encode.string("p-1")]))])),
+      ])
     )
     testPromise("backward (last/before) → fallback", () =>
       checkFallback([("last", JSON.Encode.int(2)), ("before", JSON.Encode.string(cur("p-4")))])
@@ -265,10 +272,20 @@ switch processEnv->Dict.get("PG_URL") {
     ->Array.filterMap(e => e->field("node")->Option.flatMap(n => n->str("seq")))
 
   let pageInfoBool = (conn, key) =>
-    conn->field("pageInfo")->Option.getOr(JSON.Encode.null)->field(key)->Option.flatMap(JSON.Decode.bool)->Option.getOr(false)
+    conn
+    ->field("pageInfo")
+    ->Option.getOr(JSON.Encode.null)
+    ->field(key)
+    ->Option.flatMap(JSON.Decode.bool)
+    ->Option.getOr(false)
 
   let itemsPage = args =>
-    Eng.itemsPage(~readModelName=itemsName, ~subIdField="seq", ~id="order-1", ~argsDict=argsOf(args))
+    Eng.itemsPage(
+      ~readModelName=itemsName,
+      ~subIdField="seq",
+      ~id="order-1",
+      ~argsDict=argsOf(args),
+    )
 
   describe("QueryEnginePostgres itemsPage (sub-id keyset)", () => {
     testPromise("bare → all lines ASC, no next page", async () => {
@@ -282,7 +299,10 @@ switch processEnv->Dict.get("PG_URL") {
       expect(pageInfoBool(r, "hasNextPage"))->toBe(true)
     })
     testPromise("first:2 after b → [c,d]", async () => {
-      let r = await itemsPage([("first", JSON.Encode.int(2)), ("after", JSON.Encode.string(cur("b")))])
+      let r = await itemsPage([
+        ("first", JSON.Encode.int(2)),
+        ("after", JSON.Encode.string(cur("b"))),
+      ])
       expect(r->itemSeqs)->toEqual(["c", "d"])
     })
     testPromise("order DESC → [e..a]", async () => {
@@ -304,7 +324,10 @@ switch processEnv->Dict.get("PG_URL") {
       expect(r->itemSeqs)->toEqual(["c"])
     })
     testPromise("backward last:2 before d → [b,c] (logical ASC)", async () => {
-      let r = await itemsPage([("last", JSON.Encode.int(2)), ("before", JSON.Encode.string(cur("d")))])
+      let r = await itemsPage([
+        ("last", JSON.Encode.int(2)),
+        ("before", JSON.Encode.string(cur("d"))),
+      ])
       expect(r->itemSeqs)->toEqual(["b", "c"])
       expect(pageInfoBool(r, "hasPreviousPage"))->toBe(true)
     })

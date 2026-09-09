@@ -33,7 +33,11 @@ type replay<'id, 'event> = 'id => promise<array<'event>>
 // `fromSeq` starts the replay at that sequence number (inclusive; default 0) —
 // the delta read after seeding from a snapshot at seqNr = fromSeq.
 type replayStream<'id, 'event> = ('id, ~fromSeq: int=?) => Stream.t<'event, string, unit>
-type appendStream<'id, 'event> = (int, 'id, Stream.t<'event, string, unit>) => Effect.t<unit, string, unit>
+type appendStream<'id, 'event> = (
+  int,
+  'id,
+  Stream.t<'event, string, unit>,
+) => Effect.t<unit, string, unit>
 // Keep-one semantics: `writeSnapshot` overwrites the single snapshot per
 // aggregate; recovery from a corrupt snapshot is full replay, not older
 // snapshots. Failures are plain strings — a snapshot op failure must never

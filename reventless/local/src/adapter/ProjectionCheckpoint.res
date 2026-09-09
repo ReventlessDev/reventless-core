@@ -259,7 +259,14 @@ let missedRows = (
         }
         Some((
           Float.toInt(pos),
-          dcbCatchupEnvelope(~logName, ~eventType, ~dataText, ~metaText, ~recordedAt, ~firstTagValue),
+          dcbCatchupEnvelope(
+            ~logName,
+            ~eventType,
+            ~dataText,
+            ~metaText,
+            ~recordedAt,
+            ~firstTagValue,
+          ),
         ))
       | _ => None
       }

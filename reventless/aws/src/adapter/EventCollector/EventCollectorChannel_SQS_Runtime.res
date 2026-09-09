@@ -39,8 +39,7 @@ let handleDynamoDbOrSqsEvent = (queue, handleEvents) =>
       switch entries {
       | [] => Effect.succeed()
       | entries =>
-        Util.SQS_Runtime.deleteMessages(entries, queue)
-        ->Effect.catchAll(_err => Effect.succeed())
+        Util.SQS_Runtime.deleteMessages(entries, queue)->Effect.catchAll(_err => Effect.succeed())
       }
     )
   }
@@ -84,7 +83,11 @@ let enqueueFifoEvent = (queue: Util_SQS_Runtime.resolvedQueue, delay, id, messag
   )
   ->Effect.flatMap(_ =>
     Effect.promise(() =>
-      queue->Util_SQS_Runtime.sendFifoMessage(~delay, ~messageGroupId=Util_SQS_Runtime.safeGroupId(id), messageBody)
+      queue->Util_SQS_Runtime.sendFifoMessage(
+        ~delay,
+        ~messageGroupId=Util_SQS_Runtime.safeGroupId(id),
+        messageBody,
+      )
     )
   )
   ->Effect.map(_ => ())

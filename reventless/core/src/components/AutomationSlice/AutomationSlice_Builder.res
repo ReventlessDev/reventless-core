@@ -110,8 +110,7 @@ module Make = (
             `AutomationSlice "${Spec.name}" has a Mapping with sourceName "${sourceName}", ` ++
             `but no EventTopic with that key exists in allEventTopics. ` ++
             `Available source names: [${availableNames}]. ` ++
-            `Check Mapping.Make's first arg matches an Aggregate Spec.name or a DCB ` ++
-            `source name (typically "<pluginName>DcbEventLog").`,
+            `Check Mapping.Make's first arg matches an Aggregate Spec.name or a DCB ` ++ `source name (typically "<pluginName>DcbEventLog").`,
           )
         }
       )
@@ -159,18 +158,20 @@ module Make = (
                   let _ =
                     Callback.phase2(publishJsonsFn)
                     ->Promise.then(() => syncToQueryDb(queryDbOps))
-                    ->Promise.catch(exn => {
-                      let errMsg =
-                        exn
-                        ->JsExn.fromException
-                        ->Option.flatMap(JsExn.message)
-                        ->Option.getOr("unknown")
-                      EffectLogger.logError(
-                        ~comp=`AutomationSlice(${Spec.name})`,
-                        `detached phase 2 error: ${errMsg}`,
-                      )->Effect.runSync
-                      Promise.resolve()
-                    })
+                    ->Promise.catch(
+                      exn => {
+                        let errMsg =
+                          exn
+                          ->JsExn.fromException
+                          ->Option.flatMap(JsExn.message)
+                          ->Option.getOr("unknown")
+                        EffectLogger.logError(
+                          ~comp=`AutomationSlice(${Spec.name})`,
+                          `detached phase 2 error: ${errMsg}`,
+                        )->Effect.runSync
+                        Promise.resolve()
+                      },
+                    )
                 },
               )
             )

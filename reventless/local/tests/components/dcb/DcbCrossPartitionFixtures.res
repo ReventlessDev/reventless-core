@@ -69,7 +69,10 @@ module AddProductBehavior = {
   let evolve = (state: state, event: Spec.consumedEvent): state =>
     switch event {
     | ProductAdded(_) => {...state, exists: true}
-    | CategoryAdded({categoryId}) => {...state, liveCats: Array.concat(state.liveCats, [categoryId])}
+    | CategoryAdded({categoryId}) => {
+        ...state,
+        liveCats: Array.concat(state.liveCats, [categoryId]),
+      }
     }
 
   let decide = (state: state, command: Spec.command): result<array<Spec.event>, Spec.error> =>
@@ -148,7 +151,10 @@ let publishJsonsOutput = publishJsons->Pulumi.Output.make
 let _addProductSlice = AddProductMaker.make(
   ~dcbEventLog=eventLog,
   ~publishJsons=publishJsonsOutput,
-  ~tagKeysByEventType=Dict.fromArray([("ProductAdded", ["productId"]), ("CategoryAdded", ["categoryId"])]),
+  ~tagKeysByEventType=Dict.fromArray([
+    ("ProductAdded", ["productId"]),
+    ("CategoryAdded", ["categoryId"]),
+  ]),
   ~crossPartitionTagKeys=["categoryId"],
 )
 

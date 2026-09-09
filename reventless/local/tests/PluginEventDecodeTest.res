@@ -93,9 +93,9 @@ describe("Platform.decodeUiFragmentRegistryEventEnvelope", () => {
   })
 
   testSync("returns None for malformed input", () => {
-    expect(
-      Platform.decodeUiFragmentRegistryEventEnvelope(JSON.Encode.string("junk")),
-    )->toEqual(None)
+    expect(Platform.decodeUiFragmentRegistryEventEnvelope(JSON.Encode.string("junk")))->toEqual(
+      None,
+    )
     expect(
       Platform.decodeUiFragmentRegistryEventEnvelope(
         JSON.Encode.object(Dict.fromArray([("event", JSON.Encode.object(Dict.make()))])),

@@ -28,9 +28,7 @@ type args = {
   mergedApiArn?: Pulumi.Input.t<string>,
   sourceApiId?: Pulumi.Input.t<string>,
   sourceApiArn?: Pulumi.Input.t<string>,
-  sourceApiAssociationConfigs?: Pulumi.Input.t<
-    array<Pulumi.Input.t<sourceApiAssociationConfig>>,
-  >,
+  sourceApiAssociationConfigs?: Pulumi.Input.t<array<Pulumi.Input.t<sourceApiAssociationConfig>>>,
   description?: Pulumi.Input.t<string>,
 }
 

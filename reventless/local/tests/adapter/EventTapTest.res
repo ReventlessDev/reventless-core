@@ -16,7 +16,6 @@ let defaultMeta: Reventless.Message.meta = {
   correlationId: "",
 }
 
-
 type consoleObj = {mutable log: string => unit}
 @val external console: consoleObj = "console"
 
@@ -51,24 +50,33 @@ describe("LocalBus event tap (Phase 9)", () => {
   testPromise("tap off → no sentinel line is emitted", async () => {
     clearEnv()
     module TestBus = LocalBus.MakeSilent()
-    let logs = await captureLogs(async () => {
-      await TestBus.publishEvent("SomeTopic", "svc", defaultMeta, JSON.parseOrThrow(`{"a":1}`))
-    })
+    let logs = await captureLogs(
+      async () => {
+        await TestBus.publishEvent("SomeTopic", "svc", defaultMeta, JSON.parseOrThrow(`{"a":1}`))
+      },
+    )
     expect(tapLines(logs)->Array.length)->toBe(0)
   })
 
   testPromise("tap on → one well-formed line per published event", async () => {
     NodeProcess.env->Dict.set("REVENTLESS_EVENT_TAP", "ndjson")
     module TestBus = LocalBus.MakeSilent()
-    let logs = await captureLogs(async () => {
-      await TestBus.publishEvent(
-        "CatalogEventTopic",
-        "CatalogDcbEventLog",
-        defaultMeta,
-        JSON.parseOrThrow(`{"event":{"TAG":"ProductAdded","productId":"p-1"}}`),
-      )
-      await TestBus.publishEvent("OrderingEventTopic", "svc", defaultMeta, JSON.parseOrThrow(`{}`))
-    })
+    let logs = await captureLogs(
+      async () => {
+        await TestBus.publishEvent(
+          "CatalogEventTopic",
+          "CatalogDcbEventLog",
+          defaultMeta,
+          JSON.parseOrThrow(`{"event":{"TAG":"ProductAdded","productId":"p-1"}}`),
+        )
+        await TestBus.publishEvent(
+          "OrderingEventTopic",
+          "svc",
+          defaultMeta,
+          JSON.parseOrThrow(`{}`),
+        )
+      },
+    )
     clearEnv()
     let lines = tapLines(logs)
     expect(lines->Array.length)->toBe(2)
@@ -77,7 +85,9 @@ describe("LocalBus event tap (Phase 9)", () => {
     // topic name, and the payload passed to publishEvent (no topic-name guessing).
     let first = lines->Array.getUnsafe(0)
     let json =
-      first->String.slice(~start=sentinel->String.length, ~end=first->String.length)->JSON.parseOrThrow
+      first
+      ->String.slice(~start=sentinel->String.length, ~end=first->String.length)
+      ->JSON.parseOrThrow
     let obj = json->JSON.Decode.object->Option.getOrThrow
     expect(obj->Dict.get("event")->Option.flatMap(JSON.Decode.string))->toEqual(Some("domainEvent"))
     expect(obj->Dict.get("topic")->Option.flatMap(JSON.Decode.string))->toEqual(
@@ -92,8 +102,13 @@ describe("LocalBus event tap (Phase 9)", () => {
     // what the rest of the file published first.
     let seqOf = line => {
       let j = line->String.slice(~start=sentinel->String.length, ~end=line->String.length)
-      j->JSON.parseOrThrow->JSON.Decode.object->Option.getOrThrow->Dict.get("seq")
-      ->Option.flatMap(JSON.Decode.float)->Option.getOr(0.)
+      j
+      ->JSON.parseOrThrow
+      ->JSON.Decode.object
+      ->Option.getOrThrow
+      ->Dict.get("seq")
+      ->Option.flatMap(JSON.Decode.float)
+      ->Option.getOr(0.)
     }
     expect(seqOf(lines->Array.getUnsafe(1)) -. seqOf(first))->toEqual(1.)
   })
@@ -101,10 +116,12 @@ describe("LocalBus event tap (Phase 9)", () => {
   testPromise("tap emits even when the topic has no subscribers", async () => {
     NodeProcess.env->Dict.set("REVENTLESS_EVENT_TAP", "ndjson")
     module TestBus = LocalBus.MakeSilent()
-    let logs = await captureLogs(async () => {
-      // No subscribeToEvents call — the tap fires before the subscriber-count gate.
-      await TestBus.publishEvent("Lonely", "svc", defaultMeta, JSON.Null)
-    })
+    let logs = await captureLogs(
+      async () => {
+        // No subscribeToEvents call — the tap fires before the subscriber-count gate.
+        await TestBus.publishEvent("Lonely", "svc", defaultMeta, JSON.Null)
+      },
+    )
     clearEnv()
     expect(tapLines(logs)->Array.length)->toBe(1)
   })

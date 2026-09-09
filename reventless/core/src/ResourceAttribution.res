@@ -24,9 +24,12 @@ neither derives from the other.
 /** The level a resource is attributed to. */
 module Scope = {
   type t =
-    | /** owned by one model component */ Component
-    | /** shared substrate within a plugin (DcbEventLog, plugin DLQ, …) */ Plugin
-    | /** shared substrate across the platform (API, auth, hosting, …) */ Platform
+    /** owned by one model component */
+    | Component
+    /** shared substrate within a plugin (DcbEventLog, plugin DLQ, …) */
+    | Plugin
+    /** shared substrate across the platform (API, auth, hosting, …) */
+    | Platform
 
   let toString = scope =>
     switch scope {
@@ -50,17 +53,28 @@ module Role = {
     | EventLogSubscription
     | EventCollector
     | QueryDb
-    | /** the execution unit that runs a component's handler */ Runtime
-    | /** queue/topic receiving messages that exhausted processing */ DeadLetter
-    | /** scheduled invocation (heartbeat, task scheduler) */ Scheduler
-    | /** log storage and log-derived metrics */ Logs
-    | /** execution identity and its policies */ Identity
-    | /** the GraphQL API surface and its resolvers */ Api
-    | /** identity provider / user pools */ Auth
-    | /** static-site hosting, CDN, certificates, DNS */ Hosting
-    | /** VPC and its network plumbing */ Network
-    | /** transport wiring between a source and a runtime */ EventSourceMapping
-    | /** bulk data movement (cloner, migrations) */ DataTransfer
+    /** the execution unit that runs a component's handler */
+    | Runtime
+    /** queue/topic receiving messages that exhausted processing */
+    | DeadLetter
+    /** scheduled invocation (heartbeat, task scheduler) */
+    | Scheduler
+    /** log storage and log-derived metrics */
+    | Logs
+    /** execution identity and its policies */
+    | Identity
+    /** the GraphQL API surface and its resolvers */
+    | Api
+    /** identity provider / user pools */
+    | Auth
+    /** static-site hosting, CDN, certificates, DNS */
+    | Hosting
+    /** VPC and its network plumbing */
+    | Network
+    /** transport wiring between a source and a runtime */
+    | EventSourceMapping
+    /** bulk data movement (cloner, migrations) */
+    | DataTransfer
     | Other(string)
 
   let toString = role =>

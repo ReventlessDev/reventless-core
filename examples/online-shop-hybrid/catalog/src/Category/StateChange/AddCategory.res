@@ -9,7 +9,8 @@ type consumedEvent =
 
 @schema
 type command =
-  | @authorize(AllowGroups(["Admin", "Merchandiser"])) AddCategory({
+  | @authorize(AllowGroups(["Admin", "Merchandiser"]))
+  AddCategory({
       categoryId: string,
       name: string,
     })
@@ -18,8 +19,4 @@ type command =
 type error = CategoryAlreadyExists
 
 @schema
-type event =
-  | CategoryAdded({
-      categoryId: string,
-      name: string,
-    })
+type event = CategoryAdded({categoryId: string, name: string})

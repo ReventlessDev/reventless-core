@@ -239,14 +239,14 @@ let registerConfig = (
   (),
 ) =>
   configRef := {
-    eventTopicArn,
-    pluginReadModelTableName,
-    schedulerRoleArn,
-    schedulerQueueArn,
-    schedulerQueueName,
-    appSyncApiId,
-    clonerEnabled,
-  }
+      eventTopicArn,
+      pluginReadModelTableName,
+      schedulerRoleArn,
+      schedulerQueueArn,
+      schedulerQueueName,
+      appSyncApiId,
+      clonerEnabled,
+    }
 
 // PluginRuntime_Builder is a functor so that the caller can inject the EventCollectorChannel
 // implementation. All other runtime builders hardcode EventCollectorChannel.DynamoDbStream, but
@@ -322,18 +322,12 @@ module Make = (
       string,
     >,
     ReventlessCore.EventCollector.component,
-  > = (
-    ~handler as _,
-    ~eventTopics,
-    ~resources,
-    ~memorySize=1024,
-    ~timeout=30,
-    eventCollector,
-  ) => {
+  > = (~handler as _, ~eventTopics, ~resources, ~memorySize=1024, ~timeout=30, eventCollector) => {
     let resource = eventCollector->ReventlessCore.Component.toPulumiResource
-    let name = resource.name->ReventlessCore.ComponentType.nameOpt(
-      ReventlessCore.EventCollector.componentType,
-    )
+    let name =
+      resource.name->ReventlessCore.ComponentType.nameOpt(
+        ReventlessCore.EventCollector.componentType,
+      )
     let opts = {Pulumi.ComponentResource.parent: resource}
     let config = configRef.contents
 
@@ -376,11 +370,12 @@ module Make = (
 
     // Pull the per-EventCollector context registered by Plugin_Helpers.connect
     // (plugins) or synthesise an admin one if none registered.
-    let context: ReventlessCore.Plugin_Helpers.eventCollectorContext =
-      switch ReventlessCore.Plugin_Helpers.eventCollectorContextRef.contents->Dict.get(name) {
-      | Some(ctx) => ctx
-      | None => synthesizeAdminContext()
-      }
+    let context: ReventlessCore.Plugin_Helpers.eventCollectorContext = switch ReventlessCore.Plugin_Helpers.eventCollectorContextRef.contents->Dict.get(
+      name,
+    ) {
+    | Some(ctx) => ctx
+    | None => synthesizeAdminContext()
+    }
 
     let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
 
@@ -420,140 +415,138 @@ module Make = (
     // separate `pluginDefinition.json` asset bundled alongside index.mjs (see
     // the buildCodeArchive call below); the entry point reads it from disk at
     // cold start. Slim HANDLER_CONFIG keeps just the orchestration fields.
-    let handlerConfigJson =
-      Pulumi.Output.all([
-        queue.id,
-        context.pluginExtensionPointCmdTopicUrl->Pulumi.Output.asInput->Obj.magic,
-        config.eventTopicArn->outputOrPlaceholder->Obj.magic,
-        config.pluginReadModelTableName->outputOrPlaceholder->Obj.magic,
-        config.schedulerRoleArn->outputOrPlaceholder->Obj.magic,
-        config.schedulerQueueArn->outputOrPlaceholder->Obj.magic,
-        config.schedulerQueueName->outputOrPlaceholder->Obj.magic,
-        config.appSyncApiId->outputOrPlaceholder->Obj.magic,
-        epEventTopicArnsOutput->Pulumi.Output.asInput->Obj.magic,
-      ])
-      ->Pulumi.Output.apply(values => {
-        let queueUrl = values->Array.getUnsafe(0)
-        let pluginEpCmdTopicUrl = values->Array.getUnsafe(1)
-        let topLevelEventTopicArn = values->Array.getUnsafe(2)
-        let rmTable = values->Array.getUnsafe(3)
-        let schedRoleArn = values->Array.getUnsafe(4)
-        let schedQueueArn = values->Array.getUnsafe(5)
-        let schedQueueName = values->Array.getUnsafe(6)
-        let appSyncApiId = values->Array.getUnsafe(7)
-        let epEventTopicArns: array<string> = Obj.magic(values->Array.getUnsafe(8))
+    let handlerConfigJson = Pulumi.Output.all([
+      queue.id,
+      context.pluginExtensionPointCmdTopicUrl->Pulumi.Output.asInput->Obj.magic,
+      config.eventTopicArn->outputOrPlaceholder->Obj.magic,
+      config.pluginReadModelTableName->outputOrPlaceholder->Obj.magic,
+      config.schedulerRoleArn->outputOrPlaceholder->Obj.magic,
+      config.schedulerQueueArn->outputOrPlaceholder->Obj.magic,
+      config.schedulerQueueName->outputOrPlaceholder->Obj.magic,
+      config.appSyncApiId->outputOrPlaceholder->Obj.magic,
+      epEventTopicArnsOutput->Pulumi.Output.asInput->Obj.magic,
+    ])->Pulumi.Output.apply(values => {
+      let queueUrl = values->Array.getUnsafe(0)
+      let pluginEpCmdTopicUrl = values->Array.getUnsafe(1)
+      let topLevelEventTopicArn = values->Array.getUnsafe(2)
+      let rmTable = values->Array.getUnsafe(3)
+      let schedRoleArn = values->Array.getUnsafe(4)
+      let schedQueueArn = values->Array.getUnsafe(5)
+      let schedQueueName = values->Array.getUnsafe(6)
+      let appSyncApiId = values->Array.getUnsafe(7)
+      let epEventTopicArns: array<string> = Obj.magic(values->Array.getUnsafe(8))
 
-        let dict = Dict.make()
-        dict->Dict.set("queueUrl", JSON.Encode.string(queueUrl))
-        dict->Dict.set("pluginExtensionPointCmdTopicUrl", JSON.Encode.string(pluginEpCmdTopicUrl))
-        dict->Dict.set("eventTopicArn", JSON.Encode.string(topLevelEventTopicArn))
-        dict->Dict.set("pluginReadModelTableName", JSON.Encode.string(rmTable))
-        dict->Dict.set("appSyncApiId", JSON.Encode.string(appSyncApiId))
-        dict->Dict.set("clonerEnabled", JSON.Encode.bool(config.clonerEnabled))
-        dict->Dict.set("schedulerRoleArn", JSON.Encode.string(schedRoleArn))
-        dict->Dict.set("schedulerQueueArn", JSON.Encode.string(schedQueueArn))
-        dict->Dict.set("schedulerQueueName", JSON.Encode.string(schedQueueName))
+      let dict = Dict.make()
+      dict->Dict.set("queueUrl", JSON.Encode.string(queueUrl))
+      dict->Dict.set("pluginExtensionPointCmdTopicUrl", JSON.Encode.string(pluginEpCmdTopicUrl))
+      dict->Dict.set("eventTopicArn", JSON.Encode.string(topLevelEventTopicArn))
+      dict->Dict.set("pluginReadModelTableName", JSON.Encode.string(rmTable))
+      dict->Dict.set("appSyncApiId", JSON.Encode.string(appSyncApiId))
+      dict->Dict.set("clonerEnabled", JSON.Encode.bool(config.clonerEnabled))
+      dict->Dict.set("schedulerRoleArn", JSON.Encode.string(schedRoleArn))
+      dict->Dict.set("schedulerQueueArn", JSON.Encode.string(schedQueueArn))
+      dict->Dict.set("schedulerQueueName", JSON.Encode.string(schedQueueName))
 
-        // pluginDefinition lives in pluginDefinition.json (see asset bundle
-        // below). The entry point reads it via fs.readFileSync at cold start.
+      // pluginDefinition lives in pluginDefinition.json (see asset bundle
+      // below). The entry point reads it via fs.readFileSync at cold start.
 
-        // Pair each EP with its already-resolved eventTopicArn (parallel arrays)
-        // BEFORE sorting, so the (ep, arn) pairing survives the reorder. Then
-        // sort by ep.specModule for stable JSON output across deploys — without
-        // this, push-order drift in upstream Dict iteration produces pointless
-        // Lambda env-var "updates" on every `pulumi up`.
-        let extensionPointsArr =
-          context.extensionPoints
-          ->Array.mapWithIndex((ep, i) => (ep, epEventTopicArns->Array.getUnsafe(i)))
-          ->Array.toSorted(((a, _), (b, _)) => String.compare(a.specModule, b.specModule))
-          ->Array.map(((ep, eventTopicArn)) => {
-            let entryDict = Dict.make()
-            entryDict->Dict.set("specModule", JSON.Encode.string(ep.specModule))
-            entryDict->Dict.set("mappingsModule", JSON.Encode.string(ep.mappingsModule))
-            entryDict->Dict.set("eventTopicArn", JSON.Encode.string(eventTopicArn))
-            entryDict->Dict.set(
-              "aggregateNames",
-              ep.aggregateNames->Array.map(JSON.Encode.string)->JSON.Encode.array,
-            )
-            JSON.Encode.object(entryDict)
-          })
-        dict->Dict.set("extensionPoints", JSON.Encode.array(extensionPointsArr))
-
-        let connectExtensionValue = switch context.connectExtension {
-        | Some(ce) =>
-          let ceDict = Dict.make()
-          ceDict->Dict.set("specModule", JSON.Encode.string(ce.specModule))
-          ceDict->Dict.set("mappingsModule", JSON.Encode.string(ce.mappingsModule))
-          ceDict->Dict.set("extensionPointName", JSON.Encode.string(ce.extensionPointName))
-          JSON.Encode.object(ceDict)
-        | None => JSON.Encode.null
-        }
-        dict->Dict.set("connectExtension", connectExtensionValue)
-
-        // User-declared extensions — one entry per merged extension group.
-        // Each entry carries enough metadata for the bundled handler to
-        // dynamic-import the spec / mapping modules and filter the top-level
-        // publishToAggregates + readModelQueueUrls maps down to the subset
-        // this extension actually uses.
-        // Sort by extension name so the serialized JSON is stable across deploys.
-        let extensionsArr =
-          context.extensions
-          ->Array.toSorted((a, b) => String.compare(a.name, b.name))
-          ->Array.map(ext => {
-            let entryDict = Dict.make()
-            entryDict->Dict.set("name", JSON.Encode.string(ext.name))
-            entryDict->Dict.set("specModule", JSON.Encode.string(ext.specModule))
-            entryDict->Dict.set("mappingsModule", JSON.Encode.string(ext.mappingsModule))
-            entryDict->Dict.set("delegateModule", JSON.Encode.string(ext.delegateModule))
-            entryDict->Dict.set("extensionPointName", JSON.Encode.string(ext.extensionPointName))
-            entryDict->Dict.set(
-              "aggregateNames",
-              ext.aggregateNames->Array.map(JSON.Encode.string)->JSON.Encode.array,
-            )
-            entryDict->Dict.set(
-              "readModelNames",
-              ext.readModelNames->Array.map(JSON.Encode.string)->JSON.Encode.array,
-            )
-            JSON.Encode.object(entryDict)
-          })
-        dict->Dict.set("extensions", JSON.Encode.array(extensionsArr))
-
-        // publishToAggregates / readModelQueueUrls live in queueUrls.json (see the
-        // asset bundle below). Both are one entry per target, so they grow with the
-        // plugin, and together with the PTA_/PRM_ vars they name they carried the
-        // catalog EventCollector past Lambda's 4KB environment ceiling. Only the
-        // maps move: they are built from Dict.keysToArray, so they hold no Pulumi
-        // Output and can be serialized here. The URLs themselves cannot follow —
-        // see the note on the aggregate walk further down.
-
-        let rmNamesForSourceDict = Dict.make()
-        context.readModelNamesForSourceName
-        ->Dict.toArray
-        ->Array.forEach(((sourceName, rmNames)) =>
-          rmNamesForSourceDict->Dict.set(
-            sourceName,
-            rmNames->Array.map(JSON.Encode.string)->JSON.Encode.array,
+      // Pair each EP with its already-resolved eventTopicArn (parallel arrays)
+      // BEFORE sorting, so the (ep, arn) pairing survives the reorder. Then
+      // sort by ep.specModule for stable JSON output across deploys — without
+      // this, push-order drift in upstream Dict iteration produces pointless
+      // Lambda env-var "updates" on every `pulumi up`.
+      let extensionPointsArr =
+        context.extensionPoints
+        ->Array.mapWithIndex((ep, i) => (ep, epEventTopicArns->Array.getUnsafe(i)))
+        ->Array.toSorted(((a, _), (b, _)) => String.compare(a.specModule, b.specModule))
+        ->Array.map(((ep, eventTopicArn)) => {
+          let entryDict = Dict.make()
+          entryDict->Dict.set("specModule", JSON.Encode.string(ep.specModule))
+          entryDict->Dict.set("mappingsModule", JSON.Encode.string(ep.mappingsModule))
+          entryDict->Dict.set("eventTopicArn", JSON.Encode.string(eventTopicArn))
+          entryDict->Dict.set(
+            "aggregateNames",
+            ep.aggregateNames->Array.map(JSON.Encode.string)->JSON.Encode.array,
           )
-        )
-        dict->Dict.set("readModelNamesForSourceName", JSON.Encode.object(rmNamesForSourceDict))
+          JSON.Encode.object(entryDict)
+        })
+      dict->Dict.set("extensionPoints", JSON.Encode.array(extensionPointsArr))
 
-        let json = JSON.Encode.object(dict)->JSON.stringify
-        // The PTA_/PRM_ vars are the rest of this Lambda's environment and the
-        // half that grows with the plugin. Their names are known here; their
-        // values are still Outputs, so the budget check estimates those.
-        let queueUrlKeys = Array.concat(
-          context.publishToAggregates
-          ->Dict.keysToArray
-          ->Array.map(n => `PTA_${n}_QUEUE_URL`),
-          context.readModelQueueUrls->Dict.keysToArray->Array.map(n => `PRM_${n}_QUEUE_URL`),
+      let connectExtensionValue = switch context.connectExtension {
+      | Some(ce) =>
+        let ceDict = Dict.make()
+        ceDict->Dict.set("specModule", JSON.Encode.string(ce.specModule))
+        ceDict->Dict.set("mappingsModule", JSON.Encode.string(ce.mappingsModule))
+        ceDict->Dict.set("extensionPointName", JSON.Encode.string(ce.extensionPointName))
+        JSON.Encode.object(ceDict)
+      | None => JSON.Encode.null
+      }
+      dict->Dict.set("connectExtension", connectExtensionValue)
+
+      // User-declared extensions — one entry per merged extension group.
+      // Each entry carries enough metadata for the bundled handler to
+      // dynamic-import the spec / mapping modules and filter the top-level
+      // publishToAggregates + readModelQueueUrls maps down to the subset
+      // this extension actually uses.
+      // Sort by extension name so the serialized JSON is stable across deploys.
+      let extensionsArr =
+        context.extensions
+        ->Array.toSorted((a, b) => String.compare(a.name, b.name))
+        ->Array.map(ext => {
+          let entryDict = Dict.make()
+          entryDict->Dict.set("name", JSON.Encode.string(ext.name))
+          entryDict->Dict.set("specModule", JSON.Encode.string(ext.specModule))
+          entryDict->Dict.set("mappingsModule", JSON.Encode.string(ext.mappingsModule))
+          entryDict->Dict.set("delegateModule", JSON.Encode.string(ext.delegateModule))
+          entryDict->Dict.set("extensionPointName", JSON.Encode.string(ext.extensionPointName))
+          entryDict->Dict.set(
+            "aggregateNames",
+            ext.aggregateNames->Array.map(JSON.Encode.string)->JSON.Encode.array,
+          )
+          entryDict->Dict.set(
+            "readModelNames",
+            ext.readModelNames->Array.map(JSON.Encode.string)->JSON.Encode.array,
+          )
+          JSON.Encode.object(entryDict)
+        })
+      dict->Dict.set("extensions", JSON.Encode.array(extensionsArr))
+
+      // publishToAggregates / readModelQueueUrls live in queueUrls.json (see the
+      // asset bundle below). Both are one entry per target, so they grow with the
+      // plugin, and together with the PTA_/PRM_ vars they name they carried the
+      // catalog EventCollector past Lambda's 4KB environment ceiling. Only the
+      // maps move: they are built from Dict.keysToArray, so they hold no Pulumi
+      // Output and can be serialized here. The URLs themselves cannot follow —
+      // see the note on the aggregate walk further down.
+
+      let rmNamesForSourceDict = Dict.make()
+      context.readModelNamesForSourceName
+      ->Dict.toArray
+      ->Array.forEach(((sourceName, rmNames)) =>
+        rmNamesForSourceDict->Dict.set(
+          sourceName,
+          rmNames->Array.map(JSON.Encode.string)->JSON.Encode.array,
         )
-        Util_LambdaEnvBudget.check(
-          ~lambdaName=name,
-          ~handlerConfigJson=json,
-          ~outputValuedKeys=queueUrlKeys,
-        )
-        json
-      })
+      )
+      dict->Dict.set("readModelNamesForSourceName", JSON.Encode.object(rmNamesForSourceDict))
+
+      let json = JSON.Encode.object(dict)->JSON.stringify
+      // The PTA_/PRM_ vars are the rest of this Lambda's environment and the
+      // half that grows with the plugin. Their names are known here; their
+      // values are still Outputs, so the budget check estimates those.
+      let queueUrlKeys = Array.concat(
+        context.publishToAggregates
+        ->Dict.keysToArray
+        ->Array.map(n => `PTA_${n}_QUEUE_URL`),
+        context.readModelQueueUrls->Dict.keysToArray->Array.map(n => `PRM_${n}_QUEUE_URL`),
+      )
+      Util_LambdaEnvBudget.check(
+        ~lambdaName=name,
+        ~handlerConfigJson=json,
+        ~outputValuedKeys=queueUrlKeys,
+      )
+      json
+    })
     envVars->Dict.set("HANDLER_CONFIG", handlerConfigJson->Pulumi.Output.asInput)
 
     // User-extension packages: each merged extension entry contributes three
@@ -748,20 +741,19 @@ module Make = (
       // happen on the dedicated RM Lambda.
       switch config.pluginReadModelTableName {
       | Some(rmTableOutput) =>
-        let policyJson =
-          rmTableOutput->Pulumi.Output.apply(tableName =>
-            PulumiAws.PolicyDocument.make(
-              ~id=`${name}PluginRmScanPolicy`,
-              ~statements=[
-                {
-                  sid: "AllowAdminScanPluginRm",
-                  effect: Allow,
-                  actions: Actions(["dynamodb:Scan"]),
-                  resources: Resource("arn:aws:dynamodb:*:*:table/" ++ tableName),
-                },
-              ],
-            )->PulumiAws.PolicyDocument.toJsonString
-          )
+        let policyJson = rmTableOutput->Pulumi.Output.apply(tableName =>
+          PulumiAws.PolicyDocument.make(
+            ~id=`${name}PluginRmScanPolicy`,
+            ~statements=[
+              {
+                sid: "AllowAdminScanPluginRm",
+                effect: Allow,
+                actions: Actions(["dynamodb:Scan"]),
+                resources: Resource("arn:aws:dynamodb:*:*:table/" ++ tableName),
+              },
+            ],
+          )->PulumiAws.PolicyDocument.toJsonString
+        )
         let _ = PulumiAws.IAM.RolePolicy.make(
           ~name=`${name}-pluginRmScan`,
           ~args={
@@ -771,7 +763,6 @@ module Make = (
         )
       | None => ()
       }
-
     }
 
     // Plugin EC sqs:SendMessage grants on the aggregate / StateChangeSlice
@@ -792,9 +783,7 @@ module Make = (
     // dict (mergedAggregateUrls / aggregateQueueUrls — Plugin_Builder.res:629).
     let aggregateNameSet = Dict.make()
     context.extensions->Array.forEach(ext =>
-      ext.aggregateNames->Array.forEach(aggName =>
-        aggregateNameSet->Dict.set(aggName, ())
-      )
+      ext.aggregateNames->Array.forEach(aggName => aggregateNameSet->Dict.set(aggName, ()))
     )
     // One RolePolicy per extension target, each derived through a SINGLE
     // `.apply` on that target's queue-URL Output. `Pulumi.Output.all` is
@@ -864,30 +853,20 @@ module Make = (
     ReventlessCore.Runtime.eventHandler<unit, context, unit>,
     runtimeParts,
     ReventlessCore.Heartbeat.component,
-  > = (
-    ~handler as _,
-    ~connect,
-    ~memorySize=1024,
-    ~timeout=30,
-    heartbeat,
-  ) => {
+  > = (~handler as _, ~connect, ~memorySize=1024, ~timeout=30, heartbeat) => {
     let hbConfig = heartbeatConfigRef.contents
     switch hbConfig.epQueueUrl {
     | None =>
       log.warn(~comp="PluginRuntime_Builder", "forPluginHeartbeat skipped (no EP queue URL)")
     | Some(epQueueUrl) =>
       let resource = heartbeat->ReventlessCore.Component.toPulumiResource
-      let name = resource.name->ReventlessCore.ComponentType.nameOpt(
-        ReventlessCore.Heartbeat.componentType,
-      )
+      let name =
+        resource.name->ReventlessCore.ComponentType.nameOpt(ReventlessCore.Heartbeat.componentType)
       let opts = {Pulumi.ComponentResource.parent: resource}
 
       let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
       envVars->Dict.set("EP_QUEUE_URL", epQueueUrl->Pulumi.Output.asInput)
-      envVars->Dict.set(
-        "PLUGIN_ID",
-        hbConfig.pluginId->Pulumi.Output.make->Pulumi.Output.asInput,
-      )
+      envVars->Dict.set("PLUGIN_ID", hbConfig.pluginId->Pulumi.Output.make->Pulumi.Output.asInput)
       envVars->Dict.set(
         "HEARTBEAT_TIMEOUT",
         hbConfig.heartbeatTimeout->Int.toString->Pulumi.Output.make->Pulumi.Output.asInput,

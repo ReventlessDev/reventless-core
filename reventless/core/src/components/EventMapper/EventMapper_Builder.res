@@ -38,7 +38,10 @@ module Make = (
             count: async _items =>
               log.warn(~comp="EventMapper", "No counter deployed, but trying to use count"),
             addToCounterTarget: async _target =>
-              log.warn(~comp="EventMapper", "No counter deployed, but trying to use addToCounterTarget"),
+              log.warn(
+                ~comp="EventMapper",
+                "No counter deployed, but trying to use addToCounterTarget",
+              ),
           }
           ops
         }),

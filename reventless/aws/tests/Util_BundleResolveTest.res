@@ -5,14 +5,12 @@ open JestGlobals
 // than one of reventless-aws's own dependencies. realpath because macOS hands
 // out /var/... symlinks for tmpdir while require.resolve reports /private/var.
 let makeProject = (pkgName: string): (string, string) => {
-  let project =
-    NodeFs.realpathSync(NodeFs.mkdtempSync(NodePath.join([NodeOs.tmpdir(), "pulumi-project-"])))
+  let project = NodeFs.realpathSync(
+    NodeFs.mkdtempSync(NodePath.join([NodeOs.tmpdir(), "pulumi-project-"])),
+  )
   let pkgDir = NodePath.join([NodePath.join([project, "node_modules"]), pkgName])
   NodeFs.mkdirSync(pkgDir, {recursive: true})
-  NodeFs.writeFileSync(
-    NodePath.join([pkgDir, "package.json"]),
-    `{"name":"","version":"9.9.9"}`,
-  )
+  NodeFs.writeFileSync(NodePath.join([pkgDir, "package.json"]), `{"name":"","version":"9.9.9"}`)
   (project, pkgDir)
 }
 

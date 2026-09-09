@@ -69,43 +69,47 @@ module Make = (
   //
   // `~seq` is the replayed sequence number the batch decides from, carried in so
   // the line below can name the state rather than serialise it.
-  let processCommand = (~seq: int) => (
-    (state, outcomes): (Behavior.state, array<(string, cmdOutcome, Message.meta)>),
-    topicItem: CommandTopic.topicItem<Message.command'<Spec.Id.t, Spec.command>>,
-  ) => {
-    let {reference, command: command'} = topicItem
-    let meta = command'->updateMeta
-    let id = command'.id->Spec.Id.toString
-    // Identity, not content: the folded state grows with the entity's whole
-    // history, so serialising it here makes the line's size a function of how
-    // long the system has been in use. The state at decision time is a
-    // debugger's subject, not a log's.
-    let cmdName =
-      command'.command->Message.encode(Spec.commandSchema)->Message.variantNameOfJson->LogFormat.bold
-    EffectLogger.logDebug(
-      ~comp,
-      `deciding: id=${id} seq=${seq->Int.toString} cmd=${cmdName}`,
-    )->Effect.runSync
-    switch Behavior.decide(state, command'.command) {
-    | Ok(generatedEvents) =>
-      let newState = generatedEvents->Array.reduce(state, Behavior.evolve)
-      (newState, Array.concat(outcomes, [(reference, CmdOk(generatedEvents), meta)]))
-    | Error(error) =>
-      let errorJson = error->Message.encode(Spec.errorSchema)
-      let errorCode = errorJson->Message.variantNameOfJson
-      // Strip the TAG so detail carries only the rejection payload (empty for unit errors).
-      let (_, payloadDict) = errorJson->Message.splitMessage
-      let errorDetail =
-        payloadDict->Dict.toArray->Array.length == 0
-          ? ""
-          : payloadDict->JSON.Encode.object->JSON.stringify
-      EffectLogger.logError(
+  let processCommand = (~seq: int) =>
+    (
+      (state, outcomes): (Behavior.state, array<(string, cmdOutcome, Message.meta)>),
+      topicItem: CommandTopic.topicItem<Message.command'<Spec.Id.t, Spec.command>>,
+    ) => {
+      let {reference, command: command'} = topicItem
+      let meta = command'->updateMeta
+      let id = command'.id->Spec.Id.toString
+      // Identity, not content: the folded state grows with the entity's whole
+      // history, so serialising it here makes the line's size a function of how
+      // long the system has been in use. The state at decision time is a
+      // debugger's subject, not a log's.
+      let cmdName =
+        command'.command
+        ->Message.encode(Spec.commandSchema)
+        ->Message.variantNameOfJson
+        ->LogFormat.bold
+      EffectLogger.logDebug(
         ~comp,
-        `decide rejected: ${errorCode} ${errorDetail} id=${id}`,
+        `deciding: id=${id} seq=${seq->Int.toString} cmd=${cmdName}`,
       )->Effect.runSync
-      (state, Array.concat(outcomes, [(reference, CmdRejected({errorCode, errorDetail}), meta)]))
+      switch Behavior.decide(state, command'.command) {
+      | Ok(generatedEvents) =>
+        let newState = generatedEvents->Array.reduce(state, Behavior.evolve)
+        (newState, Array.concat(outcomes, [(reference, CmdOk(generatedEvents), meta)]))
+      | Error(error) =>
+        let errorJson = error->Message.encode(Spec.errorSchema)
+        let errorCode = errorJson->Message.variantNameOfJson
+        // Strip the TAG so detail carries only the rejection payload (empty for unit errors).
+        let (_, payloadDict) = errorJson->Message.splitMessage
+        let errorDetail =
+          payloadDict->Dict.toArray->Array.length == 0
+            ? ""
+            : payloadDict->JSON.Encode.object->JSON.stringify
+        EffectLogger.logError(
+          ~comp,
+          `decide rejected: ${errorCode} ${errorDetail} id=${id}`,
+        )->Effect.runSync
+        (state, Array.concat(outcomes, [(reference, CmdRejected({errorCode, errorDetail}), meta)]))
+      }
     }
-  }
 
   let maxConflictRetries = 3
 
@@ -125,9 +129,7 @@ module Make = (
   // the fixed capacity (a per-aggregate knob is a future refinement — see
   // docs/plans/done/aggregate-snapshotting.md).
   let replayCacheCapacity = 100
-  let replayCache: Lru.t<string, (Behavior.state, int)> = Lru.make(
-    ~capacity=replayCacheCapacity,
-  )
+  let replayCache: Lru.t<string, (Behavior.state, int)> = Lru.make(~capacity=replayCacheCapacity)
 
   let resetCache = () => replayCache->Lru.clear
 
@@ -188,8 +190,7 @@ module Make = (
     let seedEffect = switch snapshotConfig {
     | None => Effect.succeed((Behavior.initialState, 0))
     | Some(_) =>
-      Effect.promise(() => Ops.eventLog.latestSnapshot(id))
-      ->Effect.map(snapResult =>
+      Effect.promise(() => Ops.eventLog.latestSnapshot(id))->Effect.map(snapResult =>
         switch snapResult {
         | Ok(Some(snap)) if snap.EventLog.schemaHash == stateSchemaHash =>
           switch decodeState(snap.state) {
@@ -269,7 +270,11 @@ module Make = (
     | Some({interval}) if interval > 0 && newSeq / interval > oldSeq / interval =>
       switch encodeState(state) {
       | Some(stateJson) =>
-        fireSnapshotWrite(id, idStr, {EventLog.seqNr: newSeq, state: stateJson, schemaHash: stateSchemaHash})
+        fireSnapshotWrite(
+          id,
+          idStr,
+          {EventLog.seqNr: newSeq, state: stateJson, schemaHash: stateSchemaHash},
+        )
       | None =>
         EffectLogger.logWarn(
           ~comp,
@@ -342,8 +347,7 @@ module Make = (
     | None => coldReadState(id)
     }
 
-    readState
-    ->Effect.flatMap(((initialState, sequenceNr)) => {
+    readState->Effect.flatMap(((initialState, sequenceNr)) => {
       let (finalState, outcomes) =
         topicItemsForId->Array.reduce((initialState, []), processCommand(~seq=sequenceNr))
 
@@ -379,51 +383,52 @@ module Make = (
           ~detail=eventJsons,
           `produced ${eventCount} event(s): [${eventDetails}]`,
         )
-        ->Effect.flatMap(
-          _ => Effect.promise(() => Ops.eventLog.append(sequenceNr, id, generatedEvents')),
+        ->Effect.flatMap(_ =>
+          Effect.promise(() => Ops.eventLog.append(sequenceNr, id, generatedEvents'))
         )
-        ->Effect.flatMap(
-          appendResult =>
-            switch appendResult {
-            | Ok(_) =>
-              // The post-decide fold state IS the post-append replay result;
-              // cache it so the next command for this id skips the replay.
-              let newSeq = sequenceNr + generatedEvents'->Array.length
-              replayCache->Lru.put(idStr, (finalState, newSeq))
-              // Persist a snapshot if this append crossed an interval boundary
-              // (fire-and-forget — never blocks or fails the command).
-              maybeWriteSnapshot(id, idStr, ~oldSeq=sequenceNr, ~newSeq, finalState)
-              let perRef = reportFinalOutcomes(
-                outcomes,
-                ~entityId=idStr,
-                ~appendSucceeded=true,
-                ~appendedEventCount=generatedEvents'->Array.length,
-              )
-              EffectLogger.logInfo(~comp, `append: id=${idStr}`)->Effect.map(_ => Ok(perRef))
-            | Error(EventLog.Conflict) =>
-              // Another writer advanced the stream past our (possibly cached)
-              // sequenceNr — drop the entry so the retry replays cold.
-              replayCache->Lru.invalidate(idStr)
-              // Signal the outer replay+re-decide retry loop (which matches
-              // Error(_)); the string is an internal marker, no longer a
-              // cross-component substring sentinel.
-              EffectLogger.logWarn(~comp, `conflict: id=${idStr}, will retry`)->Effect.map(
-                _ => Error("conflict"),
-              )
-            | Error(EventLog.StorageFailure(msg)) =>
-              // Appends are atomic, so the read snapshot is likely still valid —
-              // but a storage error means we can't be sure what committed;
-              // drop the entry so the next attempt reads authoritative state.
-              replayCache->Lru.invalidate(idStr)
-              let perRef = reportFinalOutcomes(
-                outcomes,
-                ~entityId=idStr,
-                ~appendSucceeded=false,
-                ~appendedEventCount=0,
-                ~appendErrorDetail=msg,
-              )
-              EffectLogger.logError(~comp, `append failed: id=${idStr}: ${msg}`)->Effect.map(_ => Ok(perRef))
-            },
+        ->Effect.flatMap(appendResult =>
+          switch appendResult {
+          | Ok(_) =>
+            // The post-decide fold state IS the post-append replay result;
+            // cache it so the next command for this id skips the replay.
+            let newSeq = sequenceNr + generatedEvents'->Array.length
+            replayCache->Lru.put(idStr, (finalState, newSeq))
+            // Persist a snapshot if this append crossed an interval boundary
+            // (fire-and-forget — never blocks or fails the command).
+            maybeWriteSnapshot(id, idStr, ~oldSeq=sequenceNr, ~newSeq, finalState)
+            let perRef = reportFinalOutcomes(
+              outcomes,
+              ~entityId=idStr,
+              ~appendSucceeded=true,
+              ~appendedEventCount=generatedEvents'->Array.length,
+            )
+            EffectLogger.logInfo(~comp, `append: id=${idStr}`)->Effect.map(_ => Ok(perRef))
+          | Error(EventLog.Conflict) =>
+            // Another writer advanced the stream past our (possibly cached)
+            // sequenceNr — drop the entry so the retry replays cold.
+            replayCache->Lru.invalidate(idStr)
+            // Signal the outer replay+re-decide retry loop (which matches
+            // Error(_)); the string is an internal marker, no longer a
+            // cross-component substring sentinel.
+            EffectLogger.logWarn(~comp, `conflict: id=${idStr}, will retry`)->Effect.map(
+              _ => Error("conflict"),
+            )
+          | Error(EventLog.StorageFailure(msg)) =>
+            // Appends are atomic, so the read snapshot is likely still valid —
+            // but a storage error means we can't be sure what committed;
+            // drop the entry so the next attempt reads authoritative state.
+            replayCache->Lru.invalidate(idStr)
+            let perRef = reportFinalOutcomes(
+              outcomes,
+              ~entityId=idStr,
+              ~appendSucceeded=false,
+              ~appendedEventCount=0,
+              ~appendErrorDetail=msg,
+            )
+            EffectLogger.logError(~comp, `append failed: id=${idStr}: ${msg}`)->Effect.map(
+              _ => Ok(perRef),
+            )
+          }
         )
       }
     })

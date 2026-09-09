@@ -7,14 +7,28 @@
 // more same-shaped ones, so the `Money.t` pair must lead (DZakh/sury#392).
 @schema
 type consumedEvent =
-  | ProductAdded({productId: string, name: string, description: string, price: Reventless.Money.t, categoryId: string})
+  | ProductAdded({
+      productId: string,
+      name: string,
+      description: string,
+      price: Reventless.Money.t,
+      categoryId: string,
+    })
   | ProductPriceChanged({productId: string, price: Reventless.Money.t})
   | ProductNameChanged({productId: string, name: string})
   | ProductDescriptionChanged({productId: string, description: string})
-  | ProductImageAttached({productId: string, productImage: Reventless.UploadableImage.t, altText?: string})
+  | ProductImageAttached({
+      productId: string,
+      productImage: Reventless.UploadableImage.t,
+      altText?: string,
+    })
   | ProductImageRemoved({productId: string, productImage: Reventless.UploadableImage.t})
   | ProductPrimaryImageSet({productId: string, productImage: Reventless.UploadableImage.t})
-  | ProductImageAltTextSet({productId: string, productImage: Reventless.UploadableImage.t, altText: string})
+  | ProductImageAltTextSet({
+      productId: string,
+      productImage: Reventless.UploadableImage.t,
+      altText: string,
+    })
   | ProductArchived({productId: string})
   | ProductUnarchived({productId: string})
   | ProductDiscontinued({productId: string})
@@ -32,8 +46,7 @@ type shelfStatus =
 // A product that leaves the shelf keeps its name — an order names the products
 // it bought. The annotation opens one door and only for what a reference needs:
 // id, name and shelf state. The catalog list itself stays closed.
-@schema
-@namedWhenRetired
+@schema @namedWhenRetired
 type state = {
   productId: string,
   name: string,

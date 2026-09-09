@@ -32,16 +32,72 @@ type category = {
 }
 
 let categories: array<category> = [
-  {id: "cat-01", name: "Laptops", weight: 9, nouns: ["Notebook", "Ultrabook", "Workstation"], archive: false, categoryImage: None},
-  {id: "cat-02", name: "Phones", weight: 10, nouns: ["Handset", "Smartphone", "Phone"], archive: false, categoryImage: None},
-  {id: "cat-03", name: "Audio", weight: 9, nouns: ["Headphones", "Earbuds", "Speaker"], archive: false, categoryImage: None},
-  {id: "cat-04", name: "Cameras", weight: 7, nouns: ["Camera", "Lens", "Gimbal"], archive: false, categoryImage: None},
-  {id: "cat-05", name: "Wearables", weight: 7, nouns: ["Watch", "Tracker", "Band"], archive: false, categoryImage: None},
-  {id: "cat-06", name: "Home Office", weight: 8, nouns: ["Desk Lamp", "Monitor", "Keyboard"], archive: false, categoryImage: None},
-  {id: "cat-07", name: "Accessories", weight: 6, nouns: ["Cable", "Adapter", "Case"], archive: false, categoryImage: None},
+  {
+    id: "cat-01",
+    name: "Laptops",
+    weight: 9,
+    nouns: ["Notebook", "Ultrabook", "Workstation"],
+    archive: false,
+    categoryImage: None,
+  },
+  {
+    id: "cat-02",
+    name: "Phones",
+    weight: 10,
+    nouns: ["Handset", "Smartphone", "Phone"],
+    archive: false,
+    categoryImage: None,
+  },
+  {
+    id: "cat-03",
+    name: "Audio",
+    weight: 9,
+    nouns: ["Headphones", "Earbuds", "Speaker"],
+    archive: false,
+    categoryImage: None,
+  },
+  {
+    id: "cat-04",
+    name: "Cameras",
+    weight: 7,
+    nouns: ["Camera", "Lens", "Gimbal"],
+    archive: false,
+    categoryImage: None,
+  },
+  {
+    id: "cat-05",
+    name: "Wearables",
+    weight: 7,
+    nouns: ["Watch", "Tracker", "Band"],
+    archive: false,
+    categoryImage: None,
+  },
+  {
+    id: "cat-06",
+    name: "Home Office",
+    weight: 8,
+    nouns: ["Desk Lamp", "Monitor", "Keyboard"],
+    archive: false,
+    categoryImage: None,
+  },
+  {
+    id: "cat-07",
+    name: "Accessories",
+    weight: 6,
+    nouns: ["Cable", "Adapter", "Case"],
+    archive: false,
+    categoryImage: None,
+  },
   // Archived at the end of the catalog phase — after its products exist, since
   // AddProduct rejects an archived category with CategoryNotFound.
-  {id: "cat-08", name: "Clearance", weight: 4, nouns: ["Bundle", "Refurb Kit"], archive: true, categoryImage: None},
+  {
+    id: "cat-08",
+    name: "Clearance",
+    weight: 4,
+    nouns: ["Bundle", "Refurb Kit"],
+    archive: true,
+    categoryImage: None,
+  },
 ]
 
 let renamedCategoryId = "cat-06"
@@ -54,12 +110,48 @@ let qualifiers = ["Pro", "Air", "Max", "Lite", "Studio", "Go", "Plus", ""]
 let blurbs = ["refreshed", "best-selling", "entry-level", "flagship", "compact"]
 
 let firstNames = [
-  "Ada", "Bruno", "Chiara", "Diego", "Elif", "Farid", "Greta", "Hugo", "Iris", "Jonas",
-  "Kaja", "Luca", "Maya", "Noor", "Olof", "Pia", "Rafael", "Sana", "Tomas", "Vera",
+  "Ada",
+  "Bruno",
+  "Chiara",
+  "Diego",
+  "Elif",
+  "Farid",
+  "Greta",
+  "Hugo",
+  "Iris",
+  "Jonas",
+  "Kaja",
+  "Luca",
+  "Maya",
+  "Noor",
+  "Olof",
+  "Pia",
+  "Rafael",
+  "Sana",
+  "Tomas",
+  "Vera",
 ]
 let lastNames = [
-  "Almeida", "Beck", "Costa", "Duarte", "Engel", "Ferrer", "Gruber", "Haas", "Ivanov", "Jansen",
-  "Klein", "Lindqvist", "Moreau", "Nagy", "Olsen", "Petrov", "Rossi", "Sandberg", "Tamm", "Vogel",
+  "Almeida",
+  "Beck",
+  "Costa",
+  "Duarte",
+  "Engel",
+  "Ferrer",
+  "Gruber",
+  "Haas",
+  "Ivanov",
+  "Jansen",
+  "Klein",
+  "Lindqvist",
+  "Moreau",
+  "Nagy",
+  "Olsen",
+  "Petrov",
+  "Rossi",
+  "Sandberg",
+  "Tamm",
+  "Vogel",
 ]
 let streets = ["Bakergasse", "Cedar Lane", "Dockside Way", "Elm Row", "Foundry Street"]
 let cities = ["Bruges", "Cortona", "Delft", "Espoo", "Freiburg", "Gdansk"]
@@ -82,11 +174,46 @@ let cityCoords: array<(float, float)> = [
 // sends a currency symbol where the feed's contract says ISO 4217 code, which is
 // the kind of shape an anti-corruption layer exists to stop at the boundary.
 let supplierFeed: array<CatalogPlugin.ImportProduct.externalInput> = [
-  {sku: "SKU-4410", title: "Fathom Dock 4-Port", desc: "Supplier-fed docking station.", unitPrice: 8990, currency: "USD", category: "cat-07"},
-  {sku: "SKU-4411", title: "Cirrus Travel Charger", desc: "Supplier-fed 65W charger.", unitPrice: 4550, currency: "USD", category: "cat-07"},
-  {sku: "SKU-4412", title: "Granite Laptop Sleeve", desc: "Supplier-fed protective sleeve.", unitPrice: 3200, currency: "USD", category: "cat-07"},
-  {sku: "SKU-4413", title: "Halcyon Desk Riser", desc: "Supplier-fed monitor riser.", unitPrice: 12400, currency: "USD", category: "cat-06"},
-  {sku: "SKU-4414", title: "Ember Cable Set", desc: "Rejected: currency is a symbol, not an ISO 4217 code.", unitPrice: 1900, currency: "US$", category: "cat-07"},
+  {
+    sku: "SKU-4410",
+    title: "Fathom Dock 4-Port",
+    desc: "Supplier-fed docking station.",
+    unitPrice: 8990,
+    currency: "USD",
+    category: "cat-07",
+  },
+  {
+    sku: "SKU-4411",
+    title: "Cirrus Travel Charger",
+    desc: "Supplier-fed 65W charger.",
+    unitPrice: 4550,
+    currency: "USD",
+    category: "cat-07",
+  },
+  {
+    sku: "SKU-4412",
+    title: "Granite Laptop Sleeve",
+    desc: "Supplier-fed protective sleeve.",
+    unitPrice: 3200,
+    currency: "USD",
+    category: "cat-07",
+  },
+  {
+    sku: "SKU-4413",
+    title: "Halcyon Desk Riser",
+    desc: "Supplier-fed monitor riser.",
+    unitPrice: 12400,
+    currency: "USD",
+    category: "cat-06",
+  },
+  {
+    sku: "SKU-4414",
+    title: "Ember Cable Set",
+    desc: "Rejected: currency is a symbol, not an ISO 4217 code.",
+    unitPrice: 1900,
+    currency: "US$",
+    category: "cat-07",
+  },
 ]
 
 // Which rows survive the boundary is the slice's decision, so ask the slice
@@ -166,8 +293,7 @@ let productSvg = (~name: string, ~index: int): string => {
   let label = escapeXml(name)
   `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">` ++
   `<rect width="400" height="300" fill="${bg}"/>` ++
-  `<text x="200" y="160" fill="#ffffff" font-family="sans-serif" font-size="22" font-weight="600" text-anchor="middle">${label}</text>` ++
-  `</svg>`
+  `<text x="200" y="160" fill="#ffffff" font-family="sans-serif" font-size="22" font-weight="600" text-anchor="middle">${label}</text>` ++ `</svg>`
 }
 
 // The same deterministic scheme for a category, in a wide banner rather than the
@@ -181,8 +307,7 @@ let categorySvg = (~name: string, ~index: int): string => {
   let label = escapeXml(name)
   `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="200" viewBox="0 0 600 200">` ++
   `<rect width="600" height="200" fill="${bg}"/>` ++
-  `<text x="300" y="112" fill="#ffffff" font-family="sans-serif" font-size="30" font-weight="600" text-anchor="middle">${label}</text>` ++
-  `</svg>`
+  `<text x="300" y="112" fill="#ffffff" font-family="sans-serif" font-size="30" font-weight="600" text-anchor="middle">${label}</text>` ++ `</svg>`
 }
 
 let buildProducts = (~count=productCount, ()): array<product> => {
@@ -314,13 +439,13 @@ let fallbackMerchandiserId = "local-merch"
 /** Where a demo owner's id came from. */
 type ownerSource =
   | // The accounts file declares a `userId` for that account — the id the
-    // platform stamps, whichever account this run logged in as.
-    AccountsFile
+  // platform stamps, whichever account this run logged in as.
+  AccountsFile
   | // The run authenticated AS that account, so its own bearer carries the id.
-    // The only source on a platform that keeps no accounts file.
-    Bearer
+  // The only source on a platform that keeps no accounts file.
+  Bearer
   | // Nothing on this platform supplied one.
-    Fallback
+  Fallback
 
 type demoOwner = {role: string, username: string, id: string, source: ownerSource}
 
@@ -463,8 +588,7 @@ let demoCustomers = (owners: owners): array<customer> => [
 let buildCustomers = (~count=customerCount, ()): array<customer> =>
   Array.fromInitializer(~length=count, i => {
     let first = firstNames->Array.get(mod(i, firstNames->Array.length))->Option.getOr("Ada")
-    let last =
-      lastNames->Array.get(mod(i * 7 + 3, lastNames->Array.length))->Option.getOr("Beck")
+    let last = lastNames->Array.get(mod(i * 7 + 3, lastNames->Array.length))->Option.getOr("Beck")
     let id = `cust-${pad(i + 1, 2)}`
     let (address, lat, lng) = locatedAddress()
     {
@@ -559,18 +683,21 @@ let buildOrders = (
     }
     // Mostly one of a thing, occasionally two or three — enough that the demo's
     // totals differ from one another rather than all being a single unit price.
-    let lineItems =
-      ReventlessSeed.Seed.Random.sampleWeighted(random, productWeights, ~count=size)->Array.map(p => {
-        let quantityRoll = ReventlessSeed.Seed.Random.float(random)
-        let quantity = if quantityRoll < 0.7 {
-          1
-        } else if quantityRoll < 0.92 {
-          2
-        } else {
-          3
-        }
-        ({productId: p.id, quantity}: OrderingPlugin.PlaceOrder.lineItem)
-      })
+    let lineItems = ReventlessSeed.Seed.Random.sampleWeighted(
+      random,
+      productWeights,
+      ~count=size,
+    )->Array.map(p => {
+      let quantityRoll = ReventlessSeed.Seed.Random.float(random)
+      let quantity = if quantityRoll < 0.7 {
+        1
+      } else if quantityRoll < 0.92 {
+        2
+      } else {
+        3
+      }
+      ({productId: p.id, quantity}: OrderingPlugin.PlaceOrder.lineItem)
+    })
     // Drives the whole downstream lifecycle: Express is auto-shipped by the
     // AutoShipOrder automation, Standard waits for the batch dispatch, Pickup
     // never ships. This split is what gives the board three columns.
@@ -609,9 +736,7 @@ let batchDispatched = (orders: array<order>): array<order> =>
     the batch skipped, and Pickup orders, which never ship. An Express order is
     already Shipped and could not be cancelled. */
 let cancellable = (orders: array<order>, ~dispatched: array<string>): array<order> =>
-  orders->Array.filter(o =>
-    o.shippingMethod != Express && !(dispatched->Array.includes(o.id))
-  )
+  orders->Array.filter(o => o.shippingMethod != Express && !(dispatched->Array.includes(o.id)))
 
 let cancelled = (orders: array<order>): array<order> =>
   orders->Array.filterWithIndex((_, i) => mod(i, 3) == 1)

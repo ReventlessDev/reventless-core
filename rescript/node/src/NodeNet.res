@@ -1,6 +1,5 @@
 /** Bindings for [`node:net`](https://nodejs.org/api/net.html) — TCP servers and
     the sockets they accept. */
-
 type socket
 type server
 

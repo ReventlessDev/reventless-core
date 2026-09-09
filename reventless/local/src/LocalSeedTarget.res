@@ -133,7 +133,9 @@ let select = async (): t => {
 let announce = (t: t): unit =>
   switch t.origin {
   | Running(entry) =>
-    Console.log(`→ ${entry.endpoint}  ·  ${entry.store->storeLabel}  (${entry.app->shortAppName})`)
+    Console.log(
+      `→ ${entry.endpoint}  ·  ${entry.store->storeLabel}  (${entry.app->shortAppName})`,
+    )
   | EnvOverride => Console.log(`→ ${t.endpoint}  (REVENTLESS_GRAPHQL_ENDPOINT)`)
   | NoneRunning =>
     Console.log(`→ ${t.endpoint}  (no local platform registered here — trying the default)`)

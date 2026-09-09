@@ -8,13 +8,16 @@ let doPostProcessing = async (node, pathToSavedDependencies, fn, spinner): bool 
   Console.log("")
   try {
     await fn(node, cwd)
-    let _ = spinner->Ora.succeed(())
+    let _ = spinner->Ora.succeed()
     true
   } catch {
   | exn => {
-      let _ = spinner->Ora.fail(())
+      let _ = spinner->Ora.fail()
       let msg = exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-      Console.error2("postprocessing of " ++ node->Arborist.name ++ " did fail at '" ++ fnName ++ "':", msg)
+      Console.error2(
+        "postprocessing of " ++ node->Arborist.name ++ " did fail at '" ++ fnName ++ "':",
+        msg,
+      )
       false
     }
   }
@@ -62,19 +65,19 @@ let build = async (config: DependencyBundler_Config.t) => {
   }
   let sourcePackageSpec = sourcePackageName ++ "@" ++ sourcePackageVersionStr
 
-  let _ = spinner->Ora.succeed(())
+  let _ = spinner->Ora.succeed()
 
   // --- clean previous build ---
   let _ = spinner->Ora.start("clean layer directory")
   await Rimraf.rimraf(pathToLayerData)
-  let _ = spinner->Ora.succeed(())
+  let _ = spinner->Ora.succeed()
 
   // --- extract root module ---
   let _ = spinner->Ora.start("extract source package")
   let _ = await RegistryRetry.withRetry(~label="extract " ++ sourcePackageSpec, () =>
     Pacote.extract(sourcePackageSpec, rootPath, opts)
   )
-  let _ = spinner->Ora.succeed(())
+  let _ = spinner->Ora.succeed()
 
   // --- post-process root module ---
   switch rootPostProcess {
@@ -82,17 +85,14 @@ let build = async (config: DependencyBundler_Config.t) => {
     let _ = spinner->Ora.start("postprocess source package")
     Console.log("")
     await rootFn(Obj.magic(0), rootPath)
-    let _ = spinner->Ora.succeed(())
+    let _ = spinner->Ora.succeed()
   | None => ()
   }
 
   // --- build dependency tree ---
   let _ = spinner->Ora.start("build dependency tree")
   let arboristConfig = Arborist.makeConfig(
-    Dict.fromArray([
-      ...registryEntries,
-      ("path", JSON.String(rootPath)),
-    ]),
+    Dict.fromArray([...registryEntries, ("path", JSON.String(rootPath))]),
   )
   let tree = await RegistryRetry.withRetry(~label="build dependency tree", () =>
     Arborist.make(arboristConfig)->Arborist.buildIdealTree({
@@ -100,7 +100,7 @@ let build = async (config: DependencyBundler_Config.t) => {
       saveType: "prod",
     })
   )
-  let _ = spinner->Ora.succeed(())
+  let _ = spinner->Ora.succeed()
 
   // --- stats ---
   let _ = DependencyBundler_Stats.stats(tree, ~shouldPrint=true)
@@ -121,21 +121,29 @@ let build = async (config: DependencyBundler_Config.t) => {
       } else {
         Console.log2("\nNode: ", node->Arborist.packageName)
 
-        if DependencyBundler_Filter.predIsNecessary(~excludeScopes, ~excludeModules, ~includeModules, ~includeScopes, node) {
+        if (
+          DependencyBundler_Filter.predIsNecessary(
+            ~excludeScopes,
+            ~excludeModules,
+            ~includeModules,
+            ~includeScopes,
+            node,
+          )
+        ) {
           let extractOpts = Pacote.makeConfig(
-            Dict.fromArray([
-              ...registryEntries,
-              ("resolved", JSON.String(node->Arborist.resolved)),
-            ]),
+            Dict.fromArray(
+              [...registryEntries, ("resolved", JSON.String(node->Arborist.resolved))],
+            ),
           )
           let dest = NodePath.resolve([pathToSavedDependencies, node->Arborist.packageName])
           let _ = await RegistryRetry.withRetry(
             ~label="extract " ++ node->Arborist.packageName,
-            () => Pacote.extract(
-              node->Arborist.packageName ++ "@" ++ node->Arborist.version,
-              dest,
-              extractOpts,
-            ),
+            () =>
+              Pacote.extract(
+                node->Arborist.packageName ++ "@" ++ node->Arborist.version,
+                dest,
+                extractOpts,
+              ),
           )
 
           spinner->Ora.setSuffixText("")
@@ -189,11 +197,18 @@ let build = async (config: DependencyBundler_Config.t) => {
       } else {
         []
       },
-    filter: node => DependencyBundler_Filter.predIsNecessary(~excludeScopes, ~excludeModules, ~includeModules, ~includeScopes, node),
+    filter: node =>
+      DependencyBundler_Filter.predIsNecessary(
+        ~excludeScopes,
+        ~excludeModules,
+        ~includeModules,
+        ~includeScopes,
+        node,
+      ),
   })
 
   spinner->Ora.setSuffixText("")
-  let _ = spinner->Ora.succeed(())
+  let _ = spinner->Ora.succeed()
 
   // Fail the whole build if any post-processing step failed — a broken layer must
   // not be zipped and shipped as if it succeeded.
@@ -223,7 +238,7 @@ let build = async (config: DependencyBundler_Config.t) => {
   // --- zip ---
   let _ = spinner->Ora.start("zip layer to " ++ pathToLayerData)
   await ZipAFolder.zip(pathToLayerData, NodePath.join([pathToLayerData, "../reventless-layer.zip"]))
-  let _ = spinner->Ora.succeed(())
+  let _ = spinner->Ora.succeed()
 
   Console.log2("Extracted dependencies:", extractionCount.contents)
 }

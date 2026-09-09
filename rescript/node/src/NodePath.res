@@ -5,7 +5,6 @@
     two-argument `join` and a variadic one are not duplicates of each other —
     they are different functions with the same name, and which one a call site
     got used to depend on which inline binding block it happened to sit near. */
-
 @module("node:path") @variadic
 external join: array<string> => string = "join"
 

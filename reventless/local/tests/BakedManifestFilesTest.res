@@ -16,7 +16,6 @@ let keysOf = (config: ReventlessInfra.Platform.bakedManifest) =>
   BakedManifest.files(~config)->Array.map(((key, _)) => key)
 
 describe("BakedManifest.files", () => {
-
   // The regression line: one declaration, one file, under the name every
   // existing deployment's config.json already points at.
   testSync("a declaration with no journeys produces exactly one file", () => {
@@ -39,11 +38,7 @@ describe("BakedManifest.files", () => {
           {group: "Fulfilment", components: [sel("Ordering")], key: "fulfil.json"},
         ],
       }),
-    )->toEqual([
-      "component-manifest.json",
-      "component-manifest-shopper.json",
-      "fulfil.json",
-    ])
+    )->toEqual(["component-manifest.json", "component-manifest-shopper.json", "fulfil.json"])
   })
 
   // A group name is a Cognito identifier and a key is part of a URL, so the
@@ -55,10 +50,12 @@ describe("BakedManifest.files", () => {
   })
 
   testSync("carries each journey's own selections", () => {
-    let files = BakedManifest.files(~config={
-      components: [sel("Catalog")],
-      journeys: [{group: "Fulfilment", components: [sel("Ordering")]}],
-    })
+    let files = BakedManifest.files(
+      ~config={
+        components: [sel("Catalog")],
+        journeys: [{group: "Fulfilment", components: [sel("Ordering")]}],
+      },
+    )
     expect(files->Array.map(((_, sels)) => sels->Array.map(s => s.plugin)))->toEqual([
       ["Catalog"],
       ["Ordering"],

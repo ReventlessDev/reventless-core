@@ -196,8 +196,7 @@ let makeLoggerWith = (shouldLog: level => bool): t => {
 
 // Fixed-level logger — the level is baked at creation. Used by tests that assert
 // a specific minimum regardless of env/platform default.
-let makeLogger = (~minLevel=Info): t =>
-  makeLoggerWith(l => levelToInt(l) >= levelToInt(minLevel))
+let makeLogger = (~minLevel=Info): t => makeLoggerWith(l => levelToInt(l) >= levelToInt(minLevel))
 
 let silent: t = {
   debug: (~comp as _=?, ~data as _=?, _) => (),

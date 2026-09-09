@@ -25,19 +25,13 @@ module PlaceSpec = {
   let moduleUrl: string = %raw(`import.meta.url`)
 
   @schema
-  type event = Placed({
-    orderId: @s.matches(Reventless.DcbTag.string) string,
-    customerId: string,
-  })
+  type event = Placed({orderId: @s.matches(Reventless.DcbTag.string) string, customerId: string})
 
   @schema
   type consumedEvent = Placed
 
   @schema
-  type command = Place({
-    orderId: @s.matches(Reventless.DcbTag.string) string,
-    customerId: string,
-  })
+  type command = Place({orderId: @s.matches(Reventless.DcbTag.string) string, customerId: string})
 
   @schema
   type error = AlreadyPlaced
@@ -137,42 +131,40 @@ let dcbEventLog = DcbLogMaker.make(
 // ─────────────────────────────────────────────────────────────
 
 let publishJsons: ReventlessInfra.CommandTopic.publishJsons = async cmdJsons => {
-  let _ =
-    await cmdJsons
-    ->Array.map(async cmdJson => {
-      let typeName = switch cmdJson.commandJson {
-      | JSON.Object(dict) =>
-        dict
-        ->Dict.get("TAG")
-        ->Option.flatMap(j =>
-          switch j {
-          | JSON.String(s) => Some(s)
-          | _ => None
-          }
-        )
-        ->Option.getOr("")
-      | _ => ""
-      }
-      let fullBody = JSON.Encode.object(
-        Dict.fromArray([
-          ("id", JSON.Encode.string(cmdJson.id)),
-          ("meta", cmdJson.meta->Reventless.Util_Sury.toJson(Reventless.Message.metaSchema)),
-          ("command", cmdJson.commandJson),
-        ]),
+  let _ = await cmdJsons
+  ->Array.map(async cmdJson => {
+    let typeName = switch cmdJson.commandJson {
+    | JSON.Object(dict) =>
+      dict
+      ->Dict.get("TAG")
+      ->Option.flatMap(j =>
+        switch j {
+        | JSON.String(s) => Some(s)
+        | _ => None
+        }
       )
-      let handlers = ReventlessCore.CommandTopic.getHandlers(typeName)
-      let _ =
-        await handlers
-        ->Array.map(async entry => {
-          let item: ReventlessInfra.CommandTopic.topicItem<JSON.t> = {
-            reference: cmdJson.id,
-            command: fullBody,
-          }
-          let _ = await entry.handler(Stream.fromIterable([item]))->Effect.runPromise
-        })
-        ->Promise.all
+      ->Option.getOr("")
+    | _ => ""
+    }
+    let fullBody = JSON.Encode.object(
+      Dict.fromArray([
+        ("id", JSON.Encode.string(cmdJson.id)),
+        ("meta", cmdJson.meta->Reventless.Util_Sury.toJson(Reventless.Message.metaSchema)),
+        ("command", cmdJson.commandJson),
+      ]),
+    )
+    let handlers = ReventlessCore.CommandTopic.getHandlers(typeName)
+    let _ = await handlers
+    ->Array.map(async entry => {
+      let item: ReventlessInfra.CommandTopic.topicItem<JSON.t> = {
+        reference: cmdJson.id,
+        command: fullBody,
+      }
+      let _ = await entry.handler(Stream.fromIterable([item]))->Effect.runPromise
     })
     ->Promise.all
+  })
+  ->Promise.all
 }
 
 let publishJsonsOutput = publishJsons->Pulumi.Output.make
@@ -199,8 +191,10 @@ let sendConfirmSlice = SendConfirm.make(~dcbEventLog, ~publishJsons=publishJsons
 let placeCmdJson = (orderId: string): Reventless.Message.commandJson => {
   id: orderId,
   meta: testMeta,
-  commandJson: PlaceSpec.Place({orderId, customerId: "cust-" ++ orderId})
-    ->Reventless.Util_Sury.toJson(PlaceSpec.commandSchema),
+  commandJson: PlaceSpec.Place({
+    orderId,
+    customerId: "cust-" ++ orderId,
+  })->Reventless.Util_Sury.toJson(PlaceSpec.commandSchema),
 }
 
 let readEventTypes = async (orderId: string) => {

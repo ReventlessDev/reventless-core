@@ -119,7 +119,11 @@ module type T = {
 
   /** Pre-encodes a batch of typed EP commands for the runtime. */
   let mapIncomingCommands: (
-    array<CommandTopic.topicItem<Reventless.Message.command'<Reventless.Id.String.t, ExtensionPoint.command>>>,
+    array<
+      CommandTopic.topicItem<
+        Reventless.Message.command'<Reventless.Id.String.t, ExtensionPoint.command>,
+      >,
+    >,
     Reventless.Schedule.create,
     Reventless.Schedule.delete,
     Reventless.QueryEngine.operations,
@@ -162,12 +166,20 @@ module Make = (MappingImpl: Mapping): (
     queryEngine,
   ) =>
     topicItems
-    ->Array.map(({CommandTopic.reference: reference, command: {Reventless.Message.id: id, command, meta}}) =>
+    ->Array.map(({
+      CommandTopic.reference: reference,
+      command: {Reventless.Message.id: id, command, meta},
+    }) =>
       mapIncomingEventImpl(id->Reventless.Id.String.toString, command, meta)->Array.map(x =>
         switch x {
         | PublishCommand(targetId, targetCmd) =>
           let cmdJson = targetCmd->Reventless.Message.encode(Delegate.commandSchema)
-          compLog(`ExtensionPoint(${extensionPointName})`, `EP→${delegateName}: ${cmdJson->Reventless.Message.variantNameOfJson->Reventless.AnsiStyle.bold}(${targetId})`)
+          compLog(
+            `ExtensionPoint(${extensionPointName})`,
+            `EP→${delegateName}: ${cmdJson
+              ->Reventless.Message.variantNameOfJson
+              ->Reventless.AnsiStyle.bold}(${targetId})`,
+          )
 
           AbstractPublishCommand(
             delegateName,
@@ -211,15 +223,13 @@ module Make = (MappingImpl: Mapping): (
     queryEngine,
   ) => {
     let tag = variantTagOfEnvelope(targetEventJson')
+
     // Not this mapping's concern — skip without decoding.
     if !(acceptedTags->Array.includes(tag)) {
       []
     } else {
       let {id, meta, event} =
-        targetEventJson'->Reventless.Message.decodeEvent'(
-          Delegate.Id.schema,
-          Delegate.eventSchema,
-        )
+        targetEventJson'->Reventless.Message.decodeEvent'(Delegate.Id.schema, Delegate.eventSchema)
       mapOutgoingEventImpl(
         id->Delegate.Id.toString,
         event,
@@ -229,7 +239,12 @@ module Make = (MappingImpl: Mapping): (
         switch eventAction {
         | PublishEvent(id, event) =>
           let eventJson = event->Reventless.Message.encode(Spec.eventSchema)
-          compLog(`ExtensionPoint(${extensionPointName})`, `mapped ${delegateName} → ${eventJson->Reventless.Message.variantNameOfJson->Reventless.AnsiStyle.bold}(${id})`)
+          compLog(
+            `ExtensionPoint(${extensionPointName})`,
+            `mapped ${delegateName} → ${eventJson
+              ->Reventless.Message.variantNameOfJson
+              ->Reventless.AnsiStyle.bold}(${id})`,
+          )
           let meta = {
             ...meta,
             service: Spec.name,
@@ -241,7 +256,12 @@ module Make = (MappingImpl: Mapping): (
           let toEvent' = async promise => {
             let (id, event) = await promise
             let eventJson = event->Reventless.Message.encode(Spec.eventSchema)
-            compLog(`ExtensionPoint(${extensionPointName})`, `mapped ${delegateName} → ${eventJson->Reventless.Message.variantNameOfJson->Reventless.AnsiStyle.bold}(${id}) (async)`)
+            compLog(
+              `ExtensionPoint(${extensionPointName})`,
+              `mapped ${delegateName} → ${eventJson
+                ->Reventless.Message.variantNameOfJson
+                ->Reventless.AnsiStyle.bold}(${id}) (async)`,
+            )
             let eventJson' = Reventless.Message.composeEventJson'(id, meta, eventJson) // TODO: check if meta is correct
             (id, meta, eventJson')
           }
@@ -249,8 +269,8 @@ module Make = (MappingImpl: Mapping): (
         | HandleDirective(handler, directive) =>
           compLog(`ExtensionPoint(${extensionPointName})`, `mapped ${delegateName} → directive`)
 
-          AbstractHandleDirective(() =>
-            handler(createSchedule, deleteSchedule, queryEngine, directive)
+          AbstractHandleDirective(
+            () => handler(createSchedule, deleteSchedule, queryEngine, directive),
           )
         }
       )

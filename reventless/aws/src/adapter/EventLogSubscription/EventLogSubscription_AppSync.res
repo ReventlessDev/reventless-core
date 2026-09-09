@@ -21,7 +21,7 @@ open PulumiAws
 // carrying `@/./:` etc. doesn't hit a silent-drop. Mirrors
 // AppSyncEventsSigner_Ops.pathSegment (the runtime handler's equivalent).
 let channelNameOf = (topicName: string): string =>
-  topicName->String.replaceRegExp(%re("/[^A-Za-z0-9-]/g"), "-")
+  topicName->String.replaceRegExp(/[^A-Za-z0-9-]/g, "-")
 
 // ── Deploy-time resource builder ──────────────────────────────────────────────
 
@@ -114,10 +114,7 @@ let make = (
 
   // IAM policy: SQS receive + AppSync Events publish
   let _ =
-    (
-      queue.arn,
-      eventsApi.api.apiArn,
-    )
+    (queue.arn, eventsApi.api.apiArn)
     ->Pulumi.Output.all2
     ->Pulumi.Output.apply(((queueArn, apiArn)) => {
       open PolicyDocument
@@ -165,7 +162,10 @@ let make = (
   // resolve-hook so `@rescript/runtime` resolves from the layer.
   let channelName = channelNameOf(topicName)
   let packageDirs = Dict.fromArray([
-    ("@reventlessdev/reventless-aws", Util_Bundle.resolvePackageRoot("@reventlessdev/reventless-aws")),
+    (
+      "@reventlessdev/reventless-aws",
+      Util_Bundle.resolvePackageRoot("@reventlessdev/reventless-aws"),
+    ),
   ])
   let {code, sourceCodeHash} = Util_Bundle.buildCodeArchive(
     ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/EventLogSubscription/EventLogSubscription_AppSync_Ops.res.mjs",
@@ -192,7 +192,12 @@ let make = (
       memorySize: 128->Pulumi.Input.make,
       timeout: 30->Pulumi.Input.make,
       layers,
-      tags: AWS.Tags.make(~name=name ++ "EventLogSub", ~kind=ReventlessCore.EventTopic.componentType, ~role=EventLogSubscription, ~component=name),
+      tags: AWS.Tags.make(
+        ~name=name ++ "EventLogSub",
+        ~kind=ReventlessCore.EventTopic.componentType,
+        ~role=EventLogSubscription,
+        ~component=name,
+      ),
       environment: (
         {
           Lambda.Function.variables: Dict.fromArray([

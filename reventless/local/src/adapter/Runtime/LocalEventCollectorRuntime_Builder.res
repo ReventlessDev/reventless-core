@@ -25,7 +25,9 @@ module Make = (
   ) => {
     let resource = eventCollector->ReventlessCore.Component.toPulumiResource
     let name =
-      resource.name->ReventlessCore.ComponentType.nameOpt(ReventlessCore.EventCollector.componentType)
+      resource.name->ReventlessCore.ComponentType.nameOpt(
+        ReventlessCore.EventCollector.componentType,
+      )
     // Same `comp` shape as the deployed dispatchers — see EventCollectorRuntime_Builder_Single.
     let comp = `EventCollector(${resource.name->Option.getOr("Unnamed")})`
     let opts = {Pulumi.ComponentResource.parent: resource}
@@ -46,7 +48,11 @@ module Make = (
     let _connectResources = EventCollectorChannel.connect(
       ~name,
       ~channelSpecs=[
-        {channel: eventCollector->ReventlessCore.EventCollector_Adapter.channel, eventTopics, resources},
+        {
+          channel: eventCollector->ReventlessCore.EventCollector_Adapter.channel,
+          eventTopics,
+          resources,
+        },
       ],
       ~runtime,
       ~opts,

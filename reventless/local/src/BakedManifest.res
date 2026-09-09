@@ -16,10 +16,10 @@ let log = ReventlessCore.Logger.fromEnv()
  for the reason the curation is: the key a file is written under and the URL a
  shell fetches it from have to be the same string on either platform.
  */
-let files = (
-  ~config: ReventlessInfra.Platform.bakedManifest,
-): array<(string, array<ReventlessCore.Platform_BakedManifest.selection>)> =>
-  ReventlessCore.Platform_BakedManifest.files(~config)
+let files = (~config: ReventlessInfra.Platform.bakedManifest): array<(
+  string,
+  array<ReventlessCore.Platform_BakedManifest.selection>,
+)> => ReventlessCore.Platform_BakedManifest.files(~config)
 
 /**
  A declared bake writes the files or fails loudly. Both failure modes it can hit
@@ -46,8 +46,7 @@ let emit = (
   | None =>
     JsError.throwWithMessage(
       `baked manifest: cannot resolve ${HostShellDist.package} from ${NodeProcess.cwd()} — ` ++
-      `the local shell serves the file from that package's dist/, so declaring a bake ` ++
-      `without the package installed would write nothing and render an empty shell.`,
+      `the local shell serves the file from that package's dist/, so declaring a bake ` ++ `without the package installed would write nothing and render an empty shell.`,
     )
   | Some(dir) =>
     curated->Array.forEach(((key, manifest)) => {

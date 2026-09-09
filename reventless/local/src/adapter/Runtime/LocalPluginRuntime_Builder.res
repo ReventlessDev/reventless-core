@@ -4,8 +4,5 @@
 module Make = (Bus: LocalBus.T) => {
   module ECChannel = LocalEventCollectorChannel.Make(Bus)
 
-  include ReventlessCore.PluginRuntime_Builder_Micro.Make(
-    LocalRuntimeEnvironment,
-    ECChannel,
-  )
+  include ReventlessCore.PluginRuntime_Builder_Micro.Make(LocalRuntimeEnvironment, ECChannel)
 }

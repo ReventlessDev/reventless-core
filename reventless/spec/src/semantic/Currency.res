@@ -47,182 +47,201 @@ a checked type in the domain.
 */
 @schema
 type t =
-  | /** Australian Dollar */ AUD
-  | /** Canadian Dollar */ CAD
-  | /** Swiss Franc */ CHF
-  | /** Yuan Renminbi */ CNY
-  | /** Euro */ EUR
-  | /** Pound Sterling */ GBP
-  | /** Yen */ JPY
-  | /** Norwegian Krone */ NOK
-  | /** Swedish Krona */ SEK
-  | /** US Dollar */ USD
+  /** Australian Dollar */
+  | AUD
+  /** Canadian Dollar */
+  | CAD
+  /** Swiss Franc */
+  | CHF
+  /** Yuan Renminbi */
+  | CNY
+  /** Euro */
+  | EUR
+  /** Pound Sterling */
+  | GBP
+  /** Yen */
+  | JPY
+  /** Norwegian Krone */
+  | NOK
+  /** Swedish Krona */
+  | SEK
+  /** US Dollar */
+  | USD
 
-  // ── Dormant ─────────────────────────────────────────────────────────────
-  // The rest of ISO 4217, kept for the day one of them is needed. Uncomment
-  // the code here and in the other three blocks — or add it to `active` in
-  // scripts/GenerateCurrency.res and regenerate — to admit it.
-  // | /** UAE Dirham */ AED
-  // | /** Afghani */ AFN
-  // | /** Lek */ ALL
-  // | /** Armenian Dram */ AMD
-  // | /** Kwanza */ AOA
-  // | /** Argentine Peso */ ARS
-  // | /** Aruban Florin */ AWG
-  // | /** Azerbaijan Manat */ AZN
-  // | /** Convertible Mark */ BAM
-  // | /** Barbados Dollar */ BBD
-  // | /** Taka */ BDT
-  // | /** Bahraini Dinar */ BHD
-  // | /** Burundi Franc */ BIF
-  // | /** Bermudian Dollar */ BMD
-  // | /** Brunei Dollar */ BND
-  // | /** Boliviano */ BOB
-  // | /** BOV */ BOV
-  // | /** Brazilian Real */ BRL
-  // | /** Bahamian Dollar */ BSD
-  // | /** Ngultrum */ BTN
-  // | /** Pula */ BWP
-  // | /** Belarusian Ruble */ BYN
-  // | /** Belize Dollar */ BZD
-  // | /** Congolese Franc */ CDF
-  // | /** CHE */ CHE
-  // | /** CHW */ CHW
-  // | /** CLF */ CLF
-  // | /** Chilean Peso */ CLP
-  // | /** Colombian Peso */ COP
-  // | /** COU */ COU
-  // | /** Costa Rican Colon */ CRC
-  // | /** Cuban Peso */ CUP
-  // | /** Cabo Verde Escudo */ CVE
-  // | /** Czech Koruna */ CZK
-  // | /** Djibouti Franc */ DJF
-  // | /** Danish Krone */ DKK
-  // | /** Dominican Peso */ DOP
-  // | /** Algerian Dinar */ DZD
-  // | /** Egyptian Pound */ EGP
-  // | /** Nakfa */ ERN
-  // | /** Ethiopian Birr */ ETB
-  // | /** Fiji Dollar */ FJD
-  // | /** Falkland Islands Pound */ FKP
-  // | /** Lari */ GEL
-  // | /** Ghana Cedi */ GHS
-  // | /** Gibraltar Pound */ GIP
-  // | /** Dalasi */ GMD
-  // | /** Guinean Franc */ GNF
-  // | /** Quetzal */ GTQ
-  // | /** Guyana Dollar */ GYD
-  // | /** Hong Kong Dollar */ HKD
-  // | /** Lempira */ HNL
-  // | /** Gourde */ HTG
-  // | /** Forint */ HUF
-  // | /** Rupiah */ IDR
-  // | /** New Israeli Sheqel */ ILS
-  // | /** Indian Rupee */ INR
-  // | /** Iraqi Dinar */ IQD
-  // | /** Iranian Rial */ IRR
-  // | /** Iceland Krona */ ISK
-  // | /** Jamaican Dollar */ JMD
-  // | /** Jordanian Dinar */ JOD
-  // | /** Kenyan Shilling */ KES
-  // | /** Som */ KGS
-  // | /** Riel */ KHR
-  // | /** Comorian Franc */ KMF
-  // | /** North Korean Won */ KPW
-  // | /** Won */ KRW
-  // | /** Kuwaiti Dinar */ KWD
-  // | /** Cayman Islands Dollar */ KYD
-  // | /** Tenge */ KZT
-  // | /** Lao Kip */ LAK
-  // | /** Lebanese Pound */ LBP
-  // | /** Sri Lanka Rupee */ LKR
-  // | /** Liberian Dollar */ LRD
-  // | /** Loti */ LSL
-  // | /** Libyan Dinar */ LYD
-  // | /** Moroccan Dirham */ MAD
-  // | /** Moldovan Leu */ MDL
-  // | /** Malagasy Ariary */ MGA
-  // | /** Denar */ MKD
-  // | /** Kyat */ MMK
-  // | /** Tugrik */ MNT
-  // | /** Pataca */ MOP
-  // | /** Ouguiya */ MRU
-  // | /** Mauritius Rupee */ MUR
-  // | /** Rufiyaa */ MVR
-  // | /** Malawi Kwacha */ MWK
-  // | /** Mexican Peso */ MXN
-  // | /** MXV */ MXV
-  // | /** Malaysian Ringgit */ MYR
-  // | /** Mozambique Metical */ MZN
-  // | /** Namibia Dollar */ NAD
-  // | /** Naira */ NGN
-  // | /** Cordoba Oro */ NIO
-  // | /** Nepalese Rupee */ NPR
-  // | /** New Zealand Dollar */ NZD
-  // | /** Rial Omani */ OMR
-  // | /** Balboa */ PAB
-  // | /** Sol */ PEN
-  // | /** Kina */ PGK
-  // | /** Philippine Peso */ PHP
-  // | /** Pakistan Rupee */ PKR
-  // | /** Zloty */ PLN
-  // | /** Guarani */ PYG
-  // | /** Qatari Rial */ QAR
-  // | /** Romanian Leu */ RON
-  // | /** Serbian Dinar */ RSD
-  // | /** Russian Ruble */ RUB
-  // | /** Rwanda Franc */ RWF
-  // | /** Saudi Riyal */ SAR
-  // | /** Solomon Islands Dollar */ SBD
-  // | /** Seychelles Rupee */ SCR
-  // | /** Sudanese Pound */ SDG
-  // | /** Singapore Dollar */ SGD
-  // | /** Saint Helena Pound */ SHP
-  // | /** Leone */ SLE
-  // | /** Somali Shilling */ SOS
-  // | /** Surinam Dollar */ SRD
-  // | /** South Sudanese Pound */ SSP
-  // | /** Dobra */ STN
-  // | /** El Salvador Colon */ SVC
-  // | /** Syrian Pound */ SYP
-  // | /** Lilangeni */ SZL
-  // | /** Baht */ THB
-  // | /** Somoni */ TJS
-  // | /** Turkmenistan New Manat */ TMT
-  // | /** Tunisian Dinar */ TND
-  // | /** Pa’anga */ TOP
-  // | /** Turkish Lira */ TRY
-  // | /** Trinidad and Tobago Dollar */ TTD
-  // | /** New Taiwan Dollar */ TWD
-  // | /** Tanzanian Shilling */ TZS
-  // | /** Hryvnia */ UAH
-  // | /** Uganda Shilling */ UGX
-  // | /** USN */ USN
-  // | /** UYI */ UYI
-  // | /** Peso Uruguayo */ UYU
-  // | /** Unidad Previsional */ UYW
-  // | /** Uzbekistan Sum */ UZS
-  // | /** Bolívar Soberano */ VED
-  // | /** Bolívar Soberano */ VES
-  // | /** Dong */ VND
-  // | /** Vatu */ VUV
-  // | /** Tala */ WST
-  // | /** Arab Accounting Dinar */ XAD
-  // | /** CFA Franc BEAC */ XAF
-  // | /** East Caribbean Dollar */ XCD
-  // | /** Caribbean Guilder */ XCG
-  // | /** CFA Franc BCEAO */ XOF
-  // | /** CFP Franc */ XPF
-  // | /** Yemeni Rial */ YER
-  // | /** Rand */ ZAR
-  // | /** Zambian Kwacha */ ZMW
-  // | /** Zimbabwe Gold */ ZWG
+// ── Dormant ─────────────────────────────────────────────────────────────
+// The rest of ISO 4217, kept for the day one of them is needed. Uncomment
+// the code here and in the other three blocks — or add it to `active` in
+// scripts/GenerateCurrency.res and regenerate — to admit it.
+// | /** UAE Dirham */ AED
+// | /** Afghani */ AFN
+// | /** Lek */ ALL
+// | /** Armenian Dram */ AMD
+// | /** Kwanza */ AOA
+// | /** Argentine Peso */ ARS
+// | /** Aruban Florin */ AWG
+// | /** Azerbaijan Manat */ AZN
+// | /** Convertible Mark */ BAM
+// | /** Barbados Dollar */ BBD
+// | /** Taka */ BDT
+// | /** Bahraini Dinar */ BHD
+// | /** Burundi Franc */ BIF
+// | /** Bermudian Dollar */ BMD
+// | /** Brunei Dollar */ BND
+// | /** Boliviano */ BOB
+// | /** BOV */ BOV
+// | /** Brazilian Real */ BRL
+// | /** Bahamian Dollar */ BSD
+// | /** Ngultrum */ BTN
+// | /** Pula */ BWP
+// | /** Belarusian Ruble */ BYN
+// | /** Belize Dollar */ BZD
+// | /** Congolese Franc */ CDF
+// | /** CHE */ CHE
+// | /** CHW */ CHW
+// | /** CLF */ CLF
+// | /** Chilean Peso */ CLP
+// | /** Colombian Peso */ COP
+// | /** COU */ COU
+// | /** Costa Rican Colon */ CRC
+// | /** Cuban Peso */ CUP
+// | /** Cabo Verde Escudo */ CVE
+// | /** Czech Koruna */ CZK
+// | /** Djibouti Franc */ DJF
+// | /** Danish Krone */ DKK
+// | /** Dominican Peso */ DOP
+// | /** Algerian Dinar */ DZD
+// | /** Egyptian Pound */ EGP
+// | /** Nakfa */ ERN
+// | /** Ethiopian Birr */ ETB
+// | /** Fiji Dollar */ FJD
+// | /** Falkland Islands Pound */ FKP
+// | /** Lari */ GEL
+// | /** Ghana Cedi */ GHS
+// | /** Gibraltar Pound */ GIP
+// | /** Dalasi */ GMD
+// | /** Guinean Franc */ GNF
+// | /** Quetzal */ GTQ
+// | /** Guyana Dollar */ GYD
+// | /** Hong Kong Dollar */ HKD
+// | /** Lempira */ HNL
+// | /** Gourde */ HTG
+// | /** Forint */ HUF
+// | /** Rupiah */ IDR
+// | /** New Israeli Sheqel */ ILS
+// | /** Indian Rupee */ INR
+// | /** Iraqi Dinar */ IQD
+// | /** Iranian Rial */ IRR
+// | /** Iceland Krona */ ISK
+// | /** Jamaican Dollar */ JMD
+// | /** Jordanian Dinar */ JOD
+// | /** Kenyan Shilling */ KES
+// | /** Som */ KGS
+// | /** Riel */ KHR
+// | /** Comorian Franc */ KMF
+// | /** North Korean Won */ KPW
+// | /** Won */ KRW
+// | /** Kuwaiti Dinar */ KWD
+// | /** Cayman Islands Dollar */ KYD
+// | /** Tenge */ KZT
+// | /** Lao Kip */ LAK
+// | /** Lebanese Pound */ LBP
+// | /** Sri Lanka Rupee */ LKR
+// | /** Liberian Dollar */ LRD
+// | /** Loti */ LSL
+// | /** Libyan Dinar */ LYD
+// | /** Moroccan Dirham */ MAD
+// | /** Moldovan Leu */ MDL
+// | /** Malagasy Ariary */ MGA
+// | /** Denar */ MKD
+// | /** Kyat */ MMK
+// | /** Tugrik */ MNT
+// | /** Pataca */ MOP
+// | /** Ouguiya */ MRU
+// | /** Mauritius Rupee */ MUR
+// | /** Rufiyaa */ MVR
+// | /** Malawi Kwacha */ MWK
+// | /** Mexican Peso */ MXN
+// | /** MXV */ MXV
+// | /** Malaysian Ringgit */ MYR
+// | /** Mozambique Metical */ MZN
+// | /** Namibia Dollar */ NAD
+// | /** Naira */ NGN
+// | /** Cordoba Oro */ NIO
+// | /** Nepalese Rupee */ NPR
+// | /** New Zealand Dollar */ NZD
+// | /** Rial Omani */ OMR
+// | /** Balboa */ PAB
+// | /** Sol */ PEN
+// | /** Kina */ PGK
+// | /** Philippine Peso */ PHP
+// | /** Pakistan Rupee */ PKR
+// | /** Zloty */ PLN
+// | /** Guarani */ PYG
+// | /** Qatari Rial */ QAR
+// | /** Romanian Leu */ RON
+// | /** Serbian Dinar */ RSD
+// | /** Russian Ruble */ RUB
+// | /** Rwanda Franc */ RWF
+// | /** Saudi Riyal */ SAR
+// | /** Solomon Islands Dollar */ SBD
+// | /** Seychelles Rupee */ SCR
+// | /** Sudanese Pound */ SDG
+// | /** Singapore Dollar */ SGD
+// | /** Saint Helena Pound */ SHP
+// | /** Leone */ SLE
+// | /** Somali Shilling */ SOS
+// | /** Surinam Dollar */ SRD
+// | /** South Sudanese Pound */ SSP
+// | /** Dobra */ STN
+// | /** El Salvador Colon */ SVC
+// | /** Syrian Pound */ SYP
+// | /** Lilangeni */ SZL
+// | /** Baht */ THB
+// | /** Somoni */ TJS
+// | /** Turkmenistan New Manat */ TMT
+// | /** Tunisian Dinar */ TND
+// | /** Pa’anga */ TOP
+// | /** Turkish Lira */ TRY
+// | /** Trinidad and Tobago Dollar */ TTD
+// | /** New Taiwan Dollar */ TWD
+// | /** Tanzanian Shilling */ TZS
+// | /** Hryvnia */ UAH
+// | /** Uganda Shilling */ UGX
+// | /** USN */ USN
+// | /** UYI */ UYI
+// | /** Peso Uruguayo */ UYU
+// | /** Unidad Previsional */ UYW
+// | /** Uzbekistan Sum */ UZS
+// | /** Bolívar Soberano */ VED
+// | /** Bolívar Soberano */ VES
+// | /** Dong */ VND
+// | /** Vatu */ VUV
+// | /** Tala */ WST
+// | /** Arab Accounting Dinar */ XAD
+// | /** CFA Franc BEAC */ XAF
+// | /** East Caribbean Dollar */ XCD
+// | /** Caribbean Guilder */ XCG
+// | /** CFA Franc BCEAO */ XOF
+// | /** CFP Franc */ XPF
+// | /** Yemeni Rial */ YER
+// | /** Rand */ ZAR
+// | /** Zambian Kwacha */ ZMW
+// | /** Zimbabwe Gold */ ZWG
 
 /** Every currency the type admits, in code order. `fromString` is derived from
     this, so a code that parses and a code that exists are the same set by
     construction. */
 let all: array<t> = [
-  AUD, CAD, CHF, CNY, EUR, GBP, JPY, NOK, SEK, USD,
+  AUD,
+  CAD,
+  CHF,
+  CNY,
+  EUR,
+  GBP,
+  JPY,
+  NOK,
+  SEK,
+  USD,
   // AED, AFN, ALL, AMD, AOA, ARS, AWG, AZN, BAM, BBD, BDT, BHD, BIF, BMD, BND, BOB, BOV, BRL,
   // BSD, BTN, BWP, BYN, BZD, CDF, CHE, CHW, CLF, CLP, COP, COU, CRC, CUP, CVE, CZK, DJF, DKK,
   // DOP, DZD, EGP, ERN, ETB, FJD, FKP, GEL, GHS, GIP, GMD, GNF, GTQ, GYD, HKD, HNL, HTG, HUF,

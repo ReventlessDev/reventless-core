@@ -1,7 +1,8 @@
 let make: ReventlessCore.EventTopic_Adapter.publisherMaker = (
   ~name as _,
   ~storageResources,
-  ~owner as _, ~opts as _,
+  ~owner as _,
+  ~opts as _,
 ) => {
   let storageResource = storageResources->Util.DynamoDbStream.findResource
 
@@ -20,6 +21,6 @@ let make: ReventlessCore.EventTopic_Adapter.publisherMaker = (
       ->ReventlessCore.Adapter.outputToResource,
     ],
     publishJson: Pulumi.Output.make((_, _, _) => Promise.resolve()), // ignore
-    publishJsonStream: Pulumi.Output.make(_stream => Effect.succeed(())), // ignore
+    publishJsonStream: Pulumi.Output.make(_stream => Effect.succeed()), // ignore
   }
 }

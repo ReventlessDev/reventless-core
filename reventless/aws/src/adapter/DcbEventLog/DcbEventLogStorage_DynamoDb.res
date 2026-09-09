@@ -34,10 +34,9 @@ let make: ReventlessCore.DcbEventLog_Adapter.storageMaker = (
   let globalSecondaryIndexes =
     indexes
     ->Array.map(indexName => {
-      let projectionType =
-        DcbEventLogStorage_DynamoDb_Runtime.indexKeepsFullProjection(indexName)
-          ? PulumiAws.DynamoDb.Table.ALL
-          : PulumiAws.DynamoDb.Table.KEYS_ONLY
+      let projectionType = DcbEventLogStorage_DynamoDb_Runtime.indexKeepsFullProjection(indexName)
+        ? PulumiAws.DynamoDb.Table.ALL
+        : PulumiAws.DynamoDb.Table.KEYS_ONLY
       {
         PulumiAws.DynamoDb.Table.name: indexName,
         hashKey: indexName,
@@ -50,7 +49,12 @@ let make: ReventlessCore.DcbEventLog_Adapter.storageMaker = (
 
   // Create DynamoDB table with stream enabled — EventTopicPublisher_DynamoDbStream
   // needs a DynamoDbStream resource to connect the EventTopic.
-  let tags = AWS.Tags.make(~name, ~kind=ReventlessCore.ComponentType.Plugin, ~role=DcbEventLog, ~scope=Plugin)
+  let tags = AWS.Tags.make(
+    ~name,
+    ~kind=ReventlessCore.ComponentType.Plugin,
+    ~role=DcbEventLog,
+    ~scope=Plugin,
+  )
   let table = Util_DynamoDbStream.makeTable(
     name,
     ~attributes,

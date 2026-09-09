@@ -21,17 +21,18 @@ let ordering = (name: string): string => `Ordering_${name}`
     *enum* rather than a string — the closed ReScript type reaches the API as a
     closed GraphQL type. Quoting it here would be rejected by the server, which
     is the one detail worth centralising in this file. */
-let money = (m: Reventless.Money.t): Seed.value =>
-  Object([
-    ("amount", Float(m.amount)),
-    ("currency", Enum(Reventless.Currency.toString(m.currency))),
-  ])
+let money = (m: Reventless.Money.t): Seed.value => Object([
+  ("amount", Float(m.amount)),
+  ("currency", Enum(Reventless.Currency.toString(m.currency))),
+])
 
 /** A `DateRange.t` argument is a GraphQL input object of two ISO instants. `end`
     is the wire field name (`@as("end")` in the type), so it is `end` here too —
     the composite reaches the API as one nested input, not a guessed field pair. */
-let dateRange = (r: Reventless.DateRange.t): Seed.value =>
-  Object([("start", String(r.start)), ("end", String(r.end_))])
+let dateRange = (r: Reventless.DateRange.t): Seed.value => Object([
+  ("start", String(r.start)),
+  ("end", String(r.end_)),
+])
 
 // ── Catalog ─────────────────────────────────────────────────────────────────
 
@@ -45,7 +46,7 @@ let addCategory = (command: CatalogPlugin.AddCategory.command): Seed.mutation =>
 // text is optional on the set command and sent only when present.
 let categoryImages = (command: CatalogPlugin.CategoryImages.command): Seed.mutation =>
   switch command {
-  | SetCategoryImage({categoryId, categoryImage, altText: ?altText}) =>
+  | SetCategoryImage({categoryId, categoryImage, ?altText}) =>
     let base: array<(string, Seed.value)> = [
       ("categoryId", Id(categoryId)),
       ("categoryImage", String(categoryImage)),
@@ -65,7 +66,7 @@ let categoryImages = (command: CatalogPlugin.CategoryImages.command): Seed.mutat
 // captions the members it attaches.
 let productImages = (command: CatalogPlugin.ProductImages.command): Seed.mutation =>
   switch command {
-  | AttachProductImage({productId, productImage, altText: ?altText}) =>
+  | AttachProductImage({productId, productImage, ?altText}) =>
     let base: array<(string, Seed.value)> = [
       ("productId", Id(productId)),
       ("productImage", String(productImage)),
@@ -89,8 +90,7 @@ let productImages = (command: CatalogPlugin.ProductImages.command): Seed.mutatio
         ("altText", String(altText)),
       ],
     )
-  | RemoveProductImage(_) =>
-    throw(Seed.Failed("the seed does not drive RemoveProductImage"))
+  | RemoveProductImage(_) => throw(Seed.Failed("the seed does not drive RemoveProductImage"))
   }
 
 let renameCategory = (command: CatalogPlugin.RenameCategory.command): Seed.mutation =>
@@ -246,10 +246,7 @@ let customer = (~id: string, command: OrderingPlugin.Customer.command): Seed.mut
       [
         ("id", Id(id)),
         ("address", String(address)),
-        (
-          "location",
-          Object([("lat", Float(location.lat)), ("lng", Float(location.lng))]),
-        ),
+        ("location", Object([("lat", Float(location.lat)), ("lng", Float(location.lng))])),
       ],
     )
   | Deactivate => Seed.mutation(ordering("Customer_Deactivate"), [("id", Id(id))])
@@ -259,7 +256,6 @@ let customer = (~id: string, command: OrderingPlugin.Customer.command): Seed.mut
   // loudly beats mapping to a field name the schema does not have.
   | SetLocation(_) | MarkAddressUnresolvable(_) =>
     failwith(
-      "Customer.SetLocation / MarkAddressUnresolvable are internal (@noApi) — " ++
-      "seed a located customer with SetAddressLocation instead.",
+      "Customer.SetLocation / MarkAddressUnresolvable are internal (@noApi) — " ++ "seed a located customer with SetAddressLocation instead.",
     )
   }

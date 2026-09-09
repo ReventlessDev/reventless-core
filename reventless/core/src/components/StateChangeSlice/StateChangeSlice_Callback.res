@@ -307,7 +307,9 @@ module Make = (
         }
         EffectLogger.logInfo(
           ~comp,
-          `read${cacheHit ? " (cached, delta)" : ""}: ${reads->Array.length->Int.toString} event(s)${reads->Array.length == 0
+          `read${cacheHit ? " (cached, delta)" : ""}: ${reads
+            ->Array.length
+            ->Int.toString} event(s)${reads->Array.length == 0
               ? ""
               : ` [${reads->Array.join(", ")}]`}`,
         )
@@ -337,8 +339,8 @@ module Make = (
             EffectLogger.logInfo(~comp, "no events produced")->Effect.map(_ => Ok("ok"))
           | Ok(newEvents) =>
             let rawEvents =
-              newEvents->Array.map(e =>
-                encodeEvent(~parentMeta=command'.meta, ~tagKeysByEventType, e)
+              newEvents->Array.map(
+                e => encodeEvent(~parentMeta=command'.meta, ~tagKeysByEventType, e),
               )
             let eventCount = rawEvents->Array.length->Int.toString
             let eventDetails =
@@ -393,7 +395,10 @@ module Make = (
                   // Typed classification (was substring-matching the error string,
                   // which disagreed with the backends' casing).
                   let (errorCode, errDetail) = switch err {
-                  | ReventlessInfra.DcbEventLog.Conflict => ("Conflict", "conflict: condition check failed")
+                  | ReventlessInfra.DcbEventLog.Conflict => (
+                      "Conflict",
+                      "conflict: condition check failed",
+                    )
                   | StorageFailure(msg) => ("AppendFailed", msg)
                   }
                   if retries > 0 {
@@ -413,6 +418,7 @@ module Make = (
                     // Retries exhausted — drop any cached snapshot so the next
                     // command for this entity takes the cold full-read path.
                     cacheInvalidate()
+
                     // A surfaced Conflict means the 3-retry loop could not absorb
                     // the contention — the operator signal for "this slice is hot"
                     // (consider sharding / async — Issue 10, §4 of the analysis).
@@ -465,10 +471,20 @@ module Make = (
 
   // CommandTopic handler — processes each command sequentially through handleSingleCommand,
   // returning Ok(reference) or Error(reference) per command.
-  let handleCommands = (~tagKeysByEventType=Dict.make(), ~crossPartitionTagKeys=[], dcbEventLog, stream) =>
+  let handleCommands = (
+    ~tagKeysByEventType=Dict.make(),
+    ~crossPartitionTagKeys=[],
+    dcbEventLog,
+    stream,
+  ) =>
     stream
     ->Stream.mapEffect(({ReventlessInfra.CommandTopic.reference: reference, command}) =>
-      handleSingleCommand(~tagKeysByEventType, ~crossPartitionTagKeys, dcbEventLog, command)->Effect.map(result =>
+      handleSingleCommand(
+        ~tagKeysByEventType,
+        ~crossPartitionTagKeys,
+        dcbEventLog,
+        command,
+      )->Effect.map(result =>
         switch result {
         | Ok(_) => Ok(reference)
         | Error(_) => Error(reference)

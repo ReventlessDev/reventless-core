@@ -14,10 +14,22 @@ external openDatabaseSync: string => t = "DatabaseSync"
 // node:sqlite accepts ...positional bound values. Use Function.prototype.apply
 // via a small inline helper so the array is splatted without ReScript's
 // `@send` syntax accidentally treating `run.apply` as a single property name.
-let _runApply: (statement, array<JSON.t>) => unit = %raw(`function(s, a) { return s.run.apply(s, a); }`)
-let _getApply: (statement, array<JSON.t>) => Nullable.t<dict<JSON.t>> = %raw(`function(s, a) { return s.get.apply(s, a); }`)
-let _allApply: (statement, array<JSON.t>) => array<dict<JSON.t>> = %raw(`function(s, a) { return s.all.apply(s, a); }`)
-let _iterateApply: (statement, array<JSON.t>) => Iterator.t<dict<JSON.t>> = %raw(`function(s, a) { return s.iterate.apply(s, a); }`)
+let _runApply: (
+  statement,
+  array<JSON.t>,
+) => unit = %raw(`function(s, a) { return s.run.apply(s, a); }`)
+let _getApply: (
+  statement,
+  array<JSON.t>,
+) => Nullable.t<dict<JSON.t>> = %raw(`function(s, a) { return s.get.apply(s, a); }`)
+let _allApply: (
+  statement,
+  array<JSON.t>,
+) => array<dict<JSON.t>> = %raw(`function(s, a) { return s.all.apply(s, a); }`)
+let _iterateApply: (
+  statement,
+  array<JSON.t>,
+) => Iterator.t<dict<JSON.t>> = %raw(`function(s, a) { return s.iterate.apply(s, a); }`)
 
 let openDb = (~path) => {
   if path !== ":memory:" {

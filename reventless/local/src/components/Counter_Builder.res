@@ -6,9 +6,5 @@ module Make = (Bus: LocalBus.T) => {
     let api = () => ()
     let apiRole = () => ()
   }
-  include ReventlessCore.Counter_Builder.Make(
-    QueryDbStorage,
-    Api,
-    LocalCounterHandler,
-  )
+  include ReventlessCore.Counter_Builder.Make(QueryDbStorage, Api, LocalCounterHandler)
 }

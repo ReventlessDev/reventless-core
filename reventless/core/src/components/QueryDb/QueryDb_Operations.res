@@ -19,8 +19,7 @@ module Make = (ReadModelSpec: Reventless.ReadModel.Spec, Ops: Ops) => {
     }
 
   let loadStream = id =>
-    Ops.jsonOps.loadStream(id->ReadModelSpec.Id.toString)
-    ->Stream.mapEffect(json =>
+    Ops.jsonOps.loadStream(id->ReadModelSpec.Id.toString)->Stream.mapEffect(json =>
       switch decode(id, json) {
       | Ok(s) => Effect.succeed(s)
       | Error(e) => Effect.fail(e)
@@ -32,9 +31,7 @@ module Make = (ReadModelSpec: Reventless.ReadModel.Spec, Ops: Ops) => {
     | result =>
       result->Result.flatMap(states =>
         states->Array.reduce(Ok([]), (acc, state) =>
-          acc->Result.flatMap(arr =>
-            decode(id, state)->Result.map(s => arr->Array.concat([s]))
-          )
+          acc->Result.flatMap(arr => decode(id, state)->Result.map(s => arr->Array.concat([s])))
         )
       )
     }
@@ -51,7 +48,7 @@ module Make = (ReadModelSpec: Reventless.ReadModel.Spec, Ops: Ops) => {
       dict->Dict.get(field)->Option.flatMap(JSON.Decode.string)->Option.getOr("")
     ReadModelSpec.config.indexes->Array.forEach(idx => {
       switch idx.pkFields {
-      | Some(fs) when fs->Array.length > 1 =>
+      | Some(fs) if fs->Array.length > 1 =>
         let sep = idx.pkSep->Option.getOr("/")
         let value = fs->Array.map(getStr)->Array.join(sep)
         let attrName = idx.idField->Option.getOr("_pk")
@@ -59,7 +56,7 @@ module Make = (ReadModelSpec: Reventless.ReadModel.Spec, Ops: Ops) => {
       | _ => ()
       }
       switch idx.skFields {
-      | Some(fs) when fs->Array.length > 1 =>
+      | Some(fs) if fs->Array.length > 1 =>
         let sep = idx.skSep->Option.getOr("/")
         let value = fs->Array.map(getStr)->Array.join(sep)
         let attrName = idx.subIdField->Option.getOr("_sk")
@@ -76,8 +73,9 @@ module Make = (ReadModelSpec: Reventless.ReadModel.Spec, Ops: Ops) => {
   // and left exactly as it was.
   // The union fields this view declares, read once. Empty for most views, and
   // the whole diagnostic below costs nothing when it is.
-  let declaredUnionFields =
-    Reventless.TaggedUnion.fieldsOf(ReadModelSpec.stateSchema->S.castToUnknown)
+  let declaredUnionFields = Reventless.TaggedUnion.fieldsOf(
+    ReadModelSpec.stateSchema->S.castToUnknown,
+  )
 
   // Logged once per instantiation, and unconditionally: "none" has to be
   // distinguishable from "never instantiated", because a schema that resolves no
@@ -104,7 +102,9 @@ module Make = (ReadModelSpec: Reventless.ReadModel.Spec, Ops: Ops) => {
           log.warn(
             ~comp="QueryDb",
             `${ReadModelSpec.name}.${field}: stored a union value with no ${Reventless.TaggedUnion.typenameKey} ` ++
-            `(union ${unionName->Option.getOr("<unnamed>")}). The field will resolve to null and take its ` ++
+            `(union ${unionName->Option.getOr(
+                "<unnamed>",
+              )}). The field will resolve to null and take its ` ++
             `parent with it. Union fields seen on this spec: ${declaredUnionFields
               ->Array.map(((f, _)) => f)
               ->Array.join(", ")}`,

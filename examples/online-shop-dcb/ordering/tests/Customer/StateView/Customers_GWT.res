@@ -11,9 +11,7 @@ describe("Customers StateViewSlice", () => {
   )
 
   test("EmailChanged updates the email", () =>
-    givenEvents([
-      CustomerRegistered({customerId: "c1", email: "alice@x.y", address: "123 Main"}),
-    ])
+    givenEvents([CustomerRegistered({customerId: "c1", email: "alice@x.y", address: "123 Main"})])
     ->whenEvent(EmailChanged({customerId: "c1", email: "alice2@x.y"}))
     ->thenStateWithId(
       "c1",
@@ -22,9 +20,7 @@ describe("Customers StateViewSlice", () => {
   )
 
   test("AddressChanged updates the address", () =>
-    givenEvents([
-      CustomerRegistered({customerId: "c1", email: "alice@x.y", address: "123 Main"}),
-    ])
+    givenEvents([CustomerRegistered({customerId: "c1", email: "alice@x.y", address: "123 Main"})])
     ->whenEvent(AddressChanged({customerId: "c1", address: "789 Pine"}))
     ->thenStateWithId(
       "c1",
@@ -33,9 +29,7 @@ describe("Customers StateViewSlice", () => {
   )
 
   test("CustomerDeactivated sets deactivated flag", () =>
-    givenEvents([
-      CustomerRegistered({customerId: "c1", email: "alice@x.y", address: "123 Main"}),
-    ])
+    givenEvents([CustomerRegistered({customerId: "c1", email: "alice@x.y", address: "123 Main"})])
     ->whenEvent(CustomerDeactivated({customerId: "c1"}))
     ->thenStateWithId(
       "c1",

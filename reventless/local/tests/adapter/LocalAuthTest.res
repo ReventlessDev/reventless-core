@@ -5,7 +5,9 @@
 
 open JestGlobals
 
-let buildContext = (headers: array<(string, string)>): ReventlessCore.Auth_Adapter.requestContext => {
+let buildContext = (
+  headers: array<(string, string)>,
+): ReventlessCore.Auth_Adapter.requestContext => {
   headers: Dict.fromArray(headers),
 }
 
@@ -22,9 +24,7 @@ testPromise("no X-User, no X-Groups → defaultUser (in-memory dev convenience)"
 
 testPromise("X-User: admin resolves built-in admin identity", async () => {
   LocalAuth.resetUsers()
-  let result = await LocalAuth.authenticate(
-    buildContext([("x-user", "admin")]),
-  )
+  let result = await LocalAuth.authenticate(buildContext([("x-user", "admin")]))
   switch result {
   | Authenticated(identity) =>
     expect(identity.username)->toEqual("admin")
@@ -35,9 +35,7 @@ testPromise("X-User: admin resolves built-in admin identity", async () => {
 
 testPromise("X-User: user resolves built-in default identity", async () => {
   LocalAuth.resetUsers()
-  let result = await LocalAuth.authenticate(
-    buildContext([("x-user", "user")]),
-  )
+  let result = await LocalAuth.authenticate(buildContext([("x-user", "user")]))
   switch result {
   | Authenticated(identity) =>
     expect(identity.username)->toEqual("user")
@@ -48,9 +46,7 @@ testPromise("X-User: user resolves built-in default identity", async () => {
 
 testPromise("unknown X-User falls back to Anonymous", async () => {
   LocalAuth.resetUsers()
-  let result = await LocalAuth.authenticate(
-    buildContext([("x-user", "unknown")]),
-  )
+  let result = await LocalAuth.authenticate(buildContext([("x-user", "unknown")]))
   switch result {
   | Anonymous => ()
   | _ => JsError.throwWithMessage("expected Anonymous")
@@ -72,9 +68,7 @@ testPromise("X-Groups overrides the resolved identity's groups", async () => {
 
 testPromise("X-Groups alone yields defaultUser tagged with the override groups", async () => {
   LocalAuth.resetUsers()
-  let result = await LocalAuth.authenticate(
-    buildContext([("x-groups", "Tester")]),
-  )
+  let result = await LocalAuth.authenticate(buildContext([("x-groups", "Tester")]))
   switch result {
   | Authenticated(identity) =>
     expect(identity.userId)->toEqual("local-user")
@@ -94,9 +88,7 @@ testPromise("registerUser injects a custom identity", async () => {
       provider: InMemory,
     },
   )
-  let result = await LocalAuth.authenticate(
-    buildContext([("x-user", "alice")]),
-  )
+  let result = await LocalAuth.authenticate(buildContext([("x-user", "alice")]))
   switch result {
   | Authenticated(identity) =>
     expect(identity.userId)->toEqual("alice-id")

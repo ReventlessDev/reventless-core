@@ -41,7 +41,6 @@ let decide = (state, command) => switch command {
 }
 ```
 */
-
 /**
 The lean Spec for a StateChangeSlice — types, identity, schemas. State and
 state-evolution functions live in the sibling `Behavior` module type.
@@ -150,4 +149,3 @@ module type Behavior = {
   /** File URL of this Behavior module (`import.meta.url`). */
   let moduleUrl: string
 }
-

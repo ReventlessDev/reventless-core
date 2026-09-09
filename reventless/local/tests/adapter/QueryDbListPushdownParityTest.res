@@ -154,13 +154,20 @@ let checkPushed = async (~label, ~ownerScope=?, ~retiredScope=?, args) => {
 // Assert the push-down declines this shape (resolver falls back to the spec).
 let checkFallback = async args => {
   let s = await build()
-  expect(s.listPage(~argsDict=argsOf(args), ~capability, ~labelField="name")->Option.isSome)->toBe(false)
+  expect(s.listPage(~argsDict=argsOf(args), ~capability, ~labelField="name")->Option.isSome)->toBe(
+    false,
+  )
 }
 
 // The ids a retirement-narrowed read returns, from the push-down.
 let liveIds = async args => {
   let s = await build()
-  switch s.listPage(~argsDict=argsOf(args), ~capability, ~labelField="name", ~retiredScope={field: "archived", values: None}) {
+  switch s.listPage(
+    ~argsDict=argsOf(args),
+    ~capability,
+    ~labelField="name",
+    ~retiredScope={field: "archived", values: None},
+  ) {
   | Some(conn) => (conn->norm).edges->Array.map(e => e.id)
   | None => []
   }
@@ -184,7 +191,10 @@ describe("QueryDb list push-down parity (SQLite ≡ QueryDbListQuery spec)", () 
   testPromise("bare page", () => checkPushed(~label="bare", []))
   testPromise("first:2", () => checkPushed(~label="first", [("first", JSON.Encode.int(2))]))
   testPromise("first:2 + after", () =>
-    checkPushed(~label="after", [("first", JSON.Encode.int(2)), ("after", JSON.Encode.string(cur("p-2")))])
+    checkPushed(
+      ~label="after",
+      [("first", JSON.Encode.int(2)), ("after", JSON.Encode.string(cur("p-2")))],
+    )
   )
   testPromise("statusEq active", () =>
     checkPushed(~label="eq", [("filter", filterOf([("statusEq", JSON.Encode.string("active"))]))])
@@ -192,7 +202,10 @@ describe("QueryDb list push-down parity (SQLite ≡ QueryDbListQuery spec)", () 
   testPromise("statusEq active + first:2", () =>
     checkPushed(
       ~label="eq+first",
-      [("filter", filterOf([("statusEq", JSON.Encode.string("active"))])), ("first", JSON.Encode.int(2))],
+      [
+        ("filter", filterOf([("statusEq", JSON.Encode.string("active"))])),
+        ("first", JSON.Encode.int(2)),
+      ],
     )
   )
   testPromise("orderBy name ASC", () =>
@@ -219,7 +232,12 @@ describe("QueryDb list push-down parity (SQLite ≡ QueryDbListQuery spec)", () 
   testPromise("qty range From/To (numeric-as-string)", () =>
     checkPushed(
       ~label="range",
-      [("filter", filterOf([("qtyFrom", JSON.Encode.string("2")), ("qtyTo", JSON.Encode.string("4"))]))],
+      [
+        (
+          "filter",
+          filterOf([("qtyFrom", JSON.Encode.string("2")), ("qtyTo", JSON.Encode.string("4"))]),
+        ),
+      ],
     )
   )
   testPromise("orderBy qty ASC (numeric-as-string sort)", () =>
@@ -234,9 +252,7 @@ describe("QueryDb list push-down parity (SQLite ≡ QueryDbListQuery spec)", () 
     checkFallback([("filter", filterOf([("searchPrefix", JSON.Encode.string("A"))]))])
   )
   testPromise("ids → fallback", () =>
-    checkFallback([
-      ("filter", filterOf([("ids", JSON.Encode.array([JSON.Encode.string("p-1")]))])),
-    ])
+    checkFallback([("filter", filterOf([("ids", JSON.Encode.array([JSON.Encode.string("p-1")]))]))])
   )
   testPromise("backward (last/before) → fallback", () =>
     checkFallback([("last", JSON.Encode.int(2)), ("before", JSON.Encode.string(cur("p-4")))])
@@ -247,47 +263,60 @@ describe("QueryDb list push-down parity (SQLite ≡ QueryDbListQuery spec)", () 
   // deployment takes and the spec is the path the tests reach, so a predicate
   // implemented in one of them is a hole every fallback-based test calls green.
   describe("retirement narrowing", () => {
-    testPromise("bare page, narrowed", () =>
-      checkPushed(~label="retired-bare", ~retiredScope={field: "archived", values: None}, [])
+    testPromise(
+      "bare page, narrowed",
+      () => checkPushed(~label="retired-bare", ~retiredScope={field: "archived", values: None}, []),
     )
-    testPromise("narrowed + orderBy", () =>
-      checkPushed(
-        ~label="retired-order",
-        ~retiredScope={field: "archived", values: None},
-        [("orderBy", orderBy("name", "DESC"))],
-      )
+    testPromise(
+      "narrowed + orderBy",
+      () =>
+        checkPushed(
+          ~label="retired-order",
+          ~retiredScope={field: "archived", values: None},
+          [("orderBy", orderBy("name", "DESC"))],
+        ),
     )
-    testPromise("narrowed + the caller's own filter", () =>
-      checkPushed(
-        ~label="retired-filter",
-        ~retiredScope={field: "archived", values: None},
-        [("filter", filterOf([("statusEq", JSON.Encode.string("active"))]))],
-      )
+    testPromise(
+      "narrowed + the caller's own filter",
+      () =>
+        checkPushed(
+          ~label="retired-filter",
+          ~retiredScope={field: "archived", values: None},
+          [("filter", filterOf([("statusEq", JSON.Encode.string("active"))]))],
+        ),
     )
-    testPromise("narrowed + owner-scoped together", () =>
-      checkPushed(
-        ~label="retired-owner",
-        ~ownerScope=("owner", "u-a"),
-        ~retiredScope={field: "archived", values: None},
-        [],
-      )
+    testPromise(
+      "narrowed + owner-scoped together",
+      () =>
+        checkPushed(
+          ~label="retired-owner",
+          ~ownerScope=("owner", "u-a"),
+          ~retiredScope={field: "archived", values: None},
+          [],
+        ),
     )
 
     // The rows, not just the parity: p-2 and p-4 are archived, p-5 carries no
     // flag at all. Parity alone would pass if BOTH implementations were wrong
     // the same way.
-    testPromise("drops the archived rows and keeps the one with no flag", async () => {
-      let ids = await liveIds([])
-      expect(ids)->toEqual(["p-1", "p-3", "p-5"])
-    })
+    testPromise(
+      "drops the archived rows and keeps the one with no flag",
+      async () => {
+        let ids = await liveIds([])
+        expect(ids)->toEqual(["p-1", "p-3", "p-5"])
+      },
+    )
 
     // The reason the predicate is pushed into the SQL rather than applied to the
     // page: `first: 2` must yield two LIVE rows, not two rows of which some were
     // filtered away afterwards.
-    testPromise("a page of first:2 is two live rows, not two rows minus the archived", async () => {
-      let ids = await liveIds([("first", JSON.Encode.int(2))])
-      expect(ids)->toEqual(["p-1", "p-3"])
-    })
+    testPromise(
+      "a page of first:2 is two live rows, not two rows minus the archived",
+      async () => {
+        let ids = await liveIds([("first", JSON.Encode.int(2))])
+        expect(ids)->toEqual(["p-1", "p-3"])
+      },
+    )
   })
 
   // ── Owner scoping ─────────────────────────────────────────────────────────
@@ -296,55 +325,66 @@ describe("QueryDb list push-down parity (SQLite ≡ QueryDbListQuery spec)", () 
   // easily reach. A predicate implemented in only one of them is a hole that
   // every fallback-based test would still call green.
   describe("owner scoping", () => {
-    testPromise("bare page, scoped", () =>
-      checkPushed(~label="owner-bare", ~ownerScope=("owner", "u-a"), [])
+    testPromise(
+      "bare page, scoped",
+      () => checkPushed(~label="owner-bare", ~ownerScope=("owner", "u-a"), []),
     )
-    testPromise("scoped + orderBy", () =>
-      checkPushed(
-        ~label="owner-order",
-        ~ownerScope=("owner", "u-a"),
-        [("orderBy", orderBy("name", "DESC"))],
-      )
+    testPromise(
+      "scoped + orderBy",
+      () =>
+        checkPushed(
+          ~label="owner-order",
+          ~ownerScope=("owner", "u-a"),
+          [("orderBy", orderBy("name", "DESC"))],
+        ),
     )
     // The client's own filter must survive alongside the scope, not be replaced
     // by it — a scoped read is still a filtered read.
-    testPromise("scoped + client filter compose", () =>
-      checkPushed(
-        ~label="owner-and-filter",
-        ~ownerScope=("owner", "u-a"),
-        [("filter", filterOf([("statusEq", JSON.Encode.string("inactive"))]))],
-      )
+    testPromise(
+      "scoped + client filter compose",
+      () =>
+        checkPushed(
+          ~label="owner-and-filter",
+          ~ownerScope=("owner", "u-a"),
+          [("filter", filterOf([("statusEq", JSON.Encode.string("inactive"))]))],
+        ),
     )
 
-    testPromise("a scoped read returns exactly that owner's rows", async () =>
-      expect(await scopedIds(~owner="u-a", []))->toEqual(["p-1", "p-3", "p-5"])
+    testPromise(
+      "a scoped read returns exactly that owner's rows",
+      async () => expect(await scopedIds(~owner="u-a", []))->toEqual(["p-1", "p-3", "p-5"]),
     )
 
     // The control: a different owner sees a different, also non-empty, set. An
     // implementation that scoped to nothing would pass an "is not everything"
     // assertion and fail this one.
-    testPromise("a second owner sees their own rows, not the first's", async () =>
-      expect(await scopedIds(~owner="u-b", []))->toEqual(["p-2"])
+    testPromise(
+      "a second owner sees their own rows, not the first's",
+      async () => expect(await scopedIds(~owner="u-b", []))->toEqual(["p-2"]),
     )
 
     // The case that catches a predicate applied AFTER the page rather than
     // inside the SQL: u-a owns 3 of 5 rows, so a LIMIT 2 taken before scoping
     // would return p-1 alone (p-2 belongs to u-b and would be dropped), not the
     // two rows actually asked for.
-    testPromise("paging a scoped read fills each page from owned rows only", async () =>
-      expect(await scopedIds(~owner="u-a", [("first", JSON.Encode.int(2))]))->toEqual([
-        "p-1",
-        "p-3",
-      ])
+    testPromise(
+      "paging a scoped read fills each page from owned rows only",
+      async () =>
+        expect(await scopedIds(~owner="u-a", [("first", JSON.Encode.int(2))]))->toEqual([
+          "p-1",
+          "p-3",
+        ]),
     )
 
-    testPromise("the second page continues the scoped sequence", async () =>
-      expect(
-        await scopedIds(
-          ~owner="u-a",
-          [("first", JSON.Encode.int(2)), ("after", JSON.Encode.string(cur("p-3")))],
-        ),
-      )->toEqual(["p-5"])
+    testPromise(
+      "the second page continues the scoped sequence",
+      async () =>
+        expect(
+          await scopedIds(
+            ~owner="u-a",
+            [("first", JSON.Encode.int(2)), ("after", JSON.Encode.string(cur("p-3")))],
+          ),
+        )->toEqual(["p-5"]),
     )
   })
 })

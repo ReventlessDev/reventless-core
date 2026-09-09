@@ -101,8 +101,8 @@ describe("the Geolocation semantic emits its three member types", () => {
   })
 
   testSync("the field is typed as the union", () => {
-    expect(typeDefFor("type SemanticGeoCustomer")->String.includes("geolocation: Geolocation"))->toBe(
-      true,
-    )
+    expect(
+      typeDefFor("type SemanticGeoCustomer")->String.includes("geolocation: Geolocation"),
+    )->toBe(true)
   })
 })

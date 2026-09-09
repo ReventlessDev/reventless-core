@@ -27,17 +27,11 @@ module Mapping = {
     switch event {
     | ItemOrdered({productId, orderId}) => [
         PublishStateChangeSliceCommand(RecordDemand({productId, orderId})),
-        HandleDirective(
-          directiveHandler,
-          EmitOrderRecordedTelemetry({productId, orderId}),
-        ),
+        HandleDirective(directiveHandler, EmitOrderRecordedTelemetry({productId, orderId})),
       ]
     | ItemOrderCancelled({productId, orderId}) => [
         PublishStateChangeSliceCommand(RevokeDemand({productId, orderId})),
-        HandleDirective(
-          directiveHandler,
-          EmitOrderCancelledTelemetry({productId, orderId}),
-        ),
+        HandleDirective(directiveHandler, EmitOrderCancelledTelemetry({productId, orderId})),
       ]
     }
 

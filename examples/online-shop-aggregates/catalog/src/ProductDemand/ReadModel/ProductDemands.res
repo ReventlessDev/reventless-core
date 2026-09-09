@@ -5,4 +5,3 @@
 
 @schema
 type state = {name: string, orderCount: int}
-

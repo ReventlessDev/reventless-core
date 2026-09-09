@@ -15,7 +15,6 @@
 open JestGlobals
 open ReventlessCore
 
-
 // --- Fixtures: one classic source, one read model, one projection mapping ---
 
 module OrderSource = {
@@ -132,78 +131,93 @@ switch NodeProcess.env->Dict.get("PG_URL") {
     let _ = pool->ReventlessPostgres.PgDriver.endPool
   })
 
-  describe("Postgres pipeline (append → relay → feed decode → projection → qdb row)", () => {
-    testPromise("projects a classic event end-to-end into the Postgres QueryDb", async () => {
-      let (_n, elOps, _s) =
-        ReventlessPostgres.EventLogStorage_Postgres.makeStorage(
+  describe(
+    "Postgres pipeline (append → relay → feed decode → projection → qdb row)",
+    () => {
+      testPromise("projects a classic event end-to-end into the Postgres QueryDb", async () => {
+        let (_n, elOps, _s) = ReventlessPostgres.EventLogStorage_Postgres.makeStorage(
           ~pool,
           ~name="PipelineOrderEventLog",
           ~opts=(),
         )
-      let _ = await elOps.append(
-        0,
-        "o-1",
-        [flatItem(~id="o-1", ~seq=0, ~service=OrderSource.name, ~event=OrderPlaced({product: "boat"}))],
-      )
+        let _ = await elOps.append(
+          0,
+          "o-1",
+          [
+            flatItem(
+              ~id="o-1",
+              ~seq=0,
+              ~service=OrderSource.name,
+              ~event=OrderPlaced({product: "boat"}),
+            ),
+          ],
+        )
 
-      // Relay drains event_log and emits the EventCollector bodies.
-      let sink = ref([])
-      let relayed = await PgChangeFeedRelay_Runtime.relayClassicWithPool(
-        ~pool,
-        ~logName="PipelineOrderEventLog",
-        ~subscriber="aws-rm-feed:PipelineOrderEventLog",
-        ~sendBatch=async jsons => sink := sink.contents->Array.concat(jsons),
-      )
-      expect(relayed)->toBe(1)
+        // Relay drains event_log and emits the EventCollector bodies.
+        let sink = ref([])
+        let relayed = await PgChangeFeedRelay_Runtime.relayClassicWithPool(
+          ~pool,
+          ~logName="PipelineOrderEventLog",
+          ~subscriber="aws-rm-feed:PipelineOrderEventLog",
+          ~sendBatch=async jsons => sink := sink.contents->Array.concat(jsons),
+        )
+        expect(relayed)->toBe(1)
 
-      // Feed-queue delivery → entry-point decode → real projection callback.
-      let _ = await EventCollectorChannel_DynamoDbStream_Runtime.handleStreamEvent(
-        Callback.handleJsonEvents,
-        asSqsEvent(sink.contents),
-        (),
-      )->Effect.runPromise
+        // Feed-queue delivery → entry-point decode → real projection callback.
+        let _ = await EventCollectorChannel_DynamoDbStream_Runtime.handleStreamEvent(
+          Callback.handleJsonEvents,
+          asSqsEvent(sink.contents),
+          (),
+        )->Effect.runPromise
 
-      // The projected row is in the Postgres QueryDb.
-      switch await qdbOps.load("o-1") {
-      | Ok(rows) =>
-        expect(rows->Array.length)->toBe(1)
-        let row = rows->Array.getUnsafe(0)->JSON.Decode.object->Option.getOrThrow
-        expect(row->Dict.get("product"))->toEqual(Some(JSON.Encode.string("boat")))
-        expect(row->Dict.get("id"))->toEqual(Some(JSON.Encode.string("o-1")))
-      | Error(_) => expect("load failed")->toBe("Ok")
-      }
-    })
+        // The projected row is in the Postgres QueryDb.
+        switch await qdbOps.load("o-1") {
+        | Ok(rows) =>
+          expect(rows->Array.length)->toBe(1)
+          let row = rows->Array.getUnsafe(0)->JSON.Decode.object->Option.getOrThrow
+          expect(row->Dict.get("product"))->toEqual(Some(JSON.Encode.string("boat")))
+          expect(row->Dict.get("id"))->toEqual(Some(JSON.Encode.string("o-1")))
+        | Error(_) => expect("load failed")->toBe("Ok")
+        }
+      })
 
-    testPromise("meta.service mismatch is a silent no-op (dispatch filter)", async () => {
-      let (_n, elOps, _s) =
-        ReventlessPostgres.EventLogStorage_Postgres.makeStorage(
+      testPromise("meta.service mismatch is a silent no-op (dispatch filter)", async () => {
+        let (_n, elOps, _s) = ReventlessPostgres.EventLogStorage_Postgres.makeStorage(
           ~pool,
           ~name="PipelineWrongServiceEventLog",
           ~opts=(),
         )
-      let _ = await elOps.append(
-        0,
-        "o-2",
-        [flatItem(~id="o-2", ~seq=0, ~service="NotTheSource", ~event=OrderPlaced({product: "x"}))],
-      )
+        let _ = await elOps.append(
+          0,
+          "o-2",
+          [
+            flatItem(
+              ~id="o-2",
+              ~seq=0,
+              ~service="NotTheSource",
+              ~event=OrderPlaced({product: "x"}),
+            ),
+          ],
+        )
 
-      let sink = ref([])
-      let _ = await PgChangeFeedRelay_Runtime.relayClassicWithPool(
-        ~pool,
-        ~logName="PipelineWrongServiceEventLog",
-        ~subscriber="aws-rm-feed:PipelineWrongServiceEventLog",
-        ~sendBatch=async jsons => sink := sink.contents->Array.concat(jsons),
-      )
-      let _ = await EventCollectorChannel_DynamoDbStream_Runtime.handleStreamEvent(
-        Callback.handleJsonEvents,
-        asSqsEvent(sink.contents),
-        (),
-      )->Effect.runPromise
+        let sink = ref([])
+        let _ = await PgChangeFeedRelay_Runtime.relayClassicWithPool(
+          ~pool,
+          ~logName="PipelineWrongServiceEventLog",
+          ~subscriber="aws-rm-feed:PipelineWrongServiceEventLog",
+          ~sendBatch=async jsons => sink := sink.contents->Array.concat(jsons),
+        )
+        let _ = await EventCollectorChannel_DynamoDbStream_Runtime.handleStreamEvent(
+          Callback.handleJsonEvents,
+          asSqsEvent(sink.contents),
+          (),
+        )->Effect.runPromise
 
-      switch await qdbOps.load("o-2") {
-      | Ok(rows) => expect(rows->Array.length)->toBe(0)
-      | Error(_) => expect("load failed")->toBe("Ok")
-      }
-    })
-  })
+        switch await qdbOps.load("o-2") {
+        | Ok(rows) => expect(rows->Array.length)->toBe(0)
+        | Error(_) => expect("load failed")->toBe("Ok")
+        }
+      })
+    },
+  )
 }

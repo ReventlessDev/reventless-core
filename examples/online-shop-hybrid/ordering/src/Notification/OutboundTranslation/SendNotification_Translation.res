@@ -20,7 +20,9 @@ let recipientFor = (item: outboundItem) =>
     ->Reventless.Email.fromString
     ->Result.map(email => Reventless.Messaging.ToEmail(email))
   | Sms =>
-    item.address->Reventless.Phone.fromString->Result.map(phone => Reventless.Messaging.ToSms(phone))
+    item.address
+    ->Reventless.Phone.fromString
+    ->Result.map(phone => Reventless.Messaging.ToSms(phone))
   | Push => Ok(Reventless.Messaging.ToPush({deviceToken: item.address}))
   }
 
@@ -78,12 +80,11 @@ let translate = async (_id, item: outboundItem, ~capabilities: Reventless.Capabi
 // The budget is spent and the provider never answered. Recording it beats leaving
 // the row pending forever — and it is the second reason the capability must be
 // declared, since an unprovisioned sender reaches here every single time.
-let onExhausted = (_id, item: outboundItem, ~lastError) =>
-  Some((
-    item.recipientId,
-    RecordDeliveryFailure({
-      recipientId: item.recipientId,
-      reference: item.reference,
-      reason: lastError->Option.getOr("the messaging provider never answered"),
-    }),
-  ))
+let onExhausted = (_id, item: outboundItem, ~lastError) => Some((
+  item.recipientId,
+  RecordDeliveryFailure({
+    recipientId: item.recipientId,
+    reference: item.reference,
+    reason: lastError->Option.getOr("the messaging provider never answered"),
+  }),
+))

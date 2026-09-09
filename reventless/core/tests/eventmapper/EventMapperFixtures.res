@@ -1,6 +1,5 @@
 open Reventless.Projection
 
-
 // ─────────────────────────────────────────────────────────────
 // Source event spec (aggregate events)
 // ─────────────────────────────────────────────────────────────
@@ -63,11 +62,11 @@ let testMeta: Reventless.Message.meta = {
   correlationId: "corr-001",
 }
 
-let makeSourceEvent' = (id, event) => ({
+let makeSourceEvent' = (id, event): Reventless.Message.event'<string, SourceSpec.event> => {
   Reventless.Message.id,
   meta: testMeta,
   event,
-}: Reventless.Message.event'<string, SourceSpec.event>)
+}
 
 // ─────────────────────────────────────────────────────────────
 // EventMapper_Callback test fixtures
@@ -103,14 +102,13 @@ module OrderMapping = {
   module Source = CmdSourceSpec
   module Target = CmdTargetSpec
 
-  let map = (
-    id: CmdSourceSpec.Id.t,
-    event: CmdSourceSpec.event,
-    _queryEngine,
-  ): array<Reventless.EventMapping.action<CmdTargetSpec.Id.t, CmdTargetSpec.command>> =>
+  let map = (id: CmdSourceSpec.Id.t, event: CmdSourceSpec.event, _queryEngine): array<
+    Reventless.EventMapping.action<CmdTargetSpec.Id.t, CmdTargetSpec.command>,
+  > =>
     switch event {
-    | OrderPlaced({orderId, amount}) =>
-      [Reventless.EventMapping.Publish(id, CmdTargetSpec.ProcessOrder({orderId, amount}))]
+    | OrderPlaced({orderId, amount}) => [
+        Reventless.EventMapping.Publish(id, CmdTargetSpec.ProcessOrder({orderId, amount})),
+      ]
     | OrderShipped({orderId}) =>
       let cmd = CmdTargetSpec.ShipOrder({orderId: orderId})
       [Reventless.EventMapping.Publish(id, cmd)]
@@ -122,15 +120,12 @@ module CountOrderMapping = {
   module Source = CmdSourceSpec
   module Target = CmdTargetSpec
 
-  let map = (
-    _id: CmdSourceSpec.Id.t,
-    event: CmdSourceSpec.event,
-    _queryEngine,
-  ): array<Reventless.EventMapping.action<CmdTargetSpec.Id.t, CmdTargetSpec.command>> =>
+  let map = (_id: CmdSourceSpec.Id.t, event: CmdSourceSpec.event, _queryEngine): array<
+    Reventless.EventMapping.action<CmdTargetSpec.Id.t, CmdTargetSpec.command>,
+  > =>
     switch event {
     | OrderPlaced(_) => [Reventless.EventMapping.Count("order-counter")]
-    | OrderShipped(_) =>
-      [
+    | OrderShipped(_) => [
         Reventless.EventMapping.AddToCounterTarget({
           counterId: "order-counter",
           target: 5,
@@ -191,10 +186,7 @@ module TestCounterHandler = EventMapper_Callback.MakeCounterHandler(
 
 // configurable mock for commonEventsHandler — reassigned in each test
 let mockCommonHandler: ref<
-  array<JSON.t> => promise<(
-    promise<array<Reventless.Message.commandJson>>,
-    array<Counter.action>,
-  )>,
+  array<JSON.t> => promise<(promise<array<Reventless.Message.commandJson>>, array<Counter.action>)>,
 > = ref(async _ => (Promise.resolve([]), []))
 
 let mockCountFailUntil = ref(0)
@@ -237,7 +229,7 @@ let makeEventJson = (~service=CmdSourceSpec.name, id, eventJson): JSON.t =>
     ("id", JSON.Encode.string(id)),
     (
       "meta",
-      {...evtMapTestMeta, service: service}->Reventless.Message.encode(Reventless.Message.metaSchema),
+      {...evtMapTestMeta, service}->Reventless.Message.encode(Reventless.Message.metaSchema),
     ),
     ("event", eventJson),
   ]
@@ -250,5 +242,5 @@ let resetMocks = () => {
   capturedCounterTargets := []
   mockCountFailUntil := 0
   mockCountCallCount := 0
-  mockCommonHandler := async _ => (Promise.resolve([]), [])
+  mockCommonHandler := (async _ => (Promise.resolve([]), []))
 }

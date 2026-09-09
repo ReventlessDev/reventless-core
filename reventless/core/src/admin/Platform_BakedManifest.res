@@ -40,8 +40,7 @@ let derivedKinds = ["dashboard", "lifecycles", "canvas", "scheduler"]
 let describe = (e: error): string =>
   switch e {
   | UnknownPlugin(plugin) => `baked manifest: no registered plugin named "${plugin}"`
-  | UnknownView({plugin, view}) =>
-    `baked manifest: plugin "${plugin}" has no view named "${view}"`
+  | UnknownView({plugin, view}) => `baked manifest: plugin "${plugin}" has no view named "${view}"`
   | UnknownCommand({plugin, command}) =>
     `baked manifest: plugin "${plugin}" has no command named "${command}"`
   | UnknownDerived({plugin, kind}) =>
@@ -128,16 +127,18 @@ let referencedEntities = (~pluginName: string, kept: array<writableDef>): array<
     }
   )
 
-let curateStructure = (
-  ~pluginId: string,
-  ~def: pluginStructure,
-  sel: selection,
-): result<pluginStructure, error> =>
+let curateStructure = (~pluginId: string, ~def: pluginStructure, sel: selection): result<
+  pluginStructure,
+  error,
+> =>
   validate(~def, sel)->Result.map(() => {
     let pluginName = Plugin.name(pluginId)
     let keepCommands = (ws: array<writableDef>) =>
       ws
-      ->Array.map(w => {...w, commands: w.commands->Array.filter(c => sel.commands->isSelected(c.name))})
+      ->Array.map(w => {
+        ...w,
+        commands: w.commands->Array.filter(c => sel.commands->isSelected(c.name)),
+      })
       // A write side left with no command contributes no surface. Dropping it
       // keeps the curated entry a description of what the app offers rather than
       // a list of components whose commands were all removed.
@@ -145,10 +146,7 @@ let curateStructure = (
 
     let stateChangeSlices = def.stateChangeSlices->keepCommands
     let aggregates = def.aggregates->keepCommands
-    let referenced = referencedEntities(
-      ~pluginName,
-      Array.concat(stateChangeSlices, aggregates),
-    )
+    let referenced = referencedEntities(~pluginName, Array.concat(stateChangeSlices, aggregates))
     let keepViews = (qs: array<queryableDef>) =>
       qs->Array.filter(q =>
         if Platform_ComponentDefinitionsApi.isPublicQueryable(q) {
@@ -245,12 +243,10 @@ let journeyFiles = (~config: ReventlessInfra.Platform.bakedManifest): array<jour
  derived twice is a shop whose file is written where nothing fetches it, and the
  symptom is an empty menu rather than a missing file.
  */
-let files = (
-  ~config: ReventlessInfra.Platform.bakedManifest,
-): array<(string, array<selection>)> =>
-  [
-    (config.key->Option.getOr(defaultKey), config.components->Array.map(toSelection)),
-  ]->Array.concat(journeyFiles(~config)->Array.map(j => (j.key, j.selections)))
+let files = (~config: ReventlessInfra.Platform.bakedManifest): array<(string, array<selection>)> =>
+  [(config.key->Option.getOr(defaultKey), config.components->Array.map(toSelection))]->Array.concat(
+    journeyFiles(~config)->Array.map(j => (j.key, j.selections)),
+  )
 
 /** Each declared journey's group and the URL a shell fetches its file from. */
 let journeyUrls = (~config: ReventlessInfra.Platform.bakedManifest): array<(string, string)> =>
@@ -258,25 +254,29 @@ let journeyUrls = (~config: ReventlessInfra.Platform.bakedManifest): array<(stri
 
 // The whole file: one entry per selection, in the order the deployment declared
 // them, so the include-list also states the order a consumer reads plugins in.
-let curate = (
-  ~structures: array<(string, pluginStructure)>,
-  ~selections: array<selection>,
-): result<JSON.t, error> =>
-  selections->Array.reduce(Ok([]), (acc, sel) =>
+let curate = (~structures: array<(string, pluginStructure)>, ~selections: array<selection>): result<
+  JSON.t,
+  error,
+> =>
+  selections
+  ->Array.reduce(Ok([]), (acc, sel) =>
     acc->Result.flatMap(entries =>
       switch structures->Array.find(((pluginId, _)) => Plugin.name(pluginId) === sel.plugin) {
       | None => Error(UnknownPlugin(sel.plugin))
       | Some((pluginId, def)) =>
-        curateStructure(~pluginId, ~def, sel)->Result.map(curated => {
-          entries->Array.push(
-            Platform_ComponentDefinitionsApi.encodePluginStructureEntry(
-              ~pluginId,
-              ~derived=?sel.derived,
-              curated,
-            ),
-          )
-          entries
-        })
+        curateStructure(~pluginId, ~def, sel)->Result.map(
+          curated => {
+            entries->Array.push(
+              Platform_ComponentDefinitionsApi.encodePluginStructureEntry(
+                ~pluginId,
+                ~derived=?sel.derived,
+                curated,
+              ),
+            )
+            entries
+          },
+        )
       }
     )
-  )->Result.map(JSON.Encode.array)
+  )
+  ->Result.map(JSON.Encode.array)

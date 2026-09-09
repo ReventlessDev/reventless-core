@@ -12,7 +12,6 @@ door applies it, and so provider adapters share one definition rather than three
 Provider-neutral on purpose: the contract belongs to neither the local platform
 nor AWS.
 */
-
 @val external btoa: string => string = "btoa"
 @val external atob: string => string = "atob"
 

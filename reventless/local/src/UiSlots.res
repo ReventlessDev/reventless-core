@@ -66,18 +66,15 @@ let emit = (
     | exception _ =>
       JsError.throwWithMessage(
         `host UI ${fileName}: cannot read the declared uiSlotsFile at ${path} — ` ++
-        `the shell imports this file at boot, so a declaration pointing nowhere ` ++
-        `registers no renderers and says nothing about why.`,
+        `the shell imports this file at boot, so a declaration pointing nowhere ` ++ `registers no renderers and says nothing about why.`,
       )
     }
   )
 
-  switch (
-    switch dir {
-    | Some(_) as given => given
-    | None => HostShellDist.dir()
-    }
-  ) {
+  switch switch dir {
+  | Some(_) as given => given
+  | None => HostShellDist.dir()
+  } {
   | None =>
     // No shell installed is the ordinary case for a platform nobody points a
     // browser at; only a declaration makes the missing package an error.
@@ -85,8 +82,7 @@ let emit = (
       JsError.throwWithMessage(
         `host UI ${fileName}: cannot resolve ${HostShellDist.package} from ${NodeProcess.cwd()} — ` ++
         `the local shell imports its slot renderers from that package's dist/, so ` ++
-        `declaring a uiSlotsFile without the package installed would write nothing ` ++
-        `and leave every mode drawing its own regions.`,
+        `declaring a uiSlotsFile without the package installed would write nothing ` ++ `and leave every mode drawing its own regions.`,
       )
     }
   | Some(dir) =>
@@ -132,11 +128,9 @@ let emit = (
  `onReload` runs only after a re-copy actually succeeded, so a subscriber cannot
  be told to re-import a file that did not change.
  */
-let watch = (
-  ~uiSlotsFile: option<string>,
-  ~dir: option<string>=?,
-  ~onReload: unit => unit,
-): option<NodeFs.watcher> =>
+let watch = (~uiSlotsFile: option<string>, ~dir: option<string>=?, ~onReload: unit => unit): option<
+  NodeFs.watcher,
+> =>
   uiSlotsFile->Option.flatMap(path => {
     // Named apart from the `~dir` above, which is where the file is SERVED. This
     // is where it is AUTHORED, and the two are never the same place — letting
@@ -150,8 +144,7 @@ let watch = (
       // away between the two — worth a line, not worth a throw.
       log.warn(
         ~comp="UiSlots",
-        `not watching ${base}: ${sourceDir} does not exist, so changes to the declared ` ++
-        `uiSlotsFile will need a restart`,
+        `not watching ${base}: ${sourceDir} does not exist, so changes to the declared ` ++ `uiSlotsFile will need a restart`,
       )
       None
     } else {

@@ -44,10 +44,13 @@ describe("SendTrackingEmail OutboundTranslationSlice", () => {
   test("retrying translate succeeds on the third attempt → 2 retries recorded", () => {
     let calls = ref(0)
     givenTodo("o1", {orderId: "o1", email: "x@y"})
-    ->whenTranslateRetrying(~maxRetries=3, (_id, _item) => {
-      calls := calls.contents + 1
-      Promise.resolve(calls.contents < 3 ? Error("smtp down") : Ok(None))
-    })
+    ->whenTranslateRetrying(
+      ~maxRetries=3,
+      (_id, _item) => {
+        calls := calls.contents + 1
+        Promise.resolve(calls.contents < 3 ? Error("smtp down") : Ok(None))
+      },
+    )
     ->thenRetryRecorded(2)
   })
 

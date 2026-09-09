@@ -30,7 +30,8 @@ type t = {
     a slow deploy or a throttle cannot trip it, close enough that a stopped
     scheduler is caught within the hour rather than by its consequences days
     later. Deployments that set a long `heartbeatInterval` should raise it. */
-let defaultSilenceWindowSeconds = 60 * 60
+let defaultSilenceWindowSeconds =
+  60 * 60
 
 let errorsAlarm = {
   metricName: "Errors",

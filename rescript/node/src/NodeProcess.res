@@ -5,7 +5,6 @@
     "process.env"` and `@val @scope("process") external env: dict<string> =
     "env"` compile to the same access, and the tree had both spellings. This is
     the one. */
-
 @val @scope("process")
 external argv: array<string> = "argv"
 

@@ -80,8 +80,7 @@ module DcbMapping = Mapping.Make(
   {
     let project = (msg: Message.event'<string, DcbSource.event>) =>
       switch msg.event {
-      | DcbItemAdded({name}) =>
-        Create(msg.id, ({name, source: "dcb"}: MixedReadModelSpec.state))
+      | DcbItemAdded({name}) => Create(msg.id, ({name, source: "dcb"}: MixedReadModelSpec.state))
       | DcbItemNameChanged({name}) => Update(msg.id, state => {...state, name})
       }
   },
@@ -171,11 +170,10 @@ let loadState = async id => {
   switch Bus.getQueryDb("TestMixedReadModel") {
   | None => []
   | Some(ops) =>
-    let states =
-      await ops.loadStream(id)
-      ->Stream.runCollect
-      ->Effect.catchAll(_ => Effect.succeed([]))
-      ->Effect.runPromise
+    let states = await ops.loadStream(id)
+    ->Stream.runCollect
+    ->Effect.catchAll(_ => Effect.succeed([]))
+    ->Effect.runPromise
     states->Array.map(json => json->Reventless.Util_Sury.fromJson(MixedReadModelSpec.stateSchema))
   }
 }

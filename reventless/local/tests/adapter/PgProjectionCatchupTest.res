@@ -29,7 +29,12 @@ let flatEvent = (~id, ~seq, ~eventType, ~data=[], ~msgId, ~service="Products") =
     ]),
   )
 
-let dcbEvent = (~eventType, ~tags, ~data=[], ~msgId): ReventlessCore.DcbEventLog_Adapter.rawStoredEvent => {
+let dcbEvent = (
+  ~eventType,
+  ~tags,
+  ~data=[],
+  ~msgId,
+): ReventlessCore.DcbEventLog_Adapter.rawStoredEvent => {
   eventType,
   data: JSON.Encode.object(Dict.fromArray(data)),
   tags,
@@ -58,7 +63,8 @@ let recorder = () => {
 }
 
 switch NodeProcess.env->Dict.get("PG_URL") {
-| None => testSync("Postgres projection catch-up (skipped — set PG_URL)", () => expect(true)->toBe(true))
+| None =>
+  testSync("Postgres projection catch-up (skipped — set PG_URL)", () => expect(true)->toBe(true))
 | Some(url) =>
   let pool = ReventlessPostgres.PgDriver.makePool({connectionString: url})
 
@@ -91,12 +97,24 @@ switch NodeProcess.env->Dict.get("PG_URL") {
     testPromise("replays every persisted classic + DCB event as an envelope", async () => {
       await reset()
       let agg = classicOps()
-      let _ = await agg.append(0, "p1", [flatEvent(~id="p1", ~seq=0, ~eventType="Added", ~msgId="a0")])
-      let _ = await agg.append(1, "p1", [flatEvent(~id="p1", ~seq=1, ~eventType="Renamed", ~msgId="a1")])
+      let _ = await agg.append(
+        0,
+        "p1",
+        [flatEvent(~id="p1", ~seq=0, ~eventType="Added", ~msgId="a0")],
+      )
+      let _ = await agg.append(
+        1,
+        "p1",
+        [flatEvent(~id="p1", ~seq=1, ~eventType="Renamed", ~msgId="a1")],
+      )
 
       let dcb = dcbOps()
-      let _ = await dcb.append([dcbEvent(~eventType="Placed", ~tags=[{key: "orderId", value: "o1"}], ~msgId="d0")])
-      let _ = await dcb.append([dcbEvent(~eventType="Paid", ~tags=[{key: "orderId", value: "o2"}], ~msgId="d1")])
+      let _ = await dcb.append([
+        dcbEvent(~eventType="Placed", ~tags=[{key: "orderId", value: "o1"}], ~msgId="d0"),
+      ])
+      let _ = await dcb.append([
+        dcbEvent(~eventType="Paid", ~tags=[{key: "orderId", value: "o2"}], ~msgId="d1"),
+      ])
 
       let bounds = await PgProjectionCatchup.captureBounds(pool)
       let (received, handler) = recorder()
@@ -115,15 +133,27 @@ switch NodeProcess.env->Dict.get("PG_URL") {
     testPromise("the pre-session bound excludes events appended after capture", async () => {
       await reset()
       let agg = classicOps()
-      let _ = await agg.append(0, "p1", [flatEvent(~id="p1", ~seq=0, ~eventType="Added", ~msgId="a0")])
-      let _ = await agg.append(1, "p1", [flatEvent(~id="p1", ~seq=1, ~eventType="Renamed", ~msgId="a1")])
+      let _ = await agg.append(
+        0,
+        "p1",
+        [flatEvent(~id="p1", ~seq=0, ~eventType="Added", ~msgId="a0")],
+      )
+      let _ = await agg.append(
+        1,
+        "p1",
+        [flatEvent(~id="p1", ~seq=1, ~eventType="Renamed", ~msgId="a1")],
+      )
 
       // Snapshot the head BEFORE the "this-session" append below.
       let bounds = await PgProjectionCatchup.captureBounds(pool)
 
       // This event is > the captured bound — it stands in for a live-delivered
       // this-session append and must NOT be redelivered by catch-up.
-      let _ = await agg.append(2, "p1", [flatEvent(~id="p1", ~seq=2, ~eventType="Archived", ~msgId="a2")])
+      let _ = await agg.append(
+        2,
+        "p1",
+        [flatEvent(~id="p1", ~seq=2, ~eventType="Archived", ~msgId="a2")],
+      )
 
       let (received, handler) = recorder()
       await PgProjectionCatchup.runCatchup(~pool, ~bounds, ~handlers=[("rm", handler)])
@@ -134,7 +164,11 @@ switch NodeProcess.env->Dict.get("PG_URL") {
     testPromise("delivers each event to every handler", async () => {
       await reset()
       let agg = classicOps()
-      let _ = await agg.append(0, "p1", [flatEvent(~id="p1", ~seq=0, ~eventType="Added", ~msgId="a0")])
+      let _ = await agg.append(
+        0,
+        "p1",
+        [flatEvent(~id="p1", ~seq=0, ~eventType="Added", ~msgId="a0")],
+      )
 
       let bounds = await PgProjectionCatchup.captureBounds(pool)
       let (r1, h1) = recorder()

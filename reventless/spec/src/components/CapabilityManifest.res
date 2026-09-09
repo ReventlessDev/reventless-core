@@ -12,7 +12,6 @@ spell one fact differently.
 The platform generator unions these files across a deployment's plugins and
 emits the platform's capability list from them.
 */
-
 @schema
 type kind =
   | ObjectStore
@@ -83,8 +82,8 @@ let fromStructure = (structure: Plugin.pluginStructure): t => {
       | Messaging => Messaging
       },
       key,
-      declaredBy: needs->Array.filterMap(d =>
-        d.capability == key ? Some({component: d.component}) : None
+      declaredBy: needs->Array.filterMap(
+        d => d.capability == key ? Some({component: d.component}) : None,
       ),
     })
   )

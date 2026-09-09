@@ -128,21 +128,9 @@ let storedSpecs: array<storedSpec> = []
 let grandParent = ref(None)
 
 let forEventCollector: ReventlessCore.Runtime.forEventCollector<
-  ReventlessCore.Runtime.effectHandler<
-    EventCollectorChannel.callbackEvent,
-    context,
-    unit,
-    string,
-  >,
+  ReventlessCore.Runtime.effectHandler<EventCollectorChannel.callbackEvent, context, unit, string>,
   ReventlessCore.EventCollector.component,
-> = (
-  ~handler as _,
-  ~eventTopics,
-  ~resources,
-  ~memorySize=1024,
-  ~timeout=30,
-  eventCollector,
-) => {
+> = (~handler as _, ~eventTopics, ~resources, ~memorySize=1024, ~timeout=30, eventCollector) => {
   let eventCollectorResource = eventCollector->ReventlessCore.Component.toPulumiResource
   let channel = eventCollector->ReventlessCore.EventCollector_Adapter.channel
   let eventCollectorName = eventCollectorResource.name->Option.getOr("Unnamed")
@@ -268,24 +256,23 @@ let makeGeocoderGrant = (~runtime: ReventlessCore.Runtime.environment<runtimePar
   if PluginRuntime_Builder.geocoderProvisioned() {
     let customOpts =
       opts->ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
-    let policyJson =
-      PluginRuntime_Builder.geocoderPlaceIndex()->Pulumi.Output.apply(idx => {
-        open PulumiAws.PolicyDocument
-        PulumiAws.PolicyDocument.make(
-          ~id="AllAutomationSlicesGeocode",
-          ~statements=[
-            {
-              sid: "AllowGeocode",
-              effect: Allow,
-              actions: Action("geo:SearchPlaceIndexForText"),
-              // Account/region wildcarded, matching the Function URL handler's
-              // own policy: the index name is what identifies it, and the stack
-              // has no other account to reach.
-              resources: Resource(`arn:aws:geo:*:*:place-index/${idx}`),
-            },
-          ],
-        )->PulumiAws.PolicyDocument.toJsonString
-      })
+    let policyJson = PluginRuntime_Builder.geocoderPlaceIndex()->Pulumi.Output.apply(idx => {
+      open PulumiAws.PolicyDocument
+      PulumiAws.PolicyDocument.make(
+        ~id="AllAutomationSlicesGeocode",
+        ~statements=[
+          {
+            sid: "AllowGeocode",
+            effect: Allow,
+            actions: Action("geo:SearchPlaceIndexForText"),
+            // Account/region wildcarded, matching the Function URL handler's
+            // own policy: the index name is what identifies it, and the stack
+            // has no other account to reach.
+            resources: Resource(`arn:aws:geo:*:*:place-index/${idx}`),
+          },
+        ],
+      )->PulumiAws.PolicyDocument.toJsonString
+    })
     let _ = PulumiAws.IAM.RolePolicy.make(
       ~name="AllAutomationSlicesGeocode",
       ~args={
@@ -305,24 +292,23 @@ let makeMessagingGrant = (~runtime: ReventlessCore.Runtime.environment<runtimePa
   if PluginRuntime_Builder.messagingProvisioned() {
     let customOpts =
       opts->ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
-    let policyJson =
-      PluginRuntime_Builder.messagingSender()->Pulumi.Output.apply(sender => {
-        open PulumiAws.PolicyDocument
-        PulumiAws.PolicyDocument.make(
-          ~id="AllAutomationSlicesSendEmail",
-          ~statements=[
-            {
-              sid: "AllowSendEmail",
-              effect: Allow,
-              // SESv2's SendEmail authorizes against the v1 action name, and the
-              // resource is the identity the message is sent FROM — not the
-              // recipient, which is why one grant covers every destination.
-              actions: Action("ses:SendEmail"),
-              resources: Resource(`arn:aws:ses:*:*:identity/${sender}`),
-            },
-          ],
-        )->PulumiAws.PolicyDocument.toJsonString
-      })
+    let policyJson = PluginRuntime_Builder.messagingSender()->Pulumi.Output.apply(sender => {
+      open PulumiAws.PolicyDocument
+      PulumiAws.PolicyDocument.make(
+        ~id="AllAutomationSlicesSendEmail",
+        ~statements=[
+          {
+            sid: "AllowSendEmail",
+            effect: Allow,
+            // SESv2's SendEmail authorizes against the v1 action name, and the
+            // resource is the identity the message is sent FROM — not the
+            // recipient, which is why one grant covers every destination.
+            actions: Action("ses:SendEmail"),
+            resources: Resource(`arn:aws:ses:*:*:identity/${sender}`),
+          },
+        ],
+      )->PulumiAws.PolicyDocument.toJsonString
+    })
     let _ = PulumiAws.IAM.RolePolicy.make(
       ~name="AllAutomationSlicesSendEmail",
       ~args={
@@ -374,12 +360,9 @@ let finish = () =>
             let bodyPkg = Util_Bundle.extractPackageName(info.bodyModulePath)
             packageDirs->Dict.set(bodyPkg, Util_Bundle.resolvePackageRoot(bodyPkg))
 
-            let specModule =
-              info.specModulePath->JSON.stringifyAny->Option.getOr(`""`)
-            let bodyModule =
-              info.bodyModulePath->JSON.stringifyAny->Option.getOr(`""`)
-            let callbackType =
-              info.callbackType->JSON.stringifyAny->Option.getOr(`""`)
+            let specModule = info.specModulePath->JSON.stringifyAny->Option.getOr(`""`)
+            let bodyModule = info.bodyModulePath->JSON.stringifyAny->Option.getOr(`""`)
+            let callbackType = info.callbackType->JSON.stringifyAny->Option.getOr(`""`)
             let contextFragment = switch info.context {
             | Some(context) =>
               context
@@ -389,12 +372,14 @@ let finish = () =>
             | None => ""
             }
 
-            let handlerJson =
-              Pulumi.Output.all3((info.queryDbTableName, dcbQueueUrl, spec.sourceUrns))
-              ->Pulumi.Output.apply(((tableName, queueUrl, urns)) => {
-                let sourceUrn = urns->Array.getUnsafe(0)
-                `{"specModule":${specModule},"bodyModule":${bodyModule},"callbackType":${callbackType},"queryDbTableName":"${tableName}","dcbQueueUrl":"${queueUrl}","sourceUrn":"${sourceUrn}"${contextFragment}}`
-              })
+            let handlerJson = Pulumi.Output.all3((
+              info.queryDbTableName,
+              dcbQueueUrl,
+              spec.sourceUrns,
+            ))->Pulumi.Output.apply(((tableName, queueUrl, urns)) => {
+              let sourceUrn = urns->Array.getUnsafe(0)
+              `{"specModule":${specModule},"bodyModule":${bodyModule},"callbackType":${callbackType},"queryDbTableName":"${tableName}","dcbQueueUrl":"${queueUrl}","sourceUrn":"${sourceUrn}"${contextFragment}}`
+            })
             let _ = handlerOutputs->Array.push(handlerJson)
           | None =>
             log.warn(
@@ -405,8 +390,7 @@ let finish = () =>
         })
 
         let handlerConfigOutput =
-          Pulumi.Output.all(handlerOutputs)
-          ->Pulumi.Output.apply(handlers =>
+          Pulumi.Output.all(handlerOutputs)->Pulumi.Output.apply(handlers =>
             `{"handlers":[${handlers->Array.join(",")}]}`
           )
 
@@ -448,10 +432,7 @@ let finish = () =>
           ~opts,
         )
       | None =>
-        log.warn(
-          ~comp="AutomationSliceRuntime_Builder_Single",
-          `finish: grandParent not set`,
-        )
+        log.warn(~comp="AutomationSliceRuntime_Builder_Single", `finish: grandParent not set`)
       }
     }
     finished := true
@@ -607,19 +588,21 @@ let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) 
           // publishing to the DCB fallback, repeats the shared urn and queue URL
           // exactly — so it emits neither and inherits both.
           let hasOwnUrns =
-            !(info.consumesDcbLog) || info.sourceTopics->Dict.keysToArray->Array.length > 0
-          let handlerJson =
-            Pulumi.Output.all3((info.queryDbTableName, commandQueueUrl, sourceUrnsFor(info)))
-            ->Pulumi.Output.apply(((tableName, queueUrl, urns)) => {
-              let urnsFragment = hasOwnUrns
-                ? `,"u":${urns->Array.map(JSON.Encode.string)->JSON.Encode.array->JSON.stringify}`
-                : ""
-              let queueFragment = switch target {
-              | Some(_) => `,"k":"${queueUrl}","f":${commandQueueIsFifo ? "true" : "false"}`
-              | None => ""
-              }
-              `{"n":${nameJson},"q":"${tableName}"${urnsFragment}${queueFragment}}`
-            })
+            !info.consumesDcbLog || info.sourceTopics->Dict.keysToArray->Array.length > 0
+          let handlerJson = Pulumi.Output.all3((
+            info.queryDbTableName,
+            commandQueueUrl,
+            sourceUrnsFor(info),
+          ))->Pulumi.Output.apply(((tableName, queueUrl, urns)) => {
+            let urnsFragment = hasOwnUrns
+              ? `,"u":${urns->Array.map(JSON.Encode.string)->JSON.Encode.array->JSON.stringify}`
+              : ""
+            let queueFragment = switch target {
+            | Some(_) => `,"k":"${queueUrl}","f":${commandQueueIsFifo ? "true" : "false"}`
+            | None => ""
+            }
+            `{"n":${nameJson},"q":"${tableName}"${urnsFragment}${queueFragment}}`
+          })
           let _ = handlerOutputs->Array.push(handlerJson)
         })
 
@@ -632,23 +615,23 @@ let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) 
         }
 
         // The defaults every non-overriding slice inherits, carried once.
-        let sharedOutput =
-          Pulumi.Output.all2((dcbQueueUrl, dcbSourceUrn))->Pulumi.Output.apply(((
-            queueUrl,
-            urn,
-          )) => {
-            let fifoJson = dcbQueueIsFifo.contents ? "true" : "false"
-            let urnJson = urn->JSON.stringifyAny->Option.getOr(`""`)
-            `"queueUrl":"${queueUrl}","commandQueueIsFifo":${fifoJson},"urns":[${urnJson}]`
-          })
+        let sharedOutput = Pulumi.Output.all2((dcbQueueUrl, dcbSourceUrn))->Pulumi.Output.apply(((
+          queueUrl,
+          urn,
+        )) => {
+          let fifoJson = dcbQueueIsFifo.contents ? "true" : "false"
+          let urnJson = urn->JSON.stringifyAny->Option.getOr(`""`)
+          `"queueUrl":"${queueUrl}","commandQueueIsFifo":${fifoJson},"urns":[${urnJson}]`
+        })
 
-        let handlerConfigOutput =
-          Pulumi.Output.all2((sharedOutput, Pulumi.Output.all(handlerOutputs)))
-          ->Pulumi.Output.apply(((shared, handlers)) => {
-            let json = `{${shared},"handlers":[${handlers->Array.join(",")}]}`
-            Util_LambdaEnvBudget.check(~lambdaName="AllAutomationSlices", ~handlerConfigJson=json)
-            json
-          })
+        let handlerConfigOutput = Pulumi.Output.all2((
+          sharedOutput,
+          Pulumi.Output.all(handlerOutputs),
+        ))->Pulumi.Output.apply(((shared, handlers)) => {
+          let json = `{${shared},"handlers":[${handlers->Array.join(",")}]}`
+          Util_LambdaEnvBudget.check(~lambdaName="AllAutomationSlices", ~handlerConfigJson=json)
+          json
+        })
 
         let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
         envVars->Dict.set("HANDLER_CONFIG", handlerConfigOutput->Pulumi.Output.asInput)

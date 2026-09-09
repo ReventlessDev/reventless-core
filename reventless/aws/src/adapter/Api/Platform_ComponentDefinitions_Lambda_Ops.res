@@ -12,7 +12,6 @@
 // sury-encoded with the same shape as the in-memory adapter's
 // encodePluginStructureEntry, so it is wrapped with `pluginId` without decoding.
 
-
 let str = (item: dict<JSON.t>, key: string): option<string> =>
   item->Dict.get(key)->Option.flatMap(JSON.Decode.string)
 
@@ -37,7 +36,14 @@ type healSpec = {lists: array<string>, nested: array<(string, array<string>)>}
 let refLists = ["references"]
 
 let writeSideHeal = {
-  lists: ["commands", "linkedViews", "producedEventTypes", "consumedEventTypes", "events", "errors"],
+  lists: [
+    "commands",
+    "linkedViews",
+    "producedEventTypes",
+    "consumedEventTypes",
+    "events",
+    "errors",
+  ],
   nested: [("commands", refLists), ("events", refLists), ("errors", refLists)],
 }
 
@@ -52,10 +58,7 @@ let healByCollection: array<(string, healSpec)> = [
   ("stateChangeSlices", writeSideHeal),
   ("aggregates", writeSideHeal),
   ("automationSlices", {lists: ["consumedEventTypes", "producedCommandTypes"], nested: []}),
-  (
-    "outboundTranslationSlices",
-    {lists: ["consumedEventTypes", "inboundCommandTypes"], nested: []},
-  ),
+  ("outboundTranslationSlices", {lists: ["consumedEventTypes", "inboundCommandTypes"], nested: []}),
   ("inboundTranslationSlices", {lists: ["commandTypes"], nested: []}),
   ("extensions", {lists: ["delegateNames", "eventTypes", "commandTypes"], nested: []}),
 ]
@@ -116,21 +119,22 @@ let healStructure = (structure: dict<JSON.t>): dict<JSON.t> => {
   healByCollection->Array.forEach(((collection, spec)) =>
     out->mapMembers(collection, component => {
       component->fillLists(spec.lists)
-      spec.nested->Array.forEach(((key, keys)) =>
-        component->mapMembers(key, member => member->fillLists(keys))
+      spec.nested->Array.forEach(
+        ((key, keys)) => component->mapMembers(key, member => member->fillLists(keys)),
       )
     })
   )
-  readSideCollections->Array.forEach(collection =>
-    out->mapMembers(collection, fillLifecycleField)
-  )
+  readSideCollections->Array.forEach(collection => out->mapMembers(collection, fillLifecycleField))
   out
 }
 
 // Mirror ReventlessCore.Platform_ComponentDefinitionsApi.isPublicQueryable on
 // the read path: a component is public unless its visibility is "Internal".
 let isPublicQueryable = (q: JSON.t): bool =>
-  switch q->JSON.Decode.object->Option.flatMap(o => o->Dict.get("visibility"))->Option.flatMap(JSON.Decode.string) {
+  switch q
+  ->JSON.Decode.object
+  ->Option.flatMap(o => o->Dict.get("visibility"))
+  ->Option.flatMap(JSON.Decode.string) {
   | Some("Internal") => false
   | _ => true
   }
@@ -147,8 +151,7 @@ let isPublicQueryable = (q: JSON.t): bool =>
 // duplicate list.
 let filterStructure = (structure: dict<JSON.t>): dict<JSON.t> => {
   let out = Dict.fromArray(structure->Dict.toArray)
-  let arrAt = key =>
-    out->Dict.get(key)->Option.flatMap(JSON.Decode.array)->Option.getOr([])
+  let arrAt = key => out->Dict.get(key)->Option.flatMap(JSON.Decode.array)->Option.getOr([])
   let readModels = arrAt("readModels")
   let stateViewSlices = arrAt("stateViewSlices")
   out->Dict.set("readModels", readModels->Array.filter(isPublicQueryable)->JSON.Encode.array)
@@ -192,7 +195,6 @@ let toEntryWith = (~filter: bool, item: dict<JSON.t>, ~name: string): option<JSO
   }
 }
 
-
 // The built-in Platform_Admin entry, written at deploy time as an asset file in
 // the code archive (the admin never Connects to itself, so its structure never
 // enters the Plugin read model). It rides the archive rather than an env var
@@ -204,27 +206,25 @@ let toEntryWith = (~filter: bool, item: dict<JSON.t>, ~name: string): option<JSO
 // extension points, so its filtered and complete encodings carry the same
 // components; the structure-level fields the complete entry adds are absent from
 // this JSON and resolve to null, which is what `extensionPoints: None` means.
-let adminEntry: option<JSON.t> =
-  try {
-    switch NodePath.join([NodeProcess.cwd(), "adminEntry.json"])
-    ->NodeFs.readFileSync
-    ->JSON.parseOrThrow {
-    | JSON.Null => None
-    | json => Some(json)
-    }
-  } catch {
-  | _ => None
+let adminEntry: option<JSON.t> = try {
+  switch NodePath.join([NodeProcess.cwd(), "adminEntry.json"])
+  ->NodeFs.readFileSync
+  ->JSON.parseOrThrow {
+  | JSON.Null => None
+  | json => Some(json)
   }
+} catch {
+| _ => None
+}
 
 // Resolve an offloaded `structure`: a large structure is content-addressed to the
 // offload bucket at deploy time and persisted as an `{$offload: {...}}` reference,
 // so fetch the object's bytes and substitute the real structure JSON before it is
 // filtered. Inline (or absent) structures pass through untouched. The `fetch` is
 // per-hash cached, so an identical structure shared across versions is read once.
-let resolveStructure = (
-  fetch: string => promise<string>,
-  item: dict<JSON.t>,
-): promise<dict<JSON.t>> =>
+let resolveStructure = (fetch: string => promise<string>, item: dict<JSON.t>): promise<
+  dict<JSON.t>,
+> =>
   switch item
   ->Dict.get("structure")
   ->Option.flatMap(JSON.Decode.object)
@@ -302,8 +302,7 @@ let structureOf = (item: dict<JSON.t>, ~name as _: string): option<(
     | exception _ =>
       JsError.throwWithMessage(
         `baked manifest: the structure persisted for "${pluginId}" cannot be decoded — ` ++
-        `it was written by a framework version this platform can no longer read. ` ++
-        `Redeploy that plugin, or drop it from the include-list.`,
+        `it was written by a framework version this platform can no longer read. ` ++ `Redeploy that plugin, or drop it from the include-list.`,
       )
     }
   | _ => None
@@ -357,8 +356,7 @@ let bakeSelections = (): array<ReventlessCore.Platform_BakedManifest.selection> 
   | Some(raw) =>
     switch raw->JSON.parseOrThrow {
     | json => json->decodeSelections
-    | exception _ =>
-      JsError.throwWithMessage("baked manifest: BAKE_SELECTIONS is not a JSON array")
+    | exception _ => JsError.throwWithMessage("baked manifest: BAKE_SELECTIONS is not a JSON array")
     }
   }
 
@@ -612,8 +610,7 @@ let runBake = async (
   let selections = bakeSelections()
   if selections->Array.length == 0 {
     JsError.throwWithMessage(
-      "baked manifest: BAKE_SELECTIONS is empty — this platform declares no bake, " ++
-      "so there is nothing to write and a shell pointed at the file would find none.",
+      "baked manifest: BAKE_SELECTIONS is empty — this platform declares no bake, " ++ "so there is nothing to write and a shell pointed at the file would find none.",
     )
   }
   // The default journey first and always — the caller supplies its key, because
@@ -677,8 +674,7 @@ let handler = async (event: JSON.t): array<JSON.t> => {
     switch bakeTarget {
     | Some(_) =>
       JsError.throwWithMessage(
-        "baked manifest: PLUGIN_RM_TABLE env var not set — the bake would write an " ++
-        "empty shop rather than fail.",
+        "baked manifest: PLUGIN_RM_TABLE env var not set — the bake would write an " ++ "empty shop rather than fail.",
       )
     | None => admin
     }
@@ -699,11 +695,7 @@ let handler = async (event: JSON.t): array<JSON.t> => {
     | Some(target) =>
       // Checked on the raw rows: the refs are what the deploy can predict, and a
       // row that is behind should not have its structure fetched at all.
-      let regs = registrations(
-        rawItems,
-        ~expect=bakeExpectations(event),
-        ~since=bakeSince(event),
-      )
+      let regs = registrations(rawItems, ~expect=bakeExpectations(event), ~since=bakeSince(event))
       switch regs->Array.filter(isPending) {
       | [] =>
         // The built-in admin entry is deliberately absent: it never enters the
@@ -720,8 +712,7 @@ let handler = async (event: JSON.t): array<JSON.t> => {
         // file. What the summary adds is orthogonal to the files — it says what
         // the convergence check proved, not what the bake wrote.
         Array.concat(written, [encodeSummary(regs)])
-      | pending =>
-        // Not an error — the deploy just has not finished arriving. Reported so the
+      | pending => // Not an error — the deploy just has not finished arriving. Reported so the
         // caller can invoke again rather than bake the previous deployment, and
         // reported with both keys and the row's date so that when it never does
         // arrive, the job says which of the causes it was.
@@ -734,12 +725,11 @@ let handler = async (event: JSON.t): array<JSON.t> => {
         ]
       }
     | None =>
-      let userEntries =
-        Platform_AdminScan_Ops.latestByName(
-          await resolveAll(),
-          ~nameVersionOf=item => item->str("name"),
-          ~toEntry,
-        )
+      let userEntries = Platform_AdminScan_Ops.latestByName(
+        await resolveAll(),
+        ~nameVersionOf=item => item->str("name"),
+        ~toEntry,
+      )
       Array.concat(admin, userEntries)
     }
   }

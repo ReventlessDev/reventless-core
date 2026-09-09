@@ -9,7 +9,10 @@ module Assoc = AppSync_SourceApiAssociation_Retrying
 
 describe("AppSync_SourceApiAssociation_Retrying.isConcurrentModificationError", () => {
   testSync("true for ConcurrentModificationException by name", () => {
-    let err = mkErr(~name="ConcurrentModificationException", ~message="Schema is currently being merged")
+    let err = mkErr(
+      ~name="ConcurrentModificationException",
+      ~message="Schema is currently being merged",
+    )
     expect(Assoc.isConcurrentModificationError(err))->toBe(true)
   })
 
@@ -32,32 +35,47 @@ describe("AppSync_SourceApiAssociation_Retrying.isRetryableAssociationError", ()
       "TooManyRequestsException",
       "InternalFailureException",
       "ServiceUnavailableException",
-    ]->Array.forEach(name =>
-      testSync(name, () => {
-        expect(Assoc.isRetryableAssociationError(mkErr(~name, ~message="x")))->toBe(true)
-      })
+    ]->Array.forEach(
+      name =>
+        testSync(
+          name,
+          () => {
+            expect(Assoc.isRetryableAssociationError(mkErr(~name, ~message="x")))->toBe(true)
+          },
+        ),
     )
   })
 
   describe("returns false", () => {
-    testSync("permanent ValidationException", () => {
-      expect(
-        Assoc.isRetryableAssociationError(mkErr(~name="ValidationException", ~message="bad input")),
-      )->toBe(false)
-    })
+    testSync(
+      "permanent ValidationException",
+      () => {
+        expect(
+          Assoc.isRetryableAssociationError(
+            mkErr(~name="ValidationException", ~message="bad input"),
+          ),
+        )->toBe(false)
+      },
+    )
 
-    testSync("NotFoundException (a delete no-op, not a retry)", () => {
-      expect(
-        Assoc.isRetryableAssociationError(
-          mkErr(~name="NotFoundException", ~message="association not found"),
-        ),
-      )->toBe(false)
-    })
+    testSync(
+      "NotFoundException (a delete no-op, not a retry)",
+      () => {
+        expect(
+          Assoc.isRetryableAssociationError(
+            mkErr(~name="NotFoundException", ~message="association not found"),
+          ),
+        )->toBe(false)
+      },
+    )
 
-    testSync("non-exception value", () => {
-      let notErr: JsExn.t = Obj.magic(42)
-      expect(Assoc.isRetryableAssociationError(notErr))->toBe(false)
-    })
+    testSync(
+      "non-exception value",
+      () => {
+        let notErr: JsExn.t = Obj.magic(42)
+        expect(Assoc.isRetryableAssociationError(notErr))->toBe(false)
+      },
+    )
   })
 })
 

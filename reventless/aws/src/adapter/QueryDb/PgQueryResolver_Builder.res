@@ -41,8 +41,7 @@ type resolverEntry = {
   includeIdParam: bool,
 }
 let entries: dict<resolverEntry> = Dict.make()
-let register = (entry: resolverEntry): unit =>
-  entries->Dict.set(entry.readModelName, entry)
+let register = (entry: resolverEntry): unit => entries->Dict.set(entry.readModelName, entry)
 
 // Relay node type → read-model-name, populated per RM by QueryDbResolvers_Lambda.
 // Baked into the env config so the entry point can serve the shared node(id).
@@ -138,14 +137,10 @@ let provision = (
     // In-VPC on the DB-access security group + private subnets (reach RDS).
     let vpcConfig =
       selection.securityGroupId
-      ->Pulumi.Output.apply(sgId =>
-        (
-          {
-            Lambda.Function.subnetIds: selection.subnetIds->Pulumi.Input.make,
-            securityGroupIds: [sgId->Pulumi.Input.make]->Pulumi.Input.make,
-          }: Lambda.Function.vpcConfig
-        )
-      )
+      ->Pulumi.Output.apply((sgId): Lambda.Function.vpcConfig => {
+        Lambda.Function.subnetIds: selection.subnetIds->Pulumi.Input.make,
+        securityGroupIds: [sgId->Pulumi.Input.make]->Pulumi.Input.make,
+      })
       ->Pulumi.Output.asInput
 
     let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
@@ -239,6 +234,9 @@ let provision = (
 
     // Fulfil the deferred name the Postgres storage maker handed to resolvers.
     let _ = dataSource.name->Pulumi.Output.apply(n => resolveDataSourceName.contents(n))
-    log.info(~comp="PgQueryResolver_Builder", `provisioned for ${handlers->Array.length->Int.toString} read model(s)`)
+    log.info(
+      ~comp="PgQueryResolver_Builder",
+      `provisioned for ${handlers->Array.length->Int.toString} read model(s)`,
+    )
   }
 }

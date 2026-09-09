@@ -52,13 +52,13 @@ describe("Plugin_EventQuerySchema.generate", () => {
       ),
     )
     expect(sdl->String.includes("type EventMeta {"))->toBe(true)
-    ["user", "time", "service", "msgId", "correlationId", "causationId"]->Array.forEach(f =>
-      expect(sdl->String.includes(f))->toBe(true)
+    ["user", "time", "service", "msgId", "correlationId", "causationId"]->Array.forEach(
+      f => expect(sdl->String.includes(f))->toBe(true),
     )
     // Transport / tracing detail and the cross-cutting context bag must not
     // leave the server — see the module comment.
-    ["ip:", "traceparent", "schemaVersion", "headers"]->Array.forEach(f =>
-      expect(sdl->String.includes(f))->toBe(false)
+    ["ip:", "traceparent", "schemaVersion", "headers"]->Array.forEach(
+      f => expect(sdl->String.includes(f))->toBe(false),
     )
   })
 
@@ -70,9 +70,14 @@ describe("Plugin_EventQuerySchema.generate", () => {
       ),
     )
     expect(sdl->String.includes("type Ordering_OrderEventRecord {"))->toBe(true)
-    ["position: String!", "eventType: String!", "payload: AWSJSON!", "tags: [EventTag!]!", "meta: EventMeta!", "recordedAt: String!"]->Array.forEach(
-      f => expect(sdl->String.includes(f))->toBe(true),
-    )
+    [
+      "position: String!",
+      "eventType: String!",
+      "payload: AWSJSON!",
+      "tags: [EventTag!]!",
+      "meta: EventMeta!",
+      "recordedAt: String!",
+    ]->Array.forEach(f => expect(sdl->String.includes(f))->toBe(true))
   })
 
   testSync("filter offers the entity shortcut and the precise tag pair", () => {
@@ -83,9 +88,15 @@ describe("Plugin_EventQuerySchema.generate", () => {
       ),
     )
     expect(sdl->String.includes("input Ordering_OrderEventHistoryFilter {"))->toBe(true)
-    ["entityId: ID", "tagKey: String", "tagValue: String", "eventTypes: [String!]", "user: String", "timeFrom: String", "timeTo: String"]->Array.forEach(
-      f => expect(sdl->String.includes(f))->toBe(true),
-    )
+    [
+      "entityId: ID",
+      "tagKey: String",
+      "tagValue: String",
+      "eventTypes: [String!]",
+      "user: String",
+      "timeFrom: String",
+      "timeTo: String",
+    ]->Array.forEach(f => expect(sdl->String.includes(f))->toBe(true))
   })
 
   testSync("a plugin with no event logs emits nothing at all", () => {

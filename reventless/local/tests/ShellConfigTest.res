@@ -11,7 +11,7 @@ let _ = TestRunner.setup()
 
 let manifest = (~key: option<string>=?): ReventlessInfra.Platform.bakedManifest => {
   components: [{plugin: "Catalog", views: ["Products"], commands: []}],
-  key: ?key,
+  ?key,
 }
 
 let str = (d: dict<JSON.t>, k: string): option<string> =>
@@ -65,13 +65,14 @@ describe("ShellConfig.overlay", () => {
   // did not write, with nothing in the diff to say so.
   testSync("refuses a shellConfig key the platform computes", () =>
     expect(
-      threw(() =>
-        ShellConfig.overlay(
-          ~bakedManifest=Some(manifest()),
-          ~shellConfig=Some(
-            Dict.fromArray([("manifestUrl", JSON.Encode.string("/elsewhere.json"))]),
-          ),
-        )->ignore
+      threw(
+        () =>
+          ShellConfig.overlay(
+            ~bakedManifest=Some(manifest()),
+            ~shellConfig=Some(
+              Dict.fromArray([("manifestUrl", JSON.Encode.string("/elsewhere.json"))]),
+            ),
+          )->ignore,
       ),
     )->toBe(true)
   )
@@ -107,12 +108,15 @@ describe("ShellConfig.overlay — uiSlotsFile", () => {
 
   testSync("refuses a shellConfig key redirecting the computed module", () =>
     expect(
-      threw(() =>
-        ShellConfig.overlay(
-          ~bakedManifest=None,
-          ~uiSlotsFile="/src/storefront-slots.js",
-          ~shellConfig=Some(Dict.fromArray([("uiSlotsUrl", JSON.Encode.string("/elsewhere.js"))])),
-        )->ignore
+      threw(
+        () =>
+          ShellConfig.overlay(
+            ~bakedManifest=None,
+            ~uiSlotsFile="/src/storefront-slots.js",
+            ~shellConfig=Some(
+              Dict.fromArray([("uiSlotsUrl", JSON.Encode.string("/elsewhere.js"))]),
+            ),
+          )->ignore,
       ),
     )->toBe(true)
   )
@@ -208,7 +212,6 @@ let fulfilment: ReventlessInfra.Platform.bakedJourney = {
 }
 
 describe("ShellConfig.overlay — journeys", () => {
-
   // The regression line. A shell that has never heard of journeys must not
   // suddenly find a key it does not know.
   testSync("a bake declaring no journeys writes no map", () => {
@@ -217,7 +220,10 @@ describe("ShellConfig.overlay — journeys", () => {
   })
 
   testSync("an empty journeys array is the same as none", () => {
-    let out = ShellConfig.overlay(~bakedManifest=Some(withJourneys(~journeys=[])), ~shellConfig=None)
+    let out = ShellConfig.overlay(
+      ~bakedManifest=Some(withJourneys(~journeys=[])),
+      ~shellConfig=None,
+    )
     expect(out->Dict.get("journeyManifestUrls"))->toEqual(None)
   })
 
@@ -250,11 +256,14 @@ describe("ShellConfig.overlay — journeys", () => {
   // `manifestUrl` already carries, extended to the map it now writes beside it.
   testSync("refuses a shellConfig that sets the journey map itself", () =>
     expect(
-      threw(() =>
-        ShellConfig.overlay(
-          ~bakedManifest=Some(withJourneys(~journeys=[shopper])),
-          ~shellConfig=Some(Dict.fromArray([("journeyManifestUrls", JSON.Encode.object(Dict.make()))])),
-        )->ignore
+      threw(
+        () =>
+          ShellConfig.overlay(
+            ~bakedManifest=Some(withJourneys(~journeys=[shopper])),
+            ~shellConfig=Some(
+              Dict.fromArray([("journeyManifestUrls", JSON.Encode.object(Dict.make()))]),
+            ),
+          )->ignore,
       ),
     )->toBe(true)
   )

@@ -26,7 +26,6 @@ The framework does not own the runner. A consumer runs their own suite, their ow
 way, and hands the report here — so this module is a pure transformation with no
 opinion about Jest, CI, or where files live. `fromReport` is the whole of it.
 */
-
 /** One assertion, and whether it held. Named, not numbered: a count that changed
     tells a reader nothing, and a name that disappeared tells them everything. */
 @schema
@@ -101,5 +100,6 @@ let render = (certificate: t): string =>
     console reader and a machine reader agree without either restating the rule. */
 let summarize = (certificate: t): string =>
   `${certificate.trait}@${certificate.traitVersion} → ${certificate.host}: ` ++
-  `${certificate.passed->Int.toString}/${(certificate.assertions->Array.length)
+  `${certificate.passed->Int.toString}/${certificate.assertions
+    ->Array.length
     ->Int.toString} assertions, ` ++ (certificate->verified ? "verified" : "NOT verified")

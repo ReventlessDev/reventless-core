@@ -21,30 +21,31 @@ describe("AutomationSliceEntryPoint_Ops.parseHandlerConfig", () => {
   })
 
   testSync("decodes a full entry incl. bodyModule and context", () => {
-    let config = obj([
-      (
-        "handlers",
-        JSON.Encode.array([
-          obj([
-            ("specModule", str("@x/plugin/src/Order/AutomationSlice/Restock.res.mjs")),
-            ("bodyModule", str("@x/plugin/src/Order/AutomationSlice/Restock_Automation.res.mjs")),
-            ("callbackType", str("automation")),
-            ("queryDbTableName", str("RestockTodo-abc")),
-            ("dcbQueueUrl", str("https://sqs/queue.fifo")),
-            ("sourceUrn", str("arn:aws:dynamodb:eu-west-1:1:table/log/stream/x")),
-            (
-              "context",
-              obj([
-                ("environment", str("alpha")),
-                ("platformName", str("OnlineShop")),
-                ("pluginName", str("Ordering")),
-                ("sliceName", str("Restock")),
-              ]),
-            ),
+    let config =
+      obj([
+        (
+          "handlers",
+          JSON.Encode.array([
+            obj([
+              ("specModule", str("@x/plugin/src/Order/AutomationSlice/Restock.res.mjs")),
+              ("bodyModule", str("@x/plugin/src/Order/AutomationSlice/Restock_Automation.res.mjs")),
+              ("callbackType", str("automation")),
+              ("queryDbTableName", str("RestockTodo-abc")),
+              ("dcbQueueUrl", str("https://sqs/queue.fifo")),
+              ("sourceUrn", str("arn:aws:dynamodb:eu-west-1:1:table/log/stream/x")),
+              (
+                "context",
+                obj([
+                  ("environment", str("alpha")),
+                  ("platformName", str("OnlineShop")),
+                  ("pluginName", str("Ordering")),
+                  ("sliceName", str("Restock")),
+                ]),
+              ),
+            ]),
           ]),
-        ]),
-      ),
-    ])->JSON.stringify
+        ),
+      ])->JSON.stringify
     let entries = AutomationSliceEntryPoint_Ops.parseHandlerConfig(config)
     expect(entries->Array.length)->toBe(1)
     let e = entries->Array.getUnsafe(0)
@@ -63,20 +64,21 @@ describe("AutomationSliceEntryPoint_Ops.parseHandlerConfig", () => {
   })
 
   testSync("a stale entry without bodyModule/context decodes with defaults", () => {
-    let config = obj([
-      (
-        "handlers",
-        JSON.Encode.array([
-          obj([
-            ("specModule", str("a.res.mjs")),
-            ("callbackType", str("outbound")),
-            ("queryDbTableName", str("t")),
-            ("dcbQueueUrl", str("u")),
-            ("sourceUrn", str("arn")),
+    let config =
+      obj([
+        (
+          "handlers",
+          JSON.Encode.array([
+            obj([
+              ("specModule", str("a.res.mjs")),
+              ("callbackType", str("outbound")),
+              ("queryDbTableName", str("t")),
+              ("dcbQueueUrl", str("u")),
+              ("sourceUrn", str("arn")),
+            ]),
           ]),
-        ]),
-      ),
-    ])->JSON.stringify
+        ),
+      ])->JSON.stringify
     let e = AutomationSliceEntryPoint_Ops.parseHandlerConfig(config)->Array.getUnsafe(0)
     expect(e.bodyModule)->toBe("")
     expect(e.context->Option.isNone)->toBe(true)
@@ -111,7 +113,10 @@ describe("AutomationSliceEntryPoint_Ops.parseHandlerConfigWithModules", () => {
         "Ship",
         obj([
           ("specModule", str("@x/plugin/src/Order/OutboundTranslationSlice/Ship.res.mjs")),
-          ("bodyModule", str("@x/plugin/src/Order/OutboundTranslationSlice/Ship_Translation.res.mjs")),
+          (
+            "bodyModule",
+            str("@x/plugin/src/Order/OutboundTranslationSlice/Ship_Translation.res.mjs"),
+          ),
           ("callbackType", str("outbound")),
         ]),
       ),
@@ -128,10 +133,9 @@ describe("AutomationSliceEntryPoint_Ops.parseHandlerConfigWithModules", () => {
   testSync("a compact entry takes its modules from the registry and the shared defaults", () => {
     let config = compactConfig([obj([("n", str("Restock")), ("q", str("RestockTodo-abc"))])])
     let e =
-      AutomationSliceEntryPoint_Ops.parseHandlerConfigWithModules(
-        modules,
-        config,
-      )->Array.getUnsafe(0)
+      AutomationSliceEntryPoint_Ops.parseHandlerConfigWithModules(modules, config)->Array.getUnsafe(
+        0,
+      )
     expect(e.specModule)->toBe("@x/plugin/src/Order/AutomationSlice/Restock.res.mjs")
     expect(e.bodyModule)->toBe("@x/plugin/src/Order/AutomationSlice/Restock_Automation.res.mjs")
     expect(e.callbackType)->toBe("automation")
@@ -156,10 +160,9 @@ describe("AutomationSliceEntryPoint_Ops.parseHandlerConfigWithModules", () => {
       ]),
     ])
     let e =
-      AutomationSliceEntryPoint_Ops.parseHandlerConfigWithModules(
-        modules,
-        config,
-      )->Array.getUnsafe(0)
+      AutomationSliceEntryPoint_Ops.parseHandlerConfigWithModules(modules, config)->Array.getUnsafe(
+        0,
+      )
     expect(e.callbackType)->toBe("outbound")
     expect(e.dcbQueueUrl)->toBe("https://sqs/orders.fifo")
     expect(e.commandQueueIsFifo)->toEqual(Some(true))
@@ -171,35 +174,34 @@ describe("AutomationSliceEntryPoint_Ops.parseHandlerConfigWithModules", () => {
   testSync("a compact entry with no registry match yields no bodyModule to skip on", () => {
     let config = compactConfig([obj([("n", str("Gone")), ("q", str("GoneTodo-abc"))])])
     let e =
-      AutomationSliceEntryPoint_Ops.parseHandlerConfigWithModules(
-        modules,
-        config,
-      )->Array.getUnsafe(0)
+      AutomationSliceEntryPoint_Ops.parseHandlerConfigWithModules(modules, config)->Array.getUnsafe(
+        0,
+      )
     expect(e.specModule)->toBe("")
     expect(e.bodyModule)->toBe("")
   })
 
   testSync("full-key entries still decode when a registry is present", () => {
-    let config = obj([
-      (
-        "handlers",
-        JSON.Encode.array([
-          obj([
-            ("specModule", str("a.res.mjs")),
-            ("bodyModule", str("b.res.mjs")),
-            ("callbackType", str("outbound")),
-            ("queryDbTableName", str("t")),
-            ("dcbQueueUrl", str("u")),
-            ("sourceUrn", str("arn")),
+    let config =
+      obj([
+        (
+          "handlers",
+          JSON.Encode.array([
+            obj([
+              ("specModule", str("a.res.mjs")),
+              ("bodyModule", str("b.res.mjs")),
+              ("callbackType", str("outbound")),
+              ("queryDbTableName", str("t")),
+              ("dcbQueueUrl", str("u")),
+              ("sourceUrn", str("arn")),
+            ]),
           ]),
-        ]),
-      ),
-    ])->JSON.stringify
+        ),
+      ])->JSON.stringify
     let e =
-      AutomationSliceEntryPoint_Ops.parseHandlerConfigWithModules(
-        modules,
-        config,
-      )->Array.getUnsafe(0)
+      AutomationSliceEntryPoint_Ops.parseHandlerConfigWithModules(modules, config)->Array.getUnsafe(
+        0,
+      )
     expect(e.specModule)->toBe("a.res.mjs")
     expect(e.dcbQueueUrl)->toBe("u")
   })

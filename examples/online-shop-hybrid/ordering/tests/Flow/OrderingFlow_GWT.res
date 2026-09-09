@@ -29,7 +29,8 @@ module AutoShipOrderSlice = {
   include AutoShipOrder
   type consumedEvent = AutoShipOrder_Automation.FromOrderingDcb.sourceEvent
   let consumedEventSchema = AutoShipOrder_Automation.FromOrderingDcb.sourceEventSchema
-  let collect = e => AutoShipOrder_Automation.FromOrderingDcb.collect(e, ~sourceId="", contextFor("AutoShipOrder"))
+  let collect = e =>
+    AutoShipOrder_Automation.FromOrderingDcb.collect(e, ~sourceId="", contextFor("AutoShipOrder"))
   let resolve = AutoShipOrder_Automation.FromOrderingDcb.resolve
   let process = AutoShipOrder_Automation.process
 }
@@ -41,7 +42,11 @@ module NotificationIntakeSlice = {
   type consumedEvent = NotificationIntake_Automation.FromOrderingDcb.sourceEvent
   let consumedEventSchema = NotificationIntake_Automation.FromOrderingDcb.sourceEventSchema
   let collect = e =>
-    NotificationIntake_Automation.FromOrderingDcb.collect(e, ~sourceId="", contextFor("NotificationIntake"))
+    NotificationIntake_Automation.FromOrderingDcb.collect(
+      e,
+      ~sourceId="",
+      contextFor("NotificationIntake"),
+    )
   let resolve = NotificationIntake_Automation.FromOrderingDcb.resolve
   let process = NotificationIntake_Automation.process
 }
@@ -63,10 +68,11 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
   test("an order is placed, auto-shipped, projected as Shipped, and confirmed", () => {
     // The requested delivery slot travels command → event → view row unchanged,
     // one `DateRange` end to end.
-    let window = Reventless.DateRange.make(
-      ~start="2026-03-02T09:00:00Z",
-      ~end_="2026-03-02T11:00:00Z",
-    )->Result.getOrThrow
+    let window =
+      Reventless.DateRange.make(
+        ~start="2026-03-02T09:00:00Z",
+        ~end_="2026-03-02T11:00:00Z",
+      )->Result.getOrThrow
     start
     ->Sync.givenEvents([
       SyncCatalogProduct.CatalogProductSynced({productId: "p1", name: "Book", price: eur(9.99)}),

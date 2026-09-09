@@ -31,8 +31,10 @@ module ShipOrderSlice = {
     | _ => None
     }
 
-  let process = (_id, item) =>
-    Some((item.orderId, CreateShipment({orderId: item.orderId, address: item.shippingAddress})))
+  let process = (_id, item) => Some((
+    item.orderId,
+    CreateShipment({orderId: item.orderId, address: item.shippingAddress}),
+  ))
   let onExhausted = (_id, _item) => None
 }
 
@@ -56,11 +58,11 @@ describe("ShipOrder AutomationSlice", () => {
   )
 
   test("sweep: events → commands, andThenEvents drains todos", () => {
-    let s =
-      givenEvents([OrderPlaced({orderId: "o1", shippingAddress: "1 Main St"})])
-      ->whenSweep
-    let commandsOk =
-      thenCommands(s, [("o1", CreateShipment({orderId: "o1", address: "1 Main St"}))])
+    let s = givenEvents([OrderPlaced({orderId: "o1", shippingAddress: "1 Main St"})])->whenSweep
+    let commandsOk = thenCommands(
+      s,
+      [("o1", CreateShipment({orderId: "o1", address: "1 Main St"}))],
+    )
     let drained = andThenEvents(s, [ShipmentCreated({orderId: "o1"})])
     let todosOk = thenScenarioTodos(drained, [])
     switch (commandsOk, todosOk) {

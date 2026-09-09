@@ -123,7 +123,7 @@ let listObjects = async (~bucket: string, ~prefix: string): array<object> => {
       S3.ListObjectVersionsCommand.make({
         bucket,
         prefix: `${prefix}/`,
-        keyMarker: ?keyMarker,
+        ?keyMarker,
         versionIdMarker: ?versionMarker,
       }),
     )
@@ -153,8 +153,7 @@ let listObjects = async (~bucket: string, ~prefix: string): array<object> => {
       let tagging = await S3.GetObjectTaggingCommand.send(
         S3.GetObjectTaggingCommand.make({bucket, key}),
       )
-      let pending =
-        tagging.tagSet->Option.getOr([])->Array.some(t => t.key == pendingTagKey)
+      let pending = tagging.tagSet->Option.getOr([])->Array.some(t => t.key == pendingTagKey)
       objects->Array.push({key, ref: `/${key}`, pending})
     })
   )
@@ -224,10 +223,17 @@ let print = (r: report): bool => {
   Console.log("")
   Console.log(`  ${r.store}   ${r.bucket}/${r.prefix}/`)
   Console.log(`    event rows scanned: ${r.eventRows->Int.toString}`)
-  let line = (label, n) => Console.log(`      ${n->Int.toString->String.padStart(8, " ")}  ${label}`)
+  let line = (label, n) =>
+    Console.log(`      ${n->Int.toString->String.padStart(8, " ")}  ${label}`)
   line("referenced, still tagged pending  ← must be 0", r.referencedButPending->Array.length)
-  line("unreferenced, tagged pending      ← what expiry would delete", r.unreferencedPending->Array.length)
-  line("unreferenced, untagged            ← outside the rule", r.unreferencedUntagged->Array.length)
+  line(
+    "unreferenced, tagged pending      ← what expiry would delete",
+    r.unreferencedPending->Array.length,
+  )
+  line(
+    "unreferenced, untagged            ← outside the rule",
+    r.unreferencedUntagged->Array.length,
+  )
   line("referenced but missing            ← dangling refs", r.danglingRefs->Array.length)
 
   // Every object untagged reads as "the claimer has caught up with everything",
@@ -238,13 +244,16 @@ let print = (r: report): bool => {
     r.referencedButPending->Array.length +
     r.unreferencedPending->Array.length +
     r.unreferencedUntagged->Array.length
-  if objectCount > 0 && r.referencedButPending->Array.length == 0 && r.unreferencedPending->Array.length == 0 {
+  if (
+    objectCount > 0 &&
+    r.referencedButPending->Array.length == 0 &&
+    r.unreferencedPending->Array.length == 0
+  ) {
     Console.log("")
     Console.log(
       `    Note: none of the ${objectCount->Int.toString} objects carry "${pendingTagKey}". That is ` ++
       "what a fully-claimed store looks like — and also what it looks like if the mint side " ++
-      "never wrote the tag (a store whose objects all predate it) or if this tool's tag key has " ++
-      "drifted from the deploy's.",
+      "never wrote the tag (a store whose objects all predate it) or if this tool's tag key has " ++ "drifted from the deploy's.",
     )
   }
 
@@ -258,8 +267,7 @@ let print = (r: report): bool => {
     Console.log("")
     Console.log(
       "    Do NOT enable this store's expiry rule. Either the claim component is behind or " ++
-      "stopped (check its IteratorAge alarm), or a field holding these refs is missing its " ++
-      "`@storageRef` annotation — in which case the claimer never sees it and never will.",
+      "stopped (check its IteratorAge alarm), or a field holding these refs is missing its " ++ "`@storageRef` annotation — in which case the claimer never sees it and never will.",
     )
   }
   r.referencedButPending->Array.length == 0
@@ -293,8 +301,7 @@ let run = (~stack=?, ~backend=?, ~targets: array<ReventlessSeedAws_Reset.target>
       | None =>
         throw(
           Seed.Failed(
-            "no `platform` target is declared — declared object stores live in the platform " ++
-            "project's stack output and cannot be resolved without it.",
+            "no `platform` target is declared — declared object stores live in the platform " ++ "project's stack output and cannot be resolved without it.",
           ),
         )
       }
@@ -320,8 +327,7 @@ let run = (~stack=?, ~backend=?, ~targets: array<ReventlessSeedAws_Reset.target>
       } else {
         let region = switch Seed.Prompt.envValue("AWS_REGION") {
         | Some(r) if r != "" => r
-        | _ =>
-          throw(Seed.Failed("could not resolve the AWS region — set AWS_REGION."))
+        | _ => throw(Seed.Failed("could not resolve the AWS region — set AWS_REGION."))
         }
         Seed.Runner.heading(`Reconcile: stack "${stack}" in ${region}`)
 
@@ -356,14 +362,12 @@ let run = (~stack=?, ~backend=?, ~targets: array<ReventlessSeedAws_Reset.target>
         if allClear.contents {
           Console.log(
             "Every referenced object has been claimed. Enabling a store's expiry rule " ++
-            "(`pendingUploadExpiryDays: \"<plugin>.<store>=<days>\"`) would delete only " ++
-            "objects nothing references.",
+            "(`pendingUploadExpiryDays: \"<plugin>.<store>=<days>\"`) would delete only " ++ "objects nothing references.",
           )
         } else {
           throw(
             Seed.Failed(
-              "at least one referenced object is still tagged pending — see above. No store's " ++
-              "expiry rule should be enabled while this is true.",
+              "at least one referenced object is still tagged pending — see above. No store's " ++ "expiry rule should be enabled while this is true.",
             ),
           )
         }
@@ -377,7 +381,9 @@ let run = (~stack=?, ~backend=?, ~targets: array<ReventlessSeedAws_Reset.target>
     | exn =>
       Console.error("")
       Console.error("Reconcile failed with an unexpected error:")
-      Console.error(exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown"))
+      Console.error(
+        exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown"),
+      )
       NodeProcess.exit(1)
     }
   }

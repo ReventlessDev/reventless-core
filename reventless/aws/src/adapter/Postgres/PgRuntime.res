@@ -10,15 +10,13 @@
   (as a promise) to avoid a Secrets Manager round trip on every connection; a
   password rotation surfaces as auth failures that recycle the container, after
   which the next cold start re-fetches. */
-
 /** RDS-managed master secret payload (`{username, password}` JSON). We only need
   the password here — the username is carried on `connectionConfig` (deploy-time
   known) so the pool can be constructed without first awaiting the secret. */
 let passwordFromSecret = async (secretArn: string): string => {
-  let out =
-    await {AwsSdk.SecretsManager.GetSecretValueCommand.secretId: secretArn}
-    ->AwsSdk.SecretsManager.GetSecretValueCommand.make
-    ->AwsSdk.SecretsManager.GetSecretValueCommand.send
+  let out = await {AwsSdk.SecretsManager.GetSecretValueCommand.secretId: secretArn}
+  ->AwsSdk.SecretsManager.GetSecretValueCommand.make
+  ->AwsSdk.SecretsManager.GetSecretValueCommand.send
   switch out.secretString {
   | Some(str) =>
     switch str->JSON.parseOrThrow->JSON.Decode.object {
@@ -29,8 +27,7 @@ let passwordFromSecret = async (secretArn: string): string => {
       }
     | None => JsError.throwWithMessage("Secrets Manager secret is not a JSON object")
     }
-  | None =>
-    JsError.throwWithMessage(`Secrets Manager secret ${secretArn} has no SecretString`)
+  | None => JsError.throwWithMessage(`Secrets Manager secret ${secretArn} has no SecretString`)
   }
 }
 

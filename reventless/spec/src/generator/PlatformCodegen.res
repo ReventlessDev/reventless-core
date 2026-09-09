@@ -44,16 +44,20 @@ let union = (manifests: array<pluginManifest>): array<unionEntry> => {
   let byKey: dict<unionEntry> = Dict.make()
   manifests->Array.forEach(({pluginName, manifest}) =>
     manifest.capabilities->Array.forEach(entry => {
-      let sites =
-        entry.declaredBy->Array.map(site => {
+      let sites = entry.declaredBy->Array.map(
+        site => {
           pluginName,
           component: site.component,
           field: site.field,
           annotation: site.annotation,
-        })
+        },
+      )
       switch byKey->Dict.get(entry.key) {
       | Some(existing) =>
-        byKey->Dict.set(entry.key, {...existing, declaredBy: existing.declaredBy->Array.concat(sites)})
+        byKey->Dict.set(
+          entry.key,
+          {...existing, declaredBy: existing.declaredBy->Array.concat(sites)},
+        )
       | None => byKey->Dict.set(entry.key, {kind: entry.kind, key: entry.key, declaredBy: sites})
       }
     })
@@ -71,10 +75,7 @@ let quote = (s: string): string => s->JSON.Encode.string->JSON.stringify
 let splitKey = (key: string): option<(string, string)> =>
   key
   ->String.indexOfOpt(".")
-  ->Option.map(i => (
-    key->String.slice(~start=0, ~end=i),
-    key->String.slice(~start=i + 1),
-  ))
+  ->Option.map(i => (key->String.slice(~start=0, ~end=i), key->String.slice(~start=i + 1)))
 
 // The provenance comment names the store as the field spells it — taken from
 // the manifest, which recorded it at the one place the owning plugin was
@@ -109,7 +110,9 @@ let renderEntry = (entry: unionEntry): result<array<string>, string> =>
     switch splitKey(entry.key) {
     | None =>
       Error(
-        `malformed capability key ${quote(entry.key)} — expected "{plugin}.{store}" (is the plugin's capabilities.json hand-edited?)`,
+        `malformed capability key ${quote(
+            entry.key,
+          )} — expected "{plugin}.{store}" (is the plugin's capabilities.json hand-edited?)`,
       )
     | Some((plugin, store)) =>
       Ok(
@@ -176,8 +179,7 @@ let duplicatePluginMessage = ((plugin, claimants): (string, array<string>)): str
     )}.\n` ++
   `  A platform keys its plugin registry by name, so the second registration is read as a new ` ++
   `VERSION of the first and supersedes it.\n` ++
-  `  Give each deployable's plugin a distinct name (plugin.json), or — if these were meant to be ` ++
-  `one plugin — deploy only one of them.`
+  `  Give each deployable's plugin a distinct name (plugin.json), or — if these were meant to be ` ++ `one plugin — deploy only one of them.`
 
 let header = [
   "// AUTO-GENERATED — do not edit. Run `pnpm run generate:platform` to update.",

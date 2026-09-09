@@ -9,7 +9,11 @@ type result = {
 
 /** Extract the sort key string from a JSON item using the given field name. */
 let getSk = (item, skField) =>
-  item->JSON.Decode.object->Option.flatMap(d => d->Dict.get(skField))->Option.flatMap(JSON.Decode.string)->Option.getOr("")
+  item
+  ->JSON.Decode.object
+  ->Option.flatMap(d => d->Dict.get(skField))
+  ->Option.flatMap(JSON.Decode.string)
+  ->Option.getOr("")
 
 /** Apply sort key conditions, ordering, and pagination to a list of JSON items.
     - `items` must already be sorted ascending by sort key.
@@ -28,12 +32,16 @@ let apply = (
   let filtered = items->Array.filter(item => {
     let sk = getSk(item, skField)
     let okPrefix = prefix->Option.map(p => sk->String.startsWith(p))->Option.getOr(true)
-    let okFrom   = from->Option.map(f => sk >= f)->Option.getOr(true)
-    let okTo     = to_->Option.map(t => sk <= t)->Option.getOr(true)
-    let okEq     = eq->Option.map(e => sk == e)->Option.getOr(true)
+    let okFrom = from->Option.map(f => sk >= f)->Option.getOr(true)
+    let okTo = to_->Option.map(t => sk <= t)->Option.getOr(true)
+    let okEq = eq->Option.map(e => sk == e)->Option.getOr(true)
     okPrefix && okFrom && okTo && okEq
   })
-  let ordered = if reverse { filtered->Array.toReversed } else { filtered }
+  let ordered = if reverse {
+    filtered->Array.toReversed
+  } else {
+    filtered
+  }
   let sliced = ordered->Array.slice(~start=offset, ~end=ordered->Array.length)
   let (page, hasMore) = switch limit {
   | Some(n) => (sliced->Array.slice(~start=0, ~end=n), sliced->Array.length > n)
@@ -44,5 +52,5 @@ let apply = (
   } else {
     None
   }
-  { items: page, nextToken }
+  {items: page, nextToken}
 }

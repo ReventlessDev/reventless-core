@@ -31,9 +31,9 @@ let _ = afterAll(() => {
 // Helper: build a minimal runtime with a completed handler Deferred
 // ─────────────────────────────────────────────────────────────
 
-let makeRuntime = (
-  handler: LocalRuntimeEnvironment.handler,
-): ReventlessCore.Runtime.environment<LocalHeartbeatRunner.runtimeParts> => {
+let makeRuntime = (handler: LocalRuntimeEnvironment.handler): ReventlessCore.Runtime.environment<
+  LocalHeartbeatRunner.runtimeParts,
+> => {
   let handlerDeferred: Deferred.t<LocalRuntimeEnvironment.handler, unit> =
     Deferred.make()->Effect.runSync
   // Complete before any fiber waits — runSync is safe here
@@ -49,88 +49,106 @@ let makeRuntime = (
 
 describe("LocalHeartbeatRunner", () => {
   describe("make", () => {
-    testPromise("after advanceTimersByTime(timeout * 60 * 1000), handler is called", async () => {
-      let count: ref<int> = ref(0)
-      let runtime = makeRuntime(async (_, _) => {
-        count := count.contents + 1
-      })
-      let _runner = LocalHeartbeatRunner.make(
-        ~name="hb-test",
-        ~remoteChannel=Obj.magic(()),
-        ~timeout=1,
-        ~runtime,
-        ~opts={},
-      )
-      jest->advanceTimersByTime(1 * 60 * 1000)
-      // Give the Effect.runPromise microtask one tick to complete
-      let _ = await Promise.resolve()
-      expect(count.contents)->toBe(1)
-      LocalHeartbeatRunner.reset()
-    })
+    testPromise(
+      "after advanceTimersByTime(timeout * 60 * 1000), handler is called",
+      async () => {
+        let count: ref<int> = ref(0)
+        let runtime = makeRuntime(
+          async (_, _) => {
+            count := count.contents + 1
+          },
+        )
+        let _runner = LocalHeartbeatRunner.make(
+          ~name="hb-test",
+          ~remoteChannel=Obj.magic(),
+          ~timeout=1,
+          ~runtime,
+          ~opts={},
+        )
+        jest->advanceTimersByTime(1 * 60 * 1000)
+        // Give the Effect.runPromise microtask one tick to complete
+        let _ = await Promise.resolve()
+        expect(count.contents)->toBe(1)
+        LocalHeartbeatRunner.reset()
+      },
+    )
 
-    testPromise("handler fires again on each subsequent interval", async () => {
-      let count: ref<int> = ref(0)
-      let runtime = makeRuntime(async (_, _) => {
-        count := count.contents + 1
-      })
-      let _runner = LocalHeartbeatRunner.make(
-        ~name="hb-test-2",
-        ~remoteChannel=Obj.magic(()),
-        ~timeout=2,
-        ~runtime,
-        ~opts={},
-      )
-      jest->advanceTimersByTime(2 * 60 * 1000)
-      let _ = await Promise.resolve()
-      jest->advanceTimersByTime(2 * 60 * 1000)
-      let _ = await Promise.resolve()
-      expect(count.contents)->toBe(2)
-      LocalHeartbeatRunner.reset()
-    })
+    testPromise(
+      "handler fires again on each subsequent interval",
+      async () => {
+        let count: ref<int> = ref(0)
+        let runtime = makeRuntime(
+          async (_, _) => {
+            count := count.contents + 1
+          },
+        )
+        let _runner = LocalHeartbeatRunner.make(
+          ~name="hb-test-2",
+          ~remoteChannel=Obj.magic(),
+          ~timeout=2,
+          ~runtime,
+          ~opts={},
+        )
+        jest->advanceTimersByTime(2 * 60 * 1000)
+        let _ = await Promise.resolve()
+        jest->advanceTimersByTime(2 * 60 * 1000)
+        let _ = await Promise.resolve()
+        expect(count.contents)->toBe(2)
+        LocalHeartbeatRunner.reset()
+      },
+    )
 
-    testPromise("unresolved Deferred does not crash when interval fires", async () => {
-      // Deferred intentionally left incomplete — simulates handler not yet registered.
-      // Effect.runPromise stays pending (no crash); test verifies no exception.
-      let handlerDeferred: Deferred.t<LocalRuntimeEnvironment.handler, unit> =
-        Deferred.make()->Effect.runSync
-      let runtime: ReventlessCore.Runtime.environment<LocalHeartbeatRunner.runtimeParts> = {
-        parts: {
-          handlerDeferred,
-          subscriptionLatch: Effect.makeLatch(false)->Effect.runSync,
-        },
-        resources: [],
-      }
-      let _runner = LocalHeartbeatRunner.make(
-        ~name="hb-no-handler",
-        ~remoteChannel=Obj.magic(()),
-        ~timeout=1,
-        ~runtime,
-        ~opts={},
-      )
-      jest->advanceTimersByTime(1 * 60 * 1000)
-      expect(true)->toBe(true)
-      LocalHeartbeatRunner.reset()
-      // Complete the Deferred to avoid open handle — interval is already cleared
-      Deferred.succeed(handlerDeferred, async (_, _) => ())->Effect.runSync->ignore
-    })
+    testPromise(
+      "unresolved Deferred does not crash when interval fires",
+      async () => {
+        // Deferred intentionally left incomplete — simulates handler not yet registered.
+        // Effect.runPromise stays pending (no crash); test verifies no exception.
+        let handlerDeferred: Deferred.t<LocalRuntimeEnvironment.handler, unit> =
+          Deferred.make()->Effect.runSync
+        let runtime: ReventlessCore.Runtime.environment<LocalHeartbeatRunner.runtimeParts> = {
+          parts: {
+            handlerDeferred,
+            subscriptionLatch: Effect.makeLatch(false)->Effect.runSync,
+          },
+          resources: [],
+        }
+        let _runner = LocalHeartbeatRunner.make(
+          ~name="hb-no-handler",
+          ~remoteChannel=Obj.magic(),
+          ~timeout=1,
+          ~runtime,
+          ~opts={},
+        )
+        jest->advanceTimersByTime(1 * 60 * 1000)
+        expect(true)->toBe(true)
+        LocalHeartbeatRunner.reset()
+        // Complete the Deferred to avoid open handle — interval is already cleared
+        Deferred.succeed(handlerDeferred, async (_, _) => ())->Effect.runSync->ignore
+      },
+    )
   })
 
   describe("reset", () => {
-    testPromise("clears all intervals; subsequent advance does not fire handler", async () => {
-      let count: ref<int> = ref(0)
-      let runtime = makeRuntime(async (_, _) => {
-        count := count.contents + 1
-      })
-      let _runner = LocalHeartbeatRunner.make(
-        ~name="hb-reset",
-        ~remoteChannel=Obj.magic(()),
-        ~timeout=1,
-        ~runtime,
-        ~opts={},
-      )
-      LocalHeartbeatRunner.reset()
-      jest->advanceTimersByTime(1 * 60 * 1000)
-      expect(count.contents)->toBe(0)
-    })
+    testPromise(
+      "clears all intervals; subsequent advance does not fire handler",
+      async () => {
+        let count: ref<int> = ref(0)
+        let runtime = makeRuntime(
+          async (_, _) => {
+            count := count.contents + 1
+          },
+        )
+        let _runner = LocalHeartbeatRunner.make(
+          ~name="hb-reset",
+          ~remoteChannel=Obj.magic(),
+          ~timeout=1,
+          ~runtime,
+          ~opts={},
+        )
+        LocalHeartbeatRunner.reset()
+        jest->advanceTimersByTime(1 * 60 * 1000)
+        expect(count.contents)->toBe(0)
+      },
+    )
   })
 })

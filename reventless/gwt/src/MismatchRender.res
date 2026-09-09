@@ -33,7 +33,10 @@ let renderOption = RenderRescript.renderOption
 
 let normalize = (m: Outcome.mismatch): normalized => {
   let fields = switch m {
-  | EventsMismatch({expected, actual}) => [Expected(renderMany(expected)), Actual(renderMany(actual))]
+  | EventsMismatch({expected, actual}) => [
+      Expected(renderMany(expected)),
+      Actual(renderMany(actual)),
+    ]
   | ErrorMismatch({expected, actual, actualEvents}) => [
       Expected(`Error(${render(expected)})`),
       Actual(
@@ -61,7 +64,10 @@ let normalize = (m: Outcome.mismatch): normalized => {
       Expected(expected),
       Actual(actual->Option.getOr("(none)")),
     ]
-  | QueryRowsMismatch({expected, actual}) => [Expected(renderMany(expected)), Actual(renderMany(actual))]
+  | QueryRowsMismatch({expected, actual}) => [
+      Expected(renderMany(expected)),
+      Actual(renderMany(actual)),
+    ]
   | PublishedActionsMismatch({expected, actual}) => [
       Expected(renderMany(expected)),
       Actual(renderMany(actual)),

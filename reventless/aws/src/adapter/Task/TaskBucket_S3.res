@@ -3,7 +3,12 @@ type callbackEvent = PulumiAws.S3.Bucket.event
 type context = PulumiAws.Lambda.context
 type bucketParts = PulumiAws.S3.Bucket.t
 
-let subscribeLambda2S3Bucket = (lambda: Pulumi.Output.t<PulumiAws.Lambda.Function.t>, name, bucket, opts) => {
+let subscribeLambda2S3Bucket = (
+  lambda: Pulumi.Output.t<PulumiAws.Lambda.Function.t>,
+  name,
+  bucket,
+  opts,
+) => {
   // Coerce Function.t → CallbackFunction.t for S3 bucket notification bindings
   // (structurally compatible: both have arn, id, name)
   let handler: Pulumi.Output.t<PulumiAws.Lambda.CallbackFunction.t> = lambda->Obj.magic

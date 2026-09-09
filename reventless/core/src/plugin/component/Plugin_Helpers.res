@@ -191,8 +191,7 @@ let registerEventCollectorContext = (~componentName: string, ~context: eventColl
 // package specifier.
 // User-declared extensions will eventually need to propagate their own URLs
 // via createExtensions; this scope only covers the built-in Plugin EP + Connect.
-let adminPluginExtensionPointSpecModule =
-  "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs"
+let adminPluginExtensionPointSpecModule = "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs"
 let adminPluginExtensionPointMappingsModule = PluginExtensionPoint_Plugin.moduleUrl
 // Runtime-safe mapping module (not the `_Builder` variant, which the Lambda layer
 // strips because it pulls Pulumi via `include Extension_Builder.Make(...)`).
@@ -271,64 +270,63 @@ let createExtensions = (
   })
 
   // For each EP group: merge mappings, build Extension component.
-  let triples = groups
-  ->Dict.toArray
-  ->Array.map(((_epName, blueprints)) => {
-    // Use the first blueprint's Spec as the canonical type.
-    let module(First: ReventlessInfra.Extension.Blueprint) = blueprints->Array.getUnsafe(0)
+  let triples =
+    groups
+    ->Dict.toArray
+    ->Array.map(((_epName, blueprints)) => {
+      // Use the first blueprint's Spec as the canonical type.
+      let module(First: ReventlessInfra.Extension.Blueprint) = blueprints->Array.getUnsafe(0)
 
-    // Merge all mappings arrays. Blueprints for the same EP have the same Spec
-    // at runtime — use Obj.magic to unify the existential Mapping types.
-    let allMappings: array<module(First.Mapping)> =
-      blueprints->Array.flatMap(bp => {
+      // Merge all mappings arrays. Blueprints for the same EP have the same Spec
+      // at runtime — use Obj.magic to unify the existential Mapping types.
+      let allMappings: array<module(First.Mapping)> = blueprints->Array.flatMap(bp => {
         let module(BP: ReventlessInfra.Extension.Blueprint) = bp
         (BP.mappings: array<module(BP.Mapping)>)->Obj.magic
       })
 
-    // Build the Extension component with pluginName as the extension name.
-    module Spec = First.Spec
-    module Mappings: Extension.Mappings with module Spec := Spec = {
-      module type Mapping = ReventlessInfra.ExtensionMapping.T
-        with module ExtensionPoint := Spec
-      let name = pluginName
-      let moduleUrl = First.moduleUrl
-      let mappings: array<module(Mapping)> = allMappings->Obj.magic
-    }
-    module ExtensionMaker = Extension_Builder.Make(Spec, Mappings)
+      // Build the Extension component with pluginName as the extension name.
+      module Spec = First.Spec
+      module Mappings: Extension.Mappings with module Spec := Spec = {
+        module type Mapping = ReventlessInfra.ExtensionMapping.T with module ExtensionPoint := Spec
+        let name = pluginName
+        let moduleUrl = First.moduleUrl
+        let mappings: array<module(Mapping)> = allMappings->Obj.magic
+      }
+      module ExtensionMaker = Extension_Builder.Make(Spec, Mappings)
 
-    let extension = ExtensionMaker.make(
-      ~publishToPluginExtensionPoint,
-      ~publishToAggregates,
-      ~readModelNamesForSourceName,
-      ~publishToReadModels,
-      ~queryEngine,
-      ~opts=Some(opts),
-    )
-    let ops: Pulumi.Output.t<Extension.operations> =
-      ExtensionMaker.operations(extension)->Obj.magic
-    let registryInfo: extensionRegistryInfo = {
-      // EP spec module URL (e.g. OrderingSpec/.../Orders_ExtensionPoint.res.mjs)
-      specModule: Spec.moduleUrl,
-      // User extension file URL — the .res.mjs declaring `module Mapping`.
-      // The bundled Plugin EventCollector entry point dynamic-imports this to
-      // pick up mapIncomingEvent / mapOutgoingEvent. Multi-blueprint merges
-      // still surface one path here so the runtime has one known module to
-      // import; the entry point regroups by extensionPointName.
-      mappingsModule: First.moduleUrl,
-      // Delegate spec URL (aggregate / slice the extension delegates to).
-      // The entry point dynamic-imports this to reconstruct
-      // `Mapping.Delegate` before handing the full mapping to ExtensionMapping.Make.
-      delegateModule: First.delegateModuleUrl,
-    }
-    (
-      ExtensionMaker.outputs(extension),
-      ops->Pulumi.Output.apply(({outgoingJsonEventsHandler, incomingJsonEventsHandler}) => {
-        incoming: incomingJsonEventsHandler,
-        outgoing: outgoingJsonEventsHandler,
-      }),
-      registryInfo,
-    )
-  })
+      let extension = ExtensionMaker.make(
+        ~publishToPluginExtensionPoint,
+        ~publishToAggregates,
+        ~readModelNamesForSourceName,
+        ~publishToReadModels,
+        ~queryEngine,
+        ~opts=Some(opts),
+      )
+      let ops: Pulumi.Output.t<Extension.operations> =
+        ExtensionMaker.operations(extension)->Obj.magic
+      let registryInfo: extensionRegistryInfo = {
+        // EP spec module URL (e.g. OrderingSpec/.../Orders_ExtensionPoint.res.mjs)
+        specModule: Spec.moduleUrl,
+        // User extension file URL — the .res.mjs declaring `module Mapping`.
+        // The bundled Plugin EventCollector entry point dynamic-imports this to
+        // pick up mapIncomingEvent / mapOutgoingEvent. Multi-blueprint merges
+        // still surface one path here so the runtime has one known module to
+        // import; the entry point regroups by extensionPointName.
+        mappingsModule: First.moduleUrl,
+        // Delegate spec URL (aggregate / slice the extension delegates to).
+        // The entry point dynamic-imports this to reconstruct
+        // `Mapping.Delegate` before handing the full mapping to ExtensionMapping.Make.
+        delegateModule: First.delegateModuleUrl,
+      }
+      (
+        ExtensionMaker.outputs(extension),
+        ops->Pulumi.Output.apply(({outgoingJsonEventsHandler, incomingJsonEventsHandler}) => {
+          incoming: incomingJsonEventsHandler,
+          outgoing: outgoingJsonEventsHandler,
+        }),
+        registryInfo,
+      )
+    })
   let outputs = triples->Array.map(((o, _, _)) => o)
   let handlers = triples->Array.map(((_, h, _)) => h)
   let registryInfos = triples->Array.map(((_, _, r)) => r)
@@ -424,18 +422,20 @@ let createTasks = (
 ) => {
   tasksOutputs :=
     tasks->Array.map((module(SpecificTask: ReventlessInfra.Task.T)) =>
-      SpecificTask.outputs(SpecificTask.make(
-        ~queryBucketName=(~taskName, ~bucketName="Bucket") =>
-          ResourceQueryRuntime.bucketNameOfTaskExn(tasksOutputs.contents, ~taskName, ~bucketName),
-        ~scheduler,
-        ~schedulerRoleUrn,
-        ~publishToAggregates,
-        ~queryEngine,
-        ~resourceNaming,
-        ~allAggregates=aggregatesOutputs,
-        ~runtime=?componentRuntime->Dict.get(SpecificTask.Spec.name),
-        ~opts=Some(opts),
-      ))
+      SpecificTask.outputs(
+        SpecificTask.make(
+          ~queryBucketName=(~taskName, ~bucketName="Bucket") =>
+            ResourceQueryRuntime.bucketNameOfTaskExn(tasksOutputs.contents, ~taskName, ~bucketName),
+          ~scheduler,
+          ~schedulerRoleUrn,
+          ~publishToAggregates,
+          ~queryEngine,
+          ~resourceNaming,
+          ~allAggregates=aggregatesOutputs,
+          ~runtime=?componentRuntime->Dict.get(SpecificTask.Spec.name),
+          ~opts=Some(opts),
+        ),
+      )
     )
   // Every task is constructed, so every side-effect handler has registered.
   finishTasks()
@@ -454,7 +454,12 @@ module MakeEventCollectorHelper = (
     EventCollectorChannel,
   )
   let make = (~name, ~eventTopics, ~opts) => {
-    let eventCollector = PluginEventCollector.make(~name, ~eventTopics, ~owner={kind: ComponentType.Plugin, name}, ~opts)
+    let eventCollector = PluginEventCollector.make(
+      ~name,
+      ~eventTopics,
+      ~owner={kind: ComponentType.Plugin, name},
+      ~opts,
+    )
     let eventCollectorOutputs = eventCollector->Component.outputs
     // pluginDefinition.eventCollector must identify the EC's inbound queue
     // ARN — admin's `manageSubscriptions` uses it as the subscription target
@@ -491,7 +496,9 @@ module MakeEventCollectorHelper = (
     // eventCollectorContext (uiFragmentsJson) so the AWS adapter ships it as a
     // uiFragments.json asset for the bundled Connect extension's cold start.
     ~uiFragments: option<Reventless.Plugin.uiFragmentManifest>=None,
-    ~connectPluginExtensionIncomingEventHandler: option<Pulumi.Output.t<Pulumi.Output.t<Plugin_Callback.jsonEventsHandler>>>=?,
+    ~connectPluginExtensionIncomingEventHandler: option<
+      Pulumi.Output.t<Pulumi.Output.t<Plugin_Callback.jsonEventsHandler>>,
+    >=?,
     ~extensionsHandlers,
     ~extensionPointsHandlers,
     ~connectPluginExtensionOutputs: option<Pulumi.Output.t<Extension.outputs>>=?,
@@ -534,14 +541,16 @@ module MakeEventCollectorHelper = (
       })
 
     // Resolve ConnectPluginExtension data (or provide defaults for no-Core path)
-    let connectExtData =
-      switch (connectPluginExtensionIncomingEventHandler, connectPluginExtensionOutputs) {
-      | (Some(handler), Some(outputs)) =>
-        (handler->Pulumi.Output.unwrap, outputs)
-        ->Pulumi.Output.all2
-        ->Pulumi.Output.apply(((h, o)) => Some((h, o)))
-      | _ => Pulumi.Output.make(None)
-      }
+    let connectExtData = switch (
+      connectPluginExtensionIncomingEventHandler,
+      connectPluginExtensionOutputs,
+    ) {
+    | (Some(handler), Some(outputs)) =>
+      (handler->Pulumi.Output.unwrap, outputs)
+      ->Pulumi.Output.all2
+      ->Pulumi.Output.apply(((h, o)) => Some((h, o)))
+    | _ => Pulumi.Output.make(None)
+    }
 
     (
       pluginDefinition,
@@ -603,8 +612,7 @@ module MakeEventCollectorHelper = (
       // HANDLER_CONFIG. AWS reads this in forPluginEventCollector; in-memory
       // adapters ignore it and stay on the Output-bound Callback above.
       let ecResource = eventCollector->Component.toPulumiResource
-      let ecName =
-        ecResource.name->ComponentType.nameOpt(EventCollector.componentType)
+      let ecName = ecResource.name->ComponentType.nameOpt(EventCollector.componentType)
       let pluginDefinitionJson =
         pluginDefinition
         ->Reventless.Util_Sury.toJson(Reventless.Plugin.pluginDefinitionSchema)
@@ -672,7 +680,11 @@ module MakeEventCollectorHelper = (
         // already supplied by the caller.
         switch mergedAggregateUrls->Dict.get(ReventlessCore.PluginSpec.name) {
         | Some(_) => ()
-        | None => mergedAggregateUrls->Dict.set(ReventlessCore.PluginSpec.name, pluginExtensionPointCmdTopicUrl)
+        | None =>
+          mergedAggregateUrls->Dict.set(
+            ReventlessCore.PluginSpec.name,
+            pluginExtensionPointCmdTopicUrl,
+          )
         }
       | None => ()
       }
@@ -685,13 +697,13 @@ module MakeEventCollectorHelper = (
       ) {
         extensionPointsOutputs->Array.mapWithIndex((output, i) => {
           let info = extensionPointRegistryInfos->Array.getUnsafe(i)
-          let eventTopicArn =
-            output.eventTopic->Pulumi.Output.flatMap(({resources}) =>
+          let eventTopicArn = output.eventTopic->Pulumi.Output.flatMap(
+            ({resources}) =>
               switch resources->Array.get(0) {
               | Some(r) => r.id
               | None => Pulumi.Output.make("")
-              }
-            )
+              },
+          )
           {
             specModule: info.specModule,
             mappingsModule: info.mappingsModule,
@@ -730,7 +742,6 @@ module MakeEventCollectorHelper = (
     })
   }
 }
-
 
 // ---------------------------------------------------------------------------
 // Shared schema type and plugin-built hook — re-exported from Plugin_Callbacks
@@ -800,11 +811,13 @@ let clearOnPluginDeployed = () => {
 // Fired synchronously at graph-construction time (the value is concrete and a
 // resource cannot be created inside a Pulumi.Output.apply).
 // ---------------------------------------------------------------------------
-let offloadHook: ref<option<(~store: string, ~bytes: string) => Reventless.Offload.offloadedRef>> = ref(
-  None,
-)
+let offloadHook: ref<
+  option<(~store: string, ~bytes: string) => Reventless.Offload.offloadedRef>,
+> = ref(None)
 
-let registerOffload = (hook: (~store: string, ~bytes: string) => Reventless.Offload.offloadedRef) => {
+let registerOffload = (
+  hook: (~store: string, ~bytes: string) => Reventless.Offload.offloadedRef,
+) => {
   offloadHook.contents = Some(hook)
 }
 
@@ -820,7 +833,9 @@ One implementation for both construction sites — `Plugin_Builder`'s deploy-tim
 definition and the local platform's synthetic one — so a provider that offloads
 cannot end up offloading through one path and inlining through the other.
 */
-let offloadPayload = (value: 'a, ~schema: S.t<'a>, ~store: string): Reventless.Offload.payload<'a> =>
+let offloadPayload = (value: 'a, ~schema: S.t<'a>, ~store: string): Reventless.Offload.payload<
+  'a,
+> =>
   switch offloadHook.contents {
   | Some(hook) =>
     Reventless.Offload.Offloaded(
@@ -1011,7 +1026,11 @@ type platformHooks = {
   // subscription (see Plugin_EventQuerySchema).
   eventQueryResolverHook?: eventQueryRegistrationParams => unit,
   // ── AppSync resolver creation (AWS) ───────────────────────────────────
-  preResolversSchemaHook?: (~name: string, ~version: string, Reventless.Plugin.apiSchemaFragment) => Pulumi.Output.t<unit>,
+  preResolversSchemaHook?: (
+    ~name: string,
+    ~version: string,
+    Reventless.Plugin.apiSchemaFragment,
+  ) => Pulumi.Output.t<unit>,
   // Admin equivalent of preResolversSchemaHook. Set by AWS platforms to push
   // the admin SDL to the Platform (split mode) or Domain (unified mode) API.
   // Platform_Admin.construct invokes this with a barrier that resolves once the
@@ -1107,8 +1126,10 @@ let registerAdminAggregateMutations = (
       ()
     } else {
       let constructorNames = Reventless.DcbTag.extractAllVariantNames(M.Spec.commandSchema)
-      let filteredConstructorNames =
-        ApiNoApiHelpers.filterNoApiVariants(constructorNames, commandSchema)
+      let filteredConstructorNames = ApiNoApiHelpers.filterNoApiVariants(
+        constructorNames,
+        commandSchema,
+      )
       let fieldNames =
         filteredConstructorNames->Array.map(cname =>
           Api_Naming.adminField(~name=M.Spec.name ++ "_" ++ cname)
@@ -1154,19 +1175,23 @@ let taskFieldUnion = (tasks: dict<Task.outputs>): array<string> => {
     // Pulumi.Output.t values — we only need presence, not actual string content.
     // ReScript optional fields must be set to the inner type (not option<_>) in
     // record literals, so we use a switch to conditionally include them.
-    let resolved: ReventlessInterop.Task.resolvedOutputs =
-      switch (taskOutput.bucketNames, taskOutput.sideEffectSources) {
-      | (None, None) => {name: taskOutput.name}
-      | (Some(_), None) => {name: taskOutput.name, bucketNames: Dict.make()}
-      | (None, Some(src)) => {name: taskOutput.name, sideEffectSources: src}
-      | (Some(_), Some(src)) => {
-          name: taskOutput.name,
-          bucketNames: Dict.make(),
-          sideEffectSources: src,
-        }
+    let resolved: ReventlessInterop.Task.resolvedOutputs = switch (
+      taskOutput.bucketNames,
+      taskOutput.sideEffectSources,
+    ) {
+    | (None, None) => {name: taskOutput.name}
+    | (Some(_), None) => {name: taskOutput.name, bucketNames: Dict.make()}
+    | (None, Some(src)) => {name: taskOutput.name, sideEffectSources: src}
+    | (Some(_), Some(src)) => {
+        name: taskOutput.name,
+        bucketNames: Dict.make(),
+        sideEffectSources: src,
       }
-    ReventlessInterop.ExportMeta.fieldNamesOf(resolved, ReventlessInterop.Task.resolvedOutputsSchema)
-    ->Array.reduce(acc, SSet.add)
+    }
+    ReventlessInterop.ExportMeta.fieldNamesOf(
+      resolved,
+      ReventlessInterop.Task.resolvedOutputsSchema,
+    )->Array.reduce(acc, SSet.add)
   })
   ->SSet.toArray
 }
@@ -1202,6 +1227,7 @@ let toInteropMeta = (outputs: builderOutputs): ReventlessInterop.ExportMeta.t =>
 // point module and export the result as `let _interopMeta = getInteropMeta()`.
 let getInteropMeta = (): Pulumi.Output.t<JSON.t> => {
   let v = interopMetaOutput.contents
+
   // Use raw null check to avoid option wrapping of the Proxy value.
   if %raw(`v === null`) {
     JsError.throwWithMessage("getInteropMeta() called before Plugin_Builder.construct()")
@@ -1218,12 +1244,14 @@ let exportDeploymentMetadata = () => {
   let metadata =
     [
       ("environment", Pulumi.Pulumi.getStackName()),
-      ("region", Pulumi.Config.make(Some("aws"))->Pulumi.Config.get("region")->Option.getOr("unknown")),
+      (
+        "region",
+        Pulumi.Config.make(Some("aws"))->Pulumi.Config.get("region")->Option.getOr("unknown"),
+      ),
       ("timestamp", Date.make()->Date.toISOString),
       ("gitSha", NodeProcess.env->Dict.get("GITHUB_SHA")->Option.getOr("unknown")),
       ("actor", NodeProcess.env->Dict.get("GITHUB_ACTOR")->Option.getOr("unknown")),
-    ]
-    ->Dict.fromArray
+    ]->Dict.fromArray
   Pulumi.Pulumi.export(
     "deploymentMetadata",
     metadata->Dict.mapValues(JSON.Encode.string)->JSON.Encode.object->Pulumi.Output.make,
@@ -1248,10 +1276,7 @@ let serializePlainDictExport = (
   ->Array.map(((name, outputs)) =>
     outputs
     ->toResolved
-    ->Pulumi.Output.apply(resolved => (
-      name,
-      resolved->Reventless.Util_Sury.toJson(schema),
-    ))
+    ->Pulumi.Output.apply(resolved => (name, resolved->Reventless.Util_Sury.toJson(schema)))
   )
   ->Pulumi.Output.all
   ->Pulumi.Output.apply(pairs => pairs->Dict.fromArray->JSON.Encode.object)
@@ -1267,10 +1292,7 @@ let serializeDictExport = (
     ->Array.map(((name, outputs)) =>
       outputs
       ->toResolved
-      ->Pulumi.Output.apply(resolved => (
-        name,
-        resolved->Reventless.Util_Sury.toJson(schema),
-      ))
+      ->Pulumi.Output.apply(resolved => (name, resolved->Reventless.Util_Sury.toJson(schema)))
     )
     ->Pulumi.Output.all
     ->Pulumi.Output.apply(pairs => pairs->Dict.fromArray->JSON.Encode.object)
@@ -1284,8 +1306,9 @@ let serializeTasksOutputs = (pluginOutputs: Plugin.outputs): Pulumi.Output.t<JSO
     ->Array.map(task =>
       task
       ->Task.toResolvedOutputs
-      ->Pulumi.Output.apply(resolved =>
-        resolved->Reventless.Util_Sury.toJson(ReventlessInterop.Task.resolvedOutputsSchema)
+      ->Pulumi.Output.apply(
+        resolved =>
+          resolved->Reventless.Util_Sury.toJson(ReventlessInterop.Task.resolvedOutputsSchema),
       )
     )
     ->Pulumi.Output.all
@@ -1303,20 +1326,21 @@ let serializeEventMappersOutputs = (pluginOutputs: Plugin.outputs): Pulumi.Outpu
     aggregates
     ->Dict.valuesToArray
     ->Array.map((agg: Aggregate.outputs) =>
-      agg.eventMapper->Pulumi.Output.flatMap(em =>
-        switch em {
-        | Some(em) =>
-          em
-          ->EventMapper.toResolvedOutputs
-          ->Pulumi.Output.apply(resolved =>
-            Some(
-              resolved->Reventless.Util_Sury.toJson(
-                ReventlessInterop.EventMapper.resolvedOutputsSchema,
+      agg.eventMapper->Pulumi.Output.flatMap(
+        em =>
+          switch em {
+          | Some(em) =>
+            em
+            ->EventMapper.toResolvedOutputs
+            ->Pulumi.Output.apply(
+              resolved => Some(
+                resolved->Reventless.Util_Sury.toJson(
+                  ReventlessInterop.EventMapper.resolvedOutputsSchema,
+                ),
               ),
             )
-          )
-        | None => Pulumi.Output.make(None)
-        }
+          | None => Pulumi.Output.make(None)
+          },
       )
     )
     ->Pulumi.Output.all
@@ -1348,12 +1372,14 @@ let exportPlatformOutputs = (
       ->Array.map(ep =>
         ep
         ->ExtensionPoint.toResolvedOutputs
-        ->Pulumi.Output.apply(resolved => (
-          ep.name,
-          resolved->Reventless.Util_Sury.toJson(
-            ReventlessInterop.ExtensionPoint.resolvedOutputsSchema,
+        ->Pulumi.Output.apply(
+          resolved => (
+            ep.name,
+            resolved->Reventless.Util_Sury.toJson(
+              ReventlessInterop.ExtensionPoint.resolvedOutputsSchema,
+            ),
           ),
-        ))
+        )
       )
       ->Pulumi.Output.all
       ->Pulumi.Output.apply(pairs => pairs->Dict.fromArray->JSON.Encode.object)
@@ -1392,9 +1418,7 @@ let exportPlatformOutputs = (
       dcbOutputs
       ->DcbEventLog.toResolvedOutputs
       ->Pulumi.Output.apply(resolved =>
-        resolved->Reventless.Util_Sury.toJson(
-          ReventlessInterop.DcbEventLog.resolvedOutputsSchema,
-        )
+        resolved->Reventless.Util_Sury.toJson(ReventlessInterop.DcbEventLog.resolvedOutputsSchema)
       ),
     )
   | None => ()
@@ -1545,9 +1569,7 @@ let exportPluginOutputs = (pluginOutputs: Plugin.outputs) => {
         dcbOutputs
         ->DcbEventLog.toResolvedOutputs
         ->Pulumi.Output.apply(resolved =>
-          resolved->Reventless.Util_Sury.toJson(
-            ReventlessInterop.DcbEventLog.resolvedOutputsSchema,
-          )
+          resolved->Reventless.Util_Sury.toJson(ReventlessInterop.DcbEventLog.resolvedOutputsSchema)
         )
       | None => Pulumi.Output.make(Obj.magic(JSON.Encode.null))
       }
@@ -1573,29 +1595,30 @@ let exportPluginOutputs = (pluginOutputs: Plugin.outputs) => {
       ->Dict.get("GITHUB_SHA")
       ->Option.orElse(NodeProcess.env->Dict.get("CI_COMMIT_SHA"))
       ->Option.getOr(Date.make()->Date.toISOString)
-    let schemaFor = name =>
-      componentSchemaRegistry->Dict.get(name)->Option.getOr({})
+    let schemaFor = name => componentSchemaRegistry->Dict.get(name)->Option.getOr({})
     let resolveAggregates = pluginOutputs.aggregates->Pulumi.Output.flatMap(aggs =>
       aggs
       ->Dict.toArray
       ->Array.map(((name, outputs)) =>
         outputs
         ->Aggregate.toResolvedOutputs
-        ->Pulumi.Output.apply((resolved: ReventlessInterop.Aggregate.resolvedOutputs) => {
-          let component: pluginDeployedComponent = {
-            name,
-            kind: "Aggregate",
-            schema: schemaFor(name),
-            resources: [],
-            subComponents: [
-              {role: "commandGenerator", resources: resolved.commandGenerator.resources},
-              {role: "commandTopic", resources: resolved.commandTopic.resources},
-              {role: "eventLog", resources: resolved.eventLog.resources},
-              {role: "eventTopic", resources: resolved.eventLog.eventTopic.resources},
-            ],
-          }
-          component
-        })
+        ->Pulumi.Output.apply(
+          (resolved: ReventlessInterop.Aggregate.resolvedOutputs) => {
+            let component: pluginDeployedComponent = {
+              name,
+              kind: "Aggregate",
+              schema: schemaFor(name),
+              resources: [],
+              subComponents: [
+                {role: "commandGenerator", resources: resolved.commandGenerator.resources},
+                {role: "commandTopic", resources: resolved.commandTopic.resources},
+                {role: "eventLog", resources: resolved.eventLog.resources},
+                {role: "eventTopic", resources: resolved.eventLog.eventTopic.resources},
+              ],
+            }
+            component
+          },
+        )
       )
       ->Pulumi.Output.all
     )
@@ -1606,16 +1629,18 @@ let exportPluginOutputs = (pluginOutputs: Plugin.outputs) => {
       ->Array.map(((name, outputs)) =>
         outputs
         ->ReadModel.toResolvedOutputs
-        ->Pulumi.Output.apply((resolved: ReventlessInterop.ReadModel.resolvedOutputs) => {
-          let component: pluginDeployedComponent = {
-            name,
-            kind: "ReadModel",
-            schema: schemaFor(name),
-            resources: [],
-            subComponents: [{role: "queryDb", resources: resolved.queryDb.resources}],
-          }
-          component
-        })
+        ->Pulumi.Output.apply(
+          (resolved: ReventlessInterop.ReadModel.resolvedOutputs) => {
+            let component: pluginDeployedComponent = {
+              name,
+              kind: "ReadModel",
+              schema: schemaFor(name),
+              resources: [],
+              subComponents: [{role: "queryDb", resources: resolved.queryDb.resources}],
+            }
+            component
+          },
+        )
       )
       ->Pulumi.Output.all
     )
@@ -1626,19 +1651,21 @@ let exportPluginOutputs = (pluginOutputs: Plugin.outputs) => {
       ->Array.map(((name, outputs)) =>
         outputs
         ->ExtensionPoint.toResolvedOutputs
-        ->Pulumi.Output.apply((resolved: ReventlessInterop.ExtensionPoint.resolvedOutputs) => {
-          let component: pluginDeployedComponent = {
-            name,
-            kind: "ExtensionPoint",
-            schema: schemaFor(name),
-            resources: [],
-            subComponents: [
-              {role: "commandTopic", resources: resolved.commandTopic.resources},
-              {role: "eventTopic", resources: resolved.eventTopic.resources},
-            ],
-          }
-          component
-        })
+        ->Pulumi.Output.apply(
+          (resolved: ReventlessInterop.ExtensionPoint.resolvedOutputs) => {
+            let component: pluginDeployedComponent = {
+              name,
+              kind: "ExtensionPoint",
+              schema: schemaFor(name),
+              resources: [],
+              subComponents: [
+                {role: "commandTopic", resources: resolved.commandTopic.resources},
+                {role: "eventTopic", resources: resolved.eventTopic.resources},
+              ],
+            }
+            component
+          },
+        )
       )
       ->Pulumi.Output.all
     )
@@ -1649,16 +1676,18 @@ let exportPluginOutputs = (pluginOutputs: Plugin.outputs) => {
       ->Array.map(((name, outputs)) =>
         outputs
         ->StateChangeSlice.toResolvedOutputs
-        ->Pulumi.Output.apply((resolved: ReventlessInterop.StateChangeSlice.resolvedOutputs) => {
-          let component: pluginDeployedComponent = {
-            name,
-            kind: "StateChangeSlice",
-            schema: schemaFor(name),
-            resources: resolved.resources,
-            subComponents: [],
-          }
-          component
-        })
+        ->Pulumi.Output.apply(
+          (resolved: ReventlessInterop.StateChangeSlice.resolvedOutputs) => {
+            let component: pluginDeployedComponent = {
+              name,
+              kind: "StateChangeSlice",
+              schema: schemaFor(name),
+              resources: resolved.resources,
+              subComponents: [],
+            }
+            component
+          },
+        )
       )
       ->Pulumi.Output.all
     )
@@ -1669,16 +1698,18 @@ let exportPluginOutputs = (pluginOutputs: Plugin.outputs) => {
       ->Array.map(((name, outputs)) =>
         outputs
         ->StateViewSlice.toResolvedOutputs
-        ->Pulumi.Output.apply((resolved: ReventlessInterop.StateViewSlice.resolvedOutputs) => {
-          let component: pluginDeployedComponent = {
-            name,
-            kind: "StateViewSlice",
-            schema: schemaFor(name),
-            resources: resolved.resources,
-            subComponents: [{role: "queryDb", resources: resolved.queryDb.resources}],
-          }
-          component
-        })
+        ->Pulumi.Output.apply(
+          (resolved: ReventlessInterop.StateViewSlice.resolvedOutputs) => {
+            let component: pluginDeployedComponent = {
+              name,
+              kind: "StateViewSlice",
+              schema: schemaFor(name),
+              resources: resolved.resources,
+              subComponents: [{role: "queryDb", resources: resolved.queryDb.resources}],
+            }
+            component
+          },
+        )
       )
       ->Pulumi.Output.all
     )
@@ -1689,16 +1720,18 @@ let exportPluginOutputs = (pluginOutputs: Plugin.outputs) => {
       ->Array.map(((name, outputs)) =>
         outputs
         ->AutomationSlice.toResolvedOutputs
-        ->Pulumi.Output.apply((resolved: ReventlessInterop.AutomationSlice.resolvedOutputs) => {
-          let component: pluginDeployedComponent = {
-            name,
-            kind: "AutomationSlice",
-            schema: schemaFor(name),
-            resources: resolved.resources,
-            subComponents: [{role: "queryDb", resources: resolved.queryDb.resources}],
-          }
-          component
-        })
+        ->Pulumi.Output.apply(
+          (resolved: ReventlessInterop.AutomationSlice.resolvedOutputs) => {
+            let component: pluginDeployedComponent = {
+              name,
+              kind: "AutomationSlice",
+              schema: schemaFor(name),
+              resources: resolved.resources,
+              subComponents: [{role: "queryDb", resources: resolved.queryDb.resources}],
+            }
+            component
+          },
+        )
       )
       ->Pulumi.Output.all
     )
@@ -1775,21 +1808,22 @@ let exportPluginOutputs = (pluginOutputs: Plugin.outputs) => {
         let pluginVersion = id->String.split("@")->Array.getUnsafe(1)
         exts
         ->Dict.valuesToArray
-        ->Array.map((ext: ReventlessInfra.Extension.outputs) => {
-          // Derive provider plugin name from the extension point name
-          // (e.g. "Catalog.Products" → "Catalog").
-          let providerPlugin =
-            ext.extensionPointName->String.split(".")->Array.getUnsafe(0)
-          let wiring: extensionWiring = {
-            extensionName: ext.name,
-            extensionPointName: ext.extensionPointName,
-            providerPlugin,
-            providerVersion: "",
-            subscriberPlugin: pluginName,
-            subscriberVersion: pluginVersion,
-          }
-          wiring
-        })
+        ->Array.map(
+          (ext: ReventlessInfra.Extension.outputs) => {
+            // Derive provider plugin name from the extension point name
+            // (e.g. "Catalog.Products" → "Catalog").
+            let providerPlugin = ext.extensionPointName->String.split(".")->Array.getUnsafe(0)
+            let wiring: extensionWiring = {
+              extensionName: ext.name,
+              extensionPointName: ext.extensionPointName,
+              providerPlugin,
+              providerVersion: "",
+              subscriberPlugin: pluginName,
+              subscriberVersion: pluginVersion,
+            }
+            wiring
+          },
+        )
       })
     )
 
@@ -1826,10 +1860,10 @@ let exportPluginOutputs = (pluginOutputs: Plugin.outputs) => {
             deployedAt: Date.make()->Date.toISOString,
             actor,
             deploymentId,
-            kind: ?meta->Option.flatMap(m => m.kind),
-            displayName: ?meta->Option.flatMap(m => m.displayName),
-            vendor: ?meta->Option.flatMap(m => m.vendor),
-            architectureType: ?meta->Option.flatMap(m => m.architectureType),
+            kind: ?(meta->Option.flatMap(m => m.kind)),
+            displayName: ?(meta->Option.flatMap(m => m.displayName)),
+            vendor: ?(meta->Option.flatMap(m => m.vendor)),
+            architectureType: ?(meta->Option.flatMap(m => m.architectureType)),
             components: Array.flat([aggs, rms, eps, scs, svs, autos, ots, its, dcb]),
             extensionWirings: wirings,
           }

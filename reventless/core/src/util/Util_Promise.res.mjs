@@ -70,7 +70,7 @@ async function onEndHandler(flush, resolve) {
   } catch (raw_e) {
     let e = Primitive_exceptions.internalToException(raw_e);
     if (e.RE_EXN_ID === "JsExn") {
-      Effect.runSync(EffectLogger$ReventlessCore.logError("Util_Promise-ReventlessCore", undefined, "File \"Util_Promise.res\", line 55, characters 47-54" + `: ` + Stdlib_Option.getOr(Stdlib_JsExn.message(e._1), "unknown")));
+      Effect.runSync(EffectLogger$ReventlessCore.logError("Util_Promise-ReventlessCore", undefined, "File \"Util_Promise.res\", line 57, characters 9-16" + `: ` + Stdlib_Option.getOr(Stdlib_JsExn.message(e._1), "unknown")));
     } else {
       throw e;
     }

@@ -25,7 +25,11 @@ let pendingQueueRegistry: dict<ref<array<pendingCall>>> = Dict.make()
 // Phase 1: Register SDL + resolver stub synchronously (before server starts).
 // Also pre-registers a queuing forwarder in receiveRegistry so callers can
 // invoke receive immediately; calls are parked until bindReceive drains them.
-let register = (~fieldName: string, ~externalInputSchema: S.t<unknown>, ~server: ReventlessGraphqlServer.GraphQL_ServerInstance.t) => {
+let register = (
+  ~fieldName: string,
+  ~externalInputSchema: S.t<unknown>,
+  ~server: ReventlessGraphqlServer.GraphQL_ServerInstance.t,
+) => {
   // The mutation field returns CommandResult, so its union members must exist in
   // this scope's document. Registered here rather than relying on a plugin's
   // command handlers having registered them first — a plugin whose only mutation
@@ -53,11 +57,17 @@ let register = (~fieldName: string, ~externalInputSchema: S.t<unknown>, ~server:
     })
   receiveRegistry->Dict.set(fieldName, queuingReceive)
 
-  let resolver: ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn = async (_root, args, _ctx) => {
+  let resolver: ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn = async (
+    _root,
+    args,
+    _ctx,
+  ) => {
     let inputJson: JSON.t = args->Obj.magic
     let receive = receiveRegistry->Dict.getUnsafe(fieldName)
     let result = await receive(inputJson)
-    result->InboundTranslationSlice_Callback.receiveResultToOutcome->CommandTopic.commandOutcomeToJson
+    result
+    ->InboundTranslationSlice_Callback.receiveResultToOutcome
+    ->CommandTopic.commandOutcomeToJson
   }
 
   let resolvers = Dict.make()

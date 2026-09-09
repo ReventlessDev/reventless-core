@@ -36,7 +36,8 @@ let put = (cache: t<'k, 'v>, key: 'k, value: 'v): unit =>
     if cache.store->Map.size > cache.capacity {
       // Evict the least-recently-used entry = oldest insertion = first key.
       switch cache.store->Map.keys->Array.fromIterator->Array.get(0) {
-      | Some(oldest) => let _ = cache.store->Map.delete(oldest)
+      | Some(oldest) =>
+        let _ = cache.store->Map.delete(oldest)
       | None => ()
       }
     }

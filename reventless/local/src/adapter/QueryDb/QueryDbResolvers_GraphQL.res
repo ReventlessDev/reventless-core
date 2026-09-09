@@ -57,13 +57,17 @@ module Make = (Bus: LocalBus.T) => {
   // -- Module-level server and relay refs ------------------------------------
   // Set by Platform.res before component construction runs so the make function
   // can pick up the correct target server and relay support (mirrors AWS ~api pattern).
-  let serverRef: ref<ReventlessGraphqlServer.GraphQL_ServerInstance.t> = ref(DomainGraphQL_Server.asInterface)
-  let relayRef: ref<option<relaySupport>> = ref(Some({
-    encodeGlobalId: DomainGraphQL_Server.encodeGlobalId,
-    registerNodeType: DomainGraphQL_Server.registerNodeType,
-    registerNodeResolverCallback: DomainGraphQL_Server.registerNodeResolverCallback,
-    nodeTypeRegistry: DomainGraphQL_Server.nodeTypeRegistry,
-  }))
+  let serverRef: ref<ReventlessGraphqlServer.GraphQL_ServerInstance.t> = ref(
+    DomainGraphQL_Server.asInterface,
+  )
+  let relayRef: ref<option<relaySupport>> = ref(
+    Some({
+      encodeGlobalId: DomainGraphQL_Server.encodeGlobalId,
+      registerNodeType: DomainGraphQL_Server.registerNodeType,
+      registerNodeResolverCallback: DomainGraphQL_Server.registerNodeResolverCallback,
+      nodeTypeRegistry: DomainGraphQL_Server.nodeTypeRegistry,
+    }),
+  )
 
   let make: QueryDb_Adapter.resolversMaker<unit, unit> = (
     ~name,
@@ -101,11 +105,10 @@ module Make = (Bus: LocalBus.T) => {
         }
         switch Bus.getQueryDb(queryDbName) {
         | Some(ops) =>
-          let items =
-            await ops.loadStream(localId)
-            ->Stream.runCollect
-            ->Effect.catchAll(_ => Effect.succeed([]))
-            ->Effect.runPromise
+          let items = await ops.loadStream(localId)
+          ->Stream.runCollect
+          ->Effect.catchAll(_ => Effect.succeed([]))
+          ->Effect.runPromise
           switch items->Array.get(0) {
           | Some(item) =>
             // Copied: `JSON.Decode.object` hands back the stored object itself, so
@@ -125,6 +128,7 @@ module Make = (Bus: LocalBus.T) => {
 
     let runInterceptor = async (~ctx, ~args): QueryDb_Callback.interceptResult => {
       let identity = extractIdentity(ctx)
+
       // Spec-level authorization runs first; failures short-circuit before
       // the user-supplied interceptor (mirrors mutation enforcement).
       if !Reventless.Authorization.isAllowed(authorization, identity) {
@@ -291,12 +295,20 @@ module Make = (Bus: LocalBus.T) => {
     } else {
       `  ${singleQueryName}: ${returnTypeName}`
     }
-    let byIdResolver: ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn = async (_root, args, ctx) => {
+    let byIdResolver: ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn = async (
+      _root,
+      args,
+      ctx,
+    ) => {
       switch await runInterceptor(~ctx, ~args) {
       | Deny(_) => JSON.Encode.null
       | Allow =>
         let id =
-          args->JSON.Decode.object->Option.flatMap(d => d->Dict.get("id"))->Option.flatMap(JSON.Decode.string)->Option.getOr("")
+          args
+          ->JSON.Decode.object
+          ->Option.flatMap(d => d->Dict.get("id"))
+          ->Option.flatMap(JSON.Decode.string)
+          ->Option.getOr("")
         switch Bus.getQueryDb(name) {
         | Some(ops) =>
           let load = key =>
@@ -309,10 +321,7 @@ module Make = (Bus: LocalBus.T) => {
           // as one. Retried rather than decoded up front: the raw key is what this
           // door has always taken, and a key that merely looks like base64 must
           // keep resolving to its own row.
-          let (resolvedKey, items) = switch (
-            firstAttempt->Array.get(0),
-            Api_Ids.alternateKey(id),
-          ) {
+          let (resolvedKey, items) = switch (firstAttempt->Array.get(0), Api_Ids.alternateKey(id)) {
           | (None, Some(localId)) => (localId, await load(localId))
           | _ => (id, firstAttempt)
           }
@@ -320,8 +329,8 @@ module Make = (Bus: LocalBus.T) => {
           // A row the caller does not own answers as though it were not there.
           // Distinguishing "not yours" from "not found" here would turn this door
           // into an oracle for which ids exist.
-          | Some(item) if !ownerAllows(~ctx, item) || !retiredAllows(~ctx, ~args, item) =>
-            JSON.Encode.null
+          | Some(item)
+            if !ownerAllows(~ctx, item) || !retiredAllows(~ctx, ~args, item) => JSON.Encode.null
           | Some(item) =>
             if includeIdParam {
               // Copied — `JSON.Decode.object` hands back the stored object itself,
@@ -349,61 +358,74 @@ module Make = (Bus: LocalBus.T) => {
     // ids drop out of the response (no cardinality preservation), matching
     // BatchGetItem semantics.
     let byIdsSdl = if includeIdParam && subIdField === None {
-      [GraphQL_FragmentGenerator.deriveByIdsQueryField(~listFieldName=listQueryName, ~returnTypeName)]
+      [
+        GraphQL_FragmentGenerator.deriveByIdsQueryField(
+          ~listFieldName=listQueryName,
+          ~returnTypeName,
+        ),
+      ]
     } else {
       []
     }
-    let byIdsResolverEntry: option<(string, ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn)> =
-      if includeIdParam && subIdField === None {
-        let resolver: ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn = async (_root, args, ctx) => {
-          switch await runInterceptor(~ctx, ~args) {
-          | Deny(_) => []->JSON.Encode.array
-          | Allow =>
-            let ids =
-              args
-              ->JSON.Decode.object
-              ->Option.flatMap(d => d->Dict.get("ids"))
-              ->Option.flatMap(JSON.Decode.array)
-              ->Option.getOr([])
-              ->Array.filterMap(JSON.Decode.string)
-            switch Bus.getQueryDb(name) {
-            | Some(ops) =>
-              let load = key =>
-                ops.loadStream(key)
-                ->Stream.runCollect
-                ->Effect.catchAll(_ => Effect.succeed([]))
-                ->Effect.runPromise
-              // Same either-form rule as the single-id door: raw key first, the
-              // key inside a Relay global id only on a miss.
-              let loaded = await ids->Array.map(async id =>
-                switch (await load(id))->Array.get(0) {
-                | Some(item) => (id, Some(item))
-                | None =>
-                  switch Api_Ids.alternateKey(id) {
-                  | Some(localId) => (localId, (await load(localId))->Array.get(0))
-                  | None => (id, None)
-                  }
+    let byIdsResolverEntry: option<(
+      string,
+      ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn,
+    )> = if includeIdParam && subIdField === None {
+      let resolver: ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn = async (
+        _root,
+        args,
+        ctx,
+      ) => {
+        switch await runInterceptor(~ctx, ~args) {
+        | Deny(_) => []->JSON.Encode.array
+        | Allow =>
+          let ids =
+            args
+            ->JSON.Decode.object
+            ->Option.flatMap(d => d->Dict.get("ids"))
+            ->Option.flatMap(JSON.Decode.array)
+            ->Option.getOr([])
+            ->Array.filterMap(JSON.Decode.string)
+          switch Bus.getQueryDb(name) {
+          | Some(ops) =>
+            let load = key =>
+              ops.loadStream(key)
+              ->Stream.runCollect
+              ->Effect.catchAll(_ => Effect.succeed([]))
+              ->Effect.runPromise
+            // Same either-form rule as the single-id door: raw key first, the
+            // key inside a Relay global id only on a miss.
+            let loaded = await ids
+            ->Array.map(async id =>
+              switch (await load(id))->Array.get(0) {
+              | Some(item) => (id, Some(item))
+              | None =>
+                switch Api_Ids.alternateKey(id) {
+                | Some(localId) => (localId, (await load(localId))->Array.get(0))
+                | None => (id, None)
                 }
-              )->Promise.all
-              loaded
-              ->Array.filterMap(((id, opt)) =>
-                opt
-                ->Option.filter(item => ownerAllows(~ctx, item) && retiredAllows(~ctx, ~args, item))
-                ->Option.map(item => {
-                  let obj = item->JSON.Decode.object->Option.mapOr(Dict.make(), Dict.copy)
-                  obj->Dict.set("id", JSON.Encode.string(id))
-                  JSON.Encode.object(obj)
-                })
-              )
-              ->JSON.Encode.array
-            | None => []->JSON.Encode.array
-            }
+              }
+            )
+            ->Promise.all
+            loaded
+            ->Array.filterMap(((id, opt)) =>
+              opt
+              ->Option.filter(item => ownerAllows(~ctx, item) && retiredAllows(~ctx, ~args, item))
+              ->Option.map(item => {
+                let obj = item->JSON.Decode.object->Option.mapOr(Dict.make(), Dict.copy)
+                obj->Dict.set("id", JSON.Encode.string(id))
+                JSON.Encode.object(obj)
+              })
+            )
+            ->JSON.Encode.array
+          | None => []->JSON.Encode.array
           }
         }
-        Some((listQueryName ++ "ByIds", resolver))
-      } else {
-        None
       }
+      Some((listQueryName ++ "ByIds", resolver))
+    } else {
+      None
+    }
 
     // Look up labelField from registry (Phase 3). Used by list-query filter.search /
     // searchPrefix to target the entity's human-readable column without per-entity
@@ -426,120 +448,126 @@ module Make = (Bus: LocalBus.T) => {
     // else. One predicate answers "is this row still on offer", the other "is this
     // row yours", and only the first is what an archive withdraws.
     let refsSdl = if includeIdParam && subIdField === None {
-      [GraphQL_FragmentGenerator.deriveRefsQueryField(~listFieldName=listQueryName, ~returnTypeName)]
+      [
+        GraphQL_FragmentGenerator.deriveRefsQueryField(
+          ~listFieldName=listQueryName,
+          ~returnTypeName,
+        ),
+      ]
     } else {
       []
     }
-    let refsResolverEntry: option<(string, ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn)> =
-      if includeIdParam && subIdField === None {
-        server.registerTypes(~sdlTypes=[GraphQL_FragmentGenerator.deriveRefTypeSdl(~returnTypeName)])
-        let resolver: ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn = async (
-          _root,
-          args,
-          ctx,
-        ) => {
-          switch await runInterceptor(~ctx, ~args) {
-          | Deny(_) => []->JSON.Encode.array
-          | Allow =>
-            let ids =
-              args
-              ->JSON.Decode.object
-              ->Option.flatMap(d => d->Dict.get("ids"))
-              ->Option.flatMap(JSON.Decode.array)
-              ->Option.getOr([])
-              ->Array.filterMap(JSON.Decode.string)
-            let spec = retiredSpecOf()
-            let namesRetired = spec->Option.mapOr(false, r => r.namedWhenRetired)
-            // The row's own retirement, read with the same `isRetiredValue` every
-            // other door narrows by — so "retired" here and "withheld" there are
-            // one answer, not two that drift.
-            let retirementOf = (item: JSON.t) =>
-              switch spec {
-              | None => (false, None)
-              | Some(r) =>
-                let cell = item->JSON.Decode.object->Option.flatMap(d => d->Dict.get(r.field))
-                let scope: Reventless.OwnerScope.retiredScope = {field: r.field, values: r.values}
-                let retired = scope->Reventless.OwnerScope.isRetiredValue(cell)
-                (
-                  retired,
-                  // The state that retired it, and only that. A live row reports
-                  // none — this door names rows, it does not publish a lifecycle
-                  // column to callers the list withholds. Nor does the boolean
-                  // form, where the field is the state and `retired` said it.
-                  retired && r.values->Option.isSome
-                    ? cell->Option.flatMap(JSON.Decode.string)
-                    : None,
-                )
-              }
-            switch Bus.getQueryDb(name) {
-            | Some(ops) =>
-              let load = key =>
-                ops.loadStream(key)
-                ->Stream.runCollect
-                ->Effect.catchAll(_ => Effect.succeed([]))
-                ->Effect.runPromise
-              let loaded = await ids->Array.map(async id =>
-                switch (await load(id))->Array.get(0) {
-                | Some(item) => (id, Some(item))
-                | None =>
-                  switch Api_Ids.alternateKey(id) {
-                  | Some(localId) => (localId, (await load(localId))->Array.get(0))
-                  | None => (id, None)
-                  }
-                }
-              )->Promise.all
-              loaded
-              ->Array.filterMap(((id, opt)) =>
-                opt
-                ->Option.filter(item => ownerAllows(~ctx, item))
-                ->Option.flatMap(item => {
-                  let (retired, state) = retirementOf(item)
-                  // A retired row leaves through this door only where the view
-                  // said it may. Where it did not, the door answers exactly as
-                  // every other one does — with nothing.
-                  if retired && !namesRetired {
-                    None
-                  } else {
-                    let label =
-                      item
-                      ->JSON.Decode.object
-                      ->Option.flatMap(d => d->Dict.get(labelField))
-                      ->Option.flatMap(JSON.Decode.string)
-                      // A view with no label field resolves to its id, which is
-                      // what `labelField`'s own fallback already decided.
-                      ->Option.getOr(id)
-                    // The picture travels with the name, so a retired row that
-                    // keeps one keeps the other: an archived product reads as
-                    // itself on the order that bought it.
-                    let image =
-                      switch (imageSourceOf(), item->JSON.Decode.object) {
-                      | (Some(source), Some(d)) => d->Reventless.RowImage.refFrom(source)
-                      | _ => None
-                      }
-                    Some(
-                      Dict.fromArray([
-                        ("id", JSON.Encode.string(id)),
-                        ("label", JSON.Encode.string(label)),
-                        ("image", image->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
-                        ("retired", JSON.Encode.bool(retired)),
-                        (
-                          "retiredState",
-                          state->Option.mapOr(JSON.Encode.null, JSON.Encode.string),
-                        ),
-                      ])->JSON.Encode.object,
-                    )
-                  }
-                })
+    let refsResolverEntry: option<(
+      string,
+      ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn,
+    )> = if includeIdParam && subIdField === None {
+      server.registerTypes(~sdlTypes=[GraphQL_FragmentGenerator.deriveRefTypeSdl(~returnTypeName)])
+      let resolver: ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn = async (
+        _root,
+        args,
+        ctx,
+      ) => {
+        switch await runInterceptor(~ctx, ~args) {
+        | Deny(_) => []->JSON.Encode.array
+        | Allow =>
+          let ids =
+            args
+            ->JSON.Decode.object
+            ->Option.flatMap(d => d->Dict.get("ids"))
+            ->Option.flatMap(JSON.Decode.array)
+            ->Option.getOr([])
+            ->Array.filterMap(JSON.Decode.string)
+          let spec = retiredSpecOf()
+          let namesRetired = spec->Option.mapOr(false, r => r.namedWhenRetired)
+          // The row's own retirement, read with the same `isRetiredValue` every
+          // other door narrows by — so "retired" here and "withheld" there are
+          // one answer, not two that drift.
+          let retirementOf = (item: JSON.t) =>
+            switch spec {
+            | None => (false, None)
+            | Some(r) =>
+              let cell = item->JSON.Decode.object->Option.flatMap(d => d->Dict.get(r.field))
+              let scope: Reventless.OwnerScope.retiredScope = {field: r.field, values: r.values}
+              let retired = scope->Reventless.OwnerScope.isRetiredValue(cell)
+              (
+                retired,
+                // The state that retired it, and only that. A live row reports
+                // none — this door names rows, it does not publish a lifecycle
+                // column to callers the list withholds. Nor does the boolean
+                // form, where the field is the state and `retired` said it.
+                retired && r.values->Option.isSome
+                  ? cell->Option.flatMap(JSON.Decode.string)
+                  : None,
               )
-              ->JSON.Encode.array
-            | None => []->JSON.Encode.array
             }
+          switch Bus.getQueryDb(name) {
+          | Some(ops) =>
+            let load = key =>
+              ops.loadStream(key)
+              ->Stream.runCollect
+              ->Effect.catchAll(_ => Effect.succeed([]))
+              ->Effect.runPromise
+            let loaded = await ids
+            ->Array.map(async id =>
+              switch (await load(id))->Array.get(0) {
+              | Some(item) => (id, Some(item))
+              | None =>
+                switch Api_Ids.alternateKey(id) {
+                | Some(localId) => (localId, (await load(localId))->Array.get(0))
+                | None => (id, None)
+                }
+              }
+            )
+            ->Promise.all
+            loaded
+            ->Array.filterMap(((id, opt)) =>
+              opt
+              ->Option.filter(item => ownerAllows(~ctx, item))
+              ->Option.flatMap(item => {
+                let (retired, state) = retirementOf(item)
+
+                // A retired row leaves through this door only where the view
+                // said it may. Where it did not, the door answers exactly as
+                // every other one does — with nothing.
+                if retired && !namesRetired {
+                  None
+                } else {
+                  let label =
+                    item
+                    ->JSON.Decode.object
+                    ->Option.flatMap(d => d->Dict.get(labelField))
+                    ->Option.flatMap(JSON.Decode.string)
+                    // A view with no label field resolves to its id, which is
+                    // what `labelField`'s own fallback already decided.
+                    ->Option.getOr(id)
+                  // The picture travels with the name, so a retired row that
+                  // keeps one keeps the other: an archived product reads as
+                  // itself on the order that bought it.
+                  let image = switch (imageSourceOf(), item->JSON.Decode.object) {
+                  | (Some(source), Some(d)) => d->Reventless.RowImage.refFrom(source)
+                  | _ => None
+                  }
+                  Some(
+                    Dict.fromArray([
+                      ("id", JSON.Encode.string(id)),
+                      ("label", JSON.Encode.string(label)),
+                      ("image", image->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
+                      ("retired", JSON.Encode.bool(retired)),
+                      ("retiredState", state->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
+                    ])->JSON.Encode.object,
+                  )
+                }
+              })
+            )
+            ->JSON.Encode.array
+          | None => []->JSON.Encode.array
           }
         }
-        Some((listQueryName ++ "Refs", resolver))
-      } else {
-        None
       }
+      Some((listQueryName ++ "Refs", resolver))
+    } else {
+      None
+    }
 
     // -- List query -------------------------------------------------------------
     // Look up the registered state schema (populated alongside queryFieldNamesRegistry)
@@ -562,7 +590,10 @@ module Make = (Bus: LocalBus.T) => {
         }
       }
 
-    let (listSdl, listResolver): (array<string>, ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn) = if connectionSpec {
+    let (listSdl, listResolver): (
+      array<string>,
+      ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn,
+    ) = if connectionSpec {
       // Relay Connection spec format
       let filterTypeName = returnTypeName ++ "Filter"
       let orderByTypes = GraphQL_FragmentGenerator.deriveConnectionOrderByType(
@@ -570,9 +601,10 @@ module Make = (Bus: LocalBus.T) => {
         ~capability,
       )
       let hasOrderBy = orderByTypes->Array.length > 0
-      let typesToRegister = [
-        GraphQL_FragmentGenerator.deriveConnectionFilterType(~filterTypeName, ~capability),
-      ]->Array.concat(orderByTypes)
+      let typesToRegister =
+        [
+          GraphQL_FragmentGenerator.deriveConnectionFilterType(~filterTypeName, ~capability),
+        ]->Array.concat(orderByTypes)
       server.registerTypes(~sdlTypes=typesToRegister)
       let sdl = [
         GraphQL_FragmentGenerator.deriveConnectionQueryField(
@@ -591,7 +623,11 @@ module Make = (Bus: LocalBus.T) => {
           "endCursor": Nullable.null,
         },
       })
-      let resolver: ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn = async (_root, args, ctx) => {
+      let resolver: ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn = async (
+        _root,
+        args,
+        ctx,
+      ) => {
         switch await runInterceptor(~ctx, ~args) {
         | Deny(_) => emptyConnection
         | Allow =>
@@ -653,7 +689,11 @@ module Make = (Bus: LocalBus.T) => {
     } else {
       // Legacy AppSync-style format
       let sdl = [`  ${listQueryName}(nextToken: String, limit: Int): ${pluralTypeName}!`]
-      let resolver: ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn = async (_root, args, ctx) => {
+      let resolver: ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn = async (
+        _root,
+        args,
+        ctx,
+      ) => {
         switch await runInterceptor(~ctx, ~args) {
         | Deny(_) => Obj.magic({"nextToken": Nullable.null, "scannedCount": 0, "items": []})
         | Allow =>
@@ -663,7 +703,11 @@ module Make = (Bus: LocalBus.T) => {
           // the pre-scoping total would tell a caller how many rows they may not see.
           let items =
             all->Array.filter(item => ownerAllows(~ctx, item) && retiredAllows(~ctx, ~args, item))
-          Obj.magic({"nextToken": Nullable.null, "scannedCount": items->Array.length, "items": items})
+          Obj.magic({
+            "nextToken": Nullable.null,
+            "scannedCount": items->Array.length,
+            "items": items,
+          })
         }
       }
       (sdl, resolver)
@@ -683,12 +727,21 @@ module Make = (Bus: LocalBus.T) => {
           `input ${filterTypeName} {\n  prefix: String\n  from: String\n  to: String\n  eq: String\n  order: SortOrder\n}`,
         ],
       )
-      [`  ${singleQueryName}Items(id: ID!, filter: ${filterTypeName}, first: Int, after: String, last: Int, before: String): ${connectionTypeName}!`]
+      [
+        `  ${singleQueryName}Items(id: ID!, filter: ${filterTypeName}, first: Int, after: String, last: Int, before: String): ${connectionTypeName}!`,
+      ]
     | None => []
     }
-    let itemsResolvers: array<(string, ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn)> = switch subIdField {
+    let itemsResolvers: array<(
+      string,
+      ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn,
+    )> = switch subIdField {
     | Some(sf) =>
-      let resolver: ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn = async (_root, args, ctx) => {
+      let resolver: ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn = async (
+        _root,
+        args,
+        ctx,
+      ) => {
         let emptyConn = Obj.magic({
           "edges": [],
           "pageInfo": {
@@ -704,26 +757,35 @@ module Make = (Bus: LocalBus.T) => {
           let argsDict = args->JSON.Decode.object->Option.getOr(Dict.make())
           let id = argsDict->Dict.get("id")->Option.flatMap(JSON.Decode.string)->Option.getOr("")
           let filterDict =
-            argsDict->Dict.get("filter")->Option.flatMap(JSON.Decode.object)->Option.getOr(Dict.make())
+            argsDict
+            ->Dict.get("filter")
+            ->Option.flatMap(JSON.Decode.object)
+            ->Option.getOr(Dict.make())
           let filterPrefix = filterDict->Dict.get("prefix")->Option.flatMap(JSON.Decode.string)
-          let filterFrom   = filterDict->Dict.get("from")->Option.flatMap(JSON.Decode.string)
-          let filterTo     = filterDict->Dict.get("to")->Option.flatMap(JSON.Decode.string)
-          let filterEq     = filterDict->Dict.get("eq")->Option.flatMap(JSON.Decode.string)
-          let orderDesc    = filterDict->Dict.get("order")->Option.flatMap(JSON.Decode.string)->Option.map(o => o == "DESC")->Option.getOr(false)
-          let first        = argsDict->Dict.get("first")->Option.flatMap(JSON.Decode.float)->Option.map(Float.toInt)
-          let after        = argsDict->Dict.get("after")->Option.flatMap(JSON.Decode.string)
-          let last         = argsDict->Dict.get("last")->Option.flatMap(JSON.Decode.float)->Option.map(Float.toInt)
-          let before       = argsDict->Dict.get("before")->Option.flatMap(JSON.Decode.string)
-          let isBackward   = last->Option.isSome
+          let filterFrom = filterDict->Dict.get("from")->Option.flatMap(JSON.Decode.string)
+          let filterTo = filterDict->Dict.get("to")->Option.flatMap(JSON.Decode.string)
+          let filterEq = filterDict->Dict.get("eq")->Option.flatMap(JSON.Decode.string)
+          let orderDesc =
+            filterDict
+            ->Dict.get("order")
+            ->Option.flatMap(JSON.Decode.string)
+            ->Option.map(o => o == "DESC")
+            ->Option.getOr(false)
+          let first =
+            argsDict->Dict.get("first")->Option.flatMap(JSON.Decode.float)->Option.map(Float.toInt)
+          let after = argsDict->Dict.get("after")->Option.flatMap(JSON.Decode.string)
+          let last =
+            argsDict->Dict.get("last")->Option.flatMap(JSON.Decode.float)->Option.map(Float.toInt)
+          let before = argsDict->Dict.get("before")->Option.flatMap(JSON.Decode.string)
+          let isBackward = last->Option.isSome
 
           switch Bus.getQueryDb(name) {
           | None => emptyConn
           | Some(ops) =>
-            let loaded =
-              await ops.loadStream(id)
-              ->Stream.runCollect
-              ->Effect.catchAll(_ => Effect.succeed([]))
-              ->Effect.runPromise
+            let loaded = await ops.loadStream(id)
+            ->Stream.runCollect
+            ->Effect.catchAll(_ => Effect.succeed([]))
+            ->Effect.runPromise
             // Narrowed here, before the cursor window and the sort-key filter, so
             // every page this door emits is a page of rows the caller owns. Doing
             // it after would hand back short pages with valid cursors.
@@ -737,7 +799,12 @@ module Make = (Bus: LocalBus.T) => {
               switch before->Option.map(decodeCursor) {
               | Some(beforeKey) =>
                 allItems->Array.filter(item =>
-                  item->JSON.Decode.object->Option.flatMap(d => d->Dict.get(sf))->Option.flatMap(JSON.Decode.string)->Option.map(v => v < beforeKey)->Option.getOr(false)
+                  item
+                  ->JSON.Decode.object
+                  ->Option.flatMap(d => d->Dict.get(sf))
+                  ->Option.flatMap(JSON.Decode.string)
+                  ->Option.map(v => v < beforeKey)
+                  ->Option.getOr(false)
                 )
               | None => allItems
               }
@@ -745,7 +812,12 @@ module Make = (Bus: LocalBus.T) => {
               switch after->Option.map(decodeCursor) {
               | Some(afterKey) =>
                 allItems->Array.filter(item =>
-                  item->JSON.Decode.object->Option.flatMap(d => d->Dict.get(sf))->Option.flatMap(JSON.Decode.string)->Option.map(v => v > afterKey)->Option.getOr(false)
+                  item
+                  ->JSON.Decode.object
+                  ->Option.flatMap(d => d->Dict.get(sf))
+                  ->Option.flatMap(JSON.Decode.string)
+                  ->Option.map(v => v > afterKey)
+                  ->Option.getOr(false)
                 )
               | None => allItems
               }
@@ -759,7 +831,11 @@ module Make = (Bus: LocalBus.T) => {
               ~from=?filterFrom,
               ~to_=?filterTo,
               ~eq=?filterEq,
-              ~reverse=if isBackward { !orderDesc } else { orderDesc },
+              ~reverse=if isBackward {
+                !orderDesc
+              } else {
+                orderDesc
+              },
               ~offset=0,
             ).items
 
@@ -780,13 +856,22 @@ module Make = (Bus: LocalBus.T) => {
             }
 
             let getSkValue = item =>
-              item->JSON.Decode.object->Option.flatMap(d => d->Dict.get(sf))->Option.flatMap(JSON.Decode.string)->Option.getOr("")
+              item
+              ->JSON.Decode.object
+              ->Option.flatMap(d => d->Dict.get(sf))
+              ->Option.flatMap(JSON.Decode.string)
+              ->Option.getOr("")
 
-            let edges = pageItems->Array.map(item =>
-              Obj.magic({"node": item, "cursor": encodeCursor(getSkValue(item))})
-            )
-            let startCursor = pageItems->Array.get(0)->Option.map(item => encodeCursor(getSkValue(item)))
-            let endCursor   = pageItems->Array.get(pageItems->Array.length - 1)->Option.map(item => encodeCursor(getSkValue(item)))
+            let edges =
+              pageItems->Array.map(item =>
+                Obj.magic({"node": item, "cursor": encodeCursor(getSkValue(item))})
+              )
+            let startCursor =
+              pageItems->Array.get(0)->Option.map(item => encodeCursor(getSkValue(item)))
+            let endCursor =
+              pageItems
+              ->Array.get(pageItems->Array.length - 1)
+              ->Option.map(item => encodeCursor(getSkValue(item)))
 
             Obj.magic({
               "edges": edges,
@@ -814,13 +899,14 @@ module Make = (Bus: LocalBus.T) => {
     // the same filter, as `GraphQL_FragmentGenerator`: a field emitted here and
     // not there would make the local SDL disagree with the deployed one.
     let doorIndexes = indexes->Array.filter(ic => !Reventless.ReadModel.isDerivedIndex(ic))
-    let indexSdlFields = doorIndexes->Array.map((ic: Reventless.ReadModel.indexConfig) =>
-      GraphQL_FragmentGenerator.deriveIndexQueryField(
-        ~singleFieldName=singleQueryName,
-        ~indexConfig=ic,
-        ~connectionTypeName=returnTypeName ++ "Connection",
+    let indexSdlFields =
+      doorIndexes->Array.map((ic: Reventless.ReadModel.indexConfig) =>
+        GraphQL_FragmentGenerator.deriveIndexQueryField(
+          ~singleFieldName=singleQueryName,
+          ~indexConfig=ic,
+          ~connectionTypeName=returnTypeName ++ "Connection",
+        )
       )
-    )
     // Backward paging is refused rather than ignored, and refused on both
     // backends rather than on the one that cannot do it. `listAllItemsConnection`
     // already sets the rule for a door whose read cannot walk backwards — "fail
@@ -853,7 +939,10 @@ module Make = (Bus: LocalBus.T) => {
     let indexConnection = (~args, items: array<JSON.t>) => {
       let arg = key => args->JSON.Decode.object->Option.flatMap(d => d->Dict.get(key))
       let after =
-        arg("after")->Option.flatMap(JSON.Decode.string)->Option.flatMap(s => Int.fromString(s))->Option.getOr(-1)
+        arg("after")
+        ->Option.flatMap(JSON.Decode.string)
+        ->Option.flatMap(s => Int.fromString(s))
+        ->Option.getOr(-1)
       let first =
         arg("first")->Option.flatMap(JSON.Decode.float)->Option.map(Float.toInt)->Option.getOr(50)
       let start = after + 1
@@ -880,60 +969,69 @@ module Make = (Bus: LocalBus.T) => {
         ),
       ])->JSON.Encode.object
     }
-    let indexResolvers: array<(string, ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn)> = doorIndexes->Array.map(
-      (ic: Reventless.ReadModel.indexConfig) => {
-        let resolverName = GraphQL_FragmentGenerator.indexQueryFieldName(
-          ~singleFieldName=singleQueryName,
-          ~index=ic.index,
-        )
-        // The argument the caller passes and the row field this filters on are
-        // one and the same — the door reads the index's key, not its name.
-        let filterField = GraphQL_FragmentGenerator.indexKeyField(ic)
-        let resolver: ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn = async (_root, args, ctx) => {
-          switch await runInterceptor(~ctx, ~args) {
-          | Deny(_) => indexConnection(~args, [])
-          | Allow =>
-            // After the interceptor, matching the AppSync pipeline, where the
-            // interceptor leads the chain and the query function's `request`
-            // raises this second.
-            rejectBackwardPaging(~args)
-            let value =
-              args->JSON.Decode.object->Option.flatMap(d => d->Dict.get(filterField))->Option.flatMap(JSON.Decode.string)->Option.getOr("")
-            // Applied to whichever arm answers, rather than inside one of them: the
-            // push-down and the scan are two ways to reach the same rows, and a
-            // narrowing that lives in only one is a hole that appears when a
-            // backend gains or loses an index.
-            let scoped = rows =>
-              rows->Array.filter(item => ownerAllows(~ctx, item) && retiredAllows(~ctx, ~args, item))
-            // Prefer the pushed-down equality lookup (SQLite rides the GSI index;
-            // in-memory reuses its lazy snapshot). Fall back to scan+filter only
-            // if no lookup is registered for this QueryDb.
-            switch Bus.getQueryDbIndexLookup(name) {
-            | Some(lookup) => indexConnection(~args, lookup(filterField, value)->scoped)
-            | None =>
-              switch Bus.getQueryDbScan(name) {
-              | Some(scanAll) =>
-                indexConnection(
-                  ~args,
-                  scanAll()
-                  ->Array.filter(item =>
-                    item
-                    ->JSON.Decode.object
-                    ->Option.flatMap(d => d->Dict.get(filterField))
-                    ->Option.flatMap(JSON.Decode.string)
-                    ->Option.map(v => v == value)
-                    ->Option.getOr(false)
-                  )
-                  ->scoped,
+    let indexResolvers: array<(
+      string,
+      ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn,
+    )> = doorIndexes->Array.map((ic: Reventless.ReadModel.indexConfig) => {
+      let resolverName = GraphQL_FragmentGenerator.indexQueryFieldName(
+        ~singleFieldName=singleQueryName,
+        ~index=ic.index,
+      )
+      // The argument the caller passes and the row field this filters on are
+      // one and the same — the door reads the index's key, not its name.
+      let filterField = GraphQL_FragmentGenerator.indexKeyField(ic)
+      let resolver: ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn = async (
+        _root,
+        args,
+        ctx,
+      ) => {
+        switch await runInterceptor(~ctx, ~args) {
+        | Deny(_) => indexConnection(~args, [])
+        | Allow =>
+          // After the interceptor, matching the AppSync pipeline, where the
+          // interceptor leads the chain and the query function's `request`
+          // raises this second.
+          rejectBackwardPaging(~args)
+          let value =
+            args
+            ->JSON.Decode.object
+            ->Option.flatMap(d => d->Dict.get(filterField))
+            ->Option.flatMap(JSON.Decode.string)
+            ->Option.getOr("")
+          // Applied to whichever arm answers, rather than inside one of them: the
+          // push-down and the scan are two ways to reach the same rows, and a
+          // narrowing that lives in only one is a hole that appears when a
+          // backend gains or loses an index.
+          let scoped = rows =>
+            rows->Array.filter(item => ownerAllows(~ctx, item) && retiredAllows(~ctx, ~args, item))
+          // Prefer the pushed-down equality lookup (SQLite rides the GSI index;
+          // in-memory reuses its lazy snapshot). Fall back to scan+filter only
+          // if no lookup is registered for this QueryDb.
+          switch Bus.getQueryDbIndexLookup(name) {
+          | Some(lookup) => indexConnection(~args, lookup(filterField, value)->scoped)
+          | None =>
+            switch Bus.getQueryDbScan(name) {
+            | Some(scanAll) =>
+              indexConnection(
+                ~args,
+                scanAll()
+                ->Array.filter(item =>
+                  item
+                  ->JSON.Decode.object
+                  ->Option.flatMap(d => d->Dict.get(filterField))
+                  ->Option.flatMap(JSON.Decode.string)
+                  ->Option.map(v => v == value)
+                  ->Option.getOr(false)
                 )
-              | None => indexConnection(~args, [])
-              }
+                ->scoped,
+              )
+            | None => indexConnection(~args, [])
             }
           }
         }
-        (resolverName, resolver)
-      },
-    )
+      }
+      (resolverName, resolver)
+    })
 
     // -- Cross-table fields: @resolves / @resolvesMany -------------------------
     // Field resolvers on this view's object type, following a foreign key into
@@ -1026,8 +1124,7 @@ module Make = (Bus: LocalBus.T) => {
         args,
         ctx,
       ) => {
-        let key =
-          root->sourceField(idField)->Option.flatMap(JSON.Decode.string)->Option.getOr("")
+        let key = root->sourceField(idField)->Option.flatMap(JSON.Decode.string)->Option.getOr("")
         let rows = if key == "" {
           []
         } else {
@@ -1088,9 +1185,11 @@ module Make = (Bus: LocalBus.T) => {
           ->Array.filterMap(JSON.Decode.string)
         // Missing ids drop out rather than becoming nulls, matching BatchGetItem
         // and the by-ids door built on it.
-        let rows = await ids->Array.map(async key =>
+        let rows = await ids
+        ->Array.map(async key =>
           (await loadFrom(~target=targetName, key))->Array.get(0)->Option.map(withId(~key, ...))
-        )->Promise.all
+        )
+        ->Promise.all
         rows
         ->Array.filterMap(row =>
           row->Option.filter(item => targetAllows(~ctx, ~target=targetName, item))
@@ -1127,5 +1226,4 @@ module Make = (Bus: LocalBus.T) => {
       resourcesMaker: _ => [],
     }
   }
-
 }

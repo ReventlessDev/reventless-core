@@ -27,11 +27,11 @@ let connect = (
   lambda->connectLambda(name, lambdaRole, queues, eventTopics, resources, opts)
 }
 
-let make: ReventlessCore.EventCollector_Adapter.channelMaker<callbackEvent, 'context, channelParts> = (
-  ~name as _,
-  ~eventTopics,
-  ~owner as _, ~opts as _,
-) => {
+let make: ReventlessCore.EventCollector_Adapter.channelMaker<
+  callbackEvent,
+  'context,
+  channelParts,
+> = (~name as _, ~eventTopics, ~owner as _, ~opts as _) => {
   // Postgres-backed event logs have NO storage resources (no table, no stream) —
   // skip them instead of producing undefined entries; their events arrive via the
   // PgProjectionFeed SQS queue (B3.0), not a stream ESM.

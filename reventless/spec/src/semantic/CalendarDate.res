@@ -31,7 +31,6 @@ type state = {
 }
 ```
 */
-
 /** The day's representation. Transparent `string`, like the rest of the branded
     scalars: the marker refines an existing field rather than replacing it. */
 type t = string
@@ -52,7 +51,8 @@ let fromString = (raw: string): result<t, string> =>
 
 /** The sury schema for a calendar-date field. Write the field's type as
     `Reventless.CalendarDate.t` and sury-ppx resolves it. */
-let schema: S.t<t> = S.string->Semantic.refined(~id=Semantic.Id.date, ~check=fromString)
+let schema: S.t<t> =
+  S.string->Semantic.refined(~id=Semantic.Id.date, ~check=fromString)
 
 /** Whether a field schema carries the calendar-date marker. */
 let isCalendarDate = (fieldSchema: S.t<unknown>) => fieldSchema->Semantic.has(~id=Semantic.Id.date)

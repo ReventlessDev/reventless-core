@@ -77,8 +77,7 @@ module Make = (
 
     try await Ops.publishToEventTopic(id, meta, finalEventJson) catch {
     | err =>
-      let errMsg =
-        err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+      let errMsg = err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
       EffectLogger.logError(
         ~comp=`ExtensionPoint(${MappingSpec.name})`,
         `Error on publishToEventTopic command: ${errMsg}`,
@@ -113,7 +112,10 @@ module Make = (
   let applyEventAction = async action =>
     switch action {
     | ReventlessInfra.ExtensionPointMapping.AbstractPublishEvent(id, meta, eventJson) =>
-      EffectLogger.logInfo(~comp=`ExtensionPoint(${MappingSpec.name})`, `applying event: ${LogFormat.eventSummary(eventJson)}`)->Effect.runSync
+      EffectLogger.logInfo(
+        ~comp=`ExtensionPoint(${MappingSpec.name})`,
+        `applying event: ${LogFormat.eventSummary(eventJson)}`,
+      )->Effect.runSync
       await publishWithHooks(id, meta, eventJson)
     | ReventlessInfra.ExtensionPointMapping.AbstractPublishEventAsync(promise) =>
       let (id, meta, eventJson) = await promise
@@ -123,12 +125,18 @@ module Make = (
       | err =>
         let errMsg =
           err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-        EffectLogger.logError(~comp=`ExtensionPoint(${MappingSpec.name})`, `Error on handling directive: ${errMsg}`)->Effect.runSync
+        EffectLogger.logError(
+          ~comp=`ExtensionPoint(${MappingSpec.name})`,
+          `Error on handling directive: ${errMsg}`,
+        )->Effect.runSync
       }
     }
 
   let outgoingJsonEventsHandler = async (eventJson', _pluginDef) => {
-    EffectLogger.logInfo(~comp=`ExtensionPoint(${MappingSpec.name})`, `outgoing event: ${LogFormat.eventSummary(eventJson')}`)->Effect.runSync
+    EffectLogger.logInfo(
+      ~comp=`ExtensionPoint(${MappingSpec.name})`,
+      `outgoing event: ${LogFormat.eventSummary(eventJson')}`,
+    )->Effect.runSync
     let eventActions = mapOutgoingEvent(
       eventJson',
       Mappings.mappings,

@@ -69,12 +69,12 @@ beforeAll(() =>
 )
 
 // Pulumi registers resources asynchronously; give the runtime a few ticks.
-let settle = async () => await Promise.make((resolve, _) => {
-  let _ = setTimeout(() => resolve(), 300)
-})
+let settle = async () =>
+  await Promise.make((resolve, _) => {
+    let _ = setTimeout(() => resolve(), 300)
+  })
 
-let wasRegistered = (type_, name) =>
-  registered->Array.some(((t, n)) => t == type_ && n == name)
+let wasRegistered = (type_, name) => registered->Array.some(((t, n)) => t == type_ && n == name)
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -124,7 +124,9 @@ describe("EventCollectorChannel_Helpers.connectLambda under an unknown view tabl
       name,
       lambdaRole,
       [],
-      Dict.fromArray([("DcbEventLog", {ReventlessInfra.EventTopic.resources: [knownEventLogStream]})]),
+      Dict.fromArray([
+        ("DcbEventLog", {ReventlessInfra.EventTopic.resources: [knownEventLogStream]}),
+      ]),
       [unknownViewTable],
       {},
     )
@@ -139,6 +141,11 @@ describe("EventCollectorChannel_Helpers.connectLambda under an unknown view tabl
   })
 
   test("still registers the event-log mapping, which never reads a view table", async () => {
-    expect(wasRegistered("aws:lambda/eventSourceMapping:EventSourceMapping", "CatalogDcbEventLog2" ++ name))->toBe(true)
+    expect(
+      wasRegistered(
+        "aws:lambda/eventSourceMapping:EventSourceMapping",
+        "CatalogDcbEventLog2" ++ name,
+      ),
+    )->toBe(true)
   })
 })

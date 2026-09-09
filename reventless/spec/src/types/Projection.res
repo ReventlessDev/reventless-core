@@ -145,8 +145,15 @@ module Mapping = {
   module Make = (
     Source: Source,
     Target: Target,
-    MappingImpl: MappingImpl with type sourceEvent := Source.event and type targetState := Target.state,
-  ): (Mapping with type targetState = Target.state and type sourceEvent = Source.event and module SourceId = Source.Id) => {
+    MappingImpl: MappingImpl
+      with type sourceEvent := Source.event
+      and type targetState := Target.state,
+  ): (
+    Mapping
+      with type targetState = Target.state
+      and type sourceEvent = Source.event
+      and module SourceId = Source.Id
+  ) => {
     module SourceId = Source.Id
     @schema
     type sourceEvent = Source.event

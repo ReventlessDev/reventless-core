@@ -16,7 +16,7 @@ let project = EventCollectorEntryPoint_Ops.projectPluginRow
 
 describe("EventCollectorEntryPoint_Ops.projectPluginRow", () => {
   testSync("rejects a non-object row", () => {
-    expect((project(JSON.Encode.string("nope")))->Option.isNone)->toBe(true)
+    expect(project(JSON.Encode.string("nope"))->Option.isNone)->toBe(true)
   })
 
   testSync("rejects a row missing id or status", () => {
@@ -25,7 +25,8 @@ describe("EventCollectorEntryPoint_Ops.projectPluginRow", () => {
   })
 
   testSync("projects the id/status/eventCollector subset with defaults", () => {
-    let p = project(obj([("id", str("Catalog@1")), ("status", str("Connected"))]))->Option.getOrThrow
+    let p =
+      project(obj([("id", str("Catalog@1")), ("status", str("Connected"))]))->Option.getOrThrow
     expect(p.id)->toBe("Catalog@1")
     expect(p.status)->toBe("Connected")
     expect(p.eventCollector)->toBe("") // defaulted when absent
@@ -42,7 +43,11 @@ describe("EventCollectorEntryPoint_Ops.projectPluginRow", () => {
       (
         "extensions",
         JSON.Encode.array([
-          obj([("name", str("OrdersExt")), ("extensionPointName", str("Catalog.Products")), ("dcbSources", JSON.Encode.array([str("prod"), JSON.Encode.int(7)]))]),
+          obj([
+            ("name", str("OrdersExt")),
+            ("extensionPointName", str("Catalog.Products")),
+            ("dcbSources", JSON.Encode.array([str("prod"), JSON.Encode.int(7)])),
+          ]),
           obj([("name", str("Malformed"))]), // no extensionPointName -> dropped
         ]),
       ),
@@ -127,7 +132,10 @@ describe("EventCollectorEntryPoint_Ops.parseHandlerConfig", () => {
     let msgOf = raw => throws(() => EventCollectorEntryPoint_Ops.parseHandlerConfig(raw))
     expect(msgOf(""))->toEqual(Some("HANDLER_CONFIG env var is empty"))
     expect(
-      msgOf("{nope")->Option.mapOr(false, m => m->String.startsWith("HANDLER_CONFIG JSON parse error:")),
+      msgOf("{nope")->Option.mapOr(
+        false,
+        m => m->String.startsWith("HANDLER_CONFIG JSON parse error:"),
+      ),
     )->toBe(true)
     expect(msgOf(`{"queueUrl":"q"}`))->toEqual(
       Some("HANDLER_CONFIG missing required field: pluginExtensionPointCmdTopicUrl"),

@@ -28,7 +28,12 @@ let param = (b: paramBuilder, v: JSON.t): string => {
 let col = (field: string): string => `(item->>'${field->String.replaceAll("'", "''")}')`
 
 // One Filter.config → SQL predicate, appending any bound params.
-let filterSql = (b: paramBuilder, field: string, cmp: QueryEngine.Filter.comparator, v: QueryEngine.value): string => {
+let filterSql = (
+  b: paramBuilder,
+  field: string,
+  cmp: QueryEngine.Filter.comparator,
+  v: QueryEngine.value,
+): string => {
   let c = col(field)
   let bind = () => b->param(JSON.Encode.string(valueToText(v)))
   let cmpSql = op =>
@@ -48,10 +53,16 @@ let filterSql = (b: paramBuilder, field: string, cmp: QueryEngine.Filter.compara
   }
 }
 
-let subIdSql = (b: paramBuilder, field: string, cmp: QueryEngine.SubId.comparator, v: QueryEngine.value): string => {
+let subIdSql = (
+  b: paramBuilder,
+  field: string,
+  cmp: QueryEngine.SubId.comparator,
+  v: QueryEngine.value,
+): string => {
   let c = col(field)
   let bind = () => b->param(JSON.Encode.string(valueToText(v)))
-  let cmpSql = op => isNumeric(v) ? `${c}::numeric ${op} ${bind()}::numeric` : `${c} ${op} ${bind()}`
+  let cmpSql = op =>
+    isNumeric(v) ? `${c}::numeric ${op} ${bind()}::numeric` : `${c} ${op} ${bind()}`
   switch cmp {
   | QueryEngine.SubId.Equal => cmpSql("=")
   | Unequal => cmpSql("<>")
@@ -80,7 +91,11 @@ let decodeRow = (~withId, row: dict<JSON.t>): JSON.t => {
   }
 }
 
-module Make = (P: {let pool: PgDriver.pool}) => {
+module Make = (
+  P: {
+    let pool: PgDriver.pool
+  },
+) => {
   let query = async (
     ~readModelName,
     ~key=?,
@@ -109,7 +124,9 @@ module Make = (P: {let pool: PgDriver.pool}) => {
     | Some(n) => ` LIMIT ${b->param(JSON.Encode.int(n))}`
     | None => ""
     }
-    let sql = `SELECT partition_key, item FROM ${table} WHERE ${where->Array.join(" AND ")} ORDER BY sub_key ${dir}${limitClause}`
+    let sql = `SELECT partition_key, item FROM ${table} WHERE ${where->Array.join(
+        " AND ",
+      )} ORDER BY sub_key ${dir}${limitClause}`
     (await P.pool->PgDriver.query(sql, b.params))->Array.map(decodeRow(~withId=false, ...))
   }
 
@@ -117,8 +134,12 @@ module Make = (P: {let pool: PgDriver.pool}) => {
     let table = QueryDbStorage_Postgres_Ops.tableName(readModelName)
     let b = {params: []}
     let where = [notExpired]
-    filterConfigs->Array.forEach(((field, cmp, v)) => where->Array.push(filterSql(b, field, cmp, v)))
-    let sql = `SELECT partition_key, item FROM ${table} WHERE ${where->Array.join(" AND ")} ORDER BY partition_key, sub_key LIMIT ${b->param(JSON.Encode.int(limit))}`
+    filterConfigs->Array.forEach(((field, cmp, v)) =>
+      where->Array.push(filterSql(b, field, cmp, v))
+    )
+    let sql = `SELECT partition_key, item FROM ${table} WHERE ${where->Array.join(
+        " AND ",
+      )} ORDER BY partition_key, sub_key LIMIT ${b->param(JSON.Encode.int(limit))}`
     (await P.pool->PgDriver.query(sql, b.params))->Array.map(decodeRow(~withId=true, ...))
   }
 
@@ -265,15 +286,17 @@ module Make = (P: {let pool: PgDriver.pool}) => {
         }
       capability.filterFields->Array.forEach(f => {
         switch filterDict->Dict.get(f.name ++ "Eq") {
-        | Some(v) when v != JSON.Encode.null =>
+        | Some(v) if v != JSON.Encode.null =>
           whereParts->Array.push(
-            `${jsonTextC(f.name)} = ${b->param(JSON.Encode.string(valString(v)->Option.getOr("")))}`,
+            `${jsonTextC(f.name)} = ${b->param(
+                JSON.Encode.string(valString(v)->Option.getOr("")),
+              )}`,
           )
         | _ => ()
         }
         if f.range {
           switch filterDict->Dict.get(f.name ++ "From") {
-          | Some(v) when v != JSON.Encode.null =>
+          | Some(v) if v != JSON.Encode.null =>
             whereParts->Array.push(
               `${jsonTextC(f.name)} >= ${b->param(
                   JSON.Encode.string(valString(v)->Option.getOr("")),
@@ -282,7 +305,7 @@ module Make = (P: {let pool: PgDriver.pool}) => {
           | _ => ()
           }
           switch filterDict->Dict.get(f.name ++ "To") {
-          | Some(v) when v != JSON.Encode.null =>
+          | Some(v) if v != JSON.Encode.null =>
             whereParts->Array.push(
               `${jsonTextC(f.name)} <= ${b->param(
                   JSON.Encode.string(valString(v)->Option.getOr("")),
@@ -326,7 +349,8 @@ module Make = (P: {let pool: PgDriver.pool}) => {
       let sql = `SELECT partition_key, item FROM ${table} WHERE ${whereParts->Array.join(
           " AND ",
         )} ORDER BY ${orderClause} LIMIT ${b->param(JSON.Encode.int(pageSize + 1))}`
-      let rows = (await P.pool->PgDriver.query(sql, b.params))->Array.map(decodeRow(~withId=true, ...))
+      let rows =
+        (await P.pool->PgDriver.query(sql, b.params))->Array.map(decodeRow(~withId=true, ...))
       let hasMore = rows->Array.length > pageSize
       let pageItems = rows->Array.slice(~start=0, ~end=pageSize)
       let cursorField = orderByField->Option.getOr("id")
@@ -365,8 +389,10 @@ module Make = (P: {let pool: PgDriver.pool}) => {
       argsDict->Dict.get("filter")->Option.flatMap(JSON.Decode.object)->Option.getOr(Dict.make())
     let fstr = k => filterDict->Dict.get(k)->Option.flatMap(JSON.Decode.string)
     let orderDesc = fstr("order")->Option.mapOr(false, o => o == "DESC")
-    let last = argsDict->Dict.get("last")->Option.flatMap(JSON.Decode.float)->Option.map(Float.toInt)
-    let first = argsDict->Dict.get("first")->Option.flatMap(JSON.Decode.float)->Option.map(Float.toInt)
+    let last =
+      argsDict->Dict.get("last")->Option.flatMap(JSON.Decode.float)->Option.map(Float.toInt)
+    let first =
+      argsDict->Dict.get("first")->Option.flatMap(JSON.Decode.float)->Option.map(Float.toInt)
     let after = argsDict->Dict.get("after")->Option.flatMap(JSON.Decode.string)
     let before = argsDict->Dict.get("before")->Option.flatMap(JSON.Decode.string)
     let isBackward = last->Option.isSome
@@ -387,25 +413,36 @@ module Make = (P: {let pool: PgDriver.pool}) => {
     fstr("prefix")->Option.forEach(p =>
       where->Array.push(`starts_with(sub_key, ${b->param(JSON.Encode.string(p))})`)
     )
-    fstr("from")->Option.forEach(f => where->Array.push(`${sk} >= ${b->param(JSON.Encode.string(f))}`))
-    fstr("to")->Option.forEach(t => where->Array.push(`${sk} <= ${b->param(JSON.Encode.string(t))}`))
+    fstr("from")->Option.forEach(f =>
+      where->Array.push(`${sk} >= ${b->param(JSON.Encode.string(f))}`)
+    )
+    fstr("to")->Option.forEach(t =>
+      where->Array.push(`${sk} <= ${b->param(JSON.Encode.string(t))}`)
+    )
     fstr("eq")->Option.forEach(e => where->Array.push(`${sk} = ${b->param(JSON.Encode.string(e))}`))
     // Keyset: forward excludes ≤ after; backward excludes ≥ before.
     switch (isBackward, after, before) {
     | (false, Some(c), _) =>
-      where->Array.push(`${sk} > ${b->param(JSON.Encode.string(ReventlessCore.QueryDbListQuery.decodeCursor(c)))}`)
+      where->Array.push(
+        `${sk} > ${b->param(JSON.Encode.string(ReventlessCore.QueryDbListQuery.decodeCursor(c)))}`,
+      )
     | (true, _, Some(c)) =>
-      where->Array.push(`${sk} < ${b->param(JSON.Encode.string(ReventlessCore.QueryDbListQuery.decodeCursor(c)))}`)
+      where->Array.push(
+        `${sk} < ${b->param(JSON.Encode.string(ReventlessCore.QueryDbListQuery.decodeCursor(c)))}`,
+      )
     | _ => ()
     }
     // Page-fetch direction is the LOGICAL order forward, and its OPPOSITE
     // backward (take the N nearest `before`, then reverse to logical) — mirrors
     // the resolver's `reverse = isBackward ? !orderDesc : orderDesc`.
     let fetchDesc = isBackward ? !orderDesc : orderDesc
-    let pageSize = (isBackward ? last : first)->Option.getOr(ReventlessCore.QueryDbListQuery.defaultListPageSize)
+    let pageSize =
+      (isBackward ? last : first)->Option.getOr(ReventlessCore.QueryDbListQuery.defaultListPageSize)
     let sql = `SELECT partition_key, sub_key, item FROM ${table} WHERE ${where->Array.join(
         " AND ",
-      )} ORDER BY ${sk} ${fetchDesc ? "DESC" : "ASC"} LIMIT ${b->param(JSON.Encode.int(pageSize + 1))}`
+      )} ORDER BY ${sk} ${fetchDesc ? "DESC" : "ASC"} LIMIT ${b->param(
+        JSON.Encode.int(pageSize + 1),
+      )}`
     let rows = await P.pool->PgDriver.query(sql, b.params)
     let hasMore = rows->Array.length > pageSize
     let taken = rows->Array.slice(~start=0, ~end=pageSize)
@@ -419,17 +456,18 @@ module Make = (P: {let pool: PgDriver.pool}) => {
       | _ => ""
       }
     let cursors = logical->Array.map(subKeyOf)
-    let edges =
-      pageItems->Array.mapWithIndex((item, i) =>
-        Obj.magic({
-          "node": item,
-          "cursor": ReventlessCore.QueryDbListQuery.encodeCursor(cursors->Array.getUnsafe(i)),
-        })
-      )
+    let edges = pageItems->Array.mapWithIndex((item, i) =>
+      Obj.magic({
+        "node": item,
+        "cursor": ReventlessCore.QueryDbListQuery.encodeCursor(cursors->Array.getUnsafe(i)),
+      })
+    )
     let startCursor =
       cursors->Array.get(0)->Option.map(ReventlessCore.QueryDbListQuery.encodeCursor)
     let endCursor =
-      cursors->Array.get(cursors->Array.length - 1)->Option.map(ReventlessCore.QueryDbListQuery.encodeCursor)
+      cursors
+      ->Array.get(cursors->Array.length - 1)
+      ->Option.map(ReventlessCore.QueryDbListQuery.encodeCursor)
     Obj.magic({
       "edges": edges,
       "pageInfo": {

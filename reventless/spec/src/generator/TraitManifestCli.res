@@ -48,7 +48,9 @@ let moduleBase = (traitPackage: string) =>
 
 let resolveFrom = (specifier: string) =>
   try Some(
-    NodeModule.createRequire(NodeProcess.cwd() ++ "/index.js")->NodeModule.requireResolve(specifier),
+    NodeModule.createRequire(NodeProcess.cwd() ++ "/index.js")->NodeModule.requireResolve(
+      specifier,
+    ),
   ) catch {
   | _ => None
   }
@@ -80,8 +82,7 @@ let main = async () => {
       let packageJson = switch resolveFrom(`${traitPackage}/package.json`) {
       | None =>
         fail(
-          `${traitPackage} is not installed here. A manifest is derived from the trait, so ` ++
-          `the trait has to be resolvable.`,
+          `${traitPackage} is not installed here. A manifest is derived from the trait, so ` ++ `the trait has to be resolvable.`,
         )
         JSON.Encode.null
       | Some(path) => NodeFs.readFileSync(path)->JSON.parseOrThrow
@@ -95,8 +96,7 @@ let main = async () => {
       | None =>
         fail(
           `${traitPackage} exports no ${base} module, so its capability needs cannot be read.\n` ++
-          `  A trait states them as a value — an empty array if it brokers nothing — because ` ++
-          `an unstated need fails silently at run time.`,
+          `  A trait states them as a value — an empty array if it brokers nothing — because ` ++ `an unstated need fails silently at run time.`,
         )
         %raw(`undefined`)
       | Some(path) => await dynImport(NodeUrl.pathToFileURL(path)["href"])
@@ -127,8 +127,8 @@ let main = async () => {
       NodeFs.writeFileSync(out, manifest->TraitManifest.render)
       Console.log(
         `trait-manifest: ${manifest.trait}@${manifest.version} — ` ++
-        `${(manifest.capabilities->Array.length)->Int.toString} capabilit(ies), ` ++
-        `${(manifest.config->Array.length)->Int.toString} config field(s)`,
+        `${manifest.capabilities->Array.length->Int.toString} capabilit(ies), ` ++
+        `${manifest.config->Array.length->Int.toString} config field(s)`,
       )
       Console.log(`Wrote: ${out}`)
     }

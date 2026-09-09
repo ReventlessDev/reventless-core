@@ -20,7 +20,6 @@ fields this module reads are typed non-optional and are, at runtime, sometimes
 absent. Every read here goes through a nullable cast for that reason; deleting
 one restores a silent failure rather than a type error.
 */
-
 /** Whether a JS value is a primitive string — `Cognito` and `InMemory` compile to
     bare strings while `Custom(_)` compiles to an object, so this is how a modelled
     provider is told from an unmodelled one that arrived as raw JSON. */
@@ -135,8 +134,7 @@ let classify = (identity: Identity.t, ~elevated: array<string>): t => {
     switch identity.userId->asNullableString->Nullable.toOption {
     | None => Unidentified("identity carries no userId")
     | Some("") => Unidentified("identity carries an empty userId")
-    | Some(userId) if userId == Identity.anonymous.userId =>
-      Unidentified("caller is anonymous")
+    | Some(userId) if userId == Identity.anonymous.userId => Unidentified("caller is anonymous")
     | Some(userId) =>
       let groups = identity.groups->asNullableArray->Nullable.toOption->Option.getOr([])
       groups->Array.some(g => elevated->Array.includes(g))

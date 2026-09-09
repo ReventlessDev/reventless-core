@@ -42,7 +42,8 @@ module Make = (
         acc->Effect.flatMap(
           _ => {
             Effect.promise(
-              () => Projection.handleAction(~comp, action, Spec.operations, ReadModelSpec.subIdConfig),
+              () =>
+                Projection.handleAction(~comp, action, Spec.operations, ReadModelSpec.subIdConfig),
             )->Effect.map(_ => ())
           },
         )

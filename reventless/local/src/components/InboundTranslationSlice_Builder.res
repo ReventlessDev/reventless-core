@@ -28,7 +28,8 @@ module Make = (Bus: LocalBus.T) => {
     let queryDbName = Inner.queryDbName
     let make = Inner.make
     // Re-expose operations for test resolution
-    let operations: component => Pulumi.Output.t<ReventlessCore.InboundTranslationSlice.operations> =
-      ReventlessCore.Component.operations
+    let operations: component => Pulumi.Output.t<
+      ReventlessCore.InboundTranslationSlice.operations,
+    > = ReventlessCore.Component.operations
   }
 }

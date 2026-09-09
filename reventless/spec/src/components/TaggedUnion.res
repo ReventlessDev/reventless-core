@@ -113,8 +113,7 @@ let armsOf = (schema: S.t<unknown>): option<array<arm>> =>
           | Some(String({const: ?Some(tag)})) =>
             let fields = properties->Dict.toArray->Array.filter(((name, _)) => name !== "TAG")
             if (
-              fields->Array.length == 0 ||
-                fields->Array.some(((name, _)) => isPositionalName(name))
+              fields->Array.length == 0 || fields->Array.some(((name, _)) => isPositionalName(name))
             ) {
               None
             } else {

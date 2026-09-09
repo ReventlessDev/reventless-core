@@ -104,15 +104,15 @@ describe("ResourceAttribution — carrying the context into deferred work", () =
   testSync("two plugins deferred from one apply are each attributed to themselves", () => {
     let outer = Attribution.enter(~platform="online-shop", ~plugin="Catalog")
     let catalogSaw = ref(None)
-    let catalogFinish = Attribution.deferred(() =>
-      catalogSaw := Attribution.current.contents.plugin
+    let catalogFinish = Attribution.deferred(
+      () => catalogSaw := Attribution.current.contents.plugin,
     )
     Attribution.restore(outer)
 
     let previous = Attribution.enter(~platform="online-shop", ~plugin="Ordering")
     let orderingSaw = ref(None)
-    let orderingFinish = Attribution.deferred(() =>
-      orderingSaw := Attribution.current.contents.plugin
+    let orderingFinish = Attribution.deferred(
+      () => orderingSaw := Attribution.current.contents.plugin,
     )
     Attribution.restore(previous)
 
@@ -126,8 +126,8 @@ describe("ResourceAttribution — carrying the context into deferred work", () =
 
   testSync("a throwing callback still puts the context back", () => {
     let previous = Attribution.enter(~platform="online-shop", ~plugin="Catalog")
-    let finish: unit => unit = Attribution.deferred(() =>
-      JsError.throwWithMessage("finish blew up")
+    let finish: unit => unit = Attribution.deferred(
+      () => JsError.throwWithMessage("finish blew up"),
     )
     Attribution.restore(previous)
 
@@ -164,22 +164,25 @@ describe("ResourceAttribution — carrying the context into deferred work", () =
 // exercises the production choke point: a task side-effect handler registered
 // during construct, then run the way `finishTasks` runs it — from an apply,
 // with nothing attributed.
-describe("Builder_Helpers.registerTaskSideEffectHandler — attribution survives the deferral", () => {
-  testSync("the registered finish sees the plugin that registered it", () => {
-    let before = Builder_Helpers.taskSideEffectFinishFns->Array.length
-    let observed = ref(None)
+describe(
+  "Builder_Helpers.registerTaskSideEffectHandler — attribution survives the deferral",
+  () => {
+    testSync("the registered finish sees the plugin that registered it", () => {
+      let before = Builder_Helpers.taskSideEffectFinishFns->Array.length
+      let observed = ref(None)
 
-    let previous = Attribution.enter(~platform="online-shop", ~plugin="Catalog")
-    Builder_Helpers.registerTaskSideEffectHandler(
-      ~gate=Pulumi.Output.make(),
-      ~finish=() => observed := Attribution.current.contents.plugin,
-    )
-    Attribution.restore(previous)
+      let previous = Attribution.enter(~platform="online-shop", ~plugin="Catalog")
+      Builder_Helpers.registerTaskSideEffectHandler(
+        ~gate=Pulumi.Output.make(),
+        ~finish=() => observed := Attribution.current.contents.plugin,
+      )
+      Attribution.restore(previous)
 
-    switch Builder_Helpers.taskSideEffectFinishFns->Array.get(before) {
-    | Some(finish) => finish()
-    | None => JsError.throwWithMessage("handler was not registered")
-    }
-    expect(observed.contents)->toEqual(Some("Catalog"))
-  })
-})
+      switch Builder_Helpers.taskSideEffectFinishFns->Array.get(before) {
+      | Some(finish) => finish()
+      | None => JsError.throwWithMessage("handler was not registered")
+      }
+      expect(observed.contents)->toEqual(Some("Catalog"))
+    })
+  },
+)

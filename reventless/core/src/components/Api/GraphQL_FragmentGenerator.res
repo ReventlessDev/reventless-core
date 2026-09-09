@@ -237,7 +237,9 @@ let deriveObjectTypeWithNested = (
     // — for every plugin in the merge, not just this one. Refuse at build time,
     // naming both halves.
     resolvedFields->Array.forEach(({fieldName}) =>
-      if filteredFields->Dict.get(fieldName)->Option.isSome || (includeIdParam && fieldName == "id") {
+      if (
+        filteredFields->Dict.get(fieldName)->Option.isSome || (includeIdParam && fieldName == "id")
+      ) {
         JsError.throwWithMessage(
           `${typeName}.${fieldName} is declared by @resolves/@resolvesMany and is already a field of the state record. Name the resolved field something the state does not use.`,
         )
@@ -303,16 +305,15 @@ let rec scalarOfSchemaType = (st: SchemaType.schemaType): string =>
 // `SchemaType.isIdFieldName`, which lowercases before testing the suffix and so
 // accepts `paid` and `valid` — harmless where it is used, but here it would
 // nominate an ordinary word as a row's key.
-let isKeyFieldName = (name: string): bool =>
-  name->String.length > 2 && name->String.endsWith("Id")
+let isKeyFieldName = (name: string): bool => name->String.length > 2 && name->String.endsWith("Id")
 
 /** What the ladder below concluded. The two ways to have no key are opposite
     mistakes, so they are kept apart rather than collapsed into `None`. */
 type keyFieldResolution =
   | Resolved({field: string, rung: string})
-  | /** Several `*Id` fields and none matching the name — usually a field
+  /** Several `*Id` fields and none matching the name — usually a field
         somebody added to a view that used to have exactly one. */
-  Ambiguous({candidates: array<string>, conventional: string})
+  | Ambiguous({candidates: array<string>, conventional: string})
   | NoCandidate
 
 /**
@@ -384,8 +385,7 @@ let keyFieldGapMessage = (resolution: keyFieldResolution): option<string> =>
       `has no row key: it declares no @id and its \`*Id\` fields ` ++
       `(${candidates->Array.join(", ")}) include no "${conventional}" for the name to ` ++
       `pick. Adding a second \`*Id\` field to a view that had one is what lands here, ` ++
-      `and it costs the view its filter and its whole orderBy in the schema. Declare ` ++
-      `@id on the field that identifies a row.`,
+      `and it costs the view its filter and its whole orderBy in the schema. Declare ` ++ `@id on the field that identifies a row.`,
     )
   }
 
@@ -497,15 +497,14 @@ let deriveConnectionFilterType = (
   ~capability: serverCapability=emptyCapability,
 ): string => {
   let baseFields = ["search: String", "searchPrefix: String", "ids: [ID!]"]
-  let perFieldFilters =
-    capability.filterFields->Array.flatMap(f => {
-      let eq = `${f.name}Eq: ${f.gqlType}`
-      if f.range {
-        [eq, `${f.name}From: ${f.gqlType}`, `${f.name}To: ${f.gqlType}`]
-      } else {
-        [eq]
-      }
-    })
+  let perFieldFilters = capability.filterFields->Array.flatMap(f => {
+    let eq = `${f.name}Eq: ${f.gqlType}`
+    if f.range {
+      [eq, `${f.name}From: ${f.gqlType}`, `${f.name}To: ${f.gqlType}`]
+    } else {
+      [eq]
+    }
+  })
   let allFields = Array.concat(baseFields, perFieldFilters)
   let body = allFields->Array.map(f => `  ${f}`)->Array.join("\n")
   `input ${filterTypeName} {\n${body}\n}`
@@ -514,10 +513,9 @@ let deriveConnectionFilterType = (
 // Emits an `enum <Type>OrderField` and `input <Type>OrderBy` pair when the
 // capability has any sort fields. Returns [] when no field is sortable so
 // the connection field doesn't reference a non-existent OrderBy type.
-let deriveConnectionOrderByType = (
-  ~singularTypeName: string,
-  ~capability: serverCapability,
-): array<string> =>
+let deriveConnectionOrderByType = (~singularTypeName: string, ~capability: serverCapability): array<
+  string,
+> =>
   if capability.sortFields->Array.length == 0 {
     []
   } else {
@@ -561,10 +559,7 @@ let deriveObjectQueryField = (
     `  ${singleFieldName}: ${typeName}`
   }
 
-let deriveListQueryField = (
-  ~listFieldName: string,
-  ~pluralTypeName: string,
-): string =>
+let deriveListQueryField = (~listFieldName: string, ~pluralTypeName: string): string =>
   `  ${listFieldName}(nextToken: String, limit: Int): ${pluralTypeName}!`
 
 // Batched-by-ids query: fetches multiple entities in a single BatchGetItem.
@@ -572,10 +567,7 @@ let deriveListQueryField = (
 // caller correlates by `id` on each returned item. Single-key tables only —
 // composite-key BatchGetItem requires both pk + sk per key entry, which is
 // out of scope for this field.
-let deriveByIdsQueryField = (
-  ~listFieldName: string,
-  ~returnTypeName: string,
-): string =>
+let deriveByIdsQueryField = (~listFieldName: string, ~returnTypeName: string): string =>
   `  ${listFieldName}ByIds(ids: [String!]!, includeRetired: Boolean): [${returnTypeName}!]!`
 
 // ── The reference door ─────────────────────────────────────────────────────
@@ -614,10 +606,8 @@ let deriveRefTypeSdl = (~returnTypeName: string): string =>
 // `retiredState` is null in two cases that do not need telling apart by a
 // consumer: a live row, and a boolean-form retirement, where the field is the
 // state and `retired: true` has already said everything there is to say.
-let deriveRefsQueryField = (
-  ~listFieldName: string,
-  ~returnTypeName: string,
-): string => `  ${listFieldName}Refs(ids: [ID!]!): [${returnTypeName}Ref!]!`
+let deriveRefsQueryField = (~listFieldName: string, ~returnTypeName: string): string =>
+  `  ${listFieldName}Refs(ids: [ID!]!): [${returnTypeName}Ref!]!`
 
 // `includeRetired` sits beside the paging arguments rather than inside `filter`,
 // and that placement is the point. `filter` is the caller's description of the
@@ -751,10 +741,7 @@ let mutationArgTypes = (~fieldName: string, variantSchema: S.t<unknown>): option
     fields
     ->Dict.toArray
     ->Array.forEach(((argName, argType)) =>
-      out->Dict.set(
-        argName,
-        fromSchemaType(~required=true, ~asInput=true, argType, [], Set.make()),
-      )
+      out->Dict.set(argName, fromSchemaType(~required=true, ~asInput=true, argType, [], Set.make()))
     )
     out
   })
@@ -774,8 +761,10 @@ let generate = (
   // `Plugin_Activate` / `Platform_Plugin_Activate` — always the last
   // underscore-separated segment (e.g. `Activate`).
   let constructorNameOf = (fieldName: string): string =>
-    fieldName->String.split("_")->Array.get(fieldName->String.split("_")->Array.length - 1)
-      ->Option.getOr(fieldName)
+    fieldName
+    ->String.split("_")
+    ->Array.get(fieldName->String.split("_")->Array.length - 1)
+    ->Option.getOr(fieldName)
 
   mutationEntries->Array.forEach(entry => {
     let schema = entry.commandSchema
@@ -803,9 +792,8 @@ let generate = (
       entry.fieldNames->Array.forEach(fieldName => {
         let cname = constructorNameOf(fieldName)
         let variantIndex = variantNames->Array.indexOf(cname)
-        let variantSchema = variantIndex >= 0
-          ? anyOf->Array.get(variantIndex)->Option.getOr(schema)
-          : schema
+        let variantSchema =
+          variantIndex >= 0 ? anyOf->Array.get(variantIndex)->Option.getOr(schema) : schema
         switch deriveMutationFieldFromObject(
           ~fieldName,
           ~collectedTypes=types,
@@ -838,8 +826,7 @@ let generate = (
           ~collectedTypes=types,
           ~seenTypes,
           schema,
-        )
-        ->Option.forEach(field => mutations->Array.push(field))
+        )->Option.forEach(field => mutations->Array.push(field))
       }
     | _ => ()
     }
@@ -984,8 +971,9 @@ let generate = (
         let edgeName = entry.returnTypeName ++ "Edge"
         seenTypes->Set.add(edgeName)
         seenTypes->Set.add(connectionTypeName)
-        deriveConnectionTypes(~singularTypeName=entry.returnTypeName)
-        ->Array.forEach(t => types->Array.push(t))
+        deriveConnectionTypes(~singularTypeName=entry.returnTypeName)->Array.forEach(t =>
+          types->Array.push(t)
+        )
       }
       let capability = deriveServerCapability(~entityName=entityNameOf(entry), entry.stateSchema)
       let connectionFilterTypeName = entry.returnTypeName ++ "Filter"
@@ -995,8 +983,10 @@ let generate = (
           deriveConnectionFilterType(~filterTypeName=connectionFilterTypeName, ~capability),
         )
       }
-      let orderByTypes =
-        deriveConnectionOrderByType(~singularTypeName=entry.returnTypeName, ~capability)
+      let orderByTypes = deriveConnectionOrderByType(
+        ~singularTypeName=entry.returnTypeName,
+        ~capability,
+      )
       let hasOrderBy = orderByTypes->Array.length > 0
       if hasOrderBy {
         let orderFieldEnumName = entry.returnTypeName ++ "OrderField"
@@ -1024,10 +1014,7 @@ let generate = (
         )
         types->Array.push(pluralType)
       }
-      let listField = deriveListQueryField(
-        ~listFieldName,
-        ~pluralTypeName=listFieldName,
-      )
+      let listField = deriveListQueryField(~listFieldName, ~pluralTypeName=listFieldName)
       queries->Array.push(listField)
     }
   })

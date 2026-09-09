@@ -29,9 +29,8 @@ let transactWriteConditional = (tableName, jsons) => {
   let input: TransactWriteCommand.input = {
     transactItems: buildTransactItems(tableName, jsons),
   }
-  Effect.tryPromise(
-    ~catch=DynamoDb_Error.classify,
-    () => input->TransactWriteCommand.make->TransactWriteCommand.send,
+  Effect.tryPromise(~catch=DynamoDb_Error.classify, () =>
+    input->TransactWriteCommand.make->TransactWriteCommand.send
   )->Effect.map(_ => Ok())
 }
 
@@ -46,9 +45,8 @@ let appendWithCondition = (tableName, jsons) => {
       ),
     )
   } else if count == 1 {
-    Effect.tryPromise(
-      ~catch=DynamoDb_Error.classify,
-      () => putItemConditional(tableName, jsons->Array.getUnsafe(0)),
+    Effect.tryPromise(~catch=DynamoDb_Error.classify, () =>
+      putItemConditional(tableName, jsons->Array.getUnsafe(0))
     )->Effect.map(_ => Ok())
   } else {
     transactWriteConditional(tableName, jsons)
@@ -60,12 +58,13 @@ let append = table =>
     appendWithCondition(table.name, jsons)
     ->Effect.catchAll(err =>
       switch err {
-      | DynamoDb_Error.StaleState(_) =>
-        Effect.succeed(Error(ReventlessCore.EventLog.Conflict))
+      | DynamoDb_Error.StaleState(_) => Effect.succeed(Error(ReventlessCore.EventLog.Conflict))
       | _ =>
         let msg = DynamoDb_Error.message(err)
         Effect.succeed(
-          Error(ReventlessCore.EventLog.StorageFailure(`DynamoDB conditional append failed: ${msg}`)),
+          Error(
+            ReventlessCore.EventLog.StorageFailure(`DynamoDB conditional append failed: ${msg}`),
+          ),
         )
       }
     )
@@ -170,8 +169,9 @@ let writeSnapshot = table =>
 // pays for the events it returns.
 let replayStream = table =>
   (id, ~fromSeq=?) =>
-    queryStream(replayQueryInput(table.Util_DynamoDb_Runtime.name, id, ~fromSeq=?fromSeq))
-    ->Stream.catchAll(err => {
+    queryStream(
+      replayQueryInput(table.Util_DynamoDb_Runtime.name, id, ~fromSeq?),
+    )->Stream.catchAll(err => {
       let msg = DynamoDb_Error.message(err)
       Stream.fromEffect(Effect.fail(msg))
     })
@@ -185,8 +185,7 @@ let replay = table =>
       ReventlessCore.EffectLogger.logError(
         ~comp=__MODULE__,
         `Couldn't replay events for id ${id} after retries: ${msg}`,
-      )
-      ->Effect.flatMap(_ => Effect.fail(msg))
+      )->Effect.flatMap(_ => Effect.fail(msg))
     })
     ->Effect.runPromise
 
@@ -196,10 +195,7 @@ let appendStream = table =>
   (startingSeqNr, _id, stream) => {
     let seqNrRef = ref(startingSeqNr)
     stream->Stream.runForEach(json =>
-      Effect.tryPromise(
-        ~catch=DynamoDb_Error.classify,
-        () => putItemConditional(table.name, json),
-      )
+      Effect.tryPromise(~catch=DynamoDb_Error.classify, () => putItemConditional(table.name, json))
       ->Effect.map(_ => {
         seqNrRef := seqNrRef.contents + 1
       })

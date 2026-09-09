@@ -12,7 +12,6 @@ listener.
 
 See `docs/plans/done/monitoring-hook-seam.md`.
 */
-
 /**
 The ROLE of a provisioned execution unit, not its mechanism. What "failure"
 means for a unit is provider-specific (a Lambda `Errors` metric vs. container
@@ -23,27 +22,27 @@ hatch for support units and future roles (same pattern as the protocol's
 `OtherKind`).
 */
 type unitKind =
-  | /** aggregates, state-change slices, extension points — failure = writes
+  /** aggregates, state-change slices, extension points — failure = writes
        rejected/dropped (the silent-freeze class) */
-  CommandHandler
-  | /** state-view slices, read models — failure = silently stale reads */
-  Projection
-  | /** automation slices, side-effect handlers, translations — failure = missed
+  | CommandHandler
+  /** state-view slices, read models — failure = silently stale reads */
+  | Projection
+  /** automation slices, side-effect handlers, translations — failure = missed
        side effects at boundaries */
-  Reactor
-  | /** cross-plugin/admin event ingestion — failure = event flow between plugins
+  | Reactor
+  /** cross-plugin/admin event ingestion — failure = event flow between plugins
        stops */
-  EventCollector
-  | /** scheduled task runners */
-  Task
-  | /** heartbeat/keep-alive — failure = lifecycle detection AND any staleness
+  | EventCollector
+  /** scheduled task runners */
+  | Task
+  /** heartbeat/keep-alive — failure = lifecycle detection AND any staleness
        watchdog go blind (monitoring's own pulse) */
-  Scheduler
-  | /** receives messages that exhausted processing */
-  DeadLetterSink
-  | /** support units (counters, change-feed relays, migration runners, query
+  | Scheduler
+  /** receives messages that exhausted processing */
+  | DeadLetterSink
+  /** support units (counters, change-feed relays, migration runners, query
        resolvers, …) — providers pass their name */
-  Other(string)
+  | Other(string)
 
 /**
 A monitoring backend, registered by an extension (a deploy program) before the

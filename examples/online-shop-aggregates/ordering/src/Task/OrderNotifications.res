@@ -4,5 +4,5 @@
 @@reventless.task
 
 let setup = (_queryEngine, _queryBucketName, _opts) => {
-  Task.sideEffects: [module(Order_EmailNotification): module(SideEffect.T)],
+  Task.sideEffects: [module(Order_EmailNotification: SideEffect.T)],
 }

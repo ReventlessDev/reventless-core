@@ -37,8 +37,7 @@ let buildJsonEvent' = dict => {
     // Carry the stored `recorded_at` column into the envelope so StateViewSlice
     // projections receive it as `consumed.recordedAt` (the authoritative storage
     // time on the AWS path). Absent on non-event rows → empty string.
-    let recordedAt =
-      dict->Dict.get("recordedAt")->Option.getOr(""->JSON.Encode.string)
+    let recordedAt = dict->Dict.get("recordedAt")->Option.getOr(""->JSON.Encode.string)
     Some(
       [
         ("id", dict->Dict.get("id")->Option.getOrThrow),

@@ -16,10 +16,7 @@ type protocolError =
   // A version string that isn't valid SemVer at all — distinct from a
   // well-formed but incompatible one, so callers can tell "you shipped garbage"
   // from "your version is too old".
-  | MalformedVersion({
-      extensionPointName: string,
-      version: string,
-    })
+  | MalformedVersion({extensionPointName: string, version: string})
 
 // Parse a SemVer string "MAJOR.MINOR.PATCH" into integer components, ignoring any
 // prerelease (`-alpha.1`) or build (`+sha`) suffix. Returns None only when the
@@ -77,26 +74,16 @@ let validateProtocol = (
     }
 
   Array.concat(
-    checkVersion(
-      host.commandVersion,
-      commandVersion,
-      () =>
-        IncompatibleCommandSchema({
-          extensionPointName,
-          hostVersion: host.commandVersion,
-          extensionVersion: commandVersion,
-        }),
-    ),
-    checkVersion(
-      host.eventVersion,
-      eventVersion,
-      () =>
-        IncompatibleEventSchema({
-          extensionPointName,
-          hostVersion: host.eventVersion,
-          extensionVersion: eventVersion,
-        }),
-    ),
+    checkVersion(host.commandVersion, commandVersion, () => IncompatibleCommandSchema({
+      extensionPointName,
+      hostVersion: host.commandVersion,
+      extensionVersion: commandVersion,
+    })),
+    checkVersion(host.eventVersion, eventVersion, () => IncompatibleEventSchema({
+      extensionPointName,
+      hostVersion: host.eventVersion,
+      extensionVersion: eventVersion,
+    })),
   )
 }
 
@@ -129,9 +116,7 @@ let validateAndProject = (
     ->Option.getOr([])
     ->SSet.fromArray
   switch requiredFields->Array.find(f => !SSet.has(available, f)) {
-  | Some(missing) =>
-    Error(MissingRequiredField({stackName, outputName, field: missing}))
-  | None =>
-    fromJson(rawJson)->Result.mapError(reason => DecodeFailed({stackName, reason}))
+  | Some(missing) => Error(MissingRequiredField({stackName, outputName, field: missing}))
+  | None => fromJson(rawJson)->Result.mapError(reason => DecodeFailed({stackName, reason}))
   }
 }

@@ -44,7 +44,6 @@ let maxRetries = 3
 let heartbeatInterval = 60
 ```
 */
-
 /**
 The lean Spec for an OutboundTranslationSlice — types, identity, schemas, sweep config.
 */
@@ -167,9 +166,11 @@ module type Translation = {
   the framework knows nothing about still reaches it directly and simply ignores
   this argument.
   */
-  let translate: (string, Spec.outboundItem, ~capabilities: Capabilities.t) => promise<
-    result<option<(string, Spec.inboundCommand)>, string>,
-  >
+  let translate: (
+    string,
+    Spec.outboundItem,
+    ~capabilities: Capabilities.t,
+  ) => promise<result<option<(string, Spec.inboundCommand)>, string>>
 
   /**
   The retry budget is spent: this item will never be attempted again.
@@ -186,11 +187,12 @@ module type Translation = {
   The row is marked `Abandoned` either way; this decides only whether anything
   downstream hears about it.
   */
-  let onExhausted: (string, Spec.outboundItem, ~lastError: option<string>) => option<
-    (string, Spec.inboundCommand),
-  >
+  let onExhausted: (
+    string,
+    Spec.outboundItem,
+    ~lastError: option<string>,
+  ) => option<(string, Spec.inboundCommand)>
 
   /** File URL of this Translation module (`import.meta.url`). */
   let moduleUrl: string
 }
-

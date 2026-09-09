@@ -27,7 +27,7 @@ let evolve = (state, event) => {
 // it here would be a second copy of a rule the conformance suite asserts once.
 let toOp = command =>
   switch command {
-  | SetCategoryImage({categoryId, categoryImage, altText: ?altText}) => (
+  | SetCategoryImage({categoryId, categoryImage, ?altText}) => (
       categoryId,
       Attachments.Attach({ref: categoryImage, altText}),
     )
@@ -41,7 +41,7 @@ let toOp = command =>
 let toEvent = (categoryId, fact) =>
   switch fact {
   | Attachments.Attached({ref, altText}) =>
-    Some(CategoryImageAttached({categoryId, categoryImage: ref, altText: ?altText}))
+    Some(CategoryImageAttached({categoryId, categoryImage: ref, ?altText}))
   | Attachments.Removed({ref}) => Some(CategoryImageRemoved({categoryId, categoryImage: ref}))
   // Unreachable: no command of this graft chooses a primary, because one image
   // is nothing to choose between. It contributes no event rather than being

@@ -156,8 +156,9 @@ let fields = (
     if collisions->Array.length > 0 {
       failwith(
         "host UI config.json: shellConfig sets key(s) the deploy already computes — " ++
-        collisions->Array.join(", ") ++
-        ". Remove them from shellConfig; a passthrough cannot redirect a computed key.",
+        collisions->Array.join(
+          ", ",
+        ) ++ ". Remove them from shellConfig; a passthrough cannot redirect a computed key.",
       )
     }
     extra->Dict.forEachWithKey((v, k) => out->Dict.set(k, v))

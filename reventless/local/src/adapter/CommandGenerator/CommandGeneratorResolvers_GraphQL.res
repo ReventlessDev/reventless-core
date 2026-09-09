@@ -35,15 +35,14 @@ let extractIdentity = (ctx: JSON.t): Reventless.Identity.t => {
 // Returns a `CommandRejected` outcome with a fresh msgId so the GraphQL union
 // resolves consistently — matches the existing CommandResult contract.
 
-let rejectForbidden = (~field: string): JSON.t =>
-  JSON.Object(
-    Dict.fromArray([
-      ("__typename", JSON.String("CommandRejected")),
-      ("msgId", JSON.String(ReventlessCore.Message.uuid())),
-      ("errorCode", JSON.String("Forbidden")),
-      ("errorDetail", JSON.String(`Mutation.${field}: identity is not authorized`)),
-    ]),
-  )
+let rejectForbidden = (~field: string): JSON.t => JSON.Object(
+  Dict.fromArray([
+    ("__typename", JSON.String("CommandRejected")),
+    ("msgId", JSON.String(ReventlessCore.Message.uuid())),
+    ("errorCode", JSON.String("Forbidden")),
+    ("errorDetail", JSON.String(`Mutation.${field}: identity is not authorized`)),
+  ]),
+)
 
 // -- Plugin status gate -------------------------------------------------------
 // Set by the platform after Admin.construct to wire a per-mutation lookup against
@@ -61,15 +60,18 @@ let pluginStatusGate: ref<option<string => option<(string, string)>>> = ref(None
 let setPluginStatusGate = fn => pluginStatusGate := Some(fn)
 let resetPluginStatusGate = () => pluginStatusGate := None
 
-let rejectPluginStatus = (~field: string, ~errorCode: string, ~detail: string): JSON.t =>
-  JSON.Object(
-    Dict.fromArray([
-      ("__typename", JSON.String("CommandRejected")),
-      ("msgId", JSON.String(ReventlessCore.Message.uuid())),
-      ("errorCode", JSON.String(errorCode)),
-      ("errorDetail", JSON.String(`Mutation.${field}: ${detail}`)),
-    ]),
-  )
+let rejectPluginStatus = (
+  ~field: string,
+  ~errorCode: string,
+  ~detail: string,
+): JSON.t => JSON.Object(
+  Dict.fromArray([
+    ("__typename", JSON.String("CommandRejected")),
+    ("msgId", JSON.String(ReventlessCore.Message.uuid())),
+    ("errorCode", JSON.String(errorCode)),
+    ("errorDetail", JSON.String(`Mutation.${field}: ${detail}`)),
+  ]),
+)
 
 let checkPluginStatus = (~field: string): option<JSON.t> =>
   switch pluginStatusGate.contents {
@@ -92,8 +94,7 @@ let checkPluginStatus = (~field: string): option<JSON.t> =>
 let syntheticCommand = (cname: string, ~hasPayload: bool): unknown =>
   hasPayload ? {"TAG": cname}->Obj.magic : cname->Obj.magic
 
-let capitalize = s =>
-  s->String.charAt(0)->String.toUpperCase ++ s->String.slice(~start=1)
+let capitalize = s => s->String.charAt(0)->String.toUpperCase ++ s->String.slice(~start=1)
 
 // -- CommandResult SDL types --------------------------------------------------
 // Source of truth lives in GraphQL_FragmentGenerator.commandResultSdlTypes so
@@ -194,7 +195,10 @@ let register = (
   // Aggregate commands target a specific instance — prepend id: ID!
   let sdlFields = fields->Array.map(field => {
     let variantIndex = variantIndexForField(commandSchema, ~field)
-    let sdl = deriveSdlField(~fieldName=field, extractVariantSchema(commandSchema, ~index=variantIndex))
+    let sdl = deriveSdlField(
+      ~fieldName=field,
+      extractVariantSchema(commandSchema, ~index=variantIndex),
+    )
     if sdl->String.includes("(") {
       sdl->String.replace(`${field}(`, `${field}(id: ID!, `)
     } else {
@@ -214,7 +218,11 @@ let register = (
     | _ => false
     }
     let commandName = extractCommandName(field)
-    let resolver: ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn = async (_root, args, ctx) => {
+    let resolver: ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn = async (
+      _root,
+      args,
+      ctx,
+    ) => {
       switch handlerRef.contents {
       | Some(generateCommand) =>
         switch checkPluginStatus(~field) {
@@ -265,19 +273,27 @@ let registerDcb = (
   // non-first constructor of a multi-command slice.
   let constructorNames = Reventless.DcbTag.extractAllVariantNames(commandSchema->Obj.magic)
   let variantIndex = variantIndexForField(commandSchema, ~field=fieldName)
-  let variantSchema = extractVariantSchema(commandSchema, ~index=variantIndex >= 0 ? variantIndex : 0)
+  let variantSchema = extractVariantSchema(
+    commandSchema,
+    ~index=variantIndex >= 0 ? variantIndex : 0,
+  )
   let sdlFields = [deriveSdlField(~fieldName, variantSchema)]
 
   // Extract TAG (variant constructor name) for routing
   let tag =
-    (variantIndex >= 0 ? constructorNames->Array.get(variantIndex) : constructorNames->Array.get(0))
-    ->Option.getOr(fieldName)
+    (
+      variantIndex >= 0 ? constructorNames->Array.get(variantIndex) : constructorNames->Array.get(0)
+    )->Option.getOr(fieldName)
   let hasPayload = Reventless.DcbTag.isVariantPayloadBearing(commandSchema->Obj.magic, tag)
 
   let handlerRef = ref(None)
   handlerRefs->Dict.set(fieldName, handlerRef)
 
-  let resolver: ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn = async (_root, args, ctx) => {
+  let resolver: ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn = async (
+    _root,
+    args,
+    ctx,
+  ) => {
     switch handlerRef.contents {
     | Some(generateCommand) =>
       switch checkPluginStatus(~field=fieldName) {

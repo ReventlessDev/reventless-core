@@ -99,9 +99,10 @@ describe("RuntimeExtensionEntryPoint_Ops.fire", () => {
     // ComponentType and the layer's. Firing under a guessed kind would silently
     // attach a kind-routing extension to the wrong runtime.
     let seen: array<string> = []
-    let config = RuntimeExtensionEntryPoint_Ops.parseConfig(
-      Some(`{"modules":["a"],"runtimeKind":"SomethingNewer","component":"X"}`),
-    )->Option.getOrThrow
+    let config =
+      RuntimeExtensionEntryPoint_Ops.parseConfig(
+        Some(`{"modules":["a"],"runtimeKind":"SomethingNewer","component":"X"}`),
+      )->Option.getOrThrow
 
     RuntimeExtensionEntryPoint_Ops.fire(config, [recordingHook("tracing", seen)])
 

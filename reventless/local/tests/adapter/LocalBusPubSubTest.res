@@ -20,93 +20,135 @@ let defaultMeta: Reventless.Message.meta = {
 
 describe("LocalBus PubSub (Phase F)", () => {
   describe("publishEvent timing", () => {
-    testPromise("resolves after exactly 2 microtask ticks", async () => {
-      module TestBus = LocalBus.Make()
-      let delivered = ref(false)
-      TestBus.subscribeToEvents("T", async (_, _, _) => {
-        delivered := true
-      })
-      // Start publishEvent without awaiting — drive manually tick by tick.
-      let pubPromise = TestBus.publishEvent("T", "svc", defaultMeta, JSON.parseOrThrow("{}"))
-      // Tick 0: publish is synchronous; drain fiber hasn't run yet.
-      expect(delivered.contents)->toBe(false)
-      // Tick 1: Effect scheduler runs drain fiber; handler sets delivered.
-      let _ = await Promise.resolve()
-      // Tick 2: allDone Deferred resolves; pubPromise completes.
-      let _ = await Promise.resolve()
-      let _ = await pubPromise
-      expect(delivered.contents)->toBe(true)
-    })
+    testPromise(
+      "resolves after exactly 2 microtask ticks",
+      async () => {
+        module TestBus = LocalBus.Make()
+        let delivered = ref(false)
+        TestBus.subscribeToEvents(
+          "T",
+          async (_, _, _) => {
+            delivered := true
+          },
+        )
+        // Start publishEvent without awaiting — drive manually tick by tick.
+        let pubPromise = TestBus.publishEvent("T", "svc", defaultMeta, JSON.parseOrThrow("{}"))
+        // Tick 0: publish is synchronous; drain fiber hasn't run yet.
+        expect(delivered.contents)->toBe(false)
+        // Tick 1: Effect scheduler runs drain fiber; handler sets delivered.
+        let _ = await Promise.resolve()
+        // Tick 2: allDone Deferred resolves; pubPromise completes.
+        let _ = await Promise.resolve()
+        let _ = await pubPromise
+        expect(delivered.contents)->toBe(true)
+      },
+    )
 
-    testPromise("publishEvent with no subscribers returns immediately", async () => {
-      module TestBus = LocalBus.Make()
-      // No subscribers registered — should not hang.
-      await TestBus.publishEvent("empty-topic", "svc", defaultMeta, JSON.Null)
-      // If we reach here the test passes (no timeout/hang).
-    })
+    testPromise(
+      "publishEvent with no subscribers returns immediately",
+      async () => {
+        module TestBus = LocalBus.Make()
+        // No subscribers registered — should not hang.
+        await TestBus.publishEvent("empty-topic", "svc", defaultMeta, JSON.Null)
+        // If we reach here the test passes (no timeout/hang).
+      },
+    )
   })
 
   describe("fan-out", () => {
-    testPromise("delivers to all subscribers on the same topic", async () => {
-      module TestBus = LocalBus.Make()
-      let count = ref(0)
-      TestBus.subscribeToEvents("T", async (_, _, _) => {
-        count := count.contents + 1
-      })
-      TestBus.subscribeToEvents("T", async (_, _, _) => {
-        count := count.contents + 1
-      })
-      TestBus.subscribeToEvents("T", async (_, _, _) => {
-        count := count.contents + 1
-      })
-      let _ = await TestBus.publishEvent("T", "svc", defaultMeta, JSON.parseOrThrow("{}"))
-      expect(count.contents)->toBe(3)
-    })
+    testPromise(
+      "delivers to all subscribers on the same topic",
+      async () => {
+        module TestBus = LocalBus.Make()
+        let count = ref(0)
+        TestBus.subscribeToEvents(
+          "T",
+          async (_, _, _) => {
+            count := count.contents + 1
+          },
+        )
+        TestBus.subscribeToEvents(
+          "T",
+          async (_, _, _) => {
+            count := count.contents + 1
+          },
+        )
+        TestBus.subscribeToEvents(
+          "T",
+          async (_, _, _) => {
+            count := count.contents + 1
+          },
+        )
+        let _ = await TestBus.publishEvent("T", "svc", defaultMeta, JSON.parseOrThrow("{}"))
+        expect(count.contents)->toBe(3)
+      },
+    )
 
-    testPromise("publishing to topic-a does not reach topic-b subscribers", async () => {
-      module TestBus = LocalBus.Make()
-      let countA = ref(0)
-      let countB = ref(0)
-      TestBus.subscribeToEvents("topic-a", async (_, _, _) => {
-        countA := countA.contents + 1
-      })
-      TestBus.subscribeToEvents("topic-b", async (_, _, _) => {
-        countB := countB.contents + 1
-      })
-      let _ = await TestBus.publishEvent("topic-a", "svc", defaultMeta, JSON.Null)
-      expect(countA.contents)->toBe(1)
-      expect(countB.contents)->toBe(0)
-    })
+    testPromise(
+      "publishing to topic-a does not reach topic-b subscribers",
+      async () => {
+        module TestBus = LocalBus.Make()
+        let countA = ref(0)
+        let countB = ref(0)
+        TestBus.subscribeToEvents(
+          "topic-a",
+          async (_, _, _) => {
+            countA := countA.contents + 1
+          },
+        )
+        TestBus.subscribeToEvents(
+          "topic-b",
+          async (_, _, _) => {
+            countB := countB.contents + 1
+          },
+        )
+        let _ = await TestBus.publishEvent("topic-a", "svc", defaultMeta, JSON.Null)
+        expect(countA.contents)->toBe(1)
+        expect(countB.contents)->toBe(0)
+      },
+    )
   })
 
   // A5: a throwing/rejecting subscriber must not (a) hang publishEvent (its
   // done_ countdown never reaching zero) nor (b) kill the drain fiber so the
   // topic stops working. If either regressed, these tests would time out.
   describe("failing subscriber", () => {
-    testPromise("a throwing subscriber does not hang publish; healthy siblings still receive it", async () => {
-      module TestBus = LocalBus.Make()
-      let healthy = ref(0)
-      TestBus.subscribeToEvents("T", async (_, _, _) => JsError.throwWithMessage("boom"))
-      TestBus.subscribeToEvents("T", async (_, _, _) => {
-        healthy := healthy.contents + 1
-      })
-      // Must resolve — not hang — even though one subscriber threw.
-      await TestBus.publishEvent("T", "svc", defaultMeta, JSON.Null)
-      expect(healthy.contents)->toBe(1)
-    })
+    testPromise(
+      "a throwing subscriber does not hang publish; healthy siblings still receive it",
+      async () => {
+        module TestBus = LocalBus.Make()
+        let healthy = ref(0)
+        TestBus.subscribeToEvents("T", async (_, _, _) => JsError.throwWithMessage("boom"))
+        TestBus.subscribeToEvents(
+          "T",
+          async (_, _, _) => {
+            healthy := healthy.contents + 1
+          },
+        )
+        // Must resolve — not hang — even though one subscriber threw.
+        await TestBus.publishEvent("T", "svc", defaultMeta, JSON.Null)
+        expect(healthy.contents)->toBe(1)
+      },
+    )
 
-    testPromise("the topic keeps working after a subscriber throws (drain fiber survives)", async () => {
-      module TestBus = LocalBus.Make()
-      let healthy = ref(0)
-      TestBus.subscribeToEvents("T", async (_, _, _) => JsError.throwWithMessage("boom"))
-      TestBus.subscribeToEvents("T", async (_, _, _) => {
-        healthy := healthy.contents + 1
-      })
-      await TestBus.publishEvent("T", "svc", defaultMeta, JSON.Null)
-      // Second publish on the same topic must also complete and be delivered —
-      // proving the dead-fiber cascade is gone.
-      await TestBus.publishEvent("T", "svc", defaultMeta, JSON.Null)
-      expect(healthy.contents)->toBe(2)
-    })
+    testPromise(
+      "the topic keeps working after a subscriber throws (drain fiber survives)",
+      async () => {
+        module TestBus = LocalBus.Make()
+        let healthy = ref(0)
+        TestBus.subscribeToEvents("T", async (_, _, _) => JsError.throwWithMessage("boom"))
+        TestBus.subscribeToEvents(
+          "T",
+          async (_, _, _) => {
+            healthy := healthy.contents + 1
+          },
+        )
+        await TestBus.publishEvent("T", "svc", defaultMeta, JSON.Null)
+        // Second publish on the same topic must also complete and be delivered —
+        // proving the dead-fiber cascade is gone.
+        await TestBus.publishEvent("T", "svc", defaultMeta, JSON.Null)
+        expect(healthy.contents)->toBe(2)
+      },
+    )
   })
 })

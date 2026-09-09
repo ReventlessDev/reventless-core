@@ -3,7 +3,6 @@
 
 open TestFixtures
 
-
 // ─────────────────────────────────────────────────────────────
 // Isolated bus + Pulumi mock mode
 // ─────────────────────────────────────────────────────────────
@@ -20,13 +19,13 @@ module TestEPSpec = {
   let name = "TestEP"
 
   @schema
-  type command = | Forward({targetId: string})
+  type command = Forward({targetId: string})
 
   @schema
-  type event = | TEPNoEvent // unused — mapOutgoingEvent = None
+  type event = TEPNoEvent // unused — mapOutgoingEvent = None
 
   @schema
-  type directive = | TEPNoDirective // unused — mapIncomingCommand only uses PublishCommand
+  type directive = TEPNoDirective // unused — mapIncomingCommand only uses PublishCommand
 
   let moduleUrl: string = %raw(`import.meta.url`)
 }
@@ -40,13 +39,13 @@ module DelegateAggSpec = {
   let name = "TargetAgg"
 
   @schema
-  type command = | Execute({targetId: string})
+  type command = Execute({targetId: string})
 
   @schema
-  type event = | Executed({targetId: string}) // unused but required by Aggregate.Spec
+  type event = Executed({targetId: string}) // unused but required by Aggregate.Spec
 
   @schema
-  type error = | TEAggNoError // unused but required by Aggregate.Spec
+  type error = TEAggNoError // unused but required by Aggregate.Spec
 
   let moduleUrl: string = %raw(`import.meta.url`)
 }
@@ -65,7 +64,12 @@ module ForwardMapping = {
     _id: string,
     cmd: TestEPSpec.command,
     _meta: Reventless.Message.meta,
-  ): array<ReventlessInfra.ExtensionPointMapping.commandAction<DelegateAggSpec.command, TestEPSpec.directive>> =>
+  ): array<
+    ReventlessInfra.ExtensionPointMapping.commandAction<
+      DelegateAggSpec.command,
+      TestEPSpec.directive,
+    >,
+  > =>
     switch cmd {
     | Forward({targetId}) =>
       let execCmd = DelegateAggSpec.Execute({targetId: targetId})
@@ -93,7 +97,8 @@ module TestEPMapping1 = ReventlessInfra.ExtensionPointMapping.Make(ForwardMappin
 
 module TestEPMappings = {
   module Spec = TestEPSpec
-  module type Mapping = ReventlessInfra.ExtensionPointMapping.T with module ExtensionPoint := TestEPSpec
+  module type Mapping = ReventlessInfra.ExtensionPointMapping.T
+    with module ExtensionPoint := TestEPSpec
   let name = "TestEPMappings"
   let moduleUrl: string = %raw(`import.meta.url`)
   let mappings: array<module(Mapping)> = [module(TestEPMapping1)]

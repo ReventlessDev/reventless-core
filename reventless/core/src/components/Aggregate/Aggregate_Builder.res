@@ -16,7 +16,9 @@ module Make = (
     and module EventCollectorChannel = EventCollectorChannel
     and type runtimeParts = RuntimeEnvironment.parts,
   HooksConfig: Plugin_Helpers.HooksConfig,
-): (Aggregate.T with type api = CommandGeneratorResolvers.api and type component = Aggregate.component) => {
+): (
+  Aggregate.T with type api = CommandGeneratorResolvers.api and type component = Aggregate.component
+) => {
   module Spec = Spec
   module AggregateRuntimeBuilder = AggregateRuntimeBuilder
 
@@ -25,10 +27,7 @@ module Make = (
 
   module SpecificEventLog = EventLog_Builder.Make(Spec, EventLogStorage, EventTopicPublisher)
   module SpecificCommandTopic = CommandTopic_Builder.Make(Spec, CommandTopicChannel)
-  module SpecificCommandGenerator = CommandGenerator_Builder.Make(
-    Spec,
-    CommandGeneratorResolvers,
-  )
+  module SpecificCommandGenerator = CommandGenerator_Builder.Make(Spec, CommandGeneratorResolvers)
   module SpecificEventCollector = EventCollector_Builder.Make(
     RuntimeEnvironment,
     EventCollectorChannel,
@@ -57,16 +56,22 @@ module Make = (
         )
       {
         ...aggregate->Component.outputs,
-        eventMapper: eventMapper->Pulumi.Output.apply(eventMapper =>
-          Some(eventMapper->Component.outputs)
-        ),
+        eventMapper: eventMapper->Pulumi.Output.apply(eventMapper => Some(
+          eventMapper->Component.outputs,
+        )),
       }
     } else {
       aggregate->Component.outputs
     }
   }
 
-  let createCommandTopic = (eventLog: SpecificEventLog.component, name, opts, ~memorySize, ~timeout) => {
+  let createCommandTopic = (
+    eventLog: SpecificEventLog.component,
+    name,
+    opts,
+    ~memorySize,
+    ~timeout,
+  ) => {
     // Created outside the apply below, so the topic — and with it the channel's
     // queue — exists while plugin construction is still synchronous. An outbound
     // slice targeting this aggregate resolves its publish queue in a finalizer
@@ -122,14 +127,13 @@ module Make = (
         | Some(bindHandler) =>
           // In-memory: bind generateCommand to resolver stubs directly,
           // skipping the adapter-driven forCommandGenerator path.
-          let fields =
-            switch Plugin_Helpers.aggregateMutationFieldsRegistry->Dict.get(Spec.name) {
-            | Some(registeredFields) if registeredFields->Array.length > 0 => registeredFields
-            | _ => []
-            }
+          let fields = switch Plugin_Helpers.aggregateMutationFieldsRegistry->Dict.get(Spec.name) {
+          | Some(registeredFields) if registeredFields->Array.length > 0 => registeredFields
+          | _ => []
+          }
           let generateCommand = CommandGenerator_Callback.makeGenerateCommand(
             ~publishJsons,
-            ~publishJsonsAndWait=?publishJsonsAndWait,
+            ~publishJsonsAndWait?,
             ~serviceName=Spec.name,
             ~commandSchema=Spec.commandSchema->S.castToUnknown,
             ~componentKind=CommandGenerator_Callback.Aggregate,
@@ -164,7 +168,8 @@ module Make = (
       ~opts,
     )
     let commandTopic = eventLog->createCommandTopic(name, opts, ~memorySize, ~timeout)
-    let commandGenerator = commandTopic->createCommandGenerator(~api, name, opts, ~memorySize, ~timeout)
+    let commandGenerator =
+      commandTopic->createCommandGenerator(~api, name, opts, ~memorySize, ~timeout)
 
     self->Component.setOperations(
       commandTopic->Pulumi.Output.flatMap(commandTopic =>
@@ -189,11 +194,7 @@ module Make = (
     self->Component.setOutputs(aggOutputs)
   }
 
-  let make = (
-    ~api: CommandGeneratorResolvers.api,
-    ~runtime=?,
-    ~opts=?,
-  ): Aggregate.component =>
+  let make = (~api: CommandGeneratorResolvers.api, ~runtime=?, ~opts=?): Aggregate.component =>
     Component.make(
       ~componentType=Aggregate.componentType->ComponentType.toString,
       ~name=Spec.name,

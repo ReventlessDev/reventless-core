@@ -19,68 +19,83 @@ let cmdJson = (msgId): Reventless.Message.commandJson => {
 }
 
 describe("CommandTopic_Helpers.runInlineAndCollect:", () => {
-  testPromise("Rejected from rejectedResultChannel beats Accepted from acceptedResultChannel", async () => {
-    let handler: CommandTopic_Helpers.jsonCommandsHandler = stream =>
-      stream
-      ->Stream.runCollect
-      ->Effect.map(items => {
-        items->Array.forEach(item => {
-          // Both channels report for the same reference; rejected wins.
-          CommandTopic_Helpers.reportAccepted(
-            ~component="TestService",
-            item.reference,
-            {entityId: "agg-1", eventCount: 0},
-          )
-          CommandTopic_Helpers.reportRejected(
-            ~component="TestService",
-            ~cause=DomainRejection,
-            item.reference,
-            {errorCode: "AlreadyExists", errorDetail: ""},
-          )
-        })
-        items->Array.map(item => Ok(item.reference))
-      })
-
-    let outcomes = await CommandTopic_Helpers.runInlineAndCollect([cmdJson("msg-1")], handler)
-    expect(outcomes->Array.length)->toBe(1)
-    switch outcomes->Array.getUnsafe(0) {
-    | Rejected({msgId, errorCode, errorDetail}) =>
-      expect(msgId)->toEqual("msg-1")
-      expect(errorCode)->toEqual("AlreadyExists")
-      expect(errorDetail)->toEqual(None)
-    | Accepted(_) | Pending(_) => expect("expected Rejected")->toEqual("got other")
-    }
-  })
-
-  testPromise("Rejected from rejectedResultChannel beats Error result (synthesized Conflict)", async () => {
-    let handler: CommandTopic_Helpers.jsonCommandsHandler = stream =>
-      stream
-      ->Stream.runCollect
-      ->Effect.map(items => {
-        items->Array.forEach(item =>
-          CommandTopic_Helpers.reportRejected(
-            ~component="TestService",
-            ~cause=DomainRejection,
-            item.reference,
-            {errorCode: "BusinessRuleViolated", errorDetail: "{\"reason\":\"x\"}"},
-          )
+  testPromise(
+    "Rejected from rejectedResultChannel beats Accepted from acceptedResultChannel",
+    async () => {
+      let handler: CommandTopic_Helpers.jsonCommandsHandler = stream =>
+        stream
+        ->Stream.runCollect
+        ->Effect.map(
+          items => {
+            items->Array.forEach(
+              item => {
+                // Both channels report for the same reference; rejected wins.
+                CommandTopic_Helpers.reportAccepted(
+                  ~component="TestService",
+                  item.reference,
+                  {entityId: "agg-1", eventCount: 0},
+                )
+                CommandTopic_Helpers.reportRejected(
+                  ~component="TestService",
+                  ~cause=DomainRejection,
+                  item.reference,
+                  {errorCode: "AlreadyExists", errorDetail: ""},
+                )
+              },
+            )
+            items->Array.map(item => Ok(item.reference))
+          },
         )
-        // Handler still returns Error — rejectedChannel takes precedence.
-        items->Array.map(item => Error(item.reference))
-      })
 
-    let outcomes = await CommandTopic_Helpers.runInlineAndCollect([cmdJson("msg-1")], handler)
-    switch outcomes->Array.getUnsafe(0) {
-    | Rejected({errorCode, errorDetail}) =>
-      expect(errorCode)->toEqual("BusinessRuleViolated")
-      expect(errorDetail)->toEqual(Some("{\"reason\":\"x\"}"))
-    | Accepted(_) | Pending(_) => expect("expected Rejected")->toEqual("got other")
-    }
-  })
+      let outcomes = await CommandTopic_Helpers.runInlineAndCollect([cmdJson("msg-1")], handler)
+      expect(outcomes->Array.length)->toBe(1)
+      switch outcomes->Array.getUnsafe(0) {
+      | Rejected({msgId, errorCode, errorDetail}) =>
+        expect(msgId)->toEqual("msg-1")
+        expect(errorCode)->toEqual("AlreadyExists")
+        expect(errorDetail)->toEqual(None)
+      | Accepted(_) | Pending(_) => expect("expected Rejected")->toEqual("got other")
+      }
+    },
+  )
+
+  testPromise(
+    "Rejected from rejectedResultChannel beats Error result (synthesized Conflict)",
+    async () => {
+      let handler: CommandTopic_Helpers.jsonCommandsHandler = stream =>
+        stream
+        ->Stream.runCollect
+        ->Effect.map(
+          items => {
+            items->Array.forEach(
+              item =>
+                CommandTopic_Helpers.reportRejected(
+                  ~component="TestService",
+                  ~cause=DomainRejection,
+                  item.reference,
+                  {errorCode: "BusinessRuleViolated", errorDetail: "{\"reason\":\"x\"}"},
+                ),
+            )
+            // Handler still returns Error — rejectedChannel takes precedence.
+            items->Array.map(item => Error(item.reference))
+          },
+        )
+
+      let outcomes = await CommandTopic_Helpers.runInlineAndCollect([cmdJson("msg-1")], handler)
+      switch outcomes->Array.getUnsafe(0) {
+      | Rejected({errorCode, errorDetail}) =>
+        expect(errorCode)->toEqual("BusinessRuleViolated")
+        expect(errorDetail)->toEqual(Some("{\"reason\":\"x\"}"))
+      | Accepted(_) | Pending(_) => expect("expected Rejected")->toEqual("got other")
+      }
+    },
+  )
 
   testPromise("Error result without rejectedChannel still synthesizes Conflict", async () => {
     let handler: CommandTopic_Helpers.jsonCommandsHandler = stream =>
-      stream->Stream.runCollect->Effect.map(items => items->Array.map(item => Error(item.reference)))
+      stream
+      ->Stream.runCollect
+      ->Effect.map(items => items->Array.map(item => Error(item.reference)))
 
     let outcomes = await CommandTopic_Helpers.runInlineAndCollect([cmdJson("msg-1")], handler)
     switch outcomes->Array.getUnsafe(0) {

@@ -52,5 +52,10 @@ module MakeWithHooks = (
 
 // Make — simple version for standalone tests and examples (no hook callbacks).
 module Make = (Bus: LocalBus.T) => {
-  include MakeWithHooks(Bus, {let hooks = noHooks})
+  include MakeWithHooks(
+    Bus,
+    {
+      let hooks = noHooks
+    },
+  )
 }

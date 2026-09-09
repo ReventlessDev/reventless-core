@@ -100,7 +100,11 @@ switch processEnv->Dict.get("PG_URL") {
 
     testPromise("append + read round-trips events with tags", async () => {
       let (_n, ops, _s) = makeLog("dcb-rt")
-      let e1 = stored("ItemAdded", [{key: "itemId", value: "x1"}], jsonObj([("n", JSON.Encode.string("w"))]))
+      let e1 = stored(
+        "ItemAdded",
+        [{key: "itemId", value: "x1"}],
+        jsonObj([("n", JSON.Encode.string("w"))]),
+      )
       let r = await ops.append([e1])
       switch r {
       | Ok(_) => expect(true)->toBe(true)
@@ -116,7 +120,12 @@ switch processEnv->Dict.get("PG_URL") {
 
     testPromise("conditional append conflicts when the boundary already has an event", async () => {
       let (_n, ops, _s) = makeLog("dcb-cond")
-      let mk = who => stored("Reserved", [{key: "seatId", value: "s1"}], jsonObj([("who", JSON.Encode.string(who))]))
+      let mk = who =>
+        stored(
+          "Reserved",
+          [{key: "seatId", value: "s1"}],
+          jsonObj([("who", JSON.Encode.string(who))]),
+        )
       let r1 = await ops.append([mk("a")])
       switch r1 {
       | Ok(_) => expect(true)->toBe(true)
@@ -134,37 +143,46 @@ switch processEnv->Dict.get("PG_URL") {
     })
 
     let writeSkew = (strategy, logName) =>
-      testPromise(`write-skew: exactly one of two concurrent appends wins (${logName})`, async () => {
-        let (_n, ops, _s) = DcbEventLogStorage_Postgres.makeStorage(
-          ~pool,
-          ~name=logName,
-          ~indexes=[],
-          ~partitionTag=DcbTag.Simple({key: "k"}),
-          ~opts,
-          ~lockStrategy=strategy,
-        )
-        let cond: DcbTag.appendCondition = {
-          query: [{eventTypes: ["Reserved"], tags: [{key: "seatId", value: "hot"}]}],
-        }
-        let mk = who => stored("Reserved", [{key: "seatId", value: "hot"}], jsonObj([("who", JSON.Encode.string(who))]))
-        // Dispatch BOTH before awaiting either — genuinely concurrent on the pool.
-        let p1 = ops.append([mk("a")], ~condition=cond)
-        let p2 = ops.append([mk("b")], ~condition=cond)
-        let r1 = await p1
-        let r2 = await p2
-        let isOk = r => switch r {
-        | Ok(_) => true
-        | _ => false
-        }
-        let isConflict = r => r == Error(ReventlessInfra.DcbEventLog.Conflict)
-        let oks = [r1, r2]->Array.filter(isOk)->Array.length
-        let conflicts = [r1, r2]->Array.filter(isConflict)->Array.length
-        expect(oks)->toBe(1)
-        expect(conflicts)->toBe(1)
-        // And only one event actually landed on the boundary.
-        let read = await ops.read(~query=[{tags: [{key: "seatId", value: "hot"}]}])
-        expect(read.events->Array.length)->toBe(1)
-      })
+      testPromise(
+        `write-skew: exactly one of two concurrent appends wins (${logName})`,
+        async () => {
+          let (_n, ops, _s) = DcbEventLogStorage_Postgres.makeStorage(
+            ~pool,
+            ~name=logName,
+            ~indexes=[],
+            ~partitionTag=DcbTag.Simple({key: "k"}),
+            ~opts,
+            ~lockStrategy=strategy,
+          )
+          let cond: DcbTag.appendCondition = {
+            query: [{eventTypes: ["Reserved"], tags: [{key: "seatId", value: "hot"}]}],
+          }
+          let mk = who =>
+            stored(
+              "Reserved",
+              [{key: "seatId", value: "hot"}],
+              jsonObj([("who", JSON.Encode.string(who))]),
+            )
+          // Dispatch BOTH before awaiting either — genuinely concurrent on the pool.
+          let p1 = ops.append([mk("a")], ~condition=cond)
+          let p2 = ops.append([mk("b")], ~condition=cond)
+          let r1 = await p1
+          let r2 = await p2
+          let isOk = r =>
+            switch r {
+            | Ok(_) => true
+            | _ => false
+            }
+          let isConflict = r => r == Error(ReventlessInfra.DcbEventLog.Conflict)
+          let oks = [r1, r2]->Array.filter(isOk)->Array.length
+          let conflicts = [r1, r2]->Array.filter(isConflict)->Array.length
+          expect(oks)->toBe(1)
+          expect(conflicts)->toBe(1)
+          // And only one event actually landed on the boundary.
+          let read = await ops.read(~query=[{tags: [{key: "seatId", value: "hot"}]}])
+          expect(read.events->Array.length)->toBe(1)
+        },
+      )
 
     writeSkew(#AdvisoryLocks, "dcb-skew-advisory")
     writeSkew(#RowLocks, "dcb-skew-rows")
@@ -176,17 +194,31 @@ switch processEnv->Dict.get("PG_URL") {
       }
       let n = 12
       // Dispatch all N before awaiting any — genuinely concurrent on the pool.
-      let promises = Array.make(~length=n, 0)->Array.mapWithIndex((_, i) =>
-        ops.append(
-          [stored("Claimed", [{key: "prizeId", value: "p1"}], jsonObj([("who", JSON.Encode.int(i))]))],
-          ~condition=cond,
+      let promises =
+        Array.make(~length=n, 0)->Array.mapWithIndex(
+          (_, i) =>
+            ops.append(
+              [
+                stored(
+                  "Claimed",
+                  [{key: "prizeId", value: "p1"}],
+                  jsonObj([("who", JSON.Encode.int(i))]),
+                ),
+              ],
+              ~condition=cond,
+            ),
         )
-      )
       let results = await Promise.all(promises)
-      let oks = results->Array.filter(r => switch r {
-      | Ok(_) => true
-      | _ => false
-      })->Array.length
+      let oks =
+        results
+        ->Array.filter(
+          r =>
+            switch r {
+            | Ok(_) => true
+            | _ => false
+            },
+        )
+        ->Array.length
       expect(oks)->toBe(1)
       // No lost updates: exactly one Claimed landed on the boundary.
       let read = await ops.read(~query=[{tags: [{key: "prizeId", value: "p1"}]}])
@@ -195,7 +227,8 @@ switch processEnv->Dict.get("PG_URL") {
 
     testPromise("cursors are monotonic and usable as `after`", async () => {
       let (_n, ops, _s) = makeLog("dcb-cursor")
-      let mk = i => stored("Tick", [{key: "streamId", value: "c1"}], jsonObj([("i", JSON.Encode.int(i))]))
+      let mk = i =>
+        stored("Tick", [{key: "streamId", value: "c1"}], jsonObj([("i", JSON.Encode.int(i))]))
       let _ = await ops.append([mk(0)])
       let mid = switch await ops.append([mk(1)]) {
       | Ok(pos) => pos
@@ -222,83 +255,103 @@ switch processEnv->Dict.get("PG_URL") {
       let _ = await ops.append([mk(0), mk(1), mk(2)])
 
       let collected = ref(0)
-      let processed = await PgChangeFeed.drain(pool, ~logName="feed-log", ~subscriber="sub-1", ~handle=async evs => {
-        collected := collected.contents + evs->Array.length
-      })
+      let processed = await PgChangeFeed.drain(
+        pool,
+        ~logName="feed-log",
+        ~subscriber="sub-1",
+        ~handle=async evs => {
+          collected := collected.contents + evs->Array.length
+        },
+      )
       expect(processed)->toBe(3)
       expect(collected.contents)->toBe(3)
 
       // A second drain from the saved checkpoint sees nothing new.
-      let again = await PgChangeFeed.drain(pool, ~logName="feed-log", ~subscriber="sub-1", ~handle=async _ => ())
+      let again = await PgChangeFeed.drain(
+        pool,
+        ~logName="feed-log",
+        ~subscriber="sub-1",
+        ~handle=async _ => (),
+      )
       expect(again)->toBe(0)
     })
   })
 
   describe("classic change feed (event_log, B2.5)", () => {
-    testPromise("drains classic events in commit order, with fields, then checkpoints", async () => {
-      let (_n, ops, _s) = EventLogStorage_Postgres.makeStorage(~pool, ~name="cf-orders", ~opts)
-      let _ = await ops.append(0, "agg-1", [evJson("m0", 1), evJson("m1", 2)])
-      let _ = await ops.append(0, "agg-2", [evJson("m2", 3)])
+    testPromise(
+      "drains classic events in commit order, with fields, then checkpoints",
+      async () => {
+        let (_n, ops, _s) = EventLogStorage_Postgres.makeStorage(~pool, ~name="cf-orders", ~opts)
+        let _ = await ops.append(0, "agg-1", [evJson("m0", 1), evJson("m1", 2)])
+        let _ = await ops.append(0, "agg-2", [evJson("m2", 3)])
 
-      let collected = ref([])
-      let processed = await EventLogChangeFeed.drain(
-        pool,
-        ~logName="cf-orders",
-        ~subscriber="cf-sub",
-        ~handle=async evs => collected := collected.contents->Array.concat(evs),
-      )
-      expect(processed)->toBe(3)
-      expect(collected.contents->Array.length)->toBe(3)
-
-      // Fields round-trip from the stored row.
-      let first = collected.contents->Array.getUnsafe(0)
-      expect(first.aggregateId)->toBe("agg-1")
-      expect(first.seqNr)->toBe(0)
-      expect(first.msgId)->toEqual(Some("m0"))
-
-      // Cursors are strictly increasing in drain order.
-      let cursors = collected.contents->Array.map(e => e.cursor)
-      let increasing = ref(true)
-      for i in 1 to cursors->Array.length - 1 {
-        if cursors->Array.getUnsafe(i) <= cursors->Array.getUnsafe(i - 1) {
-          increasing := false
-        }
-      }
-      expect(increasing.contents)->toBe(true)
-
-      // Second drain from the saved checkpoint sees nothing new.
-      let again = await EventLogChangeFeed.drain(
-        pool,
-        ~logName="cf-orders",
-        ~subscriber="cf-sub",
-        ~handle=async _ => (),
-      )
-      expect(again)->toBe(0)
-    })
-
-    testPromise("concurrent appends across aggregates: every event drained exactly once", async () => {
-      let (_n, ops, _s) = EventLogStorage_Postgres.makeStorage(~pool, ~name="cf-concurrent", ~opts)
-      let n = 20
-      // One event per aggregate, all dispatched before awaiting — genuinely
-      // concurrent on the pool, so global_seq is assigned in interleaved/undefined
-      // commit order. The xmin fence must still drain every event exactly once.
-      let promises =
-        Array.make(~length=n, 0)->Array.mapWithIndex((_, i) =>
-          ops.append(0, "agg-" ++ Int.toString(i), [evJson("m" ++ Int.toString(i), i)])
+        let collected = ref([])
+        let processed = await EventLogChangeFeed.drain(
+          pool,
+          ~logName="cf-orders",
+          ~subscriber="cf-sub",
+          ~handle=async evs => collected := collected.contents->Array.concat(evs),
         )
-      let _ = await Promise.all(promises)
+        expect(processed)->toBe(3)
+        expect(collected.contents->Array.length)->toBe(3)
 
-      let collected = ref([])
-      let _ = await EventLogChangeFeed.drain(
-        pool,
-        ~logName="cf-concurrent",
-        ~subscriber="cf-conc-sub",
-        ~handle=async evs => collected := collected.contents->Array.concat(evs),
-      )
-      // No skips: all N events present. No dupes: N distinct cursors.
-      expect(collected.contents->Array.length)->toBe(n)
-      let distinctCursors = collected.contents->Array.map(e => e.cursor)->Set.fromArray
-      expect(distinctCursors->Set.size)->toBe(n)
-    })
+        // Fields round-trip from the stored row.
+        let first = collected.contents->Array.getUnsafe(0)
+        expect(first.aggregateId)->toBe("agg-1")
+        expect(first.seqNr)->toBe(0)
+        expect(first.msgId)->toEqual(Some("m0"))
+
+        // Cursors are strictly increasing in drain order.
+        let cursors = collected.contents->Array.map(e => e.cursor)
+        let increasing = ref(true)
+        for i in 1 to cursors->Array.length - 1 {
+          if cursors->Array.getUnsafe(i) <= cursors->Array.getUnsafe(i - 1) {
+            increasing := false
+          }
+        }
+        expect(increasing.contents)->toBe(true)
+
+        // Second drain from the saved checkpoint sees nothing new.
+        let again = await EventLogChangeFeed.drain(
+          pool,
+          ~logName="cf-orders",
+          ~subscriber="cf-sub",
+          ~handle=async _ => (),
+        )
+        expect(again)->toBe(0)
+      },
+    )
+
+    testPromise(
+      "concurrent appends across aggregates: every event drained exactly once",
+      async () => {
+        let (_n, ops, _s) = EventLogStorage_Postgres.makeStorage(
+          ~pool,
+          ~name="cf-concurrent",
+          ~opts,
+        )
+        let n = 20
+        // One event per aggregate, all dispatched before awaiting — genuinely
+        // concurrent on the pool, so global_seq is assigned in interleaved/undefined
+        // commit order. The xmin fence must still drain every event exactly once.
+        let promises =
+          Array.make(~length=n, 0)->Array.mapWithIndex(
+            (_, i) => ops.append(0, "agg-" ++ Int.toString(i), [evJson("m" ++ Int.toString(i), i)]),
+          )
+        let _ = await Promise.all(promises)
+
+        let collected = ref([])
+        let _ = await EventLogChangeFeed.drain(
+          pool,
+          ~logName="cf-concurrent",
+          ~subscriber="cf-conc-sub",
+          ~handle=async evs => collected := collected.contents->Array.concat(evs),
+        )
+        // No skips: all N events present. No dupes: N distinct cursors.
+        expect(collected.contents->Array.length)->toBe(n)
+        let distinctCursors = collected.contents->Array.map(e => e.cursor)->Set.fromArray
+        expect(distinctCursors->Set.size)->toBe(n)
+      },
+    )
   })
 }

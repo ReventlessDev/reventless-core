@@ -214,10 +214,7 @@ let makeDcb = (
   )
 
   let _ =
-    (
-      lambda->Pulumi.Output.flatMap(lambda => lambda.arn),
-      dataSourceRole.id,
-    )
+    (lambda->Pulumi.Output.flatMap(lambda => lambda.arn), dataSourceRole.id)
     ->Pulumi.Output.all2
     ->Pulumi.Output.apply(((lambdaArn, dataSourceRoleId)) => {
       let _attachDataSourcePolicy = PulumiAws.IAM.RolePolicy.make(

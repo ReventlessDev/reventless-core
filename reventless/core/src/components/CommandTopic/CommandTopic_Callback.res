@@ -19,10 +19,7 @@ module Make = (Spec: ReventlessInfra.CommandTopic.T, Ops: Ops with module Spec =
         | exception err =>
           let commandStr = json->JSON.stringify
           let errMsg = err->Reventless.Util_Sury.exnMessage
-          EffectLogger.logError(
-            ~comp,
-            `decode failed: ${commandStr} err=${errMsg}`,
-          )->Effect.runSync
+          EffectLogger.logError(~comp, `decode failed: ${commandStr} err=${errMsg}`)->Effect.runSync
           None
         }
       )

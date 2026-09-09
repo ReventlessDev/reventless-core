@@ -16,7 +16,6 @@
 // Runtime-pure: no `open PulumiAws` values — Pulumi appears in type positions
 // only (erased).
 
-
 // ── Runtime-loaded spec-module reads (typed at the seam) ────────────────────
 // The shells read `config` / `subIdConfig` off dynamically imported spec
 // modules; these are the shapes those reads are typed against. `indexes` is
@@ -28,9 +27,9 @@ type specConfig = {indexes?: array<Reventless.ReadModel.indexConfig>}
 let indexesOf = (config: option<specConfig>): array<Reventless.ReadModel.indexConfig> =>
   config->Option.flatMap(c => c.indexes)->Option.getOr([])
 
-let subIdFieldOf = (
-  subIdConfig: option<Reventless.ReadModel.subIdConfig<JSON.t>>,
-): option<string> => subIdConfig->Option.map(c => c.subIdField)
+let subIdFieldOf = (subIdConfig: option<Reventless.ReadModel.subIdConfig<JSON.t>>): option<
+  string,
+> => subIdConfig->Option.map(c => c.subIdField)
 
 // ── QueryDb operations (DynamoDB / Postgres backend branch) ─────────────────
 // `pgConnection`, when present, selects the Postgres QueryDb runtime for the
@@ -143,7 +142,7 @@ let makeQueryDbOps = (
       endpoint: ?(NodeProcess.env->Dict.get("APPSYNC_ENDPOINT")),
       region: ?(NodeProcess.env->Dict.get("AWS_REGION")),
       topicName: ?stateTopicName,
-      subIdField: ?subIdField,
+      ?subIdField,
     })
   | None => QueryDbEntryPoint_Ops.makeDynamoQueryDbOps(~tableName=queryDbTableName)
   }

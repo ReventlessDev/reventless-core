@@ -10,7 +10,6 @@
 
 open JestGlobals
 
-
 let _ = TestRunner.setup()
 let opts: Pulumi.CustomResourceOptions.t = {}
 
@@ -80,21 +79,22 @@ describe("Backend parity (Memory vs Sqlite)", () => {
     let scenario = async () => {
       module TestBus = LocalBus.Make()
       module Storage = LocalQueryDbStorage.Make(TestBus)
-      let s = Storage.make(~name="parity-qdb", ~indexes=[], ~api=(), ~apiRole=(), ~owner=None, ~opts)
+      let s = Storage.make(
+        ~name="parity-qdb",
+        ~indexes=[],
+        ~api=(),
+        ~apiRole=(),
+        ~owner=None,
+        ~opts,
+      )
       let ops = await s.operations->TestRunner.resolve
 
-      let _ = await ops.save(
-        "k",
-        JSON.Encode.string("val"),
-        ReventlessCore.QueryDb.Any,
-        None,
-      )
+      let _ = await ops.save("k", JSON.Encode.string("val"), ReventlessCore.QueryDb.Any, None)
 
-      let items =
-        await ops.loadStream("k")
-        ->Stream.runCollect
-        ->Effect.catchAll(_ => Effect.succeed([]))
-        ->Effect.runPromise
+      let items = await ops.loadStream("k")
+      ->Stream.runCollect
+      ->Effect.catchAll(_ => Effect.succeed([]))
+      ->Effect.runPromise
       expect(items->Array.length)->toBe(1)
       expect(items->Array.getUnsafe(0))->toEqual(JSON.Encode.string("val"))
     }
@@ -103,46 +103,62 @@ describe("Backend parity (Memory vs Sqlite)", () => {
     await runUnderSqlite(scenario)
   })
 
-  testPromise("QueryDb: count returns a running total and loadStream reflects it under both", async () => {
-    let scenario = async () => {
-      module TestBus = LocalBus.Make()
-      module Storage = LocalQueryDbStorage.Make(TestBus)
-      let s = Storage.make(~name="parity-count", ~indexes=[], ~api=(), ~apiRole=(), ~owner=None, ~opts)
-      let ops = await s.operations->TestRunner.resolve
+  testPromise(
+    "QueryDb: count returns a running total and loadStream reflects it under both",
+    async () => {
+      let scenario = async () => {
+        module TestBus = LocalBus.Make()
+        module Storage = LocalQueryDbStorage.Make(TestBus)
+        let s = Storage.make(
+          ~name="parity-count",
+          ~indexes=[],
+          ~api=(),
+          ~apiRole=(),
+          ~owner=None,
+          ~opts,
+        )
+        let ops = await s.operations->TestRunner.resolve
 
-      // First increment creates the counter item and returns the new total.
-      let r1 = await ops.count("prod-1", "orderCount", 3)
-      expect(r1)->toEqual(Ok(3))
-      // Second increment accumulates (not just echoes the increment).
-      let r2 = await ops.count("prod-1", "orderCount", 2)
-      expect(r2)->toEqual(Ok(5))
+        // First increment creates the counter item and returns the new total.
+        let r1 = await ops.count("prod-1", "orderCount", 3)
+        expect(r1)->toEqual(Ok(3))
+        // Second increment accumulates (not just echoes the increment).
+        let r2 = await ops.count("prod-1", "orderCount", 2)
+        expect(r2)->toEqual(Ok(5))
 
-      // loadStream must see the persisted counter — count is not a side channel.
-      let items =
-        await ops.loadStream("prod-1")
+        // loadStream must see the persisted counter — count is not a side channel.
+        let items = await ops.loadStream("prod-1")
         ->Stream.runCollect
         ->Effect.catchAll(_ => Effect.succeed([]))
         ->Effect.runPromise
-      expect(items->Array.length)->toBe(1)
-      let field =
-        items
-        ->Array.getUnsafe(0)
-        ->JSON.Decode.object
-        ->Option.flatMap(o => o->Dict.get("orderCount"))
-        ->Option.flatMap(JSON.Decode.float)
-        ->Option.mapOr(0, Float.toInt)
-      expect(field)->toBe(5)
-    }
+        expect(items->Array.length)->toBe(1)
+        let field =
+          items
+          ->Array.getUnsafe(0)
+          ->JSON.Decode.object
+          ->Option.flatMap(o => o->Dict.get("orderCount"))
+          ->Option.flatMap(JSON.Decode.float)
+          ->Option.mapOr(0, Float.toInt)
+        expect(field)->toBe(5)
+      }
 
-    await runUnderMemory(scenario)
-    await runUnderSqlite(scenario)
-  })
+      await runUnderMemory(scenario)
+      await runUnderSqlite(scenario)
+    },
+  )
 
   testPromise("QueryDb: an expired-TTL item is filtered from loadStream under both", async () => {
     let scenario = async () => {
       module TestBus = LocalBus.Make()
       module Storage = LocalQueryDbStorage.Make(TestBus)
-      let s = Storage.make(~name="parity-ttl", ~indexes=[], ~api=(), ~apiRole=(), ~owner=None, ~opts)
+      let s = Storage.make(
+        ~name="parity-ttl",
+        ~indexes=[],
+        ~api=(),
+        ~apiRole=(),
+        ~owner=None,
+        ~opts,
+      )
       let ops = await s.operations->TestRunner.resolve
 
       let item = k => JSON.Encode.object(Dict.fromArray([("id", JSON.Encode.string(k))]))
@@ -171,16 +187,25 @@ describe("Backend parity (Memory vs Sqlite)", () => {
     let scenario = async () => {
       module TestBus = LocalBus.Make()
       module Storage = LocalQueryDbStorage.Make(TestBus)
-      let s = Storage.make(~name="parity-kind", ~indexes=[], ~api=(), ~apiRole=(), ~owner=None, ~opts)
+      let s = Storage.make(
+        ~name="parity-kind",
+        ~indexes=[],
+        ~api=(),
+        ~apiRole=(),
+        ~owner=None,
+        ~opts,
+      )
       let ops = await s.operations->TestRunner.resolve
 
       let kinds = []
-      TestBus.subscribeToStateChanges("parity-kind", descriptor =>
-        descriptor
-        ->JSON.Decode.object
-        ->Option.flatMap(o => o->Dict.get("changeKind"))
-        ->Option.flatMap(JSON.Decode.string)
-        ->Option.forEach(k => kinds->Array.push(k))
+      TestBus.subscribeToStateChanges(
+        "parity-kind",
+        descriptor =>
+          descriptor
+          ->JSON.Decode.object
+          ->Option.flatMap(o => o->Dict.get("changeKind"))
+          ->Option.flatMap(JSON.Decode.string)
+          ->Option.forEach(k => kinds->Array.push(k)),
       )
 
       let item = (k, v) =>
@@ -205,12 +230,109 @@ describe("Backend parity (Memory vs Sqlite)", () => {
     await runUnderSqlite(scenario)
   })
 
-  testPromise("QueryDb: a descriptor carries the saved row and a rising seq under both", async () => {
+  testPromise(
+    "QueryDb: a descriptor carries the saved row and a rising seq under both",
+    async () => {
+      let scenario = async () => {
+        module TestBus = LocalBus.Make()
+        module Storage = LocalQueryDbStorage.Make(TestBus)
+        let s = Storage.make(
+          ~name="parity-payload",
+          ~indexes=[],
+          ~api=(),
+          ~apiRole=(),
+          ~owner=None,
+          ~opts,
+        )
+        let ops = await s.operations->TestRunner.resolve
+
+        let descriptors = []
+        TestBus.subscribeToStateChanges("parity-payload", d => descriptors->Array.push(d))
+
+        let field = (d, key) => d->JSON.Decode.object->Option.flatMap(o => o->Dict.get(key))
+        let item = (k, v) =>
+          JSON.Encode.object(
+            Dict.fromArray([("id", JSON.Encode.string(k)), ("v", JSON.Encode.string(v))]),
+          )
+        let stateAt = i => descriptors->Array.get(i)->Option.flatMap(d => field(d, "state"))
+
+        let _ = await ops.save("p1", item("p1", "one"), ReventlessCore.QueryDb.Any, None)
+        let _ = await ops.save("p1", item("p1", "two"), ReventlessCore.QueryDb.Any, None)
+        let _ = await ops.delete("p1", None)
+
+        // The point of the payload: a subscriber can apply the row it was handed
+        // instead of spending a round-trip to fetch what the platform already had.
+        expect(stateAt(0))->toEqual(Some(item("p1", "one")))
+        expect(stateAt(1))->toEqual(Some(item("p1", "two")))
+        // A delete has no new row to carry.
+        expect(stateAt(2))->toEqual(None)
+
+        // seq only has to rise — it is monotonic, not consecutive, so a client can
+        // reject a stale payload but cannot count gaps.
+        let seqs =
+          descriptors->Array.filterMap(
+            d =>
+              field(d, "seq")->Option.flatMap(JSON.Decode.string)->Option.flatMap(Float.fromString),
+          )
+        expect(seqs->Array.length)->toBe(3)
+        let rising =
+          seqs->Array.everyWithIndex((v, i) => i == 0 || v > seqs->Array.getUnsafe(i - 1))
+        expect(rising)->toBe(true)
+      }
+
+      await runUnderMemory(scenario)
+      await runUnderSqlite(scenario)
+    },
+  )
+
+  testPromise(
+    "QueryDb: saveBatch reports Added then Updated for a repeated key under both",
+    async () => {
+      let scenario = async () => {
+        module TestBus = LocalBus.Make()
+        module Storage = LocalQueryDbStorage.Make(TestBus)
+        let s = Storage.make(
+          ~name="parity-batch",
+          ~indexes=[],
+          ~api=(),
+          ~apiRole=(),
+          ~owner=None,
+          ~opts,
+        )
+        let ops = await s.operations->TestRunner.resolve
+
+        let kinds = []
+        TestBus.subscribeToStateChanges(
+          "parity-batch",
+          descriptor =>
+            descriptor
+            ->JSON.Decode.object
+            ->Option.flatMap(o => o->Dict.get("changeKind"))
+            ->Option.flatMap(JSON.Decode.string)
+            ->Option.forEach(k => kinds->Array.push(k)),
+        )
+
+        let item = k => JSON.Encode.object(Dict.fromArray([("id", JSON.Encode.string(k))]))
+        let _ = await ops.saveBatch([
+          ("a", item("a"), None),
+          ("b", item("b"), None),
+          ("a", item("a"), None),
+        ])
+
+        expect(kinds)->toEqual(["Added", "Added", "Updated"])
+      }
+
+      await runUnderMemory(scenario)
+      await runUnderSqlite(scenario)
+    },
+  )
+
+  testPromise("QueryDb: a counter's first increment is Added under both", async () => {
     let scenario = async () => {
       module TestBus = LocalBus.Make()
       module Storage = LocalQueryDbStorage.Make(TestBus)
       let s = Storage.make(
-        ~name="parity-payload",
+        ~name="parity-ckind",
         ~indexes=[],
         ~api=(),
         ~apiRole=(),
@@ -219,87 +341,15 @@ describe("Backend parity (Memory vs Sqlite)", () => {
       )
       let ops = await s.operations->TestRunner.resolve
 
-      let descriptors = []
-      TestBus.subscribeToStateChanges("parity-payload", d => descriptors->Array.push(d))
-
-      let field = (d, key) => d->JSON.Decode.object->Option.flatMap(o => o->Dict.get(key))
-      let item = (k, v) =>
-        JSON.Encode.object(
-          Dict.fromArray([("id", JSON.Encode.string(k)), ("v", JSON.Encode.string(v))]),
-        )
-      let stateAt = i => descriptors->Array.get(i)->Option.flatMap(d => field(d, "state"))
-
-      let _ = await ops.save("p1", item("p1", "one"), ReventlessCore.QueryDb.Any, None)
-      let _ = await ops.save("p1", item("p1", "two"), ReventlessCore.QueryDb.Any, None)
-      let _ = await ops.delete("p1", None)
-
-      // The point of the payload: a subscriber can apply the row it was handed
-      // instead of spending a round-trip to fetch what the platform already had.
-      expect(stateAt(0))->toEqual(Some(item("p1", "one")))
-      expect(stateAt(1))->toEqual(Some(item("p1", "two")))
-      // A delete has no new row to carry.
-      expect(stateAt(2))->toEqual(None)
-
-      // seq only has to rise — it is monotonic, not consecutive, so a client can
-      // reject a stale payload but cannot count gaps.
-      let seqs =
-        descriptors->Array.filterMap(d =>
-          field(d, "seq")->Option.flatMap(JSON.Decode.string)->Option.flatMap(Float.fromString)
-        )
-      expect(seqs->Array.length)->toBe(3)
-      let rising =
-        seqs->Array.everyWithIndex((v, i) => i == 0 || v > seqs->Array.getUnsafe(i - 1))
-      expect(rising)->toBe(true)
-    }
-
-    await runUnderMemory(scenario)
-    await runUnderSqlite(scenario)
-  })
-
-  testPromise("QueryDb: saveBatch reports Added then Updated for a repeated key under both", async () => {
-    let scenario = async () => {
-      module TestBus = LocalBus.Make()
-      module Storage = LocalQueryDbStorage.Make(TestBus)
-      let s = Storage.make(~name="parity-batch", ~indexes=[], ~api=(), ~apiRole=(), ~owner=None, ~opts)
-      let ops = await s.operations->TestRunner.resolve
-
       let kinds = []
-      TestBus.subscribeToStateChanges("parity-batch", descriptor =>
-        descriptor
-        ->JSON.Decode.object
-        ->Option.flatMap(o => o->Dict.get("changeKind"))
-        ->Option.flatMap(JSON.Decode.string)
-        ->Option.forEach(k => kinds->Array.push(k))
-      )
-
-      let item = k => JSON.Encode.object(Dict.fromArray([("id", JSON.Encode.string(k))]))
-      let _ = await ops.saveBatch([
-        ("a", item("a"), None),
-        ("b", item("b"), None),
-        ("a", item("a"), None),
-      ])
-
-      expect(kinds)->toEqual(["Added", "Added", "Updated"])
-    }
-
-    await runUnderMemory(scenario)
-    await runUnderSqlite(scenario)
-  })
-
-  testPromise("QueryDb: a counter's first increment is Added under both", async () => {
-    let scenario = async () => {
-      module TestBus = LocalBus.Make()
-      module Storage = LocalQueryDbStorage.Make(TestBus)
-      let s = Storage.make(~name="parity-ckind", ~indexes=[], ~api=(), ~apiRole=(), ~owner=None, ~opts)
-      let ops = await s.operations->TestRunner.resolve
-
-      let kinds = []
-      TestBus.subscribeToStateChanges("parity-ckind", descriptor =>
-        descriptor
-        ->JSON.Decode.object
-        ->Option.flatMap(o => o->Dict.get("changeKind"))
-        ->Option.flatMap(JSON.Decode.string)
-        ->Option.forEach(k => kinds->Array.push(k))
+      TestBus.subscribeToStateChanges(
+        "parity-ckind",
+        descriptor =>
+          descriptor
+          ->JSON.Decode.object
+          ->Option.flatMap(o => o->Dict.get("changeKind"))
+          ->Option.flatMap(JSON.Decode.string)
+          ->Option.forEach(k => kinds->Array.push(k)),
       )
 
       let _ = await ops.count("prod-1", "orderCount", 1)

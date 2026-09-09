@@ -11,23 +11,29 @@ let project = ({event}) =>
       Set(categoryId, {categoryId, name, shelfStatus: Listed, trail: []}),
     ]
   | CategoryRenamed({categoryId, name}) => [Update(categoryId, state => {...state, name})]
-  | CategoryImageAttached({categoryId, categoryImage, altText: ?altText}) => [
-      Update(categoryId, state => {
-        ...state,
-        categoryImage: {ref: categoryImage, altText: ?altText},
-      }),
+  | CategoryImageAttached({categoryId, categoryImage, ?altText}) => [
+      Update(
+        categoryId,
+        state => {
+          ...state,
+          categoryImage: {ref: categoryImage, ?altText},
+        },
+      ),
     ]
   | CategoryImageRemoved({categoryId, categoryImage}) => [
-      Update(categoryId, state =>
-        heldRef(state) == Some(categoryImage) ? {...state, categoryImage: ?None} : state
+      Update(
+        categoryId,
+        state => heldRef(state) == Some(categoryImage) ? {...state, categoryImage: ?None} : state,
       ),
     ]
   | CategoryImageAltTextSet({categoryId, categoryImage, altText}) => [
-      Update(categoryId, state =>
-        switch state.categoryImage {
-        | Some(held) if held.ref == categoryImage => {...state, categoryImage: {...held, altText}}
-        | _ => state
-        }
+      Update(
+        categoryId,
+        state =>
+          switch state.categoryImage {
+          | Some(held) if held.ref == categoryImage => {...state, categoryImage: {...held, altText}}
+          | _ => state
+          },
       ),
     ]
   | CategoryArchived({categoryId}) => [

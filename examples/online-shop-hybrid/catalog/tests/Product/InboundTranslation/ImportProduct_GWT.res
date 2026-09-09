@@ -23,8 +23,7 @@ describe("ImportProduct InboundTranslationSlice", () => {
       unitPrice: 99999,
       currency: "USD",
       category: "cat1",
-    })
-    ->thenCommand(
+    })->thenCommand(
       "p-1",
       AddProduct({
         productId: "p-1",
@@ -48,8 +47,7 @@ describe("ImportProduct InboundTranslationSlice", () => {
       unitPrice: 1999,
       currency: "EUR",
       category: "cat1",
-    })
-    ->thenCommand(
+    })->thenCommand(
       "p-2",
       AddProduct({
         productId: "p-2",
@@ -72,8 +70,7 @@ describe("ImportProduct InboundTranslationSlice", () => {
       unitPrice: 1200,
       currency: "JPY",
       category: "cat1",
-    })
-    ->thenCommand(
+    })->thenCommand(
       "p-3",
       AddProduct({
         productId: "p-3",
@@ -97,23 +94,39 @@ describe("ImportProduct InboundTranslationSlice", () => {
       unitPrice: 1,
       currency: "eur",
       category: "cat1",
-    })->thenTranslateError(
-      `expected one of the ISO 4217 codes this framework admits (AUD, CAD, CHF, CNY, EUR, GBP, JPY, NOK, SEK, USD), got "eur". Codes are upper-case and exactly three letters.`,
-    )
+    })->thenTranslateError(`expected one of the ISO 4217 codes this framework admits (AUD, CAD, CHF, CNY, EUR, GBP, JPY, NOK, SEK, USD), got "eur". Codes are upper-case and exactly three letters.`)
   )
 
   test("non-positive price surfaces a translate error", () =>
-    whenInput({sku: "p-1", title: "Laptop", desc: "x", unitPrice: 0, currency: "USD", category: "cat1"})
-    ->thenTranslateError("Price must be positive")
+    whenInput({
+      sku: "p-1",
+      title: "Laptop",
+      desc: "x",
+      unitPrice: 0,
+      currency: "USD",
+      category: "cat1",
+    })->thenTranslateError("Price must be positive")
   )
 
   test("empty SKU surfaces a translate error", () =>
-    whenInput({sku: "", title: "Laptop", desc: "x", unitPrice: 100, currency: "USD", category: "cat1"})
-    ->thenTranslateError("SKU is required")
+    whenInput({
+      sku: "",
+      title: "Laptop",
+      desc: "x",
+      unitPrice: 100,
+      currency: "USD",
+      category: "cat1",
+    })->thenTranslateError("SKU is required")
   )
 
   test("empty category surfaces a translate error", () =>
-    whenInput({sku: "p-1", title: "Laptop", desc: "x", unitPrice: 100, currency: "USD", category: ""})
-    ->thenTranslateError("Category is required")
+    whenInput({
+      sku: "p-1",
+      title: "Laptop",
+      desc: "x",
+      unitPrice: 100,
+      currency: "USD",
+      category: "",
+    })->thenTranslateError("Category is required")
   )
 })

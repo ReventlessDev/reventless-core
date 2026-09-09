@@ -13,10 +13,10 @@ let jsonObject = (entries: array<(string, JSON.t)>): JSON.t =>
 // An absent plugin means "the declaring plugin's own", which the key's absence
 // says exactly. Writing an empty string instead would make "mine" and "unnamed"
 // indistinguishable to every reader.
-let withOptionalPlugin = (
-  entries: array<(string, JSON.t)>,
-  plugin: option<string>,
-): array<(string, JSON.t)> =>
+let withOptionalPlugin = (entries: array<(string, JSON.t)>, plugin: option<string>): array<(
+  string,
+  JSON.t,
+)> =>
   switch plugin {
   | Some(p) => entries->Array.concat([("plugin", JSON.Encode.string(p))])
   | None => entries
@@ -47,8 +47,7 @@ let mergeAnnotations = (
     }
     switch spec.indexes->Array.find(((field, _)) => field === fieldName) {
     | Some((_, indexName)) =>
-      let value =
-        indexName === "" ? JSON.Encode.bool(true) : JSON.Encode.string(indexName)
+      let value = indexName === "" ? JSON.Encode.bool(true) : JSON.Encode.string(indexName)
       obj->Dict.set("x-reventless-index", value)
     | None => ()
     }
@@ -141,10 +140,9 @@ let mergeAnnotations = (
       // the keys above follow: false is what every record said before the opt-in
       // existed, and writing it would put a key on every retirement to say
       // nothing changed.
-      let entries =
-        r.namedWhenRetired
-          ? Array.concat(entries, [("namedWhenRetired", JSON.Encode.bool(true))])
-          : entries
+      let entries = r.namedWhenRetired
+        ? Array.concat(entries, [("namedWhenRetired", JSON.Encode.bool(true))])
+        : entries
       obj->Dict.set("x-reventless-retired", JSON.Encode.object(Dict.fromArray(entries)))
     | _ => ()
     }
@@ -428,6 +426,7 @@ and objectRefToJsonSchema = (
     | None => withAnnotations
     }
     props->Dict.set(fieldName, withAnnotations)
+
     // Optional two ways, because neither source answers alone. `optional` is
     // read off the sury schema and is the only thing that can speak for a
     // reference or a tagged field, which classify as `EntityId` before their

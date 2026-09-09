@@ -33,34 +33,39 @@ describe("StateViewSliceEntryPoint_Ops.parseHandlerConfig", () => {
   })
 
   testSync("expands compact-v2 entries against shared base/sourceUrn/pgConnection", () => {
-    let config = obj([
-      ("v", JSON.Encode.int(2)),
-      ("base", str("@x/plugin/src/StateViewSlice/")),
-      ("sourceUrn", str("arn:shared")),
-      (
-        "pgConnection",
-        obj([
-          ("host", str("db.local")),
-          ("port", JSON.Encode.int(5432)),
-          ("database", str("app")),
-          ("username", str("master")),
-          ("secretArn", str("arn:secret")),
-        ]),
-      ),
-      (
-        "handlers",
-        JSON.Encode.array([
-          obj([("s", str("Carts.res.mjs")), ("p", str("Carts_Projection.res.mjs")), ("q", str("qdb_Carts"))]),
+    let config =
+      obj([
+        ("v", JSON.Encode.int(2)),
+        ("base", str("@x/plugin/src/StateViewSlice/")),
+        ("sourceUrn", str("arn:shared")),
+        (
+          "pgConnection",
           obj([
-            ("s", str("Totals.res.mjs")),
-            ("p", str("Totals_Projection.res.mjs")),
-            ("q", str("qdb_Totals")),
-            ("u", str("arn:override")),
-            ("t", str("cartTotals")),
+            ("host", str("db.local")),
+            ("port", JSON.Encode.int(5432)),
+            ("database", str("app")),
+            ("username", str("master")),
+            ("secretArn", str("arn:secret")),
           ]),
-        ]),
-      ),
-    ])->JSON.stringify
+        ),
+        (
+          "handlers",
+          JSON.Encode.array([
+            obj([
+              ("s", str("Carts.res.mjs")),
+              ("p", str("Carts_Projection.res.mjs")),
+              ("q", str("qdb_Carts")),
+            ]),
+            obj([
+              ("s", str("Totals.res.mjs")),
+              ("p", str("Totals_Projection.res.mjs")),
+              ("q", str("qdb_Totals")),
+              ("u", str("arn:override")),
+              ("t", str("cartTotals")),
+            ]),
+          ]),
+        ),
+      ])->JSON.stringify
     let entries = StateViewSliceEntryPoint_Ops.parseHandlerConfig(config)
     expect(entries->Array.length)->toBe(2)
     let first = entries->Array.getUnsafe(0)
@@ -76,21 +81,22 @@ describe("StateViewSliceEntryPoint_Ops.parseHandlerConfig", () => {
   })
 
   testSync("passes legacy full-key entries through with per-entry fields", () => {
-    let config = obj([
-      ("base", str("ignored/")),
-      ("sourceUrn", str("arn:shared")),
-      (
-        "handlers",
-        JSON.Encode.array([
-          obj([
-            ("specModule", str("full/Carts.res.mjs")),
-            ("projectionModule", str("full/Carts_Projection.res.mjs")),
-            ("queryDbTableName", str("qdb_Carts")),
-            ("sourceUrn", str("arn:own")),
+    let config =
+      obj([
+        ("base", str("ignored/")),
+        ("sourceUrn", str("arn:shared")),
+        (
+          "handlers",
+          JSON.Encode.array([
+            obj([
+              ("specModule", str("full/Carts.res.mjs")),
+              ("projectionModule", str("full/Carts_Projection.res.mjs")),
+              ("queryDbTableName", str("qdb_Carts")),
+              ("sourceUrn", str("arn:own")),
+            ]),
           ]),
-        ]),
-      ),
-    ])->JSON.stringify
+        ),
+      ])->JSON.stringify
     let e = StateViewSliceEntryPoint_Ops.parseHandlerConfig(config)->Array.getUnsafe(0)
     // Legacy entries are NOT base-prefixed and keep their own sourceUrn.
     expect(e.specModule)->toBe("full/Carts.res.mjs")
@@ -142,9 +148,9 @@ describe("StateViewSliceEntryPoint_Ops.makeJsonEventsHandler", () => {
 
   // String-typed consumed events keep the pipeline test independent of any
   // real slice: each event value becomes the row id, `recordedAt` the state.
-  let project = (
-    {event, recordedAt, _}: Reventless.StateViewSlice.consumed<string>,
-  ): array<Reventless.Projection.action<string, JSON.t>> => [Set(event, str(recordedAt))]
+  let project = ({event, recordedAt, _}: Reventless.StateViewSlice.consumed<string>): array<
+    Reventless.Projection.action<string, JSON.t>,
+  > => [Set(event, str(recordedAt))]
 
   test("decodes envelopes, projects, and runs actions against the ops", async () => {
     let saved = []
@@ -205,7 +211,12 @@ describe("StateViewSliceEntryPoint_Ops.makeJsonEventsHandler", () => {
         "row-1",
         obj([
           ("lifecycle", str("Placed")),
-          ("trail", JSON.Encode.array([obj([("state", str("Placed")), ("at", str("2026-03-02T09:00:00Z"))])])),
+          (
+            "trail",
+            JSON.Encode.array([
+              obj([("state", str("Placed")), ("at", str("2026-03-02T09:00:00Z"))]),
+            ]),
+          ),
         ]),
       ),
     ])

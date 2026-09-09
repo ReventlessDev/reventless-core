@@ -75,10 +75,14 @@ describe("EventLog — conflict detection (in-memory)", () => {
 
   testPromise("batch append with correct sequenceNr stores all events", async () => {
     let ops = await eventLog->ReventlessCore.Component.operations->TestRunner.resolve
-    let result = await ops.append(0, "conflict-5", [
-      makeEvent'("conflict-5", ItemEventLogSpec.ItemCreated({name: "e1"})),
-      makeEvent'("conflict-5", ItemEventLogSpec.ItemDeleted({id: "e2"})),
-    ])
+    let result = await ops.append(
+      0,
+      "conflict-5",
+      [
+        makeEvent'("conflict-5", ItemEventLogSpec.ItemCreated({name: "e1"})),
+        makeEvent'("conflict-5", ItemEventLogSpec.ItemDeleted({id: "e2"})),
+      ],
+    )
     expect(Result.isOk(result))->toBe(true)
     let replayed = await ops.replay("conflict-5")
     expect(replayed->Array.length)->toBe(2)

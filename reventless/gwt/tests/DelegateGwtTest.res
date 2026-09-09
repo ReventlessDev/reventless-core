@@ -6,7 +6,6 @@
 //     via `FromExtension`.
 // See `docs/plans/done/gwt-flow-and-extension-test-kinds.md` Phase 1.
 
-
 module EPM = ReventlessInfra.ExtensionPointMapping
 module EM = ReventlessInfra.ExtensionMapping
 

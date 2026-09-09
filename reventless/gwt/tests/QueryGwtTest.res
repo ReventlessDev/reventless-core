@@ -2,7 +2,6 @@
 // to prove the unified DSL works for either consumer type. Stage 6 of
 // `docs/plans/done/reventless-gwt.md`.
 
-
 // ---------------------------------------------------------------------------
 // Case 1 — ReadModel: Categories.
 // ---------------------------------------------------------------------------
@@ -51,9 +50,7 @@ CategoriesQuery.describe("Categories ReadModel queries", () => {
 
   CategoriesQuery.test("missing index produces QueryRowsMismatch", () => {
     let outcome =
-      CategoriesQuery.givenStore([
-        ("c1", {categoryId: "c1", name: "Electronics", archived: false}),
-      ])
+      CategoriesQuery.givenStore([("c1", {categoryId: "c1", name: "Electronics", archived: false})])
       ->CategoriesQuery.whenQuery({by: "name", value: "Electronics", index: "byArchived"})
       ->CategoriesQuery.thenRows([])
     switch outcome {
@@ -82,11 +79,14 @@ CategoriesQuery.describe("Categories ReadModel queries", () => {
 
   CategoriesQuery.test("limit truncates results and thenRowCount verifies", () =>
     CategoriesQuery.givenStore(
-      Array.fromInitializer(~length=10, i => {
-        let id = "c" ++ i->Int.toString
-        let state: CategoriesReadModel.state = {categoryId: id, name: "Books", archived: false}
-        (id, state)
-      }),
+      Array.fromInitializer(
+        ~length=10,
+        i => {
+          let id = "c" ++ i->Int.toString
+          let state: CategoriesReadModel.state = {categoryId: id, name: "Books", archived: false}
+          (id, state)
+        },
+      ),
     )
     ->CategoriesQuery.whenQuery({by: "name", value: "Books", index: "byName", limit: 3})
     ->CategoriesQuery.thenRowCount(3)
@@ -145,9 +145,7 @@ OrdersQuery.describe("OrdersView StateViewSlice queries", () => {
       ("ord-2", "cust-b", {orderId: "ord-2", customerId: "cust-b", total: 200}),
     ])
     ->OrdersQuery.whenQueryByCompositeId({id: "ord-1", subId: "cust-a"})
-    ->OrdersQuery.thenRowFromComposite(
-      Some({orderId: "ord-1", customerId: "cust-a", total: 100}),
-    )
+    ->OrdersQuery.thenRowFromComposite(Some({orderId: "ord-1", customerId: "cust-a", total: 100}))
   )
 
   OrdersQuery.test("composite-id lookup with wrong subId returns None", () =>

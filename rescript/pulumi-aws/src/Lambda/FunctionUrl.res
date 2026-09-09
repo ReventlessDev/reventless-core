@@ -37,5 +37,8 @@ external make: (~name: string, ~args: args, ~opts: Pulumi.CustomResourceOptions.
   "FunctionUrl"
 
 @module("@pulumi/aws") @scope(("lambda", "FunctionUrl"))
-external get: (~name: string, ~id: Pulumi.Input.t<string>, ~opts: Pulumi.CustomResourceOptions.t=?) => t =
-  "get"
+external get: (
+  ~name: string,
+  ~id: Pulumi.Input.t<string>,
+  ~opts: Pulumi.CustomResourceOptions.t=?,
+) => t = "get"

@@ -60,7 +60,6 @@ check-lifecycle --root . --reuse-sidecars --json
 check-lifecycle --root . --update     # write this app's models and golden
 ```
 */
-
 // The model this script writes is folded into `pluginStructure`, so by the time
 // it runs again the "declared" side it reads back would be its own last answer —
 // every edge confirmed, and a real disagreement between an annotation and the
@@ -103,7 +102,8 @@ type appRoot = {label: string, dir: string}
     corpus is on disk; a second pass over a warm tree buys nothing and costs the
     multi-root build chain's habit of cleaning artifacts outside the root it is
     building, which lands intermittently on a stale `.cmi`. */
-let reuseSidecars = NodeProcess.argv->Array.includes("--reuse-sidecars")
+let reuseSidecars =
+  NodeProcess.argv->Array.includes("--reuse-sidecars")
 
 /** Report the run as one JSON document on stdout instead of the grouped prose.
 
@@ -117,7 +117,8 @@ let reuseSidecars = NodeProcess.argv->Array.includes("--reuse-sidecars")
     repository says it said — nor fail because the two have drifted, which is a
     fact about the repository rather than about the corpus it was asked to
     report. A contradiction still exits non-zero, so this composes with a gate. */
-let json = NodeProcess.argv->Array.includes("--json")
+let json =
+  NodeProcess.argv->Array.includes("--json")
 
 /** The label a state carries when no row exists yet. Not a lifecycle case — no
     enum declares it — so it is spelled in a way no constructor can name, and a
@@ -295,8 +296,7 @@ let checkSidecars = (~pluginDirs: array<string>): result<unit, string> =>
   hasCorpus(~pluginDirs)
     ? Ok()
     : Error(
-        "--reuse-sidecars was passed, but no scenario sidecar exists. Build with " ++
-        "REVENTLESS_EMIT_SIDECAR=1 first, or drop the flag.",
+        "--reuse-sidecars was passed, but no scenario sidecar exists. Build with " ++ "REVENTLESS_EMIT_SIDECAR=1 first, or drop the flag.",
       )
 
 /** Sidecars are gitignored build artifacts, so the harvest produces its own
@@ -405,11 +405,13 @@ let declaredOf = (structure: JSON.t): option<declared> =>
       getObjs(s, key)->Array.filterMap(w =>
         w
         ->getStr("name")
-        ->Option.map(name => {
-          name,
-          linkedViews: getStrs(w, "linkedViews"),
-          commands: getObjs(w, "commands")->Array.filterMap(declaredCommandOf),
-        })
+        ->Option.map(
+          name => {
+            name,
+            linkedViews: getStrs(w, "linkedViews"),
+            commands: getObjs(w, "commands")->Array.filterMap(declaredCommandOf),
+          },
+        )
       )
     let viewsFrom = key =>
       getObjs(s, key)->Array.filterMap(v =>
@@ -647,9 +649,7 @@ let deriveCommands = (
         effective->Array.filterMap(o => o.from == noRow ? None : Some(o.from)),
       ),
       inertStates: sortedUnique(
-        mine->Array.filterMap(o =>
-          o.outcome == Emitted || o.from == noRow ? None : Some(o.from)
-        ),
+        mine->Array.filterMap(o => o.outcome == Emitted || o.from == noRow ? None : Some(o.from)),
       ),
       targets: sortedUnique(
         effective->Array.filterMap(o => o.to == o.from || o.to == noRow ? None : Some(o.to)),
@@ -764,8 +764,7 @@ let compare = (
         add(
           "contradicted",
           [state],
-          `the switch declares it legal in every state, and a scenario from "${state}" ` ++
-          `shows it refused or producing nothing`,
+          `the switch declares it legal in every state, and a scenario from "${state}" ` ++ `shows it refused or producing nothing`,
         )
       )
     | None =>
@@ -773,8 +772,9 @@ let compare = (
         add(
           "undeclared",
           derived.allowedStates,
-          `scenarios show it taking effect from ${derived.allowedStates->Array.join(", ")}, ` ++
-          `and it declares no edge`,
+          `scenarios show it taking effect from ${derived.allowedStates->Array.join(
+              ", ",
+            )}, ` ++ `and it declares no edge`,
         )
       }
     | Some(states) =>
@@ -785,8 +785,7 @@ let compare = (
           add(
             "contradicted",
             [state],
-            `the switch names "${state}", and a scenario from "${state}" shows it ` ++
-            `refused or producing nothing`,
+            `the switch names "${state}", and a scenario from "${state}" shows it ` ++ `refused or producing nothing`,
           )
         } else {
           add("unverified", [state], `the switch names "${state}", and no scenario starts there`)
@@ -806,8 +805,9 @@ let compare = (
         add(
           "unverified",
           states,
-          `the switch declares ${Array.length(states)->Int.toString} state(s) and ` ++
-          `no scenario shows the command taking effect anywhere`,
+          `the switch declares ${Array.length(
+              states,
+            )->Int.toString} state(s) and ` ++ `no scenario shows the command taking effect anywhere`,
         )
       }
     }
@@ -830,8 +830,7 @@ let compare = (
           add(
             "contradicted",
             [target, state],
-            `the switch targets "${target}", and a scenario lands in "${state}" — ` ++
-            `the published targetState carries one state, so this edge cannot be expressed`,
+            `the switch targets "${target}", and a scenario lands in "${state}" — ` ++ `the published targetState carries one state, so this edge cannot be expressed`,
           )
         }
       )
@@ -933,107 +932,111 @@ let runPlugin = async (
   switch await readDeclared(~pluginDir) {
   | Error(msg) => Error(msg)
   | Ok(declared) =>
-      let corpora =
-        filesUnder(NodePath.join([pluginDir, "tests"]), ~suffix=".gwt.json")->Array.filterMap(
-          readCorpus,
-        )
-
-      // Every corpus, not only the ones the walk goes on to use: the kinds that
-      // are unreadable in full — extension points, automation and translation
-      // slices — are exactly the ones that sit outside the view/writable folders
-      // below, and they are the ones a coverage UI would otherwise slander.
-      corpora->Array.forEach(c => {
-        let unreadable = c.scenarios->Array.filter(s => Array.length(s.whenElements) == 0)
-        if Array.length(unreadable) > 0 {
-          opaque
-          ->Array.push({
-            plugin,
-            component: c.component,
-            path: c.path,
-            scenarios: Array.length(c.scenarios),
-            unreadable: Array.length(unreadable),
-          })
-          ->ignore
-        }
-      })
-
-      // Views first: a command's history cannot be labelled until the events in
-      // it have somewhere to land.
-      let mapsByView = Dict.make()
-      let ambiguities = []
-      corpora->Array.forEach(c =>
-        if isViewPath(c.path) {
-          switch declared.views->Array.find(v => v.name == c.component) {
-          | Some({lifecycleField: Some(field)}) =>
-            mapsByView->Dict.set(
-              c.component,
-              lifecycleMapFor(~scenarios=c.scenarios, ~field, ~ambiguities, ~view=c.component),
-            )
-          // A view with no lifecycle field labels nothing, and that is ordinary
-          // — most views have no lifecycle at all.
-          | _ => ()
-          }
-        }
+    let corpora =
+      filesUnder(NodePath.join([pluginDir, "tests"]), ~suffix=".gwt.json")->Array.filterMap(
+        readCorpus,
       )
-      ambiguities->Array.forEach(((view, message)) =>
-        findings
+
+    // Every corpus, not only the ones the walk goes on to use: the kinds that
+    // are unreadable in full — extension points, automation and translation
+    // slices — are exactly the ones that sit outside the view/writable folders
+    // below, and they are the ones a coverage UI would otherwise slander.
+    corpora->Array.forEach(c => {
+      let unreadable = c.scenarios->Array.filter(s => Array.length(s.whenElements) == 0)
+      if Array.length(unreadable) > 0 {
+        opaque
         ->Array.push({
-          severity: "ambiguous",
           plugin,
-          component: view,
-          command: "",
-          states: [],
-          message,
+          component: c.component,
+          path: c.path,
+          scenarios: Array.length(c.scenarios),
+          unreadable: Array.length(unreadable),
         })
         ->ignore
-      )
+      }
+    })
 
-      let derived = []
-      corpora->Array.forEach(c =>
-        if isWritablePath(c.path) {
-          switch declared.writables->Array.find(w => w.name == c.component) {
-          | None => ()
-          | Some(writable) =>
-            // The union of the maps of every view this writable feeds. A union
-            // rather than a single view for the reason the platform's own name
-            // check uses one: a slice feeding two views is not claiming which of
-            // them a state belongs to.
-            let map = Dict.make()
-            writable.linkedViews->Array.forEach(view =>
-              switch mapsByView->Dict.get(view) {
-              | Some(m) => m->Dict.forEachWithKey((value, event) => map->Dict.set(event, value))
-              | None => ()
-              }
-            )
-            let labelled = Array.length(map->Dict.keysToArray) > 0
-            let idFieldFor = command =>
-              writable.commands
-              ->Array.find(c => c.command == command)
-              ->Option.flatMap(c => c.aggregateIdField)
-            let observations = observe(~scenarios=c.scenarios, ~map, ~idFieldFor)
-            let commands = deriveCommands(~component=c.component, ~observations, ~labelled)
+    // Views first: a command's history cannot be labelled until the events in
+    // it have somewhere to land.
+    let mapsByView = Dict.make()
+    let ambiguities = []
+    corpora->Array.forEach(c =>
+      if isViewPath(c.path) {
+        switch declared.views->Array.find(v => v.name == c.component) {
+        | Some({lifecycleField: Some(field)}) =>
+          mapsByView->Dict.set(
+            c.component,
+            lifecycleMapFor(~scenarios=c.scenarios, ~field, ~ambiguities, ~view=c.component),
+          )
+        // A view with no lifecycle field labels nothing, and that is ordinary
+        // — most views have no lifecycle at all.
+        | _ => ()
+        }
+      }
+    )
+    ambiguities->Array.forEach(((view, message)) =>
+      findings
+      ->Array.push({
+        severity: "ambiguous",
+        plugin,
+        component: view,
+        command: "",
+        states: [],
+        message,
+      })
+      ->ignore
+    )
 
-            commands->Array.forEach(d => {
-              // Without a lifecycle map every history folds to "no row", so
-              // there is nothing to confirm a claim against and nothing to
-              // contradict it with. Reporting the claim as unverified is the
-              // honest answer; running the comparison would manufacture
-              // contradictions out of a missing map.
-              if labelled {
-                compare(~plugin, ~writable, ~derived=d, ~findings)
-              }
-              derived->Array.push(d)
-            })
+    let derived = []
+    corpora->Array.forEach(c =>
+      if isWritablePath(c.path) {
+        switch declared.writables->Array.find(w => w.name == c.component) {
+        | None => ()
+        | Some(writable) =>
+          // The union of the maps of every view this writable feeds. A union
+          // rather than a single view for the reason the platform's own name
+          // check uses one: a slice feeding two views is not claiming which of
+          // them a state belongs to.
+          let map = Dict.make()
+          writable.linkedViews->Array.forEach(view =>
+            switch mapsByView->Dict.get(view) {
+            | Some(m) => m->Dict.forEachWithKey((value, event) => map->Dict.set(event, value))
+            | None => ()
+            }
+          )
+          let labelled = Array.length(map->Dict.keysToArray) > 0
+          let idFieldFor = command =>
+            writable.commands
+            ->Array.find(c => c.command == command)
+            ->Option.flatMap(c => c.aggregateIdField)
+          let observations = observe(~scenarios=c.scenarios, ~map, ~idFieldFor)
+          let commands = deriveCommands(~component=c.component, ~observations, ~labelled)
 
-            let why = labelled
-              ? "no scenario exercises the command"
-              : `${writable.linkedViews->Array.join(", ")} declares no lifecycle field, so its ` ++
-                `scenarios cannot be labelled`
-            writable.commands->Array.forEach(cmd =>
-              if labelled && commands->Array.some(d => d.command == cmd.command) {
-                ()
-              } else {
-                allUnverified(~cmd, ~why, ~add=(severity, states, message) =>
+          commands->Array.forEach(d => {
+            // Without a lifecycle map every history folds to "no row", so
+            // there is nothing to confirm a claim against and nothing to
+            // contradict it with. Reporting the claim as unverified is the
+            // honest answer; running the comparison would manufacture
+            // contradictions out of a missing map.
+            if labelled {
+              compare(~plugin, ~writable, ~derived=d, ~findings)
+            }
+            derived->Array.push(d)
+          })
+
+          let why = labelled
+            ? "no scenario exercises the command"
+            : `${writable.linkedViews->Array.join(
+                  ", ",
+                )} declares no lifecycle field, so its ` ++ `scenarios cannot be labelled`
+          writable.commands->Array.forEach(cmd =>
+            if labelled && commands->Array.some(d => d.command == cmd.command) {
+              ()
+            } else {
+              allUnverified(
+                ~cmd,
+                ~why,
+                ~add=(severity, states, message) =>
                   findings
                   ->Array.push({
                     severity,
@@ -1043,14 +1046,14 @@ let runPlugin = async (
                     states,
                     message: `${plugin}/${writable.name}.${cmd.command}: ${message}`,
                   })
-                  ->ignore
-                )
-              }
-            )
-          }
+                  ->ignore,
+              )
+            }
+          )
         }
-      )
-      Ok(derived)
+      }
+    )
+    Ok(derived)
   }
 
 // ── The golden ──────────────────────────────────────────────────────────────
@@ -1173,19 +1176,22 @@ let reportJson = (
 let modelSource = (~plugin: string, ~derived: array<derivedCommand>): string => {
   let saysSomething = (d: derivedCommand) =>
     d.level != "" || Array.length(d.allowedStates) > 0 || Array.length(d.targets) > 0
-  let quoted = (xs: array<string>) =>
-    "[" ++ xs->Array.map(s => `"${s}"`)->Array.join(", ") ++ "]"
-  let entries = derived->Array.filter(saysSomething)->byComponentThenCommand->Array.map(d => {
-    // Omitted rather than written as an absent value: `level` is an optional
-    // field, and a corpus that could not label this command's histories has
-    // nothing to say about it.
-    let level = switch d.level {
-    | "Collection" | "Instance" => `level: Reventless.Plugin.${d.level}, `
-    | _ => ""
-    }
-    `  {component: "${d.component}", command: "${d.command}", ${level}` ++
-    `allowedStates: ${quoted(d.allowedStates)}, targets: ${quoted(d.targets)}},`
-  })
+  let quoted = (xs: array<string>) => "[" ++ xs->Array.map(s => `"${s}"`)->Array.join(", ") ++ "]"
+  let entries =
+    derived
+    ->Array.filter(saysSomething)
+    ->byComponentThenCommand
+    ->Array.map(d => {
+      // Omitted rather than written as an absent value: `level` is an optional
+      // field, and a corpus that could not label this command's histories has
+      // nothing to say about it.
+      let level = switch d.level {
+      | "Collection" | "Instance" => `level: Reventless.Plugin.${d.level}, `
+      | _ => ""
+      }
+      `  {component: "${d.component}", command: "${d.command}", ${level}` ++
+      `allowedStates: ${quoted(d.allowedStates)}, targets: ${quoted(d.targets)}},`
+    })
   Array.flat([
     [
       `// AUTO-GENERATED — do not edit. Run \`pnpm run check:lifecycle:update\` to update.`,
@@ -1234,8 +1240,9 @@ let main = async () => {
   // an app with no plugins, and reporting "ok" for it is how that typo survives.
   if Array.length(allPluginDirs) == 0 {
     Console.error(
-      `no plugins found under ${roots->Array.map(r => r.dir)->Array.join(", ")} — a plugin is a ` ++
-      `directory with both src/Plugin.res and tests/`,
+      `no plugins found under ${roots
+        ->Array.map(r => r.dir)
+        ->Array.join(", ")} — a plugin is a ` ++ `directory with both src/Plugin.res and tests/`,
     )
     NodeProcess.exit(1)
   }
@@ -1256,8 +1263,11 @@ let main = async () => {
   // refusing outright.
   if !hasCorpus(~pluginDirs=allPluginDirs) {
     Console.error(
-      `no scenario sidecar exists under ${roots->Array.map(r => r.dir)->Array.join(", ")} after ` ++
-      `the build. Build that tree with REVENTLESS_EMIT_SIDECAR=1 and pass --reuse-sidecars.`,
+      `no scenario sidecar exists under ${roots
+        ->Array.map(r => r.dir)
+        ->Array.join(
+          ", ",
+        )} after ` ++ `the build. Build that tree with REVENTLESS_EMIT_SIDECAR=1 and pass --reuse-sidecars.`,
     )
     NodeProcess.exit(1)
   }
@@ -1308,7 +1318,9 @@ let main = async () => {
           ~drifted,
         )
         Console.log(
-          `ok ${example} — ${Array.length(derived)->Int.toString} commands derived from scenarios`,
+          `ok ${example} — ${Array.length(
+              derived,
+            )->Int.toString} commands derived from scenarios`,
         )
       }
     }
@@ -1336,8 +1348,9 @@ let main = async () => {
 
   if Array.length(drifted) > 0 {
     Console.error(
-      `\n${Array.length(drifted)->Int.toString} lifecycle artifact(s) changed. If the change is ` ++
-      `intended, re-run with --update and commit them alongside the change that moved them.`,
+      `\n${Array.length(
+          drifted,
+        )->Int.toString} lifecycle artifact(s) changed. If the change is ` ++ `intended, re-run with --update and commit them alongside the change that moved them.`,
     )
   }
 

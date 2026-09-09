@@ -73,11 +73,12 @@ let decode = (fragment: Reventless.Plugin.apiSchemaFragment): fragmentParts => {
           let field = obj->Dict.get("field")->Option.flatMap(JSON.Decode.string)
           let mutations = switch obj->Dict.get("mutations") {
           | Some(JSON.Array(ms)) =>
-            ms->Array.filterMap(m =>
-              switch m {
-              | JSON.String(s) => Some(s)
-              | _ => None
-              }
+            ms->Array.filterMap(
+              m =>
+                switch m {
+                | JSON.String(s) => Some(s)
+                | _ => None
+                },
             )
           | _ => []
           }
@@ -169,9 +170,7 @@ let relayBaseTypes = [
   `enum SortOrder {\n  ASC\n  DESC\n}`,
 ]
 
-let relayBaseQueries = [
-  `  node(id: ID!): Node`,
-]
+let relayBaseQueries = [`  node(id: ID!): Node`]
 
 /**
 Assemble fragments into a complete GraphQL SDL string.
@@ -293,8 +292,8 @@ let assembleSdl = (
       : None
 
   let sdlParts =
-    [Some(typesSdl), Some(queriesSdl), Some(mutationsSdl), subscriptionsSdl]->Array.filterMap(
-      x => x,
+    [Some(typesSdl), Some(queriesSdl), Some(mutationsSdl), subscriptionsSdl]->Array.filterMap(x =>
+      x
     )
   sdlParts->Array.join("\n\n")
 }

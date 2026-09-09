@@ -33,8 +33,8 @@ describe("Stm.TRef", () => {
     let tref = Stm.TRef.make(7)->Stm.commit->Effect.runSync
     let result = Stm.TRef.modify(tref, n => (n * 10, n + 1))->Stm.commit->Effect.runSync
     let new_ = Stm.TRef.get(tref)->Stm.commit->Effect.runSync
-    expect(result)->toBe(70)  // computed: 7 * 10
-    expect(new_)->toBe(8)     // updated: 7 + 1
+    expect(result)->toBe(70) // computed: 7 * 10
+    expect(new_)->toBe(8) // updated: 7 + 1
   })
 })
 
@@ -50,7 +50,8 @@ describe("Stm — STM operations", () => {
   })
 
   testSync("flatMap chains transactions", () => {
-    let v = Stm.succeed(4)
+    let v =
+      Stm.succeed(4)
       ->Stm.flatMap(n => Stm.succeed(n + 1))
       ->Stm.commit
       ->Effect.runSync
@@ -58,7 +59,8 @@ describe("Stm — STM operations", () => {
   })
 
   testSync("zipRight returns the second value", () => {
-    let v = Stm.succeed("a")
+    let v =
+      Stm.succeed("a")
       ->Stm.zipRight(Stm.succeed("b"))
       ->Stm.commit
       ->Effect.runSync

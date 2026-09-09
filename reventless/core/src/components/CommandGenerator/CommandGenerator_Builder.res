@@ -1,25 +1,29 @@
-module Make = (
-  Spec: Reventless.Aggregate.Spec,
-  Resolvers: CommandGenerator_Adapter.Resolvers,
-): (
+module Make = (Spec: Reventless.Aggregate.Spec, Resolvers: CommandGenerator_Adapter.Resolvers): (
   CommandGenerator.T with type runtimeParts := Resolvers.runtimeParts and type api := Resolvers.api
 ) => {
   let construct = (self, _name) => {
-    let resources = Plugin_Helpers.aggregateMutationFieldsRegistry->Dict.get(Spec.name)->Option.getOr([])->Array.map(field => {
-      let r: ReventlessInfra.Adapter.resource = {
-        id: ""->Pulumi.Output.make,
-        resourceInfo: ReventlessInfra.Adapter.ApiResolver({typeName: "Mutation", fieldName: field})->Pulumi.Output.make,
-        name: ""->Pulumi.Output.make,
-        urn: ""->Pulumi.Output.make,
-        service: ""->Pulumi.Output.make,
-        role: "commandGenerator"->Pulumi.Output.make,
-        region: ""->Pulumi.Output.make,
-        resourceType: ""->Pulumi.Output.make,
-        configuration: Dict.make()->Pulumi.Output.make,
-        tags: Dict.make()->Pulumi.Output.make,
-      }
-      r
-    })
+    let resources =
+      Plugin_Helpers.aggregateMutationFieldsRegistry
+      ->Dict.get(Spec.name)
+      ->Option.getOr([])
+      ->Array.map(field => {
+        let r: ReventlessInfra.Adapter.resource = {
+          id: ""->Pulumi.Output.make,
+          resourceInfo: ReventlessInfra.Adapter.ApiResolver({
+            typeName: "Mutation",
+            fieldName: field,
+          })->Pulumi.Output.make,
+          name: ""->Pulumi.Output.make,
+          urn: ""->Pulumi.Output.make,
+          service: ""->Pulumi.Output.make,
+          role: "commandGenerator"->Pulumi.Output.make,
+          region: ""->Pulumi.Output.make,
+          resourceType: ""->Pulumi.Output.make,
+          configuration: Dict.make()->Pulumi.Output.make,
+          tags: Dict.make()->Pulumi.Output.make,
+        }
+        r
+      })
     let outputs: CommandGenerator.outputs = {resources: resources}
     let _ = self->Component.setOutputs(outputs)
   }
@@ -32,7 +36,8 @@ module Make = (
       ->ComponentType.name(CommandGenerator.componentType)
     let opts = {Pulumi.ComponentResource.parent: commandGeneratorResource}
 
-    let fields = Plugin_Helpers.aggregateMutationFieldsRegistry->Dict.get(Spec.name)->Option.getOr([])
+    let fields =
+      Plugin_Helpers.aggregateMutationFieldsRegistry->Dict.get(Spec.name)->Option.getOr([])
 
     let resolvers = Resolvers.make(
       ~name,
@@ -48,7 +53,10 @@ module Make = (
     let _ = commandGenerator->Component.setOutputs(cgOutputs)
   }
 
-  let makeHandler = (~publishJsons, ~publishJsonsAndWait: option<CommandTopic.publishJsonsAndWait>) => {
+  let makeHandler = (
+    ~publishJsons,
+    ~publishJsonsAndWait: option<CommandTopic.publishJsonsAndWait>,
+  ) => {
     module Callback = CommandGenerator_Callback.Make(
       {
         let publishJsons = publishJsons

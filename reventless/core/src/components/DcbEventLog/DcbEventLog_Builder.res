@@ -2,7 +2,6 @@ module Make = (
   Storage: DcbEventLog_Adapter.Storage,
   EventTopicPublisher: EventTopic_Adapter.Publisher,
 ): DcbEventLog.T => {
-
   // DcbEventLog uses a generic JSON event topic (no typed event schema needed)
   module EventTopicSpec = {
     module Id = Reventless.Id.String

@@ -30,14 +30,9 @@ let createAggregatesWithoutEventMappers = (
       ~opts,
     )
     let aggOutputs = SpecificAggregate.outputs(aggregate)
-    addEventMapperFns->Dict.set(
-      SpecificAggregate.Spec.name,
-      aggOutputs.addEventMapper,
-    )
+    addEventMapperFns->Dict.set(SpecificAggregate.Spec.name, aggOutputs.addEventMapper)
     let resources =
-      aggOutputs.commandTopic->Pulumi.Output.apply(commandTopic =>
-        commandTopic.resources
-      )
+      aggOutputs.commandTopic->Pulumi.Output.apply(commandTopic => commandTopic.resources)
     aggregateResources->Dict.set(SpecificAggregate.Spec.name, resources)
     let publishJsons =
       SpecificAggregate.operations(aggregate)->Pulumi.Output.apply(({publishJsons}) => publishJsons)
@@ -54,10 +49,7 @@ let createAggregatesWithoutEventMappers = (
   ->Array.map(aggregate => {(aggregate.name, aggregate)})
   ->Dict.fromArray
 
-
-let finishAggregates = (
-  aggregatesOutputs: dict<Aggregate.outputs>,
-) => {
+let finishAggregates = (aggregatesOutputs: dict<Aggregate.outputs>) => {
   let allOutputs = aggregatesOutputs->Dict.valuesToArray
 
   // Wait for ALL commandTopicOutputs (not just those with event mappers)
@@ -89,10 +81,7 @@ let finishAggregates = (
     )
 }
 
-let addEventMappers = (
-  allEventTopics,
-  queryEngine,
-) => {
+let addEventMappers = (allEventTopics, queryEngine) => {
   let aggregatesOutputs =
     addEventMapperFns->Dict.mapValues(addEventMapperFn =>
       addEventMapperFn(allEventTopics, queryEngine)
@@ -126,9 +115,7 @@ let finishTasks = () =>
     let _ =
       taskSideEffectGates
       ->Pulumi.Output.all
-      ->Pulumi.Output.apply(_ =>
-        taskSideEffectFinishFns->Array.forEach(finishFn => finishFn())
-      )
+      ->Pulumi.Output.apply(_ => taskSideEffectFinishFns->Array.forEach(finishFn => finishFn()))
   }
 
 let readModelNamesForSourceName = Dict.make()
@@ -154,8 +141,7 @@ let extractReadModelsOutputs = readModels =>
   ->Dict.fromArray
 
 let createReadModels = (
-  type a,
-  type r,
+  type a r,
   readModels: array<module(ReventlessInfra.ReadModel.T with type api = a and type role = r)>,
   ~api: a,
   ~apiRole: r,
@@ -163,7 +149,9 @@ let createReadModels = (
   allEventTopics,
   opts,
 ) => {
-  let readModels = readModels->Array.map((module(SpecificReadModel: ReventlessInfra.ReadModel.T with type api = a and type role = r)) => {
+  let readModels = readModels->Array.map((
+    module(SpecificReadModel: ReventlessInfra.ReadModel.T with type api = a and type role = r),
+  ) => {
     let readModel = SpecificReadModel.make(
       ~api,
       ~apiRole,
@@ -222,8 +210,9 @@ let createExtensionPoints = (
   ~opts,
 ) => {
   let triples =
-    extensionPoints
-    ->Array.map((module(SpecificExtensionPoint: ReventlessInfra.ExtensionPoint.T)) => {
+    extensionPoints->Array.map((
+      module(SpecificExtensionPoint: ReventlessInfra.ExtensionPoint.T),
+    ) => {
       let extensionPoint = SpecificExtensionPoint.make(
         ~aggregateResources,
         ~publishToAggregates,

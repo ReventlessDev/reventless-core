@@ -37,7 +37,7 @@ module Make = (Spec: Spec) => {
       EffectLogger.logInfo(
         ~comp="Counter",
         `counterHandler: counts: ${counts->JSON.stringifyAny->Option.getOr("[]")}`,
-      )
+      ),
     )
     ->Effect.zipRight(
       Effect.all(
@@ -53,7 +53,7 @@ module Make = (Spec: Spec) => {
           )
         ),
         {"concurrency": "unbounded"},
-      )->Effect.map(_ => ())
+      )->Effect.map(_ => ()),
     )
     ->Effect.zipRight(
       Spec.jsonEventsHandler(
@@ -88,7 +88,7 @@ module Make = (Spec: Spec) => {
             }
           ),
         ),
-      )
+      ),
     )
     ->Effect.runPromise
 }

@@ -87,10 +87,7 @@ describe("the lifecycle trail:", () => {
   // Derived from the log and the envelope's own time, so the same events in the
   // same order produce the same trail however often they are replayed.
   testSync("a rebuild from the same events produces an identical trail", () => {
-    let events = [
-      (nine, Set("o1", placed)),
-      (ten, Update("o1", s => {...s, lifecycle: Shipped})),
-    ]
+    let events = [(nine, Set("o1", placed)), (ten, Update("o1", s => {...s, lifecycle: Shipped}))]
     expect(run(events)->statesOf)->toEqual(run(events)->statesOf)
   })
 

@@ -40,10 +40,10 @@ module Make = (): ReventlessCore.SideEffectHandler.T => {
     )
 
     // Derive npm specifiers from moduleUrl on each SideEffect module
-    let sideEffectModulePaths = sideEffects->Array.map(
-      (module(SE: Reventless.SideEffect.T)) =>
-        Util_Bundle.getModuleSpecifier(SE.moduleUrl),
-    )
+    let sideEffectModulePaths =
+      sideEffects->Array.map((module(SE: Reventless.SideEffect.T)) =>
+        Util_Bundle.getModuleSpecifier(SE.moduleUrl)
+      )
 
     EventCollectorRuntimeBuilder.registerSideEffectHandler(
       ~sideEffectHandlerName=name,

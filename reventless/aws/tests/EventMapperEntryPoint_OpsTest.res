@@ -37,9 +37,7 @@ let context: PulumiAws.Lambda.context = {
 
 describe("EventMapperEntryPoint_Ops.parseHandlerConfig", () => {
   testSync("reads the builder's field names", () => {
-    let config = EventMapperEntryPoint_Ops.parseHandlerConfig(
-      `{"targetSpecModule":"@x/p/src/Aggregate/Product.res.mjs","mappingsModule":"@x/p/src/Aggregate/Product_Mappings.res.mjs","queueUrl":"https://sqs/q"}`,
-    )
+    let config = EventMapperEntryPoint_Ops.parseHandlerConfig(`{"targetSpecModule":"@x/p/src/Aggregate/Product.res.mjs","mappingsModule":"@x/p/src/Aggregate/Product_Mappings.res.mjs","queueUrl":"https://sqs/q"}`)
     expect(config.targetSpecModule)->toEqual(Some("@x/p/src/Aggregate/Product.res.mjs"))
     expect(config.mappingsModule)->toEqual(Some("@x/p/src/Aggregate/Product_Mappings.res.mjs"))
     expect(config.queueUrl)->toEqual(Some("https://sqs/q"))

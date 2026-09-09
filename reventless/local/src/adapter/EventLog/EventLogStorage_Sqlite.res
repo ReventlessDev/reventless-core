@@ -58,27 +58,32 @@ let countAll = (db: SqliteDriver.t): int => {
 let makeStorage = (~db: SqliteDriver.t, ~name: string, ~opts as _) => {
   ensureSchema(db)
 
-  let insertStmt = db->SqliteDriver.prepare(
-    "INSERT INTO event_log(log_name, aggregate_id, seq_nr, payload) VALUES(?,?,?,?)",
-  )
+  let insertStmt =
+    db->SqliteDriver.prepare(
+      "INSERT INTO event_log(log_name, aggregate_id, seq_nr, payload) VALUES(?,?,?,?)",
+    )
   // Expected next seq_nr for an aggregate. Events are always appended
   // contiguously from seq 0 (the OCC check below forbids gaps), so
   // `MAX(seq_nr)+1` equals the row count — but it reads the rightmost leaf of the
   // (log_name, aggregate_id, seq_nr) PK index in O(log n) instead of `COUNT(*)`
   // scanning every row for the aggregate. `COALESCE(…, -1)+1` yields 0 when empty.
-  let nextSeqStmt = db->SqliteDriver.prepare(
-    "SELECT COALESCE(MAX(seq_nr), -1) + 1 AS c FROM event_log WHERE log_name=? AND aggregate_id=?",
-  )
-  let selectByIdStmt = db->SqliteDriver.prepare(
-    "SELECT payload FROM event_log WHERE log_name=? AND aggregate_id=? AND seq_nr >= ? ORDER BY seq_nr ASC",
-  )
+  let nextSeqStmt =
+    db->SqliteDriver.prepare(
+      "SELECT COALESCE(MAX(seq_nr), -1) + 1 AS c FROM event_log WHERE log_name=? AND aggregate_id=?",
+    )
+  let selectByIdStmt =
+    db->SqliteDriver.prepare(
+      "SELECT payload FROM event_log WHERE log_name=? AND aggregate_id=? AND seq_nr >= ? ORDER BY seq_nr ASC",
+    )
   let lastRowidStmt = db->SqliteDriver.prepare("SELECT last_insert_rowid() AS r")
-  let upsertSnapshotStmt = db->SqliteDriver.prepare(
-    "INSERT OR REPLACE INTO snapshot(log_name, aggregate_id, seq_nr, state, schema_hash) VALUES(?,?,?,?,?)",
-  )
-  let selectSnapshotStmt = db->SqliteDriver.prepare(
-    "SELECT seq_nr, state, schema_hash FROM snapshot WHERE log_name=? AND aggregate_id=?",
-  )
+  let upsertSnapshotStmt =
+    db->SqliteDriver.prepare(
+      "INSERT OR REPLACE INTO snapshot(log_name, aggregate_id, seq_nr, state, schema_hash) VALUES(?,?,?,?,?)",
+    )
+  let selectSnapshotStmt =
+    db->SqliteDriver.prepare(
+      "SELECT seq_nr, state, schema_hash FROM snapshot WHERE log_name=? AND aggregate_id=?",
+    )
 
   let expectedNextSeq = (id: string): int =>
     switch nextSeqStmt->SqliteDriver.get([JSON.Encode.string(name), JSON.Encode.string(id)]) {
@@ -118,6 +123,7 @@ let makeStorage = (~db: SqliteDriver.t, ~name: string, ~opts as _) => {
         | None => 0
         }
       })
+
       // Register the committed batch as appended-but-not-yet-published for the
       // projection checkpoint low-watermark; Platform's afterPublish hook
       // resolves the msgIds once the publish cycle completes. A transaction's
@@ -160,11 +166,7 @@ let makeStorage = (~db: SqliteDriver.t, ~name: string, ~opts as _) => {
 
   let replayArray = (id: string, ~fromSeq=0): array<JSON.t> =>
     selectByIdStmt
-    ->SqliteDriver.all([
-      JSON.Encode.string(name),
-      JSON.Encode.string(id),
-      JSON.Encode.int(fromSeq),
-    ])
+    ->SqliteDriver.all([JSON.Encode.string(name), JSON.Encode.string(id), JSON.Encode.int(fromSeq)])
     ->Array.map(decodePayload)
 
   let replay: EventLog.replay<string, JSON.t> = async id => replayArray(id)
@@ -172,7 +174,7 @@ let makeStorage = (~db: SqliteDriver.t, ~name: string, ~opts as _) => {
   // node:sqlite's iterate() could back a lazy stream, but the current Stream
   // API only has array-based fromIterable. Small events, dev-only backend →
   // materialise via all() and wrap. Swap to a lazy adapter if it matters.
-  let replayStream = (id, ~fromSeq=?) => replayArray(id, ~fromSeq=?fromSeq)->Stream.fromIterable
+  let replayStream = (id, ~fromSeq=?) => replayArray(id, ~fromSeq?)->Stream.fromIterable
 
   let latestSnapshot: EventLog.latestSnapshot<string> = async id =>
     try {
@@ -197,7 +199,10 @@ let makeStorage = (~db: SqliteDriver.t, ~name: string, ~opts as _) => {
     } catch {
     | exn =>
       Error(
-        exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("snapshot read error"),
+        exn
+        ->JsExn.fromException
+        ->Option.flatMap(JsExn.message)
+        ->Option.getOr("snapshot read error"),
       )
     }
 
@@ -230,7 +235,9 @@ let makeStorage = (~db: SqliteDriver.t, ~name: string, ~opts as _) => {
     stream
     ->Stream.runCollect
     ->Effect.flatMap(jsons =>
-      Effect.promise(() => appendTracked(~track=false, startingSeqNr, id, jsons))->Effect.flatMap(result =>
+      Effect.promise(() =>
+        appendTracked(~track=false, startingSeqNr, id, jsons)
+      )->Effect.flatMap(result =>
         switch result {
         | Ok() => Effect.succeed()
         // appendStream's error channel is a string; map the typed append error.
@@ -257,7 +264,12 @@ let makeStorage = (~db: SqliteDriver.t, ~name: string, ~opts as _) => {
   )
 }
 
-module Make = (Bus: LocalBus.T, DbProvider: {let db: SqliteDriver.t}) => {
+module Make = (
+  Bus: LocalBus.T,
+  DbProvider: {
+    let db: SqliteDriver.t
+  },
+) => {
   let make: EventLog_Adapter.storageMaker = (~name, ~owner as _, ~opts) => {
     let (storageName, replay, storage) = makeStorage(~db=DbProvider.db, ~name, ~opts)
     Bus.registerEventLogReplay(storageName, replay)

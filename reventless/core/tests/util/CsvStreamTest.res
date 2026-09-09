@@ -37,9 +37,9 @@ describe("CsvStream.parseRows", () => {
       ->Array.join("\n")
     let path = writeTempCsv("name\n" ++ dataRows)
     let result = await CsvStream.parseRows(~path)
-      ->Stream.take(2)
-      ->Stream.runCollect
-      ->Effect.runPromise
+    ->Stream.take(2)
+    ->Stream.runCollect
+    ->Effect.runPromise
     expect(result->Array.length)->toBe(2)
   })
 

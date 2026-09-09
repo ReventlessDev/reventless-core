@@ -21,8 +21,8 @@ let throws = (f: unit => 'a): option<string> =>
 
 describe("Util_LambdaEnvBudget.check", () => {
   testSync("passes a small environment", () => {
-    let msg = throws(() =>
-      Util_LambdaEnvBudget.check(~lambdaName="Small", ~handlerConfigJson=`{"queueUrl":"q"}`)
+    let msg = throws(
+      () => Util_LambdaEnvBudget.check(~lambdaName="Small", ~handlerConfigJson=`{"queueUrl":"q"}`),
     )
     expect(msg)->toEqual(None)
   })
@@ -39,19 +39,21 @@ describe("Util_LambdaEnvBudget.check", () => {
   testSync("counts the queue-URL var names toward the exact total", () => {
     // Sized so HANDLER_CONFIG alone fits and the var NAMES alone push it over —
     // the names are known at check time, so this must throw rather than warn.
-    let keys = Array.make(~length=40, "")->Array.mapWithIndex((_, i) =>
-      `PTA_AVeryLongAggregateNameNumber${i->Int.toString}_QUEUE_URL`
-    )
+    let keys =
+      Array.make(~length=40, "")->Array.mapWithIndex(
+        (_, i) => `PTA_AVeryLongAggregateNameNumber${i->Int.toString}_QUEUE_URL`,
+      )
     let keyBytes = keys->Array.reduce(0, (acc, k) => acc + String.length(k))
     let fixed = Util_LambdaEnvBudget.frameworkVarsBytes + String.length("HANDLER_CONFIG")
     // Just past the limit on the exact total alone — the names are enough.
     let json = String.repeat("a", budget - fixed - keyBytes + 1)
-    let msg = throws(() =>
-      Util_LambdaEnvBudget.check(
-        ~lambdaName="ManyTargets",
-        ~handlerConfigJson=json,
-        ~outputValuedKeys=keys,
-      )
+    let msg = throws(
+      () =>
+        Util_LambdaEnvBudget.check(
+          ~lambdaName="ManyTargets",
+          ~handlerConfigJson=json,
+          ~outputValuedKeys=keys,
+        ),
     )
     expect(msg->Option.isSome)->toBe(true)
   })
@@ -59,19 +61,21 @@ describe("Util_LambdaEnvBudget.check", () => {
   testSync("only estimating over the limit warns rather than throwing", () => {
     // Exact total sits under the limit; it is the per-URL allowance that crosses
     // it. The deploy must be allowed to proceed and find out.
-    let keys = Array.make(~length=20, "")->Array.mapWithIndex((_, i) => `PTA_A${i->Int.toString}_URL`)
+    let keys =
+      Array.make(~length=20, "")->Array.mapWithIndex((_, i) => `PTA_A${i->Int.toString}_URL`)
     let exact =
       Util_LambdaEnvBudget.frameworkVarsBytes +
       String.length("HANDLER_CONFIG") +
       keys->Array.reduce(0, (acc, k) => acc + String.length(k))
     let room = budget - exact - 100
     let json = String.repeat("a", room)
-    let msg = throws(() =>
-      Util_LambdaEnvBudget.check(
-        ~lambdaName="Estimated",
-        ~handlerConfigJson=json,
-        ~outputValuedKeys=keys,
-      )
+    let msg = throws(
+      () =>
+        Util_LambdaEnvBudget.check(
+          ~lambdaName="Estimated",
+          ~handlerConfigJson=json,
+          ~outputValuedKeys=keys,
+        ),
     )
     expect(msg)->toEqual(None)
   })

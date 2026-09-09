@@ -78,10 +78,7 @@ operator upgrading meets a sentence instead of a silent misbehaviour.
 
 Order-insensitive, because `DescribeTable` does not promise one.
 */
-let keySchemaRefusal = (
-  ~tableName: string,
-  ~actual: array<(string, string)>,
-): option<string> => {
+let keySchemaRefusal = (~tableName: string, ~actual: array<(string, string)>): option<string> => {
   let actualKey = describeKeySchema(actual)
   let wantedKey = describeKeySchema(expectedKeySchema)
   actualKey == wantedKey

@@ -64,7 +64,9 @@ let uploadAsset = async (
   // GraphQL string literals: JSON-quote the argument values (JSON string escaping is a
   // superset-safe subset of GraphQL's for these ASCII-ish inputs).
   let q = s => JSON.stringify(JSON.Encode.string(s))
-  let query = `mutation { r: Upload_Presign(store: ${q(store)}, fileName: ${q(fileName)}, contentType: ${q(contentType)}) { uploadUrl storageRef } }`
+  let query = `mutation { r: Upload_Presign(store: ${q(store)}, fileName: ${q(
+      fileName,
+    )}, contentType: ${q(contentType)}) { uploadUrl storageRef } }`
 
   let presign = try Ok(await Seed_Client.gql(client, ~query, ~label="Upload_Presign")) catch {
   | Seed_Types.Failed(m) => Error(m)
@@ -89,7 +91,7 @@ let uploadAsset = async (
       | Ok(putRes) if putRes->responseOk => Ok(storageRef)
       | Ok(putRes) =>
         let detail = await putRes->responseText
-        Error(`upload PUT failed with HTTP ${(putRes->responseStatus)->Int.toString}: ${detail}`)
+        Error(`upload PUT failed with HTTP ${putRes->responseStatus->Int.toString}: ${detail}`)
       }
     | _ => Error("Upload_Presign response missing uploadUrl/storageRef")
     }

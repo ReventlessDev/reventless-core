@@ -1,4 +1,7 @@
-type bucket<'bucketParts> = {resources: array<ReventlessInfra.Adapter.resource>, parts: 'bucketParts}
+type bucket<'bucketParts> = {
+  resources: array<ReventlessInfra.Adapter.resource>,
+  parts: 'bucketParts,
+}
 
 type connect<'bucketParts, 'runtimeParts> = (
   ~name: string,

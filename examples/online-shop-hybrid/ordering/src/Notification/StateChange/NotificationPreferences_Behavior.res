@@ -82,7 +82,8 @@ let evolve = (state, event: consumedEvent) =>
 let named = (recipientId, fact: Rules.fact) =>
   switch fact {
   | Claimed(_)
-  | Released(_) => None
+  | Released(_) =>
+    None
   | Deferred({reference, source}) =>
     Some(NotificationDeferred({recipientId, reference, sourceKey: source}))
   | Announced({address}) => Some(RecipientAnnounced({recipientId, email: address}))
@@ -155,9 +156,17 @@ let decide = (state, command) =>
   | AnnounceRecipient({recipientId, email}) =>
     through(state, recipientId, Announce({channel: Email, address: email}))
   | Subscribe({recipientId, category, channel}) =>
-    through(state, recipientId, Subscribe({category: categoryKey(category), channel: channelKey(channel)}))
+    through(
+      state,
+      recipientId,
+      Subscribe({category: categoryKey(category), channel: channelKey(channel)}),
+    )
   | Unsubscribe({recipientId, category, channel}) =>
-    through(state, recipientId, Unsubscribe({category: categoryKey(category), channel: channelKey(channel)}))
+    through(
+      state,
+      recipientId,
+      Unsubscribe({category: categoryKey(category), channel: channelKey(channel)}),
+    )
 
   // The one arm the mapping cannot be pure about: the words and the subject
   // belong to the requester, and the trait's facts carry neither, because a trait

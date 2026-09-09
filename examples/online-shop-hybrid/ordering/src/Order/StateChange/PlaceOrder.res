@@ -54,23 +54,23 @@ type lineItem = {
 
 @schema
 type command =
-  PlaceOrder({
-    @partitionTag orderId: string,
-    // customerId is payload, not a query key — @noDcbTag stops it auto-tagging.
-    // It is also the order's owner: the resolver overwrites this with the
-    // authenticated caller's id before the command is published, so what a
-    // client sends here is ignored rather than trusted. An operator placing an
-    // order on someone's behalf is exempt and keeps the value they sent.
-    @noDcbTag @owner customerId: string,
-    lineItems: array<lineItem>,
-    shippingMethod: shippingMethod,
-    // A requested delivery slot, chosen at checkout. An optional field — a
-    // Pickup order (or a caller that names no preference) simply omits it, and
-    // an order placed before this field existed carries no key, so adding it
-    // costs the log nothing (the additive path in the plan's adoption table).
-    // One `DateRange.t`, not a guessed `start*`/`end*` name pair.
-    deliveryWindow?: Reventless.DateRange.t,
-  })
+  | PlaceOrder({
+      @partitionTag orderId: string,
+      // customerId is payload, not a query key — @noDcbTag stops it auto-tagging.
+      // It is also the order's owner: the resolver overwrites this with the
+      // authenticated caller's id before the command is published, so what a
+      // client sends here is ignored rather than trusted. An operator placing an
+      // order on someone's behalf is exempt and keeps the value they sent.
+      @noDcbTag @owner customerId: string,
+      lineItems: array<lineItem>,
+      shippingMethod: shippingMethod,
+      // A requested delivery slot, chosen at checkout. An optional field — a
+      // Pickup order (or a caller that names no preference) simply omits it, and
+      // an order placed before this field existed carries no key, so adding it
+      // costs the log nothing (the additive path in the plan's adoption table).
+      // One `DateRange.t`, not a guessed `start*`/`end*` name pair.
+      deliveryWindow?: Reventless.DateRange.t,
+    })
 
 @schema
 type error =
@@ -102,33 +102,33 @@ type orderLine = {
 
 @schema
 type event =
-  OrderPlaced({
-    @partitionTag orderId: string,
-    customerId: string,
-    // Redundant against `lines`, and deliberately so. The extension point
-    // decomposes this into one published `ItemOrdered` per product and
-    // `CancelOrder` folds it, so both keep working untouched — and the public
-    // contract in `ordering-spec` does not move, which is what lets the shop
-    // show quantities without redeploying Catalog in lockstep.
-    productIds: array<string>,
-    lines: array<orderLine>,
-    total: Reventless.Money.t,
-    shippingMethod: shippingMethod,
-    deliveryWindow?: Reventless.DateRange.t,
-    // What the first product was called when this order was placed.
-    //
-    // **Captured, not looked up.** An order is a record of what somebody bought,
-    // and the catalog goes on changing afterwards — a rename, a withdrawal, a
-    // reshoot. Reading the name live would rewrite history every time the shop
-    // tidied its shelves, and would leave an order for a withdrawn product with
-    // nothing to show at all.
-    //
-    // Optional because every order placed before this field existed carries no
-    // key, which is what makes adding it cost the log nothing. A reader treats
-    // absent as "not recorded" rather than as a name.
-    firstProductName?: string,
-    // The picture as it was when the order was placed, frozen for the reason the
-    // name is. A reshoot, a withdrawal or a deletion afterwards leaves this
-    // order showing what the shopper actually bought.
-    @storageRef("Catalog.productImages") firstProductImage?: Reventless.UploadableImage.t,
-  })
+  | OrderPlaced({
+      @partitionTag orderId: string,
+      customerId: string,
+      // Redundant against `lines`, and deliberately so. The extension point
+      // decomposes this into one published `ItemOrdered` per product and
+      // `CancelOrder` folds it, so both keep working untouched — and the public
+      // contract in `ordering-spec` does not move, which is what lets the shop
+      // show quantities without redeploying Catalog in lockstep.
+      productIds: array<string>,
+      lines: array<orderLine>,
+      total: Reventless.Money.t,
+      shippingMethod: shippingMethod,
+      deliveryWindow?: Reventless.DateRange.t,
+      // What the first product was called when this order was placed.
+      //
+      // **Captured, not looked up.** An order is a record of what somebody bought,
+      // and the catalog goes on changing afterwards — a rename, a withdrawal, a
+      // reshoot. Reading the name live would rewrite history every time the shop
+      // tidied its shelves, and would leave an order for a withdrawn product with
+      // nothing to show at all.
+      //
+      // Optional because every order placed before this field existed carries no
+      // key, which is what makes adding it cost the log nothing. A reader treats
+      // absent as "not recorded" rather than as a name.
+      firstProductName?: string,
+      // The picture as it was when the order was placed, frozen for the reason the
+      // name is. A reshoot, a withdrawal or a deletion afterwards leaves this
+      // order showing what the shopper actually bought.
+      @storageRef("Catalog.productImages") firstProductImage?: Reventless.UploadableImage.t,
+    })

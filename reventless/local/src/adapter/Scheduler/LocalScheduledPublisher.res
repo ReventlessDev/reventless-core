@@ -60,14 +60,12 @@ module Make = (Bus: LocalBus.T) => {
       | json => json
       | exception _ => schedule.payload->JSON.Encode.string
       }
-      let fire = () =>
-        Bus.publishEvent(topicName, "Scheduler", scheduleMeta, payloadJson)->ignore
-      let handle =
-        if schedule.rate->isSingleShot {
-          setTimeoutJs(fire, 0)
-        } else {
-          setIntervalJs(fire, rateToMs(schedule.rate))
-        }
+      let fire = () => Bus.publishEvent(topicName, "Scheduler", scheduleMeta, payloadJson)->ignore
+      let handle = if schedule.rate->isSingleShot {
+        setTimeoutJs(fire, 0)
+      } else {
+        setIntervalJs(fire, rateToMs(schedule.rate))
+      }
       activeTimers.contents->Dict.set(schedule.name, handle)
     }
 
@@ -87,10 +85,12 @@ module Make = (Bus: LocalBus.T) => {
         ~urn=""->Pulumi.Output.make,
         ~service="memory:InMemory"->Pulumi.Output.make,
       ),
-      operations: ({
-        createSchedule,
-        deleteSchedule,
-      }: ReventlessInfra.Scheduler.operations)->Pulumi.Output.make,
+      operations: (
+        {
+          createSchedule,
+          deleteSchedule,
+        }: ReventlessInfra.Scheduler.operations
+      )->Pulumi.Output.make,
     }
   }
 

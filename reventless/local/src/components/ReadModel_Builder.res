@@ -15,16 +15,15 @@ module Make = (Bus: LocalBus.T) => {
   module Make = (
     Spec: Reventless.ReadModel.Spec,
     Mappings: Reventless.Projection.Mappings with module Target := Spec,
-  ) =>
-    ReventlessCore.ReadModel_Builder.Make(
-      Spec,
-      Mappings,
-      RuntimeEnvironment,
-      QueryDbStorage,
-      QueryDbResolvers,
-      EventCollectorChannel,
-      EventCollectorRuntimeBuilder,
-    )
+  ) => ReventlessCore.ReadModel_Builder.Make(
+    Spec,
+    Mappings,
+    RuntimeEnvironment,
+    QueryDbStorage,
+    QueryDbResolvers,
+    EventCollectorChannel,
+    EventCollectorRuntimeBuilder,
+  )
 
   // Resolver-free variant: registers the QueryDb store in the Bus and wires the
   // EventCollector subscription, but does NOT register GraphQL query resolvers.
@@ -36,14 +35,13 @@ module Make = (Bus: LocalBus.T) => {
   module MakeNoResolver = (
     Spec: Reventless.ReadModel.Spec,
     Mappings: Reventless.Projection.Mappings with module Target := Spec,
-  ) =>
-    ReventlessCore.ReadModel_Builder.Make(
-      Spec,
-      Mappings,
-      RuntimeEnvironment,
-      QueryDbStorage,
-      NoResolvers,
-      EventCollectorChannel,
-      EventCollectorRuntimeBuilder,
-    )
+  ) => ReventlessCore.ReadModel_Builder.Make(
+    Spec,
+    Mappings,
+    RuntimeEnvironment,
+    QueryDbStorage,
+    NoResolvers,
+    EventCollectorChannel,
+    EventCollectorRuntimeBuilder,
+  )
 }

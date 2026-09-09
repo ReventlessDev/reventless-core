@@ -31,13 +31,9 @@ describe("Util_StaticBundle.contentTypeFor", () => {
     )
   )
   testSync("json", () =>
-    expect(Util_StaticBundle.contentTypeFor("data.json"))->toBe(
-      "application/json; charset=utf-8",
-    )
+    expect(Util_StaticBundle.contentTypeFor("data.json"))->toBe("application/json; charset=utf-8")
   )
-  testSync("svg", () =>
-    expect(Util_StaticBundle.contentTypeFor("logo.svg"))->toBe("image/svg+xml")
-  )
+  testSync("svg", () => expect(Util_StaticBundle.contentTypeFor("logo.svg"))->toBe("image/svg+xml"))
   testSync("woff2", () =>
     expect(Util_StaticBundle.contentTypeFor("font.woff2"))->toBe("font/woff2")
   )
@@ -92,8 +88,7 @@ describe("Util_StaticBundle.walk", () => {
   testSync("identical contents produce identical hashes", () => {
     let dir = makeFixture()
     let entries = Util_StaticBundle.walk(dir)
-    let indexEntry =
-      entries->Array.find(e => e.relativePath == "index.html")->Option.getUnsafe
+    let indexEntry = entries->Array.find(e => e.relativePath == "index.html")->Option.getUnsafe
     let indexHash = indexEntry.contentHash
     let dir2 = NodeFs.mkdtempSync(NodePath.join([NodeOs.tmpdir(), "static-bundle-"]))
     NodeFs.writeFileSync(NodePath.join([dir2, "index.html"]), "<html></html>")

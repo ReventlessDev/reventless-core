@@ -3,16 +3,22 @@ let onListTools = (server: McpSdk.server, handler: unit => promise<McpSdk.listTo
   server->McpSdk.setRequestHandler(McpSdk.listToolsRequestSchema, _ => handler())
 
 /** Register a handler for tools/call requests. */
-let onCallTool = (server: McpSdk.server, handler: McpSdk.callToolRequest => promise<McpSdk.callToolResult>) =>
-  server->McpSdk.setRequestHandler(McpSdk.callToolRequestSchema, handler)
+let onCallTool = (
+  server: McpSdk.server,
+  handler: McpSdk.callToolRequest => promise<McpSdk.callToolResult>,
+) => server->McpSdk.setRequestHandler(McpSdk.callToolRequestSchema, handler)
 
 /** Register a handler for resources/list requests. */
-let onListResources = (server: McpSdk.server, handler: unit => promise<McpSdk.listResourcesResult>) =>
-  server->McpSdk.setRequestHandler(McpSdk.listResourcesRequestSchema, _ => handler())
+let onListResources = (
+  server: McpSdk.server,
+  handler: unit => promise<McpSdk.listResourcesResult>,
+) => server->McpSdk.setRequestHandler(McpSdk.listResourcesRequestSchema, _ => handler())
 
 /** Register a handler for resources/read requests. */
-let onReadResource = (server: McpSdk.server, handler: McpSdk.readResourceRequest => promise<McpSdk.readResourceResult>) =>
-  server->McpSdk.setRequestHandler(McpSdk.readResourceRequestSchema, handler)
+let onReadResource = (
+  server: McpSdk.server,
+  handler: McpSdk.readResourceRequest => promise<McpSdk.readResourceResult>,
+) => server->McpSdk.setRequestHandler(McpSdk.readResourceRequestSchema, handler)
 
 /** Register a handler for resources/templates/list requests. */
 let onListResourceTemplates = (

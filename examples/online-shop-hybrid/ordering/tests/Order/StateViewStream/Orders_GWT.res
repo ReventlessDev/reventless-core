@@ -69,10 +69,11 @@ describe("Orders StateViewSlice", () => {
   // `customerId` beside it as the resource ref — which is what lets a scheduler
   // mode lay a bar out from the row without guessing the pair from field names.
   test("a requested delivery window lands on the row", () => {
-    let window = Reventless.DateRange.make(
-      ~start="2026-03-02T09:00:00Z",
-      ~end_="2026-03-02T11:00:00Z",
-    )->Result.getOrThrow
+    let window =
+      Reventless.DateRange.make(
+        ~start="2026-03-02T09:00:00Z",
+        ~end_="2026-03-02T11:00:00Z",
+      )->Result.getOrThrow
     givenEvents([])
     ->whenEvent(
       OrderPlaced({

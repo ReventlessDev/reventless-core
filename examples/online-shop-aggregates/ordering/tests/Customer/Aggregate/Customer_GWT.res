@@ -14,10 +14,7 @@ describe("Customer Behavior", () => {
   )
 
   test("Register on deactivated aggregate returns CustomerAlreadyDeactivated", () =>
-    givenEvents([
-      Registered({email: "alice@example.com", address: "123 Main St"}),
-      Deactivated,
-    ])
+    givenEvents([Registered({email: "alice@example.com", address: "123 Main St"}), Deactivated])
     ->whenCmd(Register({email: "bob@example.com", address: "456 Oak Ave"}))
     ->thenError(CustomerAlreadyDeactivated)
   )
@@ -41,10 +38,7 @@ describe("Customer Behavior", () => {
   )
 
   test("UpdateEmail on deactivated customer returns CustomerAlreadyDeactivated", () =>
-    givenEvents([
-      Registered({email: "alice@example.com", address: "123 Main St"}),
-      Deactivated,
-    ])
+    givenEvents([Registered({email: "alice@example.com", address: "123 Main St"}), Deactivated])
     ->whenCmd(UpdateEmail({email: "bob@example.com"}))
     ->thenError(CustomerAlreadyDeactivated)
   )
@@ -80,10 +74,7 @@ describe("Customer Behavior", () => {
   )
 
   test("Deactivate on deactivated customer produces no events (idempotent)", () =>
-    givenEvents([
-      Registered({email: "alice@example.com", address: "123 Main St"}),
-      Deactivated,
-    ])
+    givenEvents([Registered({email: "alice@example.com", address: "123 Main St"}), Deactivated])
     ->whenCmd(Deactivate)
     ->thenNoEvent
   )

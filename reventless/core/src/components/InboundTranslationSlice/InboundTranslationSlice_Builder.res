@@ -39,7 +39,11 @@ module Make = (
       let visibility: Reventless.Visibility.t = Public
     }
 
-    module SpecificQueryDb = QueryDb_Builder.Make(AuditQueryDbSpec, QueryDbStorage, QueryDbResolvers)
+    module SpecificQueryDb = QueryDb_Builder.Make(
+      AuditQueryDbSpec,
+      QueryDbStorage,
+      QueryDbResolvers,
+    )
 
     // Persist just this request's audit row, taking it out of the in-memory log
     // as it goes — see `takeAuditRow` for why draining the whole dict is wrong.
@@ -78,10 +82,7 @@ module Make = (
           let ops: InboundTranslationSlice.operations = {
             receive: async inputJson => {
               let result = await Callback.receive(publishJsonsFn, inputJson)
-              await syncToQueryDb(
-                queryDbOps,
-                result->InboundTranslationSlice_Callback.requestIdOf,
-              )
+              await syncToQueryDb(queryDbOps, result->InboundTranslationSlice_Callback.requestIdOf)
               result
             },
           }
@@ -99,11 +100,7 @@ module Make = (
     // InboundTranslationSlice publishes commands + syncs its QueryDb inline; it
     // provisions no per-slice runtime environment, so the runtime hint is accepted
     // (for composition-surface parity) and discarded.
-    let make = (
-      ~publishJsons,
-      ~runtime as _=?,
-      ~opts=?,
-    ): InboundTranslationSlice.component =>
+    let make = (~publishJsons, ~runtime as _=?, ~opts=?): InboundTranslationSlice.component =>
       Component.make(
         ~componentType=InboundTranslationSlice.componentType->ComponentType.toString,
         ~name=Spec.name,

@@ -23,12 +23,15 @@ module PaymentWebhookSlice = {
 
 describe("PaymentWebhook InboundTranslationSlice", () => {
   test("completed status emits ConfirmPayment", () =>
-    whenInput({paymentId: "p1", orderId: "o1", status: "completed"})
-    ->thenCommand("o1", ConfirmPayment({orderId: "o1", paymentId: "p1"}))
+    whenInput({paymentId: "p1", orderId: "o1", status: "completed"})->thenCommand(
+      "o1",
+      ConfirmPayment({orderId: "o1", paymentId: "p1"}),
+    )
   )
 
   test("unknown status surfaces translate error", () =>
-    whenInput({paymentId: "p1", orderId: "o1", status: "garbage"})
-    ->thenTranslateError("Unknown payment status: garbage")
+    whenInput({paymentId: "p1", orderId: "o1", status: "garbage"})->thenTranslateError(
+      "Unknown payment status: garbage",
+    )
   )
 })

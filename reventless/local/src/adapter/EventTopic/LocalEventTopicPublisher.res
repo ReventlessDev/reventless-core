@@ -2,7 +2,12 @@
 // The resource name doubles as the bus topic key that EventCollectorChannel subscribes to.
 
 module Make = (Bus: LocalBus.T) => {
-  let make: ReventlessCore.EventTopic_Adapter.publisherMaker = (~name, ~storageResources as _, ~owner as _, ~opts as _) => {
+  let make: ReventlessCore.EventTopic_Adapter.publisherMaker = (
+    ~name,
+    ~storageResources as _,
+    ~owner as _,
+    ~opts as _,
+  ) => {
     let publishJson = (service, meta, json) => Bus.publishEvent(name, service, meta, json)
     let publishJsonStream: ReventlessInfra.EventTopic.publishJsonStream = stream =>
       stream
@@ -10,8 +15,9 @@ module Make = (Bus: LocalBus.T) => {
       ->Stream.runForEach(items =>
         Effect.promise(() =>
           items
-          ->Array.map(({ReventlessInfra.EventTopic.service, meta, json}) =>
-            publishJson(service, meta, json)
+          ->Array.map(
+            ({ReventlessInfra.EventTopic.service: service, meta, json}) =>
+              publishJson(service, meta, json),
           )
           ->Promise.all
           ->Promise.thenResolve(_ => ())

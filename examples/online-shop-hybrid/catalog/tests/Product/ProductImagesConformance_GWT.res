@@ -14,27 +14,39 @@ module Binding = {
     let created: array<ProductImages.consumedEvent> = [ProductAdded]
     let attached = (ref): ProductImages.consumedEvent => ProductImageAttached({productImage: ref})
     let removed = (ref): ProductImages.consumedEvent => ProductImageRemoved({productImage: ref})
-    let primarySet = (ref): ProductImages.consumedEvent =>
-      ProductPrimaryImageSet({productImage: ref})
-    let altTextSet = (ref, altText): ProductImages.consumedEvent =>
-      ProductImageAltTextSet({productImage: ref, altText})
-    let effectiveChanged = (ref): ProductImages.consumedEvent =>
-      ProductEffectiveImageChanged({productImage: ?ref})
+    let primarySet = (ref): ProductImages.consumedEvent => ProductPrimaryImageSet({
+      productImage: ref,
+    })
+    let altTextSet = (ref, altText): ProductImages.consumedEvent => ProductImageAltTextSet({
+      productImage: ref,
+      altText,
+    })
+    let effectiveChanged = (ref): ProductImages.consumedEvent => ProductEffectiveImageChanged({
+      productImage: ?ref,
+    })
   }
 
   let attach = ref => ProductImages.AttachProductImage({productId: "p1", productImage: ref})
   let remove = ref => ProductImages.RemoveProductImage({productId: "p1", productImage: ref})
   let setPrimary = ref => ProductImages.SetPrimaryProductImage({productId: "p1", productImage: ref})
-  let setAltText = (ref, altText) =>
-    ProductImages.SetProductImageAltText({productId: "p1", productImage: ref, altText})
+  let setAltText = (ref, altText) => ProductImages.SetProductImageAltText({
+    productId: "p1",
+    productImage: ref,
+    altText,
+  })
 
   let attached = ref => ProductImages.ProductImageAttached({productId: "p1", productImage: ref})
   let removed = ref => ProductImages.ProductImageRemoved({productId: "p1", productImage: ref})
   let primarySet = ref => ProductImages.ProductPrimaryImageSet({productId: "p1", productImage: ref})
-  let altTextSet = (ref, altText) =>
-    ProductImages.ProductImageAltTextSet({productId: "p1", productImage: ref, altText})
-  let effectiveChanged = ref =>
-    ProductImages.ProductEffectiveImageChanged({productId: "p1", productImage: ?ref})
+  let altTextSet = (ref, altText) => ProductImages.ProductImageAltTextSet({
+    productId: "p1",
+    productImage: ref,
+    altText,
+  })
+  let effectiveChanged = ref => ProductImages.ProductEffectiveImageChanged({
+    productId: "p1",
+    productImage: ?ref,
+  })
   let notAttached = ProductImages.ProductImageNotAttached
 }
 

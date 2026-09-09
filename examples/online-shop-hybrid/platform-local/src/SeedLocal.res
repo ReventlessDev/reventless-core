@@ -18,7 +18,4 @@
 open ReventlessSeed
 open OnlineShopHybridSeed
 
-Seed.Runner.seed(
-  ~sets=HybridSeedData.dataSets,
-  ~connect=ReventlessLocal.LocalSeedTarget.connect(),
-)
+Seed.Runner.seed(~sets=HybridSeedData.dataSets, ~connect=ReventlessLocal.LocalSeedTarget.connect())

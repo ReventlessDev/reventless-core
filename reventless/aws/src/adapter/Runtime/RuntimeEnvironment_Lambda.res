@@ -48,7 +48,12 @@ let make: ReventlessCore.Runtime.environmentMaker<'event, context, 'result, part
 
   // The environmentMaker signature carries no component kind, so callers cannot
   // pass one through; attributed to the Platform rather than to an invented kind.
-  let tags = AWS.Tags.make(~name, ~kind=ReventlessCore.ComponentType.Platform, ~role=Runtime, ~scope=Platform)
+  let tags = AWS.Tags.make(
+    ~name,
+    ~kind=ReventlessCore.ComponentType.Platform,
+    ~role=Runtime,
+    ~scope=Platform,
+  )
 
   let lambdaRole = IAM.Role.makeWithDefaultPolicy(
     ~name,
@@ -85,7 +90,9 @@ let make: ReventlessCore.Runtime.environmentMaker<'event, context, 'result, part
     parts: {lambda: lambdaAsFunction, lambdaRole},
     resources: [
       lambdaAsFunction
-      ->Pulumi.Output.apply(lambda => lambda->Util.Lambda.toResource(~tags=tags->Pulumi.Output.fromInput))
+      ->Pulumi.Output.apply(lambda =>
+        lambda->Util.Lambda.toResource(~tags=tags->Pulumi.Output.fromInput)
+      )
       ->ReventlessCore.Adapter.outputToResource,
       Util_IAM_Role.toResource(lambdaRole),
     ],
@@ -264,8 +271,10 @@ let makeFromCodeAsset: (
   // UpdateFunctionConfiguration limit. Absent entirely when nothing is
   // registered — an extension-free deployment gets the env it always had.
   if !ReventlessCore.RuntimeExtension.isEmpty() {
-    let {ReventlessCore.ResourceAttribution.plugin: plugin, platform} =
-      ReventlessCore.ResourceAttribution.current.contents
+    let {
+      ReventlessCore.ResourceAttribution.plugin: plugin,
+      platform,
+    } = ReventlessCore.ResourceAttribution.current.contents
     let orNull = o => o->Option.mapOr(JSON.Null, s => JSON.String(s))
     let config = JSON.Object(
       Dict.fromArray([
@@ -313,15 +322,18 @@ let makeFromCodeAsset: (
       role: lambdaRole.arn->Pulumi.Output.asInput,
       memorySize: memorySize->Pulumi.Input.make,
       timeout: timeout->Pulumi.Input.make,
-      reservedConcurrentExecutions: ?reservedConcurrency->Option.map(Pulumi.Input.make),
-      ephemeralStorage: ?ephemeralStorageMb->Option.map(mb =>
-        ({size: mb->Pulumi.Input.make}: Lambda.Function.ephemeralStorage)->Pulumi.Input.make
+      reservedConcurrentExecutions: ?(reservedConcurrency->Option.map(Pulumi.Input.make)),
+      ephemeralStorage: ?(
+        ephemeralStorageMb->Option.map(mb =>
+          ({size: mb->Pulumi.Input.make}: Lambda.Function.ephemeralStorage)->Pulumi.Input.make
+        )
       ),
       layers,
       tags,
-      vpcConfig: ?vpcConfig,
-      environment: ({Lambda.Function.variables: variables}: Lambda.Function.functionEnvironment)
-        ->Pulumi.Input.make,
+      ?vpcConfig,
+      environment: (
+        {Lambda.Function.variables: variables}: Lambda.Function.functionEnvironment
+      )->Pulumi.Input.make,
       // Points the function at the group above and, by reading its name output,
       // orders the function after it.
       loggingConfig: ?Util_LambdaLogging.loggingConfigFor(logGroup),

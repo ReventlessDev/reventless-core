@@ -29,7 +29,12 @@ describe("StateViewSlice sub-ID E2E", () => {
       ScoreEventLog.ScoreRecorded({id: "player-2", category: "math", date: "2026-01", score: 80}),
     )
     let _ = await appendEvent(
-      ScoreEventLog.ScoreRecorded({id: "player-2", category: "science", date: "2026-01", score: 95}),
+      ScoreEventLog.ScoreRecorded({
+        id: "player-2",
+        category: "science",
+        date: "2026-01",
+        score: 95,
+      }),
     )
     let _ = await appendEvent(
       ScoreEventLog.ScoreRecorded({id: "player-2", category: "math", date: "2026-02", score: 85}),
@@ -40,7 +45,12 @@ describe("StateViewSlice sub-ID E2E", () => {
 
   testPromise("loadStream returns sub-key items in alphabetical order", async () => {
     let _ = await appendEvent(
-      ScoreEventLog.ScoreRecorded({id: "player-3", category: "science", date: "2026-03", score: 70}),
+      ScoreEventLog.ScoreRecorded({
+        id: "player-3",
+        category: "science",
+        date: "2026-03",
+        score: 70,
+      }),
     )
     let _ = await appendEvent(
       ScoreEventLog.ScoreRecorded({id: "player-3", category: "math", date: "2026-01", score: 88}),

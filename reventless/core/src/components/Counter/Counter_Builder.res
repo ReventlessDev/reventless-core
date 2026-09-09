@@ -57,12 +57,7 @@ module Make = (
       QueryDb_Adapter.NoResolvers(QueryDbStorage),
     )
 
-    let referencesDb = ReferencesDb.make(
-      ~api=Api.api(),
-      ~apiRole=Api.apiRole(),
-      ~ttl?,
-      ~opts,
-    )
+    let referencesDb = ReferencesDb.make(~api=Api.api(), ~apiRole=Api.apiRole(), ~ttl?, ~opts)
     let countsDb = CountsDb.make(
       ~api=Api.api(),
       ~apiRole=Api.apiRole(),

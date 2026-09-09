@@ -7,7 +7,6 @@
 // Pulumi value reaches this module's import graph (deploy-time wiring lives in
 // PluginRuntime_Builder.forPluginHeartbeat).
 
-
 // === Initialize eagerly at module load (Lambda cold start) ===
 
 let epQueueUrl = NodeProcess.env->Dict.get("EP_QUEUE_URL")->Option.getOr("")

@@ -46,8 +46,8 @@ describe("QueryInterception", () => {
 
   testSync("and registering a runtime interceptor does not switch provisioning on", () => {
     Interception.reset()
-    QueryDb_Callback.registerQueryInterceptor((~identity as _, ~readModelName as _, ~args as _) =>
-      Promise.resolve(QueryDb_Callback.Allow)
+    QueryDb_Callback.registerQueryInterceptor(
+      (~identity as _, ~readModelName as _, ~args as _) => Promise.resolve(QueryDb_Callback.Allow),
     )
     expect(Interception.isEnabled())->toBe(false)
     QueryDb_Callback.clearQueryInterceptor()

@@ -3,7 +3,6 @@
 
 open TestFixtures
 
-
 // ─────────────────────────────────────────────────────────────
 // Isolated bus + Pulumi mock mode
 // ─────────────────────────────────────────────────────────────
@@ -20,7 +19,7 @@ module TestSEHSource = {
   let name = "TestSEHSource"
 
   @schema
-  type event = | OrderPlaced({orderId: string})
+  type event = OrderPlaced({orderId: string})
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -119,8 +118,9 @@ let publishOrderPlaced = async (id, orderId) => {
       ("meta", testMeta->Reventless.Util_Sury.toJson(Reventless.Message.metaSchema)),
       (
         "event",
-        TestSEHSource.OrderPlaced({orderId: orderId})
-        ->Reventless.Util_Sury.toJson(TestSEHSource.eventSchema),
+        TestSEHSource.OrderPlaced({orderId: orderId})->Reventless.Util_Sury.toJson(
+          TestSEHSource.eventSchema,
+        ),
       ),
     ]),
   )

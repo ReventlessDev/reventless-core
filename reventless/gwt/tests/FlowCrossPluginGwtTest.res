@@ -15,7 +15,6 @@
 // order fans out into one demand command per product across the boundary.
 // See `docs/plans/done/gwt-flow-and-extension-test-kinds.md` Phase 3.
 
-
 open Flow_GWT
 
 module EPM = ReventlessInfra.ExtensionPointMapping
@@ -40,7 +39,11 @@ module AddProductSlice = {
 
   @schema
   type event =
-    ProductAdded({productId: @s.matches(Reventless.DcbTag.string) string, name: string, price: float})
+    | ProductAdded({
+        productId: @s.matches(Reventless.DcbTag.string) string,
+        name: string,
+        price: float,
+      })
 }
 
 module AddProductBehavior = {
@@ -91,7 +94,10 @@ module ProductsEpMapping = {
     (_id, event: ProductDelegate.event, _meta, _q) =>
       switch event {
       | ProductAdded({productId, name, price}) => [
-          EPM.PublishEvent(productId, ProductsEpSpec.ProductBecameAvailable({productId, name, price})),
+          EPM.PublishEvent(
+            productId,
+            ProductsEpSpec.ProductBecameAvailable({productId, name, price}),
+          ),
         ]
       },
   )
@@ -127,9 +133,10 @@ module OrdersEpMapping = {
     (_id, event: OrderDelegate.event, _meta, _q) =>
       switch event {
       | OrderPlaced({orderId, productIds}) =>
-        productIds->Array.map(pid =>
-          EPM.PublishEvent(pid, OrdersEpSpec.ItemOrdered({productId: pid, orderId}))
-        )
+        productIds->Array.map(pid => EPM.PublishEvent(
+          pid,
+          OrdersEpSpec.ItemOrdered({productId: pid, orderId}),
+        ))
       },
   )
 }
@@ -164,7 +171,8 @@ module RecordDemandBehavior = {
     }
   let decide = (_state, command: RecordDemandSlice.command) =>
     switch command {
-    | RecordDemand({productId, orderId}) => Ok([RecordDemandSlice.DemandRecorded({productId, orderId})])
+    | RecordDemand({productId, orderId}) =>
+      Ok([RecordDemandSlice.DemandRecorded({productId, orderId})])
     }
 }
 
@@ -194,11 +202,19 @@ module SyncProductSlice = {
   type consumedEvent = ProductSynced({productId: @s.matches(Reventless.DcbTag.string) string})
   @schema
   type command =
-    SyncProduct({productId: @s.matches(Reventless.DcbTag.string) string, name: string, price: float})
+    | SyncProduct({
+        productId: @s.matches(Reventless.DcbTag.string) string,
+        name: string,
+        price: float,
+      })
   @schema type error = NoError
   @schema
   type event =
-    ProductSynced({productId: @s.matches(Reventless.DcbTag.string) string, name: string, price: float})
+    | ProductSynced({
+        productId: @s.matches(Reventless.DcbTag.string) string,
+        name: string,
+        price: float,
+      })
   let moduleUrl = ""
   let commandAuthorization = (_: command): Reventless.Authorization.permission => AllowAuthenticated
   type lifecycleState = unit
@@ -242,20 +258,20 @@ module PlaceOrderSlice = {
     | ProductSynced({productId: @s.matches(Reventless.DcbTag.string) string})
   @schema
   type command =
-    PlaceOrder({
-      orderId: @s.matches(Reventless.DcbTag.string) string,
-      productIds: array<@s.matches(Reventless.DcbTag.stringForKey(~key="productId")) string>,
-    })
+    | PlaceOrder({
+        orderId: @s.matches(Reventless.DcbTag.string) string,
+        productIds: array<@s.matches(Reventless.DcbTag.stringForKey(~key="productId")) string>,
+      })
   @schema
   type error =
     | OrderAlreadyPlaced
     | ProductsNotAvailable({missing: array<string>})
   @schema
   type event =
-    OrderPlaced({
-      orderId: @s.matches(Reventless.DcbTag.string) string,
-      productIds: array<@s.matches(Reventless.DcbTag.stringForKey(~key="productId")) string>,
-    })
+    | OrderPlaced({
+        orderId: @s.matches(Reventless.DcbTag.string) string,
+        productIds: array<@s.matches(Reventless.DcbTag.stringForKey(~key="productId")) string>,
+      })
 }
 
 module PlaceOrderBehavior = {
@@ -265,7 +281,10 @@ module PlaceOrderBehavior = {
   let evolve = (state, event: PlaceOrderSlice.consumedEvent) =>
     switch event {
     | OrderPlaced({orderId}) => {...state, placed: state.placed->Array.concat([orderId])}
-    | ProductSynced({productId}) => {...state, available: state.available->Array.concat([productId])}
+    | ProductSynced({productId}) => {
+        ...state,
+        available: state.available->Array.concat([productId]),
+      }
     }
   let decide = (state, command: PlaceOrderSlice.command) =>
     switch command {
@@ -301,8 +320,12 @@ module Demand = CommandStep(RecordDemandSlice, RecordDemandBehavior)
 describe("Cross-plugin flow", () => {
   test("Tier 2 — a product added in Catalog becomes orderable in Ordering via sync", () =>
     start
-    ->AddProduct.whenCommand(AddProductSlice.AddProduct({productId: "p1", name: "Book", price: 9.99}))
-    ->AddProduct.thenEvent(AddProductSlice.ProductAdded({productId: "p1", name: "Book", price: 9.99}))
+    ->AddProduct.whenCommand(
+      AddProductSlice.AddProduct({productId: "p1", name: "Book", price: 9.99}),
+    )
+    ->AddProduct.thenEvent(
+      AddProductSlice.ProductAdded({productId: "p1", name: "Book", price: 9.99}),
+    )
     ->ProductsEp.whenPublishedThrough
     ->ProductsEp.thenPublicEvent(
       ProductsEpSpec.ProductBecameAvailable({productId: "p1", name: "Book", price: 9.99}),
@@ -323,25 +346,27 @@ describe("Cross-plugin flow", () => {
     ->Place.thenError(ProductsNotAvailable({missing: ["p1"]}))
   )
 
-  test("Tier 3 — a batch order fans out to one demand command per product across the boundary", () =>
-    start
-    ->Sync.givenEvents([
-      SyncProductSlice.ProductSynced({productId: "p1", name: "Book", price: 9.99}),
-      SyncProductSlice.ProductSynced({productId: "p2", name: "Pen", price: 1.5}),
-    ])
-    ->Place.whenCommand(PlaceOrderSlice.PlaceOrder({orderId: "o1", productIds: ["p1", "p2"]}))
-    ->Place.thenEvent(PlaceOrderSlice.OrderPlaced({orderId: "o1", productIds: ["p1", "p2"]}))
-    ->OrdersEp.whenPublishedThrough
-    ->OrdersEp.thenPublicEvents([
-      OrdersEpSpec.ItemOrdered({productId: "p1", orderId: "o1"}),
-      OrdersEpSpec.ItemOrdered({productId: "p2", orderId: "o1"}),
-    ])
-    ->OrdersExt.whenExtensionReacts
-    ->OrdersExt.thenIssuesCommands([
-      RecordDemandSlice.RecordDemand({productId: "p1", orderId: "o1"}),
-      RecordDemandSlice.RecordDemand({productId: "p2", orderId: "o1"}),
-    ])
-    ->Demand.whenCommand(RecordDemandSlice.RecordDemand({productId: "p1", orderId: "o1"}))
-    ->Demand.thenEvent(RecordDemandSlice.DemandRecorded({productId: "p1", orderId: "o1"}))
+  test(
+    "Tier 3 — a batch order fans out to one demand command per product across the boundary",
+    () =>
+      start
+      ->Sync.givenEvents([
+        SyncProductSlice.ProductSynced({productId: "p1", name: "Book", price: 9.99}),
+        SyncProductSlice.ProductSynced({productId: "p2", name: "Pen", price: 1.5}),
+      ])
+      ->Place.whenCommand(PlaceOrderSlice.PlaceOrder({orderId: "o1", productIds: ["p1", "p2"]}))
+      ->Place.thenEvent(PlaceOrderSlice.OrderPlaced({orderId: "o1", productIds: ["p1", "p2"]}))
+      ->OrdersEp.whenPublishedThrough
+      ->OrdersEp.thenPublicEvents([
+        OrdersEpSpec.ItemOrdered({productId: "p1", orderId: "o1"}),
+        OrdersEpSpec.ItemOrdered({productId: "p2", orderId: "o1"}),
+      ])
+      ->OrdersExt.whenExtensionReacts
+      ->OrdersExt.thenIssuesCommands([
+        RecordDemandSlice.RecordDemand({productId: "p1", orderId: "o1"}),
+        RecordDemandSlice.RecordDemand({productId: "p2", orderId: "o1"}),
+      ])
+      ->Demand.whenCommand(RecordDemandSlice.RecordDemand({productId: "p1", orderId: "o1"}))
+      ->Demand.thenEvent(RecordDemandSlice.DemandRecorded({productId: "p1", orderId: "o1"})),
   )
 })

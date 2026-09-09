@@ -41,9 +41,7 @@ describe("Auth_Cognito.authenticate", () => {
   })
 
   testAsync("non-Bearer Authorization header → Anonymous", async () => {
-    let r = await Auth_Cognito.authenticate(
-      buildContext([("authorization", "Basic dXNlcjpwYXNz")]),
-    )
+    let r = await Auth_Cognito.authenticate(buildContext([("authorization", "Basic dXNlcjpwYXNz")]))
     switch r {
     | Anonymous => ()
     | _ => JsError.throwWithMessage("expected Anonymous")
@@ -51,9 +49,7 @@ describe("Auth_Cognito.authenticate", () => {
   })
 
   testAsync("malformed Bearer token → AuthError", async () => {
-    let r = await Auth_Cognito.authenticate(
-      buildContext([("authorization", "Bearer not-a-jwt")]),
-    )
+    let r = await Auth_Cognito.authenticate(buildContext([("authorization", "Bearer not-a-jwt")]))
     switch r {
     | AuthError(_) => ()
     | _ => JsError.throwWithMessage("expected AuthError")
@@ -64,15 +60,10 @@ describe("Auth_Cognito.authenticate", () => {
     let claims = Dict.fromArray([
       ("sub", JSON.Encode.string("c3741234-aaaa-bbbb-cccc-ddddeeee1234")),
       ("cognito:username", JSON.Encode.string("alice@example.com")),
-      (
-        "cognito:groups",
-        ["Admin", "User"]->Array.map(JSON.Encode.string)->JSON.Encode.array,
-      ),
+      ("cognito:groups", ["Admin", "User"]->Array.map(JSON.Encode.string)->JSON.Encode.array),
     ])
     let token = buildJwt(claims)
-    let r = await Auth_Cognito.authenticate(
-      buildContext([("authorization", "Bearer " ++ token)]),
-    )
+    let r = await Auth_Cognito.authenticate(buildContext([("authorization", "Bearer " ++ token)]))
     switch r {
     | Authenticated(identity) =>
       expect(identity.userId)->toBe("c3741234-aaaa-bbbb-cccc-ddddeeee1234")
@@ -88,9 +79,7 @@ describe("Auth_Cognito.authenticate", () => {
       ("cognito:username", JSON.Encode.string("bob")),
     ])
     let token = buildJwt(claims)
-    let r = await Auth_Cognito.authenticate(
-      buildContext([("authorization", "Bearer " ++ token)]),
-    )
+    let r = await Auth_Cognito.authenticate(buildContext([("authorization", "Bearer " ++ token)]))
     switch r {
     | Authenticated(identity) =>
       expect(identity.groups)->toEqual([])
@@ -100,13 +89,9 @@ describe("Auth_Cognito.authenticate", () => {
   })
 
   testAsync("header lookup is case-insensitive (Authorization)", async () => {
-    let claims = Dict.fromArray([
-      ("sub", JSON.Encode.string("user-mixed-case")),
-    ])
+    let claims = Dict.fromArray([("sub", JSON.Encode.string("user-mixed-case"))])
     let token = buildJwt(claims)
-    let r = await Auth_Cognito.authenticate(
-      buildContext([("Authorization", "Bearer " ++ token)]),
-    )
+    let r = await Auth_Cognito.authenticate(buildContext([("Authorization", "Bearer " ++ token)]))
     switch r {
     | Authenticated(identity) => expect(identity.userId)->toBe("user-mixed-case")
     | _ => JsError.throwWithMessage("expected Authenticated")
@@ -124,31 +109,31 @@ describe("Auth_Cognito.fromAppSyncIdentity", () => {
     }
   })
 
-  testSync("Cognito identity: sub + claims.cognito:groups → Authenticated with Cognito provider", () => {
-    let claims = Dict.fromArray([
-      ("cognito:username", JSON.Encode.string("alice@example.com")),
-      (
-        "cognito:groups",
-        ["Admin"]->Array.map(JSON.Encode.string)->JSON.Encode.array,
-      ),
-    ])
-    let id: Auth_Cognito.appSyncIdentity = {
-      sub: "c3741234-aaaa",
-      username: "alice@example.com",
-      claims,
-    }
-    switch Auth_Cognito.fromAppSyncIdentity(Some(id)) {
-    | Authenticated(identity) =>
-      expect(identity.userId)->toBe("c3741234-aaaa")
-      expect(identity.username)->toBe("alice@example.com")
-      expect(identity.groups)->toEqual(["Admin"])
-      switch identity.provider {
-      | Cognito => ()
-      | _ => JsError.throwWithMessage("expected Cognito provider")
+  testSync(
+    "Cognito identity: sub + claims.cognito:groups → Authenticated with Cognito provider",
+    () => {
+      let claims = Dict.fromArray([
+        ("cognito:username", JSON.Encode.string("alice@example.com")),
+        ("cognito:groups", ["Admin"]->Array.map(JSON.Encode.string)->JSON.Encode.array),
+      ])
+      let id: Auth_Cognito.appSyncIdentity = {
+        sub: "c3741234-aaaa",
+        username: "alice@example.com",
+        claims,
       }
-    | _ => JsError.throwWithMessage("expected Authenticated")
-    }
-  })
+      switch Auth_Cognito.fromAppSyncIdentity(Some(id)) {
+      | Authenticated(identity) =>
+        expect(identity.userId)->toBe("c3741234-aaaa")
+        expect(identity.username)->toBe("alice@example.com")
+        expect(identity.groups)->toEqual(["Admin"])
+        switch identity.provider {
+        | Cognito => ()
+        | _ => JsError.throwWithMessage("expected Cognito provider")
+        }
+      | _ => JsError.throwWithMessage("expected Authenticated")
+      }
+    },
+  )
 
   testSync("Cognito identity: missing claims.cognito:groups → empty groups", () => {
     let id: Auth_Cognito.appSyncIdentity = {

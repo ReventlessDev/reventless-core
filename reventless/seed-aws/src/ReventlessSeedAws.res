@@ -14,7 +14,6 @@ open ReventlessSeed
 
 // ── Node bindings ─────────────────────────────────────────────────────────────
 
-
 type fetchInit = {method: string, headers: dict<string>, body?: string}
 type response
 @val external fetch: (string, fetchInit) => promise<response> = "fetch"
@@ -77,12 +76,15 @@ let deployedStacks = (~projectDir: string, ~backend: option<string>): array<stri
   }
 
 let stackOutputs = (~projectDir: string, ~backend: option<string>, stack: string): JSON.t => {
-  let raw = try pulumi(~projectDir, ~backend, ["stack", "output", "--stack", stack, "--json"]) catch {
+  let raw = try pulumi(
+    ~projectDir,
+    ~backend,
+    ["stack", "output", "--stack", stack, "--json"],
+  ) catch {
   | _ =>
     throw(
       Seed.Failed(
-        `pulumi stack output --stack ${stack} failed — is pulumi installed, logged in, ` ++
-        "and the stack deployed?",
+        `pulumi stack output --stack ${stack} failed — is pulumi installed, logged in, ` ++ "and the stack deployed?",
       ),
     )
   }
@@ -97,7 +99,11 @@ let backendNote = (~backend: option<string>): string =>
   | None => ""
   }
 
-let resolveStack = async (~projectDir: string, ~backend: option<string>, ~stack: option<string>): string =>
+let resolveStack = async (
+  ~projectDir: string,
+  ~backend: option<string>,
+  ~stack: option<string>,
+): string =>
   switch stack {
   | Some(s) => s
   | None =>
@@ -111,8 +117,7 @@ let resolveStack = async (~projectDir: string, ~backend: option<string>, ~stack:
             `no deployed Pulumi stacks for this project (\`pulumi stack ls\` is empty in ${projectDir})${backendNote(
                 ~backend,
               )}. ` ++
-            "A Pulumi.<stack>.yaml config file alone is not a deployed stack — run `pulumi up` " ++
-            "first, log in to the backend that holds the stack, or set SEED_STACK to target one.",
+            "A Pulumi.<stack>.yaml config file alone is not a deployed stack — run `pulumi up` " ++ "first, log in to the backend that holds the stack, or set SEED_STACK to target one.",
           ),
         )
       }
@@ -123,13 +128,13 @@ let resolveStack = async (~projectDir: string, ~backend: option<string>, ~stack:
 // ── Endpoints ─────────────────────────────────────────────────────────────────
 
 let fetchConfig = async (hostShellUrl: string): JSON.t => {
-  let base = hostShellUrl->String.replaceRegExp(%re("/\/+$/g"), "")
+  let base = hostShellUrl->String.replaceRegExp(/\/+$/g, "")
   let url = `${base}/config.json`
   let res = try await fetch(url, {method: "GET", headers: Dict.make()}) catch {
   | _ => throw(Seed.Failed(`cannot reach ${url}`))
   }
   if !(res->responseOk) {
-    throw(Seed.Failed(`GET ${url} → HTTP ${(res->responseStatus)->Int.toString}`))
+    throw(Seed.Failed(`GET ${url} → HTTP ${res->responseStatus->Int.toString}`))
   }
   await res->responseJson
 }
@@ -232,66 +237,66 @@ let resolveEndpoints = async (
 
 // ── Cognito login ─────────────────────────────────────────────────────────────
 
-let cognito = (~region: string, ~clientId: string) => async (
-  ~username: string,
-  ~password: string,
-): string => {
-  let body = JSON.stringify(
-    JSON.Encode.object(
-      Dict.fromArray([
-        ("AuthFlow", JSON.Encode.string("USER_PASSWORD_AUTH")),
-        ("ClientId", JSON.Encode.string(clientId)),
-        (
-          "AuthParameters",
-          JSON.Encode.object(
-            Dict.fromArray([
-              ("USERNAME", JSON.Encode.string(username)),
-              ("PASSWORD", JSON.Encode.string(password)),
-            ]),
+let cognito = (~region: string, ~clientId: string) =>
+  async (~username: string, ~password: string): string => {
+    let body = JSON.stringify(
+      JSON.Encode.object(
+        Dict.fromArray([
+          ("AuthFlow", JSON.Encode.string("USER_PASSWORD_AUTH")),
+          ("ClientId", JSON.Encode.string(clientId)),
+          (
+            "AuthParameters",
+            JSON.Encode.object(
+              Dict.fromArray([
+                ("USERNAME", JSON.Encode.string(username)),
+                ("PASSWORD", JSON.Encode.string(password)),
+              ]),
+            ),
           ),
+        ]),
+      ),
+    )
+    let headers = Dict.fromArray([
+      ("content-type", "application/x-amz-json-1.1"),
+      ("x-amz-target", "AWSCognitoIdentityProviderService.InitiateAuth"),
+    ])
+    let res = try await fetch(
+      `https://cognito-idp.${region}.amazonaws.com/`,
+      {
+        method: "POST",
+        headers,
+        body,
+      },
+    ) catch {
+    | _ => throw(Seed.Failed(`cannot reach Cognito in ${region}`))
+    }
+    let json = await res->responseJson
+    if !(res->responseOk) {
+      let detail =
+        json->field("message")->Option.flatMap(asString)->Option.getOr(JSON.stringify(json))
+      throw(
+        Seed.Failed(
+          `Cognito InitiateAuth failed (HTTP ${res->responseStatus->Int.toString}): ${detail}`,
         ),
-      ]),
-    ),
-  )
-  let headers = Dict.fromArray([
-    ("content-type", "application/x-amz-json-1.1"),
-    ("x-amz-target", "AWSCognitoIdentityProviderService.InitiateAuth"),
-  ])
-  let res = try await fetch(`https://cognito-idp.${region}.amazonaws.com/`, {
-    method: "POST",
-    headers,
-    body,
-  }) catch {
-  | _ => throw(Seed.Failed(`cannot reach Cognito in ${region}`))
+      )
+    }
+    switch json->field("ChallengeName")->Option.flatMap(asString) {
+    | Some(challenge) =>
+      throw(
+        Seed.Failed(
+          `Cognito returned challenge ${challenge} — set a permanent password first ` ++ "(aws cognito-idp admin-set-user-password … --permanent).",
+        ),
+      )
+    | None => ()
+    }
+    switch json
+    ->field("AuthenticationResult")
+    ->Option.flatMap(ar => ar->field("IdToken"))
+    ->Option.flatMap(asString) {
+    | Some(token) => token
+    | None => throw(Seed.Failed(`Cognito response carried no IdToken: ${JSON.stringify(json)}`))
+    }
   }
-  let json = await res->responseJson
-  if !(res->responseOk) {
-    let detail =
-      json->field("message")->Option.flatMap(asString)->Option.getOr(JSON.stringify(json))
-    throw(
-      Seed.Failed(
-        `Cognito InitiateAuth failed (HTTP ${(res->responseStatus)->Int.toString}): ${detail}`,
-      ),
-    )
-  }
-  switch json->field("ChallengeName")->Option.flatMap(asString) {
-  | Some(challenge) =>
-    throw(
-      Seed.Failed(
-        `Cognito returned challenge ${challenge} — set a permanent password first ` ++
-        "(aws cognito-idp admin-set-user-password … --permanent).",
-      ),
-    )
-  | None => ()
-  }
-  switch json
-  ->field("AuthenticationResult")
-  ->Option.flatMap(ar => ar->field("IdToken"))
-  ->Option.flatMap(asString) {
-  | Some(token) => token
-  | None => throw(Seed.Failed(`Cognito response carried no IdToken: ${JSON.stringify(json)}`))
-  }
-}
 
 // ── Active role ───────────────────────────────────────────────────────────────
 

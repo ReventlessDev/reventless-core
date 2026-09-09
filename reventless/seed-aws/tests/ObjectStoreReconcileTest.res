@@ -45,7 +45,9 @@ describe("ReventlessSeedAws_Reconcile.collectRefs", () => {
   )
 
   testSync("finds a ref nested inside a record", () =>
-    expect(collect(obj([("variant", obj([("photo", JSON.Encode.string(refIn))]))])))->toEqual([refIn])
+    expect(collect(obj([("variant", obj([("photo", JSON.Encode.string(refIn))]))])))->toEqual([
+      refIn,
+    ])
   )
 
   // Store isolation: one bucket holds several stores under distinct prefixes, so
@@ -75,10 +77,7 @@ describe("ReventlessSeedAws_Reconcile.collectRefs", () => {
   )
 
   testSync("collects each distinct ref once", () => {
-    let json = obj([
-      ("a", JSON.Encode.string(refIn)),
-      ("b", JSON.Encode.string(refIn)),
-    ])
+    let json = obj([("a", JSON.Encode.string(refIn)), ("b", JSON.Encode.string(refIn))])
     expect(collect(json)->Array.length)->toBe(1)
   })
 })

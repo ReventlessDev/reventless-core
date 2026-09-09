@@ -29,9 +29,9 @@ describe("Upload_Claim_S3_Ops.tableNameFromEventSourceArn", () => {
   )
 
   testSync("returns None for an ARN that is not a table stream", () =>
-    expect(Ops.tableNameFromEventSourceArn("arn:aws:sqs:eu-west-1:123456789012:SomeQueue"))->toEqual(
-      None,
-    )
+    expect(
+      Ops.tableNameFromEventSourceArn("arn:aws:sqs:eu-west-1:123456789012:SomeQueue"),
+    )->toEqual(None)
   )
 })
 

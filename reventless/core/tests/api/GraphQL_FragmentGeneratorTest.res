@@ -102,25 +102,23 @@ describe("resolveKeyField — the ladder", () => {
   })
 
   testSync("several `*Id` fields are disambiguated by the component name", () => {
-    let schema = S.schema(s =>
-      {"productId": s.matches(S.string), "categoryId": s.matches(S.string)}
+    let schema = S.schema(
+      s => {"productId": s.matches(S.string), "categoryId": s.matches(S.string)},
     )
     expect(rungFor(~entityName="Products", schema))->toEqual(Some(("productId", "convention")))
   })
 
   // The `-ies` plural the naive singulariser gets wrong, on the key side too.
   testSync("the convention rung singularises the way Api_Naming does", () => {
-    let schema = S.schema(s =>
-      {"categoryId": s.matches(S.string), "ownerId": s.matches(S.string)}
-    )
+    let schema = S.schema(s => {"categoryId": s.matches(S.string), "ownerId": s.matches(S.string)})
     expect(rungFor(~entityName="Categories", schema))->toEqual(Some(("categoryId", "convention")))
   })
 
   // ProductDemand: two `*Id` fields, and the name yields `productDemandId`, which
   // is not a field. Declining is the honest answer — this is what `@id` is for.
   testSync("several `*Id` fields with no name match declines", () => {
-    let schema = S.schema(s =>
-      {"productId": s.matches(S.string), "categoryId": s.matches(S.string)}
+    let schema = S.schema(
+      s => {"productId": s.matches(S.string), "categoryId": s.matches(S.string)},
     )
     expect(rungFor(~entityName="ProductDemand", schema))->toEqual(None)
   })
@@ -144,14 +142,16 @@ describe("resolveKeyField — the ladder", () => {
 // which of the two ways to lose it is worth saying out loud.
 describe("keyFieldGapMessage — which gap is worth a warning", () => {
   let gapFor = (~entityName, schema) =>
-    GraphQL_FragmentGenerator.classifyKeyField(~entityName, schema->S.castToUnknown)
-    ->GraphQL_FragmentGenerator.keyFieldGapMessage
+    GraphQL_FragmentGenerator.classifyKeyField(
+      ~entityName,
+      schema->S.castToUnknown,
+    )->GraphQL_FragmentGenerator.keyFieldGapMessage
 
   // The accident §14b.2 named: the view had `productId` alone and somebody added
   // `categoryId`, so `sole` stopped firing and the name matches neither.
   testSync("a second `*Id` field taking the key away is named, with both fields", () => {
-    let schema = S.schema(s =>
-      {"productId": s.matches(S.string), "categoryId": s.matches(S.string)}
+    let schema = S.schema(
+      s => {"productId": s.matches(S.string), "categoryId": s.matches(S.string)},
     )
     let message = gapFor(~entityName="ProductDemand", schema)->Option.getOr("")
     expect(message->String.includes("productId, categoryId"))->toBe(true)
@@ -171,9 +171,9 @@ describe("keyFieldGapMessage — which gap is worth a warning", () => {
   )
 
   testSync("a resolved key says nothing", () =>
-    expect(
-      gapFor(~entityName="Orders", S.schema(s => {"orderId": s.matches(S.string)})),
-    )->toEqual(None)
+    expect(gapFor(~entityName="Orders", S.schema(s => {"orderId": s.matches(S.string)})))->toEqual(
+      None,
+    )
   )
 
   testSync("an @id-less view whose name picks one of its `*Id` fields is fine", () =>
@@ -289,11 +289,12 @@ describe("semantic composites are named once, not once per field", () => {
     let types = GraphQL_FragmentGenerator.deriveObjectTypeWithNested(
       ~typeName="Catalog_Product",
       ~includeIdParam=false,
-      S.schema(s =>
-        {
-          "productId": s.matches(S.string),
-          "price": s.matches(Reventless.Money.schema),
-        }
+      S.schema(
+        s =>
+          {
+            "productId": s.matches(S.string),
+            "price": s.matches(Reventless.Money.schema),
+          },
       )->S.castToUnknown,
     )
     expect((
@@ -315,16 +316,15 @@ module PlaceOrder = {
   // A single-payload command reaches the generator as a plain object schema —
   // the `Object(_)` branch of `generate` — which is also the shape one variant
   // of a union presents to `mutationArgTypes`.
-  let schema =
-    S.schema(s =>
-      {
-        "orderId": s.matches(S.string),
-        "shippingMethod": s.matches(shippingMethodSchema),
-        "total": s.matches(Reventless.Money.schema),
-        "tip": s.matches(S.option(Reventless.Money.schema)),
-        "itemCount": s.matches(S.int),
-      }
-    )->S.castToUnknown
+  let schema = S.schema(s =>
+    {
+      "orderId": s.matches(S.string),
+      "shippingMethod": s.matches(shippingMethodSchema),
+      "total": s.matches(Reventless.Money.schema),
+      "tip": s.matches(S.option(Reventless.Money.schema)),
+      "itemCount": s.matches(S.int),
+    }
+  )->S.castToUnknown
 }
 
 describe("GraphQL_FragmentGenerator.mutationArgTypes", () => {
@@ -409,7 +409,7 @@ let refDoorFragment = (~subIdField=?) =>
         stateSchema: RefDoorRow.stateSchema->S.castToUnknown,
         authorization: None,
         connectionSpec: true,
-        subIdField: ?subIdField,
+        ?subIdField,
       },
     ],
   )
@@ -417,7 +417,6 @@ let refDoorFragment = (~subIdField=?) =>
 // What a caller holding a pointer to a withheld row may learn about it, and what
 // the two doors that could never answer for one can now be asked.
 describe("the reference door and the archive argument", () => {
-
   // The narrowness is the type's, not a rule each backend re-implements: a caller
   // cannot ask this door for a price, because there is no price on it.
   testSync("projects a reference to id, label and the state that retired it", () => {
@@ -490,7 +489,9 @@ describe("the reference door and the archive argument", () => {
         ~typeName="Ordering_OrderLine",
         ~subIdField="lineNo",
       ),
-    )->toEqual("  Ordering_OrderLine(id: ID!, lineNo: String!, includeRetired: Boolean): Ordering_OrderLine")
+    )->toEqual(
+      "  Ordering_OrderLine(id: ID!, lineNo: String!, includeRetired: Boolean): Ordering_OrderLine",
+    )
   )
 })
 
@@ -502,8 +503,8 @@ describe("the by-index door", () => {
   let index = (~index, ~idField=?, ~subIdField=?): Reventless.ReadModel.indexConfig => {
     index,
     type_: "S",
-    idField: ?idField,
-    subIdField: ?subIdField,
+    ?idField,
+    ?subIdField,
     projectionType: ALL,
   }
 
@@ -591,8 +592,10 @@ describe("the by-index door", () => {
       GraphQL_Stitcher.decode(
         GraphQL_FragmentGenerator.generate(~mutationEntries=[], ~queryEntries=[entryWith(indexes)]),
       ).queries->Array.filter(q => q->String.includes("Ordering_OrderBy"))
-    expect((doorsOf([derived])->Array.length, doorsOf([authored, derived])->Array.length))
-    ->toEqual((0, 1))
+    expect((
+      doorsOf([derived])->Array.length,
+      doorsOf([authored, derived])->Array.length,
+    ))->toEqual((0, 1))
   })
 })
 
@@ -681,7 +684,7 @@ module ResolvedFields = {
       returnTypeName: "Catalog_Order",
       stateSchema: orderSchema->S.castToUnknown,
       authorization: None,
-      resolvedFields: ?resolvedFields,
+      ?resolvedFields,
     },
     {
       singleFieldName: "Catalog_Product",
@@ -755,10 +758,13 @@ describe("@resolves / @resolvesMany reach the SDL", () => {
   // it, not just this field. Refused where the declaration is, naming it.
   testSync("a target this plugin does not expose is refused", () =>
     expect(
-      refused(() =>
-        orderType(
-          ~resolvedFields=Some([{fieldName: "supplier", typeName: "Supply_Supplier", multi: false}]),
-        )
+      refused(
+        () =>
+          orderType(
+            ~resolvedFields=Some([
+              {fieldName: "supplier", typeName: "Supply_Supplier", multi: false},
+            ]),
+          ),
       ),
     )->toBe(true)
   )
@@ -768,11 +774,12 @@ describe("@resolves / @resolvesMany reach the SDL", () => {
   // handed over by the wider door.
   testSync("a target guarded differently from the parent is refused", () =>
     expect(
-      refused(() =>
-        orderType(
-          ~resolvedFields=Some(ResolvedFields.bothFields),
-          ~targetPermission=AllowGroups(["Admin"]),
-        )
+      refused(
+        () =>
+          orderType(
+            ~resolvedFields=Some(ResolvedFields.bothFields),
+            ~targetPermission=AllowGroups(["Admin"]),
+          ),
       ),
     )->toBe(true)
   )
@@ -780,20 +787,25 @@ describe("@resolves / @resolvesMany reach the SDL", () => {
   // A target open to everyone can only narrow, so it needs no refusal.
   testSync("a target open to everyone is allowed under an authenticated parent", () =>
     expect(
-      refused(() =>
-        orderType(~resolvedFields=Some(ResolvedFields.bothFields), ~targetPermission=AllowAnonymous)
+      refused(
+        () =>
+          orderType(
+            ~resolvedFields=Some(ResolvedFields.bothFields),
+            ~targetPermission=AllowAnonymous,
+          ),
       ),
     )->toBe(false)
   )
 
   testSync("a resolved field colliding with a state field is refused", () =>
     expect(
-      refused(() =>
-        orderType(
-          ~resolvedFields=Some([
-            {fieldName: "productId", typeName: "Catalog_Product", multi: false},
-          ]),
-        )
+      refused(
+        () =>
+          orderType(
+            ~resolvedFields=Some([
+              {fieldName: "productId", typeName: "Catalog_Product", multi: false},
+            ]),
+          ),
       ),
     )->toBe(true)
   )

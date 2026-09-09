@@ -17,19 +17,21 @@
 // a core import can't drag deploy-time code into the Lambda's import graph — so
 // `StateChangeDescriptorParityTest` drives all three and asserts they agree.
 
-
 let endpoint = NodeProcess.env->Dict.get("APPSYNC_ENDPOINT")->Option.getOr("")
 
 // STATE_TOPIC_MAP: `{ <tableName>: <topicName> }`, injected at deploy time.
-let topicMap: dict<string> =
-  switch NodeProcess.env->Dict.get("STATE_TOPIC_MAP")->Option.getOr("{}")->JSON.parseOrThrow->JSON.Decode.object {
-  | Some(obj) =>
-    obj
-    ->Dict.toArray
-    ->Array.filterMap(((k, v)) => v->JSON.Decode.string->Option.map(s => (k, s)))
-    ->Dict.fromArray
-  | None => Dict.make()
-  }
+let topicMap: dict<string> = switch NodeProcess.env
+->Dict.get("STATE_TOPIC_MAP")
+->Option.getOr("{}")
+->JSON.parseOrThrow
+->JSON.Decode.object {
+| Some(obj) =>
+  obj
+  ->Dict.toArray
+  ->Array.filterMap(((k, v)) => v->JSON.Decode.string->Option.map(s => (k, s)))
+  ->Dict.fromArray
+| None => Dict.make()
+}
 
 // ── DynamoDB stream event (only the fields this handler reads) ───────────────
 
@@ -64,34 +66,35 @@ type event = {@as("Records") records: array<record>}
 // writer the other, and the two drift the first time a state name contains the
 // separator — an argument that only gets stronger now that a lifecycle can name
 // several states.
-let retiredMap: dict<Reventless.OwnerScope.retiredScope> =
-  switch NodeProcess.env
-  ->Dict.get("STATE_RETIRED_MAP")
-  ->Option.getOr("{}")
-  ->JSON.parseOrThrow
-  ->JSON.Decode.object {
-  | Some(d) =>
-    let out = Dict.make()
-    d->Dict.forEachWithKey((v, k) =>
-      v
-      ->JSON.Decode.object
-      ->Option.flatMap(o =>
-        o
-        ->Dict.get("field")
-        ->Option.flatMap(JSON.Decode.string)
-        ->Option.map(field => {
+let retiredMap: dict<Reventless.OwnerScope.retiredScope> = switch NodeProcess.env
+->Dict.get("STATE_RETIRED_MAP")
+->Option.getOr("{}")
+->JSON.parseOrThrow
+->JSON.Decode.object {
+| Some(d) =>
+  let out = Dict.make()
+  d->Dict.forEachWithKey((v, k) =>
+    v
+    ->JSON.Decode.object
+    ->Option.flatMap(o =>
+      o
+      ->Dict.get("field")
+      ->Option.flatMap(JSON.Decode.string)
+      ->Option.map(
+        field => {
           Reventless.OwnerScope.field,
           values: o
           ->Dict.get("values")
           ->Option.flatMap(JSON.Decode.array)
           ->Option.map(vs => vs->Array.filterMap(JSON.Decode.string)),
-        })
+        },
       )
-      ->Option.forEach(scope => out->Dict.set(k, scope))
     )
-    out
-  | None => Dict.make()
-  }
+    ->Option.forEach(scope => out->Dict.set(k, scope))
+  )
+  out
+| None => Dict.make()
+}
 
 let tableNameFromEventSourceArn = (arn: string): option<string> => {
   let parts = arn->String.split("/")
@@ -166,7 +169,8 @@ let pickSortKeyValue = (image: dict<JSON.t>): option<string> =>
 /** Cap on the serialised state payload, in characters. Must match
     `LocalStateChangeDescriptor.maxStateChars` and `StateTopicPublish.mjs`'s
     MAX_STATE_CHARS — see the local module for the reasoning. */
-let maxStateChars = 60 * 1024
+let maxStateChars =
+  60 * 1024
 
 /** Build the change descriptor. Split out of `processRecord` so the wire format
     can be asserted against the other two implementations without a network call.

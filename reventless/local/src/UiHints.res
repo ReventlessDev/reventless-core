@@ -50,27 +50,23 @@ let emit = (
     | exception _ =>
       JsError.throwWithMessage(
         `host UI ${fileName}: cannot read the declared uiHintsFile at ${path} — ` ++
-        `the shell fetches this file at boot, so a declaration pointing nowhere ` ++
-        `applies no hints and says nothing about why.`,
+        `the shell fetches this file at boot, so a declaration pointing nowhere ` ++ `applies no hints and says nothing about why.`,
       )
     }
     switch source->JSON.parseOrThrow {
     | _ => ()
     | exception _ =>
       JsError.throwWithMessage(
-        `host UI ${fileName}: the declared uiHintsFile at ${path} is not JSON — ` ++
-        `the shell warns once and applies no hints, which reads as hints that do nothing.`,
+        `host UI ${fileName}: the declared uiHintsFile at ${path} is not JSON — ` ++ `the shell warns once and applies no hints, which reads as hints that do nothing.`,
       )
     }
     source
   })
 
-  switch (
-    switch dir {
-    | Some(_) as given => given
-    | None => HostShellDist.dir()
-    }
-  ) {
+  switch switch dir {
+  | Some(_) as given => given
+  | None => HostShellDist.dir()
+  } {
   | None =>
     // No shell installed is the ordinary case for a platform nobody points a
     // browser at; only a declaration makes the missing package an error.
@@ -78,8 +74,7 @@ let emit = (
       JsError.throwWithMessage(
         `host UI ${fileName}: cannot resolve ${HostShellDist.package} from ${NodeProcess.cwd()} — ` ++
         `the local shell reads its hints from that package's dist/, so declaring a ` ++
-        `uiHintsFile without the package installed would write nothing and leave the ` ++
-        `shell applying whatever the package shipped.`,
+        `uiHintsFile without the package installed would write nothing and leave the ` ++ `shell applying whatever the package shipped.`,
       )
     }
   | Some(dir) =>
@@ -148,8 +143,7 @@ let watch = (
       // away between the two — worth a line, not worth a throw.
       log.warn(
         ~comp="UiHints",
-        `not watching ${base}: ${sourceDir} does not exist, so changes to the declared ` ++
-        `uiHintsFile will need a restart`,
+        `not watching ${base}: ${sourceDir} does not exist, so changes to the declared ` ++ `uiHintsFile will need a restart`,
       )
       None
     } else {

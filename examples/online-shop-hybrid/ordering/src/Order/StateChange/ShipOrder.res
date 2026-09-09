@@ -29,8 +29,7 @@ type consumedEvent =
   | OrderReopened
 
 @schema
-type command =
-  | @authorize(AllowGroups(["Admin", "Fulfilment"])) ShipOrder({orderId: string})
+type command = | @authorize(AllowGroups(["Admin", "Fulfilment"])) ShipOrder({orderId: string})
 
 @schema
 type error =
@@ -38,8 +37,7 @@ type error =
   | OrderAlreadyCancelled
 
 @schema
-type event =
-  | OrderShipped({@partitionTag orderId: string, customerId: string})
+type event = OrderShipped({@partitionTag orderId: string, customerId: string})
 
 type lifecycleState = Orders.lifecycle
 

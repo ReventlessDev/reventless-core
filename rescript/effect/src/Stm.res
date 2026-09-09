@@ -1,3 +1,5 @@
+// ─── STM type ────────────────────────────────────────────────────────────
+
 /**
 ReScript bindings for `STM<A, E, R>` — Software Transactional Memory.
 
@@ -21,9 +23,6 @@ counter
 ->Effect.runPromise
 ```
 */
-
-// ─── STM type ────────────────────────────────────────────────────────────
-
 /** The core STM type — describes a transactional computation, not yet committed. */
 type t<'a, 'e, 'r>
 

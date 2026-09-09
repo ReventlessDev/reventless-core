@@ -36,43 +36,47 @@ let project = ({event}) =>
     ]
   | ProductPriceChanged({productId, price}) => [Update(productId, state => {...state, price})]
   // Appended, so the first member attached is the primary until one is chosen.
-  | ProductImageAttached({productId, productImage, altText: ?altText}) => [
-      Update(productId, state =>
-        state.productImages->Array.some(a => a.ref == productImage)
-          ? state
-          : {
-              ...state,
-              productImages: state.productImages->Array.concat([
-                {ref: productImage, altText: ?altText},
-              ]),
-            }
+  | ProductImageAttached({productId, productImage, ?altText}) => [
+      Update(
+        productId,
+        state =>
+          state.productImages->Array.some(a => a.ref == productImage)
+            ? state
+            : {
+                ...state,
+                productImages: state.productImages->Array.concat([{ref: productImage, ?altText}]),
+              },
       ),
     ]
   // Removing the head promotes the next member with no arm to say so.
   | ProductImageRemoved({productId, productImage}) => [
-      Update(productId, state => {
-        ...state,
-        productImages: state.productImages->Array.filter(a => a.ref != productImage),
-      }),
+      Update(
+        productId,
+        state => {
+          ...state,
+          productImages: state.productImages->Array.filter(a => a.ref != productImage),
+        },
+      ),
     ]
   | ProductPrimaryImageSet({productId, productImage}) => [
       Update(productId, state => primaryFirst(state, productImage)),
     ]
   | ProductImageAltTextSet({productId, productImage, altText}) => [
-      Update(productId, state => {
-        ...state,
-        productImages: state.productImages->Array.map(a =>
-          a.ref == productImage ? {...a, altText} : a
-        ),
-      }),
+      Update(
+        productId,
+        state => {
+          ...state,
+          productImages: state.productImages->Array.map(a =>
+            a.ref == productImage ? {...a, altText} : a
+          ),
+        },
+      ),
     ]
   // The row stays and moves along its lifecycle rather than being deleted: an
   // order still references a withdrawn product, and a merchandiser still needs
   // to find it. Which callers see it afterwards is the resolvers' answer, not
   // this projection's.
-  | ProductArchived({productId}) => [
-      Update(productId, state => {...state, shelfStatus: Archived}),
-    ]
+  | ProductArchived({productId}) => [Update(productId, state => {...state, shelfStatus: Archived})]
   | ProductUnarchived({productId}) => [Update(productId, state => {...state, shelfStatus: Listed})]
   | ProductDiscontinued({productId}) => [
       Update(productId, state => {...state, shelfStatus: Discontinued}),

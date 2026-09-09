@@ -114,5 +114,3 @@ type queryResult = {
   dcbEventLog: option<Reventless.Plugin.dcbEventLogDefinition>,
   kind: option<Reventless.Plugin.pluginKind>,
 }
-
-

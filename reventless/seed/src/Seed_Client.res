@@ -21,7 +21,8 @@ type response
 @val external setTimeout: (unit => unit, int) => unit = "setTimeout"
 @scope("Date") @val external nowMs: unit => float = "now"
 
-let sleep = (ms: int): promise<unit> => Promise.make((resolve, _) => setTimeout(() => resolve(), ms))
+let sleep = (ms: int): promise<unit> =>
+  Promise.make((resolve, _) => setTimeout(() => resolve(), ms))
 
 // ── Configuration ───────────────────────────────────────────────────────────
 
@@ -225,8 +226,9 @@ let login = async (t: t): unit => {
     let detail = await res->responseText
     throw(
       Failed(
-        `login as "${username}" failed with HTTP ${(res->responseStatus)
-            ->Int.toString}: ${detail}`,
+        `login as "${username}" failed with HTTP ${res
+          ->responseStatus
+          ->Int.toString}: ${detail}`,
       ),
     )
   }
@@ -324,8 +326,7 @@ let gqlOutcome = async (t: t, ~query: string, ~label: string): outcome => {
   )
   let rec attempt = async (n: int): outcome => {
     let res = try await fetch(t.config.endpoint, {method: "POST", headers, body}) catch {
-    | _ =>
-      throw(Failed(`${label}: cannot reach ${t.config.endpoint} — is the platform running?`))
+    | _ => throw(Failed(`${label}: cannot reach ${t.config.endpoint} — is the platform running?`))
     }
     let json = await res->responseJson
     switch json->field("errors") {
@@ -375,11 +376,11 @@ type access =
   | Granted
   | Refused
   | // Served, and carrying nothing. Its own case because the two platforms deny a
-    // read differently: AppSync answers `Unauthorized`, while the local resolver's
-    // interceptor returns an empty connection — so on local an unauthorized read
-    // and an empty view are the same response, and no caller can tell them apart.
-    // Naming it lets a probe say "consistent with a denial" instead of guessing.
-    Empty
+  // read differently: AppSync answers `Unauthorized`, while the local resolver's
+  // interceptor returns an empty connection — so on local an unauthorized read
+  // and an empty view are the same response, and no caller can tell them apart.
+  // Naming it lets a probe say "consistent with a denial" instead of guessing.
+  Empty
   | Broke(string)
 
 let checkAccess = async (t: t, ~query: string, ~label: string): access =>
@@ -488,12 +489,12 @@ let sendAll = async (t: t, mutations: array<mutation>): unit =>
  * Walks a Relay-style connection to the end. Connections page at 50 by default,
  * so any count taken from a single request silently truncates.
  */
-// `~args` is spliced into the connection's argument list — `"includeRetired: true"`
+let // `~args` is spliced into the connection's argument list — `"includeRetired: true"`
 // is the case it exists for, and the only way to read rows the resolvers withhold
 // by default. Literal GraphQL rather than a typed argument list because a seed
 // writes the query it means; the alternative is a builder that has to grow a case
 // per argument the platform adds.
-let queryAllNodes = async (
+queryAllNodes = async (
   t: t,
   ~field as fieldName: string,
   ~selection: string,
@@ -609,8 +610,9 @@ let waitForIds = async (
         missing->Array.length > 10 ? ` (+${(missing->Array.length - 10)->Int.toString} more)` : ""
       throw(
         Failed(
-          `only ${(found->Array.length)->Int.toString}/${(ids->Array.length)
-              ->Int.toString} ids reached ${fieldName} within ${timeoutMs->Int.toString}ms.\n  missing: ${shown}${extra}`,
+          `only ${found->Array.length->Int.toString}/${ids
+            ->Array.length
+            ->Int.toString} ids reached ${fieldName} within ${timeoutMs->Int.toString}ms.\n  missing: ${shown}${extra}`,
         ),
       )
     } else {

@@ -6,7 +6,6 @@ Grammar: `{{ path }}`, `{{ path | formatter }}`, `{{# if path }}…{{/ if }}` an
 evaluated, an unresolved path renders a visible placeholder rather than throwing,
 and a field the schema marks `@sensitive` is withheld.
 */
-
 /** A path into the payload, in **wire** field names. `text` is what was written,
     so a placeholder can name it. */
 type path = {text: string, relative: bool, segments: array<string>}
@@ -54,8 +53,7 @@ let parsePath = (raw: string, ~insideEach: bool): result<path, string> => {
       segments->Array.every(segment => segmentGrammar->RegExp.test(segment))
         ? Ok({text, relative, segments})
         : Error(
-            `"${text}" is not a path — segments are letters, digits and ` ++
-            `underscores, separated by dots`,
+            `"${text}" is not a path — segments are letters, digits and ` ++ `underscores, separated by dots`,
           )
     }
   }
@@ -268,10 +266,10 @@ let isWithheld = (schema: option<S.t<unknown>>): bool =>
   | None => false
   | Some(field) =>
     Sensitive.isFieldSensitive(field) ||
-      switch Semantic.getFrom(field) {
-      | Some({id}) => Sensitive.impliedBySemantic(id)
-      | None => false
-      }
+    switch Semantic.getFrom(field) {
+    | Some({id}) => Sensitive.impliedBySemantic(id)
+    | None => false
+    }
   }
 
 let parseSafely = (json: JSON.t, schema: S.t<'a>): option<'a> =>

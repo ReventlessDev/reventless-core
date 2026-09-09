@@ -26,11 +26,13 @@ let filterEventTopics = (allAggregates, aggregateNames) =>
   )
   ->Dict.fromArray
 
-let toResolvedOutputs = (
-  outputs: outputs,
-): Pulumi.Output.t<ReventlessInterop.Aggregate.resolvedOutputs> => {
+let toResolvedOutputs = (outputs: outputs): Pulumi.Output.t<
+  ReventlessInterop.Aggregate.resolvedOutputs,
+> => {
   let commandGeneratorResolved =
-    outputs.commandGenerator->Pulumi.Output.flatMap((cg: ReventlessInfra.CommandGenerator.outputs) =>
+    outputs.commandGenerator->Pulumi.Output.flatMap((
+      cg: ReventlessInfra.CommandGenerator.outputs,
+    ) =>
       cg.resources
       ->Adapter.resourcesToInterop
       ->Pulumi.Output.apply(resources => {
@@ -50,18 +52,17 @@ let toResolvedOutputs = (
     ->Pulumi.Output.all2
     ->Pulumi.Output.apply(((resources, eventTopicResources)) => {
       let resolved: ReventlessInterop.EventLog.resolvedOutputs = {
-        resources: resources,
+        resources,
         eventTopic: {resources: eventTopicResources},
       }
       resolved
     })
-  let eventMapperResolved =
-    outputs.eventMapper->Pulumi.Output.flatMap(em =>
-      switch em {
-      | Some(em) => em->EventMapper.toResolvedOutputs->Pulumi.Output.apply(r => Some(r))
-      | None => Pulumi.Output.make(None)
-      }
-    )
+  let eventMapperResolved = outputs.eventMapper->Pulumi.Output.flatMap(em =>
+    switch em {
+    | Some(em) => em->EventMapper.toResolvedOutputs->Pulumi.Output.apply(r => Some(r))
+    | None => Pulumi.Output.make(None)
+    }
+  )
   (commandGeneratorResolved, commandTopicResolved, eventLogResolved, eventMapperResolved)
   ->Pulumi.Output.all4
   ->Pulumi.Output.apply(((commandGenerator, commandTopic, eventLog, eventMapper)) =>

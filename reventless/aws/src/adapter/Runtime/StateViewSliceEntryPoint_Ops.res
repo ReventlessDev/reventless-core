@@ -207,15 +207,16 @@ let makeRegisteredHandler = (
   entry: handlerEntry,
   modules: sliceModules<'event>,
 ): StreamRoutedEntryPoint_Ops.registeredHandler => {
-  let queryDbOps = ProjectionEntryPoint_Ops.makeQueryDbOps(
-    ~queryDbTableName=entry.queryDbTableName,
-    ~pgConnection=entry.pgConnection,
-    ~stateTopicName=entry.stateTopicName,
-    ~indexes=ProjectionEntryPoint_Ops.indexesOf(modules.config),
-    ~subIdField=ProjectionEntryPoint_Ops.subIdFieldOf(modules.subIdConfig),
-  )
-  ->ProjectionEntryPoint_Ops.withUnionMemberTypes(~stateSchema=modules.stateSchema)
-  ->ProjectionEntryPoint_Ops.withDisplayName(~stateSchema=modules.stateSchema)
+  let queryDbOps =
+    ProjectionEntryPoint_Ops.makeQueryDbOps(
+      ~queryDbTableName=entry.queryDbTableName,
+      ~pgConnection=entry.pgConnection,
+      ~stateTopicName=entry.stateTopicName,
+      ~indexes=ProjectionEntryPoint_Ops.indexesOf(modules.config),
+      ~subIdField=ProjectionEntryPoint_Ops.subIdFieldOf(modules.subIdConfig),
+    )
+    ->ProjectionEntryPoint_Ops.withUnionMemberTypes(~stateSchema=modules.stateSchema)
+    ->ProjectionEntryPoint_Ops.withDisplayName(~stateSchema=modules.stateSchema)
   {
     handler: StreamRoutedEntryPoint_Ops.toStreamHandler(
       makeJsonEventsHandler(

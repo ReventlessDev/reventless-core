@@ -60,6 +60,7 @@ let makeStore = (): (SqliteDriver.t, string) => {
     db->SqliteDriver.exec(
       `CREATE TABLE ${t} (partition_key TEXT NOT NULL, sub_key TEXT NOT NULL DEFAULT '', item TEXT NOT NULL, expires_at INTEGER, PRIMARY KEY (partition_key, sub_key))`,
     )
+
     // qdb_Plugins gets the two registry rows below and nothing else, so its count
     // stays the number of connected plugins.
     if t != "qdb_Plugins" {

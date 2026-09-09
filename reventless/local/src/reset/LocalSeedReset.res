@@ -444,11 +444,8 @@ let build = (db, ~root: string, ~scope: scope): plan => {
   // structure mentions, which only a `domain` scope reaches.
   let unattributed = switch scope {
   | OnePlugin(_) =>
-    let claimedByAnyPlugin =
-      plugins->Array.flatMap(p => p.queryables->Array.map(qdbTableName))
-    qdbTables(db)->Array.filter(t =>
-      !isPlatformQdb(t) && !(claimedByAnyPlugin->Array.includes(t))
-    )
+    let claimedByAnyPlugin = plugins->Array.flatMap(p => p.queryables->Array.map(qdbTableName))
+    qdbTables(db)->Array.filter(t => !isPlatformQdb(t) && !(claimedByAnyPlugin->Array.includes(t)))
   | Domain | Platform | Everything => []
   }
 

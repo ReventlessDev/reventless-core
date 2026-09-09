@@ -63,7 +63,10 @@ describe("Pairing.groupExtensionPoints", () => {
     ])
     expect(eps)->toEqual([
       {Pairing.group: None, mappings: ["Flat_ExtensionPointMapping"]},
-      {Pairing.group: Some("Grp"), mappings: ["G1_ExtensionPointMapping", "G2_ExtensionPointMapping"]},
+      {
+        Pairing.group: Some("Grp"),
+        mappings: ["G1_ExtensionPointMapping", "G2_ExtensionPointMapping"],
+      },
     ])
   })
 

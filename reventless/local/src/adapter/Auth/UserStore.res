@@ -83,11 +83,10 @@ let resolved: ref<bool> = ref(false)
 
 let resetResolution = (): unit => resolved := false
 
-let load = (
-  ~users: option<array<entry>>=?,
-  ~usersFile: option<string>=?,
-  (),
-): result<resolution, string> => {
+let load = (~users: option<array<entry>>=?, ~usersFile: option<string>=?, ()): result<
+  resolution,
+  string,
+> => {
   resolved := true
   switch users {
   | Some(entries) =>
@@ -109,8 +108,7 @@ let load = (
         })
       } else {
         Console.log(
-          "[LocalAuth] no users configured — POST /__inmemory/login will reject all. " ++
-          "Provide ~users / ~usersFile or create .reventless/users.yaml relative to cwd.",
+          "[LocalAuth] no users configured — POST /__inmemory/login will reject all. " ++ "Provide ~users / ~usersFile or create .reventless/users.yaml relative to cwd.",
         )
         Ok(Empty)
       }

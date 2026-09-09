@@ -122,42 +122,47 @@ describe("LocalPlatformStart.orAddressRunning", () => {
 
 describe("LocalPlatformStart.decide", () => {
   testSync("starts where nothing is running", () =>
-    withoutBypass(() =>
-      expect(LocalPlatformStart.decide(~cwd=tempRoot(), ()))->toEqual(LocalPlatformStart.Start)
+    withoutBypass(
+      () =>
+        expect(LocalPlatformStart.decide(~cwd=tempRoot(), ()))->toEqual(LocalPlatformStart.Start),
     )
   )
 
   testSync("addresses the one platform already serving this directory", () =>
-    withoutBypass(() => {
-      let cwd = tempRoot()
-      let _ = writeAt(~cwd, ~port=4000, ~store=sqliteStore(NodePath.join([cwd, "local.db"])))
+    withoutBypass(
+      () => {
+        let cwd = tempRoot()
+        let _ = writeAt(~cwd, ~port=4000, ~store=sqliteStore(NodePath.join([cwd, "local.db"])))
 
-      switch LocalPlatformStart.decide(~cwd, ()) {
-      | Start => fail("expected the running platform to be addressed")
-      | AlreadyRunning(entries) =>
-        expect(entries->Array.map(e => e.port))->toEqual([4000])
-        let lines = LocalPlatformStart.report(entries)
-        expect(lines->Array.length)->toEqual(2)
-        expect(lines->Array.join("\n")->String.includes(":4000"))->toEqual(true)
-      }
-    })
+        switch LocalPlatformStart.decide(~cwd, ()) {
+        | Start => fail("expected the running platform to be addressed")
+        | AlreadyRunning(entries) =>
+          expect(entries->Array.map(e => e.port))->toEqual([4000])
+          let lines = LocalPlatformStart.report(entries)
+          expect(lines->Array.length)->toEqual(2)
+          expect(lines->Array.join("\n")->String.includes(":4000"))->toEqual(true)
+        }
+      },
+    )
   )
 
   // The state this is trying to make impossible: say so rather than pick one.
   testSync("names all of them when two are running", () =>
-    withoutBypass(() => {
-      let cwd = tempRoot()
-      let _ = writeAt(~cwd, ~port=4000, ~store=sqliteStore(NodePath.join([cwd, "local.db"])))
-      let _ = writeAt(~cwd, ~port=4010, ~store=memoryStore)
+    withoutBypass(
+      () => {
+        let cwd = tempRoot()
+        let _ = writeAt(~cwd, ~port=4000, ~store=sqliteStore(NodePath.join([cwd, "local.db"])))
+        let _ = writeAt(~cwd, ~port=4010, ~store=memoryStore)
 
-      switch LocalPlatformStart.decide(~cwd, ()) {
-      | Start => fail("expected both running platforms to be reported")
-      | AlreadyRunning(entries) =>
-        let printed = LocalPlatformStart.report(entries)->Array.join("\n")
-        expect(printed->String.includes(":4000"))->toEqual(true)
-        expect(printed->String.includes(":4010"))->toEqual(true)
-      }
-    })
+        switch LocalPlatformStart.decide(~cwd, ()) {
+        | Start => fail("expected both running platforms to be reported")
+        | AlreadyRunning(entries) =>
+          let printed = LocalPlatformStart.report(entries)->Array.join("\n")
+          expect(printed->String.includes(":4000"))->toEqual(true)
+          expect(printed->String.includes(":4010"))->toEqual(true)
+        }
+      },
+    )
   )
 
   // The escape hatch the e2e suites and the VS Code runner already take.

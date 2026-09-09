@@ -125,4 +125,3 @@ module Raw = {
   @module("@aws-sdk/util-dynamodb")
   external unmarshall: ('data, ~options: unmarshallOptions) => 'output = "unmarshall"
 }
-

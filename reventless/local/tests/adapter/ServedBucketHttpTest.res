@@ -44,31 +44,32 @@ type httpRes
 let postJson = (path: string, body: dict<JSON.t>): promise<(int, JSON.t)> =>
   Promise.make((resolve, reject) => {
     let bodyStr = body->JSON.Encode.object->JSON.stringify
-    let req =
-      _request(
-        {
-          hostname: "localhost",
-          port,
-          path,
-          method: "POST",
-          headers: Dict.fromArray([
-            ("content-type", "application/json"),
-            ("content-length", bodyStr->String.length->Int.toString),
-          ]),
-        },
-        res => {
-          let status = _resStatusCode(res)
-          let buf = ref("")
-          res->_resSetEncoding("utf8")
-          res->_resOnData(chunk => buf := buf.contents ++ Obj.magic(chunk))
-          res->_resOnEnd(() => {
+    let req = _request(
+      {
+        hostname: "localhost",
+        port,
+        path,
+        method: "POST",
+        headers: Dict.fromArray([
+          ("content-type", "application/json"),
+          ("content-length", bodyStr->String.length->Int.toString),
+        ]),
+      },
+      res => {
+        let status = _resStatusCode(res)
+        let buf = ref("")
+        res->_resSetEncoding("utf8")
+        res->_resOnData(chunk => buf := buf.contents ++ Obj.magic(chunk))
+        res->_resOnEnd(
+          () => {
             let parsed = try buf.contents->JSON.parseOrThrow catch {
             | _ => JSON.Encode.null
             }
             resolve((status, parsed))
-          })
-        },
-      )
+          },
+        )
+      },
+    )
     req->_reqOnError(err => reject(Obj.magic(err)))
     req->_reqWrite(bodyStr)
     req->_reqEnd
@@ -78,24 +79,23 @@ let postJson = (path: string, body: dict<JSON.t>): promise<(int, JSON.t)> =>
 // only for ASCII payloads, which the SVG fixture below is.
 let putRaw = (path: string, body: string, ~contentType: string): promise<int> =>
   Promise.make((resolve, reject) => {
-    let req =
-      _request(
-        {
-          hostname: "localhost",
-          port,
-          path,
-          method: "PUT",
-          headers: Dict.fromArray([
-            ("content-type", contentType),
-            ("content-length", body->String.length->Int.toString),
-          ]),
-        },
-        res => {
-          let status = _resStatusCode(res)
-          res->_resOnData(_ => ())
-          res->_resOnEnd(() => resolve(status))
-        },
-      )
+    let req = _request(
+      {
+        hostname: "localhost",
+        port,
+        path,
+        method: "PUT",
+        headers: Dict.fromArray([
+          ("content-type", contentType),
+          ("content-length", body->String.length->Int.toString),
+        ]),
+      },
+      res => {
+        let status = _resStatusCode(res)
+        res->_resOnData(_ => ())
+        res->_resOnEnd(() => resolve(status))
+      },
+    )
     req->_reqOnError(err => reject(Obj.magic(err)))
     req->_reqWrite(body)
     req->_reqEnd
@@ -103,24 +103,27 @@ let putRaw = (path: string, body: string, ~contentType: string): promise<int> =>
 
 let getRaw = (path: string): promise<(int, string, string)> =>
   Promise.make((resolve, reject) => {
-    let req =
-      _request(
-        {hostname: "localhost", port, path, method: "GET", headers: Dict.make()},
-        res => {
-          let status = _resStatusCode(res)
-          let contentType = _resHeaders(res)->Dict.get("content-type")->Option.getOr("")
-          let buf = ref("")
-          res->_resSetEncoding("utf8")
-          res->_resOnData(chunk => buf := buf.contents ++ Obj.magic(chunk))
-          res->_resOnEnd(() => resolve((status, buf.contents, contentType)))
-        },
-      )
+    let req = _request(
+      {hostname: "localhost", port, path, method: "GET", headers: Dict.make()},
+      res => {
+        let status = _resStatusCode(res)
+        let contentType = _resHeaders(res)->Dict.get("content-type")->Option.getOr("")
+        let buf = ref("")
+        res->_resSetEncoding("utf8")
+        res->_resOnData(chunk => buf := buf.contents ++ Obj.magic(chunk))
+        res->_resOnEnd(() => resolve((status, buf.contents, contentType)))
+      },
+    )
     req->_reqOnError(err => reject(Obj.magic(err)))
     req->_reqEnd
   })
 
 let getString = (j: JSON.t, k: string): string =>
-  j->JSON.Decode.object->Option.flatMap(d => d->Dict.get(k))->Option.flatMap(JSON.Decode.string)->Option.getOr("")
+  j
+  ->JSON.Decode.object
+  ->Option.flatMap(d => d->Dict.get(k))
+  ->Option.flatMap(JSON.Decode.string)
+  ->Option.getOr("")
 
 // ── Lifecycle ────────────────────────────────────────────────────────────────
 
@@ -198,13 +201,16 @@ testPromise("presign → PUT → GET → release → GET(404) is the full loop",
   expect(goneStatus)->toEqual(404)
 })
 
-testPromise("Upload_Release of a ref outside a served prefix is refused with a reason", async () => {
-  let r = await releaseRef(~storageRef="/not-a-store/x/y.svg")
-  expect(r->JSON.Decode.object->Option.flatMap(d => d->Dict.get("released")))->toEqual(
-    Some(JSON.Encode.bool(false)),
-  )
-  expect(getString(r, "reason"))->toEqual("not_in_store")
-})
+testPromise(
+  "Upload_Release of a ref outside a served prefix is refused with a reason",
+  async () => {
+    let r = await releaseRef(~storageRef="/not-a-store/x/y.svg")
+    expect(r->JSON.Decode.object->Option.flatMap(d => d->Dict.get("released")))->toEqual(
+      Some(JSON.Encode.bool(false)),
+    )
+    expect(getString(r, "reason"))->toEqual("not_in_store")
+  },
+)
 
 testPromise("GET a missing served object returns 404", async () => {
   let (status, _, _) = await getRaw("/uploads/missing/none.svg")

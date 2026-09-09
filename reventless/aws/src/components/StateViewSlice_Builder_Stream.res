@@ -9,10 +9,12 @@ module EventCollectorChannel = EventCollectorChannel.DynamoDbStream
 module RuntimeEnvironment = RuntimeEnvironment.Lambda
 module EventCollectorRuntimeBuilder = StateViewSliceRuntime_Builder_Single
 
-module Make = (Api: {
-  let api: unit => Types.AppSync.api
-  let apiRole: unit => Types.AppSync.role
-}) => {
+module Make = (
+  Api: {
+    let api: unit => Types.AppSync.api
+    let apiRole: unit => Types.AppSync.role
+  },
+) => {
   module Inner = ReventlessCore.StateViewSlice_Builder.Make(
     RuntimeEnvironment,
     QueryDbStorage.SelectableStream,

@@ -12,7 +12,8 @@
 
 type ddbClient
 type docClient
-@module("@aws-sdk/client-dynamodb") @new external makeDdbClient: unit => ddbClient = "DynamoDBClient"
+@module("@aws-sdk/client-dynamodb") @new
+external makeDdbClient: unit => ddbClient = "DynamoDBClient"
 @module("@aws-sdk/lib-dynamodb") @scope("DynamoDBDocumentClient")
 external docFrom: ddbClient => docClient = "from"
 
@@ -25,7 +26,8 @@ type scanInput = {
   @as("ExpressionAttributeValues") expressionAttributeValues?: dict<JSON.t>,
 }
 type scanCommand
-@module("@aws-sdk/lib-dynamodb") @new external makeScanCommand: scanInput => scanCommand = "ScanCommand"
+@module("@aws-sdk/lib-dynamodb") @new
+external makeScanCommand: scanInput => scanCommand = "ScanCommand"
 type scanOutput = {
   @as("Items") items?: array<dict<JSON.t>>,
   @as("LastEvaluatedKey") lastEvaluatedKey?: JSON.t,
@@ -46,17 +48,16 @@ let scanAll = async (
   let startKey = ref(None)
   let more = ref(true)
   while more.contents {
-    let out =
-      await doc->send(
-        makeScanCommand({
-          tableName,
-          limit: 1000,
-          exclusiveStartKey: ?startKey.contents,
-          filterExpression: ?filterExpression,
-          expressionAttributeNames: ?expressionAttributeNames,
-          expressionAttributeValues: ?expressionAttributeValues,
-        }),
-      )
+    let out = await doc->send(
+      makeScanCommand({
+        tableName,
+        limit: 1000,
+        exclusiveStartKey: ?startKey.contents,
+        ?filterExpression,
+        ?expressionAttributeNames,
+        ?expressionAttributeValues,
+      }),
+    )
     out.items->Option.forEach(is => is->Array.forEach(i => items->Array.push(i)))
     switch out.lastEvaluatedKey {
     | Some(k) => startKey := Some(k)
@@ -76,7 +77,7 @@ let scanAll = async (
 // numeric segments compared as numbers, others lexically). Mirrors the platform
 // invariant "one version per plugin at a time" ordering. Returns 1/-1/0.
 let compareVersions = (a: string, b: string): int => {
-  let norm = s => s->String.replaceRegExp(%re("/[-+]/g"), ".")->String.split(".")
+  let norm = s => s->String.replaceRegExp(/[-+]/g, ".")->String.split(".")
   let pa = norm(a)
   let pb = norm(b)
   let len = Math.Int.max(pa->Array.length, pb->Array.length)

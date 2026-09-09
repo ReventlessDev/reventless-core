@@ -32,20 +32,15 @@ let make: ReventlessCore.Heartbeat_Adapter.runnerMaker<runtimeParts> = (
 ) => {
   let handlerDeferred = runtime.parts.handlerDeferred
   let intervalMs = timeout * 60 * 1000
-  let handle = setIntervalJs(
-    () => {
-      // Await the handler Deferred on each tick. Since the Deferred is completed
-      // during make() setup, this resolves immediately after the first tick.
-      handlerDeferred
-      ->Deferred.await_
-      ->Effect.flatMap(handler =>
-        Effect.promise(() => handler(Obj.magic(()), ()))
-      )
-      ->Effect.runPromise
-      ->ignore
-    },
-    intervalMs,
-  )
+  let handle = setIntervalJs(() => {
+    // Await the handler Deferred on each tick. Since the Deferred is completed
+    // during make() setup, this resolves immediately after the first tick.
+    handlerDeferred
+    ->Deferred.await_
+    ->Effect.flatMap(handler => Effect.promise(() => handler(Obj.magic(), ())))
+    ->Effect.runPromise
+    ->ignore
+  }, intervalMs)
   activeTimers.contents->Dict.set(name, handle)
   {resources: []}
 }

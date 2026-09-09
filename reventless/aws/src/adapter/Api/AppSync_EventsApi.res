@@ -43,7 +43,6 @@
     installed, subscribe goes through the API-level auth modes only
     (single-tenant open-core case).
 */
-
 module Api = PulumiAws.AwsNative.AppSync.Api
 module ChannelNamespace = PulumiAws.AwsNative.AppSync.ChannelNamespace
 
@@ -158,15 +157,18 @@ let make = (
   let subscribeAuth = subscribeAuthRef.contents
   let codeHandlersInput: option<Pulumi.Input.t<string>> =
     subscribeAuth->Option.map(c => c.codeHandlers->Pulumi.Input.make)
-  let handlerConfigsInput: option<Pulumi.Input.t<ChannelNamespace.handlerConfigsArgs>> =
-    subscribeAuth->Option.map(c => {
+  let handlerConfigsInput: option<
+    Pulumi.Input.t<ChannelNamespace.handlerConfigsArgs>,
+  > = subscribeAuth->Option.map(c =>
+    {
       ChannelNamespace.onSubscribe: {
         ChannelNamespace.behavior: ChannelNamespace.handlerBehaviorCode->Pulumi.Input.make,
         integration: {
           ChannelNamespace.dataSourceName: c.dataSourceName,
         }->Pulumi.Input.make,
       }->Pulumi.Input.make,
-    }->Pulumi.Input.make)
+    }->Pulumi.Input.make
+  )
   let defaultNamespace = ChannelNamespace.make(
     ~name=name ++ "DefaultNS",
     ~args={
@@ -182,14 +184,12 @@ let make = (
   // API-level `defaultPublishAuthModes` (IAM-only), so authenticated browsers
   // can publish ephemeral payloads on `/client/**` while `/default/**` change
   // descriptors stay Lambda-only.
-  let clientAuthModes: Pulumi.Input.t<
-    array<Pulumi.Input.t<ChannelNamespace.authMode>>,
-  > =
+  let clientAuthModes: Pulumi.Input.t<array<Pulumi.Input.t<ChannelNamespace.authMode>>> =
     [
-      ({authType: Api.amazonCognitoUserPools->Pulumi.Input.make}: ChannelNamespace.authMode)
-      ->Pulumi.Input.make,
-      ({authType: Api.awsIam->Pulumi.Input.make}: ChannelNamespace.authMode)
-      ->Pulumi.Input.make,
+      (
+        {authType: Api.amazonCognitoUserPools->Pulumi.Input.make}: ChannelNamespace.authMode
+      )->Pulumi.Input.make,
+      ({authType: Api.awsIam->Pulumi.Input.make}: ChannelNamespace.authMode)->Pulumi.Input.make,
     ]->Pulumi.Input.make
   let clientNamespace = ChannelNamespace.make(
     ~name=name ++ "ClientNS",
@@ -208,6 +208,4 @@ let make = (
 /** HTTP endpoint URL for use as Lambda `APPSYNC_ENDPOINT` env var.
     Constructs `https://{dns.http}` from the raw domain name in the API output. */
 let httpEndpoint = (eventsApi: t): Pulumi.Output.t<string> =>
-  eventsApi.api.dns->Pulumi.Output.apply(dns =>
-    "https://" ++ dns.http->Option.getOr("")
-  )
+  eventsApi.api.dns->Pulumi.Output.apply(dns => "https://" ++ dns.http->Option.getOr(""))

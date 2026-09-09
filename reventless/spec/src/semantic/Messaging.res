@@ -11,7 +11,6 @@ A `(channel, address)` pair can be built wrong: `Sms` beside an email address
 compiles and fails at the provider. `recipient` fuses them, so the wrong pair
 does not exist, and the channel is read back off the value that carries it.
 */
-
 /** A delivery route. The selector a recipient chooses per notification kind, and
     the granularity a platform provisions at. */
 type channel =
@@ -25,9 +24,9 @@ type channel =
 type recipient =
   | ToEmail(Email.t)
   | ToSms(Phone.t)
-  | /** The token the device registered with the push service. Opaque and
+  /** The token the device registered with the push service. Opaque and
         provider-shaped — unlike an address, nobody else has a grammar for it. */
-  ToPush({deviceToken: string})
+  | ToPush({deviceToken: string})
 
 /** The channel a recipient is addressed on. */
 let channelOf = (recipient: recipient): channel =>
@@ -93,14 +92,14 @@ burns the budget on an outcome that will not change, and abandoning a transient
 outage writes off a message that would have gone.
 */
 type failure =
-  | /** The provider could not be reached, or refused the call. Retry. */
-  Unavailable(string)
-  | /** This deployment provisions nothing for this channel. Do not retry — no
+  /** The provider could not be reached, or refused the call. Retry. */
+  | Unavailable(string)
+  /** This deployment provisions nothing for this channel. Do not retry — no
         number of attempts provisions one. */
-  UnsupportedChannel(channel)
-  | /** The provider answered and will not take this message: an address it
+  | UnsupportedChannel(channel)
+  /** The provider answered and will not take this message: an address it
         rejects, a recipient it suppresses. Do not retry. */
-  Refused(string)
+  | Refused(string)
 
 /** The retry rule, stated once. Everything that sweeps a failed send derives
     from it rather than re-reading the constructors. */

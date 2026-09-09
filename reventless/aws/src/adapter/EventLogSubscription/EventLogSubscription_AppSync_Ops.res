@@ -7,7 +7,6 @@
 // body, wraps it as a `{position, eventType, payload}` event, and publishes it
 // to the fixed plugin event-log channel on the AppSync Events API.
 
-
 // Baked at deploy time: the normalised channel segment for this event log.
 let channel = "/default/" ++ NodeProcess.env->Dict.get("EVENT_LOG_CHANNEL")->Option.getOr("")
 let endpoint = NodeProcess.env->Dict.get("APPSYNC_ENDPOINT")->Option.getOr("")
@@ -37,7 +36,10 @@ let processRecord = async (
       Dict.fromArray([
         ("id", JSON.Encode.string(record.messageId)),
         ("channel", JSON.Encode.string(channel)),
-        ("events", JSON.Encode.array([JSON.Encode.string(payload->JSON.Encode.object->JSON.stringify)])),
+        (
+          "events",
+          JSON.Encode.array([JSON.Encode.string(payload->JSON.Encode.object->JSON.stringify)]),
+        ),
       ])
       ->JSON.Encode.object
       ->JSON.stringify

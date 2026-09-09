@@ -12,9 +12,7 @@ module Make = (
   SourceBehavior: Behavior.T with module Spec = Source,
   Target: Reventless.Aggregate.Spec,
   TargetBehavior: Behavior.T with module Spec = Target,
-  EventMapping: Reventless.EventMapping.T
-    with module Source = Source
-    and module Target = Target,
+  EventMapping: Reventless.EventMapping.T with module Source = Source and module Target = Target,
 ) => {
   module AdaptedSource = Mapping_GWT.FromBehavior(Source, SourceBehavior)
   module AdaptedTarget = Mapping_GWT.FromBehavior(Target, TargetBehavior)

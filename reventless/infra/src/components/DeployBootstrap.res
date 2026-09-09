@@ -14,18 +14,17 @@ Same shape as `ReventlessCore.Monitoring.use`: a module-level registry consulted
 by an emitted call, so deploy-time extension becomes *registration*, not *file
 editing*. See `docs/plans/done/deploy-bootstrap-seam.md`.
 */
-
 /**
 Ordered phases at which bootstrap contributions run during a deploy program.
 */
 type phase =
-  | /** before `deployPlatform` / `deployPlugin` — seam registration and other
+  /** before `deployPlatform` / `deployPlugin` — seam registration and other
        ordering-sensitive activations that must precede the platform/plugin
        graph build */
-  PreDeploy
-  | /** after the platform/plugin graph is registered — exports, cross-stack
+  | PreDeploy
+  /** after the platform/plugin graph is registered — exports, cross-stack
        output emission */
-  PostDeploy
+  | PostDeploy
 
 type contribution = unit => unit
 

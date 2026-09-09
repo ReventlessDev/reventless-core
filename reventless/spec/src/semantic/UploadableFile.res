@@ -14,7 +14,6 @@ representation, no media-type restriction on what may be uploaded. See
     })
 ```
 */
-
 type t = string
 
 external unsafe: string => t = "%identity"

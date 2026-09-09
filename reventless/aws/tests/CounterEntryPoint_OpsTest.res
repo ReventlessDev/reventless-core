@@ -26,8 +26,8 @@ let mkRecord = (
   awsRegion: "eu-west-1",
   dynamodb: {
     keys: {id: attrS(keysId)},
-    newImage: ?newImage,
-    oldImage: ?oldImage,
+    ?newImage,
+    ?oldImage,
   },
   eventID: "e1",
   eventName: INSERT,
@@ -83,11 +83,7 @@ describe("CounterEntryPoint_Ops.splitRecords", () => {
         ~oldImage=Dict.fromArray([("id", attrS("c2")), ("count", attrN("4"))]),
       ),
       // foreign stream / foreign source → dropped
-      mkRecord(
-        ~arn="arn:other",
-        ~keysId="x",
-        ~newImage=Dict.fromArray([("id", attrS("x"))]),
-      ),
+      mkRecord(~arn="arn:other", ~keysId="x", ~newImage=Dict.fromArray([("id", attrS("x"))])),
       mkRecord(
         ~arn=refsArn,
         ~source="aws:sqs",

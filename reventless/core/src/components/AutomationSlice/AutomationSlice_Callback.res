@@ -172,9 +172,9 @@ module Make = (
     handle: (JSON.t, ~sourceId: string, Reventless.AutomationSlice.context) => unit,
   }
 
-  let dispatches: array<dispatch> = Automation.mappings->Array.map((
-    module(M: Automation.Mapping),
-  ) => {
+  let dispatches: array<
+    dispatch,
+  > = Automation.mappings->Array.map((module(M: Automation.Mapping)) => {
     let decoder = Reventless.DcbDecode.makeDecoder(M.sourceEventSchema)
     let handle = (json: JSON.t, ~sourceId: string, ctx: Reventless.AutomationSlice.context) => {
       let (eventType, dataDict) = json->Message.splitMessage

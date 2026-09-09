@@ -4,14 +4,20 @@ open PulumiAws
     Read by subscriptionInfraHook (Phase 5) to skip non-SNS entries. */
 let snsRegistry: Set.t<string> = Set.make()
 
-let make: ReventlessCore.EventTopic_Adapter.publisherMaker = (~name, ~storageResources as _, ~owner, ~opts) => {
+let make: ReventlessCore.EventTopic_Adapter.publisherMaker = (
+  ~name,
+  ~storageResources as _,
+  ~owner,
+  ~opts,
+) => {
   snsRegistry->Set.add(name)
-  let tags = AWS.Tags.make(~name, ~kind=ReventlessCore.EventTopic.componentType, ~role=EventTopic, ~owner?)
-  let topic = SNS.Topic.make(
+  let tags = AWS.Tags.make(
     ~name,
-    ~args={SNS.Topic.tags: tags},
-    ~opts,
+    ~kind=ReventlessCore.EventTopic.componentType,
+    ~role=EventTopic,
+    ~owner?,
   )
+  let topic = SNS.Topic.make(~name, ~args={SNS.Topic.tags: tags}, ~opts)
 
   let resolvedTopicOutput = topic->Util_SNS.toResolvedTopicOutput
 
@@ -26,13 +32,15 @@ let make: ReventlessCore.EventTopic_Adapter.publisherMaker = (~name, ~storageRes
         stream
         ->Stream.grouped(10)
         ->Stream.runForEach(items =>
-          Effect.promise(() =>
-            items
-            ->Array.map(({ReventlessInfra.EventTopic.service, meta, json}) =>
-              publishJson(service, meta, json)
-            )
-            ->Promise.all
-            ->Promise.thenResolve(_ => ())
+          Effect.promise(
+            () =>
+              items
+              ->Array.map(
+                ({ReventlessInfra.EventTopic.service: service, meta, json}) =>
+                  publishJson(service, meta, json),
+              )
+              ->Promise.all
+              ->Promise.thenResolve(_ => ()),
           )
         )
     }),

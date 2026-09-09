@@ -6,7 +6,6 @@ staleness, redelivery, an outage is not a verdict, the stand-down — live in
 host by `AddressGeocoding_Conformance`; the confidence rule stays core's
 (`Reventless.Geocoding`). The spec surface is written by `AddressGeocoding_Scaffold`.
 */
-
 /** Whether the graft reports back into its host. This trait does — the two `@noApi`
     commands — and the runner accepts nothing else yet; the flag is here so a
     competency that only observes is not mis-modelled as one that writes. */

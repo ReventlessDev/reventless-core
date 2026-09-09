@@ -7,9 +7,17 @@
 type consumedEvent =
   | CategoryAdded({categoryId: string, name: string})
   | CategoryRenamed({categoryId: string, name: string})
-  | CategoryImageAttached({categoryId: string, categoryImage: Reventless.UploadableImage.t, altText?: string})
+  | CategoryImageAttached({
+      categoryId: string,
+      categoryImage: Reventless.UploadableImage.t,
+      altText?: string,
+    })
   | CategoryImageRemoved({categoryId: string, categoryImage: Reventless.UploadableImage.t})
-  | CategoryImageAltTextSet({categoryId: string, categoryImage: Reventless.UploadableImage.t, altText: string})
+  | CategoryImageAltTextSet({
+      categoryId: string,
+      categoryImage: Reventless.UploadableImage.t,
+      altText: string,
+    })
   | CategoryArchived({categoryId: string})
   | CategoryUnarchived({categoryId: string})
 
@@ -23,8 +31,7 @@ type shelfStatus =
 
 // An archived category keeps its name: the products filed under it still name
 // it. The list stays closed — a reference gets id, name and state, nothing more.
-@schema
-@namedWhenRetired
+@schema @namedWhenRetired
 type state = {
   categoryId: string,
   name: string,

@@ -17,12 +17,17 @@ module Binding = {
   // a consumed fact carries none, because the partition already says whose it is.
   module Consumed = {
     let created: array<CategoryImages.consumedEvent> = [CategoryAdded]
-    let attached = (ref): CategoryImages.consumedEvent => CategoryImageAttached({categoryImage: ref})
+    let attached = (ref): CategoryImages.consumedEvent => CategoryImageAttached({
+      categoryImage: ref,
+    })
     let removed = (ref): CategoryImages.consumedEvent => CategoryImageRemoved({categoryImage: ref})
-    let altTextSet = (ref, altText): CategoryImages.consumedEvent =>
-      CategoryImageAltTextSet({categoryImage: ref, altText})
-    let effectiveChanged = (ref): CategoryImages.consumedEvent =>
-      CategoryEffectiveImageChanged({categoryImage: ?ref})
+    let altTextSet = (ref, altText): CategoryImages.consumedEvent => CategoryImageAltTextSet({
+      categoryImage: ref,
+      altText,
+    })
+    let effectiveChanged = (ref): CategoryImages.consumedEvent => CategoryEffectiveImageChanged({
+      categoryImage: ?ref,
+    })
   }
 
   let attach = ref => CategoryImages.SetCategoryImage({categoryId: "c1", categoryImage: ref})
@@ -31,10 +36,15 @@ module Binding = {
 
   let attached = ref => CategoryImages.CategoryImageAttached({categoryId: "c1", categoryImage: ref})
   let removed = ref => CategoryImages.CategoryImageRemoved({categoryId: "c1", categoryImage: ref})
-  let altTextSet = (ref, altText) =>
-    CategoryImages.CategoryImageAltTextSet({categoryId: "c1", categoryImage: ref, altText})
-  let effectiveChanged = ref =>
-    CategoryImages.CategoryEffectiveImageChanged({categoryId: "c1", categoryImage: ?ref})
+  let altTextSet = (ref, altText) => CategoryImages.CategoryImageAltTextSet({
+    categoryId: "c1",
+    categoryImage: ref,
+    altText,
+  })
+  let effectiveChanged = ref => CategoryImages.CategoryEffectiveImageChanged({
+    categoryId: "c1",
+    categoryImage: ?ref,
+  })
   let notAttached = CategoryImages.CategoryImageNotAttached
 }
 

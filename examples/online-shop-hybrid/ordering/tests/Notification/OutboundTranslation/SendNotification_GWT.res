@@ -20,9 +20,7 @@ let item: SendNotification.outboundItem = {
 
 // The real `translate`, driven by a stub provider. Spreads `none` so the test
 // says nothing about capabilities it is not exercising.
-let withProvider = (
-  answer: result<Reventless.Messaging.receipt, Reventless.Messaging.failure>,
-) => {
+let withProvider = (answer: result<Reventless.Messaging.receipt, Reventless.Messaging.failure>) => {
   let capabilities: Reventless.Capabilities.t = {
     ...Reventless.Capabilities.none,
     messaging: {
@@ -87,7 +85,14 @@ describe("SendNotification OutboundTranslationSlice", () => {
   test("an address its channel cannot parse is recorded without asking the provider", () =>
     givenTodo("confirm:o1", {...item, address: "not-an-address"})
     ->whenTranslateMocked(withProvider(Ok({ref: "must-not-be-used"})))
-    ->thenCommand("c1", RecordDeliveryFailure({recipientId: "c1", reference: "confirm:o1", reason: "expected an email address, got \"not-an-address\""}))
+    ->thenCommand(
+      "c1",
+      RecordDeliveryFailure({
+        recipientId: "c1",
+        reference: "confirm:o1",
+        reason: "expected an email address, got \"not-an-address\"",
+      }),
+    )
   )
 
   testSync("the request's own reference is the TODO key", () =>

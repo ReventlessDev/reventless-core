@@ -55,9 +55,7 @@ describe("ProvisionIdentity.parseArgs", () => {
   // Same hazard from the other direction: a flag whose value was left off must
   // not read as "no id given".
   testSync("a flag with no value is refused", () =>
-    expect(Provision.parseArgs(["--provider-id"]))->toEqual(
-      Error("--provider-id needs a value"),
-    )
+    expect(Provision.parseArgs(["--provider-id"]))->toEqual(Error("--provider-id needs a value"))
   )
 
   testSync("--name with no value is refused too", () =>
@@ -87,9 +85,7 @@ describe("ProvisionIdentity.parseArgs", () => {
 describe("ProvisionIdentity.poolSettings", () => {
   let settings = Provision.poolSettings(~poolName="MyIdentity")
 
-  testSync("carries the name it was asked for", () =>
-    expect(settings.poolName)->toBe("MyIdentity")
-  )
+  testSync("carries the name it was asked for", () => expect(settings.poolName)->toBe("MyIdentity"))
 
   testSync("matches what auto mode declares: email sign-in, no MFA, admin-only", () =>
     expect((

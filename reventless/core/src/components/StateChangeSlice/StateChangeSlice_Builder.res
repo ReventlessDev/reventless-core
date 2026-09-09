@@ -10,7 +10,11 @@ module Make = (
   type component = StateChangeSlice.component
   module Callback = StateChangeSlice_Callback.Make(Spec, Behavior)
 
-  let makeJsonHandler = (~tagKeysByEventType, ~crossPartitionTagKeys, dcbEventLogOps: DcbEventLog.operations) => {
+  let makeJsonHandler = (
+    ~tagKeysByEventType,
+    ~crossPartitionTagKeys,
+    dcbEventLogOps: DcbEventLog.operations,
+  ) => {
     let handler: CommandTopic.jsonCommandsHandler = stream => {
       let decodedStream =
         stream
@@ -35,7 +39,12 @@ module Make = (
           | None => Stream.empty
           }
         )
-      Callback.handleCommands(~tagKeysByEventType, ~crossPartitionTagKeys, dcbEventLogOps, decodedStream)
+      Callback.handleCommands(
+        ~tagKeysByEventType,
+        ~crossPartitionTagKeys,
+        dcbEventLogOps,
+        decodedStream,
+      )
     }
     handler
   }
@@ -55,7 +64,11 @@ module Make = (
       dcbEventLog
       ->Component.operations
       ->Pulumi.Output.apply(dcbEventLogOps => {
-        let jsonHandler = makeJsonHandler(~tagKeysByEventType, ~crossPartitionTagKeys, dcbEventLogOps)
+        let jsonHandler = makeJsonHandler(
+          ~tagKeysByEventType,
+          ~crossPartitionTagKeys,
+          dcbEventLogOps,
+        )
         CommandTopic.registerHandler(
           ~schema=commandSchema,
           ~handler=jsonHandler,
@@ -91,7 +104,13 @@ module Make = (
     Component.make(
       ~componentType=StateChangeSlice.componentType->ComponentType.toString,
       ~name=Spec.name,
-      ~construct=construct(~dcbEventLog, ~publishJsons, ~tagKeysByEventType, ~crossPartitionTagKeys, ...),
+      ~construct=construct(
+        ~dcbEventLog,
+        ~publishJsons,
+        ~tagKeysByEventType,
+        ~crossPartitionTagKeys,
+        ...
+      ),
       ~opts,
     )
 }

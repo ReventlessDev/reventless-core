@@ -9,12 +9,18 @@ describe("LocalBus", () => {
   testPromise("publishes events to all subscribers", async () => {
     module TestBus = LocalBus.Make()
     let count: ref<int> = ref(0)
-    TestBus.subscribeToEvents("t1", async (_, _, _) => {
-      count := count.contents + 1
-    })
-    TestBus.subscribeToEvents("t1", async (_, _, _) => {
-      count := count.contents + 1
-    })
+    TestBus.subscribeToEvents(
+      "t1",
+      async (_, _, _) => {
+        count := count.contents + 1
+      },
+    )
+    TestBus.subscribeToEvents(
+      "t1",
+      async (_, _, _) => {
+        count := count.contents + 1
+      },
+    )
     await TestBus.publishEvent("t1", "memory:InMemory", testMeta, JSON.Null)
     expect(count.contents)->toBe(2)
   })
@@ -22,12 +28,16 @@ describe("LocalBus", () => {
   testPromise("dispatches commands to registered handler", async () => {
     module TestBus = LocalBus.Make()
     let received: ref<option<string>> = ref(None)
-    TestBus.registerCommandHandler("cmd1", async (json, _) => {
-      received := switch json {
-      | JSON.String(s) => Some(s)
-      | _ => None
-      }
-    })
+    TestBus.registerCommandHandler(
+      "cmd1",
+      async (json, _) => {
+        received :=
+          switch json {
+          | JSON.String(s) => Some(s)
+          | _ => None
+          }
+      },
+    )
     await TestBus.dispatchCommand("cmd1", JSON.Encode.string("hello"))
     expect(received.contents)->toEqual(Some("hello"))
   })
@@ -35,9 +45,12 @@ describe("LocalBus", () => {
   testPromise("reset clears all handlers and subscribers", async () => {
     module TestBus = LocalBus.Make()
     let count: ref<int> = ref(0)
-    TestBus.subscribeToEvents("topic", async (_, _, _) => {
-      count := count.contents + 1
-    })
+    TestBus.subscribeToEvents(
+      "topic",
+      async (_, _, _) => {
+        count := count.contents + 1
+      },
+    )
     TestBus.reset()
     // After reset, no subscribers — this just verifies no crash
     expect(count.contents)->toBe(0)
@@ -91,7 +104,7 @@ describe("Aggregate E2E", () => {
       {
         Reventless.Message.id: "item-1",
         meta: testMeta,
-        commandJson: commandJson,
+        commandJson,
       },
     ])
     expect(capturedEventCount.contents)->toBe(1)
@@ -106,7 +119,7 @@ describe("Aggregate E2E", () => {
       {
         Reventless.Message.id: "item-1",
         meta: testMeta,
-        commandJson: commandJson,
+        commandJson,
       },
     ])
     // AlreadyExists error → no events generated → no bus publish
@@ -121,7 +134,7 @@ describe("Aggregate E2E", () => {
       {
         Reventless.Message.id: "item-2",
         meta: testMeta,
-        commandJson: commandJson,
+        commandJson,
       },
     ])
     expect(capturedEventCount.contents)->toBe(1)

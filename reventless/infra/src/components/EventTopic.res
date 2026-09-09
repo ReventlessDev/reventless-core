@@ -48,4 +48,8 @@ type publishJsonStreamItem = {
 Publishes a stream of event items as an `Effect.t`.
 Use this for high-throughput or streaming event pipelines.
 */
-type publishJsonStream = Stream.t<publishJsonStreamItem, string, unit> => Effect.t<unit, string, unit>
+type publishJsonStream = Stream.t<publishJsonStreamItem, string, unit> => Effect.t<
+  unit,
+  string,
+  unit,
+>

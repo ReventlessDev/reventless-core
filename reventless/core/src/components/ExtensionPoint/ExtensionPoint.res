@@ -33,9 +33,9 @@ module type Mappings = {
   let mappings: array<module(Mapping)>
 }
 
-let toResolvedOutputs = (
-  outputs: outputs,
-): Pulumi.Output.t<ReventlessInterop.ExtensionPoint.resolvedOutputs> =>
+let toResolvedOutputs = (outputs: outputs): Pulumi.Output.t<
+  ReventlessInterop.ExtensionPoint.resolvedOutputs,
+> =>
   (
     outputs.commandTopic->Pulumi.Output.flatMap(CommandTopic.toResolvedOutputs),
     outputs.eventTopic->Pulumi.Output.flatMap(EventTopic.toResolvedOutputs),

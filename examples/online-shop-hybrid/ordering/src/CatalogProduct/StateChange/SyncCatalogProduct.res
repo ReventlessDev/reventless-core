@@ -35,25 +35,14 @@ type error = unit // always succeeds — sync is idempotent
 
 @schema
 type event =
-  | CatalogProductSynced({
-      productId: string,
-      name: string,
-      price: Reventless.Money.t,
-    })
-  | CatalogProductPriceChanged({
-      productId: string,
-      price: Reventless.Money.t,
-    })
+  | CatalogProductSynced({productId: string, name: string, price: Reventless.Money.t})
+  | CatalogProductPriceChanged({productId: string, price: Reventless.Money.t})
   | CatalogProductWithdrawn({productId: string})
   // Carries the shadow's name and price so the projection can restore the row
   // without a second read: the fold has them in hand at exactly the moment the
   // decision is made, and an event that states what it caused is what makes the
   // projection a pure mapping.
-  | CatalogProductRelisted({
-      productId: string,
-      name: string,
-      price: Reventless.Money.t,
-    })
+  | CatalogProductRelisted({productId: string, name: string, price: Reventless.Money.t})
   | CatalogProductImageChanged({
       productId: string,
       @storageRef("Catalog.productImages") productImage?: Reventless.UploadableImage.t,

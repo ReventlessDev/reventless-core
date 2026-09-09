@@ -18,7 +18,7 @@ let toResource = (~tags=?, queue: PulumiAws.SQS.Queue.t): ReventlessInfra.Adapte
     ~urn=queue.arn,
     ~service=queue.name->Pulumi.Output.apply(_ => AWS.SQS.service),
     ~resourceType="aws:sqs:Queue"->Pulumi.Output.make,
-    ~tags=?tags,
+    ~tags?,
   )
 
 let fromResource = ({id, name}: ReventlessInfra.Adapter.resource) => {
@@ -59,7 +59,9 @@ let findResolvedResource = resources =>
   resources->ReventlessCore.Util.AdapterRuntime.findResolvedResource(AWS.SQS.service)
 
 module Subscription = {
-  let toResource = ({eventSourceMapping: {id, arn}}: PulumiAws.SQS.Queue.eventSubscription): ReventlessInfra.Adapter.resource =>
+  let toResource = (
+    {eventSourceMapping: {id, arn}}: PulumiAws.SQS.Queue.eventSubscription,
+  ): ReventlessInfra.Adapter.resource =>
     ReventlessInfra.Adapter.make(
       ~name=id,
       ~id,

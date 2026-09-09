@@ -15,7 +15,9 @@ describe("PluginName.fromPackageName", () => {
     expect(P.fromPackageName("online-shop"))->toEqual("OnlineShop")
   )
   testSync("splits on underscores as well as dashes", () =>
-    expect(P.fromPackageName("online-shop_aggregates-catalog"))->toEqual("OnlineShopAggregatesCatalog")
+    expect(P.fromPackageName("online-shop_aggregates-catalog"))->toEqual(
+      "OnlineShopAggregatesCatalog",
+    )
   )
   testSync("a single lowercase word is capitalised", () =>
     expect(P.fromPackageName("catalog"))->toEqual("Catalog")

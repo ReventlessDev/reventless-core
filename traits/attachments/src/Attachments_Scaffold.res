@@ -25,7 +25,6 @@ is how a scaffolder acquires a policy language nobody asked for. They are left
 as `TODO(graft)` markers, and the developer writes ReScript, which is better at
 this than any config could be.
 */
-
 /**
 The names a graft needs, and nothing else.
 
@@ -132,8 +131,7 @@ type names = {
   notAttached: string,
 }
 
-let cardinalityOf = (c: config): Attachments_Rules.cardinality =>
-  c.cardinality->Option.getOr(Many)
+let cardinalityOf = (c: config): Attachments_Rules.cardinality => c.cardinality->Option.getOr(Many)
 
 let isSingle = (c: config): bool => cardinalityOf(c) == Single
 
@@ -313,95 +311,96 @@ let sliceSpec = (c: config): string => {
   // the fact, so listing the event would declare one nothing can write.
   let primaryArm = (prefix: string) =>
     single ? [] : [`  | ${n.primarySet}({ ${prefix}${c.file}: ${ref}})`]
-  let headline =
-    single
-      ? [
-          `// ${n.slice} StateChangeSlice: ${c.entity}'s single attachment — set it, remove`,
-          `// it, caption it. A graft of the Attachments trait; the set's rules are the`,
-        ]
-      : [
-          `// ${n.slice} StateChangeSlice: ${c.entity}'s attachment set — attach, remove,`,
-          `// choose the primary, caption. A graft of the Attachments trait; the rules are`,
-        ]
-  lines([
-    ...headline,
-    `// trait's and are asserted by its conformance suite, bound in the tests.`,
-    `//`,
-    `// Emitted by the trait. Everything below is this host's own vocabulary, so it is`,
-    `// ordinary source from here on — edit it freely.`,
-    ``,
-    `@@reventless.spec`,
-    ``,
-    `@schema`,
-    `type consumedEvent =`,
-    createdArm,
-    `  | ${n.attached}({ ${c.file}: ${ref}})`,
-    `  | ${n.removed}({ ${c.file}: ${ref}})`,
-    ...primaryArm(""),
-    `  | ${n.altTextSet}({ ${c.file}: ${ref}, altText: string})`,
-    `  | ${n.effectiveChanged}({ ${c.file}?: ${ref}})`,
-    `  // TODO(graft): add the events this host's own refusal turns on — whatever`,
-    `  // moves it into a state where attachments may not be changed.`,
-    ``,
-    ...(single
-      ? [
-          `// One reference field, on ${n.attachCmd}, and it accepts a new file — so`,
-          `// it is typed as the uploadable it is and a form binds an upload input to it.`,
-          `// Neither other command names a reference: with one attachment there is`,
-          `// nothing to choose between, and asking a caller to name it would be asking`,
-          `// them to repeat what the row already says.`,
-        ]
-      : [
-          `// The reference fields divide into two kinds, and the division is the point.`,
-          `// The one on ${n.attachCmd} accepts a new file, so it is typed as the`,
-          `// uploadable it is and a form binds an upload input to it. The others name a`,
-          `// file the row ALREADY holds, so they are typed as selections out of`,
-          `// \`${setFieldOf(c)}\` and a form offers those instead of an uploader.`,
-          `//`,
-          `// Bound once rather than spelled three times: the collection is one answer,`,
-          `// and three copies are three chances for one to name a field that has moved.`,
-          `let ${selectionBinding} = Reventless.MemberRef.of_(~view="${c.view}", ${contentArgOf(
-              c,
-            )}~field="${setFieldOf(c)}")`,
-          ``,
-        ]),
-    `@schema`,
-    `type command =`,
-    `${attrs}${n.attachCmd}({ ${c.entityId}: string, ${c.file}: ${ref}, altText?: string})`,
-    // The bounded set's remove names nothing. This is the reported defect in its
-    // purest form — the old command asked for an upload in order to delete.
-    single
-      ? `${attrs}${n.removeCmd}({ ${c.entityId}: string})`
-      : `${attrs}${n.removeCmd}({ ${c.entityId}: string, ${c.file}: ${sel}})`,
-    ...(single ? [] : [`${attrs}${n.setPrimaryCmd}({ ${c.entityId}: string, ${c.file}: ${sel}})`]),
-    single
-      ? `${attrs}${n.setAltTextCmd}({ ${c.entityId}: string, altText: string})`
-      : `${attrs}${n.setAltTextCmd}({ ${c.entityId}: string, ${c.file}: ${sel}, altText: string})`,
-    ``,
-    `@schema`,
-    `type error =`,
-    `  | ${n.notFound}`,
-    `  | ${n.notAttached}`,
-    `  // TODO(graft): add this host's own refusal.`,
-    ``,
-    `@schema`,
-    `type event =`,
-    `  | ${n.attached}({ ${c.entityId}: string, ${c.file}: ${ref}, altText?: string})`,
-    `  | ${n.removed}({ ${c.entityId}: string, ${c.file}: ${ref}})`,
-    ...primaryArm(`${c.entityId}: string, `),
-    `  | ${n.altTextSet}({ ${c.entityId}: string, ${c.file}: ${ref}, altText: string})`,
-    `  // The member a reader should now show, or none. A conclusion rather than a`,
-    `  // decision: most of the moves that change it — a first attachment, a removal`,
-    `  // promoting the next — are nobody's choice, so nothing else announces them.`,
-    `  | ${n.effectiveChanged}({ ${c.entityId}: string, ${c.file}?: ${ref}})`,
-    ``,
-    ...commandTransitionBinding(c),
-    `// The graft's own record of itself. Nothing else survives into a deployed`,
-    `// plugin — the dependency and the rules alias are source-side — so without`,
-    `// this a running estate cannot say where this slice came from.`,
-    `let traits = [TraitAttachments.Attachments.declaration]`,
-    ``,
-  ])
+  let headline = single
+    ? [
+        `// ${n.slice} StateChangeSlice: ${c.entity}'s single attachment — set it, remove`,
+        `// it, caption it. A graft of the Attachments trait; the set's rules are the`,
+      ]
+    : [
+        `// ${n.slice} StateChangeSlice: ${c.entity}'s attachment set — attach, remove,`,
+        `// choose the primary, caption. A graft of the Attachments trait; the rules are`,
+      ]
+  lines(
+    [
+      ...headline,
+      `// trait's and are asserted by its conformance suite, bound in the tests.`,
+      `//`,
+      `// Emitted by the trait. Everything below is this host's own vocabulary, so it is`,
+      `// ordinary source from here on — edit it freely.`,
+      ``,
+      `@@reventless.spec`,
+      ``,
+      `@schema`,
+      `type consumedEvent =`,
+      createdArm,
+      `  | ${n.attached}({ ${c.file}: ${ref}})`,
+      `  | ${n.removed}({ ${c.file}: ${ref}})`,
+      ...primaryArm(""),
+      `  | ${n.altTextSet}({ ${c.file}: ${ref}, altText: string})`,
+      `  | ${n.effectiveChanged}({ ${c.file}?: ${ref}})`,
+      `  // TODO(graft): add the events this host's own refusal turns on — whatever`,
+      `  // moves it into a state where attachments may not be changed.`,
+      ``,
+      ...single
+        ? [
+            `// One reference field, on ${n.attachCmd}, and it accepts a new file — so`,
+            `// it is typed as the uploadable it is and a form binds an upload input to it.`,
+            `// Neither other command names a reference: with one attachment there is`,
+            `// nothing to choose between, and asking a caller to name it would be asking`,
+            `// them to repeat what the row already says.`,
+          ]
+        : [
+            `// The reference fields divide into two kinds, and the division is the point.`,
+            `// The one on ${n.attachCmd} accepts a new file, so it is typed as the`,
+            `// uploadable it is and a form binds an upload input to it. The others name a`,
+            `// file the row ALREADY holds, so they are typed as selections out of`,
+            `// \`${setFieldOf(c)}\` and a form offers those instead of an uploader.`,
+            `//`,
+            `// Bound once rather than spelled three times: the collection is one answer,`,
+            `// and three copies are three chances for one to name a field that has moved.`,
+            `let ${selectionBinding} = Reventless.MemberRef.of_(~view="${c.view}", ${contentArgOf(
+                c,
+              )}~field="${setFieldOf(c)}")`,
+            ``,
+          ],
+      `@schema`,
+      `type command =`,
+      `${attrs}${n.attachCmd}({ ${c.entityId}: string, ${c.file}: ${ref}, altText?: string})`,
+      // The bounded set's remove names nothing. This is the reported defect in its
+      // purest form — the old command asked for an upload in order to delete.
+      single
+        ? `${attrs}${n.removeCmd}({ ${c.entityId}: string})`
+        : `${attrs}${n.removeCmd}({ ${c.entityId}: string, ${c.file}: ${sel}})`,
+      ...single ? [] : [`${attrs}${n.setPrimaryCmd}({ ${c.entityId}: string, ${c.file}: ${sel}})`],
+      single
+        ? `${attrs}${n.setAltTextCmd}({ ${c.entityId}: string, altText: string})`
+        : `${attrs}${n.setAltTextCmd}({ ${c.entityId}: string, ${c.file}: ${sel}, altText: string})`,
+      ``,
+      `@schema`,
+      `type error =`,
+      `  | ${n.notFound}`,
+      `  | ${n.notAttached}`,
+      `  // TODO(graft): add this host's own refusal.`,
+      ``,
+      `@schema`,
+      `type event =`,
+      `  | ${n.attached}({ ${c.entityId}: string, ${c.file}: ${ref}, altText?: string})`,
+      `  | ${n.removed}({ ${c.entityId}: string, ${c.file}: ${ref}})`,
+      ...primaryArm(`${c.entityId}: string, `),
+      `  | ${n.altTextSet}({ ${c.entityId}: string, ${c.file}: ${ref}, altText: string})`,
+      `  // The member a reader should now show, or none. A conclusion rather than a`,
+      `  // decision: most of the moves that change it — a first attachment, a removal`,
+      `  // promoting the next — are nobody's choice, so nothing else announces them.`,
+      `  | ${n.effectiveChanged}({ ${c.entityId}: string, ${c.file}?: ${ref}})`,
+      ``,
+      ...commandTransitionBinding(c),
+      `// The graft's own record of itself. Nothing else survives into a deployed`,
+      `// plugin — the dependency and the rules alias are source-side — so without`,
+      `// this a running estate cannot say where this slice came from.`,
+      `let traits = [TraitAttachments.Attachments.declaration]`,
+      ``,
+    ],
+  )
 }
 
 // ── The slice body ───────────────────────────────────────────────────────────
@@ -409,124 +408,126 @@ let sliceSpec = (c: config): string => {
 let sliceBehavior = (c: config): string => {
   let n = namesOf(c)
   let single = isSingle(c)
-  lines([
-    `@@reventless.behavior`,
-    ``,
-    `// The set's rules are the trait's. What is left here is this host's own refusal`,
-    `// and the mapping between its constructors and the trait's ops and facts.`,
-    `module Attachments = TraitAttachments.Attachments_Rules`,
-    ``,
-    `type state = {exists: bool, attachments: Attachments.t}`,
-    ``,
-    `let initialState = {exists: false, attachments: Attachments.empty}`,
-    ``,
-    `let evolve = (state, event) => {`,
-    `  let fold = fact => {...state, attachments: state.attachments->Attachments.evolve(fact)}`,
-    `  switch event {`,
-    // A creation event that carries no id is a bare constructor, so a wildcard
-    // payload does not compile against it. The spec above already branches on
-    // this; the fold has to branch with it.
-    c.createdCarriesEntityId->Option.getOr(true)
-      ? `  | ${c.created}(_) => {...state, exists: true}`
-      : `  | ${c.created} => {...state, exists: true}`,
-    `  | ${n.attached}({${c.file}}) => fold(Attached({ref: ${c.file}, altText: None}))`,
-    `  | ${n.removed}({${c.file}}) => fold(Removed({ref: ${c.file}}))`,
-    ...(single
-      ? []
-      : [`  | ${n.primarySet}({${c.file}}) => fold(PrimarySet({ref: ${c.file}}))`]),
-    `  | ${n.altTextSet}({${c.file}, altText}) => fold(AltTextSet({ref: ${c.file}, altText}))`,
-    `  | ${n.effectiveChanged}({${c.file}: ?ref}) => fold(EffectiveChanged({ref: ref}))`,
-    `  // TODO(graft): fold this host's own events into its own state.`,
-    `  }`,
-    `}`,
-    ``,
-    `let toOp = command =>`,
-    `  switch command {`,
-    `  | ${n.attachCmd}({${c.entityId}, ${c.file}, altText: ?altText}) => (`,
-    `      ${c.entityId},`,
-    `      Attachments.Attach({ref: ${c.file}, altText}),`,
-    `    )`,
-    // `Clear` is what a ref-less remove maps onto: the op that empties the set,
-    // whatever it holds. Nothing here has to look the member up.
-    ...(single
-      ? [`  | ${n.removeCmd}({${c.entityId}}) => (${c.entityId}, Attachments.Clear)`]
-      : [
-          `  | ${n.removeCmd}({${c.entityId}, ${c.file}}) => (`,
-          `      ${c.entityId},`,
-          `      Attachments.Remove({ref: ${c.file}}),`,
-          `    )`,
-          `  | ${n.setPrimaryCmd}({${c.entityId}, ${c.file}}) => (`,
-          `      ${c.entityId},`,
-          `      Attachments.SetPrimary({ref: ${c.file}}),`,
-          `    )`,
-        ]),
-    ...(single
-      ? [
-          `  | ${n.setAltTextCmd}({${c.entityId}, altText}) => (`,
-          `      ${c.entityId},`,
-          // Not punned: a single-field inline record whose field shares its name
-          // with the variable filling it is read as a record copy, and the
-          // anonymous type then escapes its constructor.
-          `      Attachments.SetPrimaryAltText({altText: altText}),`,
-          `    )`,
-        ]
-      : [
-          `  | ${n.setAltTextCmd}({${c.entityId}, ${c.file}, altText}) => (`,
-          `      ${c.entityId},`,
-          `      Attachments.SetAltText({ref: ${c.file}, altText}),`,
-          `    )`,
-        ]),
-    `  }`,
-    ``,
-    // `Some`/`None` for a bounded set only. `fact` is the trait's type and so
-    // lists a primary at both cardinalities, but a graft with no primary command
-    // can never decide one — and an arm that fabricated some other event to keep
-    // the switch total would be writing a fact nothing happened.
-    `let toEvent = (${c.entityId}, fact) =>`,
-    `  switch fact {`,
-    `  | Attachments.Attached({ref, altText}) =>`,
-    `    ${single ? "Some(" : ""}${n.attached}({${c.entityId}, ${c.file}: ref, altText: ?altText})${single
-        ? ")"
-        : ""}`,
-    `  | Attachments.Removed({ref}) => ${single
-        ? `Some(${n.removed}({${c.entityId}, ${c.file}: ref}))`
-        : `${n.removed}({${c.entityId}, ${c.file}: ref})`}`,
-    ...(single
-      ? [
-          `  // Unreachable: no command of this graft chooses a primary, because a set`,
-          `  // of one has nothing to choose between. It contributes no event.`,
-          `  | Attachments.PrimarySet(_) => None`,
-        ]
-      : [`  | Attachments.PrimarySet({ref}) => ${n.primarySet}({${c.entityId}, ${c.file}: ref})`]),
-    `  | Attachments.AltTextSet({ref, altText}) =>`,
-    `    ${single ? "Some(" : ""}${n.altTextSet}({${c.entityId}, ${c.file}: ref, altText})${single
-        ? ")"
-        : ""}`,
-    `  | Attachments.EffectiveChanged({ref}) =>`,
-    `    ${single ? "Some(" : ""}${n.effectiveChanged}({${c.entityId}, ${c.file}: ?ref})${single
-        ? ")"
-        : ""}`,
-    `  }`,
-    ``,
-    `let decide = (state, command) =>`,
-    `  if !state.exists {`,
-    `    Error(${n.notFound})`,
-    `  } else {`,
-    `    // TODO(graft): this host's own refusal goes here, ahead of the set's rules —`,
-    `    // an \`else if\` returning the error added above. A graft with no extra refusal`,
-    `    // is a complete graft, so leaving this is legitimate.`,
-    `    let (${c.entityId}, op) = toOp(command)`,
-    single
-      ? `    switch state.attachments->Attachments.decide(~cardinality=Single, op) {`
-      : `    switch state.attachments->Attachments.decide(op) {`,
-    `    | Error(#NotAttached) => Error(${n.notAttached})`,
-    single
-      ? `    | Ok(facts) => Ok(facts->Array.filterMap(toEvent(${c.entityId}, _)))`
-      : `    | Ok(facts) => Ok(facts->Array.map(toEvent(${c.entityId}, _)))`,
-    `    }`,
-    `  }`,
-    ``,
-  ])
+  lines(
+    [
+      `@@reventless.behavior`,
+      ``,
+      `// The set's rules are the trait's. What is left here is this host's own refusal`,
+      `// and the mapping between its constructors and the trait's ops and facts.`,
+      `module Attachments = TraitAttachments.Attachments_Rules`,
+      ``,
+      `type state = {exists: bool, attachments: Attachments.t}`,
+      ``,
+      `let initialState = {exists: false, attachments: Attachments.empty}`,
+      ``,
+      `let evolve = (state, event) => {`,
+      `  let fold = fact => {...state, attachments: state.attachments->Attachments.evolve(fact)}`,
+      `  switch event {`,
+      // A creation event that carries no id is a bare constructor, so a wildcard
+      // payload does not compile against it. The spec above already branches on
+      // this; the fold has to branch with it.
+      c.createdCarriesEntityId->Option.getOr(true)
+        ? `  | ${c.created}(_) => {...state, exists: true}`
+        : `  | ${c.created} => {...state, exists: true}`,
+      `  | ${n.attached}({${c.file}}) => fold(Attached({ref: ${c.file}, altText: None}))`,
+      `  | ${n.removed}({${c.file}}) => fold(Removed({ref: ${c.file}}))`,
+      ...single ? [] : [`  | ${n.primarySet}({${c.file}}) => fold(PrimarySet({ref: ${c.file}}))`],
+      `  | ${n.altTextSet}({${c.file}, altText}) => fold(AltTextSet({ref: ${c.file}, altText}))`,
+      `  | ${n.effectiveChanged}({${c.file}: ?ref}) => fold(EffectiveChanged({ref: ref}))`,
+      `  // TODO(graft): fold this host's own events into its own state.`,
+      `  }`,
+      `}`,
+      ``,
+      `let toOp = command =>`,
+      `  switch command {`,
+      `  | ${n.attachCmd}({${c.entityId}, ${c.file}, altText: ?altText}) => (`,
+      `      ${c.entityId},`,
+      `      Attachments.Attach({ref: ${c.file}, altText}),`,
+      `    )`,
+      // `Clear` is what a ref-less remove maps onto: the op that empties the set,
+      // whatever it holds. Nothing here has to look the member up.
+      ...single
+        ? [`  | ${n.removeCmd}({${c.entityId}}) => (${c.entityId}, Attachments.Clear)`]
+        : [
+            `  | ${n.removeCmd}({${c.entityId}, ${c.file}}) => (`,
+            `      ${c.entityId},`,
+            `      Attachments.Remove({ref: ${c.file}}),`,
+            `    )`,
+            `  | ${n.setPrimaryCmd}({${c.entityId}, ${c.file}}) => (`,
+            `      ${c.entityId},`,
+            `      Attachments.SetPrimary({ref: ${c.file}}),`,
+            `    )`,
+          ],
+      ...single
+        ? [
+            `  | ${n.setAltTextCmd}({${c.entityId}, altText}) => (`,
+            `      ${c.entityId},`,
+            // Not punned: a single-field inline record whose field shares its name
+            // with the variable filling it is read as a record copy, and the
+            // anonymous type then escapes its constructor.
+            `      Attachments.SetPrimaryAltText({altText: altText}),`,
+            `    )`,
+          ]
+        : [
+            `  | ${n.setAltTextCmd}({${c.entityId}, ${c.file}, altText}) => (`,
+            `      ${c.entityId},`,
+            `      Attachments.SetAltText({ref: ${c.file}, altText}),`,
+            `    )`,
+          ],
+      `  }`,
+      ``,
+      // `Some`/`None` for a bounded set only. `fact` is the trait's type and so
+      // lists a primary at both cardinalities, but a graft with no primary command
+      // can never decide one — and an arm that fabricated some other event to keep
+      // the switch total would be writing a fact nothing happened.
+      `let toEvent = (${c.entityId}, fact) =>`,
+      `  switch fact {`,
+      `  | Attachments.Attached({ref, altText}) =>`,
+      `    ${single
+          ? "Some("
+          : ""}${n.attached}({${c.entityId}, ${c.file}: ref, altText: ?altText})${single
+          ? ")"
+          : ""}`,
+      `  | Attachments.Removed({ref}) => ${single
+          ? `Some(${n.removed}({${c.entityId}, ${c.file}: ref}))`
+          : `${n.removed}({${c.entityId}, ${c.file}: ref})`}`,
+      ...single
+        ? [
+            `  // Unreachable: no command of this graft chooses a primary, because a set`,
+            `  // of one has nothing to choose between. It contributes no event.`,
+            `  | Attachments.PrimarySet(_) => None`,
+          ]
+        : [`  | Attachments.PrimarySet({ref}) => ${n.primarySet}({${c.entityId}, ${c.file}: ref})`],
+      `  | Attachments.AltTextSet({ref, altText}) =>`,
+      `    ${single ? "Some(" : ""}${n.altTextSet}({${c.entityId}, ${c.file}: ref, altText})${single
+          ? ")"
+          : ""}`,
+      `  | Attachments.EffectiveChanged({ref}) =>`,
+      `    ${single ? "Some(" : ""}${n.effectiveChanged}({${c.entityId}, ${c.file}: ?ref})${single
+          ? ")"
+          : ""}`,
+      `  }`,
+      ``,
+      `let decide = (state, command) =>`,
+      `  if !state.exists {`,
+      `    Error(${n.notFound})`,
+      `  } else {`,
+      `    // TODO(graft): this host's own refusal goes here, ahead of the set's rules —`,
+      `    // an \`else if\` returning the error added above. A graft with no extra refusal`,
+      `    // is a complete graft, so leaving this is legitimate.`,
+      `    let (${c.entityId}, op) = toOp(command)`,
+      single
+        ? `    switch state.attachments->Attachments.decide(~cardinality=Single, op) {`
+        : `    switch state.attachments->Attachments.decide(op) {`,
+      `    | Error(#NotAttached) => Error(${n.notAttached})`,
+      single
+        ? `    | Ok(facts) => Ok(facts->Array.filterMap(toEvent(${c.entityId}, _)))`
+        : `    | Ok(facts) => Ok(facts->Array.map(toEvent(${c.entityId}, _)))`,
+      `    }`,
+      `  }`,
+      ``,
+    ],
+  )
 }
 
 // ── The conformance binding ──────────────────────────────────────────────────
@@ -545,70 +546,72 @@ let conformanceBinding = (c: config): string => {
     c.createdCarriesEntityId->Option.getOr(true)
       ? `${c.created}({ ${c.entityId}: "${id}"})`
       : c.created
-  lines([
-    `// The Attachments trait's conformance suite, bound to \`${n.slice}\`.`,
-    `// Emitted whole: every name here is one the graft already declared.`,
-    ``,
-    `module Binding = {`,
-    `  type ref = string`,
-    `  let refA = "${refA}"`,
-    `  let refB = "${refB}"`,
-    ``,
-    `  module Spec = ${n.slice}`,
-    `  module Behavior = ${n.slice}_Behavior`,
-    ``,
-    `  // Annotated: the slice consumes and emits same-named constructors.`,
-    `  // The same facts as the slice consumes them: no ${c.entityId}, because the`,
-    `  // partition already says which entity they belong to.`,
-    `  module Consumed = {`,
-    `    let created: array<${n.slice}.consumedEvent> = [${createdValue}]`,
-    `    let attached = (ref): ${n.slice}.consumedEvent => ${n.attached}({ ${c.file}: ref})`,
-    `    let removed = (ref): ${n.slice}.consumedEvent => ${n.removed}({ ${c.file}: ref})`,
-    ...(single
-      ? []
-      : [
-          `    let primarySet = (ref): ${n.slice}.consumedEvent => ${n.primarySet}({ ${c.file}: ref})`,
-        ]),
-    `    let altTextSet = (ref, altText): ${n.slice}.consumedEvent =>`,
-    `      ${n.altTextSet}({ ${c.file}: ref, altText})`,
-    `    let effectiveChanged = (ref): ${n.slice}.consumedEvent =>`,
-    `      ${n.effectiveChanged}({ ${c.file}: ?ref})`,
-    `  }`,
-    ``,
-    `  let attach = ref => ${n.slice}.${n.attachCmd}({ ${c.entityId}: "${id}", ${c.file}: ref})`,
-    ...(single
-      ? [`  let clear = ${n.slice}.${n.removeCmd}({ ${c.entityId}: "${id}"})`]
-      : [
-          `  let remove = ref => ${n.slice}.${n.removeCmd}({ ${c.entityId}: "${id}", ${c.file}: ref})`,
-          `  let setPrimary = ref =>`,
-          `    ${n.slice}.${n.setPrimaryCmd}({ ${c.entityId}: "${id}", ${c.file}: ref})`,
-        ]),
-    single
-      ? `  let setAltText = altText => ${n.slice}.${n.setAltTextCmd}({ ${c.entityId}: "${id}", altText})`
-      : `  let setAltText = (ref, altText) =>\n    ${n.slice}.${n.setAltTextCmd}({ ${c.entityId}: "${id}", ${c.file}: ref, altText})`,
-    ``,
-    `  let attached = ref => ${n.slice}.${n.attached}({ ${c.entityId}: "${id}", ${c.file}: ref})`,
-    `  let removed = ref => ${n.slice}.${n.removed}({ ${c.entityId}: "${id}", ${c.file}: ref})`,
-    ...(single
-      ? []
-      : [
-          `  let primarySet = ref =>`,
-          `    ${n.slice}.${n.primarySet}({ ${c.entityId}: "${id}", ${c.file}: ref})`,
-        ]),
-    `  let altTextSet = (ref, altText) =>`,
-    `    ${n.slice}.${n.altTextSet}({ ${c.entityId}: "${id}", ${c.file}: ref, altText})`,
-    `  let effectiveChanged = ref =>`,
-    `    ${n.slice}.${n.effectiveChanged}({ ${c.entityId}: "${id}", ${c.file}: ?ref})`,
-    `  let notAttached = ${n.slice}.${n.notAttached}`,
-    `}`,
-    ``,
-    single
-      ? `module Conformance = TraitAttachments.Attachments_Conformance.MakeSingle(Binding)`
-      : `module Conformance = TraitAttachments.Attachments_Conformance.Make(Binding)`,
-    ``,
-    `Conformance.register()`,
-    ``,
-  ])
+  lines(
+    [
+      `// The Attachments trait's conformance suite, bound to \`${n.slice}\`.`,
+      `// Emitted whole: every name here is one the graft already declared.`,
+      ``,
+      `module Binding = {`,
+      `  type ref = string`,
+      `  let refA = "${refA}"`,
+      `  let refB = "${refB}"`,
+      ``,
+      `  module Spec = ${n.slice}`,
+      `  module Behavior = ${n.slice}_Behavior`,
+      ``,
+      `  // Annotated: the slice consumes and emits same-named constructors.`,
+      `  // The same facts as the slice consumes them: no ${c.entityId}, because the`,
+      `  // partition already says which entity they belong to.`,
+      `  module Consumed = {`,
+      `    let created: array<${n.slice}.consumedEvent> = [${createdValue}]`,
+      `    let attached = (ref): ${n.slice}.consumedEvent => ${n.attached}({ ${c.file}: ref})`,
+      `    let removed = (ref): ${n.slice}.consumedEvent => ${n.removed}({ ${c.file}: ref})`,
+      ...single
+        ? []
+        : [
+            `    let primarySet = (ref): ${n.slice}.consumedEvent => ${n.primarySet}({ ${c.file}: ref})`,
+          ],
+      `    let altTextSet = (ref, altText): ${n.slice}.consumedEvent =>`,
+      `      ${n.altTextSet}({ ${c.file}: ref, altText})`,
+      `    let effectiveChanged = (ref): ${n.slice}.consumedEvent =>`,
+      `      ${n.effectiveChanged}({ ${c.file}: ?ref})`,
+      `  }`,
+      ``,
+      `  let attach = ref => ${n.slice}.${n.attachCmd}({ ${c.entityId}: "${id}", ${c.file}: ref})`,
+      ...single
+        ? [`  let clear = ${n.slice}.${n.removeCmd}({ ${c.entityId}: "${id}"})`]
+        : [
+            `  let remove = ref => ${n.slice}.${n.removeCmd}({ ${c.entityId}: "${id}", ${c.file}: ref})`,
+            `  let setPrimary = ref =>`,
+            `    ${n.slice}.${n.setPrimaryCmd}({ ${c.entityId}: "${id}", ${c.file}: ref})`,
+          ],
+      single
+        ? `  let setAltText = altText => ${n.slice}.${n.setAltTextCmd}({ ${c.entityId}: "${id}", altText})`
+        : `  let setAltText = (ref, altText) =>\n    ${n.slice}.${n.setAltTextCmd}({ ${c.entityId}: "${id}", ${c.file}: ref, altText})`,
+      ``,
+      `  let attached = ref => ${n.slice}.${n.attached}({ ${c.entityId}: "${id}", ${c.file}: ref})`,
+      `  let removed = ref => ${n.slice}.${n.removed}({ ${c.entityId}: "${id}", ${c.file}: ref})`,
+      ...single
+        ? []
+        : [
+            `  let primarySet = ref =>`,
+            `    ${n.slice}.${n.primarySet}({ ${c.entityId}: "${id}", ${c.file}: ref})`,
+          ],
+      `  let altTextSet = (ref, altText) =>`,
+      `    ${n.slice}.${n.altTextSet}({ ${c.entityId}: "${id}", ${c.file}: ref, altText})`,
+      `  let effectiveChanged = ref =>`,
+      `    ${n.slice}.${n.effectiveChanged}({ ${c.entityId}: "${id}", ${c.file}: ?ref})`,
+      `  let notAttached = ${n.slice}.${n.notAttached}`,
+      `}`,
+      ``,
+      single
+        ? `module Conformance = TraitAttachments.Attachments_Conformance.MakeSingle(Binding)`
+        : `module Conformance = TraitAttachments.Attachments_Conformance.Make(Binding)`,
+      ``,
+      `Conformance.register()`,
+      ``,
+    ],
+  )
 }
 
 // ── The projection patch ─────────────────────────────────────────────────────

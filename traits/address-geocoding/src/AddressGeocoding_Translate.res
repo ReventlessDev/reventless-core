@@ -7,7 +7,6 @@ An outage is not a verdict — it comes back `Error`, which leaves the TODO pend
 for another attempt — and once the retries are spent `exhaustedReason` is what the
 host reports instead, by the same command a confident refusal produces.
 */
-
 /** The geocoder arrives as a capability, so the deployment decides what answers. */
 let translate = async (
   ~text: string,

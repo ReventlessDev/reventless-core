@@ -153,8 +153,9 @@ let restoreConcurrency = async (~client, ~h: held): option<string> =>
   | () => None
   | exception exn =>
     Some(
-      `LEFT SWITCHED OFF: could not restore concurrency on ${h.functionName} (${errorText(exn)}). ` ++
-      `It is still reserved at 0 and will not run until that is undone.`,
+      `LEFT SWITCHED OFF: could not restore concurrency on ${h.functionName} (${errorText(
+          exn,
+        )}). ` ++ `It is still reserved at 0 and will not run until that is undone.`,
     )
   }
 
@@ -181,7 +182,9 @@ let release = async (~client, ~held: array<held>): array<string> => {
     | () => None
     | exception exn =>
       Some(
-        `could not restore the environment of ${h.functionName} (${errorText(exn)}) — it may still ` ++
+        `could not restore the environment of ${h.functionName} (${errorText(
+            exn,
+          )}) — it may still ` ++
         `carry ${markerKey}, which is inert and is removed by the next deploy.`,
       )
     }
@@ -207,8 +210,9 @@ let recycle = async (~client, ~held: array<held>): array<string> => {
     | () => None
     | exception exn =>
       Some(
-        `could not recycle ${h.functionName} (${errorText(exn)}) — a warm container may still hold ` ++
-        `pre-wipe state and write it back. Redeploy or update that function to clear it.`,
+        `could not recycle ${h.functionName} (${errorText(
+            exn,
+          )}) — a warm container may still hold ` ++ `pre-wipe state and write it back. Redeploy or update that function to clear it.`,
       )
     }
   })
@@ -283,12 +287,10 @@ let hold = async (~client, ~functionNames: array<string>): array<held> => {
     let advice = if reason->isThrottle {
       `The Lambda control plane throttled the hold. That budget is per account and region and is ` ++
       `shared with anything else using it — a deploy, an inspector sync, another stack in the same ` ++
-      `region — so this is transient and nothing is wrong with the credentials. Wait for whatever ` ++
-      `else is running to finish and re-run.`
+      `region — so this is transient and nothing is wrong with the credentials. Wait for whatever ` ++ `else is running to finish and re-run.`
     } else {
       `The reset holds every runtime in scope for the length of the wipe, which needs ` ++
-      `lambda:GetFunctionConcurrency, lambda:GetFunctionConfiguration, lambda:PutFunctionConcurrency, ` ++
-      `lambda:DeleteFunctionConcurrency and lambda:UpdateFunctionConfiguration.`
+      `lambda:GetFunctionConcurrency, lambda:GetFunctionConfiguration, lambda:PutFunctionConcurrency, ` ++ `lambda:DeleteFunctionConcurrency and lambda:UpdateFunctionConfiguration.`
     }
     throw(
       ReventlessSeed.Seed.Failed(

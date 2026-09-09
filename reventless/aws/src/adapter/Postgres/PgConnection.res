@@ -19,7 +19,6 @@
 
   Aurora / Aurora Serverless v2 is a planned second engine behind the same
   `connectionConfig` output shape (tracked in the AWS-Postgres plan). */
-
 /** Resolved at deploy time, serialized into the handler Lambda env, and consumed
   at cold start to build a `PgDriver` pool. `secretArn` points at the
   RDS-managed `{username, password}` secret; `host`/`port`/`database` come from
@@ -54,7 +53,8 @@ let connectionConfigToJson = (
     ("secretArn", cc.secretArn->JSON.Encode.string),
   ]
   switch lockStrategy {
-  | Some(#AdvisoryLocks) => fields->Array.push(("lockStrategy", "AdvisoryLocks"->JSON.Encode.string))
+  | Some(#AdvisoryLocks) =>
+    fields->Array.push(("lockStrategy", "AdvisoryLocks"->JSON.Encode.string))
   | Some(#RowLocks) => fields->Array.push(("lockStrategy", "RowLocks"->JSON.Encode.string))
   | None => ()
   }
@@ -195,9 +195,10 @@ let make = (
   // instance's so the B-phase storage adapters can order after the schema exists.
   // The connection is passed as pre-serialized pieces to avoid a module cycle
   // (PgMigration_Builder must not reference this module's `connectionConfig`).
-  let migrationHandlerConfig = connectionConfig->Pulumi.Output.apply(cc =>
-    `{"pgConnection":${cc->connectionConfigToJson->JSON.stringify}}`
-  )
+  let migrationHandlerConfig =
+    connectionConfig->Pulumi.Output.apply(cc =>
+      `{"pgConnection":${cc->connectionConfigToJson->JSON.stringify}}`
+    )
   let migrationResources = PgMigration_Builder.make(
     ~name=`${name}-pg-migrate`,
     ~handlerConfig=migrationHandlerConfig,

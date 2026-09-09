@@ -26,7 +26,6 @@ listener.
 
 See `docs/plans/done/runtime-extension-seam.md`.
 */
-
 /**
 What every registered extension is handed at cold start. Kept to the runtime's
 IDENTITY on purpose: an extension registering a command interceptor needs to know

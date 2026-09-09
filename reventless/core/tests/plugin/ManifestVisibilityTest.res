@@ -38,8 +38,7 @@ module InternalSpec = {
   let visibility: Reventless.Visibility.t = Internal
 }
 
-module PublicReadModel: ReventlessInfra.ReadModel.T
-  with type api = unit and type role = unit = {
+module PublicReadModel: ReventlessInfra.ReadModel.T with type api = unit and type role = unit = {
   module Spec = PublicSpec
   type api = unit
   type role = unit
@@ -48,24 +47,33 @@ module PublicReadModel: ReventlessInfra.ReadModel.T
   // A read model that projects an event reaching it via a (DCB-log-sourced) mapping — the
   // case Plugin_Structure must surface as a qualified `consumedEventTypes` entry.
   let consumedEventNames: array<string> = ["OrderPlaced"]
-  let make = (~api as _, ~apiRole as _, ~allEventTopics as _, ~runtime as _=?, ~opts as _=?): component =>
-    Obj.magic(0)
+  let make = (
+    ~api as _,
+    ~apiRole as _,
+    ~allEventTopics as _,
+    ~runtime as _=?,
+    ~opts as _=?,
+  ): component => Obj.magic(0)
   let outputs = (_: component): ReventlessInfra.ReadModel.outputs => Obj.magic(0)
   let operations = (_: component): Pulumi.Output.t<ReventlessInfra.ReadModel.operations> =>
     Obj.magic(0)
   let finish = () => ()
 }
 
-module InternalReadModel: ReventlessInfra.ReadModel.T
-  with type api = unit and type role = unit = {
+module InternalReadModel: ReventlessInfra.ReadModel.T with type api = unit and type role = unit = {
   module Spec = InternalSpec
   type api = unit
   type role = unit
   type component
   let sourceNames: array<string> = []
   let consumedEventNames: array<string> = []
-  let make = (~api as _, ~apiRole as _, ~allEventTopics as _, ~runtime as _=?, ~opts as _=?): component =>
-    Obj.magic(0)
+  let make = (
+    ~api as _,
+    ~apiRole as _,
+    ~allEventTopics as _,
+    ~runtime as _=?,
+    ~opts as _=?,
+  ): component => Obj.magic(0)
   let outputs = (_: component): ReventlessInfra.ReadModel.outputs => Obj.magic(0)
   let operations = (_: component): Pulumi.Output.t<ReventlessInfra.ReadModel.operations> =>
     Obj.magic(0)
@@ -143,9 +151,9 @@ describe("Plugin_Structure.make — visibility tagging", () => {
   })
 
   testSync("aggregates / stateViewSlices stay empty when none are passed (sanity)", () => {
-    expect((
-      structure.aggregates->Array.length,
-      structure.stateViewSlices->Array.length,
-    ))->toEqual((0, 0))
+    expect((structure.aggregates->Array.length, structure.stateViewSlices->Array.length))->toEqual((
+      0,
+      0,
+    ))
   })
 })

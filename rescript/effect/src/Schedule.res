@@ -140,4 +140,5 @@ Runs both schedules in parallel, using the *shorter* delay of the two.
 The combined schedule stops as soon as *either* constituent schedule stops.
 */
 @module("effect/Schedule")
-external intersect: (t<'out, 'in_, 'r>, t<'out2, 'in_, 'r>) => t<('out, 'out2), 'in_, 'r> = "intersect"
+external intersect: (t<'out, 'in_, 'r>, t<'out2, 'in_, 'r>) => t<('out, 'out2), 'in_, 'r> =
+  "intersect"

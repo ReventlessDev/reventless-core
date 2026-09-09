@@ -21,15 +21,17 @@ let translate = (input: externalInput) =>
     } else if input.category === "" {
       Error("Category is required")
     } else {
-      Ok([(
-        input.sku,
-        AddProduct({
-          productId: input.sku,
-          name: input.title,
-          description: input.desc,
-          price: Reventless.Money.make(~amount=Int.toFloat(input.unitPrice), ~currency),
-          categoryId: input.category,
-        }),
-      )])
+      Ok([
+        (
+          input.sku,
+          AddProduct({
+            productId: input.sku,
+            name: input.title,
+            description: input.desc,
+            price: Reventless.Money.make(~amount=Int.toFloat(input.unitPrice), ~currency),
+            categoryId: input.category,
+          }),
+        ),
+      ])
     }
   }

@@ -28,8 +28,7 @@ let buildDescriptionSuffix = (
   ~entry: ReventlessInfra.Api.mutationSchemaEntry,
 ): string => {
   let viewsSuffix = switch entry.linkedViews {
-  | Some(views) if views->Array.length > 0 =>
-    ` Affects views: ${views->Array.join(", ")}.`
+  | Some(views) if views->Array.length > 0 => ` Affects views: ${views->Array.join(", ")}.`
   | _ => ""
   }
   let consistencySuffix = switch entry.consistencyRead {
@@ -41,10 +40,9 @@ let buildDescriptionSuffix = (
 
 /** Generate MCP tool definitions from mutation entries.
     Each command variant becomes a separate tool. */
-let generateTools = (
-  ~pluginName: string,
-  ~mutationEntries: array<mutationSchemaEntry>,
-): array<mcpToolDefinition> => {
+let generateTools = (~pluginName: string, ~mutationEntries: array<mutationSchemaEntry>): array<
+  mcpToolDefinition,
+> => {
   let tools: array<mcpToolDefinition> = []
 
   mutationEntries->Array.forEach(entry => {
@@ -87,8 +85,7 @@ let generateTools = (
                 obj->Dict.set("required", JSON.Encode.array(arr))
               | None => ()
               }
-            | None =>
-              obj->Dict.set("required", JSON.Encode.array([JSON.Encode.string("id")]))
+            | None => obj->Dict.set("required", JSON.Encode.array([JSON.Encode.string("id")]))
             }
             JSON.Encode.object(obj)
           | None => inputSchema
@@ -124,10 +121,9 @@ let generateTools = (
 
 /** Generate MCP resource definitions from query entries.
     Each query entry becomes one or two resources (single + list). */
-let generateResources = (
-  ~pluginName: string,
-  ~queryEntries: array<querySchemaEntry>,
-): array<mcpResourceDefinition> => {
+let generateResources = (~pluginName: string, ~queryEntries: array<querySchemaEntry>): array<
+  mcpResourceDefinition,
+> => {
   let resources: array<mcpResourceDefinition> = []
 
   queryEntries->Array.forEach(entry => {

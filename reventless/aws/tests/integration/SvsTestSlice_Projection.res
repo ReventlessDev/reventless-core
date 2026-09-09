@@ -17,9 +17,7 @@ let project = ({event}: Reventless.StateViewSlice.consumed<consumedEvent>) =>
         cartId,
         states => {
           let others = states->Array.filter(s => s.productId != productId)
-          others->Array.concat([
-            {cartId, productId, qty, fulfilment: Shipped({carrier: "dhl"})},
-          ])
+          others->Array.concat([{cartId, productId, qty, fulfilment: Shipped({carrier: "dhl"})}])
         },
       ),
     ]

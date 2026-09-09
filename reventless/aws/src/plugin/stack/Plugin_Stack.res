@@ -59,9 +59,7 @@ let _getUsEast1Provider = (): PulumiAws.Aws.Provider.t =>
 // `no-cache` here a redeploy uploads the new entry file to S3 while CloudFront
 // (and browsers) keep serving the previous build: the "deployed but stale" trap.
 let cacheControlFor = (relativePath: string): string =>
-  relativePath->String.startsWith("assets/")
-    ? "public, max-age=31536000, immutable"
-    : "no-cache"
+  relativePath->String.startsWith("assets/") ? "public, max-age=31536000, immutable" : "no-cache"
 
 // ── Inline CloudFront SDK binding (deploy-time cache invalidation) ───────────
 // Mirrors AppSync_Adapter's inline `@aws-sdk` binding pattern. Runs in the
@@ -103,7 +101,10 @@ let invalidateDistribution = async (~distributionId: string, ~paths: array<strin
       },
     }
     let _ = await client->cfSend(input->makeCreateInvalidationCommand)
-    log.info(~comp="makeUiBundleDistribution", `CloudFront invalidation submitted for ${distributionId}`)
+    log.info(
+      ~comp="makeUiBundleDistribution",
+      `CloudFront invalidation submitted for ${distributionId}`,
+    )
   } catch {
   | exn =>
     let msg = exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
@@ -212,7 +213,9 @@ let makeUiBundleDistribution = (
   // policy. Always cover `remoteEntry.js` (federation manifest) and, for SPA
   // shells, `index.html` + `config.json`. Hashed assets fall through to the
   // CachingOptimized default behavior since their URL changes on every build.
-  let noCacheBehavior = (pattern: string): PulumiAws.CloudFront.Distribution.orderedCacheBehavior => {
+  let noCacheBehavior = (
+    pattern: string,
+  ): PulumiAws.CloudFront.Distribution.orderedCacheBehavior => {
     pathPattern: Pulumi.Input.make(pattern),
     targetOriginId: Pulumi.Input.make(originId),
     viewerProtocolPolicy: Pulumi.Input.make("redirect-to-https"),
@@ -330,27 +333,27 @@ let makeUiBundleDistribution = (
       | Some({fqdn}) => Some(Pulumi.Input.make([fqdn]))
       },
       origins: (bucket.bucketRegionalDomainName, oac.id)
-        ->Pulumi.Output.all2
-        ->Pulumi.Output.apply(((domainName, oacId)) =>
-          Array.concat(
-            [
-              {
-                PulumiAws.CloudFront.Distribution.domainName: Pulumi.Input.make(domainName),
-                originId: Pulumi.Input.make(originId),
-                originAccessControlId: Pulumi.Input.make(oacId),
-              },
-            ],
-            // One S3 origin per served bucket, sharing the same OAC as the bundle
-            // origin (the OAC only authorizes CloudFront→S3 sigv4 signing; the
-            // per-bucket read grant is the served bucket's own BucketPolicy below).
-            servedBuckets->Array.map(sb => {
-              PulumiAws.CloudFront.Distribution.domainName: sb.bucketRegionalDomainName,
-              originId: Pulumi.Input.make(servedOriginId(sb.id)),
+      ->Pulumi.Output.all2
+      ->Pulumi.Output.apply(((domainName, oacId)) =>
+        Array.concat(
+          [
+            {
+              PulumiAws.CloudFront.Distribution.domainName: Pulumi.Input.make(domainName),
+              originId: Pulumi.Input.make(originId),
               originAccessControlId: Pulumi.Input.make(oacId),
-            }),
-          )
+            },
+          ],
+          // One S3 origin per served bucket, sharing the same OAC as the bundle
+          // origin (the OAC only authorizes CloudFront→S3 sigv4 signing; the
+          // per-bucket read grant is the served bucket's own BucketPolicy below).
+          servedBuckets->Array.map(sb => {
+            PulumiAws.CloudFront.Distribution.domainName: sb.bucketRegionalDomainName,
+            originId: Pulumi.Input.make(servedOriginId(sb.id)),
+            originAccessControlId: Pulumi.Input.make(oacId),
+          }),
         )
-        ->Pulumi.Output.asInput,
+      )
+      ->Pulumi.Output.asInput,
       defaultCacheBehavior: Pulumi.Input.make(
         (
           {
@@ -413,27 +416,27 @@ let makeUiBundleDistribution = (
     ~args={
       bucket: bucket.id->Pulumi.Output.asInput,
       policy: (bucket.arn, distribution.arn)
-        ->Pulumi.Output.all2
-        ->Pulumi.Output.apply(((bucketArn, distributionArn)) =>
-          {
-            "Version": "2012-10-17",
-            "Statement": [
-              {
-                "Sid": "AllowCloudFrontServicePrincipal",
-                "Effect": "Allow",
-                "Principal": {"Service": "cloudfront.amazonaws.com"},
-                "Action": "s3:GetObject",
-                "Resource": bucketArn ++ "/*",
-                "Condition": {
-                  "StringEquals": {"AWS:SourceArn": distributionArn},
-                },
+      ->Pulumi.Output.all2
+      ->Pulumi.Output.apply(((bucketArn, distributionArn)) =>
+        {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "AllowCloudFrontServicePrincipal",
+              "Effect": "Allow",
+              "Principal": {"Service": "cloudfront.amazonaws.com"},
+              "Action": "s3:GetObject",
+              "Resource": bucketArn ++ "/*",
+              "Condition": {
+                "StringEquals": {"AWS:SourceArn": distributionArn},
               },
-            ],
-          }
-          ->JSON.stringifyAny
-          ->Option.getUnsafe
-        )
-        ->Pulumi.Output.asInput,
+            },
+          ],
+        }
+        ->JSON.stringifyAny
+        ->Option.getUnsafe
+      )
+      ->Pulumi.Output.asInput,
     },
   )
 
@@ -461,27 +464,27 @@ let makeUiBundleDistribution = (
       ~args={
         bucket: sb.bucketId,
         policy: (sb.bucketArn->Pulumi.Output.fromInput, distribution.arn)
-          ->Pulumi.Output.all2
-          ->Pulumi.Output.apply(((bucketArn, distributionArn)) =>
-            {
-              "Version": "2012-10-17",
-              "Statement": [
-                {
-                  "Sid": "AllowCloudFrontServicePrincipal",
-                  "Effect": "Allow",
-                  "Principal": {"Service": "cloudfront.amazonaws.com"},
-                  "Action": "s3:GetObject",
-                  "Resource": bucketArn ++ "/*",
-                  "Condition": {
-                    "StringEquals": {"AWS:SourceArn": distributionArn},
-                  },
+        ->Pulumi.Output.all2
+        ->Pulumi.Output.apply(((bucketArn, distributionArn)) =>
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Sid": "AllowCloudFrontServicePrincipal",
+                "Effect": "Allow",
+                "Principal": {"Service": "cloudfront.amazonaws.com"},
+                "Action": "s3:GetObject",
+                "Resource": bucketArn ++ "/*",
+                "Condition": {
+                  "StringEquals": {"AWS:SourceArn": distributionArn},
                 },
-              ],
-            }
-            ->JSON.stringifyAny
-            ->Option.getUnsafe
-          )
-          ->Pulumi.Output.asInput,
+              },
+            ],
+          }
+          ->JSON.stringifyAny
+          ->Option.getUnsafe
+        )
+        ->Pulumi.Output.asInput,
       },
     )
   })
@@ -491,9 +494,7 @@ let makeUiBundleDistribution = (
   | Some(dir) =>
     let allEntries = Util.StaticBundle.walk(dir)
     if allEntries->Array.length == 0 {
-      JsError.throwWithMessage(
-        `Plugin_Stack.makeUiBundleDistribution: assetsDir is empty: ${dir}`,
-      )
+      JsError.throwWithMessage(`Plugin_Stack.makeUiBundleDistribution: assetsDir is empty: ${dir}`)
     }
     // Drop excluded relative paths before BucketObject creation. Used so the
     // host-shell deploy can skip the dev-mode `public/config.json` it ships
@@ -502,21 +503,20 @@ let makeUiBundleDistribution = (
     // upload (whichever Pulumi applies last wins).
     let entries =
       allEntries->Array.filter(entry => !(excludeFiles->Array.includes(entry.relativePath)))
-    let objectEtags =
-      entries->Array.map(entry => {
-        let obj = PulumiAws.S3.BucketObject.make(
-          ~name=name ++ "-asset-" ++ Util.StaticBundle.sanitizeName(entry.relativePath),
-          ~args={
-            bucket: bucket.id->Pulumi.Output.asInput,
-            key: Pulumi.Input.make(entry.relativePath),
-            source: Pulumi.Input.make(entry.fileAsset),
-            contentType: Pulumi.Input.make(Util.StaticBundle.contentTypeFor(entry.relativePath)),
-            cacheControl: Pulumi.Input.make(cacheControlFor(entry.relativePath)),
-            etag: Pulumi.Input.make(entry.contentHash),
-          },
-        )
-        obj.etag
-      })
+    let objectEtags = entries->Array.map(entry => {
+      let obj = PulumiAws.S3.BucketObject.make(
+        ~name=name ++ "-asset-" ++ Util.StaticBundle.sanitizeName(entry.relativePath),
+        ~args={
+          bucket: bucket.id->Pulumi.Output.asInput,
+          key: Pulumi.Input.make(entry.relativePath),
+          source: Pulumi.Input.make(entry.fileAsset),
+          contentType: Pulumi.Input.make(Util.StaticBundle.contentTypeFor(entry.relativePath)),
+          cacheControl: Pulumi.Input.make(cacheControlFor(entry.relativePath)),
+          etag: Pulumi.Input.make(entry.contentHash),
+        },
+      )
+      obj.etag
+    })
 
     // Auto-invalidate CloudFront once every object is (re)uploaded. Stable-named
     // entry files (index.html, the module-federation mf-entry-bootstrap-*.js)
@@ -629,7 +629,8 @@ let makeServedBucketDistribution = (
       | None => None
       | Some({fqdn}) => Some(Pulumi.Input.make([fqdn]))
       },
-      origins: oac.id->Pulumi.Output.apply(oacId =>
+      origins: oac.id
+      ->Pulumi.Output.apply(oacId =>
         servedBuckets->Array.map(sb => {
           PulumiAws.CloudFront.Distribution.domainName: sb.bucketRegionalDomainName,
           originId: Pulumi.Input.make(originIdFor(sb.id)),
@@ -710,27 +711,27 @@ let makeServedBucketDistribution = (
       ~args={
         bucket: sb.bucketId,
         policy: (sb.bucketArn->Pulumi.Output.fromInput, distribution.arn)
-          ->Pulumi.Output.all2
-          ->Pulumi.Output.apply(((bucketArn, distributionArn)) =>
-            {
-              "Version": "2012-10-17",
-              "Statement": [
-                {
-                  "Sid": "AllowCloudFrontServicePrincipal",
-                  "Effect": "Allow",
-                  "Principal": {"Service": "cloudfront.amazonaws.com"},
-                  "Action": "s3:GetObject",
-                  "Resource": bucketArn ++ "/*",
-                  "Condition": {
-                    "StringEquals": {"AWS:SourceArn": distributionArn},
-                  },
+        ->Pulumi.Output.all2
+        ->Pulumi.Output.apply(((bucketArn, distributionArn)) =>
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Sid": "AllowCloudFrontServicePrincipal",
+                "Effect": "Allow",
+                "Principal": {"Service": "cloudfront.amazonaws.com"},
+                "Action": "s3:GetObject",
+                "Resource": bucketArn ++ "/*",
+                "Condition": {
+                  "StringEquals": {"AWS:SourceArn": distributionArn},
                 },
-              ],
-            }
-            ->JSON.stringifyAny
-            ->Option.getUnsafe
-          )
-          ->Pulumi.Output.asInput,
+              },
+            ],
+          }
+          ->JSON.stringifyAny
+          ->Option.getUnsafe
+        )
+        ->Pulumi.Output.asInput,
       },
     )
   })

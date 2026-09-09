@@ -1,7 +1,6 @@
 /** @pulumi/aws/cloudwatch/logmetricfilter
   see: https://www.pulumi.com/registry/packages/aws/api-docs/cloudwatch/logmetricfilter/
 */
-
 /** How matched log events are turned into a CloudWatch metric data point.
   `value`/`dimensions` use metric-filter JSON selectors (e.g. `"$.value"`). */
 type metricTransformation = {

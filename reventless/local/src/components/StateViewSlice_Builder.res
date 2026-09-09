@@ -39,7 +39,8 @@ module Make = (Bus: LocalBus.T) => {
     type component = Inner.component
     let make = Inner.make
     // Re-expose operations for test resolution
-    let operations: component => Pulumi.Output.t<ReventlessCore.StateViewSlice.operations> =
-      ReventlessCore.Component.operations
+    let operations: component => Pulumi.Output.t<
+      ReventlessCore.StateViewSlice.operations,
+    > = ReventlessCore.Component.operations
   }
 }

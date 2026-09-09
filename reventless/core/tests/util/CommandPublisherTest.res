@@ -11,7 +11,6 @@
 
 open JestGlobals
 
-
 let published: ref<array<Reventless.Message.commandJson>> = ref([])
 
 module TestSpec = {

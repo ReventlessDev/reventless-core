@@ -38,7 +38,18 @@ let resourcesOutputToResource: Pulumi.Output.t<array<ReventlessInfra.Adapter.res
   }
 
 let resolvedToResource = (
-  {id, name, urn, resourceInfo, service, role, region, resourceType, configuration, tags}: resolvedResource,
+  {
+    id,
+    name,
+    urn,
+    resourceInfo,
+    service,
+    role,
+    region,
+    resourceType,
+    configuration,
+    tags,
+  }: resolvedResource,
 ): ReventlessInfra.Adapter.resource => {
   id: id->Pulumi.Output.make,
   name: name->Pulumi.Output.make,
@@ -124,7 +135,18 @@ let urns = resources => resources->Array.map((resource: resolvedResource) => res
 // ---------------------------------------------------------------------------
 
 let toInteropResource = (
-  {name, id, urn, resourceInfo, service, role, region, resourceType, configuration, tags}: resolvedResource,
+  {
+    name,
+    id,
+    urn,
+    resourceInfo,
+    service,
+    role,
+    region,
+    resourceType,
+    configuration,
+    tags,
+  }: resolvedResource,
 ): ReventlessInterop.Resource.t => {
   name,
   id,
@@ -144,7 +166,18 @@ let resourcesToInterop = (resources: array<ReventlessInfra.Adapter.resource>) =>
   ->Pulumi.Output.apply(rs => rs->Array.map(toInteropResource))
 
 let fromInteropResolved = (
-  {name, id, urn, resourceInfo, service, role, region, resourceType, configuration, tags}: ReventlessInterop.Resource.t,
+  {
+    name,
+    id,
+    urn,
+    resourceInfo,
+    service,
+    role,
+    region,
+    resourceType,
+    configuration,
+    tags,
+  }: ReventlessInterop.Resource.t,
 ): resolvedResource => {
   name,
   id,
@@ -159,7 +192,18 @@ let fromInteropResolved = (
 }
 
 let fromInteropResource = (
-  {name, id, urn, resourceInfo, service, role, region, resourceType, configuration, tags}: ReventlessInterop.Resource.t,
+  {
+    name,
+    id,
+    urn,
+    resourceInfo,
+    service,
+    role,
+    region,
+    resourceType,
+    configuration,
+    tags,
+  }: ReventlessInterop.Resource.t,
 ): ReventlessInfra.Adapter.resource => {
   id: id->Pulumi.Output.make,
   name: name->Pulumi.Output.make,

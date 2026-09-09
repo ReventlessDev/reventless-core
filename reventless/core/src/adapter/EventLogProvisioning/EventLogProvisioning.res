@@ -22,7 +22,6 @@ internals into every deployment's stack outputs.
 
 See `docs/plans/done/event-log-provisioned-seam.md`.
 */
-
 /**
 Which event-log family provisioned the log. The two differ in what a reader finds
 on the wire — a classic log is per-aggregate and its rows carry an aggregate id;
@@ -30,8 +29,10 @@ a DCB log is per-plugin and its rows carry tags — so a backend that decodes
 records needs to know which it is looking at before it looks.
 */
 type logStyle =
-  | /** per-aggregate log behind `EventLog_Builder` */ Classic
-  | /** per-plugin tagged log behind `DcbEventLog_Builder` */ Dcb
+  /** per-aggregate log behind `EventLog_Builder` */
+  | Classic
+  /** per-plugin tagged log behind `DcbEventLog_Builder` */
+  | Dcb
 
 /**
 An event-log backend, registered by an extension (a deploy program) before the
@@ -124,8 +125,7 @@ let use = (b: module(Backend)) => {
     JsError.throwWithMessage(
       "EventLogProvisioning.use called twice: only one event-log backend can be registered. " ++
       "A DynamoDB stream supports two readers per shard and core's event collector already holds one, " ++
-      "so a second backend would throttle the first. Compose the two backends into one, or fan out " ++
-      "behind a single registration.",
+      "so a second backend would throttle the first. Compose the two backends into one, or fan out " ++ "behind a single registration.",
     )
   }
   registered := true

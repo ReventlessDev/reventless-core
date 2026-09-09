@@ -91,6 +91,7 @@ let registerResourcesFromEntries = (
         ],
       }
     }
+
     // URIs with template parameters ({id}) go into resource templates;
     // fixed URIs (list endpoints) go into regular resources.
     if def.uriTemplate->String.includes("{") {
@@ -237,9 +238,7 @@ let createServerInstance = (identity: Reventless.Identity.t) => {
         }
         await handler(uri)
       | None => {
-          McpSdk.contents: [
-            {McpSdk.uri, text: `{"error": "Resource not found: ${uri}"}`},
-          ],
+          McpSdk.contents: [{McpSdk.uri, text: `{"error": "Resource not found: ${uri}"}`}],
         }
       }
     }
@@ -250,45 +249,47 @@ let createServerInstance = (identity: Reventless.Identity.t) => {
 
 let start = (~port: int=3001, ()) => {
   let httpServer = McpSdk.createHttpServer((req, res) => {
-    let _ = (async () => {
-      let reqMethod = req->McpSdk.method
-      let reqUrl = req->McpSdk.url
+    let _ = (
+      async () => {
+        let reqMethod = req->McpSdk.method
+        let reqUrl = req->McpSdk.url
 
-      // CORS headers for browser-based clients (e.g. MCP Inspector)
-      res->McpSdk.setHeader("Access-Control-Allow-Origin", "*")
-      res->McpSdk.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
-      res->McpSdk.setHeader("Access-Control-Allow-Headers", "Content-Type")
+        // CORS headers for browser-based clients (e.g. MCP Inspector)
+        res->McpSdk.setHeader("Access-Control-Allow-Origin", "*")
+        res->McpSdk.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
+        res->McpSdk.setHeader("Access-Control-Allow-Headers", "Content-Type")
 
-      if reqUrl == "/mcp" || reqUrl->String.startsWith("/mcp?") {
-        switch reqMethod {
-        | "OPTIONS" =>
-          res->McpSdk.setStatusCode(204)
-          res->McpSdk.endResponseNoBody
-        | "POST" =>
-          let body = await McpSdk_Helpers.parseJsonBody(req)
-          let identity = extractIdentity(req)
-          // Stateless mode: fresh server + transport per request
-          let server = createServerInstance(identity)
-          let transport = McpSdk.newStreamableHTTPTransport({
-            enableJsonResponse: true,
-          })
-          let _ = await server->McpSdk.connect(transport)
-          let _ = await transport->McpSdk.handleRequest(req, res, body)
-        | "GET" =>
-          res->McpSdk.setHeader("Content-Type", "text/plain")
-          res->McpSdk.endResponse("MCP server running")
-        | "DELETE" =>
-          res->McpSdk.setStatusCode(200)
-          res->McpSdk.endResponseNoBody
-        | _ =>
-          res->McpSdk.setStatusCode(405)
-          res->McpSdk.endResponse("Method not allowed")
+        if reqUrl == "/mcp" || reqUrl->String.startsWith("/mcp?") {
+          switch reqMethod {
+          | "OPTIONS" =>
+            res->McpSdk.setStatusCode(204)
+            res->McpSdk.endResponseNoBody
+          | "POST" =>
+            let body = await McpSdk_Helpers.parseJsonBody(req)
+            let identity = extractIdentity(req)
+            // Stateless mode: fresh server + transport per request
+            let server = createServerInstance(identity)
+            let transport = McpSdk.newStreamableHTTPTransport({
+              enableJsonResponse: true,
+            })
+            let _ = await server->McpSdk.connect(transport)
+            let _ = await transport->McpSdk.handleRequest(req, res, body)
+          | "GET" =>
+            res->McpSdk.setHeader("Content-Type", "text/plain")
+            res->McpSdk.endResponse("MCP server running")
+          | "DELETE" =>
+            res->McpSdk.setStatusCode(200)
+            res->McpSdk.endResponseNoBody
+          | _ =>
+            res->McpSdk.setStatusCode(405)
+            res->McpSdk.endResponse("Method not allowed")
+          }
+        } else {
+          res->McpSdk.setStatusCode(404)
+          res->McpSdk.endResponse("Not found")
         }
-      } else {
-        res->McpSdk.setStatusCode(404)
-        res->McpSdk.endResponse("Not found")
       }
-    })()
+    )()
   })
 
   httpServer->McpSdk.listen(port, () => {
@@ -301,7 +302,10 @@ let start = (~port: int=3001, ()) => {
       toolNames->Array.forEach(t => log.info(~comp="MCP:Domain", `  - ${t}`))
       log.info(~comp="MCP:Domain", `resources (${resourceNames->Array.length->Int.toString}):`)
       resourceNames->Array.forEach(r => log.info(~comp="MCP:Domain", `  - ${r}`))
-      log.info(~comp="MCP:Domain", `resource templates (${templateNames->Array.length->Int.toString}):`)
+      log.info(
+        ~comp="MCP:Domain",
+        `resource templates (${templateNames->Array.length->Int.toString}):`,
+      )
       templateNames->Array.forEach(r => log.info(~comp="MCP:Domain", `  - ${r}`))
     }
   })

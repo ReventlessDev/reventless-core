@@ -27,7 +27,8 @@ module AutoShipOrderSlice = {
   include OrderingPlugin.AutoShipOrder
   type consumedEvent = OrderingPlugin.AutoShipOrder_Automation.FromOrderingDcb.sourceEvent
   let consumedEventSchema = OrderingPlugin.AutoShipOrder_Automation.FromOrderingDcb.sourceEventSchema
-  let collect = e => OrderingPlugin.AutoShipOrder_Automation.FromOrderingDcb.collect(e, ~sourceId="", testContext)
+  let collect = e =>
+    OrderingPlugin.AutoShipOrder_Automation.FromOrderingDcb.collect(e, ~sourceId="", testContext)
   let resolve = OrderingPlugin.AutoShipOrder_Automation.FromOrderingDcb.resolve
   let process = OrderingPlugin.AutoShipOrder_Automation.process
 }
@@ -40,8 +41,14 @@ module ConfirmSlice = {
 module Add = CommandStep(CatalogPlugin.AddProduct, CatalogPlugin.AddProduct_Behavior)
 module ProductsEp = ExtensionPointStep(CatalogPlugin.Products_ExtensionPointMapping)
 module ProductsExt = ExtensionStep(OrderingPlugin.Products_Extension.Mapping)
-module Sync = CommandStep(OrderingPlugin.SyncCatalogProduct, OrderingPlugin.SyncCatalogProduct_Behavior)
-module Register = CommandStep(OrderingPlugin.RegisterCustomer, OrderingPlugin.RegisterCustomer_Behavior)
+module Sync = CommandStep(
+  OrderingPlugin.SyncCatalogProduct,
+  OrderingPlugin.SyncCatalogProduct_Behavior,
+)
+module Register = CommandStep(
+  OrderingPlugin.RegisterCustomer,
+  OrderingPlugin.RegisterCustomer_Behavior,
+)
 module Place = CommandStep(OrderingPlugin.PlaceOrder, OrderingPlugin.PlaceOrder_Behavior)
 module Auto = AutomationStep(AutoShipOrderSlice)
 module Ship = CommandStep(OrderingPlugin.ShipOrder, OrderingPlugin.ShipOrder_Behavior)
@@ -76,10 +83,18 @@ describe("DCB cross-plugin flow", () => {
     )
     ->ProductsExt.whenExtensionReacts
     ->ProductsExt.thenIssuesCommand(
-      OrderingPlugin.SyncCatalogProduct.SyncNewProduct({productId: "p1", name: "Book", price: 9.99}),
+      OrderingPlugin.SyncCatalogProduct.SyncNewProduct({
+        productId: "p1",
+        name: "Book",
+        price: 9.99,
+      }),
     )
     ->Sync.whenCommand(
-      OrderingPlugin.SyncCatalogProduct.SyncNewProduct({productId: "p1", name: "Book", price: 9.99}),
+      OrderingPlugin.SyncCatalogProduct.SyncNewProduct({
+        productId: "p1",
+        name: "Book",
+        price: 9.99,
+      }),
     )
     ->Sync.thenEvent(
       OrderingPlugin.SyncCatalogProduct.CatalogProductSynced({

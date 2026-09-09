@@ -24,7 +24,7 @@ let evolve = (state, event) =>
   | CatalogProductPriceChanged({price}) => {...state, price: Some(price)}
   | CatalogProductWithdrawn => {...state, withdrawn: true}
   | CatalogProductRelisted => {...state, withdrawn: false}
-  | CatalogProductImageChanged({productImage: ?productImage}) => {...state, productImage}
+  | CatalogProductImageChanged({?productImage}) => {...state, productImage}
   }
 
 let decide = (state, command) =>
@@ -62,10 +62,10 @@ let decide = (state, command) =>
   // ordinary shape of at-least-once delivery, not a change.
   // Compared as options, so "the picture is gone" is recognised as a change and
   // re-announcing the same absence is not.
-  | ChangeSyncedProductImage({productId, productImage: ?productImage}) =>
+  | ChangeSyncedProductImage({productId, ?productImage}) =>
     if state.productImage == productImage {
       Ok([])
     } else {
-      Ok([CatalogProductImageChanged({productId, productImage: ?productImage})])
+      Ok([CatalogProductImageChanged({productId, ?productImage})])
     }
   }

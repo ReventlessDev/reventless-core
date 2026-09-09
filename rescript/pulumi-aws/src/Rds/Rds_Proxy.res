@@ -34,5 +34,4 @@ type args = {
 }
 
 @module("@pulumi/aws") @scope("rds") @new
-external make: (~name: string, ~args: args, ~opts: Pulumi.CustomResourceOptions.t=?) => t =
-  "Proxy"
+external make: (~name: string, ~args: args, ~opts: Pulumi.CustomResourceOptions.t=?) => t = "Proxy"

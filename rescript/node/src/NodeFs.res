@@ -8,11 +8,10 @@
     passed wrongly — the `(string, string)` form is the one that permits
     `readFileSync(path, "utf-8")`, a different string, silently. Use
     {!readFileSyncBuffer} when the bytes are wanted rather than text. */
-
-// ── Existence and metadata ───────────────────────────────────────────────────
-
 @module("node:fs")
-external existsSync: string => bool = "existsSync"
+external // ── Existence and metadata ───────────────────────────────────────────────────
+
+existsSync: string => bool = "existsSync"
 
 @module("node:fs")
 external realpathSync: string => string = "realpathSync"

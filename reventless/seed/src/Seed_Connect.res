@@ -145,9 +145,7 @@ let resolveRole = async (
         Console.log(
           "This token is narrowed to one role. Seeding needs every right the account has;",
         )
-        Console.log(
-          "clearing also widens your host-shell session, which shares the stored choice.",
-        )
+        Console.log("clearing also widens your host-shell session, which shares the stored choice.")
         let options = Array.concat(
           [(`full membership (${available->Array.join(", ")})`, Full)],
           available->Array.map(r => (r, Narrowed(r))),
@@ -227,19 +225,17 @@ let clientFor = async (c: connection, ~account: Seed_Users.user): Seed_Client.t 
  * `/__inmemory/login` shape: POST `{username, password}` → `{token}`). Reuses
  * `Seed_Client.login` but hands the token back for `useToken`.
  */
-let viaLoginEndpoint = (~loginEndpoint: string) => async (
-  ~username: string,
-  ~password: string,
-): string => {
-  let client = Seed_Client.make(
-    ~config={endpoint: loginEndpoint, loginEndpoint, username, password},
-  )
-  await Seed_Client.login(client)
-  switch Seed_Client.currentToken(client) {
-  | Some(token) => token
-  | None => throw(Failed(`login at ${loginEndpoint} returned no token`))
+let viaLoginEndpoint = (~loginEndpoint: string) =>
+  async (~username: string, ~password: string): string => {
+    let client = Seed_Client.make(
+      ~config={endpoint: loginEndpoint, loginEndpoint, username, password},
+    )
+    await Seed_Client.login(client)
+    switch Seed_Client.currentToken(client) {
+    | Some(token) => token
+    | None => throw(Failed(`login at ${loginEndpoint} returned no token`))
+    }
   }
-}
 
 /**
  * The local dev platform's active-role door: POST `/__inmemory/switch-role` with
@@ -252,55 +248,54 @@ let viaLoginEndpoint = (~loginEndpoint: string) => async (
  * this exists for a *deliberate* `SEED_ROLE` run, which is where a restricted
  * caller's refusals can be exercised without a deployed stack.
  */
-let viaSwitchRoleEndpoint = (~switchRoleEndpoint: string): roleSwitch => async (
-  ~client: Seed_Client.t,
-  ~role: option<string>,
-) => {
-  let token = switch Seed_Client.currentToken(client) {
-  | Some(t) => t
-  | None => throw(Failed("switch-role: no bearer to present — log in first"))
-  }
-  // Clearing OMITS the key rather than sending `null`. The local handler reads
-  // its body through `Obj.magic` into an `option<string>`, and ReScript spells
-  // absence `undefined` — so a JSON `null` arrives as a present value and the
-  // server tries to act as a role literally named "null", refusing with
-  // `Cannot act as "null": not a group this user holds`. An absent key is the
-  // only thing it reads as "no role", which is what widens back to full.
-  let body = JSON.stringify(
-    JSON.Encode.object(
-      switch role {
-      | Some(r) => Dict.fromArray([("activeRole", JSON.Encode.string(r))])
-      | None => Dict.make()
-      },
-    ),
-  )
-  let res = try await Seed_Client.fetch(
-    switchRoleEndpoint,
-    {
-      method: "POST",
-      headers: Dict.fromArray([
-        ("content-type", "application/json"),
-        ("authorization", `Bearer ${token}`),
-      ]),
-      body,
-    },
-  ) catch {
-  | _ => throw(Failed(`switch-role: cannot reach ${switchRoleEndpoint}`))
-  }
-  let json = await res->Seed_Client.responseJson
-  if !(res->Seed_Client.responseOk) {
-    throw(
-      Failed(
-        `switch-role at ${switchRoleEndpoint} failed with HTTP ${(res->Seed_Client.responseStatus)
-            ->Int.toString}: ${JSON.stringify(json)}`,
+let viaSwitchRoleEndpoint = (~switchRoleEndpoint: string): roleSwitch =>
+  async (~client: Seed_Client.t, ~role: option<string>) => {
+    let token = switch Seed_Client.currentToken(client) {
+    | Some(t) => t
+    | None => throw(Failed("switch-role: no bearer to present — log in first"))
+    }
+    // Clearing OMITS the key rather than sending `null`. The local handler reads
+    // its body through `Obj.magic` into an `option<string>`, and ReScript spells
+    // absence `undefined` — so a JSON `null` arrives as a present value and the
+    // server tries to act as a role literally named "null", refusing with
+    // `Cannot act as "null": not a group this user holds`. An absent key is the
+    // only thing it reads as "no role", which is what widens back to full.
+    let body = JSON.stringify(
+      JSON.Encode.object(
+        switch role {
+        | Some(r) => Dict.fromArray([("activeRole", JSON.Encode.string(r))])
+        | None => Dict.make()
+        },
       ),
     )
+    let res = try await Seed_Client.fetch(
+      switchRoleEndpoint,
+      {
+        method: "POST",
+        headers: Dict.fromArray([
+          ("content-type", "application/json"),
+          ("authorization", `Bearer ${token}`),
+        ]),
+        body,
+      },
+    ) catch {
+    | _ => throw(Failed(`switch-role: cannot reach ${switchRoleEndpoint}`))
+    }
+    let json = await res->Seed_Client.responseJson
+    if !(res->Seed_Client.responseOk) {
+      throw(
+        Failed(
+          `switch-role at ${switchRoleEndpoint} failed with HTTP ${res
+            ->Seed_Client.responseStatus
+            ->Int.toString}: ${JSON.stringify(json)}`,
+        ),
+      )
+    }
+    switch json->Seed_Client.field("token")->Option.flatMap(Seed_Client.asString) {
+    | Some(fresh) => Some(fresh)
+    | None => throw(Failed(`switch-role at ${switchRoleEndpoint} returned no token`))
+    }
   }
-  switch json->Seed_Client.field("token")->Option.flatMap(Seed_Client.asString) {
-  | Some(fresh) => Some(fresh)
-  | None => throw(Failed(`switch-role at ${switchRoleEndpoint} returned no token`))
-  }
-}
 
 let envOr = (key: string, fallback: string): string =>
   Seed_Prompt.envValue(key)->Option.getOr(fallback)
@@ -317,7 +312,9 @@ let local = (~graphql=?, ~login=?, ()): (unit => promise<connection>) => {
   let endpoint =
     graphql->Option.getOr(envOr("REVENTLESS_GRAPHQL_ENDPOINT", "http://localhost:4000/graphql"))
   let loginEndpoint =
-    login->Option.getOr(envOr("REVENTLESS_LOGIN_ENDPOINT", "http://localhost:4000/__inmemory/login"))
+    login->Option.getOr(
+      envOr("REVENTLESS_LOGIN_ENDPOINT", "http://localhost:4000/__inmemory/login"),
+    )
   // The switch-role route sits beside the login one on the same server, so it is
   // derived rather than configured — a second env var could name a different
   // host from the login it is supposed to re-issue, which is the mismatch

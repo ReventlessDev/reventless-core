@@ -61,12 +61,10 @@ module type T = {
 
 let handleActions = Projection.handleActions // local alias to avoid shadowing
 
-module Make = (
-  Spec: Spec,
-  Projection: Projection with module Spec := Spec,
-): (T with module Spec = Spec) => {
+module Make = (Spec: Spec, Projection: Projection with module Spec := Spec): (
+  T with module Spec = Spec
+) => {
   module Spec = Spec
-
 
   let testId = ref(TestFixtures.id)
 
@@ -148,8 +146,7 @@ module Make = (
     Ok()->Promise.resolve
   }
 
-  let runActions = (actions, operations) =>
-    actions->handleActions(operations, Spec.subIdConfig)
+  let runActions = (actions, operations) => actions->handleActions(operations, Spec.subIdConfig)
 
   let sortStore = store =>
     switch Spec.subIdConfig {
@@ -210,8 +207,7 @@ module Make = (
   let stateEq = (a: Spec.state, b: Spec.state) =>
     JSON.stringify(encState(a)) == JSON.stringify(encState(b))
   let statesEq = (a, b) =>
-    Array.length(a) == Array.length(b) &&
-      Array.zip(a, b)->Array.every(((x, y)) => stateEq(x, y))
+    Array.length(a) == Array.length(b) && Array.zip(a, b)->Array.every(((x, y)) => stateEq(x, y))
   let storeEq = (a: store, b: store) => {
     let ka = a->Dict.keysToArray->Array.toSorted(String.compare)
     let kb = b->Dict.keysToArray->Array.toSorted(String.compare)
@@ -236,8 +232,8 @@ module Make = (
     let actualStates = store->Dict.valuesToArray->Array.get(0)->Option.getOr([])
     if (
       keys->Array.length == 1 &&
-        actualId == Some(testId.contents) &&
-        statesEq(actualStates, expectedStates)
+      actualId == Some(testId.contents) &&
+      statesEq(actualStates, expectedStates)
     ) {
       Outcome.pass
     } else {
@@ -285,8 +281,7 @@ module Make = (
   }
 
   let thenState = (thunk, expectedState) => thenStates(thunk, [expectedState])
-  let thenStateWithId = (thunk, id, expectedState) =>
-    thenStatesWithId(thunk, id, [expectedState])
+  let thenStateWithId = (thunk, id, expectedState) => thenStatesWithId(thunk, id, [expectedState])
 
   let thenNoState = async thunk => {
     let store = await thunk()
@@ -319,10 +314,7 @@ module Make = (
 
   let thenFail = async thunk =>
     switch await thunk() {
-    | _ =>
-      Outcome.fail(
-        Throw({error: "Expected failure but thunk returned normally", stack: ""}),
-      )
+    | _ => Outcome.fail(Throw({error: "Expected failure but thunk returned normally", stack: ""}))
     | exception _ => Outcome.pass
     }
 }

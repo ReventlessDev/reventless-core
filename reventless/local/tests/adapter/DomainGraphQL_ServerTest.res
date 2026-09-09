@@ -11,12 +11,12 @@ module Server = DomainGraphQL_Server
 // Execute a query directly against a composed schema (no HTTP server needed).
 type executionResult = {data: Nullable.t<JSON.t>, errors: Nullable.t<array<JSON.t>>}
 @module("graphql")
-external graphqlExecute: {"schema": GraphqlYoga.schema, "source": string} => promise<executionResult> =
-  "graphql"
+external graphqlExecute: {"schema": GraphqlYoga.schema, "source": string} => promise<
+  executionResult,
+> = "graphql"
 
 let intResolver = (value: int): Server.resolverFn =>
-  async (_root, _args, _ctx) =>
-    JSON.Encode.object(Dict.fromArray([("x", JSON.Encode.int(value))]))
+  async (_root, _args, _ctx) => JSON.Encode.object(Dict.fromArray([("x", JSON.Encode.int(value))]))
 
 let resolversOf = (entries: array<(string, Server.resolverFn)>) => Dict.fromArray(entries)
 
@@ -67,27 +67,30 @@ test("two scopes with identical shared-type copies compose and both fields resol
 
 // ── (b) standalone-invalid scope fails with plugin-name attribution ─────────
 
-testSync("scope referencing an undefined type fails standalone validation naming the plugin", () => {
-  // Register under a construction token, then relabel to the plugin name —
-  // exercising the Platform.res flow (name only known after construction).
-  Server.setScope("plugin-token-1")
-  Server.registerQueries(
-    ~sdlFields=["  broken: MissingType"],
-    ~resolvers=resolversOf([("broken", intResolver(0))]),
-  )
-  Server.relabelScope(~from="plugin-token-1", ~to_="BrokenPlugin")
-  Server.resetScope()
+testSync(
+  "scope referencing an undefined type fails standalone validation naming the plugin",
+  () => {
+    // Register under a construction token, then relabel to the plugin name —
+    // exercising the Platform.res flow (name only known after construction).
+    Server.setScope("plugin-token-1")
+    Server.registerQueries(
+      ~sdlFields=["  broken: MissingType"],
+      ~resolvers=resolversOf([("broken", intResolver(0))]),
+    )
+    Server.relabelScope(~from="plugin-token-1", ~to_="BrokenPlugin")
+    Server.resetScope()
 
-  switch Server.composeSchema() {
-  | _ => Runner.fail("expected composeSchema to throw")
-  | exception JsExn(err) => {
-      expect(exnMessage(err))->toContain(
-        `Plugin "BrokenPlugin" subgraph document is not valid standalone`,
-      )
-      expect(exnMessage(err))->toContain("MissingType")
+    switch Server.composeSchema() {
+    | _ => Runner.fail("expected composeSchema to throw")
+    | exception JsExn(err) => {
+        expect(
+          exnMessage(err),
+        )->toContain(`Plugin "BrokenPlugin" subgraph document is not valid standalone`)
+        expect(exnMessage(err))->toContain("MissingType")
+      }
     }
-  }
-})
+  },
+)
 
 // ── (c) conflicting same-named type across scopes fails the merge ────────────
 
@@ -109,7 +112,9 @@ testSync("two scopes defining the same type name with conflicting fields fail co
   switch Server.composeSchema() {
   | _ => Runner.fail("expected composeSchema to throw")
   | exception JsExn(err) =>
-    expect(exnMessage(err))->toContain("Cross-plugin schema merge failed (mirrors AWS MERGE_FAILED)")
+    expect(exnMessage(err))->toContain(
+      "Cross-plugin schema merge failed (mirrors AWS MERGE_FAILED)",
+    )
   }
 })
 
@@ -141,21 +146,26 @@ testSync("reset clears all scope buckets and restores the platform scope", () =>
 
 // ── per-scope shared types keep plugin subgraphs standalone-valid ────────────
 
-test("scope missing its own shared-type copy fails standalone even when platform defines it", async () => {
-  // The platform bucket defines SharedThing; the plugin bucket references it
-  // without carrying its own copy — standalone-invalid, mirroring an AWS
-  // source API that leans on another API's types.
-  Server.registerTypes(~sdlTypes=[sharedTypeSdl]) // platform scope
-  Server.setScope("Leaner")
-  Server.registerQueries(
-    ~sdlFields=["  leanItem: SharedThing"],
-    ~resolvers=resolversOf([("leanItem", intResolver(3))]),
-  )
-  Server.resetScope()
+test(
+  "scope missing its own shared-type copy fails standalone even when platform defines it",
+  async () => {
+    // The platform bucket defines SharedThing; the plugin bucket references it
+    // without carrying its own copy — standalone-invalid, mirroring an AWS
+    // source API that leans on another API's types.
+    Server.registerTypes(~sdlTypes=[sharedTypeSdl]) // platform scope
+    Server.setScope("Leaner")
+    Server.registerQueries(
+      ~sdlFields=["  leanItem: SharedThing"],
+      ~resolvers=resolversOf([("leanItem", intResolver(3))]),
+    )
+    Server.resetScope()
 
-  switch Server.composeSchema() {
-  | _ => Runner.fail("expected composeSchema to throw")
-  | exception JsExn(err) =>
-    expect(exnMessage(err))->toContain(`Plugin "Leaner" subgraph document is not valid standalone`)
-  }
-})
+    switch Server.composeSchema() {
+    | _ => Runner.fail("expected composeSchema to throw")
+    | exception JsExn(err) =>
+      expect(
+        exnMessage(err),
+      )->toContain(`Plugin "Leaner" subgraph document is not valid standalone`)
+    }
+  },
+)

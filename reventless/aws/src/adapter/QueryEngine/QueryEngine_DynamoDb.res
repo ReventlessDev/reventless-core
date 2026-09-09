@@ -109,7 +109,10 @@ let queryByTableName = (
     ->Effect.map(items => items->Array.map(js => js->JSON.stringify->JSON.parseOrThrow))
     ->Effect.catchAll(err => {
       let msg = DynamoDb_Error.message(err)
-      ReventlessCore.EffectLogger.logError(~comp=__MODULE__, "queryByTableName: " ++ msg)->Effect.map(_ => [])
+      ReventlessCore.EffectLogger.logError(
+        ~comp=__MODULE__,
+        "queryByTableName: " ++ msg,
+      )->Effect.map(_ => [])
     })
   )
   ->Effect.runPromise
@@ -145,7 +148,10 @@ let scanByTableName = (~tableName, ~filterConfigs, ~limit) => {
     ->Effect.map(items => items->Array.map(js => js->JSON.stringify->JSON.parseOrThrow))
     ->Effect.catchAll(err => {
       let msg = DynamoDb_Error.message(err)
-      ReventlessCore.EffectLogger.logError(~comp=__MODULE__, "scanByTableName: " ++ msg)->Effect.map(_ => [])
+      ReventlessCore.EffectLogger.logError(
+        ~comp=__MODULE__,
+        "scanByTableName: " ++ msg,
+      )->Effect.map(_ => [])
     })
   )
   ->Effect.runPromise

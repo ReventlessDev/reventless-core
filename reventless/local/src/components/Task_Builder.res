@@ -19,17 +19,16 @@ module Make = (Bus: LocalBus.T) => {
     let timeout = 600
   }
 
-  module Make = (
-    Spec: ReventlessCore.Task.Spec,
-  ): (ReventlessCore.Task.T with module Spec = Spec) =>
-    ReventlessCore.Task_Builder.Make(
-      Spec,
-      RuntimeEnvironment,
-      EventCollectorChannel,
-      EventCollectorRuntimeBuilder,
-      TaskRuntimeBuilder,
-      LocalTaskBucket,
-      SideEffectHandler,
-      Defaults,
-    )
+  module Make = (Spec: ReventlessCore.Task.Spec): (
+    ReventlessCore.Task.T with module Spec = Spec
+  ) => ReventlessCore.Task_Builder.Make(
+    Spec,
+    RuntimeEnvironment,
+    EventCollectorChannel,
+    EventCollectorRuntimeBuilder,
+    TaskRuntimeBuilder,
+    LocalTaskBucket,
+    SideEffectHandler,
+    Defaults,
+  )
 }

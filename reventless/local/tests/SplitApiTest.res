@@ -25,78 +25,108 @@ let pluginQueryPrefix = "SplitTestPlugin_SplitTestItem"
 
 describe("Split API Mode — Schema Separation", () => {
   describe("Plugin GraphQL singleton", () => {
-    testPromise("contains plugin mutation fields", async () => {
-      let d = GraphQL_Server.diagnostics()
-      let hasPluginMutation =
-        d.registeredMutationFields->Array.some(f => f->String.startsWith(pluginMutationPrefix))
-      expect(hasPluginMutation)->toBe(true)
-    })
+    testPromise(
+      "contains plugin mutation fields",
+      async () => {
+        let d = GraphQL_Server.diagnostics()
+        let hasPluginMutation =
+          d.registeredMutationFields->Array.some(f => f->String.startsWith(pluginMutationPrefix))
+        expect(hasPluginMutation)->toBe(true)
+      },
+    )
 
-    testPromise("contains plugin query fields", async () => {
-      let d = GraphQL_Server.diagnostics()
-      let hasPluginQuery =
-        d.registeredQueryFields->Array.some(f => f->String.startsWith(pluginQueryPrefix))
-      expect(hasPluginQuery)->toBe(true)
-    })
+    testPromise(
+      "contains plugin query fields",
+      async () => {
+        let d = GraphQL_Server.diagnostics()
+        let hasPluginQuery =
+          d.registeredQueryFields->Array.some(f => f->String.startsWith(pluginQueryPrefix))
+        expect(hasPluginQuery)->toBe(true)
+      },
+    )
 
-    testPromise("does NOT contain admin mutation fields", async () => {
-      let d = GraphQL_Server.diagnostics()
-      let hasAdminField =
-        d.registeredMutationFields->Array.some(f =>
-          adminMutationFields->Array.includes(f)
-        )
-      expect(hasAdminField)->toBe(false)
-    })
+    testPromise(
+      "does NOT contain admin mutation fields",
+      async () => {
+        let d = GraphQL_Server.diagnostics()
+        let hasAdminField =
+          d.registeredMutationFields->Array.some(f => adminMutationFields->Array.includes(f))
+        expect(hasAdminField)->toBe(false)
+      },
+    )
 
-    testPromise("does NOT contain admin query fields", async () => {
-      let d = GraphQL_Server.diagnostics()
-      let hasAdminQuery =
-        d.registeredQueryFields->Array.some(f =>
-          adminQueryFields->Array.includes(f)
-        )
-      expect(hasAdminQuery)->toBe(false)
-    })
+    testPromise(
+      "does NOT contain admin query fields",
+      async () => {
+        let d = GraphQL_Server.diagnostics()
+        let hasAdminQuery =
+          d.registeredQueryFields->Array.some(f => adminQueryFields->Array.includes(f))
+        expect(hasAdminQuery)->toBe(false)
+      },
+    )
   })
 
   describe("Admin GraphQL instance", () => {
-    testPromise("contains admin mutation fields", async () => {
-      let d = adminGraphQL.diagnostics()
-      adminMutationFields->Array.forEach(field => {
-        let hasField = d.registeredMutationFields->Array.includes(field)
-        expect(hasField)->toBe(true)
-      })
-    })
+    testPromise(
+      "contains admin mutation fields",
+      async () => {
+        let d = adminGraphQL.diagnostics()
+        adminMutationFields->Array.forEach(
+          field => {
+            let hasField = d.registeredMutationFields->Array.includes(field)
+            expect(hasField)->toBe(true)
+          },
+        )
+      },
+    )
 
-    testPromise("contains admin query fields", async () => {
-      let d = adminGraphQL.diagnostics()
-      adminQueryFields->Array.forEach(field => {
-        let hasField = d.registeredQueryFields->Array.includes(field)
-        expect(hasField)->toBe(true)
-      })
-    })
+    testPromise(
+      "contains admin query fields",
+      async () => {
+        let d = adminGraphQL.diagnostics()
+        adminQueryFields->Array.forEach(
+          field => {
+            let hasField = d.registeredQueryFields->Array.includes(field)
+            expect(hasField)->toBe(true)
+          },
+        )
+      },
+    )
 
-    testPromise("does NOT contain plugin mutation fields", async () => {
-      let d = adminGraphQL.diagnostics()
-      let hasPluginMutation =
-        d.registeredMutationFields->Array.some(f => f->String.startsWith(pluginMutationPrefix))
-      expect(hasPluginMutation)->toBe(false)
-    })
+    testPromise(
+      "does NOT contain plugin mutation fields",
+      async () => {
+        let d = adminGraphQL.diagnostics()
+        let hasPluginMutation =
+          d.registeredMutationFields->Array.some(f => f->String.startsWith(pluginMutationPrefix))
+        expect(hasPluginMutation)->toBe(false)
+      },
+    )
 
-    testPromise("does NOT contain plugin query fields", async () => {
-      let d = adminGraphQL.diagnostics()
-      let hasPluginQuery =
-        d.registeredQueryFields->Array.some(f => f->String.startsWith(pluginQueryPrefix))
-      expect(hasPluginQuery)->toBe(false)
-    })
+    testPromise(
+      "does NOT contain plugin query fields",
+      async () => {
+        let d = adminGraphQL.diagnostics()
+        let hasPluginQuery =
+          d.registeredQueryFields->Array.some(f => f->String.startsWith(pluginQueryPrefix))
+        expect(hasPluginQuery)->toBe(false)
+      },
+    )
 
-    testPromise("has admin type definitions registered", async () => {
-      let d = adminGraphQL.diagnostics()
-      expect(d.typeCount > 0)->toBe(true)
-    })
+    testPromise(
+      "has admin type definitions registered",
+      async () => {
+        let d = adminGraphQL.diagnostics()
+        expect(d.typeCount > 0)->toBe(true)
+      },
+    )
 
-    testPromise("has no SDL mismatches", async () => {
-      let d = adminGraphQL.diagnostics()
-      expect(d.mismatches->Array.length)->toBe(0)
-    })
+    testPromise(
+      "has no SDL mismatches",
+      async () => {
+        let d = adminGraphQL.diagnostics()
+        expect(d.mismatches->Array.length)->toBe(0)
+      },
+    )
   })
 })

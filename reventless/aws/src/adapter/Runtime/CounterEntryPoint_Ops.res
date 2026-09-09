@@ -76,8 +76,7 @@ let splitRecords = (
   let dynamoDbRecords =
     records->Array.filter(record =>
       record.eventSource == "aws:dynamodb" &&
-        (record.eventSourceARN == referencesStreamArn ||
-          record.eventSourceARN == countsStreamArn)
+        (record.eventSourceARN == referencesStreamArn || record.eventSourceARN == countsStreamArn)
     )
 
   let (referenceRecords, countRecords) =
@@ -134,11 +133,7 @@ let makeHandler = (
   let countsStreamArn = config.countsStreamArn->Option.getOr("")
 
   async (event: PulumiAws.DynamoDb.Stream.event, _context: PulumiAws.Lambda.context) => {
-    let (references, counts) = splitRecords(
-      ~referencesStreamArn,
-      ~countsStreamArn,
-      event.records,
-    )
+    let (references, counts) = splitRecords(~referencesStreamArn, ~countsStreamArn, event.records)
     await Callback.counterHandler(~references, ~counts)
     ""
   }

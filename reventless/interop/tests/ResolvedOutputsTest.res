@@ -67,14 +67,16 @@ describe("DCB interop types — round-trip serialization", () => {
 
   testSync("OutboundTranslationSlice.resolvedOutputs round-trips", () => {
     let original: OutboundTranslationSlice.resolvedOutputs = {resources: [resource], queryDb}
-    let json = original->S.decodeOrThrow(~from=OutboundTranslationSlice.resolvedOutputsSchema, ~to=S.json)
+    let json =
+      original->S.decodeOrThrow(~from=OutboundTranslationSlice.resolvedOutputsSchema, ~to=S.json)
     let parsed = json->S.parseOrThrow(~to=OutboundTranslationSlice.resolvedOutputsSchema)
     expect(parsed)->toEqual(original)
   })
 
   testSync("InboundTranslationSlice.resolvedOutputs round-trips", () => {
     let original: InboundTranslationSlice.resolvedOutputs = {resources: [resource], queryDb}
-    let json = original->S.decodeOrThrow(~from=InboundTranslationSlice.resolvedOutputsSchema, ~to=S.json)
+    let json =
+      original->S.decodeOrThrow(~from=InboundTranslationSlice.resolvedOutputsSchema, ~to=S.json)
     let parsed = json->S.parseOrThrow(~to=InboundTranslationSlice.resolvedOutputsSchema)
     expect(parsed)->toEqual(original)
   })

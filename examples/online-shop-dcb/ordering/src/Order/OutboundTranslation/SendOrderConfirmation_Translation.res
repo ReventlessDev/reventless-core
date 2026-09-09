@@ -10,10 +10,7 @@ let collect = (event, ~sourceId as _) =>
 // mailer directly and ignores the injected capabilities.
 let translate = async (_id, item, ~capabilities as _) => {
   try {
-    await EmailService.sendOrderConfirmation(
-      ~email=item.customerId,
-      ~orderId=item.orderId,
-    )
+    await EmailService.sendOrderConfirmation(~email=item.customerId, ~orderId=item.orderId)
     Ok(None)
   } catch {
   | exn =>

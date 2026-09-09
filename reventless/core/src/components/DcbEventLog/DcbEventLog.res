@@ -14,9 +14,9 @@ type appendStream = ReventlessInfra.DcbEventLog.appendStream
 type operations = ReventlessInfra.DcbEventLog.operations
 type component = ReventlessInfra.DcbEventLog.component
 
-let toResolvedOutputs = (
-  outputs: outputs,
-): Pulumi.Output.t<ReventlessInterop.DcbEventLog.resolvedOutputs> =>
+let toResolvedOutputs = (outputs: outputs): Pulumi.Output.t<
+  ReventlessInterop.DcbEventLog.resolvedOutputs,
+> =>
   (
     outputs.resources->Adapter.resourcesToInterop,
     outputs.eventTopic.resources->Adapter.resourcesToInterop,
@@ -24,7 +24,7 @@ let toResolvedOutputs = (
   ->Pulumi.Output.all2
   ->Pulumi.Output.apply(((resources, eventTopicResources)) => {
     let resolved: ReventlessInterop.DcbEventLog.resolvedOutputs = {
-      resources: resources,
+      resources,
       eventTopic: {resources: eventTopicResources},
     }
     resolved

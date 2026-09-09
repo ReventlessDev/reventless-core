@@ -4,7 +4,6 @@
 
 open JestGlobals
 
-
 let resetAll = () => {
   LocalAuth.resetUsers()
   LocalAuth.Login.resetStore()
@@ -115,8 +114,7 @@ testPromise("load() with no args + no default file returns Empty", async () => {
   // no such file exists.)
   switch UserStore.load() {
   | Ok(Empty) => ()
-  | Ok(DefaultFile(_)) =>
-    // If a .reventless/users.yaml happens to exist in CI, accept it.
+  | Ok(DefaultFile(_)) => // If a .reventless/users.yaml happens to exist in CI, accept it.
     ()
   | Ok(_) => JsError.throwWithMessage("expected Empty or DefaultFile")
   | Error(msg) => JsError.throwWithMessage("load failed: " ++ msg)
@@ -152,10 +150,7 @@ testPromise("inline users win over a file path", async () => {
 
 testPromise("autoLoadOnce is a no-op after an explicit load", async () => {
   resetAll()
-  let _ = UserStore.load(
-    ~users=[{username: "x", password: "x", groups: []}],
-    (),
-  )
+  let _ = UserStore.load(~users=[{username: "x", password: "x", groups: []}], ())
   // Second call should not crash even if .reventless/users.yaml doesn't
   // exist; resolved=true prevents the default-discovery branch.
   UserStore.autoLoadOnce()

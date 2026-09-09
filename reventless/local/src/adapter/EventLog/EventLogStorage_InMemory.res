@@ -50,8 +50,9 @@ let makeMemoryStorage = (~name as _name, ~opts as _) => {
   let replay: ReventlessCore.EventLog.replay<string, JSON.t> = id =>
     replayStream(id)->Stream.runCollect->Effect.runPromise
 
-  let latestSnapshot: ReventlessCore.EventLog.latestSnapshot<string> = async id =>
-    Ok(snapshots->Dict.get(id))
+  let latestSnapshot: ReventlessCore.EventLog.latestSnapshot<string> = async id => Ok(
+    snapshots->Dict.get(id),
+  )
 
   let writeSnapshot: ReventlessCore.EventLog.writeSnapshot<string> = async (id, snap) => {
     snapshots->Dict.set(id, snap)
@@ -60,7 +61,11 @@ let makeMemoryStorage = (~name as _name, ~opts as _) => {
 
   // Appends each stream item sequentially to storage.
   // Node.js is single-threaded so a plain ref is safe for the seqNr counter.
-  let appendStream: ReventlessCore.EventLog.appendStream<string, JSON.t> = (startingSeqNr, id, stream) => {
+  let appendStream: ReventlessCore.EventLog.appendStream<string, JSON.t> = (
+    startingSeqNr,
+    id,
+    stream,
+  ) => {
     let seqNrRef = ref(startingSeqNr)
     stream->Stream.runForEach(json =>
       Stm.TRef.modify(eventsRef, events => {
@@ -78,7 +83,7 @@ let makeMemoryStorage = (~name as _name, ~opts as _) => {
         switch result {
         | Ok() =>
           seqNrRef := seqNrRef.contents + 1
-          Effect.succeed(())
+          Effect.succeed()
         | Error(msg) => Effect.fail(msg)
         }
       )

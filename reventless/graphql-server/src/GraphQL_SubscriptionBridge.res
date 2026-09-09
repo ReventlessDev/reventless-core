@@ -33,8 +33,7 @@ let sourceBTopic = (returnTypeName: string) => `on${returnTypeName}_stateChanged
 
 let makeFieldResolver = (~pubSub: YG.pubSub, topic: string): YG.resolverFn => {
   Obj.magic({
-    "subscribe": (_root: JSON.t, _args: JSON.t, _ctx: JSON.t) =>
-      pubSub->YG.pubSubSubscribe(topic),
+    "subscribe": (_root: JSON.t, _args: JSON.t, _ctx: JSON.t) => pubSub->YG.pubSubSubscribe(topic),
     "resolve": (payload: JSON.t) => payload,
   })
 }

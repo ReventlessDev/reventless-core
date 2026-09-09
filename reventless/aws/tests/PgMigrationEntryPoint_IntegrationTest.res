@@ -14,7 +14,6 @@
 
 open JestGlobals
 
-
 // Drive the real ReScript `runMigration` with the pool injected — the guard
 // rejects a HANDLER_CONFIG with no pgConnection; the real fields below are
 // ignored because `~makePool` is injected. Returns "ok" on success.

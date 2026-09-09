@@ -30,13 +30,14 @@ let ref_ = (~plugin: option<string>=?, ~store: string) =>
 
 describe("StorageRefFields.fromEventSchema", () => {
   testSync("finds a declared single-valued ref field and qualifies its store", () => {
-    let schema = S.union([variant(~tag="ProductImageChanged", [("imageUrl", ref_(~store="productImages"))])])->S.castToUnknown
+    let schema =
+      S.union([
+        variant(~tag="ProductImageChanged", [("imageUrl", ref_(~store="productImages"))]),
+      ])->S.castToUnknown
     expect(Fields.fromEventSchema(~plugin="Catalog", schema))->toEqual([
       {
         Fields.eventType: "ProductImageChanged",
-        fields: [
-          {Fields.field: "imageUrl", arity: Single, store: "Catalog.productImages"},
-        ],
+        fields: [{Fields.field: "imageUrl", arity: Single, store: "Catalog.productImages"}],
       },
     ])
   })
@@ -47,11 +48,15 @@ describe("StorageRefFields.fromEventSchema", () => {
   testSync("a qualified declaration keeps the store it names", () => {
     let schema =
       S.union([
-        variant(~tag="OrderPhotoAttached", [("photo", ref_(~plugin="Catalog", ~store="productImages"))]),
+        variant(
+          ~tag="OrderPhotoAttached",
+          [("photo", ref_(~plugin="Catalog", ~store="productImages"))],
+        ),
       ])->S.castToUnknown
     expect(
-      Fields.fromEventSchema(~plugin="Ordering", schema)
-      ->Array.flatMap(e => e.fields->Array.map(f => f.store)),
+      Fields.fromEventSchema(~plugin="Ordering", schema)->Array.flatMap(
+        e => e.fields->Array.map(f => f.store),
+      ),
     )->toEqual(["Catalog.productImages"])
   })
 
@@ -61,7 +66,10 @@ describe("StorageRefFields.fromEventSchema", () => {
   testSync("finds a multi-valued ref field and records its arity", () => {
     let schema =
       S.union([
-        variant(~tag="GalleryReplaced", [("imageUrls", S.array(ref_(~store="productImages"))->S.castToUnknown)]),
+        variant(
+          ~tag="GalleryReplaced",
+          [("imageUrls", S.array(ref_(~store="productImages"))->S.castToUnknown)],
+        ),
       ])->S.castToUnknown
     expect(
       Fields.fromEventSchema(~plugin="Catalog", schema)->Array.flatMap(e => e.fields),
@@ -77,13 +85,16 @@ describe("StorageRefFields.fromEventSchema", () => {
         variant(~tag="ProductRenamed", [("name", S.string->S.castToUnknown)]),
         variant(~tag="ProductImageChanged", [("imageUrl", ref_(~store="productImages"))]),
       ])->S.castToUnknown
-    expect(Fields.fromEventSchema(~plugin="Catalog", schema)->Array.map(e => e.eventType))->toEqual([
-      "ProductImageChanged",
-    ])
+    expect(
+      Fields.fromEventSchema(~plugin="Catalog", schema)->Array.map(e => e.eventType),
+    )->toEqual(["ProductImageChanged"])
   })
 
   testSync("an event schema with no declaration anywhere yields nothing", () => {
-    let schema = S.union([variant(~tag="ProductRenamed", [("name", S.string->S.castToUnknown)])])->S.castToUnknown
+    let schema =
+      S.union([
+        variant(~tag="ProductRenamed", [("name", S.string->S.castToUnknown)]),
+      ])->S.castToUnknown
     expect(Fields.fromEventSchema(~plugin="Catalog", schema))->toEqual([])
   })
 
@@ -93,15 +104,17 @@ describe("StorageRefFields.fromEventSchema", () => {
   // store the deploy actually provisioned.
   testSync("an unannotated string field is not treated as a ref", () => {
     let schema =
-      S.union([variant(~tag="ProductImported", [("imageUrl", S.string->S.castToUnknown)])])->S.castToUnknown
+      S.union([
+        variant(~tag="ProductImported", [("imageUrl", S.string->S.castToUnknown)]),
+      ])->S.castToUnknown
     expect(Fields.fromEventSchema(~plugin="Catalog", schema))->toEqual([])
   })
 
   testSync("a single-variant (non-union) event schema is read the same way", () => {
     let schema = variant(~tag="ProductImageChanged", [("imageUrl", ref_(~store="productImages"))])
-    expect(Fields.fromEventSchema(~plugin="Catalog", schema)->Array.map(e => e.eventType))->toEqual([
-      "ProductImageChanged",
-    ])
+    expect(
+      Fields.fromEventSchema(~plugin="Catalog", schema)->Array.map(e => e.eventType),
+    )->toEqual(["ProductImageChanged"])
   })
 })
 
@@ -122,8 +135,7 @@ describe("StorageRefFields.toJson", () => {
       },
     ]
     expect(Fields.toJson(entries)->JSON.stringify)->toBe(
-      `{"ProductImageChanged":[{"field":"imageUrl","arity":"one","store":"Catalog.productImages"}],` ++
-      `"GalleryReplaced":[{"field":"imageUrls","arity":"many","store":"Catalog.productImages"}]}`,
+      `{"ProductImageChanged":[{"field":"imageUrl","arity":"one","store":"Catalog.productImages"}],` ++ `"GalleryReplaced":[{"field":"imageUrls","arity":"many","store":"Catalog.productImages"}]}`,
     )
   })
 })

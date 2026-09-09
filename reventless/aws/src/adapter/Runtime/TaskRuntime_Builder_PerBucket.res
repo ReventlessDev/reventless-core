@@ -35,13 +35,14 @@ let forBucketCallback = (
   })
 
   // Build HANDLER_CONFIG JSON
-  let callbackModule =
-    callbackModulePath->JSON.stringifyAny->Option.getOr(`""`)
+  let callbackModule = callbackModulePath->JSON.stringifyAny->Option.getOr(`""`)
   let publishToAggregatesJson =
     publishToAggregatesEnvVars
     ->Dict.toArray
     ->Array.map(((aggName, envVar)) =>
-      `${aggName->JSON.stringifyAny->Option.getOr(`""`)}: ${envVar->JSON.stringifyAny->Option.getOr(`""`)}`
+      `${aggName->JSON.stringifyAny->Option.getOr(`""`)}: ${envVar
+        ->JSON.stringifyAny
+        ->Option.getOr(`""`)}`
     )
     ->Array.join(",")
 
@@ -50,14 +51,12 @@ let forBucketCallback = (
   // runtime. None for tasks without a side-effect handler.
   let handlerConfigJson = switch schedulerConfig {
   | None =>
-    `{"callbackModule":${callbackModule},"publishToAggregates":{${publishToAggregatesJson}}}`
-    ->Pulumi.Output.make
+    `{"callbackModule":${callbackModule},"publishToAggregates":{${publishToAggregatesJson}}}`->Pulumi.Output.make
   | Some({schedulerRoleUrn, targetUrn, targetName}) =>
     envVars->Dict.set("SCHEDULER_ROLE_ARN", schedulerRoleUrn->Pulumi.Output.asInput)
     envVars->Dict.set("SCHEDULER_TARGET_ARN", targetUrn->Pulumi.Output.asInput)
     envVars->Dict.set("SCHEDULER_TARGET_NAME", targetName->Pulumi.Output.asInput)
-    `{"callbackModule":${callbackModule},"publishToAggregates":{${publishToAggregatesJson}},"scheduler":{"roleArnEnv":"SCHEDULER_ROLE_ARN","targetArnEnv":"SCHEDULER_TARGET_ARN","targetNameEnv":"SCHEDULER_TARGET_NAME"}}`
-    ->Pulumi.Output.make
+    `{"callbackModule":${callbackModule},"publishToAggregates":{${publishToAggregatesJson}},"scheduler":{"roleArnEnv":"SCHEDULER_ROLE_ARN","targetArnEnv":"SCHEDULER_TARGET_ARN","targetNameEnv":"SCHEDULER_TARGET_NAME"}}`->Pulumi.Output.make
   }
   envVars->Dict.set("HANDLER_CONFIG", handlerConfigJson->Pulumi.Output.asInput)
 

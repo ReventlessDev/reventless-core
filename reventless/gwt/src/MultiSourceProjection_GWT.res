@@ -32,7 +32,6 @@ let handleActions = Projection.handleActions // create alias to avoid shadowing 
 module Make = (Projection: Reventless.Projection.Mapping): (
   T with type sourceEvent := Projection.sourceEvent and type targetState := Projection.targetState
 ) => {
-
   let testId = ref(TestFixtures.id)
   let meta = ref(TestFixtures.meta)
 
@@ -130,10 +129,7 @@ module Make = (Projection: Reventless.Projection.Mapping): (
     ->Array.map(event' =>
       event'
       ->Projection.project
-      ->ReventlessCore.Projection.rewriteTrail(
-        ~at=event'.meta.time,
-        Projection.targetStateSchema,
-      )
+      ->ReventlessCore.Projection.rewriteTrail(~at=event'.meta.time, Projection.targetStateSchema)
     )
     ->handleActions({
       load: load(store, ...),
@@ -205,8 +201,7 @@ module Make = (Projection: Reventless.Projection.Mapping): (
   let stateEq = (a: Projection.targetState, b: Projection.targetState) =>
     JSON.stringify(encState(a)) == JSON.stringify(encState(b))
   let statesEq = (a, b) =>
-    Array.length(a) == Array.length(b) &&
-      Array.zip(a, b)->Array.every(((x, y)) => stateEq(x, y))
+    Array.length(a) == Array.length(b) && Array.zip(a, b)->Array.every(((x, y)) => stateEq(x, y))
   let storeEq = (a: store, b: store) => {
     let ka = a->Dict.keysToArray->Array.toSorted(String.compare)
     let kb = b->Dict.keysToArray->Array.toSorted(String.compare)
@@ -231,8 +226,8 @@ module Make = (Projection: Reventless.Projection.Mapping): (
     let actualStates = store->Dict.valuesToArray->Array.get(0)->Option.getOr([])
     if (
       keys->Array.length == 1 &&
-        actualId == Some(testId.contents) &&
-        statesEq(actualStates, expectedStates)
+      actualId == Some(testId.contents) &&
+      statesEq(actualStates, expectedStates)
     ) {
       Outcome.pass
     } else {
@@ -281,8 +276,7 @@ module Make = (Projection: Reventless.Projection.Mapping): (
 
   let thenState = (thunk, expectedState) => thenStates(thunk, [expectedState])
 
-  let thenStateWithId = (thunk, id, expectedState) =>
-    thenStatesWithId(thunk, id, [expectedState])
+  let thenStateWithId = (thunk, id, expectedState) => thenStatesWithId(thunk, id, [expectedState])
 
   let thenNoState = async thunk => {
     let store = await thunk()
@@ -315,10 +309,7 @@ module Make = (Projection: Reventless.Projection.Mapping): (
 
   let thenFail = async thunk =>
     switch await thunk() {
-    | _ =>
-      Outcome.fail(
-        Throw({error: "Expected failure but thunk returned normally", stack: ""}),
-      )
+    | _ => Outcome.fail(Throw({error: "Expected failure but thunk returned normally", stack: ""}))
     | exception _ => Outcome.pass
     }
 }

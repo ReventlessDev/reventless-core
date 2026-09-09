@@ -14,8 +14,9 @@ let collect = (event, ~sourceId) =>
 // item completes on this returning `Ok`, which is what makes the directory's own
 // `AnnounceRecipient` free to be idempotent: a re-announced address publishes no
 // event, and no row is left waiting for one.
-let translate = async (_id, item: outboundItem, ~capabilities as _) =>
-  Ok(Some((item.recipientId, AnnounceRecipient({recipientId: item.recipientId, email: item.email}))))
+let translate = async (_id, item: outboundItem, ~capabilities as _) => Ok(
+  Some((item.recipientId, AnnounceRecipient({recipientId: item.recipientId, email: item.email}))),
+)
 
 // Unreachable in practice — `translate` cannot fail — but a slice that stays
 // silent has to say so on purpose. If a publish failure ever did exhaust the

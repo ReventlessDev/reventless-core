@@ -53,7 +53,8 @@ type payload = {
 // "Owner" → "ownerId" (auth-table owner field name, matching authorizeIndexedAccess).
 let authIdField = (group: string): string =>
   switch group->String.get(0) {
-  | Some(c) => c->String.toLowerCase ++ group->String.slice(~start=1, ~end=group->String.length) ++ "Id"
+  | Some(c) =>
+    c->String.toLowerCase ++ group->String.slice(~start=1, ~end=group->String.length) ++ "Id"
   | None => "Id"
   }
 
@@ -110,8 +111,7 @@ type binding = {
 }
 
 // -- arg helpers -------------------------------------------------------------
-let argObj = (args: JSON.t): dict<JSON.t> =>
-  args->JSON.Decode.object->Option.getOr(Dict.make())
+let argObj = (args: JSON.t): dict<JSON.t> => args->JSON.Decode.object->Option.getOr(Dict.make())
 let argStr = (args: JSON.t, key: string): option<string> =>
   args->argObj->Dict.get(key)->Option.flatMap(JSON.Decode.string)
 let argStrs = (args: JSON.t, key: string): array<string> =>
@@ -144,7 +144,10 @@ let emptyConnection = (): JSON.t =>
 // Spec-level authorization then the (optional) user interceptor — mirrors
 // QueryDbResolvers_GraphQL.runInterceptor. Denials return the kind's empty shape
 // (the provider-agnostic resolver behaviour), not an error.
-let runInterceptor = async (~binding, ~payload): ReventlessCore.QueryDb_Callback.interceptResult => {
+let runInterceptor = async (
+  ~binding,
+  ~payload,
+): ReventlessCore.QueryDb_Callback.interceptResult => {
   if !Reventless.Authorization.isAllowed(binding.authorization, payload.identity) {
     Deny("Forbidden")
   } else {
@@ -187,8 +190,7 @@ let dispatch = async (
       switch payload.identity->Reventless.OwnerScope.decide(~ownerField=binding.ownerField) {
       | Unscoped => true
       | RefuseOwned => false
-      | ScopeTo(field, required) =>
-        item->argStr(field)->Option.mapOr(false, v => v == required)
+      | ScopeTo(field, required) => item->argStr(field)->Option.mapOr(false, v => v == required)
       }
     // The caller's request to see the archive, honoured only where the
     // classification says it counts.
@@ -254,9 +256,8 @@ let dispatch = async (
         found->Array.length < ids->Array.length
           ? ids->Array.filterMap(ReventlessCore.Api_Ids.alternateKey)
           : []
-      let extra = missing->Array.length > 0
-        ? await binding.pushdowns.byIds(~readModelName=rm, missing)
-        : []
+      let extra =
+        missing->Array.length > 0 ? await binding.pushdowns.byIds(~readModelName=rm, missing) : []
       JSON.Encode.array(
         Array.concat(found, extra)->Array.filter(item => ownerAllows(item) && retiredAllows(item)),
       )
@@ -272,9 +273,8 @@ let dispatch = async (
         found->Array.length < ids->Array.length
           ? ids->Array.filterMap(ReventlessCore.Api_Ids.alternateKey)
           : []
-      let extra = missing->Array.length > 0
-        ? await binding.pushdowns.byIds(~readModelName=rm, missing)
-        : []
+      let extra =
+        missing->Array.length > 0 ? await binding.pushdowns.byIds(~readModelName=rm, missing) : []
       let retirementOf = (item: JSON.t) =>
         switch binding.retiredField {
         | None => (false, None)
@@ -386,9 +386,9 @@ let dispatch = async (
       }
       if authorized {
         JSON.Encode.array(
-          (await binding.pushdowns.indexLookup(~readModelName=rm, field, value))->Array.filter(
-            item => ownerAllows(item) && retiredAllows(item),
-          ),
+          (
+            await binding.pushdowns.indexLookup(~readModelName=rm, field, value)
+          )->Array.filter(item => ownerAllows(item) && retiredAllows(item)),
         )
       } else {
         JSON.Encode.array([])
@@ -448,11 +448,10 @@ let dispatch = async (
       // Optional target sort-key filter (source field or GraphQL arg).
       let filtered = switch (payload.sourceSubId, binding.subIdField) {
       | (Some({kind, name}), Some(subField)) =>
-        let subVal =
-          switch kind {
-          | "arg" => payload.arguments->argStr(name)
-          | _ => source->argStr(name)
-          }->Option.getOr("")
+        let subVal = switch kind {
+        | "arg" => payload.arguments->argStr(name)
+        | _ => source->argStr(name)
+        }->Option.getOr("")
         items->Array.filter(it => it->argStr(subField)->Option.getOr("") == subVal)
       | _ => items
       }
@@ -555,7 +554,9 @@ let handler = async (payload: payload, _context) => {
     | Some(binding) =>
       await dispatch(~binding, ~lookupBinding=name => bindings->Dict.get(name), ~payload)
     | None =>
-      JsError.throwWithMessage("PgQueryResolver: no binding registered for read model " ++ bindingKey)
+      JsError.throwWithMessage(
+        "PgQueryResolver: no binding registered for read model " ++ bindingKey,
+      )
     }
   }
 }

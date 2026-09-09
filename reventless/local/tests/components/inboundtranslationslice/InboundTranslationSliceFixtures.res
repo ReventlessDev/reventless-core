@@ -8,7 +8,7 @@ module OrderEventLog = {
   let moduleUrl: string = %raw(`import.meta.url`)
   @schema
   type event =
-    | PaymentConfirmed({orderId: @s.matches(Reventless.DcbTag.string) string, paymentId: string})
+    PaymentConfirmed({orderId: @s.matches(Reventless.DcbTag.string) string, paymentId: string})
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -23,7 +23,8 @@ module PaymentWebhookSpec = {
   type externalInput = {paymentId: string, orderId: string, status: string}
 
   @schema
-  type command = ConfirmPayment({orderId: @s.matches(Reventless.DcbTag.string) string, paymentId: string})
+  type command =
+    ConfirmPayment({orderId: @s.matches(Reventless.DcbTag.string) string, paymentId: string})
 
   let targetName = "ConfirmPayment"
   let externalSystem = None

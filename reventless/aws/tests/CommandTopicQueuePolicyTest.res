@@ -16,8 +16,7 @@ let policy =
     ~lambdaArn,
   )->JSON.parseOrThrow
 
-let field = (json, key) =>
-  json->JSON.Decode.object->Option.flatMap(o => o->Dict.get(key))
+let field = (json, key) => json->JSON.Decode.object->Option.flatMap(o => o->Dict.get(key))
 
 let statement = sid =>
   policy

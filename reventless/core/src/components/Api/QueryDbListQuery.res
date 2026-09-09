@@ -66,10 +66,14 @@ let buildConnection = (
   ~cursorValueOf: JSON.t => string,
 ): JSON.t => {
   let edges =
-    pageItems->Array.map(item => Obj.magic({"node": item, "cursor": encodeCursor(cursorValueOf(item))}))
+    pageItems->Array.map(item =>
+      Obj.magic({"node": item, "cursor": encodeCursor(cursorValueOf(item))})
+    )
   let startCursor = pageItems->Array.get(0)->Option.map(item => encodeCursor(cursorValueOf(item)))
   let endCursor =
-    pageItems->Array.get(pageItems->Array.length - 1)->Option.map(item => encodeCursor(cursorValueOf(item)))
+    pageItems
+    ->Array.get(pageItems->Array.length - 1)
+    ->Option.map(item => encodeCursor(cursorValueOf(item)))
   Obj.magic({
     "edges": edges,
     "pageInfo": {
@@ -130,7 +134,7 @@ let run = (
   let perFieldChecks: array<JSON.t => bool> = capability.filterFields->Array.flatMap(f => {
     let checks: array<JSON.t => bool> = []
     switch filterDict->Dict.get(f.name ++ "Eq") {
-    | Some(v) when v != JSON.Encode.null =>
+    | Some(v) if v != JSON.Encode.null =>
       let expected = switch v->JSON.Decode.string {
       | Some(s) => s
       | None => v->JSON.Decode.float->Option.map(f => Float.toString(f))->Option.getOr("")
@@ -142,16 +146,18 @@ let run = (
     }
     if f.range {
       switch filterDict->Dict.get(f.name ++ "From") {
-      | Some(v) when v != JSON.Encode.null =>
+      | Some(v) if v != JSON.Encode.null =>
         let from =
           v
           ->JSON.Decode.string
           ->Option.getOr(v->JSON.Decode.float->Option.map(f => Float.toString(f))->Option.getOr(""))
-        checks->Array.push(item => getFieldString(item, f.name)->Option.mapOr(false, v => v >= from))
+        checks->Array.push(item =>
+          getFieldString(item, f.name)->Option.mapOr(false, v => v >= from)
+        )
       | _ => ()
       }
       switch filterDict->Dict.get(f.name ++ "To") {
-      | Some(v) when v != JSON.Encode.null =>
+      | Some(v) if v != JSON.Encode.null =>
         let to_ =
           v
           ->JSON.Decode.string
@@ -207,6 +213,7 @@ let run = (
           item->JSON.Decode.object->Option.flatMap(d => d->Dict.get(scope.field)),
         )
       )
+
     | None => true
     }
     passSearch && passPrefix && passIds && passPerField && passOwner && passRetired

@@ -52,7 +52,10 @@ describe("Platform_AdminScan_Ops.latestByName", () => {
     }
 
   let pluginIdOf = json =>
-    json->JSON.Decode.object->Option.flatMap(o => o->Dict.get("pluginId"))->Option.flatMap(JSON.Decode.string)
+    json
+    ->JSON.Decode.object
+    ->Option.flatMap(o => o->Dict.get("pluginId"))
+    ->Option.flatMap(JSON.Decode.string)
 
   testSync("keeps only the highest version per bare plugin name", () => {
     let items = [

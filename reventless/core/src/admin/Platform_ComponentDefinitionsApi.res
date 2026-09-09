@@ -73,16 +73,10 @@ let encodeCommandDef = (c: commandDef): JSON.t =>
         },
       ),
     ),
-    (
-      "aggregateIdField",
-      c.aggregateIdField->Option.mapOr(JSON.Encode.null, JSON.Encode.string),
-    ),
+    ("aggregateIdField", c.aggregateIdField->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
     ("mutationField", JSON.Encode.string(c.mutationField)),
     ("references", c.references->Array.map(encodeFieldReference)->JSON.Encode.array),
-    (
-      "allowedStates",
-      c.allowedStates->Option.mapOr(JSON.Encode.null, encodeStrings),
-    ),
+    ("allowedStates", c.allowedStates->Option.mapOr(JSON.Encode.null, encodeStrings)),
     ("targetState", c.targetState->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
     (
       "allowedStatesSource",
@@ -117,10 +111,7 @@ let encodeQueryableDef = (r: queryableDef): JSON.t =>
     ("linkedWriteSide", encodeStrings(r.linkedWriteSide)),
     ("labelField", JSON.Encode.string(r.labelField)),
     ("searchableFields", encodeStrings(r.searchableFields)),
-    (
-      "labelFieldSource",
-      r.labelFieldSource->Option.mapOr(JSON.Encode.null, JSON.Encode.string),
-    ),
+    ("labelFieldSource", r.labelFieldSource->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
     ("lifecycleField", r.lifecycleField->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
     // Carried rather than only filtered on: a tooling consumer reading the
     // unfiltered structure needs to know WHICH components are Internal, and a
@@ -128,10 +119,7 @@ let encodeQueryableDef = (r: queryableDef): JSON.t =>
     // survives the filter anyway.
     ("visibility", r.visibility->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
     ("chapter", r.chapter->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
-    (
-      "singleQueryField",
-      r.singleQueryField->Option.mapOr(JSON.Encode.null, JSON.Encode.string),
-    ),
+    ("singleQueryField", r.singleQueryField->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
     ("idField", r.idField->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
     ("idFieldSource", r.idFieldSource->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
     ("requiredAccess", r.requiredAccess->Option.mapOr(JSON.Encode.null, encodeStrings)),
@@ -160,10 +148,7 @@ let encodeWritableDef = (w: writableDef): JSON.t =>
     ("name", JSON.Encode.string(w.name)),
     ("commands", w.commands->Array.map(encodeCommandDef)->JSON.Encode.array),
     ("linkedViews", encodeStrings(w.linkedViews)),
-    (
-      "consistencyRead",
-      w.consistencyRead->Option.mapOr(JSON.Encode.null, JSON.Encode.string),
-    ),
+    ("consistencyRead", w.consistencyRead->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
     ("producedEventTypes", encodeStrings(w.producedEventTypes)),
     ("consumedEventTypes", encodeStrings(w.consumedEventTypes)),
     // Phase 6.3: emitted-event field schemas (None → [] on the wire).
@@ -266,7 +251,10 @@ let encodePluginStructureEntry = (
     ("pluginId", JSON.Encode.string(Plugin.name(pluginId))),
     (
       "readModels",
-      def.readModels->Array.filter(isPublicQueryable)->Array.map(encodeQueryableDef)->JSON.Encode.array,
+      def.readModels
+      ->Array.filter(isPublicQueryable)
+      ->Array.map(encodeQueryableDef)
+      ->JSON.Encode.array,
     ),
     (
       "stateViewSlices",

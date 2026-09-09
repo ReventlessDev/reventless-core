@@ -131,8 +131,7 @@ let makeManagedLogGroup = (
     Kept here, beside `logGroupNameFor`, so both naming shapes a Lambda's logs can
     take live in the one module that owns log-group naming and neither is
     reconstructed at a call site. */
-let autoCreatedLogGroupNameFor = (~physicalName: string): string =>
-  `/aws/lambda/${physicalName}`
+let autoCreatedLogGroupNameFor = (~physicalName: string): string => `/aws/lambda/${physicalName}`
 
 /** Where a function's logs actually land, for a caller that wants to point
     somebody at them (a monitoring backend stamping an address into an alert).

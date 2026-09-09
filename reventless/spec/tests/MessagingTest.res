@@ -20,34 +20,45 @@ describe("Messaging", () => {
     // The reason `recipient` fuses the channel with the address: a separate
     // `(channel, address)` pair can name one and carry the other, and nothing
     // but the provider would notice.
-    testSync("the channel is read off the value that carries the address", () =>
-      expect([
-        Messaging.ToEmail(address("ops@example.com")),
-        ToSms(Phone.unsafe("+15555550100")),
-        ToPush({deviceToken: "abc"}),
-      ]->Array.map(Messaging.channelOf))->toEqual([Messaging.Email, Sms, Push])
+    testSync(
+      "the channel is read off the value that carries the address",
+      () =>
+        expect(
+          [
+            Messaging.ToEmail(address("ops@example.com")),
+            ToSms(Phone.unsafe("+15555550100")),
+            ToPush({deviceToken: "abc"}),
+          ]->Array.map(Messaging.channelOf),
+        )->toEqual([Messaging.Email, Sms, Push]),
     )
   })
 
   describe("retriable", () => {
-    testSync("an outage is retried", () =>
-      expect(Messaging.retriable(Unavailable("connection reset")))->toBe(true)
+    testSync(
+      "an outage is retried",
+      () => expect(Messaging.retriable(Unavailable("connection reset")))->toBe(true),
     )
 
     // Not a fact about the recipient, but not one more attempts can change
     // either: provisioning a channel is a deploy, not a retry.
-    testSync("a channel this deployment does not run is not retried", () =>
-      expect(Messaging.retriable(UnsupportedChannel(Sms)))->toBe(false)
+    testSync(
+      "a channel this deployment does not run is not retried",
+      () => expect(Messaging.retriable(UnsupportedChannel(Sms)))->toBe(false),
     )
 
-    testSync("a refusal is not retried", () =>
-      expect(Messaging.retriable(Refused("address on the suppression list")))->toBe(false)
+    testSync(
+      "a refusal is not retried",
+      () => expect(Messaging.retriable(Refused("address on the suppression list")))->toBe(false),
     )
   })
 
   describe("failureReason", () => {
-    testSync("an unsupported channel says which one", () =>
-      expect(Messaging.failureReason(UnsupportedChannel(Push))->String.includes("Push"))->toBe(true)
+    testSync(
+      "an unsupported channel says which one",
+      () =>
+        expect(Messaging.failureReason(UnsupportedChannel(Push))->String.includes("Push"))->toBe(
+          true,
+        ),
     )
   })
 
@@ -57,16 +68,20 @@ describe("Messaging", () => {
       send: async (~recipient as _, ~message as _) => Error(Unavailable("stub")),
     }
 
-    testSync("a provisioned channel is supported", () =>
-      expect(emailOnly->Messaging.supports(~recipient=ToEmail(address("ops@example.com"))))->toBe(
-        true,
-      )
+    testSync(
+      "a provisioned channel is supported",
+      () =>
+        expect(emailOnly->Messaging.supports(~recipient=ToEmail(address("ops@example.com"))))->toBe(
+          true,
+        ),
     )
 
-    testSync("an unprovisioned channel is not", () =>
-      expect(emailOnly->Messaging.supports(~recipient=ToSms(Phone.unsafe("+15555550100"))))->toBe(
-        false,
-      )
+    testSync(
+      "an unprovisioned channel is not",
+      () =>
+        expect(emailOnly->Messaging.supports(~recipient=ToSms(Phone.unsafe("+15555550100"))))->toBe(
+          false,
+        ),
     )
   })
 
@@ -74,25 +89,29 @@ describe("Messaging", () => {
     // Both halves matter, and they say different true things. An empty channel
     // list is what a preference surface renders — offering a channel nothing can
     // deliver on collects a subscription that never arrives.
-    testSync("publishes no channels", () =>
-      expect(Capabilities.none.messaging.channels)->toEqual([])
+    testSync(
+      "publishes no channels",
+      () => expect(Capabilities.none.messaging.channels)->toEqual([]),
     )
 
     // …while the send stays retryable: a caller that got this far is looking at
     // a deployment gap, not at a fact about the recipient, and abandoning the
     // message would record the second.
-    test("a send against it is a retryable outage, not a verdict", async () => {
-      let outcome = await Capabilities.none.messaging.send(
-        ~recipient=ToEmail(address("ops@example.com")),
-        ~message={subject: "Order confirmed", body: "Thanks."},
-      )
-      expect(
-        switch outcome {
-        | Error(failure) => Messaging.retriable(failure)
-        | Ok(_) => false
-        },
-      )->toBe(true)
-    })
+    test(
+      "a send against it is a retryable outage, not a verdict",
+      async () => {
+        let outcome = await Capabilities.none.messaging.send(
+          ~recipient=ToEmail(address("ops@example.com")),
+          ~message={subject: "Order confirmed", body: "Thanks."},
+        )
+        expect(
+          switch outcome {
+          | Error(failure) => Messaging.retriable(failure)
+          | Ok(_) => false
+          },
+        )->toBe(true)
+      },
+    )
   })
 })
 
@@ -115,9 +134,9 @@ describe("Messaging.fromHeader", () => {
   // Quoted unconditionally, so the names needing it are not exceptions somebody
   // has to remember: a comma alone splits the header into two addresses.
   testSync("a name carrying a comma stays one address", () =>
-    expect(Messaging.fromHeader(~displayName=Some("Shop, Inc."), ~address="mail@shop.test"))->toBe(
-      `"Shop, Inc." <mail@shop.test>`,
-    )
+    expect(
+      Messaging.fromHeader(~displayName=Some("Shop, Inc."), ~address="mail@shop.test"),
+    )->toBe(`"Shop, Inc." <mail@shop.test>`)
   )
 
   testSync("quotes and backslashes in a name are escaped", () =>

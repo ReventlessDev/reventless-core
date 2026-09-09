@@ -5,7 +5,9 @@
 let log = Logger.fromEnv()
 
 // Set by `check:lifecycle`, and by nothing else. See the note where it is read.
-@val external _declaredTransitionsOnly: option<string> = "process.env.REVENTLESS_DECLARED_TRANSITIONS_ONLY"
+@val
+external _declaredTransitionsOnly: option<string> =
+  "process.env.REVENTLESS_DECLARED_TRANSITIONS_ONLY"
 let declaredTransitionsOnly = _declaredTransitionsOnly->Option.isSome
 
 // Whether a field can name a record, stated over `SchemaType`'s IR so every
@@ -26,8 +28,11 @@ let rec isLabelShape = (t: SchemaType.schemaType): bool =>
 // and *exactly*: `customerName` holds a customer's name, not this record's.
 let conventionalLabelNames = ["name", "title", "label", "displayname"]
 
-let shapeOfField = (~entityName: string, ~name: string, schema: S.t<unknown>): SchemaType.schemaType =>
-  SchemaType.fromSury(~parentName=entityName, ~fieldName=name, schema)
+let shapeOfField = (
+  ~entityName: string,
+  ~name: string,
+  schema: S.t<unknown>,
+): SchemaType.schemaType => SchemaType.fromSury(~parentName=entityName, ~fieldName=name, schema)
 
 // The field holding the entity's lifecycle, for filtering a per-row command
 // menu. One rule, stated in `Reventless.Lifecycle` — the projection machinery
@@ -36,9 +41,9 @@ let lifecycleFieldFromStateSchema = Reventless.Lifecycle.fieldName
 
 // The field whose truth withdraws a row from ordinary reads. Annotation-only —
 // no convention rung, since guessing wrong here makes rows vanish.
-let retiredFromStateSchema = (
-  stateSchema: S.t<unknown>,
-): option<Reventless.StateAnnotations.retiredSpec> =>
+let retiredFromStateSchema = (stateSchema: S.t<unknown>): option<
+  Reventless.StateAnnotations.retiredSpec,
+> =>
   switch Reventless.StateAnnotations.getSpec(stateSchema) {
   | Some(spec) => spec.retired
   | None => None
@@ -112,11 +117,10 @@ let checkRetiredValue = (~entityName: string, stateSchema: S.t<unknown>): retire
       Checked(
         values
         ->Array.filter(v => !(declared->Array.includes(v)))
-        ->Array.map(
-          v =>
-            `${entityName}: @retired(${v}) names a state "${field}" does not declare — known values: ${declared->Array.join(
-                ", ",
-              )}.`,
+        ->Array.map(v =>
+          `${entityName}: @retired(${v}) names a state "${field}" does not declare — known values: ${declared->Array.join(
+              ", ",
+            )}.`
         ),
       )
     }
@@ -149,10 +153,9 @@ let reportRetiredStates = (
 // The states a record's lifecycle field can hold — the field a command's
 // declared edge is written in terms of. `None`: no lifecycle; `Some([])`: one
 // with no cases.
-let lifecycleStatesFromStateSchema = (
-  ~entityName: string,
-  stateSchema: S.t<unknown>,
-): option<array<string>> =>
+let lifecycleStatesFromStateSchema = (~entityName: string, stateSchema: S.t<unknown>): option<
+  array<string>,
+> =>
   lifecycleFieldFromStateSchema(stateSchema)->Option.flatMap(field =>
     switch stateSchema {
     | Object({properties}) =>
@@ -214,9 +217,10 @@ let translationTableDrift = (
   ~observed: array<(string, string)>,
   ~followed: array<string>,
 ): (array<string>, array<string>) => {
-  let declaredEdges = declared->Array.reduce([], (acc, {name, fromEventTypes}) =>
-    Array.concat(acc, fromEventTypes->Array.map(src => (src, name)))
-  )
+  let declaredEdges =
+    declared->Array.reduce([], (acc, {name, fromEventTypes}) =>
+      Array.concat(acc, fromEventTypes->Array.map(src => (src, name)))
+    )
   let has = (edges, (src, pub)) => edges->Array.some(((s, p)) => s == src && p == pub)
 
   let failures =
@@ -370,13 +374,14 @@ let checkDeclaredTransitions = (
         },
       )
       if Array.length(declared) > 0 {
-        let known =
-          w.linkedViews->Array.reduce([], (acc, view) =>
+        let known = w.linkedViews->Array.reduce(
+          [],
+          (acc, view) =>
             switch lifecycleStatesByView->Dict.get(view) {
             | Some(states) => Array.concat(acc, states)
             | None => acc
-            }
-          )
+            },
+        )
         if Array.length(known) == 0 {
           unvalidated := unvalidated.contents + 1
         } else {
@@ -385,21 +390,23 @@ let checkDeclaredTransitions = (
           // longer declares means the committed model went stale, and stopping is
           // right — published, it would offer the command on no row at all.
           let hint = switch cmd.allowedStatesSource {
-          | Some("derived") =>
-            " This edge came from the component's own scenarios, so the committed lifecycle model is stale."
+          | Some(
+              "derived",
+            ) => " This edge came from the component's own scenarios, so the committed lifecycle model is stale."
           | _ => ""
           }
           declared
           ->Array.filter(state => !(known->Array.includes(state)))
-          ->Array.forEach(state =>
-            failures
-            ->Array.push(
-              `${w.name}.${cmd.name} declares state "${state}", which none of its ` ++
-              `linked views declare — ${w.linkedViews->Array.join(
-                  ", ",
-                )} know ${known->Array.join(", ")}.${hint}`,
-            )
-            ->ignore
+          ->Array.forEach(
+            state =>
+              failures
+              ->Array.push(
+                `${w.name}.${cmd.name} declares state "${state}", which none of its ` ++
+                `linked views declare — ${w.linkedViews->Array.join(
+                    ", ",
+                  )} know ${known->Array.join(", ")}.${hint}`,
+              )
+              ->ignore,
           )
         }
       }
@@ -412,15 +419,13 @@ let checkDeclaredTransitions = (
   if unvalidated.contents > 0 {
     log.warn(
       ~comp="Plugin_Structure",
-      `${pluginName}: ${unvalidated.contents->Int.toString} command(s) declare a transition ` ++
-      `but no linked view declares a lifecycle to check it against.`,
+      `${pluginName}: ${unvalidated.contents->Int.toString} command(s) declare a transition ` ++ `but no linked view declares a lifecycle to check it against.`,
     )
   }
 
   if Array.length(failures) > 0 {
     JsError.throwWithMessage(
-      `${pluginName}: a transition names states that do not exist.\n` ++
-      failures->Array.join("\n"),
+      `${pluginName}: a transition names states that do not exist.\n` ++ failures->Array.join("\n"),
     )
   }
 }
@@ -439,11 +444,12 @@ let lifecycleTopologyFindings = (
   ->Array.forEach(((view, states)) => {
     // Arrival only, so a creating command (a target and no from-set) counts
     // towards reachability like any other edge.
-    let reachable = writables->Array.reduce([], (acc, w) =>
-      w.linkedViews->Array.includes(view)
-        ? Array.concat(acc, w.commands->Array.filterMap(cmd => cmd.targetState))
-        : acc
-    )
+    let reachable =
+      writables->Array.reduce([], (acc, w) =>
+        w.linkedViews->Array.includes(view)
+          ? Array.concat(acc, w.commands->Array.filterMap(cmd => cmd.targetState))
+          : acc
+      )
     if Array.length(reachable) > 0 {
       // Rows start in the first declared state, so nothing pointing at it is fine.
       let initial = states->Array.get(0)
@@ -453,8 +459,7 @@ let lifecycleTopologyFindings = (
           findings
           ->Array.push((
             view,
-            `no command declares a transition INTO "${state}" — it is unreachable ` ++
-            `unless something outside this plugin's declarations puts a row there.`,
+            `no command declares a transition INTO "${state}" — it is unreachable ` ++ `unless something outside this plugin's declarations puts a row there.`,
           ))
           ->ignore
         }
@@ -551,9 +556,7 @@ let labelFieldsFromStateSchema = (
 // A variant's cross-entity references, shared by the command and event walks.
 // `getFieldTarget`, not `getTarget`: an `array<string>` field declares it on the
 // element schema.
-let extractReferences = (properties: dict<S.t<unknown>>): array<
-  Reventless.Plugin.fieldReference,
-> =>
+let extractReferences = (properties: dict<S.t<unknown>>): array<Reventless.Plugin.fieldReference> =>
   properties
   ->Dict.toArray
   ->Array.flatMap(((fieldName, fieldSchema)) =>
@@ -565,25 +568,26 @@ let extractReferences = (properties: dict<S.t<unknown>>): array<
     Reventless.Reference.collectFieldTargets(fieldName, fieldSchema)->Array.map(((
       path,
       target,
-    )) => (
-      {
-        Reventless.Plugin.fieldName: path,
-        entity: target.entity,
-        plugin: target.plugin,
-      }: Reventless.Plugin.fieldReference
-    ))
+    )): Reventless.Plugin.fieldReference => {
+      Reventless.Plugin.fieldName: path,
+      entity: target.entity,
+      plugin: target.plugin,
+    })
   )
 
 let toEventDef = (v: S.t<unknown>): option<Reventless.Plugin.eventDef> => {
   let mkDef = (~variantName, ~properties) => {
     let references = extractReferences(properties)
-    ({
-      Reventless.Plugin.name: variantName,
-      // Derived for the same reason as `commandDef.schema`: an event's field
-      // markers are the write side's half of the same vocabulary.
-      schema: v->SuryToJsonSchema.deriveObjectSchema->JSON.stringify,
-      references,
-    }: Reventless.Plugin.eventDef)
+
+    (
+      {
+        Reventless.Plugin.name: variantName,
+        // Derived for the same reason as `commandDef.schema`: an event's field
+        // markers are the write side's half of the same vocabulary.
+        schema: v->SuryToJsonSchema.deriveObjectSchema->JSON.stringify,
+        references,
+      }: Reventless.Plugin.eventDef
+    )
   }
   switch v {
   | Object({properties}) =>
@@ -611,9 +615,11 @@ let extractEventDefs = (eventSchema: S.t<unknown>): array<Reventless.Plugin.even
 // Errors walk identically to events; only the def type differs, so a consumer
 // can tell a refusal from a fact. Shared rather than copied, so they cannot drift.
 let extractErrorDefs = (errorSchema: S.t<unknown>): array<Reventless.Plugin.errorDef> =>
-  extractEventDefs(errorSchema)->Array.map(({name, schema, references}) => (
-    {name, schema, references}: Reventless.Plugin.errorDef
-  ))
+  extractEventDefs(errorSchema)->Array.map(({
+    name,
+    schema,
+    references,
+  }): Reventless.Plugin.errorDef => {name, schema, references})
 
 // Module-level like the event walk: the synthetic Platform_Admin structure has no
 // `module(Aggregate.T)` to hand `make`, and a second copy of this walk is what let
@@ -643,8 +649,7 @@ let commandLevelAndId = (~isAggregate, ~variantName, properties: dict<S.t<unknow
       ->Dict.toArray
       ->Array.filter(((fieldName, fieldSchema)) =>
         fieldName != "TAG" &&
-          (Reventless.DcbTag.isTagged(fieldSchema) ||
-            Reventless.DcbTag.isTaggedArray(fieldSchema))
+          (Reventless.DcbTag.isTagged(fieldSchema) || Reventless.DcbTag.isTaggedArray(fieldSchema))
       )
     let taggedField =
       taggedFields
@@ -727,10 +732,12 @@ let toCommandDef = (
     // Evaluated against a synthetic value per constructor, the same shape the
     // resolver builds at call time: a payload-bearing variant compiles to
     // `{TAG, ...}`, a payload-less one to a bare string.
-    let syntheticCommand: unknown =
-      Reventless.DcbTag.isVariantPayloadBearing(parentSchema, variantName)
-        ? {"TAG": variantName}->Obj.magic
-        : variantName->Obj.magic
+    let syntheticCommand: unknown = Reventless.DcbTag.isVariantPayloadBearing(
+      parentSchema,
+      variantName,
+    )
+      ? {"TAG": variantName}->Obj.magic
+      : variantName->Obj.magic
     // The spec's own switch, which is exhaustive — so it also speaks for a
     // constructor the host did not declare but spliced from a trait.
     //
@@ -814,27 +821,30 @@ let toCommandDef = (
     } else {
       jsonSchema
     }
-    ({
-      Reventless.Plugin.name: variantName,
-      // The derived schema, not sury's raw one, which drops every `x-reventless-*`
-      // marker the PPX put on the fields. Also carries `x-reventless-graphql-type`.
-      schema: annotatedSchema->JSON.stringify,
-      level,
-      aggregateIdField,
-      // Empty for a `@noApi` variant: `mutationFieldFor` would resolve it to a
-      // sibling's field, which reads as callable. Exposed variants are unchanged.
-      mutationField,
-      references,
-      allowedStates,
-      targetState,
-      allowedStatesSource: ?allowedStatesSource,
-      apiExposed: Some(apiExposed),
-      requiredAccess,
-      // Resolved from this constructor's own properties, not the union's: two
-      // commands in one slice can disagree about whether they record an owner,
-      // and the write path stamps per constructor for the same reason.
-      ownerField: Reventless.Owner.fieldNamesOfProperties(properties)->Array.get(0),
-    }: Reventless.Plugin.commandDef)
+
+    (
+      {
+        Reventless.Plugin.name: variantName,
+        // The derived schema, not sury's raw one, which drops every `x-reventless-*`
+        // marker the PPX put on the fields. Also carries `x-reventless-graphql-type`.
+        schema: annotatedSchema->JSON.stringify,
+        level,
+        aggregateIdField,
+        // Empty for a `@noApi` variant: `mutationFieldFor` would resolve it to a
+        // sibling's field, which reads as callable. Exposed variants are unchanged.
+        mutationField,
+        references,
+        allowedStates,
+        targetState,
+        ?allowedStatesSource,
+        apiExposed: Some(apiExposed),
+        requiredAccess,
+        // Resolved from this constructor's own properties, not the union's: two
+        // commands in one slice can disagree about whether they record an owner,
+        // and the write path stamps per constructor for the same reason.
+        ownerField: Reventless.Owner.fieldNamesOfProperties(properties)->Array.get(0),
+      }: Reventless.Plugin.commandDef
+    )
   }
   switch v {
   | Object({properties}) =>
@@ -920,7 +930,7 @@ let queryableDefFromSpec = (
   // the generated filter/order-by is built from cannot disagree.
   let keyField = GraphQL_FragmentGenerator.resolveKeyField(~entityName=name, stateSchema)
   {
-    Reventless.Plugin.name: name,
+    Reventless.Plugin.name,
     queryField: qf.listFieldName,
     schema: stateSchema->SuryToJsonSchema.deriveObjectSchema->JSON.stringify,
     consumedEventTypes,
@@ -946,7 +956,9 @@ let make = (
   type api role,
   ~name: string,
   ~aggregates: array<module(ReventlessInfra.Aggregate.T with type api = api)>=[],
-  ~readModels: array<module(ReventlessInfra.ReadModel.T with type api = api and type role = role)>=[],
+  ~readModels: array<
+    module(ReventlessInfra.ReadModel.T with type api = api and type role = role),
+  >=[],
   ~stateViewSlices: array<module(ReventlessInfra.StateViewSlice.T)>=[],
   ~stateChangeSlices: array<module(ReventlessInfra.StateChangeSlice.T)>=[],
   ~automationSlices: array<module(ReventlessInfra.AutomationSlice.T)>=[],
@@ -1011,8 +1023,7 @@ let make = (
 
   // ── Cross-reference helpers ────────────────────────────────────────────────
 
-  let intersects = (a: array<string>, b: array<string>) =>
-    a->Array.some(x => b->Array.includes(x))
+  let intersects = (a: array<string>, b: array<string>) => a->Array.some(x => b->Array.includes(x))
 
   let linkedSvsFor = (producedTypes: array<string>): array<string> =>
     svsConsumed->Array.filterMap(((viewName, consumed)) =>
@@ -1055,7 +1066,11 @@ let make = (
       ->Array.filter(((_, overlap, _)) => overlap > 0)
       ->Array.toSorted(((_, a, aTotal), (_, b, bTotal)) => {
         let cmp = Int.compare(b, a)
-        if cmp != Ordering.equal { cmp } else { Int.compare(bTotal, aTotal) }
+        if cmp != Ordering.equal {
+          cmp
+        } else {
+          Int.compare(bTotal, aTotal)
+        }
       })
     switch scored->Array.length {
     | 0 => None
@@ -1168,18 +1183,17 @@ let make = (
     dcbCommandOwners
     ->Dict.toArray
     ->Array.filter(((_, owners)) => owners->Array.length > 1)
-    ->Array.toSorted((((a, _)), ((b, _))) => String.compare(a, b))
+    ->Array.toSorted(((a, _), (b, _)) => String.compare(a, b))
   if clashes->Array.length > 0 {
     JsError.throwWithMessage(
       `${name}: ` ++
       clashes
-      ->Array.map((((cmd, owners))) =>
+      ->Array.map(((cmd, owners)) =>
         `${owners->Array.join(" and ")} both declare the command "${cmd}"`
       )
       ->Array.join("; ") ++
       `.\n  A DCB plugin routes a command by its bare name, so one of these would never run. ` ++
-      `Qualify them — the shipped traits' emitters prefix every name with the host they are ` ++
-      `grafted onto, for exactly this reason.`,
+      `Qualify them — the shipped traits' emitters prefix every name with the host they are ` ++ `grafted onto, for exactly this reason.`,
     )
   }
 
@@ -1247,12 +1261,12 @@ let make = (
   let requiredCapabilities =
     outboundTranslationSlices
     ->Array.flatMap((module(OTS: ReventlessInfra.OutboundTranslationSlice.T)) =>
-      OTS.Spec.capabilityNeeds->Array.map(need => (
-        {
-          Reventless.Plugin.capability: Reventless.CapabilityNeed.toString(need),
-          component: OTS.Spec.name,
-        }: Reventless.Plugin.requiredCapabilityDeclaration
-      ))
+      OTS.Spec.capabilityNeeds->Array.map((
+        need
+      ): Reventless.Plugin.requiredCapabilityDeclaration => {
+        Reventless.Plugin.capability: Reventless.CapabilityNeed.toString(need),
+        component: OTS.Spec.name,
+      })
     )
     ->Array.toSorted((a, b) =>
       a.capability == b.capability
@@ -1272,14 +1286,12 @@ let make = (
   // hand-typed string this whole mechanism exists to avoid. Sorted and
   // deduplicated for the same reason the two declarations above are.
   let traitDeclarations = {
-    let entry = (~component, decl: Reventless.Trait.t) => (
-      {
-        Reventless.Plugin.trait: decl.trait,
-        version: decl.version,
-        posture: Reventless.Trait.postureToString(decl.posture),
-        component,
-      }: Reventless.Plugin.traitDeclaration
-    )
+    let entry = (~component, decl: Reventless.Trait.t): Reventless.Plugin.traitDeclaration => {
+      Reventless.Plugin.trait: decl.trait,
+      version: decl.version,
+      posture: Reventless.Trait.postureToString(decl.posture),
+      component,
+    }
     [
       aggregates->Array.flatMap((module(A: ReventlessInfra.Aggregate.T with type api = api)) =>
         A.Spec.traits->Array.map(entry(~component=A.Spec.name, ...))
@@ -1293,7 +1305,9 @@ let make = (
     ]
     ->Array.flat
     ->Array.toSorted((a, b) =>
-      a.trait == b.trait ? String.compare(a.component, b.component) : String.compare(a.trait, b.trait)
+      a.trait == b.trait
+        ? String.compare(a.component, b.component)
+        : String.compare(a.trait, b.trait)
     )
     ->Array.reduce([], (acc, d) =>
       switch acc->Array.last {
@@ -1345,26 +1359,23 @@ let make = (
     ->GraphQL_FragmentGenerator.keyFieldGapMessage
     ->Option.forEach(why => log.warn(~comp="Plugin_Structure", `${name}/${entityName} ${why}`))
 
-  let readModelDefs =
-    readModels
-    ->Array.map((
-      module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role),
-    ) => {
-      let qf = Api_Naming.queryFieldNamesForReadModel(~plugin=name, ~name=R.Spec.name)
-      let stateSchema = R.Spec.stateSchema->S.castToUnknown
-      let label = labelFieldsFromStateSchema(~entityName=R.Spec.name, stateSchema)
-      // The same call the capability deriver makes, so the published key and the
-      // key the generated filter/order-by is built from cannot disagree.
-      let keyField = GraphQL_FragmentGenerator.resolveKeyField(
-        ~entityName=R.Spec.name,
-        stateSchema,
-      )
-      // Qualified to the plugin's event ids so they match the producers' nodes.
-      let consumed = qualify(~prefix=name, R.consumedEventNames)
-      recordRetired(~entityName=R.Spec.name, stateSchema)
-      recordLifecycle(~entityName=R.Spec.name, stateSchema)
-      recordKeyField(~entityName=R.Spec.name, stateSchema)
-      ({
+  let readModelDefs = readModels->Array.map((
+    module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role),
+  ) => {
+    let qf = Api_Naming.queryFieldNamesForReadModel(~plugin=name, ~name=R.Spec.name)
+    let stateSchema = R.Spec.stateSchema->S.castToUnknown
+    let label = labelFieldsFromStateSchema(~entityName=R.Spec.name, stateSchema)
+    // The same call the capability deriver makes, so the published key and the
+    // key the generated filter/order-by is built from cannot disagree.
+    let keyField = GraphQL_FragmentGenerator.resolveKeyField(~entityName=R.Spec.name, stateSchema)
+    // Qualified to the plugin's event ids so they match the producers' nodes.
+    let consumed = qualify(~prefix=name, R.consumedEventNames)
+    recordRetired(~entityName=R.Spec.name, stateSchema)
+    recordLifecycle(~entityName=R.Spec.name, stateSchema)
+    recordKeyField(~entityName=R.Spec.name, stateSchema)
+
+    (
+      {
         Reventless.Plugin.name: R.Spec.name,
         queryField: qf.listFieldName,
         schema: stateSchema->SuryToJsonSchema.deriveObjectSchema->JSON.stringify,
@@ -1389,8 +1400,9 @@ let make = (
         idField: keyField->Option.map(((f, _)) => f),
         idFieldSource: keyField->Option.map(((_, rung)) => rung),
         requiredAccess: accessKeysFor(R.Spec.authorization),
-      }: Reventless.Plugin.queryableDef)
-    })
+      }: Reventless.Plugin.queryableDef
+    )
+  })
 
   let stateViewDefs =
     stateViewSlices->Array.mapWithIndex((module(SVS: ReventlessInfra.StateViewSlice.T), i) => {
@@ -1405,27 +1417,30 @@ let make = (
       recordRetired(~entityName=SVS.Spec.name, stateSchema)
       recordLifecycle(~entityName=SVS.Spec.name, stateSchema)
       recordKeyField(~entityName=SVS.Spec.name, stateSchema)
-      ({
-        Reventless.Plugin.name: SVS.Spec.name,
-        queryField: qf.listFieldName,
-        schema: stateSchema->SuryToJsonSchema.deriveObjectSchema->JSON.stringify,
-        consumedEventTypes: consumed,
-        linkedWriteSide: linkedWriteSideFor(consumed),
-        labelField: label.field,
-        searchableFields: label.searchableFields,
-        labelFieldSource: Some(labelFieldSourceToString(label.source)),
-        lifecycleField: lifecycleFieldFromStateSchema(stateSchema),
-        ownerField: Reventless.Owner.fieldNames(stateSchema)->Array.get(0),
-        retiredField: retiredFieldFromStateSchema(stateSchema),
-        retiredValues: retiredValuesFromStateSchema(stateSchema),
-        namedWhenRetired: Some(namedWhenRetiredFromStateSchema(stateSchema)),
-        visibility: visibilityTag(SVS.Spec.visibility),
-        chapter: chapterOf(SVS.Spec.name),
-        singleQueryField: Some(qf.singleFieldName),
-        idField: keyField->Option.map(((f, _)) => f),
-        idFieldSource: keyField->Option.map(((_, rung)) => rung),
-        requiredAccess: accessKeysFor(SVS.Spec.authorization),
-      }: Reventless.Plugin.queryableDef)
+
+      (
+        {
+          Reventless.Plugin.name: SVS.Spec.name,
+          queryField: qf.listFieldName,
+          schema: stateSchema->SuryToJsonSchema.deriveObjectSchema->JSON.stringify,
+          consumedEventTypes: consumed,
+          linkedWriteSide: linkedWriteSideFor(consumed),
+          labelField: label.field,
+          searchableFields: label.searchableFields,
+          labelFieldSource: Some(labelFieldSourceToString(label.source)),
+          lifecycleField: lifecycleFieldFromStateSchema(stateSchema),
+          ownerField: Reventless.Owner.fieldNames(stateSchema)->Array.get(0),
+          retiredField: retiredFieldFromStateSchema(stateSchema),
+          retiredValues: retiredValuesFromStateSchema(stateSchema),
+          namedWhenRetired: Some(namedWhenRetiredFromStateSchema(stateSchema)),
+          visibility: visibilityTag(SVS.Spec.visibility),
+          chapter: chapterOf(SVS.Spec.name),
+          singleQueryField: Some(qf.singleFieldName),
+          idField: keyField->Option.map(((f, _)) => f),
+          idFieldSource: keyField->Option.map(((_, rung)) => rung),
+          requiredAccess: accessKeysFor(SVS.Spec.authorization),
+        }: Reventless.Plugin.queryableDef
+      )
     })
 
   // ── Build writable defs ────────────────────────────────────────────────────
@@ -1434,43 +1449,52 @@ let make = (
     stateChangeSlices->Array.mapWithIndex((module(SCS: ReventlessInfra.StateChangeSlice.T), i) => {
       let (_, produced) = scsProduced->Array.getUnsafe(i)
       let (_, consumed) = scsConsumed->Array.getUnsafe(i)
-      ({
-        Reventless.Plugin.name: SCS.Spec.name,
-        commands: extractCommandDefs(
-          ~isAggregate=false,
-          ~mutationFieldFor=variantName =>
-            Api_Naming.sliceMutationFieldFor(
-              ~plugin=name,
-              ~slice=SCS.Spec.name,
-              ~commandSchema=SCS.Spec.commandSchema->S.castToUnknown,
-              ~variant=variantName,
-            ),
-          ~commandAuthorization=SCS.Spec.commandAuthorization->Obj.magic,
-          ~commandTransition=SCS.Spec.commandTransition->Obj.magic,
-          ~derivedEdgeFor=derivedEdgeFor(~component=SCS.Spec.name, ...),
-          SCS.Spec.commandSchema->S.castToUnknown,
-        ),
-        producedEventTypes: produced,
-        consumedEventTypes: consumed,
-        linkedViews: linkedSvsFor(produced),
-        consistencyRead: consistencyReadFor(consumed),
-        events: extractEventDefs(SCS.Spec.eventSchema->S.castToUnknown),
-        errors: extractErrorDefs(SCS.Spec.errorSchema->S.castToUnknown),
-        chapter: chapterOf(SCS.Spec.name),
-      }: Reventless.Plugin.writableDef)
+
+      (
+        {
+          Reventless.Plugin.name: SCS.Spec.name,
+          commands: extractCommandDefs(
+            ~isAggregate=false,
+            ~mutationFieldFor=variantName =>
+              Api_Naming.sliceMutationFieldFor(
+                ~plugin=name,
+                ~slice=SCS.Spec.name,
+                ~commandSchema=SCS.Spec.commandSchema->S.castToUnknown,
+                ~variant=variantName,
+              ),
+            ~commandAuthorization=SCS.Spec.commandAuthorization->Obj.magic,
+            ~commandTransition=SCS.Spec.commandTransition->Obj.magic,
+            ~derivedEdgeFor=derivedEdgeFor(~component=SCS.Spec.name, ...),
+            SCS.Spec.commandSchema->S.castToUnknown,
+          ),
+          producedEventTypes: produced,
+          consumedEventTypes: consumed,
+          linkedViews: linkedSvsFor(produced),
+          consistencyRead: consistencyReadFor(consumed),
+          events: extractEventDefs(SCS.Spec.eventSchema->S.castToUnknown),
+          errors: extractErrorDefs(SCS.Spec.errorSchema->S.castToUnknown),
+          chapter: chapterOf(SCS.Spec.name),
+        }: Reventless.Plugin.writableDef
+      )
     })
 
-  let aggregateDefs =
-    aggregates->Array.mapWithIndex((
-      module(A: ReventlessInfra.Aggregate.T with type api = api),
-      i,
-    ) => {
-      let (_, produced) = aggProduced->Array.getUnsafe(i)
-      ({
+  let aggregateDefs = aggregates->Array.mapWithIndex((
+    module(A: ReventlessInfra.Aggregate.T with type api = api),
+    i,
+  ) => {
+    let (_, produced) = aggProduced->Array.getUnsafe(i)
+
+    (
+      {
         Reventless.Plugin.name: A.Spec.name,
         commands: extractCommandDefs(
           ~isAggregate=true,
-          ~mutationFieldFor=variantName => Api_Naming.aggregateMutationField(~plugin=name, ~aggregate=A.Spec.name, ~command=variantName),
+          ~mutationFieldFor=variantName =>
+            Api_Naming.aggregateMutationField(
+              ~plugin=name,
+              ~aggregate=A.Spec.name,
+              ~command=variantName,
+            ),
           ~commandAuthorization=A.Spec.commandAuthorization->Obj.magic,
           ~commandTransition=A.Spec.commandTransition->Obj.magic,
           ~derivedEdgeFor=derivedEdgeFor(~component=A.Spec.name, ...),
@@ -1483,8 +1507,9 @@ let make = (
         events: extractEventDefs(A.Spec.eventSchema->S.castToUnknown),
         errors: extractErrorDefs(A.Spec.errorSchema->S.castToUnknown),
         chapter: chapterOf(A.Spec.name),
-      }: Reventless.Plugin.writableDef)
-    })
+      }: Reventless.Plugin.writableDef
+    )
+  })
 
   // ── Automation slices ────────────────────────────────────────────────────────
 
@@ -1500,22 +1525,30 @@ let make = (
         )
         ->Belt.Set.String.fromArray
         ->Belt.Set.String.toArray
-      ({
-        Reventless.Plugin.name: AS.Spec.name,
-        consumedEventTypes: qualify(~prefix=name, allConsumedVariants),
-        producedCommandTypes: qualify(~prefix=name, commandVariantNames(AS.Spec.commandSchema)),
-        targetName: AS.Spec.targetName,
-        chapter: chapterOf(AS.Spec.name),
-      }: Reventless.Plugin.automationSliceDef)
+
+      (
+        {
+          Reventless.Plugin.name: AS.Spec.name,
+          consumedEventTypes: qualify(~prefix=name, allConsumedVariants),
+          producedCommandTypes: qualify(~prefix=name, commandVariantNames(AS.Spec.commandSchema)),
+          targetName: AS.Spec.targetName,
+          chapter: chapterOf(AS.Spec.name),
+        }: Reventless.Plugin.automationSliceDef
+      )
     })
 
   // ── Outbound translation slices ───────────────────────────────────────────
 
   let outboundTranslationSliceDefs =
-    outboundTranslationSlices->Array.map((module(OTS: ReventlessInfra.OutboundTranslationSlice.T)) => ({
+    outboundTranslationSlices->Array.map((
+      module(OTS: ReventlessInfra.OutboundTranslationSlice.T),
+    ): Reventless.Plugin.outboundTranslationSliceDef => {
       Reventless.Plugin.name: OTS.Spec.name,
       consumedEventTypes: qualify(~prefix=name, eventVariantNames(OTS.Spec.consumedEventSchema)),
-      inboundCommandTypes: qualify(~prefix=name, commandVariantNames(OTS.Spec.inboundCommandSchema)),
+      inboundCommandTypes: qualify(
+        ~prefix=name,
+        commandVariantNames(OTS.Spec.inboundCommandSchema),
+      ),
       targetName: OTS.Spec.targetName,
       externalSystem: OTS.Spec.externalSystem,
       chapter: chapterOf(OTS.Spec.name),
@@ -1523,18 +1556,20 @@ let make = (
       // this plugin's own DCB log, and resolving it here to a derived name would
       // be a second place that name is spelled.
       consumedSources: Some(OTS.Spec.sourceNames),
-    }: Reventless.Plugin.outboundTranslationSliceDef))
+    })
 
   // ── Inbound translation slices ────────────────────────────────────────────
 
   let inboundTranslationSliceDefs =
-    inboundTranslationSlices->Array.map((module(ITS: ReventlessInfra.InboundTranslationSlice.T)) => ({
+    inboundTranslationSlices->Array.map((
+      module(ITS: ReventlessInfra.InboundTranslationSlice.T),
+    ): Reventless.Plugin.inboundTranslationSliceDef => {
       Reventless.Plugin.name: ITS.Spec.name,
       commandTypes: qualify(~prefix=name, commandVariantNames(ITS.Spec.commandSchema)),
       targetName: ITS.Spec.targetName,
       externalSystem: ITS.Spec.externalSystem,
       chapter: chapterOf(ITS.Spec.name),
-    }: Reventless.Plugin.inboundTranslationSliceDef))
+    })
 
   // ── Extensions ───────────────────────────────────────────────────────────
 
@@ -1546,39 +1581,39 @@ let make = (
   // what the author can write, not the payload-filtered subset the edges use.
   let allVariantNames = schema => Reventless.DcbTag.extractAllVariantNames(schema)
 
-  let extensionDefs =
-    extensions->Array.map((module(E: ReventlessInfra.Extension.Blueprint)) => {
-      let delegateNames = E.mappings->Array.map((module(M: E.Mapping)) => M.delegateName)
-      let epEventNames = allVariantNames(E.Spec.eventSchema)
-      let epCommandNames = allVariantNames(E.Spec.commandSchema)
+  let extensionDefs = extensions->Array.map((module(E: ReventlessInfra.Extension.Blueprint)) => {
+    let delegateNames = E.mappings->Array.map((module(M: E.Mapping)) => M.delegateName)
+    let epEventNames = allVariantNames(E.Spec.eventSchema)
+    let epCommandNames = allVariantNames(E.Spec.commandSchema)
 
-      // Mappings sharing one EP union their tables — the same event may route to
-      // a different delegate's command in each.
-      let commandsByEvent: Dict.t<array<string>> = Dict.make()
-      let eventsByCommand: Dict.t<array<string>> = Dict.make()
-      E.mappings->Array.forEach((module(M: E.Mapping)) => {
-        let label = `${E.Spec.name} → ${M.delegateName}`
-        pushAll(
-          tableFailures,
-          handledTableFailures(
-            ~label,
-            ~declared=M.handledEvents,
-            ~eventNames=epEventNames,
-            ~commandNames=Array.concat(M.delegateCommandNames, epCommandNames),
-          ),
-        )
-        pushAll(
-          tableFailures,
-          commandTableFailures(
-            ~label,
-            ~keyed="issuedCommands",
-            ~valueKind="comes from",
-            ~rows=M.issuedCommands->Array.map(({name, fromEventTypes}) => (name, fromEventTypes)),
-            ~keyNames=epCommandNames,
-            ~valueNames=M.delegateEventNames,
-          ),
-        )
-        M.issuedCommands->Array.forEach(({name: commandName, fromEventTypes}) => {
+    // Mappings sharing one EP union their tables — the same event may route to
+    // a different delegate's command in each.
+    let commandsByEvent: Dict.t<array<string>> = Dict.make()
+    let eventsByCommand: Dict.t<array<string>> = Dict.make()
+    E.mappings->Array.forEach((module(M: E.Mapping)) => {
+      let label = `${E.Spec.name} → ${M.delegateName}`
+      pushAll(
+        tableFailures,
+        handledTableFailures(
+          ~label,
+          ~declared=M.handledEvents,
+          ~eventNames=epEventNames,
+          ~commandNames=Array.concat(M.delegateCommandNames, epCommandNames),
+        ),
+      )
+      pushAll(
+        tableFailures,
+        commandTableFailures(
+          ~label,
+          ~keyed="issuedCommands",
+          ~valueKind="comes from",
+          ~rows=M.issuedCommands->Array.map(({name, fromEventTypes}) => (name, fromEventTypes)),
+          ~keyNames=epCommandNames,
+          ~valueNames=M.delegateEventNames,
+        ),
+      )
+      M.issuedCommands->Array.forEach(
+        ({name: commandName, fromEventTypes}) => {
           let key = `${E.Spec.name}.${commandName}`
           eventsByCommand->Dict.set(
             key,
@@ -1587,25 +1622,30 @@ let make = (
               qualify(~prefix=name, fromEventTypes),
             ),
           )
-        })
-        M.handledEvents->Array.forEach(({name: eventName, toCommandTypes}) => {
+        },
+      )
+      M.handledEvents->Array.forEach(
+        ({name: eventName, toCommandTypes}) => {
           // The qualifier says which way the command goes: plugin-qualified
           // inward, EP-qualified back to the port.
           let qualified =
-            toCommandTypes->Array.map(cmd =>
-              M.delegateCommandNames->Array.includes(cmd)
-                ? `${name}.${cmd}`
-                : `${E.Spec.name}.${cmd}`
+            toCommandTypes->Array.map(
+              cmd =>
+                M.delegateCommandNames->Array.includes(cmd)
+                  ? `${name}.${cmd}`
+                  : `${E.Spec.name}.${cmd}`,
             )
           let key = `${E.Spec.name}.${eventName}`
           commandsByEvent->Dict.set(
             key,
             Array.concat(commandsByEvent->Dict.get(key)->Option.getOr([]), qualified),
           )
-        })
-      })
+        },
+      )
+    })
 
-      ({
+    (
+      {
         Reventless.Plugin.name: E.Spec.name,
         delegateNames,
         eventTypes: qualify(~prefix=E.Spec.name, eventVariantNames(E.Spec.eventSchema)),
@@ -1613,21 +1653,22 @@ let make = (
         handledEvents: Some(
           commandsByEvent
           ->Dict.toArray
-          ->Array.map(((eventName, cmds)) => ({
+          ->Array.map(((eventName, cmds)): Reventless.Plugin.handledEventDef => {
             Reventless.Plugin.name: eventName,
             toCommandTypes: dedupe(cmds),
-          }: Reventless.Plugin.handledEventDef)),
+          }),
         ),
         issuedCommands: Some(
           eventsByCommand
           ->Dict.toArray
-          ->Array.map(((commandName, evs)) => ({
+          ->Array.map(((commandName, evs)): Reventless.Plugin.issuedCommandDef => {
             Reventless.Plugin.name: commandName,
             fromEventTypes: dedupe(evs),
-          }: Reventless.Plugin.issuedCommandDef)),
+          }),
         ),
-      }: Reventless.Plugin.extensionDef)
-    })
+      }: Reventless.Plugin.extensionDef
+    )
+  })
 
   // ── Extension points (producer side) ──────────────────────────────────────
   //
@@ -1646,14 +1687,21 @@ let make = (
 
   extensionPoints->Array.forEach((module(M: ReventlessInfra.ExtensionPointMapping.Mapping)) => {
     let epName = M.ExtensionPoint.name
-    let sourceEvents = qualify(~prefix=name, eventVariantNames(M.Delegate.eventSchema->S.castToUnknown))
+    let sourceEvents = qualify(
+      ~prefix=name,
+      eventVariantNames(M.Delegate.eventSchema->S.castToUnknown),
+    )
     // The EP's inbound command protocol (variants of its `command` type). Empty
     // for a `command = unit` EP — an events-out-only boundary that routes nothing.
     let commands = qualify(~prefix=epName, commandVariantNames(M.ExtensionPoint.commandSchema))
     let (dels, evs, cmds) = epByName->Dict.get(epName)->Option.getOr(([], [], []))
     epByName->Dict.set(
       epName,
-      (Array.concat(dels, [M.Delegate.name]), Array.concat(evs, sourceEvents), Array.concat(cmds, commands)),
+      (
+        Array.concat(dels, [M.Delegate.name]),
+        Array.concat(evs, sourceEvents),
+        Array.concat(cmds, commands),
+      ),
     )
 
     let label = `${epName} ← ${M.Delegate.name}`
@@ -1690,39 +1738,38 @@ let make = (
       )
         ? Dict.fromArray([("TAG", JSON.Encode.string(cmd))])->JSON.Encode.object
         : JSON.Encode.string(cmd)
-      switch (
-        try {
-          let command =
-            Reventless.Message.fillMissingDefaults(
-              M.ExtensionPoint.commandSchema,
-              synthesised,
-              [],
-            )->Reventless.Util_Sury.fromJson(M.ExtensionPoint.commandSchema)
-          let decodedAs =
-            command
-            ->Reventless.Message.encode(M.ExtensionPoint.commandSchema)
-            ->Reventless.Message.variantNameOfJson
-          decodedAs != cmd
-            ? Error(`a synthesised "${cmd}" decoded as "${decodedAs}"`)
-            : Ok(M.mapIncomingCommand(probeId, command, probeMeta))
-        } catch {
-        | _ => Error(`the mapping raised on a synthesised "${cmd}"`)
-        }
-      ) {
+      switch try {
+        let command =
+          Reventless.Message.fillMissingDefaults(
+            M.ExtensionPoint.commandSchema,
+            synthesised,
+            [],
+          )->Reventless.Util_Sury.fromJson(M.ExtensionPoint.commandSchema)
+        let decodedAs =
+          command
+          ->Reventless.Message.encode(M.ExtensionPoint.commandSchema)
+          ->Reventless.Message.variantNameOfJson
+        decodedAs != cmd
+          ? Error(`a synthesised "${cmd}" decoded as "${decodedAs}"`)
+          : Ok(M.mapIncomingCommand(probeId, command, probeMeta))
+      } catch {
+      | _ => Error(`the mapping raised on a synthesised "${cmd}"`)
+      } {
       | Ok(actions) =>
-        actions->Array.forEach(action =>
-          switch action {
-          | ReventlessInfra.ExtensionPointMapping.PublishCommand(_, routed) =>
-            acceptedObserved
-            ->Array.push((
-              cmd,
-              routed
-              ->Reventless.Message.encode(M.Delegate.commandSchema)
-              ->Reventless.Message.variantNameOfJson,
-            ))
-            ->ignore
-          | HandleDirective(_, _) => ()
-          }
+        actions->Array.forEach(
+          action =>
+            switch action {
+            | ReventlessInfra.ExtensionPointMapping.PublishCommand(_, routed) =>
+              acceptedObserved
+              ->Array.push((
+                cmd,
+                routed
+                ->Reventless.Message.encode(M.Delegate.commandSchema)
+                ->Reventless.Message.variantNameOfJson,
+              ))
+              ->ignore
+            | HandleDirective(_, _) => ()
+            },
         )
       | Error(reason) =>
         tableWarnings->Array.push(`${label}: not checked against the arms — ${reason}.`)->ignore
@@ -1731,8 +1778,8 @@ let make = (
     acceptedObserved->Array.forEach(((cmd, routed)) =>
       if (
         !(
-          M.acceptedCommands->Array.some(({name, toCommandTypes}) =>
-            name == cmd && toCommandTypes->Array.includes(routed)
+          M.acceptedCommands->Array.some(
+            ({name, toCommandTypes}) => name == cmd && toCommandTypes->Array.includes(routed),
           )
         )
       ) {
@@ -1764,8 +1811,7 @@ let make = (
         ->Array.push(
           `${label}: publishedEvents declares ${M.publishedEvents
             ->Array.length
-            ->Int.toString} event(s), but the mapping has no mapOutgoingEvent and ` ++
-          `publishes nothing.`,
+            ->Int.toString} event(s), but the mapping has no mapOutgoingEvent and ` ++ `publishes nothing.`,
         )
         ->ignore
       }
@@ -1785,8 +1831,11 @@ let make = (
           // Filled directly rather than through `parseJsonTolerant`, which warns
           // about inventing values — here the invention is the point.
           let event =
-            Reventless.Message.fillMissingDefaults(M.Delegate.eventSchema, synthesised, [])
-            ->Reventless.Util_Sury.fromJson(M.Delegate.eventSchema)
+            Reventless.Message.fillMissingDefaults(
+              M.Delegate.eventSchema,
+              synthesised,
+              [],
+            )->Reventless.Util_Sury.fromJson(M.Delegate.eventSchema)
           // A fabricated payload can decode as a sibling constructor; only a
           // value that round-trips is judged.
           let decodedAs =
@@ -1797,26 +1846,28 @@ let make = (
             Error(`a synthesised "${src}" decoded as "${decodedAs}"`)
           } else {
             let actions = mapOutgoing(probeId, event, probeMeta, probeQueryEngine)
-            actions->Array.forEach(action =>
-              switch action {
-              | ReventlessInfra.ExtensionPointMapping.PublishEvent(_, published) =>
-                observed
-                ->Array.push((
-                  src,
-                  published
-                  ->Reventless.Message.encode(M.ExtensionPoint.eventSchema)
-                  ->Reventless.Message.variantNameOfJson,
-                ))
-                ->ignore
-              | PublishEventAsync(_) | HandleDirective(_, _) => ()
-              }
+            actions->Array.forEach(
+              action =>
+                switch action {
+                | ReventlessInfra.ExtensionPointMapping.PublishEvent(_, published) =>
+                  observed
+                  ->Array.push((
+                    src,
+                    published
+                    ->Reventless.Message.encode(M.ExtensionPoint.eventSchema)
+                    ->Reventless.Message.variantNameOfJson,
+                  ))
+                  ->ignore
+                | PublishEventAsync(_) | HandleDirective(_, _) => ()
+                },
             )
             // A promise hides what it will publish — leave the arm unjudged.
-            actions->Array.some(action =>
-              switch action {
-              | PublishEventAsync(_) => true
-              | PublishEvent(_, _) | HandleDirective(_, _) => false
-              }
+            actions->Array.some(
+              action =>
+                switch action {
+                | PublishEventAsync(_) => true
+                | PublishEvent(_, _) | HandleDirective(_, _) => false
+                },
             )
               ? Error(`"${src}" publishes behind a promise`)
               : Ok()
@@ -1857,10 +1908,7 @@ let make = (
       let key = `${epName}.${published}`
       table->Dict.set(
         key,
-        Array.concat(
-          table->Dict.get(key)->Option.getOr([]),
-          qualify(~prefix=name, fromEventTypes),
-        ),
+        Array.concat(table->Dict.get(key)->Option.getOr([]), qualify(~prefix=name, fromEventTypes)),
       )
     })
     epPublished->Dict.set(epName, table)
@@ -1869,7 +1917,7 @@ let make = (
   let extensionPointDefs =
     epByName
     ->Dict.toArray
-    ->Array.map(((epName, (dels, evs, cmds))) => ({
+    ->Array.map(((epName, (dels, evs, cmds))): Reventless.Plugin.extensionPointDef => {
       Reventless.Plugin.name: epName,
       delegateNames: dedupe(dels),
       sourceEventTypes: dedupe(evs),
@@ -1879,22 +1927,22 @@ let make = (
         ->Dict.get(epName)
         ->Option.getOr(Dict.make())
         ->Dict.toArray
-        ->Array.map(((published, sources)) => ({
+        ->Array.map(((published, sources)): Reventless.Plugin.publishedEventDef => {
           Reventless.Plugin.name: published,
           fromEventTypes: dedupe(sources),
-        }: Reventless.Plugin.publishedEventDef)),
+        }),
       ),
       acceptedCommands: Some(
         epAccepted
         ->Dict.get(epName)
         ->Option.getOr(Dict.make())
         ->Dict.toArray
-        ->Array.map(((accepted, routed)) => ({
+        ->Array.map(((accepted, routed)): Reventless.Plugin.acceptedCommandDef => {
           Reventless.Plugin.name: accepted,
           toCommandTypes: dedupe(routed),
-        }: Reventless.Plugin.acceptedCommandDef)),
+        }),
       ),
-    }: Reventless.Plugin.extensionPointDef))
+    })
 
   // Dead inbound surface, judged only after every mapping on an EP has been seen:
   // one port's inbound protocol is split across its mappings, so a command the
@@ -1902,16 +1950,14 @@ let make = (
   epByName
   ->Dict.toArray
   ->Array.forEach(((epName, (_, _, cmds))) => {
-    let handled =
-      epAccepted->Dict.get(epName)->Option.getOr(Dict.make())->Dict.keysToArray
+    let handled = epAccepted->Dict.get(epName)->Option.getOr(Dict.make())->Dict.keysToArray
     cmds
     ->dedupe
     ->Array.forEach(cmd =>
       if !(handled->Array.includes(cmd)) {
         tableWarnings
         ->Array.push(
-          `${epName}: the extension point accepts "${cmd}", which no arm handles — a ` ++
-          `sender gets no error and nothing happens.`,
+          `${epName}: the extension point accepts "${cmd}", which no arm handles — a ` ++ `sender gets no error and nothing happens.`,
         )
         ->ignore
       }

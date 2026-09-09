@@ -133,7 +133,7 @@ let generateAdminConfig = (
 
 /** Extract entity ID from the last path segment (before any query string). */
 let extractEntityId = (uri: string) => {
-  let pathPart = (uri->String.split("?"))->Array.getUnsafe(0)
+  let pathPart = uri->String.split("?")->Array.getUnsafe(0)
   let segments = pathPart->String.split("/")
   segments->Array.at(-1)->Option.getOr("")
 }
@@ -145,26 +145,21 @@ let parsePaginationParams = (uri: string) => {
   | None => (None, None)
   | Some(qs) =>
     let params = Dict.make()
-    qs->String.split("&")->Array.forEach(param => {
+    qs
+    ->String.split("&")
+    ->Array.forEach(param => {
       let kv = param->String.split("=")
       switch (kv->Array.get(0), kv->Array.get(1)) {
       | (Some(k), Some(v)) => params->Dict.set(k, v)
       | _ => ()
       }
     })
-    (
-      params->Dict.get("limit")->Option.flatMap(v => Int.fromString(v)),
-      params->Dict.get("after"),
-    )
+    (params->Dict.get("limit")->Option.flatMap(v => Int.fromString(v)), params->Dict.get("after"))
   }
 }
 
 /** Build a paginated response JSON with events and pagination metadata. */
-let paginatedResponse = (
-  ~events: array<JSON.t>,
-  ~hasMore: bool,
-  ~nextAfter: option<string>,
-) =>
+let paginatedResponse = (~events: array<JSON.t>, ~hasMore: bool, ~nextAfter: option<string>) =>
   Dict.fromArray([
     ("events", events->JSON.Encode.array),
     (
@@ -196,25 +191,24 @@ let readEventLogHistory = async (
 
   let expressionAttributeValues = [(":id", entityId->JSON.Encode.string)]->Dict.fromArray
 
-  let exclusiveStartKey = after->Option.map(afterPos =>
-    Dict.fromArray([
-      ("id", entityId->JSON.Encode.string),
-      ("position", afterPos->JSON.Encode.string),
-    ])
-  )
+  let exclusiveStartKey =
+    after->Option.map(afterPos =>
+      Dict.fromArray([
+        ("id", entityId->JSON.Encode.string),
+        ("position", afterPos->JSON.Encode.string),
+      ])
+    )
 
-  let stream =
-    Util_DynamoDb_Runtime.queryStream({
-      tableName: table.name,
-      consistentRead: true,
-      keyConditionExpression: "id=:id",
-      expressionAttributeValues,
-      ?exclusiveStartKey,
-    })
-    ->Stream.catchAll(err => {
-      let _ = DynamoDb_Error.message(err)
-      Stream.empty
-    })
+  let stream = Util_DynamoDb_Runtime.queryStream({
+    tableName: table.name,
+    consistentRead: true,
+    keyConditionExpression: "id=:id",
+    expressionAttributeValues,
+    ?exclusiveStartKey,
+  })->Stream.catchAll(err => {
+    let _ = DynamoDb_Error.message(err)
+    Stream.empty
+  })
 
   // Fetch limit+1 items to detect hasMore
   let bounded = switch limit {
@@ -225,8 +219,7 @@ let readEventLogHistory = async (
   let events = await bounded->Stream.runCollect->Effect.runPromise
 
   let (limited, hasMore) = switch limit {
-  | Some(n) when events->Array.length > n =>
-    (events->Array.slice(~start=0, ~end=n), true)
+  | Some(n) if events->Array.length > n => (events->Array.slice(~start=0, ~end=n), true)
   | _ => (events, false)
   }
 
@@ -258,10 +251,7 @@ let readDcbEventLogHistory = async (
     hashKey: "id",
   }
 
-  let result = await DcbEventLogStorage_DynamoDb_Runtime.read(table)(
-    ~query=[],
-    ~after?,
-  )
+  let result = await DcbEventLogStorage_DynamoDb_Runtime.read(table)(~query=[], ~after?)
 
   // Filter by entity ID tag value (events matching this entity)
   let filtered = if entityId->String.length > 0 {
@@ -272,8 +262,7 @@ let readDcbEventLogHistory = async (
 
   // Apply limit
   let (limited, hasMore) = switch limit {
-  | Some(n) when filtered->Array.length > n =>
-    (filtered->Array.slice(~start=0, ~end=n), true)
+  | Some(n) if filtered->Array.length > n => (filtered->Array.slice(~start=0, ~end=n), true)
   | _ => (filtered, false)
   }
 
@@ -381,11 +370,7 @@ let extractIdentity = (authHeader: option<string>): Reventless.Identity.t =>
 
 /** Dispatch an MCP tool call through makeGenerateCommand so the interceptor hook fires.
     The commandTopicArn from mcpConfig tells us which SQS FIFO queue to target. */
-let dispatchTool = async (
-  tool: mcpToolEntry,
-  args: JSON.t,
-  identity: Reventless.Identity.t,
-) => {
+let dispatchTool = async (tool: mcpToolEntry, args: JSON.t, identity: Reventless.Identity.t) => {
   let queueRef = makeQueueRef(tool.commandTopicArn)
   let publishJsons = sqsPublishJsons(queueRef, AWS.SQS_FIFO.service)
   let generateCommand = makeGenerateCommand(
@@ -448,12 +433,12 @@ let dispatchTool = async (
 
 /** Authentication mode for the Lambda Function URL. */
 type authType =
-  | /** AWS IAM auth — callers sign requests with SigV4. Suitable for
+  /** AWS IAM auth — callers sign requests with SigV4. Suitable for
         service-to-service or Cognito identity pool access. */
-  AwsIam
-  | /** No auth — the Function URL is publicly accessible. Suitable for
+  | AwsIam
+  /** No auth — the Function URL is publicly accessible. Suitable for
         development or when auth is handled at a different layer (API Gateway). */
-  None
+  | None
 
 /** Per-tool authorization scope. Tools can require specific Cognito groups
     or OAuth scopes before execution. */

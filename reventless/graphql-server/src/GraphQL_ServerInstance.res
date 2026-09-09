@@ -111,9 +111,9 @@ let make = (~label: string="GraphQL"): t => {
 
   let registerSubscriptions = (~sdlFields: array<string>, ~resolvers: dict<resolverFn>) => {
     subscriptionFields.contents = subscriptionFields.contents->Array.concat(sdlFields)
-    resolvers->Dict.toArray->Array.forEach(((k, v)) =>
-      subscriptionResolvers.contents->Dict.set(k, v)
-    )
+    resolvers
+    ->Dict.toArray
+    ->Array.forEach(((k, v)) => subscriptionResolvers.contents->Dict.set(k, v))
   }
 
   let registerFieldResolvers = (~typeName: string, ~resolvers: dict<resolverFn>) => {
@@ -146,9 +146,7 @@ let make = (~label: string="GraphQL"): t => {
 
   let buildSdl = () => {
     let typesSdl =
-      typeDefinitions.contents->Array.length > 0
-        ? typeDefinitions.contents->Array.join("\n\n")
-        : ""
+      typeDefinitions.contents->Array.length > 0 ? typeDefinitions.contents->Array.join("\n\n") : ""
     let mutations =
       mutationFields.contents->Array.length > 0
         ? mutationFields.contents->Array.join("\n")
@@ -168,9 +166,7 @@ ${mutations}
         ? `\n\ntype Subscription {\n${subscriptionFields.contents->Array.join("\n")}\n}`
         : ""
     let base =
-      typesSdl->String.length > 0
-        ? typesSdl ++ "\n\n" ++ queriesMutationsSdl
-        : queriesMutationsSdl
+      typesSdl->String.length > 0 ? typesSdl ++ "\n\n" ++ queriesMutationsSdl : queriesMutationsSdl
     base ++ subscriptionsSdl
   }
 
@@ -202,8 +198,14 @@ ${mutations}
     // with the original Error even when the client response is masked — is never
     // swallowed), while verbose debug/info stay gated on GRAPHQL_DEBUG.
     let yogaLogging: YG.yogaLogger = {
-      debug: a => if debug { log.debug(~comp=label, YG.logArgToString(a)) },
-      info: a => if debug { log.info(~comp=label, YG.logArgToString(a)) },
+      debug: a =>
+        if debug {
+          log.debug(~comp=label, YG.logArgToString(a))
+        },
+      info: a =>
+        if debug {
+          log.info(~comp=label, YG.logArgToString(a))
+        },
       warn: a => log.warn(~comp=label, YG.logArgToString(a)),
       error: a => log.error(~comp=label, YG.logArgToString(a)),
     }
@@ -231,7 +233,10 @@ ${mutations}
     if subscriptionResolvers.contents->Dict.keysToArray->Array.length > 0 {
       let wss = YG.newWebSocketServer({"server": server, "path": "/graphql"})
       YG.wsUseServer({"schema": schema}, wss)
-      log.info(~comp=label, `graphql-ws subscriptions on ws://localhost:${port->Int.toString}/graphql`)
+      log.info(
+        ~comp=label,
+        `graphql-ws subscriptions on ws://localhost:${port->Int.toString}/graphql`,
+      )
     }
     activeServer.contents = Some(server)
   }

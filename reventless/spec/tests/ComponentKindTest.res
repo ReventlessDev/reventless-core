@@ -47,17 +47,17 @@ describe("ComponentKind.folderToKind", () => {
   ]
 
   spellings->Array.forEach(((kind, folders)) =>
-    folders->Array.forEach(folder =>
-      testSync(`${folder} -> ${K.folderName(kind)}`, () =>
-        expect(K.folderToKind(folder))->toEqual(Some(kind))
-      )
+    folders->Array.forEach(
+      folder =>
+        testSync(
+          `${folder} -> ${K.folderName(kind)}`,
+          () => expect(K.folderToKind(folder))->toEqual(Some(kind)),
+        ),
     )
   )
 
   testSync("every kind's canonical folderName round-trips back to itself", () =>
-    K.all->Array.forEach(kind =>
-      expect(K.folderToKind(K.folderName(kind)))->toEqual(Some(kind))
-    )
+    K.all->Array.forEach(kind => expect(K.folderToKind(K.folderName(kind)))->toEqual(Some(kind)))
   )
 
   testSync("a non-kind folder is None", () => expect(K.folderToKind("Helpers"))->toEqual(None))

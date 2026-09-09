@@ -39,6 +39,8 @@ let emailSender = (
 ): Pulumi.Input.t<string> => {
   let identity = SES.EmailIdentity.make(~name, ~args={email: address}, ~opts?)
   identity.email
-  ->Pulumi.Output.apply(verified => Reventless.Messaging.fromHeader(~displayName, ~address=verified))
+  ->Pulumi.Output.apply(verified =>
+    Reventless.Messaging.fromHeader(~displayName, ~address=verified)
+  )
   ->Pulumi.Output.asInput
 }

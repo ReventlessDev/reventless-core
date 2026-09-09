@@ -54,11 +54,8 @@ module EventSubscription = {
 }
 
 @module("@pulumi/aws") @scope("kinesis") @new
-external make: (
-  ~name: string,
-  ~args: args=?,
-  ~opts: Pulumi.CustomResourceOptions.t=?
-) => stream = "Stream"
+external make: (~name: string, ~args: args=?, ~opts: Pulumi.CustomResourceOptions.t=?) => stream =
+  "Stream"
 
 @send
 external onEvent: (
@@ -66,5 +63,5 @@ external onEvent: (
   ~name: string,
   ~handler: Lambda.eventHandlerNoResult<event>,
   ~args: subscriptionArgs=?,
-  ~opts: Pulumi.CustomResourceOptions.t=?
+  ~opts: Pulumi.CustomResourceOptions.t=?,
 ) => EventSubscription.t = "onEvent"

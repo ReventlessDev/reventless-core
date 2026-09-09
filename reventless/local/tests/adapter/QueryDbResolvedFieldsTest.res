@@ -66,14 +66,20 @@ let plainCtx = ctxFor(~groups=["User"])
 let noArgs: JSON.t = JSON.Encode.object(Dict.make())
 
 let getString = (json: JSON.t, key: string): option<string> =>
-  json->JSON.Decode.object->Option.flatMap(d => d->Dict.get(key))->Option.flatMap(JSON.Decode.string)
+  json
+  ->JSON.Decode.object
+  ->Option.flatMap(d => d->Dict.get(key))
+  ->Option.flatMap(JSON.Decode.string)
 
 let names = (json: JSON.t): array<string> =>
   json->JSON.Decode.array->Option.getOr([])->Array.filterMap(item => item->getString("name"))
 
 // One Bus carrying both views, resolvers registered for the Orders view with the
 // two configs the PPX writes from `@resolves` / `@resolvesMany`.
-let buildFixture = async (~suffix: string, ~retired: option<Reventless.StateAnnotations.retiredSpec>) => {
+let buildFixture = async (
+  ~suffix: string,
+  ~retired: option<Reventless.StateAnnotations.retiredSpec>,
+) => {
   module Bus = LocalBus.Make()
   module Storage = LocalQueryDbStorage.Make(Bus)
   module Resolvers = QueryDbResolvers_GraphQL.Make(Bus)
@@ -144,10 +150,7 @@ let buildFixture = async (~suffix: string, ~retired: option<Reventless.StateAnno
   ReventlessCore.Plugin_Helpers.stateSchemaRegistry->Dict.set(
     productsName,
     productRowSchema
-    ->S.Metadata.set(
-      ~id=Reventless.StateAnnotations.stateAnnotationsId,
-      annotations(~retired),
-    )
+    ->S.Metadata.set(~id=Reventless.StateAnnotations.stateAnnotationsId, annotations(~retired))
     ->S.castToUnknown,
   )
 
@@ -169,7 +172,12 @@ let buildFixture = async (~suffix: string, ~retired: option<Reventless.StateAnno
     ~opts=({}: Pulumi.CustomResourceOptions.t),
   )
 
-  let _ = await productOps.save("p-1", {productId: "p-1", name: "Book", archived: false}, Init, None)
+  let _ = await productOps.save(
+    "p-1",
+    {productId: "p-1", name: "Book", archived: false},
+    Init,
+    None,
+  )
   let _ = await productOps.save("p-2", {productId: "p-2", name: "Pen", archived: true}, Init, None)
   let _ = await orderOps.save(
     "o-1",
@@ -188,10 +196,7 @@ let buildFixture = async (~suffix: string, ~retired: option<Reventless.StateAnno
     Dict.fromArray([
       ("orderId", JSON.Encode.string("o-1")),
       ("productId", JSON.Encode.string("p-1")),
-      (
-        "productIds",
-        ["p-1", "gone", "p-2"]->Array.map(JSON.Encode.string)->JSON.Encode.array,
-      ),
+      ("productIds", ["p-1", "gone", "p-2"]->Array.map(JSON.Encode.string)->JSON.Encode.array),
     ]),
   )
 
@@ -222,9 +227,7 @@ describe("QueryDb cross-table field resolvers", () => {
 
   testPromise("a foreign key naming no row resolves to nothing", async () => {
     let (resolverFor, _) = await buildFixture(~suffix="C", ~retired=None)
-    let orphan = JSON.Encode.object(
-      Dict.fromArray([("productId", JSON.Encode.string("nope"))]),
-    )
+    let orphan = JSON.Encode.object(Dict.fromArray([("productId", JSON.Encode.string("nope"))]))
     let product = await resolverFor("product")(orphan, noArgs, plainCtx)
     expect(product)->toBe(JSON.Encode.null)
   })

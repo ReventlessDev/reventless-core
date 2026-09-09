@@ -42,7 +42,6 @@ let maxRetries = 3
 let heartbeatInterval = 60
 ```
 */
-
 /**
 The lean Spec for an AutomationSlice — types, identity, schemas, sweep config.
 
@@ -196,9 +195,7 @@ module type Automation = {
   + `module type Mapping = M.Mapping` produces exactly this shape; legacy
   3-file files re-export it via `module type Mapping = <Stem>_Mappings.Mapping`.
   */
-  module type Mapping = Mapping
-    with type todoItem = Spec.todoItem
-    and type command = Spec.command
+  module type Mapping = Mapping with type todoItem = Spec.todoItem and type command = Spec.command
 
   /**
   The per-source mappings registered with this slice. Each entry is a first-class
@@ -318,4 +315,3 @@ module Mappings = {
       and type command = Target.command
   }
 }
-

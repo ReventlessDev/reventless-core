@@ -22,7 +22,10 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 
   // ReadModels
   module CategoriesReadModel = Platform.ReadModel.Make(Categories, Categories_Projections)
-  module ProductDemandsReadModel = Platform.ReadModel.Make(ProductDemands, ProductDemands_Projections)
+  module ProductDemandsReadModel = Platform.ReadModel.Make(
+    ProductDemands,
+    ProductDemands_Projections,
+  )
   module ProductsReadModel = Platform.ReadModel.Make(Products, Products_Projections)
 
   // Tasks
@@ -36,11 +39,26 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 
   let pluginStructure = Platform.Plugin.makePluginDefinition(
     ~name="Catalog",
-    ~aggregates=[module(CategoryAggregate), module(ProductAggregate), module(ProductDemandAggregate)],
-    ~readModels=[module(CategoriesReadModel), module(ProductDemandsReadModel), module(ProductsReadModel)],
+    ~aggregates=[
+      module(CategoryAggregate),
+      module(ProductAggregate),
+      module(ProductDemandAggregate),
+    ],
+    ~readModels=[
+      module(CategoriesReadModel),
+      module(ProductDemandsReadModel),
+      module(ProductsReadModel),
+    ],
     ~extensions=[module(Orders_Extension)],
     ~extensionPoints=[module(Products_ExtensionPointMapping)],
-    ~componentChapters=Dict.fromArray([("Categories", "Category"), ("Category", "Category"), ("Product", "Product"), ("ProductDemand", "ProductDemand"), ("ProductDemands", "ProductDemand"), ("Products", "Product")]),
+    ~componentChapters=Dict.fromArray([
+      ("Categories", "Category"),
+      ("Category", "Category"),
+      ("Product", "Product"),
+      ("ProductDemand", "ProductDemand"),
+      ("ProductDemands", "ProductDemand"),
+      ("Products", "Product"),
+    ]),
     ~lifecycleModel=LifecycleModel.model,
   )
 
@@ -50,10 +68,18 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ~heartbeatInterval=5,
       ~extensionPoints=[module(Products_ExtensionPoint)],
       ~extensions=[module(Orders_Extension)],
-      ~aggregates=[module(CategoryAggregate), module(ProductAggregate), module(ProductDemandAggregate)],
-      ~readModels=[module(CategoriesReadModel), module(ProductDemandsReadModel), module(ProductsReadModel)],
+      ~aggregates=[
+        module(CategoryAggregate),
+        module(ProductAggregate),
+        module(ProductDemandAggregate),
+      ],
+      ~readModels=[
+        module(CategoriesReadModel),
+        module(ProductDemandsReadModel),
+        module(ProductsReadModel),
+      ],
       ~tasks=[module(ImportProductsTask)],
-      ~pluginStructure=pluginStructure,
+      ~pluginStructure,
       ~uiFragments=?uiBundleUrl->Option.map(url =>
         Platform.Plugin.makeAutoUIManifest(
           ~remoteEntryUrl=url,

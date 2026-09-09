@@ -12,7 +12,4 @@ module type Spec = {
 }
 
 type evolve<'state, 'event> = ('state, 'event) => 'state
-type decide<'state, 'command, 'event, 'error> = (
-  'state,
-  'command,
-) => result<array<'event>, 'error>
+type decide<'state, 'command, 'event, 'error> = ('state, 'command) => result<array<'event>, 'error>

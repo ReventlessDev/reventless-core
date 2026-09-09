@@ -71,7 +71,7 @@ module CustomerOrdersMapping = Mapping.Make(
         UpdateWithDefault(
           customerId,
           {
-            Customers.customerId: customerId,
+            Customers.customerId,
             email: "",
             address: "",
             // No address from this side; `Registered` fills it in when it arrives.

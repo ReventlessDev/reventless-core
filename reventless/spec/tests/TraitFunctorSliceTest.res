@@ -172,8 +172,8 @@ module CategoryImagesSpec = MakeAttachmentSlice({
 module ProductImages: StateChangeSlice.Spec = ProductImagesSpec
 module CategoryImages: StateChangeSlice.Spec = CategoryImagesSpec
 
-module ProductImagesBehavior: StateChangeSlice.Behavior with module Spec := ProductImagesSpec =
-  MakeAttachmentBehavior(ProductImagesSpec)
+module ProductImagesBehavior: StateChangeSlice.Behavior
+  with module Spec := ProductImagesSpec = MakeAttachmentBehavior(ProductImagesSpec)
 
 describe("P1 — @schema variant inside a functor, over an abstract type", () => {
   testSync("the functor's event schema names its constructors", () =>
@@ -184,11 +184,11 @@ describe("P1 — @schema variant inside a functor, over an abstract type", () =>
   )
   testSync("the abstract field round-trips through the host's own schema", () =>
     expect(
-      ShopEvents.Subscribed({recipientId: "r1", category: ShopCategory.ShippingUpdate})
-      ->Util_Sury.toJson(ShopEvents.eventSchema),
-    )->toEqual(
-      %raw(`{TAG: "Subscribed", recipientId: "r1", category: "ShippingUpdate"}`),
-    )
+      ShopEvents.Subscribed({
+        recipientId: "r1",
+        category: ShopCategory.ShippingUpdate,
+      })->Util_Sury.toJson(ShopEvents.eventSchema),
+    )->toEqual(%raw(`{TAG: "Subscribed", recipientId: "r1", category: "ShippingUpdate"}`))
   )
 })
 
@@ -218,8 +218,9 @@ describe("P3 — a wire name computed at instantiation", () => {
   })
 
   testSync("the computed names are byte-identical to the committed graft's", () =>
-    expect(DcbTag.extractVariantNames(productFacts->unk)->Array.includes("ProductImageAttached"))
-    ->toBe(true)
+    expect(
+      DcbTag.extractVariantNames(productFacts->unk)->Array.includes("ProductImageAttached"),
+    )->toBe(true)
   )
 
   testSync("a value encodes under its instantiation's name", () =>
@@ -267,10 +268,7 @@ describe("P4 — a functor-produced module IS a StateChangeSlice spec", () => {
   // coercions above). These assert the two instantiations are genuinely distinct
   // rather than sharing one module.
   testSync("each instantiation carries its own component name", () =>
-    expect((ProductImages.name, CategoryImages.name))->toEqual((
-      "ProductImages",
-      "CategoryImages",
-    ))
+    expect((ProductImages.name, CategoryImages.name))->toEqual(("ProductImages", "CategoryImages"))
   )
 
   testSync("the event surface is qualified per graft, with no config to get wrong", () =>
@@ -287,14 +285,18 @@ describe("P4 — a functor-produced module IS a StateChangeSlice spec", () => {
   // abstract, which is right — the runtime only ever decodes one off the wire.
   testSync("each graft keeps its own authorization", () =>
     expect((
-      ProductImagesSpec.commandAuthorization(ProductImagesSpec.Attach({
-        entityId: "p1",
-        ref: "r",
-      })),
-      CategoryImagesSpec.commandAuthorization(CategoryImagesSpec.Attach({
-        entityId: "c1",
-        ref: "r",
-      })),
+      ProductImagesSpec.commandAuthorization(
+        ProductImagesSpec.Attach({
+          entityId: "p1",
+          ref: "r",
+        }),
+      ),
+      CategoryImagesSpec.commandAuthorization(
+        CategoryImagesSpec.Attach({
+          entityId: "c1",
+          ref: "r",
+        }),
+      ),
     ))->toEqual((
       Authorization.AllowGroups(["Admin", "Merchandiser"]),
       Authorization.AllowGroups(["Admin"]),

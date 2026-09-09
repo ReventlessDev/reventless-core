@@ -16,23 +16,27 @@ describe("SideEffectEntryPoint_Ops.parseHandlerConfig", () => {
   })
 
   testSync("decodes handlers incl. attribution fields", () => {
-    let config = obj([
-      (
-        "handlers",
-        JSON.Encode.array([
-          obj([
-            ("sideEffectModules", JSON.Encode.array([str("@x/p/src/A.res.mjs"), str("@x/p/src/B.res.mjs")])),
-            ("sourceUrn", str("arn:stream-1")),
-            ("comp", str("SideEffectHandler(Mailer)")),
-            ("plugin", str("Ordering")),
+    let config =
+      obj([
+        (
+          "handlers",
+          JSON.Encode.array([
+            obj([
+              (
+                "sideEffectModules",
+                JSON.Encode.array([str("@x/p/src/A.res.mjs"), str("@x/p/src/B.res.mjs")]),
+              ),
+              ("sourceUrn", str("arn:stream-1")),
+              ("comp", str("SideEffectHandler(Mailer)")),
+              ("plugin", str("Ordering")),
+            ]),
+            obj([
+              ("sideEffectModules", JSON.Encode.array([str("@x/p/src/C.res.mjs")])),
+              ("sourceUrn", str("arn:stream-2")),
+            ]),
           ]),
-          obj([
-            ("sideEffectModules", JSON.Encode.array([str("@x/p/src/C.res.mjs")])),
-            ("sourceUrn", str("arn:stream-2")),
-          ]),
-        ]),
-      ),
-    ])->JSON.stringify
+        ),
+      ])->JSON.stringify
     let entries = SideEffectEntryPoint_Ops.parseHandlerConfig(config)
     expect(entries->Array.length)->toBe(2)
     let first = entries->Array.getUnsafe(0)
@@ -70,8 +74,9 @@ describe("SideEffectEntryPoint_Ops.makeRegisteredHandler", () => {
       comp: Some("SideEffectHandler(Mailer)"),
       plugin: Some("Ordering"),
     }
-    let registered = SideEffectEntryPoint_Ops.makeRegisteredHandler(entry, _stream =>
-      Effect.succeed()
+    let registered = SideEffectEntryPoint_Ops.makeRegisteredHandler(
+      entry,
+      _stream => Effect.succeed(),
     )
     expect(registered.comp)->toEqual(Some("SideEffectHandler(Mailer)"))
     expect(registered.plugin)->toEqual(Some("Ordering"))

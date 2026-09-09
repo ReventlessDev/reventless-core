@@ -1,3 +1,7 @@
+// ---------------------------------------------------------------------------
+// Context types
+// ---------------------------------------------------------------------------
+
 /** Bindings for @aws-appsync/utils and AppSync JS resolver context types.
     Used in resolver source files compiled to APPSYNC_JS — not Pulumi deploy-time code.
 
@@ -6,11 +10,6 @@
     AppSync provides the module as an object with named exports. When bundled with
     esbuild (--external:@aws-appsync/utils), the import is preserved for AppSync runtime.
 */
-
-// ---------------------------------------------------------------------------
-// Context types
-// ---------------------------------------------------------------------------
-
 type error = {
   message: string,
   @as("type") type_: string,

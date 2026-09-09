@@ -89,13 +89,12 @@ module Make = (
         // first command-topic resource's `id`. The in-memory ExtensionPoint
         // runtime builder ignores this dict, so including every aggregate
         // (not just mapping targets) and the empty fallback are both harmless.
-        let publishToAggregatesQueueUrls =
-          aggregateResources->Dict.mapValues(resources =>
-            switch resources->Array.get(0) {
-            | Some(r: ReventlessInfra.Adapter.resource) => r.id
-            | None => Pulumi.Output.make("")
-            }
-          )
+        let publishToAggregatesQueueUrls = aggregateResources->Dict.mapValues(resources =>
+          switch resources->Array.get(0) {
+          | Some(r: ReventlessInfra.Adapter.resource) => r.id
+          | None => Pulumi.Output.make("")
+          }
+        )
 
         commandTopic->ExtensionPointRuntimeBuilder.forCommandTopic(
           ~handler,
@@ -138,9 +137,9 @@ module Make = (
       ->Pulumi.Output.unzip3
 
     self->Component.setOperations(
-      outgoingJsonEventsHandler->Pulumi.Output.apply(outgoingJsonEventsHandler =>
-        ({outgoingJsonEventsHandler: outgoingJsonEventsHandler}: ExtensionPoint.operations)
-      ),
+      outgoingJsonEventsHandler->Pulumi.Output.apply((
+        outgoingJsonEventsHandler
+      ): ExtensionPoint.operations => {outgoingJsonEventsHandler: outgoingJsonEventsHandler}),
     )
 
     let epOutputs: ExtensionPoint.outputs = {

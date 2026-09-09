@@ -59,7 +59,11 @@ let parseConfig = (raw: option<string>): option<config> =>
         ->Option.flatMap(JSON.Decode.array)
         ->Option.getOr([])
         ->Array.filterMap(JSON.Decode.string)
-      switch (modules->Array.length, obj->decodeString("runtimeKind"), obj->decodeString("component")) {
+      switch (
+        modules->Array.length,
+        obj->decodeString("runtimeKind"),
+        obj->decodeString("component"),
+      ) {
       | (0, _, _) => None
       | (_, Some(runtimeKind), Some(component)) =>
         Some({
@@ -100,7 +104,9 @@ let fire = (config: config, hooks: array<ReventlessCore.RuntimeExtension.coldSta
   | Some(runtimeKind) =>
     log.debug(
       ~comp="RuntimeExtension",
-      `firing ${hooks->Array.length->Int.toString} cold-start extension(s) for ${config.runtimeKind}(${config.component})`,
+      `firing ${hooks
+        ->Array.length
+        ->Int.toString} cold-start extension(s) for ${config.runtimeKind}(${config.component})`,
     )
     ReventlessCore.RuntimeExtension.notifyColdStartHooks(
       ~hooks,

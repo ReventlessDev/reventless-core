@@ -7,8 +7,32 @@
 // annotation where it is silent.
 
 let model: array<Reventless.Plugin.derivedEdge> = [
-  {component: "Order", command: "Cancel", level: Reventless.Plugin.Instance, allowedStates: ["Placed"], targets: ["Cancelled"]},
-  {component: "Order", command: "Place", level: Reventless.Plugin.Collection, allowedStates: [], targets: ["Placed"]},
-  {component: "Order", command: "Refund", level: Reventless.Plugin.Instance, allowedStates: ["Cancelled"], targets: ["Refunded"]},
-  {component: "Order", command: "Ship", level: Reventless.Plugin.Instance, allowedStates: ["Placed"], targets: ["Shipped"]},
+  {
+    component: "Order",
+    command: "Cancel",
+    level: Reventless.Plugin.Instance,
+    allowedStates: ["Placed"],
+    targets: ["Cancelled"],
+  },
+  {
+    component: "Order",
+    command: "Place",
+    level: Reventless.Plugin.Collection,
+    allowedStates: [],
+    targets: ["Placed"],
+  },
+  {
+    component: "Order",
+    command: "Refund",
+    level: Reventless.Plugin.Instance,
+    allowedStates: ["Cancelled"],
+    targets: ["Refunded"],
+  },
+  {
+    component: "Order",
+    command: "Ship",
+    level: Reventless.Plugin.Instance,
+    allowedStates: ["Placed"],
+    targets: ["Shipped"],
+  },
 ]

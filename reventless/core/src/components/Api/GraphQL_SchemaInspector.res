@@ -19,7 +19,10 @@ let inspectScalar = (schema: S.t<'a>): string => {
 }
 
 let inspectObjectType = (~typeName: string, schema: S.t<'a>): option<string> => {
-  let types = GraphQL_FragmentGenerator.deriveObjectTypeWithNested(~typeName, schema->S.castToUnknown)
+  let types = GraphQL_FragmentGenerator.deriveObjectTypeWithNested(
+    ~typeName,
+    schema->S.castToUnknown,
+  )
   types->Array.get(types->Array.length - 1)
 }
 
@@ -103,8 +106,7 @@ let inspectFragment = (fragment: Reventless.Plugin.apiSchemaFragment): fragmentI
   | true => `type Mutation {\n${parts.mutations->Array.join("\n")}\n}`
   | false => ""
   }
-  let sdlParts =
-    [typesSdl, queriesSdl, mutationsSdl]->Array.filter(p => p->String.length > 0)
+  let sdlParts = [typesSdl, queriesSdl, mutationsSdl]->Array.filter(p => p->String.length > 0)
   let sdlPreview = sdlParts->Array.join("\n\n")
   {types: parts.types, mutations: parts.mutations, queries: parts.queries, sdlPreview}
 }

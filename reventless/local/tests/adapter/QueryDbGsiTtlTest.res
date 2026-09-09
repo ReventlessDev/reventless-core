@@ -41,29 +41,33 @@ describe("QueryDbStorage_Sqlite — GSI", () => {
       ~indexes=[byOwnerIdx, byOwnerCreatedIdx],
       ~api=(),
       ~apiRole=(),
-      ~owner=None, ~opts,
+      ~owner=None,
+      ~opts,
     )
 
     // Verify the indexes were created in sqlite_master.
-    let listIndexes = DbProvider.db->SqliteDriver.prepare(
-      "SELECT name, sql FROM sqlite_master WHERE type='index' AND tbl_name='qdb_orders' ORDER BY name",
-    )
+    let listIndexes =
+      DbProvider.db->SqliteDriver.prepare(
+        "SELECT name, sql FROM sqlite_master WHERE type='index' AND tbl_name='qdb_orders' ORDER BY name",
+      )
     let rows = listIndexes->SqliteDriver.all([])
-    let names = rows->Array.map(row =>
-      switch row->Dict.get("name") {
-      | Some(JSON.String(s)) => s
-      | _ => ""
-      }
+    let names = rows->Array.map(
+      row =>
+        switch row->Dict.get("name") {
+        | Some(JSON.String(s)) => s
+        | _ => ""
+        },
     )
     expect(names->Array.includes("idx_qdb_orders_ByOwner"))->toBe(true)
     expect(names->Array.includes("idx_qdb_orders_ByOwnerCreated"))->toBe(true)
 
     // Confirm the index definition references json_extract on the configured field.
-    let firstSql = switch rows->Array.find(row =>
-      switch row->Dict.get("name") {
-      | Some(JSON.String(s)) => s == "idx_qdb_orders_ByOwner"
-      | _ => false
-      }
+    let firstSql = switch rows->Array.find(
+      row =>
+        switch row->Dict.get("name") {
+        | Some(JSON.String(s)) => s == "idx_qdb_orders_ByOwner"
+        | _ => false
+        },
     ) {
     | Some(row) =>
       switch row->Dict.get("sql") {
@@ -95,56 +99,66 @@ describe("QueryDbStorage_Sqlite — GSI", () => {
       ~indexes=[compositeIdx],
       ~api=(),
       ~apiRole=(),
-      ~owner=None, ~opts,
+      ~owner=None,
+      ~opts,
     )
 
-    let listSql = DbProvider.db->SqliteDriver.prepare(
-      "SELECT sql FROM sqlite_master WHERE type='index' AND name='idx_qdb_composite_ByTenantOwner'",
-    )
+    let listSql =
+      DbProvider.db->SqliteDriver.prepare(
+        "SELECT sql FROM sqlite_master WHERE type='index' AND name='idx_qdb_composite_ByTenantOwner'",
+      )
     let row = listSql->SqliteDriver.get([])->Option.getOrThrow
     let sql = switch row->Dict.get("sql") {
     | Some(JSON.String(s)) => s
     | _ => ""
     }
     expect(
-      sql->String.includes("json_extract(item, '$.tenantId') || '|' || json_extract(item, '$.ownerId')"),
+      sql->String.includes(
+        "json_extract(item, '$.tenantId') || '|' || json_extract(item, '$.ownerId')",
+      ),
     )->toBe(true)
   })
 
-  testPromise("index name is sanitised — special characters in index name become underscores", async () => {
-    module TestBus = LocalBus.Make()
-    module DbProvider = {
-      let db = openFreshDb()
-    }
-    module Storage = QueryDbStorage_Sqlite.Make(TestBus, DbProvider)
+  testPromise(
+    "index name is sanitised — special characters in index name become underscores",
+    async () => {
+      module TestBus = LocalBus.Make()
+      module DbProvider = {
+        let db = openFreshDb()
+      }
+      module Storage = QueryDbStorage_Sqlite.Make(TestBus, DbProvider)
 
-    let weirdIdx: Reventless.ReadModel.indexConfig = {
-      index: "by-thing.v2",
-      type_: "S",
-      idField: "thing",
-      projectionType: ALL,
-    }
-    let _ = Storage.make(
-      ~name="rm",
-      ~indexes=[weirdIdx],
-      ~api=(),
-      ~apiRole=(),
-      ~owner=None, ~opts,
-    )
-    let listIndexes = DbProvider.db->SqliteDriver.prepare(
-      "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='qdb_rm'",
-    )
-    let names =
-      listIndexes
-      ->SqliteDriver.all([])
-      ->Array.map(row =>
-        switch row->Dict.get("name") {
-        | Some(JSON.String(s)) => s
-        | _ => ""
-        }
+      let weirdIdx: Reventless.ReadModel.indexConfig = {
+        index: "by-thing.v2",
+        type_: "S",
+        idField: "thing",
+        projectionType: ALL,
+      }
+      let _ = Storage.make(
+        ~name="rm",
+        ~indexes=[weirdIdx],
+        ~api=(),
+        ~apiRole=(),
+        ~owner=None,
+        ~opts,
       )
-    expect(names->Array.includes("idx_qdb_rm_by_thing_v2"))->toBe(true)
-  })
+      let listIndexes =
+        DbProvider.db->SqliteDriver.prepare(
+          "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='qdb_rm'",
+        )
+      let names =
+        listIndexes
+        ->SqliteDriver.all([])
+        ->Array.map(
+          row =>
+            switch row->Dict.get("name") {
+            | Some(JSON.String(s)) => s
+            | _ => ""
+            },
+        )
+      expect(names->Array.includes("idx_qdb_rm_by_thing_v2"))->toBe(true)
+    },
+  )
 })
 
 describe("QueryDb — indexed equality lookup (B4 push-down)", () => {
@@ -166,7 +180,14 @@ describe("QueryDb — indexed equality lookup (B4 push-down)", () => {
       let db = openFreshDb()
     }
     module Storage = QueryDbStorage_Sqlite.Make(TestBus, DbProvider)
-    let s = Storage.make(~name="orders", ~indexes=[byOwner], ~api=(), ~apiRole=(), ~owner=None, ~opts)
+    let s = Storage.make(
+      ~name="orders",
+      ~indexes=[byOwner],
+      ~api=(),
+      ~apiRole=(),
+      ~owner=None,
+      ~opts,
+    )
     let ops = await s.operations->TestRunner.resolve
     let _ = await ops.save("k1", item("o1"), ReventlessCore.QueryDb.Any, None)
     let _ = await ops.save("k2", item("o2"), ReventlessCore.QueryDb.Any, None)
@@ -184,7 +205,14 @@ describe("QueryDb — indexed equality lookup (B4 push-down)", () => {
       let db = openFreshDb()
     }
     module Storage = QueryDbStorage_Sqlite.Make(TestBus, DbProvider)
-    let s = Storage.make(~name="orders", ~indexes=[byOwner], ~api=(), ~apiRole=(), ~owner=None, ~opts)
+    let s = Storage.make(
+      ~name="orders",
+      ~indexes=[byOwner],
+      ~api=(),
+      ~apiRole=(),
+      ~owner=None,
+      ~opts,
+    )
     let ops = await s.operations->TestRunner.resolve
     let aMinuteAgo = Float.toInt(Date.now() /. 1000.0) - 60
     let _ = await ops.save("k1", item("o1"), ReventlessCore.QueryDb.Any, None)
@@ -196,7 +224,14 @@ describe("QueryDb — indexed equality lookup (B4 push-down)", () => {
   testPromise("in-memory lookup matches the sqlite result (backend parity)", async () => {
     module TestBus = LocalBus.Make()
     module Storage = QueryDbStorage_InMemory.Make(TestBus)
-    let s = Storage.make(~name="orders", ~indexes=[byOwner], ~api=(), ~apiRole=(), ~owner=None, ~opts)
+    let s = Storage.make(
+      ~name="orders",
+      ~indexes=[byOwner],
+      ~api=(),
+      ~apiRole=(),
+      ~owner=None,
+      ~opts,
+    )
     let ops = await s.operations->TestRunner.resolve
     let _ = await ops.save("k1", item("o1"), ReventlessCore.QueryDb.Any, None)
     let _ = await ops.save("k2", item("o2"), ReventlessCore.QueryDb.Any, None)
@@ -312,35 +347,40 @@ describe("QueryDbStorage_Sqlite — TTL", () => {
     }
   })
 
-  testPromise("overwriting an expired row with a non-expired one makes it visible again", async () => {
-    module TestBus = LocalBus.Make()
-    module DbProvider = {
-      let db = openFreshDb()
-    }
-    module Storage = QueryDbStorage_Sqlite.Make(TestBus, DbProvider)
+  testPromise(
+    "overwriting an expired row with a non-expired one makes it visible again",
+    async () => {
+      module TestBus = LocalBus.Make()
+      module DbProvider = {
+        let db = openFreshDb()
+      }
+      module Storage = QueryDbStorage_Sqlite.Make(TestBus, DbProvider)
 
-    let s = Storage.make(~name="overwrite-ttl", ~indexes=[], ~api=(), ~apiRole=(), ~owner=None, ~opts)
-    let ops = await s.operations->TestRunner.resolve
+      let s = Storage.make(
+        ~name="overwrite-ttl",
+        ~indexes=[],
+        ~api=(),
+        ~apiRole=(),
+        ~owner=None,
+        ~opts,
+      )
+      let ops = await s.operations->TestRunner.resolve
 
-    let aMinuteAgo = Float.toInt(Date.now() /. 1000.0) - 60
-    let _ = await ops.save(
-      "k",
-      JSON.Encode.string("expired"),
-      ReventlessCore.QueryDb.Any,
-      Some(aMinuteAgo),
-    )
+      let aMinuteAgo = Float.toInt(Date.now() /. 1000.0) - 60
+      let _ = await ops.save(
+        "k",
+        JSON.Encode.string("expired"),
+        ReventlessCore.QueryDb.Any,
+        Some(aMinuteAgo),
+      )
 
-    let items1 = await ops.loadStream("k")->collect
-    expect(items1->Array.length)->toBe(0)
+      let items1 = await ops.loadStream("k")->collect
+      expect(items1->Array.length)->toBe(0)
 
-    let _ = await ops.save(
-      "k",
-      JSON.Encode.string("revived"),
-      ReventlessCore.QueryDb.Any,
-      None,
-    )
-    let items2 = await ops.loadStream("k")->collect
-    expect(items2->Array.length)->toBe(1)
-    expect(items2->Array.getUnsafe(0))->toEqual(JSON.Encode.string("revived"))
-  })
+      let _ = await ops.save("k", JSON.Encode.string("revived"), ReventlessCore.QueryDb.Any, None)
+      let items2 = await ops.loadStream("k")->collect
+      expect(items2->Array.length)->toBe(1)
+      expect(items2->Array.getUnsafe(0))->toEqual(JSON.Encode.string("revived"))
+    },
+  )
 })

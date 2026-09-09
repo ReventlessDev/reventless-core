@@ -92,8 +92,7 @@ switch NodeProcess.env->Dict.get("PG_URL") {
       }
 
       switch await Ops.load("c-1"->CustomersSpec.Id.makeFromString) {
-      | Ok([{geolocation: Located({lat, lng})}]) =>
-        expect((lat, lng))->toEqual((48.2082, 16.3738))
+      | Ok([{geolocation: Located({lat, lng})}]) => expect((lat, lng))->toEqual((48.2082, 16.3738))
       | _ => expect("round trip")->toBe("Located with its point intact")
       }
     })

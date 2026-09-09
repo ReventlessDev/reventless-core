@@ -143,7 +143,7 @@ let buildReadWhere = (
 // Strip the zero-padding a cursor carries for string-sortability, leaving a
 // plain decimal both `::xid8` and `::bigint` parse unambiguously ("0" if empty).
 let stripZeros = (s: string): string => {
-  let t = s->String.replaceRegExp(%re("/^0+/"), "")
+  let t = s->String.replaceRegExp(/^0+/, "")
   t == "" ? "0" : t
 }
 
@@ -222,49 +222,45 @@ let makeOps = (
     }
   }
 
-  let append = async (
-    newEvents: array<DcbEventLog_Adapter.rawStoredEvent>,
-    ~condition=?,
-  ): result<DcbTag.sequencePosition, ReventlessInfra.DcbEventLog.appendError> => {
+  let append = async (newEvents: array<DcbEventLog_Adapter.rawStoredEvent>, ~condition=?): result<
+    DcbTag.sequencePosition,
+    ReventlessInfra.DcbEventLog.appendError,
+  > => {
     let eventsJson = JSON.Array(
-      newEvents->Array.map(ev =>
-        JSON.Object(
-          Dict.fromArray([
-            ("event_type", JSON.Encode.string(ev.eventType)),
-            (
-              "tags",
-              JSON.Array(ev.tags->Array.map(t => JSON.Encode.string(t.key ++ "=" ++ t.value))),
-            ),
-            ("data", ev.data),
-            ("meta", ev.meta->Reventless.Util_Sury.toJson(Reventless.Message.metaSchema)),
-          ]),
-        )
-      ),
+      newEvents->Array.map(ev => JSON.Object(
+        Dict.fromArray([
+          ("event_type", JSON.Encode.string(ev.eventType)),
+          (
+            "tags",
+            JSON.Array(ev.tags->Array.map(t => JSON.Encode.string(t.key ++ "=" ++ t.value))),
+          ),
+          ("data", ev.data),
+          ("meta", ev.meta->Reventless.Util_Sury.toJson(Reventless.Message.metaSchema)),
+        ]),
+      )),
     )
     let conditionParam = switch condition {
     | Some(cond: DcbTag.appendCondition) =>
       let queryJson = JSON.Array(
-        cond.query->Array.map(clause =>
-          JSON.Object(
-            Dict.fromArray([
-              (
-                "eventTypes",
-                switch clause.eventTypes {
-                | Some(types) => JSON.Array(types->Array.map(JSON.Encode.string))
-                | None => JSON.Encode.null
-                },
-              ),
-              (
-                "tags",
-                switch clause.tags {
-                | Some(tags) =>
-                  JSON.Array(tags->Array.map(t => JSON.Encode.string(t.key ++ "=" ++ t.value)))
-                | None => JSON.Encode.null
-                },
-              ),
-            ]),
-          )
-        ),
+        cond.query->Array.map(clause => JSON.Object(
+          Dict.fromArray([
+            (
+              "eventTypes",
+              switch clause.eventTypes {
+              | Some(types) => JSON.Array(types->Array.map(JSON.Encode.string))
+              | None => JSON.Encode.null
+              },
+            ),
+            (
+              "tags",
+              switch clause.tags {
+              | Some(tags) =>
+                JSON.Array(tags->Array.map(t => JSON.Encode.string(t.key ++ "=" ++ t.value)))
+              | None => JSON.Encode.null
+              },
+            ),
+          ]),
+        )),
       )
       let fields = [("query", queryJson)]
       switch cond.after {
@@ -306,7 +302,10 @@ let makeOps = (
         ? Error(ReventlessInfra.DcbEventLog.Conflict)
         : Error(
             ReventlessInfra.DcbEventLog.StorageFailure(
-              exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("storage error"),
+              exn
+              ->JsExn.fromException
+              ->Option.flatMap(JsExn.message)
+              ->Option.getOr("storage error"),
             ),
           )
     }
@@ -324,7 +323,9 @@ let makeOps = (
       Effect.promise(() => {
         let b = mkBuilder()
         let where = buildReadWhere(b, ~name, ~query, ~after=cursor, ~applyFence=true)
-        let sql = `SELECT ${selectColumns}, transaction_id::text AS tx_raw, position::text AS pos_raw FROM dcb_event WHERE ${where} ORDER BY transaction_id ASC, position ASC LIMIT ${Int.toString(pageSize)}`
+        let sql = `SELECT ${selectColumns}, transaction_id::text AS tx_raw, position::text AS pos_raw FROM dcb_event WHERE ${where} ORDER BY transaction_id ASC, position ASC LIMIT ${Int.toString(
+            pageSize,
+          )}`
         pool->PgDriver.query(sql, b.params)
       })->Effect.map(rows => {
         let events = rows->Array.map(rowToEvent)

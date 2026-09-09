@@ -28,8 +28,9 @@ module Rule = TraitNotification.Notification_Rule
 // One row of the shape every rule's paths read, so a rule nobody wrote a
 // scenario for is still checked.
 let sample =
-  ({ruleId: "confirm", recipientId: "c1", orderId: "o1"}: NotificationIntake.todoItem)
-  ->Reventless.Util_Sury.toJson(NotificationIntake.todoItemSchema)
+  (
+    {ruleId: "confirm", recipientId: "c1", orderId: "o1"}: NotificationIntake.todoItem
+  )->Reventless.Util_Sury.toJson(NotificationIntake.todoItemSchema)
 
 describe("NotificationIntake AutomationSlice", () => {
   // Every rule in the table, not only the two with scenarios below: a third one

@@ -30,8 +30,7 @@ describe("PgChangeFeedRelay_Runtime.toEventCollectorJson", () => {
     expect(eventJson->JSON.stringify->String.includes("c-1"))->toBe(true)
 
     // meta round-trips the producing service
-    let metaObj =
-      obj->Dict.get("meta")->Option.flatMap(JSON.Decode.object)->Option.getOrThrow
+    let metaObj = obj->Dict.get("meta")->Option.flatMap(JSON.Decode.object)->Option.getOrThrow
     expect(metaObj->Dict.get("service"))->toEqual(Some(JSON.Encode.string("Orders")))
   })
 
@@ -52,7 +51,10 @@ describe("PgChangeFeedRelay_Runtime partitionTag (B2.3d)", () => {
   testSync("a Simple partitionTag selects its tag for the id, not just the first", () => {
     let pt = Reventless.DcbTag.Simple({key: "customerId"})
     let json =
-      PgChangeFeedRelay_Runtime.toEventCollectorJson(multiTagEvent, ~partitionTag=pt)->Option.getOrThrow
+      PgChangeFeedRelay_Runtime.toEventCollectorJson(
+        multiTagEvent,
+        ~partitionTag=pt,
+      )->Option.getOrThrow
     let obj = json->JSON.Decode.object->Option.getOrThrow
     // Without partitionTag the id would be "orderId:o-1" (first tag); the tag
     // pins it to "customerId:c-9".
@@ -64,12 +66,13 @@ describe("PgChangeFeedRelay_Runtime partitionTag (B2.3d)", () => {
     // and PgChangeFeedRelay_Runtime.relay parses it back the same way. Guard the
     // round-trip so a schema change can't silently break the id derivation.
     let simple = Reventless.DcbTag.Simple({key: "courseId"})
-    let composite =
-      Reventless.DcbTag.Composite({keys: ["studentId", "courseId"], seps: [":"]})
-    [simple, composite]->Array.forEach(pt => {
-      let wire = pt->Reventless.Util_Sury.toJson(Reventless.DcbTag.derivedPartitionTagSchema)
-      let back = wire->Reventless.Util_Sury.fromJson(Reventless.DcbTag.derivedPartitionTagSchema)
-      expect(back)->toEqual(pt)
-    })
+    let composite = Reventless.DcbTag.Composite({keys: ["studentId", "courseId"], seps: [":"]})
+    [simple, composite]->Array.forEach(
+      pt => {
+        let wire = pt->Reventless.Util_Sury.toJson(Reventless.DcbTag.derivedPartitionTagSchema)
+        let back = wire->Reventless.Util_Sury.fromJson(Reventless.DcbTag.derivedPartitionTagSchema)
+        expect(back)->toEqual(pt)
+      },
+    )
   })
 })

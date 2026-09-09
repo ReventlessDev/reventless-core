@@ -45,7 +45,8 @@ let queryEngine: Reventless.QueryEngine.operations = {
 
 let pluginId = "Catalog_1.0.0-alpha.169"
 
-let handle = directive => EP.directiveHandler(createSchedule, deleteSchedule, queryEngine, directive)
+let handle = directive =>
+  EP.directiveHandler(createSchedule, deleteSchedule, queryEngine, directive)
 
 describe("plugin disconnect schedule", () => {
   test("create and delete address the same rule name", async () => {

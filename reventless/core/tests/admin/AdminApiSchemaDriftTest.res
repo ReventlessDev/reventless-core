@@ -442,25 +442,32 @@ guards->Array.forEach(g => {
   describe(g.gqlType, () => {
     // Without this, a renamed GraphQL type or an unreadable schema would make
     // every assertion below pass over two empty lists.
-    testSync("the SDL block and the record schema are both readable", () => {
-      expect(sdlFields->Array.length > 0)->toEqual(true)
-      expect(g.recordFields->Array.length > 0)->toEqual(true)
-    })
-
-    testSync("every encoded field is selectable", () =>
-      expect(missing(g.wireFields, sdlFields))->toEqual([])
+    testSync(
+      "the SDL block and the record schema are both readable",
+      () => {
+        expect(sdlFields->Array.length > 0)->toEqual(true)
+        expect(g.recordFields->Array.length > 0)->toEqual(true)
+      },
     )
 
-    testSync("every declared field is encoded", () =>
-      expect(missing(sdlFields, g.wireFields))->toEqual([])
+    testSync(
+      "every encoded field is selectable",
+      () => expect(missing(g.wireFields, sdlFields))->toEqual([]),
     )
 
-    testSync("every record field reaches the wire", () =>
-      expect(missing(g.recordFields, Array.concat(sdlFields, g.recordOnly)))->toEqual([])
+    testSync(
+      "every declared field is encoded",
+      () => expect(missing(sdlFields, g.wireFields))->toEqual([]),
     )
 
-    testSync("the wire carries nothing the record and the divergences do not name", () =>
-      expect(missing(sdlFields, Array.concat(g.recordFields, g.wireOnly)))->toEqual([])
+    testSync(
+      "every record field reaches the wire",
+      () => expect(missing(g.recordFields, Array.concat(sdlFields, g.recordOnly)))->toEqual([]),
+    )
+
+    testSync(
+      "the wire carries nothing the record and the divergences do not name",
+      () => expect(missing(sdlFields, Array.concat(g.recordFields, g.wireOnly)))->toEqual([]),
     )
   })
 })
@@ -479,10 +486,9 @@ describe("derivedPages", () => {
       )
     expect(jsonKeys(baked)->Array.includes("derivedPages"))->toEqual(true)
     expect(
-      sdlFieldNames(
-        ~typeName="Platform_ComponentDefinitionEntry",
-        componentSdl,
-      )->Array.includes("derivedPages"),
+      sdlFieldNames(~typeName="Platform_ComponentDefinitionEntry", componentSdl)->Array.includes(
+        "derivedPages",
+      ),
     )->toEqual(false)
   })
 })

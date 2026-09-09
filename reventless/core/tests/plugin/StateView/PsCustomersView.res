@@ -5,8 +5,7 @@
 @@reventless.spec("Customers")
 
 @schema
-type consumedEvent =
-  | CustomerAdded({customerId: string, firstName: string, lastName: string})
+type consumedEvent = CustomerAdded({customerId: string, firstName: string, lastName: string})
 
 @schema
 type state = {
@@ -17,6 +16,7 @@ type state = {
 
 let project = ({event}: Reventless.StateViewSlice.consumed<consumedEvent>) =>
   switch event {
-  | CustomerAdded({customerId, firstName, lastName}) =>
-    [Set(customerId, {customerId, firstName, lastName})]
+  | CustomerAdded({customerId, firstName, lastName}) => [
+      Set(customerId, {customerId, firstName, lastName}),
+    ]
   }

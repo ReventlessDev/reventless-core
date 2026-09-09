@@ -293,7 +293,8 @@ module Moment = {
 @module("moment") external momentWithFormats: (string, array<string>) => Moment.t = "default"
 @module("moment") external momentWithTimestampMS: float => Moment.t = "default"
 @module("moment") external momentWithComponents: list<int> => Moment.t = "default"
-@module("moment") @scope("default") external momentUtcWithFormats: (string, array<string>) => Moment.t = "utc"
+@module("moment") @scope("default")
+external momentUtcWithFormats: (string, array<string>) => Moment.t = "utc"
 @module("moment") @scope("default") external momentUtcDefaultFormat: string => Moment.t = "utc"
 
 @send
@@ -330,4 +331,3 @@ external diffWithPrecision: (
   ],
   bool,
 ) => float = "diff"
-

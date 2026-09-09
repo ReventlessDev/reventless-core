@@ -1,7 +1,6 @@
 // Fixtures for CommandGenerator integration tests.
 // Verifies that makeHandler builds a resolver that publishes the correct commandJson.
 
-
 // Activate Pulumi mock mode (must be called before any Component.make)
 let _ = TestRunner.setup()
 
@@ -14,13 +13,13 @@ module CGSpec = {
   let name = "TestCGAggregate"
 
   @schema
-  type command = | CreateCGItem({name: string})
+  type command = CreateCGItem({name: string})
 
   @schema
-  type event = | CGItemCreated({name: string})
+  type event = CGItemCreated({name: string})
 
   @schema
-  type error = | CGAlreadyExists
+  type error = CGAlreadyExists
 
   let moduleUrl: string = %raw(`import.meta.url`)
 }
@@ -42,7 +41,10 @@ module CGBehavior = {
     | CGItemCreated({name}) => {name: name}
     }
 
-  let decide = (_state: state, command: CGSpec.command): result<array<CGSpec.event>, CGSpec.error> =>
+  let decide = (_state: state, command: CGSpec.command): result<
+    array<CGSpec.event>,
+    CGSpec.error,
+  > =>
     switch command {
     | CreateCGItem({name}) => Ok([CGSpec.CGItemCreated({name: name})])
     }

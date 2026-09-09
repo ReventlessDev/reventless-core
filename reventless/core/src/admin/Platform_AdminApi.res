@@ -142,9 +142,7 @@ let activeRoleTypes = [
   `type Platform_ActiveRole {\n  activeRole: String\n  availableRoles: [String!]!\n}`,
 ]
 
-let activeRoleMutationFields = [
-  `  Platform_SetActiveRole(activeRole: String): Platform_ActiveRole`,
-]
+let activeRoleMutationFields = [`  Platform_SetActiveRole(activeRole: String): Platform_ActiveRole`]
 
 let baseFragment = (~cloner: bool) => {
   let base = GraphQL_FragmentGenerator.generate(
@@ -156,8 +154,12 @@ let baseFragment = (~cloner: bool) => {
   // The standard auto-resolver flow (CommandGeneratorResolvers_AppSync.make)
   // always creates a Subscription.onX resolver per mutation field; without the
   // matching SDL fields, AppSync's CreateResolver fails with "Type not found".
-  let (pluginAggregateSubscriptionFields, pluginAggregateSubscriptionSources) =
-    Plugin_SubscriptionSchema.sourceCFields(~mutationEntries=PluginBaseFragment.pluginAggregateMutationEntries)
+  let (
+    pluginAggregateSubscriptionFields,
+    pluginAggregateSubscriptionSources,
+  ) = Plugin_SubscriptionSchema.sourceCFields(
+    ~mutationEntries=PluginBaseFragment.pluginAggregateMutationEntries,
+  )
   GraphQL_Stitcher.encode({
     types: parts.types
     ->Array.concat(uiFragmentSubscriptionTypes)
@@ -176,9 +178,12 @@ let baseFragment = (~cloner: bool) => {
     mutations: parts.mutations
     ->Array.concat(uiFragmentMutationFields)
     ->Array.concat(pluginStatusMutationFields),
-    subscriptions: [uiFragmentSubscriptionField, pluginStatusSubscriptionField]
-    ->Array.concat(pluginAggregateSubscriptionFields),
-    subscriptionSources: [uiFragmentSubscriptionSource, pluginStatusSubscriptionSource]
-    ->Array.concat(pluginAggregateSubscriptionSources),
+    subscriptions: [uiFragmentSubscriptionField, pluginStatusSubscriptionField]->Array.concat(
+      pluginAggregateSubscriptionFields,
+    ),
+    subscriptionSources: [
+      uiFragmentSubscriptionSource,
+      pluginStatusSubscriptionSource,
+    ]->Array.concat(pluginAggregateSubscriptionSources),
   })
 }

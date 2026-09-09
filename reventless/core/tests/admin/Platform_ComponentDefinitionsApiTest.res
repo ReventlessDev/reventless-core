@@ -11,9 +11,7 @@ let cmd: commandDef = {
   level: Collection,
   aggregateIdField: None,
   mutationField: "AddProduct",
-  references: [
-    {fieldName: "categoryId", entity: "Category", plugin: Some("Catalog")},
-  ],
+  references: [{fieldName: "categoryId", entity: "Category", plugin: Some("Catalog")}],
   allowedStates: None,
   targetState: None,
   apiExposed: Some(true),
@@ -276,10 +274,10 @@ describe("visibility filtering (deployed AutoUI hides Internal)", () => {
     idField: Some("productId"),
     idFieldSource: Some("sole"),
     requiredAccess: None,
-      ownerField: None,
-      retiredField: None,
-      retiredValues: None,
-      namedWhenRetired: None,
+    ownerField: None,
+    retiredField: None,
+    retiredValues: None,
+    namedWhenRetired: None,
   }
   // A distinct name per source array: the complement has to be fed by both, and
   // reusing one def would hide a version that only walks `readModels`.
@@ -293,8 +291,10 @@ describe("visibility filtering (deployed AutoUI hides Internal)", () => {
     readModels: [qbl, internalQbl],
     stateViewSlices: [internalSlice],
   }
-  let mixedEntry =
-    Platform_ComponentDefinitionsApi.encodePluginStructureEntry(~pluginId="Ordering", mixed)
+  let mixedEntry = Platform_ComponentDefinitionsApi.encodePluginStructureEntry(
+    ~pluginId="Ordering",
+    mixed,
+  )
 
   // Names under one key of the encoded entry. `String.includes` over the whole
   // JSON can no longer answer this: an Internal view is legitimately present
@@ -308,7 +308,10 @@ describe("visibility filtering (deployed AutoUI hides Internal)", () => {
     ->Option.flatMap(JSON.Decode.array)
     ->Option.getOr([])
     ->Array.filterMap(c =>
-      c->JSON.Decode.object->Option.flatMap(o => o->Dict.get("name"))->Option.flatMap(JSON.Decode.string)
+      c
+      ->JSON.Decode.object
+      ->Option.flatMap(o => o->Dict.get("name"))
+      ->Option.flatMap(JSON.Decode.string)
     )
 
   testSync("excludes an Internal queryableDef from the encoded read-side", () => {
@@ -358,7 +361,7 @@ describe("allowedStates + lifecycleField populated", () => {
     allowedStatesSource: "declared",
     apiExposed: Some(true),
     requiredAccess: None,
-      ownerField: None,
+    ownerField: None,
   }
 
   let qblWithStatus: queryableDef = {
@@ -377,10 +380,10 @@ describe("allowedStates + lifecycleField populated", () => {
     idField: None,
     idFieldSource: None,
     requiredAccess: None,
-      ownerField: None,
-      retiredField: None,
-      retiredValues: None,
-      namedWhenRetired: None,
+    ownerField: None,
+    retiredField: None,
+    retiredValues: None,
+    namedWhenRetired: None,
   }
 
   let wblWithStates: writableDef = {

@@ -2,7 +2,6 @@
 
 open Seed_Types
 
-
 let envOr = (key: string, fallback: string): string =>
   NodeProcess.env->Dict.get(key)->Option.getOr(fallback)
 
@@ -58,14 +57,12 @@ let verifyViews = async (client: Seed_Client.t, ~views: array<view>): dict<int> 
     Console.log(`  ${count->Int.toString->String.padStart(4, " ")}  ${name}${note}`)
   })
 
-  let empty =
-    views
-    ->Array.filterMap(v =>
-      switch v {
-      | Seeded(name) if counts->Dict.get(name)->Option.getOr(0) == 0 => Some(name)
-      | _ => None
-      }
-    )
+  let empty = views->Array.filterMap(v =>
+    switch v {
+    | Seeded(name) if counts->Dict.get(name)->Option.getOr(0) == 0 => Some(name)
+    | _ => None
+    }
+  )
   if empty->Array.length > 0 {
     throw(Failed(`these views are still empty after seeding: ${empty->Array.join(", ")}`))
   }
@@ -138,9 +135,7 @@ let run = async (main: unit => promise<unit>): unit =>
     Console.error("")
     Console.error("Seeding aborted with an unexpected error:")
     Console.error("")
-    Console.error(
-      exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown"),
-    )
+    Console.error(exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown"))
     NodeProcess.exit(1)
   }
 

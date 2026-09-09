@@ -1,4 +1,3 @@
-
 /** Identity provider that authenticated the user. */
 @schema
 type provider = Cognito | InMemory | Custom(string)
@@ -25,8 +24,7 @@ let anonymous: t = {
   provider: InMemory,
 }
 
-let hasGroup = (identity: t, group: string): bool =>
-  identity.groups->Array.includes(group)
+let hasGroup = (identity: t, group: string): bool => identity.groups->Array.includes(group)
 
 let getClaim = (identity: t, key: string): option<string> =>
   switch identity.claims {

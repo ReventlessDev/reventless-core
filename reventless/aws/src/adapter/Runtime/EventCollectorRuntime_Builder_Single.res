@@ -66,21 +66,9 @@ let storedSpecs: array<storedSpec> = []
 let grandParent = ref(None)
 
 let forEventCollector: ReventlessCore.Runtime.forEventCollector<
-  ReventlessCore.Runtime.effectHandler<
-    EventCollectorChannel.callbackEvent,
-    context,
-    unit,
-    string,
-  >,
+  ReventlessCore.Runtime.effectHandler<EventCollectorChannel.callbackEvent, context, unit, string>,
   ReventlessCore.EventCollector.component,
-> = (
-  ~handler as _,
-  ~eventTopics,
-  ~resources,
-  ~memorySize=1024,
-  ~timeout=30,
-  eventCollector,
-) => {
+> = (~handler as _, ~eventTopics, ~resources, ~memorySize=1024, ~timeout=30, eventCollector) => {
   let eventCollectorResource = eventCollector->ReventlessCore.Component.toPulumiResource
   let channel = eventCollector->ReventlessCore.EventCollector_Adapter.channel
   let eventCollectorName = eventCollectorResource.name->Option.getOr("Unnamed")
@@ -163,8 +151,7 @@ let finish = () =>
         // entry (per read model — admin-exempt ones stay DynamoDB in the same
         // Lambda). The Lambda itself goes in-VPC when any handler is pg-backed.
         let qdbSelection = QueryDbBackend.get()
-        let anyPgBacked =
-          readModelInfos->Dict.valuesToArray->Array.some(info => info.pgBacked)
+        let anyPgBacked = readModelInfos->Dict.valuesToArray->Array.some(info => info.pgBacked)
         let pgConnectionFragment = switch (qdbSelection, anyPgBacked) {
         | (Some(sel), true) =>
           sel.connectionConfig->Pulumi.Output.apply(cc =>
@@ -193,14 +180,10 @@ let finish = () =>
             packageDirs->Dict.set(specPkg, Util_Bundle.resolvePackageRoot(specPkg))
             packageDirs->Dict.set(mappingsPkg, Util_Bundle.resolvePackageRoot(mappingsPkg))
 
-            let specModule =
-              info.specModulePath->JSON.stringifyAny->Option.getOr(`""`)
-            let mappingsModule =
-              info.mappingsModulePath->JSON.stringifyAny->Option.getOr(`""`)
+            let specModule = info.specModulePath->JSON.stringifyAny->Option.getOr(`""`)
+            let mappingsModule = info.mappingsModulePath->JSON.stringifyAny->Option.getOr(`""`)
 
-            let handlerPgFragment = info.pgBacked
-              ? pgConnectionFragment
-              : Pulumi.Output.make("")
+            let handlerPgFragment = info.pgBacked ? pgConnectionFragment : Pulumi.Output.make("")
             // B3.3: a subscription-enabled Postgres read model publishes live
             // updates from the projection Lambda — bake its AppSync Events channel
             // root (the plural LIST field name, same source as the DynamoDB
@@ -227,19 +210,17 @@ let finish = () =>
             let attribution = Util_LogAttribution.fragments(
               ~comp=`EventCollector(${spec.eventCollectorName})`,
             )
-            let handlerJson =
-              Pulumi.Output.all4((
-                info.queryDbTableName,
-                spec.sourceUrns,
-                feedArnOutput,
-                handlerPgFragment,
-              ))
-              ->Pulumi.Output.apply(((tableName, urns, feedArn, pgFragment)) => {
-                // No stream resource (Postgres-backed source) → dispatch on the
-                // feed queue's ARN instead of a stream URN.
-                let sourceUrn = urns->Array.get(0)->Option.getOr(feedArn)
-                `{"specModule":${specModule},"mappingsModule":${mappingsModule},"queryDbTableName":"${tableName}","sourceUrn":"${sourceUrn}"${attribution}${pgFragment}${stateTopicFragment}}`
-              })
+            let handlerJson = Pulumi.Output.all4((
+              info.queryDbTableName,
+              spec.sourceUrns,
+              feedArnOutput,
+              handlerPgFragment,
+            ))->Pulumi.Output.apply(((tableName, urns, feedArn, pgFragment)) => {
+              // No stream resource (Postgres-backed source) → dispatch on the
+              // feed queue's ARN instead of a stream URN.
+              let sourceUrn = urns->Array.get(0)->Option.getOr(feedArn)
+              `{"specModule":${specModule},"mappingsModule":${mappingsModule},"queryDbTableName":"${tableName}","sourceUrn":"${sourceUrn}"${attribution}${pgFragment}${stateTopicFragment}}`
+            })
             let _ = handlerOutputs->Array.push(handlerJson)
           | None =>
             log.warn(
@@ -249,13 +230,13 @@ let finish = () =>
           }
         })
 
-        let handlerConfigOutput =
-          Pulumi.Output.all(handlerOutputs)
-          ->Pulumi.Output.apply(handlers => {
-            let json = `{"handlers":[${handlers->Array.join(",")}]}`
-            Util_LambdaEnvBudget.check(~lambdaName="AllReadModels", ~handlerConfigJson=json)
-            json
-          })
+        let handlerConfigOutput = Pulumi.Output.all(
+          handlerOutputs,
+        )->Pulumi.Output.apply(handlers => {
+          let json = `{"handlers":[${handlers->Array.join(",")}]}`
+          Util_LambdaEnvBudget.check(~lambdaName="AllReadModels", ~handlerConfigJson=json)
+          json
+        })
 
         let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
         envVars->Dict.set("HANDLER_CONFIG", handlerConfigOutput->Pulumi.Output.asInput)
@@ -267,7 +248,7 @@ let finish = () =>
           readModelInfos
           ->Dict.keysToArray
           ->Array.some(rmName =>
-            (readModelInfos->Dict.get(rmName)->Option.mapOr(false, i => i.pgBacked)) &&
+            readModelInfos->Dict.get(rmName)->Option.mapOr(false, i => i.pgBacked) &&
               QueryDbBackend.postgresStreamRegistry->Set.has(rmName)
           )
         let pgStreamConfig = anyPgStream ? eventsApiConfig.contents : None
@@ -287,14 +268,10 @@ let finish = () =>
         | (Some(sel), true) =>
           Some(
             sel.securityGroupId
-            ->Pulumi.Output.apply(sgId =>
-              (
-                {
-                  PulumiAws.Lambda.Function.subnetIds: sel.subnetIds->Pulumi.Input.make,
-                  securityGroupIds: [sgId->Pulumi.Input.make]->Pulumi.Input.make,
-                }: PulumiAws.Lambda.Function.vpcConfig
-              )
-            )
+            ->Pulumi.Output.apply((sgId): PulumiAws.Lambda.Function.vpcConfig => {
+              PulumiAws.Lambda.Function.subnetIds: sel.subnetIds->Pulumi.Input.make,
+              securityGroupIds: [sgId->Pulumi.Input.make]->Pulumi.Input.make,
+            })
             ->Pulumi.Output.asInput,
           )
         | _ => None
@@ -309,7 +286,7 @@ let finish = () =>
           ~envVars,
           ~memorySize=maxMemorySize,
           ~timeout=maxTimeout,
-          ~vpcConfig=?vpcConfig,
+          ~vpcConfig?,
           ~opts,
         )
 
@@ -392,10 +369,7 @@ let finish = () =>
         | None => ()
         }
       | None =>
-        log.warn(
-          ~comp="EventCollectorRuntime_Builder_Single",
-          `finish: grandParent not set`,
-        )
+        log.warn(~comp="EventCollectorRuntime_Builder_Single", `finish: grandParent not set`)
       }
     }
     finished := true

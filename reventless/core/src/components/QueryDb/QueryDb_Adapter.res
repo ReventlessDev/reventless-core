@@ -25,9 +25,7 @@ module type Storage = {
   let make: storageMaker<api, role>
 }
 
-type queryEngineMaker = dict<QueryDb.outputs> => Pulumi.Output.t<
-  Reventless.QueryEngine.operations,
->
+type queryEngineMaker = dict<QueryDb.outputs> => Pulumi.Output.t<Reventless.QueryEngine.operations>
 
 module type QueryEngineAdapter = {
   let make: queryEngineMaker

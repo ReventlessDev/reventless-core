@@ -18,10 +18,9 @@ Resolution priority for a comp string like `"Kind(Name)"`:
 `Plugin_Builder` registers every component (and the plugin's self-name) when
 constructing a plugin, so all transformation candidates resolve to a
 real plugin name. */
-
-// Ambient plugin name. Set inside `Plugin_Builder.Make.construct` so
+let // Ambient plugin name. Set inside `Plugin_Builder.Make.construct` so
 // synchronous logs during construction carry a `[Name]` prefix.
-let currentPluginName: ref<option<string>> = ref(None)
+currentPluginName: ref<option<string>> = ref(None)
 
 // Registry: component name → owning plugin name. Populated at construct time.
 let componentPluginRegistry: ref<dict<string>> = ref(Dict.make())
@@ -40,14 +39,7 @@ let hashStr = (s: string): int => {
 }
 
 // Foreground colors that don't collide with level indicators (cyan / yellow / red).
-let pluginColors = [
-  "\x1b[32m", // green
-  "\x1b[34m", // blue
-  "\x1b[35m", // magenta
-  "\x1b[92m", // bright green
-  "\x1b[94m", // bright blue
-  "\x1b[95m", // bright magenta
-]
+let pluginColors = ["\x1b[32m", "\x1b[34m", "\x1b[35m", "\x1b[92m", "\x1b[94m", "\x1b[95m"] // green // blue // magenta // bright green // bright blue // bright magenta
 
 let pluginColor = (name: string): string =>
   pluginColors->Array.getUnsafe(mod(hashStr(name), pluginColors->Array.length))
@@ -99,8 +91,7 @@ let lastDotSegment = (s: string): option<string> => {
   }
 }
 
-let lookup = (name: string): option<string> =>
-  componentPluginRegistry.contents->Dict.get(name)
+let lookup = (name: string): option<string> => componentPluginRegistry.contents->Dict.get(name)
 
 // Last-resort candidate: the inner name is a registered component name carrying a
 // component-kind suffix (`Customers` + `ReadModel` → `CustomersReadModel`), which is

@@ -102,7 +102,6 @@ let commandTransition = (command: command): Reventless.Transition.t<lifecycleSta
   | Disconnect(_) => Moves([Plugins.Connected], Plugins.Disconnected)
   | Activate(_) => Moves([Plugins.Inactive, Plugins.Retired], Plugins.Connected)
   | Deactivate(_) => Moves([Plugins.Connected, Plugins.Disconnected], Plugins.Inactive)
-  | Retire(_) =>
-    Moves([Plugins.Connected, Plugins.Disconnected, Plugins.Inactive], Plugins.Retired)
+  | Retire(_) => Moves([Plugins.Connected, Plugins.Disconnected, Plugins.Inactive], Plugins.Retired)
   }
 }

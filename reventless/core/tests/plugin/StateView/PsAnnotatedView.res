@@ -19,8 +19,7 @@ type consumedEvent =
       @default(1) quantity: int,
     })
 
-@live(false)
-@schema
+@live(false) @schema
 type state = {
   @id itemId: string,
   @subId version: string,
@@ -33,6 +32,7 @@ type state = {
 
 let project = ({event}: Reventless.StateViewSlice.consumed<consumedEvent>) =>
   switch event {
-  | ItemRecorded({itemId, ownerId, version, name, total, contact, quantity}) =>
-    [Set(itemId, {itemId, ownerId, version, name, total, contact, quantity})]
+  | ItemRecorded({itemId, ownerId, version, name, total, contact, quantity}) => [
+      Set(itemId, {itemId, ownerId, version, name, total, contact, quantity}),
+    ]
   }

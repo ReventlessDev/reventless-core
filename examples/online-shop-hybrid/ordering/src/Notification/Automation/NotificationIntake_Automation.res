@@ -112,7 +112,8 @@ module FromOrderingDcb = Mapping.Make(
       | NotificationDeferred({reference}) =>
         Some(reference)
       | OrderPlaced(_)
-      | OrderShipped(_) => None
+      | OrderShipped(_) =>
+        None
       }
   },
 )

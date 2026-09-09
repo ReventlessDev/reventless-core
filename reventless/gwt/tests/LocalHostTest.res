@@ -14,9 +14,9 @@ describe("LocalHost.packageNameToPluginName", () => {
   testPromise("PascalCases scoped / dashed / underscored package names", async () => {
     expect(LocalHost.packageNameToPluginName("@scope/my-catalog"))->toBe("MyCatalog")
     expect(LocalHost.packageNameToPluginName("online-shop"))->toBe("OnlineShop")
-    expect(
-      LocalHost.packageNameToPluginName("online-shop-aggregates-catalog"),
-    )->toBe("OnlineShopAggregatesCatalog")
+    expect(LocalHost.packageNameToPluginName("online-shop-aggregates-catalog"))->toBe(
+      "OnlineShopAggregatesCatalog",
+    )
   })
 })
 
@@ -31,10 +31,14 @@ describe("LocalHost name derivation + discovery", () => {
       let a = NodePath.join([root, "a"])
       let aSrc = NodePath.join([a, "src"])
       let _ = await NodeFs.Promises.mkdir(aSrc, {recursive: true})
-      let _ =
-        await NodeFs.Promises.writeFile(NodePath.join([a, "package.json"]), `{"name":"@x/a-pkg"}`)
-      let _ =
-        await NodeFs.Promises.writeFile(NodePath.join([aSrc, "plugin.json"]), `{"name":"Catalog"}`)
+      let _ = await NodeFs.Promises.writeFile(
+        NodePath.join([a, "package.json"]),
+        `{"name":"@x/a-pkg"}`,
+      )
+      let _ = await NodeFs.Promises.writeFile(
+        NodePath.join([aSrc, "plugin.json"]),
+        `{"name":"Catalog"}`,
+      )
       let _ = await NodeFs.Promises.writeFile(NodePath.join([aSrc, "Plugin.res.mjs"]), "")
 
       // b: no plugin.json → name falls back to PascalCase(package.json name).
@@ -55,7 +59,10 @@ describe("LocalHost name derivation + discovery", () => {
       expect(LocalHost.derivePluginName(~pluginSrcDir=bSrc))->toBe("MyOrdering")
 
       let refs = LocalHost.discover(~packageDirs=[a, b, c])
-      expect(refs->Array.map((r: LocalHost.pluginRef) => r.name))->toEqual(["Catalog", "MyOrdering"])
+      expect(refs->Array.map((r: LocalHost.pluginRef) => r.name))->toEqual([
+        "Catalog",
+        "MyOrdering",
+      ])
       let first: LocalHost.pluginRef = refs->Array.getUnsafe(0)
       expect(first.modulePath->String.endsWith("Plugin.res.mjs"))->toBe(true)
       expect(first.packageDir)->toBe(a)

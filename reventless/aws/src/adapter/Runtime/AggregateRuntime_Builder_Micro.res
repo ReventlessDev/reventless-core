@@ -75,44 +75,30 @@ let forCommandGenerator: ReventlessCore.Runtime.forComponent<
   ReventlessCore.CommandGenerator.effectEventHandler<context>,
   runtimeParts,
   ReventlessCore.CommandGenerator.component,
-> = (
-  ~handler as _,
-  ~connect,
-  ~memorySize=1024,
-  ~timeout=30,
-  commandGenerator,
-) => {
+> = (~handler as _, ~connect, ~memorySize=1024, ~timeout=30, commandGenerator) => {
   let resource = commandGenerator->ReventlessCore.Component.toPulumiResource
   switch resource.parent {
   | Some(aggregateResource) =>
     let aggregateName = aggregateResource.name->Option.getOr("Unnamed")
     let spec = getStoredSpec(aggregateName, aggregateResource)
-    storedSpecs->Dict.set(aggregateName, {
-      ...spec,
-      commandGeneratorConnects: spec.commandGeneratorConnects->Array.concat([connect]),
-      commandGeneratorMemorySize: Math.Int.max(spec.commandGeneratorMemorySize, memorySize),
-      commandGeneratorTimeout: Math.Int.max(spec.commandGeneratorTimeout, timeout),
-    })
+    storedSpecs->Dict.set(
+      aggregateName,
+      {
+        ...spec,
+        commandGeneratorConnects: spec.commandGeneratorConnects->Array.concat([connect]),
+        commandGeneratorMemorySize: Math.Int.max(spec.commandGeneratorMemorySize, memorySize),
+        commandGeneratorTimeout: Math.Int.max(spec.commandGeneratorTimeout, timeout),
+      },
+    )
   | None => ()
   }
 }
 
 let forCommandTopic: ReventlessCore.Runtime.forComponent<
-  ReventlessCore.Runtime.effectHandler<
-    CommandTopicChannel.callbackEvent,
-    context,
-    unit,
-    string,
-  >,
+  ReventlessCore.Runtime.effectHandler<CommandTopicChannel.callbackEvent, context, unit, string>,
   runtimeParts,
   ReventlessCore.CommandTopic.component<'op>,
-> = (
-  ~handler as _,
-  ~connect,
-  ~memorySize=1024,
-  ~timeout=30,
-  commandTopic,
-) => {
+> = (~handler as _, ~connect, ~memorySize=1024, ~timeout=30, commandTopic) => {
   let commandTopicResource = commandTopic->ReventlessCore.Component.toPulumiResource
   switch commandTopicResource.parent {
   | Some(aggregateResource) =>
@@ -122,50 +108,42 @@ let forCommandTopic: ReventlessCore.Runtime.forComponent<
     let queue = channelParts.queue
 
     let spec = getStoredSpec(aggregateName, aggregateResource)
-    storedSpecs->Dict.set(aggregateName, {
-      ...spec,
-      queueUrl: queue.id,
-      queueArn: queue.arn,
-      commandTopicConnects: spec.commandTopicConnects->Array.concat([connect]),
-      commandTopicMemorySize: Math.Int.max(spec.commandTopicMemorySize, memorySize),
-      commandTopicTimeout: Math.Int.max(spec.commandTopicTimeout, timeout),
-    })
+    storedSpecs->Dict.set(
+      aggregateName,
+      {
+        ...spec,
+        queueUrl: queue.id,
+        queueArn: queue.arn,
+        commandTopicConnects: spec.commandTopicConnects->Array.concat([connect]),
+        commandTopicMemorySize: Math.Int.max(spec.commandTopicMemorySize, memorySize),
+        commandTopicTimeout: Math.Int.max(spec.commandTopicTimeout, timeout),
+      },
+    )
   | None =>
     let name = commandTopicResource.name->Option.getOr("Unnamed")
-    JsError.throwWithMessage(
-      `forCommandTopic(micro): commandTopic ${name} has no Aggregate parent`,
-    )
+    JsError.throwWithMessage(`forCommandTopic(micro): commandTopic ${name} has no Aggregate parent`)
   }
 }
 
 let forEventCollector: ReventlessCore.Runtime.forEventCollector<
-  ReventlessCore.Runtime.effectHandler<
-    EventCollectorChannel.callbackEvent,
-    context,
-    unit,
-    string,
-  >,
+  ReventlessCore.Runtime.effectHandler<EventCollectorChannel.callbackEvent, context, unit, string>,
   ReventlessCore.EventCollector.component,
-> = (
-  ~handler as _,
-  ~eventTopics,
-  ~resources,
-  ~memorySize=2048,
-  ~timeout=180,
-  eventCollector,
-) => {
+> = (~handler as _, ~eventTopics, ~resources, ~memorySize=2048, ~timeout=180, eventCollector) => {
   let eventCollectorResource = eventCollector->ReventlessCore.Component.toPulumiResource
   let channel = eventCollector->ReventlessCore.EventCollector_Adapter.channel
   switch eventCollectorResource.parent->Option.flatMap(parent => parent.parent) {
   | Some(aggregateResource) =>
     let aggregateName = aggregateResource.name->Option.getOr("Unnamed")
     let spec = getStoredSpec(aggregateName, aggregateResource)
-    storedSpecs->Dict.set(aggregateName, {
-      ...spec,
-      eventCollectorChannelSpec: Some({channel, eventTopics, resources}),
-      eventCollectorMemorySize: Math.Int.max(spec.eventCollectorMemorySize, memorySize),
-      eventCollectorTimeout: Math.Int.max(spec.eventCollectorTimeout, timeout),
-    })
+    storedSpecs->Dict.set(
+      aggregateName,
+      {
+        ...spec,
+        eventCollectorChannelSpec: Some({channel, eventTopics, resources}),
+        eventCollectorMemorySize: Math.Int.max(spec.eventCollectorMemorySize, memorySize),
+        eventCollectorTimeout: Math.Int.max(spec.eventCollectorTimeout, timeout),
+      },
+    )
   | None =>
     let name = eventCollectorResource.name->Option.getOr("Unnamed")
     JsError.throwWithMessage(
@@ -198,13 +176,11 @@ let finish = () =>
           packageDirs->Dict.set(specPkg, Util_Bundle.resolvePackageRoot(specPkg))
           packageDirs->Dict.set(behaviorPkg, Util_Bundle.resolvePackageRoot(behaviorPkg))
 
-          let specModule =
-            info.specModulePath->JSON.stringifyAny->Option.getOr(`""`)
-          let behaviorModule =
-            info.behaviorModulePath->JSON.stringifyAny->Option.getOr(`""`)
+          let specModule = info.specModulePath->JSON.stringifyAny->Option.getOr(`""`)
+          let behaviorModule = info.behaviorModulePath->JSON.stringifyAny->Option.getOr(`""`)
 
           // --- CommandTopic Lambda ---
-// `plugin` cannot be resolved inside the Lambda — LogPrefix's registry is a
+          // `plugin` cannot be resolved inside the Lambda — LogPrefix's registry is a
           // deploy-time structure, and the Lambda-name fallback yields nothing for a
           // shared or per-aggregate command handler. Resolve it here; the shell still
           // derives `comp` itself from the spec name.
@@ -212,15 +188,24 @@ let finish = () =>
             ~comp=`AggregateRuntime(${spec.aggregateName})`,
           )
           let cmdTopicHandlerConfigOutput =
-            Pulumi.Output.all3((info.eventLogTableName, spec.queueUrl, spec.queueArn))
-            ->Pulumi.Output.apply(((table, queueUrl, queueArn)) =>
+            Pulumi.Output.all3((
+              info.eventLogTableName,
+              spec.queueUrl,
+              spec.queueArn,
+            ))->Pulumi.Output.apply(((table, queueUrl, queueArn)) =>
               `{"handlers":[{"specModule":${specModule},"behaviorModule":${behaviorModule},"eventLogTable":"${table}","queueUrl":"${queueUrl}","queueArn":"${queueArn}"${pluginFragment}}]}`
             )
 
           let cmdTopicEnvVars: dict<Pulumi.Input.t<string>> = Dict.make()
-          cmdTopicEnvVars->Dict.set("HANDLER_CONFIG", cmdTopicHandlerConfigOutput->Pulumi.Output.asInput)
+          cmdTopicEnvVars->Dict.set(
+            "HANDLER_CONFIG",
+            cmdTopicHandlerConfigOutput->Pulumi.Output.asInput,
+          )
 
-          let {code: cmdTopicCode, sourceCodeHash: cmdTopicSourceCodeHash} = Util_Bundle.buildCodeArchive(
+          let {
+            code: cmdTopicCode,
+            sourceCodeHash: cmdTopicSourceCodeHash,
+          } = Util_Bundle.buildCodeArchive(
             ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs",
             ~packageDirs,
           )
@@ -242,7 +227,7 @@ let finish = () =>
 
           // --- CommandGenerator Lambda ---
           if spec.commandGeneratorConnects->Array.length > 0 {
-// `plugin` cannot be resolved inside the Lambda — LogPrefix's registry is a
+            // `plugin` cannot be resolved inside the Lambda — LogPrefix's registry is a
             // deploy-time structure, and the Lambda-name fallback yields nothing for a
             // shared or per-aggregate command handler. Resolve it here; the shell still
             // derives `comp` itself from the spec name.
@@ -250,15 +235,24 @@ let finish = () =>
               ~comp=`AggregateRuntime(${spec.aggregateName})`,
             )
             let cmdGenHandlerConfigOutput =
-              Pulumi.Output.all3((info.eventLogTableName, spec.queueUrl, spec.queueArn))
-              ->Pulumi.Output.apply(((table, queueUrl, queueArn)) =>
+              Pulumi.Output.all3((
+                info.eventLogTableName,
+                spec.queueUrl,
+                spec.queueArn,
+              ))->Pulumi.Output.apply(((table, queueUrl, queueArn)) =>
                 `{"handlers":[{"specModule":${specModule},"behaviorModule":${behaviorModule},"eventLogTable":"${table}","queueUrl":"${queueUrl}","queueArn":"${queueArn}"${pluginFragment}}]}`
               )
 
             let cmdGenEnvVars: dict<Pulumi.Input.t<string>> = Dict.make()
-            cmdGenEnvVars->Dict.set("HANDLER_CONFIG", cmdGenHandlerConfigOutput->Pulumi.Output.asInput)
+            cmdGenEnvVars->Dict.set(
+              "HANDLER_CONFIG",
+              cmdGenHandlerConfigOutput->Pulumi.Output.asInput,
+            )
 
-            let {code: cmdGenCode, sourceCodeHash: cmdGenSourceCodeHash} = Util_Bundle.buildCodeArchive(
+            let {
+              code: cmdGenCode,
+              sourceCodeHash: cmdGenSourceCodeHash,
+            } = Util_Bundle.buildCodeArchive(
               ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs",
               ~packageDirs,
             )
@@ -276,9 +270,7 @@ let finish = () =>
               ~opts=aggregateOpts,
             )
 
-            spec.commandGeneratorConnects->Array.forEach(connect =>
-              connect(~runtime=cmdGenRuntime)
-            )
+            spec.commandGeneratorConnects->Array.forEach(connect => connect(~runtime=cmdGenRuntime))
           }
 
           // --- EventMapper Lambda ---
@@ -286,14 +278,11 @@ let finish = () =>
           | (Some(channelSpec), Some(mappingsModulePath)) =>
             let evtMapperEnvVars: dict<Pulumi.Input.t<string>> = Dict.make()
 
-            let targetSpecModule =
-              info.specModulePath->JSON.stringifyAny->Option.getOr(`""`)
-            let mappingsModuleJson =
-              mappingsModulePath->JSON.stringifyAny->Option.getOr(`""`)
+            let targetSpecModule = info.specModulePath->JSON.stringifyAny->Option.getOr(`""`)
+            let mappingsModuleJson = mappingsModulePath->JSON.stringifyAny->Option.getOr(`""`)
 
             let handlerConfigJson =
-              spec.queueUrl
-              ->Pulumi.Output.apply(queueUrl =>
+              spec.queueUrl->Pulumi.Output.apply(queueUrl =>
                 `{"targetSpecModule":${targetSpecModule},"mappingsModule":${mappingsModuleJson},"queueUrl":"${queueUrl}"}`
               )
             evtMapperEnvVars->Dict.set("HANDLER_CONFIG", handlerConfigJson->Pulumi.Output.asInput)
@@ -304,7 +293,10 @@ let finish = () =>
             evtMapperPackageDirs->Dict.set(specPkg, Util_Bundle.resolvePackageRoot(specPkg))
             evtMapperPackageDirs->Dict.set(mappingsPkg, Util_Bundle.resolvePackageRoot(mappingsPkg))
 
-            let {code: evtMapperCode, sourceCodeHash: evtMapperSourceCodeHash} = Util_Bundle.buildCodeArchive(
+            let {
+              code: evtMapperCode,
+              sourceCodeHash: evtMapperSourceCodeHash,
+            } = Util_Bundle.buildCodeArchive(
               ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Runtime/EventMapperEntryPoint.mjs",
               ~packageDirs=evtMapperPackageDirs,
             )

@@ -21,9 +21,10 @@ let ensureSchema = (db: SqliteDriver.t) =>
 
 let put = (~db: SqliteDriver.t, ~bucket: string, ~key: string, ~body: string): unit => {
   ensureSchema(db)
-  let stmt = db->SqliteDriver.prepare(
-    "INSERT INTO task_object(bucket, key, body) VALUES(?, ?, ?) ON CONFLICT(bucket, key) DO UPDATE SET body = excluded.body",
-  )
+  let stmt =
+    db->SqliteDriver.prepare(
+      "INSERT INTO task_object(bucket, key, body) VALUES(?, ?, ?) ON CONFLICT(bucket, key) DO UPDATE SET body = excluded.body",
+    )
   stmt->SqliteDriver.run([
     JSON.Encode.string(bucket),
     JSON.Encode.string(key),
@@ -33,9 +34,7 @@ let put = (~db: SqliteDriver.t, ~bucket: string, ~key: string, ~body: string): u
 
 let get = (~db: SqliteDriver.t, ~bucket: string, ~key: string): option<string> => {
   ensureSchema(db)
-  let stmt = db->SqliteDriver.prepare(
-    "SELECT body FROM task_object WHERE bucket = ? AND key = ?",
-  )
+  let stmt = db->SqliteDriver.prepare("SELECT body FROM task_object WHERE bucket = ? AND key = ?")
   switch stmt->SqliteDriver.get([JSON.Encode.string(bucket), JSON.Encode.string(key)]) {
   | Some(row) =>
     switch row->Dict.get("body") {

@@ -19,8 +19,14 @@ describe("Monitoring", () => {
   testSync("an announcement made before any backend is registered reaches the first one", () => {
     let recorded: array<(Monitoring.unitKind, string, option<string>)> = []
     module Late: Monitoring.Backend = {
-      let onProvisioned = (~kind, ~name, ~component as _, ~plugin, ~platform as _, ~logLocator as _) =>
-        recorded->Array.push((kind, name, plugin))
+      let onProvisioned = (
+        ~kind,
+        ~name,
+        ~component as _,
+        ~plugin,
+        ~platform as _,
+        ~logLocator as _,
+      ) => recorded->Array.push((kind, name, plugin))
     }
 
     // Provisioned at import time, inside a construct scope that is long gone by the time
@@ -42,8 +48,14 @@ describe("Monitoring", () => {
     // Drained: a second registration does not receive them again.
     let second: array<string> = []
     module Other: Monitoring.Backend = {
-      let onProvisioned = (~kind as _, ~name, ~component as _, ~plugin as _, ~platform as _, ~logLocator as _) =>
-        second->Array.push(name)
+      let onProvisioned = (
+        ~kind as _,
+        ~name,
+        ~component as _,
+        ~plugin as _,
+        ~platform as _,
+        ~logLocator as _,
+      ) => second->Array.push(name)
     }
     Monitoring.use(module(Other: Monitoring.Backend))
     expect(second)->toEqual([])
@@ -54,12 +66,22 @@ describe("Monitoring", () => {
   testSync("use registers a backend that receives every notify, role and name", () => {
     let recorded: array<(Monitoring.unitKind, string)> = []
     module Recorder: Monitoring.Backend = {
-      let onProvisioned = (~kind, ~name, ~component as _, ~plugin as _, ~platform as _, ~logLocator as _) =>
-        recorded->Array.push((kind, name))
+      let onProvisioned = (
+        ~kind,
+        ~name,
+        ~component as _,
+        ~plugin as _,
+        ~platform as _,
+        ~logLocator as _,
+      ) => recorded->Array.push((kind, name))
     }
     Monitoring.use(module(Recorder: Monitoring.Backend))
 
-    Monitoring.notify(~kind=CommandHandler, ~name="AllAggregatesCmdHandler", ~component=stubResource)
+    Monitoring.notify(
+      ~kind=CommandHandler,
+      ~name="AllAggregatesCmdHandler",
+      ~component=stubResource,
+    )
     Monitoring.notify(~kind=Projection, ~name="AllStateViewSlices", ~component=stubResource)
     Monitoring.notify(~kind=DeadLetterSink, ~name="DeadLetterQueue", ~component=stubResource)
     Monitoring.notify(~kind=Other("Counter"), ~name="ProductCounter", ~component=stubResource)
@@ -78,8 +100,14 @@ describe("Monitoring", () => {
   testSync("notify forwards the static name and component resource to the backend", () => {
     let seen: ref<option<(string, ReventlessInfra.Adapter.resource)>> = ref(None)
     module Capture: Monitoring.Backend = {
-      let onProvisioned = (~kind as _, ~name, ~component, ~plugin as _, ~platform as _, ~logLocator as _) =>
-        seen := Some((name, component))
+      let onProvisioned = (
+        ~kind as _,
+        ~name,
+        ~component,
+        ~plugin as _,
+        ~platform as _,
+        ~logLocator as _,
+      ) => seen := Some((name, component))
     }
     Monitoring.use(module(Capture: Monitoring.Backend))
 
@@ -92,33 +120,42 @@ describe("Monitoring", () => {
     Monitoring.reset()
   })
 
-  testSync("notify delivers the ambient plugin/platform inside a construct scope, None outside", () => {
-    let seen: array<(option<string>, option<string>)> = []
-    module OwnerCapture: Monitoring.Backend = {
-      let onProvisioned = (~kind as _, ~name as _, ~component as _, ~plugin, ~platform, ~logLocator as _) =>
-        seen->Array.push((plugin, platform))
-    }
-    Monitoring.use(module(OwnerCapture: Monitoring.Backend))
+  testSync(
+    "notify delivers the ambient plugin/platform inside a construct scope, None outside",
+    () => {
+      let seen: array<(option<string>, option<string>)> = []
+      module OwnerCapture: Monitoring.Backend = {
+        let onProvisioned = (
+          ~kind as _,
+          ~name as _,
+          ~component as _,
+          ~plugin,
+          ~platform,
+          ~logLocator as _,
+        ) => seen->Array.push((plugin, platform))
+      }
+      Monitoring.use(module(OwnerCapture: Monitoring.Backend))
 
-    // Outside any plugin construct: platform substrate → both None.
-    Monitoring.notify(~kind=CommandHandler, ~name="ApiRouter", ~component=stubResource)
+      // Outside any plugin construct: platform substrate → both None.
+      Monitoring.notify(~kind=CommandHandler, ~name="ApiRouter", ~component=stubResource)
 
-    // Inside a construct scope (what Plugin_Builder.construct establishes): both delivered.
-    let prev = ResourceAttribution.enter(~platform="online-shop", ~plugin="Ordering")
-    Monitoring.notify(~kind=CommandHandler, ~name="AllAggregatesCmdHandler", ~component=stubResource)
-    ResourceAttribution.restore(prev)
+      // Inside a construct scope (what Plugin_Builder.construct establishes): both delivered.
+      let prev = ResourceAttribution.enter(~platform="online-shop", ~plugin="Ordering")
+      Monitoring.notify(
+        ~kind=CommandHandler,
+        ~name="AllAggregatesCmdHandler",
+        ~component=stubResource,
+      )
+      ResourceAttribution.restore(prev)
 
-    // After restore: back to None.
-    Monitoring.notify(~kind=Projection, ~name="AllStateViewSlices", ~component=stubResource)
+      // After restore: back to None.
+      Monitoring.notify(~kind=Projection, ~name="AllStateViewSlices", ~component=stubResource)
 
-    expect(seen)->toEqual([
-      (None, None),
-      (Some("Ordering"), Some("online-shop")),
-      (None, None),
-    ])
+      expect(seen)->toEqual([(None, None), (Some("Ordering"), Some("online-shop")), (None, None)])
 
-    Monitoring.reset()
-  })
+      Monitoring.reset()
+    },
+  )
 
   // Unlike the owner, the locator is not ambient — the seam only forwards what the provisioning
   // site passed. A site with nothing to say omits it, and the backend must see that as "this unit
@@ -129,8 +166,14 @@ describe("Monitoring", () => {
     let stubLocator: Pulumi.Output.t<string> = %raw(`{}`)
     let seen: array<bool> = []
     module LocatorCapture: Monitoring.Backend = {
-      let onProvisioned = (~kind as _, ~name as _, ~component as _, ~plugin as _, ~platform as _, ~logLocator) =>
-        seen->Array.push(logLocator->Option.isSome)
+      let onProvisioned = (
+        ~kind as _,
+        ~name as _,
+        ~component as _,
+        ~plugin as _,
+        ~platform as _,
+        ~logLocator,
+      ) => seen->Array.push(logLocator->Option.isSome)
     }
     Monitoring.use(module(LocatorCapture: Monitoring.Backend))
 

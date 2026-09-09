@@ -119,7 +119,5 @@ type getResult = {
 }
 
 @module("@pulumi/aws") @scope("cognito") @val
-external getUserPoolOutput: (
-  ~args: getArgs,
-  ~opts: InvokeOptions.t=?,
-) => Output.t<getResult> = "getUserPoolOutput"
+external getUserPoolOutput: (~args: getArgs, ~opts: InvokeOptions.t=?) => Output.t<getResult> =
+  "getUserPoolOutput"

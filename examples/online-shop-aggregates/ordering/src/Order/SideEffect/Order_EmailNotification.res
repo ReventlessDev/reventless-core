@@ -10,9 +10,6 @@ module Source = {
 let execute = async (orderId, _meta, event, _queryEngine) =>
   switch event {
   | Order.Placed({customerId}) =>
-    await EmailService.sendOrderConfirmation(
-      ~email=customerId,
-      ~orderId=orderId->Order.Id.toString,
-    )
+    await EmailService.sendOrderConfirmation(~email=customerId, ~orderId=orderId->Order.Id.toString)
   | _ => ()
   }

@@ -190,10 +190,17 @@ module Make = (
           []
         } else {
           let constructorNames = Reventless.DcbTag.extractAllVariantNames(M.Spec.commandSchema)
-          let filteredConstructorNames = ApiNoApiHelpers.filterNoApiVariants(constructorNames, commandSchema)
+          let filteredConstructorNames = ApiNoApiHelpers.filterNoApiVariants(
+            constructorNames,
+            commandSchema,
+          )
           let fieldNames =
             filteredConstructorNames->Array.map(cname =>
-              Api_Naming.aggregateMutationField(~plugin=name, ~aggregate=M.Spec.name, ~command=cname)
+              Api_Naming.aggregateMutationField(
+                ~plugin=name,
+                ~aggregate=M.Spec.name,
+                ~command=cname,
+              )
             )
           // Register plugin-prefixed field names for CommandGenerator_Builder.
           Plugin_Helpers.aggregateMutationFieldsRegistry->Dict.set(M.Spec.name, fieldNames)
@@ -223,20 +230,23 @@ module Make = (
             let fieldPermissions = Dict.make()
             filteredConstructorNames->Array.forEachWithIndex((cname, idx) => {
               let fieldName = fieldNames->Array.getUnsafe(idx)
-              let hasPayload =
-                Reventless.DcbTag.isVariantPayloadBearing(M.Spec.commandSchema->Obj.magic, cname)
-              let syntheticCmd: unknown =
-                hasPayload ? {"TAG": cname}->Obj.magic : cname->Obj.magic
+              let hasPayload = Reventless.DcbTag.isVariantPayloadBearing(
+                M.Spec.commandSchema->Obj.magic,
+                cname,
+              )
+              let syntheticCmd: unknown = hasPayload ? {"TAG": cname}->Obj.magic : cname->Obj.magic
               let rule = M.Spec.commandAuthorization(syntheticCmd->Obj.magic)
               fieldPermissions->Dict.set(fieldName, rule)
             })
-            [{
-              ReventlessInfra.Api.fieldNames,
-              commandSchema,
-              fieldPermissions,
-              linkedViews: ?aggDef->Option.map(d => d.linkedViews),
-              consistencyRead: ?aggDef->Option.flatMap(d => d.consistencyRead),
-            }]
+            [
+              {
+                ReventlessInfra.Api.fieldNames,
+                commandSchema,
+                fieldPermissions,
+                linkedViews: ?(aggDef->Option.map(d => d.linkedViews)),
+                consistencyRead: ?(aggDef->Option.flatMap(d => d.consistencyRead)),
+              },
+            ]
           }
         }
       })
@@ -264,7 +274,7 @@ module Make = (
           authorization: None,
           permission: R.Spec.authorization,
           connectionSpec: true,
-          subIdField: ?subIdField,
+          ?subIdField,
           indexQueries: ?(indexes->Array.length > 0 ? Some(indexes) : None),
           resolvedFields: ?(resolvedFields->Array.length > 0 ? Some(resolvedFields) : None),
         }
@@ -299,8 +309,7 @@ module Make = (
         connectionFilterTypeName: qn.returnTypeName ++ "Filter",
       }
       let qn = switch R.Spec.subIdConfig {
-      | Some(_) =>
-        {
+      | Some(_) => {
           ...qn,
           itemsFieldName: qn.singleFieldName ++ "Items",
           itemsFilterTypeName: qn.returnTypeName ++ "ItemsFilter",
@@ -308,18 +317,12 @@ module Make = (
       | None => qn
       }
       Plugin_Helpers.queryFieldNamesRegistry->Dict.set(R.Spec.name, qn)
-      Plugin_Helpers.stateSchemaRegistry->Dict.set(
-        R.Spec.name,
-        R.Spec.stateSchema->S.castToUnknown,
-      )
+      Plugin_Helpers.stateSchemaRegistry->Dict.set(R.Spec.name, R.Spec.stateSchema->S.castToUnknown)
     })
 
     let apiSchemaFragment = {
       let baseFragment = FragmentProvider.generateFragment(~mutationEntries, ~queryEntries)
-      let subResult = Plugin_SubscriptionSchema.generate(
-        ~mutationEntries,
-        ~eventLogEntries,
-      )
+      let subResult = Plugin_SubscriptionSchema.generate(~mutationEntries, ~eventLogEntries)
       // The historical read counterpart of the Source A subscription — same
       // event logs, same generation point, so the two cannot disagree about
       // which streams exist.
@@ -442,12 +445,8 @@ module Make = (
           commandTypes: extractTypes(M.Spec.commandSchema),
           eventTypes: extractTypes(M.Spec.eventSchema),
           errorTypes: extractTypes(M.Spec.errorSchema),
-          commandSchemas: [
-            SchemaWalker.walk(M.Spec.name ++ ".command", M.Spec.commandSchema),
-          ],
-          eventSchemas: [
-            SchemaWalker.walk(M.Spec.name ++ ".event", M.Spec.eventSchema),
-          ],
+          commandSchemas: [SchemaWalker.walk(M.Spec.name ++ ".command", M.Spec.commandSchema)],
+          eventSchemas: [SchemaWalker.walk(M.Spec.name ++ ".event", M.Spec.eventSchema)],
           chapter: ?chapterFor(M.Spec.name),
         }
         Plugin_Helpers.componentSchemaRegistry->Dict.set(M.Spec.name, schema)
@@ -595,10 +594,10 @@ module Make = (
         hook({
           name,
           version,
-          kind: ?meta->Option.flatMap(m => m.kind),
-          displayName: ?meta->Option.flatMap(m => m.displayName),
-          vendor: ?meta->Option.flatMap(m => m.vendor),
-          architectureType: ?meta->Option.flatMap(m => m.architectureType),
+          kind: ?(meta->Option.flatMap(m => m.kind)),
+          displayName: ?(meta->Option.flatMap(m => m.displayName)),
+          vendor: ?(meta->Option.flatMap(m => m.vendor)),
+          architectureType: ?(meta->Option.flatMap(m => m.architectureType)),
           components,
         })
       | None => ()
@@ -790,24 +789,29 @@ module Make = (
         // topics → this plugin's EventCollector, and vice-versa. The eventTopic
         // resource's `id` is the SNS topic ARN (same convention as
         // extensionPointDefinition.eventTopic).
-        let dcbEventLogDef: Pulumi.Output.t<option<Reventless.Plugin.dcbEventLogDefinition>> =
-          switch dcbResult.dcbEventLogOutputs {
+        let dcbEventLogDef: Pulumi.Output.t<
+          option<Reventless.Plugin.dcbEventLogDefinition>,
+        > = switch dcbResult.dcbEventLogOutputs {
+        | None => Pulumi.Output.make(None)
+        | Some(dcbOutputs) =>
+          switch dcbOutputs.eventTopic.resources->Array.get(0) {
+          | Some(r) =>
+            r.id->Pulumi.Output.apply(arn => Some({
+              Reventless.Plugin.name: name ++ "DcbEventLog",
+              eventTopicArn: arn,
+            }))
           | None => Pulumi.Output.make(None)
-          | Some(dcbOutputs) =>
-            switch dcbOutputs.eventTopic.resources->Array.get(0) {
-            | Some(r) =>
-              r.id->Pulumi.Output.apply(arn => Some({
-                Reventless.Plugin.name: name ++ "DcbEventLog",
-                eventTopicArn: arn,
-              }))
-            | None => Pulumi.Output.make(None)
-            }
           }
+        }
 
         let pluginDefinition =
           (extensionPointsDefinitions, eventCollectorUrn, dcbEventLogDef)
           ->Pulumi.Output.all3
-          ->Pulumi.Output.apply(((extensionPointsDefinitions, eventCollectorUrn, dcbEventLogDef)) => {
+          ->Pulumi.Output.apply(((
+            extensionPointsDefinitions,
+            eventCollectorUrn,
+            dcbEventLogDef,
+          )) => {
             Reventless.Plugin.id,
             name,
             version,
@@ -854,13 +858,13 @@ module Make = (
         readModelsOutputs
         ->Dict.toArray
         ->Array.forEach(((rmName, rmOut)) => {
-          let urlOutput =
-            rmOut.eventCollector->Pulumi.Output.flatMap(ecOutputs =>
+          let urlOutput = rmOut.eventCollector->Pulumi.Output.flatMap(
+            ecOutputs =>
               switch ecOutputs.resources->Array.get(0) {
               | Some(r) => r.id
               | None => Pulumi.Output.make("")
-              }
-            )
+              },
+          )
           readModelQueueUrls->Dict.set(rmName, urlOutput)
         })
 

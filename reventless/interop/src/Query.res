@@ -6,7 +6,10 @@ let stackEntries: array<(string, Pulumi.StackReference.t)> = {
   let coreEntry =
     Pulumi.Config.make(Some("platform"))
     ->Pulumi.Config.get("stack")
-    ->Option.map(name => (name, Pulumi.StackReference.makeWithName(name ++ "-query", {"name": name})))
+    ->Option.map(name => (
+      name,
+      Pulumi.StackReference.makeWithName(name ++ "-query", {"name": name}),
+    ))
 
   Pulumi.Config.make(Some("interstack"))
   ->Pulumi.Config.getObject("dependencies")
@@ -37,11 +40,13 @@ module type StackQuery = {
 // Pulumi resolves and deserialises stack outputs to plain JavaScript values before
 // making them available via StackReference.
 let parseMeta = (raw: 'a): result<ExportMeta.t, string> =>
-  try Ok((raw->Obj.magic: JSON.t)->S.parseOrThrow(~to=ExportMeta.schema))
-  catch {
+  try Ok((raw->Obj.magic: JSON.t)->S.parseOrThrow(~to=ExportMeta.schema)) catch {
   | exn =>
     let msg =
-      exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("failed to parse interop meta")
+      exn
+      ->JsExn.fromException
+      ->Option.flatMap(JsExn.message)
+      ->Option.getOr("failed to parse interop meta")
     Error(msg)
   }
 
@@ -61,42 +66,44 @@ let queryAllArray = (
       stackRef->Pulumi.StackReference.getOutput(outputName)
 
     metaOutput->Pulumi.Output.flatMap(metaOpt =>
-      dataOutput->Pulumi.Output.apply(dataOpt =>
-        switch (metaOpt, dataOpt) {
-        | (None, _) =>
-          // Stack was found but has no _interopMeta — old publisher or not an interop stack
-          [Error(Compat.MetaMissing({stackName: stackName}))]
-        | (_, None) =>
-          // Stack doesn't export this output name — skip silently
-          []
-        | (Some(rawMeta), Some(rawData)) =>
-          switch parseMeta(rawMeta) {
-          | Error(_) => [Error(Compat.MetaMissing({stackName: stackName}))]
-          | Ok(meta) =>
-            switch rawData->JSON.Decode.array {
-            | None =>
-              [
-                Error(
-                  Compat.DecodeFailed({
-                    stackName: stackName,
-                    reason: `"${outputName}" stack export is not an array`,
-                  }),
-                ),
-              ]
-            | Some(items) =>
-              items->Array.map(item =>
-                Compat.validateAndProject(
-                  ~stackName,
-                  ~meta,
-                  ~outputName,
-                  ~rawJson=item,
-                  ~requiredFields,
-                  ~fromJson,
+      dataOutput->Pulumi.Output.apply(
+        dataOpt =>
+          switch (metaOpt, dataOpt) {
+          | (
+              None,
+              _,
+            ) => // Stack was found but has no _interopMeta — old publisher or not an interop stack
+            [Error(Compat.MetaMissing({stackName: stackName}))]
+          | (_, None) => // Stack doesn't export this output name — skip silently
+            []
+          | (Some(rawMeta), Some(rawData)) =>
+            switch parseMeta(rawMeta) {
+            | Error(_) => [Error(Compat.MetaMissing({stackName: stackName}))]
+            | Ok(meta) =>
+              switch rawData->JSON.Decode.array {
+              | None => [
+                  Error(
+                    Compat.DecodeFailed({
+                      stackName,
+                      reason: `"${outputName}" stack export is not an array`,
+                    }),
+                  ),
+                ]
+              | Some(items) =>
+                items->Array.map(
+                  item =>
+                    Compat.validateAndProject(
+                      ~stackName,
+                      ~meta,
+                      ~outputName,
+                      ~rawJson=item,
+                      ~requiredFields,
+                      ~fromJson,
+                    ),
                 )
-              )
+              }
             }
-          }
-        }
+          },
       )
     )
   })
@@ -118,28 +125,29 @@ let queryAllSingle = (
       stackRef->Pulumi.StackReference.getOutput(outputName)
 
     metaOutput->Pulumi.Output.flatMap(metaOpt =>
-      dataOutput->Pulumi.Output.apply(dataOpt =>
-        switch (metaOpt, dataOpt) {
-        | (None, _) => Some(Error(Compat.MetaMissing({stackName: stackName})))
-        | (_, None) =>
-          // Stack doesn't export this output name — skip silently
-          None
-        | (Some(rawMeta), Some(rawData)) =>
-          switch parseMeta(rawMeta) {
-          | Error(_) => Some(Error(Compat.MetaMissing({stackName: stackName})))
-          | Ok(meta) =>
-            Some(
-              Compat.validateAndProject(
-                ~stackName,
-                ~meta,
-                ~outputName,
-                ~rawJson=rawData,
-                ~requiredFields,
-                ~fromJson,
-              ),
-            )
-          }
-        }
+      dataOutput->Pulumi.Output.apply(
+        dataOpt =>
+          switch (metaOpt, dataOpt) {
+          | (None, _) => Some(Error(Compat.MetaMissing({stackName: stackName})))
+          | (_, None) =>
+            // Stack doesn't export this output name — skip silently
+            None
+          | (Some(rawMeta), Some(rawData)) =>
+            switch parseMeta(rawMeta) {
+            | Error(_) => Some(Error(Compat.MetaMissing({stackName: stackName})))
+            | Ok(meta) =>
+              Some(
+                Compat.validateAndProject(
+                  ~stackName,
+                  ~meta,
+                  ~outputName,
+                  ~rawJson=rawData,
+                  ~requiredFields,
+                  ~fromJson,
+                ),
+              )
+            }
+          },
       )
     )
   })
@@ -155,7 +163,12 @@ module Task = {
 
     let mergeWith = locals =>
       queryAll()->Pulumi.Output.apply(results => {
-        let remotes = results->Array.filterMap(r => switch r { | Ok(v) => Some(v) | Error(_) => None })
+        let remotes = results->Array.filterMap(r =>
+          switch r {
+          | Ok(v) => Some(v)
+          | Error(_) => None
+          }
+        )
         locals->Array.concat(remotes)
       })
   }
@@ -174,7 +187,12 @@ module EventMapper = {
 
     let mergeWith = locals =>
       queryAll()->Pulumi.Output.apply(results => {
-        let remotes = results->Array.filterMap(r => switch r { | Ok(v) => Some(v) | Error(_) => None })
+        let remotes = results->Array.filterMap(r =>
+          switch r {
+          | Ok(v) => Some(v)
+          | Error(_) => None
+          }
+        )
         locals->Array.concat(remotes)
       })
   }
@@ -185,15 +203,16 @@ module Plugin = {
     type t = P.t
 
     let queryAll = () =>
-      queryAllSingle(
-        ~outputName="plugin",
-        ~requiredFields=P.requiredFields,
-        ~fromJson=P.fromJson,
-      )
+      queryAllSingle(~outputName="plugin", ~requiredFields=P.requiredFields, ~fromJson=P.fromJson)
 
     let mergeWith = locals =>
       queryAll()->Pulumi.Output.apply(results => {
-        let remotes = results->Array.filterMap(r => switch r { | Ok(v) => Some(v) | Error(_) => None })
+        let remotes = results->Array.filterMap(r =>
+          switch r {
+          | Ok(v) => Some(v)
+          | Error(_) => None
+          }
+        )
         locals->Array.concat(remotes)
       })
   }
@@ -212,7 +231,12 @@ module ExtensionPoint = {
 
     let mergeWith = locals =>
       queryAll()->Pulumi.Output.apply(results => {
-        let remotes = results->Array.filterMap(r => switch r { | Ok(v) => Some(v) | Error(_) => None })
+        let remotes = results->Array.filterMap(r =>
+          switch r {
+          | Ok(v) => Some(v)
+          | Error(_) => None
+          }
+        )
         locals->Array.concat(remotes)
       })
   }

@@ -14,7 +14,7 @@ describe("Latch", () => {
   testPromise("makeLatch(true) starts open — await_ passes through immediately", async () => {
     let latch = Effect.makeLatch(true)->Effect.runSync
     let _ = await latch->Latch.await_->Effect.runPromise
-    expect(true)->toBe(true)  // reached without blocking
+    expect(true)->toBe(true) // reached without blocking
   })
 
   testPromise("close then open — latch can be cycled", async () => {

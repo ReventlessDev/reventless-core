@@ -22,10 +22,11 @@ module MakeCounterHandler = (
   // Used to pre-filter incoming envelopes by TAG before attempting decode —
   // sibling variants on the same source aggregate that this mapping does not
   // declare are silently skipped instead of producing decode-failure noise.
-  let mappingsWithTags = Mappings.mappings->Array.map((module(M: Mappings.Mapping)) => (
-    module(M: Mappings.Mapping),
-    Reventless.DcbTag.extractAllVariantNames(M.Source.eventSchema),
-  ))
+  let mappingsWithTags =
+    Mappings.mappings->Array.map((module(M: Mappings.Mapping)) => (
+      module(M: Mappings.Mapping),
+      Reventless.DcbTag.extractAllVariantNames(M.Source.eventSchema),
+    ))
 
   // Looks up the event mapping for a given event JSON by matching the source service name
   // from the event's meta against the registered Mapping modules.
@@ -44,12 +45,18 @@ module MakeCounterHandler = (
           )
         switch entry {
         | None =>
-          EffectLogger.logInfo(~comp="EventMapper", `map: No mapping ${source} -> ${target} found`)->Effect.runSync
+          EffectLogger.logInfo(
+            ~comp="EventMapper",
+            `map: No mapping ${source} -> ${target} found`,
+          )->Effect.runSync
           None
         | Some((mapping, acceptedTags)) =>
           module Mapping = unpack(mapping)
           let source = Mapping.Source.name
-          EffectLogger.logInfo(~comp="EventMapper", `map: found mapping ${source} -> ${target}`)->Effect.runSync
+          EffectLogger.logInfo(
+            ~comp="EventMapper",
+            `map: found mapping ${source} -> ${target}`,
+          )->Effect.runSync
           Some((eventObj', eventMeta, mapping, acceptedTags))
         }
       | None =>
@@ -224,8 +231,9 @@ module MakeCounterHandler = (
         }
       )
       ->Effect.flatMap(((publisherEntries, _)) =>
-        Effect.promise(() => publisherEntries)
-        ->Effect.flatMap(entries => Effect.promise(() => Ops.publishJsons(entries)))
+        Effect.promise(() => publisherEntries)->Effect.flatMap(
+          entries => Effect.promise(() => Ops.publishJsons(entries)),
+        )
       )
     )
 }
@@ -271,8 +279,10 @@ module MakeEventCollectorHandler = (Ops: EventCollectorOps): EventCollectorHandl
   //   3. Publishes generated commands to the target aggregate
   let handleJsonEvents: EventCollector.jsonEventsHandler = stream =>
     stream->Stream.runForEach(eventJson' =>
-      Effect.promise(() => Ops.commonEventsHandler([eventJson']))
-      ->Effect.flatMap(((publisherEntries, counterActions)) => {
+      Effect.promise(() => Ops.commonEventsHandler([eventJson']))->Effect.flatMap(((
+        publisherEntries,
+        counterActions,
+      )) => {
         let (countActions, addToCounterTargetActions) = counterActions->Array.partition(
           x =>
             switch x {
@@ -294,29 +304,34 @@ module MakeEventCollectorHandler = (Ops: EventCollectorOps): EventCollectorHandl
             ->Int.toString}`,
         )
         ->Effect.flatMap(_ => doCount(countItems))
-        ->Effect.flatMap(_ =>
-          EffectLogger.logInfo(
-            ~comp="EventMapper",
-            `eventCollectorEventsHandler: addToCounterTargetActions: ${addToCounterTargetActions
-              ->JSON.stringifyAny
-              ->Option.getOr("[]")}`,
-          )
-        )
-        ->Effect.flatMap(_ =>
-          Effect.all(
-            addToCounterTargetActions->Array.filterMap(x =>
-              switch x {
-              | AddToCounterTarget(counterTarget) =>
-                Some(Effect.promise(() => Ops.addToCounterTarget(counterTarget)))
-              | _ => None
-              }
+        ->Effect.flatMap(
+          _ =>
+            EffectLogger.logInfo(
+              ~comp="EventMapper",
+              `eventCollectorEventsHandler: addToCounterTargetActions: ${addToCounterTargetActions
+                ->JSON.stringifyAny
+                ->Option.getOr("[]")}`,
             ),
-            {"concurrency": "unbounded"},
-          )->Effect.map(_ => ())
         )
-        ->Effect.flatMap(_ =>
-          Effect.promise(() => publisherEntries)
-          ->Effect.flatMap(entries => Effect.promise(() => Ops.publishJsons(entries)))
+        ->Effect.flatMap(
+          _ =>
+            Effect.all(
+              addToCounterTargetActions->Array.filterMap(
+                x =>
+                  switch x {
+                  | AddToCounterTarget(counterTarget) =>
+                    Some(Effect.promise(() => Ops.addToCounterTarget(counterTarget)))
+                  | _ => None
+                  },
+              ),
+              {"concurrency": "unbounded"},
+            )->Effect.map(_ => ()),
+        )
+        ->Effect.flatMap(
+          _ =>
+            Effect.promise(() => publisherEntries)->Effect.flatMap(
+              entries => Effect.promise(() => Ops.publishJsons(entries)),
+            ),
         )
       })
     )

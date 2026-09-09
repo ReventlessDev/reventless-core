@@ -34,7 +34,10 @@ test("loadGraph cold-loads structures from the real plugins", async () => {
   deepEqual(g.structures->Array.map(((n, _)) => n), ["Catalog", "Ordering"])
 
   let catalog = structureFor(g, "Catalog")->Option.getOrThrow
-  let category = catalog.aggregates->Array.find((a: Reventless.Plugin.writableDef) => a.name == "Category")->Option.getOrThrow
+  let category =
+    catalog.aggregates
+    ->Array.find((a: Reventless.Plugin.writableDef) => a.name == "Category")
+    ->Option.getOrThrow
   ok(category.producedEventTypes->Array.includes("Catalog.Added"))
 
   // An aggregate's declared errors ride the structure beside its events: what the
@@ -45,7 +48,10 @@ test("loadGraph cold-loads structures from the real plugins", async () => {
   )
 
   let ordering = structureFor(g, "Ordering")->Option.getOrThrow
-  let order = ordering.aggregates->Array.find((a: Reventless.Plugin.writableDef) => a.name == "Order")->Option.getOrThrow
+  let order =
+    ordering.aggregates
+    ->Array.find((a: Reventless.Plugin.writableDef) => a.name == "Order")
+    ->Option.getOrThrow
   ok(order.producedEventTypes->Array.includes("Ordering.Placed"))
 
   // extensionPoints (producer side): Catalog owns Catalog.Products, fed by the
@@ -53,20 +59,31 @@ test("loadGraph cold-loads structures from the real plugins", async () => {
   // subset of the producer's producedEventTypes, the link the event graph draws.
   let catalogEps = catalog.extensionPoints->Option.getOr([])
   let productsEp =
-    catalogEps->Array.find((e: Reventless.Plugin.extensionPointDef) => e.name == "Catalog.Products")->Option.getOrThrow
-  ok(productsEp.delegateNames->Array.includes("Product"), ~message=productsEp.delegateNames->Array.join(","))
+    catalogEps
+    ->Array.find((e: Reventless.Plugin.extensionPointDef) => e.name == "Catalog.Products")
+    ->Option.getOrThrow
+  ok(
+    productsEp.delegateNames->Array.includes("Product"),
+    ~message=productsEp.delegateNames->Array.join(","),
+  )
   ok(
     productsEp.sourceEventTypes->Array.includes("Catalog.Added"),
     ~message=productsEp.sourceEventTypes->Array.join(","),
   )
-  let product = catalog.aggregates->Array.find((a: Reventless.Plugin.writableDef) => a.name == "Product")->Option.getOrThrow
+  let product =
+    catalog.aggregates
+    ->Array.find((a: Reventless.Plugin.writableDef) => a.name == "Product")
+    ->Option.getOrThrow
   ok(productsEp.sourceEventTypes->Array.every(e => product.producedEventTypes->Array.includes(e)))
 })
 
-test("loadGraph is cold — a second call in the same process succeeds (cache-busting works)", async () => {
-  let plugins = LocalHost.discover(~packageDirs=[catalogDir])
-  let g1 = await LocalHost.loadGraph(~platformModulePath=platformPath, ~plugins)
-  let g2 = await LocalHost.loadGraph(~platformModulePath=platformPath, ~plugins)
-  equal(g1.structures->Array.length, 1)
-  equal(g2.structures->Array.length, 1)
-})
+test(
+  "loadGraph is cold — a second call in the same process succeeds (cache-busting works)",
+  async () => {
+    let plugins = LocalHost.discover(~packageDirs=[catalogDir])
+    let g1 = await LocalHost.loadGraph(~platformModulePath=platformPath, ~plugins)
+    let g2 = await LocalHost.loadGraph(~platformModulePath=platformPath, ~plugins)
+    equal(g1.structures->Array.length, 1)
+    equal(g2.structures->Array.length, 1)
+  },
+)

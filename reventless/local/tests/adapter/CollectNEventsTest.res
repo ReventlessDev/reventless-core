@@ -50,10 +50,12 @@ describe("TestRunner.collectNEvents", () => {
     let collecting = TestRunner.collectNEvents(Bus.subscribeToEvents, "T", 3)
     let json = JSON.parseOrThrow("{}")
     let resolved = ref(false)
-    let _ = collecting->Promise.then(events => {
-      resolved := true
-      Promise.resolve(events)
-    })
+    let _ = collecting->Promise.then(
+      events => {
+        resolved := true
+        Promise.resolve(events)
+      },
+    )
     await Bus.publishEvent("T", "svc", meta, json)
     await Bus.publishEvent("T", "svc", meta, json)
     // Only 2 events so far — promise should not yet be resolved.

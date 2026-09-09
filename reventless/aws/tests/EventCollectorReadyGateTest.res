@@ -32,7 +32,7 @@ external makeOutput: (
 
 let pending = (value: 'a): (Pulumi.Output.t<'a>, unit => unit) => {
   let settle = ref(() => ())
-  let p = Promise.make((resolve, _) => settle := () => resolve(value))
+  let p = Promise.make((resolve, _) => settle := (() => resolve(value)))
   (
     makeOutput(
       Set.make(),
@@ -45,9 +45,10 @@ let pending = (value: 'a): (Pulumi.Output.t<'a>, unit => unit) => {
   )
 }
 
-let ticks = async () => await Promise.make((resolve, _) => {
-  let _ = setTimeout(() => resolve(), 50)
-})
+let ticks = async () =>
+  await Promise.make((resolve, _) => {
+    let _ = setTimeout(() => resolve(), 50)
+  })
 
 /** A collector mid-update, the way the engine presents one: the identifiers are
     already known — they do not change across a code update — and only

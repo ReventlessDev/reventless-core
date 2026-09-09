@@ -18,14 +18,13 @@ let eventFor = (
     groupConfiguration: {
       groupsToOverride: membership,
       iamRolesToOverride: iamRoles,
-      preferredRole: ?preferredRole->Option.map(Nullable.make),
+      preferredRole: ?(preferredRole->Option.map(Nullable.make)),
     },
   },
   userName: "carol",
 }
 
-let overrideOf = (e: Trigger.event) =>
-  e.response->Option.flatMap(r => r.claimsOverrideDetails)
+let overrideOf = (e: Trigger.event) => e.response->Option.flatMap(r => r.claimsOverrideDetails)
 
 let groupsOf = (e: Trigger.event) =>
   overrideOf(e)->Option.flatMap(c => c.groupOverrideDetails)->Option.map(g => g.groupsToOverride)
@@ -51,18 +50,20 @@ let claimOf = (e: Trigger.event, key) =>
 // the same token. That an absent override really is absent (rather than an empty
 // one, which is not the same thing) is asserted separately below.
 
-let effectiveGroups = (e: Trigger.event, ~membership) =>
-  groupsOf(e)->Option.getOr(membership)
+let effectiveGroups = (e: Trigger.event, ~membership) => groupsOf(e)->Option.getOr(membership)
 
 describe("the conformance table, minted by the trigger", () => {
   Contract.conformanceCases->Array.forEach(({label, membership, requested, expected}) =>
-    testSync(label, () => {
-      let event = Trigger.respond(
-        ~event=eventFor(~membership),
-        ~decision=Trigger.decide(~membership, ~storedRole=requested),
-      )
-      expect(effectiveGroups(event, ~membership))->toEqual(expected->Option.getOr(membership))
-    })
+    testSync(
+      label,
+      () => {
+        let event = Trigger.respond(
+          ~event=eventFor(~membership),
+          ~decision=Trigger.decide(~membership, ~storedRole=requested),
+        )
+        expect(effectiveGroups(event, ~membership))->toEqual(expected->Option.getOr(membership))
+      },
+    )
   )
 })
 
@@ -76,9 +77,9 @@ describe("Auth_ActiveRoleTrigger_Ops.decide", () => {
   )
 
   testSync("a held role narrows", () =>
-    expect(
-      Trigger.decide(~membership=["Admin", "Shopper"], ~storedRole=Some("Shopper")),
-    )->toEqual(Trigger.Narrow({role: "Shopper", membership: ["Admin", "Shopper"]}))
+    expect(Trigger.decide(~membership=["Admin", "Shopper"], ~storedRole=Some("Shopper")))->toEqual(
+      Trigger.Narrow({role: "Shopper", membership: ["Admin", "Shopper"]}),
+    )
   )
 
   // The case the local path never had to answer: the row outlives the membership.
@@ -152,7 +153,10 @@ describe("Auth_ActiveRoleTrigger_Ops.respond", () => {
     expect((
       details->Option.map(d => d.iamRolesToOverride),
       details->Option.flatMap(d => d.preferredRole),
-    ))->toEqual((Some(["arn:aws:iam::1:role/Shopper"]), Some(Nullable.make("arn:aws:iam::1:role/Shopper"))))
+    ))->toEqual((
+      Some(["arn:aws:iam::1:role/Shopper"]),
+      Some(Nullable.make("arn:aws:iam::1:role/Shopper")),
+    ))
   })
 
   testSync("a stale mint carries them through too", () => {

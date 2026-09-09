@@ -10,7 +10,13 @@ describe("AddProduct StateChangeSlice", () => {
   test("adds product when the referenced category exists", () =>
     givenEvents([CategoryAdded({categoryId: "cat1"})])
     ->whenCmd(
-      AddProduct({productId: "p1", name: "Laptop", description: "x", price: eur(999.99), categoryId: "cat1"}),
+      AddProduct({
+        productId: "p1",
+        name: "Laptop",
+        description: "x",
+        price: eur(999.99),
+        categoryId: "cat1",
+      }),
     )
     ->thenEvent(
       ProductAdded({
@@ -26,7 +32,13 @@ describe("AddProduct StateChangeSlice", () => {
   test("rejects when the referenced category does not exist", () =>
     givenEvents([])
     ->whenCmd(
-      AddProduct({productId: "p1", name: "Laptop", description: "x", price: eur(999.99), categoryId: "cat1"}),
+      AddProduct({
+        productId: "p1",
+        name: "Laptop",
+        description: "x",
+        price: eur(999.99),
+        categoryId: "cat1",
+      }),
     )
     ->thenError(CategoryNotFound)
   )
@@ -34,7 +46,13 @@ describe("AddProduct StateChangeSlice", () => {
   test("rejects when the referenced category is archived", () =>
     givenEvents([CategoryAdded({categoryId: "cat1"}), CategoryArchived({categoryId: "cat1"})])
     ->whenCmd(
-      AddProduct({productId: "p1", name: "Laptop", description: "x", price: eur(999.99), categoryId: "cat1"}),
+      AddProduct({
+        productId: "p1",
+        name: "Laptop",
+        description: "x",
+        price: eur(999.99),
+        categoryId: "cat1",
+      }),
     )
     ->thenError(CategoryNotFound)
   )
@@ -42,7 +60,13 @@ describe("AddProduct StateChangeSlice", () => {
   test("existing product returns ProductAlreadyExists", () =>
     givenEvents([CategoryAdded({categoryId: "cat1"}), ProductAdded({productId: "p1"})])
     ->whenCmd(
-      AddProduct({productId: "p1", name: "Laptop", description: "x", price: eur(999.99), categoryId: "cat1"}),
+      AddProduct({
+        productId: "p1",
+        name: "Laptop",
+        description: "x",
+        price: eur(999.99),
+        categoryId: "cat1",
+      }),
     )
     ->thenError(ProductAlreadyExists)
   )
@@ -55,7 +79,13 @@ describe("AddProduct StateChangeSlice", () => {
   test("a sibling product in the same category does not block a new product", () =>
     givenEvents([CategoryAdded({categoryId: "cat1"})])
     ->whenCmd(
-      AddProduct({productId: "p2", name: "Mouse", description: "y", price: eur(19.99), categoryId: "cat1"}),
+      AddProduct({
+        productId: "p2",
+        name: "Mouse",
+        description: "y",
+        price: eur(19.99),
+        categoryId: "cat1",
+      }),
     )
     ->thenEvent(
       ProductAdded({

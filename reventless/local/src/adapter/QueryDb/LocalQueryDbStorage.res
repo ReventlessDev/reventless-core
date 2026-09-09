@@ -33,7 +33,8 @@ module Make = (Bus: LocalBus.T) => {
     ~ttl=?,
     ~api,
     ~apiRole,
-    ~owner, ~opts,
+    ~owner,
+    ~opts,
   ) =>
     switch BackendState.getSqliteDb() {
     | Some(db) =>

@@ -91,7 +91,10 @@ type appendCondition = {
 let dcbTagId: S.Metadata.Id.t<bool> = S.Metadata.Id.make(~namespace="dcb", ~name="tag")
 
 /** Internal sury metadata ID used to mark the partition tag field. */
-let dcbPartitionTagId: S.Metadata.Id.t<bool> = S.Metadata.Id.make(~namespace="dcb", ~name="partitionTag")
+let dcbPartitionTagId: S.Metadata.Id.t<bool> = S.Metadata.Id.make(
+  ~namespace="dcb",
+  ~name="partitionTag",
+)
 
 /**
 Internal sury metadata ID marking a tag field as *cross-partition* — readable
@@ -101,22 +104,27 @@ partition-scoped behaviour. The scope is a property of the tag *key* and must
 agree across every event type that carries it (the fence-scope half depends on
 it). See `docs/analysis/dcb-consistency-check-issues.md` Issue 13.
 */
-let dcbCrossPartitionId: S.Metadata.Id.t<bool> =
-  S.Metadata.Id.make(~namespace="dcb", ~name="crossPartition")
+let dcbCrossPartitionId: S.Metadata.Id.t<bool> = S.Metadata.Id.make(
+  ~namespace="dcb",
+  ~name="crossPartition",
+)
 
 /** Metadata value for a composite partition member field. */
 type compositePartitionMemberMeta = {position: int, sep: string}
 
 /** Internal sury metadata ID used to mark a composite partition member field. */
-let dcbCompositePartitionMemberId: S.Metadata.Id.t<compositePartitionMemberMeta> =
-  S.Metadata.Id.make(~namespace="dcb", ~name="compositePartitionMember")
+let dcbCompositePartitionMemberId: S.Metadata.Id.t<
+  compositePartitionMemberMeta,
+> = S.Metadata.Id.make(~namespace="dcb", ~name="compositePartitionMember")
 
 /**
 Internal sury metadata ID carrying an explicit tag-key override. When present,
 tag extraction uses the stored string as the tag `key` instead of the field name.
 */
-let dcbTagKeyOverrideId: S.Metadata.Id.t<string> =
-  S.Metadata.Id.make(~namespace="dcb", ~name="tagKeyOverride")
+let dcbTagKeyOverrideId: S.Metadata.Id.t<string> = S.Metadata.Id.make(
+  ~namespace="dcb",
+  ~name="tagKeyOverride",
+)
 
 /**
 A sury string schema annotated as a DCB tag field.
@@ -139,7 +147,8 @@ and array element types.
     })
 ```
 */
-let string: S.t<string> = S.string->S.Metadata.set(~id=dcbTagId, true)
+let string: S.t<string> =
+  S.string->S.Metadata.set(~id=dcbTagId, true)
 
 /**
 A sury string schema annotated as a DCB tag field with an explicit tag-key override.
@@ -169,7 +178,8 @@ let stringForKey = (~key: string): S.t<string> =>
 A sury int schema annotated as a DCB tag field.
 Use with `@s.matches(DcbTag.int)` on integer fields that should be extracted as tags.
 */
-let int: S.t<int> = S.int->S.Metadata.set(~id=dcbTagId, true)
+let int: S.t<int> =
+  S.int->S.Metadata.set(~id=dcbTagId, true)
 
 /**
 A sury string schema annotated as both a DCB tag field AND the partition key.
@@ -518,12 +528,15 @@ let extractTagsFromJson = (schema: S.t<unknown>, json: JSON.t): array<tag> =>
   | AnyOf({anyOf}) =>
     switch json->JSON.Decode.object {
     | Some(jsonDict) =>
-      let jsonTag = jsonDict->Dict.get("TAG")->Option.flatMap(j =>
-        switch j {
-        | JSON.String(s) => Some(s)
-        | _ => None
-        }
-      )
+      let jsonTag =
+        jsonDict
+        ->Dict.get("TAG")
+        ->Option.flatMap(j =>
+          switch j {
+          | JSON.String(s) => Some(s)
+          | _ => None
+          }
+        )
       anyOf->Array.reduce([], (acc, variantSchema) =>
         if acc->Array.length > 0 {
           acc
@@ -674,10 +687,7 @@ Fields holding records are descended into on the same terms as in
 `extractTagsFromProperties` — the two walks agree there and differ only on scalar
 arrays; see that function.
 */
-let extractTagsFromPropertiesExpanded = (
-  properties: dict<S.t<unknown>>,
-  jsonDict: dict<JSON.t>,
-) =>
+let extractTagsFromPropertiesExpanded = (properties: dict<S.t<unknown>>, jsonDict: dict<JSON.t>) =>
   properties
   ->Dict.toArray
   ->Array.flatMap(((fieldName, fieldSchema)) =>
@@ -705,12 +715,15 @@ let extractTagsFromJsonExpanded = (schema: S.t<unknown>, json: JSON.t): array<ta
   | AnyOf({anyOf}) =>
     switch json->JSON.Decode.object {
     | Some(jsonDict) =>
-      let jsonTag = jsonDict->Dict.get("TAG")->Option.flatMap(j =>
-        switch j {
-        | JSON.String(s) => Some(s)
-        | _ => None
-        }
-      )
+      let jsonTag =
+        jsonDict
+        ->Dict.get("TAG")
+        ->Option.flatMap(j =>
+          switch j {
+          | JSON.String(s) => Some(s)
+          | _ => None
+          }
+        )
       anyOf->Array.reduce([], (acc, variantSchema) =>
         if acc->Array.length > 0 {
           acc
@@ -873,8 +886,7 @@ let narrowEventTypesForTags = (
   eventTypes->Array.filter(eventType =>
     switch tagKeysByEventType->Dict.get(eventType) {
     | None => true
-    | Some(producedKeys) =>
-      tags->Array.every(tag => producedKeys->Array.includes(tag.key))
+    | Some(producedKeys) => tags->Array.every(tag => producedKeys->Array.includes(tag.key))
     }
   )
 
@@ -922,7 +934,8 @@ let buildQueryFromCommand = (
   ~tagKeysByEventType: dict<array<string>>=Dict.make(),
   ~crossPartitionTagKeys: array<string>=[],
 ): query => {
-  let typesForTags = clauseTags => narrowEventTypesForTags(eventTypes, clauseTags, tagKeysByEventType)
+  let typesForTags = clauseTags =>
+    narrowEventTypesForTags(eventTypes, clauseTags, tagKeysByEventType)
   if hasTaggedArrayFields(schema) {
     // Array fields already fan out per element into single-tag clauses, so a
     // cross-partition array tag is already its own clause (the adapter routes it
@@ -940,8 +953,7 @@ let buildQueryFromCommand = (
     // must read "all of the course" AND "all of the student" as two single-tag
     // reads — a composite read of the exact `{course, student}` pair is neither.
     // Without a cross-partition tag the default composite clause is preserved.
-    let hasCrossPartition =
-      tags->Array.some(tag => crossPartitionTagKeys->Array.includes(tag.key))
+    let hasCrossPartition = tags->Array.some(tag => crossPartitionTagKeys->Array.includes(tag.key))
     if hasCrossPartition && tags->Array.length > 1 {
       tags->Array.map(tag => {
         let clauseTags = [{key: tag.key, value: tag.value}]
@@ -1347,9 +1359,9 @@ type compositePartitionFieldInfo = {name: string, position: int, sep: string}
 Extracts all composite partition member fields from a single object-variant schema.
 Returns an array sorted by `position`.
 */
-let extractCompositePartitionFieldsFromProperties = (
-  properties: dict<S.t<unknown>>,
-): array<compositePartitionFieldInfo> =>
+let extractCompositePartitionFieldsFromProperties = (properties: dict<S.t<unknown>>): array<
+  compositePartitionFieldInfo,
+> =>
   properties
   ->Dict.toArray
   ->Array.filterMap(((fieldName, fieldSchema)) =>
@@ -1396,7 +1408,15 @@ let getCompositePartitionKeyValue = (tags: array<tag>, spec: compositePartitionS
   spec.keys
   ->Array.mapWithIndex((fieldName, i) => {
     let v =
-      tags->Array.findMap(t => if t.key == fieldName {Some(t.value)} else {None})->Option.getOr("")
+      tags
+      ->Array.findMap(t =>
+        if t.key == fieldName {
+          Some(t.value)
+        } else {
+          None
+        }
+      )
+      ->Option.getOr("")
     if i == 0 {
       v
     } else {
@@ -1450,7 +1470,9 @@ let derivePartitionTag = (
 
   let allPartitionFields = {
     let seen = Set.make()
-    schemas->Array.flatMap(schema => extractPartitionTagFields(schema))->Array.filter(f => {
+    schemas
+    ->Array.flatMap(schema => extractPartitionTagFields(schema))
+    ->Array.filter(f => {
       if seen->Set.has(f) {
         false
       } else {
@@ -1461,27 +1483,28 @@ let derivePartitionTag = (
   }
 
   if hasComposite && allPartitionFields->Array.length > 0 {
-    JsError.throwWithMessage(
-      `DCB spec mixes @compositePartitionTag and @partitionTag — use one strategy per schema`,
-    )
+    JsError.throwWithMessage(`DCB spec mixes @compositePartitionTag and @partitionTag — use one strategy per schema`)
   }
 
   if hasComposite {
     if allCompositeFields->Array.length < 2 {
       JsError.throwWithMessage(
-        `@compositePartitionTag requires at least 2 annotated fields — only ${allCompositeFields->Array.length->Int.toString} found`,
+        `@compositePartitionTag requires at least 2 annotated fields — only ${allCompositeFields
+          ->Array.length
+          ->Int.toString} found`,
       )
     }
     let sorted = allCompositeFields->Array.toSorted((a, b) => Int.compare(a.position, b.position))
     let keys = sorted->Array.map(info => info.name)
-    let seps = sorted->Array.slice(~start=0, ~end=sorted->Array.length - 1)->Array.map(info =>
-      info.sep
-    )
+    let seps =
+      sorted->Array.slice(~start=0, ~end=sorted->Array.length - 1)->Array.map(info => info.sep)
     Composite({keys, seps})
   } else {
     let allTaggedFields = {
       let seen = Set.make()
-      schemas->Array.flatMap(schema => extractTaggedFields(schema))->Array.filter(f => {
+      schemas
+      ->Array.flatMap(schema => extractTaggedFields(schema))
+      ->Array.filter(f => {
         if seen->Set.has(f) {
           false
         } else {
@@ -1492,7 +1515,8 @@ let derivePartitionTag = (
     }
 
     switch allTaggedFields {
-    | [] => JsError.throwWithMessage("DCB spec has no tagged fields — cannot derive partition tag")
+    | [] =>
+      JsError.throwWithMessage("DCB spec has no tagged fields — cannot derive partition tag")
     | [singleField] => Simple({key: singleField})
     | multipleFields => {
         let needsExplicitPartition = schemas->Array.some(schema => hasMultiTagVariant(schema))
@@ -1514,11 +1538,15 @@ let derivePartitionTag = (
           | [singlePartition] => Simple({key: singlePartition})
           | [] =>
             JsError.throwWithMessage(
-              `DCB spec has variants with multiple tagged fields (${multipleFields->Array.join(", ")}) but none is annotated with @partitionTag — affected: ${context} — mark one field as the partition key`,
+              `DCB spec has variants with multiple tagged fields (${multipleFields->Array.join(
+                  ", ",
+                )}) but none is annotated with @partitionTag — affected: ${context} — mark one field as the partition key`,
             )
           | multiplePartitions =>
             JsError.throwWithMessage(
-              `DCB spec has multiple fields annotated with @partitionTag (${multiplePartitions->Array.join(", ")}) — only one is allowed — affected: ${context}`,
+              `DCB spec has multiple fields annotated with @partitionTag (${multiplePartitions->Array.join(
+                  ", ",
+                )}) — only one is allowed — affected: ${context}`,
             )
           }
         } else {

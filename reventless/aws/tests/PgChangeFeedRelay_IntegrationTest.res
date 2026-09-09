@@ -32,7 +32,10 @@ let stored = (eventType, tags, data): DcbEventLog_Adapter.rawStoredEvent => {
 let capturingSendBatch = sink => async jsons => sink := sink.contents->Array.concat(jsons)
 
 let idOf = json =>
-  json->JSON.Decode.object->Option.flatMap(o => o->Dict.get("id"))->Option.flatMap(JSON.Decode.string)
+  json
+  ->JSON.Decode.object
+  ->Option.flatMap(o => o->Dict.get("id"))
+  ->Option.flatMap(JSON.Decode.string)
 
 switch NodeProcess.env->Dict.get("PG_URL") {
 | None =>
@@ -63,7 +66,11 @@ switch NodeProcess.env->Dict.get("PG_URL") {
     testPromise("relays each appended DCB event as an {id, meta, event} body", async () => {
       let (_n, ops, _s) = makeLog("relay-basic")
       let mk = i =>
-        stored("OrderPlaced", [{key: "orderId", value: "o-1"}], jsonObj([("i", JSON.Encode.int(i))]))
+        stored(
+          "OrderPlaced",
+          [{key: "orderId", value: "o-1"}],
+          jsonObj([("i", JSON.Encode.int(i))]),
+        )
       let _ = await ops.append([mk(0), mk(1), mk(2)])
 
       let sink = ref([])
@@ -81,109 +88,134 @@ switch NodeProcess.env->Dict.get("PG_URL") {
       let first = sink.contents->Array.getUnsafe(0)
       expect(idOf(first))->toEqual(Some("orderId:o-1"))
       let obj = first->JSON.Decode.object->Option.getOrThrow
-      expect(obj->Dict.get("event")->Option.getOrThrow->JSON.stringify->String.includes("OrderPlaced"))->toBe(true)
+      expect(
+        obj->Dict.get("event")->Option.getOrThrow->JSON.stringify->String.includes("OrderPlaced"),
+      )->toBe(true)
       let metaObj = obj->Dict.get("meta")->Option.flatMap(JSON.Decode.object)->Option.getOrThrow
       expect(metaObj->Dict.get("service"))->toEqual(Some(JSON.Encode.string("relay-it")))
     })
 
-    testPromise("checkpoints — a second drain from the same subscriber sees nothing new", async () => {
-      let (_n, ops, _s) = makeLog("relay-checkpoint")
-      let mk = i => stored("Fed", [{key: "orderId", value: "f"}], jsonObj([("i", JSON.Encode.int(i))]))
-      let _ = await ops.append([mk(0), mk(1)])
+    testPromise(
+      "checkpoints — a second drain from the same subscriber sees nothing new",
+      async () => {
+        let (_n, ops, _s) = makeLog("relay-checkpoint")
+        let mk = i =>
+          stored("Fed", [{key: "orderId", value: "f"}], jsonObj([("i", JSON.Encode.int(i))]))
+        let _ = await ops.append([mk(0), mk(1)])
 
-      let sink = ref([])
-      let first = await PgChangeFeedRelay_Runtime.relayWithPool(
-        ~pool,
-        ~logName="relay-checkpoint",
-        ~subscriber="relay-it",
-        ~sendBatch=capturingSendBatch(sink),
-      )
-      expect(first)->toBe(2)
+        let sink = ref([])
+        let first = await PgChangeFeedRelay_Runtime.relayWithPool(
+          ~pool,
+          ~logName="relay-checkpoint",
+          ~subscriber="relay-it",
+          ~sendBatch=capturingSendBatch(sink),
+        )
+        expect(first)->toBe(2)
 
-      let second = await PgChangeFeedRelay_Runtime.relayWithPool(
-        ~pool,
-        ~logName="relay-checkpoint",
-        ~subscriber="relay-it",
-        ~sendBatch=capturingSendBatch(sink),
-      )
-      expect(second)->toBe(0)
-      // No extra bodies were emitted on the second pass.
-      expect(sink.contents->Array.length)->toBe(2)
-    })
+        let second = await PgChangeFeedRelay_Runtime.relayWithPool(
+          ~pool,
+          ~logName="relay-checkpoint",
+          ~subscriber="relay-it",
+          ~sendBatch=capturingSendBatch(sink),
+        )
+        expect(second)->toBe(0)
+        // No extra bodies were emitted on the second pass.
+        expect(sink.contents->Array.length)->toBe(2)
+      },
+    )
 
-    testPromise("classic: relays each appended event_log event as an {id, meta, event} body", async () => {
-      let (_n, ops, _s) =
-        ReventlessPostgres.EventLogStorage_Postgres.makeStorage(
+    testPromise(
+      "classic: relays each appended event_log event as an {id, meta, event} body",
+      async () => {
+        let (_n, ops, _s) = ReventlessPostgres.EventLogStorage_Postgres.makeStorage(
           ~pool,
           ~name="ClassicRelayBasicEventLog",
           ~opts=(),
         )
-      // The flat on-disk item the classic append stores verbatim — same shape the
-      // DynamoDB path puts (id, position, event, data, decomposed meta).
-      let flatItem = (~id, ~seq, ~eventType, ~data) =>
-        [
-          ("id", JSON.Encode.string(id)),
-          ("position", JSON.Encode.string(seq->Int.toString->String.padStart(9, "0"))),
-          ("event", JSON.Encode.string(eventType)),
-          ("data", data),
-        ]
-        ->Array.concat(
-          ReventlessCore.Message.generateMeta(~service="relay-it")->ReventlessCore.Message.decomposeMeta,
+        // The flat on-disk item the classic append stores verbatim — same shape the
+        // DynamoDB path puts (id, position, event, data, decomposed meta).
+        let flatItem = (~id, ~seq, ~eventType, ~data) =>
+          [
+            ("id", JSON.Encode.string(id)),
+            ("position", JSON.Encode.string(seq->Int.toString->String.padStart(9, "0"))),
+            ("event", JSON.Encode.string(eventType)),
+            ("data", data),
+          ]
+          ->Array.concat(
+            ReventlessCore.Message.generateMeta(
+              ~service="relay-it",
+            )->ReventlessCore.Message.decomposeMeta,
+          )
+          ->Dict.fromArray
+          ->JSON.Encode.object
+        let _ = await ops.append(
+          0,
+          "agg-1",
+          [
+            flatItem(
+              ~id="agg-1",
+              ~seq=0,
+              ~eventType="NameUpdated",
+              ~data=jsonObj([("n", JSON.Encode.int(0))]),
+            ),
+            flatItem(
+              ~id="agg-1",
+              ~seq=1,
+              ~eventType="NameUpdated",
+              ~data=jsonObj([("n", JSON.Encode.int(1))]),
+            ),
+          ],
         )
-        ->Dict.fromArray
-        ->JSON.Encode.object
-      let _ = await ops.append(
-        0,
-        "agg-1",
-        [
-          flatItem(~id="agg-1", ~seq=0, ~eventType="NameUpdated", ~data=jsonObj([("n", JSON.Encode.int(0))])),
-          flatItem(~id="agg-1", ~seq=1, ~eventType="NameUpdated", ~data=jsonObj([("n", JSON.Encode.int(1))])),
-        ],
-      )
 
-      let sink = ref([])
-      let processed = await PgChangeFeedRelay_Runtime.relayClassicWithPool(
-        ~pool,
-        ~logName="ClassicRelayBasicEventLog",
-        ~subscriber="relay-it:ClassicRelayBasicEventLog",
-        ~sendBatch=capturingSendBatch(sink),
-      )
+        let sink = ref([])
+        let processed = await PgChangeFeedRelay_Runtime.relayClassicWithPool(
+          ~pool,
+          ~logName="ClassicRelayBasicEventLog",
+          ~subscriber="relay-it:ClassicRelayBasicEventLog",
+          ~sendBatch=capturingSendBatch(sink),
+        )
 
-      expect(processed)->toBe(2)
-      expect(sink.contents->Array.length)->toBe(2)
-      let first = sink.contents->Array.getUnsafe(0)
-      expect(idOf(first))->toEqual(Some("agg-1"))
-      let obj = first->JSON.Decode.object->Option.getOrThrow
-      expect(
-        obj->Dict.get("event")->Option.getOrThrow->JSON.stringify->String.includes("NameUpdated"),
-      )->toBe(true)
-      let metaObj = obj->Dict.get("meta")->Option.flatMap(JSON.Decode.object)->Option.getOrThrow
-      expect(metaObj->Dict.get("service"))->toEqual(Some(JSON.Encode.string("relay-it")))
+        expect(processed)->toBe(2)
+        expect(sink.contents->Array.length)->toBe(2)
+        let first = sink.contents->Array.getUnsafe(0)
+        expect(idOf(first))->toEqual(Some("agg-1"))
+        let obj = first->JSON.Decode.object->Option.getOrThrow
+        expect(
+          obj->Dict.get("event")->Option.getOrThrow->JSON.stringify->String.includes("NameUpdated"),
+        )->toBe(true)
+        let metaObj = obj->Dict.get("meta")->Option.flatMap(JSON.Decode.object)->Option.getOrThrow
+        expect(metaObj->Dict.get("service"))->toEqual(Some(JSON.Encode.string("relay-it")))
 
-      // Checkpointed: a second drain from the same subscriber sees nothing new.
-      let second = await PgChangeFeedRelay_Runtime.relayClassicWithPool(
-        ~pool,
-        ~logName="ClassicRelayBasicEventLog",
-        ~subscriber="relay-it:ClassicRelayBasicEventLog",
-        ~sendBatch=capturingSendBatch(sink),
-      )
-      expect(second)->toBe(0)
-      expect(sink.contents->Array.length)->toBe(2)
-    })
+        // Checkpointed: a second drain from the same subscriber sees nothing new.
+        let second = await PgChangeFeedRelay_Runtime.relayClassicWithPool(
+          ~pool,
+          ~logName="ClassicRelayBasicEventLog",
+          ~subscriber="relay-it:ClassicRelayBasicEventLog",
+          ~sendBatch=capturingSendBatch(sink),
+        )
+        expect(second)->toBe(0)
+        expect(sink.contents->Array.length)->toBe(2)
+      },
+    )
 
     testPromise("classic: per-log subscribers keep checkpoints isolated across logs", async () => {
       // event_log_subscription keys by subscriber alone. With a SHARED subscriber,
       // draining log A after log B's events were appended would save a cursor past
       // B's rows and silently skip them — the clobber the per-log subscriber fixes.
       let mkOps = name => {
-        let (_n, ops, _s) =
-          ReventlessPostgres.EventLogStorage_Postgres.makeStorage(~pool, ~name, ~opts=())
+        let (_n, ops, _s) = ReventlessPostgres.EventLogStorage_Postgres.makeStorage(
+          ~pool,
+          ~name,
+          ~opts=(),
+        )
         ops
       }
       let opsB = mkOps("ClassicRelayIsoBEventLog")
       let opsA = mkOps("ClassicRelayIsoAEventLog")
       let meta = () =>
-        ReventlessCore.Message.generateMeta(~service="relay-it")->ReventlessCore.Message.decomposeMeta
+        ReventlessCore.Message.generateMeta(
+          ~service="relay-it",
+        )->ReventlessCore.Message.decomposeMeta
       let item = (id, eventType) =>
         [
           ("id", JSON.Encode.string(id)),
@@ -221,20 +253,18 @@ switch NodeProcess.env->Dict.get("PG_URL") {
     })
 
     testPromise("partitionTag pins the id to its tag on a multi-tag event", async () => {
-      let (_n, ops, _s) =
-        ReventlessPostgres.DcbEventLogStorage_Postgres.makeStorage(
-          ~pool,
-          ~name="relay-pt",
-          ~indexes=[],
-          ~partitionTag=DcbTag.Simple({key: "customerId"}),
-          ~opts,
-        )
-      let ev =
-        stored(
-          "OrderPlaced",
-          [{key: "orderId", value: "o-9"}, {key: "customerId", value: "c-9"}],
-          jsonObj([("n", JSON.Encode.int(1))]),
-        )
+      let (_n, ops, _s) = ReventlessPostgres.DcbEventLogStorage_Postgres.makeStorage(
+        ~pool,
+        ~name="relay-pt",
+        ~indexes=[],
+        ~partitionTag=DcbTag.Simple({key: "customerId"}),
+        ~opts,
+      )
+      let ev = stored(
+        "OrderPlaced",
+        [{key: "orderId", value: "o-9"}, {key: "customerId", value: "c-9"}],
+        jsonObj([("n", JSON.Encode.int(1))]),
+      )
       let _ = await ops.append([ev])
 
       // The relay receives the sury-encoded partition tag exactly as the builder emits it.

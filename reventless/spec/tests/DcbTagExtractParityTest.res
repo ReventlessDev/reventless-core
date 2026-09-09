@@ -26,10 +26,10 @@ module IntTag = {
 module ArrayTag = {
   @schema
   type command =
-    PlaceOrder({
-      orderId: @s.matches(DcbTag.string) string,
-      productIds: array<@s.matches(DcbTag.stringForKey(~key="productId")) string>,
-    })
+    | PlaceOrder({
+        orderId: @s.matches(DcbTag.string) string,
+        productIds: array<@s.matches(DcbTag.stringForKey(~key="productId")) string>,
+      })
 }
 
 module Renamed = {

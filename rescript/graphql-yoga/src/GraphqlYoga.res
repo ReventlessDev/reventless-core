@@ -43,10 +43,8 @@ type resolverFn = (JSON.t, JSON.t, JSON.t) => promise<JSON.t>
  * ```
  */
 @module("graphql-yoga")
-external createSchema: {
-  "typeDefs": string,
-  "resolvers": dict<dict<resolverFn>>,
-} => schema = "createSchema"
+external createSchema: {"typeDefs": string, "resolvers": dict<dict<resolverFn>>} => schema =
+  "createSchema"
 
 /**
  * Multi-document variant of `createSchema`. graphql-yoga's `createSchema` is a
@@ -209,11 +207,9 @@ type executionResult = {
  * resolver invoked directly cannot show.
  */
 @module("graphql")
-external graphql: {
-  "schema": schema,
-  "source": string,
-  "contextValue": JSON.t,
-} => promise<executionResult> = "graphql"
+external graphql: {"schema": schema, "source": string, "contextValue": JSON.t} => promise<
+  executionResult,
+> = "graphql"
 
 // ─── PubSub (for WebSocket subscriptions) ────────────────────────────────
 
@@ -256,8 +252,7 @@ type wsServer
 
 /** Construct a `ws` `WebSocketServer` bound to `server` at `path`. */
 @new @module("ws")
-external newWebSocketServer: {"server": httpServer, "path": string} => wsServer =
-  "WebSocketServer"
+external newWebSocketServer: {"server": httpServer, "path": string} => wsServer = "WebSocketServer"
 
 /**
  * Install the `graphql-ws` handler on a `WebSocketServer`, fanning out

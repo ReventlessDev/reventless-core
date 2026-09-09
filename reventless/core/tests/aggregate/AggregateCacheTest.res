@@ -12,7 +12,6 @@
 
 open JestGlobals
 
-
 module AggSpec = {
   module Id = Reventless.Id.StringPure
   let name = "CacheTestAggregate"
@@ -29,7 +28,7 @@ module AggSpec = {
     | CheckpointTaken({count: int})
 
   @schema
-  type error = | Never
+  type error = Never
 
   let moduleUrl: string = %raw(`import.meta.url`)
 }
@@ -103,7 +102,7 @@ let makeMockEL = (): mockEL => {
       Error(EventLog.Conflict)
     } else {
       storedRef := storedRef.contents->Array.concat(newEvents)
-      Ok(())
+      Ok()
     }
   }
 
@@ -155,11 +154,11 @@ module TestOps = {
       ) => promise<result<unit, EventLog.appendError>>,
       replay: string => promise<array<AggSpec.event>>,
       replayStream: (string, ~fromSeq: int=?) => Stream.t<AggSpec.event, string, unit>,
-      appendStream: (int, string, Stream.t<AggSpec.event, string, unit>) => Effect.t<
-        unit,
+      appendStream: (
+        int,
         string,
-        unit,
-      >,
+        Stream.t<AggSpec.event, string, unit>,
+      ) => Effect.t<unit, string, unit>,
       latestSnapshot: string => promise<result<option<EventLog.snapshot>, string>>,
       writeSnapshot: (string, EventLog.snapshot) => promise<result<unit, string>>,
     }
@@ -223,14 +222,13 @@ describe("Aggregate_Callback — replay cache:", () => {
     let _ = await run(AggSpec.Checkpoint)
     expect(mock.replayCallCount.contents)->toBe(2)
     // Both checkpoints observed the same state — cached fold ≡ replayed fold.
-    let checkpoints =
-      mock.getAll()
-      ->Array.filterMap(e =>
+    let checkpoints = mock.getAll()->Array.filterMap(
+      e =>
         switch e.event {
         | CheckpointTaken({count}) => Some(count)
         | _ => None
-        }
-      )
+        },
+    )
     expect(checkpoints)->toEqual([3, 3])
   })
 

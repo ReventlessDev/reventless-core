@@ -17,8 +17,9 @@ describe("DcbEventLog E2E", () => {
 
   testPromise("AddItem command publishes 1 event to event topic", async () => {
     let cmd =
-      AddItemSpec.AddItem({id: "item-1", name: "Widget"})
-      ->ReventlessCore.Message.encode(AddItemSpec.commandSchema)
+      AddItemSpec.AddItem({id: "item-1", name: "Widget"})->ReventlessCore.Message.encode(
+        AddItemSpec.commandSchema,
+      )
     await dispatch(cmd, "item-1")
     expect(capturedEventCount.contents)->toBe(1)
   })
@@ -26,16 +27,18 @@ describe("DcbEventLog E2E", () => {
   testPromise("duplicate AddItem produces 0 events (ItemAlreadyExists)", async () => {
     // item-1 was already created in the previous test — same aggregate state persists
     let cmd =
-      AddItemSpec.AddItem({id: "item-1", name: "Widget"})
-      ->ReventlessCore.Message.encode(AddItemSpec.commandSchema)
+      AddItemSpec.AddItem({id: "item-1", name: "Widget"})->ReventlessCore.Message.encode(
+        AddItemSpec.commandSchema,
+      )
     await dispatch(cmd, "item-1")
     expect(capturedEventCount.contents)->toBe(0)
   })
 
   testPromise("AddItem for new id produces 1 event", async () => {
     let cmd =
-      AddItemSpec.AddItem({id: "item-2", name: "Gadget"})
-      ->ReventlessCore.Message.encode(AddItemSpec.commandSchema)
+      AddItemSpec.AddItem({id: "item-2", name: "Gadget"})->ReventlessCore.Message.encode(
+        AddItemSpec.commandSchema,
+      )
     await dispatch(cmd, "item-2")
     expect(capturedEventCount.contents)->toBe(1)
   })

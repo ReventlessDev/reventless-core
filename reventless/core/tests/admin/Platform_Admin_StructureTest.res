@@ -44,8 +44,7 @@ describe("the Plugins read model declares its lifecycle", () => {
   })
 
   testSync("is served on the encoded def under the new key", () => {
-    let json =
-      rm->Platform_ComponentDefinitionsApi.encodeQueryableDef->JSON.stringify
+    let json = rm->Platform_ComponentDefinitionsApi.encodeQueryableDef->JSON.stringify
     expect(json->String.includes(`"lifecycleField":"status"`))->toEqual(true)
   })
 
@@ -137,11 +136,7 @@ describe("the Plugin command defs carry every argument the SDL requires", () => 
       Platform_Admin_Structure.pluginCommands
       ->Array.filter(c => c.apiExposed != Some(false))
       ->Array.map(c => c.mutationField),
-    )->toEqual([
-      "Platform_Plugin_Activate",
-      "Platform_Plugin_Deactivate",
-      "Platform_Plugin_Retire",
-    ])
+    )->toEqual(["Platform_Plugin_Activate", "Platform_Plugin_Deactivate", "Platform_Plugin_Retire"])
   )
 
   // The `@noApi` protocol variants come back from the same walk. They belong on
@@ -179,16 +174,20 @@ describe("the internal commands declare the edges they move rows along", () => {
   }
 
   testSync("the only edge into Disconnected is declared", () =>
-    expect((commandNamed("Disconnect").allowedStates, commandNamed("Disconnect").targetState))
-    ->toEqual((Some(["Connected"]), Some("Disconnected")))
+    expect((
+      commandNamed("Disconnect").allowedStates,
+      commandNamed("Disconnect").targetState,
+    ))->toEqual((Some(["Connected"]), Some("Disconnected")))
   )
 
   // The creating form's claim: a target and no from-set. `Connect` brings the
   // version's row into being, so there is no state it runs from — and an empty
   // `allowedStates` would say the opposite, that it is legal in none.
   testSync("the handshake declares a target and no from-set", () =>
-    expect((commandNamed("Connect").allowedStates, commandNamed("Connect").targetState))
-    ->toEqual((None, Some("Connected")))
+    expect((commandNamed("Connect").allowedStates, commandNamed("Connect").targetState))->toEqual((
+      None,
+      Some("Connected"),
+    ))
   )
 
   testSync("and no state is left unreachable", () =>

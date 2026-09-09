@@ -21,6 +21,7 @@ type state = {shipmentId: string, @lifecycle shipmentStatus: shipmentStatus}
 let project = ({event}: Reventless.StateViewSlice.consumed<consumedEvent>) =>
   switch event {
   | ShipmentBooked({shipmentId}) => [Set(shipmentId, {shipmentId, shipmentStatus: Booked})]
-  | ShipmentDispatched({shipmentId}) =>
-    [Update(shipmentId, s => {...s, shipmentStatus: Dispatched})]
+  | ShipmentDispatched({shipmentId}) => [
+      Update(shipmentId, s => {...s, shipmentStatus: Dispatched}),
+    ]
   }

@@ -17,7 +17,9 @@ let sha256hex = (data: string): string =>
 let hmacFromStr = (key: string, data: string): NodeCrypto.buffer =>
   NodeCrypto.createHmac("sha256", key)->NodeCrypto.hmacUpdate(data)->NodeCrypto.hmacDigestBuffer
 let hmacFromBuf = (key: NodeCrypto.buffer, data: string): NodeCrypto.buffer =>
-  NodeCrypto.createHmacFromBuffer("sha256", key)->NodeCrypto.hmacUpdate(data)->NodeCrypto.hmacDigestBuffer
+  NodeCrypto.createHmacFromBuffer("sha256", key)
+  ->NodeCrypto.hmacUpdate(data)
+  ->NodeCrypto.hmacDigestBuffer
 
 // ── SigV4 ───────────────────────────────────────────────────────────────────
 
@@ -71,7 +73,10 @@ let signedHeaders = (
   let kRegion = hmacFromBuf(kDate, region)
   let kService = hmacFromBuf(kRegion, "appsync")
   let kSigning = hmacFromBuf(kService, "aws4_request")
-  let signature = NodeCrypto.createHmacFromBuffer("sha256", kSigning)->NodeCrypto.hmacUpdate(stringToSign)->NodeCrypto.hmacDigest("hex")
+  let signature =
+    NodeCrypto.createHmacFromBuffer("sha256", kSigning)
+    ->NodeCrypto.hmacUpdate(stringToSign)
+    ->NodeCrypto.hmacDigest("hex")
 
   let authorization = `AWS4-HMAC-SHA256 Credential=${creds.accessKeyId}/${scope}, SignedHeaders=${signedHeaderList}, Signature=${signature}`
   let out = Dict.fromArray(sorted)
@@ -115,5 +120,4 @@ let postEvent = async (
 
 // AppSync Events channel segments allow only [A-Za-z0-9-]; anything else
 // collapses to `-`. Mirrors the UI's AutoLive.normalizeSegment.
-let pathSegment = (value: string): string =>
-  value->String.replaceRegExp(%re("/[^A-Za-z0-9-]/g"), "-")
+let pathSegment = (value: string): string => value->String.replaceRegExp(/[^A-Za-z0-9-]/g, "-")

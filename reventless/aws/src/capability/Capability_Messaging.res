@@ -80,8 +80,7 @@ let parseEmailProvider = (raw: string): emailProvider =>
   | other =>
     JsError.throwWithMessage(
       `platform:${emailProviderKey} is "${other}", which is not an email provider.\n` ++
-      `  Known values: "ses" (default — a verified SES identity) and "log" ` ++
-      `(writes each message to the log, sends nothing).`,
+      `  Known values: "ses" (default — a verified SES identity) and "log" ` ++ `(writes each message to the log, sends nothing).`,
     )
   }
 
@@ -121,11 +120,11 @@ let make = (
   // Asked for SES and named no address. Nothing is provisioned, and the deploy
   // gate refuses this the moment a plugin declares it needs messaging — here
   // rather than there because this module has no view of what the plugins want.
-  | (Ses, None) => {emailProvider: providerInput, smsSender: ?smsSender}
+  | (Ses, None) => {emailProvider: providerInput, ?smsSender}
   | (Ses, Some(address)) => {
       emailSender: Capability_Messaging_Ses.emailSender(~name, ~address, ~displayName, ~opts?),
       emailProvider: providerInput,
-      smsSender: ?smsSender,
+      ?smsSender,
     }
   | (Log, address) => {
       emailSender: Pulumi.Input.make(
@@ -135,7 +134,7 @@ let make = (
         ),
       ),
       emailProvider: providerInput,
-      smsSender: ?smsSender,
+      ?smsSender,
     }
   }
 }

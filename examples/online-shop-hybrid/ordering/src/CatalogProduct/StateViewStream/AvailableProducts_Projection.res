@@ -3,8 +3,7 @@
 let project = ({event}) =>
   switch event {
   | CatalogProductSynced({productId, name, price}) => [Set(productId, {productId, name, price})]
-  | CatalogProductPriceChanged({productId, price}) =>
-    [Update(productId, p => {...p, price})]
+  | CatalogProductPriceChanged({productId, price}) => [Update(productId, p => {...p, price})]
   // `Delete`, not a flag. This view answers "what can I order", so a withdrawn
   // product leaves it. Marking it instead — `@retired` on the shopper view —
   // would look tidy and be wrong twice over: a shopper is not elevated, so the

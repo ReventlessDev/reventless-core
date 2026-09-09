@@ -35,8 +35,9 @@ describe("Util_DynamoDb.toResourceInfo", () => {
   })
 
   test("carries a sort key when the table has one", async () => {
-    let resourceInfo =
-      await table(~rangeKey=Nullable.make("seq"))->Util_DynamoDb.toResourceInfo->resolve
+    let resourceInfo = await table(~rangeKey=Nullable.make("seq"))
+    ->Util_DynamoDb.toResourceInfo
+    ->resolve
     expect(resourceInfo)->toEqual(
       ReventlessInfra.Adapter.StorageKeys({partitionKey: "id", sortKey: Some("seq")}),
     )

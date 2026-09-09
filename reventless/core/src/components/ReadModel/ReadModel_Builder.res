@@ -104,8 +104,7 @@ module Make = (
           `ReadModel "${Spec.name}" has a Mapping with sourceName "${sourceName}", ` ++
           `but no EventTopic with that key exists in allEventTopics. ` ++
           `Available source names: [${availableNames}]. ` ++
-          `Check Mapping.Make's first arg matches an Aggregate Spec.name or a DCB ` ++
-          `source name (typically "<pluginName>DcbEventLog").`,
+          `Check Mapping.Make's first arg matches an Aggregate Spec.name or a DCB ` ++ `source name (typically "<pluginName>DcbEventLog").`,
         )
       }
     )

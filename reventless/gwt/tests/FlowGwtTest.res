@@ -8,7 +8,6 @@
 // filters the log by its command's tags.
 // See `docs/plans/done/gwt-flow-and-extension-test-kinds.md` Phase 2.
 
-
 open Flow_GWT
 
 // -- Slices ------------------------------------------------------------------

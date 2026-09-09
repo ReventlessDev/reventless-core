@@ -57,10 +57,7 @@ let make: ReventlessCore.Heartbeat_Adapter.runnerMaker<runtimeParts> = (
       ~args={
         policy: PulumiAws.PolicyDocument.mergePolicyDocuments(
           name ++ "Policy",
-          [
-            PulumiAws.Lambda.defaultLoggingPolicyDocument,
-            heartbeatLambdaSendMessagePolicyDocument,
-          ],
+          [PulumiAws.Lambda.defaultLoggingPolicyDocument, heartbeatLambdaSendMessagePolicyDocument],
         )->Pulumi.Output.asInput,
         role: lambdaRole.id->Pulumi.Output.asInput,
       },
@@ -70,7 +67,10 @@ let make: ReventlessCore.Heartbeat_Adapter.runnerMaker<runtimeParts> = (
   // The Lambda permission and CloudWatch event target genuinely need the
   // Lambda's resolved arn/name, so they stay inside an apply.
   let _permissionAndEventTarget =
-    (lambda->Pulumi.Output.flatMap(lambda => lambda.arn), lambda->Pulumi.Output.flatMap(lambda => lambda.name))
+    (
+      lambda->Pulumi.Output.flatMap(lambda => lambda.arn),
+      lambda->Pulumi.Output.flatMap(lambda => lambda.name),
+    )
     ->Pulumi.Output.all2
     ->Pulumi.Output.apply(((lambdaArn, lambdaName)) => {
       let _addHeartbeatLambdaPermission = PulumiAws.Lambda.Permission.make(

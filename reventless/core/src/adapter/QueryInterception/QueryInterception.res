@@ -51,7 +51,6 @@ not.
 
 See `docs/plans/done/query-interception-provisioning.md`.
 */
-
 let enabled = ref(false)
 
 /**

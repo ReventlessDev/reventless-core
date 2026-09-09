@@ -22,7 +22,9 @@ let isNodeExcluded = (excludedModules, node) => {
 
 let hasDependency = (node, dependencyName) => {
   let found = ref(false)
-  node->Arborist.edgesOut->Arborist.mapForEachWithKey((_edge, key, _map) => {
+  node
+  ->Arborist.edgesOut
+  ->Arborist.mapForEachWithKey((_edge, key, _map) => {
     if key === dependencyName {
       found := true
     }
@@ -32,16 +34,23 @@ let hasDependency = (node, dependencyName) => {
 
 let hasRescriptDependency = node => hasDependency(node, "rescript")
 
-let isNecessary = (~excludeScopes, ~excludeModules, ~includeModules=[], ~includeScopes=[], node) => {
+let isNecessary = (
+  ~excludeScopes,
+  ~excludeModules,
+  ~includeModules=[],
+  ~includeScopes=[],
+  node,
+) => {
   // Force-keep takes precedence over every exclusion (including the
   // orphan/`DependentExcluded` pruning below). A whole scope can be forced —
   // e.g. `@smithy/*`, whose only prod dependents are the scope-excluded
   // `@aws-sdk/*` clients, so it would otherwise be pruned as orphaned even
   // though the deployed Lambdas resolve it from the layer at runtime.
-  if includeModules->Array.includes(node->Arborist.name) || isNodeScopeIncluded(includeScopes, node) {
+  if (
+    includeModules->Array.includes(node->Arborist.name) || isNodeScopeIncluded(includeScopes, node)
+  ) {
     None
-  } else
-  if node->Arborist.dev {
+  } else if node->Arborist.dev {
     Some(Dev)
   } else if node->Arborist.optional {
     Some(Optional)
@@ -88,12 +97,20 @@ let isNecessary = (~excludeScopes, ~excludeModules, ~includeModules=[], ~include
   }
 }
 
-let predIsNecessary = (~excludeScopes, ~excludeModules, ~includeModules=[], ~includeScopes=[], node) =>
+let predIsNecessary = (
+  ~excludeScopes,
+  ~excludeModules,
+  ~includeModules=[],
+  ~includeScopes=[],
+  node,
+) =>
   isNecessary(~excludeScopes, ~excludeModules, ~includeModules, ~includeScopes, node)->Option.isNone
 
 let rec filterNodes = (node, ~predicate) => {
   let count = ref(0)
-  node->Arborist.children->Arborist.mapForEachWithKey((child, key, map) => {
+  node
+  ->Arborist.children
+  ->Arborist.mapForEachWithKey((child, key, map) => {
     if predicate(child) && map->Map.delete(key) {
       count := count.contents + 1 + DependencyBundler_Stats.countChildrenRecursive(child)
     } else if DependencyBundler_Stats.hasChildren(child) {

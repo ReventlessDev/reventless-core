@@ -92,8 +92,9 @@ let resolvePackageRoot = (~fromPulumiProject: bool=false, packageName: string): 
     let viaFramework = () => NodePath.dirname(localRequire->NodeModule.requireResolve(request))
     let viaPulumiProject = () =>
       NodePath.dirname(
-        NodeModule.createRequire(NodeProcess.cwd() ++ "/index.js")
-        ->NodeModule.requireResolve(request),
+        NodeModule.createRequire(NodeProcess.cwd() ++ "/index.js")->NodeModule.requireResolve(
+          request,
+        ),
       )
     let (preferred, fallback) = fromPulumiProject
       ? (viaPulumiProject, viaFramework)
@@ -204,7 +205,11 @@ let rec walkDir = (
         let newPrefix = prefix == "" ? entryName : prefix ++ "/" ++ entryName
         walkDir(~dir=NodePath.join([dir, entryName]), ~prefix=newPrefix, ~assets, ~paths)
       }
-    } else if entryName == "package.json" || entryName->String.endsWith(".mjs") || entryName->String.endsWith(".js") {
+    } else if (
+      entryName == "package.json" ||
+      entryName->String.endsWith(".mjs") ||
+      entryName->String.endsWith(".js")
+    ) {
       let relPath = prefix == "" ? entryName : prefix ++ "/" ++ entryName
       let absPath = NodePath.join([dir, entryName])
       assets->Dict.set(
@@ -339,15 +344,12 @@ let isRuntimeProvided = (specifier: string, ~pkgName: string): bool =>
   nodeBuiltins->Set.has(specifier) ||
   nodeBuiltins->Set.has(pkgName) ||
   pkgName->String.startsWith("@aws-sdk/") ||
-  pkgName->String.startsWith("@smithy/") ||
-  (
-    try {
-      let _ = resolvePackageRoot(pkgName)
-      true
-    } catch {
-    | _ => false
-    }
-  )
+  pkgName->String.startsWith("@smithy/") || try {
+    let _ = resolvePackageRoot(pkgName)
+    true
+  } catch {
+  | _ => false
+  }
 
 /** The framework's own package root: this module ships inside reventless-aws, so
     the nearest package.json walking up from it is reventless-aws's own. */
@@ -422,8 +424,9 @@ let resolvePackageRootFrom = (~fromRoot: string, pkgName: string): option<string
   try {
     Some(
       NodePath.dirname(
-        NodeModule.createRequire(NodePath.join([fromRoot, "index.js"]))
-        ->NodeModule.requireResolve(pkgName ++ "/package.json"),
+        NodeModule.createRequire(NodePath.join([fromRoot, "index.js"]))->NodeModule.requireResolve(
+          pkgName ++ "/package.json",
+        ),
       ),
     )
   } catch {
@@ -569,15 +572,16 @@ let assertRuntimeExtensionImportsResolvable = (
       if relPath->String.endsWith(".mjs") || relPath->String.endsWith(".js") {
         NodeFs.readFileSync(absPath)
         ->staticImportSpecifiers
-        ->Array.forEach(specifier =>
-          if isBareSpecifier(specifier) {
-            let dep = extractPackageName(specifier)
-            if !(bundledPackages->Dict.has(dep)) && !isRuntimeProvided(specifier, ~pkgName=dep) {
-              JsError.throwWithMessage(
-                `runtime extension package "${pkgName}" imports "${specifier}" (${relPath}), which is neither bundled into the code archive nor provided in the deployed runtime. The extension would be skipped at every cold start with "could not be loaded". Declare the package in the extension's companionModuleUrls — the import.meta.url of one of its modules — so it rides into the archive alongside the extension.`,
-              )
-            }
-          }
+        ->Array.forEach(
+          specifier =>
+            if isBareSpecifier(specifier) {
+              let dep = extractPackageName(specifier)
+              if !(bundledPackages->Dict.has(dep)) && !isRuntimeProvided(specifier, ~pkgName=dep) {
+                JsError.throwWithMessage(
+                  `runtime extension package "${pkgName}" imports "${specifier}" (${relPath}), which is neither bundled into the code archive nor provided in the deployed runtime. The extension would be skipped at every cold start with "could not be loaded". Declare the package in the extension's companionModuleUrls — the import.meta.url of one of its modules — so it rides into the archive alongside the extension.`,
+                )
+              }
+            },
         )
       }
     )
@@ -627,15 +631,16 @@ let buildCodeArchive = (
     )
   })
   // Co-bundle effect whenever reventless-aws is bundled (see comment above).
-  let allPackageDirs =
-    if packageDirs->Dict.has("@reventlessdev/reventless-aws") &&
-      !(packageDirs->Dict.has("effect")) {
-      let dirs = packageDirs->Dict.copy
-      dirs->Dict.set("effect", resolvePackageRoot("effect"))
-      dirs
-    } else {
-      packageDirs
-    }
+  let allPackageDirs = if (
+    packageDirs->Dict.has("@reventlessdev/reventless-aws") && !(packageDirs->Dict.has("effect"))
+  ) {
+    let dirs = packageDirs->Dict.copy
+    dirs->Dict.set("effect", resolvePackageRoot("effect"))
+    dirs
+  } else {
+    packageDirs
+  }
+
   // Registered runtime extensions ride along (with their declared companion
   // packages), so the entry shell can import them at cold start. No-op when
   // nothing is registered — the archive, and therefore `sourceCodeHash`, is
@@ -671,15 +676,14 @@ let buildCodeArchive = (
   })
   let code = Pulumi.Archive.assetArchive(archiveContents)
   packageContentHashes.contents->Array.sort(String.compare)
-  let sourceCodeHash =
-    hashString(
-      reExportCode ++
-      "\n---\n" ++
-      packageContentHashes.contents->Array.join(",") ++
-      "\n---\n" ++
-      extraHashEntries->Array.join("\n") ++
-      "\n---\n" ++
-      loaderHash,
-    )
+  let sourceCodeHash = hashString(
+    reExportCode ++
+    "\n---\n" ++
+    packageContentHashes.contents->Array.join(",") ++
+    "\n---\n" ++
+    extraHashEntries->Array.join("\n") ++
+    "\n---\n" ++
+    loaderHash,
+  )
   {code, sourceCodeHash}
 }

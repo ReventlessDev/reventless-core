@@ -48,8 +48,7 @@ module OrdersViewProjection = {
 
   let project = ({event}: Reventless.StateViewSlice.consumed<consumedEvent>) =>
     switch event {
-    | OrderPlaced({id, placedAt}) =>
-      [Set(id, {id, placedAt, shippedAt: "", displayName: None})]
+    | OrderPlaced({id, placedAt}) => [Set(id, {id, placedAt, shippedAt: "", displayName: None})]
     | OrderShipped({id, shippedAt}) => [Update(id, s => {...s, shippedAt})]
     }
 }
@@ -88,11 +87,10 @@ let loadState = async id => {
   switch Bus.getQueryDb("DnOrdersView") {
   | None => []
   | Some(ops) =>
-    let states =
-      await ops.loadStream(id)
-      ->Stream.runCollect
-      ->Effect.catchAll(_ => Effect.succeed([]))
-      ->Effect.runPromise
+    let states = await ops.loadStream(id)
+    ->Stream.runCollect
+    ->Effect.catchAll(_ => Effect.succeed([]))
+    ->Effect.runPromise
     states->Array.map(json => json->Reventless.Util_Sury.fromJson(OrdersViewSpec.stateSchema))
   }
 }

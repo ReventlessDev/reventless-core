@@ -35,14 +35,25 @@ describe("ProductImages StateChangeSlice", () => {
     givenEvents([
       ProductAdded,
       ProductImageAttached({productImage: img}),
-      ProductImageAttached({productImage: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg"}),
+      ProductImageAttached({
+        productImage: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg",
+      }),
     ])
     ->whenCmd(
-      SetPrimaryProductImage({productId: "p1", productImage: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg"}),
+      SetPrimaryProductImage({
+        productId: "p1",
+        productImage: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg",
+      }),
     )
     ->thenEvents([
-      ProductPrimaryImageSet({productId: "p1", productImage: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg"}),
-      ProductEffectiveImageChanged({productId: "p1", productImage: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg"}),
+      ProductPrimaryImageSet({
+        productId: "p1",
+        productImage: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg",
+      }),
+      ProductEffectiveImageChanged({
+        productId: "p1",
+        productImage: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg",
+      }),
     ])
   )
 
@@ -74,15 +85,26 @@ describe("ProductImages StateChangeSlice", () => {
     givenEvents([
       ProductAdded,
       ProductImageAttached({productImage: img}),
-      ProductImageAttached({productImage: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg"}),
+      ProductImageAttached({
+        productImage: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg",
+      }),
       ProductArchived,
     ])
     ->whenCmd(
-      SetPrimaryProductImage({productId: "p1", productImage: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg"}),
+      SetPrimaryProductImage({
+        productId: "p1",
+        productImage: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg",
+      }),
     )
     ->thenEvents([
-      ProductPrimaryImageSet({productId: "p1", productImage: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg"}),
-      ProductEffectiveImageChanged({productId: "p1", productImage: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg"}),
+      ProductPrimaryImageSet({
+        productId: "p1",
+        productImage: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg",
+      }),
+      ProductEffectiveImageChanged({
+        productId: "p1",
+        productImage: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg",
+      }),
     ])
   )
 

@@ -20,9 +20,9 @@ module type T = {
   ) => component
 }
 
-let toResolvedOutputs = (
-  outputs: outputs,
-): Pulumi.Output.t<ReventlessInterop.EventMapper.resolvedOutputs> => {
+let toResolvedOutputs = (outputs: outputs): Pulumi.Output.t<
+  ReventlessInterop.EventMapper.resolvedOutputs,
+> => {
   let eventCollectorOutput =
     outputs.eventCollector->Pulumi.Output.flatMap((ec: ReventlessEventCollector.outputs) =>
       ec.resources
@@ -30,7 +30,7 @@ let toResolvedOutputs = (
       ->Pulumi.Output.apply(resources => {
         let resolved: ReventlessInterop.EventCollector.resolvedOutputs = {
           name: ec.name,
-          resources: resources,
+          resources,
         }
         resolved
       })
@@ -42,12 +42,10 @@ let toResolvedOutputs = (
       counter.countsDb.resources->Adapter.resourcesToInterop,
     )
     ->Pulumi.Output.all2
-    ->Pulumi.Output.apply(((referencesDbResources, countsDbResources)) =>
-      Some({
-        ReventlessInterop.Counter.referencesDb: {resources: referencesDbResources},
-        countsDb: {resources: countsDbResources},
-      })
-    )
+    ->Pulumi.Output.apply(((referencesDbResources, countsDbResources)) => Some({
+      ReventlessInterop.Counter.referencesDb: {resources: referencesDbResources},
+      countsDb: {resources: countsDbResources},
+    }))
   | None => Pulumi.Output.make(None)
   }
   (eventCollectorOutput, counterOutput)

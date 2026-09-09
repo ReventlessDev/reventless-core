@@ -44,42 +44,44 @@ let make = (
     ~opts,
   )
 
-  let _ =
-    uiFragmentRegistryTableName->Pulumi.Output.apply(tableName => {
-      open PolicyDocument
-      let _rolePolicy = IAM.RolePolicy.make(
-        ~name=name ++ "LambdaPolicy",
-        ~args={
-          IAM.RolePolicy.policy: PolicyDocument.make(
-            ~id=name ++ "LambdaPolicy",
-            ~statements=[
-              {
-                sid: "AllowLambdaLogging",
-                effect: Allow,
-                actions: Action("logs:*"),
-                resources: Resource("arn:aws:logs:*:*:*"),
-              },
-              {
-                sid: "AllowScanUiFragmentsTable",
-                effect: Allow,
-                actions: Actions(["dynamodb:Scan"]),
-                resources: Resource("arn:aws:dynamodb:*:*:table/" ++ tableName),
-              },
-            ],
-          )
-          ->PolicyDocument.toJsonString
-          ->Pulumi.Input.make,
-          role: lambdaRole.id->Pulumi.Output.asInput,
-        },
-        ~opts,
-      )
-    })
+  let _ = uiFragmentRegistryTableName->Pulumi.Output.apply(tableName => {
+    open PolicyDocument
+    let _rolePolicy = IAM.RolePolicy.make(
+      ~name=name ++ "LambdaPolicy",
+      ~args={
+        IAM.RolePolicy.policy: PolicyDocument.make(
+          ~id=name ++ "LambdaPolicy",
+          ~statements=[
+            {
+              sid: "AllowLambdaLogging",
+              effect: Allow,
+              actions: Action("logs:*"),
+              resources: Resource("arn:aws:logs:*:*:*"),
+            },
+            {
+              sid: "AllowScanUiFragmentsTable",
+              effect: Allow,
+              actions: Actions(["dynamodb:Scan"]),
+              resources: Resource("arn:aws:dynamodb:*:*:table/" ++ tableName),
+            },
+          ],
+        )
+        ->PolicyDocument.toJsonString
+        ->Pulumi.Input.make,
+        role: lambdaRole.id->Pulumi.Output.asInput,
+      },
+      ~opts,
+    )
+  })
 
   // Bundle reventless-aws (the compiled `_Ops` handler lives inside it) and
   // re-export its `handler`; buildCodeArchive also ships the ESM resolve-hook so
   // the handler's bare @aws-sdk/* specifiers resolve from the managed runtime.
   let packageDirs = Dict.fromArray([
-    ("@reventlessdev/reventless-aws", Util_Bundle.resolvePackageRoot("@reventlessdev/reventless-aws")),
+    (
+      "@reventlessdev/reventless-aws",
+      Util_Bundle.resolvePackageRoot("@reventlessdev/reventless-aws"),
+    ),
   ])
   let {code, sourceCodeHash} = Util_Bundle.buildCodeArchive(
     ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Api/Platform_UIFragments_Lambda_Ops.res.mjs",
@@ -118,7 +120,12 @@ let make = (
       memorySize: 512->Pulumi.Input.make,
       timeout: 30->Pulumi.Input.make,
       layers,
-      tags: AWS.Tags.make(~name=name ++ "Lambda", ~kind=ReventlessCore.ComponentType.Platform, ~role=Runtime, ~scope=Platform),
+      tags: AWS.Tags.make(
+        ~name=name ++ "Lambda",
+        ~kind=ReventlessCore.ComponentType.Platform,
+        ~role=Runtime,
+        ~scope=Platform,
+      ),
       environment: (
         {
           Lambda.Function.variables: Dict.fromArray([

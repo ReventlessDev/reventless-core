@@ -10,14 +10,8 @@ let globalSecondaryIndexes = (indexes: array<Reventless.ReadModel.indexConfig>) 
     let {index, projectionType} = indexConfig
     let (projectionType, includes) = switch projectionType {
     | Reventless.ReadModel.ALL as _projection => (PulumiAws.DynamoDb.Table.ALL, None)
-    | Reventless.ReadModel.KEYS_ONLY as _projection => (
-        PulumiAws.DynamoDb.Table.KEYS_ONLY,
-        None,
-      )
-    | Reventless.ReadModel.INCLUDE(includes) => (
-        PulumiAws.DynamoDb.Table.INCLUDE,
-        Some(includes),
-      )
+    | Reventless.ReadModel.KEYS_ONLY as _projection => (PulumiAws.DynamoDb.Table.KEYS_ONLY, None)
+    | Reventless.ReadModel.INCLUDE(includes) => (PulumiAws.DynamoDb.Table.INCLUDE, Some(includes))
     }
     {
       name: index,
@@ -34,20 +28,19 @@ let globalSecondaryIndexes = (indexes: array<Reventless.ReadModel.indexConfig>) 
 // sorts on `id`, and any index may sort on the table's own sort key. First
 // declaration wins; they agree on the type because both name the same column.
 let attributes = (sortField, indexes: array<Reventless.ReadModel.indexConfig>) => {
-  let all =
-    [
-      [{name: "id", type_: "S"}],
-      sortField->Option.mapOr([], sortField => [{name: sortField, type_: "S"}]),
-      indexes
-      ->Array.map((indexConfig: Reventless.ReadModel.indexConfig) => {
-        let {index, type_} = indexConfig
-        [
-          [{name: indexConfig.idField->Option.getOr(index), type_}],
-          indexConfig.subIdField->Option.mapOr([], sortField => [{name: sortField, type_: "S"}]),
-        ]->Array.flat
-      })
-      ->Array.flat,
-    ]->Array.flat
+  let all = [
+    [{name: "id", type_: "S"}],
+    sortField->Option.mapOr([], sortField => [{name: sortField, type_: "S"}]),
+    indexes
+    ->Array.map((indexConfig: Reventless.ReadModel.indexConfig) => {
+      let {index, type_} = indexConfig
+      [
+        [{name: indexConfig.idField->Option.getOr(index), type_}],
+        indexConfig.subIdField->Option.mapOr([], sortField => [{name: sortField, type_: "S"}]),
+      ]->Array.flat
+    })
+    ->Array.flat,
+  ]->Array.flat
   let seen = Set.make()
   all->Array.filter(({name}) =>
     if seen->Set.has(name) {
@@ -111,9 +104,15 @@ let make: ReventlessCore.QueryDb_Adapter.storageMaker<api, role> = (
   ~ttl=?,
   ~api,
   ~apiRole,
-  ~owner, ~opts,
+  ~owner,
+  ~opts,
 ) => {
-  let tags = AWS.Tags.make(~name, ~kind=ReventlessCore.QueryDb.componentType, ~role=QueryDb, ~owner?)
+  let tags = AWS.Tags.make(
+    ~name,
+    ~kind=ReventlessCore.QueryDb.componentType,
+    ~role=QueryDb,
+    ~owner?,
+  )
   let table = Util_DynamoDb.makeTable(
     name,
     ~attributes=attributes(subIdField, indexes),

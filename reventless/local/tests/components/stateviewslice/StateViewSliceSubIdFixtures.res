@@ -11,8 +11,17 @@ open Reventless.Projection
 module ScoreEventLog = {
   @schema
   type event =
-    | ScoreRecorded({id: @s.matches(Reventless.DcbTag.string) string, category: string, date: string, score: int})
-    | ScoreRemoved({id: @s.matches(Reventless.DcbTag.string) string, category: string, date: string})
+    | ScoreRecorded({
+        id: @s.matches(Reventless.DcbTag.string) string,
+        category: string,
+        date: string,
+        score: int,
+      })
+    | ScoreRemoved({
+        id: @s.matches(Reventless.DcbTag.string) string,
+        category: string,
+        date: string,
+      })
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -46,10 +55,8 @@ module ScoresViewProjection = {
 
   let project = ({event}: Reventless.StateViewSlice.consumed<consumedEvent>) =>
     switch event {
-    | ScoreRecorded({id, category, date, score}) =>
-      [Set(id, {id, category, date, score})]
-    | ScoreRemoved({id, category: _, date: _}) =>
-      [Delete(id)]
+    | ScoreRecorded({id, category, date, score}) => [Set(id, {id, category, date, score})]
+    | ScoreRemoved({id, category: _, date: _}) => [Delete(id)]
     }
 }
 
@@ -107,11 +114,10 @@ let loadScores = async id => {
   switch Bus.getQueryDb("ScoresView") {
   | None => []
   | Some(ops) =>
-    let states =
-      await ops.loadStream(id)
-      ->Stream.runCollect
-      ->Effect.catchAll(_ => Effect.succeed([]))
-      ->Effect.runPromise
+    let states = await ops.loadStream(id)
+    ->Stream.runCollect
+    ->Effect.catchAll(_ => Effect.succeed([]))
+    ->Effect.runPromise
     states->Array.map(json => json->Reventless.Util_Sury.fromJson(ScoresViewSpec.stateSchema))
   }
 }

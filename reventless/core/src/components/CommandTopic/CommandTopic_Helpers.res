@@ -206,8 +206,7 @@ let runInlineAndCollect = async (
       Rejected({msgId, errorCode, errorDetail: detail})
     | None =>
       switch results->Array.get(i) {
-      | Some(Error(msg)) =>
-        Rejected({msgId, errorCode: "Conflict", errorDetail: Some(msg)})
+      | Some(Error(msg)) => Rejected({msgId, errorCode: "Conflict", errorDetail: Some(msg)})
       | _ =>
         let ar = acceptedResults->Dict.get(msgId)->Option.getOr({eventCount: 0})
         switch ar.entityId {

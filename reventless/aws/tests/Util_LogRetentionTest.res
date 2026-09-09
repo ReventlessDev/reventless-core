@@ -39,11 +39,15 @@ describe("Util_LogRetention.retentionDaysFor", () => {
   // The config key is the escape hatch — a stack dialled without a code change,
   // including `0` (never expire) as an explicit opt-in.
   testSync("a config override wins over the tier default", () =>
-    expect(Util_LogRetention.retentionDaysFor(~stack="alpha", ~prodStacks, ~configOverride=14))->toBe(14)
+    expect(
+      Util_LogRetention.retentionDaysFor(~stack="alpha", ~prodStacks, ~configOverride=14),
+    )->toBe(14)
   )
 
   testSync("0 = never expire is expressible via the override", () =>
-    expect(Util_LogRetention.retentionDaysFor(~stack="prod", ~prodStacks, ~configOverride=0))->toBe(0)
+    expect(Util_LogRetention.retentionDaysFor(~stack="prod", ~prodStacks, ~configOverride=0))->toBe(
+      0,
+    )
   )
 })
 

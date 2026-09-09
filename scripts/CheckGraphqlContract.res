@@ -27,12 +27,11 @@ pnpm run check:graphql           # fail on drift
 pnpm run check:graphql:update    # rewrite the goldens
 ```
 */
-
-// ── Where things live ───────────────────────────────────────────────────────
+let // ── Where things live ───────────────────────────────────────────────────────
 
 // Both entry points run from the repo root, which is where pnpm starts a root
 // script.
-let repoRoot = NodeProcess.cwd()
+repoRoot = NodeProcess.cwd()
 let platformDir = NodePath.join([repoRoot, "examples", "online-shop-hybrid", "platform-local"])
 
 // The two goldens live apart because they are owned by different things. The
@@ -247,10 +246,12 @@ let describe = (~marker: string, lines: array<string>): string =>
   ->Array.slice(~start=0, ~end=reportLimit)
   ->Array.map(line => `  ${marker} ${line}`)
   ->Array.join("\n")
-  ->(shown =>
-    Array.length(lines) > reportLimit
-      ? `${shown}\n  … and ${(Array.length(lines) - reportLimit)->Int.toString} more`
-      : shown)
+  ->(
+    shown =>
+      Array.length(lines) > reportLimit
+        ? `${shown}\n  … and ${(Array.length(lines) - reportLimit)->Int.toString} more`
+        : shown
+  )
 
 let driftReport = (~golden: string, ~actual: string): string => {
   let added = exclusiveTo(~from=actual, ~other=golden)
@@ -314,7 +315,7 @@ let main = async () => {
         NodeFs.mkdirSync(contract.dir, {recursive: true})
       }
       let path = NodePath.join([contract.dir, contract.file])
-      let actual = (sdl->Array.getUnsafe(i))->String.trim ++ "\n"
+      let actual = sdl->Array.getUnsafe(i)->String.trim ++ "\n"
       let existed = path->NodeFs.existsSync
 
       if update || !existed {
@@ -335,8 +336,7 @@ let main = async () => {
       Console.error(
         `\n${drifted->Array.length->Int.toString} GraphQL contract(s) changed. ` ++
         `If the change is intended, run\n` ++
-        `  pnpm run check:graphql:update\n` ++
-        `and commit the goldens alongside the change that moved them.`,
+        `  pnpm run check:graphql:update\n` ++ `and commit the goldens alongside the change that moved them.`,
       )
       NodeProcess.exit(1)
     }

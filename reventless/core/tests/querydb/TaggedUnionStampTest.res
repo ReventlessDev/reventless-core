@@ -81,9 +81,7 @@ describe("QueryDb_Operations stamps union members", () => {
     }
     let _ = await Sightings.save("s-1", state, Init, None)
     let row = storedRow("s-1")
-    expect(row->field("lastSeen")->field("__typename")->string)->toEqual(
-      Some("GeolocationLocated"),
-    )
+    expect(row->field("lastSeen")->field("__typename")->string)->toEqual(Some("GeolocationLocated"))
     let history = row->field("history")->JSON.Decode.array->Option.getOr([])
     expect(history->Array.map(h => h->field("__typename")->string))->toEqual([
       Some("GeolocationPending"),
@@ -105,16 +103,19 @@ describe("QueryDb_Operations stamps union members", () => {
   // is walked and written exactly as it was written before the walk existed.
   testPromise("a view with no union field stores what it always stored", async () => {
     let _ = await Items.save("item-1", {name: "Widget", count: 5}, Init, None)
-    expect(storedRow("item-1")->JSON.stringify)->toBe(
-      `{"name":"Widget","count":5,"id":"item-1"}`,
-    )
+    expect(storedRow("item-1")->JSON.stringify)->toBe(`{"name":"Widget","count":5,"id":"item-1"}`)
   })
 
   testPromise("saveBatch stamps every row", async () => {
     let batch = [
       (
         "c-4",
-        ({customerId: "c-4", geolocation: Located({point: {lat: 0.0, lng: 0.0}})}: CustomersSpec.state),
+        (
+          {
+            customerId: "c-4",
+            geolocation: Located({point: {lat: 0.0, lng: 0.0}}),
+          }: CustomersSpec.state
+        ),
         None,
       ),
       (
@@ -141,7 +142,8 @@ describe("a stamped row decodes back", () => {
     )
     let result = await Customers.loadStream("c-6")->Stream.runCollect->Effect.runPromise
     switch result {
-    | [{geolocation: Located({point})}] => expect((point.lat, point.lng))->toEqual((48.2082, 16.3738))
+    | [{geolocation: Located({point})}] =>
+      expect((point.lat, point.lng))->toEqual((48.2082, 16.3738))
     | _ => expect("round trip")->toBe("Located with its point intact")
     }
   })

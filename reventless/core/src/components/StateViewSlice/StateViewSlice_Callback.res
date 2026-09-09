@@ -45,7 +45,9 @@ module Make = (
         EffectLogger.logInfo(
           ~comp,
           ~detail=raw.data,
-          `handling event ${idx.contents->Int.toString}/${count}: ${LogFormat.bold(raw.eventType)}(${id}) ${actionsStr}`,
+          `handling event ${idx.contents->Int.toString}/${count}: ${LogFormat.bold(
+              raw.eventType,
+            )}(${id}) ${actionsStr}`,
         )->Effect.runSync
         allActions->Array.pushMany(
           actions->Array.map(

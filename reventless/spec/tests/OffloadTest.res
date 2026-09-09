@@ -23,7 +23,12 @@ describe("Offload codec:", () => {
   })
 
   testSync("Offloaded round-trips and hides under the sentinel key", () => {
-    let value = Offload.Offloaded({store: "pluginStructures", key: "sha256/abc", hash: "abc", bytes: 74000})
+    let value = Offload.Offloaded({
+      store: "pluginStructures",
+      key: "sha256/abc",
+      hash: "abc",
+      bytes: 74000,
+    })
     let json = value->Util_Sury.toJson(codec)
     let hasSentinel =
       json->JSON.Decode.object->Option.flatMap(d => d->Dict.get(Offload.sentinelKey))->Option.isSome
@@ -58,9 +63,9 @@ describe("Offload optional field:", () => {
     let value = Some(
       Offload.Offloaded({store: "pluginStructures", key: "sha256/abc", hash: "abc", bytes: 74000}),
     )
-    expect(value->Util_Sury.toJsonString(optional))->toBe(
-      `{"$offload":{"store":"pluginStructures","key":"sha256/abc","hash":"abc","bytes":74000}}`,
-    )
+    expect(
+      value->Util_Sury.toJsonString(optional),
+    )->toBe(`{"$offload":{"store":"pluginStructures","key":"sha256/abc","hash":"abc","bytes":74000}}`)
   })
 
   testSync("every value round-trips", () => {
@@ -69,9 +74,9 @@ describe("Offload optional field:", () => {
       Some(Offload.Inline({name: "a", count: 3})),
       Some(Offload.Offloaded({store: "s", key: "sha256/abc", hash: "abc", bytes: 74000})),
     ]
-    expect(values->Array.map(v => v->Util_Sury.toJson(optional)->Util_Sury.fromJson(optional)))->toEqual(
-      values,
-    )
+    expect(
+      values->Array.map(v => v->Util_Sury.toJson(optional)->Util_Sury.fromJson(optional)),
+    )->toEqual(values)
   })
 
   testSync("the union still advertises null, which replay heals against", () => {
@@ -104,7 +109,8 @@ describe("Offload healing on replay:", () => {
   })
 
   testSync("an offloaded payload still heals as Offloaded", () => {
-    let stored = `{"f":{"$offload":{"store":"s","key":"sha256/abc","hash":"abc","bytes":74000}}}`->JSON.parseOrThrow
+    let stored =
+      `{"f":{"$offload":{"store":"s","key":"sha256/abc","hash":"abc","bytes":74000}}}`->JSON.parseOrThrow
     let healed = Message.fillMissingDefaults(envelopeSchema, stored, [])
     expect(healed->Util_Sury.fromJson(envelopeSchema))->toEqual({
       f: Some(Offload.Offloaded({store: "s", key: "sha256/abc", hash: "abc", bytes: 74000})),
@@ -128,9 +134,9 @@ describe("Offload marker:", () => {
 
   testSync("optionSchema declares its store, unqualified for this plugin", () => {
     let target = Offload.optionSchema(~store="pluginStructures", demoSchema)->Offload.getStore
-    expect(target->Option.mapOr(false, t => t.store == "pluginStructures" && t.plugin == None))->toBe(
-      true,
-    )
+    expect(
+      target->Option.mapOr(false, t => t.store == "pluginStructures" && t.plugin == None),
+    )->toBe(true)
   })
 
   testSync("forStore qualifies a cross-plugin store", () => {
@@ -140,7 +146,9 @@ describe("Offload marker:", () => {
     )->toBe(true)
   })
 
-  testSync("id string matches the wire vocabulary", () => expect(Semantic.Id.offload)->toBe("offload"))
+  testSync("id string matches the wire vocabulary", () =>
+    expect(Semantic.Id.offload)->toBe("offload")
+  )
 })
 
 describe("Offload threshold:", () => {
@@ -280,7 +288,11 @@ describe("Offload client helpers:", () => {
 
   test("resolve: inline needs no fetch, offloaded round-trips", async () => {
     let (_, upload, fetch, _, fetches) = makeStore()
-    let inlineBack = await Offload.resolve(Inline({name: "a", count: 1}), ~schema=demoSchema, ~fetch)
+    let inlineBack = await Offload.resolve(
+      Inline({name: "a", count: 1}),
+      ~schema=demoSchema,
+      ~fetch,
+    )
     expect(inlineBack.name == "a" && fetches.contents == 0)->toBe(true)
     let big = {name: "abcdefghij", count: 5}
     let p = await Offload.prepare(

@@ -19,11 +19,13 @@ let withElevated = (groups, f) => {
 
 describe("Util_OwnerScopeEnv — the elevated-groups carrier", () => {
   testSync("writes what OwnerScope reads back", () => {
-    let encoded = withElevated(["Admin", "Support"], () =>
-      switch Util_OwnerScopeEnv.entry() {
-      | Some((_, value)) => value->Obj.magic
-      | None => ""
-      }
+    let encoded = withElevated(
+      ["Admin", "Support"],
+      () =>
+        switch Util_OwnerScopeEnv.entry() {
+        | Some((_, value)) => value->Obj.magic
+        | None => ""
+        },
     )
     // The round trip, not the spelling: a separator change on either side fails.
     expect(Reventless.OwnerScope.parseElevatedGroups(encoded))->toEqual(["Admin", "Support"])
@@ -47,9 +49,9 @@ describe("Util_OwnerScopeEnv — the elevated-groups carrier", () => {
   testSync("a caller that pinned the variable wins", () => {
     let variables = Dict.fromArray([(Util_OwnerScopeEnv.key, "Pinned"->Obj.magic)])
     withElevated(["Admin"], () => Util_OwnerScopeEnv.applyElevatedGroupsDefault(variables))
-    expect(variables->Dict.get(Util_OwnerScopeEnv.key)->Option.getOr(""->Obj.magic)->Obj.magic)->toBe(
-      "Pinned",
-    )
+    expect(
+      variables->Dict.get(Util_OwnerScopeEnv.key)->Option.getOr(""->Obj.magic)->Obj.magic,
+    )->toBe("Pinned")
   })
 
   testSync("adds nothing when the deployment named no elevated groups", () => {

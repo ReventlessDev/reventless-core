@@ -28,7 +28,9 @@ let store = (~qualified, ~bucket, ~prefix): Reset.objectStore => {
 describe("parseObjectStores", () => {
   testSync("splits the qualified key into plugin and store", () =>
     switch Reset.parseObjectStores(
-      output([("Catalog.productImages", storeEntry(~bucket="alpha-stores", ~prefix="productImages"))]),
+      output([
+        ("Catalog.productImages", storeEntry(~bucket="alpha-stores", ~prefix="productImages")),
+      ]),
     ) {
     | Ok([s]) =>
       expect((s.plugin, s.store, s.bucketName, s.keyPrefix))->toEqual((
@@ -61,7 +63,9 @@ describe("parseObjectStores", () => {
   // A store the reset cannot read is a store it would silently leave behind, so
   // a malformed entry fails the run rather than being skipped.
   testSync("a malformed entry is an error, not a skip", () =>
-    switch Reset.parseObjectStores(output([("Catalog.productImages", obj([("keyPrefix", str("x"))]))])) {
+    switch Reset.parseObjectStores(
+      output([("Catalog.productImages", obj([("keyPrefix", str("x"))]))]),
+    ) {
     | Ok(_) => fail("expected a malformed entry to be refused")
     | Error(message) => expect(message->String.includes("Catalog.productImages"))->toBe(true)
     }
@@ -108,7 +112,11 @@ describe("validateStores", () => {
   testSync("an enclosing prefix is refused", () =>
     switch Reset.validateStores([
       store(~qualified="Legacy.catalog", ~bucket="alpha-stores", ~prefix="Catalog"),
-      store(~qualified="Catalog.productImages", ~bucket="alpha-stores", ~prefix="Catalog/productImages"),
+      store(
+        ~qualified="Catalog.productImages",
+        ~bucket="alpha-stores",
+        ~prefix="Catalog/productImages",
+      ),
     ]) {
     | Ok() => fail("expected an enclosing prefix to be refused")
     | Error(message) => expect(message->String.includes("encloses"))->toBe(true)
@@ -120,8 +128,16 @@ describe("validateStores", () => {
   testSync("one prefix in two different buckets is fine", () =>
     expect(
       Reset.validateStores([
-        store(~qualified="Catalog.productImages", ~bucket="catalog-productImages", ~prefix="productImages"),
-        store(~qualified="Ordering.productImages", ~bucket="ordering-productImages", ~prefix="productImages"),
+        store(
+          ~qualified="Catalog.productImages",
+          ~bucket="catalog-productImages",
+          ~prefix="productImages",
+        ),
+        store(
+          ~qualified="Ordering.productImages",
+          ~bucket="ordering-productImages",
+          ~prefix="productImages",
+        ),
       ]),
     )->toEqual(Ok())
   )
@@ -160,7 +176,12 @@ describe("pluginOf", () => {
   // never has to guess the relation between the two.
   testSync("prefers the declared plugin name over the label", () =>
     expect(
-      Reset.pluginOf({projectDir: "../catalog-aws", label: "catalog", group: Domain, plugin: "Catalog"}),
+      Reset.pluginOf({
+        projectDir: "../catalog-aws",
+        label: "catalog",
+        group: Domain,
+        plugin: "Catalog",
+      }),
     )->toBe("Catalog")
   )
 

@@ -1,11 +1,3 @@
-/**
-The conformance suite, run by a host against its own graft. `Make(Binding).register()`
-inside a Jest test file registers one `describe` block; every assertion is written
-over the binding, never over a host's constructors.
-*/
-
-// Warning 23 flags the spread in `geocoder` as redundant today; it is there for
-// the day `Capabilities.t` grows a field.
 @@warning("-23")
 
 module Outcome = ReventlessGwt.Outcome
@@ -53,7 +45,9 @@ module Make = (B: AddressGeocoding.Binding) => {
     let triggers =
       B.triggers(B.subjectA)
       ->Array.map(e =>
-        e->Reventless.Message.encode(B.Slice.consumedEventSchema)->Reventless.Message.variantNameOfJson
+        e
+        ->Reventless.Message.encode(B.Slice.consumedEventSchema)
+        ->Reventless.Message.variantNameOfJson
       )
       ->sorted
     // Encoded through the aggregate's own schema, so a stand-down event is a
@@ -124,7 +118,10 @@ module Make = (B: AddressGeocoding.Binding) => {
 
       A.test("a redelivered verdict is a no-op", () =>
         A.givenEvents(
-          Array.concat(B.created(B.subjectA), [B.unresolvable(~subject=B.subjectA, ~reason="no match")]),
+          Array.concat(
+            B.created(B.subjectA),
+            [B.unresolvable(~subject=B.subjectA, ~reason="no match")],
+          ),
         )
         ->A.whenCmd(B.markUnresolvable(~subject=B.subjectA, ~reason="no match"))
         ->A.thenNoEvent
@@ -147,10 +144,12 @@ module Make = (B: AddressGeocoding.Binding) => {
       )
 
       B.triggers(B.subjectA)->Array.forEachWithIndex((trigger, i) =>
-        S.testSync(`trigger ${Int.toString(i + 1)} queues one TODO keyed by entity and subject`, () =>
-          S.givenEvent(trigger)
-          ->S.whenCollect(~sourceId=entityId)
-          ->S.thenTodos([(todoKey(B.subjectA), B.item(~entityId, ~subject=B.subjectA))])
+        S.testSync(
+          `trigger ${Int.toString(i + 1)} queues one TODO keyed by entity and subject`,
+          () =>
+            S.givenEvent(trigger)
+            ->S.whenCollect(~sourceId=entityId)
+            ->S.thenTodos([(todoKey(B.subjectA), B.item(~entityId, ~subject=B.subjectA))]),
         )
       )
 

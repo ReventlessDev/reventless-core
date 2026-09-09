@@ -47,8 +47,8 @@ describe("LocalEventTap.settingFromEnv", () => {
   })
 
   testSync("switches the socket off on request", () =>
-    ["off", "false", "none"]->Array.forEach(v =>
-      expect(LocalEventTap.settingFromEnv(~env=envWith(Some(v))))->toEqual(LocalEventTap.Off)
+    ["off", "false", "none"]->Array.forEach(
+      v => expect(LocalEventTap.settingFromEnv(~env=envWith(Some(v))))->toEqual(LocalEventTap.Off),
     )
   )
 })
@@ -113,8 +113,8 @@ describe("LocalEventTap.start", () => {
   // picks, reported only once it is actually bound.
   test("binds an ephemeral port by default and reports the one it got", async () => {
     LocalEventTap.resetForTests()
-    let bound = await Promise.make((resolve, _reject) =>
-      LocalEventTap.start(~env=envWith(None), ~onBound=p => resolve(p), ())
+    let bound = await Promise.make(
+      (resolve, _reject) => LocalEventTap.start(~env=envWith(None), ~onBound=p => resolve(p), ()),
     )
     expect(bound > 0)->toEqual(true)
     // What the registry entry will carry — the real port, not a hoped-for one.
@@ -127,26 +127,31 @@ describe("LocalEventTap.start", () => {
   test("serves the lines it is sent on the port it was named", async () => {
     LocalEventTap.resetForTests()
     let port = 47311
-    let bound = await Promise.make((resolve, _reject) =>
-      LocalEventTap.start(~env=envWith(Some(port->Int.toString)), ~onBound=p => resolve(p), ())
+    let bound = await Promise.make(
+      (resolve, _reject) =>
+        LocalEventTap.start(~env=envWith(Some(port->Int.toString)), ~onBound=p => resolve(p), ()),
     )
     expect(bound)->toEqual(port)
 
-    let received = await Promise.make((resolve, _reject) => {
-      let socket = NodeNet.connect(port, "127.0.0.1", () => ())
-      socket->NodeNet.setEncoding("utf8")
-      socket->NodeNet.onSocketError(e =>
-        resolve("connect failed: " ++ e->JsExn.message->Option.getOr("unknown"))
-      )
-      // Re-sent until it lands: the server's accept and the client's connect are
-      // separate events, so a single broadcast could beat the connection.
-      let ticker = ref(None)
-      socket->NodeNet.onSocketData(chunk => {
-        ticker.contents->Option.forEach(clearInterval)
-        resolve(chunk)
-      })
-      ticker := Some(setInterval(() => LocalEventTap.broadcast(`@@RVLESS_EVT@@ {"seq":7}`), 5))
-    })
+    let received = await Promise.make(
+      (resolve, _reject) => {
+        let socket = NodeNet.connect(port, "127.0.0.1", () => ())
+        socket->NodeNet.setEncoding("utf8")
+        socket->NodeNet.onSocketError(
+          e => resolve("connect failed: " ++ e->JsExn.message->Option.getOr("unknown")),
+        )
+        // Re-sent until it lands: the server's accept and the client's connect are
+        // separate events, so a single broadcast could beat the connection.
+        let ticker = ref(None)
+        socket->NodeNet.onSocketData(
+          chunk => {
+            ticker.contents->Option.forEach(clearInterval)
+            resolve(chunk)
+          },
+        )
+        ticker := Some(setInterval(() => LocalEventTap.broadcast(`@@RVLESS_EVT@@ {"seq":7}`), 5))
+      },
+    )
 
     expect(received)->toEqual(`@@RVLESS_EVT@@ {"seq":7}\n`)
     await LocalEventTap.stopForTests()

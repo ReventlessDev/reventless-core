@@ -138,11 +138,12 @@ describe("StateViewSliceEntryPoint integration", () => {
 
       let productIds =
         rows
-        ->Array.filterMap(row =>
-          row
-          ->JSON.Decode.object
-          ->Option.flatMap(o => o->Dict.get("productId"))
-          ->Option.flatMap(JSON.Decode.string)
+        ->Array.filterMap(
+          row =>
+            row
+            ->JSON.Decode.object
+            ->Option.flatMap(o => o->Dict.get("productId"))
+            ->Option.flatMap(JSON.Decode.string),
         )
         ->Array.toSorted(String.compare)
       expect(productIds)->toEqual(["prod-a", "prod-b"])
@@ -150,16 +151,15 @@ describe("StateViewSliceEntryPoint integration", () => {
       // The runtime path's union stamp, against real DynamoDB. The deployed
       // Lambdas assemble JSON-level ops and skipped it entirely, so a member
       // resolved to null and took its non-nullable parent with it.
-      let members =
-        rows
-        ->Array.filterMap(row =>
+      let members = rows->Array.filterMap(
+        row =>
           row
           ->JSON.Decode.object
           ->Option.flatMap(o => o->Dict.get("fulfilment"))
           ->Option.flatMap(JSON.Decode.object)
           ->Option.flatMap(o => o->Dict.get("__typename"))
-          ->Option.flatMap(JSON.Decode.string)
-        )
+          ->Option.flatMap(JSON.Decode.string),
+      )
       expect(members)->toEqual(["FulfilmentShipped", "FulfilmentShipped"])
 
       await H.deleteTable(table)

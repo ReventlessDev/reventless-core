@@ -31,7 +31,6 @@ let translate = input => switch input.status {
 }
 ```
 */
-
 /**
 The lean Spec for an InboundTranslationSlice — types, identity, schemas.
 */
@@ -96,4 +95,3 @@ module type Translation = {
   /** File URL of this Translation module (`import.meta.url`). */
   let moduleUrl: string
 }
-

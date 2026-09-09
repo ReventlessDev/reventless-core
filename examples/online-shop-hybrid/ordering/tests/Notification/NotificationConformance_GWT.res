@@ -25,30 +25,36 @@ module Binding = {
     // no creation event to seed: an unannounced recipient is one with no history.
     let created: array<Spec.consumedEvent> = []
     let announced = (email): Spec.consumedEvent => RecipientAnnounced({recipientId, email})
-    let subscribed = (category, channel): Spec.consumedEvent =>
-      NotificationSubscribed({
-        recipientId,
-        category,
-        channel: Behavior.channelOf(channel),
-      })
-    let unsubscribed = (category, channel): Spec.consumedEvent =>
-      NotificationUnsubscribed({
-        recipientId,
-        category,
-        channel: Behavior.channelOf(channel),
-      })
+    let subscribed = (category, channel): Spec.consumedEvent => NotificationSubscribed({
+      recipientId,
+      category,
+      channel: Behavior.channelOf(channel),
+    })
+    let unsubscribed = (category, channel): Spec.consumedEvent => NotificationUnsubscribed({
+      recipientId,
+      category,
+      channel: Behavior.channelOf(channel),
+    })
     // Written by NotificationSourceClaims next door and read here across
     // partitions — this slice consumes them and produces neither.
-    let claimed = (source, by): Spec.consumedEvent =>
-      NotificationSourceClaimed({sourceId: source, by})
+    let claimed = (source, by): Spec.consumedEvent => NotificationSourceClaimed({
+      sourceId: source,
+      by,
+    })
     let released = (source): Spec.consumedEvent => NotificationSourceReleased({sourceId: source})
   }
 
   let announce = email => Spec.AnnounceRecipient({recipientId, email})
-  let subscribe = (category, channel) =>
-    Spec.Subscribe({recipientId, category, channel: Behavior.channelOf(channel)})
-  let unsubscribe = (category, channel) =>
-    Spec.Unsubscribe({recipientId, category, channel: Behavior.channelOf(channel)})
+  let subscribe = (category, channel) => Spec.Subscribe({
+    recipientId,
+    category,
+    channel: Behavior.channelOf(channel),
+  })
+  let unsubscribe = (category, channel) => Spec.Unsubscribe({
+    recipientId,
+    category,
+    channel: Behavior.channelOf(channel),
+  })
   // The wording and the subject are this host's and the trait carries neither, so
   // the suite supplies whatever it likes and asserts nothing about them.
   //
@@ -56,80 +62,84 @@ module Binding = {
   // handover keep deciding exactly as they did.
   let defaultSource = "OrderingDcbEventLog:OrderPlaced"
 
-  let requestFrom = (category, reference, ~source, ~origin) =>
-    Spec.RequestNotification({
-      recipientId,
-      category,
-      reference,
-      subjectType: "Order",
-      subjectRef: "o1",
-      subject: "subject",
-      body: "body",
-      sourceId: source,
-      origin: switch (origin: TraitNotification.Notification_Rules.origin) {
-      | Default => Default
-      | Configured => Configured({ruleId: "rule-1", ruleVersion: "1"})
-      },
-    })
+  let requestFrom = (category, reference, ~source, ~origin) => Spec.RequestNotification({
+    recipientId,
+    category,
+    reference,
+    subjectType: "Order",
+    subjectRef: "o1",
+    subject: "subject",
+    body: "body",
+    sourceId: source,
+    origin: switch (origin: TraitNotification.Notification_Rules.origin) {
+    | Default => Default
+    | Configured => Configured({ruleId: "rule-1", ruleVersion: "1"})
+    },
+  })
 
   let request = (category, reference) =>
     requestFrom(category, reference, ~source=defaultSource, ~origin=Default)
 
   let announced = email => Spec.RecipientAnnounced({recipientId, email})
-  let subscribed = (category, channel) =>
-    Spec.NotificationSubscribed({recipientId, category, channel: Behavior.channelOf(channel)})
-  let unsubscribed = (category, channel) =>
-    Spec.NotificationUnsubscribed({recipientId, category, channel: Behavior.channelOf(channel)})
-  let requested = (category, reference, channel, address) =>
-    Spec.NotificationRequested({
-      recipientId,
-      category,
-      reference,
-      channel: Behavior.channelOf(channel),
-      address,
-      subjectType: "Order",
-      subjectRef: "o1",
-      subject: "subject",
-      body: "body",
-      origin: Default,
-    })
-  let requestedConfigured = (category, reference, channel, address) =>
-    Spec.NotificationRequested({
-      recipientId,
-      category,
-      reference,
-      channel: Behavior.channelOf(channel),
-      address,
-      subjectType: "Order",
-      subjectRef: "o1",
-      subject: "subject",
-      body: "body",
-      // Matches what `requestFrom(~origin=Configured)` above sends in.
-      origin: Configured({ruleId: "rule-1", ruleVersion: "1"}),
-    })
-  let deferred = (reference, source) =>
-    Spec.NotificationDeferred({recipientId, reference, sourceKey: source})
+  let subscribed = (category, channel) => Spec.NotificationSubscribed({
+    recipientId,
+    category,
+    channel: Behavior.channelOf(channel),
+  })
+  let unsubscribed = (category, channel) => Spec.NotificationUnsubscribed({
+    recipientId,
+    category,
+    channel: Behavior.channelOf(channel),
+  })
+  let requested = (category, reference, channel, address) => Spec.NotificationRequested({
+    recipientId,
+    category,
+    reference,
+    channel: Behavior.channelOf(channel),
+    address,
+    subjectType: "Order",
+    subjectRef: "o1",
+    subject: "subject",
+    body: "body",
+    origin: Default,
+  })
+  let requestedConfigured = (category, reference, channel, address) => Spec.NotificationRequested({
+    recipientId,
+    category,
+    reference,
+    channel: Behavior.channelOf(channel),
+    address,
+    subjectType: "Order",
+    subjectRef: "o1",
+    subject: "subject",
+    body: "body",
+    // Matches what `requestFrom(~origin=Configured)` above sends in.
+    origin: Configured({ruleId: "rule-1", ruleVersion: "1"}),
+  })
+  let deferred = (reference, source) => Spec.NotificationDeferred({
+    recipientId,
+    reference,
+    sourceKey: source,
+  })
   // The subject rides through the two decisions not to send as well: what a
   // suppressed or undeliverable notification was about is the whole reason those
   // rows are worth reading.
-  let suppressed = (category, reference) =>
-    Spec.NotificationSuppressed({
-      recipientId,
-      category,
-      reference,
-      subjectType: "Order",
-      subjectRef: "o1",
-      origin: Default,
-    })
-  let undeliverable = (category, reference) =>
-    Spec.NotificationUndeliverable({
-      recipientId,
-      category,
-      reference,
-      subjectType: "Order",
-      subjectRef: "o1",
-      origin: Default,
-    })
+  let suppressed = (category, reference) => Spec.NotificationSuppressed({
+    recipientId,
+    category,
+    reference,
+    subjectType: "Order",
+    subjectRef: "o1",
+    origin: Default,
+  })
+  let undeliverable = (category, reference) => Spec.NotificationUndeliverable({
+    recipientId,
+    category,
+    reference,
+    subjectType: "Order",
+    subjectRef: "o1",
+    origin: Default,
+  })
 
   let recipientUnknown = Spec.RecipientUnknown
 

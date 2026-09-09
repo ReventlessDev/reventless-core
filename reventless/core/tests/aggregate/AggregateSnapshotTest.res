@@ -12,7 +12,6 @@
 
 open JestGlobals
 
-
 module AggSpec = {
   module Id = Reventless.Id.StringPure
   let name = "SnapshotTestAggregate"
@@ -24,7 +23,7 @@ module AggSpec = {
   type event = Added({item: string})
 
   @schema
-  type error = | Never
+  type error = Never
 
   let moduleUrl: string = %raw(`import.meta.url`)
 }
@@ -161,7 +160,11 @@ let mock = makeMockEL()
 
 module OuterEventLog = EventLog
 
-module MakeOps = (B: {let name: string}) => {
+module MakeOps = (
+  B: {
+    let name: string
+  },
+) => {
   module Spec = AggSpec
   module EventLog = {
     module Spec = {
@@ -178,11 +181,11 @@ module MakeOps = (B: {let name: string}) => {
       ) => promise<result<unit, EventLog.appendError>>,
       replay: string => promise<array<AggSpec.event>>,
       replayStream: (string, ~fromSeq: int=?) => Stream.t<AggSpec.event, string, unit>,
-      appendStream: (int, string, Stream.t<AggSpec.event, string, unit>) => Effect.t<
-        unit,
+      appendStream: (
+        int,
         string,
-        unit,
-      >,
+        Stream.t<AggSpec.event, string, unit>,
+      ) => Effect.t<unit, string, unit>,
       latestSnapshot: string => promise<result<option<EventLog.snapshot>, string>>,
       writeSnapshot: (string, EventLog.snapshot) => promise<result<unit, string>>,
     }
@@ -199,7 +202,9 @@ module MakeOps = (B: {let name: string}) => {
   }
 }
 
-module TestOps = MakeOps({let name = "SnapshotMockEventLog"})
+module TestOps = MakeOps({
+  let name = "SnapshotMockEventLog"
+})
 module TestHandler = Aggregate_Callback.Make(AggSpec, TestBehavior, TestOps)
 
 // A second behavior with snapshots DISABLED, sharing the same mock, to prove
@@ -225,7 +230,9 @@ module PlainBehavior = {
     }
 }
 
-module PlainOps = MakeOps({let name = "PlainMockEventLog"})
+module PlainOps = MakeOps({
+  let name = "PlainMockEventLog"
+})
 module PlainHandler = Aggregate_Callback.Make(AggSpec, PlainBehavior, PlainOps)
 
 let makeItem = (~id="agg-1", reference, command): CommandTopic.topicItem<
@@ -253,7 +260,10 @@ describe("Aggregate_Callback — snapshots:", () => {
   testPromise("writes a snapshot each time an interval boundary is crossed", async () => {
     // 25 single-event commands → boundaries at 10 and 20 (not 25).
     for i in 1 to 25 {
-      let _ = await run(~handler=TestHandler.handleCommands, AggSpec.Add({item: `i${i->Int.toString}`}))
+      let _ = await run(
+        ~handler=TestHandler.handleCommands,
+        AggSpec.Add({item: `i${i->Int.toString}`}),
+      )
     }
     let _ = await tick()
     expect(mock.snapshotWriteCount.contents)->toBe(2)
@@ -266,7 +276,10 @@ describe("Aggregate_Callback — snapshots:", () => {
 
   testPromise("cold replay seeds from the snapshot and reads only the delta", async () => {
     for i in 1 to 12 {
-      let _ = await run(~handler=TestHandler.handleCommands, AggSpec.Add({item: `i${i->Int.toString}`}))
+      let _ = await run(
+        ~handler=TestHandler.handleCommands,
+        AggSpec.Add({item: `i${i->Int.toString}`}),
+      )
     }
     let _ = await tick()
     // A snapshot exists at seq 10. Evict the in-process cache to force a cold read.
@@ -282,7 +295,10 @@ describe("Aggregate_Callback — snapshots:", () => {
 
   testPromise("state seeded from snapshot equals a full-replay fold", async () => {
     for i in 1 to 15 {
-      let _ = await run(~handler=TestHandler.handleCommands, AggSpec.Add({item: `x${i->Int.toString}`}))
+      let _ = await run(
+        ~handler=TestHandler.handleCommands,
+        AggSpec.Add({item: `x${i->Int.toString}`}),
+      )
     }
     let _ = await tick()
     // Snapshot-seeded cold read (snapshot at seq 10, delta 10..15).
@@ -292,7 +308,10 @@ describe("Aggregate_Callback — snapshots:", () => {
     // Force a boundary to capture the seeded state as a fresh snapshot: add up to
     // seq 20 and compare its item count to the true event count.
     for i in 16 to 20 {
-      let _ = await run(~handler=TestHandler.handleCommands, AggSpec.Add({item: `x${i->Int.toString}`}))
+      let _ = await run(
+        ~handler=TestHandler.handleCommands,
+        AggSpec.Add({item: `x${i->Int.toString}`}),
+      )
     }
     let _ = await tick()
     switch mock.getSnapshot("agg-1") {
@@ -312,7 +331,10 @@ describe("Aggregate_Callback — snapshots:", () => {
 
   testPromise("schema-drift snapshot is ignored → full replay from 0", async () => {
     for i in 1 to 12 {
-      let _ = await run(~handler=TestHandler.handleCommands, AggSpec.Add({item: `i${i->Int.toString}`}))
+      let _ = await run(
+        ~handler=TestHandler.handleCommands,
+        AggSpec.Add({item: `i${i->Int.toString}`}),
+      )
     }
     let _ = await tick()
     // Corrupt the stored snapshot's hash to simulate a state-shape change.
@@ -329,7 +351,10 @@ describe("Aggregate_Callback — snapshots:", () => {
 
   testPromise("snapshot write failure does not fail the command", async () => {
     for i in 1 to 9 {
-      let _ = await run(~handler=TestHandler.handleCommands, AggSpec.Add({item: `i${i->Int.toString}`}))
+      let _ = await run(
+        ~handler=TestHandler.handleCommands,
+        AggSpec.Add({item: `i${i->Int.toString}`}),
+      )
     }
     // The 10th append crosses the boundary; make its snapshot write fail.
     mock.failNextWrite := true
@@ -344,7 +369,10 @@ describe("Aggregate_Callback — snapshots:", () => {
 
   testPromise("disabled aggregate does zero snapshot reads and writes", async () => {
     for i in 1 to 12 {
-      let _ = await run(~handler=PlainHandler.handleCommands, AggSpec.Add({item: `i${i->Int.toString}`}))
+      let _ = await run(
+        ~handler=PlainHandler.handleCommands,
+        AggSpec.Add({item: `i${i->Int.toString}`}),
+      )
     }
     let _ = await tick()
     PlainHandler.resetCache()

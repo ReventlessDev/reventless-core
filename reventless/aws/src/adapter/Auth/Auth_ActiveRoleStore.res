@@ -70,8 +70,7 @@ nothing else is consulted.
 let chooseStore = (~identityProviderId: option<string>): storeChoice =>
   switch identityProviderId {
   | None => StackScoped
-  | Some(id) =>
-    ProviderScoped(Auth_ActiveRoleStore_Schema.derivedStoreName(~identityProviderId=id))
+  | Some(id) => ProviderScoped(Auth_ActiveRoleStore_Schema.derivedStoreName(~identityProviderId=id))
   }
 
 // JS resolver code (APPSYNC_JS runtime): forward the caller's arguments and the

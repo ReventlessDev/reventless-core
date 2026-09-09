@@ -10,7 +10,6 @@ next same-entity command reads only the delta instead of folding full history.
 `capacity`, `put` evicts the least-recently-used key. A `capacity <= 0` disables
 the cache entirely (`get` always misses, `put` is a no-op) so a slice can opt out.
 */
-
 type t<'k, 'v>
 
 /** Creates an empty cache holding at most `capacity` entries (`<= 0` disables it). */
@@ -26,7 +25,7 @@ let put: (t<'k, 'v>, 'k, 'v) => unit
 let invalidate: (t<'k, 'v>, 'k) => unit
 
 /** Drops every entry. */
-let clear: (t<'k, 'v>) => unit
+let clear: t<'k, 'v> => unit
 
 /** Current number of live entries. */
-let size: (t<'k, 'v>) => int
+let size: t<'k, 'v> => int

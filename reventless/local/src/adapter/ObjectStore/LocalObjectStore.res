@@ -83,11 +83,14 @@ let declaredStoreList = (): array<(string, string)> => declaredStores->Dict.toAr
 // key becomes a path, and `uploads/../../etc/passwd` would otherwise escape the
 // store.
 let servedKey = (path: string): option<string> => {
-  let trimmed = path->String.startsWith("/") ? path->String.slice(~start=1, ~end=path->String.length) : path
+  let trimmed =
+    path->String.startsWith("/") ? path->String.slice(~start=1, ~end=path->String.length) : path
   let segments = trimmed->String.split("/")
   let underAPrefix =
     servedPrefixes.contents->Array.some(p =>
-      p->String.length > 0 && trimmed->String.startsWith(p ++ "/") && trimmed->String.length > p->String.length + 1
+      p->String.length > 0 &&
+      trimmed->String.startsWith(p ++ "/") &&
+      trimmed->String.length > p->String.length + 1
     )
   if underAPrefix && segments->Array.every(seg => seg != "" && seg != "." && seg != "..") {
     Some(trimmed)

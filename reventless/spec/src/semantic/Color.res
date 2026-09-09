@@ -26,7 +26,6 @@ full triplet, and the triplet with alpha. Case is not significant.
     })
 ```
 */
-
 /** The colour's representation. Transparent `string`; see `Email.t`. */
 type t = string
 

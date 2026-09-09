@@ -11,7 +11,7 @@ module ItemEventLogSpec = {
   let name = "TestItemEventLog"
 
   @schema
-  type event = | ItemCreated({name: string}) | ItemDeleted({id: string})
+  type event = ItemCreated({name: string}) | ItemDeleted({id: string})
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -41,11 +41,11 @@ module EventLogMaker = ReventlessCore.EventLog_Builder.Make(
 
 let eventLog = EventLogMaker.make(~name="TestItemEventLog")
 
-let makeEvent' = (id, event) => ({
+let makeEvent' = (id, event): Reventless.Message.event'<string, ItemEventLogSpec.event> => {
   Reventless.Message.id,
   meta: testMeta,
   event,
-}: Reventless.Message.event'<string, ItemEventLogSpec.event>)
+}
 
 let reset = () => {
   capturedTopicEventCount := 0

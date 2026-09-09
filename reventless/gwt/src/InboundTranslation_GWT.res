@@ -33,7 +33,6 @@ module type T = {
 module Make = (Spec: SliceSpec): (T with module Spec = Spec) => {
   module Spec = Spec
 
-
   let describe = JestBind.describe
   let test = (name, body) => JestBind.test(~slice=Spec.name, name, body)
 
@@ -54,11 +53,8 @@ module Make = (Spec: SliceSpec): (T with module Spec = Spec) => {
     switch result {
     | Ok(actual) if actual == expected => Outcome.pass
     | Ok(actual) =>
-      Outcome.fail(
-        EventsMismatch({expected: encPairs(expected), actual: encPairs(actual)}),
-      )
-    | Error(msg) =>
-      Outcome.fail(TranslateError({expected: "(commands)", actual: Some(msg)}))
+      Outcome.fail(EventsMismatch({expected: encPairs(expected), actual: encPairs(actual)}))
+    | Error(msg) => Outcome.fail(TranslateError({expected: "(commands)", actual: Some(msg)}))
     }
 
   let thenCommand = (result, expectedId, expectedCmd) =>
@@ -68,15 +64,13 @@ module Make = (Spec: SliceSpec): (T with module Spec = Spec) => {
     switch result {
     | Ok([]) => Outcome.pass
     | Ok(actual) => Outcome.fail(NoEventExpected({actual: encPairs(actual)}))
-    | Error(msg) =>
-      Outcome.fail(TranslateError({expected: "(no commands)", actual: Some(msg)}))
+    | Error(msg) => Outcome.fail(TranslateError({expected: "(no commands)", actual: Some(msg)}))
     }
 
   let thenTranslateError = (result, expectedMsg) =>
     switch result {
     | Error(actual) if actual == expectedMsg => Outcome.pass
-    | Error(actual) =>
-      Outcome.fail(TranslateError({expected: expectedMsg, actual: Some(actual)}))
+    | Error(actual) => Outcome.fail(TranslateError({expected: expectedMsg, actual: Some(actual)}))
     | Ok(_) => Outcome.fail(TranslateError({expected: expectedMsg, actual: None}))
     }
 }

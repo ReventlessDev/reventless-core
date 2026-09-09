@@ -53,17 +53,20 @@ module CategoryActivityMapping = Mapping.Make(
         Set(
           categoryId,
           {
-            CategoryActivity.name: name,
+            CategoryActivity.name,
             kind: Category,
             lastChange: (Added: CategoryActivity.change),
           },
         )
       | CategoryRenamed({categoryId, name}) =>
-        Update(categoryId, state => {
-          ...state,
-          name,
-          lastChange: (Renamed: CategoryActivity.change),
-        })
+        Update(
+          categoryId,
+          state => {
+            ...state,
+            name,
+            lastChange: (Renamed: CategoryActivity.change),
+          },
+        )
       | CategoryArchived({categoryId}) =>
         Update(categoryId, state => {...state, lastChange: (Archived: CategoryActivity.change)})
       }
@@ -82,11 +85,14 @@ module ProductActivityMapping = Mapping.Make(
     let project = ({event, _}) =>
       switch event {
       | ProductAdded({productId, name}) =>
-        Set(productId, {CategoryActivity.name: name, kind: Product, lastChange: Added})
+        Set(productId, {CategoryActivity.name, kind: Product, lastChange: Added})
       | ProductNameChanged({productId, name}) =>
         Update(productId, state => {...state, name, lastChange: Renamed})
       }
   },
 )
 
-let mappings: array<module(Mapping)> = [module(CategoryActivityMapping), module(ProductActivityMapping)]
+let mappings: array<module(Mapping)> = [
+  module(CategoryActivityMapping),
+  module(ProductActivityMapping),
+]

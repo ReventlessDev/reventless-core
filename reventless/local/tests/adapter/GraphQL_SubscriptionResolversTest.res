@@ -60,104 +60,113 @@ describe("LocalGraphQL_SubscriptionResolvers", () => {
   })
 
   describe("Source B — state-change bridge", () => {
-    testPromise("Bus.publishStateChange → yoga PubSub subscriber receives descriptor", async () => {
-      module TestBus = LocalBus.Make()
+    testPromise(
+      "Bus.publishStateChange → yoga PubSub subscriber receives descriptor",
+      async () => {
+        module TestBus = LocalBus.Make()
 
-      // Wire the bridge before subscribing, so the bus callback publishes to the PubSub.
-      LocalGraphQL_SubscriptionResolvers.bridgeSourceB(
-        ~subscribeToStateChanges=TestBus.subscribeToStateChanges,
-        ~readModelName="Product",
-        ~returnTypeName="CatalogProduct",
-      )
+        // Wire the bridge before subscribing, so the bus callback publishes to the PubSub.
+        LocalGraphQL_SubscriptionResolvers.bridgeSourceB(
+          ~subscribeToStateChanges=TestBus.subscribeToStateChanges,
+          ~readModelName="Product",
+          ~returnTypeName="CatalogProduct",
+        )
 
-      // Start the consumer BEFORE publishing — yoga's PubSub drops messages
-      // on topics whose AsyncIterable listener isn't registered yet.
-      let ps = LocalGraphQL_SubscriptionResolvers.getPubSub()
-      let iter = ps->GraphqlYoga.pubSubSubscribe("onCatalogProduct_stateChanged")
-      let consumerPromise = startConsumer(iter, 1000)
-      await yieldTick() // ensure listener is registered before publish
+        // Start the consumer BEFORE publishing — yoga's PubSub drops messages
+        // on topics whose AsyncIterable listener isn't registered yet.
+        let ps = LocalGraphQL_SubscriptionResolvers.getPubSub()
+        let iter = ps->GraphqlYoga.pubSubSubscribe("onCatalogProduct_stateChanged")
+        let consumerPromise = startConsumer(iter, 1000)
+        await yieldTick() // ensure listener is registered before publish
 
-      // Bus payload is the change descriptor matching the AWS StateTopic Lambda
-      // output shape: {changeKind, id, sortKeyValue?, seq, state?}.
-      let state = JSON.Encode.object(
-        Dict.fromArray([
-          ("id", JSON.Encode.string("prod-1")),
-          ("name", JSON.Encode.string("Widget")),
-          ("updatedAt", JSON.Encode.string("2026-05-19T12:00:00Z")),
-        ]),
-      )
-      let descriptor = LocalStateChangeDescriptor.make(
-        ~changeKind="Updated",
-        ~id="prod-1",
-        ~state=Some(state),
-        ~seq=LocalStateChangeDescriptor.nextSequence(),
-      )
-      TestBus.publishStateChange(~name="Product", ~descriptor)
+        // Bus payload is the change descriptor matching the AWS StateTopic Lambda
+        // output shape: {changeKind, id, sortKeyValue?, seq, state?}.
+        let state = JSON.Encode.object(
+          Dict.fromArray([
+            ("id", JSON.Encode.string("prod-1")),
+            ("name", JSON.Encode.string("Widget")),
+            ("updatedAt", JSON.Encode.string("2026-05-19T12:00:00Z")),
+          ]),
+        )
+        let descriptor = LocalStateChangeDescriptor.make(
+          ~changeKind="Updated",
+          ~id="prod-1",
+          ~state=Some(state),
+          ~seq=LocalStateChangeDescriptor.nextSequence(),
+        )
+        TestBus.publishStateChange(~name="Product", ~descriptor)
 
-      let received = await consumerPromise
-      switch received->Null.toOption {
-      | Some(msg) => expect(msg)->toEqual(descriptor)
-      | None => expect("onCatalogProduct_stateChanged: timed out")->toBe("received")
-      }
-    })
+        let received = await consumerPromise
+        switch received->Null.toOption {
+        | Some(msg) => expect(msg)->toEqual(descriptor)
+        | None => expect("onCatalogProduct_stateChanged: timed out")->toBe("received")
+        }
+      },
+    )
 
-    testPromise("state change for unregistered ReadModel → no publish", async () => {
-      module TestBus = LocalBus.Make()
+    testPromise(
+      "state change for unregistered ReadModel → no publish",
+      async () => {
+        module TestBus = LocalBus.Make()
 
-      LocalGraphQL_SubscriptionResolvers.bridgeSourceB(
-        ~subscribeToStateChanges=TestBus.subscribeToStateChanges,
-        ~readModelName="Product",
-        ~returnTypeName="CatalogProduct",
-      )
+        LocalGraphQL_SubscriptionResolvers.bridgeSourceB(
+          ~subscribeToStateChanges=TestBus.subscribeToStateChanges,
+          ~readModelName="Product",
+          ~returnTypeName="CatalogProduct",
+        )
 
-      let ps = LocalGraphQL_SubscriptionResolvers.getPubSub()
-      let iter = ps->GraphqlYoga.pubSubSubscribe("onCatalogProduct_stateChanged")
-      let consumerPromise = startConsumer(iter, 300)
-      await yieldTick()
+        let ps = LocalGraphQL_SubscriptionResolvers.getPubSub()
+        let iter = ps->GraphqlYoga.pubSubSubscribe("onCatalogProduct_stateChanged")
+        let consumerPromise = startConsumer(iter, 300)
+        await yieldTick()
 
-      // Publish for a DIFFERENT ReadModel — should NOT reach our topic.
-      let foreignDescriptor = LocalStateChangeDescriptor.make(
-        ~changeKind="Updated",
-        ~id="cat-1",
-        ~state=Some(JSON.Encode.object(Dict.fromArray([("id", JSON.Encode.string("cat-1"))]))),
-        ~seq=LocalStateChangeDescriptor.nextSequence(),
-      )
-      TestBus.publishStateChange(~name="Category", ~descriptor=foreignDescriptor)
+        // Publish for a DIFFERENT ReadModel — should NOT reach our topic.
+        let foreignDescriptor = LocalStateChangeDescriptor.make(
+          ~changeKind="Updated",
+          ~id="cat-1",
+          ~state=Some(JSON.Encode.object(Dict.fromArray([("id", JSON.Encode.string("cat-1"))]))),
+          ~seq=LocalStateChangeDescriptor.nextSequence(),
+        )
+        TestBus.publishStateChange(~name="Category", ~descriptor=foreignDescriptor)
 
-      let received = await consumerPromise
-      expect(received->Null.toOption)->toEqual(None)
-    })
+        let received = await consumerPromise
+        expect(received->Null.toOption)->toEqual(None)
+      },
+    )
   })
 
   describe("Source A — event-stream bridge", () => {
-    testPromise("Bus.publishEvent → yoga PubSub subscriber receives event", async () => {
-      module TestBus = LocalBus.Make()
+    testPromise(
+      "Bus.publishEvent → yoga PubSub subscriber receives event",
+      async () => {
+        module TestBus = LocalBus.Make()
 
-      LocalGraphQL_SubscriptionResolvers.bridgeSourceA(
-        ~subscribeToEvents=TestBus.subscribeToEvents,
-        ~displayName="Catalog",
-        ~busTopicName="catalog-events",
-      )
+        LocalGraphQL_SubscriptionResolvers.bridgeSourceA(
+          ~subscribeToEvents=TestBus.subscribeToEvents,
+          ~displayName="Catalog",
+          ~busTopicName="catalog-events",
+        )
 
-      let ps = LocalGraphQL_SubscriptionResolvers.getPubSub()
-      let iter = ps->GraphqlYoga.pubSubSubscribe("onCatalogEventLog_eventAppended")
-      let consumerPromise = startConsumer(iter, 1000)
-      await yieldTick()
+        let ps = LocalGraphQL_SubscriptionResolvers.getPubSub()
+        let iter = ps->GraphqlYoga.pubSubSubscribe("onCatalogEventLog_eventAppended")
+        let consumerPromise = startConsumer(iter, 1000)
+        await yieldTick()
 
-      let event = JSON.Encode.object(
-        Dict.fromArray([
-          ("eventType", JSON.Encode.string("ProductAdded")),
-          ("id", JSON.Encode.string("prod-1")),
-          ("name", JSON.Encode.string("Widget")),
-        ]),
-      )
-      await TestBus.publishEvent("catalog-events", "svc", testMeta, event)
+        let event = JSON.Encode.object(
+          Dict.fromArray([
+            ("eventType", JSON.Encode.string("ProductAdded")),
+            ("id", JSON.Encode.string("prod-1")),
+            ("name", JSON.Encode.string("Widget")),
+          ]),
+        )
+        await TestBus.publishEvent("catalog-events", "svc", testMeta, event)
 
-      let received = await consumerPromise
-      switch received->Null.toOption {
-      | Some(msg) => expect(msg)->toEqual(event)
-      | None => expect("onCatalogEventLog_eventAppended: timed out")->toBe("received")
-      }
-    })
+        let received = await consumerPromise
+        switch received->Null.toOption {
+        | Some(msg) => expect(msg)->toEqual(event)
+        | None => expect("onCatalogEventLog_eventAppended: timed out")->toBe("received")
+        }
+      },
+    )
   })
 })

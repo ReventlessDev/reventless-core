@@ -75,9 +75,7 @@ let scriptsOf = (pkg: dict<JSON.t>): array<string> =>
   pkg
   ->Dict.get("scripts")
   ->Option.flatMap(asObject)
-  ->Option.mapOr([], scripts =>
-    scripts->Dict.valuesToArray->Array.filterMap(JSON.Decode.string)
-  )
+  ->Option.mapOr([], scripts => scripts->Dict.valuesToArray->Array.filterMap(JSON.Decode.string))
 
 // The composition `src/` an `-aws` root is generated from, read off the script
 // that performs the generation.

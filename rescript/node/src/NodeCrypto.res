@@ -1,5 +1,4 @@
 /** Bindings for [`node:crypto`](https://nodejs.org/api/crypto.html). */
-
 /** A Node `Buffer`. Abstract rather than aliased to `Uint8Array.t`: a digest
     buffer is only ever fed back into `createHmac` or stringified, and giving it
     its own type keeps those two uses from being confused with file bytes. */

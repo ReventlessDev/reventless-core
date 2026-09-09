@@ -20,6 +20,8 @@
 // remains accessible inside module type T even though T re-declares
 // `module ExtensionPoint` with a different local type, which would otherwise
 // shadow the package-level ExtensionPoint.outputs.
+// Type alias so `deployPlugin` can reference `Plugin.outputs` inside module type T,
+// where `module Plugin: Plugin.T` shadows the package-level Plugin module.
 /**
 Abstract factory interface for creating Reventless components without coupling
 application code to a specific infrastructure provider.
@@ -44,9 +46,6 @@ module Platform = ReventlessAws.Platform.Make(AwsConfig)
 module App = CatalogPlugin.Make(Platform)
 ```
 */
-
-// Type alias so `deployPlugin` can reference `Plugin.outputs` inside module type T,
-// where `module Plugin: Plugin.T` shadows the package-level Plugin module.
 type pluginOutputs = Plugin.outputs
 
 // A storage bucket a deployment declares to be served read-only to the UI under
@@ -286,13 +285,13 @@ module type T = {
       Spec: Reventless.Aggregate.Spec,
       Behavior: Reventless.Behavior.T with module Spec := Spec,
       EventMappings: EventMapper.Mappings with module Target := Spec,
-    ) => Aggregate.T with type api = api
+    ) => (Aggregate.T with type api = api)
     /** Async variant — uses FIFO channel, returns `CommandPending`. */
     module MakeAsync: (
       Spec: Reventless.Aggregate.Spec,
       Behavior: Reventless.Behavior.T with module Spec := Spec,
       EventMappings: EventMapper.Mappings with module Target := Spec,
-    ) => Aggregate.T with type api = api
+    ) => (Aggregate.T with type api = api)
   }
 
   /** Factory for read model (query-side projection) components. */
@@ -300,7 +299,7 @@ module type T = {
     module Make: (
       Spec: Reventless.ReadModel.Spec,
       Mappings: Reventless.Projection.Mappings with module Target := Spec,
-    ) => ReadModel.T with module Spec = Spec and type api = api and type role = role
+    ) => (ReadModel.T with module Spec = Spec and type api = api and type role = role)
   }
 
   /** Factory for stream-enabled read model components — identical to `ReadModel`
@@ -312,29 +311,24 @@ module type T = {
     module Make: (
       Spec: Reventless.ReadModel.Spec,
       Mappings: Reventless.Projection.Mappings with module Target := Spec,
-    ) => ReadModelComponentT with module Spec = Spec and type api = api and type role = role
+    ) => (ReadModelComponentT with module Spec = Spec and type api = api and type role = role)
   }
 
   /** Factory for extension point components (single mapping). */
   module ExtensionPoint: {
-    module Make: (
-      Mapping: ExtensionPointMapping.Mapping,
-    ) => ExtensionPoint.T
+    module Make: (Mapping: ExtensionPointMapping.Mapping) => ExtensionPoint.T
 
     /** Two-mapping variant — merges per-slice EP mappings. */
     module Make2: (
       Mapping1: ExtensionPointMapping.Mapping,
-      Mapping2: ExtensionPointMapping.Mapping
-        with module ExtensionPoint = Mapping1.ExtensionPoint,
+      Mapping2: ExtensionPointMapping.Mapping with module ExtensionPoint = Mapping1.ExtensionPoint,
     ) => ExtensionPoint.T
 
     /** Three-mapping variant — merges per-slice EP mappings. */
     module Make3: (
       Mapping1: ExtensionPointMapping.Mapping,
-      Mapping2: ExtensionPointMapping.Mapping
-        with module ExtensionPoint = Mapping1.ExtensionPoint,
-      Mapping3: ExtensionPointMapping.Mapping
-        with module ExtensionPoint = Mapping1.ExtensionPoint,
+      Mapping2: ExtensionPointMapping.Mapping with module ExtensionPoint = Mapping1.ExtensionPoint,
+      Mapping3: ExtensionPointMapping.Mapping with module ExtensionPoint = Mapping1.ExtensionPoint,
     ) => ExtensionPoint.T
 
     /** Multi-mapping variant with full control over name and mappings array. */
@@ -349,14 +343,12 @@ module type T = {
       using the plugin name for the extension's component name and auto-merging
       blueprints that target the same extension point. */
   module Extension: {
-    module Make: (
-      Mapping: ExtensionMapping.Mapping,
-    ) => Extension.Blueprint
+    module Make: (Mapping: ExtensionMapping.Mapping) => Extension.Blueprint
   }
 
   /** Factory for task (background job / S3 trigger) components. */
   module Task: {
-    module Make: (Spec: Task.Spec) => Task.T with module Spec = Spec
+    module Make: (Spec: Task.Spec) => (Task.T with module Spec = Spec)
   }
 
   /** Ready-to-use counter component (no Make required). */
@@ -367,12 +359,12 @@ module type T = {
     module Make: (
       Spec: Reventless.StateChangeSlice.Spec,
       Behavior: Reventless.StateChangeSlice.Behavior with module Spec := Spec,
-    ) => StateChangeSlice.T with module Spec = Spec
+    ) => (StateChangeSlice.T with module Spec = Spec)
     /** Async variant — uses FIFO channel, returns `CommandPending`. */
     module MakeAsync: (
       Spec: Reventless.StateChangeSlice.Spec,
       Behavior: Reventless.StateChangeSlice.Behavior with module Spec := Spec,
-    ) => StateChangeSlice.T with module Spec = Spec
+    ) => (StateChangeSlice.T with module Spec = Spec)
   }
 
   /** Factory for DCB read-side state-view slice components. */
@@ -380,7 +372,7 @@ module type T = {
     module Make: (
       Spec: Reventless.StateViewSlice.Spec,
       Projection: Reventless.StateViewSlice.Projection with module Spec := Spec,
-    ) => StateViewSlice.T with module Spec = Spec
+    ) => (StateViewSlice.T with module Spec = Spec)
   }
 
   /** Factory for stream-enabled state-view slice components (enables Source B subscriptions). */
@@ -388,7 +380,7 @@ module type T = {
     module Make: (
       Spec: Reventless.StateViewSlice.Spec,
       Projection: Reventless.StateViewSlice.Projection with module Spec := Spec,
-    ) => StateViewSliceComponentT with module Spec = Spec
+    ) => (StateViewSliceComponentT with module Spec = Spec)
   }
 
   /** Factory for DCB automation slice components (TODO list pattern). */
@@ -396,7 +388,7 @@ module type T = {
     module Make: (
       Spec: Reventless.AutomationSlice.Spec,
       Automation: Reventless.AutomationSlice.Automation with module Spec := Spec,
-    ) => AutomationSlice.T with module Spec = Spec
+    ) => (AutomationSlice.T with module Spec = Spec)
   }
 
   /** Factory for DCB outbound translation slice components (tracked external calls). */
@@ -404,7 +396,7 @@ module type T = {
     module Make: (
       Spec: Reventless.OutboundTranslationSlice.Spec,
       Translation: Reventless.OutboundTranslationSlice.Translation with module Spec := Spec,
-    ) => OutboundTranslationSlice.T with module Spec = Spec
+    ) => (OutboundTranslationSlice.T with module Spec = Spec)
   }
 
   /** Factory for DCB inbound translation slice components (external input to commands). */
@@ -412,7 +404,7 @@ module type T = {
     module Make: (
       Spec: Reventless.InboundTranslationSlice.Spec,
       Translation: Reventless.InboundTranslationSlice.Translation with module Spec := Spec,
-    ) => InboundTranslationSlice.T with module Spec = Spec
+    ) => (InboundTranslationSlice.T with module Spec = Spec)
   }
 
   /** Whether this platform supports MCP (Model Context Protocol) for AI agent access.
@@ -536,7 +528,10 @@ module type T = {
       Pass `~apiTarget=Platform` to route the plugin's resolvers and schema to the Platform API.
       Defaults to `Domain`.
       Returns the Pulumi stack outputs dict for use as the ESM `default` export. */
-  let deployPlugin: (~plugin: module(PluginMaker), ~apiTarget: apiTarget=?) => dict<Pulumi.Output.t<JSON.t>>
+  let deployPlugin: (
+    ~plugin: module(PluginMaker),
+    ~apiTarget: apiTarget=?,
+  ) => dict<Pulumi.Output.t<JSON.t>>
 
   /** Start all servers after all makePlatform/deployPlugin calls are complete.
       In split in-memory mode, servers are deferred until this is called so all

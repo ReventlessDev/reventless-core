@@ -32,7 +32,6 @@ type lifecycleState = Products.shelfStatus
 let commandTransition = (command: command): Reventless.Transition.t<lifecycleState> => {
   open Reventless.Transition
   switch command {
-  | DiscontinueProduct(_) =>
-    Moves([Products.Listed, Products.Archived], Products.Discontinued)
+  | DiscontinueProduct(_) => Moves([Products.Listed, Products.Archived], Products.Discontinued)
   }
 }

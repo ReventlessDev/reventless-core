@@ -126,10 +126,7 @@ let buildAppSyncEvent = (widgetId): JSON.t => {
   // template in `DcbCmdHandlerResolver_GraphQL.res`).
   let command = Dict.fromArray([("AddWidget", Dict.make()->JSON.Encode.object)])
   let arguments = Dict.fromArray([("widgetId", widgetId->JSON.Encode.string)])
-  let meta = Dict.fromArray([
-    ("user", "ep-test"->JSON.Encode.string),
-    ("ip", JSON.Encode.null),
-  ])
+  let meta = Dict.fromArray([("user", "ep-test"->JSON.Encode.string), ("ip", JSON.Encode.null)])
   Dict.fromArray([
     ("command", command->JSON.Encode.object),
     ("arguments", arguments->JSON.Encode.object),
@@ -181,25 +178,28 @@ describe("DcbCommandTopicEntryPoint integration", () => {
 
       // Concurrent burst — simulates the deploy-sync fan-out that surfaced the
       // `retries exhausted` cascade on alpha.
-      let outcomes =
-        await resourceNames
-        ->Array.map(resourceName =>
-          runOneCompositeEvent(table.name, buildAddResourceEvent(~environment=env, ~resourceName))
-        )
-        ->Promise.all
+      let outcomes = await resourceNames
+      ->Array.map(
+        resourceName =>
+          runOneCompositeEvent(table.name, buildAddResourceEvent(~environment=env, ~resourceName)),
+      )
+      ->Promise.all
 
       // Every distinct composite entity must commit — none may conflict on the
       // shared `environment` prefix.
-      outcomes->Array.forEach(outcomeJson => {
-        let s = outcomeJson->JSON.stringifyAny->Option.getOr("<unserializable>")
-        expect(s->String.includes("CommandAccepted"))->toBe(true)
-      })
+      outcomes->Array.forEach(
+        outcomeJson => {
+          let s = outcomeJson->JSON.stringifyAny->Option.getOr("<unserializable>")
+          expect(s->String.includes("CommandAccepted"))->toBe(true)
+        },
+      )
 
       // Mechanism-level proof: the only fence rows are the synthetic composite
       // fences (`fence#__dcb_composite__:…`) — one per entity — with NO
       // per-member `fence#environment:…` / `fence#resourceName:…` rows.
       let fenceIds = await H.scanFenceIds(table)
-      let compositeFencePrefix = "fence#" ++ DcbEventLogStorage_DynamoDb_Runtime.compositeFenceTagKey
+      let compositeFencePrefix =
+        "fence#" ++ DcbEventLogStorage_DynamoDb_Runtime.compositeFenceTagKey
       expect(fenceIds->Array.length)->toBe(resourceNames->Array.length)
       fenceIds->Array.forEach(id => expect(id->String.startsWith(compositeFencePrefix))->toBe(true))
 

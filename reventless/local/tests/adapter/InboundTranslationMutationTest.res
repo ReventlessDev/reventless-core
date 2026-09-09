@@ -68,7 +68,10 @@ let payload = (result: GraphqlYoga.executionResult): JSON.t =>
   ->Option.getOr(JSON.Encode.null)
 
 let str = (node: JSON.t, key: string): option<string> =>
-  node->JSON.Decode.object->Option.flatMap(d => d->Dict.get(key))->Option.flatMap(JSON.Decode.string)
+  node
+  ->JSON.Decode.object
+  ->Option.flatMap(d => d->Dict.get(key))
+  ->Option.flatMap(JSON.Decode.string)
 
 let num = (node: JSON.t, key: string): option<float> =>
   node->JSON.Decode.object->Option.flatMap(d => d->Dict.get(key))->Option.flatMap(JSON.Decode.float)

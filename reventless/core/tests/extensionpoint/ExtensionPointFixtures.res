@@ -14,10 +14,10 @@ module TestEPSpec = {
     | TriggerDirective({value: string})
 
   @schema
-  type event = | Done({result: string})
+  type event = Done({result: string})
 
   @schema
-  type directive = | DirectiveA
+  type directive = DirectiveA
 
   let moduleUrl: string = %raw(`import.meta.url`)
 }
@@ -75,9 +75,7 @@ module TestMapping = {
       Reventless.Schedule.create,
       Reventless.Schedule.delete,
       Reventless.QueryEngine.operations,
-    ) => array<
-      ReventlessInfra.ExtensionPointMapping.abstractEventAction<TestEPSpec.event>,
-    >,
+    ) => array<ReventlessInfra.ExtensionPointMapping.abstractEventAction<TestEPSpec.event>>,
   > = None
 }
 
@@ -87,7 +85,8 @@ module TestMapping = {
 
 module TestMappings = {
   module Spec = TestEPSpec
-  module type Mapping = ReventlessInfra.ExtensionPointMapping.T with module ExtensionPoint := TestEPSpec
+  module type Mapping = ReventlessInfra.ExtensionPointMapping.T
+    with module ExtensionPoint := TestEPSpec
   let name = "TestMappings"
   let moduleUrl: string = %raw(`import.meta.url`)
   let mappings: array<module(Mapping)> = [module(TestMapping)]
@@ -98,16 +97,14 @@ module TestMappings = {
 // ─────────────────────────────────────────────────────────────
 
 module TestCallbackSpec: ExtensionPoint_Callback.Spec = {
-  let publishToAggregates: dict<CommandTopic.publishJsons> =
-    Dict.fromArray([
-      (
-        "TestTargetAgg",
-        async cmds => {
-          capturedPublishedCmds :=
-            capturedPublishedCmds.contents->Array.concat(cmds)
-        },
-      ),
-    ])
+  let publishToAggregates: dict<CommandTopic.publishJsons> = Dict.fromArray([
+    (
+      "TestTargetAgg",
+      async cmds => {
+        capturedPublishedCmds := capturedPublishedCmds.contents->Array.concat(cmds)
+      },
+    ),
+  ])
 
   let commandTopicResources: array<Adapter.resolvedResource> = []
 
@@ -154,10 +151,9 @@ let testMeta: Message.meta = {
   correlationId: "ep-corr-1",
 }
 
-let makeTopicItem = (
-  reference,
-  command,
-): CommandTopic.topicItem<Message.command'<Reventless.Id.String.t, TestEPSpec.command>> => {
+let makeTopicItem = (reference, command): CommandTopic.topicItem<
+  Message.command'<Reventless.Id.String.t, TestEPSpec.command>,
+> => {
   command: {
     id: reference->Reventless.Id.String.makeFromString,
     meta: testMeta,

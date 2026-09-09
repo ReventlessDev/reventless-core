@@ -12,9 +12,15 @@ type queryNames = {
 }
 
 let pluralize = (n: string) =>
-  if RegExp.test(%re("/[^aeiou]y$/i"), n) {
+  if RegExp.test(/[^aeiou]y$/i, n) {
     n->String.slice(~start=0, ~end=String.length(n) - 1) ++ "ies"
-  } else if n->String.endsWith("s") || n->String.endsWith("x") || n->String.endsWith("z") || n->String.endsWith("ch") || n->String.endsWith("sh") {
+  } else if (
+    n->String.endsWith("s") ||
+    n->String.endsWith("x") ||
+    n->String.endsWith("z") ||
+    n->String.endsWith("ch") ||
+    n->String.endsWith("sh")
+  ) {
     n ++ "es"
   } else {
     n ++ "s"
@@ -23,7 +29,13 @@ let pluralize = (n: string) =>
 let singularize = (n: string) =>
   if n->String.endsWith("ies") {
     n->String.slice(~start=0, ~end=n->String.length - 3) ++ "y"
-  } else if n->String.endsWith("ses") || n->String.endsWith("xes") || n->String.endsWith("zes") || n->String.endsWith("ches") || n->String.endsWith("shes") {
+  } else if (
+    n->String.endsWith("ses") ||
+    n->String.endsWith("xes") ||
+    n->String.endsWith("zes") ||
+    n->String.endsWith("ches") ||
+    n->String.endsWith("shes")
+  ) {
     n->String.slice(~start=0, ~end=n->String.length - 2)
   } else if n->String.endsWith("s") {
     n->String.slice(~start=0, ~end=n->String.length - 1)
@@ -76,16 +88,17 @@ let assertSubscriptionNameFits = (~fieldName: string) => {
 // expect that shape (not aggregate-style `${plugin}_${slice}_${command}`). @noApi
 // variants are filtered out. Every emitted name is guarded against the 50-char AppSync
 // subscription cap at build time. Returns [(fieldName, constructorName)] in declaration order.
-let sliceMutationFields = (
-  ~plugin: string,
-  ~slice: string,
-  ~commandSchema: S.t<unknown>,
-): array<(string, string)> => {
+let sliceMutationFields = (~plugin: string, ~slice: string, ~commandSchema: S.t<unknown>): array<(
+  string,
+  string,
+)> => {
   let allNames = Reventless.DcbTag.extractAllVariantNames(commandSchema->Obj.magic)
   let filtered = ApiNoApiHelpers.filterNoApiVariants(allNames, commandSchema)
   switch filtered {
   | [] => []
-  | [single] => [(assertSubscriptionNameFits(~fieldName=sliceMutationField(~plugin, ~slice)), single)]
+  | [single] => [
+      (assertSubscriptionNameFits(~fieldName=sliceMutationField(~plugin, ~slice)), single),
+    ]
   | _ =>
     filtered->Array.map(ctor => (
       assertSubscriptionNameFits(~fieldName=dcbCommandMutationField(~plugin, ~command=ctor)),
@@ -115,7 +128,11 @@ let sliceMutationFieldFor = (
 // "ProductDemand" the singularize is a no-op and pluralize behaves as usual.
 let canonicalPlural = (n: string) => pluralize(singularize(n))
 
-let queryFieldNamesForReadModel = (~plugin: string, ~name: string, ~connectionSpec: bool=true): queryNames => {
+let queryFieldNamesForReadModel = (
+  ~plugin: string,
+  ~name: string,
+  ~connectionSpec: bool=true,
+): queryNames => {
   let singular = singularize(name)
   let plural = canonicalPlural(name)
   {
@@ -144,18 +161,16 @@ returning a type the plugin does not define fails the merge — and on AWS the
 target table's `dynamodb:*` grant is attached to the *declaring* plugin's API
 role, so even a schema that merged would be refused at read time.
 */
-let resolvedFieldsOfConfig = (
-  ~plugin: string,
-  config: Reventless.ReadModel.config,
-): array<ReventlessInfra.Api.resolvedFieldEntry> => {
+let resolvedFieldsOfConfig = (~plugin: string, config: Reventless.ReadModel.config): array<
+  ReventlessInfra.Api.resolvedFieldEntry,
+> => {
   let assertSamePlugin = (~pluginName: option<string>, ~tableName: string, ~fieldName: string) =>
     switch pluginName {
     | Some(p) if p != plugin =>
       JsError.throwWithMessage(
         `Field \`${fieldName}\` resolves to "${tableName}" in plugin "${p}", but cross-plugin ` ++
         `resolvers are not supported: a plugin's GraphQL document must be valid standalone, and ` ++
-        `"${p}"'s table is not readable by "${plugin}"'s API role. Query the other view directly, ` ++
-        `or project the fields you need into this one.`,
+        `"${p}"'s table is not readable by "${plugin}"'s API role. Query the other view directly, ` ++ `or project the fields you need into this one.`,
       )
     | _ => ()
     }
@@ -186,7 +201,11 @@ let resolvedFieldsOfConfig = (
   Array.concat(single, many)
 }
 
-let queryFieldNamesForStateView = (~plugin: string, ~viewName: string, ~connectionSpec: bool=true): queryNames => {
+let queryFieldNamesForStateView = (
+  ~plugin: string,
+  ~viewName: string,
+  ~connectionSpec: bool=true,
+): queryNames => {
   let entity = stripViewSuffix(viewName)
   let singular = singularize(entity)
   let plural = canonicalPlural(entity)
@@ -206,7 +225,11 @@ let queryFieldNamesForStateView = (~plugin: string, ~viewName: string, ~connecti
 // the resolver path (`GetItem` instead of `Scan`), and the `*ByIds` batch
 // resolver all line up. StateViewSlice uses `queryFieldNamesForStateView`
 // instead and keeps its own (id-free) shape.
-let queryFieldNamesForSliceQueryDb = (~plugin: string, ~queryDbName: string, ~connectionSpec: bool=true): queryNames => {
+let queryFieldNamesForSliceQueryDb = (
+  ~plugin: string,
+  ~queryDbName: string,
+  ~connectionSpec: bool=true,
+): queryNames => {
   {
     singleFieldName: `${plugin}_${queryDbName}`,
     listFieldName: `${plugin}_${canonicalPlural(queryDbName)}`,

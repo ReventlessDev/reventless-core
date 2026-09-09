@@ -23,11 +23,12 @@ Declaration order rather than a name rule: a view with two image fields has
 already said which one comes first, and guessing from names would let a field
 called `thumbnail` outrank the one the author put at the top.
 */
-
 /** Where the ref string sits, relative to the field that carries it. */
 type shape =
-  | /** The field's own value is the ref. */ Scalar
-  | /** The ref is one member of the field's record. */ Member(string)
+  /** The field's own value is the ref. */
+  | Scalar
+  /** The ref is one member of the field's record. */
+  | Member(string)
 
 type source = {
   field: string,

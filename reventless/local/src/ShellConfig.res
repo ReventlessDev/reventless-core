@@ -41,11 +41,7 @@ let manifestUrlOf = (config: ReventlessInfra.Platform.bakedManifest): string =>
 // caller matching no declared group gets and what every existing deployment has.
 let journeyManifestsKey = "journeyManifestUrls"
 
-let computedKeys = [
-  "manifestUrl",
-  journeyManifestsKey,
-  ReventlessCore.Platform_UiSlots.configKey,
-]
+let computedKeys = ["manifestUrl", journeyManifestsKey, ReventlessCore.Platform_UiSlots.configKey]
 
 /**
  The overlay this platform puts on top of the shipped `config.json`.
@@ -96,8 +92,9 @@ let overlay = (
     if collisions->Array.length > 0 {
       JsError.throwWithMessage(
         "host UI config.json: shellConfig sets key(s) the platform already computes — " ++
-        collisions->Array.join(", ") ++
-        ". Remove them from shellConfig; a passthrough cannot redirect a computed key.",
+        collisions->Array.join(
+          ", ",
+        ) ++ ". Remove them from shellConfig; a passthrough cannot redirect a computed key.",
       )
     }
     extra->Dict.forEachWithKey((v, k) => out->Dict.set(k, v))
@@ -134,12 +131,10 @@ let emit = (
 ) => {
   let overlay = overlay(~bakedManifest, ~uiSlotsFile?, ~shellConfig)
 
-  switch (
-    switch dir {
-    | Some(_) as given => given
-    | None => HostShellDist.dir()
-    }
-  ) {
+  switch switch dir {
+  | Some(_) as given => given
+  | None => HostShellDist.dir()
+  } {
   | None =>
     // Nothing declared and no shell installed is the ordinary case for a
     // platform nobody points a browser at; only a declaration makes the missing
@@ -148,8 +143,7 @@ let emit = (
       JsError.throwWithMessage(
         `host UI config.json: cannot resolve ${HostShellDist.package} from ${NodeProcess.cwd()} — ` ++
         `the local shell reads its config from that package's dist/, so declaring shell ` ++
-        `config without the package installed would write nothing and leave the shell ` ++
-        `configured as it shipped.`,
+        `config without the package installed would write nothing and leave the shell ` ++ `configured as it shipped.`,
       )
     }
   | Some(dir) =>
@@ -163,8 +157,7 @@ let emit = (
       if !NodeFs.existsSync(path) {
         JsError.throwWithMessage(
           `host UI config.json: ${HostShellDist.package} ships no ${fileName} at ${dir} — ` ++
-          `there is no baseline to overlay, so the shell would boot with only the keys ` ++
-          `declared here and none of the ones it expects.`,
+          `there is no baseline to overlay, so the shell would boot with only the keys ` ++ `declared here and none of the ones it expects.`,
         )
       }
       NodeFs.writeFileSync(baselinePath, NodeFs.readFileSync(path))

@@ -18,7 +18,14 @@ let metaOf = (~user=?, ~time="2026-01-01T00:00:00Z", ()) =>
     ("causationId", JSON.Encode.null),
   ])->JSON.Encode.object
 
-let rec_ = (~position, ~eventType="OrderPlaced", ~tags=[], ~user=?, ~time="2026-01-01T00:00:00Z", ()): EH.record => {
+let rec_ = (
+  ~position,
+  ~eventType="OrderPlaced",
+  ~tags=[],
+  ~user=?,
+  ~time="2026-01-01T00:00:00Z",
+  (),
+): EH.record => {
   position,
   eventType,
   payload: JSON.Encode.object(Dict.make()),
@@ -86,9 +93,8 @@ describe("EventHistoryResolvers_GraphQL — position ordering", () => {
   })
 
   testSync("a cursor bound crossing a digit boundary skips nothing", () => {
-    let records = Array.make(~length=12, 0)->Array.mapWithIndex((_, i) =>
-      rec_(~position=i->Int.toString, ())
-    )
+    let records =
+      Array.make(~length=12, 0)->Array.mapWithIndex((_, i) => rec_(~position=i->Int.toString, ()))
     // Page 1 ends at position 9; page 2 must start at 10, not at 1.
     let page1 = EH.paginate(~records, ~args=args(~first=10, ()))
     expect(page1->positionsOf->Array.length)->toBe(10)
@@ -101,9 +107,30 @@ describe("EventHistoryResolvers_GraphQL — position ordering", () => {
 
 describe("EventHistoryResolvers_GraphQL — filtering", () => {
   let records = [
-    rec_(~position="1", ~eventType="OrderPlaced", ~tags=[tag("orderId", "o-1")], ~user="alice", ~time="2026-01-01T00:00:00Z", ()),
-    rec_(~position="2", ~eventType="OrderShipped", ~tags=[tag("orderId", "o-1")], ~user="bob", ~time="2026-01-05T00:00:00Z", ()),
-    rec_(~position="3", ~eventType="OrderPlaced", ~tags=[tag("orderId", "o-2")], ~user="alice", ~time="2026-01-09T00:00:00Z", ()),
+    rec_(
+      ~position="1",
+      ~eventType="OrderPlaced",
+      ~tags=[tag("orderId", "o-1")],
+      ~user="alice",
+      ~time="2026-01-01T00:00:00Z",
+      (),
+    ),
+    rec_(
+      ~position="2",
+      ~eventType="OrderShipped",
+      ~tags=[tag("orderId", "o-1")],
+      ~user="bob",
+      ~time="2026-01-05T00:00:00Z",
+      (),
+    ),
+    rec_(
+      ~position="3",
+      ~eventType="OrderPlaced",
+      ~tags=[tag("orderId", "o-2")],
+      ~user="alice",
+      ~time="2026-01-09T00:00:00Z",
+      (),
+    ),
   ]
   let filtered = f => records->Array.filter(r => EH.matchesFilter(r, f))->Array.map(r => r.position)
 
@@ -129,9 +156,9 @@ describe("EventHistoryResolvers_GraphQL — filtering", () => {
   testSync("time range is inclusive on both bounds", () => {
     expect(filtered({timeFrom: "2026-01-05T00:00:00Z"}))->toEqual(["2", "3"])
     expect(filtered({timeTo: "2026-01-05T00:00:00Z"}))->toEqual(["1", "2"])
-    expect(
-      filtered({timeFrom: "2026-01-05T00:00:00Z", timeTo: "2026-01-05T00:00:00Z"}),
-    )->toEqual(["2"])
+    expect(filtered({timeFrom: "2026-01-05T00:00:00Z", timeTo: "2026-01-05T00:00:00Z"}))->toEqual([
+      "2",
+    ])
   })
 
   testSync("an empty filter keeps everything", () => {
@@ -154,10 +181,7 @@ describe("EventHistoryResolvers_GraphQL — argument decoding", () => {
               ("entityId", JSON.Encode.string("o-1")),
               ("tagKey", JSON.Encode.string("orderId")),
               ("tagValue", JSON.Encode.string("o-1")),
-              (
-                "eventTypes",
-                [JSON.Encode.string("OrderPlaced")]->JSON.Encode.array,
-              ),
+              ("eventTypes", [JSON.Encode.string("OrderPlaced")]->JSON.Encode.array),
               ("user", JSON.Encode.string("alice")),
               ("timeFrom", JSON.Encode.string("2026-01-01")),
               ("timeTo", JSON.Encode.string("2026-02-01")),
@@ -183,9 +207,10 @@ describe("EventHistoryResolvers_GraphQL — argument decoding", () => {
 })
 
 describe("EventHistoryResolvers_GraphQL — pagination", () => {
-  let records = Array.make(~length=5, 0)->Array.mapWithIndex((_, i) =>
-    rec_(~position=(i + 1)->Int.toString, ())
-  )
+  let records =
+    Array.make(~length=5, 0)->Array.mapWithIndex((_, i) =>
+      rec_(~position=(i + 1)->Int.toString, ())
+    )
 
   testSync("forward paging reports hasNextPage until exhausted", () => {
     let page = EH.paginate(~records, ~args=args(~first=2, ()))
@@ -242,7 +267,10 @@ describe("EventHistoryResolvers_GraphQL — naming the caller", () => {
 
   testSync("say so when the caller sent no filter at all", () =>
     expect(
-      EH.describeCaller(~ctx=ctxOf(~operationName="AuditTrail", ~userId="local-admin", ()), ~filter={}),
+      EH.describeCaller(
+        ~ctx=ctxOf(~operationName="AuditTrail", ~userId="local-admin", ()),
+        ~filter={},
+      ),
     )->toBe(`operation "AuditTrail" as local-admin, with no filter`)
   )
 

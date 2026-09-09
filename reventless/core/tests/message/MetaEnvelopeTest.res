@@ -129,10 +129,7 @@ describe("StoredEvent encode/decode round-trip:", () => {
       position: "000000001",
       event: "ItemCreated",
       data: JSON.Object(
-        Dict.fromArray([
-          ("itemId", JSON.String("agg-1")),
-          ("name", JSON.String("Widget")),
-        ]),
+        Dict.fromArray([("itemId", JSON.String("agg-1")), ("name", JSON.String("Widget"))]),
       ),
       meta,
       recordedAt: "2026-05-13T10:00:00.000Z",
@@ -157,10 +154,7 @@ describe("StoredEvent encode/decode round-trip:", () => {
       data: JSON.Object(Dict.fromArray([("productId", JSON.String("p-1"))])),
       meta,
       recordedAt: "2026-05-13T10:00:00.000Z",
-      tags: [
-        {key: "productId", value: "p-1"},
-        {key: "categoryId", value: "c-1"},
-      ],
+      tags: [{key: "productId", value: "p-1"}, {key: "categoryId", value: "c-1"}],
     }
     let flat = stored->storedEventToFlatJson(S.string)
     let roundTrip = flat->flatJsonToStoredEvent(S.string)
@@ -175,26 +169,28 @@ describe("StoredEvent encode/decode round-trip:", () => {
     expect(first.value)->toBe("p-1")
   })
 
-  testSync("meta is flattened to top-level keys in the on-disk JSON (DynamoDB GSI projectability)", () => {
-    let meta = generateMeta(~service="catalog")
-    let stored: Reventless.StoredEvent.storedEvent<string> = {
-      id: "agg-1",
-      position: "000000001",
-      event: "ItemCreated",
-      data: JSON.Object(Dict.make()),
-      meta,
-      recordedAt: "2026-05-13T10:00:00.000Z",
-    }
-    let flat = stored->storedEventToFlatJson(S.string)
-    let obj = flat->JSON.Decode.object->Option.getOrThrow
-    // meta.* should be top-level (not nested under "meta")
-    expect(obj->Dict.get("meta"))->toEqual(None)->ignore
-    expect(obj->Dict.get("service"))->toEqual(Some(JSON.String("catalog")))->ignore
-    expect(obj->Dict.get("msgId")->Option.isSome)->toBe(true)->ignore
-    // envelope fields are also top-level
-    expect(obj->Dict.get("position"))->toEqual(Some(JSON.String("000000001")))->ignore
-    expect(obj->Dict.get("event"))->toEqual(Some(JSON.String("ItemCreated")))->ignore
-    expect(obj->Dict.get("recordedAt"))
-    ->toEqual(Some(JSON.String("2026-05-13T10:00:00.000Z")))
-  })
+  testSync(
+    "meta is flattened to top-level keys in the on-disk JSON (DynamoDB GSI projectability)",
+    () => {
+      let meta = generateMeta(~service="catalog")
+      let stored: Reventless.StoredEvent.storedEvent<string> = {
+        id: "agg-1",
+        position: "000000001",
+        event: "ItemCreated",
+        data: JSON.Object(Dict.make()),
+        meta,
+        recordedAt: "2026-05-13T10:00:00.000Z",
+      }
+      let flat = stored->storedEventToFlatJson(S.string)
+      let obj = flat->JSON.Decode.object->Option.getOrThrow
+      // meta.* should be top-level (not nested under "meta")
+      expect(obj->Dict.get("meta"))->toEqual(None)->ignore
+      expect(obj->Dict.get("service"))->toEqual(Some(JSON.String("catalog")))->ignore
+      expect(obj->Dict.get("msgId")->Option.isSome)->toBe(true)->ignore
+      // envelope fields are also top-level
+      expect(obj->Dict.get("position"))->toEqual(Some(JSON.String("000000001")))->ignore
+      expect(obj->Dict.get("event"))->toEqual(Some(JSON.String("ItemCreated")))->ignore
+      expect(obj->Dict.get("recordedAt"))->toEqual(Some(JSON.String("2026-05-13T10:00:00.000Z")))
+    },
+  )
 })

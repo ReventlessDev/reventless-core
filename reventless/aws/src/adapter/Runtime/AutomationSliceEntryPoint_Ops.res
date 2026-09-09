@@ -20,7 +20,6 @@
 // `callback.phase1`. The `bodyModule` and `context` HANDLER_CONFIG fields
 // exist for this wiring (AutomationSliceRuntime_Builder_Single).
 
-
 type handlerEntry = {
   specModule: string,
   bodyModule: string,
@@ -129,7 +128,9 @@ let parseHandlerConfigWithModules = (modulesJson: string, rawJson: string): arra
           | Some(h) =>
             switch h->strOf("n") {
             | Some(name) =>
-              Some(decodeCompactEntry(~modules, ~sharedQueueUrl, ~sharedIsFifo, ~sharedUrns, h, name))
+              Some(
+                decodeCompactEntry(~modules, ~sharedQueueUrl, ~sharedIsFifo, ~sharedUrns, h, name),
+              )
             | None => decodeEntry(item)
             }
           }
@@ -164,7 +165,10 @@ let defaultContext = (sliceName: string): Reventless.AutomationSlice.context => 
 // be hardcoded FIFO while the command topics are standard queues, and SQS rejects
 // the MessageGroupId a FIFO publisher attaches — a failure nothing had reached,
 // because the role had no sqs:SendMessage to get that far.
-let makePublishJsons = (queueUrl: string, ~isFifo: bool): ReventlessCore.CommandTopic.publishJsons => {
+let makePublishJsons = (
+  queueUrl: string,
+  ~isFifo: bool,
+): ReventlessCore.CommandTopic.publishJsons => {
   let queue: Util_SQS_Runtime.resolvedQueue = {id: queueUrl, name: queueUrl, arn: ""}
   queue->CommandTopicChannel_SQS_Runtime.publishJsons(isFifo ? AWS.SQS_FIFO : AWS.SQS)
 }
@@ -185,13 +189,12 @@ let makeSyncTodoItems = (
   }
   let save = QueryDbStorage_DynamoDb_Runtime.save(table)
   async () => {
-    let _ =
-      await todoItems
-      ->Dict.toArray
-      ->Array.map(((id, row)) =>
-        save(id, row->Reventless.Util_Sury.toJson(rowSchema), ReventlessCore.QueryDb.Overwrite, None)
-      )
-      ->Promise.all
+    let _ = await todoItems
+    ->Dict.toArray
+    ->Array.map(((id, row)) =>
+      save(id, row->Reventless.Util_Sury.toJson(rowSchema), ReventlessCore.QueryDb.Overwrite, None)
+    )
+    ->Promise.all
   }
 }
 
@@ -248,7 +251,11 @@ let makeLoadTodoItems = (
       ->Effect.map(items =>
         items->Array.reduce(0, (count, item) => {
           let json = item->JSON.stringifyAny->Option.getOr("")->JSON.parseOrThrow
-          let id = json->JSON.Decode.object->Option.flatMap(d => d->Dict.get("id"))->Option.flatMap(JSON.Decode.string)
+          let id =
+            json
+            ->JSON.Decode.object
+            ->Option.flatMap(d => d->Dict.get("id"))
+            ->Option.flatMap(JSON.Decode.string)
           switch id {
           | Some(id) if todoItems->Dict.get(id)->Option.isNone =>
             switch json->Reventless.Util_Sury.fromJson(rowSchema) {

@@ -24,7 +24,6 @@ the suite â€” the assertions are registered by a functor, not declared as data â
 so a manifest that listed them would be restating the certificate from memory.
 A reader who wants to know what was proved reads a certificate.
 */
-
 /** One field the emitter's config declares. `required` is read off the schema,
     so an optional field cannot be listed as mandatory by a stale hand. */
 @schema
@@ -82,6 +81,7 @@ let configFieldsOf = (schema: S.t<unknown>): array<configField> =>
             }
           )
         )
+
       | _ => true
       },
     })

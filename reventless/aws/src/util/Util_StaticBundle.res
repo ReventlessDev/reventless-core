@@ -44,9 +44,7 @@ let rec walkInto = (~dir: string, ~prefix: string, acc: array<fileEntry>): unit 
  */
 let walk = (assetsDir: string): array<fileEntry> => {
   if !NodeFs.existsSync(assetsDir) {
-    JsError.throwWithMessage(
-      `Util_StaticBundle.walk: assetsDir does not exist: ${assetsDir}`,
-    )
+    JsError.throwWithMessage(`Util_StaticBundle.walk: assetsDir does not exist: ${assetsDir}`)
   }
   let acc: array<fileEntry> = []
   walkInto(~dir=assetsDir, ~prefix="", acc)

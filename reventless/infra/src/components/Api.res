@@ -4,8 +4,10 @@
 let noApiId: S.Metadata.Id.t<bool> = S.Metadata.Id.make(~namespace="api", ~name="noApi")
 
 /** Internal sury metadata ID used to mark specific variant names excluded from API exposure. */
-let noApiVariantsId: S.Metadata.Id.t<Set.t<string>> =
-  S.Metadata.Id.make(~namespace="api", ~name="noApiVariants")
+let noApiVariantsId: S.Metadata.Id.t<Set.t<string>> = S.Metadata.Id.make(
+  ~namespace="api",
+  ~name="noApiVariants",
+)
 
 /** The same exclusion, carried by the excluded *member* rather than by the union
     it sits in — so it survives a variant spread.
@@ -16,12 +18,13 @@ let noApiVariantsId: S.Metadata.Id.t<Set.t<string>> =
     host publishes a command its author marked internal. A mark on the member
     travels, because the member is what is spliced — the host's union holds the
     same schema object. */
-let noApiVariantId: S.Metadata.Id.t<bool> =
-  S.Metadata.Id.make(~namespace="api", ~name="noApiVariant")
+let noApiVariantId: S.Metadata.Id.t<bool> = S.Metadata.Id.make(
+  ~namespace="api",
+  ~name="noApiVariant",
+)
 
 /** PPX helper: attaches the noApi flag to a command schema. Called by generated code. */
-let markNoApi = (schema: S.t<'a>): S.t<'a> =>
-  schema->S.Metadata.set(~id=noApiId, true)
+let markNoApi = (schema: S.t<'a>): S.t<'a> => schema->S.Metadata.set(~id=noApiId, true)
 
 /** The constructor a union member stands for: the `TAG` literal of a
     payload-bearing variant, or the bare literal a payload-less one compiles to. */

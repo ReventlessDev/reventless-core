@@ -64,7 +64,6 @@ type has, and it is the one most existing coordinate fields are on. It costs a
 log something only if it *collapses* two flattened scalar fields back into one,
 which rewrites that shape.
 */
-
 /**
 Validate a latitude, saying why when it is out of range.
 
@@ -76,8 +75,9 @@ let validateLat = (raw: float): result<float, string> =>
     Error(`a latitude must be a finite number of degrees, got ${Float.toString(raw)}`)
   } else if raw < -90.0 || raw > 90.0 {
     Error(
-      `a latitude runs from -90 to 90 degrees, got ${Float.toString(raw)}. ` ++
-      `A value beyond ±90 is usually a longitude in the latitude's place.`,
+      `a latitude runs from -90 to 90 degrees, got ${Float.toString(
+          raw,
+        )}. ` ++ `A value beyond ±90 is usually a longitude in the latitude's place.`,
     )
   } else {
     Ok(raw)
@@ -99,25 +99,20 @@ let validateLng = (raw: float): result<float, string> =>
     11-alpha miscompiles a refinement wrapping a *record* schema. Refining the
     field is both the honest placement and the one that works. */
 let latSchema: S.t<float> =
-  S.float->S.refine(
-    raw =>
-      switch validateLat(raw) {
-      | Ok(_) => true
-      | Error(_) => false
-      },
-    ~error="expected a latitude in -90…90",
-  )
+  S.float->S.refine(raw =>
+    switch validateLat(raw) {
+    | Ok(_) => true
+    | Error(_) => false
+    }
+  , ~error="expected a latitude in -90…90")
 
 /** The longitude's own schema, for the same reason. */
-let lngSchema: S.t<float> =
-  S.float->S.refine(
-    raw =>
-      switch validateLng(raw) {
-      | Ok(_) => true
-      | Error(_) => false
-      },
-    ~error="expected a longitude in -180…180",
-  )
+let lngSchema: S.t<float> = S.float->S.refine(raw =>
+  switch validateLng(raw) {
+  | Ok(_) => true
+  | Error(_) => false
+  }
+, ~error="expected a longitude in -180…180")
 
 @schema
 type t = {
@@ -131,7 +126,8 @@ type t = {
 
     Shadows the schema sury-ppx derived from the type above: the derived one is
     the shape, and this adds the marker the shape cannot carry. */
-let schema: S.t<t> = schema->Semantic.mark(~id=Semantic.Id.geoPoint)
+let schema: S.t<t> =
+  schema->Semantic.mark(~id=Semantic.Id.geoPoint)
 
 /** Build a validated point. Both coordinates are checked, and the message names
     which one is wrong — the common mistake is a swapped pair, where the

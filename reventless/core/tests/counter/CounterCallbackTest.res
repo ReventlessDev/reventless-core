@@ -39,45 +39,51 @@ describe("Counter_Callback.groupByCounterId:", () => {
 
 describe("Counter_Callback.counterHandler:", () => {
   describe("count reaches zero", () => {
-    testPromise("CountFinished event dispatched via jsonEventsHandler", async () => {
-      let ref1 = Counter.makeId(("counter-1", "ref-a"))
-      let counts = [makeCountsJson(ref1, 0)]
-      await TestCounterHandler.counterHandler(~references=[(ref1, 1)], ~counts)
-      // jsonEventsHandler should have been called with 1 event batch containing 1 event
-      let batches = capturedEventBatches.contents
-      expect((batches->Array.length, batches->Array.getUnsafe(0)->Array.length))->toEqual((1, 1))
-    })
+    testPromise(
+      "CountFinished event dispatched via jsonEventsHandler",
+      async () => {
+        let ref1 = Counter.makeId(("counter-1", "ref-a"))
+        let counts = [makeCountsJson(ref1, 0)]
+        await TestCounterHandler.counterHandler(~references=[(ref1, 1)], ~counts)
+        // jsonEventsHandler should have been called with 1 event batch containing 1 event
+        let batches = capturedEventBatches.contents
+        expect((batches->Array.length, batches->Array.getUnsafe(0)->Array.length))->toEqual((1, 1))
+      },
+    )
   })
 
   describe("count above zero", () => {
-    testPromise("no CountFinished event, countsDbCount still called", async () => {
-      let ref1 = Counter.makeId(("counter-1", "ref-a"))
-      let counts = [makeCountsJson(ref1, 3)]
-      await TestCounterHandler.counterHandler(~references=[(ref1, 1)], ~counts)
-      // jsonEventsHandler called with empty array (no finished counters)
-      let batches = capturedEventBatches.contents
-      let events = batches->Array.getUnsafe(0)
-      expect(events->Array.length)->toBe(0)
-      // countsDbCount was called once
-      expect(capturedCountCalls.contents->Array.length)->toBe(1)
-    })
+    testPromise(
+      "no CountFinished event, countsDbCount still called",
+      async () => {
+        let ref1 = Counter.makeId(("counter-1", "ref-a"))
+        let counts = [makeCountsJson(ref1, 3)]
+        await TestCounterHandler.counterHandler(~references=[(ref1, 1)], ~counts)
+        // jsonEventsHandler called with empty array (no finished counters)
+        let batches = capturedEventBatches.contents
+        let events = batches->Array.getUnsafe(0)
+        expect(events->Array.length)->toBe(0)
+        // countsDbCount was called once
+        expect(capturedCountCalls.contents->Array.length)->toBe(1)
+      },
+    )
   })
 
   describe("multiple counters in batch", () => {
-    testPromise("each decremented independently", async () => {
-      let refA = Counter.makeId(("counter-a", "ref-1"))
-      let refB = Counter.makeId(("counter-b", "ref-2"))
-      let counts = [makeCountsJson(refA, 2), makeCountsJson(refB, 0)]
-      await TestCounterHandler.counterHandler(
-        ~references=[(refA, 1), (refB, 1)],
-        ~counts,
-      )
-      // countsDbCount called twice (once per counter ID)
-      expect(capturedCountCalls.contents->Array.length)->toBe(2)
-      // One CountFinished event (counter-b reached 0)
-      let batches = capturedEventBatches.contents
-      let events = batches->Array.getUnsafe(0)
-      expect(events->Array.length)->toBe(1)
-    })
+    testPromise(
+      "each decremented independently",
+      async () => {
+        let refA = Counter.makeId(("counter-a", "ref-1"))
+        let refB = Counter.makeId(("counter-b", "ref-2"))
+        let counts = [makeCountsJson(refA, 2), makeCountsJson(refB, 0)]
+        await TestCounterHandler.counterHandler(~references=[(refA, 1), (refB, 1)], ~counts)
+        // countsDbCount called twice (once per counter ID)
+        expect(capturedCountCalls.contents->Array.length)->toBe(2)
+        // One CountFinished event (counter-b reached 0)
+        let batches = capturedEventBatches.contents
+        let events = batches->Array.getUnsafe(0)
+        expect(events->Array.length)->toBe(1)
+      },
+    )
   })
 })

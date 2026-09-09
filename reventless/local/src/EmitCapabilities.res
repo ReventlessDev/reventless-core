@@ -80,7 +80,9 @@ let main = async () => {
       let platformModule: localPlatformExports = await dynImport("./Platform.res.mjs")
       let platform = platformModule["Make"]()
 
-      let composition: compositionExports = await dynImport(NodeUrl.pathToFileURL(modulePath)["href"])
+      let composition: compositionExports = await dynImport(
+        NodeUrl.pathToFileURL(modulePath)["href"],
+      )
       let built = composition["Make"](platform)
 
       let manifestPath = NodePath.join([srcDir, "capabilities.json"])

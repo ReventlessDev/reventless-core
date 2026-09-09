@@ -7,14 +7,17 @@ let toResolvedTopicOutput = ({name, id, arn}: PulumiAws.SNS.Topic.t) =>
     arn,
   })
 
-let toResource = (~tags=?, {id, name, arn}: PulumiAws.SNS.Topic.t): ReventlessInfra.Adapter.resource =>
+let toResource = (
+  ~tags=?,
+  {id, name, arn}: PulumiAws.SNS.Topic.t,
+): ReventlessInfra.Adapter.resource =>
   ReventlessInfra.Adapter.make(
     ~name,
     ~id,
     ~urn=arn,
     ~service=name->Pulumi.Output.apply(_ => AWS.SNS.service),
     ~resourceType="aws:sns:Topic"->Pulumi.Output.make,
-    ~tags=?tags,
+    ~tags?,
   )
 
 let findResolvedResource = resources =>
@@ -23,7 +26,9 @@ let findResolvedResource = resources =>
 let log = ReventlessCore.Logger.fromEnv()
 
 let findTopicInResolvedResources = resources =>
-  switch resources->ReventlessCore.Util_Adapter.filterSupportedResolvedResources([AWS.SNS.service]) {
+  switch resources->ReventlessCore.Util_Adapter.filterSupportedResolvedResources([
+    AWS.SNS.service,
+  ]) {
   | [] =>
     let err = "Couldn't find SNS Topic in resources"
     log.error(~comp="SNS", err)

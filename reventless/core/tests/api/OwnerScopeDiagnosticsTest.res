@@ -38,9 +38,9 @@ let warnFor = (~view, ~ownerField, ~elevated) => {
 
 describe("OwnerScopeDiagnostics:", () => {
   testSync("an owner-scoped view with no elevated groups warns", () =>
-    expect(warnFor(~view="Orders", ~ownerField=Some("customerId"), ~elevated=[])->Array.length)->toBe(
-      1,
-    )
+    expect(
+      warnFor(~view="Orders", ~ownerField=Some("customerId"), ~elevated=[])->Array.length,
+    )->toBe(1)
   )
 
   // The consequence is the whole point of the line — an operator reading
@@ -74,36 +74,40 @@ describe("OwnerScopeDiagnostics:", () => {
   testSync("the same view warns once, not once per registration", () => {
     OwnerScopeDiagnostics.resetWarnings()
     Reventless.OwnerScope.setElevatedGroups([])
-    let lines = capture(() => {
-      OwnerScopeDiagnostics.warnIfNoElevatedGroups(
-        ~comp="Test",
-        ~view="Orders",
-        ~ownerField=Some("customerId"),
-      )
-      OwnerScopeDiagnostics.warnIfNoElevatedGroups(
-        ~comp="Test",
-        ~view="Orders",
-        ~ownerField=Some("customerId"),
-      )
-    })
+    let lines = capture(
+      () => {
+        OwnerScopeDiagnostics.warnIfNoElevatedGroups(
+          ~comp="Test",
+          ~view="Orders",
+          ~ownerField=Some("customerId"),
+        )
+        OwnerScopeDiagnostics.warnIfNoElevatedGroups(
+          ~comp="Test",
+          ~view="Orders",
+          ~ownerField=Some("customerId"),
+        )
+      },
+    )
     expect(lines->Array.length)->toBe(1)
   })
 
   testSync("a second view gets its own warning", () => {
     OwnerScopeDiagnostics.resetWarnings()
     Reventless.OwnerScope.setElevatedGroups([])
-    let lines = capture(() => {
-      OwnerScopeDiagnostics.warnIfNoElevatedGroups(
-        ~comp="Test",
-        ~view="Orders",
-        ~ownerField=Some("customerId"),
-      )
-      OwnerScopeDiagnostics.warnIfNoElevatedGroups(
-        ~comp="Test",
-        ~view="Invoices",
-        ~ownerField=Some("payerId"),
-      )
-    })
+    let lines = capture(
+      () => {
+        OwnerScopeDiagnostics.warnIfNoElevatedGroups(
+          ~comp="Test",
+          ~view="Orders",
+          ~ownerField=Some("customerId"),
+        )
+        OwnerScopeDiagnostics.warnIfNoElevatedGroups(
+          ~comp="Test",
+          ~view="Invoices",
+          ~ownerField=Some("payerId"),
+        )
+      },
+    )
     expect(lines->Array.length)->toBe(2)
   })
 })

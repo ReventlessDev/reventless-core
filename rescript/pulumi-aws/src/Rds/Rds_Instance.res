@@ -1,7 +1,6 @@
 /** @pulumi/aws/rds/instance
   see: https://www.pulumi.com/registry/packages/aws/api-docs/rds/instance
 */
-
 /** One entry of `masterUserSecrets`, populated when `manageMasterUserPassword`
   is true — RDS creates and rotates the master password in Secrets Manager and
   reports the secret ARN here. */

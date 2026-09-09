@@ -88,11 +88,10 @@ let _resolveLayerArnFromSsm = (): option<string> =>
  *      manually.
  *   3. `None` when both fail — Lambdas deploy without the layer.
  */
-let reventlessLayerArn: option<string> =
-  switch _layerArnEnv {
-  | Some(arn) if arn->String.trim->String.length > 0 => Some(arn->String.trim)
-  | _ => _resolveLayerArnFromSsm()
-  }
+let reventlessLayerArn: option<string> = switch _layerArnEnv {
+| Some(arn) if arn->String.trim->String.length > 0 => Some(arn->String.trim)
+| _ => _resolveLayerArnFromSsm()
+}
 
 @val
 external environment: option<string> = "process.env.Environment"
@@ -262,11 +261,8 @@ module Function = {
   }
 
   @module("@pulumi/aws") @scope("lambda") @new
-  external make: (
-    ~name: string,
-    ~args: args,
-    ~opts: Pulumi.CustomResourceOptions.t=?,
-  ) => t = "Function"
+  external make: (~name: string, ~args: args, ~opts: Pulumi.CustomResourceOptions.t=?) => t =
+    "Function"
 
   @module("@pulumi/aws") @scope(("lambda", "Function"))
   external get: (

@@ -11,7 +11,10 @@ let toResource: Types.AppSync.resolver => ReventlessInfra.Adapter.resource = ({
     ~service=id->Pulumi.Output.apply(_ => AWS.AppSync.service),
     ~resourceInfo=(type_, field)
     ->Pulumi.Output.all2
-    ->Pulumi.Output.apply(((type_, field)) => ReventlessInfra.Adapter.ApiResolver({typeName: type_, fieldName: field})),
+    ->Pulumi.Output.apply(((type_, field)) => ReventlessInfra.Adapter.ApiResolver({
+      typeName: type_,
+      fieldName: field,
+    })),
     ~resourceType="aws:appsync:Resolver"->Pulumi.Output.make,
   )
 
@@ -31,6 +34,9 @@ let toResourceNative: PulumiAws.AwsNative.AppSync.Resolver.t => ReventlessInfra.
     ~service=id->Pulumi.Output.apply(_ => AWS.AppSync.service),
     ~resourceInfo=(typeName, fieldName)
     ->Pulumi.Output.all2
-    ->Pulumi.Output.apply(((t, f)) => ReventlessInfra.Adapter.ApiResolver({typeName: t, fieldName: f})),
+    ->Pulumi.Output.apply(((t, f)) => ReventlessInfra.Adapter.ApiResolver({
+      typeName: t,
+      fieldName: f,
+    })),
     ~resourceType="aws-native:appsync:Resolver"->Pulumi.Output.make,
   )

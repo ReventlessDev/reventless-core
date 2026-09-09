@@ -18,7 +18,6 @@
 // HANDLER_CONFIG shape:
 //   { "pgConnection": { host, port, database, username, secretArn } }
 
-
 // Structured JSON logging shared by every deployed entry point (HandlerFactoryHelpers).
 type logExtra = {comp?: string}
 @module("./HandlerFactoryHelpers.mjs") @scope("log")

@@ -7,7 +7,7 @@ module ItemEventTopicSpec = {
   let name = "TestItemEventTopic"
 
   @schema
-  type event = | ItemPublished({name: string}) | ItemRemoved({id: string})
+  type event = ItemPublished({name: string}) | ItemRemoved({id: string})
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -36,11 +36,11 @@ module EventTopicMaker = ReventlessCore.EventTopic_Builder.Make(
 
 let eventTopic = EventTopicMaker.make(~name="TestItemEventTopic", ~storageResources=[])
 
-let makeEvent' = (id, event) => ({
+let makeEvent' = (id, event): Reventless.Message.event'<string, ItemEventTopicSpec.event> => {
   Reventless.Message.id,
   meta: testMeta,
   event,
-}: Reventless.Message.event'<string, ItemEventTopicSpec.event>)
+}
 
 let reset = () => {
   capturedEventCount := 0

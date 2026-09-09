@@ -81,9 +81,10 @@ let toRealtimeUrl = (endpoint: string): string => {
 }
 
 let apiHost = (endpoint: string): string => {
-  let noScheme = endpoint->String.startsWith("https://")
-    ? endpoint->String.slice(~start=8, ~end=String.length(endpoint))
-    : endpoint
+  let noScheme =
+    endpoint->String.startsWith("https://")
+      ? endpoint->String.slice(~start=8, ~end=String.length(endpoint))
+      : endpoint
   switch noScheme->String.indexOf("/") {
   | -1 => noScheme
   | i => noScheme->String.slice(~start=0, ~end=i)
@@ -105,12 +106,10 @@ let authSubprotocol = (~host: string, ~idToken: string): string =>
 
 /** POST one event as the browser does: the IdToken in `Authorization`, no
     SigV4. Returns (status, body) so the caller can assert on either. */
-let publish = async (
-  ~endpoint: string,
-  ~idToken: string,
-  ~channel: string,
-  ~payload: JSON.t,
-): (int, string) => {
+let publish = async (~endpoint: string, ~idToken: string, ~channel: string, ~payload: JSON.t): (
+  int,
+  string,
+) => {
   let body =
     Dict.fromArray([
       ("channel", JSON.Encode.string(channel)),
@@ -126,10 +125,7 @@ let publish = async (
     endpoint,
     {
       method: "POST",
-      headers: Dict.fromArray([
-        ("Content-Type", "application/json"),
-        ("Authorization", idToken),
-      ]),
+      headers: Dict.fromArray([("Content-Type", "application/json"), ("Authorization", idToken)]),
       body: Fetch.Body.string(body),
     },
   )
@@ -150,11 +146,7 @@ type socket = {
 
 /** Open the realtime socket, connection_init → ack, then subscribe. Resolves
     once subscribe_success arrives (or the deadline passes). */
-let openSubscription = async (
-  ~endpoint: string,
-  ~idToken: string,
-  ~channel: string,
-): socket => {
+let openSubscription = async (~endpoint: string, ~idToken: string, ~channel: string): socket => {
   let host = apiHost(endpoint)
   let ws = Socket.make(
     toRealtimeUrl(endpoint),
@@ -191,8 +183,7 @@ let openSubscription = async (
         ->JSON.stringify,
       )
     | Some("subscribe_success") => sock.subscribed := true
-    | Some("subscribe_error") | Some("connection_error") =>
-      sock.failure := Some(evt.data)
+    | Some("subscribe_error") | Some("connection_error") => sock.failure := Some(evt.data)
     | Some("data") =>
       // `event` is a stringified JSON payload, as AWS delivers it.
       switch evt.data->JSON.parseOrThrow->field("event")->Option.flatMap(asString) {
@@ -317,16 +308,17 @@ let run = async () => {
     ~passed=accepted,
     ~detail=accepted
       ? `HTTP ${clientStatus->Int.toString} — the per-namespace publishAuthModes override works`
-      : `HTTP ${clientStatus->Int.toString}: ${clientBody}\n        ` ++
-        "→ the namespace override did NOT take effect; the fallback is an onPublish handler or a separate API",
+      : `HTTP ${clientStatus->Int.toString}: ${clientBody}\n        ` ++ "→ the namespace override did NOT take effect; the fallback is an onPublish handler or a separate API",
   )
 
   // Acceptance is not delivery — wait for the frame to come back round.
   let rec awaitMarker = async (n: int) =>
     if n == 0 {
       false
-    } else if sock.received.contents->Array.some(e =>
-      e->field("marker")->Option.flatMap(asString) == Some(marker)
+    } else if (
+      sock.received.contents->Array.some(e =>
+        e->field("marker")->Option.flatMap(asString) == Some(marker)
+      )
     ) {
       true
     } else {
@@ -340,8 +332,8 @@ let run = async () => {
     ~detail=delivered
       ? "round trip completed — browser→platform→browser fan-out works"
       : `no frame carrying ${marker} arrived within 10s (${sock.received.contents
-        ->Array.length
-        ->Int.toString} other events seen)`,
+          ->Array.length
+          ->Int.toString} other events seen)`,
   )
 
   // ── 4. the security assertion ──
@@ -362,8 +354,7 @@ let run = async () => {
     ~detail=rejected
       ? `HTTP ${defaultStatus->Int.toString} — change descriptors stay unforgeable`
       : `HTTP ${defaultStatus->Int.toString}: ${defaultBody}\n        ` ++
-        "→ SERIOUS: a browser can forge a read-model change descriptor. " ++
-        "The namespace split is isolating nothing — do not ship this.",
+        "→ SERIOUS: a browser can forge a read-model change descriptor. " ++ "The namespace split is isolating nothing — do not ship this.",
   )
 
   sock.ws->Socket.close
@@ -378,8 +369,7 @@ let run = async () => {
   } else {
     Console.log(
       `${failed->Array.length->Int.toString} of ${total} checks FAILED:\n` ++
-      failed->Array.map(c => `  - ${c.label}`)->Array.join("\n") ++
-      "\n",
+      failed->Array.map(c => `  - ${c.label}`)->Array.join("\n") ++ "\n",
     )
     exit(1)
   }

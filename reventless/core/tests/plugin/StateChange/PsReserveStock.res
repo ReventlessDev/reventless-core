@@ -49,9 +49,9 @@ type error = OutOfStock
 
 @schema
 type event =
-  StockReserved({
-    @partitionTag reservationId: string,
-    @ref("AvailableProducts") productIds: array<string>,
-  })
+  | StockReserved({
+      @partitionTag reservationId: string,
+      @ref("AvailableProducts") productIds: array<string>,
+    })
 
 let decide = (_state, _command): result<array<event>, error> => Ok([])

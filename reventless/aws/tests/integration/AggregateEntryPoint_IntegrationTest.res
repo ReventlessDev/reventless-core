@@ -73,10 +73,7 @@ let buildAppSyncEvent = (~id, ~name): JSON.t => {
     ("id", id->JSON.Encode.string),
     ("name", name->JSON.Encode.string),
   ])
-  let meta = Dict.fromArray([
-    ("user", "agg-test"->JSON.Encode.string),
-    ("ip", JSON.Encode.null),
-  ])
+  let meta = Dict.fromArray([("user", "agg-test"->JSON.Encode.string), ("ip", JSON.Encode.null)])
   Dict.fromArray([
     ("command", "Add"->JSON.Encode.string),
     ("arguments", arguments->JSON.Encode.object),

@@ -6,7 +6,6 @@ What it asserts is the competency, not the host: the directory, the fallback to
 the host's posture, and — the part worth being strict about — that the three ways
 to send nothing stay three different facts.
 */
-
 /** The suite's title, composed once and read twice: the suite registers it,
     and `certify-trait` computes the same string to find the run's assertions in
     a test report. Exported rather than inlined so neither side parses the
@@ -22,9 +21,9 @@ module Make = (B: Notification.Binding) => {
   let register = () =>
     G.describe(suiteName(B.Spec.name), () => {
       G.test("an announced contact is recorded", () =>
-        G.givenEvents(B.Consumed.created)->G.whenCmd(B.announce(B.addressA))->G.thenEvent(
-          B.announced(B.addressA),
-        )
+        G.givenEvents(B.Consumed.created)
+        ->G.whenCmd(B.announce(B.addressA))
+        ->G.thenEvent(B.announced(B.addressA))
       )
 
       // The relay re-announces on every contact event a host publishes, and its
@@ -36,9 +35,9 @@ module Make = (B: Notification.Binding) => {
       )
 
       G.test("a changed address is recorded", () =>
-        G.givenEvents(announced)->G.whenCmd(B.announce(B.addressB))->G.thenEvent(
-          B.announced(B.addressB),
-        )
+        G.givenEvents(announced)
+        ->G.whenCmd(B.announce(B.addressB))
+        ->G.thenEvent(B.announced(B.addressB))
       )
 
       // A person is at the other end of this one, so they are told rather than
@@ -81,9 +80,7 @@ module Make = (B: Notification.Binding) => {
       G.test("a transactional request goes out with no explicit subscription", () =>
         G.givenEvents(announced)
         ->G.whenCmd(B.request(B.transactional, "ref-1"))
-        ->G.thenEvent(
-          B.requested(B.transactional, "ref-1", B.announcedChannel, B.addressA),
-        )
+        ->G.thenEvent(B.requested(B.transactional, "ref-1", B.announcedChannel, B.addressA))
       )
 
       G.test("the address on the request is the one currently on file", () =>
@@ -129,7 +126,9 @@ module Make = (B: Notification.Binding) => {
       )
 
       G.test("a default request for a claimed source is deferred", () =>
-        G.givenEvents(Array.concat(announced, [B.Consumed.claimed("other:Source", "second-producer")]))
+        G.givenEvents(
+          Array.concat(announced, [B.Consumed.claimed("other:Source", "second-producer")]),
+        )
         ->G.whenCmd(
           B.requestFrom(B.transactional, "ref-7", ~source="other:Source", ~origin=Default),
         )
@@ -140,7 +139,9 @@ module Make = (B: Notification.Binding) => {
       // keeps firing everywhere it was not taken over. Without this, a single
       // claim would silence the whole competency.
       G.test("a claim on one source leaves every other source alone", () =>
-        G.givenEvents(Array.concat(announced, [B.Consumed.claimed("other:Source", "second-producer")]))
+        G.givenEvents(
+          Array.concat(announced, [B.Consumed.claimed("other:Source", "second-producer")]),
+        )
         ->G.whenCmd(
           B.requestFrom(B.transactional, "ref-8", ~source=B.defaultSource, ~origin=Default),
         )
@@ -150,7 +151,9 @@ module Make = (B: Notification.Binding) => {
       // The producer that owns the source is the one that must get through, or
       // the handover would silence the entry rather than move it.
       G.test("a configured request for a claimed source goes through", () =>
-        G.givenEvents(Array.concat(announced, [B.Consumed.claimed("other:Source", "second-producer")]))
+        G.givenEvents(
+          Array.concat(announced, [B.Consumed.claimed("other:Source", "second-producer")]),
+        )
         ->G.whenCmd(
           B.requestFrom(B.transactional, "ref-9", ~source="other:Source", ~origin=Configured),
         )
@@ -163,7 +166,10 @@ module Make = (B: Notification.Binding) => {
         G.givenEvents(
           Array.concat(
             announced,
-            [B.Consumed.claimed("other:Source", "second-producer"), B.Consumed.released("other:Source")],
+            [
+              B.Consumed.claimed("other:Source", "second-producer"),
+              B.Consumed.released("other:Source"),
+            ],
           ),
         )
         ->G.whenCmd(

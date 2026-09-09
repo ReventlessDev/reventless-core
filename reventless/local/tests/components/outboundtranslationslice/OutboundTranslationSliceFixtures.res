@@ -21,8 +21,7 @@ module SendTrackingEmailSpec = {
   let moduleUrl: string = %raw(`import.meta.url`)
 
   @schema
-  type consumedEvent =
-    | OrderShipped({orderId: string, email: string})
+  type consumedEvent = OrderShipped({orderId: string, email: string})
 
   @schema
   type outboundItem = {orderId: string, email: string}
@@ -56,8 +55,7 @@ module ProcessPaymentSpec = {
   let moduleUrl: string = %raw(`import.meta.url`)
 
   @schema
-  type consumedEvent =
-    | PaymentReceived({orderId: string, amount: float})
+  type consumedEvent = PaymentReceived({orderId: string, amount: float})
 
   @schema
   type outboundItem = {orderId: string, amount: float}
@@ -71,9 +69,9 @@ module ProcessPaymentSpec = {
     }
 
   // Simulate calling external payment gateway, then return a command
-  let translateFn: ref<(string, outboundItem) => promise<result<option<(string, inboundCommand)>, string>>> = ref(
-    async (id, _item) => Ok(Some((id, ConfirmPayment({orderId: id}))))
-  )
+  let translateFn: ref<
+    (string, outboundItem) => promise<result<option<(string, inboundCommand)>, string>>,
+  > = ref(async (id, _item) => Ok(Some((id, ConfirmPayment({orderId: id})))))
 
   // The mock stays two-arg: a test that wants to vary behaviour varies it on
   // the item, and threading capabilities into every fixture would make each
@@ -82,9 +80,9 @@ module ProcessPaymentSpec = {
 
   // Overridable like `translateFn`, so a test can assert both answers a slice may
   // give when its budget runs out: say nothing, or tell the domain.
-  let onExhaustedFn: ref<(string, outboundItem, option<string>) => option<(string, inboundCommand)>> = ref(
-    (_id, _item, _lastError) => None
-  )
+  let onExhaustedFn: ref<
+    (string, outboundItem, option<string>) => option<(string, inboundCommand)>,
+  > = ref((_id, _item, _lastError) => None)
   let onExhausted = (id, item, ~lastError) => onExhaustedFn.contents(id, item, lastError)
 
   let maxRetries = 2

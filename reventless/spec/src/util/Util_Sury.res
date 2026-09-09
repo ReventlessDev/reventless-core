@@ -11,10 +11,7 @@ let toJson: ('a, S.t<'a>) => JSON.t = (value, schema) =>
 
 // `~space` defaults to compact, matching the removed `reverseConvertToJsonStringOrThrow`.
 let toJsonString = (value: 'a, schema: S.t<'a>, ~space: int=0): string =>
-  value->S.decodeOrThrow(
-    ~from=schema,
-    ~to=space == 0 ? S.jsonString : S.jsonStringWithSpace(space),
-  )
+  value->S.decodeOrThrow(~from=schema, ~to=space == 0 ? S.jsonString : S.jsonStringWithSpace(space))
 
 let fromJson: (JSON.t, S.t<'a>) => 'a = (json, schema) => json->S.parseOrThrow(~to=schema)
 

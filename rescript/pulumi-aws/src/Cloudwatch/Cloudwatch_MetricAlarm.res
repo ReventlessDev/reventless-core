@@ -1,7 +1,6 @@
 /** @pulumi/aws/cloudwatch/metricalarm
   see: https://www.pulumi.com/registry/packages/aws/api-docs/cloudwatch/metricalarm/
 */
-
 type t = {arn: Pulumi.Output.t<string>, id: Pulumi.Output.t<string>}
 
 /** Single-metric alarm args. `comparisonOperator` uses CloudWatch's operator

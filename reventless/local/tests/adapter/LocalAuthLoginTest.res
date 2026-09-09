@@ -19,7 +19,9 @@ let bob: Reventless.Identity.t = {
   provider: InMemory,
 }
 
-let buildContext = (headers: array<(string, string)>): ReventlessCore.Auth_Adapter.requestContext => {
+let buildContext = (
+  headers: array<(string, string)>,
+): ReventlessCore.Auth_Adapter.requestContext => {
   headers: Dict.fromArray(headers),
 }
 
@@ -127,9 +129,7 @@ testPromise("authenticate accepts a valid Bearer token", async () => {
   | Ok(t) => t
   | Error(msg) => JsError.throwWithMessage("issue failed: " ++ msg)
   }
-  let result = await LocalAuth.authenticate(
-    buildContext([("authorization", "Bearer " ++ token)]),
-  )
+  let result = await LocalAuth.authenticate(buildContext([("authorization", "Bearer " ++ token)]))
   switch result {
   | Authenticated(identity) =>
     expect(identity.username)->toEqual("bob")
@@ -256,11 +256,7 @@ testPromise("a narrowed token remembers the choice and what it gave up", async (
 // the failure that would hand a tampering client everything it asked for.
 testPromise("a login naming a role the user does not hold is REFUSED", async () => {
   carolLoggedIn()
-  switch await LocalAuth.Login.issue(
-    ~username="carol",
-    ~password="carol-pw",
-    ~activeRole="Admin",
-  ) {
+  switch await LocalAuth.Login.issue(~username="carol", ~password="carol-pw", ~activeRole="Admin") {
   | Ok(_) => JsError.throwWithMessage("expected a request to widen to be refused")
   | Error(msg) => expect(msg->String.includes("Admin"))->toEqual(true)
   }
@@ -275,13 +271,8 @@ testPromise("narrowing cannot smuggle a group in through the claims bag", async 
     claims: Dict.fromArray([("availableRoles", "Admin,Fulfilment,Shopper")]),
   }
   LocalAuth.Login.setCredentials(~username="carol", ~password="carol-pw", ~identity=withClaims)
-  switch await LocalAuth.Login.issue(
-    ~username="carol",
-    ~password="carol-pw",
-    ~activeRole="Admin",
-  ) {
-  | Ok(_) =>
-    JsError.throwWithMessage("expected membership to be judged by groups, not by a claim")
+  switch await LocalAuth.Login.issue(~username="carol", ~password="carol-pw", ~activeRole="Admin") {
+  | Ok(_) => JsError.throwWithMessage("expected membership to be judged by groups, not by a claim")
   | Error(_) => expect(true)->toEqual(true)
   }
 })
@@ -298,9 +289,7 @@ testPromise("a narrowed token authenticates as the narrowed identity", async () 
   | Ok(t) => t
   | Error(e) => JsError.throwWithMessage(e)
   }
-  let result = await LocalAuth.authenticate(
-    buildContext([("authorization", "Bearer " ++ token)]),
-  )
+  let result = await LocalAuth.authenticate(buildContext([("authorization", "Bearer " ++ token)]))
   switch result {
   | Authenticated(identity) => expect(identity.groups)->toEqual(["Shopper"])
   | _ => JsError.throwWithMessage("expected the narrowed token to authenticate")
@@ -408,32 +397,35 @@ describe("the conformance table, minted locally", () => {
     requested,
     expected,
   }) =>
-    testPromise(label, async () => {
-      resetAll()
-      LocalAuth.Login.setCredentials(
-        ~username="conformance",
-        ~password="pw",
-        ~identity={
-          userId: "u-conformance",
-          username: "conformance",
-          groups: membership,
-          provider: InMemory,
-        },
-      )
-      let minted = await LocalAuth.Login.issue(
-        ~username="conformance",
-        ~password="pw",
-        ~activeRole=?requested,
-      )
-      switch (minted, expected) {
-      | (Ok(token), Some(groups)) => expect(decodeOrThrow(token).groups)->toEqual(groups)
-      // `None` means refused — not honoured, not ignored, and not reduced to the
-      // empty set. A token minted here at all would be the vulnerability.
-      | (Ok(_), None) => JsError.throwWithMessage("expected the request to be refused")
-      | (Error(msg), Some(_)) => JsError.throwWithMessage("expected a token, got: " ++ msg)
-      | (Error(_), None) => expect(true)->toEqual(true)
-      }
-    })
+    testPromise(
+      label,
+      async () => {
+        resetAll()
+        LocalAuth.Login.setCredentials(
+          ~username="conformance",
+          ~password="pw",
+          ~identity={
+            userId: "u-conformance",
+            username: "conformance",
+            groups: membership,
+            provider: InMemory,
+          },
+        )
+        let minted = await LocalAuth.Login.issue(
+          ~username="conformance",
+          ~password="pw",
+          ~activeRole=?requested,
+        )
+        switch (minted, expected) {
+        | (Ok(token), Some(groups)) => expect(decodeOrThrow(token).groups)->toEqual(groups)
+        // `None` means refused — not honoured, not ignored, and not reduced to the
+        // empty set. A token minted here at all would be the vulnerability.
+        | (Ok(_), None) => JsError.throwWithMessage("expected the request to be refused")
+        | (Error(msg), Some(_)) => JsError.throwWithMessage("expected a token, got: " ++ msg)
+        | (Error(_), None) => expect(true)->toEqual(true)
+        }
+      },
+    )
   )
 })
 
@@ -453,11 +445,11 @@ describe("Login token secret", () => {
     let first = LocalAuth.Login._resolveIn(~dir)
     // A second call with no memoised value is what the next process does.
     let second = LocalAuth.Login._resolveIn(~dir)
-    expect((first == second, NodeFs.existsSync(secretPath(dir)), String.length(first) >= 16))->toEqual((
-      true,
-      true,
-      true,
-    ))
+    expect((
+      first == second,
+      NodeFs.existsSync(secretPath(dir)),
+      String.length(first) >= 16,
+    ))->toEqual((true, true, true))
   })
 
   testSync("reads a secret a previous boot left behind", () => {

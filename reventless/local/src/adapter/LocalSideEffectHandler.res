@@ -40,7 +40,7 @@ let make = (
         eventCollector: eventCollectorOutputs,
       })
     },
-    ~opts=opts,
+    ~opts,
   )
 }
 

@@ -17,8 +17,8 @@ let pascalCase = s =>
 // Split words out of a PascalCase/camelCase run so kebab-casing keeps the word
 // boundaries. Two passes: `aB` splits an ordinary hump, `ABc` splits the tail of
 // an acronym off the word that follows it ("HTTPServer" -> "HTTP-Server").
-let humpBoundary = %re("/([a-z0-9])([A-Z])/g")
-let acronymBoundary = %re("/([A-Z]+)([A-Z][a-z])/g")
+let humpBoundary = /([a-z0-9])([A-Z])/g
+let acronymBoundary = /([A-Z]+)([A-Z][a-z])/g
 
 // Kebab-case an identifier for use in an S3 bucket name: "ImportProducts" and
 // "product-imports" both reduce to "import-products".
@@ -119,7 +119,10 @@ module Make = (
     // Task bucket callbacks default to the platform-supplied task-pod floor (a
     // large envelope for bulk import/export work); a plugin.json `runtime`
     // override raises memory above it and replaces timeout.
-    let memorySize = ReventlessInfra.RuntimeHints.resolveMemory(runtime, ~default=Defaults.memorySize)
+    let memorySize = ReventlessInfra.RuntimeHints.resolveMemory(
+      runtime,
+      ~default=Defaults.memorySize,
+    )
     let timeout = ReventlessInfra.RuntimeHints.resolveTimeout(runtime, ~default=Defaults.timeout)
     let allCommandTopics = allAggregates->Aggregate.allCommandTopics
 
@@ -128,15 +131,14 @@ module Make = (
     // first command-topic resource's `id` — bundled adapters interpret it as
     // their channel address; adapters that don't need it (e.g. in-memory)
     // ignore the dict in their TaskRuntime_Builder.
-    let publishToAggregatesQueueUrls =
-      allAggregates->Dict.mapValues(agg =>
-        agg.commandTopic->Pulumi.Output.flatMap(ct =>
-          switch ct.resources->Array.get(0) {
-          | Some(r) => r.id
-          | None => Pulumi.Output.make("")
-          }
-        )
+    let publishToAggregatesQueueUrls = allAggregates->Dict.mapValues(agg =>
+      agg.commandTopic->Pulumi.Output.flatMap(ct =>
+        switch ct.resources->Array.get(0) {
+        | Some(r) => r.id
+        | None => Pulumi.Output.make("")
+        }
       )
+    )
 
     let publishCommands: Task.publishCommands = (aggregateName, cmdJsons) => {
       (publishToAggregates->Dict.get(aggregateName)->Option.getOrThrow)(cmdJsons)
@@ -218,17 +220,18 @@ module Make = (
     // scheduler's invoker URN. Bundled adapters thread these into the
     // deployed handler so it can talk to the underlying scheduler service;
     // adapters without a real scheduler ignore the dict.
-    let schedulerConfig: option<TaskRuntime_Builder.schedulerConfig> =
-      sideEffectHandler->Option.flatMap(seh => {
-        let sehOutputs = seh->Component.outputs
-        sehOutputs.eventCollector.resources
-        ->Array.get(0)
-        ->Option.map(r => {
-          TaskRuntime_Builder.schedulerRoleUrn: schedulerRoleUrn,
-          targetUrn: r.urn,
-          targetName: r.name,
-        })
+    let schedulerConfig: option<
+      TaskRuntime_Builder.schedulerConfig,
+    > = sideEffectHandler->Option.flatMap(seh => {
+      let sehOutputs = seh->Component.outputs
+      sehOutputs.eventCollector.resources
+      ->Array.get(0)
+      ->Option.map(r => {
+        TaskRuntime_Builder.schedulerRoleUrn,
+        targetUrn: r.urn,
+        targetName: r.name,
       })
+    })
 
     let bucketNames = config.buckets->Option.map(buckets =>
       buckets

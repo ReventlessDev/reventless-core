@@ -31,8 +31,8 @@ let sanitizeIdent = (s: string): string =>
     let code = ch->String.codePointAt(0)->Option.getOr(0)
     let isAlphaNum =
       (code >= 48 && code <= 57) ||
-      (code >= 65 && code <= 90) ||
-      (code >= 97 && code <= 122) ||
+      code >= 65 && code <= 90 ||
+      code >= 97 && code <= 122 ||
       code == 95
     isAlphaNum ? ch : "_"
   })
@@ -64,8 +64,7 @@ let compositeExpr = (fields: array<string>, sep: string): string => {
 // Uses pkFields if present, else falls back to idField; same for sub key.
 let indexExpressions = (idx: indexConfig): (string, option<string>) => {
   let pkExpr = switch idx.pkFields {
-  | Some(fields) if fields->Array.length > 0 =>
-    compositeExpr(fields, idx.pkSep->Option.getOr("/"))
+  | Some(fields) if fields->Array.length > 0 => compositeExpr(fields, idx.pkSep->Option.getOr("/"))
   | _ =>
     switch idx.idField {
     | Some(field) => jsonField(field)
@@ -168,30 +167,32 @@ let makeStorage = (
   ensureExpiresColumn(~db, ~table)
   ensureIndexes(~db, ~table, ~indexes)
 
-  let upsertStmt = db->SqliteDriver.prepare(
-    `INSERT INTO ${table}(partition_key, sub_key, item, expires_at) VALUES(?,?,?,?) ON CONFLICT(partition_key, sub_key) DO UPDATE SET item = excluded.item, expires_at = excluded.expires_at`,
-  )
-  let selectByPartitionStmt = db->SqliteDriver.prepare(
-    `SELECT partition_key, sub_key, item FROM ${table} WHERE partition_key = ? AND ${notExpiredClause} ORDER BY sub_key ASC`,
-  )
-  let deleteByPartitionStmt = db->SqliteDriver.prepare(
-    `DELETE FROM ${table} WHERE partition_key = ?`,
-  )
-  let deleteBySubKeyStmt = db->SqliteDriver.prepare(
-    `DELETE FROM ${table} WHERE partition_key = ? AND sub_key = ?`,
-  )
-  let scanAllStmt = db->SqliteDriver.prepare(
-    `SELECT partition_key, sub_key, item FROM ${table} WHERE ${notExpiredClause} ORDER BY partition_key, sub_key`,
-  )
+  let upsertStmt =
+    db->SqliteDriver.prepare(
+      `INSERT INTO ${table}(partition_key, sub_key, item, expires_at) VALUES(?,?,?,?) ON CONFLICT(partition_key, sub_key) DO UPDATE SET item = excluded.item, expires_at = excluded.expires_at`,
+    )
+  let selectByPartitionStmt =
+    db->SqliteDriver.prepare(
+      `SELECT partition_key, sub_key, item FROM ${table} WHERE partition_key = ? AND ${notExpiredClause} ORDER BY sub_key ASC`,
+    )
+  let deleteByPartitionStmt =
+    db->SqliteDriver.prepare(`DELETE FROM ${table} WHERE partition_key = ?`)
+  let deleteBySubKeyStmt =
+    db->SqliteDriver.prepare(`DELETE FROM ${table} WHERE partition_key = ? AND sub_key = ?`)
+  let scanAllStmt =
+    db->SqliteDriver.prepare(
+      `SELECT partition_key, sub_key, item FROM ${table} WHERE ${notExpiredClause} ORDER BY partition_key, sub_key`,
+    )
   // First-insert detection. DynamoDB streams hand the AWS StateTopic Lambda an
   // eventName that separates INSERT from MODIFY; an upsert reports neither, so
   // ask the table before writing. Carries `notExpiredClause` because that is what
   // a reader sees: a row aged past its TTL is invisible to them, so overwriting
   // it is an insert — the same descriptor pair (Removed, then Added) DynamoDB
   // emits when a TTL delete is followed by a fresh Put.
-  let existsStmt = db->SqliteDriver.prepare(
-    `SELECT 1 FROM ${table} WHERE partition_key = ? AND sub_key = ? AND ${notExpiredClause} LIMIT 1`,
-  )
+  let existsStmt =
+    db->SqliteDriver.prepare(
+      `SELECT 1 FROM ${table} WHERE partition_key = ? AND sub_key = ? AND ${notExpiredClause} LIMIT 1`,
+    )
 
   let rowsFor = (id: string): array<JSON.t> =>
     selectByPartitionStmt
@@ -222,9 +223,10 @@ let makeStorage = (
       // Escape single quotes in the JSON path literal so an odd field name can't
       // break out of the string (bound `?` already covers the value).
       let escapedField = field->String.replaceAll("'", "''")
-      let s = db->SqliteDriver.prepare(
-        `SELECT partition_key, sub_key, item FROM ${table} WHERE json_extract(item, '$.${escapedField}') = ? AND ${notExpiredClause}`,
-      )
+      let s =
+        db->SqliteDriver.prepare(
+          `SELECT partition_key, sub_key, item FROM ${table} WHERE json_extract(item, '$.${escapedField}') = ? AND ${notExpiredClause}`,
+        )
       indexLookupStmts->Dict.set(field, s)
       s
     }
@@ -265,7 +267,9 @@ let makeStorage = (
       ~state=Some(state),
       ~seq=LocalStateChangeDescriptor.nextSequence(),
       ~retiredField=?LocalStateChangeDescriptor.retiredSpecFor(name)->Option.map(r => r.field),
-      ~retiredValues=?LocalStateChangeDescriptor.retiredSpecFor(name)->Option.flatMap(r => r.values),
+      ~retiredValues=?LocalStateChangeDescriptor.retiredSpecFor(name)->Option.flatMap(r =>
+        r.values
+      ),
     )
     bus.publishStateChange(~name, ~descriptor)
   }
@@ -358,10 +362,7 @@ let makeStorage = (
     switch subIdOpt {
     | None => deleteByPartitionStmt->SqliteDriver.run([JSON.Encode.string(id)])
     | Some((_, subValue)) =>
-      deleteBySubKeyStmt->SqliteDriver.run([
-        JSON.Encode.string(id),
-        JSON.Encode.string(subValue),
-      ])
+      deleteBySubKeyStmt->SqliteDriver.run([JSON.Encode.string(id), JSON.Encode.string(subValue)])
     }
 
   let delete: QueryDb.delete<string> = async (id, subIdOpt) => {
@@ -436,12 +437,24 @@ let makeStorage = (
     let filterDict =
       argsDict->Dict.get("filter")->Option.flatMap(JSON.Decode.object)->Option.getOr(Dict.make())
     let strNonEmpty = k =>
-      filterDict->Dict.get(k)->Option.flatMap(JSON.Decode.string)->Option.mapOr(false, s => s->String.length > 0)
+      filterDict
+      ->Dict.get(k)
+      ->Option.flatMap(JSON.Decode.string)
+      ->Option.mapOr(false, s => s->String.length > 0)
     let hasIds =
-      filterDict->Dict.get("ids")->Option.flatMap(JSON.Decode.array)->Option.mapOr(false, a => a->Array.length > 0)
+      filterDict
+      ->Dict.get("ids")
+      ->Option.flatMap(JSON.Decode.array)
+      ->Option.mapOr(false, a => a->Array.length > 0)
     let last = argsDict->Dict.get("last")->Option.flatMap(JSON.Decode.float)
     let before = argsDict->Dict.get("before")->Option.flatMap(JSON.Decode.string)
-    if strNonEmpty("search") || strNonEmpty("searchPrefix") || hasIds || last->Option.isSome || before->Option.isSome {
+    if (
+      strNonEmpty("search") ||
+      strNonEmpty("searchPrefix") ||
+      hasIds ||
+      last->Option.isSome ||
+      before->Option.isSome
+    ) {
       None
     } else {
       let whereParts = [notExpiredClause]
@@ -495,20 +508,20 @@ let makeStorage = (
         }
       capability.filterFields->Array.forEach(f => {
         switch filterDict->Dict.get(f.name ++ "Eq") {
-        | Some(v) when v != JSON.Encode.null =>
+        | Some(v) if v != JSON.Encode.null =>
           whereParts->Array.push(`${jsonText(f.name)} = ?`)
           params->Array.push(JSON.Encode.string(valString(v)->Option.getOr("")))
         | _ => ()
         }
         if f.range {
           switch filterDict->Dict.get(f.name ++ "From") {
-          | Some(v) when v != JSON.Encode.null =>
+          | Some(v) if v != JSON.Encode.null =>
             whereParts->Array.push(`${jsonText(f.name)} >= ?`)
             params->Array.push(JSON.Encode.string(valString(v)->Option.getOr("")))
           | _ => ()
           }
           switch filterDict->Dict.get(f.name ++ "To") {
-          | Some(v) when v != JSON.Encode.null =>
+          | Some(v) if v != JSON.Encode.null =>
             whereParts->Array.push(`${jsonText(f.name)} <= ?`)
             params->Array.push(JSON.Encode.string(valString(v)->Option.getOr("")))
           | _ => ()
@@ -551,7 +564,9 @@ let makeStorage = (
         ->Option.flatMap(JSON.Decode.float)
         ->Option.map(Float.toInt)
         ->Option.getOr(QueryDbListQuery.defaultListPageSize)
-      let sql = `SELECT partition_key, item FROM ${table} WHERE ${whereParts->Array.join(" AND ")} ORDER BY ${orderClause} LIMIT ?`
+      let sql = `SELECT partition_key, item FROM ${table} WHERE ${whereParts->Array.join(
+          " AND ",
+        )} ORDER BY ${orderClause} LIMIT ?`
       let rows =
         preparedList(sql)
         ->SqliteDriver.all(params->Array.concat([JSON.Encode.int(pageSize + 1)]))
@@ -560,7 +575,9 @@ let makeStorage = (
       let pageItems = rows->Array.slice(~start=0, ~end=pageSize)
       let cursorField = orderByField->Option.getOr("id")
       let cursorValueOf = item =>
-        QueryDbListQuery.getFieldString(item, cursorField)->Option.getOr(QueryDbListQuery.getId(item))
+        QueryDbListQuery.getFieldString(item, cursorField)->Option.getOr(
+          QueryDbListQuery.getId(item),
+        )
       Some(
         QueryDbListQuery.buildConnection(
           ~pageItems,
@@ -583,7 +600,12 @@ let makeStorage = (
   }
 }
 
-module Make = (Bus: LocalBus.T, DbProvider: {let db: SqliteDriver.t}) => {
+module Make = (
+  Bus: LocalBus.T,
+  DbProvider: {
+    let db: SqliteDriver.t
+  },
+) => {
   type api = unit
   type role = unit
 
@@ -603,6 +625,7 @@ module Make = (Bus: LocalBus.T, DbProvider: {let db: SqliteDriver.t}) => {
     ~ttl as _=?,
     ~api as _,
     ~apiRole as _,
-    ~owner as _, ~opts as _,
+    ~owner as _,
+    ~opts as _,
   ) => makeStorage(~db=DbProvider.db, ~bus=busCallbacks, ~name, ~indexes, ~subIdField)
 }

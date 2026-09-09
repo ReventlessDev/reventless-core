@@ -88,7 +88,10 @@ Destroy semantics follow disposability, **not** layout.
 field rename may destroy a bucket by accident. Only stacks that are routinely
 torn down are unprotected.
 */
-let protectionFor = (~stack: string, ~ephemeralPrefixes: array<string>=defaultEphemeralPrefixes): protection =>
+let protectionFor = (
+  ~stack: string,
+  ~ephemeralPrefixes: array<string>=defaultEphemeralPrefixes,
+): protection =>
   ephemeralPrefixes->Array.some(p => stack->String.startsWith(p)) ? Unprotected : Protected
 
 /**

@@ -31,7 +31,6 @@ does, and only because the store is derived from it.
     })
 ```
 */
-
 /** Transparent `string`, for `StorageRef.t`'s reason: the marker refines an
     existing field rather than replacing it, so nothing stored changes. */
 type t = string

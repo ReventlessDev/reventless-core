@@ -21,54 +21,66 @@ describe("a field marker on a branded semantic:", () => {
     }
 
   describe("@owner on an Email field:", () => {
-    testSync("marks the field as the owner", () =>
-      expect(fieldOf("email")->Option.mapOr(false, Reventless.Owner.isFieldOwner))->toBe(true)
+    testSync(
+      "marks the field as the owner",
+      () =>
+        expect(fieldOf("email")->Option.mapOr(false, Reventless.Owner.isFieldOwner))->toBe(true),
     )
 
-    testSync("keeps the email semantic", () =>
-      expect(
-        fieldOf("email")
-        ->Option.flatMap(Reventless.Semantic.getFrom)
-        ->Option.map(s => s.id),
-      )->toEqual(Some("email"))
+    testSync(
+      "keeps the email semantic",
+      () =>
+        expect(
+          fieldOf("email")
+          ->Option.flatMap(Reventless.Semantic.getFrom)
+          ->Option.map(s => s.id),
+        )->toEqual(Some("email")),
     )
 
     // The regression a substituting fix would land, and it lands in silence:
     // the row still scopes to its owner, and the field accepts anything.
-    testSync("still rejects what is not an address", () => {
-      let parses = raw =>
-        switch fieldOf("email") {
-        | Some(schema) =>
-          switch raw->JSON.Encode.string->S.parseOrThrow(~to=schema) {
-          | _ => true
-          | exception _ => false
+    testSync(
+      "still rejects what is not an address",
+      () => {
+        let parses = raw =>
+          switch fieldOf("email") {
+          | Some(schema) =>
+            switch raw->JSON.Encode.string->S.parseOrThrow(~to=schema) {
+            | _ => true
+            | exception _ => false
+            }
+          | None => false
           }
-        | None => false
-        }
-      expect((parses("buyer@example.com"), parses("buyer")))->toEqual((true, false))
-    })
+        expect((parses("buyer@example.com"), parses("buyer")))->toEqual((true, false))
+      },
+    )
   })
 
   describe("@displayName on a DateTime field:", () => {
-    testSync("names the row by it", () =>
-      expect(
-        S.Metadata.get(stateSchema, ~id=Reventless.DisplayName.displayNameId)->Option.map(d =>
-          d.fields
-        ),
-      )->toEqual(Some(["openedAt"]))
+    testSync(
+      "names the row by it",
+      () =>
+        expect(
+          S.Metadata.get(stateSchema, ~id=Reventless.DisplayName.displayNameId)->Option.map(
+            d => d.fields,
+          ),
+        )->toEqual(Some(["openedAt"])),
     )
 
-    testSync("and the instant grammar survives", () => {
-      let parses = raw =>
-        switch fieldOf("openedAt") {
-        | Some(schema) =>
-          switch raw->JSON.Encode.string->S.parseOrThrow(~to=schema) {
-          | _ => true
-          | exception _ => false
+    testSync(
+      "and the instant grammar survives",
+      () => {
+        let parses = raw =>
+          switch fieldOf("openedAt") {
+          | Some(schema) =>
+            switch raw->JSON.Encode.string->S.parseOrThrow(~to=schema) {
+            | _ => true
+            | exception _ => false
+            }
+          | None => false
           }
-        | None => false
-        }
-      expect((parses("2026-03-02T09:00:00Z"), parses("tomorrow")))->toEqual((true, false))
-    })
+        expect((parses("2026-03-02T09:00:00Z"), parses("tomorrow")))->toEqual((true, false))
+      },
+    )
   })
 })

@@ -160,22 +160,21 @@ let walkSchema = (typeName: string, schema: S.t<unknown>): typeSchema =>
       // It's an optional/nullable scalar at the top level, treat as unknown.
       {typeName, kind: "unknown", fields: [], structuralHash: ""}
     } else {
-      let constructors =
-        anyOf->Array.filterMap(variantSchema =>
-          switch variantSchema {
-          | Object({properties}) =>
-            tagConstOf(properties)->Option.map(name => {
-              name,
-              fields: extractFields(properties),
-            })
-          | _ => None
-          }
-        )
+      let constructors = anyOf->Array.filterMap(variantSchema =>
+        switch variantSchema {
+        | Object({properties}) =>
+          tagConstOf(properties)->Option.map(name => {
+            name,
+            fields: extractFields(properties),
+          })
+        | _ => None
+        }
+      )
       {
         typeName,
         kind: "variant",
         fields: [],
-        constructors: constructors,
+        constructors,
         structuralHash: hashConstructors(constructors),
       }
     }

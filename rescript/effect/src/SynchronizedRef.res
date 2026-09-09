@@ -43,7 +43,8 @@ ref->SynchronizedRef.updateEffect(current =>
 ```
 */
 @module("effect/SynchronizedRef")
-external updateEffect: (t<'a>, 'a => Effect.t<'a, 'e, 'r>) => Effect.t<unit, 'e, 'r> = "updateEffect"
+external updateEffect: (t<'a>, 'a => Effect.t<'a, 'e, 'r>) => Effect.t<unit, 'e, 'r> =
+  "updateEffect"
 
 /**
 Atomically applies an effectful function that produces both a result and a new value.
@@ -52,4 +53,5 @@ Combines the atomicity guarantee of `updateEffect` with the result-returning
 semantics of `Ref.modify`.
 */
 @module("effect/SynchronizedRef")
-external modifyEffect: (t<'a>, 'a => Effect.t<('b, 'a), 'e, 'r>) => Effect.t<'b, 'e, 'r> = "modifyEffect"
+external modifyEffect: (t<'a>, 'a => Effect.t<('b, 'a), 'e, 'r>) => Effect.t<'b, 'e, 'r> =
+  "modifyEffect"

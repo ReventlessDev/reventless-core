@@ -175,14 +175,17 @@ let forDcbCommandTopic = (
       })
     }
 
-    let handlerConfigJson =
-      Pulumi.Output.all4((dcbTableName, queue.id, pgConnectionFragment, inboundFragment))
-      ->Pulumi.Output.apply(((table, queueUrl, pgFragment, inbFragment)) => {
-        let pluginNameJson = pluginName->JSON.stringifyAny->Option.getOr(`""`)
-        let json = `{"dcbEventLogTableName":"${table}","queueUrl":"${queueUrl}","pluginName":${pluginNameJson}${pgFragment}${inbFragment}}`
-        Util_LambdaEnvBudget.check(~lambdaName=name, ~handlerConfigJson=json)
-        json
-      })
+    let handlerConfigJson = Pulumi.Output.all4((
+      dcbTableName,
+      queue.id,
+      pgConnectionFragment,
+      inboundFragment,
+    ))->Pulumi.Output.apply(((table, queueUrl, pgFragment, inbFragment)) => {
+      let pluginNameJson = pluginName->JSON.stringifyAny->Option.getOr(`""`)
+      let json = `{"dcbEventLogTableName":"${table}","queueUrl":"${queueUrl}","pluginName":${pluginNameJson}${pgFragment}${inbFragment}}`
+      Util_LambdaEnvBudget.check(~lambdaName=name, ~handlerConfigJson=json)
+      json
+    })
     envVars->Dict.set("HANDLER_CONFIG", handlerConfigJson->Pulumi.Output.asInput)
 
     // Build code asset
@@ -235,14 +238,10 @@ let forDcbCommandTopic = (
     | Some(sel) =>
       Some(
         sel.securityGroupId
-        ->Pulumi.Output.apply(sgId =>
-          (
-            {
-              PulumiAws.Lambda.Function.subnetIds: sel.subnetIds->Pulumi.Input.make,
-              securityGroupIds: [sgId->Pulumi.Input.make]->Pulumi.Input.make,
-            }: PulumiAws.Lambda.Function.vpcConfig
-          )
-        )
+        ->Pulumi.Output.apply((sgId): PulumiAws.Lambda.Function.vpcConfig => {
+          PulumiAws.Lambda.Function.subnetIds: sel.subnetIds->Pulumi.Input.make,
+          securityGroupIds: [sgId->Pulumi.Input.make]->Pulumi.Input.make,
+        })
         ->Pulumi.Output.asInput,
       )
     | None => None
@@ -260,7 +259,7 @@ let forDcbCommandTopic = (
       ~reservedConcurrency=?cfg.reservedConcurrency,
       ~ephemeralStorageMb=?cfg.ephemeralStorageMb,
       ~logRetentionDays=?cfg.logRetentionDays,
-      ~vpcConfig=?vpcConfig,
+      ~vpcConfig?,
       // This is the StateChangeSlice command handler — provision the DCB
       // retry/conflict metric filters (takes effect when logRetentionDays is set).
       ~dcbMetrics=true,

@@ -18,25 +18,39 @@ describe("ImportProduct InboundTranslationSlice", () => {
       desc: "high-end",
       unitPrice: 99999,
       currency: "USD",
-    })
-    ->thenCommand(
+    })->thenCommand(
       "p-1",
       AddProduct({productId: "p-1", name: "Laptop", description: "high-end", price: 999.99}),
     )
   )
 
   test("non-USD currency surfaces a translate error", () =>
-    whenInput({sku: "p-1", title: "Laptop", desc: "x", unitPrice: 1, currency: "EUR"})
-    ->thenTranslateError("Unsupported currency: EUR")
+    whenInput({
+      sku: "p-1",
+      title: "Laptop",
+      desc: "x",
+      unitPrice: 1,
+      currency: "EUR",
+    })->thenTranslateError("Unsupported currency: EUR")
   )
 
   test("non-positive price surfaces a translate error", () =>
-    whenInput({sku: "p-1", title: "Laptop", desc: "x", unitPrice: 0, currency: "USD"})
-    ->thenTranslateError("Price must be positive")
+    whenInput({
+      sku: "p-1",
+      title: "Laptop",
+      desc: "x",
+      unitPrice: 0,
+      currency: "USD",
+    })->thenTranslateError("Price must be positive")
   )
 
   test("empty SKU surfaces a translate error", () =>
-    whenInput({sku: "", title: "Laptop", desc: "x", unitPrice: 100, currency: "USD"})
-    ->thenTranslateError("SKU is required")
+    whenInput({
+      sku: "",
+      title: "Laptop",
+      desc: "x",
+      unitPrice: 100,
+      currency: "USD",
+    })->thenTranslateError("SKU is required")
   )
 })

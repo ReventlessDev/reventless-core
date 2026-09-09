@@ -14,10 +14,7 @@ let clone = async (~taskDefinition, ~cluster, ~fullQualifiedStackName, ~subnets,
 
   log.info(
     ~comp="ClonerRunner",
-    "clone: requested by user " ++
-    payload["meta"]["user"] ++
-    " from ip " ++
-    payload["meta"]["ip"],
+    "clone: requested by user " ++ payload["meta"]["user"] ++ " from ip " ++ payload["meta"]["ip"],
   )
 
   let _ = await {

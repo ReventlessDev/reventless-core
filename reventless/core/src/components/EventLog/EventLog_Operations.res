@@ -134,8 +134,9 @@ module Make = (Spec: ReventlessInfra.EventLog.T, Ops: Ops with module Spec = Spe
     // result (no Cause stringification / substring matching).
     let storageEffect =
       Effect.tryPromise(
-        ~catch=(err: unknown) =>
-          EventLog.StorageFailure(Util.Error.messageFromUnknown(err, "storage error")),
+        ~catch=(err: unknown) => EventLog.StorageFailure(
+          Util.Error.messageFromUnknown(err, "storage error"),
+        ),
         () => Ops.storage.append(sequenceNr, idStr, eventsJson),
       )
       ->Effect.flatMap(result =>
@@ -149,12 +150,16 @@ module Make = (Spec: ReventlessInfra.EventLog.T, Ops: Ops with module Spec = Spe
       ->Effect.catchAll(e => Effect.succeed(Error(e)))
     switch await storageEffect->Effect.runPromise {
     | Ok() =>
-      (await publishToEventTopic(id, events', eventsJson))->Result.mapError(msg => EventLog.StorageFailure(
-        msg,
-      ))
+      (
+        await publishToEventTopic(id, events', eventsJson)
+      )->Result.mapError(msg => EventLog.StorageFailure(msg))
     | Error(EventLog.Conflict) => Error(EventLog.Conflict)
     | Error(StorageFailure(msg)) =>
-      Error(EventLog.StorageFailure(`EventLog: Error: Couldn't append for ${Spec.name}(${idStr}): ${msg}`))
+      Error(
+        EventLog.StorageFailure(
+          `EventLog: Error: Couldn't append for ${Spec.name}(${idStr}): ${msg}`,
+        ),
+      )
     }
   }
 
@@ -190,8 +195,7 @@ module Make = (Spec: ReventlessInfra.EventLog.T, Ops: Ops with module Spec = Spe
   // Lazy streaming replay — wraps decodeEvent in Effect.sync so thrown exceptions
   // surface through the stream's error channel rather than as unhandled exceptions.
   let replayStream = (id, ~fromSeq=?) =>
-    Ops.storage.replayStream(id->Spec.Id.toString, ~fromSeq=?fromSeq)
-    ->Stream.mapEffect(json =>
+    Ops.storage.replayStream(id->Spec.Id.toString, ~fromSeq?)->Stream.mapEffect(json =>
       Effect.sync(() => decodeEvent(id->Spec.Id.toString, json))
     )
 

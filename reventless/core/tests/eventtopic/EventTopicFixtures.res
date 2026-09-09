@@ -1,11 +1,10 @@
-
 // Test event spec for EventTopic
 module ItemEventTopicSpec = {
   module Id = Reventless.Id.StringPure
   let name = "TestItemEventTopic"
 
   @schema
-  type event = | ItemPublished({name: string}) | ItemRemoved({id: string})
+  type event = ItemPublished({name: string}) | ItemRemoved({id: string})
 }
 
 // Captured publish calls
@@ -24,11 +23,11 @@ let testMeta: Message.meta = {
   correlationId: "corr-001",
 }
 
-let makeEvent' = (id, event) => ({
+let makeEvent' = (id, event): Message.event'<string, ItemEventTopicSpec.event> => {
   Reventless.Message.id,
   meta: testMeta,
   event,
-}: Message.event'<string, ItemEventTopicSpec.event>)
+}
 
 let reset = () => {
   capturedCalls := []

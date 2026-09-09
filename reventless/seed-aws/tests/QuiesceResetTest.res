@@ -20,29 +20,33 @@ module Quiesce = ReventlessSeedAws_Quiesce
 
 describe("classify", () => {
   testSync("reads the function name out of a Lambda ARN", () =>
-    expect(Reset.classify("arn:aws:lambda:eu-west-1:123456789012:function:AllAutomationSlices-28b116c"))
-    ->toEqual(Reset.Function("AllAutomationSlices-28b116c"))
+    expect(
+      Reset.classify("arn:aws:lambda:eu-west-1:123456789012:function:AllAutomationSlices-28b116c"),
+    )->toEqual(Reset.Function("AllAutomationSlices-28b116c"))
   )
 
   // The tagging API returns unqualified ARNs, but a qualified one must still
   // yield the function name — every Lambda control-plane call the hold makes
   // takes a name, and "Name:1" is not one.
   testSync("drops a version or alias qualifier", () =>
-    expect(Reset.classify("arn:aws:lambda:eu-west-1:123456789012:function:AllReadModels-0287438:42"))
-    ->toEqual(Reset.Function("AllReadModels-0287438"))
+    expect(
+      Reset.classify("arn:aws:lambda:eu-west-1:123456789012:function:AllReadModels-0287438:42"),
+    )->toEqual(Reset.Function("AllReadModels-0287438"))
   )
 
   testSync("still classifies tables and buckets", () => {
-    expect(Reset.classify("arn:aws:dynamodb:eu-west-1:123456789012:table/Products-0ba6849"))
-    ->toEqual(Reset.Table("Products-0ba6849"))
+    expect(
+      Reset.classify("arn:aws:dynamodb:eu-west-1:123456789012:table/Products-0ba6849"),
+    )->toEqual(Reset.Table("Products-0ba6849"))
     expect(Reset.classify("arn:aws:s3:::alpha-product-images"))->toEqual(
       Reset.Bucket("alpha-product-images"),
     )
   })
 
   testSync("ignores anything else the tag scope returns", () =>
-    expect(Reset.classify("arn:aws:sqs:eu-west-1:123456789012:OrderingDcbCmdTopic-4b3658c"))
-    ->toEqual(Reset.Other)
+    expect(
+      Reset.classify("arn:aws:sqs:eu-west-1:123456789012:OrderingDcbCmdTopic-4b3658c"),
+    )->toEqual(Reset.Other)
   )
 })
 
@@ -52,22 +56,28 @@ describe("mapBounded", () => {
   // shuffled array would restore the wrong concurrency to the wrong function.
   test("keeps results in input order under out-of-order completion", async () => {
     let delays = [40, 0, 30, 10, 20, 5]
-    let out = await delays->Quiesce.mapBounded(~limit=3, async ms => {
-      await ReventlessSeed.Seed.Client.sleep(ms)
-      ms
-    })
+    let out = await delays->Quiesce.mapBounded(
+      ~limit=3,
+      async ms => {
+        await ReventlessSeed.Seed.Client.sleep(ms)
+        ms
+      },
+    )
     expect(out)->toEqual(delays)
   })
 
   test("never runs more than the limit at once", async () => {
     let inFlight = ref(0)
     let peak = ref(0)
-    let _ = await Array.make(~length=12, 0)->Quiesce.mapBounded(~limit=4, async _ => {
-      inFlight := inFlight.contents + 1
-      peak := Math.Int.max(peak.contents, inFlight.contents)
-      await ReventlessSeed.Seed.Client.sleep(5)
-      inFlight := inFlight.contents - 1
-    })
+    let _ = await Array.make(~length=12, 0)->Quiesce.mapBounded(
+      ~limit=4,
+      async _ => {
+        inFlight := inFlight.contents + 1
+        peak := Math.Int.max(peak.contents, inFlight.contents)
+        await ReventlessSeed.Seed.Client.sleep(5)
+        inFlight := inFlight.contents - 1
+      },
+    )
     expect(peak.contents)->toBe(4)
   })
 
@@ -148,10 +158,12 @@ describe("noQuiesce", () => {
   })
 
   testSync("accepts the spellings an operator would actually type", () => {
-    ["1", "true", "TRUE", " yes "]->Array.forEach(v => {
-      set(v)
-      expect(Reset.noQuiesce())->toBe(true)
-    })
+    ["1", "true", "TRUE", " yes "]->Array.forEach(
+      v => {
+        set(v)
+        expect(Reset.noQuiesce())->toBe(true)
+      },
+    )
     set("")
   })
 })

@@ -1,7 +1,6 @@
 // Fixtures for Task integration tests.
 // Tests Task_Builder.Make wiring with in-memory adapters.
 
-
 // Activate Pulumi mock mode (must be called before any Component.make)
 let _ = TestRunner.setup()
 
@@ -52,8 +51,7 @@ module OneBucketSpec = {
         bucketName: "Reports",
         bucketMode: Reventless.Task.Read,
         callback: async (~eventName, ~key) => {
-          capturedEvents :=
-            capturedEvents.contents->Array.concat([(eventName, key)])
+          capturedEvents := capturedEvents.contents->Array.concat([(eventName, key)])
           []
         },
       },
@@ -67,8 +65,10 @@ module OneBucketSpec = {
 
 let mockPublishToAggregates: dict<ReventlessInfra.CommandTopic.publishJsons> = Dict.make()
 
-let mockQueryBucketName: ReventlessInfra.Task.queryBucketName = (~taskName as _, ~bucketName as _=?) =>
-  "in-memory-bucket"
+let mockQueryBucketName: ReventlessInfra.Task.queryBucketName = (
+  ~taskName as _,
+  ~bucketName as _=?,
+) => "in-memory-bucket"
 
 // ─────────────────────────────────────────────────────────────
 // Pre-built task makers

@@ -44,25 +44,32 @@ describe("DCB inferred cross-partition read (sibling exclusion)", () => {
       await dispatch(addProductJson("p3", "cat3", "Blocks"), "p3")
 
       // Queryable by its own partition key…
-      let byProduct = await ops.read(~query=[{tags: [{Reventless.DcbTag.key: "productId", value: "p3"}]}])
+      let byProduct = await ops.read(
+        ~query=[{tags: [{Reventless.DcbTag.key: "productId", value: "p3"}]}],
+      )
       expect(byProduct.events->Array.some(e => e.eventType == "ProductAdded"))->toBe(true)
 
       // …but the categoryId index returns only the category's own event, never p3.
-      let byCategory = await ops.read(~query=[{tags: [{Reventless.DcbTag.key: "categoryId", value: "cat3"}]}])
+      let byCategory = await ops.read(
+        ~query=[{tags: [{Reventless.DcbTag.key: "categoryId", value: "cat3"}]}],
+      )
       expect(byCategory.events->Array.some(e => e.eventType == "ProductAdded"))->toBe(false)
       expect(byCategory.events->Array.some(e => e.eventType == "CategoryAdded"))->toBe(true)
     },
   )
 
-  testPromise("re-adding the same product is still rejected (its own read is partition-scoped)", async () => {
-    let ops = await eventLog->ReventlessCore.Component.operations->TestRunner.resolve
-    let _ = await ops.append([
-      encodeEvent(CategoryAdded({categoryId: "cat2", name: "Books"})),
-      encodeEvent(ProductAdded({productId: "p9", categoryId: "cat2", name: "Novel"})),
-    ])
-    capturedEventCount := 0 // count only events produced by the command below
-    // p9 already exists — its own productId clause returns its ProductAdded.
-    await dispatch(addProductJson("p9", "cat2", "Novel"), "p9")
-    expect(capturedEventCount.contents)->toBe(0)
-  })
+  testPromise(
+    "re-adding the same product is still rejected (its own read is partition-scoped)",
+    async () => {
+      let ops = await eventLog->ReventlessCore.Component.operations->TestRunner.resolve
+      let _ = await ops.append([
+        encodeEvent(CategoryAdded({categoryId: "cat2", name: "Books"})),
+        encodeEvent(ProductAdded({productId: "p9", categoryId: "cat2", name: "Novel"})),
+      ])
+      capturedEventCount := 0 // count only events produced by the command below
+      // p9 already exists — its own productId clause returns its ProductAdded.
+      await dispatch(addProductJson("p9", "cat2", "Novel"), "p9")
+      expect(capturedEventCount.contents)->toBe(0)
+    },
+  )
 })

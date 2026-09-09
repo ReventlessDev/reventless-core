@@ -3,7 +3,6 @@
 
 open JestGlobals
 
-
 // ─────────────────────────────────────────────────────────────
 // EP Spec — minimal types for operations tests
 // ─────────────────────────────────────────────────────────────
@@ -12,13 +11,13 @@ module OpsEPSpec = {
   let name = "OpsTestEP"
 
   @schema
-  type command = | OpsEPCmd({id: string})
+  type command = OpsEPCmd({id: string})
 
   @schema
-  type event = | OpsEPEvent({result: string})
+  type event = OpsEPEvent({result: string})
 
   @schema
-  type directive = | OpsEPNoDirective
+  type directive = OpsEPNoDirective
 
   let moduleUrl: string = %raw(`import.meta.url`)
 }
@@ -57,7 +56,11 @@ module TestPublishMapping = {
   let mapOutgoingEvent = Some(
     (eventJson, _createSchedule, _deleteSchedule, _queryEngine) => {
       [
-        ReventlessInfra.ExtensionPointMapping.AbstractPublishEvent("ep-dest", outgoingMeta, eventJson),
+        ReventlessInfra.ExtensionPointMapping.AbstractPublishEvent(
+          "ep-dest",
+          outgoingMeta,
+          eventJson,
+        ),
       ]
     },
   )
@@ -81,9 +84,11 @@ module TestCallMapping = {
   let mapOutgoingEvent = Some(
     (_eventJson, _createSchedule, _deleteSchedule, _queryEngine) => {
       [
-        ReventlessInfra.ExtensionPointMapping.AbstractHandleDirective(async () => {
-          capturedCallCount := capturedCallCount.contents + 1
-        }),
+        ReventlessInfra.ExtensionPointMapping.AbstractHandleDirective(
+          async () => {
+            capturedCallCount := capturedCallCount.contents + 1
+          },
+        ),
       ]
     },
   )
@@ -122,7 +127,8 @@ module TestAsyncMapping = {
 
 module TestOpsMappings = {
   module Spec = OpsEPSpec
-  module type Mapping = ReventlessInfra.ExtensionPointMapping.T with module ExtensionPoint := OpsEPSpec
+  module type Mapping = ReventlessInfra.ExtensionPointMapping.T
+    with module ExtensionPoint := OpsEPSpec
   let name = "TestOpsMappings"
   let moduleUrl: string = %raw(`import.meta.url`)
   let mappings: array<module(Mapping)> = [
@@ -207,54 +213,69 @@ describe("ExtensionPoint_Operations.Make:", () => {
   let _ = beforeEach(() => reset())
 
   describe("outgoingJsonEventsHandler — AbstractPublishEvent:", () => {
-    testPromise("known aggregate calls publishToEventTopic with correct destination id", async () => {
-      let eventJson = makeEventJsonForAgg("PublishAgg")
-      await EpOps.outgoingJsonEventsHandler(eventJson, ())
-      expect(capturedPublished.contents->Array.length)->toBe(1)
-      let item = capturedPublished.contents->Array.getUnsafe(0)
-      let (id, _, _) = item
-      expect(id)->toBe("ep-dest")
-    })
+    testPromise(
+      "known aggregate calls publishToEventTopic with correct destination id",
+      async () => {
+        let eventJson = makeEventJsonForAgg("PublishAgg")
+        await EpOps.outgoingJsonEventsHandler(eventJson, ())
+        expect(capturedPublished.contents->Array.length)->toBe(1)
+        let item = capturedPublished.contents->Array.getUnsafe(0)
+        let (id, _, _) = item
+        expect(id)->toBe("ep-dest")
+      },
+    )
 
-    testPromise("publishToEventTopic receives the original event JSON", async () => {
-      let eventJson = makeEventJsonForAgg("PublishAgg")
-      await EpOps.outgoingJsonEventsHandler(eventJson, ())
-      let item = capturedPublished.contents->Array.getUnsafe(0)
-      let (_, _, capturedEventJson) = item
-      expect(capturedEventJson)->toEqual(eventJson)
-    })
+    testPromise(
+      "publishToEventTopic receives the original event JSON",
+      async () => {
+        let eventJson = makeEventJsonForAgg("PublishAgg")
+        await EpOps.outgoingJsonEventsHandler(eventJson, ())
+        let item = capturedPublished.contents->Array.getUnsafe(0)
+        let (_, _, capturedEventJson) = item
+        expect(capturedEventJson)->toEqual(eventJson)
+      },
+    )
   })
 
   describe("outgoingJsonEventsHandler — AbstractHandleDirective:", () => {
-    testPromise("known aggregate with AbstractHandleDirective invokes the handler", async () => {
-      let eventJson = makeEventJsonForAgg("CallAgg")
-      await EpOps.outgoingJsonEventsHandler(eventJson, ())
-      expect(capturedCallCount.contents)->toBe(1)
-      expect(capturedPublished.contents->Array.length)->toBe(0)
-    })
+    testPromise(
+      "known aggregate with AbstractHandleDirective invokes the handler",
+      async () => {
+        let eventJson = makeEventJsonForAgg("CallAgg")
+        await EpOps.outgoingJsonEventsHandler(eventJson, ())
+        expect(capturedCallCount.contents)->toBe(1)
+        expect(capturedPublished.contents->Array.length)->toBe(0)
+      },
+    )
   })
 
   describe("outgoingJsonEventsHandler — AbstractPublishEventAsync:", () => {
-    testPromise("async mapping resolves and calls publishToEventTopic", async () => {
-      let eventJson = makeEventJsonForAgg("AsyncAgg")
-      await EpOps.outgoingJsonEventsHandler(eventJson, ())
-      expect(capturedPublished.contents->Array.length)->toBe(1)
-      let item = capturedPublished.contents->Array.getUnsafe(0)
-      let (id, _, _) = item
-      expect(id)->toBe("ep-async-dest")
-    })
+    testPromise(
+      "async mapping resolves and calls publishToEventTopic",
+      async () => {
+        let eventJson = makeEventJsonForAgg("AsyncAgg")
+        await EpOps.outgoingJsonEventsHandler(eventJson, ())
+        expect(capturedPublished.contents->Array.length)->toBe(1)
+        let item = capturedPublished.contents->Array.getUnsafe(0)
+        let (id, _, _) = item
+        expect(id)->toBe("ep-async-dest")
+      },
+    )
   })
 
   describe("outgoingJsonEventsHandler — no matching mapping:", () => {
-    testPromise("event from unknown aggregate throws", async () => {
-      let eventJson = makeEventJsonForAgg("UnknownAgg")
-      let didThrow = ref(false)
-      try {
-        await EpOps.outgoingJsonEventsHandler(eventJson, ())
-      } catch {
-      | _ => didThrow := true
-      }
-      expect(didThrow.contents)->toBe(true)
-    })
+    testPromise(
+      "event from unknown aggregate throws",
+      async () => {
+        let eventJson = makeEventJsonForAgg("UnknownAgg")
+        let didThrow = ref(false)
+        try {
+          await EpOps.outgoingJsonEventsHandler(eventJson, ())
+        } catch {
+        | _ => didThrow := true
+        }
+        expect(didThrow.contents)->toBe(true)
+      },
+    )
   })
 })

@@ -29,8 +29,7 @@ let evolve = (state, event) =>
 
 let decide = (state, command) =>
   switch (state, command) {
-  | (NotCreated, Place({customerId, productIds})) =>
-    Ok([Order.Placed({customerId, productIds})])
+  | (NotCreated, Place({customerId, productIds})) => Ok([Order.Placed({customerId, productIds})])
   | (NotCreated, Ship) => Error(OrderNotFound)
   | (NotCreated, Cancel) => Error(OrderNotFound)
   | (NotCreated, Refund(_)) => Error(OrderNotFound)

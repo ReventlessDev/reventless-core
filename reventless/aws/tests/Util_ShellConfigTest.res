@@ -33,9 +33,7 @@ describe("Util_ShellConfig.fields — viewModes", () => {
     expect(out->get("viewModes"))->toEqual(
       JSON.Encode.array([JSON.Encode.string("map"), JSON.Encode.string("graph")]),
     )
-    expect(out->get("mapStyle"))->toEqual(
-      JSON.Encode.string("https://tiles.example/style.json"),
-    )
+    expect(out->get("mapStyle"))->toEqual(JSON.Encode.string("https://tiles.example/style.json"))
     expect(out->get("graphLayout"))->toEqual(JSON.Encode.string("dagre"))
   })
 })
@@ -43,7 +41,7 @@ describe("Util_ShellConfig.fields — viewModes", () => {
 describe("Util_ShellConfig.fields — bakedManifest", () => {
   let bake = (~key: option<string>=?): ReventlessInfra.Platform.bakedManifest => {
     components: [{plugin: "Catalog", views: ["Products"], commands: []}],
-    key: ?key,
+    ?key,
   }
 
   testSync("unset ⇒ no manifestUrl, so every caller keeps the admin path", () => {
@@ -202,8 +200,8 @@ describe("Util_ShellConfig.fields — journeys", () => {
       ->Array.filterMap(JSON.Decode.string),
     )
     expect(published)->toEqual(
-      ReventlessCore.Platform_BakedManifest.files(~config=bake)->Array.map(((key, _)) =>
-        "/" ++ key
+      ReventlessCore.Platform_BakedManifest.files(~config=bake)->Array.map(
+        ((key, _)) => "/" ++ key,
       ),
     )
   })
@@ -215,9 +213,7 @@ describe("Util_ShellConfig.fields — journeys", () => {
       let _ = Util_ShellConfig.fields(
         ~computed,
         ~bakedManifest=withJourneys(~journeys=[shopper]),
-        ~shellConfig=Dict.fromArray([
-          ("journeyManifestUrls", JSON.Encode.object(Dict.make())),
-        ]),
+        ~shellConfig=Dict.fromArray([("journeyManifestUrls", JSON.Encode.object(Dict.make()))]),
       )
       None
     } catch {
@@ -239,12 +235,7 @@ describe("Util_ShellConfig.fields — shellConfig passthrough", () => {
         ("accessTiers", JSON.Encode.array([JSON.Encode.string("public")])),
       ]),
     )
-    expect(out->Dict.keysToArray)->toEqual([
-      "apiEndpoint",
-      "region",
-      "platformName",
-      "accessTiers",
-    ])
+    expect(out->Dict.keysToArray)->toEqual(["apiEndpoint", "region", "platformName", "accessTiers"])
     expect(out->get("platformName"))->toEqual(JSON.Encode.string("Online Shop"))
   })
 
@@ -277,8 +268,7 @@ describe("Util_ShellConfig.fields — shellConfig passthrough", () => {
 // These assert the property that removes that window, not the spelling.
 describe("Util_ShellConfig.identityFields", () => {
   let fields = Util_ShellConfig.identityFields(~providerId="eu-west-1_x", ~clientId="7cl13nt")
-  let get = key =>
-    fields->Array.find(((k, _)) => k == key)->Option.map(((_, v)) => v)
+  let get = key => fields->Array.find(((k, _)) => k == key)->Option.map(((_, v)) => v)
 
   testSync("the new spelling is present", () =>
     expect((get("identityProviderId"), get("identityProviderClientId")))->toEqual((

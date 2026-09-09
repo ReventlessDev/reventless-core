@@ -43,7 +43,9 @@ module type T = {
   let makePluginDefinition: (
     ~name: string,
     ~aggregates: array<module(ReventlessInfra.Aggregate.T with type api = api)>=?,
-    ~readModels: array<module(ReventlessInfra.ReadModel.T with type api = api and type role = role)>=?,
+    ~readModels: array<
+      module(ReventlessInfra.ReadModel.T with type api = api and type role = role),
+    >=?,
     ~stateViewSlices: array<module(ReventlessInfra.StateViewSlice.T)>=?,
     ~stateChangeSlices: array<module(ReventlessInfra.StateChangeSlice.T)>=?,
     ~automationSlices: array<module(ReventlessInfra.AutomationSlice.T)>=?,
@@ -63,13 +65,11 @@ let makeId = (name, version) => `${name}@${version}`
 // the platform invariant is one version per plugin at a time — so anything
 // crossing into the UI (routes, federation remote name, subscription
 // payloads) gets the bare name. If the input has no `@`, returns it as-is.
-let name = (id: string): string =>
-  id->String.split("@")->Array.get(0)->Option.getOr(id)
+let name = (id: string): string => id->String.split("@")->Array.get(0)->Option.getOr(id)
 
 // Version segment of a plugin id (`name@version`). Empty string when the id
 // carries no `@` (e.g. the synthetic admin plugin id).
-let version = (id: string): string =>
-  id->String.split("@")->Array.get(1)->Option.getOr("")
+let version = (id: string): string => id->String.split("@")->Array.get(1)->Option.getOr("")
 
 // Compare two plugin version strings (e.g. "0.10.0-alpha.73"), newest-first:
 // returns 1 when `a` is newer than `b`, -1 when older, 0 when equal. Separators
@@ -79,7 +79,7 @@ let version = (id: string): string =>
 // the admin manifest resolvers to enforce the one-version-per-plugin invariant
 // when more than one version lingers in `Connected` state.
 let compareVersions = (a: string, b: string): int => {
-  let parts = s => s->String.replaceRegExp(%re("/[-+]/g"), ".")->String.split(".")
+  let parts = s => s->String.replaceRegExp(/[-+]/g, ".")->String.split(".")
   let pa = parts(a)
   let pb = parts(b)
   let len = pa->Array.length > pb->Array.length ? pa->Array.length : pb->Array.length

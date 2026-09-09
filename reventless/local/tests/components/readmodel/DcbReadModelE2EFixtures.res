@@ -21,20 +21,13 @@ module AddProductSpec = {
   let moduleUrl: string = %raw(`import.meta.url`)
 
   @schema
-  type event =
-    ProductAdded({
-      productId: @s.matches(Reventless.DcbTag.string) string,
-      name: string,
-    })
+  type event = ProductAdded({productId: @s.matches(Reventless.DcbTag.string) string, name: string})
 
   @schema
   type consumedEvent = ProductAdded
 
   @schema
-  type command = AddProduct({
-    productId: @s.matches(Reventless.DcbTag.string) string,
-    name: string,
-  })
+  type command = AddProduct({productId: @s.matches(Reventless.DcbTag.string) string, name: string})
 
   @schema
   type error = ProductAlreadyExists
@@ -180,7 +173,9 @@ let _addProductSlice = AddProductMaker.make(~dcbEventLog, ~publishJsons=publishJ
 // under the key `<name> ++ "DcbEventLog"`.
 // ─────────────────────────────────────────────────────────────
 
-let dcbTopicOutputs: ReventlessInfra.EventTopic.outputs = (dcbEventLog->ReventlessInfra.Component.outputs).eventTopic
+let dcbTopicOutputs: ReventlessInfra.EventTopic.outputs = (
+  dcbEventLog->ReventlessInfra.Component.outputs
+).eventTopic
 
 let allEventTopics: ReventlessInfra.EventTopic.allOutputs = Dict.fromArray([
   ("ProductCatalogDcbEventLog", dcbTopicOutputs),
@@ -198,18 +193,20 @@ let dispatch = async (commandJson, id) =>
   await publishJsons([{Reventless.Message.id, meta: testMeta, commandJson}])
 
 let addProductCmd = (productId, name) =>
-  AddProductSpec.AddProduct({productId, name})
-  ->Reventless.Util_Sury.toJson(AddProductSpec.commandSchema)
+  AddProductSpec.AddProduct({productId, name})->Reventless.Util_Sury.toJson(
+    AddProductSpec.commandSchema,
+  )
 
 let loadState = async productId => {
   switch Bus.getQueryDb("TestProductsReadModel") {
   | None => []
   | Some(ops) =>
-    let states =
-      await ops.loadStream(productId)
-      ->Stream.runCollect
-      ->Effect.catchAll(_ => Effect.succeed([]))
-      ->Effect.runPromise
-    states->Array.map(json => json->Reventless.Util_Sury.fromJson(ProductsReadModelSpec.stateSchema))
+    let states = await ops.loadStream(productId)
+    ->Stream.runCollect
+    ->Effect.catchAll(_ => Effect.succeed([]))
+    ->Effect.runPromise
+    states->Array.map(json =>
+      json->Reventless.Util_Sury.fromJson(ProductsReadModelSpec.stateSchema)
+    )
   }
 }

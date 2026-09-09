@@ -38,19 +38,22 @@ type Subscription {
 describe("AppSync_SdlDecorate.injectAwsSubscribe", () => {
   testSync("appends @aws_subscribe on a 1:1 mutation-sourced field (with args)", () => {
     let sdl = AppSync_SdlDecorate.injectAwsSubscribe(stitchedSdl, ~sources)
-    expect(sdl)->toContain(
-      `onCatalog_AddProduct(id: ID): CommandResult\n    @aws_subscribe(mutations: ["Catalog_AddProduct"])`,
-    )
+    expect(
+      sdl,
+    )->toContain(`onCatalog_AddProduct(id: ID): CommandResult\n    @aws_subscribe(mutations: ["Catalog_AddProduct"])`)
   })
 
-  testSync("appends the many-mutations fan-in on a no-arg field, keeping the group directive", () => {
-    let sdl = AppSync_SdlDecorate.injectAwsSubscribe(stitchedSdl, ~sources)
-    expect(sdl)->toContain(
-      `onUIFragmentChange: UIFragmentChangeEvent\n    @aws_subscribe(mutations: ["Platform_UIFragmentRegistered", "Platform_UIFragmentUpdated", "Platform_UIFragmentDeregistered"])`,
-    )
-    // The auth directive line appended by injectAwsAuthAll survives.
-    expect(sdl)->toContain(`@aws_cognito_user_pools(cognito_groups: ["Admin"])`)
-  })
+  testSync(
+    "appends the many-mutations fan-in on a no-arg field, keeping the group directive",
+    () => {
+      let sdl = AppSync_SdlDecorate.injectAwsSubscribe(stitchedSdl, ~sources)
+      expect(
+        sdl,
+      )->toContain(`onUIFragmentChange: UIFragmentChangeEvent\n    @aws_subscribe(mutations: ["Platform_UIFragmentRegistered", "Platform_UIFragmentUpdated", "Platform_UIFragmentDeregistered"])`)
+      // The auth directive line appended by injectAwsAuthAll survives.
+      expect(sdl)->toContain(`@aws_cognito_user_pools(cognito_groups: ["Admin"])`)
+    },
+  )
 
   testSync("leaves unmapped fields (Source A) and non-Subscription blocks untouched", () => {
     let sdl = AppSync_SdlDecorate.injectAwsSubscribe(stitchedSdl, ~sources)
@@ -71,7 +74,9 @@ describe("AppSync_Adapter.stitchStandaloneWithAwsDirectives", () => {
   testSync("assembles a neutral fragment into an AWS-dialect standalone document", () => {
     let fragment = ReventlessCore.GraphQL_Stitcher.encode({
       types: [`type PluginStatusChangeEvent {\n  pluginId: ID!\n}`],
-      mutations: [`  Platform_PluginStatusChanged(pluginId: ID!, status: PluginStatus!): PluginStatusChangeEvent`],
+      mutations: [
+        `  Platform_PluginStatusChanged(pluginId: ID!, status: PluginStatus!): PluginStatusChangeEvent`,
+      ],
       queries: [],
       subscriptions: [`  onPluginStatusChange: PluginStatusChangeEvent`],
       subscriptionSources: [
@@ -117,7 +122,6 @@ describe("AppSync_SdlDecorate.injectAwsAuthAll", () => {
     expect(other->String.includes("@aws_iam"))->toBe(false)
   })
 })
-
 
 describe("AppSync_SdlDecorate.stampSharedIamTypes", () => {
   testSync("stamps the CommandResult members", () => {
@@ -236,9 +240,9 @@ describe("AppSync_SdlDecorate.stampUndirectivedFields", () => {
   testSync("does not strip an @aws_iam arm", () => {
     let dual = "  Sys_Sync: String\n    @aws_cognito_user_pools @aws_iam"
     let out = AppSync_SdlDecorate.stampUndirectivedFields(frag(~mutations=[dual], ()))
-    expect(
-      ReventlessCore.GraphQL_Stitcher.decode(out).mutations->Array.getUnsafe(0),
-    )->toContain("@aws_iam")
+    expect(ReventlessCore.GraphQL_Stitcher.decode(out).mutations->Array.getUnsafe(0))->toContain(
+      "@aws_iam",
+    )
   })
 
   testSync("is idempotent", () => {
@@ -277,8 +281,7 @@ describe("AppSync_SdlDecorate.assertGateable", () => {
   })
 
   testSync("refuses an object type carrying no enforced directive", () => {
-    let sdl =
-      "type Query @aws_cognito_user_pools {\n  a: String @aws_cognito_user_pools\n}\ntype Product {\n  id: ID!\n}"
+    let sdl = "type Query @aws_cognito_user_pools {\n  a: String @aws_cognito_user_pools\n}\ntype Product {\n  id: ID!\n}"
     expect(refuses(sdl))->toBe(true)
   })
 
@@ -289,8 +292,7 @@ describe("AppSync_SdlDecorate.assertGateable", () => {
   })
 
   testSync("accepts a group-gated field and an @aws_iam-only field", () => {
-    let sdl =
-      `type Mutation @aws_cognito_user_pools {\n  Gated: String\n    @aws_cognito_user_pools(cognito_groups: ["Admin"])\n  Sys: String\n    @aws_cognito_user_pools @aws_iam\n}`
+    let sdl = `type Mutation @aws_cognito_user_pools {\n  Gated: String\n    @aws_cognito_user_pools(cognito_groups: ["Admin"])\n  Sys: String\n    @aws_cognito_user_pools @aws_iam\n}`
     expect(refuses(sdl))->toBe(false)
   })
 

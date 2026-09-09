@@ -250,7 +250,8 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
     // SDL the in-memory adapter does, so the AWS Filter / OrderBy stays in lockstep
     // with the SDL emitted by GraphQL_FragmentGenerator at runtime.
     let capability = switch stateSchemaOpt {
-    | Some(s) => ReventlessCore.GraphQL_FragmentGenerator.deriveServerCapability(~entityName=name, s)
+    | Some(s) =>
+      ReventlessCore.GraphQL_FragmentGenerator.deriveServerCapability(~entityName=name, s)
     | None => ReventlessCore.GraphQL_FragmentGenerator.emptyCapability
     }
     let filterFieldNames = capability.filterFields->Array.map(f => f.name)
@@ -262,11 +263,10 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
     // JS-runtime per-page sort over a full Scan (expensive in production).
     switch stateSchemaOpt {
     | Some(s) =>
-      let knownSortFields =
-        switch subIdField {
-        | Some(f) => [f]
-        | None => []
-        }->Array.concat(indexes->Array.filterMap(({subIdField: ?sf}) => sf))
+      let knownSortFields = switch subIdField {
+      | Some(f) => [f]
+      | None => []
+      }->Array.concat(indexes->Array.filterMap(({subIdField: ?sf}) => sf))
       ReventlessCore.GraphQL_FragmentGenerator.validateScanSortAlignment(
         ~schema=s,
         ~readModelName=name,
@@ -314,8 +314,7 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
         `${name}: @owner field "${f}" keys no index on this table, so owner-scoped ` ++
         "reads Scan the table and filter after the page is read — cost grows with the " ++
         "table while the answer shrinks with the caller's share of it. Drop " ++
-        "`@owner({index: false})` to let the framework derive the index, or accept " ++
-        "the cost on a view that stays small.",
+        "`@owner({index: false})` to let the framework derive the index, or accept " ++ "the cost on a view that stays small.",
       )
     | _ => ()
     }
@@ -347,8 +346,7 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
         ~comp="QueryDbResolvers_AppSync",
         `${name}: @retired field "${f}" is filtered after the page is read, so pages ` ++
         `shrink as the archive's share of the rows grows. This view is scoped on "${o}", ` ++
-        "so a scoped caller only sifts their own partition and pays in proportion to " ++
-        "their rows; it is the elevated whole-table read that pays in full.",
+        "so a scoped caller only sifts their own partition and pays in proportion to " ++ "their rows; it is the elevated whole-table read that pays in full.",
       )
     | (Some(f), None) =>
       log.warn(
@@ -356,8 +354,7 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
         `${name}: @retired field "${f}" is filtered after the page is read, so pages ` ++
         "shrink as the archive's share of the rows grows. An @index on that field " ++
         "would not help — the list read does not use one, and a flag makes a poor " ++
-        "partition key. Reshape the view so the rows you serve are the rows you " ++
-        "keep, or accept the cost while the archive stays small.",
+        "partition key. Reshape the view so the rows you serve are the rows you " ++ "keep, or accept the cost while the archive stays small.",
       )
     | (None, _) => ()
     }
@@ -385,108 +382,109 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
     // Derived indexes are absent from the SDL (`GraphQL_FragmentGenerator` skips
     // them), so a resolver here would attach to a field that does not exist and
     // fail the deploy. The list resolver above is the only thing that reads one.
-    let resolversByIndex = indexes
-    ->Array.filter(ic => !Reventless.ReadModel.isDerivedIndex(ic))
-    ->Array.map(({index} as indexConfig) => {
-      // Name and key field both come from `GraphQL_FragmentGenerator`, which is
-      // where the SDL field this attaches to is derived. Deriving them here as
-      // well is how the two came to disagree: the emitted field declared `id`
-      // while this resolver read the index key, so the door could not be called.
-      let fieldName = ReventlessCore.GraphQL_FragmentGenerator.indexQueryFieldName(
-        ~singleFieldName=fieldNameForSingle,
-        ~index,
-      )
-      let resolverName = fieldName->String.capitalize
-      let idField = ReventlessCore.GraphQL_FragmentGenerator.indexKeyField(indexConfig)
-      switch indexConfig.authorization {
-      | None =>
-        makeQueryResolver(
-          ~resolverName,
-          ~field=fieldName->Pulumi.Input.make,
-          ~code=switch indexConfig.subIdField {
-          | Some(sortField) =>
-            Resolver.Functions.queryByIndexSortFiltered(
+    let resolversByIndex =
+      indexes
+      ->Array.filter(ic => !Reventless.ReadModel.isDerivedIndex(ic))
+      ->Array.map(({index} as indexConfig) => {
+        // Name and key field both come from `GraphQL_FragmentGenerator`, which is
+        // where the SDL field this attaches to is derived. Deriving them here as
+        // well is how the two came to disagree: the emitted field declared `id`
+        // while this resolver read the index key, so the door could not be called.
+        let fieldName = ReventlessCore.GraphQL_FragmentGenerator.indexQueryFieldName(
+          ~singleFieldName=fieldNameForSingle,
+          ~index,
+        )
+        let resolverName = fieldName->String.capitalize
+        let idField = ReventlessCore.GraphQL_FragmentGenerator.indexKeyField(indexConfig)
+        switch indexConfig.authorization {
+        | None =>
+          makeQueryResolver(
+            ~resolverName,
+            ~field=fieldName->Pulumi.Input.make,
+            ~code=switch indexConfig.subIdField {
+            | Some(sortField) =>
+              Resolver.Functions.queryByIndexSortFiltered(
+                ~index,
+                ~idField,
+                ~sortField,
+                ~ownerField?,
+                ~retiredField?,
+                ~retiredValues?,
+                ~elevatedGroups,
+              )
+            | None =>
+              Resolver.Functions.queryByIndexFiltered(
+                ~index,
+                ~idField,
+                ~ownerField?,
+                ~retiredField?,
+                ~retiredValues?,
+                ~elevatedGroups,
+              )
+            },
+          )
+        | Some({tableName, group}) =>
+          let authDataSource = DataSource.makeDynamoDBDataSourceWithTableName(
+            ~name=resolverName ++ "Auth",
+            ~api,
+            ~tableName=(
+              allQueryDbs
+              ->ReventlessCore.Util.QueryDb.getLocalStorageResources(tableName)
+              ->Util.DynamoDb.findResource
+            ).name,
+            ~serviceRole=apiRole,
+            ~opts,
+          )
+          let authFunction = Function.makeJs(
+            ~name=resolverName ++ "Auth",
+            ~api,
+            ~dataSource=authDataSource.name->Pulumi.Output.asInput,
+            ~code=Resolver.Functions.authorizeIndexedAccess(~index, ~group),
+            ~opts,
+          )
+          let queryFunction = Function.makeJs(
+            ~name=resolverName,
+            ~api,
+            ~dataSource=dataSourceName,
+            // No `~ownerField`, deliberately: this index declares its own
+            // authorization, and the rows it grants a group member are by
+            // construction owned by somebody else — an order assigned to a
+            // fulfilment operator belongs to the customer who placed it. Adding the
+            // owner predicate here would return nothing and revoke the access the
+            // auth table exists to grant. Retirement still applies: an archived row
+            // is withdrawn from everyone who has not asked, whoever owns it.
+            ~code=Resolver.Functions.queryByIndexFiltered(
               ~index,
               ~idField,
-              ~sortField,
-              ~ownerField?,
               ~retiredField?,
               ~retiredValues?,
               ~elevatedGroups,
-            )
-          | None =>
-            Resolver.Functions.queryByIndexFiltered(
-              ~index,
-              ~idField,
-              ~ownerField?,
-              ~retiredField?,
-              ~retiredValues?,
-              ~elevatedGroups,
-            )
-          },
-        )
-      | Some({tableName, group}) =>
-        let authDataSource = DataSource.makeDynamoDBDataSourceWithTableName(
-          ~name=resolverName ++ "Auth",
-          ~api,
-          ~tableName=(
-            allQueryDbs
-            ->ReventlessCore.Util.QueryDb.getLocalStorageResources(tableName)
-            ->Util.DynamoDb.findResource
-          ).name,
-          ~serviceRole=apiRole,
-          ~opts,
-        )
-        let authFunction = Function.makeJs(
-          ~name=resolverName ++ "Auth",
-          ~api,
-          ~dataSource=authDataSource.name->Pulumi.Output.asInput,
-          ~code=Resolver.Functions.authorizeIndexedAccess(~index, ~group),
-          ~opts,
-        )
-        let queryFunction = Function.makeJs(
-          ~name=resolverName,
-          ~api,
-          ~dataSource=dataSourceName,
-          // No `~ownerField`, deliberately: this index declares its own
-          // authorization, and the rows it grants a group member are by
-          // construction owned by somebody else — an order assigned to a
-          // fulfilment operator belongs to the customer who placed it. Adding the
-          // owner predicate here would return nothing and revoke the access the
-          // auth table exists to grant. Retirement still applies: an archived row
-          // is withdrawn from everyone who has not asked, whoever owns it.
-          ~code=Resolver.Functions.queryByIndexFiltered(
-            ~index,
-            ~idField,
-            ~retiredField?,
-            ~retiredValues?,
-            ~elevatedGroups,
-          ),
-          ~opts,
-        )
-        // The interceptor leads the chain, as it does in every other Query
-        // pipeline. That position means an attempt refused by the row-level index
-        // authorization below has still been counted — the same "attempts, not
-        // outcomes" bound the hook has everywhere, since it fires before the read
-        // and never learns how it ended. Putting it after the auth step would buy
-        // outcome-accurate counts and cost the property that matters more: the
-        // interceptor is the one place a read can be REFUSED, so it has to be
-        // reachable before the pipeline spends a second table read deciding
-        // whether this caller may use the index.
-        Resolver.makePipelineJsResolver(
-          ~name=resolverName,
-          ~api,
-          ~type_="Query"->Pulumi.Input.make,
-          ~field=fieldName->Pulumi.Input.make,
-          ~code=Resolver.Functions.pipelinePassThrough,
-          ~functions=switch interceptorFunction(~resolverName) {
-          | None => [authFunction, queryFunction]
-          | Some(interceptorFn) => [interceptorFn, authFunction, queryFunction]
-          },
-          ~opts,
-        )
-      }
-    })
+            ),
+            ~opts,
+          )
+          // The interceptor leads the chain, as it does in every other Query
+          // pipeline. That position means an attempt refused by the row-level index
+          // authorization below has still been counted — the same "attempts, not
+          // outcomes" bound the hook has everywhere, since it fires before the read
+          // and never learns how it ended. Putting it after the auth step would buy
+          // outcome-accurate counts and cost the property that matters more: the
+          // interceptor is the one place a read can be REFUSED, so it has to be
+          // reachable before the pipeline spends a second table read deciding
+          // whether this caller may use the index.
+          Resolver.makePipelineJsResolver(
+            ~name=resolverName,
+            ~api,
+            ~type_="Query"->Pulumi.Input.make,
+            ~field=fieldName->Pulumi.Input.make,
+            ~code=Resolver.Functions.pipelinePassThrough,
+            ~functions=switch interceptorFunction(~resolverName) {
+            | None => [authFunction, queryFunction]
+            | Some(interceptorFn) => [interceptorFn, authFunction, queryFunction]
+            },
+            ~opts,
+          )
+        }
+      })
 
     let storageResource = (~pluginName: option<string>, ~tableName: string) =>
       allQueryDbs
@@ -711,8 +709,13 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
     // is independent of whether this view has a sub-id door, and adding a third
     // dimension to that match would spell eight cases to say one thing.
     let refsResolvers = resolverRefs->Option.mapOr([], r => [r])
-    Array.flat([mainResolvers, refsResolvers, resolversByIndex, idResolvers, idsResolvers])
-    ->Array.map(Util.AppSync.toResourceNative)
+    Array.flat([
+      mainResolvers,
+      refsResolvers,
+      resolversByIndex,
+      idResolvers,
+      idsResolvers,
+    ])->Array.map(Util.AppSync.toResourceNative)
   }
 
   {resources: [], resourcesMaker}

@@ -687,7 +687,8 @@ function MakeWithConfig(Config) {
   };
   let provisionPgChangeFeedRelay = () => {
     let feedTargets = (connectionConfig, logName, feed, isClassic) => Stdlib_Array.filterMap(PgProjectionFeed$ReventlessAws.getFeedQueues(), fq => {
-      if (isClassic ? fq.includeClassic : fq.includeDcb) {
+      let included = isClassic ? fq.includeClassic : fq.includeDcb;
+      if (included) {
         return {
           connectionConfig: connectionConfig,
           logName: logName,
@@ -2086,7 +2087,8 @@ function Make($star) {
   };
   let provisionPgChangeFeedRelay = () => {
     let feedTargets = (connectionConfig, logName, feed, isClassic) => Stdlib_Array.filterMap(PgProjectionFeed$ReventlessAws.getFeedQueues(), fq => {
-      if (isClassic ? fq.includeClassic : fq.includeDcb) {
+      let included = isClassic ? fq.includeClassic : fq.includeDcb;
+      if (included) {
         return {
           connectionConfig: connectionConfig,
           logName: logName,

@@ -40,23 +40,24 @@ let report = (entries: array<LocalPlatformRegistry.entry>): array<string> =>
   | [e] => [e->entryLine, `  nothing started — ${e.endpoint} is serving this directory.`]
   | entries =>
     Array.concat(
-      [`→ ${entries->Array.length->Int.toString} platforms are already running in this directory:`],
+      [
+        `→ ${entries
+          ->Array.length
+          ->Int.toString} platforms are already running in this directory:`,
+      ],
       entries->Array.map(entryLine),
     )->Array.concat(["  nothing started — stop the ones you do not want, then start again."])
   }
 
 /** The live platform serving this store file, if one is. Resolved against this
     process's cwd, because the registry's paths are absolute. */
-let servedBy = (~path: string, ~cwd=NodeProcess.cwd(), ()): option<
-  LocalPlatformRegistry.entry,
-> => {
+let servedBy = (~path: string, ~cwd=NodeProcess.cwd(), ()): option<LocalPlatformRegistry.entry> => {
   let resolved = NodePath.resolve([path])
   LocalPlatformRegistry.list(~cwd, ())->Array.find(e => e.store.path == Some(resolved))
 }
 
 let refusalMessage = (~path: string, e: LocalPlatformRegistry.entry): string =>
-  `refusing to reset ${path}: it is the store of ${e.app} running at :${e.port->Int.toString} (pid ${e.pid->Int.toString}). ` ++
-  `Stop that platform first, or start this one without ?reset.`
+  `refusing to reset ${path}: it is the store of ${e.app} running at :${e.port->Int.toString} (pid ${e.pid->Int.toString}). ` ++ `Stop that platform first, or start this one without ?reset.`
 
 /** Throws rather than letting a reset unlink a store something is serving. Always
     on: it must protect an app that never calls {!orAddressRunning}. */

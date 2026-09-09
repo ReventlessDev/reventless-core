@@ -15,22 +15,18 @@ open JestGlobals
 
 describe("Seed_Prompt.isAffirmative:", () => {
   testSync("takes the three spellings of yes", () => {
-    ["y", "yes", "1"]->Array.forEach(v =>
-      expect(Seed_Prompt.isAffirmative(v))->Expect.toBe(true)
-    )
+    ["y", "yes", "1"]->Array.forEach(v => expect(Seed_Prompt.isAffirmative(v))->Expect.toBe(true))
   })
 
   // A prompt that prints `[y/N]` invites a capital as readily as a lowercase
   // one, and an env var set by hand is written however the hand felt.
   testSync("ignores case, so Y and YES answer as y does", () => {
-    ["Y", "Yes", "YES"]->Array.forEach(v =>
-      expect(Seed_Prompt.isAffirmative(v))->Expect.toBe(true)
-    )
+    ["Y", "Yes", "YES"]->Array.forEach(v => expect(Seed_Prompt.isAffirmative(v))->Expect.toBe(true))
   })
 
   testSync("ignores surrounding space", () => {
-    [" y", "y ", "  yes  "]->Array.forEach(v =>
-      expect(Seed_Prompt.isAffirmative(v))->Expect.toBe(true)
+    [" y", "y ", "  yes  "]->Array.forEach(
+      v => expect(Seed_Prompt.isAffirmative(v))->Expect.toBe(true),
     )
   })
 
@@ -38,14 +34,14 @@ describe("Seed_Prompt.isAffirmative:", () => {
   // reads it as "no". None may be mistaken for "nothing was said", which is what
   // sent the old code to a prompt it could not open.
   testSync("declines every spelling of no, capital N included", () => {
-    ["n", "N", "no", "No", "NO"]->Array.forEach(v =>
-      expect(Seed_Prompt.isAffirmative(v))->Expect.toBe(false)
+    ["n", "N", "no", "No", "NO"]->Array.forEach(
+      v => expect(Seed_Prompt.isAffirmative(v))->Expect.toBe(false),
     )
   })
 
   testSync("declines anything it does not recognise", () => {
-    ["", "  ", "0", "true", "yep", "y.", "yesplease", "affirmative"]->Array.forEach(v =>
-      expect(Seed_Prompt.isAffirmative(v))->Expect.toBe(false)
+    ["", "  ", "0", "true", "yep", "y.", "yesplease", "affirmative"]->Array.forEach(
+      v => expect(Seed_Prompt.isAffirmative(v))->Expect.toBe(false),
     )
   })
 

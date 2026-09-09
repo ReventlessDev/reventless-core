@@ -78,10 +78,10 @@ the view on the wrong value.
 */
 let isFieldOwner = (schema: S.t<unknown>): bool =>
   isOwner(schema) ||
-    switch schema->Semantic.unwrapOptional {
-    | Some(inner) => isOwner(inner)
-    | None => false
-    }
+  switch schema->Semantic.unwrapOptional {
+  | Some(inner) => isOwner(inner)
+  | None => false
+  }
 
 /**
 The owner fields declared on an object schema, in declaration order.

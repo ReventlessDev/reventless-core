@@ -10,7 +10,6 @@
 // binds the Id module at the ReScript level, mirroring ExtensionPoint_Builder.
 // Runtime-pure: no Pulumi value reaches this module's import graph.
 
-
 // ── Shim bindings (HandlerFactoryHelpers.mjs) ───────────────────────────────
 // The structured-log + Effect dispatch boundary shared by every deployed entry
 // point (single place where invocations get their log annotations and
@@ -160,7 +159,7 @@ let commandTopicResources: array<ReventlessInfra.Adapter.resolvedResource> = {
       ]
 }
 
-let invalidNameChars = %re("/[^.\-_a-zA-Z0-9]/g")
+let invalidNameChars = /[^.\-_a-zA-Z0-9]/g
 let resourceNaming: ReventlessInfra.ResourceNaming.operations = {
   validateName: n => n->String.replaceRegExp(invalidNameChars, "_"),
   urnName: arn =>

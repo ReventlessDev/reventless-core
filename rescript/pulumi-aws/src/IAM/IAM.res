@@ -103,7 +103,7 @@ module Role = {
         assumeRolePolicy: servicePrincipal
         ->Pulumi.Output.apply(principal => Policy.assumeRolePolicy(name, principal))
         ->Pulumi.Output.asInput,
-        tags: ?tags,
+        ?tags,
       },
       ~opts,
     )

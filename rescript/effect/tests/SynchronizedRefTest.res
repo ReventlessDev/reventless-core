@@ -23,8 +23,9 @@ describe("SynchronizedRef", () => {
 
   testPromise("updateEffect updates with an async computation", async () => {
     let r = SynchronizedRef.make(5)->Effect.runSync
-    let _ = await SynchronizedRef.updateEffect(r, n =>
-      Effect.promise(() => Promise.resolve(n + 10))
+    let _ = await SynchronizedRef.updateEffect(
+      r,
+      n => Effect.promise(() => Promise.resolve(n + 10)),
     )->Effect.runPromise
     let v = await SynchronizedRef.get(r)->Effect.runPromise
     expect(v)->toBe(15)
@@ -32,8 +33,9 @@ describe("SynchronizedRef", () => {
 
   testPromise("modifyEffect returns result and updates atomically", async () => {
     let r = SynchronizedRef.make(4)->Effect.runSync
-    let result = await SynchronizedRef.modifyEffect(r, n =>
-      Effect.promise(() => Promise.resolve((n * 100, n + 1)))
+    let result = await SynchronizedRef.modifyEffect(
+      r,
+      n => Effect.promise(() => Promise.resolve((n * 100, n + 1))),
     )->Effect.runPromise
     let new_ = await SynchronizedRef.get(r)->Effect.runPromise
     expect(result)->toBe(400)

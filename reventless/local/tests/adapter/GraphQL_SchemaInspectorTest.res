@@ -59,7 +59,7 @@ type unionCommand =
 // expose one `Plugin_Command` field per constructor).
 @schema
 type dcbSingleCommand =
-  | AddCategory({categoryId: @s.matches(Reventless.DcbTag.string) string, name: string})
+  AddCategory({categoryId: @s.matches(Reventless.DcbTag.string) string, name: string})
 
 @schema
 type dcbMultiCommand =
@@ -184,410 +184,479 @@ let scanStateSchemaWithAnnotations = scanStateSchema->S.Metadata.set(
 
 describe("GraphQL_SchemaInspector", () => {
   describe("inspectScalar", () => {
-    testPromise("plain string derives to String", async () => {
-      expect(ReventlessCore.GraphQL_SchemaInspector.inspectScalar(stringSchema))->toBe("String")
-    })
+    testPromise(
+      "plain string derives to String",
+      async () => {
+        expect(ReventlessCore.GraphQL_SchemaInspector.inspectScalar(stringSchema))->toBe("String")
+      },
+    )
 
-    testPromise("tagged string derives to ID", async () => {
-      expect(ReventlessCore.GraphQL_SchemaInspector.inspectScalar(taggedSchema))->toBe("ID")
-    })
+    testPromise(
+      "tagged string derives to ID",
+      async () => {
+        expect(ReventlessCore.GraphQL_SchemaInspector.inspectScalar(taggedSchema))->toBe("ID")
+      },
+    )
 
-    testPromise("float derives to Float", async () => {
-      expect(ReventlessCore.GraphQL_SchemaInspector.inspectScalar(numberSchema))->toBe("Float")
-    })
+    testPromise(
+      "float derives to Float",
+      async () => {
+        expect(ReventlessCore.GraphQL_SchemaInspector.inspectScalar(numberSchema))->toBe("Float")
+      },
+    )
 
-    testPromise("bool derives to Boolean", async () => {
-      expect(ReventlessCore.GraphQL_SchemaInspector.inspectScalar(boolSchema))->toBe("Boolean")
-    })
+    testPromise(
+      "bool derives to Boolean",
+      async () => {
+        expect(ReventlessCore.GraphQL_SchemaInspector.inspectScalar(boolSchema))->toBe("Boolean")
+      },
+    )
   })
 
   describe("inspectObjectType", () => {
-    testPromise("derives type definition from object schema", async () => {
-      let result = ReventlessCore.GraphQL_SchemaInspector.inspectObjectType(
-        ~typeName="TestState",
-        testStateSchema,
-      )
-      expect(result->Option.isSome)->toBe(true)
-      let sdl = result->Option.getOrThrow
-      expect(sdl->String.includes("type TestState"))->toBe(true)
-      expect(sdl->String.includes("id: ID!"))->toBe(true)
-      expect(sdl->String.includes("name: String"))->toBe(true)
-      expect(sdl->String.includes("price: Float"))->toBe(true)
-      expect(sdl->String.includes("active: Boolean"))->toBe(true)
-    })
+    testPromise(
+      "derives type definition from object schema",
+      async () => {
+        let result = ReventlessCore.GraphQL_SchemaInspector.inspectObjectType(
+          ~typeName="TestState",
+          testStateSchema,
+        )
+        expect(result->Option.isSome)->toBe(true)
+        let sdl = result->Option.getOrThrow
+        expect(sdl->String.includes("type TestState"))->toBe(true)
+        expect(sdl->String.includes("id: ID!"))->toBe(true)
+        expect(sdl->String.includes("name: String"))->toBe(true)
+        expect(sdl->String.includes("price: Float"))->toBe(true)
+        expect(sdl->String.includes("active: Boolean"))->toBe(true)
+      },
+    )
 
-    testPromise("returns None for non-object schema", async () => {
-      let result = ReventlessCore.GraphQL_SchemaInspector.inspectObjectType(
-        ~typeName="Foo",
-        stringSchema,
-      )
-      expect(result->Option.isNone)->toBe(true)
-    })
+    testPromise(
+      "returns None for non-object schema",
+      async () => {
+        let result = ReventlessCore.GraphQL_SchemaInspector.inspectObjectType(
+          ~typeName="Foo",
+          stringSchema,
+        )
+        expect(result->Option.isNone)->toBe(true)
+      },
+    )
   })
 
   describe("inspectMutationFields", () => {
-    testPromise("derives fields from single-variant (DCB slice) command", async () => {
-      let fields = ReventlessCore.GraphQL_SchemaInspector.inspectMutationFields(
-        ~fieldPrefix="Catalog_AddProduct",
-        addCommandSchema,
-      )
-      expect(fields->Array.length)->toBe(1)
-      let field = fields->Array.getUnsafe(0)
-      expect(field->String.includes("Catalog_AddProduct"))->toBe(true)
-      expect(field->String.includes("productId: ID!"))->toBe(true)
-      expect(field->String.includes("name: String"))->toBe(true)
-    })
+    testPromise(
+      "derives fields from single-variant (DCB slice) command",
+      async () => {
+        let fields = ReventlessCore.GraphQL_SchemaInspector.inspectMutationFields(
+          ~fieldPrefix="Catalog_AddProduct",
+          addCommandSchema,
+        )
+        expect(fields->Array.length)->toBe(1)
+        let field = fields->Array.getUnsafe(0)
+        expect(field->String.includes("Catalog_AddProduct"))->toBe(true)
+        expect(field->String.includes("productId: ID!"))->toBe(true)
+        expect(field->String.includes("name: String"))->toBe(true)
+      },
+    )
 
-    testPromise("derives fields from union (aggregate) command", async () => {
-      let fields = ReventlessCore.GraphQL_SchemaInspector.inspectMutationFields(
-        ~fieldPrefix="App_Item",
-        unionCommandSchema,
-      )
-      expect(fields->Array.length)->toBe(2)
-      let createField = fields->Array.getUnsafe(0)
-      expect(createField->String.includes("App_Item_Create"))->toBe(true)
-      expect(createField->String.includes("itemId: ID!"))->toBe(true)
-      let renameField = fields->Array.getUnsafe(1)
-      expect(renameField->String.includes("App_Item_Rename"))->toBe(true)
-      expect(renameField->String.includes("newName: String"))->toBe(true)
-    })
+    testPromise(
+      "derives fields from union (aggregate) command",
+      async () => {
+        let fields = ReventlessCore.GraphQL_SchemaInspector.inspectMutationFields(
+          ~fieldPrefix="App_Item",
+          unionCommandSchema,
+        )
+        expect(fields->Array.length)->toBe(2)
+        let createField = fields->Array.getUnsafe(0)
+        expect(createField->String.includes("App_Item_Create"))->toBe(true)
+        expect(createField->String.includes("itemId: ID!"))->toBe(true)
+        let renameField = fields->Array.getUnsafe(1)
+        expect(renameField->String.includes("App_Item_Rename"))->toBe(true)
+        expect(renameField->String.includes("newName: String"))->toBe(true)
+      },
+    )
 
-    testPromise("returns empty for non-object/non-union schema", async () => {
-      let fields = ReventlessCore.GraphQL_SchemaInspector.inspectMutationFields(
-        ~fieldPrefix="Foo",
-        stringSchema,
-      )
-      expect(fields->Array.length)->toBe(0)
-    })
+    testPromise(
+      "returns empty for non-object/non-union schema",
+      async () => {
+        let fields = ReventlessCore.GraphQL_SchemaInspector.inspectMutationFields(
+          ~fieldPrefix="Foo",
+          stringSchema,
+        )
+        expect(fields->Array.length)->toBe(0)
+      },
+    )
   })
 
   describe("inspectQueryFields", () => {
-    testPromise("derives type def and query fields from state schema", async () => {
-      let result = ReventlessCore.GraphQL_SchemaInspector.inspectQueryFields(
-        ~name="Catalog_Product",
-        ~typeName="CatalogProduct",
-        testStateSchema,
-      )
-      expect(result.typeDef->Option.isSome)->toBe(true)
-      let typeDef = result.typeDef->Option.getOrThrow
-      expect(typeDef->String.includes("type CatalogProduct"))->toBe(true)
-      expect(result.singleQuery->String.includes("Catalog_Product(id: ID!, includeRetired: Boolean)"))->toBe(true)
-      expect(result.singleQuery->String.includes("CatalogProduct"))->toBe(true)
-      expect(result.listQuery->Option.isSome)->toBe(true)
-      let listQ = result.listQuery->Option.getOrThrow
-      expect(listQ->String.includes("Catalog_Products"))->toBe(true)
-    })
+    testPromise(
+      "derives type def and query fields from state schema",
+      async () => {
+        let result = ReventlessCore.GraphQL_SchemaInspector.inspectQueryFields(
+          ~name="Catalog_Product",
+          ~typeName="CatalogProduct",
+          testStateSchema,
+        )
+        expect(result.typeDef->Option.isSome)->toBe(true)
+        let typeDef = result.typeDef->Option.getOrThrow
+        expect(typeDef->String.includes("type CatalogProduct"))->toBe(true)
+        expect(
+          result.singleQuery->String.includes("Catalog_Product(id: ID!, includeRetired: Boolean)"),
+        )->toBe(true)
+        expect(result.singleQuery->String.includes("CatalogProduct"))->toBe(true)
+        expect(result.listQuery->Option.isSome)->toBe(true)
+        let listQ = result.listQuery->Option.getOrThrow
+        expect(listQ->String.includes("Catalog_Products"))->toBe(true)
+      },
+    )
   })
 
   // ── includeIdParam Tests ──────────────────────────────────────────────────
 
   describe("includeIdParam — ReadModel vs StateViewSlice", () => {
-    testPromise("ReadModel fragment: query has (id: ID!) and type has injected id: ID!", async () => {
-      let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
-        ~mutationEntries=[],
-        ~queryEntries=[
-          {
-            singleFieldName: "RM_Product",
-            listFieldName: "RM_Products",
-            returnTypeName: "RMProduct",
-            stateSchema: testStateSchema->S.castToUnknown,
-            authorization: None,
-            includeIdParam: true,
-          },
-        ],
-      )
-      let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
-      let sdl = inspection.sdlPreview
-      expect(sdl->String.includes("RM_Product(id: ID!, includeRetired: Boolean): RMProduct"))->toBe(true)
-      expect(sdl->String.includes("type RMProduct"))->toBe(true)
-      // The type should have an injected id: ID! field (first field in the type)
-      let typeLines = sdl->String.split("\n")
-      let idFieldInType = typeLines->Array.some(line =>
-        line->String.trim == "id: ID!" &&
-          !(line->String.includes("("))
-      )
-      expect(idFieldInType)->toBe(true)
-    })
+    testPromise(
+      "ReadModel fragment: query has (id: ID!) and type has injected id: ID!",
+      async () => {
+        let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
+          ~mutationEntries=[],
+          ~queryEntries=[
+            {
+              singleFieldName: "RM_Product",
+              listFieldName: "RM_Products",
+              returnTypeName: "RMProduct",
+              stateSchema: testStateSchema->S.castToUnknown,
+              authorization: None,
+              includeIdParam: true,
+            },
+          ],
+        )
+        let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
+        let sdl = inspection.sdlPreview
+        expect(
+          sdl->String.includes("RM_Product(id: ID!, includeRetired: Boolean): RMProduct"),
+        )->toBe(true)
+        expect(sdl->String.includes("type RMProduct"))->toBe(true)
+        // The type should have an injected id: ID! field (first field in the type)
+        let typeLines = sdl->String.split("\n")
+        let idFieldInType =
+          typeLines->Array.some(
+            line => line->String.trim == "id: ID!" && !(line->String.includes("(")),
+          )
+        expect(idFieldInType)->toBe(true)
+      },
+    )
 
-    testPromise("StateViewSlice fragment: query has no (id: ID!) and type has no injected id", async () => {
-      let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
-        ~mutationEntries=[],
-        ~queryEntries=[
-          {
-            singleFieldName: "SV_Item",
-            listFieldName: "SV_Items",
-            returnTypeName: "SVItem",
-            stateSchema: svStateSchema->S.castToUnknown,
-            authorization: None,
-            includeIdParam: false,
-          },
-        ],
-      )
-      let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
-      let sdl = inspection.sdlPreview
-      // Single query should NOT have (id: ID!) parameter
-      expect(sdl->String.includes("SV_Item: SVItem"))->toBe(true)
-      expect(sdl->String.includes("SV_Item(id: ID!)"))->toBe(false)
-      // The type should NOT have an injected id: ID! field
-      expect(sdl->String.includes("type SVItem"))->toBe(true)
-      expect(sdl->String.includes("productId: ID!"))->toBe(true)
-      // Count id: ID! occurrences — should be zero (productId uses ID! but "id: ID!" standalone should not appear)
-      let typeSection = sdl->String.split("type SVItem")->Array.get(1)->Option.getOr("")
-      let typeEnd = typeSection->String.indexOf("}")
-      let typeEnd = typeEnd >= 0 ? typeEnd : typeSection->String.length
-      let typeBody = typeSection->String.slice(~start=0, ~end=typeEnd)
-      let hasInjectedId = typeBody->String.split("\n")->Array.some(line =>
-        line->String.trim == "id: ID!"
-      )
-      expect(hasInjectedId)->toBe(false)
-    })
+    testPromise(
+      "StateViewSlice fragment: query has no (id: ID!) and type has no injected id",
+      async () => {
+        let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
+          ~mutationEntries=[],
+          ~queryEntries=[
+            {
+              singleFieldName: "SV_Item",
+              listFieldName: "SV_Items",
+              returnTypeName: "SVItem",
+              stateSchema: svStateSchema->S.castToUnknown,
+              authorization: None,
+              includeIdParam: false,
+            },
+          ],
+        )
+        let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
+        let sdl = inspection.sdlPreview
+        // Single query should NOT have (id: ID!) parameter
+        expect(sdl->String.includes("SV_Item: SVItem"))->toBe(true)
+        expect(sdl->String.includes("SV_Item(id: ID!)"))->toBe(false)
+        // The type should NOT have an injected id: ID! field
+        expect(sdl->String.includes("type SVItem"))->toBe(true)
+        expect(sdl->String.includes("productId: ID!"))->toBe(true)
+        // Count id: ID! occurrences — should be zero (productId uses ID! but "id: ID!" standalone should not appear)
+        let typeSection = sdl->String.split("type SVItem")->Array.get(1)->Option.getOr("")
+        let typeEnd = typeSection->String.indexOf("}")
+        let typeEnd = typeEnd >= 0 ? typeEnd : typeSection->String.length
+        let typeBody = typeSection->String.slice(~start=0, ~end=typeEnd)
+        let hasInjectedId =
+          typeBody->String.split("\n")->Array.some(line => line->String.trim == "id: ID!")
+        expect(hasInjectedId)->toBe(false)
+      },
+    )
 
-    testPromise("default includeIdParam (omitted) behaves like ReadModel", async () => {
-      let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
-        ~mutationEntries=[],
-        ~queryEntries=[
-          {
-            singleFieldName: "Default_Thing",
-            listFieldName: "Default_Things",
-            returnTypeName: "DefaultThing",
-            stateSchema: testStateSchema->S.castToUnknown,
-            authorization: None,
-          },
-        ],
-      )
-      let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
-      let sdl = inspection.sdlPreview
-      expect(sdl->String.includes("Default_Thing(id: ID!, includeRetired: Boolean): DefaultThing"))->toBe(true)
-    })
+    testPromise(
+      "default includeIdParam (omitted) behaves like ReadModel",
+      async () => {
+        let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
+          ~mutationEntries=[],
+          ~queryEntries=[
+            {
+              singleFieldName: "Default_Thing",
+              listFieldName: "Default_Things",
+              returnTypeName: "DefaultThing",
+              stateSchema: testStateSchema->S.castToUnknown,
+              authorization: None,
+            },
+          ],
+        )
+        let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
+        let sdl = inspection.sdlPreview
+        expect(
+          sdl->String.includes("Default_Thing(id: ID!, includeRetired: Boolean): DefaultThing"),
+        )->toBe(true)
+      },
+    )
   })
 
   // ── Relay compliance — implements Node + Connection types ──────────────
 
   describe("Relay compliance", () => {
-    testPromise("entity type includes 'implements Node' when includeIdParam is true", async () => {
-      let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
-        ~mutationEntries=[],
-        ~queryEntries=[
-          {
-            singleFieldName: "Relay_Product",
-            listFieldName: "Relay_Products",
-            returnTypeName: "RelayProduct",
-            stateSchema: testStateSchema->S.castToUnknown,
-            authorization: None,
-            includeIdParam: true,
-          },
-        ],
-      )
-      let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
-      let sdl = inspection.sdlPreview
-      expect(sdl->String.includes("type RelayProduct implements Node"))->toBe(true)
-      expect(sdl->String.includes("id: ID!"))->toBe(true)
-    })
+    testPromise(
+      "entity type includes 'implements Node' when includeIdParam is true",
+      async () => {
+        let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
+          ~mutationEntries=[],
+          ~queryEntries=[
+            {
+              singleFieldName: "Relay_Product",
+              listFieldName: "Relay_Products",
+              returnTypeName: "RelayProduct",
+              stateSchema: testStateSchema->S.castToUnknown,
+              authorization: None,
+              includeIdParam: true,
+            },
+          ],
+        )
+        let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
+        let sdl = inspection.sdlPreview
+        expect(sdl->String.includes("type RelayProduct implements Node"))->toBe(true)
+        expect(sdl->String.includes("id: ID!"))->toBe(true)
+      },
+    )
 
-    testPromise("non-entity type does not include 'implements Node'", async () => {
-      let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
-        ~mutationEntries=[],
-        ~queryEntries=[
-          {
-            singleFieldName: "Relay_View",
-            listFieldName: "Relay_Views",
-            returnTypeName: "RelayView",
-            stateSchema: svStateSchema->S.castToUnknown,
-            authorization: None,
-            includeIdParam: false,
-          },
-        ],
-      )
-      let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
-      let sdl = inspection.sdlPreview
-      expect(sdl->String.includes("type RelayView implements Node"))->toBe(false)
-      expect(sdl->String.includes("type RelayView {"))->toBe(true)
-    })
+    testPromise(
+      "non-entity type does not include 'implements Node'",
+      async () => {
+        let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
+          ~mutationEntries=[],
+          ~queryEntries=[
+            {
+              singleFieldName: "Relay_View",
+              listFieldName: "Relay_Views",
+              returnTypeName: "RelayView",
+              stateSchema: svStateSchema->S.castToUnknown,
+              authorization: None,
+              includeIdParam: false,
+            },
+          ],
+        )
+        let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
+        let sdl = inspection.sdlPreview
+        expect(sdl->String.includes("type RelayView implements Node"))->toBe(false)
+        expect(sdl->String.includes("type RelayView {"))->toBe(true)
+      },
+    )
 
-    testPromise("connectionSpec generates Edge and Connection types instead of plural wrapper", async () => {
-      let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
-        ~mutationEntries=[],
-        ~queryEntries=[
-          {
-            singleFieldName: "Relay_Product",
-            listFieldName: "Relay_Products",
-            returnTypeName: "RelayProduct",
-            stateSchema: testStateSchema->S.castToUnknown,
-            authorization: None,
-            includeIdParam: true,
-            connectionSpec: true,
-          },
-        ],
-      )
-      let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
-      let sdl = inspection.sdlPreview
-      // Should have Edge and Connection types
-      expect(sdl->String.includes("type RelayProductEdge"))->toBe(true)
-      expect(sdl->String.includes("node: RelayProduct!"))->toBe(true)
-      expect(sdl->String.includes("cursor: String!"))->toBe(true)
-      expect(sdl->String.includes("type RelayProductConnection"))->toBe(true)
-      expect(sdl->String.includes("edges: [RelayProductEdge!]!"))->toBe(true)
-      expect(sdl->String.includes("pageInfo: PageInfo!"))->toBe(true)
-      expect(sdl->String.includes("totalCount"))->toBe(false)
-      // Query field should use filter + first/after/last/before args (Phase 4)
-      expect(
-        sdl->String.includes(
-          "Relay_Products(filter: RelayProductFilter, first: Int, after: String, last: Int, before: String, includeRetired: Boolean): RelayProductConnection!",
-        ),
-      )->toBe(true)
-      // Connection filter input with search/searchPrefix/ids
-      expect(sdl->String.includes("input RelayProductFilter"))->toBe(true)
-      expect(sdl->String.includes("search: String"))->toBe(true)
-      expect(sdl->String.includes("searchPrefix: String"))->toBe(true)
-      expect(sdl->String.includes("ids: [ID!]"))->toBe(true)
-      // Should NOT have legacy plural wrapper type
-      expect(sdl->String.includes("items: [RelayProduct!]!"))->toBe(false)
-      expect(sdl->String.includes("nextToken:"))->toBe(false)
-    })
+    testPromise(
+      "connectionSpec generates Edge and Connection types instead of plural wrapper",
+      async () => {
+        let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
+          ~mutationEntries=[],
+          ~queryEntries=[
+            {
+              singleFieldName: "Relay_Product",
+              listFieldName: "Relay_Products",
+              returnTypeName: "RelayProduct",
+              stateSchema: testStateSchema->S.castToUnknown,
+              authorization: None,
+              includeIdParam: true,
+              connectionSpec: true,
+            },
+          ],
+        )
+        let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
+        let sdl = inspection.sdlPreview
+        // Should have Edge and Connection types
+        expect(sdl->String.includes("type RelayProductEdge"))->toBe(true)
+        expect(sdl->String.includes("node: RelayProduct!"))->toBe(true)
+        expect(sdl->String.includes("cursor: String!"))->toBe(true)
+        expect(sdl->String.includes("type RelayProductConnection"))->toBe(true)
+        expect(sdl->String.includes("edges: [RelayProductEdge!]!"))->toBe(true)
+        expect(sdl->String.includes("pageInfo: PageInfo!"))->toBe(true)
+        expect(sdl->String.includes("totalCount"))->toBe(false)
+        // Query field should use filter + first/after/last/before args (Phase 4)
+        expect(
+          sdl->String.includes(
+            "Relay_Products(filter: RelayProductFilter, first: Int, after: String, last: Int, before: String, includeRetired: Boolean): RelayProductConnection!",
+          ),
+        )->toBe(true)
+        // Connection filter input with search/searchPrefix/ids
+        expect(sdl->String.includes("input RelayProductFilter"))->toBe(true)
+        expect(sdl->String.includes("search: String"))->toBe(true)
+        expect(sdl->String.includes("searchPrefix: String"))->toBe(true)
+        expect(sdl->String.includes("ids: [ID!]"))->toBe(true)
+        // Should NOT have legacy plural wrapper type
+        expect(sdl->String.includes("items: [RelayProduct!]!"))->toBe(false)
+        expect(sdl->String.includes("nextToken:"))->toBe(false)
+      },
+    )
 
-    testPromise("subIdField generates ItemsFilter (distinct from connection Filter)", async () => {
-      let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
-        ~mutationEntries=[],
-        ~queryEntries=[
-          {
-            singleFieldName: "Items_Product",
-            listFieldName: "Items_Products",
-            returnTypeName: "ItemsProduct",
-            stateSchema: testStateSchema->S.castToUnknown,
-            authorization: None,
-            includeIdParam: true,
-            connectionSpec: true,
-            subIdField: "sku",
-          },
-        ],
-      )
-      let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
-      let sdl = inspection.sdlPreview
-      // Connection-level filter (search/searchPrefix/ids)
-      expect(sdl->String.includes("input ItemsProductFilter"))->toBe(true)
-      // Items query gets its own filter type (prefix/from/to/eq/order) — renamed
-      // to ItemsFilter to disambiguate from the connection-level Filter.
-      expect(sdl->String.includes("input ItemsProductItemsFilter"))->toBe(true)
-      expect(
-        sdl->String.includes(
-          "Items_ProductItems(id: ID!, filter: ItemsProductItemsFilter,",
-        ),
-      )->toBe(true)
-    })
+    testPromise(
+      "subIdField generates ItemsFilter (distinct from connection Filter)",
+      async () => {
+        let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
+          ~mutationEntries=[],
+          ~queryEntries=[
+            {
+              singleFieldName: "Items_Product",
+              listFieldName: "Items_Products",
+              returnTypeName: "ItemsProduct",
+              stateSchema: testStateSchema->S.castToUnknown,
+              authorization: None,
+              includeIdParam: true,
+              connectionSpec: true,
+              subIdField: "sku",
+            },
+          ],
+        )
+        let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
+        let sdl = inspection.sdlPreview
+        // Connection-level filter (search/searchPrefix/ids)
+        expect(sdl->String.includes("input ItemsProductFilter"))->toBe(true)
+        // Items query gets its own filter type (prefix/from/to/eq/order) — renamed
+        // to ItemsFilter to disambiguate from the connection-level Filter.
+        expect(sdl->String.includes("input ItemsProductItemsFilter"))->toBe(true)
+        expect(
+          sdl->String.includes("Items_ProductItems(id: ID!, filter: ItemsProductItemsFilter,"),
+        )->toBe(true)
+      },
+    )
 
-    testPromise("explicit connectionSpec=false generates legacy plural wrapper (opt-out)", async () => {
-      let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
-        ~mutationEntries=[],
-        ~queryEntries=[
-          {
-            singleFieldName: "Legacy_Product",
-            listFieldName: "Legacy_Products",
-            returnTypeName: "LegacyProduct",
-            stateSchema: testStateSchema->S.castToUnknown,
-            authorization: None,
-            includeIdParam: true,
-            connectionSpec: false,
-          },
-        ],
-      )
-      let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
-      let sdl = inspection.sdlPreview
-      expect(sdl->String.includes("items: [LegacyProduct!]!"))->toBe(true)
-      expect(sdl->String.includes("nextToken: String"))->toBe(true)
-      expect(sdl->String.includes("LegacyProductEdge"))->toBe(false)
-      expect(sdl->String.includes("LegacyProductConnection"))->toBe(false)
-    })
+    testPromise(
+      "explicit connectionSpec=false generates legacy plural wrapper (opt-out)",
+      async () => {
+        let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
+          ~mutationEntries=[],
+          ~queryEntries=[
+            {
+              singleFieldName: "Legacy_Product",
+              listFieldName: "Legacy_Products",
+              returnTypeName: "LegacyProduct",
+              stateSchema: testStateSchema->S.castToUnknown,
+              authorization: None,
+              includeIdParam: true,
+              connectionSpec: false,
+            },
+          ],
+        )
+        let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
+        let sdl = inspection.sdlPreview
+        expect(sdl->String.includes("items: [LegacyProduct!]!"))->toBe(true)
+        expect(sdl->String.includes("nextToken: String"))->toBe(true)
+        expect(sdl->String.includes("LegacyProductEdge"))->toBe(false)
+        expect(sdl->String.includes("LegacyProductConnection"))->toBe(false)
+      },
+    )
 
-    testPromise("stitcher injects Node interface and node query", async () => {
-      let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
-        ~mutationEntries=[],
-        ~queryEntries=[
-          {
-            singleFieldName: "Stitch_Product",
-            listFieldName: "Stitch_Products",
-            returnTypeName: "StitchProduct",
-            stateSchema: testStateSchema->S.castToUnknown,
-            authorization: None,
-            includeIdParam: true,
-          },
-        ],
-      )
-      let sdl = ReventlessCore.GraphQL_Stitcher.stitch(~baseFragment=fragment, ~pluginFragments=[])
-      expect(sdl->String.includes("interface Node"))->toBe(true)
-      expect(sdl->String.includes("node(id: ID!): Node"))->toBe(true)
-      expect(sdl->String.includes("type PageInfo"))->toBe(true)
-      expect(sdl->String.includes("hasNextPage: Boolean!"))->toBe(true)
-    })
+    testPromise(
+      "stitcher injects Node interface and node query",
+      async () => {
+        let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
+          ~mutationEntries=[],
+          ~queryEntries=[
+            {
+              singleFieldName: "Stitch_Product",
+              listFieldName: "Stitch_Products",
+              returnTypeName: "StitchProduct",
+              stateSchema: testStateSchema->S.castToUnknown,
+              authorization: None,
+              includeIdParam: true,
+            },
+          ],
+        )
+        let sdl = ReventlessCore.GraphQL_Stitcher.stitch(
+          ~baseFragment=fragment,
+          ~pluginFragments=[],
+        )
+        expect(sdl->String.includes("interface Node"))->toBe(true)
+        expect(sdl->String.includes("node(id: ID!): Node"))->toBe(true)
+        expect(sdl->String.includes("type PageInfo"))->toBe(true)
+        expect(sdl->String.includes("hasNextPage: Boolean!"))->toBe(true)
+      },
+    )
   })
 
   // ── Plugin Level — Fragment Inspector ───────────────────────────────────
 
   describe("inspectFragment", () => {
-    testPromise("decodes and previews a fragment", async () => {
-      let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
-        ~mutationEntries=[
-          {
-            fieldNames: ["Test_Add"],
-            commandSchema: addCommandSchema->S.castToUnknown,
-          },
-        ],
-        ~queryEntries=[
-          {
-            singleFieldName: "Test_State",
-            listFieldName: "Test_States",
-            returnTypeName: "TestState",
-            stateSchema: testStateSchema->S.castToUnknown,
-            authorization: None,
-          },
-        ],
-      )
-      let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
-      // TestState, TestStateEdge, TestStateConnection, TestStateFilter (connection filter)
-      // + TestStateRef (the reference door's projection)
-      // + CommandResult union + CommandAccepted + CommandRejected + CommandPending
-      // (auto-injected whenever the fragment emits any mutation field).
-      expect(inspection.types->Array.length)->toBe(9)
-      expect(inspection.mutations->Array.length)->toBe(1)
-      // single Test_State(id), list Test_States(...), Test_StatesByIds(ids: [String!]!)
-      // and Test_StatesRefs(ids: [ID!]!) — the by-ids read projected to a reference.
-      expect(inspection.queries->Array.length)->toBe(4)
-      expect(inspection.sdlPreview->String.includes("type TestState"))->toBe(true)
-      expect(inspection.sdlPreview->String.includes("type TestStateEdge"))->toBe(true)
-      expect(inspection.sdlPreview->String.includes("type TestStateConnection"))->toBe(true)
-      expect(inspection.sdlPreview->String.includes("input TestStateFilter"))->toBe(true)
-      expect(inspection.sdlPreview->String.includes("edges: [TestStateEdge!]!"))->toBe(true)
-      expect(inspection.sdlPreview->String.includes("Test_Add"))->toBe(true)
-      expect(inspection.sdlPreview->String.includes("Test_State"))->toBe(true)
-      expect(inspection.sdlPreview->String.includes("TestStateConnection!"))->toBe(true)
-      expect(inspection.sdlPreview->String.includes("union CommandResult"))->toBe(true)
-    })
+    testPromise(
+      "decodes and previews a fragment",
+      async () => {
+        let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
+          ~mutationEntries=[
+            {
+              fieldNames: ["Test_Add"],
+              commandSchema: addCommandSchema->S.castToUnknown,
+            },
+          ],
+          ~queryEntries=[
+            {
+              singleFieldName: "Test_State",
+              listFieldName: "Test_States",
+              returnTypeName: "TestState",
+              stateSchema: testStateSchema->S.castToUnknown,
+              authorization: None,
+            },
+          ],
+        )
+        let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
+        // TestState, TestStateEdge, TestStateConnection, TestStateFilter (connection filter)
+        // + TestStateRef (the reference door's projection)
+        // + CommandResult union + CommandAccepted + CommandRejected + CommandPending
+        // (auto-injected whenever the fragment emits any mutation field).
+        expect(inspection.types->Array.length)->toBe(9)
+        expect(inspection.mutations->Array.length)->toBe(1)
+        // single Test_State(id), list Test_States(...), Test_StatesByIds(ids: [String!]!)
+        // and Test_StatesRefs(ids: [ID!]!) — the by-ids read projected to a reference.
+        expect(inspection.queries->Array.length)->toBe(4)
+        expect(inspection.sdlPreview->String.includes("type TestState"))->toBe(true)
+        expect(inspection.sdlPreview->String.includes("type TestStateEdge"))->toBe(true)
+        expect(inspection.sdlPreview->String.includes("type TestStateConnection"))->toBe(true)
+        expect(inspection.sdlPreview->String.includes("input TestStateFilter"))->toBe(true)
+        expect(inspection.sdlPreview->String.includes("edges: [TestStateEdge!]!"))->toBe(true)
+        expect(inspection.sdlPreview->String.includes("Test_Add"))->toBe(true)
+        expect(inspection.sdlPreview->String.includes("Test_State"))->toBe(true)
+        expect(inspection.sdlPreview->String.includes("TestStateConnection!"))->toBe(true)
+        expect(inspection.sdlPreview->String.includes("union CommandResult"))->toBe(true)
+      },
+    )
   })
 
   describe("inspectPluginEntries", () => {
-    testPromise("formats mutation and query entries", async () => {
-      let summary = ReventlessCore.GraphQL_SchemaInspector.inspectPluginEntries(
-        ~mutationEntries=[
-          {
-            fieldNames: ["Plugin_Add", "Plugin_Remove"],
-            commandSchema: unionCommandSchema->S.castToUnknown,
-          },
-        ],
-        ~queryEntries=[
-          {
-            singleFieldName: "Plugin_Item",
-            listFieldName: "Plugin_Items",
-            returnTypeName: "PluginItem",
-            stateSchema: testStateSchema->S.castToUnknown,
-            authorization: None,
-          },
-        ],
-      )
-      expect(summary->String.includes("Mutations (2)"))->toBe(true)
-      expect(summary->String.includes("Plugin_Add"))->toBe(true)
-      expect(summary->String.includes("Plugin_Remove"))->toBe(true)
-      expect(summary->String.includes("Queries (1)"))->toBe(true)
-      expect(summary->String.includes("Plugin_Item(id) -> PluginItem"))->toBe(true)
-    })
+    testPromise(
+      "formats mutation and query entries",
+      async () => {
+        let summary = ReventlessCore.GraphQL_SchemaInspector.inspectPluginEntries(
+          ~mutationEntries=[
+            {
+              fieldNames: ["Plugin_Add", "Plugin_Remove"],
+              commandSchema: unionCommandSchema->S.castToUnknown,
+            },
+          ],
+          ~queryEntries=[
+            {
+              singleFieldName: "Plugin_Item",
+              listFieldName: "Plugin_Items",
+              returnTypeName: "PluginItem",
+              stateSchema: testStateSchema->S.castToUnknown,
+              authorization: None,
+            },
+          ],
+        )
+        expect(summary->String.includes("Mutations (2)"))->toBe(true)
+        expect(summary->String.includes("Plugin_Add"))->toBe(true)
+        expect(summary->String.includes("Plugin_Remove"))->toBe(true)
+        expect(summary->String.includes("Queries (1)"))->toBe(true)
+        expect(summary->String.includes("Plugin_Item(id) -> PluginItem"))->toBe(true)
+      },
+    )
   })
 
   // ── Platform Level — GraphQL_Server diagnostics ─────────────────────────
@@ -600,93 +669,102 @@ describe("GraphQL_SchemaInspector", () => {
     // one `*Id` field, so the key is knowable without `@id` and the queryable now
     // gets that key's eq filter and sort. The search-only case is the one below,
     // where nothing identifies the row.
-    testPromise("read model with no annotations gets its inferred key's Eq + OrderBy", async () => {
-      let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
-        ~mutationEntries=[],
-        ~queryEntries=[
-          {
-            singleFieldName: "Plain_View",
-            listFieldName: "Plain_Views",
-            returnTypeName: "PlainView",
-            stateSchema: plainStateSchema->S.castToUnknown,
-            authorization: None,
-            includeIdParam: false,
-            connectionSpec: true,
-          },
-        ],
-      )
-      let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
-      let sdl = inspection.sdlPreview
-      // The legacy block is untouched …
-      expect(sdl->String.includes("input PlainViewFilter"))->toBe(true)
-      expect(sdl->String.includes("search: String"))->toBe(true)
-      expect(sdl->String.includes("searchPrefix: String"))->toBe(true)
-      expect(sdl->String.includes("ids: [ID!]"))->toBe(true)
-      // … and `productId`, the sole candidate, now narrows and sorts.
-      expect(sdl->String.includes("productIdEq: ID"))->toBe(true)
-      expect(sdl->String.includes("PlainViewOrderBy"))->toBe(true)
-      expect(sdl->String.includes("PlainViewOrderField"))->toBe(true)
-      expect(sdl->String.includes("orderBy:"))->toBe(true)
-      // Only the key — an inferred key never drags the rest of the record in.
-      expect(sdl->String.includes("nameEq:"))->toBe(false)
-    })
+    testPromise(
+      "read model with no annotations gets its inferred key's Eq + OrderBy",
+      async () => {
+        let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
+          ~mutationEntries=[],
+          ~queryEntries=[
+            {
+              singleFieldName: "Plain_View",
+              listFieldName: "Plain_Views",
+              returnTypeName: "PlainView",
+              stateSchema: plainStateSchema->S.castToUnknown,
+              authorization: None,
+              includeIdParam: false,
+              connectionSpec: true,
+            },
+          ],
+        )
+        let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
+        let sdl = inspection.sdlPreview
+        // The legacy block is untouched …
+        expect(sdl->String.includes("input PlainViewFilter"))->toBe(true)
+        expect(sdl->String.includes("search: String"))->toBe(true)
+        expect(sdl->String.includes("searchPrefix: String"))->toBe(true)
+        expect(sdl->String.includes("ids: [ID!]"))->toBe(true)
+        // … and `productId`, the sole candidate, now narrows and sorts.
+        expect(sdl->String.includes("productIdEq: ID"))->toBe(true)
+        expect(sdl->String.includes("PlainViewOrderBy"))->toBe(true)
+        expect(sdl->String.includes("PlainViewOrderField"))->toBe(true)
+        expect(sdl->String.includes("orderBy:"))->toBe(true)
+        // Only the key — an inferred key never drags the rest of the record in.
+        expect(sdl->String.includes("nameEq:"))->toBe(false)
+      },
+    )
 
     // The remaining empty-capability case: no `*Id` field, so nothing says which
     // field identifies a row and the ladder declines rather than guessing.
-    testPromise("read model whose key cannot be resolved stays search-only", async () => {
-      let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
-        ~mutationEntries=[],
-        ~queryEntries=[
-          {
-            singleFieldName: "Keyless_View",
-            listFieldName: "Keyless_Views",
-            returnTypeName: "KeylessView",
-            stateSchema: keylessStateSchema->S.castToUnknown,
-            authorization: None,
-            includeIdParam: false,
-            connectionSpec: true,
-          },
-        ],
-      )
-      let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
-      let sdl = inspection.sdlPreview
-      expect(sdl->String.includes("input KeylessViewFilter"))->toBe(true)
-      expect(sdl->String.includes("search: String"))->toBe(true)
-      expect(sdl->String.includes("Eq:"))->toBe(false)
-      expect(sdl->String.includes("KeylessViewOrderBy"))->toBe(false)
-      expect(sdl->String.includes("KeylessViewOrderField"))->toBe(false)
-      expect(sdl->String.includes("orderBy:"))->toBe(false)
-    })
+    testPromise(
+      "read model whose key cannot be resolved stays search-only",
+      async () => {
+        let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
+          ~mutationEntries=[],
+          ~queryEntries=[
+            {
+              singleFieldName: "Keyless_View",
+              listFieldName: "Keyless_Views",
+              returnTypeName: "KeylessView",
+              stateSchema: keylessStateSchema->S.castToUnknown,
+              authorization: None,
+              includeIdParam: false,
+              connectionSpec: true,
+            },
+          ],
+        )
+        let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
+        let sdl = inspection.sdlPreview
+        expect(sdl->String.includes("input KeylessViewFilter"))->toBe(true)
+        expect(sdl->String.includes("search: String"))->toBe(true)
+        expect(sdl->String.includes("Eq:"))->toBe(false)
+        expect(sdl->String.includes("KeylessViewOrderBy"))->toBe(false)
+        expect(sdl->String.includes("KeylessViewOrderField"))->toBe(false)
+        expect(sdl->String.includes("orderBy:"))->toBe(false)
+      },
+    )
 
-    testPromise("read model with @id + @index emits Eq filters + OrderBy + orderBy arg", async () => {
-      let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
-        ~mutationEntries=[],
-        ~queryEntries=[
-          {
-            singleFieldName: "Indexed_Product",
-            listFieldName: "Indexed_Products",
-            returnTypeName: "IndexedProduct",
-            stateSchema: indexedStateSchemaWithAnnotations->S.castToUnknown,
-            authorization: None,
-            includeIdParam: true,
-            connectionSpec: true,
-          },
-        ],
-      )
-      let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
-      let sdl = inspection.sdlPreview
-      // Per-field eq inputs derived from @id and @index
-      expect(sdl->String.includes("input IndexedProductFilter"))->toBe(true)
-      expect(sdl->String.includes("productIdEq: ID"))->toBe(true)
-      // ownerId is detected as an entity reference → ID (matches SchemaType.fromSury behaviour)
-      expect(sdl->String.includes("ownerIdEq: ID"))->toBe(true)
-      // OrderField enum lists the same fields
-      expect(sdl->String.includes("enum IndexedProductOrderField"))->toBe(true)
-      expect(sdl->String.includes("input IndexedProductOrderBy"))->toBe(true)
-      expect(sdl->String.includes("direction: SortOrder!"))->toBe(true)
-      // Connection field arg list includes orderBy
-      expect(sdl->String.includes("orderBy: IndexedProductOrderBy"))->toBe(true)
-    })
+    testPromise(
+      "read model with @id + @index emits Eq filters + OrderBy + orderBy arg",
+      async () => {
+        let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
+          ~mutationEntries=[],
+          ~queryEntries=[
+            {
+              singleFieldName: "Indexed_Product",
+              listFieldName: "Indexed_Products",
+              returnTypeName: "IndexedProduct",
+              stateSchema: indexedStateSchemaWithAnnotations->S.castToUnknown,
+              authorization: None,
+              includeIdParam: true,
+              connectionSpec: true,
+            },
+          ],
+        )
+        let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
+        let sdl = inspection.sdlPreview
+        // Per-field eq inputs derived from @id and @index
+        expect(sdl->String.includes("input IndexedProductFilter"))->toBe(true)
+        expect(sdl->String.includes("productIdEq: ID"))->toBe(true)
+        // ownerId is detected as an entity reference → ID (matches SchemaType.fromSury behaviour)
+        expect(sdl->String.includes("ownerIdEq: ID"))->toBe(true)
+        // OrderField enum lists the same fields
+        expect(sdl->String.includes("enum IndexedProductOrderField"))->toBe(true)
+        expect(sdl->String.includes("input IndexedProductOrderBy"))->toBe(true)
+        expect(sdl->String.includes("direction: SortOrder!"))->toBe(true)
+        // Connection field arg list includes orderBy
+        expect(sdl->String.includes("orderBy: IndexedProductOrderBy"))->toBe(true)
+      },
+    )
 
     testPromise(
       "read model with @scan / @scanSort folds opt-in fields into Filter / OrderBy",
@@ -763,94 +841,109 @@ describe("GraphQL_SchemaInspector", () => {
         expect(warnings)->toEqual([])
       },
     )
-    testPromise("read model with @subId emits range filters + OrderBy on the sort key", async () => {
-      let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
-        ~mutationEntries=[],
-        ~queryEntries=[
-          {
-            singleFieldName: "Ordered_Item",
-            listFieldName: "Ordered_Items",
-            returnTypeName: "OrderedItem",
-            stateSchema: orderedStateSchemaWithAnnotations->S.castToUnknown,
-            authorization: None,
-            includeIdParam: true,
-            connectionSpec: true,
-          },
-        ],
-      )
-      let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
-      let sdl = inspection.sdlPreview
-      expect(sdl->String.includes("createdAtEq: String"))->toBe(true)
-      expect(sdl->String.includes("createdAtFrom: String"))->toBe(true)
-      expect(sdl->String.includes("createdAtTo: String"))->toBe(true)
-      expect(sdl->String.includes("enum OrderedItemOrderField"))->toBe(true)
-      expect(sdl->String.includes("orderBy: OrderedItemOrderBy"))->toBe(true)
-    })
+    testPromise(
+      "read model with @subId emits range filters + OrderBy on the sort key",
+      async () => {
+        let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
+          ~mutationEntries=[],
+          ~queryEntries=[
+            {
+              singleFieldName: "Ordered_Item",
+              listFieldName: "Ordered_Items",
+              returnTypeName: "OrderedItem",
+              stateSchema: orderedStateSchemaWithAnnotations->S.castToUnknown,
+              authorization: None,
+              includeIdParam: true,
+              connectionSpec: true,
+            },
+          ],
+        )
+        let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
+        let sdl = inspection.sdlPreview
+        expect(sdl->String.includes("createdAtEq: String"))->toBe(true)
+        expect(sdl->String.includes("createdAtFrom: String"))->toBe(true)
+        expect(sdl->String.includes("createdAtTo: String"))->toBe(true)
+        expect(sdl->String.includes("enum OrderedItemOrderField"))->toBe(true)
+        expect(sdl->String.includes("orderBy: OrderedItemOrderBy"))->toBe(true)
+      },
+    )
   })
 
   describe("GraphQL_Server diagnostics", () => {
-    testPromise("diagnostics detects resolver without SDL field", async () => {
-      GraphQL_Server.reset()
-      let resolvers = Dict.make()
-      resolvers->Dict.set("orphanResolver", async (_root, _args, _ctx) => JSON.Encode.string("ok"))
-      GraphQL_Server.registerMutations(~sdlFields=[], ~resolvers)
-      let d = GraphQL_Server.diagnostics()
-      expect(d.resolverMutationCount)->toBe(1)
-      expect(d.sdlMutationCount)->toBe(0)
-      expect(d.mismatches->Array.length)->toBe(1)
-      expect(
-        (d.mismatches->Array.getUnsafe(0))->String.includes("resolver but no SDL field"),
-      )->toBe(true)
-      GraphQL_Server.reset()
-    })
+    testPromise(
+      "diagnostics detects resolver without SDL field",
+      async () => {
+        GraphQL_Server.reset()
+        let resolvers = Dict.make()
+        resolvers->Dict.set(
+          "orphanResolver",
+          async (_root, _args, _ctx) => JSON.Encode.string("ok"),
+        )
+        GraphQL_Server.registerMutations(~sdlFields=[], ~resolvers)
+        let d = GraphQL_Server.diagnostics()
+        expect(d.resolverMutationCount)->toBe(1)
+        expect(d.sdlMutationCount)->toBe(0)
+        expect(d.mismatches->Array.length)->toBe(1)
+        expect(
+          d.mismatches->Array.getUnsafe(0)->String.includes("resolver but no SDL field"),
+        )->toBe(true)
+        GraphQL_Server.reset()
+      },
+    )
 
-    testPromise("diagnostics detects SDL field without resolver", async () => {
-      GraphQL_Server.reset()
-      GraphQL_Server.registerQueries(
-        ~sdlFields=["  orphanField(id: ID!): String"],
-        ~resolvers=Dict.make(),
-      )
-      let d = GraphQL_Server.diagnostics()
-      expect(d.sdlQueryCount)->toBe(1)
-      expect(d.resolverQueryCount)->toBe(0)
-      expect(d.mismatches->Array.length)->toBe(1)
-      expect(
-        (d.mismatches->Array.getUnsafe(0))->String.includes("SDL field but no resolver"),
-      )->toBe(true)
-      GraphQL_Server.reset()
-    })
+    testPromise(
+      "diagnostics detects SDL field without resolver",
+      async () => {
+        GraphQL_Server.reset()
+        GraphQL_Server.registerQueries(
+          ~sdlFields=["  orphanField(id: ID!): String"],
+          ~resolvers=Dict.make(),
+        )
+        let d = GraphQL_Server.diagnostics()
+        expect(d.sdlQueryCount)->toBe(1)
+        expect(d.resolverQueryCount)->toBe(0)
+        expect(d.mismatches->Array.length)->toBe(1)
+        expect(
+          d.mismatches->Array.getUnsafe(0)->String.includes("SDL field but no resolver"),
+        )->toBe(true)
+        GraphQL_Server.reset()
+      },
+    )
 
-    testPromise("diagnostics reports no mismatches when fields and resolvers match", async () => {
-      GraphQL_Server.reset()
-      let resolvers = Dict.make()
-      resolvers->Dict.set("myQuery", async (_root, _args, _ctx) => JSON.Encode.string("ok"))
-      GraphQL_Server.registerQueries(
-        ~sdlFields=["  myQuery(id: ID!): String"],
-        ~resolvers,
-      )
-      let d = GraphQL_Server.diagnostics()
-      expect(d.mismatches->Array.length)->toBe(0)
-      expect(d.sdlQueryCount)->toBe(1)
-      expect(d.resolverQueryCount)->toBe(1)
-      GraphQL_Server.reset()
-    })
+    testPromise(
+      "diagnostics reports no mismatches when fields and resolvers match",
+      async () => {
+        GraphQL_Server.reset()
+        let resolvers = Dict.make()
+        resolvers->Dict.set("myQuery", async (_root, _args, _ctx) => JSON.Encode.string("ok"))
+        GraphQL_Server.registerQueries(~sdlFields=["  myQuery(id: ID!): String"], ~resolvers)
+        let d = GraphQL_Server.diagnostics()
+        expect(d.mismatches->Array.length)->toBe(0)
+        expect(d.sdlQueryCount)->toBe(1)
+        expect(d.resolverQueryCount)->toBe(1)
+        GraphQL_Server.reset()
+      },
+    )
 
-    testPromise("getFullSdl returns None before start", async () => {
-      GraphQL_Server.reset()
-      expect(GraphQL_Server.getFullSdl()->Option.isNone)->toBe(true)
-    })
+    testPromise(
+      "getFullSdl returns None before start",
+      async () => {
+        GraphQL_Server.reset()
+        expect(GraphQL_Server.getFullSdl()->Option.isNone)->toBe(true)
+      },
+    )
 
-    testPromise("getRegisteredSdl returns Query/Mutation SDL", async () => {
-      GraphQL_Server.reset()
-      GraphQL_Server.registerQueries(
-        ~sdlFields=["  hello: String"],
-        ~resolvers=Dict.make(),
-      )
-      let sdl = GraphQL_Server.getRegisteredSdl()
-      expect(sdl->String.includes("hello: String"))->toBe(true)
-      expect(sdl->String.includes("type Query"))->toBe(true)
-      GraphQL_Server.reset()
-    })
+    testPromise(
+      "getRegisteredSdl returns Query/Mutation SDL",
+      async () => {
+        GraphQL_Server.reset()
+        GraphQL_Server.registerQueries(~sdlFields=["  hello: String"], ~resolvers=Dict.make())
+        let sdl = GraphQL_Server.getRegisteredSdl()
+        expect(sdl->String.includes("hello: String"))->toBe(true)
+        expect(sdl->String.includes("type Query"))->toBe(true)
+        GraphQL_Server.reset()
+      },
+    )
   })
 })
 
@@ -877,19 +970,22 @@ describe("DCB StateChangeSlice — one mutation per command constructor", () => 
     expect(fieldNames)->toEqual(["Catalog_AddCategory"])
   })
 
-  testPromise("multi-command slice emits one `${plugin}_${command}` field per constructor", async () => {
-    // The command constructor already names the operation; callers/plans expect
-    // `${plugin}_${command}` (e.g. Platform_SyncComponent / Platform_RemoveComponent),
-    // NOT the aggregate-style `${plugin}_${slice}_${command}` doubling — which both
-    // renamed the primary command and overflowed AppSync's subscription cap.
-    let fieldNames =
-      ReventlessCore.Api_Naming.sliceMutationFields(
-        ~plugin="Ordering",
-        ~slice="SyncCatalogProduct",
-        ~commandSchema=dcbMultiCommandSchema->S.castToUnknown,
-      )->Array.map(((f, _)) => f)
-    expect(fieldNames)->toEqual(["Ordering_SyncNewProduct", "Ordering_ChangeSyncedPrice"])
-  })
+  testPromise(
+    "multi-command slice emits one `${plugin}_${command}` field per constructor",
+    async () => {
+      // The command constructor already names the operation; callers/plans expect
+      // `${plugin}_${command}` (e.g. Platform_SyncComponent / Platform_RemoveComponent),
+      // NOT the aggregate-style `${plugin}_${slice}_${command}` doubling — which both
+      // renamed the primary command and overflowed AppSync's subscription cap.
+      let fieldNames =
+        ReventlessCore.Api_Naming.sliceMutationFields(
+          ~plugin="Ordering",
+          ~slice="SyncCatalogProduct",
+          ~commandSchema=dcbMultiCommandSchema->S.castToUnknown,
+        )->Array.map(((f, _)) => f)
+      expect(fieldNames)->toEqual(["Ordering_SyncNewProduct", "Ordering_ChangeSyncedPrice"])
+    },
+  )
 
   testPromise(
     "multi-command slice: both mutations carry their own args, plus both subscriptions (each ≤ 50 chars)",
@@ -914,9 +1010,7 @@ describe("DCB StateChangeSlice — one mutation per command constructor", () => 
         ),
       )->toBe(true)
       expect(
-        sdl->String.includes(
-          "Ordering_ChangeSyncedPrice(id: ID!, productId: ID!, price: Float!)",
-        ),
+        sdl->String.includes("Ordering_ChangeSyncedPrice(id: ID!, productId: ID!, price: Float!)"),
       )->toBe(true)
 
       // Subscriptions fan out one-per-field over the same entry.
@@ -929,13 +1023,14 @@ describe("DCB StateChangeSlice — one mutation per command constructor", () => 
       expect(subSdl->String.includes("onOrdering_ChangeSyncedPrice"))->toBe(true)
 
       // Every emitted subscription field name stays within AppSync's 50-char cap.
-      subs.subscriptionFields->Array.forEach(sub => {
-        // `sub` is the full SDL line `  on<Field>(id: ID): CommandResult\n ...`;
-        // extract the leading `on<Field>` token to length-check the field name itself.
-        let name =
-          sub->String.trim->String.split("(")->Array.getUnsafe(0)
-        expect(name->String.length <= 50)->toBe(true)
-      })
+      subs.subscriptionFields->Array.forEach(
+        sub => {
+          // `sub` is the full SDL line `  on<Field>(id: ID): CommandResult\n ...`;
+          // extract the leading `on<Field>` token to length-check the field name itself.
+          let name = sub->String.trim->String.split("(")->Array.getUnsafe(0)
+          expect(name->String.length <= 50)->toBe(true)
+        },
+      )
     },
   )
 
@@ -962,22 +1057,25 @@ describe("DCB StateChangeSlice — one mutation per command constructor", () => 
 })
 
 describe("Plugin admin fragment — kind enum + kindEq filter", () => {
-  testPromise("Platform_Plugin exposes a PluginKind enum and Platform_Plugins gains kindEq", async () => {
-    let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
-      ~mutationEntries=[],
-      ~queryEntries=ReventlessCore.PluginBaseFragment.queryEntries,
-    )
-    let sdl = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment).sdlPreview
-    // kind is a real enum on the Plugin type (auto-derived from the payload-less variant)
-    expect(sdl->String.includes("enum Platform_PluginKind"))->toBe(true)
-    expect(sdl->String.includes("PlatformInfrastructure"))->toBe(true)
-    // `kind` is `option<pluginKind>` — nullable on purpose so a kind-less legacy row
-    // can't collapse the whole Platform_Plugins query. It must render without a `!`.
-    expect(sdl->String.includes("kind: Platform_PluginKind"))->toBe(true)
-    expect(sdl->String.includes("kind: Platform_PluginKind!"))->toBe(false)
-    // @scan folds a server-side equality filter for the panel split
-    expect(sdl->String.includes("kindEq: String"))->toBe(true)
-  })
+  testPromise(
+    "Platform_Plugin exposes a PluginKind enum and Platform_Plugins gains kindEq",
+    async () => {
+      let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
+        ~mutationEntries=[],
+        ~queryEntries=ReventlessCore.PluginBaseFragment.queryEntries,
+      )
+      let sdl = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment).sdlPreview
+      // kind is a real enum on the Plugin type (auto-derived from the payload-less variant)
+      expect(sdl->String.includes("enum Platform_PluginKind"))->toBe(true)
+      expect(sdl->String.includes("PlatformInfrastructure"))->toBe(true)
+      // `kind` is `option<pluginKind>` — nullable on purpose so a kind-less legacy row
+      // can't collapse the whole Platform_Plugins query. It must render without a `!`.
+      expect(sdl->String.includes("kind: Platform_PluginKind"))->toBe(true)
+      expect(sdl->String.includes("kind: Platform_PluginKind!"))->toBe(false)
+      // @scan folds a server-side equality filter for the panel split
+      expect(sdl->String.includes("kindEq: String"))->toBe(true)
+    },
+  )
 })
 
 describe("optional enum fields preserve GraphQL nullability", () => {

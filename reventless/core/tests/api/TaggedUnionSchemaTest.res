@@ -31,8 +31,7 @@ describe("SchemaType classifies a named union", () => {
         expect(fields->Dict.keysToArray)->toEqual(["point"])
       | _ => expect("Located arm")->toBe("an ObjectRef")
       }
-    | other =>
-      expect(other->Option.isSome ? "some other shape" : "nothing")->toBe("a TaggedUnion")
+    | other => expect(other->Option.isSome ? "some other shape" : "nothing")->toBe("a TaggedUnion")
     }
   })
 
@@ -58,8 +57,7 @@ describe("SchemaType classifies a named union", () => {
     | [{path, reason}] =>
       expect(path)->toBe("verdict")
       expect(reason->String.includes("no name"))->toBe(true)
-    | found =>
-      expect(found->Array.length)->toBe(1)
+    | found => expect(found->Array.length)->toBe(1)
     }
   })
 
@@ -139,17 +137,16 @@ describe("GraphQL_FragmentGenerator emits a union", () => {
       ~specName="TaggedUnionUnnamed",
       UnnamedSpec.stateSchema,
     )
-    expect(
-      typeDefFor(unnamed, "type Ordering_TuCase ")->String.includes("verdict: String!"),
-    )->toBe(true)
+    expect(typeDefFor(unnamed, "type Ordering_TuCase ")->String.includes("verdict: String!"))->toBe(
+      true,
+    )
     expect(typesOf(unnamed)->Array.some(t => t->String.startsWith("union ")))->toBe(false)
   })
 })
 
 // ── The JSON Schema ───────────────────────────────────────────────────────
 
-let objAt = (json, key) =>
-  json->JSON.Decode.object->Option.flatMap(o => o->Dict.get(key))
+let objAt = (json, key) => json->JSON.Decode.object->Option.flatMap(o => o->Dict.get(key))
 
 describe("SuryToJsonSchema emits the arms as oneOf", () => {
   let json = SuryToJsonSchema.deriveObjectSchema(CustomersSpec.stateSchema->S.castToUnknown)
@@ -166,15 +163,15 @@ describe("SuryToJsonSchema emits the arms as oneOf", () => {
   })
 
   testSync("one member per arm, each discriminated by its TAG const", () => {
-    let members =
-      objAt(field, "oneOf")->Option.flatMap(JSON.Decode.array)->Option.getOr([])
+    let members = objAt(field, "oneOf")->Option.flatMap(JSON.Decode.array)->Option.getOr([])
     expect(members->Array.length)->toBe(3)
-    let tags = members->Array.filterMap(m =>
-      objAt(m, "properties")
-      ->Option.flatMap(JSON.Decode.object)
-      ->Option.flatMap(p => p->Dict.get("TAG"))
-      ->Option.flatMap(t => objAt(t, "const"))
-      ->Option.flatMap(JSON.Decode.string)
+    let tags = members->Array.filterMap(
+      m =>
+        objAt(m, "properties")
+        ->Option.flatMap(JSON.Decode.object)
+        ->Option.flatMap(p => p->Dict.get("TAG"))
+        ->Option.flatMap(t => objAt(t, "const"))
+        ->Option.flatMap(JSON.Decode.string),
     )
     expect(tags)->toEqual(["Pending", "Located", "Unresolvable"])
   })
@@ -186,13 +183,9 @@ describe("SuryToJsonSchema emits the arms as oneOf", () => {
       objAt(field, "oneOf")
       ->Option.flatMap(JSON.Decode.array)
       ->Option.getOr([])
-      ->Array.filterMap(m =>
-        objAt(m, "x-reventless-union-member")->Option.flatMap(JSON.Decode.string)
+      ->Array.filterMap(
+        m => objAt(m, "x-reventless-union-member")->Option.flatMap(JSON.Decode.string),
       )
-    expect(names)->toEqual([
-      "GeolocationPending",
-      "GeolocationLocated",
-      "GeolocationUnresolvable",
-    ])
+    expect(names)->toEqual(["GeolocationPending", "GeolocationLocated", "GeolocationUnresolvable"])
   })
 })

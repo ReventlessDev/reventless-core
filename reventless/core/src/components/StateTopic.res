@@ -43,9 +43,7 @@ module Make = (
     type state
   },
   Publisher: Adapter.Publisher,
-): (
-  T with module Spec = Spec
-) => {
+): (T with module Spec = Spec) => {
   module Spec = Spec
 
   type constructed

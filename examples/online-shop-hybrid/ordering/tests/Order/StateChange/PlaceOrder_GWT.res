@@ -4,11 +4,17 @@
 let eur = amount => Reventless.Money.make(~amount, ~currency=EUR)
 let usd = amount => Reventless.Money.make(~amount, ~currency=USD)
 
-let synced = (~id, ~name, ~price=2500.0) =>
-  CatalogProductSynced({productId: id, name, price: eur(price)})
+let synced = (~id, ~name, ~price=2500.0) => CatalogProductSynced({
+  productId: id,
+  name,
+  price: eur(price),
+})
 
-let relisted = (~id, ~name, ~price=2500.0) =>
-  CatalogProductRelisted({productId: id, name, price: eur(price)})
+let relisted = (~id, ~name, ~price=2500.0) => CatalogProductRelisted({
+  productId: id,
+  name,
+  price: eur(price),
+})
 
 let line = (~id, ~qty=1): lineItem => {productId: id, quantity: qty}
 
@@ -227,10 +233,11 @@ describe("PlaceOrder StateChangeSlice", () => {
   // Standard order can still ask for a window; an order that omits it carries no
   // key at all (the optional field above).
   test("a requested delivery window is carried onto the event", () => {
-    let window = Reventless.DateRange.make(
-      ~start="2026-03-02T09:00:00Z",
-      ~end_="2026-03-02T11:00:00Z",
-    )->Result.getOrThrow
+    let window =
+      Reventless.DateRange.make(
+        ~start="2026-03-02T09:00:00Z",
+        ~end_="2026-03-02T11:00:00Z",
+      )->Result.getOrThrow
     givenEvents([synced(~id="p1", ~name="Fathom Dock")])
     ->whenCmd(
       PlaceOrder({
@@ -272,10 +279,7 @@ describe("PlaceOrder StateChangeSlice", () => {
   // product's row, so a shopper never sees it; these pin the write side to the
   // same answer, which is the half that was missing.
   test("a withdrawn product can no longer be ordered", () =>
-    givenEvents([
-      synced(~id="p1", ~name="Fathom Dock"),
-      CatalogProductWithdrawn({productId: "p1"}),
-    ])
+    givenEvents([synced(~id="p1", ~name="Fathom Dock"), CatalogProductWithdrawn({productId: "p1"})])
     ->whenCmd(
       PlaceOrder({
         orderId: "o1",
@@ -396,10 +400,7 @@ describe("PlaceOrder StateChangeSlice", () => {
   // basket after whichever product the fold happened to see last would make the
   // same order read differently depending on catalog traffic.
   test("a basket is named after its first product, not its last", () =>
-    givenEvents([
-      synced(~id="p1", ~name="Fathom Dock"),
-      synced(~id="p2", ~name="Cirrus Charger"),
-    ])
+    givenEvents([synced(~id="p1", ~name="Fathom Dock"), synced(~id="p2", ~name="Cirrus Charger")])
     ->whenCmd(
       PlaceOrder({
         orderId: "o1",
@@ -413,10 +414,7 @@ describe("PlaceOrder StateChangeSlice", () => {
         orderId: "o1",
         customerId: "c1",
         productIds: ["p2", "p1"],
-        lines: [
-          placed(~id="p2", ~name="Cirrus Charger"),
-          placed(~id="p1", ~name="Fathom Dock"),
-        ],
+        lines: [placed(~id="p2", ~name="Cirrus Charger"), placed(~id="p1", ~name="Fathom Dock")],
         total: eur(5000.0),
         shippingMethod: Standard,
         firstProductName: "Cirrus Charger",
@@ -430,7 +428,9 @@ describe("PlaceOrder StateChangeSlice", () => {
       synced(~id="p1", ~name="Fathom Dock"),
       CatalogProductImageChanged({
         productId: "p1",
-        productImage: Reventless.UploadableImage.unsafe("/uploads/Catalog/productImages/a/dock.png"),
+        productImage: Reventless.UploadableImage.unsafe(
+          "/uploads/Catalog/productImages/a/dock.png",
+        ),
       }),
     ])
     ->whenCmd(
@@ -505,7 +505,9 @@ describe("PlaceOrder StateChangeSlice", () => {
       synced(~id="p1", ~name="Fathom Dock"),
       CatalogProductImageChanged({
         productId: "p1",
-        productImage: Reventless.UploadableImage.unsafe("/uploads/Catalog/productImages/a/dock.png"),
+        productImage: Reventless.UploadableImage.unsafe(
+          "/uploads/Catalog/productImages/a/dock.png",
+        ),
       }),
       CatalogProductImageChanged({productId: "p1"}),
     ])

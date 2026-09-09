@@ -39,4 +39,3 @@ module EventCollectorMaker = ReventlessCore.EventCollector_Builder.Make(
 )
 
 let eventCollector = EventCollectorMaker.make(~name="TestEC", ~eventTopics=allEventTopics, ~opts={})
-

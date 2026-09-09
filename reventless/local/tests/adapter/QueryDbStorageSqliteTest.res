@@ -18,18 +18,12 @@ describe("QueryDbStorage_Sqlite", () => {
     let s = Storage.make(~name="rm1", ~indexes=[], ~api=(), ~apiRole=(), ~owner=None, ~opts)
     let ops = await s.operations->TestRunner.resolve
 
-    let _ = await ops.save(
-      "id1",
-      JSON.Encode.string("value1"),
-      ReventlessCore.QueryDb.Any,
-      None,
-    )
+    let _ = await ops.save("id1", JSON.Encode.string("value1"), ReventlessCore.QueryDb.Any, None)
 
-    let items =
-      await ops.loadStream("id1")
-      ->Stream.runCollect
-      ->Effect.catchAll(_ => Effect.succeed([]))
-      ->Effect.runPromise
+    let items = await ops.loadStream("id1")
+    ->Stream.runCollect
+    ->Effect.catchAll(_ => Effect.succeed([]))
+    ->Effect.runPromise
 
     expect(items->Array.length)->toBe(1)
     expect(items->Array.getUnsafe(0))->toEqual(JSON.Encode.string("value1"))
@@ -48,11 +42,10 @@ describe("QueryDbStorage_Sqlite", () => {
     let _ = await ops.save("k", JSON.Encode.string("a"), ReventlessCore.QueryDb.Any, None)
     let _ = await ops.save("k", JSON.Encode.string("b"), ReventlessCore.QueryDb.Any, None)
 
-    let items =
-      await ops.loadStream("k")
-      ->Stream.runCollect
-      ->Effect.catchAll(_ => Effect.succeed([]))
-      ->Effect.runPromise
+    let items = await ops.loadStream("k")
+    ->Stream.runCollect
+    ->Effect.catchAll(_ => Effect.succeed([]))
+    ->Effect.runPromise
 
     expect(items->Array.length)->toBe(1)
     expect(items->Array.getUnsafe(0))->toEqual(JSON.Encode.string("b"))
@@ -74,21 +67,18 @@ describe("QueryDbStorage_Sqlite", () => {
       ("id3", JSON.Encode.string("three"), None),
     ])
 
-    let items1 =
-      await ops.loadStream("id1")
-      ->Stream.runCollect
-      ->Effect.catchAll(_ => Effect.succeed([]))
-      ->Effect.runPromise
-    let items2 =
-      await ops.loadStream("id2")
-      ->Stream.runCollect
-      ->Effect.catchAll(_ => Effect.succeed([]))
-      ->Effect.runPromise
-    let items3 =
-      await ops.loadStream("id3")
-      ->Stream.runCollect
-      ->Effect.catchAll(_ => Effect.succeed([]))
-      ->Effect.runPromise
+    let items1 = await ops.loadStream("id1")
+    ->Stream.runCollect
+    ->Effect.catchAll(_ => Effect.succeed([]))
+    ->Effect.runPromise
+    let items2 = await ops.loadStream("id2")
+    ->Stream.runCollect
+    ->Effect.catchAll(_ => Effect.succeed([]))
+    ->Effect.runPromise
+    let items3 = await ops.loadStream("id3")
+    ->Stream.runCollect
+    ->Effect.catchAll(_ => Effect.succeed([]))
+    ->Effect.runPromise
 
     expect(items1->Array.length)->toBe(1)
     expect(items2->Array.length)->toBe(1)
@@ -108,11 +98,10 @@ describe("QueryDbStorage_Sqlite", () => {
     let _ = await ops.save("k", JSON.Encode.string("a"), ReventlessCore.QueryDb.Any, None)
     let _ = await ops.delete("k", None)
 
-    let items =
-      await ops.loadStream("k")
-      ->Stream.runCollect
-      ->Effect.catchAll(_ => Effect.succeed([]))
-      ->Effect.runPromise
+    let items = await ops.loadStream("k")
+    ->Stream.runCollect
+    ->Effect.catchAll(_ => Effect.succeed([]))
+    ->Effect.runPromise
 
     expect(items->Array.length)->toBe(0)
   })
@@ -120,8 +109,9 @@ describe("QueryDbStorage_Sqlite", () => {
   testPromise("items persist across a file reopen", async () => {
     let path = `/tmp/reventless-test-qdb-${Float.toString(Date.now())}.db`
 
-    // Session 1: write
     {
+      // Session 1: write
+
       module TestBus = LocalBus.Make()
       module DbProvider = {
         let db = SqliteDriver.openDb(~path)
@@ -129,12 +119,7 @@ describe("QueryDbStorage_Sqlite", () => {
       module Storage = QueryDbStorage_Sqlite.Make(TestBus, DbProvider)
       let s = Storage.make(~name="persist", ~indexes=[], ~api=(), ~apiRole=(), ~owner=None, ~opts)
       let ops = await s.operations->TestRunner.resolve
-      let _ = await ops.save(
-        "k",
-        JSON.Encode.string("hello"),
-        ReventlessCore.QueryDb.Any,
-        None,
-      )
+      let _ = await ops.save("k", JSON.Encode.string("hello"), ReventlessCore.QueryDb.Any, None)
       DbProvider.db->SqliteDriver.close
     }
 
@@ -146,11 +131,10 @@ describe("QueryDbStorage_Sqlite", () => {
     module Storage2 = QueryDbStorage_Sqlite.Make(TestBus2, DbProvider2)
     let s2 = Storage2.make(~name="persist", ~indexes=[], ~api=(), ~apiRole=(), ~owner=None, ~opts)
     let ops2 = await s2.operations->TestRunner.resolve
-    let items =
-      await ops2.loadStream("k")
-      ->Stream.runCollect
-      ->Effect.catchAll(_ => Effect.succeed([]))
-      ->Effect.runPromise
+    let items = await ops2.loadStream("k")
+    ->Stream.runCollect
+    ->Effect.catchAll(_ => Effect.succeed([]))
+    ->Effect.runPromise
 
     expect(items->Array.length)->toBe(1)
     expect(items->Array.getUnsafe(0))->toEqual(JSON.Encode.string("hello"))

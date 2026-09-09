@@ -28,9 +28,7 @@ let createSchedule = (~roleArn: string): ReventlessCore.Scheduler.createSchedule
     | [] =>
       let err = "createSchedule not possible: no Queue configured !"
       ReventlessCore.EffectLogger.logError(~comp=__MODULE__, err)
-      ->Effect.flatMap(_ =>
-        Effect.sync(() => JsError.throwWithMessage(err))
-      )
+      ->Effect.flatMap(_ => Effect.sync(() => JsError.throwWithMessage(err)))
       ->Effect.runPromise
     | resources =>
       let resource = resources->Array.getUnsafe(0) // FIXME
@@ -69,9 +67,7 @@ let deleteSchedule: ReventlessCore.Scheduler.deleteSchedule = (queueResources, n
   | [] =>
     let err = "deleteSchedule not possible: no Queue configured !"
     ReventlessCore.EffectLogger.logError(~comp=__MODULE__, err)
-    ->Effect.flatMap(_ =>
-      Effect.sync(() => JsError.throwWithMessage(err))
-    )
+    ->Effect.flatMap(_ => Effect.sync(() => JsError.throwWithMessage(err)))
     ->Effect.runPromise
   | resources =>
     let resource = resources->Array.getUnsafe(0) // FIXME

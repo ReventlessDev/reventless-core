@@ -73,7 +73,8 @@ describe("Auth_ActiveRoleStore_Schema.keySchemaRefusal", () => {
   )
 
   testSync("the refusal names the table, what it found, and what is needed", () => {
-    let message = Schema.keySchemaRefusal(~tableName=store, ~actual=[("id", "HASH")])->Option.getOr("")
+    let message =
+      Schema.keySchemaRefusal(~tableName=store, ~actual=[("id", "HASH")])->Option.getOr("")
     expect((
       message->String.includes(store),
       message->String.includes("id:HASH"),

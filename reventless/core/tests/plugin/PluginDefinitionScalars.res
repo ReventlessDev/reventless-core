@@ -67,8 +67,7 @@ let collect = (root: S.t<'a>): array<string> => {
       if !isEnum {
         // Either optional encoding: the healer leaves an absent `T | undefined`
         // alone and writes `null` for a `T | null`, so neither invents a scalar.
-        let optional =
-          has.null->Option.getOr(false) || has.undefined->Option.getOr(false)
+        let optional = has.null->Option.getOr(false) || has.undefined->Option.getOr(false)
         anyOf->Array.forEach(member =>
           switch member {
           | Undefined(_) | Null(_) => ()

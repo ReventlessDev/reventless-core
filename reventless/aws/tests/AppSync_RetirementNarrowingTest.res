@@ -25,15 +25,18 @@ let shelf = (~includeOwner: bool) =>
 describe("the single-entity door", () => {
   testSync("withholds a retired row until an exempt caller asks", () => {
     let code = shelf(~includeOwner=false)
-    expect(code->String.includes("const _wantsRetired = _exempt && ctx.args.includeRetired === true"))
-    ->Expect.toBe(true)
+    expect(
+      code->String.includes("const _wantsRetired = _exempt && ctx.args.includeRetired === true"),
+    )->Expect.toBe(true)
     expect(code->String.includes("_live(ctx.result) ? ctx.result : null"))->Expect.toBe(true)
   })
 
   // Absent attribute keeps the row: a row written before the annotation existed
   // is not retired, which is what stops a view emptying the day it lands.
   testSync("reads a missing attribute as not retired", () =>
-    expect(shelf(~includeOwner=false)->String.includes("row['shelfStatus'] == null"))->Expect.toBe(true)
+    expect(shelf(~includeOwner=false)->String.includes("row['shelfStatus'] == null"))->Expect.toBe(
+      true,
+    )
   )
 
   testSync("tests membership of the retiring states, not equality with one", () =>
@@ -48,16 +51,19 @@ describe("the single-entity door", () => {
   // preamble's copy is the only one when both guards are present.
   testSync("declares the exemption test once when owner scoping is also on", () => {
     let code = shelf(~includeOwner=true)
-    let occurrences =
-      code->String.split("const _exempt =")->Array.length - 1
-    expect((occurrences, code->String.includes("_owns(ctx.result) && _live(ctx.result)")))
-    ->Expect.toEqual((1, true))
+    let occurrences = code->String.split("const _exempt =")->Array.length - 1
+    expect((
+      occurrences,
+      code->String.includes("_owns(ctx.result) && _live(ctx.result)"),
+    ))->Expect.toEqual((1, true))
   })
 
   testSync("is unchanged for a view that declares no retirement", () => {
     let code = F.getItemById(~elevatedGroups=elevated)->asString
-    expect((code->String.includes("_wantsRetired"), code->String.includes("includeRetired")))
-    ->Expect.toEqual((false, false))
+    expect((
+      code->String.includes("_wantsRetired"),
+      code->String.includes("includeRetired"),
+    ))->Expect.toEqual((false, false))
   })
 })
 
@@ -79,19 +85,19 @@ describe("the by-ids door", () => {
   )
 
   testSync("is unchanged for a view that declares no retirement", () =>
-    expect(F.batchGetItemsByIds()("ProductsTable")->String.includes("_live"))
-    ->Expect.toBe(false)
+    expect(F.batchGetItemsByIds()("ProductsTable")->String.includes("_live"))->Expect.toBe(false)
   )
 })
 
 describe("the by-index door", () => {
-  let code = F.queryByIndexFiltered(
-    ~index="byCategory",
-    ~idField="categoryId",
-    ~retiredField="shelfStatus",
-    ~retiredValues=["Archived", "Discontinued"],
-    ~elevatedGroups=elevated,
-  )->asString
+  let code =
+    F.queryByIndexFiltered(
+      ~index="byCategory",
+      ~idField="categoryId",
+      ~retiredField="shelfStatus",
+      ~retiredValues=["Archived", "Discontinued"],
+      ~elevatedGroups=elevated,
+    )->asString
 
   // A Query takes a FilterExpression, so the predicate is pushed into the read.
   // Narrowing after it would hand back fewer rows than `limit` asked for and say
@@ -121,8 +127,7 @@ describe("the by-index door", () => {
 
 describe("the boolean form", () => {
   testSync("tests the flag rather than a set of states", () => {
-    let code =
-      F.getItemById(~elevatedGroups=elevated, ~retiredField="archived")->asString
+    let code = F.getItemById(~elevatedGroups=elevated, ~retiredField="archived")->asString
     expect((
       code->String.includes("row['archived'] === true"),
       code->String.includes("indexOf(row["),
@@ -153,18 +158,21 @@ describe("the by-ids door's owner scoping", () => {
 
   testSync("is unchanged for a view with neither rule", () => {
     let plain = F.batchGetItemsByIds()("Orders")
-    expect((plain->String.includes("_owns"), plain->String.includes("_live")))
-    ->Expect.toEqual((false, false))
+    expect((plain->String.includes("_owns"), plain->String.includes("_live")))->Expect.toEqual((
+      false,
+      false,
+    ))
   })
 })
 
 describe("the by-index door's owner scoping", () => {
-  let code = F.queryByIndexFiltered(
-    ~index="byCategory",
-    ~idField="categoryId",
-    ~ownerField="customerId",
-    ~elevatedGroups=elevated,
-  )->asString
+  let code =
+    F.queryByIndexFiltered(
+      ~index="byCategory",
+      ~idField="categoryId",
+      ~ownerField="customerId",
+      ~elevatedGroups=elevated,
+    )->asString
 
   testSync("pushes the owner predicate into the read", () =>
     expect(code->String.includes("names['#owner'] = 'customerId'"))->Expect.toBe(true)
@@ -178,7 +186,9 @@ describe("the by-index door's owner scoping", () => {
 
   testSync("exempts an elevated caller and an IAM service call", () =>
     expect(
-      code->String.includes("if (!(_osub == null || _ogroups.some(g => _oelevated.indexOf(g) >= 0)))"),
+      code->String.includes(
+        "if (!(_osub == null || _ogroups.some(g => _oelevated.indexOf(g) >= 0)))",
+      ),
     )->Expect.toBe(true)
   )
 
@@ -196,8 +206,7 @@ describe("the by-index door's owner scoping", () => {
 // field that promised a Connection. These assert the two halves that were wrong,
 // beside the paging arguments the field actually offers.
 describe("the by-index door answers the field it is attached to", () => {
-  let code =
-    F.queryByIndexFiltered(~index="byCategory", ~idField="categoryId")->asString
+  let code = F.queryByIndexFiltered(~index="byCategory", ~idField="categoryId")->asString
 
   testSync("keys the read on the index column the SDL offers", () =>
     expect(code->String.includes("util.dynamodb.toDynamoDB(args.categoryId)"))->Expect.toBe(true)
@@ -226,8 +235,8 @@ describe("the by-index door answers the field it is attached to", () => {
   // reaching the generic filter loop would filter on an attribute no row has.
   testSync("keeps every paging argument out of the filter loop", () =>
     expect(
-      ["first", "after", "last", "before", "includeRetired"]->Array.every(arg =>
-        code->String.includes(`key === '${arg}'`)
+      ["first", "after", "last", "before", "includeRetired"]->Array.every(
+        arg => code->String.includes(`key === '${arg}'`),
       ),
     )->Expect.toBe(true)
   )
@@ -264,8 +273,10 @@ describe("the by-index door's backward paging", () => {
     let code = F.queryByIndexFiltered(~index="byCategory", ~idField="categoryId")->asString
     let guardAt = code->String.indexOf("args.before != null")
     let queryAt = code->String.indexOf("expressionValues")
-    expect((guardAt >= 0 && guardAt < queryAt, code->String.includes("'UnsupportedPagination'")))
-    ->Expect.toEqual((true, true))
+    expect((
+      guardAt >= 0 && guardAt < queryAt,
+      code->String.includes("'UnsupportedPagination'"),
+    ))->Expect.toEqual((true, true))
   })
 })
 
@@ -280,13 +291,12 @@ describe("the unowned stub is callable where the door calls it", () => {
   // calls it: with neither rule the guard is not emitted at all, and with an
   // owner the real one-parameter test replaces it.
   testSync("declares a parameter on the single-entity door", () => {
-    let code =
-      F.ownerScopedResultResponse(
-        ~ownerField=None,
-        ~elevatedGroups=elevated,
-        ~retiredField="lifecycle",
-        ~retiredValues=["Archived"],
-      )
+    let code = F.ownerScopedResultResponse(
+      ~ownerField=None,
+      ~elevatedGroups=elevated,
+      ~retiredField="lifecycle",
+      ~retiredValues=["Archived"],
+    )
     expect((
       code->String.includes("const _owns = (row) => true;"),
       code->String.includes("const _owns = () => true;"),
@@ -363,8 +373,9 @@ describe("the cross-table single door", () => {
     )
 
   testSync("narrows the one row it hands back", () =>
-    expect(response(~multi=false)->String.includes("_owns(_row) && _live(_row) ? _row : null"))
-    ->Expect.toBe(true)
+    expect(
+      response(~multi=false)->String.includes("_owns(_row) && _live(_row) ? _row : null"),
+    )->Expect.toBe(true)
   )
 
   testSync("narrows every row of the list form", () =>
@@ -380,7 +391,9 @@ describe("the cross-table single door", () => {
 
   testSync("a target with neither rule keeps the plain response", () => {
     let plain = F.resolvedFieldResponse(~multi=false, ~ownerField=None, ~elevatedGroups=elevated)
-    expect((plain->String.includes("_owns"), plain->String.includes("ctx.result.items[0]")))
-    ->toEqual((false, true))
+    expect((
+      plain->String.includes("_owns"),
+      plain->String.includes("ctx.result.items[0]"),
+    ))->toEqual((false, true))
   })
 })

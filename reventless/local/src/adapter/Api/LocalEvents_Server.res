@@ -27,8 +27,7 @@ let log = ReventlessCore.Logger.fromEnv()
 
 // Mirrors AppSyncEventsSigner_Ops.pathSegment (aws) and the client's channel
 // normalizer: any char outside [A-Za-z0-9-] becomes `-`.
-let pathSegment = (s: string): string =>
-  s->String.replaceRegExp(/[^A-Za-z0-9-]/g, "-")
+let pathSegment = (s: string): string => s->String.replaceRegExp(/[^A-Za-z0-9-]/g, "-")
 
 let clientChannelPrefix = "/client/"
 
@@ -172,7 +171,10 @@ let broadcastStateChange = (~name: string, ~descriptor: JSON.t): unit => {
 // -- Inbound frames (subscribe side) -----------------------------------------
 
 let decodeStringField = (json: JSON.t, field: string): option<string> =>
-  json->JSON.Decode.object->Option.flatMap(o => o->Dict.get(field))->Option.flatMap(JSON.Decode.string)
+  json
+  ->JSON.Decode.object
+  ->Option.flatMap(o => o->Dict.get(field))
+  ->Option.flatMap(JSON.Decode.string)
 
 /** Handle one client→server text frame on an established connection. */
 let handleFrame = (conn: connection, text: string): unit => {

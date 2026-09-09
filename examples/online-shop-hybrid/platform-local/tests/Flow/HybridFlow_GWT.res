@@ -18,11 +18,17 @@ module Cat = CommandStep(CatalogPlugin.AddCategory, CatalogPlugin.AddCategory_Be
 module Add = CommandStep(CatalogPlugin.AddProduct, CatalogPlugin.AddProduct_Behavior)
 module ProductsEp = ExtensionPointStep(CatalogPlugin.Products_ExtensionPointMapping)
 module ProductsExt = ExtensionStep(OrderingPlugin.Products_Extension.Mapping)
-module Sync = CommandStep(OrderingPlugin.SyncCatalogProduct, OrderingPlugin.SyncCatalogProduct_Behavior)
+module Sync = CommandStep(
+  OrderingPlugin.SyncCatalogProduct,
+  OrderingPlugin.SyncCatalogProduct_Behavior,
+)
 module Place = CommandStep(OrderingPlugin.PlaceOrder, OrderingPlugin.PlaceOrder_Behavior)
 module OrdersEp = ExtensionPointStep(OrderingPlugin.Orders_ExtensionPointMapping)
 module OrdersExt = ExtensionStep(CatalogPlugin.Orders_Extension.Mapping)
-module Demand = CommandStep(CatalogPlugin.RecordProductDemand, CatalogPlugin.RecordProductDemand_Behavior)
+module Demand = CommandStep(
+  CatalogPlugin.RecordProductDemand,
+  CatalogPlugin.RecordProductDemand_Behavior,
+)
 
 // Prices are money, so a test writes the amount a person would say and converts
 // it once. `ofMajor` scales by the currency's own exponent, which is what keeps
@@ -34,7 +40,9 @@ describe("Hybrid cross-plugin flow", () => {
   test("Tier 2 — a product added in Catalog becomes orderable in Ordering via the sync", () =>
     start
     // AddProduct now verifies the category exists, so seed it into the shared log first.
-    ->Cat.givenEvents([CatalogPlugin.AddCategory.CategoryAdded({categoryId: "cat1", name: "Books"})])
+    ->Cat.givenEvents([
+      CatalogPlugin.AddCategory.CategoryAdded({categoryId: "cat1", name: "Books"}),
+    ])
     ->Add.whenCommand(
       CatalogPlugin.AddProduct.AddProduct({
         productId: "p1",
@@ -63,10 +71,18 @@ describe("Hybrid cross-plugin flow", () => {
     )
     ->ProductsExt.whenExtensionReacts
     ->ProductsExt.thenIssuesCommand(
-      OrderingPlugin.SyncCatalogProduct.SyncNewProduct({productId: "p1", name: "Book", price: eur(9.99)}),
+      OrderingPlugin.SyncCatalogProduct.SyncNewProduct({
+        productId: "p1",
+        name: "Book",
+        price: eur(9.99),
+      }),
     )
     ->Sync.whenCommand(
-      OrderingPlugin.SyncCatalogProduct.SyncNewProduct({productId: "p1", name: "Book", price: eur(9.99)}),
+      OrderingPlugin.SyncCatalogProduct.SyncNewProduct({
+        productId: "p1",
+        name: "Book",
+        price: eur(9.99),
+      }),
     )
     ->Sync.thenEvent(
       OrderingPlugin.SyncCatalogProduct.CatalogProductSynced({
@@ -122,68 +138,80 @@ describe("Hybrid cross-plugin flow", () => {
     ->Place.thenError(ProductsNotAvailable({missing: ["p1"]}))
   )
 
-  test("Tier 3 — a batch order fans out to one demand command per product, round-tripping into Catalog", () =>
-    start
-    ->Sync.givenEvents([
-      OrderingPlugin.SyncCatalogProduct.CatalogProductSynced({
-        productId: "p1",
-        name: "Book",
-        price: eur(9.99),
-      }),
-      OrderingPlugin.SyncCatalogProduct.CatalogProductSynced({
-        productId: "p2",
-        name: "Pen",
-        price: eur(1.5),
-      }),
-    ])
-    ->Place.whenCommand(
-      OrderingPlugin.PlaceOrder.PlaceOrder({
-        orderId: "o1",
-        customerId: "c1",
-        lineItems: [{productId: "p1", quantity: 1}, {productId: "p2", quantity: 3}],
-        shippingMethod: Standard,
-      }),
-    )
-    ->Place.thenEvent(
-      OrderingPlugin.PlaceOrder.OrderPlaced({
-        orderId: "o1",
-        customerId: "c1",
-        productIds: ["p1", "p2"],
-        lines: [
-          {
-            productId: "p1",
-            name: "Book",
-            quantity: 1,
-            unitPrice: eur(9.99),
-            lineTotal: eur(9.99),
-          },
-          {
-            productId: "p2",
-            name: "Pen",
-            quantity: 3,
-            unitPrice: eur(1.5),
-            lineTotal: eur(4.5),
-          },
-        ],
-        total: eur(14.49),
-        shippingMethod: Standard,
-        firstProductName: "Book",
-      }),
-    )
-    ->OrdersEp.whenPublishedThrough
-    ->OrdersEp.thenPublicEvents([
-      OrderingSpec.Orders_ExtensionPoint.ItemOrdered({productId: "p1", orderId: "o1", customerId: "c1"}),
-      OrderingSpec.Orders_ExtensionPoint.ItemOrdered({productId: "p2", orderId: "o1", customerId: "c1"}),
-    ])
-    ->OrdersExt.whenExtensionReacts
-    ->OrdersExt.thenIssuesCommands([
-      CatalogPlugin.RecordProductDemand.RecordDemand({productId: "p1", orderId: "o1"}),
-      CatalogPlugin.RecordProductDemand.RecordDemand({productId: "p2", orderId: "o1"}),
-    ])
-    ->Demand.whenCommand(CatalogPlugin.RecordProductDemand.RecordDemand({productId: "p1", orderId: "o1"}))
-    ->Demand.thenEvent(
-      CatalogPlugin.RecordProductDemand.ProductDemandRecorded({productId: "p1", orderId: "o1"}),
-    )
+  test(
+    "Tier 3 — a batch order fans out to one demand command per product, round-tripping into Catalog",
+    () =>
+      start
+      ->Sync.givenEvents([
+        OrderingPlugin.SyncCatalogProduct.CatalogProductSynced({
+          productId: "p1",
+          name: "Book",
+          price: eur(9.99),
+        }),
+        OrderingPlugin.SyncCatalogProduct.CatalogProductSynced({
+          productId: "p2",
+          name: "Pen",
+          price: eur(1.5),
+        }),
+      ])
+      ->Place.whenCommand(
+        OrderingPlugin.PlaceOrder.PlaceOrder({
+          orderId: "o1",
+          customerId: "c1",
+          lineItems: [{productId: "p1", quantity: 1}, {productId: "p2", quantity: 3}],
+          shippingMethod: Standard,
+        }),
+      )
+      ->Place.thenEvent(
+        OrderingPlugin.PlaceOrder.OrderPlaced({
+          orderId: "o1",
+          customerId: "c1",
+          productIds: ["p1", "p2"],
+          lines: [
+            {
+              productId: "p1",
+              name: "Book",
+              quantity: 1,
+              unitPrice: eur(9.99),
+              lineTotal: eur(9.99),
+            },
+            {
+              productId: "p2",
+              name: "Pen",
+              quantity: 3,
+              unitPrice: eur(1.5),
+              lineTotal: eur(4.5),
+            },
+          ],
+          total: eur(14.49),
+          shippingMethod: Standard,
+          firstProductName: "Book",
+        }),
+      )
+      ->OrdersEp.whenPublishedThrough
+      ->OrdersEp.thenPublicEvents([
+        OrderingSpec.Orders_ExtensionPoint.ItemOrdered({
+          productId: "p1",
+          orderId: "o1",
+          customerId: "c1",
+        }),
+        OrderingSpec.Orders_ExtensionPoint.ItemOrdered({
+          productId: "p2",
+          orderId: "o1",
+          customerId: "c1",
+        }),
+      ])
+      ->OrdersExt.whenExtensionReacts
+      ->OrdersExt.thenIssuesCommands([
+        CatalogPlugin.RecordProductDemand.RecordDemand({productId: "p1", orderId: "o1"}),
+        CatalogPlugin.RecordProductDemand.RecordDemand({productId: "p2", orderId: "o1"}),
+      ])
+      ->Demand.whenCommand(
+        CatalogPlugin.RecordProductDemand.RecordDemand({productId: "p1", orderId: "o1"}),
+      )
+      ->Demand.thenEvent(
+        CatalogPlugin.RecordProductDemand.ProductDemandRecorded({productId: "p1", orderId: "o1"}),
+      ),
   )
 
   // The steps above name the slices a scenario walks through. These two name

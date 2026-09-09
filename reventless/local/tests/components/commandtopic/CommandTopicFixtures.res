@@ -5,13 +5,13 @@ module ItemSpec = {
   let name = "TestCommandTopicItem"
 
   @schema
-  type command = | CreateItem({name: string}) | DeleteItem({id: string})
+  type command = CreateItem({name: string}) | DeleteItem({id: string})
 
   @schema
-  type event = | ItemCreated({name: string})
+  type event = ItemCreated({name: string})
 
   @schema
-  type error = | AlreadyExists
+  type error = AlreadyExists
 
   let moduleUrl: string = %raw(`import.meta.url`)
 }
@@ -34,4 +34,3 @@ module CommandTopicMaker = ReventlessCore.CommandTopic_Builder.Make(
 )
 
 let cmdTopic = CommandTopicMaker.make(~name="TestCommandTopic")
-

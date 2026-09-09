@@ -20,14 +20,24 @@ let skField = "_subId"
 
 let getSks = result =>
   result.SortKey_Filter.items->Array.map(item =>
-    item->JSON.Decode.object->Option.flatMap(d => d->Dict.get(skField))->Option.flatMap(JSON.Decode.string)->Option.getOr("")
+    item
+    ->JSON.Decode.object
+    ->Option.flatMap(d => d->Dict.get(skField))
+    ->Option.flatMap(JSON.Decode.string)
+    ->Option.getOr("")
   )
 
 describe("SortKey_Filter.apply:", () => {
   testPromise("no filters returns all items in order", async () => {
     let r = SortKey_Filter.apply(~items, ~skField)
     expect(r.items->Array.length)->toBe(5)
-    expect(getSks(r))->toEqual(["art/2026-01", "art/2026-02", "math/2026-01", "math/2026-02", "science/2026-01"])
+    expect(getSks(r))->toEqual([
+      "art/2026-01",
+      "art/2026-02",
+      "math/2026-01",
+      "math/2026-02",
+      "science/2026-01",
+    ])
     expect(r.nextToken)->toBe(None)
   })
 
@@ -59,7 +69,13 @@ describe("SortKey_Filter.apply:", () => {
 
   testPromise("reverse returns items in descending order", async () => {
     let r = SortKey_Filter.apply(~items, ~skField, ~reverse=true)
-    expect(getSks(r))->toEqual(["science/2026-01", "math/2026-02", "math/2026-01", "art/2026-02", "art/2026-01"])
+    expect(getSks(r))->toEqual([
+      "science/2026-01",
+      "math/2026-02",
+      "math/2026-01",
+      "art/2026-02",
+      "art/2026-01",
+    ])
   })
 
   testPromise("limit returns first N items", async () => {

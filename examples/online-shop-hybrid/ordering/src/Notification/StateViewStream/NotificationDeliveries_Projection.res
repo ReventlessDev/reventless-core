@@ -21,7 +21,15 @@ let channelName = (channel: NotificationPreferences.channel) =>
 // dropping it is what makes that visible instead of fabricating a half-row.
 let project = ({event, meta}) =>
   switch event {
-  | NotificationRequested({recipientId, category, reference, channel, subjectType, subjectRef, origin}) => [
+  | NotificationRequested({
+      recipientId,
+      category,
+      reference,
+      channel,
+      subjectType,
+      subjectRef,
+      origin,
+    }) => [
       Set(
         reference,
         {
@@ -60,7 +68,14 @@ let project = ({event, meta}) =>
         },
       ),
     ]
-  | NotificationUndeliverable({recipientId, category, reference, subjectType, subjectRef, origin}) => [
+  | NotificationUndeliverable({
+      recipientId,
+      category,
+      reference,
+      subjectType,
+      subjectRef,
+      origin,
+    }) => [
       Set(
         reference,
         {
@@ -79,19 +94,25 @@ let project = ({event, meta}) =>
       ),
     ]
   | NotificationDelivered({reference, providerRef}) => [
-      Update(reference, state => {
-        ...state,
-        outcome: Delivered,
-        detail: providerRef,
-        settledAt: Some(meta.time),
-      }),
+      Update(
+        reference,
+        state => {
+          ...state,
+          outcome: Delivered,
+          detail: providerRef,
+          settledAt: Some(meta.time),
+        },
+      ),
     ]
   | NotificationFailed({reference, reason}) => [
-      Update(reference, state => {
-        ...state,
-        outcome: Failed,
-        detail: reason,
-        settledAt: Some(meta.time),
-      }),
+      Update(
+        reference,
+        state => {
+          ...state,
+          outcome: Failed,
+          detail: reason,
+          settledAt: Some(meta.time),
+        },
+      ),
     ]
   }

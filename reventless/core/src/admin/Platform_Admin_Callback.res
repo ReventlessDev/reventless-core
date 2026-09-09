@@ -20,7 +20,7 @@ module Make = (Spec: Spec): T => {
             Effect.promise(() => handleEvent(eventJson', Spec.pluginDefinition))
           ),
           {"concurrency": "unbounded"},
-        )->Effect.map(_ => ())
+        )->Effect.map(_ => ()),
       )
     )
     ->Stream.runDrain

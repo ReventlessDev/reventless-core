@@ -73,12 +73,12 @@ let rec schemasAreCompatible = (a: S.t<unknown>, b: S.t<unknown>): bool =>
     let at = av->Array.map(v => v.tagName)->Array.toSorted(String.compare)
     let bt = bv->Array.map(v => v.tagName)->Array.toSorted(String.compare)
     at == bt &&
-    at->Array.every(tag =>
-      switch (av->Array.find(v => v.tagName == tag), bv->Array.find(v => v.tagName == tag)) {
-      | (Some(x), Some(y)) => propsCompatible(x.fields, y.fields)
-      | _ => false
-      }
-    )
+      at->Array.every(tag =>
+        switch (av->Array.find(v => v.tagName == tag), bv->Array.find(v => v.tagName == tag)) {
+        | (Some(x), Some(y)) => propsCompatible(x.fields, y.fields)
+        | _ => false
+        }
+      )
   | _ => false
   }
 // Two property maps are compatible when they carry the same field names and each
@@ -87,12 +87,12 @@ and propsCompatible = (aProps: dict<S.t<unknown>>, bProps: dict<S.t<unknown>>): 
   let aKeys = aProps->Dict.keysToArray->Array.toSorted(String.compare)
   let bKeys = bProps->Dict.keysToArray->Array.toSorted(String.compare)
   aKeys == bKeys &&
-  aKeys->Array.every(k =>
-    switch (aProps->Dict.get(k), bProps->Dict.get(k)) {
-    | (Some(av), Some(bv)) => schemasAreCompatible(av, bv)
-    | _ => false
-    }
-  )
+    aKeys->Array.every(k =>
+      switch (aProps->Dict.get(k), bProps->Dict.get(k)) {
+      | (Some(av), Some(bv)) => schemasAreCompatible(av, bv)
+      | _ => false
+      }
+    )
 }
 
 // Get a human-readable type name for a schema
@@ -185,26 +185,27 @@ let validateCompositeReads = (
       ->Array.forEach(cmdKeys => {
         let querySet = dedupeKeys(cmdKeys)
         if querySet->Array.length >= 2 {
-          consumedTypes->Array.forEach(consumedType =>
-            switch producedTagKeys->Dict.get(consumedType) {
-            | None => ()
-            | Some(producedKeys) =>
-              let producedSet = dedupeKeys(producedKeys)
-              let isSuperset = querySet->Array.every(k => producedSet->Array.includes(k))
-              if isSuperset && producedSet->Array.length > querySet->Array.length {
-                let extra = producedSet->Array.filter(k => !(querySet->Array.includes(k)))
-                let _ = warnings->Array.push({
-                  sliceName,
-                  message: `composite read on tags [${querySet->Array.join(
-                      ", ",
-                    )}] will silently miss '${consumedType}', which also carries [${extra->Array.join(
-                      ", ",
-                    )}] — the tag_composite key includes ALL of an event's tags, so a composite query matches only events tagged exactly [${querySet->Array.join(
-                      ", ",
-                    )}]. Align the event's tag set with the query, or read '${consumedType}' via a single-tag clause.`,
-                })
-              }
-            }
+          consumedTypes->Array.forEach(
+            consumedType =>
+              switch producedTagKeys->Dict.get(consumedType) {
+              | None => ()
+              | Some(producedKeys) =>
+                let producedSet = dedupeKeys(producedKeys)
+                let isSuperset = querySet->Array.every(k => producedSet->Array.includes(k))
+                if isSuperset && producedSet->Array.length > querySet->Array.length {
+                  let extra = producedSet->Array.filter(k => !(querySet->Array.includes(k)))
+                  let _ = warnings->Array.push({
+                    sliceName,
+                    message: `composite read on tags [${querySet->Array.join(
+                        ", ",
+                      )}] will silently miss '${consumedType}', which also carries [${extra->Array.join(
+                        ", ",
+                      )}] — the tag_composite key includes ALL of an event's tags, so a composite query matches only events tagged exactly [${querySet->Array.join(
+                        ", ",
+                      )}]. Align the event's tag set with the query, or read '${consumedType}' via a single-tag clause.`,
+                  })
+                }
+              },
           )
         }
       })
@@ -231,7 +232,9 @@ let validateProducedAndConsumed = (
 
   // Rule 1: Payload equivalence across producers
   // All producers of the same TAG must have identical fields, types, and tag annotations
-  producerMap->Dict.toArray->Array.forEach(((tagName, entries)) => {
+  producerMap
+  ->Dict.toArray
+  ->Array.forEach(((tagName, entries)) => {
     if entries->Array.length > 1 {
       let first = entries->Array.getUnsafe(0)
       let firstFields = first.variant.fields->Dict.keysToArray->Array.toSorted(String.compare)
@@ -243,70 +246,85 @@ let validateProducedAndConsumed = (
           let entryTagged = entry.variant.taggedFields->Array.toSorted(String.compare)
 
           // Check field names match
-          if firstFields->Array.length != entryFields->Array.length ||
-            firstFields->Array.some(f => !(entryFields->Array.includes(f))) {
-            let missingInEntry =
-              firstFields->Array.filter(f => !(entryFields->Array.includes(f)))
-            let extraInEntry =
-              entryFields->Array.filter(f => !(firstFields->Array.includes(f)))
+          if (
+            firstFields->Array.length != entryFields->Array.length ||
+              firstFields->Array.some(f => !(entryFields->Array.includes(f)))
+          ) {
+            let missingInEntry = firstFields->Array.filter(f => !(entryFields->Array.includes(f)))
+            let extraInEntry = entryFields->Array.filter(f => !(firstFields->Array.includes(f)))
             let parts = []
             if missingInEntry->Array.length > 0 {
               let _ =
                 parts->Array.push(
-                  `'${first.sliceName}' has fields [${missingInEntry->Array.join(", ")}] which '${entry.sliceName}' is missing`,
+                  `'${first.sliceName}' has fields [${missingInEntry->Array.join(
+                      ", ",
+                    )}] which '${entry.sliceName}' is missing`,
                 )
             }
             if extraInEntry->Array.length > 0 {
               let _ =
                 parts->Array.push(
-                  `'${entry.sliceName}' has fields [${extraInEntry->Array.join(", ")}] which '${first.sliceName}' is missing`,
+                  `'${entry.sliceName}' has fields [${extraInEntry->Array.join(
+                      ", ",
+                    )}] which '${first.sliceName}' is missing`,
                 )
             }
-            let _ =
-              errors->Array.push({
-                sliceName: entry.sliceName,
-                message: `Producers '${first.sliceName}' and '${entry.sliceName}' both produce '${tagName}' but with different fields: ${parts->Array.join("; ")}`,
-              })
+            let _ = errors->Array.push({
+              sliceName: entry.sliceName,
+              message: `Producers '${first.sliceName}' and '${entry.sliceName}' both produce '${tagName}' but with different fields: ${parts->Array.join(
+                  "; ",
+                )}`,
+            })
           } else {
             // Fields match by name — check types are compatible
-            firstFields->Array.forEach(fieldName => {
-              let firstSchema = first.variant.fields->Dict.getUnsafe(fieldName)
-              let entrySchema = entry.variant.fields->Dict.getUnsafe(fieldName)
-              if !schemasAreCompatible(firstSchema, entrySchema) {
-                let _ =
-                  errors->Array.push({
+            firstFields->Array.forEach(
+              fieldName => {
+                let firstSchema = first.variant.fields->Dict.getUnsafe(fieldName)
+                let entrySchema = entry.variant.fields->Dict.getUnsafe(fieldName)
+                if !schemasAreCompatible(firstSchema, entrySchema) {
+                  let _ = errors->Array.push({
                     sliceName: entry.sliceName,
-                    message: `Producers '${first.sliceName}' and '${entry.sliceName}' both produce '${tagName}' but field '${fieldName}' has type '${schemaTypeName(firstSchema)}' in '${first.sliceName}' and '${schemaTypeName(entrySchema)}' in '${entry.sliceName}'`,
+                    message: `Producers '${first.sliceName}' and '${entry.sliceName}' both produce '${tagName}' but field '${fieldName}' has type '${schemaTypeName(
+                        firstSchema,
+                      )}' in '${first.sliceName}' and '${schemaTypeName(
+                        entrySchema,
+                      )}' in '${entry.sliceName}'`,
                   })
-              }
-            })
+                }
+              },
+            )
           }
 
           // Check tag annotations match
-          if firstTagged->Array.length != entryTagged->Array.length ||
-            firstTagged->Array.some(f => !(entryTagged->Array.includes(f))) {
-            let untaggedInEntry =
-              firstTagged->Array.filter(f => !(entryTagged->Array.includes(f)))
-            let untaggedInFirst =
-              entryTagged->Array.filter(f => !(firstTagged->Array.includes(f)))
+          if (
+            firstTagged->Array.length != entryTagged->Array.length ||
+              firstTagged->Array.some(f => !(entryTagged->Array.includes(f)))
+          ) {
+            let untaggedInEntry = firstTagged->Array.filter(f => !(entryTagged->Array.includes(f)))
+            let untaggedInFirst = entryTagged->Array.filter(f => !(firstTagged->Array.includes(f)))
             let parts = []
             if untaggedInEntry->Array.length > 0 {
               let _ =
                 parts->Array.push(
-                  `[${untaggedInEntry->Array.join(", ")}] tagged in '${first.sliceName}' but not in '${entry.sliceName}'`,
+                  `[${untaggedInEntry->Array.join(
+                      ", ",
+                    )}] tagged in '${first.sliceName}' but not in '${entry.sliceName}'`,
                 )
             }
             if untaggedInFirst->Array.length > 0 {
               let _ =
                 parts->Array.push(
-                  `[${untaggedInFirst->Array.join(", ")}] tagged in '${entry.sliceName}' but not in '${first.sliceName}'`,
+                  `[${untaggedInFirst->Array.join(
+                      ", ",
+                    )}] tagged in '${entry.sliceName}' but not in '${first.sliceName}'`,
                 )
             }
-            let _ =
-              errors->Array.push({
-                sliceName: entry.sliceName,
-                message: `Producers '${first.sliceName}' and '${entry.sliceName}' both produce '${tagName}' but tag annotations differ: ${parts->Array.join("; ")}`,
-              })
+            let _ = errors->Array.push({
+              sliceName: entry.sliceName,
+              message: `Producers '${first.sliceName}' and '${entry.sliceName}' both produce '${tagName}' but tag annotations differ: ${parts->Array.join(
+                  "; ",
+                )}`,
+            })
           }
         }
       })
@@ -321,35 +339,42 @@ let validateProducedAndConsumed = (
     variants->Array.forEach(variant => {
       switch producerMap->Dict.get(variant.tagName) {
       | None =>
-        let _ =
-          errors->Array.push({
-            sliceName,
-            message: `Slice '${sliceName}' consumes '${variant.tagName}' but no slice produces it`,
-          })
+        let _ = errors->Array.push({
+          sliceName,
+          message: `Slice '${sliceName}' consumes '${variant.tagName}' but no slice produces it`,
+        })
       | Some(producers) =>
         // Use first producer as the authoritative shape (Rule 1 ensures they're all identical)
         let producer = producers->Array.getUnsafe(0)
 
         // Skip field checks for payload-less consumed variants
         if !isPayloadLess(variant) {
-          variant.fields->Dict.toArray->Array.forEach(((fieldName, consumedFieldSchema)) => {
-            switch producer.variant.fields->Dict.get(fieldName) {
-            | None =>
-              let _ =
-                errors->Array.push({
+          variant.fields
+          ->Dict.toArray
+          ->Array.forEach(
+            ((fieldName, consumedFieldSchema)) => {
+              switch producer.variant.fields->Dict.get(fieldName) {
+              | None =>
+                let _ = errors->Array.push({
                   sliceName,
-                  message: `Slice '${sliceName}' consumes '${variant.tagName}.${fieldName}' (${schemaTypeName(consumedFieldSchema)}) but produced '${variant.tagName}' has no field '${fieldName}'`,
+                  message: `Slice '${sliceName}' consumes '${variant.tagName}.${fieldName}' (${schemaTypeName(
+                      consumedFieldSchema,
+                    )}) but produced '${variant.tagName}' has no field '${fieldName}'`,
                 })
-            | Some(producedFieldSchema) =>
-              if !schemasAreCompatible(consumedFieldSchema, producedFieldSchema) {
-                let _ =
-                  errors->Array.push({
+              | Some(producedFieldSchema) =>
+                if !schemasAreCompatible(consumedFieldSchema, producedFieldSchema) {
+                  let _ = errors->Array.push({
                     sliceName,
-                    message: `Slice '${sliceName}' consumes '${variant.tagName}.${fieldName}' as ${describeSchema(consumedFieldSchema)} but producer '${producer.sliceName}' declares it as ${describeSchema(producedFieldSchema)}`,
+                    message: `Slice '${sliceName}' consumes '${variant.tagName}.${fieldName}' as ${describeSchema(
+                        consumedFieldSchema,
+                      )} but producer '${producer.sliceName}' declares it as ${describeSchema(
+                        producedFieldSchema,
+                      )}`,
                   })
+                }
               }
-            }
-          })
+            },
+          )
         }
       }
     })
@@ -375,9 +400,9 @@ one warning per producer that carries a key some *other* producer declared
 
 @param producers `(sliceName, producedEventSchema)` per producing slice.
 */
-let validateCrossPartitionScope = (
-  ~producers: array<(string, S.t<unknown>)>,
-): array<validationError> => {
+let validateCrossPartitionScope = (~producers: array<(string, S.t<unknown>)>): array<
+  validationError,
+> => {
   let perProducer = producers->Array.map(((name, schema)) => {
     let cpSet = Set.make()
     DcbTag.extractCrossPartitionTagKeys(schema)->Array.forEach(k => cpSet->Set.add(k))

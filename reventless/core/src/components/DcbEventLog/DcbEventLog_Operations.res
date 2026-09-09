@@ -35,12 +35,13 @@ module Make = (Ops: Ops): T => {
     | None => Message.generateMeta(~service=serviceName)
     }
 
-    let rawEventsJson = rawEvents->Array.map(rawEvent =>
-      Message.combineMessage(
-        rawEvent.eventType,
-        rawEvent.data->JSON.Decode.object->Option.getOr(Dict.make()),
+    let rawEventsJson =
+      rawEvents->Array.map(rawEvent =>
+        Message.combineMessage(
+          rawEvent.eventType,
+          rawEvent.data->JSON.Decode.object->Option.getOr(Dict.make()),
+        )
       )
-    )
 
     // Run beforePublish hook — if it throws, log the error and publish original events.
     let finalRawEventsJson = switch EventPublish_Callback.beforePublishHook.contents {
@@ -75,13 +76,15 @@ module Make = (Ops: Ops): T => {
     let recordedAt = Message.nowAsISOString()
     let _ = await Array.zip(rawEvents, finalRawEventsJson)
     ->Array.map(async ((rawEvent, eventJson)) => {
-      let entityId =
-        rawEvent.tags->Array.get(0)->Option.map(t => t.value)->Option.getOr(name)
+      let entityId = rawEvent.tags->Array.get(0)->Option.map(t => t.value)->Option.getOr(name)
       let eventJson' = Message.composeEventJson'(entityId, rawEvent.meta, ~recordedAt, eventJson)
       try await Ops.publishJson(serviceName, rawEvent.meta, eventJson') catch {
       | JsExn(err) =>
         let errMsg = err->JsExn.message->Option.getOr("unknown")
-        EffectLogger.logError(~comp=`DcbEventLog(${name})`, `EventTopic.publish Error: ${errMsg}`)->Effect.runSync
+        EffectLogger.logError(
+          ~comp=`DcbEventLog(${name})`,
+          `EventTopic.publish Error: ${errMsg}`,
+        )->Effect.runSync
       }
     })
     ->Promise.all
@@ -114,10 +117,7 @@ module Make = (Ops: Ops): T => {
     }
   }
 
-  let append: DcbEventLog.append = async (
-    rawEvents,
-    ~condition=?,
-  ) => {
+  let append: DcbEventLog.append = async (rawEvents, ~condition=?) => {
     // Normalise `meta.service` to the DcbEventLog's serviceName on every event
     // before BOTH storage append and SNS publish. EventCollector dispatch (via
     // Plugin_Callback.handleJsonEvents) keys on `meta.service`, and the catalog
@@ -140,10 +140,7 @@ module Make = (Ops: Ops): T => {
     }
   }
 
-  let read: DcbEventLog.read = async (
-    ~query,
-    ~after=?,
-  ) => {
+  let read: DcbEventLog.read = async (~query, ~after=?) => {
     let rawResult = await Ops.storage.read(~query, ~after?)
     // Adapter rawSequencedEvent is structurally identical to infra rawSequencedEvent
     let events: array<DcbEventLog.rawSequencedEvent> = rawResult.events->Obj.magic
@@ -155,14 +152,16 @@ module Make = (Ops: Ops): T => {
   }
 
   let readStream: DcbEventLog.readStream = (~query, ~after=?, ~strongConsistency=?) =>
-    Ops.storage.readStream(~query, ~after?, ~strongConsistency?)->Stream.map(raw => (raw->Obj.magic: DcbEventLog.rawSequencedEvent))
+    Ops.storage.readStream(~query, ~after?, ~strongConsistency?)->Stream.map((
+      raw
+    ): DcbEventLog.rawSequencedEvent => raw->Obj.magic)
 
   // Streaming append — collects the stream into an array, then makes a single
   // storage.append call to preserve atomicity of the condition check.
   // Does not publish to EventTopic (use case: migration / bulk seeding).
   let appendStream: DcbEventLog.appendStream = (stream, ~condition=?) =>
     stream
-    ->Stream.map(rawEvent => (rawEvent->Obj.magic: DcbEventLog_Adapter.rawStoredEvent))
+    ->Stream.map((rawEvent): DcbEventLog_Adapter.rawStoredEvent => rawEvent->Obj.magic)
     ->Stream.runCollect
     ->Effect.flatMap(rawEvents => Effect.promise(() => Ops.storage.append(rawEvents, ~condition?)))
 }

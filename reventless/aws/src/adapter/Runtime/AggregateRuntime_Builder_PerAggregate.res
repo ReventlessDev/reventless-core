@@ -21,10 +21,7 @@ let registerAggregate = (
   ~behaviorModulePath,
   ~eventLogTableName,
 ) =>
-  aggregateInfos->Dict.set(
-    aggregateName,
-    {specModulePath, behaviorModulePath, eventLogTableName},
-  )
+  aggregateInfos->Dict.set(aggregateName, {specModulePath, behaviorModulePath, eventLogTableName})
 
 type storedSpec = {
   aggregateName: string,
@@ -63,44 +60,30 @@ let forCommandGenerator: ReventlessCore.Runtime.forComponent<
   ReventlessCore.CommandGenerator.effectEventHandler<context>,
   runtimeParts,
   ReventlessCore.CommandGenerator.component,
-> = (
-  ~handler as _,
-  ~connect,
-  ~memorySize=1024,
-  ~timeout=30,
-  commandGenerator,
-) => {
+> = (~handler as _, ~connect, ~memorySize=1024, ~timeout=30, commandGenerator) => {
   let resource = commandGenerator->ReventlessCore.Component.toPulumiResource
   switch resource.parent {
   | Some(aggregateResource) =>
     let aggregateName = aggregateResource.name->Option.getOr("Unnamed")
     let spec = getStoredSpec(aggregateName, aggregateResource)
-    storedSpecs->Dict.set(aggregateName, {
-      ...spec,
-      connects: spec.connects->Array.concat([connect]),
-      memorySize: Math.Int.max(spec.memorySize, memorySize),
-      timeout: Math.Int.max(spec.timeout, timeout),
-    })
+    storedSpecs->Dict.set(
+      aggregateName,
+      {
+        ...spec,
+        connects: spec.connects->Array.concat([connect]),
+        memorySize: Math.Int.max(spec.memorySize, memorySize),
+        timeout: Math.Int.max(spec.timeout, timeout),
+      },
+    )
   | None => ()
   }
 }
 
 let forCommandTopic: ReventlessCore.Runtime.forComponent<
-  ReventlessCore.Runtime.effectHandler<
-    CommandTopicChannel.callbackEvent,
-    context,
-    unit,
-    string,
-  >,
+  ReventlessCore.Runtime.effectHandler<CommandTopicChannel.callbackEvent, context, unit, string>,
   runtimeParts,
   ReventlessCore.CommandTopic.component<'op>,
-> = (
-  ~handler as _,
-  ~connect,
-  ~memorySize=1024,
-  ~timeout=30,
-  commandTopic,
-) => {
+> = (~handler as _, ~connect, ~memorySize=1024, ~timeout=30, commandTopic) => {
   let commandTopicResource = commandTopic->ReventlessCore.Component.toPulumiResource
   switch commandTopicResource.parent {
   | Some(aggregateResource) =>
@@ -110,14 +93,17 @@ let forCommandTopic: ReventlessCore.Runtime.forComponent<
     let queue = channelParts.queue
 
     let spec = getStoredSpec(aggregateName, aggregateResource)
-    storedSpecs->Dict.set(aggregateName, {
-      ...spec,
-      queueUrl: queue.id,
-      queueArn: queue.arn,
-      connects: spec.connects->Array.concat([connect]),
-      memorySize: Math.Int.max(spec.memorySize, memorySize),
-      timeout: Math.Int.max(spec.timeout, timeout),
-    })
+    storedSpecs->Dict.set(
+      aggregateName,
+      {
+        ...spec,
+        queueUrl: queue.id,
+        queueArn: queue.arn,
+        connects: spec.connects->Array.concat([connect]),
+        memorySize: Math.Int.max(spec.memorySize, memorySize),
+        timeout: Math.Int.max(spec.timeout, timeout),
+      },
+    )
   | None =>
     let name = commandTopicResource.name->Option.getOr("Unnamed")
     JsError.throwWithMessage(
@@ -127,33 +113,24 @@ let forCommandTopic: ReventlessCore.Runtime.forComponent<
 }
 
 let forEventCollector: ReventlessCore.Runtime.forEventCollector<
-  ReventlessCore.Runtime.effectHandler<
-    EventCollectorChannel.callbackEvent,
-    context,
-    unit,
-    string,
-  >,
+  ReventlessCore.Runtime.effectHandler<EventCollectorChannel.callbackEvent, context, unit, string>,
   ReventlessCore.EventCollector.component,
-> = (
-  ~handler as _,
-  ~eventTopics,
-  ~resources,
-  ~memorySize=1024,
-  ~timeout=30,
-  eventCollector,
-) => {
+> = (~handler as _, ~eventTopics, ~resources, ~memorySize=1024, ~timeout=30, eventCollector) => {
   let eventCollectorResource = eventCollector->ReventlessCore.Component.toPulumiResource
   let channel = eventCollector->ReventlessCore.EventCollector_Adapter.channel
   switch eventCollectorResource.parent->Option.flatMap(parent => parent.parent) {
   | Some(aggregateResource) =>
     let aggregateName = aggregateResource.name->Option.getOr("Unnamed")
     let spec = getStoredSpec(aggregateName, aggregateResource)
-    storedSpecs->Dict.set(aggregateName, {
-      ...spec,
-      eventCollectorChannelSpec: Some({channel, eventTopics, resources}),
-      memorySize: Math.Int.max(spec.memorySize, memorySize),
-      timeout: Math.Int.max(spec.timeout, timeout),
-    })
+    storedSpecs->Dict.set(
+      aggregateName,
+      {
+        ...spec,
+        eventCollectorChannelSpec: Some({channel, eventTopics, resources}),
+        memorySize: Math.Int.max(spec.memorySize, memorySize),
+        timeout: Math.Int.max(spec.timeout, timeout),
+      },
+    )
   | None =>
     let name = eventCollectorResource.name->Option.getOr("Unnamed")
     JsError.throwWithMessage(
@@ -188,12 +165,10 @@ let finish = () =>
           let lambdaName = name ++ "CmdHandler"
 
           // Build HANDLER_CONFIG with single handler
-          let specModule =
-            info.specModulePath->JSON.stringifyAny->Option.getOr(`""`)
-          let behaviorModule =
-            info.behaviorModulePath->JSON.stringifyAny->Option.getOr(`""`)
+          let specModule = info.specModulePath->JSON.stringifyAny->Option.getOr(`""`)
+          let behaviorModule = info.behaviorModulePath->JSON.stringifyAny->Option.getOr(`""`)
 
-// `plugin` cannot be resolved inside the Lambda — LogPrefix's registry is a
+          // `plugin` cannot be resolved inside the Lambda — LogPrefix's registry is a
           // deploy-time structure, and the Lambda-name fallback yields nothing for a
           // shared or per-aggregate command handler. Resolve it here; the shell still
           // derives `comp` itself from the spec name.
@@ -201,8 +176,11 @@ let finish = () =>
             ~comp=`AggregateRuntime(${spec.aggregateName})`,
           )
           let handlerConfigOutput =
-            Pulumi.Output.all3((info.eventLogTableName, spec.queueUrl, spec.queueArn))
-            ->Pulumi.Output.apply(((table, queueUrl, queueArn)) =>
+            Pulumi.Output.all3((
+              info.eventLogTableName,
+              spec.queueUrl,
+              spec.queueArn,
+            ))->Pulumi.Output.apply(((table, queueUrl, queueArn)) =>
               `{"handlers":[{"specModule":${specModule},"behaviorModule":${behaviorModule},"eventLogTable":"${table}","queueUrl":"${queueUrl}","queueArn":"${queueArn}"${pluginFragment}}]}`
             )
 
@@ -236,8 +214,7 @@ let finish = () =>
 
           spec.connects->Array.forEach(connect => connect(~runtime))
 
-          let channelSpecs =
-            spec.eventCollectorChannelSpec->Option.mapOr([], cs => [cs])
+          let channelSpecs = spec.eventCollectorChannelSpec->Option.mapOr([], cs => [cs])
           let _connectResources = EventCollectorChannel.connect(
             ~name,
             ~channelSpecs,

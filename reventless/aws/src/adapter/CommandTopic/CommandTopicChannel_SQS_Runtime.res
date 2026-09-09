@@ -25,22 +25,21 @@ let handleQueueEvent = (
     ->Effect.flatMap(results => {
       let deleteEntries =
         results
-        ->Array.mapWithIndex(
-          (result, idx) =>
-            switch result {
-            | Ok(reference) =>
-              let deleteMessageBatchEntry: AwsSdk.SQS.DeleteMessageBatchCommand.deleteMessageBatchEntry = {
-                id: idx->Int.toString,
-                receiptHandle: reference,
-              }
-              deleteMessageBatchEntry->Some
-            | Error(reference) =>
-              ReventlessCore.EffectLogger.logError(
-                ~comp=__MODULE__,
-                "handleQueueEvent: Couldn't handle command with ReceiptHandle: " ++ reference,
-              )->Effect.runSync
-              None
-            },
+        ->Array.mapWithIndex((result, idx) =>
+          switch result {
+          | Ok(reference) =>
+            let deleteMessageBatchEntry: AwsSdk.SQS.DeleteMessageBatchCommand.deleteMessageBatchEntry = {
+              id: idx->Int.toString,
+              receiptHandle: reference,
+            }
+            deleteMessageBatchEntry->Some
+          | Error(reference) =>
+            ReventlessCore.EffectLogger.logError(
+              ~comp=__MODULE__,
+              "handleQueueEvent: Couldn't handle command with ReceiptHandle: " ++ reference,
+            )->Effect.runSync
+            None
+          }
         )
         ->Array.filterMap(x => x)
 
@@ -48,7 +47,12 @@ let handleQueueEvent = (
       | [] => Effect.succeed()
       | entries =>
         Util.SQS_Runtime.deleteMessages(entries, queue)
-        ->Effect.tap(_ => ReventlessCore.EffectLogger.logInfo(~comp=__MODULE__, "handleQueueEvent: Deleted all commands from queue"))
+        ->Effect.tap(_ =>
+          ReventlessCore.EffectLogger.logInfo(
+            ~comp=__MODULE__,
+            "handleQueueEvent: Deleted all commands from queue",
+          )
+        )
         ->Effect.catchAll(errorMsg =>
           ReventlessCore.EffectLogger.logError(
             ~comp=__MODULE__,
@@ -63,7 +67,9 @@ let publishJsons = (queue, queueService) =>
   async jsons =>
     switch jsons->Array.length {
     | 0 =>
-      ReventlessCore.EffectLogger.logInfo(~comp=__MODULE__, "publishJsons: No commands to send")->Effect.runPromise->ignore
+      ReventlessCore.EffectLogger.logInfo(~comp=__MODULE__, "publishJsons: No commands to send")
+      ->Effect.runPromise
+      ->ignore
     | 1 =>
       await queue->Util_SQS_Runtime.send(queueService, jsons->Array.getUnsafe(0))->Effect.runPromise
     | _ =>

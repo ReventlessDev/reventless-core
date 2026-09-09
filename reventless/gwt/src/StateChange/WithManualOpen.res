@@ -8,16 +8,13 @@
 let name = "WithManualOpen"
 
 @schema
-type consumedEvent =
-  | CategoryAdded
+type consumedEvent = CategoryAdded
 
 @schema
-type command =
-  AddCategory({categoryId: @s.matches(Reventless.DcbTag.string) string, name: string})
+type command = AddCategory({categoryId: @s.matches(Reventless.DcbTag.string) string, name: string})
 
 @schema
 type error = CategoryAlreadyExists
 
 @schema
-type event =
-  CategoryAdded({categoryId: @s.matches(Reventless.DcbTag.string) string, name: string})
+type event = CategoryAdded({categoryId: @s.matches(Reventless.DcbTag.string) string, name: string})

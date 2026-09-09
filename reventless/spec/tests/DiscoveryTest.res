@@ -43,17 +43,37 @@ describe("Discovery.chapterOf", () => {
 
 describe("Discovery.chaptersByStem", () => {
   let files: array<D.discoveredFile> = [
-    {stem: "Product", componentType: Aggregate, epGroup: None, relPath: "Product/Aggregate/Product.res"},
+    {
+      stem: "Product",
+      componentType: Aggregate,
+      epGroup: None,
+      relPath: "Product/Aggregate/Product.res",
+    },
     {
       stem: "Product_Behavior",
       componentType: Aggregate,
       epGroup: None,
       relPath: "Product/Aggregate/Product_Behavior.res",
     },
-    {stem: "Products", componentType: ReadModel, epGroup: None, relPath: "Product/ReadModel/Products.res"},
-    {stem: "Category", componentType: Aggregate, epGroup: None, relPath: "Category/Aggregate/Category.res"},
+    {
+      stem: "Products",
+      componentType: ReadModel,
+      epGroup: None,
+      relPath: "Product/ReadModel/Products.res",
+    },
+    {
+      stem: "Category",
+      componentType: Aggregate,
+      epGroup: None,
+      relPath: "Category/Aggregate/Category.res",
+    },
     // Directly under a kind folder — no chapter, excluded from the map.
-    {stem: "ImportProducts", componentType: Task, epGroup: None, relPath: "Task/ImportProducts.res"},
+    {
+      stem: "ImportProducts",
+      componentType: Task,
+      epGroup: None,
+      relPath: "Task/ImportProducts.res",
+    },
   ]
 
   testSync("maps every chaptered stem (incl. body files) to its chapter, sorted by stem", () =>

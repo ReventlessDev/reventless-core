@@ -44,12 +44,10 @@ let isUniqueViolation = (exn: exn): bool => {
 
 // Builds the classic runtime op set bound to `pool`. Returns `(name, ops)`; the
 // deploy-time `EventLog_Adapter` wrapper lives in `EventLogStorage_Postgres`.
-let makeOps = (
-  ~pool: PgDriver.pool,
-  ~name: string,
-  ~opts as _,
-  ~onAppended=noTracking,
-): (string, EventLog_Adapter.operations) => {
+let makeOps = (~pool: PgDriver.pool, ~name: string, ~opts as _, ~onAppended=noTracking): (
+  string,
+  EventLog_Adapter.operations,
+) => {
   let appendTracked = async (~track, seqNr: int, id: string, jsons: array<JSON.t>) => {
     // Empty append is a legitimate no-op (at-least-once retries, idempotent
     // commands), NOT a conflict — return before the guarded insert whose 0-row
@@ -95,7 +93,10 @@ let makeOps = (
           ? Error(EventLog.Conflict)
           : Error(
               EventLog.StorageFailure(
-                exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("storage error"),
+                exn
+                ->JsExn.fromException
+                ->Option.flatMap(JsExn.message)
+                ->Option.getOr("storage error"),
               ),
             )
       }
@@ -106,12 +107,14 @@ let makeOps = (
     appendTracked(~track=true, seqNr, id, jsons)
 
   let replayArray = async (id: string, ~fromSeq=0): array<JSON.t> =>
-    (await pool->PgDriver.query(
-      "SELECT payload FROM event_log
+    (
+      await pool->PgDriver.query(
+        "SELECT payload FROM event_log
         WHERE log_name = $1 AND aggregate_id = $2 AND seq_nr >= $3::bigint
         ORDER BY seq_nr ASC",
-      [JSON.Encode.string(name), JSON.Encode.string(id), JSON.Encode.int(fromSeq)],
-    ))->Array.map(decodePayload)
+        [JSON.Encode.string(name), JSON.Encode.string(id), JSON.Encode.int(fromSeq)],
+      )
+    )->Array.map(decodePayload)
 
   let replay: EventLog.replay<string, JSON.t> = id => replayArray(id)
 
@@ -152,14 +155,21 @@ let makeOps = (
       Ok()
     } catch {
     | exn =>
-      Error(exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("snapshot write error"))
+      Error(
+        exn
+        ->JsExn.fromException
+        ->Option.flatMap(JsExn.message)
+        ->Option.getOr("snapshot write error"),
+      )
     }
 
   let appendStream: EventLog.appendStream<string, JSON.t> = (startingSeqNr, id, stream) =>
     stream
     ->Stream.runCollect
     ->Effect.flatMap(jsons =>
-      Effect.promise(() => appendTracked(~track=false, startingSeqNr, id, jsons))->Effect.flatMap(result =>
+      Effect.promise(() =>
+        appendTracked(~track=false, startingSeqNr, id, jsons)
+      )->Effect.flatMap(result =>
         switch result {
         | Ok() => Effect.succeed()
         | Error(EventLog.Conflict) => Effect.fail("conflict")

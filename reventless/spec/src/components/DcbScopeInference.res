@@ -29,7 +29,6 @@ The three rules (over the representation):
    on `ProductAdded`) are payload ⇒ not indexed ⇒ the sibling-leak GSI write never
    happens.
 */
-
 /** A `*Id` / `*Ids`-shaped field, identified by name only (no schema, no tag flag). */
 type idField = {name: string, isList: bool}
 
@@ -210,15 +209,19 @@ let infer = (slices: array<sliceShape>): derived => {
           partitionBlockers(s)
           ->Array.map(((key, arms)) => `${arms->Array.join("/")} declares ${key}`)
           ->Array.join("; ")
-        let _ = ambiguities->Array.push((
-          s.sliceName,
-          `no own partition key — every produced *Id is read from a foreign producer (${blame}). If that field is this slice's own partition, remove it from the consumed arm; if the slice really is a pure join, add an explicit @partitionTag`,
-        ))
+        let _ =
+          ambiguities->Array.push((
+            s.sliceName,
+            `no own partition key — every produced *Id is read from a foreign producer (${blame}). If that field is this slice's own partition, remove it from the consumed arm; if the slice really is a pure join, add an explicit @partitionTag`,
+          ))
       | many =>
-        let _ = ambiguities->Array.push((
-          s.sliceName,
-          `multiple candidate partition keys (${many->Array.join(", ")}) — add an explicit @partitionTag`,
-        ))
+        let _ =
+          ambiguities->Array.push((
+            s.sliceName,
+            `multiple candidate partition keys (${many->Array.join(
+                ", ",
+              )}) — add an explicit @partitionTag`,
+          ))
       }
     }
   })
@@ -247,7 +250,9 @@ let infer = (slices: array<sliceShape>): derived => {
   slices->Array.forEach(s => {
     let own = partitionBySlice->Dict.get(s.sliceName)
     let scalar = commandScalarKeys(s)
-    s->consumedKeys->Array.forEach(k =>
+    s
+    ->consumedKeys
+    ->Array.forEach(k =>
       if ownedPartitionKeys->Set.has(k) && Some(k) != own && scalar->Array.includes(k) {
         crossKeys->Set.add(k)
       }
@@ -275,8 +280,7 @@ let infer = (slices: array<sliceShape>): derived => {
     let own = partitionBySlice->Dict.get(s.sliceName)
     s.produced->Array.forEach(e => {
       let readKeys = readKeysByEventType->Dict.get(e.eventType)->Option.getOr([])
-      let indexed =
-        e->keysOfEvent->Array.filter(k => Some(k) == own || readKeys->Array.includes(k))
+      let indexed = e->keysOfEvent->Array.filter(k => Some(k) == own || readKeys->Array.includes(k))
       tagKeysByEventType->Dict.set(e.eventType, dedupSorted(indexed))
     })
   })

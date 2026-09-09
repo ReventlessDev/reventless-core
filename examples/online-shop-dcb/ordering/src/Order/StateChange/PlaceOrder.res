@@ -12,7 +12,11 @@ type consumedEvent =
 @schema
 type command =
   // Multiple tagged fields — @partitionTag picks orderId as the storage partition.
-  PlaceOrder({@partitionTag orderId: string, customerId: string, @ref("AvailableProducts") productIds: array<string>})
+  | PlaceOrder({
+      @partitionTag orderId: string,
+      customerId: string,
+      @ref("AvailableProducts") productIds: array<string>,
+    })
 
 @schema
 type error =

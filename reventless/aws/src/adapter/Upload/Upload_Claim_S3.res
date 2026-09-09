@@ -127,8 +127,7 @@ let finish = (
     log.warn(
       ~comp="Upload_Claim",
       `event log(s) ${logs->Array.join(", ")} declare storage-ref fields but publish through an ` ++
-      `SNS event topic, which the claimer does not subscribe to — objects those events reference ` ++
-      `keep the pending tag. Do not enable a store's expiry rule while this is true.`,
+      `SNS event topic, which the claimer does not subscribe to — objects those events reference ` ++ `keep the pending tag. Do not enable a store's expiry rule while this is true.`,
     )
     unreachable->Dict.set(plugin, [])
   | _ => ()
@@ -161,8 +160,7 @@ let finish = (
       ->Pulumi.Output.all2
       ->Pulumi.Output.apply(((streamArns, stores)) => {
         open PolicyDocument
-        let objectArns =
-          stores->Array.map(s => `arn:aws:s3:::${s.bucketName}/${s.servedPrefix}/*`)
+        let objectArns = stores->Array.map(s => `arn:aws:s3:::${s.bucketName}/${s.servedPrefix}/*`)
         let _rolePolicy = IAM.RolePolicy.make(
           ~name=name ++ "Policy",
           ~args={
@@ -226,20 +224,19 @@ let finish = (
 
     // `UPLOAD_STORES` — the same qualified-name → {bucket, prefix} shape the
     // presign service reads, so mint and claim resolve a store identically.
-    let uploadStoresJson =
-      stores->Pulumi.Output.apply(stores =>
-        stores
-        ->Array.map(s => (
-          s.qualified,
-          Dict.fromArray([
-            ("bucket", JSON.Encode.string(s.bucketName)),
-            ("prefix", JSON.Encode.string(s.servedPrefix)),
-          ])->JSON.Encode.object,
-        ))
-        ->Dict.fromArray
-        ->JSON.Encode.object
-        ->JSON.stringify
-      )
+    let uploadStoresJson = stores->Pulumi.Output.apply(stores =>
+      stores
+      ->Array.map(s => (
+        s.qualified,
+        Dict.fromArray([
+          ("bucket", JSON.Encode.string(s.bucketName)),
+          ("prefix", JSON.Encode.string(s.servedPrefix)),
+        ])->JSON.Encode.object,
+      ))
+      ->Dict.fromArray
+      ->JSON.Encode.object
+      ->JSON.stringify
+    )
 
     // Compiled EntryPoint rather than a serialized closure, for the reason the
     // presign service is one: the handler reaches the AWS SDK v3 S3 client, and
@@ -359,8 +356,8 @@ let finish = (
         ->Pulumi.Output.asInput,
         treatMissingData: "notBreaching"->Pulumi.Input.make,
         alarmDescription: (`${name} is behind on committed events. While it is behind, objects an ` ++
-        `event already references still carry the pending tag — and a store with an expiry rule ` ++
-        `enabled will delete them.`)->Pulumi.Input.make,
+        `event already references still carry the pending tag — and a store with an expiry rule ` ++ `enabled will delete them.`)
+          ->Pulumi.Input.make,
         tags: AWS.Tags.make(
           ~name=name ++ "Lag",
           ~kind=ReventlessCore.ComponentType.Plugin,

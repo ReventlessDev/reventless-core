@@ -26,17 +26,18 @@ let variant = (~tag: string, fields: array<(string, S.t<unknown>)>): S.t<unknown
 
 let ref_ = (~store: string) => Reventless.StorageRef.forStore(~store)->S.castToUnknown
 
-let addCategory = S.union([
-  variant(~tag="CategoryAdded", [("imageUrl", ref_(~store="categoryImages"))]),
-])->S.castToUnknown
+let addCategory =
+  S.union([
+    variant(~tag="CategoryAdded", [("imageUrl", ref_(~store="categoryImages"))]),
+  ])->S.castToUnknown
 
-let addProduct = S.union([
-  variant(~tag="ProductAdded", [("imageUrl", ref_(~store="productImages"))]),
-])->S.castToUnknown
+let addProduct =
+  S.union([
+    variant(~tag="ProductAdded", [("imageUrl", ref_(~store="productImages"))]),
+  ])->S.castToUnknown
 
-let renameCategory = S.union([
-  variant(~tag="CategoryRenamed", [("name", S.string->S.castToUnknown)]),
-])->S.castToUnknown
+let renameCategory =
+  S.union([variant(~tag="CategoryRenamed", [("name", S.string->S.castToUnknown)])])->S.castToUnknown
 
 describe("Dcb_Builder.mergedEventSchema", () => {
   testSync("carries every slice's event types, not the first slice's", () => {
@@ -53,10 +54,9 @@ describe("Dcb_Builder.mergedEventSchema", () => {
   testSync("surfaces the ref fields of every slice that declares one", () => {
     let merged = [addCategory, addProduct, renameCategory]->Dcb_Builder.mergedEventSchema
     expect(
-      StorageRefFields.fromEventSchema(~plugin="Catalog", merged)->Array.map(e => (
-        e.eventType,
-        e.fields->Array.map(f => f.store),
-      )),
+      StorageRefFields.fromEventSchema(~plugin="Catalog", merged)->Array.map(
+        e => (e.eventType, e.fields->Array.map(f => f.store)),
+      ),
     )->toEqual([
       ("CategoryAdded", ["Catalog.categoryImages"]),
       ("ProductAdded", ["Catalog.productImages"]),

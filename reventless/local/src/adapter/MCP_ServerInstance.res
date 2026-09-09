@@ -26,9 +26,21 @@ type diagnostics = {
 }
 
 type t = {
-  registerTool: (~name: string, ~definition: ReventlessCore.MCP_SchemaGenerator.mcpToolDefinition, ~handler: toolHandler) => unit,
-  registerResource: (~name: string, ~definition: ReventlessCore.MCP_SchemaGenerator.mcpResourceDefinition, ~handler: resourceHandler) => unit,
-  registerResourceTemplate: (~name: string, ~definition: ReventlessCore.MCP_SchemaGenerator.mcpResourceDefinition, ~handler: resourceHandler) => unit,
+  registerTool: (
+    ~name: string,
+    ~definition: ReventlessCore.MCP_SchemaGenerator.mcpToolDefinition,
+    ~handler: toolHandler,
+  ) => unit,
+  registerResource: (
+    ~name: string,
+    ~definition: ReventlessCore.MCP_SchemaGenerator.mcpResourceDefinition,
+    ~handler: resourceHandler,
+  ) => unit,
+  registerResourceTemplate: (
+    ~name: string,
+    ~definition: ReventlessCore.MCP_SchemaGenerator.mcpResourceDefinition,
+    ~handler: resourceHandler,
+  ) => unit,
   registerToolsFromEntries: (
     ~pluginName: string,
     ~mutationEntries: array<ReventlessInfra.Api.mutationSchemaEntry>,
@@ -248,9 +260,7 @@ let make = (~label: string="MCP"): t => {
           }
           await handler(uri)
         | None => {
-            McpSdk.contents: [
-              {McpSdk.uri, text: `{"error": "Resource not found: ${uri}"}`},
-            ],
+            McpSdk.contents: [{McpSdk.uri, text: `{"error": "Resource not found: ${uri}"}`}],
           }
         }
       }
@@ -261,43 +271,45 @@ let make = (~label: string="MCP"): t => {
 
   let start = (~port: int=3001, ()) => {
     let httpServer = McpSdk.createHttpServer((req, res) => {
-      let _ = (async () => {
-        let reqMethod = req->McpSdk.method
-        let reqUrl = req->McpSdk.url
+      let _ = (
+        async () => {
+          let reqMethod = req->McpSdk.method
+          let reqUrl = req->McpSdk.url
 
-        res->McpSdk.setHeader("Access-Control-Allow-Origin", "*")
-        res->McpSdk.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
-        res->McpSdk.setHeader("Access-Control-Allow-Headers", "Content-Type")
+          res->McpSdk.setHeader("Access-Control-Allow-Origin", "*")
+          res->McpSdk.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
+          res->McpSdk.setHeader("Access-Control-Allow-Headers", "Content-Type")
 
-        if reqUrl == "/mcp" || reqUrl->String.startsWith("/mcp?") {
-          switch reqMethod {
-          | "OPTIONS" =>
-            res->McpSdk.setStatusCode(204)
-            res->McpSdk.endResponseNoBody
-          | "POST" =>
-            let body = await McpSdk_Helpers.parseJsonBody(req)
-            let identity = extractIdentity(req)
-            let server = createServerInstance(identity)
-            let transport = McpSdk.newStreamableHTTPTransport({
-              enableJsonResponse: true,
-            })
-            let _ = await server->McpSdk.connect(transport)
-            let _ = await transport->McpSdk.handleRequest(req, res, body)
-          | "GET" =>
-            res->McpSdk.setHeader("Content-Type", "text/plain")
-            res->McpSdk.endResponse(`${label} server running`)
-          | "DELETE" =>
-            res->McpSdk.setStatusCode(200)
-            res->McpSdk.endResponseNoBody
-          | _ =>
-            res->McpSdk.setStatusCode(405)
-            res->McpSdk.endResponse("Method not allowed")
+          if reqUrl == "/mcp" || reqUrl->String.startsWith("/mcp?") {
+            switch reqMethod {
+            | "OPTIONS" =>
+              res->McpSdk.setStatusCode(204)
+              res->McpSdk.endResponseNoBody
+            | "POST" =>
+              let body = await McpSdk_Helpers.parseJsonBody(req)
+              let identity = extractIdentity(req)
+              let server = createServerInstance(identity)
+              let transport = McpSdk.newStreamableHTTPTransport({
+                enableJsonResponse: true,
+              })
+              let _ = await server->McpSdk.connect(transport)
+              let _ = await transport->McpSdk.handleRequest(req, res, body)
+            | "GET" =>
+              res->McpSdk.setHeader("Content-Type", "text/plain")
+              res->McpSdk.endResponse(`${label} server running`)
+            | "DELETE" =>
+              res->McpSdk.setStatusCode(200)
+              res->McpSdk.endResponseNoBody
+            | _ =>
+              res->McpSdk.setStatusCode(405)
+              res->McpSdk.endResponse("Method not allowed")
+            }
+          } else {
+            res->McpSdk.setStatusCode(404)
+            res->McpSdk.endResponse("Not found")
           }
-        } else {
-          res->McpSdk.setStatusCode(404)
-          res->McpSdk.endResponse("Not found")
         }
-      })()
+      )()
     })
 
     httpServer->McpSdk.listen(port, () => {

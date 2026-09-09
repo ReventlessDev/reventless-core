@@ -25,8 +25,7 @@ let _outputsStore = _makeWeakMap()
 let _operationsStore = _makeWeakMap()
 
 /** Access the deploy-time outputs record for this component. */
-let outputs = (self: t<'component, 'outputs, 'operations>): 'outputs =>
-  _outputsStore->_get(self)
+let outputs = (self: t<'component, 'outputs, 'operations>): 'outputs => _outputsStore->_get(self)
 
 /**
 Access the deploy-time outputs wrapped in an `Output.t` (resolved asynchronously).

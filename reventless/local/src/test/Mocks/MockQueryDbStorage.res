@@ -28,8 +28,9 @@ module Make = (Bus: LocalBus.T) => {
       allItems.contents = store.contents->Dict.valuesToArray->Array.flatMap(v => v)
     }
 
-    let load: QueryDb.load<string, JSON.t> = async id =>
-      Ok(store.contents->Dict.get(id)->Option.getOr([]))
+    let load: QueryDb.load<string, JSON.t> = async id => Ok(
+      store.contents->Dict.get(id)->Option.getOr([]),
+    )
 
     let loadStream: QueryDb.loadStream<string, JSON.t> = id =>
       store.contents->Dict.get(id)->Option.getOr([])->Stream.fromIterable

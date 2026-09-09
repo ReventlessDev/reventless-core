@@ -178,8 +178,7 @@ let topLevelPrefixes = (~root: string): array<string> =>
   | _ => None
   } {
   | None => []
-  | Some(entries) =>
-    entries->Array.filter(NodeFs.isDirectory)->Array.map(NodeFs.direntName)
+  | Some(entries) => entries->Array.filter(NodeFs.isDirectory)->Array.map(NodeFs.direntName)
   }
 
 /** Deletes every object under `prefix`, returning how many were removed. Goes

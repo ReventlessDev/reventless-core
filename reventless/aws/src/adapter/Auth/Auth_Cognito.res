@@ -93,11 +93,8 @@ type authConfig = {
   region: string,
 }
 
-let authenticate = async (
-  ctx: ReventlessCore.Auth_Adapter.requestContext,
-): Identity.authResult => {
-  let token =
-    _getHeader(ctx.headers, "Authorization")->Option.flatMap(_bearerToken)
+let authenticate = async (ctx: ReventlessCore.Auth_Adapter.requestContext): Identity.authResult => {
+  let token = _getHeader(ctx.headers, "Authorization")->Option.flatMap(_bearerToken)
   switch token {
   | None => Anonymous
   | Some(t) =>
@@ -154,10 +151,7 @@ let fromAppSyncIdentity = (id: option<appSyncIdentity>): Identity.authResult =>
       let claims =
         rawClaims
         ->Dict.toArray
-        ->Array.map(((k, v)) => (
-          k,
-          v->JSON.Decode.string->Option.getOr(v->JSON.stringify),
-        ))
+        ->Array.map(((k, v)) => (k, v->JSON.Decode.string->Option.getOr(v->JSON.stringify)))
         ->Dict.fromArray
       Authenticated({
         userId: sub,

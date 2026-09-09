@@ -24,7 +24,8 @@ let make: ReventlessCore.QueryDb_Adapter.storageMaker<api, role> = (
   ~ttl as _=?,
   ~api as _,
   ~apiRole as _,
-  ~owner as _, ~opts as _,
+  ~owner as _,
+  ~opts as _,
 ) => {
   let operations = switch QueryDbBackend.get() {
   | Some({connectionConfig}) =>
@@ -33,7 +34,9 @@ let make: ReventlessCore.QueryDb_Adapter.storageMaker<api, role> = (
     )
   | None =>
     // Selectable only routes here when a selection is set; guard defensively.
-    JsError.throwWithMessage("QueryDbStorage_Postgres.make called without a QueryDbBackend selection")
+    JsError.throwWithMessage(
+      "QueryDbStorage_Postgres.make called without a QueryDbBackend selection",
+    )
   }
   {
     ReventlessCore.QueryDb_Adapter.resources: [],

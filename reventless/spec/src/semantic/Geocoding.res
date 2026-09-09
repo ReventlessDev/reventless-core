@@ -5,7 +5,6 @@ The transport is provider-specific and lives with its provider. What is here is
 provider-neutral: the shape of an answer, the two ways a lookup fails, and the
 confidence rule — decided once, so no transport invents its own.
 */
-
 /** One candidate a geocoder returned. */
 type candidate = {
   /** The provider's canonical rendering of the address it matched. */
@@ -19,10 +18,10 @@ type candidate = {
 /** Why a lookup produced no usable point. Two constructors because the retry
     decision turns on the distinction: an outage must not become a verdict. */
 type failure =
-  | /** The provider could not be reached, or refused the call. Retry. */
-  Unavailable(string)
-  | /** The provider answered, and had nothing for this text. Do not retry. */
-  NoMatch
+  /** The provider could not be reached, or refused the call. Retry. */
+  | Unavailable(string)
+  /** The provider answered, and had nothing for this text. Do not retry. */
+  | NoMatch
 
 /**
 The port a caller reaches a geocoder through, so swapping the implementation is a
@@ -51,11 +50,11 @@ let defaultAmbiguityMargin = 0.01
 type assessment =
   | Confident(candidate)
   | NoCandidates
-  | /** Unscored is not a low score, and must not read as a high one. */
-  Unscored(candidate)
+  /** Unscored is not a low score, and must not read as a high one. */
+  | Unscored(candidate)
   | LowRelevance({top: candidate, score: float, floor: float})
-  | /** Several matches about equally well. */
-  Ambiguous({top: candidate, runnerUp: candidate, margin: float})
+  /** Several matches about equally well. */
+  | Ambiguous({top: candidate, runnerUp: candidate, margin: float})
 
 /** The confidence rule, stated once. Everything else here derives from it. */
 let assess = (

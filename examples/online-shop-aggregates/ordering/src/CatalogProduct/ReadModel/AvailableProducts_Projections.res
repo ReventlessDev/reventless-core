@@ -9,10 +9,8 @@ module CatalogProductMapping = Mapping.Make(
     open CatalogProduct
     let project = ({event, id, _}) =>
       switch event {
-      | Synced({name, price}) =>
-        Set(id, {AvailableProducts.name: name, price})
-      | PriceUpdated({price}) =>
-        Update(id, state => {...state, price})
+      | Synced({name, price}) => Set(id, {AvailableProducts.name, price})
+      | PriceUpdated({price}) => Update(id, state => {...state, price})
       }
   },
 )

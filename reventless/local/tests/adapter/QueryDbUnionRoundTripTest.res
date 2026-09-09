@@ -76,11 +76,10 @@ describe("QueryDb round-trips a union field", () => {
     )
 
     // The stored row, as any read door would hand it back.
-    let stored =
-      await jsonOps.loadStream("c-1")
-      ->Stream.runCollect
-      ->Effect.catchAll(_ => Effect.succeed([]))
-      ->Effect.runPromise
+    let stored = await jsonOps.loadStream("c-1")
+    ->Stream.runCollect
+    ->Effect.catchAll(_ => Effect.succeed([]))
+    ->Effect.runPromise
     let typename =
       stored
       ->Array.get(0)
@@ -91,11 +90,10 @@ describe("QueryDb round-trips a union field", () => {
       ->Option.flatMap(JSON.Decode.string)
     expect(typename)->toEqual(Some("GeolocationLocated"))
 
-    let items =
-      await Ops.loadStream("c-1"->CustomersSpec.Id.makeFromString)
-      ->Stream.runCollect
-      ->Effect.catchAll(_ => Effect.succeed([]))
-      ->Effect.runPromise
+    let items = await Ops.loadStream("c-1"->CustomersSpec.Id.makeFromString)
+    ->Stream.runCollect
+    ->Effect.catchAll(_ => Effect.succeed([]))
+    ->Effect.runPromise
     switch items {
     | [{geolocation: Located({lat, lng})}] => expect((lat, lng))->toEqual((48.2082, 16.3738))
     | _ => expect("round trip")->toBe("Located with its point intact")

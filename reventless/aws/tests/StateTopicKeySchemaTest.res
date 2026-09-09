@@ -16,32 +16,35 @@ let capture = f =>
 
 describe("StateTopic_AppSync_Helpers.checkPartitionKeyName", () => {
   testSync("accepts the framework convention", () => {
-    let thrown = capture(() =>
-      StateTopic_AppSync_Helpers.checkPartitionKeyName(
-        ~tableName="PlatformUsageLedger-1a2b3c4",
-        ~partitionKeyName="id",
-      )
+    let thrown = capture(
+      () =>
+        StateTopic_AppSync_Helpers.checkPartitionKeyName(
+          ~tableName="PlatformUsageLedger-1a2b3c4",
+          ~partitionKeyName="id",
+        ),
     )
     expect(thrown)->toEqual(None)
   })
 
   testSync("rejects a table keyed on anything else", () => {
-    let thrown = capture(() =>
-      StateTopic_AppSync_Helpers.checkPartitionKeyName(
-        ~tableName="PlatformUsageLedger-1a2b3c4",
-        ~partitionKeyName="pluginId",
-      )
+    let thrown = capture(
+      () =>
+        StateTopic_AppSync_Helpers.checkPartitionKeyName(
+          ~tableName="PlatformUsageLedger-1a2b3c4",
+          ~partitionKeyName="pluginId",
+        ),
     )
     expect(thrown->Option.isSome)->toBe(true)
   })
 
   testSync("names the table and its actual key in the message", () => {
     let message =
-      capture(() =>
-        StateTopic_AppSync_Helpers.checkPartitionKeyName(
-          ~tableName="PlatformUsageLedger-1a2b3c4",
-          ~partitionKeyName="pluginId",
-        )
+      capture(
+        () =>
+          StateTopic_AppSync_Helpers.checkPartitionKeyName(
+            ~tableName="PlatformUsageLedger-1a2b3c4",
+            ~partitionKeyName="pluginId",
+          ),
       )->Option.getOr("")
     expect(message->String.includes("PlatformUsageLedger-1a2b3c4"))->toBe(true)
     expect(message->String.includes("pluginId"))->toBe(true)

@@ -30,10 +30,9 @@ let postgres = async (~connection, ~resetOnStart=false) => {
   }
   let initialCount =
     (await ReventlessPostgres.EventLogStorage_Postgres.countAll(pool)) +
-      (await ReventlessPostgres.DcbEventLogStorage_Postgres.countAll(pool))
+    (await ReventlessPostgres.DcbEventLogStorage_Postgres.countAll(pool))
   Postgres({pool, initialCount, connection})
 }
-
 
 // Deletes a file if it exists. No-op if the path is missing.
 

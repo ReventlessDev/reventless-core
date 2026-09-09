@@ -38,10 +38,7 @@ let register = (
   ~queueUrl: Pulumi.Output.t<string>,
   ~resource: ReventlessInfra.Adapter.resource,
   ~isFifo: bool,
-) =>
-  owner->Option.forEach(({name}) =>
-    byOwner->Dict.set(name, {queueUrl, resource, isFifo})
-  )
+) => owner->Option.forEach(({name}) => byOwner->Dict.set(name, {queueUrl, resource, isFifo}))
 
 /** The CommandTopic of the component with this name, if one has been created.
     `None` for a target that is not an Aggregate in this plugin — a DCB

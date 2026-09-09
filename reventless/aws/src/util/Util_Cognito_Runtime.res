@@ -33,20 +33,24 @@ let signUp = (
 /** sign up a user to a given userPool, if the user is not already present
    NOTE: should be called in runtime
 */
-// Intentionally silent on failure: user may already exist (idempotent sign-up).
-let signUpIfMissing = (
+let // Intentionally silent on failure: user may already exist (idempotent sign-up).
+signUpIfMissing = (
   ~region: string,
   ~userPoolId: string,
   ~userPoolClientId: string,
   ~userName: string,
   ~password: string,
 ) =>
-  Effect.tryPromise(
-    ~catch=Cognito_Error.classify,
-    () => signUp(~region, ~userPoolId, ~userPoolClientId, ~userName, ~password),
+  Effect.tryPromise(~catch=Cognito_Error.classify, () =>
+    signUp(~region, ~userPoolId, ~userPoolClientId, ~userName, ~password)
   )
   ->Effect.flatMap(result =>
-    ReventlessCore.EffectLogger.logInfo(~comp=__MODULE__, `Created User ${userName} ${result.userSub->Option.getOr("")}`)
+    ReventlessCore.EffectLogger.logInfo(
+      ~comp=__MODULE__,
+      `Created User ${userName} ${result.userSub->Option.getOr("")}`,
+    )
   )
-  ->Effect.catchAll(err => ReventlessCore.EffectLogger.logInfo(~comp=__MODULE__, Cognito_Error.message(err)))
+  ->Effect.catchAll(err =>
+    ReventlessCore.EffectLogger.logInfo(~comp=__MODULE__, Cognito_Error.message(err))
+  )
   ->Effect.runPromise

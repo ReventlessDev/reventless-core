@@ -9,7 +9,12 @@ module Delegate = {
   let name = "CatalogDcbEventLog"
   @schema
   type event =
-    | ProductAdded({productId: string, name: string, description: string, price: Reventless.Money.t})
+    | ProductAdded({
+        productId: string,
+        name: string,
+        description: string,
+        price: Reventless.Money.t,
+      })
     | ProductPriceChanged({productId: string, price: Reventless.Money.t})
     // Both ways off the shelf, and the way back.
     | ProductArchived({productId: string})
@@ -19,10 +24,7 @@ module Delegate = {
     // picture stands and announces the conclusion, so this port never has to ask
     // whether an attachment was the first, or what a removal left behind —
     // questions a stateless mapping could not answer anyway.
-    | ProductEffectiveImageChanged({
-        productId: string,
-        productImage?: Reventless.UploadableImage.t,
-      })
+    | ProductEffectiveImageChanged({productId: string, productImage?: Reventless.UploadableImage.t})
 }
 
 let mapIncomingCommand = (_id, _command, _meta) => []
@@ -42,50 +44,57 @@ let directiveHandler = async (
     )
   }
 
-let mapOutgoingEvent = Some((_id, event, _meta, _queryEngine) =>
-  switch event {
-  | Delegate.ProductAdded({productId, name, price}) => [
-      PublishEvent(
-        productId,
-        CatalogSpec.Products_ExtensionPoint.ProductBecameAvailable({productId, name, price}),
-      ),
-    ]
-  | Delegate.ProductPriceChanged({productId, price}) => [
-      PublishEvent(
-        productId,
-        CatalogSpec.Products_ExtensionPoint.ProductPriceChanged({productId, price}),
-      ),
-      HandleDirective(
-        directiveHandler,
-        CatalogSpec.Products_ExtensionPoint.EmitPricingUpdate({productId, price}),
-      ),
-    ]
-  // Two arms, not an or-pattern: ReScript cannot bind a field across inline-record
-  // constructors.
-  | Delegate.ProductArchived({productId: theId}) => [
-      PublishEvent(theId, CatalogSpec.Products_ExtensionPoint.ProductWithdrawn({productId: theId})),
-    ]
-  | Delegate.ProductDiscontinued({productId: theId}) => [
-      PublishEvent(theId, CatalogSpec.Products_ExtensionPoint.ProductWithdrawn({productId: theId})),
-    ]
-  | Delegate.ProductUnarchived({productId: theId}) => [
-      PublishEvent(
-        theId,
-        CatalogSpec.Products_ExtensionPoint.ProductRelisted({productId: theId}),
-      ),
-    ]
-  // Absence travels too. A subscriber that could only be told about pictures
-  // would keep showing one the catalog no longer holds — and an order placed
-  // after the last picture was removed would freeze a file that was already
-  // gone, which is staleness rather than the record of a purchase.
-  | Delegate.ProductEffectiveImageChanged({productId, productImage: ?productImage}) => [
-      PublishEvent(
-        productId,
-        CatalogSpec.Products_ExtensionPoint.ProductImageChanged({
+let mapOutgoingEvent = Some(
+  (_id, event, _meta, _queryEngine) =>
+    switch event {
+    | Delegate.ProductAdded({productId, name, price}) => [
+        PublishEvent(
           productId,
-          productImage: ?productImage,
-        }),
-      ),
-    ]
-  }
+          CatalogSpec.Products_ExtensionPoint.ProductBecameAvailable({productId, name, price}),
+        ),
+      ]
+    | Delegate.ProductPriceChanged({productId, price}) => [
+        PublishEvent(
+          productId,
+          CatalogSpec.Products_ExtensionPoint.ProductPriceChanged({productId, price}),
+        ),
+        HandleDirective(
+          directiveHandler,
+          CatalogSpec.Products_ExtensionPoint.EmitPricingUpdate({productId, price}),
+        ),
+      ]
+    // Two arms, not an or-pattern: ReScript cannot bind a field across inline-record
+    // constructors.
+    | Delegate.ProductArchived({productId: theId}) => [
+        PublishEvent(
+          theId,
+          CatalogSpec.Products_ExtensionPoint.ProductWithdrawn({productId: theId}),
+        ),
+      ]
+    | Delegate.ProductDiscontinued({productId: theId}) => [
+        PublishEvent(
+          theId,
+          CatalogSpec.Products_ExtensionPoint.ProductWithdrawn({productId: theId}),
+        ),
+      ]
+    | Delegate.ProductUnarchived({productId: theId}) => [
+        PublishEvent(
+          theId,
+          CatalogSpec.Products_ExtensionPoint.ProductRelisted({productId: theId}),
+        ),
+      ]
+    // Absence travels too. A subscriber that could only be told about pictures
+    // would keep showing one the catalog no longer holds — and an order placed
+    // after the last picture was removed would freeze a file that was already
+    // gone, which is staleness rather than the record of a purchase.
+    | Delegate.ProductEffectiveImageChanged({productId, ?productImage}) => [
+        PublishEvent(
+          productId,
+          CatalogSpec.Products_ExtensionPoint.ProductImageChanged({
+            productId,
+            ?productImage,
+          }),
+        ),
+      ]
+    },
 )

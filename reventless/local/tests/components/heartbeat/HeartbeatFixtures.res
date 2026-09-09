@@ -38,11 +38,10 @@ let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
 let resolvedHandler: ref<option<(unit, unit) => promise<unit>>> = ref(None)
 
 let _ = beforeAllAsync(async () => {
-  let h =
-    await HeartbeatMaker.makeHandler(
-      ~id="hb-id-1",
-      ~timeout=1,
-      ~publishToPluginExtensionPoint=mockPublish,
-    )->TestRunner.resolve
+  let h = await HeartbeatMaker.makeHandler(
+    ~id="hb-id-1",
+    ~timeout=1,
+    ~publishToPluginExtensionPoint=mockPublish,
+  )->TestRunner.resolve
   resolvedHandler := Some(h)
 })

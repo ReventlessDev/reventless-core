@@ -18,7 +18,9 @@ let vienna: Reventless.GeoPoint.t = {lat: 48.2082, lng: 16.3738}
 
 // The real `translate`, driven by a stub geocoder. `whenTranslateMocked` takes any
 // (id, item) => promise<translateResult>, so no DSL verb is needed to reach it.
-let withGeocoder = (answer: result<array<Reventless.Geocoding.candidate>, Reventless.Geocoding.failure>) => {
+let withGeocoder = (
+  answer: result<array<Reventless.Geocoding.candidate>, Reventless.Geocoding.failure>,
+) => {
   // Spread `none` and override the one capability under test: a literal record
   // would have to name every other capability the framework grows, and this test
   // has nothing to say about them.
@@ -37,14 +39,18 @@ let candidate = (~label, ~point=vienna, ~relevance): Reventless.Geocoding.candid
 
 describe("GeocodeCustomerAddress OutboundTranslationSlice", () => {
   test("a confident match completes the TODO", () =>
-    givenTodo("cust-1:Stephansplatz 1, Vienna", {
-      customerId: "cust-1",
-      address: "Stephansplatz 1, Vienna",
-    })
-    ->whenTranslateMocked((_id, item) =>
-      Promise.resolve(
-        Ok(Some((item.customerId, SetLocation({location: vienna, resolvedFrom: item.address})))),
-      )
+    givenTodo(
+      "cust-1:Stephansplatz 1, Vienna",
+      {
+        customerId: "cust-1",
+        address: "Stephansplatz 1, Vienna",
+      },
+    )
+    ->whenTranslateMocked(
+      (_id, item) =>
+        Promise.resolve(
+          Ok(Some((item.customerId, SetLocation({location: vienna, resolvedFrom: item.address})))),
+        ),
     )
     ->thenTodoStatus("cust-1:Stephansplatz 1, Vienna", #Completed)
   )
@@ -52,14 +58,20 @@ describe("GeocodeCustomerAddress OutboundTranslationSlice", () => {
   // The real `translate`, not a mock of it: a confident answer becomes SetLocation
   // with the point the geocoder returned.
   test("translate: a confident answer produces SetLocation", () =>
-    givenTodo("cust-1:Stephansplatz 1, Vienna", {
-      customerId: "cust-1",
-      address: "Stephansplatz 1, Vienna",
-    })
+    givenTodo(
+      "cust-1:Stephansplatz 1, Vienna",
+      {
+        customerId: "cust-1",
+        address: "Stephansplatz 1, Vienna",
+      },
+    )
     ->whenTranslateMocked(
       withGeocoder(Ok([candidate(~label="Stephansplatz 1, Vienna", ~relevance=0.995)])),
     )
-    ->thenCommand("cust-1", SetLocation({location: vienna, resolvedFrom: "Stephansplatz 1, Vienna"}))
+    ->thenCommand(
+      "cust-1",
+      SetLocation({location: vienna, resolvedFrom: "Stephansplatz 1, Vienna"}),
+    )
   )
 
   // An ambiguous answer is a verdict, and the reason names both candidates rather

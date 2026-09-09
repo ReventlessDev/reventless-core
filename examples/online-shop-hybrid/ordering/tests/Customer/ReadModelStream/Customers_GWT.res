@@ -50,7 +50,9 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
 
   CustomerGwt.test("LocationSet fills the declared point", () =>
     CustomerGwt.givenEvents([Customer.Registered({email: "alice@x.y", address: "123 Main"})])
-    ->CustomerGwt.whenEvent(Customer.LocationSet({location: {lat: 51.2093, lng: 3.2247}, resolvedFrom: "123 Main"}))
+    ->CustomerGwt.whenEvent(
+      Customer.LocationSet({location: {lat: 51.2093, lng: 3.2247}, resolvedFrom: "123 Main"}),
+    )
     ->CustomerGwt.thenState({
       Customers.customerId: "id",
       email: "alice@x.y",

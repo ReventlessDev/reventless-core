@@ -30,31 +30,30 @@ type rowState = {
   geolocation?: geolocation,
 }
 
-let rowStateSchemaWithAnnotations =
-  rowStateSchema->S.Metadata.set(
-    ~id=Reventless.StateAnnotations.stateAnnotationsId,
-    {
-      ids: ["productId"],
-      compositeIds: [],
-      subIds: [],
-      compositeSubIds: [],
-      indexes: [],
-      hidden: [],
-      summary: [],
-      drillTargets: [],
-      drillTargetKeys: [],
-      collapsed: [],
-      scan: ["status"],
-      scanSort: ["name"],
-      semantic: [],
-      metric: [],
-      lifecycle: None,
-      groupBy: None,
-      visibility: None,
-      live: None,
-      retired: None,
-    },
-  )
+let rowStateSchemaWithAnnotations = rowStateSchema->S.Metadata.set(
+  ~id=Reventless.StateAnnotations.stateAnnotationsId,
+  {
+    ids: ["productId"],
+    compositeIds: [],
+    subIds: [],
+    compositeSubIds: [],
+    indexes: [],
+    hidden: [],
+    summary: [],
+    drillTargets: [],
+    drillTargetKeys: [],
+    collapsed: [],
+    scan: ["status"],
+    scanSort: ["name"],
+    semantic: [],
+    metric: [],
+    lifecycle: None,
+    groupBy: None,
+    visibility: None,
+    live: None,
+    retired: None,
+  },
+)
 
 // ─────────────────────────────────────────────────────────────
 // Helpers — invoke a registered resolver with synthetic args/ctx
@@ -63,12 +62,22 @@ let rowStateSchemaWithAnnotations =
 // Inject a synthetic authenticated identity so the resolver's spec-level
 // authorization check (AllowAuthenticated, see Resolvers.make below) lets
 // these list-resolver mechanics tests through.
-let emptyCtx: JSON.t = JSON.Encode.object(Dict.fromArray([
-  ("request", JSON.Encode.object(Dict.fromArray([
-    ("headers", JSON.Encode.object(Dict.make())),
-  ]))),
-  ("identity", ({...Reventless.Identity.anonymous, userId: "test-user", username: "test-user", groups: ["User"]}: Reventless.Identity.t)->Obj.magic),
-]))
+let emptyCtx: JSON.t = JSON.Encode.object(
+  Dict.fromArray([
+    ("request", JSON.Encode.object(Dict.fromArray([("headers", JSON.Encode.object(Dict.make()))]))),
+    (
+      "identity",
+      (
+        {
+          ...Reventless.Identity.anonymous,
+          userId: "test-user",
+          username: "test-user",
+          groups: ["User"],
+        }: Reventless.Identity.t
+      )->Obj.magic,
+    ),
+  ]),
+)
 
 let argsOf = (entries: array<(string, JSON.t)>): JSON.t =>
   JSON.Encode.object(Dict.fromArray(entries))
@@ -97,7 +106,10 @@ let edgeNodeField = (edge: JSON.t, field: string): string =>
   ->Option.getOr("")
 
 let edges2Find = (edges: array<JSON.t>, pid: string): JSON.t =>
-  edges->Array.find(e => e->getField("node")->Option.flatMap(n => n->getString("productId")) === Some(pid))
+  edges
+  ->Array.find(e =>
+    e->getField("node")->Option.flatMap(n => n->getString("productId")) === Some(pid)
+  )
   ->Option.getOr(JSON.Encode.null)
 
 let edgeNodeJson = (edge: JSON.t, field: string): option<JSON.t> =>
@@ -216,8 +228,7 @@ describe("QueryDb list resolver — keyset pagination", () => {
 
   testPromise("first: 2 over a 5-row fixture returns 2 edges and hasNextPage = true", async () => {
     let (resolver, _) = await buildFixture(~name="PageA")
-    let response =
-      await resolver(JSON.Encode.null, argsOf([("first", numJson(2))]), emptyCtx)
+    let response = await resolver(JSON.Encode.null, argsOf([("first", numJson(2))]), emptyCtx)
     let edges = getEdges(response)
     expect(edges->Array.length)->toBe(2)
     expect(pageInfoBool(response, "hasNextPage"))->toBe(true)
@@ -229,16 +240,14 @@ describe("QueryDb list resolver — keyset pagination", () => {
 
   testPromise("after: <endCursor> walks forward without overlap", async () => {
     let (resolver, _) = await buildFixture(~name="PageB")
-    let page1 =
-      await resolver(JSON.Encode.null, argsOf([("first", numJson(2))]), emptyCtx)
+    let page1 = await resolver(JSON.Encode.null, argsOf([("first", numJson(2))]), emptyCtx)
     let endCursor1 = pageInfoString(page1, "endCursor")->Option.getOr("")
 
-    let page2 =
-      await resolver(
-        JSON.Encode.null,
-        argsOf([("first", numJson(2)), ("after", strJson(endCursor1))]),
-        emptyCtx,
-      )
+    let page2 = await resolver(
+      JSON.Encode.null,
+      argsOf([("first", numJson(2)), ("after", strJson(endCursor1))]),
+      emptyCtx,
+    )
     let edges2 = getEdges(page2)
     expect(edges2->Array.length)->toBe(2)
     expect(edgeNodeField(edges2->Array.getUnsafe(0), "productId"))->toBe("p-3")
@@ -246,12 +255,11 @@ describe("QueryDb list resolver — keyset pagination", () => {
     expect(pageInfoBool(page2, "hasNextPage"))->toBe(true)
 
     let endCursor2 = pageInfoString(page2, "endCursor")->Option.getOr("")
-    let page3 =
-      await resolver(
-        JSON.Encode.null,
-        argsOf([("first", numJson(2)), ("after", strJson(endCursor2))]),
-        emptyCtx,
-      )
+    let page3 = await resolver(
+      JSON.Encode.null,
+      argsOf([("first", numJson(2)), ("after", strJson(endCursor2))]),
+      emptyCtx,
+    )
     let edges3 = getEdges(page3)
     expect(edges3->Array.length)->toBe(1)
     expect(edgeNodeField(edges3->Array.getUnsafe(0), "productId"))->toBe("p-5")
@@ -261,31 +269,27 @@ describe("QueryDb list resolver — keyset pagination", () => {
   testPromise("last + before walks backward and flips hasPreviousPage", async () => {
     let (resolver, _) = await buildFixture(~name="PageC")
     // Walk to page 3 first to grab a startCursor we can walk back from.
-    let page1 =
-      await resolver(JSON.Encode.null, argsOf([("first", numJson(2))]), emptyCtx)
+    let page1 = await resolver(JSON.Encode.null, argsOf([("first", numJson(2))]), emptyCtx)
     let endCursor1 = pageInfoString(page1, "endCursor")->Option.getOr("")
-    let page2 =
-      await resolver(
-        JSON.Encode.null,
-        argsOf([("first", numJson(2)), ("after", strJson(endCursor1))]),
-        emptyCtx,
-      )
+    let page2 = await resolver(
+      JSON.Encode.null,
+      argsOf([("first", numJson(2)), ("after", strJson(endCursor1))]),
+      emptyCtx,
+    )
     let endCursor2 = pageInfoString(page2, "endCursor")->Option.getOr("")
-    let page3 =
-      await resolver(
-        JSON.Encode.null,
-        argsOf([("first", numJson(2)), ("after", strJson(endCursor2))]),
-        emptyCtx,
-      )
+    let page3 = await resolver(
+      JSON.Encode.null,
+      argsOf([("first", numJson(2)), ("after", strJson(endCursor2))]),
+      emptyCtx,
+    )
     let startCursor3 = pageInfoString(page3, "startCursor")->Option.getOr("")
 
     // last: 2 + before: <startCursor3> should return p-3, p-4 in forward order.
-    let backPage =
-      await resolver(
-        JSON.Encode.null,
-        argsOf([("last", numJson(2)), ("before", strJson(startCursor3))]),
-        emptyCtx,
-      )
+    let backPage = await resolver(
+      JSON.Encode.null,
+      argsOf([("last", numJson(2)), ("before", strJson(startCursor3))]),
+      emptyCtx,
+    )
     let backEdges = getEdges(backPage)
     expect(backEdges->Array.length)->toBe(2)
     expect(edgeNodeField(backEdges->Array.getUnsafe(0), "productId"))->toBe("p-3")
@@ -298,12 +302,11 @@ describe("QueryDb list resolver — keyset pagination", () => {
 
     // Walk one more step back — should land on p-1, p-2 with hasPreviousPage = false.
     let backStart = pageInfoString(backPage, "startCursor")->Option.getOr("")
-    let firstPage =
-      await resolver(
-        JSON.Encode.null,
-        argsOf([("last", numJson(2)), ("before", strJson(backStart))]),
-        emptyCtx,
-      )
+    let firstPage = await resolver(
+      JSON.Encode.null,
+      argsOf([("last", numJson(2)), ("before", strJson(backStart))]),
+      emptyCtx,
+    )
     let firstEdges = getEdges(firstPage)
     expect(firstEdges->Array.length)->toBe(2)
     expect(edgeNodeField(firstEdges->Array.getUnsafe(0), "productId"))->toBe("p-1")
@@ -314,12 +317,11 @@ describe("QueryDb list resolver — keyset pagination", () => {
   testPromise("filter.<field>Eq + first / after paginates only the narrowed subset", async () => {
     let (resolver, _) = await buildFixture(~name="PageD")
     let activeFilter = JSON.Encode.object(Dict.fromArray([("statusEq", strJson("active"))]))
-    let page1 =
-      await resolver(
-        JSON.Encode.null,
-        argsOf([("filter", activeFilter), ("first", numJson(2))]),
-        emptyCtx,
-      )
+    let page1 = await resolver(
+      JSON.Encode.null,
+      argsOf([("filter", activeFilter), ("first", numJson(2))]),
+      emptyCtx,
+    )
     let edges1 = getEdges(page1)
     expect(edges1->Array.length)->toBe(2)
     // active rows: p-1, p-2, p-4 (id-ascending). First page should be p-1, p-2.
@@ -328,16 +330,11 @@ describe("QueryDb list resolver — keyset pagination", () => {
     expect(pageInfoBool(page1, "hasNextPage"))->toBe(true)
 
     let endCursor1 = pageInfoString(page1, "endCursor")->Option.getOr("")
-    let page2 =
-      await resolver(
-        JSON.Encode.null,
-        argsOf([
-          ("filter", activeFilter),
-          ("first", numJson(2)),
-          ("after", strJson(endCursor1)),
-        ]),
-        emptyCtx,
-      )
+    let page2 = await resolver(
+      JSON.Encode.null,
+      argsOf([("filter", activeFilter), ("first", numJson(2)), ("after", strJson(endCursor1))]),
+      emptyCtx,
+    )
     let edges2 = getEdges(page2)
     expect(edges2->Array.length)->toBe(1)
     expect(edgeNodeField(edges2->Array.getUnsafe(0), "productId"))->toBe("p-4")
@@ -348,16 +345,14 @@ describe("QueryDb list resolver — keyset pagination", () => {
     let (resolver, _) = await buildFixture(~name="PageE")
     // orderBy field: name, direction: DESC. Names sorted DESC:
     //   Echo (p-3), Delta (p-5), Charlie (p-1), Bravo (p-4), Alpha (p-2).
-    let orderBy = JSON.Encode.object(Dict.fromArray([
-      ("field", strJson("name")),
-      ("direction", strJson("DESC")),
-    ]))
-    let page1 =
-      await resolver(
-        JSON.Encode.null,
-        argsOf([("orderBy", orderBy), ("first", numJson(2))]),
-        emptyCtx,
-      )
+    let orderBy = JSON.Encode.object(
+      Dict.fromArray([("field", strJson("name")), ("direction", strJson("DESC"))]),
+    )
+    let page1 = await resolver(
+      JSON.Encode.null,
+      argsOf([("orderBy", orderBy), ("first", numJson(2))]),
+      emptyCtx,
+    )
     let edges1 = getEdges(page1)
     expect(edges1->Array.length)->toBe(2)
     expect(edgeNodeField(edges1->Array.getUnsafe(0), "name"))->toBe("Echo")
@@ -365,16 +360,11 @@ describe("QueryDb list resolver — keyset pagination", () => {
     expect(pageInfoBool(page1, "hasNextPage"))->toBe(true)
 
     let endCursor1 = pageInfoString(page1, "endCursor")->Option.getOr("")
-    let page2 =
-      await resolver(
-        JSON.Encode.null,
-        argsOf([
-          ("orderBy", orderBy),
-          ("first", numJson(2)),
-          ("after", strJson(endCursor1)),
-        ]),
-        emptyCtx,
-      )
+    let page2 = await resolver(
+      JSON.Encode.null,
+      argsOf([("orderBy", orderBy), ("first", numJson(2)), ("after", strJson(endCursor1))]),
+      emptyCtx,
+    )
     let edges2 = getEdges(page2)
     expect(edges2->Array.length)->toBe(2)
     expect(edgeNodeField(edges2->Array.getUnsafe(0), "name"))->toBe("Charlie")
@@ -412,59 +402,66 @@ describe("QueryDb list resolver — SQLite push-down path", () => {
   }
 
   testPromise("first:2 then after walks forward without overlap", () =>
-    withSqlite(async () => {
-      let (resolver, _) = await buildFixture(~name="SqlPageA")
-      let page1 = await resolver(JSON.Encode.null, argsOf([("first", numJson(2))]), emptyCtx)
-      let edges1 = getEdges(page1)
-      expect(edges1->Array.length)->toBe(2)
-      expect(edgeNodeField(edges1->Array.getUnsafe(0), "productId"))->toBe("p-1")
-      expect(edgeNodeField(edges1->Array.getUnsafe(1), "productId"))->toBe("p-2")
-      expect(pageInfoBool(page1, "hasNextPage"))->toBe(true)
+    withSqlite(
+      async () => {
+        let (resolver, _) = await buildFixture(~name="SqlPageA")
+        let page1 = await resolver(JSON.Encode.null, argsOf([("first", numJson(2))]), emptyCtx)
+        let edges1 = getEdges(page1)
+        expect(edges1->Array.length)->toBe(2)
+        expect(edgeNodeField(edges1->Array.getUnsafe(0), "productId"))->toBe("p-1")
+        expect(edgeNodeField(edges1->Array.getUnsafe(1), "productId"))->toBe("p-2")
+        expect(pageInfoBool(page1, "hasNextPage"))->toBe(true)
 
-      let endCursor1 = pageInfoString(page1, "endCursor")->Option.getOr("")
-      let page2 =
-        await resolver(
+        let endCursor1 = pageInfoString(page1, "endCursor")->Option.getOr("")
+        let page2 = await resolver(
           JSON.Encode.null,
           argsOf([("first", numJson(2)), ("after", strJson(endCursor1))]),
           emptyCtx,
         )
-      let edges2 = getEdges(page2)
-      expect(edges2->Array.length)->toBe(2)
-      expect(edgeNodeField(edges2->Array.getUnsafe(0), "productId"))->toBe("p-3")
-      expect(edgeNodeField(edges2->Array.getUnsafe(1), "productId"))->toBe("p-4")
-    })
+        let edges2 = getEdges(page2)
+        expect(edges2->Array.length)->toBe(2)
+        expect(edgeNodeField(edges2->Array.getUnsafe(0), "productId"))->toBe("p-3")
+        expect(edgeNodeField(edges2->Array.getUnsafe(1), "productId"))->toBe("p-4")
+      },
+    )
   )
 
   testPromise("orderBy name DESC + first:2 returns the reverse-sorted head", () =>
-    withSqlite(async () => {
-      let (resolver, _) = await buildFixture(~name="SqlPageB")
-      let orderBy = JSON.Encode.object(
-        Dict.fromArray([("field", strJson("name")), ("direction", strJson("DESC"))]),
-      )
-      let page1 =
-        await resolver(
+    withSqlite(
+      async () => {
+        let (resolver, _) = await buildFixture(~name="SqlPageB")
+        let orderBy = JSON.Encode.object(
+          Dict.fromArray([("field", strJson("name")), ("direction", strJson("DESC"))]),
+        )
+        let page1 = await resolver(
           JSON.Encode.null,
           argsOf([("orderBy", orderBy), ("first", numJson(2))]),
           emptyCtx,
         )
-      let edges1 = getEdges(page1)
-      expect(edges1->Array.length)->toBe(2)
-      expect(edgeNodeField(edges1->Array.getUnsafe(0), "name"))->toBe("Echo")
-      expect(edgeNodeField(edges1->Array.getUnsafe(1), "name"))->toBe("Delta")
-    })
+        let edges1 = getEdges(page1)
+        expect(edges1->Array.length)->toBe(2)
+        expect(edgeNodeField(edges1->Array.getUnsafe(0), "name"))->toBe("Echo")
+        expect(edgeNodeField(edges1->Array.getUnsafe(1), "name"))->toBe("Delta")
+      },
+    )
   )
 
   testPromise("statusEq active narrows the pushed page", () =>
-    withSqlite(async () => {
-      let (resolver, _) = await buildFixture(~name="SqlPageC")
-      let activeFilter = JSON.Encode.object(Dict.fromArray([("statusEq", strJson("active"))]))
-      let response =
-        await resolver(JSON.Encode.null, argsOf([("filter", activeFilter)]), emptyCtx)
-      let edges = getEdges(response)
-      expect(edges->Array.length)->toBe(3)
-      expect(edgeNodeField(edges->Array.getUnsafe(0), "productId"))->toBe("p-1")
-      expect(edgeNodeField(edges->Array.getUnsafe(2), "productId"))->toBe("p-4")
-    })
+    withSqlite(
+      async () => {
+        let (resolver, _) = await buildFixture(~name="SqlPageC")
+        let activeFilter = JSON.Encode.object(Dict.fromArray([("statusEq", strJson("active"))]))
+        let response = await resolver(
+          JSON.Encode.null,
+          argsOf([("filter", activeFilter)]),
+          emptyCtx,
+        )
+        let edges = getEdges(response)
+        expect(edges->Array.length)->toBe(3)
+        expect(edgeNodeField(edges->Array.getUnsafe(0), "productId"))->toBe("p-1")
+        expect(edgeNodeField(edges->Array.getUnsafe(2), "productId"))->toBe("p-4")
+      },
+    )
   )
 })
 
@@ -491,7 +488,11 @@ describe("QueryDb by-index resolver", () => {
 
   testPromise("answers the rows carrying the index value, as edges", async () => {
     let resolver = await indexResolver(~name="IdxA")
-    let response = await resolver(JSON.Encode.null, argsOf([("status", strJson("active"))]), emptyCtx)
+    let response = await resolver(
+      JSON.Encode.null,
+      argsOf([("status", strJson("active"))]),
+      emptyCtx,
+    )
     let edges = getEdges(response)
     expect(edges->Array.length)->toBe(3)
     expect(edgeNodeField(edges->Array.getUnsafe(0), "productId"))->toBe("p-1")
@@ -499,25 +500,23 @@ describe("QueryDb by-index resolver", () => {
 
   testPromise("pages forward on first/after like every other connection", async () => {
     let resolver = await indexResolver(~name="IdxB")
-    let page1 =
-      await resolver(
-        JSON.Encode.null,
-        argsOf([("status", strJson("active")), ("first", numJson(2))]),
-        emptyCtx,
-      )
+    let page1 = await resolver(
+      JSON.Encode.null,
+      argsOf([("status", strJson("active")), ("first", numJson(2))]),
+      emptyCtx,
+    )
     expect(getEdges(page1)->Array.length)->toBe(2)
     expect(pageInfoBool(page1, "hasNextPage"))->toBe(true)
 
-    let page2 =
-      await resolver(
-        JSON.Encode.null,
-        argsOf([
-          ("status", strJson("active")),
-          ("first", numJson(2)),
-          ("after", strJson(pageInfoString(page1, "endCursor")->Option.getOr(""))),
-        ]),
-        emptyCtx,
-      )
+    let page2 = await resolver(
+      JSON.Encode.null,
+      argsOf([
+        ("status", strJson("active")),
+        ("first", numJson(2)),
+        ("after", strJson(pageInfoString(page1, "endCursor")->Option.getOr(""))),
+      ]),
+      emptyCtx,
+    )
     let edges2 = getEdges(page2)
     expect(edges2->Array.length)->toBe(1)
     expect(edgeNodeField(edges2->Array.getUnsafe(0), "productId"))->toBe("p-4")
@@ -530,13 +529,20 @@ describe("QueryDb by-index resolver", () => {
   // it, so the whole row would vanish rather than error.
   testPromise("carries a union field's member type through", async () => {
     let resolver = await indexResolver(~name="IdxU")
-    let response = await resolver(JSON.Encode.null, argsOf([("status", strJson("active"))]), emptyCtx)
+    let response = await resolver(
+      JSON.Encode.null,
+      argsOf([("status", strJson("active"))]),
+      emptyCtx,
+    )
     let edges = getEdges(response)
     let seeded =
-      edges->Array.find(e => edgeNodeField(e, "productId") === "p-1")->Option.getOr(JSON.Encode.null)
+      edges
+      ->Array.find(e => edgeNodeField(e, "productId") === "p-1")
+      ->Option.getOr(JSON.Encode.null)
     let geo = edgeNodeJson(seeded, "geolocation")->Option.flatMap(JSON.Decode.object)
-    expect(geo->Option.flatMap(o => o->Dict.get("__typename"))->Option.flatMap(JSON.Decode.string))
-    ->toEqual(Some("GeolocationLocated"))
+    expect(
+      geo->Option.flatMap(o => o->Dict.get("__typename"))->Option.flatMap(JSON.Decode.string),
+    )->toEqual(Some("GeolocationLocated"))
     expect(
       geo
       ->Option.flatMap(o => o->Dict.get("lat"))
@@ -547,7 +553,11 @@ describe("QueryDb by-index resolver", () => {
   // An absent optional union is left absent rather than stamped into an arm.
   testPromise("leaves an absent union absent", async () => {
     let resolver = await indexResolver(~name="IdxV")
-    let response = await resolver(JSON.Encode.null, argsOf([("status", strJson("active"))]), emptyCtx)
+    let response = await resolver(
+      JSON.Encode.null,
+      argsOf([("status", strJson("active"))]),
+      emptyCtx,
+    )
     let other = edges2Find(getEdges(response), "p-2")
     // Assert the row is real first, so an absent field cannot pass as an absent row.
     expect(edgeNodeField(other, "name"))->toBe("Alpha")
@@ -560,12 +570,11 @@ describe("QueryDb by-index resolver", () => {
   testPromise("refuses backward paging instead of answering forward", async () => {
     let resolver = await indexResolver(~name="IdxC")
     let outcome = try {
-      let _ =
-        await resolver(
-          JSON.Encode.null,
-          argsOf([("status", strJson("active")), ("last", numJson(2))]),
-          emptyCtx,
-        )
+      let _ = await resolver(
+        JSON.Encode.null,
+        argsOf([("status", strJson("active")), ("last", numJson(2))]),
+        emptyCtx,
+      )
       Ok()
     } catch {
     | e => Error(e->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr(""))
@@ -573,7 +582,9 @@ describe("QueryDb by-index resolver", () => {
     switch outcome {
     | Ok() => expect("no error")->toBe("a BAD_USER_INPUT refusal")
     | Error(message) =>
-      expect(message->String.includes("Backward pagination (last/before) is not supported"))->toBe(true)
+      expect(message->String.includes("Backward pagination (last/before) is not supported"))->toBe(
+        true,
+      )
     }
   })
 })
@@ -594,31 +605,30 @@ type lineState = {
   geolocation?: geolocation,
 }
 
-let lineStateSchemaWithAnnotations =
-  lineStateSchema->S.Metadata.set(
-    ~id=Reventless.StateAnnotations.stateAnnotationsId,
-    {
-      ids: ["orderId"],
-      compositeIds: [],
-      subIds: ["lineNo"],
-      compositeSubIds: [],
-      indexes: [],
-      hidden: [],
-      summary: [],
-      drillTargets: [],
-      drillTargetKeys: [],
-      collapsed: [],
-      scan: [],
-      scanSort: [],
-      semantic: [],
-      metric: [],
-      lifecycle: None,
-      groupBy: None,
-      visibility: None,
-      live: None,
-      retired: None,
-    },
-  )
+let lineStateSchemaWithAnnotations = lineStateSchema->S.Metadata.set(
+  ~id=Reventless.StateAnnotations.stateAnnotationsId,
+  {
+    ids: ["orderId"],
+    compositeIds: [],
+    subIds: ["lineNo"],
+    compositeSubIds: [],
+    indexes: [],
+    hidden: [],
+    summary: [],
+    drillTargets: [],
+    drillTargetKeys: [],
+    collapsed: [],
+    scan: [],
+    scanSort: [],
+    semantic: [],
+    metric: [],
+    lifecycle: None,
+    groupBy: None,
+    visibility: None,
+    live: None,
+    retired: None,
+  },
+)
 
 let buildSubIdFixture = async (~name: string) => {
   module Bus = LocalBus.Make()
@@ -679,7 +689,12 @@ let buildSubIdFixture = async (~name: string) => {
   // optional field absent.
   let _ = await ops.save(
     "o-1",
-    {orderId: "o-1", lineNo: "l-1", label: "First", geolocation: Located({lat: 48.2082, lng: 16.3738})},
+    {
+      orderId: "o-1",
+      lineNo: "l-1",
+      label: "First",
+      geolocation: Located({lat: 48.2082, lng: 16.3738}),
+    },
     Init,
     None,
   )
@@ -713,10 +728,12 @@ describe("QueryDb sub-id resolver — the Items door", () => {
     let response = await resolver(JSON.Encode.null, argsOf([("id", strJson("o-1"))]), emptyCtx)
     let first = getEdges(response)->Array.getUnsafe(0)
     let geo = edgeNodeJson(first, "geolocation")->Option.flatMap(JSON.Decode.object)
-    expect(geo->Option.flatMap(o => o->Dict.get("__typename"))->Option.flatMap(JSON.Decode.string))
-    ->toEqual(Some("GeolocationLocated"))
-    expect(geo->Option.flatMap(o => o->Dict.get("lat"))->Option.flatMap(JSON.Decode.float))
-    ->toEqual(Some(48.2082))
+    expect(
+      geo->Option.flatMap(o => o->Dict.get("__typename"))->Option.flatMap(JSON.Decode.string),
+    )->toEqual(Some("GeolocationLocated"))
+    expect(
+      geo->Option.flatMap(o => o->Dict.get("lat"))->Option.flatMap(JSON.Decode.float),
+    )->toEqual(Some(48.2082))
   })
 
   testPromise("leaves an absent union absent", async () => {

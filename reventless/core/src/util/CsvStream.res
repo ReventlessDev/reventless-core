@@ -17,7 +17,8 @@
 let parseRows = (~path: string): Stream.t<CSV.row, string, unit> =>
   Queue.unbounded()
   ->Effect.flatMap(queue => {
-    let _ = CSV.parseFile(~path, ~options={headers: CSV.Options.Bool(true)})
+    let _ =
+      CSV.parseFile(~path, ~options={headers: CSV.Options.Bool(true)})
       ->CSV.onData(row => Queue.offer(queue, Ok(row))->Effect.runSyncExit->ignore)
       ->CSV.onEnd(_ => Queue.shutdown(queue)->Effect.runSyncExit->ignore)
       ->CSV.onError(err => {
@@ -29,8 +30,7 @@ let parseRows = (~path: string): Stream.t<CSV.row, string, unit> =>
   })
   ->Stream.fromEffect
   ->Stream.flatMap(queue =>
-    Stream.fromQueue(queue)
-    ->Stream.mapEffect(item =>
+    Stream.fromQueue(queue)->Stream.mapEffect(item =>
       switch item {
       | Ok(row) => Effect.succeed(row)
       | Error(msg) => Effect.fail(msg)

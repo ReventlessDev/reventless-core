@@ -1,4 +1,3 @@
-
 // ─────────────────────────────────────────────────────────────
 // Event source spec for SideEffect
 // ─────────────────────────────────────────────────────────────
@@ -8,7 +7,7 @@ module TestSource = {
   let name = "TestSideEffectSource"
 
   @schema
-  type event = | SomethingHappened({value: string})
+  type event = SomethingHappened({value: string})
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -18,7 +17,7 @@ module TestSource = {
 type executeCall = {id: string, event: TestSource.event}
 
 let capturedExecuteCalls: ref<array<executeCall>> = ref([])
-let executeThrowOnCall = ref(0)  // throw on this call number (1-based); 0 = never throw
+let executeThrowOnCall = ref(0) // throw on this call number (1-based); 0 = never throw
 let executeCallCount = ref(0)
 
 // ─────────────────────────────────────────────────────────────
@@ -35,9 +34,7 @@ module TestSideEffect: Reventless.SideEffect.T = {
       JsError.throwWithMessage("side effect failed")
     }
     capturedExecuteCalls :=
-      capturedExecuteCalls.contents->Array.concat([
-        {id: id->TestSource.Id.toString, event},
-      ])
+      capturedExecuteCalls.contents->Array.concat([{id: id->TestSource.Id.toString, event}])
   }
 }
 
@@ -79,10 +76,7 @@ let testMeta: Message.meta = {
 let makeEventJson = (~service=TestSource.name, id, event): JSON.t =>
   [
     ("id", JSON.Encode.string(id)),
-    (
-      "meta",
-      {...testMeta, service: service}->Message.encode(Message.metaSchema),
-    ),
+    ("meta", {...testMeta, service}->Message.encode(Message.metaSchema)),
     ("event", event->Message.encode(TestSource.eventSchema)),
   ]
   ->Dict.fromArray

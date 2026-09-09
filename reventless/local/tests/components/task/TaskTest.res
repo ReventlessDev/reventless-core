@@ -11,91 +11,106 @@ describe("Task_Builder.Make:", () => {
   let _ = beforeEach(() => resetCaptures())
 
   describe("make — no buckets:", () => {
-    testPromise("creates component with correct output name", async () => {
-      let task = NoBucketsMaker.make(
-        ~queryBucketName=mockQueryBucketName,
-        ~scheduler=mockScheduler,
-        ~schedulerRoleUrn=Pulumi.Output.make(""),
-        ~publishToAggregates=mockPublishToAggregates,
-        ~queryEngine=mockQueryEngine,
-        ~resourceNaming=mockResourceNaming,
-        ~allAggregates=Dict.make(),
-        ~opts=None,
-      )
-      let outputs = NoBucketsMaker.outputs(task)
-      expect(outputs.name)->toBe("NoBucketsTask")
-    })
+    testPromise(
+      "creates component with correct output name",
+      async () => {
+        let task = NoBucketsMaker.make(
+          ~queryBucketName=mockQueryBucketName,
+          ~scheduler=mockScheduler,
+          ~schedulerRoleUrn=Pulumi.Output.make(""),
+          ~publishToAggregates=mockPublishToAggregates,
+          ~queryEngine=mockQueryEngine,
+          ~resourceNaming=mockResourceNaming,
+          ~allAggregates=Dict.make(),
+          ~opts=None,
+        )
+        let outputs = NoBucketsMaker.outputs(task)
+        expect(outputs.name)->toBe("NoBucketsTask")
+      },
+    )
 
-    testPromise("task with no buckets has no bucketNames in outputs", async () => {
-      let task = NoBucketsMaker.make(
-        ~queryBucketName=mockQueryBucketName,
-        ~scheduler=mockScheduler,
-        ~schedulerRoleUrn=Pulumi.Output.make(""),
-        ~publishToAggregates=mockPublishToAggregates,
-        ~queryEngine=mockQueryEngine,
-        ~resourceNaming=mockResourceNaming,
-        ~allAggregates=Dict.make(),
-        ~opts=None,
-      )
-      let outputs = NoBucketsMaker.outputs(task)
-      // bucketNames is absent when spec returns no buckets
-      expect(outputs.bucketNames->Option.isSome)->toBe(false)
-    })
+    testPromise(
+      "task with no buckets has no bucketNames in outputs",
+      async () => {
+        let task = NoBucketsMaker.make(
+          ~queryBucketName=mockQueryBucketName,
+          ~scheduler=mockScheduler,
+          ~schedulerRoleUrn=Pulumi.Output.make(""),
+          ~publishToAggregates=mockPublishToAggregates,
+          ~queryEngine=mockQueryEngine,
+          ~resourceNaming=mockResourceNaming,
+          ~allAggregates=Dict.make(),
+          ~opts=None,
+        )
+        let outputs = NoBucketsMaker.outputs(task)
+        // bucketNames is absent when spec returns no buckets
+        expect(outputs.bucketNames->Option.isSome)->toBe(false)
+      },
+    )
   })
 
   describe("make — one named bucket with callback:", () => {
-    testPromise("creates component with correct output name", async () => {
-      let task = OneBucketMaker.make(
-        ~queryBucketName=mockQueryBucketName,
-        ~scheduler=mockScheduler,
-        ~schedulerRoleUrn=Pulumi.Output.make(""),
-        ~publishToAggregates=mockPublishToAggregates,
-        ~queryEngine=mockQueryEngine,
-        ~resourceNaming=mockResourceNaming,
-        ~allAggregates=Dict.make(),
-        ~opts=None,
-      )
-      let outputs = OneBucketMaker.outputs(task)
-      expect(outputs.name)->toBe("OneBucketTask")
-    })
+    testPromise(
+      "creates component with correct output name",
+      async () => {
+        let task = OneBucketMaker.make(
+          ~queryBucketName=mockQueryBucketName,
+          ~scheduler=mockScheduler,
+          ~schedulerRoleUrn=Pulumi.Output.make(""),
+          ~publishToAggregates=mockPublishToAggregates,
+          ~queryEngine=mockQueryEngine,
+          ~resourceNaming=mockResourceNaming,
+          ~allAggregates=Dict.make(),
+          ~opts=None,
+        )
+        let outputs = OneBucketMaker.outputs(task)
+        expect(outputs.name)->toBe("OneBucketTask")
+      },
+    )
 
-    testPromise("bucketNames dict contains the named bucket key", async () => {
-      let task = OneBucketMaker.make(
-        ~queryBucketName=mockQueryBucketName,
-        ~scheduler=mockScheduler,
-        ~schedulerRoleUrn=Pulumi.Output.make(""),
-        ~publishToAggregates=mockPublishToAggregates,
-        ~queryEngine=mockQueryEngine,
-        ~resourceNaming=mockResourceNaming,
-        ~allAggregates=Dict.make(),
-        ~opts=None,
-      )
-      let outputs = OneBucketMaker.outputs(task)
-      let bucketNames = outputs.bucketNames->Option.getUnsafe
-      expect(bucketNames->Dict.keysToArray)->toEqual(["Reports"])
-    })
+    testPromise(
+      "bucketNames dict contains the named bucket key",
+      async () => {
+        let task = OneBucketMaker.make(
+          ~queryBucketName=mockQueryBucketName,
+          ~scheduler=mockScheduler,
+          ~schedulerRoleUrn=Pulumi.Output.make(""),
+          ~publishToAggregates=mockPublishToAggregates,
+          ~queryEngine=mockQueryEngine,
+          ~resourceNaming=mockResourceNaming,
+          ~allAggregates=Dict.make(),
+          ~opts=None,
+        )
+        let outputs = OneBucketMaker.outputs(task)
+        let bucketNames = outputs.bucketNames->Option.getUnsafe
+        expect(bucketNames->Dict.keysToArray)->toEqual(["Reports"])
+      },
+    )
 
-    testPromise("bucket id resolves to the bucket name (in-memory dummy resource)", async () => {
-      let task = OneBucketMaker.make(
-        ~queryBucketName=mockQueryBucketName,
-        ~scheduler=mockScheduler,
-        ~schedulerRoleUrn=Pulumi.Output.make(""),
-        ~publishToAggregates=mockPublishToAggregates,
-        ~queryEngine=mockQueryEngine,
-        ~resourceNaming=mockResourceNaming,
-        ~allAggregates=Dict.make(),
-        ~opts=None,
-      )
-      let outputs = OneBucketMaker.outputs(task)
-      let bucketNames = outputs.bucketNames->Option.getUnsafe
-      let idOutput = bucketNames->Dict.get("Reports")->Option.getUnsafe
-      let id = await idOutput->TestRunner.resolve
-      // In-memory bucket id = the bucket's resource name, which is kebab-cased
-      // and plugin-qualified because S3 lowercases a bucket name and a PascalCase
-      // one collapses into a run-on. No plugin segment here: the task is built
-      // outside any plugin, so there is no ambient plugin to qualify with.
-      // The runtime lookup key is a separate string and stays "Reports".
-      expect(id)->toBe("one-bucket-task-reports")
-    })
+    testPromise(
+      "bucket id resolves to the bucket name (in-memory dummy resource)",
+      async () => {
+        let task = OneBucketMaker.make(
+          ~queryBucketName=mockQueryBucketName,
+          ~scheduler=mockScheduler,
+          ~schedulerRoleUrn=Pulumi.Output.make(""),
+          ~publishToAggregates=mockPublishToAggregates,
+          ~queryEngine=mockQueryEngine,
+          ~resourceNaming=mockResourceNaming,
+          ~allAggregates=Dict.make(),
+          ~opts=None,
+        )
+        let outputs = OneBucketMaker.outputs(task)
+        let bucketNames = outputs.bucketNames->Option.getUnsafe
+        let idOutput = bucketNames->Dict.get("Reports")->Option.getUnsafe
+        let id = await idOutput->TestRunner.resolve
+        // In-memory bucket id = the bucket's resource name, which is kebab-cased
+        // and plugin-qualified because S3 lowercases a bucket name and a PascalCase
+        // one collapses into a run-on. No plugin segment here: the task is built
+        // outside any plugin, so there is no ambient plugin to qualify with.
+        // The runtime lookup key is a separate string and stays "Reports".
+        expect(id)->toBe("one-bucket-task-reports")
+      },
+    )
   })
 })

@@ -38,7 +38,10 @@ describe("SyncCatalogProduct StateChangeSlice", () => {
   )
 
   test("withdrawing an already-withdrawn product produces no events", () =>
-    givenEvents([CatalogProductSynced({name: "Laptop", price: eur(999.99)}), CatalogProductWithdrawn])
+    givenEvents([
+      CatalogProductSynced({name: "Laptop", price: eur(999.99)}),
+      CatalogProductWithdrawn,
+    ])
     ->whenCmd(WithdrawSyncedProduct({productId: "p1"}))
     ->thenNoEvent
   )
@@ -47,7 +50,10 @@ describe("SyncCatalogProduct StateChangeSlice", () => {
   // and price it kept through the withdrawal — Catalog's `ProductRelisted` carries
   // neither, and is never asked to.
   test("RelistSyncedProduct restores name and price from the shadow", () =>
-    givenEvents([CatalogProductSynced({name: "Laptop", price: eur(999.99)}), CatalogProductWithdrawn])
+    givenEvents([
+      CatalogProductSynced({name: "Laptop", price: eur(999.99)}),
+      CatalogProductWithdrawn,
+    ])
     ->whenCmd(RelistSyncedProduct({productId: "p1"}))
     ->thenEvent(CatalogProductRelisted({productId: "p1", name: "Laptop", price: eur(999.99)}))
   )

@@ -70,13 +70,7 @@ module Make = (
 
   let registerPluginName = (_: string) => ()
 
-  let forDcbCommandTopic = (
-    ~handler,
-    ~connect,
-    ~memorySize=1024,
-    ~timeout=30,
-    dcbCommandTopic,
-  ) => {
+  let forDcbCommandTopic = (~handler, ~connect, ~memorySize=1024, ~timeout=30, dcbCommandTopic) => {
     let resource = dcbCommandTopic->Component.toPulumiResource
     let name = resource.name->ComponentType.nameOpt(CommandTopic.componentType)
     let runtime = RuntimeEnvironment.make(

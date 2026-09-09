@@ -14,7 +14,6 @@ wire. `int` is safe here — int32 seconds is 68 years.
 }
 ```
 */
-
 /** The duration's representation, in seconds. Transparent `int`. */
 type t = int
 
@@ -31,7 +30,8 @@ let fromInt = (raw: int): result<t, string> =>
 
 /** The sury schema for a duration field, in seconds.
     Use with `@s.matches(Reventless.Duration.schema)`. */
-let schema: S.t<t> = S.int->Semantic.refined(~id=Semantic.Id.duration, ~check=fromInt)
+let schema: S.t<t> =
+  S.int->Semantic.refined(~id=Semantic.Id.duration, ~check=fromInt)
 
 let scales = [(86400, "d"), (3600, "h"), (60, "m"), (1, "s")]
 

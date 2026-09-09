@@ -9,7 +9,6 @@ surface. It is also why the wording is `Reventless.Template` source: readable
 text rather than ReScript interpolation, rendered against the payload's schema so
 a semantic formats itself and a `@sensitive` field is withheld.
 */
-
 /** How a field is compared. */
 @schema
 type comparison =
@@ -165,8 +164,7 @@ let recipientOf = (rule: t, ~payload: JSON.t) => stringAt(payload, rule.recipien
 
 /** What it is about. Empty is legal — a notification about nothing in particular
     is a real case, and a fabricated subject is worse than an absent one. */
-let subjectOf = (rule: t, ~payload: JSON.t) =>
-  stringAt(payload, rule.subjectPath)->Option.getOr("")
+let subjectOf = (rule: t, ~payload: JSON.t) => stringAt(payload, rule.subjectPath)->Option.getOr("")
 
 /** The wording to use, the asked-for locale if the rule has it and the first
     otherwise. Which locale to ask for is the caller's — nothing here knows who
@@ -191,10 +189,7 @@ let render = (source: string, ~payload: JSON.t, ~schema: S.t<'a>) =>
 let compose = (rule: t, ~payload: JSON.t, ~schema: S.t<'a>, ~locale: option<string>=?) =>
   switch contentFor(rule, ~locale?) {
   | None => ("", "")
-  | Some({subject, body}) => (
-      render(subject, ~payload, ~schema),
-      render(body, ~payload, ~schema),
-    )
+  | Some({subject, body}) => (render(subject, ~payload, ~schema), render(body, ~payload, ~schema))
   }
 
 /**
@@ -221,11 +216,12 @@ let validate = (rules: array<t>, ~digestRouted: bool=false, ~sample: JSON.t): ar
       note("no wording at all")
     }
     rule.content->Array.forEach(({locale, subject, body}) =>
-      [("subject", subject), ("body", body)]->Array.forEach(((which, template)) =>
-        switch Reventless.Template.parse(template) {
-        | Ok(_) => ()
-        | Error(why) => note(`${locale} ${which} does not parse — ${why}`)
-        }
+      [("subject", subject), ("body", body)]->Array.forEach(
+        ((which, template)) =>
+          switch Reventless.Template.parse(template) {
+          | Ok(_) => ()
+          | Error(why) => note(`${locale} ${which} does not parse — ${why}`)
+          },
       )
     )
     if recipientOf(rule, ~payload=sample) == None {

@@ -14,21 +14,16 @@ let loadStream = table =>
       expressionAttributeValues: [(":id", id->JSON.Encode.string)]->Dict.fromArray,
     }
     Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
-      Effect.tryPromise(
-        ~catch=DynamoDb_Error.classify,
-        () => {
-          let params = switch cursor {
-          | None => baseParams
-          | Some(key) => {...baseParams, exclusiveStartKey: key}
-          }
-          QueryCommand.send(params->QueryCommand.make)
-        },
-      )
+      Effect.tryPromise(~catch=DynamoDb_Error.classify, () => {
+        let params = switch cursor {
+        | None => baseParams
+        | Some(key) => {...baseParams, exclusiveStartKey: key}
+        }
+        QueryCommand.send(params->QueryCommand.make)
+      })
       ->Effect.retry(DynamoDb_Error.retrySchedule)
       ->Effect.catchAll(err =>
-        Effect.fail(
-          ReventlessInfra.QueryDb.NotLoadedFromStorage(DynamoDb_Error.message(err)),
-        )
+        Effect.fail(ReventlessInfra.QueryDb.NotLoadedFromStorage(DynamoDb_Error.message(err)))
       )
       ->Effect.map(result => (
         result.items
@@ -51,8 +46,7 @@ let load = table =>
       ReventlessCore.EffectLogger.logError(
         ~comp=__MODULE__,
         `load: Couldn't load state for ${id} from ${tableName}: ${msg}`,
-      )
-      ->Effect.map(_ => Error(err))
+      )->Effect.map(_ => Error(err))
     })
     ->Effect.runPromise
 
@@ -63,18 +57,20 @@ let save = table =>
 
     let effect = switch saveMode {
     | Init =>
-      table->putIfNotExistsWithRetries(~idKey=table.hashKey, ~sortKey=?table.rangeKey, id, json)
+      table
+      ->putIfNotExistsWithRetries(~idKey=table.hashKey, ~sortKey=?table.rangeKey, id, json)
       ->Effect.flatMap(result =>
         switch result {
         | Ok() =>
-          ReventlessCore.EffectLogger.logInfo(~comp=__MODULE__, `save: saved Init state to ${tableName}: id=${id}`)
-          ->Effect.map(_ => Ok())
+          ReventlessCore.EffectLogger.logInfo(
+            ~comp=__MODULE__,
+            `save: saved Init state to ${tableName}: id=${id}`,
+          )->Effect.map(_ => Ok())
         | Error(errorMsg) =>
           ReventlessCore.EffectLogger.logError(
             ~comp=__MODULE__,
             `save: Couldn't save Init state to ${tableName}, id=${id}: ${errorMsg}`,
-          )
-          ->Effect.map(_ => Error(ReventlessInfra.QueryDb.NotSavedToStorage(errorMsg)))
+          )->Effect.map(_ => Error(ReventlessInfra.QueryDb.NotSavedToStorage(errorMsg)))
         }
       )
     | Any
@@ -84,14 +80,15 @@ let save = table =>
       ->Effect.flatMap(result =>
         switch result {
         | Ok() =>
-          ReventlessCore.EffectLogger.logInfo(~comp=__MODULE__, `save: saved state to ${tableName}: id=${id}`)
-          ->Effect.map(_ => Ok())
+          ReventlessCore.EffectLogger.logInfo(
+            ~comp=__MODULE__,
+            `save: saved state to ${tableName}: id=${id}`,
+          )->Effect.map(_ => Ok())
         | Error(errorMsg) =>
           ReventlessCore.EffectLogger.logError(
             ~comp=__MODULE__,
             `save: Couldn't save state to ${tableName}, id=${id}: ${errorMsg}`,
-          )
-          ->Effect.map(_ => Error(ReventlessInfra.QueryDb.NotSavedToStorage(errorMsg)))
+          )->Effect.map(_ => Error(ReventlessInfra.QueryDb.NotSavedToStorage(errorMsg)))
         }
       )
     }
@@ -111,38 +108,34 @@ let writeMultiple = (writeRequests, op, ids, table) => {
   let size = writeRequests->Array.length
   let batches = (size->Int.toFloat /. BatchWriteCommand.maxBatchSize->Int.toFloat)->Math.Int.ceil
 
-  let logSplitEffect =
-    if batches > 1 {
-      ReventlessCore.EffectLogger.logInfo(
-        ~comp=__MODULE__,
-        `writeBatch: splitting up batch of size ${size->Int.toString} into ${batches->Int.toString} batches`,
-      )
-    } else {
-      Effect.succeed()
-    }
-
-  let batchEffects =
-    Array.fromInitializer(~length=batches, batchNr =>
-      writeRequests
-      ->sliceBatch(batchNr)
-      ->toTable(tableName)
-      ->batchWriteWithRetries
-      ->Effect.map(result => {
-        let batchIds = ids->sliceBatch(batchNr)
-        let batchCount = batchIds->Array.length->Int.toString
-        let batchIdsStr = batchIds->Array.joinUnsafe(", ")
-        switch result {
-        | Ok() => None
-        | Error(error) =>
-          Some(`Batch ${batchNr->Int.toString}: ${batchCount} ids:${batchIdsStr}: ${error}`)
-        }
-      })
+  let logSplitEffect = if batches > 1 {
+    ReventlessCore.EffectLogger.logInfo(
+      ~comp=__MODULE__,
+      `writeBatch: splitting up batch of size ${size->Int.toString} into ${batches->Int.toString} batches`,
     )
+  } else {
+    Effect.succeed()
+  }
+
+  let batchEffects = Array.fromInitializer(~length=batches, batchNr =>
+    writeRequests
+    ->sliceBatch(batchNr)
+    ->toTable(tableName)
+    ->batchWriteWithRetries
+    ->Effect.map(result => {
+      let batchIds = ids->sliceBatch(batchNr)
+      let batchCount = batchIds->Array.length->Int.toString
+      let batchIdsStr = batchIds->Array.joinUnsafe(", ")
+      switch result {
+      | Ok() => None
+      | Error(error) =>
+        Some(`Batch ${batchNr->Int.toString}: ${batchCount} ids:${batchIdsStr}: ${error}`)
+      }
+    })
+  )
 
   logSplitEffect
-  ->Effect.flatMap(_ =>
-    Effect.all(batchEffects, {"concurrency": "unbounded"})
-  )
+  ->Effect.flatMap(_ => Effect.all(batchEffects, {"concurrency": "unbounded"}))
   ->Effect.map(results => results->Array.filterMap(x => x))
   ->Effect.flatMap(errors =>
     switch errors {
@@ -150,20 +143,21 @@ let writeMultiple = (writeRequests, op, ids, table) => {
       ReventlessCore.EffectLogger.logInfo(
         ~comp=__MODULE__,
         `writeBatch: ${op} ${count} states: ${tableName}, ids:${allIdsStr}`,
-      )
-      ->Effect.map(_ => Ok())
+      )->Effect.map(_ => Ok())
     | errors =>
       let errorsStr = errors->Array.joinUnsafe("; ")
       let errorMsg = `writeBatch: Couldn't save states to ${tableName}: ${errorsStr}`
-      ReventlessCore.EffectLogger.logError(~comp=__MODULE__, errorMsg)
-      ->Effect.map(_ => Error(ReventlessInfra.QueryDb.BatchNotFullyWrittenToStorage(errorMsg)))
+      ReventlessCore.EffectLogger.logError(~comp=__MODULE__, errorMsg)->Effect.map(_ => Error(
+        ReventlessInfra.QueryDb.BatchNotFullyWrittenToStorage(errorMsg),
+      ))
     }
   )
   ->Effect.catchAll(err => {
     let msg = DynamoDb_Error.message(err)
     let errorMsg = `writeBatch: Couldn't save states to ${tableName}, ${count} ids:${allIdsStr}: ${msg}`
-    ReventlessCore.EffectLogger.logError(~comp=__MODULE__, errorMsg)
-    ->Effect.map(_ => Error(ReventlessInfra.QueryDb.BatchNotFullyWrittenToStorage(errorMsg)))
+    ReventlessCore.EffectLogger.logError(~comp=__MODULE__, errorMsg)->Effect.map(_ => Error(
+      ReventlessInfra.QueryDb.BatchNotFullyWrittenToStorage(errorMsg),
+    ))
   })
   ->Effect.runPromise
 }
@@ -199,8 +193,9 @@ let count = table =>
             key: [("id", id->JSON.Encode.string)]->Dict.fromArray,
             updateExpression: "ADD #fieldName :inc",
             expressionAttributeNames: [("#fieldName", fieldName)]->Dict.fromArray,
-            expressionAttributeValues: [(":inc", inc->Int.toFloat->JSON.Encode.float)]
-            ->Dict.fromArray,
+            expressionAttributeValues: [
+              (":inc", inc->Int.toFloat->JSON.Encode.float),
+            ]->Dict.fromArray,
             returnValues: #UPDATED_NEW,
           })->UpdateCommand.send,
       )
@@ -212,15 +207,16 @@ let count = table =>
         ReventlessCore.EffectLogger.logError(
           ~comp=__MODULE__,
           `count: Invalid updateOutput in count on ${tableName}`,
-        )
-        ->Effect.map(_ =>
-          Error(ReventlessInfra.QueryDb.NotCountedOnStorage("Invalid updateOutput in count"))
-        )
+        )->Effect.map(_ => Error(
+          ReventlessInfra.QueryDb.NotCountedOnStorage("Invalid updateOutput in count"),
+        ))
       }
     )
     ->Effect.catchAll(errorMsg =>
-      ReventlessCore.EffectLogger.logError(~comp=__MODULE__, `count: Couldn't count on ${tableName}: ${errorMsg}`)
-      ->Effect.map(_ => Error(ReventlessInfra.QueryDb.NotCountedOnStorage(errorMsg)))
+      ReventlessCore.EffectLogger.logError(
+        ~comp=__MODULE__,
+        `count: Couldn't count on ${tableName}: ${errorMsg}`,
+      )->Effect.map(_ => Error(ReventlessInfra.QueryDb.NotCountedOnStorage(errorMsg)))
     )
     ->Effect.runPromise
   }
@@ -235,15 +231,17 @@ let delete = table =>
       | Ok() =>
         ReventlessCore.EffectLogger.logInfo(
           ~comp=__MODULE__,
-          `delete: deleted state from ${tableName}: id=${id}, sort=${sort->JSON.stringifyAny->Option.getOr("None")}`,
-        )
-        ->Effect.map(_ => Ok())
+          `delete: deleted state from ${tableName}: id=${id}, sort=${sort
+            ->JSON.stringifyAny
+            ->Option.getOr("None")}`,
+        )->Effect.map(_ => Ok())
       | Error(errorMsg) =>
         ReventlessCore.EffectLogger.logError(
           ~comp=__MODULE__,
-          `delete: Couldn't delete state from ${tableName}, id=${id}, sort=${sort->JSON.stringifyAny->Option.getOr("None")}: ${errorMsg}`,
-        )
-        ->Effect.map(_ => Error(ReventlessInfra.QueryDb.NotDeletedFromStorage(errorMsg)))
+          `delete: Couldn't delete state from ${tableName}, id=${id}, sort=${sort
+            ->JSON.stringifyAny
+            ->Option.getOr("None")}: ${errorMsg}`,
+        )->Effect.map(_ => Error(ReventlessInfra.QueryDb.NotDeletedFromStorage(errorMsg)))
       }
     )
     ->Effect.runPromise

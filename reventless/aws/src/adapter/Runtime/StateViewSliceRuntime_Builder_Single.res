@@ -93,21 +93,9 @@ let storedSpecs: array<storedSpec> = []
 let grandParent = ref(None)
 
 let forEventCollector: ReventlessCore.Runtime.forEventCollector<
-  ReventlessCore.Runtime.effectHandler<
-    EventCollectorChannel.callbackEvent,
-    context,
-    unit,
-    string,
-  >,
+  ReventlessCore.Runtime.effectHandler<EventCollectorChannel.callbackEvent, context, unit, string>,
   ReventlessCore.EventCollector.component,
-> = (
-  ~handler as _,
-  ~eventTopics,
-  ~resources,
-  ~memorySize=1024,
-  ~timeout=30,
-  eventCollector,
-) => {
+> = (~handler as _, ~eventTopics, ~resources, ~memorySize=1024, ~timeout=30, eventCollector) => {
   let eventCollectorResource = eventCollector->ReventlessCore.Component.toPulumiResource
   let channel = eventCollector->ReventlessCore.EventCollector_Adapter.channel
   let eventCollectorName = eventCollectorResource.name->Option.getOr("Unnamed")
@@ -263,14 +251,10 @@ let buildLambda = (
   | Some(sel) =>
     Some(
       sel.securityGroupId
-      ->Pulumi.Output.apply(sgId =>
-        (
-          {
-            PulumiAws.Lambda.Function.subnetIds: sel.subnetIds->Pulumi.Input.make,
-            securityGroupIds: [sgId->Pulumi.Input.make]->Pulumi.Input.make,
-          }: PulumiAws.Lambda.Function.vpcConfig
-        )
-      )
+      ->Pulumi.Output.apply((sgId): PulumiAws.Lambda.Function.vpcConfig => {
+        PulumiAws.Lambda.Function.subnetIds: sel.subnetIds->Pulumi.Input.make,
+        securityGroupIds: [sgId->Pulumi.Input.make]->Pulumi.Input.make,
+      })
       ->Pulumi.Output.asInput,
     )
   | None => None
@@ -285,7 +269,7 @@ let buildLambda = (
     ~envVars,
     ~memorySize,
     ~timeout,
-    ~vpcConfig=?vpcConfig,
+    ~vpcConfig?,
     ~opts,
   )
 
@@ -375,14 +359,16 @@ let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) 
       let dcbResource = dcbEventLog->ReventlessCore.Component.toPulumiResource
       switch dcbResource.parent {
       | Some(parent) =>
-        let dcbOutputs: ReventlessCore.DcbEventLog.outputs = dcbEventLog->ReventlessCore.Component.outputs
+        let dcbOutputs: ReventlessCore.DcbEventLog.outputs =
+          dcbEventLog->ReventlessCore.Component.outputs
         let eventTopics: ReventlessCore.EventTopic.allOutputs = Dict.fromArray([
           ("DcbEventLog", dcbOutputs.eventTopic),
         ])
         let channel = EventCollectorChannel.make(
           ~name="AllStateViewSlices",
           ~eventTopics,
-          ~owner=None, ~opts={Pulumi.ComponentResource.parent: parent},
+          ~owner=None,
+          ~opts={Pulumi.ComponentResource.parent: parent},
         )
 
         // B3.0: a Postgres-backed DCB log has no stream resource — provision the
@@ -422,18 +408,19 @@ let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) 
           | None => feedArnOutput
           }
 
-          let handlerJson =
-            Pulumi.Output.all2((info.queryDbTableName, sourceUrn))
-            ->Pulumi.Output.apply(((tableName, urn)) => {
-              let entry: handlerEntry = {
-                specModule: info.specModulePath,
-                projectionModule: info.projectionModulePath,
-                queryDbTableName: tableName,
-                sourceUrn: urn,
-                stateTopicName: stateTopicNameFor(name),
-              }
-              entry
-            })
+          let handlerJson = Pulumi.Output.all2((
+            info.queryDbTableName,
+            sourceUrn,
+          ))->Pulumi.Output.apply(((tableName, urn)) => {
+            let entry: handlerEntry = {
+              specModule: info.specModulePath,
+              projectionModule: info.projectionModulePath,
+              queryDbTableName: tableName,
+              sourceUrn: urn,
+              stateTopicName: stateTopicNameFor(name),
+            }
+            entry
+          })
           let _ = handlerOutputs->Array.push(handlerJson)
         })
 
@@ -445,7 +432,7 @@ let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) 
           ~parent,
           ~handlerOutputs,
           ~packageDirs,
-          ~channelSpecs=[{channel: channel, eventTopics, resources: allQueryDbResources}],
+          ~channelSpecs=[{channel, eventTopics, resources: allQueryDbResources}],
           ~feedQueue,
           ~pgStreamConfig=anyPgStream ? eventsApiConfig.contents : None,
         )
@@ -463,7 +450,12 @@ let finish = () =>
   if !finished.contents {
     log.info(
       ~comp="StateViewSliceRuntime_Builder_Single",
-      `finish: ${storedSpecs->Array.length->Int.toString} storedSpecs, ${sliceInfos->Dict.keysToArray->Array.length->Int.toString} sliceInfos, grandParent=${grandParent.contents->Option.map(_ => "Some")->Option.getOr("None")}`,
+      `finish: ${storedSpecs->Array.length->Int.toString} storedSpecs, ${sliceInfos
+        ->Dict.keysToArray
+        ->Array.length
+        ->Int.toString} sliceInfos, grandParent=${grandParent.contents
+        ->Option.map(_ => "Some")
+        ->Option.getOr("None")}`,
     )
     if storedSpecs->Array.length > 0 {
       let (maxMemorySize, maxTimeout) = storedSpecs->Array.reduce((0, 0), (
@@ -503,19 +495,21 @@ let finish = () =>
             let projectionPkg = Util_Bundle.extractPackageName(info.projectionModulePath)
             packageDirs->Dict.set(projectionPkg, Util_Bundle.resolvePackageRoot(projectionPkg))
 
-            let handlerJson =
-              Pulumi.Output.all3((info.queryDbTableName, spec.sourceUrns, feedArnOutput))
-              ->Pulumi.Output.apply(((tableName, urns, feedArn)) => {
-                let entry: handlerEntry = {
-                  specModule: info.specModulePath,
-                  projectionModule: info.projectionModulePath,
-                  queryDbTableName: tableName,
-                  // No stream resource (Postgres) → dispatch on the feed queue ARN.
-                  sourceUrn: urns->Array.get(0)->Option.getOr(feedArn),
-                  stateTopicName: stateTopicNameFor(spec.componentName),
-                }
-                entry
-              })
+            let handlerJson = Pulumi.Output.all3((
+              info.queryDbTableName,
+              spec.sourceUrns,
+              feedArnOutput,
+            ))->Pulumi.Output.apply(((tableName, urns, feedArn)) => {
+              let entry: handlerEntry = {
+                specModule: info.specModulePath,
+                projectionModule: info.projectionModulePath,
+                queryDbTableName: tableName,
+                // No stream resource (Postgres) → dispatch on the feed queue ARN.
+                sourceUrn: urns->Array.get(0)->Option.getOr(feedArn),
+                stateTopicName: stateTopicNameFor(spec.componentName),
+              }
+              entry
+            })
             let _ = handlerOutputs->Array.push(handlerJson)
           | None =>
             log.warn(

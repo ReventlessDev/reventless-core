@@ -8,15 +8,13 @@ open JestGlobals
 
 describe("Util_DcbMetrics.transformationFor", () => {
   testSync("never sets defaultValue — it is mutually exclusive with dimensions", () =>
-    Util_DcbMetrics.metricNames->Array.forEach(m =>
-      expect(Util_DcbMetrics.transformationFor(m).defaultValue)->toBe(None)
+    Util_DcbMetrics.metricNames->Array.forEach(
+      m => expect(Util_DcbMetrics.transformationFor(m).defaultValue)->toBe(None),
     )
   )
 
   testSync("dimensions the metric by slice", () =>
-    expect(
-      Util_DcbMetrics.transformationFor("AppendRetry").dimensions->Option.isSome,
-    )->toBe(true)
+    expect(Util_DcbMetrics.transformationFor("AppendRetry").dimensions->Option.isSome)->toBe(true)
   )
 
   testSync("counts into the DCB namespace", () =>
@@ -30,6 +28,8 @@ describe("Util_DcbMetrics.transformationFor", () => {
 
 describe("Util_DcbMetrics.patternFor", () => {
   testSync("selects one metric's lines by its marker", () =>
-    expect(Util_DcbMetrics.patternFor("AppendRetry"))->toBe(`{ $.reventlessMetric = "AppendRetry" }`)
+    expect(
+      Util_DcbMetrics.patternFor("AppendRetry"),
+    )->toBe(`{ $.reventlessMetric = "AppendRetry" }`)
   )
 })

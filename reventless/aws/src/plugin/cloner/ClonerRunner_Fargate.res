@@ -243,14 +243,8 @@ export const handler = async (event) => {
               Lambda.Function.variables: Dict.fromArray([
                 ("TASK_DEFINITION_ARN", taskDefinition.arn->Pulumi.Output.asInput),
                 ("CLUSTER_ARN", cluster.arn->Pulumi.Output.asInput),
-                (
-                  "STACK_ORG",
-                  fullQualifiedStackName.organization->Pulumi.Input.make,
-                ),
-                (
-                  "STACK_PROJECT",
-                  fullQualifiedStackName.project->Pulumi.Input.make,
-                ),
+                ("STACK_ORG", fullQualifiedStackName.organization->Pulumi.Input.make),
+                ("STACK_PROJECT", fullQualifiedStackName.project->Pulumi.Input.make),
                 ("STACK_STACK", fullQualifiedStackName.stack->Pulumi.Input.make),
                 (
                   "SUBNETS",
@@ -361,8 +355,7 @@ export const handler = async (event) => {
         ~opts,
       )
 
-      let invokeCloneCode =
-        `import { util } from '@aws-appsync/utils';
+      let invokeCloneCode = `import { util } from '@aws-appsync/utils';
 export function request(ctx) {
   return {
     operation: 'Invoke',

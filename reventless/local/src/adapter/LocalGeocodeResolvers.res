@@ -56,8 +56,5 @@ let register = (server: ReventlessGraphqlServer.GraphQL_ServerInstance.t): unit 
     }
   })
   server.registerTypes(~sdlTypes=ReventlessCore.Platform_AdminApi.geocodeTypes)
-  server.registerQueries(
-    ~sdlFields=ReventlessCore.Platform_AdminApi.geocodeQueryFields,
-    ~resolvers,
-  )
+  server.registerQueries(~sdlFields=ReventlessCore.Platform_AdminApi.geocodeQueryFields, ~resolvers)
 }

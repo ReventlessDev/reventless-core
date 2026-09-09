@@ -20,19 +20,13 @@ describe("PlaceOrder StateChangeSlice", () => {
   )
 
   test("re-placing the same orderId returns OrderAlreadyPlaced", () =>
-    givenEvents([
-      CatalogProductSynced({productId: "p1"}),
-      OrderPlaced({orderId: "o1"}),
-    ])
+    givenEvents([CatalogProductSynced({productId: "p1"}), OrderPlaced({orderId: "o1"})])
     ->whenCmd(PlaceOrder({orderId: "o1", customerId: "c1", productIds: ["p1"]}))
     ->thenError(OrderAlreadyPlaced)
   )
 
   test("a sibling OrderPlaced for a different orderId does not block placement", () =>
-    givenEvents([
-      CatalogProductSynced({productId: "p1"}),
-      OrderPlaced({orderId: "o2"}),
-    ])
+    givenEvents([CatalogProductSynced({productId: "p1"}), OrderPlaced({orderId: "o2"})])
     ->whenCmd(PlaceOrder({orderId: "o1", customerId: "c1", productIds: ["p1"]}))
     ->thenEvent(OrderPlaced({orderId: "o1", customerId: "c1", productIds: ["p1"]}))
   )

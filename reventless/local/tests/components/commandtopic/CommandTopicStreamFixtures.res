@@ -7,13 +7,13 @@ module ItemSpec = {
   let name = "StreamCmdItem"
 
   @schema
-  type command = | CreateItem({name: string}) | DeleteItem({id: string})
+  type command = CreateItem({name: string}) | DeleteItem({id: string})
 
   @schema
-  type event = | ItemCreated({name: string})
+  type event = ItemCreated({name: string})
 
   @schema
-  type error = | AlreadyExists
+  type error = AlreadyExists
 
   let moduleUrl: string = %raw(`import.meta.url`)
 }
@@ -37,7 +37,9 @@ let _ = StreamBus.registerCommandHandler("StreamCmdTopicCmdTopic", async (body, 
 })
 
 let makeJson = (id): Reventless.Message.commandJson => {
-  Reventless.Message.id: id,
+  Reventless.Message.id,
   meta: testMeta,
-  commandJson: ItemSpec.CreateItem({name: id})->ReventlessCore.Message.encode(ItemSpec.commandSchema),
+  commandJson: ItemSpec.CreateItem({name: id})->ReventlessCore.Message.encode(
+    ItemSpec.commandSchema,
+  ),
 }

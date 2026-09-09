@@ -53,7 +53,12 @@ module Make = (
   ) => {
     module PlatformEventCollector = EventCollector_Builder.Make(RE, ECC)
     let make = (~name, ~eventTopics, ~opts) => {
-      let eventCollector = PlatformEventCollector.make(~name, ~eventTopics, ~owner={kind: ComponentType.Plugin, name}, ~opts)
+      let eventCollector = PlatformEventCollector.make(
+        ~name,
+        ~eventTopics,
+        ~owner={kind: ComponentType.Plugin, name},
+        ~opts,
+      )
       let eventCollectorOutputs = eventCollector->Component.outputs
       (eventCollector, eventCollectorOutputs)
     }
@@ -94,7 +99,9 @@ module Make = (
     ~version as _,
     ~extensionPoints: array<module(ReventlessInfra.ExtensionPoint.T)>,
     ~aggregates: array<module(ReventlessInfra.Aggregate.T with type api = api)>,
-    ~readModels: array<module(ReventlessInfra.ReadModel.T with type api = api and type role = 'role)>,
+    ~readModels: array<
+      module(ReventlessInfra.ReadModel.T with type api = api and type role = 'role),
+    >,
     ~scheduler: Pulumi.Output.t<Scheduler.operations>,
     ~resourceNaming: ReventlessInfra.ResourceNaming.operations,
     ~api: ClonerRunner.api,
@@ -266,7 +273,13 @@ module Make = (
     })
 
     let readModelsOutputs =
-      readModels->createReadModels(~api, ~apiRole, ~componentRuntime=Dict.make(), allEventTopics, opts)
+      readModels->createReadModels(
+        ~api,
+        ~apiRole,
+        ~componentRuntime=Dict.make(),
+        allEventTopics,
+        opts,
+      )
 
     let allQueryDbs = readModelsOutputs->ReadModel.allQueryDbs
     // Merge DCB StateViewSlice / InboundTranslation QueryDbs into allQueryDbs so the
@@ -349,9 +362,7 @@ module Make = (
     | Some(push) => push(~adminBarrier)
     | None => Pulumi.Output.make()
     }
-    let _resolvers = adminSchemaPushed->Pulumi.Output.apply(() =>
-      allQueryDbs->createResolvers
-    )
+    let _resolvers = adminSchemaPushed->Pulumi.Output.apply(() => allQueryDbs->createResolvers)
 
     let extensionPointsOutputs =
       (

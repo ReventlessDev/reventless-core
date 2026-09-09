@@ -157,8 +157,7 @@ let main = async () => {
           | _ =>
             fail(
               `${traitPackage} ships no scaffold (looked for ${specifier}).\n` ++
-              `  Not every trait has one — a trait whose graft is all patches has nothing to write.\n` ++
-              `  Write the graft by hand instead; its README says what the host must declare.`,
+              `  Not every trait has one — a trait whose graft is all patches has nothing to write.\n` ++ `  Write the graft by hand instead; its README says what the host must declare.`,
             )
             %raw(`undefined`)
           }
@@ -177,11 +176,14 @@ let main = async () => {
           )
           ["into", "tests", "dry-run"]->Array.forEach(k => raw->Dict.delete(k))
 
-          let config = try raw->JSON.Encode.object->Util_Sury.fromJson(scaffold.configSchema) catch {
+          let config = try raw
+          ->JSON.Encode.object
+          ->Util_Sury.fromJson(scaffold.configSchema) catch {
           | exn => {
               fail(
-                `${traitPackage} refused this config: ${Util_Sury.exnMessage(exn)}\n` ++
-                `  Every --key is a field of the trait's own config; it decides what it needs.`,
+                `${traitPackage} refused this config: ${Util_Sury.exnMessage(
+                    exn,
+                  )}\n` ++ `  Every --key is a field of the trait's own config; it decides what it needs.`,
               )
               %raw(`undefined`)
             }
@@ -191,7 +193,12 @@ let main = async () => {
 
           files->Array.forEach(({path, contents}) =>
             if dryRun {
-              Console.log(`Would write: ${path} (${contents->String.split("\n")->Array.length->Int.toString} lines)`)
+              Console.log(
+                `Would write: ${path} (${contents
+                  ->String.split("\n")
+                  ->Array.length
+                  ->Int.toString} lines)`,
+              )
             } else if NodeFs.existsSync(path) {
               // Never overwrite. From the moment a graft lands it is the host's
               // source, edited with the policy the trait deliberately does not
@@ -207,7 +214,9 @@ let main = async () => {
 
           if patches->Array.length > 0 {
             Console.log("")
-            Console.log("── Paste these; they go into files you already own ──────────────")
+            Console.log(
+              "── Paste these; they go into files you already own ──────────────",
+            )
             patches->Array.forEach(({into, at, contents}) => {
               Console.log("")
               Console.log(`# ${into} — ${at}`)
@@ -216,8 +225,7 @@ let main = async () => {
             Console.log("")
             Console.log(
               "Printed rather than written: placing an arm in an existing ordered `switch`\n" ++
-              "is an AST operation, and a text splice into the wrong arm is a bug the\n" ++
-              "compiler cannot see.",
+              "is an AST operation, and a text splice into the wrong arm is a bug the\n" ++ "compiler cannot see.",
             )
           }
 

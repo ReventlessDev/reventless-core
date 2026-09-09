@@ -17,39 +17,47 @@ describe("Auth_RefusalVocabulary — the table", () => {
   })
 
   testSync("each adapter can express both refusals", () => {
-    [Local, AppSync]->Array.forEach(adapter => {
-      let kinds = signalsFor(adapter)->Array.map(s => s.kind)
-      expect(kinds->Array.includes(Entitlement))->toBe(true)
-      expect(kinds->Array.includes(Identity))->toBe(true)
-    })
+    [Local, AppSync]->Array.forEach(
+      adapter => {
+        let kinds = signalsFor(adapter)->Array.map(s => s.kind)
+        expect(kinds->Array.includes(Entitlement))->toBe(true)
+        expect(kinds->Array.includes(Identity))->toBe(true)
+      },
+    )
   })
 
   testSync("within an adapter the two refusals are actually distinguishable", () => {
     // A mapping whose two rows look identical to a client would be worthless —
     // it has to differ in the status, the place to look, or the value found.
-    [Local, AppSync]->Array.forEach(adapter => {
-      let signals = signalsFor(adapter)
-      let entitlement = signals->Array.find(s => s.kind == Entitlement)
-      let identity = signals->Array.find(s => s.kind == Identity)
-      switch (entitlement, identity) {
-      | (Some(e), Some(i)) =>
-        let differs =
-          e.httpStatus != i.httpStatus || e.discriminator != i.discriminator || e.value != i.value
-        expect(differs)->toBe(true)
-      | _ => JsError.throwWithMessage("adapter is missing one of the two refusals")
-      }
-    })
+    [Local, AppSync]->Array.forEach(
+      adapter => {
+        let signals = signalsFor(adapter)
+        let entitlement = signals->Array.find(s => s.kind == Entitlement)
+        let identity = signals->Array.find(s => s.kind == Identity)
+        switch (entitlement, identity) {
+        | (Some(e), Some(i)) =>
+          let differs =
+            e.httpStatus != i.httpStatus || e.discriminator != i.discriminator || e.value != i.value
+          expect(differs)->toBe(true)
+        | _ => JsError.throwWithMessage("adapter is missing one of the two refusals")
+        }
+      },
+    )
   })
 })
 
 describe("Auth_RefusalVocabulary.classify", () => {
   testSync("classifies every row of the table as that row's kind", () => {
-    signals->Array.forEach(s => {
-      let errorType = s.discriminator->String.includes("errorType") ? Some(s.value) : None
-      let extensionsCode = s.discriminator == "extensions.code" ? Some(s.value) : None
-      // The 401 row's discriminator is a response header; status alone carries it.
-      expect(classify(~httpStatus=s.httpStatus, ~errorType?, ~extensionsCode?))->toEqual(Some(s.kind))
-    })
+    signals->Array.forEach(
+      s => {
+        let errorType = s.discriminator->String.includes("errorType") ? Some(s.value) : None
+        let extensionsCode = s.discriminator == "extensions.code" ? Some(s.value) : None
+        // The 401 row's discriminator is a response header; status alone carries it.
+        expect(classify(~httpStatus=s.httpStatus, ~errorType?, ~extensionsCode?))->toEqual(
+          Some(s.kind),
+        )
+      },
+    )
   })
 
   // The trap the table exists to defuse: on AppSync the entitlement value is a

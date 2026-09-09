@@ -20,40 +20,35 @@ let renderSlices = (
   stems: array<string>,
 ): array<string> =>
   stems->Array.map(stem =>
-    "  module "
-    ++ stem
-    ++ suffix
-    ++ " = Platform."
-    ++ platformFactory
-    ++ ".Make("
-    ++ stem
-    ++ ", "
-    ++ stem
-    ++ implSuffix
-    ++ ")"
+    "  module " ++
+    stem ++
+    suffix ++
+    " = Platform." ++
+    platformFactory ++
+    ".Make(" ++
+    stem ++
+    ", " ++
+    stem ++
+    implSuffix ++ ")"
   )
 
 // StateChangeSlices opt into async dispatch via `@@reventless.async` on the
 // spec file; the rendered factory becomes MakeAsync (CommandPending response).
-let renderStateChangeSlices = (
-  stems: array<string>,
-  asyncStems: Dict.t<bool>,
-): array<string> =>
+let renderStateChangeSlices = (stems: array<string>, asyncStems: Dict.t<bool>): array<string> =>
   stems->Array.map(stem => {
     let factory = switch Dict.get(asyncStems, stem) {
     | Some(true) => "MakeAsync"
     | _ => "Make"
     }
-    "  module "
-    ++ stem
-    ++ "Slice = Platform.StateChangeSlice."
-    ++ factory
-    ++ "("
-    ++ stem
-    ++ ", "
-    ++ stem
-    ++ Pairing.implSuffixForStateChange
-    ++ ")"
+    "  module " ++
+    stem ++
+    "Slice = Platform.StateChangeSlice." ++
+    factory ++
+    "(" ++
+    stem ++
+    ", " ++
+    stem ++
+    Pairing.implSuffixForStateChange ++ ")"
   })
 
 // AutomationSlice — 2-arg form. The merged `_Automation.res` shape exposes
@@ -63,13 +58,12 @@ let renderStateChangeSlices = (
 // from the sibling `_Mappings.res`.
 let renderAutomationSlices = (stems: array<string>): array<string> =>
   stems->Array.map(stem =>
-    "  module "
-    ++ stem
-    ++ "Slice = Platform.AutomationSlice.Make("
-    ++ stem
-    ++ ", "
-    ++ stem
-    ++ "_Automation)"
+    "  module " ++
+    stem ++
+    "Slice = Platform.AutomationSlice.Make(" ++
+    stem ++
+    ", " ++
+    stem ++ "_Automation)"
   )
 
 let renderAggregates = (aggregates: array<Pairing.aggregateDef>): array<string> =>
@@ -99,14 +93,19 @@ let renderReadModels = (readModels: array<Pairing.readModelDef>): array<string> 
     // platform wires a StateTopic Lambda for AppSync Events (Source B) live updates.
     let factory = stream ? "Platform.ReadModelStream.Make" : "Platform.ReadModel.Make"
     [
-      "  module " ++ wrapperName ++ " = " ++ factory ++ "(" ++ readModel ++ ", " ++ projections ++ ")",
+      "  module " ++
+      wrapperName ++
+      " = " ++
+      factory ++
+      "(" ++
+      readModel ++
+      ", " ++
+      projections ++ ")",
     ]
   })
 
 let renderTasks = (tasks: array<string>): array<string> =>
-  tasks->Array.map(stem =>
-    "  module " ++ stem ++ "Task = Platform.Task.Make(" ++ stem ++ ")"
-  )
+  tasks->Array.map(stem => "  module " ++ stem ++ "Task = Platform.Task.Make(" ++ stem ++ ")")
 
 let renderExtensionPoints = (extensionPoints: array<Pairing.extensionPointDef>): array<string> =>
   extensionPoints->Array.flatMap(({group, mappings}) => {
@@ -118,8 +117,7 @@ let renderExtensionPoints = (extensionPoints: array<Pairing.extensionPointDef>):
     }
     switch count {
     | 0 => []
-    | 1 =>
-      ["  module " ++ moduleName ++ " = Platform.ExtensionPoint.Make(" ++ firstMapping ++ ")"]
+    | 1 => ["  module " ++ moduleName ++ " = Platform.ExtensionPoint.Make(" ++ firstMapping ++ ")"]
     | 2 =>
       let m2 = mappings->Array.getUnsafe(1)
       [
@@ -140,8 +138,7 @@ let renderExtensionPoints = (extensionPoints: array<Pairing.extensionPointDef>):
       ]
     | _ =>
       // MakeMulti — inline module expression
-      let mappingLines =
-        mappings->Array.map(m => "      module(" ++ m ++ "),")
+      let mappingLines = mappings->Array.map(m => "      module(" ++ m ++ "),")
       Array.flat([
         [
           "  module " ++ moduleName ++ " = Platform.ExtensionPoint.MakeMulti({",
@@ -152,10 +149,7 @@ let renderExtensionPoints = (extensionPoints: array<Pairing.extensionPointDef>):
           "    let mappings: array<module(Mapping)> = [",
         ],
         mappingLines,
-        [
-          "    ]",
-          "  })",
-        ],
+        ["    ]", "  })"],
       ])
     }
   })
@@ -172,11 +166,9 @@ let renderExtensions = (extensions: array<string>): array<string> =>
 
 // ── make() call ──────────────────────────────────────────────────────────────
 
-let renderMakeParam = (
-  ~param: string,
-  ~items: array<string>,
-  ~moduleSuffix: string,
-): option<string> =>
+let renderMakeParam = (~param: string, ~items: array<string>, ~moduleSuffix: string): option<
+  string,
+> =>
   if items->Array.length === 0 {
     None
   } else {
@@ -184,10 +176,9 @@ let renderMakeParam = (
     Some("      ~" ++ param ++ "=[" ++ entries->Array.join(", ") ++ "],")
   }
 
-let renderStateViewSlicesMakeParam = (
-  slices: array<string>,
-  streamSlices: array<string>,
-): option<string> => {
+let renderStateViewSlicesMakeParam = (slices: array<string>, streamSlices: array<string>): option<
+  string,
+> => {
   let entries = Array.flat([
     slices->Array.map(s => "module(" ++ s ++ "Slice)"),
     streamSlices->Array.map(s => "module(" ++ s ++ "StreamSlice)"),
@@ -314,9 +305,7 @@ let validateComponentRuntimeKeys = (
   )
 }
 
-let renderComponentRuntimeParam = (
-  componentRuntime: dict<Config.runtimeHints>,
-): option<string> => {
+let renderComponentRuntimeParam = (componentRuntime: dict<Config.runtimeHints>): option<string> => {
   let entries = componentRuntime->Dict.toArray
   if entries->Array.length === 0 {
     None
@@ -419,6 +408,7 @@ let renderPluginStructureCall = (
       let entries = epMappingStems->Array.map(s => "module(" ++ s ++ ")")
       ls->Array.push("    ~extensionPoints=[" ++ entries->Array.join(", ") ++ "],")
     }
+
     // Chapter grouping bands per component, captured from the source folder layout.
     // Only emitted when at least one component lives under a chapter folder, so
     // plugins with a flat `src/` keep a byte-identical generated Plugin.res.
@@ -427,8 +417,11 @@ let renderPluginStructureCall = (
         componentChapters->Array.map(((stem, chapter)) =>
           "(\"" ++ stem ++ "\", \"" ++ chapter ++ "\")"
         )
-      ls->Array.push("    ~componentChapters=Dict.fromArray([" ++ entries->Array.join(", ") ++ "]),")
+      ls->Array.push(
+        "    ~componentChapters=Dict.fromArray([" ++ entries->Array.join(", ") ++ "]),",
+      )
     }
+
     // What the plugin's own scenarios say about each command's lifecycle edge.
     // Written by `check:lifecycle:update`, not here: the sidecars it harvests are
     // produced by the build this generator runs *before*, so a generator-written
@@ -463,7 +456,18 @@ let validateUniqueSpecStems = (~discovered: array<Discovery.discoveredFile>) => 
   ->Dict.toArray
   ->Array.forEach(((stem, paths)) => {
     if paths->Array.length > 1 {
-      let pathList = paths->Array.toSorted((a, b) => if a < b {-1.0} else if a > b {1.0} else {0.0})->Array.join("\n  - ")
+      let pathList =
+        paths
+        ->Array.toSorted((a, b) =>
+          if a < b {
+            -1.0
+          } else if a > b {
+            1.0
+          } else {
+            0.0
+          }
+        )
+        ->Array.join("\n  - ")
       JsError.throwWithMessage(
         "Generator: stem `" ++
         stem ++
@@ -493,7 +497,7 @@ let validateSliceTargets = (~resolved: Pairing.resolved) => {
         "` is missing `let targetName = \"...\"`. Valid targets: " ++
         knownReceivers->Array.join(", "),
       )
-    | Some(t) when !(knownReceivers->Array.includes(t)) =>
+    | Some(t) if !(knownReceivers->Array.includes(t)) =>
       JsError.throwWithMessage(
         "Generator: " ++
         kind ++
@@ -526,7 +530,7 @@ let validateSliceTargets = (~resolved: Pairing.resolved) => {
   // OutboundTranslationSlice: only validate when targetName = Some(name) (None = fire-and-forget)
   resolved.outboundTranslationSlices->Array.forEach(stem => {
     switch resolved.outboundTranslationSliceTargets->Dict.get(stem)->Option.getOr(None) {
-    | Some(t) when !(knownReceivers->Array.includes(t)) =>
+    | Some(t) if !(knownReceivers->Array.includes(t)) =>
       JsError.throwWithMessage(
         "Generator: OutboundTranslationSlice `" ++
         stem ++
@@ -616,9 +620,9 @@ let renderComposition = (
   lines->Array.push("")
   lines->Array.push(
     "@val external uiBundleUrl: option<string> = \"process.env." ++
-    pluginNameToEnvBase(config.name) ++
-    "_UI_BUNDLE_URL\"",
+    pluginNameToEnvBase(config.name) ++ "_UI_BUNDLE_URL\"",
   )
+
   // The DCB boundary's slices as schemas, outside `Make` because the scope they
   // determine is a property of the specs and not of any platform. Emitted rather
   // than hand-listed so a slice added tomorrow is in it: this is the only value
@@ -651,10 +655,7 @@ let renderComposition = (
   // StateChangeSlices — per-stem MakeAsync opt-in via @@reventless.async
   if resolved.stateChangeSlices->Array.length > 0 {
     lines->Array.push("  // StateChangeSlices")
-    renderStateChangeSlices(
-      resolved.stateChangeSlices,
-      resolved.asyncStateChangeSlices,
-    )->push
+    renderStateChangeSlices(resolved.stateChangeSlices, resolved.asyncStateChangeSlices)->push
   }
 
   // StateViewSlices
@@ -794,9 +795,17 @@ let renderComposition = (
     renderAggregateMakeParam(resolved.aggregates),
     renderReadModelMakeParam(resolved.readModels),
     renderTaskMakeParam(resolved.tasks),
-    renderMakeParam(~param="stateChangeSlices", ~items=resolved.stateChangeSlices, ~moduleSuffix="Slice"),
+    renderMakeParam(
+      ~param="stateChangeSlices",
+      ~items=resolved.stateChangeSlices,
+      ~moduleSuffix="Slice",
+    ),
     renderStateViewSlicesMakeParam(resolved.stateViewSlices, resolved.stateViewSlicesStream),
-    renderMakeParam(~param="automationSlices", ~items=resolved.automationSlices, ~moduleSuffix="Slice"),
+    renderMakeParam(
+      ~param="automationSlices",
+      ~items=resolved.automationSlices,
+      ~moduleSuffix="Slice",
+    ),
     renderMakeParam(
       ~param="outboundTranslationSlices",
       ~items=resolved.outboundTranslationSlices,

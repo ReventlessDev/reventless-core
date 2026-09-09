@@ -33,8 +33,7 @@ let adminUser: Identity.t = {
 // A `dict<Identity.t>` keyed by `username`. A4 hydrates this from
 // `.reventless/users.yaml`; tests inject via `registerUser`.
 
-let initialUsers = () =>
-  Dict.fromArray([("user", defaultUser), ("admin", adminUser)])
+let initialUsers = () => Dict.fromArray([("user", defaultUser), ("admin", adminUser)])
 
 let users: ref<dict<Identity.t>> = ref(initialUsers())
 
@@ -43,8 +42,7 @@ let registerUser = (~username: string, ~identity: Identity.t): unit =>
 
 let resetUsers = (): unit => users := initialUsers()
 
-let lookupUser = (username: string): option<Identity.t> =>
-  users.contents->Dict.get(username)
+let lookupUser = (username: string): option<Identity.t> => users.contents->Dict.get(username)
 
 // ── Header parsing ────────────────────────────────────────────────────────
 
@@ -240,11 +238,10 @@ module Login = {
    `activeRole` narrows the minted token to one of the caller's own roles; unset
    mints exactly what it has always minted.
    */
-  let issue = async (
-    ~username: string,
-    ~password: string,
-    ~activeRole: option<string>=?,
-  ): result<string, string> =>
+  let issue = async (~username: string, ~password: string, ~activeRole: option<string>=?): result<
+    string,
+    string,
+  > =>
     switch store.contents->Dict.get(username) {
     | Some({password: stored, identity}) if stored === password =>
       switch switch activeRole {
@@ -340,7 +337,6 @@ module Login = {
         }
       }
     }
-
 }
 
 // ── Provider implementation ───────────────────────────────────────────────
@@ -354,9 +350,7 @@ let _bearerToken = (header: string): option<string> =>
     None
   }
 
-let authenticate = async (
-  ctx: ReventlessCore.Auth_Adapter.requestContext,
-): Identity.authResult => {
+let authenticate = async (ctx: ReventlessCore.Auth_Adapter.requestContext): Identity.authResult => {
   // Decoding order: Bearer (when signature valid) → X-User/X-Groups → default.
   // A *present* Bearer that fails verification is rejected (AuthError) rather
   // than falling through to defaultUser — otherwise a client whose token was
@@ -402,5 +396,7 @@ let authenticate = async (
   }
 }
 
-let make = (~name as _: string, ~opts as _: option<Pulumi.ComponentResource.options>=?): Pulumi.Output.t<authConfig> =>
-  Pulumi.Output.make()
+let make = (
+  ~name as _: string,
+  ~opts as _: option<Pulumi.ComponentResource.options>=?,
+): Pulumi.Output.t<authConfig> => Pulumi.Output.make()

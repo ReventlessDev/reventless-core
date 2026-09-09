@@ -29,7 +29,8 @@ let decide = (state, command) =>
     if state.placedOrderIds->Array.includes(orderId) {
       Error(OrderAlreadyPlaced)
     } else {
-      let missing = productIds->Array.filter(pid => !(state.availableProductIds->Array.includes(pid)))
+      let missing =
+        productIds->Array.filter(pid => !(state.availableProductIds->Array.includes(pid)))
       if missing->Array.length > 0 {
         Error(ProductsNotAvailable({missing: missing}))
       } else {

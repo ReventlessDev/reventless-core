@@ -28,17 +28,21 @@ describe("AppSync_Adapter.injectAwsAuthAll", () => {
   testSync("adds the Cognito group directive to all mutation fields", () => {
     let augmented = AppSync_Adapter.injectAwsAuthAll(baseFragment, ~group="Admin")
     let parts = decodeFragment(augmented)
-    parts.mutations->Array.forEach(field => {
-      expect(field)->toContain(`@aws_cognito_user_pools(cognito_groups: ["Admin"])`)
-    })
+    parts.mutations->Array.forEach(
+      field => {
+        expect(field)->toContain(`@aws_cognito_user_pools(cognito_groups: ["Admin"])`)
+      },
+    )
   })
 
   testSync("adds the Cognito group directive to all query fields", () => {
     let augmented = AppSync_Adapter.injectAwsAuthAll(baseFragment, ~group="Admin")
     let parts = decodeFragment(augmented)
-    parts.queries->Array.forEach(field => {
-      expect(field)->toContain(`@aws_cognito_user_pools(cognito_groups: ["Admin"])`)
-    })
+    parts.queries->Array.forEach(
+      field => {
+        expect(field)->toContain(`@aws_cognito_user_pools(cognito_groups: ["Admin"])`)
+      },
+    )
   })
 
   testSync("preserves type definitions unchanged", () => {
@@ -51,9 +55,11 @@ describe("AppSync_Adapter.injectAwsAuthAll", () => {
   testSync("uses specified group name", () => {
     let augmented = AppSync_Adapter.injectAwsAuthAll(baseFragment, ~group="SuperAdmin")
     let parts = decodeFragment(augmented)
-    parts.mutations->Array.forEach(field => {
-      expect(field)->toContain(`cognito_groups: ["SuperAdmin"]`)
-    })
+    parts.mutations->Array.forEach(
+      field => {
+        expect(field)->toContain(`cognito_groups: ["SuperAdmin"]`)
+      },
+    )
   })
 
   // Regression: `injectAwsAuthAll` used to re-encode the fragment without the
@@ -68,9 +74,11 @@ describe("AppSync_Adapter.injectAwsAuthAll", () => {
     let parts = decodeFragment(augmented)
     expect(parts.subscriptions->Array.length)->toBe(original.subscriptions->Array.length)
     expect(parts.subscriptions->Array.length)->toBeGreaterThan(0)
-    parts.subscriptions->Array.forEach(field => {
-      expect(field)->toContain(`@aws_cognito_user_pools(cognito_groups: ["Admin"])`)
-    })
+    parts.subscriptions->Array.forEach(
+      field => {
+        expect(field)->toContain(`@aws_cognito_user_pools(cognito_groups: ["Admin"])`)
+      },
+    )
   })
 
   testSync("admin Plugin aggregate subscription fields survive the round-trip", () => {
@@ -100,25 +108,20 @@ describe("AppSync_Adapter.injectAwsAuthAll", () => {
 describe("AppSync_Adapter.injectAwsAuth", () => {
   testSync("injects auth only on entries with authorization", () => {
     // Build a fragment with known entries
-    let mutationEntries: array<ReventlessInfra.Api.mutationSchemaEntry> =
-      ReventlessCore.Platform_AdminApi.mutationEntries(~cloner=false)
+    let mutationEntries: array<
+      ReventlessInfra.Api.mutationSchemaEntry,
+    > = ReventlessCore.Platform_AdminApi.mutationEntries(~cloner=false)
     let queryEntries = ReventlessCore.PluginBaseFragment.queryEntries
 
     let baseFragment = ReventlessCore.Platform_AdminApi.baseFragment(~cloner=false)
-    let augmented = AppSync_Adapter.injectAwsAuth(
-      baseFragment,
-      ~mutationEntries,
-      ~queryEntries,
-    )
+    let augmented = AppSync_Adapter.injectAwsAuth(baseFragment, ~mutationEntries, ~queryEntries)
     let parts = decodeFragment(augmented)
 
     // Query entries have authorization → should carry the directive
-    let queryWithAuth =
-      queryEntries->Array.some(entry => entry.authorization->Option.isSome)
+    let queryWithAuth = queryEntries->Array.some(entry => entry.authorization->Option.isSome)
     if queryWithAuth {
-      let hasAuthQuery = parts.queries->Array.some(field =>
-        field->String.includes("@aws_cognito_user_pools")
-      )
+      let hasAuthQuery =
+        parts.queries->Array.some(field => field->String.includes("@aws_cognito_user_pools"))
       expect(hasAuthQuery)->toBe(true)
     }
   })
@@ -177,59 +180,37 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
     returnTypeName: single,
     stateSchema: S.unknown,
     authorization: None,
-    permission: ?permission,
+    ?permission,
   }
 
   testSync("AllowGroups([\"Admin\"]) emits cognito_groups: [\"Admin\"] on mutation", () => {
-    let fp = Dict.fromArray([(
-      "catalog_Category_Archive",
-      Reventless.Authorization.AllowGroups(["Admin"]),
-    )])
-    let entry = mutationEntry(
-      ~fieldNames=["catalog_Category_Archive"],
-      ~fieldPermissions=fp,
-    )
+    let fp = Dict.fromArray([
+      ("catalog_Category_Archive", Reventless.Authorization.AllowGroups(["Admin"])),
+    ])
+    let entry = mutationEntry(~fieldNames=["catalog_Category_Archive"], ~fieldPermissions=fp)
     let frag = makeFragment(["catalog_Category_Archive(id: ID!): String"], [])
-    let aug = AppSync_Adapter.injectAwsAuth(
-      frag,
-      ~mutationEntries=[entry],
-      ~queryEntries=[],
-    )
+    let aug = AppSync_Adapter.injectAwsAuth(frag, ~mutationEntries=[entry], ~queryEntries=[])
     let parts = decodeFragment(aug)
     let m = parts.mutations->Array.getUnsafe(0)
     expect(m)->toContain(`@aws_cognito_user_pools(cognito_groups: ["Admin"])`)
   })
 
   testSync("AllowGroups multi-group emits comma-separated groups", () => {
-    let fp = Dict.fromArray([(
-      "p_X",
-      Reventless.Authorization.AllowGroups(["Admin", "Editor"]),
-    )])
+    let fp = Dict.fromArray([("p_X", Reventless.Authorization.AllowGroups(["Admin", "Editor"]))])
     let entry = mutationEntry(~fieldNames=["p_X"], ~fieldPermissions=fp)
     let frag = makeFragment(["p_X(id: ID!): String"], [])
-    let aug = AppSync_Adapter.injectAwsAuth(
-      frag,
-      ~mutationEntries=[entry],
-      ~queryEntries=[],
-    )
+    let aug = AppSync_Adapter.injectAwsAuth(frag, ~mutationEntries=[entry], ~queryEntries=[])
     let parts = decodeFragment(aug)
-    expect(parts.mutations->Array.getUnsafe(0))->toContain(
-      `@aws_cognito_user_pools(cognito_groups: ["Admin", "Editor"])`,
-    )
+    expect(
+      parts.mutations->Array.getUnsafe(0),
+    )->toContain(`@aws_cognito_user_pools(cognito_groups: ["Admin", "Editor"])`)
   })
 
   testSync("AllowAuthenticated emits the group-less Cognito directive", () => {
-    let fp = Dict.fromArray([(
-      "p_Add",
-      Reventless.Authorization.AllowAuthenticated,
-    )])
+    let fp = Dict.fromArray([("p_Add", Reventless.Authorization.AllowAuthenticated)])
     let entry = mutationEntry(~fieldNames=["p_Add"], ~fieldPermissions=fp)
     let frag = makeFragment(["p_Add(id: ID!): String"], [])
-    let aug = AppSync_Adapter.injectAwsAuth(
-      frag,
-      ~mutationEntries=[entry],
-      ~queryEntries=[],
-    )
+    let aug = AppSync_Adapter.injectAwsAuth(frag, ~mutationEntries=[entry], ~queryEntries=[])
     let parts = decodeFragment(aug)
     // Open, not ungated: the field carries the group-less directive so it stays
     // reachable once defaultAction flips to DENY, but names no group.
@@ -242,11 +223,7 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
     let fp = Dict.fromArray([("p_Hide", Reventless.Authorization.DenyAll)])
     let entry = mutationEntry(~fieldNames=["p_Hide"], ~fieldPermissions=fp)
     let frag = makeFragment(["p_Hide(id: ID!): String"], [])
-    let aug = AppSync_Adapter.injectAwsAuth(
-      frag,
-      ~mutationEntries=[entry],
-      ~queryEntries=[],
-    )
+    let aug = AppSync_Adapter.injectAwsAuth(frag, ~mutationEntries=[entry], ~queryEntries=[])
     let parts = decodeFragment(aug)
     expect(parts.mutations->Array.getUnsafe(0))->toContain(`"__deny_all__"`)
   })
@@ -256,19 +233,9 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
       ("p_Archive", Reventless.Authorization.AllowGroups(["Admin"])),
       ("p_Add", Reventless.Authorization.AllowAuthenticated),
     ])
-    let entry = mutationEntry(
-      ~fieldNames=["p_Archive", "p_Add"],
-      ~fieldPermissions=fp,
-    )
-    let frag = makeFragment(
-      ["p_Archive(id: ID!): String", "p_Add(name: String!): String"],
-      [],
-    )
-    let aug = AppSync_Adapter.injectAwsAuth(
-      frag,
-      ~mutationEntries=[entry],
-      ~queryEntries=[],
-    )
+    let entry = mutationEntry(~fieldNames=["p_Archive", "p_Add"], ~fieldPermissions=fp)
+    let frag = makeFragment(["p_Archive(id: ID!): String", "p_Add(name: String!): String"], [])
+    let aug = AppSync_Adapter.injectAwsAuth(frag, ~mutationEntries=[entry], ~queryEntries=[])
     let parts = decodeFragment(aug)
     let archive = parts.mutations->Array.find(f => f->String.includes("p_Archive"))
     let add = parts.mutations->Array.find(f => f->String.includes("p_Add"))
@@ -295,16 +262,9 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
     // paren-first split reliably yields the bare field name.
     let frag = makeFragment(
       [],
-      [
-        "p_Item(id: ID!): Item",
-        "p_Items(first: Int, after: String): ItemConnection!",
-      ],
+      ["p_Item(id: ID!): Item", "p_Items(first: Int, after: String): ItemConnection!"],
     )
-    let aug = AppSync_Adapter.injectAwsAuth(
-      frag,
-      ~mutationEntries=[],
-      ~queryEntries=[entry],
-    )
+    let aug = AppSync_Adapter.injectAwsAuth(frag, ~mutationEntries=[], ~queryEntries=[entry])
     let parts = decodeFragment(aug)
     let item = parts.queries->Array.find(f => f->String.includes("p_Item("))
     let items = parts.queries->Array.find(f => f->String.includes("p_Items("))
@@ -319,10 +279,7 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
   testSync("Spec-level permission wins over legacy authorization field", () => {
     // Legacy {tableName, group} says "Admin"; spec-level says "Manager".
     // Spec-level must win.
-    let fp = Dict.fromArray([(
-      "p_X",
-      Reventless.Authorization.AllowGroups(["Manager"]),
-    )])
+    let fp = Dict.fromArray([("p_X", Reventless.Authorization.AllowGroups(["Manager"]))])
     let entry: ReventlessInfra.Api.mutationSchemaEntry = {
       fieldNames: ["p_X"],
       commandSchema: S.unknown,
@@ -333,44 +290,36 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
       fieldPermissions: fp,
     }
     let frag = makeFragment(["p_X(id: ID!): String"], [])
-    let aug = AppSync_Adapter.injectAwsAuth(
-      frag,
-      ~mutationEntries=[entry],
-      ~queryEntries=[],
-    )
+    let aug = AppSync_Adapter.injectAwsAuth(frag, ~mutationEntries=[entry], ~queryEntries=[])
     let parts = decodeFragment(aug)
     let m = parts.mutations->Array.getUnsafe(0)
     expect(m)->toContain(`cognito_groups: ["Manager"]`)
     expect(m)->not_->toContain(`"Admin"`)
   })
 
-  testSync("AllowAuthenticated on a field overrides the legacy authorization (drops the group)", () => {
-    let fp = Dict.fromArray([(
-      "p_X",
-      Reventless.Authorization.AllowAuthenticated,
-    )])
-    let entry: ReventlessInfra.Api.mutationSchemaEntry = {
-      fieldNames: ["p_X"],
-      commandSchema: S.unknown,
-      authorization: {
-        Reventless.ReadModel.tableName: "Tbl",
-        group: "Admin",
-      },
-      fieldPermissions: fp,
-    }
-    let frag = makeFragment(["p_X(id: ID!): String"], [])
-    let aug = AppSync_Adapter.injectAwsAuth(
-      frag,
-      ~mutationEntries=[entry],
-      ~queryEntries=[],
-    )
-    let parts = decodeFragment(aug)
-    // The spec-level AllowAuthenticated wins over the legacy `authorization.group`:
-    // the field keeps a directive, but no longer names a group.
-    let m = parts.mutations->Array.getUnsafe(0)
-    expect(m)->toContain("@aws_cognito_user_pools")
-    expect(m)->not_->toContain("cognito_groups")
-  })
+  testSync(
+    "AllowAuthenticated on a field overrides the legacy authorization (drops the group)",
+    () => {
+      let fp = Dict.fromArray([("p_X", Reventless.Authorization.AllowAuthenticated)])
+      let entry: ReventlessInfra.Api.mutationSchemaEntry = {
+        fieldNames: ["p_X"],
+        commandSchema: S.unknown,
+        authorization: {
+          Reventless.ReadModel.tableName: "Tbl",
+          group: "Admin",
+        },
+        fieldPermissions: fp,
+      }
+      let frag = makeFragment(["p_X(id: ID!): String"], [])
+      let aug = AppSync_Adapter.injectAwsAuth(frag, ~mutationEntries=[entry], ~queryEntries=[])
+      let parts = decodeFragment(aug)
+      // The spec-level AllowAuthenticated wins over the legacy `authorization.group`:
+      // the field keeps a directive, but no longer names a group.
+      let m = parts.mutations->Array.getUnsafe(0)
+      expect(m)->toContain("@aws_cognito_user_pools")
+      expect(m)->not_->toContain("cognito_groups")
+    },
+  )
 })
 
 // ── Dual-auth (Cognito + IAM) for deploy-time system callers ────────────────
@@ -394,7 +343,9 @@ describe("AppSync_Adapter.injectAwsAuth — systemCallable dual-auth", () => {
     let entry: ReventlessInfra.Api.mutationSchemaEntry = {
       fieldNames: ["p_Sync"],
       commandSchema: S.unknown,
-      fieldPermissions: Dict.fromArray([("p_Sync", Reventless.Authorization.AllowGroups(["Admin"]))]),
+      fieldPermissions: Dict.fromArray([
+        ("p_Sync", Reventless.Authorization.AllowGroups(["Admin"])),
+      ]),
       systemCallable: true,
     }
     let frag = makeFragment(["p_Sync(id: ID!): String"], [])
@@ -406,21 +357,24 @@ describe("AppSync_Adapter.injectAwsAuth — systemCallable dual-auth", () => {
     expect(m)->not_->toContain("@aws_auth")
   })
 
-  testSync("systemCallable mutation without a group restriction stays open to Cognito + IAM", () => {
-    let entry: ReventlessInfra.Api.mutationSchemaEntry = {
-      fieldNames: ["p_Sync"],
-      commandSchema: S.unknown,
-      fieldPermissions: Dict.fromArray([("p_Sync", Reventless.Authorization.AllowAuthenticated)]),
-      systemCallable: true,
-    }
-    let frag = makeFragment(["p_Sync(id: ID!): String"], [])
-    let aug = AppSync_Adapter.injectAwsAuth(frag, ~mutationEntries=[entry], ~queryEntries=[])
-    let m = decodeFragment(aug).mutations->Array.getUnsafe(0)
-    // Bare @aws_cognito_user_pools (any authenticated Cognito user) + IAM.
-    expect(m)->toContain("@aws_cognito_user_pools @aws_iam")
-    expect(m)->not_->toContain("cognito_groups")
-    expect(m)->not_->toContain("@aws_auth")
-  })
+  testSync(
+    "systemCallable mutation without a group restriction stays open to Cognito + IAM",
+    () => {
+      let entry: ReventlessInfra.Api.mutationSchemaEntry = {
+        fieldNames: ["p_Sync"],
+        commandSchema: S.unknown,
+        fieldPermissions: Dict.fromArray([("p_Sync", Reventless.Authorization.AllowAuthenticated)]),
+        systemCallable: true,
+      }
+      let frag = makeFragment(["p_Sync(id: ID!): String"], [])
+      let aug = AppSync_Adapter.injectAwsAuth(frag, ~mutationEntries=[entry], ~queryEntries=[])
+      let m = decodeFragment(aug).mutations->Array.getUnsafe(0)
+      // Bare @aws_cognito_user_pools (any authenticated Cognito user) + IAM.
+      expect(m)->toContain("@aws_cognito_user_pools @aws_iam")
+      expect(m)->not_->toContain("cognito_groups")
+      expect(m)->not_->toContain("@aws_auth")
+    },
+  )
 
   testSync("a non-systemCallable sibling stays Cognito-only (no @aws_iam)", () => {
     let entry: ReventlessInfra.Api.mutationSchemaEntry = {
@@ -437,11 +391,17 @@ describe("AppSync_Adapter.injectAwsAuth — systemCallable dual-auth", () => {
     let iamEntry: ReventlessInfra.Api.mutationSchemaEntry = {
       fieldNames: ["p_Sync"],
       commandSchema: S.unknown,
-      fieldPermissions: Dict.fromArray([("p_Sync", Reventless.Authorization.AllowGroups(["Admin"]))]),
+      fieldPermissions: Dict.fromArray([
+        ("p_Sync", Reventless.Authorization.AllowGroups(["Admin"])),
+      ]),
       systemCallable: true,
     }
     let frag = makeFragment(["p_Sync(id: ID!): String", "p_Other(id: ID!): String"], [])
-    let aug = AppSync_Adapter.injectAwsAuth(frag, ~mutationEntries=[entry, iamEntry], ~queryEntries=[])
+    let aug = AppSync_Adapter.injectAwsAuth(
+      frag,
+      ~mutationEntries=[entry, iamEntry],
+      ~queryEntries=[],
+    )
     let parts = decodeFragment(aug)
     switch parts.mutations->Array.find(f => f->String.includes("p_Other")) {
     | Some(other) =>
@@ -480,35 +440,39 @@ describe("AppSync_Adapter.injectAwsAuth — systemCallable dual-auth", () => {
     }
   })
 
-  testSync("systemCallable dual-auth extends to derived query fields (Items/ByIds/By<Index>)", () => {
-    let entry: ReventlessInfra.Api.querySchemaEntry = {
-      singleFieldName: "p_Item",
-      listFieldName: "p_Items",
-      returnTypeName: "p_Item",
-      stateSchema: S.unknown,
-      authorization: None,
-      permission: Reventless.Authorization.AllowGroups(["Admin"]),
-      systemCallable: true,
-    }
-    let frag = makeFragment(
-      [],
-      [
-        "p_ItemItems(id: ID!, first: Int): p_ItemConnection!",
-        "p_ItemsByIds(ids: [ID!]!): [p_Item]!",
-        "p_ItemByOwner(id: ID!, first: Int): p_ItemConnection!",
-        "q_Unrelated(id: ID!): String",
-      ],
-    )
-    let aug = AppSync_Adapter.injectAwsAuth(frag, ~mutationEntries=[], ~queryEntries=[entry])
-    let parts = decodeFragment(aug)
-    parts.queries->Array.forEach(field =>
-      if field->String.includes("q_Unrelated") {
-        expect(field)->not_->toContain("@aws_iam")
-      } else {
-        expect(field)->toContain("@aws_iam")
+  testSync(
+    "systemCallable dual-auth extends to derived query fields (Items/ByIds/By<Index>)",
+    () => {
+      let entry: ReventlessInfra.Api.querySchemaEntry = {
+        singleFieldName: "p_Item",
+        listFieldName: "p_Items",
+        returnTypeName: "p_Item",
+        stateSchema: S.unknown,
+        authorization: None,
+        permission: Reventless.Authorization.AllowGroups(["Admin"]),
+        systemCallable: true,
       }
-    )
-  })
+      let frag = makeFragment(
+        [],
+        [
+          "p_ItemItems(id: ID!, first: Int): p_ItemConnection!",
+          "p_ItemsByIds(ids: [ID!]!): [p_Item]!",
+          "p_ItemByOwner(id: ID!, first: Int): p_ItemConnection!",
+          "q_Unrelated(id: ID!): String",
+        ],
+      )
+      let aug = AppSync_Adapter.injectAwsAuth(frag, ~mutationEntries=[], ~queryEntries=[entry])
+      let parts = decodeFragment(aug)
+      parts.queries->Array.forEach(
+        field =>
+          if field->String.includes("q_Unrelated") {
+            expect(field)->not_->toContain("@aws_iam")
+          } else {
+            expect(field)->toContain("@aws_iam")
+          },
+      )
+    },
+  )
 })
 
 // ── Type-level dual-auth ─────────────────────────────────────────────────────
@@ -551,15 +515,20 @@ describe("AppSync_Adapter — type-level dual-auth", () => {
 
   testSync("types prefixed by a callable entry's returnTypeName carry the multi-auth pair", () => {
     let frag = makeFragmentWithTypes(types, ["p_Item(id: ID!): p_Item"])
-    let aug = AppSync_Adapter.injectAwsAuth(frag, ~mutationEntries=[], ~queryEntries=[callableEntry])
+    let aug = AppSync_Adapter.injectAwsAuth(
+      frag,
+      ~mutationEntries=[],
+      ~queryEntries=[callableEntry],
+    )
     let parts = decodeFragment(aug)
-    parts.types->Array.forEach(decl =>
-      if decl->String.startsWith("type p_Item") {
-        expect(decl)->toContain("@aws_cognito_user_pools @aws_iam {")
-      } else {
-        // The sibling view's type and the (non-authorizable) input stay untouched.
-        expect(decl)->not_->toContain("@aws_iam")
-      }
+    parts.types->Array.forEach(
+      decl =>
+        if decl->String.startsWith("type p_Item") {
+          expect(decl)->toContain("@aws_cognito_user_pools @aws_iam {")
+        } else {
+          // The sibling view's type and the (non-authorizable) input stay untouched.
+          expect(decl)->not_->toContain("@aws_iam")
+        },
     )
   })
 
@@ -573,25 +542,31 @@ describe("AppSync_Adapter — type-level dual-auth", () => {
     decodeFragment(aug).types->Array.forEach(decl => expect(decl)->not_->toContain("@aws_iam"))
   })
 
-  testSync("stampSharedIamTypes marks PageInfo + CommandResult members on the assembled SDL", () => {
-    let sdl = [
-      "interface Node {\n  id: ID!\n}",
-      "type PageInfo {\n  hasNextPage: Boolean!\n}",
-      "union CommandResult = CommandAccepted | CommandRejected | CommandPending",
-      "type CommandAccepted {\n  msgId: ID!\n}",
-      "type CommandRejected {\n  msgId: ID!\n}",
-      "type CommandPending {\n  msgId: ID!\n}",
-      "type Untouched {\n  id: ID!\n}",
-    ]->Array.join("\n\n")
-    let stamped = AppSync_Adapter.stampSharedIamTypes(sdl)
-    expect(stamped)->toContain("type PageInfo @aws_cognito_user_pools @aws_iam {")
-    expect(stamped)->toContain("type CommandAccepted @aws_cognito_user_pools @aws_iam {")
-    expect(stamped)->toContain("type CommandRejected @aws_cognito_user_pools @aws_iam {")
-    expect(stamped)->toContain("type CommandPending @aws_cognito_user_pools @aws_iam {")
-    expect(stamped)->toContain("type Untouched {")
-    // The union declaration itself takes no directive.
-    expect(stamped)->toContain("union CommandResult = CommandAccepted | CommandRejected | CommandPending")
-  })
+  testSync(
+    "stampSharedIamTypes marks PageInfo + CommandResult members on the assembled SDL",
+    () => {
+      let sdl =
+        [
+          "interface Node {\n  id: ID!\n}",
+          "type PageInfo {\n  hasNextPage: Boolean!\n}",
+          "union CommandResult = CommandAccepted | CommandRejected | CommandPending",
+          "type CommandAccepted {\n  msgId: ID!\n}",
+          "type CommandRejected {\n  msgId: ID!\n}",
+          "type CommandPending {\n  msgId: ID!\n}",
+          "type Untouched {\n  id: ID!\n}",
+        ]->Array.join("\n\n")
+      let stamped = AppSync_Adapter.stampSharedIamTypes(sdl)
+      expect(stamped)->toContain("type PageInfo @aws_cognito_user_pools @aws_iam {")
+      expect(stamped)->toContain("type CommandAccepted @aws_cognito_user_pools @aws_iam {")
+      expect(stamped)->toContain("type CommandRejected @aws_cognito_user_pools @aws_iam {")
+      expect(stamped)->toContain("type CommandPending @aws_cognito_user_pools @aws_iam {")
+      expect(stamped)->toContain("type Untouched {")
+      // The union declaration itself takes no directive.
+      expect(stamped)->toContain(
+        "union CommandResult = CommandAccepted | CommandRejected | CommandPending",
+      )
+    },
+  )
 })
 
 describe("AppSync_Adapter.injectAwsAuthAll — ~iamFieldNames", () => {
@@ -603,20 +578,25 @@ describe("AppSync_Adapter.injectAwsAuthAll — ~iamFieldNames", () => {
       decodeFragment(baseFragment).mutations
       ->Array.getUnsafe(0)
       ->ReventlessCore.GraphQL_Stitcher.extractLeadingName
-    let augmented =
-      AppSync_Adapter.injectAwsAuthAll(baseFragment, ~group="Admin", ~iamFieldNames=[firstMutationName])
+    let augmented = AppSync_Adapter.injectAwsAuthAll(
+      baseFragment,
+      ~group="Admin",
+      ~iamFieldNames=[firstMutationName],
+    )
     let parts = decodeFragment(augmented)
-    parts.mutations->Array.forEach(field => {
-      let name = ReventlessCore.GraphQL_Stitcher.extractLeadingName(field)
-      if name == firstMutationName {
-        expect(field)->toContain(`@aws_cognito_user_pools(cognito_groups: ["Admin"])`)
-        expect(field)->toContain("@aws_iam")
-        expect(field)->not_->toContain("@aws_auth")
-      } else {
-        expect(field)->toContain(`@aws_cognito_user_pools(cognito_groups: ["Admin"])`)
-        expect(field)->not_->toContain("@aws_iam")
-      }
-    })
+    parts.mutations->Array.forEach(
+      field => {
+        let name = ReventlessCore.GraphQL_Stitcher.extractLeadingName(field)
+        if name == firstMutationName {
+          expect(field)->toContain(`@aws_cognito_user_pools(cognito_groups: ["Admin"])`)
+          expect(field)->toContain("@aws_iam")
+          expect(field)->not_->toContain("@aws_auth")
+        } else {
+          expect(field)->toContain(`@aws_cognito_user_pools(cognito_groups: ["Admin"])`)
+          expect(field)->not_->toContain("@aws_iam")
+        }
+      },
+    )
   })
 
   testSync("default (no ~iamFieldNames) leaves every field Cognito-only", () => {
@@ -670,10 +650,7 @@ describe("Split mode — empty base fragment", () => {
 
   testSync("stitching admin base without plugins produces only admin fields", () => {
     let adminBase = ReventlessCore.Platform_AdminApi.baseFragment(~cloner=false)
-    let sdl = ReventlessCore.GraphQL_Stitcher.stitch(
-      ~baseFragment=adminBase,
-      ~pluginFragments=[],
-    )
+    let sdl = ReventlessCore.GraphQL_Stitcher.stitch(~baseFragment=adminBase, ~pluginFragments=[])
     expect(sdl)->toContain("Platform_Plugin")
   })
 })
@@ -688,8 +665,9 @@ describe("Split mode — empty base fragment", () => {
 
 describe("Merged mode — canonical source documents", () => {
   let assembleCanonicalSourceSdl = (~baseFragment) =>
-    AppSync_Adapter.stitchStandaloneWithAwsDirectives(~fragment=baseFragment)
-    ->AppSync_SdlDecorate.stampCanonicalTypes
+    AppSync_Adapter.stitchStandaloneWithAwsDirectives(
+      ~fragment=baseFragment,
+    )->AppSync_SdlDecorate.stampCanonicalTypes
 
   // Mirrors Platform.res's domainBaseFragment: no component fields, one
   // Platform_ping so the Query type is non-empty.
@@ -755,9 +733,7 @@ describe("Merged mode — canonical source documents", () => {
     mutations: ["MyPlugin_Item_Create(name: String!): CommandResult"],
     queries: ["MyPlugin_Item(id: ID!): MyPlugin_Item"],
     subscriptions: ["onMyPlugin_Item_Create(id: ID): CommandResult"],
-    subscriptionSources: [
-      {field: "onMyPlugin_Item_Create", mutations: ["MyPlugin_Item_Create"]},
-    ],
+    subscriptionSources: [{field: "onMyPlugin_Item_Create", mutations: ["MyPlugin_Item_Create"]}],
   })
 
   testSync("plugin subgraph document is standalone: relay types included, node omitted", () => {
@@ -768,13 +744,16 @@ describe("Merged mode — canonical source documents", () => {
     expect(sdl)->not_->toContain("node(id: ID!): Node")
   })
 
-  testSync("plugin subgraph document carries @aws_subscribe + shared-type IAM stamps, no @canonical", () => {
-    let sdl = AppSync_Adapter.stitchStandaloneWithAwsDirectives(~fragment=pluginFragment)
-    expect(sdl)->toContain(`@aws_subscribe(mutations: ["MyPlugin_Item_Create"])`)
-    expect(sdl)->toContain("type CommandAccepted @aws_cognito_user_pools @aws_iam {")
-    // Plugin subgraphs stay unstamped — the admin source's canonical defs win.
-    expect(sdl)->not_->toContain("@canonical")
-  })
+  testSync(
+    "plugin subgraph document carries @aws_subscribe + shared-type IAM stamps, no @canonical",
+    () => {
+      let sdl = AppSync_Adapter.stitchStandaloneWithAwsDirectives(~fragment=pluginFragment)
+      expect(sdl)->toContain(`@aws_subscribe(mutations: ["MyPlugin_Item_Create"])`)
+      expect(sdl)->toContain("type CommandAccepted @aws_cognito_user_pools @aws_iam {")
+      // Plugin subgraphs stay unstamped — the admin source's canonical defs win.
+      expect(sdl)->not_->toContain("@canonical")
+    },
+  )
 })
 
 // ── waitForMergeSuccess — association merge-status poll ─────────────────────
