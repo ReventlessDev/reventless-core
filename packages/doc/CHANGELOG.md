@@ -718,6 +718,8 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-09-10
+- feat(spec)!: a push channel is not one provider ([a778832](https://github.com/ReventlessDev/reventless-core/commit/a778832b1abee2449faa62db9e42520f5e3a7212))
 ### 2026-09-09
 - fix(aws): the archive asks what the layer holds, not what resolves ([fca352f](https://github.com/ReventlessDev/reventless-core/commit/fca352f7a19f0518a84944d4efd23eb98285f6bf))
 ### 2026-09-08
