@@ -63,8 +63,13 @@ let envValue = (key: string): option<string> =>
   | _ => None
   }
 
+/** Whether an interactive prompt is possible at all. Callers that can carry on
+    without an answer ask this first; a prompt nobody can answer is worse than a
+    default, because it turns a workable run into a hang or a throw. */
+let hasTty = (): bool => NodeProcess.stdin->NodeProcess.isTTY->Option.getOr(false)
+
 let requireTty = (): unit =>
-  if !(NodeProcess.stdin->NodeProcess.isTTY->Option.getOr(false)) {
+  if !hasTty() {
     throw(
       Failed(
         "no TTY for an interactive prompt — set the documented SEED_* / REVENTLESS_DEMO_* " ++

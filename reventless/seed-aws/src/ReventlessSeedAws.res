@@ -293,6 +293,52 @@ let cognito = (~region: string, ~clientId: string) => async (
   }
 }
 
+// ── Active role ───────────────────────────────────────────────────────────────
+
+/**
+ * The Cognito path's active-role door: `Platform_SetActiveRole` on the domain
+ * API, which is where the seed already sends everything else.
+ *
+ * It sits on the domain base document at `AllowAuthenticated`, deliberately not
+ * behind the Admin gate — the whole point is that a caller can drop into a
+ * narrower role — so a token already narrowed to `Shopper` can still call this
+ * to widen back out. There is no chicken-and-egg, and no `sub` argument: the
+ * mutation addresses the authorizer-verified caller's own row and nobody else's.
+ *
+ * Returns `None` always: the choice is a stored row, read by the pool's
+ * pre-token-generation trigger on the NEXT login, so the current bearer is
+ * unchanged by it and the caller must re-authenticate to see any effect.
+ *
+ * Split-API only. A unified-mode deployment's single API does not carry the
+ * field, so a refusal naming it is reported as "this deployment offers no role
+ * switch" rather than as a seeding failure.
+ */
+let setActiveRole: Seed.Connect.roleSwitch = async (~client, ~role) => {
+  let argument = switch role {
+  | None => "null"
+  | Some(r) => JSON.stringify(JSON.Encode.string(r))
+  }
+  try {
+    let _ = await Seed.Client.gql(
+      client,
+      ~query=`mutation { Platform_SetActiveRole(activeRole: ${argument}) { activeRole availableRoles } }`,
+      ~label="Platform_SetActiveRole",
+    )
+    None
+  } catch {
+  | Seed.Failed(message) =>
+    throw(
+      Seed.Failed(
+        message->String.includes("Platform_SetActiveRole")
+          ? `this deployment offers no role switch — \`Platform_SetActiveRole\` is a split-API ` ++
+            `field, and a unified-mode API does not carry it. Change the role in the host shell ` ++
+            `instead.\n  ${message}`
+          : message,
+      ),
+    )
+  }
+}
+
 // ── connect ───────────────────────────────────────────────────────────────────
 
 /**
@@ -324,5 +370,6 @@ let connect = (~projectDir: string=".", ~stack=?, ~backend=?, ()): (
       ~label=stackName,
       ~endpoint=eps.graphql,
       ~login=cognito(~region=eps.cognitoRegion, ~clientId=eps.cognitoClientId),
+      ~roleSwitch=setActiveRole,
     )
   }

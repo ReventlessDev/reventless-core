@@ -221,6 +221,43 @@ describe("Seed_Client.identitySummary:", () => {
   )
 })
 
+// Whether a token is narrowed cannot be read off the group claim: a bearer
+// carrying one group looks identical whether the account holds one role or five.
+// `availableRoles` is written only when a role was chosen, so its presence IS
+// the narrowing — and that is what decides whether the seed has anything to ask.
+
+describe("Seed_Client.narrowedFrom:", () => {
+  testSync("names the membership a narrowed token was reduced from", () =>
+    expect(
+      clientWith(
+        jwt([
+          ("cognito:groups", strings(["Shopper"])),
+          ("availableRoles", JSON.Encode.string("Admin,Shopper")),
+        ]),
+      )->Seed_Client.narrowedFrom,
+    )->toEqual(Some(["Admin", "Shopper"]))
+  )
+
+  // The case that must NOT prompt: a single-role account is not narrowed, it is
+  // simply small. Asking it to choose would put a question in every run.
+  testSync("says nothing about an unnarrowed token", () => {
+    expect(clientWith(jwt([("cognito:groups", strings(["Shopper"]))]))->Seed_Client.narrowedFrom)
+    ->toEqual(None)
+    expect(
+      clientWith(jwt([("cognito:groups", strings(["Admin", "Shopper"]))]))
+      ->Seed_Client.narrowedFrom,
+    )->toEqual(None)
+  })
+
+  // An empty claim is not a narrowing to nothing — it is a claim carrying no
+  // information, and offering a menu of no roles would be a dead end.
+  testSync("treats an empty availableRoles as not narrowed", () =>
+    expect(
+      clientWith(jwt([("availableRoles", JSON.Encode.string(""))]))->Seed_Client.narrowedFrom,
+    )->toEqual(None)
+  )
+})
+
 describe("Seed_Client.isDenied:", () => {
   // AppSync types it; the local server carries it in the message.
   testSync("recognises a refusal in either platform's vocabulary", () => {

@@ -53,6 +53,10 @@ function envValue(key) {
   }
 }
 
+function hasTty() {
+  return Stdlib_Option.getOr(process.stdin.isTTY, false);
+}
+
 function requireTty() {
   if (Stdlib_Option.getOr(process.stdin.isTTY, false)) {
     return;
@@ -229,6 +233,7 @@ export {
   iface,
   close,
   envValue,
+  hasTty,
   requireTty,
   ask,
   askHidden,

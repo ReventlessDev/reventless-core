@@ -27,6 +27,7 @@ type connection = Seed_Connect.connection = {
   caller: Seed_Users.user,
   callerId: option<string>,
   login: (~username: string, ~password: string) => promise<string>,
+  roleSwitch: option<Seed_Connect.roleSwitch>,
 }
 
 // A named, seedable data set. `seed` owns everything domain-specific.

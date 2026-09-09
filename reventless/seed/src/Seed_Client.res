@@ -151,6 +151,20 @@ let callerId = (t: t): option<string> =>
     }
   )
 
+/**
+ * The membership a narrowed token was reduced *from*, or `None` when the bearer
+ * is not narrowed.
+ *
+ * `availableRoles` is only written when a role was chosen, so its presence is
+ * the narrowing — the group claim alone cannot tell you, since a token carrying
+ * one group looks identical whether the account holds one or five.
+ */
+let narrowedFrom = (t: t): option<array<string>> =>
+  switch t->claimStrings(availableRolesClaim) {
+  | Some(available) if available->Array.length > 0 => Some(available)
+  | _ => None
+  }
+
 /** One line naming the identity the bearer carries, and — when it was narrowed —
     the membership it was narrowed from. The second half is the point: without it
     a refusal looks like a misconfigured grant rather than a role switch. */

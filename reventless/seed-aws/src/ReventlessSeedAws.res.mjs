@@ -4,6 +4,8 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Nodechild_process from "node:child_process";
 import * as Seed$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed.res.mjs";
+import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as Seed_Client$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Client.res.mjs";
 import * as Seed_Prompt$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Prompt.res.mjs";
 import * as Seed_Connect$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Connect.res.mjs";
 
@@ -279,6 +281,25 @@ function cognito(region, clientId) {
   };
 }
 
+async function setActiveRole(client, role) {
+  let argument = role !== undefined ? JSON.stringify(role) : "null";
+  try {
+    await Seed_Client$ReventlessSeed.gql(client, `mutation { Platform_SetActiveRole(activeRole: ` + argument + `) { activeRole availableRoles } }`, "Platform_SetActiveRole");
+    return;
+  } catch (raw_message) {
+    let message = Primitive_exceptions.internalToException(raw_message);
+    if (message.RE_EXN_ID === Seed$ReventlessSeed.Failed) {
+      let message$1 = message._1;
+      throw {
+        RE_EXN_ID: Seed$ReventlessSeed.Failed,
+        _1: message$1.includes("Platform_SetActiveRole") ? `this deployment offers no role switch — \`Platform_SetActiveRole\` is a split-API field, and a unified-mode API does not carry it. Change the role in the host shell instead.\n  ` + message$1 : message$1,
+        Error: new Error()
+      };
+    }
+    throw message;
+  }
+}
+
 function connect($staropt$star, stack, backend, param) {
   return async () => {
     let projectDir = $staropt$star !== undefined ? $staropt$star : ".";
@@ -286,7 +307,7 @@ function connect($staropt$star, stack, backend, param) {
     let backend$1 = url !== undefined ? url : backend;
     let stackName = await resolveStack(projectDir, backend$1, stack);
     let eps = await resolveEndpoints(projectDir, backend$1, stackName);
-    return await Seed_Connect$ReventlessSeed.make(stackName, eps.graphql, cognito(eps.cognitoRegion, eps.cognitoClientId), undefined);
+    return await Seed_Connect$ReventlessSeed.make(stackName, eps.graphql, cognito(eps.cognitoRegion, eps.cognitoClientId), setActiveRole, undefined);
   };
 }
 
@@ -304,6 +325,7 @@ export {
   endpointsFrom,
   resolveEndpoints,
   cognito,
+  setActiveRole,
   connect,
 }
 /* node:child_process Not a pure module */

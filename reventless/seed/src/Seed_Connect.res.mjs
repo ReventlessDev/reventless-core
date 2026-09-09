@@ -6,7 +6,77 @@ import * as Seed_Client$ReventlessSeed from "./Seed_Client.res.mjs";
 import * as Seed_Prompt$ReventlessSeed from "./Seed_Prompt.res.mjs";
 import * as Seed_Upload$ReventlessSeed from "./Seed_Upload.res.mjs";
 
-async function make(label, endpoint, login, localDefaultsOpt) {
+function roleFromEnv() {
+  return Stdlib_Option.map(Seed_Prompt$ReventlessSeed.envValue("SEED_ROLE"), v => {
+    let match = v.toLowerCase();
+    switch (match) {
+      case "all" :
+      case "clear" :
+      case "full" :
+      case "none" :
+        return "Full";
+      default:
+        return {
+          TAG: "Narrowed",
+          _0: v
+        };
+    }
+  });
+}
+
+function announceIdentity(client, prefixOpt) {
+  let prefix = prefixOpt !== undefined ? prefixOpt : "Acting as";
+  let summary = Seed_Client$ReventlessSeed.identitySummary(client);
+  if (summary !== undefined) {
+    console.log(prefix + `: ` + summary);
+    return;
+  }
+}
+
+async function applyRole(client, roleSwitch, login, caller, role) {
+  let minted = await roleSwitch(client, role);
+  let token = minted !== undefined ? minted : await login(caller.username, caller.password);
+  Seed_Client$ReventlessSeed.useToken(client, token);
+  return announceIdentity(client, "Now acting as");
+}
+
+async function resolveRole(client, roleSwitch, login, caller) {
+  if (roleSwitch === undefined) {
+    return;
+  }
+  let narrowedFrom = Seed_Client$ReventlessSeed.narrowedFrom(client);
+  let choice = roleFromEnv();
+  let chosen;
+  if (choice !== undefined) {
+    chosen = choice;
+  } else if (narrowedFrom !== undefined && narrowedFrom.length > 1 && Seed_Prompt$ReventlessSeed.hasTty()) {
+    console.log("");
+    console.log("This token is narrowed to one role. Seeding needs every right the account has;");
+    console.log("clearing also widens your host-shell session, which shares the stored choice.");
+    let options = [[
+        `full membership (` + narrowedFrom.join(", ") + `)`,
+        "Full"
+      ]].concat(narrowedFrom.map(r => [
+      r,
+      {
+        TAG: "Narrowed",
+        _0: r
+      }
+    ]));
+    chosen = await Seed_Prompt$ReventlessSeed.select("Act as:", options, undefined, 0);
+  } else {
+    chosen = undefined;
+  }
+  if (chosen !== undefined) {
+    if (typeof chosen !== "object") {
+      return await applyRole(client, roleSwitch, login, caller, undefined);
+    } else {
+      return await applyRole(client, roleSwitch, login, caller, chosen._0);
+    }
+  }
+}
+
+async function make(label, endpoint, login, roleSwitch, localDefaultsOpt) {
   let localDefaults = localDefaultsOpt !== undefined ? localDefaultsOpt : false;
   let uploadsSkipped = Seed_Upload$ReventlessSeed.uploadsSkipped();
   let match = await Seed_Prompt$ReventlessSeed.credentials(localDefaults);
@@ -16,10 +86,8 @@ async function make(label, endpoint, login, localDefaultsOpt) {
     endpoint: endpoint
   });
   Seed_Client$ReventlessSeed.useToken(client, token);
-  let summary = Seed_Client$ReventlessSeed.identitySummary(client);
-  if (summary !== undefined) {
-    console.log(`Acting as: ` + summary);
-  }
+  announceIdentity(client, undefined);
+  await resolveRole(client, roleSwitch, login, caller);
   return {
     client: client,
     uploadsSkipped: uploadsSkipped,
@@ -27,7 +95,8 @@ async function make(label, endpoint, login, localDefaultsOpt) {
     accounts: match.accounts,
     caller: caller,
     callerId: Seed_Client$ReventlessSeed.callerId(client),
-    login: login
+    login: login,
+    roleSwitch: roleSwitch
   };
 }
 
@@ -61,6 +130,66 @@ function viaLoginEndpoint(loginEndpoint) {
   };
 }
 
+function viaSwitchRoleEndpoint(switchRoleEndpoint) {
+  return async (client, role) => {
+    let t = Seed_Client$ReventlessSeed.currentToken(client);
+    let token;
+    if (t !== undefined) {
+      token = t;
+    } else {
+      throw {
+        RE_EXN_ID: Seed_Types$ReventlessSeed.Failed,
+        _1: "switch-role: no bearer to present — log in first",
+        Error: new Error()
+      };
+    }
+    let body = JSON.stringify(role !== undefined ? Object.fromEntries([[
+          "activeRole",
+          role
+        ]]) : ({}));
+    let res;
+    try {
+      res = await fetch(switchRoleEndpoint, {
+        method: "POST",
+        headers: Object.fromEntries([
+          [
+            "content-type",
+            "application/json"
+          ],
+          [
+            "authorization",
+            `Bearer ` + token
+          ]
+        ]),
+        body: body
+      });
+    } catch (exn) {
+      throw {
+        RE_EXN_ID: Seed_Types$ReventlessSeed.Failed,
+        _1: `switch-role: cannot reach ` + switchRoleEndpoint,
+        Error: new Error()
+      };
+    }
+    let json = await res.json();
+    if (!res.ok) {
+      throw {
+        RE_EXN_ID: Seed_Types$ReventlessSeed.Failed,
+        _1: `switch-role at ` + switchRoleEndpoint + ` failed with HTTP ` + res.status.toString() + `: ` + JSON.stringify(json),
+        Error: new Error()
+      };
+    }
+    let fresh = Stdlib_Option.flatMap(Seed_Client$ReventlessSeed.field(json, "token"), Seed_Client$ReventlessSeed.asString);
+    if (fresh !== undefined) {
+      return fresh;
+    }
+    throw {
+      RE_EXN_ID: Seed_Types$ReventlessSeed.Failed,
+      _1: `switch-role at ` + switchRoleEndpoint + ` returned no token`,
+      Error: new Error()
+    };
+  };
+}
+
 function envOr(key, fallback) {
   return Stdlib_Option.getOr(Seed_Prompt$ReventlessSeed.envValue(key), fallback);
 }
@@ -68,13 +197,19 @@ function envOr(key, fallback) {
 function local(graphql, login, param) {
   let endpoint = Stdlib_Option.getOr(graphql, Stdlib_Option.getOr(Seed_Prompt$ReventlessSeed.envValue("REVENTLESS_GRAPHQL_ENDPOINT"), "http://localhost:4000/graphql"));
   let loginEndpoint = Stdlib_Option.getOr(login, Stdlib_Option.getOr(Seed_Prompt$ReventlessSeed.envValue("REVENTLESS_LOGIN_ENDPOINT"), "http://localhost:4000/__inmemory/login"));
-  return () => make("local", endpoint, viaLoginEndpoint(loginEndpoint), true);
+  let switchRoleEndpoint = loginEndpoint.replace("/__inmemory/login", "/__inmemory/switch-role");
+  return () => make("local", endpoint, viaLoginEndpoint(loginEndpoint), viaSwitchRoleEndpoint(switchRoleEndpoint), true);
 }
 
 export {
+  roleFromEnv,
+  announceIdentity,
+  applyRole,
+  resolveRole,
   make,
   clientFor,
   viaLoginEndpoint,
+  viaSwitchRoleEndpoint,
   envOr,
   local,
 }

@@ -104,6 +104,13 @@ function callerId(t) {
   });
 }
 
+function narrowedFrom(t) {
+  let available = claimStrings(t, availableRolesClaim);
+  if (available !== undefined && available.length !== 0) {
+    return available;
+  }
+}
+
 function identitySummary(t) {
   return Stdlib_Option.map(effectiveGroups(t), groups => {
     let held = groups.length === 0 ? "no groups" : groups.join(", ");
@@ -438,6 +445,7 @@ export {
   claimStrings,
   effectiveGroups,
   callerId,
+  narrowedFrom,
   identitySummary,
   field,
   asString,
