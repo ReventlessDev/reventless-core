@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.294 (2026-09-09)
+
+### Bug Fixes
+
+* **deps:** follow the host UI to 3.0.0-alpha.103 ([ffb9560](https://github.com/ReventlessDev/reventless-core/commit/ffb95607863a2886122008c443be6d9ec7f709a2))
+* **seed:** resolve the demo owners from the platform's own accounts ([7000bb3](https://github.com/ReventlessDev/reventless-core/commit/7000bb367cddbed532197c8b234cb3d0320c1c62))
+
+
 # 1.0.0-alpha.293 (2026-09-09)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-platform-aws

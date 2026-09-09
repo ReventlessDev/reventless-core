@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.29 (2026-09-09)
+
+### Features
+
+* **seed:** choose the role a run acts as, instead of inheriting a stored one ([edf41ca](https://github.com/ReventlessDev/reventless-core/commit/edf41ca80f84bf340679f200ebfeeeb4a590ae03))
+
+
 # 1.0.0-alpha.28 (2026-09-08)
 
 **Note:** Version bump only for package @reventlessdev/reventless-seed-aws

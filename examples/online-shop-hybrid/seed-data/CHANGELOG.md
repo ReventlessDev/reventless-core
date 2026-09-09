@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.87 (2026-09-09)
+
+### Bug Fixes
+
+* **deps:** follow the host UI to 3.0.0-alpha.103 ([ffb9560](https://github.com/ReventlessDev/reventless-core/commit/ffb95607863a2886122008c443be6d9ec7f709a2))
+* **seed:** resolve the demo owners from the platform's own accounts ([7000bb3](https://github.com/ReventlessDev/reventless-core/commit/7000bb367cddbed532197c8b234cb3d0320c1c62))
+### Features
+
+* **seed:** check the deployed authorization against what the specs declare ([4f768cd](https://github.com/ReventlessDev/reventless-core/commit/4f768cd849e386cd7a3e6d7293fcf8312299d388))
+* **seed:** give every non-elevated storefront account demo data of its own ([3815c56](https://github.com/ReventlessDev/reventless-core/commit/3815c560b6a7a23a6d0ed676aa29cbf3cb434423))
+
+
 # 1.0.0-alpha.86 (2026-09-08)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-seed

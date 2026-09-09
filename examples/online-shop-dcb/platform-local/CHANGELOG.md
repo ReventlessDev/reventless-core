@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.238 (2026-09-09)
+
+### Bug Fixes
+
+* **deps:** follow the host UI to 3.0.0-alpha.103 ([ffb9560](https://github.com/ReventlessDev/reventless-core/commit/ffb95607863a2886122008c443be6d9ec7f709a2))
+
+
 # 1.0.0-alpha.237 (2026-09-08)
 
 ### Bug Fixes

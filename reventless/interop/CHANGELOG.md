@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.36 (2026-09-09)
+
+**Note:** Version bump only for package @reventlessdev/reventless-interop
+
+
+
+
+
 # 3.0.0-alpha.35 (2026-09-04)
 
 * feat(spec)!: one optional encoding on the wire, with no annotation ([320f91d](https://github.com/ReventlessDev/reventless-core/commit/320f91daa8bd90812a6e82069e7a1cb473041930))

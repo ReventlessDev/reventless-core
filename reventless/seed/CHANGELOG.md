@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.21 (2026-09-09)
+
+### Bug Fixes
+
+* **seed:** read the claims behind a JWT's JOSE header, not the header ([7d3b4fd](https://github.com/ReventlessDev/reventless-core/commit/7d3b4fd8ae6dfca90f3c16f29b2be67e4e26c28f))
+* **seed:** resolve the demo owners from the platform's own accounts ([7000bb3](https://github.com/ReventlessDev/reventless-core/commit/7000bb367cddbed532197c8b234cb3d0320c1c62))
+### Features
+
+* **seed:** choose the role a run acts as, instead of inheriting a stored one ([edf41ca](https://github.com/ReventlessDev/reventless-core/commit/edf41ca80f84bf340679f200ebfeeeb4a590ae03))
+* **seed:** let a caller ask whether a door opens, without walking through it ([342a142](https://github.com/ReventlessDev/reventless-core/commit/342a1429b6fba79ac46f395b801ce5a0f1e29567))
+
+
 # 1.0.0-alpha.20 (2026-09-08)
 
 ### Features

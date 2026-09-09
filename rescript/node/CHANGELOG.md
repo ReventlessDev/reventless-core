@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.0.0-alpha.11 (2026-09-09)
+
+### Bug Fixes
+
+* **spec:** let the formatter settle the lifecycle model's layout ([09e1742](https://github.com/ReventlessDev/reventless-core/commit/09e17429c24d3b84ee6d324b0641d62db4f0d9f9))
+
+
 # 2.0.0-alpha.10 (2026-09-08)
 
 ### Features
