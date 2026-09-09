@@ -910,6 +910,20 @@ function reportJson(findings, opaque, derived, failures) {
   ]), undefined, 2) + "\n";
 }
 
+function formatted(source) {
+  return Nodechild_process.execFileSync("pnpm", [
+    "exec",
+    "rescript",
+    "format",
+    "--stdin",
+    ".res"
+  ], {
+    cwd: repoRoot,
+    encoding: "utf8",
+    input: source
+  });
+}
+
 function modelSource(plugin, derived) {
   let saysSomething = d => {
     if (d.level !== "" || d.allowedStates.length !== 0) {
@@ -932,7 +946,7 @@ function modelSource(plugin, derived) {
     }
     return `  {component: "` + d.component + `", command: "` + d.command + `", ` + level + (`allowedStates: ` + quoted(d.allowedStates) + `, targets: ` + quoted(d.targets) + `},`);
   });
-  return [
+  return formatted([
     [
       `// AUTO-GENERATED — do not edit. Run \`pnpm run check:lifecycle:update\` to update.`,
       `//`,
@@ -949,7 +963,7 @@ function modelSource(plugin, derived) {
       "]",
       ""
     ]
-  ].flat().join("\n");
+  ].flat().join("\n"));
 }
 
 function modelPath(pluginDir) {
@@ -1126,6 +1140,7 @@ export {
   goldenJson,
   goldenPath,
   reportJson,
+  formatted,
   modelSource,
   modelPath,
   writeOrCompare,

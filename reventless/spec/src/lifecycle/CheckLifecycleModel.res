@@ -1163,6 +1163,19 @@ let reportJson = (
 
 // ── The value structure assembly reads ──────────────────────────────────────
 
+/** The emitted file is committed ReScript, so it faces the tree's format gate
+    like any other source. Laying the text out by hand would put this script and
+    the formatter in a standing argument only one of them can win — so it emits
+    whatever reads clearly and lets the formatter settle the layout. Raising
+    beats falling back: unformatted source would satisfy this check and fail the
+    format gate, which is the stand-off the call exists to end. */
+let formatted = (source: string): string =>
+  NodeChildProcess.execFileSync(
+    "pnpm",
+    ["exec", "rescript", "format", "--stdin", ".res"],
+    {cwd: repoRoot, encoding: "utf8", input: source},
+  )
+
 /** The same derivation as a committed ReScript value, so `buildStructure` gets
     the model as data. It cannot read the corpus itself: tests are not published
     with a plugin package, and metadata that read them would make deleting a test
@@ -1206,7 +1219,9 @@ let modelSource = (~plugin: string, ~derived: array<derivedCommand>): string => 
     ],
     entries,
     ["]", ""],
-  ])->Array.join("\n")
+  ])
+  ->Array.join("\n")
+  ->formatted
 }
 
 let modelPath = (~pluginDir: string) => NodePath.join([pluginDir, "src", "LifecycleModel.res"])

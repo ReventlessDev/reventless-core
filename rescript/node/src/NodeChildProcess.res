@@ -6,6 +6,8 @@ type execOptions = {
   env?: dict<string>,
   stdio?: array<string>,
   maxBuffer?: int,
+  /** Written to the child's stdin, which is then closed. */
+  input?: string,
 }
 
 @module("node:child_process")
