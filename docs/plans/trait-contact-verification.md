@@ -1,11 +1,12 @@
 # Plan: the ContactVerification trait
 
 **Date:** 2026-09-10
-**Status:** **Phase A part-built 2026-09-10 — the rules and the write-back are in; the ledger and the
-send are not.** The vocabulary, the decision rules and the graft onto `Customer` are built in the
-ordering example, with the staleness guard verified by deletion at *both* layers. What is **not** built:
-the trait-owned challenge ledger (so nothing issues or holds a secret yet) and the outbound slice that
-spends the `Messaging` call. Phases B and C not started.
+**Status:** **Phase A blocked 2026-09-10, one step from done.** The vocabulary, the decision rules,
+the graft onto `Customer` and the challenge ledger are all built in the ordering example, with the
+staleness guard verified by deletion at *both* layers. **The outbound slice cannot be built: nothing a
+plugin can reach produces a secret** — no randomness, no hashing, in `Capabilities.t` or anywhere else
+a `translate` can see. That needs a decision before Phase A closes; see the blocked section below.
+Phases B and C not started.
 **Repos:** `reventless-core` only — the `online-shop-hybrid` ordering plugin it is written in, then a
 new package under `traits/`.
 **Builds on:** [trait-address-geocoding.md](./trait-address-geocoding.md) and
@@ -240,10 +241,59 @@ Two smaller decisions the graft forced:
   projectable because it holds a secret. The corollary is that the *verdict* projects freely — and must
   also be dropped on an address change, or a row shows an address as proven that nobody proved.
 
-**Still to build in Phase A:** the trait-owned challenge ledger — nothing issues or stores a secret yet,
-so `onProofPresented`, expiry, attempts and the cooldown are exercised only as rules — and the outbound
-slice that spends the `Messaging` call. The write-back half is proven end to end on the host; the
-issue-and-send half has no component behind it.
+### The ledger, and the thing it ran into
+
+`EmailVerificationChallenges` — a StateChangeSlice of its own, because an aggregate is snapshotted and
+a secret held on `Customer` would be a secret in every backup of one. Commands carry a **hash**, never
+the secret, so `decide` stays pure and replayable; a wrong answer is recorded as a *fact*, so the
+attempt budget survives a replay rather than resetting on every rebuild. 194 tests green.
+
+Building it moved two rules that had been written with one host in view:
+
+- **`onIssueRequested` no longer takes host state.** A ledger has no host. Folding "is this address
+  owed a proof" together with "is a secret already outstanding" read naturally for a contact change and
+  stopped compiling the moment a second flow had no host at all. The stand-down (`contactToVerify`)
+  stayed with whoever reads the host.
+- **`onProofPresented` takes the held address as an `option`.** A registration has no subject yet, so
+  there is nothing for its challenge to be superseded *by* — which is a different statement from
+  skipping the check, and the type now says which one is meant.
+
+Both are the WritesBack/SelfContained split this plan predicted, arriving a phase earlier than
+expected — from the ledger rather than from the registration chapter.
+
+## 🚨 Phase A is blocked: nothing in a plugin can mint a secret
+
+**The send half cannot be built, and the reason is a missing seam rather than missing work.**
+
+A `translate` is handed exactly one thing — `~capabilities: Reventless.Capabilities.t`. There is no
+clock, no randomness and no hashing in it, and none anywhere else a plugin can reach: `Capabilities.t`
+carries `geocode`, `messaging` and `identityProvider`; nothing in `reventless-spec` exposes a random
+source (the two files matching "uuid" mention it only in prose); and no trait or example plugin uses
+randomness at all. The single `Math.random()` in the tree is in a platform-side publish check, not in
+plugin code.
+
+So the outbound slice can compose the message and cannot produce what goes in it.
+
+**`Math.random()` is not the answer, and taking it would be the exact defect this plan already names.**
+Token entropy is listed here as one of the five failure modes that end in account takeover. A secret
+drawn from a non-cryptographic PRNG is guessable, and it would be guessable behind a green test suite,
+which is worse than an obvious gap.
+
+**The seam has to be injected rather than imported, for a second reason beyond portability:** a
+conformance suite cannot test issuance against an unpredictable secret. Injecting the generator is what
+lets a test pin it, exactly as `geocoder(answer)` pins a geocode. An `external` binding to a runtime
+global would work in production and leave the trait's issuance untestable — which is the shape this
+plan already refuses in its publishing gate.
+
+**Not decided here, and it is a real fork.** The candidates are a new capability member alongside
+`geocode` / `messaging` / `identityProvider`; a narrower `Reventless.Secrets` module bound to Web
+Crypto, which every target runtime has; or moving minting out of the slice entirely and onto whoever
+opens the door. They differ in blast radius — the first changes `Capabilities.t`, which is a breaking
+change for anything constructing it — and the choice is not this plan's to make alone.
+
+**Still to build in Phase A:** the outbound slice, once the above is settled. The write-back half is
+proven end to end on the host and the ledger holds and settles challenges; what is missing is the one
+step that puts a secret into a message.
 
 ## Phase B — the second consumer
 
