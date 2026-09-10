@@ -96,61 +96,6 @@ nothing that a platform stack owns. Region and credentials come from the
 environment, as for any AWS SDK call.
 `
 
-// ── The password ─────────────────────────────────────────────────────────────
-
-/** Excludes the glyphs a person confuses when retyping a printed credential —
-  `l`/`I`/`1` and `O`/`0`. This password is meant to be read off a terminal once,
-  and a bootstrap that fails on a misread character sends the operator back to the
-  console this exists to avoid. */
-let lower = "abcdefghijkmnopqrstuvwxyz"
-let upper = "ABCDEFGHJKLMNPQRSTUVWXYZ"
-let digits = "23456789"
-let alphabet = lower ++ upper ++ digits
-
-/** Comfortably over the 12 every Reventless pool is created with, since nobody
-  has to remember it. */
-let passwordLength = 24
-
-/** `count` uniform bytes as ints.
-
-  Via the hex encoding because that is what [NodeCrypto] exposes of a Buffer, and
-  a binding returning raw byte values would be a new one added for this alone.
-  Two hex digits always parse, so the fallback below is unreachable — it is there
-  because the parse is *typed* as partial, not because it can fail. */
-let randomInts = (count: int): array<int> => {
-  let hex = NodeCrypto.randomBytes(count)->NodeCrypto.bufferToString("hex")
-  Array.fromInitializer(~length=count, i =>
-    hex->String.substring(~start=i * 2, ~end=i * 2 + 2)->Int.fromString(~radix=16)->Option.getOr(0)
-  )
-}
-
-let charAt = (source: string, n: int): string =>
-  source->String.charAt(mod(n, source->String.length))
-
-/**
-A password that satisfies the pool policy every Reventless pool is created with
-(12+ characters, with a lowercase, an uppercase and a digit).
-
-Satisfies it *by construction*: the three required classes are written into three
-non-overlapping thirds of the string, so one of each is always present. The
-obvious alternative — generate, test, regenerate — would leave a branch that
-almost never runs and, when it did, would hand Cognito a password it refuses.
-Almost-never is exactly the branch nobody has tested.
-*/
-let generatePassword = (): string => {
-  let ints = randomInts(passwordLength + 6)
-  let chars = ints->Array.slice(~start=0, ~end=passwordLength)->Array.map(n => alphabet->charAt(n))
-  let third = passwordLength / 3
-  [lower, upper, digits]->Array.forEachWithIndex((classAlphabet, block) => {
-    let position = block * third + mod(ints->Array.getUnsafe(passwordLength + block), third)
-    chars->Array.set(
-      position,
-      classAlphabet->charAt(ints->Array.getUnsafe(passwordLength + 3 + block)),
-    )
-  })
-  chars->Array.join("")
-}
-
 // ── The pool ─────────────────────────────────────────────────────────────────
 
 /**
@@ -165,14 +110,10 @@ assumed for the same reason `provision-identity` describes a supplied pool.
 No `UsernameAttributes` at all means the pool signs in on a plain username, which
 takes an email-shaped one happily.
 */
-let checkPoolAcceptsEmail = async (~providerId: string): result<unit, string> => {
-  let described = await Cognito.DescribeUserPoolCommand.make({
-    userPoolId: providerId,
-  })->Cognito.DescribeUserPoolCommand.send
-  switch described.userPool {
-  | None => Error(`DescribeUserPool returned nothing for "${providerId}"`)
-  | Some(pool) =>
-    let attributes = pool.usernameAttributes->Option.getOr([])
+let checkPoolAcceptsEmail = async (~providerId: string): result<unit, string> =>
+  switch await ProvisionCognito.usernameAttributes(~providerId) {
+  | Error(_) as e => e
+  | Ok(attributes) =>
     if attributes->Array.length == 0 || attributes->Array.includes("email") {
       Console.log(`pool     ${providerId}`)
       Ok()
@@ -184,29 +125,25 @@ let checkPoolAcceptsEmail = async (~providerId: string): result<unit, string> =>
       )
     }
   }
-}
 
 // ── The account ──────────────────────────────────────────────────────────────
 
-/** The group, where a stack has not already declared it.
-
-  In auto mode this is a no-op and says so: [Platform_Stack] declares the group as
-  an ordinary child of the pool it owns. On a supplied pool no stack does, because
-  two stacks sharing a provider would both declare it and the second would fail on
-  a name that already exists — so it is created here, beside the first
-  administrator who needs it. */
-let ensureGroup = async (~providerId: string, ~group: string): unit =>
-  try {
-    let _ = await Cognito.CreateGroupCommand.make({
-      groupName: group,
-      userPoolId: providerId,
-      description: "Reventless administrators",
-    })->Cognito.CreateGroupCommand.send
-    Console.log(`group    ${group} (created)`)
-  } catch {
-  | exn if exn->Util_AwsError.hasCode(~code="GroupExistsException") =>
-    Console.log(`group    ${group} (already present)`)
+let describe = (outcome: ProvisionCognito.outcome) =>
+  switch outcome {
+  | Created => "created"
+  | AlreadyPresent => "already present"
   }
+
+/** The group, where a stack has not already declared it. See
+  [ProvisionCognito.ensureGroup] for why a supplied pool needs one made here. */
+let ensureGroup = async (~providerId: string, ~group: string): unit => {
+  let outcome = await ProvisionCognito.ensureGroup(
+    ~providerId,
+    ~group,
+    ~description="Reventless administrators",
+  )
+  Console.log(`group    ${group} (${outcome->describe})`)
+}
 
 /**
 The account, where it is not already there.
@@ -214,62 +151,29 @@ The account, where it is not already there.
 `email_verified` is stamped true because nothing here can complete a verification
 round-trip, and an unverified address leaves the account able to sign in but
 unable to recover a password — a bootstrap that works once and strands its owner.
-
-`MessageAction: "SUPPRESS"` stops Cognito emailing an invitation. The invitation
-carries the temporary password this run is about to replace, so sending it would
-tell the new administrator to sign in with a credential that no longer works.
 */
 let ensureUser = async (~providerId: string, ~email: string): unit => {
   let attributes: array<Cognito.AdminCreateUserCommand.attributeType> = [
     {name: "email", value: email},
     {name: "email_verified", value: "true"},
   ]
-  try {
-    let _ = await Cognito.AdminCreateUserCommand.make({
-      userPoolId: providerId,
-      username: email,
-      userAttributes: attributes,
-      messageAction: "SUPPRESS",
-    })->Cognito.AdminCreateUserCommand.send
-    Console.log(`user     ${email} (created)`)
-  } catch {
-  | exn if exn->Util_AwsError.hasCode(~code="UsernameExistsException") =>
-    Console.log(`user     ${email} (already present)`)
-  }
+  let outcome = await ProvisionCognito.ensureUser(~providerId, ~username=email, ~attributes)
+  Console.log(`user     ${email} (${outcome->describe})`)
 }
 
-/**
-A password the account can actually be used with.
+/** A password the account can actually be used with — see
+  [ProvisionCognito.setPassword] for why it is permanent rather than temporary.
 
-🚨 **The step it is easiest to leave out, and leaving it out reproduces the defect
-this script exists to remove.** An administrator-created account holds a
-*temporary* password and lands in `FORCE_CHANGE_PASSWORD`: the first sign-in meets
-a `NEW_PASSWORD_REQUIRED` challenge, which the host UI is not known to handle. So
-this sets a permanent one rather than a temporary one, and the account is
-`CONFIRMED` when it returns.
-
-Unconditional rather than skipped for an account that already exists, which is
-what makes a second run useful instead of merely harmless: the operator who runs
-this again is usually the one who has lost the password.
-*/
+  Unconditional rather than skipped for an account that already exists, which is
+  what makes a second run useful instead of merely harmless: the operator who runs
+  this again is usually the one who has lost the password. */
 let setPassword = async (~providerId: string, ~email: string, ~password: string): unit => {
-  await Cognito.AdminSetUserPasswordCommand.make({
-    userPoolId: providerId,
-    username: email,
-    password,
-    permanent: true,
-  })->Cognito.AdminSetUserPasswordCommand.send
+  await ProvisionCognito.setPassword(~providerId, ~username=email, ~password)
   Console.log(`password (set, permanent)`)
 }
 
-/** Idempotent at the API: adding a user already in the group is not an error, so
-  this needs no existence check of its own. */
 let addToGroup = async (~providerId: string, ~email: string, ~group: string): unit => {
-  await Cognito.AdminAddUserToGroupCommand.make({
-    username: email,
-    groupName: group,
-    userPoolId: providerId,
-  })->Cognito.AdminAddUserToGroupCommand.send
+  await ProvisionCognito.addToGroup(~providerId, ~username=email, ~group)
   Console.log(`member   ${email} in ${group}`)
 }
 
@@ -305,9 +209,10 @@ The first administrator is ready.
   group      ${group}
 ${passwordNote}
 
-Adding more people is the AWS console's job for now — this script bootstraps the
-first account only, which is the one that cannot be made through a signed-in
-session because there is no signed-in session yet.`
+This script bootstraps the first account only, which is the one that cannot be
+made through a signed-in session because there is no signed-in session yet. The
+rest of the cast is a list rather than a command: declare it in
+.reventless/users.yaml and run \`pnpm exec provision-accounts\`.`
 
 let run = async (): result<unit, string> =>
   // argv[0] is node, argv[1] this script.
@@ -333,7 +238,7 @@ let run = async (): result<unit, string> =>
       | Error(_) as e => e
       | Ok() =>
         let group = Reventless.AdminGroup.name
-        let password = generatePassword()
+        let password = Reventless.Util_Password.generate()
         await ensureGroup(~providerId, ~group)
         await ensureUser(~providerId, ~email)
         await setPassword(~providerId, ~email, ~password)

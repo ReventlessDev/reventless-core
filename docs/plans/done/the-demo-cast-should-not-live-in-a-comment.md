@@ -1,7 +1,7 @@
 # Plan: the demo cast should not live in a comment
 
 **Date:** 2026-09-10
-**Status:** filed, not started.
+**Status:** done, 2026-09-10.
 **Repos:** `reventless-core` only.
 
 **Goal.** One command turns a declared list of accounts, groups and memberships into a working set of
@@ -219,9 +219,40 @@ following the demo actually is.
 - **Not investigated:** whether the seed client's account selection needs anything beyond what the
   manifest already carries, and whether four accounts is the right cast at all — that list is inherited
   from whoever built the demo, not derived from what the demo needs to show.
-- **Design proposal, not validated:** the write-back. It is the part with no precedent here, it mutates
-  a file a human also edits, and Step 4's "only fill empties" rule is the whole of its safety. If that
-  rule proves awkward, printing the passwords and leaving the file alone is the fallback — worse to
-  live with, but it cannot destroy anything.
-- **Unresolved, and named rather than assumed away:** where the shared manifest schema lives (Step 2).
-  A plaintext password field in `spec` is a real objection and this plan does not overrule it.
+- **Was "design proposal, not validated" — now validated:** the write-back. It round-trips through
+  `yaml`'s `parseDocument` rather than re-serializing the parsed entries, so comments survive; run
+  against the new AWS template it filled four empty passwords and left all 37 comment lines intact, and
+  a second run generated nothing. The "only fill empties" rule lives inside `applyFills` rather than in
+  its callers, so a future second caller cannot forget it. `userId` is the deliberate exception: the
+  pool mints it and the file is only a copy, so a stale one is corrected rather than preserved.
+- **Was unresolved, now decided:** the shared manifest schema lives in `spec`, as
+  `Reventless.AccountsManifest`. The objection was not overruled so much as answered by scope — the type
+  describes a *file format* whose password field the file already holds in plaintext by design, and the
+  module says so. What settled it: `spec` already owns the identity vocabulary both tools read
+  (`Identity`, `AdminGroup` — `provision-admin` reaches into it for the group name) and already depends
+  on `yaml`, while `core`, the only shared home plugins do *not* depend on, would have needed a new
+  runtime dependency in the package that ships into Lambda bundles.
+
+## 6. What was found while building it
+
+- **There are three readers of this file, not two.** `reventless-seed`'s `Seed_Users` keeps a
+  hand-rolled fourth copy of the shape, and it stays: `reventless-seed` deliberately depends only on
+  `rescript-node` and `rescript-jest` so a consuming app can install it without Pulumi, and its parse is
+  deliberately *lenient* where the shared one is strict — it skips a malformed entry rather than
+  refusing a hand-maintained file. Unifying it would trade that minimality away. Named here so the third
+  copy is a decision rather than an oversight.
+- **Steps 1 and 5 pulled against each other, and Step 5 won.** Step 1 said to extract `generatePassword`
+  into a module both AWS bins import — which would have put it in `reventless/aws`. But *prepare*
+  generates passwords and Step 5 forbids the platform-neutral half reaching into the AWS package. So the
+  generator moved further than Step 1 asked, to `Reventless.Util_Password` in `spec`, and only the
+  Cognito calls stayed behind in `ProvisionCognito`.
+- **The extraction had to leave the printing behind.** `provision-admin` has a line format its docs
+  describe, so the shared operations return an `outcome` and each bin phrases its own run. An extraction
+  that took the `Console.log` calls with it would have changed that script's output while claiming to
+  change nothing.
+- **One binding was missing:** `AdminGetUserCommand`. No request supplies a `sub` and `AdminCreateUser`
+  does not return one, so the id is read back — the same way for an account the run just made and one
+  that was already there, which is what lets a re-run correct a manifest written by hand.
+- **Two places said something that is now false** and were corrected in the same commit: the closing
+  line of `provision-admin`'s own output, and `first-admin.md`'s "Adding more people, today", which
+  carried the three-command CLI recipe this work replaces.

@@ -115,6 +115,44 @@ module AdminCreateUserCommand = {
   let send: t => promise<output> = command => Raw.send(client(), command)
 }
 
+module AdminGetUserCommand = {
+  type t
+
+  type attributeType = {
+    @as("Name") name: string,
+    @as("Value") value: string,
+  }
+
+  type input = {
+    @as("UserPoolId") userPoolId: string,
+    @as("Username") username: string,
+  }
+
+  /** `UserAttributes` is where `sub` lives — the id the pool minted, which no
+    request supplies and which `AdminCreateUser` does not return. A caller that
+    has to record it (an accounts manifest, say) reads it back from here, and
+    reads it the same way for an account it just made and one that was already
+    there. A username the pool cannot resolve raises `UserNotFoundException`. */
+  type output = {
+    @as("Username") username?: string,
+    @as("UserAttributes") userAttributes?: array<attributeType>,
+    @as("UserStatus") userStatus?: string,
+  }
+
+  @new @module("@aws-sdk/client-cognito-identity-provider")
+  external make: input => t = "AdminGetUserCommand"
+
+  module Raw = {
+    /**
+      see: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/cognito-identity-provider/command/AdminGetUserCommand/
+    */
+    @send
+    external send: (client, t) => promise<output> = "send"
+  }
+
+  let send: t => promise<output> = command => Raw.send(client(), command)
+}
+
 module AdminSetUserPasswordCommand = {
   type t
 

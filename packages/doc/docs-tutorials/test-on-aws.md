@@ -45,6 +45,23 @@ Sign in to the host-shell with that user and run the same smoke test you ran
 locally: add a category and product, register a customer, place an order, and
 confirm read models update.
 
+### The other three accounts
+
+The shop demonstrates four roles, and one administrator shows only one of them.
+Copy the committed template and let the tool make the rest:
+
+```bash
+mkdir -p .reventless && cp users.example.yaml .reventless/users.yaml
+pnpm exec provision-accounts \
+  --provider-id $(pulumi stack output identityProviderId)
+```
+
+That creates `shopper`, `merch` and `fulfil` with their groups, generates a
+password for each, and writes both the passwords and the ids the pool minted back
+into `.reventless/users.yaml`. The seed below reads that same file, so the demo
+data lands on the accounts you can actually log in as — which is what makes
+`fulfil` and `merch` show different screens instead of empty ones.
+
 ## Seed demo data (optional)
 
 To fill the views without clicking through by hand, run the demo seed against the

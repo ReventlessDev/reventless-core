@@ -117,30 +117,67 @@ You can read the group name back from the stack rather than from source:
 pulumi stack output identityProviderAdminGroup
 ```
 
-## Adding more people, today
+## The rest of the cast
 
-There is no runtime user administration yet. Until there is, the second and
-hundredth account are made through the AWS console or CLI, in the pool the stack
-created:
+`provision-admin` stops at one account on purpose: the first administrator is the
+one that cannot be made from a signed-in session, because there is no signed-in
+session yet. Everyone else — a demo's shopper and merchandiser, a company's
+staff — is a list, and a list belongs in a file rather than in a dozen CLI
+invocations.
 
-```bash
-aws cognito-idp admin-create-user \
-  --user-pool-id <POOL_ID> --username them@example.com \
-  --user-attributes Name=email,Value=them@example.com Name=email_verified,Value=true \
-  --message-action SUPPRESS
-aws cognito-idp admin-set-user-password \
-  --user-pool-id <POOL_ID> --username them@example.com \
-  --password '<StrongPassw0rd>' --permanent
-# only for another administrator:
-aws cognito-idp admin-add-user-to-group \
-  --user-pool-id <POOL_ID> --username them@example.com --group-name Admin
+Declare them in `.reventless/users.yaml`, beside the platform package you deploy
+from:
+
+```yaml
+- username: shopper
+  password: ""
+  groups: [Shopper]
+
+- username: merch
+  password: ""
+  groups: [Merchandiser, Shopper]
 ```
 
-That is the honest answer rather than a gap: `provision-admin` bootstraps the
-*first* account specifically, because it is the one that cannot be made from a
-signed-in session — there is no signed-in session yet. Managing accounts after
-that is a different problem, and the framework is growing an identity capability
-to own it.
+Then:
+
+```bash
+pnpm exec provision-accounts \
+  --provider-id "$(pulumi stack output identityProviderId)"
+```
+
+For each entry it creates the groups named, creates the account, sets a permanent
+password and applies the memberships — then **writes back into the file** the two
+things you cannot know in advance: the generated password, and the `sub` the pool
+minted. That second one matters more than it looks: owner-scoped rows are keyed by
+it, and `pnpm run seed` reads it to key demo data to the accounts you actually log
+in as. Nobody pastes a UUID.
+
+Leave `password: ""` and one is generated for you. **A password already in the
+file is never replaced**, so a second run is safe — which is the normal case, because
+adding one colleague to a list of four means running it again.
+
+The command knows nothing about any particular application's cast; the manifest is
+yours. Each example ships a `users.example.yaml` beside its `platform-aws` package
+to copy from.
+
+### It also runs with no AWS account
+
+```bash
+pnpm exec provision-accounts --prepare-only
+```
+
+Validates the manifest and fills in empty passwords, and creates nothing. That is
+the *whole* of provisioning on the local platform, where the manifest **is** the
+user store — the in-memory auth adapter hydrates from it at startup, so there is
+no principal to create. Same file, same format, same command; only the second half
+is Cognito's.
+
+### What is still missing
+
+Runtime user administration — adding a colleague from inside the running product.
+That is a different problem, and the framework is growing an identity capability to
+own it. `provision-accounts` is a provisioning tool: it is for standing a
+deployment up, not for running it.
 
 If you are self-registering rather than administering, note that a pool is created
 admin-only by default; `platform:signUpMode` opens it. See

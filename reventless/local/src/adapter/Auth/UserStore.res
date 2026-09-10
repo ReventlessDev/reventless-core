@@ -14,40 +14,15 @@ open Reventless
 /**
  * One YAML entry. `groups` is required (use `[]` for an unprivileged user);
  * `userId` defaults to the username when omitted.
+ *
+ * The shape belongs to [AccountsManifest] rather than to this adapter: the AWS
+ * provisioning tool writes the same file, and two definitions of one file format
+ * is how a manifest starts working on one platform and failing on the other.
  */
-@schema
-type entry = {
-  username: string,
-  password: string,
-  groups: array<string>,
-  userId?: string,
-}
+type entry = AccountsManifest.entry
 
-// ── YAML parsing (eemeli/yaml) ──────────────────────────────────────────────
-
-@module("yaml") external _yamlParse: string => unknown = "parse"
-
-let _entriesSchema = S.array(entrySchema)
-
-/** Parses a YAML document string into entries (best-effort). */
-let parseString = (yamlText: string): result<array<entry>, string> =>
-  try {
-    let json = _yamlParse(yamlText)->Obj.magic
-    Ok(S.parseOrThrow(json, ~to=_entriesSchema))
-  } catch {
-  | JsExn(err) => Error(JsExn.message(err)->Option.getOr("YAML parse error"))
-  | _ => Error("YAML parse error")
-  }
-
-/** Reads + parses a YAML file. */
-let parseFile = (path: string): result<array<entry>, string> =>
-  try {
-    let text = NodeFs.readFileSync(path)
-    parseString(text)
-  } catch {
-  | JsExn(err) => Error(JsExn.message(err)->Option.getOr(`Cannot read ${path}`))
-  | _ => Error(`Cannot read ${path}`)
-  }
+let parseString = AccountsManifest.parseString
+let parseFile = AccountsManifest.parseFile
 
 // ── Resolution & loading ────────────────────────────────────────────────────
 
@@ -62,7 +37,7 @@ let _registerEntries = (entries: array<entry>): unit =>
     LocalAuth.Login.setCredentials(~username, ~password, ~identity=id)
   })
 
-let _defaultPath = (): string => NodePath.join([NodeProcess.cwd(), ".reventless/users.yaml"])
+let _defaultPath = AccountsManifest.defaultPath
 
 /**
  * Hydrates the Login store. Returns the resolution path actually used

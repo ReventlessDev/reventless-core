@@ -1,0 +1,53 @@
+# Cognito accounts for the deployed platform — TEMPLATE.
+#
+# Copy it into place, then let the tool fill it in:
+#
+#   mkdir -p .reventless && cp users.example.yaml .reventless/users.yaml
+#   pnpm exec provision-accounts --provider-id "$(pulumi stack output identityProviderId)"
+#
+# That creates every group named below, creates each account, sets a permanent
+# password, applies the memberships — and writes back into `.reventless/users.yaml`
+# the two things this file cannot know in advance:
+#
+#   password  generated per deployment, 24 characters. Written only into an EMPTY
+#             field, so a second run never replaces one you are signed in with.
+#   userId    the Cognito `sub`, which the pool mints. Owner-scoped rows (@owner)
+#             are keyed by it, and `pnpm run seed` reads it to key the demo's
+#             rows to the accounts you actually log in as. Nobody pastes a UUID.
+#
+# Re-running is safe and is the normal case: an existing group and an existing
+# account are both adopted rather than refused.
+#
+# 🚨 THIS TEMPLATE SHIPS NO PASSWORDS, and that is the difference from its local
+# counterpart. `platform-local/users.example.yaml` ships `admin`/`admin` because
+# the local store keeps passwords in a plaintext in-memory dictionary that is gone
+# on restart — a development fixture, reachable only from the machine it runs on.
+# A Cognito pool is reachable from the internet, so a committed password here
+# would mean every Reventless demo anyone deploys shares four published
+# credentials. The structure is the valuable part; none of it is secret.
+#
+# `.reventless/` is gitignored, so the filled-in file stays out of the repo. Keep
+# it that way: after a run it holds four working credentials for a real pool.
+#
+# Each stack (alpha, beta, main) resolves its own pool, so its accounts are NOT
+# shared with another stack's. Run the command once per deployment.
+#
+# The four roles mirror the local ones exactly. See
+# ../platform-local/users.example.yaml for what each is for, why `fulfil` holds
+# Fulfilment AND Shopper, and why Merchandiser is deliberately not elevated.
+
+- username: admin
+  password: ""
+  groups: [Admin, Shopper]
+
+- username: shopper
+  password: ""
+  groups: [Shopper]
+
+- username: merch
+  password: ""
+  groups: [Merchandiser, Shopper]
+
+- username: fulfil
+  password: ""
+  groups: [Fulfilment, Shopper]

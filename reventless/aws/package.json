@@ -5,7 +5,8 @@
   "license": "Apache-2.0",
   "bin": {
     "provision-identity": "./run-provision-identity.mjs",
-    "provision-admin": "./run-provision-admin.mjs"
+    "provision-admin": "./run-provision-admin.mjs",
+    "provision-accounts": "./run-provision-accounts.mjs"
   },
   "scripts": {
     "build": "rescript build",
@@ -42,7 +43,8 @@
     "@reventlessdev/reventless-postgres": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*",
     "sury": "11.0.0-rc.2",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "yaml": "^2.8.3"
   },
   "devDependencies": {
     "rescript": "12.3.0",
