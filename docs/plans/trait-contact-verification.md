@@ -1,12 +1,11 @@
 # Plan: the ContactVerification trait
 
 **Date:** 2026-09-10
-**Status:** **Phase A blocked 2026-09-10, one step from done.** The vocabulary, the decision rules,
-the graft onto `Customer` and the challenge ledger are all built in the ordering example, with the
-staleness guard verified by deletion at *both* layers. **The outbound slice cannot be built: nothing a
-plugin can reach produces a secret** — no randomness, no hashing, in `Capabilities.t` or anywhere else
-a `translate` can see. That needs a decision before Phase A closes; see the blocked section below.
-Phases B and C not started.
+**Status:** **Phase A ✅ complete 2026-09-10.** The vocabulary, the decision rules, the graft onto
+`Customer`, the challenge ledger and the issue-and-send slice are all built in the ordering example —
+202 tests there, with the staleness guard verified by deletion at *both* layers. The blocker it hit
+(nothing in a plugin could produce a secret) was resolved by making one: `Secrets` is now a capability.
+**Phase B (the registration chapter) and Phase C (extraction) not started.**
 **Repos:** `reventless-core` only — the `online-shop-hybrid` ordering plugin it is written in, then a
 new package under `traits/`.
 **Builds on:** [trait-address-geocoding.md](./trait-address-geocoding.md) and
@@ -261,9 +260,9 @@ Building it moved two rules that had been written with one host in view:
 Both are the WritesBack/SelfContained split this plan predicted, arriving a phase earlier than
 expected — from the ledger rather than from the registration chapter.
 
-## 🚨 Phase A is blocked: nothing in a plugin can mint a secret
+## The blocker Phase A hit, and what it produced — resolved 2026-09-10
 
-**The send half cannot be built, and the reason is a missing seam rather than missing work.**
+**The send half could not be built at all, and the reason was a missing seam rather than missing work.**
 
 A `translate` is handed exactly one thing — `~capabilities: Reventless.Capabilities.t`. There is no
 clock, no randomness and no hashing in it, and none anywhere else a plugin can reach: `Capabilities.t`
@@ -285,15 +284,41 @@ lets a test pin it, exactly as `geocoder(answer)` pins a geocode. An `external` 
 global would work in production and leave the trait's issuance untestable — which is the shape this
 plan already refuses in its publishing gate.
 
-**Not decided here, and it is a real fork.** The candidates are a new capability member alongside
-`geocode` / `messaging` / `identityProvider`; a narrower `Reventless.Secrets` module bound to Web
-Crypto, which every target runtime has; or moving minting out of the slice entirely and onto whoever
-opens the door. They differ in blast radius — the first changes `Capabilities.t`, which is a breaking
-change for anything constructing it — and the choice is not this plan's to make alone.
+**Resolved by making it a capability.** `Secrets.t` — `randomToken(~length, ~alphabet)` and `hash` —
+sits beside `geocode` / `messaging` / `identityProvider`, with a refusing `Capabilities.none` arm, a
+shared Node backend, and `Secrets.fixed` for suites that need to know the secret in advance. The trait's
+own `alphabet` type went away in favour of the capability's: it had been written before there was a
+source to draw from, and one vocabulary for what a secret is made of belongs to the source that defines
+it.
 
-**Still to build in Phase A:** the outbound slice, once the above is settled. The write-back half is
-proven end to end on the host and the ledger holds and settles challenges; what is missing is the one
-step that puts a secret into a message.
+Two things that fell out of building it, both worth keeping:
+
+- **No `CapabilityNeed` arm was added.** A need exists so a deploy can refuse when a deployment did not
+  provision something; every runtime has a cryptographic source, so a gate over it could never fire.
+  Adding one later is additive, whereas the record member is not — so waiting is the cheap direction.
+- **A sampled test of the token distribution is worthless, and the first one written here was.** The
+  Node backend rejects bytes rather than folding them with a modulo, because 256 is not a multiple of
+  10 and the remainder would make six digits about four percent likelier each. The first test sampled
+  20,000 draws for that skew — but it is only 0.609 against 0.600, a couple of standard errors, and the
+  test **passed with the defence deleted**. It is now a named `accepts` predicate checked over every
+  byte value, and deleting the defence turns two tests red. The general lesson is the one this plan
+  already applies to the staleness guard: assert the rule, not a sample of its output.
+
+## Phase A, complete
+
+The issue-and-send slice draws a secret, sends it, and opens a challenge against its hash — in that
+order, deliberately. Recording first and failing to send would open a challenge nobody can answer,
+and the ledger would then refuse a second one for that address until the first lapsed. Done this way a
+failed send records nothing, so the work stays outstanding and the sweep retries.
+
+**`onExhausted` reports nothing, and that is the third answer this plan predicted.** A geocode records
+"unresolvable" rather than leaving a row pending forever; there is no equivalent here, because an
+address is not disproven by a mail transport that was down. Exhausting *delivery* retries is not a
+verdict on the *verification*.
+
+What Phase A now exercises, end to end: the staleness guard at both layers, the redelivery no-op, the
+stand-down, lazy expiry, the attempt budget, the resend cooldown, and a send whose secret a test can
+name in advance.
 
 ## Phase B — the second consumer
 
