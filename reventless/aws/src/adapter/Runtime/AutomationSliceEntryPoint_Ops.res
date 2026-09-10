@@ -332,6 +332,7 @@ let capabilities = (): Reventless.Capabilities.t => {
   // store mapping a domain user id to a provider handle is not, and creating a
   // principal before that exists would write a handle with nowhere to live.
   identityProvider: Reventless.Capabilities.none.identityProvider,
+  secrets: ReventlessCore.Secrets_Node_Backend.provider,
 }
 
 // ── Phase-1/phase-2 pipelines ───────────────────────────────────────────────

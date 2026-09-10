@@ -16,6 +16,7 @@ import * as Capabilities$Reventless from "@reventlessdev/reventless-spec/src/sem
 import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src/util/EffectLogger.res.mjs";
 import * as DynamoDb_Error$ReventlessAws from "../../errors/DynamoDb_Error.res.mjs";
 import * as Messaging_Ses_Backend$ReventlessAws from "../Messaging/Messaging_Ses_Backend.res.mjs";
+import * as Secrets_Node_Backend$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Secrets/Secrets_Node_Backend.res.mjs";
 import * as Util_DynamoDb_Runtime$ReventlessAws from "../../util/Util_DynamoDb_Runtime.res.mjs";
 import * as Messaging_Log_Backend$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Messaging/Messaging_Log_Backend.res.mjs";
 import * as AutomationSlice_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/AutomationSlice/AutomationSlice_Callback.res.mjs";
@@ -201,7 +202,8 @@ function capabilities() {
   return {
     geocode: text => Geocoder_AwsLocation_Backend$ReventlessAws.search(Stdlib_Option.getOr(process.env["PLACE_INDEX_NAME"], ""), text, undefined),
     messaging: messagingEmailProvider(),
-    identityProvider: Capabilities$Reventless.none.identityProvider
+    identityProvider: Capabilities$Reventless.none.identityProvider,
+    secrets: Secrets_Node_Backend$ReventlessCore.provider
   };
 }
 

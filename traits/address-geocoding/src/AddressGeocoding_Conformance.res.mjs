@@ -29,7 +29,8 @@ function Make(B) {
   let geocoder = answer => ({
     geocode: param => Promise.resolve(answer),
     messaging: Capabilities$Reventless.none.messaging,
-    identityProvider: Capabilities$Reventless.none.identityProvider
+    identityProvider: Capabilities$Reventless.none.identityProvider,
+    secrets: Capabilities$Reventless.none.secrets
   });
   let translateWith = answer => ((id, item) => B.translate(id, item, geocoder(answer)));
   let describeCommand = cmd => JSON.stringify(Message$Reventless.encode(cmd, B.Slice.inboundCommandSchema));
@@ -111,25 +112,17 @@ function Make(B) {
           relevance: 0.995
         }]
     })), "a location", B.isLocation));
-    S.test("a no-match completes the TODO with a verdict", undefined, () => thenReports(S.whenTranslateMocked(S.givenTodo(todoKey(B.subjectA), B.item(entityId, B.subjectA)), (id, item) => B.translate(id, item, {
-      geocode: param => Promise.resolve({
-        TAG: "Error",
-        _0: "NoMatch"
-      }),
-      messaging: Capabilities$Reventless.none.messaging,
-      identityProvider: Capabilities$Reventless.none.identityProvider
-    })), "a verdict", B.isVerdict));
-    S.test("an outage leaves the TODO pending", undefined, () => S.thenTodoStatus(S.whenTranslateMocked(S.givenTodo(todoKey(B.subjectA), B.item(entityId, B.subjectA)), (id, item) => B.translate(id, item, {
-      geocode: param => Promise.resolve({
-        TAG: "Error",
-        _0: {
-          TAG: "Unavailable",
-          _0: "502"
-        }
-      }),
-      messaging: Capabilities$Reventless.none.messaging,
-      identityProvider: Capabilities$Reventless.none.identityProvider
-    })), todoKey(B.subjectA), "Pending"));
+    S.test("a no-match completes the TODO with a verdict", undefined, () => thenReports(S.whenTranslateMocked(S.givenTodo(todoKey(B.subjectA), B.item(entityId, B.subjectA)), (id, item) => B.translate(id, item, geocoder({
+      TAG: "Error",
+      _0: "NoMatch"
+    }))), "a verdict", B.isVerdict));
+    S.test("an outage leaves the TODO pending", undefined, () => S.thenTodoStatus(S.whenTranslateMocked(S.givenTodo(todoKey(B.subjectA), B.item(entityId, B.subjectA)), (id, item) => B.translate(id, item, geocoder({
+      TAG: "Error",
+      _0: {
+        TAG: "Unavailable",
+        _0: "502"
+      }
+    }))), todoKey(B.subjectA), "Pending"));
   });
   return {
     A: A,

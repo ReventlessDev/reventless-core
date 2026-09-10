@@ -31,6 +31,11 @@ type t = {
       deployment's provider can do at all. Administrative only — authenticating
       one is `Auth_Adapter.Provider`'s. See `IdentityProvider.t`. */
   identityProvider: IdentityProvider.t,
+  /** Unguessable material and a one-way function over it. Injected rather than
+      imported so a test can pin the secret a flow is about to use — a suite
+      cannot assert what a flow does with a value it cannot predict. See
+      `Secrets.t`. */
+  secrets: Secrets.t,
 }
 
 /**
@@ -61,4 +66,9 @@ let none: t = {
   identityProvider: IdentityProvider.unavailable(
     ~reason="no identity provider is configured for this platform",
   ),
+  // Refusing rather than falling back to a weak source. Every runtime has a
+  // cryptographic one, so a platform reaching this arm has skipped wiring rather
+  // than declined to provision — and a guessable token would be accepted
+  // everywhere while looking exactly like a real one.
+  secrets: Secrets.unavailable(~reason="no secret source is configured for this platform"),
 }

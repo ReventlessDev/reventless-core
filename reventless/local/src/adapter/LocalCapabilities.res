@@ -32,4 +32,5 @@ let capabilities = (): Reventless.Capabilities.t => {
   // answering `Unavailable` leaves the work queued and visible instead of
   // recording a verdict against a person who has done nothing wrong.
   identityProvider: Reventless.Capabilities.none.identityProvider,
+  secrets: ReventlessCore.Secrets_Node_Backend.provider,
 }
