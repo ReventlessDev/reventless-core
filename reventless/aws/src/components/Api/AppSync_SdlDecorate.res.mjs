@@ -51,6 +51,39 @@ function formatDualAuthDirective(groups) {
   return cognito + ` @aws_iam`;
 }
 
+function permissionToGate(permission) {
+  if (typeof permission !== "object") {
+    switch (permission) {
+      case "AllowAuthenticated" :
+        return "AnyAuthenticated";
+      case "AllowAnonymous" :
+        return "Anonymous";
+      case "DenyAll" :
+        return {
+          TAG: "Groups",
+          _0: ["__deny_all__"]
+        };
+    }
+  } else {
+    let groups = permission._0;
+    if (groups.length !== 0) {
+      return {
+        TAG: "Groups",
+        _0: groups
+      };
+    } else {
+      return {
+        TAG: "Groups",
+        _0: ["__deny_all__"]
+      };
+    }
+  }
+}
+
+function refuseAnonymousFields(fieldNames) {
+  return Stdlib_JsError.throwWithMessage(`Refusing to push an AppSync schema that cannot honour AllowAnonymous.\n\n` + (`  ` + fieldNames.length.toString() + ` field(s) declare AllowAnonymous:\n`) + (`    ` + fieldNames.join(", ") + `\n\n`) + `AppSync has no anonymous authorization mode. This API is provisioned with\nAMAZON_COGNITO_USER_POOLS primary and AWS_IAM additional, so the only\ndirective available is @aws_cognito_user_pools — which means ANY\nAUTHENTICATED caller, the opposite of what the spec declares. Mutations have\nno runtime authorization check to correct it: on this platform the directive\nis the whole enforcement.\n\nThe local platform DOES honour AllowAnonymous (its resolvers call\nAuthorization.isAllowed), so a spec that passes locally can still not be\ndeployable here. That divergence is the reason this refuses instead of\nemitting a directive that reads as gated and is not.\n\nTo serve anonymous callers on AWS the API needs API_KEY added as a third\nauth provider, plus something to rotate the key. Until then, declare the\nfield AllowAuthenticated (or AllowGroups) and mean it.`);
+}
+
 function injectAwsAuthAll(fragment, group, iamFieldNamesOpt) {
   let iamFieldNames = iamFieldNamesOpt !== undefined ? iamFieldNamesOpt : [];
   let parts = GraphQL_Stitcher$ReventlessCore.decode(fragment);
@@ -120,6 +153,15 @@ function stampAllTypesCognito(sdl) {
       return line;
     }
   }).join("\n");
+}
+
+function stampTypeDualAuth(decl) {
+  let i = Stdlib_String.indexOfOpt(decl, "{");
+  if (i !== undefined) {
+    return decl.slice(0, i) + formatDualAuthDirective(undefined) + " " + decl.slice(i, decl.length);
+  } else {
+    return decl;
+  }
 }
 
 let enforcedDirectives = [
@@ -328,11 +370,14 @@ export {
   formatCognitoGroupsDirective,
   cognitoOpenDirective,
   formatDualAuthDirective,
+  permissionToGate,
+  refuseAnonymousFields,
   injectAwsAuthAll,
   sharedIamTypeNames,
   stampSharedIamTypes,
   stampUndirectivedFields,
   stampAllTypesCognito,
+  stampTypeDualAuth,
   enforcedDirectives,
   hasEnforcedDirective,
   rootOperationTypes,

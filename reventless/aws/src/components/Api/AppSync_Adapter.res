@@ -227,97 +227,13 @@ let rec waitForMergeSuccess = async (
 // and a least-privilege deploy-role policy — see
 // `docs/guides/appsync-iam-system-caller.md`.
 
-/** What a declared permission asks this API to enforce.
-
-    Three arms rather than the `option<array<string>>` this used to be: the
-    option form had no way to hold `AllowAuthenticated` and `AllowAnonymous`
-    apart, so both landed on `None` and emitted one directive. AppSync can
-    enforce the first and cannot express the second at all — a difference the
-    type now carries, which is what makes the refusal below possible. */
-type fieldGate =
-  | Groups(array<string>)
-  | AnyAuthenticated
-  /** No directive can express this; the deploy is refused rather than gated
-      into its opposite. */
-  | Anonymous
-
-let _permissionToGate = (permission: Reventless.Authorization.permission): fieldGate =>
-  switch permission {
-  | AllowGroups([]) => Groups(["__deny_all__"])
-  | AllowGroups(groups) => Groups(groups)
-  | DenyAll => Groups(["__deny_all__"])
-  | AllowAuthenticated => AnyAuthenticated
-  | AllowAnonymous => Anonymous
-  }
-
-/** The deploy-time refusal for fields declared `AllowAnonymous`. Shaped like
-    `assertGateable`'s: name the fields, say what the emitted schema would have
-    meant, and say what has to change. */
-let _refuseAnonymousFields = (fieldNames: array<string>): 'a =>
-  JsError.throwWithMessage(
-    `Refusing to push an AppSync schema that cannot honour AllowAnonymous.\n\n` ++
-    `  ${fieldNames->Array.length->Int.toString} field(s) declare AllowAnonymous:\n` ++
-    `    ${fieldNames->Array.join(", ")}\n\n` ++
-    `AppSync has no anonymous authorization mode. This API is provisioned with\n` ++
-    `AMAZON_COGNITO_USER_POOLS primary and AWS_IAM additional, so the only\n` ++
-    `directive available is @aws_cognito_user_pools — which means ANY\n` ++
-    `AUTHENTICATED caller, the opposite of what the spec declares. Mutations have\n` ++
-    `no runtime authorization check to correct it: on this platform the directive\n` ++
-    `is the whole enforcement.\n\n` ++
-    `The local platform DOES honour AllowAnonymous (its resolvers call\n` ++
-    `Authorization.isAllowed), so a spec that passes locally can still not be\n` ++
-    `deployable here. That divergence is the reason this refuses instead of\n` ++
-    `emitting a directive that reads as gated and is not.\n\n` ++
-    `To serve anonymous callers on AWS the API needs API_KEY added as a third\n` ++
-    `auth provider, plus something to rotate the key. Until then, declare the\n` ++ `field AllowAuthenticated (or AllowGroups) and mean it.`,
-  )
-
-// Both directive forms are defined once in the runtime-pure AppSync_SdlDecorate
-// so this deploy path and the bundled AdminEventCollector Lambda's reactive push
-// cannot drift. The Cognito-only arm carries the rationale for why it is
-// `@aws_cognito_user_pools(...)` and never `@aws_auth(...)`.
-let _formatGroupsDirective = AppSync_SdlDecorate.formatCognitoGroupsDirective
-
-// Multi-auth directive for a field that must accept BOTH Cognito and IAM.
-// `groups=Some([...])` preserves Cognito group gating; `groups=None` keeps the
-// field open to any authenticated Cognito user. `@aws_iam` admits the
-// deploy-time SigV4 system caller. See the dual-auth note above.
-let _formatDualAuthDirective = AppSync_SdlDecorate.formatDualAuthDirective
-
-// ── Type-level dual-auth ─────────────────────────────────────────────────────
-// On a multi-auth API, object TYPES without auth directives are accessible only
-// via the default auth mode — a field-level `@aws_iam` admits the system caller
-// to the top-level field, but response shaping then walks the return types
-// (`…Connection` → `…Edge` → node type → nested state types) and dies with
-// "Not Authorized to access <field> on type <T>" one level in. Types reachable
-// from a systemCallable field therefore carry the bare multi-auth pair: the
-// group-less Cognito arm matches the pre-existing accessibility of an
-// undirectived type (any authenticated user; entry gating stays on the fields),
-// the IAM arm admits the traversal. Only `type` declarations take auth
-// directives (inputs/enums/interfaces do not).
-
-// The declared name of a `type …` SDL declaration; None for input/enum/union/etc.
-let _typeDeclName = (decl: string): option<string> =>
-  if decl->String.startsWith("type ") {
-    let rest = decl->String.slice(~start=5, ~end=decl->String.length)
-    let end = switch rest->String.search(/[\s{]/) {
-    | -1 => rest->String.length
-    | i => i
-    }
-    Some(rest->String.slice(~start=0, ~end))
-  } else {
-    None
-  }
-
-// Insert the multi-auth pair into a type declaration header (before its `{`).
-let _stampTypeDualAuth = (decl: string): string =>
-  switch decl->String.indexOfOpt("{") {
-  | Some(i) =>
-    decl->String.slice(~start=0, ~end=i) ++
-    "@aws_cognito_user_pools @aws_iam " ++
-    decl->String.slice(~start=i, ~end=decl->String.length)
-  | None => decl
-  }
+// Everything this file needs to decide what a directive says — the two directive
+// formats, the permission → gate mapping, the `AllowAnonymous` refusal, the type
+// header stampers and `typeDeclNameOf` — lives in the runtime-pure
+// AppSync_SdlDecorate, so this deploy path and the bundled AdminEventCollector
+// Lambda's reactive push cannot drift. The Cognito-only arm carries the rationale
+// for why it is `@aws_cognito_user_pools(...)` and never `@aws_auth(...)`.
+// This file is left with resource creation, which is what it is for.
 
 // Shared traversal types every callable surface reaches — `PageInfo` (relay
 // connections, injected by the stitcher) and the `CommandResult` members
@@ -371,7 +287,7 @@ let injectAwsAuth = (
       fp
       ->Dict.toArray
       ->Array.forEach(((fieldName, permission)) => {
-        switch _permissionToGate(permission) {
+        switch AppSync_SdlDecorate.permissionToGate(permission) {
         | Groups(groups) => mutationAuthMap->Dict.set(fieldName, groups)
         | AnyAuthenticated => mutationAuthMap->Dict.delete(fieldName)
         | Anonymous => anonymousFields->Array.push(fieldName)
@@ -400,7 +316,7 @@ let injectAwsAuth = (
     }
     switch entry.permission {
     | Some(permission) =>
-      switch _permissionToGate(permission) {
+      switch AppSync_SdlDecorate.permissionToGate(permission) {
       | Groups(groups) =>
         queryAuthMap->Dict.set(entry.singleFieldName, groups)
         queryAuthMap->Dict.set(entry.listFieldName, groups)
@@ -419,7 +335,7 @@ let injectAwsAuth = (
   })
 
   if anonymousFields->Array.length > 0 {
-    _refuseAnonymousFields(anonymousFields)
+    AppSync_SdlDecorate.refuseAnonymousFields(anonymousFields)
   }
 
   // A field with no group restriction gets the group-less Cognito directive
@@ -432,10 +348,10 @@ let injectAwsAuth = (
     let fieldName = ReventlessCore.GraphQL_Stitcher.extractLeadingName(field)
     let groups = mutationAuthMap->Dict.get(fieldName)
     if iamFields->Dict.get(fieldName)->Option.getOr(false) {
-      `${field}\n    ${_formatDualAuthDirective(groups)}`
+      `${field}\n    ${AppSync_SdlDecorate.formatDualAuthDirective(groups)}`
     } else {
       switch groups {
-      | Some(groups) => `${field}\n    ${_formatGroupsDirective(groups)}`
+      | Some(groups) => `${field}\n    ${AppSync_SdlDecorate.formatCognitoGroupsDirective(groups)}`
       | None => `${field}\n    ${openDirective}`
       }
     }
@@ -448,10 +364,10 @@ let injectAwsAuth = (
       iamFields->Dict.get(fieldName)->Option.getOr(false) ||
         iamQueryFieldPrefixes->Array.some(p => fieldName->String.startsWith(p))
     if isIam {
-      `${field} ${_formatDualAuthDirective(groups)}`
+      `${field} ${AppSync_SdlDecorate.formatDualAuthDirective(groups)}`
     } else {
       switch groups {
-      | Some(groups) => `${field} ${_formatGroupsDirective(groups)}`
+      | Some(groups) => `${field} ${AppSync_SdlDecorate.formatCognitoGroupsDirective(groups)}`
       | None => `${field} ${openDirective}`
       }
     }
@@ -464,7 +380,7 @@ let injectAwsAuth = (
   let augmentedSubscriptions = parts.subscriptions->Array.map(field => {
     let fieldName = ReventlessCore.GraphQL_Stitcher.extractLeadingName(field)
     switch mutationAuthMap->Dict.get(fieldName) {
-    | Some(groups) => `${field}\n    ${_formatGroupsDirective(groups)}`
+    | Some(groups) => `${field}\n    ${AppSync_SdlDecorate.formatCognitoGroupsDirective(groups)}`
     | None => `${field}\n    ${openDirective}`
     }
   })
@@ -473,9 +389,9 @@ let injectAwsAuth = (
   // the node type, its Connection/Edge wrappers, and nested state types all
   // share the entry's returnTypeName prefix.
   let augmentedTypes = parts.types->Array.map(decl =>
-    switch _typeDeclName(decl) {
+    switch AppSync_SdlDecorate.typeDeclNameOf(decl) {
     | Some(name) if iamTypePrefixes->Array.some(p => name->String.startsWith(p)) =>
-      _stampTypeDualAuth(decl)
+      AppSync_SdlDecorate.stampTypeDualAuth(decl)
     | _ => decl
     }
   )

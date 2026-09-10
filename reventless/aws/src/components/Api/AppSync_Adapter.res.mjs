@@ -6,7 +6,6 @@ import * as Aws from "@pulumi/aws";
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Nodecrypto from "node:crypto";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
-import * as Stdlib_String from "@rescript/runtime/lib/es6/Stdlib_String.js";
 import * as Effect$1 from "effect/Effect";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
@@ -107,58 +106,6 @@ async function waitForMergeSuccess(client, associationId, mergedApiIdentifier, m
   return Stdlib_JsError.throwWithMessage(`Source API association ` + associationId + ` on ` + mergedApiIdentifier + ` failed to merge (` + status + `): ` + detail);
 }
 
-function _permissionToGate(permission) {
-  if (typeof permission !== "object") {
-    switch (permission) {
-      case "AllowAuthenticated" :
-        return "AnyAuthenticated";
-      case "AllowAnonymous" :
-        return "Anonymous";
-      case "DenyAll" :
-        return {
-          TAG: "Groups",
-          _0: ["__deny_all__"]
-        };
-    }
-  } else {
-    let groups = permission._0;
-    if (groups.length !== 0) {
-      return {
-        TAG: "Groups",
-        _0: groups
-      };
-    } else {
-      return {
-        TAG: "Groups",
-        _0: ["__deny_all__"]
-      };
-    }
-  }
-}
-
-function _refuseAnonymousFields(fieldNames) {
-  return Stdlib_JsError.throwWithMessage(`Refusing to push an AppSync schema that cannot honour AllowAnonymous.\n\n` + (`  ` + fieldNames.length.toString() + ` field(s) declare AllowAnonymous:\n`) + (`    ` + fieldNames.join(", ") + `\n\n`) + `AppSync has no anonymous authorization mode. This API is provisioned with\nAMAZON_COGNITO_USER_POOLS primary and AWS_IAM additional, so the only\ndirective available is @aws_cognito_user_pools — which means ANY\nAUTHENTICATED caller, the opposite of what the spec declares. Mutations have\nno runtime authorization check to correct it: on this platform the directive\nis the whole enforcement.\n\nThe local platform DOES honour AllowAnonymous (its resolvers call\nAuthorization.isAllowed), so a spec that passes locally can still not be\ndeployable here. That divergence is the reason this refuses instead of\nemitting a directive that reads as gated and is not.\n\nTo serve anonymous callers on AWS the API needs API_KEY added as a third\nauth provider, plus something to rotate the key. Until then, declare the\nfield AllowAuthenticated (or AllowGroups) and mean it.`);
-}
-
-function _typeDeclName(decl) {
-  if (!decl.startsWith("type ")) {
-    return;
-  }
-  let rest = decl.slice(5, decl.length);
-  let i = rest.search(/[\s{]/);
-  let end = i !== -1 ? i : rest.length;
-  return rest.slice(0, end);
-}
-
-function _stampTypeDualAuth(decl) {
-  let i = Stdlib_String.indexOfOpt(decl, "{");
-  if (i !== undefined) {
-    return decl.slice(0, i) + "@aws_cognito_user_pools @aws_iam " + decl.slice(i, decl.length);
-  } else {
-    return decl;
-  }
-}
-
 function injectAwsAuth(fragment, mutationEntries, queryEntries) {
   let parts = GraphQL_Stitcher$ReventlessCore.decode(fragment);
   let iamFields = {};
@@ -183,7 +130,7 @@ function injectAwsAuth(fragment, mutationEntries, queryEntries) {
     if (fp !== undefined) {
       Object.entries(fp).forEach(param => {
         let fieldName = param[0];
-        let groups = _permissionToGate(param[1]);
+        let groups = AppSync_SdlDecorate$ReventlessAws.permissionToGate(param[1]);
         if (typeof groups !== "object") {
           if (groups === "AnyAuthenticated") {
             return Stdlib_Dict.$$delete(mutationAuthMap, fieldName);
@@ -217,7 +164,7 @@ function injectAwsAuth(fragment, mutationEntries, queryEntries) {
     if (permission === undefined) {
       return;
     }
-    let groups = _permissionToGate(permission);
+    let groups = AppSync_SdlDecorate$ReventlessAws.permissionToGate(permission);
     if (typeof groups !== "object") {
       if (groups === "AnyAuthenticated") {
         Stdlib_Dict.$$delete(queryAuthMap, entry.singleFieldName);
@@ -234,7 +181,7 @@ function injectAwsAuth(fragment, mutationEntries, queryEntries) {
     }
   });
   if (anonymousFields.length !== 0) {
-    _refuseAnonymousFields(anonymousFields);
+    AppSync_SdlDecorate$ReventlessAws.refuseAnonymousFields(anonymousFields);
   }
   let augmentedMutations = parts.mutations.map(field => {
     let fieldName = GraphQL_Stitcher$ReventlessCore.extractLeadingName(field);
@@ -269,9 +216,9 @@ function injectAwsAuth(fragment, mutationEntries, queryEntries) {
     }
   });
   let augmentedTypes = parts.types.map(decl => {
-    let name = _typeDeclName(decl);
+    let name = AppSync_SdlDecorate$ReventlessAws.typeDeclNameOf(decl);
     if (name !== undefined && iamTypePrefixes.some(p => name.startsWith(p))) {
-      return _stampTypeDualAuth(decl);
+      return AppSync_SdlDecorate$ReventlessAws.stampTypeDualAuth(decl);
     } else {
       return decl;
     }
@@ -368,10 +315,6 @@ function generateFragment(mutationEntries, queryEntries) {
   return injectAwsAuth(fragment, mutationEntries, queryEntries);
 }
 
-let _formatGroupsDirective = AppSync_SdlDecorate$ReventlessAws.formatCognitoGroupsDirective;
-
-let _formatDualAuthDirective = AppSync_SdlDecorate$ReventlessAws.formatDualAuthDirective;
-
 let stampSharedIamTypes = AppSync_SdlDecorate$ReventlessAws.stampSharedIamTypes;
 
 let primaryAuthenticationType = "AMAZON_COGNITO_USER_POOLS";
@@ -385,12 +328,6 @@ export {
   _client,
   getClient,
   waitForMergeSuccess,
-  _permissionToGate,
-  _refuseAnonymousFields,
-  _formatGroupsDirective,
-  _formatDualAuthDirective,
-  _typeDeclName,
-  _stampTypeDualAuth,
   stampSharedIamTypes,
   injectAwsAuth,
   injectAwsAuthAll,

@@ -90,7 +90,11 @@ let formatCognitoGroupsDirective = (groups: array<string>): string => {
 
 // The group-less Cognito directive: reachable by any authenticated Cognito
 // caller. Emitted where a field or type is deliberately open — `AllowAuthenticated`,
-// `AllowAnonymous`, a field carrying no permission at all, and every object type.
+// a field carrying no permission at all, and every object type.
+//
+// NOT for `AllowAnonymous`: "any authenticated caller" is the inverse of what
+// that declares, and emitting this for it is the defect `permissionToGate` and
+// `refuseAnonymousFields` above exist to prevent.
 //
 // Under `userPoolConfig.defaultAction: ALLOW` this is a no-op: an undirectived
 // field is already reachable by any authenticated caller, so stamping it changes
@@ -111,6 +115,56 @@ let formatDualAuthDirective = (groups: option<array<string>>): string => {
   }
   `${cognito} @aws_iam`
 }
+
+// ── What a declared permission asks this API to enforce ─────────────────────
+//
+// Lives here rather than beside the Pulumi resources because it is the same
+// concern as the directive vocabulary above: reading a spec-level rule and
+// deciding what the schema says. Keeping the mapping next to the strings it
+// maps onto is what stops a fourth spelling of a directive appearing.
+
+/** Three arms rather than an `option<array<string>>`, which is the shape this
+    had while it was wrong: the option form could not hold `AllowAuthenticated`
+    and `AllowAnonymous` apart, so both became `None` and emitted one directive.
+    AppSync can enforce the first and cannot express the second at all. */
+type fieldGate =
+  | Groups(array<string>)
+  | AnyAuthenticated
+  /** No directive can express this; the deploy is refused rather than gated
+      into its opposite. See `refuseAnonymousFields`. */
+  | Anonymous
+
+let permissionToGate = (permission: Reventless.Authorization.permission): fieldGate =>
+  switch permission {
+  | AllowGroups([]) => Groups(["__deny_all__"])
+  | AllowGroups(groups) => Groups(groups)
+  | DenyAll => Groups(["__deny_all__"])
+  | AllowAuthenticated => AnyAuthenticated
+  | AllowAnonymous => Anonymous
+  }
+
+/** The deploy-time refusal for fields declared `AllowAnonymous`, and the
+    sibling of `assertGateable` below: both refuse a schema that would claim a
+    gate it does not have. This one fires earlier, while the permission is still
+    a value — by SDL time the two permissions are indistinguishable. */
+let refuseAnonymousFields = (fieldNames: array<string>): 'a =>
+  JsError.throwWithMessage(
+    `Refusing to push an AppSync schema that cannot honour AllowAnonymous.\n\n` ++
+    `  ${fieldNames->Array.length->Int.toString} field(s) declare AllowAnonymous:\n` ++
+    `    ${fieldNames->Array.join(", ")}\n\n` ++
+    `AppSync has no anonymous authorization mode. This API is provisioned with\n` ++
+    `AMAZON_COGNITO_USER_POOLS primary and AWS_IAM additional, so the only\n` ++
+    `directive available is @aws_cognito_user_pools — which means ANY\n` ++
+    `AUTHENTICATED caller, the opposite of what the spec declares. Mutations have\n` ++
+    `no runtime authorization check to correct it: on this platform the directive\n` ++
+    `is the whole enforcement.\n\n` ++
+    `The local platform DOES honour AllowAnonymous (its resolvers call\n` ++
+    `Authorization.isAllowed), so a spec that passes locally can still not be\n` ++
+    `deployable here. That divergence is the reason this refuses instead of\n` ++
+    `emitting a directive that reads as gated and is not.\n\n` ++
+    `To serve anonymous callers on AWS the API needs API_KEY added as a third\n` ++
+    `auth provider, plus something to rotate the key. Until then, declare the\n` ++ `field AllowAuthenticated (or AllowGroups) and mean it.`,
+  )
 
 // Injects the Cognito group gate on ALL mutation, query, and subscription fields
 // in a fragment. `~iamFieldNames` opts the named mutation/query fields into
@@ -225,6 +279,31 @@ let stampAllTypesCognito = (sdl: string): string =>
     }
   )
   ->Array.join("\n")
+
+// Insert the multi-auth pair into ONE type declaration's header, before its `{`.
+//
+// The sibling of `stampAllTypesCognito` and deliberately not folded into it:
+// that one sweeps a whole assembled SDL and fills in the Cognito-only arm for
+// anything undirectived, this one is applied to a declaration already chosen by
+// its caller and adds the IAM arm the traversal needs. Different input, different
+// directive, same header surgery.
+//
+// On a multi-auth API, object TYPES without auth directives are reachable only
+// via the default auth mode: a field-level `@aws_iam` admits the system caller to
+// the top-level field, but response shaping then walks the return types
+// (`…Connection` → `…Edge` → node → nested state types) and dies with "Not
+// Authorized to access <field> on type <T>" one level in. The group-less Cognito
+// arm matches the accessibility an undirectived type already has (entry gating
+// stays on the fields); the IAM arm admits the traversal.
+let stampTypeDualAuth = (decl: string): string =>
+  switch decl->String.indexOfOpt("{") {
+  | Some(i) =>
+    decl->String.slice(~start=0, ~end=i) ++
+    formatDualAuthDirective(None) ++
+    " " ++
+    decl->String.slice(~start=i, ~end=decl->String.length)
+  | None => decl
+  }
 
 // ── Deploy-time gate invariant ──────────────────────────────────────────────
 //
