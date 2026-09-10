@@ -8,6 +8,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
+import * as AdminGroup$Reventless from "@reventlessdev/reventless-spec/src/types/AdminGroup.res.mjs";
 import * as Auth_ActiveRole$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Auth/Auth_ActiveRole.res.mjs";
 
 let defaultUser_groups = ["User"];
@@ -20,7 +21,7 @@ let defaultUser = {
 };
 
 let adminUser_groups = [
-  "Admin",
+  AdminGroup$Reventless.name,
   "User"
 ];
 

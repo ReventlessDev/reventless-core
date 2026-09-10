@@ -359,7 +359,14 @@ or set REVENTLESS_IDENTITY_PROVIDER_ID in CI. Every stack on this provider
 derives the same store, so there is nothing else to configure.
 
 The pre-token-generation trigger is attached by the deploy, not by this script.
-Users and groups are yours to create.`;
+
+Once a stack has deployed against this provider, make the first administrator:
+
+  pnpm exec provision-admin --provider-id ` + providerId + ` --email you@example.com
+
+That is a separate bin because it provisions nothing a stack owns, and because it
+is needed on a pool created here and on one a stack created for itself alike. See
+[ProvisionAdmin].`;
 }
 
 async function run() {

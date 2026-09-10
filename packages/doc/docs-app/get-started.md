@@ -180,3 +180,5 @@ Follow the spine from here:
 4. [Views and UI](./components/readmodel.md) — what users read
 5. [Connect plugins](./plugin-system.md) — extension points between bounded contexts
 6. [Run and deploy](./local-development.md) — locally, then to the cloud
+7. [The first administrator](./first-admin.md) — the one command between a
+   successful cloud deploy and being able to sign in

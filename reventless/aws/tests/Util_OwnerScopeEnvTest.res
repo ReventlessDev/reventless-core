@@ -59,4 +59,29 @@ describe("Util_OwnerScopeEnv — the elevated-groups carrier", () => {
     withElevated([], () => Util_OwnerScopeEnv.applyElevatedGroupsDefault(variables))
     expect(variables->Dict.get(Util_OwnerScopeEnv.key)->Option.isNone)->toBe(true)
   })
+
+  // The whole path the "administrator sees empty screens" trap ran through: the
+  // platform entry point defaults the list, and this composes it into a Lambda's
+  // environment. Asserted end to end rather than at either half, because both
+  // halves were already correct while the trap was open — the pipe was laid and
+  // nothing ever put a value in.
+  testSync("the platform's administrator default reaches a composed environment", () => {
+    Reventless.OwnerScope.clearElevatedGroups()
+    NodeProcess.env->Dict.delete(Util_OwnerScopeEnv.key)
+    Reventless.OwnerScope.defaultElevatedGroups([Reventless.AdminGroup.name])
+
+    let variables = Dict.make()
+    Util_OwnerScopeEnv.applyElevatedGroupsDefault(variables)
+    let encoded = switch variables->Dict.get(Util_OwnerScopeEnv.key) {
+    | Some(value) => value->Obj.magic
+    | None => ""
+    }
+    Reventless.OwnerScope.clearElevatedGroups()
+
+    // Round-tripped, like the first case above: the runtime reads this back with
+    // `parseElevatedGroups`, so the encoding is asserted rather than the spelling.
+    expect(Reventless.OwnerScope.parseElevatedGroups(encoded))->toEqual([
+      Reventless.AdminGroup.name,
+    ])
+  })
 })

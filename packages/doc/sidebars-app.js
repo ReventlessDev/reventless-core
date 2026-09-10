@@ -55,6 +55,7 @@ const sidebars = {
         'components/stateviewslice',
         'ui-configuration',
         'authorization',
+        'first-admin',
       ],
     },
     {

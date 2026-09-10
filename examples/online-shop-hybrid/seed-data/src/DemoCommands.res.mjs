@@ -581,6 +581,8 @@ function customer(id, command) {
     case "SetLocation" :
     case "MarkAddressUnresolvable" :
       return Pervasives.failwith("Customer.SetLocation / MarkAddressUnresolvable are internal (@noApi) — seed a located customer with SetAddressLocation instead.");
+    case "MarkEmailVerified" :
+      return Pervasives.failwith("Customer.MarkEmailVerified is internal (@noApi) — it is a verification verdict reported by the slice that issued the challenge, not a mutation.");
   }
 }
 

@@ -4,7 +4,8 @@
   "description": "AWS adapters for Reventless",
   "license": "Apache-2.0",
   "bin": {
-    "provision-identity": "./run-provision-identity.mjs"
+    "provision-identity": "./run-provision-identity.mjs",
+    "provision-admin": "./run-provision-admin.mjs"
   },
   "scripts": {
     "build": "rescript build",

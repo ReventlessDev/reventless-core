@@ -41,7 +41,7 @@ let wrapAdmin = (resolvers: dict<ReventlessGraphqlServer.GraphQL_ServerInstance.
   resolvers
   ->Dict.toArray
   ->Array.forEach(((k, v)) =>
-    wrapped->Dict.set(k, Auth_GraphqlContext.requireGroup(~group="Admin", v))
+    wrapped->Dict.set(k, Auth_GraphqlContext.requireGroup(~group=Reventless.AdminGroup.name, v))
   )
   wrapped
 }

@@ -102,12 +102,20 @@ or, in a platform root, before the plugins are built:
 Reventless.OwnerScope.setElevatedGroups(["Admin", "Fulfilment"])
 ```
 
-An explicit call wins over the environment. The default is **empty** in both
-directions: a deployment that configures nothing shows operators too little
-rather than showing customers each other.
+An explicit call wins over the environment, and either counts as an answer — a
+deployment that names its operators is never overridden, including when it names
+nobody.
+
+Say nothing and the answer depends on the platform. A cloud platform defaults the
+list to the administrator group it declares, so the account made by
+`provision-admin` is elevated without anyone configuring it. Everywhere else the
+default is **empty**, which shows operators too little rather than showing
+customers each other — the direction a wrong guess should fail in.
 
 Note that elevation and authorization are independent. Being elevated lifts
-owner scoping; it does not grant a command whose rule you fail.
+owner scoping; it does not grant a command whose rule you fail. They are also the
+two halves of "who is an administrator", and a deployment that narrows one should
+narrow the other — see [The first administrator](./first-admin.md).
 
 ## Index-scoped queries
 
@@ -141,4 +149,4 @@ will never be deployed. Neither shortcut exists on AWS, where Cognito issues the
 identity and group membership comes from the user pool.
 
 See [Run and deploy](./local-development.md) for the rest of the local setup, and
-[Test it on AWS](/tutorials/test-on-aws) for creating your first deployed user.
+[The first administrator](./first-admin.md) for creating your first deployed user.

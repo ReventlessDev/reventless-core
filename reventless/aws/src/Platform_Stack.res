@@ -24,9 +24,12 @@ type cognitoUserPool = {
  * - **Auto**: no `platform:identityProviderId` config — create a fresh UserPool
  *   with SPA-friendly defaults (email sign-in unless `platform:loginIdentifier`
  *   says otherwise, 12-char password policy, no MFA, and admin-only user
- *   creation unless `platform:signUpMode` says otherwise).
- *   Caller is responsible for creating
- *   groups (`Admin`, `User`, …) and users via the AWS console / CLI.
+ *   creation unless `platform:signUpMode` says otherwise), plus the
+ *   administrator group named by [Reventless.AdminGroup] and an elevated-groups
+ *   default naming it. What it does **not** create is the first administrator:
+ *   accounts are not stack resources, and a pool full of them is not something a
+ *   `pulumi destroy` should be able to empty. `provision-admin` makes that one,
+ *   and no step of this needs the AWS console.
  *
  * - **BYO**: provider ID provided — skip pool creation, look up the existing
  *   pool via `aws.cognito.getUserPool` for its ARN. Lookup precedence
@@ -45,7 +48,8 @@ type cognitoUserPool = {
  *
  * Always exports `identityProviderId`, `identityProviderClientId`,
  * `identityProviderArn`, `identityProviderRegion`, `identityProviderManaged`,
- * `identityProviderLoginIdentifier` and `activeRoleStore` as stack outputs so
+ * `identityProviderLoginIdentifier`, `identityProviderAdminGroup` and
+ * `activeRoleStore` as stack outputs so
  * downstream stacks (and Stage D AppSync wiring) can read them via
  * `StackReference` — plus, for one release, the deprecated `cognito*` spellings
  * of the first five.
@@ -285,6 +289,23 @@ let _resolveUncached = (): cognitoUserPool => {
       },
     )
 
+    // The administrator group, declared beside the pool that holds it.
+    //
+    // Auto mode only, and the restriction is the point: a group is a pool-level
+    // fact, and on a pool this stack does not own those are not this stack's to
+    // declare. Two stacks pointed at one shared provider would each declare this
+    // group, and the second would fail on a name that already exists — the same
+    // split, for the same reason, as [Auth_SignUpMode] and the active-role store.
+    // The BYO half is `provision-admin`, which creates the group beside the first
+    // administrator who needs it.
+    //
+    // An ordinary child resource: the pool is ours, so this needs no out-of-band
+    // call and Pulumi's state stays the authority for whether it exists.
+    let _adminGroup = Util_CognitoGroupUser.addUserGroup(
+      ~name=Reventless.AdminGroup.name,
+      ~userPoolId=pool.id,
+    )
+
     let tokenUnits2: PulumiAws.Cognito.UserPoolClient.tokenValidityUnits = {
       accessToken: Pulumi.Input.make("minutes"),
       idToken: Pulumi.Input.make("minutes"),
@@ -370,6 +391,16 @@ let _resolveUncached = (): cognitoUserPool => {
   Pulumi.Pulumi.export("cognitoUserPoolArn", result.poolArn)
   Pulumi.Pulumi.export("cognitoRegion", regionOutput)
   Pulumi.Pulumi.export("cognitoUserPoolManaged", managedStr)
+
+  // The group that administers this deployment, readable without reading source.
+  // `provision-admin` puts its first user in it, and a deployment overriding who
+  // is elevated needs to know which name it is overriding.
+  //
+  // Exported in both pool modes although only auto mode *declares* the group: the
+  // name is what a caller needs either way, and an output that appeared in one
+  // mode and not the other would read as "there is no administrator group here"
+  // rather than "this stack did not create it".
+  Pulumi.Pulumi.export("identityProviderAdminGroup", Pulumi.Output.make(Reventless.AdminGroup.name))
 
   // Exported so an operator can read back the store this provider resolved to —
   // the name is derived, not configured, so this is a convenience for checking

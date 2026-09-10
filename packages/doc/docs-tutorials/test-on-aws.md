@@ -23,18 +23,23 @@ host-shell SPA. Open the CloudFront URL in a browser.
 
 The deployed platform authenticates against the Cognito user pool configured on
 the [deploy page](./deploy-to-aws) (Step 2). A freshly auto-provisioned pool has
-no users yet — create one:
+no users yet — make the first one from `platform-aws/`:
 
 ```bash
-aws cognito-idp admin-create-user \
-  --user-pool-id <COGNITO_USER_POOL_ID> \
-  --username you@example.com \
-  --user-attributes Name=email,Value=you@example.com
-# then set a permanent password:
-aws cognito-idp admin-set-user-password \
-  --user-pool-id <COGNITO_USER_POOL_ID> \
-  --username you@example.com --password '<StrongPassw0rd!>' --permanent
+pnpm exec provision-admin \
+  --provider-id $(pulumi stack output identityProviderId) \
+  --email you@example.com
 ```
+
+That creates the account, sets a permanent password so there is no
+password-change challenge on first sign-in, puts it in the `Admin` group, and
+prints the credentials once. Running it again is safe and mints a new password.
+
+Doing this by hand with `aws cognito-idp admin-create-user` works too, but it is
+easy to stop one step early: an account that is not in the `Admin` group cannot
+reach the administration views, and the symptom is a refusal much later. See
+[The first administrator](/app/first-admin) for the full picture, including why being
+in the group is only half of what makes someone an administrator.
 
 Sign in to the host-shell with that user and run the same smoke test you ran
 locally: add a category and product, register a customer, place an order, and

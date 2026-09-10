@@ -24,7 +24,7 @@ let defaultUser: Identity.t = {
 let adminUser: Identity.t = {
   userId: "local-admin",
   username: "admin",
-  groups: ["Admin", "User"],
+  groups: [AdminGroup.name, "User"],
   provider: InMemory,
 }
 

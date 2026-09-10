@@ -94,6 +94,33 @@ let setElevatedGroups = (groups: array<string>) => explicitElevatedGroups := Som
 /** Forget an explicit setting and fall back to the environment again. */
 let clearElevatedGroups = () => explicitElevatedGroups := None
 
+/**
+Name the elevated groups only where the deployment has not already answered.
+
+For a platform that wants a working default without overriding an operator who
+stated one — a stack that declares an administrator group has every reason to
+exempt it, and no business overruling a deployment that named different operators.
+
+"Already answered" includes the **environment**, not only an explicit call. A
+deployment that set `REVENTLESS_ELEVATED_GROUPS` in CI has named its operators,
+and a default that beat it would leave the runtime acting on a value no source in
+that deployment states. This is the same contract, one level up, that
+`Util_OwnerScopeEnv.applyElevatedGroupsDefault` keeps with a Lambda's own
+environment: the more specific statement wins, and the default only fills silence.
+
+🚨 **An explicit empty list is an answer, and this must not fill it in.** A
+deployment that deliberately elevates nobody has decided that; a default landing
+on top would silently re-grant the cross-owner read it withheld. That is why this
+reads [explicitElevatedGroups] rather than [elevatedGroups] — the latter answers
+`[]` for "nobody" and for "nothing said" alike, and those must not be treated the
+same here.
+*/
+let defaultElevatedGroups = (groups: array<string>) =>
+  switch (explicitElevatedGroups.contents, _elevatedGroupsEnv) {
+  | (None, None) => explicitElevatedGroups := Some(groups)
+  | _ => ()
+  }
+
 let parseElevatedGroups = (raw: string): array<string> =>
   raw
   ->String.split(",")

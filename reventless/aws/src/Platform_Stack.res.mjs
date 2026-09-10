@@ -5,12 +5,14 @@ import * as Pulumi$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Pulumi
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as AdminGroup$Reventless from "@reventlessdev/reventless-spec/src/types/AdminGroup.res.mjs";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as AWS_Tags$ReventlessAws from "./adapter/AWS_Tags.res.mjs";
 import * as Auth_SignUpMode$ReventlessAws from "./adapter/Auth/Auth_SignUpMode.res.mjs";
 import * as Util_LocalConfig$ReventlessAws from "./util/Util_LocalConfig.res.mjs";
 import * as Auth_ActiveRoleStore$ReventlessAws from "./adapter/Auth/Auth_ActiveRoleStore.res.mjs";
 import * as Auth_LoginIdentifier$ReventlessAws from "./adapter/Auth/Auth_LoginIdentifier.res.mjs";
+import * as Util_CognitoGroupUser$ReventlessAws from "./util/Util_CognitoGroupUser.res.mjs";
 import * as Auth_ActiveRoleTrigger$ReventlessAws from "./adapter/Auth/Auth_ActiveRoleTrigger.res.mjs";
 import * as Auth_ActiveRolePoolAttachment$ReventlessAws from "./adapter/Auth/Auth_ActiveRolePoolAttachment.res.mjs";
 
@@ -131,6 +133,7 @@ function _resolveUncached() {
       mfaConfiguration: "OFF",
       tags: AWS_Tags$ReventlessAws.make("HostUiPool", "Platform", "Auth", "Platform", undefined, undefined, undefined, undefined)
     });
+    Util_CognitoGroupUser$ReventlessAws.addUserGroup(AdminGroup$Reventless.name, pool.id);
     let tokenUnits2_accessToken = "minutes";
     let tokenUnits2_idToken = "minutes";
     let tokenUnits2_refreshToken = "days";
@@ -178,6 +181,7 @@ function _resolveUncached() {
   Pulumi$Pulumi.$$export("cognitoUserPoolArn", result.poolArn);
   Pulumi$Pulumi.$$export("cognitoRegion", regionOutput);
   Pulumi$Pulumi.$$export("cognitoUserPoolManaged", managedStr);
+  Pulumi$Pulumi.$$export("identityProviderAdminGroup", Pulumi.output(AdminGroup$Reventless.name));
   Pulumi$Pulumi.$$export("activeRoleStore", result.activeRoleTable.name);
   return result;
 }

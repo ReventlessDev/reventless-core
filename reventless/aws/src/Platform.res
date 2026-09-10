@@ -121,6 +121,31 @@ module MakeWithConfig = (
 ): (
   ReventlessInfra.Platform.T with type api = Types.AppSync.api and type role = Types.AppSync.role
 ) => {
+  // The administrator group reads across every owner, unless the deployment says
+  // otherwise.
+  //
+  // Authorization and owner scoping decide admin-ness independently and nothing
+  // checks that they agree: without this, a deployment gets an administrator who
+  // passes every authorization check and then reads *empty* owner-scoped views.
+  // `Util_OwnerScopeEnv.applyElevatedGroupsDefault` already carries whatever
+  // `OwnerScope.elevatedGroups()` holds into every Lambda's environment — the pipe
+  // was laid and nothing ever put a value in.
+  //
+  // 🚨 **Here, at the entry point, rather than beside the pool that declares the
+  // group.** The value has to be set before the runtime builder composes any
+  // Lambda's environment, and this functor's body runs when the functor is
+  // applied — necessarily before any plugin is built through it. Written into
+  // `Platform_Stack.resolveCognitoUserPool` it would instead depend on *which
+  // caller resolved the pool first*, which is precisely how a feature once
+  // vanished from a deploy with no error and no resource; see the note on
+  // `_resolveUncached`. Ordering that is structural beats ordering that happens
+  // to hold.
+  //
+  // A default, never a forcing: an explicit `setElevatedGroups` in a platform
+  // root — including one naming nobody — means what it says and wins. See
+  // [Reventless.OwnerScope.defaultElevatedGroups].
+  Reventless.OwnerScope.defaultElevatedGroups([Reventless.AdminGroup.name])
+
   // Dispatch per-flavor commandHandlerConfig records to the four runtime
   // builders. Every sub-record is optional; only branches the caller actually
   // supplied propagate, and within each sub-record every field is optional too
@@ -287,7 +312,7 @@ module MakeWithConfig = (
     assembleCanonicalSourceSdl(
       ~baseFragment=AppSync_Adapter.injectAwsAuthAll(
         ReventlessCore.Platform_AdminApi.baseFragment(~cloner=Config.cloner),
-        ~group="Admin",
+        ~group=Reventless.AdminGroup.name,
       ),
     )
 

@@ -273,6 +273,90 @@ describe("OwnerScope:", () => {
     )
   })
 
+  // A platform that declares an administrator group has every reason to exempt
+  // it, and no business overruling a deployment that named different operators.
+  // The distinction these pin is between silence and an answer — including the
+  // answer "nobody", which reads as `[]` through `elevatedGroups` and must not be
+  // mistaken for nothing having been said.
+  describe("defaulting the elevated list without overriding it:", () => {
+    let withEnv = (value, fn) => {
+      OwnerScope.clearElevatedGroups()
+      switch value {
+      | Some(v) => NodeProcess.env->Dict.set("REVENTLESS_ELEVATED_GROUPS", v)
+      | None => NodeProcess.env->Dict.delete("REVENTLESS_ELEVATED_GROUPS")
+      }
+      let result = fn()
+      NodeProcess.env->Dict.delete("REVENTLESS_ELEVATED_GROUPS")
+      OwnerScope.setElevatedGroups([])
+      result
+    }
+
+    testSync(
+      "it fills silence",
+      () =>
+        expect(
+          withEnv(
+            None,
+            () => {
+              OwnerScope.defaultElevatedGroups(["Admin"])
+              OwnerScope.elevatedGroups()
+            },
+          ),
+        )->toEqual(["Admin"]),
+    )
+
+    testSync(
+      "an explicit call is left alone",
+      () =>
+        expect(
+          withEnv(
+            None,
+            () => {
+              OwnerScope.setElevatedGroups(["Ops"])
+              OwnerScope.defaultElevatedGroups(["Admin"])
+              OwnerScope.elevatedGroups()
+            },
+          ),
+        )->toEqual(["Ops"]),
+    )
+
+    // The case a default would quietly undo: a deployment that elevates nobody
+    // has decided that, and filling it in would re-grant the cross-owner read it
+    // withheld. Reading `elevatedGroups` to decide would see `[]` here and treat
+    // it as silence.
+    testSync(
+      "an explicit empty list is an answer, not silence",
+      () =>
+        expect(
+          withEnv(
+            None,
+            () => {
+              OwnerScope.setElevatedGroups([])
+              OwnerScope.defaultElevatedGroups(["Admin"])
+              OwnerScope.elevatedGroups()
+            },
+          ),
+        )->toEqual([]),
+    )
+
+    // The environment answers for the runtimes the deploy program never enters,
+    // so a default landing on top of it would leave those acting on a value no
+    // source in the deployment states.
+    testSync(
+      "the environment counts as an answer too",
+      () =>
+        expect(
+          withEnv(
+            Some("Support"),
+            () => {
+              OwnerScope.defaultElevatedGroups(["Admin"])
+              OwnerScope.elevatedGroups()
+            },
+          ),
+        )->toEqual(["Support"]),
+    )
+  })
+
   // `@retired` narrows on the same classification `@owner` does, and the two
   // must not be able to disagree about who an operator is. These pin the ways
   // the retirement rule deliberately differs.

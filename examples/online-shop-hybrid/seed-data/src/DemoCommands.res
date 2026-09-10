@@ -258,4 +258,12 @@ let customer = (~id: string, command: OrderingPlugin.Customer.command): Seed.mut
     failwith(
       "Customer.SetLocation / MarkAddressUnresolvable are internal (@noApi) — " ++ "seed a located customer with SetAddressLocation instead.",
     )
+  // `@noApi` for a stronger reason than the two above: a client never asserts
+  // that an address was proven, it presents a secret to the slice that issued
+  // one. There is no seedable stand-in, because a command that could set this
+  // would be the hole the verification exists to close.
+  | MarkEmailVerified(_) =>
+    failwith(
+      "Customer.MarkEmailVerified is internal (@noApi) — it is a verification " ++ "verdict reported by the slice that issued the challenge, not a mutation.",
+    )
   }

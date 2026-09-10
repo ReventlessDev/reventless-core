@@ -206,14 +206,23 @@ describe("the internal commands declare the edges they move rows along", () => {
 // was open to everyone and the server refused anyone outside `Admin`. The
 // mismatch is invisible until a non-admin clicks the page.
 describe("the Plugins view publishes the rule the server enforces", () => {
-  testSync("the spec declares the group", () =>
+  // 🚨 **This is also the only check `Reventless.AdminGroup.name` can carry.** A
+  // PPX annotation takes a literal, so `@@reventless.authorize(AllowGroups(
+  // ["Admin"]))` above cannot reference the constant — the constant's job is to
+  // make everything *else* agree with the annotation, and nothing in the compiler
+  // spans that gap. The actual side here comes from the expanded annotation and
+  // the expected side from the constant, so the two are compared rather than
+  // restated. Writing the literal on both sides would pass while they diverged.
+  testSync("the spec declares the group, and it is the one the constant names", () =>
     expect(PluginsReadModelSpec.authorization)->toEqual(
-      Reventless.Authorization.AllowGroups(["Admin"]),
+      Reventless.Authorization.AllowGroups([Reventless.AdminGroup.name]),
     )
   )
 
   testSync("and the published access keys are derived from it", () =>
-    expect(Platform_Admin_Structure.pluginReadModel.requiredAccess)->toEqual(Some(["Admin"]))
+    expect(Platform_Admin_Structure.pluginReadModel.requiredAccess)->toEqual(
+      Some([Reventless.AdminGroup.name]),
+    )
   )
 
   // The API entry reads the same binding rather than restating it, so the two

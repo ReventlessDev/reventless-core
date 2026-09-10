@@ -70,6 +70,107 @@ module SignUpCommand = {
   let send: t => promise<output> = command => Raw.send(client(), command)
 }
 
+module AdminCreateUserCommand = {
+  type t
+
+  type attributeType = {
+    @as("Name") name: string,
+    @as("Value") value: string,
+  }
+
+  /** `MessageAction: "SUPPRESS"` stops Cognito emailing an invitation carrying a
+    temporary password. A caller that follows this with `AdminSetUserPassword`
+    owns the credential, and the invitation would name one that no longer works —
+    a message inviting somebody to sign in with the wrong password is worse than
+    no message. Omit it to get Cognito's ordinary invitation flow. */
+  type input = {
+    @as("UserPoolId") userPoolId: string,
+    @as("Username") username: string,
+    @as("UserAttributes") userAttributes?: array<attributeType>,
+    @as("MessageAction") messageAction?: string,
+    @as("DesiredDeliveryMediums") desiredDeliveryMediums?: array<string>,
+  }
+
+  /** `UserStatus` is `FORCE_CHANGE_PASSWORD` for a user created this way — an
+    administrator-created account holds a temporary password and meets a challenge
+    on first sign-in. Reported so a caller can say what it did about it. */
+  type userType = {
+    @as("Username") username?: string,
+    @as("UserStatus") userStatus?: string,
+  }
+
+  type output = {@as("User") user?: userType}
+
+  @new @module("@aws-sdk/client-cognito-identity-provider")
+  external make: input => t = "AdminCreateUserCommand"
+
+  module Raw = {
+    /**
+      see: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/cognito-identity-provider/command/AdminCreateUserCommand/
+    */
+    @send
+    external send: (client, t) => promise<output> = "send"
+  }
+
+  let send: t => promise<output> = command => Raw.send(client(), command)
+}
+
+module AdminSetUserPasswordCommand = {
+  type t
+
+  /** `Permanent: true` leaves the account `CONFIRMED` and the password usable as
+    it stands. `false` (the default, if omitted) sets a *temporary* one and puts
+    the account back into `FORCE_CHANGE_PASSWORD` — so a caller bootstrapping an
+    account that must simply work has to say `true` explicitly. */
+  type input = {
+    @as("UserPoolId") userPoolId: string,
+    @as("Username") username: string,
+    @as("Password") password: string,
+    @as("Permanent") permanent?: bool,
+  }
+
+  @new @module("@aws-sdk/client-cognito-identity-provider")
+  external make: input => t = "AdminSetUserPasswordCommand"
+
+  module Raw = {
+    /**
+      see: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/cognito-identity-provider/command/AdminSetUserPasswordCommand/
+    */
+    @send
+    external send: (client, t) => promise<unit> = "send"
+  }
+
+  let send: t => promise<unit> = command => Raw.send(client(), command)
+}
+
+module CreateGroupCommand = {
+  type t
+
+  type input = {
+    @as("GroupName") groupName: string,
+    @as("UserPoolId") userPoolId: string,
+    @as("Description") description?: string,
+    @as("Precedence") precedence?: int,
+  }
+
+  type groupType = {@as("GroupName") groupName?: string}
+
+  type output = {@as("Group") group?: groupType}
+
+  @new @module("@aws-sdk/client-cognito-identity-provider")
+  external make: input => t = "CreateGroupCommand"
+
+  module Raw = {
+    /**
+      see: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/cognito-identity-provider/command/CreateGroupCommand/
+    */
+    @send
+    external send: (client, t) => promise<output> = "send"
+  }
+
+  let send: t => promise<output> = command => Raw.send(client(), command)
+}
+
 module AdminAddUserToGroupCommand = {
   type t
 
@@ -242,10 +343,15 @@ module DescribeUserPoolCommand = {
 
   type input = {@as("UserPoolId") userPoolId: string}
 
+  /** `UsernameAttributes` is how a caller learns what this pool signs in on
+    without having created it — the one pool setting no update can change, so a
+    caller that guesses wrong creates an account nobody can use. Absent means the
+    pool signs in on a plain username rather than on an attribute. */
   type userPoolType = {
     @as("Id") id?: string,
     @as("Name") name?: string,
     @as("Arn") arn?: string,
+    @as("UsernameAttributes") usernameAttributes?: array<string>,
   }
 
   type output = {@as("UserPool") userPool?: userPoolType}

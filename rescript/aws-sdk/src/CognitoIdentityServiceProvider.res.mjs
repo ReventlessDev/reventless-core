@@ -43,7 +43,7 @@ function send$1(command) {
   return client().send(command);
 }
 
-let AdminAddUserToGroupCommand = {
+let AdminCreateUserCommand = {
   Raw: Raw$2,
   send: send$1
 };
@@ -54,7 +54,7 @@ function send$2(command) {
   return client().send(command);
 }
 
-let AdminRemoveUserFromGroupCommand = {
+let AdminSetUserPasswordCommand = {
   Raw: Raw$3,
   send: send$2
 };
@@ -65,7 +65,7 @@ function send$3(command) {
   return client().send(command);
 }
 
-let AdminListGroupsForUserCommand = {
+let CreateGroupCommand = {
   Raw: Raw$4,
   send: send$3
 };
@@ -76,7 +76,7 @@ function send$4(command) {
   return client().send(command);
 }
 
-let CreateUserPoolCommand = {
+let AdminAddUserToGroupCommand = {
   Raw: Raw$5,
   send: send$4
 };
@@ -87,7 +87,7 @@ function send$5(command) {
   return client().send(command);
 }
 
-let ListUserPoolsCommand = {
+let AdminRemoveUserFromGroupCommand = {
   Raw: Raw$6,
   send: send$5
 };
@@ -98,9 +98,42 @@ function send$6(command) {
   return client().send(command);
 }
 
-let DescribeUserPoolCommand = {
+let AdminListGroupsForUserCommand = {
   Raw: Raw$7,
   send: send$6
+};
+
+let Raw$8 = {};
+
+function send$7(command) {
+  return client().send(command);
+}
+
+let CreateUserPoolCommand = {
+  Raw: Raw$8,
+  send: send$7
+};
+
+let Raw$9 = {};
+
+function send$8(command) {
+  return client().send(command);
+}
+
+let ListUserPoolsCommand = {
+  Raw: Raw$9,
+  send: send$8
+};
+
+let Raw$10 = {};
+
+function send$9(command) {
+  return client().send(command);
+}
+
+let DescribeUserPoolCommand = {
+  Raw: Raw$10,
+  send: send$9
 };
 
 export {
@@ -108,6 +141,9 @@ export {
   clientInstance,
   client,
   SignUpCommand,
+  AdminCreateUserCommand,
+  AdminSetUserPasswordCommand,
+  CreateGroupCommand,
   AdminAddUserToGroupCommand,
   AdminRemoveUserFromGroupCommand,
   AdminListGroupsForUserCommand,

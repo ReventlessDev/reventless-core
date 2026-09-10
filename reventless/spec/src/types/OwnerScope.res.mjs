@@ -21,6 +21,17 @@ function clearElevatedGroups() {
   explicitElevatedGroups.contents = undefined;
 }
 
+function defaultElevatedGroups(groups) {
+  let match = explicitElevatedGroups.contents;
+  let match$1 = process.env.REVENTLESS_ELEVATED_GROUPS;
+  if (match !== undefined || match$1 !== undefined) {
+    return;
+  } else {
+    explicitElevatedGroups.contents = groups;
+    return;
+  }
+}
+
 function parseElevatedGroups(raw) {
   return raw.split(",").map(prim => prim.trim()).filter(part => part.length > 0);
 }
@@ -226,6 +237,7 @@ export {
   explicitElevatedGroups,
   setElevatedGroups,
   clearElevatedGroups,
+  defaultElevatedGroups,
   parseElevatedGroups,
   elevatedGroups,
   classify,

@@ -1,8 +1,54 @@
 # Plan: the first admin should not need the console
 
 **Date:** 2026-09-10
-**Status:** filed, not started.
+**Status:** ✅ **All six steps landed 2026-09-10.** A default auto deploy now declares the
+administrator group, defaults the elevated list to it, and exports its name; one command
+(`pnpm exec provision-admin`) makes the first account with a permanent password and puts it in
+the group; and the published site says so on a page of its own. Not yet exercised against a
+live pool — see the ledger below for exactly which claim that leaves open.
 **Repos:** `reventless-core` only.
+
+## What landed, and where it differs from the plan as filed
+
+- **Step 4 is its own bin, not a flag on `provision-identity`.** The plan proposed
+  `--admin-email` there. Measured while building: `provision-identity --provider-id <id>` always
+  provisions the active-role store at `derivedStoreName`, and in **auto** mode the stack's own
+  store is called `ActiveRoleStore` — so an auto-mode developer following the plan's command
+  would have created a second DynamoDB table that no stack ever reads. The first administrator
+  is needed in both pool modes and is infrastructure in neither, so it is asked for separately:
+  `provision-admin`, with `--email` rather than `--admin-email` (the bin already says whose).
+  `provision-identity` now points at it instead of ending "users and groups are yours to create".
+- **The SDK bindings did not exist**, as the plan suspected. Added to `rescript-aws-sdk`:
+  `AdminCreateUserCommand`, `AdminSetUserPasswordCommand`, `CreateGroupCommand`, and
+  `UsernameAttributes` on `DescribeUserPoolCommand` — the last so the script can refuse a
+  phone-only pool rather than creating an account that could never authenticate.
+- **Step 1's test is the existing assertion, retargeted.** `Platform_Admin_StructureTest` already
+  compared `PluginsReadModelSpec.authorization` against a literal `["Admin"]`. Pointing the
+  *expected* side at the constant makes it exactly the constant-vs-literal check the plan asked
+  for, since the actual side comes from the expanded PPX annotation. A second test would have
+  been a near-duplicate, and writing the literal on both sides would have passed while they drifted.
+- **Step 3 sits at `Platform.MakeWithConfig`'s functor body**, not beside the pool. The plan
+  allowed either; the entry point is the one where the ordering is *structural* — the functor
+  body runs at application, necessarily before any plugin builds a Lambda through it — rather
+  than depending on which caller resolves the process-cached pool first.
+- **`OwnerScope.defaultElevatedGroups` treats the environment as an answer**, not only an explicit
+  call. The plan said "default it, never force it"; a default that beat an exported
+  `REVENTLESS_ELEVATED_GROUPS` would leave the function runtimes acting on a value no source in
+  the deployment states.
+
+## Corrections to §1's measurement
+
+- **"Nothing documents the manual path" was measured over `docs/guides/` and
+  `packages/doc/docs-app/` only.** `packages/doc/docs-tutorials/test-on-aws.md` *did* carry an
+  `admin-create-user` + `admin-set-user-password` recipe. It is a sharper version of the same
+  defect rather than a refutation: the recipe never adds the account to `Admin`, so a developer
+  who followed it exactly still could not reach the administration views, and nothing said why.
+  That section now runs the one command; the honest console path lives on the new page, with the
+  group step included.
+- **`signUpIfMissing` would not have been the right helper anyway.** It calls self-service
+  `SignUp`, which an `adminOnly` pool — the default since `a89e13f0b` — refuses. The bootstrap
+  uses `AdminCreateUser`, which works regardless of sign-up mode. Only `addUserGroup` was wired
+  as the plan expected.
 
 **Goal.** A developer deploys, runs **one command**, and signs in as an administrator who can see
 everything. Today they deploy, cannot sign in, and are told nothing about why.
@@ -206,6 +252,13 @@ It must cover, in this order:
   `FORCE_CHANGE_PASSWORD` and needs a separate call to receive a usable password. It decides Step 4's
   third bullet, so **confirm it against a real pool before building** — if it is wrong, that step gets
   simpler, and nothing else in this plan moves.
+  - **Still unconfirmed against a live pool, and deliberately not depended on.** The script sets a
+    permanent password *unconditionally*, which is correct whether or not the assertion holds: if
+    the account was in `FORCE_CHANGE_PASSWORD` this clears it, and if it never was, the call is a
+    harmless password set. So the assertion decides nothing that is now load-bearing. What remains
+    genuinely unexercised is §4's first verification bullet — a fresh auto deploy, the one command,
+    a successful sign-in, and an administrator reading an `@owner`-scoped row belonging to somebody
+    else. Every part of that path is unit-covered; the path itself has not been run end to end.
 - **Not investigated:** whether the host UI's sign-in flow handles a password-change challenge at all.
   Step 4 avoids the question rather than answering it, which is the right trade for a bootstrap but
   leaves the flow untested for any *other* path that produces the same challenge — an administrator
