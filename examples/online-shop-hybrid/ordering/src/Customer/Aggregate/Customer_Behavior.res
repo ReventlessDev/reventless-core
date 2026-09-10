@@ -15,6 +15,7 @@ module Guards = TraitAddressGeocoding.AddressGeocoding_Guards
 // The invariant they maintain: `locationResolvedFrom` is either `None` or equal
 // to `address`. Every arm below preserves it, and it is what makes "is this pin
 // still current?" a decidable question rather than an assumption.
+//
 // `verifiedEmail` is the verification graft's staleness token, and it holds the
 // same shape of invariant: it is either `None` or equal to `email`. `EmailUpdated`
 // dropping it is what makes "is this address proven?" a decidable question rather
@@ -70,7 +71,10 @@ let evolve = (state, event) =>
   // handing it back for another round.
   | (Active(s), AddressUnresolvable({address})) =>
     Active({...s, location: None, locationResolvedFrom: Some(address)})
-  | (Active({email, address, location, locationResolvedFrom, verifiedEmail}), Customer.Deactivated) =>
+  | (
+      Active({email, address, location, locationResolvedFrom, verifiedEmail}),
+      Customer.Deactivated,
+    ) =>
     Deactivated({email, address, location, locationResolvedFrom, verifiedEmail})
   | (Deactivated({email, address, location, locationResolvedFrom, verifiedEmail}), Reactivated) =>
     Active({email, address, location, locationResolvedFrom, verifiedEmail})

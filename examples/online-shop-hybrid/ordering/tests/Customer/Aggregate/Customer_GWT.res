@@ -159,10 +159,7 @@ describe("Customer email verification", () => {
   // Swallowed rather than refused, so a proof settling while the customer was
   // being deactivated does not leave the reporting slice retrying forever.
   test("a verdict landing after deactivation produces no events", () =>
-    givenEvents([
-      Registered({email: "alice@x.y", address: "123 Main"}),
-      Deactivated,
-    ])
+    givenEvents([Registered({email: "alice@x.y", address: "123 Main"}), Deactivated])
     ->whenCmd(MarkEmailVerified({email: "alice@x.y"}))
     ->thenNoEvent
   )

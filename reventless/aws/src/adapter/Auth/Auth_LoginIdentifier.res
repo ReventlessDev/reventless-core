@@ -58,7 +58,9 @@ let parse = (value: option<string>): result<t, string> =>
       Error(
         `loginIdentifier "${raw}" is not one of ${all
           ->Array.map(toString)
-          ->Array.join(", ")}. It fixes the sign-in attribute at pool creation and no later deploy can change it, so an unrecognised spelling refuses rather than defaulting.`,
+          ->Array.join(
+            ", ",
+          )}. It fixes the sign-in attribute at pool creation and no later deploy can change it, so an unrecognised spelling refuses rather than defaulting.`,
       )
     }
   }

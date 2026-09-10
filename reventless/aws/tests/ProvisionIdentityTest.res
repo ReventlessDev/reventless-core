@@ -57,8 +57,8 @@ describe("ProvisionIdentity.parseArgs", () => {
 
   testSync("--login-identifier picks the sign-in attribute", () =>
     expect(
-      Provision.parseArgs(["--login-identifier", "emailOrPhone"])->Result.map(a =>
-        a.loginIdentifier
+      Provision.parseArgs(["--login-identifier", "emailOrPhone"])->Result.map(
+        a => a.loginIdentifier,
       ),
     )->toEqual(Ok(Auth_LoginIdentifier.EmailOrPhone))
   )

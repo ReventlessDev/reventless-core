@@ -94,13 +94,7 @@ type t = {
   operations: array<operation>,
 }
 
-let make = (
-  ~createPrincipal,
-  ~addToGroup,
-  ~removeFromGroup,
-  ~deletePrincipal,
-  ~operations,
-): t => {
+let make = (~createPrincipal, ~addToGroup, ~removeFromGroup, ~deletePrincipal, ~operations): t => {
   createPrincipal,
   addToGroup,
   removeFromGroup,

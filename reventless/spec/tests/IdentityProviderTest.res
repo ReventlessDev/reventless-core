@@ -37,18 +37,13 @@ describe("IdentityProvider.unavailable", () => {
   // The empty list and the retryable send say different true things and both are
   // needed: this is what a caller reads *before* offering a flow that cannot
   // complete, rather than discovering it on the last step.
-  testSync("publishes no operations at all", () =>
-    expect(provider.operations)->toEqual([])
-  )
+  testSync("publishes no operations at all", () => expect(provider.operations)->toEqual([]))
 
   testSync("supports answers false for everything", () =>
     expect(
-      [
-        IdentityProvider.CreatePrincipal,
-        AddToGroup,
-        RemoveFromGroup,
-        DeletePrincipal,
-      ]->Array.map(operation => provider->IdentityProvider.supports(~operation)),
+      [IdentityProvider.CreatePrincipal, AddToGroup, RemoveFromGroup, DeletePrincipal]->Array.map(
+        operation => provider->IdentityProvider.supports(~operation),
+      ),
     )->toEqual([false, false, false, false])
   )
 })
@@ -65,12 +60,9 @@ describe("Capabilities.none", () => {
 describe("IdentityProvider.operation", () => {
   testSync("covers principal lifecycle and nothing else", () =>
     expect(
-      [
-        IdentityProvider.CreatePrincipal,
-        AddToGroup,
-        RemoveFromGroup,
-        DeletePrincipal,
-      ]->Array.map(IdentityProvider.operationToString),
+      [IdentityProvider.CreatePrincipal, AddToGroup, RemoveFromGroup, DeletePrincipal]->Array.map(
+        IdentityProvider.operationToString,
+      ),
     )->toEqual(["CreatePrincipal", "AddToGroup", "RemoveFromGroup", "DeletePrincipal"])
   )
 })
