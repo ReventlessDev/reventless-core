@@ -1,11 +1,11 @@
 # Plan: the ContactVerification trait
 
 **Date:** 2026-09-10
-**Status:** **Phase A started 2026-09-10 — the rules are in and proven, the graft is not.** The
-vocabulary and the decision rules are built in the ordering example and covered by 22 tests, including
-the staleness guard, which was verified by removing it and watching two tests go red. What is *not*
-built: the commands and events on `Customer`, the challenge ledger component, and the outbound slice
-that sends. Phases B and C not started.
+**Status:** **Phase A part-built 2026-09-10 — the rules and the write-back are in; the ledger and the
+send are not.** The vocabulary, the decision rules and the graft onto `Customer` are built in the
+ordering example, with the staleness guard verified by deletion at *both* layers. What is **not** built:
+the trait-owned challenge ledger (so nothing issues or holds a secret yet) and the outbound slice that
+spends the `Messaging` call. Phases B and C not started.
 **Repos:** `reventless-core` only — the `online-shop-hybrid` ordering plugin it is written in, then a
 new package under `traits/`.
 **Builds on:** [trait-address-geocoding.md](./trait-address-geocoding.md) and
@@ -216,10 +216,34 @@ Three things the sketch above did not settle, decided while writing it:
   are looking at while they read it. `TooSoon` carries the remaining wait so a host can say *when*
   rather than only *no*.
 
-**Still to build in Phase A:** `Customer`'s commands and events and their `decide` / `evolve` arms; the
-trait-owned challenge ledger; the outbound slice that spends the `Messaging` call. The guard is
-therefore proven as a rule and not yet proven end to end on the host — which is the honest reading, and
-the reason the graft is the next step rather than the extraction.
+### The graft, built the same day
+
+`Customer` gains `MarkEmailVerified` (unpublished), `EmailVerified`, and a `verifiedEmail` token whose
+invariant matches geocoding's `locationResolvedFrom`: absent, or equal to the current address.
+`EmailUpdated` drops it, in the fold and in the read model alike. 186 tests green in the example, eight
+of them new.
+
+**The staleness guard turned out to want two implementations, not one.** The plan described it as the
+trait's security control, singular. Writing the graft made it clear that the ledger refusing to *settle*
+and the aggregate refusing to *record* are different failures: a verdict can reach the host by
+redelivery, by a replayed command, or from a ledger that is simply wrong, and only the aggregate's check
+sits inside the host's own consistency boundary. Both are now present, and deleting **either** one turns
+a test red — verified by doing it.
+
+Two smaller decisions the graft forced:
+
+- **The write-back command is not published.** A client never asserts that an address was proven; it
+  presents a secret to the slice that issued one, and the slice reports the verdict. A public command
+  would let any caller mark any address verified, which is the entire property being protected. Same
+  `@noApi` reasoning as geocoding's `SetLocation`, and for a sharper reason.
+- **The read model carries the outcome and never the challenge.** The plan argued the ledger must not be
+  projectable because it holds a secret. The corollary is that the *verdict* projects freely — and must
+  also be dropped on an address change, or a row shows an address as proven that nobody proved.
+
+**Still to build in Phase A:** the trait-owned challenge ledger — nothing issues or stores a secret yet,
+so `onProofPresented`, expiry, attempts and the cooldown are exercised only as rules — and the outbound
+slice that spends the `Messaging` call. The write-back half is proven end to end on the host; the
+issue-and-send half has no component behind it.
 
 ## Phase B — the second consumer
 
