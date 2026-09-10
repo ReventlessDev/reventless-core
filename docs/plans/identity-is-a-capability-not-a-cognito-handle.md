@@ -12,9 +12,9 @@ payloads. Step 2 is re-cut around that; it turns out to be one seam wide, additi
 **Step 3 was investigated 2026-09-10 and its stated gap was wrong too** — the auth-posture vocabulary
 already exists as `Authorization.AllowAnonymous`, and AWS silently enforces it as *authenticated only*.
 Step 3 is re-cut into three pieces, and **the first — refusing to compile `AllowAnonymous` into a
-directive that contradicts it — ✅ shipped 2026-09-10** (851 aws tests green, verified by deletion).
-Pieces 2 (an API-key auth provider, its missing Pulumi binding, and key rotation) and 3 (the door) are
-untouched.
+directive that contradicts it — ✅ shipped 2026-09-10**, as did **Step 5b** (862 aws tests green, both
+verified by deletion). **Steps 3b (an API-key auth provider, its missing Pulumi binding, and key
+rotation), 3c (the door) and 2 are what remain**, and 3b is the one gating an anonymous door on AWS.
 **Repos:** `reventless-core` only.
 
 **Goal.** Put the *administrative* half of identity — making, grouping and unmaking principals —
@@ -457,9 +457,9 @@ the AWS SDK so its two consumers can share it: the auto pool in `Platform_Stack.
 *Evidence:* `reventless/aws` builds warning-free; 846 tests in 73 suites green, 22 of them across
 `Auth_LoginIdentifierTest` and `ProvisionIdentityTest`.
 
-### Step 5b — self-service sign-up (not urgent, and Step 0 is why)
+### Step 5b — self-service sign-up ✅ **done 2026-09-10**
 
-`allowAdminCreateUserOnly: true` is still hard-coded. `AdminCreateUserConfig` **is** in
+`allowAdminCreateUserOnly: true` was hard-coded. `AdminCreateUserConfig` **is** in
 `UpdateUserPoolRequest`, so as an API fact this is an in-place update on a live pool: free, reversible,
 and correctable at any point. It moves onto the capability with Steps 1–4 rather than ahead of them.
 
@@ -489,6 +489,37 @@ pool has one of it. That is the same shape as the single pre-token-trigger slot 
 already guards, and it is a blast-radius fact rather than a cost: a deployment that must never
 self-register cannot rely on its own stack config to prevent it, and should not share a pool with one
 that does.
+
+#### Built 2026-09-10 — both halves, as planned above
+
+`Auth_SignUpMode` — a two-arm variant (`AdminOnly` / `SelfService`), free of Pulumi and of the AWS SDK
+so the auto pool and the provisioning script share one definition, exactly as `Auth_LoginIdentifier`
+does. It carries `allowAdminCreateUserOnly` as its own function, because **Cognito's field asks the
+negative of the question the type asks** and a bool named for the negative is easy to read backwards at
+a call site. Both arms are pinned by a test for that reason.
+
+- `platform:signUpMode` config, through the same env / sidecar / stack-config precedence as
+  `loginIdentifier`. **Absent means `adminOnly`**, so every existing stack redeploys byte-unchanged —
+  and closed is right on its own terms, since a deployment that never asked for self-registration
+  should not acquire it by upgrading.
+- `--sign-up-mode` on the provisioning script, same variant, same refusal.
+- **An unrecognised spelling fails the deploy — for a different reason than 5a's, and the plan should
+  not be read as if they were the same.** 5a refuses because the mistake is *permanent*. This one is
+  correctable at any time; it refuses because the mistake is *silent*. The default is closed, so a typo
+  fails safe — and invisibly: the deploy is green, the config reads as though registration is open, and
+  the only symptom is every registration being refused, which surfaces nowhere near the spelling that
+  caused it.
+
+**No new stack output, deliberately.** 5a added `identityProviderLoginIdentifier` because the sign-in
+attribute is unchangeable, so the value a pool was *born* with has to be readable somewhere other than a
+source file that has since moved on. That argument does not transfer: this setting is mutable, so in
+auto mode the stack config *is* the current authority and the source tells the truth. (`getUserPool`'s
+result type carries neither field, so an output could not have been sourced from a BYO pool anyway —
+it would have read `unknown` there, exactly as 5a's does.)
+
+*Evidence:* `reventless/aws` builds warning-free; **862 tests in 74 suites green** (up 11). Verified by
+deletion twice — inverting `allowAdminCreateUserOnly` turns 4 tests red, and making `parse` default
+past an unknown spelling instead of refusing turns 4 red.
 
 ### Step 5c — refusing a replacement instead of performing one, **named and not built**
 
