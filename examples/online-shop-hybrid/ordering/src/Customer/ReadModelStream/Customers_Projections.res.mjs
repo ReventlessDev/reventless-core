@@ -70,6 +70,7 @@ function project(param) {
             requestedFor: address
           },
           accountStatus: "Active",
+          emailVerified: false,
           orderCount: 0
         },
         _2: state => {
@@ -87,6 +88,7 @@ function project(param) {
         _0: id,
         _1: state => {
           let newrecord = {...state};
+          newrecord.emailVerified = false;
           newrecord.email = email$1;
           return newrecord;
         }
@@ -150,6 +152,16 @@ function project(param) {
           return newrecord;
         }
       };
+    case "EmailVerified" :
+      return {
+        TAG: "Update",
+        _0: id,
+        _1: state => {
+          let newrecord = {...state};
+          newrecord.emailVerified = true;
+          return newrecord;
+        }
+      };
   }
 }
 
@@ -180,6 +192,7 @@ function project$1(param) {
         requestedFor: ""
       },
       accountStatus: "Active",
+      emailVerified: false,
       orderCount: 1
     },
     _2: state => {

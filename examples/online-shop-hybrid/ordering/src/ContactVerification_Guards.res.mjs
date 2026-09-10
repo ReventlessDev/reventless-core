@@ -50,6 +50,14 @@ function onProofPresented(v, c, proofMatches, now, policy) {
   }
 }
 
+function onVerifiedReport(v, contact) {
+  if (Primitive_object.notequal(contact, v.contact) || Primitive_object.equal(v.verifiedAddress, contact)) {
+    return "Ignore";
+  } else {
+    return "Append";
+  }
+}
+
 function onIssueRequested(v, existing, now, policy) {
   let contact = contactToVerify(v);
   if (contact !== undefined) {
@@ -90,6 +98,7 @@ export {
   elapsedSeconds,
   hasExpired,
   onProofPresented,
+  onVerifiedReport,
   onIssueRequested,
   onResendRequested,
 }

@@ -44,6 +44,15 @@ type command =
   // Spliced from the trait, `@noApi` and all: the exclusion is recorded on each
   // member, so it survives the spread and neither is published.
   | ...TraitAddressGeocoding.AddressGeocoding.reportCommands
+  // The verification graft's report back. `@noApi` for the same reason
+  // `SetLocation` is: a client never asserts that an address was proven — it
+  // presents a secret to the slice that issued one, and the slice reports the
+  // verdict here. A public command would let a caller mark any address verified,
+  // which is the whole property being protected.
+  //
+  // Carries the address it is a verdict about, so a verdict for an address the
+  // customer has since changed can be dropped rather than applied.
+  | @noApi MarkEmailVerified({email: string})
   | Deactivate
   // The way back. Deactivation withdraws a customer from ordinary use; it does
   // not erase them, so restoring one needs no payload — the profile is still in
@@ -60,6 +69,10 @@ type event =
   // They are matched unqualified below and in the projections, and sury splices
   // the schema flat, so the wire format is what hand-written arms produced.
   | ...TraitAddressGeocoding.AddressGeocoding.events
+  // Names the address that was proven, not just that one was. `EmailUpdated`
+  // drops it again, which is what keeps "is this address proven?" decidable
+  // instead of assumed.
+  | EmailVerified({email: string})
   | Deactivated
   | Reactivated
 
@@ -109,6 +122,10 @@ let commandTransition = (command: command): Reventless.Transition.t<lifecycleSta
   // geocode landing after deactivation returns `Ok([])` rather than refusing, so
   // it does not park a TODO row in Failed forever.
   | SetLocation(_) | MarkAddressUnresolvable(_) => Unrestricted
+  // Legal in every state for the same reason: a proof settled while the customer
+  // was being deactivated returns `Ok([])` rather than refusing, so the slice
+  // that reported it does not retry forever against a state it cannot change.
+  | MarkEmailVerified(_) => Unrestricted
   | Deactivate => Moves([Customers.Active], Customers.Deactivated)
   // Works because the view's retirement IS a state of its lifecycle rather than
   // a boolean beside one, so the states a command names and the states a row can

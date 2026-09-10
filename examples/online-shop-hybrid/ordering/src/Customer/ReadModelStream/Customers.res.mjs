@@ -17,6 +17,7 @@ let stateSchema = Sury.$schema(s => ({
   address: s.m(Sury.string),
   geolocation: s.m(Geolocation$Reventless.schema),
   accountStatus: s.m(accountStatusSchema),
+  emailVerified: s.m(Sury.bool),
   orderCount: s.m(Sury.int),
   displayName: s.m(Sury.$option(Sury.string))
 }));

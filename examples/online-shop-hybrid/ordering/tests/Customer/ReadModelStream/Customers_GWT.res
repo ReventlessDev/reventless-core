@@ -18,6 +18,7 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
       address: "123 Main",
       geolocation: Pending({requestedFor: "123 Main"}),
       accountStatus: Active,
+      emailVerified: false,
       orderCount: 0,
     })
   )
@@ -31,6 +32,41 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
       address: "123 Main",
       geolocation: Pending({requestedFor: "123 Main"}),
       accountStatus: Active,
+      emailVerified: false,
+      orderCount: 0,
+    })
+  )
+
+  CustomerGwt.test("EmailVerified marks the address proven", () =>
+    CustomerGwt.givenEvents([Customer.Registered({email: "alice@x.y", address: "123 Main"})])
+    ->CustomerGwt.whenEvent(Customer.EmailVerified({email: "alice@x.y"}))
+    ->CustomerGwt.thenState({
+      Customers.customerId: "id",
+      email: "alice@x.y",
+      address: "123 Main",
+      geolocation: Pending({requestedFor: "123 Main"}),
+      accountStatus: Active,
+      emailVerified: true,
+      orderCount: 0,
+    })
+  )
+
+  // 🚨 The row must not carry the badge across a change. Keeping it would show an
+  // address as proven that nobody has proven — the read model's half of the same
+  // guard the aggregate applies.
+  CustomerGwt.test("EmailUpdated drops the proof along with the address", () =>
+    CustomerGwt.givenEvents([
+      Customer.Registered({email: "alice@x.y", address: "123 Main"}),
+      Customer.EmailVerified({email: "alice@x.y"}),
+    ])
+    ->CustomerGwt.whenEvent(Customer.EmailUpdated({email: "alice2@x.y"}))
+    ->CustomerGwt.thenState({
+      Customers.customerId: "id",
+      email: "alice2@x.y",
+      address: "123 Main",
+      geolocation: Pending({requestedFor: "123 Main"}),
+      accountStatus: Active,
+      emailVerified: false,
       orderCount: 0,
     })
   )
@@ -44,6 +80,7 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
       address: "789 Pine",
       geolocation: Pending({requestedFor: "789 Pine"}),
       accountStatus: Active,
+      emailVerified: false,
       orderCount: 0,
     })
   )
@@ -59,6 +96,7 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
       address: "123 Main",
       geolocation: Located({point: {lat: 51.2093, lng: 3.2247}}),
       accountStatus: Active,
+      emailVerified: false,
       orderCount: 0,
     })
   )
@@ -72,6 +110,7 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
       address: "123 Main",
       geolocation: Pending({requestedFor: "123 Main"}),
       accountStatus: Deactivated,
+      emailVerified: false,
       orderCount: 0,
     })
   )
@@ -91,6 +130,7 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
       address: "123 Main",
       geolocation: Pending({requestedFor: "123 Main"}),
       accountStatus: Active,
+      emailVerified: false,
       orderCount: 0,
     })
   )
@@ -110,6 +150,7 @@ OrderGwt.describe("Customers ReadModel ← Ordering DCB log", () => {
         address: "",
         geolocation: Pending({requestedFor: ""}),
         accountStatus: Active,
+        emailVerified: false,
         orderCount: 1,
       },
     )
@@ -130,6 +171,7 @@ OrderGwt.describe("Customers ReadModel ← Ordering DCB log", () => {
         address: "",
         geolocation: Pending({requestedFor: ""}),
         accountStatus: Active,
+        emailVerified: false,
         orderCount: 2,
       },
     )

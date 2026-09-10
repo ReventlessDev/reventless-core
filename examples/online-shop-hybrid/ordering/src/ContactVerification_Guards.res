@@ -88,6 +88,27 @@ let onProofPresented = (
     Settle
   }
 
+type verdict = Append | Ignore
+
+/**
+The write-back rule, applied where the host records the outcome.
+
+Two guards, and the first is the same security control `onProofPresented`
+applies to the challenge — deliberately duplicated rather than trusted once. The
+ledger refusing to settle and the host refusing to record are different
+failures: a verdict can reach the host by redelivery, by a replayed command, or
+from a ledger that is simply wrong, and only this one is inside the host's own
+consistency boundary. The second is the ordinary redelivery no-op.
+*/
+let onVerifiedReport = (v: verification, ~contact: ContactVerification.contact): verdict =>
+  if contact != v.contact {
+    Ignore
+  } else if v.verifiedAddress == Some(contact) {
+    Ignore
+  } else {
+    Append
+  }
+
 type issuance =
   /** Nothing owes a proof. */
   | StandDown

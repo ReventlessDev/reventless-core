@@ -36,11 +36,16 @@ module CustomerMapping = Mapping.Make(
             address,
             geolocation: Pending({requestedFor: address}),
             accountStatus: Active,
+            emailVerified: false,
             orderCount: 0,
           },
           state => {...state, email, address, accountStatus: Active},
         )
-      | EmailUpdated({email}) => Update(id, state => {...state, email})
+      // The new address is unproven whatever the old one was, mirroring the drop
+      // the aggregate makes — a row that kept the badge across a change would
+      // show an address as proven that nobody has proven.
+      | EmailUpdated({email}) => Update(id, state => {...state, email, emailVerified: false})
+      | EmailVerified(_) => Update(id, state => {...state, emailVerified: true})
       // A new address invalidates the pin: back to Pending for the new one.
       | AddressUpdated({address}) =>
         Update(id, state => {...state, address, geolocation: Pending({requestedFor: address})})
@@ -77,6 +82,7 @@ module CustomerOrdersMapping = Mapping.Make(
             // No address from this side; `Registered` fills it in when it arrives.
             geolocation: Pending({requestedFor: ""}),
             accountStatus: Active,
+            emailVerified: false,
             orderCount: 1,
           },
           state => {...state, orderCount: state.orderCount + 1},

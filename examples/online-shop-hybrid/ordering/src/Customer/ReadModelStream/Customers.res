@@ -28,5 +28,9 @@ type state = {
   geolocation: Reventless.Geolocation.t,
   // Annotated rather than named `lifecycle`, which is what the annotation is for.
   @lifecycle accountStatus: accountStatus,
+  // Whether the address in `email` has been proven. The *outcome* projects
+  // freely; the challenge that produced it never does — it holds a secret, and a
+  // read model is the one place it must not reach.
+  emailVerified: bool,
   orderCount: int,
 }

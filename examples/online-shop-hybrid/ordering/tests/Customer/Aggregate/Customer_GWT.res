@@ -110,3 +110,66 @@ describe("Customer Behavior", () => {
     ->thenError(CustomerNotFound)
   )
 })
+
+// The verification graft's write-back. The first scenario is the security test:
+// it is what stops "change the address, then present the old one's link" from
+// marking the new address proven.
+describe("Customer email verification", () => {
+  test("MarkEmailVerified for the current address produces EmailVerified", () =>
+    givenEvents([Registered({email: "alice@x.y", address: "123 Main"})])
+    ->whenCmd(MarkEmailVerified({email: "alice@x.y"}))
+    ->thenEvent(EmailVerified({email: "alice@x.y"}))
+  )
+
+  // 🚨 The verdict names the address it is about, so one naming an address the
+  // customer has moved off is dropped rather than applied. Without this the
+  // aggregate would record the *new* address as proven on the strength of a
+  // proof issued for the old one.
+  test("a verdict for a superseded address produces no event", () =>
+    givenEvents([
+      Registered({email: "alice@x.y", address: "123 Main"}),
+      EmailUpdated({email: "alice2@x.y"}),
+    ])
+    ->whenCmd(MarkEmailVerified({email: "alice@x.y"}))
+    ->thenNoEvent
+  )
+
+  // Commands arrive at least once, so the second delivery must record nothing.
+  test("a redelivered verdict produces no second event", () =>
+    givenEvents([
+      Registered({email: "alice@x.y", address: "123 Main"}),
+      EmailVerified({email: "alice@x.y"}),
+    ])
+    ->whenCmd(MarkEmailVerified({email: "alice@x.y"}))
+    ->thenNoEvent
+  )
+
+  // Changing the address unproves it, so the same address proven again is a new
+  // fact rather than a repeat — this is the fold's half of the guard.
+  test("a re-verified address after a change is recorded again", () =>
+    givenEvents([
+      Registered({email: "alice@x.y", address: "123 Main"}),
+      EmailVerified({email: "alice@x.y"}),
+      EmailUpdated({email: "alice2@x.y"}),
+    ])
+    ->whenCmd(MarkEmailVerified({email: "alice2@x.y"}))
+    ->thenEvent(EmailVerified({email: "alice2@x.y"}))
+  )
+
+  // Swallowed rather than refused, so a proof settling while the customer was
+  // being deactivated does not leave the reporting slice retrying forever.
+  test("a verdict landing after deactivation produces no events", () =>
+    givenEvents([
+      Registered({email: "alice@x.y", address: "123 Main"}),
+      Deactivated,
+    ])
+    ->whenCmd(MarkEmailVerified({email: "alice@x.y"}))
+    ->thenNoEvent
+  )
+
+  test("MarkEmailVerified on non-existent aggregate returns CustomerNotFound", () =>
+    givenEvents([])
+    ->whenCmd(MarkEmailVerified({email: "alice@x.y"}))
+    ->thenError(CustomerNotFound)
+  )
+})
