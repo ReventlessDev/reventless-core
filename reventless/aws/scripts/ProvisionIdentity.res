@@ -39,6 +39,7 @@ type args = {
   poolName: string,
   providerId: option<string>,
   loginIdentifier: Auth_LoginIdentifier.t,
+  signUpMode: Auth_SignUpMode.t,
   help: bool,
 }
 
@@ -53,6 +54,7 @@ let parseArgs = (argv: array<string>): result<args, string> => {
       poolName: defaultPoolName,
       providerId: None,
       loginIdentifier: Auth_LoginIdentifier.default,
+      signUpMode: Auth_SignUpMode.default,
       help: false,
     }),
   )
@@ -76,12 +78,16 @@ let parseArgs = (argv: array<string>): result<args, string> => {
           loginIdentifier,
         })
       i := i.contents + 2
+    | (Ok(a), "--sign-up-mode", Some(v)) =>
+      acc := Auth_SignUpMode.parse(Some(v))->Result.map(signUpMode => {...a, signUpMode})
+      i := i.contents + 2
     | (Ok(a), "--help", _) | (Ok(a), "-h", _) =>
       acc := Ok({...a, help: true})
       i := i.contents + 1
     | (Ok(_), "--name", None)
     | (Ok(_), "--provider-id", None)
-    | (Ok(_), "--login-identifier", None) =>
+    | (Ok(_), "--login-identifier", None)
+    | (Ok(_), "--sign-up-mode", None) =>
       acc := Error(`${flag} needs a value`)
     | (Ok(_), unknown, _) => acc := Error(`unknown argument "${unknown}"`)
     }
@@ -94,6 +100,10 @@ let _loginIdentifiers =
 
 let _defaultLoginIdentifier = Auth_LoginIdentifier.toString(Auth_LoginIdentifier.default)
 
+let _signUpModes = Auth_SignUpMode.all->Array.map(Auth_SignUpMode.toString)->Array.join(" | ")
+
+let _defaultSignUpMode = Auth_SignUpMode.toString(Auth_SignUpMode.default)
+
 let usage = `
 Provision a Reventless identity provider and its active-role store.
 
@@ -104,6 +114,9 @@ Provision a Reventless identity provider and its active-role store.
                          (default: ${_defaultLoginIdentifier}). Fixed at creation —
                          no later change is possible without replacing the pool
                          and losing every account in it.
+  --sign-up-mode <m>     Whether a stranger may register themselves: ${_signUpModes}
+                         (default: ${_defaultSignUpMode}). Correctable later, but on a
+                         pool shared between stacks it applies to all of them.
 
 Creates nothing that a platform stack owns, and never attaches a trigger.
 Region and credentials come from the environment, as for any AWS SDK call.
@@ -116,16 +129,23 @@ Region and credentials come from the environment, as for any AWS SDK call.
   something else edits the pool afterwards rather than having this script grow a
   flag per Cognito setting.
 
-  The sign-in attribute is the exception, and has a flag, because it is the one
-  setting no later edit can reach — Cognito offers no update for it. */
+  Two settings are exceptions and have flags, for two different reasons. The
+  sign-in attribute, because it is the one setting no later edit can reach —
+  Cognito offers no update for it. Sign-up mode, because a stack pointed at a
+  supplied pool holds no handle to set it on, so "edit it afterwards" is the only
+  other answer and it leaves the pool's two identity choices in two places. Both
+  describe the pool itself rather than a policy detail. */
 let poolSettings = (
   ~poolName: string,
   ~loginIdentifier: Auth_LoginIdentifier.t,
+  ~signUpMode: Auth_SignUpMode.t,
 ): CognitoIdentityServiceProvider.CreateUserPoolCommand.input => {
   poolName,
   usernameAttributes: loginIdentifier->Auth_LoginIdentifier.usernameAttributes,
   mfaConfiguration: "OFF",
-  adminCreateUserConfig: {allowAdminCreateUserOnly: true},
+  adminCreateUserConfig: {
+    allowAdminCreateUserOnly: signUpMode->Auth_SignUpMode.allowAdminCreateUserOnly,
+  },
   policies: {
     passwordPolicy: {
       minimumLength: 12,
@@ -199,7 +219,11 @@ let resolvePool = async (~args: args): result<string, string> =>
       Ok(existing)
     | Ok(None) =>
       let created = await CognitoIdentityServiceProvider.CreateUserPoolCommand.make(
-        poolSettings(~poolName=args.poolName, ~loginIdentifier=args.loginIdentifier),
+        poolSettings(
+          ~poolName=args.poolName,
+          ~loginIdentifier=args.loginIdentifier,
+          ~signUpMode=args.signUpMode,
+        ),
       )->CognitoIdentityServiceProvider.CreateUserPoolCommand.send
       switch created.userPool->Option.flatMap(p => p.id) {
       | None => Error("CreateUserPool returned no pool id")
@@ -207,7 +231,7 @@ let resolvePool = async (~args: args): result<string, string> =>
         Console.log(
           `pool     ${id} (created, named "${args.poolName}", sign-in on ${Auth_LoginIdentifier.toString(
               args.loginIdentifier,
-            )})`,
+            )}, sign-up ${Auth_SignUpMode.toString(args.signUpMode)})`,
         )
         Ok(id)
       }

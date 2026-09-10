@@ -7,6 +7,7 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as AWS_Tags$ReventlessAws from "./adapter/AWS_Tags.res.mjs";
+import * as Auth_SignUpMode$ReventlessAws from "./adapter/Auth/Auth_SignUpMode.res.mjs";
 import * as Util_LocalConfig$ReventlessAws from "./util/Util_LocalConfig.res.mjs";
 import * as Auth_ActiveRoleStore$ReventlessAws from "./adapter/Auth/Auth_ActiveRoleStore.res.mjs";
 import * as Auth_LoginIdentifier$ReventlessAws from "./adapter/Auth/Auth_LoginIdentifier.res.mjs";
@@ -45,6 +46,17 @@ function _loginIdentifier(cfg) {
     return identifier._0;
   } else {
     return Stdlib_JsError.throwWithMessage(identifier._0);
+  }
+}
+
+function _signUpMode(cfg) {
+  let v = Util_LocalConfig$ReventlessAws.get("signUpMode");
+  let raw = v !== undefined ? v : cfg.get("signUpMode");
+  let mode = Auth_SignUpMode$ReventlessAws.parse(raw);
+  if (mode.TAG === "Ok") {
+    return mode._0;
+  } else {
+    return Stdlib_JsError.throwWithMessage(mode._0);
   }
 }
 
@@ -95,8 +107,9 @@ function _resolveUncached() {
     };
   } else {
     let loginIdentifier = _loginIdentifier(cfg);
+    let signUpMode = _signUpMode(cfg);
     let adminConfig = {
-      allowAdminCreateUserOnly: true
+      allowAdminCreateUserOnly: Auth_SignUpMode$ReventlessAws.allowAdminCreateUserOnly(signUpMode)
     };
     let pwdPolicy_minimumLength = 12;
     let pwdPolicy_requireLowercase = true;
@@ -188,6 +201,7 @@ export {
   _deprecatedPoolIdKey,
   _identityProviderId,
   _loginIdentifier,
+  _signUpMode,
   _resolveUncached,
   _cached,
   resolveCognitoUserPool,

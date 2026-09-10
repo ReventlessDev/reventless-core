@@ -6,6 +6,7 @@ import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_excep
 import * as ClientDynamodb from "@aws-sdk/client-dynamodb";
 import * as DynamoDb_DynamoDb$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DynamoDb.res.mjs";
 import * as Util_AwsError$ReventlessAws from "../src/util/Util_AwsError.res.mjs";
+import * as Auth_SignUpMode$ReventlessAws from "../src/adapter/Auth/Auth_SignUpMode.res.mjs";
 import * as Auth_LoginIdentifier$ReventlessAws from "../src/adapter/Auth/Auth_LoginIdentifier.res.mjs";
 import * as CognitoIdentityServiceProvider$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/CognitoIdentityServiceProvider.res.mjs";
 import * as ClientCognitoIdentityProvider from "@aws-sdk/client-cognito-identity-provider";
@@ -20,6 +21,7 @@ function parseArgs(argv) {
       poolName: defaultPoolName,
       providerId: undefined,
       loginIdentifier: Auth_LoginIdentifier$ReventlessAws.default,
+      signUpMode: Auth_SignUpMode$ReventlessAws.default,
       help: false
     }
   };
@@ -40,6 +42,7 @@ function parseArgs(argv) {
               poolName: a.poolName,
               providerId: a.providerId,
               loginIdentifier: loginIdentifier,
+              signUpMode: a.signUpMode,
               help: a.help
             }));
             i = i + 2 | 0;
@@ -55,6 +58,7 @@ function parseArgs(argv) {
                 poolName: value,
                 providerId: a.providerId,
                 loginIdentifier: a.loginIdentifier,
+                signUpMode: a.signUpMode,
                 help: a.help
               }
             };
@@ -71,9 +75,24 @@ function parseArgs(argv) {
                 poolName: a.poolName,
                 providerId: value,
                 loginIdentifier: a.loginIdentifier,
+                signUpMode: a.signUpMode,
                 help: a.help
               }
             };
+            i = i + 2 | 0;
+          } else {
+            exit = 1;
+          }
+          break;
+        case "--sign-up-mode" :
+          if (value !== undefined) {
+            acc = Stdlib_Result.map(Auth_SignUpMode$ReventlessAws.parse(value), signUpMode => ({
+              poolName: a.poolName,
+              providerId: a.providerId,
+              loginIdentifier: a.loginIdentifier,
+              signUpMode: signUpMode,
+              help: a.help
+            }));
             i = i + 2 | 0;
           } else {
             exit = 1;
@@ -96,6 +115,7 @@ function parseArgs(argv) {
             poolName: a.poolName,
             providerId: a.providerId,
             loginIdentifier: a.loginIdentifier,
+            signUpMode: a.signUpMode,
             help: true
           }
         };
@@ -118,6 +138,10 @@ let _loginIdentifiers = Auth_LoginIdentifier$ReventlessAws.all.map(Auth_LoginIde
 
 let _defaultLoginIdentifier = Auth_LoginIdentifier$ReventlessAws.toString(Auth_LoginIdentifier$ReventlessAws.default);
 
+let _signUpModes = Auth_SignUpMode$ReventlessAws.all.map(Auth_SignUpMode$ReventlessAws.toString).join(" | ");
+
+let _defaultSignUpMode = Auth_SignUpMode$ReventlessAws.toString(Auth_SignUpMode$ReventlessAws.default);
+
 let usage = `
 Provision a Reventless identity provider and its active-role store.
 
@@ -128,12 +152,15 @@ Provision a Reventless identity provider and its active-role store.
                          (default: ` + _defaultLoginIdentifier + `). Fixed at creation —
                          no later change is possible without replacing the pool
                          and losing every account in it.
+  --sign-up-mode <m>     Whether a stranger may register themselves: ` + _signUpModes + `
+                         (default: ` + _defaultSignUpMode + `). Correctable later, but on a
+                         pool shared between stacks it applies to all of them.
 
 Creates nothing that a platform stack owns, and never attaches a trigger.
 Region and credentials come from the environment, as for any AWS SDK call.
 `;
 
-function poolSettings(poolName, loginIdentifier) {
+function poolSettings(poolName, loginIdentifier, signUpMode) {
   return {
     PoolName: poolName,
     UsernameAttributes: Auth_LoginIdentifier$ReventlessAws.usernameAttributes(loginIdentifier),
@@ -147,7 +174,7 @@ function poolSettings(poolName, loginIdentifier) {
       }
     },
     AdminCreateUserConfig: {
-      AllowAdminCreateUserOnly: true
+      AllowAdminCreateUserOnly: Auth_SignUpMode$ReventlessAws.allowAdminCreateUserOnly(signUpMode)
     }
   };
 }
@@ -221,10 +248,10 @@ async function resolvePool(args) {
       _0: existing
     };
   }
-  let created = await CognitoIdentityServiceProvider$AwsSdk.CreateUserPoolCommand.send(new ClientCognitoIdentityProvider.CreateUserPoolCommand(poolSettings(args.poolName, args.loginIdentifier)));
+  let created = await CognitoIdentityServiceProvider$AwsSdk.CreateUserPoolCommand.send(new ClientCognitoIdentityProvider.CreateUserPoolCommand(poolSettings(args.poolName, args.loginIdentifier, args.signUpMode)));
   let id$1 = Stdlib_Option.flatMap(created.UserPool, p => p.Id);
   if (id$1 !== undefined) {
-    console.log(`pool     ` + id$1 + ` (created, named "` + args.poolName + `", sign-in on ` + Auth_LoginIdentifier$ReventlessAws.toString(args.loginIdentifier) + `)`);
+    console.log(`pool     ` + id$1 + ` (created, named "` + args.poolName + `", sign-in on ` + Auth_LoginIdentifier$ReventlessAws.toString(args.loginIdentifier) + `, sign-up ` + Auth_SignUpMode$ReventlessAws.toString(args.signUpMode) + `)`);
     return {
       TAG: "Ok",
       _0: id$1
@@ -390,6 +417,8 @@ export {
   parseArgs,
   _loginIdentifiers,
   _defaultLoginIdentifier,
+  _signUpModes,
+  _defaultSignUpMode,
   usage,
   poolSettings,
   findPoolByName,

@@ -17,6 +17,7 @@ describe("ProvisionIdentity.parseArgs", () => {
         Provision.poolName: Provision.defaultPoolName,
         providerId: None,
         loginIdentifier: Auth_LoginIdentifier.Email,
+        signUpMode: Auth_SignUpMode.AdminOnly,
         help: false,
       }),
     )
@@ -28,6 +29,7 @@ describe("ProvisionIdentity.parseArgs", () => {
         Provision.poolName: Provision.defaultPoolName,
         providerId: Some("eu-west-1_AbCdEfGhI"),
         loginIdentifier: Auth_LoginIdentifier.Email,
+        signUpMode: Auth_SignUpMode.AdminOnly,
         help: false,
       }),
     )
@@ -39,6 +41,7 @@ describe("ProvisionIdentity.parseArgs", () => {
         Provision.poolName: "examples-dev",
         providerId: None,
         loginIdentifier: Auth_LoginIdentifier.Email,
+        signUpMode: Auth_SignUpMode.AdminOnly,
         help: false,
       }),
     )
@@ -50,6 +53,7 @@ describe("ProvisionIdentity.parseArgs", () => {
         Provision.poolName: "ignored",
         providerId: Some("eu-west-1_x"),
         loginIdentifier: Auth_LoginIdentifier.Email,
+        signUpMode: Auth_SignUpMode.AdminOnly,
         help: false,
       }),
     )
@@ -68,6 +72,26 @@ describe("ProvisionIdentity.parseArgs", () => {
   // rebuild — and re-register every account in — to correct.
   testSync("an unrecognised sign-in attribute is refused, never defaulted", () =>
     expect(Provision.parseArgs(["--login-identifier", "e-mail"])->Result.isError)->toBe(true)
+  )
+
+  testSync("--sign-up-mode opens the pool to self-registration", () =>
+    expect(
+      Provision.parseArgs(["--sign-up-mode", "selfService"])->Result.map(a => a.signUpMode),
+    )->toEqual(Ok(Auth_SignUpMode.SelfService))
+  )
+
+  // This one IS correctable later, unlike the sign-in attribute — it is refused
+  // because the mistake is silent, not because it is permanent. Defaulting past
+  // a typo leaves a pool that refuses every registration while the command line
+  // reads as though it allows them.
+  testSync("an unrecognised sign-up mode is refused, never defaulted", () =>
+    expect(Provision.parseArgs(["--sign-up-mode", "self-service"])->Result.isError)->toBe(true)
+  )
+
+  testSync("sign-up mode defaults to admin-only, so an existing pool is unchanged", () =>
+    expect(Provision.parseArgs([])->Result.map(a => a.signUpMode))->toEqual(
+      Ok(Auth_SignUpMode.AdminOnly),
+    )
   )
 
   // 🚨 The reason unknown flags are refused rather than skipped. A misspelled
@@ -119,6 +143,7 @@ describe("ProvisionIdentity.poolSettings", () => {
   let settings = Provision.poolSettings(
     ~poolName="MyIdentity",
     ~loginIdentifier=Auth_LoginIdentifier.default,
+    ~signUpMode=Auth_SignUpMode.default,
   )
 
   testSync("carries the name it was asked for", () => expect(settings.poolName)->toBe("MyIdentity"))
@@ -136,9 +161,25 @@ describe("ProvisionIdentity.poolSettings", () => {
       Provision.poolSettings(
         ~poolName="MyIdentity",
         ~loginIdentifier=Auth_LoginIdentifier.Phone,
+        ~signUpMode=Auth_SignUpMode.default,
       ).usernameAttributes,
     )->toEqual(Some(["phone_number"]))
   )
+
+  // The negation is the part worth pinning: this type asks who may sign up, and
+  // Cognito's field asks the opposite question. Reading it backwards would open a
+  // pool that was meant to stay closed.
+  testSync("selfService clears allowAdminCreateUserOnly, adminOnly sets it", () => {
+    let openPool = Provision.poolSettings(
+      ~poolName="MyIdentity",
+      ~loginIdentifier=Auth_LoginIdentifier.default,
+      ~signUpMode=Auth_SignUpMode.SelfService,
+    )
+    expect((
+      openPool.adminCreateUserConfig->Option.flatMap(c => c.allowAdminCreateUserOnly),
+      settings.adminCreateUserConfig->Option.flatMap(c => c.allowAdminCreateUserOnly),
+    ))->toEqual((Some(false), Some(true)))
+  })
 
   testSync("keeps the 12-character password policy", () =>
     expect(

@@ -23,7 +23,8 @@ type cognitoUserPool = {
  *
  * - **Auto**: no `platform:identityProviderId` config — create a fresh UserPool
  *   with SPA-friendly defaults (email sign-in unless `platform:loginIdentifier`
- *   says otherwise, 12-char password policy, no MFA, admin-only user creation).
+ *   says otherwise, 12-char password policy, no MFA, and admin-only user
+ *   creation unless `platform:signUpMode` says otherwise).
  *   Caller is responsible for creating
  *   groups (`Admin`, `User`, …) and users via the AWS console / CLI.
  *
@@ -52,6 +53,11 @@ type cognitoUserPool = {
  * 🚨 In auto mode `platform:loginIdentifier` picks the sign-in attribute, and it
  * is the one setting no later deploy can correct: changing it replaces the pool
  * and empties it. Absent means `email`. See [Auth_LoginIdentifier].
+ *
+ * `platform:signUpMode` decides whether a stranger may register themselves.
+ * Absent means `adminOnly`. It is the opposite kind of setting — an ordinary
+ * in-place update, free and reversible on a pool full of accounts — but on a
+ * pool shared between stacks the flip is pool-wide. See [Auth_SignUpMode].
  *
  * Also provisions the role-state table and the pre-token-generation trigger that
  * narrows `cognito:groups` to a caller's chosen role. They belong here rather
@@ -109,6 +115,25 @@ let _loginIdentifier = (~cfg: Pulumi.Config.t): Auth_LoginIdentifier.t => {
   }
   switch Auth_LoginIdentifier.parse(raw) {
   | Ok(identifier) => identifier
+  | Error(message) => JsError.throwWithMessage(message)
+  }
+}
+
+/** Whether a stranger may create their own account in a pool this stack creates,
+  from `platform:signUpMode` (or `REVENTLESS_SIGN_UP_MODE` / the sidecar).
+
+  Absent means `adminOnly`, which is what every pool so far was created with, so
+  an existing stack redeploys unchanged. Unlike the sign-in attribute this is an
+  ordinary in-place update on a live pool — but an unrecognised spelling still
+  fails the deploy, because defaulting past it would refuse every registration
+  while the config read as if it allowed them. See [Auth_SignUpMode]. */
+let _signUpMode = (~cfg: Pulumi.Config.t): Auth_SignUpMode.t => {
+  let raw = switch Util_LocalConfig.get("signUpMode") {
+  | Some(_) as v => v
+  | None => cfg->Pulumi.Config.get("signUpMode")
+  }
+  switch Auth_SignUpMode.parse(raw) {
+  | Ok(mode) => mode
   | Error(message) => JsError.throwWithMessage(message)
   }
 }
@@ -215,8 +240,14 @@ let _resolveUncached = (): cognitoUserPool => {
 
   | None =>
     let loginIdentifier = _loginIdentifier(~cfg)
+    let signUpMode = _signUpMode(~cfg)
+    // In place, unlike the sign-in attribute below: `AdminCreateUserConfig` is a
+    // member of `UpdateUserPoolRequest`, so flipping this on a pool full of
+    // accounts is an ordinary update rather than a replacement.
     let adminConfig: PulumiAws.Cognito.UserPool.adminCreateUserConfig = {
-      allowAdminCreateUserOnly: Pulumi.Input.make(true),
+      allowAdminCreateUserOnly: Pulumi.Input.make(
+        signUpMode->Auth_SignUpMode.allowAdminCreateUserOnly,
+      ),
     }
     let pwdPolicy: PulumiAws.Cognito.UserPool.passwordPolicy = {
       minimumLength: Pulumi.Input.make(12),
