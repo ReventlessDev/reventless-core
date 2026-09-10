@@ -1,7 +1,11 @@
 # Plan: the ContactVerification trait
 
 **Date:** 2026-09-10
-**Status:** Not started. Phase A can begin immediately — it needs nothing that is not already shipped.
+**Status:** **Phase A started 2026-09-10 — the rules are in and proven, the graft is not.** The
+vocabulary and the decision rules are built in the ordering example and covered by 22 tests, including
+the staleness guard, which was verified by removing it and watching two tests go red. What is *not*
+built: the commands and events on `Customer`, the challenge ledger component, and the outbound slice
+that sends. Phases B and C not started.
 **Repos:** `reventless-core` only — the `online-shop-hybrid` ordering plugin it is written in, then a
 new package under `traits/`.
 **Builds on:** [trait-address-geocoding.md](./trait-address-geocoding.md) and
@@ -185,6 +189,37 @@ on that interaction, which makes it a better probe than a fresh aggregate would 
 
 **It is small enough to be a spike:** if the vocabulary above is wrong, that is discovered having
 written one graft rather than a ~2,000-line package.
+
+### Built 2026-09-10 — the rules, and what the spike changed
+
+`ContactVerification` (vocabulary) and `ContactVerification_Guards` (decision rules) in the ordering
+example, with 22 tests. The rules are pure and Pulumi-free, so extraction in Phase C is a move rather
+than a rewrite.
+
+**The staleness guard is wired, and that is asserted rather than claimed.** Removing the one branch
+that compares the challenge's address to the host's turns two tests red. Given this plan's own position
+— that a green certificate compatible with an unwired guard is worse than no certificate — a guard of
+this kind should not be called done on a passing suite alone, and this one was not.
+
+Three things the sketch above did not settle, decided while writing it:
+
+- **Check order is part of the security control, not formatting.** Supersession is tested before
+  expiry, settlement, attempts and the secret. A challenge that is *both* superseded and expired must
+  be refused as superseded — reporting it as merely expired describes the harmless half of a dangerous
+  state. The secret is compared last, so no structural refusal depends on it.
+- **`policyFor` returns `option<policy>`, and `Push` is the `None`.** The plan argued push is
+  structurally excluded; making that a missing arm rather than an unbuilt one is what stops "not yet"
+  from inviting an implementation. The exclusion is now a value the compiler carries.
+- **Issuance and resend are separate rules.** They were one idea in the sketch and are two decisions:
+  a redelivered command must mint nothing (`AlreadyOpen`), while a person asking again past the
+  cooldown re-sends **the same secret** (`Send`) — minting a fresh one would invalidate the link they
+  are looking at while they read it. `TooSoon` carries the remaining wait so a host can say *when*
+  rather than only *no*.
+
+**Still to build in Phase A:** `Customer`'s commands and events and their `decide` / `evolve` arms; the
+trait-owned challenge ledger; the outbound slice that spends the `Messaging` call. The guard is
+therefore proven as a rule and not yet proven end to end on the host — which is the honest reading, and
+the reason the graft is the next step rather than the extraction.
 
 ## Phase B — the second consumer
 
