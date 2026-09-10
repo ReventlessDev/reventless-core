@@ -550,6 +550,18 @@ type derivedCommand = {
       accepted and silent. Kept separately because it is what turns a declared
       state the corpus disagrees with into a contradiction rather than a gap. */
   inertStates: array<string>,
+  /** The strict subset of [inertStates] where the command was *refused* — an
+      error, not an accepted no-op.
+
+      Separate because the two refute different claims. A named from-set says the
+      command **takes effect** from those states, so anything inert there
+      contradicts it. `Unrestricted` says only that the command is **never
+      refused**, which an accepted `Ok([])` agrees with rather than contradicts —
+      returning no events for a command that would change nothing is this
+      codebase's idempotency convention, not evidence the state was illegal.
+      Reading one field for both questions made every idempotent
+      legal-in-every-state command look like a contradiction. */
+  refusedStates: array<string>,
   /** Where the edges land. A relation, not a single value: a command observed
       landing in two states is the signal that the published `targetState` cannot
       carry the model, and that is worth seeing before spending the change. */
@@ -650,6 +662,9 @@ let deriveCommands = (
       ),
       inertStates: sortedUnique(
         mine->Array.filterMap(o => o.outcome == Emitted || o.from == noRow ? None : Some(o.from)),
+      ),
+      refusedStates: sortedUnique(
+        mine->Array.filterMap(o => o.outcome == Refused && o.from != noRow ? Some(o.from) : None),
       ),
       targets: sortedUnique(
         effective->Array.filterMap(o => o.to == o.from || o.to == noRow ? None : Some(o.to)),
@@ -757,14 +772,24 @@ let compare = (
     // effect somewhere agrees with that rather than narrowing it — the corpus
     // covers the states somebody wrote a scenario for, and silence about the
     // rest is not refusal. What DOES refute the claim is a state the command was
-    // exercised in and did nothing: that is the switch and the behaviour
+    // exercised in and **refused**: that is the switch and the behaviour
     // disagreeing about the same row.
+    //
+    // 🚨 **Refused, not merely inert.** `Unrestricted` claims the command is
+    // never refused — it does not claim the command always emits. A state where a
+    // scenario shows it accepted and silent AGREES with that: returning `Ok([])`
+    // for a command that would change nothing is this codebase's idempotency
+    // convention, required because commands arrive at least once. Reading
+    // `inertStates` here marked every such command contradicted, which is the
+    // opposite of what the corpus showed — a verdict redelivered, or landing
+    // after deactivation, is precisely the case the switch declared legal so that
+    // the reporting slice would not retry forever.
     | None if cmd.allowedStatesSource == Some("unrestricted") =>
-      derived.inertStates->Array.forEach(state =>
+      derived.refusedStates->Array.forEach(state =>
         add(
           "contradicted",
           [state],
-          `the switch declares it legal in every state, and a scenario from "${state}" ` ++ `shows it refused or producing nothing`,
+          `the switch declares it legal in every state, and a scenario from "${state}" ` ++ `shows it refused`,
         )
       )
     | None =>
@@ -1378,4 +1403,9 @@ let main = async () => {
   }
 }
 
-let _ = main()
+// 🚨 **No top-level call.** `../../run-check-lifecycle.mjs` invokes [main]; this
+// module only defines it. While the call was here, importing the module *ran the
+// whole check* and then called `NodeProcess.exit`, so nothing in this file could
+// be reached from a test — including [deriveCommands] and [compare], which are
+// pure and are where every verdict is actually decided. That is the same trap
+// `ProvisionIdentity` records having shipped a never-matching guard through.

@@ -30,6 +30,13 @@ let model: array<Reventless.Plugin.derivedEdge> = [
   },
   {
     component: "Customer",
+    command: "MarkEmailVerified",
+    level: Reventless.Plugin.Instance,
+    allowedStates: ["Active"],
+    targets: [],
+  },
+  {
+    component: "Customer",
     command: "Reactivate",
     level: Reventless.Plugin.Instance,
     allowedStates: ["Deactivated"],

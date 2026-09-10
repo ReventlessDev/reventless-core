@@ -367,6 +367,7 @@ type Mutation {
   Ordering_Customer_SetAddressLocation(address: String!, id: ID!, location: GeoPointInput!): CommandResult!
   Ordering_Customer_UpdateAddress(address: String!, id: ID!): CommandResult!
   Ordering_Customer_UpdateEmail(email: String!, id: ID!): CommandResult!
+  Ordering_EmailVerificationChallenges(customerId: ID!, email: String!, issuedAt: String!, proofHash: String!, purpose: String!): CommandResult!
   Ordering_PlaceOrder(customerId: ID!, deliveryWindow: DateRangeInput, lineItems: [Ordering_PlaceOrderLineItems!]!, orderId: ID!, shippingMethod: Ordering_PlaceOrderShippingMethod!): CommandResult!
   Ordering_RelistSyncedProduct(productId: ID!): CommandResult!
   Ordering_ShipOrder(orderId: ID!): CommandResult!
@@ -534,6 +535,7 @@ type Ordering_Customer implements Node {
   customerId: ID!
   displayName: String
   email: String!
+  emailVerified: Boolean!
   geolocation: Geolocation!
   id: ID!
   orderCount: Int!
@@ -1030,6 +1032,55 @@ enum Ordering_UnsubscribeChannel {
   Sms
 }
 
+type Ordering_VerifyCustomerEmailTodo implements Node {
+  completedAt: String
+  createdAt: String!
+  id: ID!
+  item: Ordering_VerifyCustomerEmailTodoItem!
+  lastError: String
+  maxRetries: Int
+  processedAt: String
+  retryCount: Int!
+  status: Ordering_VerifyCustomerEmailTodoStatus!
+}
+
+type Ordering_VerifyCustomerEmailTodoConnection {
+  edges: [Ordering_VerifyCustomerEmailTodoEdge!]!
+  pageInfo: PageInfo!
+}
+
+type Ordering_VerifyCustomerEmailTodoEdge {
+  cursor: String!
+  node: Ordering_VerifyCustomerEmailTodo!
+}
+
+input Ordering_VerifyCustomerEmailTodoFilter {
+  ids: [ID!]
+  search: String
+  searchPrefix: String
+}
+
+type Ordering_VerifyCustomerEmailTodoItem {
+  customerId: ID!
+  email: String!
+}
+
+type Ordering_VerifyCustomerEmailTodoRef {
+  id: ID!
+  image: String
+  label: String!
+  retired: Boolean!
+  retiredState: String
+}
+
+enum Ordering_VerifyCustomerEmailTodoStatus {
+  Abandoned
+  Completed
+  Failed
+  Pending
+  Processing
+}
+
 type PageInfo {
   endCursor: String
   hasNextPage: Boolean!
@@ -1241,6 +1292,10 @@ type Query {
   Ordering_SendNotificationTodos(after: String, before: String, filter: Ordering_SendNotificationTodoFilter, first: Int, includeRetired: Boolean, last: Int): Ordering_SendNotificationTodoConnection!
   Ordering_SendNotificationTodosByIds(ids: [String!]!, includeRetired: Boolean): [Ordering_SendNotificationTodo!]!
   Ordering_SendNotificationTodosRefs(ids: [ID!]!): [Ordering_SendNotificationTodoRef!]!
+  Ordering_VerifyCustomerEmailTodo(id: ID!, includeRetired: Boolean): Ordering_VerifyCustomerEmailTodo
+  Ordering_VerifyCustomerEmailTodos(after: String, before: String, filter: Ordering_VerifyCustomerEmailTodoFilter, first: Int, includeRetired: Boolean, last: Int): Ordering_VerifyCustomerEmailTodoConnection!
+  Ordering_VerifyCustomerEmailTodosByIds(ids: [String!]!, includeRetired: Boolean): [Ordering_VerifyCustomerEmailTodo!]!
+  Ordering_VerifyCustomerEmailTodosRefs(ids: [ID!]!): [Ordering_VerifyCustomerEmailTodoRef!]!
   Platform_UiFragment(id: ID!, includeRetired: Boolean): Platform_UiFragment
   Platform_UiFragments(after: String, before: String, filter: Platform_UiFragmentFilter, first: Int, includeRetired: Boolean, last: Int, orderBy: Platform_UiFragmentOrderBy): Platform_UiFragmentConnection!
   Platform_UiFragmentsByIds(ids: [String!]!, includeRetired: Boolean): [Platform_UiFragment!]!
@@ -1286,6 +1341,7 @@ type Subscription {
   onOrdering_Customer_SetAddressLocation(id: ID): CommandResult
   onOrdering_Customer_UpdateAddress(id: ID): CommandResult
   onOrdering_Customer_UpdateEmail(id: ID): CommandResult
+  onOrdering_EmailVerificationChallenges(id: ID): CommandResult
   onOrdering_PlaceOrder(id: ID): CommandResult
   onOrdering_RelistSyncedProduct(id: ID): CommandResult
   onOrdering_ShipOrder(id: ID): CommandResult

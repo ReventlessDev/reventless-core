@@ -469,6 +469,11 @@ function deriveCommands(component, observations, labelled) {
           return o.from;
         }
       })),
+      refusedStates: sortedUnique(Stdlib_Array.filterMap(mine, o => {
+        if (o.outcome === "Refused" && o.from !== noRow) {
+          return o.from;
+        }
+      })),
       targets: sortedUnique(Stdlib_Array.filterMap(effective, o => {
         if (o.to === o.from || o.to === noRow) {
           return;
@@ -531,7 +536,7 @@ function compare(plugin, writable, derived, findings) {
       add("unverified", states, `the switch declares ` + states.length.toString() + ` state(s) and no scenario shows the command taking effect anywhere`);
     }
   } else if (Primitive_object.equal(declared.allowedStatesSource, "unrestricted")) {
-    derived.inertStates.forEach(state => add("contradicted", [state], `the switch declares it legal in every state, and a scenario from "` + state + `" shows it refused or producing nothing`));
+    derived.refusedStates.forEach(state => add("contradicted", [state], `the switch declares it legal in every state, and a scenario from "` + state + `" shows it refused`));
   } else if (derived.allowedStates.length !== 0) {
     add("undeclared", derived.allowedStates, `scenarios show it taking effect from ` + derived.allowedStates.join(", ") + `, and it declares no edge`);
   }
@@ -1085,8 +1090,6 @@ async function main() {
     return;
   }
 }
-
-main();
 
 export {
   repoRoot,

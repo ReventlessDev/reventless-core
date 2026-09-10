@@ -144,6 +144,16 @@
   },
   {
     "component": "Customer",
+    "command": "MarkEmailVerified",
+    "level": "Instance",
+    "allowedStates": [
+      "Active"
+    ],
+    "targets": [],
+    "scenarios": 6
+  },
+  {
+    "component": "Customer",
     "command": "Reactivate",
     "level": "Instance",
     "allowedStates": [
@@ -214,6 +224,22 @@
       "Discontinued"
     ],
     "scenarios": 4
+  },
+  {
+    "component": "EmailVerificationChallenges",
+    "command": "IssueEmailChallenge",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 2
+  },
+  {
+    "component": "EmailVerificationChallenges",
+    "command": "SubmitEmailProof",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 6
   },
   {
     "component": "NotificationPreferences",

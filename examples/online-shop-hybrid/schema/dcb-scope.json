@@ -23,6 +23,7 @@
   "ordering": {
     "partitionBySlice": {
       "CancelOrder": "orderId",
+      "EmailVerificationChallenges": "customerId",
       "NotificationPreferences": "recipientId",
       "NotificationSourceClaims": "sourceId",
       "PlaceOrder": "orderId",

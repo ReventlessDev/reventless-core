@@ -25,6 +25,13 @@ let model = [
   },
   {
     component: "Customer",
+    command: "MarkEmailVerified",
+    level: "Instance",
+    allowedStates: ["Active"],
+    targets: []
+  },
+  {
+    component: "Customer",
     command: "Reactivate",
     level: "Instance",
     allowedStates: ["Deactivated"],
