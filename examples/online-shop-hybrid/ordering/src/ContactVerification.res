@@ -48,11 +48,11 @@ type outcome =
   | Superseded
   | Abandoned
 
-/** What a secret is drawn from. A link is followed and a code is typed off a
-    screen, so the two cannot share an alphabet. */
-type alphabet =
-  | Digits
-  | UrlSafe
+/** What a secret is drawn from — the capability's own vocabulary rather than a
+    second copy of it. A link is followed and a code is typed off a screen, so
+    the two cannot share an alphabet, and the source that draws them is the one
+    place that should say which exist. */
+type alphabet = Reventless.Secrets.alphabet
 
 /** Keyed by channel — not globally, and not by contact. A 32-character link with
     a 24-hour window is right for email and unusable over SMS, where a human

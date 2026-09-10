@@ -21,6 +21,7 @@ import * as ShipOrder_Behavior$OrderingPlugin from "./Order/StateChange/ShipOrde
 import * as SyncCatalogProduct$OrderingPlugin from "./CatalogProduct/StateChange/SyncCatalogProduct.res.mjs";
 import * as Orders_ExtensionPoint$OrderingSpec from "@reventlessdev/online-shop-hybrid-ordering-spec/src/Orders_ExtensionPoint.res.mjs";
 import * as PlaceOrder_Behavior$OrderingPlugin from "./Order/StateChange/PlaceOrder_Behavior.res.mjs";
+import * as VerifyCustomerEmail$OrderingPlugin from "./Customer/OutboundTranslation/VerifyCustomerEmail.res.mjs";
 import * as CancelOrder_Behavior$OrderingPlugin from "./Order/StateChange/CancelOrder_Behavior.res.mjs";
 import * as Products_ExtensionPoint$CatalogSpec from "@reventlessdev/online-shop-hybrid-catalog-spec/src/Products_ExtensionPoint.res.mjs";
 import * as Customers_Projections$OrderingPlugin from "./Customer/ReadModelStream/Customers_Projections.res.mjs";
@@ -37,6 +38,7 @@ import * as AvailableProducts_Projection$OrderingPlugin from "./CatalogProduct/S
 import * as Orders_ExtensionPointMapping$OrderingPlugin from "./ExtensionPoint/Orders_ExtensionPointMapping.res.mjs";
 import * as SendNotification_Translation$OrderingPlugin from "./Notification/OutboundTranslation/SendNotification_Translation.res.mjs";
 import * as NotificationIntake_Automation$OrderingPlugin from "./Notification/Automation/NotificationIntake_Automation.res.mjs";
+import * as VerifyCustomerEmail_Translation$OrderingPlugin from "./Customer/OutboundTranslation/VerifyCustomerEmail_Translation.res.mjs";
 import * as NotificationPreferences_Behavior$OrderingPlugin from "./Notification/StateChange/NotificationPreferences_Behavior.res.mjs";
 import * as NotificationDeliveries_Projection$OrderingPlugin from "./Notification/StateViewStream/NotificationDeliveries_Projection.res.mjs";
 import * as NotificationSourceClaims_Behavior$OrderingPlugin from "./Notification/StateChange/NotificationSourceClaims_Behavior.res.mjs";
@@ -354,6 +356,25 @@ function Make(Platform) {
     onExhausted: SendNotification_Translation$OrderingPlugin.onExhausted,
     moduleUrl: SendNotification_Translation$OrderingPlugin.moduleUrl
   });
+  let VerifyCustomerEmailSlice = Platform.OutboundTranslationSlice.Make({
+    name: VerifyCustomerEmail$OrderingPlugin.name,
+    moduleUrl: VerifyCustomerEmail$OrderingPlugin.moduleUrl,
+    consumedEventSchema: VerifyCustomerEmail$OrderingPlugin.consumedEventSchema,
+    outboundItemSchema: VerifyCustomerEmail$OrderingPlugin.outboundItemSchema,
+    inboundCommandSchema: VerifyCustomerEmail$OrderingPlugin.inboundCommandSchema,
+    maxRetries: VerifyCustomerEmail$OrderingPlugin.maxRetries,
+    heartbeatInterval: VerifyCustomerEmail$OrderingPlugin.heartbeatInterval,
+    targetName: VerifyCustomerEmail$OrderingPlugin.targetName,
+    sourceNames: VerifyCustomerEmail$OrderingPlugin.sourceNames,
+    externalSystem: undefined,
+    capabilityNeeds: VerifyCustomerEmail$OrderingPlugin.capabilityNeeds,
+    traits: VerifyCustomerEmail$OrderingPlugin.traits
+  })({
+    collect: VerifyCustomerEmail_Translation$OrderingPlugin.collect,
+    translate: VerifyCustomerEmail_Translation$OrderingPlugin.translate,
+    onExhausted: VerifyCustomerEmail_Translation$OrderingPlugin.onExhausted,
+    moduleUrl: VerifyCustomerEmail_Translation$OrderingPlugin.moduleUrl
+  });
   let CustomerAggregate = Platform.Aggregate.Make({
     Id: Id$Reventless.$$String,
     name: Customer$OrderingPlugin.name,
@@ -458,7 +479,8 @@ function Make(Platform) {
   ], [
     AnnounceRecipientContactSlice,
     GeocodeCustomerAddressSlice,
-    SendNotificationSlice
+    SendNotificationSlice,
+    VerifyCustomerEmailSlice
   ], undefined, [Products_Extension], [{
       ExtensionPoint: {
         name: Orders_ExtensionPoint$OrderingSpec.name,
@@ -555,6 +577,10 @@ function Make(Platform) {
     [
       "SyncCatalogProduct",
       "CatalogProduct"
+    ],
+    [
+      "VerifyCustomerEmail",
+      "Customer"
     ]
   ]), LifecycleModel$OrderingPlugin.model);
   let make = () => Platform.Plugin.make("Ordering", 5, [Orders_ExtensionPoint], [Products_Extension], [CustomerAggregate], [CustomersReadModel], undefined, [
@@ -576,7 +602,8 @@ function Make(Platform) {
   ], [
     AnnounceRecipientContactSlice,
     GeocodeCustomerAddressSlice,
-    SendNotificationSlice
+    SendNotificationSlice,
+    VerifyCustomerEmailSlice
   ], undefined, undefined, Object.fromEntries([
     [
       "Customers",
@@ -624,6 +651,7 @@ function Make(Platform) {
     AnnounceRecipientContactSlice: AnnounceRecipientContactSlice,
     GeocodeCustomerAddressSlice: GeocodeCustomerAddressSlice,
     SendNotificationSlice: SendNotificationSlice,
+    VerifyCustomerEmailSlice: VerifyCustomerEmailSlice,
     CustomerAggregate: CustomerAggregate,
     CustomersReadModel: CustomersReadModel,
     Orders_ExtensionPoint: Orders_ExtensionPoint,

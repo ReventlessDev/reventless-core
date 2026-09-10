@@ -104,6 +104,10 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     SendNotification,
     SendNotification_Translation,
   )
+  module VerifyCustomerEmailSlice = Platform.OutboundTranslationSlice.Make(
+    VerifyCustomerEmail,
+    VerifyCustomerEmail_Translation,
+  )
 
   // Aggregates
   module CustomerAggregate = Platform.Aggregate.Make(
@@ -145,6 +149,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       module(AnnounceRecipientContactSlice),
       module(GeocodeCustomerAddressSlice),
       module(SendNotificationSlice),
+      module(VerifyCustomerEmailSlice),
     ],
     ~extensions=[module(Products_Extension)],
     ~extensionPoints=[module(Orders_ExtensionPointMapping)],
@@ -167,6 +172,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ("SendNotification", "Notification"),
       ("ShipOrder", "Order"),
       ("SyncCatalogProduct", "CatalogProduct"),
+      ("VerifyCustomerEmail", "Customer"),
     ]),
     ~lifecycleModel=LifecycleModel.model,
   )
@@ -199,6 +205,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
         module(AnnounceRecipientContactSlice),
         module(GeocodeCustomerAddressSlice),
         module(SendNotificationSlice),
+        module(VerifyCustomerEmailSlice),
       ],
       ~pluginStructure,
       ~componentRuntime=Dict.fromArray([
