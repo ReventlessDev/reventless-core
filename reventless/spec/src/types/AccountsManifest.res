@@ -167,6 +167,70 @@ let fillFile = (~path as file: string, ~fills: array<fill>): result<array<filled
     }
   }
 
+// ── Finding it ───────────────────────────────────────────────────────────────
+
+/** The template each platform package keeps beside itself, committed, as the
+  declaration of its cast. Both examples spell it this way and so does the local
+  setup script, so it is a convention rather than a setting. */
+let templateName = "users.example.yaml"
+
+type located =
+  | Declared(string)
+  | SeededFrom(string, string)
+
+let pathOf = (located: located): string =>
+  switch located {
+  | Declared(file) | SeededFrom(file, _) => file
+  }
+
+/**
+The manifest to work from, copying the template into place when there is none.
+
+`.reventless/` is gitignored on every platform, so a fresh clone has no manifest
+and the first thing anyone met was `cp users.example.yaml .reventless/users.yaml`
+— ceremony of the same kind as passing a pool id the deployment already knows.
+`scripts/setup.mjs` has done this for the local platform all along; this generalises
+it to any platform package, which is why it lives beside the format rather than
+inside either platform's tooling.
+
+🚨 **A named path is never seeded.** Passing one is a claim that it exists, and
+copying a template over that claim would answer a typo by provisioning the wrong
+cast. Only the default path is filled in.
+*/
+let locate = (~given: option<string>=?, ()): result<located, string> =>
+  switch given {
+  | Some(file) =>
+    NodeFs.existsSync(file)
+      ? Ok(Declared(file))
+      : Error(`${file} does not exist — a named manifest is read, never created`)
+  | None =>
+    let file = defaultPath()
+    if NodeFs.existsSync(file) {
+      Ok(Declared(file))
+    } else {
+      let template = NodePath.join([NodeProcess.cwd(), templateName])
+      if !NodeFs.existsSync(template) {
+        Error(
+          `no ${file} and no ${templateName} here to start one from. Declare the accounts in .reventless/users.yaml — each entry a username, a password (empty to have one generated) and the groups it belongs to`,
+        )
+      } else {
+        try {
+          NodeFs.mkdirSync(NodePath.dirname(file), {recursive: true})
+          NodeFs.cpSync(template, file, {})
+          Ok(SeededFrom(file, template))
+        } catch {
+        | JsExn(err) =>
+          Error(
+            `could not copy ${templateName} into place: ${JsExn.message(err)->Option.getOr(
+                "unknown error",
+              )}`,
+          )
+        | _ => Error(`could not copy ${templateName} into place`)
+        }
+      }
+    }
+  }
+
 // ── Preparing ────────────────────────────────────────────────────────────────
 
 /** One account after preparation: what the file now declares, and whether this

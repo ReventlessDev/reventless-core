@@ -19,12 +19,7 @@
 // Run from the repo root.
 
 import { execSync } from 'node:child_process'
-import {
-  existsSync,
-  copyFileSync,
-  mkdirSync,
-  chmodSync,
-} from 'node:fs'
+import { existsSync, copyFileSync, chmodSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -152,25 +147,29 @@ function hasOpam() {
   }
 }
 
+// Delegates to `prepare-accounts` (from reventless-spec) rather than doing its
+// own copy: that command is the one implementation of "a manifest starts from
+// its committed template", and the deployed platform reaches the same code
+// through `provision-accounts`. Two copies of this had already drifted — the
+// line printed here named a `user` account the template has never declared.
+//
+// It copies users.example.yaml into place and generates a password into any
+// field left empty. The local template ships memorable ones, so here it only
+// copies; the AWS template ships empty ones, so there it mints four. Same
+// command, and the declaration is what differs.
+//
+// Safe this early in the bootstrap: the compiled CLI is a tracked output, so it
+// is on disk before step 6 builds anything, its only dependency (yaml) arrived
+// with step 3, and step 3 is also what links the bin.
 function seedUsers() {
-  const dir = join(
-    ROOT,
-    'examples/online-shop-hybrid/platform-local/.reventless',
-  )
-  const target = join(dir, 'users.yaml')
-  const example = join(
-    ROOT,
-    'examples/online-shop-hybrid/platform-local/users.example.yaml',
-  )
-  if (existsSync(target)) {
+  const platform = join(ROOT, 'examples/online-shop-hybrid/platform-local')
+  if (existsSync(join(platform, '.reventless/users.yaml'))) {
     ok('.reventless/users.yaml already present')
     return
   }
-  if (!existsSync(example)) {
+  if (!existsSync(join(platform, 'users.example.yaml'))) {
     warn('users.example.yaml not found — skipping user seed')
     return
   }
-  mkdirSync(dir, { recursive: true })
-  copyFileSync(example, target)
-  ok('seeded .reventless/users.yaml (admin/admin, user/user)')
+  run('pnpm exec prepare-accounts', { cwd: platform })
 }

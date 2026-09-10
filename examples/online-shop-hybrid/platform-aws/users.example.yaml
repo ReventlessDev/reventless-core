@@ -1,9 +1,13 @@
 # Cognito accounts for the deployed platform — TEMPLATE.
 #
-# Copy it into place, then let the tool fill it in:
+# Run this from platform-aws/ and it does the rest:
 #
-#   mkdir -p .reventless && cp users.example.yaml .reventless/users.yaml
-#   pnpm exec provision-accounts --provider-id "$(pulumi stack output identityProviderId)"
+#   pnpm exec provision-accounts
+#
+# On the first run this file is copied to .reventless/users.yaml — that copy is
+# the working file, and the one the tool writes into. The pool comes from the
+# selected Pulumi stack, so it needs no argument either. `pnpm exec
+# prepare-accounts` does the half that creates nothing, if you want to look first.
 #
 # That creates every group named below, creates each account, sets a permanent
 # password, applies the memberships — and writes back into `.reventless/users.yaml`

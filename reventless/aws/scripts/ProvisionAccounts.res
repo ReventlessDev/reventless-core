@@ -3,22 +3,32 @@ Turn a declared cast of accounts into working sign-ins.
 
 `provision-admin` makes the *first* administrator, which is the account that
 cannot be made from a signed-in session because there is no signed-in session yet.
-This one makes the rest — and needs that one to exist first, so the order is
-forced rather than chosen.
+This one makes a declared list of accounts instead.
+
+🚨 **Neither needs the other to have run.** Both authenticate as the AWS caller,
+not as a Cognito principal, so there is no bootstrap ordering between them: a
+manifest declaring an entry in the administrator group stands a deployment up on
+its own. The difference is where the credential ends up — `provision-admin` prints
+one and keeps no copy, while this writes into the manifest, which is what
+`pnpm run seed` reads. For a demo whose cast already names an administrator, this
+one alone is enough.
 
 ```
-pnpm exec provision-accounts --provider-id eu-west-1_AbCdEfGhI
+pnpm exec provision-accounts
 ```
 
 It reads `.reventless/users.yaml`, and knows nothing about any particular
 application's cast: the manifest belongs to whoever is deploying. A demo's four
-roles and a company's twelve staff are the same run.
+roles and a company's twelve staff are the same run. Which pool it writes to is
+[ProvisionProvider]'s question, and usually needs no argument either.
 
 🚨 **Two halves, and only the second is AWS's.** [Reventless.AccountsManifest.prepare]
 validates the manifest and mints a password into every empty field, on any
 platform and with no credentials — locally that is the whole of provisioning,
 because there the manifest *is* the user store. This script then applies the
-prepared manifest to a Cognito pool. `--prepare-only` stops after the first half.
+prepared manifest to a Cognito pool. That first half is its own bin,
+`prepare-accounts`, so a platform that never deploys to AWS can reach it without
+depending on this package.
 
 Re-running is safe and is the normal case — an operator adding one account to
 four. A password already in the file is never replaced; see
@@ -35,21 +45,17 @@ module Manifest = Reventless.AccountsManifest
 
 type args = {
   providerId: option<string>,
+  stack: option<string>,
   file: option<string>,
-  prepareOnly: bool,
   help: bool,
 }
-
-/** The same variable `Platform_Stack` and `provision-admin` read, so a shell that
-  already exports it needs no second spelling here. */
-let providerIdEnvKey = "REVENTLESS_IDENTITY_PROVIDER_ID"
 
 /** Parsed rather than positional, and unknown flags are an error — the reason
   [ProvisionAdmin.parseArgs] gives, which lands harder here: a typo'd
   `--provider-id` would fall through to the environment and create the whole cast
   in a *different pool* than the operator named. */
 let parseArgs = (argv: array<string>): result<args, string> => {
-  let acc = ref(Ok({providerId: None, file: None, prepareOnly: false, help: false}))
+  let acc = ref(Ok({providerId: None, stack: None, file: None, help: false}))
   let i = ref(0)
   let count = argv->Array.length
   while i.contents < count {
@@ -60,16 +66,16 @@ let parseArgs = (argv: array<string>): result<args, string> => {
     | (Ok(a), "--provider-id", Some(v)) =>
       acc := Ok({...a, providerId: Some(v)})
       i := i.contents + 2
+    | (Ok(a), "--stack", Some(v)) =>
+      acc := Ok({...a, stack: Some(v)})
+      i := i.contents + 2
     | (Ok(a), "--file", Some(v)) =>
       acc := Ok({...a, file: Some(v)})
       i := i.contents + 2
-    | (Ok(a), "--prepare-only", _) =>
-      acc := Ok({...a, prepareOnly: true})
-      i := i.contents + 1
     | (Ok(a), "--help", _) | (Ok(a), "-h", _) =>
       acc := Ok({...a, help: true})
       i := i.contents + 1
-    | (Ok(_), "--provider-id", None) | (Ok(_), "--file", None) =>
+    | (Ok(_), "--provider-id", None) | (Ok(_), "--file", None) | (Ok(_), "--stack", None) =>
       acc := Error(`${flag} needs a value`)
     | (Ok(_), unknown, _) => acc := Error(`unknown argument "${unknown}"`)
     }
@@ -80,16 +86,16 @@ let parseArgs = (argv: array<string>): result<args, string> => {
 let usage = `
 Turn a declared cast of accounts into working sign-ins.
 
-  --provider-id <id>   The identity provider to create the accounts in. Defaults
-                       to ${providerIdEnvKey}. In auto mode this is
-                       the stack's own output:
-                         pulumi stack output identityProviderId
+  --provider-id <id>   The identity provider to create the accounts in. Usually
+                       omitted: it falls back to ${ProvisionProvider.envKey},
+                       then to the identityProviderId exported by the selected
+                       Pulumi stack — which every deployment exports, whether it
+                       created the pool or was handed one.
+  --stack <name>       Read that output from this stack instead of the selected
+                       one. The run always names the stack it used.
   --file <path>        The manifest. Defaults to .reventless/users.yaml relative
                        to the working directory, which is where both platforms
                        keep it.
-  --prepare-only       Validate the manifest and fill in empty passwords, then
-                       stop. Creates nothing and needs no AWS credentials — this
-                       is the whole of provisioning on the local platform.
 
 For every entry: ensures the groups it names, ensures the account, sets a
 permanent password, and applies the memberships. Generated passwords and the ids
@@ -128,7 +134,11 @@ let checkPoolAcceptsUsernames = async (~providerId: string, ~usernames: array<st
     let signsInOnEmail = attributes->Array.includes("email")
     let unusable = signsInOnEmail ? usernames->Array.filter(u => !looksLikeEmail(u)) : []
     if unusable->Array.length == 0 {
-      Console.log(`pool     ${providerId}`)
+      Console.log(
+        `pool     signs in on ${attributes->Array.length == 0
+            ? "username"
+            : attributes->Array.join(", ")}`,
+      )
       Ok()
     } else {
       Error(
@@ -237,32 +247,32 @@ let run = async (): result<unit, string> =>
     Console.log(usage)
     Ok()
   | Ok(args) =>
-    let file = args.file->Option.getOr(Manifest.defaultPath())
-    switch Manifest.prepare(~path=file) {
-    | Error(message) => Error(`${file}: ${message}`)
-    | Ok([]) => Error(`${file} declares no accounts`)
-    | Ok(prepared) =>
-      let generated = prepared->Array.filter(p => p.passwordGenerated)->Array.length
-      Console.log(
-        `manifest ${file} (${prepared
-          ->Array.length
-          ->Int.toString} accounts, ${generated->Int.toString} password(s) generated)`,
-      )
-      let entries = prepared->Array.map(p => p.entry)
-      if args.prepareOnly {
-        Console.log(manifestNote(~file))
-        Ok()
-      } else {
-        let providerId = switch args.providerId {
-        | Some(_) as given => given
-        | None => NodeProcess.env->Dict.get(providerIdEnvKey)
-        }
-        switch providerId {
-        | None =>
+    switch Manifest.locate(~given=?args.file, ()) {
+    | Error(_) as e => e
+    | Ok(located) =>
+      let file = located->Manifest.pathOf
+      switch located {
+      | SeededFrom(_, template) => Console.log(`manifest ${file} (new, copied from ${template})`)
+      | Declared(_) => ()
+      }
+      switch Manifest.prepare(~path=file) {
+      | Error(message) => Error(`${file}: ${message}`)
+      | Ok([]) => Error(`${file} declares no accounts`)
+      | Ok(prepared) =>
+        let generated = prepared->Array.filter(p => p.passwordGenerated)->Array.length
+        Console.log(
+          `manifest ${file} (${prepared
+            ->Array.length
+            ->Int.toString} accounts, ${generated->Int.toString} password(s) generated)`,
+        )
+        let entries = prepared->Array.map(p => p.entry)
+        switch ProvisionProvider.resolve(~given=args.providerId, ~stack=args.stack) {
+        | Error(message) =>
           Error(
-            `--provider-id is required (or set ${providerIdEnvKey}). In auto mode it is the stack's own output: pulumi stack output identityProviderId. To fill in the manifest without creating anything, pass --prepare-only`,
+            `${message}. To fill in the manifest without creating anything, run prepare-accounts`,
           )
-        | Some(providerId) =>
+        | Ok((providerId, source)) =>
+          Console.log(`provider ${providerId} (from ${source->ProvisionProvider.describe})`)
           switch await checkPoolAcceptsUsernames(
             ~providerId,
             ~usernames=entries->Array.map(e => e.username),

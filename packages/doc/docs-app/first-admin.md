@@ -34,16 +34,22 @@ The last row matters more than it looks, and it is covered in
 From your `platform-aws` package, once `pulumi up` has finished:
 
 ```bash
-pnpm exec provision-admin \
-  --provider-id $(pulumi stack output identityProviderId) \
-  --email you@example.com
+pnpm exec provision-admin --email you@example.com
 ```
+
+You do not have to tell it which pool. It takes `--provider-id` if you pass one,
+then `REVENTLESS_IDENTITY_PROVIDER_ID`, and otherwise reads `identityProviderId`
+from the selected Pulumi stack — which every deployment exports, whether the stack
+created the pool or was handed one. It always prints which of the three answered,
+so a run against the wrong stack is visible rather than silent; `--stack <name>`
+picks a different one.
 
 It creates the group if it is missing, creates the account if it is missing, sets
 a **permanent** password, adds the account to the group, and prints what you need:
 
 ```text
-pool     eu-west-1_AbCdEfGhI
+provider eu-west-1_AbCdEfGhI (from stack alpha)
+pool     signs in on email
 group    Admin (already present)
 user     you@example.com (created)
 password (set, permanent)
@@ -125,8 +131,8 @@ session yet. Everyone else — a demo's shopper and merchandiser, a company's
 staff — is a list, and a list belongs in a file rather than in a dozen CLI
 invocations.
 
-Declare them in `.reventless/users.yaml`, beside the platform package you deploy
-from:
+Declare them in `users.example.yaml`, beside the platform package you deploy
+from — each example ships one already:
 
 ```yaml
 - username: shopper
@@ -138,12 +144,16 @@ from:
   groups: [Merchandiser, Shopper]
 ```
 
-Then:
+Then, from that package:
 
 ```bash
-pnpm exec provision-accounts \
-  --provider-id "$(pulumi stack output identityProviderId)"
+pnpm exec provision-accounts
 ```
+
+There is nothing to copy first. When `.reventless/users.yaml` does not exist yet,
+the committed `users.example.yaml` is copied into place for you — the gitignored
+file is where your deployment's answers accumulate, and the template is what it
+starts from.
 
 For each entry it creates the groups named, creates the account, sets a permanent
 password and applies the memberships — then **writes back into the file** the two
@@ -160,17 +170,29 @@ The command knows nothing about any particular application's cast; the manifest 
 yours. Each example ships a `users.example.yaml` beside its `platform-aws` package
 to copy from.
 
-### It also runs with no AWS account
+### The half that is not AWS's
 
 ```bash
-pnpm exec provision-accounts --prepare-only
+pnpm exec prepare-accounts
 ```
 
-Validates the manifest and fills in empty passwords, and creates nothing. That is
-the *whole* of provisioning on the local platform, where the manifest **is** the
-user store — the in-memory auth adapter hydrates from it at startup, so there is
-no principal to create. Same file, same format, same command; only the second half
-is Cognito's.
+Finds the manifest (copying the template into place if there is none), validates
+it, and generates a password into every field left empty. It creates nothing,
+contacts nothing, and needs no credentials.
+
+That is the *whole* of provisioning on the local platform, where the manifest
+**is** the user store — the in-memory auth adapter hydrates from it at startup, so
+there is no principal to create. It ships in `reventless-spec` rather than as a
+flag on `provision-accounts` for exactly that reason: a project that never deploys
+to AWS should not reach this through an AWS package.
+
+The two platforms share the command and differ only in what their templates
+declare. The local one ships `admin`/`admin` and gets no generated passwords,
+because its store keeps them in a plaintext in-memory dictionary that is gone on
+restart — a fixture you type into dozens of times a day, where a 24-character
+random string would add no protection and cost a copy-paste every time. The AWS
+template ships empty passwords and gets real ones. Same mechanism, different
+declaration.
 
 ### What is still missing
 
@@ -193,9 +215,11 @@ auto-mode conveniences apply to the pool itself:
   and two stacks sharing one provider would each try to declare it, with the
   second failing on a name that already exists. `provision-admin` creates it
   instead, beside the first administrator who needs it.
-- Everything else is the same. The command takes the same arguments, and
-  `--provider-id` defaults to `REVENTLESS_IDENTITY_PROVIDER_ID`, which a BYO
-  deployment usually exports already.
+- Everything else is the same. The commands take the same arguments, and you still
+  need not name the pool: a BYO stack re-exports the provider it was given as
+  `identityProviderId`, so the stack fallback works here too. Failing that,
+  `REVENTLESS_IDENTITY_PROVIDER_ID` is read, which a BYO deployment usually exports
+  already.
 - The elevated-groups default still applies — it is a property of the platform,
   not of who created the pool.
 

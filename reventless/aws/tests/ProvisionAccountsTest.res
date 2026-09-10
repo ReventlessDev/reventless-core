@@ -16,7 +16,7 @@ module Provision = ProvisionAccounts
 describe("ProvisionAccounts.parseArgs", () => {
   testSync("no arguments leaves every choice unanswered", () =>
     expect(Provision.parseArgs([]))->toEqual(
-      Ok({Provision.providerId: None, file: None, prepareOnly: false, help: false}),
+      Ok({Provision.providerId: None, stack: None, file: None, help: false}),
     )
   )
 
@@ -26,16 +26,16 @@ describe("ProvisionAccounts.parseArgs", () => {
     )->toEqual(
       Ok({
         Provision.providerId: Some("eu-west-1_AbCdEfGhI"),
+        stack: None,
         file: Some("cast.yaml"),
-        prepareOnly: false,
         help: false,
       }),
     )
   )
 
-  testSync("--prepare-only takes no value", () =>
-    expect(Provision.parseArgs(["--prepare-only"]))->toEqual(
-      Ok({Provision.providerId: None, file: None, prepareOnly: true, help: false}),
+  testSync("--stack picks the deployment to read the pool id from", () =>
+    expect(Provision.parseArgs(["--stack", "beta"]))->toEqual(
+      Ok({Provision.providerId: None, stack: Some("beta"), file: None, help: false}),
     )
   )
 
@@ -55,9 +55,72 @@ describe("ProvisionAccounts.parseArgs", () => {
 
   testSync("-h asks for the usage", () =>
     expect(Provision.parseArgs(["-h"]))->toEqual(
-      Ok({Provision.providerId: None, file: None, prepareOnly: false, help: true}),
+      Ok({Provision.providerId: None, stack: None, file: None, help: true}),
     )
   )
+})
+
+// Which pool a run writes to, which is the one decision that is expensive to get
+// wrong: provisioning a cast into the wrong deployment succeeds, and leaves
+// working accounts somewhere nobody is looking.
+//
+// The stack fallback is not exercised here — it shells out to `pulumi`, and a
+// test that did would depend on a logged-in CLI and a deployed stack. What is
+// covered is the precedence above it, and that every answer says where it came
+// from, which is what makes a wrong-pool run visible rather than silent.
+describe("ProvisionProvider.resolve", () => {
+  let withoutEnv = fn => {
+    let saved = NodeProcess.env->Dict.get(ProvisionProvider.envKey)
+    NodeProcess.env->Dict.delete(ProvisionProvider.envKey)
+    let outcome = fn()
+    switch saved {
+    | Some(value) => NodeProcess.env->Dict.set(ProvisionProvider.envKey, value)
+    | None => ()
+    }
+    outcome
+  }
+
+  testSync("an explicit id wins, and says so", () =>
+    expect(
+      withoutEnv(
+        () => ProvisionProvider.resolve(~given=Some("eu-west-1_Explicit"), ~stack=Some("alpha")),
+      ),
+    )->toEqual(Ok(("eu-west-1_Explicit", ProvisionProvider.Flag)))
+  )
+
+  // The flag beats the variable rather than the other way round: a CI shell that
+  // exports one for every stack must still be overridable for a single run.
+  testSync("an explicit id beats the environment", () => {
+    NodeProcess.env->Dict.set(ProvisionProvider.envKey, "eu-west-1_FromEnv")
+    let resolved = ProvisionProvider.resolve(~given=Some("eu-west-1_Explicit"), ~stack=None)
+    NodeProcess.env->Dict.delete(ProvisionProvider.envKey)
+    expect(resolved)->toEqual(Ok(("eu-west-1_Explicit", ProvisionProvider.Flag)))
+  })
+
+  testSync("the environment answers when no flag does", () => {
+    NodeProcess.env->Dict.set(ProvisionProvider.envKey, "eu-west-1_FromEnv")
+    let resolved = ProvisionProvider.resolve(~given=None, ~stack=None)
+    NodeProcess.env->Dict.delete(ProvisionProvider.envKey)
+    expect(resolved)->toEqual(Ok(("eu-west-1_FromEnv", ProvisionProvider.Environment)))
+  })
+
+  // An empty variable is not an answer. Exporting it unset is the ordinary shape
+  // of a CI script whose earlier step did not run, and reading "" as the pool id
+  // would fail much later with a message about Cognito rather than about setup.
+  testSync("an empty environment variable is not an answer", () =>
+    expect({
+      NodeProcess.env->Dict.set(ProvisionProvider.envKey, "   ")
+      let resolved = ProvisionProvider.resolve(~given=None, ~stack=Some("no-such-stack-here"))
+      NodeProcess.env->Dict.delete(ProvisionProvider.envKey)
+      resolved->Result.isError
+    })->toBe(true)
+  )
+
+  testSync("each source describes itself", () => {
+    expect(ProvisionProvider.describe(Flag))->toBe("--provider-id")
+    expect(ProvisionProvider.describe(Environment))->toBe("REVENTLESS_IDENTITY_PROVIDER_ID")
+    expect(ProvisionProvider.describe(Stack("beta")))->toBe("stack beta")
+  })
 })
 
 // A manifest usually names plain usernames — `shopper`, `merch` — and a pool

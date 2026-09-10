@@ -9,7 +9,8 @@
     "graft-trait": "./run-graft-trait.mjs",
     "certify-trait": "./run-certify-trait.mjs",
     "trait-manifest": "./run-trait-manifest.mjs",
-    "check-lifecycle": "./run-check-lifecycle.mjs"
+    "check-lifecycle": "./run-check-lifecycle.mjs",
+    "prepare-accounts": "./run-prepare-accounts.mjs"
   },
   "scripts": {
     "build": "rescript build",

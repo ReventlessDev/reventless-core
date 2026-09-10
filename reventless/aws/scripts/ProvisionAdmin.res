@@ -42,13 +42,10 @@ module Cognito = CognitoIdentityServiceProvider
 
 type args = {
   providerId: option<string>,
+  stack: option<string>,
   email: option<string>,
   help: bool,
 }
-
-/** The same variable `Platform_Stack` reads for the same value, so a shell that
-  already exports it for a BYO deploy needs no second spelling here. */
-let providerIdEnvKey = "REVENTLESS_IDENTITY_PROVIDER_ID"
 
 /** Parsed rather than positional, and unknown flags are an error — the reason
   [ProvisionIdentity.parseArgs] gives, arriving somewhere worse: a typo'd
@@ -56,7 +53,7 @@ let providerIdEnvKey = "REVENTLESS_IDENTITY_PROVIDER_ID"
   below, but a typo'd `--provider-id` would fall through to the environment and
   create the administrator in a *different pool* than the operator named. */
 let parseArgs = (argv: array<string>): result<args, string> => {
-  let acc = ref(Ok({providerId: None, email: None, help: false}))
+  let acc = ref(Ok({providerId: None, stack: None, email: None, help: false}))
   let i = ref(0)
   let count = argv->Array.length
   while i.contents < count {
@@ -67,13 +64,16 @@ let parseArgs = (argv: array<string>): result<args, string> => {
     | (Ok(a), "--provider-id", Some(v)) =>
       acc := Ok({...a, providerId: Some(v)})
       i := i.contents + 2
+    | (Ok(a), "--stack", Some(v)) =>
+      acc := Ok({...a, stack: Some(v)})
+      i := i.contents + 2
     | (Ok(a), "--email", Some(v)) =>
       acc := Ok({...a, email: Some(v)})
       i := i.contents + 2
     | (Ok(a), "--help", _) | (Ok(a), "-h", _) =>
       acc := Ok({...a, help: true})
       i := i.contents + 1
-    | (Ok(_), "--provider-id", None) | (Ok(_), "--email", None) =>
+    | (Ok(_), "--provider-id", None) | (Ok(_), "--email", None) | (Ok(_), "--stack", None) =>
       acc := Error(`${flag} needs a value`)
     | (Ok(_), unknown, _) => acc := Error(`unknown argument "${unknown}"`)
     }
@@ -84,10 +84,13 @@ let parseArgs = (argv: array<string>): result<args, string> => {
 let usage = `
 Make the first administrator of a Reventless deployment.
 
-  --provider-id <id>   The identity provider to create the account in. Defaults to
-                       ${providerIdEnvKey}. In auto mode this is the
-                       stack's own output:
-                         pulumi stack output identityProviderId
+  --provider-id <id>   The identity provider to create the account in. Usually
+                       omitted: it falls back to ${ProvisionProvider.envKey},
+                       then to the identityProviderId exported by the selected
+                       Pulumi stack — which every deployment exports, whether it
+                       created the pool or was handed one.
+  --stack <name>       Read that output from this stack instead of the selected
+                       one. The run always names the stack it used.
   --email <address>    The address they sign in with.
 
 Creates the "${Reventless.AdminGroup.name}" group if it is missing, the account if
@@ -222,29 +225,29 @@ let run = async (): result<unit, string> =>
     Console.log(usage)
     Ok()
   | Ok(args) =>
-    let providerId = switch args.providerId {
-    | Some(_) as given => given
-    | None => NodeProcess.env->Dict.get(providerIdEnvKey)
-    }
-    switch (providerId, args.email) {
-    | (None, _) =>
-      Error(
-        `--provider-id is required (or set ${providerIdEnvKey}). In auto mode it is the stack's own output: pulumi stack output identityProviderId`,
-      )
-    | (_, None) =>
-      Error("--email is required — it is the address the administrator signs in with")
-    | (Some(providerId), Some(email)) =>
-      switch await checkPoolAcceptsEmail(~providerId) {
+    // The address is checked before the provider is resolved: it costs nothing,
+    // while resolving may shell out to Pulumi, and a run missing both arguments
+    // should say the cheap thing rather than fail on a stack lookup it never
+    // needed.
+    switch args.email {
+    | None => Error("--email is required — it is the address the administrator signs in with")
+    | Some(email) =>
+      switch ProvisionProvider.resolve(~given=args.providerId, ~stack=args.stack) {
       | Error(_) as e => e
-      | Ok() =>
-        let group = Reventless.AdminGroup.name
-        let password = Reventless.Util_Password.generate()
-        await ensureGroup(~providerId, ~group)
-        await ensureUser(~providerId, ~email)
-        await setPassword(~providerId, ~email, ~password)
-        await addToGroup(~providerId, ~email, ~group)
-        Console.log(signInDetails(~providerId, ~email, ~password, ~group))
-        Ok()
+      | Ok((providerId, source)) =>
+        Console.log(`provider ${providerId} (from ${source->ProvisionProvider.describe})`)
+        switch await checkPoolAcceptsEmail(~providerId) {
+        | Error(_) as e => e
+        | Ok() =>
+          let group = Reventless.AdminGroup.name
+          let password = Reventless.Util_Password.generate()
+          await ensureGroup(~providerId, ~group)
+          await ensureUser(~providerId, ~email)
+          await setPassword(~providerId, ~email, ~password)
+          await addToGroup(~providerId, ~email, ~group)
+          Console.log(signInDetails(~providerId, ~email, ~password, ~group))
+          Ok()
+        }
       }
     }
   }

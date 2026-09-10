@@ -5,14 +5,14 @@ import * as AdminGroup$Reventless from "@reventlessdev/reventless-spec/src/types
 import * as Util_Password$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Password.res.mjs";
 import * as Util_AwsError$ReventlessAws from "../src/util/Util_AwsError.res.mjs";
 import * as ProvisionCognito$ReventlessAws from "./ProvisionCognito.res.mjs";
-
-let providerIdEnvKey = "REVENTLESS_IDENTITY_PROVIDER_ID";
+import * as ProvisionProvider$ReventlessAws from "./ProvisionProvider.res.mjs";
 
 function parseArgs(argv) {
   let acc = {
     TAG: "Ok",
     _0: {
       providerId: undefined,
+      stack: undefined,
       email: undefined,
       help: false
     }
@@ -34,6 +34,7 @@ function parseArgs(argv) {
               TAG: "Ok",
               _0: {
                 providerId: a.providerId,
+                stack: a.stack,
                 email: value,
                 help: a.help
               }
@@ -49,6 +50,23 @@ function parseArgs(argv) {
               TAG: "Ok",
               _0: {
                 providerId: value,
+                stack: a.stack,
+                email: a.email,
+                help: a.help
+              }
+            };
+            i = i + 2 | 0;
+          } else {
+            exit = 1;
+          }
+          break;
+        case "--stack" :
+          if (value !== undefined) {
+            acc = {
+              TAG: "Ok",
+              _0: {
+                providerId: a.providerId,
+                stack: value,
                 email: a.email,
                 help: a.help
               }
@@ -73,6 +91,7 @@ function parseArgs(argv) {
           TAG: "Ok",
           _0: {
             providerId: a.providerId,
+            stack: a.stack,
             email: a.email,
             help: true
           }
@@ -95,10 +114,13 @@ function parseArgs(argv) {
 let usage = `
 Make the first administrator of a Reventless deployment.
 
-  --provider-id <id>   The identity provider to create the account in. Defaults to
-                       ` + providerIdEnvKey + `. In auto mode this is the
-                       stack's own output:
-                         pulumi stack output identityProviderId
+  --provider-id <id>   The identity provider to create the account in. Usually
+                       omitted: it falls back to ` + ProvisionProvider$ReventlessAws.envKey + `,
+                       then to the identityProviderId exported by the selected
+                       Pulumi stack — which every deployment exports, whether it
+                       created the pool or was handed one.
+  --stack <name>       Read that output from this stack instead of the selected
+                       one. The run always names the stack it used.
   --email <address>    The address they sign in with.
 
 Creates the "` + AdminGroup$Reventless.name + `" group if it is missing, the account if
@@ -200,31 +222,30 @@ async function run() {
       _0: undefined
     };
   }
-  let given = args.providerId;
-  let providerId = given !== undefined ? given : process.env[providerIdEnvKey];
-  let match = args.email;
-  if (providerId === undefined) {
-    return {
-      TAG: "Error",
-      _0: `--provider-id is required (or set ` + providerIdEnvKey + `). In auto mode it is the stack's own output: pulumi stack output identityProviderId`
-    };
-  }
-  if (match === undefined) {
+  let email = args.email;
+  if (email === undefined) {
     return {
       TAG: "Error",
       _0: "--email is required — it is the address the administrator signs in with"
     };
   }
-  let e$1 = await checkPoolAcceptsEmail(providerId);
+  let e$1 = ProvisionProvider$ReventlessAws.resolve(args.providerId, args.stack);
   if (e$1.TAG !== "Ok") {
     return e$1;
   }
+  let match = e$1._0;
+  let providerId = match[0];
+  console.log(`provider ` + providerId + ` (from ` + ProvisionProvider$ReventlessAws.describe(match[1]) + `)`);
+  let e$2 = await checkPoolAcceptsEmail(providerId);
+  if (e$2.TAG !== "Ok") {
+    return e$2;
+  }
   let password = Util_Password$Reventless.generate();
   await ensureGroup(providerId, AdminGroup$Reventless.name);
-  await ensureUser(providerId, match);
-  await setPassword(providerId, match, password);
-  await addToGroup(providerId, match, AdminGroup$Reventless.name);
-  console.log(signInDetails(providerId, match, password, AdminGroup$Reventless.name));
+  await ensureUser(providerId, email);
+  await setPassword(providerId, email, password);
+  await addToGroup(providerId, email, AdminGroup$Reventless.name);
+  console.log(signInDetails(providerId, email, password, AdminGroup$Reventless.name));
   return {
     TAG: "Ok",
     _0: undefined
@@ -252,7 +273,6 @@ let Cognito;
 
 export {
   Cognito,
-  providerIdEnvKey,
   parseArgs,
   usage,
   checkPoolAcceptsEmail,

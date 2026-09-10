@@ -177,6 +177,75 @@ function fillFile(file, fills) {
   }
 }
 
+let templateName = "users.example.yaml";
+
+function pathOf(located) {
+  return located._0;
+}
+
+function locate(given, param) {
+  if (given !== undefined) {
+    if (Nodefs.existsSync(given)) {
+      return {
+        TAG: "Ok",
+        _0: {
+          TAG: "Declared",
+          _0: given
+        }
+      };
+    } else {
+      return {
+        TAG: "Error",
+        _0: given + ` does not exist — a named manifest is read, never created`
+      };
+    }
+  }
+  let file = defaultPath();
+  if (Nodefs.existsSync(file)) {
+    return {
+      TAG: "Ok",
+      _0: {
+        TAG: "Declared",
+        _0: file
+      }
+    };
+  }
+  let template = Nodepath.join(process.cwd(), templateName);
+  if (!Nodefs.existsSync(template)) {
+    return {
+      TAG: "Error",
+      _0: `no ` + file + ` and no ` + templateName + ` here to start one from. Declare the accounts in .reventless/users.yaml — each entry a username, a password (empty to have one generated) and the groups it belongs to`
+    };
+  }
+  try {
+    Nodefs.mkdirSync(Nodepath.dirname(file), {
+      recursive: true
+    });
+    Nodefs.cpSync(template, file, {});
+    return {
+      TAG: "Ok",
+      _0: {
+        TAG: "SeededFrom",
+        _0: file,
+        _1: template
+      }
+    };
+  } catch (raw_err) {
+    let err = Primitive_exceptions.internalToException(raw_err);
+    if (err.RE_EXN_ID === "JsExn") {
+      return {
+        TAG: "Error",
+        _0: `could not copy ` + templateName + ` into place: ` + Stdlib_Option.getOr(Stdlib_JsExn.message(err._1), "unknown error")
+      };
+    } else {
+      return {
+        TAG: "Error",
+        _0: `could not copy ` + templateName + ` into place`
+      };
+    }
+  }
+}
+
 function prepare(file) {
   let e = parseFile(file);
   if (e.TAG !== "Ok") {
@@ -234,6 +303,9 @@ export {
   currentString,
   applyFills,
   fillFile,
+  templateName,
+  pathOf,
+  locate,
   prepare,
 }
 /* entrySchema Not a pure module */

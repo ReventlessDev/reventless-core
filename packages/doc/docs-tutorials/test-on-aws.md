@@ -26,9 +26,7 @@ the [deploy page](./deploy-to-aws) (Step 2). A freshly auto-provisioned pool has
 no users yet — make the first one from `platform-aws/`:
 
 ```bash
-pnpm exec provision-admin \
-  --provider-id $(pulumi stack output identityProviderId) \
-  --email you@example.com
+pnpm exec provision-admin --email you@example.com
 ```
 
 That creates the account, sets a permanent password so there is no
@@ -51,13 +49,12 @@ The shop demonstrates four roles, and one administrator shows only one of them.
 Copy the committed template and let the tool make the rest:
 
 ```bash
-mkdir -p .reventless && cp users.example.yaml .reventless/users.yaml
-pnpm exec provision-accounts \
-  --provider-id $(pulumi stack output identityProviderId)
+pnpm exec provision-accounts
 ```
 
-That creates `shopper`, `merch` and `fulfil` with their groups, generates a
-password for each, and writes both the passwords and the ids the pool minted back
+The committed `users.example.yaml` is copied to `.reventless/users.yaml` on first
+run, so there is nothing to copy by hand. That creates `shopper`, `merch` and
+`fulfil` with their groups, generates a password for each, and writes both the passwords and the ids the pool minted back
 into `.reventless/users.yaml`. The seed below reads that same file, so the demo
 data lands on the accounts you can actually log in as — which is what makes
 `fulfil` and `merch` show different screens instead of empty ones.

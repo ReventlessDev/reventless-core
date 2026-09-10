@@ -20,6 +20,7 @@ describe("ProvisionAdmin.parseArgs", () => {
     )->toEqual(
       Ok({
         Provision.providerId: Some("eu-west-1_AbCdEfGhI"),
+        stack: None,
         email: Some("me@example.com"),
         help: false,
       }),
@@ -28,7 +29,7 @@ describe("ProvisionAdmin.parseArgs", () => {
 
   testSync("no arguments leaves both unanswered", () =>
     expect(Provision.parseArgs([]))->toEqual(
-      Ok({Provision.providerId: None, email: None, help: false}),
+      Ok({Provision.providerId: None, stack: None, email: None, help: false}),
     )
   )
 
@@ -48,7 +49,7 @@ describe("ProvisionAdmin.parseArgs", () => {
 
   testSync("-h asks for the usage", () =>
     expect(Provision.parseArgs(["-h"]))->toEqual(
-      Ok({Provision.providerId: None, email: None, help: true}),
+      Ok({Provision.providerId: None, stack: None, email: None, help: true}),
     )
   )
 })
