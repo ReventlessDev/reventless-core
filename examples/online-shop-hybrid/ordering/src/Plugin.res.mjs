@@ -31,6 +31,7 @@ import * as AnnounceRecipientContact$OrderingPlugin from "./Notification/Outboun
 import * as AutoShipOrder_Automation$OrderingPlugin from "./Order/Automation/AutoShipOrder_Automation.res.mjs";
 import * as NotificationSourceClaims$OrderingPlugin from "./Notification/StateChange/NotificationSourceClaims.res.mjs";
 import * as NotificationSubscriptions$OrderingPlugin from "./Notification/StateViewStream/NotificationSubscriptions.res.mjs";
+import * as EmailVerificationChallenges$OrderingPlugin from "./Customer/StateChange/EmailVerificationChallenges.res.mjs";
 import * as SyncCatalogProduct_Behavior$OrderingPlugin from "./CatalogProduct/StateChange/SyncCatalogProduct_Behavior.res.mjs";
 import * as AvailableProducts_Projection$OrderingPlugin from "./CatalogProduct/StateViewStream/AvailableProducts_Projection.res.mjs";
 import * as Orders_ExtensionPointMapping$OrderingPlugin from "./ExtensionPoint/Orders_ExtensionPointMapping.res.mjs";
@@ -41,6 +42,7 @@ import * as NotificationDeliveries_Projection$OrderingPlugin from "./Notificatio
 import * as NotificationSourceClaims_Behavior$OrderingPlugin from "./Notification/StateChange/NotificationSourceClaims_Behavior.res.mjs";
 import * as GeocodeCustomerAddress_Translation$OrderingPlugin from "./Customer/OutboundTranslation/GeocodeCustomerAddress_Translation.res.mjs";
 import * as AnnounceRecipientContact_Translation$OrderingPlugin from "./Notification/OutboundTranslation/AnnounceRecipientContact_Translation.res.mjs";
+import * as EmailVerificationChallenges_Behavior$OrderingPlugin from "./Customer/StateChange/EmailVerificationChallenges_Behavior.res.mjs";
 import * as NotificationSubscriptions_Projection$OrderingPlugin from "./Notification/StateViewStream/NotificationSubscriptions_Projection.res.mjs";
 
 let dcbSliceSchemas = [
@@ -49,6 +51,12 @@ let dcbSliceSchemas = [
     commandSchema: CancelOrder$OrderingPlugin.commandSchema,
     consumedEventSchema: CancelOrder$OrderingPlugin.consumedEventSchema,
     eventSchema: CancelOrder$OrderingPlugin.eventSchema
+  },
+  {
+    name: EmailVerificationChallenges$OrderingPlugin.name,
+    commandSchema: EmailVerificationChallenges$OrderingPlugin.commandSchema,
+    consumedEventSchema: EmailVerificationChallenges$OrderingPlugin.consumedEventSchema,
+    eventSchema: EmailVerificationChallenges$OrderingPlugin.eventSchema
   },
   {
     name: NotificationPreferences$OrderingPlugin.name,
@@ -100,6 +108,24 @@ function Make(Platform) {
     evolve: CancelOrder_Behavior$OrderingPlugin.evolve,
     decide: CancelOrder_Behavior$OrderingPlugin.decide,
     moduleUrl: CancelOrder_Behavior$OrderingPlugin.moduleUrl
+  });
+  let EmailVerificationChallengesSlice = Platform.StateChangeSlice.Make({
+    name: EmailVerificationChallenges$OrderingPlugin.name,
+    moduleUrl: EmailVerificationChallenges$OrderingPlugin.moduleUrl,
+    Id: Id$Reventless.$$String,
+    consumedEventSchema: EmailVerificationChallenges$OrderingPlugin.consumedEventSchema,
+    errorSchema: EmailVerificationChallenges$OrderingPlugin.errorSchema,
+    eventSchema: EmailVerificationChallenges$OrderingPlugin.eventSchema,
+    commandSchema: EmailVerificationChallenges$OrderingPlugin.commandSchema,
+    commandAuthorization: EmailVerificationChallenges$OrderingPlugin.commandAuthorization,
+    commandTransition: EmailVerificationChallenges$OrderingPlugin.commandTransition,
+    traits: EmailVerificationChallenges$OrderingPlugin.traits,
+    readConsistency: EmailVerificationChallenges$OrderingPlugin.readConsistency
+  })({
+    initialState: EmailVerificationChallenges_Behavior$OrderingPlugin.initialState,
+    evolve: EmailVerificationChallenges_Behavior$OrderingPlugin.evolve,
+    decide: EmailVerificationChallenges_Behavior$OrderingPlugin.decide,
+    moduleUrl: EmailVerificationChallenges_Behavior$OrderingPlugin.moduleUrl
   });
   let NotificationPreferencesSlice = Platform.StateChangeSlice.Make({
     name: NotificationPreferences$OrderingPlugin.name,
@@ -420,6 +446,7 @@ function Make(Platform) {
     OrdersStreamSlice
   ], [
     CancelOrderSlice,
+    EmailVerificationChallengesSlice,
     NotificationPreferencesSlice,
     NotificationSourceClaimsSlice,
     PlaceOrderSlice,
@@ -482,6 +509,10 @@ function Make(Platform) {
       "Customer"
     ],
     [
+      "EmailVerificationChallenges",
+      "Customer"
+    ],
+    [
       "GeocodeCustomerAddress",
       "Customer"
     ],
@@ -528,6 +559,7 @@ function Make(Platform) {
   ]), LifecycleModel$OrderingPlugin.model);
   let make = () => Platform.Plugin.make("Ordering", 5, [Orders_ExtensionPoint], [Products_Extension], [CustomerAggregate], [CustomersReadModel], undefined, [
     CancelOrderSlice,
+    EmailVerificationChallengesSlice,
     NotificationPreferencesSlice,
     NotificationSourceClaimsSlice,
     PlaceOrderSlice,
@@ -577,6 +609,7 @@ function Make(Platform) {
   ]), Stdlib_Option.map(process.env.ORDERING_UI_BUNDLE_URL, url => Platform.Plugin.makeAutoUIManifest(url, "Ordering", pluginStructure, ["platform-summary"], ["resource-detail"])), pluginStructure, undefined);
   return {
     CancelOrderSlice: CancelOrderSlice,
+    EmailVerificationChallengesSlice: EmailVerificationChallengesSlice,
     NotificationPreferencesSlice: NotificationPreferencesSlice,
     NotificationSourceClaimsSlice: NotificationSourceClaimsSlice,
     PlaceOrderSlice: PlaceOrderSlice,

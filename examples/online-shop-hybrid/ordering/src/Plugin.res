@@ -10,6 +10,12 @@ let dcbSliceSchemas: array<Reventless.DcbTag.sliceSchemas> = [
     eventSchema: CancelOrder.eventSchema->S.castToUnknown,
   },
   {
+    name: EmailVerificationChallenges.name,
+    commandSchema: EmailVerificationChallenges.commandSchema->S.castToUnknown,
+    consumedEventSchema: EmailVerificationChallenges.consumedEventSchema->S.castToUnknown,
+    eventSchema: EmailVerificationChallenges.eventSchema->S.castToUnknown,
+  },
+  {
     name: NotificationPreferences.name,
     commandSchema: NotificationPreferences.commandSchema->S.castToUnknown,
     consumedEventSchema: NotificationPreferences.consumedEventSchema->S.castToUnknown,
@@ -44,6 +50,10 @@ let dcbSliceSchemas: array<Reventless.DcbTag.sliceSchemas> = [
 module Make = (Platform: ReventlessInfra.Platform.T) => {
   // StateChangeSlices
   module CancelOrderSlice = Platform.StateChangeSlice.Make(CancelOrder, CancelOrder_Behavior)
+  module EmailVerificationChallengesSlice = Platform.StateChangeSlice.Make(
+    EmailVerificationChallenges,
+    EmailVerificationChallenges_Behavior,
+  )
   module NotificationPreferencesSlice = Platform.StateChangeSlice.Make(
     NotificationPreferences,
     NotificationPreferences_Behavior,
@@ -123,6 +133,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     ],
     ~stateChangeSlices=[
       module(CancelOrderSlice),
+      module(EmailVerificationChallengesSlice),
       module(NotificationPreferencesSlice),
       module(NotificationSourceClaimsSlice),
       module(PlaceOrderSlice),
@@ -144,6 +155,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ("CancelOrder", "Order"),
       ("Customer", "Customer"),
       ("Customers", "Customer"),
+      ("EmailVerificationChallenges", "Customer"),
       ("GeocodeCustomerAddress", "Customer"),
       ("NotificationDeliveries", "Notification"),
       ("NotificationIntake", "Notification"),
@@ -169,6 +181,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ~readModels=[module(CustomersReadModel)],
       ~stateChangeSlices=[
         module(CancelOrderSlice),
+        module(EmailVerificationChallengesSlice),
         module(NotificationPreferencesSlice),
         module(NotificationSourceClaimsSlice),
         module(PlaceOrderSlice),

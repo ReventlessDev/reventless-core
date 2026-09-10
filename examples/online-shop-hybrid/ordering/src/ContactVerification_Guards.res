@@ -66,15 +66,23 @@ the fact that makes it dangerous rather than on whichever of its other
 properties happened to lapse first — a superseded challenge that had also
 expired must not be reported as merely expired. The proof itself is compared
 last, so none of the structural refusals depend on the secret.
+
+`hostContact` is an option because the two flows this competency serves differ
+in whether there *is* a host. Changing an address has one, and supersession is
+checkable. Registering has none — the subject the address will belong to does
+not exist yet — so `None` means "nothing to be superseded by", not "skip the
+check". A ledger that simply does not track the host also passes `None`, and
+relies on the host's own write-back guard, which is why that one is not
+optional.
 */
 let onProofPresented = (
-  v: verification,
   c: challenge,
+  ~hostContact: option<ContactVerification.contact>,
   ~proofMatches: bool,
   ~now: Reventless.DateTime.t,
   ~policy: ContactVerification.policy,
 ): proofVerdict =>
-  if c.contact != v.contact {
+  if hostContact->Option.mapOr(false, held => c.contact != held) {
     Refuse(AddressSuperseded)
   } else if c.settled {
     Refuse(AlreadySettled)
@@ -110,8 +118,6 @@ let onVerifiedReport = (v: verification, ~contact: ContactVerification.contact):
   }
 
 type issuance =
-  /** Nothing owes a proof. */
-  | StandDown
   /** Mint a secret and send it. */
   | Issue
   /** An open challenge already covers this address, so a redelivered request
@@ -119,19 +125,24 @@ type issuance =
       re-publishes until its work clears. */
   | AlreadyOpen
 
+/**
+Whether a request to challenge an address produces a new secret.
+
+Decided against the ledger's own state and nothing else. The stand-down —
+whether an address is owed a proof at all — is `contactToVerify`, and it belongs
+to whoever reads the host, because a ledger has no host to read. Folding the two
+together read naturally with one host in view and stopped compiling the moment a
+second flow had none.
+*/
 let onIssueRequested = (
-  v: verification,
+  ~contact: ContactVerification.contact,
   ~existing: option<challenge>,
   ~now: Reventless.DateTime.t,
   ~policy: ContactVerification.policy,
 ): issuance =>
-  switch contactToVerify(v) {
-  | None => StandDown
-  | Some(contact) =>
-    switch existing {
-    | Some(c) if c.contact == contact && !c.settled && !hasExpired(c, ~now, ~policy) => AlreadyOpen
-    | _ => Issue
-    }
+  switch existing {
+  | Some(c) if c.contact == contact && !c.settled && !hasExpired(c, ~now, ~policy) => AlreadyOpen
+  | _ => Issue
   }
 
 type resend =
@@ -148,14 +159,14 @@ so a link already sitting in a mailbox keeps working — minting a new one would
 invalidate the message the person is looking at while they read it.
 */
 let onResendRequested = (
-  v: verification,
+  ~contact: ContactVerification.contact,
   ~existing: option<challenge>,
   ~now: Reventless.DateTime.t,
   ~policy: ContactVerification.policy,
 ): resend =>
-  switch (contactToVerify(v), existing) {
-  | (None, _) | (_, None) => NothingOpen
-  | (Some(contact), Some(c)) =>
+  switch existing {
+  | None => NothingOpen
+  | Some(c) =>
     if c.contact != contact || c.settled || hasExpired(c, ~now, ~policy) {
       NothingOpen
     } else {
