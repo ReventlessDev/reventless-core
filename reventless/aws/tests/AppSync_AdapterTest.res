@@ -276,6 +276,89 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
     }
   })
 
+  // ── AllowAnonymous is refused, not silently downgraded ────────────────────
+  //
+  // The defect these cover: `AllowAnonymous` shared `AllowAuthenticated`'s arm
+  // and emitted the same group-less directive, which on this Cognito-primary
+  // API means *any authenticated caller* — the inverse of the declaration. It
+  // deployed green, passed `assertGateable`, and worked on the local platform,
+  // whose resolvers call `Authorization.isAllowed` and honour the rule. It
+  // failed closed, so no deployment ever reported it.
+
+  let refuses = (run: unit => 'a): bool =>
+    switch run() {
+    | _ => false
+    | exception _ => true
+    }
+
+  let messageOf = (run: unit => 'a): string =>
+    switch run() {
+    | _ => ""
+    | exception JsExn(err) => JsExn.message(err)->Option.getOr("")
+    | exception _ => ""
+    }
+
+  let anonymousMutation = (~fieldNames) => {
+    let fp =
+      fieldNames
+      ->Array.map(n => (n, Reventless.Authorization.AllowAnonymous))
+      ->Dict.fromArray
+    let entry = mutationEntry(~fieldNames, ~fieldPermissions=fp)
+    let frag = makeFragment(fieldNames->Array.map(n => `${n}(id: ID!): String`), [])
+    () => AppSync_Adapter.injectAwsAuth(frag, ~mutationEntries=[entry], ~queryEntries=[])
+  }
+
+  testSync("AllowAnonymous on a mutation fails the deploy", () => {
+    expect(refuses(anonymousMutation(~fieldNames=["p_Register"])))->toBe(true)
+  })
+
+  // The whole point of the change: two distinct permissions must not produce
+  // one outcome. Asserting only "it throws" would still pass if a later edit
+  // re-collapsed the arms and dropped the refusal, so pin the contrast.
+  testSync("AllowAnonymous and AllowAuthenticated do not behave alike", () => {
+    let authenticated = {
+      let fp = Dict.fromArray([("p_Register", Reventless.Authorization.AllowAuthenticated)])
+      let entry = mutationEntry(~fieldNames=["p_Register"], ~fieldPermissions=fp)
+      let frag = makeFragment(["p_Register(id: ID!): String"], [])
+      () => AppSync_Adapter.injectAwsAuth(frag, ~mutationEntries=[entry], ~queryEntries=[])
+    }
+    expect(refuses(authenticated))->toBe(false)
+    expect(refuses(anonymousMutation(~fieldNames=["p_Register"])))->toBe(true)
+  })
+
+  testSync("the refusal names the offending field, so it can be found", () => {
+    let msg = messageOf(anonymousMutation(~fieldNames=["p_Register"]))
+    expect(msg)->toContain("p_Register")
+    expect(msg)->toContain("AllowAnonymous")
+  })
+
+  // One deploy should report every offending field. Reporting the first one
+  // turns a batch of them into as many failed deploys as there are fields.
+  testSync("every offending field is reported, not just the first", () => {
+    let msg = messageOf(anonymousMutation(~fieldNames=["p_Register", "p_Confirm"]))
+    expect(msg)->toContain("p_Register")
+    expect(msg)->toContain("p_Confirm")
+  })
+
+  testSync("AllowAnonymous on a query names BOTH derived field names", () => {
+    let entry = queryEntry(
+      ~single="p_Item",
+      ~list="p_Items",
+      ~permission=Some(Reventless.Authorization.AllowAnonymous),
+    )
+    let frag = makeFragment(
+      [],
+      ["p_Item(id: ID!): Item", "p_Items(first: Int, after: String): ItemConnection!"],
+    )
+    let run = () => AppSync_Adapter.injectAwsAuth(frag, ~mutationEntries=[], ~queryEntries=[entry])
+    expect(refuses(run))->toBe(true)
+    let msg = messageOf(run)
+    // The spec declares one permission and the generator emits two fields from
+    // it; naming one would send the author hunting a declaration that is not there.
+    expect(msg)->toContain("p_Item")
+    expect(msg)->toContain("p_Items")
+  })
+
   testSync("Spec-level permission wins over legacy authorization field", () => {
     // Legacy {tableName, group} says "Admin"; spec-level says "Manager".
     // Spec-level must win.

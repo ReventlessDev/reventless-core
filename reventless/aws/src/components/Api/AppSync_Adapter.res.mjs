@@ -107,23 +107,37 @@ async function waitForMergeSuccess(client, associationId, mergedApiIdentifier, m
   return Stdlib_JsError.throwWithMessage(`Source API association ` + associationId + ` on ` + mergedApiIdentifier + ` failed to merge (` + status + `): ` + detail);
 }
 
-function _permissionToCognitoGroups(permission) {
+function _permissionToGate(permission) {
   if (typeof permission !== "object") {
     switch (permission) {
       case "AllowAuthenticated" :
+        return "AnyAuthenticated";
       case "AllowAnonymous" :
-        return;
+        return "Anonymous";
       case "DenyAll" :
-        return ["__deny_all__"];
+        return {
+          TAG: "Groups",
+          _0: ["__deny_all__"]
+        };
     }
   } else {
     let groups = permission._0;
     if (groups.length !== 0) {
-      return groups;
+      return {
+        TAG: "Groups",
+        _0: groups
+      };
     } else {
-      return ["__deny_all__"];
+      return {
+        TAG: "Groups",
+        _0: ["__deny_all__"]
+      };
     }
   }
+}
+
+function _refuseAnonymousFields(fieldNames) {
+  return Stdlib_JsError.throwWithMessage(`Refusing to push an AppSync schema that cannot honour AllowAnonymous.\n\n` + (`  ` + fieldNames.length.toString() + ` field(s) declare AllowAnonymous:\n`) + (`    ` + fieldNames.join(", ") + `\n\n`) + `AppSync has no anonymous authorization mode. This API is provisioned with\nAMAZON_COGNITO_USER_POOLS primary and AWS_IAM additional, so the only\ndirective available is @aws_cognito_user_pools — which means ANY\nAUTHENTICATED caller, the opposite of what the spec declares. Mutations have\nno runtime authorization check to correct it: on this platform the directive\nis the whole enforcement.\n\nThe local platform DOES honour AllowAnonymous (its resolvers call\nAuthorization.isAllowed), so a spec that passes locally can still not be\ndeployable here. That divergence is the reason this refuses instead of\nemitting a directive that reads as gated and is not.\n\nTo serve anonymous callers on AWS the API needs API_KEY added as a third\nauth provider, plus something to rotate the key. Until then, declare the\nfield AllowAuthenticated (or AllowGroups) and mean it.`);
 }
 
 function _typeDeclName(decl) {
@@ -150,6 +164,7 @@ function injectAwsAuth(fragment, mutationEntries, queryEntries) {
   let iamFields = {};
   let iamQueryFieldPrefixes = [];
   let iamTypePrefixes = [];
+  let anonymousFields = [];
   let mutationAuthMap = {};
   mutationEntries.forEach(entry => {
     if (Stdlib_Option.getOr(entry.systemCallable, false)) {
@@ -168,12 +183,16 @@ function injectAwsAuth(fragment, mutationEntries, queryEntries) {
     if (fp !== undefined) {
       Object.entries(fp).forEach(param => {
         let fieldName = param[0];
-        let groups = _permissionToCognitoGroups(param[1]);
-        if (groups !== undefined) {
-          mutationAuthMap[fieldName] = groups;
+        let groups = _permissionToGate(param[1]);
+        if (typeof groups !== "object") {
+          if (groups === "AnyAuthenticated") {
+            return Stdlib_Dict.$$delete(mutationAuthMap, fieldName);
+          }
+          anonymousFields.push(fieldName);
           return;
         } else {
-          return Stdlib_Dict.$$delete(mutationAuthMap, fieldName);
+          mutationAuthMap[fieldName] = groups._0;
+          return;
         }
       });
       return;
@@ -198,16 +217,25 @@ function injectAwsAuth(fragment, mutationEntries, queryEntries) {
     if (permission === undefined) {
       return;
     }
-    let groups = _permissionToCognitoGroups(permission);
-    if (groups !== undefined) {
-      queryAuthMap[entry.singleFieldName] = groups;
-      queryAuthMap[entry.listFieldName] = groups;
+    let groups = _permissionToGate(permission);
+    if (typeof groups !== "object") {
+      if (groups === "AnyAuthenticated") {
+        Stdlib_Dict.$$delete(queryAuthMap, entry.singleFieldName);
+        return Stdlib_Dict.$$delete(queryAuthMap, entry.listFieldName);
+      }
+      anonymousFields.push(entry.singleFieldName);
+      anonymousFields.push(entry.listFieldName);
       return;
     } else {
-      Stdlib_Dict.$$delete(queryAuthMap, entry.singleFieldName);
-      return Stdlib_Dict.$$delete(queryAuthMap, entry.listFieldName);
+      let groups$1 = groups._0;
+      queryAuthMap[entry.singleFieldName] = groups$1;
+      queryAuthMap[entry.listFieldName] = groups$1;
+      return;
     }
   });
+  if (anonymousFields.length !== 0) {
+    _refuseAnonymousFields(anonymousFields);
+  }
   let augmentedMutations = parts.mutations.map(field => {
     let fieldName = GraphQL_Stitcher$ReventlessCore.extractLeadingName(field);
     let groups = mutationAuthMap[fieldName];
@@ -357,7 +385,8 @@ export {
   _client,
   getClient,
   waitForMergeSuccess,
-  _permissionToCognitoGroups,
+  _permissionToGate,
+  _refuseAnonymousFields,
   _formatGroupsDirective,
   _formatDualAuthDirective,
   _typeDeclName,

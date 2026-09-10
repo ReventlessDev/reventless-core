@@ -183,13 +183,31 @@ let rec waitForMergeSuccess = async (
 // When both are present on the same field, the spec-level permission wins
 // (it is more specific). `AllowGroups([g1, g2, ...])` emits
 // `@aws_cognito_user_pools(cognito_groups: ["g1", "g2", ...])`.
-// `AllowAuthenticated` / `AllowAnonymous` emit the group-less
-// `@aws_cognito_user_pools` — same reachability (with Cognito as primary auth
-// any reaching request is already authenticated), but stated rather than left
+// `AllowAuthenticated` emits the group-less `@aws_cognito_user_pools` — the same
+// reachability an undirectived field already has, but stated rather than left
 // implicit, so `assertGateable` can tell "deliberately open" from "nobody
 // stamped this". `AllowGroups([])` and `DenyAll` emit a sentinel `__deny_all__`
 // group that no Cognito user can belong to — effectively blocking the field at
 // the API layer.
+//
+// `AllowAnonymous` is REFUSED at deploy time, and this used to be the bug:
+// it shared `AllowAuthenticated`'s arm and emitted the same group-less
+// directive, which on a Cognito-primary API means *any authenticated caller* —
+// the opposite of what the spec says. AppSync has no anonymous mode to emit
+// instead (`authenticationType` is API_KEY | AWS_IAM | AMAZON_COGNITO_USER_POOLS
+// | OPENID_CONNECT, and this adapter provisions Cognito primary with AWS_IAM
+// additional), so there is no directive that means "no auth". The old behaviour
+// deployed green, passed `assertGateable`, worked on the local platform — whose
+// resolvers call `Authorization.isAllowed` and honour the rule — and refused
+// anonymous callers only on AWS. It failed CLOSED, which is why nothing
+// surfaced it.
+//
+// Refusing follows `Auth_LoginIdentifier`'s rule for an unrecognised spelling:
+// a silent contradiction of the source is worse than a stopped deploy, because
+// only one of the two is discoverable. AppSync mutations have no runtime
+// authorization check to fall back on — the only `Authorization.isAllowed` call
+// in this package is on the Postgres query path — so the directive is the whole
+// enforcement, and a directive that cannot say this must not pretend to.
 //
 // NOT `@aws_auth(...)`: that is the single-mode form, which AppSync ignores on a
 // multi-auth API — which every API this adapter provisions is. See
@@ -209,15 +227,50 @@ let rec waitForMergeSuccess = async (
 // and a least-privilege deploy-role policy — see
 // `docs/guides/appsync-iam-system-caller.md`.
 
-let _permissionToCognitoGroups = (permission: Reventless.Authorization.permission): option<
-  array<string>,
-> =>
+/** What a declared permission asks this API to enforce.
+
+    Three arms rather than the `option<array<string>>` this used to be: the
+    option form had no way to hold `AllowAuthenticated` and `AllowAnonymous`
+    apart, so both landed on `None` and emitted one directive. AppSync can
+    enforce the first and cannot express the second at all — a difference the
+    type now carries, which is what makes the refusal below possible. */
+type fieldGate =
+  | Groups(array<string>)
+  | AnyAuthenticated
+  /** No directive can express this; the deploy is refused rather than gated
+      into its opposite. */
+  | Anonymous
+
+let _permissionToGate = (permission: Reventless.Authorization.permission): fieldGate =>
   switch permission {
-  | AllowGroups([]) => Some(["__deny_all__"])
-  | AllowGroups(groups) => Some(groups)
-  | DenyAll => Some(["__deny_all__"])
-  | AllowAuthenticated | AllowAnonymous => None
+  | AllowGroups([]) => Groups(["__deny_all__"])
+  | AllowGroups(groups) => Groups(groups)
+  | DenyAll => Groups(["__deny_all__"])
+  | AllowAuthenticated => AnyAuthenticated
+  | AllowAnonymous => Anonymous
   }
+
+/** The deploy-time refusal for fields declared `AllowAnonymous`. Shaped like
+    `assertGateable`'s: name the fields, say what the emitted schema would have
+    meant, and say what has to change. */
+let _refuseAnonymousFields = (fieldNames: array<string>): 'a =>
+  JsError.throwWithMessage(
+    `Refusing to push an AppSync schema that cannot honour AllowAnonymous.\n\n` ++
+    `  ${fieldNames->Array.length->Int.toString} field(s) declare AllowAnonymous:\n` ++
+    `    ${fieldNames->Array.join(", ")}\n\n` ++
+    `AppSync has no anonymous authorization mode. This API is provisioned with\n` ++
+    `AMAZON_COGNITO_USER_POOLS primary and AWS_IAM additional, so the only\n` ++
+    `directive available is @aws_cognito_user_pools — which means ANY\n` ++
+    `AUTHENTICATED caller, the opposite of what the spec declares. Mutations have\n` ++
+    `no runtime authorization check to correct it: on this platform the directive\n` ++
+    `is the whole enforcement.\n\n` ++
+    `The local platform DOES honour AllowAnonymous (its resolvers call\n` ++
+    `Authorization.isAllowed), so a spec that passes locally can still not be\n` ++
+    `deployable here. That divergence is the reason this refuses instead of\n` ++
+    `emitting a directive that reads as gated and is not.\n\n` ++
+    `To serve anonymous callers on AWS the API needs API_KEY added as a third\n` ++
+    `auth provider, plus something to rotate the key. Until then, declare the\n` ++ `field AllowAuthenticated (or AllowGroups) and mean it.`,
+  )
 
 // Both directive forms are defined once in the runtime-pure AppSync_SdlDecorate
 // so this deploy path and the bundled AdminEventCollector Lambda's reactive push
@@ -299,6 +352,10 @@ let injectAwsAuth = (
   let iamQueryFieldPrefixes: array<string> = []
   let iamTypePrefixes: array<string> = []
 
+  // Collected across both entry kinds and refused once, so a deploy reports
+  // every offending field rather than the first one found.
+  let anonymousFields: array<string> = []
+
   let mutationAuthMap: Dict.t<array<string>> = Dict.make()
   mutationEntries->Array.forEach(entry => {
     if entry.systemCallable->Option.getOr(false) {
@@ -314,9 +371,10 @@ let injectAwsAuth = (
       fp
       ->Dict.toArray
       ->Array.forEach(((fieldName, permission)) => {
-        switch _permissionToCognitoGroups(permission) {
-        | Some(groups) => mutationAuthMap->Dict.set(fieldName, groups)
-        | None => mutationAuthMap->Dict.delete(fieldName)
+        switch _permissionToGate(permission) {
+        | Groups(groups) => mutationAuthMap->Dict.set(fieldName, groups)
+        | AnyAuthenticated => mutationAuthMap->Dict.delete(fieldName)
+        | Anonymous => anonymousFields->Array.push(fieldName)
         }
       })
     | None => ()
@@ -342,17 +400,27 @@ let injectAwsAuth = (
     }
     switch entry.permission {
     | Some(permission) =>
-      switch _permissionToCognitoGroups(permission) {
-      | Some(groups) =>
+      switch _permissionToGate(permission) {
+      | Groups(groups) =>
         queryAuthMap->Dict.set(entry.singleFieldName, groups)
         queryAuthMap->Dict.set(entry.listFieldName, groups)
-      | None =>
+      | AnyAuthenticated =>
         queryAuthMap->Dict.delete(entry.singleFieldName)
         queryAuthMap->Dict.delete(entry.listFieldName)
+      | Anonymous =>
+        // Both derived field names, because the spec declares one permission and
+        // the generator emits two fields from it; naming only one would send the
+        // author looking for a second declaration that does not exist.
+        anonymousFields->Array.push(entry.singleFieldName)
+        anonymousFields->Array.push(entry.listFieldName)
       }
     | None => ()
     }
   })
+
+  if anonymousFields->Array.length > 0 {
+    _refuseAnonymousFields(anonymousFields)
+  }
 
   // A field with no group restriction gets the group-less Cognito directive
   // rather than no directive at all. Same reachability under `defaultAction:
