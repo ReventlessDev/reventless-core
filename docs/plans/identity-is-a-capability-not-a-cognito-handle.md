@@ -5,9 +5,16 @@
 replaces the pool and empties it, which made it the workstream's most urgent item; **Step 5a ✅ shipped
 the same day** and it is no longer a countdown. Step 5b turned out to be free and is not urgent, and
 5c is named-and-not-built. **Steps 1 and 4 ✅ shipped 2026-09-10** — the declaration, the plugin door,
-the refusing arm and the deploy gate, with `setActiveRole` decided *out* of the capability. **Steps 2
-(the mapping store) and 3 (the client door) are next**, and nothing has written a principal yet, so
-Step 2's no-second-chance decision is still genuinely open.
+the refusing arm and the deploy gate, with `setActiveRole` decided *out* of the capability. **Step 2 was
+measured 2026-09-10 and its premise was false:** the log does not have a clean slate — `Identity.userId`
+*is* the Cognito `sub` on AWS, and three shipped paths already persist it, one of them into domain
+payloads. Step 2 is re-cut around that; it turns out to be one seam wide, additive, and **not** urgent.
+**Step 3 was investigated 2026-09-10 and its stated gap was wrong too** — the auth-posture vocabulary
+already exists as `Authorization.AllowAnonymous`, and AWS silently enforces it as *authenticated only*.
+Step 3 is re-cut into three pieces, and **the first — refusing to compile `AllowAnonymous` into a
+directive that contradicts it — ✅ shipped 2026-09-10** (851 aws tests green, verified by deletion).
+Pieces 2 (an API-key auth provider, its missing Pulumi binding, and key rotation) and 3 (the door) are
+untouched.
 **Repos:** `reventless-core` only.
 
 **Goal.** Put the *administrative* half of identity — making, grouping and unmaking principals —
@@ -119,31 +126,219 @@ That last one is the point of the whole step: the gate now has an `IdentityProvi
 says what is true — *no platform has a backend yet, and no configuration change will produce one*
 — rather than sending a deployer to look for a setting that does not exist.
 
-## Step 2 — the persisted reference: none, and this is the load-bearing line
+## Step 2 — the persisted reference: **measured 2026-09-10, and the premise was false**
 
-**A domain event must never persist a Cognito `sub`, a pool id, or any provider-shaped user id.** What
-the log holds is the domain's own opaque `userId`; the mapping to the provider's id lives in the
-capability's own store, outside the event log. A reference already written into a million events is
-permanent, and a log full of provider ids cannot be migrated to another provider — which would make the
-replaceability this whole capability exists for a fiction.
+The rule stands and is still the load-bearing line: **a domain event must never persist a Cognito
+`sub`, a pool id, or any provider-shaped user id**, because a reference written into a million events is
+permanent and a log full of one provider's ids cannot be migrated — which would make the replaceability
+this capability exists for a fiction.
 
-**Decide where that mapping store lives before writing to it.** Which store, who provisions it, and
-what happens when it disagrees with the provider (a principal deleted out-of-band) are unspecified.
-This has the same no-second-chance property as the object store's key layout: get it wrong and the fix
-is a migration of the one table that cannot be rebuilt from the log.
+What was wrong is the *state* this step claimed. It said the layout is still free because nothing has
+written a principal yet. Nothing has written one **through this capability** — but the provider-shaped
+id has been reaching the log by another path since long before this plan was filed, and it is in domain
+**payloads**, not only in metadata.
 
-## Step 3 — the client door
+### The measurement
 
-A GraphQL field on the platform API rather than a bare endpoint, re-registered by the local platform
-over its own backend — the way portability is demonstrated rather than asserted, as `Upload_Presign`
-already does for the object store.
+`Auth_Cognito._identityFromClaims` sets `Identity.userId` from the token's `sub` (`Auth_Cognito.res:63`),
+and `fromAppSyncIdentity` sets it from the resolver's already-validated `identity.sub` (line 157). On
+AWS, `Identity.userId` **is** the Cognito `sub`. Three shipped paths then persist it:
 
-**One thing no existing capability door needs: these doors must be callable unauthenticated**, because
-being authenticated is what a caller is trying to become. On AWS that is an `@aws_auth` decision
-differing from every other mutation the plugin publishes; locally it is a resolver-level decision. A
-component that brings a door currently cannot declare that door's auth posture — the manifest carries
-`ownedComponents[].clientDoor` and nothing about who may knock. Either extend it here or record the
-gap explicitly; do not leave it to each author.
+| Site | What it writes | Reach |
+|---|---|---|
+| `CommandGenerator_Callback.makeGenerateCommand` | `meta.user` on every command, into `StoredEvent.meta` — which the DynamoDB adapters flatten to top-level attributes so meta keys stay GSI-projectable | every event, every deployment, both platforms |
+| `CommandGenerator_Callback.stampOwnerFields` | overwrites every `@owner`-marked **command field** with `userId`, so it lands in the event *payload* rather than the envelope | `PlaceOrder`'s `customerId`, `Subscribe`/`Unsubscribe`'s `recipientId`, and every state-view row derived from them |
+| `Auth_ActiveRoleStore_Ops` | the row key, `ctx.identity.sub` by its own comment (line 14) | every active-role row |
+
+`Identity.res:8` states the intent precisely — *"NOT persisted in events — only `userId` is stored as
+`meta.user`"* — and the second clause is the leak that the first clause reads as denying. The
+`Message.res:250` parent-to-child propagation then carries `user` down the whole causal chain, so a
+derived command inherits it too.
+
+**Independent corroboration, from the other end:** the known defect where demo owners seeded under
+`local-*` ids leave every owner-scoped view empty on AWS is this same fact observed as a bug. The same
+person has a different id on each platform *because the id is the provider's*.
+
+So the honest statement is not "the layout is still free." It is: **the decision was already taken by
+default, on every deployment that has ever run, and Step 2's real subject is what unmaking it costs.**
+
+### What the measurement makes cheap — and it is the reason to keep going
+
+**The leak is one seam wide, not three.** Every one of those three sites reads `Identity.userId` and is
+already provider-agnostic; not one of them names Cognito. The provider id becomes a domain id in exactly
+two functions, both in `Auth_Cognito.res`. Change what those two produce and all three sites become
+domain-shaped with no edit at all. That is only visible once the sites are enumerated, and it is the
+difference between a one-file change and a sweep across the command pipeline.
+
+### The direction split — and only one direction needs a store
+
+**Measured, not assumed:** `ListUsers`' `Filter` accepts nine standard attributes plus `sub`, and the
+API's own documentation closes the list with *"Custom attributes aren't searchable."* So the tempting
+no-store design — put the domain id on the principal as a custom attribute and ask the provider — answers
+the hot direction and **cannot** answer the cold one. The store is genuinely required, and now for a
+stated reason rather than by assumption.
+
+| Direction | When it is needed | Answer |
+|---|---|---|
+| provider → domain | every authenticated request | a claim carried in the token; **no store read on the request path** |
+| domain → provider | admin ops only: group, ungroup, delete | the capability's own store — unavoidable, per the measurement above |
+
+That split is what keeps the store off the hot path, which is what makes it affordable at all.
+
+### Existing accounts: additive, and **not** a countdown
+
+An account created before this lands carries no domain-id claim. The fallback for an absent claim must
+therefore be **`userId = sub`** — which reproduces today's value exactly, so every order already holding
+a `sub` as its `customerId` keeps matching its owner and no state view is rebuilt. New accounts get a
+minted domain id in a shape that cannot be mistaken for a UUID. A mixed pool is fine: both are opaque
+strings and neither collides.
+
+**And unlike 5a, this can be done to the pool that already exists.** `CreateUserPoolRequest` carries
+`Schema` and `UpdateUserPoolRequest` does not — the same shape as the login identifier, and the reason
+to check rather than infer — but **`AddCustomAttributes` is its own API operation**, so a custom
+attribute can be added to a live pool. It is one-way, since an attribute can never be removed or
+renamed, which makes it a decision worth making deliberately. It is not a first-deploy-or-never one.
+**Step 2 is 5b-shaped, not 5a-shaped: it is not urgent, and it does not restart the countdown 5a
+closed.**
+
+### What is still open, and the recommendation
+
+Which store, and who provisions it. The recommendation is the shape 5b already argued for the pool
+settings: **the capability owns the mapping, the platform provisions the storage** — a DynamoDB table
+beside `Auth_ActiveRoleStore` with a derived name on AWS, and the existing `.reventless/users.yaml` on
+local, which Step 3's `createPrincipal` has to learn to write to anyway. Both are the identity-adjacent
+state that already exists on each platform, and neither is the event log.
+
+Still unanswered, and it should not be closed by omission: **what happens when the store disagrees with
+the provider** — a principal deleted out-of-band leaves a mapping row pointing at nothing. That is the
+one part of this step that has no precedent to copy.
+
+**Nothing here has been built.** This step remains a decision, and the decision is now being taken
+against measured facts rather than an assumed clean slate.
+
+## Step 3 — the client door: **the gap is real, and it is not the one this step named**
+
+The door's *shape* is unchanged: a GraphQL field on the platform API rather than a bare endpoint,
+re-registered by the local platform over its own backend — the way portability is demonstrated rather
+than asserted, as `Upload_Presign` already does for the object store. And the requirement is unchanged:
+**these doors must be callable unauthenticated**, because being authenticated is what the caller is
+trying to become.
+
+Everything this step said about *where that gets declared* was wrong, in both directions, and the
+correction makes the step larger rather than smaller.
+
+### The vocabulary is not missing — it exists, and it is already wrong on one platform
+
+This step asked whether to extend the manifest, on the grounds that it "carries
+`ownedComponents[].clientDoor` and nothing about who may knock." **There is no `clientDoor` field and no
+`ownedComponents` field**; `CapabilityManifest.entry` is `{kind, key, declaredBy}` and the manifest has
+no notion of a door at all. "Door" is this repo's prose, not its schema.
+
+The declaration it was reaching for exists somewhere else and has all along:
+`Authorization.permission` publishes **`AllowAnonymous`** beside `AllowAuthenticated`, `AllowGroups`
+and `DenyAll`, and it is `@schema`'d, so it already persists and already travels.
+
+That answers the delegated question — *is an unauthenticated door's auth posture a trait declaration or
+a framework concept?* — without waiting for a second case: **it is a framework concept, and the
+framework already has it.** Nothing should be added to the manifest.
+
+**What is broken is the AWS half of its implementation:**
+
+| Platform | How `AllowAnonymous` is enforced | What it actually means |
+|---|---|---|
+| local | `Authorization.isAllowed(rule, identity)`, called in the resolver | anonymous callers are admitted — the rule is honoured |
+| AWS (mutations) | an SDL directive and nothing else; `AllowAuthenticated \| AllowAnonymous => None` collapses both to `cognitoOpenDirective` | `@aws_cognito_user_pools` — **any *authenticated* Cognito caller**. Anonymous is refused |
+
+There is no runtime `isAllowed` on the AppSync mutation path to catch it: the only `isAllowed` call in
+`reventless/aws/src` is on the Postgres *query* resolver. A registration mutation is a mutation, which
+is exactly the path where the directive is the whole enforcement.
+
+So a spec declaring `AllowAnonymous` today **deploys green, passes `assertGateable`, works on local, and
+is unreachable on AWS by precisely the callers it exists for.** It fails closed, which is the safe
+direction and is why nobody has hit it — and it is fatal for this step specifically, because the
+registration door is the one field in the system whose whole purpose is to admit someone with no
+identity yet.
+
+This is the second silent authorization divergence in this adapter. The first — `@aws_auth` ignored on a
+multi-auth API, group gates failing *open*, recorded in `appsync-group-authorization-unenforced.md` — is
+what motivated `assertGateable`, whose stated job is to make "carries no directive" detectable rather
+than silently permissive. `AllowAnonymous` slips past it by carrying a directive that is well-formed and
+means something else.
+
+### AppSync cannot express "no auth" at all, and that is the real cost
+
+Measured in the binding: `AppSync.GraphQLApi.authenticationType` has four arms — `API_KEY`, `AWS_IAM`,
+`AMAZON_COGNITO_USER_POOLS`, `OPENID_CONNECT`. **There is no anonymous arm**, and the adapter provisions
+Cognito primary with AWS_IAM additional, unconditionally. An unauthenticated field therefore needs
+`API_KEY` added as a *third* auth provider — an API-level change touching every field's directive story,
+not a per-field decoration — and **there is no `AppSync_ApiKey` binding in `rescript/pulumi-aws`** to
+declare the key with.
+
+An API key is also a shared secret shipped to the browser, and (asserted from outside this repo, worth
+confirming before relying on it) one that expires, with a maximum lifetime around a year — so a public
+registration door authenticated this way **breaks on a timer** unless something rotates it. That is an
+operational commitment, not a directive.
+
+### The precedent this step cites points the other way on posture
+
+`Upload_Presign` is the right precedent for the door's *shape* and a counter-precedent for its *auth*:
+its own header records that it has "no Function URL and no anonymous surface," and that the anonymous
+Function URL it used to carry, along with an unverified `decodeJwtSub`, was deliberately removed. The
+one place this system built an anonymous surface, it took it out again. That does not forbid this step —
+registration genuinely needs one — but it means an anonymous door is a departure with history, and the
+reasons that removal was right are the ones this door has to answer.
+
+### What this makes Step 3
+
+Three pieces, and only the first is small:
+
+1. **Stop the silent divergence** — ✅ **built 2026-09-10, see below.**
+2. **The API-key auth provider and its binding**, if the anonymous door is to exist on AWS at all —
+   plus whatever rotates the key.
+3. **The door itself**, on both platforms, over a backend Step 2 has not decided the storage for.
+
+Only (1) was affordable, it was worth doing on its own, and it was worth doing **whether or not this
+capability is ever finished** — a live correctness gap in a shipped authorization rule is not this
+workstream's to hoard.
+
+### Step 3a — the divergence is closed ✅ **2026-09-10**
+
+`AllowAnonymous` no longer compiles into the directive that contradicts it. The deploy is refused
+instead, which is 5a's rule for an unrecognised login identifier applied to the same class of mistake:
+a silent contradiction of the source is worse than a stopped deploy, because only one of the two is
+discoverable.
+
+What changed, in `AppSync_Adapter`:
+
+- **`_permissionToCognitoGroups` became `_permissionToGate`, returning a real variant** —
+  `Groups(array<string>) | AnyAuthenticated | Anonymous` — instead of `option<array<string>>`. The
+  option form is *why* the bug existed: it had no way to hold `AllowAuthenticated` and `AllowAnonymous`
+  apart, so both landed on `None`. With the arms distinct, re-collapsing them is a deliberate edit that
+  fails a test rather than a shrug that types fine.
+- **Both entry kinds collect offending fields and refuse once**, so one deploy reports every field
+  rather than turning a batch of them into as many failed deploys. A query reports **both** derived
+  field names, because the spec declares one permission and the generator emits two fields from it —
+  naming one would send the author hunting a declaration that does not exist.
+- The refusal names the fields, says what the emitted schema would have meant, says that the local
+  platform *does* honour the rule so a locally-green spec can still be undeployable here, and points at
+  the API-key work that piece 2 would need.
+
+*Evidence:* `reventless/aws` builds warning-free; **851 tests in 73 suites green** (up 5). The five new
+tests were **verified by deletion**: restoring the single collapsed arm
+(`AllowAuthenticated | AllowAnonymous => AnyAuthenticated`) turns exactly those five red and nothing
+else. One of them exists specifically to outlive the others — it asserts that the two permissions do
+*not* behave alike, because a test that only checks "it throws" would still pass if a later edit
+re-collapsed the arms and dropped the refusal together.
+
+*Blast radius, checked rather than assumed:* **no example, trait or shipped spec declares
+`AllowAnonymous`.** The only declarations are three DynamoDB-Local integration fixtures under
+`reventless/aws/tests/integration/`, and they never reach the SDL path — they exercise the aggregate
+runtime, where the rule is honoured. Nothing that deploys today starts failing.
+
+**What this does *not* do:** it does not make an anonymous door possible on AWS. It converts a silent
+wrong answer into a loud refusal, which is the whole of its claim. Pieces 2 and 3 are untouched, and
+until piece 2 exists the registration door cannot be deployed to AWS at all — which is now a fact the
+deploy states rather than one a stranger discovers.
 
 ## Step 4 — the plugin door
 
@@ -218,10 +413,11 @@ declaring `IdentityProvider` is reported unmet while nothing provisions one, and
 answers `Unavailable` rather than `Refused` on every operation, because a caller that got this far has
 already proven their address and `Refused` would strand them.
 
-**What is deliberately still missing:** Steps 2 and 3. There is no backend on either platform, and
-that is why the gate refuses rather than warns. In particular **nothing writes a principal yet, which
-keeps Step 2's no-second-chance decision genuinely open** — the mapping store's shape is still free,
-because no row has been written under a layout that would have to be migrated.
+**What is deliberately still missing:** Steps 2 and 3. There is no backend on either platform, and that
+is why the gate refuses rather than warns. This paragraph originally added that nothing writes a
+principal yet, so Step 2's decision was still free — **Step 2's own measurement has since withdrawn
+that**, and the withdrawal is worth leaving visible: the id was reaching the log by a path this step
+never looked at, which is what an unexamined "nothing has happened yet" is usually hiding.
 
 ## Step 5 — the deploy-time handle, which is already leaking
 
@@ -324,6 +520,14 @@ capability has to reproduce that property rather than inherit it, so it is worth
   developers already work with it. It races two processes — record that rather than pretend otherwise;
   the file is already shared with the seed runner.
 - Round-trip on both platforms: create, add to group, remove, delete.
+- ✅ **A spec field declaring `AllowAnonymous` either reaches an anonymous caller on AWS or fails the
+  deploy — never deploys green meaning `AllowAuthenticated`.** Held by five tests in
+  `AppSync_AdapterTest`, one of which pins the *contrast* between the two permissions rather than the
+  throw, so re-collapsing the arms cannot pass by also deleting the refusal.
+- **A token carrying a domain-id claim produces an `Identity.userId` that is not the `sub`, and a token
+  without one produces an `Identity.userId` that is exactly the `sub`.** Both arms, held as tests at
+  `Auth_Cognito`'s two entry points — the second is what protects every `@owner` field already written,
+  and it is the arm that will look redundant to a later reader and is not.
 - Full build warning-free and the whole suite green.
 
 ## Honesty ledger
@@ -338,10 +542,30 @@ capability has to reproduce that property rather than inherit it, so it is worth
   fixed at pool creation — `UpdateUserPoolRequest` cannot express it, `CreateUserPoolRequest` can. Also
   that `AdminCreateUserConfig` *can* be updated in place, and that the Pulumi AWS schema's
   `replaceOnChanges` is unpopulated for every resource in the provider.
-- **Still asserted from outside this repo, and now the only load-bearing outside claim:** that a
-  replaced pool cannot have its users carried across — Cognito exports no password material, so a
-  migration re-registers everybody. Narrower than what Step 0 started with, and it only decides *how
-  bad* the replacement is, not whether one happens.
+- **Measured in-repo 2026-09-10 (Step 2), replacing this plan's own claim of a clean slate:** that
+  `Identity.userId` is the Cognito `sub` on both AWS entry points, and that it is persisted by three
+  shipped paths — `meta.user` on every stored event, every `@owner`-stamped command field, and the
+  active-role row key. This plan asserted the opposite; the code says otherwise and the code is right.
+- **Measured in the vendored SDK types 2026-09-10 (Step 2):** that `ListUsers` cannot filter custom
+  attributes, so domain → provider cannot be delegated to the provider; and that `Schema` is on
+  `CreateUserPoolRequest` only, while `AddCustomAttributes` exists as its own operation — which is what
+  makes the remedy applicable to a live pool.
+- **Measured in-repo 2026-09-10 (Step 3), replacing this plan's own description of the gap:** that
+  `ownedComponents` and `clientDoor` do not exist — `CapabilityManifest.entry` is `{kind, key,
+  declaredBy}`; that `Authorization.permission` already publishes `AllowAnonymous`; that
+  `AppSync_Adapter` collapses `AllowAuthenticated | AllowAnonymous` to one group-less Cognito directive
+  while the local resolvers call `isAllowed` and honour the distinction; that the only `isAllowed` in
+  `reventless/aws/src` is on the Postgres query path, so mutations have no runtime check; and that
+  `AppSync.GraphQLApi.authenticationType` has no anonymous arm and no `AppSync_ApiKey` binding exists.
+- **Still asserted from outside this repo — three claims, all narrow:** that a replaced pool cannot have
+  its users carried across, since Cognito exports no password material, so a migration re-registers
+  everybody (narrower than what Step 0 started with, and it decides only *how bad* a replacement is, not
+  whether one happens); that a `custom:` attribute is emitted into the id token for an app client
+  granted read access to it; and that an AppSync API key expires, with a maximum lifetime of about a
+  year, which is what makes Step 3's anonymous door an operational commitment rather than a directive.
+  The token claim is Step 2's hot path, so **verify it against a real token before building on it** — if
+  it is wrong, the provider → domain direction needs the store too, and the store moves onto the request
+  path, which is the one thing the direction split was chosen to avoid.
 - **Design proposal, not validated:** every ReScript block here is illustrative shape, not code that
   compiles. The operation set is argued from what the shipped capabilities look like plus one unbuilt
   consumer, and a second consumer can still invert which half was load-bearing.
