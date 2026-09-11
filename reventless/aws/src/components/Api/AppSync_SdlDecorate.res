@@ -162,8 +162,10 @@ let refuseAnonymousFields = (fieldNames: array<string>): 'a =>
     `Authorization.isAllowed), so a spec that passes locally can still not be\n` ++
     `deployable here. That divergence is the reason this refuses instead of\n` ++
     `emitting a directive that reads as gated and is not.\n\n` ++
-    `To serve anonymous callers on AWS the API needs API_KEY added as a third\n` ++
-    `auth provider, plus something to rotate the key. Until then, declare the\n` ++ `field AllowAuthenticated (or AllowGroups) and mean it.`,
+    `Anonymous fields on AWS are deferred. When they land it will be as a separate\n` ++
+    `API carrying only the unauthenticated fields. Do not add API_KEY to this one:\n` ++
+    `every field here would then have to say whether the key reaches it, and one\n` ++
+    `that forgot would be open. Until then, declare the field AllowAuthenticated\n` ++ `(or AllowGroups) and mean it.`,
   )
 
 // Injects the Cognito group gate on ALL mutation, query, and subscription fields
