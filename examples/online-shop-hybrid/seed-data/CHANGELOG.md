@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.88 (2026-09-11)
+
+### Features
+
+* **aws:** the first administrator is one command, not the console ([5f1a846](https://github.com/ReventlessDev/reventless-core/commit/5f1a84603b21a9feb691a08a148751c6c6e8eca8))
+
+
 # 1.0.0-alpha.87 (2026-09-09)
 
 ### Bug Fixes

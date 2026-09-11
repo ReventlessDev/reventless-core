@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.262 (2026-09-11)
+
+* feat(spec)!: a secret is a capability, so a test can know it in advance ([71507c6](https://github.com/ReventlessDev/reventless-core/commit/71507c6459b49178746f00c5040cb479d7fdade8))
+### Features
+
+* **aws:** the first administrator is one command, not the console ([5f1a846](https://github.com/ReventlessDev/reventless-core/commit/5f1a84603b21a9feb691a08a148751c6c6e8eca8))
+
+### BREAKING CHANGES
+
+* Capabilities.t gains a secrets member. A platform that builds
+the record literally no longer compiles until it supplies one;
+Capabilities.none.secrets is the refusing value. Code that spreads
+Capabilities.none is unaffected.
+
+
+
 # 3.0.0-alpha.261 (2026-09-09)
 
 **Note:** Version bump only for package @reventlessdev/reventless-core

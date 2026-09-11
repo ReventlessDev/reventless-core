@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.295 (2026-09-11)
+
+### Features
+
+* **aws:** the rest of the cast is a file, not a comment ([aa23581](https://github.com/ReventlessDev/reventless-core/commit/aa23581f09948a47fb451ec2ecf2fc2bdd8e6ee6))
+* **spec:** preparing a manifest is not an AWS errand ([bd7f8e2](https://github.com/ReventlessDev/reventless-core/commit/bd7f8e2f6132c0cacac2ab839165f21fe91eaf6c))
+
+
 # 1.0.0-alpha.294 (2026-09-09)
 
 ### Bug Fixes

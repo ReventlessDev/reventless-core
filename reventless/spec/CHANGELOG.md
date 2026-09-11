@@ -3,6 +3,32 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.135 (2026-09-11)
+
+### Bug Fixes
+
+* **spec:** a command that declines to act is not a command that was refused ([0b3d8a4](https://github.com/ReventlessDev/reventless-core/commit/0b3d8a40092ce7ed7801a2aae5d4d7bbed03c179))
+* feat(spec)!: a secret is a capability, so a test can know it in advance ([71507c6](https://github.com/ReventlessDev/reventless-core/commit/71507c6459b49178746f00c5040cb479d7fdade8))
+* feat(spec)!: making a principal is a capability, so the provider is replaceable ([3e59b9b](https://github.com/ReventlessDev/reventless-core/commit/3e59b9b665cc7e4b6b6f156b63b1b6bd0c6181ca))
+### Features
+
+* **aws:** the first administrator is one command, not the console ([5f1a846](https://github.com/ReventlessDev/reventless-core/commit/5f1a84603b21a9feb691a08a148751c6c6e8eca8))
+* **aws:** the rest of the cast is a file, not a comment ([aa23581](https://github.com/ReventlessDev/reventless-core/commit/aa23581f09948a47fb451ec2ecf2fc2bdd8e6ee6))
+* **spec:** preparing a manifest is not an AWS errand ([bd7f8e2](https://github.com/ReventlessDev/reventless-core/commit/bd7f8e2f6132c0cacac2ab839165f21fe91eaf6c))
+
+### BREAKING CHANGES
+
+* Capabilities.t gains a secrets member. A platform that builds
+the record literally no longer compiles until it supplies one;
+Capabilities.none.secrets is the refusing value. Code that spreads
+Capabilities.none is unaffected.
+* Capabilities.t gains an identityProvider member. A platform
+that builds the record literally no longer compiles until it supplies one;
+Capabilities.none.identityProvider is the refusing value to pass while no
+backend exists. Code that spreads Capabilities.none is unaffected.
+
+
+
 # 3.0.0-alpha.134 (2026-09-09)
 
 ### Bug Fixes

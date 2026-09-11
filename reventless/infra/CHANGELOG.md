@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.163 (2026-09-11)
+
+* feat(spec)!: making a principal is a capability, so the provider is replaceable ([3e59b9b](https://github.com/ReventlessDev/reventless-core/commit/3e59b9b665cc7e4b6b6f156b63b1b6bd0c6181ca))
+
+### BREAKING CHANGES
+
+* Capabilities.t gains an identityProvider member. A platform
+that builds the record literally no longer compiles until it supplies one;
+Capabilities.none.identityProvider is the refusing value to pass while no
+backend exists. Code that spreads Capabilities.none is unaffected.
+
+
+
 # 3.0.0-alpha.162 (2026-09-09)
 
 **Note:** Version bump only for package @reventlessdev/reventless-infra

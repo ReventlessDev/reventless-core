@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.238 (2026-09-11)
+
+### Bug Fixes
+
+* **spec:** a command that declines to act is not a command that was refused ([0b3d8a4](https://github.com/ReventlessDev/reventless-core/commit/0b3d8a40092ce7ed7801a2aae5d4d7bbed03c179))
+### Features
+
+* **example:** a customer's email carries whether it has been proven ([04885a6](https://github.com/ReventlessDev/reventless-core/commit/04885a66e22ca255172f038b42c120c66c0a76bc))
+* **example:** draw a secret, send it, and record only its hash ([a08cbe8](https://github.com/ReventlessDev/reventless-core/commit/a08cbe854516e68e97b0b81e7a53c55e1415bc29))
+* **example:** one secret at a time, held where a snapshot cannot reach it ([f904c63](https://github.com/ReventlessDev/reventless-core/commit/f904c635858f33043dc1d01c968887fee2000047))
+* **example:** proving an address, and dropping the proof when it changes ([89612ff](https://github.com/ReventlessDev/reventless-core/commit/89612ff338e9a39fddf1b2147b88fb961ee57601))
+
+
 # 1.0.0-alpha.237 (2026-09-09)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-ordering

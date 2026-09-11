@@ -3,6 +3,24 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.11 (2026-09-11)
+
+* feat(spec)!: a secret is a capability, so a test can know it in advance ([71507c6](https://github.com/ReventlessDev/reventless-core/commit/71507c6459b49178746f00c5040cb479d7fdade8))
+* feat(spec)!: making a principal is a capability, so the provider is replaceable ([3e59b9b](https://github.com/ReventlessDev/reventless-core/commit/3e59b9b665cc7e4b6b6f156b63b1b6bd0c6181ca))
+
+### BREAKING CHANGES
+
+* Capabilities.t gains a secrets member. A platform that builds
+the record literally no longer compiles until it supplies one;
+Capabilities.none.secrets is the refusing value. Code that spreads
+Capabilities.none is unaffected.
+* Capabilities.t gains an identityProvider member. A platform
+that builds the record literally no longer compiles until it supplies one;
+Capabilities.none.identityProvider is the refusing value to pass while no
+backend exists. Code that spreads Capabilities.none is unaffected.
+
+
+
 # 1.0.0-alpha.10 (2026-09-09)
 
 **Note:** Version bump only for package @reventlessdev/trait-address-geocoding
