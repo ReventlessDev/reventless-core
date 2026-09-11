@@ -1,9 +1,11 @@
 # Plan: self-registration is a chapter, not a trait
 
-**Date:** 2026-09-10
+**Date:** 2026-09-10, revised 2026-09-11
 **Status:** Not started, and **not ready to step in full** — two gaps below have to close first. Filed
 now because the shape is settled and because the two blockers are cheap to name and expensive to
-discover late.
+discover late. **Revised 2026-09-11:** the AWS door is deferred, so this is built and proven on the
+local platform first (*Both platforms*); and the first real requirement arrived — a deployer briefly
+opening their own `Closed` deployment — which a runtime policy flip already satisfies.
 **Repos:** `reventless-core` only.
 **Blocks on:** [identity-is-a-capability-not-a-cognito-handle.md](./identity-is-a-capability-not-a-cognito-handle.md)
 (hard — nothing here works without `createPrincipal`) ·
@@ -61,6 +63,13 @@ Two consequences to accept rather than work around:
 not also own it: two verifiers means two sources of truth about one fact, and the provider's is
 invisible to every read model, absent locally, and different on the next provider.
 
+**And keep the provider's own sign-up entrance shut.** On Cognito that is `platform:signUpMode`, and on
+every pool this chapter serves it stays `adminOnly`. Opening it does not help this flow —
+`createPrincipal` is an administrator's call, which an admin-only pool accepts — and it reopens ordering
+A beside it: Cognito's public `SignUp` needs only the app client id, which ships in the page, so anyone
+could create a principal with no claim tag and no proof. **The pool setting is not a way to open
+registration, even briefly.** The policy below is.
+
 ## Admission is three orthogonal knobs, not an enum
 
 Every mode anyone asks for decomposes into three independent questions: **who may issue a challenge**,
@@ -106,6 +115,19 @@ state says" is justified by blast radius — without it, a compromised admin acc
 registration. That matters for a regulated estate and is noise for a shop, and the hard cap covers the
 common case. One config key is cheap to add when a deployment asks. Recorded so it is a decision rather
 than an omission.
+
+### Opening a `Closed` deployment for a while
+
+A deployer who ships `Closed` and wants to exercise registration on their own deployment flips the
+**policy**, not the deployment: one authorized command opens it, another closes it. No redeploy, no
+source edit, and both land in the log with who did it and when. It needs no admin UI — the command is
+the whole mechanism, and any authorized client can send it.
+
+**Proposed: give `Open` an optional end.** A test window someone forgets to close is open registration.
+An `openUntil` on the issue knob, checked lazily in `decide` against the time the command carries — read
+at the edge, as the verification trait's `presentedAt` already is — closes the window with no scheduler
+and no closing event. Past its end, `Open` refuses exactly as `Closed` does. It bounds an existing mode
+rather than adding one, so the decomposition is not reopened.
 
 ## Key the policy by scope from the first commit
 
@@ -165,6 +187,12 @@ an access control, and belongs on the registration command as required fields th
 | Send the token | ✅ SES, plus a `log` transport chosen by config | ✅ the log transport writes the message out |
 | Create a principal | ⚠️ needs the capability's Cognito provider | ⚠️ needs the capability's local provider |
 | Throttle the anonymous door | ⚠️ WAF / AppSync throttling — see below | ❌ nothing exists |
+| The anonymous door itself | ❌ **deferred 2026-09-11** — AppSync has no anonymous auth mode, and `AllowAnonymous` refuses the deploy. When built: a separate narrow door, not a third auth type on the platform API | ✅ `AllowAnonymous` is honoured — the resolvers call `Authorization.isAllowed` |
+
+**So this is built and proven locally first.** The door's shape is decided in the identity plan's
+Step 3b: a door of its own, so the platform API keeps two auth types and the risk sits in one place. The
+option that needs no door — the browser calling the provider's own sign-up — is rejected rather than
+deferred, because it is ordering A.
 
 **The local story is unusually good and worth protecting.** With the log transport a developer
 registers, reads the token out of the platform log, and completes the flow — no mailbox, no external
@@ -183,12 +211,19 @@ mail to an attacker-chosen address is an abuse target, and the cost rises from s
 money per request the moment an SMS channel exists. Whichever deployment first opens this door
 publicly must land the throttle in the same increment.
 
+**A test window counts.** An `Open` with an end bounds the exposure; it does not remove it. `Closed`
+refuses in `decide` before anything is sent, so the mail-abuse cost this throttle exists for is incurred
+only while the policy is open — which is exactly when a deployer testing on a public URL has opened it.
+
 ## Two blockers before this can be stepped in full
 
 1. **The mode set is decomposed from requirements nobody here has stated.** The seven named modes are
    the common ones in the market, not ones this repo has been asked for, and the three-knob claim is
    argued from them rather than measured. The *decomposition* is the durable part; which modes are
    worth building is not decided. **Get one real requirement before building past `Closed` / `Open`.**
+   *One has since been stated (2026-09-11):* a deployer opening their own `Closed` deployment briefly
+   to exercise the flow. It needs nothing past `Closed` / `Open` — it argues for a bound on `Open`, not
+   for another mode.
 2. **The UI half is uninvestigated** — what a registration form is, what an unauthenticated route does,
    and what the shell does with a half-completed session. None of it is designed, and it is the half a
    user actually touches.
@@ -201,15 +236,25 @@ publicly must land the throttle in the same increment.
 - An abandoned registration expires and releases its claim tag; the address is registrable again.
 - `Closed` refuses at `decide`, not only in the client.
 - The whole flow runs locally end to end with the log transport and no AWS.
+- On AWS, once a door exists, the flow completes against a pool whose own sign-up is `adminOnly` —
+  nothing here leans on the provider's self-service.
+- If the bound is taken: past its end, an `Open` window refuses exactly as `Closed` does, with no event
+  recorded to close it.
 - Full build warning-free, whole suite green.
 
 ## Honesty ledger
 
 - **Read off code:** `Platform_Stack.res`'s `preventUserExistenceErrors: ENABLED` on both pool paths;
   the messaging capability's config rationale, quoted; the local log transport's behaviour; and the
-  capability-layer facts recorded in the identity plan.
+  capability-layer facts recorded in the identity plan. *Added 2026-09-11:* `provision-identity
+  --sign-up-mode` applies only when the script **creates** a pool — an existing one is adopted unchanged
+  — and a stack given a supplied pool ignores `platform:signUpMode`, so a supplied pool's sign-up
+  setting cannot be flipped by any supported path.
+- **Asserted from outside the repo:** that `AdminCreateUser` succeeds on a pool with
+  `AllowAdminCreateUserOnly: true` — the flag's documented purpose, and what lets the pool stay shut
+  while `createPrincipal` works. Confirm when the Cognito provider is built.
 - **Design proposal, not validated:** the mode table, the three-knob decomposition, the three layers,
-  and every claim about what a later per-organisation layer will want. The scope-keying and claim-tag
+  the bounded `Open`, and every claim about what a later per-organisation layer will want. The scope-keying and claim-tag
   instructions are cheap insurance argued from that unvalidated shape — they are worth taking anyway,
   because both are single fields now and migrations later.
 - **Not investigated:** the UI half; GDPR erasure of a registration that never completed; whether the

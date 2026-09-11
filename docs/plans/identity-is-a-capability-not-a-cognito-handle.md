@@ -13,8 +13,9 @@ payloads. Step 2 is re-cut around that; it turns out to be one seam wide, additi
 already exists as `Authorization.AllowAnonymous`, and AWS silently enforces it as *authenticated only*.
 Step 3 is re-cut into three pieces, and **the first — refusing to compile `AllowAnonymous` into a
 directive that contradicts it — ✅ shipped 2026-09-10**, as did **Step 5b** (862 aws tests green, both
-verified by deletion). **Steps 3b (an API-key auth provider, its missing Pulumi binding, and key
-rotation), 3c (the door) and 2 are what remain**, and 3b is the one gating an anonymous door on AWS.
+verified by deletion). **Step 3b was decided 2026-09-11: the AWS door is deferred, and when built it
+is a separate narrow door** rather than an API key on the platform API. **Steps 3c (the door, local
+first) and 2 are what remain.**
 **Repos:** `reventless-core` only.
 
 **Goal.** Put the *administrative* half of identity — making, grouping and unmaking principals —
@@ -293,8 +294,8 @@ reasons that removal was right are the ones this door has to answer.
 Three pieces, and only the first is small:
 
 1. **Stop the silent divergence** — ✅ **built 2026-09-10, see below.**
-2. **The API-key auth provider and its binding**, if the anonymous door is to exist on AWS at all —
-   plus whatever rotates the key.
+2. **An unauthenticated surface on AWS** — ✅ **decided 2026-09-11: deferred, and a separate narrow
+   door when built** (Step 3b below). Originally framed as an API-key provider on this API.
 3. **The door itself**, on both platforms, over a backend Step 2 has not decided the storage for.
 
 Only (1) was affordable, it was worth doing on its own, and it was worth doing **whether or not this
@@ -339,6 +340,31 @@ runtime, where the rule is honoured. Nothing that deploys today starts failing.
 wrong answer into a loud refusal, which is the whole of its claim. Pieces 2 and 3 are untouched, and
 until piece 2 exists the registration door cannot be deployed to AWS at all — which is now a fact the
 deploy states rather than one a stranger discovers.
+
+### Step 3b — the AWS door: **decided 2026-09-11, deferred**
+
+Three shapes were on the table, none free:
+
+| Shape | Cost |
+|---|---|
+| API key as a third auth type on this API | every field must then say whether the key reaches it — the failure this adapter has had twice; a secret shipped to the page, on a rotation timer; no `AppSync_ApiKey` binding |
+| The browser calls the provider's own sign-up | nearly free, but the provider then owns proving the address and creates before confirming — the ordering the registration chapter rejects |
+| A separate narrow door | the risk sits in one place and this API keeps two auth types; more to build, deploy and watch |
+
+**Decision: the third, and not yet.** Nothing that needs the door is ready — the chapter is unbuilt and
+the unauthenticated throttle has no home — and the local platform already honours `AllowAnonymous`, so
+the flow is built and proven there first. The second shape is **rejected, not deferred**: it is not a
+cheaper door, it is a different owner for the proof. Its corollary lands on Step 5b: **`platform:signUpMode`
+stays `adminOnly` on every pool**, because opening it *is* the second shape.
+
+What the narrow door authenticates with — its own API key, an unauthenticated identity-pool role,
+something else — is not decided and belongs to whoever builds it. The honesty ledger's API-key expiry
+claim still applies if it is a key.
+
+✅ **Its one follow-up in code is made (2026-09-11).** `AppSync_SdlDecorate.refuseAnonymousFields`
+(where 3a's refusal now lives) told the author to add `API_KEY` as a third auth provider on this API —
+the rejected shape. It now says anonymous fields are deferred to a separate API and warns against the
+key on this one. Message text only; what is refused is unchanged, and all 150 AppSync tests stay green.
 
 ## Step 4 — the plugin door
 
@@ -475,7 +501,7 @@ So 5b is two halves with different owners, and only the first is the stack's wor
 | Pool | Where the flip lives | Cost |
 |---|---|---|
 | Auto (`HostUiPool`) | a declared property, driven by the capability setting | one property |
-| BYO / supplied | `scripts/ProvisionIdentity.res`, beside 5a's `--login-identifier` | a flag on a script that already exists |
+| BYO / supplied | `scripts/ProvisionIdentity.res`, beside 5a's `--login-identifier` | a flag on a script that already exists — ⚠️ **at creation only** (measured 2026-09-11): an existing pool is adopted unchanged, so no supported path flips a supplied pool |
 
 Putting the BYO half in the provisioning script rather than in a second merge-and-send-back resource is
 the recommendation: the script already provisions the pool no stack owns and already carries the other
@@ -502,7 +528,8 @@ a call site. Both arms are pinned by a test for that reason.
   `loginIdentifier`. **Absent means `adminOnly`**, so every existing stack redeploys byte-unchanged —
   and closed is right on its own terms, since a deployment that never asked for self-registration
   should not acquire it by upgrading.
-- `--sign-up-mode` on the provisioning script, same variant, same refusal.
+- `--sign-up-mode` on the provisioning script, same variant, same refusal — applied only when the
+  script creates the pool. Since Step 3b, no pool this repo serves should be given `selfService`.
 - **An unrecognised spelling fails the deploy — for a different reason than 5a's, and the plan should
   not be read as if they were the same.** 5a refuses because the mistake is *permanent*. This one is
   correctable at any time; it refuses because the mistake is *silent*. The default is closed, so a typo
