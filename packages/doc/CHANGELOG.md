@@ -719,6 +719,10 @@ This file tracks changes to the documentation. Since the doc package is not vers
 ## Changes
 
 ### 2026-09-10
+- feat(spec): preparing a manifest is not an AWS errand ([bd7f8e2](https://github.com/ReventlessDev/reventless-core/commit/bd7f8e2f6132c0cacac2ab839165f21fe91eaf6c))
+- feat(aws): the rest of the cast is a file, not a comment ([aa23581](https://github.com/ReventlessDev/reventless-core/commit/aa23581f09948a47fb451ec2ecf2fc2bdd8e6ee6))
+- feat(aws): the first administrator is one command, not the console ([5f1a846](https://github.com/ReventlessDev/reventless-core/commit/5f1a84603b21a9feb691a08a148751c6c6e8eca8))
+### 2026-09-10
 - feat(spec)!: a push channel is not one provider ([a778832](https://github.com/ReventlessDev/reventless-core/commit/a778832b1abee2449faa62db9e42520f5e3a7212))
 ### 2026-09-09
 - fix(aws): the archive asks what the layer holds, not what resolves ([fca352f](https://github.com/ReventlessDev/reventless-core/commit/fca352f7a19f0518a84944d4efd23eb98285f6bf))
