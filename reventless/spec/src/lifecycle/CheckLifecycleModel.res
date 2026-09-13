@@ -681,6 +681,90 @@ let deriveCommands = (
   })
 }
 
+// ── What each command yields ────────────────────────────────────────────────
+
+/** Which command yields which event or error, as its scenarios show it — what a
+    consumer draws a command's outcome arrows from, read off the corpus rather
+    than guessed from names. It needs no lifecycle labelling, so every corpus a
+    plugin has is read, though only its command scenarios count.
+
+    An empty `then` is skipped rather than read as "accepted, nothing happened".
+    The PPX currently writes `then: []` for `thenNoEvent`, so an empty `then` is
+    indistinguishable from one the sidecar could not read, and an outcome shown
+    here has to be one a scenario actually states. */
+type shownOutcome = {
+  kind: string, // "event" | "error" | "noEvent"
+  /** The whole `then`, in order: `thenEvents([A, B])` is one outcome of two
+      events — both, not either. Empty for `noEvent`. */
+  names: array<string>,
+  /** The title of every scenario showing this outcome, in corpus order. */
+  scenarios: array<string>,
+}
+
+type commandOutcomes = {
+  plugin: string,
+  component: string,
+  command: string,
+  /** One per distinct outcome, in order of first appearance. */
+  outcomes: array<shownOutcome>,
+}
+
+let shownOutcomeOf = (s: scenario): option<(string, array<string>)> =>
+  switch s.thenKind {
+  | "event" | "error" => Some((s.thenKind, s.thenElements->Array.map(e => e.name)))
+  | "noEvent" => Some(("noEvent", []))
+  // The empty `then` above, and a `then` that is not about this command's
+  // result — a side effect, a published command.
+  | _ => None
+  }
+
+let byPluginComponentCommand = (xs: array<commandOutcomes>): array<commandOutcomes> =>
+  xs->Array.toSorted((a, b) =>
+    switch String.compare(a.plugin, b.plugin) {
+    | 0. =>
+      switch String.compare(a.component, b.component) {
+      | 0. => String.compare(a.command, b.command)
+      | c => c
+      }
+    | c => c
+    }
+  )
+
+/** A command with no readable outcome is left out: an entry must say something. */
+let commandOutcomes = (~plugin: string, ~corpora: array<corpus>): array<commandOutcomes> => {
+  let entries: array<commandOutcomes> = []
+  corpora->Array.forEach(c =>
+    c.scenarios->Array.forEach(s =>
+      switch (s.whenKind, s.whenElements->Array.get(0), shownOutcomeOf(s)) {
+      | ("command", Some(command), Some((kind, names))) =>
+        let entry = switch entries->Array.find(
+          e => e.component == c.component && e.command == command.name,
+        ) {
+        | Some(e) => e
+        | None =>
+          let e: commandOutcomes = {
+            plugin,
+            component: c.component,
+            command: command.name,
+            outcomes: [],
+          }
+          entries->Array.push(e)
+          e
+        }
+        switch entry.outcomes->Array.find(o => o.kind == kind && o.names == names) {
+        | Some(o) =>
+          if !(o.scenarios->Array.includes(s.title)) {
+            o.scenarios->Array.push(s.title)
+          }
+        | None => entry.outcomes->Array.push({kind, names, scenarios: [s.title]})
+        }
+      | _ => ()
+      }
+    )
+  )
+  entries->byPluginComponentCommand
+}
+
 // ── The three verdicts ──────────────────────────────────────────────────────
 
 type finding = {
@@ -953,6 +1037,7 @@ let runPlugin = async (
   ~pluginDir: string,
   ~findings: array<finding>,
   ~opaque: array<opaque>,
+  ~outcomes: array<commandOutcomes>,
 ): result<array<derivedCommand>, string> =>
   switch await readDeclared(~pluginDir) {
   | Error(msg) => Error(msg)
@@ -961,6 +1046,8 @@ let runPlugin = async (
       filesUnder(NodePath.join([pluginDir, "tests"]), ~suffix=".gwt.json")->Array.filterMap(
         readCorpus,
       )
+
+    outcomes->Array.pushMany(commandOutcomes(~plugin, ~corpora))
 
     // Every corpus, not only the ones the walk goes on to use: the kinds that
     // are unreadable in full — extension points, automation and translation
@@ -1131,13 +1218,16 @@ let goldenPath = (~root: appRoot) => NodePath.join([root.dir, "schema", "lifecyc
       ever exercised, which is a sharper "missing scenario" than a verdict.
     - `opaque` — the corpora the walk cannot read, so a consumer can say "not
       analysed" where it would otherwise say "not covered".
+    - `outcomes` — which command yields which event or error, and the scenarios
+      that show it, sorted by plugin, component and command.
 
-    `str` is the schema's own version, bumped when a consumer would have to
-    change. */
+    `version` is the schema's own version, bumped when a consumer would have to
+    change. An added section is not such a change. */
 let reportJson = (
   ~findings: array<finding>,
   ~opaque: array<opaque>,
   ~derived: array<(string, derivedCommand)>,
+  ~outcomes: array<commandOutcomes>,
   ~failures: array<string>,
 ): string => {
   let strs = xs => JSON.Encode.array(xs->Array.map(JSON.Encode.string))
@@ -1174,11 +1264,30 @@ let reportJson = (
       ("unreadable", JSON.Encode.int(o.unreadable)),
     ])
 
+  let shownOutcomeJson = (o: shownOutcome) =>
+    obj([
+      ("kind", JSON.Encode.string(o.kind)),
+      ("names", strs(o.names)),
+      ("scenarios", strs(o.scenarios)),
+    ])
+
+  let commandOutcomesJson = (e: commandOutcomes) =>
+    obj([
+      ("plugin", JSON.Encode.string(e.plugin)),
+      ("component", JSON.Encode.string(e.component)),
+      ("command", JSON.Encode.string(e.command)),
+      ("outcomes", JSON.Encode.array(e.outcomes->Array.map(shownOutcomeJson))),
+    ])
+
   JSON.stringify(
     obj([
       ("version", JSON.Encode.int(1)),
       ("findings", JSON.Encode.array(findings->Array.map(findingJson))),
       ("commands", JSON.Encode.array(derived->Array.map(commandJson))),
+      (
+        "outcomes",
+        JSON.Encode.array(outcomes->byPluginComponentCommand->Array.map(commandOutcomesJson)),
+      ),
       ("opaque", JSON.Encode.array(opaque->Array.map(opaqueJson))),
       ("unreadable", strs(failures)),
     ]),
@@ -1270,6 +1379,7 @@ let writeOrCompare = (~path: string, ~actual: string, ~label: string, ~drifted: 
 let main = async () => {
   let findings = []
   let opaque = []
+  let outcomes = []
   let failures = []
   let drifted = []
   let allDerived = []
@@ -1327,7 +1437,7 @@ let main = async () => {
         | Some(pluginDir) =>
           let plugin = NodePath.basename(pluginDir)
           let qualified = `${example}/${plugin}`
-          switch await runPlugin(~plugin=qualified, ~pluginDir, ~findings, ~opaque) {
+          switch await runPlugin(~plugin=qualified, ~pluginDir, ~findings, ~opaque, ~outcomes) {
           | Ok(commands) =>
             commands->Array.forEach(c => {
               derived->Array.push(c)
@@ -1370,7 +1480,7 @@ let main = async () => {
   let contradicted = of_("contradicted")
 
   if json {
-    Console.log(reportJson(~findings, ~opaque, ~derived=allDerived, ~failures))
+    Console.log(reportJson(~findings, ~opaque, ~derived=allDerived, ~outcomes, ~failures))
   } else {
     ["contradicted", "unverified", "undeclared", "level", "ambiguous"]->Array.forEach(severity => {
       let group = of_(severity)

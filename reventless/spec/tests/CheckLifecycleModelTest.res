@@ -124,3 +124,167 @@ describe("an Unrestricted claim is refuted by a refusal, not by silence", () => 
     expect(verdictsFor(~observations=silentSomewhere, ~allowedStatesSource=None))->toEqual([])
   )
 })
+
+// Which command yields which event or error. An outcome is the whole `then`, so
+// two events emitted together are one outcome rather than two alternatives; and
+// an empty `then` is not evidence of anything, since the PPX writes the same
+// `then: []` for `thenNoEvent` as for a step it could not read.
+describe("commandOutcomes reads each command's outcomes off its scenarios", () => {
+  let el = (name): Check.element => {name, values: []}
+  let scenario = (~title, ~whenKind="command", ~when_, ~thenKind, ~then_=[]): Check.scenario => {
+    title,
+    given: [],
+    whenKind,
+    whenElements: when_->Array.map(el),
+    thenKind,
+    thenElements: then_->Array.map(el),
+    thenValues: [],
+  }
+  let corpus = (~component, scenarios): Check.corpus => {
+    component,
+    path: `tests/${component}/Aggregate/${component}_GWT.gwt.json`,
+    scenarios,
+  }
+
+  let found = Check.commandOutcomes(
+    ~plugin="shop/ordering",
+    ~corpora=[
+      corpus(
+        ~component="Order",
+        [
+          scenario(~title="placing", ~when_=["Place"], ~thenKind="event", ~then_=["OrderPlaced"]),
+          scenario(
+            ~title="placing twice",
+            ~when_=["Place"],
+            ~thenKind="error",
+            ~then_=["OrderAlreadyPlaced"],
+          ),
+          scenario(
+            ~title="placing again",
+            ~when_=["Place"],
+            ~thenKind="event",
+            ~then_=["OrderPlaced"],
+          ),
+          scenario(
+            ~title="shipping",
+            ~when_=["Ship"],
+            ~thenKind="event",
+            ~then_=["OrderShipped", "InvoiceIssued"],
+          ),
+          scenario(~title="shipping a shipped order", ~when_=["Ship"], ~thenKind="noEvent"),
+          scenario(~title="cancelling, unreadably", ~when_=["Cancel"], ~thenKind=""),
+          scenario(~title="an opaque when", ~when_=[], ~thenKind="event", ~then_=["OrderPlaced"]),
+        ],
+      ),
+      corpus(
+        ~component="Customer",
+        [
+          scenario(
+            ~title="registering",
+            ~when_=["Register"],
+            ~thenKind="event",
+            ~then_=["Registered"],
+          ),
+        ],
+      ),
+      corpus(
+        ~component="Orders",
+        [
+          scenario(
+            ~title="a placed order is listed",
+            ~whenKind="event",
+            ~when_=["OrderPlaced"],
+            ~thenKind="state",
+          ),
+        ],
+      ),
+    ],
+  )
+
+  let entry = command =>
+    found->Array.find(e => e.Check.command == command)->Option.map(e => e.outcomes)
+
+  testSync("entries are sorted by component, then command, and say something", () =>
+    expect(found->Array.map(e => (e.Check.plugin, e.component, e.command)))->toEqual([
+      ("shop/ordering", "Customer", "Register"),
+      ("shop/ordering", "Order", "Place"),
+      ("shop/ordering", "Order", "Ship"),
+    ])
+  )
+
+  testSync("a single event, and an error, in order of first appearance", () =>
+    expect(entry("Place"))->toEqual(
+      Some([
+        {Check.kind: "event", names: ["OrderPlaced"], scenarios: ["placing", "placing again"]},
+        {kind: "error", names: ["OrderAlreadyPlaced"], scenarios: ["placing twice"]},
+      ]),
+    )
+  )
+
+  testSync("events emitted together are one outcome, and noEvent is its own", () =>
+    expect(entry("Ship"))->toEqual(
+      Some([
+        {
+          Check.kind: "event",
+          names: ["OrderShipped", "InvoiceIssued"],
+          scenarios: ["shipping"],
+        },
+        {kind: "noEvent", names: [], scenarios: ["shipping a shipped order"]},
+      ]),
+    )
+  )
+
+  // Only an empty `then`, so there is nothing to say, and no entry says it.
+  testSync("an empty then is skipped, and a command left with nothing is omitted", () =>
+    expect(entry("Cancel"))->toEqual(None)
+  )
+
+  testSync("a read model's event scenarios are not command outcomes", () =>
+    expect(found->Array.some(e => e.Check.component == "Orders"))->toEqual(false)
+  )
+
+  testSync("the same outcome in two corpora of one component merges, titles deduplicated", () => {
+    let twice = Check.commandOutcomes(
+      ~plugin="shop/ordering",
+      ~corpora=[
+        corpus(
+          ~component="Customer",
+          [
+            scenario(
+              ~title="registering",
+              ~when_=["Register"],
+              ~thenKind="event",
+              ~then_=["Registered"],
+            ),
+          ],
+        ),
+        corpus(
+          ~component="Customer",
+          [
+            scenario(
+              ~title="registering",
+              ~when_=["Register"],
+              ~thenKind="event",
+              ~then_=["Registered"],
+            ),
+            scenario(
+              ~title="registering by invitation",
+              ~when_=["Register"],
+              ~thenKind="event",
+              ~then_=["Registered"],
+            ),
+          ],
+        ),
+      ],
+    )
+    expect(twice->Array.map(e => e.Check.outcomes))->toEqual([
+      [
+        {
+          Check.kind: "event",
+          names: ["Registered"],
+          scenarios: ["registering", "registering by invitation"],
+        },
+      ],
+    ])
+  })
+})

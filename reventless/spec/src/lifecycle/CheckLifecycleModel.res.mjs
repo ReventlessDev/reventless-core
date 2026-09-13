@@ -489,6 +489,109 @@ function deriveCommands(component, observations, labelled) {
   });
 }
 
+function shownOutcomeOf(s) {
+  let match = s.thenKind;
+  switch (match) {
+    case "error" :
+    case "event" :
+      break;
+    case "noEvent" :
+      return [
+        "noEvent",
+        []
+      ];
+    default:
+      return;
+  }
+  return [
+    s.thenKind,
+    s.thenElements.map(e => e.name)
+  ];
+}
+
+function byPluginComponentCommand(xs) {
+  return xs.toSorted((a, b) => {
+    let c = Primitive_string.compare(a.plugin, b.plugin);
+    if (c !== 0) {
+      return c;
+    }
+    let c$1 = Primitive_string.compare(a.component, b.component);
+    if (c$1 !== 0) {
+      return c$1;
+    } else {
+      return Primitive_string.compare(a.command, b.command);
+    }
+  });
+}
+
+function commandOutcomes(plugin, corpora) {
+  let entries = [];
+  corpora.forEach(c => {
+    c.scenarios.forEach(s => {
+      let match = s.whenKind;
+      let match$1 = s.whenElements[0];
+      let match$2 = shownOutcomeOf(s);
+      if (match !== "command") {
+        return;
+      }
+      if (match$1 === undefined) {
+        return;
+      }
+      if (match$2 === undefined) {
+        return;
+      }
+      let names = match$2[1];
+      let kind = match$2[0];
+      let e = entries.find(e => {
+        if (e.component === c.component) {
+          return e.command === match$1.name;
+        } else {
+          return false;
+        }
+      });
+      let entry;
+      if (e !== undefined) {
+        entry = e;
+      } else {
+        let e_component = c.component;
+        let e_command = match$1.name;
+        let e_outcomes = [];
+        let e$1 = {
+          plugin: plugin,
+          component: e_component,
+          command: e_command,
+          outcomes: e_outcomes
+        };
+        entries.push(e$1);
+        entry = e$1;
+      }
+      let o = entry.outcomes.find(o => {
+        if (o.kind === kind) {
+          return Primitive_object.equal(o.names, names);
+        } else {
+          return false;
+        }
+      });
+      if (o !== undefined) {
+        if (!o.scenarios.includes(s.title)) {
+          o.scenarios.push(s.title);
+          return;
+        } else {
+          return;
+        }
+      } else {
+        entry.outcomes.push({
+          kind: kind,
+          names: names,
+          scenarios: [s.title]
+        });
+        return;
+      }
+    });
+  });
+  return byPluginComponentCommand(entries);
+}
+
 function allUnverified(cmd, add, why) {
   let states = cmd.allowedStates;
   if (states !== undefined && states.length !== 0) {
@@ -659,7 +762,7 @@ function isWritablePath(path) {
   }
 }
 
-async function runPlugin(plugin, pluginDir, findings, opaque) {
+async function runPlugin(plugin, pluginDir, findings, opaque, outcomes) {
   let msg = await readDeclared(pluginDir);
   if (msg.TAG !== "Ok") {
     return {
@@ -669,6 +772,7 @@ async function runPlugin(plugin, pluginDir, findings, opaque) {
   }
   let declared = msg._0;
   let corpora = Stdlib_Array.filterMap(filesUnder(Nodepath.join(pluginDir, "tests"), ".gwt.json"), readCorpus);
+  outcomes.push(...commandOutcomes(plugin, corpora));
   corpora.forEach(c => {
     let unreadable = c.scenarios.filter(s => s.whenElements.length === 0);
     if (unreadable.length !== 0) {
@@ -805,7 +909,7 @@ function goldenPath(root) {
   return Nodepath.join(root.dir, "schema", "lifecycle-model.json");
 }
 
-function reportJson(findings, opaque, derived, failures) {
+function reportJson(findings, opaque, derived, outcomes, failures) {
   let findingJson = f => Object.fromEntries([
     [
       "verdict",
@@ -891,6 +995,38 @@ function reportJson(findings, opaque, derived, failures) {
       o.unreadable
     ]
   ]);
+  let shownOutcomeJson = o => Object.fromEntries([
+    [
+      "kind",
+      o.kind
+    ],
+    [
+      "names",
+      o.names.map(prim => prim)
+    ],
+    [
+      "scenarios",
+      o.scenarios.map(prim => prim)
+    ]
+  ]);
+  let commandOutcomesJson = e => Object.fromEntries([
+    [
+      "plugin",
+      e.plugin
+    ],
+    [
+      "component",
+      e.component
+    ],
+    [
+      "command",
+      e.command
+    ],
+    [
+      "outcomes",
+      e.outcomes.map(shownOutcomeJson)
+    ]
+  ]);
   return JSON.stringify(Object.fromEntries([
     [
       "version",
@@ -903,6 +1039,10 @@ function reportJson(findings, opaque, derived, failures) {
     [
       "commands",
       derived.map(commandJson)
+    ],
+    [
+      "outcomes",
+      byPluginComponentCommand(outcomes).map(commandOutcomesJson)
     ],
     [
       "opaque",
@@ -995,6 +1135,7 @@ function writeOrCompare(path, actual, label, drifted) {
 async function main() {
   let findings = [];
   let opaque = [];
+  let outcomes = [];
   let failures = [];
   let drifted = [];
   let allDerived = [];
@@ -1024,7 +1165,7 @@ async function main() {
         if (pluginDir !== undefined) {
           let plugin = Nodepath.basename(pluginDir);
           let qualified = example + `/` + plugin;
-          let commands = await runPlugin(qualified, pluginDir, findings, opaque);
+          let commands = await runPlugin(qualified, pluginDir, findings, opaque, outcomes);
           if (commands.TAG === "Ok") {
             let commands$1 = commands._0;
             commands$1.forEach(c => {
@@ -1057,7 +1198,7 @@ async function main() {
   let of_ = severity => findings.filter(f => f.severity === severity);
   let contradicted = of_("contradicted");
   if (json) {
-    console.log(reportJson(findings, opaque, allDerived, failures));
+    console.log(reportJson(findings, opaque, allDerived, outcomes, failures));
   } else {
     [
       "contradicted",
@@ -1131,6 +1272,9 @@ export {
   sameRow,
   observe,
   deriveCommands,
+  shownOutcomeOf,
+  byPluginComponentCommand,
+  commandOutcomes,
   allUnverified,
   compare,
   pluginDirsIn,
