@@ -130,14 +130,38 @@ every function, which keeps deployment packages small and cold starts short. The
 layer ARN is resolved at deploy time in this order:
 
 1. `REVENTLESS_LAYER_ARN`, if set — the fast path, and what CI uses.
-2. An SSM parameter at `/reventless/layer-arn/<stack>`, looked up automatically —
-   so a local deploy needs no manual export.
-3. Nothing — functions deploy without the layer, bundling their dependencies
-   instead. This works, but produces larger packages and slower cold starts.
+2. An SSM parameter at `/reventless/layer-arn/<stack>`, looked up automatically
+   through the AWS CLI in its default region — so a local deploy needs no manual
+   export.
+3. Nothing — the deploy succeeds, but the functions do not run: their archives
+   carry the plugin's own packages and leave the framework's to the layer, so
+   each fails with `Cannot find package` on its first invocation.
 
-Each release of `@reventlessdev/reventless-aws` publishes a matching layer. Keep
-the layer and the package version in step: a layer older than the code that
-expects it fails at runtime, not at deploy.
+A layer belongs to one account and one region, so a new account has none until
+you publish one. Every `@reventlessdev/reventless-aws` release attaches the layer
+to its GitHub release as `reventless-layer.zip`. Publish the one matching the
+version you deploy, and store its ARN where step 2 finds it:
+
+```bash
+VERSION="<your @reventlessdev/reventless-aws version>"
+curl -fLo reventless-layer.zip \
+  "https://github.com/ReventlessDev/reventless-core/releases/download/%40reventlessdev%2Freventless-aws%40${VERSION}/reventless-layer.zip"
+
+LAYER_ARN=$(aws lambda publish-layer-version \
+  --layer-name reventless-aws \
+  --zip-file fileb://reventless-layer.zip \
+  --compatible-runtimes nodejs20.x nodejs22.x \
+  --query LayerVersionArn --output text)
+
+aws ssm put-parameter --name "/reventless/layer-arn/<stack>" \
+  --type String --overwrite --value "$LAYER_ARN"
+```
+
+Keep the layer and the package version in step: publish a new layer when you
+upgrade `@reventlessdev/reventless-aws`, because a layer older than the code that
+expects it fails at runtime, not at deploy. The
+[Lambda layer reference](../aws-lambda-layer.md) covers what the layer contains
+and how to build one yourself.
 
 ## Deploying
 

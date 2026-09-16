@@ -51,7 +51,7 @@ For editing, [VS Code](https://code.visualstudio.com) with the
 [ReScript extension](https://marketplace.visualstudio.com/items?itemName=rescript-ide.rescript-vscode).
 
 **Create the project and add the packages.** They are published under the
-`@reventlessdev` scope on the GitHub Package Registry:
+`@reventlessdev` scope on the public npm registry, and install without a token:
 
 ```bash
 pnpm init

@@ -23,10 +23,9 @@ pnpm --version    # should print 10.x
 
 ### Registry access
 
-`@reventlessdev/*` packages resolve from a configured registry. Set your
-auth token up once per machine before running `pnpm install` — see
-[Registry and Tokens](registry-and-tokens.md) for the full walk-through,
-including the `.npmrc` example and CI environment-variable wiring.
+`@reventlessdev/*` packages are public on npmjs, so `pnpm install` needs no
+token. [Registry and Tokens](registry-and-tokens.md) explains the `.npmrc` and
+how CI authenticates to publish.
 
 ---
 
@@ -172,7 +171,7 @@ and UI side by side.
 
 - [CLAUDE.md](https://github.com/ReventlessDev/reventless-core/blob/alpha/CLAUDE.md) — top-level project context and conventions
 - [pnpm-guide.md](pnpm-guide.md) — npm → pnpm command reference
-- [registry-and-tokens.md](registry-and-tokens.md) — auth setup
+- [registry-and-tokens.md](registry-and-tokens.md) — registry and publishing tokens
 - [cross-repo-dev-linking.md](cross-repo-dev-linking.md) — link-mode workflow
 - [local-dev.md](/tutorials/run-locally) — running a local GraphQL backend
 - [platform-and-plugin-guide.md](/app/platform-and-plugin-guide) — how to

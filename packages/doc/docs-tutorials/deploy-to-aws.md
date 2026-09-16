@@ -20,8 +20,8 @@ Budget about an hour for a first run, most of it waiting for AWS.
   tier) or a self-managed backend.
 - Node v22.17.1 and pnpm 10, and a checkout of `reventless-core` bootstrapped
   with `pnpm run setup` from the repo root.
-- A GitHub Package Registry token with `read:packages` to install
-  `@reventlessdev/*`.
+- The AWS CLI, signed in with those credentials — Step 4 uses it, and so does the
+  deploy itself, to find the Lambda layer.
 
 ### What it will cost
 
@@ -45,7 +45,7 @@ Each plugin and the platform have an `-aws` deployment package:
 
 | Stack | Package | What it deploys |
 |---|---|---|
-| Platform | `platform-aws/` | Shared AppSync API, admin components, scheduler, Lambda layer, and the host-shell UI on CloudFront |
+| Platform | `platform-aws/` | Shared AppSync API, admin components, scheduler, and the host-shell UI on CloudFront |
 | Catalog | `catalog-aws/` | Catalog DynamoDB / SQS / Lambda / S3 + its AppSync resolvers |
 | Ordering | `ordering-aws/` | Ordering infra + resolvers; depends on Catalog's extension point |
 
@@ -119,7 +119,50 @@ The pin is exact on purpose — the checked-in value is the version this example
 was verified against. Bump it deliberately when a newer host-shell is published,
 and run `pnpm install` after changing it.
 
-## Step 4 — Deploy (platform first, then plugins)
+## Step 4 — Publish the Lambda layer in your account
+
+Framework code reaches the Lambda functions as a shared layer, and a layer lives
+in one account and one region — so a new account has none until you publish one.
+Every `@reventlessdev/reventless-aws` release attaches the layer to its GitHub
+release as `reventless-layer.zip`. From the repo root, fetch the one matching
+your checkout, publish it, and record its ARN:
+
+```bash
+VERSION=$(node -p "require('./reventless/aws/package.json').version")
+curl -fLo reventless-layer.zip \
+  "https://github.com/ReventlessDev/reventless-core/releases/download/%40reventlessdev%2Freventless-aws%40${VERSION}/reventless-layer.zip"
+
+LAYER_ARN=$(aws lambda publish-layer-version \
+  --layer-name reventless-aws-alpha \
+  --zip-file fileb://reventless-layer.zip \
+  --compatible-runtimes nodejs20.x nodejs22.x \
+  --query LayerVersionArn --output text)
+
+aws ssm put-parameter --name /reventless/layer-arn/alpha \
+  --type String --overwrite --value "$LAYER_ARN"
+```
+
+`pulumi up` looks that parameter up for the stack it deploys (`alpha` here), so
+every later deploy attaches the layer with nothing exported. Run these with your
+AWS CLI's default region set to the stack's region: the layer and the parameter
+are both regional, and the deploy-time lookup reads from the CLI's default region
+too. `export REVENTLESS_LAYER_ARN=$LAYER_ARN` skips SSM for the current shell
+instead.
+
+Publish a new layer whenever you move the checkout to a new `reventless-aws`
+version — a layer older than the code that expects it fails at runtime, not at
+deploy. If no asset exists for your version, build the zip yourself:
+`REVENTLESS_AWS_VERSION=$VERSION pnpm run build` in `reventless/layer-builder/`
+writes `builder/reventless-layer.zip`.
+
+Do not skip this step. The deploy itself still succeeds without a layer, but the
+functions do not work: each function's archive carries the plugin's own packages
+and leaves the framework's to the layer, so a function with no layer fails with
+`Cannot find package` on its first invocation. The
+[Lambda layer](/infrastructure/aws-lambda-layer) reference covers what it
+contains.
+
+## Step 5 — Deploy (platform first, then plugins)
 
 ```bash
 # 1. Build everything from the repo root
@@ -133,31 +176,22 @@ pulumi up --stack alpha
 
 # 3. Catalog (no dependencies)
 cd ../catalog-aws
+pulumi stack init alpha        # first time only
 pulumi up --stack alpha
 
 # 4. Ordering (depends on Catalog's extension point)
 cd ../ordering-aws
+pulumi stack init alpha        # first time only
 pulumi up --stack alpha
 ```
 
 Or push to a branch that has matching `Pulumi.<branch>.yaml` files and let the
 reusable GitHub Actions workflow (`deploy-manifest.yaml` drives the order) do it.
 
-## Step 5 — Invalidate CloudFront after a host-UI deploy
-
-:::caution Stale UI gotcha
-The host-shell UI is uploaded to S3 behind CloudFront under stable file names
-(`index.html`, bootstrap entry). A deploy uploads the new bundle but does **not**
-invalidate CloudFront, so the browser keeps serving the cached old bundle and a
-UI fix can look like it "didn't deploy". After any deploy that changes the host
-UI, create an invalidation:
-
-```bash
-aws cloudfront create-invalidation --distribution-id <DIST_ID> --paths '/*'
-```
-
-Read `<DIST_ID>` from the platform stack outputs (`pulumi stack output`).
-:::
+There is no cache to clear afterwards. The platform deploy invalidates the host
+UI's CloudFront distribution itself once the new bundle is uploaded, and the
+files the UI boots from (`index.html`, `config.json`, the component manifest) are
+served `no-cache`, so the next page load shows the new deploy.
 
 ## What you have now
 

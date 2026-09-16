@@ -165,11 +165,15 @@ After esbuild bundling:
 
 ### Layer ARN
 
-Lambda functions reference the layer via the `REVENTLESS_LAYER_ARN` environment variable, read at deploy time:
+The layer ARN is resolved at deploy time — from `REVENTLESS_LAYER_ARN` if set,
+otherwise from the SSM parameter `/reventless/layer-arn/{stack}` through the AWS CLI:
 
 ```rescript
 // rescript-pulumi-aws/src/Lambda/Lambda.res
-@val external reventlessLayerArn: option<string> = "process.env.REVENTLESS_LAYER_ARN"
+let reventlessLayerArn: option<string> = switch _layerArnEnv {
+| Some(arn) if arn->String.trim->String.length > 0 => Some(arn->String.trim)
+| _ => _resolveLayerArnFromSsm()
+}
 ```
 
 `RuntimeEnvironment_Lambda.res` attaches the layer to every bundled Lambda:
@@ -187,6 +191,14 @@ The current layer ARN is stored in AWS SSM Parameter Store at
 CI after each layer publish. The deploy workflow reads it back into
 `REVENTLESS_LAYER_ARN`. Parameters are regional — CI writes and reads them in the
 same region as the deploy. It is no longer committed to the repository.
+
+That parameter exists only in the account CI publishes to. In any other account,
+publish the `reventless-layer.zip` asset of the matching GitHub release yourself
+and write the parameter — see
+[Getting Started with AWS](./aws/get-started.md#the-lambda-layer). When neither
+source answers, functions deploy without the layer and fail with
+`Cannot find package` on their first invocation — the archive never carries the
+framework's own packages.
 
 ### ESM Module Resolution
 
@@ -208,7 +220,7 @@ AWS Lambda runtimes (Node.js 18+) handle this by making layer packages discovera
 The builder (`DependencyBundler.res`) executes these steps:
 
 1. **Clean** — delete previous `layer/` directory
-2. **Install** — download `@reventlessdev/reventless-aws@<version>` from GitHub Package Registry via Pacote
+2. **Install** — download `@reventlessdev/reventless-aws@<version>` from npmjs via Pacote (anonymously — the packages are public)
 3. **Resolve tree** — use `@npmcli/arborist` to compute ideal dependency tree with `preferDedupe: true`, production dependencies only
 4. **Filter** — depth-first traversal, apply inclusion/exclusion rules (see [Filtering Rules](#filtering-rules))
 5. **Extract** — copy matching packages to `layer/nodejs/node_modules/`
@@ -226,7 +238,7 @@ let config: DependencyBundler_Config.t = {
   excludeScopes: [...],
   includeModules: [...],
   excludeModules: [...],
-  registryOpts: ...,               // GitHub Package Registry auth
+  registryOpts: ...,               // @reventlessdev scope → registry.npmjs.org, no auth
   postProcess: ...,                // per-package file cleanup
 }
 ```

@@ -5,39 +5,46 @@ Builds optimized AWS Lambda layers for `@reventlessdev/reventless-aws`.
 ## Architecture
 
 ```
-reventless-layer-builder/
+reventless/layer-builder/
 ├── src/
-│   └── index.js              # Generic layer builder library
+│   ├── Main.res                           # Entry point: the Reventless config
+│   ├── DependencyBundler.res              # Build orchestration
+│   ├── DependencyBundler_Config.res       # Config type
+│   ├── DependencyBundler_Filter.res       # Inclusion/exclusion logic
+│   ├── DependencyBundler_PostProcess.res  # Per-package file cleanup
+│   ├── DependencyBundler_Stats.res
+│   ├── Packaging.res, Packaging_AwsLambdaLayer.res
+│   ├── RegistryRetry.res                  # Retry wrapper for npmjs registry reads
+│   └── bindings/                          # Arborist, Pacote, Treeverse, ZipAFolder, …
 ├── builder/
-│   ├── index.js              # Entry point (Reventless config)
-│   ├── postprocess.js        # Package-specific cleanup functions
 │   ├── layer/                # Build output (gitignored)
 │   │   └── nodejs/
 │   │       └── node_modules/
 │   └── reventless-layer.zip  # Final layer artifact (gitignored)
+├── tests/
 └── iam-policy.json           # IAM policy for CI publishing
 ```
 
 Two-part system:
-- **Generic Library** (`src/index.js`): Builds Lambda layers from any npm package using Arborist + Pacote + Treeverse
-- **Reventless Config** (`builder/`): Reventless-specific configuration, exclusions, and post-processing
+- **Generic builder** (`DependencyBundler*.res`): builds a Lambda layer from any npm package using Arborist + Pacote + Treeverse
+- **Reventless config** (`Main.res`): Reventless-specific exclusions, inclusions, and post-processing
 
 ## Building Locally
 
-```bash
-# Set your GitHub Package Registry token (needs read:packages scope)
-export GITHUB_TOKEN="ghp_..."
+From this directory, after `pnpm run setup` at the repo root:
 
-# Build the layer
-REVENTLESS_AWS_VERSION=3.0.0-alpha.9 npm run build
+```bash
+REVENTLESS_AWS_VERSION=3.0.0-alpha.346 pnpm run build
 ```
 
-Enable debug logging with `DEBUG='lib,lib:*'`.
+No token is needed — `@reventlessdev/*` packages are public on npmjs. Without
+`REVENTLESS_AWS_VERSION` the build takes the `latest` dist-tag. The result is
+`builder/reventless-layer.zip`.
 
 ## Build Process
 
 1. **Clean** — Delete previous layer directory
-2. **Extract** — Download `@reventlessdev/reventless-aws@<version>` from GitHub Package Registry
+2. **Extract** — Download `@reventlessdev/reventless-aws@<version>` from npmjs
 3. **Resolve** — Build dependency tree with Arborist (deduplication enabled)
 4. **Filter** — Exclude dev/optional/peer deps, excluded scopes and modules
 5. **Extract Dependencies** — Download each necessary dependency
@@ -63,23 +70,23 @@ AWS SDK packages are excluded because Lambda provides them at runtime. `sury-ppx
 
 Post-process keys prefixed with `>` match any package that has the named dependency.
 
-## Library API
+## Configuration
 
-### `build(options)`
+`DependencyBundler_Config.t`, of which `Main.res` holds the one instance:
 
-```javascript
-{
-  sourcePackageName: string,       // Package to build layer from
-  sourcePackageVersion: string,    // Version (default: 'latest')
+```rescript
+type t = {
+  sourcePackageName: string,       // Package to build the layer from
+  sourcePackageVersion: string,    // From REVENTLESS_AWS_VERSION (default: "latest")
   pathToLayerData: string,         // Root directory for layer content
   pathToSavedDependencies: string, // Where to extract node_modules
-  excludeScopes: string[],        // npm scopes to exclude (without @)
-  excludeModules: string[],       // Specific packages to exclude
-  registryOpts: object,           // npm registry authentication config
-  postProcess: {                  // Post-processing functions
-    "package-name": (node, cwd) => Promise<void>,
-    ">dependency": (node, cwd) => Promise<void>
-  }
+  excludeScopes: array<string>,    // npm scopes to exclude (without @)
+  excludeModules: array<string>,   // Specific packages to exclude
+  includeModules?: array<string>,
+  includeScopes?: array<string>,
+  registryOpts: Dict.t<string>,    // @reventlessdev scope → registry.npmjs.org, no auth
+  postProcess: postProcessMap,     // Per-package post-processing
+  rootPostProcess?: DependencyBundler_PostProcess.postProcessFn,
 }
 ```
 
@@ -87,11 +94,12 @@ Post-process keys prefixed with `>` match any package that has the named depende
 
 ### GitHub Actions Workflow
 
-`.github/workflows/build-lambda-layer.yml` triggers on:
-- Tag push: `@reventlessdev/reventless-aws@*`
-- Manual: `workflow_dispatch` with version input
+`.github/workflows/build-lambda-layer.yml` runs:
+- when the release workflow dispatches it after releasing `@reventlessdev/reventless-aws`, with the released version
+- on a push to `main`/`beta`/`alpha` that changes `reventless/layer-builder/**`
+- manually, via `workflow_dispatch` with a version input
 
-The workflow builds the layer, publishes to AWS Lambda, uploads the zip as a GitHub release asset, and appends the layer ARN to the release notes.
+The workflow builds the layer, publishes it to AWS Lambda in the CI account, stores its ARN in SSM at `/reventless/layer-arn/{stack}`, uploads the zip as a GitHub release asset, and appends the layer ARN to the release notes.
 
 ### IAM Setup
 
@@ -131,17 +139,27 @@ When attached to a Lambda function, the layer is extracted to `/opt/`, making pa
 
 ## Using the Layer
 
-Reference the layer ARN from the GitHub release notes in your Pulumi stack config:
+A deploy takes the layer ARN from `REVENTLESS_LAYER_ARN`, or else from the SSM
+parameter `/reventless/layer-arn/<stack>` in the deploy region. The CI account's
+layer cannot be used from another account: publish the zip there yourself and
+write the parameter.
 
-```yaml
-# Pulumi.<stack>.yaml
-config:
-  reventless:layerArn: "arn:aws:lambda:eu-west-1:123456789:layer:reventless-aws:1"
+```bash
+LAYER_ARN=$(aws lambda publish-layer-version \
+  --layer-name reventless-aws \
+  --zip-file fileb://builder/reventless-layer.zip \
+  --compatible-runtimes nodejs20.x nodejs22.x \
+  --query LayerVersionArn --output text)
+
+aws ssm put-parameter --name "/reventless/layer-arn/<stack>" \
+  --type String --overwrite --value "$LAYER_ARN"
 ```
+
+The zip is also attached to each `@reventlessdev/reventless-aws` GitHub release, so building is optional.
 
 ## Troubleshooting
 
-**Authentication error**: Ensure `GITHUB_TOKEN` is a classic personal access token with `read:packages` scope.
+**Registry error during extract**: `@reventlessdev/*` is read anonymously from npmjs — check that the requested `REVENTLESS_AWS_VERSION` is published.
 
 **Layer exceeds 50 MB**: Check for new large dependencies. Add to `excludeScopes`, `excludeModules`, or add a postprocess handler.
 

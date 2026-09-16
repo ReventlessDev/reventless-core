@@ -6,7 +6,7 @@ This guide covers deploying a Reventless application to AWS using independent pe
 
 A Reventless application is deployed as **one Pulumi stack per plugin** plus a **platform stack**:
 
-- **Platform stack** (`platform-aws`) -- deploys the shared AppSync API (single unified endpoint), admin components (Plugin aggregate, read model, extension point), scheduler, and Lambda Layer. Exports the API ID so plugins can create DataSources/Resolvers against it.
+- **Platform stack** (`platform-aws`) -- deploys the shared AppSync API (single unified endpoint), admin components (Plugin aggregate, read model, extension point), and scheduler. Exports the API ID so plugins can create DataSources/Resolvers against it.
 - **Plugin stacks** (`catalog-aws`, `ordering-aws`) -- each plugin deploys its own infrastructure (DynamoDB, SQS, Lambda, S3) and creates AppSync DataSources/Resolvers against the shared API. At runtime, plugins register their GraphQL schema fragment with the platform via the PluginExtensionPoint.
 
 ### Package split: agnostic + AWS
@@ -48,7 +48,8 @@ No platform redeployment is needed when plugins change.
 | Pulumi CLI | Installed locally (`brew install pulumi` or `curl -fsSL https://get.pulumi.com \| sh`) |
 | Pulumi state backend | Pulumi Cloud account (free tier) or self-managed S3 backend |
 | Node.js v22+ | See `.node-version` in the project root |
-| npm access to `@reventlessdev/*` | GitHub Package Registry token with `read:packages` scope |
+| npm access to `@reventlessdev/*` | None needed — the packages are public on npmjs |
+| Lambda layer | Published once in your account and region — see [The Lambda layer](./aws/get-started.md#the-lambda-layer) |
 | ReScript compiler | Installed via npm (included in `@reventlessdev/reventless-aws` dependencies) |
 
 ## 3. Architecture

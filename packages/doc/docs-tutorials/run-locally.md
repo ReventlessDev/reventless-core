@@ -17,9 +17,9 @@ Everything in this page happens inside
 - Node v22.17.1 (see `.node-version`) and pnpm 10 (via `corepack`).
 - A checkout of `reventless-core`. You do **not** need the UI source — the local
   UI is provided by the published `reventless-host-shell` package.
-- A GitHub Package Registry token with `read:packages` for `@reventlessdev/*` — the
-  install pulls published packages (e.g. `reventless-host-shell`). See
-  [Registry and Tokens](/framework/registry-and-tokens).
+- No registry token. The `@reventlessdev/*` packages the install pulls,
+  `reventless-host-shell` included, are public on npmjs and install anonymously —
+  see [Registry and Tokens](/framework/registry-and-tokens).
 
 ## Bootstrap the checkout
 

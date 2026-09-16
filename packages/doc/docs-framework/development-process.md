@@ -34,8 +34,8 @@ git checkout main  && git merge beta                 && git push origin main   #
 ```
 
 Each push to `alpha`/`beta`/`main` runs CI (type check, build, tests), then the release
-workflow versions the changed packages, updates CHANGELOGs, publishes to the GitHub Package
-Registry, and creates tagged GitHub releases (pre-release for alpha/beta).
+workflow versions the changed packages, updates CHANGELOGs, publishes to npmjs, and creates
+tagged GitHub releases (pre-release for alpha/beta).
 
 **Promote alpha → beta** when the feature is functionally complete and alpha testing passed
 with no critical bugs. **Promote beta → main** when testing passed, the feature is
@@ -83,8 +83,7 @@ git commit -m "chore(deps): update dev dependencies to latest patches"
   full test suite. CI must pass before a release can proceed.
 - **`release.yml`** runs only on **alpha / beta / main**: waits for CI, determines the release
   type from the branch, analyzes commits, versions packages with Lerna, updates CHANGELOGs,
-  builds, publishes to the GitHub Package Registry, tags each package, and creates GitHub
-  releases.
+  builds, publishes to npmjs, tags each package, and creates GitHub releases.
 
 ## Version Numbering Examples
 
