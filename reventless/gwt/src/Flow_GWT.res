@@ -239,10 +239,27 @@ let thenBoundaryScopeResolves = async (
 ) => {
   let s = await flowP
   let scope = Reventless.DcbTag.deriveEffectiveScope(slices)
-  // An ambiguity that costs nothing is not a failure: a boundary whose fallback
-  // carries every derived key reads exactly as the derivation would. What fails
-  // is losing a key, because that is the case where the runtime answers wrongly.
-  let outcome = if scope.droppedCrossPartitionTagKeys->Array.length > 0 {
+  // Deploy and boot derive the storage partition from the same slices and refuse
+  // the boundary when it fails, so the test fails with their reasons.
+  let partitionReasons = {
+    let hints = Reventless.DcbValidation.validatePartitionHintsVsInference(
+      ~shapes=slices->Array.map(Reventless.DcbTag.sliceShape),
+    )
+    let contradictions = hints.contradictions->Array.map(e => `${e.sliceName}: ${e.message}`)
+    switch Reventless.DcbTag.deriveBoundaryPartition(slices) {
+    | _ => contradictions
+    | exception JsExn(err) =>
+      contradictions->Array.concat([
+        JsExn.message(err)->Option.getOr("partition derivation failed"),
+      ])
+    }
+  }
+  // Beyond that, an ambiguity that costs nothing is not a failure: a boundary whose
+  // fallback carries every derived key reads exactly as the derivation would. What
+  // fails is losing a key, because that is the case where the runtime answers wrongly.
+  let outcome = if partitionReasons->Array.length > 0 {
+    Outcome.fail(PartitionUnresolved({boundary: name, reasons: partitionReasons}))
+  } else if scope.droppedCrossPartitionTagKeys->Array.length > 0 {
     Outcome.fail(
       ScopeDegraded({
         boundary: name,

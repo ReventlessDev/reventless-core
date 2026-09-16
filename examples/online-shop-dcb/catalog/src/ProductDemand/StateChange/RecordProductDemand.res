@@ -18,5 +18,7 @@ type error = unit // always succeeds — demand recording is idempotent
 
 @schema
 type event =
+  // A join: product and order are both this slice's own ids. Only the domain says
+  // demand is counted per product, so inference cannot choose.
   | ProductDemandRecorded({@partitionTag productId: string, orderId: string})
   | ProductDemandRevoked({@partitionTag productId: string, orderId: string})

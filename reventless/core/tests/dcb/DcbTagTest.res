@@ -534,107 +534,120 @@ describe("DcbTag:", () => {
     )
   })
 
-  describe("derivePartitionTag", () => {
-    let u = S.castToUnknown
+  describe("deriveBoundaryPartition", () => {
+    let slice = (name, eventSchema): Reventless.DcbTag.sliceSchemas => {
+      name,
+      commandSchema: S.unknown,
+      consumedEventSchema: S.unknown,
+      eventSchema: eventSchema->S.castToUnknown,
+    }
+    let thrownMessage = f =>
+      try {
+        let _ = f()
+        None
+      } catch {
+      | JsExn(err) => JsExn.message(err)
+      }
 
     testSync(
       "returns Composite for schema with >= 2 composite fields",
-      () => {
-        let result = Reventless.DcbTag.derivePartitionTag([
-          ("Sync", "test.res", DcbFixtures.compositeEventSchema->u),
-        ])
-        switch result {
+      () =>
+        switch Reventless.DcbTag.deriveBoundaryPartition([
+          slice("Sync", DcbFixtures.compositeEventSchema),
+        ]).partitionTag {
         | Composite(spec) =>
-          expect(spec.keys)->toEqual(["environment", "platformName", "pluginName"])->ignore
+          expect(spec.keys)->toEqual(["environment", "platformName", "pluginName"])
           expect(spec.seps)->toEqual(["/", "/"])
-        | Simple(_) => fail("Expected Composite")
-        }
-      },
+        | _ => fail("Expected Composite")
+        },
     )
 
     testSync(
       "returns Composite with custom separators",
-      () => {
-        let result = Reventless.DcbTag.derivePartitionTag([
-          ("Config", "test.res", DcbFixtures.compositeEventCustomSepSchema->u),
-        ])
-        switch result {
+      () =>
+        switch Reventless.DcbTag.deriveBoundaryPartition([
+          slice("Config", DcbFixtures.compositeEventCustomSepSchema),
+        ]).partitionTag {
         | Composite(spec) =>
-          expect(spec.keys)->toEqual(["tenantId", "region", "service"])->ignore
+          expect(spec.keys)->toEqual(["tenantId", "region", "service"])
           expect(spec.seps)->toEqual([":", "/"])
-        | Simple(_) => fail("Expected Composite")
+        | _ => fail("Expected Composite")
+        },
+    )
+
+    testSync(
+      "files each event type under its own slice's key — two entities, two annotated keys",
+      () => {
+        let bp = Reventless.DcbTag.deriveBoundaryPartition([
+          slice("PlaceOrder", DcbFixtures.simplePartitionEventSchema),
+          slice("LinkAddress", DcbFixtures.addressLinkedEventSchema),
+        ])
+        switch bp.partitionTag {
+        | ByEventType(keys) =>
+          expect(keys->Dict.get("OrderPlaced"))->toEqual(Some("orderId"))
+          expect(keys->Dict.get("AddressLinked"))->toEqual(Some("customerId"))
+        | _ => fail("Expected ByEventType")
         }
+        expect(bp->Reventless.DcbTag.slicePartitionTag("LinkAddress"))->toEqual(
+          Some(Reventless.DcbTag.Simple({key: "customerId"})),
+        )
       },
     )
 
     testSync(
-      "returns Simple for schema with only @partitionTag",
-      () => {
-        let result = Reventless.DcbTag.derivePartitionTag([
-          ("Order", "test.res", DcbFixtures.simplePartitionEventSchema->u),
-        ])
-        switch result {
-        | Simple(pt) => expect(pt.key)->toBe("orderId")
-        | Composite(_) => fail("Expected Simple")
-        }
-      },
+      "a single tagged field is the partition",
+      () =>
+        expect(
+          Reventless.DcbTag.deriveBoundaryPartition([
+            slice("Item", DcbFixtures.singleTagCommandSchema),
+          ]).partitionBySlice->Dict.get("Item"),
+        )->toEqual(Some("itemId")),
     )
 
     testSync(
-      "returns Simple for schema with single tagged field",
+      "an unannotated multi-id slice throws naming it, though a sibling is annotated",
       () => {
-        let result = Reventless.DcbTag.derivePartitionTag([
-          ("Item", "test.res", DcbFixtures.singleTagCommandSchema->u),
-        ])
-        switch result {
-        | Simple(pt) => expect(pt.key)->toBe("itemId")
-        | Composite(_) => fail("Expected Simple")
-        }
+        let message =
+          thrownMessage(
+            () =>
+              Reventless.DcbTag.deriveBoundaryPartition([
+                slice("PlaceOrder", DcbFixtures.simplePartitionEventSchema),
+                slice("LinkCustomerAddress", DcbFixtures.unannotatedLinkEventSchema),
+              ]),
+          )->Option.getOr("")
+        expect(message->String.includes("LinkCustomerAddress"))->toBe(true)
+        expect(message->String.includes("@partitionTag"))->toBe(true)
       },
     )
 
     testSync(
       "throws on mixed composite and simple partition strategy",
-      () => {
-        let threw = ref(false)
-        try {
-          let _ = Reventless.DcbTag.derivePartitionTag([
-            ("Mixed", "test.res", DcbFixtures.mixedStrategyEventSchema->u),
-          ])
-        } catch {
-        | JsExn(err) =>
-          threw := true
-          expect(
-            JsExn.message(err)
-            ->Option.getOr("")
-            ->String.includes("mixes @compositePartitionTag and @partitionTag"),
+      () =>
+        expect(
+          thrownMessage(
+            () =>
+              Reventless.DcbTag.deriveBoundaryPartition([
+                slice("Mixed", DcbFixtures.mixedStrategyEventSchema),
+              ]),
           )
-          ->toBe(true)
-          ->ignore
-        }
-        expect(threw.contents)->toBe(true)
-      },
+          ->Option.getOr("")
+          ->String.includes("mixes @compositePartitionTag and @partitionTag"),
+        )->toBe(true),
     )
 
     testSync(
       "throws on single composite field (< 2)",
-      () => {
-        let threw = ref(false)
-        try {
-          let _ = Reventless.DcbTag.derivePartitionTag([
-            ("Single", "test.res", DcbFixtures.singleCompositeEventSchema->u),
-          ])
-        } catch {
-        | JsExn(err) =>
-          threw := true
-          expect(
-            JsExn.message(err)->Option.getOr("")->String.includes("at least 2 annotated fields"),
+      () =>
+        expect(
+          thrownMessage(
+            () =>
+              Reventless.DcbTag.deriveBoundaryPartition([
+                slice("Single", DcbFixtures.singleCompositeEventSchema),
+              ]),
           )
-          ->toBe(true)
-          ->ignore
-        }
-        expect(threw.contents)->toBe(true)
-      },
+          ->Option.getOr("")
+          ->String.includes("at least 2 annotated fields"),
+        )->toBe(true),
     )
   })
 

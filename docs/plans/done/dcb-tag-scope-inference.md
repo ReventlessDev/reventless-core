@@ -432,6 +432,8 @@ over to the derived values.
      critical DCB decision. The sibling leak — the actual footgun — is already fixed
      read- **and** write-side (Part A) without removing it.
 
+     **Superseded:** the storage partition is now inferred per slice, with `@partitionTag` kept only where inference cannot decide — see [dcb-partition-key-inference.md](dcb-partition-key-inference.md).
+
      **Why the partition tag is consistency-critical, not cosmetic/perf.** The storage
      partition key `id` chosen by `derivePartitionTag`
      ([`DcbTag.res:1211-1312`](../../reventless/reventless-spec/src/components/DcbTag.res))

@@ -29,6 +29,10 @@ type mismatch =
   // is exactly why it needs its own outcome: the defect is in the composition,
   // and nothing that tests one slice can see it.
   | ScopeDegraded({boundary: string, dropped: array<string>, ambiguities: array<string>})
+  // A DCB consistency boundary whose storage partition cannot be derived: a slice
+  // with no inferable key, or a `@partitionTag` inference contradicts. Deploy and
+  // boot refuse such a boundary, so its flow test fails with the same reasons.
+  | PartitionUnresolved({boundary: string, reasons: array<string>})
   | Throw({error: string, stack: string})
 
 type outcome = result<unit, mismatch>
@@ -48,6 +52,7 @@ let kindName = (m: mismatch) =>
   | QueryRowsMismatch(_) => "QueryRowsMismatch"
   | PublishedActionsMismatch(_) => "PublishedActionsMismatch"
   | ScopeDegraded(_) => "ScopeDegraded"
+  | PartitionUnresolved(_) => "PartitionUnresolved"
   | Throw(_) => "Throw"
   }
 
@@ -103,5 +108,7 @@ let format = (m: mismatch) =>
     `ScopeDegraded:\n  boundary: ${boundary}\n  dropped:  ${dropped->Array.join(
         ", ",
       )}\n  cause:    ${ambiguities->Array.join(" | ")}`
+  | PartitionUnresolved({boundary, reasons}) =>
+    `PartitionUnresolved:\n  boundary: ${boundary}\n  cause:    ${reasons->Array.join(" | ")}`
   | Throw({error, stack}) => `Throw: ${error}\n${stack}`
   }

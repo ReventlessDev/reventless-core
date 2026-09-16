@@ -185,7 +185,7 @@ The query is built automatically from the command schema via `DcbTag.buildQueryF
 
 No configuration is needed — the schema determines the query mode automatically.
 
-When a variant has multiple `*Id` fields, use `@partitionTag` on the field that should be the partition key, or `@compositePartitionTag` on multiple fields to form a composite key joined in declaration order — see [PPX annotations](../rescript-syntax.md#reventless-ppx-annotations).
+The partition key — where the slice's events are stored — is inferred from the slice graph, so you normally annotate nothing. Use `@partitionTag` on the produced event only when inference cannot choose, or `@compositePartitionTag` on multiple fields to form a composite key joined in declaration order — see [PPX annotations](../rescript-syntax.md#reventless-ppx-annotations).
 
 ## Error Handling
 
@@ -253,18 +253,23 @@ The DCB tag:
 2. Automatically extracts tag values from commands at runtime
 3. Enables efficient querying of relevant events from DcbEventLog
 
-### Multiple `*Id` fields — partition key
+### Partition key
 
-When a variant has multiple `*Id` fields, use `@partitionTag` to mark which one is the partition key:
+Each event is stored under one id, its partition key. The framework infers it per slice: the `*Id` fields on the events the slice writes, minus the ids it reads from another slice's events (a reference, like `categoryId` on `AddProduct`). One id left is the partition, and no annotation is needed.
+
+Add `@partitionTag` on the produced event only when inference cannot choose — a join, or an event carrying two ids that are both the slice's own:
 
 ```rescript
+// A join: productId and orderId are both this slice's own ids.
 @schema
 type event =
-  | DemandRecorded({
+  | ProductDemandRecorded({
       @partitionTag productId: string,  // partition key
       orderId: string,                  // also tagged as DcbTag.string
     })
 ```
+
+Without it the build stops with `DCB partition key cannot be inferred — <Slice>: multiple candidate partition keys (…) — add an explicit @partitionTag`. See [Event Log Partitioning](../dcb-usage.md#event-log-partitioning) for the full rules.
 
 ### Composite partition keys
 
@@ -282,7 +287,7 @@ type event =
 // Partition key: e.g. "prod/acme-platform/billing"
 ```
 
-Use `@compositePartitionTag(":")` to set a different separator after a field. Cannot be combined with `@partitionTag` on the same schema.
+Use `@compositePartitionTag(":")` to set a different separator after a field. A composite key is explicit, never inferred, and applies to the whole plugin's event log. Cannot be combined with `@partitionTag` on the same schema.
 
 ### Cross-Entity Queries with Tagged Arrays
 

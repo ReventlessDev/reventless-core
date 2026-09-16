@@ -18,12 +18,12 @@ let consumedEventSchema = Sury.union([
 let commandSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "RecordDemand",
-    productId: s.m(DcbTag$Reventless.partition),
+    productId: s.m(DcbTag$Reventless.string),
     orderId: s.m(DcbTag$Reventless.string)
   })),
   Sury.$schema(s => ({
     TAG: "RevokeDemand",
-    productId: s.m(DcbTag$Reventless.partition),
+    productId: s.m(DcbTag$Reventless.string),
     orderId: s.m(DcbTag$Reventless.string)
   }))
 ]);

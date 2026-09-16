@@ -171,7 +171,7 @@ Multi-key commands work the same way. `Ordering_PlaceOrder` carries an order id,
 ```rescript
 @schema
 type command =
-  PlaceOrder({@partitionTag orderId: string, customerId: string, productIds: array<string>})
+  PlaceOrder({orderId: string, customerId: string, productIds: array<string>})
 ```
 
 ```graphql

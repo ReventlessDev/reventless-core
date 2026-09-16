@@ -411,7 +411,7 @@ module Mapping = {
 }
 ```
 
-`PublishAggregateCommand(id, command)` dispatches the command to the aggregate identified by `id` — in this case the `ProductDemand` aggregate for the given `productId`. When the local target is a StateChangeSlice instead of an Aggregate, use `PublishStateChangeSliceCommand(command)`; the framework derives the FIFO grouping id from the command's `@partitionTag` field, so no id argument is needed.
+`PublishAggregateCommand(id, command)` dispatches the command to the aggregate identified by `id` — in this case the `ProductDemand` aggregate for the given `productId`. When the local target is a StateChangeSlice instead of an Aggregate, use `PublishStateChangeSliceCommand(command)`; the framework uses the command's value of the slice's partition key as the FIFO grouping id, so no id argument is needed.
 
 ### 6. Plugin
 

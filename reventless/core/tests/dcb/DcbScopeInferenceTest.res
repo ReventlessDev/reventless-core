@@ -271,6 +271,174 @@ describe("DcbScopeInference:", () => {
     )
   })
 
+  describe("partition: identity given back only when subtraction leaves nothing", () => {
+    let partitionOf = (d: DSI.derived, name) => d.partitionBySlice->Dict.get(name)
+
+    testSync(
+      "AddProduct without a hint stays productId, though its category arms come from a categoryId slice",
+      () => {
+        let d = DSI.infer(catalog)
+        expect(addProduct.partitionHint)->toEqual(None)
+        expect(d->partitionOf("AddProduct"))->toEqual(Some("productId"))
+      },
+    )
+
+    testSync(
+      "a lifecycle arm naming the slice's own id resolves",
+      () => {
+        let changeName = slice(
+          "ChangeProductName",
+          ~command=[scal("productId")],
+          ~consumed=[ev("ProductAdded", [scal("productId")])],
+          ~produced=[ev("ProductNameChanged", [scal("productId")])],
+        )
+        let d = DSI.infer(catalog->Array.concat([changeName]))
+        expect(d->partitionOf("ChangeProductName"))->toEqual(Some("productId"))
+        expect(d.ambiguities)->toEqual([])
+      },
+    )
+
+    // Every arm a slice reads from the other also names that slice's ids, so
+    // subtraction leaves both with nothing and each depends on the other.
+    let placeOrder = slice(
+      "PlaceOrder",
+      ~partitionHint="orderId",
+      ~command=[scal("orderId"), scal("customerId")],
+      ~produced=[ev("OrderPlaced", [scal("orderId"), scal("customerId"), arr("productIds")])],
+    )
+    let shipOrder = slice(
+      "ShipOrder",
+      ~command=[scal("orderId")],
+      ~consumed=[
+        ev("OrderPlaced", [scal("orderId"), scal("customerId"), arr("productIds")]),
+        ev("OrderCancelled", [scal("orderId"), arr("productIds")]),
+      ],
+      ~produced=[ev("OrderShipped", [scal("orderId"), scal("customerId")])],
+    )
+    let cancelOrder = slice(
+      "CancelOrder",
+      ~command=[scal("orderId")],
+      ~consumed=[
+        ev("OrderPlaced", [scal("orderId"), scal("customerId"), arr("productIds")]),
+        ev("OrderShipped", [scal("orderId"), scal("customerId")]),
+      ],
+      ~produced=[ev("OrderCancelled", [scal("orderId"), arr("productIds")])],
+    )
+
+    testSync(
+      "the ShipOrder ⇄ CancelOrder cycle resolves both to orderId",
+      () => {
+        let d = DSI.infer([placeOrder, shipOrder, cancelOrder])
+        expect(d->partitionOf("ShipOrder"))->toEqual(Some("orderId"))
+        expect(d->partitionOf("CancelOrder"))->toEqual(Some("orderId"))
+        expect(d.ambiguities)->toEqual([])
+      },
+    )
+
+    testSync(
+      "seen alone, the same slice names the arms to change",
+      () =>
+        expect(DSI.partitionBlockers(cancelOrder))->toEqual([
+          ("orderId", ["OrderPlaced", "OrderShipped"]),
+          ("productId", ["OrderPlaced"]),
+        ]),
+    )
+
+    let recordDemand = slice(
+      "RecordProductDemand",
+      ~command=[scal("productId"), scal("orderId")],
+      ~consumed=[ev("ProductDemandRecorded", [scal("orderId")])],
+      ~produced=[ev("ProductDemandRecorded", [scal("productId"), scal("orderId")])],
+    )
+
+    testSync(
+      "a join without a hint stays ambiguous",
+      () => {
+        let d = DSI.infer([recordDemand])
+        expect(d->partitionOf("RecordProductDemand"))->toEqual(None)
+        expect(d.ambiguities->Array.map(((n, _)) => n))->toEqual(["RecordProductDemand"])
+      },
+    )
+
+    testSync(
+      "a produced id another slice is partitioned by is not dropped",
+      () => {
+        // Were productId dropped for belonging to AddProduct, the join would
+        // silently resolve to orderId.
+        let d = DSI.infer(catalog->Array.concat([placeOrder, recordDemand]))
+        expect(d->partitionOf("RecordProductDemand"))->toEqual(None)
+        expect(
+          d.ambiguities->Array.some(
+            ((n, reason)) =>
+              n == "RecordProductDemand" && reason->String.includes("orderId, productId"),
+          ),
+        )->toBe(true)
+      },
+    )
+
+    testSync(
+      "a boundary that never settles is reported, not guessed",
+      () => {
+        // A resolves only while B is unresolved, and B only while A is: each
+        // pass flips both. Z* arms have no producer, so they always block.
+        let a = slice(
+          "A",
+          ~consumed=[ev("BHappened", [scal("xId")]), ev("ZHappened", [scal("yId")])],
+          ~produced=[ev("AHappened", [scal("xId"), scal("yId")])],
+        )
+        let b = slice(
+          "B",
+          ~consumed=[ev("AHappened", [scal("yId")]), ev("Z2Happened", [scal("xId")])],
+          ~produced=[ev("BHappened", [scal("xId"), scal("yId")])],
+        )
+        let d = DSI.infer([a, b])
+        expect(d.ambiguities->Array.map(((n, _)) => n))->toEqual(["A", "B"])
+        expect(
+          d.ambiguities->Array.every(((_, reason)) => reason->String.includes("did not settle")),
+        )->toBe(true)
+      },
+    )
+  })
+
+  describe("validatePartitionHintsVsInference (@partitionTag ⇄ inference)", () => {
+    let hinted = (s: DSI.sliceShape, key) => {...s, partitionHint: Some(key)}
+    let check = shapes => Reventless.DcbValidation.validatePartitionHintsVsInference(~shapes)
+    let names = (issues: array<Reventless.DcbValidation.validationError>) =>
+      issues->Array.map(e => e.sliceName)
+
+    testSync(
+      "a hint naming a key the slice only references is a contradiction",
+      () => {
+        let issues = check([hinted(addProduct, "categoryId"), addCategory])
+        expect(issues.contradictions->names)->toEqual(["AddProduct"])
+        expect(issues.redundancies)->toEqual([])
+      },
+    )
+
+    testSync(
+      "a hint inference reaches unaided is redundant",
+      () => {
+        let issues = check([hinted(addProduct, "productId"), addCategory])
+        expect(issues.contradictions)->toEqual([])
+        expect(issues.redundancies->names)->toEqual(["AddProduct"])
+      },
+    )
+
+    testSync(
+      "a hint that decides a join is neither",
+      () => {
+        let demand = slice(
+          "RecordProductDemand",
+          ~partitionHint="productId",
+          ~produced=[ev("ProductDemandRecorded", [scal("productId"), scal("orderId")])],
+        )
+        let issues = check([demand])
+        expect(issues.contradictions)->toEqual([])
+        expect(issues.redundancies)->toEqual([])
+      },
+    )
+  })
+
   describe("ambiguity surfacing", () => {
     // A pure join: produces an event carrying two foreign keys, owns neither.
     let aOwner = slice("A", ~produced=[ev("AHappened", [scal("aId")])])

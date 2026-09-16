@@ -55,7 +55,7 @@ let lineItemSchema = Sury.$schema(s => ({
 
 let commandSchema = Sury.$schema(s => ({
   TAG: "PlaceOrder",
-  orderId: s.m(DcbTag$Reventless.partition),
+  orderId: s.m(DcbTag$Reventless.string),
   customerId: s.m(Owner$Reventless.string),
   lineItems: s.m(Sury.array(lineItemSchema)),
   shippingMethod: s.m(shippingMethodSchema),

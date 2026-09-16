@@ -32,6 +32,7 @@ module PsPlaceOrderSlice: ReventlessInfra.StateChangeSlice.T = {
     ~publishJsons as _,
     ~tagKeysByEventType as _=?,
     ~crossPartitionTagKeys as _=?,
+    ~partitionTag as _=?,
     ~runtime as _=?,
     ~opts as _=?,
   ): component => Obj.magic(0)
@@ -52,6 +53,7 @@ module PsShipOrderSlice: ReventlessInfra.StateChangeSlice.T = {
     ~publishJsons as _,
     ~tagKeysByEventType as _=?,
     ~crossPartitionTagKeys as _=?,
+    ~partitionTag as _=?,
     ~runtime as _=?,
     ~opts as _=?,
   ): component => Obj.magic(0)
@@ -118,6 +120,7 @@ module PsAttachInvoiceSlice: ReventlessInfra.StateChangeSlice.T = {
     ~publishJsons as _,
     ~tagKeysByEventType as _=?,
     ~crossPartitionTagKeys as _=?,
+    ~partitionTag as _=?,
     ~runtime as _=?,
     ~opts as _=?,
   ): component => Obj.magic(0)
@@ -139,6 +142,7 @@ module PsUploadAvatarSlice: ReventlessInfra.StateChangeSlice.T = {
     ~publishJsons as _,
     ~tagKeysByEventType as _=?,
     ~crossPartitionTagKeys as _=?,
+    ~partitionTag as _=?,
     ~runtime as _=?,
     ~opts as _=?,
   ): component => Obj.magic(0)
@@ -160,6 +164,7 @@ module PsUploadImagesSlice: ReventlessInfra.StateChangeSlice.T = {
     ~publishJsons as _,
     ~tagKeysByEventType as _=?,
     ~crossPartitionTagKeys as _=?,
+    ~partitionTag as _=?,
     ~runtime as _=?,
     ~opts as _=?,
   ): component => Obj.magic(0)
@@ -181,6 +186,7 @@ module PsTypoStoreSlice: ReventlessInfra.StateChangeSlice.T = {
     ~publishJsons as _,
     ~tagKeysByEventType as _=?,
     ~crossPartitionTagKeys as _=?,
+    ~partitionTag as _=?,
     ~runtime as _=?,
     ~opts as _=?,
   ): component => Obj.magic(0)
@@ -202,6 +208,7 @@ module PsChangePhotoSlice: ReventlessInfra.StateChangeSlice.T = {
     ~publishJsons as _,
     ~tagKeysByEventType as _=?,
     ~crossPartitionTagKeys as _=?,
+    ~partitionTag as _=?,
     ~runtime as _=?,
     ~opts as _=?,
   ): component => Obj.magic(0)
@@ -223,6 +230,7 @@ module PsReserveStockSlice: ReventlessInfra.StateChangeSlice.T = {
     ~publishJsons as _,
     ~tagKeysByEventType as _=?,
     ~crossPartitionTagKeys as _=?,
+    ~partitionTag as _=?,
     ~runtime as _=?,
     ~opts as _=?,
   ): component => Obj.magic(0)
@@ -244,6 +252,7 @@ module PsDispatchShipmentSlice: ReventlessInfra.StateChangeSlice.T = {
     ~publishJsons as _,
     ~tagKeysByEventType as _=?,
     ~crossPartitionTagKeys as _=?,
+    ~partitionTag as _=?,
     ~runtime as _=?,
     ~opts as _=?,
   ): component => Obj.magic(0)
@@ -264,6 +273,7 @@ module PsTransitionSwitchSlice: ReventlessInfra.StateChangeSlice.T = {
     ~publishJsons as _,
     ~tagKeysByEventType as _=?,
     ~crossPartitionTagKeys as _=?,
+    ~partitionTag as _=?,
     ~runtime as _=?,
     ~opts as _=?,
   ): component => Obj.magic(0)

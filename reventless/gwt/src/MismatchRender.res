@@ -76,6 +76,10 @@ let normalize = (m: Outcome.mismatch): normalized => {
       Expected(`${boundary}: cross-partition reads [${dropped->Array.join(", ")}] derived`),
       Actual(ambiguities->Array.join(" | ")),
     ]
+  | PartitionUnresolved({boundary, reasons}) => [
+      Expected(`${boundary}: every slice's partition key derived`),
+      Actual(reasons->Array.join(" | ")),
+    ]
   | Throw({error, stack}) => [Error(error), Stack(stack)]
   }
   {kind: Outcome.kindName(m), fields}

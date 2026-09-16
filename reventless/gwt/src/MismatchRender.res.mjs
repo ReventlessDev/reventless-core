@@ -94,6 +94,18 @@ function normalize(m) {
         }
       ];
       break;
+    case "PartitionUnresolved" :
+      fields = [
+        {
+          TAG: "Expected",
+          _0: m.boundary + `: every slice's partition key derived`
+        },
+        {
+          TAG: "Actual",
+          _0: m.reasons.join(" | ")
+        }
+      ];
+      break;
     case "Throw" :
       fields = [
         {

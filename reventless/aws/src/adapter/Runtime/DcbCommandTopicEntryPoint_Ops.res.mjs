@@ -20,26 +20,42 @@ import * as StateChangeSlice_CallbackResMjs from "@reventlessdev/reventless-core
 import * as InboundTranslationSlice_CallbackResMjs from "@reventlessdev/reventless-core/src/components/InboundTranslationSlice/InboundTranslationSlice_Callback.res.mjs";
 
 function deriveScope(specs) {
-  let scope = DcbTag$Reventless.deriveEffectiveScope(specs.map(s => ({
+  if (specs.length === 0) {
+    return {
+      crossPartitionTagKeys: [],
+      tagKeysByEventType: {},
+      partitionTag: undefined,
+      partitionTagBySlice: {}
+    };
+  }
+  let slices = specs.map(s => ({
     name: s.name,
     commandSchema: s.commandSchema,
     consumedEventSchema: s.consumedEventSchema,
     eventSchema: s.eventSchema
-  })));
-  let partitionTag;
+  }));
+  let scope = DcbTag$Reventless.deriveEffectiveScope(slices);
+  let boundary;
   try {
-    partitionTag = DcbTag$Reventless.derivePartitionTag(specs.map(s => [
-      s.name,
-      Stdlib_Option.getOr(Primitive_option.fromNullable(s.moduleUrl), s.name),
-      s.eventSchema
-    ]));
-  } catch (exn) {
-    partitionTag = undefined;
+    boundary = DcbTag$Reventless.deriveBoundaryPartition(slices);
+  } catch (raw_err) {
+    let err = Primitive_exceptions.internalToException(raw_err);
+    if (err.RE_EXN_ID === "JsExn") {
+      let err$1 = err._1;
+      Effect.runSync(EffectLogger$ReventlessCore.logError("DcbCommandTopicRuntime", undefined, `refusing to start: ` + Stdlib_Option.getOr(Stdlib_JsExn.message(err$1), "unknown error")));
+      throw err$1;
+    }
+    throw err;
   }
+  let partitionTagBySlice = {};
+  slices.forEach(s => Stdlib_Option.forEach(DcbTag$Reventless.slicePartitionTag(boundary, s.name), tag => {
+    partitionTagBySlice[s.name] = tag;
+  }));
   return {
     crossPartitionTagKeys: scope.crossPartitionTagKeys,
     tagKeysByEventType: scope.tagKeysByEventType,
-    partitionTag: partitionTag
+    partitionTag: boundary.partitionTag,
+    partitionTagBySlice: partitionTagBySlice
   };
 }
 
@@ -75,7 +91,7 @@ function makeStorageOps(tableName, pgConnection, scope) {
   }
 }
 
-function buildSliceHandler(spec, behavior, tagKeysByEventType, crossPartitionTagKeys, dcbEventLog) {
+function buildSliceHandler(spec, behavior, scope, dcbEventLog) {
   let callback = StateChangeSlice_CallbackResMjs.Make(spec)(behavior);
   let commandSchema = spec.commandSchema;
   return jsonStream => {
@@ -97,7 +113,7 @@ function buildSliceHandler(spec, behavior, tagKeysByEventType, crossPartitionTag
         return Stream.empty;
       }
     });
-    return callback.handleCommands(tagKeysByEventType, crossPartitionTagKeys, dcbEventLog, decodedStream);
+    return callback.handleCommands(scope.tagKeysByEventType, scope.crossPartitionTagKeys, scope.partitionTagBySlice[spec.name], dcbEventLog, decodedStream);
   };
 }
 

@@ -65,25 +65,16 @@ function Make(MappingImpl) {
     if (d !== undefined) {
       return d;
     }
-    let d$1 = DcbTag$Reventless.derivePartitionTag([[
-        Delegate.name,
-        Delegate.moduleUrl,
-        Delegate.commandSchema
-      ]]);
+    let d$1 = DcbTag$Reventless.deriveSlicePartition({
+      name: Delegate.name,
+      commandSchema: Delegate.commandSchema,
+      consumedEventSchema: Sury.unknown,
+      eventSchema: Delegate.eventSchema
+    });
     derivedPartitionTagLazy.contents = d$1;
     return d$1;
   };
-  let derivePartitionId = targetCmd => {
-    let pt = getDerivedPartitionTag();
-    if (pt.TAG === "Simple") {
-      let tags = DcbTag$Reventless.extractTags(Delegate.commandSchema, targetCmd);
-      return Stdlib_Option.getOr(DcbTag$Reventless.getPartitionTagValue([{
-          tags: tags
-        }], pt._0), "");
-    }
-    let tags$1 = DcbTag$Reventless.extractTags(Delegate.commandSchema, targetCmd);
-    return DcbTag$Reventless.getCompositePartitionKeyValue(tags$1, pt._0);
-  };
+  let derivePartitionId = targetCmd => DcbTag$Reventless.partitionValueOfTags(DcbTag$Reventless.extractTags(Delegate.commandSchema, targetCmd), getDerivedPartitionTag());
   let compLog = (comp, msg) => Effect.runSync(Effect.annotateLogs(Effect.logInfo(msg), "comp", comp));
   let encodeMeta = (meta, service) => {
     let newrecord = {...meta};

@@ -156,31 +156,36 @@ These field attributes give fine-grained control over DCB tag injection. They wo
 
 | Annotation | Placed on | Effect |
 |---|---|---|
-| `@partitionTag` | A `*Id: string` field | Injects `@s.matches(DcbTag.partition)` — marks this field as the partition key. Required when a variant has multiple `*Id` fields. |
+| `@partitionTag` | A `*Id: string` field on a produced `event` | Injects `@s.matches(DcbTag.partition)` — marks this field as the partition key. **Required only when inference is ambiguous** — the framework infers the partition key from the slice graph otherwise. See [When you still need `@partitionTag`](dcb-usage.md#when-you-still-need-partitiontag). |
 | `@crossPartition` | A `string` (or `array<string>` element) field | Injects `@s.matches(DcbTag.crossPartition)`. **Rarely needed** — cross-entity *reference* reads are inferred from the slice graph; this is the escape hatch only for **M:N capacity** reads of a slice's own event type. See [`@crossPartition`](#crosspartition--cross-partition-secondary-tag-reads) below. |
 | `@noDcbTag` | A `*Id: string` field | Suppresses auto-tagging — the field stays as plain `string`. Use when the field is payload data, not a DCB query key. |
 | `@dcbTag` | Any `string` field | Injects `@s.matches(DcbTag.string)` — explicit opt-in for fields that don't follow `*Id` naming (e.g., `sku`, `slug`, `reference`). |
 
 The PPX strips all four attributes from the output AST, so the compiler never sees them as unknown attributes.
 
-**`@partitionTag` — multiple `*Id` fields:**
+**`@partitionTag` — when inference cannot choose:**
+
+The framework infers each slice's partition key: the `*Id` fields on the events it writes, minus the ids it reads from another slice's events. A single id left is the partition. You annotate only when inference cannot choose — a **join** such as demand recorded per product *and* order, or a **reference nothing reveals**, such as the customer on an order the slice never reads customer events for. The annotation is read from the produced `event`, never from the command. See [Event Log Partitioning](dcb-usage.md#event-log-partitioning) for the full rules and error messages.
+
 ```rescript
-// In a StateChangeSlice file — both productId and orderId would otherwise
-// both get auto-tagged, making partition derivation ambiguous
+// A join: productId and orderId are both this slice's own ids. Only the domain
+// says demand is counted per product, so inference cannot choose.
 @schema
 type event =
-  | DemandRecorded({
+  | ProductDemandRecorded({
       @partitionTag productId: string,  // partition key
       orderId: string,                  // also tagged as DcbTag.string
     })
 ```
+
+A `@partitionTag` that inference contradicts fails the build; one that inference already agrees with is logged as redundant and can be removed.
 
 **`@noDcbTag` — payload-only field:**
 ```rescript
 @schema
 type event =
   | DemandRecorded({
-      @partitionTag productId: string,
+      productId: string,
       @noDcbTag orderId: string,  // not a DCB tag — plain string in the event store
     })
 ```
@@ -219,7 +224,7 @@ type lineItem = {
 @schema
 type command =
   PlaceOrder({
-    @partitionTag orderId: string,
+    orderId: string,
     lineItems: array<lineItem>,
   })
 ```
@@ -254,7 +259,7 @@ records deep is not found.
 
 ### `@compositePartitionTag` — composite DCB partition key
 
-`@compositePartitionTag` lets you form the DynamoDB partition key from multiple fields, concatenated in declaration order with a configurable separator. Use it when a single field is too coarse for partitioning and a composite identity (e.g. `environment/platform/plugin`) distributes events better across partitions.
+`@compositePartitionTag` lets you form the DynamoDB partition key from multiple fields, concatenated in declaration order with a configurable separator. Use it when a single field is too coarse for partitioning and a composite identity (e.g. `environment/platform/plugin`) distributes events better across partitions. A composite key is never inferred: it is explicit and applies to the whole plugin's event log.
 
 Each annotated field is still a regular DCB tag (individually queryable). The composite key is derived automatically at runtime from the stored tag values.
 
@@ -290,8 +295,8 @@ type event =
 | Rule | Behaviour |
 |---|---|
 | Non-`string` field annotated | No-op — field is left untouched |
-| `@compositePartitionTag` and `@partitionTag` on the same schema | `derivePartitionTag` throws at startup |
-| Fewer than 2 fields annotated | `derivePartitionTag` throws at startup |
+| `@compositePartitionTag` and `@partitionTag` on the same schema | Throws at startup |
+| Fewer than 2 fields annotated | Throws at startup |
 | A member's value is the empty string | Permitted — see below |
 
 **Empty tag values.** A composite key often describes a hierarchy, and a member of
@@ -337,7 +342,7 @@ environment: @compositePartitionTag string
 > that key's partitions (below). A `@crossPartition` that the framework resolves as
 > the slice's own partition is flagged as a contradiction at build time.
 
-A DCB event is stored under exactly one **partition** (its `@partitionTag`). A
+A DCB event is stored under exactly one **partition** (its partition key). A
 single-tag decision read of any *other* tag the event carries is, by default,
 **partition-scoped** — it only sees events whose partition key is that tag, so a
 tag that is secondary on the event is invisible to such a read.
@@ -354,10 +359,11 @@ in explicitly.
 // course partition the student appears in. The annotation goes on BOTH the
 // command (its tags build the read query) and the produced event (its tags
 // drive partitioning, GSI indexing, and the fence) — never on consumedEvent.
+// The event carries two candidate ids, so @partitionTag on it names the partition.
 @schema
 type command =
   | SubscribeStudent({
-      @partitionTag courseId: string,      // → clause [courseId]  — partition read
+      courseId: string,                    // → clause [courseId]  — partition read
       @crossPartition studentId: string,   // → clause [studentId] — cross-partition read
     })
 
@@ -414,8 +420,8 @@ Use on command types or individual command variants to exclude them from automat
 // Driven by an extension reacting to another plugin's events — never by a client.
 @schema @noApi
 type command =
-  | RecordDemand({@partitionTag productId: string, orderId: string})
-  | RevokeDemand({@partitionTag productId: string, orderId: string})
+  | RecordDemand({productId: string, orderId: string})
+  | RevokeDemand({productId: string, orderId: string})
 ```
 All variants of this command type are excluded from GraphQL mutations and MCP tools. Use this for commands that only ever arrive from an extension, an automation, or another internal path.
 
@@ -820,7 +826,7 @@ Two things follow, both enforced server-side:
 @schema
 type command =
   PlaceOrder({
-    @partitionTag orderId: string,
+    orderId: string,
     @noDcbTag @owner customerId: string,
   })
 

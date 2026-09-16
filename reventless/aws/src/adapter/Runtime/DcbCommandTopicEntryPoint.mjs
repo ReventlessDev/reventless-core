@@ -26,7 +26,7 @@ import { commandOutcomeToJson, runInlineAndCollect } from "@reventlessdev/revent
 // re-exporting it in sury 11. This is the same binding the compiled ReScript uses.
 import { json as jsonSchema } from "sury";
 import { handleQueueEvent, publishJsons as sqsPublishJsons } from "@reventlessdev/reventless-aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_Runtime.res.mjs";
-// Typed cold-start core — scope/partitionTag derivation, storage-ops wiring, and
+// Typed cold-start core — scope/partition derivation, storage-ops wiring, and
 // per-slice handler building (functor + decode + handleCommands), all
 // compiler-checked against the framework signatures (see the module header and
 // docs/plans/done/minimize-lambda-entrypoint-mjs-shell.md).
@@ -89,7 +89,6 @@ export async function buildHandlersForConfig(config, opts = {}) {
   // as `dcb_event.log_name`); absence keeps the DynamoDB path byte-identical.
   const specs = loadedSlices.map(({ patchedSpec }) => patchedSpec);
   const scope = deriveScope(specs);
-  const { crossPartitionTagKeys, tagKeysByEventType } = scope;
   const rawStorageOps = makeStorageOps(
     config.dcbEventLogTableName,
     config.pgConnection,
@@ -98,6 +97,7 @@ export async function buildHandlersForConfig(config, opts = {}) {
 
   const handlersByType = {};
   const commandSchemasByType = {};
+  const partitionTagsByType = {};
   const sharedDcbEventLogOps = dcbEventLogOperationsMake({
     name: config.pluginName,
     // Mirrors DcbEventLog_Builder.res's `name ++ "DcbEventLog"` — the
@@ -116,8 +116,7 @@ export async function buildHandlersForConfig(config, opts = {}) {
     const jsonHandler = buildSliceHandler(
       patchedSpec,
       behaviorModule,
-      tagKeysByEventType,
-      crossPartitionTagKeys,
+      scope,
       sharedDcbEventLogOps,
     );
     for (const typeName of commandTypeNames(patchedSpec)) {
@@ -134,6 +133,8 @@ export async function buildHandlersForConfig(config, opts = {}) {
         );
       } else {
         commandSchemasByType[typeName] = patchedSpec.commandSchema;
+        // The envelope id is the command's value of its slice's partition key.
+        partitionTagsByType[typeName] = scope.partitionTagBySlice[patchedSpec.name];
       }
     }
   });
@@ -225,17 +226,21 @@ export async function buildHandlersForConfig(config, opts = {}) {
   // reads a command's `@owner` fields from: given `S.json` it finds none, for every
   // command, and the write keeps whatever owner the CLIENT sent. Validation was
   // never the only job.
-  const makeGeneratorFor = (commandSchema) => makeCommandGenerator(
+  const makeGeneratorFor = (commandSchema, partitionTag) => makeCommandGenerator(
     publishJsons,
     publishJsonsAndWait,
     config.pluginName,
     commandSchema,
     "StateChangeSlice",
     false,
+    partitionTag,
   );
   const generatorsByType = {};
   for (const typeName of Object.keys(commandSchemasByType)) {
-    generatorsByType[typeName] = makeGeneratorFor(commandSchemasByType[typeName]);
+    generatorsByType[typeName] = makeGeneratorFor(
+      commandSchemasByType[typeName],
+      partitionTagsByType[typeName],
+    );
   }
   // A command no loaded slice claims keeps the permissive generator — what every
   // command got before this change — so anything reaching this handler by another
@@ -301,6 +306,10 @@ async function buildHandler() {
 }
 
 const initPromise = buildHandler();
+// Startup runs at module load, before any invocation awaits it. A failure left
+// unhandled until then can surface as a bare `Runtime.UnhandledPromiseRejection`
+// and a restart; handled here, every invocation rethrows the same clear error.
+initPromise.catch(() => {});
 
 export async function handler(event, context) {
   setRequestId(context?.awsRequestId);

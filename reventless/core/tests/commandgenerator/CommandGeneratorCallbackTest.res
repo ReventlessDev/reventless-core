@@ -91,7 +91,7 @@ describe("CommandGenerator_Callback.generateCommand:", () => {
 
   describe("StateChangeSlice envelope id derivation", () => {
     testPromise(
-      "single @partitionTag: id derived from tagged field when args have no id",
+      "the slice's partition key: id derived from its field when args have no id",
       async () => {
         let payload = makeSlicePayload(
           ~command="CreateItem",

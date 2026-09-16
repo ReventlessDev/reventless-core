@@ -10,7 +10,18 @@
       "RecordProductDemand": "productId",
       "RenameCategory": "categoryId"
     },
-    "crossPartitionTagKeys": []
+    "crossPartitionTagKeys": [],
+    "partitionKeyByEventType": {
+      "CategoryAdded": "categoryId",
+      "CategoryArchived": "categoryId",
+      "CategoryRenamed": "categoryId",
+      "ProductAdded": "productId",
+      "ProductDemandRecorded": "productId",
+      "ProductDemandRevoked": "productId",
+      "ProductDescriptionChanged": "productId",
+      "ProductNameChanged": "productId",
+      "ProductPriceChanged": "productId"
+    }
   },
   "ordering": {
     "partitionBySlice": {
@@ -23,6 +34,17 @@
       "ShipOrder": "orderId",
       "SyncCatalogProduct": "productId"
     },
-    "crossPartitionTagKeys": []
+    "crossPartitionTagKeys": [],
+    "partitionKeyByEventType": {
+      "AddressChanged": "customerId",
+      "CatalogProductPriceChanged": "productId",
+      "CatalogProductSynced": "productId",
+      "CustomerDeactivated": "customerId",
+      "CustomerRegistered": "customerId",
+      "EmailChanged": "customerId",
+      "OrderCancelled": "orderId",
+      "OrderPlaced": "orderId",
+      "OrderShipped": "orderId"
+    }
   }
 }

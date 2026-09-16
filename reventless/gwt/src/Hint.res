@@ -100,6 +100,11 @@ let forMismatch = (~slice="<slice>", m: Outcome.mismatch): t =>
           ", ",
         )}] were lost. A slice referencing another entity by one of these keys now decides against an empty history and rejects valid commands. Fix the named slice — usually a consumed arm declaring the id the slice is already partitioned by.`,
     }
+  | PartitionUnresolved(_) => {
+      locus: `${slice} (DCB boundary)`,
+      branch: None,
+      message: "A slice in this boundary has no derivable partition key, or a @partitionTag names a key inference contradicts. Deploy and boot refuse the boundary. Follow the named reason: usually a consumed arm declaring the slice's own id, or an annotation to add or move.",
+    }
   | Throw({error}) => {
       locus: `${slice}`,
       branch: None,

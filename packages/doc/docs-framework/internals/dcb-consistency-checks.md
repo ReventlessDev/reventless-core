@@ -65,7 +65,7 @@ AddProduct({ productId: "prod-1", … })
 
 ```rescript
 type command =
-  PlaceOrder({ @partitionTag orderId: string, @noDcbTag customerId: string, productIds: array<string> })
+  PlaceOrder({ orderId: string, @noDcbTag customerId: string, productIds: array<string> })
 type consumedEvent =
   | OrderPlaced({ orderId: string })
   | CatalogProductSynced({ productId: string })
@@ -88,8 +88,8 @@ Each clause carries a **single** tag — this matters in Stage 2: a single-tag c
 
 ```rescript
 type command =
-  | RecordDemand({ @partitionTag productId: string, orderId: string })
-  | RevokeDemand({ @partitionTag productId: string, orderId: string })
+  | RecordDemand({ productId: string, orderId: string })
+  | RevokeDemand({ productId: string, orderId: string })
 ```
 
 Both `productId` and `orderId` are tags (no array), so the query is a single clause with **two** tags AND-ed together — the consistency boundary is the exact `(product, order)` pair:
@@ -111,7 +111,7 @@ Suppose a customer may order at most *N* units of a given product — **across a
 ```rescript
 type command =
   OrderProduct({
-    @partitionTag orderId: string,
+    orderId: string,
     @crossPartition customerId: string,   // read THIS customer's whole history, across partitions
     productId: string,                     // payload — which product to cap (filtered in the fold)
     quantity: int,                         // payload — units in this order (summed in the fold)
@@ -180,13 +180,13 @@ Every single-tag read is partition-scoped **by default** (`PartitionScoped`). `@
 
 A single-tag read being partition-scoped (above) blocks the **canonical M:N decision**. Take course subscription: a `StudentSubscribed` event ties two entities and must enforce two invariants on subscribe — *course not full* (read by `courseId`) and *student not over-enrolled* (read by `studentId`). The event can be partitioned by only one tag, so the other read is inherently cross-partition.
 
-The annotation goes on the **command** and the produced **`event`** — exactly where `@partitionTag` already lives, and consistently across both — never on `consumedEvent` (which carries no tag annotations):
+The annotation goes on the **command** and the produced **`event`**, consistently across both — never on `consumedEvent` (which carries no tag annotations). The event carries two ids of the slice's own, so the partition key is not inferable and `@partitionTag` names it on the produced event:
 
 ```rescript
 // command — its tagged fields build the read query
 @schema type command =
   | SubscribeStudent({
-      @partitionTag courseId: string,      // → clause [courseId:C1] — partition read: course full?
+      courseId: string,                    // → clause [courseId:C1] — partition read: course full?
       @crossPartition studentId: string,   // → clause [studentId:S1] — cross-partition read: over-enrolled?
     })
 

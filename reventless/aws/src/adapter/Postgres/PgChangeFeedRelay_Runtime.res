@@ -27,6 +27,7 @@ let toEventCollectorJson = (
     "id",
     DcbEventLogStorage_DynamoDb_Runtime.derivePartitionKey(
       ~partitionTag?,
+      ~eventType=event.eventType,
       event.tags,
     )->JSON.Encode.string,
   )
@@ -55,10 +56,10 @@ let relayWithPool = async (
   ~pool: ReventlessPostgres.PgDriver.pool,
   ~logName: string,
   ~subscriber: string,
-  // ~partitionTagJson: the DCB log's partition tag, sury-encoded into HANDLER_CONFIG
-  // by the relay builder (B2.3d). Parsed once via the shared derivedPartitionTagSchema
-  // so the `id` the relay emits matches the DynamoDB-stream path. Absent → None (a
-  // single-tag log derives the same id without it).
+  // ~partitionTagJson: the DCB log's partition (the per-event-type key map, or a
+  // composite), sury-encoded into HANDLER_CONFIG by the relay builder (B2.3d). Parsed
+  // once via the shared derivedPartitionTagSchema so the `id` the relay emits matches
+  // the DynamoDB-stream path. Absent → None (a single-tag log derives the same id).
   ~partitionTagJson: option<JSON.t>=?,
   ~sendBatch: array<JSON.t> => promise<unit>,
 ): int => {

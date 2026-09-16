@@ -32,6 +32,7 @@ module PsGatedCommandsSlice: ReventlessInfra.StateChangeSlice.T = {
     ~publishJsons as _,
     ~tagKeysByEventType as _=?,
     ~crossPartitionTagKeys as _=?,
+    ~partitionTag as _=?,
     ~runtime as _=?,
     ~opts as _=?,
   ): component => Obj.magic(0)

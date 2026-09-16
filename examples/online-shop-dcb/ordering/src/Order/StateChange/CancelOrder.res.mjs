@@ -24,7 +24,7 @@ let errorSchema = Sury.union([
 
 let eventSchema = Sury.$schema(s => ({
   TAG: "OrderCancelled",
-  orderId: s.m(DcbTag$Reventless.partition),
+  orderId: s.m(DcbTag$Reventless.string),
   productIds: s.m(Sury.array(DcbTag$Reventless.stringForKey("productId")))
 }));
 

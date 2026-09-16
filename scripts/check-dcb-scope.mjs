@@ -18,9 +18,14 @@
 //   it composes, and this covers every plugin in the repository.
 //
 // - The scope it prints is a contract. Which keys are cross-partition decides
-//   which reads fan out and which tags are written to a GSI, so a change to the
-//   derived scope changes the runtime for slices nobody edited. The golden makes
-//   that a reviewable diff rather than a surprise in production.
+//   which reads fan out and which tags are written to a GSI, and the partition
+//   key of each event type decides where it is stored and which fence guards it.
+//   A change to either changes the runtime for slices nobody edited. The golden
+//   makes that a reviewable diff rather than a surprise in production.
+//
+// It also holds this repository's examples to their annotations: a
+// `@partitionTag` inference contradicts fails, and so does one inference already
+// agrees with, since the examples are what readers copy.
 //
 // Plain .mjs because it is untyped reflection: a plugin is found by path and its
 // `dcbSliceSchemas` is a value shaped by that plugin, not by anything this
@@ -43,6 +48,9 @@ const DcbTag = await import(
 const Inference = await import(
   path.join(ROOT, "reventless/spec/src/components/DcbScopeInference.res.mjs")
 )
+const Validation = await import(
+  path.join(ROOT, "reventless/spec/src/components/DcbValidation.res.mjs")
+)
 
 // A plugin is a directory holding a compiled `src/Plugin.res.mjs`; it is part of
 // a DCB boundary only if the generator emitted `dcbSliceSchemas`, which it does
@@ -59,6 +67,7 @@ const examples = readdirSync(path.join(ROOT, "examples"), { withFileTypes: true 
   .sort()
 
 let failures = 0
+let annotations = 0
 let drift = 0
 
 for (const example of examples) {
@@ -85,6 +94,22 @@ for (const example of examples) {
       failures++
       console.error(`✗ ${example}/${name}: ${slice} — ${reason}`)
     }
+    const hints = Validation.validatePartitionHintsVsInference(shapes)
+    for (const { sliceName, message } of [...hints.contradictions, ...hints.redundancies]) {
+      annotations++
+      console.error(`✗ ${example}/${name}: ${sliceName} — ${message}`)
+    }
+    let partitionKeyByEventType = {}
+    try {
+      const { partitionTag } = DcbTag.deriveBoundaryPartition(slices)
+      partitionKeyByEventType = partitionTag.TAG === "ByEventType" ? partitionTag._0 : partitionTag
+    } catch (err) {
+      // An unresolved slice is already reported above; anything else is new.
+      if (inferred.ambiguities.length === 0) {
+        failures++
+        console.error(`✗ ${example}/${name}: ${err.message}`)
+      }
+    }
     if (effective.droppedCrossPartitionTagKeys.length > 0) {
       console.error(
         `  → the boundary lost cross-partition reads of [${effective.droppedCrossPartitionTagKeys.join(", ")}];` +
@@ -100,6 +125,9 @@ for (const example of examples) {
         Object.entries(inferred.partitionBySlice).sort(([a], [b]) => a.localeCompare(b)),
       ),
       crossPartitionTagKeys: effective.crossPartitionTagKeys,
+      partitionKeyByEventType: Object.fromEntries(
+        Object.entries(partitionKeyByEventType).sort(([a], [b]) => a.localeCompare(b)),
+      ),
     }
   }
 
@@ -125,9 +153,9 @@ for (const example of examples) {
   }
 }
 
-if (failures > 0 || drift > 0) {
+if (failures > 0 || annotations > 0 || drift > 0) {
   console.error(
-    `\n${failures} unresolved slice(s), ${drift} golden drift(s). ` +
+    `\n${failures} unresolved slice(s), ${annotations} @partitionTag issue(s), ${drift} golden drift(s). ` +
       `An unresolved partition is usually a consumed arm declaring the id its slice is already partitioned by — remove the field.`,
   )
   process.exit(1)

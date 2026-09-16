@@ -18,7 +18,31 @@
     },
     "crossPartitionTagKeys": [
       "categoryId"
-    ]
+    ],
+    "partitionKeyByEventType": {
+      "CategoryAdded": "categoryId",
+      "CategoryArchived": "categoryId",
+      "CategoryEffectiveImageChanged": "categoryId",
+      "CategoryImageAltTextSet": "categoryId",
+      "CategoryImageAttached": "categoryId",
+      "CategoryImageRemoved": "categoryId",
+      "CategoryRenamed": "categoryId",
+      "CategoryUnarchived": "categoryId",
+      "ProductAdded": "productId",
+      "ProductArchived": "productId",
+      "ProductDemandRecorded": "productId",
+      "ProductDemandRevoked": "productId",
+      "ProductDescriptionChanged": "productId",
+      "ProductDiscontinued": "productId",
+      "ProductEffectiveImageChanged": "productId",
+      "ProductImageAltTextSet": "productId",
+      "ProductImageAttached": "productId",
+      "ProductImageRemoved": "productId",
+      "ProductNameChanged": "productId",
+      "ProductPriceChanged": "productId",
+      "ProductPrimaryImageSet": "productId",
+      "ProductUnarchived": "productId"
+    }
   },
   "ordering": {
     "partitionBySlice": {
@@ -32,6 +56,31 @@
     },
     "crossPartitionTagKeys": [
       "sourceId"
-    ]
+    ],
+    "partitionKeyByEventType": {
+      "CatalogProductImageChanged": "productId",
+      "CatalogProductPriceChanged": "productId",
+      "CatalogProductRelisted": "productId",
+      "CatalogProductSynced": "productId",
+      "CatalogProductWithdrawn": "productId",
+      "EmailChallengeIssued": "customerId",
+      "EmailProofAccepted": "customerId",
+      "EmailProofRefused": "customerId",
+      "NotificationDeferred": "recipientId",
+      "NotificationDelivered": "recipientId",
+      "NotificationFailed": "recipientId",
+      "NotificationRequested": "recipientId",
+      "NotificationSourceClaimed": "sourceId",
+      "NotificationSourceReleased": "sourceId",
+      "NotificationSubscribed": "recipientId",
+      "NotificationSuppressed": "recipientId",
+      "NotificationUndeliverable": "recipientId",
+      "NotificationUnsubscribed": "recipientId",
+      "OrderCancelled": "orderId",
+      "OrderPlaced": "orderId",
+      "OrderReopened": "orderId",
+      "OrderShipped": "orderId",
+      "RecipientAnnounced": "recipientId"
+    }
   }
 }

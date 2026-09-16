@@ -35,9 +35,13 @@ shape of their primary key. All three share one composite key:
 
 The actual stored events.
 
-- **`id`** — the **partition-tag** value, formatted `<tagKey>:<tagValue>`
-  (e.g. `"orderId:ord-123"`). Composite partition tags join their segments via
-  `getCompositePartitionKeyValue`; tagless events fall back to the literal `"dcb"`.
+- **`id`** — the event's **partition key** value, formatted `<tagKey>:<tagValue>`
+  (e.g. `"orderId:ord-123"`). Each event type is filed under the partition key of
+  the slice that writes it, which `Dcb_Builder` infers from the slice graph (or
+  reads from `@partitionTag`) and binds as `~partitionTag`. An event that lacks
+  that tag throws rather than being filed elsewhere. Composite partition tags join
+  their segments via `getCompositePartitionKeyValue`; tagless events fall back to
+  the literal `"dcb"`.
 - **`position`** — a lexicographically sortable `<timestamp>-<uuidv4>` string. A batch
   appended in one call shares a base position and suffixes `-001`, `-002`, … so the
   events keep their relative order (`generatePositionForBatch`).
@@ -210,7 +214,7 @@ adapter still writes events and bumps every carried tag's fence in one atomic
 
 | Aspect | EventLog (aggregate) | DcbEventLog (DCB) |
 |---|---|---|
-| Partition key | aggregate instance `id` | `<partitionTag>:<value>` |
+| Partition key | aggregate instance `id` | `<partitionKey>:<value>` of the writing slice |
 | Sort key | `sequenceNr` | `position` (`<timestamp>-<uuid>`) |
 | Scope | one stream per aggregate | one table per plugin, many slices |
 | Concurrency | per-aggregate sequence | per-tag, per-event-type fences in `TransactWriteItems` |

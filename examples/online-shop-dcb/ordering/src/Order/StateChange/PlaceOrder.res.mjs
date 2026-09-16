@@ -17,7 +17,7 @@ let consumedEventSchema = Sury.union([
 
 let commandSchema = Sury.$schema(s => ({
   TAG: "PlaceOrder",
-  orderId: s.m(DcbTag$Reventless.partition),
+  orderId: s.m(DcbTag$Reventless.string),
   customerId: s.m(DcbTag$Reventless.string),
   productIds: s.m(Sury.array(Reference$Reventless.to_(undefined, "productId", "AvailableProducts")))
 }));

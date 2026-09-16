@@ -2,8 +2,8 @@
 
 import * as CommandGenerator_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandGenerator/CommandGenerator_Callback.res.mjs";
 
-function makeCommandGenerator(publishJsons, publishJsonsAndWait, serviceName, commandSchema, componentKind, stripIdFromParams) {
-  return CommandGenerator_Callback$ReventlessCore.makeGenerateCommand(publishJsons, publishJsonsAndWait, serviceName, commandSchema, componentKind, stripIdFromParams);
+function makeCommandGenerator(publishJsons, publishJsonsAndWait, serviceName, commandSchema, componentKind, stripIdFromParams, partitionTag) {
+  return CommandGenerator_Callback$ReventlessCore.makeGenerateCommand(publishJsons, publishJsonsAndWait, serviceName, commandSchema, componentKind, stripIdFromParams, partitionTag);
 }
 
 export {

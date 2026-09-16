@@ -103,18 +103,18 @@ describe("DcbTag.deriveEffectiveScope (inference vs annotation drift)", () => {
 })
 
 // The fallback is all-or-nothing, so one unresolvable slice decides the scope of
-// every slice beside it. Here a fourth slice reads its own entity's lifecycle arm
-// *with* the id on it, which leaves it no partition — and `AddProduct`, untouched,
-// loses the `categoryId` read its category check depends on.
+// every slice beside it. Here a fourth slice writes two ids and reads both off an
+// event nothing in the boundary writes, which leaves it no partition — and
+// `AddProduct`, untouched, loses the `categoryId` read its category check depends on.
 
 @schema
-type imagesCommand = AttachProductImage({productId: string, productImage: string})
+type imagesCommand = AttachProductImage({productId: string, uploadId: string})
 @schema
 type imagesConsumed =
-  | ProductAdded({productId: string})
-  | ProductImageAttached({productImage: string})
+  | ImageUploaded({productId: string, uploadId: string})
+  | ProductImageAttached({uploadId: string})
 @schema
-type imagesEvent = ProductImageAttached({productId: string, productImage: string})
+type imagesEvent = ProductImageAttached({productId: string, uploadId: string})
 
 let withUnresolvableSlice: array<DcbTag.sliceSchemas> = catalogSlices->Array.concat([
   {

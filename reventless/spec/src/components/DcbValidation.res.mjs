@@ -5,6 +5,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as DcbTag$Reventless from "./DcbTag.res.mjs";
+import * as DcbScopeInference$Reventless from "./DcbScopeInference.res.mjs";
 
 function extractVariantInfo(variantSchema) {
   switch (variantSchema.type) {
@@ -425,6 +426,60 @@ function validateScopeVsInference(annotations, inferred) {
   };
 }
 
+function validatePartitionHintsVsInference(shapes) {
+  let contradictions = [];
+  let redundancies = [];
+  shapes.forEach(s => {
+    let hint = s.partitionHint;
+    if (hint === undefined) {
+      return;
+    }
+    if (!DcbScopeInference$Reventless.producedKeys(s).includes(hint)) {
+      return;
+    }
+    let unaided = DcbScopeInference$Reventless.resolvePartitions(shapes.map(o => {
+      if (o.sliceName === s.sliceName) {
+        return {
+          sliceName: o.sliceName,
+          command: o.command,
+          consumed: o.consumed,
+          produced: o.produced,
+          partitionHint: undefined
+        };
+      } else {
+        return o;
+      }
+    }));
+    let inferred = unaided.partitionBySlice[s.sliceName];
+    if (inferred !== undefined) {
+      if (inferred === hint) {
+        redundancies.push({
+          sliceName: s.sliceName,
+          message: `@partitionTag ` + hint + ` is what inference derives without it — the annotation is redundant and can be removed.`
+        });
+      } else {
+        contradictions.push({
+          sliceName: s.sliceName,
+          message: `@partitionTag names ` + hint + `, but inference derives ` + inferred + ` from the slice graph — ` + hint + ` is read from another entity. Remove the annotation, or move it to ` + inferred + `.`
+        });
+      }
+      return;
+    }
+    let candidates = Stdlib_Option.getOr(unaided.candidatesBySlice[s.sliceName], []);
+    if (!candidates.includes(hint)) {
+      contradictions.push({
+        sliceName: s.sliceName,
+        message: `@partitionTag names ` + hint + `, which this slice only reads as a reference to another entity (candidates: ` + candidates.join(", ") + `). Move the annotation to the slice's own key.`
+      });
+      return;
+    }
+  });
+  return {
+    contradictions: contradictions,
+    redundancies: redundancies
+  };
+}
+
 export {
   extractVariantInfo,
   extractAllVariants,
@@ -438,5 +493,6 @@ export {
   validateProducedAndConsumed,
   validateCrossPartitionScope,
   validateScopeVsInference,
+  validatePartitionHintsVsInference,
 }
 /* DcbTag-Reventless Not a pure module */

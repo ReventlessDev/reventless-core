@@ -107,6 +107,7 @@ let singleTagSliceGen = CommandGenerator_Callback.makeGenerateCommand(
   ~commandSchema=singleTagCommandSchema->S.castToUnknown,
   ~componentKind=CommandGenerator_Callback.StateChangeSlice,
   ~stripIdFromParams=false,
+  ~partitionTag=Simple({key: "itemId"}),
 )
 
 let compositeTagSliceGen = CommandGenerator_Callback.makeGenerateCommand(
@@ -115,6 +116,7 @@ let compositeTagSliceGen = CommandGenerator_Callback.makeGenerateCommand(
   ~commandSchema=compositeTagCommandSchema->S.castToUnknown,
   ~componentKind=CommandGenerator_Callback.StateChangeSlice,
   ~stripIdFromParams=false,
+  ~partitionTag=Composite({keys: ["environment", "service"], seps: ["-"]}),
 )
 
 // Build a payload for a StateChangeSlice command — args must NOT include `id`.

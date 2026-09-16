@@ -4,6 +4,8 @@ module type T = {
   let handleCommands: (
     ~tagKeysByEventType: Dict.t<array<string>>=?,
     ~crossPartitionTagKeys: array<string>=?,
+    /** This slice's partition within its boundary; inferred from the slice alone when absent. */
+    ~partitionTag: Reventless.DcbTag.derivedPartitionTag=?,
     DcbEventLog.operations,
     Stream.t<
       CommandTopic.topicItem<Message.command'<Reventless.Id.String.t, Spec.command>>,
@@ -74,18 +76,31 @@ module Make = (
     {eventType, data: JSON.Object(data), tags, meta}
   }
 
-  // Computed once at functor init — used to extract entityId for publishJsonsAndWait outcomes.
-  let derivedPartitionTag = Reventless.DcbTag.derivePartitionTag([
-    (Spec.name, Behavior.moduleUrl, Spec.eventSchema->S.castToUnknown),
-  ])
+  // The partition inferred from this slice alone, for callers that do not thread
+  // the boundary's. Lazy and non-throwing: it only names ids in logs and outcomes,
+  // and a slice that needs its siblings to resolve must not fail to load for that.
+  let slicePartitionTag = Lazy.make(() =>
+    try Some(
+      Reventless.DcbTag.deriveSlicePartition({
+        name: Spec.name,
+        commandSchema: Spec.commandSchema->S.castToUnknown,
+        consumedEventSchema: Spec.consumedEventSchema->S.castToUnknown,
+        eventSchema: Spec.eventSchema->S.castToUnknown,
+      }),
+    ) catch {
+    | _ => None
+    }
+  )
 
   // Extracts the entity id of a read event from its own tags, for logging
   // which events the decision model was built from. Prefers this slice's
-  // partition key (derived from the produced event), but consumed events from
-  // other sources are tagged by their own key (e.g. CatalogProductSynced →
-  // productId, not this slice's orderId), so fall back to the read event's own
-  // tag value(s) instead of logging no id.
-  let readEventId = (tags: array<Reventless.DcbTag.tag>): option<string> => {
+  // partition key, but consumed events from other sources are tagged by their
+  // own key (e.g. CatalogProductSynced → productId, not this slice's orderId),
+  // so fall back to the read event's own tag value(s) instead of logging no id.
+  let readEventId = (
+    ~partitionTag: option<Reventless.DcbTag.derivedPartitionTag>,
+    tags: array<Reventless.DcbTag.tag>,
+  ): option<string> => {
     let ownTagValues = () => {
       let vals =
         tags->Array.reduce([], (acc, t: Reventless.DcbTag.tag) =>
@@ -93,15 +108,14 @@ module Make = (
         )
       vals->Array.length == 0 ? None : Some(vals->Array.join(","))
     }
-    switch derivedPartitionTag {
-    | Simple(pt) =>
-      switch tags->Array.findMap((t: Reventless.DcbTag.tag) =>
-        t.key == pt.key ? Some(t.value) : None
-      ) {
-      | Some(v) => Some(v)
-      | None => ownTagValues()
+    switch partitionTag {
+    | Some(Composite(spec)) => Some(Reventless.DcbTag.getCompositePartitionKeyValue(tags, spec))
+    | Some(pt) =>
+      switch tags->Reventless.DcbTag.partitionValueOfTags(pt) {
+      | "" => ownTagValues()
+      | v => Some(v)
       }
-    | Composite(spec) => Some(Reventless.DcbTag.getCompositePartitionKeyValue(tags, spec))
+    | None => ownTagValues()
     }
   }
 
@@ -147,6 +161,7 @@ module Make = (
   let handleSingleCommand = (
     ~tagKeysByEventType,
     ~crossPartitionTagKeys,
+    ~partitionTag,
     dcbEventLog: DcbEventLog.operations,
     command': Message.command'<Reventless.Id.String.t, Spec.command>,
   ) => {
@@ -192,11 +207,12 @@ module Make = (
     EffectLogger.logInfo(~comp, `query: ${queryDetail}`)->Effect.runSync
 
     // Extract the entity ID from the command for use in Accepted outcomes.
-    let entityId = switch derivedPartitionTag {
-    | Simple(pt) => Reventless.DcbTag.getPartitionTagValue(query, pt)
-    | Composite(spec) =>
+    let entityId = switch partitionTag {
+    | Some(Reventless.DcbTag.Composite(spec)) =>
       let tags = Reventless.DcbTag.extractTags(Spec.commandSchema, command'.command)
       Some(Reventless.DcbTag.getCompositePartitionKeyValue(tags, spec))
+    | Some(Simple(pt)) => Reventless.DcbTag.getPartitionTagValue(query, pt)
+    | Some(ByEventType(_)) | None => None
     }
 
     // Fail closed: a query that can't be serialized yields `None`, not the empty
@@ -267,7 +283,12 @@ module Make = (
           ~eventType=raw.eventType,
           ~data=raw.data->JSON.Decode.object->Option.getOr(Dict.make()),
         )
-        decoded->Option.map(event => (event, raw.position, raw.eventType, readEventId(raw.tags)))
+        decoded->Option.map(event => (
+          event,
+          raw.position,
+          raw.eventType,
+          readEventId(~partitionTag, raw.tags),
+        ))
       })
       ->Stream.flatMap(opt =>
         switch opt {
@@ -474,14 +495,20 @@ module Make = (
   let handleCommands = (
     ~tagKeysByEventType=Dict.make(),
     ~crossPartitionTagKeys=[],
+    ~partitionTag=?,
     dcbEventLog,
     stream,
-  ) =>
+  ) => {
+    let partitionTag = switch partitionTag {
+    | Some(_) => partitionTag
+    | None => slicePartitionTag->Lazy.get
+    }
     stream
     ->Stream.mapEffect(({ReventlessInfra.CommandTopic.reference: reference, command}) =>
       handleSingleCommand(
         ~tagKeysByEventType,
         ~crossPartitionTagKeys,
+        ~partitionTag,
         dcbEventLog,
         command,
       )->Effect.map(result =>
@@ -492,4 +519,5 @@ module Make = (
       )
     )
     ->Stream.runCollect
+  }
 }

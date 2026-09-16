@@ -636,7 +636,15 @@ let isCreateCommandName = name =>
     name->String.startsWith(p)
   )
 
-let commandLevelAndId = (~isAggregate, ~variantName, properties: dict<S.t<unknown>>) =>
+// A slice command's id field is the one carrying its slice's partition key, as the
+// boundary infers it; a `@partitionTag` or the first tagged field stands in only
+// where no key was inferred.
+let commandLevelAndId = (
+  ~isAggregate,
+  ~partitionKey: option<string>=?,
+  ~variantName,
+  properties: dict<S.t<unknown>>,
+) =>
   if isAggregate {
     if isCreateCommandName(variantName) {
       (Reventless.Plugin.Collection, None)
@@ -651,9 +659,18 @@ let commandLevelAndId = (~isAggregate, ~variantName, properties: dict<S.t<unknow
         fieldName != "TAG" &&
           (Reventless.DcbTag.isTagged(fieldSchema) || Reventless.DcbTag.isTaggedArray(fieldSchema))
       )
+    let keyOf = ((fieldName, fieldSchema)) =>
+      Reventless.DcbTag.isTaggedArray(fieldSchema)
+        ? Reventless.DcbTag.resolveArrayTagKey(fieldName, fieldSchema)
+        : Reventless.DcbTag.resolveTagKey(fieldName, fieldSchema)
     let taggedField =
-      taggedFields
-      ->Array.find(((_, fieldSchema)) => Reventless.DcbTag.isPartitionTag(fieldSchema))
+      partitionKey
+      ->Option.flatMap(key => taggedFields->Array.find(field => keyOf(field) == key))
+      ->Option.orElse(
+        taggedFields->Array.find(((_, fieldSchema)) =>
+          Reventless.DcbTag.isPartitionTag(fieldSchema)
+        ),
+      )
       ->Option.orElse(taggedFields->Array.get(0))
     switch taggedField {
     | Some((fieldName, _)) =>
@@ -700,6 +717,7 @@ let annotateArgTypes = (schema: JSON.t, argTypes: dict<string>): JSON.t => {
 
 let toCommandDef = (
   ~isAggregate,
+  ~partitionKey: option<string>=?,
   ~mutationFieldFor: string => string,
   ~parentSchema: S.t<unknown>,
   // The PPX-generated `command => permission`. Per VARIANT, not per component:
@@ -727,7 +745,12 @@ let toCommandDef = (
   // empty for a payload-less variant (e.g. `| Archive`), which compiles to a bare
   // `S.literal("Archive")` string rather than an `{TAG, ...}` object.
   let mkDef = (~variantName, ~properties) => {
-    let (guessedLevel, aggregateIdField) = commandLevelAndId(~isAggregate, ~variantName, properties)
+    let (guessedLevel, aggregateIdField) = commandLevelAndId(
+      ~isAggregate,
+      ~partitionKey?,
+      ~variantName,
+      properties,
+    )
     let references = extractReferences(properties)
     // Evaluated against a synthetic value per constructor, the same shape the
     // resolver builds at call time: a payload-bearing variant compiles to
@@ -867,6 +890,7 @@ let toCommandDef = (
 
 let extractCommandDefs = (
   ~isAggregate,
+  ~partitionKey: option<string>=?,
   ~mutationFieldFor: string => string,
   ~commandAuthorization: unknown => Reventless.Authorization.permission,
   ~commandTransition: unknown => Reventless.Transition.t<string>,
@@ -878,6 +902,7 @@ let extractCommandDefs = (
     anyOf->Array.filterMap(v =>
       toCommandDef(
         ~isAggregate,
+        ~partitionKey?,
         ~mutationFieldFor,
         ~parentSchema=commandSchema,
         ~commandAuthorization,
@@ -890,6 +915,7 @@ let extractCommandDefs = (
     // Single-variant command types compile to a bare Object schema, not a Union.
     toCommandDef(
       ~isAggregate,
+      ~partitionKey?,
       ~mutationFieldFor,
       ~parentSchema=commandSchema,
       ~commandAuthorization,
@@ -1445,6 +1471,20 @@ let make = (
 
   // ── Build writable defs ────────────────────────────────────────────────────
 
+  // Non-throwing: this is a description of the plugin, and the builder is what
+  // refuses a boundary whose partitions do not resolve.
+  let {partitionBySlice}: Reventless.DcbScopeInference.partitionResolution =
+    stateChangeSlices
+    ->Array.map((module(SCS: ReventlessInfra.StateChangeSlice.T)) =>
+      Reventless.DcbTag.sliceShape({
+        name: SCS.Spec.name,
+        commandSchema: SCS.Spec.commandSchema->S.castToUnknown,
+        consumedEventSchema: SCS.Spec.consumedEventSchema->S.castToUnknown,
+        eventSchema: SCS.Spec.eventSchema->S.castToUnknown,
+      })
+    )
+    ->Reventless.DcbScopeInference.resolvePartitions
+
   let stateChangeDefs =
     stateChangeSlices->Array.mapWithIndex((module(SCS: ReventlessInfra.StateChangeSlice.T), i) => {
       let (_, produced) = scsProduced->Array.getUnsafe(i)
@@ -1455,6 +1495,7 @@ let make = (
           Reventless.Plugin.name: SCS.Spec.name,
           commands: extractCommandDefs(
             ~isAggregate=false,
+            ~partitionKey=?partitionBySlice->Dict.get(SCS.Spec.name),
             ~mutationFieldFor=variantName =>
               Api_Naming.sliceMutationFieldFor(
                 ~plugin=name,

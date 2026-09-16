@@ -141,7 +141,7 @@ type consumedEvent =
 @schema
 type command =
   | @authorize(AllowGroups(["Admin", "Merchandiser"])) AddProduct({
-      @partitionTag productId: string,
+      productId: string,
       name: string,
       description: string,
       price: Reventless.Money.t,
@@ -156,7 +156,7 @@ type error =
 @schema
 type event =
   | ProductAdded({
-      @partitionTag productId: string,
+      productId: string,
       name: string,
       description: string,
       price: Reventless.Money.t,
@@ -164,9 +164,11 @@ type event =
     })
 ```
 
-Two ids appear on the command, so `@partitionTag` says which one decides storage
-placement; `categoryId` stays queryable, which is what lets the decision read the
-category's events. The behavior folds those events into exactly the two facts the
+Two ids appear on the event, yet no annotation says which one decides storage
+placement. The framework works it out: `categoryId` also appears on
+`CategoryAdded`, which another slice writes, so it is a reference to a category,
+and `productId` is left as the product's partition key. `categoryId` stays
+queryable, which is what lets the decision read the category's events. The behavior folds those events into exactly the two facts the
 rule needs, and nothing else:
 
 ```rescript

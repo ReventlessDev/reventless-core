@@ -22,7 +22,7 @@ Stores shared event log for DCB with tag-based filtering.
 
 | Attribute | Type | Key | Purpose |
 |-----------|------|-----|---------|
-| `pk` | String | Partition Key | Event log partition |
+| `pk` | String | Partition Key | `<tagKey>:<tagValue>` of the writing slice's partition key (inferred per slice, or `@partitionTag`) |
 | `sk` | Number | Sort Key | Global sequence number |
 | `event` | String | — | JSON-encoded event |
 | `meta` | Map | — | Message metadata |

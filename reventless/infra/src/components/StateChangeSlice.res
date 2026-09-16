@@ -40,6 +40,8 @@ module type T = {
         a cross-partition scalar command tag fans out into its own single-tag
         decision-read clause. */
     ~crossPartitionTagKeys: array<string>=?,
+    /** This slice's partition, as `Dcb_Builder` derives it for the whole boundary. */
+    ~partitionTag: Reventless.DcbTag.derivedPartitionTag=?,
     ~runtime: RuntimeHints.t=?,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component

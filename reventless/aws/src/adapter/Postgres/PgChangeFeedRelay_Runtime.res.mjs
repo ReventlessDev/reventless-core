@@ -14,7 +14,7 @@ import * as DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws from "../DcbEventL
 
 function toEventCollectorJson(event, partitionTag) {
   let item = {};
-  item["id"] = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.derivePartitionKey(partitionTag, event.tags);
+  item["id"] = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.derivePartitionKey(partitionTag, event.eventType, event.tags);
   item["position"] = event.position;
   item["event"] = event.eventType;
   item["data"] = event.data;

@@ -481,3 +481,53 @@ let validateScopeVsInference = (
   )
   {contradictions, redundancies}
 }
+
+/**
+Checks each `@partitionTag` against what inference derives with that hint removed.
+
+- **Contradiction** — inference resolves the slice to a different key, or the
+  hint names a key the slice only reads as a reference to another entity. Storage,
+  fence and read scope would all follow the wrong key.
+- **Redundant** — inference reaches the same key unaided; the annotation can go.
+
+A hint that names a key the slice's events do not carry is not checked here:
+inference ignores it, and the boundary derivation reports the slice instead.
+*/
+let validatePartitionHintsVsInference = (
+  ~shapes: array<DcbScopeInference.sliceShape>,
+): scopeInferenceIssues => {
+  let contradictions: array<validationError> = []
+  let redundancies: array<validationError> = []
+  shapes->Array.forEach(s =>
+    switch s.partitionHint {
+    | Some(hint) if DcbScopeInference.producedKeys(s)->Array.includes(hint) =>
+      let unaided = DcbScopeInference.resolvePartitions(
+        shapes->Array.map(o => o.sliceName == s.sliceName ? {...o, partitionHint: None} : o),
+      )
+      switch unaided.partitionBySlice->Dict.get(s.sliceName) {
+      | Some(inferred) if inferred == hint =>
+        redundancies->Array.push({
+          sliceName: s.sliceName,
+          message: `@partitionTag ${hint} is what inference derives without it — the annotation is redundant and can be removed.`,
+        })
+      | Some(inferred) =>
+        contradictions->Array.push({
+          sliceName: s.sliceName,
+          message: `@partitionTag names ${hint}, but inference derives ${inferred} from the slice graph — ${hint} is read from another entity. Remove the annotation, or move it to ${inferred}.`,
+        })
+      | None =>
+        let candidates = unaided.candidatesBySlice->Dict.get(s.sliceName)->Option.getOr([])
+        if !(candidates->Array.includes(hint)) {
+          contradictions->Array.push({
+            sliceName: s.sliceName,
+            message: `@partitionTag names ${hint}, which this slice only reads as a reference to another entity (candidates: ${candidates->Array.join(
+                ", ",
+              )}). Move the annotation to the slice's own key.`,
+          })
+        }
+      }
+    | _ => ()
+    }
+  )
+  {contradictions, redundancies}
+}

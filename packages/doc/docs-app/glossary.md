@@ -145,12 +145,13 @@ nothing relevant changed in between. A conflicting append is rejected and
 retried rather than blocking other writers. Aggregates apply it per instance;
 DCB slices apply it per tag through the fence.
 
-## Partition tag
+## Partition key
 
-The tag that decides which storage partition a DCB event lands in, marked
-`@partitionTag` when an event carries more than one `*Id` field. Distinct from a
-tag that is merely queryable: every tag can be read on, but one decides
-placement.
+The one id that decides which storage partition a DCB event lands in, what a
+command reads before deciding, and which fence guards the write. The framework
+infers it per slice from what the slice writes and reads; `@partitionTag` marks
+it only where that inference cannot choose. Distinct from a tag that is merely
+queryable: every tag can be read on, but one decides placement.
 
 ## Platform
 

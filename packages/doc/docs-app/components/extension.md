@@ -168,8 +168,7 @@ type incomingCommandAction<'aggregateCommand, 'extensionPointCommand, 'directive
 Use `PublishAggregateCommand(id, …)` when the `Delegate` is an `Aggregate` — the
 `id` is the aggregate's identity. Use `PublishStateChangeSliceCommand(…)` when
 the `Delegate` is a `StateChangeSlice` — no id is needed because the framework
-derives the FIFO grouping id from the command's `@partitionTag` (or
-`@compositePartitionTag`) field.
+uses the command's value of the slice's partition key as the FIFO grouping id.
 
 ### Outgoing Command Actions
 
@@ -324,8 +323,11 @@ module Mapping = {
 
 When the local `Delegate` is a `StateChangeSlice` (the DCB write side) rather than
 an Aggregate, use `PublishStateChangeSliceCommand(command)` — no id is needed
-because the framework derives the FIFO grouping id from the command's
-`@partitionTag` (or `@compositePartitionTag`) field:
+because the framework uses the command's value of the slice's partition key as
+the FIFO grouping id. The extension sees only the slice's command and produced
+events, not what it reads, so a slice whose partition key only its consumed
+events decide needs `@partitionTag` on its produced event. `RecordProductDemand`
+carries it because its events join a product and an order:
 
 ```rescript title="Orders_Extension.res" showLineNumbers
 @@reventless.extension

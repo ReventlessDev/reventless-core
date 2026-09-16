@@ -259,6 +259,94 @@ describe("Runtime.buildScanFilter — excludes fence sentinels (Issue 12)", () =
   })
 })
 
+describe("Runtime.derivePartitionKey — each event type under its slice's key", () => {
+  // Two entities in one log. AddressLinked declares addressId first, so a
+  // positional default would file it under the reference.
+  let partitionTag = Reventless.DcbTag.ByEventType(
+    Dict.fromArray([("OrderPlaced", "orderId"), ("AddressLinked", "customerId")]),
+  )
+  let thrownMessage = f =>
+    try {
+      let _ = f()
+      ""
+    } catch {
+    | JsExn(err) => JsExn.message(err)->Option.getOr("")
+    }
+
+  testSync("files an event under its own type's key, not its first tag", () =>
+    expect(
+      Runtime.derivePartitionKey(
+        ~partitionTag,
+        ~eventType="AddressLinked",
+        [tag("addressId", "a1"), tag("customerId", "c1")],
+      ),
+    )->toBe("customerId:c1")
+  )
+
+  testSync("another type in the same log keeps its own key", () =>
+    expect(
+      Runtime.derivePartitionKey(
+        ~partitionTag,
+        ~eventType="OrderPlaced",
+        [tag("customerId", "c1"), tag("orderId", "o1")],
+      ),
+    )->toBe("orderId:o1")
+  )
+
+  testSync("an event type no slice writes throws instead of guessing", () =>
+    expect(
+      thrownMessage(
+        () =>
+          Runtime.derivePartitionKey(
+            ~partitionTag,
+            ~eventType="Unknown",
+            [tag("customerId", "c1")],
+          ),
+      )->String.includes("Unknown has no partition key"),
+    )->toBe(true)
+  )
+
+  testSync("an event missing its partition tag throws instead of guessing", () =>
+    expect(
+      thrownMessage(
+        () =>
+          Runtime.derivePartitionKey(
+            ~partitionTag,
+            ~eventType="AddressLinked",
+            [tag("addressId", "a1")],
+          ),
+      )->String.includes("carries no customerId tag"),
+    )->toBe(true)
+  )
+
+  testSync("a conditional append puts and fences the event under that key", () => {
+    let linked: ReventlessCore.DcbEventLog_Adapter.rawStoredEvent = {
+      eventType: "AddressLinked",
+      data: JSON.Object(Dict.make()),
+      tags: [tag("addressId", "a1"), tag("customerId", "c1")],
+      meta: testMeta(),
+    }
+    let cond: Reventless.DcbTag.appendCondition = {
+      query: [{tags: [tag("customerId", "c1")], eventTypes: ["AddressLinked"]}],
+      after: "50",
+    }
+    let ids =
+      Runtime.buildConditionalTransactItems(table, [linked], cond, "100", ~partitionTag)
+      ->Array.filterMap(
+        it =>
+          switch (it.put, it.update) {
+          | (Some(p), _) => p.item->JSON.Decode.object->Option.flatMap(i => i->Dict.get("id"))
+          | (_, Some(u)) => u.key->Dict.get("id")
+          | _ => None
+          },
+      )
+      ->Array.filterMap(JSON.Decode.string)
+    expect(ids->Array.includes("customerId:c1"))->toBe(true)
+    expect(ids->Array.includes("fence#customerId:c1"))->toBe(true)
+    expect(ids->Array.some(id => id->String.includes("addressId")))->toBe(false)
+  })
+})
+
 describe("Runtime.buildEventPuts", () => {
   let event = (eventType, tags): ReventlessCore.DcbEventLog_Adapter.rawStoredEvent => {
     eventType,

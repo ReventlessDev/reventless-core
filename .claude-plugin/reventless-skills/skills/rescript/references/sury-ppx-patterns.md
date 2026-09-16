@@ -49,9 +49,19 @@ productId: @s.matches(DcbTag.string) string
 
 Both command AND event types need `@s.matches` on entity ID fields. Without it, queries return ALL events and the decision model sees phantom state from other entities.
 
+### Partition key
+
+Each DCB event is stored under one tag, its partition key. The framework infers it per slice: the `*Id` tags on the events the slice writes, minus the ids it reads from events another slice writes (references). One left is the partition — no annotation. Only when several are left (a join, or a reference the slice's reads never reveal, such as `customerId` beside `orderId` on `OrderPlaced`) mark the key with `@partitionTag` on the **produced event** (it emits `@s.matches(DcbTag.partition)`); on a command it has no effect. A `@partitionTag` that contradicts inference fails the build; a redundant one is logged.
+
+```rescript
+@schema
+type event =
+  | ProductDemandRecorded({@partitionTag productId: string, orderId: string})
+```
+
 ### Composite partition keys
 
-When the partition key should be formed from multiple fields **joined in declaration order**, use the `@compositePartitionTag` **field-level** PPX annotation (before the field name, not after the colon) instead of writing `@s.matches` manually:
+When the partition key should be formed from multiple fields **joined in declaration order** (explicit, never inferred; applies to the whole plugin's log), use the `@compositePartitionTag` **field-level** PPX annotation (before the field name, not after the colon) instead of writing `@s.matches` manually:
 
 ```rescript
 // PPX annotation — recommended

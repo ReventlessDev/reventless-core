@@ -256,8 +256,8 @@ let register = (
 // Called by Dcb_Builder via dcbMutationResolverHook. Registers SDL + resolver
 // stubs for DCB mutations. Unlike aggregate mutations, DCB commands use tagged
 // ID field(s) (e.g., itemId, or composite-partition members) — the envelope id
-// is derived inside makeGenerateCommand from the command schema, so the resolver
-// just forwards args verbatim.
+// is the command's value of its slice's partition key, taken inside
+// makeGenerateCommand, so the resolver just forwards args verbatim.
 
 let registerDcb = (
   ~fieldName: string,

@@ -23,6 +23,7 @@ import * as Api_Naming$ReventlessCore from "../../components/Api/Api_Naming.res.
 import * as CapabilityNeed$Reventless from "@reventlessdev/reventless-spec/src/semantic/CapabilityNeed.res.mjs";
 import * as SchemaType$ReventlessCore from "../../components/Api/SchemaType.res.mjs";
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
+import * as DcbScopeInference$Reventless from "@reventlessdev/reventless-spec/src/components/DcbScopeInference.res.mjs";
 import * as ApiNoApiHelpers$ReventlessCore from "../../components/Api/ApiNoApiHelpers.res.mjs";
 import * as SuryToJsonSchema$ReventlessCore from "../../components/Api/SuryToJsonSchema.res.mjs";
 import * as Capability_Inference$ReventlessCore from "./Capability_Inference.res.mjs";
@@ -492,7 +493,7 @@ function isCreateCommandName(name) {
   ].some(p => name.startsWith(p));
 }
 
-function commandLevelAndId(isAggregate, variantName, properties) {
+function commandLevelAndId(isAggregate, partitionKey, variantName, properties) {
   if (isAggregate) {
     if (isCreateCommandName(variantName)) {
       return [
@@ -518,7 +519,16 @@ function commandLevelAndId(isAggregate, variantName, properties) {
       return false;
     }
   });
-  let taggedField = Stdlib_Option.orElse(taggedFields.find(param => DcbTag$Reventless.isPartitionTag(param[1])), taggedFields[0]);
+  let keyOf = param => {
+    let fieldSchema = param[1];
+    let fieldName = param[0];
+    if (DcbTag$Reventless.isTaggedArray(fieldSchema)) {
+      return DcbTag$Reventless.resolveArrayTagKey(fieldName, fieldSchema);
+    } else {
+      return DcbTag$Reventless.resolveTagKey(fieldName, fieldSchema);
+    }
+  };
+  let taggedField = Stdlib_Option.orElse(Stdlib_Option.orElse(Stdlib_Option.flatMap(partitionKey, key => taggedFields.find(field => keyOf(field) === key)), taggedFields.find(param => DcbTag$Reventless.isPartitionTag(param[1]))), taggedFields[0]);
   if (taggedField === undefined) {
     return [
       "Collection",
@@ -563,9 +573,9 @@ function annotateArgTypes(schema, argTypes) {
   return schema;
 }
 
-function toCommandDef(isAggregate, mutationFieldFor, parentSchema, commandAuthorization, commandTransition, derivedEdgeFor, v) {
+function toCommandDef(isAggregate, partitionKey, mutationFieldFor, parentSchema, commandAuthorization, commandTransition, derivedEdgeFor, v) {
   let mkDef = (variantName, properties) => {
-    let match = commandLevelAndId(isAggregate, variantName, properties);
+    let match = commandLevelAndId(isAggregate, partitionKey, variantName, properties);
     let references = extractReferences(properties);
     let syntheticCommand = DcbTag$Reventless.isVariantPayloadBearing(parentSchema, variantName) ? ({
         TAG: variantName
@@ -649,12 +659,12 @@ function toCommandDef(isAggregate, mutationFieldFor, parentSchema, commandAuthor
   }
 }
 
-function extractCommandDefs(isAggregate, mutationFieldFor, commandAuthorization, commandTransition, derivedEdgeForOpt, commandSchema) {
+function extractCommandDefs(isAggregate, partitionKey, mutationFieldFor, commandAuthorization, commandTransition, derivedEdgeForOpt, commandSchema) {
   let derivedEdgeFor = derivedEdgeForOpt !== undefined ? derivedEdgeForOpt : param => {};
   if (commandSchema.type === "anyOf") {
-    return Stdlib_Array.filterMap(commandSchema.anyOf, v => toCommandDef(isAggregate, mutationFieldFor, commandSchema, commandAuthorization, commandTransition, derivedEdgeFor, v));
+    return Stdlib_Array.filterMap(commandSchema.anyOf, v => toCommandDef(isAggregate, partitionKey, mutationFieldFor, commandSchema, commandAuthorization, commandTransition, derivedEdgeFor, v));
   } else {
-    return Stdlib_Option.mapOr(toCommandDef(isAggregate, mutationFieldFor, commandSchema, commandAuthorization, commandTransition, derivedEdgeFor, commandSchema), [], def => [def]);
+    return Stdlib_Option.mapOr(toCommandDef(isAggregate, partitionKey, mutationFieldFor, commandSchema, commandAuthorization, commandTransition, derivedEdgeFor, commandSchema), [], def => [def]);
   }
 }
 
@@ -1036,6 +1046,13 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       requiredAccess: accessKeysFor(SVS.Spec.authorization)
     };
   });
+  let match = DcbScopeInference$Reventless.resolvePartitions(stateChangeSlices.map(SCS => DcbTag$Reventless.sliceShape({
+    name: SCS.Spec.name,
+    commandSchema: SCS.Spec.commandSchema,
+    consumedEventSchema: SCS.Spec.consumedEventSchema,
+    eventSchema: SCS.Spec.eventSchema
+  })));
+  let partitionBySlice = match.partitionBySlice;
   let stateChangeDefs = stateChangeSlices.map((SCS, i) => {
     let match = scsProduced[i];
     let produced = match[1];
@@ -1043,7 +1060,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     let consumed = match$1[1];
     return {
       name: SCS.Spec.name,
-      commands: extractCommandDefs(false, variantName => Api_Naming$ReventlessCore.sliceMutationFieldFor(name, SCS.Spec.name, SCS.Spec.commandSchema, variantName), SCS.Spec.commandAuthorization, SCS.Spec.commandTransition, extra => derivedEdgeFor(SCS.Spec.name, extra), SCS.Spec.commandSchema),
+      commands: extractCommandDefs(false, partitionBySlice[SCS.Spec.name], variantName => Api_Naming$ReventlessCore.sliceMutationFieldFor(name, SCS.Spec.name, SCS.Spec.commandSchema, variantName), SCS.Spec.commandAuthorization, SCS.Spec.commandTransition, extra => derivedEdgeFor(SCS.Spec.name, extra), SCS.Spec.commandSchema),
       producedEventTypes: produced,
       consumedEventTypes: consumed,
       linkedViews: linkedSvsFor(produced),
@@ -1058,7 +1075,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     let produced = match[1];
     return {
       name: A.Spec.name,
-      commands: extractCommandDefs(true, variantName => Api_Naming$ReventlessCore.aggregateMutationField(name, A.Spec.name, variantName), A.Spec.commandAuthorization, A.Spec.commandTransition, extra => derivedEdgeFor(A.Spec.name, extra), A.Spec.commandSchema),
+      commands: extractCommandDefs(true, undefined, variantName => Api_Naming$ReventlessCore.aggregateMutationField(name, A.Spec.name, variantName), A.Spec.commandAuthorization, A.Spec.commandTransition, extra => derivedEdgeFor(A.Spec.name, extra), A.Spec.commandSchema),
       producedEventTypes: produced,
       consumedEventTypes: [],
       linkedViews: linkedSvsFor(produced).concat(linkedReadModelsFor(A.Spec.name)),

@@ -59,7 +59,7 @@ function dropNullArguments(obj) {
   });
 }
 
-function makeGenerateCommand(publishJsons, publishJsonsAndWait, serviceName, commandSchema, componentKind, $staropt$star) {
+function makeGenerateCommand(publishJsons, publishJsonsAndWait, serviceName, commandSchema, componentKind, $staropt$star, partitionTag) {
   return payload => {
     let stripIdFromParams = $staropt$star !== undefined ? $staropt$star : true;
     return Effect.flatMap(Effect.tap(Effect.sync(() => {
@@ -85,28 +85,7 @@ function makeGenerateCommand(publishJsons, publishJsonsAndWait, serviceName, com
           ]].concat(params)) : commandStr;
       let suppliedId = payload.arguments.id;
       let id;
-      if (componentKind === "Aggregate" || !(suppliedId == null)) {
-        id = suppliedId;
-      } else {
-        try {
-          let derived = DcbTag$Reventless.derivePartitionTag([[
-              serviceName,
-              "",
-              commandSchema
-            ]]);
-          if (derived.TAG === "Simple") {
-            let tags = DcbTag$Reventless.extractTagsFromJson(commandSchema, commandJson);
-            id = Stdlib_Option.getOr(DcbTag$Reventless.getPartitionTagValue([{
-                tags: tags
-              }], derived._0), "");
-          } else {
-            let tags$1 = DcbTag$Reventless.extractTagsFromJson(commandSchema, commandJson);
-            id = DcbTag$Reventless.getCompositePartitionKeyValue(tags$1, derived._0);
-          }
-        } catch (exn) {
-          id = "";
-        }
-      }
+      id = componentKind === "Aggregate" || !(suppliedId == null) ? suppliedId : Stdlib_Option.mapOr(partitionTag, "", pt => DcbTag$Reventless.partitionValueOfTags(DcbTag$Reventless.extractTagsFromJson(commandSchema, commandJson), pt));
       return [
         meta,
         commandJson,
@@ -181,7 +160,7 @@ function makeGenerateCommand(publishJsons, publishJsonsAndWait, serviceName, com
 
 function Make(Spec) {
   return AggregateSpec => {
-    let generateCommand = makeGenerateCommand(Spec.publishJsons, Spec.publishJsonsAndWait, AggregateSpec.name, AggregateSpec.commandSchema, "Aggregate", undefined);
+    let generateCommand = makeGenerateCommand(Spec.publishJsons, Spec.publishJsonsAndWait, AggregateSpec.name, AggregateSpec.commandSchema, "Aggregate", undefined, undefined);
     return {
       generateCommand: generateCommand
     };

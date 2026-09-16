@@ -11,9 +11,8 @@ type consumedEvent =
 
 @schema
 type command =
-  // Multiple tagged fields — @partitionTag picks orderId as the storage partition.
   | PlaceOrder({
-      @partitionTag orderId: string,
+      orderId: string,
       customerId: string,
       @ref("AvailableProducts") productIds: array<string>,
     })
@@ -25,4 +24,6 @@ type error =
 
 @schema
 type event =
-  OrderPlaced({@partitionTag orderId: string, customerId: string, productIds: array<string>})
+  // customerId refers to the customer, but nothing this slice reads shows that,
+  // so inference sees two candidates and cannot choose.
+  | OrderPlaced({@partitionTag orderId: string, customerId: string, productIds: array<string>})

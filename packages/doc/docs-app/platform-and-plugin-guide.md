@@ -760,7 +760,7 @@ In DCB all events for a bounded context share a single event log — but there i
 
 The runtime stitches every slice's `event` and `consumedEvent` declarations into one per-plugin log and tags entries by entity ID.
 
-**Tagging is automatic inside slice folders.** The `@@reventless.spec` PPX auto-injects `@s.matches(Reventless.DcbTag.string)` on all `*Id: string`, `*Id: array<string>`, and `*Ids: array<string>` fields in `@schema` types — on both `command`/`event` and `consumedEvent`. You never write `@s.matches` by hand in a slice file. Use `@partitionTag` (and `@noDcbTag`, `@dcbTag`) only to disambiguate when a variant has more than one `*Id` field (see [StateChangeSlice](#statechangeslice) and the [PPX guide](reventless-ppx.md)).
+**Tagging is automatic inside slice folders.** The `@@reventless.spec` PPX auto-injects `@s.matches(Reventless.DcbTag.string)` on all `*Id: string`, `*Id: array<string>`, and `*Ids: array<string>` fields in `@schema` types — on both `command`/`event` and `consumedEvent`. You never write `@s.matches` by hand in a slice file. Each event's partition key — where it is stored — is inferred from what the slices write and read. Use `@partitionTag` only when that inference cannot choose, and `@noDcbTag` / `@dcbTag` to adjust which fields are tags (see [StateChangeSlice](#statechangeslice) and the [PPX guide](reventless-ppx.md)).
 
 ---
 
@@ -824,7 +824,7 @@ let decide = (state, command) =>
 
 Because `AddProduct.res` is in a `StateChange/` folder, `@@reventless.spec` automatically applies DCB tag injection — no `@@reventless.dcbTags` annotation and no manual `@s.matches` are needed. The PPX auto-injects `@s.matches(Reventless.DcbTag.string)` on all `*Id: string`, `*Id: array<string>`, and `*Ids: array<string>` fields in `@schema` types (`command`, `event`, and `consumedEvent`).
 
-If a variant has multiple `*Id` fields and only one is the partition key, use the `@partitionTag` field annotation to disambiguate (mirror `PlaceOrder.res`, which tags `@partitionTag orderId` so its `productIds` array fans out without colliding with the order tag — see the [PPX guide](reventless-ppx.md#partitiontag-nodcbtag-dcbtag--field-level-dcb-tag-control)).
+`AddProduct` needs no partition annotation either. Its event carries `productId` and `categoryId`, but `categoryId` is read from `CategoryAdded`, which another slice writes, so it is a reference and `productId` is left as the partition key. Add `@partitionTag` on the produced event only when inference cannot choose — as `PlaceOrder.res` does, whose `OrderPlaced` carries `orderId` and `customerId` and whose reads never show `customerId` to be a reference (see [Event Log Partitioning](dcb-usage.md#event-log-partitioning)).
 
 The `@@reventless.behavior` PPX opens the spec module so event/command variants resolve unqualified in `evolve`/`decide`. It derives the spec module from the filename (`AddProduct_Behavior.res` → `AddProduct`); use `@@reventless.behavior(SpecName)` to override.
 
@@ -853,7 +853,7 @@ The `@@reventless.behavior` PPX opens the spec module so event/command variants 
 
 #### Cross-Entity Queries (Tagged Arrays)
 
-When a command references multiple entities (e.g., PlaceOrder with a list of product IDs), use an `*Ids: array<string>` field. The PPX auto-injects `@s.matches(DcbTag.string)` on the element type and auto-singularises the trailing `s`, so each element is stored under tag key `productId` — sharing the key with single-value `productId: string` producers. Use `@partitionTag` to mark which scalar `*Id` field anchors the slice's own entity when several `*Id` fields coexist:
+When a command references multiple entities (e.g., PlaceOrder with a list of product IDs), use an `*Ids: array<string>` field. The PPX auto-injects `@s.matches(DcbTag.string)` on the element type and auto-singularises the trailing `s`, so each element is stored under tag key `productId` — sharing the key with single-value `productId: string` producers. Here `productId` is read from `CatalogProductSynced`, which another slice writes, so it is a reference. That leaves `orderId` and `customerId` — both the order's own — so `@partitionTag` on the produced event names the partition key:
 
 ```rescript
 @schema
@@ -863,7 +863,7 @@ type consumedEvent =
 
 @schema
 type command =
-  PlaceOrder({@partitionTag orderId: string, customerId: string, productIds: array<string>})
+  PlaceOrder({orderId: string, customerId: string, productIds: array<string>})
 
 @schema
 type event =
@@ -885,7 +885,7 @@ This fetches Order events (by `orderId`) AND CatalogProduct events (by each `pro
 
 **Key rules for cross-entity commands:**
 - Name the array field so its singularised key matches the tag key on the referenced events (e.g., command field `productIds` → tag key `productId`, matching the `productId` tag on `CatalogProductSynced` events)
-- Use `@partitionTag` on the slice's own `*Id` field so events from sibling entities sharing a tag don't leak into the decision model
+- The partition key is inferred; add `@partitionTag` on the produced event only when the build reports that inference cannot choose
 - Commands with only scalar tagged fields produce single-clause AND queries (standard behavior, unchanged)
 - The append condition automatically covers all queried entities for optimistic concurrency
 
@@ -1094,7 +1094,7 @@ module Mapping = {
 }
 ```
 
-When the `Delegate` is a StateChangeSlice, use `PublishStateChangeSliceCommand(command)` (no id argument) — the framework derives the FIFO grouping id from the command's `@partitionTag` (or `@compositePartitionTag`) field. Use `PublishAggregateCommand(id, command)` only when the `Delegate` is an Aggregate.
+When the `Delegate` is a StateChangeSlice, use `PublishStateChangeSliceCommand(command)` (no id argument) — the framework uses the command's value of the target slice's partition key as the FIFO grouping id. The extension sees only the slice's command and events, not what it reads, so a target slice whose key only its consumed events decide needs `@partitionTag` on its produced event. Use `PublishAggregateCommand(id, command)` only when the `Delegate` is an Aggregate.
 
 The extension file exports `module Mapping` — the generator references it as `Orders_Extension.Mapping`.
 

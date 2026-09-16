@@ -55,7 +55,7 @@ type lineItem = {
 @schema
 type command =
   | PlaceOrder({
-      @partitionTag orderId: string,
+      orderId: string,
       // customerId is payload, not a query key — @noDcbTag stops it auto-tagging.
       // It is also the order's owner: the resolver overwrites this with the
       // authenticated caller's id before the command is published, so what a
@@ -103,6 +103,8 @@ type orderLine = {
 @schema
 type event =
   | OrderPlaced({
+      // customerId refers to the customer, but nothing this slice reads shows
+      // that, so inference sees two candidates and cannot choose.
       @partitionTag orderId: string,
       customerId: string,
       // Redundant against `lines`, and deliberately so. The extension point

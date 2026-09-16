@@ -8,6 +8,7 @@ import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Pulumi from "@pulumi/pulumi";
+import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
@@ -29,24 +30,6 @@ import * as InboundTranslationSlice_Callback$ReventlessCore from "../InboundTran
 import * as OutboundTranslationSlice_Callback$ReventlessCore from "../OutboundTranslationSlice/OutboundTranslationSlice_Callback.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
-
-let toRelativePath = (function toRelativePath(moduleUrl) {
-  try {
-    const fs = process.getBuiltinModule('node:fs');
-    const path = process.getBuiltinModule('node:path');
-    const { fileURLToPath } = process.getBuiltinModule('node:url');
-    const builderReal = fs.realpathSync(fileURLToPath(import.meta.url));
-    const sliceReal = fs.realpathSync(fileURLToPath(moduleUrl));
-    let dir = path.dirname(builderReal);
-    while (dir !== path.dirname(dir)) {
-      if (fs.existsSync(path.join(dir, 'lerna.json'))) break;
-      dir = path.dirname(dir);
-    }
-    return path.relative(dir, sliceReal).replace(/\.mjs$/, '.res');
-  } catch(e) {
-    return moduleUrl.replace('file://', '');
-  }
-});
 
 function variantTag(variant) {
   switch (variant.type) {
@@ -157,11 +140,6 @@ function Make(DcbEventLogStorage) {
         Sc.Spec.name,
         Sc.Spec.eventSchema
       ]);
-      let producedNamed = stateChangeSlices.map(Sc => [
-        Sc.Spec.name,
-        toRelativePath(Sc.Spec.moduleUrl),
-        Sc.Spec.eventSchema
-      ]);
       let consumed = stateChangeSlices.map(Sc => [
         Sc.Spec.name,
         Sc.Spec.consumedEventSchema
@@ -191,7 +169,22 @@ function Make(DcbEventLogStorage) {
         }
       }).map(tagKey => `tag_` + tagKey);
       let indexes$1 = indexes.length > 1 ? indexes.concat(["tag_composite"]) : indexes;
-      let partitionTag = DcbTag$Reventless.derivePartitionTag(producedNamed);
+      let sliceSchemas = stateChangeSlices.map(Sc => ({
+        name: Sc.Spec.name,
+        commandSchema: Sc.Spec.commandSchema,
+        consumedEventSchema: Sc.Spec.consumedEventSchema,
+        eventSchema: Sc.Spec.eventSchema
+      }));
+      let inferenceShapes = sliceSchemas.map(DcbTag$Reventless.sliceShape);
+      let hintIssues = DcbValidation$Reventless.validatePartitionHintsVsInference(inferenceShapes);
+      hintIssues.redundancies.forEach(e => log.info("Dcb_Builder", undefined, `DCB partition (` + e.sliceName + `): ` + e.message));
+      if (hintIssues.contradictions.length !== 0) {
+        let detail = hintIssues.contradictions.map(e => e.sliceName + `: ` + e.message).join(" | ");
+        log.error("Dcb_Builder", undefined, `DCB partition contradiction (` + name + `): ` + detail);
+        Stdlib_JsError.throwWithMessage(`DCB partition contradiction (` + name + `): ` + detail);
+      }
+      let boundaryPartition = DcbTag$Reventless.deriveBoundaryPartition(sliceSchemas);
+      let partitionTag = boundaryPartition.partitionTag;
       let arr$1 = producedSchemas.flatMap(DcbTag$Reventless.extractCrossPartitionTagKeys);
       let seen$1 = new Set();
       let crossPartitionTagKeys = arr$1.filter(f => {
@@ -209,7 +202,6 @@ function Make(DcbEventLogStorage) {
         Sc.Spec.commandSchema,
         Sc.Spec.consumedEventSchema
       ]), tagKeysByEventType).forEach(w => log.warn("Dcb_Builder", undefined, `DCB composite-read warning (` + w.sliceName + `): ` + w.message));
-      let inferenceShapes = stateChangeSlices.map(Sc => DcbTag$Reventless.sliceShapeFromSchemas(Sc.Spec.name, Sc.Spec.commandSchema, Sc.Spec.consumedEventSchema, Sc.Spec.eventSchema));
       let inferred = DcbScopeInference$Reventless.infer(inferenceShapes);
       if (Primitive_object.notequal(inferred.crossPartitionTagKeys, crossPartitionTagKeys)) {
         log.info("Dcb_Builder", undefined, `DCB scope-inference diff: crossPartitionTagKeys annotated=[` + crossPartitionTagKeys.join(", ") + `] inferred=[` + inferred.crossPartitionTagKeys.join(", ") + `]`);
@@ -231,12 +223,7 @@ function Make(DcbEventLogStorage) {
       let scopeIssues = DcbValidation$Reventless.validateScopeVsInference(scopeAnnotations, inferred);
       scopeIssues.contradictions.forEach(e => log.warn("Dcb_Builder", undefined, `DCB scope contradiction (` + e.sliceName + `): ` + e.message));
       scopeIssues.redundancies.forEach(e => log.info("Dcb_Builder", undefined, `DCB scope (` + e.sliceName + `): ` + e.message));
-      let effective = DcbTag$Reventless.deriveEffectiveScope(stateChangeSlices.map(Sc => ({
-        name: Sc.Spec.name,
-        commandSchema: Sc.Spec.commandSchema,
-        consumedEventSchema: Sc.Spec.consumedEventSchema,
-        eventSchema: Sc.Spec.eventSchema
-      })));
+      let effective = DcbTag$Reventless.deriveEffectiveScope(sliceSchemas);
       let effectiveCrossPartitionTagKeys = effective.crossPartitionTagKeys;
       let effectiveTagKeysByEventType = effective.tagKeysByEventType;
       if (effective.droppedCrossPartitionTagKeys.length !== 0) {
@@ -276,7 +263,7 @@ function Make(DcbEventLogStorage) {
         asyncDcbCommandTopicOpt = undefined;
       }
       let stateChangeSlicesOutputs = Object.fromEntries(syncSlices.map(StateChangeSlice => {
-        let ch = StateChangeSlice.make(dcbEventLog, publishJsons, effectiveTagKeysByEventType, effectiveCrossPartitionTagKeys, componentRuntime[StateChangeSlice.Spec.name], opts);
+        let ch = StateChangeSlice.make(dcbEventLog, publishJsons, effectiveTagKeysByEventType, effectiveCrossPartitionTagKeys, DcbTag$Reventless.slicePartitionTag(boundaryPartition, StateChangeSlice.Spec.name), componentRuntime[StateChangeSlice.Spec.name], opts);
         return [
           StateChangeSlice.Spec.name,
           Component$ReventlessCore.outputs(ch)
@@ -286,7 +273,7 @@ function Make(DcbEventLogStorage) {
       if (asyncDcbCommandTopicOpt !== undefined) {
         let asyncPublishJsons = Component$ReventlessCore.operations(Primitive_option.valFromOption(asyncDcbCommandTopicOpt)).apply(ops => ops.publishJsons);
         asyncStateChangeSlicesOutputs = Object.fromEntries(asyncSlices.map(StateChangeSlice => {
-          let ch = StateChangeSlice.make(dcbEventLog, asyncPublishJsons, effectiveTagKeysByEventType, effectiveCrossPartitionTagKeys, componentRuntime[StateChangeSlice.Spec.name], opts);
+          let ch = StateChangeSlice.make(dcbEventLog, asyncPublishJsons, effectiveTagKeysByEventType, effectiveCrossPartitionTagKeys, DcbTag$Reventless.slicePartitionTag(boundaryPartition, StateChangeSlice.Spec.name), componentRuntime[StateChangeSlice.Spec.name], opts);
           return [
             StateChangeSlice.Spec.name,
             Component$ReventlessCore.outputs(ch)
@@ -318,7 +305,7 @@ function Make(DcbEventLogStorage) {
             if (ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema)) {
               return;
             }
-            let generateCommand = CommandGenerator_Callback$ReventlessCore.makeGenerateCommand(ops.publishJsons, ops.publishJsonsAndWait, S.Spec.name, S.Spec.commandSchema, "StateChangeSlice", false);
+            let generateCommand = CommandGenerator_Callback$ReventlessCore.makeGenerateCommand(ops.publishJsons, ops.publishJsonsAndWait, S.Spec.name, S.Spec.commandSchema, "StateChangeSlice", false, DcbTag$Reventless.slicePartitionTag(boundaryPartition, S.Spec.name));
             Api_Naming$ReventlessCore.sliceMutationFields(apiNamePrefix, S.Spec.name, commandSchema).forEach(param => bindHandler(param[0], generateCommand));
           });
         });
@@ -329,7 +316,7 @@ function Make(DcbEventLogStorage) {
               if (ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema)) {
                 return;
               }
-              let generateCommand = CommandGenerator_Callback$ReventlessCore.makeGenerateCommand(asyncOps.publishJsons, asyncOps.publishJsonsAndWait, S.Spec.name, S.Spec.commandSchema, "StateChangeSlice", false);
+              let generateCommand = CommandGenerator_Callback$ReventlessCore.makeGenerateCommand(asyncOps.publishJsons, asyncOps.publishJsonsAndWait, S.Spec.name, S.Spec.commandSchema, "StateChangeSlice", false, DcbTag$Reventless.slicePartitionTag(boundaryPartition, S.Spec.name));
               Api_Naming$ReventlessCore.sliceMutationFields(apiNamePrefix, S.Spec.name, commandSchema).forEach(param => bindHandler(param[0], generateCommand));
             });
           });
@@ -437,7 +424,10 @@ function Make(DcbEventLogStorage) {
             if (match !== undefined) {
               return log.error("Dcb_Builder", undefined, `Two DCB slices in "` + name + `" both declare the command "` + tag + `". ` + "Owner stamping resolves a command by that name alone, so it cannot tell them apart. Rename one of the constructors.");
             } else {
-              byTag[tag] = commandSchema;
+              byTag[tag] = [
+                commandSchema,
+                DcbTag$Reventless.slicePartitionTag(boundaryPartition, S.Spec.name)
+              ];
               return;
             }
           });
@@ -445,14 +435,15 @@ function Make(DcbEventLogStorage) {
         }
       });
       let dcbGenerateCommandOutput = Component$ReventlessCore.operations(dcbCommandTopic).apply(ops => {
-        let make = commandSchema => CommandGenerator_Callback$ReventlessCore.makeGenerateCommand(ops.publishJsons, ops.publishJsonsAndWait, name, commandSchema, "StateChangeSlice", false);
+        let make = (commandSchema, partitionTag) => CommandGenerator_Callback$ReventlessCore.makeGenerateCommand(ops.publishJsons, ops.publishJsonsAndWait, name, commandSchema, "StateChangeSlice", false, partitionTag);
         let byTag$1 = {};
         Object.entries(byTag).forEach(param => {
-          byTag$1[param[0]] = make(param[1]);
+          let match = param[1];
+          byTag$1[param[0]] = make(match[0], match[1]);
         });
         return [
           byTag$1,
-          make(Sury.json)
+          make(Sury.json, undefined)
         ];
       });
       let dcbHandler = Pulumi.all([
@@ -693,7 +684,6 @@ function Make(DcbEventLogStorage) {
 
 export {
   log,
-  toRelativePath,
   variantTag,
   mergedEventSchema,
   emptyResult,

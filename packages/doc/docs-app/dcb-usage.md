@@ -282,7 +282,7 @@ let decide = (state, command) =>
 
 Note: `consumedEvent` here is a payload-less `| ProductAdded` — it only needs the TAG to know the event happened. The `event` type carries the full payload. The framework validates at build time that every `consumedEvent` TAG has a matching producer.
 
-Auto-tagged `*Id` fields become DCB tags — the event log is queried by these values to rebuild state. Each event's first tag is also used as the DynamoDB partition key (see [Event Log Partitioning](#event-log-partitioning) below).
+Auto-tagged `*Id` fields become DCB tags — the event log is queried by these values to rebuild state. One of them is the event's partition key, which decides where it is stored. The framework works that key out from what each slice writes and reads (see [Event Log Partitioning](#event-log-partitioning) below).
 
 ### Hiding Commands from the API (`@noApi`)
 
@@ -301,8 +301,8 @@ type command =
 // Recorded from an extension reacting to another plugin's events, not by a client
 @schema @noApi
 type command =
-  | RecordDemand({@partitionTag productId: string, orderId: string})
-  | RevokeDemand({@partitionTag productId: string, orderId: string})
+  | RecordDemand({productId: string, orderId: string})
+  | RevokeDemand({productId: string, orderId: string})
 ```
 
 The `@noApi` annotation prevents commands from appearing in:
@@ -442,89 +442,95 @@ This build-time, schema-level validation is what allows the decoupled event type
 
 ## Event Log Partitioning
 
-The DCB EventLog uses **primary-tag partitioning** — each event's tag determines its DynamoDB partition key. Instead of a single `id="dcb"` partition for all events, the partition key is `"<tagKey>:<tagValue>"` (e.g., `"productId:prod-1"`, `"categoryId:cat-1"`).
+The DCB EventLog uses **per-entity partitioning**. Every event is stored under one id, its **partition key**. Instead of a single `id="dcb"` partition for all events, the DynamoDB partition is `"<tagKey>:<tagValue>"` (e.g., `"productId:prod-1"`, `"categoryId:cat-1"`).
+
+The partition key decides three things at once: where the event is stored, what a command reads before it decides, and which fence (the lock checked on append) guards the write. It is also the command's envelope id, which groups commands for the same entity on the FIFO queue.
 
 This distributes events across DynamoDB partitions by entity, eliminating the single-partition bottleneck and enabling per-entity queries via direct key lookups instead of secondary index queries.
 
 ### How partitioning works
 
-**Write path**: Each event's first tag determines its partition key. A `ProductAdded({productId: "p1", ...})` event goes to partition `productId:p1`. A `CategoryAdded({categoryId: "c1", ...})` event goes to partition `categoryId:c1`.
+**Write path**: Each event type is stored under the partition key of the slice that writes it. `AddProduct` is partitioned by `productId`, so a `ProductAdded({productId: "p1", categoryId: "c1", ...})` event goes to partition `productId:p1`. `AddCategory` is partitioned by `categoryId`, so a `CategoryAdded({categoryId: "c1", ...})` event goes to partition `categoryId:c1`. The other `*Id` fields stay DCB tags you can query by; they just do not decide where the event lives.
 
 **Read path**: Each query clause routes to the partition matching its tag. A query for `{tags: [{key: "productId", value: "p1"}]}` does a direct partition key lookup on `productId:p1` — no secondary index needed.
 
 **Multi-clause queries**: Cross-entity queries (e.g., PlaceOrder referencing multiple products) dispatch each clause to its target partition in parallel, then merge results using the existing k-way merge.
 
-### Partition tag derivation
+Only the DynamoDB backend observes partitions. The local backends (in-memory and SQLite) keep one log and ignore them.
 
-At build time, `Dcb_Builder` calls `DcbTag.derivePartitionTag` on all produced event schemas. The rules are:
+### How the partition key is inferred
 
-| Scenario | Behavior |
-|----------|----------|
-| **All events have one tag field each** (even if different names) | Auto-selected — each event uses its own tag. Multi-entity DCB logs work naturally. |
-| **Any single event variant has multiple tag fields** | Requires explicit `@s.matches(DcbTag.partition)` annotation on one field. |
-| **Only one tag field across all schemas** | Auto-selected — no annotation needed. |
+You normally write no annotation. At build time the framework reads the whole plugin's slice graph — what each slice writes and what it reads — and works out one partition key per slice:
 
-### Marking the partition key
+1. **Own ids.** Collect the `*Id` fields on the events the slice writes. If there is only one, that is the partition, whatever the slice reads.
+2. **Minus references.** Remove every id that appears on a consumed arm whose event type *another* slice writes. `AddProduct` reads `CategoryAdded({categoryId})`, which `AddCategory` writes, so `categoryId` is a reference to another entity, not the product's own id.
+3. **What is left.** Exactly one id left is the partition. Several left means inference cannot choose, and you add `@partitionTag` (see [below](#when-you-still-need-partitiontag)).
 
-When a single event variant has multiple tagged fields, one must be designated as the partition key. There are two ways:
+If step 2 removes *every* id, one more rule applies: an id is given back when every other-slice arm carrying it comes from a slice partitioned by that same id. Reading your own entity's events by its id is identity, not a reference — which is why `ChangeProductName` may read `ProductAdded({productId, name})`. This rule depends on other slices' partitions, so the framework repeats it across the plugin until nothing changes. Slices that read each other's events, such as `ShipOrder` and `CancelOrder`, resolve this way.
 
-**`@partitionTag` field annotation (recommended in slice files):**
+The same derivation drives storage, the fence, the command envelope id and the decision read, so they cannot disagree.
 
-In files where `@@reventless.dcbTags` is active (including all slice folders), use the `@partitionTag` field annotation — the PPX transforms it to `@s.matches(DcbTag.partition)`:
+### When you still need `@partitionTag`
 
-```rescript
-// In a StateChangeSlice file
-@schema
-type event =
-  | DemandRecorded({
-      @partitionTag productId: string,  // partition key
-      orderId: string,                  // regular DcbTag.string
-    })
-```
+Inference cannot decide in two cases:
 
-**`@s.matches(DcbTag.partition)` (explicit, for event log type definitions):**
+- **A join.** `RecordProductDemand` writes events carrying `productId` and `orderId`. Both are the slice's own ids. Only the domain says demand is counted per product.
+- **A reference nothing reveals.** `PlaceOrder` writes `OrderPlaced` carrying `orderId` and `customerId`. `customerId` refers to the customer, but `PlaceOrder` reads no event that carries it, so nothing marks it as a reference and both ids remain candidates.
 
-In event log type files where dcbTags is not active, annotate directly:
+Mark the partition on the **produced event** (`type event`) — not on the command, where it has no effect:
 
 ```rescript
+// RecordProductDemand.res
 @schema
 type event =
-  | OrderPlaced({
-      orderId: @s.matches(DcbTag.partition) string,
-      customerId: @s.matches(DcbTag.string) string,
-    })
+  | ProductDemandRecorded({@partitionTag productId: string, orderId: string})
+  | ProductDemandRevoked({@partitionTag productId: string, orderId: string})
 ```
 
-Both fields remain DCB tags (used for query filtering), but the annotated field determines the partition key. Events without the designated partition tag fall back to their first tag.
+In files where `@@reventless.dcbTags` is not active (e.g. event log type definitions outside slice folders), write the schema directly: `orderId: @s.matches(DcbTag.partition) string`. The annotated field stays a DCB tag you can query by.
 
-For most DCB specs — where each event variant has exactly one tagged field — no annotation is needed. You only reach for `@partitionTag` when an event carries **two or more `*Id` fields** and the storage partition would otherwise be ambiguous — most often because the event also carries a **foreign reference** (see the next section).
+Without the annotation, the build stops and names the slice:
+
+```text
+DCB partition key cannot be inferred — PlaceOrder: multiple candidate partition keys (orderId, customerId) — add an explicit @partitionTag
+```
+
+The other failure reads `… <Slice>: no own partition key — every produced *Id is read from a foreign producer (OrderPlaced declares orderId; …)`. That is almost always a consumed lifecycle arm declaring the id the slice is partitioned by. Remove the field from the consumed arm (write the bare `| OrderPlaced`); add `@partitionTag` only if the slice really is a pure join.
+
+These checks run at deploy (`Dcb_Builder`), at local boot, and when the command Lambda cold-starts — an unresolved partition stops the Lambda from starting rather than storing events under the wrong key. The framework also:
+
+- **fails the build** on a `@partitionTag` that inference contradicts — it names a key the slice only references, or inference derives a different key;
+- **logs** a redundant `@partitionTag` (inference derives the same key without it) at info level — remove it;
+- **throws** when an event lacks the tag its partition key names, or when two slices write the same event type under different keys.
+
+Two entities in one plugin may each annotate their own key; there is no limit of one `@partitionTag` per plugin.
 
 ### Cross-entity reference reads (inferred — no annotation)
 
-The common cross-partition case — "this command references another entity; does it exist / is it valid?" — needs **no tag annotation at all**. You declare the fields and what the slice consumes, and the framework derives the scope from the whole plugin's slice graph:
+The common cross-partition case — "this command references another entity; does it exist / is it valid?" — needs **no tag annotation at all**. You declare the fields and what the slice consumes, and the framework derives the scope and the partition from the whole plugin's slice graph:
 
 ```rescript
-// AddProduct.res — references a Category. Zero scope annotations.
+// AddProduct.res — references a Category. Zero annotations.
 @schema
 type consumedEvent =
   | ProductAdded({productId: string})        // my own lifecycle
   | CategoryAdded({categoryId: string})      // the category's lifecycle…
   | CategoryArchived({categoryId: string})
 @schema
-type command = AddProduct({@partitionTag productId: string, name, price, categoryId: string})
+type command = AddProduct({productId: string, name: string, price: Reventless.Money.t, categoryId: string})
 @schema
-type event   = ProductAdded({@partitionTag productId: string, name, price, categoryId: string})
+type event   = ProductAdded({productId: string, name: string, price: Reventless.Money.t, categoryId: string})
 ```
 
-Because `categoryId` is owned by another entity (Category emits `CategoryAdded` keyed by it), the framework infers that `AddProduct` reads it **cross-partition** — the `categoryId` clause reads only the category's lifecycle, never sibling products — and that `categoryId` is **payload** on the emitted `ProductAdded` (so the event is never written to the `categoryId` index). You write no `@crossPartition` and no `@noTag`.
-
-The one annotation still required here is **`@partitionTag productId`**: the emitted `ProductAdded` carries two `*Id` fields (`productId` + the foreign `categoryId`), so storage needs to be told which one is the partition. (Inferring the storage partition is planned; until then, mark it.)
+Because `categoryId` is owned by another entity (Category emits `CategoryAdded` keyed by it), the framework infers that `AddProduct` reads it **cross-partition** — the `categoryId` clause reads only the category's lifecycle, never sibling products — and that `categoryId` is **payload** on the emitted `ProductAdded` (so the event is never written to the `categoryId` index). The same subtraction leaves `productId` as the partition. You write no `@crossPartition`, no `@noTag` and no `@partitionTag`.
 
 If you write a redundant or contradictory `@crossPartition` the build logs a diagnostic — a key marked cross-partition that the framework resolves as the slice's *own* partition is flagged as a contradiction.
 
+In this repo, `pnpm run check:dcb-scope` guards all of this for the examples: it fails on an unresolvable slice or a redundant `@partitionTag`, and goldens each plugin's partition key per event type (`partitionKeyByEventType`) in `examples/<example>/schema/dcb-scope.json`.
+
 ### Composite partition keys (`@compositePartitionTag`)
 
-When the optimal partition key is formed from **multiple fields concatenated together in declaration order** (e.g. `environment/platform/plugin`), use `@compositePartitionTag` instead of `@partitionTag`:
+When the optimal partition key is formed from **multiple fields concatenated together in declaration order** (e.g. `environment/platform/plugin`), use `@compositePartitionTag` instead of `@partitionTag`. A composite key is never inferred: you declare it, and it applies to the whole plugin's event log rather than per slice.
 
 ```rescript
 @@reventless.spec
@@ -552,7 +558,7 @@ Each `@compositePartitionTag` field is still a regular DCB tag — individually 
 ```
 
 **Rules:**
-- Requires ≥ 2 annotated fields — `derivePartitionTag` throws at startup if only 1 is found.
+- Requires ≥ 2 annotated fields — throws at startup if only 1 is found.
 - Cannot mix `@compositePartitionTag` with `@partitionTag` on the same schema — throws at startup.
 - Annotations must be on `string` fields; non-string fields are silently ignored.
 - Placement is **before the field name** (field-level attribute), not after the colon.
@@ -566,13 +572,14 @@ invariant**, where a slice reads its **own** event type by a secondary key acros
 both produces and reads `StudentSubscribed`, so inference sees `studentId` as an
 own-stream read (partition-scoped), not a cross-partition one. Here you must opt in.
 
-Because each event lives in exactly one partition (its partition tag), a
+Because each event lives in exactly one partition (its partition key), a
 single-tag read of any *other* tag is **partition-scoped** by default — it keeps
 that tag's consistency fence narrow. The M:N invariant needs the opposite: read
 `studentId` across every course partition the student appears in.
 
-Mark such a tag `@crossPartition` (on the command **and** the produced event,
-like `@partitionTag` — never on `consumedEvent`):
+Mark such a tag `@crossPartition` (on the command **and** the produced event —
+never on `consumedEvent`). Here the events carry two candidate ids, `courseId` and
+`studentId`, so the partition also needs `@partitionTag` on the produced event:
 
 ```rescript
 // Course-subscription capacity: partition by courseId, read studentId across
@@ -580,7 +587,7 @@ like `@partitionTag` — never on `consumedEvent`):
 @schema
 type command =
   | SubscribeStudent({
-      @partitionTag courseId: string,      // partition read — "all of the course"
+      courseId: string,                    // partition read — "all of the course"
       @crossPartition studentId: string,   // cross-partition read — "all of the student"
     })
 

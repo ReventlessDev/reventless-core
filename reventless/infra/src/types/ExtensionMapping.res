@@ -10,7 +10,7 @@ type id = string
 
 /** What `mapIncomingEvent` can do with a published event: command the wrapped
     aggregate or slice, command the extension point, forward, or run a directive.
-    The slice forms take no id — the FIFO group comes from `@partitionTag`. */
+    The slice forms take no id — the FIFO group is the slice's partition key. */
 type incomingCommandAction<'aggregateCommand, 'extensionPointCommand, 'directive> =
   | PublishAggregateCommand(id, 'aggregateCommand)
   | PublishAggregateCommandAsync(promise<(id, 'aggregateCommand)>)
@@ -216,28 +216,29 @@ module Make = (MappingImpl: Mapping): (
   let acceptedTags = Reventless.DcbTag.extractAllVariantNames(Delegate.eventSchema)
   let delegateEventNames = acceptedTags
 
-  // Partition tag for `PublishStateChangeSliceCommand*`. Throws when the Delegate
-  // declares none — an Aggregate, where `PublishAggregateCommand` is the right form.
+  // Partition for `PublishStateChangeSliceCommand*`, which becomes the command's
+  // FIFO group. Inferred from the Delegate alone: its consumed arms are not in
+  // view, so a slice whose key only they decide needs `@partitionTag`. Throws
+  // when unresolved — an Aggregate, where `PublishAggregateCommand` is right.
   let derivedPartitionTagLazy = ref(None)
   let getDerivedPartitionTag = () =>
     switch derivedPartitionTagLazy.contents {
     | Some(d) => d
     | None =>
-      let d = Reventless.DcbTag.derivePartitionTag([
-        (Delegate.name, Delegate.moduleUrl, Delegate.commandSchema->S.castToUnknown),
-      ])
+      let d = Reventless.DcbTag.deriveSlicePartition({
+        name: Delegate.name,
+        commandSchema: Delegate.commandSchema->S.castToUnknown,
+        consumedEventSchema: S.unknown,
+        eventSchema: Delegate.eventSchema->S.castToUnknown,
+      })
       derivedPartitionTagLazy := Some(d)
       d
     }
   let derivePartitionId = (targetCmd: Delegate.command): string =>
-    switch getDerivedPartitionTag() {
-    | Simple(pt) =>
-      let tags = Reventless.DcbTag.extractTags(Delegate.commandSchema, targetCmd)
-      Reventless.DcbTag.getPartitionTagValue([{tags: tags}], pt)->Option.getOr("")
-    | Composite(spec) =>
-      let tags = Reventless.DcbTag.extractTags(Delegate.commandSchema, targetCmd)
-      Reventless.DcbTag.getCompositePartitionKeyValue(tags, spec)
-    }
+    Reventless.DcbTag.extractTags(
+      Delegate.commandSchema,
+      targetCmd,
+    )->Reventless.DcbTag.partitionValueOfTags(getDerivedPartitionTag())
 
   // `comp` as an Effect log annotation; EffectLogger.install lifts it to the
   // top-level JSON field.

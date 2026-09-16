@@ -31,6 +31,8 @@ function kindName(m) {
       return "PublishedActionsMismatch";
     case "ScopeDegraded" :
       return "ScopeDegraded";
+    case "PartitionUnresolved" :
+      return "PartitionUnresolved";
     case "Throw" :
       return "Throw";
   }
@@ -75,6 +77,8 @@ function format(m) {
       return `PublishedActionsMismatch:\n  expected: ` + stringifyJsonArray(m.expected) + `\n  actual:   ` + stringifyJsonArray(m.actual);
     case "ScopeDegraded" :
       return `ScopeDegraded:\n  boundary: ` + m.boundary + `\n  dropped:  ` + m.dropped.join(", ") + `\n  cause:    ` + m.ambiguities.join(" | ");
+    case "PartitionUnresolved" :
+      return `PartitionUnresolved:\n  boundary: ` + m.boundary + `\n  cause:    ` + m.reasons.join(" | ");
     case "Throw" :
       return `Throw: ` + m.error + `\n` + m.stack;
   }

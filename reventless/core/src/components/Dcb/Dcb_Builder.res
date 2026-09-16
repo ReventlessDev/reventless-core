@@ -1,25 +1,4 @@
-// Converts a file:// module URL to a path relative to the project root (located by lerna.json),
-// resolving symlinks so workspace packages show their source location rather than node_modules.
-// Falls back to the bare URL string on any error.
 let log = Logger.fromEnv()
-
-let toRelativePath: string => string = %raw(`function toRelativePath(moduleUrl) {
-  try {
-    const fs = process.getBuiltinModule('node:fs');
-    const path = process.getBuiltinModule('node:path');
-    const { fileURLToPath } = process.getBuiltinModule('node:url');
-    const builderReal = fs.realpathSync(fileURLToPath(import.meta.url));
-    const sliceReal = fs.realpathSync(fileURLToPath(moduleUrl));
-    let dir = path.dirname(builderReal);
-    while (dir !== path.dirname(dir)) {
-      if (fs.existsSync(path.join(dir, 'lerna.json'))) break;
-      dir = path.dirname(dir);
-    }
-    return path.relative(dir, sliceReal).replace(/\.mjs$/, '.res');
-  } catch(e) {
-    return moduleUrl.replace('file://', '');
-  }
-}`)
 
 // The tag of one compiled variant arm: `{TAG: "<Name>", …}` for a payload-bearing
 // constructor, a bare string const for a payload-less one.
@@ -182,12 +161,6 @@ module Make = (
           Sc.Spec.name,
           Sc.Spec.eventSchema->S.castToUnknown,
         ))
-      let producedNamed =
-        stateChangeSlices->Array.map((module(Sc: StateChangeSlice.T)) => (
-          Sc.Spec.name,
-          toRelativePath(Sc.Spec.moduleUrl),
-          Sc.Spec.eventSchema->S.castToUnknown,
-        ))
       let consumed =
         stateChangeSlices
         ->Array.map((module(Sc: StateChangeSlice.T)) => (
@@ -253,7 +226,38 @@ module Make = (
         indexes
       }
 
-      let partitionTag = Reventless.DcbTag.derivePartitionTag(producedNamed)
+      let sliceSchemas = stateChangeSlices->Array.map((module(Sc: StateChangeSlice.T)) => {
+        Reventless.DcbTag.name: Sc.Spec.name,
+        commandSchema: Sc.Spec.commandSchema->S.castToUnknown,
+        consumedEventSchema: Sc.Spec.consumedEventSchema->S.castToUnknown,
+        eventSchema: Sc.Spec.eventSchema->S.castToUnknown,
+      })
+      let inferenceShapes = sliceSchemas->Array.map(Reventless.DcbTag.sliceShape)
+
+      // A `@partitionTag` inference contradicts would steer storage, fence and read
+      // scope to a key the slice only references, so it stops the build. One that
+      // inference agrees with is noise, and says so.
+      let hintIssues = Reventless.DcbValidation.validatePartitionHintsVsInference(
+        ~shapes=inferenceShapes,
+      )
+      hintIssues.redundancies->Array.forEach(e =>
+        log.info(~comp="Dcb_Builder", `DCB partition (${e.sliceName}): ${e.message}`)
+      )
+      if hintIssues.contradictions->Array.length > 0 {
+        let detail =
+          hintIssues.contradictions
+          ->Array.map(e => `${e.sliceName}: ${e.message}`)
+          ->Array.join(" | ")
+        log.error(~comp="Dcb_Builder", `DCB partition contradiction (${name}): ${detail}`)
+        JsError.throwWithMessage(`DCB partition contradiction (${name}): ${detail}`)
+      }
+
+      // Where each event is stored — and so its fence, and each command's envelope
+      // id. Throws, naming the slice, when a partition cannot be inferred.
+      let boundaryPartition = Reventless.DcbTag.deriveBoundaryPartition(sliceSchemas)
+      let partitionTag = boundaryPartition.partitionTag
+      let partitionTagOf = sliceName =>
+        boundaryPartition->Reventless.DcbTag.slicePartitionTag(sliceName)
 
       // Tag keys declared `@crossPartition` across the produced event schemas.
       // Derived once at build time (the scope is a property of the tag key, and
@@ -325,15 +329,6 @@ module Make = (
       // preserved (generalised rule 3). Safety guard: if any slice's partition is
       // ambiguous we keep the annotated values for the whole boundary rather than
       // thread a partial inference. See docs/plans/done/dcb-tag-scope-inference.md.
-      let inferenceShapes =
-        stateChangeSlices->Array.map((module(Sc: StateChangeSlice.T)) =>
-          Reventless.DcbTag.sliceShapeFromSchemas(
-            ~name=Sc.Spec.name,
-            ~commandSchema=Sc.Spec.commandSchema->S.castToUnknown,
-            ~consumedEventSchema=Sc.Spec.consumedEventSchema->S.castToUnknown,
-            ~eventSchema=Sc.Spec.eventSchema->S.castToUnknown,
-          )
-        )
       let inferred = Reventless.DcbScopeInference.infer(inferenceShapes)
       if inferred.crossPartitionTagKeys != crossPartitionTagKeys {
         log.info(
@@ -388,14 +383,7 @@ module Make = (
       // (DcbCommandTopicEntryPoint.mjs) route through `DcbTag.deriveEffectiveScope`
       // so the runtime decision query cannot drift from this scope — see
       // docs/analysis/dcb-runtime-scope-annotation-drift.md.
-      let effective = Reventless.DcbTag.deriveEffectiveScope(
-        stateChangeSlices->Array.map((module(Sc: StateChangeSlice.T)) => {
-          Reventless.DcbTag.name: Sc.Spec.name,
-          commandSchema: Sc.Spec.commandSchema->S.castToUnknown,
-          consumedEventSchema: Sc.Spec.consumedEventSchema->S.castToUnknown,
-          eventSchema: Sc.Spec.eventSchema->S.castToUnknown,
-        }),
-      )
+      let effective = Reventless.DcbTag.deriveEffectiveScope(sliceSchemas)
       let effectiveCrossPartitionTagKeys = effective.crossPartitionTagKeys
       let effectiveTagKeysByEventType = effective.tagKeysByEventType
 
@@ -487,6 +475,7 @@ module Make = (
             ~publishJsons,
             ~tagKeysByEventType=effectiveTagKeysByEventType,
             ~crossPartitionTagKeys=effectiveCrossPartitionTagKeys,
+            ~partitionTag=?partitionTagOf(StateChangeSlice.Spec.name),
             ~runtime=?componentRuntime->Dict.get(StateChangeSlice.Spec.name),
             ~opts,
           )
@@ -507,6 +496,7 @@ module Make = (
             ~publishJsons=asyncPublishJsons,
             ~tagKeysByEventType=effectiveTagKeysByEventType,
             ~crossPartitionTagKeys=effectiveCrossPartitionTagKeys,
+            ~partitionTag=?partitionTagOf(StateChangeSlice.Spec.name),
             ~runtime=?componentRuntime->Dict.get(StateChangeSlice.Spec.name),
             ~opts,
           )
@@ -572,6 +562,7 @@ module Make = (
                   ~commandSchema=S.Spec.commandSchema->Obj.magic,
                   ~componentKind=CommandGenerator_Callback.StateChangeSlice,
                   ~stripIdFromParams=false,
+                  ~partitionTag=?partitionTagOf(S.Spec.name),
                 )
                 Api_Naming.sliceMutationFields(
                   ~plugin=apiNamePrefix,
@@ -602,6 +593,7 @@ module Make = (
                     ~commandSchema=S.Spec.commandSchema->Obj.magic,
                     ~componentKind=CommandGenerator_Callback.StateChangeSlice,
                     ~stripIdFromParams=false,
+                    ~partitionTag=?partitionTagOf(S.Spec.name),
                   )
                   Api_Naming.sliceMutationFields(
                     ~plugin=apiNamePrefix,
@@ -813,7 +805,7 @@ module Make = (
                   `Two DCB slices in "${name}" both declare the command "${tag}". ` ++
                   "Owner stamping resolves a command by that name alone, so it cannot " ++ "tell them apart. Rename one of the constructors.",
                 )
-              | None => byTag->Dict.set(tag, commandSchema)
+              | None => byTag->Dict.set(tag, (commandSchema, partitionTagOf(S.Spec.name)))
               }
             })
           }
@@ -825,7 +817,7 @@ module Make = (
         dcbCommandTopic
         ->Component.operations
         ->Pulumi.Output.apply(ops => {
-          let make = commandSchema =>
+          let make = (commandSchema, partitionTag) =>
             CommandGenerator_Callback.makeGenerateCommand(
               ~publishJsons=ops.publishJsons,
               ~publishJsonsAndWait=?ops.publishJsonsAndWait,
@@ -833,16 +825,19 @@ module Make = (
               ~commandSchema,
               ~componentKind=CommandGenerator_Callback.StateChangeSlice,
               ~stripIdFromParams=false,
+              ~partitionTag?,
             )
           let byTag = Dict.make()
           dcbCommandSchemasByTag
           ->Dict.toArray
-          ->Array.forEach(((tag, schema)) => byTag->Dict.set(tag, make(schema)))
+          ->Array.forEach(((tag, (schema, partitionTag))) =>
+            byTag->Dict.set(tag, make(schema, partitionTag))
+          )
           // A command no slice claims keeps the permissive generator — what every
           // command got before this change — so nothing that reaches this handler
           // by another route starts failing. It also cannot stamp, which is why
           // the unknown case is logged rather than left to look like a success.
-          (byTag, make(S.json->S.castToUnknown))
+          (byTag, make(S.json->S.castToUnknown, None))
         })
 
       let dcbHandler =

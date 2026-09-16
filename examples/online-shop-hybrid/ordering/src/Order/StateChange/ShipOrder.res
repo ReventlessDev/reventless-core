@@ -37,7 +37,7 @@ type error =
   | OrderAlreadyCancelled
 
 @schema
-type event = OrderShipped({@partitionTag orderId: string, customerId: string})
+type event = OrderShipped({orderId: string, customerId: string})
 
 type lifecycleState = Orders.lifecycle
 

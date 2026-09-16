@@ -421,13 +421,13 @@ appears exactly once — multiple annotations stack on the same field declaratio
 @schema
 type consumedEvent =
   | OrderPlaced({
-      @partitionTag orderId: string,
+      orderId: string,
       customerId: string,
       total: float,
       placedAt: string,
     })
   | OrderStatusChanged({
-      @partitionTag orderId: string,
+      orderId: string,
       status: string,
       total: float,
       changedAt: string,

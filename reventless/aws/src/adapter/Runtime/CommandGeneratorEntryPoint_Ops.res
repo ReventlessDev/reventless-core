@@ -22,6 +22,7 @@ let makeCommandGenerator = (
   ~commandSchema,
   ~componentKind: ReventlessCore.CommandGenerator_Callback.commandComponentKind,
   ~stripIdFromParams: bool,
+  ~partitionTag: option<Reventless.DcbTag.derivedPartitionTag>=?,
 ): ReventlessCore.CommandGenerator.commandGenerator =>
   ReventlessCore.CommandGenerator_Callback.makeGenerateCommand(
     ~publishJsons,
@@ -30,4 +31,5 @@ let makeCommandGenerator = (
     ~commandSchema,
     ~componentKind,
     ~stripIdFromParams,
+    ~partitionTag?,
   )

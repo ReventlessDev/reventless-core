@@ -223,18 +223,26 @@ In slice files (or files with `@@reventless.dcbTags`), the PPX auto-tags `*Id: s
 
 | Annotation | Effect |
 |---|---|
-| `@partitionTag` | Marks the field as the DCB partition key (`DcbTag.partition`). Required when a variant has multiple `*Id` fields and only one is the partition key. |
+| `@partitionTag` | Marks the field of a produced event as the DCB partition key (`DcbTag.partition`). The partition key is otherwise inferred per slice from the slice graph (the ids on the events it writes, minus the ids it reads from other slices' events); the annotation is required only where that leaves more than one candidate, such as a join. `Dcb_Builder` fails on one that contradicts inference and logs one that agrees with it as redundant. |
 | `@compositePartitionTag` | Marks a `string` field as one segment of a multi-field composite partition key. Fields are joined in **declaration order** with a configurable separator (default `"/"`). Use `@compositePartitionTag(":")` to set a different separator after that field. Requires ≥ 2 annotated fields; cannot be combined with `@partitionTag`. |
 | `@noDcbTag` | Suppresses auto-tagging on a `*Id` field that is payload data, not a DCB key. |
 | `@dcbTag` | Explicitly opts in a field that doesn't follow `*Id` naming (e.g. `sku`, `slug`). |
 
 ```rescript
-// Multiple *Id fields — declare which is the partition key
+// A join: both ids are the slice's own, so inference cannot choose
 @schema
 type event =
-  | DemandRecorded({
+  | ProductDemandRecorded({
       @partitionTag productId: string,  // partition key
-      @noDcbTag orderId: string,           // payload only, not a DCB tag
+      orderId: string,                  // still a queryable DCB tag
+    })
+
+// Payload that is not a DCB key
+@schema
+type event =
+  | NoteAdded({
+      noteId: string,
+      @noDcbTag authorId: string,        // payload only, not a DCB tag
     })
 
 // Composite partition key from multiple fields (joined in declaration order)

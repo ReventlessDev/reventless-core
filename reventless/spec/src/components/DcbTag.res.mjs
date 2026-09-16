@@ -68,6 +68,10 @@ let derivedPartitionTagSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "Composite",
     _0: s.m(compositePartitionSpecSchema)
+  })),
+  Sury.$schema(s => ({
+    TAG: "ByEventType",
+    _0: s.m(Sury.dict(Sury.string))
   }))
 ]);
 
@@ -824,46 +828,6 @@ function deriveEffectiveScope(slices) {
   };
 }
 
-function hasMultiTagVariant(schema) {
-  switch (schema.type) {
-    case "object" :
-      let tagCount = Object.entries(schema.properties).filter(param => Stdlib_Option.isSome(Sury.$Metadata_get(param[1], dcbTagId))).length;
-      return tagCount > 1;
-    case "anyOf" :
-      return schema.anyOf.some(variantSchema => {
-        if (variantSchema.type !== "object") {
-          return false;
-        }
-        let tagCount = Object.entries(variantSchema.properties).filter(param => Stdlib_Option.isSome(Sury.$Metadata_get(param[1], dcbTagId))).length;
-        return tagCount > 1;
-      });
-    default:
-      return false;
-  }
-}
-
-function findMultiTagVariantNames(schema) {
-  let variantName = variantSchema => {
-    if (variantSchema.type !== "object") {
-      return;
-    }
-    let properties = variantSchema.properties;
-    let tagCount = Object.entries(properties).filter(param => Stdlib_Option.isSome(Sury.$Metadata_get(param[1], dcbTagId))).length;
-    if (tagCount > 1) {
-      return Stdlib_Option.getOr(variantTagName(properties), "(unknown)");
-    }
-  };
-  if (schema.type === "anyOf") {
-    return Stdlib_Array.filterMap(schema.anyOf, variantName);
-  }
-  let name = variantName(schema);
-  if (name !== undefined) {
-    return [name];
-  } else {
-    return [];
-  }
-}
-
 function extractCompositePartitionFieldsFromProperties(properties) {
   return Stdlib_Array.filterMap(Object.entries(properties), param => {
     let meta = Sury.$Metadata_get(param[1], dcbCompositePartitionMemberId);
@@ -918,98 +882,122 @@ function getCompositePartitionKeyValue(tags, spec) {
   }).join("");
 }
 
-function derivePartitionTag(namedSchemas) {
-  let schemas = namedSchemas.map(param => param[2]);
-  let seen = new Set();
-  let allCompositeFields = schemas.flatMap(extractCompositePartitionFields).filter(info => {
-    if (seen.has(info.name)) {
-      return false;
-    } else {
-      seen.add(info.name);
-      return true;
-    }
-  });
-  let hasComposite = allCompositeFields.length !== 0;
-  let seen$1 = new Set();
-  let allPartitionFields = schemas.flatMap(extractPartitionTagFields).filter(f => {
-    if (seen$1.has(f)) {
-      return false;
-    } else {
-      seen$1.add(f);
-      return true;
-    }
-  });
-  if (hasComposite && allPartitionFields.length !== 0) {
-    Stdlib_JsError.throwWithMessage(`DCB spec mixes @compositePartitionTag and @partitionTag — use one strategy per schema`);
-  }
-  if (hasComposite) {
-    if (allCompositeFields.length < 2) {
-      Stdlib_JsError.throwWithMessage(`@compositePartitionTag requires at least 2 annotated fields — only ` + allCompositeFields.length.toString() + ` found`);
-    }
-    let sorted = allCompositeFields.toSorted((a, b) => Primitive_int.compare(a.position, b.position));
-    let keys = sorted.map(info => info.name);
-    let seps = sorted.slice(0, sorted.length - 1 | 0).map(info => info.sep);
-    return {
-      TAG: "Composite",
-      _0: {
-        keys: keys,
-        seps: seps
+function compositePartitionOf(schemas) {
+  let dedupe = (items, keyOf) => {
+    let seen = new Set();
+    return items.filter(item => {
+      let k = keyOf(item);
+      if (seen.has(k)) {
+        return false;
+      } else {
+        seen.add(k);
+        return true;
       }
-    };
+    });
+  };
+  let compositeFields = dedupe(schemas.flatMap(extractCompositePartitionFields), info => info.name);
+  let partitionFields = dedupe(schemas.flatMap(extractPartitionTagFields), f => f);
+  if (compositeFields.length === 0) {
+    return;
   }
-  let seen$2 = new Set();
-  let allTaggedFields = schemas.flatMap(extractTaggedFields).filter(f => {
-    if (seen$2.has(f)) {
-      return false;
-    } else {
-      seen$2.add(f);
-      return true;
-    }
-  });
-  let len = allTaggedFields.length;
-  if (len !== 1) {
-    if (len === 0) {
-      return Stdlib_JsError.throwWithMessage("DCB spec has no tagged fields — cannot derive partition tag");
-    }
-    let needsExplicitPartition = schemas.some(hasMultiTagVariant);
-    if (needsExplicitPartition) {
-      let context = Stdlib_Array.filterMap(namedSchemas, param => {
-        let variantNames = findMultiTagVariantNames(param[2]);
-        if (variantNames.length !== 0) {
-          return param[0] + ` (` + variantNames.join(", ") + `) @ ` + param[1];
-        }
-      }).join(", ");
-      let len$1 = allPartitionFields.length;
-      if (len$1 !== 1) {
-        if (len$1 !== 0) {
-          return Stdlib_JsError.throwWithMessage(`DCB spec has multiple fields annotated with @partitionTag (` + allPartitionFields.join(", ") + `) — only one is allowed — affected: ` + context);
-        } else {
-          return Stdlib_JsError.throwWithMessage(`DCB spec has variants with multiple tagged fields (` + allTaggedFields.join(", ") + `) but none is annotated with @partitionTag — affected: ` + context + ` — mark one field as the partition key`);
-        }
-      }
-      let singlePartition = allPartitionFields[0];
-      return {
-        TAG: "Simple",
-        _0: {
-          key: singlePartition
-        }
-      };
-    }
-    let sorted$1 = allTaggedFields.toSorted(Primitive_string.compare);
-    return {
-      TAG: "Simple",
-      _0: {
-        key: sorted$1[0]
-      }
-    };
+  if (partitionFields.length !== 0) {
+    return Stdlib_JsError.throwWithMessage(`DCB spec mixes @compositePartitionTag and @partitionTag — use one strategy per schema`);
   }
-  let singleField = allTaggedFields[0];
+  if (compositeFields.length === 1) {
+    return Stdlib_JsError.throwWithMessage(`@compositePartitionTag requires at least 2 annotated fields — only 1 found`);
+  }
+  let sorted = compositeFields.toSorted((a, b) => Primitive_int.compare(a.position, b.position));
   return {
-    TAG: "Simple",
-    _0: {
-      key: singleField
+    keys: sorted.map(info => info.name),
+    seps: sorted.slice(0, sorted.length - 1 | 0).map(info => info.sep)
+  };
+}
+
+function sliceShape(s) {
+  return sliceShapeFromSchemas(s.name, s.commandSchema, s.consumedEventSchema, s.eventSchema);
+}
+
+function deriveBoundaryPartition(slices) {
+  let spec = compositePartitionOf(slices.map(s => s.eventSchema));
+  if (spec !== undefined) {
+    return {
+      partitionBySlice: {},
+      partitionTag: {
+        TAG: "Composite",
+        _0: spec
+      }
+    };
+  }
+  let resolution = DcbScopeInference$Reventless.resolvePartitions(slices.map(sliceShape));
+  if (resolution.ambiguities.length !== 0) {
+    Stdlib_JsError.throwWithMessage(`DCB partition key cannot be inferred — ` + resolution.ambiguities.map(param => param[0] + `: ` + param[1]).join(" | "));
+  }
+  let byEventType = {};
+  slices.forEach(s => {
+    let key = resolution.partitionBySlice[s.name];
+    Object.entries(extractTagKeysByEventType(s.eventSchema)).forEach(param => {
+      let tagKeys = param[1];
+      let eventType = param[0];
+      if (tagKeys.length !== 0 && !tagKeys.includes(key)) {
+        Stdlib_JsError.throwWithMessage(`DCB slice ` + s.name + ` is partitioned by ` + key + `, but its event ` + eventType + ` carries no ` + key + ` tag (it carries ` + tagKeys.join(", ") + `) — add ` + key + ` to the event, or declare the partition with @partitionTag`);
+      }
+      let other = byEventType[eventType];
+      if (other !== undefined && other !== key) {
+        return Stdlib_JsError.throwWithMessage(`DCB event ` + eventType + ` is written under two partition keys (` + other + `, ` + key + `) — every slice writing it must be partitioned by the same key`);
+      } else {
+        byEventType[eventType] = key;
+        return;
+      }
+    });
+  });
+  return {
+    partitionBySlice: resolution.partitionBySlice,
+    partitionTag: {
+      TAG: "ByEventType",
+      _0: byEventType
     }
   };
+}
+
+function slicePartitionTag(bp, sliceName) {
+  let other = bp.partitionTag;
+  switch (other.TAG) {
+    case "Simple" :
+    case "Composite" :
+      return other;
+    case "ByEventType" :
+      return Stdlib_Option.map(bp.partitionBySlice[sliceName], key => ({
+        TAG: "Simple",
+        _0: {
+          key: key
+        }
+      }));
+  }
+}
+
+function deriveSlicePartition(slice) {
+  let tag = slicePartitionTag(deriveBoundaryPartition([slice]), slice.name);
+  if (tag !== undefined) {
+    return tag;
+  } else {
+    return Stdlib_JsError.throwWithMessage(`DCB slice ` + slice.name + ` has no partition key`);
+  }
+}
+
+function partitionValueOfTags(tags, pt) {
+  switch (pt.TAG) {
+    case "Simple" :
+      let key = pt._0.key;
+      return Stdlib_Option.getOr(Stdlib_Array.findMap(tags, t => {
+        if (t.key === key) {
+          return t.value;
+        }
+      }), "");
+    case "Composite" :
+      return getCompositePartitionKeyValue(tags, pt._0);
+    case "ByEventType" :
+      return "";
+  }
 }
 
 function getPartitionTagValue(query, pt) {
@@ -1083,12 +1071,15 @@ export {
   extractPartitionTagFields,
   sliceShapeFromSchemas,
   deriveEffectiveScope,
-  hasMultiTagVariant,
-  findMultiTagVariantNames,
   extractCompositePartitionFieldsFromProperties,
   extractCompositePartitionFields,
   getCompositePartitionKeyValue,
-  derivePartitionTag,
+  compositePartitionOf,
+  sliceShape,
+  deriveBoundaryPartition,
+  slicePartitionTag,
+  deriveSlicePartition,
+  partitionValueOfTags,
   getPartitionTagValue,
 }
 /* tagSchema Not a pure module */

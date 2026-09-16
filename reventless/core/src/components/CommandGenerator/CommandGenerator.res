@@ -7,10 +7,10 @@ The `id` field is the envelope id for the produced command message:
 - For **Aggregates**, it is required — the resolver populates it from the
   GraphQL `id: ID!` argument injected into the mutation SDL.
 - For **DCB StateChangeSlices**, it is optional. When the resolver does not
-  supply one, `makeGenerateCommand` derives the envelope id from the command's
-  `@partitionTag` / `@compositePartitionTag` field(s) using the same helpers
-  the slice itself uses for its decision-model partition key, so envelope id
-  and slice partition key share one source of truth.
+  supply one, `makeGenerateCommand` takes the envelope id from the command's
+  value of the handling slice's partition key — the key `Dcb_Builder` derives
+  for storage and the fence — so envelope id and slice partition key share one
+  source of truth.
 */
 type arguments = {id: string}
 type meta = {ip: array<string>, user: string, info: string}

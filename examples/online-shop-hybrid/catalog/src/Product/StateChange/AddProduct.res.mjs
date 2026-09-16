@@ -22,7 +22,7 @@ let consumedEventSchema = Sury.union([
 
 let commandSchema = Sury.$schema(s => ({
   TAG: "AddProduct",
-  productId: s.m(DcbTag$Reventless.partition),
+  productId: s.m(DcbTag$Reventless.string),
   name: s.m(Sury.string),
   description: s.m(Sury.string),
   price: s.m(Money$Reventless.schema),
@@ -36,7 +36,7 @@ let errorSchema = Sury.union([
 
 let eventSchema = Sury.$schema(s => ({
   TAG: "ProductAdded",
-  productId: s.m(DcbTag$Reventless.partition),
+  productId: s.m(DcbTag$Reventless.string),
   name: s.m(Sury.string),
   description: s.m(Sury.string),
   price: s.m(Money$Reventless.schema),

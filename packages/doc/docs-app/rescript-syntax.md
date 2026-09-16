@@ -593,6 +593,6 @@ type event =
   | ItemCreated({@s.matches(DcbTag.string) itemId: string, name: string})
 ```
 
-Fine-grained control is available via field-level annotations: `@partitionTag` (marks the partition key when multiple `*Id` fields exist), `@compositePartitionTag` (builds a partition key from multiple fields joined in declaration order), `@noDcbTag` (suppresses auto-tagging), `@dcbTag` (tags a field that doesn't follow `*Id` naming).
+Fine-grained control is available via field-level annotations: `@partitionTag` (marks the partition key on a produced event, needed only when the framework cannot infer it), `@compositePartitionTag` (builds a partition key from multiple fields joined in declaration order), `@noDcbTag` (suppresses auto-tagging), `@dcbTag` (tags a field that doesn't follow `*Id` naming).
 
 See [DCB Slices](./dcb-slices.md) for how DCB tags are used in practice.

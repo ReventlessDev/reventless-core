@@ -61,27 +61,54 @@ let compositeTagKey = (tags: array<Reventless.DcbTag.tag>) =>
 
 // --- Partition Key Derivation ---
 
-let derivePartitionKey = (
-  ~partitionTag: option<Reventless.DcbTag.derivedPartitionTag>=?,
+// The tag an event is filed under: the one named by its partition key. An event
+// that lacks it throws — filing it under another tag would put it where no
+// decision read of its entity looks. With no partition configured at all (a
+// single-tag log), the event's only tag.
+let partitionTagOfEvent = (
+  ~partitionTag: option<Reventless.DcbTag.derivedPartitionTag>,
+  ~eventType: string,
   tags: array<Reventless.DcbTag.tag>,
-): string => {
-  if tags->Array.length == 0 {
-    "dcb"
-  } else {
-    switch partitionTag {
+): option<Reventless.DcbTag.tag> => {
+  let byKey = key =>
+    switch tags->Array.find(t => t.key == key) {
+    | Some(t) => Some(t)
     | None =>
-      let tag = tags->Array.getUnsafe(0)
-      `${tag.key}:${tag.value}`
-    | Some(Simple(pt)) =>
-      let tag = switch tags->Array.find(t => t.key == pt.key) {
-      | Some(t) => t
-      | None => tags->Array.getUnsafe(0)
-      }
-      `${tag.key}:${tag.value}`
-    | Some(Composite(spec)) => Reventless.DcbTag.getCompositePartitionKeyValue(tags, spec)
+      JsError.throwWithMessage(
+        `DCB event ${eventType} carries no ${key} tag (tags: ${tags
+          ->Array.map(t => t.key)
+          ->Array.join(", ")}) — it cannot be filed under its partition`,
+      )
+    }
+  switch (tags, partitionTag) {
+  | ([], _) | (_, Some(Composite(_))) => None
+  | (_, None) => tags->Array.get(0)
+  | (_, Some(Simple({key}))) => byKey(key)
+  | (_, Some(ByEventType(keys))) =>
+    switch keys->Dict.get(eventType) {
+    | Some(key) => byKey(key)
+    | None =>
+      JsError.throwWithMessage(
+        `DCB event ${eventType} has no partition key — no slice of this boundary writes it`,
+      )
     }
   }
 }
+
+let derivePartitionKey = (
+  ~partitionTag: option<Reventless.DcbTag.derivedPartitionTag>=?,
+  ~eventType: string,
+  tags: array<Reventless.DcbTag.tag>,
+): string =>
+  switch (tags, partitionTag) {
+  | ([], _) => "dcb"
+  | (_, Some(Composite(spec))) => Reventless.DcbTag.getCompositePartitionKeyValue(tags, spec)
+  | _ =>
+    switch partitionTagOfEvent(~partitionTag, ~eventType, tags) {
+    | Some(tag) => `${tag.key}:${tag.value}`
+    | None => "dcb"
+    }
+  }
 
 // --- Item Conversion ---
 
@@ -93,7 +120,10 @@ let toItem = (
 ): JSON.t => {
   // Create base item
   let item = Dict.make()
-  item->Dict.set("id", derivePartitionKey(~partitionTag?, event.tags)->JSON.Encode.string)
+  item->Dict.set(
+    "id",
+    derivePartitionKey(~partitionTag?, ~eventType=event.eventType, event.tags)->JSON.Encode.string,
+  )
   item->Dict.set("position", position->JSON.Encode.string)
   item->Dict.set("event", event.eventType->JSON.Encode.string)
   item->Dict.set("data", event.data)
@@ -985,20 +1015,11 @@ let eventPartitionTags = (
 ): array<Reventless.DcbTag.tag> =>
   switch partitionTag {
   | Some(Composite(spec)) => [makeCompositeFenceTag(event.tags, spec)]
-  | Some(Simple(pt)) =>
-    switch event.tags->Array.find(t => t.key == pt.key) {
-    | Some(t) => [t]
-    | None =>
-      switch event.tags->Array.get(0) {
-      | Some(t) => [t]
-      | None => []
-      }
-    }
-  | None =>
-    switch event.tags->Array.get(0) {
-    | Some(t) => [t]
-    | None => []
-    }
+  | _ =>
+    partitionTagOfEvent(~partitionTag, ~eventType=event.eventType, event.tags)->Option.mapOr(
+      [],
+      t => [t],
+    )
   }
 
 let collectEventPartitionTags = (

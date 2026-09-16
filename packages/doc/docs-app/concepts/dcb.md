@@ -39,8 +39,9 @@ filter over tags, not a scan.
 
 **Partition.** Where an event physically lives in storage. Events sharing a
 partition key are stored and ordered together. When an event carries more than
-one id, one of them is marked as the partition tag — the others remain queryable
-but do not decide placement.
+one id, one of them is the partition key — the framework works out which from what
+each slice writes and reads, and asks for a `@partitionTag` only when it cannot.
+The others remain queryable but do not decide placement.
 
 **Decision model.** The state a slice builds to answer one command. It is
 produced by reading the relevant events and folding them with `evolve`, starting

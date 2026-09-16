@@ -64,26 +64,60 @@ function compositeTagKey(tags) {
   return tags.toSorted((a, b) => Primitive_string.compare(a.key, b.key)).map(t => t.key + `:` + t.value).join("#");
 }
 
-function derivePartitionKey(partitionTag, tags) {
+function partitionTagOfEvent(partitionTag, eventType, tags) {
+  let byKey = key => {
+    let t = tags.find(t => t.key === key);
+    if (t !== undefined) {
+      return t;
+    } else {
+      return Stdlib_JsError.throwWithMessage(`DCB event ` + eventType + ` carries no ` + key + ` tag (tags: ` + tags.map(t => t.key).join(", ") + `) — it cannot be filed under its partition`);
+    }
+  };
+  if (tags.length === 0) {
+    return;
+  }
+  if (partitionTag === undefined) {
+    return tags[0];
+  }
+  switch (partitionTag.TAG) {
+    case "Simple" :
+      return byKey(partitionTag._0.key);
+    case "Composite" :
+      return;
+    case "ByEventType" :
+      let key = partitionTag._0[eventType];
+      if (key !== undefined) {
+        return byKey(key);
+      } else {
+        return Stdlib_JsError.throwWithMessage(`DCB event ` + eventType + ` has no partition key — no slice of this boundary writes it`);
+      }
+  }
+}
+
+function derivePartitionKey(partitionTag, eventType, tags) {
   if (tags.length === 0) {
     return "dcb";
   }
   if (partitionTag !== undefined) {
-    if (partitionTag.TAG !== "Simple") {
-      return DcbTag$Reventless.getCompositePartitionKeyValue(tags, partitionTag._0);
+    switch (partitionTag.TAG) {
+      case "Composite" :
+        return DcbTag$Reventless.getCompositePartitionKeyValue(tags, partitionTag._0);
+      case "Simple" :
+      case "ByEventType" :
+        break;
     }
-    let pt = partitionTag._0;
-    let t = tags.find(t => t.key === pt.key);
-    let tag = t !== undefined ? t : tags[0];
-    return tag.key + `:` + tag.value;
   }
-  let tag$1 = tags[0];
-  return tag$1.key + `:` + tag$1.value;
+  let tag = partitionTagOfEvent(partitionTag, eventType, tags);
+  if (tag !== undefined) {
+    return tag.key + `:` + tag.value;
+  } else {
+    return "dcb";
+  }
 }
 
 function toItem(position, event, partitionTag, recordedAt) {
   let item = {};
-  item["id"] = derivePartitionKey(partitionTag, event.tags);
+  item["id"] = derivePartitionKey(partitionTag, event.eventType, event.tags);
   item["position"] = position;
   item["event"] = event.eventType;
   item["data"] = event.data;
@@ -733,27 +767,15 @@ function makeCompositeFenceTag(tags, spec) {
 
 function eventPartitionTags(event, partitionTag) {
   if (partitionTag !== undefined) {
-    if (partitionTag.TAG !== "Simple") {
-      return [makeCompositeFenceTag(event.tags, partitionTag._0)];
-    }
-    let pt = partitionTag._0;
-    let t = event.tags.find(t => t.key === pt.key);
-    if (t !== undefined) {
-      return [t];
-    }
-    let t$1 = event.tags[0];
-    if (t$1 !== undefined) {
-      return [t$1];
-    } else {
-      return [];
+    switch (partitionTag.TAG) {
+      case "Composite" :
+        return [makeCompositeFenceTag(event.tags, partitionTag._0)];
+      case "Simple" :
+      case "ByEventType" :
+        break;
     }
   }
-  let t$2 = event.tags[0];
-  if (t$2 !== undefined) {
-    return [t$2];
-  } else {
-    return [];
-  }
+  return Stdlib_Option.mapOr(partitionTagOfEvent(partitionTag, event.eventType, event.tags), [], t => [t]);
 }
 
 function collectEventPartitionTags(events, partitionTag) {
@@ -790,22 +812,30 @@ function partitionTypesByTag(events, partitionTag) {
 function buildConditionalTransactItems(table, events, cond, basePosition, partitionTag, crossPartitionTagKeysOpt) {
   let crossPartitionTagKeys = crossPartitionTagKeysOpt !== undefined ? crossPartitionTagKeysOpt : [];
   let cond$1;
-  if (partitionTag !== undefined && partitionTag.TAG !== "Simple") {
-    let spec = partitionTag._0;
-    let newrecord = {...cond};
-    newrecord.query = cond.query.map(qi => {
-      let clauseTags = qi.tags;
-      if (clauseTags === undefined) {
-        return qi;
-      }
-      if (clauseTags.length <= 1) {
-        return qi;
-      }
-      let newrecord = {...qi};
-      newrecord.tags = [makeCompositeFenceTag(clauseTags, spec)];
-      return newrecord;
-    });
-    cond$1 = newrecord;
+  if (partitionTag !== undefined) {
+    switch (partitionTag.TAG) {
+      case "Composite" :
+        let spec = partitionTag._0;
+        let newrecord = {...cond};
+        newrecord.query = cond.query.map(qi => {
+          let clauseTags = qi.tags;
+          if (clauseTags === undefined) {
+            return qi;
+          }
+          if (clauseTags.length <= 1) {
+            return qi;
+          }
+          let newrecord = {...qi};
+          newrecord.tags = [makeCompositeFenceTag(clauseTags, spec)];
+          return newrecord;
+        });
+        cond$1 = newrecord;
+        break;
+      case "Simple" :
+      case "ByEventType" :
+        cond$1 = cond;
+        break;
+    }
   } else {
     cond$1 = cond;
   }
@@ -1166,6 +1196,7 @@ export {
   compositeIndexName,
   indexKeepsFullProjection,
   compositeTagKey,
+  partitionTagOfEvent,
   derivePartitionKey,
   toItem,
   fromItem,

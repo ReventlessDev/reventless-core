@@ -5,9 +5,10 @@ annotated, and should the first-mentioned id be the default?"
 **Status:** Analysis — no code changed. Findings verified against `alpha` (`ac0bdc23f`)
 by reading the derivation code, the five annotated example slices, the
 `dcb-scope.json` goldens, and probing the compiled `DcbTag` module in node.
-**Builds on:** [`dcb-tag-scope-inference.md`](../plans/done/dcb-tag-scope-inference.md)
+**Resolved by:** [`dcb-partition-key-inference.md`](../../plans/done/dcb-partition-key-inference.md)
+**Builds on:** [`dcb-tag-scope-inference.md`](../../plans/done/dcb-tag-scope-inference.md)
 (the inference design and the decision to keep `@partitionTag`), and
-[`dcb-runtime-scope-annotation-drift.md`](dcb-runtime-scope-annotation-drift.md)
+[`dcb-runtime-scope-annotation-drift.md`](../dcb-runtime-scope-annotation-drift.md)
 (why every call site must derive scope through the same functions).
 
 ## Summary
@@ -41,33 +42,33 @@ by reading the derivation code, the five annotated example slices, the
 
 ### A. Storage partition and fence: `derivePartitionTag`
 
-[`DcbTag.res:1450`](../../reventless/spec/src/components/DcbTag.res#L1450). Its input is
+[`DcbTag.res:1450`](../../../reventless/spec/src/components/DcbTag.res#L1450). Its input is
 the **produced event schemas** only; the command and consumed events play no part. It
 works from the tag flags the PPX put on the schema, so a field counts as tagged after
 auto-tagging of `*Id`, `@dcbTag` and `@noTag`.
 
 | Situation (across all schemas passed in) | Result |
 |---|---|
-| No tagged fields | throws "DCB spec has no tagged fields" ([:1519](../../reventless/spec/src/components/DcbTag.res#L1519)) |
+| No tagged fields | throws "DCB spec has no tagged fields" ([:1519](../../../reventless/spec/src/components/DcbTag.res#L1519)) |
 | Exactly one tagged field | that field |
-| Several tagged fields, but **no variant** has more than one | **alphabetically first** field ([:1553](../../reventless/spec/src/components/DcbTag.res#L1553)) |
+| Several tagged fields, but **no variant** has more than one | **alphabetically first** field ([:1553](../../../reventless/spec/src/components/DcbTag.res#L1553)) |
 | Some variant has more than one tagged field, and exactly one `@partitionTag` exists | that field |
-| …and no `@partitionTag` exists | throws, naming slice, variants and file ([:1543](../../reventless/spec/src/components/DcbTag.res#L1543)) |
-| …and more than one distinct `@partitionTag` exists | throws "only one is allowed" ([:1549](../../reventless/spec/src/components/DcbTag.res#L1549)) |
+| …and no `@partitionTag` exists | throws, naming slice, variants and file ([:1543](../../../reventless/spec/src/components/DcbTag.res#L1543)) |
+| …and more than one distinct `@partitionTag` exists | throws "only one is allowed" ([:1549](../../../reventless/spec/src/components/DcbTag.res#L1549)) |
 | `@compositePartitionTag` mixed with `@partitionTag`, or fewer than 2 members | throws |
 
 The result is written into the DcbEventLog as `~partitionTag`, and on AWS it selects
 the base-table `id` of every stored event:
-[`derivePartitionKey`, `DcbEventLogStorage_DynamoDb_Runtime.res:64`](../../reventless/aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L64).
+[`derivePartitionKey`, `DcbEventLogStorage_DynamoDb_Runtime.res:64`](../../../reventless/aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L64).
 The in-memory and SQLite backends ignore it
-([`_InMemory.res:53`](../../reventless/local/src/adapter/DcbEventLog/DcbEventLogStorage_InMemory.res#L53),
-[`_Sqlite.res:164`](../../reventless/local/src/adapter/DcbEventLog/DcbEventLogStorage_Sqlite.res#L164)).
+([`_InMemory.res:53`](../../../reventless/local/src/adapter/DcbEventLog/DcbEventLogStorage_InMemory.res#L53),
+[`_Sqlite.res:164`](../../../reventless/local/src/adapter/DcbEventLog/DcbEventLogStorage_Sqlite.res#L164)).
 
 ### B. Decision-read scope: `DcbScopeInference.infer`, rule 1
 
-[`DcbScopeInference.res:189`](../../reventless/spec/src/components/DcbScopeInference.res#L189).
+[`DcbScopeInference.res:189`](../../../reventless/spec/src/components/DcbScopeInference.res#L189).
 Its input is a structural shape built per slice by
-[`DcbTag.sliceShapeFromSchemas`](../../reventless/spec/src/components/DcbTag.res#L1180):
+[`DcbTag.sliceShapeFromSchemas`](../../../reventless/spec/src/components/DcbTag.res#L1180):
 the `*Id` / `*Ids` fields **by name**, regardless of tag flags. Nested record fields are
 included, and `*Ids` is singularised.
 
@@ -75,18 +76,18 @@ For each slice:
 
 1. `produced` = the keys on the slice's own `event` arms.
 2. `foreign` = the keys on `consumedEvent` arms whose event type **this slice** does not
-   produce ([`foreignConsumedKeys`, :124](../../reventless/spec/src/components/DcbScopeInference.res#L124)).
+   produce ([`foreignConsumedKeys`, :124](../../../reventless/spec/src/components/DcbScopeInference.res#L124)).
 3. A `@partitionTag` hint that names a produced key wins
-   ([:199](../../reventless/spec/src/components/DcbScopeInference.res#L199)). The hint is
+   ([:199](../../../reventless/spec/src/components/DcbScopeInference.res#L199)). The hint is
    read only when all of the slice's `@partitionTag`s name one field.
 4. Otherwise `produced − foreign` decides:
    - exactly one key left: that key is the partition
    - no keys left: ambiguous, "no own partition key", with the arms that removed the key
-     ([`partitionBlockers`](../../reventless/spec/src/components/DcbScopeInference.res#L152))
+     ([`partitionBlockers`](../../../reventless/spec/src/components/DcbScopeInference.res#L152))
    - several keys left: ambiguous, "add @partitionTag"
 
 This never throws. An ambiguity makes
-[`deriveEffectiveScope`](../../reventless/spec/src/components/DcbTag.res#L1251) fall
+[`deriveEffectiveScope`](../../../reventless/spec/src/components/DcbTag.res#L1251) fall
 back to annotations for the **whole boundary**, which is the all-or-nothing blast radius
 that `check:dcb-scope` guards.
 
@@ -104,12 +105,12 @@ a foreign arm is therefore evidence that it is a reference, not evidence of iden
 | When | Call site | Derivation | On failure |
 |---|---|---|---|
 | Compile time | — (the PPX sees one file and only writes metadata) | none | — |
-| Tests | [`Behavior_GWT.res:274`](../../reventless/gwt/src/Behavior_GWT.res#L274) (one slice), [`Flow_GWT.res:241`](../../reventless/gwt/src/Flow_GWT.res#L241) (boundary) | B | per-slice tests cannot see the boundary fallback; `thenBoundaryScopeResolves` asserts it |
-| CI | [`scripts/check-dcb-scope.mjs`](../../scripts/check-dcb-scope.mjs) | B, compared with `examples/*/schema/dcb-scope.json` | fails on ambiguity or drift |
-| Deploy (Pulumi, incl. preview) and local boot | [`Dcb_Builder.res:256`](../../reventless/core/src/components/Dcb/Dcb_Builder.res#L256) (A, boundary), [`:391`](../../reventless/core/src/components/Dcb/Dcb_Builder.res#L391) (B) | A + B | A throws; B only logs (info diff, error on dropped cross-partition keys) |
-| Slice builder applied (deploy, boot, cold start) | [`StateChangeSlice_Callback.res:78`](../../reventless/core/src/components/StateChangeSlice/StateChangeSlice_Callback.res#L78), applied by [`StateChangeSlice_Builder.res:11`](../../reventless/core/src/components/StateChangeSlice/StateChangeSlice_Builder.res#L11) | A, **this slice only** | throws, uncaught (the value is used only to log read-event ids) |
-| Lambda cold start | [`DcbCommandTopicEntryPoint_Ops.res:50`](../../reventless/aws/src/adapter/Runtime/DcbCommandTopicEntryPoint_Ops.res#L50) | A + B, boundary | A is **caught → `None`** (untagged fences) |
-| Every command without a resolver-supplied id | [`CommandGenerator_Callback.res:171`](../../reventless/core/src/components/CommandGenerator/CommandGenerator_Callback.res#L171) | A on the **command** schema | caught → envelope id `""` |
+| Tests | [`Behavior_GWT.res:274`](../../../reventless/gwt/src/Behavior_GWT.res#L274) (one slice), [`Flow_GWT.res:241`](../../../reventless/gwt/src/Flow_GWT.res#L241) (boundary) | B | per-slice tests cannot see the boundary fallback; `thenBoundaryScopeResolves` asserts it |
+| CI | [`scripts/check-dcb-scope.mjs`](../../../scripts/check-dcb-scope.mjs) | B, compared with `examples/*/schema/dcb-scope.json` | fails on ambiguity or drift |
+| Deploy (Pulumi, incl. preview) and local boot | [`Dcb_Builder.res:256`](../../../reventless/core/src/components/Dcb/Dcb_Builder.res#L256) (A, boundary), [`:391`](../../../reventless/core/src/components/Dcb/Dcb_Builder.res#L391) (B) | A + B | A throws; B only logs (info diff, error on dropped cross-partition keys) |
+| Slice builder applied (deploy, boot, cold start) | [`StateChangeSlice_Callback.res:78`](../../../reventless/core/src/components/StateChangeSlice/StateChangeSlice_Callback.res#L78), applied by [`StateChangeSlice_Builder.res:11`](../../../reventless/core/src/components/StateChangeSlice/StateChangeSlice_Builder.res#L11) | A, **this slice only** | throws, uncaught (the value is used only to log read-event ids) |
+| Lambda cold start | [`DcbCommandTopicEntryPoint_Ops.res:50`](../../../reventless/aws/src/adapter/Runtime/DcbCommandTopicEntryPoint_Ops.res#L50) | A + B, boundary | A is **caught → `None`** (untagged fences) |
+| Every command without a resolver-supplied id | [`CommandGenerator_Callback.res:171`](../../../reventless/core/src/components/CommandGenerator/CommandGenerator_Callback.res#L171) | A on the **command** schema | caught → envelope id `""` |
 
 ---
 
@@ -163,7 +164,7 @@ storage placement with no signal.
 
 The retained-annotation analysis already flags this fallback as the one place where a
 wrong derivation mis-partitions instead of failing
-([plan, Phase 4b](../plans/done/dcb-tag-scope-inference.md)).
+([plan, Phase 4b](../../plans/done/dcb-tag-scope-inference.md)).
 
 ### F3 — Failure handling differs at each call site, and local cannot observe it
 
@@ -233,7 +234,7 @@ of the same entity therefore counts as foreign. `ChangeProductName` consumes
 `ProductAdded({productId, name})` would subtract `productId` and leave the slice with no
 partition, degrading the whole boundary. The convention "a consumed arm must not declare
 the id its slice is partitioned by" (the reason
-[`ChangeProductName.res`](../../examples/online-shop-hybrid/catalog/src/Product/StateChange/ChangeProductName.res)
+[`ChangeProductName.res`](../../../examples/online-shop-hybrid/catalog/src/Product/StateChange/ChangeProductName.res)
 writes `ProductAdded({name})`) and the `partitionBlockers` diagnostic both exist to work
 around this.
 
@@ -247,7 +248,7 @@ part of the F5 proposal that holds.
 #### Deciding foreignness per chapter instead
 
 A chapter is the optional folder above the kind folder (`src/<Chapter>/<Kind>/…`,
-[`Discovery.chapterOf`](../../reventless/spec/src/generator/Discovery.res#L38)). Today it
+[`Discovery.chapterOf`](../../../reventless/spec/src/generator/Discovery.res#L38)). Today it
 is a grouping band on the plugin structure and nothing more. In the examples every DCB
 slice sits in one, and most chapters coincide with an entity. The exception is
 `Notification`, which holds two entities (`recipientId`, `sourceId`).
@@ -300,10 +301,10 @@ detected at the first test, `check:dcb-scope`, boot, or deploy.
 ### F8 — A `@partitionTag` is never checked against the inference
 
 The hint in rule B overrides the derivation whenever it names *any* produced key
-([:199](../../reventless/spec/src/components/DcbScopeInference.res#L199)), including a
+([:199](../../../reventless/spec/src/components/DcbScopeInference.res#L199)), including a
 key that the same slice reads from a foreign producer. `@partitionTag categoryId` on
 `AddProduct` would be accepted and would drive storage, fence and read scope together.
-[`validateScopeVsInference`](../../reventless/spec/src/components/DcbValidation.res#L461)
+[`validateScopeVsInference`](../../../reventless/spec/src/components/DcbValidation.res#L461)
 already flags the equivalent contradiction for `@crossPartition`; `@partitionTag` has no
 such check. The plan keeps the annotation as the **intent oracle** that inference is
 verified against, but in this direction the oracle itself is unverified.

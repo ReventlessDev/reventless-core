@@ -160,10 +160,8 @@ describe("DcbScopeInference.infer", () => {
 })
 
 // A slice reading its own entity's lifecycle — `ProductImages` folding
-// `ProductAdded` to learn the product exists. Declaring the id on that arm makes
-// the slice's own partition look foreign and leaves it with none, which drops the
-// derived scope for the whole boundary. The shape is easy to write and the
-// consequence lands on a slice nobody touched, so both halves are pinned.
+// `ProductAdded` to learn the product exists. Its events carry one key, so it is
+// partitioned by that key whatever its consumed arms declare.
 let imagesReadingOwnLifecycle = slice(
   ~name="ProductImages",
   ~command=[id("productId")],
@@ -171,39 +169,56 @@ let imagesReadingOwnLifecycle = slice(
   ~produced=[ev("ProductImageAttached", [id("productId")])],
 )
 
+// Two keys, both named on an arm whose producer is out of sight. Seen alone the
+// slice cannot tell identity from reference, and the arm is what to change.
+let cancelReadingPlacedIds = slice(
+  ~name="CancelOrder",
+  ~command=[id("orderId")],
+  ~consumed=[ev("OrderPlaced", [id("orderId"), ids("productIds")])],
+  ~produced=[ev("OrderCancelled", [id("orderId"), ids("productIds")])],
+)
+
 describe("DcbScopeInference.partitionBlockers", () => {
-  testSync("names the foreign arm that claimed the slice's only produced key", () =>
-    expect(I.partitionBlockers(imagesReadingOwnLifecycle))->toEqual([
-      ("productId", ["ProductAdded"]),
+  testSync("names the foreign arm that claimed each produced key", () =>
+    expect(I.partitionBlockers(cancelReadingPlacedIds))->toEqual([
+      ("orderId", ["OrderPlaced"]),
+      ("productId", ["OrderPlaced"]),
     ])
   )
 
-  testSync("a slice with a partition has nothing to explain", () =>
+  testSync("a slice with a partition has nothing to explain", () => {
     expect(I.partitionBlockers(orderSlice))->toEqual([])
-  )
+    expect(I.partitionBlockers(imagesReadingOwnLifecycle))->toEqual([])
+  })
 })
 
-describe("DcbScopeInference.infer — a lifecycle arm that costs a slice its partition", () => {
-  testSync("leaves the slice with no partition and names the arm in the reason", () => {
+describe("DcbScopeInference.infer — a consumed arm naming the slice's own id", () => {
+  testSync("a single-key slice keeps its partition", () => {
     let d = I.infer([imagesReadingOwnLifecycle])
-    expect(d.partitionBySlice->Dict.get("ProductImages"))->toEqual(None)
+    expect(d.partitionBySlice->Dict.get("ProductImages"))->toEqual(Some("productId"))
+    expect(d.ambiguities)->toEqual([])
+  })
+
+  testSync("a two-key slice seen alone is left with none, and the reason names the arm", () => {
+    let d = I.infer([cancelReadingPlacedIds])
+    expect(d.partitionBySlice->Dict.get("CancelOrder"))->toEqual(None)
     expect(
       d.ambiguities->Array.some(
         ((slice, reason)) =>
-          slice == "ProductImages" && reason->String.includes("ProductAdded declares productId"),
+          slice == "CancelOrder" && reason->String.includes("OrderPlaced declares orderId"),
       ),
     )->toEqual(true)
   })
 
   testSync("dropping the field from the consumed arm resolves it", () => {
     let fixed = slice(
-      ~name="ProductImages",
-      ~command=[id("productId")],
-      ~consumed=[ev("ProductAdded", []), ev("ProductImageAttached", [])],
-      ~produced=[ev("ProductImageAttached", [id("productId")])],
+      ~name="CancelOrder",
+      ~command=[id("orderId")],
+      ~consumed=[ev("OrderPlaced", [ids("productIds")])],
+      ~produced=[ev("OrderCancelled", [id("orderId"), ids("productIds")])],
     )
     let d = I.infer([fixed])
-    expect(d.partitionBySlice->Dict.get("ProductImages"))->toEqual(Some("productId"))
+    expect(d.partitionBySlice->Dict.get("CancelOrder"))->toEqual(Some("orderId"))
     expect(d.ambiguities)->toEqual([])
   })
 })

@@ -375,12 +375,29 @@ type compositeMultiVariant =
       count: int,
     })
 
-// Schema with @partitionTag (simple) for derivePartitionTagV2 fallback test
+// Schema with @partitionTag (simple)
 @schema
 type simplePartitionEvent =
   | OrderPlaced({
       orderId: @s.matches(Reventless.DcbTag.partition) string,
       customerId: @s.matches(Reventless.DcbTag.string) string,
+    })
+
+// A second entity in the same boundary, annotated on its own key. The partition
+// key is declared after the reference, so a positional default would pick the wrong one.
+@schema
+type addressLinkedEvent =
+  | AddressLinked({
+      addressId: @s.matches(Reventless.DcbTag.string) string,
+      customerId: @s.matches(Reventless.DcbTag.partition) string,
+    })
+
+// Two ids, no annotation and nothing read: inference cannot choose.
+@schema
+type unannotatedLinkEvent =
+  | CustomerAddressLinked({
+      customerId: @s.matches(Reventless.DcbTag.string) string,
+      addressId: @s.matches(Reventless.DcbTag.string) string,
     })
 
 // Schema that mixes composite and simple partition (should throw)

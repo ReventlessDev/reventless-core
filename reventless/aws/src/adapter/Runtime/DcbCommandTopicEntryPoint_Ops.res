@@ -25,7 +25,6 @@
 type specModule
 
 @get external specName: specModule => string = "name"
-@get external specModuleUrl: specModule => Nullable.t<string> = "moduleUrl"
 @get external specCommandSchema: specModule => S.t<unknown> = "commandSchema"
 @get external specConsumedEventSchema: specModule => S.t<unknown> = "consumedEventSchema"
 @get external specEventSchema: specModule => S.t<unknown> = "eventSchema"
@@ -37,47 +36,61 @@ type pgConnectionJson
 @get external pgLockStrategy: pgConnectionJson => Nullable.t<string> = "lockStrategy"
 external asConnectionConfig: pgConnectionJson => PgConnection.connectionConfig = "%identity"
 
-// The decision-read scope + storage partition tag for one consistency boundary,
+// The decision-read scope + storage partition for one consistency boundary,
 // derived exactly the way the deploy-time `Dcb_Builder` does (both call the same
 // `Reventless.DcbTag` functions — the single source of truth), so the runtime
 // query can't diverge from the storage/GSI scope.
 type derivedScope = {
   crossPartitionTagKeys: array<string>,
   tagKeysByEventType: dict<array<string>>,
+  /** `None` only for a Lambda hosting no StateChangeSlices, which never appends. */
   partitionTag: option<Reventless.DcbTag.derivedPartitionTag>,
+  /** Slice name -> its partition: the handler's entity id and each command's envelope id. */
+  partitionTagBySlice: dict<Reventless.DcbTag.derivedPartitionTag>,
 }
 
-let deriveScope = (specs: array<specModule>): derivedScope => {
-  let scope = Reventless.DcbTag.deriveEffectiveScope(
-    specs->Array.map(s => {
+let deriveScope = (specs: array<specModule>): derivedScope =>
+  switch specs {
+  | [] => {
+      crossPartitionTagKeys: [],
+      tagKeysByEventType: Dict.make(),
+      partitionTag: None,
+      partitionTagBySlice: Dict.make(),
+    }
+  | _ =>
+    let slices = specs->Array.map(s => {
       Reventless.DcbTag.name: specName(s),
       commandSchema: specCommandSchema(s),
       consumedEventSchema: specConsumedEventSchema(s),
       eventSchema: specEventSchema(s),
-    }),
-  )
-
-  // `derivePartitionTag` throws only on a misconfigured spec, which the deploy
-  // would already have rejected; degrade to untagged fences rather than crash
-  // cold start (matches the shell's prior defensive behaviour).
-  let partitionTag = try Some(
-    Reventless.DcbTag.derivePartitionTag(
-      specs->Array.map(s => (
-        specName(s),
-        specModuleUrl(s)->Nullable.toOption->Option.getOr(specName(s)),
-        specEventSchema(s),
-      )),
-    ),
-  ) catch {
-  | _ => None
+    })
+    let scope = Reventless.DcbTag.deriveEffectiveScope(slices)
+    // Deploy derives this from the same slice list, so on the same code it cannot
+    // fail here. It can when the framework in the Lambda layer differs from the
+    // one deploy used — and then carrying on would file events under the wrong
+    // keys. Refuse to start instead, saying why before the rejection can be lost.
+    // Rethrown as the original JS error, so each invocation reports its message.
+    let boundary = try Reventless.DcbTag.deriveBoundaryPartition(slices) catch {
+    | JsExn(err) =>
+      ReventlessCore.EffectLogger.logError(
+        ~comp="DcbCommandTopicRuntime",
+        `refusing to start: ${err->JsExn.message->Option.getOr("unknown error")}`,
+      )->Effect.runSync
+      JsExn.throw(err)
+    }
+    let partitionTagBySlice = Dict.make()
+    slices->Array.forEach(s =>
+      boundary
+      ->Reventless.DcbTag.slicePartitionTag(s.name)
+      ->Option.forEach(tag => partitionTagBySlice->Dict.set(s.name, tag))
+    )
+    {
+      crossPartitionTagKeys: scope.crossPartitionTagKeys,
+      tagKeysByEventType: scope.tagKeysByEventType,
+      partitionTag: Some(boundary.partitionTag),
+      partitionTagBySlice,
+    }
   }
-
-  {
-    crossPartitionTagKeys: scope.crossPartitionTagKeys,
-    tagKeysByEventType: scope.tagKeysByEventType,
-    partitionTag,
-  }
-}
 
 // The command TAG names this slice handles — used by the shell to build its
 // `handlersByType` routing map.
@@ -166,6 +179,7 @@ type sliceCallback = {
   handleCommands: (
     ~tagKeysByEventType: dict<array<string>>=?,
     ~crossPartitionTagKeys: array<string>=?,
+    ~partitionTag: Reventless.DcbTag.derivedPartitionTag=?,
     ReventlessInfra.DcbEventLog.operations,
     Stream.t<
       ReventlessInfra.CommandTopic.topicItem<
@@ -188,8 +202,7 @@ external makeSliceCallback: specModule => behaviorModule => sliceCallback = "Mak
 let buildSliceHandler = (
   spec: specModule,
   behavior: behaviorModule,
-  ~tagKeysByEventType: dict<array<string>>,
-  ~crossPartitionTagKeys: array<string>,
+  scope: derivedScope,
   dcbEventLog: ReventlessInfra.DcbEventLog.operations,
 ) => {
   let callback = makeSliceCallback(spec)(behavior)
@@ -220,7 +233,13 @@ let buildSliceHandler = (
         | None => Stream.empty
         }
       )
-    callback.handleCommands(~tagKeysByEventType, ~crossPartitionTagKeys, dcbEventLog, decodedStream)
+    callback.handleCommands(
+      ~tagKeysByEventType=scope.tagKeysByEventType,
+      ~crossPartitionTagKeys=scope.crossPartitionTagKeys,
+      ~partitionTag=?scope.partitionTagBySlice->Dict.get(specName(spec)),
+      dcbEventLog,
+      decodedStream,
+    )
   }
 }
 

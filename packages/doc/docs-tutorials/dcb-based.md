@@ -442,7 +442,7 @@ let decide = (state, command) =>
 
 #### RecordProductDemand — driven by an Extension
 
-`RecordProductDemand` is not called by UI clients. It is dispatched internally by the `Orders_Extension` whenever Ordering's Extension Point emits an `ItemOrdered` or `ItemOrderCancelled` event. The decision state tracks which order IDs have already been recorded to make the operation idempotent. Because this slice is the **target of an Extension**, its produced events mark `productId` with `@partitionTag` so the framework can derive the FIFO grouping id from the command.
+`RecordProductDemand` is not called by UI clients. It is dispatched internally by the `Orders_Extension` whenever Ordering's Extension Point emits an `ItemOrdered` or `ItemOrderCancelled` event. The decision state tracks which order IDs have already been recorded to make the operation idempotent. Its events carry two ids of the slice's own, `productId` and `orderId`, and only the domain says demand is counted per product — so the produced events mark `productId` with `@partitionTag`. That partition key is also what the framework takes from the command as the FIFO grouping id when the Extension dispatches it.
 
 ```rescript
 // ProductDemand/StateChange/RecordProductDemand.res
@@ -653,7 +653,7 @@ The mapping logic mirrors the aggregate-based approach — only the `module Dele
 
 An **Extension** is the inbound subscription that Catalog registers to receive events from Ordering's Extension Point. Catalog decodes the incoming events through Ordering's spec package (`ordering-spec`) — it never depends on Ordering's implementation.
 
-The extension file (`Extension/Orders_Extension.res`, annotated `@@reventless.extension`) exposes a `module Mapping` naming the source Extension Point and the local `Delegate` slice (`RecordProductDemand`). It uses `PublishStateChangeSliceCommand` — no id is passed because the framework derives the FIFO grouping id from the command's `@partitionTag` field:
+The extension file (`Extension/Orders_Extension.res`, annotated `@@reventless.extension`) exposes a `module Mapping` naming the source Extension Point and the local `Delegate` slice (`RecordProductDemand`). It uses `PublishStateChangeSliceCommand` — no id is passed because the framework uses the command's value of the slice's partition key (`productId`) as the FIFO grouping id:
 
 ```rescript
 // Extension/Orders_Extension.res

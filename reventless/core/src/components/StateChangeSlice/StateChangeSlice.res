@@ -33,6 +33,8 @@ module type T = {
         clause (instead of an AND-ed composite) so the decision read is a real
         secondary-tag read. */
     ~crossPartitionTagKeys: array<string>=?,
+    /** This slice's partition, as `Dcb_Builder` derives it for the whole boundary. */
+    ~partitionTag: Reventless.DcbTag.derivedPartitionTag=?,
     ~runtime: ReventlessInfra.RuntimeHints.t=?,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component

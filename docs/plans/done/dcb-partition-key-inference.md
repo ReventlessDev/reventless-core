@@ -1,9 +1,9 @@
 # Plan: Infer the DCB partition key, and drop `@partitionTag` where inference agrees
 
-**Status:** Proposed (2026-09-16)
-**Analysis:** [dcb-partition-key-derivation.md](../analysis/dcb-partition-key-derivation.md)
+**Status:** ✅ Done (2026-09-16). See "Where the implementation differs" at the end.
+**Analysis:** [dcb-partition-key-derivation.md](../../analysis/done/dcb-partition-key-derivation.md)
 **Reverses:** the "drop `@partitionTag`" won't-do in
-[dcb-tag-scope-inference.md](done/dcb-tag-scope-inference.md) (Phase 4b, Part B), for
+[dcb-tag-scope-inference.md](dcb-tag-scope-inference.md) (Phase 4b, Part B), for
 the slices where inference and annotation provably agree. The annotation stays where
 inference cannot decide.
 
@@ -39,8 +39,9 @@ reading the code doesn't decide it:
 
 - **Joins.** `RecordProductDemand` links a product and an order. Both ids really
   belong to the slice, and only domain knowledge says demand is counted per product.
-- **Two own ids.** `PlaceOrder` carries `orderId` and `customerId`, and reads nothing
-  that marks either one as a reference.
+- **A reference nothing reveals.** `PlaceOrder` carries `orderId` and `customerId`.
+  `customerId` refers to the customer, but `PlaceOrder` reads nothing that carries
+  it, so nothing marks it as a reference.
 
 When inference and an annotation agree, the annotation is noise, and the examples
 drop it. When they disagree, the build fails.
@@ -130,14 +131,14 @@ arm" convention is ignored. "Target annotations" means only `PlaceOrder` and
 
 ### Phase 1: the refined rule in `DcbScopeInference`
 
-- [`DcbScopeInference.infer`](../../reventless/spec/src/components/DcbScopeInference.res):
+- [`DcbScopeInference.infer`](../../../reventless/spec/src/components/DcbScopeInference.res):
   single-id seeding, the fixpoint, and step 4 (only when step 2 leaves nothing).
   Non-convergence or a leftover ambiguity becomes an `ambiguities` entry.
 - `partitionBlockers` names only the arms step 4 could not give back.
 - `crossPartitionForSlice` and the one-slice path: an unseen producer counts as
   foreign (unchanged).
 - Update the module doc's "No fixpoint needed" line.
-- Tests in [`DcbScopeInferenceTest.res`](../../reventless/core/tests/dcb/DcbScopeInferenceTest.res):
+- Tests in [`DcbScopeInferenceTest.res`](../../../reventless/core/tests/dcb/DcbScopeInferenceTest.res):
   - `AddProduct` without a hint resolves to `productId`
   - a lifecycle arm naming the slice's own id resolves
   - the `ShipOrder` ⇄ `CancelOrder` cycle resolves
@@ -149,7 +150,7 @@ arm" convention is ignored. "Target annotations" means only `PlaceOrder` and
 
 ### Phase 2: check annotations against inference
 
-Beside [`validateScopeVsInference`](../../reventless/spec/src/components/DcbValidation.res#L461):
+Beside [`validateScopeVsInference`](../../../reventless/spec/src/components/DcbValidation.res#L461):
 
 - **Contradiction (error).** A `@partitionTag` naming an id that the slice only
   mentions as a reference, or that differs from what inference derives unaided when
@@ -176,14 +177,14 @@ Call sites (all from the analysis's "Where it runs" table):
 
 | Call site | Change |
 |---|---|
-| [`Dcb_Builder.res:256`](../../reventless/core/src/components/Dcb/Dcb_Builder.res#L256) | uses the new derivation, and threads the result to the event log and to each slice and command generator it builds |
-| [`StateChangeSlice_Callback.res:78`](../../reventless/core/src/components/StateChangeSlice/StateChangeSlice_Callback.res#L78) | receives the slice's partition from the builder instead of deriving it alone |
-| [`CommandGenerator_Callback.res:171`](../../reventless/core/src/components/CommandGenerator/CommandGenerator_Callback.res#L171) | the envelope id is the value of the **handling slice's** partition field on the command (`Dcb_Builder` builds these, so the boundary is at hand). A command without that field keeps today's `""` |
-| [`ExtensionMapping.res:226`](../../reventless/infra/src/types/ExtensionMapping.res#L226) | the `Delegate` is a slice of the same plugin; the generated `Plugin.res` passes the plugin's partition map. Outside a generated root, it falls back to one-slice inference and throws if unresolved |
-| [`DcbCommandTopicEntryPoint_Ops.res:64`](../../reventless/aws/src/adapter/Runtime/DcbCommandTopicEntryPoint_Ops.res#L64) | the same derivation, with no `catch → None`; see "Cold start fails loudly" below |
-| [`DcbEventLogStorage_DynamoDb_Runtime.res`](../../reventless/aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res) `derivePartitionKey`, `eventPartitionTags` | look up the key by `event.eventType`. An event type missing from the map throws; there is no `tags[0]` fallback |
-| [`PgChangeFeedRelay_Runtime.res`](../../reventless/aws/src/adapter/Postgres/PgChangeFeedRelay_Runtime.res) and `DcbBackend` | carry the per-event-type map in `HANDLER_CONFIG`, so relay ids match the DynamoDB path |
-| [`Behavior_GWT.res`](../../reventless/gwt/src/Behavior_GWT.res) / [`Flow_GWT.res`](../../reventless/gwt/src/Flow_GWT.res) | one-slice and boundary views of the same function |
+| [`Dcb_Builder.res:256`](../../../reventless/core/src/components/Dcb/Dcb_Builder.res#L256) | uses the new derivation, and threads the result to the event log and to each slice and command generator it builds |
+| [`StateChangeSlice_Callback.res:78`](../../../reventless/core/src/components/StateChangeSlice/StateChangeSlice_Callback.res#L78) | receives the slice's partition from the builder instead of deriving it alone |
+| [`CommandGenerator_Callback.res:171`](../../../reventless/core/src/components/CommandGenerator/CommandGenerator_Callback.res#L171) | the envelope id is the value of the **handling slice's** partition field on the command (`Dcb_Builder` builds these, so the boundary is at hand). A command without that field keeps today's `""` |
+| [`ExtensionMapping.res:226`](../../../reventless/infra/src/types/ExtensionMapping.res#L226) | the `Delegate` is a slice of the same plugin; the generated `Plugin.res` passes the plugin's partition map. Outside a generated root, it falls back to one-slice inference and throws if unresolved |
+| [`DcbCommandTopicEntryPoint_Ops.res:64`](../../../reventless/aws/src/adapter/Runtime/DcbCommandTopicEntryPoint_Ops.res#L64) | the same derivation, with no `catch → None`; see "Cold start fails loudly" below |
+| [`DcbEventLogStorage_DynamoDb_Runtime.res`](../../../reventless/aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res) `derivePartitionKey`, `eventPartitionTags` | look up the key by `event.eventType`. An event type missing from the map throws; there is no `tags[0]` fallback |
+| [`PgChangeFeedRelay_Runtime.res`](../../../reventless/aws/src/adapter/Postgres/PgChangeFeedRelay_Runtime.res) and `DcbBackend` | carry the per-event-type map in `HANDLER_CONFIG`, so relay ids match the DynamoDB path |
+| [`Behavior_GWT.res`](../../../reventless/gwt/src/Behavior_GWT.res) / [`Flow_GWT.res`](../../../reventless/gwt/src/Flow_GWT.res) | one-slice and boundary views of the same function |
 
 The "only one `@partitionTag` per boundary" error goes away, because two entities in
 one plugin may now each name their own key.
@@ -242,7 +243,7 @@ until a fix is deployed:
 **Tests.**
 
 - `buildHandlersForConfig` with no slices starts, and inbound translation still
-  routes ([`DcbInboundTranslationRoutingTest`](../../reventless/aws/tests/DcbInboundTranslationRoutingTest.res)).
+  routes ([`DcbInboundTranslationRoutingTest`](../../../reventless/aws/tests/DcbInboundTranslationRoutingTest.res)).
 - With a slice whose partition cannot be resolved, it rejects with the slice's name
   in the message.
 - Calling `handler` after a failed startup rethrows that same error on every call,
@@ -268,41 +269,41 @@ partition" comments above it:
 
 | File | Where |
 |---|---|
-| [hybrid `AddProduct.res`](../../examples/online-shop-hybrid/catalog/src/Product/StateChange/AddProduct.res) | command and event |
-| [hybrid `ShipOrder.res`](../../examples/online-shop-hybrid/ordering/src/Order/StateChange/ShipOrder.res) | event |
-| [dcb `CancelOrder.res`](../../examples/online-shop-dcb/ordering/src/Order/StateChange/CancelOrder.res) | event |
+| [hybrid `AddProduct.res`](../../../examples/online-shop-hybrid/catalog/src/Product/StateChange/AddProduct.res) | command and event |
+| [hybrid `ShipOrder.res`](../../../examples/online-shop-hybrid/ordering/src/Order/StateChange/ShipOrder.res) | event |
+| [dcb `CancelOrder.res`](../../../examples/online-shop-dcb/ordering/src/Order/StateChange/CancelOrder.res) | event |
 
 **Keep**, and reword their comments to say *why* inference cannot decide:
 
-- `PlaceOrder`, in both examples (two own ids)
+- `PlaceOrder`, in both examples (a reference nothing reveals)
 - `RecordProductDemand`, in both examples (join)
 
 Core test fixtures that exercise the annotation itself stay annotated.
 
 **Docs** (plain words, built on "In plain words" above):
 
-- [`dcb-usage.md`](../../packages/doc/docs-app/dcb-usage.md) "Event Log Partitioning":
+- [`dcb-usage.md`](../../../packages/doc/docs-app/dcb-usage.md) "Event Log Partitioning":
   - rewrite "How partitioning works" (its "each event's first tag determines its
     partition key" is already inaccurate) and "Partition tag derivation" as the
     three-step story: own ids, minus references, what is left
   - rewrite "Cross-entity reference reads" without "Inferring the storage partition
     is planned; until then, mark it"
-  - add a short "When you still need `@partitionTag`" with the join and two-own-ids
+  - add a short "When you still need `@partitionTag`" with the join and unrevealed-reference
     examples, and the error message the reader will see
-- [`reventless-ppx.md`](../../packages/doc/docs-app/reventless-ppx.md) `@partitionTag`
+- [`reventless-ppx.md`](../../../packages/doc/docs-app/reventless-ppx.md) `@partitionTag`
   row: "Required when inference is ambiguous", not "Required when a variant has
   multiple `*Id` fields"
-- [`statechangeslice.md`](../../packages/doc/docs-app/components/statechangeslice.md),
-  [`platform-and-plugin-guide.md`](../../packages/doc/docs-app/platform-and-plugin-guide.md),
-  [`dcbeventlog.md`](../../packages/doc/docs-framework/runtime-components/dcbeventlog.md),
-  [`dcb-consistency-checks.md`](../../packages/doc/docs-framework/internals/dcb-consistency-checks.md),
+- [`statechangeslice.md`](../../../packages/doc/docs-app/components/statechangeslice.md),
+  [`platform-and-plugin-guide.md`](../../../packages/doc/docs-app/platform-and-plugin-guide.md),
+  [`dcbeventlog.md`](../../../packages/doc/docs-framework/runtime-components/dcbeventlog.md),
+  [`dcb-consistency-checks.md`](../../../packages/doc/docs-framework/internals/dcb-consistency-checks.md),
   and the `dcb-based` / `hybrid-based` tutorials: align examples and wording
-- [`.claude/rules/app-developer.md`](../../.claude/rules/app-developer.md) DCB tag
+- [`.claude/rules/app-developer.md`](../../../.claude/rules/app-developer.md) DCB tag
   inference paragraph: drop "`@partitionTag` is still required on multi-`*Id` events
   (storage partition is not yet inferred)"
 - Skills: `rescript/references/sury-ppx-patterns.md`,
   `reventless-app/references/cross-plugin-patterns.md`
-- [dcb-tag-scope-inference.md](done/dcb-tag-scope-inference.md): a one-line pointer
+- [dcb-tag-scope-inference.md](dcb-tag-scope-inference.md): a one-line pointer
   from Part B to this plan
 
 **Final commit:** `git mv` this plan to `done/`, and the analysis to
@@ -322,3 +323,47 @@ Core test fixtures that exercise the annotation itself stay annotated.
   seen; until then, the loud startup failure above is enough.
 - **Inferring `@compositePartitionTag`.** A key built from several fields is a design
   choice, not something the code reveals.
+
+---
+
+## Where the implementation differs
+
+In plain words: the plan was followed; these are the places where the code had
+something to say that the plan did not.
+
+- **Extensions read the partition from the delegate alone.** The plan had the
+  generated `Plugin.res` pass the plugin's partition map to `ExtensionMapping`.
+  `ExtensionMapping.Make` is applied by the framework (`Plugin_Helpers`) and again
+  in the deployed EventCollector from a dynamically imported delegate, not by the
+  generated root, so there is no map to pass without new wiring on both. It uses
+  the fallback the plan describes instead: one-slice inference, throwing when
+  unresolved. The delegate is typed `Aggregate.Spec`, which hides its consumed
+  events, so the inference sees the command and the produced events only. A
+  delegate slice whose key only its consumed arms decide therefore needs
+  `@partitionTag`; no delegate in the examples is such a slice.
+- **The event log's partition is a new `derivedPartitionTag` arm.** `ByEventType`
+  maps each event type to its key, beside `Simple` and `Composite`. The Postgres
+  relay already serialises the type into `HANDLER_CONFIG` with its schema, so it
+  picked the map up with no config change.
+- **"No partition configured" keeps the first tag.** `derivePartitionKey` throws
+  for an unmapped event type and for an event lacking its key, under both
+  `ByEventType` and `Simple`. With no partition at all it still files a single-tag
+  event under its only tag: dozens of storage unit tests call it that way, and no
+  deploy, boot or Lambda path passes none any more (a cold start hosting no slices
+  never appends).
+- **The UI's create-command id field follows the inferred key.**
+  `Plugin_Structure` chose the field to seed with a UUID from the command's
+  `@partitionTag`, else the first tagged field — a second positional default the
+  plan did not list. It now prefers the slice's inferred key.
+- **Command-side `@partitionTag` removed everywhere in the examples.** Inference
+  reads the hint from the produced event only, and command ids now come from the
+  inferred key, so the annotation on `PlaceOrder`'s and hybrid
+  `RecordProductDemand`'s commands had no reader left. The event-side annotations
+  the plan keeps are kept.
+- **`Flow_GWT.thenBoundaryScopeResolves` also fails on an unresolved partition**,
+  not only on a contradicting `@partitionTag`, since boot now refuses both. It
+  reports them as a new `PartitionUnresolved` outcome.
+- **Not run: the DynamoDB Local integration suite** (`pnpm run test:integration`).
+  Docker's daemon was not running. Its appends were checked by reading: each
+  passes a `Simple` key its events carry, so none relied on the removed fallback.
+

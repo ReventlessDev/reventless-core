@@ -2,6 +2,7 @@
 
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
+import * as Stdlib_Lazy from "@rescript/runtime/lib/es6/Stdlib_Lazy.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
@@ -22,12 +23,19 @@ function Make(Spec) {
     let comp = `StateChangeSlice(` + Spec.name + `)`;
     let decoder = DcbDecode$Reventless.makeDecoder(Spec.consumedEventSchema);
     let queryEventTypes = decoder.eventTypes;
-    let derivedPartitionTag = DcbTag$Reventless.derivePartitionTag([[
-        Spec.name,
-        Behavior.moduleUrl,
-        Spec.eventSchema
-      ]]);
-    let readEventId = tags => {
+    let slicePartitionTag = Stdlib_Lazy.make(() => {
+      try {
+        return DcbTag$Reventless.deriveSlicePartition({
+          name: Spec.name,
+          commandSchema: Spec.commandSchema,
+          consumedEventSchema: Spec.consumedEventSchema,
+          eventSchema: Spec.eventSchema
+        });
+      } catch (exn) {
+        return;
+      }
+    });
+    let readEventId = (partitionTag, tags) => {
       let ownTagValues = () => {
         let vals = Stdlib_Array.reduce(tags, [], (acc, t) => {
           if (acc.includes(t.value)) {
@@ -42,24 +50,26 @@ function Make(Spec) {
           return vals.join(",");
         }
       };
-      if (derivedPartitionTag.TAG !== "Simple") {
-        return DcbTag$Reventless.getCompositePartitionKeyValue(tags, derivedPartitionTag._0);
-      }
-      let pt = derivedPartitionTag._0;
-      let v = Stdlib_Array.findMap(tags, t => {
-        if (t.key === pt.key) {
-          return t.value;
-        }
-      });
-      if (v !== undefined) {
-        return v;
-      } else {
+      if (partitionTag === undefined) {
         return ownTagValues();
+      }
+      switch (partitionTag.TAG) {
+        case "Composite" :
+          return DcbTag$Reventless.getCompositePartitionKeyValue(tags, partitionTag._0);
+        case "Simple" :
+        case "ByEventType" :
+          break;
+      }
+      let v = DcbTag$Reventless.partitionValueOfTags(tags, partitionTag);
+      if (v === "") {
+        return ownTagValues();
+      } else {
+        return v;
       }
     };
     let projectionCache = Lru$ReventlessCore.make(100);
     let resetCache = () => Lru$ReventlessCore.clear(projectionCache);
-    let handleSingleCommand = (tagKeysByEventType, crossPartitionTagKeys, dcbEventLog, command$p) => {
+    let handleSingleCommand = (tagKeysByEventType, crossPartitionTagKeys, partitionTag, dcbEventLog, command$p) => {
       let cmdJson = Message$ReventlessCore.commandJsonOfCommand$p(Id$Reventless.$$String.toString, Spec.commandSchema, command$p);
       Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, cmdJson.commandJson, `handling command: ` + LogFormat$ReventlessCore.cmdDetailNoId(cmdJson)));
       let query = DcbTag$Reventless.buildQueryFromCommand(queryEventTypes, Spec.commandSchema, command$p.command, tagKeysByEventType, crossPartitionTagKeys);
@@ -76,11 +86,21 @@ function Make(Spec) {
       }).join(" OR ");
       Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, undefined, `query: ` + queryDetail));
       let entityId;
-      if (derivedPartitionTag.TAG === "Simple") {
-        entityId = DcbTag$Reventless.getPartitionTagValue(query, derivedPartitionTag._0);
+      if (partitionTag !== undefined) {
+        switch (partitionTag.TAG) {
+          case "Simple" :
+            entityId = DcbTag$Reventless.getPartitionTagValue(query, partitionTag._0);
+            break;
+          case "Composite" :
+            let tags = DcbTag$Reventless.extractTags(Spec.commandSchema, command$p.command);
+            entityId = DcbTag$Reventless.getCompositePartitionKeyValue(tags, partitionTag._0);
+            break;
+          case "ByEventType" :
+            entityId = undefined;
+            break;
+        }
       } else {
-        let tags = DcbTag$Reventless.extractTags(Spec.commandSchema, command$p.command);
-        entityId = DcbTag$Reventless.getCompositePartitionKeyValue(tags, derivedPartitionTag._0);
+        entityId = undefined;
       }
       let cacheKey = JSON.stringify(query);
       let cacheGet = () => {
@@ -131,7 +151,7 @@ function Make(Spec) {
             event,
             raw.position,
             raw.eventType,
-            readEventId(raw.tags)
+            readEventId(partitionTag, raw.tags)
           ]);
         }), opt => {
           if (opt !== undefined) {
@@ -290,12 +310,13 @@ function Make(Spec) {
       };
       return attempt(3);
     };
-    let handleCommands = (tagKeysByEventTypeOpt, crossPartitionTagKeysOpt, dcbEventLog, stream) => {
+    let handleCommands = (tagKeysByEventTypeOpt, crossPartitionTagKeysOpt, partitionTag, dcbEventLog, stream) => {
       let tagKeysByEventType = tagKeysByEventTypeOpt !== undefined ? tagKeysByEventTypeOpt : ({});
       let crossPartitionTagKeys = crossPartitionTagKeysOpt !== undefined ? crossPartitionTagKeysOpt : [];
+      let partitionTag$1 = partitionTag !== undefined ? partitionTag : Stdlib_Lazy.get(slicePartitionTag);
       return Stream.runCollect(Stream$1.mapEffect(stream, param => {
         let reference = param.reference;
-        return Effect.map(handleSingleCommand(tagKeysByEventType, crossPartitionTagKeys, dcbEventLog, param.command), result => {
+        return Effect.map(handleSingleCommand(tagKeysByEventType, crossPartitionTagKeys, partitionTag$1, dcbEventLog, param.command), result => {
           if (result.TAG === "Ok") {
             return {
               TAG: "Ok",
