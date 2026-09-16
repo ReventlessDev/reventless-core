@@ -325,8 +325,9 @@ When the local `Delegate` is a `StateChangeSlice` (the DCB write side) rather th
 an Aggregate, use `PublishStateChangeSliceCommand(command)` — no id is needed
 because the framework uses the command's value of the slice's partition key as
 the FIFO grouping id. The extension sees only the slice's command and produced
-events, not what it reads, so a slice whose partition key only its consumed
-events decide needs `@partitionTag` on its produced event. `RecordProductDemand`
+events, not what it reads or its chapter, so a slice whose partition key only
+those decide needs `@partitionTag` on its produced event — the plugin build
+checks this and fails naming the key to annotate. `RecordProductDemand`
 carries it because its events join a product and an order:
 
 ```rescript title="Orders_Extension.res" showLineNumbers

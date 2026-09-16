@@ -2704,6 +2704,43 @@ describe("the subscriber's half of the table", () => {
   )
 })
 
+// An extension infers its target slice's partition from the slice alone. Where
+// the plugin needed the slice's reads or chapter, the two can part — caught here,
+// at assembly, rather than when the first event arrives.
+describe("an extension's partition against the plugin's", () => {
+  let failure = (~expected, ~actual) =>
+    Plugin_Structure.extensionPartitionFailure(
+      ~label="Ordering.Orders → PlaceOrder",
+      ~delegate="PlaceOrder",
+      ~expected,
+      ~actual,
+    )
+  let orderId = Reventless.DcbTag.Simple({key: "orderId"})
+
+  testSync("says nothing when both derive the same key", () =>
+    expect(failure(~expected=Some(orderId), ~actual=Ok(orderId)))->toEqual(None)
+  )
+
+  testSync("fails when the extension alone cannot tell, naming the key to annotate", () => {
+    let message =
+      failure(
+        ~expected=Some(orderId),
+        ~actual=Error("multiple candidate partition keys"),
+      )->Option.getOr("")
+    expect(message->String.includes("add @partitionTag orderId to PlaceOrder's event"))->toBe(true)
+  })
+
+  testSync("fails when the extension derives a different key", () =>
+    expect(
+      failure(~expected=Some(orderId), ~actual=Ok(Simple({key: "customerId"})))->Option.isSome,
+    )->toBe(true)
+  )
+
+  testSync("leaves a plugin that cannot derive a partition to the builder", () =>
+    expect(failure(~expected=None, ~actual=Error("no partition key")))->toEqual(None)
+  )
+})
+
 // ── One command name, one handler ────────────────────────────────────────────
 //
 // A DCB plugin routes a command by its bare type name, so two slices declaring

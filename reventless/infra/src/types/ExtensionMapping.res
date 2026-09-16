@@ -182,6 +182,11 @@ module type T = {
   let delegateCommandNames: array<string>
   let delegateEventNames: array<string>
 
+  /** The partition key slice commands to the Delegate are grouped by, inferred
+      from the Delegate alone — or why it cannot tell. Checked at assembly against
+      the plugin's own derivation, which sees what the slice reads. */
+  let delegatePartition: unit => result<Reventless.DcbTag.derivedPartitionTag, string>
+
   let mapIncomingEvent: (
     Reventless.Message.event'<string, ExtensionPoint.event>,
     pluginDefinition,
@@ -234,6 +239,11 @@ module Make = (MappingImpl: Mapping): (
       })
       derivedPartitionTagLazy := Some(d)
       d
+    }
+  let delegatePartition = () =>
+    switch getDerivedPartitionTag() {
+    | tag => Ok(tag)
+    | exception JsExn(err) => Error(err->JsExn.message->Option.getOr("no partition key"))
     }
   let derivePartitionId = (targetCmd: Delegate.command): string =>
     Reventless.DcbTag.extractTags(

@@ -3,12 +3,14 @@
 import * as Sury from "sury";
 import * as Uuid from "uuid";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
+import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 import * as AnsiStyle$Reventless from "@reventlessdev/reventless-spec/src/AnsiStyle.res.mjs";
+import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as PluginExtensionPointSpec$ReventlessInfra from "./PluginExtensionPointSpec.res.mjs";
 
 let schema = Sury.string;
@@ -74,6 +76,25 @@ function Make(MappingImpl) {
     });
     derivedPartitionTagLazy.contents = d$1;
     return d$1;
+  };
+  let delegatePartition = () => {
+    let tag;
+    try {
+      tag = getDerivedPartitionTag();
+    } catch (raw_err) {
+      let err = Primitive_exceptions.internalToException(raw_err);
+      if (err.RE_EXN_ID === "JsExn") {
+        return {
+          TAG: "Error",
+          _0: Stdlib_Option.getOr(Stdlib_JsExn.message(err._1), "no partition key")
+        };
+      }
+      throw err;
+    }
+    return {
+      TAG: "Ok",
+      _0: tag
+    };
   };
   let derivePartitionId = targetCmd => DcbTag$Reventless.partitionValueOfTags(DcbTag$Reventless.extractTags(Delegate.commandSchema, targetCmd), getDerivedPartitionTag());
   let compLog = (comp, msg) => Effect.runSync(Effect.annotateLogs(Effect.logInfo(msg), "comp", comp));
@@ -253,6 +274,7 @@ function Make(MappingImpl) {
     issuedCommands: MappingImpl.issuedCommands,
     delegateCommandNames: delegateCommandNames,
     delegateEventNames: acceptedTags,
+    delegatePartition: delegatePartition,
     mapIncomingEvent: mapIncomingEvent,
     mapOutgoingEvent: mapOutgoingEvent
   };

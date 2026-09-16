@@ -146,8 +146,9 @@ When the local target is a `StateChangeSlice`, reference it directly as the
 `Delegate` and use `PublishStateChangeSliceCommand` — the framework uses the
 command's value of the slice's partition key as the FIFO grouping id, so no id
 argument is needed. The partition key is inferred from the slice's command and
-events only (the extension cannot see what the slice reads), so a slice whose
-key only its consumed events decide needs `@partitionTag` on its produced event.
+events only (the extension cannot see what the slice reads or its chapter), so a
+slice whose key only those decide needs `@partitionTag` on its produced event. The
+plugin build checks this and fails naming the key to annotate.
 
 ```rescript
 // ordering/src/Extension/ProductsExtension.res

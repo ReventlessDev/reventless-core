@@ -13,6 +13,7 @@ import * as Trait$Reventless from "@reventlessdev/reventless-spec/src/types/Trai
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 import * as Lifecycle$Reventless from "@reventlessdev/reventless-spec/src/types/Lifecycle.res.mjs";
+import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Reference$Reventless from "@reventlessdev/reventless-spec/src/components/Reference.res.mjs";
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
@@ -288,6 +289,29 @@ function reportTranslationTables(pluginName, failures, warnings) {
   if (failures.length !== 0) {
     return Stdlib_JsError.throwWithMessage(pluginName + `: the declared translation table does not match the mapping.\n` + failures.join("\n"));
   }
+}
+
+function describePartition(pt) {
+  switch (pt.TAG) {
+    case "Simple" :
+      return pt._0.key;
+    case "Composite" :
+      return pt._0.keys.join(" + ");
+    case "ByEventType" :
+      return "a key per event type";
+  }
+}
+
+function extensionPartitionFailure(label, delegate, expected, actual) {
+  if (expected === undefined) {
+    return;
+  }
+  if (actual.TAG === "Ok" && Primitive_object.equal(expected, actual._0)) {
+    return;
+  }
+  let seen;
+  seen = actual.TAG === "Ok" ? `groups its commands by ` + describePartition(actual._0) : `cannot tell which key to group its commands by (` + actual._0 + `)`;
+  return label + `: the extension ` + seen + `, but the plugin partitions ` + delegate + ` by ` + describePartition(expected) + `. An extension sees only the slice's command and events, not what it reads or its chapter — ` + (`add @partitionTag ` + describePartition(expected) + ` to ` + delegate + `'s event.`);
 }
 
 function checkDeclaredTransitions(pluginName, writables, lifecycleStatesByView) {
@@ -1046,14 +1070,37 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       requiredAccess: accessKeysFor(SVS.Spec.authorization)
     };
   });
-  let match = DcbScopeInference$Reventless.resolvePartitions(stateChangeSlices.map(SCS => DcbTag$Reventless.sliceShape({
+  let dcbSliceSchemas = stateChangeSlices.map(SCS => ({
     name: SCS.Spec.name,
     commandSchema: SCS.Spec.commandSchema,
     consumedEventSchema: SCS.Spec.consumedEventSchema,
     eventSchema: SCS.Spec.eventSchema,
     moduleUrl: SCS.Spec.moduleUrl
-  })));
+  }));
+  let match = DcbScopeInference$Reventless.resolvePartitions(dcbSliceSchemas.map(DcbTag$Reventless.sliceShape));
   let partitionBySlice = match.partitionBySlice;
+  let slicePartitionOf;
+  let exit = 0;
+  let boundary;
+  try {
+    boundary = DcbTag$Reventless.deriveBoundaryPartition(dcbSliceSchemas);
+    exit = 1;
+  } catch (raw_exn) {
+    let exn = Primitive_exceptions.internalToException(raw_exn);
+    if (exn.RE_EXN_ID === "JsExn") {
+      slicePartitionOf = param => {};
+    } else {
+      throw exn;
+    }
+  }
+  if (exit === 1) {
+    slicePartitionOf = delegate => {
+      if (dcbSliceSchemas.some(s => s.name === delegate)) {
+        return DcbTag$Reventless.slicePartitionTag(boundary, delegate);
+      }
+    };
+  }
+  let partitionFailures = [];
   let stateChangeDefs = stateChangeSlices.map((SCS, i) => {
     let match = scsProduced[i];
     let produced = match[1];
@@ -1127,6 +1174,9 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     let eventsByCommand = {};
     E.mappings.forEach(M => {
       let label = E.Spec.name + ` → ` + M.delegateName;
+      Stdlib_Option.forEach(extensionPartitionFailure(label, M.delegateName, slicePartitionOf(M.delegateName), M.delegatePartition()), f => {
+        partitionFailures.push(f);
+      });
       pushAll(tableFailures, handledTableFailures(label, M.handledEvents, epEventNames, M.delegateCommandNames.concat(epCommandNames)));
       pushAll(tableFailures, commandTableFailures(label, "issuedCommands", "comes from", M.issuedCommands.map(param => [
         param.name,
@@ -1348,6 +1398,9 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     });
   });
   reportTranslationTables(name, tableFailures, tableWarnings);
+  if (partitionFailures.length !== 0) {
+    Stdlib_JsError.throwWithMessage(name + `: an extension cannot group its commands by the target slice's partition key.\n` + partitionFailures.join("\n"));
+  }
   checkDeclaredTransitions(name, stateChangeDefs.concat(aggregateDefs), lifecycleStatesByView);
   checkLifecycleTopology(name, stateChangeDefs.concat(aggregateDefs), lifecycleStatesByView);
   reportRetiredStates(name, retiredFailures, retiredUnchecked);
@@ -1392,6 +1445,8 @@ export {
   probeMeta,
   probeQueryEngine,
   reportTranslationTables,
+  describePartition,
+  extensionPartitionFailure,
   checkDeclaredTransitions,
   lifecycleTopologyFindings,
   checkLifecycleTopology,

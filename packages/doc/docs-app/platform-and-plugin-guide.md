@@ -1094,7 +1094,7 @@ module Mapping = {
 }
 ```
 
-When the `Delegate` is a StateChangeSlice, use `PublishStateChangeSliceCommand(command)` (no id argument) — the framework uses the command's value of the target slice's partition key as the FIFO grouping id. The extension sees only the slice's command and events, not what it reads, so a target slice whose key only its consumed events decide needs `@partitionTag` on its produced event. Use `PublishAggregateCommand(id, command)` only when the `Delegate` is an Aggregate.
+When the `Delegate` is a StateChangeSlice, use `PublishStateChangeSliceCommand(command)` (no id argument) — the framework uses the command's value of the target slice's partition key as the FIFO grouping id. The extension sees only the slice's command and events, not what it reads or its chapter, so a target slice whose key only those decide needs `@partitionTag` on its produced event. The plugin build checks this and fails naming the key to annotate. Use `PublishAggregateCommand(id, command)` only when the `Delegate` is an Aggregate.
 
 The extension file exports `module Mapping` — the generator references it as `Orders_Extension.Mapping`.
 

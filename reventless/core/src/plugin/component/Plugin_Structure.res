@@ -345,6 +345,40 @@ let reportTranslationTables = (
   }
 }
 
+let describePartition = (pt: Reventless.DcbTag.derivedPartitionTag) =>
+  switch pt {
+  | Simple({key}) => key
+  | Composite({keys}) => keys->Array.join(" + ")
+  | ByEventType(_) => "a key per event type"
+  }
+
+// An extension groups the commands it sends a DCB slice by the slice's partition
+// key, but it infers that key from the slice alone: the command and the events,
+// not what the slice reads. Where the plugin needs those reads — or the chapter —
+// to decide, the two can differ, and the extension would fail or group commands
+// by the wrong id at run time. `expected` is `None` when the plugin itself cannot
+// derive a partition; that failure is the builder's to report.
+let extensionPartitionFailure = (
+  ~label: string,
+  ~delegate: string,
+  ~expected: option<Reventless.DcbTag.derivedPartitionTag>,
+  ~actual: result<Reventless.DcbTag.derivedPartitionTag, string>,
+): option<string> =>
+  switch (expected, actual) {
+  | (None, _) => None
+  | (Some(e), Ok(a)) if e == a => None
+  | (Some(e), outcome) =>
+    let seen = switch outcome {
+    | Ok(a) => `groups its commands by ${a->describePartition}`
+    | Error(reason) => `cannot tell which key to group its commands by (${reason})`
+    }
+    Some(
+      `${label}: the extension ${seen}, but the plugin partitions ${delegate} by ${e->describePartition}. ` ++
+      `An extension sees only the slice's command and events, not what it reads or its chapter — ` ++
+      `add @partitionTag ${e->describePartition} to ${delegate}'s event.`,
+    )
+  }
+
 // A command's declared edge names states belonging to another component's enum,
 // and nothing forces a spec to pick the one its linked view declares. Both sides
 // are in hand here. A state the linked views do not declare raises (this runs at assembly,
@@ -1473,18 +1507,27 @@ let make = (
 
   // Non-throwing: this is a description of the plugin, and the builder is what
   // refuses a boundary whose partitions do not resolve.
+  let dcbSliceSchemas =
+    stateChangeSlices->Array.map((module(SCS: ReventlessInfra.StateChangeSlice.T)) => {
+      Reventless.DcbTag.name: SCS.Spec.name,
+      commandSchema: SCS.Spec.commandSchema->S.castToUnknown,
+      consumedEventSchema: SCS.Spec.consumedEventSchema->S.castToUnknown,
+      eventSchema: SCS.Spec.eventSchema->S.castToUnknown,
+      moduleUrl: SCS.Spec.moduleUrl,
+    })
   let {partitionBySlice}: Reventless.DcbScopeInference.partitionResolution =
-    stateChangeSlices
-    ->Array.map((module(SCS: ReventlessInfra.StateChangeSlice.T)) =>
-      Reventless.DcbTag.sliceShape({
-        name: SCS.Spec.name,
-        commandSchema: SCS.Spec.commandSchema->S.castToUnknown,
-        consumedEventSchema: SCS.Spec.consumedEventSchema->S.castToUnknown,
-        eventSchema: SCS.Spec.eventSchema->S.castToUnknown,
-        moduleUrl: SCS.Spec.moduleUrl,
-      })
-    )
+    dcbSliceSchemas
+    ->Array.map(Reventless.DcbTag.sliceShape)
     ->Reventless.DcbScopeInference.resolvePartitions
+  let slicePartitionOf = switch Reventless.DcbTag.deriveBoundaryPartition(dcbSliceSchemas) {
+  | boundary =>
+    delegate =>
+      dcbSliceSchemas->Array.some(s => s.name == delegate)
+        ? boundary->Reventless.DcbTag.slicePartitionTag(delegate)
+        : None
+  | exception JsExn(_) => _ => None
+  }
+  let partitionFailures = []
 
   let stateChangeDefs =
     stateChangeSlices->Array.mapWithIndex((module(SCS: ReventlessInfra.StateChangeSlice.T), i) => {
@@ -1634,6 +1677,12 @@ let make = (
     let eventsByCommand: Dict.t<array<string>> = Dict.make()
     E.mappings->Array.forEach((module(M: E.Mapping)) => {
       let label = `${E.Spec.name} → ${M.delegateName}`
+      extensionPartitionFailure(
+        ~label,
+        ~delegate=M.delegateName,
+        ~expected=slicePartitionOf(M.delegateName),
+        ~actual=M.delegatePartition(),
+      )->Option.forEach(f => partitionFailures->Array.push(f))
       pushAll(
         tableFailures,
         handledTableFailures(
@@ -2007,6 +2056,12 @@ let make = (
   })
 
   reportTranslationTables(~pluginName=name, ~failures=tableFailures, ~warnings=tableWarnings)
+  if partitionFailures->Array.length > 0 {
+    JsError.throwWithMessage(
+      `${name}: an extension cannot group its commands by the target slice's partition key.\n` ++
+      partitionFailures->Array.join("\n"),
+    )
+  }
 
   // Second pass, on purpose: commands are built well before `linkedViews` is
   // assembled, so the check cannot run inline where the defs are made.
