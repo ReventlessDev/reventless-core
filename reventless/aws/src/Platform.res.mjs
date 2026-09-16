@@ -873,7 +873,7 @@ function MakeWithConfig(Config) {
       }
     });
     PluginRuntime_Builder$ReventlessAws.registerConfig(pluginEpEventTopicArn, pluginReadModelTableName, hooks_schedulerRoleUrn.contents, undefined, undefined, domainApiId, Config.cloner, undefined);
-    let offloadProtection = Util_StoreLayout$ReventlessAws.protectionFor(Pulumi.getStack(), undefined);
+    let offloadProtection = Util_StoreLayout$ReventlessAws.protectionOfDeployedStack();
     let offloadBucket = new (Aws.s3.Bucket)("reventless-offload", {
       forceDestroy: offloadProtection === "Unprotected",
       tags: AWS_Tags$ReventlessAws.make("reventless-offload", "Platform", {
@@ -969,7 +969,7 @@ function MakeWithConfig(Config) {
     });
     let stackName = Pulumi.getStack();
     let storeLayout = Util_StoreLayout$ReventlessAws.layoutFor(stackName, Util_HostUiDomain$ReventlessAws.resolveProdStacks());
-    let storeProtection = Util_StoreLayout$ReventlessAws.protectionFor(stackName, undefined);
+    let storeProtection = Util_StoreLayout$ReventlessAws.protectionOfDeployedStack();
     let declaredStores = Stdlib_Array.reduce(Stdlib_Array.filterMap(capabilities, c => {
       if (typeof c !== "object") {
         return;
@@ -2263,7 +2263,7 @@ function Make($star) {
       }
     });
     PluginRuntime_Builder$ReventlessAws.registerConfig(pluginEpEventTopicArn, pluginReadModelTableName, hooks_schedulerRoleUrn.contents, undefined, undefined, domainApiId, false, undefined);
-    let offloadProtection = Util_StoreLayout$ReventlessAws.protectionFor(Pulumi.getStack(), undefined);
+    let offloadProtection = Util_StoreLayout$ReventlessAws.protectionOfDeployedStack();
     let offloadBucket = new (Aws.s3.Bucket)("reventless-offload", {
       forceDestroy: offloadProtection === "Unprotected",
       tags: AWS_Tags$ReventlessAws.make("reventless-offload", "Platform", {
@@ -2353,7 +2353,7 @@ function Make($star) {
     });
     let stackName = Pulumi.getStack();
     let storeLayout = Util_StoreLayout$ReventlessAws.layoutFor(stackName, Util_HostUiDomain$ReventlessAws.resolveProdStacks());
-    let storeProtection = Util_StoreLayout$ReventlessAws.protectionFor(stackName, undefined);
+    let storeProtection = Util_StoreLayout$ReventlessAws.protectionOfDeployedStack();
     let declaredStores = Stdlib_Array.reduce(Stdlib_Array.filterMap(capabilities, c => {
       if (typeof c !== "object") {
         return;

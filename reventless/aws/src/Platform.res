@@ -1492,7 +1492,7 @@ module MakeWithConfig = (
     // GETs from it to resolve an offloaded `structure`. Kept out of the declared
     // `@storageRef` stores and their pending-claim/expiry machinery: offload
     // objects are written durably up front and are never "pending".
-    let offloadProtection = Util_StoreLayout.protectionFor(~stack=Pulumi.Pulumi.getStackName())
+    let offloadProtection = Util_StoreLayout.protectionOfDeployedStack()
     let offloadBucket = PulumiAws.S3.Bucket.make(
       ~name="reventless-offload",
       ~args={
@@ -1774,7 +1774,7 @@ module MakeWithConfig = (
       ~stack=stackName,
       ~prodStacks=Util_HostUiDomain.resolveProdStacks(),
     )
-    let storeProtection = Util_StoreLayout.protectionFor(~stack=stackName)
+    let storeProtection = Util_StoreLayout.protectionOfDeployedStack()
 
     // Dedup by `(plugin, store)` — that pair is a store's identity, and many
     // fields legitimately name one store.

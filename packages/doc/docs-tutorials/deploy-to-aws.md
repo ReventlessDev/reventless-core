@@ -240,8 +240,9 @@ cd ../platform-aws                          && pulumi destroy --stack alpha
 Two things will stop a destroy, both on purpose:
 
 **Protected object stores.** Stacks that are not disposable — anything not named
-`pr-*`, which includes `alpha` — get their object-store buckets marked protected,
-so a stray refactor cannot delete uploaded files. Pulumi names the protected
+`pr-*` and not declaring `reventless:disposable: "true"`, which includes `alpha` —
+get their object-store buckets marked protected, so a stray refactor cannot
+delete uploaded files. Pulumi names the protected
 resource and refuses. Unprotect deliberately, then destroy again:
 
 ```bash
@@ -254,6 +255,16 @@ first:
 
 ```bash
 aws s3 rm s3://<bucket-name> --recursive
+```
+
+A stack meant to be thrown away skips both: declare it disposable in every one of
+its stack files, and its buckets are unprotected and emptied on destroy, so
+`pulumi destroy` alone removes it. Never set this on a stack whose data you want
+to keep.
+
+```yaml
+config:
+  reventless:disposable: "true"
 ```
 
 Then remove the stacks themselves if you are done with them

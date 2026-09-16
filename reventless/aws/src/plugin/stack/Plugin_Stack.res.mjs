@@ -11,6 +11,7 @@ import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_excep
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as AWS_Tags$ReventlessAws from "../../adapter/AWS_Tags.res.mjs";
 import * as ClientCloudfront from "@aws-sdk/client-cloudfront";
+import * as Util_StoreLayout$ReventlessAws from "../../util/Util_StoreLayout.res.mjs";
 import * as Util_StaticBundle$ReventlessAws from "../../util/Util_StaticBundle.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
@@ -76,6 +77,7 @@ function makeUiBundleDistribution(pluginId, bundleVersion, assetsDir, spaFallbac
   let servedBuckets = servedBucketsOpt !== undefined ? servedBucketsOpt : [];
   let name = stableName ? pluginId : pluginId + "-" + bundleVersion;
   let bucket = new (Aws.s3.Bucket)(name + "-bundle", {
+    forceDestroy: Util_StoreLayout$ReventlessAws.protectionOfDeployedStack() === "Unprotected",
     tags: AWS_Tags$ReventlessAws.make(name + "-bundle", "Plugin", "Hosting", "Plugin", undefined, undefined, pluginId, undefined)
   });
   new (Aws.s3.BucketPublicAccessBlock)(name + "-bundle-pab", {

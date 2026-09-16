@@ -157,9 +157,13 @@ let makeUiBundleDistribution = (
   // shell, where blue/green between versions is wanted.
   let name = stableName ? pluginId : pluginId ++ "-" ++ bundleVersion
 
+  // Emptied on removal from a disposable stack: the manifest bake writes files
+  // here outside Pulumi, which would otherwise fail the destroy.
   let bucket = PulumiAws.S3.Bucket.make(
     ~name=name ++ "-bundle",
     ~args={
+      forceDestroy: (Util_StoreLayout.protectionOfDeployedStack() == Unprotected)
+        ->Pulumi.Input.make,
       tags: AWS.Tags.make(
         ~name=name ++ "-bundle",
         ~kind=ReventlessCore.ComponentType.Plugin,

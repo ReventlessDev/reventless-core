@@ -86,13 +86,26 @@ Destroy semantics follow disposability, **not** layout.
 `reventless:wipeable`, but that authorises the reset tool to empty stores
 *deliberately*, after a scope prompt and a typed confirmation. It does not say a
 field rename may destroy a bucket by accident. Only stacks that are routinely
-torn down are unprotected.
+torn down are unprotected: a `pr-*` stack, or one that declares
+`reventless:disposable: "true"` — a try-out meant to be removed whole.
 */
 let protectionFor = (
   ~stack: string,
+  ~disposable: bool=false,
   ~ephemeralPrefixes: array<string>=defaultEphemeralPrefixes,
 ): protection =>
-  ephemeralPrefixes->Array.some(p => stack->String.startsWith(p)) ? Unprotected : Protected
+  disposable || ephemeralPrefixes->Array.some(p => stack->String.startsWith(p))
+    ? Unprotected
+    : Protected
+
+/** `protectionFor` the stack being deployed, reading its `reventless:disposable`
+    setting. The one function here that touches Pulumi. */
+let protectionOfDeployedStack = (): protection =>
+  protectionFor(
+    ~stack=Pulumi.Pulumi.getStackName(),
+    ~disposable=Pulumi.Config.make(Some("reventless"))->Pulumi.Config.get("disposable") ==
+      Some("true"),
+  )
 
 /**
 The bucket a store's objects live in.

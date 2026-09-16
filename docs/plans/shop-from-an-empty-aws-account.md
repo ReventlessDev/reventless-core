@@ -1,7 +1,7 @@
 # Plan: the online shop from an empty AWS account
 
 **Date:** 2026-09-16
-**Status:** IN PROGRESS — steps 1, 2, 3 and 5 done.
+**Status:** IN PROGRESS — steps 1, 2, 3, 5 and 6 done.
 **Repos:** `reventless-core` only.
 **Based on:** [the analysis of the same name](../analysis/from-an-empty-account-to-a-running-shop.md).
 **Companion plan:** [platform-stack-creates-the-lambda-layer.md](./platform-stack-creates-the-lambda-layer.md).
@@ -280,6 +280,15 @@ remove.
 **Done when.** A stack with the flag is removed by `pulumi destroy` alone; `alpha`
 stays protected.
 
+**Done**, except for the destroy itself, which is checked with step 4's `shop:down`.
+A preview of `alpha` shows no change to any bucket. The host UI's hosting bucket
+now also empties on removal from an unprotected stack: the manifest bake writes
+files there outside Pulumi, which would otherwise fail the destroy with
+`BucketNotEmpty`. One change from the plan: the offload objects stay
+`retainOnDelete`. Retaining them is what stops an update from deleting a structure
+the Plugin read model still points at, and a disposable stack needs that too; on
+removal the offload bucket, now emptied with its content, takes them with it.
+
 ## Step 7 — Helper scripts follow your Pulumi login
 
 **Why.** The seed, the reset tool and the client check always read stacks from Pulumi
@@ -368,7 +377,7 @@ Step 5  [x] getOrganization binding
         [x] missing platform:stack is an error for plugins
         [x] Pulumi.main.yaml project names fixed
         [x] interstack:dependencies removed
-Step 6  [ ] reventless:disposable setting
+Step 6  [x] reventless:disposable setting
 Step 7  [ ] helper scripts follow the Pulumi login
         [ ] verify-subscriptions.mjs removed
 Step 8  [ ] tutorials rewritten

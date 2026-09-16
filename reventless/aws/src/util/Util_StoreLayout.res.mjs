@@ -3,6 +3,8 @@
 import * as Stdlib_Int from "@rescript/runtime/lib/es6/Stdlib_Int.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Pulumi from "@pulumi/pulumi";
+import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as StoreLayout$ReventlessCore from "@reventlessdev/reventless-core/src/util/StoreLayout.res.mjs";
 
 let defaultEphemeralPrefixes = ["pr-"];
@@ -15,13 +17,18 @@ function layoutFor(stack, prodStacks) {
   }
 }
 
-function protectionFor(stack, ephemeralPrefixesOpt) {
+function protectionFor(stack, disposableOpt, ephemeralPrefixesOpt) {
+  let disposable = disposableOpt !== undefined ? disposableOpt : false;
   let ephemeralPrefixes = ephemeralPrefixesOpt !== undefined ? ephemeralPrefixesOpt : defaultEphemeralPrefixes;
-  if (ephemeralPrefixes.some(p => stack.startsWith(p))) {
+  if (disposable || ephemeralPrefixes.some(p => stack.startsWith(p))) {
     return "Unprotected";
   } else {
     return "Protected";
   }
+}
+
+function protectionOfDeployedStack() {
+  return protectionFor(Pulumi.getStack(), Primitive_object.equal(new Pulumi.Config("reventless").get("disposable"), "true"), undefined);
 }
 
 function bucketNameFor(layout, stack, plugin, store) {
@@ -84,10 +91,11 @@ export {
   defaultEphemeralPrefixes,
   layoutFor,
   protectionFor,
+  protectionOfDeployedStack,
   bucketNameFor,
   keyPrefixFor,
   servingFor,
   coverageFor,
   pendingExpiryFor,
 }
-/* No side effect */
+/* @pulumi/pulumi Not a pure module */

@@ -76,7 +76,7 @@ function connect(name, bucket, bucketMode, commandTopics, runtime, opts) {
 
 function make(name, opts) {
   let opts$1 = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
-  let forceDestroy = Util_StoreLayout$ReventlessAws.protectionFor(Pulumi.getStack(), undefined) === "Unprotected";
+  let forceDestroy = Util_StoreLayout$ReventlessAws.protectionOfDeployedStack() === "Unprotected";
   let bucket = new (Aws.s3.Bucket)(name, {
     corsRules: [{
         allowedHeaders: ["*"],

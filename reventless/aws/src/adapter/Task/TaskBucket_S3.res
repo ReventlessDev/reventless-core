@@ -136,9 +136,7 @@ let make: ReventlessCore.Task_Adapter.bucketMaker<bucketParts> = (~name, ~opts) 
   // bucket fails the deploy with `BucketNotEmpty` — which would wedge precisely
   // the throwaway stacks that are recreated most often. Protected stacks keep
   // the safe default and drain by hand.
-  let forceDestroy =
-    Util_StoreLayout.protectionFor(~stack=Pulumi.Pulumi.getStackName()) ==
-      Util_StoreLayout.Unprotected
+  let forceDestroy = Util_StoreLayout.protectionOfDeployedStack() == Util_StoreLayout.Unprotected
 
   let bucket = {
     PulumiAws.S3.Bucket.make(

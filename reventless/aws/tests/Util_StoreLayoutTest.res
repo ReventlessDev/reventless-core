@@ -179,6 +179,12 @@ describe("Util_StoreLayout.protectionFor", () => {
   testSync("'prepare' is not a PR stack — the prefix is 'pr-', not 'pr'", () =>
     expect(Util_StoreLayout.protectionFor(~stack="prepare"))->toEqual(Util_StoreLayout.Protected)
   )
+
+  testSync("a stack declared disposable is unprotected whatever its name", () =>
+    expect(Util_StoreLayout.protectionFor(~stack="dev", ~disposable=true))->toEqual(
+      Util_StoreLayout.Unprotected,
+    )
+  )
 })
 
 describe("Util_StoreLayout.bucketNameFor", () => {
