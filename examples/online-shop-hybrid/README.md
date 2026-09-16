@@ -193,27 +193,32 @@ the `SendOrderConfirmation` OutboundTranslationSlice has called `EmailService`.
 
 ## Deploy it to AWS
 
-Deploy the platform stack first, then the plugins (Pulumi):
+From the repo root, with AWS credentials and a region set and the Pulumi CLI
+logged in:
 
 ```bash
-pnpm install && pnpm run build          # from the repo root
-
-cd platform-aws && pulumi up --stack alpha
-cd ../catalog-aws && pulumi up --stack alpha
-cd ../ordering-aws && pulumi up --stack alpha   # depends on catalog
+pnpm run shop:up      # deploys everything and prints the web address and the sign-ins
+pnpm run shop:seed    # optional: fills the shop with demo data
+pnpm run shop:down    # later: removes everything again
 ```
 
-Before deploying, point the stack configs at your own Pulumi org and review the
-Cognito + host-shell settings — see
+`shop:up` deploys a try-out stack named `dev`: it publishes the Lambda layer,
+deploys the platform and both plugins, writes the component manifest and creates
+the four demo accounts in `platform-aws/.reventless/users.dev.yaml`. `shop:down`
+removes all of it. See
 [Deploy to your AWS account](../../packages/doc/docs-tutorials/deploy-to-aws.md)
-and [Test it on AWS](../../packages/doc/docs-tutorials/test-on-aws.md).
+and [Test it on AWS](../../packages/doc/docs-tutorials/test-on-aws.md); deploying
+stack by stack is covered in
+[Getting Started with AWS](../../packages/doc/docs-infrastructure/aws/get-started.md).
 
 ## Seed the deployed shop
 
-Run [`pnpm run seed`](#seed-demo-data) from `platform-aws/` — it targets AWS by
+`pnpm run shop:seed` seeds the `dev` stack. By hand, run
+[`pnpm run seed`](#seed-demo-data) from `platform-aws/` — it targets AWS by
 construction. It picks the stack (or `SEED_STACK`), discovers the endpoints from
 the stack's published `config.json` (or its stack outputs), and signs in against
-Cognito with the account you pick from `platform-aws/.reventless/users.yaml`.
+Cognito with the account you pick from `platform-aws/.reventless/users.yaml`
+(`SEED_USERS_FILE` names another file, such as `users.dev.yaml`).
 That account must exist in the stack's pool with a permanent password, and the
 file is the record of the ones that do — see
 [Test it on AWS](../../packages/doc/docs-tutorials/test-on-aws.md). As locally,

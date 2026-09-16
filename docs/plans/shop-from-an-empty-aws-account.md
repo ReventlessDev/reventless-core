@@ -1,7 +1,7 @@
 # Plan: the online shop from an empty AWS account
 
 **Date:** 2026-09-16
-**Status:** IN PROGRESS — steps 1 to 7 done; step 8 next; steps 9 and 10 blocked on an empty account.
+**Status:** IN PROGRESS — steps 1 to 8 done; steps 9 and 10 blocked on an empty AWS account.
 **Repos:** `reventless-core` only.
 **Based on:** [the analysis of the same name](../analysis/from-an-empty-account-to-a-running-shop.md).
 **Companion plan:** [platform-stack-creates-the-lambda-layer.md](./platform-stack-creates-the-lambda-layer.md).
@@ -378,6 +378,13 @@ copies, which hold placeholders rather than another deployment's addresses.
 **Done when.** The docs site builds without broken links; the tutorial names no step
 that the command already does.
 
+**Done.** The stack-by-stack path — deploy order, the bake, your own identity
+provider, removing a deployment and its protections — moved to
+[Getting Started with AWS](../../packages/doc/docs-infrastructure/aws/get-started.md).
+`test-on-aws.md` names each account's role and what it sees, and points the seed and
+the live-channel check at `users.dev.yaml`. The docs site builds with no broken
+links or anchors.
+
 ## Step 9 — First real run in an empty AWS account
 
 **Blocked:** needs an empty AWS account.
@@ -437,7 +444,7 @@ Step 5  [x] getOrganization binding
 Step 6  [x] reventless:disposable setting
 Step 7  [x] helper scripts follow the Pulumi login
         [x] verify-subscriptions.mjs removed
-Step 8  [ ] tutorials rewritten
+Step 8  [x] tutorials rewritten
 Step 9  [ ] first run in an empty account          (blocked: account)
 Step 10 [ ] scheduled deploy from scratch           (blocked: account + CI credentials)
 ```

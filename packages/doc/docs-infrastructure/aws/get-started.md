@@ -163,13 +163,77 @@ and how to build one yourself.
 
 ## Deploying
 
+Build, then deploy the platform stack first and each plugin stack after it, in the
+order `deploy-manifest.yaml` lists them:
+
 ```bash
-pnpm run build          # compile the plugin and its deployment package
-pulumi up --stack alpha
+pnpm run build                               # compile the plugins and deployment packages
+
+cd platform-aws && pulumi up --stack alpha   # the platform first
+cd ../catalog-aws && pulumi up --stack alpha
+cd ../ordering-aws && pulumi up --stack alpha
+
+cd ../platform-aws
+pnpm exec bake-manifest --manifest ../deploy-manifest.yaml --stack alpha
 ```
 
 Pulumi shows the planned changes — tables, queues, topics, functions, resolvers,
 permissions — before it applies anything.
+
+The last command writes the component manifest, the file that tells the web app
+which pages to show. The discovery query it stands in for is for administrators
+only, so without it every other user signs in to an empty app. It waits until each
+plugin has registered the structure its stack just deployed. The reusable GitHub
+Actions workflow runs the same command after its plugin stacks are up.
+
+`deploy-app up` does all of this for a try-out stack — the layer, the stacks, the
+manifest and the accounts in `.reventless/users.<stack>.yaml` — and `deploy-app
+down` removes it again; the [tutorial](/tutorials/deploy-to-aws) runs it for the
+example. A new stack it creates starts with the settings the app lists under
+`stack-defaults` for that folder in `deploy-manifest.yaml`:
+
+```yaml
+platform:
+  path: platform-aws
+  stack-defaults:
+    platform:messagingEmailProvider: log
+```
+
+### Your own identity provider
+
+By default the platform creates its own Cognito user pool. To use an existing one,
+set its ID — as `REVENTLESS_IDENTITY_PROVIDER_ID`, or `identityProviderId` in the
+gitignored `Pulumi.local.yaml` — and provision the pool's active-role store before
+the first deploy:
+
+```bash
+pnpm exec provision-identity --provider-id eu-west-1_AbCdEfGhI
+```
+
+A stack pointed at a pool whose store is missing fails the deploy.
+[Bringing your own identity provider](../deployment-guide.md#bringing-your-own-identity-provider)
+explains why the store belongs to the pool rather than to the stack.
+
+### Removing a deployment
+
+Remove the stacks in the reverse of the deploy order — plugins first, the platform
+last — with `pulumi destroy --stack <stack>` in each folder. Two things stop a
+destroy, both on purpose:
+
+- **Protected object stores.** A stack that is not disposable — not named `pr-*`
+  and not declaring `reventless:disposable: "true"` — gets its object-store buckets
+  marked protected, so a stray refactor cannot delete uploaded files. Pulumi names
+  the protected resource and refuses; `pulumi state unprotect --all --stack <stack>`
+  lifts it deliberately.
+- **Non-empty buckets.** The same stacks' buckets are created without force
+  destroy, so S3 refuses to delete one that still holds files. Empty it first with
+  `aws s3 rm s3://<bucket> --recursive`.
+
+A stack declaring `reventless:disposable: "true"` has neither, so `pulumi destroy`
+alone removes it. Never set it on a stack whose data you want to keep.
+
+`pulumi stack rm <stack>` afterwards also deletes that stack's `Pulumi.<stack>.yaml`;
+restore a tracked one with `git checkout` if you meant to keep its settings.
 
 For the ordering rules when several plugins depend on each other, and for adding
 or removing a plugin later, see the

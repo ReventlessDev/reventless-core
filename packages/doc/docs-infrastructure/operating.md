@@ -129,6 +129,6 @@ policy later.
 
 The two things that block a destroy are protected object stores and non-empty
 buckets, both on purpose. A stack declaring `reventless:disposable: "true"` has
-neither, so `pulumi destroy` alone removes it. The
-[teardown steps](/tutorials/deploy-to-aws#tearing-it-down-again) walk through
-both, plus the leftovers worth checking for afterwards.
+neither, so `pulumi destroy` alone removes it.
+[Removing a deployment](./aws/get-started.md#removing-a-deployment) walks through
+both.
