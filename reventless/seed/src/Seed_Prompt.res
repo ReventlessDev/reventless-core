@@ -197,6 +197,7 @@ let typedUser = (~username: string, ~password: string): Seed_Users.user => {
   password,
   groups: [],
   userId: None,
+  demoOwner: None,
 }
 
 // Typing both halves is the fallback, not the first offer: it is what happens

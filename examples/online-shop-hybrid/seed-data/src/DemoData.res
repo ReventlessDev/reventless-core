@@ -420,9 +420,10 @@ let demoShopperOrderCount = 5
 let demoOperatorOrderCount = 3
 let demoMerchandiserOrderCount = 2
 
-// Which account stands in for each demo owner. Domain knowledge, and the reason
-// this mapping is here rather than in the harness: the harness knows which
-// account a run logged in as, not which of them this shop means by "the
+// Which account stands in for each demo owner: the accounts-file entry whose
+// `demoOwner` names it, else the one with that username. Domain knowledge, and
+// the reason this mapping is here rather than in the harness: the harness knows
+// which account a run logged in as, not which of them this shop means by "the
 // shopper".
 let demoShopperUsername = "shopper"
 let demoOperatorUsername = "admin"
@@ -466,8 +467,9 @@ let resolveOwner = (
   ~caller: account,
   ~callerId: option<string>,
 ): demoOwner => {
-  let declared = accounts->Array.find(u => u.username == username)->Option.flatMap(u => u.userId)
-  switch declared {
+  let account = ReventlessSeed.Seed.Users.playing(accounts, username)
+  let username = account->Option.mapOr(username, a => a.username)
+  switch account->Option.flatMap(a => a.userId) {
   | Some(id) => {role, username, id, source: AccountsFile}
   | None =>
     switch caller.username == username ? callerId : None {

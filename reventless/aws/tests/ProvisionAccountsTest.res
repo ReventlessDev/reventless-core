@@ -140,3 +140,29 @@ describe("ProvisionAccounts.looksLikeEmail", () => {
     expect(Provision.looksLikeEmail("admin@localhost"))->toBe(false)
   )
 })
+
+// A refused pool used to leave generated passwords in the file, and the seed then
+// offered accounts that exist nowhere.
+describe("ProvisionAccounts.provision", () => {
+  let manifest = `# the cast
+- username: shopper
+  password: ""
+  groups: [Shopper]
+`
+
+  test("a refused pool leaves the manifest untouched", async () => {
+    let dir = NodeFs.mkdtempSync(NodePath.join([NodeOs.tmpdir(), "provision-accounts-"]))
+    let file = NodePath.join([dir, "users.yaml"])
+    NodeFs.writeFileSync(file, manifest)
+    let refuse = async (~providerId as _, ~usernames as _) => Error("pool signs in on email")
+    let outcome = await Provision.provision(
+      ~file,
+      ~providerId="eu-west-1_Refuses",
+      ~checkPool=refuse,
+    )
+    let after = NodeFs.readFileSync(file)
+    NodeFs.rmSync(dir, {recursive: true, force: true})
+    expect(outcome)->toEqual(Error("pool signs in on email"))
+    expect(after)->toBe(manifest)
+  })
+})

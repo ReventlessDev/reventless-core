@@ -12,6 +12,11 @@
     {
       "dir": "src",
       "subdirs": true
+    },
+    {
+      "dir": "tests",
+      "subdirs": true,
+      "type": "dev"
     }
   ],
   "dependencies": [
@@ -25,7 +30,8 @@
     "@reventlessdev/online-shop-hybrid-ordering",
     "@reventlessdev/online-shop-hybrid-ordering-spec",
     "@reventlessdev/reventless-ui-slots",
-    "@rescript/react"
+    "@rescript/react",
+    "@reventlessdev/rescript-jest"
   ],
   "compiler-flags": [],
   "suffix": ".res.mjs"

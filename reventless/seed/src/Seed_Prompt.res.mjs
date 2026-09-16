@@ -151,7 +151,8 @@ function typedUser(username, password) {
     username: username,
     password: password,
     groups: [],
-    userId: undefined
+    userId: undefined,
+    demoOwner: undefined
   };
 }
 

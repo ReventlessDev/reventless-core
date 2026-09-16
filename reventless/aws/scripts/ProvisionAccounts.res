@@ -121,8 +121,8 @@ question is whether the pool will accept *those*. A pool created with
 `UsernameAttributes: [email]` will not, and the accounts it makes instead are
 correctly created and unable to authenticate.
 
-Checked for every entry before anything is created, so a manifest that cannot work
-costs nothing rather than half a cast.
+Checked for every entry before anything is created or written, so a manifest that
+cannot work costs nothing rather than half a cast.
 */
 let checkPoolAcceptsUsernames = async (~providerId: string, ~usernames: array<string>): result<
   unit,
@@ -239,6 +239,58 @@ let manifestNote = (~file: string) =>
    It is gitignored on every platform; keep it that way. These are bootstrap
    credentials for a deployment, not secrets to reuse anywhere real.`
 
+/**
+The manifest at `file`, applied to the pool `providerId`.
+
+🚨 **The pool is checked before anything is written.** Preparing mints passwords
+into the file; doing that first left a refused run with a manifest offering
+accounts that exist nowhere, which the seed then tried to sign in as. `checkPool`
+is a parameter so a test can refuse without a pool.
+*/
+let provision = async (
+  ~file: string,
+  ~providerId: string,
+  ~checkPool=checkPoolAcceptsUsernames,
+): result<unit, string> =>
+  switch Manifest.parseFile(file) {
+  | Error(message) => Error(`${file}: ${message}`)
+  | Ok([]) => Error(`${file} declares no accounts`)
+  | Ok(declared) =>
+    switch await checkPool(~providerId, ~usernames=declared->Array.map(e => e.username)) {
+    | Error(_) as e => e
+    | Ok() =>
+      switch Manifest.prepare(~path=file) {
+      | Error(message) => Error(`${file}: ${message}`)
+      | Ok(prepared) =>
+        let generated = prepared->Array.filter(p => p.passwordGenerated)->Array.length
+        Console.log(
+          `manifest ${file} (${prepared
+            ->Array.length
+            ->Int.toString} accounts, ${generated->Int.toString} password(s) generated)`,
+        )
+        let entries = prepared->Array.map(p => p.entry)
+        await ensureGroups(~providerId, ~entries)
+        let fills = []
+        for index in 0 to entries->Array.length - 1 {
+          let entry = entries->Array.getUnsafe(index)
+          let userId = await applyEntry(~providerId, ~entry)
+          fills->Array.push({Manifest.index, password: None, userId})
+        }
+        switch Manifest.fillFile(~path=file, ~fills) {
+        | Error(message) => Error(`${file}: ${message}`)
+        | Ok(report) =>
+          let corrected = report->Array.filter(r => r.userIdWritten)->Array.length
+          Console.log(
+            `manifest ${file} (${corrected->Int.toString} id(s) written back)${manifestNote(
+                ~file,
+              )}`,
+          )
+          Ok()
+        }
+      }
+    }
+  }
+
 let run = async (): result<unit, string> =>
   // argv[0] is node, argv[1] this script.
   switch parseArgs(NodeProcess.argv->Array.slice(~start=2, ~end=NodeProcess.argv->Array.length)) {
@@ -255,50 +307,12 @@ let run = async (): result<unit, string> =>
       | SeededFrom(_, template) => Console.log(`manifest ${file} (new, copied from ${template})`)
       | Declared(_) => ()
       }
-      switch Manifest.prepare(~path=file) {
-      | Error(message) => Error(`${file}: ${message}`)
-      | Ok([]) => Error(`${file} declares no accounts`)
-      | Ok(prepared) =>
-        let generated = prepared->Array.filter(p => p.passwordGenerated)->Array.length
-        Console.log(
-          `manifest ${file} (${prepared
-            ->Array.length
-            ->Int.toString} accounts, ${generated->Int.toString} password(s) generated)`,
-        )
-        let entries = prepared->Array.map(p => p.entry)
-        switch ProvisionProvider.resolve(~given=args.providerId, ~stack=args.stack) {
-        | Error(message) =>
-          Error(
-            `${message}. To fill in the manifest without creating anything, run prepare-accounts`,
-          )
-        | Ok((providerId, source)) =>
-          Console.log(`provider ${providerId} (from ${source->ProvisionProvider.describe})`)
-          switch await checkPoolAcceptsUsernames(
-            ~providerId,
-            ~usernames=entries->Array.map(e => e.username),
-          ) {
-          | Error(_) as e => e
-          | Ok() =>
-            await ensureGroups(~providerId, ~entries)
-            let fills = []
-            for index in 0 to entries->Array.length - 1 {
-              let entry = entries->Array.getUnsafe(index)
-              let userId = await applyEntry(~providerId, ~entry)
-              fills->Array.push({Manifest.index, password: None, userId})
-            }
-            switch Manifest.fillFile(~path=file, ~fills) {
-            | Error(message) => Error(`${file}: ${message}`)
-            | Ok(report) =>
-              let corrected = report->Array.filter(r => r.userIdWritten)->Array.length
-              Console.log(
-                `manifest ${file} (${corrected->Int.toString} id(s) written back)${manifestNote(
-                    ~file,
-                  )}`,
-              )
-              Ok()
-            }
-          }
-        }
+      switch ProvisionProvider.resolve(~given=args.providerId, ~stack=args.stack) {
+      | Error(message) =>
+        Error(`${message}. To fill in the manifest without creating anything, run prepare-accounts`)
+      | Ok((providerId, source)) =>
+        Console.log(`provider ${providerId} (from ${source->ProvisionProvider.describe})`)
+        await provision(~file, ~providerId)
       }
     }
   }

@@ -27,6 +27,11 @@ provisioned" on both platforms.
 `userId` is what the platform stamps on rows this account writes. Locally it
 defaults to the username; on AWS it is the `sub` the pool minted, so it can only
 be filled in after the account exists.
+
+`demoOwner` names the person this account plays in a demo's data, for a seed to
+find it by. It exists because the name a pool accepts is not always the demo's:
+a pool that signs in on an email address takes `shopper@example.com`, not
+`shopper`.
 */
 @schema
 type entry = {
@@ -34,6 +39,7 @@ type entry = {
   password: string,
   groups: array<string>,
   userId?: string,
+  demoOwner?: string,
 }
 
 let entriesSchema = S.array(entrySchema)

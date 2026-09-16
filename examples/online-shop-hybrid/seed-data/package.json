@@ -23,6 +23,7 @@
     "sury": "11.0.0-rc.2"
   },
   "devDependencies": {
+    "@reventlessdev/rescript-jest": "workspace:*",
     "rescript": "12.3.0"
   },
   "peerDependencies": {

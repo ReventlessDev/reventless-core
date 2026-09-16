@@ -8,8 +8,8 @@
 #
 # The in-memory auth adapter loads `.reventless/users.yaml` (relative to the
 # process cwd) at startup. Each entry: username, password, groups[] (required;
-# [] = unprivileged), userId? (defaults to username). Restart the server after
-# editing.
+# [] = unprivileged), userId? (defaults to username), demoOwner? (which demo
+# person the account plays). Restart the server after editing.
 #
 # `pnpm run seed` reads the same file: it offers these accounts as the login to
 # seed as, first as the default, and takes the password from here.
@@ -20,7 +20,9 @@
 # whose id they carry. The seed resolves that id from the `userId` below —
 # falling back to a literal, and warning that it did, when an entry declares
 # none. Delete a `userId` here and the matching account's demo rows become
-# invisible to it.
+# invisible to it. The seed finds each account by its `demoOwner`, falling back to
+# the username; the AWS template needs the field, because its usernames are
+# addresses, and this file carries it so the two read the same way.
 #
 # `fulfil` deliberately gets no row of its own: it is elevated (see
 # `Storefront.elevatedGroups`), so it reads across every customer and its screens
@@ -58,18 +60,22 @@
   password: admin
   groups: [Admin, Shopper]
   userId: local-admin
+  demoOwner: admin
 
 - username: shopper
   password: shopper
   groups: [Shopper]
   userId: local-shopper
+  demoOwner: shopper
 
 - username: merch
   password: merch
   groups: [Merchandiser, Shopper]
   userId: local-merch
+  demoOwner: merch
 
 - username: fulfil
   password: fulfil
   groups: [Fulfilment, Shopper]
   userId: local-fulfil
+  demoOwner: fulfil

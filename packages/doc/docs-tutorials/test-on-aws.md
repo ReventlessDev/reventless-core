@@ -23,41 +23,49 @@ host-shell SPA. Open the CloudFront URL in a browser.
 
 The deployed platform authenticates against the Cognito user pool configured on
 the [deploy page](./deploy-to-aws) (Step 2). A freshly auto-provisioned pool has
-no users yet — make the first one from `platform-aws/`:
-
-```bash
-pnpm exec provision-admin --email you@example.com
-```
-
-That creates the account, sets a permanent password so there is no
-password-change challenge on first sign-in, puts it in the `Admin` group, and
-prints the credentials once. Running it again is safe and mints a new password.
-
-Doing this by hand with `aws cognito-idp admin-create-user` works too, but it is
-easy to stop one step early: an account that is not in the `Admin` group cannot
-reach the administration views, and the symptom is a refusal much later. See
-[The first administrator](/app/first-admin) for the full picture, including why being
-in the group is only half of what makes someone an administrator.
-
-Sign in to the host-shell with that user and run the same smoke test you ran
-locally: add a category and product, register a customer, place an order, and
-confirm read models update.
-
-### The other three accounts
-
-The shop demonstrates four roles, and one administrator shows only one of them.
-Copy the committed template and let the tool make the rest:
+no users yet. One command, run from `platform-aws/`, creates the shop's four demo
+accounts:
 
 ```bash
 pnpm exec provision-accounts
 ```
 
 The committed `users.example.yaml` is copied to `.reventless/users.yaml` on first
-run, so there is nothing to copy by hand. That creates `shopper`, `merch` and
-`fulfil` with their groups, generates a password for each, and writes both the passwords and the ids the pool minted back
-into `.reventless/users.yaml`. The seed below reads that same file, so the demo
-data lands on the accounts you can actually log in as — which is what makes
-`fulfil` and `merch` show different screens instead of empty ones.
+run, so there is nothing to copy by hand. It creates `admin@example.com`,
+`shopper@example.com`, `merch@example.com` and `fulfil@example.com` with their
+groups, sets a generated permanent password for each (no password-change
+challenge on first sign-in), and writes the passwords and the ids the pool minted
+back into `.reventless/users.yaml` — read the sign-ins from there. The usernames
+are addresses because a pool the deploy creates signs people in by email address;
+`example.com` is reserved, so no mail reaches anyone. The seed below reads the
+same file, so the demo data lands on the accounts you can actually log in as —
+which is what makes `fulfil` and `merch` show different screens instead of empty
+ones.
+
+The tool checks the pool before it writes anything: if the pool could not sign in
+one of the accounts, it stops and leaves the file as it was.
+
+Sign in to the host-shell as `admin@example.com` and run the same smoke test you
+ran locally: add a category and product, register a customer, place an order, and
+confirm read models update.
+
+### An administrator of your own
+
+To sign in with your own address instead, make one administrator:
+
+```bash
+pnpm exec provision-admin --email you@example.com
+```
+
+That creates the account, sets a permanent password, puts it in the `Admin`
+group, and prints the credentials once. Running it again is safe and mints a new
+password.
+
+Doing this by hand with `aws cognito-idp admin-create-user` works too, but it is
+easy to stop one step early: an account that is not in the `Admin` group cannot
+reach the administration views, and the symptom is a refusal much later. See
+[The first administrator](/app/first-admin) for the full picture, including why being
+in the group is only half of what makes someone an administrator.
 
 ## Seed demo data (optional)
 

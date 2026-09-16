@@ -36,22 +36,33 @@
 # Each stack (alpha, beta, main) resolves its own pool, so its accounts are NOT
 # shared with another stack's. Run the command once per deployment.
 #
+# The usernames are addresses because the pool a deploy creates signs people in
+# with an email address and refuses a plain `shopper`. They are under
+# `example.com`, which is reserved, so no mail can reach anyone — and provisioning
+# tells Cognito not to send invitations anyway. `demoOwner` says which demo person
+# each account plays, which is how `pnpm run seed` finds `shopper` behind
+# `shopper@example.com`.
+#
 # The four roles mirror the local ones exactly. See
 # ../platform-local/users.example.yaml for what each is for, why `fulfil` holds
 # Fulfilment AND Shopper, and why Merchandiser is deliberately not elevated.
 
-- username: admin
+- username: admin@example.com
   password: ""
   groups: [Admin, Shopper]
+  demoOwner: admin
 
-- username: shopper
+- username: shopper@example.com
   password: ""
   groups: [Shopper]
+  demoOwner: shopper
 
-- username: merch
+- username: merch@example.com
   password: ""
   groups: [Merchandiser, Shopper]
+  demoOwner: merch
 
-- username: fulfil
+- username: fulfil@example.com
   password: ""
   groups: [Fulfilment, Shopper]
+  demoOwner: fulfil

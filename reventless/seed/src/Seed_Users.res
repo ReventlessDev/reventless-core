@@ -24,6 +24,7 @@ type user = {
   password: string,
   groups: array<string>,
   userId: option<string>,
+  demoOwner: option<string>,
 }
 
 let asString = (json: JSON.t): option<string> =>
@@ -44,7 +45,13 @@ let userOf = (json: JSON.t): option<user> =>
       | Some(JSON.Array(items)) => items->Array.filterMap(asString)
       | _ => []
       }
-      Some({username, password, groups, userId: obj->Dict.get("userId")->Option.flatMap(asString)})
+      Some({
+        username,
+        password,
+        groups,
+        userId: obj->Dict.get("userId")->Option.flatMap(asString),
+        demoOwner: obj->Dict.get("demoOwner")->Option.flatMap(asString),
+      })
     | _ => None
     }
   | _ => None
@@ -86,6 +93,14 @@ let load = (~path: option<string>=?): option<(string, array<user>)> => {
   }
   users->Array.length == 0 ? None : Some((file, users))
 }
+
+/** The account that plays `name` in a demo: the one whose `demoOwner` says so,
+    else the one named `name` — which is how a file without the field reads. */
+let playing = (users: array<user>, name: string): option<user> =>
+  switch users->Array.find(u => u.demoOwner == Some(name)) {
+  | Some(_) as declared => declared
+  | None => users->Array.find(u => u.username == name)
+  }
 
 /** Menu label: the username, plus whatever groups the file records for it. */
 let label = (u: user): string =>

@@ -6,6 +6,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
 import * as Money$Reventless from "@reventlessdev/reventless-spec/src/semantic/Money.res.mjs";
 import * as DateRange$Reventless from "@reventlessdev/reventless-spec/src/semantic/DateRange.res.mjs";
+import * as Seed_Users$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Users.res.mjs";
 import * as Seed_Random$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Random.res.mjs";
 import * as ImportProduct_Translation$CatalogPlugin from "@reventlessdev/online-shop-hybrid-catalog/src/Product/InboundTranslation/ImportProduct_Translation.res.mjs";
 
@@ -404,27 +405,29 @@ function all(o) {
 }
 
 function resolveOwner(role, username, fallback, accounts, caller, callerId) {
-  let declared = Stdlib_Option.flatMap(accounts.find(u => u.username === username), u => u.userId);
-  if (declared !== undefined) {
-    return {
-      role: role,
-      username: username,
-      id: declared,
-      source: "AccountsFile"
-    };
-  }
-  let id = caller.username === username ? callerId : undefined;
+  let account = Seed_Users$ReventlessSeed.playing(accounts, username);
+  let username$1 = Stdlib_Option.mapOr(account, username, a => a.username);
+  let id = Stdlib_Option.flatMap(account, a => a.userId);
   if (id !== undefined) {
     return {
       role: role,
-      username: username,
+      username: username$1,
       id: id,
+      source: "AccountsFile"
+    };
+  }
+  let id$1 = caller.username === username$1 ? callerId : undefined;
+  if (id$1 !== undefined) {
+    return {
+      role: role,
+      username: username$1,
+      id: id$1,
       source: "Bearer"
     };
   } else {
     return {
       role: role,
-      username: username,
+      username: username$1,
       id: fallback,
       source: "Fallback"
     };

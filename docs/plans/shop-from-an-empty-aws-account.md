@@ -1,7 +1,7 @@
 # Plan: the online shop from an empty AWS account
 
 **Date:** 2026-09-16
-**Status:** IN PROGRESS — step 1 done.
+**Status:** IN PROGRESS — steps 1 and 2 done.
 **Repos:** `reventless-core` only.
 **Based on:** [the analysis of the same name](../analysis/from-an-empty-account-to-a-running-shop.md).
 **Companion plan:** [platform-stack-creates-the-lambda-layer.md](./platform-stack-creates-the-lambda-layer.md).
@@ -122,6 +122,12 @@ file *before* it refuses, so the seed then offers accounts that do not exist.
 **Done when.** A test shows that a refused pool leaves the accounts file untouched;
 a test shows the seed finds all demo owners in the new AWS template; the local seed
 still works.
+
+**Done.** The owner lookup lives in the seed harness as `Seed.Users.playing`. The
+template test reads both real templates, so `seed-data` gained a dev-only Jest
+project; its tests compile only when it is a build root, so the root `build` chain
+got a `rescript build examples/online-shop-hybrid/seed-data` step before
+`reventless/core`.
 
 ## Step 3 — One bake command, used by CI and by people
 
@@ -328,10 +334,10 @@ bakes the manifest, and nobody creates the demo users again.
 Step 1  [x] layer lookup tells found / not found / could not look
         [x] deploy stops when no layer, message names parameter + region
         [x] all call sites use the check; tests given a test value
-Step 2  [ ] pool checked before the accounts file is written
-        [ ] AWS template uses example.com addresses
-        [ ] demoOwner field in AccountsManifest; seed uses it first
-        [ ] test-on-aws.md fixed
+Step 2  [x] pool checked before the accounts file is written
+        [x] AWS template uses example.com addresses
+        [x] demoOwner field in AccountsManifest; seed uses it first
+        [x] test-on-aws.md fixed
 Step 3  [ ] bake-manifest command
         [ ] CI job uses it
 Step 4  [ ] deploy-platform up / down

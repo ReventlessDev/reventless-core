@@ -5,6 +5,7 @@ import * as Nodefs from "node:fs";
 import * as Nodepath from "node:path";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 
 function asString(json) {
   if (typeof json === "string") {
@@ -32,7 +33,8 @@ function userOf(json) {
     username: match,
     password: match$1,
     groups: groups,
-    userId: Stdlib_Option.flatMap(json["userId"], asString)
+    userId: Stdlib_Option.flatMap(json["userId"], asString),
+    demoOwner: Stdlib_Option.flatMap(json["demoOwner"], asString)
   };
 }
 
@@ -72,6 +74,15 @@ function load(path) {
   }
 }
 
+function playing(users, name) {
+  let declared = users.find(u => Primitive_object.equal(u.demoOwner, name));
+  if (declared !== undefined) {
+    return declared;
+  } else {
+    return users.find(u => u.username === name);
+  }
+}
+
 function label(u) {
   if (u.groups.length === 0) {
     return u.username;
@@ -86,6 +97,7 @@ export {
   parseString,
   defaultPath,
   load,
+  playing,
   label,
 }
 /* yaml Not a pure module */

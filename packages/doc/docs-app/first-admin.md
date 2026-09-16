@@ -135,14 +135,22 @@ Declare them in `users.example.yaml`, beside the platform package you deploy
 from — each example ships one already:
 
 ```yaml
-- username: shopper
+- username: shopper@example.com
   password: ""
   groups: [Shopper]
+  demoOwner: shopper
 
-- username: merch
+- username: merch@example.com
   password: ""
   groups: [Merchandiser, Shopper]
+  demoOwner: merch
 ```
+
+The usernames are addresses because a pool the deploy creates signs people in by
+email address and refuses a plain `shopper`; the command checks this for every
+entry before it creates or writes anything. `demoOwner` is optional: it names the
+demo person an account plays, so a seed can find `shopper` behind
+`shopper@example.com`.
 
 Then, from that package:
 

@@ -220,59 +220,37 @@ function manifestNote(file) {
    credentials for a deployment, not secrets to reuse anywhere real.`;
 }
 
-async function run() {
-  let e = parseArgs(process.argv.slice(2, process.argv.length));
-  if (e.TAG !== "Ok") {
-    return e;
-  }
-  let args = e._0;
-  if (args.help) {
-    console.log(usage);
-    return {
-      TAG: "Ok",
-      _0: undefined
-    };
-  }
-  let e$1 = AccountsManifest$Reventless.locate(args.file, undefined);
-  if (e$1.TAG !== "Ok") {
-    return e$1;
-  }
-  let located = e$1._0;
-  let file = AccountsManifest$Reventless.pathOf(located);
-  if (located.TAG !== "Declared") {
-    console.log(`manifest ` + file + ` (new, copied from ` + located._1 + `)`);
-  }
-  let message = AccountsManifest$Reventless.prepare(file);
+async function provision(file, providerId, checkPoolOpt) {
+  let checkPool = checkPoolOpt !== undefined ? checkPoolOpt : checkPoolAcceptsUsernames;
+  let message = AccountsManifest$Reventless.parseFile(file);
   if (message.TAG !== "Ok") {
     return {
       TAG: "Error",
       _0: file + `: ` + message._0
     };
   }
-  let prepared = message._0;
-  if (prepared.length === 0) {
+  let declared = message._0;
+  if (declared.length === 0) {
     return {
       TAG: "Error",
       _0: file + ` declares no accounts`
     };
   }
-  let generated = prepared.filter(p => p.passwordGenerated).length;
-  console.log(`manifest ` + file + ` (` + prepared.length.toString() + ` accounts, ` + generated.toString() + ` password(s) generated)`);
-  let entries = prepared.map(p => p.entry);
-  let message$1 = ProvisionProvider$ReventlessAws.resolve(args.providerId, args.stack);
+  let e = await checkPool(providerId, declared.map(e => e.username));
+  if (e.TAG !== "Ok") {
+    return e;
+  }
+  let message$1 = AccountsManifest$Reventless.prepare(file);
   if (message$1.TAG !== "Ok") {
     return {
       TAG: "Error",
-      _0: message$1._0 + `. To fill in the manifest without creating anything, run prepare-accounts`
+      _0: file + `: ` + message$1._0
     };
   }
-  let match = message$1._0;
-  let providerId = match[0];
-  console.log(`provider ` + providerId + ` (from ` + ProvisionProvider$ReventlessAws.describe(match[1]) + `)`);
-  let e$2 = await checkPoolAcceptsUsernames(providerId, entries.map(e => e.username));
-  if (e$2.TAG !== "Ok") {
-    return e$2;
-  }
+  let prepared = message$1._0;
+  let generated = prepared.filter(p => p.passwordGenerated).length;
+  console.log(`manifest ` + file + ` (` + prepared.length.toString() + ` accounts, ` + generated.toString() + ` password(s) generated)`);
+  let entries = prepared.map(p => p.entry);
   await ensureGroups(providerId, entries);
   let fills = [];
   for (let index = 0, index_finish = entries.length; index < index_finish; ++index) {
@@ -297,6 +275,41 @@ async function run() {
     TAG: "Ok",
     _0: undefined
   };
+}
+
+async function run() {
+  let e = parseArgs(process.argv.slice(2, process.argv.length));
+  if (e.TAG !== "Ok") {
+    return e;
+  }
+  let args = e._0;
+  if (args.help) {
+    console.log(usage);
+    return {
+      TAG: "Ok",
+      _0: undefined
+    };
+  }
+  let e$1 = AccountsManifest$Reventless.locate(args.file, undefined);
+  if (e$1.TAG !== "Ok") {
+    return e$1;
+  }
+  let located = e$1._0;
+  let file = AccountsManifest$Reventless.pathOf(located);
+  if (located.TAG !== "Declared") {
+    console.log(`manifest ` + file + ` (new, copied from ` + located._1 + `)`);
+  }
+  let message = ProvisionProvider$ReventlessAws.resolve(args.providerId, args.stack);
+  if (message.TAG !== "Ok") {
+    return {
+      TAG: "Error",
+      _0: message._0 + `. To fill in the manifest without creating anything, run prepare-accounts`
+    };
+  }
+  let match = message._0;
+  let providerId = match[0];
+  console.log(`provider ` + providerId + ` (from ` + ProvisionProvider$ReventlessAws.describe(match[1]) + `)`);
+  return await provision(file, providerId, undefined);
 }
 
 async function main() {
@@ -331,6 +344,7 @@ export {
   ensureGroups,
   applyEntry,
   manifestNote,
+  provision,
   run,
   main,
 }

@@ -95,6 +95,36 @@ describe("Seed_Users.load:", () => {
   })
 })
 
+// A pool that signs in on an email address takes `shopper@example.com`, not
+// `shopper`, so a demo cannot find its accounts by username alone there.
+describe("Seed_Users.playing:", () => {
+  let users = Seed_Users.parseString(`
+- username: shopper@example.com
+  password: pw
+  groups: [Shopper]
+  demoOwner: shopper
+- username: admin
+  password: pw
+  groups: [Admin]
+`)
+
+  testSync("finds the account whose demoOwner names the person", () => {
+    expect(
+      Seed_Users.playing(users, "shopper")->Option.map(u => u.Seed_Users.username),
+    )->Expect.toEqual(Some("shopper@example.com"))
+  })
+
+  testSync("falls back to the username when no entry declares one", () => {
+    expect(
+      Seed_Users.playing(users, "admin")->Option.map(u => u.Seed_Users.username),
+    )->Expect.toEqual(Some("admin"))
+  })
+
+  testSync("finds nobody for a person no entry plays", () => {
+    expect(Seed_Users.playing(users, "merch"))->Expect.toEqual(None)
+  })
+})
+
 describe("Seed_Users.label:", () => {
   testSync("names the groups an account carries", () => {
     expect(
@@ -103,13 +133,20 @@ describe("Seed_Users.label:", () => {
         password: "x",
         groups: ["Admin", "Shopper"],
         userId: None,
+        demoOwner: None,
       }),
     )->Expect.toBe("admin  [Admin, Shopper]")
   })
 
   testSync("is the bare username when the file records no groups", () => {
     expect(
-      Seed_Users.label({username: "admin", password: "x", groups: [], userId: None}),
+      Seed_Users.label({
+        username: "admin",
+        password: "x",
+        groups: [],
+        userId: None,
+        demoOwner: None,
+      }),
     )->Expect.toBe("admin")
   })
 
@@ -123,6 +160,7 @@ describe("Seed_Users.label:", () => {
         password: "x",
         groups: ["Admin"],
         userId: Some("4275e4a4-00c1-70e1-1cb5-363b06b992b5"),
+        demoOwner: None,
       }),
     )->Expect.toBe("admin  [Admin]")
   })

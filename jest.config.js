@@ -128,6 +128,13 @@ module.exports = {
       setupFiles: [setupFile],
     },
     {
+      displayName: "online-shop-hybrid-seed-data",
+      rootDir: "./examples/online-shop-hybrid/seed-data",
+      testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
+      moduleFileExtensions: ["js", "mjs"],
+      setupFiles: [setupFile],
+    },
+    {
       displayName: "rescript-moment",
       rootDir: "./rescript/moment",
       testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
