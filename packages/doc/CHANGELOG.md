@@ -718,6 +718,18 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-09-16
+- feat(core): fail the build when an extension cannot find its slice's partition key ([cf2b093](https://github.com/ReventlessDev/reventless-core/commit/cf2b093dd5dc7cf9425cdac919cd3910fc4aeefd))
+- docs: deploy and test the online shop with shop:up, shop:seed and shop:down ([460c555](https://github.com/ReventlessDev/reventless-core/commit/460c55542ab6ec2f3efc6e6e9e0093b15a813a6a))
+- fix(examples): read deployed stacks from the current Pulumi login ([2c639c6](https://github.com/ReventlessDev/reventless-core/commit/2c639c6771f829ece2f71aef4143230a81fbe2bc))
+- feat(aws): let a stack declare itself disposable ([a8a8f29](https://github.com/ReventlessDev/reventless-core/commit/a8a8f29bccb7ed9994dea11aefb059953be4b095))
+- fix(aws): stop a plugin stack that does not name its platform ([8ba09da](https://github.com/ReventlessDev/reventless-core/commit/8ba09da55b72d06b19ca6b78dd9abbc744a9b167))
+- feat(aws): bake the component manifest with a command, in CI and by hand ([4b0dccc](https://github.com/ReventlessDev/reventless-core/commit/4b0dccc8fc3b99874108c82db282d73cc93a48e9))
+- fix(aws): make the demo accounts work on a pool that signs in by email ([97b036f](https://github.com/ReventlessDev/reventless-core/commit/97b036f86979ba55dbbf93d460fe8076c35abf1a))
+- fix(aws)!: stop a deploy that finds no Lambda layer ([62957f4](https://github.com/ReventlessDev/reventless-core/commit/62957f444ab2120f672b9ac0564f786d64090864))
+- feat(spec): let a slice's chapter break a partition-key tie ([2b9ae77](https://github.com/ReventlessDev/reventless-core/commit/2b9ae77e98eb42177d2bdd4977bc62bb7c7911aa))
+- feat(spec)!: infer the DCB partition key per slice, and drop @partitionTag where inference agrees ([6c10161](https://github.com/ReventlessDev/reventless-core/commit/6c101611d438beea4bc9175ae8ea0ea1f6f7493b))
+- docs: a new account publishes its own Lambda layer, and needs no registry token ([04d7a71](https://github.com/ReventlessDev/reventless-core/commit/04d7a71a8345852d87579a4ab36359be533a5e3b))
 ### 2026-09-10
 - feat(spec): preparing a manifest is not an AWS errand ([bd7f8e2](https://github.com/ReventlessDev/reventless-core/commit/bd7f8e2f6132c0cacac2ab839165f21fe91eaf6c))
 - feat(aws): the rest of the cast is a file, not a comment ([aa23581](https://github.com/ReventlessDev/reventless-core/commit/aa23581f09948a47fb451ec2ecf2fc2bdd8e6ee6))
