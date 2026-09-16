@@ -12,12 +12,14 @@ let slice = (
   ~consumed=[],
   ~produced=[],
   ~partitionHint=?,
+  ~chapter=?,
 ): DSI.sliceShape => {
   sliceName,
   command,
   consumed,
   produced,
   partitionHint,
+  ?chapter,
 }
 
 // The online-shop-hybrid catalog boundary, transcribed structurally (NO tag
@@ -396,6 +398,70 @@ describe("DcbScopeInference:", () => {
         expect(
           d.ambiguities->Array.every(((_, reason)) => reason->String.includes("did not settle")),
         )->toBe(true)
+      },
+    )
+  })
+
+  describe("partition: the chapter breaks a tie", () => {
+    let placeOrder = (~chapter=?) =>
+      slice(
+        "PlaceOrder",
+        ~command=[scal("orderId"), scal("customerId")],
+        ~consumed=[ev("OrderPlaced", [scal("orderId")])],
+        ~produced=[ev("OrderPlaced", [scal("orderId"), scal("customerId")])],
+        ~chapter?,
+      )
+    let cancelOrder = slice(
+      "CancelOrder",
+      ~chapter="Order",
+      ~consumed=[ev("OrderPlaced", [])],
+      ~produced=[ev("OrderCancelled", [scal("orderId")])],
+    )
+    let partitionOf = (d: DSI.derived, name) => d.partitionBySlice->Dict.get(name)
+
+    testSync(
+      "an order and its customer resolve to the id every Order event carries",
+      () => {
+        let d = DSI.infer([placeOrder(~chapter="Order"), cancelOrder])
+        expect(d->partitionOf("PlaceOrder"))->toEqual(Some("orderId"))
+        expect(d.ambiguities)->toEqual([])
+      },
+    )
+
+    testSync(
+      "without a chapter the same slice stays ambiguous",
+      () => {
+        let d = DSI.infer([placeOrder(), cancelOrder])
+        expect(d->partitionOf("PlaceOrder"))->toEqual(None)
+      },
+    )
+
+    testSync(
+      "a join whose chapter carries both ids stays ambiguous, and the reason says so",
+      () => {
+        let demand = slice(
+          "RecordProductDemand",
+          ~chapter="ProductDemand",
+          ~produced=[ev("ProductDemandRecorded", [scal("productId"), scal("orderId")])],
+        )
+        let d = DSI.infer([demand])
+        expect(d->partitionOf("RecordProductDemand"))->toEqual(None)
+        expect(
+          d.ambiguities->Array.some(
+            ((_, reason)) => reason->String.includes("The ProductDemand chapter does not decide"),
+          ),
+        )->toBe(true)
+      },
+    )
+
+    testSync(
+      "it never overrides a key the subtraction decided",
+      () => {
+        // AddProduct filed under a chapter keyed by categoryId still resolves to
+        // productId: the tie-breaker only sees slices left with several keys.
+        let misfiled = {...addProduct, chapter: "Category"}
+        let d = DSI.infer([misfiled, {...addCategory, chapter: "Category"}])
+        expect(d->partitionOf("AddProduct"))->toEqual(Some("productId"))
       },
     )
   })

@@ -29,7 +29,8 @@ function Make(Spec) {
           name: Spec.name,
           commandSchema: Spec.commandSchema,
           consumedEventSchema: Spec.consumedEventSchema,
-          eventSchema: Spec.eventSchema
+          eventSchema: Spec.eventSchema,
+          moduleUrl: Spec.moduleUrl
         });
       } catch (exn) {
         return;

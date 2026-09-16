@@ -23,7 +23,4 @@ type error =
   | ProductsNotAvailable({missing: array<string>})
 
 @schema
-type event =
-  // customerId refers to the customer, but nothing this slice reads shows that,
-  // so inference sees two candidates and cannot choose.
-  | OrderPlaced({@partitionTag orderId: string, customerId: string, productIds: array<string>})
+type event = OrderPlaced({orderId: string, customerId: string, productIds: array<string>})

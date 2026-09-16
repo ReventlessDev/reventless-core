@@ -195,7 +195,7 @@ function Make(Spec) {
       contents: undefined
     };
     let consumedEventTypes = DcbDecode$Reventless.makeDecoder(Spec.consumedEventSchema).eventTypes;
-    let scopeShape = DcbTag$Reventless.sliceShapeFromSchemas("", Spec.commandSchema, Spec.consumedEventSchema, Spec.eventSchema);
+    let scopeShape = DcbTag$Reventless.sliceShapeFromSchemas("", Spec.commandSchema, Spec.consumedEventSchema, Spec.eventSchema, undefined);
     let set = new Set();
     DcbTag$Reventless.extractCrossPartitionTagKeys(Spec.eventSchema).forEach(k => {
       set.add(k);

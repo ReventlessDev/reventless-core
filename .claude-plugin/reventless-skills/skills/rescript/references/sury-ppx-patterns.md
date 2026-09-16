@@ -51,7 +51,7 @@ Both command AND event types need `@s.matches` on entity ID fields. Without it, 
 
 ### Partition key
 
-Each DCB event is stored under one tag, its partition key. The framework infers it per slice: the `*Id` tags on the events the slice writes, minus the ids it reads from events another slice writes (references). One left is the partition — no annotation. Only when several are left (a join, or a reference the slice's reads never reveal, such as `customerId` beside `orderId` on `OrderPlaced`) mark the key with `@partitionTag` on the **produced event** (it emits `@s.matches(DcbTag.partition)`); on a command it has no effect. A `@partitionTag` that contradicts inference fails the build; a redundant one is logged.
+Each DCB event is stored under one tag, its partition key. The framework infers it per slice: the `*Id` tags on the events the slice writes, minus the ids it reads from events another slice writes (references). One left is the partition — no annotation. When several are left, the one every event in the slice's chapter (`src/<Chapter>/<Kind>/`) carries wins — `orderId` over `customerId` for `PlaceOrder` under `Order/`. Only when that still leaves several (a join such as `RecordProductDemand`, or a slice in no chapter) mark the key with `@partitionTag` on the **produced event** (it emits `@s.matches(DcbTag.partition)`); on a command it has no effect. A `@partitionTag` that contradicts inference fails the build; a redundant one is logged.
 
 ```rescript
 @schema

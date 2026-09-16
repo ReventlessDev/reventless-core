@@ -182,7 +182,7 @@ function CommandStep(Spec) {
         lastAggregateId: s.lastAggregateId
       };
     };
-    let scopeShape = DcbTag$Reventless.sliceShapeFromSchemas("", Spec.commandSchema, Spec.consumedEventSchema, Spec.eventSchema);
+    let scopeShape = DcbTag$Reventless.sliceShapeFromSchemas("", Spec.commandSchema, Spec.consumedEventSchema, Spec.eventSchema, undefined);
     let set = new Set();
     DcbTag$Reventless.extractCrossPartitionTagKeys(Spec.eventSchema).forEach(k => {
       set.add(k);

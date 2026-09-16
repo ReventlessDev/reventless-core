@@ -32,7 +32,7 @@ let errorSchema = Sury.union([
 
 let eventSchema = Sury.$schema(s => ({
   TAG: "OrderPlaced",
-  orderId: s.m(DcbTag$Reventless.partition),
+  orderId: s.m(DcbTag$Reventless.string),
   customerId: s.m(DcbTag$Reventless.string),
   productIds: s.m(Sury.array(DcbTag$Reventless.stringForKey("productId")))
 }));

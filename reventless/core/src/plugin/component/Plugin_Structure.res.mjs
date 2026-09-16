@@ -1050,7 +1050,8 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     name: SCS.Spec.name,
     commandSchema: SCS.Spec.commandSchema,
     consumedEventSchema: SCS.Spec.consumedEventSchema,
-    eventSchema: SCS.Spec.eventSchema
+    eventSchema: SCS.Spec.eventSchema,
+    moduleUrl: SCS.Spec.moduleUrl
   })));
   let partitionBySlice = match.partitionBySlice;
   let stateChangeDefs = stateChangeSlices.map((SCS, i) => {

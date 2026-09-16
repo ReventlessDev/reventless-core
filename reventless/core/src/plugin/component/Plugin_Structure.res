@@ -1481,6 +1481,7 @@ let make = (
         commandSchema: SCS.Spec.commandSchema->S.castToUnknown,
         consumedEventSchema: SCS.Spec.consumedEventSchema->S.castToUnknown,
         eventSchema: SCS.Spec.eventSchema->S.castToUnknown,
+        moduleUrl: SCS.Spec.moduleUrl,
       })
     )
     ->Reventless.DcbScopeInference.resolvePartitions

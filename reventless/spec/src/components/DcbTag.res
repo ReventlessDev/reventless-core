@@ -1175,6 +1175,23 @@ let extractPartitionTagFields = (schema: S.t<'event>): array<string> => {
 }
 
 /**
+The chapter a module sits in, read off its `moduleUrl`: the first directory under
+the last `src/` that is not a kind folder (`…/src/Order/StateChange/PlaceOrder.res.mjs`
+→ `Order`). The same rule the generator applies to paths on disk, applied to the
+one value every call site has — the deployed Lambda included.
+*/
+let chapterOfModuleUrl = (moduleUrl: string): option<string> =>
+  switch moduleUrl->String.split("/src/") {
+  | [] | [_] => None
+  | parts =>
+    let segments = parts->Array.getUnsafe(parts->Array.length - 1)->String.split("/")
+    switch segments->Array.get(0) {
+    | Some(first) if segments->Array.length > 1 && !ComponentKind.isKindFolder(first) => Some(first)
+    | _ => None
+    }
+  }
+
+/**
 Builds the `DcbScopeInference.sliceShape` for one slice from its sury schemas.
 The `command` fields are flattened across command variants; `consumed` / `produced`
 keep their per-arm structure. Schema-coupling lives here so the inference core
@@ -1185,6 +1202,7 @@ let sliceShapeFromSchemas = (
   ~commandSchema: S.t<'c>,
   ~consumedEventSchema: S.t<'ce>,
   ~eventSchema: S.t<'e>,
+  ~moduleUrl: option<string>=?,
 ): DcbScopeInference.sliceShape => {
   // An explicit @partitionTag on the produced event is the escape hatch for
   // slices whose own events carry two owned keys (e.g. RecordProductDemand).
@@ -1198,6 +1216,7 @@ let sliceShapeFromSchemas = (
     consumed: eventShapesOfSchema(consumedEventSchema),
     produced: eventShapesOfSchema(eventSchema),
     partitionHint,
+    chapter: ?(moduleUrl->Option.flatMap(chapterOfModuleUrl)),
   }
 }
 
@@ -1207,7 +1226,18 @@ type sliceSchemas = {
   commandSchema: S.t<unknown>,
   consumedEventSchema: S.t<unknown>,
   eventSchema: S.t<unknown>,
+  /** Where the slice's spec lives; its chapter breaks partition ties. */
+  moduleUrl?: string,
 }
+
+let sliceShape = (s: sliceSchemas) =>
+  sliceShapeFromSchemas(
+    ~name=s.name,
+    ~commandSchema=s.commandSchema,
+    ~consumedEventSchema=s.consumedEventSchema,
+    ~eventSchema=s.eventSchema,
+    ~moduleUrl=?s.moduleUrl,
+  )
 
 /**
 The DCB decision-read scope threaded into every StateChangeSlice callback:
@@ -1267,16 +1297,7 @@ let deriveEffectiveScope = (slices: array<sliceSchemas>): effectiveScope => {
   }
   let annotatedTagKeys =
     producedSchemas->Array.map(extractTagKeysByEventType)->mergeTagKeysByEventType
-  let shapes =
-    slices->Array.map(s =>
-      sliceShapeFromSchemas(
-        ~name=s.name,
-        ~commandSchema=s.commandSchema,
-        ~consumedEventSchema=s.consumedEventSchema,
-        ~eventSchema=s.eventSchema,
-      )
-    )
-  let inferred = DcbScopeInference.infer(shapes)
+  let inferred = DcbScopeInference.infer(slices->Array.map(sliceShape))
   let useInferred = inferred.ambiguities->Array.length == 0
   {
     crossPartitionTagKeys: useInferred ? inferred.crossPartitionTagKeys : annotatedCross,
@@ -1411,14 +1432,6 @@ type boundaryPartition = {
   /** What the event log files each event under. */
   partitionTag: derivedPartitionTag,
 }
-
-let sliceShape = (s: sliceSchemas) =>
-  sliceShapeFromSchemas(
-    ~name=s.name,
-    ~commandSchema=s.commandSchema,
-    ~consumedEventSchema=s.consumedEventSchema,
-    ~eventSchema=s.eventSchema,
-  )
 
 /**
 Derives where a boundary's events are stored — the one derivation behind the

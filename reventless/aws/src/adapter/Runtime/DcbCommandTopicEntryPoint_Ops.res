@@ -25,6 +25,7 @@
 type specModule
 
 @get external specName: specModule => string = "name"
+@get external specModuleUrl: specModule => Nullable.t<string> = "moduleUrl"
 @get external specCommandSchema: specModule => S.t<unknown> = "commandSchema"
 @get external specConsumedEventSchema: specModule => S.t<unknown> = "consumedEventSchema"
 @get external specEventSchema: specModule => S.t<unknown> = "eventSchema"
@@ -63,6 +64,7 @@ let deriveScope = (specs: array<specModule>): derivedScope =>
       commandSchema: specCommandSchema(s),
       consumedEventSchema: specConsumedEventSchema(s),
       eventSchema: specEventSchema(s),
+      moduleUrl: ?(specModuleUrl(s)->Nullable.toOption),
     })
     let scope = Reventless.DcbTag.deriveEffectiveScope(slices)
     // Deploy derives this from the same slice list, so on the same code it cannot

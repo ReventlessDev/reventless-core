@@ -32,7 +32,8 @@ function deriveScope(specs) {
     name: s.name,
     commandSchema: s.commandSchema,
     consumedEventSchema: s.consumedEventSchema,
-    eventSchema: s.eventSchema
+    eventSchema: s.eventSchema,
+    moduleUrl: Primitive_option.fromNullable(s.moduleUrl)
   }));
   let scope = DcbTag$Reventless.deriveEffectiveScope(slices);
   let boundary;

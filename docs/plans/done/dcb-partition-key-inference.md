@@ -367,3 +367,24 @@ something to say that the plan did not.
   Docker's daemon was not running. Its appends were checked by reading: each
   passes a `Simple` key its events carry, so none relied on the removed fallback.
 
+
+## Follow-up: the chapter breaks ties
+
+In plain words: `PlaceOrder` kept its annotation only because its reads never show
+`customerId` to be a reference. The slice sits in the `Order` chapter, and every event
+written there carries `orderId` — only some carry `customerId`. So when several keys
+are left, inference now keeps the ones every event in the slice's chapter carries,
+and `PlaceOrder` needs no `@partitionTag` in either example.
+
+The analysis preferred the chapter as a check rather than an input (F6). Used only as
+a tie-breaker, its costs shrink:
+
+- **It cannot override a decision.** It sees only slices the earlier steps left with
+  several keys, and when it does not narrow them to one, the slice stays ambiguous as
+  before (`RecordProductDemand`, whose chapter's events all carry both ids).
+- **No new input at any call site.** The chapter is read off the spec's `moduleUrl`
+  (`…/src/Order/StateChange/PlaceOrder.res.mjs`), which the builder, the cold-start
+  Lambda, the generated `dcbSliceSchemas` and extensions all already have.
+- **The remaining cost is the one F6 named:** where the chapter decides, moving the
+  slice to another chapter can move its partition. The `dcb-scope.json` golden shows
+  it; the docs tell apps without one to annotate slices they expect to move.

@@ -231,6 +231,7 @@ module Make = (
         commandSchema: Sc.Spec.commandSchema->S.castToUnknown,
         consumedEventSchema: Sc.Spec.consumedEventSchema->S.castToUnknown,
         eventSchema: Sc.Spec.eventSchema->S.castToUnknown,
+        moduleUrl: Sc.Spec.moduleUrl,
       })
       let inferenceShapes = sliceSchemas->Array.map(Reventless.DcbTag.sliceShape)
 

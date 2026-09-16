@@ -103,9 +103,7 @@ type orderLine = {
 @schema
 type event =
   | OrderPlaced({
-      // customerId refers to the customer, but nothing this slice reads shows
-      // that, so inference sees two candidates and cannot choose.
-      @partitionTag orderId: string,
+      orderId: string,
       customerId: string,
       // Redundant against `lines`, and deliberately so. The extension point
       // decomposes this into one published `ItemOrdered` per product and

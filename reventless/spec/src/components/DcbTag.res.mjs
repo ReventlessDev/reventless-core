@@ -10,6 +10,7 @@ import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as Semantic$Reventless from "../semantic/Semantic.res.mjs";
 import * as Util_Sury$Reventless from "../util/Util_Sury.res.mjs";
+import * as ComponentKind$Reventless from "./ComponentKind.res.mjs";
 import * as DcbScopeInference$Reventless from "./DcbScopeInference.res.mjs";
 
 let tagSchema = Sury.$schema(s => ({
@@ -793,7 +794,23 @@ function extractPartitionTagFields(schema) {
   }
 }
 
-function sliceShapeFromSchemas(name, commandSchema, consumedEventSchema, eventSchema) {
+function chapterOfModuleUrl(moduleUrl) {
+  let parts = moduleUrl.split("/src/");
+  let len = parts.length;
+  if (len === 1) {
+    return;
+  }
+  if (len === 0) {
+    return;
+  }
+  let segments = parts[parts.length - 1 | 0].split("/");
+  let first = segments[0];
+  if (first !== undefined && segments.length > 1 && !ComponentKind$Reventless.isKindFolder(first)) {
+    return first;
+  }
+}
+
+function sliceShapeFromSchemas(name, commandSchema, consumedEventSchema, eventSchema, moduleUrl) {
   let match = extractPartitionTagFields(eventSchema);
   let partitionHint = match.length !== 1 ? undefined : match[0];
   return {
@@ -801,8 +818,13 @@ function sliceShapeFromSchemas(name, commandSchema, consumedEventSchema, eventSc
     command: eventShapesOfSchema(commandSchema).flatMap(e => e.idFields),
     consumed: eventShapesOfSchema(consumedEventSchema),
     produced: eventShapesOfSchema(eventSchema),
-    partitionHint: partitionHint
+    partitionHint: partitionHint,
+    chapter: Stdlib_Option.flatMap(moduleUrl, chapterOfModuleUrl)
   };
+}
+
+function sliceShape(s) {
+  return sliceShapeFromSchemas(s.name, s.commandSchema, s.consumedEventSchema, s.eventSchema, s.moduleUrl);
 }
 
 function deriveEffectiveScope(slices) {
@@ -817,8 +839,7 @@ function deriveEffectiveScope(slices) {
     }
   });
   let annotatedTagKeys = mergeTagKeysByEventType(producedSchemas.map(extractTagKeysByEventType));
-  let shapes = slices.map(s => sliceShapeFromSchemas(s.name, s.commandSchema, s.consumedEventSchema, s.eventSchema));
-  let inferred = DcbScopeInference$Reventless.infer(shapes);
+  let inferred = DcbScopeInference$Reventless.infer(slices.map(sliceShape));
   let useInferred = inferred.ambiguities.length === 0;
   return {
     crossPartitionTagKeys: useInferred ? inferred.crossPartitionTagKeys : annotatedCross,
@@ -911,10 +932,6 @@ function compositePartitionOf(schemas) {
     keys: sorted.map(info => info.name),
     seps: sorted.slice(0, sorted.length - 1 | 0).map(info => info.sep)
   };
-}
-
-function sliceShape(s) {
-  return sliceShapeFromSchemas(s.name, s.commandSchema, s.consumedEventSchema, s.eventSchema);
 }
 
 function deriveBoundaryPartition(slices) {
@@ -1069,13 +1086,14 @@ export {
   idFieldsOfProperties,
   eventShapesOfSchema,
   extractPartitionTagFields,
+  chapterOfModuleUrl,
   sliceShapeFromSchemas,
+  sliceShape,
   deriveEffectiveScope,
   extractCompositePartitionFieldsFromProperties,
   extractCompositePartitionFields,
   getCompositePartitionKeyValue,
   compositePartitionOf,
-  sliceShape,
   deriveBoundaryPartition,
   slicePartitionTag,
   deriveSlicePartition,

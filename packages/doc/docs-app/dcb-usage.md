@@ -464,18 +464,21 @@ You normally write no annotation. At build time the framework reads the whole pl
 
 1. **Own ids.** Collect the `*Id` fields on the events the slice writes. If there is only one, that is the partition, whatever the slice reads.
 2. **Minus references.** Remove every id that appears on a consumed arm whose event type *another* slice writes. `AddProduct` reads `CategoryAdded({categoryId})`, which `AddCategory` writes, so `categoryId` is a reference to another entity, not the product's own id.
-3. **What is left.** Exactly one id left is the partition. Several left means inference cannot choose, and you add `@partitionTag` (see [below](#when-you-still-need-partitiontag)).
+3. **What is left.** Exactly one id left is the partition. Several left go to the chapter.
+4. **The chapter breaks a tie.** A chapter is the folder above the kind folder (`src/Order/StateChange/PlaceOrder.res` is in the `Order` chapter). Of the ids left, the framework keeps those that *every* event written in the chapter carries. `PlaceOrder` is left with `orderId` and `customerId`: `customerId` refers to the customer, but nothing `PlaceOrder` reads shows that. Every event under `Order/` carries `orderId`, and only some carry `customerId`, so the partition is `orderId`. If that still leaves several ids — or the slice sits in no chapter — you add `@partitionTag` (see [below](#when-you-still-need-partitiontag)).
 
 If step 2 removes *every* id, one more rule applies: an id is given back when every other-slice arm carrying it comes from a slice partitioned by that same id. Reading your own entity's events by its id is identity, not a reference — which is why `ChangeProductName` may read `ProductAdded({productId, name})`. This rule depends on other slices' partitions, so the framework repeats it across the plugin until nothing changes. Slices that read each other's events, such as `ShipOrder` and `CancelOrder`, resolve this way.
 
 The same derivation drives storage, the fence, the command envelope id and the decision read, so they cannot disagree.
 
+The chapter only breaks ties; it never overrides the steps before it. But where it does decide, the folder is part of the storage decision: moving such a slice into another chapter can change where its new events are stored, away from the ones already written. The golden `schema/dcb-scope.json` in the examples (`pnpm run check:dcb-scope`) shows that as a diff; without one, add `@partitionTag` to slices you expect to move.
+
 ### When you still need `@partitionTag`
 
-Inference cannot decide in two cases:
+Inference cannot decide when several ids are left and the chapter does not settle it:
 
-- **A join.** `RecordProductDemand` writes events carrying `productId` and `orderId`. Both are the slice's own ids. Only the domain says demand is counted per product.
-- **A reference nothing reveals.** `PlaceOrder` writes `OrderPlaced` carrying `orderId` and `customerId`. `customerId` refers to the customer, but `PlaceOrder` reads no event that carries it, so nothing marks it as a reference and both ids remain candidates.
+- **A join.** `RecordProductDemand` writes events carrying `productId` and `orderId`. Both are the slice's own ids, and every event in its `ProductDemand` chapter carries both. Only the domain says demand is counted per product.
+- **A reference nothing reveals, outside a chapter.** A slice like `PlaceOrder` whose reads never show `customerId` to be a reference, placed directly under `src/StateChange/`, has no chapter to break the tie.
 
 Mark the partition on the **produced event** (`type event`) — not on the command, where it has no effect:
 
@@ -492,7 +495,7 @@ In files where `@@reventless.dcbTags` is not active (e.g. event log type definit
 Without the annotation, the build stops and names the slice:
 
 ```text
-DCB partition key cannot be inferred — PlaceOrder: multiple candidate partition keys (orderId, customerId) — add an explicit @partitionTag
+DCB partition key cannot be inferred — RecordProductDemand: multiple candidate partition keys (orderId, productId) — add an explicit @partitionTag. The ProductDemand chapter does not decide: the ids every event in it carries are [orderId, productId].
 ```
 
 The other failure reads `… <Slice>: no own partition key — every produced *Id is read from a foreign producer (OrderPlaced declares orderId; …)`. That is almost always a consumed lifecycle arm declaring the id the slice is partitioned by. Remove the field from the consumed arm (write the bare `| OrderPlaced`); add `@partitionTag` only if the slice really is a pure join.

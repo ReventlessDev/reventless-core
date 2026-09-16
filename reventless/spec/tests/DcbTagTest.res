@@ -142,3 +142,26 @@ describe("DcbTag.deriveEffectiveScope (one unresolvable slice degrades the bound
     )->toEqual(true)
   )
 })
+
+describe("DcbTag.chapterOfModuleUrl", () => {
+  testSync("reads the chapter off a package specifier", () =>
+    expect(
+      DcbTag.chapterOfModuleUrl(
+        "@reventlessdev/online-shop-hybrid-ordering/src/Order/StateChange/PlaceOrder.res.mjs",
+      ),
+    )->toEqual(Some("Order"))
+  )
+  testSync("uses the last src/ of a file URL", () =>
+    expect(
+      DcbTag.chapterOfModuleUrl(
+        "file:///home/dev/src/shop/ordering/src/Order/StateChange/X.res.mjs",
+      ),
+    )->toEqual(Some("Order"))
+  )
+  testSync("a slice directly under its kind folder has no chapter", () =>
+    expect(DcbTag.chapterOfModuleUrl("@x/plugin/src/StateChange/PlaceOrder.res.mjs"))->toEqual(None)
+  )
+  testSync("a URL with no src/ has no chapter", () =>
+    expect(DcbTag.chapterOfModuleUrl("ep-test://EpTestSlice"))->toEqual(None)
+  )
+})

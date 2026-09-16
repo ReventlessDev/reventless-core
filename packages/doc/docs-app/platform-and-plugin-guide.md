@@ -824,7 +824,7 @@ let decide = (state, command) =>
 
 Because `AddProduct.res` is in a `StateChange/` folder, `@@reventless.spec` automatically applies DCB tag injection — no `@@reventless.dcbTags` annotation and no manual `@s.matches` are needed. The PPX auto-injects `@s.matches(Reventless.DcbTag.string)` on all `*Id: string`, `*Id: array<string>`, and `*Ids: array<string>` fields in `@schema` types (`command`, `event`, and `consumedEvent`).
 
-`AddProduct` needs no partition annotation either. Its event carries `productId` and `categoryId`, but `categoryId` is read from `CategoryAdded`, which another slice writes, so it is a reference and `productId` is left as the partition key. Add `@partitionTag` on the produced event only when inference cannot choose — as `PlaceOrder.res` does, whose `OrderPlaced` carries `orderId` and `customerId` and whose reads never show `customerId` to be a reference (see [Event Log Partitioning](dcb-usage.md#event-log-partitioning)).
+`AddProduct` needs no partition annotation either. Its event carries `productId` and `categoryId`, but `categoryId` is read from `CategoryAdded`, which another slice writes, so it is a reference and `productId` is left as the partition key. `PlaceOrder` needs none either: its `OrderPlaced` carries `orderId` and `customerId`, and although nothing it reads shows `customerId` to be a reference, every event in its `Order` chapter carries `orderId`, which breaks the tie. Add `@partitionTag` on the produced event only when inference still cannot choose, as `RecordProductDemand.res` does (see [Event Log Partitioning](dcb-usage.md#event-log-partitioning)).
 
 The `@@reventless.behavior` PPX opens the spec module so event/command variants resolve unqualified in `evolve`/`decide`. It derives the spec module from the filename (`AddProduct_Behavior.res` → `AddProduct`); use `@@reventless.behavior(SpecName)` to override.
 
@@ -867,7 +867,7 @@ type command =
 
 @schema
 type event =
-  OrderPlaced({@partitionTag orderId: string, customerId: string, productIds: array<string>})
+  OrderPlaced({orderId: string, customerId: string, productIds: array<string>})
 ```
 
 The runtime automatically detects tagged array fields via schema introspection and builds a multi-clause OR query — one clause per scalar tag and one clause per array element:

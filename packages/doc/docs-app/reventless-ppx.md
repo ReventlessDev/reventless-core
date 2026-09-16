@@ -165,7 +165,7 @@ The PPX strips all four attributes from the output AST, so the compiler never se
 
 **`@partitionTag` — when inference cannot choose:**
 
-The framework infers each slice's partition key: the `*Id` fields on the events it writes, minus the ids it reads from another slice's events. A single id left is the partition. You annotate only when inference cannot choose — a **join** such as demand recorded per product *and* order, or a **reference nothing reveals**, such as the customer on an order the slice never reads customer events for. The annotation is read from the produced `event`, never from the command. See [Event Log Partitioning](dcb-usage.md#event-log-partitioning) for the full rules and error messages.
+The framework infers each slice's partition key: the `*Id` fields on the events it writes, minus the ids it reads from another slice's events. A single id left is the partition; when several are left, the one every event in the slice's chapter (`src/<Chapter>/<Kind>/`) carries wins. You annotate only when that still cannot choose — a **join** such as demand recorded per product *and* order, whose chapter's events all carry both. The annotation is read from the produced `event`, never from the command. See [Event Log Partitioning](dcb-usage.md#event-log-partitioning) for the full rules and error messages.
 
 ```rescript
 // A join: productId and orderId are both this slice's own ids. Only the domain

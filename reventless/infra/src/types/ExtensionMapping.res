@@ -230,6 +230,7 @@ module Make = (MappingImpl: Mapping): (
         commandSchema: Delegate.commandSchema->S.castToUnknown,
         consumedEventSchema: S.unknown,
         eventSchema: Delegate.eventSchema->S.castToUnknown,
+        moduleUrl: Delegate.moduleUrl,
       })
       derivedPartitionTagLazy := Some(d)
       d

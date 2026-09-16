@@ -67,6 +67,29 @@ function resolvePartitions(slices) {
       }
     });
   });
+  let chapterKeys = {};
+  slices.forEach(s => Stdlib_Option.forEach(s.chapter, chapter => {
+    let events = s.produced.filter(e => e.idFields.length !== 0);
+    events.forEach(e => {
+      let keys = e.idFields.map(tagKeyOf);
+      let prev = chapterKeys[chapter];
+      let shared = prev !== undefined ? prev.filter(k => keys.includes(k)) : dedupSorted(keys);
+      chapterKeys[chapter] = shared;
+    });
+  }));
+  let chapterKeysOf = s => Stdlib_Option.flatMap(s.chapter, c => chapterKeys[c]);
+  let byChapter = (s, candidates) => {
+    let keys = chapterKeysOf(s);
+    if (keys === undefined) {
+      return candidates;
+    }
+    let match = candidates.filter(k => keys.includes(k));
+    if (match.length !== 1) {
+      return candidates;
+    } else {
+      return [match[0]];
+    }
+  };
   let foreignArms = s => {
     let own = new Set();
     s.produced.forEach(e => {
@@ -127,10 +150,10 @@ function resolvePartitions(slices) {
     }
     let remaining = subtracted(s);
     if (remaining.length !== 0) {
-      return remaining;
+      return byChapter(s, remaining);
     }
     let blocked = blockersOf(s, known).map(param => param[0]);
-    return producedKeys(s).filter(k => !blocked.includes(k));
+    return byChapter(s, producedKeys(s).filter(k => !blocked.includes(k)));
   };
   let pass = known => {
     let next = {};
@@ -187,9 +210,12 @@ function resolvePartitions(slices) {
     let len = candidates.length;
     if (len !== 1) {
       if (len !== 0) {
+        let match = s.chapter;
+        let match$1 = chapterKeysOf(s);
+        let chapterNote = match !== undefined && match$1 !== undefined ? ` The ` + match + ` chapter does not decide: the ids every event in it carries are [` + match$1.join(", ") + `].` : "";
         ambiguities.push([
           s.sliceName,
-          `multiple candidate partition keys (` + candidates.join(", ") + `) — add an explicit @partitionTag`
+          `multiple candidate partition keys (` + candidates.join(", ") + `) — add an explicit @partitionTag.` + chapterNote
         ]);
         return;
       }

@@ -406,7 +406,7 @@ function renderComposition(config, resolved, componentChapters, hasLifecycleMode
     lines.push("");
     lines.push("let dcbSliceSchemas: array<Reventless.DcbTag.sliceSchemas> = [");
     resolved.stateChangeSlices.forEach(stem => {
-      lines.push("  {" + (`name: ` + stem + `.name, `) + (`commandSchema: ` + stem + `.commandSchema->S.castToUnknown, `) + (`consumedEventSchema: ` + stem + `.consumedEventSchema->S.castToUnknown, `) + (`eventSchema: ` + stem + `.eventSchema->S.castToUnknown`) + "},");
+      lines.push("  {" + (`name: ` + stem + `.name, `) + (`commandSchema: ` + stem + `.commandSchema->S.castToUnknown, `) + (`consumedEventSchema: ` + stem + `.consumedEventSchema->S.castToUnknown, `) + (`eventSchema: ` + stem + `.eventSchema->S.castToUnknown, `) + (`moduleUrl: ` + stem + `.moduleUrl`) + "},");
     });
     lines.push("]");
   }

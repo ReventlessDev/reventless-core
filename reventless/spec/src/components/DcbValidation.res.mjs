@@ -438,17 +438,12 @@ function validatePartitionHintsVsInference(shapes) {
       return;
     }
     let unaided = DcbScopeInference$Reventless.resolvePartitions(shapes.map(o => {
-      if (o.sliceName === s.sliceName) {
-        return {
-          sliceName: o.sliceName,
-          command: o.command,
-          consumed: o.consumed,
-          produced: o.produced,
-          partitionHint: undefined
-        };
-      } else {
+      if (o.sliceName !== s.sliceName) {
         return o;
       }
+      let newrecord = {...o};
+      newrecord.partitionHint = undefined;
+      return newrecord;
     }));
     let inferred = unaided.partitionBySlice[s.sliceName];
     if (inferred !== undefined) {

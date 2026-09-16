@@ -86,6 +86,7 @@ module Make = (
         commandSchema: Spec.commandSchema->S.castToUnknown,
         consumedEventSchema: Spec.consumedEventSchema->S.castToUnknown,
         eventSchema: Spec.eventSchema->S.castToUnknown,
+        moduleUrl: Spec.moduleUrl,
       }),
     ) catch {
     | _ => None

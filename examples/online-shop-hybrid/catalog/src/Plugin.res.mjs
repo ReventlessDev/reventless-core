@@ -50,85 +50,99 @@ let dcbSliceSchemas = [
     name: AddCategory$CatalogPlugin.name,
     commandSchema: AddCategory$CatalogPlugin.commandSchema,
     consumedEventSchema: AddCategory$CatalogPlugin.consumedEventSchema,
-    eventSchema: AddCategory$CatalogPlugin.eventSchema
+    eventSchema: AddCategory$CatalogPlugin.eventSchema,
+    moduleUrl: AddCategory$CatalogPlugin.moduleUrl
   },
   {
     name: AddProduct$CatalogPlugin.name,
     commandSchema: AddProduct$CatalogPlugin.commandSchema,
     consumedEventSchema: AddProduct$CatalogPlugin.consumedEventSchema,
-    eventSchema: AddProduct$CatalogPlugin.eventSchema
+    eventSchema: AddProduct$CatalogPlugin.eventSchema,
+    moduleUrl: AddProduct$CatalogPlugin.moduleUrl
   },
   {
     name: ArchiveCategory$CatalogPlugin.name,
     commandSchema: ArchiveCategory$CatalogPlugin.commandSchema,
     consumedEventSchema: ArchiveCategory$CatalogPlugin.consumedEventSchema,
-    eventSchema: ArchiveCategory$CatalogPlugin.eventSchema
+    eventSchema: ArchiveCategory$CatalogPlugin.eventSchema,
+    moduleUrl: ArchiveCategory$CatalogPlugin.moduleUrl
   },
   {
     name: ArchiveProduct$CatalogPlugin.name,
     commandSchema: ArchiveProduct$CatalogPlugin.commandSchema,
     consumedEventSchema: ArchiveProduct$CatalogPlugin.consumedEventSchema,
-    eventSchema: ArchiveProduct$CatalogPlugin.eventSchema
+    eventSchema: ArchiveProduct$CatalogPlugin.eventSchema,
+    moduleUrl: ArchiveProduct$CatalogPlugin.moduleUrl
   },
   {
     name: CategoryImages$CatalogPlugin.name,
     commandSchema: CategoryImages$CatalogPlugin.commandSchema,
     consumedEventSchema: CategoryImages$CatalogPlugin.consumedEventSchema,
-    eventSchema: CategoryImages$CatalogPlugin.eventSchema
+    eventSchema: CategoryImages$CatalogPlugin.eventSchema,
+    moduleUrl: CategoryImages$CatalogPlugin.moduleUrl
   },
   {
     name: ChangeProductDescription$CatalogPlugin.name,
     commandSchema: ChangeProductDescription$CatalogPlugin.commandSchema,
     consumedEventSchema: ChangeProductDescription$CatalogPlugin.consumedEventSchema,
-    eventSchema: ChangeProductDescription$CatalogPlugin.eventSchema
+    eventSchema: ChangeProductDescription$CatalogPlugin.eventSchema,
+    moduleUrl: ChangeProductDescription$CatalogPlugin.moduleUrl
   },
   {
     name: ChangeProductName$CatalogPlugin.name,
     commandSchema: ChangeProductName$CatalogPlugin.commandSchema,
     consumedEventSchema: ChangeProductName$CatalogPlugin.consumedEventSchema,
-    eventSchema: ChangeProductName$CatalogPlugin.eventSchema
+    eventSchema: ChangeProductName$CatalogPlugin.eventSchema,
+    moduleUrl: ChangeProductName$CatalogPlugin.moduleUrl
   },
   {
     name: ChangeProductPrice$CatalogPlugin.name,
     commandSchema: ChangeProductPrice$CatalogPlugin.commandSchema,
     consumedEventSchema: ChangeProductPrice$CatalogPlugin.consumedEventSchema,
-    eventSchema: ChangeProductPrice$CatalogPlugin.eventSchema
+    eventSchema: ChangeProductPrice$CatalogPlugin.eventSchema,
+    moduleUrl: ChangeProductPrice$CatalogPlugin.moduleUrl
   },
   {
     name: DiscontinueProduct$CatalogPlugin.name,
     commandSchema: DiscontinueProduct$CatalogPlugin.commandSchema,
     consumedEventSchema: DiscontinueProduct$CatalogPlugin.consumedEventSchema,
-    eventSchema: DiscontinueProduct$CatalogPlugin.eventSchema
+    eventSchema: DiscontinueProduct$CatalogPlugin.eventSchema,
+    moduleUrl: DiscontinueProduct$CatalogPlugin.moduleUrl
   },
   {
     name: ProductImages$CatalogPlugin.name,
     commandSchema: ProductImages$CatalogPlugin.commandSchema,
     consumedEventSchema: ProductImages$CatalogPlugin.consumedEventSchema,
-    eventSchema: ProductImages$CatalogPlugin.eventSchema
+    eventSchema: ProductImages$CatalogPlugin.eventSchema,
+    moduleUrl: ProductImages$CatalogPlugin.moduleUrl
   },
   {
     name: RecordProductDemand$CatalogPlugin.name,
     commandSchema: RecordProductDemand$CatalogPlugin.commandSchema,
     consumedEventSchema: RecordProductDemand$CatalogPlugin.consumedEventSchema,
-    eventSchema: RecordProductDemand$CatalogPlugin.eventSchema
+    eventSchema: RecordProductDemand$CatalogPlugin.eventSchema,
+    moduleUrl: RecordProductDemand$CatalogPlugin.moduleUrl
   },
   {
     name: RenameCategory$CatalogPlugin.name,
     commandSchema: RenameCategory$CatalogPlugin.commandSchema,
     consumedEventSchema: RenameCategory$CatalogPlugin.consumedEventSchema,
-    eventSchema: RenameCategory$CatalogPlugin.eventSchema
+    eventSchema: RenameCategory$CatalogPlugin.eventSchema,
+    moduleUrl: RenameCategory$CatalogPlugin.moduleUrl
   },
   {
     name: UnarchiveCategory$CatalogPlugin.name,
     commandSchema: UnarchiveCategory$CatalogPlugin.commandSchema,
     consumedEventSchema: UnarchiveCategory$CatalogPlugin.consumedEventSchema,
-    eventSchema: UnarchiveCategory$CatalogPlugin.eventSchema
+    eventSchema: UnarchiveCategory$CatalogPlugin.eventSchema,
+    moduleUrl: UnarchiveCategory$CatalogPlugin.moduleUrl
   },
   {
     name: UnarchiveProduct$CatalogPlugin.name,
     commandSchema: UnarchiveProduct$CatalogPlugin.commandSchema,
     consumedEventSchema: UnarchiveProduct$CatalogPlugin.consumedEventSchema,
-    eventSchema: UnarchiveProduct$CatalogPlugin.eventSchema
+    eventSchema: UnarchiveProduct$CatalogPlugin.eventSchema,
+    moduleUrl: UnarchiveProduct$CatalogPlugin.moduleUrl
   }
 ];
 

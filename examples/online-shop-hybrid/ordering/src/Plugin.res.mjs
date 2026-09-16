@@ -52,43 +52,50 @@ let dcbSliceSchemas = [
     name: CancelOrder$OrderingPlugin.name,
     commandSchema: CancelOrder$OrderingPlugin.commandSchema,
     consumedEventSchema: CancelOrder$OrderingPlugin.consumedEventSchema,
-    eventSchema: CancelOrder$OrderingPlugin.eventSchema
+    eventSchema: CancelOrder$OrderingPlugin.eventSchema,
+    moduleUrl: CancelOrder$OrderingPlugin.moduleUrl
   },
   {
     name: EmailVerificationChallenges$OrderingPlugin.name,
     commandSchema: EmailVerificationChallenges$OrderingPlugin.commandSchema,
     consumedEventSchema: EmailVerificationChallenges$OrderingPlugin.consumedEventSchema,
-    eventSchema: EmailVerificationChallenges$OrderingPlugin.eventSchema
+    eventSchema: EmailVerificationChallenges$OrderingPlugin.eventSchema,
+    moduleUrl: EmailVerificationChallenges$OrderingPlugin.moduleUrl
   },
   {
     name: NotificationPreferences$OrderingPlugin.name,
     commandSchema: NotificationPreferences$OrderingPlugin.commandSchema,
     consumedEventSchema: NotificationPreferences$OrderingPlugin.consumedEventSchema,
-    eventSchema: NotificationPreferences$OrderingPlugin.eventSchema
+    eventSchema: NotificationPreferences$OrderingPlugin.eventSchema,
+    moduleUrl: NotificationPreferences$OrderingPlugin.moduleUrl
   },
   {
     name: NotificationSourceClaims$OrderingPlugin.name,
     commandSchema: NotificationSourceClaims$OrderingPlugin.commandSchema,
     consumedEventSchema: NotificationSourceClaims$OrderingPlugin.consumedEventSchema,
-    eventSchema: NotificationSourceClaims$OrderingPlugin.eventSchema
+    eventSchema: NotificationSourceClaims$OrderingPlugin.eventSchema,
+    moduleUrl: NotificationSourceClaims$OrderingPlugin.moduleUrl
   },
   {
     name: PlaceOrder$OrderingPlugin.name,
     commandSchema: PlaceOrder$OrderingPlugin.commandSchema,
     consumedEventSchema: PlaceOrder$OrderingPlugin.consumedEventSchema,
-    eventSchema: PlaceOrder$OrderingPlugin.eventSchema
+    eventSchema: PlaceOrder$OrderingPlugin.eventSchema,
+    moduleUrl: PlaceOrder$OrderingPlugin.moduleUrl
   },
   {
     name: ShipOrder$OrderingPlugin.name,
     commandSchema: ShipOrder$OrderingPlugin.commandSchema,
     consumedEventSchema: ShipOrder$OrderingPlugin.consumedEventSchema,
-    eventSchema: ShipOrder$OrderingPlugin.eventSchema
+    eventSchema: ShipOrder$OrderingPlugin.eventSchema,
+    moduleUrl: ShipOrder$OrderingPlugin.moduleUrl
   },
   {
     name: SyncCatalogProduct$OrderingPlugin.name,
     commandSchema: SyncCatalogProduct$OrderingPlugin.commandSchema,
     consumedEventSchema: SyncCatalogProduct$OrderingPlugin.consumedEventSchema,
-    eventSchema: SyncCatalogProduct$OrderingPlugin.eventSchema
+    eventSchema: SyncCatalogProduct$OrderingPlugin.eventSchema,
+    moduleUrl: SyncCatalogProduct$OrderingPlugin.moduleUrl
   }
 ];
 

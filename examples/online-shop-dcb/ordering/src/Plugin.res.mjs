@@ -39,49 +39,57 @@ let dcbSliceSchemas = [
     name: CancelOrder$OrderingPlugin.name,
     commandSchema: CancelOrder$OrderingPlugin.commandSchema,
     consumedEventSchema: CancelOrder$OrderingPlugin.consumedEventSchema,
-    eventSchema: CancelOrder$OrderingPlugin.eventSchema
+    eventSchema: CancelOrder$OrderingPlugin.eventSchema,
+    moduleUrl: CancelOrder$OrderingPlugin.moduleUrl
   },
   {
     name: ChangeAddress$OrderingPlugin.name,
     commandSchema: ChangeAddress$OrderingPlugin.commandSchema,
     consumedEventSchema: ChangeAddress$OrderingPlugin.consumedEventSchema,
-    eventSchema: ChangeAddress$OrderingPlugin.eventSchema
+    eventSchema: ChangeAddress$OrderingPlugin.eventSchema,
+    moduleUrl: ChangeAddress$OrderingPlugin.moduleUrl
   },
   {
     name: ChangeEmail$OrderingPlugin.name,
     commandSchema: ChangeEmail$OrderingPlugin.commandSchema,
     consumedEventSchema: ChangeEmail$OrderingPlugin.consumedEventSchema,
-    eventSchema: ChangeEmail$OrderingPlugin.eventSchema
+    eventSchema: ChangeEmail$OrderingPlugin.eventSchema,
+    moduleUrl: ChangeEmail$OrderingPlugin.moduleUrl
   },
   {
     name: DeactivateCustomer$OrderingPlugin.name,
     commandSchema: DeactivateCustomer$OrderingPlugin.commandSchema,
     consumedEventSchema: DeactivateCustomer$OrderingPlugin.consumedEventSchema,
-    eventSchema: DeactivateCustomer$OrderingPlugin.eventSchema
+    eventSchema: DeactivateCustomer$OrderingPlugin.eventSchema,
+    moduleUrl: DeactivateCustomer$OrderingPlugin.moduleUrl
   },
   {
     name: PlaceOrder$OrderingPlugin.name,
     commandSchema: PlaceOrder$OrderingPlugin.commandSchema,
     consumedEventSchema: PlaceOrder$OrderingPlugin.consumedEventSchema,
-    eventSchema: PlaceOrder$OrderingPlugin.eventSchema
+    eventSchema: PlaceOrder$OrderingPlugin.eventSchema,
+    moduleUrl: PlaceOrder$OrderingPlugin.moduleUrl
   },
   {
     name: RegisterCustomer$OrderingPlugin.name,
     commandSchema: RegisterCustomer$OrderingPlugin.commandSchema,
     consumedEventSchema: RegisterCustomer$OrderingPlugin.consumedEventSchema,
-    eventSchema: RegisterCustomer$OrderingPlugin.eventSchema
+    eventSchema: RegisterCustomer$OrderingPlugin.eventSchema,
+    moduleUrl: RegisterCustomer$OrderingPlugin.moduleUrl
   },
   {
     name: ShipOrder$OrderingPlugin.name,
     commandSchema: ShipOrder$OrderingPlugin.commandSchema,
     consumedEventSchema: ShipOrder$OrderingPlugin.consumedEventSchema,
-    eventSchema: ShipOrder$OrderingPlugin.eventSchema
+    eventSchema: ShipOrder$OrderingPlugin.eventSchema,
+    moduleUrl: ShipOrder$OrderingPlugin.moduleUrl
   },
   {
     name: SyncCatalogProduct$OrderingPlugin.name,
     commandSchema: SyncCatalogProduct$OrderingPlugin.commandSchema,
     consumedEventSchema: SyncCatalogProduct$OrderingPlugin.consumedEventSchema,
-    eventSchema: SyncCatalogProduct$OrderingPlugin.eventSchema
+    eventSchema: SyncCatalogProduct$OrderingPlugin.eventSchema,
+    moduleUrl: SyncCatalogProduct$OrderingPlugin.moduleUrl
   }
 ];
 

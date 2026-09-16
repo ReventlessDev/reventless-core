@@ -638,7 +638,8 @@ let renderComposition = (
         `name: ${stem}.name, ` ++
         `commandSchema: ${stem}.commandSchema->S.castToUnknown, ` ++
         `consumedEventSchema: ${stem}.consumedEventSchema->S.castToUnknown, ` ++
-        `eventSchema: ${stem}.eventSchema->S.castToUnknown` ++ "},",
+        `eventSchema: ${stem}.eventSchema->S.castToUnknown, ` ++
+        `moduleUrl: ${stem}.moduleUrl` ++ "},",
       )
     )
     lines->Array.push("]")

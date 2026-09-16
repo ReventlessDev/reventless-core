@@ -69,7 +69,8 @@ function Make(MappingImpl) {
       name: Delegate.name,
       commandSchema: Delegate.commandSchema,
       consumedEventSchema: Sury.unknown,
-      eventSchema: Delegate.eventSchema
+      eventSchema: Delegate.eventSchema,
+      moduleUrl: Delegate.moduleUrl
     });
     derivedPartitionTagLazy.contents = d$1;
     return d$1;

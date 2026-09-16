@@ -79,14 +79,7 @@ for (const example of examples) {
     const slices = mod.dcbSliceSchemas
     if (!slices || slices.length === 0) continue
 
-    const shapes = slices.map((s) =>
-      DcbTag.sliceShapeFromSchemas(
-        s.name,
-        s.commandSchema,
-        s.consumedEventSchema,
-        s.eventSchema,
-      ),
-    )
+    const shapes = slices.map(DcbTag.sliceShape)
     const inferred = Inference.infer(shapes)
     const effective = DcbTag.deriveEffectiveScope(slices)
 

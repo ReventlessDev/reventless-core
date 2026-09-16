@@ -21,6 +21,8 @@ The three rules (over the representation):
    back: one whose every foreign arm comes from a slice partitioned by that same
    key, since reading your own entity's events is identity, not a reference.
    That step depends on other slices' partitions, so it runs to a fixpoint.
+   When several keys are left, the slice's chapter breaks the tie if exactly one
+   of them is carried by every event its chapter writes.
 
 2. **Cross-partition.** A key is cross-partition iff some slice reads it on a
    *foreign* consumed event while partitioned by something else *and* the key is
@@ -53,6 +55,8 @@ type sliceShape = {
   consumed: array<eventShape>,
   produced: array<eventShape>,
   partitionHint: option<string>,
+  /** The chapter the slice sits in (`src/<Chapter>/<Kind>/…`), when it has one. */
+  chapter?: string,
 }
 
 /** Derived scope for one tag key. */
@@ -155,13 +159,21 @@ Rule 1 over a whole boundary.
 1. **Seeds.** A slice whose events carry a single key is partitioned by it, whatever
    it reads; an explicit `@partitionTag` naming a produced key is a seed too.
 2. **Subtraction.** Otherwise, `producedKeys − foreignConsumedKeys`. One key left
-   is the partition; several is an ambiguity only `@partitionTag` resolves.
+   is the partition; several go to the chapter (4), then to `@partitionTag`.
 3. **Give-back.** Only when the subtraction leaves nothing: a key comes back when
    every foreign arm carrying it is produced by a slice partitioned by that key.
    An unseen producer makes the arm a reference. An unresolved producer counts as
    possibly partitioned by any key it writes, which breaks cycles such as two
    slices each reading the other's event; the answer counts only once a further
    pass changes nothing, so that optimism never decides it alone.
+4. **Chapter.** When several keys are left, keep the ones every id-carrying event
+   written in the slice's chapter carries. `PlaceOrder` is left with `orderId` and
+   `customerId`, whose reads never show the customer to be a reference; every
+   event under `Order/` carries `orderId`, and only some carry `customerId`. Only a
+   single survivor decides — a join such as `RecordProductDemand`, whose chapter's
+   events all carry both ids, stays ambiguous. It is a tie-breaker, not a rule:
+   it never overrides a seed, the subtraction or the give-back, and moving a slice
+   to another chapter can change only a partition this step decided.
 
 Applying the give-back everywhere would be wrong: `AddProduct` reads
 `CategoryAdded({categoryId})` from a slice partitioned by `categoryId`, which
@@ -177,6 +189,33 @@ let resolvePartitions = (slices: array<sliceShape>): partitionResolution => {
       }
     })
   )
+  // chapter -> the keys every id-carrying event written in that chapter carries.
+  let chapterKeys = Dict.make()
+  slices->Array.forEach(s =>
+    s.chapter->Option.forEach(chapter => {
+      let events = s.produced->Array.filter(e => e.idFields->Array.length > 0)
+      events->Array.forEach(
+        e => {
+          let keys = e->keysOfEvent
+          let shared = switch chapterKeys->Dict.get(chapter) {
+          | Some(prev) => prev->Array.filter(k => keys->Array.includes(k))
+          | None => dedupSorted(keys)
+          }
+          chapterKeys->Dict.set(chapter, shared)
+        },
+      )
+    })
+  )
+  let chapterKeysOf = (s: sliceShape) => s.chapter->Option.flatMap(c => chapterKeys->Dict.get(c))
+  let byChapter = (s: sliceShape, candidates) =>
+    switch s->chapterKeysOf {
+    | Some(keys) =>
+      switch candidates->Array.filter(k => keys->Array.includes(k)) {
+      | [k] => [k]
+      | _ => candidates
+      }
+    | None => candidates
+    }
   let foreignArms = (s: sliceShape) => {
     let own = Set.make()
     s.produced->Array.forEach(e => own->Set.add(e.eventType))
@@ -223,8 +262,8 @@ let resolvePartitions = (slices: array<sliceShape>): partitionResolution => {
       switch subtracted(s) {
       | [] =>
         let blocked = s->blockersOf(known)->Array.map(((k, _)) => k)
-        producedKeys(s)->Array.filter(k => !(blocked->Array.includes(k)))
-      | remaining => remaining
+        s->byChapter(producedKeys(s)->Array.filter(k => !(blocked->Array.includes(k))))
+      | remaining => s->byChapter(remaining)
       }
     }
 
@@ -282,11 +321,18 @@ let resolvePartitions = (slices: array<sliceShape>): partitionResolution => {
         `no own partition key — every produced *Id is read from a foreign producer (${blame}). If that field is this slice's own partition, remove it from the consumed arm; if the slice really is a pure join, add an explicit @partitionTag`,
       ))
     | many =>
+      let chapterNote = switch (s.chapter, s->chapterKeysOf) {
+      | (Some(chapter), Some(keys)) =>
+        ` The ${chapter} chapter does not decide: the ids every event in it carries are [${keys->Array.join(
+            ", ",
+          )}].`
+      | _ => ""
+      }
       ambiguities->Array.push((
         s.sliceName,
         `multiple candidate partition keys (${many->Array.join(
             ", ",
-          )}) — add an explicit @partitionTag`,
+          )}) — add an explicit @partitionTag.${chapterNote}`,
       ))
     }
   })

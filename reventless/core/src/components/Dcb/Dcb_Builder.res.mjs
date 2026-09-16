@@ -173,7 +173,8 @@ function Make(DcbEventLogStorage) {
         name: Sc.Spec.name,
         commandSchema: Sc.Spec.commandSchema,
         consumedEventSchema: Sc.Spec.consumedEventSchema,
-        eventSchema: Sc.Spec.eventSchema
+        eventSchema: Sc.Spec.eventSchema,
+        moduleUrl: Sc.Spec.moduleUrl
       }));
       let inferenceShapes = sliceSchemas.map(DcbTag$Reventless.sliceShape);
       let hintIssues = DcbValidation$Reventless.validatePartitionHintsVsInference(inferenceShapes);
