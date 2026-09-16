@@ -1,7 +1,7 @@
 # Plan: the online shop from an empty AWS account
 
 **Date:** 2026-09-16
-**Status:** IN PROGRESS — steps 1 to 3 done.
+**Status:** IN PROGRESS — steps 1, 2, 3 and 5 done.
 **Repos:** `reventless-core` only.
 **Based on:** [the analysis of the same name](../analysis/from-an-empty-account-to-a-running-shop.md).
 **Companion plan:** [platform-stack-creates-the-lambda-layer.md](./platform-stack-creates-the-lambda-layer.md).
@@ -250,6 +250,14 @@ deploys as a platform of its own, with no error.
 **Done when.** A plugin stack without `platform:stack` fails with the new message; the
 example files contain no dead settings.
 
+**Done.** Checked first: every `deployPlugin` caller sets `platform:stack`. One
+correction to the analysis: `interstack:dependencies` *was* read —
+`ReventlessInterop.Query.stackEntries` turns each entry into a StackReference —
+but nothing uses what those references return, so the setting still did nothing
+useful; `ordering-aws` drops one StackReference on its next deploy. The reading code
+is public API of `reventless-interop` and stays. All three examples' `main` stack
+files had the wrong project names, not only the hybrid one's.
+
 ## Step 6 — Try-out stacks can be removed in one go
 
 **Why.** To stop accidents, every stack not named `pr-…` gets protected storage
@@ -337,8 +345,9 @@ bakes the manifest, and nobody creates the demo users again.
 
 - The command's name, and the try-out stack name (step 4).
 - How the CI bake job gets `reventless-aws` installed (step 3).
-- Whether any stack that is its own platform also goes through `deployPlugin`
-  (step 5).
+- ~~Whether any stack that is its own platform also goes through `deployPlugin`
+  (step 5).~~ No: every caller, here and in the business repository, is a plugin
+  stack that sets `platform:stack`.
 
 ## Checklist
 
@@ -355,10 +364,10 @@ Step 3  [x] bake-manifest command
 Step 4  [ ] deploy-platform up / down
         [ ] shop:up / shop:down / shop:seed scripts
         [ ] Pulumi.dev.yaml ignored
-Step 5  [ ] getOrganization binding
-        [ ] missing platform:stack is an error for plugins
-        [ ] Pulumi.main.yaml project names fixed
-        [ ] interstack:dependencies removed
+Step 5  [x] getOrganization binding
+        [x] missing platform:stack is an error for plugins
+        [x] Pulumi.main.yaml project names fixed
+        [x] interstack:dependencies removed
 Step 6  [ ] reventless:disposable setting
 Step 7  [ ] helper scripts follow the Pulumi login
         [ ] verify-subscriptions.mjs removed

@@ -1327,6 +1327,9 @@ function MakeWithConfig(Config) {
   let startServers = () => {};
   let deployPlugin = (plugin, apiTargetOpt) => {
     let apiTarget = apiTargetOpt !== undefined ? apiTargetOpt : "Domain";
+    if (Stdlib_Option.isNone(platformStackRef)) {
+      Stdlib_JsError.throwWithMessage(`This plugin stack has no platform:stack setting, so it cannot find its platform. Set it to the platform's stack: pulumi config set platform:stack ` + (Pulumi.getOrganization() + `/<platform project>/` + Pulumi.getStack()));
+    }
     let tmp;
     tmp = apiTarget === "Domain" ? "Domain" : "Platform";
     log.info("Platform:deployPlugin", undefined, `target=` + tmp);
@@ -2706,6 +2709,9 @@ function Make($star) {
   let startServers = () => {};
   let deployPlugin = (plugin, apiTargetOpt) => {
     let apiTarget = apiTargetOpt !== undefined ? apiTargetOpt : "Domain";
+    if (Stdlib_Option.isNone(platformStackRef)) {
+      Stdlib_JsError.throwWithMessage(`This plugin stack has no platform:stack setting, so it cannot find its platform. Set it to the platform's stack: pulumi config set platform:stack ` + (Pulumi.getOrganization() + `/<platform project>/` + Pulumi.getStack()));
+    }
     let tmp;
     tmp = apiTarget === "Domain" ? "Domain" : "Platform";
     log.info("Platform:deployPlugin", undefined, `target=` + tmp);

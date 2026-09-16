@@ -113,9 +113,6 @@ which platform stack it belongs to, and which other plugin stacks it depends on:
 config:
   aws:region: eu-west-1
   platform:stack: <your-pulumi-org>/my-app-platform-aws/alpha
-  interstack:
-    dependencies:
-      - <your-pulumi-org>/my-app-catalog-aws/alpha
 ```
 
 Stack names are `<org>/<project>/<stack>`. The

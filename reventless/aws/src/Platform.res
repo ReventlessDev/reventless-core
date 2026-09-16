@@ -2529,6 +2529,15 @@ module MakeWithConfig = (
   let startServers = () => ()
 
   let deployPlugin = (~plugin: module(PluginMaker), ~apiTarget=Domain) => {
+    // Without the setting the plugin used to deploy as a platform of its own,
+    // with no error, and never register with the real one.
+    if platformStackRef->Option.isNone {
+      JsError.throwWithMessage(
+        `This plugin stack has no platform:stack setting, so it cannot find its platform. ` ++
+        `Set it to the platform's stack: pulumi config set platform:stack ` ++
+        `${Pulumi.Pulumi.getOrganization()}/<platform project>/${Pulumi.Pulumi.getStackName()}`,
+      )
+    }
     log.info(
       ~comp="Platform:deployPlugin",
       `target=${switch apiTarget {

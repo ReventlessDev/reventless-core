@@ -94,7 +94,7 @@ No platform redeployment is needed when plugins change.
 - When a plugin disconnects, its fragment is removed and the schema is updated.
 
 **Cross-plugin:**
-- Plugins that consume another plugin's extension point read that plugin's exported EP data via StackReference (`interstack:dependencies`).
+- A plugin that consumes another plugin's extension point needs no stack setting for it. The two are connected at runtime, through the platform, once both have registered.
 
 ### Deployment order
 
@@ -271,9 +271,6 @@ config:
 config:
   aws:region: eu-west-1
   platform:stack: org/my-app-platform/alpha
-  interstack:
-    dependencies:
-      - org/my-app-catalog/alpha
 ```
 
 The branch name determines the environment: push to `alpha` uses `Pulumi.alpha.yaml`, push to `main` uses `Pulumi.main.yaml`. If no matching file exists, no deployment occurs.
@@ -552,16 +549,13 @@ platform:
 
 **Each repo calls the reusable workflow independently.** Push to the catalog repo triggers catalog's workflow. Push to the platform repo triggers the platform's workflow. They are independent CI pipelines.
 
-**Cross-plugin StackReferences work across repos.** `interstack:dependencies` and `platform:stack` are Pulumi stack names — they reference stacks by name, not by repo. Ordering in repo B can reference catalog in repo A's stack:
+**The platform reference works across repos.** `platform:stack` is a Pulumi stack name — it references a stack by name, not by repo. Ordering in repo B finds the platform deployed from repo A:
 
 ```yaml
 # repo: my-org/ordering — ordering-aws/Pulumi.alpha.yaml
 config:
   aws:region: eu-west-1
   platform:stack: myorg/my-app-platform/alpha
-  interstack:
-    dependencies:
-      - myorg/my-app-catalog/alpha
 ```
 
 ### Platform repo and local development
@@ -581,7 +575,7 @@ The platform repo contains `platform/` for the local dev server. It depends on a
 ### What stays identical
 
 - Pulumi stack structure (platform + per-plugin stacks)
-- `platform:stack` and `interstack:dependencies` config
+- `platform:stack` config
 - Runtime schema registration via PluginExtensionPoint
 - The reusable workflow (called from each repo)
 - Deployment order (platform first, then plugins)
@@ -600,19 +594,6 @@ config:
 
 The format is `<pulumi-org>/<project-name>/<stack-name>`. The stack name matches the branch/environment name.
 
-### `interstack:dependencies` -- cross-plugin StackReferences
-
-When a plugin consumes another plugin's extension point (e.g., ordering subscribes to catalog events), it needs a StackReference to that plugin:
-
-```yaml
-config:
-  interstack:
-    dependencies:
-      - org/my-app-catalog/alpha
-```
-
-Multiple dependencies are supported as a YAML list. The ordering plugin reads the catalog plugin's exported `_interopMeta` to resolve extension point bindings at deploy time.
-
 ### Environment-specific configuration
 
 Each environment gets its own `Pulumi.<env>.yaml`. Common differences between environments:
@@ -621,7 +602,6 @@ Each environment gets its own `Pulumi.<env>.yaml`. Common differences between en
 |---|---|---|
 | `aws:region` | `eu-west-1` | `eu-west-1` |
 | `platform:stack` | `org/my-app-platform/alpha` | `org/my-app-platform/main` |
-| `interstack:dependencies` | `org/.../alpha` | `org/.../main` |
 
 Add custom config keys per environment for Lambda memory, DynamoDB capacity, or feature flags:
 
@@ -694,7 +674,7 @@ Or push to the `alpha` branch and let GitHub Actions handle the ordering automat
      path: shipping-aws
      depends-on: []
    ```
-5. If the plugin consumes another plugin's extension point, add `depends-on` and `interstack:dependencies`.
+5. If the plugin consumes another plugin's extension point, add `depends-on`.
 6. Commit and push. The workflow deploys the plugin. At runtime, the plugin connects to the PluginExtensionPoint and its schema fragment is added to the unified API.
 
 No platform redeployment is needed.
@@ -715,14 +695,8 @@ At runtime, the disconnect event removes the plugin's schema fragment from the u
 When plugin B subscribes to plugin A's extension point:
 
 1. Plugin A exports its extension points as stack outputs (handled automatically by `deployPlugin`'s `_interopMeta` export).
-2. Plugin B declares a dependency on plugin A in `deploy-manifest.yaml` (`depends-on: [pluginA]`).
-3. Plugin B's `Pulumi.<env>.yaml` includes a StackReference to plugin A:
-   ```yaml
-   interstack:
-     dependencies:
-       - org/my-app-pluginA/alpha
-   ```
-4. At deploy time, plugin B reads plugin A's outputs via StackReference and wires the extension binding.
+2. Plugin B declares a dependency on plugin A in `deploy-manifest.yaml` (`depends-on: [pluginA]`), so A deploys first.
+3. At runtime, once both have registered with the platform, B's extension is connected to A's extension point. Plugin B's stack needs no setting naming plugin A.
 
 ## 8. API Functions
 

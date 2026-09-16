@@ -70,14 +70,12 @@ config:
 config:
   aws:region: eu-west-1
   platform:stack: <your-pulumi-org>/online-shop-hybrid-platform-aws/alpha
-  interstack:
-    dependencies:
-      - <your-pulumi-org>/online-shop-hybrid-catalog-aws/alpha
 ```
 
-`platform:stack` and `interstack:dependencies` are Pulumi stack names of the form
-`<org>/<project>/<stack>` — the `<stack>` segment matches your branch/environment
-(`alpha` here).
+`platform:stack` is a Pulumi stack name of the form `<org>/<project>/<stack>` —
+the `<stack>` segment matches your branch/environment (`alpha` here). A plugin
+stack without it stops with an error rather than deploying as a platform of its
+own.
 
 ## Step 2 — Identity: auto-provision or bring your own
 

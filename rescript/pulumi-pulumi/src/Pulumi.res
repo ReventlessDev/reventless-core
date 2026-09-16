@@ -5,6 +5,11 @@ external getStackName: unit => string = "getStack"
 @module("@pulumi/pulumi")
 external getProjectName: unit => string = "getProject"
 
+/** The organization the stack belongs to — the first segment of a stack name
+    `<organization>/<project>/<stack>`. `organization` on a local or S3 backend. */
+@module("@pulumi/pulumi")
+external getOrganization: unit => string = "getOrganization"
+
 // True during `pulumi preview` (dry run). Guard deploy-time side effects (e.g.
 // one-shot SQS sends inside Output.apply) so they only run on a real `pulumi up`.
 @module("@pulumi/pulumi/runtime/index.js")
