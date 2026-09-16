@@ -213,8 +213,7 @@ async function openSubscription(endpoint, idToken, channel) {
 
 async function run() {
   console.log("\nVerifying client-publishable Events channels\n");
-  let url = Seed_Prompt$ReventlessSeed.envValue("SEED_PULUMI_BACKEND");
-  let backend = url !== undefined ? url : "https://api.pulumi.com";
+  let backend = Seed_Prompt$ReventlessSeed.envValue("SEED_PULUMI_BACKEND");
   let stack = await ReventlessSeedAws.resolveStack(".", backend, Seed_Prompt$ReventlessSeed.envValue("SEED_STACK"));
   let outputs = ReventlessSeedAws.stackOutputs(".", backend, stack);
   let u = Stdlib_Option.flatMap(field(outputs, "hostShellUrl"), asString);

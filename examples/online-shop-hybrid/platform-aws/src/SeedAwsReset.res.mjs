@@ -22,7 +22,7 @@ let targets = [
   }
 ];
 
-ReventlessSeedAws_Reset.run(undefined, "https://api.pulumi.com", targets, undefined);
+ReventlessSeedAws_Reset.run(undefined, undefined, targets, undefined);
 
 export {
   targets,

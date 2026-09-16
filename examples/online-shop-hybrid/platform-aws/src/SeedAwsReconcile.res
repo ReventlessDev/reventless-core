@@ -24,4 +24,4 @@ let targets: array<ReventlessSeedAws_Reset.target> = [
   {projectDir: ".", label: "platform", group: Platform},
 ]
 
-ReventlessSeedAws_Reconcile.run(~backend="https://api.pulumi.com", ~targets, ())
+ReventlessSeedAws_Reconcile.run(~targets, ())

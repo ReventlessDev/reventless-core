@@ -17,9 +17,8 @@
 // REVENTLESS_WIPE_CONFIRM=<stack>). AWS auth is the ambient credential chain
 // (env / profile / SSO), not the Cognito login the seed uses — so no password.
 //
-// The project dirs are relative to this platform-aws dir (the seed cwd); the
-// backend pin matches the seed script beside it. AWS credentials come from the
-// ambient chain (env / profile / SSO).
+// The project dirs are relative to this platform-aws dir (the seed cwd). Stacks
+// are read from the backend the `pulumi` CLI is logged into, as the seed does.
 
 // `plugin` is the name the project's plugin registers, which the platform's
 // `objectStores` keys are qualified by — it is how an uploaded object is
@@ -31,4 +30,4 @@ let targets: array<ReventlessSeedAws_Reset.target> = [
   {projectDir: ".", label: "platform", group: Platform},
 ]
 
-ReventlessSeedAws_Reset.run(~backend="https://api.pulumi.com", ~targets, ())
+ReventlessSeedAws_Reset.run(~targets, ())

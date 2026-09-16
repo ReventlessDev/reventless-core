@@ -4,6 +4,6 @@ import * as ReventlessSeedAws from "@reventlessdev/reventless-seed-aws/src/Reven
 import * as Seed_Runner$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Runner.res.mjs";
 import * as HybridSeedData$OnlineShopHybridSeed from "@reventlessdev/online-shop-hybrid-seed/src/HybridSeedData.res.mjs";
 
-Seed_Runner$ReventlessSeed.seed(HybridSeedData$OnlineShopHybridSeed.dataSets, ReventlessSeedAws.connect(undefined, undefined, "https://api.pulumi.com", undefined));
+Seed_Runner$ReventlessSeed.seed(HybridSeedData$OnlineShopHybridSeed.dataSets, ReventlessSeedAws.connect(undefined, undefined, undefined, undefined));
 
 /*  Not a pure module */

@@ -1,7 +1,7 @@
 # Plan: the online shop from an empty AWS account
 
 **Date:** 2026-09-16
-**Status:** IN PROGRESS — steps 1, 2, 3, 5 and 6 done.
+**Status:** IN PROGRESS — steps 1, 2, 3, 5, 6 and 7 done.
 **Repos:** `reventless-core` only.
 **Based on:** [the analysis of the same name](../analysis/from-an-empty-account-to-a-running-shop.md).
 **Companion plan:** [platform-stack-creates-the-lambda-layer.md](./platform-stack-creates-the-lambda-layer.md).
@@ -308,6 +308,18 @@ login.
 
 **Done when.** With `pulumi login --local`, the seed finds the local stacks.
 
+**Done.** Checked with a throwaway local backend (`PULUMI_BACKEND_URL=file://…`, so
+the persistent login stayed untouched): the seed found the empty `dev` stack there
+and stopped on its missing outputs. No CI job ran these scripts, so none needed the
+variable. The pin lived only in the hybrid example; the harness already followed
+the login when given no backend.
+
+**Lost with the script:** `verify-subscriptions.mjs` was the only end-to-end check
+of the Lambda→browser direction (a command's change pushed over the WebSocket).
+`verify:client-publish` checks the browser→browser direction and the refusal on
+the platform's channel, not that one. The aggregates and dcb examples keep their
+copies, which hold placeholders rather than another deployment's addresses.
+
 ## Step 8 — Rewrite the tutorials around the new command
 
 - [deploy-to-aws.md](../../packages/doc/docs-tutorials/deploy-to-aws.md): what you
@@ -378,8 +390,8 @@ Step 5  [x] getOrganization binding
         [x] Pulumi.main.yaml project names fixed
         [x] interstack:dependencies removed
 Step 6  [x] reventless:disposable setting
-Step 7  [ ] helper scripts follow the Pulumi login
-        [ ] verify-subscriptions.mjs removed
+Step 7  [x] helper scripts follow the Pulumi login
+        [x] verify-subscriptions.mjs removed
 Step 8  [ ] tutorials rewritten
 Step 9  [ ] first run in an empty account          (blocked: account)
 Step 10 [ ] scheduled deploy from scratch           (blocked: account + CI credentials)

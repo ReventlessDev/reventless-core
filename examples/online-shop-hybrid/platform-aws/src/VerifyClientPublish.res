@@ -23,9 +23,8 @@
 // read-model change descriptor and the namespace split is isolating nothing —
 // so this script treats that as a failure regardless of how (1)–(3) went.
 //
-// Companion to `verify-subscriptions.mjs`, which covers the Lambda→browser
-// direction with SigV4. This one is the browser→browser direction with Cognito,
-// and needs no AWS credentials at all — only a pool user.
+// This is the browser→browser direction with Cognito, and needs no AWS
+// credentials at all — only a pool user.
 //
 // Plan: reventless-core docs/plans/events-client-publish-channels.md (Phase 6).
 
@@ -219,10 +218,7 @@ let run = async () => {
 
   // Stack + config discovery reuses the seed tooling, so this script stays in
   // step with however `pnpm run seed` resolves a deployment.
-  let backend = switch Seed.Prompt.envValue("SEED_PULUMI_BACKEND") {
-  | Some(url) => Some(url)
-  | None => Some("https://api.pulumi.com")
-  }
+  let backend = Seed.Prompt.envValue("SEED_PULUMI_BACKEND")
   let stack = await ReventlessSeedAws.resolveStack(
     ~projectDir=".",
     ~backend,

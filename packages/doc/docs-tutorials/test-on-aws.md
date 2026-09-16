@@ -101,48 +101,30 @@ existing data.
 
 **Skipping image uploads.** `SEED_SKIP_UPLOADS=1` seeds the domain data without
 uploading product images (`imageUrl` is left empty) — use it when the deployment
-serves no upload endpoint, or to seed fast. This is the reliable knob: an *empty*
-`REVENTLESS_UPLOAD_ENDPOINT` reads as "unset" and falls back to discovery, so set
-`SEED_SKIP_UPLOADS` rather than blanking the endpoint.
+serves no upload endpoint, or to seed fast.
 
-**Pulumi backend.** This example is deployed by CI to **Pulumi Cloud**, so its
-`SeedAws.res` pins the backend to `https://api.pulumi.com` — the seed reads the
-stack from there regardless of which backend your CLI is logged into (needs a
-Pulumi Cloud login / `PULUMI_ACCESS_TOKEN`). A self-hosted platform instead pins
-its own store, e.g. `ReventlessSeedAws.connect(~backend="s3://<bucket>?region=<r>", ())`
-(needs ambient AWS creds). `SEED_PULUMI_BACKEND` overrides the pin; omit it to use
-the ambient login. The pin is passed as `PULUMI_BACKEND_URL` on a copy of the
-environment, so your persistent `pulumi login` is never changed.
+**Pulumi backend.** The seed reads the stack from whatever backend your `pulumi`
+CLI is logged into — Pulumi Cloud, a local directory, or an S3 bucket.
+`SEED_PULUMI_BACKEND` names another backend for one run; it is passed as
+`PULUMI_BACKEND_URL` on a copy of the environment, so your persistent
+`pulumi login` is never changed. A self-hosted app can pin its own store in code
+instead, e.g. `ReventlessSeedAws.connect(~backend="s3://<bucket>?region=<r>", ())`.
 
-## Verify subscriptions end to end
+## Verify live channels end to end
 
-The example ships a verification script that drives a command and confirms the
-change is pushed over a WebSocket subscription — the AWS equivalent of watching
-the live view update in the local UI. It exercises the live-update path:
-
-```
-AddProduct command → DynamoDB write → DynamoDB Stream → StateTopic Lambda
-                   → AppSync Events API → WebSocket subscriber
-```
-
-Run it from `platform-aws/`:
+The example ships a check that finds the deployment by itself and exercises the
+browser's side of the live channels: a signed-in user subscribes to a
+client channel, publishes to it and receives the event, and is refused when
+publishing to the channel the platform's own change notifications travel on.
 
 ```bash
 cd examples/online-shop-hybrid/platform-aws
-node verify-subscriptions.mjs
+pnpm run verify:client-publish
 ```
 
-Requirements:
-
-- AWS credentials with `appsync:EventPublish`, `appsync:EventSubscribe`, and
-  `appsync:GraphQL`.
-- The Pulumi stack deployed.
-- **Update the config block at the top of `verify-subscriptions.mjs`** — the
-  AppSync host and API IDs there point at the reference stack. Replace them with
-  **your** values from `pulumi stack output` before running.
-
-A successful run publishes an `AddProduct`, subscribes over the WebSocket, and
-confirms the resulting event arrives at the subscriber.
+It picks the stack the way the seed does (`SEED_STACK` fixes it), reads the
+endpoints from the deployment's `config.json`, and asks for a sign-in from
+`.reventless/users.yaml`. It needs no AWS credentials.
 
 ## What you've proven
 

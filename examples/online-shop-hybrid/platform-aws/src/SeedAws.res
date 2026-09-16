@@ -8,15 +8,10 @@
 // come from the shared `online-shop-hybrid-seed` package. The Pulumi stacks are
 // this package's own `Pulumi.<stack>.yaml`, so the project dir is the default `.`.
 //
-// This example is deployed by CI to Pulumi Cloud, so the backend is pinned to
-// `https://api.pulumi.com` — seeding reads the stack from there regardless of
-// which backend the operator's CLI is logged into (needs `PULUMI_ACCESS_TOKEN`).
-// `SEED_PULUMI_BACKEND` overrides it if the stack lives elsewhere.
+// The stack is read from whatever backend the `pulumi` CLI is logged into;
+// `SEED_PULUMI_BACKEND` names another one for a single run.
 
 open ReventlessSeed
 open OnlineShopHybridSeed
 
-Seed.Runner.seed(
-  ~sets=HybridSeedData.dataSets,
-  ~connect=ReventlessSeedAws.connect(~backend="https://api.pulumi.com", ()),
-)
+Seed.Runner.seed(~sets=HybridSeedData.dataSets, ~connect=ReventlessSeedAws.connect())
