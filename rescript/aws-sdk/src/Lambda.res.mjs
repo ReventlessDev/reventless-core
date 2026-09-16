@@ -12,6 +12,8 @@ function client(region, param) {
   });
 }
 
+let InvokeCommand = {};
+
 let GetFunctionConfigurationCommand = {};
 
 let UpdateFunctionConfigurationCommand = {};
@@ -25,6 +27,7 @@ let DeleteFunctionConcurrencyCommand = {};
 export {
   Raw,
   client,
+  InvokeCommand,
   GetFunctionConfigurationCommand,
   UpdateFunctionConfigurationCommand,
   GetFunctionConcurrencyCommand,

@@ -569,8 +569,9 @@ shell.
 
 Both platforms honour the same declaration. Locally the files are written into the
 shell's served directory at boot; on AWS the deploy grants the bake a write for
-every key the declaration produces and the post-deploy bake writes them beside
-`config.json`, which carries a group→url map (`journeyManifestUrls`) next to the
+every key the declaration produces and the post-deploy bake (`pnpm exec
+bake-manifest`, which the deploy workflow runs once every plugin stack is up)
+writes them beside `config.json`, which carries a group→url map (`journeyManifestUrls`) next to the
 default `manifestUrl`.
 
 Declare the manifest in a **platform-independent module**, and pass it from each

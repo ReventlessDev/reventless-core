@@ -1,7 +1,7 @@
 # Plan: the online shop from an empty AWS account
 
 **Date:** 2026-09-16
-**Status:** IN PROGRESS — steps 1 and 2 done.
+**Status:** IN PROGRESS — steps 1 to 3 done.
 **Repos:** `reventless-core` only.
 **Based on:** [the analysis of the same name](../analysis/from-an-empty-account-to-a-running-shop.md).
 **Companion plan:** [platform-stack-creates-the-lambda-layer.md](./platform-stack-creates-the-lambda-layer.md).
@@ -159,6 +159,18 @@ same workflow, so whatever is chosen must also work for them.
 
 **Done when.** An `alpha` deploy in CI bakes through the new command, with the same
 report as before.
+
+**Done.** Decided: the job installs the app's dependencies (`pnpm install
+--frozen-lockfile`, cached, no build), the same steps the deploy jobs already take,
+so it works unchanged in a consumer repository. The install is skipped when the
+branch has no platform stack file.
+
+One change from the plan: the command also waits while a plugin is `missing`, and
+stops at once only on `diverged`. On a first deploy into an empty account no plugin
+has a row until its registration lands, so `missing` is the normal first answer
+there. The manifest reader (`DeployManifest`) and the `pulumi` CLI helper
+(`PulumiCli`) sit beside the command for step 4 to reuse. Verified by running the
+command locally against `alpha`; the CI half is verified on the next `alpha` deploy.
 
 ## Step 4 — One command to deploy the shop, and one to remove it
 
@@ -338,8 +350,8 @@ Step 2  [x] pool checked before the accounts file is written
         [x] AWS template uses example.com addresses
         [x] demoOwner field in AccountsManifest; seed uses it first
         [x] test-on-aws.md fixed
-Step 3  [ ] bake-manifest command
-        [ ] CI job uses it
+Step 3  [x] bake-manifest command
+        [x] CI job uses it
 Step 4  [ ] deploy-platform up / down
         [ ] shop:up / shop:down / shop:seed scripts
         [ ] Pulumi.dev.yaml ignored

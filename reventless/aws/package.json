@@ -6,7 +6,8 @@
   "bin": {
     "provision-identity": "./run-provision-identity.mjs",
     "provision-admin": "./run-provision-admin.mjs",
-    "provision-accounts": "./run-provision-accounts.mjs"
+    "provision-accounts": "./run-provision-accounts.mjs",
+    "bake-manifest": "./run-bake-manifest.mjs"
   },
   "scripts": {
     "build": "rescript build",

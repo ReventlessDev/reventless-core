@@ -183,7 +183,16 @@ pulumi up --stack alpha
 cd ../ordering-aws
 pulumi stack init alpha        # first time only
 pulumi up --stack alpha
+
+# 5. Bake the component manifest, once every plugin is up
+cd ../platform-aws
+pnpm exec bake-manifest --manifest ../deploy-manifest.yaml --stack alpha
 ```
+
+The last command writes the file that tells the web app which pages to show. The
+discovery query it stands in for is for administrators only, so without it every
+other user signs in to an empty shop. It waits until each plugin has registered
+the structure its stack just deployed, and says which plugin it is waiting for.
 
 Or push to a branch that has matching `Pulumi.<branch>.yaml` files and let the
 reusable GitHub Actions workflow (`deploy-manifest.yaml` drives the order) do it.

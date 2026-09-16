@@ -1,8 +1,8 @@
 /*** @aws-sdk/client-lambda
   see: https://docs.aws.amazon.com/lambda/latest/api/Welcome.html
 
-  Control-plane bindings only — enough to take a function out of service and put
-  it back. The seed reset uses them to quiesce a stack's runtimes for the length
+  Control-plane bindings — enough to take a function out of service and put it
+  back — plus `Invoke`. The seed reset uses them to quiesce a stack's runtimes for the length
   of a wipe: a live runtime that holds state across invocations will write that
   state back over a truncated table, so the wipe has to remove the contention
   rather than race it.
@@ -46,6 +46,32 @@ let client = (~region: option<string>=?, ()): client =>
     use. `variables` absent and `variables` empty are different: sending an empty
     map on an update CLEARS every variable. */
 type environment = {@as("Variables") variables?: dict<string>}
+
+module InvokeCommand = {
+  /*** see: https://docs.aws.amazon.com/lambda/latest/api/API_Invoke.html
+
+    A handler that throws still answers `StatusCode` 200: the failure is in
+    `FunctionError`, and `Payload` then carries the error rather than a result. */
+
+  type t
+
+  type input = {
+    @as("FunctionName") functionName: string,
+    @as("Payload") payload?: Uint8Array.t,
+  }
+
+  type output = {
+    @as("$metadata") metadata: Metadata.t,
+    @as("StatusCode") statusCode?: int,
+    @as("FunctionError") functionError?: string,
+    @as("Payload") payload?: Uint8Array.t,
+  }
+
+  @new @module("@aws-sdk/client-lambda")
+  external make: input => t = "InvokeCommand"
+
+  @send external send: (client, t) => promise<output> = "send"
+}
 
 module GetFunctionConfigurationCommand = {
   /*** see: https://docs.aws.amazon.com/lambda/latest/api/API_GetFunctionConfiguration.html */
