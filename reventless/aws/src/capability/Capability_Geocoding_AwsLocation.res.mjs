@@ -2,6 +2,7 @@
 
 import * as Aws from "@pulumi/aws";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as AWS_Tags$ReventlessAws from "../adapter/AWS_Tags.res.mjs";
 import * as Util_LocalConfig$ReventlessAws from "../util/Util_LocalConfig.res.mjs";
@@ -10,11 +11,15 @@ let defaultDataSource = "Esri";
 
 let defaultIntendedUse = "SingleUse";
 
+function physicalName(name, stack) {
+  return name + `-` + stack;
+}
+
 function make(name, opts) {
   let dataSource = Stdlib_Option.getOr(Util_LocalConfig$ReventlessAws.get("geocoderDataSource"), defaultDataSource);
   let intendedUse = Stdlib_Option.getOr(Util_LocalConfig$ReventlessAws.get("geocoderIntendedUse"), defaultIntendedUse);
   let index = new (Aws.location.PlaceIndex)(name, {
-    indexName: name,
+    indexName: physicalName(name, Pulumi.getStack()),
     dataSource: dataSource,
     dataSourceConfiguration: {
       intendedUse: intendedUse
@@ -32,6 +37,7 @@ function make(name, opts) {
 export {
   defaultDataSource,
   defaultIntendedUse,
+  physicalName,
   make,
 }
 /* @pulumi/aws Not a pure module */

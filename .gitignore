@@ -74,6 +74,10 @@ package-lock.json
 # off shared stack configs.
 **/Pulumi.local.yaml
 
+# The try-out stack `deploy-app up` creates writes its settings here; they belong
+# to one person's account and never to a commit.
+**/Pulumi.dev.yaml
+
 # Cross-repo dev linking (see docs/guides/cross-repo-dev-linking.md).
 # pnpm-workspace.base.yaml is the tracked source of truth.
 # pnpm-workspace.yaml is either a symlink to it (release mode) or a

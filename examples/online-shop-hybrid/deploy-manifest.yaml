@@ -6,6 +6,13 @@ region: eu-west-1
 platform:
   path: platform-aws
   name: online-shop-hybrid-platform
+  # What `deploy-app` gives a platform stack it creates. A try-out must not mail
+  # anybody, so its messages are only logged; `example.com` is reserved, so the
+  # sender is nobody's inbox.
+  stack-defaults:
+    platform:messagingEmailProvider: log
+    platform:messagingEmailSender: orders@example.com
+    platform:messagingEmailSenderName: Online Shop
 
 plugins:
   - name: catalog

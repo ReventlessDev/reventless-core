@@ -23,6 +23,8 @@ open PulumiAws
 let defaultDataSource = "Esri"
 let defaultIntendedUse = "SingleUse"
 
+let physicalName = (~name: string, ~stack: string): string => `${name}-${stack}`
+
 /** Create a place index with framework attribution tags and config-driven
     provider/retention settings. */
 let make = (
@@ -35,7 +37,9 @@ let make = (
   let index = Location.PlaceIndex.make(
     ~name,
     ~args={
-      indexName: Pulumi.Input.make(name),
+      // Stack-scoped: an index name is unique per account and region, so two
+      // stacks of one app in the same place would otherwise collide.
+      indexName: Pulumi.Input.make(physicalName(~name, ~stack=Pulumi.Pulumi.getStackName())),
       dataSource: Pulumi.Input.make(dataSource),
       dataSourceConfiguration: Pulumi.Input.make({
         Location.PlaceIndex.intendedUse: Pulumi.Input.make(intendedUse),

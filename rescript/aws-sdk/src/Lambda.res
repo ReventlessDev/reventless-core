@@ -2,7 +2,7 @@
   see: https://docs.aws.amazon.com/lambda/latest/api/Welcome.html
 
   Control-plane bindings — enough to take a function out of service and put it
-  back — plus `Invoke`. The seed reset uses them to quiesce a stack's runtimes for the length
+  back, and to publish and remove a layer — plus `Invoke`. The seed reset uses them to quiesce a stack's runtimes for the length
   of a wipe: a live runtime that holds state across invocations will write that
   state back over a truncated table, so the wipe has to remove the contention
   rather than race it.
@@ -69,6 +69,100 @@ module InvokeCommand = {
 
   @new @module("@aws-sdk/client-lambda")
   external make: input => t = "InvokeCommand"
+
+  @send external send: (client, t) => promise<output> = "send"
+}
+
+module PublishLayerVersionCommand = {
+  /*** see: https://docs.aws.amazon.com/lambda/latest/api/API_PublishLayerVersion.html
+
+    `zipFile` is sent in the request itself, which Lambda accepts up to 50 MB;
+    a larger archive has to go through S3. */
+
+  type t
+
+  type content = {@as("ZipFile") zipFile: Uint8Array.t}
+
+  type input = {
+    @as("LayerName") layerName: string,
+    @as("Description") description?: string,
+    @as("Content") content: content,
+    @as("CompatibleRuntimes") compatibleRuntimes?: array<string>,
+  }
+
+  type output = {
+    @as("$metadata") metadata: Metadata.t,
+    @as("LayerVersionArn") layerVersionArn?: string,
+    @as("Version") version?: int,
+  }
+
+  @new @module("@aws-sdk/client-lambda")
+  external make: input => t = "PublishLayerVersionCommand"
+
+  @send external send: (client, t) => promise<output> = "send"
+}
+
+module GetLayerVersionByArnCommand = {
+  /*** see: https://docs.aws.amazon.com/lambda/latest/api/API_GetLayerVersionByArn.html */
+
+  type t
+
+  type input = {@as("Arn") arn: string}
+
+  type output = {
+    @as("$metadata") metadata: Metadata.t,
+    @as("LayerVersionArn") layerVersionArn?: string,
+    @as("Description") description?: string,
+  }
+
+  @new @module("@aws-sdk/client-lambda")
+  external make: input => t = "GetLayerVersionByArnCommand"
+
+  @send external send: (client, t) => promise<output> = "send"
+}
+
+module ListLayerVersionsCommand = {
+  /*** see: https://docs.aws.amazon.com/lambda/latest/api/API_ListLayerVersions.html */
+
+  type t
+
+  type input = {
+    @as("LayerName") layerName: string,
+    @as("Marker") marker?: string,
+  }
+
+  type layerVersion = {
+    @as("LayerVersionArn") layerVersionArn?: string,
+    @as("Version") version?: int,
+    @as("Description") description?: string,
+  }
+
+  type output = {
+    @as("$metadata") metadata: Metadata.t,
+    @as("LayerVersions") layerVersions?: array<layerVersion>,
+    @as("NextMarker") nextMarker?: string,
+  }
+
+  @new @module("@aws-sdk/client-lambda")
+  external make: input => t = "ListLayerVersionsCommand"
+
+  @send external send: (client, t) => promise<output> = "send"
+}
+
+module DeleteLayerVersionCommand = {
+  /*** see: https://docs.aws.amazon.com/lambda/latest/api/API_DeleteLayerVersion.html */
+
+  type t
+
+  type input = {
+    @as("LayerName") layerName: string,
+    @as("VersionNumber") versionNumber: int,
+  }
+
+  type output = {@as("$metadata") metadata: Metadata.t}
+
+  @new @module("@aws-sdk/client-lambda")
+  external make: input => t = "DeleteLayerVersionCommand"
 
   @send external send: (client, t) => promise<output> = "send"
 }

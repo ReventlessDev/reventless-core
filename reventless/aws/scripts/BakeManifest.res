@@ -296,7 +296,7 @@ let invokeWith = (client: Lambda.client, ~functionName: string, ~payload: JSON.t
     }
 
 let bake = async (~manifest: DeployManifest.resolved, ~stack: string, ~since: option<string>) =>
-  switch PulumiCli.stackOutputs(~dir=manifest.platformDir, ~stack) {
+  switch PulumiCli.stackOutputs(~dir=manifest.platform.dir, ~stack) {
   | Error(_) as e => e
   | Ok(outputs) =>
     switch targetOf(outputs) {
@@ -373,8 +373,8 @@ let run = async (): result<unit, string> =>
     switch DeployManifest.load(args.manifest->Option.getOr(DeployManifest.defaultFile)) {
     | Error(_) as e => e
     | Ok(manifest) =>
-      switch args.stack->Option.orElse(PulumiCli.selectedStack(~dir=manifest.platformDir)) {
-      | None => Error(`no stack selected in ${manifest.platformDir} — pass --stack`)
+      switch args.stack->Option.orElse(PulumiCli.selectedStack(~dir=manifest.platform.dir)) {
+      | None => Error(`no stack selected in ${manifest.platform.dir} — pass --stack`)
       | Some(stack) => await bake(~manifest, ~stack, ~since=args.since)
       }
     }

@@ -11,13 +11,15 @@ import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_excep
 
 let platformSchema = Sury.$schema(s => ({
   path: s.m(Sury.string),
-  name: s.m(Sury.$option(Sury.string))
+  name: s.m(Sury.$option(Sury.string)),
+  "stack-defaults": s.m(Sury.$option(Sury.dict(Sury.string)))
 }));
 
 let pluginSchema = Sury.$schema(s => ({
   name: s.m(Sury.string),
   path: s.m(Sury.string),
-  "depends-on": s.m(Sury.$option(Sury.array(Sury.string)))
+  "depends-on": s.m(Sury.$option(Sury.array(Sury.string))),
+  "stack-defaults": s.m(Sury.$option(Sury.dict(Sury.string)))
 }));
 
 let schema = Sury.$schema(s => ({
@@ -53,10 +55,15 @@ function resolve(manifest, file) {
   return {
     file: file,
     region: manifest.region,
-    platformDir: Nodepath.resolve(base, manifest.platform.path),
+    platform: {
+      name: Stdlib_Option.getOr(manifest.platform.name, "platform"),
+      dir: Nodepath.resolve(base, manifest.platform.path),
+      stackDefaults: Stdlib_Option.getOr(manifest.platform["stack-defaults"], {})
+    },
     plugins: Stdlib_Option.getOr(manifest.plugins, []).map(p => ({
       name: p.name,
-      dir: Nodepath.resolve(base, p.path)
+      dir: Nodepath.resolve(base, p.path),
+      stackDefaults: Stdlib_Option.getOr(p["stack-defaults"], {})
     }))
   };
 }

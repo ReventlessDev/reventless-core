@@ -892,6 +892,7 @@ function MakeWithConfig(Config) {
       restrictPublicBuckets: true
     });
     Pulumi$Pulumi.$$export("offloadBucket", offloadBucketName);
+    Pulumi$Pulumi.$$export("platformStack", Pulumi.output(Pulumi.getOrganization() + `/` + Pulumi.getProject() + `/` + Pulumi.getStack()));
     let componentDefinitions = pluginReadModelTableName !== undefined ? (AggregateRuntime_Builder_Single$ReventlessAws.setPluginReadModelTable(pluginReadModelTableName), Platform_ComponentDefinitions_Lambda$ReventlessAws.make(platformApi, pluginReadModelTableName, offloadBucketName, admin.adminSchemaPushed, Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest), {})) : undefined;
     let rm = admin.stateViewSlicesOutputs["UiFragments"];
     if (rm !== undefined) {
@@ -2282,6 +2283,7 @@ function Make($star) {
       restrictPublicBuckets: true
     });
     Pulumi$Pulumi.$$export("offloadBucket", offloadBucketName);
+    Pulumi$Pulumi.$$export("platformStack", Pulumi.output(Pulumi.getOrganization() + `/` + Pulumi.getProject() + `/` + Pulumi.getStack()));
     let componentDefinitions = pluginReadModelTableName !== undefined ? (AggregateRuntime_Builder_Single$ReventlessAws.setPluginReadModelTable(pluginReadModelTableName), Platform_ComponentDefinitions_Lambda$ReventlessAws.make(platformApi, pluginReadModelTableName, offloadBucketName, admin.adminSchemaPushed, Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest), {})) : undefined;
     let rm = admin.stateViewSlicesOutputs["UiFragments"];
     if (rm !== undefined) {

@@ -7,7 +7,8 @@
     "provision-identity": "./run-provision-identity.mjs",
     "provision-admin": "./run-provision-admin.mjs",
     "provision-accounts": "./run-provision-accounts.mjs",
-    "bake-manifest": "./run-bake-manifest.mjs"
+    "bake-manifest": "./run-bake-manifest.mjs",
+    "deploy-app": "./run-deploy-app.mjs"
   },
   "scripts": {
     "build": "rescript build",
@@ -38,6 +39,7 @@
     "@reventlessdev/rescript-pulumi-aws": "workspace:*",
     "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
     "@reventlessdev/rescript-uuid": "workspace:*",
+    "@reventlessdev/rescript-web": "workspace:*",
     "@reventlessdev/reventless-core": "workspace:*",
     "@reventlessdev/reventless-infra": "workspace:*",
     "@reventlessdev/reventless-interop": "workspace:*",

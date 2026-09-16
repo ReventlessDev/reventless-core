@@ -74,4 +74,7 @@ type headers
     already known to be a failure. */
 @send external json: response => promise<JSON.t> = "json"
 
+/** The body as bytes — a download that is not text. */
+@send external arrayBuffer: response => promise<ArrayBuffer.t> = "arrayBuffer"
+
 @val external fetch: (string, init) => promise<response> = "fetch"

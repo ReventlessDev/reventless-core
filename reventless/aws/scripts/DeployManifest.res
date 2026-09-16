@@ -4,18 +4,26 @@ folders holding the plugin stacks, in the order they deploy.
 
 The reusable deploy workflow reads it with `yq`; the commands in this folder read
 it here. Paths in the file are relative to the file's own folder.
+
+`stack-defaults` on an entry are the settings `deploy-app` gives a stack it
+creates for that folder — what a new stack of this app cannot deploy without.
 */
 
 @module("yaml") external parseYaml: string => JSON.t = "parse"
 
 @schema
-type platform = {path: string, name?: string}
+type platform = {
+  path: string,
+  name?: string,
+  @as("stack-defaults") stackDefaults?: dict<string>,
+}
 
 @schema
 type plugin = {
   name: string,
   path: string,
   @as("depends-on") dependsOn?: array<string>,
+  @as("stack-defaults") stackDefaults?: dict<string>,
 }
 
 @schema
@@ -25,14 +33,14 @@ type t = {
   plugins?: array<plugin>,
 }
 
-type pluginDir = {name: string, dir: string}
+/** One stack folder, with its path made absolute. */
+type project = {name: string, dir: string, stackDefaults: dict<string>}
 
-/** The manifest with every path made absolute. */
 type resolved = {
   file: string,
   region: option<string>,
-  platformDir: string,
-  plugins: array<pluginDir>,
+  platform: project,
+  plugins: array<project>,
 }
 
 let defaultFile = "deploy-manifest.yaml"
@@ -48,10 +56,18 @@ let resolve = (manifest: t, ~file: string): resolved => {
   {
     file,
     region: manifest.region,
-    platformDir: NodePath.resolve([base, manifest.platform.path]),
+    platform: {
+      name: manifest.platform.name->Option.getOr("platform"),
+      dir: NodePath.resolve([base, manifest.platform.path]),
+      stackDefaults: manifest.platform.stackDefaults->Option.getOr(Dict.make()),
+    },
     plugins: manifest.plugins
     ->Option.getOr([])
-    ->Array.map(p => {name: p.name, dir: NodePath.resolve([base, p.path])}),
+    ->Array.map(p => {
+      name: p.name,
+      dir: NodePath.resolve([base, p.path]),
+      stackDefaults: p.stackDefaults->Option.getOr(Dict.make()),
+    }),
   }
 }
 

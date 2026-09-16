@@ -14,6 +14,14 @@ function client(region, param) {
 
 let InvokeCommand = {};
 
+let PublishLayerVersionCommand = {};
+
+let GetLayerVersionByArnCommand = {};
+
+let ListLayerVersionsCommand = {};
+
+let DeleteLayerVersionCommand = {};
+
 let GetFunctionConfigurationCommand = {};
 
 let UpdateFunctionConfigurationCommand = {};
@@ -28,6 +36,10 @@ export {
   Raw,
   client,
   InvokeCommand,
+  PublishLayerVersionCommand,
+  GetLayerVersionByArnCommand,
+  ListLayerVersionsCommand,
+  DeleteLayerVersionCommand,
   GetFunctionConfigurationCommand,
   UpdateFunctionConfigurationCommand,
   GetFunctionConcurrencyCommand,

@@ -351,7 +351,7 @@ function invokeWith(client, functionName, payload) {
 }
 
 async function bake(manifest, stack, since) {
-  let e = PulumiCli$ReventlessAws.stackOutputs(manifest.platformDir, stack);
+  let e = PulumiCli$ReventlessAws.stackOutputs(manifest.platform.dir, stack);
   if (e.TAG !== "Ok") {
     return e;
   }
@@ -427,13 +427,13 @@ async function run() {
     return e$1;
   }
   let manifest = e$1._0;
-  let stack = Stdlib_Option.orElse(args.stack, PulumiCli$ReventlessAws.selectedStack(manifest.platformDir));
+  let stack = Stdlib_Option.orElse(args.stack, PulumiCli$ReventlessAws.selectedStack(manifest.platform.dir));
   if (stack !== undefined) {
     return await bake(manifest, stack, args.since);
   } else {
     return {
       TAG: "Error",
-      _0: `no stack selected in ` + manifest.platformDir + ` — pass --stack`
+      _0: `no stack selected in ` + manifest.platform.dir + ` — pass --stack`
     };
   }
 }

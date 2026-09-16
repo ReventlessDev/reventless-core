@@ -1,7 +1,7 @@
 # Plan: the online shop from an empty AWS account
 
 **Date:** 2026-09-16
-**Status:** IN PROGRESS — steps 1, 2, 3, 5, 6 and 7 done.
+**Status:** IN PROGRESS — steps 1 to 7 done; step 8 next; steps 9 and 10 blocked on an empty account.
 **Repos:** `reventless-core` only.
 **Based on:** [the analysis of the same name](../analysis/from-an-empty-account-to-a-running-shop.md).
 **Companion plan:** [platform-stack-creates-the-lambda-layer.md](./platform-stack-creates-the-lambda-layer.md).
@@ -225,6 +225,51 @@ deleted first, `pnpm run shop:up` ends by printing the address and four sign-ins
 each user sees their pages; `pnpm run shop:down` leaves no stacks, buckets, layer
 versions or parameters behind.
 
+**Done.** Decided: the command is `deploy-app`, the try-out stack `dev`.
+
+Checked on 2026-09-16 in the maintainers' account (eu-west-1, the account `alpha`
+lives in), with no `dev` parameter, layer or stacks beforehand. `shop:up` published
+the release layer, created and deployed the three stacks, baked the manifest,
+created the four accounts and printed the address and sign-ins. All four accounts
+signed in with their generated passwords, carried the right groups, received the
+manifest for their audience and could query products and orders (checked through
+the API, not in a browser; the shop was not seeded). `shop:down` removed everything;
+afterwards the account held no `dev` stack, bucket, function, table, log group, user
+pool, layer version or parameter.
+
+Added beyond the plan, each found by that run:
+
+- **`stack-defaults` in `deploy-manifest.yaml`.** A new platform stack of the shop
+  cannot deploy without the messaging settings, and a command that works for any app
+  cannot know them. Each entry may now list the settings `deploy-app` gives a stack
+  it creates; the hybrid manifest names the `log` transport.
+- **`platformStack` output.** The platform stack exports its own fully qualified
+  name (`getOrganization()/getProject()/getStack()`), and `deploy-app` sets each
+  plugin's `platform:stack` from it. This holds on every Pulumi backend.
+- **Per-stack accounts file.** `deploy-app` creates accounts from
+  `.reventless/users.<stack>.yaml`, not `users.yaml`: the file records the ids one pool
+  minted, and a maintainer's `users.yaml` already holds `alpha`'s. `shop:seed` passes
+  `SEED_USERS_FILE` accordingly.
+- **Stack-scoped place index.** `Capability_Geocoding_AwsLocation` named the index
+  exactly as the app did (`online-shop-geocoder`), so a second stack in the same
+  account and region failed with `ConflictException`. It is now
+  `<name>-<stack>`; `alpha` replaces its index once on its next deploy.
+- **Failure messages.** A failed `pulumi up` or `destroy` now ends with Pulumi's own
+  `error:` lines and the stack's name; a failure before the update starts streams
+  nothing, and the run used to end without a reason.
+
+Seen during the run, not changed here:
+
+- **A deploy resumed within five minutes can leave a plugin unregistered until its
+  heartbeat.** The first `ordering` deploy failed on a transient AWS error
+  ("Internal KMS service error"); its re-detect went out before its event collector
+  was subscribed. The resumed deploy's identical re-detect came within the FIFO
+  queues' five-minute deduplication window and was dropped. The bake waited, as
+  designed, and `Ordering` registered on its next heartbeat (attempt 10). Related to
+  [a-stale-handshake-answer-asks-again.md](./a-stale-handshake-answer-asks-again.md).
+- **An interrupted `down` recovers.** A `down` stopped halfway left two deletes
+  pending; running `down` again finished them.
+
 ## Step 5 — Plugin stacks find the platform without editing files
 
 **Why.** Both plugins' stack files name the maintainers' Pulumi organization. A new
@@ -364,8 +409,8 @@ bakes the manifest, and nobody creates the demo users again.
 
 ## Open questions
 
-- The command's name, and the try-out stack name (step 4).
-- How the CI bake job gets `reventless-aws` installed (step 3).
+- ~~The command's name, and the try-out stack name (step 4).~~ `deploy-app`, stack `dev`.
+- ~~How the CI bake job gets `reventless-aws` installed (step 3).~~ A full install, as the deploy jobs do.
 - ~~Whether any stack that is its own platform also goes through `deployPlugin`
   (step 5).~~ No: every caller, here and in the business repository, is a plugin
   stack that sets `platform:stack`.
@@ -382,9 +427,9 @@ Step 2  [x] pool checked before the accounts file is written
         [x] test-on-aws.md fixed
 Step 3  [x] bake-manifest command
         [x] CI job uses it
-Step 4  [ ] deploy-platform up / down
-        [ ] shop:up / shop:down / shop:seed scripts
-        [ ] Pulumi.dev.yaml ignored
+Step 4  [x] deploy-app up / down
+        [x] shop:up / shop:down / shop:seed scripts
+        [x] Pulumi.dev.yaml ignored
 Step 5  [x] getOrganization binding
         [x] missing platform:stack is an error for plugins
         [x] Pulumi.main.yaml project names fixed

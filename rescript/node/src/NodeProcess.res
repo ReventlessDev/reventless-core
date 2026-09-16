@@ -23,6 +23,10 @@ external exit: int => unit = "exit"
 @val @scope("process")
 external pid: int = "pid"
 
+/** `versions["node"]` is the running Node's version, without the leading `v`. */
+@val @scope("process")
+external versions: dict<string> = "versions"
+
 /** Signalling another process — or, with signal `0`, asking whether it is still
     there without disturbing it. Throws when the pid is gone (`ESRCH`) or not
     ours to signal (`EPERM`), so a liveness check is a `try`. */

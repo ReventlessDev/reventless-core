@@ -1518,6 +1518,14 @@ module MakeWithConfig = (
       },
     )
     Pulumi.Pulumi.export("offloadBucket", offloadBucketName)
+    // What a plugin stack's `platform:stack` names, fully qualified so it holds on
+    // every backend. `deploy-app` reads it to point the plugin stacks it creates.
+    Pulumi.Pulumi.export(
+      "platformStack",
+      Pulumi.Output.make(
+        `${Pulumi.Pulumi.getOrganization()}/${Pulumi.Pulumi.getProjectName()}/${Pulumi.Pulumi.getStackName()}`,
+      ),
+    )
 
     // Mount the Platform_ComponentDefinitions Lambda resolver on the Platform API
     // (split mode) or Domain API (unified mode — platformApi == domainApi above).

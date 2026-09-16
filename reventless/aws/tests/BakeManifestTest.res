@@ -13,6 +13,8 @@ region: eu-west-1
 platform:
   path: platform-aws
   name: shop-platform
+  stack-defaults:
+    platform:messagingEmailProvider: log
 plugins:
   - name: catalog
     path: catalog-aws
@@ -30,10 +32,14 @@ plugins:
       Ok({
         DeployManifest.file: "/repo/shop/deploy-manifest.yaml",
         region: Some("eu-west-1"),
-        platformDir: "/repo/shop/platform-aws",
+        platform: {
+          name: "shop-platform",
+          dir: "/repo/shop/platform-aws",
+          stackDefaults: Dict.fromArray([("platform:messagingEmailProvider", "log")]),
+        },
         plugins: [
-          {name: "catalog", dir: "/repo/shop/catalog-aws"},
-          {name: "ordering", dir: "/repo/shop/ordering-aws"},
+          {name: "catalog", dir: "/repo/shop/catalog-aws", stackDefaults: Dict.make()},
+          {name: "ordering", dir: "/repo/shop/ordering-aws", stackDefaults: Dict.make()},
         ],
       }),
     )

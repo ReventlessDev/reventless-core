@@ -24,6 +24,8 @@
     "@aws-sdk/client-sesv2": "^3.1033.0",
     "@aws-sdk/client-sns": "^3.1033.0",
     "@aws-sdk/client-sqs": "^3.1033.0",
+    "@aws-sdk/client-ssm": "^3.1033.0",
+    "@aws-sdk/client-sts": "^3.1033.0",
     "@aws-sdk/lib-dynamodb": "^3.1033.0",
     "@aws-sdk/lib-storage": "^3.1033.0",
     "@reventlessdev/rescript-node": "workspace:*",
