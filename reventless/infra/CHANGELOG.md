@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.164 (2026-09-16)
+
+* feat(spec)!: infer the DCB partition key per slice, and drop @partitionTag where inference agrees ([6c10161](https://github.com/ReventlessDev/reventless-core/commit/6c101611d438beea4bc9175ae8ea0ea1f6f7493b))
+### Features
+
+* **core:** fail the build when an extension cannot find its slice's partition key ([cf2b093](https://github.com/ReventlessDev/reventless-core/commit/cf2b093dd5dc7cf9425cdac919cd3910fc4aeefd))
+* **spec:** let a slice's chapter break a partition-key tie ([2b9ae77](https://github.com/ReventlessDev/reventless-core/commit/2b9ae77e98eb42177d2bdd4977bc62bb7c7911aa))
+
+### BREAKING CHANGES
+
+* DcbTag.derivePartitionTag is removed; a boundary whose
+partition cannot be inferred no longer deploys.
+
+
+
 # 3.0.0-alpha.163 (2026-09-11)
 
 * feat(spec)!: making a principal is a capability, so the provider is replaceable ([3e59b9b](https://github.com/ReventlessDev/reventless-core/commit/3e59b9b665cc7e4b6b6f156b63b1b6bd0c6181ca))

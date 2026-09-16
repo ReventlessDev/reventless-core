@@ -3,6 +3,32 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.347 (2026-09-16)
+
+### Bug Fixes
+
+* **aws:** make the demo accounts work on a pool that signs in by email ([97b036f](https://github.com/ReventlessDev/reventless-core/commit/97b036f86979ba55dbbf93d460fe8076c35abf1a))
+* **aws:** stop a plugin stack that does not name its platform ([8ba09da](https://github.com/ReventlessDev/reventless-core/commit/8ba09da55b72d06b19ca6b78dd9abbc744a9b167))
+* **aws:** the anonymous-field refusal recommended the door that was ruled out ([062c0a0](https://github.com/ReventlessDev/reventless-core/commit/062c0a08b5db239a86cc6b77d29e942f527cadae))
+* fix(aws)!: stop a deploy that finds no Lambda layer ([62957f4](https://github.com/ReventlessDev/reventless-core/commit/62957f444ab2120f672b9ac0564f786d64090864))
+* feat(spec)!: infer the DCB partition key per slice, and drop @partitionTag where inference agrees ([6c10161](https://github.com/ReventlessDev/reventless-core/commit/6c101611d438beea4bc9175ae8ea0ea1f6f7493b))
+### Features
+
+* **aws:** bake the component manifest with a command, in CI and by hand ([4b0dccc](https://github.com/ReventlessDev/reventless-core/commit/4b0dccc8fc3b99874108c82db282d73cc93a48e9))
+* **aws:** deploy and remove a whole app with deploy-app up and down ([b7d0587](https://github.com/ReventlessDev/reventless-core/commit/b7d0587bd02a4b067a3a9fa21b5f77ea5210d792))
+* **aws:** let a stack declare itself disposable ([a8a8f29](https://github.com/ReventlessDev/reventless-core/commit/a8a8f29bccb7ed9994dea11aefb059953be4b095))
+* **spec:** let a slice's chapter break a partition-key tie ([2b9ae77](https://github.com/ReventlessDev/reventless-core/commit/2b9ae77e98eb42177d2bdd4977bc62bb7c7911aa))
+
+### BREAKING CHANGES
+
+* PulumiAws.Lambda.reventlessLayerArn is now a function that
+returns the ARN and throws when there is none. Use Lambda.reventlessLayers()
+for a function's layers argument.
+* DcbTag.derivePartitionTag is removed; a boundary whose
+partition cannot be inferred no longer deploys.
+
+
+
 # 3.0.0-alpha.346 (2026-09-11)
 
 ### Bug Fixes

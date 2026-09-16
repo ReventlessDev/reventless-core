@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.307 (2026-09-16)
+
+### Bug Fixes
+
+* **aws:** stop a plugin stack that does not name its platform ([8ba09da](https://github.com/ReventlessDev/reventless-core/commit/8ba09da55b72d06b19ca6b78dd9abbc744a9b167))
+
+
 # 1.0.0-alpha.306 (2026-09-11)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-ordering-aws

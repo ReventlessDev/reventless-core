@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.89 (2026-09-16)
+
+### Bug Fixes
+
+* **aws:** make the demo accounts work on a pool that signs in by email ([97b036f](https://github.com/ReventlessDev/reventless-core/commit/97b036f86979ba55dbbf93d460fe8076c35abf1a))
+
+
 # 1.0.0-alpha.88 (2026-09-11)
 
 ### Features

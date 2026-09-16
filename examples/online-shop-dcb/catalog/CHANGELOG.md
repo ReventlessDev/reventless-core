@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.244 (2026-09-16)
+
+* feat(spec)!: infer the DCB partition key per slice, and drop @partitionTag where inference agrees ([6c10161](https://github.com/ReventlessDev/reventless-core/commit/6c101611d438beea4bc9175ae8ea0ea1f6f7493b))
+### Features
+
+* **spec:** let a slice's chapter break a partition-key tie ([2b9ae77](https://github.com/ReventlessDev/reventless-core/commit/2b9ae77e98eb42177d2bdd4977bc62bb7c7911aa))
+
+### BREAKING CHANGES
+
+* DcbTag.derivePartitionTag is removed; a boundary whose
+partition cannot be inferred no longer deploys.
+
+
+
 # 1.0.0-alpha.243 (2026-09-11)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-dcb-catalog

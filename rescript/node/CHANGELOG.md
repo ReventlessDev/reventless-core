@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.0.0-alpha.12 (2026-09-16)
+
+* fix(aws)!: stop a deploy that finds no Lambda layer ([62957f4](https://github.com/ReventlessDev/reventless-core/commit/62957f444ab2120f672b9ac0564f786d64090864))
+### Features
+
+* **aws:** bake the component manifest with a command, in CI and by hand ([4b0dccc](https://github.com/ReventlessDev/reventless-core/commit/4b0dccc8fc3b99874108c82db282d73cc93a48e9))
+* **aws:** deploy and remove a whole app with deploy-app up and down ([b7d0587](https://github.com/ReventlessDev/reventless-core/commit/b7d0587bd02a4b067a3a9fa21b5f77ea5210d792))
+
+### BREAKING CHANGES
+
+* PulumiAws.Lambda.reventlessLayerArn is now a function that
+returns the ARN and throws when there is none. Use Lambda.reventlessLayers()
+for a function's layers argument.
+
+
+
 # 2.0.0-alpha.11 (2026-09-09)
 
 ### Bug Fixes

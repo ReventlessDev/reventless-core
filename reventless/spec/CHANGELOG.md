@@ -3,6 +3,24 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.136 (2026-09-16)
+
+### Bug Fixes
+
+* **aws:** make the demo accounts work on a pool that signs in by email ([97b036f](https://github.com/ReventlessDev/reventless-core/commit/97b036f86979ba55dbbf93d460fe8076c35abf1a))
+* feat(spec)!: infer the DCB partition key per slice, and drop @partitionTag where inference agrees ([6c10161](https://github.com/ReventlessDev/reventless-core/commit/6c101611d438beea4bc9175ae8ea0ea1f6f7493b))
+### Features
+
+* **spec:** let a slice's chapter break a partition-key tie ([2b9ae77](https://github.com/ReventlessDev/reventless-core/commit/2b9ae77e98eb42177d2bdd4977bc62bb7c7911aa))
+* **spec:** report which command yields which event or error ([ac0bdc2](https://github.com/ReventlessDev/reventless-core/commit/ac0bdc23f76a5b71b5bf5c99415ff0937690a279))
+
+### BREAKING CHANGES
+
+* DcbTag.derivePartitionTag is removed; a boundary whose
+partition cannot be inferred no longer deploys.
+
+
+
 # 3.0.0-alpha.135 (2026-09-11)
 
 ### Bug Fixes

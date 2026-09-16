@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.3.0-alpha.21 (2026-09-16)
+
+### Bug Fixes
+
+* **aws:** stop a plugin stack that does not name its platform ([8ba09da](https://github.com/ReventlessDev/reventless-core/commit/8ba09da55b72d06b19ca6b78dd9abbc744a9b167))
+### Features
+
+* **aws:** deploy and remove a whole app with deploy-app up and down ([b7d0587](https://github.com/ReventlessDev/reventless-core/commit/b7d0587bd02a4b067a3a9fa21b5f77ea5210d792))
+
+
 # 2.3.0-alpha.20 (2026-09-09)
 
 **Note:** Version bump only for package @reventlessdev/rescript-pulumi-pulumi

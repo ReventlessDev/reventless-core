@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.14 (2026-09-16)
+
+* fix(aws)!: stop a deploy that finds no Lambda layer ([62957f4](https://github.com/ReventlessDev/reventless-core/commit/62957f444ab2120f672b9ac0564f786d64090864))
+
+### BREAKING CHANGES
+
+* PulumiAws.Lambda.reventlessLayerArn is now a function that
+returns the ARN and throws when there is none. Use Lambda.reventlessLayers()
+for a function's layers argument.
+
+
+
 # 3.0.0-alpha.13 (2026-09-11)
 
 **Note:** Version bump only for package @reventlessdev/rescript-pulumi-aws

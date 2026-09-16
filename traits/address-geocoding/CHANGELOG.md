@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.12 (2026-09-16)
+
+**Note:** Version bump only for package @reventlessdev/trait-address-geocoding
+
+
+
+
+
 # 1.0.0-alpha.11 (2026-09-11)
 
 * feat(spec)!: a secret is a capability, so a test can know it in advance ([71507c6](https://github.com/ReventlessDev/reventless-core/commit/71507c6459b49178746f00c5040cb479d7fdade8))

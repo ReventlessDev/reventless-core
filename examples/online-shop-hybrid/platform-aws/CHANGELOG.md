@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.296 (2026-09-16)
+
+### Bug Fixes
+
+* **aws:** make the demo accounts work on a pool that signs in by email ([97b036f](https://github.com/ReventlessDev/reventless-core/commit/97b036f86979ba55dbbf93d460fe8076c35abf1a))
+* **examples:** read deployed stacks from the current Pulumi login ([2c639c6](https://github.com/ReventlessDev/reventless-core/commit/2c639c6771f829ece2f71aef4143230a81fbe2bc))
+
+
 # 1.0.0-alpha.295 (2026-09-11)
 
 ### Features

@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.4 (2026-09-16)
+
+### Features
+
+* **aws:** deploy and remove a whole app with deploy-app up and down ([b7d0587](https://github.com/ReventlessDev/reventless-core/commit/b7d0587bd02a4b067a3a9fa21b5f77ea5210d792))
+
+
 # 1.0.0-alpha.3 (2026-09-09)
 
 **Note:** Version bump only for package @reventlessdev/rescript-web
