@@ -2,7 +2,6 @@
 
 import * as Aws from "@pulumi/aws";
 import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
-import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Lambda$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Lambda/Lambda.res.mjs";
 import * as Adapter$ReventlessInfra from "@reventlessdev/reventless-infra/src/adapter/Adapter.res.mjs";
@@ -34,7 +33,7 @@ function make(name, handlerConfig, secretArn, securityGroupId, subnetIds, opts) 
       }]))),
     role: runtime.parts.lambdaRole.id
   });
-  let layerArn = Stdlib_Option.getOr(Lambda$PulumiAws.reventlessLayerArn, "no-layer");
+  let layerArn = Lambda$PulumiAws.reventlessLayerArn();
   let inputJson = JSON.stringify(Object.fromEntries([[
       "trigger",
       sourceCodeHash + `:` + layerArn

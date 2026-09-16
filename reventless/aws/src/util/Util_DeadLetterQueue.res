@@ -123,11 +123,7 @@ archiveContents->Dict.set(
 let code = Pulumi.Archive.assetArchive(archiveContents)
 let sourceCodeHash = Util_Bundle.hashString(entryPointCode)
 
-let layers =
-  Lambda.reventlessLayerArn
-  ->Option.map(arn => [arn->Pulumi.Input.make])
-  ->Option.getOr([])
-  ->Pulumi.Input.make
+let layers = Lambda.reventlessLayers()
 
 // This is the one Lambda in the framework built by hand rather than through
 // `RuntimeEnvironment_Lambda`, and it was the one Lambda whose logs Lambda

@@ -170,20 +170,18 @@ otherwise from the SSM parameter `/reventless/layer-arn/{stack}` through the AWS
 
 ```rescript
 // rescript-pulumi-aws/src/Lambda/Lambda.res
-let reventlessLayerArn: option<string> = switch _layerArnEnv {
-| Some(arn) if arn->String.trim->String.length > 0 => Some(arn->String.trim)
-| _ => _resolveLayerArnFromSsm()
-}
+type layerLookup =
+  | Found(string)
+  | NotFound({parameter: string, region: option<string>})
+  | CouldNotLook({parameter: string, region: option<string>, reason: string})
 ```
 
-`RuntimeEnvironment_Lambda.res` attaches the layer to every bundled Lambda:
+Every function the framework creates takes its `layers` from
+`Lambda.reventlessLayers()`, which looks once per deploy and throws unless the
+lookup is `Found`:
 
 ```rescript
-let layers =
-  Lambda.reventlessLayerArn
-  ->Option.map(arn => [arn->Pulumi.Input.make])
-  ->Option.getOr([])
-  ->Pulumi.Input.make
+let layers = Lambda.reventlessLayers()
 ```
 
 The current layer ARN is stored in AWS SSM Parameter Store at
@@ -196,9 +194,11 @@ That parameter exists only in the account CI publishes to. In any other account,
 publish the `reventless-layer.zip` asset of the matching GitHub release yourself
 and write the parameter — see
 [Getting Started with AWS](./aws/get-started.md#the-lambda-layer). When neither
-source answers, functions deploy without the layer and fail with
-`Cannot find package` on their first invocation — the archive never carries the
-framework's own packages.
+source answers, the deploy stops with a message naming the parameter and the
+region it looked in — or, when the AWS CLI is missing or the call is refused,
+saying why it could not look. Deploying on would leave every function failing
+with `Cannot find package` on its first invocation, because the archive never
+carries the framework's own packages.
 
 ### ESM Module Resolution
 

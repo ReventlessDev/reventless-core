@@ -88,7 +88,7 @@ let make = (
 
   // Re-invoke whenever the migration code or the Reventless layer (which ships
   // PgSchema's DDL) changes; idempotent DDL makes an unchanged re-run a no-op.
-  let layerArn = PulumiAws.Lambda.reventlessLayerArn->Option.getOr("no-layer")
+  let layerArn = PulumiAws.Lambda.reventlessLayerArn()
   let inputJson =
     [("trigger", `${sourceCodeHash}:${layerArn}`->JSON.Encode.string)]
     ->Dict.fromArray

@@ -1199,6 +1199,9 @@ importers:
       '@reventlessdev/rescript-aws-sdk':
         specifier: workspace:*
         version: link:../aws-sdk
+      '@reventlessdev/rescript-node':
+        specifier: workspace:*
+        version: link:../node
       '@reventlessdev/rescript-pulumi-pulumi':
         specifier: workspace:*
         version: link:../pulumi-pulumi

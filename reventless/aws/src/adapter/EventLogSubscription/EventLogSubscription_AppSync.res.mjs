@@ -2,7 +2,6 @@
 
 import * as Aws from "@pulumi/aws";
 import * as IAM$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/IAM.res.mjs";
-import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Lambda$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Lambda/Lambda.res.mjs";
 import * as AWS$ReventlessAws from "../AWS.res.mjs";
@@ -90,7 +89,7 @@ function make(name, topicName, eventTopicOutputs, eventsApi, opts) {
       Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, "@reventlessdev/reventless-aws")
     ]]);
   let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/EventLogSubscription/EventLogSubscription_AppSync_Ops.res.mjs", packageDirs, undefined, false);
-  let layers = Stdlib_Option.getOr(Stdlib_Option.map(Lambda$PulumiAws.reventlessLayerArn, arn => [arn]), []);
+  let layers = Lambda$PulumiAws.reventlessLayers();
   let appsyncEndpoint = AppSync_EventsApi$ReventlessAws.httpEndpoint(eventsApi);
   let lambda = new (Aws.lambda.Function)(name + "EventLogSubscriber", {
     handler: "index.handler",

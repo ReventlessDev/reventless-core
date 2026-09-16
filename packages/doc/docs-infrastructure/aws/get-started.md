@@ -131,11 +131,12 @@ layer ARN is resolved at deploy time in this order:
 
 1. `REVENTLESS_LAYER_ARN`, if set — the fast path, and what CI uses.
 2. An SSM parameter at `/reventless/layer-arn/<stack>`, looked up automatically
-   through the AWS CLI in its default region — so a local deploy needs no manual
-   export.
-3. Nothing — the deploy succeeds, but the functions do not run: their archives
-   carry the plugin's own packages and leave the framework's to the layer, so
-   each fails with `Cannot find package` on its first invocation.
+   through the AWS CLI in the stack's `aws:region` (the CLI's default region when
+   the stack sets none) — so a local deploy needs no manual export.
+3. Nothing — the deploy stops, naming the parameter and region it checked. A
+   function's archive carries the plugin's own packages and leaves the
+   framework's to the layer, so a function without one would fail with
+   `Cannot find package` on its first invocation.
 
 A layer belongs to one account and one region, so a new account has none until
 you publish one. Every `@reventlessdev/reventless-aws` release attaches the layer

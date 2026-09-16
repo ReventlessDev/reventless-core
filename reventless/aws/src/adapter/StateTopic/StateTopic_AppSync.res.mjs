@@ -120,7 +120,7 @@ function finish(eventsApi, opts) {
       Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, "@reventlessdev/reventless-aws")
     ]]);
   let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/StateTopic/StateTopic_AppSync_Ops.res.mjs", packageDirs, undefined, false);
-  let layers = Stdlib_Option.getOr(Stdlib_Option.map(Lambda$PulumiAws.reventlessLayerArn, arn => [arn]), []);
+  let layers = Lambda$PulumiAws.reventlessLayers();
   let appsyncEndpoint = AppSync_EventsApi$ReventlessAws.httpEndpoint(eventsApi);
   let logGroup = Util_LambdaLogging$ReventlessAws.makeManagedLogGroup(name + "StateTopicPublisher", undefined, AWS_Tags$ReventlessAws.make(name + "StateTopicPublisherLogGroup", QueryDb$ReventlessCore.componentType, "Logs", undefined, name, undefined, undefined, undefined), opts, undefined);
   let lambda = new (Aws.lambda.Function)(name + "StateTopicPublisher", {

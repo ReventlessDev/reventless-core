@@ -116,7 +116,7 @@ function make(api, pluginReadModelTableName, offloadBucketName, schemaReady, bak
       "adminEntry.json",
       adminEntryJson
     ]]), false);
-  let layers = Stdlib_Option.getOr(Stdlib_Option.map(Lambda$PulumiAws.reventlessLayerArn, arn => [arn]), []);
+  let layers = Lambda$PulumiAws.reventlessLayers();
   let logGroup = Util_LambdaLogging$ReventlessAws.makeManagedLogGroup(name + "Lambda", undefined, AWS_Tags$ReventlessAws.make(name + "LambdaLogGroup", "Platform", "Logs", "Platform", undefined, undefined, undefined, undefined), opts$1, undefined);
   let lambda = new (Aws.lambda.Function)(name + "Lambda", {
     handler: "index.handler",

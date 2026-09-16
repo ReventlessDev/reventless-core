@@ -1,7 +1,7 @@
 # Plan: the online shop from an empty AWS account
 
 **Date:** 2026-09-16
-**Status:** PROPOSED — nothing built yet.
+**Status:** IN PROGRESS — step 1 done.
 **Repos:** `reventless-core` only.
 **Based on:** [the analysis of the same name](../analysis/from-an-empty-account-to-a-running-shop.md).
 **Companion plan:** [platform-stack-creates-the-lambda-layer.md](./platform-stack-creates-the-lambda-layer.md).
@@ -83,6 +83,13 @@ layer and reports success. Every function then fails the first time it runs with
 
 **Done when.** `pulumi preview` on a stack with no layer stops with the message
 above; setting `REVENTLESS_LAYER_ARN` still works; all tests pass.
+
+**Done.** The lookup now also asks in the stack's `aws:region`, not the AWS CLI's
+default region: the `alpha` parameter lives in `eu-west-1`, and from a CLI set to
+another region the old lookup found nothing. Only one suite reached a function (the
+dead-letter Lambda is created at import time); the `reventless-aws` Jest project
+gets a stand-in ARN from `tests/setup/layerArn.cjs`. `Lambda.reventlessLayerArn`
+is now a function, so code outside this repo that read it as a value must call it.
 
 ## Step 2 — The demo users work on the default user pool
 
@@ -318,9 +325,9 @@ bakes the manifest, and nobody creates the demo users again.
 ## Checklist
 
 ```
-Step 1  [ ] layer lookup tells found / not found / could not look
-        [ ] deploy stops when no layer, message names parameter + region
-        [ ] all call sites use the check; tests given a test value
+Step 1  [x] layer lookup tells found / not found / could not look
+        [x] deploy stops when no layer, message names parameter + region
+        [x] all call sites use the check; tests given a test value
 Step 2  [ ] pool checked before the accounts file is written
         [ ] AWS template uses example.com addresses
         [ ] demoOwner field in AccountsManifest; seed uses it first

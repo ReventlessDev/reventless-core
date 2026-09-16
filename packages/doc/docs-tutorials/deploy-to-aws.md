@@ -145,8 +145,8 @@ aws ssm put-parameter --name /reventless/layer-arn/alpha \
 `pulumi up` looks that parameter up for the stack it deploys (`alpha` here), so
 every later deploy attaches the layer with nothing exported. Run these with your
 AWS CLI's default region set to the stack's region: the layer and the parameter
-are both regional, and the deploy-time lookup reads from the CLI's default region
-too. `export REVENTLESS_LAYER_ARN=$LAYER_ARN` skips SSM for the current shell
+are both regional, and the deploy-time lookup reads the parameter in the stack's
+`aws:region`. `export REVENTLESS_LAYER_ARN=$LAYER_ARN` skips SSM for the current shell
 instead.
 
 Publish a new layer whenever you move the checkout to a new `reventless-aws`
@@ -155,9 +155,9 @@ deploy. If no asset exists for your version, build the zip yourself:
 `REVENTLESS_AWS_VERSION=$VERSION pnpm run build` in `reventless/layer-builder/`
 writes `builder/reventless-layer.zip`.
 
-Do not skip this step. The deploy itself still succeeds without a layer, but the
-functions do not work: each function's archive carries the plugin's own packages
-and leaves the framework's to the layer, so a function with no layer fails with
+Without a layer the deploy stops and names the parameter and region it checked.
+Each function's archive carries the plugin's own packages and leaves the
+framework's to the layer, so a function with no layer would fail with
 `Cannot find package` on its first invocation. The
 [Lambda layer](/infrastructure/aws-lambda-layer) reference covers what it
 contains.

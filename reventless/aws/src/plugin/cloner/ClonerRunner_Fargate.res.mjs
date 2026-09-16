@@ -87,7 +87,7 @@ export const handler = async (event) => {
   let loaderHash = Util_Bundle$ReventlessAws.addEsmLoaderAssets(clonerArchiveContents);
   let code = new (Pulumi.asset.AssetArchive)(clonerArchiveContents);
   let sourceCodeHash = Util_Bundle$ReventlessAws.hashString(entryPointCode + "\n---\n" + loaderHash);
-  let layers = Stdlib_Option.getOr(Stdlib_Option.map(Lambda$PulumiAws.reventlessLayerArn, arn => [arn]), []);
+  let layers = Lambda$PulumiAws.reventlessLayers();
   let vpcStackName = Stdlib_Option.getOrThrow(new Pulumi.Config("vpc").get("stack"), undefined);
   let vpcConfig = Util_Vpc$ReventlessAws.getVpcConfig(vpcStackName, "vpc");
   let secrets = Pulumi.all(secretUrns.map(urn => GetSecretVersion$PulumiAws.getSecretNames(urn).apply(names => names.map(name => ({

@@ -257,11 +257,7 @@ let finish = (
       ~bundleRuntimeExtensions=false,
     )
 
-    let layers =
-      Lambda.reventlessLayerArn
-      ->Option.map(arn => [arn->Pulumi.Input.make])
-      ->Option.getOr([])
-      ->Pulumi.Input.make
+    let layers = Lambda.reventlessLayers()
 
     // Created before the function that writes to it — see
     // `Util_LambdaLogging.makeManagedLogGroup` for why the ordering matters.

@@ -141,11 +141,7 @@ export const handler = async (event) => {
   let code = Pulumi.Archive.assetArchive(clonerArchiveContents)
   let sourceCodeHash = Util_Bundle.hashString(entryPointCode ++ "\n---\n" ++ loaderHash)
 
-  let layers =
-    Lambda.reventlessLayerArn
-    ->Option.map(arn => [arn->Pulumi.Input.make])
-    ->Option.getOr([])
-    ->Pulumi.Input.make
+  let layers = Lambda.reventlessLayers()
 
   let vpcStackName = Pulumi.Config.make(Some("vpc"))->Pulumi.Config.get("stack")->Option.getOrThrow
   let vpcConfig = Util_Vpc.getVpcConfig(~stackName=vpcStackName, ~outputName="vpc")

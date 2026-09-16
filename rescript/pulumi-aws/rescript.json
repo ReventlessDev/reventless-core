@@ -21,7 +21,8 @@
   "dependencies": [
     "sury",
     "@reventlessdev/rescript-pulumi-pulumi",
-    "@reventlessdev/rescript-aws-sdk"
+    "@reventlessdev/rescript-aws-sdk",
+    "@reventlessdev/rescript-node"
   ],
   "compiler-flags": []
 }

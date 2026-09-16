@@ -18,6 +18,20 @@ external execSync: (string, execOptions) => string = "execSync"
 @module("node:child_process")
 external execFileSync: (string, array<string>, execOptions) => string = "execFileSync"
 
+/** Pass `encoding` to get `stdout` / `stderr` as strings. All three stay null
+    when the program could not be started at all; `error` then says why. */
+type spawnSyncResult = {
+  status: Nullable.t<int>,
+  stdout: Nullable.t<string>,
+  stderr: Nullable.t<string>,
+  error: Nullable.t<JsExn.t>,
+}
+
+/** Unlike `execFileSync`, never throws: a non-zero exit comes back as `status`
+    with the child's `stderr`, so a caller can tell one failure from another. */
+@module("node:child_process")
+external spawnSync: (string, array<string>, execOptions) => spawnSyncResult = "spawnSync"
+
 /** A running child process. Unlike the `*Sync` calls above, `spawn` returns
     while the child is still alive, so the caller keeps working alongside it —
     which is the whole reason to reach for this over `execFileSync`. */

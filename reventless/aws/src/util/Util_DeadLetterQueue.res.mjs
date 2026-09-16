@@ -2,7 +2,6 @@
 
 import * as Aws from "@pulumi/aws";
 import * as IAM$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/IAM.res.mjs";
-import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Lambda$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Lambda/Lambda.res.mjs";
 import * as AWS$ReventlessAws from "../adapter/AWS.res.mjs";
@@ -76,7 +75,7 @@ let code = new (Pulumi.asset.AssetArchive)(archiveContents);
 
 let sourceCodeHash = Util_Bundle$ReventlessAws.hashString(entryPointCode);
 
-let layers = Stdlib_Option.getOr(Stdlib_Option.map(Lambda$PulumiAws.reventlessLayerArn, arn => [arn]), []);
+let layers = Lambda$PulumiAws.reventlessLayers();
 
 let logGroup = Util_LambdaLogging$ReventlessAws.makeManagedLogGroup(name, undefined, AWS_Tags$ReventlessAws.make(name + `LogGroup`, "Plugin", "Logs", "Plugin", undefined, undefined, undefined, undefined), opts, undefined);
 

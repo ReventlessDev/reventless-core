@@ -91,7 +91,7 @@ function makeFromCodeAsset(name, unitKind, componentKind, code, sourceCodeHash, 
       });
     });
   });
-  let layers = Stdlib_Option.getOr(Stdlib_Option.map(Lambda$PulumiAws.reventlessLayerArn, arn => [arn]), []);
+  let layers = Lambda$PulumiAws.reventlessLayers();
   let variables = Object.fromEntries([[
       "Environment",
       stack

@@ -46,52 +46,135 @@ type eventHandlerNoResult<'event> = eventHandler<'event, unit>
 @send
 external getRemainingTimeInMillis: context => int = "getRemainingTimeInMillis"
 
-@val @scope(("process", "env")) external _layerArnEnv: option<string> = "REVENTLESS_LAYER_ARN"
-@val @scope(("process", "env")) external _pulumiNodejsStack: option<string> = "PULUMI_NODEJS_STACK"
-@module("child_process") external _execSync: (string, {..}) => string = "execSync"
+/** The outcome of looking for the Reventless layer. `region` is `None` when
+    neither the stack nor the environment names one, and the AWS CLI's default
+    region was asked. */
+type layerLookup =
+  | Found(string)
+  | NotFound({parameter: string, region: option<string>})
+  | CouldNotLook({parameter: string, region: option<string>, reason: string})
 
-// SSM fallback for local `pulumi up`. CI exports `REVENTLESS_LAYER_ARN`
-// directly (deploy-reventless-aws.yml reads `/reventless/layer-arn/{stack}`
-// via the AWS CLI and injects it as an env var); local devs typically don't.
-// When the env var is unset, shell out to the same SSM parameter from the
-// dev's `aws` CLI so local deploys attach the freshest layer automatically.
-//
-// Failures are swallowed (no `aws` on PATH, missing IAM `ssm:GetParameter`,
-// parameter absent, etc.) — Lambdas then deploy without the layer, which is
-// the same outcome as before this fallback existed.
-let _resolveLayerArnFromSsm = (): option<string> =>
-  switch _pulumiNodejsStack {
-  | None | Some("") => None
-  | Some(stack) =>
-    try {
-      let cmd = `aws ssm get-parameter --name /reventless/layer-arn/${stack} --query Parameter.Value --output text 2>/dev/null`
-      let raw = _execSync(cmd, {"encoding": "utf8"})
-      let trimmed = raw->String.trim
-      if trimmed === "" || trimmed === "None" {
-        None
-      } else {
-        Some(trimmed)
-      }
-    } catch {
-    | _ => None
+let layerParameter = stack => `/reventless/layer-arn/${stack}`
+
+let _nonEmpty = value =>
+  switch value->Option.map(String.trim) {
+  | Some("") | None => None
+  | trimmed => trimmed
+  }
+
+let _lookupRegion = () =>
+  switch Pulumi.Config.make(Some("aws"))->Pulumi.Config.get("region")->_nonEmpty {
+  | Some(_) as region => region
+  | None =>
+    switch NodeProcess.env->Dict.get("AWS_REGION")->_nonEmpty {
+    | Some(_) as region => region
+    | None => NodeProcess.env->Dict.get("AWS_DEFAULT_REGION")->_nonEmpty
     }
   }
 
-/**
- * Reventless Lambda layer ARN for the current Pulumi stack.
- *
- * Resolution order:
- *   1. `REVENTLESS_LAYER_ARN` env var — fast path, used by CI
- *      (deploy-reventless-aws.yml reads SSM and exports it).
- *   2. AWS CLI SSM lookup at `/reventless/layer-arn/${PULUMI_NODEJS_STACK}` —
- *      local-deploy convenience so devs don't need to export the env var
- *      manually.
- *   3. `None` when both fail — Lambdas deploy without the layer.
- */
-let reventlessLayerArn: option<string> = switch _layerArnEnv {
-| Some(arn) if arn->String.trim->String.length > 0 => Some(arn->String.trim)
-| _ => _resolveLayerArnFromSsm()
+let _firstLine = text =>
+  text
+  ->String.split("\n")
+  ->Array.map(String.trim)
+  ->Array.find(line => line !== "")
+  ->Option.getOr("the AWS CLI exited without saying why")
+
+/** Reads the result of `aws ssm get-parameter`: only `ParameterNotFound` means
+    there is no layer; a missing CLI or a refused call means nobody could tell. */
+let classifySsmLookup = (
+  ~parameter,
+  ~region,
+  result: NodeChildProcess.spawnSyncResult,
+): layerLookup => {
+  let stderr = result.stderr->Nullable.toOption->Option.getOr("")
+  switch (result.error->Nullable.toOption, result.status->Nullable.toOption) {
+  | (Some(error), _) =>
+    let message = error->JsExn.message->Option.getOr("unknown error")
+    CouldNotLook({parameter, region, reason: `the AWS CLI could not be run (${message})`})
+  | (None, Some(0)) =>
+    switch result.stdout->Nullable.toOption->_nonEmpty {
+    | None | Some("None") => NotFound({parameter, region})
+    | Some(arn) => Found(arn)
+    }
+  | (None, _) if stderr->String.includes("ParameterNotFound") => NotFound({parameter, region})
+  | (None, _) => CouldNotLook({parameter, region, reason: _firstLine(stderr)})
+  }
 }
+
+let _lookupInSsm = (): layerLookup => {
+  let parameter = layerParameter(Pulumi.Pulumi.getStackName())
+  let region = _lookupRegion()
+  let regionArgs = region->Option.mapOr([], region => ["--region", region])
+  NodeChildProcess.spawnSync(
+    "aws",
+    [
+      "ssm",
+      "get-parameter",
+      "--name",
+      parameter,
+      "--query",
+      "Parameter.Value",
+      "--output",
+      "text",
+    ]->Array.concat(regionArgs),
+    {encoding: "utf8"},
+  )->classifySsmLookup(~parameter, ~region, _)
+}
+
+let _lookup: ref<option<layerLookup>> = ref(None)
+
+/** Looks once per deploy: `REVENTLESS_LAYER_ARN` when set (CI exports it),
+    otherwise the stack's SSM parameter through the AWS CLI, in the stack's
+    `aws:region` when it sets one. */
+let lookupLayer = (): layerLookup =>
+  switch _lookup.contents {
+  | Some(lookup) => lookup
+  | None =>
+    let lookup = switch NodeProcess.env->Dict.get("REVENTLESS_LAYER_ARN")->_nonEmpty {
+    | Some(arn) => Found(arn)
+    | None => _lookupInSsm()
+    }
+    _lookup := Some(lookup)
+    lookup
+  }
+
+let _regionName = region =>
+  region->Option.mapOr("the AWS CLI's default region", region => `region ${region}`)
+
+let _publishHint = `Publish the layer and store its ARN in that parameter, or set REVENTLESS_LAYER_ARN: https://docs.reventless.dev/infrastructure/aws/get-started#the-lambda-layer`
+
+/** Why a deploy cannot go on without the layer, or `None` when it was found. */
+let missingLayerMessage = lookup =>
+  switch lookup {
+  | Found(_) => None
+  | NotFound({parameter, region}) =>
+    Some(
+      `No Reventless Lambda layer: the SSM parameter ${parameter} does not exist in ${_regionName(
+          region,
+        )}. Without the layer every function fails with "Cannot find package" on its first run. ${_publishHint}`,
+    )
+  | CouldNotLook({parameter, region, reason}) =>
+    Some(
+      `Could not look up the Reventless Lambda layer in the SSM parameter ${parameter} (${_regionName(
+          region,
+        )}): ${reason}. ${_publishHint}`,
+    )
+  }
+
+/** The layer's ARN. Throws with `missingLayerMessage` when there is none, so a
+    function is never created without the framework code it imports. */
+let reventlessLayerArn = (): string =>
+  switch lookupLayer() {
+  | Found(arn) => arn
+  | lookup =>
+    JsError.throwWithMessage(
+      missingLayerMessage(lookup)->Option.getOr("No Reventless Lambda layer"),
+    )
+  }
+
+/** The `layers` argument of every framework function. */
+let reventlessLayers = (): Pulumi.Input.t<array<Pulumi.Input.t<string>>> =>
+  [reventlessLayerArn()->Pulumi.Input.make]->Pulumi.Input.make
 
 @val
 external environment: option<string> = "process.env.Environment"
@@ -150,10 +233,7 @@ module CallbackFunction = {
       ~memorySize=1024->Pulumi.Input.make,
       ~timeout=180->Pulumi.Input.make,
       ~runtime=NodeJs22,
-      ~layers=reventlessLayerArn
-      ->Option.map(arn => [arn->Pulumi.Input.make])
-      ->Option.getOr([])
-      ->Pulumi.Input.make,
+      ~layers=reventlessLayers(),
       ~vpcConfig=?,
       ~tags=?,
       ~environment={

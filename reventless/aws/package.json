@@ -55,7 +55,8 @@
   },
   "jest": {
     "setupFiles": [
-      "<rootDir>/jest.setup.cjs"
+      "<rootDir>/jest.setup.cjs",
+      "<rootDir>/tests/setup/layerArn.cjs"
     ],
     "testMatch": [
       "<rootDir>/tests/**/*Test.res.mjs"

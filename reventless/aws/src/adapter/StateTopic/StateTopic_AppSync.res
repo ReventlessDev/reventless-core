@@ -332,11 +332,7 @@ let finish = (~eventsApi: AppSync_EventsApi.t, ~opts: Pulumi.CustomResourceOptio
       ~bundleRuntimeExtensions=false,
     )
 
-    let layers =
-      Lambda.reventlessLayerArn
-      ->Option.map(arn => [arn->Pulumi.Input.make])
-      ->Option.getOr([])
-      ->Pulumi.Input.make
+    let layers = Lambda.reventlessLayers()
 
     let appsyncEndpoint = AppSync_EventsApi.httpEndpoint(eventsApi)
 

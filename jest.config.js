@@ -40,7 +40,7 @@ module.exports = {
         "Pg.*IntegrationTest\\.res\\.mjs$",
       ],
       moduleFileExtensions: ["js", "mjs", "cjs"],
-      setupFiles: [setupFile],
+      setupFiles: [setupFile, "<rootDir>/tests/setup/layerArn.cjs"],
       moduleNameMapper: {
         "^@npmcli/arborist$": "<rootDir>/__mocks__/emptyModule.js",
         "^spdx-license-ids$":

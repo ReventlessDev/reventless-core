@@ -3,7 +3,6 @@
 import * as Aws from "@pulumi/aws";
 import * as IAM$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/IAM.res.mjs";
 import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
-import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Lambda$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Lambda/Lambda.res.mjs";
 import * as AWS$ReventlessAws from "../AWS.res.mjs";
@@ -57,7 +56,7 @@ function make(api, placeIndexName, nameOpt, opts) {
       Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, "@reventlessdev/reventless-aws")
     ]]);
   let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Geocoder/Geocoder_AwsLocation_Resolver_Ops.res.mjs", packageDirs, undefined, false);
-  let layers = Stdlib_Option.getOr(Stdlib_Option.map(Lambda$PulumiAws.reventlessLayerArn, arn => [arn]), []);
+  let layers = Lambda$PulumiAws.reventlessLayers();
   let logGroup = Util_LambdaLogging$ReventlessAws.makeManagedLogGroup(name + "Lambda", undefined, AWS_Tags$ReventlessAws.make(name + "LambdaLogGroup", "Platform", "Logs", "Platform", undefined, undefined, undefined, undefined), opts$1, undefined);
   let lambda = new (Aws.lambda.Function)(name + "Lambda", {
     handler: "index.handler",
