@@ -142,21 +142,25 @@ let register = (arg: Slots.registerArg): unit => {
 
   let h = (tag, props, children) => Slots.h(arg.h, tag, props, children)
 
-  // The picture, or a panel that says there isn't one.
+  // The picture, a panel that says there isn't one, or nothing at all.
   //
   // An `<img>` with an empty `src` is a broken-image icon in every browser, and
   // that reads as a deployment that is broken rather than a row that has no
-  // picture. A view whose rows mostly lack images — a shop mid-catalogue-entry —
-  // would otherwise look like a fault.
+  // picture. The panel is kept only where the view has pictures (`imageSlot`):
+  // a face is drawn for every view opening as cards, and Customers has none to miss.
   let picture = (~className: string, payload: Slots.rowPayload) =>
-    switch payload.image {
-    | Some(image) => h("img", {"className": className, "src": image.src, "alt": image.alt}, [])
-    | None =>
-      h(
-        "div",
-        {"className": className ++ " sf-noimg", "role": "img", "aria-label": "No image"},
-        [h("span", Object.make(), [React.string("No image")])],
-      )
+    switch (payload.image, payload.imageSlot) {
+    | (Some(image), _) => [
+        h("img", {"className": className, "src": image.src, "alt": image.alt}, []),
+      ]
+    | (None, Some(true)) => [
+        h(
+          "div",
+          {"className": className ++ " sf-noimg", "role": "img", "aria-label": "No image"},
+          [h("span", Object.make(), [React.string("No image")])],
+        ),
+      ]
+    | (None, _) => []
     }
 
   // A category, as a picture with its name over it. Drawn wherever a view opens
@@ -165,10 +169,9 @@ let register = (arg: Slots.registerArg): unit => {
     h(
       "figure",
       {"className": "sf-tile", "onClick": payload.openRow, "role": "button"},
-      [
-        picture(~className="sf-tile-img", payload),
+      picture(~className="sf-tile-img", payload)->Array.concat([
         h("figcaption", Object.make(), [React.string(Slots.titleOf(payload))]),
-      ],
+      ]),
     )
   )
 
@@ -220,11 +223,10 @@ let register = (arg: Slots.registerArg): unit => {
     h(
       "div",
       {"className": "sf-face"},
-      [
-        picture(~className="sf-face-img", payload),
+      picture(~className="sf-face-img", payload)->Array.concat([
         h("div", {"className": "sf-face-name"}, [React.string(heading)]),
         h("div", {"className": "sf-face-price"}, [React.string(summary->Array.join(" · "))]),
-      ],
+      ]),
     )
   })
 
@@ -257,7 +259,7 @@ let register = (arg: Slots.registerArg): unit => {
 
     switch images {
     // No picture at all still says so, rather than leaving the column blank.
-    | [] => h("div", {"className": "sf-media"}, [picture(~className="sf-media-img", payload)])
+    | [] => h("div", {"className": "sf-media"}, picture(~className="sf-media-img", payload))
     | _ =>
       let first = images->Array.getUnsafe(0)
       let primary = [

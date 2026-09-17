@@ -398,29 +398,33 @@ function register(arg) {
   ensureStyles("storefront-slots", styles);
   let h2 = (tag, props, children) => h(arg.h, tag, props, children);
   let picture = (className, payload) => {
-    let image = payload.image;
-    if (image !== void 0) {
-      return h2("img", {
+    let match = payload.image;
+    let match$1 = payload.imageSlot;
+    if (match !== void 0) {
+      return [h2("img", {
         className,
-        src: image.src,
-        alt: image.alt
-      }, []);
+        src: match.src,
+        alt: match.alt
+      }, [])];
+    } else if (match$1 !== void 0) {
+      if (match$1) {
+        return [h2("div", {
+          className: className + " sf-noimg",
+          role: "img",
+          "aria-label": "No image"
+        }, [h2("span", {}, ["No image"])])];
+      } else {
+        return [];
+      }
     } else {
-      return h2("div", {
-        className: className + " sf-noimg",
-        role: "img",
-        "aria-label": "No image"
-      }, [h2("span", {}, ["No image"])]);
+      return [];
     }
   };
   arg.slots.row(RowSlot.galleryTile, (payload) => h2("figure", {
     className: "sf-tile",
     onClick: payload.open,
     role: "button"
-  }, [
-    picture("sf-tile-img", payload),
-    h2("figcaption", {}, [titleOf(payload)])
-  ]));
+  }, picture("sf-tile-img", payload).concat([h2("figcaption", {}, [titleOf(payload)])])));
   arg.slots.row(RowSlot.cardsFace, (payload) => {
     let at = Row.text(payload.row, "placedAt");
     let heading = at !== void 0 ? Format.isoDay(at) : titleOf(payload);
@@ -435,15 +439,14 @@ function register(arg) {
     ], (line) => line);
     return h2("div", {
       className: "sf-face"
-    }, [
-      picture("sf-face-img", payload),
+    }, picture("sf-face-img", payload).concat([
       h2("div", {
         className: "sf-face-name"
       }, [heading]),
       h2("div", {
         className: "sf-face-price"
       }, [summary.join(" \xB7 ")])
-    ]);
+    ]));
   });
   arg.slots.row(RowSlot.detailMedia, (payload) => {
     let images = payload.images;
@@ -472,7 +475,7 @@ function register(arg) {
     if (images$1.length === 0) {
       return h2("div", {
         className: "sf-media"
-      }, [picture("sf-media-img", payload)]);
+      }, picture("sf-media-img", payload));
     }
     let first = images$1[0];
     let caption = captionAt(0);

@@ -94,29 +94,33 @@ function register(arg) {
   ReventlessSlots.ensureStyles("storefront-slots", styles);
   let h = (tag, props, children) => ReventlessSlots.h(arg.h, tag, props, children);
   let picture = (className, payload) => {
-    let image = payload.image;
-    if (image !== undefined) {
-      return h("img", {
-        className: className,
-        src: image.src,
-        alt: image.alt
-      }, []);
+    let match = payload.image;
+    let match$1 = payload.imageSlot;
+    if (match !== undefined) {
+      return [h("img", {
+          className: className,
+          src: match.src,
+          alt: match.alt
+        }, [])];
+    } else if (match$1 !== undefined) {
+      if (match$1) {
+        return [h("div", {
+            className: className + " sf-noimg",
+            role: "img",
+            "aria-label": "No image"
+          }, [h("span", {}, ["No image"])])];
+      } else {
+        return [];
+      }
     } else {
-      return h("div", {
-        className: className + " sf-noimg",
-        role: "img",
-        "aria-label": "No image"
-      }, [h("span", {}, ["No image"])]);
+      return [];
     }
   };
   arg.slots.row(ReventlessSlots.RowSlot.galleryTile, payload => h("figure", {
     className: "sf-tile",
     onClick: payload.open,
     role: "button"
-  }, [
-    picture("sf-tile-img", payload),
-    h("figcaption", {}, [ReventlessSlots.titleOf(payload)])
-  ]));
+  }, picture("sf-tile-img", payload).concat([h("figcaption", {}, [ReventlessSlots.titleOf(payload)])])));
   arg.slots.row(ReventlessSlots.RowSlot.cardsFace, payload => {
     let at = ReventlessSlots.Row.text(payload.row, "placedAt");
     let heading = at !== undefined ? ReventlessSlots.Format.isoDay(at) : ReventlessSlots.titleOf(payload);
@@ -137,15 +141,14 @@ function register(arg) {
     ], line => line);
     return h("div", {
       className: "sf-face"
-    }, [
-      picture("sf-face-img", payload),
+    }, picture("sf-face-img", payload).concat([
       h("div", {
         className: "sf-face-name"
       }, [heading]),
       h("div", {
         className: "sf-face-price"
       }, [summary.join(" · ")])
-    ]);
+    ]));
   });
   arg.slots.row(ReventlessSlots.RowSlot.detailMedia, payload => {
     let images = payload.images;
@@ -174,7 +177,7 @@ function register(arg) {
     if (images$1.length === 0) {
       return h("div", {
         className: "sf-media"
-      }, [picture("sf-media-img", payload)]);
+      }, picture("sf-media-img", payload));
     }
     let first = images$1[0];
     let caption = captionAt(0);
