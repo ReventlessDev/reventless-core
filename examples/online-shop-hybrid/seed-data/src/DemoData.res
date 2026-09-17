@@ -10,10 +10,12 @@
 // The mapping from those command values onto GraphQL mutations lives in
 // `DemoCommands.res`; the run itself lives in `DemoSeed.res`.
 
-// A fixed seed and fixed literal data: two runs against a fresh store produce
-// identical rows, so a seeded store is a usable baseline for comparison. Dates
-// are the exception: delivery windows follow the run's day (`deliveryWindowFor`).
-let random = ReventlessSeed.Seed.Random.make(~seed=0x5eed)
+// A fixed seed and fixed literal data: two first runs against a fresh store
+// produce identical rows, so a seeded store is a usable baseline for comparison.
+// Dates are the exception: delivery windows follow the run's day
+// (`deliveryWindowFor`). A follow-up run makes its own generator, seeded from its
+// run date. Every generator below takes the one it draws from.
+let firstRunRandom = ReventlessSeed.Seed.Random.make(~seed=0x5eed)
 
 let productCount = 60
 let customerCount = 20
@@ -234,22 +236,22 @@ let expectedImportFailures = supplierFeed->Array.length - expectedImportSuccesse
 
 let pad = (n: int, width: int): string => n->Int.toString->String.padStart(width, "0")
 
-let pick = (xs: array<string>): string =>
+let pick = (xs: array<string>, ~random): string =>
   ReventlessSeed.Seed.Random.pickOr(random, ~fallback="", xs)
 
-let address = (): string => {
+let address = (~random): string => {
   let number = ReventlessSeed.Seed.Random.int(random, ~min=1, ~max=180)
-  `${number->Int.toString} ${pick(streets)}, ${pick(cities)}`
+  `${number->Int.toString} ${pick(streets, ~random)}, ${pick(cities, ~random)}`
 }
 
 // An address paired with the coordinates of the city it names, so a customer's
 // map pin lands on the same city that appears in its address text.
-let locatedAddress = (): (string, float, float) => {
+let locatedAddress = (~random): (string, float, float) => {
   let number = ReventlessSeed.Seed.Random.int(random, ~min=1, ~max=180)
   let cityIndex = ReventlessSeed.Seed.Random.int(random, ~min=0, ~max=cities->Array.length - 1)
   let city = cities->Array.get(cityIndex)->Option.getOr("")
   let (lat, lng) = cityCoords->Array.get(cityIndex)->Option.getOr((0.0, 0.0))
-  (`${number->Int.toString} ${pick(streets)}, ${city}`, lat, lng)
+  (`${number->Int.toString} ${pick(streets, ~random)}, ${city}`, lat, lng)
 }
 
 // ── Products ────────────────────────────────────────────────────────────────
@@ -311,7 +313,35 @@ let categorySvg = (~name: string, ~index: int): string => {
   `<text x="300" y="112" fill="#ffffff" font-family="sans-serif" font-size="30" font-weight="600" text-anchor="middle">${label}</text>` ++ `</svg>`
 }
 
-let buildProducts = (~count=productCount, ()): array<product> => {
+// One listed product in `category`. The draws happen in a fixed order, so a
+// generator seeded the same way names and prices the same products.
+let makeProduct = (~random, ~id: string, ~category: category): product => {
+  let qualifier = pick(qualifiers, ~random)
+  let suffix = qualifier == "" ? "" : ` ${qualifier}`
+  let name = `${pick(brands, ~random)} ${pick(category.nouns, ~random)}${suffix}`
+  // Log-uniform over ~5..900 so the price axis has a long right tail
+  // instead of clustering in the middle of a linear range.
+  let low = Math.log(5.0)
+  let high = Math.log(900.0)
+  let raw = Math.exp(low +. ReventlessSeed.Seed.Random.float(random) *. (high -. low))
+  // `ofMajor` is the rounding: it scales by the currency's exponent and
+  // lands on a whole minor unit, which is what the hand-written
+  // `Math.round(raw *. 100.0) /. 100.0` here used to approximate.
+  let price = Reventless.Money.ofMajor(~amount=raw, ~currency)
+  {
+    id,
+    name,
+    description: `${name} — ${pick(blurbs, ~random)} ${category.name->String.toLowerCase} pick.`,
+    price,
+    // Absent until the upload phase fills it with the served `/{prefix}/{key}`
+    // ref; products left without an upload keep no image.
+    productImage: None,
+    categoryId: category.id,
+    shelf: Listed,
+  }
+}
+
+let buildProducts = (~random, ~count=productCount, ~idPrefix="prd-", ()): array<product> => {
   // Category share proportional to weight, so the catalog is lopsided the way a
   // real one is rather than eight even buckets.
   let totalWeight = categories->Array.reduce(0, (sum, c) => sum + c.weight)
@@ -324,27 +354,9 @@ let buildProducts = (~count=productCount, ()): array<product> => {
     for _ in 1 to share {
       if products->Array.length < count {
         n := n.contents + 1
-        let qualifier = pick(qualifiers)
-        let suffix = qualifier == "" ? "" : ` ${qualifier}`
-        let name = `${pick(brands)} ${pick(category.nouns)}${suffix}`
-        // Log-uniform over ~5..900 so the price axis has a long right tail
-        // instead of clustering in the middle of a linear range.
-        let low = Math.log(5.0)
-        let high = Math.log(900.0)
-        let raw = Math.exp(low +. ReventlessSeed.Seed.Random.float(random) *. (high -. low))
-        // `ofMajor` is the rounding: it scales by the currency's exponent and
-        // lands on a whole minor unit, which is what the hand-written
-        // `Math.round(raw *. 100.0) /. 100.0` here used to approximate.
-        let price = Reventless.Money.ofMajor(~amount=raw, ~currency)
+        let product = makeProduct(~random, ~id=`${idPrefix}${pad(n.contents, 3)}`, ~category)
         products->Array.push({
-          id: `prd-${pad(n.contents, 3)}`,
-          name,
-          description: `${name} — ${pick(blurbs)} ${category.name->String.toLowerCase} pick.`,
-          price,
-          // Absent until the upload phase fills it with the served `/{prefix}/{key}`
-          // ref; products left without an upload keep no image.
-          productImage: None,
-          categoryId: category.id,
+          ...product,
           // Exactly one of each, at low indices so the `sample` set (16 products)
           // exercises the same path the full one does. A retirement that only the
           // large data set shows is a retirement nobody checks.
@@ -360,13 +372,13 @@ let buildProducts = (~count=productCount, ()): array<product> => {
   products
 }
 
-/** A little post-creation churn, so views are not uniformly "created once and
-    never touched" and the price-change path through to Ordering is exercised. */
+// The first run's changes: one of each, so a single run still exercises every
+// path. The bulk of the churn is a follow-up run's, on a later day.
 let repricedProducts = (products: array<product>): array<product> =>
-  products->Array.filterWithIndex((_, i) => mod(i, 11) == 4)
+  products->Array.filterWithIndex((_, i) => i == 4)
 
 let redescribedProducts = (products: array<product>): array<product> =>
-  products->Array.filterWithIndex((_, i) => mod(i, 17) == 9)
+  products->Array.filterWithIndex((_, i) => i == 9)
 
 // The two ways off the shelf, read back off the fixture. Retired late in the run
 // — after orders reference the products — for the reason the archived category
@@ -381,8 +393,10 @@ let discontinuedProducts = (products: array<product>): array<product> =>
 
 // The discount is applied to the minor units directly, so it cannot drift into
 // float error on the way through a decimal and back.
-let discountedPrice = (p: product): Reventless.Money.t =>
-  Reventless.Money.make(~amount=Math.round(p.price.amount *. 0.85), ~currency=p.price.currency)
+let scaledPrice = (price: Reventless.Money.t, ~by: float): Reventless.Money.t =>
+  Reventless.Money.make(~amount=Math.round(price.amount *. by), ~currency=price.currency)
+
+let discountedPrice = (p: product): Reventless.Money.t => scaledPrice(p.price, ~by=0.85)
 
 // ── Customers ───────────────────────────────────────────────────────────────
 
@@ -588,15 +602,25 @@ let demoCustomers = (owners: owners): array<customer> => [
   },
 ]
 
-let buildCustomers = (~count=customerCount, ()): array<customer> =>
+// `~nameOffset` continues the name pools past the customers that already exist,
+// and `~emailTag` keeps a later run's addresses from repeating an earlier run's.
+let buildCustomers = (
+  ~random,
+  ~count=customerCount,
+  ~idPrefix="cust-",
+  ~nameOffset=0,
+  ~emailTag="",
+  (),
+): array<customer> =>
   Array.fromInitializer(~length=count, i => {
-    let first = firstNames->Array.get(mod(i, firstNames->Array.length))->Option.getOr("Ada")
-    let last = lastNames->Array.get(mod(i * 7 + 3, lastNames->Array.length))->Option.getOr("Beck")
-    let id = `cust-${pad(i + 1, 2)}`
-    let (address, lat, lng) = locatedAddress()
+    let n = i + nameOffset
+    let first = firstNames->Array.get(mod(n, firstNames->Array.length))->Option.getOr("Ada")
+    let last = lastNames->Array.get(mod(n * 7 + 3, lastNames->Array.length))->Option.getOr("Beck")
+    let id = `${idPrefix}${pad(i + 1, 2)}`
+    let (address, lat, lng) = locatedAddress(~random)
     {
       id,
-      email: `${first}.${last}@example.com`->String.toLowerCase,
+      email: `${first}.${last}${emailTag}@example.com`->String.toLowerCase,
       address,
       lat,
       lng,
@@ -604,12 +628,12 @@ let buildCustomers = (~count=customerCount, ()): array<customer> =>
   })
 
 let movedCustomers = (customers: array<customer>): array<customer> =>
-  customers->Array.filterWithIndex((_, i) => mod(i, 6) == 2)
+  customers->Array.filterWithIndex((_, i) => i == 2)
 
 let deactivatedCustomers = (customers: array<customer>): array<customer> =>
-  customers->Array.filterWithIndex((_, i) => mod(i, 9) == 5)
+  customers->Array.filterWithIndex((_, i) => i == 5)
 
-let newAddress = () => address()
+let newAddress = (~random) => address(~random)
 
 // ── Orders ──────────────────────────────────────────────────────────────────
 
@@ -630,23 +654,51 @@ let deliverySlotHours = [(9, 12), (14, 17), (18, 21)]
 
 let dayMs = 86400000.0
 
-// The requested slot for the i-th order: 1–21 days after the run's UTC day.
-// Anchored to that day because orders are placed when the seed runs — a window
-// before it would be a delivery requested for the past. Derived from the index,
-// not drawn, so the shared random stream and everything sampled after it stay
-// as they were; two runs on the same day produce identical windows.
-let deliveryWindowFor = (i: int, ~today: float): Reventless.DateRange.t => {
-  let day = Math.floor(today /. dayMs) *. dayMs +. Float.fromInt(1 + mod(i * 5, 21)) *. dayMs
+let startOfDay = (instant: float): float => Math.floor(instant /. dayMs) *. dayMs
+
+// The requested slot for the i-th order, counted in days after the run's UTC day:
+// 1–2 for Express, which ships at once, and 3–21 for Standard, which waits for a
+// run to dispatch it. Never before that day — orders are placed when the seed
+// runs, and a window before it would be a delivery requested for the past.
+// Derived from the index, not drawn, so the shared random stream and everything
+// sampled after it stay as they were.
+let deliveryWindowFor = (
+  i: int,
+  ~today: float,
+  ~shippingMethod: OrderingPlugin.PlaceOrder.shippingMethod,
+): Reventless.DateRange.t => {
+  let offset = switch shippingMethod {
+  | Express => 1 + mod(i, 2)
+  | Standard | Pickup => 3 + mod(i * 5, 19)
+  }
+  let day = startOfDay(today) +. Float.fromInt(offset) *. dayMs
   let (from, until) = deliverySlotHours->Array.getUnsafe(mod(i, Array.length(deliverySlotHours)))
   let at = hour => Date.fromTime(day +. Float.fromInt(hour) *. 3600000.0)->Date.toISOString
   Reventless.DateRange.make(~start=at(from), ~end_=at(until))->Result.getOrThrow
 }
 
+// The customer of each of the first orders: the demo logins, by index rather
+// than by the weighted draw, so their counts are exact rather than probable — an
+// acceptance check that asserts "5 orders" cannot be written against a Zipf
+// sample.
+let demoOrderCustomers = (owners: owners): array<string> =>
+  Array.concat(
+    Array.make(~length=demoShopperOrderCount, owners.shopper.id),
+    Array.concat(
+      Array.make(~length=demoOperatorOrderCount, owners.operator.id),
+      Array.make(~length=demoMerchandiserOrderCount, owners.merchandiser.id),
+    ),
+  )
+
+// `~reserved` names the customer of each of the first orders; every order after
+// them is drawn over `~customerIds`, so a reserved customer picks up no extra rows.
 let buildOrders = (
-  products: array<product>,
-  customers: array<customer>,
-  ~owners: owners,
+  ~random,
+  ~productIds: array<string>,
+  ~customerIds: array<string>,
+  ~reserved: array<string>=[],
   ~count=orderCount,
+  ~idPrefix="ord-",
   ~today: float,
   (),
 ): array<order> => {
@@ -654,12 +706,12 @@ let buildOrders = (
   // and the tail is long, so ProductDemand reads as a real leaderboard.
   let shuffled = ReventlessSeed.Seed.Random.sampleWeighted(
     random,
-    products->Array.map(p => (p, 1.0)),
-    ~count=products->Array.length,
+    productIds->Array.map(id => (id, 1.0)),
+    ~count=productIds->Array.length,
   )
   let productWeights = ReventlessSeed.Seed.Random.zipfWeights(shuffled, ~exponent=1.1)
   // Milder skew on customers: a few repeat buyers, nobody with zero.
-  let customerWeights = ReventlessSeed.Seed.Random.zipfWeights(customers, ~exponent=0.45)
+  let customerWeights = ReventlessSeed.Seed.Random.zipfWeights(customerIds, ~exponent=0.45)
 
   Array.fromInitializer(~length=count, i => {
     let sizeRoll = ReventlessSeed.Seed.Random.float(random)
@@ -672,26 +724,12 @@ let buildOrders = (
     } else {
       4
     }
-    // The first orders belong to the demo logins, by index rather than by the
-    // weighted draw, so their counts are exact rather than probable — an
-    // acceptance check that asserts "5 orders" cannot be written against a Zipf
-    // sample. Everything after them is distributed as before, over the generated
-    // customers only, so neither demo owner picks up extra rows.
-    let demoOwner = if i < demoShopperOrderCount {
-      Some(owners.shopper.id)
-    } else if i < demoShopperOrderCount + demoOperatorOrderCount {
-      Some(owners.operator.id)
-    } else if i < demoShopperOrderCount + demoOperatorOrderCount + demoMerchandiserOrderCount {
-      Some(owners.merchandiser.id)
-    } else {
-      None
-    }
-    let customerId = switch demoOwner {
+    let customerId = switch reserved->Array.get(i) {
     | Some(id) => id
     | None =>
       ReventlessSeed.Seed.Random.sampleWeighted(random, customerWeights, ~count=1)
       ->Array.get(0)
-      ->Option.mapOr("cust-01", c => c.id)
+      ->Option.getOr("cust-01")
     }
     // Mostly one of a thing, occasionally two or three — enough that the demo's
     // totals differ from one another rather than all being a single unit price.
@@ -699,7 +737,7 @@ let buildOrders = (
       random,
       productWeights,
       ~count=size,
-    )->Array.map(p => {
+    )->Array.map(productId => {
       let quantityRoll = ReventlessSeed.Seed.Random.float(random)
       let quantity = if quantityRoll < 0.7 {
         1
@@ -708,7 +746,7 @@ let buildOrders = (
       } else {
         3
       }
-      ({productId: p.id, quantity}: OrderingPlugin.PlaceOrder.lineItem)
+      ({productId, quantity}: OrderingPlugin.PlaceOrder.lineItem)
     })
     // Drives the whole downstream lifecycle: Express is auto-shipped by the
     // AutoShipOrder automation, Standard waits for the batch dispatch, Pickup
@@ -726,25 +764,57 @@ let buildOrders = (
     let deliveryWindow = if shippingMethod == Pickup || windowRoll < 0.4 {
       None
     } else {
-      Some(deliveryWindowFor(i, ~today))
+      Some(deliveryWindowFor(i, ~today, ~shippingMethod))
     }
-    {id: `ord-${pad(i + 1, 3)}`, customerId, lineItems, shippingMethod, deliveryWindow}
+    {id: `${idPrefix}${pad(i + 1, 3)}`, customerId, lineItems, shippingMethod, deliveryWindow}
   })
 }
 
-/** The warehouse batch run: Standard orders are not the automation's business,
-    so they sit in Placed until something dispatches them. Most are shipped;
-    the rest stay Placed. */
-let batchDispatched = (orders: array<order>): array<order> =>
-  orders
-  ->Array.filter(o => o.shippingMethod == Standard)
-  ->Array.filterWithIndex((_, i) => mod(i, 5) != 0)
+// ── Shipping and cancelling ─────────────────────────────────────────────────
 
-/** Cancellations are drawn only from orders still in Placed — Standard orders
-    the batch skipped, and Pickup orders, which never ship. An Express order is
-    already Shipped and could not be cancelled. */
-let cancellable = (orders: array<order>, ~dispatched: array<string>): array<order> =>
-  orders->Array.filter(o => o.shippingMethod != Express && !(dispatched->Array.includes(o.id)))
+// An order still waiting in `Placed`, as a run sees it: the first run from the
+// orders it just built, a follow-up from the Orders view.
+type placedOrder = {
+  id: string,
+  shippingMethod: OrderingPlugin.PlaceOrder.shippingMethod,
+  deliveryWindow: option<Reventless.DateRange.t>,
+}
 
-let cancelled = (orders: array<order>): array<order> =>
-  orders->Array.filterWithIndex((_, i) => mod(i, 3) == 1)
+let placedOf = (o: order): placedOrder => {
+  id: o.id,
+  shippingMethod: o.shippingMethod,
+  deliveryWindow: o.deliveryWindow,
+}
+
+// How many days ahead of its window a Standard order ships.
+let shipLeadDays = 3
+
+/** The warehouse run: the Standard orders whose window opens within
+    `shipLeadDays` of `today`, plus every other one of those without a window.
+    Express is the automation's business and Pickup never ships. Run on a later
+    day, the same rule ships what an earlier run left waiting. */
+let dueForShipping = (placed: array<placedOrder>, ~today: float): array<string> => {
+  let standard = placed->Array.filter(o => o.shippingMethod == Standard)
+  let horizon = startOfDay(today) +. Float.fromInt(shipLeadDays + 1) *. dayMs
+  let windowDue =
+    standard->Array.filter(o =>
+      o.deliveryWindow->Option.mapOr(false, w => Reventless.DateRange.millis(w.start) < horizon)
+    )
+  let unscheduled =
+    standard
+    ->Array.filter(o => o.deliveryWindow->Option.isNone)
+    ->Array.filterWithIndex((_, i) => mod(i, 2) == 0)
+  Array.concat(windowDue, unscheduled)->Array.map(o => o.id)
+}
+
+/** Up to `max` cancellations, drawn only from orders still in Placed that this
+    run is not shipping. An Express order is already Shipped and could not be
+    cancelled. */
+let cancellations = (placed: array<placedOrder>, ~shipping: array<string>, ~max: int): array<
+  string,
+> =>
+  placed
+  ->Array.filter(o => o.shippingMethod != Express && !(shipping->Array.includes(o.id)))
+  ->Array.filterWithIndex((_, i) => mod(i, 3) == 1)
+  ->Array.slice(~start=0, ~end=max)
+  ->Array.map(o => o.id)

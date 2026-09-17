@@ -256,41 +256,42 @@ let seedRejectedDuplicate = async (products: array<DemoData.product>, ~client: S
   | None => ()
   }
 
-let seedCatalogEdits = async (
-  products: array<DemoData.product>,
-  categories: array<DemoData.category>,
+// Price changes, as (productId, new price) pairs. A repricing crosses the Products
+// extension point, so a later order is priced at the new figure.
+let seedRepricing = async (
   ~client: Seed.Client.t,
-  // (categoryId, a freshly uploaded ref) for the one category that gets its
-  // image replaced. Empty when uploads are off.
-  ~reimage: array<(string, string)>,
+  ~repriced: array<(string, Reventless.Money.t)>,
 ) => {
-  let repriced = DemoData.repricedProducts(products)
   await client->Seed.Client.sendAll(
-    repriced->Array.map(p =>
-      DemoCommands.changeProductPrice(
-        ChangeProductPrice({productId: p.id, price: DemoData.discountedPrice(p)}),
-      )
+    repriced->Array.map(((productId, price)) =>
+      DemoCommands.changeProductPrice(ChangeProductPrice({productId, price}))
     ),
   )
-  let redescribed = DemoData.redescribedProducts(products)
+  Seed.Runner.report(`catalog: ${repriced->Array.length->Int.toString} repriced`)
+}
+
+let seedRedescriptions = async (~client: Seed.Client.t, ~redescribed: array<(string, string)>) => {
   await client->Seed.Client.sendAll(
-    redescribed->Array.map(p =>
-      DemoCommands.changeProductDescription(
-        ChangeProductDescription({
-          productId: p.id,
-          description: `${p.description} Updated listing copy.`,
-        }),
-      )
+    redescribed->Array.map(((productId, description)) =>
+      DemoCommands.changeProductDescription(ChangeProductDescription({productId, description}))
     ),
   )
-  await client->Seed.Client.sendAll([
-    DemoCommands.renameCategory(
-      RenameCategory({
-        categoryId: DemoData.renamedCategoryId,
-        name: DemoData.renamedCategoryName,
-      }),
+  Seed.Runner.report(`catalog: ${redescribed->Array.length->Int.toString} redescribed`)
+}
+
+let seedCategoryEdits = async (
+  ~client: Seed.Client.t,
+  ~renamed: array<(string, string)>,
+  // (categoryId, a freshly uploaded ref) for a category that gets its image
+  // replaced. Empty when uploads are off.
+  ~reimage: array<(string, string)>,
+  ~archived: array<string>,
+) => {
+  await client->Seed.Client.sendAll(
+    renamed->Array.map(((categoryId, name)) =>
+      DemoCommands.renameCategory(RenameCategory({categoryId, name}))
     ),
-  ])
+  )
   // Re-image one live category, so the replacement path is exercised next to the
   // rename: one command, and the log shows the old ref leaving before the new one
   // arrives. The ref must differ from the first — setting the same ref is the
@@ -303,19 +304,13 @@ let seedCatalogEdits = async (
       )
     ),
   )
-
-  let archived = categories->Array.filter(c => c.archive)
   await client->Seed.Client.sendAll(
-    archived->Array.map(c => DemoCommands.archiveCategory(ArchiveCategory({categoryId: c.id}))),
+    archived->Array.map(id => DemoCommands.archiveCategory(ArchiveCategory({categoryId: id}))),
   )
   Seed.Runner.report(
-    `catalog edits: ${repriced->Array.length->Int.toString} repriced, ${redescribed
+    `categories: ${renamed->Array.length->Int.toString} renamed, ${reimage
       ->Array.length
-      ->Int.toString} redescribed, 1 renamed, ${reimage
-      ->Array.length
-      ->Int.toString} re-imaged, ${archived
-      ->Array.length
-      ->Int.toString} archived`,
+      ->Int.toString} re-imaged, ${archived->Array.length->Int.toString} archived`,
   )
 }
 
@@ -388,17 +383,16 @@ let seedCustomers = async (customers: array<DemoData.customer>, ~client: Seed.Cl
       )
     ),
   )
-  let moved = DemoData.movedCustomers(customers)
+  Seed.Runner.report(`customers: ${customers->Array.length->Int.toString} registered`)
+}
+
+// Address changes, as (customerId, new address) pairs. Sent without a location,
+// so the geocoding slice resolves each one.
+let seedAddressMoves = async (~client: Seed.Client.t, ~moved: array<(string, string)>) => {
   await client->Seed.Client.sendAll(
-    moved->Array.map(c =>
-      DemoCommands.customer(~id=c.id, UpdateAddress({address: DemoData.newAddress()}))
-    ),
+    moved->Array.map(((id, next)) => DemoCommands.customer(~id, UpdateAddress({address: next}))),
   )
-  Seed.Runner.report(
-    `customers: ${customers->Array.length->Int.toString} registered, ${moved
-      ->Array.length
-      ->Int.toString} moved`,
-  )
+  Seed.Runner.report(`customers: ${moved->Array.length->Int.toString} moved`)
 }
 
 let seedOrders = async (orders: array<DemoData.order>, ~client: Seed.Client.t) => {
@@ -437,44 +431,25 @@ let seedOrders = async (orders: array<DemoData.order>, ~client: Seed.Client.t) =
   )
 }
 
-let dispatchStandardBatch = async (orders: array<DemoData.order>, ~client: Seed.Client.t) => {
-  let dispatched = DemoData.batchDispatched(orders)
+let seedShipments = async (~client: Seed.Client.t, ~orderIds: array<string>) => {
   await client->Seed.Client.sendAll(
-    dispatched->Array.map(o => DemoCommands.shipOrder(ShipOrder({orderId: o.id}))),
+    orderIds->Array.map(id => DemoCommands.shipOrder(ShipOrder({orderId: id}))),
   )
-  let standardTotal = orders->Array.filter(o => o.shippingMethod == Standard)->Array.length
-  Seed.Runner.report(
-    `batch dispatch: ${dispatched
-      ->Array.length
-      ->Int.toString}/${standardTotal->Int.toString} Standard orders shipped, ${(standardTotal -
-      dispatched->Array.length)->Int.toString} left pending`,
-  )
-  dispatched->Array.map(o => o.id)
+  Seed.Runner.report(`shipments: ${orderIds->Array.length->Int.toString} Standard orders shipped`)
 }
 
-let seedCancellations = async (
-  orders: array<DemoData.order>,
-  ~client: Seed.Client.t,
-  ~dispatched: array<string>,
-) => {
-  let cancellable = DemoData.cancellable(orders, ~dispatched)
-  let targets = DemoData.cancelled(cancellable)
+let seedCancellations = async (~client: Seed.Client.t, ~orderIds: array<string>) => {
   await client->Seed.Client.sendAll(
-    targets->Array.map(o => DemoCommands.cancelOrder(CancelOrder({orderId: o.id}))),
+    orderIds->Array.map(id => DemoCommands.cancelOrder(CancelOrder({orderId: id}))),
   )
-  Seed.Runner.report(
-    `cancellations: ${targets->Array.length->Int.toString} of ${cancellable
-      ->Array.length
-      ->Int.toString} cancellable orders cancelled`,
-  )
+  Seed.Runner.report(`cancellations: ${orderIds->Array.length->Int.toString} orders cancelled`)
 }
 
-let seedDeactivations = async (customers: array<DemoData.customer>, ~client: Seed.Client.t) => {
-  let targets = DemoData.deactivatedCustomers(customers)
+let seedDeactivations = async (~client: Seed.Client.t, ~customerIds: array<string>) => {
   await client->Seed.Client.sendAll(
-    targets->Array.map(c => DemoCommands.customer(~id=c.id, Deactivate)),
+    customerIds->Array.map(id => DemoCommands.customer(~id, Deactivate)),
   )
-  Seed.Runner.report(`customers: ${targets->Array.length->Int.toString} deactivated`)
+  Seed.Runner.report(`customers: ${customerIds->Array.length->Int.toString} deactivated`)
 }
 
 // The two ways a product leaves the shelf, run late for the reason the archived
@@ -483,15 +458,20 @@ let seedDeactivations = async (customers: array<DemoData.customer>, ~client: See
 // resolving a product the catalog no longer offers — which is the case the whole
 // feature is for — and it shows the withdrawal crossing the extension point into
 // Ordering, where the shopper's `AvailableProducts` drops the row.
-let seedProductRetirements = async (products: array<DemoData.product>, ~client: Seed.Client.t) => {
-  let archived = DemoData.archivedProducts(products)
+let seedProductRetirements = async (
+  ~client: Seed.Client.t,
+  ~archived: array<string>,
+  ~discontinued: array<string>,
+  // How many products the shop holds retired once these land, counting any
+  // retired before this run.
+  ~expectedRetired: int,
+) => {
   await client->Seed.Client.sendAll(
-    archived->Array.map(p => DemoCommands.archiveProduct(ArchiveProduct({productId: p.id}))),
+    archived->Array.map(id => DemoCommands.archiveProduct(ArchiveProduct({productId: id}))),
   )
-  let discontinued = DemoData.discontinuedProducts(products)
   await client->Seed.Client.sendAll(
-    discontinued->Array.map(p =>
-      DemoCommands.discontinueProduct(DiscontinueProduct({productId: p.id}))
+    discontinued->Array.map(id =>
+      DemoCommands.discontinueProduct(DiscontinueProduct({productId: id}))
     ),
   )
   // Wait for the projection rather than reporting the commands as though they
@@ -501,7 +481,6 @@ let seedProductRetirements = async (products: array<DemoData.product>, ~client: 
   //
   // Read with `includeRetired` for the obvious reason: without it the rows this
   // is waiting for are precisely the ones the resolvers withhold.
-  let expected = archived->Array.length + discontinued->Array.length
   let retiredNow = nodes =>
     nodes
     ->Array.filter(n =>
@@ -515,9 +494,9 @@ let seedProductRetirements = async (products: array<DemoData.product>, ~client: 
     ~field="Catalog_Products",
     ~selection="shelfStatus",
     ~args="includeRetired: true",
-    ~satisfied=nodes => retiredNow(nodes) >= expected,
+    ~satisfied=nodes => retiredNow(nodes) >= expectedRetired,
     ~onTimeout=nodes =>
-      `catalog retirements: expected ${expected->Int.toString} withdrawn products, saw ${retiredNow(
+      `catalog retirements: expected ${expectedRetired->Int.toString} withdrawn products, saw ${retiredNow(
           nodes,
         )->Int.toString}`,
   )
@@ -811,7 +790,7 @@ let run = async (
   // commands already went out without.
   let owners = resolveDemoOwners(connection)
 
-  let built = DemoData.buildProducts(~count=productCount, ())
+  let built = DemoData.buildProducts(~random=DemoData.firstRunRandom, ~count=productCount, ())
   let products = switch connection.uploadsSkipped {
   | false => await uploadProductImages(built, ~client, ~store=productImageStore)
   | true =>
@@ -885,27 +864,60 @@ let run = async (
     )
     out
   }
-  let generatedCustomers = DemoData.buildCustomers(~count=customerCount, ())
+  let generatedCustomers = DemoData.buildCustomers(
+    ~random=DemoData.firstRunRandom,
+    ~count=customerCount,
+    (),
+  )
   // The demo logins are registered as customers but are deliberately NOT part of
   // the weighted draw below: their order counts are fixed by index, and letting
   // them also be sampled would make those counts approximate again.
   let customers = generatedCustomers->Array.concat(DemoData.demoCustomers(owners))
+  let today = Date.now()
   let orders = DemoData.buildOrders(
-    products,
-    generatedCustomers,
-    ~owners,
+    ~random=DemoData.firstRunRandom,
+    ~productIds=products->Array.map(p => p.id),
+    ~customerIds=generatedCustomers->Array.map(c => c.id),
+    ~reserved=DemoData.demoOrderCustomers(owners),
     ~count=orderCount,
-    ~today=Date.now(),
+    ~today,
     (),
   )
+  // Drawn after the orders, where the address draws have always come in the
+  // shared stream, so the rest of the data set is unchanged by where they are sent.
+  let moved =
+    DemoData.movedCustomers(generatedCustomers)->Array.map(c => (
+      c.id,
+      DemoData.newAddress(~random=DemoData.firstRunRandom),
+    ))
 
   await seedCategories(categories, ~client)
   await seedProducts(products, ~client)
   await seedProductGallery(~client, ~extra=extraProductImages)
   await seedRejectedDuplicate(products, ~client)
-  await seedCatalogEdits(products, categories, ~client, ~reimage)
+  await seedRepricing(
+    ~client,
+    ~repriced=DemoData.repricedProducts(products)->Array.map(p => (
+      p.id,
+      DemoData.discountedPrice(p),
+    )),
+  )
+  await seedRedescriptions(
+    ~client,
+    ~redescribed=DemoData.redescribedProducts(products)->Array.map(p => (
+      p.id,
+      `${p.description} Updated listing copy.`,
+    )),
+  )
+  await seedCategoryEdits(
+    ~client,
+    ~renamed=[(DemoData.renamedCategoryId, DemoData.renamedCategoryName)],
+    ~reimage,
+    ~archived=categories->Array.filter(c => c.archive)->Array.map(c => c.id),
+  )
   await seedSupplierFeed(~client)
   await seedCustomers(customers, ~client)
+  await seedAddressMoves(~client, ~moved)
 
   // Products reach Ordering asynchronously through the Products extension
   // point; PlaceOrder rejects until the shadow copy lands.
@@ -917,18 +929,154 @@ let run = async (
   Seed.Runner.report(`ordering: ${available->Int.toString} products available`)
 
   await seedOrders(orders, ~client)
-  let dispatched = await dispatchStandardBatch(orders, ~client)
-  await seedCancellations(orders, ~client, ~dispatched)
-  await seedDeactivations(customers, ~client)
-  await seedProductRetirements(products, ~client)
+  // Every order but an Express one is still Placed: those ship on arrival.
+  let placed = orders->Array.filter(o => o.shippingMethod != Express)->Array.map(DemoData.placedOf)
+  let shipping = DemoData.dueForShipping(placed, ~today)
+  await seedShipments(~client, ~orderIds=shipping)
+  await seedCancellations(~client, ~orderIds=DemoData.cancellations(placed, ~shipping, ~max=2))
+  await seedDeactivations(
+    ~client,
+    ~customerIds=DemoData.deactivatedCustomers(generatedCustomers)->Array.map(c => c.id),
+  )
+  let archived = DemoData.archivedProducts(products)->Array.map(p => p.id)
+  let discontinued = DemoData.discontinuedProducts(products)->Array.map(p => p.id)
+  await seedProductRetirements(
+    ~client,
+    ~archived,
+    ~discontinued,
+    ~expectedRetired=archived->Array.length + discontinued->Array.length,
+  )
 
   let counts = await Seed.Runner.verifyViews(client, ~views)
   await verifyOwnerScopedReads(connection, ~owners)
   await summarise(~client, ~counts)
 }
 
-// Two sets, so `Seed.Runner.seed` presents a selection: the full demo, and a
-// compact sample for a quick end-to-end check. Both walk identical phases.
+// ── Follow-up run ───────────────────────────────────────────────────────────
+
+// The day a follow-up runs as. `SEED_RUN_DATE` (YYYY-MM-DD) exists for testing the
+// run-date rules on one day: it changes the ids and the random choices, never the
+// time the shop records for an event, which is always now.
+let followUpToday = (): float =>
+  switch Seed.Prompt.envValue("SEED_RUN_DATE") {
+  | None => Date.now()
+  | Some(raw) =>
+    let t = Date.fromString(`${raw}T00:00:00Z`)->Date.getTime
+    Float.isNaN(t)
+      ? throw(Seed.Failed(`SEED_RUN_DATE="${raw}" is not a date — expected YYYY-MM-DD`))
+      : t
+  }
+
+// Refused before anything is sent: an empty shop has nothing to follow up on, and
+// a second run on the same day would stop at its first duplicate id.
+let followUpPreflight = async (connection: Seed.connection) => {
+  let runDate = DemoFollowUp.runDateOf(followUpToday())
+  let snapshot = await ShopSnapshot.read(connection.client)
+  if snapshot.products->Array.length == 0 {
+    throw(
+      Seed.Failed(
+        `the shop is empty — a follow-up adds a day of activity to a shop that a first run ` ++ `filled. Seed "full" or "sample" first.`,
+      ),
+    )
+  }
+  if DemoFollowUp.alreadyRan(snapshot, ~runDate) {
+    throw(
+      Seed.Failed(
+        `the follow-up for ${runDate} already ran — its orders (${DemoFollowUp.orderIdPrefix(
+            runDate,
+          )}…) are in the shop. Run the next one on a later day.`,
+      ),
+    )
+  }
+}
+
+// Waits until a view holds at least `expected` rows. Views catch up with the
+// commands asynchronously, so a single read right after sending can come up short.
+let expectGrowth = async (
+  client: Seed.Client.t,
+  ~field: string,
+  ~args: string="",
+  ~before: int,
+  ~added: int,
+) => {
+  let expected = before + added
+  let _ = await client->Seed.Client.queryAllNodesUntil(
+    ~field,
+    ~selection="id",
+    ~args,
+    ~satisfied=nodes => nodes->Array.length >= expected,
+    ~onTimeout=nodes =>
+      `follow-up: ${field} holds ${nodes
+        ->Array.length
+        ->Int.toString} rows, expected ${expected->Int.toString} (${before->Int.toString} before, ${added->Int.toString} added)`,
+  )
+  Seed.Runner.report(`${field}: ${before->Int.toString} → ${expected->Int.toString} ✓`)
+}
+
+let runFollowUp = async (connection: Seed.connection) => {
+  let client = connection.client
+  let owners = resolveDemoOwners(connection)
+  let today = followUpToday()
+  let before = await ShopSnapshot.read(client)
+  let f = DemoFollowUp.plan(
+    before,
+    ~today,
+    ~demoCustomerIds=owners->DemoData.all->Array.map(o => o.id),
+  )
+  Seed.Runner.heading(`Follow-up for ${f.runDate}:`)
+
+  let newProducts = switch (connection.uploadsSkipped, f.newProducts) {
+  | (_, []) | (true, _) => f.newProducts
+  | (false, products) => await uploadProductImages(products, ~client, ~store=productImageStore)
+  }
+  await seedProducts(newProducts, ~client)
+  await seedRepricing(~client, ~repriced=f.repriced)
+  await seedRedescriptions(~client, ~redescribed=f.redescribed)
+  await seedCustomers(f.newCustomers, ~client)
+  await seedAddressMoves(~client, ~moved=f.moved)
+  await seedOrders(f.orders, ~client)
+  await seedShipments(~client, ~orderIds=f.shipping)
+  await seedCancellations(~client, ~orderIds=f.cancelled)
+  await seedDeactivations(~client, ~customerIds=f.deactivated)
+  await seedProductRetirements(
+    ~client,
+    ~archived=f.archived,
+    ~discontinued=f.discontinued,
+    ~expectedRetired=before.products->Array.filter(p => !p.listed)->Array.length +
+    f.archived->Array.length +
+    f.discontinued->Array.length,
+  )
+
+  Seed.Runner.heading("Growth:")
+  let retired = "includeRetired: true"
+  await expectGrowth(
+    client,
+    ~field="Catalog_Products",
+    ~args=retired,
+    ~before=before.products->Array.length,
+    ~added=newProducts->Array.length,
+  )
+  await expectGrowth(
+    client,
+    ~field="Ordering_Customers",
+    ~args=retired,
+    ~before=before.customers->Array.length,
+    ~added=f.newCustomers->Array.length,
+  )
+  await expectGrowth(
+    client,
+    ~field="Ordering_Orders",
+    ~before=before.orders->Array.length,
+    ~added=f.orders->Array.length,
+  )
+  await verifyOwnerScopedReads(connection, ~owners)
+  let counts = await Seed.Runner.verifyViews(client, ~views)
+  await summarise(~client, ~counts)
+}
+
+// Two first runs, so `Seed.Runner.seed` presents a selection: the full demo, and a
+// compact sample for a quick end-to-end check. Both walk identical phases. `next`
+// is the follow-up, for a later day.
 let dataSets: array<Seed.dataSet> = [
   {
     name: "full",
@@ -947,6 +1095,12 @@ let dataSets: array<Seed.dataSet> = [
     label: "sample — 16 products, 8 customers, 40 orders",
     seed: connection => run(connection, ~productCount=16, ~customerCount=8, ~orderCount=40),
     probeViews,
+  },
+  {
+    name: "next",
+    label: "next — add one day of activity to a seeded shop (run on a later day)",
+    seed: runFollowUp,
+    preflight: followUpPreflight,
   },
   // Not a data set in the "fills a store" sense, and offered here anyway: this
   // is the menu an operator already reaches for, and a check nobody can find is

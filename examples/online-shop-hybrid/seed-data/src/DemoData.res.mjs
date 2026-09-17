@@ -10,7 +10,7 @@ import * as Seed_Users$ReventlessSeed from "@reventlessdev/reventless-seed/src/S
 import * as Seed_Random$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Random.res.mjs";
 import * as ImportProduct_Translation$CatalogPlugin from "@reventlessdev/online-shop-hybrid-catalog/src/Product/InboundTranslation/ImportProduct_Translation.res.mjs";
 
-let random = Seed_Random$ReventlessSeed.make(24301);
+let firstRunRandom = Seed_Random$ReventlessSeed.make(24301);
 
 let categories = [
   {
@@ -283,16 +283,16 @@ function pad(n, width) {
   return n.toString().padStart(width, "0");
 }
 
-function pick(xs) {
+function pick(xs, random) {
   return Seed_Random$ReventlessSeed.pickOr(random, "", xs);
 }
 
-function address() {
+function address(random) {
   let number = Seed_Random$ReventlessSeed.int(random, 1, 180);
   return number.toString() + ` ` + Seed_Random$ReventlessSeed.pickOr(random, "", streets) + `, ` + Seed_Random$ReventlessSeed.pickOr(random, "", cities);
 }
 
-function locatedAddress() {
+function locatedAddress(random) {
   let number = Seed_Random$ReventlessSeed.int(random, 1, 180);
   let cityIndex = Seed_Random$ReventlessSeed.int(random, 0, cities.length - 1 | 0);
   let city = Stdlib_Option.getOr(cities[cityIndex], "");
@@ -325,8 +325,28 @@ function categorySvg(name, index) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="200" viewBox="0 0 600 200">` + (`<rect width="600" height="200" fill="` + bg + `"/>`) + (`<text x="300" y="112" fill="#ffffff" font-family="sans-serif" font-size="30" font-weight="600" text-anchor="middle">` + label + `</text>`) + `</svg>`;
 }
 
-function buildProducts(countOpt, param) {
+function makeProduct(random, id, category) {
+  let qualifier = Seed_Random$ReventlessSeed.pickOr(random, "", qualifiers);
+  let suffix = qualifier === "" ? "" : ` ` + qualifier;
+  let name = Seed_Random$ReventlessSeed.pickOr(random, "", brands) + ` ` + Seed_Random$ReventlessSeed.pickOr(random, "", category.nouns) + suffix;
+  let low = Math.log(5.0);
+  let high = Math.log(900.0);
+  let raw = Math.exp(low + Seed_Random$ReventlessSeed.float(random) * (high - low));
+  let price = Money$Reventless.ofMajor(raw, "EUR");
+  return {
+    id: id,
+    name: name,
+    description: name + ` — ` + Seed_Random$ReventlessSeed.pickOr(random, "", blurbs) + ` ` + category.name.toLowerCase() + ` pick.`,
+    price: price,
+    productImage: undefined,
+    categoryId: category.id,
+    shelf: "Listed"
+  };
+}
+
+function buildProducts(random, countOpt, idPrefixOpt, param) {
   let count = countOpt !== undefined ? countOpt : 60;
+  let idPrefix = idPrefixOpt !== undefined ? idPrefixOpt : "prd-";
   let totalWeight = Stdlib_Array.reduce(categories, 0, (sum, c) => sum + c.weight | 0);
   let products = [];
   let n = {
@@ -339,21 +359,15 @@ function buildProducts(countOpt, param) {
     for (let _for = 1; _for <= share$1; ++_for) {
       if (products.length < count) {
         n.contents = n.contents + 1 | 0;
-        let qualifier = Seed_Random$ReventlessSeed.pickOr(random, "", qualifiers);
-        let suffix = qualifier === "" ? "" : ` ` + qualifier;
-        let name = Seed_Random$ReventlessSeed.pickOr(random, "", brands) + ` ` + Seed_Random$ReventlessSeed.pickOr(random, "", category.nouns) + suffix;
-        let low = Math.log(5.0);
-        let high = Math.log(900.0);
-        let raw = Math.exp(low + Seed_Random$ReventlessSeed.float(random) * (high - low));
-        let price = Money$Reventless.ofMajor(raw, "EUR");
+        let product = makeProduct(random, idPrefix + pad(n.contents, 3), category);
         let match = n.contents;
         products.push({
-          id: `prd-` + pad(n.contents, 3),
-          name: name,
-          description: name + ` — ` + Seed_Random$ReventlessSeed.pickOr(random, "", blurbs) + ` ` + category.name.toLowerCase() + ` pick.`,
-          price: price,
-          productImage: undefined,
-          categoryId: category.id,
+          id: product.id,
+          name: product.name,
+          description: product.description,
+          price: product.price,
+          productImage: product.productImage,
+          categoryId: product.categoryId,
           shelf: match !== 4 ? (
               match !== 8 ? "Listed" : "Discontinued"
             ) : "Archived"
@@ -365,11 +379,11 @@ function buildProducts(countOpt, param) {
 }
 
 function repricedProducts(products) {
-  return products.filter((param, i) => i % 11 === 4);
+  return products.filter((param, i) => i === 4);
 }
 
 function redescribedProducts(products) {
-  return products.filter((param, i) => i % 17 === 9);
+  return products.filter((param, i) => i === 9);
 }
 
 function archivedProducts(products) {
@@ -380,8 +394,12 @@ function discontinuedProducts(products) {
   return products.filter(p => p.shelf === "Discontinued");
 }
 
+function scaledPrice(price, by) {
+  return Money$Reventless.make(Math.round(price.amount * by), price.currency);
+}
+
 function discountedPrice(p) {
-  return Money$Reventless.make(Math.round(p.price.amount * 0.85), p.price.currency);
+  return scaledPrice(p.price, 0.85);
 }
 
 let demoShopperUsername = "shopper";
@@ -502,16 +520,20 @@ function demoCustomers(owners) {
   ];
 }
 
-function buildCustomers(countOpt, param) {
+function buildCustomers(random, countOpt, idPrefixOpt, nameOffsetOpt, emailTagOpt, param) {
   let count = countOpt !== undefined ? countOpt : 20;
+  let idPrefix = idPrefixOpt !== undefined ? idPrefixOpt : "cust-";
+  let nameOffset = nameOffsetOpt !== undefined ? nameOffsetOpt : 0;
+  let emailTag = emailTagOpt !== undefined ? emailTagOpt : "";
   return Stdlib_Array.fromInitializer(count, i => {
-    let first = Stdlib_Option.getOr(firstNames[Primitive_int.mod_(i, firstNames.length)], "Ada");
-    let last = Stdlib_Option.getOr(lastNames[Primitive_int.mod_((i * 7 | 0) + 3 | 0, lastNames.length)], "Beck");
-    let id = `cust-` + pad(i + 1 | 0, 2);
-    let match = locatedAddress();
+    let n = i + nameOffset | 0;
+    let first = Stdlib_Option.getOr(firstNames[Primitive_int.mod_(n, firstNames.length)], "Ada");
+    let last = Stdlib_Option.getOr(lastNames[Primitive_int.mod_((n * 7 | 0) + 3 | 0, lastNames.length)], "Beck");
+    let id = idPrefix + pad(i + 1 | 0, 2);
+    let match = locatedAddress(random);
     return {
       id: id,
-      email: (first + `.` + last + `@example.com`).toLowerCase(),
+      email: (first + `.` + last + emailTag + `@example.com`).toLowerCase(),
       address: match[0],
       lat: match[1],
       lng: match[2]
@@ -520,16 +542,14 @@ function buildCustomers(countOpt, param) {
 }
 
 function movedCustomers(customers) {
-  return customers.filter((param, i) => i % 6 === 2);
+  return customers.filter((param, i) => i === 2);
 }
 
 function deactivatedCustomers(customers) {
-  return customers.filter((param, i) => i % 9 === 5);
+  return customers.filter((param, i) => i === 5);
 }
 
-function newAddress() {
-  return address();
-}
+let newAddress = address;
 
 let deliverySlotHours = [
   [
@@ -546,21 +566,45 @@ let deliverySlotHours = [
   ]
 ];
 
-function deliveryWindowFor(i, today) {
-  let day = Math.floor(today / 86400000.0) * 86400000.0 + (1 + (i * 5 | 0) % 21 | 0) * 86400000.0;
+function startOfDay(instant) {
+  return Math.floor(instant / 86400000.0) * 86400000.0;
+}
+
+function deliveryWindowFor(i, today, shippingMethod) {
+  let offset;
+  let exit = 0;
+  switch (shippingMethod) {
+    case "Express" :
+      offset = 1 + i % 2 | 0;
+      break;
+    case "Standard" :
+    case "Pickup" :
+      exit = 1;
+      break;
+  }
+  if (exit === 1) {
+    offset = 3 + (i * 5 | 0) % 19 | 0;
+  }
+  let day = startOfDay(today) + offset * 86400000.0;
   let match = deliverySlotHours[Primitive_int.mod_(i, deliverySlotHours.length)];
   let at = hour => new Date(day + hour * 3600000.0).toISOString();
   return Stdlib_Result.getOrThrow(DateRange$Reventless.make(at(match[0]), at(match[1])), undefined);
 }
 
-function buildOrders(products, customers, owners, countOpt, today, param) {
+function demoOrderCustomers(owners) {
+  return Stdlib_Array.make(5, owners.shopper.id).concat(Stdlib_Array.make(3, owners.operator.id).concat(Stdlib_Array.make(2, owners.merchandiser.id)));
+}
+
+function buildOrders(random, productIds, customerIds, reservedOpt, countOpt, idPrefixOpt, today, param) {
+  let reserved = reservedOpt !== undefined ? reservedOpt : [];
   let count = countOpt !== undefined ? countOpt : 150;
-  let shuffled = Seed_Random$ReventlessSeed.sampleWeighted(random, products.map(p => [
-    p,
+  let idPrefix = idPrefixOpt !== undefined ? idPrefixOpt : "ord-";
+  let shuffled = Seed_Random$ReventlessSeed.sampleWeighted(random, productIds.map(id => [
+    id,
     1.0
-  ]), products.length);
+  ]), productIds.length);
   let productWeights = Seed_Random$ReventlessSeed.zipfWeights(shuffled, 1.1);
-  let customerWeights = Seed_Random$ReventlessSeed.zipfWeights(customers, 0.45);
+  let customerWeights = Seed_Random$ReventlessSeed.zipfWeights(customerIds, 0.45);
   return Stdlib_Array.fromInitializer(count, i => {
     let sizeRoll = Seed_Random$ReventlessSeed.float(random);
     let size = sizeRoll < 0.5 ? 1 : (
@@ -568,19 +612,15 @@ function buildOrders(products, customers, owners, countOpt, today, param) {
             sizeRoll < 0.9 ? 3 : 4
           )
       );
-    let demoOwner = i < 5 ? owners.shopper.id : (
-        i < 8 ? owners.operator.id : (
-            i < 10 ? owners.merchandiser.id : undefined
-          )
-      );
-    let customerId = demoOwner !== undefined ? demoOwner : Stdlib_Option.mapOr(Seed_Random$ReventlessSeed.sampleWeighted(random, customerWeights, 1)[0], "cust-01", c => c.id);
-    let lineItems = Seed_Random$ReventlessSeed.sampleWeighted(random, productWeights, size).map(p => {
+    let id = reserved[i];
+    let customerId = id !== undefined ? id : Stdlib_Option.getOr(Seed_Random$ReventlessSeed.sampleWeighted(random, customerWeights, 1)[0], "cust-01");
+    let lineItems = Seed_Random$ReventlessSeed.sampleWeighted(random, productWeights, size).map(productId => {
       let quantityRoll = Seed_Random$ReventlessSeed.float(random);
       let quantity = quantityRoll < 0.7 ? 1 : (
           quantityRoll < 0.92 ? 2 : 3
         );
       return {
-        productId: p.id,
+        productId: productId,
         quantity: quantity
       };
     });
@@ -589,9 +629,9 @@ function buildOrders(products, customers, owners, countOpt, today, param) {
         methodRoll < 0.8 ? "Standard" : "Pickup"
       );
     let windowRoll = Seed_Random$ReventlessSeed.float(random);
-    let deliveryWindow = shippingMethod === "Pickup" || windowRoll < 0.4 ? undefined : deliveryWindowFor(i, today);
+    let deliveryWindow = shippingMethod === "Pickup" || windowRoll < 0.4 ? undefined : deliveryWindowFor(i, today, shippingMethod);
     return {
-      id: `ord-` + pad(i + 1 | 0, 3),
+      id: idPrefix + pad(i + 1 | 0, 3),
       customerId: customerId,
       lineItems: lineItems,
       shippingMethod: shippingMethod,
@@ -600,22 +640,30 @@ function buildOrders(products, customers, owners, countOpt, today, param) {
   });
 }
 
-function batchDispatched(orders) {
-  return orders.filter(o => o.shippingMethod === "Standard").filter((param, i) => i % 5 !== 0);
+function placedOf(o) {
+  return {
+    id: o.id,
+    shippingMethod: o.shippingMethod,
+    deliveryWindow: o.deliveryWindow
+  };
 }
 
-function cancellable(orders, dispatched) {
-  return orders.filter(o => {
+function dueForShipping(placed, today) {
+  let standard = placed.filter(o => o.shippingMethod === "Standard");
+  let horizon = startOfDay(today) + 4 * 86400000.0;
+  let windowDue = standard.filter(o => Stdlib_Option.mapOr(o.deliveryWindow, false, w => DateRange$Reventless.millis(w.start) < horizon));
+  let unscheduled = standard.filter(o => Stdlib_Option.isNone(o.deliveryWindow)).filter((param, i) => i % 2 === 0);
+  return windowDue.concat(unscheduled).map(o => o.id);
+}
+
+function cancellations(placed, shipping, max) {
+  return placed.filter(o => {
     if (o.shippingMethod !== "Express") {
-      return !dispatched.includes(o.id);
+      return !shipping.includes(o.id);
     } else {
       return false;
     }
-  });
-}
-
-function cancelled(orders) {
-  return orders.filter((param, i) => i % 3 === 1);
+  }).filter((param, i) => i % 3 === 1).slice(0, max).map(o => o.id);
 }
 
 let productCount = 60;
@@ -638,8 +686,10 @@ let demoMerchandiserOrderCount = 2;
 
 let dayMs = 86400000.0;
 
+let shipLeadDays = 3;
+
 export {
-  random,
+  firstRunRandom,
   productCount,
   customerCount,
   orderCount,
@@ -666,11 +716,13 @@ export {
   escapeXml,
   productSvg,
   categorySvg,
+  makeProduct,
   buildProducts,
   repricedProducts,
   redescribedProducts,
   archivedProducts,
   discontinuedProducts,
+  scaledPrice,
   discountedPrice,
   demoShopperOrderCount,
   demoOperatorOrderCount,
@@ -693,10 +745,13 @@ export {
   newAddress,
   deliverySlotHours,
   dayMs,
+  startOfDay,
   deliveryWindowFor,
+  demoOrderCustomers,
   buildOrders,
-  batchDispatched,
-  cancellable,
-  cancelled,
+  placedOf,
+  shipLeadDays,
+  dueForShipping,
+  cancellations,
 }
-/* random Not a pure module */
+/* firstRunRandom Not a pure module */

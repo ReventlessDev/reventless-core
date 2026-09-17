@@ -1,7 +1,8 @@
 # Plan: seed the online shop over several days
 
 **Date:** 2026-09-17
-**Status:** PROPOSED — nothing built yet.
+**Status:** IN PROGRESS — steps 1 to 6 done and tried on a local platform (2026-09-17);
+step 7 (trying it on AWS on later days) remains. See [Progress](#progress).
 **Repos:** `reventless-core` only.
 
 ## In plain words
@@ -105,7 +106,7 @@ follow-ups:
 |---|---|---|---|
 | Repricing | every 11th product | 1 product | a few, up and down |
 | New descriptions | every 17th product | 1 product | a few |
-| Category rename, re-image | 1 each | unchanged | now and then |
+| Category rename, re-image | 1 each | unchanged | — |
 | Archived categories | from the fixture | unchanged | — |
 | New products | all | all | 1–2 now and then, with images |
 | Customers moving address | every 6th | 1 | a few |
@@ -229,6 +230,45 @@ Open the Ordering dashboard and the Orders calendar and check the spread by eye.
 Document the follow-up in the example's README beside `full` and `sample`, including
 that the local server must use SQLite (its default) for data to survive until the next
 day.
+
+## Progress
+
+**2026-09-17 — steps 1 to 6 done; step 7 done locally, AWS remains.**
+
+- **Step 1.** The generators take `~random` and an id prefix, and the order generator takes
+  plain id lists and the demo-account customers of its first orders (`demoOrderCustomers`).
+  Checked by dumping `full` and `sample` before and after: byte-identical.
+- **Steps 2–4.** Each step in `HybridSeedData.res` takes exactly what it sends. Delivery
+  windows depend on the shipping method; `DemoData.dueForShipping` and
+  `DemoData.cancellations` apply D6 to both kinds of run. The first run keeps one example of
+  each change. On `sample` it now ships 5 of 21 Standard orders and cancels 2.
+- **Step 5.** `seed-data/src/ShopSnapshot.res`.
+- **Step 6.** `seed-data/src/DemoFollowUp.res` decides the day's activity and
+  `HybridSeedData.runFollowUp` sends it, as the data set `next`. Unit tests in
+  `DemoFollowUpTest.res`. Tried on an isolated local platform: `sample`, then `next` (orders
+  40 → 45), `next` again the same day (refused before sending), then `SEED_RUN_DATE` 2026-09-18
+  and 2026-09-25 (45 → 50 → 55). Each run shipped orders earlier runs had left waiting, and
+  the demo-account checks passed after every run.
+- **Step 7, docs.** The example's README describes `next`.
+
+**Where the build differs from the decisions above:**
+
+- **The refusals needed a hook in the shared runner.** A refusal raised inside a data set's
+  `seed` is reported as "the store is now half-seeded", which is untrue before anything was
+  sent. `Seed.dataSet` gained an optional `preflight`, run where `probeViews` is checked, so a
+  refusal reads "nothing was written".
+- **Orders only use products in the shop's own currency.** The first local try stopped on
+  `MixedCurrencies`: the supplier feed lists its products in USD, the generated catalog is in
+  EUR, and a follow-up had drawn one of each into an order. The first run never met this,
+  because it orders only generated products.
+- **Follow-ups do not rename or re-image categories.** Renaming the same category back and
+  forth reads as noise; left out rather than invented.
+- **Ids:** `prd-<date>-01`, `cust-<date>-01`, `ord-<date>-001`. New customers' e-mail
+  addresses carry the date too (`ada.almeida.20260924@example.com`), and their names continue
+  the name pools past the customers already there.
+
+**Next:** step 7 on AWS — `shop:seed` with `full`, then `SEED_SET=next` on two later days, and a
+look at the Ordering dashboard and the Orders calendar.
 
 ## Risks and open questions
 

@@ -146,10 +146,37 @@ orders `shopper` creates are the orders `shopper` sees. `SEED_USER` picks by
 username or 1-based index, and `SEED_USERS_FILE` points at a file elsewhere.
 
 Generation is deterministic (fixed PRNG seed, fixed literal data), so a reset
-plus a re-run reproduces the same rows. There is no idempotence logic: run it
-against a fresh store, not on top of an existing one.
+plus a re-run reproduces the same rows — apart from delivery windows, which
+follow the day of the run. `full` and `sample` refuse a store that already
+holds data.
 
-For a non-interactive run (CI), set `SEED_SET` (`full` or `sample`) plus
+### Adding a day of activity: `next`
+
+The shop records the time of every event itself, when it accepts the command,
+so one seed run puts everything on one day: every order placed at the same
+minute, every notification a few seconds later. To spread the data over days,
+run the follow-up data set `next` on later days, on top of a store `full` or
+`sample` filled:
+
+```bash
+SEED_SET=next pnpm run seed
+```
+
+Each run reads the shop first and adds a small day of activity sized to it:
+a few price and description changes, now and then a new product or a
+withdrawn one, a new customer or two, some address moves, new orders, and
+shipments and cancellations of orders still waiting — including ones earlier
+runs placed, so an order ships days after it was placed. The demo accounts get
+no new orders, so their order counts stay what the first run checks.
+
+A run is named by its UTC date: its ids carry it (`ord-20260924-001`) and its
+random choices follow from it. It refuses an empty store, and it refuses to
+run twice on the same day. `SEED_RUN_DATE=YYYY-MM-DD` runs it as another date
+for testing; that changes the ids and the choices, never the times the shop
+records. Locally, keep the SQLite store (the default) so the data is still
+there on the next day.
+
+For a non-interactive run (CI), set `SEED_SET` (`full`, `sample` or `next`) plus
 `REVENTLESS_DEMO_USER`/`REVENTLESS_DEMO_PASSWORD` to skip every prompt — those
 two together bypass the accounts file entirely, so CI needs no copy of it. Add
 `SEED_SKIP_UPLOADS=1` to seed the domain data without product images (the
@@ -170,6 +197,8 @@ so both platform scripts import the same sets:
 | `seed-data/src/DemoData.res` | *What* to seed — literal data and the deterministic generation that turns it into categories, products, customers and orders |
 | `seed-data/src/DemoCommands.res` | The adapter — how this example's command values map onto GraphQL mutation fields and arguments |
 | `seed-data/src/HybridSeedData.res` | The data sets — phases, view verification, and the summary, exported as `Seed.dataSet` values |
+| `seed-data/src/ShopSnapshot.res` | What `next` reads before it decides anything — the shop's products, categories, customers and orders |
+| `seed-data/src/DemoFollowUp.res` | What `next` sends — one day of activity, chosen from the snapshot and the run date |
 | `platform-local/src/SeedLocal.res` | Thin entry — `Seed.Runner.seed` with the local connection |
 | `platform-aws/src/SeedAws.res` | Thin entry — `Seed.Runner.seed` with the AWS connection |
 

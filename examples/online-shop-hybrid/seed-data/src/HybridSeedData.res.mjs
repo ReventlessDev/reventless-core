@@ -6,12 +6,15 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Seed$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed.res.mjs";
 import * as Seed_Client$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Client.res.mjs";
+import * as Seed_Prompt$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Prompt.res.mjs";
 import * as Seed_Runner$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Runner.res.mjs";
 import * as Seed_Upload$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Upload.res.mjs";
 import * as Seed_Connect$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Connect.res.mjs";
 import * as DemoData$OnlineShopHybridSeed from "./DemoData.res.mjs";
 import * as AuthzProbe$OnlineShopHybridSeed from "./AuthzProbe.res.mjs";
 import * as DemoCommands$OnlineShopHybridSeed from "./DemoCommands.res.mjs";
+import * as DemoFollowUp$OnlineShopHybridSeed from "./DemoFollowUp.res.mjs";
+import * as ShopSnapshot$OnlineShopHybridSeed from "./ShopSnapshot.res.mjs";
 
 let views = [
   {
@@ -219,36 +222,41 @@ async function seedRejectedDuplicate(products, client) {
   };
 }
 
-async function seedCatalogEdits(products, categories, client, reimage) {
-  let repriced = DemoData$OnlineShopHybridSeed.repricedProducts(products);
-  await Seed_Client$ReventlessSeed.sendAll(client, repriced.map(p => DemoCommands$OnlineShopHybridSeed.changeProductPrice({
+async function seedRepricing(client, repriced) {
+  await Seed_Client$ReventlessSeed.sendAll(client, repriced.map(param => DemoCommands$OnlineShopHybridSeed.changeProductPrice({
     TAG: "ChangeProductPrice",
-    productId: p.id,
-    price: DemoData$OnlineShopHybridSeed.discountedPrice(p)
+    productId: param[0],
+    price: param[1]
   })));
-  let redescribed = DemoData$OnlineShopHybridSeed.redescribedProducts(products);
-  await Seed_Client$ReventlessSeed.sendAll(client, redescribed.map(p => DemoCommands$OnlineShopHybridSeed.changeProductDescription({
+  return Seed_Runner$ReventlessSeed.report(`catalog: ` + repriced.length.toString() + ` repriced`);
+}
+
+async function seedRedescriptions(client, redescribed) {
+  await Seed_Client$ReventlessSeed.sendAll(client, redescribed.map(param => DemoCommands$OnlineShopHybridSeed.changeProductDescription({
     TAG: "ChangeProductDescription",
-    productId: p.id,
-    description: p.description + ` Updated listing copy.`
+    productId: param[0],
+    description: param[1]
   })));
-  await Seed_Client$ReventlessSeed.sendAll(client, [DemoCommands$OnlineShopHybridSeed.renameCategory({
-      TAG: "RenameCategory",
-      categoryId: DemoData$OnlineShopHybridSeed.renamedCategoryId,
-      name: DemoData$OnlineShopHybridSeed.renamedCategoryName
-    })]);
+  return Seed_Runner$ReventlessSeed.report(`catalog: ` + redescribed.length.toString() + ` redescribed`);
+}
+
+async function seedCategoryEdits(client, renamed, reimage, archived) {
+  await Seed_Client$ReventlessSeed.sendAll(client, renamed.map(param => DemoCommands$OnlineShopHybridSeed.renameCategory({
+    TAG: "RenameCategory",
+    categoryId: param[0],
+    name: param[1]
+  })));
   await Seed_Client$ReventlessSeed.sendAll(client, reimage.map(param => DemoCommands$OnlineShopHybridSeed.categoryImages({
     TAG: "SetCategoryImage",
     categoryId: param[0],
     categoryImage: param[1],
     altText: "updated banner"
   })));
-  let archived = categories.filter(c => c.archive);
-  await Seed_Client$ReventlessSeed.sendAll(client, archived.map(c => DemoCommands$OnlineShopHybridSeed.archiveCategory({
+  await Seed_Client$ReventlessSeed.sendAll(client, archived.map(id => DemoCommands$OnlineShopHybridSeed.archiveCategory({
     TAG: "ArchiveCategory",
-    categoryId: c.id
+    categoryId: id
   })));
-  return Seed_Runner$ReventlessSeed.report(`catalog edits: ` + repriced.length.toString() + ` repriced, ` + redescribed.length.toString() + ` redescribed, 1 renamed, ` + reimage.length.toString() + ` re-imaged, ` + archived.length.toString() + ` archived`);
+  return Seed_Runner$ReventlessSeed.report(`categories: ` + renamed.length.toString() + ` renamed, ` + reimage.length.toString() + ` re-imaged, ` + archived.length.toString() + ` archived`);
 }
 
 async function seedSupplierFeed(client) {
@@ -295,12 +303,15 @@ async function seedCustomers(customers, client) {
       lng: c.lng
     }
   })));
-  let moved = DemoData$OnlineShopHybridSeed.movedCustomers(customers);
-  await Seed_Client$ReventlessSeed.sendAll(client, moved.map(c => DemoCommands$OnlineShopHybridSeed.customer(c.id, {
+  return Seed_Runner$ReventlessSeed.report(`customers: ` + customers.length.toString() + ` registered`);
+}
+
+async function seedAddressMoves(client, moved) {
+  await Seed_Client$ReventlessSeed.sendAll(client, moved.map(param => DemoCommands$OnlineShopHybridSeed.customer(param[0], {
     TAG: "UpdateAddress",
-    address: DemoData$OnlineShopHybridSeed.newAddress()
+    address: param[1]
   })));
-  return Seed_Runner$ReventlessSeed.report(`customers: ` + customers.length.toString() + ` registered, ` + moved.length.toString() + ` moved`);
+  return Seed_Runner$ReventlessSeed.report(`customers: ` + moved.length.toString() + ` moved`);
 }
 
 async function seedOrders(orders, client) {
@@ -324,45 +335,36 @@ async function seedOrders(orders, client) {
   return Seed_Runner$ReventlessSeed.report(`orders: ` + orders.length.toString() + ` placed (Standard ` + countMethod("Standard").toString() + `, Express ` + countMethod("Express").toString() + `, Pickup ` + countMethod("Pickup").toString() + `) — Express placements were auto-shipped on arrival`);
 }
 
-async function dispatchStandardBatch(orders, client) {
-  let dispatched = DemoData$OnlineShopHybridSeed.batchDispatched(orders);
-  await Seed_Client$ReventlessSeed.sendAll(client, dispatched.map(o => DemoCommands$OnlineShopHybridSeed.shipOrder({
+async function seedShipments(client, orderIds) {
+  await Seed_Client$ReventlessSeed.sendAll(client, orderIds.map(id => DemoCommands$OnlineShopHybridSeed.shipOrder({
     TAG: "ShipOrder",
-    orderId: o.id
+    orderId: id
   })));
-  let standardTotal = orders.filter(o => o.shippingMethod === "Standard").length;
-  Seed_Runner$ReventlessSeed.report(`batch dispatch: ` + dispatched.length.toString() + `/` + standardTotal.toString() + ` Standard orders shipped, ` + (standardTotal - dispatched.length | 0).toString() + ` left pending`);
-  return dispatched.map(o => o.id);
+  return Seed_Runner$ReventlessSeed.report(`shipments: ` + orderIds.length.toString() + ` Standard orders shipped`);
 }
 
-async function seedCancellations(orders, client, dispatched) {
-  let cancellable = DemoData$OnlineShopHybridSeed.cancellable(orders, dispatched);
-  let targets = DemoData$OnlineShopHybridSeed.cancelled(cancellable);
-  await Seed_Client$ReventlessSeed.sendAll(client, targets.map(o => DemoCommands$OnlineShopHybridSeed.cancelOrder({
+async function seedCancellations(client, orderIds) {
+  await Seed_Client$ReventlessSeed.sendAll(client, orderIds.map(id => DemoCommands$OnlineShopHybridSeed.cancelOrder({
     TAG: "CancelOrder",
-    orderId: o.id
+    orderId: id
   })));
-  return Seed_Runner$ReventlessSeed.report(`cancellations: ` + targets.length.toString() + ` of ` + cancellable.length.toString() + ` cancellable orders cancelled`);
+  return Seed_Runner$ReventlessSeed.report(`cancellations: ` + orderIds.length.toString() + ` orders cancelled`);
 }
 
-async function seedDeactivations(customers, client) {
-  let targets = DemoData$OnlineShopHybridSeed.deactivatedCustomers(customers);
-  await Seed_Client$ReventlessSeed.sendAll(client, targets.map(c => DemoCommands$OnlineShopHybridSeed.customer(c.id, "Deactivate")));
-  return Seed_Runner$ReventlessSeed.report(`customers: ` + targets.length.toString() + ` deactivated`);
+async function seedDeactivations(client, customerIds) {
+  await Seed_Client$ReventlessSeed.sendAll(client, customerIds.map(id => DemoCommands$OnlineShopHybridSeed.customer(id, "Deactivate")));
+  return Seed_Runner$ReventlessSeed.report(`customers: ` + customerIds.length.toString() + ` deactivated`);
 }
 
-async function seedProductRetirements(products, client) {
-  let archived = DemoData$OnlineShopHybridSeed.archivedProducts(products);
-  await Seed_Client$ReventlessSeed.sendAll(client, archived.map(p => DemoCommands$OnlineShopHybridSeed.archiveProduct({
+async function seedProductRetirements(client, archived, discontinued, expectedRetired) {
+  await Seed_Client$ReventlessSeed.sendAll(client, archived.map(id => DemoCommands$OnlineShopHybridSeed.archiveProduct({
     TAG: "ArchiveProduct",
-    productId: p.id
+    productId: id
   })));
-  let discontinued = DemoData$OnlineShopHybridSeed.discontinuedProducts(products);
-  await Seed_Client$ReventlessSeed.sendAll(client, discontinued.map(p => DemoCommands$OnlineShopHybridSeed.discontinueProduct({
+  await Seed_Client$ReventlessSeed.sendAll(client, discontinued.map(id => DemoCommands$OnlineShopHybridSeed.discontinueProduct({
     TAG: "DiscontinueProduct",
-    productId: p.id
+    productId: id
   })));
-  let expected = archived.length + discontinued.length | 0;
   let retiredNow = nodes => nodes.filter(n => {
     let match = Seed_Client$ReventlessSeed.nodeString(n, "shelfStatus");
     if (match === undefined) {
@@ -376,7 +378,7 @@ async function seedProductRetirements(products, client) {
         return false;
     }
   }).length;
-  await Seed_Client$ReventlessSeed.queryAllNodesUntil(client, "Catalog_Products", "shelfStatus", "includeRetired: true", nodes => retiredNow(nodes) >= expected, nodes => `catalog retirements: expected ` + expected.toString() + ` withdrawn products, saw ` + retiredNow(nodes).toString(), undefined);
+  await Seed_Client$ReventlessSeed.queryAllNodesUntil(client, "Catalog_Products", "shelfStatus", "includeRetired: true", nodes => retiredNow(nodes) >= expectedRetired, nodes => `catalog retirements: expected ` + expectedRetired.toString() + ` withdrawn products, saw ` + retiredNow(nodes).toString(), undefined);
   return Seed_Runner$ReventlessSeed.report(`catalog retirements: ` + archived.length.toString() + ` archived, ` + discontinued.length.toString() + ` discontinued`);
 }
 
@@ -510,7 +512,7 @@ async function summarise(client, counts) {
 async function run(connection, productCount, customerCount, orderCount) {
   let client = connection.client;
   let owners = resolveDemoOwners(connection);
-  let built = DemoData$OnlineShopHybridSeed.buildProducts(productCount, undefined);
+  let built = DemoData$OnlineShopHybridSeed.buildProducts(DemoData$OnlineShopHybridSeed.firstRunRandom, productCount, undefined, undefined);
   let products = connection.uploadsSkipped ? (Seed_Runner$ReventlessSeed.report(`product images: skipped (SEED_SKIP_UPLOADS) — productImage left absent`), built) : await uploadProductImages(built, client, productImageStore);
   let categories = connection.uploadsSkipped ? (Seed_Runner$ReventlessSeed.report(`category images: skipped (SEED_SKIP_UPLOADS) — categoryImage left absent`), DemoData$OnlineShopHybridSeed.categories) : await uploadCategoryImages(DemoData$OnlineShopHybridSeed.categories, client, categoryImageStore);
   let match = connection.uploadsSkipped;
@@ -581,26 +583,120 @@ async function run(connection, productCount, customerCount, orderCount) {
     Seed_Runner$ReventlessSeed.report(`extra product images: ` + out.length.toString() + ` uploaded to the served bucket`);
     extraProductImages = out;
   }
-  let generatedCustomers = DemoData$OnlineShopHybridSeed.buildCustomers(customerCount, undefined);
+  let generatedCustomers = DemoData$OnlineShopHybridSeed.buildCustomers(DemoData$OnlineShopHybridSeed.firstRunRandom, customerCount, undefined, undefined, undefined, undefined);
   let customers = generatedCustomers.concat(DemoData$OnlineShopHybridSeed.demoCustomers(owners));
-  let orders = DemoData$OnlineShopHybridSeed.buildOrders(products, generatedCustomers, owners, orderCount, Date.now(), undefined);
+  let today = Date.now();
+  let orders = DemoData$OnlineShopHybridSeed.buildOrders(DemoData$OnlineShopHybridSeed.firstRunRandom, products.map(p => p.id), generatedCustomers.map(c => c.id), DemoData$OnlineShopHybridSeed.demoOrderCustomers(owners), orderCount, undefined, today, undefined);
+  let moved = DemoData$OnlineShopHybridSeed.movedCustomers(generatedCustomers).map(c => [
+    c.id,
+    DemoData$OnlineShopHybridSeed.newAddress(DemoData$OnlineShopHybridSeed.firstRunRandom)
+  ]);
   await seedCategories(categories, client);
   await seedProducts(products, client);
   await seedProductGallery(client, extraProductImages);
   await seedRejectedDuplicate(products, client);
-  await seedCatalogEdits(products, categories, client, reimage);
+  await seedRepricing(client, DemoData$OnlineShopHybridSeed.repricedProducts(products).map(p => [
+    p.id,
+    DemoData$OnlineShopHybridSeed.discountedPrice(p)
+  ]));
+  await seedRedescriptions(client, DemoData$OnlineShopHybridSeed.redescribedProducts(products).map(p => [
+    p.id,
+    p.description + ` Updated listing copy.`
+  ]));
+  await seedCategoryEdits(client, [[
+      DemoData$OnlineShopHybridSeed.renamedCategoryId,
+      DemoData$OnlineShopHybridSeed.renamedCategoryName
+    ]], reimage, categories.filter(c => c.archive).map(c => c.id));
   await seedSupplierFeed(client);
   await seedCustomers(customers, client);
+  await seedAddressMoves(client, moved);
   let expected = products.map(p => p.id).concat(DemoData$OnlineShopHybridSeed.importedSkus);
   let available = await Seed_Client$ReventlessSeed.waitForIds(client, "Ordering_AvailableProductsByIds", expected, undefined);
   Seed_Runner$ReventlessSeed.report(`ordering: ` + available.toString() + ` products available`);
   await seedOrders(orders, client);
-  let dispatched = await dispatchStandardBatch(orders, client);
-  await seedCancellations(orders, client, dispatched);
-  await seedDeactivations(customers, client);
-  await seedProductRetirements(products, client);
+  let placed = orders.filter(o => o.shippingMethod !== "Express").map(DemoData$OnlineShopHybridSeed.placedOf);
+  let shipping = DemoData$OnlineShopHybridSeed.dueForShipping(placed, today);
+  await seedShipments(client, shipping);
+  await seedCancellations(client, DemoData$OnlineShopHybridSeed.cancellations(placed, shipping, 2));
+  await seedDeactivations(client, DemoData$OnlineShopHybridSeed.deactivatedCustomers(generatedCustomers).map(c => c.id));
+  let archived = DemoData$OnlineShopHybridSeed.archivedProducts(products).map(p => p.id);
+  let discontinued = DemoData$OnlineShopHybridSeed.discontinuedProducts(products).map(p => p.id);
+  await seedProductRetirements(client, archived, discontinued, archived.length + discontinued.length | 0);
   let counts = await Seed_Runner$ReventlessSeed.verifyViews(client, views);
   await verifyOwnerScopedReads(connection, owners);
+  return await summarise(client, counts);
+}
+
+function followUpToday() {
+  let raw = Seed_Prompt$ReventlessSeed.envValue("SEED_RUN_DATE");
+  if (raw === undefined) {
+    return Date.now();
+  }
+  let t = new Date(raw + `T00:00:00Z`).getTime();
+  if (Number.isNaN(t)) {
+    throw {
+      RE_EXN_ID: Seed$ReventlessSeed.Failed,
+      _1: `SEED_RUN_DATE="` + raw + `" is not a date — expected YYYY-MM-DD`,
+      Error: new Error()
+    };
+  }
+  return t;
+}
+
+async function followUpPreflight(connection) {
+  let runDate = DemoFollowUp$OnlineShopHybridSeed.runDateOf(followUpToday());
+  let snapshot = await ShopSnapshot$OnlineShopHybridSeed.read(connection.client);
+  if (snapshot.products.length === 0) {
+    throw {
+      RE_EXN_ID: Seed$ReventlessSeed.Failed,
+      _1: `the shop is empty — a follow-up adds a day of activity to a shop that a first run filled. Seed "full" or "sample" first.`,
+      Error: new Error()
+    };
+  }
+  if (!DemoFollowUp$OnlineShopHybridSeed.alreadyRan(snapshot, runDate)) {
+    return;
+  }
+  throw {
+    RE_EXN_ID: Seed$ReventlessSeed.Failed,
+    _1: `the follow-up for ` + runDate + ` already ran — its orders (` + DemoFollowUp$OnlineShopHybridSeed.orderIdPrefix(runDate) + `…) are in the shop. Run the next one on a later day.`,
+    Error: new Error()
+  };
+}
+
+async function expectGrowth(client, field, argsOpt, before, added) {
+  let args = argsOpt !== undefined ? argsOpt : "";
+  let expected = before + added | 0;
+  await Seed_Client$ReventlessSeed.queryAllNodesUntil(client, field, "id", args, nodes => nodes.length >= expected, nodes => `follow-up: ` + field + ` holds ` + nodes.length.toString() + ` rows, expected ` + expected.toString() + ` (` + before.toString() + ` before, ` + added.toString() + ` added)`, undefined);
+  return Seed_Runner$ReventlessSeed.report(field + `: ` + before.toString() + ` → ` + expected.toString() + ` ✓`);
+}
+
+async function runFollowUp(connection) {
+  let client = connection.client;
+  let owners = resolveDemoOwners(connection);
+  let today = followUpToday();
+  let before = await ShopSnapshot$OnlineShopHybridSeed.read(client);
+  let f = DemoFollowUp$OnlineShopHybridSeed.plan(before, today, DemoData$OnlineShopHybridSeed.all(owners).map(o => o.id));
+  Seed_Runner$ReventlessSeed.heading(`Follow-up for ` + f.runDate + `:`);
+  let match = connection.uploadsSkipped;
+  let match$1 = f.newProducts;
+  let newProducts = match$1.length !== 0 && !match ? await uploadProductImages(match$1, client, productImageStore) : f.newProducts;
+  await seedProducts(newProducts, client);
+  await seedRepricing(client, f.repriced);
+  await seedRedescriptions(client, f.redescribed);
+  await seedCustomers(f.newCustomers, client);
+  await seedAddressMoves(client, f.moved);
+  await seedOrders(f.orders, client);
+  await seedShipments(client, f.shipping);
+  await seedCancellations(client, f.cancelled);
+  await seedDeactivations(client, f.deactivated);
+  await seedProductRetirements(client, f.archived, f.discontinued, (before.products.filter(p => !p.listed).length + f.archived.length | 0) + f.discontinued.length | 0);
+  Seed_Runner$ReventlessSeed.heading("Growth:");
+  let retired = "includeRetired: true";
+  await expectGrowth(client, "Catalog_Products", retired, before.products.length, newProducts.length);
+  await expectGrowth(client, "Ordering_Customers", retired, before.customers.length, f.newCustomers.length);
+  await expectGrowth(client, "Ordering_Orders", undefined, before.orders.length, f.orders.length);
+  await verifyOwnerScopedReads(connection, owners);
+  let counts = await Seed_Runner$ReventlessSeed.verifyViews(client, views);
   return await summarise(client, counts);
 }
 
@@ -617,6 +713,12 @@ let dataSets = [
     seed: connection => run(connection, 16, 8, 40),
     probeViews: probeViews
   },
+  {
+    name: "next",
+    label: "next — add one day of activity to a seeded shop (run on a later day)",
+    seed: runFollowUp,
+    preflight: followUpPreflight
+  },
   AuthzProbe$OnlineShopHybridSeed.dataSet
 ];
 
@@ -631,11 +733,14 @@ export {
   seedProducts,
   seedProductGallery,
   seedRejectedDuplicate,
-  seedCatalogEdits,
+  seedRepricing,
+  seedRedescriptions,
+  seedCategoryEdits,
   seedSupplierFeed,
   seedCustomers,
+  seedAddressMoves,
   seedOrders,
-  dispatchStandardBatch,
+  seedShipments,
   seedCancellations,
   seedDeactivations,
   seedProductRetirements,
@@ -647,6 +752,10 @@ export {
   verifyOwnerScopedReads,
   summarise,
   run,
+  followUpToday,
+  followUpPreflight,
+  expectGrowth,
+  runFollowUp,
   dataSets,
 }
 /* probeViews Not a pure module */
