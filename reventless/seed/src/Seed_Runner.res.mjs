@@ -163,6 +163,10 @@ function seed(sets, connect) {
       let connection = await connect();
       Seed_Prompt$ReventlessSeed.close();
       await assertStoreEmpty(connection.client, Stdlib_Option.getOr(chosen.probeViews, []));
+      let check = chosen.preflight;
+      if (check !== undefined) {
+        await check(connection);
+      }
       started = [
         chosen,
         connection

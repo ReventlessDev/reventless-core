@@ -36,6 +36,7 @@ type dataSet = Seed_Runner.dataSet = {
   label: string,
   seed: connection => promise<unit>,
   probeViews?: array<string>,
+  preflight?: connection => promise<unit>,
 }
 
 type rec value = Seed_Types.value =

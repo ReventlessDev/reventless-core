@@ -151,6 +151,10 @@ type dataSet = {
   // View names probed by the fresh-store guard before any command is sent; a
   // non-empty one aborts the run at startup. Omit to skip the guard.
   probeViews?: array<string>,
+  // Any other check that must pass before a command is sent — a set that adds to
+  // an existing store refuses an empty one here. Throw `Failed` to refuse; the
+  // run then reports that nothing was written.
+  preflight?: Seed_Connect.connection => promise<unit>,
 }
 
 /**
@@ -205,6 +209,10 @@ let seed = (~sets: array<dataSet>, ~connect: unit => promise<Seed_Connect.connec
       // Runs inside this pre-seed `try`, so refusing a non-empty store (or a
       // failed probe query) is reported as "did not start", not "half-seeded".
       await assertStoreEmpty(connection.client, ~probeViews=chosen.probeViews->Option.getOr([]))
+      switch chosen.preflight {
+      | Some(check) => await check(connection)
+      | None => ()
+      }
       Some((chosen, connection))
     } catch {
     | Failed(message) =>
