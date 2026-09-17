@@ -531,26 +531,29 @@ function newAddress() {
   return address();
 }
 
-let deliverySlots = [
+let deliverySlotHours = [
   [
-    "2026-03-02T09:00:00Z",
-    "2026-03-02T12:00:00Z"
+    9,
+    12
   ],
   [
-    "2026-03-02T14:00:00Z",
-    "2026-03-02T17:00:00Z"
+    14,
+    17
   ],
   [
-    "2026-03-03T09:00:00Z",
-    "2026-03-03T12:00:00Z"
-  ],
-  [
-    "2026-03-03T14:00:00Z",
-    "2026-03-03T17:00:00Z"
+    18,
+    21
   ]
 ];
 
-function buildOrders(products, customers, owners, countOpt, param) {
+function deliveryWindowFor(i, today) {
+  let day = Math.floor(today / 86400000.0) * 86400000.0 + (1 + (i * 5 | 0) % 21 | 0) * 86400000.0;
+  let match = deliverySlotHours[Primitive_int.mod_(i, deliverySlotHours.length)];
+  let at = hour => new Date(day + hour * 3600000.0).toISOString();
+  return Stdlib_Result.getOrThrow(DateRange$Reventless.make(at(match[0]), at(match[1])), undefined);
+}
+
+function buildOrders(products, customers, owners, countOpt, today, param) {
   let count = countOpt !== undefined ? countOpt : 150;
   let shuffled = Seed_Random$ReventlessSeed.sampleWeighted(random, products.map(p => [
     p,
@@ -586,16 +589,7 @@ function buildOrders(products, customers, owners, countOpt, param) {
         methodRoll < 0.8 ? "Standard" : "Pickup"
       );
     let windowRoll = Seed_Random$ReventlessSeed.float(random);
-    let deliveryWindow;
-    if (shippingMethod === "Pickup" || windowRoll < 0.4) {
-      deliveryWindow = undefined;
-    } else {
-      let match = Stdlib_Option.getOr(deliverySlots[Primitive_int.mod_(i, deliverySlots.length)], [
-        "2026-03-02T09:00:00Z",
-        "2026-03-02T12:00:00Z"
-      ]);
-      deliveryWindow = Stdlib_Result.getOrThrow(DateRange$Reventless.make(match[0], match[1]), undefined);
-    }
+    let deliveryWindow = shippingMethod === "Pickup" || windowRoll < 0.4 ? undefined : deliveryWindowFor(i, today);
     return {
       id: `ord-` + pad(i + 1 | 0, 3),
       customerId: customerId,
@@ -641,6 +635,8 @@ let demoShopperOrderCount = 5;
 let demoOperatorOrderCount = 3;
 
 let demoMerchandiserOrderCount = 2;
+
+let dayMs = 86400000.0;
 
 export {
   random,
@@ -695,7 +691,9 @@ export {
   movedCustomers,
   deactivatedCustomers,
   newAddress,
-  deliverySlots,
+  deliverySlotHours,
+  dayMs,
+  deliveryWindowFor,
   buildOrders,
   batchDispatched,
   cancellable,

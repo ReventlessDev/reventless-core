@@ -583,7 +583,7 @@ async function run(connection, productCount, customerCount, orderCount) {
   }
   let generatedCustomers = DemoData$OnlineShopHybridSeed.buildCustomers(customerCount, undefined);
   let customers = generatedCustomers.concat(DemoData$OnlineShopHybridSeed.demoCustomers(owners));
-  let orders = DemoData$OnlineShopHybridSeed.buildOrders(products, generatedCustomers, owners, orderCount, undefined);
+  let orders = DemoData$OnlineShopHybridSeed.buildOrders(products, generatedCustomers, owners, orderCount, Date.now(), undefined);
   await seedCategories(categories, client);
   await seedProducts(products, client);
   await seedProductGallery(client, extraProductImages);

@@ -21,6 +21,41 @@ let resolve = accounts =>
     ~callerId=None,
   )->DemoData.all
 
+describe("DemoData.deliveryWindowFor", () => {
+  // 2026-09-17T06:45Z — mid-morning of the run's day, not its start.
+  let today = 1789627500000.0
+  let windows = Array.fromInitializer(~length=21, i => DemoData.deliveryWindowFor(i, ~today))
+  let days = windows->Array.map(w => w.start->String.slice(~start=0, ~end=10))
+
+  testSync("places the first windows on distinct days after the run's day", () => {
+    expect(windows->Array.slice(~start=0, ~end=3))->toEqual([
+      {Reventless.DateRange.start: "2026-09-18T09:00:00.000Z", end_: "2026-09-18T12:00:00.000Z"},
+      {start: "2026-09-23T14:00:00.000Z", end_: "2026-09-23T17:00:00.000Z"},
+      {start: "2026-09-28T18:00:00.000Z", end_: "2026-09-28T21:00:00.000Z"},
+    ])
+  })
+
+  // Twenty-one orders cover all twenty-one days, so no day grid is left holding
+  // every bar.
+  testSync("spread 21 orders over 21 different future days", () => {
+    let distinct = days->Array.reduce([], (acc, d) => acc->Array.includes(d) ? acc : [...acc, d])
+    expect((
+      distinct->Array.length,
+      days->Array.every(d => d > "2026-09-17" && d <= "2026-10-08"),
+    ))->toEqual((21, true))
+  })
+
+  testSync("produce valid date-time instants", () => {
+    expect(
+      windows->Array.every(
+        w =>
+          Reventless.DateTime.fromString(w.start)->Result.isOk &&
+            Reventless.DateTime.fromString(w.end_)->Result.isOk,
+      ),
+    )->toBe(true)
+  })
+})
+
 describe("DemoData.resolveOwners", () => {
   testSync("finds every demo owner in the provisioned AWS template", () => {
     let owners = template("platform-aws")->provisioned->resolve

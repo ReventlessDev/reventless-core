@@ -11,7 +11,8 @@
 // `DemoCommands.res`; the run itself lives in `DemoSeed.res`.
 
 // A fixed seed and fixed literal data: two runs against a fresh store produce
-// identical rows, so a seeded store is a usable baseline for comparison.
+// identical rows, so a seeded store is a usable baseline for comparison. Dates
+// are the exception: delivery windows follow the run's day (`deliveryWindowFor`).
 let random = ReventlessSeed.Seed.Random.make(~seed=0x5eed)
 
 let productCount = 60
@@ -624,20 +625,29 @@ type order = {
   deliveryWindow: option<Reventless.DateRange.t>,
 }
 
-// A small fixed pool of slots so seeded windows are deterministic and a day grid
-// has both morning and afternoon bars to lay out across two days.
-let deliverySlots = [
-  ("2026-03-02T09:00:00Z", "2026-03-02T12:00:00Z"),
-  ("2026-03-02T14:00:00Z", "2026-03-02T17:00:00Z"),
-  ("2026-03-03T09:00:00Z", "2026-03-03T12:00:00Z"),
-  ("2026-03-03T14:00:00Z", "2026-03-03T17:00:00Z"),
-]
+// Slot hours (UTC), so a day grid has morning, afternoon and evening bars.
+let deliverySlotHours = [(9, 12), (14, 17), (18, 21)]
+
+let dayMs = 86400000.0
+
+// The requested slot for the i-th order: 1–21 days after the run's UTC day.
+// Anchored to that day because orders are placed when the seed runs — a window
+// before it would be a delivery requested for the past. Derived from the index,
+// not drawn, so the shared random stream and everything sampled after it stay
+// as they were; two runs on the same day produce identical windows.
+let deliveryWindowFor = (i: int, ~today: float): Reventless.DateRange.t => {
+  let day = Math.floor(today /. dayMs) *. dayMs +. Float.fromInt(1 + mod(i * 5, 21)) *. dayMs
+  let (from, until) = deliverySlotHours->Array.getUnsafe(mod(i, Array.length(deliverySlotHours)))
+  let at = hour => Date.fromTime(day +. Float.fromInt(hour) *. 3600000.0)->Date.toISOString
+  Reventless.DateRange.make(~start=at(from), ~end_=at(until))->Result.getOrThrow
+}
 
 let buildOrders = (
   products: array<product>,
   customers: array<customer>,
   ~owners: owners,
   ~count=orderCount,
+  ~today: float,
   (),
 ): array<order> => {
   // Zipf over a fixed shuffle: a handful of products carry most of the demand
@@ -716,11 +726,7 @@ let buildOrders = (
     let deliveryWindow = if shippingMethod == Pickup || windowRoll < 0.4 {
       None
     } else {
-      let (start, end_) =
-        deliverySlots
-        ->Array.get(mod(i, deliverySlots->Array.length))
-        ->Option.getOr(("2026-03-02T09:00:00Z", "2026-03-02T12:00:00Z"))
-      Some(Reventless.DateRange.make(~start, ~end_)->Result.getOrThrow)
+      Some(deliveryWindowFor(i, ~today))
     }
     {id: `ord-${pad(i + 1, 3)}`, customerId, lineItems, shippingMethod, deliveryWindow}
   })

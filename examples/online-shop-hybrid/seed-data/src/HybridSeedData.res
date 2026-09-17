@@ -890,7 +890,14 @@ let run = async (
   // the weighted draw below: their order counts are fixed by index, and letting
   // them also be sampled would make those counts approximate again.
   let customers = generatedCustomers->Array.concat(DemoData.demoCustomers(owners))
-  let orders = DemoData.buildOrders(products, generatedCustomers, ~owners, ~count=orderCount, ())
+  let orders = DemoData.buildOrders(
+    products,
+    generatedCustomers,
+    ~owners,
+    ~count=orderCount,
+    ~today=Date.now(),
+    (),
+  )
 
   await seedCategories(categories, ~client)
   await seedProducts(products, ~client)
