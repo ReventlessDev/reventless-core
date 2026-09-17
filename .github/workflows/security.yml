@@ -50,6 +50,7 @@ jobs:
         with:
           name: pnpm-audit-results
           path: audit-results.json
+          retention-days: 7
 
       - name: Run Snyk security scan
         uses: snyk/actions/node@master
@@ -160,6 +161,7 @@ jobs:
           path: |
             license-report.json
             license-report.csv
+          retention-days: 7
 
   # Vulnerability Database Check disabled - can be re-enabled when needed
   # vulnerability-database:
