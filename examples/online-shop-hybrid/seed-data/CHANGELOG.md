@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.91 (2026-09-17)
+
+### Bug Fixes
+
+* **deps:** follow the host UI to 3.0.0-alpha.107 ([58de82d](https://github.com/ReventlessDev/reventless-core/commit/58de82dcb33eec6f2cbb0c85875cfc3f34d490d3))
+* **examples:** draw no image placeholder on cards of views without pictures ([6911993](https://github.com/ReventlessDev/reventless-core/commit/69119935eaa8673f1c360fd5a191750bc4f1c1fc))
+
+
 # 1.0.0-alpha.90 (2026-09-17)
 
 ### Bug Fixes
