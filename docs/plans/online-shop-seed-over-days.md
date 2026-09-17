@@ -124,9 +124,12 @@ follow-up does it.
   `prd-20260924-01`. They never collide with the first run's ids or with another day's.
 - **The random generator is seeded from the run date.** Two different days give
   different activity; the same day gives the same commands.
-- **The same day twice is refused before anything is sent.** The follow-up looks for
-  an order carrying today's id prefix and stops with "today's follow-up already ran",
-  because a second run would stop halfway on the first duplicate id.
+- **Runs on the same day are numbered.** *(Revised 2026-09-17; first built as a
+  refusal of the same day twice.)* The day's first run keeps `ord-20260924-001`; a
+  second is run 2 with `ord-20260924-r2-001`, and so on. The number is one past the
+  highest found among product, customer and order ids for that date, so a run that
+  stopped before placing orders does not hand its number on. The random generator is
+  seeded from the date and the number.
 
 ### D4. A follow-up reads the shop before deciding what to send
 
@@ -216,7 +219,7 @@ records, including retired rows (`includeRetired`).
 printed.
 
 **6. The `next` data set (D3, D5, D6, D7, D8).**
-Refusals first (empty shop, today already ran), then generation from the reader's
+Refusals first (an empty shop), then generation from the reader's
 records, then the steps in the first run's order, then the growth checks.
 *Check:* unit tests for the generation on fixed input records (ids, sizes, the window
 and shipping rules, no demo-account orders). Then locally, on SQLite: `sample`, then
@@ -267,6 +270,10 @@ day.
   addresses carry the date too (`ada.almeida.20260924@example.com`), and their names continue
   the name pools past the customers already there.
 
+**2026-09-17, later — several follow-ups per day.** The same-day refusal became run
+numbers (D3). Tried on an isolated local platform: `sample`, then `next` three times on
+one day — runs 1, 2 and 3, orders 40 → 45 → 50 → 55.
+
 **Next:** step 7 on AWS — `shop:seed` with `full`, then `SEED_SET=next` on two later days, and a
 look at the Ordering dashboard and the Orders calendar.
 
@@ -280,6 +287,6 @@ look at the Ordering dashboard and the Orders calendar.
 - **A follow-up after a partial first run.** The reader sees whatever is there, and
   the checks in D8 are relative, so it works — but the demo-account check would fail if
   the first run stopped before placing their orders. That failure is the right answer.
-- **An open question: one follow-up per day, or allow several?** This plan refuses the
-  same run date twice for simplicity. If more than one per day is wanted, the id prefix
-  needs a counter, read from the shop.
+- **Several follow-ups per day are allowed** (decided 2026-09-17). The cost: a run
+  started twice by mistake is no longer caught — it adds a second batch, which is
+  harmless for demo data.

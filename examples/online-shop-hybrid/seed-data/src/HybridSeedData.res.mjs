@@ -644,21 +644,13 @@ function followUpToday() {
 }
 
 async function followUpPreflight(connection) {
-  let runDate = DemoFollowUp$OnlineShopHybridSeed.runDateOf(followUpToday());
   let snapshot = await ShopSnapshot$OnlineShopHybridSeed.read(connection.client);
-  if (snapshot.products.length === 0) {
-    throw {
-      RE_EXN_ID: Seed$ReventlessSeed.Failed,
-      _1: `the shop is empty — a follow-up adds a day of activity to a shop that a first run filled. Seed "full" or "sample" first.`,
-      Error: new Error()
-    };
-  }
-  if (!DemoFollowUp$OnlineShopHybridSeed.alreadyRan(snapshot, runDate)) {
+  if (snapshot.products.length !== 0) {
     return;
   }
   throw {
     RE_EXN_ID: Seed$ReventlessSeed.Failed,
-    _1: `the follow-up for ` + runDate + ` already ran — its orders (` + DemoFollowUp$OnlineShopHybridSeed.orderIdPrefix(runDate) + `…) are in the shop. Run the next one on a later day.`,
+    _1: `the shop is empty — a follow-up adds a day of activity to a shop that a first run filled. Seed "full" or "sample" first.`,
     Error: new Error()
   };
 }
@@ -676,7 +668,7 @@ async function runFollowUp(connection) {
   let today = followUpToday();
   let before = await ShopSnapshot$OnlineShopHybridSeed.read(client);
   let f = DemoFollowUp$OnlineShopHybridSeed.plan(before, today, DemoData$OnlineShopHybridSeed.all(owners).map(o => o.id));
-  Seed_Runner$ReventlessSeed.heading(`Follow-up for ` + f.runDate + `:`);
+  Seed_Runner$ReventlessSeed.heading(`Follow-up for ` + f.runDate + `, run ` + f.run.toString() + `:`);
   let match = connection.uploadsSkipped;
   let match$1 = f.newProducts;
   let newProducts = match$1.length !== 0 && !match ? await uploadProductImages(match$1, client, productImageStore) : f.newProducts;
@@ -715,7 +707,7 @@ let dataSets = [
   },
   {
     name: "next",
-    label: "next — add one day of activity to a seeded shop (run on a later day)",
+    label: "next — add a day of activity to a seeded shop",
     seed: runFollowUp,
     preflight: followUpPreflight
   },

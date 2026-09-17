@@ -169,11 +169,12 @@ shipments and cancellations of orders still waiting — including ones earlier
 runs placed, so an order ships days after it was placed. The demo accounts get
 no new orders, so their order counts stay what the first run checks.
 
-A run is named by its UTC date: its ids carry it (`ord-20260924-001`) and its
-random choices follow from it. It refuses an empty store, and it refuses to
-run twice on the same day. `SEED_RUN_DATE=YYYY-MM-DD` runs it as another date
-for testing; that changes the ids and the choices, never the times the shop
-records. Locally, keep the SQLite store (the default) so the data is still
+A run is named by its UTC date and its number on that date: the day's first
+run makes ids like `ord-20260924-001`, a second one `ord-20260924-r2-001`, and
+its random choices follow from both. It refuses an empty store. Several runs on
+one day add more data but no more spread, since the shop dates every event when
+it happens. `SEED_RUN_DATE=YYYY-MM-DD` runs it as another date, which changes
+the ids and the choices, never the times the shop records. Locally, keep the SQLite store (the default) so the data is still
 there on the next day.
 
 For a non-interactive run (CI), set `SEED_SET` (`full`, `sample` or `next`) plus

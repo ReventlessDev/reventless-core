@@ -60,11 +60,11 @@ let ids = xs => xs->Array.map(((id, _)) => id)
 describe("DemoFollowUp.plan", () => {
   testSync("names everything it creates by the run date", () => {
     expect((
-      plan.runDate,
+      (plan.runDate, plan.run),
       plan.orders->Array.every(o => o.id->String.startsWith("ord-20260924-")),
       plan.newCustomers->Array.every(c => c.id->String.startsWith("cust-20260924-")),
       plan.newProducts->Array.every(p => p.id->String.startsWith("prd-20260924-")),
-    ))->toEqual(("2026-09-24", true, true, true))
+    ))->toEqual((("2026-09-24", 1), true, true, true))
   })
 
   testSync("repeat itself on the same day and differ on another", () => {
@@ -125,16 +125,49 @@ describe("DemoFollowUp.plan", () => {
 })
 
 describe("DemoFollowUp", () => {
-  testSync("know when the day's follow-up already ran", () => {
-    let ran = {
+  testSync("number the day's runs from the ids already in the shop", () => {
+    let withIds = (~orders=[], ~customers=[]) => {
       ...snapshot,
-      orders: [...snapshot.orders, {...order(1), ShopSnapshot.id: "ord-20260924-001"}],
+      orders: [...snapshot.orders, ...orders->Array.map(id => {...order(1), ShopSnapshot.id})],
+      customers: [...snapshot.customers, ...customers->Array.map(id => customer(id))],
     }
     expect((
-      DemoFollowUp.alreadyRan(snapshot, ~runDate="2026-09-24"),
-      DemoFollowUp.alreadyRan(ran, ~runDate="2026-09-24"),
-      DemoFollowUp.alreadyRan(ran, ~runDate="2026-09-25"),
-    ))->toEqual((false, true, false))
+      DemoFollowUp.nextRun(snapshot, ~runDate="2026-09-24"),
+      DemoFollowUp.nextRun(withIds(~orders=["ord-20260924-001"]), ~runDate="2026-09-24"),
+      DemoFollowUp.nextRun(
+        withIds(~orders=["ord-20260924-001", "ord-20260924-r2-001"]),
+        ~runDate="2026-09-24",
+      ),
+      // A run that stopped after registering its customers keeps its number.
+      DemoFollowUp.nextRun(withIds(~customers=["cust-20260924-r3-01"]), ~runDate="2026-09-24"),
+      DemoFollowUp.nextRun(withIds(~orders=["ord-20260924-001"]), ~runDate="2026-09-25"),
+    ))->toEqual((1, 2, 3, 4, 1))
+  })
+
+  // What the first run of the day placed is in the shop the second one reads.
+  testSync("give a second run on the same day its own ids and its own choices", () => {
+    let afterFirst = {
+      ...snapshot,
+      orders: Array.concat(
+        snapshot.orders,
+        plan.orders->Array.map(
+          (o): ShopSnapshot.order => {
+            id: o.id,
+            customerId: o.customerId,
+            placed: o.shippingMethod != Express,
+            shippingMethod: o.shippingMethod,
+            deliveryWindow: o.deliveryWindow,
+          },
+        ),
+      ),
+    }
+    let second = DemoFollowUp.plan(afterFirst, ~today, ~demoCustomerIds=demoIds)
+    expect((
+      second.run,
+      second.orders->Array.every(o => o.id->String.startsWith("ord-20260924-r2-")),
+      second.newCustomers->Array.every(c => c.id->String.startsWith("cust-20260924-r2-")),
+      second.orders->Array.map(o => o.lineItems) == plan.orders->Array.map(o => o.lineItems),
+    ))->toEqual((2, true, true, false))
   })
 
   testSync("replace an earlier listing note rather than stacking it", () => {

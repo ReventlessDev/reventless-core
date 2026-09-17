@@ -10,20 +10,52 @@ function runDateOf(today) {
   return new Date(today).toISOString().slice(0, 10);
 }
 
-function idTag(runDate) {
-  return runDate.replaceAll("-", "");
+function idTag(runDate, run) {
+  let date = runDate.replaceAll("-", "");
+  if (run === 1) {
+    return date;
+  } else {
+    return date + `-r` + run.toString();
+  }
 }
 
-function orderIdPrefix(runDate) {
-  return `ord-` + runDate.replaceAll("-", "") + `-`;
+function orderIdPrefix(runDate, run) {
+  return `ord-` + idTag(runDate, run) + `-`;
 }
 
-function randomFor(runDate) {
-  return Seed_Random$ReventlessSeed.make(Stdlib_Option.getOr(Stdlib_Int.fromString(runDate.replaceAll("-", ""), undefined), 0) ^ 24301);
+function randomFor(runDate, run) {
+  return Seed_Random$ReventlessSeed.make(Stdlib_Option.getOr(Stdlib_Int.fromString(runDate.replaceAll("-", ""), undefined), 0) ^ 24301 ^ ((run - 1 | 0) * 65537 | 0));
 }
 
-function alreadyRan(snapshot, runDate) {
-  return snapshot.orders.some(o => o.id.startsWith(orderIdPrefix(runDate)));
+function runOfId(id, runDate) {
+  let date = runDate.replaceAll("-", "");
+  return Stdlib_Array.findMap([
+    "prd",
+    "cust",
+    "ord"
+  ], kind => {
+    let prefix = kind + `-` + date + `-`;
+    if (!id.startsWith(prefix)) {
+      return;
+    }
+    let rest = id.slice(prefix.length);
+    if (rest.startsWith("r")) {
+      return Stdlib_Int.fromString(rest.slice(1, rest.indexOf("-")), undefined);
+    } else {
+      return 1;
+    }
+  });
+}
+
+function nextRun(snapshot, runDate) {
+  let ids = snapshot.products.map(p => p.id).concat(snapshot.customers.map(c => c.id).concat(snapshot.orders.map(o => o.id)));
+  return Stdlib_Array.reduce(Stdlib_Array.filterMap(ids, id => runOfId(id, runDate)), 0, (a, b) => {
+    if (a > b) {
+      return a;
+    } else {
+      return b;
+    }
+  }) + 1 | 0;
 }
 
 function sizeOf(existing, share, min) {
@@ -57,8 +89,9 @@ let priceFactors = [
 
 function plan(snapshot, today, demoCustomerIds) {
   let runDate = runDateOf(today);
-  let tag = runDate.replaceAll("-", "");
-  let random = randomFor(runDate);
+  let run = nextRun(snapshot, runDate);
+  let tag = idTag(runDate, run);
+  let random = randomFor(runDate, run);
   let listed = snapshot.products.filter(p => p.listed);
   let listedCategories = DemoData$OnlineShopHybridSeed.categories.filter(c => snapshot.categories.some(s => {
     if (s.id === c.id) {
@@ -93,7 +126,7 @@ function plan(snapshot, today, demoCustomerIds) {
     DemoData$OnlineShopHybridSeed.newAddress(random)
   ]);
   let orderable = snapshot.availableProducts.filter(p => p.price.currency === DemoData$OnlineShopHybridSeed.currency).map(p => p.id);
-  let orders = DemoData$OnlineShopHybridSeed.buildOrders(random, orderable, customers.map(c => c.id).concat(newCustomers.map(c => c.id)), undefined, sizeOf(snapshot.orders.length, 0.1, 5), orderIdPrefix(runDate), today, undefined);
+  let orders = DemoData$OnlineShopHybridSeed.buildOrders(random, orderable, customers.map(c => c.id).concat(newCustomers.map(c => c.id)), undefined, sizeOf(snapshot.orders.length, 0.1, 5), orderIdPrefix(runDate, run), today, undefined);
   let orders$1 = orderable.length === 0 ? [] : orders;
   let placed = snapshot.orders.filter(o => o.placed).map(o => ({
     id: o.id,
@@ -108,6 +141,7 @@ function plan(snapshot, today, demoCustomerIds) {
   let discontinued = Seed_Random$ReventlessSeed.float(random) < 0.15 ? sample(random, listed.filter(p => !archived.includes(p.id)), 1).map(p => p.id) : [];
   return {
     runDate: runDate,
+    run: run,
     newProducts: newProducts,
     repriced: repriced,
     redescribed: redescribed,
@@ -127,7 +161,8 @@ export {
   idTag,
   orderIdPrefix,
   randomFor,
-  alreadyRan,
+  runOfId,
+  nextRun,
   sizeOf,
   sample,
   refreshed,

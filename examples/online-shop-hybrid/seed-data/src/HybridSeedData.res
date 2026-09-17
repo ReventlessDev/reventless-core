@@ -954,9 +954,9 @@ let run = async (
 
 // ── Follow-up run ───────────────────────────────────────────────────────────
 
-// The day a follow-up runs as. `SEED_RUN_DATE` (YYYY-MM-DD) exists for testing the
-// run-date rules on one day: it changes the ids and the random choices, never the
-// time the shop records for an event, which is always now.
+// The day a follow-up runs as. `SEED_RUN_DATE` (YYYY-MM-DD) changes the ids and
+// the random choices, never the time the shop records for an event, which is
+// always now.
 let followUpToday = (): float =>
   switch Seed.Prompt.envValue("SEED_RUN_DATE") {
   | None => Date.now()
@@ -967,24 +967,13 @@ let followUpToday = (): float =>
       : t
   }
 
-// Refused before anything is sent: an empty shop has nothing to follow up on, and
-// a second run on the same day would stop at its first duplicate id.
+// Refused before anything is sent: an empty shop has nothing to follow up on.
 let followUpPreflight = async (connection: Seed.connection) => {
-  let runDate = DemoFollowUp.runDateOf(followUpToday())
   let snapshot = await ShopSnapshot.read(connection.client)
   if snapshot.products->Array.length == 0 {
     throw(
       Seed.Failed(
         `the shop is empty — a follow-up adds a day of activity to a shop that a first run ` ++ `filled. Seed "full" or "sample" first.`,
-      ),
-    )
-  }
-  if DemoFollowUp.alreadyRan(snapshot, ~runDate) {
-    throw(
-      Seed.Failed(
-        `the follow-up for ${runDate} already ran — its orders (${DemoFollowUp.orderIdPrefix(
-            runDate,
-          )}…) are in the shop. Run the next one on a later day.`,
       ),
     )
   }
@@ -1023,7 +1012,7 @@ let runFollowUp = async (connection: Seed.connection) => {
     ~today,
     ~demoCustomerIds=owners->DemoData.all->Array.map(o => o.id),
   )
-  Seed.Runner.heading(`Follow-up for ${f.runDate}:`)
+  Seed.Runner.heading(`Follow-up for ${f.runDate}, run ${f.run->Int.toString}:`)
 
   let newProducts = switch (connection.uploadsSkipped, f.newProducts) {
   | (_, []) | (true, _) => f.newProducts
@@ -1098,7 +1087,7 @@ let dataSets: array<Seed.dataSet> = [
   },
   {
     name: "next",
-    label: "next — add one day of activity to a seeded shop (run on a later day)",
+    label: "next — add a day of activity to a seeded shop",
     seed: runFollowUp,
     preflight: followUpPreflight,
   },

@@ -2,13 +2,15 @@
 //
 // Everything here is decided from what the shop holds now (`ShopSnapshot`) and
 // the run date, and nothing is sent — `HybridSeedData.runFollowUp` sends it. The
-// run date names the run's ids and seeds its random generator, so two days differ
-// and the same day repeats itself.
+// run date and the run's number on that date name its ids and seed its random
+// generator, so every run differs and a given run repeats itself.
 
 open ReventlessSeed
 
 type t = {
   runDate: string,
+  // 1 for the day's first follow-up, then counting up.
+  run: int,
   newProducts: array<DemoData.product>,
   repriced: array<(string, Reventless.Money.t)>,
   redescribed: array<(string, string)>,
@@ -26,17 +28,54 @@ type t = {
 let runDateOf = (today: float): string =>
   Date.fromTime(today)->Date.toISOString->String.slice(~start=0, ~end=10)
 
-/** The run date as it appears in ids: `20260924`. */
-let idTag = (runDate: string): string => runDate->String.replaceAll("-", "")
+/** The run as it appears in ids: `20260924` for the day's first run, which keeps
+    the format ids had before runs were numbered, then `20260924-r2`, `20260924-r3`. */
+let idTag = (runDate: string, ~run: int): string => {
+  let date = runDate->String.replaceAll("-", "")
+  run == 1 ? date : `${date}-r${run->Int.toString}`
+}
 
-let orderIdPrefix = (runDate: string) => `ord-${idTag(runDate)}-`
+let orderIdPrefix = (runDate: string, ~run: int) => `ord-${idTag(runDate, ~run)}-`
 
-let randomFor = (runDate: string): Seed.Random.t =>
-  Seed.Random.make(~seed=Int.fromString(idTag(runDate))->Option.getOr(0)->Int.bitwiseXor(0x5eed))
+let randomFor = (runDate: string, ~run: int): Seed.Random.t =>
+  Seed.Random.make(
+    ~seed=Int.fromString(runDate->String.replaceAll("-", ""))
+    ->Option.getOr(0)
+    ->Int.bitwiseXor(0x5eed)
+    ->Int.bitwiseXor((run - 1) * 0x10001),
+  )
 
-/** Whether a follow-up already ran on `runDate`: its ids are in the Orders view. */
-let alreadyRan = (snapshot: ShopSnapshot.t, ~runDate: string): bool =>
-  snapshot.orders->Array.some(o => o.id->String.startsWith(orderIdPrefix(runDate)))
+// The run number an id belongs to, when it was made by a follow-up on `runDate`:
+// `prd-20260924-01` is run 1, `prd-20260924-r2-01` run 2.
+let runOfId = (id: string, ~runDate: string): option<int> => {
+  let date = runDate->String.replaceAll("-", "")
+  ["prd", "cust", "ord"]->Array.findMap(kind => {
+    let prefix = `${kind}-${date}-`
+    if id->String.startsWith(prefix) {
+      let rest = id->String.slice(~start=String.length(prefix))
+      switch rest->String.startsWith("r") {
+      | false => Some(1)
+      | true =>
+        rest
+        ->String.slice(~start=1, ~end=rest->String.indexOf("-"))
+        ->Int.fromString
+      }
+    } else {
+      None
+    }
+  })
+}
+
+/** The number the next follow-up on `runDate` takes: one past the highest run
+    whose ids are in the shop. Products and customers count as well as orders, so
+    a run that stopped before placing its orders does not hand its number on. */
+let nextRun = (snapshot: ShopSnapshot.t, ~runDate: string): int => {
+  let ids = Array.concat(
+    snapshot.products->Array.map(p => p.id),
+    Array.concat(snapshot.customers->Array.map(c => c.id), snapshot.orders->Array.map(o => o.id)),
+  )
+  ids->Array.filterMap(id => runOfId(id, ~runDate))->Array.reduce(0, (a, b) => a > b ? a : b) + 1
+}
 
 /** A share of what exists, never below `min`. */
 let sizeOf = (existing: int, ~share: float, ~min: int): int => {
@@ -61,8 +100,9 @@ let priceFactors = [0.85, 0.9, 1.1, 1.2]
 
 let plan = (snapshot: ShopSnapshot.t, ~today: float, ~demoCustomerIds: array<string>): t => {
   let runDate = runDateOf(today)
-  let tag = idTag(runDate)
-  let random = randomFor(runDate)
+  let run = nextRun(snapshot, ~runDate)
+  let tag = idTag(runDate, ~run)
+  let random = randomFor(runDate, ~run)
 
   let listed = snapshot.products->Array.filter(p => p.listed)
   let listedCategories =
@@ -121,7 +161,7 @@ let plan = (snapshot: ShopSnapshot.t, ~today: float, ~demoCustomerIds: array<str
     ~productIds=orderable,
     ~customerIds=Array.concat(customers->Array.map(c => c.id), newCustomers->Array.map(c => c.id)),
     ~count=sizeOf(snapshot.orders->Array.length, ~share=0.1, ~min=5),
-    ~idPrefix=orderIdPrefix(runDate),
+    ~idPrefix=orderIdPrefix(runDate, ~run),
     ~today,
     (),
   )
@@ -167,6 +207,7 @@ let plan = (snapshot: ShopSnapshot.t, ~today: float, ~demoCustomerIds: array<str
 
   {
     runDate,
+    run,
     newProducts,
     repriced,
     redescribed,
