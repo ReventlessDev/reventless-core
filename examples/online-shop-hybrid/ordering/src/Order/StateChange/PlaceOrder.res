@@ -85,6 +85,11 @@ type error =
   // currency happened to come first. Naming the codes says which shelf entries
   // disagree, the way `ProductsNotAvailable` names the products.
   | MixedCurrencies({currencies: array<string>})
+  // A pickup is collected in store, so a delivery slot on one describes a
+  // delivery that will never happen.
+  | DeliveryWindowOnPickup
+  // The window ends before it starts. `reason` is `DateRange.validate`'s wording.
+  | InvalidDeliveryWindow({reason: string})
 
 // One priced line of a placed order, frozen at placement.
 //

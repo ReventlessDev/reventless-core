@@ -77,6 +77,11 @@ let errorSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "MixedCurrencies",
     currencies: s.m(Sury.array(Sury.string))
+  })),
+  Sury.literal("DeliveryWindowOnPickup"),
+  Sury.$schema(s => ({
+    TAG: "InvalidDeliveryWindow",
+    reason: s.m(Sury.string)
   }))
 ]);
 

@@ -5,6 +5,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Money$Reventless from "@reventlessdev/reventless-spec/src/semantic/Money.res.mjs";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Currency$Reventless from "@reventlessdev/reventless-spec/src/semantic/Currency.res.mjs";
+import * as DateRange$Reventless from "@reventlessdev/reventless-spec/src/semantic/DateRange.res.mjs";
 
 let initialState_placedOrderIds = [];
 
@@ -175,6 +176,28 @@ function priceLines(state, lineItems) {
   });
 }
 
+function deliveryWindowError(shippingMethod, deliveryWindow) {
+  if (deliveryWindow === undefined) {
+    return;
+  }
+  switch (shippingMethod) {
+    case "Standard" :
+    case "Express" :
+      break;
+    case "Pickup" :
+      return "DeliveryWindowOnPickup";
+  }
+  let reason = DateRange$Reventless.validate(deliveryWindow);
+  if (reason.TAG === "Ok") {
+    return;
+  } else {
+    return {
+      TAG: "InvalidDeliveryWindow",
+      reason: reason._0
+    };
+  }
+}
+
 function decide(state, command) {
   let orderId = command.orderId;
   if (state.placedOrderIds.includes(orderId)) {
@@ -190,7 +213,10 @@ function decide(state, command) {
       _0: "OrderIsEmpty"
     };
   }
+  let deliveryWindow = command.deliveryWindow;
+  let shippingMethod = command.shippingMethod;
   let match = lineItems.find(param => param.quantity <= 0);
+  let match$1 = deliveryWindowError(shippingMethod, deliveryWindow);
   if (match !== undefined) {
     return {
       TAG: "Error",
@@ -199,6 +225,12 @@ function decide(state, command) {
         productId: match.productId,
         quantity: match.quantity
       }
+    };
+  }
+  if (match$1 !== undefined) {
+    return {
+      TAG: "Error",
+      _0: match$1
     };
   }
   let merged = mergeLines(lineItems);
@@ -224,14 +256,14 @@ function decide(state, command) {
     return failed;
   }
   let lines = failed._0;
-  let match$1 = Money$Reventless.sum(lines.map(line => line.lineTotal));
-  if (match$1 === undefined) {
+  let match$2 = Money$Reventless.sum(lines.map(line => line.lineTotal));
+  if (match$2 === undefined) {
     return {
       TAG: "Error",
       _0: "OrderIsEmpty"
     };
   }
-  if (match$1.TAG !== "Ok") {
+  if (match$2.TAG !== "Ok") {
     return {
       TAG: "Error",
       _0: {
@@ -258,9 +290,9 @@ function decide(state, command) {
         customerId: command.customerId,
         productIds: lines.map(line => line.productId),
         lines: lines,
-        total: match$1._0,
-        shippingMethod: command.shippingMethod,
-        deliveryWindow: command.deliveryWindow,
+        total: match$2._0,
+        shippingMethod: shippingMethod,
+        deliveryWindow: deliveryWindow,
         firstProductName: firstProductName,
         firstProductImage: firstProductImage
       }]
@@ -281,6 +313,7 @@ export {
   mergeLines,
   priceLine,
   priceLines,
+  deliveryWindowError,
   decide,
   moduleUrl,
 }

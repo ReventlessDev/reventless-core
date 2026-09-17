@@ -262,6 +262,52 @@ describe("PlaceOrder StateChangeSlice", () => {
     )
   })
 
+  test("a delivery window on a pickup order is refused", () => {
+    let window =
+      Reventless.DateRange.make(
+        ~start="2026-03-02T09:00:00Z",
+        ~end_="2026-03-02T11:00:00Z",
+      )->Result.getOrThrow
+    givenEvents([synced(~id="p1", ~name="Fathom Dock")])
+    ->whenCmd(
+      PlaceOrder({
+        orderId: "o1",
+        customerId: "c1",
+        lineItems: [line(~id="p1")],
+        shippingMethod: Pickup,
+        deliveryWindow: window,
+      }),
+    )
+    ->thenError(DeliveryWindowOnPickup)
+  })
+
+  // Built as a record rather than through `DateRange.make`, which would refuse
+  // it: a client sends JSON, and decoding does not apply the ordering rule.
+  test("a delivery window that ends before it starts is refused", () => {
+    let reversed = {
+      Reventless.DateRange.start: "2026-03-02T11:00:00Z",
+      end_: "2026-03-02T09:00:00Z",
+    }
+    givenEvents([synced(~id="p1", ~name="Fathom Dock")])
+    ->whenCmd(
+      PlaceOrder({
+        orderId: "o1",
+        customerId: "c1",
+        lineItems: [line(~id="p1")],
+        shippingMethod: Standard,
+        deliveryWindow: reversed,
+      }),
+    )
+    ->thenError(
+      InvalidDeliveryWindow({
+        reason: switch Reventless.DateRange.validate(reversed) {
+        | Error(reason) => reason
+        | Ok(_) => "expected the ordering rule to refuse this range"
+        },
+      }),
+    )
+  })
+
   test("partial product availability returns ProductsNotAvailable with missing list", () =>
     givenEvents([synced(~id="p1", ~name="Fathom Dock")])
     ->whenCmd(

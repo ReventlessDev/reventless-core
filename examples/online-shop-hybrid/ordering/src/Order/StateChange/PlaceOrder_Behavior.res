@@ -114,6 +114,19 @@ let priceLines = (state, lineItems: array<lineItem>): result<array<orderLine>, e
     }
   )
 
+// The window is display data — nothing ships by it — but a window that cannot
+// describe a delivery is refused rather than shown.
+let deliveryWindowError = (~shippingMethod, ~deliveryWindow) =>
+  switch (shippingMethod, deliveryWindow) {
+  | (_, None) => None
+  | (Pickup, Some(_)) => Some(DeliveryWindowOnPickup)
+  | (_, Some(window)) =>
+    switch Reventless.DateRange.validate(window) {
+    | Ok(_) => None
+    | Error(reason) => Some(InvalidDeliveryWindow({reason: reason}))
+    }
+  }
+
 let decide = (state, command) =>
   switch command {
   | PlaceOrder({orderId, customerId, lineItems, shippingMethod, ?deliveryWindow}) =>
@@ -122,9 +135,13 @@ let decide = (state, command) =>
     } else if lineItems->Array.length == 0 {
       Error(OrderIsEmpty)
     } else {
-      switch lineItems->Array.find(({quantity}) => quantity <= 0) {
-      | Some({productId, quantity}) => Error(InvalidQuantity({productId, quantity}))
-      | None =>
+      switch (
+        lineItems->Array.find(({quantity}) => quantity <= 0),
+        deliveryWindowError(~shippingMethod, ~deliveryWindow),
+      ) {
+      | (Some({productId, quantity}), _) => Error(InvalidQuantity({productId, quantity}))
+      | (None, Some(error)) => Error(error)
+      | (None, None) =>
         let merged = mergeLines(lineItems)
         let missing =
           merged->Array.filterMap(({productId}) =>
