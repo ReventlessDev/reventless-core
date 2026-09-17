@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.23 (2026-09-17)
+
+### Features
+
+* **seed:** let a data set refuse to start before anything is sent ([6fc5135](https://github.com/ReventlessDev/reventless-core/commit/6fc5135107f9af3016a48423cfee625216babca1))
+
+
 # 1.0.0-alpha.22 (2026-09-16)
 
 ### Bug Fixes

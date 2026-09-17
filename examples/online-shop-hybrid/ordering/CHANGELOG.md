@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.240 (2026-09-17)
+
+### Features
+
+* **examples:** refuse a delivery window that cannot describe a delivery ([4f36ec3](https://github.com/ReventlessDev/reventless-core/commit/4f36ec39b3b73910edce1ca2ad0108efb06aa9de))
+
+
 # 1.0.0-alpha.239 (2026-09-16)
 
 * feat(spec)!: infer the DCB partition key per slice, and drop @partitionTag where inference agrees ([6c10161](https://github.com/ReventlessDev/reventless-core/commit/6c101611d438beea4bc9175ae8ea0ea1f6f7493b))

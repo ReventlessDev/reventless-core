@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.90 (2026-09-17)
+
+### Bug Fixes
+
+* **deps:** follow the host UI to 3.0.0-alpha.105 ([5958203](https://github.com/ReventlessDev/reventless-core/commit/5958203579060eebe81946bfeb6157c366567eec))
+### Features
+
+* **examples:** add a follow-up seed run that adds a day of activity ([4be00d9](https://github.com/ReventlessDev/reventless-core/commit/4be00d9bf7a633e44d5fd7d333d2884086d62317))
+* **examples:** allow several follow-up seed runs on one day ([817996e](https://github.com/ReventlessDev/reventless-core/commit/817996e9c6be47d45b154b55b0e1a3e57af269df))
+
+
 # 1.0.0-alpha.89 (2026-09-16)
 
 ### Bug Fixes
