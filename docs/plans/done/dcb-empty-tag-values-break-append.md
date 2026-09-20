@@ -107,6 +107,13 @@ it is by design.
 
 ### D4 — optional: surface empty partition members at append
 
+> **Follow-up (2026-09-21):** D4's case has a build-time cause that the build does not catch —
+> `deriveBoundaryPartition`'s composite branch never checks that the boundary's other events carry
+> the members, so a missing member (not just an empty value) resolves to `""` here. Refusing that
+> at derivation is [composite-boundary-member-check](../composite-boundary-member-check.md); it
+> keeps D4 deferred rather than reviving it, since with the build check the only remaining way in
+> is an empty *value*, which D1 permits by design.
+
 A composite partition key whose members are *all* empty degenerates to a constant, putting every
 event of that slice in one partition. That is a modelling error rather than a storage one, so it
 belongs at most as a debug-level log, not a failure — but it is worth knowing about while the
