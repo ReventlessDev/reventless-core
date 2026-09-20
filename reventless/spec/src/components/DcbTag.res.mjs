@@ -703,31 +703,36 @@ function idFieldsOfProperties(properties) {
       return name.endsWith("Id");
     }
   };
+  let identity = (name, fieldSchema, isList) => {
+    if (isIdName(name)) {
+      return {
+        name: name,
+        isList: isList
+      };
+    } else if (Stdlib_Option.isSome(Sury.$Metadata_get(fieldSchema, dcbPartitionTagId))) {
+      return {
+        name: name,
+        isList: isList,
+        byTag: true
+      };
+    } else {
+      return;
+    }
+  };
   return Object.entries(properties).flatMap(param => {
     let fieldSchema = param[1];
-    let name = param[0];
-    if (isIdName(name)) {
-      let isList;
-      isList = fieldSchema.type === "array";
-      return [{
-          name: name,
-          isList: isList
-        }];
+    let isList;
+    isList = fieldSchema.type === "array";
+    let f = identity(param[0], fieldSchema, isList);
+    if (f !== undefined) {
+      return [f];
     }
     let match = nestedRecordProperties(fieldSchema);
     if (match === undefined) {
       return [];
     }
     let nestedIsList = match[1];
-    return Stdlib_Array.filterMap(Object.entries(match[0]), param => {
-      let nestedName = param[0];
-      if (isIdName(nestedName)) {
-        return {
-          name: nestedName,
-          isList: nestedIsList
-        };
-      }
-    });
+    return Stdlib_Array.filterMap(Object.entries(match[0]), param => identity(param[0], param[1], nestedIsList));
   });
 }
 

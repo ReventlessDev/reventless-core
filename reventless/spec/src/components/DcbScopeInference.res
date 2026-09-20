@@ -34,8 +34,22 @@ The three rules (over the representation):
    on `ProductAdded`) are payload ⇒ not indexed ⇒ the sibling-leak GSI write never
    happens.
 */
-/** A `*Id` / `*Ids`-shaped field, identified by name only (no schema, no tag flag). */
-type idField = {name: string, isList: bool}
+/** A field the slice graph treats as an entity identity.
+
+    Normally that is a `*Id` / `*Ids`-shaped name — the convention is the signal,
+    and this module stays schema-agnostic by taking the name alone.
+
+    `byTag` marks the exception: an identity the *name* does not declare, which an
+    adapter recognised from an explicit `@partitionTag`. A domain's own identifier
+    is often not suffixed — `sku`, `isbn`, `vin` — and without this the annotation
+    naming one would be extracted as a hint and then dropped, because `seedOf`
+    only honours a hint already among the produced keys. So the escape hatch would
+    have worked for every field except the ones that need it.
+
+    It is carried rather than folded in because removing the annotation removes
+    the identity, which is exactly what the redundancy check has to know: a hint
+    inference cannot reach without it is never redundant. */
+type idField = {name: string, isList: bool, byTag?: bool}
 
 /** One variant arm: its constructor name and the `*Id` fields it carries. */
 type eventShape = {eventType: string, idFields: array<idField>}

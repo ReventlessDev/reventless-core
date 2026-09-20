@@ -501,29 +501,62 @@ let validatePartitionHintsVsInference = (
   shapes->Array.forEach(s =>
     switch s.partitionHint {
     | Some(hint) if DcbScopeInference.producedKeys(s)->Array.includes(hint) =>
+      // "Without the annotation" has to mean without everything the annotation
+      // brought. A field that is an identity only because it carries the tag
+      // (`byTag`) stops being one when the tag goes, so dropping only the hint
+      // would ask whether inference reaches a key it can no longer see — and
+      // answer yes, reporting a load-bearing annotation as removable.
+      let withoutTag = (e: DcbScopeInference.eventShape) => {
+        ...e,
+        idFields: e.idFields->Array.filter(f => f.byTag != Some(true)),
+      }
+      // A hint naming an identity that exists only because of the annotation is
+      // **necessary**, and fits neither verdict this check was built to give.
+      // Called redundant it would be removed and the key would vanish; called
+      // contradictory it would be "corrected" to whatever name-shaped field
+      // happens to sit beside it — which is the author's choice overruled, not a
+      // mistake found. Both readings come from assuming the field is an identity
+      // either way, which is true only when the name says so.
+      let declaredByTag =
+        s.produced->Array.some(e =>
+          e.idFields->Array.some(f => f.name == hint && f.byTag == Some(true))
+        )
       let unaided = DcbScopeInference.resolvePartitions(
-        shapes->Array.map(o => o.sliceName == s.sliceName ? {...o, partitionHint: None} : o),
+        shapes->Array.map(o =>
+          o.sliceName == s.sliceName
+            ? {
+                ...o,
+                partitionHint: None,
+                produced: o.produced->Array.map(withoutTag),
+                consumed: o.consumed->Array.map(withoutTag),
+              }
+            : o
+        ),
       )
-      switch unaided.partitionBySlice->Dict.get(s.sliceName) {
-      | Some(inferred) if inferred == hint =>
-        redundancies->Array.push({
-          sliceName: s.sliceName,
-          message: `@partitionTag ${hint} is what inference derives without it — the annotation is redundant and can be removed.`,
-        })
-      | Some(inferred) =>
-        contradictions->Array.push({
-          sliceName: s.sliceName,
-          message: `@partitionTag names ${hint}, but inference derives ${inferred} from the slice graph — ${hint} is read from another entity. Remove the annotation, or move it to ${inferred}.`,
-        })
-      | None =>
-        let candidates = unaided.candidatesBySlice->Dict.get(s.sliceName)->Option.getOr([])
-        if !(candidates->Array.includes(hint)) {
+      if declaredByTag {
+        ()
+      } else {
+        switch unaided.partitionBySlice->Dict.get(s.sliceName) {
+        | Some(inferred) if inferred == hint =>
+          redundancies->Array.push({
+            sliceName: s.sliceName,
+            message: `@partitionTag ${hint} is what inference derives without it — the annotation is redundant and can be removed.`,
+          })
+        | Some(inferred) =>
           contradictions->Array.push({
             sliceName: s.sliceName,
-            message: `@partitionTag names ${hint}, which this slice only reads as a reference to another entity (candidates: ${candidates->Array.join(
-                ", ",
-              )}). Move the annotation to the slice's own key.`,
+            message: `@partitionTag names ${hint}, but inference derives ${inferred} from the slice graph — ${hint} is read from another entity. Remove the annotation, or move it to ${inferred}.`,
           })
+        | None =>
+          let candidates = unaided.candidatesBySlice->Dict.get(s.sliceName)->Option.getOr([])
+          if !(candidates->Array.includes(hint)) {
+            contradictions->Array.push({
+              sliceName: s.sliceName,
+              message: `@partitionTag names ${hint}, which this slice only reads as a reference to another entity (candidates: ${candidates->Array.join(
+                  ", ",
+                )}). Move the annotation to the slice's own key.`,
+            })
+          }
         }
       }
     | _ => ()

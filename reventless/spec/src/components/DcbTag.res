@@ -1084,29 +1084,42 @@ which is this module's half of the split.
 */
 let idFieldsOfProperties = (properties: dict<S.t<unknown>>): array<DcbScopeInference.idField> => {
   let isIdName = (name: string) => name->String.endsWith("Ids") || name->String.endsWith("Id")
+  // An explicit `@partitionTag` declares an identity the naming convention cannot
+  // express — a domain's own identifier is often unsuffixed (`sku`, `isbn`).
+  // Without this the hint is extracted and then ignored, since `seedOf` honours
+  // only a hint already among the produced keys, so the escape hatch would work
+  // for every field except the ones that need it. Flagged, not folded in: taking
+  // the annotation away takes the identity with it, which is what the redundancy
+  // check has to be able to tell.
+  let identity = (name, fieldSchema, isList) =>
+    if isIdName(name) {
+      Some({DcbScopeInference.name, isList})
+    } else if isPartitionTag(fieldSchema) {
+      Some({DcbScopeInference.name, isList, byTag: true})
+    } else {
+      None
+    }
   properties
   ->Dict.toArray
-  ->Array.flatMap(((name, fieldSchema)) =>
-    if isIdName(name) {
-      let isList = switch fieldSchema {
-      | Array(_) => true
-      | _ => false
-      }
-      [{DcbScopeInference.name, isList}]
-    } else {
+  ->Array.flatMap(((name, fieldSchema)) => {
+    let isList = switch fieldSchema {
+    | Array(_) => true
+    | _ => false
+    }
+    switch identity(name, fieldSchema, isList) {
+    | Some(f) => [f]
+    | None =>
       switch nestedRecordProperties(fieldSchema) {
       | Some((nested, nestedIsList)) =>
         nested
         ->Dict.toArray
-        ->Array.filterMap(((nestedName, _)) =>
-          isIdName(nestedName)
-            ? Some({DcbScopeInference.name: nestedName, isList: nestedIsList})
-            : None
+        ->Array.filterMap(((nestedName, nestedSchema)) =>
+          identity(nestedName, nestedSchema, nestedIsList)
         )
       | None => []
       }
     }
-  )
+  })
 }
 
 /**

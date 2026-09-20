@@ -437,14 +437,30 @@ function validatePartitionHintsVsInference(shapes) {
     if (!DcbScopeInference$Reventless.producedKeys(s).includes(hint)) {
       return;
     }
+    let withoutTag = e => ({
+      eventType: e.eventType,
+      idFields: e.idFields.filter(f => Primitive_object.notequal(f.byTag, true))
+    });
+    let declaredByTag = s.produced.some(e => e.idFields.some(f => {
+      if (f.name === hint) {
+        return Primitive_object.equal(f.byTag, true);
+      } else {
+        return false;
+      }
+    }));
     let unaided = DcbScopeInference$Reventless.resolvePartitions(shapes.map(o => {
       if (o.sliceName !== s.sliceName) {
         return o;
       }
       let newrecord = {...o};
       newrecord.partitionHint = undefined;
+      newrecord.produced = o.produced.map(withoutTag);
+      newrecord.consumed = o.consumed.map(withoutTag);
       return newrecord;
     }));
+    if (declaredByTag) {
+      return;
+    }
     let inferred = unaided.partitionBySlice[s.sliceName];
     if (inferred !== undefined) {
       if (inferred === hint) {
