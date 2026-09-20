@@ -1,8 +1,23 @@
 # Plan: the semantic-type list is exported, not transcribed
 
 **Date:** 2026-09-20
-**Status:** Proposed — not started. Small, and it unblocks a consumer that is currently
-forbidden from proceeding without it.
+**Status:** ✅ **Done, 2026-09-20.** `Semantic.brandedStrings` ships with the flag and the id
+per entry, guarded by `SemanticBrandedStringsTest`. Full `reventless-spec` suite green (673
+tests). The consumer that was blocked can proceed once this is published.
+
+**The design changed on one point, in its favour.** The plan proposed a test comparing the new
+registry against the ppx's list. While writing it, the ppx's own doc comment turned out to
+state a mechanical rule for both facts — *"`grep -l '^type t = string' reventless/spec/src/semantic/*.res`
+is the list"*, and the flag is whether the module exposes a bare `let schema`. Run against the
+tree, that rule reproduces `branded_string_modules` exactly: the same twelve modules, the same
+eight `true`s and four `false`s.
+
+So **both hand-maintained lists are caches of a computable fact**, and the test recomputes it
+from the files rather than comparing the two caches. That is strictly stronger: two lists agree
+happily when both are wrong in the same way, and the failure actually worth catching — someone
+adds a `type t = string` module and updates neither — is invisible to a two-way comparison.
+Each list is checked against the computed truth separately, so a red test names which one
+drifted. Verified by mutation in both directions.
 
 ## Why
 
@@ -48,18 +63,25 @@ it or be checked against it.**
 2. **Say which set is which.** The composites and the transparent-string brands are different
    populations with different rules, and a single flat list that hides the distinction would
    reproduce the current confusion at one remove. Mark it in the record.
-3. **The PPX stops holding a second answer.** Either it reads the exported list at build time,
-   or a test fails when the two disagree. The second is cheaper and sufficient: the failure mode
-   is drift, and a red test on drift is the whole requirement. **A silent divergence is the one
-   outcome that must be impossible.**
+3. **Neither list is trusted; both are checked against the sources.** The ppx keeps its copy —
+   OCaml cannot see through `type t = string` at syntax level, so it genuinely needs one. What
+   changes is that the copy is no longer the reference for anything: the test recomputes
+   membership and the flag from `semantic/*.res` and checks each list against *that*,
+   separately. **A silent divergence is the one outcome that must be impossible**, and a
+   two-way comparison between caches does not deliver it.
 
-## Verify
+## Verify — done
 
-- Adding an entry to the registry without touching `Util.ml` fails a test that names both files.
-- The exported flag matches `branded_string_modules` entry for entry, including the four
-  `false`s, checked by that same test rather than by reading.
-- An existing consumer of `Semantic.Id` compiles unchanged — this adds a value, it does not
-  reshape the module.
+- ✅ Dropping one entry from the registry turns the two registry assertions red while the ppx
+  assertion stays green, and vice versa when the ppx's flag is flipped instead. Both directions
+  exercised by mutation, then restored; each failure names the list that drifted.
+- ✅ The guard cannot pass vacuously: a first assertion proves the sources are readable from the
+  test's working directory and that both computed sets are non-empty. Without it an unreadable
+  path would make every later comparison trivially true.
+- ✅ `CalendarDate` carries `date`, not `calendarDate` — asserted, because that one mapping is
+  the reason the registry has to carry ids at all rather than leaving them derivable.
+- ✅ Existing consumers of `Semantic.Id` compile unchanged; this adds a type and a value and
+  reshapes nothing. Full package suite: 42 files, 673 tests, green.
 
 ## Scope
 

@@ -4,31 +4,118 @@ import * as S from "sury/src/S.res.mjs";
 import * as Sury from "sury";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 
+let dateTime = "dateTime";
+
+let date = "date";
+
+let storageRef = "storageRef";
+
+let uploadableImage = "uploadableImage";
+
+let uploadableFile = "uploadableFile";
+
+let imageRef = "imageRef";
+
+let fileRef = "fileRef";
+
+let memberRef = "memberRef";
+
+let email = "email";
+
+let phone = "phone";
+
+let url = "url";
+
+let color = "color";
+
 let Id = {
-  dateTime: "dateTime",
-  date: "date",
+  dateTime: dateTime,
+  date: date,
   reference: "reference",
-  storageRef: "storageRef",
+  storageRef: storageRef,
   offload: "offload",
-  uploadableImage: "uploadableImage",
-  uploadableFile: "uploadableFile",
-  imageRef: "imageRef",
-  fileRef: "fileRef",
+  uploadableImage: uploadableImage,
+  uploadableFile: uploadableFile,
+  imageRef: imageRef,
+  fileRef: fileRef,
   captionedImage: "captionedImage",
-  memberRef: "memberRef",
-  email: "email",
-  phone: "phone",
-  url: "url",
+  memberRef: memberRef,
+  email: email,
+  phone: phone,
+  url: url,
   percent: "percent",
   bytes: "bytes",
   duration: "duration",
-  color: "color",
+  color: color,
   money: "money",
   dateRange: "dateRange",
   geoPoint: "geoPoint",
   lifecycleTrail: "lifecycleTrail",
   geolocation: "geolocation"
 };
+
+let brandedStrings = [
+  {
+    moduleName: "DateTime",
+    id: dateTime,
+    hasDerivableSchema: true
+  },
+  {
+    moduleName: "CalendarDate",
+    id: date,
+    hasDerivableSchema: true
+  },
+  {
+    moduleName: "Email",
+    id: email,
+    hasDerivableSchema: true
+  },
+  {
+    moduleName: "Phone",
+    id: phone,
+    hasDerivableSchema: true
+  },
+  {
+    moduleName: "Url",
+    id: url,
+    hasDerivableSchema: true
+  },
+  {
+    moduleName: "Color",
+    id: color,
+    hasDerivableSchema: true
+  },
+  {
+    moduleName: "FileRef",
+    id: fileRef,
+    hasDerivableSchema: true
+  },
+  {
+    moduleName: "ImageRef",
+    id: imageRef,
+    hasDerivableSchema: true
+  },
+  {
+    moduleName: "MemberRef",
+    id: memberRef,
+    hasDerivableSchema: false
+  },
+  {
+    moduleName: "StorageRef",
+    id: storageRef,
+    hasDerivableSchema: false
+  },
+  {
+    moduleName: "UploadableFile",
+    id: uploadableFile,
+    hasDerivableSchema: false
+  },
+  {
+    moduleName: "UploadableImage",
+    id: uploadableImage,
+    hasDerivableSchema: false
+  }
+];
 
 let semanticId = Sury.$Metadata_Id_make("reventless", "semantic");
 
@@ -129,6 +216,7 @@ function has(fieldSchema, id) {
 
 export {
   Id,
+  brandedStrings,
   semanticId,
   mark,
   refined,

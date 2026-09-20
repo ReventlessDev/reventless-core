@@ -113,6 +113,50 @@ module Id = {
   let geolocation = "geolocation"
 }
 
+/** One transparent-string semantic: a `semantic/` module whose `type t` is a
+    bare `string`. */
+type brandedString = {
+  moduleName: string,
+  /** The `Id` values of this module carry. Not derivable from the module name —
+      `CalendarDate` carries `date`. */
+  id: string,
+  /** Whether the module exposes the `let schema` that sury-ppx resolves `X.t`
+      to by convention. The `false`s build theirs from a function taking
+      arguments (`forStore` / `forField` / `forCollection`), so such a field
+      always carries an explicit `@s.matches` and there is no name a pass could
+      derive. Offering one as a plain type pick emits code that does not
+      compile. */
+  hasDerivableSchema: bool,
+}
+
+/** Every transparent-string semantic, so a consumer can ask what they are
+    instead of transcribing the set.
+
+    A check written against the literal `string` keyword sees only the brand and
+    refuses the field, which would make declaring a semantic cost the field
+    whatever that check gates — so a pass that must leave these alone needs the
+    set, not a guess. It cannot be guessed from the names: `Money.t` is a record,
+    `Duration.t` an int, `Percent.t` and `Bytes.t` floats, and all four are
+    deliberately absent.
+
+    Both facts here are computable from the sources, and `SemanticBrandedStringsTest`
+    recomputes them rather than trusting this list — so adding a module without
+    adding it here fails, and so does the ppx's copy drifting from either. */
+let brandedStrings: array<brandedString> = [
+  {moduleName: "DateTime", id: Id.dateTime, hasDerivableSchema: true},
+  {moduleName: "CalendarDate", id: Id.date, hasDerivableSchema: true},
+  {moduleName: "Email", id: Id.email, hasDerivableSchema: true},
+  {moduleName: "Phone", id: Id.phone, hasDerivableSchema: true},
+  {moduleName: "Url", id: Id.url, hasDerivableSchema: true},
+  {moduleName: "Color", id: Id.color, hasDerivableSchema: true},
+  {moduleName: "FileRef", id: Id.fileRef, hasDerivableSchema: true},
+  {moduleName: "ImageRef", id: Id.imageRef, hasDerivableSchema: true},
+  {moduleName: "MemberRef", id: Id.memberRef, hasDerivableSchema: false},
+  {moduleName: "StorageRef", id: Id.storageRef, hasDerivableSchema: false},
+  {moduleName: "UploadableFile", id: Id.uploadableFile, hasDerivableSchema: false},
+  {moduleName: "UploadableImage", id: Id.uploadableImage, hasDerivableSchema: false},
+]
+
 let semanticId: S.Metadata.Id.t<t> = S.Metadata.Id.make(~namespace="reventless", ~name="semantic")
 
 /** Mark a schema as carrying a semantic. */
