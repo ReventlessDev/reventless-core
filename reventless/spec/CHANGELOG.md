@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.137 (2026-09-20)
+
+### Bug Fixes
+
+* **spec:** resolve the drift guard's paths from the module, not the cwd ([7f4d8de](https://github.com/ReventlessDev/reventless-core/commit/7f4d8de896f37ce4a855ecc6a980788f01d0e1c7))
+### Features
+
+* **spec:** enumerate the transparent-string semantics, and check the list against the sources ([995c31c](https://github.com/ReventlessDev/reventless-core/commit/995c31c5eb1a9bdb2ad88d39b2b9a8a5348be0da))
+
+
 # 3.0.0-alpha.136 (2026-09-16)
 
 ### Bug Fixes
