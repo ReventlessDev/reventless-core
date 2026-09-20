@@ -10,6 +10,12 @@
 # Publishing first means a crash loses the definition of a version while its
 # artifacts survive, which is how one number ends up naming two different trees.
 #
+# That ordering leaves one state with no way out on its own: a publish that dies
+# partway has already pushed the tags, so `lerna changed` compares against them,
+# finds nothing, and every later run succeeds having published nothing while the
+# minted versions sit in git and on no registry. `publish-only: true` is the way
+# out — it ships what the tree already declares and mints nothing.
+#
 # Everything repository-specific is an input: the `--ignore-changes` list, the
 # workspace-setup command, the build command, the PPX fallback and the
 # documentation CHANGELOG. Post-release side effects (layer builds, deploys) are
@@ -61,6 +67,23 @@ on:
         required: false
         type: string
         default: ""
+      publish-only:
+        description: >-
+          Publish the versions already in the tree, minting nothing. The recovery path for a run
+          whose publish failed after the tags were pushed: those versions exist in git and on no
+          registry, and because `lerna changed` then compares against the very tags that run
+          pushed, every later run reports "nothing to release" and succeeds having published
+          nothing. Versioning, the CHANGELOG commit and the tag push are all skipped; the build
+          and the publish run as normal, and the publish already skips anything the registry
+          has. Safe to repeat — it is idempotent by the same skip.
+
+          Limitation: no GitHub releases are created, and the `tags` output is empty. Both are
+          derived from what THIS run minted, and a recovery run mints nothing. The packages
+          reach the registry; the release notes for those tags have to be added by hand or by
+          a later run.
+        required: false
+        type: boolean
+        default: false
       private-packages:
         description: "Space-separated package names to skip when creating GitHub releases."
         required: false
@@ -145,7 +168,10 @@ jobs:
     name: Release Packages
     runs-on: ubuntu-latest
     outputs:
-      released: ${{ steps.changes.outputs.count != '0' }}
+      # Whether anything was shipped, which in publish-only is true without a
+      # version having been minted — callers dispatch post-release side effects
+      # off this, and a recovery publish needs them just as much as a fresh one.
+      released: ${{ steps.changes.outputs.publish == 'true' }}
       branch: ${{ steps.prerelease.outputs.branch }}
       tags: ${{ steps.tags.outputs.list }}
     steps:
@@ -206,6 +232,7 @@ jobs:
         id: changes
         env:
           IGNORE_CHANGES: ${{ inputs.ignore-changes }}
+          PUBLISH_ONLY: ${{ inputs.publish-only }}
         run: |
           # `lerna changed` exits non-zero when no releasable (non-private)
           # packages changed — e.g. a commit that only touches private example
@@ -223,6 +250,18 @@ jobs:
             IGNORE_ARGS+=(--ignore-changes "**/$pkg/**")
           done
 
+          # `publish-only` answers a different question, so it does not ask this one:
+          # the versions are already minted and the tags already pushed, which is
+          # precisely why `lerna changed` would report nothing.
+          if [[ "$PUBLISH_ONLY" == "true" ]]; then
+            echo "count=0" >> "$GITHUB_OUTPUT"
+            echo "version=false" >> "$GITHUB_OUTPUT"
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+            echo "publish-only: minting nothing; publishing the versions already in the tree."
+            echo "Anything the registry already has is skipped by the publish step."
+            exit 0
+          fi
+
           CHANGED=$(npx lerna changed --json "${IGNORE_ARGS[@]}" 2>/dev/null || true)
           if [[ -z "$CHANGED" ]]; then
             CHANGED='[]'
@@ -230,8 +269,12 @@ jobs:
           COUNT=$(echo "$CHANGED" | jq 'length' 2>/dev/null || echo 0)
           echo "count=$COUNT" >> "$GITHUB_OUTPUT"
           if [[ "$COUNT" -eq 0 ]]; then
+            echo "version=false" >> "$GITHUB_OUTPUT"
+            echo "publish=false" >> "$GITHUB_OUTPUT"
             echo "No packages have releasable changes — skipping release"
           else
+            echo "version=true" >> "$GITHUB_OUTPUT"
+            echo "publish=true" >> "$GITHUB_OUTPUT"
             echo "Packages to release: $COUNT"
             echo "$CHANGED" | jq -r '.[].name'
           fi
@@ -243,7 +286,12 @@ jobs:
       # (clean + build) just before publish.
 
       - name: Determine prerelease identifier
-        if: steps.changes.outputs.count != '0'
+        # Gated on publish, not version: it derives the preid from the branch name
+        # and writes nothing, and the PUBLISH step reads it for the dist-tag. Gating
+        # it on versioning would leave publish-only with an empty preid, which for a
+        # caller setting dist-tag-prereleases is exactly the accident the publish
+        # step's own comment warns about — a prerelease landing on `latest`.
+        if: steps.changes.outputs.publish == 'true'
         id: prerelease
         env:
           BRANCH_NAME: ${{ inputs.ref }}
@@ -262,7 +310,7 @@ jobs:
           fi
 
       - name: Clean uncommitted changes
-        if: steps.changes.outputs.count != '0'
+        if: steps.changes.outputs.version == 'true'
         run: |
           # Discard any uncommitted changes from the install/fallback steps
           # (build artifacts, generated files, deleted files, etc.)
@@ -272,7 +320,7 @@ jobs:
           git status
 
       - name: Version packages with Lerna
-        if: steps.changes.outputs.count != '0'
+        if: steps.changes.outputs.version == 'true'
         id: version
         timeout-minutes: 10
         env:
@@ -331,7 +379,7 @@ jobs:
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Verify minted versions are unpublished
-        if: steps.changes.outputs.count != '0'
+        if: steps.changes.outputs.version == 'true'
         env:
           RELEASE_TOKEN: ${{ secrets.NPM_TOKEN }}
           REGISTRY: ${{ inputs.registry }}
@@ -371,7 +419,7 @@ jobs:
           [ "$fail" -eq 0 ]
 
       - name: Update documentation CHANGELOG
-        if: steps.changes.outputs.count != '0' && inputs.doc-changelog-file != ''
+        if: steps.changes.outputs.version == 'true' && inputs.doc-changelog-file != ''
         env:
           CHANGELOG_FILE: ${{ inputs.doc-changelog-file }}
           DOC_SOURCE: ${{ inputs.doc-changelog-source }}
@@ -460,11 +508,11 @@ jobs:
           fi
 
       - name: Build release artifacts
-        if: steps.changes.outputs.count != '0'
+        if: steps.changes.outputs.publish == 'true'
         run: ${{ inputs.build-command }}
 
       - name: Restore deleted dev sources
-        if: steps.changes.outputs.count != '0'
+        if: steps.changes.outputs.publish == 'true'
         run: |
           # A `rescript clean` deletes compiled test files (dev sources) that are
           # checked into git, and a root build does not regenerate them. Restore
@@ -486,7 +534,7 @@ jobs:
       # the next release finishes the job — whereas the old order was
       # unrecoverable and silent.
       - name: Push version tags and commits
-        if: steps.changes.outputs.count != '0'
+        if: steps.changes.outputs.version == 'true'
         env:
           BRANCH_NAME: ${{ steps.prerelease.outputs.branch }}
         run: |
@@ -500,7 +548,7 @@ jobs:
           exit 1
 
       - name: Publish to npmjs (throttled, sequential, stop on first error)
-        if: steps.changes.outputs.count != '0'
+        if: steps.changes.outputs.publish == 'true'
         env:
           TOKEN_ENV_VAR: ${{ inputs.token-env-var }}
           RELEASE_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -593,7 +641,7 @@ jobs:
               done
 
       - name: Collect released tags
-        if: steps.changes.outputs.count != '0'
+        if: steps.changes.outputs.version == 'true'
         id: tags
         env:
           VERSION_SHA: ${{ steps.version.outputs.sha }}
@@ -635,7 +683,7 @@ jobs:
           echo "list=$LIST" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub releases
-        if: steps.changes.outputs.count != '0'
+        if: steps.changes.outputs.version == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           IS_PRERELEASE: ${{ steps.prerelease.outputs.is_prerelease }}

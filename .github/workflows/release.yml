@@ -6,6 +6,12 @@ on:
     branches: [main, beta, alpha]
     types: [completed]
   workflow_dispatch:
+    inputs:
+      publish-only:
+        description: "Publish the versions already in the tree, minting nothing. Use after a run whose publish failed once its tags were pushed — those versions are in git and on no registry, and an ordinary run will report 'nothing to release' forever."
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: release-${{ github.event.workflow_run.head_branch || github.ref_name }}
@@ -31,6 +37,10 @@ jobs:
       actions: write
     with:
       ref: ${{ github.event.workflow_run.head_branch || github.ref_name }}
+      # Only a manual dispatch can ask for this; a CI-triggered release always
+      # takes the ordinary path. `inputs` is empty on a workflow_run event, so
+      # the comparison is false there rather than null.
+      publish-only: ${{ github.event_name == 'workflow_dispatch' && inputs.publish-only == true }}
       node-version: "22.17.1"
       workspace-setup: node scripts/workspace-setup.mjs
       build-command: pnpm run clean && pnpm run build
