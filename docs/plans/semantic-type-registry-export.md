@@ -1,9 +1,18 @@
 # Plan: the semantic-type list is exported, not transcribed
 
 **Date:** 2026-09-20
-**Status:** ✅ **Done, 2026-09-20.** `Semantic.brandedStrings` ships with the flag and the id
-per entry, guarded by `SemanticBrandedStringsTest`. Full `reventless-spec` suite green (673
-tests). The consumer that was blocked can proceed once this is published.
+**Status:** ✅ **Done and published, 2026-09-20.** `Semantic.brandedStrings` ships with the flag
+and the id per entry, guarded by `SemanticBrandedStringsTest`. Full `reventless-spec` suite
+green (673 tests). Live as **`@reventlessdev/reventless-spec@3.0.0-alpha.137`** — verified by
+reading `brandedStrings` out of the published tarball's `Semantic.res` and `Semantic.res.mjs`,
+not by trusting a green pipeline. The blocked consumer can proceed.
+
+**Getting it published took three runs**, which is worth recording because the failure mode is
+silent. The first release died mid-publish on a transient `curl: (35) Recv failure` — but only
+after pushing the version tags, so `lerna changed` compared against those tags, found nothing,
+and the second run **succeeded having published nothing**. `alpha.137` existed in git and on no
+registry. The recovery path added to `release-packages.yml` (`publish-only: true`) is what
+shipped it. See the fallout section of [npmjs-publish-migration.md](npmjs-publish-migration.md).
 
 **The design changed on one point, in its favour.** The plan proposed a test comparing the new
 registry against the ppx's list. While writing it, the ppx's own doc comment turned out to

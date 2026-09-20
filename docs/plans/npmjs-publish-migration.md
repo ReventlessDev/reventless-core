@@ -253,6 +253,47 @@ swallowed-403 note above). The urgent risk is already contained: the deploy is
 fixed, and `ci.yml`/`release.yml` build steps already define `NPM_TOKEN`, so this
 is can't-recur hardening, not a live outage.
 
+## Post-migration fallout — a failed publish stranded its versions, and no run could ship them (2026-09-20)
+
+**Symptom.** A release died partway through publishing on `curl: (35) Recv failure: Connection
+reset by peer`, after five `skip (already on registry)` lines. Zero packages published. Every
+run after it reported `No packages have releasable changes — skipping release` and **succeeded
+having published nothing**. `@reventlessdev/reventless-spec@3.0.0-alpha.137` existed as a git
+tag and on no registry.
+
+**Cause — the cost of a deliberate ordering.** This workflow versions, then **pushes tags**,
+then publishes, and that order is correct: publishing first would lose the definition of a
+version while its artifacts survived, which is how one number ends up naming two trees. But it
+means a publish failure leaves the tags pushed, so `lerna changed` compares against those very
+tags, finds nothing, and the gate closes permanently. The safe failure mode had no exit.
+
+**Two ways it hides:**
+- A green Release run does **not** mean anything published. There are now two distinct
+  green-but-empty shapes — this gate, and the `PUBLISHING_ENABLED` / red-CI gate that finishes
+  in seconds. Check the registry, never the workflow status.
+- `npm view` caches and will report the old version as `latest`. Query the registry API.
+
+**Fix — `publish-only: true`** on `release-packages.yml`, exposed as a `workflow_dispatch`
+input on `release.yml`:
+
+```
+gh workflow run release.yml --ref alpha -f publish-only=true
+```
+
+It publishes what the tree already declares and mints nothing. The gate now yields two
+decisions rather than one count (`version` / `publish`): everything that mints or records a
+version is gated on the first, the build and the publish on the second. Idempotent, because the
+publish step already skips whatever the registry has.
+
+**Two things to know about it.** A recovery run creates no GitHub releases and its `tags` output
+is empty — both describe what a run minted, and it mints nothing. And *"Determine prerelease
+identifier"* is gated on **publish**, not version, although it sits among the versioning steps:
+the publish step reads its `preid` for the dist-tag, so gating it the obvious way would publish
+a prerelease with no dist-tag, onto `latest` — the exact accident that step's own comment warns
+about.
+
+**Verified** by recovering `alpha.137`, which then became `latest`.
+
 ## Related (this repo)
 
 - `docs/plans/docs-site-open-source-publication.md` — public docs cut.
