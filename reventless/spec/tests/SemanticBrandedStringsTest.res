@@ -14,8 +14,14 @@
 
 open JestGlobals
 
-let semanticDir = "src/semantic"
-let ppxUtil = "../../packages/reventless-ppx/src/ppx/Util.ml"
+// Resolved from this module's own location, never from `process.cwd()`: the
+// runner's working directory is the repo root for a whole-workspace run and the
+// package directory for a single-package one, so a cwd-relative path passes
+// locally and fails in CI. `import.meta.url` is the portable form — Jest's ESM
+// `import.meta` carries `url` but not necessarily Node's `dirname`.
+let here = NodePath.dirname(NodeUrl.fileURLToPath(NodeImportMeta.url))
+let semanticDir = here ++ "/../src/semantic"
+let ppxUtil = here ++ "/../../../packages/reventless-ppx/src/ppx/Util.ml"
 
 let readFile = path => NodeFs.readFileSync(path)
 
