@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.138 (2026-09-20)
+
+* fix(spec)!: let an explicit partition tag declare an identity the name cannot ([01d82c0](https://github.com/ReventlessDev/reventless-core/commit/01d82c0714a31f31d55c466eae9100cf4dcc85f0))
+
+### BREAKING CHANGES
+
+* a @partitionTag on a field whose name is not *Id / *Ids was
+inert and now takes effect, so such a slice's partition key — and with it its
+storage key, fence and read scope — changes to the annotated field. Nothing else
+moves: the annotation was doing nothing before, so no slice that resolved a key
+resolves a different one.
+
+
+
 # 3.0.0-alpha.137 (2026-09-20)
 
 ### Bug Fixes
