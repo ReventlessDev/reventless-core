@@ -47,6 +47,15 @@ the **produced event schemas** only; the command and consumed events play no par
 works from the tag flags the PPX put on the schema, so a field counts as tagged after
 auto-tagging of `*Id`, `@dcbTag` and `@noTag`.
 
+> ⚠️ **Stale on the single-key path (noted 2026-09-21).** The table below describes the
+> derivation *before* the per-slice inference landed — "alphabetically first", "no tagged
+> fields" and the several-`@partitionTag` cases are that older shape.
+> `DcbTag.deriveBoundaryPartition` now resolves each slice through
+> `DcbScopeInference.resolvePartitions`, and since `reventless-spec@3.0.0-alpha.138` an
+> explicit `@partitionTag` makes a field an identity whatever it is called. See
+> [dcb-tag-scope-inference.md](../../plans/done/dcb-tag-scope-inference.md) and its 2026-09-21
+> amendment. **The composite row is still accurate**, because composite bypasses the inference.
+
 | Situation (across all schemas passed in) | Result |
 |---|---|
 | No tagged fields | throws "DCB spec has no tagged fields" ([:1519](../../../reventless/spec/src/components/DcbTag.res#L1519)) |

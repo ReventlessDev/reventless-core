@@ -553,3 +553,41 @@ over to the derived values.
 - Escape-hatch annotations still work and override inference; a contradicting
   annotation is a clear generator error.
 - The reachability guard still reds a deliberately-broken cross-entity read.
+
+---
+
+## Amendment (2026-09-21): a tag declares an identity the name cannot
+
+The inference reads identities off field **names** (`*Id` / `*Ids`), which is what keeps
+`DcbScopeInference` schema-agnostic. That made `@partitionTag` — the intent oracle this plan
+deliberately retained — powerless on exactly the fields that need it most: a domain's own
+identifier is often unsuffixed (`sku`, `isbn`, `vin`), and the hint was extracted from the event
+schema and then dropped, because `seedOf` honours a hint only when it already names a produced
+key. The hatch worked for every field except the ones it was for, and a slice keyed that way
+carried an annotation, a partition nobody chose, and nothing saying the two disagreed.
+
+`DcbTag.idFieldsOfProperties` now counts an explicitly partition-tagged field as an identity
+whatever it is called, and `DcbScopeInference.idField` carries `byTag` to say the annotation is
+the only reason it is one.
+
+That flag exists for the redundancy check, which needed a **third outcome**. It was built to say
+*redundant* or *contradictory*, and a hint that is **necessary** is neither: called redundant it
+would be removed and the key would vanish; called contradictory it would be "corrected" to
+whatever name-shaped field sits beside it — the author's choice overruled, not a mistake found.
+Both readings came from assuming a field is an identity either way, which is true only when its
+name says so, so `validatePartitionHintsVsInference` drops `byTag` identities along with the
+hint when it asks what inference reaches unaided.
+
+Shipped in `reventless-spec@3.0.0-alpha.138`. **Breaking:** such an annotation was inert and now
+takes effect, so that slice's partition key — and with it its storage key, fence and read scope —
+becomes the annotated field. Nothing that already resolved a key resolves a different one.
+
+**Scoped to `@partitionTag`.** The generic `DcbTag` marker says a field is a queryable key, of
+which a slice may have several, and says nothing about which is the partition. Promoting every
+tag to a candidate would make slices that resolve today ambiguous and fail their builds.
+
+**Composite is untouched and stays outside this.** `deriveBoundaryPartition` short-circuits the
+inference whenever `compositePartitionOf` finds a spec — `partitionBySlice` comes back empty and
+every event is filed under the composite tag — so `@compositePartitionTag` is a **whole-boundary**
+strategy, not a per-slice key, and generalising `partitionBySlice` to a multi-key shape would be
+work with no consumer. See [composite-partition-tag.md](composite-partition-tag.md).
