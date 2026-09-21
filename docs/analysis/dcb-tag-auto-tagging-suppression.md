@@ -1,5 +1,16 @@
 # DCB Tag Auto-Tagging Suppression
 
+> **Status: ✅ Resolved — Option B shipped, as `@noDcbTag` (not `@dcb.skip`).** The attribute is
+> live in `ReferenceInference.ml`, which routes a field carrying it to
+> `Reference.toWithoutDcbTag`, and the VS Code extension offers it as a code action on a
+> `consumedEvent` arm field: *"Suppress DCB tag (@noDcbTag) — this id is payload, not a boundary
+> key."* Everything below is kept as the reasoning that led there; the recommendation section
+> still names the attribute `@dcb.skip`, which never existed under that spelling.
+>
+> 🚨 **Option E (the `*Ref` suffix) is superseded, and does not compose with `@ref`.** See the
+> note under that option. Read this document for *why* suppression is explicit, not as a menu of
+> live choices.
+
 **Context**: `@@reventless.dcbTags` (and auto-application in `*Slice` folders via Phase 8) injects
 `@s.matches(Reventless.DcbTag.string)` on every `*Id: string` field in `@schema` variant types.
 This is convenient for the common case but creates false positives when a slice command carries
@@ -148,9 +159,32 @@ type command =
 **Cons**: Requires renaming existing fields (`customerId` → `customerRef`); may conflict with
 established domain vocabulary; the rename cascades to event types, read models, and tests.
 
+> 🚨 **Superseded — do not adopt (2026-09-21).** Three reasons, the last of which did not exist
+> when this was written:
+>
+> 1. **It suppresses by failing to match a rule, so it states nothing.** `isIdName` is
+>    `endsWith("Id") || endsWith("Ids")`, and a `*Ref` name simply misses it. Nothing records
+>    that the omission was deliberate, and renaming the field back to `customerId` later — an
+>    innocent tidy-up — silently makes it a DCB key again. `@noDcbTag` survives a rename and greps.
+> 2. **It costs the reference inference.** Auto UI infers a reference from a field name by
+>    stripping `Id`/`Ids` (`AutoUI.stemFromKey`) whenever the author declared none, so a `*Ref`
+>    field gets no picker in the generated UI — it gets a box someone types a raw id into.
+> 3. **🚨 It does not compose with `@ref`.** `Reference.to_` sets the DCB tag metadata *itself*,
+>    so `@ref("Customers") customerRef` is tagged after all — under the key `customerRef`, which
+>    no `*Id`-named producer will match. The naming trick suppresses only the *inference*; an
+>    explicit reference overrides it in the other direction. Getting "a reference that is not a
+>    boundary key" therefore needs `@ref("Customers") @noDcbTag customerId`, where the annotation
+>    does all the work and the suffix does none.
+>
+> **The convention is `*Id` in every case**, with `@noDcbTag` where the field is payload rather
+> than a key. That is also what the framework's own specs do: `productId`, `productIds`,
+> `categoryId`, `customerId`, `warehouseIds` — and no `*Ref`-suffixed reference field anywhere.
+
 ---
 
 ## Recommendation
+
+*(Historical — `@dcb.skip` shipped as `@noDcbTag`; see the status note at the top.)*
 
 **Option B** (`@dcb.skip`) for the short term — it makes suppression intent explicit with minimal
 PPX complexity and is easy to grep. The PPX change is ~5 lines in `DcbTagInference.ml`.
@@ -159,5 +193,6 @@ If the convention proves noisy (many fields needing `@dcb.skip`), revisit **Opti
 `@dcb.tag`) as a breaking PPX change. Option C is the more principled design but trades
 convenience for correctness.
 
-**Option E** is worth considering alongside B as a complementary naming convention for
-command payload fields that happen to be identifiers.
+~~**Option E** is worth considering alongside B as a complementary naming convention for
+command payload fields that happen to be identifiers.~~ **Withdrawn** — see the note under
+Option E.
