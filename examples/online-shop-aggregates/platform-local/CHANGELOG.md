@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.247 (2026-09-21)
+
+### Features
+
+* **examples:** the aggregates example types its ids ([10795b4](https://github.com/ReventlessDev/reventless-core/commit/10795b40e4991e7255c851ef9b37f2f1836da613))
+
+
 # 1.0.0-alpha.246 (2026-09-21)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-aggregates-platform-local

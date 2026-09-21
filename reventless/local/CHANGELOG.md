@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.257 (2026-09-21)
+
+### Bug Fixes
+
+* **core:** an event mapping that commands its own source no longer hangs ([d30ce6b](https://github.com/ReventlessDev/reventless-core/commit/d30ce6b360707d933732fa2c90aba49c03dda006))
+* feat(spec)!: typed projection keys ([fc6a018](https://github.com/ReventlessDev/reventless-core/commit/fc6a01811ba788f3289e84a435a09f77fa627e1a))
+
+### BREAKING CHANGES
+
+* a projection that keys a row by a payload `string`, or uses
+the envelope id as a `string`, converts explicitly with
+`Target.Id.makeFromString` / `Source.Id.toString`. `StateChangeSlice.Spec` no
+longer requires `module Id`.
+
+
+
 # 3.0.0-alpha.256 (2026-09-21)
 
 **Note:** Version bump only for package @reventlessdev/reventless-local

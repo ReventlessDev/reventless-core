@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.140 (2026-09-21)
+
+* feat(spec)!: typed projection keys ([fc6a018](https://github.com/ReventlessDev/reventless-core/commit/fc6a01811ba788f3289e84a435a09f77fa627e1a))
+### Features
+
+* **core:** references derived from identities, and identity checks ([7cb1376](https://github.com/ReventlessDev/reventless-core/commit/7cb1376e56cdb4e4d5ab5954cd97fd37fd3ba258))
+
+### BREAKING CHANGES
+
+* a projection that keys a row by a payload `string`, or uses
+the envelope id as a `string`, converts explicitly with
+`Target.Id.makeFromString` / `Source.Id.toString`. `StateChangeSlice.Spec` no
+longer requires `module Id`.
+
+
+
 # 3.0.0-alpha.139 (2026-09-21)
 
 ### Features

@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.140 (2026-09-21)
+
+### Features
+
+* **examples:** the DCB example types its ids ([2efb86f](https://github.com/ReventlessDev/reventless-core/commit/2efb86f0cf53c804c55fd930ecc897eea60c91e3))
+
+
 # 1.0.0-alpha.139 (2026-09-21)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-dcb-catalog-spec

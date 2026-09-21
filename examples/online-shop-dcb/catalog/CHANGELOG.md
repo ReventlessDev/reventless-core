@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.249 (2026-09-21)
+
+* feat(spec)!: typed projection keys ([fc6a018](https://github.com/ReventlessDev/reventless-core/commit/fc6a01811ba788f3289e84a435a09f77fa627e1a))
+### Features
+
+* **examples:** the DCB example types its ids ([2efb86f](https://github.com/ReventlessDev/reventless-core/commit/2efb86f0cf53c804c55fd930ecc897eea60c91e3))
+
+### BREAKING CHANGES
+
+* a projection that keys a row by a payload `string`, or uses
+the envelope id as a `string`, converts explicitly with
+`Target.Id.makeFromString` / `Source.Id.toString`. `StateChangeSlice.Spec` no
+longer requires `module Id`.
+
+
+
 # 1.0.0-alpha.248 (2026-09-21)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-dcb-catalog
