@@ -718,6 +718,8 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-09-21
+- feat(examples): the DCB example types its ids ([2efb86f](https://github.com/ReventlessDev/reventless-core/commit/2efb86f0cf53c804c55fd930ecc897eea60c91e3))
 ### 2026-09-16
 - feat(core): fail the build when an extension cannot find its slice's partition key ([cf2b093](https://github.com/ReventlessDev/reventless-core/commit/cf2b093dd5dc7cf9425cdac919cd3910fc4aeefd))
 - docs: deploy and test the online shop with shop:up, shop:seed and shop:down ([460c555](https://github.com/ReventlessDev/reventless-core/commit/460c55542ab6ec2f3efc6e6e9e0093b15a813a6a))
