@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.3.0-alpha.22 (2026-09-21)
+
+### Bug Fixes
+
+* **deps:** update rescript to 12.3.1 ([ea1ce37](https://github.com/ReventlessDev/reventless-core/commit/ea1ce377297640f6d0d360e6c84c778d59ecbcc5))
+
+
 # 2.3.0-alpha.21 (2026-09-16)
 
 ### Bug Fixes

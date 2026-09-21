@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.0.0-alpha.1 (2026-09-21)
+
+### Bug Fixes
+
+* **deps:** update rescript to 12.3.1 ([ea1ce37](https://github.com/ReventlessDev/reventless-core/commit/ea1ce377297640f6d0d360e6c84c778d59ecbcc5))
+
+
 # 2.0.0-alpha.0 (2026-07-31)
 
 * feat(rescript)!: one Node bindings package, not two ([1258d8c](https://github.com/ReventlessDev/reventless-core/commit/1258d8c2b2ff2636b36a849fc5bdf9005c6fb0eb))
