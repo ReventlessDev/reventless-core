@@ -191,14 +191,89 @@ let () =
      then Printf.printf "  ok(gwt): Function$-wrapped (ReScript v12) extraction\n"
      else (Printf.printf "  FAIL(gwt v12): missing elements in:\n%s\n" s; exit 1));
 
-  (* spec_id_for: nearest preceding comment line wins. *)
-  (match
-     ReventlessPpx__SidecarEmit.spec_id_for 10 [ (3, "a"); (7, "b"); (12, "c") ]
-   with
-   | Some "b" -> Printf.printf "  ok(gwt): spec_id_for nearest-preceding\n"
+  (* ── Scenario ids: a marker belongs to the test directly below it ─────── *)
+  let id_label = function Some s -> s | None -> "None" in
+  let expect_id label got want =
+    if got = want then Printf.printf "  ok(gwt): %s\n" label
+    else (
+      Printf.printf "  FAIL(gwt): %s — got %s, want %s\n" label (id_label got)
+        (id_label want);
+      exit 1)
+  in
+  (* Markers on 3 and 7, tests on 4, 8 and 10: the test on 10 has no marker of its
+     own, and the one on 7 belongs to the test on 8. *)
+  let ids = [ (3, "a"); (7, "b"); (12, "c") ] and tests = [ 4; 8; 10 ] in
+  expect_id "marker on 3 → test on 4"
+    (ReventlessPpx__SidecarEmit.scenario_id_for 4 ~tests ids) (Some "a");
+  expect_id "marker on 7 → test on 8"
+    (ReventlessPpx__SidecarEmit.scenario_id_for 8 ~tests ids) (Some "b");
+  expect_id "test on 10 inherits nothing"
+    (ReventlessPpx__SidecarEmit.scenario_id_for 10 ~tests ids) None;
+
+  (* The same through a file: a form-written test with its marker, a hand-written
+     test added below it, and a test marked with the older spelling. The markers
+     are read from the file on disk; the AST is parsed from the same lines with
+     the comments blanked, so the test locations line up with them. *)
+  let lines =
+    [ ";; describe \"AddProduct\" (fun () ->";
+      "  // scenario-id: 1111";
+      "  test \"written by the form\" (fun () ->";
+      "    thenEvent (whenCmd (givenEvents [||]) (AddProduct { productId = \"prod-1\" }))";
+      "      (ProductAdded { productId = \"prod-1\" }));";
+      "  test \"written by hand afterwards\" (fun () ->";
+      "    thenEvent (whenCmd (givenEvents [||]) (AddProduct { productId = \"prod-2\" }))";
+      "      (ProductAdded { productId = \"prod-2\" }));";
+      "  // spec-id: 2222";
+      "  test \"marked the older way\" (fun () ->";
+      "    thenEvent (whenCmd (givenEvents [||]) (AddProduct { productId = \"prod-3\" }))";
+      "      (ProductAdded { productId = \"prod-3\" })))" ]
+  in
+  let fname = Filename.temp_file "Marker_GWT" ".res" in
+  let oc = open_out fname in
+  List.iter (fun l -> output_string oc (l ^ "\n")) lines;
+  close_out oc;
+  (match ReventlessPpx__SidecarEmit.read_scenario_ids fname with
+   | [ (2, "1111"); (9, "2222") ] ->
+     print_endline "  ok(gwt): both marker spellings are read"
    | other ->
-     Printf.printf "  FAIL(gwt): spec_id_for got %s\n"
-       (match other with Some s -> s | None -> "None");
+     Printf.printf "  FAIL(gwt): read_scenario_ids got [%s]\n"
+       (String.concat "; " (List.map (fun (n, id) -> Printf.sprintf "%d,%s" n id) other));
+     exit 1);
+  let ocaml_src =
+    String.concat "\n"
+      (List.map
+         (fun l -> if String.length (String.trim l) >= 2
+                      && String.sub (String.trim l) 0 2 = "//" then "" else l)
+         lines)
+  in
+  let marker_body = Parse.implementation (Lexing.from_string ocaml_src) in
+  let mj =
+    match ReventlessPpx__SidecarEmit.gwt_fragment_json ~fname marker_body with
+    | Some j -> j
+    | None -> (Printf.printf "  FAIL(gwt): marker file extracted nothing\n"; exit 1)
+  in
+  Sys.remove fname;
+  let ids_of key =
+    match mj with
+    | `Assoc fields -> (
+      match List.assoc_opt "scenarios" fields with
+      | Some (`List scenarios) ->
+        List.map
+          (function
+            | `Assoc sf -> (
+              match List.assoc_opt key sf with Some (`String id) -> id | _ -> "<missing>")
+            | _ -> "<missing>")
+          scenarios
+      | _ -> [])
+    | _ -> []
+  in
+  let show xs = "[" ^ String.concat "; " xs ^ "]" in
+  (match (ids_of "scenarioId", ids_of "specId") with
+   | ([ "1111"; ""; "2222" ] as a), b when a = b ->
+     print_endline
+       "  ok(gwt): scenarioId and specId agree; the hand-written test below a marked one has no id"
+   | a, b ->
+     Printf.printf "  FAIL(gwt): scenarioId %s, specId %s\n" (show a) (show b);
      exit 1);
 
   (* ── Typed ids: the role follows the type, inside the existing vocabulary ── *)

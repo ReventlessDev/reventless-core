@@ -300,7 +300,7 @@ let maybe_emit ~spec_name ~fname (body : structure) : unit =
    writes:
 
      describe("Spec", () => {
-       // spec-id: <id>
+       // scenario-id: <id>        (or the older `// spec-id: <id>`)
        test("title", () =>
          givenEvents([E({..}), ..])
          ->whenCmd(C({..}))            // or ->whenInput(..)
@@ -310,7 +310,7 @@ let maybe_emit ~spec_name ~fname (body : structure) : unit =
 
    ReScript desugars `a->f(b)` to `f(a, b)`, so the body is a nest of applies;
    we walk it and pick the given / when / then calls by function name. The
-   `// spec-id:` lives in a comment (ppxlib drops comments) so it is recovered
+   `// scenario-id:` lives in a comment (ppxlib drops comments) so it is recovered
    from the source text by line, correlated to each `test(...)` location.
    ════════════════════════════════════════════════════════════════════════ *)
 
@@ -564,27 +564,33 @@ let extract_steps (body : expression) :
   in
   (given, when_, then_)
 
-(* ── spec-id comments (recovered from source text) ──────────────────────── *)
+(* ── scenario-id comments (recovered from source text) ──────────────────── *)
 
-let read_spec_ids (fname : string) : (int * string) list =
+(* The marker's two spellings. `// scenario-id:` is the current one; the codegen
+   wrote `// spec-id:` before "spec" was reserved for a slice's definition file,
+   and generated apps carry it until their next forward pass, so it is read for
+   good. *)
+let scenario_id_prefixes = [ "// scenario-id:"; "// spec-id:" ]
+
+let read_scenario_ids (fname : string) : (int * string) list =
+  let id_of_line (trimmed : string) : string option =
+    List.find_map
+      (fun prefix ->
+        let lp = String.length prefix and lt = String.length trimmed in
+        if lt >= lp && String.equal (String.sub trimmed 0 lp) prefix then
+          Some (String.trim (String.sub trimmed lp (lt - lp)))
+        else None)
+      scenario_id_prefixes
+  in
   try
     let ic = open_in fname in
     let rec loop n acc =
       match input_line ic with
       | line ->
-        let trimmed = String.trim line in
-        let prefix = "// spec-id:" in
         let acc =
-          if String.length trimmed >= String.length prefix
-             && String.equal (String.sub trimmed 0 (String.length prefix)) prefix
-          then
-            let id =
-              String.trim
-                (String.sub trimmed (String.length prefix)
-                   (String.length trimmed - String.length prefix))
-            in
-            (n, id) :: acc
-          else acc
+          match id_of_line (String.trim line) with
+          | Some id -> (n, id) :: acc
+          | None -> acc
         in
         loop (n + 1) acc
       | exception End_of_file ->
@@ -594,16 +600,28 @@ let read_spec_ids (fname : string) : (int * string) list =
     loop 1 []
   with _ -> []
 
-let spec_id_for (line : int) (ids : (int * string) list) : string option =
-  List.fold_left
-    (fun best (n, id) ->
-      if n < line then
-        match best with
-        | Some (bn, _) when bn >= n -> best
-        | _ -> Some (n, id)
-      else best)
-    None ids
-  |> Option.map snd
+(* The id of the test starting on [line]: the nearest marker above it, and only
+   when no other test starts between that marker and [line]. A marker belongs to
+   the one test directly below it. Taking the nearest marker however far above
+   gave a hand-written test added below a form-written one the form-written
+   test's id, so two scenarios reached the reverse pass under one id. The VS Code
+   extension reads a marker the same way, so both readers agree on a file.
+   [tests] holds the start line of every test in the file. *)
+let scenario_id_for (line : int) ~(tests : int list) (ids : (int * string) list) :
+    string option =
+  let nearest =
+    List.fold_left
+      (fun best (n, id) ->
+        if n < line then
+          match best with
+          | Some (bn, _) when bn >= n -> best
+          | _ -> Some (n, id)
+        else best)
+      None ids
+  in
+  match nearest with
+  | Some (n, id) when not (List.exists (fun t -> n < t && t < line) tests) -> Some id
+  | _ -> None
 
 (* ── collect the `test(...)` calls inside a `describe` body ──────────────── *)
 
@@ -661,7 +679,7 @@ let describe_of_item (item : structure_item) :
   | _ -> None
 
 let gwt_fragment_json ~fname (str : structure) : Yojson.Safe.t option =
-  let spec_ids = read_spec_ids fname in
+  let scenario_ids = read_scenario_ids fname in
   let describes = List.filter_map describe_of_item str in
   match describes with
   | [] -> None
@@ -669,19 +687,30 @@ let gwt_fragment_json ~fname (str : structure) : Yojson.Safe.t option =
     let spec_name =
       match describes with (n, _) :: _ -> n | [] -> filename_stem fname
     in
+    let test_lines =
+      List.concat_map
+        (fun (_, tests) ->
+          List.map (fun ((loc : Location.t), _, _) -> loc.loc_start.pos_lnum) tests)
+        describes
+    in
     let scenarios =
       List.concat_map
         (fun (_, tests) ->
           List.map
-            (fun (loc, title, body) ->
-              let spec_id =
-                match spec_id_for loc.loc_start.pos_lnum spec_ids with
+            (fun ((loc : Location.t), title, body) ->
+              let scenario_id =
+                match
+                  scenario_id_for loc.loc_start.pos_lnum ~tests:test_lines scenario_ids
+                with
                 | Some id -> id
                 | None -> ""
               in
               let given, when_, then_ = extract_steps body in
+              (* `specId` repeats the id for the released codegen, which reads
+                 only that key; it goes once the codegen reads `scenarioId`. *)
               `Assoc
-                [ ("specId", `String spec_id);
+                [ ("scenarioId", `String scenario_id);
+                  ("specId", `String scenario_id);
                   ("title", `String title);
                   ("given", `List given);
                   ("when", `List when_);

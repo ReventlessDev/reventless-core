@@ -39,7 +39,9 @@ plugin/tests/**/*_GWT.res ──────────────────
 ### Sidecars
 
 - `<Stem>.model.json` — for every `@@reventless.spec` file: each `@schema type` (command / event / consumedEvent / error / state) as a list of elements whose fields carry name, kind, identity flags, and the resolved DCB-tag **`dcbRole`**.
-- `<Stem>.gwt.json` — for every `@@reventless.gwt` file: per scenario the `spec-id`, title, and given/when/then steps with literal example values.
+- `<Stem>.gwt.json` — for every `@@reventless.gwt` file: per scenario its id (`scenarioId`), title, and given/when/then steps with literal example values.
+
+A scenario's id comes from a `// scenario-id: <id>` comment on the line above its `test(`. The older spelling `// spec-id: <id>` is still read, and always will be. A marker belongs only to the test directly below it: a test with no marker of its own gets the id `""`, even when a marked test comes before it. The sidecar also repeats the id under `specId`, for codegen releases that read only that key; that duplicate will be dropped once the codegen reads `scenarioId`.
 
 Sidecars are **derived artifacts**, emitted **only** when `REVENTLESS_EMIT_SIDECAR=1` — which `export` sets before it builds. Ordinary `rescript build` writes nothing new. They are git-ignored (`*.model.json` / `*.gwt.json` / `*.wiring.json`) and never hand-edited: `export` does a clean rebuild first so they cannot lag source.
 
