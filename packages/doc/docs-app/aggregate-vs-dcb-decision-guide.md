@@ -292,6 +292,18 @@ Does the command need state from multiple entity types?
 
 ---
 
+## Identities in both approaches
+
+An entity's id type does not depend on the approach. Declare it once with `Id.Make` (see [Id](common-modules/Id.md)) and both kinds of component use it:
+
+- **An aggregate** is keyed by it: `module Id = OrderId`. The id travels in the envelope, not the payload, so an aggregate's own events rarely mention it. The payload fields that name other entities are typed.
+- **A DCB slice** types the fields that carry it, and the partition field is the entity the slice decides about. Its tags and partition are derived from the identity exactly as they were from the name.
+- **A read model or view** is keyed by it (`module Id = OrderId` for a read model, `module Key = OrderId` for a StateView), so a projection that keys a row by another entity's id does not compile.
+
+In a hybrid plugin the same `OrderId.res` serves aggregates and slices alike, which is one reason to declare it in its own file rather than inside a component. Aggregates are the easier first adopter: an aggregate has no DCB tags, so a mistake there is a compile error rather than a tag that goes missing.
+
+---
+
 ## Naming: what a name means in each approach
 
 The last table says a DCB plugin has one shared CommandTopic and one shared

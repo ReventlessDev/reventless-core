@@ -3,7 +3,7 @@
 // Stored as immutable arrays (rather than `Set.t`) so each fold yields a fresh
 // state — `evolve` returns a new record instead of mutating a shared one. This
 // keeps successive `decide` calls (and unit tests) hermetic.
-type state = {placedOrderIds: array<string>, availableProductIds: array<string>}
+type state = {placedOrderIds: array<OrderId.t>, availableProductIds: array<CatalogSpec.ProductId.t>}
 
 let initialState = {placedOrderIds: [], availableProductIds: []}
 

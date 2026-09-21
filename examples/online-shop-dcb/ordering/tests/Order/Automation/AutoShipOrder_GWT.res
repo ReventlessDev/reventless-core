@@ -22,34 +22,36 @@ module AutoShipOrderSlice = {
 
 @@reventless.gwt
 
+let oid = OrderId.make
+
 describe("AutoShipOrder AutomationSlice", () => {
   test("collect: OrderPlaced creates a pending TODO", () =>
-    givenEvent(OrderPlaced({orderId: "o1"}))
+    givenEvent(OrderPlaced({orderId: oid("o1")}))
     ->whenCollect
-    ->thenTodos([("o1", {orderId: "o1"})])
+    ->thenTodos([("o1", {orderId: oid("o1")})])
   )
 
   test("collect: OrderShipped is ignored (no TODO)", () =>
-    givenEvent(OrderShipped({orderId: "o1"}))
+    givenEvent(OrderShipped({orderId: oid("o1")}))
     ->whenCollect
     ->thenTodos([])
   )
 
   test("resolve: OrderShipped marks the TODO done", () =>
-    givenEvent(OrderShipped({orderId: "o1"}))
+    givenEvent(OrderShipped({orderId: oid("o1")}))
     ->whenResolve
     ->thenResolved(Some("o1"))
   )
 
   test("resolve: OrderPlaced does not mark anything done", () =>
-    givenEvent(OrderPlaced({orderId: "o1"}))
+    givenEvent(OrderPlaced({orderId: oid("o1")}))
     ->whenResolve
     ->thenResolved(None)
   )
 
   test("process: pending TODO emits ShipOrder for the same id", () =>
-    givenTodo("o1", {orderId: "o1"})
+    givenTodo("o1", {orderId: oid("o1")})
     ->whenProcess
-    ->thenCommand("o1", ShipOrder({orderId: "o1"}))
+    ->thenCommand("o1", ShipOrder({orderId: oid("o1")}))
   )
 })

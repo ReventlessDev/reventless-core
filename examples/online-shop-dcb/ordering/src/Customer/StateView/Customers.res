@@ -2,9 +2,12 @@
 // Projects customer events from the shared ordering event log into a Customers read model.
 @@reventless.spec
 
+// Rows are keyed by this identity.
+module Key = CustomerId
+
 @schema
 type state = {
-  customerId: string,
+  customerId: CustomerId.t,
   @displayName email: string,
   address: string,
   deactivated: bool,
@@ -12,7 +15,7 @@ type state = {
 
 @schema
 type consumedEvent =
-  | CustomerRegistered({customerId: string, email: string, address: string})
-  | EmailChanged({customerId: string, email: string})
-  | AddressChanged({customerId: string, address: string})
-  | CustomerDeactivated({customerId: string})
+  | CustomerRegistered({customerId: CustomerId.t, email: string, address: string})
+  | EmailChanged({customerId: CustomerId.t, email: string})
+  | AddressChanged({customerId: CustomerId.t, address: string})
+  | CustomerDeactivated({customerId: CustomerId.t})

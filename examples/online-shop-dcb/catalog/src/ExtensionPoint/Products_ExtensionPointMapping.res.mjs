@@ -2,20 +2,21 @@
 
 import * as Sury from "sury";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as ProductId$CatalogSpec from "@reventlessdev/online-shop-dcb-catalog-spec/src/ProductId.res.mjs";
 
 let commandSchema = Sury.$unit;
 
 let eventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "ProductAdded",
-    productId: s.m(DcbTag$Reventless.string),
+    productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
     name: s.m(Sury.string),
     description: s.m(Sury.string),
     price: s.m(Sury.float)
   })),
   Sury.$schema(s => ({
     TAG: "ProductPriceChanged",
-    productId: s.m(DcbTag$Reventless.string),
+    productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
     price: s.m(Sury.float)
   }))
 ]);
@@ -53,7 +54,7 @@ let mapOutgoingEvent = (_id, event, _meta, _queryEngine) => {
     let productId = event.productId;
     return [{
         TAG: "PublishEvent",
-        _0: productId,
+        _0: ProductId$CatalogSpec.toString(productId),
         _1: {
           TAG: "ProductBecameAvailable",
           productId: productId,
@@ -65,7 +66,7 @@ let mapOutgoingEvent = (_id, event, _meta, _queryEngine) => {
   let productId$1 = event.productId;
   return [{
       TAG: "PublishEvent",
-      _0: productId$1,
+      _0: ProductId$CatalogSpec.toString(productId$1),
       _1: {
         TAG: "ProductPriceChanged",
         productId: productId$1,

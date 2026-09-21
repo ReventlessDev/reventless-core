@@ -3,38 +3,41 @@
 import * as Sury from "sury";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Reference$Reventless from "@reventlessdev/reventless-spec/src/components/Reference.res.mjs";
+import * as ProductId$CatalogSpec from "@reventlessdev/online-shop-dcb-catalog-spec/src/ProductId.res.mjs";
+import * as OrderId$OrderingPlugin from "../OrderId.res.mjs";
+import * as CustomerId$OrderingPlugin from "../../Customer/CustomerId.res.mjs";
 
 let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "OrderPlaced",
-    orderId: s.m(DcbTag$Reventless.string)
+    orderId: s.m(DcbTag$Reventless.mark(OrderId$OrderingPlugin.schema))
   })),
   Sury.$schema(s => ({
     TAG: "CatalogProductSynced",
-    productId: s.m(DcbTag$Reventless.string)
+    productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema))
   }))
 ]);
 
 let commandSchema = Sury.$schema(s => ({
   TAG: "PlaceOrder",
-  orderId: s.m(DcbTag$Reventless.string),
-  customerId: s.m(DcbTag$Reventless.string),
-  productIds: s.m(Sury.array(Reference$Reventless.to_(undefined, "productId", "AvailableProducts")))
+  orderId: s.m(DcbTag$Reventless.mark(OrderId$OrderingPlugin.schema)),
+  customerId: s.m(DcbTag$Reventless.mark(CustomerId$OrderingPlugin.schema)),
+  productIds: s.m(Sury.array(Reference$Reventless.mark(ProductId$CatalogSpec.schema, undefined, undefined, "AvailableProducts")))
 }));
 
 let errorSchema = Sury.union([
   Sury.literal("OrderAlreadyPlaced"),
   Sury.$schema(s => ({
     TAG: "ProductsNotAvailable",
-    missing: s.m(Sury.array(Sury.string))
+    missing: s.m(Sury.array(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)))
   }))
 ]);
 
 let eventSchema = Sury.$schema(s => ({
   TAG: "OrderPlaced",
-  orderId: s.m(DcbTag$Reventless.string),
-  customerId: s.m(DcbTag$Reventless.string),
-  productIds: s.m(Sury.array(DcbTag$Reventless.stringForKey("productId")))
+  orderId: s.m(DcbTag$Reventless.mark(OrderId$OrderingPlugin.schema)),
+  customerId: s.m(DcbTag$Reventless.mark(CustomerId$OrderingPlugin.schema)),
+  productIds: s.m(Sury.array(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)))
 }));
 
 function commandAuthorization(param) {

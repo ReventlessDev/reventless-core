@@ -2,12 +2,13 @@
 
 import * as Sury from "sury";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as ProductId$CatalogSpec from "@reventlessdev/online-shop-dcb-catalog-spec/src/ProductId.res.mjs";
 
 let consumedEventSchema = Sury.literal("ProductAdded");
 
 let commandSchema = Sury.$schema(s => ({
   TAG: "AddProduct",
-  productId: s.m(DcbTag$Reventless.string),
+  productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
   name: s.m(Sury.string),
   description: s.m(Sury.string),
   price: s.m(Sury.float)
@@ -17,7 +18,7 @@ let errorSchema = Sury.literal("ProductAlreadyExists");
 
 let eventSchema = Sury.$schema(s => ({
   TAG: "ProductAdded",
-  productId: s.m(DcbTag$Reventless.string),
+  productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
   name: s.m(Sury.string),
   description: s.m(Sury.string),
   price: s.m(Sury.float)

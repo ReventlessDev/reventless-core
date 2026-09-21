@@ -3,10 +3,11 @@
 import * as Sury from "sury";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
+import * as ProductId$CatalogSpec from "@reventlessdev/online-shop-dcb-catalog-spec/src/ProductId.res.mjs";
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 
 let stateSchema = Sury.$schema(s => ({
-  productId: s.m(Sury.string),
+  productId: s.m(ProductId$CatalogSpec.schema),
   name: s.m(Sury.string),
   price: s.m(Sury.float)
 }));
@@ -14,13 +15,13 @@ let stateSchema = Sury.$schema(s => ({
 let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "CatalogProductSynced",
-    productId: s.m(DcbTag$Reventless.string),
+    productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
     name: s.m(Sury.string),
     price: s.m(Sury.float)
   })),
   Sury.$schema(s => ({
     TAG: "CatalogProductPriceChanged",
-    productId: s.m(DcbTag$Reventless.string),
+    productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
     price: s.m(Sury.float)
   }))
 ]);
@@ -67,9 +68,9 @@ let visibility = "Internal";
 export {
   name,
   Id,
+  Key,
   consumedEventSchema,
   config,
-  Key,
   subIdConfig,
   stateSchema$1 as stateSchema,
   moduleUrl,

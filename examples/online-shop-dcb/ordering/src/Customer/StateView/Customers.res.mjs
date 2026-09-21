@@ -4,9 +4,10 @@ import * as Sury from "sury";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 import * as DisplayName$Reventless from "@reventlessdev/reventless-spec/src/components/DisplayName.res.mjs";
+import * as CustomerId$OrderingPlugin from "../CustomerId.res.mjs";
 
 let stateSchema = Sury.$schema(s => ({
-  customerId: s.m(Sury.string),
+  customerId: s.m(CustomerId$OrderingPlugin.schema),
   email: s.m(Sury.string),
   address: s.m(Sury.string),
   deactivated: s.m(Sury.bool),
@@ -21,23 +22,23 @@ let stateSchema$1 = Sury.$Metadata_set(stateSchema, DisplayName$Reventless.displ
 let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "CustomerRegistered",
-    customerId: s.m(DcbTag$Reventless.string),
+    customerId: s.m(DcbTag$Reventless.mark(CustomerId$OrderingPlugin.schema)),
     email: s.m(Sury.string),
     address: s.m(Sury.string)
   })),
   Sury.$schema(s => ({
     TAG: "EmailChanged",
-    customerId: s.m(DcbTag$Reventless.string),
+    customerId: s.m(DcbTag$Reventless.mark(CustomerId$OrderingPlugin.schema)),
     email: s.m(Sury.string)
   })),
   Sury.$schema(s => ({
     TAG: "AddressChanged",
-    customerId: s.m(DcbTag$Reventless.string),
+    customerId: s.m(DcbTag$Reventless.mark(CustomerId$OrderingPlugin.schema)),
     address: s.m(Sury.string)
   })),
   Sury.$schema(s => ({
     TAG: "CustomerDeactivated",
-    customerId: s.m(DcbTag$Reventless.string)
+    customerId: s.m(DcbTag$Reventless.mark(CustomerId$OrderingPlugin.schema))
   }))
 ]);
 
@@ -60,10 +61,10 @@ let visibility = "Public";
 export {
   name,
   Id,
+  Key,
   stateSchema$1 as stateSchema,
   consumedEventSchema,
   config,
-  Key,
   subIdConfig,
   moduleUrl,
   authorization,

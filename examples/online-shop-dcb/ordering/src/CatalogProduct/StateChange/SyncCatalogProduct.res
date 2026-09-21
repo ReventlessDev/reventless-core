@@ -9,13 +9,13 @@ type consumedEvent =
 
 @schema
 type command =
-  | SyncNewProduct({productId: string, name: string, price: float})
-  | ChangeSyncedPrice({productId: string, price: float})
+  | SyncNewProduct({productId: CatalogSpec.ProductId.t, name: string, price: float})
+  | ChangeSyncedPrice({productId: CatalogSpec.ProductId.t, price: float})
 
 @schema
 type error = unit // always succeeds — sync is idempotent
 
 @schema
 type event =
-  | CatalogProductSynced({productId: string, name: string, price: float})
-  | CatalogProductPriceChanged({productId: string, price: float})
+  | CatalogProductSynced({productId: CatalogSpec.ProductId.t, name: string, price: float})
+  | CatalogProductPriceChanged({productId: CatalogSpec.ProductId.t, price: float})

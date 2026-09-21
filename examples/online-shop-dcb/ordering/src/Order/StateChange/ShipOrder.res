@@ -9,7 +9,7 @@ type consumedEvent =
   | OrderCancelled
 
 @schema
-type command = ShipOrder({orderId: string})
+type command = ShipOrder({orderId: OrderId.t})
 
 @schema
 type error =
@@ -17,7 +17,7 @@ type error =
   | OrderAlreadyCancelled
 
 @schema
-type event = OrderShipped({orderId: string})
+type event = OrderShipped({orderId: OrderId.t})
 
 type lifecycleState = Orders.lifecycle
 

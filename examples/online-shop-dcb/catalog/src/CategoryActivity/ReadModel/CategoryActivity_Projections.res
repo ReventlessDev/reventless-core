@@ -20,9 +20,9 @@ module CategoryEvents = {
 
   @schema
   type event =
-    | CategoryAdded({categoryId: string, name: string})
-    | CategoryRenamed({categoryId: string, name: string})
-    | CategoryArchived({categoryId: string})
+    | CategoryAdded({categoryId: CategoryId.t, name: string})
+    | CategoryRenamed({categoryId: CategoryId.t, name: string})
+    | CategoryArchived({categoryId: CategoryId.t})
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -34,8 +34,13 @@ module ProductEvents = {
 
   @schema
   type event =
-    | ProductAdded({productId: string, name: string, description: string, price: float})
-    | ProductNameChanged({productId: string, name: string})
+    | ProductAdded({
+        productId: CatalogSpec.ProductId.t,
+        name: string,
+        description: string,
+        price: float,
+      })
+    | ProductNameChanged({productId: CatalogSpec.ProductId.t, name: string})
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -51,7 +56,7 @@ module CategoryActivityMapping = Mapping.Make(
       switch event {
       | CategoryAdded({categoryId, name}) =>
         Set(
-          CategoryActivity.Id.makeFromString(categoryId),
+          CategoryActivity.Id.makeFromString(categoryId->CategoryId.toString),
           {
             CategoryActivity.name,
             kind: Category,
@@ -60,7 +65,7 @@ module CategoryActivityMapping = Mapping.Make(
         )
       | CategoryRenamed({categoryId, name}) =>
         Update(
-          CategoryActivity.Id.makeFromString(categoryId),
+          CategoryActivity.Id.makeFromString(categoryId->CategoryId.toString),
           state => {
             ...state,
             name,
@@ -69,7 +74,7 @@ module CategoryActivityMapping = Mapping.Make(
         )
       | CategoryArchived({categoryId}) =>
         Update(
-          CategoryActivity.Id.makeFromString(categoryId),
+          CategoryActivity.Id.makeFromString(categoryId->CategoryId.toString),
           state => {...state, lastChange: (Archived: CategoryActivity.change)},
         )
       }
@@ -89,12 +94,12 @@ module ProductActivityMapping = Mapping.Make(
       switch event {
       | ProductAdded({productId, name}) =>
         Set(
-          CategoryActivity.Id.makeFromString(productId),
+          CategoryActivity.Id.makeFromString(productId->CatalogSpec.ProductId.toString),
           {CategoryActivity.name, kind: Product, lastChange: Added},
         )
       | ProductNameChanged({productId, name}) =>
         Update(
-          CategoryActivity.Id.makeFromString(productId),
+          CategoryActivity.Id.makeFromString(productId->CatalogSpec.ProductId.toString),
           state => {...state, name, lastChange: Renamed},
         )
       }

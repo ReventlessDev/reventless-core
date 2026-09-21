@@ -8,10 +8,10 @@ type consumedEvent =
   | CustomerDeactivated
 
 @schema
-type command = DeactivateCustomer({customerId: string})
+type command = DeactivateCustomer({customerId: CustomerId.t})
 
 @schema
 type error = CustomerNotFound
 
 @schema
-type event = CustomerDeactivated({customerId: string})
+type event = CustomerDeactivated({customerId: CustomerId.t})

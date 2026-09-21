@@ -12,21 +12,24 @@ module SendOrderConfirmationSlice = {
 
 @@reventless.gwt
 
+let cid = CustomerId.make
+let oid = OrderId.make
+
 describe("SendOrderConfirmation OutboundTranslationSlice", () => {
   testSync("collect: OrderPlaced queues an outbound TODO", () =>
-    givenEvent(OrderPlaced({orderId: "o1", customerId: "c1"}))
+    givenEvent(OrderPlaced({orderId: oid("o1"), customerId: cid("c1")}))
     ->whenCollect
-    ->thenTodos([("o1", {orderId: "o1", customerId: "c1"})])
+    ->thenTodos([("o1", {orderId: oid("o1"), customerId: cid("c1")})])
   )
 
   test("translate success marks the TODO Completed", () =>
-    givenTodo("o1", {orderId: "o1", customerId: "c1"})
+    givenTodo("o1", {orderId: oid("o1"), customerId: cid("c1")})
     ->whenTranslateMocked((_id, _item) => Promise.resolve(Ok(None)))
     ->thenTodoStatus("o1", #Completed)
   )
 
   test("translate failure leaves the TODO Pending for retry", () =>
-    givenTodo("o1", {orderId: "o1", customerId: "c1"})
+    givenTodo("o1", {orderId: oid("o1"), customerId: cid("c1")})
     ->whenTranslateMocked((_id, _item) => Promise.resolve(Error("smtp down")))
     ->thenTodoStatus("o1", #Pending)
   )

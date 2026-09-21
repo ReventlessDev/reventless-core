@@ -4,10 +4,13 @@
 @@reventless.spec
 @@reventless.visibility(Internal)
 
+// Rows are keyed by this identity.
+module Key = CatalogSpec.ProductId
+
 @schema
-type state = {productId: string, name: string, price: float}
+type state = {productId: CatalogSpec.ProductId.t, name: string, price: float}
 
 @schema
 type consumedEvent =
-  | CatalogProductSynced({productId: string, name: string, price: float})
-  | CatalogProductPriceChanged({productId: string, price: float})
+  | CatalogProductSynced({productId: CatalogSpec.ProductId.t, name: string, price: float})
+  | CatalogProductPriceChanged({productId: CatalogSpec.ProductId.t, price: float})

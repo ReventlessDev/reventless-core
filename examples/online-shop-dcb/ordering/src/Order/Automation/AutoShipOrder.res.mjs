@@ -2,14 +2,15 @@
 
 import * as Sury from "sury";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as OrderId$OrderingPlugin from "../OrderId.res.mjs";
 
 let todoItemSchema = Sury.$schema(s => ({
-  orderId: s.m(Sury.string)
+  orderId: s.m(OrderId$OrderingPlugin.schema)
 }));
 
 let commandSchema = Sury.$schema(s => ({
   TAG: "ShipOrder",
-  orderId: s.m(DcbTag$Reventless.string)
+  orderId: s.m(DcbTag$Reventless.mark(OrderId$OrderingPlugin.schema))
 }));
 
 function commandAuthorization(param) {

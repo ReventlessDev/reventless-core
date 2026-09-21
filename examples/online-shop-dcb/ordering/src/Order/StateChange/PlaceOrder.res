@@ -6,21 +6,26 @@
 
 @schema
 type consumedEvent =
-  | OrderPlaced({orderId: string})
-  | CatalogProductSynced({productId: string})
+  | OrderPlaced({orderId: OrderId.t})
+  | CatalogProductSynced({productId: CatalogSpec.ProductId.t})
 
 @schema
 type command =
   | PlaceOrder({
-      orderId: string,
-      customerId: string,
-      @ref("AvailableProducts") productIds: array<string>,
+      orderId: OrderId.t,
+      customerId: CustomerId.t,
+      @ref("AvailableProducts") productIds: array<CatalogSpec.ProductId.t>,
     })
 
 @schema
 type error =
   | OrderAlreadyPlaced
-  | ProductsNotAvailable({missing: array<string>})
+  | ProductsNotAvailable({missing: array<CatalogSpec.ProductId.t>})
 
 @schema
-type event = OrderPlaced({orderId: string, customerId: string, productIds: array<string>})
+type event =
+  | OrderPlaced({
+      orderId: OrderId.t,
+      customerId: CustomerId.t,
+      productIds: array<CatalogSpec.ProductId.t>,
+    })

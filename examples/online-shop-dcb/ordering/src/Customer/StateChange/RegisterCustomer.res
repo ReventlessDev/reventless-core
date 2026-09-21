@@ -6,10 +6,10 @@
 type consumedEvent = CustomerRegistered
 
 @schema
-type command = RegisterCustomer({customerId: string, email: string, address: string})
+type command = RegisterCustomer({customerId: CustomerId.t, email: string, address: string})
 
 @schema
 type error = CustomerAlreadyRegistered
 
 @schema
-type event = CustomerRegistered({customerId: string, email: string, address: string})
+type event = CustomerRegistered({customerId: CustomerId.t, email: string, address: string})

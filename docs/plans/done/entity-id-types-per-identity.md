@@ -1,7 +1,7 @@
 # Plan: one Id type per identity
 
-**Status:** Proposed (2026-09-21).<br/>
-**Analysis:** [entity-id-types-per-identity.md](../analysis/entity-id-types-per-identity.md). The
+**Status:** Done (2026-09-21).<br/>
+**Analysis:** [entity-id-types-per-identity.md](../../analysis/entity-id-types-per-identity.md). The
 findings (F1–F6), the design and the recommendations are there; this plan only orders the work.<br/>
 **Touches:** `reventless-spec` (`Id`, `Semantic`, `Reference`, `DcbTag`, `DcbScopeInference`,
 `Projection`, `StateViewSlice`, `StateChangeSlice`), `reventless-core` (`SchemaType`,
@@ -62,7 +62,7 @@ sole rung never gave it a key to lose. Only the aggregates example's `Orders` ch
 the envelope id) from a StateViewSlice (row keyed by a state field). For a read model, the
 "sole `*Id`" rung does not name the key.
 
-- [`GraphQL_FragmentGenerator.res`](../../reventless/core/src/components/Api/GraphQL_FragmentGenerator.res):
+- [`GraphQL_FragmentGenerator.res`](../../../reventless/core/src/components/Api/GraphQL_FragmentGenerator.res):
   `classifyKeyField` / `resolveKeyField` take the kind as a real variant (e.g.
   `RowKeyedByEnvelope | RowKeyedByStateField`), not a boolean, and not a default.
   `deriveServerCapability` takes it too.
@@ -117,16 +117,16 @@ Phase 2's.
 
 Additive. Nothing uses it yet.
 
-- [`Id.res`](../../reventless/spec/src/types/Id.res): `module type Identity = { include T with
+- [`Id.res`](../../../reventless/spec/src/types/Id.res): `module type Identity = { include T with
   type input = string; let key: string }` and `module Make`. Correct the `Id.T` doc comment
   (analysis F1).
-- [`Semantic.res`](../../reventless/spec/src/semantic/Semantic.res): add `Id.identity` and
+- [`Semantic.res`](../../../reventless/spec/src/semantic/Semantic.res): add `Id.identity` and
   `IdentityOf({key: string})`; extend `referenceTarget` with `identity: option<string>`.
   `Reference.to_` sets it when wrapping an identity schema (analysis open question 2).
-- [`SuryToJsonSchema.withSemantic`](../../reventless/core/src/components/Api/SuryToJsonSchema.res):
+- [`SuryToJsonSchema.withSemantic`](../../../reventless/core/src/components/Api/SuryToJsonSchema.res):
   emit `x-reventless-semantic: "identity"` with `x-reventless-semantic-target: {key}`; add
   `identity` to a reference's target.
-- [`SchemaType.shapeOf`](../../reventless/core/src/components/Api/SchemaType.res): an identity
+- [`SchemaType.shapeOf`](../../../reventless/core/src/components/Api/SchemaType.res): an identity
   is `EntityId`, for scalars and array elements.
 
 **Validation.** Unit tests: two `Make` applications are distinct types (a compile-fail fixture
@@ -154,12 +154,12 @@ on the schema itself, not through the optional as tags and references do.
 
 Additive for specs without identities.
 
-- [`DcbTag.res`](../../reventless/spec/src/components/DcbTag.res): type-preserving helpers
+- [`DcbTag.res`](../../../reventless/spec/src/components/DcbTag.res): type-preserving helpers
   (`S.t<'a> => S.t<'a>`) beside `string` / `stringForKey` / `partition` / `crossPartition`;
   the tag key comes from the identity semantic unless `dcbTagKeyOverrideId` is set (so
   `@dcbTag("k")` wins). `idFieldsOfProperties` (~1085) and `sliceShapeFromSchemas` read the
   identity semantic before names.
-- [`DcbScopeInference.res`](../../reventless/spec/src/components/DcbScopeInference.res): no
+- [`DcbScopeInference.res`](../../../reventless/spec/src/components/DcbScopeInference.res): no
   logic change; it receives identity-keyed shapes.
 - Read-model key: `Plugin_Structure` passes a read model's `Spec.Id.schema` to the key rule; if
   it carries an identity, that identity is the row key and state fields of other identities are
@@ -194,7 +194,7 @@ Released together with Phase 4, because nothing can produce a typed field before
 
 ## Phase 4: the PPX accepts identity-typed fields → Checkpoint B
 
-- One recognition helper in [`Util.ml`](../../packages/reventless-ppx/src/ppx/Util.ml): a type
+- One recognition helper in [`Util.ml`](../../../packages/reventless-ppx/src/ppx/Util.ml): a type
   constructor whose path ends in `<M>Id.t`, through `option<…>` and `array<…>`.
 - Accept it at every string-only site (analysis F4): `DcbTagInference` (auto-tag,
   `@partitionTag`, `@crossPartition`, `@dcbTag`), `ReferenceInference`, `OwnerInference`,
@@ -235,7 +235,7 @@ helpers. Beyond the plan:
   their key field). Exactly one → emit the reference. Several → no reference, and a report
   asking for `@ref`. None → a report that nothing lists the identity. With `@ref`, check the
   named view is keyed by the field's identity.
-- Beside `check:dcb-scope` ([`scripts/check-dcb-scope.mjs`](../../scripts/check-dcb-scope.mjs)):
+- Beside `check:dcb-scope` ([`scripts/check-dcb-scope.mjs`](../../../scripts/check-dcb-scope.mjs)):
   a field named after *another* declared identity's key (`orderId: CustomerId.t`); an untyped
   `*Id: string` whose key has a declared identity in scope (analysis open question 3); a slice
   whose partition identity is declared outside its own chapter.
@@ -249,7 +249,7 @@ helpers. Beyond the plan:
   before its views.
 - Derived references and the `@ref` check are warnings at structure assembly (like the
   key-field gap), deduplicated per plugin; the field still decodes.
-- The identity checks live in [`IdentityCheck`](../../reventless/spec/src/components/IdentityCheck.res),
+- The identity checks live in [`IdentityCheck`](../../../reventless/spec/src/components/IdentityCheck.res),
   a pure module `check:dcb-scope` calls, and they fail the check like a `@partitionTag`
   issue. "Declared" means some field in the plugin is typed with the identity, so a plugin
   that types nothing is never reported.
@@ -265,9 +265,9 @@ helpers. Beyond the plan:
 
 ## Phase 6: typed projections and row keys
 
-- [`Projection.res`](../../reventless/spec/src/types/Projection.res): `action` generic in its key;
+- [`Projection.res`](../../../reventless/spec/src/types/Projection.res): `action` generic in its key;
   `Mapping.project` takes `event'<SourceId.t, _>` and returns `action<Target.Id.t, _>` for read
-  models. [`StateViewSlice.res:117`](../../reventless/spec/src/components/StateViewSlice.res#L117):
+  models. [`StateViewSlice.res:117`](../../../reventless/spec/src/components/StateViewSlice.res#L117):
   the key type is the view's declared identity, or `string` for a view that declares none (the
   hard constraint).
 - Builders: `ProjectionMapper.res`, `StateViewSlice_Builder.res` convert at the storage edge
@@ -325,6 +325,21 @@ and that is the shape an aggregate read model has.
 - `packages/doc/docs-app`: an identities section in `dcb-usage.md` and
   `aggregate-vs-dcb-decision-guide.md`; the F5 conversion rule (schema inside JSON documents,
   `toString` for infrastructure keys) where ids are documented.
+
+**Done (2026-09-21).** Both DCB plugins are typed throughout; the catalog keeps `orderId` a
+string, since it cannot see ordering's identity, and the identity check asks only for keys a
+plugin declares. `check:dcb-scope` reports nothing and its golden did not move. Conversions
+landed at the same kinds of seam as in the aggregates example, plus the automation and outbound
+to-do keys, the extension routing ids and the imported SKU. `PlaceOrder`'s
+`ProductsNotAvailable.missing` is typed rather than converted.
+
+One framework fix it needed: **the GWT sidecar read a typed id as no value at all.**
+`oid("o1")` is a call, not a literal, so the lifecycle harvest could no longer relate a
+scenario's given events to its command, and `PlaceOrder` flipped from creating an order to
+acting on a placed one. `SidecarEmit.example_of_expr` now reads a single-literal call as that
+string, recording the function as `constructor` so a writer can reproduce it.
+`common-modules/Id.md` was rewritten too: it recommended `Id.String` for keeping ids apart,
+which F1 disproved.
 
 ## Out of scope
 

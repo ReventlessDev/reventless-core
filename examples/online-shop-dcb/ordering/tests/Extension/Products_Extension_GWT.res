@@ -2,6 +2,8 @@
 // SyncCatalogProduct commands on Ordering's local shadow slice.
 @@reventless.gwt
 
+let pid = CatalogSpec.ProductId.make
+
 // `Mapping` is brought into scope by the PPX `open Products_Extension`; opening
 // it surfaces the extension point's events and the delegate's commands.
 open Mapping
@@ -9,13 +11,15 @@ open Mapping
 describe("Products Extension delegate", () => {
   test("ProductBecameAvailable issues SyncNewProduct", () =>
     whenIncomingEvent(
-      ExtensionPoint.ProductBecameAvailable({productId: "p1", name: "Book", price: 9.99}),
-    )->thenPublishesCommand(Delegate.SyncNewProduct({productId: "p1", name: "Book", price: 9.99}))
+      ExtensionPoint.ProductBecameAvailable({productId: pid("p1"), name: "Book", price: 9.99}),
+    )->thenPublishesCommand(
+      Delegate.SyncNewProduct({productId: pid("p1"), name: "Book", price: 9.99}),
+    )
   )
 
   test("ProductPriceChanged issues ChangeSyncedPrice", () =>
     whenIncomingEvent(
-      ExtensionPoint.ProductPriceChanged({productId: "p1", price: 7.5}),
-    )->thenPublishesCommand(Delegate.ChangeSyncedPrice({productId: "p1", price: 7.5}))
+      ExtensionPoint.ProductPriceChanged({productId: pid("p1"), price: 7.5}),
+    )->thenPublishesCommand(Delegate.ChangeSyncedPrice({productId: pid("p1"), price: 7.5}))
   )
 })

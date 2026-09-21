@@ -3,8 +3,11 @@
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Orders$OrderingPlugin from "./Order/StateView/Orders.res.mjs";
+import * as ProductId$CatalogSpec from "@reventlessdev/online-shop-dcb-catalog-spec/src/ProductId.res.mjs";
+import * as OrderId$OrderingPlugin from "./Order/OrderId.res.mjs";
 import * as Customers$OrderingPlugin from "./Customer/StateView/Customers.res.mjs";
 import * as ShipOrder$OrderingPlugin from "./Order/StateChange/ShipOrder.res.mjs";
+import * as CustomerId$OrderingPlugin from "./Customer/CustomerId.res.mjs";
 import * as PlaceOrder$OrderingPlugin from "./Order/StateChange/PlaceOrder.res.mjs";
 import * as CancelOrder$OrderingPlugin from "./Order/StateChange/CancelOrder.res.mjs";
 import * as ChangeEmail$OrderingPlugin from "./Customer/StateChange/ChangeEmail.res.mjs";
@@ -234,13 +237,7 @@ function Make(Platform) {
     name: AvailableProducts$OrderingPlugin.name,
     moduleUrl: AvailableProducts$OrderingPlugin.moduleUrl,
     stateSchema: AvailableProducts$OrderingPlugin.stateSchema,
-    Key: {
-      schema: Id$Reventless.StringPure.schema,
-      make: prim => prim,
-      makeFromString: prim => prim,
-      toString: prim => prim,
-      cmp: Id$Reventless.StringPure.cmp
-    },
+    Key: ProductId$CatalogSpec,
     consumedEventSchema: AvailableProducts$OrderingPlugin.consumedEventSchema,
     config: AvailableProducts$OrderingPlugin.config,
     subIdConfig: undefined,
@@ -254,13 +251,7 @@ function Make(Platform) {
     name: Customers$OrderingPlugin.name,
     moduleUrl: Customers$OrderingPlugin.moduleUrl,
     stateSchema: Customers$OrderingPlugin.stateSchema,
-    Key: {
-      schema: Id$Reventless.StringPure.schema,
-      make: prim => prim,
-      makeFromString: prim => prim,
-      toString: prim => prim,
-      cmp: Id$Reventless.StringPure.cmp
-    },
+    Key: CustomerId$OrderingPlugin,
     consumedEventSchema: Customers$OrderingPlugin.consumedEventSchema,
     config: Customers$OrderingPlugin.config,
     subIdConfig: undefined,
@@ -274,13 +265,7 @@ function Make(Platform) {
     name: Orders$OrderingPlugin.name,
     moduleUrl: Orders$OrderingPlugin.moduleUrl,
     stateSchema: Orders$OrderingPlugin.stateSchema,
-    Key: {
-      schema: Id$Reventless.StringPure.schema,
-      make: prim => prim,
-      makeFromString: prim => prim,
-      toString: prim => prim,
-      cmp: Id$Reventless.StringPure.cmp
-    },
+    Key: OrderId$OrderingPlugin,
     consumedEventSchema: Orders$OrderingPlugin.consumedEventSchema,
     config: Orders$OrderingPlugin.config,
     subIdConfig: undefined,

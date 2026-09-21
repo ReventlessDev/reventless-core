@@ -2,16 +2,18 @@
 
 import * as Sury from "sury";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as OrderId$OrderingPlugin from "../OrderId.res.mjs";
+import * as CustomerId$OrderingPlugin from "../../Customer/CustomerId.res.mjs";
 
 let consumedEventSchema = Sury.$schema(s => ({
   TAG: "OrderPlaced",
-  orderId: s.m(DcbTag$Reventless.string),
-  customerId: s.m(DcbTag$Reventless.string)
+  orderId: s.m(DcbTag$Reventless.mark(OrderId$OrderingPlugin.schema)),
+  customerId: s.m(DcbTag$Reventless.mark(CustomerId$OrderingPlugin.schema))
 }));
 
 let outboundItemSchema = Sury.$schema(s => ({
-  orderId: s.m(Sury.string),
-  customerId: s.m(Sury.string)
+  orderId: s.m(OrderId$OrderingPlugin.schema),
+  customerId: s.m(CustomerId$OrderingPlugin.schema)
 }));
 
 let inboundCommandSchema = Sury.$unit;

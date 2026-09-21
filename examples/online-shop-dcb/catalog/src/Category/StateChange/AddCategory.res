@@ -8,10 +8,10 @@ type consumedEvent =
   | CategoryArchived
 
 @schema
-type command = AddCategory({categoryId: string, name: string})
+type command = AddCategory({categoryId: CategoryId.t, name: string})
 
 @schema
 type error = CategoryAlreadyExists
 
 @schema
-type event = CategoryAdded({categoryId: string, name: string})
+type event = CategoryAdded({categoryId: CategoryId.t, name: string})

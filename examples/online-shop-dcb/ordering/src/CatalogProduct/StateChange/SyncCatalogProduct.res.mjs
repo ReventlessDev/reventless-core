@@ -2,6 +2,7 @@
 
 import * as Sury from "sury";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as ProductId$CatalogSpec from "@reventlessdev/online-shop-dcb-catalog-spec/src/ProductId.res.mjs";
 
 let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
@@ -18,13 +19,13 @@ let consumedEventSchema = Sury.union([
 let commandSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "SyncNewProduct",
-    productId: s.m(DcbTag$Reventless.string),
+    productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
     name: s.m(Sury.string),
     price: s.m(Sury.float)
   })),
   Sury.$schema(s => ({
     TAG: "ChangeSyncedPrice",
-    productId: s.m(DcbTag$Reventless.string),
+    productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
     price: s.m(Sury.float)
   }))
 ]);
@@ -34,13 +35,13 @@ let errorSchema = Sury.$unit;
 let eventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "CatalogProductSynced",
-    productId: s.m(DcbTag$Reventless.string),
+    productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
     name: s.m(Sury.string),
     price: s.m(Sury.float)
   })),
   Sury.$schema(s => ({
     TAG: "CatalogProductPriceChanged",
-    productId: s.m(DcbTag$Reventless.string),
+    productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
     price: s.m(Sury.float)
   }))
 ]);

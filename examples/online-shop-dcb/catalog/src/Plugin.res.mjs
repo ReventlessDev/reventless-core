@@ -2,9 +2,11 @@
 
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as ProductId$CatalogSpec from "@reventlessdev/online-shop-dcb-catalog-spec/src/ProductId.res.mjs";
 import * as Products$CatalogPlugin from "./Product/StateView/Products.res.mjs";
 import * as AddProduct$CatalogPlugin from "./Product/StateChange/AddProduct.res.mjs";
 import * as Categories$CatalogPlugin from "./Category/StateView/Categories.res.mjs";
+import * as CategoryId$CatalogPlugin from "./Category/CategoryId.res.mjs";
 import * as AddCategory$CatalogPlugin from "./Category/StateChange/AddCategory.res.mjs";
 import * as ImportProduct$CatalogPlugin from "./Product/InboundTranslation/ImportProduct.res.mjs";
 import * as ProductDemand$CatalogPlugin from "./ProductDemand/StateView/ProductDemand.res.mjs";
@@ -235,13 +237,7 @@ function Make(Platform) {
     name: Categories$CatalogPlugin.name,
     moduleUrl: Categories$CatalogPlugin.moduleUrl,
     stateSchema: Categories$CatalogPlugin.stateSchema,
-    Key: {
-      schema: Id$Reventless.StringPure.schema,
-      make: prim => prim,
-      makeFromString: prim => prim,
-      toString: prim => prim,
-      cmp: Id$Reventless.StringPure.cmp
-    },
+    Key: CategoryId$CatalogPlugin,
     consumedEventSchema: Categories$CatalogPlugin.consumedEventSchema,
     config: Categories$CatalogPlugin.config,
     subIdConfig: undefined,
@@ -255,13 +251,7 @@ function Make(Platform) {
     name: ProductDemand$CatalogPlugin.name,
     moduleUrl: ProductDemand$CatalogPlugin.moduleUrl,
     stateSchema: ProductDemand$CatalogPlugin.stateSchema,
-    Key: {
-      schema: Id$Reventless.StringPure.schema,
-      make: prim => prim,
-      makeFromString: prim => prim,
-      toString: prim => prim,
-      cmp: Id$Reventless.StringPure.cmp
-    },
+    Key: ProductId$CatalogSpec,
     consumedEventSchema: ProductDemand$CatalogPlugin.consumedEventSchema,
     config: ProductDemand$CatalogPlugin.config,
     subIdConfig: undefined,
@@ -275,13 +265,7 @@ function Make(Platform) {
     name: Products$CatalogPlugin.name,
     moduleUrl: Products$CatalogPlugin.moduleUrl,
     stateSchema: Products$CatalogPlugin.stateSchema,
-    Key: {
-      schema: Id$Reventless.StringPure.schema,
-      make: prim => prim,
-      makeFromString: prim => prim,
-      toString: prim => prim,
-      cmp: Id$Reventless.StringPure.cmp
-    },
+    Key: ProductId$CatalogSpec,
     consumedEventSchema: Products$CatalogPlugin.consumedEventSchema,
     config: Products$CatalogPlugin.config,
     subIdConfig: undefined,

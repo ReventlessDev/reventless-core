@@ -3,12 +3,14 @@
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as OrderId$OrderingPlugin from "../OrderId.res.mjs";
+import * as CustomerId$OrderingPlugin from "../../Customer/CustomerId.res.mjs";
 import * as EmailService$OrderingPlugin from "../../Service/EmailService.res.mjs";
 
 function collect(event, param) {
   let orderId = event.orderId;
   return [[
-      orderId,
+      OrderId$OrderingPlugin.toString(orderId),
       {
         orderId: orderId,
         customerId: event.customerId
@@ -18,7 +20,7 @@ function collect(event, param) {
 
 async function translate(_id, item, param) {
   try {
-    await EmailService$OrderingPlugin.sendOrderConfirmation(item.customerId, item.orderId);
+    await EmailService$OrderingPlugin.sendOrderConfirmation(CustomerId$OrderingPlugin.toString(item.customerId), OrderId$OrderingPlugin.toString(item.orderId));
     return {
       TAG: "Ok",
       _0: undefined

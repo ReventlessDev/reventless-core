@@ -14,6 +14,10 @@
 //          └─ SendOrderConfirmation : confirmation effect fired
 @@reventless.gwt
 
+let cid = OrderingPlugin.CustomerId.make
+let oid = OrderingPlugin.OrderId.make
+let pid = CatalogSpec.ProductId.make
+
 // Compose the automation onto a flat slice — the production split keeps
 // collect/resolve inside the per-source mapping; the GWT needs them together.
 let testContext: Reventless.AutomationSlice.context = {
@@ -59,7 +63,7 @@ describe("DCB cross-plugin flow", () => {
     start
     ->Add.whenCommand(
       CatalogPlugin.AddProduct.AddProduct({
-        productId: "p1",
+        productId: pid("p1"),
         name: "Book",
         description: "A good book",
         price: 9.99,
@@ -67,7 +71,7 @@ describe("DCB cross-plugin flow", () => {
     )
     ->Add.thenEvent(
       CatalogPlugin.AddProduct.ProductAdded({
-        productId: "p1",
+        productId: pid("p1"),
         name: "Book",
         description: "A good book",
         price: 9.99,
@@ -76,7 +80,7 @@ describe("DCB cross-plugin flow", () => {
     ->ProductsEp.whenPublishedThrough
     ->ProductsEp.thenPublicEvent(
       CatalogSpec.Products_ExtensionPoint.ProductBecameAvailable({
-        productId: "p1",
+        productId: pid("p1"),
         name: "Book",
         price: 9.99,
       }),
@@ -84,59 +88,71 @@ describe("DCB cross-plugin flow", () => {
     ->ProductsExt.whenExtensionReacts
     ->ProductsExt.thenIssuesCommand(
       OrderingPlugin.SyncCatalogProduct.SyncNewProduct({
-        productId: "p1",
+        productId: pid("p1"),
         name: "Book",
         price: 9.99,
       }),
     )
     ->Sync.whenCommand(
       OrderingPlugin.SyncCatalogProduct.SyncNewProduct({
-        productId: "p1",
+        productId: pid("p1"),
         name: "Book",
         price: 9.99,
       }),
     )
     ->Sync.thenEvent(
       OrderingPlugin.SyncCatalogProduct.CatalogProductSynced({
-        productId: "p1",
+        productId: pid("p1"),
         name: "Book",
         price: 9.99,
       }),
     )
     ->Register.whenCommand(
       OrderingPlugin.RegisterCustomer.RegisterCustomer({
-        customerId: "c1",
+        customerId: cid("c1"),
         email: "alice@example.com",
         address: "1 Test St",
       }),
     )
     ->Register.thenEvent(
       OrderingPlugin.RegisterCustomer.CustomerRegistered({
-        customerId: "c1",
+        customerId: cid("c1"),
         email: "alice@example.com",
         address: "1 Test St",
       }),
     )
     ->Place.whenCommand(
-      OrderingPlugin.PlaceOrder.PlaceOrder({orderId: "o1", customerId: "c1", productIds: ["p1"]}),
+      OrderingPlugin.PlaceOrder.PlaceOrder({
+        orderId: oid("o1"),
+        customerId: cid("c1"),
+        productIds: [pid("p1")],
+      }),
     )
     ->Place.thenEvent(
-      OrderingPlugin.PlaceOrder.OrderPlaced({orderId: "o1", customerId: "c1", productIds: ["p1"]}),
+      OrderingPlugin.PlaceOrder.OrderPlaced({
+        orderId: oid("o1"),
+        customerId: cid("c1"),
+        productIds: [pid("p1")],
+      }),
     )
     ->Auto.whenReacts
-    ->Auto.thenIssuesCommand(OrderingPlugin.AutoShipOrder.ShipOrder({orderId: "o1"}))
-    ->Ship.whenCommand(OrderingPlugin.ShipOrder.ShipOrder({orderId: "o1"}))
-    ->Ship.thenEvent(OrderingPlugin.ShipOrder.OrderShipped({orderId: "o1"}))
+    ->Auto.thenIssuesCommand(OrderingPlugin.AutoShipOrder.ShipOrder({orderId: oid("o1")}))
+    ->Ship.whenCommand(OrderingPlugin.ShipOrder.ShipOrder({orderId: oid("o1")}))
+    ->Ship.thenEvent(OrderingPlugin.ShipOrder.OrderShipped({orderId: oid("o1")}))
     ->Confirm.thenOutbound([
-      ("o1", {OrderingPlugin.SendOrderConfirmation.orderId: "o1", customerId: "c1"}),
+      ("o1", {OrderingPlugin.SendOrderConfirmation.orderId: oid("o1"), customerId: cid("c1")}),
     ])
   )
 
   test("placing an order for an unsynced product is rejected", () =>
     start
     ->Place.whenCommand(
-      OrderingPlugin.PlaceOrder.PlaceOrder({orderId: "o1", customerId: "c1", productIds: ["p1"]}),
+      OrderingPlugin.PlaceOrder.PlaceOrder({
+        orderId: oid("o1"),
+        customerId: cid("c1"),
+        productIds: [pid("p1")],
+      }),
     )
-    ->Place.thenError(ProductsNotAvailable({missing: ["p1"]}))
+    ->Place.thenError(ProductsNotAvailable({missing: [pid("p1")]}))
   )
 })

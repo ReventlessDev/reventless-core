@@ -1,3 +1,6 @@
+let catId = CategoryId.make
+let pid = CatalogSpec.ProductId.make
+
 // Multi-source ReadModel: one `_GWT` instance per source mapping. The
 // `MultiSourceProjection_GWT.Make` functor is single-source — wire one GWT
 // module per Source view and let each describe its own slice of behaviour.
@@ -14,7 +17,7 @@ CategoryGwt.describe("CategoryActivity ReadModel ← Category DCB events", () =>
     CategoryGwt.givenEvents([])
     ->CategoryGwt.whenEvent(
       CategoryActivity_Projections.CategoryEvents.CategoryAdded({
-        categoryId: "c1",
+        categoryId: catId("c1"),
         name: "Electronics",
       }),
     )
@@ -27,13 +30,13 @@ CategoryGwt.describe("CategoryActivity ReadModel ← Category DCB events", () =>
   CategoryGwt.test("CategoryRenamed updates name + lastChange=Renamed", () =>
     CategoryGwt.givenEvents([
       CategoryActivity_Projections.CategoryEvents.CategoryAdded({
-        categoryId: "c1",
+        categoryId: catId("c1"),
         name: "Electronics",
       }),
     ])
     ->CategoryGwt.whenEvent(
       CategoryActivity_Projections.CategoryEvents.CategoryRenamed({
-        categoryId: "c1",
+        categoryId: catId("c1"),
         name: "Consumer Electronics",
       }),
     )
@@ -46,12 +49,12 @@ CategoryGwt.describe("CategoryActivity ReadModel ← Category DCB events", () =>
   CategoryGwt.test("CategoryArchived keeps name and sets lastChange=Archived", () =>
     CategoryGwt.givenEvents([
       CategoryActivity_Projections.CategoryEvents.CategoryAdded({
-        categoryId: "c1",
+        categoryId: catId("c1"),
         name: "Electronics",
       }),
     ])
     ->CategoryGwt.whenEvent(
-      CategoryActivity_Projections.CategoryEvents.CategoryArchived({categoryId: "c1"}),
+      CategoryActivity_Projections.CategoryEvents.CategoryArchived({categoryId: catId("c1")}),
     )
     ->CategoryGwt.thenStateWithId(
       "c1",
@@ -65,7 +68,7 @@ ProductGwt.describe("CategoryActivity ReadModel ← Product DCB events", () => {
     ProductGwt.givenEvents([])
     ->ProductGwt.whenEvent(
       CategoryActivity_Projections.ProductEvents.ProductAdded({
-        productId: "p1",
+        productId: pid("p1"),
         name: "Laptop",
         description: "x",
         price: 1.0,
@@ -80,7 +83,7 @@ ProductGwt.describe("CategoryActivity ReadModel ← Product DCB events", () => {
   ProductGwt.test("ProductNameChanged updates name + lastChange=Renamed", () =>
     ProductGwt.givenEvents([
       CategoryActivity_Projections.ProductEvents.ProductAdded({
-        productId: "p1",
+        productId: pid("p1"),
         name: "Laptop",
         description: "x",
         price: 1.0,
@@ -88,7 +91,7 @@ ProductGwt.describe("CategoryActivity ReadModel ← Product DCB events", () => {
     ])
     ->ProductGwt.whenEvent(
       CategoryActivity_Projections.ProductEvents.ProductNameChanged({
-        productId: "p1",
+        productId: pid("p1"),
         name: "Gaming Laptop",
       }),
     )

@@ -8,10 +8,10 @@ type consumedEvent =
   | ProductNameChanged({name: string})
 
 @schema
-type command = ChangeProductName({productId: string, name: string})
+type command = ChangeProductName({productId: CatalogSpec.ProductId.t, name: string})
 
 @schema
 type error = ProductNotFound
 
 @schema
-type event = ProductNameChanged({productId: string, name: string})
+type event = ProductNameChanged({productId: CatalogSpec.ProductId.t, name: string})

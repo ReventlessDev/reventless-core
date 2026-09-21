@@ -2,20 +2,23 @@
 
 import * as Sury from "sury";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as ProductId$CatalogSpec from "@reventlessdev/online-shop-dcb-catalog-spec/src/ProductId.res.mjs";
+import * as OrderId$OrderingPlugin from "../Order/OrderId.res.mjs";
+import * as CustomerId$OrderingPlugin from "../Customer/CustomerId.res.mjs";
 
 let commandSchema = Sury.$unit;
 
 let eventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "OrderPlaced",
-    orderId: s.m(DcbTag$Reventless.string),
-    customerId: s.m(DcbTag$Reventless.string),
-    productIds: s.m(Sury.array(DcbTag$Reventless.stringForKey("productId")))
+    orderId: s.m(DcbTag$Reventless.mark(OrderId$OrderingPlugin.schema)),
+    customerId: s.m(DcbTag$Reventless.mark(CustomerId$OrderingPlugin.schema)),
+    productIds: s.m(Sury.array(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)))
   })),
   Sury.$schema(s => ({
     TAG: "OrderCancelled",
-    orderId: s.m(DcbTag$Reventless.string),
-    productIds: s.m(Sury.array(DcbTag$Reventless.stringForKey("productId")))
+    orderId: s.m(DcbTag$Reventless.mark(OrderId$OrderingPlugin.schema)),
+    productIds: s.m(Sury.array(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)))
   }))
 ]);
 
@@ -51,27 +54,33 @@ let mapOutgoingEvent = (_id, event, _meta, _queryEngine) => {
   if (event.TAG === "OrderPlaced") {
     let customerId = event.customerId;
     let orderId = event.orderId;
-    return event.productIds.map(productId => ({
-      TAG: "PublishEvent",
-      _0: productId,
-      _1: {
-        TAG: "ItemOrdered",
-        productId: productId,
-        orderId: orderId,
-        customerId: customerId
-      }
-    }));
+    return event.productIds.map(productId => {
+      let productId$1 = ProductId$CatalogSpec.toString(productId);
+      return {
+        TAG: "PublishEvent",
+        _0: productId$1,
+        _1: {
+          TAG: "ItemOrdered",
+          productId: productId$1,
+          orderId: OrderId$OrderingPlugin.toString(orderId),
+          customerId: CustomerId$OrderingPlugin.toString(customerId)
+        }
+      };
+    });
   }
   let orderId$1 = event.orderId;
-  return event.productIds.map(productId => ({
-    TAG: "PublishEvent",
-    _0: productId,
-    _1: {
-      TAG: "ItemOrderCancelled",
-      productId: productId,
-      orderId: orderId$1
-    }
-  }));
+  return event.productIds.map(productId => {
+    let productId$1 = ProductId$CatalogSpec.toString(productId);
+    return {
+      TAG: "PublishEvent",
+      _0: productId$1,
+      _1: {
+        TAG: "ItemOrderCancelled",
+        productId: productId$1,
+        orderId: OrderId$OrderingPlugin.toString(orderId$1)
+      }
+    };
+  });
 };
 
 let publishedEvents = [

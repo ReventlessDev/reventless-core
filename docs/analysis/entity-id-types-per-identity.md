@@ -7,7 +7,7 @@ premise false for every generated spec (F1) and works out what makes it true.<br
 **Status:** Analysis, no code changed. Verified against `alpha` by reading the PPX,
 `Reventless.Id`, `DcbTag`, `Reference`, `Plugin_Structure` and the three online-shop
 examples, and by compiling the sealing forms below in a scratch project.<br/>
-**Planned out in:** [entity-id-types-per-identity.md](../plans/entity-id-types-per-identity.md).
+**Planned out in:** [entity-id-types-per-identity.md](../plans/done/entity-id-types-per-identity.md).
 
 ---
 

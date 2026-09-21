@@ -3,6 +3,9 @@
 import * as Sury from "sury";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
+import * as ProductId$CatalogSpec from "@reventlessdev/online-shop-dcb-catalog-spec/src/ProductId.res.mjs";
+import * as OrderId$OrderingPlugin from "../OrderId.res.mjs";
+import * as CustomerId$OrderingPlugin from "../../Customer/CustomerId.res.mjs";
 
 let lifecycleSchema = Sury.union([
   Sury.literal("Placed"),
@@ -11,26 +14,26 @@ let lifecycleSchema = Sury.union([
 ]);
 
 let stateSchema = Sury.$schema(s => ({
-  orderId: s.m(Sury.string),
-  customerId: s.m(Sury.string),
-  productIds: s.m(Sury.array(Sury.string)),
+  orderId: s.m(OrderId$OrderingPlugin.schema),
+  customerId: s.m(CustomerId$OrderingPlugin.schema),
+  productIds: s.m(Sury.array(ProductId$CatalogSpec.schema)),
   lifecycle: s.m(lifecycleSchema)
 }));
 
 let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "OrderPlaced",
-    orderId: s.m(DcbTag$Reventless.string),
-    customerId: s.m(DcbTag$Reventless.string),
-    productIds: s.m(Sury.array(DcbTag$Reventless.stringForKey("productId")))
+    orderId: s.m(DcbTag$Reventless.mark(OrderId$OrderingPlugin.schema)),
+    customerId: s.m(DcbTag$Reventless.mark(CustomerId$OrderingPlugin.schema)),
+    productIds: s.m(Sury.array(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)))
   })),
   Sury.$schema(s => ({
     TAG: "OrderShipped",
-    orderId: s.m(DcbTag$Reventless.string)
+    orderId: s.m(DcbTag$Reventless.mark(OrderId$OrderingPlugin.schema))
   })),
   Sury.$schema(s => ({
     TAG: "OrderCancelled",
-    orderId: s.m(DcbTag$Reventless.string)
+    orderId: s.m(DcbTag$Reventless.mark(OrderId$OrderingPlugin.schema))
   }))
 ]);
 
@@ -53,11 +56,11 @@ let visibility = "Public";
 export {
   name,
   Id,
+  Key,
   lifecycleSchema,
   stateSchema,
   consumedEventSchema,
   config,
-  Key,
   subIdConfig,
   moduleUrl,
   authorization,

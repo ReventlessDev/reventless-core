@@ -4,12 +4,12 @@
 
 @schema
 type consumedEvent =
-  | OrderPlaced({productIds: array<string>})
+  | OrderPlaced({productIds: array<CatalogSpec.ProductId.t>})
   | OrderShipped
   | OrderCancelled
 
 @schema
-type command = CancelOrder({orderId: string})
+type command = CancelOrder({orderId: OrderId.t})
 
 @schema
 type error =
@@ -17,7 +17,7 @@ type error =
   | OrderAlreadyShipped
 
 @schema
-type event = OrderCancelled({orderId: string, productIds: array<string>})
+type event = OrderCancelled({orderId: OrderId.t, productIds: array<CatalogSpec.ProductId.t>})
 
 type lifecycleState = Orders.lifecycle
 

@@ -3,9 +3,10 @@
 import * as Sury from "sury";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
+import * as CategoryId$CatalogPlugin from "../CategoryId.res.mjs";
 
 let stateSchema = Sury.$schema(s => ({
-  categoryId: s.m(Sury.string),
+  categoryId: s.m(CategoryId$CatalogPlugin.schema),
   name: s.m(Sury.string),
   archived: s.m(Sury.bool)
 }));
@@ -13,17 +14,17 @@ let stateSchema = Sury.$schema(s => ({
 let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "CategoryAdded",
-    categoryId: s.m(DcbTag$Reventless.string),
+    categoryId: s.m(DcbTag$Reventless.mark(CategoryId$CatalogPlugin.schema)),
     name: s.m(Sury.string)
   })),
   Sury.$schema(s => ({
     TAG: "CategoryRenamed",
-    categoryId: s.m(DcbTag$Reventless.string),
+    categoryId: s.m(DcbTag$Reventless.mark(CategoryId$CatalogPlugin.schema)),
     name: s.m(Sury.string)
   })),
   Sury.$schema(s => ({
     TAG: "CategoryArchived",
-    categoryId: s.m(DcbTag$Reventless.string)
+    categoryId: s.m(DcbTag$Reventless.mark(CategoryId$CatalogPlugin.schema))
   }))
 ]);
 
@@ -46,10 +47,10 @@ let visibility = "Public";
 export {
   name,
   Id,
+  Key,
   stateSchema,
   consumedEventSchema,
   config,
-  Key,
   subIdConfig,
   moduleUrl,
   authorization,

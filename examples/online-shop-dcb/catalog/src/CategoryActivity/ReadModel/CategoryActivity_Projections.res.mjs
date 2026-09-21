@@ -3,7 +3,9 @@
 import * as Sury from "sury";
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as ProductId$CatalogSpec from "@reventlessdev/online-shop-dcb-catalog-spec/src/ProductId.res.mjs";
 import * as Projection$Reventless from "@reventlessdev/reventless-spec/src/types/Projection.res.mjs";
+import * as CategoryId$CatalogPlugin from "../../Category/CategoryId.res.mjs";
 import * as CategoryActivity$CatalogPlugin from "./CategoryActivity.res.mjs";
 
 let M = Projection$Reventless.Mappings.Make({
@@ -18,17 +20,17 @@ let name = "CatalogDcbEventLog";
 let eventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "CategoryAdded",
-    categoryId: s.m(DcbTag$Reventless.string),
+    categoryId: s.m(DcbTag$Reventless.mark(CategoryId$CatalogPlugin.schema)),
     name: s.m(Sury.string)
   })),
   Sury.$schema(s => ({
     TAG: "CategoryRenamed",
-    categoryId: s.m(DcbTag$Reventless.string),
+    categoryId: s.m(DcbTag$Reventless.mark(CategoryId$CatalogPlugin.schema)),
     name: s.m(Sury.string)
   })),
   Sury.$schema(s => ({
     TAG: "CategoryArchived",
-    categoryId: s.m(DcbTag$Reventless.string)
+    categoryId: s.m(DcbTag$Reventless.mark(CategoryId$CatalogPlugin.schema))
   }))
 ]);
 
@@ -43,14 +45,14 @@ let name$1 = "CatalogDcbEventLog";
 let eventSchema$1 = Sury.union([
   Sury.$schema(s => ({
     TAG: "ProductAdded",
-    productId: s.m(DcbTag$Reventless.string),
+    productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
     name: s.m(Sury.string),
     description: s.m(Sury.string),
     price: s.m(Sury.float)
   })),
   Sury.$schema(s => ({
     TAG: "ProductNameChanged",
-    productId: s.m(DcbTag$Reventless.string),
+    productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
     name: s.m(Sury.string)
   }))
 ]);
@@ -67,7 +69,7 @@ function project(param) {
     case "CategoryAdded" :
       return {
         TAG: "Set",
-        _0: Id$Reventless.$$String.makeFromString(event.categoryId),
+        _0: Id$Reventless.$$String.makeFromString(CategoryId$CatalogPlugin.toString(event.categoryId)),
         _1: {
           name: event.name,
           kind: "Category",
@@ -78,7 +80,7 @@ function project(param) {
       let name = event.name;
       return {
         TAG: "Update",
-        _0: Id$Reventless.$$String.makeFromString(event.categoryId),
+        _0: Id$Reventless.$$String.makeFromString(CategoryId$CatalogPlugin.toString(event.categoryId)),
         _1: state => ({
           name: name,
           kind: state.kind,
@@ -88,7 +90,7 @@ function project(param) {
     case "CategoryArchived" :
       return {
         TAG: "Update",
-        _0: Id$Reventless.$$String.makeFromString(event.categoryId),
+        _0: Id$Reventless.$$String.makeFromString(CategoryId$CatalogPlugin.toString(event.categoryId)),
         _1: state => ({
           name: state.name,
           kind: state.kind,
@@ -116,7 +118,7 @@ function project$1(param) {
   if (event.TAG === "ProductAdded") {
     return {
       TAG: "Set",
-      _0: Id$Reventless.$$String.makeFromString(event.productId),
+      _0: Id$Reventless.$$String.makeFromString(ProductId$CatalogSpec.toString(event.productId)),
       _1: {
         name: event.name,
         kind: "Product",
@@ -127,7 +129,7 @@ function project$1(param) {
   let name = event.name;
   return {
     TAG: "Update",
-    _0: Id$Reventless.$$String.makeFromString(event.productId),
+    _0: Id$Reventless.$$String.makeFromString(ProductId$CatalogSpec.toString(event.productId)),
     _1: state => ({
       name: name,
       kind: state.kind,

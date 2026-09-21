@@ -233,4 +233,16 @@ let () =
   imust "an explicit key wins" "{\"role\":\"customKey\",\"key\":\"sellerId\"}";
   imust "array element → productId" "{\"role\":\"customKey\",\"key\":\"productId\"}";
 
+  (* A typed id made from a literal reads as that literal. *)
+  (match
+     ReventlessPpx__SidecarEmit.example_of_expr [%expr oid "o1"]
+   with
+   | Some j when Yojson.Safe.to_string j
+                 = "{\"kind\":\"string\",\"value\":\"o1\",\"constructor\":\"oid\"}" ->
+     print_endline "  ok: a typed id's literal is its example value"
+   | other ->
+     Printf.printf "  FAIL: typed id example: %s\n"
+       (match other with Some j -> Yojson.Safe.to_string j | None -> "None");
+     exit 1);
+
   print_endline "ALL SIDECAR CHECKS PASSED"

@@ -2,12 +2,13 @@
 
 import * as Sury from "sury";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as CustomerId$OrderingPlugin from "../CustomerId.res.mjs";
 
 let consumedEventSchema = Sury.literal("CustomerRegistered");
 
 let commandSchema = Sury.$schema(s => ({
   TAG: "RegisterCustomer",
-  customerId: s.m(DcbTag$Reventless.string),
+  customerId: s.m(DcbTag$Reventless.mark(CustomerId$OrderingPlugin.schema)),
   email: s.m(Sury.string),
   address: s.m(Sury.string)
 }));
@@ -16,7 +17,7 @@ let errorSchema = Sury.literal("CustomerAlreadyRegistered");
 
 let eventSchema = Sury.$schema(s => ({
   TAG: "CustomerRegistered",
-  customerId: s.m(DcbTag$Reventless.string),
+  customerId: s.m(DcbTag$Reventless.mark(CustomerId$OrderingPlugin.schema)),
   email: s.m(Sury.string),
   address: s.m(Sury.string)
 }));

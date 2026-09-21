@@ -6,10 +6,17 @@
 type consumedEvent = ProductAdded
 
 @schema
-type command = AddProduct({productId: string, name: string, description: string, price: float})
+type command =
+  AddProduct({productId: CatalogSpec.ProductId.t, name: string, description: string, price: float})
 
 @schema
 type error = ProductAlreadyExists
 
 @schema
-type event = ProductAdded({productId: string, name: string, description: string, price: float})
+type event =
+  | ProductAdded({
+      productId: CatalogSpec.ProductId.t,
+      name: string,
+      description: string,
+      price: float,
+    })

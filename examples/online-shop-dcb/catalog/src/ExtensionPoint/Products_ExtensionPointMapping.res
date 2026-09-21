@@ -9,8 +9,13 @@ module Delegate = {
   let name = "CatalogDcbEventLog"
   @schema
   type event =
-    | ProductAdded({productId: string, name: string, description: string, price: float})
-    | ProductPriceChanged({productId: string, price: float})
+    | ProductAdded({
+        productId: CatalogSpec.ProductId.t,
+        name: string,
+        description: string,
+        price: float,
+      })
+    | ProductPriceChanged({productId: CatalogSpec.ProductId.t, price: float})
 }
 
 let mapIncomingCommand = (_id, _command, _meta) => []
@@ -18,15 +23,16 @@ let mapIncomingCommand = (_id, _command, _meta) => []
 let mapOutgoingEvent = Some(
   (_id, event, _meta, _queryEngine) =>
     switch event {
+    // Publishing routes by string; the contract carries the typed id.
     | Delegate.ProductAdded({productId, name, price}) => [
         PublishEvent(
-          productId,
+          productId->CatalogSpec.ProductId.toString,
           CatalogSpec.Products_ExtensionPoint.ProductBecameAvailable({productId, name, price}),
         ),
       ]
     | Delegate.ProductPriceChanged({productId, price}) => [
         PublishEvent(
-          productId,
+          productId->CatalogSpec.ProductId.toString,
           CatalogSpec.Products_ExtensionPoint.ProductPriceChanged({productId, price}),
         ),
       ]

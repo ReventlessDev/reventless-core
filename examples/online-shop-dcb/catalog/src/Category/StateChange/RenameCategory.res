@@ -12,7 +12,7 @@ type consumedEvent =
   | CategoryArchived
 
 @schema
-type command = RenameCategory({categoryId: string, name: string})
+type command = RenameCategory({categoryId: CategoryId.t, name: string})
 
 @schema
 type error =
@@ -20,4 +20,4 @@ type error =
   | CategoryAlreadyArchived
 
 @schema
-type event = CategoryRenamed({categoryId: string, name: string})
+type event = CategoryRenamed({categoryId: CategoryId.t, name: string})

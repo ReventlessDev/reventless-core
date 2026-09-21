@@ -2,6 +2,7 @@
 
 import * as Sury from "sury";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as CategoryId$CatalogPlugin from "../CategoryId.res.mjs";
 
 let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
@@ -17,7 +18,7 @@ let consumedEventSchema = Sury.union([
 
 let commandSchema = Sury.$schema(s => ({
   TAG: "RenameCategory",
-  categoryId: s.m(DcbTag$Reventless.string),
+  categoryId: s.m(DcbTag$Reventless.mark(CategoryId$CatalogPlugin.schema)),
   name: s.m(Sury.string)
 }));
 
@@ -28,7 +29,7 @@ let errorSchema = Sury.union([
 
 let eventSchema = Sury.$schema(s => ({
   TAG: "CategoryRenamed",
-  categoryId: s.m(DcbTag$Reventless.string),
+  categoryId: s.m(DcbTag$Reventless.mark(CategoryId$CatalogPlugin.schema)),
   name: s.m(Sury.string)
 }));
 

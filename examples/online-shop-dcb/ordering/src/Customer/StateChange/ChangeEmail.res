@@ -9,7 +9,7 @@ type consumedEvent =
   | CustomerDeactivated
 
 @schema
-type command = ChangeEmail({customerId: string, email: string})
+type command = ChangeEmail({customerId: CustomerId.t, email: string})
 
 @schema
 type error =
@@ -17,4 +17,4 @@ type error =
   | CustomerAlreadyDeactivated
 
 @schema
-type event = EmailChanged({customerId: string, email: string})
+type event = EmailChanged({customerId: CustomerId.t, email: string})

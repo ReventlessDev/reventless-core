@@ -617,6 +617,45 @@ over folding the whole set. The scope is a property of the tag *key* and must
 agree across every event type that carries it — `Dcb_Builder` reports a mismatch
 at build time.
 
+## Identities: one type per id
+
+**In plain words:** declare each entity's id once with `Id.Make`, and type every field that holds it. The compiler then refuses an order id where a customer id belongs. The tags, partitions and references the framework derives stay what they were, because an identity's key is the name those fields already had. See [Id](common-modules/Id.md) for the module itself.
+
+```rescript
+// src/Order/OrderId.res — declared in the chapter whose slices decide about it
+include Reventless.Id.Make({
+  let key = "orderId"
+})
+```
+
+```rescript
+// src/Order/StateChange/PlaceOrder.res
+@schema
+type command =
+  | PlaceOrder({
+      orderId: OrderId.t,
+      customerId: CustomerId.t,
+      productIds: array<CatalogSpec.ProductId.t>,
+    })
+```
+
+A DCB slice has no identity of its own: it decides about the one its partition field carries, and mentions others. So an identity is declared per **key**, not per slice or per chapter. The chapter is its default home, and a slice partitioned by an identity another chapter declares is reported.
+
+What changes once a field is typed:
+
+- **The tag key follows the type.** A typed field is tagged whatever it is called, and by its identity's key: `buyer: CustomerId.t` writes the `customerId` tag its producers write. `@dcbTag("sellerId")` on a typed field keeps `sellerId`, which is how to retype a field whose stored tag is not its identity's key without migrating data. `@partitionTag`, `@crossPartition` and `@ref` accept typed fields too.
+- **Partition inference reads identities**, so the rules above apply to typed fields unchanged. The golden `schema/dcb-scope.json` of the DCB example did not move when the example adopted identities.
+- **References are derived.** A typed field with no `@ref` references the one view in the plugin whose rows are keyed by its identity. `@ref` is needed only where several are, and naming a view keyed by another identity is reported.
+- **Views are keyed by type.** A StateView declares `module Key = OrderId`, and a projection that sets a row under another id no longer compiles. Without a `Key`, rows stay keyed by `string`.
+
+Adoption is per plugin, and once started it is checked for completeness. `pnpm run check:dcb-scope` reports a field named for one identity but typed as another (`orderId: CustomerId.t`), and an untyped `*Id: string` whose identity the plugin declares. A plugin that types nothing is never reported.
+
+Some ids stay strings, on purpose:
+
+- **Published contracts read by other plugins.** A consumer cannot hold a type it cannot see. Convert with `toString` where you publish, and `makeFromString` where you receive. An identity that both plugins share, like a product id, is declared in the publishing plugin's `*-spec` package instead, and then crosses the boundary typed.
+- **`@compositePartitionTag` members.** A member is one segment of a joined key, not an entity's id. Typing one is a compile error.
+- **Routing keys.** Automation and outbound to-do rows, and extension routing ids, are keyed by string. Convert where you key them.
+
 ## Under the hood
 
 How the shared log, the command topic, the filtering handler, and the per-slice

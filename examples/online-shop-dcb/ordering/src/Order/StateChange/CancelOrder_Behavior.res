@@ -1,6 +1,11 @@
 @@reventless.behavior
 
-type state = {exists: bool, shipped: bool, cancelled: bool, productIds: array<string>}
+type state = {
+  exists: bool,
+  shipped: bool,
+  cancelled: bool,
+  productIds: array<CatalogSpec.ProductId.t>,
+}
 
 let initialState = {exists: false, shipped: false, cancelled: false, productIds: []}
 

@@ -335,6 +335,19 @@ let rec example_of_expr (e : expression) : Yojson.Safe.t option =
   | Pexp_construct ({ txt = Lident "None"; _ }, None) ->
     Some (`Assoc [ ("kind", `String "null") ])
   | Pexp_construct ({ txt = Lident "Some"; _ }, Some inner) -> example_of_expr inner
+  (* A typed id made from a literal — `oid("o1")`, `OrderId.make("o1")`. Its
+     value is the string: a scenario relates its given events to its command by
+     comparing ids, and a test that types its ids must not read as one whose ids
+     are unknown. The function is kept beside it so a writer can reproduce the
+     call rather than a bare string, which would not compile. *)
+  | Pexp_apply
+      ( { pexp_desc = Pexp_ident { txt = fn; _ }; _ },
+        [ (Nolabel, { pexp_desc = Pexp_constant (Pconst_string (s, _, _)); _ }) ] ) ->
+    Some
+      (`Assoc
+         [ ("kind", `String "string");
+           ("value", `String s);
+           ("constructor", `String (flatten_longident fn)) ])
   (* A payload-less constructor — `Listed`, `Customers.Active`. Recorded as its
      own kind rather than as a string: the two are different ReScript source, and
      a consumer that renders `"Listed"` where the author wrote `Listed` produces

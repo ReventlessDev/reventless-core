@@ -10,6 +10,8 @@ module ImportProductSlice = {
 
 @@reventless.gwt
 
+let pid = CatalogSpec.ProductId.make
+
 describe("ImportProduct InboundTranslationSlice", () => {
   test("USD payload translates to AddProduct command", () =>
     whenInput({
@@ -20,7 +22,7 @@ describe("ImportProduct InboundTranslationSlice", () => {
       currency: "USD",
     })->thenCommand(
       "p-1",
-      AddProduct({productId: "p-1", name: "Laptop", description: "high-end", price: 999.99}),
+      AddProduct({productId: pid("p-1"), name: "Laptop", description: "high-end", price: 999.99}),
     )
   )
 

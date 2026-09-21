@@ -3,14 +3,17 @@
 // `orderId` is in the payload, so the envelope id adds nothing here.
 let collect = (event, ~sourceId as _) =>
   switch event {
-  | OrderPlaced({orderId, customerId}) => [(orderId, {orderId, customerId})]
+  | OrderPlaced({orderId, customerId}) => [(orderId->OrderId.toString, {orderId, customerId})]
   }
 
 // This slice calls a service the framework does not broker, so it reaches its
 // mailer directly and ignores the injected capabilities.
 let translate = async (_id, item, ~capabilities as _) => {
   try {
-    await EmailService.sendOrderConfirmation(~email=item.customerId, ~orderId=item.orderId)
+    await EmailService.sendOrderConfirmation(
+      ~email=item.customerId->CustomerId.toString,
+      ~orderId=item.orderId->OrderId.toString,
+    )
     Ok(None)
   } catch {
   | exn =>

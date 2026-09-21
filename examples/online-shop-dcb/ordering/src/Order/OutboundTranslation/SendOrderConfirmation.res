@@ -5,10 +5,10 @@
 @@reventless.spec
 
 @schema
-type consumedEvent = OrderPlaced({orderId: string, customerId: string})
+type consumedEvent = OrderPlaced({orderId: OrderId.t, customerId: CustomerId.t})
 
 @schema
-type outboundItem = {orderId: string, customerId: string}
+type outboundItem = {orderId: OrderId.t, customerId: CustomerId.t}
 
 @schema
 type inboundCommand = unit

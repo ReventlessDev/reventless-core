@@ -3,6 +3,7 @@
 import * as Sury from "sury";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Api$ReventlessInfra from "@reventlessdev/reventless-infra/src/components/Api.res.mjs";
+import * as ProductId$CatalogSpec from "@reventlessdev/online-shop-dcb-catalog-spec/src/ProductId.res.mjs";
 
 let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
@@ -18,12 +19,12 @@ let consumedEventSchema = Sury.union([
 let commandSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "RecordDemand",
-    productId: s.m(DcbTag$Reventless.string),
+    productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
     orderId: s.m(DcbTag$Reventless.string)
   })),
   Sury.$schema(s => ({
     TAG: "RevokeDemand",
-    productId: s.m(DcbTag$Reventless.string),
+    productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
     orderId: s.m(DcbTag$Reventless.string)
   }))
 ]);
@@ -33,12 +34,12 @@ let errorSchema = Sury.$unit;
 let eventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "ProductDemandRecorded",
-    productId: s.m(DcbTag$Reventless.partition),
+    productId: s.m(DcbTag$Reventless.markPartition(ProductId$CatalogSpec.schema)),
     orderId: s.m(DcbTag$Reventless.string)
   })),
   Sury.$schema(s => ({
     TAG: "ProductDemandRevoked",
-    productId: s.m(DcbTag$Reventless.partition),
+    productId: s.m(DcbTag$Reventless.markPartition(ProductId$CatalogSpec.schema)),
     orderId: s.m(DcbTag$Reventless.string)
   }))
 ]);

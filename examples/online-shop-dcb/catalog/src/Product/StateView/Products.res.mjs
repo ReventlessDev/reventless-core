@@ -3,9 +3,10 @@
 import * as Sury from "sury";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
+import * as ProductId$CatalogSpec from "@reventlessdev/online-shop-dcb-catalog-spec/src/ProductId.res.mjs";
 
 let stateSchema = Sury.$schema(s => ({
-  productId: s.m(Sury.string),
+  productId: s.m(ProductId$CatalogSpec.schema),
   name: s.m(Sury.string),
   description: s.m(Sury.string),
   price: s.m(Sury.float)
@@ -14,24 +15,24 @@ let stateSchema = Sury.$schema(s => ({
 let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "ProductAdded",
-    productId: s.m(DcbTag$Reventless.string),
+    productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
     name: s.m(Sury.string),
     description: s.m(Sury.string),
     price: s.m(Sury.float)
   })),
   Sury.$schema(s => ({
     TAG: "ProductNameChanged",
-    productId: s.m(DcbTag$Reventless.string),
+    productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
     name: s.m(Sury.string)
   })),
   Sury.$schema(s => ({
     TAG: "ProductDescriptionChanged",
-    productId: s.m(DcbTag$Reventless.string),
+    productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
     description: s.m(Sury.string)
   })),
   Sury.$schema(s => ({
     TAG: "ProductPriceChanged",
-    productId: s.m(DcbTag$Reventless.string),
+    productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
     price: s.m(Sury.float)
   }))
 ]);
@@ -55,10 +56,10 @@ let visibility = "Public";
 export {
   name,
   Id,
+  Key,
   stateSchema,
   consumedEventSchema,
   config,
-  Key,
   subIdConfig,
   moduleUrl,
   authorization,

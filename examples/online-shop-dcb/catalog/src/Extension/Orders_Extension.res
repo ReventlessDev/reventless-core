@@ -12,11 +12,17 @@ module Mapping = {
 
   let mapIncomingEvent = (_id, event, _meta, _pluginDef, _queryEngine) =>
     switch event {
+    // Ordering's contract carries a plain string; the catalog decides by its own
+    // ProductId.
     | ItemOrdered({productId, orderId}) => [
-        PublishStateChangeSliceCommand(RecordDemand({productId, orderId})),
+        PublishStateChangeSliceCommand(
+          RecordDemand({productId: CatalogSpec.ProductId.makeFromString(productId), orderId}),
+        ),
       ]
     | ItemOrderCancelled({productId, orderId}) => [
-        PublishStateChangeSliceCommand(RevokeDemand({productId, orderId})),
+        PublishStateChangeSliceCommand(
+          RevokeDemand({productId: CatalogSpec.ProductId.makeFromString(productId), orderId}),
+        ),
       ]
     }
 

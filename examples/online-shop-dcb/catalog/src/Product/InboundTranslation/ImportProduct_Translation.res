@@ -12,7 +12,8 @@ let translate = input =>
       (
         input.sku,
         AddProduct({
-          productId: input.sku,
+          // The external SKU becomes the catalog's product id here, at the edge.
+          productId: CatalogSpec.ProductId.makeFromString(input.sku),
           name: input.title,
           description: input.desc,
           price: Int.toFloat(input.unitPrice) /. 100.0,
