@@ -133,6 +133,11 @@ type brandedString = {
       derive. Offering one as a plain type pick emits code that does not
       compile. */
   hasDerivableSchema: bool,
+  /** A value the module accepts, as the string itself (not as source): a tool
+      writes it as a string literal. An obvious example, never plausible data,
+      because a new scenario starts from it. For the modules without a derivable
+      schema it is a value their schema accepts for any store or collection. */
+  sample: string,
 }
 
 /** Every transparent-string semantic, so a consumer can ask what they are
@@ -149,18 +154,156 @@ type brandedString = {
     recomputes them rather than trusting this list — so adding a module without
     adding it here fails, and so does the ppx's copy drifting from either. */
 let brandedStrings: array<brandedString> = [
-  {moduleName: "DateTime", id: Id.dateTime, hasDerivableSchema: true},
-  {moduleName: "CalendarDate", id: Id.date, hasDerivableSchema: true},
-  {moduleName: "Email", id: Id.email, hasDerivableSchema: true},
-  {moduleName: "Phone", id: Id.phone, hasDerivableSchema: true},
-  {moduleName: "Url", id: Id.url, hasDerivableSchema: true},
-  {moduleName: "Color", id: Id.color, hasDerivableSchema: true},
-  {moduleName: "FileRef", id: Id.fileRef, hasDerivableSchema: true},
-  {moduleName: "ImageRef", id: Id.imageRef, hasDerivableSchema: true},
-  {moduleName: "MemberRef", id: Id.memberRef, hasDerivableSchema: false},
-  {moduleName: "StorageRef", id: Id.storageRef, hasDerivableSchema: false},
-  {moduleName: "UploadableFile", id: Id.uploadableFile, hasDerivableSchema: false},
-  {moduleName: "UploadableImage", id: Id.uploadableImage, hasDerivableSchema: false},
+  {
+    moduleName: "DateTime",
+    id: Id.dateTime,
+    hasDerivableSchema: true,
+    sample: "2024-01-01T00:00:00Z",
+  },
+  {moduleName: "CalendarDate", id: Id.date, hasDerivableSchema: true, sample: "2024-01-01"},
+  {moduleName: "Email", id: Id.email, hasDerivableSchema: true, sample: "ada@example.com"},
+  // 555-0100…0199 is the North American range reserved for fiction.
+  {moduleName: "Phone", id: Id.phone, hasDerivableSchema: true, sample: "+15555550100"},
+  {moduleName: "Url", id: Id.url, hasDerivableSchema: true, sample: "https://example.com"},
+  {moduleName: "Color", id: Id.color, hasDerivableSchema: true, sample: "#1e90ff"},
+  {
+    moduleName: "FileRef",
+    id: Id.fileRef,
+    hasDerivableSchema: true,
+    sample: "https://example.com/example.pdf",
+  },
+  {
+    moduleName: "ImageRef",
+    id: Id.imageRef,
+    hasDerivableSchema: true,
+    sample: "https://example.com/example.png",
+  },
+  {
+    moduleName: "MemberRef",
+    id: Id.memberRef,
+    hasDerivableSchema: false,
+    sample: "/example/example.png",
+  },
+  {
+    moduleName: "StorageRef",
+    id: Id.storageRef,
+    hasDerivableSchema: false,
+    sample: "/example/example.txt",
+  },
+  {
+    moduleName: "UploadableFile",
+    id: Id.uploadableFile,
+    hasDerivableSchema: false,
+    sample: "/example/example.pdf",
+  },
+  {
+    moduleName: "UploadableImage",
+    id: Id.uploadableImage,
+    hasDerivableSchema: false,
+    sample: "/example/example.png",
+  },
+]
+
+/** How a value of a `valueType` is put together, so a tool can offer an input
+    that fits it. */
+type valueShape =
+  /** A number literal. `integer` says whether it is written `3600` or `50.0` —
+      a float field does not accept an int literal. */
+  | Number({integer: bool})
+  /** One of a closed set of codes, each written as the module's constructor. */
+  | Codes({codes: array<string>})
+  /** A value built from named parts: `(part, module or primitive)`. A module
+      names another `semantic/` module (its `sample` fills the part); a primitive
+      is `float`, `int` or `string`. */
+  | Parts({parts: array<(string, string)>})
+
+/** A semantic whose value is not a bare string: how to write one. */
+type valueType = {
+  moduleName: string,
+  shape: valueShape,
+  /** A value, written as ReScript source, fully qualified: what a tool emits.
+      An obvious example, never plausible data. */
+  sample: string,
+  /** How to write one. `$part` is replaced by that part's source: the module's
+      constructor where it returns `t` (`Money.make`), a record literal where the
+      constructor returns `result`, since a test value should not need
+      unwrapping. A `Number` has the one part `$value`, a `Codes` the one part
+      `$code`. */
+  writer: string,
+}
+
+/** Every semantic whose `type t` is not a bare string and which types a field a
+    scenario fills. The type names cannot say how to write one — `Money.t` is a
+    record, `Duration.t` an int — so a tool reads it here instead of guessing.
+
+    `SemanticValueTypesTest` compiles every sample, runs it through its module's
+    schema, and checks `Currency`'s codes against `Currency.all`. */
+let valueTypes: array<valueType> = [
+  {
+    moduleName: "Money",
+    shape: Parts({parts: [("amount", "float"), ("currency", "Currency")]}),
+    // Whole minor units: 1000 is 10.00 EUR.
+    sample: "Reventless.Money.make(~amount=1000.0, ~currency=Reventless.Currency.EUR)",
+    writer: "Reventless.Money.make(~amount=$amount, ~currency=$currency)",
+  },
+  {
+    moduleName: "Currency",
+    shape: Codes({codes: Currency.all->Array.map(Currency.toString)}),
+    sample: "Reventless.Currency.EUR",
+    writer: "Reventless.Currency.$code",
+  },
+  {
+    moduleName: "DateRange",
+    shape: Parts({parts: [("start", "DateTime"), ("end_", "DateTime")]}),
+    sample: `{Reventless.DateRange.start: "2024-01-01T00:00:00Z", end_: "2024-01-02T00:00:00Z"}`,
+    writer: "{Reventless.DateRange.start: $start, end_: $end_}",
+  },
+  {
+    moduleName: "GeoPoint",
+    shape: Parts({parts: [("lat", "float"), ("lng", "float")]}),
+    sample: "{Reventless.GeoPoint.lat: 0.0, lng: 0.0}",
+    writer: "{Reventless.GeoPoint.lat: $lat, lng: $lng}",
+  },
+  {
+    moduleName: "CaptionedImage",
+    // `altText` and `caption` are optional fields; the writer gives both.
+    shape: Parts({
+      parts: [("ref", "UploadableImage"), ("altText", "string"), ("caption", "string")],
+    }),
+    sample: `{Reventless.CaptionedImage.ref: "/example/example.png", altText: "An example image", caption: "An example caption"}`,
+    writer: "{Reventless.CaptionedImage.ref: $ref, altText: $altText, caption: $caption}",
+  },
+  {
+    moduleName: "Duration",
+    shape: Number({integer: true}),
+    // Seconds: one hour.
+    sample: "3600",
+    writer: "$value",
+  },
+  {moduleName: "Percent", shape: Number({integer: false}), sample: "50.0", writer: "$value"},
+  {moduleName: "Bytes", shape: Number({integer: false}), sample: "1024.0", writer: "$value"},
+]
+
+/** `semantic/` modules whose `type t` types a field, but whose shape
+    `valueShape` cannot express yet. `Geolocation.t` is a union of cases with
+    payloads. A tool asks for its value as ReScript source. */
+let valueTypesWithoutWriter: array<string> = ["Geolocation"]
+
+/** `semantic/` modules that are not a field's value: capabilities, helpers and
+    wrappers the ppx applies. Listed so the coverage test can tell a forgotten
+    module from a deliberate omission. */
+let nonValueModules: array<string> = [
+  "Capabilities",
+  "CapabilityNeed",
+  "Geocoding",
+  "IdentityProvider",
+  "Media_Ref",
+  "Messaging",
+  "Offload",
+  "RowImage",
+  "Secrets",
+  "Semantic",
+  "Template",
 ]
 
 let semanticId: S.Metadata.Id.t<t> = S.Metadata.Id.make(~namespace="reventless", ~name="semantic")

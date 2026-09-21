@@ -3,6 +3,7 @@
 import * as S from "sury/src/S.res.mjs";
 import * as Sury from "sury";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Currency$Reventless from "./Currency.res.mjs";
 
 let dateTime = "dateTime";
 
@@ -59,63 +60,206 @@ let brandedStrings = [
   {
     moduleName: "DateTime",
     id: dateTime,
-    hasDerivableSchema: true
+    hasDerivableSchema: true,
+    sample: "2024-01-01T00:00:00Z"
   },
   {
     moduleName: "CalendarDate",
     id: date,
-    hasDerivableSchema: true
+    hasDerivableSchema: true,
+    sample: "2024-01-01"
   },
   {
     moduleName: "Email",
     id: email,
-    hasDerivableSchema: true
+    hasDerivableSchema: true,
+    sample: "ada@example.com"
   },
   {
     moduleName: "Phone",
     id: phone,
-    hasDerivableSchema: true
+    hasDerivableSchema: true,
+    sample: "+15555550100"
   },
   {
     moduleName: "Url",
     id: url,
-    hasDerivableSchema: true
+    hasDerivableSchema: true,
+    sample: "https://example.com"
   },
   {
     moduleName: "Color",
     id: color,
-    hasDerivableSchema: true
+    hasDerivableSchema: true,
+    sample: "#1e90ff"
   },
   {
     moduleName: "FileRef",
     id: fileRef,
-    hasDerivableSchema: true
+    hasDerivableSchema: true,
+    sample: "https://example.com/example.pdf"
   },
   {
     moduleName: "ImageRef",
     id: imageRef,
-    hasDerivableSchema: true
+    hasDerivableSchema: true,
+    sample: "https://example.com/example.png"
   },
   {
     moduleName: "MemberRef",
     id: memberRef,
-    hasDerivableSchema: false
+    hasDerivableSchema: false,
+    sample: "/example/example.png"
   },
   {
     moduleName: "StorageRef",
     id: storageRef,
-    hasDerivableSchema: false
+    hasDerivableSchema: false,
+    sample: "/example/example.txt"
   },
   {
     moduleName: "UploadableFile",
     id: uploadableFile,
-    hasDerivableSchema: false
+    hasDerivableSchema: false,
+    sample: "/example/example.pdf"
   },
   {
     moduleName: "UploadableImage",
     id: uploadableImage,
-    hasDerivableSchema: false
+    hasDerivableSchema: false,
+    sample: "/example/example.png"
   }
+];
+
+let valueTypes = [
+  {
+    moduleName: "Money",
+    shape: {
+      TAG: "Parts",
+      parts: [
+        [
+          "amount",
+          "float"
+        ],
+        [
+          "currency",
+          "Currency"
+        ]
+      ]
+    },
+    sample: "Reventless.Money.make(~amount=1000.0, ~currency=Reventless.Currency.EUR)",
+    writer: "Reventless.Money.make(~amount=$amount, ~currency=$currency)"
+  },
+  {
+    moduleName: "Currency",
+    shape: {
+      TAG: "Codes",
+      codes: Currency$Reventless.all.map(Currency$Reventless.toString)
+    },
+    sample: "Reventless.Currency.EUR",
+    writer: "Reventless.Currency.$code"
+  },
+  {
+    moduleName: "DateRange",
+    shape: {
+      TAG: "Parts",
+      parts: [
+        [
+          "start",
+          "DateTime"
+        ],
+        [
+          "end_",
+          "DateTime"
+        ]
+      ]
+    },
+    sample: `{Reventless.DateRange.start: "2024-01-01T00:00:00Z", end_: "2024-01-02T00:00:00Z"}`,
+    writer: "{Reventless.DateRange.start: $start, end_: $end_}"
+  },
+  {
+    moduleName: "GeoPoint",
+    shape: {
+      TAG: "Parts",
+      parts: [
+        [
+          "lat",
+          "float"
+        ],
+        [
+          "lng",
+          "float"
+        ]
+      ]
+    },
+    sample: "{Reventless.GeoPoint.lat: 0.0, lng: 0.0}",
+    writer: "{Reventless.GeoPoint.lat: $lat, lng: $lng}"
+  },
+  {
+    moduleName: "CaptionedImage",
+    shape: {
+      TAG: "Parts",
+      parts: [
+        [
+          "ref",
+          "UploadableImage"
+        ],
+        [
+          "altText",
+          "string"
+        ],
+        [
+          "caption",
+          "string"
+        ]
+      ]
+    },
+    sample: `{Reventless.CaptionedImage.ref: "/example/example.png", altText: "An example image", caption: "An example caption"}`,
+    writer: "{Reventless.CaptionedImage.ref: $ref, altText: $altText, caption: $caption}"
+  },
+  {
+    moduleName: "Duration",
+    shape: {
+      TAG: "Number",
+      integer: true
+    },
+    sample: "3600",
+    writer: "$value"
+  },
+  {
+    moduleName: "Percent",
+    shape: {
+      TAG: "Number",
+      integer: false
+    },
+    sample: "50.0",
+    writer: "$value"
+  },
+  {
+    moduleName: "Bytes",
+    shape: {
+      TAG: "Number",
+      integer: false
+    },
+    sample: "1024.0",
+    writer: "$value"
+  }
+];
+
+let valueTypesWithoutWriter = ["Geolocation"];
+
+let nonValueModules = [
+  "Capabilities",
+  "CapabilityNeed",
+  "Geocoding",
+  "IdentityProvider",
+  "Media_Ref",
+  "Messaging",
+  "Offload",
+  "RowImage",
+  "Secrets",
+  "Semantic",
+  "Template"
 ];
 
 let semanticId = Sury.$Metadata_Id_make("reventless", "semantic");
@@ -257,6 +401,9 @@ function has(fieldSchema, id) {
 export {
   Id,
   brandedStrings,
+  valueTypes,
+  valueTypesWithoutWriter,
+  nonValueModules,
   semanticId,
   mark,
   refined,
@@ -269,4 +416,4 @@ export {
   fieldIdentityKey,
   has,
 }
-/* semanticId Not a pure module */
+/* valueTypes Not a pure module */
