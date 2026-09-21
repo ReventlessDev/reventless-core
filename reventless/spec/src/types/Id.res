@@ -2,8 +2,9 @@
 Module type for aggregate and read model identifiers.
 
 Every Reventless component declares its own `Id` module satisfying this type.
-The abstract `type t` prevents accidentally mixing identifiers from different
-aggregates at compile time.
+The abstract `type t` keeps ids apart from plain strings, but not from each
+other: every alias of `Id.String` (which is what the ppx injects) is the same
+type. Only `Id.Make` gives an entity an id type of its own.
 
 @example
 ```rescript
@@ -62,8 +63,9 @@ module StringPure = {
 /**
 A sealed string-based `Id.T` implementation for use in production aggregate specs.
 
-Unlike `StringPure`, the `t` type is abstract, preventing accidental cross-aggregate
-ID mixing. Use `Id.StringPure` in tests when string literals are needed.
+Unlike `StringPure`, the `t` type is abstract, so an id is not a plain string. It is
+sealed once, so every alias shares one type; use `Id.Make` for an id type per
+entity. Use `Id.StringPure` in tests when string literals are needed.
 
 @example
 ```rescript
@@ -73,3 +75,31 @@ let name = "Category"
 ```
 */
 module String: T = StringPure
+
+/** An `Id.T` that names one entity, by its key (`orderId`). */
+module type Identity = {
+  include T with type input = string
+  let key: string
+}
+
+/**
+One distinct type per identity. Each application yields a fresh abstract `t`, so
+an `OrderId.t` cannot be passed where a `CustomerId.t` is expected. A string on
+the wire; the schema carries the `identity` semantic, which is how the runtime
+knows which entity a field names whatever the field is called.
+
+@example
+```rescript
+// src/Order/OrderId.res
+include Reventless.Id.Make({let key = "orderId"})
+```
+*/
+module Make = (
+  K: {
+    let key: string
+  },
+): Identity => {
+  include StringPure
+  let key = K.key
+  let schema = schema->Semantic.mark(~id=Semantic.Id.identity, ~payload=IdentityOf({key: K.key}))
+}

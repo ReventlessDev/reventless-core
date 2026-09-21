@@ -10,7 +10,7 @@ The payload is a typed variant because the vocabulary is framework-owned and
 closed — which also keeps `Reference.getTarget` total.
 */
 /** Which entity a reference field points to. */
-type referenceTarget = {entity: string, plugin: option<string>}
+type referenceTarget = {entity: string, plugin: option<string>, identity?: string}
 
 /** Which object store the value lives in. `plugin` is absent for the declaring
     plugin's own store; `threshold` is `@offload`'s per-field byte cut, `None`
@@ -50,6 +50,8 @@ type payload =
   | ReferenceTo(referenceTarget)
   | StoredIn(storeTarget)
   | MemberOf(memberTarget)
+  /** Which identity an id is: named by its key (`orderId`). */
+  | IdentityOf({key: string})
 
 /** A field's semantic: the vocabulary id, plus its detail. */
 type t = {id: string, payload: payload}
@@ -111,6 +113,10 @@ module Id = {
   // The first composite that is a union rather than an object. Collapses fields,
   // so adopting it changes the wire and rebuilds a derived view.
   let geolocation = "geolocation"
+
+  // Which entity an id names, carried by the type `Id.Make` produces. A string on
+  // the wire, so adopting one changes nothing stored.
+  let identity = "identity"
 }
 
 /** One transparent-string semantic: a `semantic/` module whose `type t` is a

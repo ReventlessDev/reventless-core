@@ -51,7 +51,8 @@ let Id = {
   dateRange: "dateRange",
   geoPoint: "geoPoint",
   lifecycleTrail: "lifecycleTrail",
-  geolocation: "geolocation"
+  geolocation: "geolocation",
+  identity: "identity"
 };
 
 let brandedStrings = [

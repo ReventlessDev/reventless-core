@@ -104,6 +104,10 @@ the analysis before Phase 2.
 
 **Output:** a short note appended to the analysis, and the branch discarded.
 
+**Done (2026-09-21).** Both hold; the API stands (analysis § Spike result). The spike ran in
+the tree rather than on a branch; the example edits were reverted, and `Make` is kept as
+Phase 2's.
+
 ---
 
 ## Phase 2: `Id.Make` and the `identity` semantic → Checkpoint A
@@ -126,6 +130,18 @@ Additive. Nothing uses it yet.
 if the suite has one, otherwise the Phase 1 program as a test); schema round-trip; JSON Schema
 carries the semantic and target; SDL renders an identity field named `buyer` as `ID!`. All
 examples build unchanged.
+
+**Done (2026-09-21).** Two departures:
+- `Reference.to_` does not set the reference's identity. It builds its own `S.string`, so
+  there is no identity schema for it to wrap; the type-preserving helpers of Phase 3 are
+  where a reference meets one. `referenceTarget.identity` is an optional field, so existing
+  constructions are unchanged.
+- A reference's target never reaches the JSON Schema: `SchemaType.fromSury` excludes the
+  reference semantic from its wrapper, and clients read references from `extractReferences`.
+  The identity on a reference is therefore published in Phase 5, not here.
+
+An optional identity stays nullable in the SDL (`previous: ID`). `shapeOf` reads the marker
+on the schema itself, not through the optional as tags and references do.
 
 **Release → Checkpoint A.**
 

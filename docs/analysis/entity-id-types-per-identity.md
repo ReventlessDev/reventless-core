@@ -500,3 +500,22 @@ injection in spec packages.**
   skip spec packages through `is_spec_namespace_pkg`
   ([`AuthorizationInjection.ml:287`](../../packages/reventless-ppx/src/ppx/AuthorizationInjection.ml#L287)).
   Give the Id injection the same skip in the same change (step 5).
+
+## Spike result (2026-09-21)
+
+**The API stands; no fallback is needed.** Tried in the tree and reverted:
+
+- **sury-ppx finds a functor-made schema.** `include Reventless.Id.Make({let key = "orderId"})`
+  in `OrderId.res`, and `orderId: OrderId.t` in a `@schema` record, compiles to
+  `s.m(OrderId.schema)`, the schema `Make` marked. The same holds through `option<…>` and
+  `array<…>`. The wire form is the bare string.
+- **Two applications are two types.** `let x: OrderId.t = CustomerId.make("c-1")` fails with
+  "This has type: CustomerId.t / But it's expected to have type: OrderId.t".
+- **A chapter folder is safe.** `src/Order/OrderId.res` in the DCB ordering plugin is
+  ignored by `generate-plugin` (the output is identical up to formatting), and the
+  reventless-ppx leaves it alone.
+- **F4 reproduced.** In `Orders`' `consumedEvent`, retyping `orderId` to `OrderId.t` replaced
+  its `DcbTag.string` with `OrderId.schema`, silently, with no error. The Phase 3/4 order stands.
+- **Not tried: a `*-spec` package.** None of them depends on `reventless-spec` yet, so `Make`
+  cannot be reached there. Adding that dependency is Phase 4's `module Id` skip, as open
+  question 5 says.

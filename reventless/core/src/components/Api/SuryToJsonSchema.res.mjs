@@ -355,10 +355,16 @@ function withSemantic(fieldSchema, sem) {
     switch (match.TAG) {
       case "ReferenceTo" :
         let match$1 = match._0;
-        obj["x-reventless-semantic-target"] = Object.fromEntries(withOptionalPlugin([[
+        let identity = match$1.identity;
+        let pairs = withOptionalPlugin([[
             "entity",
             match$1.entity
-          ]], match$1.plugin));
+          ]], match$1.plugin);
+        let pairs$1 = identity !== undefined ? pairs.concat([[
+              "identity",
+              identity
+            ]]) : pairs;
+        obj["x-reventless-semantic-target"] = Object.fromEntries(pairs$1);
         break;
       case "StoredIn" :
         let match$2 = match._0;
@@ -383,6 +389,12 @@ function withSemantic(fieldSchema, sem) {
             "field",
             match$3.field
           ]], match$3.plugin), "view", match$3.view), "content", match$3.content));
+        break;
+      case "IdentityOf" :
+        obj["x-reventless-semantic-target"] = Object.fromEntries([[
+            "key",
+            match.key
+          ]]);
         break;
     }
   }

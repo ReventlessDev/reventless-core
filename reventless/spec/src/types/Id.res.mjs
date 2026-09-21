@@ -2,6 +2,7 @@
 
 import * as Sury from "sury";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
+import * as Semantic$Reventless from "../semantic/Semantic.res.mjs";
 
 let schema = Sury.string;
 
@@ -11,6 +12,21 @@ let StringPure = {
   schema: schema,
   cmp: cmp
 };
+
+function Make(K) {
+  let schema$1 = Semantic$Reventless.mark(schema, Semantic$Reventless.Id.identity, {
+    TAG: "IdentityOf",
+    key: K.key
+  });
+  return {
+    schema: schema$1,
+    make: prim => prim,
+    makeFromString: prim => prim,
+    toString: prim => prim,
+    cmp: cmp,
+    key: K.key
+  };
+}
 
 function String_make(prim) {
   return prim;
@@ -35,5 +51,6 @@ let $$String = {
 export {
   StringPure,
   $$String,
+  Make,
 }
 /* schema Not a pure module */

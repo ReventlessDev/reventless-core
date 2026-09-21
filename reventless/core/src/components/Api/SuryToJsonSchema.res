@@ -310,11 +310,15 @@ and withSemantic = (fieldSchema: JSON.t, sem: Reventless.Semantic.t): JSON.t =>
     obj->Dict.set("x-reventless-semantic-source", str("type"))
     switch sem.payload {
     | Plain => ()
-    | ReferenceTo({entity, plugin}) =>
-      obj->Dict.set(
-        "x-reventless-semantic-target",
-        jsonObject(withOptionalPlugin([("entity", str(entity))], plugin)),
-      )
+    | ReferenceTo({entity, plugin, ?identity}) =>
+      let pairs = withOptionalPlugin([("entity", str(entity))], plugin)
+      let pairs = switch identity {
+      | Some(key) => Array.concat(pairs, [("identity", str(key))])
+      | None => pairs
+      }
+      obj->Dict.set("x-reventless-semantic-target", jsonObject(pairs))
+    | IdentityOf({key}) =>
+      obj->Dict.set("x-reventless-semantic-target", jsonObject([("key", str(key))]))
     | StoredIn({plugin, store}) =>
       // An absent plugin means "this plugin's own store" — omit the key rather
       // than writing an empty string, so a reader never has to tell those apart.

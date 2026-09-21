@@ -45,6 +45,14 @@ let isTagged = Reventless.DcbTag.isTagged
 let isDateTime = Reventless.DateTime.isDateTime
 let isCalendarDate = Reventless.CalendarDate.isCalendarDate
 
+// On the schema itself, not through `option<…>` as `Semantic.get` reads: the
+// optional wrapper then reaches the `AnyOf` branch and stays `Nullable`.
+let isIdentity = (schema: S.t<unknown>): bool =>
+  switch schema->S.Metadata.get(~id=Reventless.Semantic.semanticId) {
+  | Some({id}) => id === Reventless.Semantic.Id.identity
+  | None => false
+  }
+
 let isIdFieldName = (name: string): bool => {
   let lower = String.toLowerCase(name)
   let len = String.length(lower)
@@ -123,12 +131,14 @@ and withoutDefault = (
 }
 
 and shapeOf = (~parentName: string, ~fieldName: string, schema: S.t<unknown>): schemaType => {
-  // Two independent facts, checked independently. A DCB-tagged field is an
+  // Three independent facts, checked independently. A DCB-tagged field is an
   // entity id because it routes; a reference field is one because it points at
-  // an entity. Neither implies the other — a `@partitionTag` field carries no
+  // an entity; an identity-typed field is one whatever it is called. Neither implies the other — a `@partitionTag` field carries no
   // reference, and `Reference.toWithoutDcbTag` carries no tag — so collapsing
   // these into one test would silently reclassify whichever case it dropped.
-  if isTagged(schema) || Reventless.Reference.getTarget(schema)->Option.isSome {
+  if (
+    isTagged(schema) || Reventless.Reference.getTarget(schema)->Option.isSome || isIdentity(schema)
+  ) {
     EntityId
   } else {
     switch schema {
