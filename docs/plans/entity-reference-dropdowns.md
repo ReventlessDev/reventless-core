@@ -212,6 +212,7 @@ The `!` marks the rename of `${ReturnType}Filter` → `${ReturnType}ItemsFilter`
 - `SchemaType.fromSury` now classifies `@ref @noDcbTag` fields as `EntityId` (renders as `ID!` in GraphQL SDL) even when `DcbTag` metadata is absent.
 - Platform bootstrap reference validator (plan step 3) deferred — open question 2 row 5 interaction also deferred.
 - Both SDL copies in `Platform.res` updated; both encoders extended with `references` array.
+- **Follow-up (2026-09-21):** [entity-id-types-per-identity.md](../analysis/entity-id-types-per-identity.md) proposes one Id type per identity. A field's type then states which entity it names, and `@ref` is needed only to choose between several views keyed by that identity; with exactly one, the reference is derived.
 
 **Deferred for follow-up** (not blocking Phase 6 progress):
 - Self-reference `@ref` (no payload) — requires threading enclosing aggregate name through ppx transform context.

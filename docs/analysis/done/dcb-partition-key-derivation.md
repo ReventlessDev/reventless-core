@@ -10,6 +10,9 @@ by reading the derivation code, the five annotated example slices, the
 (the inference design and the decision to keep `@partitionTag`), and
 [`dcb-runtime-scope-annotation-drift.md`](../dcb-runtime-scope-annotation-drift.md)
 (why every call site must derive scope through the same functions).
+**Followed up by:** [`entity-id-types-per-identity.md`](../entity-id-types-per-identity.md)
+(F6's chapter-as-check applied to identity types: the chapter is where an identity is declared
+by default, not what defines it).
 
 ## Summary
 
