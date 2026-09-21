@@ -430,10 +430,21 @@ jobs:
           '
           # Relock so --frozen-lockfile consumers resolve the new pin. Retry to
           # ride out registry propagation of the just-published packages.
+          # pnpm does not fail on an optional dependency it cannot resolve yet: it
+          # drops it from the lockfile, which then breaks every frozen install.
+          # So a relock counts only once every pinned binary is locked at $VERSION.
+          pinned=$(node -p 'Object.keys(require("./packages/reventless-ppx/package.json").optionalDependencies || {}).filter(k => k.startsWith("@reventlessdev/reventless-ppx-")).join(" ")')
           ok=false
           for i in $(seq 1 12); do
-            if pnpm install --lockfile-only --no-frozen-lockfile; then ok=true; break; fi
-            echo "relock attempt $i failed (registry may still be propagating) — retrying in 20s"
+            if pnpm install --lockfile-only --no-frozen-lockfile --config.prefer-offline=false; then
+              missing=""
+              for pkg in $pinned; do
+                grep -qF "'$pkg@$VERSION':" pnpm-lock.yaml || missing="$missing $pkg"
+              done
+              if [ -z "$missing" ]; then ok=true; break; fi
+              echo "relock attempt $i left out:$missing"
+            fi
+            echo "relock attempt $i incomplete (registry may still be propagating) — retrying in 20s"
             sleep 20
           done
           if [ "$ok" != true ]; then echo "::error::relock failed after retries"; exit 1; fi

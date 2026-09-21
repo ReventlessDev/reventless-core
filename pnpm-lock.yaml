@@ -1021,6 +1021,9 @@ importers:
 
   packages/reventless-ppx:
     optionalDependencies:
+      '@reventlessdev/reventless-ppx-darwin-arm64':
+        specifier: ^1.0.0-alpha.83
+        version: 1.0.0-alpha.83
       '@reventlessdev/reventless-ppx-linux-x64':
         specifier: ^1.0.0-alpha.83
         version: 1.0.0-alpha.83
@@ -4851,6 +4854,11 @@ packages:
   '@reventlessdev/reventless-host-shell@3.0.0-alpha.108':
     resolution: {integrity: sha512-0C+SN4ZSMLXgrmeo01FyGOg0mS6s8EP9H4tKpbW71jicayTxU4JLZv2uLKLt9Km0DqFjBrjtvG6bybuOo2hwzA==}
     hasBin: true
+
+  '@reventlessdev/reventless-ppx-darwin-arm64@1.0.0-alpha.83':
+    resolution: {integrity: sha512-XrYea4CqVM2E4P6ufb+Zn5YKudFwMyVZVFNadRdaxT9+E5G4Qj25wPOsnQgRxN7CGuuEEvgD9al/YeZRKpApiA==}
+    cpu: [arm64]
+    os: [darwin]
 
   '@reventlessdev/reventless-ppx-linux-x64@1.0.0-alpha.83':
     resolution: {integrity: sha512-l7iIDyRLKIBjmmEexLrg5WyJTbCRTT+a8hyJaGUcDBBxtdtkq/PJJnLrtMD+hIZC4qYv9IKJketsvFdX7mCAqg==}
@@ -17987,6 +17995,9 @@ snapshots:
       - utf-8-validate
       - vue-tsc
       - yaml
+
+  '@reventlessdev/reventless-ppx-darwin-arm64@1.0.0-alpha.83':
+    optional: true
 
   '@reventlessdev/reventless-ppx-linux-x64@1.0.0-alpha.83':
     optional: true
