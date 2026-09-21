@@ -13,10 +13,10 @@
 @@reventless.spec
 
 @schema
-type todoItem = {orderId: string}
+type todoItem = {orderId: OrderId.t}
 
 @schema
-type command = ShipOrder({orderId: string})
+type command = ShipOrder({orderId: OrderId.t})
 
 let maxRetries = 3
 let heartbeatInterval = 60

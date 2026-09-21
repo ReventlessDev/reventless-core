@@ -1,5 +1,7 @@
 @@reventless.gwt
 
+let pid = CatalogSpec.ProductId.make
+
 // The modelling claim that makes the two retired states worth having, asserted
 // rather than left to a comment: one withdrawal can be undone and the other
 // cannot. The declared edge is the framework half and is covered elsewhere; this
@@ -7,24 +9,24 @@
 // reversible.
 describe("UnarchiveProduct StateChangeSlice", () => {
   test("unarchive on non-existent product returns ProductNotFound", () =>
-    givenEvents([])->whenCmd(UnarchiveProduct({productId: "p1"}))->thenError(ProductNotFound)
+    givenEvents([])->whenCmd(UnarchiveProduct({productId: pid("p1")}))->thenError(ProductNotFound)
   )
 
   test("unarchive on an archived product produces ProductUnarchived", () =>
     givenEvents([ProductAdded, ProductArchived])
-    ->whenCmd(UnarchiveProduct({productId: "p1"}))
-    ->thenEvent(ProductUnarchived({productId: "p1"}))
+    ->whenCmd(UnarchiveProduct({productId: pid("p1")}))
+    ->thenEvent(ProductUnarchived({productId: pid("p1")}))
   )
 
   test("unarchive on a listed product produces no events (idempotent)", () =>
-    givenEvents([ProductAdded])->whenCmd(UnarchiveProduct({productId: "p1"}))->thenNoEvent
+    givenEvents([ProductAdded])->whenCmd(UnarchiveProduct({productId: pid("p1")}))->thenNoEvent
   )
 
   // The other half of the pair, and the assertion the whole two-state model
   // rests on: a discontinued product has no way back.
   test("unarchive on a discontinued product is refused", () =>
     givenEvents([ProductAdded, ProductDiscontinued])
-    ->whenCmd(UnarchiveProduct({productId: "p1"}))
+    ->whenCmd(UnarchiveProduct({productId: pid("p1")}))
     ->thenError(ProductIsDiscontinued)
   )
 
@@ -32,7 +34,7 @@ describe("UnarchiveProduct StateChangeSlice", () => {
   // about the state the product is in rather than about how it got there.
   test("and stays refused for a product discontinued out of the archive", () =>
     givenEvents([ProductAdded, ProductArchived, ProductDiscontinued])
-    ->whenCmd(UnarchiveProduct({productId: "p1"}))
+    ->whenCmd(UnarchiveProduct({productId: pid("p1")}))
     ->thenError(ProductIsDiscontinued)
   )
 })

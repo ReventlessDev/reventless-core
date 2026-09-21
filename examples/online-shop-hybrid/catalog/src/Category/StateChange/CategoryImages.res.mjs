@@ -2,6 +2,7 @@
 
 import * as Sury from "sury";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as CategoryId$CatalogPlugin from "../CategoryId.res.mjs";
 import * as UploadableImage$Reventless from "@reventlessdev/reventless-spec/src/semantic/UploadableImage.res.mjs";
 import * as Attachments$TraitAttachments from "@reventlessdev/trait-attachments/src/Attachments.res.mjs";
 
@@ -31,17 +32,17 @@ let consumedEventSchema = Sury.union([
 let commandSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "SetCategoryImage",
-    categoryId: s.m(DcbTag$Reventless.string),
+    categoryId: s.m(DcbTag$Reventless.mark(CategoryId$CatalogPlugin.schema)),
     categoryImage: s.m(UploadableImage$Reventless.forField(undefined, "categoryImages")),
     altText: s.m(Sury.$option(Sury.string))
   })),
   Sury.$schema(s => ({
     TAG: "RemoveCategoryImage",
-    categoryId: s.m(DcbTag$Reventless.string)
+    categoryId: s.m(DcbTag$Reventless.mark(CategoryId$CatalogPlugin.schema))
   })),
   Sury.$schema(s => ({
     TAG: "SetCategoryImageAltText",
-    categoryId: s.m(DcbTag$Reventless.string),
+    categoryId: s.m(DcbTag$Reventless.mark(CategoryId$CatalogPlugin.schema)),
     altText: s.m(Sury.string)
   }))
 ]);
@@ -55,24 +56,24 @@ let errorSchema = Sury.union([
 let eventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "CategoryImageAttached",
-    categoryId: s.m(DcbTag$Reventless.string),
+    categoryId: s.m(DcbTag$Reventless.mark(CategoryId$CatalogPlugin.schema)),
     categoryImage: s.m(UploadableImage$Reventless.forField(undefined, "categoryImages")),
     altText: s.m(Sury.$option(Sury.string))
   })),
   Sury.$schema(s => ({
     TAG: "CategoryImageRemoved",
-    categoryId: s.m(DcbTag$Reventless.string),
+    categoryId: s.m(DcbTag$Reventless.mark(CategoryId$CatalogPlugin.schema)),
     categoryImage: s.m(UploadableImage$Reventless.forField(undefined, "categoryImages"))
   })),
   Sury.$schema(s => ({
     TAG: "CategoryImageAltTextSet",
-    categoryId: s.m(DcbTag$Reventless.string),
+    categoryId: s.m(DcbTag$Reventless.mark(CategoryId$CatalogPlugin.schema)),
     categoryImage: s.m(UploadableImage$Reventless.forField(undefined, "categoryImages")),
     altText: s.m(Sury.string)
   })),
   Sury.$schema(s => ({
     TAG: "CategoryEffectiveImageChanged",
-    categoryId: s.m(DcbTag$Reventless.string),
+    categoryId: s.m(DcbTag$Reventless.mark(CategoryId$CatalogPlugin.schema)),
     categoryImage: s.m(Sury.$option(UploadableImage$Reventless.forField(undefined, "categoryImages")))
   }))
 ]);

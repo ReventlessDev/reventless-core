@@ -9,10 +9,10 @@
 type shelfProduct = {name: string, price: Reventless.Money.t}
 
 type state = {
-  placedOrderIds: array<string>,
-  availableProductIds: array<string>,
-  shelf: array<(string, shelfProduct)>,
-  productImages: array<(string, Reventless.UploadableImage.t)>,
+  placedOrderIds: array<OrderId.t>,
+  availableProductIds: array<CatalogSpec.ProductId.t>,
+  shelf: array<(CatalogSpec.ProductId.t, shelfProduct)>,
+  productImages: array<(CatalogSpec.ProductId.t, Reventless.UploadableImage.t)>,
 }
 
 let initialState = {

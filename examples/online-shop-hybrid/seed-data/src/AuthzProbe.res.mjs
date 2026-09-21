@@ -2,7 +2,10 @@
 
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Seed$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed.res.mjs";
+import * as ProductId$CatalogSpec from "@reventlessdev/online-shop-hybrid-catalog-spec/src/ProductId.res.mjs";
+import * as OrderId$OrderingPlugin from "@reventlessdev/online-shop-hybrid-ordering/src/Order/OrderId.res.mjs";
 import * as Products$CatalogPlugin from "@reventlessdev/online-shop-hybrid-catalog/src/Product/StateViewStream/Products.res.mjs";
+import * as CategoryId$CatalogPlugin from "@reventlessdev/online-shop-hybrid-catalog/src/Category/CategoryId.res.mjs";
 import * as Customers$OrderingPlugin from "@reventlessdev/online-shop-hybrid-ordering/src/Customer/ReadModelStream/Customers.res.mjs";
 import * as Seed_Client$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Client.res.mjs";
 import * as Seed_Runner$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Runner.res.mjs";
@@ -63,7 +66,7 @@ let cases = [
       TAG: "Command",
       _0: DemoCommands$OnlineShopHybridSeed.archiveProduct({
         TAG: "ArchiveProduct",
-        productId: missing
+        productId: ProductId$CatalogSpec.make(missing)
       })
     }
   },
@@ -74,7 +77,7 @@ let cases = [
       TAG: "Command",
       _0: DemoCommands$OnlineShopHybridSeed.renameCategory({
         TAG: "RenameCategory",
-        categoryId: missing,
+        categoryId: CategoryId$CatalogPlugin.make(missing),
         name: "probe"
       })
     }
@@ -86,7 +89,7 @@ let cases = [
       TAG: "Command",
       _0: DemoCommands$OnlineShopHybridSeed.shipOrder({
         TAG: "ShipOrder",
-        orderId: missing
+        orderId: OrderId$OrderingPlugin.make(missing)
       })
     }
   },
@@ -97,7 +100,7 @@ let cases = [
       TAG: "Command",
       _0: DemoCommands$OnlineShopHybridSeed.cancelOrder({
         TAG: "CancelOrder",
-        orderId: missing
+        orderId: OrderId$OrderingPlugin.make(missing)
       })
     }
   },

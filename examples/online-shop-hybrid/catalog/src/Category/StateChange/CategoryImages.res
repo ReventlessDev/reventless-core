@@ -26,14 +26,17 @@ type consumedEvent =
 type command =
   | @authorize(AllowGroups(["Admin", "Merchandiser"]))
   SetCategoryImage({
-      categoryId: string,
+      categoryId: CategoryId.t,
       categoryImage: Reventless.UploadableImage.t,
       altText?: string,
     })
-  | @authorize(AllowGroups(["Admin", "Merchandiser"])) RemoveCategoryImage({categoryId: string})
+  | @authorize(AllowGroups(["Admin", "Merchandiser"]))
+  RemoveCategoryImage({
+      categoryId: CategoryId.t,
+    })
   | @authorize(AllowGroups(["Admin", "Merchandiser"]))
   SetCategoryImageAltText({
-      categoryId: string,
+      categoryId: CategoryId.t,
       altText: string,
     })
 
@@ -49,13 +52,13 @@ type error =
 @schema
 type event =
   | CategoryImageAttached({
-      categoryId: string,
+      categoryId: CategoryId.t,
       categoryImage: Reventless.UploadableImage.t,
       altText?: string,
     })
-  | CategoryImageRemoved({categoryId: string, categoryImage: Reventless.UploadableImage.t})
+  | CategoryImageRemoved({categoryId: CategoryId.t, categoryImage: Reventless.UploadableImage.t})
   | CategoryImageAltTextSet({
-      categoryId: string,
+      categoryId: CategoryId.t,
       categoryImage: Reventless.UploadableImage.t,
       altText: string,
     })
@@ -63,7 +66,7 @@ type event =
   // cardinality too though `attached`/`removed` already imply it: a subscriber
   // reading it must not have to know how many pictures a host allows.
   | CategoryEffectiveImageChanged({
-      categoryId: string,
+      categoryId: CategoryId.t,
       categoryImage?: Reventless.UploadableImage.t,
     })
 

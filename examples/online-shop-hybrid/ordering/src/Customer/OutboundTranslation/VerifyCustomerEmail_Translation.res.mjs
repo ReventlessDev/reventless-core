@@ -2,6 +2,7 @@
 
 import * as Duration$Reventless from "@reventlessdev/reventless-spec/src/semantic/Duration.res.mjs";
 import * as Messaging$Reventless from "@reventlessdev/reventless-spec/src/semantic/Messaging.res.mjs";
+import * as CustomerId$OrderingPlugin from "../CustomerId.res.mjs";
 import * as ContactVerification$OrderingPlugin from "../../ContactVerification.res.mjs";
 
 function collect(event, sourceId) {
@@ -60,7 +61,7 @@ async function translate(_id, item, capabilities) {
         item.customerId,
         {
           TAG: "IssueEmailChallenge",
-          customerId: item.customerId,
+          customerId: CustomerId$OrderingPlugin.makeFromString(item.customerId),
           email: item.email,
           purpose: "ContactChange",
           proofHash: proofHash._0,

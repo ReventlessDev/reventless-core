@@ -2,29 +2,31 @@
 
 import * as Sury from "sury";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
+import * as ProductId$CatalogSpec from "@reventlessdev/online-shop-hybrid-catalog-spec/src/ProductId.res.mjs";
+import * as CategoryId$CatalogPlugin from "../../Category/CategoryId.res.mjs";
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 
 let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "ProductAdded",
-    productId: s.m(Sury.string),
+    productId: s.m(ProductId$CatalogSpec.schema),
     name: s.m(Sury.string),
-    categoryId: s.m(Sury.string)
+    categoryId: s.m(CategoryId$CatalogPlugin.schema)
   })),
   Sury.$schema(s => ({
     TAG: "ProductDemandRecorded",
-    productId: s.m(Sury.string)
+    productId: s.m(ProductId$CatalogSpec.schema)
   })),
   Sury.$schema(s => ({
     TAG: "ProductDemandRevoked",
-    productId: s.m(Sury.string)
+    productId: s.m(ProductId$CatalogSpec.schema)
   }))
 ]);
 
 let stateSchema = Sury.$schema(s => ({
-  productId: s.m(Sury.string),
+  productId: s.m(ProductId$CatalogSpec.schema),
   name: s.m(Sury.string),
-  categoryId: s.m(Sury.string),
+  categoryId: s.m(CategoryId$CatalogPlugin.schema),
   orderCount: s.m(Sury.int)
 }));
 
@@ -78,9 +80,9 @@ let visibility = "Public";
 export {
   name,
   Id,
+  Key,
   consumedEventSchema,
   config,
-  Key,
   subIdConfig,
   makeId,
   stateSchema$1 as stateSchema,

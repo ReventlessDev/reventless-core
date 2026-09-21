@@ -7,7 +7,10 @@ import * as DateTime$Reventless from "@reventlessdev/reventless-spec/src/semanti
 import * as DateRange$Reventless from "@reventlessdev/reventless-spec/src/semantic/DateRange.res.mjs";
 import * as Lifecycle$Reventless from "@reventlessdev/reventless-spec/src/types/Lifecycle.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
+import * as ProductId$CatalogSpec from "@reventlessdev/online-shop-hybrid-catalog-spec/src/ProductId.res.mjs";
 import * as DisplayName$Reventless from "@reventlessdev/reventless-spec/src/components/DisplayName.res.mjs";
+import * as OrderId$OrderingPlugin from "../OrderId.res.mjs";
+import * as CustomerId$OrderingPlugin from "../../Customer/CustomerId.res.mjs";
 import * as UploadableImage$Reventless from "@reventlessdev/reventless-spec/src/semantic/UploadableImage.res.mjs";
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 
@@ -20,7 +23,7 @@ let shippingMethodSchema = Sury.union([
 ]);
 
 let orderLineSchema = Sury.$schema(s => ({
-  productId: s.m(Sury.string),
+  productId: s.m(ProductId$CatalogSpec.schema),
   name: s.m(Sury.string),
   quantity: s.m(Sury.int),
   unitPrice: s.m(Money$Reventless.schema),
@@ -30,9 +33,9 @@ let orderLineSchema = Sury.$schema(s => ({
 let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "OrderPlaced",
-    orderId: s.m(Sury.string),
-    customerId: s.m(Sury.string),
-    productIds: s.m(Sury.array(Sury.string)),
+    orderId: s.m(OrderId$OrderingPlugin.schema),
+    customerId: s.m(CustomerId$OrderingPlugin.schema),
+    productIds: s.m(Sury.array(ProductId$CatalogSpec.schema)),
     lines: s.m(Sury.array(orderLineSchema)),
     total: s.m(Money$Reventless.schema),
     shippingMethod: s.m(shippingMethodSchema),
@@ -42,15 +45,15 @@ let consumedEventSchema = Sury.union([
   })),
   Sury.$schema(s => ({
     TAG: "OrderShipped",
-    orderId: s.m(Sury.string)
+    orderId: s.m(OrderId$OrderingPlugin.schema)
   })),
   Sury.$schema(s => ({
     TAG: "OrderCancelled",
-    orderId: s.m(Sury.string)
+    orderId: s.m(OrderId$OrderingPlugin.schema)
   })),
   Sury.$schema(s => ({
     TAG: "OrderReopened",
-    orderId: s.m(Sury.string)
+    orderId: s.m(OrderId$OrderingPlugin.schema)
   }))
 ]);
 
@@ -61,9 +64,9 @@ let lifecycleSchema = Sury.union([
 ]);
 
 let stateSchema = Sury.$schema(s => ({
-  orderId: s.m(Sury.string),
-  customerId: s.m(Owner$Reventless.string),
-  productIds: s.m(Sury.array(Sury.string)),
+  orderId: s.m(OrderId$OrderingPlugin.schema),
+  customerId: s.m(Owner$Reventless.mark(CustomerId$OrderingPlugin.schema)),
+  productIds: s.m(Sury.array(ProductId$CatalogSpec.schema)),
   placedAt: s.m(DateTime$Reventless.schema),
   trail: s.m(Lifecycle$Reventless.Trail.schema(lifecycleSchema)),
   lines: s.m(Sury.array(orderLineSchema)),
@@ -136,13 +139,13 @@ let visibility = "Public";
 export {
   name,
   Id,
+  Key,
   catalogProductImage,
   shippingMethodSchema,
   orderLineSchema,
   consumedEventSchema,
   lifecycleSchema,
   config,
-  Key,
   subIdConfig,
   stateSchema$2 as stateSchema,
   moduleUrl,

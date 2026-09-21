@@ -15,7 +15,7 @@ type consumedEvent =
 type command =
   | @authorize(AllowGroups(["Admin", "Merchandiser"]))
   ChangeProductName({
-      productId: string,
+      productId: CatalogSpec.ProductId.t,
       name: string,
     })
 
@@ -25,7 +25,7 @@ type error =
   | ProductIsDiscontinued
 
 @schema
-type event = ProductNameChanged({productId: string, name: string})
+type event = ProductNameChanged({productId: CatalogSpec.ProductId.t, name: string})
 
 // Legal on a listed product and on an archived one — correcting a name while a
 // product is off the shelf is exactly when it wants correcting. Not legal on a

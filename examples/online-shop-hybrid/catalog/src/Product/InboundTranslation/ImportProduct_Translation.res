@@ -25,11 +25,11 @@ let translate = (input: externalInput) =>
         (
           input.sku,
           AddProduct({
-            productId: input.sku,
+            productId: CatalogSpec.ProductId.makeFromString(input.sku),
             name: input.title,
             description: input.desc,
             price: Reventless.Money.make(~amount=Int.toFloat(input.unitPrice), ~currency),
-            categoryId: input.category,
+            categoryId: CategoryId.makeFromString(input.category),
           }),
         ),
       ])

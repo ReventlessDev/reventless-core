@@ -1,5 +1,7 @@
 @@reventless.gwt
 
+let cid = CustomerId.make
+
 // The challenge ledger. What it owns is one secret at a time: issue it, count
 // wrong answers against it, settle it once, and let it lapse on its own.
 //
@@ -15,7 +17,7 @@ let nextDay = "2026-09-11T09:00:01.000Z"
 // produced and consumed types carry the same constructors.
 let openChallenge: array<consumedEvent> = [
   EmailChallengeIssued({
-    customerId: "c1",
+    customerId: cid("c1"),
     email: "alice@x.y",
     purpose: "ContactChange",
     proofHash: "hash-of-the-secret",
@@ -24,10 +26,10 @@ let openChallenge: array<consumedEvent> = [
 ]
 
 let settled: array<consumedEvent> =
-  openChallenge->Array.concat([EmailProofAccepted({customerId: "c1", email: "alice@x.y"})])
+  openChallenge->Array.concat([EmailProofAccepted({customerId: cid("c1"), email: "alice@x.y"})])
 
 let wrongOnce: consumedEvent = EmailProofRefused({
-  customerId: "c1",
+  customerId: cid("c1"),
   email: "alice@x.y",
   reason: "ProofMismatch",
 })
@@ -37,7 +39,7 @@ describe("EmailVerificationChallenges StateChangeSlice", () => {
     givenEvents([])
     ->whenCmd(
       IssueEmailChallenge({
-        customerId: "c1",
+        customerId: cid("c1"),
         email: "alice@x.y",
         purpose: "ContactChange",
         proofHash: "hash-of-the-secret",
@@ -46,7 +48,7 @@ describe("EmailVerificationChallenges StateChangeSlice", () => {
     )
     ->thenEvent(
       EmailChallengeIssued({
-        customerId: "c1",
+        customerId: cid("c1"),
         email: "alice@x.y",
         purpose: "ContactChange",
         proofHash: "hash-of-the-secret",
@@ -62,7 +64,7 @@ describe("EmailVerificationChallenges StateChangeSlice", () => {
     givenEvents(openChallenge)
     ->whenCmd(
       IssueEmailChallenge({
-        customerId: "c1",
+        customerId: cid("c1"),
         email: "alice@x.y",
         purpose: "ContactChange",
         proofHash: "a-different-secret",
@@ -76,13 +78,13 @@ describe("EmailVerificationChallenges StateChangeSlice", () => {
     givenEvents(openChallenge)
     ->whenCmd(
       SubmitEmailProof({
-        customerId: "c1",
+        customerId: cid("c1"),
         email: "alice@x.y",
         proofHash: "hash-of-the-secret",
         presentedAt: soonAfter,
       }),
     )
-    ->thenEvent(EmailProofAccepted({customerId: "c1", email: "alice@x.y"}))
+    ->thenEvent(EmailProofAccepted({customerId: cid("c1"), email: "alice@x.y"}))
   )
 
   // Recorded rather than returned, so the attempt is counted. A refusal that came
@@ -91,26 +93,30 @@ describe("EmailVerificationChallenges StateChangeSlice", () => {
     givenEvents(openChallenge)
     ->whenCmd(
       SubmitEmailProof({
-        customerId: "c1",
+        customerId: cid("c1"),
         email: "alice@x.y",
         proofHash: "wrong",
         presentedAt: soonAfter,
       }),
     )
-    ->thenEvent(EmailProofRefused({customerId: "c1", email: "alice@x.y", reason: "ProofMismatch"}))
+    ->thenEvent(
+      EmailProofRefused({customerId: cid("c1"), email: "alice@x.y", reason: "ProofMismatch"}),
+    )
   )
 
   test("a settled challenge settles once", () =>
     givenEvents(settled)
     ->whenCmd(
       SubmitEmailProof({
-        customerId: "c1",
+        customerId: cid("c1"),
         email: "alice@x.y",
         proofHash: "hash-of-the-secret",
         presentedAt: soonAfter,
       }),
     )
-    ->thenEvent(EmailProofRefused({customerId: "c1", email: "alice@x.y", reason: "AlreadySettled"}))
+    ->thenEvent(
+      EmailProofRefused({customerId: cid("c1"), email: "alice@x.y", reason: "AlreadySettled"}),
+    )
   )
 
   // Expiry is decided here, when the proof arrives, against the instant the
@@ -119,14 +125,14 @@ describe("EmailVerificationChallenges StateChangeSlice", () => {
     givenEvents(openChallenge)
     ->whenCmd(
       SubmitEmailProof({
-        customerId: "c1",
+        customerId: cid("c1"),
         email: "alice@x.y",
         proofHash: "hash-of-the-secret",
         presentedAt: nextDay,
       }),
     )
     ->thenEvent(
-      EmailProofRefused({customerId: "c1", email: "alice@x.y", reason: "ChallengeExpired"}),
+      EmailProofRefused({customerId: cid("c1"), email: "alice@x.y", reason: "ChallengeExpired"}),
     )
   )
 
@@ -138,14 +144,14 @@ describe("EmailVerificationChallenges StateChangeSlice", () => {
     )
     ->whenCmd(
       SubmitEmailProof({
-        customerId: "c1",
+        customerId: cid("c1"),
         email: "alice@x.y",
         proofHash: "hash-of-the-secret",
         presentedAt: soonAfter,
       }),
     )
     ->thenEvent(
-      EmailProofRefused({customerId: "c1", email: "alice@x.y", reason: "AttemptsExhausted"}),
+      EmailProofRefused({customerId: cid("c1"), email: "alice@x.y", reason: "AttemptsExhausted"}),
     )
   )
 
@@ -155,7 +161,7 @@ describe("EmailVerificationChallenges StateChangeSlice", () => {
     givenEvents([])
     ->whenCmd(
       SubmitEmailProof({
-        customerId: "c1",
+        customerId: cid("c1"),
         email: "alice@x.y",
         proofHash: "hash-of-the-secret",
         presentedAt: soonAfter,

@@ -3,6 +3,10 @@
 import * as Pervasives from "@rescript/runtime/lib/es6/Pervasives.js";
 import * as Currency$Reventless from "@reventlessdev/reventless-spec/src/semantic/Currency.res.mjs";
 import * as Seed$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed.res.mjs";
+import * as ProductId$CatalogSpec from "@reventlessdev/online-shop-hybrid-catalog-spec/src/ProductId.res.mjs";
+import * as OrderId$OrderingPlugin from "@reventlessdev/online-shop-hybrid-ordering/src/Order/OrderId.res.mjs";
+import * as CategoryId$CatalogPlugin from "@reventlessdev/online-shop-hybrid-catalog/src/Category/CategoryId.res.mjs";
+import * as CustomerId$OrderingPlugin from "@reventlessdev/online-shop-hybrid-ordering/src/Customer/CustomerId.res.mjs";
 
 function catalog(name) {
   return `Catalog_` + name;
@@ -56,13 +60,41 @@ function dateRange(r) {
   };
 }
 
+function categoryIdArg(id) {
+  return {
+    TAG: "Id",
+    _0: CategoryId$CatalogPlugin.toString(id)
+  };
+}
+
+function productIdArg(id) {
+  return {
+    TAG: "Id",
+    _0: ProductId$CatalogSpec.toString(id)
+  };
+}
+
+function orderIdArg(id) {
+  return {
+    TAG: "Id",
+    _0: OrderId$OrderingPlugin.toString(id)
+  };
+}
+
+function customerIdArg(id) {
+  return {
+    TAG: "Id",
+    _0: CustomerId$OrderingPlugin.toString(id)
+  };
+}
+
 function addCategory(command) {
   return Seed$ReventlessSeed.mutation(`Catalog_` + "AddCategory", [
     [
       "categoryId",
       {
         TAG: "Id",
-        _0: command.categoryId
+        _0: CategoryId$CatalogPlugin.toString(command.categoryId)
       }
     ],
     [
@@ -84,7 +116,7 @@ function categoryImages(command) {
           "categoryId",
           {
             TAG: "Id",
-            _0: command.categoryId
+            _0: CategoryId$CatalogPlugin.toString(command.categoryId)
           }
         ],
         [
@@ -122,7 +154,7 @@ function productImages(command) {
           "productId",
           {
             TAG: "Id",
-            _0: command.productId
+            _0: ProductId$CatalogSpec.toString(command.productId)
           }
         ],
         [
@@ -153,7 +185,7 @@ function productImages(command) {
           "productId",
           {
             TAG: "Id",
-            _0: command.productId
+            _0: ProductId$CatalogSpec.toString(command.productId)
           }
         ],
         [
@@ -170,7 +202,7 @@ function productImages(command) {
           "productId",
           {
             TAG: "Id",
-            _0: command.productId
+            _0: ProductId$CatalogSpec.toString(command.productId)
           }
         ],
         [
@@ -197,7 +229,7 @@ function renameCategory(command) {
       "categoryId",
       {
         TAG: "Id",
-        _0: command.categoryId
+        _0: CategoryId$CatalogPlugin.toString(command.categoryId)
       }
     ],
     [
@@ -215,7 +247,7 @@ function archiveCategory(command) {
       "categoryId",
       {
         TAG: "Id",
-        _0: command.categoryId
+        _0: CategoryId$CatalogPlugin.toString(command.categoryId)
       }
     ]]);
 }
@@ -225,7 +257,7 @@ function archiveProduct(command) {
       "productId",
       {
         TAG: "Id",
-        _0: command.productId
+        _0: ProductId$CatalogSpec.toString(command.productId)
       }
     ]]);
 }
@@ -235,7 +267,7 @@ function discontinueProduct(command) {
       "productId",
       {
         TAG: "Id",
-        _0: command.productId
+        _0: ProductId$CatalogSpec.toString(command.productId)
       }
     ]]);
 }
@@ -246,7 +278,7 @@ function addProduct(command) {
       "productId",
       {
         TAG: "Id",
-        _0: command.productId
+        _0: ProductId$CatalogSpec.toString(command.productId)
       }
     ],
     [
@@ -271,7 +303,7 @@ function addProduct(command) {
       "categoryId",
       {
         TAG: "Id",
-        _0: command.categoryId
+        _0: CategoryId$CatalogPlugin.toString(command.categoryId)
       }
     ]
   ]);
@@ -283,7 +315,7 @@ function changeProductPrice(command) {
       "productId",
       {
         TAG: "Id",
-        _0: command.productId
+        _0: ProductId$CatalogSpec.toString(command.productId)
       }
     ],
     [
@@ -299,7 +331,7 @@ function changeProductDescription(command) {
       "productId",
       {
         TAG: "Id",
-        _0: command.productId
+        _0: ProductId$CatalogSpec.toString(command.productId)
       }
     ],
     [
@@ -386,14 +418,14 @@ function placeOrder(command) {
       "orderId",
       {
         TAG: "Id",
-        _0: command.orderId
+        _0: OrderId$OrderingPlugin.toString(command.orderId)
       }
     ],
     [
       "customerId",
       {
         TAG: "Id",
-        _0: command.customerId
+        _0: CustomerId$OrderingPlugin.toString(command.customerId)
       }
     ],
     [
@@ -407,7 +439,7 @@ function placeOrder(command) {
               "productId",
               {
                 TAG: "Id",
-                _0: param.productId
+                _0: ProductId$CatalogSpec.toString(param.productId)
               }
             ],
             [
@@ -437,7 +469,7 @@ function shipOrder(command) {
       "orderId",
       {
         TAG: "Id",
-        _0: command.orderId
+        _0: OrderId$OrderingPlugin.toString(command.orderId)
       }
     ]]);
 }
@@ -448,7 +480,7 @@ function cancelOrder(command) {
         "orderId",
         {
           TAG: "Id",
-          _0: command.orderId
+          _0: OrderId$OrderingPlugin.toString(command.orderId)
         }
       ]]);
   }
@@ -591,6 +623,10 @@ export {
   ordering,
   money,
   dateRange,
+  categoryIdArg,
+  productIdArg,
+  orderIdArg,
+  customerIdArg,
   addCategory,
   categoryImages,
   productImages,

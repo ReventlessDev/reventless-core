@@ -21,11 +21,11 @@ type externalInput = {
 type command =
   | @authorize(AllowGroups(["Admin", "Merchandiser"]))
   AddProduct({
-      productId: string,
+      productId: CatalogSpec.ProductId.t,
       name: string,
       description: string,
       price: Reventless.Money.t,
-      categoryId: string,
+      categoryId: CategoryId.t,
     })
 
 let targetName = "AddProduct"

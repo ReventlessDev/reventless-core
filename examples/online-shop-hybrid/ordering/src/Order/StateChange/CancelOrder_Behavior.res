@@ -9,7 +9,7 @@ type lifecycle =
   | Shipped
   | Cancelled
 
-type state = {lifecycle: lifecycle, productIds: array<string>}
+type state = {lifecycle: lifecycle, productIds: array<CatalogSpec.ProductId.t>}
 
 let initialState = {lifecycle: NotPlaced, productIds: []}
 

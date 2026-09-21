@@ -4,11 +4,13 @@ import * as Sury from "sury";
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Projection$Reventless from "@reventlessdev/reventless-spec/src/types/Projection.res.mjs";
+import * as OrderId$OrderingPlugin from "../../Order/OrderId.res.mjs";
 import * as Customer$OrderingPlugin from "../Aggregate/Customer.res.mjs";
 import * as Customers$OrderingPlugin from "./Customers.res.mjs";
+import * as CustomerId$OrderingPlugin from "../CustomerId.res.mjs";
 
 let M = Projection$Reventless.Mappings.Make({
-  Id: Id$Reventless.$$String,
+  Id: CustomerId$OrderingPlugin,
   name: Customers$OrderingPlugin.name,
   stateSchema: Customers$OrderingPlugin.stateSchema,
   subIdConfig: undefined
@@ -18,8 +20,8 @@ let name = "OrderingDcbEventLog";
 
 let eventSchema = Sury.$schema(s => ({
   TAG: "OrderPlaced",
-  orderId: s.m(DcbTag$Reventless.string),
-  customerId: s.m(DcbTag$Reventless.string)
+  orderId: s.m(DcbTag$Reventless.mark(OrderId$OrderingPlugin.schema)),
+  customerId: s.m(DcbTag$Reventless.mark(CustomerId$OrderingPlugin.schema))
 }));
 
 let OrderEvents = {
@@ -62,7 +64,7 @@ function project(param) {
         TAG: "UpdateWithDefault",
         _0: id,
         _1: {
-          customerId: Id$Reventless.$$String.toString(id),
+          customerId: id,
           email: email,
           address: address,
           geolocation: {
@@ -166,11 +168,11 @@ function project(param) {
 }
 
 let CustomerMapping = Projection$Reventless.Mapping.Make({
-  Id: Id$Reventless.$$String,
+  Id: CustomerId$OrderingPlugin,
   name: Customer$OrderingPlugin.name,
   eventSchema: Customer$OrderingPlugin.eventSchema
 })({
-  Id: Id$Reventless.$$String,
+  Id: CustomerId$OrderingPlugin,
   name: Customers$OrderingPlugin.name,
   stateSchema: Customers$OrderingPlugin.stateSchema,
   subIdConfig: undefined
@@ -182,7 +184,7 @@ function project$1(param) {
   let customerId = param.event.customerId;
   return {
     TAG: "UpdateWithDefault",
-    _0: Id$Reventless.$$String.makeFromString(customerId),
+    _0: customerId,
     _1: {
       customerId: customerId,
       email: "",
@@ -208,7 +210,7 @@ let CustomerOrdersMapping = Projection$Reventless.Mapping.Make({
   name: name,
   eventSchema: eventSchema
 })({
-  Id: Id$Reventless.$$String,
+  Id: CustomerId$OrderingPlugin,
   name: Customers$OrderingPlugin.name,
   stateSchema: Customers$OrderingPlugin.stateSchema,
   subIdConfig: undefined

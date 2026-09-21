@@ -5,16 +5,16 @@
 
 @schema
 type consumedEvent =
-  | OrderPlaced({productIds: array<string>})
+  | OrderPlaced({productIds: array<CatalogSpec.ProductId.t>})
   | OrderShipped
   | OrderCancelled
   | OrderReopened
 
 @schema
 type command =
-  | CancelOrder({orderId: string})
+  | CancelOrder({orderId: OrderId.t})
   // Internal: admin/automation only.
-  | @noApi ReopenOrder({orderId: string})
+  | @noApi ReopenOrder({orderId: OrderId.t})
 
 @schema
 type error =
@@ -23,8 +23,8 @@ type error =
 
 @schema
 type event =
-  | OrderCancelled({orderId: string, productIds: array<string>})
-  | OrderReopened({orderId: string})
+  | OrderCancelled({orderId: OrderId.t, productIds: array<CatalogSpec.ProductId.t>})
+  | OrderReopened({orderId: OrderId.t})
 
 // `ReopenOrder` is the way back out of `Cancelled`, and a real edge of the
 // lifecycle — being unreachable from the API does not make it less of one, and

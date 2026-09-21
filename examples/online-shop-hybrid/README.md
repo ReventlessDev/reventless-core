@@ -38,6 +38,14 @@ trait's conformance suite. Likewise the catalog's `ProductImages` and `CategoryI
 slices are grafts of `@reventlessdev/trait-attachments` (`traits/attachments`),
 each bound to its suite in `catalog/tests/*/…Conformance_GWT.res`.
 
+Every entity's id has its own type, so passing an order id where a customer id is
+expected does not compile: `CategoryId` and `ProductId` (in `catalog-spec`, because
+Ordering keys its copy of the catalog by it), `OrderId` and `CustomerId`. The
+`ordering-spec` contract, catalog's record of which orders named a product, and the
+notification graft's recipients stay plain strings, because nothing on the other side
+has the type. See [Id](../../packages/doc/docs-app/common-modules/Id.md) and
+[Identities](../../packages/doc/docs-app/dcb-usage.md#identities-one-type-per-id).
+
 ## Run it locally
 
 On a fresh clone, bootstrap once from the **repo root** (creates the workspace

@@ -25,11 +25,14 @@ module Rule = TraitNotification.Notification_Rule
 
 @@reventless.gwt
 
+let oid = OrderId.make
+let cid = CustomerId.make
+
 // One row of the shape every rule's paths read, so a rule nobody wrote a
 // scenario for is still checked.
 let sample =
   (
-    {ruleId: "confirm", recipientId: "c1", orderId: "o1"}: NotificationIntake.todoItem
+    {ruleId: "confirm", recipientId: "c1", orderId: oid("o1")}: NotificationIntake.todoItem
   )->Reventless.Util_Sury.toJson(NotificationIntake.todoItemSchema)
 
 describe("NotificationIntake AutomationSlice", () => {
@@ -77,17 +80,17 @@ describe("NotificationIntake AutomationSlice", () => {
   })
 
   test("collect: a placed order becomes one todo, keyed by its rule and the order", () =>
-    givenEvent(OrderPlaced({orderId: "o1", customerId: "c1"}))
+    givenEvent(OrderPlaced({orderId: oid("o1"), customerId: cid("c1")}))
     ->whenCollect
-    ->thenTodos([("confirm:o1", {ruleId: "confirm", recipientId: "c1", orderId: "o1"})])
+    ->thenTodos([("confirm:o1", {ruleId: "confirm", recipientId: "c1", orderId: oid("o1")})])
   )
 
   // The reference is the row key of the delivery view, the TODO id here, and how
   // that row is resolved — so two occurrences of one order must be two keys.
   test("collect: a shipped order is a second todo under a second key", () =>
-    givenEvent(OrderShipped({orderId: "o1", customerId: "c1"}))
+    givenEvent(OrderShipped({orderId: oid("o1"), customerId: cid("c1")}))
     ->whenCollect
-    ->thenTodos([("ship:o1", {ruleId: "ship", recipientId: "c1", orderId: "o1"})])
+    ->thenTodos([("ship:o1", {ruleId: "ship", recipientId: "c1", orderId: oid("o1")})])
   )
 
   test("collect: an outcome is not an occurrence", () =>
@@ -103,7 +106,7 @@ describe("NotificationIntake AutomationSlice", () => {
   // The wording is rendered from the rule's template, so this is also the
   // assertion that `{{ orderId }}` reaches the sentence.
   test("process: the confirmation says what the table says it says", () =>
-    givenTodo("confirm:o1", {ruleId: "confirm", recipientId: "c1", orderId: "o1"})
+    givenTodo("confirm:o1", {ruleId: "confirm", recipientId: "c1", orderId: oid("o1")})
     ->whenProcess
     ->thenCommand(
       "c1",
@@ -125,7 +128,7 @@ describe("NotificationIntake AutomationSlice", () => {
   // between them falls back to the first kind declared. This rule's kind is not
   // that one, so a mistyped key shows up here rather than in production.
   test("process: the shipping update earns its own kind and its own source", () =>
-    givenTodo("ship:o1", {ruleId: "ship", recipientId: "c1", orderId: "o1"})
+    givenTodo("ship:o1", {ruleId: "ship", recipientId: "c1", orderId: oid("o1")})
     ->whenProcess
     ->thenCommand(
       "c1",
@@ -147,7 +150,7 @@ describe("NotificationIntake AutomationSlice", () => {
   // from, so nothing is published — and the row stays Pending, since a `None`
   // from `process` spends no retry budget.
   test("process: a row naming a rule this build no longer has publishes nothing", () =>
-    givenTodo("gone:o1", {ruleId: "gone", recipientId: "c1", orderId: "o1"})
+    givenTodo("gone:o1", {ruleId: "gone", recipientId: "c1", orderId: oid("o1")})
     ->whenProcess
     ->thenNoCommand
   )

@@ -15,7 +15,7 @@ type consumedEvent =
 type command =
   | @authorize(AllowGroups(["Admin", "Merchandiser"]))
   ChangeProductDescription({
-      productId: string,
+      productId: CatalogSpec.ProductId.t,
       description: string,
     })
 
@@ -25,7 +25,7 @@ type error =
   | ProductIsDiscontinued
 
 @schema
-type event = ProductDescriptionChanged({productId: string, description: string})
+type event = ProductDescriptionChanged({productId: CatalogSpec.ProductId.t, description: string})
 
 // Legal while the product is on the shelf and while it is archived; refused once
 // it is discontinued, which is terminal.

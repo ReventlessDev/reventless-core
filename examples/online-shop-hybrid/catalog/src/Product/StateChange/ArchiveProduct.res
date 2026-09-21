@@ -15,7 +15,10 @@ type consumedEvent =
 
 @schema
 type command =
-  | @authorize(AllowGroups(["Admin", "Merchandiser"])) ArchiveProduct({productId: string})
+  | @authorize(AllowGroups(["Admin", "Merchandiser"]))
+  ArchiveProduct({
+      productId: CatalogSpec.ProductId.t,
+    })
 
 // Refused rather than idempotent: `Discontinued` is terminal, and archiving out
 // of it would quietly make it reversible — the one thing the second state exists
@@ -24,7 +27,7 @@ type command =
 type error = ProductNotFound | ProductIsDiscontinued
 
 @schema
-type event = ProductArchived({productId: string})
+type event = ProductArchived({productId: CatalogSpec.ProductId.t})
 
 // The lifecycle edge, over the view's own constructors: meaningful only on a
 // product still on the shelf, and it lands one in `Archived`. Same field the

@@ -9,6 +9,9 @@ module ImportProductSlice = {
 
 @@reventless.gwt
 
+let pid = CatalogSpec.ProductId.make
+let cid = CategoryId.make
+
 // The feed sends minor units already, so these expectations are written the same
 // way — `make`, not `ofMajor`. Nothing is scaled at this boundary, which is the
 // point: the supplier's `unitPrice` and the domain's `amount` are the same number.
@@ -26,11 +29,11 @@ describe("ImportProduct InboundTranslationSlice", () => {
     })->thenCommand(
       "p-1",
       AddProduct({
-        productId: "p-1",
+        productId: pid("p-1"),
         name: "Laptop",
         description: "high-end",
         price: money(99999.0, USD),
-        categoryId: "cat1",
+        categoryId: cid("cat1"),
       }),
     )
   )
@@ -50,11 +53,11 @@ describe("ImportProduct InboundTranslationSlice", () => {
     })->thenCommand(
       "p-2",
       AddProduct({
-        productId: "p-2",
+        productId: pid("p-2"),
         name: "Buch",
         description: "gut",
         price: money(1999.0, EUR),
-        categoryId: "cat1",
+        categoryId: cid("cat1"),
       }),
     )
   )
@@ -73,11 +76,11 @@ describe("ImportProduct InboundTranslationSlice", () => {
     })->thenCommand(
       "p-3",
       AddProduct({
-        productId: "p-3",
+        productId: pid("p-3"),
         name: "ノート",
         description: "x",
         price: money(1200.0, JPY),
-        categoryId: "cat1",
+        categoryId: cid("cat1"),
       }),
     )
   )

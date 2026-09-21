@@ -555,3 +555,42 @@ predated this work. The event mapper awaited the `Ship` it issued from inside it
 subscriber, and `Shipped` could not finish publishing until that subscriber dequeued it. The
 local mapper now detaches the publish, as the automation slice already did
 (`AggregateSelfMappingTest` holds it).
+
+## Churn: the hybrid example (2026-09-21)
+
+What adopting identities cost `online-shop-hybrid`, the example with traits, seed data and a
+deployed UI:
+
+- **Declarations:** the same 4 identity files as the other examples, `module Key` on 5
+  StateViewSlices, `module Id = CustomerId` on the `Customer` aggregate and the `Customers`
+  read model.
+- **Source:** 21 conversions, again all at string-routed seams: the two extension-point
+  mappings (routing ids, the untyped `ordering-spec` contract, a telemetry line), catalog's
+  extension and the supplier import (`makeFromString`), the auto-ship to-do keys, the
+  email-verification report, and `NotificationIntake`, where a customer becomes the trait's
+  string `recipientId`. `Customers` lost 2, now that its rows are keyed by the identity.
+  `ProductsNotAvailable.missing` and `PlaceOrder`'s shelf are typed rather than converted.
+- **Traits:** the attachments emitter takes an optional `entityIdType` and writes typed ids
+  with it. The identity check reads every StateChange slice, so `ProductImages` and
+  `CategoryImages` had to move with their plugins. The geocoding emitter needed nothing:
+  an outbound slice receives its source id as a string.
+- **Seed:** 4 helpers where typed ids become GraphQL arguments, and about 25 `make` calls
+  where authored string data enters a command.
+- **Tests:** 36 files; typed literals bound once per file, as before. Tests of the untyped
+  contracts and of outbound items keep their strings.
+- **References:** 44 derived where there were 2 declared. `AddProduct` drops its `@ref`;
+  `PlaceOrder`'s line-item `@ref` stays, because a reference is derived only on a top-level
+  field. Catalog's `productId` derives none: `Products` and `ProductDemand` are both keyed by
+  it, which is reported once per plugin, as in the DCB example.
+- **Unchanged:** the SDL, `dcb-scope.json`, the lifecycle model, both `Plugin.res`, and the
+  stored form of every event (checked on the SQLite backend after a full seed).
+- **Left as strings, deliberately:** catalog's `orderId`, the `ordering-spec` contract, the
+  notification trait's `recipientId` / `sourceId` / `ruleId`, and the outbound items.
+
+**Found here, and fixed:** a derived reference on the id a creating command mints.
+`AddCategory.categoryId` referenced `Categories` and `PlaceOrder.orderId` referenced
+`Orders`. AutoUI uses a command's references in place of its naming heuristic, and only the
+heuristic knew that a Collection command's own id is minted rather than chosen, so both
+create forms would have offered a list of existing rows for the new id. The DCB example had
+the same derivation. `Plugin_Structure` now derives nothing for a Collection command's
+`aggregateIdField`; a declared `@ref` there still stands.

@@ -15,8 +15,8 @@ module OrderingDcbSource = {
 
   @schema
   type event =
-    | OrderPlaced({orderId: string, shippingMethod: shippingMethod})
-    | OrderShipped({orderId: string})
+    | OrderPlaced({orderId: OrderId.t, shippingMethod: shippingMethod})
+    | OrderShipped({orderId: OrderId.t})
 }
 
 module FromOrderingDcb = Mapping.Make(
@@ -31,8 +31,9 @@ module FromOrderingDcb = Mapping.Make(
     // todo view would show a backlog that is never worked off.
     let collect = (event, ~sourceId as _, _ctx) =>
       switch event {
+      // To-do rows are keyed by string; the item keeps the typed id.
       | OrderPlaced({orderId, shippingMethod: Express}) => [
-          (orderId, ({orderId: orderId}: AutoShipOrder.todoItem)),
+          (orderId->OrderId.toString, ({orderId: orderId}: AutoShipOrder.todoItem)),
         ]
       | OrderPlaced(_) => []
       | OrderShipped(_) => []
@@ -40,7 +41,7 @@ module FromOrderingDcb = Mapping.Make(
 
     let resolve = event =>
       switch event {
-      | OrderShipped({orderId}) => Some(orderId)
+      | OrderShipped({orderId}) => Some(orderId->OrderId.toString)
       | OrderPlaced(_) => None
       }
   },
@@ -48,7 +49,7 @@ module FromOrderingDcb = Mapping.Make(
 
 let mappings: array<module(Mapping)> = [module(FromOrderingDcb)]
 
-let process = (id, _item) => Some((id, ShipOrder({orderId: id})))
+let process = (id, item: AutoShipOrder.todoItem) => Some((id, ShipOrder({orderId: item.orderId})))
 
 // Nothing to say: an order the shipping automation gave up on is a Placed order
 // that never shipped, which the Orders view already shows. A command here would

@@ -1,3 +1,6 @@
+let oid = OrderId.make
+let cid = CustomerId.make
+
 // `MultiSourceProjection_GWT.Make` is single-source, so one GWT module per source
 // mapping. At runtime the two merge on `customerId`; here each is tested alone.
 
@@ -13,7 +16,7 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
     CustomerGwt.givenEvents([])
     ->CustomerGwt.whenEvent(Customer.Registered({email: "alice@x.y", address: "123 Main"}))
     ->CustomerGwt.thenState({
-      Customers.customerId: "id",
+      Customers.customerId: cid("id"),
       email: "alice@x.y",
       address: "123 Main",
       geolocation: Pending({requestedFor: "123 Main"}),
@@ -27,7 +30,7 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
     CustomerGwt.givenEvents([Customer.Registered({email: "alice@x.y", address: "123 Main"})])
     ->CustomerGwt.whenEvent(Customer.EmailUpdated({email: "alice2@x.y"}))
     ->CustomerGwt.thenState({
-      Customers.customerId: "id",
+      Customers.customerId: cid("id"),
       email: "alice2@x.y",
       address: "123 Main",
       geolocation: Pending({requestedFor: "123 Main"}),
@@ -41,7 +44,7 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
     CustomerGwt.givenEvents([Customer.Registered({email: "alice@x.y", address: "123 Main"})])
     ->CustomerGwt.whenEvent(Customer.EmailVerified({email: "alice@x.y"}))
     ->CustomerGwt.thenState({
-      Customers.customerId: "id",
+      Customers.customerId: cid("id"),
       email: "alice@x.y",
       address: "123 Main",
       geolocation: Pending({requestedFor: "123 Main"}),
@@ -61,7 +64,7 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
     ])
     ->CustomerGwt.whenEvent(Customer.EmailUpdated({email: "alice2@x.y"}))
     ->CustomerGwt.thenState({
-      Customers.customerId: "id",
+      Customers.customerId: cid("id"),
       email: "alice2@x.y",
       address: "123 Main",
       geolocation: Pending({requestedFor: "123 Main"}),
@@ -75,7 +78,7 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
     CustomerGwt.givenEvents([Customer.Registered({email: "alice@x.y", address: "123 Main"})])
     ->CustomerGwt.whenEvent(Customer.AddressUpdated({address: "789 Pine"}))
     ->CustomerGwt.thenState({
-      Customers.customerId: "id",
+      Customers.customerId: cid("id"),
       email: "alice@x.y",
       address: "789 Pine",
       geolocation: Pending({requestedFor: "789 Pine"}),
@@ -91,7 +94,7 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
       Customer.LocationSet({location: {lat: 51.2093, lng: 3.2247}, resolvedFrom: "123 Main"}),
     )
     ->CustomerGwt.thenState({
-      Customers.customerId: "id",
+      Customers.customerId: cid("id"),
       email: "alice@x.y",
       address: "123 Main",
       geolocation: Located({point: {lat: 51.2093, lng: 3.2247}}),
@@ -105,7 +108,7 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
     CustomerGwt.givenEvents([Customer.Registered({email: "alice@x.y", address: "123 Main"})])
     ->CustomerGwt.whenEvent(Customer.Deactivated)
     ->CustomerGwt.thenState({
-      Customers.customerId: "id",
+      Customers.customerId: cid("id"),
       email: "alice@x.y",
       address: "123 Main",
       geolocation: Pending({requestedFor: "123 Main"}),
@@ -125,7 +128,7 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
     ])
     ->CustomerGwt.whenEvent(Customer.Reactivated)
     ->CustomerGwt.thenState({
-      Customers.customerId: "id",
+      Customers.customerId: cid("id"),
       email: "alice@x.y",
       address: "123 Main",
       geolocation: Pending({requestedFor: "123 Main"}),
@@ -140,12 +143,12 @@ OrderGwt.describe("Customers ReadModel ← Ordering DCB log", () => {
   OrderGwt.test("OrderPlaced creates a row and counts the placement", () =>
     OrderGwt.givenEvents([])
     ->OrderGwt.whenEvent(
-      Customers_Projections.OrderEvents.OrderPlaced({orderId: "o1", customerId: "c1"}),
+      Customers_Projections.OrderEvents.OrderPlaced({orderId: oid("o1"), customerId: cid("c1")}),
     )
     ->OrderGwt.thenStateWithId(
       "c1",
       {
-        Customers.customerId: "c1",
+        Customers.customerId: cid("c1"),
         email: "",
         address: "",
         geolocation: Pending({requestedFor: ""}),
@@ -158,15 +161,15 @@ OrderGwt.describe("Customers ReadModel ← Ordering DCB log", () => {
 
   OrderGwt.test("a second OrderPlaced increments orderCount", () =>
     OrderGwt.givenEvents([
-      Customers_Projections.OrderEvents.OrderPlaced({orderId: "o1", customerId: "c1"}),
+      Customers_Projections.OrderEvents.OrderPlaced({orderId: oid("o1"), customerId: cid("c1")}),
     ])
     ->OrderGwt.whenEvent(
-      Customers_Projections.OrderEvents.OrderPlaced({orderId: "o2", customerId: "c1"}),
+      Customers_Projections.OrderEvents.OrderPlaced({orderId: oid("o2"), customerId: cid("c1")}),
     )
     ->OrderGwt.thenStateWithId(
       "c1",
       {
-        Customers.customerId: "c1",
+        Customers.customerId: cid("c1"),
         email: "",
         address: "",
         geolocation: Pending({requestedFor: ""}),

@@ -2,10 +2,18 @@
 // into one public per-product event each (one-to-many fan-out).
 @@reventless.gwt
 
+let oid = OrderId.make
+let cid = CustomerId.make
+let pid = CatalogSpec.ProductId.make
+
 describe("Orders ExtensionPoint mapping — per-product fan-out", () => {
   test("OrderPlaced fans out to one ItemOrdered per product", () =>
     whenDelegateEvent(
-      Delegate.OrderPlaced({orderId: "o1", customerId: "c1", productIds: ["p1", "p2"]}),
+      Delegate.OrderPlaced({
+        orderId: oid("o1"),
+        customerId: cid("c1"),
+        productIds: [pid("p1"), pid("p2")],
+      }),
     )->thenPublishesEvents([
       ("p1", ExtensionPoint.ItemOrdered({productId: "p1", orderId: "o1", customerId: "c1"})),
       ("p2", ExtensionPoint.ItemOrdered({productId: "p2", orderId: "o1", customerId: "c1"})),
@@ -14,7 +22,7 @@ describe("Orders ExtensionPoint mapping — per-product fan-out", () => {
 
   test("OrderCancelled fans out to one ItemOrderCancelled per product", () =>
     whenDelegateEvent(
-      Delegate.OrderCancelled({orderId: "o1", productIds: ["p1", "p2"]}),
+      Delegate.OrderCancelled({orderId: oid("o1"), productIds: [pid("p1"), pid("p2")]}),
     )->thenPublishesEvents([
       ("p1", ExtensionPoint.ItemOrderCancelled({productId: "p1", orderId: "o1"})),
       ("p2", ExtensionPoint.ItemOrderCancelled({productId: "p2", orderId: "o1"})),

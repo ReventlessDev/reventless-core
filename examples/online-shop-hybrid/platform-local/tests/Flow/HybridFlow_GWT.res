@@ -14,6 +14,11 @@
 //               └─ Catalog: RecordProductDemand ─→ ProductDemandRecorded
 @@reventless.gwt
 
+let pid = CatalogSpec.ProductId.make
+let catId = CatalogPlugin.CategoryId.make
+let oid = OrderingPlugin.OrderId.make
+let custId = OrderingPlugin.CustomerId.make
+
 module Cat = CommandStep(CatalogPlugin.AddCategory, CatalogPlugin.AddCategory_Behavior)
 module Add = CommandStep(CatalogPlugin.AddProduct, CatalogPlugin.AddProduct_Behavior)
 module ProductsEp = ExtensionPointStep(CatalogPlugin.Products_ExtensionPointMapping)
@@ -41,30 +46,30 @@ describe("Hybrid cross-plugin flow", () => {
     start
     // AddProduct now verifies the category exists, so seed it into the shared log first.
     ->Cat.givenEvents([
-      CatalogPlugin.AddCategory.CategoryAdded({categoryId: "cat1", name: "Books"}),
+      CatalogPlugin.AddCategory.CategoryAdded({categoryId: catId("cat1"), name: "Books"}),
     ])
     ->Add.whenCommand(
       CatalogPlugin.AddProduct.AddProduct({
-        productId: "p1",
+        productId: pid("p1"),
         name: "Book",
         description: "A good book",
         price: eur(9.99),
-        categoryId: "cat1",
+        categoryId: catId("cat1"),
       }),
     )
     ->Add.thenEvent(
       CatalogPlugin.AddProduct.ProductAdded({
-        productId: "p1",
+        productId: pid("p1"),
         name: "Book",
         description: "A good book",
         price: eur(9.99),
-        categoryId: "cat1",
+        categoryId: catId("cat1"),
       }),
     )
     ->ProductsEp.whenPublishedThrough
     ->ProductsEp.thenPublicEvent(
       CatalogSpec.Products_ExtensionPoint.ProductBecameAvailable({
-        productId: "p1",
+        productId: pid("p1"),
         name: "Book",
         price: eur(9.99),
       }),
@@ -72,44 +77,44 @@ describe("Hybrid cross-plugin flow", () => {
     ->ProductsExt.whenExtensionReacts
     ->ProductsExt.thenIssuesCommand(
       OrderingPlugin.SyncCatalogProduct.SyncNewProduct({
-        productId: "p1",
+        productId: pid("p1"),
         name: "Book",
         price: eur(9.99),
       }),
     )
     ->Sync.whenCommand(
       OrderingPlugin.SyncCatalogProduct.SyncNewProduct({
-        productId: "p1",
+        productId: pid("p1"),
         name: "Book",
         price: eur(9.99),
       }),
     )
     ->Sync.thenEvent(
       OrderingPlugin.SyncCatalogProduct.CatalogProductSynced({
-        productId: "p1",
+        productId: pid("p1"),
         name: "Book",
         price: eur(9.99),
       }),
     )
     ->Place.whenCommand(
       OrderingPlugin.PlaceOrder.PlaceOrder({
-        orderId: "o1",
-        customerId: "c1",
-        lineItems: [{productId: "p1", quantity: 2}],
+        orderId: oid("o1"),
+        customerId: custId("c1"),
+        lineItems: [{productId: pid("p1"), quantity: 2}],
         shippingMethod: Standard,
       }),
     )
     ->Place.thenEvent(
       OrderingPlugin.PlaceOrder.OrderPlaced({
-        orderId: "o1",
-        customerId: "c1",
-        productIds: ["p1"],
+        orderId: oid("o1"),
+        customerId: custId("c1"),
+        productIds: [pid("p1")],
         // The price crossed the boundary with the name and the availability, so
         // the total is computed on the Ordering side with no read back into
         // Catalog — two of a EUR 9.99 book.
         lines: [
           {
-            productId: "p1",
+            productId: pid("p1"),
             name: "Book",
             quantity: 2,
             unitPrice: eur(9.99),
@@ -129,13 +134,13 @@ describe("Hybrid cross-plugin flow", () => {
     start
     ->Place.whenCommand(
       OrderingPlugin.PlaceOrder.PlaceOrder({
-        orderId: "o1",
-        customerId: "c1",
-        lineItems: [{productId: "p1", quantity: 1}],
+        orderId: oid("o1"),
+        customerId: custId("c1"),
+        lineItems: [{productId: pid("p1"), quantity: 1}],
         shippingMethod: Standard,
       }),
     )
-    ->Place.thenError(ProductsNotAvailable({missing: ["p1"]}))
+    ->Place.thenError(ProductsNotAvailable({missing: [pid("p1")]}))
   )
 
   test(
@@ -144,39 +149,39 @@ describe("Hybrid cross-plugin flow", () => {
       start
       ->Sync.givenEvents([
         OrderingPlugin.SyncCatalogProduct.CatalogProductSynced({
-          productId: "p1",
+          productId: pid("p1"),
           name: "Book",
           price: eur(9.99),
         }),
         OrderingPlugin.SyncCatalogProduct.CatalogProductSynced({
-          productId: "p2",
+          productId: pid("p2"),
           name: "Pen",
           price: eur(1.5),
         }),
       ])
       ->Place.whenCommand(
         OrderingPlugin.PlaceOrder.PlaceOrder({
-          orderId: "o1",
-          customerId: "c1",
-          lineItems: [{productId: "p1", quantity: 1}, {productId: "p2", quantity: 3}],
+          orderId: oid("o1"),
+          customerId: custId("c1"),
+          lineItems: [{productId: pid("p1"), quantity: 1}, {productId: pid("p2"), quantity: 3}],
           shippingMethod: Standard,
         }),
       )
       ->Place.thenEvent(
         OrderingPlugin.PlaceOrder.OrderPlaced({
-          orderId: "o1",
-          customerId: "c1",
-          productIds: ["p1", "p2"],
+          orderId: oid("o1"),
+          customerId: custId("c1"),
+          productIds: [pid("p1"), pid("p2")],
           lines: [
             {
-              productId: "p1",
+              productId: pid("p1"),
               name: "Book",
               quantity: 1,
               unitPrice: eur(9.99),
               lineTotal: eur(9.99),
             },
             {
-              productId: "p2",
+              productId: pid("p2"),
               name: "Pen",
               quantity: 3,
               unitPrice: eur(1.5),
@@ -203,14 +208,17 @@ describe("Hybrid cross-plugin flow", () => {
       ])
       ->OrdersExt.whenExtensionReacts
       ->OrdersExt.thenIssuesCommands([
-        CatalogPlugin.RecordProductDemand.RecordDemand({productId: "p1", orderId: "o1"}),
-        CatalogPlugin.RecordProductDemand.RecordDemand({productId: "p2", orderId: "o1"}),
+        CatalogPlugin.RecordProductDemand.RecordDemand({productId: pid("p1"), orderId: "o1"}),
+        CatalogPlugin.RecordProductDemand.RecordDemand({productId: pid("p2"), orderId: "o1"}),
       ])
       ->Demand.whenCommand(
-        CatalogPlugin.RecordProductDemand.RecordDemand({productId: "p1", orderId: "o1"}),
+        CatalogPlugin.RecordProductDemand.RecordDemand({productId: pid("p1"), orderId: "o1"}),
       )
       ->Demand.thenEvent(
-        CatalogPlugin.RecordProductDemand.ProductDemandRecorded({productId: "p1", orderId: "o1"}),
+        CatalogPlugin.RecordProductDemand.ProductDemandRecorded({
+          productId: pid("p1"),
+          orderId: "o1",
+        }),
       ),
   )
 

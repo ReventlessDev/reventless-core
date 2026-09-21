@@ -2,12 +2,15 @@
 
 import * as Sury from "sury";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as ProductId$CatalogSpec from "@reventlessdev/online-shop-hybrid-catalog-spec/src/ProductId.res.mjs";
+import * as OrderId$OrderingPlugin from "../OrderId.res.mjs";
+import * as CustomerId$OrderingPlugin from "../../Customer/CustomerId.res.mjs";
 
 let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "OrderPlaced",
-    productIds: s.m(Sury.array(DcbTag$Reventless.stringForKey("productId"))),
-    customerId: s.m(DcbTag$Reventless.string)
+    productIds: s.m(Sury.array(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema))),
+    customerId: s.m(DcbTag$Reventless.mark(CustomerId$OrderingPlugin.schema))
   })),
   Sury.literal("OrderShipped"),
   Sury.literal("OrderCancelled"),
@@ -16,7 +19,7 @@ let consumedEventSchema = Sury.union([
 
 let commandSchema = Sury.$schema(s => ({
   TAG: "ShipOrder",
-  orderId: s.m(DcbTag$Reventless.string)
+  orderId: s.m(DcbTag$Reventless.mark(OrderId$OrderingPlugin.schema))
 }));
 
 let errorSchema = Sury.union([
@@ -26,8 +29,8 @@ let errorSchema = Sury.union([
 
 let eventSchema = Sury.$schema(s => ({
   TAG: "OrderShipped",
-  orderId: s.m(DcbTag$Reventless.string),
-  customerId: s.m(DcbTag$Reventless.string)
+  orderId: s.m(DcbTag$Reventless.mark(OrderId$OrderingPlugin.schema)),
+  customerId: s.m(DcbTag$Reventless.mark(CustomerId$OrderingPlugin.schema))
 }));
 
 function commandTransition(command) {

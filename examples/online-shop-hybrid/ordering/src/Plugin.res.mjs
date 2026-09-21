@@ -3,9 +3,12 @@
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Orders$OrderingPlugin from "./Order/StateViewStream/Orders.res.mjs";
+import * as ProductId$CatalogSpec from "@reventlessdev/online-shop-hybrid-catalog-spec/src/ProductId.res.mjs";
+import * as OrderId$OrderingPlugin from "./Order/OrderId.res.mjs";
 import * as Customer$OrderingPlugin from "./Customer/Aggregate/Customer.res.mjs";
 import * as Customers$OrderingPlugin from "./Customer/ReadModelStream/Customers.res.mjs";
 import * as ShipOrder$OrderingPlugin from "./Order/StateChange/ShipOrder.res.mjs";
+import * as CustomerId$OrderingPlugin from "./Customer/CustomerId.res.mjs";
 import * as PlaceOrder$OrderingPlugin from "./Order/StateChange/PlaceOrder.res.mjs";
 import * as CancelOrder$OrderingPlugin from "./Order/StateChange/CancelOrder.res.mjs";
 import * as AutoShipOrder$OrderingPlugin from "./Order/Automation/AutoShipOrder.res.mjs";
@@ -223,13 +226,7 @@ function Make(Platform) {
     name: AvailableProducts$OrderingPlugin.name,
     moduleUrl: AvailableProducts$OrderingPlugin.moduleUrl,
     stateSchema: AvailableProducts$OrderingPlugin.stateSchema,
-    Key: {
-      schema: Id$Reventless.StringPure.schema,
-      make: prim => prim,
-      makeFromString: prim => prim,
-      toString: prim => prim,
-      cmp: Id$Reventless.StringPure.cmp
-    },
+    Key: ProductId$CatalogSpec,
     consumedEventSchema: AvailableProducts$OrderingPlugin.consumedEventSchema,
     config: AvailableProducts$OrderingPlugin.config,
     subIdConfig: undefined,
@@ -283,13 +280,7 @@ function Make(Platform) {
     name: Orders$OrderingPlugin.name,
     moduleUrl: Orders$OrderingPlugin.moduleUrl,
     stateSchema: Orders$OrderingPlugin.stateSchema,
-    Key: {
-      schema: Id$Reventless.StringPure.schema,
-      make: prim => prim,
-      makeFromString: prim => prim,
-      toString: prim => prim,
-      cmp: Id$Reventless.StringPure.cmp
-    },
+    Key: OrderId$OrderingPlugin,
     consumedEventSchema: Orders$OrderingPlugin.consumedEventSchema,
     config: Orders$OrderingPlugin.config,
     subIdConfig: undefined,
@@ -404,7 +395,7 @@ function Make(Platform) {
     moduleUrl: VerifyCustomerEmail_Translation$OrderingPlugin.moduleUrl
   });
   let CustomerAggregate = Platform.Aggregate.Make({
-    Id: Id$Reventless.$$String,
+    Id: CustomerId$OrderingPlugin,
     name: Customer$OrderingPlugin.name,
     eventSchema: Customer$OrderingPlugin.eventSchema,
     errorSchema: Customer$OrderingPlugin.errorSchema,
@@ -421,11 +412,11 @@ function Make(Platform) {
     moduleUrl: Customer_Behavior$OrderingPlugin.moduleUrl
   })(NoEventMappings$ReventlessInfra.Make({
     name: Customer$OrderingPlugin.name,
-    Id: Id$Reventless.$$String,
+    Id: CustomerId$OrderingPlugin,
     commandSchema: Customer$OrderingPlugin.commandSchema
   }));
   let CustomersReadModel = Platform.ReadModelStream.Make({
-    Id: Id$Reventless.$$String,
+    Id: CustomerId$OrderingPlugin,
     name: Customers$OrderingPlugin.name,
     moduleUrl: Customers$OrderingPlugin.moduleUrl,
     stateSchema: Customers$OrderingPlugin.stateSchema,

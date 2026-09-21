@@ -3,6 +3,8 @@
 import * as Sury from "sury";
 import * as Money$Reventless from "@reventlessdev/reventless-spec/src/semantic/Money.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as ProductId$CatalogSpec from "@reventlessdev/online-shop-hybrid-catalog-spec/src/ProductId.res.mjs";
+import * as CategoryId$CatalogPlugin from "../../Category/CategoryId.res.mjs";
 
 let externalInputSchema = Sury.$schema(s => ({
   sku: s.m(Sury.string),
@@ -15,11 +17,11 @@ let externalInputSchema = Sury.$schema(s => ({
 
 let commandSchema = Sury.$schema(s => ({
   TAG: "AddProduct",
-  productId: s.m(DcbTag$Reventless.string),
+  productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
   name: s.m(Sury.string),
   description: s.m(Sury.string),
   price: s.m(Money$Reventless.schema),
-  categoryId: s.m(DcbTag$Reventless.string)
+  categoryId: s.m(DcbTag$Reventless.mark(CategoryId$CatalogPlugin.schema))
 }));
 
 function commandAuthorization(command) {

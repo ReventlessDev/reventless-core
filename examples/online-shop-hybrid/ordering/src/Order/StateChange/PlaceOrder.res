@@ -16,18 +16,29 @@
 // read or a read-model query issued out of a behaviour.
 @schema
 type consumedEvent =
-  | OrderPlaced({orderId: string})
+  | OrderPlaced({orderId: OrderId.t})
   // `name` is read as well as `productId`, so the order can record what the
   // product was called at the moment it was placed. The catalog publishes it on
   // both arms already; this slice simply stopped ignoring it.
-  | CatalogProductSynced({productId: string, name: string, price: Reventless.Money.t})
-  | CatalogProductPriceChanged({productId: string, price: Reventless.Money.t})
-  | CatalogProductWithdrawn({productId: string})
-  | CatalogProductRelisted({productId: string, name: string, price: Reventless.Money.t})
+  | CatalogProductSynced({
+      productId: CatalogSpec.ProductId.t,
+      name: string,
+      price: Reventless.Money.t,
+    })
+  | CatalogProductPriceChanged({productId: CatalogSpec.ProductId.t, price: Reventless.Money.t})
+  | CatalogProductWithdrawn({productId: CatalogSpec.ProductId.t})
+  | CatalogProductRelisted({
+      productId: CatalogSpec.ProductId.t,
+      name: string,
+      price: Reventless.Money.t,
+    })
   // The picture the shelf currently shows, folded for the same reason the name
   // is: so a placement can copy it onto the order rather than the order having
   // to ask the catalog later.
-  | CatalogProductImageChanged({productId: string, productImage?: Reventless.UploadableImage.t})
+  | CatalogProductImageChanged({
+      productId: CatalogSpec.ProductId.t,
+      productImage?: Reventless.UploadableImage.t,
+    })
 
 // Declared in the order the UI should present them: the batched default first,
 // then the expedited option, then in-store collection.
@@ -43,10 +54,12 @@ type shippingMethod =
 //
 // The framework finds the marker at this depth — the reference walk names it
 // `lineItems[].productId`, and the tag walk gives it the key `productId`, which is
-// the same tag the catalog's own events write.
+// the same tag the catalog's own events write. The `@ref` is written out although
+// the field is typed: a reference is derived from an identity only on a top-level
+// field.
 @schema
 type lineItem = {
-  @ref("AvailableProducts") productId: string,
+  @ref("AvailableProducts") productId: CatalogSpec.ProductId.t,
   // A line is for one of the thing unless the shopper says otherwise. Without
   // it a checkout seeded from a picked shelf opens each line blank.
   @default(1) quantity: int,
@@ -55,13 +68,13 @@ type lineItem = {
 @schema
 type command =
   | PlaceOrder({
-      orderId: string,
+      orderId: OrderId.t,
       // customerId is payload, not a query key — @noDcbTag stops it auto-tagging.
       // It is also the order's owner: the resolver overwrites this with the
       // authenticated caller's id before the command is published, so what a
       // client sends here is ignored rather than trusted. An operator placing an
       // order on someone's behalf is exempt and keeps the value they sent.
-      @noDcbTag @owner customerId: string,
+      @noDcbTag @owner customerId: CustomerId.t,
       lineItems: array<lineItem>,
       shippingMethod: shippingMethod,
       // A requested delivery slot, chosen at checkout. An optional field — a
@@ -75,11 +88,11 @@ type command =
 @schema
 type error =
   | OrderAlreadyPlaced
-  | ProductsNotAvailable({missing: array<string>})
+  | ProductsNotAvailable({missing: array<CatalogSpec.ProductId.t>})
   // An order for nothing is the one validation a shopper could trip before line
   // items existed: an empty product list placed an order and produced no lines.
   | OrderIsEmpty
-  | InvalidQuantity({productId: string, quantity: int})
+  | InvalidQuantity({productId: CatalogSpec.ProductId.t, quantity: int})
   // Refused rather than silently summed. `Money.add` returns a `result` for
   // exactly this case, and unwrapping it here would invent a total in whichever
   // currency happened to come first. Naming the codes says which shelf entries
@@ -98,7 +111,7 @@ type error =
 // total belongs on the event rather than in the projection.
 @schema
 type orderLine = {
-  productId: string,
+  productId: CatalogSpec.ProductId.t,
   name: string,
   quantity: int,
   unitPrice: Reventless.Money.t,
@@ -108,14 +121,14 @@ type orderLine = {
 @schema
 type event =
   | OrderPlaced({
-      orderId: string,
-      customerId: string,
+      orderId: OrderId.t,
+      customerId: CustomerId.t,
       // Redundant against `lines`, and deliberately so. The extension point
       // decomposes this into one published `ItemOrdered` per product and
       // `CancelOrder` folds it, so both keep working untouched — and the public
       // contract in `ordering-spec` does not move, which is what lets the shop
       // show quantities without redeploying Catalog in lockstep.
-      productIds: array<string>,
+      productIds: array<CatalogSpec.ProductId.t>,
       lines: array<orderLine>,
       total: Reventless.Money.t,
       shippingMethod: shippingMethod,

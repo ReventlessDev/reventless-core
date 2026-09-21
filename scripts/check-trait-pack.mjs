@@ -73,10 +73,16 @@ const specimens = {
       {
         // A fresh entity, so the emit collides with nothing the host already owns
         // and the conformance suite runs against emitted code alone.
+        // Typed by an identity the host declares, where `Badge` below stays a
+        // string, so both branches of the id emission compile.
         args: [
-          "--entity", "Gadget", "--entityId", "gadgetId", "--noun", "Image",
-          "--file", "gadgetImage", "--created", "GadgetAdded", "--view", "Gadgets",
+          "--entity", "Gadget", "--entityId", "gadgetId", "--entityIdType", "GadgetId",
+          "--noun", "Image", "--file", "gadgetImage", "--created", "GadgetAdded",
+          "--view", "Gadgets",
         ],
+        declare: {
+          "src/Gadget/GadgetId.res": 'include Reventless.Id.Make({\n  let key = "gadgetId"\n})\n',
+        },
         into: "src/Gadget",
         tests: "tests/Gadget",
         // The suite the emitted binding registers, run against what was emitted.
@@ -235,6 +241,11 @@ for (const [traitDir, spec] of Object.entries(specimens)) {
       for (const owned of graft.remove ?? []) {
         rmSync(join(host, owned), { force: true })
         rmSync(join(host, owned.replace(/\.res$/, ".res.mjs")), { force: true })
+      }
+      // What the host already has before the graft lands, such as an identity.
+      for (const [path, contents] of Object.entries(graft.declare ?? {})) {
+        mkdirSync(dirname(join(host, path)), { recursive: true })
+        writeFileSync(join(host, path), contents)
       }
       const graftBin = join(modules, "@reventlessdev", "reventless-spec", "run-graft-trait.mjs")
       run("node", [graftBin, traitPkg.name,

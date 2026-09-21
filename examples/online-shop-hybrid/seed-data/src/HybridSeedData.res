@@ -15,6 +15,13 @@
 
 open ReventlessSeed
 
+// The plugins' identities. `DemoData` is authored as strings; they become typed
+// ids where they enter a command.
+module CategoryId = CatalogPlugin.CategoryId
+module ProductId = CatalogSpec.ProductId
+module OrderId = OrderingPlugin.OrderId
+module CustomerId = OrderingPlugin.CustomerId
+
 // Every queryable view this example exposes. `Unfillable` is not a way to
 // silence a gap — it records a view no volume of seed data can reach, with the
 // reason, so a zero is never read as a seeding miss.
@@ -60,17 +67,20 @@ let probeViews = views->Array.filterMap(v =>
 let seedCategories = async (categories: array<DemoData.category>, ~client: Seed.Client.t) => {
   await client->Seed.Client.sendAll(
     categories->Array.map(c =>
-      DemoCommands.addCategory(AddCategory({categoryId: c.id, name: c.name}))
+      DemoCommands.addCategory(AddCategory({categoryId: CategoryId.make(c.id), name: c.name}))
     ),
   )
-  let attached =
-    categories->Array.filterMap(c =>
-      c.categoryImage->Option.map(categoryImage =>
-        DemoCommands.categoryImages(
-          SetCategoryImage({categoryId: c.id, categoryImage, altText: `${c.name} banner`}),
-        )
+  let attached = categories->Array.filterMap(c =>
+    c.categoryImage->Option.map(categoryImage =>
+      DemoCommands.categoryImages(
+        SetCategoryImage({
+          categoryId: CategoryId.make(c.id),
+          categoryImage,
+          altText: `${c.name} banner`,
+        }),
       )
     )
+  )
   await client->Seed.Client.sendAll(attached)
   Seed.Runner.report(
     `categories: ${categories->Array.length->Int.toString} added, ${attached
@@ -163,11 +173,11 @@ let seedProducts = async (products: array<DemoData.product>, ~client: Seed.Clien
     products->Array.map(p =>
       DemoCommands.addProduct(
         AddProduct({
-          productId: p.id,
+          productId: ProductId.make(p.id),
           name: p.name,
           description: p.description,
           price: p.price,
-          categoryId: p.categoryId,
+          categoryId: CategoryId.make(p.categoryId),
         }),
       )
     ),
@@ -176,7 +186,7 @@ let seedProducts = async (products: array<DemoData.product>, ~client: Seed.Clien
     products->Array.filterMap(p =>
       p.productImage->Option.map(productImage =>
         DemoCommands.productImages(
-          AttachProductImage({productId: p.id, productImage, altText: p.name}),
+          AttachProductImage({productId: ProductId.make(p.id), productImage, altText: p.name}),
         )
       )
     )
@@ -200,7 +210,9 @@ let seedProductGallery = async (
 ) => {
   await client->Seed.Client.sendAll(
     extra->Array.map(((productId, productImage, altText)) =>
-      DemoCommands.productImages(AttachProductImage({productId, productImage, altText}))
+      DemoCommands.productImages(
+        AttachProductImage({productId: ProductId.make(productId), productImage, altText}),
+      )
     ),
   )
   // The primary is chosen rather than left to the first-attached fallback, so a
@@ -212,7 +224,9 @@ let seedProductGallery = async (
       productImage->String.endsWith("-v2.svg") ? Some((productId, productImage)) : None
     )
     ->Array.map(((productId, productImage)) =>
-      DemoCommands.productImages(SetPrimaryProductImage({productId, productImage}))
+      DemoCommands.productImages(
+        SetPrimaryProductImage({productId: ProductId.make(productId), productImage}),
+      )
     )
   await client->Seed.Client.sendAll(chosen)
   Seed.Runner.report(
@@ -234,11 +248,11 @@ let seedRejectedDuplicate = async (products: array<DemoData.product>, ~client: S
     let outcome = await client->Seed.Client.send(
       DemoCommands.addProduct(
         AddProduct({
-          productId: p.id,
+          productId: ProductId.make(p.id),
           name: p.name,
           description: p.description,
           price: p.price,
-          categoryId: p.categoryId,
+          categoryId: CategoryId.make(p.categoryId),
         }),
       ),
       ~tolerate=["ProductAlreadyExists"],
@@ -264,7 +278,9 @@ let seedRepricing = async (
 ) => {
   await client->Seed.Client.sendAll(
     repriced->Array.map(((productId, price)) =>
-      DemoCommands.changeProductPrice(ChangeProductPrice({productId, price}))
+      DemoCommands.changeProductPrice(
+        ChangeProductPrice({productId: ProductId.make(productId), price}),
+      )
     ),
   )
   Seed.Runner.report(`catalog: ${repriced->Array.length->Int.toString} repriced`)
@@ -273,7 +289,9 @@ let seedRepricing = async (
 let seedRedescriptions = async (~client: Seed.Client.t, ~redescribed: array<(string, string)>) => {
   await client->Seed.Client.sendAll(
     redescribed->Array.map(((productId, description)) =>
-      DemoCommands.changeProductDescription(ChangeProductDescription({productId, description}))
+      DemoCommands.changeProductDescription(
+        ChangeProductDescription({productId: ProductId.make(productId), description}),
+      )
     ),
   )
   Seed.Runner.report(`catalog: ${redescribed->Array.length->Int.toString} redescribed`)
@@ -289,7 +307,7 @@ let seedCategoryEdits = async (
 ) => {
   await client->Seed.Client.sendAll(
     renamed->Array.map(((categoryId, name)) =>
-      DemoCommands.renameCategory(RenameCategory({categoryId, name}))
+      DemoCommands.renameCategory(RenameCategory({categoryId: CategoryId.make(categoryId), name}))
     ),
   )
   // Re-image one live category, so the replacement path is exercised next to the
@@ -300,12 +318,18 @@ let seedCategoryEdits = async (
   await client->Seed.Client.sendAll(
     reimage->Array.map(((categoryId, categoryImage)) =>
       DemoCommands.categoryImages(
-        SetCategoryImage({categoryId, categoryImage, altText: "updated banner"}),
+        SetCategoryImage({
+          categoryId: CategoryId.make(categoryId),
+          categoryImage,
+          altText: "updated banner",
+        }),
       )
     ),
   )
   await client->Seed.Client.sendAll(
-    archived->Array.map(id => DemoCommands.archiveCategory(ArchiveCategory({categoryId: id}))),
+    archived->Array.map(id =>
+      DemoCommands.archiveCategory(ArchiveCategory({categoryId: CategoryId.make(id)}))
+    ),
   )
   Seed.Runner.report(
     `categories: ${renamed->Array.length->Int.toString} renamed, ${reimage
@@ -403,8 +427,8 @@ let seedOrders = async (orders: array<DemoData.order>, ~client: Seed.Client.t) =
         await client->Seed.Client.send(
           DemoCommands.placeOrder(
             PlaceOrder({
-              orderId: order.id,
-              customerId: order.customerId,
+              orderId: OrderId.make(order.id),
+              customerId: CustomerId.make(order.customerId),
               lineItems: order.lineItems,
               shippingMethod: order.shippingMethod,
               deliveryWindow: ?order.deliveryWindow,
@@ -433,14 +457,14 @@ let seedOrders = async (orders: array<DemoData.order>, ~client: Seed.Client.t) =
 
 let seedShipments = async (~client: Seed.Client.t, ~orderIds: array<string>) => {
   await client->Seed.Client.sendAll(
-    orderIds->Array.map(id => DemoCommands.shipOrder(ShipOrder({orderId: id}))),
+    orderIds->Array.map(id => DemoCommands.shipOrder(ShipOrder({orderId: OrderId.make(id)}))),
   )
   Seed.Runner.report(`shipments: ${orderIds->Array.length->Int.toString} Standard orders shipped`)
 }
 
 let seedCancellations = async (~client: Seed.Client.t, ~orderIds: array<string>) => {
   await client->Seed.Client.sendAll(
-    orderIds->Array.map(id => DemoCommands.cancelOrder(CancelOrder({orderId: id}))),
+    orderIds->Array.map(id => DemoCommands.cancelOrder(CancelOrder({orderId: OrderId.make(id)}))),
   )
   Seed.Runner.report(`cancellations: ${orderIds->Array.length->Int.toString} orders cancelled`)
 }
@@ -467,11 +491,13 @@ let seedProductRetirements = async (
   ~expectedRetired: int,
 ) => {
   await client->Seed.Client.sendAll(
-    archived->Array.map(id => DemoCommands.archiveProduct(ArchiveProduct({productId: id}))),
+    archived->Array.map(id =>
+      DemoCommands.archiveProduct(ArchiveProduct({productId: ProductId.make(id)}))
+    ),
   )
   await client->Seed.Client.sendAll(
     discontinued->Array.map(id =>
-      DemoCommands.discontinueProduct(DiscontinueProduct({productId: id}))
+      DemoCommands.discontinueProduct(DiscontinueProduct({productId: ProductId.make(id)}))
     ),
   )
   // Wait for the projection rather than reporting the commands as though they

@@ -2,6 +2,7 @@
 
 import * as Sury from "sury";
 import * as Money$Reventless from "@reventlessdev/reventless-spec/src/semantic/Money.res.mjs";
+import * as ProductId$CatalogSpec from "./ProductId.res.mjs";
 import * as UploadableImage$Reventless from "@reventlessdev/reventless-spec/src/semantic/UploadableImage.res.mjs";
 
 let commandSchema = Sury.$unit;
@@ -9,33 +10,33 @@ let commandSchema = Sury.$unit;
 let eventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "ProductBecameAvailable",
-    productId: s.m(Sury.string),
+    productId: s.m(ProductId$CatalogSpec.schema),
     name: s.m(Sury.string),
     price: s.m(Money$Reventless.schema)
   })),
   Sury.$schema(s => ({
     TAG: "ProductPriceChanged",
-    productId: s.m(Sury.string),
+    productId: s.m(ProductId$CatalogSpec.schema),
     price: s.m(Money$Reventless.schema)
   })),
   Sury.$schema(s => ({
     TAG: "ProductWithdrawn",
-    productId: s.m(Sury.string)
+    productId: s.m(ProductId$CatalogSpec.schema)
   })),
   Sury.$schema(s => ({
     TAG: "ProductRelisted",
-    productId: s.m(Sury.string)
+    productId: s.m(ProductId$CatalogSpec.schema)
   })),
   Sury.$schema(s => ({
     TAG: "ProductImageChanged",
-    productId: s.m(Sury.string),
+    productId: s.m(ProductId$CatalogSpec.schema),
     productImage: s.m(Sury.$option(UploadableImage$Reventless.forField(undefined, "productImages")))
   }))
 ]);
 
 let directiveSchema = Sury.$schema(s => ({
   TAG: "EmitPricingUpdate",
-  productId: s.m(Sury.string),
+  productId: s.m(ProductId$CatalogSpec.schema),
   price: s.m(Money$Reventless.schema)
 }));
 

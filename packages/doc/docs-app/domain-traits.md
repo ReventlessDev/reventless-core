@@ -345,13 +345,14 @@ kept in parallel, so each rule has one source of truth.
    ```sh
    pnpm exec graft-trait @reventlessdev/trait-attachments \
      --into src/Product --tests tests/Product \
-     --entity Product --entityId productId --noun Image \
-     --file productImage --created ProductAdded --view Products
+     --entity Product --entityId productId --entityIdType CatalogSpec.ProductId \
+     --noun Image --file productImage --created ProductAdded --view Products
    ```
 
    One thing the attachment config insists on: the member field is **named for its
    store** (`productImage`, not `image`), because the ppx derives the object store
-   from the field name and provisions it.
+   from the field name and provisions it. `--entityIdType` is optional: it names the
+   host's [identity](common-modules/Id.md) module, and the emitted ids take its type.
 
    What it writes is yours from the moment it lands — nothing regenerates it, and
    `graft-trait` refuses to overwrite. What it *prints* are the arms for files you

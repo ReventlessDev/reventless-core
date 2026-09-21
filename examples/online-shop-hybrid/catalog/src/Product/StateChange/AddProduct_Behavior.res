@@ -6,7 +6,7 @@
 // the whole model.
 type state = {
   exists: bool,
-  liveCategoryIds: array<string>,
+  liveCategoryIds: array<CategoryId.t>,
 }
 
 let initialState = {exists: false, liveCategoryIds: []}

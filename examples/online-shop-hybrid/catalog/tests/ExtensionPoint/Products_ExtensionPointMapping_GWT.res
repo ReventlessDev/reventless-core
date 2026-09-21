@@ -2,6 +2,8 @@
 // become the stable public events Ordering subscribes to.
 @@reventless.gwt
 
+let pid = CatalogSpec.ProductId.make
+
 // Published events and handled directives are disjoint channels on the same
 // mapping run — each `test` projects to one channel and asserts on it.
 // Prices are money, so a test writes the amount a person would say and converts
@@ -14,21 +16,21 @@ describe("Products ExtensionPoint mapping", () => {
   test("ProductAdded publishes ProductBecameAvailable", () =>
     whenDelegateEvent(
       Delegate.ProductAdded({
-        productId: "p1",
+        productId: pid("p1"),
         name: "Book",
         description: "A good book",
         price: eur(9.99),
       }),
     )->thenPublishesEvent(
       "p1",
-      ExtensionPoint.ProductBecameAvailable({productId: "p1", name: "Book", price: eur(9.99)}),
+      ExtensionPoint.ProductBecameAvailable({productId: pid("p1"), name: "Book", price: eur(9.99)}),
     )
   )
 
   test("ProductAdded raises no directive", () =>
     whenDelegateEvent(
       Delegate.ProductAdded({
-        productId: "p1",
+        productId: pid("p1"),
         name: "Book",
         description: "A good book",
         price: eur(9.99),
@@ -38,17 +40,19 @@ describe("Products ExtensionPoint mapping", () => {
 
   test("ProductPriceChanged is forwarded to the extension point", () =>
     whenDelegateEvent(
-      Delegate.ProductPriceChanged({productId: "p1", price: eur(7.5)}),
+      Delegate.ProductPriceChanged({productId: pid("p1"), price: eur(7.5)}),
     )->thenPublishesEvent(
       "p1",
-      ExtensionPoint.ProductPriceChanged({productId: "p1", price: eur(7.5)}),
+      ExtensionPoint.ProductPriceChanged({productId: pid("p1"), price: eur(7.5)}),
     )
   )
 
   test("ProductPriceChanged also fires a pricing-update directive", () =>
     whenDelegateEvent(
-      Delegate.ProductPriceChanged({productId: "p1", price: eur(7.5)}),
-    )->thenHandlesDirective(ExtensionPoint.EmitPricingUpdate({productId: "p1", price: eur(7.5)}))
+      Delegate.ProductPriceChanged({productId: pid("p1"), price: eur(7.5)}),
+    )->thenHandlesDirective(
+      ExtensionPoint.EmitPricingUpdate({productId: pid("p1"), price: eur(7.5)}),
+    )
   )
 
   // Both of Catalog's retirements collapse to the one fact Ordering needs. This
@@ -56,23 +60,23 @@ describe("Products ExtensionPoint mapping", () => {
   // of the catalog's lifecycle: adding a third way off the shelf must not add a
   // third published event.
   test("ProductArchived publishes ProductWithdrawn", () =>
-    whenDelegateEvent(Delegate.ProductArchived({productId: "p1"}))->thenPublishesEvent(
+    whenDelegateEvent(Delegate.ProductArchived({productId: pid("p1")}))->thenPublishesEvent(
       "p1",
-      ExtensionPoint.ProductWithdrawn({productId: "p1"}),
+      ExtensionPoint.ProductWithdrawn({productId: pid("p1")}),
     )
   )
 
   test("ProductDiscontinued publishes the same ProductWithdrawn", () =>
-    whenDelegateEvent(Delegate.ProductDiscontinued({productId: "p1"}))->thenPublishesEvent(
+    whenDelegateEvent(Delegate.ProductDiscontinued({productId: pid("p1")}))->thenPublishesEvent(
       "p1",
-      ExtensionPoint.ProductWithdrawn({productId: "p1"}),
+      ExtensionPoint.ProductWithdrawn({productId: pid("p1")}),
     )
   )
 
   test("ProductUnarchived publishes ProductRelisted", () =>
-    whenDelegateEvent(Delegate.ProductUnarchived({productId: "p1"}))->thenPublishesEvent(
+    whenDelegateEvent(Delegate.ProductUnarchived({productId: pid("p1")}))->thenPublishesEvent(
       "p1",
-      ExtensionPoint.ProductRelisted({productId: "p1"}),
+      ExtensionPoint.ProductRelisted({productId: pid("p1")}),
     )
   )
 })

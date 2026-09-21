@@ -1,5 +1,8 @@
 @@reventless.gwt
 
+let pid = CatalogSpec.ProductId.make
+let cid = CategoryId.make
+
 // Prices are money, so a test writes the amount a person would say and converts
 // it once. `ofMajor` scales by the currency's own exponent, which is what keeps
 // the literal honest: 9.99 EUR is 999 cents, and the same call on a JPY price
@@ -23,22 +26,22 @@ describe("Products StateViewSliceStream", () => {
     givenEvents([])
     ->whenEvent(
       ProductAdded({
-        productId: "p1",
+        productId: pid("p1"),
         name: "Laptop",
         description: "x",
         price: eur(999.99),
-        categoryId: "cat1",
+        categoryId: cid("cat1"),
       }),
     )
     ->thenStateWithId(
       "p1",
       {
-        productId: "p1",
+        productId: pid("p1"),
         name: "Laptop",
         description: "x",
         price: eur(999.99),
         productImages: [],
-        categoryId: "cat1",
+        categoryId: cid("cat1"),
         shelfStatus: Listed,
         trail: trail([Listed]),
       },
@@ -48,23 +51,23 @@ describe("Products StateViewSliceStream", () => {
   test("ProductNameChanged updates the name", () =>
     givenEvents([
       ProductAdded({
-        productId: "p1",
+        productId: pid("p1"),
         name: "Laptop",
         description: "x",
         price: eur(999.99),
-        categoryId: "cat1",
+        categoryId: cid("cat1"),
       }),
     ])
-    ->whenEvent(ProductNameChanged({productId: "p1", name: "Gaming Laptop"}))
+    ->whenEvent(ProductNameChanged({productId: pid("p1"), name: "Gaming Laptop"}))
     ->thenStateWithId(
       "p1",
       {
-        productId: "p1",
+        productId: pid("p1"),
         name: "Gaming Laptop",
         description: "x",
         price: eur(999.99),
         productImages: [],
-        categoryId: "cat1",
+        categoryId: cid("cat1"),
         shelfStatus: Listed,
         trail: trail([Listed]),
       },
@@ -74,23 +77,23 @@ describe("Products StateViewSliceStream", () => {
   test("ProductDescriptionChanged updates the description", () =>
     givenEvents([
       ProductAdded({
-        productId: "p1",
+        productId: pid("p1"),
         name: "Laptop",
         description: "x",
         price: eur(999.99),
-        categoryId: "cat1",
+        categoryId: cid("cat1"),
       }),
     ])
-    ->whenEvent(ProductDescriptionChanged({productId: "p1", description: "high-end"}))
+    ->whenEvent(ProductDescriptionChanged({productId: pid("p1"), description: "high-end"}))
     ->thenStateWithId(
       "p1",
       {
-        productId: "p1",
+        productId: pid("p1"),
         name: "Laptop",
         description: "high-end",
         price: eur(999.99),
         productImages: [],
-        categoryId: "cat1",
+        categoryId: cid("cat1"),
         shelfStatus: Listed,
         trail: trail([Listed]),
       },
@@ -100,23 +103,23 @@ describe("Products StateViewSliceStream", () => {
   test("ProductPriceChanged updates the price", () =>
     givenEvents([
       ProductAdded({
-        productId: "p1",
+        productId: pid("p1"),
         name: "Laptop",
         description: "x",
         price: eur(999.99),
-        categoryId: "cat1",
+        categoryId: cid("cat1"),
       }),
     ])
-    ->whenEvent(ProductPriceChanged({productId: "p1", price: eur(899.99)}))
+    ->whenEvent(ProductPriceChanged({productId: pid("p1"), price: eur(899.99)}))
     ->thenStateWithId(
       "p1",
       {
-        productId: "p1",
+        productId: pid("p1"),
         name: "Laptop",
         description: "x",
         price: eur(899.99),
         productImages: [],
-        categoryId: "cat1",
+        categoryId: cid("cat1"),
         shelfStatus: Listed,
         trail: trail([Listed]),
       },
@@ -129,16 +132,16 @@ describe("Products StateViewSliceStream", () => {
   test("the first ProductImageAttached becomes the primary", () =>
     givenEvents([
       ProductAdded({
-        productId: "p1",
+        productId: pid("p1"),
         name: "Laptop",
         description: "x",
         price: eur(999.99),
-        categoryId: "cat1",
+        categoryId: cid("cat1"),
       }),
     ])
     ->whenEvent(
       ProductImageAttached({
-        productId: "p1",
+        productId: pid("p1"),
         productImage: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg",
         altText: "front",
       }),
@@ -146,7 +149,7 @@ describe("Products StateViewSliceStream", () => {
     ->thenStateWithId(
       "p1",
       {
-        productId: "p1",
+        productId: pid("p1"),
         name: "Laptop",
         description: "x",
         price: eur(999.99),
@@ -155,7 +158,7 @@ describe("Products StateViewSliceStream", () => {
         productImages: [
           {ref: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg", altText: "front"},
         ],
-        categoryId: "cat1",
+        categoryId: cid("cat1"),
         shelfStatus: Listed,
         trail: trail([Listed]),
       },
@@ -165,27 +168,27 @@ describe("Products StateViewSliceStream", () => {
   test("a second attachment extends the set and leaves the primary first", () =>
     givenEvents([
       ProductAdded({
-        productId: "p1",
+        productId: pid("p1"),
         name: "Laptop",
         description: "x",
         price: eur(999.99),
-        categoryId: "cat1",
+        categoryId: cid("cat1"),
       }),
       ProductImageAttached({
-        productId: "p1",
+        productId: pid("p1"),
         productImage: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg",
       }),
     ])
     ->whenEvent(
       ProductImageAttached({
-        productId: "p1",
+        productId: pid("p1"),
         productImage: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg",
       }),
     )
     ->thenStateWithId(
       "p1",
       {
-        productId: "p1",
+        productId: pid("p1"),
         name: "Laptop",
         description: "x",
         price: eur(999.99),
@@ -193,7 +196,7 @@ describe("Products StateViewSliceStream", () => {
           {ref: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg"},
           {ref: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg"},
         ],
-        categoryId: "cat1",
+        categoryId: cid("cat1"),
         shelfStatus: Listed,
         trail: trail([Listed]),
       },
@@ -206,31 +209,31 @@ describe("Products StateViewSliceStream", () => {
   test("ProductPrimaryImageSet moves the chosen member to the front", () =>
     givenEvents([
       ProductAdded({
-        productId: "p1",
+        productId: pid("p1"),
         name: "Laptop",
         description: "x",
         price: eur(999.99),
-        categoryId: "cat1",
+        categoryId: cid("cat1"),
       }),
       ProductImageAttached({
-        productId: "p1",
+        productId: pid("p1"),
         productImage: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg",
       }),
       ProductImageAttached({
-        productId: "p1",
+        productId: pid("p1"),
         productImage: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg",
       }),
     ])
     ->whenEvent(
       ProductPrimaryImageSet({
-        productId: "p1",
+        productId: pid("p1"),
         productImage: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg",
       }),
     )
     ->thenStateWithId(
       "p1",
       {
-        productId: "p1",
+        productId: pid("p1"),
         name: "Laptop",
         description: "x",
         price: eur(999.99),
@@ -238,7 +241,7 @@ describe("Products StateViewSliceStream", () => {
           {ref: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg"},
           {ref: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg"},
         ],
-        categoryId: "cat1",
+        categoryId: cid("cat1"),
         shelfStatus: Listed,
         trail: trail([Listed]),
       },
@@ -250,40 +253,40 @@ describe("Products StateViewSliceStream", () => {
   test("removing the primary promotes the next member", () =>
     givenEvents([
       ProductAdded({
-        productId: "p1",
+        productId: pid("p1"),
         name: "Laptop",
         description: "x",
         price: eur(999.99),
-        categoryId: "cat1",
+        categoryId: cid("cat1"),
       }),
       ProductImageAttached({
-        productId: "p1",
+        productId: pid("p1"),
         productImage: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg",
       }),
       ProductImageAttached({
-        productId: "p1",
+        productId: pid("p1"),
         productImage: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg",
       }),
       ProductPrimaryImageSet({
-        productId: "p1",
+        productId: pid("p1"),
         productImage: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg",
       }),
     ])
     ->whenEvent(
       ProductImageRemoved({
-        productId: "p1",
+        productId: pid("p1"),
         productImage: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg",
       }),
     )
     ->thenStateWithId(
       "p1",
       {
-        productId: "p1",
+        productId: pid("p1"),
         name: "Laptop",
         description: "x",
         price: eur(999.99),
         productImages: [{ref: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg"}],
-        categoryId: "cat1",
+        categoryId: cid("cat1"),
         shelfStatus: Listed,
         trail: trail([Listed]),
       },
@@ -293,32 +296,32 @@ describe("Products StateViewSliceStream", () => {
   test("removing the last attachment leaves no primary", () =>
     givenEvents([
       ProductAdded({
-        productId: "p1",
+        productId: pid("p1"),
         name: "Laptop",
         description: "x",
         price: eur(999.99),
-        categoryId: "cat1",
+        categoryId: cid("cat1"),
       }),
       ProductImageAttached({
-        productId: "p1",
+        productId: pid("p1"),
         productImage: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg",
       }),
     ])
     ->whenEvent(
       ProductImageRemoved({
-        productId: "p1",
+        productId: pid("p1"),
         productImage: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg",
       }),
     )
     ->thenStateWithId(
       "p1",
       {
-        productId: "p1",
+        productId: pid("p1"),
         name: "Laptop",
         description: "x",
         price: eur(999.99),
         productImages: [],
-        categoryId: "cat1",
+        categoryId: cid("cat1"),
         shelfStatus: Listed,
         trail: trail([Listed]),
       },
@@ -328,20 +331,20 @@ describe("Products StateViewSliceStream", () => {
   test("ProductImageAltTextSet captions one member", () =>
     givenEvents([
       ProductAdded({
-        productId: "p1",
+        productId: pid("p1"),
         name: "Laptop",
         description: "x",
         price: eur(999.99),
-        categoryId: "cat1",
+        categoryId: cid("cat1"),
       }),
       ProductImageAttached({
-        productId: "p1",
+        productId: pid("p1"),
         productImage: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg",
       }),
     ])
     ->whenEvent(
       ProductImageAltTextSet({
-        productId: "p1",
+        productId: pid("p1"),
         productImage: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg",
         altText: "front view",
       }),
@@ -349,14 +352,14 @@ describe("Products StateViewSliceStream", () => {
     ->thenStateWithId(
       "p1",
       {
-        productId: "p1",
+        productId: pid("p1"),
         name: "Laptop",
         description: "x",
         price: eur(999.99),
         productImages: [
           {ref: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg", altText: "front view"},
         ],
-        categoryId: "cat1",
+        categoryId: cid("cat1"),
         shelfStatus: Listed,
         trail: trail([Listed]),
       },
@@ -368,24 +371,24 @@ describe("Products StateViewSliceStream", () => {
   test("captioning a non-primary member leaves the order alone", () =>
     givenEvents([
       ProductAdded({
-        productId: "p1",
+        productId: pid("p1"),
         name: "Laptop",
         description: "x",
         price: eur(999.99),
-        categoryId: "cat1",
+        categoryId: cid("cat1"),
       }),
       ProductImageAttached({
-        productId: "p1",
+        productId: pid("p1"),
         productImage: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg",
       }),
       ProductImageAttached({
-        productId: "p1",
+        productId: pid("p1"),
         productImage: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg",
       }),
     ])
     ->whenEvent(
       ProductImageAltTextSet({
-        productId: "p1",
+        productId: pid("p1"),
         productImage: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg",
         altText: "side view",
       }),
@@ -393,7 +396,7 @@ describe("Products StateViewSliceStream", () => {
     ->thenStateWithId(
       "p1",
       {
-        productId: "p1",
+        productId: pid("p1"),
         name: "Laptop",
         description: "x",
         price: eur(999.99),
@@ -401,7 +404,7 @@ describe("Products StateViewSliceStream", () => {
           {ref: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg"},
           {ref: "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg", altText: "side view"},
         ],
-        categoryId: "cat1",
+        categoryId: cid("cat1"),
         shelfStatus: Listed,
         trail: trail([Listed]),
       },
@@ -420,23 +423,23 @@ describe("Products StateViewSliceStream", () => {
   test("ProductArchived moves the product off the shelf", () =>
     givenEvents([
       ProductAdded({
-        productId: "p1",
+        productId: pid("p1"),
         name: "Laptop",
         description: "x",
         price: eur(999.99),
-        categoryId: "cat1",
+        categoryId: cid("cat1"),
       }),
     ])
-    ->whenEvent(ProductArchived({productId: "p1"}))
+    ->whenEvent(ProductArchived({productId: pid("p1")}))
     ->thenStateWithId(
       "p1",
       {
-        productId: "p1",
+        productId: pid("p1"),
         name: "Laptop",
         description: "x",
         price: eur(999.99),
         productImages: [],
-        categoryId: "cat1",
+        categoryId: cid("cat1"),
         shelfStatus: Archived,
         trail: trail([Listed, Archived]),
       },
@@ -446,24 +449,24 @@ describe("Products StateViewSliceStream", () => {
   test("ProductUnarchived puts it back on the shelf", () =>
     givenEvents([
       ProductAdded({
-        productId: "p1",
+        productId: pid("p1"),
         name: "Laptop",
         description: "x",
         price: eur(999.99),
-        categoryId: "cat1",
+        categoryId: cid("cat1"),
       }),
-      ProductArchived({productId: "p1"}),
+      ProductArchived({productId: pid("p1")}),
     ])
-    ->whenEvent(ProductUnarchived({productId: "p1"}))
+    ->whenEvent(ProductUnarchived({productId: pid("p1")}))
     ->thenStateWithId(
       "p1",
       {
-        productId: "p1",
+        productId: pid("p1"),
         name: "Laptop",
         description: "x",
         price: eur(999.99),
         productImages: [],
-        categoryId: "cat1",
+        categoryId: cid("cat1"),
         shelfStatus: Listed,
         trail: trail([Listed, Archived, Listed]),
       },
@@ -473,23 +476,23 @@ describe("Products StateViewSliceStream", () => {
   test("ProductDiscontinued is the end of the line", () =>
     givenEvents([
       ProductAdded({
-        productId: "p1",
+        productId: pid("p1"),
         name: "Laptop",
         description: "x",
         price: eur(999.99),
-        categoryId: "cat1",
+        categoryId: cid("cat1"),
       }),
     ])
-    ->whenEvent(ProductDiscontinued({productId: "p1"}))
+    ->whenEvent(ProductDiscontinued({productId: pid("p1")}))
     ->thenStateWithId(
       "p1",
       {
-        productId: "p1",
+        productId: pid("p1"),
         name: "Laptop",
         description: "x",
         price: eur(999.99),
         productImages: [],
-        categoryId: "cat1",
+        categoryId: cid("cat1"),
         shelfStatus: Discontinued,
         trail: trail([Listed, Discontinued]),
       },

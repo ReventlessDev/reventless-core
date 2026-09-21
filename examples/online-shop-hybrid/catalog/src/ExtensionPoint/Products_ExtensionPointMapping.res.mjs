@@ -3,6 +3,7 @@
 import * as Sury from "sury";
 import * as Money$Reventless from "@reventlessdev/reventless-spec/src/semantic/Money.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as ProductId$CatalogSpec from "@reventlessdev/online-shop-hybrid-catalog-spec/src/ProductId.res.mjs";
 import * as UploadableImage$Reventless from "@reventlessdev/reventless-spec/src/semantic/UploadableImage.res.mjs";
 
 let commandSchema = Sury.$unit;
@@ -10,31 +11,31 @@ let commandSchema = Sury.$unit;
 let eventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "ProductAdded",
-    productId: s.m(DcbTag$Reventless.string),
+    productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
     name: s.m(Sury.string),
     description: s.m(Sury.string),
     price: s.m(Money$Reventless.schema)
   })),
   Sury.$schema(s => ({
     TAG: "ProductPriceChanged",
-    productId: s.m(DcbTag$Reventless.string),
+    productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
     price: s.m(Money$Reventless.schema)
   })),
   Sury.$schema(s => ({
     TAG: "ProductArchived",
-    productId: s.m(DcbTag$Reventless.string)
+    productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema))
   })),
   Sury.$schema(s => ({
     TAG: "ProductDiscontinued",
-    productId: s.m(DcbTag$Reventless.string)
+    productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema))
   })),
   Sury.$schema(s => ({
     TAG: "ProductUnarchived",
-    productId: s.m(DcbTag$Reventless.string)
+    productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema))
   })),
   Sury.$schema(s => ({
     TAG: "ProductEffectiveImageChanged",
-    productId: s.m(DcbTag$Reventless.string),
+    productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
     productImage: s.m(Sury.$option(UploadableImage$Reventless.forField(undefined, "productImages")))
   }))
 ]);
@@ -68,7 +69,7 @@ function mapIncomingCommand(_id, _command, _meta) {
 }
 
 async function directiveHandler(_createSchedule, _deleteSchedule, _queryEngine, directive) {
-  console.log(`[Catalog.ProductsExtensionPoint] telemetry: pricing update product=` + directive.productId + ` price=` + Money$Reventless.format(directive.price));
+  console.log(`[Catalog.ProductsExtensionPoint] telemetry: pricing update product=` + ProductId$CatalogSpec.toString(directive.productId) + ` price=` + Money$Reventless.format(directive.price));
 }
 
 let mapOutgoingEvent = (_id, event, _meta, _queryEngine) => {
@@ -77,7 +78,7 @@ let mapOutgoingEvent = (_id, event, _meta, _queryEngine) => {
       let productId = event.productId;
       return [{
           TAG: "PublishEvent",
-          _0: productId,
+          _0: ProductId$CatalogSpec.toString(productId),
           _1: {
             TAG: "ProductBecameAvailable",
             productId: productId,
@@ -91,7 +92,7 @@ let mapOutgoingEvent = (_id, event, _meta, _queryEngine) => {
       return [
         {
           TAG: "PublishEvent",
-          _0: productId$1,
+          _0: ProductId$CatalogSpec.toString(productId$1),
           _1: {
             TAG: "ProductPriceChanged",
             productId: productId$1,
@@ -115,7 +116,7 @@ let mapOutgoingEvent = (_id, event, _meta, _queryEngine) => {
       let theId = event.productId;
       return [{
           TAG: "PublishEvent",
-          _0: theId,
+          _0: ProductId$CatalogSpec.toString(theId),
           _1: {
             TAG: "ProductRelisted",
             productId: theId
@@ -125,7 +126,7 @@ let mapOutgoingEvent = (_id, event, _meta, _queryEngine) => {
       let productId$2 = event.productId;
       return [{
           TAG: "PublishEvent",
-          _0: productId$2,
+          _0: ProductId$CatalogSpec.toString(productId$2),
           _1: {
             TAG: "ProductImageChanged",
             productId: productId$2,
@@ -136,7 +137,7 @@ let mapOutgoingEvent = (_id, event, _meta, _queryEngine) => {
   let theId$1 = event.productId;
   return [{
       TAG: "PublishEvent",
-      _0: theId$1,
+      _0: ProductId$CatalogSpec.toString(theId$1),
       _1: {
         TAG: "ProductWithdrawn",
         productId: theId$1

@@ -3,6 +3,8 @@
 
 @@reventless.spec
 
+module Id = CustomerId
+
 // A map coordinate carried by location commands/events. `GeoPoint.t` rather than
 // a local `{lat, lng}` record: the wire shape is identical — so every event
 // already stored decodes unchanged — and the declaration buys the range checks

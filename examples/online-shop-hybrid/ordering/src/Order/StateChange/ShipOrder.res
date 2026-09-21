@@ -20,7 +20,7 @@
 
 @schema
 type consumedEvent =
-  | OrderPlaced({productIds: array<string>, customerId: string})
+  | OrderPlaced({productIds: array<CatalogSpec.ProductId.t>, customerId: CustomerId.t})
   | OrderShipped
   | OrderCancelled
   // The slice refuses on a cancellation, so it has to hear when one is undone.
@@ -29,7 +29,7 @@ type consumedEvent =
   | OrderReopened
 
 @schema
-type command = | @authorize(AllowGroups(["Admin", "Fulfilment"])) ShipOrder({orderId: string})
+type command = | @authorize(AllowGroups(["Admin", "Fulfilment"])) ShipOrder({orderId: OrderId.t})
 
 @schema
 type error =
@@ -37,7 +37,7 @@ type error =
   | OrderAlreadyCancelled
 
 @schema
-type event = OrderShipped({orderId: string, customerId: string})
+type event = OrderShipped({orderId: OrderId.t, customerId: CustomerId.t})
 
 type lifecycleState = Orders.lifecycle
 

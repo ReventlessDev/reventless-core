@@ -1,25 +1,29 @@
 @@reventless.gwt
 
+let oid = OrderId.make
+let cid = CustomerId.make
+let pid = CatalogSpec.ProductId.make
+
 // Minor units, the way `Money` counts them: 2500 is €25.00.
 let eur = amount => Reventless.Money.make(~amount, ~currency=EUR)
 let usd = amount => Reventless.Money.make(~amount, ~currency=USD)
 
 let synced = (~id, ~name, ~price=2500.0) => CatalogProductSynced({
-  productId: id,
+  productId: pid(id),
   name,
   price: eur(price),
 })
 
 let relisted = (~id, ~name, ~price=2500.0) => CatalogProductRelisted({
-  productId: id,
+  productId: pid(id),
   name,
   price: eur(price),
 })
 
-let line = (~id, ~qty=1): lineItem => {productId: id, quantity: qty}
+let line = (~id, ~qty=1): lineItem => {productId: pid(id), quantity: qty}
 
 let placed = (~id, ~name, ~qty=1, ~price=2500.0): orderLine => {
-  productId: id,
+  productId: pid(id),
   name,
   quantity: qty,
   unitPrice: eur(price),
@@ -31,30 +35,30 @@ describe("PlaceOrder StateChangeSlice", () => {
     givenEvents([])
     ->whenCmd(
       PlaceOrder({
-        orderId: "o1",
-        customerId: "c1",
+        orderId: oid("o1"),
+        customerId: cid("c1"),
         lineItems: [line(~id="p1")],
         shippingMethod: Standard,
       }),
     )
-    ->thenError(ProductsNotAvailable({missing: ["p1"]}))
+    ->thenError(ProductsNotAvailable({missing: [pid("p1")]}))
   )
 
   test("placement succeeds when products are available", () =>
     givenEvents([synced(~id="p1", ~name="Fathom Dock")])
     ->whenCmd(
       PlaceOrder({
-        orderId: "o1",
-        customerId: "c1",
+        orderId: oid("o1"),
+        customerId: cid("c1"),
         lineItems: [line(~id="p1")],
         shippingMethod: Standard,
       }),
     )
     ->thenEvent(
       OrderPlaced({
-        orderId: "o1",
-        customerId: "c1",
-        productIds: ["p1"],
+        orderId: oid("o1"),
+        customerId: cid("c1"),
+        productIds: [pid("p1")],
         lines: [placed(~id="p1", ~name="Fathom Dock")],
         total: eur(2500.0),
         shippingMethod: Standard,
@@ -73,17 +77,17 @@ describe("PlaceOrder StateChangeSlice", () => {
     ])
     ->whenCmd(
       PlaceOrder({
-        orderId: "o1",
-        customerId: "c1",
+        orderId: oid("o1"),
+        customerId: cid("c1"),
         lineItems: [line(~id="p1", ~qty=2), line(~id="p2")],
         shippingMethod: Standard,
       }),
     )
     ->thenEvent(
       OrderPlaced({
-        orderId: "o1",
-        customerId: "c1",
-        productIds: ["p1", "p2"],
+        orderId: oid("o1"),
+        customerId: cid("c1"),
+        productIds: [pid("p1"), pid("p2")],
         lines: [
           placed(~id="p1", ~name="Fathom Dock", ~qty=2, ~price=2500.0),
           placed(~id="p2", ~name="Cirrus Charger", ~price=1000.0),
@@ -102,17 +106,17 @@ describe("PlaceOrder StateChangeSlice", () => {
     givenEvents([synced(~id="p1", ~name="Fathom Dock", ~price=2500.0)])
     ->whenCmd(
       PlaceOrder({
-        orderId: "o1",
-        customerId: "c1",
+        orderId: oid("o1"),
+        customerId: cid("c1"),
         lineItems: [line(~id="p1", ~qty=2), line(~id="p1")],
         shippingMethod: Standard,
       }),
     )
     ->thenEvent(
       OrderPlaced({
-        orderId: "o1",
-        customerId: "c1",
-        productIds: ["p1"],
+        orderId: oid("o1"),
+        customerId: cid("c1"),
+        productIds: [pid("p1")],
         lines: [placed(~id="p1", ~name="Fathom Dock", ~qty=3, ~price=2500.0)],
         total: eur(7500.0),
         shippingMethod: Standard,
@@ -127,21 +131,21 @@ describe("PlaceOrder StateChangeSlice", () => {
   test("a repricing before placement is the price the order records", () =>
     givenEvents([
       synced(~id="p1", ~name="Fathom Dock", ~price=2500.0),
-      CatalogProductPriceChanged({productId: "p1", price: eur(1800.0)}),
+      CatalogProductPriceChanged({productId: pid("p1"), price: eur(1800.0)}),
     ])
     ->whenCmd(
       PlaceOrder({
-        orderId: "o1",
-        customerId: "c1",
+        orderId: oid("o1"),
+        customerId: cid("c1"),
         lineItems: [line(~id="p1", ~qty=2)],
         shippingMethod: Standard,
       }),
     )
     ->thenEvent(
       OrderPlaced({
-        orderId: "o1",
-        customerId: "c1",
-        productIds: ["p1"],
+        orderId: oid("o1"),
+        customerId: cid("c1"),
+        productIds: [pid("p1")],
         lines: [placed(~id="p1", ~name="Fathom Dock", ~qty=2, ~price=1800.0)],
         total: eur(3600.0),
         shippingMethod: Standard,
@@ -155,7 +159,12 @@ describe("PlaceOrder StateChangeSlice", () => {
   test("an empty basket is refused", () =>
     givenEvents([synced(~id="p1", ~name="Fathom Dock")])
     ->whenCmd(
-      PlaceOrder({orderId: "o1", customerId: "c1", lineItems: [], shippingMethod: Standard}),
+      PlaceOrder({
+        orderId: oid("o1"),
+        customerId: cid("c1"),
+        lineItems: [],
+        shippingMethod: Standard,
+      }),
     )
     ->thenError(OrderIsEmpty)
   )
@@ -164,26 +173,26 @@ describe("PlaceOrder StateChangeSlice", () => {
     givenEvents([synced(~id="p1", ~name="Fathom Dock")])
     ->whenCmd(
       PlaceOrder({
-        orderId: "o1",
-        customerId: "c1",
+        orderId: oid("o1"),
+        customerId: cid("c1"),
         lineItems: [line(~id="p1", ~qty=0)],
         shippingMethod: Standard,
       }),
     )
-    ->thenError(InvalidQuantity({productId: "p1", quantity: 0}))
+    ->thenError(InvalidQuantity({productId: pid("p1"), quantity: 0}))
   )
 
   test("a negative quantity is refused", () =>
     givenEvents([synced(~id="p1", ~name="Fathom Dock")])
     ->whenCmd(
       PlaceOrder({
-        orderId: "o1",
-        customerId: "c1",
+        orderId: oid("o1"),
+        customerId: cid("c1"),
         lineItems: [line(~id="p1", ~qty=-2)],
         shippingMethod: Standard,
       }),
     )
-    ->thenError(InvalidQuantity({productId: "p1", quantity: -2}))
+    ->thenError(InvalidQuantity({productId: pid("p1"), quantity: -2}))
   )
 
   // Refused rather than silently summed. `Money.add` returns a `result` for
@@ -192,12 +201,12 @@ describe("PlaceOrder StateChangeSlice", () => {
   test("an order mixing currencies is refused rather than summed", () =>
     givenEvents([
       synced(~id="p1", ~name="Fathom Dock", ~price=2500.0),
-      CatalogProductSynced({productId: "p2", name: "Cirrus Charger", price: usd(1000.0)}),
+      CatalogProductSynced({productId: pid("p2"), name: "Cirrus Charger", price: usd(1000.0)}),
     ])
     ->whenCmd(
       PlaceOrder({
-        orderId: "o1",
-        customerId: "c1",
+        orderId: oid("o1"),
+        customerId: cid("c1"),
         lineItems: [line(~id="p1"), line(~id="p2")],
         shippingMethod: Standard,
       }),
@@ -209,17 +218,17 @@ describe("PlaceOrder StateChangeSlice", () => {
     givenEvents([synced(~id="p1", ~name="Fathom Dock")])
     ->whenCmd(
       PlaceOrder({
-        orderId: "o1",
-        customerId: "c1",
+        orderId: oid("o1"),
+        customerId: cid("c1"),
         lineItems: [line(~id="p1")],
         shippingMethod: Express,
       }),
     )
     ->thenEvent(
       OrderPlaced({
-        orderId: "o1",
-        customerId: "c1",
-        productIds: ["p1"],
+        orderId: oid("o1"),
+        customerId: cid("c1"),
+        productIds: [pid("p1")],
         lines: [placed(~id="p1", ~name="Fathom Dock")],
         total: eur(2500.0),
         shippingMethod: Express,
@@ -241,8 +250,8 @@ describe("PlaceOrder StateChangeSlice", () => {
     givenEvents([synced(~id="p1", ~name="Fathom Dock")])
     ->whenCmd(
       PlaceOrder({
-        orderId: "o1",
-        customerId: "c1",
+        orderId: oid("o1"),
+        customerId: cid("c1"),
         lineItems: [line(~id="p1")],
         shippingMethod: Standard,
         deliveryWindow: window,
@@ -250,9 +259,9 @@ describe("PlaceOrder StateChangeSlice", () => {
     )
     ->thenEvent(
       OrderPlaced({
-        orderId: "o1",
-        customerId: "c1",
-        productIds: ["p1"],
+        orderId: oid("o1"),
+        customerId: cid("c1"),
+        productIds: [pid("p1")],
         lines: [placed(~id="p1", ~name="Fathom Dock")],
         total: eur(2500.0),
         shippingMethod: Standard,
@@ -271,8 +280,8 @@ describe("PlaceOrder StateChangeSlice", () => {
     givenEvents([synced(~id="p1", ~name="Fathom Dock")])
     ->whenCmd(
       PlaceOrder({
-        orderId: "o1",
-        customerId: "c1",
+        orderId: oid("o1"),
+        customerId: cid("c1"),
         lineItems: [line(~id="p1")],
         shippingMethod: Pickup,
         deliveryWindow: window,
@@ -291,8 +300,8 @@ describe("PlaceOrder StateChangeSlice", () => {
     givenEvents([synced(~id="p1", ~name="Fathom Dock")])
     ->whenCmd(
       PlaceOrder({
-        orderId: "o1",
-        customerId: "c1",
+        orderId: oid("o1"),
+        customerId: cid("c1"),
         lineItems: [line(~id="p1")],
         shippingMethod: Standard,
         deliveryWindow: reversed,
@@ -312,29 +321,32 @@ describe("PlaceOrder StateChangeSlice", () => {
     givenEvents([synced(~id="p1", ~name="Fathom Dock")])
     ->whenCmd(
       PlaceOrder({
-        orderId: "o1",
-        customerId: "c1",
+        orderId: oid("o1"),
+        customerId: cid("c1"),
         lineItems: [line(~id="p1"), line(~id="p2")],
         shippingMethod: Standard,
       }),
     )
-    ->thenError(ProductsNotAvailable({missing: ["p2"]}))
+    ->thenError(ProductsNotAvailable({missing: [pid("p2")]}))
   )
 
   // The shelf lifecycle reaching the decision. The view deletes a withdrawn
   // product's row, so a shopper never sees it; these pin the write side to the
   // same answer, which is the half that was missing.
   test("a withdrawn product can no longer be ordered", () =>
-    givenEvents([synced(~id="p1", ~name="Fathom Dock"), CatalogProductWithdrawn({productId: "p1"})])
+    givenEvents([
+      synced(~id="p1", ~name="Fathom Dock"),
+      CatalogProductWithdrawn({productId: pid("p1")}),
+    ])
     ->whenCmd(
       PlaceOrder({
-        orderId: "o1",
-        customerId: "c1",
+        orderId: oid("o1"),
+        customerId: cid("c1"),
         lineItems: [line(~id="p1")],
         shippingMethod: Standard,
       }),
     )
-    ->thenError(ProductsNotAvailable({missing: ["p1"]}))
+    ->thenError(ProductsNotAvailable({missing: [pid("p1")]}))
   )
 
   // Withdrawal removes one id, not the shelf.
@@ -342,21 +354,21 @@ describe("PlaceOrder StateChangeSlice", () => {
     givenEvents([
       synced(~id="p1", ~name="Fathom Dock"),
       synced(~id="p2", ~name="Cirrus Charger"),
-      CatalogProductWithdrawn({productId: "p2"}),
+      CatalogProductWithdrawn({productId: pid("p2")}),
     ])
     ->whenCmd(
       PlaceOrder({
-        orderId: "o1",
-        customerId: "c1",
+        orderId: oid("o1"),
+        customerId: cid("c1"),
         lineItems: [line(~id="p1")],
         shippingMethod: Standard,
       }),
     )
     ->thenEvent(
       OrderPlaced({
-        orderId: "o1",
-        customerId: "c1",
-        productIds: ["p1"],
+        orderId: oid("o1"),
+        customerId: cid("c1"),
+        productIds: [pid("p1")],
         lines: [placed(~id="p1", ~name="Fathom Dock")],
         total: eur(2500.0),
         shippingMethod: Standard,
@@ -370,17 +382,17 @@ describe("PlaceOrder StateChangeSlice", () => {
     givenEvents([
       synced(~id="p1", ~name="Fathom Dock"),
       synced(~id="p2", ~name="Cirrus Charger"),
-      CatalogProductWithdrawn({productId: "p2"}),
+      CatalogProductWithdrawn({productId: pid("p2")}),
     ])
     ->whenCmd(
       PlaceOrder({
-        orderId: "o1",
-        customerId: "c1",
+        orderId: oid("o1"),
+        customerId: cid("c1"),
         lineItems: [line(~id="p1"), line(~id="p2")],
         shippingMethod: Standard,
       }),
     )
-    ->thenError(ProductsNotAvailable({missing: ["p2"]}))
+    ->thenError(ProductsNotAvailable({missing: [pid("p2")]}))
   )
 
   // And the way back. A relist that did not restore orderability would break the
@@ -388,22 +400,22 @@ describe("PlaceOrder StateChangeSlice", () => {
   test("a relisted product can be ordered again", () =>
     givenEvents([
       synced(~id="p1", ~name="Fathom Dock"),
-      CatalogProductWithdrawn({productId: "p1"}),
+      CatalogProductWithdrawn({productId: pid("p1")}),
       relisted(~id="p1", ~name="Fathom Dock"),
     ])
     ->whenCmd(
       PlaceOrder({
-        orderId: "o1",
-        customerId: "c1",
+        orderId: oid("o1"),
+        customerId: cid("c1"),
         lineItems: [line(~id="p1")],
         shippingMethod: Standard,
       }),
     )
     ->thenEvent(
       OrderPlaced({
-        orderId: "o1",
-        customerId: "c1",
-        productIds: ["p1"],
+        orderId: oid("o1"),
+        customerId: cid("c1"),
+        productIds: [pid("p1")],
         lines: [placed(~id="p1", ~name="Fathom Dock")],
         total: eur(2500.0),
         shippingMethod: Standard,
@@ -423,17 +435,17 @@ describe("PlaceOrder StateChangeSlice", () => {
     ])
     ->whenCmd(
       PlaceOrder({
-        orderId: "o1",
-        customerId: "c1",
+        orderId: oid("o1"),
+        customerId: cid("c1"),
         lineItems: [line(~id="p1")],
         shippingMethod: Standard,
       }),
     )
     ->thenEvent(
       OrderPlaced({
-        orderId: "o1",
-        customerId: "c1",
-        productIds: ["p1"],
+        orderId: oid("o1"),
+        customerId: cid("c1"),
+        productIds: [pid("p1")],
         lines: [placed(~id="p1", ~name="Fathom Dock 4-Port")],
         total: eur(2500.0),
         shippingMethod: Standard,
@@ -449,17 +461,17 @@ describe("PlaceOrder StateChangeSlice", () => {
     givenEvents([synced(~id="p1", ~name="Fathom Dock"), synced(~id="p2", ~name="Cirrus Charger")])
     ->whenCmd(
       PlaceOrder({
-        orderId: "o1",
-        customerId: "c1",
+        orderId: oid("o1"),
+        customerId: cid("c1"),
         lineItems: [line(~id="p2"), line(~id="p1")],
         shippingMethod: Standard,
       }),
     )
     ->thenEvent(
       OrderPlaced({
-        orderId: "o1",
-        customerId: "c1",
-        productIds: ["p2", "p1"],
+        orderId: oid("o1"),
+        customerId: cid("c1"),
+        productIds: [pid("p2"), pid("p1")],
         lines: [placed(~id="p2", ~name="Cirrus Charger"), placed(~id="p1", ~name="Fathom Dock")],
         total: eur(5000.0),
         shippingMethod: Standard,
@@ -473,7 +485,7 @@ describe("PlaceOrder StateChangeSlice", () => {
     givenEvents([
       synced(~id="p1", ~name="Fathom Dock"),
       CatalogProductImageChanged({
-        productId: "p1",
+        productId: pid("p1"),
         productImage: Reventless.UploadableImage.unsafe(
           "/uploads/Catalog/productImages/a/dock.png",
         ),
@@ -481,17 +493,17 @@ describe("PlaceOrder StateChangeSlice", () => {
     ])
     ->whenCmd(
       PlaceOrder({
-        orderId: "o1",
-        customerId: "c1",
+        orderId: oid("o1"),
+        customerId: cid("c1"),
         lineItems: [line(~id="p1")],
         shippingMethod: Standard,
       }),
     )
     ->thenEvent(
       OrderPlaced({
-        orderId: "o1",
-        customerId: "c1",
-        productIds: ["p1"],
+        orderId: oid("o1"),
+        customerId: cid("c1"),
+        productIds: [pid("p1")],
         lines: [placed(~id="p1", ~name="Fathom Dock")],
         total: eur(2500.0),
         shippingMethod: Standard,
@@ -509,27 +521,27 @@ describe("PlaceOrder StateChangeSlice", () => {
     givenEvents([
       synced(~id="p1", ~name="Fathom Dock"),
       CatalogProductImageChanged({
-        productId: "p1",
+        productId: pid("p1"),
         productImage: Reventless.UploadableImage.unsafe("/uploads/Catalog/productImages/a/old.png"),
       }),
       CatalogProductImageChanged({
-        productId: "p1",
+        productId: pid("p1"),
         productImage: Reventless.UploadableImage.unsafe("/uploads/Catalog/productImages/a/new.png"),
       }),
     ])
     ->whenCmd(
       PlaceOrder({
-        orderId: "o1",
-        customerId: "c1",
+        orderId: oid("o1"),
+        customerId: cid("c1"),
         lineItems: [line(~id="p1")],
         shippingMethod: Standard,
       }),
     )
     ->thenEvent(
       OrderPlaced({
-        orderId: "o1",
-        customerId: "c1",
-        productIds: ["p1"],
+        orderId: oid("o1"),
+        customerId: cid("c1"),
+        productIds: [pid("p1")],
         lines: [placed(~id="p1", ~name="Fathom Dock")],
         total: eur(2500.0),
         shippingMethod: Standard,
@@ -550,26 +562,26 @@ describe("PlaceOrder StateChangeSlice", () => {
     givenEvents([
       synced(~id="p1", ~name="Fathom Dock"),
       CatalogProductImageChanged({
-        productId: "p1",
+        productId: pid("p1"),
         productImage: Reventless.UploadableImage.unsafe(
           "/uploads/Catalog/productImages/a/dock.png",
         ),
       }),
-      CatalogProductImageChanged({productId: "p1"}),
+      CatalogProductImageChanged({productId: pid("p1")}),
     ])
     ->whenCmd(
       PlaceOrder({
-        orderId: "o1",
-        customerId: "c1",
+        orderId: oid("o1"),
+        customerId: cid("c1"),
         lineItems: [line(~id="p1")],
         shippingMethod: Standard,
       }),
     )
     ->thenEvent(
       OrderPlaced({
-        orderId: "o1",
-        customerId: "c1",
-        productIds: ["p1"],
+        orderId: oid("o1"),
+        customerId: cid("c1"),
+        productIds: [pid("p1")],
         lines: [placed(~id="p1", ~name="Fathom Dock")],
         total: eur(2500.0),
         shippingMethod: Standard,
@@ -584,17 +596,17 @@ describe("PlaceOrder StateChangeSlice", () => {
     givenEvents([synced(~id="p1", ~name="Fathom Dock")])
     ->whenCmd(
       PlaceOrder({
-        orderId: "o1",
-        customerId: "c1",
+        orderId: oid("o1"),
+        customerId: cid("c1"),
         lineItems: [line(~id="p1")],
         shippingMethod: Standard,
       }),
     )
     ->thenEvent(
       OrderPlaced({
-        orderId: "o1",
-        customerId: "c1",
-        productIds: ["p1"],
+        orderId: oid("o1"),
+        customerId: cid("c1"),
+        productIds: [pid("p1")],
         lines: [placed(~id="p1", ~name="Fathom Dock")],
         total: eur(2500.0),
         shippingMethod: Standard,
@@ -604,11 +616,11 @@ describe("PlaceOrder StateChangeSlice", () => {
   )
 
   test("re-placing the same orderId returns OrderAlreadyPlaced", () =>
-    givenEvents([synced(~id="p1", ~name="Fathom Dock"), OrderPlaced({orderId: "o1"})])
+    givenEvents([synced(~id="p1", ~name="Fathom Dock"), OrderPlaced({orderId: oid("o1")})])
     ->whenCmd(
       PlaceOrder({
-        orderId: "o1",
-        customerId: "c1",
+        orderId: oid("o1"),
+        customerId: cid("c1"),
         lineItems: [line(~id="p1")],
         shippingMethod: Standard,
       }),
@@ -617,20 +629,20 @@ describe("PlaceOrder StateChangeSlice", () => {
   )
 
   test("a sibling OrderPlaced for a different orderId does not block placement", () =>
-    givenEvents([synced(~id="p1", ~name="Fathom Dock"), OrderPlaced({orderId: "o2"})])
+    givenEvents([synced(~id="p1", ~name="Fathom Dock"), OrderPlaced({orderId: oid("o2")})])
     ->whenCmd(
       PlaceOrder({
-        orderId: "o1",
-        customerId: "c1",
+        orderId: oid("o1"),
+        customerId: cid("c1"),
         lineItems: [line(~id="p1")],
         shippingMethod: Pickup,
       }),
     )
     ->thenEvent(
       OrderPlaced({
-        orderId: "o1",
-        customerId: "c1",
-        productIds: ["p1"],
+        orderId: oid("o1"),
+        customerId: cid("c1"),
+        productIds: [pid("p1")],
         lines: [placed(~id="p1", ~name="Fathom Dock")],
         total: eur(2500.0),
         shippingMethod: Pickup,

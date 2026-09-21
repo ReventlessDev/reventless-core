@@ -34,12 +34,29 @@ let dateRange = (r: Reventless.DateRange.t): Seed.value => Object([
   ("end", String(r.end_)),
 ])
 
+/** Typed ids reach the API as the strings they are. */
+let categoryIdArg = (id: CatalogPlugin.CategoryId.t): Seed.value => Id(
+  id->CatalogPlugin.CategoryId.toString,
+)
+let productIdArg = (id: CatalogSpec.ProductId.t): Seed.value => Id(
+  id->CatalogSpec.ProductId.toString,
+)
+let orderIdArg = (id: OrderingPlugin.OrderId.t): Seed.value => Id(
+  id->OrderingPlugin.OrderId.toString,
+)
+let customerIdArg = (id: OrderingPlugin.CustomerId.t): Seed.value => Id(
+  id->OrderingPlugin.CustomerId.toString,
+)
+
 // ── Catalog ─────────────────────────────────────────────────────────────────
 
 let addCategory = (command: CatalogPlugin.AddCategory.command): Seed.mutation =>
   switch command {
   | AddCategory({categoryId, name}) =>
-    Seed.mutation(catalog("AddCategory"), [("categoryId", Id(categoryId)), ("name", String(name))])
+    Seed.mutation(
+      catalog("AddCategory"),
+      [("categoryId", categoryIdArg(categoryId)), ("name", String(name))],
+    )
   }
 
 // A category's single image. Only the arms the seed drives are encoded; the alt
@@ -48,7 +65,7 @@ let categoryImages = (command: CatalogPlugin.CategoryImages.command): Seed.mutat
   switch command {
   | SetCategoryImage({categoryId, categoryImage, ?altText}) =>
     let base: array<(string, Seed.value)> = [
-      ("categoryId", Id(categoryId)),
+      ("categoryId", categoryIdArg(categoryId)),
       ("categoryImage", String(categoryImage)),
     ]
     let alt: array<(string, Seed.value)> = switch altText {
@@ -68,7 +85,7 @@ let productImages = (command: CatalogPlugin.ProductImages.command): Seed.mutatio
   switch command {
   | AttachProductImage({productId, productImage, ?altText}) =>
     let base: array<(string, Seed.value)> = [
-      ("productId", Id(productId)),
+      ("productId", productIdArg(productId)),
       ("productImage", String(productImage)),
     ]
     let alt: array<(string, Seed.value)> = switch altText {
@@ -79,13 +96,13 @@ let productImages = (command: CatalogPlugin.ProductImages.command): Seed.mutatio
   | SetPrimaryProductImage({productId, productImage}) =>
     Seed.mutation(
       catalog("SetPrimaryProductImage"),
-      [("productId", Id(productId)), ("productImage", String(productImage))],
+      [("productId", productIdArg(productId)), ("productImage", String(productImage))],
     )
   | SetProductImageAltText({productId, productImage, altText}) =>
     Seed.mutation(
       catalog("SetProductImageAltText"),
       [
-        ("productId", Id(productId)),
+        ("productId", productIdArg(productId)),
         ("productImage", String(productImage)),
         ("altText", String(altText)),
       ],
@@ -98,26 +115,26 @@ let renameCategory = (command: CatalogPlugin.RenameCategory.command): Seed.mutat
   | RenameCategory({categoryId, name}) =>
     Seed.mutation(
       catalog("RenameCategory"),
-      [("categoryId", Id(categoryId)), ("name", String(name))],
+      [("categoryId", categoryIdArg(categoryId)), ("name", String(name))],
     )
   }
 
 let archiveCategory = (command: CatalogPlugin.ArchiveCategory.command): Seed.mutation =>
   switch command {
   | ArchiveCategory({categoryId}) =>
-    Seed.mutation(catalog("ArchiveCategory"), [("categoryId", Id(categoryId))])
+    Seed.mutation(catalog("ArchiveCategory"), [("categoryId", categoryIdArg(categoryId))])
   }
 
 let archiveProduct = (command: CatalogPlugin.ArchiveProduct.command): Seed.mutation =>
   switch command {
   | ArchiveProduct({productId}) =>
-    Seed.mutation(catalog("ArchiveProduct"), [("productId", Id(productId))])
+    Seed.mutation(catalog("ArchiveProduct"), [("productId", productIdArg(productId))])
   }
 
 let discontinueProduct = (command: CatalogPlugin.DiscontinueProduct.command): Seed.mutation =>
   switch command {
   | DiscontinueProduct({productId}) =>
-    Seed.mutation(catalog("DiscontinueProduct"), [("productId", Id(productId))])
+    Seed.mutation(catalog("DiscontinueProduct"), [("productId", productIdArg(productId))])
   }
 
 let addProduct = (command: CatalogPlugin.AddProduct.command): Seed.mutation =>
@@ -126,11 +143,11 @@ let addProduct = (command: CatalogPlugin.AddProduct.command): Seed.mutation =>
     Seed.mutation(
       catalog("AddProduct"),
       [
-        ("productId", Id(productId)),
+        ("productId", productIdArg(productId)),
         ("name", String(name)),
         ("description", String(description)),
         ("price", money(price)),
-        ("categoryId", Id(categoryId)),
+        ("categoryId", categoryIdArg(categoryId)),
       ],
     )
   }
@@ -140,7 +157,7 @@ let changeProductPrice = (command: CatalogPlugin.ChangeProductPrice.command): Se
   | ChangeProductPrice({productId, price}) =>
     Seed.mutation(
       catalog("ChangeProductPrice"),
-      [("productId", Id(productId)), ("price", money(price))],
+      [("productId", productIdArg(productId)), ("price", money(price))],
     )
   }
 
@@ -151,7 +168,7 @@ let changeProductDescription = (
   | ChangeProductDescription({productId, description}) =>
     Seed.mutation(
       catalog("ChangeProductDescription"),
-      [("productId", Id(productId)), ("description", String(description))],
+      [("productId", productIdArg(productId)), ("description", String(description))],
     )
   }
 
@@ -183,15 +200,15 @@ let placeOrder = (command: OrderingPlugin.PlaceOrder.command): Seed.mutation =>
   switch command {
   | PlaceOrder({orderId, customerId, lineItems, shippingMethod: method, deliveryWindow: ?window}) =>
     let base: array<(string, Seed.value)> = [
-      ("orderId", Id(orderId)),
-      ("customerId", Id(customerId)),
+      ("orderId", orderIdArg(orderId)),
+      ("customerId", customerIdArg(customerId)),
       // A list of input objects, which the transport renders as GraphQL literals
       // — the same road `deliveryWindow` takes, one level of nesting further in.
       (
         "lineItems",
         List(
           lineItems->Array.map(({productId, quantity}) => Seed.Object([
-            ("productId", Id(productId)),
+            ("productId", productIdArg(productId)),
             ("quantity", Int(quantity)),
           ])),
         ),
@@ -211,7 +228,7 @@ let placeOrder = (command: OrderingPlugin.PlaceOrder.command): Seed.mutation =>
 
 let shipOrder = (command: OrderingPlugin.ShipOrder.command): Seed.mutation =>
   switch command {
-  | ShipOrder({orderId}) => Seed.mutation(ordering("ShipOrder"), [("orderId", Id(orderId))])
+  | ShipOrder({orderId}) => Seed.mutation(ordering("ShipOrder"), [("orderId", orderIdArg(orderId))])
   }
 
 /** CancelOrder's ReopenOrder variant is `@noApi`, so it has no mutation field to
@@ -219,7 +236,8 @@ let shipOrder = (command: OrderingPlugin.ShipOrder.command): Seed.mutation =>
     command through the public API. */
 let cancelOrder = (command: OrderingPlugin.CancelOrder.command): Seed.mutation =>
   switch command {
-  | CancelOrder({orderId}) => Seed.mutation(ordering("CancelOrder"), [("orderId", Id(orderId))])
+  | CancelOrder({orderId}) =>
+    Seed.mutation(ordering("CancelOrder"), [("orderId", orderIdArg(orderId))])
   | ReopenOrder(_) =>
     throw(Seed.Failed("ReopenOrder is @noApi — it cannot be seeded through the GraphQL API"))
   }

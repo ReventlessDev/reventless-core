@@ -3,6 +3,7 @@
 import * as Sury from "sury";
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as OrderId$OrderingPlugin from "../OrderId.res.mjs";
 import * as AutomationSlice$Reventless from "@reventlessdev/reventless-spec/src/components/AutomationSlice.res.mjs";
 import * as AutoShipOrder$OrderingPlugin from "./AutoShipOrder.res.mjs";
 
@@ -27,12 +28,12 @@ let shippingMethodSchema = Sury.union([
 let eventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "OrderPlaced",
-    orderId: s.m(DcbTag$Reventless.string),
+    orderId: s.m(DcbTag$Reventless.mark(OrderId$OrderingPlugin.schema)),
     shippingMethod: s.m(shippingMethodSchema)
   })),
   Sury.$schema(s => ({
     TAG: "OrderShipped",
-    orderId: s.m(DcbTag$Reventless.string)
+    orderId: s.m(DcbTag$Reventless.mark(OrderId$OrderingPlugin.schema))
   }))
 ]);
 
@@ -51,7 +52,7 @@ function collect(event, param, _ctx) {
   switch (event.shippingMethod) {
     case "Express" :
       return [[
-          orderId,
+          OrderId$OrderingPlugin.toString(orderId),
           {
             orderId: orderId
           }
@@ -66,7 +67,7 @@ function resolve(event) {
   if (event.TAG === "OrderPlaced") {
     return;
   } else {
-    return event.orderId;
+    return OrderId$OrderingPlugin.toString(event.orderId);
   }
 }
 
@@ -89,12 +90,12 @@ let FromOrderingDcb = AutomationSlice$Reventless.Mapping.Make({
 
 let mappings = [FromOrderingDcb];
 
-function process(id, _item) {
+function process(id, item) {
   return [
     id,
     {
       TAG: "ShipOrder",
-      orderId: id
+      orderId: item.orderId
     }
   ];
 }

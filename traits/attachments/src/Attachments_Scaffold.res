@@ -38,6 +38,9 @@ type config = {
   entity: string,
   /** Its id field: `"productId"`. */
   entityId: string,
+  /** The host's identity module for that id: `"ProductId"`. Absent ⇒ `string`,
+      for a host that has not declared one. */
+  entityIdType?: string,
   /**
   What this host calls one attachment, capitalised and singular: `"Image"`,
   `"Document"`, `"Attachment"`.
@@ -160,6 +163,15 @@ let namesOf = (c: config): names => {
 }
 
 let refTypeOf = (c: config) => c.refType->Option.getOr("Reventless.UploadableImage.t")
+
+// The entity id's type, and a fixture value of it.
+let idTypeOf = (c: config) => c.entityIdType->Option.mapOr("string", t => t ++ ".t")
+
+let idValueOf = (c: config, literal: string) =>
+  switch c.entityIdType {
+  | Some(t) => `${t}.make("${literal}")`
+  | None => `"${literal}"`
+  }
 
 // What the VIEW holds, as against what an event's reference field holds. An
 // event names a file; a view holds that file together with the text that goes
@@ -304,7 +316,7 @@ let sliceSpec = (c: config): string => {
   let attrs = commandAttributes(c)
   let createdArm =
     c.createdCarriesEntityId->Option.getOr(true)
-      ? `  | ${c.created}({ ${c.entityId}: string})`
+      ? `  | ${c.created}({ ${c.entityId}: ${idTypeOf(c)}})`
       : `  | ${c.created}`
   // Present only where a choice exists. A bounded set has one member, so
   // nothing consumes or emits a primary — and the trait's rules never produce
@@ -365,16 +377,22 @@ let sliceSpec = (c: config): string => {
           ],
       `@schema`,
       `type command =`,
-      `${attrs}${n.attachCmd}({ ${c.entityId}: string, ${c.file}: ${ref}, altText?: string})`,
+      `${attrs}${n.attachCmd}({ ${c.entityId}: ${idTypeOf(
+          c,
+        )}, ${c.file}: ${ref}, altText?: string})`,
       // The bounded set's remove names nothing. This is the reported defect in its
       // purest form — the old command asked for an upload in order to delete.
       single
-        ? `${attrs}${n.removeCmd}({ ${c.entityId}: string})`
-        : `${attrs}${n.removeCmd}({ ${c.entityId}: string, ${c.file}: ${sel}})`,
-      ...single ? [] : [`${attrs}${n.setPrimaryCmd}({ ${c.entityId}: string, ${c.file}: ${sel}})`],
+        ? `${attrs}${n.removeCmd}({ ${c.entityId}: ${idTypeOf(c)}})`
+        : `${attrs}${n.removeCmd}({ ${c.entityId}: ${idTypeOf(c)}, ${c.file}: ${sel}})`,
+      ...single
+        ? []
+        : [`${attrs}${n.setPrimaryCmd}({ ${c.entityId}: ${idTypeOf(c)}, ${c.file}: ${sel}})`],
       single
-        ? `${attrs}${n.setAltTextCmd}({ ${c.entityId}: string, altText: string})`
-        : `${attrs}${n.setAltTextCmd}({ ${c.entityId}: string, ${c.file}: ${sel}, altText: string})`,
+        ? `${attrs}${n.setAltTextCmd}({ ${c.entityId}: ${idTypeOf(c)}, altText: string})`
+        : `${attrs}${n.setAltTextCmd}({ ${c.entityId}: ${idTypeOf(
+              c,
+            )}, ${c.file}: ${sel}, altText: string})`,
       ``,
       `@schema`,
       `type error =`,
@@ -384,14 +402,14 @@ let sliceSpec = (c: config): string => {
       ``,
       `@schema`,
       `type event =`,
-      `  | ${n.attached}({ ${c.entityId}: string, ${c.file}: ${ref}, altText?: string})`,
-      `  | ${n.removed}({ ${c.entityId}: string, ${c.file}: ${ref}})`,
-      ...primaryArm(`${c.entityId}: string, `),
-      `  | ${n.altTextSet}({ ${c.entityId}: string, ${c.file}: ${ref}, altText: string})`,
+      `  | ${n.attached}({ ${c.entityId}: ${idTypeOf(c)}, ${c.file}: ${ref}, altText?: string})`,
+      `  | ${n.removed}({ ${c.entityId}: ${idTypeOf(c)}, ${c.file}: ${ref}})`,
+      ...primaryArm(`${c.entityId}: ${idTypeOf(c)}, `),
+      `  | ${n.altTextSet}({ ${c.entityId}: ${idTypeOf(c)}, ${c.file}: ${ref}, altText: string})`,
       `  // The member a reader should now show, or none. A conclusion rather than a`,
       `  // decision: most of the moves that change it — a first attachment, a removal`,
       `  // promoting the next — are nobody's choice, so nothing else announces them.`,
-      `  | ${n.effectiveChanged}({ ${c.entityId}: string, ${c.file}?: ${ref}})`,
+      `  | ${n.effectiveChanged}({ ${c.entityId}: ${idTypeOf(c)}, ${c.file}?: ${ref}})`,
       ``,
       ...commandTransitionBinding(c),
       `// The graft's own record of itself. Nothing else survives into a deployed`,
@@ -544,7 +562,7 @@ let conformanceBinding = (c: config): string => {
   let refB = c.refB->Option.getOr(`/uploads/00000000-0000-4000-8000-000000000002/b`)
   let createdValue =
     c.createdCarriesEntityId->Option.getOr(true)
-      ? `${c.created}({ ${c.entityId}: "${id}"})`
+      ? `${c.created}({ ${c.entityId}: ${idValueOf(c, id)}})`
       : c.created
   lines(
     [
@@ -577,30 +595,57 @@ let conformanceBinding = (c: config): string => {
       `      ${n.effectiveChanged}({ ${c.file}: ?ref})`,
       `  }`,
       ``,
-      `  let attach = ref => ${n.slice}.${n.attachCmd}({ ${c.entityId}: "${id}", ${c.file}: ref})`,
+      `  let attach = ref => ${n.slice}.${n.attachCmd}({ ${c.entityId}: ${idValueOf(
+          c,
+          id,
+        )}, ${c.file}: ref})`,
       ...single
-        ? [`  let clear = ${n.slice}.${n.removeCmd}({ ${c.entityId}: "${id}"})`]
+        ? [`  let clear = ${n.slice}.${n.removeCmd}({ ${c.entityId}: ${idValueOf(c, id)}})`]
         : [
-            `  let remove = ref => ${n.slice}.${n.removeCmd}({ ${c.entityId}: "${id}", ${c.file}: ref})`,
+            `  let remove = ref => ${n.slice}.${n.removeCmd}({ ${c.entityId}: ${idValueOf(
+                c,
+                id,
+              )}, ${c.file}: ref})`,
             `  let setPrimary = ref =>`,
-            `    ${n.slice}.${n.setPrimaryCmd}({ ${c.entityId}: "${id}", ${c.file}: ref})`,
+            `    ${n.slice}.${n.setPrimaryCmd}({ ${c.entityId}: ${idValueOf(
+                c,
+                id,
+              )}, ${c.file}: ref})`,
           ],
       single
-        ? `  let setAltText = altText => ${n.slice}.${n.setAltTextCmd}({ ${c.entityId}: "${id}", altText})`
-        : `  let setAltText = (ref, altText) =>\n    ${n.slice}.${n.setAltTextCmd}({ ${c.entityId}: "${id}", ${c.file}: ref, altText})`,
+        ? `  let setAltText = altText => ${n.slice}.${n.setAltTextCmd}({ ${c.entityId}: ${idValueOf(
+              c,
+              id,
+            )}, altText})`
+        : `  let setAltText = (ref, altText) =>\n    ${n.slice}.${n.setAltTextCmd}({ ${c.entityId}: ${idValueOf(
+              c,
+              id,
+            )}, ${c.file}: ref, altText})`,
       ``,
-      `  let attached = ref => ${n.slice}.${n.attached}({ ${c.entityId}: "${id}", ${c.file}: ref})`,
-      `  let removed = ref => ${n.slice}.${n.removed}({ ${c.entityId}: "${id}", ${c.file}: ref})`,
+      `  let attached = ref => ${n.slice}.${n.attached}({ ${c.entityId}: ${idValueOf(
+          c,
+          id,
+        )}, ${c.file}: ref})`,
+      `  let removed = ref => ${n.slice}.${n.removed}({ ${c.entityId}: ${idValueOf(
+          c,
+          id,
+        )}, ${c.file}: ref})`,
       ...single
         ? []
         : [
             `  let primarySet = ref =>`,
-            `    ${n.slice}.${n.primarySet}({ ${c.entityId}: "${id}", ${c.file}: ref})`,
+            `    ${n.slice}.${n.primarySet}({ ${c.entityId}: ${idValueOf(c, id)}, ${c.file}: ref})`,
           ],
       `  let altTextSet = (ref, altText) =>`,
-      `    ${n.slice}.${n.altTextSet}({ ${c.entityId}: "${id}", ${c.file}: ref, altText})`,
+      `    ${n.slice}.${n.altTextSet}({ ${c.entityId}: ${idValueOf(
+          c,
+          id,
+        )}, ${c.file}: ref, altText})`,
       `  let effectiveChanged = ref =>`,
-      `    ${n.slice}.${n.effectiveChanged}({ ${c.entityId}: "${id}", ${c.file}: ?ref})`,
+      `    ${n.slice}.${n.effectiveChanged}({ ${c.entityId}: ${idValueOf(
+          c,
+          id,
+        )}, ${c.file}: ?ref})`,
       `  let notAttached = ${n.slice}.${n.notAttached}`,
       `}`,
       ``,

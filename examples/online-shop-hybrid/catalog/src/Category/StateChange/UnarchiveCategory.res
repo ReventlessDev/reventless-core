@@ -18,13 +18,13 @@ type consumedEvent =
 
 @schema
 type command =
-  | @authorize(AllowGroups(["Admin", "Merchandiser"])) UnarchiveCategory({categoryId: string})
+  | @authorize(AllowGroups(["Admin", "Merchandiser"])) UnarchiveCategory({categoryId: CategoryId.t})
 
 @schema
 type error = CategoryNotFound
 
 @schema
-type event = CategoryUnarchived({categoryId: string})
+type event = CategoryUnarchived({categoryId: CategoryId.t})
 
 type lifecycleState = Categories.shelfStatus
 

@@ -4,6 +4,7 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Money$Reventless from "@reventlessdev/reventless-spec/src/semantic/Money.res.mjs";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
+import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Currency$Reventless from "@reventlessdev/reventless-spec/src/semantic/Currency.res.mjs";
 import * as DateRange$Reventless from "@reventlessdev/reventless-spec/src/semantic/DateRange.res.mjs";
 
@@ -63,7 +64,7 @@ function evolve(state, event) {
       let productId$1 = event.productId;
       return {
         placedOrderIds: state.placedOrderIds,
-        availableProductIds: state.availableProductIds.filter(id => id !== productId$1),
+        availableProductIds: state.availableProductIds.filter(id => Primitive_object.notequal(id, productId$1)),
         shelf: state.shelf,
         productImages: state.productImages
       };
@@ -96,7 +97,7 @@ function mergeLines(lineItems) {
   return Stdlib_Array.reduce(lineItems, [], (merged, param) => {
     let quantity = param.quantity;
     let productId = param.productId;
-    let at = merged.findIndex(line => line.productId === productId);
+    let at = merged.findIndex(line => Primitive_object.equal(line.productId, productId));
     if (at !== -1) {
       return merged.map((line, i) => {
         if (i === at) {
@@ -239,7 +240,7 @@ function decide(state, command) {
     if (state.availableProductIds.includes(productId)) {
       return;
     } else {
-      return productId;
+      return Primitive_option.some(productId);
     }
   });
   if (missing.length !== 0) {

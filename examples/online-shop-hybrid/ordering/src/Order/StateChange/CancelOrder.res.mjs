@@ -3,11 +3,13 @@
 import * as Sury from "sury";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Api$ReventlessInfra from "@reventlessdev/reventless-infra/src/components/Api.res.mjs";
+import * as ProductId$CatalogSpec from "@reventlessdev/online-shop-hybrid-catalog-spec/src/ProductId.res.mjs";
+import * as OrderId$OrderingPlugin from "../OrderId.res.mjs";
 
 let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "OrderPlaced",
-    productIds: s.m(Sury.array(DcbTag$Reventless.stringForKey("productId")))
+    productIds: s.m(Sury.array(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)))
   })),
   Sury.literal("OrderShipped"),
   Sury.literal("OrderCancelled"),
@@ -17,11 +19,11 @@ let consumedEventSchema = Sury.union([
 let commandSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "CancelOrder",
-    orderId: s.m(DcbTag$Reventless.string)
+    orderId: s.m(DcbTag$Reventless.mark(OrderId$OrderingPlugin.schema))
   })),
   Sury.$schema(s => ({
     TAG: "ReopenOrder",
-    orderId: s.m(DcbTag$Reventless.string)
+    orderId: s.m(DcbTag$Reventless.mark(OrderId$OrderingPlugin.schema))
   }))
 ]);
 
@@ -33,12 +35,12 @@ let errorSchema = Sury.union([
 let eventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "OrderCancelled",
-    orderId: s.m(DcbTag$Reventless.string),
-    productIds: s.m(Sury.array(DcbTag$Reventless.stringForKey("productId")))
+    orderId: s.m(DcbTag$Reventless.mark(OrderId$OrderingPlugin.schema)),
+    productIds: s.m(Sury.array(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)))
   })),
   Sury.$schema(s => ({
     TAG: "OrderReopened",
-    orderId: s.m(DcbTag$Reventless.string)
+    orderId: s.m(DcbTag$Reventless.mark(OrderId$OrderingPlugin.schema))
   }))
 ]);
 

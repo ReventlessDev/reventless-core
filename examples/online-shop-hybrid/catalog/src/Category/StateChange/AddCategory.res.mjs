@@ -2,6 +2,7 @@
 
 import * as Sury from "sury";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as CategoryId$CatalogPlugin from "../CategoryId.res.mjs";
 
 let consumedEventSchema = Sury.union([
   Sury.literal("CategoryAdded"),
@@ -10,7 +11,7 @@ let consumedEventSchema = Sury.union([
 
 let commandSchema = Sury.$schema(s => ({
   TAG: "AddCategory",
-  categoryId: s.m(DcbTag$Reventless.string),
+  categoryId: s.m(DcbTag$Reventless.mark(CategoryId$CatalogPlugin.schema)),
   name: s.m(Sury.string)
 }));
 
@@ -18,7 +19,7 @@ let errorSchema = Sury.literal("CategoryAlreadyExists");
 
 let eventSchema = Sury.$schema(s => ({
   TAG: "CategoryAdded",
-  categoryId: s.m(DcbTag$Reventless.string),
+  categoryId: s.m(DcbTag$Reventless.mark(CategoryId$CatalogPlugin.schema)),
   name: s.m(Sury.string)
 }));
 

@@ -10,21 +10,24 @@ module Delegate = {
   @schema
   type event =
     | ProductAdded({
-        productId: string,
+        productId: CatalogSpec.ProductId.t,
         name: string,
         description: string,
         price: Reventless.Money.t,
       })
-    | ProductPriceChanged({productId: string, price: Reventless.Money.t})
+    | ProductPriceChanged({productId: CatalogSpec.ProductId.t, price: Reventless.Money.t})
     // Both ways off the shelf, and the way back.
-    | ProductArchived({productId: string})
-    | ProductDiscontinued({productId: string})
-    | ProductUnarchived({productId: string})
+    | ProductArchived({productId: CatalogSpec.ProductId.t})
+    | ProductDiscontinued({productId: CatalogSpec.ProductId.t})
+    | ProductUnarchived({productId: CatalogSpec.ProductId.t})
     // One event, not the several that move the primary. Catalog resolves which
     // picture stands and announces the conclusion, so this port never has to ask
     // whether an attachment was the first, or what a removal left behind —
     // questions a stateless mapping could not answer anyway.
-    | ProductEffectiveImageChanged({productId: string, productImage?: Reventless.UploadableImage.t})
+    | ProductEffectiveImageChanged({
+        productId: CatalogSpec.ProductId.t,
+        productImage?: Reventless.UploadableImage.t,
+      })
 }
 
 let mapIncomingCommand = (_id, _command, _meta) => []
@@ -40,7 +43,7 @@ let directiveHandler = async (
   switch directive {
   | EmitPricingUpdate({productId, price}) =>
     Console.log(
-      `[Catalog.ProductsExtensionPoint] telemetry: pricing update product=${productId} price=${price->Reventless.Money.format}`,
+      `[Catalog.ProductsExtensionPoint] telemetry: pricing update product=${productId->CatalogSpec.ProductId.toString} price=${price->Reventless.Money.format}`,
     )
   }
 
@@ -49,13 +52,13 @@ let mapOutgoingEvent = Some(
     switch event {
     | Delegate.ProductAdded({productId, name, price}) => [
         PublishEvent(
-          productId,
+          productId->CatalogSpec.ProductId.toString,
           CatalogSpec.Products_ExtensionPoint.ProductBecameAvailable({productId, name, price}),
         ),
       ]
     | Delegate.ProductPriceChanged({productId, price}) => [
         PublishEvent(
-          productId,
+          productId->CatalogSpec.ProductId.toString,
           CatalogSpec.Products_ExtensionPoint.ProductPriceChanged({productId, price}),
         ),
         HandleDirective(
@@ -67,19 +70,19 @@ let mapOutgoingEvent = Some(
     // constructors.
     | Delegate.ProductArchived({productId: theId}) => [
         PublishEvent(
-          theId,
+          theId->CatalogSpec.ProductId.toString,
           CatalogSpec.Products_ExtensionPoint.ProductWithdrawn({productId: theId}),
         ),
       ]
     | Delegate.ProductDiscontinued({productId: theId}) => [
         PublishEvent(
-          theId,
+          theId->CatalogSpec.ProductId.toString,
           CatalogSpec.Products_ExtensionPoint.ProductWithdrawn({productId: theId}),
         ),
       ]
     | Delegate.ProductUnarchived({productId: theId}) => [
         PublishEvent(
-          theId,
+          theId->CatalogSpec.ProductId.toString,
           CatalogSpec.Products_ExtensionPoint.ProductRelisted({productId: theId}),
         ),
       ]
@@ -89,7 +92,7 @@ let mapOutgoingEvent = Some(
     // gone, which is staleness rather than the record of a purchase.
     | Delegate.ProductEffectiveImageChanged({productId, ?productImage}) => [
         PublishEvent(
-          productId,
+          productId->CatalogSpec.ProductId.toString,
           CatalogSpec.Products_ExtensionPoint.ProductImageChanged({
             productId,
             ?productImage,

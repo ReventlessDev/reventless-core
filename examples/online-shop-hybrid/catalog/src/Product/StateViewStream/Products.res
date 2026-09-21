@@ -3,35 +3,44 @@
 
 @@reventless.spec
 
+// Rows are keyed by this identity.
+module Key = CatalogSpec.ProductId
+
 // Order is load-bearing: sury strands constructors declared after a run of two or
 // more same-shaped ones, so the `Money.t` pair must lead (DZakh/sury#392).
 @schema
 type consumedEvent =
   | ProductAdded({
-      productId: string,
+      productId: CatalogSpec.ProductId.t,
       name: string,
       description: string,
       price: Reventless.Money.t,
-      categoryId: string,
+      categoryId: CategoryId.t,
     })
-  | ProductPriceChanged({productId: string, price: Reventless.Money.t})
-  | ProductNameChanged({productId: string, name: string})
-  | ProductDescriptionChanged({productId: string, description: string})
+  | ProductPriceChanged({productId: CatalogSpec.ProductId.t, price: Reventless.Money.t})
+  | ProductNameChanged({productId: CatalogSpec.ProductId.t, name: string})
+  | ProductDescriptionChanged({productId: CatalogSpec.ProductId.t, description: string})
   | ProductImageAttached({
-      productId: string,
+      productId: CatalogSpec.ProductId.t,
       productImage: Reventless.UploadableImage.t,
       altText?: string,
     })
-  | ProductImageRemoved({productId: string, productImage: Reventless.UploadableImage.t})
-  | ProductPrimaryImageSet({productId: string, productImage: Reventless.UploadableImage.t})
+  | ProductImageRemoved({
+      productId: CatalogSpec.ProductId.t,
+      productImage: Reventless.UploadableImage.t,
+    })
+  | ProductPrimaryImageSet({
+      productId: CatalogSpec.ProductId.t,
+      productImage: Reventless.UploadableImage.t,
+    })
   | ProductImageAltTextSet({
-      productId: string,
+      productId: CatalogSpec.ProductId.t,
       productImage: Reventless.UploadableImage.t,
       altText: string,
     })
-  | ProductArchived({productId: string})
-  | ProductUnarchived({productId: string})
-  | ProductDiscontinued({productId: string})
+  | ProductArchived({productId: CatalogSpec.ProductId.t})
+  | ProductUnarchived({productId: CatalogSpec.ProductId.t})
+  | ProductDiscontinued({productId: CatalogSpec.ProductId.t})
 
 // Two ways off the shelf: both withdraw the row identically, and what they
 // disagree about is whether it can come back. `Moves([Archived], Listed)` on
@@ -48,7 +57,7 @@ type shelfStatus =
 // id, name and shelf state. The catalog list itself stays closed.
 @schema @namedWhenRetired
 type state = {
-  productId: string,
+  productId: CatalogSpec.ProductId.t,
   name: string,
   description: string,
   price: Reventless.Money.t,
@@ -60,7 +69,7 @@ type state = {
   // The reference, not a captured name: this view is keyed by `productId`, so a
   // copy could never be refreshed on a category rename. `@index` lets the server
   // answer `categoryIdEq` rather than a client narrowing one loaded page.
-  @index @groupBy categoryId: string,
+  @index @groupBy categoryId: CategoryId.t,
   // `@lifecycle` makes this the field commands' declared edges are written in
   // terms of; the retirements are on the constructors above.
   @lifecycle shelfStatus: shelfStatus,

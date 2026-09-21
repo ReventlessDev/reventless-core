@@ -40,23 +40,23 @@ let selected = Reventless.MemberRef.of_(
 type command =
   | @authorize(AllowGroups(["Admin", "Merchandiser"]))
   AttachProductImage({
-      productId: string,
+      productId: CatalogSpec.ProductId.t,
       productImage: Reventless.UploadableImage.t,
       altText?: string,
     })
   | @authorize(AllowGroups(["Admin", "Merchandiser"]))
   RemoveProductImage({
-      productId: string,
+      productId: CatalogSpec.ProductId.t,
       productImage: @s.matches(selected) string,
     })
   | @authorize(AllowGroups(["Admin", "Merchandiser"]))
   SetPrimaryProductImage({
-      productId: string,
+      productId: CatalogSpec.ProductId.t,
       productImage: @s.matches(selected) string,
     })
   | @authorize(AllowGroups(["Admin", "Merchandiser"]))
   SetProductImageAltText({
-      productId: string,
+      productId: CatalogSpec.ProductId.t,
       productImage: @s.matches(selected) string,
       altText: string,
     })
@@ -70,21 +70,30 @@ type error =
 @schema
 type event =
   | ProductImageAttached({
-      productId: string,
+      productId: CatalogSpec.ProductId.t,
       productImage: Reventless.UploadableImage.t,
       altText?: string,
     })
-  | ProductImageRemoved({productId: string, productImage: Reventless.UploadableImage.t})
-  | ProductPrimaryImageSet({productId: string, productImage: Reventless.UploadableImage.t})
+  | ProductImageRemoved({
+      productId: CatalogSpec.ProductId.t,
+      productImage: Reventless.UploadableImage.t,
+    })
+  | ProductPrimaryImageSet({
+      productId: CatalogSpec.ProductId.t,
+      productImage: Reventless.UploadableImage.t,
+    })
   | ProductImageAltTextSet({
-      productId: string,
+      productId: CatalogSpec.ProductId.t,
       productImage: Reventless.UploadableImage.t,
       altText: string,
     })
   // The picture that now stands as this product's — the trait's conclusion,
   // named here so anything outside the slice can follow it without re-deriving
   // the set's rules. Absent means the product has none.
-  | ProductEffectiveImageChanged({productId: string, productImage?: Reventless.UploadableImage.t})
+  | ProductEffectiveImageChanged({
+      productId: CatalogSpec.ProductId.t,
+      productImage?: Reventless.UploadableImage.t,
+    })
 
 // Legal while the product is on the shelf and while it is archived; refused once
 // it is discontinued, which is terminal. Four from-sets and no target: an

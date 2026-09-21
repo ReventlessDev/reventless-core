@@ -5,6 +5,8 @@ import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
+import * as OrderId$OrderingPlugin from "../../Order/OrderId.res.mjs";
+import * as CustomerId$OrderingPlugin from "../../Customer/CustomerId.res.mjs";
 import * as AutomationSlice$Reventless from "@reventlessdev/reventless-spec/src/components/AutomationSlice.res.mjs";
 import * as NotificationIntake$OrderingPlugin from "./NotificationIntake.res.mjs";
 import * as Notification_Rule$TraitNotification from "@reventlessdev/trait-notification/src/Notification_Rule.res.mjs";
@@ -25,13 +27,13 @@ let name = "OrderingDcbEventLog";
 let eventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "OrderPlaced",
-    orderId: s.m(DcbTag$Reventless.string),
-    customerId: s.m(DcbTag$Reventless.string)
+    orderId: s.m(DcbTag$Reventless.mark(OrderId$OrderingPlugin.schema)),
+    customerId: s.m(DcbTag$Reventless.mark(CustomerId$OrderingPlugin.schema))
   })),
   Sury.$schema(s => ({
     TAG: "OrderShipped",
-    orderId: s.m(DcbTag$Reventless.string),
-    customerId: s.m(DcbTag$Reventless.string)
+    orderId: s.m(DcbTag$Reventless.mark(OrderId$OrderingPlugin.schema)),
+    customerId: s.m(DcbTag$Reventless.mark(CustomerId$OrderingPlugin.schema))
   })),
   Sury.$schema(s => ({
     TAG: "NotificationRequested",
@@ -100,10 +102,10 @@ let defaultRules = [
 
 function todosFor(eventType, recipientId, orderId) {
   return Notification_Rule$TraitNotification.forEvent(defaultRules, name, eventType).filter(Notification_Rule$TraitNotification.isImmediate).map(rule => [
-    Notification_Rule$TraitNotification.reference(rule, orderId),
+    Notification_Rule$TraitNotification.reference(rule, OrderId$OrderingPlugin.toString(orderId)),
     {
       ruleId: rule.id,
-      recipientId: recipientId,
+      recipientId: CustomerId$OrderingPlugin.toString(recipientId),
       orderId: orderId
     }
   ]);

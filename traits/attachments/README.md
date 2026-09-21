@@ -43,12 +43,14 @@ Unlike the geocoding trait this one writes nothing back into its host: the graft
 ```sh
 pnpm exec graft-trait @reventlessdev/trait-attachments \
   --into src/Product --tests tests/Product \
-  --entity Product --entityId productId --noun Image \
-  --file productImage --created ProductAdded --view Products
+  --entity Product --entityId productId --entityIdType CatalogSpec.ProductId \
+  --noun Image --file productImage --created ProductAdded --view Products
 ```
 
    The field is named for the store it draws from, and `--noun` is what this host calls
-   one attachment — it runs through every name the graft declares.
+   one attachment — it runs through every name the graft declares. `--entityIdType` names
+   the host's identity module, so the emitted ids are typed; leave it out for a host that
+   keeps its ids as strings.
 
 2. Fill the `TODO(graft)` markers. They are the host's own policy: the events its
    refusal turns on, the error it raises, and the `else if` in `decide` that raises it

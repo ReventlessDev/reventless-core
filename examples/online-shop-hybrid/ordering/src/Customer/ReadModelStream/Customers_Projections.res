@@ -15,7 +15,7 @@ module OrderEvents = {
   let name = "OrderingDcbEventLog"
 
   @schema
-  type event = OrderPlaced({orderId: string, customerId: string})
+  type event = OrderPlaced({orderId: OrderId.t, customerId: CustomerId.t})
 }
 
 // Source 1 — Customer aggregate (profile)
@@ -31,7 +31,7 @@ module CustomerMapping = Mapping.Make(
         UpdateWithDefault(
           id,
           {
-            Customers.customerId: id->Customer.Id.toString,
+            Customers.customerId: id,
             email,
             address,
             geolocation: Pending({requestedFor: address}),
@@ -74,7 +74,7 @@ module CustomerOrdersMapping = Mapping.Make(
       switch event {
       | OrderPlaced({customerId}) =>
         UpdateWithDefault(
-          Customers.Id.makeFromString(customerId),
+          customerId,
           {
             Customers.customerId,
             email: "",

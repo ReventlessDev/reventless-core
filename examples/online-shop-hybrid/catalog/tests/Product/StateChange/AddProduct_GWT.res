@@ -1,5 +1,8 @@
 @@reventless.gwt
 
+let pid = CatalogSpec.ProductId.make
+let cid = CategoryId.make
+
 // Prices are money, so a test writes the amount a person would say and converts
 // it once. `ofMajor` scales by the currency's own exponent, which is what keeps
 // the literal honest: 9.99 EUR is 999 cents, and the same call on a JPY price
@@ -8,23 +11,23 @@ let eur = amount => Reventless.Money.ofMajor(~amount, ~currency=EUR)
 
 describe("AddProduct StateChangeSlice", () => {
   test("adds product when the referenced category exists", () =>
-    givenEvents([CategoryAdded({categoryId: "cat1"})])
+    givenEvents([CategoryAdded({categoryId: cid("cat1")})])
     ->whenCmd(
       AddProduct({
-        productId: "p1",
+        productId: pid("p1"),
         name: "Laptop",
         description: "x",
         price: eur(999.99),
-        categoryId: "cat1",
+        categoryId: cid("cat1"),
       }),
     )
     ->thenEvent(
       ProductAdded({
-        productId: "p1",
+        productId: pid("p1"),
         name: "Laptop",
         description: "x",
         price: eur(999.99),
-        categoryId: "cat1",
+        categoryId: cid("cat1"),
       }),
     )
   )
@@ -33,39 +36,42 @@ describe("AddProduct StateChangeSlice", () => {
     givenEvents([])
     ->whenCmd(
       AddProduct({
-        productId: "p1",
+        productId: pid("p1"),
         name: "Laptop",
         description: "x",
         price: eur(999.99),
-        categoryId: "cat1",
+        categoryId: cid("cat1"),
       }),
     )
     ->thenError(CategoryNotFound)
   )
 
   test("rejects when the referenced category is archived", () =>
-    givenEvents([CategoryAdded({categoryId: "cat1"}), CategoryArchived({categoryId: "cat1"})])
+    givenEvents([
+      CategoryAdded({categoryId: cid("cat1")}),
+      CategoryArchived({categoryId: cid("cat1")}),
+    ])
     ->whenCmd(
       AddProduct({
-        productId: "p1",
+        productId: pid("p1"),
         name: "Laptop",
         description: "x",
         price: eur(999.99),
-        categoryId: "cat1",
+        categoryId: cid("cat1"),
       }),
     )
     ->thenError(CategoryNotFound)
   )
 
   test("existing product returns ProductAlreadyExists", () =>
-    givenEvents([CategoryAdded({categoryId: "cat1"}), ProductAdded({productId: "p1"})])
+    givenEvents([CategoryAdded({categoryId: cid("cat1")}), ProductAdded({productId: pid("p1")})])
     ->whenCmd(
       AddProduct({
-        productId: "p1",
+        productId: pid("p1"),
         name: "Laptop",
         description: "x",
         price: eur(999.99),
-        categoryId: "cat1",
+        categoryId: cid("cat1"),
       }),
     )
     ->thenError(ProductAlreadyExists)
@@ -77,23 +83,23 @@ describe("AddProduct StateChangeSlice", () => {
   // returns only p2's own (absent) `ProductAdded`. So p2's history carries no
   // sibling `ProductAdded` — exactly what makes the plain existence check correct.
   test("a sibling product in the same category does not block a new product", () =>
-    givenEvents([CategoryAdded({categoryId: "cat1"})])
+    givenEvents([CategoryAdded({categoryId: cid("cat1")})])
     ->whenCmd(
       AddProduct({
-        productId: "p2",
+        productId: pid("p2"),
         name: "Mouse",
         description: "y",
         price: eur(19.99),
-        categoryId: "cat1",
+        categoryId: cid("cat1"),
       }),
     )
     ->thenEvent(
       ProductAdded({
-        productId: "p2",
+        productId: pid("p2"),
         name: "Mouse",
         description: "y",
         price: eur(19.99),
-        categoryId: "cat1",
+        categoryId: cid("cat1"),
       }),
     )
   )

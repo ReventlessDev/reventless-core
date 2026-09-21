@@ -1,12 +1,16 @@
 @@reventless.gwt
 
+let oid = OrderId.make
+let cid = CustomerId.make
+let pid = CatalogSpec.ProductId.make
+
 // Minor units, the way `Money` counts them: 2500 is €25.00. The lines are the
 // write side's own — this view copies them through rather than deriving anything
 // from them, apart from `itemCount`.
 let eur = amount => Reventless.Money.make(~amount, ~currency=EUR)
 
 let dockLine: orderLine = {
-  productId: "p1",
+  productId: pid("p1"),
   name: "Fathom Dock",
   quantity: 1,
   unitPrice: eur(2500.0),
@@ -14,7 +18,7 @@ let dockLine: orderLine = {
 }
 
 let chargerLine: orderLine = {
-  productId: "p2",
+  productId: pid("p2"),
   name: "Cirrus Charger",
   quantity: 2,
   unitPrice: eur(1000.0),
@@ -34,9 +38,9 @@ describe("Orders StateViewSlice", () => {
     givenEvents([])
     ->whenEvent(
       OrderPlaced({
-        orderId: "o1",
-        customerId: "c1",
-        productIds: ["p1", "p2"],
+        orderId: oid("o1"),
+        customerId: cid("c1"),
+        productIds: [pid("p1"), pid("p2")],
         lines: [dockLine, chargerLine],
         total: eur(4500.0),
         shippingMethod: Standard,
@@ -48,9 +52,9 @@ describe("Orders StateViewSlice", () => {
     ->thenStateWithId(
       "o1",
       {
-        orderId: "o1",
-        customerId: "c1",
-        productIds: ["p1", "p2"],
+        orderId: oid("o1"),
+        customerId: cid("c1"),
+        productIds: [pid("p1"), pid("p2")],
         lines: [dockLine, chargerLine],
         total: eur(4500.0),
         itemCount: 3,
@@ -77,9 +81,9 @@ describe("Orders StateViewSlice", () => {
     givenEvents([])
     ->whenEvent(
       OrderPlaced({
-        orderId: "o1",
-        customerId: "c1",
-        productIds: ["p1"],
+        orderId: oid("o1"),
+        customerId: cid("c1"),
+        productIds: [pid("p1")],
         lines: [dockLine],
         total: eur(2500.0),
         shippingMethod: Standard,
@@ -91,9 +95,9 @@ describe("Orders StateViewSlice", () => {
     ->thenStateWithId(
       "o1",
       {
-        orderId: "o1",
-        customerId: "c1",
-        productIds: ["p1"],
+        orderId: oid("o1"),
+        customerId: cid("c1"),
+        productIds: [pid("p1")],
         lines: [dockLine],
         total: eur(2500.0),
         itemCount: 1,
@@ -112,9 +116,9 @@ describe("Orders StateViewSlice", () => {
     givenEvents([])
     ->whenEvent(
       OrderPlaced({
-        orderId: "o1",
-        customerId: "c1",
-        productIds: ["p1"],
+        orderId: oid("o1"),
+        customerId: cid("c1"),
+        productIds: [pid("p1")],
         lines: [dockLine],
         total: eur(2500.0),
         shippingMethod: Pickup,
@@ -126,9 +130,9 @@ describe("Orders StateViewSlice", () => {
     ->thenStateWithId(
       "o1",
       {
-        orderId: "o1",
-        customerId: "c1",
-        productIds: ["p1"],
+        orderId: oid("o1"),
+        customerId: cid("c1"),
+        productIds: [pid("p1")],
         lines: [dockLine],
         total: eur(2500.0),
         itemCount: 1,
@@ -146,9 +150,9 @@ describe("Orders StateViewSlice", () => {
   test("OrderShipped updates status to Shipped", () =>
     givenEvents([
       OrderPlaced({
-        orderId: "o1",
-        customerId: "c1",
-        productIds: ["p1"],
+        orderId: oid("o1"),
+        customerId: cid("c1"),
+        productIds: [pid("p1")],
         lines: [dockLine],
         total: eur(2500.0),
         shippingMethod: Express,
@@ -157,13 +161,13 @@ describe("Orders StateViewSlice", () => {
         firstProductImage: None,
       }),
     ])
-    ->whenEvent(OrderShipped({orderId: "o1"}))
+    ->whenEvent(OrderShipped({orderId: oid("o1")}))
     ->thenStateWithId(
       "o1",
       {
-        orderId: "o1",
-        customerId: "c1",
-        productIds: ["p1"],
+        orderId: oid("o1"),
+        customerId: cid("c1"),
+        productIds: [pid("p1")],
         lines: [dockLine],
         total: eur(2500.0),
         itemCount: 1,
@@ -181,9 +185,9 @@ describe("Orders StateViewSlice", () => {
   test("OrderCancelled updates status to Cancelled", () =>
     givenEvents([
       OrderPlaced({
-        orderId: "o1",
-        customerId: "c1",
-        productIds: ["p1"],
+        orderId: oid("o1"),
+        customerId: cid("c1"),
+        productIds: [pid("p1")],
         lines: [dockLine],
         total: eur(2500.0),
         shippingMethod: Standard,
@@ -192,13 +196,13 @@ describe("Orders StateViewSlice", () => {
         firstProductImage: None,
       }),
     ])
-    ->whenEvent(OrderCancelled({orderId: "o1"}))
+    ->whenEvent(OrderCancelled({orderId: oid("o1")}))
     ->thenStateWithId(
       "o1",
       {
-        orderId: "o1",
-        customerId: "c1",
-        productIds: ["p1"],
+        orderId: oid("o1"),
+        customerId: cid("c1"),
+        productIds: [pid("p1")],
         lines: [dockLine],
         total: eur(2500.0),
         itemCount: 1,
@@ -221,9 +225,9 @@ describe("Orders StateViewSlice", () => {
   test("OrderReopened puts a cancelled order back to Placed", () =>
     givenEvents([
       OrderPlaced({
-        orderId: "o1",
-        customerId: "c1",
-        productIds: ["p1"],
+        orderId: oid("o1"),
+        customerId: cid("c1"),
+        productIds: [pid("p1")],
         lines: [dockLine],
         total: eur(2500.0),
         shippingMethod: Standard,
@@ -231,15 +235,15 @@ describe("Orders StateViewSlice", () => {
         firstProductName: None,
         firstProductImage: None,
       }),
-      OrderCancelled({orderId: "o1"}),
+      OrderCancelled({orderId: oid("o1")}),
     ])
-    ->whenEvent(OrderReopened({orderId: "o1"}))
+    ->whenEvent(OrderReopened({orderId: oid("o1")}))
     ->thenStateWithId(
       "o1",
       {
-        orderId: "o1",
-        customerId: "c1",
-        productIds: ["p1"],
+        orderId: oid("o1"),
+        customerId: cid("c1"),
+        productIds: [pid("p1")],
         lines: [dockLine],
         total: eur(2500.0),
         itemCount: 1,

@@ -746,7 +746,13 @@ let buildOrders = (
       } else {
         3
       }
-      ({productId, quantity}: OrderingPlugin.PlaceOrder.lineItem)
+
+      (
+        {
+          productId: CatalogSpec.ProductId.make(productId),
+          quantity,
+        }: OrderingPlugin.PlaceOrder.lineItem
+      )
     })
     // Drives the whole downstream lifecycle: Express is auto-shipped by the
     // AutoShipOrder automation, Standard waits for the batch dispatch, Pickup

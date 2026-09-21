@@ -2,6 +2,7 @@
 
 import * as Sury from "sury";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as CustomerId$OrderingPlugin from "../CustomerId.res.mjs";
 
 let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
@@ -22,7 +23,7 @@ let outboundItemSchema = Sury.$schema(s => ({
 
 let inboundCommandSchema = Sury.$schema(s => ({
   TAG: "IssueEmailChallenge",
-  customerId: s.m(DcbTag$Reventless.string),
+  customerId: s.m(DcbTag$Reventless.mark(CustomerId$OrderingPlugin.schema)),
   email: s.m(Sury.string),
   purpose: s.m(Sury.string),
   proofHash: s.m(Sury.string),

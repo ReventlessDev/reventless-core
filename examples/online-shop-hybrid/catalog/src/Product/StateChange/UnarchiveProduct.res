@@ -16,13 +16,16 @@ type consumedEvent =
 
 @schema
 type command =
-  | @authorize(AllowGroups(["Admin", "Merchandiser"])) UnarchiveProduct({productId: string})
+  | @authorize(AllowGroups(["Admin", "Merchandiser"]))
+  UnarchiveProduct({
+      productId: CatalogSpec.ProductId.t,
+    })
 
 @schema
 type error = ProductNotFound | ProductIsDiscontinued
 
 @schema
-type event = ProductUnarchived({productId: string})
+type event = ProductUnarchived({productId: CatalogSpec.ProductId.t})
 
 // The edge that makes the two withdrawals different: this is the only command
 // naming `Archived` as a from-state, so a diagram draws the way back from there

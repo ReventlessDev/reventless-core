@@ -18,7 +18,7 @@ type consumedEvent =
 type command =
   | @authorize(AllowGroups(["Admin", "Merchandiser"]))
   RenameCategory({
-      categoryId: string,
+      categoryId: CategoryId.t,
       name: string,
     })
 
@@ -28,7 +28,7 @@ type error =
   | CategoryAlreadyArchived
 
 @schema
-type event = CategoryRenamed({categoryId: string, name: string})
+type event = CategoryRenamed({categoryId: CategoryId.t, name: string})
 
 // `Guards` rather than `Moves`: renaming a category is legal only while it is on
 // the shelf, and it does not move it anywhere. `decide` already refuses with

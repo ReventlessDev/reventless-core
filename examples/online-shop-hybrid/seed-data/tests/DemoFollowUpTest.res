@@ -95,7 +95,10 @@ describe("DemoFollowUp.plan", () => {
     "order only what Ordering sells in the shop's currency, and change only listed products",
     () => {
       let listed = snapshot.products->Array.filter(p => p.listed)->Array.map(p => p.id)
-      let ordered = plan.orders->Array.flatMap(o => o.lineItems->Array.map(line => line.productId))
+      let ordered =
+        plan.orders->Array.flatMap(
+          o => o.lineItems->Array.map(line => line.productId->CatalogSpec.ProductId.toString),
+        )
       let changed = Array.concat(
         Array.concat(ids(plan.repriced), ids(plan.redescribed)),
         Array.concat(plan.archived, plan.discontinued),

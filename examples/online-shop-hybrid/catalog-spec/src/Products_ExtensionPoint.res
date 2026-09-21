@@ -34,10 +34,10 @@ type command = unit // read-only: no inbound commands
 // event may not.
 @schema
 type event =
-  | ProductBecameAvailable({productId: string, name: string, price: Reventless.Money.t})
-  | ProductPriceChanged({productId: string, price: Reventless.Money.t})
-  | ProductWithdrawn({productId: string})
-  | ProductRelisted({productId: string})
+  | ProductBecameAvailable({productId: ProductId.t, name: string, price: Reventless.Money.t})
+  | ProductPriceChanged({productId: ProductId.t, price: Reventless.Money.t})
+  | ProductWithdrawn({productId: ProductId.t})
+  | ProductRelisted({productId: ProductId.t})
   // **A separate event, not a field on `ProductBecameAvailable`.** A product is
   // added before it has a picture — the images are a slice of their own, and the
   // first one is attached afterwards — so availability cannot carry one. Which
@@ -53,10 +53,10 @@ type event =
   // Per the note above this is the breaking kind of addition — a subscriber
   // compiled against the old spec cannot decode this variant. Tolerable here
   // only because `catalog` and `ordering` deploy together.
-  | ProductImageChanged({productId: string, productImage?: Reventless.UploadableImage.t})
+  | ProductImageChanged({productId: ProductId.t, productImage?: Reventless.UploadableImage.t})
 
 // Non-domain side effects an EP-side mapping can fire alongside its events.
 // Fired from the publishing side; not durable, not replayable, not routed to
 // subscribers. See `catalog/src/ExtensionPoint/Products_ExtensionPointMapping.res`.
 @schema
-type directive = EmitPricingUpdate({productId: string, price: Reventless.Money.t})
+type directive = EmitPricingUpdate({productId: ProductId.t, price: Reventless.Money.t})

@@ -16,6 +16,10 @@
 // the flow seeds a CatalogProductSynced event before placing the order.
 @@reventless.gwt
 
+let oid = OrderId.make
+let cid = CustomerId.make
+let pid = CatalogSpec.ProductId.make
+
 // Compose the automation onto a flat slice — the production split keeps
 // collect/resolve inside the per-source mapping; the GWT needs them together.
 let contextFor = (sliceName): Reventless.AutomationSlice.context => {
@@ -75,30 +79,34 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
       )->Result.getOrThrow
     start
     ->Sync.givenEvents([
-      SyncCatalogProduct.CatalogProductSynced({productId: "p1", name: "Book", price: eur(9.99)}),
+      SyncCatalogProduct.CatalogProductSynced({
+        productId: pid("p1"),
+        name: "Book",
+        price: eur(9.99),
+      }),
     ])
     // Express, so the automation picks it up — a Standard or Pickup order would
     // stop at Placed and wait for an explicit ShipOrder.
     ->Place.whenCommand(
       PlaceOrder.PlaceOrder({
-        orderId: "o1",
-        customerId: "c1",
-        lineItems: [{productId: "p1", quantity: 2}],
+        orderId: oid("o1"),
+        customerId: cid("c1"),
+        lineItems: [{productId: pid("p1"), quantity: 2}],
         shippingMethod: Express,
         deliveryWindow: window,
       }),
     )
     ->Place.thenEvent(
       PlaceOrder.OrderPlaced({
-        orderId: "o1",
-        customerId: "c1",
-        productIds: ["p1"],
+        orderId: oid("o1"),
+        customerId: cid("c1"),
+        productIds: [pid("p1")],
         // The line is priced from the shelf the placement read, and the total is
         // the sum of the lines — two of a €9.99 book is €19.98, computed by
         // `Money` rather than by the behaviour.
         lines: [
           {
-            productId: "p1",
+            productId: pid("p1"),
             name: "Book",
             quantity: 2,
             unitPrice: eur(9.99),
@@ -114,18 +122,18 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
       }),
     )
     ->Auto.whenReacts
-    ->Auto.thenIssuesCommand(AutoShipOrder.ShipOrder({orderId: "o1"}))
-    ->Ship.whenCommand(ShipOrder.ShipOrder({orderId: "o1"}))
-    ->Ship.thenEvent(ShipOrder.OrderShipped({orderId: "o1", customerId: "c1"}))
+    ->Auto.thenIssuesCommand(AutoShipOrder.ShipOrder({orderId: oid("o1")}))
+    ->Ship.whenCommand(ShipOrder.ShipOrder({orderId: oid("o1")}))
+    ->Ship.thenEvent(ShipOrder.OrderShipped({orderId: oid("o1"), customerId: cid("c1")}))
     ->OrdersView.thenViewState(
       "o1",
       {
-        Orders.orderId: "o1",
-        customerId: "c1",
-        productIds: ["p1"],
+        Orders.orderId: oid("o1"),
+        customerId: cid("c1"),
+        productIds: [pid("p1")],
         lines: [
           {
-            productId: "p1",
+            productId: pid("p1"),
             name: "Book",
             quantity: 2,
             unitPrice: eur(9.99),
@@ -188,12 +196,12 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
     start
     ->Place.whenCommand(
       PlaceOrder.PlaceOrder({
-        orderId: "o1",
-        customerId: "c1",
-        lineItems: [{productId: "p1", quantity: 1}],
+        orderId: oid("o1"),
+        customerId: cid("c1"),
+        lineItems: [{productId: pid("p1"), quantity: 1}],
         shippingMethod: Standard,
       }),
     )
-    ->Place.thenError(ProductsNotAvailable({missing: ["p1"]}))
+    ->Place.thenError(ProductsNotAvailable({missing: [pid("p1")]}))
   )
 })

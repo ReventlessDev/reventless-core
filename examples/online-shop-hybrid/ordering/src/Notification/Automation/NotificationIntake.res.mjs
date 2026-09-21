@@ -2,12 +2,13 @@
 
 import * as Sury from "sury";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as OrderId$OrderingPlugin from "../../Order/OrderId.res.mjs";
 import * as NotificationPreferences$OrderingPlugin from "../StateChange/NotificationPreferences.res.mjs";
 
 let todoItemSchema = Sury.$schema(s => ({
   ruleId: s.m(Sury.string),
   recipientId: s.m(Sury.string),
-  orderId: s.m(Sury.string)
+  orderId: s.m(OrderId$OrderingPlugin.schema)
 }));
 
 let commandSchema = Sury.$schema(s => ({

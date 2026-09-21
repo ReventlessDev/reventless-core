@@ -26,25 +26,43 @@ module Binding = {
     })
   }
 
-  let attach = ref => ProductImages.AttachProductImage({productId: "p1", productImage: ref})
-  let remove = ref => ProductImages.RemoveProductImage({productId: "p1", productImage: ref})
-  let setPrimary = ref => ProductImages.SetPrimaryProductImage({productId: "p1", productImage: ref})
+  let attach = ref => ProductImages.AttachProductImage({
+    productId: CatalogSpec.ProductId.make("p1"),
+    productImage: ref,
+  })
+  let remove = ref => ProductImages.RemoveProductImage({
+    productId: CatalogSpec.ProductId.make("p1"),
+    productImage: ref,
+  })
+  let setPrimary = ref => ProductImages.SetPrimaryProductImage({
+    productId: CatalogSpec.ProductId.make("p1"),
+    productImage: ref,
+  })
   let setAltText = (ref, altText) => ProductImages.SetProductImageAltText({
-    productId: "p1",
+    productId: CatalogSpec.ProductId.make("p1"),
     productImage: ref,
     altText,
   })
 
-  let attached = ref => ProductImages.ProductImageAttached({productId: "p1", productImage: ref})
-  let removed = ref => ProductImages.ProductImageRemoved({productId: "p1", productImage: ref})
-  let primarySet = ref => ProductImages.ProductPrimaryImageSet({productId: "p1", productImage: ref})
+  let attached = ref => ProductImages.ProductImageAttached({
+    productId: CatalogSpec.ProductId.make("p1"),
+    productImage: ref,
+  })
+  let removed = ref => ProductImages.ProductImageRemoved({
+    productId: CatalogSpec.ProductId.make("p1"),
+    productImage: ref,
+  })
+  let primarySet = ref => ProductImages.ProductPrimaryImageSet({
+    productId: CatalogSpec.ProductId.make("p1"),
+    productImage: ref,
+  })
   let altTextSet = (ref, altText) => ProductImages.ProductImageAltTextSet({
-    productId: "p1",
+    productId: CatalogSpec.ProductId.make("p1"),
     productImage: ref,
     altText,
   })
   let effectiveChanged = ref => ProductImages.ProductEffectiveImageChanged({
-    productId: "p1",
+    productId: CatalogSpec.ProductId.make("p1"),
     productImage: ?ref,
   })
   let notAttached = ProductImages.ProductImageNotAttached

@@ -22,14 +22,14 @@
 @schema
 type consumedEvent =
   | EmailChallengeIssued({
-      customerId: string,
+      customerId: CustomerId.t,
       email: string,
       purpose: string,
       proofHash: string,
       issuedAt: string,
     })
-  | EmailProofAccepted({customerId: string, email: string})
-  | EmailProofRefused({customerId: string, email: string, reason: string})
+  | EmailProofAccepted({customerId: CustomerId.t, email: string})
+  | EmailProofRefused({customerId: CustomerId.t, email: string, reason: string})
 
 @schema
 type command =
@@ -37,7 +37,7 @@ type command =
   // caller who could issue challenges could send mail to any address they liked.
   | @noApi
   IssueEmailChallenge({
-      customerId: string,
+      customerId: CustomerId.t,
       email: string,
       purpose: string,
       proofHash: string,
@@ -50,7 +50,12 @@ type command =
   // authorization fits. Registration is the case that does not: the caller is
   // trying to *become* someone, and a component that brings a door cannot yet
   // declare that the door is open to the unauthenticated.
-  | SubmitEmailProof({customerId: string, email: string, proofHash: string, presentedAt: string})
+  | SubmitEmailProof({
+      customerId: CustomerId.t,
+      email: string,
+      proofHash: string,
+      presentedAt: string,
+    })
 
 @schema
 type error =
@@ -63,11 +68,11 @@ type error =
 @schema
 type event =
   | EmailChallengeIssued({
-      customerId: string,
+      customerId: CustomerId.t,
       email: string,
       purpose: string,
       proofHash: string,
       issuedAt: string,
     })
-  | EmailProofAccepted({customerId: string, email: string})
-  | EmailProofRefused({customerId: string, email: string, reason: string})
+  | EmailProofAccepted({customerId: CustomerId.t, email: string})
+  | EmailProofRefused({customerId: CustomerId.t, email: string, reason: string})

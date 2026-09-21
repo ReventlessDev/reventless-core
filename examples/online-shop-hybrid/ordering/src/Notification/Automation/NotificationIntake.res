@@ -19,7 +19,7 @@
 // It is also the payload the wording is rendered against, so every field here is
 // a path a template may name — `{{ orderId }}`.
 @schema
-type todoItem = {ruleId: string, recipientId: string, orderId: string}
+type todoItem = {ruleId: string, recipientId: string, orderId: OrderId.t}
 
 @schema
 type command =

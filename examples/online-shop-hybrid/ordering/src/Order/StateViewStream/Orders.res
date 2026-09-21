@@ -3,6 +3,9 @@
 
 @@reventless.spec
 
+// Rows are keyed by this identity.
+module Key = OrderId
+
 // Catalog's store, named explicitly: the ppx would otherwise derive an
 // *Ordering* store from the field name, and nothing writes to that one.
 let catalogProductImage = Reventless.UploadableImage.forField(
@@ -20,7 +23,7 @@ type shippingMethod =
 // write side froze at placement, not the catalog's current ones.
 @schema
 type orderLine = {
-  productId: string,
+  productId: CatalogSpec.ProductId.t,
   name: string,
   quantity: int,
   unitPrice: Reventless.Money.t,
@@ -30,9 +33,9 @@ type orderLine = {
 @schema
 type consumedEvent =
   | OrderPlaced({
-      orderId: string,
-      customerId: string,
-      productIds: array<string>,
+      orderId: OrderId.t,
+      customerId: CustomerId.t,
+      productIds: array<CatalogSpec.ProductId.t>,
       lines: array<orderLine>,
       total: Reventless.Money.t,
       shippingMethod: shippingMethod,
@@ -41,12 +44,12 @@ type consumedEvent =
       firstProductImage: @s.matches(S.option(catalogProductImage))
       option<Reventless.UploadableImage.t>,
     })
-  | OrderShipped({orderId: string})
-  | OrderCancelled({orderId: string})
+  | OrderShipped({orderId: OrderId.t})
+  | OrderCancelled({orderId: OrderId.t})
   // Folding the cancellation without the reopen would render the row `Cancelled`
   // for the rest of its life. `ReopenOrder` being internal-only does not make
   // the edge less real.
-  | OrderReopened({orderId: string})
+  | OrderReopened({orderId: OrderId.t})
 
 @schema
 type lifecycle =
@@ -58,12 +61,12 @@ type lifecycle =
 // shopper is looking at it — so the Live control is offered.
 @live(true) @schema
 type state = {
-  orderId: string,
+  orderId: OrderId.t,
   // Reads are narrowed to the caller's own rows in the resolver; an elevated
   // caller sees every row.
-  @owner customerId: string,
+  @owner customerId: CustomerId.t,
   // Correct on the event, noise in a grid — `lines` says the same with names.
-  @hidden productIds: array<string>,
+  @hidden productIds: array<CatalogSpec.ProductId.t>,
   // From the envelope's `meta.time`. `@displayName` because an order placed
   // through the UI has a uuid for an id and no name of its own; `@summary` puts
   // the field a row is named by in the set a list column may show.

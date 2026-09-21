@@ -22,7 +22,7 @@ type outboundItem = {customerId: string, email: string}
 @schema
 type inboundCommand =
   | IssueEmailChallenge({
-      customerId: string,
+      customerId: CustomerId.t,
       email: string,
       purpose: string,
       proofHash: string,

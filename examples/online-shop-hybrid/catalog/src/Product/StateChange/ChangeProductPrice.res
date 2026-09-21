@@ -19,7 +19,7 @@ type consumedEvent =
 type command =
   | @authorize(AllowGroups(["Admin", "Merchandiser"]))
   ChangeProductPrice({
-      productId: string,
+      productId: CatalogSpec.ProductId.t,
       price: Reventless.Money.t,
     })
 
@@ -29,7 +29,7 @@ type error =
   | ProductIsDiscontinued
 
 @schema
-type event = ProductPriceChanged({productId: string, price: Reventless.Money.t})
+type event = ProductPriceChanged({productId: CatalogSpec.ProductId.t, price: Reventless.Money.t})
 
 // Repricing is legal on a listed product and on an archived one — a product
 // pulled for a season is coming back, and its price should be right when it

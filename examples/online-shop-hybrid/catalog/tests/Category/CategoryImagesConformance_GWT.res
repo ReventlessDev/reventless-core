@@ -30,19 +30,31 @@ module Binding = {
     })
   }
 
-  let attach = ref => CategoryImages.SetCategoryImage({categoryId: "c1", categoryImage: ref})
-  let clear = CategoryImages.RemoveCategoryImage({categoryId: "c1"})
-  let setAltText = altText => CategoryImages.SetCategoryImageAltText({categoryId: "c1", altText})
+  let attach = ref => CategoryImages.SetCategoryImage({
+    categoryId: CategoryId.make("c1"),
+    categoryImage: ref,
+  })
+  let clear = CategoryImages.RemoveCategoryImage({categoryId: CategoryId.make("c1")})
+  let setAltText = altText => CategoryImages.SetCategoryImageAltText({
+    categoryId: CategoryId.make("c1"),
+    altText,
+  })
 
-  let attached = ref => CategoryImages.CategoryImageAttached({categoryId: "c1", categoryImage: ref})
-  let removed = ref => CategoryImages.CategoryImageRemoved({categoryId: "c1", categoryImage: ref})
+  let attached = ref => CategoryImages.CategoryImageAttached({
+    categoryId: CategoryId.make("c1"),
+    categoryImage: ref,
+  })
+  let removed = ref => CategoryImages.CategoryImageRemoved({
+    categoryId: CategoryId.make("c1"),
+    categoryImage: ref,
+  })
   let altTextSet = (ref, altText) => CategoryImages.CategoryImageAltTextSet({
-    categoryId: "c1",
+    categoryId: CategoryId.make("c1"),
     categoryImage: ref,
     altText,
   })
   let effectiveChanged = ref => CategoryImages.CategoryEffectiveImageChanged({
-    categoryId: "c1",
+    categoryId: CategoryId.make("c1"),
     categoryImage: ?ref,
   })
   let notAttached = CategoryImages.CategoryImageNotAttached

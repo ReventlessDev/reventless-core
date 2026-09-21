@@ -3,6 +3,7 @@
 import * as Sury from "sury";
 import * as Lifecycle$Reventless from "@reventlessdev/reventless-spec/src/types/Lifecycle.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
+import * as CategoryId$CatalogPlugin from "../CategoryId.res.mjs";
 import * as CaptionedImage$Reventless from "@reventlessdev/reventless-spec/src/semantic/CaptionedImage.res.mjs";
 import * as UploadableImage$Reventless from "@reventlessdev/reventless-spec/src/semantic/UploadableImage.res.mjs";
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
@@ -10,38 +11,38 @@ import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src
 let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "CategoryAdded",
-    categoryId: s.m(Sury.string),
+    categoryId: s.m(CategoryId$CatalogPlugin.schema),
     name: s.m(Sury.string)
   })),
   Sury.$schema(s => ({
     TAG: "CategoryRenamed",
-    categoryId: s.m(Sury.string),
+    categoryId: s.m(CategoryId$CatalogPlugin.schema),
     name: s.m(Sury.string)
   })),
   Sury.$schema(s => ({
     TAG: "CategoryImageAttached",
-    categoryId: s.m(Sury.string),
+    categoryId: s.m(CategoryId$CatalogPlugin.schema),
     categoryImage: s.m(UploadableImage$Reventless.forField(undefined, "categoryImages")),
     altText: s.m(Sury.$option(Sury.string))
   })),
   Sury.$schema(s => ({
     TAG: "CategoryImageRemoved",
-    categoryId: s.m(Sury.string),
+    categoryId: s.m(CategoryId$CatalogPlugin.schema),
     categoryImage: s.m(UploadableImage$Reventless.forField(undefined, "categoryImages"))
   })),
   Sury.$schema(s => ({
     TAG: "CategoryImageAltTextSet",
-    categoryId: s.m(Sury.string),
+    categoryId: s.m(CategoryId$CatalogPlugin.schema),
     categoryImage: s.m(UploadableImage$Reventless.forField(undefined, "categoryImages")),
     altText: s.m(Sury.string)
   })),
   Sury.$schema(s => ({
     TAG: "CategoryArchived",
-    categoryId: s.m(Sury.string)
+    categoryId: s.m(CategoryId$CatalogPlugin.schema)
   })),
   Sury.$schema(s => ({
     TAG: "CategoryUnarchived",
-    categoryId: s.m(Sury.string)
+    categoryId: s.m(CategoryId$CatalogPlugin.schema)
   }))
 ]);
 
@@ -51,7 +52,7 @@ let shelfStatusSchema = Sury.union([
 ]);
 
 let stateSchema = Sury.$schema(s => ({
-  categoryId: s.m(Sury.string),
+  categoryId: s.m(CategoryId$CatalogPlugin.schema),
   name: s.m(Sury.string),
   shelfStatus: s.m(shelfStatusSchema),
   trail: s.m(Lifecycle$Reventless.Trail.schema(shelfStatusSchema)),
@@ -106,10 +107,10 @@ let visibility = "Public";
 export {
   name,
   Id,
+  Key,
   consumedEventSchema,
   shelfStatusSchema,
   config,
-  Key,
   subIdConfig,
   stateSchema$1 as stateSchema,
   moduleUrl,

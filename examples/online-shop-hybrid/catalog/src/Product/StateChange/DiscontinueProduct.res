@@ -17,13 +17,16 @@ type consumedEvent =
 
 @schema
 type command =
-  | @authorize(AllowGroups(["Admin", "Merchandiser"])) DiscontinueProduct({productId: string})
+  | @authorize(AllowGroups(["Admin", "Merchandiser"]))
+  DiscontinueProduct({
+      productId: CatalogSpec.ProductId.t,
+    })
 
 @schema
 type error = ProductNotFound
 
 @schema
-type event = ProductDiscontinued({productId: string})
+type event = ProductDiscontinued({productId: CatalogSpec.ProductId.t})
 
 // Both live states, because the decision is about the product's future rather
 // than about where it sits today.

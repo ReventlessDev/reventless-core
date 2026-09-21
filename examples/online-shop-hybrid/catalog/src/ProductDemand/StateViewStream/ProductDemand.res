@@ -3,15 +3,18 @@
 
 @@reventless.spec
 
+// Rows are keyed by this identity.
+module Key = CatalogSpec.ProductId
+
 // Operator surface: aggregate demand across every customer is a merchandising
 // signal, not something a shopper is entitled to read.
 @@reventless.authorize(AllowGroups(["Admin", "Merchandiser"]))
 
 @schema
 type consumedEvent =
-  | ProductAdded({productId: string, name: string, categoryId: string})
-  | ProductDemandRecorded({productId: string})
-  | ProductDemandRevoked({productId: string})
+  | ProductAdded({productId: CatalogSpec.ProductId.t, name: string, categoryId: CategoryId.t})
+  | ProductDemandRecorded({productId: CatalogSpec.ProductId.t})
+  | ProductDemandRevoked({productId: CatalogSpec.ProductId.t})
 
 // `@id` because this is the one view here whose key cannot be inferred: the state
 // carries two `*Id` fields, and the component name yields no matching field
@@ -19,9 +22,9 @@ type consumedEvent =
 // no key filter and no order-by at all.
 @schema
 type state = {
-  @id productId: string,
+  @id productId: CatalogSpec.ProductId.t,
   name: string,
-  categoryId: string,
+  categoryId: CategoryId.t,
   // **Orders, not units.** Every `ItemOrdered` increments this by one, whatever
   // quantity the line carried, so three of a thing in one order counts once.
   // Counting units would mean `quantity` on `Orders_ExtensionPoint.ItemOrdered`,

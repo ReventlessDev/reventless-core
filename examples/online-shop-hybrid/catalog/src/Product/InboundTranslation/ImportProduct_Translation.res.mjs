@@ -2,6 +2,8 @@
 
 import * as Money$Reventless from "@reventlessdev/reventless-spec/src/semantic/Money.res.mjs";
 import * as Currency$Reventless from "@reventlessdev/reventless-spec/src/semantic/Currency.res.mjs";
+import * as ProductId$CatalogSpec from "@reventlessdev/online-shop-hybrid-catalog-spec/src/ProductId.res.mjs";
+import * as CategoryId$CatalogPlugin from "../../Category/CategoryId.res.mjs";
 
 function translate(input) {
   let why = Currency$Reventless.fromString(input.currency);
@@ -28,11 +30,11 @@ function translate(input) {
             input.sku,
             {
               TAG: "AddProduct",
-              productId: input.sku,
+              productId: ProductId$CatalogSpec.makeFromString(input.sku),
               name: input.title,
               description: input.desc,
               price: Money$Reventless.make(input.unitPrice, why._0),
-              categoryId: input.category
+              categoryId: CategoryId$CatalogPlugin.makeFromString(input.category)
             }
           ]]
       };

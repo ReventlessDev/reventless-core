@@ -6,38 +6,41 @@ import * as Owner$Reventless from "@reventlessdev/reventless-spec/src/components
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as DateRange$Reventless from "@reventlessdev/reventless-spec/src/semantic/DateRange.res.mjs";
 import * as Reference$Reventless from "@reventlessdev/reventless-spec/src/components/Reference.res.mjs";
+import * as ProductId$CatalogSpec from "@reventlessdev/online-shop-hybrid-catalog-spec/src/ProductId.res.mjs";
+import * as OrderId$OrderingPlugin from "../OrderId.res.mjs";
 import * as FieldDefault$Reventless from "@reventlessdev/reventless-spec/src/components/FieldDefault.res.mjs";
+import * as CustomerId$OrderingPlugin from "../../Customer/CustomerId.res.mjs";
 import * as UploadableImage$Reventless from "@reventlessdev/reventless-spec/src/semantic/UploadableImage.res.mjs";
 
 let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "OrderPlaced",
-    orderId: s.m(DcbTag$Reventless.string)
+    orderId: s.m(DcbTag$Reventless.mark(OrderId$OrderingPlugin.schema))
   })),
   Sury.$schema(s => ({
     TAG: "CatalogProductSynced",
-    productId: s.m(DcbTag$Reventless.string),
+    productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
     name: s.m(Sury.string),
     price: s.m(Money$Reventless.schema)
   })),
   Sury.$schema(s => ({
     TAG: "CatalogProductPriceChanged",
-    productId: s.m(DcbTag$Reventless.string),
+    productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
     price: s.m(Money$Reventless.schema)
   })),
   Sury.$schema(s => ({
     TAG: "CatalogProductWithdrawn",
-    productId: s.m(DcbTag$Reventless.string)
+    productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema))
   })),
   Sury.$schema(s => ({
     TAG: "CatalogProductRelisted",
-    productId: s.m(DcbTag$Reventless.string),
+    productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
     name: s.m(Sury.string),
     price: s.m(Money$Reventless.schema)
   })),
   Sury.$schema(s => ({
     TAG: "CatalogProductImageChanged",
-    productId: s.m(DcbTag$Reventless.string),
+    productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
     productImage: s.m(Sury.$option(UploadableImage$Reventless.forField(undefined, "productImages")))
   }))
 ]);
@@ -49,14 +52,14 @@ let shippingMethodSchema = Sury.union([
 ]);
 
 let lineItemSchema = Sury.$schema(s => ({
-  productId: s.m(Reference$Reventless.to_(undefined, undefined, "AvailableProducts")),
+  productId: s.m(Reference$Reventless.mark(ProductId$CatalogSpec.schema, undefined, undefined, "AvailableProducts")),
   quantity: s.m(FieldDefault$Reventless.int(Sury.int, 1))
 }));
 
 let commandSchema = Sury.$schema(s => ({
   TAG: "PlaceOrder",
-  orderId: s.m(DcbTag$Reventless.string),
-  customerId: s.m(Owner$Reventless.string),
+  orderId: s.m(DcbTag$Reventless.mark(OrderId$OrderingPlugin.schema)),
+  customerId: s.m(Owner$Reventless.mark(CustomerId$OrderingPlugin.schema)),
   lineItems: s.m(Sury.array(lineItemSchema)),
   shippingMethod: s.m(shippingMethodSchema),
   deliveryWindow: s.m(Sury.$option(DateRange$Reventless.schema))
@@ -66,12 +69,12 @@ let errorSchema = Sury.union([
   Sury.literal("OrderAlreadyPlaced"),
   Sury.$schema(s => ({
     TAG: "ProductsNotAvailable",
-    missing: s.m(Sury.array(Sury.string))
+    missing: s.m(Sury.array(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)))
   })),
   Sury.literal("OrderIsEmpty"),
   Sury.$schema(s => ({
     TAG: "InvalidQuantity",
-    productId: s.m(DcbTag$Reventless.string),
+    productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
     quantity: s.m(Sury.int)
   })),
   Sury.$schema(s => ({
@@ -86,7 +89,7 @@ let errorSchema = Sury.union([
 ]);
 
 let orderLineSchema = Sury.$schema(s => ({
-  productId: s.m(Sury.string),
+  productId: s.m(ProductId$CatalogSpec.schema),
   name: s.m(Sury.string),
   quantity: s.m(Sury.int),
   unitPrice: s.m(Money$Reventless.schema),
@@ -95,9 +98,9 @@ let orderLineSchema = Sury.$schema(s => ({
 
 let eventSchema = Sury.$schema(s => ({
   TAG: "OrderPlaced",
-  orderId: s.m(DcbTag$Reventless.string),
-  customerId: s.m(DcbTag$Reventless.string),
-  productIds: s.m(Sury.array(DcbTag$Reventless.stringForKey("productId"))),
+  orderId: s.m(DcbTag$Reventless.mark(OrderId$OrderingPlugin.schema)),
+  customerId: s.m(DcbTag$Reventless.mark(CustomerId$OrderingPlugin.schema)),
+  productIds: s.m(Sury.array(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema))),
   lines: s.m(Sury.array(orderLineSchema)),
   total: s.m(Money$Reventless.schema),
   shippingMethod: s.m(shippingMethodSchema),

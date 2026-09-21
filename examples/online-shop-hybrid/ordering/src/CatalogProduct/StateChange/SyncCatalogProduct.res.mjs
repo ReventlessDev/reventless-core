@@ -3,6 +3,7 @@
 import * as Sury from "sury";
 import * as Money$Reventless from "@reventlessdev/reventless-spec/src/semantic/Money.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as ProductId$CatalogSpec from "@reventlessdev/online-shop-hybrid-catalog-spec/src/ProductId.res.mjs";
 import * as UploadableImage$Reventless from "@reventlessdev/reventless-spec/src/semantic/UploadableImage.res.mjs";
 
 let consumedEventSchema = Sury.union([
@@ -26,26 +27,26 @@ let consumedEventSchema = Sury.union([
 let commandSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "SyncNewProduct",
-    productId: s.m(DcbTag$Reventless.string),
+    productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
     name: s.m(Sury.string),
     price: s.m(Money$Reventless.schema)
   })),
   Sury.$schema(s => ({
     TAG: "ChangeSyncedPrice",
-    productId: s.m(DcbTag$Reventless.string),
+    productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
     price: s.m(Money$Reventless.schema)
   })),
   Sury.$schema(s => ({
     TAG: "WithdrawSyncedProduct",
-    productId: s.m(DcbTag$Reventless.string)
+    productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema))
   })),
   Sury.$schema(s => ({
     TAG: "RelistSyncedProduct",
-    productId: s.m(DcbTag$Reventless.string)
+    productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema))
   })),
   Sury.$schema(s => ({
     TAG: "ChangeSyncedProductImage",
-    productId: s.m(DcbTag$Reventless.string),
+    productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
     productImage: s.m(Sury.$option(UploadableImage$Reventless.forField("Catalog", "productImages")))
   }))
 ]);
@@ -55,28 +56,28 @@ let errorSchema = Sury.$unit;
 let eventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "CatalogProductSynced",
-    productId: s.m(DcbTag$Reventless.string),
+    productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
     name: s.m(Sury.string),
     price: s.m(Money$Reventless.schema)
   })),
   Sury.$schema(s => ({
     TAG: "CatalogProductPriceChanged",
-    productId: s.m(DcbTag$Reventless.string),
+    productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
     price: s.m(Money$Reventless.schema)
   })),
   Sury.$schema(s => ({
     TAG: "CatalogProductWithdrawn",
-    productId: s.m(DcbTag$Reventless.string)
+    productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema))
   })),
   Sury.$schema(s => ({
     TAG: "CatalogProductRelisted",
-    productId: s.m(DcbTag$Reventless.string),
+    productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
     name: s.m(Sury.string),
     price: s.m(Money$Reventless.schema)
   })),
   Sury.$schema(s => ({
     TAG: "CatalogProductImageChanged",
-    productId: s.m(DcbTag$Reventless.string),
+    productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
     productImage: s.m(Sury.$option(UploadableImage$Reventless.forField("Catalog", "productImages")))
   }))
 ]);

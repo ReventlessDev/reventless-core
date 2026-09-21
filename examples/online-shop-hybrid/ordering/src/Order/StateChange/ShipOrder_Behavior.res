@@ -14,9 +14,9 @@ type lifecycle =
 // the way `CancelOrder` carries `productIds` out for restocking. It is never
 // read by `decide` — it is a value passing through the fold, not a fact this
 // slice reasons about.
-type state = {lifecycle: lifecycle, customerId: string}
+type state = {lifecycle: lifecycle, customerId: CustomerId.t}
 
-let initialState = {lifecycle: NotPlaced, customerId: ""}
+let initialState = {lifecycle: NotPlaced, customerId: CustomerId.makeFromString("")}
 
 let evolve = (state, event) =>
   switch event {

@@ -1,27 +1,31 @@
 @@reventless.gwt
 
+let oid = OrderId.make
+let cid = CustomerId.make
+let pid = CatalogSpec.ProductId.make
+
 describe("ShipOrder StateChangeSlice", () => {
   test("non-existent order returns OrderNotFound", () =>
     givenEvents([])
-    ->whenCmd(ShipOrder({orderId: "o1"}))
+    ->whenCmd(ShipOrder({orderId: oid("o1")}))
     ->thenError(OrderNotFound)
   )
 
   test("placed order produces OrderShipped", () =>
-    givenEvents([OrderPlaced({productIds: ["p1"], customerId: "c1"})])
-    ->whenCmd(ShipOrder({orderId: "o1"}))
-    ->thenEvent(OrderShipped({orderId: "o1", customerId: "c1"}))
+    givenEvents([OrderPlaced({productIds: [pid("p1")], customerId: cid("c1")})])
+    ->whenCmd(ShipOrder({orderId: oid("o1")}))
+    ->thenEvent(OrderShipped({orderId: oid("o1"), customerId: cid("c1")}))
   )
 
   test("already shipped order produces no events (idempotent)", () =>
-    givenEvents([OrderPlaced({productIds: ["p1"], customerId: "c1"}), OrderShipped])
-    ->whenCmd(ShipOrder({orderId: "o1"}))
+    givenEvents([OrderPlaced({productIds: [pid("p1")], customerId: cid("c1")}), OrderShipped])
+    ->whenCmd(ShipOrder({orderId: oid("o1")}))
     ->thenNoEvent
   )
 
   test("cancelled order returns OrderAlreadyCancelled", () =>
-    givenEvents([OrderPlaced({productIds: ["p1"], customerId: "c1"}), OrderCancelled])
-    ->whenCmd(ShipOrder({orderId: "o1"}))
+    givenEvents([OrderPlaced({productIds: [pid("p1")], customerId: cid("c1")}), OrderCancelled])
+    ->whenCmd(ShipOrder({orderId: oid("o1")}))
     ->thenError(OrderAlreadyCancelled)
   )
 
@@ -32,11 +36,11 @@ describe("ShipOrder StateChangeSlice", () => {
   // the two folds simply disagreed, and only running them says so.
   test("reopened order can ship again", () =>
     givenEvents([
-      OrderPlaced({productIds: ["p1"], customerId: "c1"}),
+      OrderPlaced({productIds: [pid("p1")], customerId: cid("c1")}),
       OrderCancelled,
       OrderReopened,
     ])
-    ->whenCmd(ShipOrder({orderId: "o1"}))
-    ->thenEvent(OrderShipped({orderId: "o1", customerId: "c1"}))
+    ->whenCmd(ShipOrder({orderId: oid("o1")}))
+    ->thenEvent(OrderShipped({orderId: oid("o1"), customerId: cid("c1")}))
   )
 })

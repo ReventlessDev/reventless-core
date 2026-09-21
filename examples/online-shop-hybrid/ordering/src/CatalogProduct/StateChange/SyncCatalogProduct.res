@@ -13,20 +13,20 @@ type consumedEvent =
 
 @schema
 type command =
-  | SyncNewProduct({productId: string, name: string, price: Reventless.Money.t})
-  | ChangeSyncedPrice({productId: string, price: Reventless.Money.t})
+  | SyncNewProduct({productId: CatalogSpec.ProductId.t, name: string, price: Reventless.Money.t})
+  | ChangeSyncedPrice({productId: CatalogSpec.ProductId.t, price: Reventless.Money.t})
   // The withdrawal and the way back. Both carry only the id: the shadow this
   // slice maintains already holds the name and price, and it survives the read
   // model's delete — which is what lets a relist restore availability from state
   // Ordering owns rather than asking Catalog to re-send facts it already has.
-  | WithdrawSyncedProduct({productId: string})
-  | RelistSyncedProduct({productId: string})
+  | WithdrawSyncedProduct({productId: CatalogSpec.ProductId.t})
+  | RelistSyncedProduct({productId: CatalogSpec.ProductId.t})
   // The picture Catalog says to show. Carried as the ref Catalog's store minted,
   // so Ordering stores a path it can hand to a reader without knowing where the
   // bytes live or being able to write there — which is why the store is named
   // rather than derived: the field's own name would declare an Ordering store.
   | ChangeSyncedProductImage({
-      productId: string,
+      productId: CatalogSpec.ProductId.t,
       @storageRef("Catalog.productImages") productImage?: Reventless.UploadableImage.t,
     })
 
@@ -35,15 +35,23 @@ type error = unit // always succeeds — sync is idempotent
 
 @schema
 type event =
-  | CatalogProductSynced({productId: string, name: string, price: Reventless.Money.t})
-  | CatalogProductPriceChanged({productId: string, price: Reventless.Money.t})
-  | CatalogProductWithdrawn({productId: string})
+  | CatalogProductSynced({
+      productId: CatalogSpec.ProductId.t,
+      name: string,
+      price: Reventless.Money.t,
+    })
+  | CatalogProductPriceChanged({productId: CatalogSpec.ProductId.t, price: Reventless.Money.t})
+  | CatalogProductWithdrawn({productId: CatalogSpec.ProductId.t})
   // Carries the shadow's name and price so the projection can restore the row
   // without a second read: the fold has them in hand at exactly the moment the
   // decision is made, and an event that states what it caused is what makes the
   // projection a pure mapping.
-  | CatalogProductRelisted({productId: string, name: string, price: Reventless.Money.t})
+  | CatalogProductRelisted({
+      productId: CatalogSpec.ProductId.t,
+      name: string,
+      price: Reventless.Money.t,
+    })
   | CatalogProductImageChanged({
-      productId: string,
+      productId: CatalogSpec.ProductId.t,
       @storageRef("Catalog.productImages") productImage?: Reventless.UploadableImage.t,
     })

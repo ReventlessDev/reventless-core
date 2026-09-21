@@ -3,6 +3,8 @@
 
 @@reventless.spec
 
+module Id = CustomerId
+
 // Operator surface: everyone's profile, so operator-only. A shopper reads their
 // own orders instead.
 @@reventless.authorize(AllowGroups(["Admin", "Fulfilment"]))
@@ -20,7 +22,7 @@ type accountStatus =
 // needed — the name matches the component.
 @schema
 type state = {
-  customerId: string,
+  customerId: CustomerId.t,
   @displayName email: string,
   address: string,
   // The map pin is drawn from the `Located` arm's declared point. Not the

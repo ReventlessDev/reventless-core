@@ -4,6 +4,7 @@ import * as Sury from "sury";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 import * as DisplayName$Reventless from "@reventlessdev/reventless-spec/src/components/DisplayName.res.mjs";
 import * as Geolocation$Reventless from "@reventlessdev/reventless-spec/src/semantic/Geolocation.res.mjs";
+import * as CustomerId$OrderingPlugin from "../CustomerId.res.mjs";
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 
 let accountStatusSchema = Sury.union([
@@ -12,7 +13,7 @@ let accountStatusSchema = Sury.union([
 ]);
 
 let stateSchema = Sury.$schema(s => ({
-  customerId: s.m(Sury.string),
+  customerId: s.m(CustomerId$OrderingPlugin.schema),
   email: s.m(Sury.string),
   address: s.m(Sury.string),
   geolocation: s.m(Geolocation$Reventless.schema),

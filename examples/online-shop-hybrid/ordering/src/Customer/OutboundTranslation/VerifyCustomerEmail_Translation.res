@@ -50,7 +50,7 @@ let translate = async (_id, item: outboundItem, ~capabilities: Reventless.Capabi
           Some((
             item.customerId,
             IssueEmailChallenge({
-              customerId: item.customerId,
+              customerId: CustomerId.makeFromString(item.customerId),
               email: item.email,
               purpose: "ContactChange",
               proofHash,

@@ -8,6 +8,7 @@ import * as Attachments_Rules$TraitAttachments from "./Attachments_Rules.res.mjs
 let configSchema = Sury.$schema(s => ({
   entity: s.m(Sury.string),
   entityId: s.m(Sury.string),
+  entityIdType: s.m(Sury.$option(Sury.string)),
   noun: s.m(Sury.string),
   file: s.m(Sury.string),
   cardinality: s.m(Sury.$option(Attachments_Rules$TraitAttachments.cardinalitySchema)),
@@ -52,6 +53,19 @@ function namesOf(c) {
 
 function refTypeOf(c) {
   return Stdlib_Option.getOr(c.refType, "Reventless.UploadableImage.t");
+}
+
+function idTypeOf(c) {
+  return Stdlib_Option.mapOr(c.entityIdType, "string", t => t + ".t");
+}
+
+function idValueOf(c, literal) {
+  let t = c.entityIdType;
+  if (t !== undefined) {
+    return t + `.make("` + literal + `")`;
+  } else {
+    return `"` + literal + `"`;
+  }
 }
 
 function viewTypeOf(c) {
@@ -156,7 +170,7 @@ function sliceSpec(c) {
   let sel = selectionTypeOf(c);
   let single = Stdlib_Option.getOr(c.cardinality, "Many") === "Single";
   let attrs = commandAttributes(c);
-  let createdArm = Stdlib_Option.getOr(c.createdCarriesEntityId, true) ? `  | ` + c.created + `({ ` + c.entityId + `: string})` : `  | ` + c.created;
+  let createdArm = Stdlib_Option.getOr(c.createdCarriesEntityId, true) ? `  | ` + c.created + `({ ` + c.entityId + `: ` + idTypeOf(c) + `})` : `  | ` + c.created;
   let primaryArm = prefix => {
     if (single) {
       return [];
@@ -216,12 +230,12 @@ function sliceSpec(c) {
     [
       `@schema`,
       `type command =`,
-      attrs + n.attachCmd + `({ ` + c.entityId + `: string, ` + c.file + `: ` + ref + `, altText?: string})`,
-      single ? attrs + n.removeCmd + `({ ` + c.entityId + `: string})` : attrs + n.removeCmd + `({ ` + c.entityId + `: string, ` + c.file + `: ` + sel + `})`
+      attrs + n.attachCmd + `({ ` + c.entityId + `: ` + idTypeOf(c) + `, ` + c.file + `: ` + ref + `, altText?: string})`,
+      single ? attrs + n.removeCmd + `({ ` + c.entityId + `: ` + idTypeOf(c) + `})` : attrs + n.removeCmd + `({ ` + c.entityId + `: ` + idTypeOf(c) + `, ` + c.file + `: ` + sel + `})`
     ],
-    single ? [] : [attrs + n.setPrimaryCmd + `({ ` + c.entityId + `: string, ` + c.file + `: ` + sel + `})`],
+    single ? [] : [attrs + n.setPrimaryCmd + `({ ` + c.entityId + `: ` + idTypeOf(c) + `, ` + c.file + `: ` + sel + `})`],
     [
-      single ? attrs + n.setAltTextCmd + `({ ` + c.entityId + `: string, altText: string})` : attrs + n.setAltTextCmd + `({ ` + c.entityId + `: string, ` + c.file + `: ` + sel + `, altText: string})`,
+      single ? attrs + n.setAltTextCmd + `({ ` + c.entityId + `: ` + idTypeOf(c) + `, altText: string})` : attrs + n.setAltTextCmd + `({ ` + c.entityId + `: ` + idTypeOf(c) + `, ` + c.file + `: ` + sel + `, altText: string})`,
       ``,
       `@schema`,
       `type error =`,
@@ -231,16 +245,16 @@ function sliceSpec(c) {
       ``,
       `@schema`,
       `type event =`,
-      `  | ` + n.attached + `({ ` + c.entityId + `: string, ` + c.file + `: ` + ref + `, altText?: string})`,
-      `  | ` + n.removed + `({ ` + c.entityId + `: string, ` + c.file + `: ` + ref + `})`
+      `  | ` + n.attached + `({ ` + c.entityId + `: ` + idTypeOf(c) + `, ` + c.file + `: ` + ref + `, altText?: string})`,
+      `  | ` + n.removed + `({ ` + c.entityId + `: ` + idTypeOf(c) + `, ` + c.file + `: ` + ref + `})`
     ],
-    primaryArm(c.entityId + `: string, `),
+    primaryArm(c.entityId + `: ` + idTypeOf(c) + `, `),
     [
-      `  | ` + n.altTextSet + `({ ` + c.entityId + `: string, ` + c.file + `: ` + ref + `, altText: string})`,
+      `  | ` + n.altTextSet + `({ ` + c.entityId + `: ` + idTypeOf(c) + `, ` + c.file + `: ` + ref + `, altText: string})`,
       `  // The member a reader should now show, or none. A conclusion rather than a`,
       `  // decision: most of the moves that change it — a first attachment, a removal`,
       `  // promoting the next — are nobody's choice, so nothing else announces them.`,
-      `  | ` + n.effectiveChanged + `({ ` + c.entityId + `: string, ` + c.file + `?: ` + ref + `})`,
+      `  | ` + n.effectiveChanged + `({ ` + c.entityId + `: ` + idTypeOf(c) + `, ` + c.file + `?: ` + ref + `})`,
       ``
     ],
     commandTransitionBinding(c),
@@ -371,7 +385,7 @@ function conformanceBinding(c) {
   let id = "e1";
   let refA = Stdlib_Option.getOr(c.refA, `/uploads/00000000-0000-4000-8000-000000000001/a`);
   let refB = Stdlib_Option.getOr(c.refB, `/uploads/00000000-0000-4000-8000-000000000002/b`);
-  let createdValue = Stdlib_Option.getOr(c.createdCarriesEntityId, true) ? c.created + `({ ` + c.entityId + `: "` + id + `"})` : c.created;
+  let createdValue = Stdlib_Option.getOr(c.createdCarriesEntityId, true) ? c.created + `({ ` + c.entityId + `: ` + idValueOf(c, id) + `})` : c.created;
   return Belt_Array.concatMany([
     [
       `// The Attachments trait's conformance suite, bound to \`` + n.slice + `\`.`,
@@ -401,28 +415,28 @@ function conformanceBinding(c) {
       `      ` + n.effectiveChanged + `({ ` + c.file + `: ?ref})`,
       `  }`,
       ``,
-      `  let attach = ref => ` + n.slice + `.` + n.attachCmd + `({ ` + c.entityId + `: "` + id + `", ` + c.file + `: ref})`
+      `  let attach = ref => ` + n.slice + `.` + n.attachCmd + `({ ` + c.entityId + `: ` + idValueOf(c, id) + `, ` + c.file + `: ref})`
     ],
-    single ? [`  let clear = ` + n.slice + `.` + n.removeCmd + `({ ` + c.entityId + `: "` + id + `"})`] : [
-        `  let remove = ref => ` + n.slice + `.` + n.removeCmd + `({ ` + c.entityId + `: "` + id + `", ` + c.file + `: ref})`,
+    single ? [`  let clear = ` + n.slice + `.` + n.removeCmd + `({ ` + c.entityId + `: ` + idValueOf(c, id) + `})`] : [
+        `  let remove = ref => ` + n.slice + `.` + n.removeCmd + `({ ` + c.entityId + `: ` + idValueOf(c, id) + `, ` + c.file + `: ref})`,
         `  let setPrimary = ref =>`,
-        `    ` + n.slice + `.` + n.setPrimaryCmd + `({ ` + c.entityId + `: "` + id + `", ` + c.file + `: ref})`
+        `    ` + n.slice + `.` + n.setPrimaryCmd + `({ ` + c.entityId + `: ` + idValueOf(c, id) + `, ` + c.file + `: ref})`
       ],
     [
-      single ? `  let setAltText = altText => ` + n.slice + `.` + n.setAltTextCmd + `({ ` + c.entityId + `: "` + id + `", altText})` : `  let setAltText = (ref, altText) =>\n    ` + n.slice + `.` + n.setAltTextCmd + `({ ` + c.entityId + `: "` + id + `", ` + c.file + `: ref, altText})`,
+      single ? `  let setAltText = altText => ` + n.slice + `.` + n.setAltTextCmd + `({ ` + c.entityId + `: ` + idValueOf(c, id) + `, altText})` : `  let setAltText = (ref, altText) =>\n    ` + n.slice + `.` + n.setAltTextCmd + `({ ` + c.entityId + `: ` + idValueOf(c, id) + `, ` + c.file + `: ref, altText})`,
       ``,
-      `  let attached = ref => ` + n.slice + `.` + n.attached + `({ ` + c.entityId + `: "` + id + `", ` + c.file + `: ref})`,
-      `  let removed = ref => ` + n.slice + `.` + n.removed + `({ ` + c.entityId + `: "` + id + `", ` + c.file + `: ref})`
+      `  let attached = ref => ` + n.slice + `.` + n.attached + `({ ` + c.entityId + `: ` + idValueOf(c, id) + `, ` + c.file + `: ref})`,
+      `  let removed = ref => ` + n.slice + `.` + n.removed + `({ ` + c.entityId + `: ` + idValueOf(c, id) + `, ` + c.file + `: ref})`
     ],
     single ? [] : [
         `  let primarySet = ref =>`,
-        `    ` + n.slice + `.` + n.primarySet + `({ ` + c.entityId + `: "` + id + `", ` + c.file + `: ref})`
+        `    ` + n.slice + `.` + n.primarySet + `({ ` + c.entityId + `: ` + idValueOf(c, id) + `, ` + c.file + `: ref})`
       ],
     [
       `  let altTextSet = (ref, altText) =>`,
-      `    ` + n.slice + `.` + n.altTextSet + `({ ` + c.entityId + `: "` + id + `", ` + c.file + `: ref, altText})`,
+      `    ` + n.slice + `.` + n.altTextSet + `({ ` + c.entityId + `: ` + idValueOf(c, id) + `, ` + c.file + `: ref, altText})`,
       `  let effectiveChanged = ref =>`,
-      `    ` + n.slice + `.` + n.effectiveChanged + `({ ` + c.entityId + `: "` + id + `", ` + c.file + `: ?ref})`,
+      `    ` + n.slice + `.` + n.effectiveChanged + `({ ` + c.entityId + `: ` + idValueOf(c, id) + `, ` + c.file + `: ?ref})`,
       `  let notAttached = ` + n.slice + `.` + n.notAttached,
       `}`,
       ``,
@@ -568,6 +582,8 @@ export {
   isSingle,
   namesOf,
   refTypeOf,
+  idTypeOf,
+  idValueOf,
   viewTypeOf,
   setFieldOf,
   selectionBinding,

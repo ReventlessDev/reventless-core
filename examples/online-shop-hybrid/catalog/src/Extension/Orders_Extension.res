@@ -24,13 +24,19 @@ module Mapping = {
     }
 
   let mapIncomingEvent = (_id, event, _meta, _pluginDef, _queryEngine) =>
+    // Ordering's contract carries a plain string; the catalog decides by its own
+    // ProductId.
     switch event {
     | ItemOrdered({productId, orderId}) => [
-        PublishStateChangeSliceCommand(RecordDemand({productId, orderId})),
+        PublishStateChangeSliceCommand(
+          RecordDemand({productId: CatalogSpec.ProductId.makeFromString(productId), orderId}),
+        ),
         HandleDirective(directiveHandler, EmitOrderRecordedTelemetry({productId, orderId})),
       ]
     | ItemOrderCancelled({productId, orderId}) => [
-        PublishStateChangeSliceCommand(RevokeDemand({productId, orderId})),
+        PublishStateChangeSliceCommand(
+          RevokeDemand({productId: CatalogSpec.ProductId.makeFromString(productId), orderId}),
+        ),
         HandleDirective(directiveHandler, EmitOrderCancelledTelemetry({productId, orderId})),
       ]
     }

@@ -11,8 +11,8 @@ module OrderingDcbSource = {
 
   @schema
   type event =
-    | OrderPlaced({orderId: string, customerId: string})
-    | OrderShipped({orderId: string, customerId: string})
+    | OrderPlaced({orderId: OrderId.t, customerId: CustomerId.t})
+    | OrderShipped({orderId: OrderId.t, customerId: CustomerId.t})
     // Every way a request can end. All four resolve the row, because all four
     // mean the decision was made — a suppressed notification is a finished piece
     // of work, not a failed one, and a deferred one is somebody else's work.
@@ -82,8 +82,17 @@ let todosFor = (~eventType, ~recipientId, ~orderId) =>
   ->Rule.forEvent(~log=OrderingDcbSource.name, ~eventType)
   ->Array.filter(Rule.isImmediate)
   ->Array.map(rule => (
-    Rule.reference(rule, ~subject=orderId),
-    ({ruleId: rule.id, recipientId, orderId}: NotificationIntake.todoItem),
+    Rule.reference(rule, ~subject=orderId->OrderId.toString),
+    (
+      // A recipient is any principal to the notification trait, so the customer
+      // crosses as a plain string.
+
+      {
+        ruleId: rule.id,
+        recipientId: recipientId->CustomerId.toString,
+        orderId,
+      }: NotificationIntake.todoItem
+    ),
   ))
 
 module FromOrderingDcb = Mapping.Make(

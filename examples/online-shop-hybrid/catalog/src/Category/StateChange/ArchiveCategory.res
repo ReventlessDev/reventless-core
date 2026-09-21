@@ -13,13 +13,13 @@ type consumedEvent =
 
 @schema
 type command =
-  | @authorize(AllowGroups(["Admin", "Merchandiser"])) ArchiveCategory({categoryId: string})
+  | @authorize(AllowGroups(["Admin", "Merchandiser"])) ArchiveCategory({categoryId: CategoryId.t})
 
 @schema
 type error = CategoryNotFound
 
 @schema
-type event = CategoryArchived({categoryId: string})
+type event = CategoryArchived({categoryId: CategoryId.t})
 
 // Meaningful only on a category still on the shelf. The states are the view's
 // own constructors, which is the same field `@retired` marks — one vocabulary,

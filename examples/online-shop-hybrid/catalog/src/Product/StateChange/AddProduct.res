@@ -10,21 +10,21 @@
 // itself, where a rename is immediately visible.
 @schema
 type consumedEvent =
-  | ProductAdded({productId: string})
-  | CategoryAdded({categoryId: string})
-  | CategoryArchived({categoryId: string})
+  | ProductAdded({productId: CatalogSpec.ProductId.t})
+  | CategoryAdded({categoryId: CategoryId.t})
+  | CategoryArchived({categoryId: CategoryId.t})
 
 @schema
 type command =
   | @authorize(AllowGroups(["Admin", "Merchandiser"]))
   AddProduct({
-      productId: string,
+      productId: CatalogSpec.ProductId.t,
       name: string,
       description: string,
       price: Reventless.Money.t,
       // Images are attached afterwards, through `ProductImages` — a creation
       // that also attaches would be two facts in one event.
-      @ref("Categories") categoryId: string,
+      categoryId: CategoryId.t,
     })
 
 @schema
@@ -35,9 +35,9 @@ type error =
 @schema
 type event =
   | ProductAdded({
-      productId: string,
+      productId: CatalogSpec.ProductId.t,
       name: string,
       description: string,
       price: Reventless.Money.t,
-      categoryId: string,
+      categoryId: CategoryId.t,
     })

@@ -3,11 +3,12 @@
 import * as Sury from "sury";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Api$ReventlessInfra from "@reventlessdev/reventless-infra/src/components/Api.res.mjs";
+import * as CustomerId$OrderingPlugin from "../CustomerId.res.mjs";
 
 let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "EmailChallengeIssued",
-    customerId: s.m(DcbTag$Reventless.string),
+    customerId: s.m(DcbTag$Reventless.mark(CustomerId$OrderingPlugin.schema)),
     email: s.m(Sury.string),
     purpose: s.m(Sury.string),
     proofHash: s.m(Sury.string),
@@ -15,12 +16,12 @@ let consumedEventSchema = Sury.union([
   })),
   Sury.$schema(s => ({
     TAG: "EmailProofAccepted",
-    customerId: s.m(DcbTag$Reventless.string),
+    customerId: s.m(DcbTag$Reventless.mark(CustomerId$OrderingPlugin.schema)),
     email: s.m(Sury.string)
   })),
   Sury.$schema(s => ({
     TAG: "EmailProofRefused",
-    customerId: s.m(DcbTag$Reventless.string),
+    customerId: s.m(DcbTag$Reventless.mark(CustomerId$OrderingPlugin.schema)),
     email: s.m(Sury.string),
     reason: s.m(Sury.string)
   }))
@@ -29,7 +30,7 @@ let consumedEventSchema = Sury.union([
 let commandSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "IssueEmailChallenge",
-    customerId: s.m(DcbTag$Reventless.string),
+    customerId: s.m(DcbTag$Reventless.mark(CustomerId$OrderingPlugin.schema)),
     email: s.m(Sury.string),
     purpose: s.m(Sury.string),
     proofHash: s.m(Sury.string),
@@ -37,7 +38,7 @@ let commandSchema = Sury.union([
   })),
   Sury.$schema(s => ({
     TAG: "SubmitEmailProof",
-    customerId: s.m(DcbTag$Reventless.string),
+    customerId: s.m(DcbTag$Reventless.mark(CustomerId$OrderingPlugin.schema)),
     email: s.m(Sury.string),
     proofHash: s.m(Sury.string),
     presentedAt: s.m(Sury.string)
@@ -49,7 +50,7 @@ let errorSchema = Sury.literal("NoChallengeOutstanding");
 let eventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "EmailChallengeIssued",
-    customerId: s.m(DcbTag$Reventless.string),
+    customerId: s.m(DcbTag$Reventless.mark(CustomerId$OrderingPlugin.schema)),
     email: s.m(Sury.string),
     purpose: s.m(Sury.string),
     proofHash: s.m(Sury.string),
@@ -57,12 +58,12 @@ let eventSchema = Sury.union([
   })),
   Sury.$schema(s => ({
     TAG: "EmailProofAccepted",
-    customerId: s.m(DcbTag$Reventless.string),
+    customerId: s.m(DcbTag$Reventless.mark(CustomerId$OrderingPlugin.schema)),
     email: s.m(Sury.string)
   })),
   Sury.$schema(s => ({
     TAG: "EmailProofRefused",
-    customerId: s.m(DcbTag$Reventless.string),
+    customerId: s.m(DcbTag$Reventless.mark(CustomerId$OrderingPlugin.schema)),
     email: s.m(Sury.string),
     reason: s.m(Sury.string)
   }))

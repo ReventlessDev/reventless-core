@@ -2,6 +2,7 @@
 
 import * as Sury from "sury";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as ProductId$CatalogSpec from "@reventlessdev/online-shop-hybrid-catalog-spec/src/ProductId.res.mjs";
 
 let consumedEventSchema = Sury.union([
   Sury.literal("ProductAdded"),
@@ -12,14 +13,14 @@ let consumedEventSchema = Sury.union([
 
 let commandSchema = Sury.$schema(s => ({
   TAG: "DiscontinueProduct",
-  productId: s.m(DcbTag$Reventless.string)
+  productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema))
 }));
 
 let errorSchema = Sury.literal("ProductNotFound");
 
 let eventSchema = Sury.$schema(s => ({
   TAG: "ProductDiscontinued",
-  productId: s.m(DcbTag$Reventless.string)
+  productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema))
 }));
 
 function commandTransition(command) {

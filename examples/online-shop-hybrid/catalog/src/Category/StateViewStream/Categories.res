@@ -3,23 +3,26 @@
 
 @@reventless.spec
 
+// Rows are keyed by this identity.
+module Key = CategoryId
+
 @schema
 type consumedEvent =
-  | CategoryAdded({categoryId: string, name: string})
-  | CategoryRenamed({categoryId: string, name: string})
+  | CategoryAdded({categoryId: CategoryId.t, name: string})
+  | CategoryRenamed({categoryId: CategoryId.t, name: string})
   | CategoryImageAttached({
-      categoryId: string,
+      categoryId: CategoryId.t,
       categoryImage: Reventless.UploadableImage.t,
       altText?: string,
     })
-  | CategoryImageRemoved({categoryId: string, categoryImage: Reventless.UploadableImage.t})
+  | CategoryImageRemoved({categoryId: CategoryId.t, categoryImage: Reventless.UploadableImage.t})
   | CategoryImageAltTextSet({
-      categoryId: string,
+      categoryId: CategoryId.t,
       categoryImage: Reventless.UploadableImage.t,
       altText: string,
     })
-  | CategoryArchived({categoryId: string})
-  | CategoryUnarchived({categoryId: string})
+  | CategoryArchived({categoryId: CategoryId.t})
+  | CategoryUnarchived({categoryId: CategoryId.t})
 
 // A state rather than a flag, so a command's declared edge can name it.
 // `@retired` on the constructor is what withdraws the row from ordinary reads
@@ -33,7 +36,7 @@ type shelfStatus =
 // it. The list stays closed — a reference gets id, name and state, nothing more.
 @schema @namedWhenRetired
 type state = {
-  categoryId: string,
+  categoryId: CategoryId.t,
   name: string,
   // `@lifecycle` makes this the field a command's declared edge is written in
   // terms of; the retirement is on the constructor and needs no annotation here.

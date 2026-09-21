@@ -1,5 +1,7 @@
 @@reventless.gwt
 
+let pid = CatalogSpec.ProductId.make
+
 // Prices are money, so a test writes the amount a person would say and converts
 // it once. `ofMajor` scales by the currency's own exponent, which is what keeps
 // the literal honest: 9.99 EUR is 999 cents, and the same call on a JPY price
@@ -9,32 +11,32 @@ let eur = amount => Reventless.Money.ofMajor(~amount, ~currency=EUR)
 describe("SyncCatalogProduct StateChangeSlice", () => {
   test("SyncNewProduct produces CatalogProductSynced", () =>
     givenEvents([])
-    ->whenCmd(SyncNewProduct({productId: "p1", name: "Laptop", price: eur(999.99)}))
-    ->thenEvent(CatalogProductSynced({productId: "p1", name: "Laptop", price: eur(999.99)}))
+    ->whenCmd(SyncNewProduct({productId: pid("p1"), name: "Laptop", price: eur(999.99)}))
+    ->thenEvent(CatalogProductSynced({productId: pid("p1"), name: "Laptop", price: eur(999.99)}))
   )
 
   test("ChangeSyncedPrice produces CatalogProductPriceChanged", () =>
     givenEvents([CatalogProductSynced({name: "Laptop", price: eur(999.99)})])
-    ->whenCmd(ChangeSyncedPrice({productId: "p1", price: eur(899.99)}))
-    ->thenEvent(CatalogProductPriceChanged({productId: "p1", price: eur(899.99)}))
+    ->whenCmd(ChangeSyncedPrice({productId: pid("p1"), price: eur(899.99)}))
+    ->thenEvent(CatalogProductPriceChanged({productId: pid("p1"), price: eur(899.99)}))
   )
 
   test("re-syncing identical product data produces no events (idempotent)", () =>
     givenEvents([CatalogProductSynced({name: "Laptop", price: eur(999.99)})])
-    ->whenCmd(SyncNewProduct({productId: "p1", name: "Laptop", price: eur(999.99)}))
+    ->whenCmd(SyncNewProduct({productId: pid("p1"), name: "Laptop", price: eur(999.99)}))
     ->thenNoEvent
   )
 
   test("re-applying the current price produces no events (idempotent)", () =>
     givenEvents([CatalogProductSynced({name: "Laptop", price: eur(999.99)})])
-    ->whenCmd(ChangeSyncedPrice({productId: "p1", price: eur(999.99)}))
+    ->whenCmd(ChangeSyncedPrice({productId: pid("p1"), price: eur(999.99)}))
     ->thenNoEvent
   )
 
   test("WithdrawSyncedProduct produces CatalogProductWithdrawn", () =>
     givenEvents([CatalogProductSynced({name: "Laptop", price: eur(999.99)})])
-    ->whenCmd(WithdrawSyncedProduct({productId: "p1"}))
-    ->thenEvent(CatalogProductWithdrawn({productId: "p1"}))
+    ->whenCmd(WithdrawSyncedProduct({productId: pid("p1")}))
+    ->thenEvent(CatalogProductWithdrawn({productId: pid("p1")}))
   )
 
   test("withdrawing an already-withdrawn product produces no events", () =>
@@ -42,7 +44,7 @@ describe("SyncCatalogProduct StateChangeSlice", () => {
       CatalogProductSynced({name: "Laptop", price: eur(999.99)}),
       CatalogProductWithdrawn,
     ])
-    ->whenCmd(WithdrawSyncedProduct({productId: "p1"}))
+    ->whenCmd(WithdrawSyncedProduct({productId: pid("p1")}))
     ->thenNoEvent
   )
 
@@ -54,8 +56,8 @@ describe("SyncCatalogProduct StateChangeSlice", () => {
       CatalogProductSynced({name: "Laptop", price: eur(999.99)}),
       CatalogProductWithdrawn,
     ])
-    ->whenCmd(RelistSyncedProduct({productId: "p1"}))
-    ->thenEvent(CatalogProductRelisted({productId: "p1", name: "Laptop", price: eur(999.99)}))
+    ->whenCmd(RelistSyncedProduct({productId: pid("p1")}))
+    ->thenEvent(CatalogProductRelisted({productId: pid("p1"), name: "Laptop", price: eur(999.99)}))
   )
 
   // And the latest price, not the one it was first synced at: the shadow keeps
@@ -66,19 +68,19 @@ describe("SyncCatalogProduct StateChangeSlice", () => {
       CatalogProductPriceChanged({price: eur(899.99)}),
       CatalogProductWithdrawn,
     ])
-    ->whenCmd(RelistSyncedProduct({productId: "p1"}))
-    ->thenEvent(CatalogProductRelisted({productId: "p1", name: "Laptop", price: eur(899.99)}))
+    ->whenCmd(RelistSyncedProduct({productId: pid("p1")}))
+    ->thenEvent(CatalogProductRelisted({productId: pid("p1"), name: "Laptop", price: eur(899.99)}))
   )
 
   test("relisting a product that is not withdrawn produces no events", () =>
     givenEvents([CatalogProductSynced({name: "Laptop", price: eur(999.99)})])
-    ->whenCmd(RelistSyncedProduct({productId: "p1"}))
+    ->whenCmd(RelistSyncedProduct({productId: pid("p1")}))
     ->thenNoEvent
   )
 
   // Nothing to restore, so nothing is invented: a row with a made-up name and a
   // zero price would appear in the shopper's catalog backed by no Catalog product.
   test("relisting a product never synced produces no events", () =>
-    givenEvents([])->whenCmd(RelistSyncedProduct({productId: "p1"}))->thenNoEvent
+    givenEvents([])->whenCmd(RelistSyncedProduct({productId: pid("p1")}))->thenNoEvent
   )
 })

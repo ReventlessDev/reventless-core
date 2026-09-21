@@ -4,14 +4,25 @@
 // this denormalised mirror exists purely as an Ordering-side lookup target.
 
 @@reventless.spec
+
+// Rows are keyed by this identity.
+module Key = CatalogSpec.ProductId
 @@reventless.visibility(Internal)
 
 @schema
 type consumedEvent =
-  | CatalogProductSynced({productId: string, name: string, price: Reventless.Money.t})
-  | CatalogProductPriceChanged({productId: string, price: Reventless.Money.t})
-  | CatalogProductWithdrawn({productId: string})
-  | CatalogProductRelisted({productId: string, name: string, price: Reventless.Money.t})
+  | CatalogProductSynced({
+      productId: CatalogSpec.ProductId.t,
+      name: string,
+      price: Reventless.Money.t,
+    })
+  | CatalogProductPriceChanged({productId: CatalogSpec.ProductId.t, price: Reventless.Money.t})
+  | CatalogProductWithdrawn({productId: CatalogSpec.ProductId.t})
+  | CatalogProductRelisted({
+      productId: CatalogSpec.ProductId.t,
+      name: string,
+      price: Reventless.Money.t,
+    })
 
 @schema
-type state = {productId: string, name: string, price: Reventless.Money.t}
+type state = {productId: CatalogSpec.ProductId.t, name: string, price: Reventless.Money.t}

@@ -92,13 +92,17 @@ let cases: array<probeCase> = [
   {
     name: "Catalog_ArchiveProduct",
     rule: catalogOperator,
-    subject: Command(DemoCommands.archiveProduct(ArchiveProduct({productId: missing}))),
+    subject: Command(
+      DemoCommands.archiveProduct(ArchiveProduct({productId: CatalogSpec.ProductId.make(missing)})),
+    ),
   },
   {
     name: "Catalog_RenameCategory",
     rule: catalogOperator,
     subject: Command(
-      DemoCommands.renameCategory(RenameCategory({categoryId: missing, name: "probe"})),
+      DemoCommands.renameCategory(
+        RenameCategory({categoryId: CatalogPlugin.CategoryId.make(missing), name: "probe"}),
+      ),
     ),
   },
   // The one command gated on Admin | Fulfilment, and the reason the two operator
@@ -106,7 +110,9 @@ let cases: array<probeCase> = [
   {
     name: "Ordering_ShipOrder",
     rule: orderFulfilment,
-    subject: Command(DemoCommands.shipOrder(ShipOrder({orderId: missing}))),
+    subject: Command(
+      DemoCommands.shipOrder(ShipOrder({orderId: OrderingPlugin.OrderId.make(missing)})),
+    ),
   },
   // An ungated command. Not padding: a run where EVERYTHING is refused — a broken
   // token, an unreachable API — would otherwise read as a clean pass on every row
@@ -114,7 +120,9 @@ let cases: array<probeCase> = [
   {
     name: "Ordering_CancelOrder",
     rule: anyCaller,
-    subject: Command(DemoCommands.cancelOrder(CancelOrder({orderId: missing}))),
+    subject: Command(
+      DemoCommands.cancelOrder(CancelOrder({orderId: OrderingPlugin.OrderId.make(missing)})),
+    ),
   },
   // The two gated views, read off their specs, and the ungated control for the
   // same reason as the command one.

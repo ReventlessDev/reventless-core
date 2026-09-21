@@ -4,6 +4,8 @@ import * as Sury from "sury";
 import * as Money$Reventless from "@reventlessdev/reventless-spec/src/semantic/Money.res.mjs";
 import * as Lifecycle$Reventless from "@reventlessdev/reventless-spec/src/types/Lifecycle.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
+import * as ProductId$CatalogSpec from "@reventlessdev/online-shop-hybrid-catalog-spec/src/ProductId.res.mjs";
+import * as CategoryId$CatalogPlugin from "../../Category/CategoryId.res.mjs";
 import * as CaptionedImage$Reventless from "@reventlessdev/reventless-spec/src/semantic/CaptionedImage.res.mjs";
 import * as UploadableImage$Reventless from "@reventlessdev/reventless-spec/src/semantic/UploadableImage.res.mjs";
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
@@ -11,60 +13,60 @@ import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src
 let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "ProductAdded",
-    productId: s.m(Sury.string),
+    productId: s.m(ProductId$CatalogSpec.schema),
     name: s.m(Sury.string),
     description: s.m(Sury.string),
     price: s.m(Money$Reventless.schema),
-    categoryId: s.m(Sury.string)
+    categoryId: s.m(CategoryId$CatalogPlugin.schema)
   })),
   Sury.$schema(s => ({
     TAG: "ProductPriceChanged",
-    productId: s.m(Sury.string),
+    productId: s.m(ProductId$CatalogSpec.schema),
     price: s.m(Money$Reventless.schema)
   })),
   Sury.$schema(s => ({
     TAG: "ProductNameChanged",
-    productId: s.m(Sury.string),
+    productId: s.m(ProductId$CatalogSpec.schema),
     name: s.m(Sury.string)
   })),
   Sury.$schema(s => ({
     TAG: "ProductDescriptionChanged",
-    productId: s.m(Sury.string),
+    productId: s.m(ProductId$CatalogSpec.schema),
     description: s.m(Sury.string)
   })),
   Sury.$schema(s => ({
     TAG: "ProductImageAttached",
-    productId: s.m(Sury.string),
+    productId: s.m(ProductId$CatalogSpec.schema),
     productImage: s.m(UploadableImage$Reventless.forField(undefined, "productImages")),
     altText: s.m(Sury.$option(Sury.string))
   })),
   Sury.$schema(s => ({
     TAG: "ProductImageRemoved",
-    productId: s.m(Sury.string),
+    productId: s.m(ProductId$CatalogSpec.schema),
     productImage: s.m(UploadableImage$Reventless.forField(undefined, "productImages"))
   })),
   Sury.$schema(s => ({
     TAG: "ProductPrimaryImageSet",
-    productId: s.m(Sury.string),
+    productId: s.m(ProductId$CatalogSpec.schema),
     productImage: s.m(UploadableImage$Reventless.forField(undefined, "productImages"))
   })),
   Sury.$schema(s => ({
     TAG: "ProductImageAltTextSet",
-    productId: s.m(Sury.string),
+    productId: s.m(ProductId$CatalogSpec.schema),
     productImage: s.m(UploadableImage$Reventless.forField(undefined, "productImages")),
     altText: s.m(Sury.string)
   })),
   Sury.$schema(s => ({
     TAG: "ProductArchived",
-    productId: s.m(Sury.string)
+    productId: s.m(ProductId$CatalogSpec.schema)
   })),
   Sury.$schema(s => ({
     TAG: "ProductUnarchived",
-    productId: s.m(Sury.string)
+    productId: s.m(ProductId$CatalogSpec.schema)
   })),
   Sury.$schema(s => ({
     TAG: "ProductDiscontinued",
-    productId: s.m(Sury.string)
+    productId: s.m(ProductId$CatalogSpec.schema)
   }))
 ]);
 
@@ -75,12 +77,12 @@ let shelfStatusSchema = Sury.union([
 ]);
 
 let stateSchema = Sury.$schema(s => ({
-  productId: s.m(Sury.string),
+  productId: s.m(ProductId$CatalogSpec.schema),
   name: s.m(Sury.string),
   description: s.m(Sury.string),
   price: s.m(Money$Reventless.schema),
   productImages: s.m(Sury.array(CaptionedImage$Reventless.forField(undefined, "productImages"))),
-  categoryId: s.m(Sury.string),
+  categoryId: s.m(CategoryId$CatalogPlugin.schema),
   shelfStatus: s.m(shelfStatusSchema),
   trail: s.m(Lifecycle$Reventless.Trail.schema(shelfStatusSchema))
 }));
@@ -143,10 +145,10 @@ let visibility = "Public";
 export {
   name,
   Id,
+  Key,
   consumedEventSchema,
   shelfStatusSchema,
   config,
-  Key,
   subIdConfig,
   stateSchema$1 as stateSchema,
   moduleUrl,
