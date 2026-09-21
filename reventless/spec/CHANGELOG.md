@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.139 (2026-09-21)
+
+### Features
+
+* **spec:** one Id type per identity ([203be38](https://github.com/ReventlessDev/reventless-core/commit/203be389b9047db0a7a0294fe3c1c04ba5119965))
+* **spec:** the runtime reads identities ([417c5f6](https://github.com/ReventlessDev/reventless-core/commit/417c5f613b031a08c7849a81c75de6a8bbeb841b))
+
+
 # 3.0.0-alpha.138 (2026-09-20)
 
 * fix(spec)!: let an explicit partition tag declare an identity the name cannot ([01d82c0](https://github.com/ReventlessDev/reventless-core/commit/01d82c0714a31f31d55c466eae9100cf4dcc85f0))

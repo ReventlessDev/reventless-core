@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.135 (2026-09-21)
+
+### Features
+
+* **ppx:** accept identity-typed fields ([dcfa012](https://github.com/ReventlessDev/reventless-core/commit/dcfa01222d8896b0612349a25dceac9db552aa9d))
+
+
 # 1.0.0-alpha.134 (2026-09-20)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-catalog-spec

@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.266 (2026-09-21)
+
+### Bug Fixes
+
+* **core:** an aggregate read model is not keyed by a foreign id ([0dfed74](https://github.com/ReventlessDev/reventless-core/commit/0dfed747c4182b1fc58675b42f5d3cb3eb6309c7))
+### Features
+
+* **spec:** one Id type per identity ([203be38](https://github.com/ReventlessDev/reventless-core/commit/203be389b9047db0a7a0294fe3c1c04ba5119965))
+* **spec:** the runtime reads identities ([417c5f6](https://github.com/ReventlessDev/reventless-core/commit/417c5f613b031a08c7849a81c75de6a8bbeb841b))
+
+
 # 3.0.0-alpha.265 (2026-09-20)
 
 **Note:** Version bump only for package @reventlessdev/reventless-core
