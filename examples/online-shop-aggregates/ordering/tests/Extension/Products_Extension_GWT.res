@@ -6,16 +6,18 @@
 // it surfaces the extension point's events and the delegate's commands.
 open Mapping
 
+let p1 = CatalogSpec.ProductId.make("p1")
+
 describe("Products Extension delegate", () => {
   test("ProductBecameAvailable issues Sync", () =>
     whenIncomingEvent(
-      ExtensionPoint.ProductBecameAvailable({productId: "p1", name: "Book", price: 9.99}),
+      ExtensionPoint.ProductBecameAvailable({productId: p1, name: "Book", price: 9.99}),
     )->thenPublishesAggregateCommand("p1", Delegate.Sync({name: "Book", price: 9.99}))
   )
 
   test("ProductPriceChanged issues UpdatePrice", () =>
     whenIncomingEvent(
-      ExtensionPoint.ProductPriceChanged({productId: "p1", price: 7.5}),
+      ExtensionPoint.ProductPriceChanged({productId: p1, price: 7.5}),
     )->thenPublishesAggregateCommand("p1", Delegate.UpdatePrice({price: 7.5}))
   )
 })

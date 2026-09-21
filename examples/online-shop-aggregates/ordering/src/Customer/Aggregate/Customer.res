@@ -3,6 +3,8 @@
 
 @@reventless.spec
 
+module Id = CustomerId
+
 // The command is where an address is first accepted, so it is where the type
 // belongs — a value that reaches the log is already permanent. The events below
 // stay plain `string`: they record what was accepted, and re-validating history

@@ -6,7 +6,7 @@
 @schema
 type state =
   | NotCreated
-  | Placed({customerId: string, productIds: array<string>})
+  | Placed({customerId: CustomerId.t, productIds: array<CatalogSpec.ProductId.t>})
   | Shipped
   | Cancelled
   | Refunded

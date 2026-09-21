@@ -8,5 +8,7 @@
 @@reventless.spec
 @@reventless.visibility(Internal)
 
+module Id = CatalogSpec.ProductId
+
 @schema
 type state = {name: string, price: float}

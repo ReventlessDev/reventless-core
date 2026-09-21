@@ -8,8 +8,8 @@ type command = unit // read-only: no inbound commands
 
 @schema
 type event =
-  | ProductBecameAvailable({productId: string, name: string, price: float})
-  | ProductPriceChanged({productId: string, price: float})
+  | ProductBecameAvailable({productId: ProductId.t, name: string, price: float})
+  | ProductPriceChanged({productId: ProductId.t, price: float})
 
 @schema
 type directive = unit

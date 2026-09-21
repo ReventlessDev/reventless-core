@@ -311,6 +311,11 @@ The safe first adopter: no DCB tags (analysis § Aggregates and read models).
 **Validation.** GWT suites green; SDL diff shows only intended changes; the local platform runs
 the shop; record the churn (files, conversions added) in the analysis before Phase 8.
 
+**Done (2026-09-21).** Churn recorded in the analysis (§ Churn): 8 conversions, all at string-
+routed seams. Beyond the plan, `Order.Place` drops its `@ref` for the derived reference.
+Orders publishes no key: its state holds no field typed `OrderId` (see the Phase 3 departure),
+and that is the shape an aggregate read model has.
+
 ---
 
 ## Phase 8: migrate the DCB example; document

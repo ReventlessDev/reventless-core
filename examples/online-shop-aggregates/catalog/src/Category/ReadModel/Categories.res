@@ -3,6 +3,8 @@
 
 @@reventless.spec
 
+module Id = CategoryId
+
 @schema
 type state = {
   name: string,

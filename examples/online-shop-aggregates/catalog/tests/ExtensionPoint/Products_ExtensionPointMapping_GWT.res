@@ -2,6 +2,8 @@
 // events become the stable public events Ordering subscribes to.
 @@reventless.gwt
 
+let gwtId = CatalogSpec.ProductId.make("gwt-id")
+
 describe("Products ExtensionPoint mapping", () => {
   test("Added publishes ProductBecameAvailable", () =>
     whenDelegateEvent(
@@ -13,14 +15,14 @@ describe("Products ExtensionPoint mapping", () => {
       }),
     )->thenPublishesEvent(
       "gwt-id",
-      ExtensionPoint.ProductBecameAvailable({productId: "gwt-id", name: "Book", price: 9.99}),
+      ExtensionPoint.ProductBecameAvailable({productId: gwtId, name: "Book", price: 9.99}),
     )
   )
 
   test("PriceUpdated publishes ProductPriceChanged", () =>
     whenDelegateEvent(Delegate.PriceUpdated({price: 7.5}))->thenPublishesEvent(
       "gwt-id",
-      ExtensionPoint.ProductPriceChanged({productId: "gwt-id", price: 7.5}),
+      ExtensionPoint.ProductPriceChanged({productId: gwtId, price: 7.5}),
     )
   )
 

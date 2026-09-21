@@ -9,6 +9,8 @@
 
 @@reventless.spec
 
+module Id = CatalogSpec.ProductId
+
 @schema
 type command =
   | Add({

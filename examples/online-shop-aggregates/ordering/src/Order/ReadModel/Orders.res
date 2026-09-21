@@ -3,6 +3,8 @@
 
 @@reventless.spec
 
+module Id = OrderId
+
 @schema
 type lifecycle =
   | Placed
@@ -12,8 +14,8 @@ type lifecycle =
 
 @schema
 type state = {
-  customerId: string,
-  productIds: array<string>,
+  customerId: CustomerId.t,
+  productIds: array<CatalogSpec.ProductId.t>,
   // No annotation: the field name is the declaration. `@lifecycle` exists for
   // records whose lifecycle field is honestly called something else.
   lifecycle: lifecycle,

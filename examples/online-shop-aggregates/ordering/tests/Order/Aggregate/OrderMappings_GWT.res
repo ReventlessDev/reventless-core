@@ -17,13 +17,15 @@ module AutoShipGwtMapping = {
 
 include ReventlessGwt.Mapping_GWT.Make(AutoShipGwtMapping)
 
-let placedEvent = Order.Placed({customerId: "cust-1", productIds: ["prod-1"]})
+let cust1 = CustomerId.make("cust-1")
+let prod1 = CatalogSpec.ProductId.make("prod-1")
+let placedEvent = Order.Placed({customerId: cust1, productIds: [prod1]})
 
 describe("Order auto-ship mapping (Placed → Ship)", () => {
   test("Place → AutoShipMapping issues Ship → target emits Shipped", () =>
     givenSourceEvents([])
     ->andTargetEvents([("order-1", [placedEvent])])
-    ->whenSourceCmd("order-1", Place({customerId: "cust-1", productIds: ["prod-1"]}))
+    ->whenSourceCmd("order-1", Place({customerId: cust1, productIds: [prod1]}))
     ->thenTargetEvent("order-1", Order.Shipped)
   )
 
@@ -42,8 +44,8 @@ describe("Order auto-ship mapping (Placed → Ship)", () => {
   )
 
   test("Refund command does not fire the mapping (only Placed events do)", () =>
-    givenSourceEvents([placedEvent, Order.Cancelled({productIds: ["prod-1"]})])
-    ->andTargetEvents([("order-1", [placedEvent, Order.Cancelled({productIds: ["prod-1"]})])])
+    givenSourceEvents([placedEvent, Order.Cancelled({productIds: [prod1]})])
+    ->andTargetEvents([("order-1", [placedEvent, Order.Cancelled({productIds: [prod1]})])])
     ->whenSourceCmd("order-1", Refund({reason: "customer-changed-mind"}))
     ->thenNoTargetEvent
   )

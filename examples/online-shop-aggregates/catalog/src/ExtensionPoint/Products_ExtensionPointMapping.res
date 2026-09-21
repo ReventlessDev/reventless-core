@@ -12,13 +12,20 @@ let mapOutgoingEvent = Some(
     | Product.Added({name, price}) => [
         PublishEvent(
           id,
-          CatalogSpec.Products_ExtensionPoint.ProductBecameAvailable({productId: id, name, price}),
+          CatalogSpec.Products_ExtensionPoint.ProductBecameAvailable({
+            productId: CatalogSpec.ProductId.makeFromString(id),
+            name,
+            price,
+          }),
         ),
       ]
     | Product.PriceUpdated({price}) => [
         PublishEvent(
           id,
-          CatalogSpec.Products_ExtensionPoint.ProductPriceChanged({productId: id, price}),
+          CatalogSpec.Products_ExtensionPoint.ProductPriceChanged({
+            productId: CatalogSpec.ProductId.makeFromString(id),
+            price,
+          }),
         ),
       ]
     | _ => []

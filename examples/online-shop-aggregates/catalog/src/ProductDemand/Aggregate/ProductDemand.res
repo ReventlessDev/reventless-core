@@ -3,6 +3,8 @@
 
 @@reventless.spec
 
+module Id = CatalogSpec.ProductId
+
 // @noApi keeps this event-driven command off the GraphQL/MCP/AutoUI surface.
 @schema @noApi
 type command =

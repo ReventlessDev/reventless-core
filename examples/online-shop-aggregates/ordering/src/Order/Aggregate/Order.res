@@ -3,18 +3,22 @@
 
 @@reventless.spec
 
+module Id = OrderId
+
 @schema
 type command =
-  | Place({customerId: string, @ref("AvailableProducts") @noDcbTag productIds: array<string>})
+  // Both references are derived from the types: AvailableProducts is the one view
+  // here keyed by ProductId, and Customers the one keyed by CustomerId.
+  | Place({customerId: CustomerId.t, productIds: array<CatalogSpec.ProductId.t>})
   | Ship
   | Cancel
   | Refund({reason: string})
 
 @schema
 type event =
-  | Placed({customerId: string, productIds: array<string>})
+  | Placed({customerId: CustomerId.t, productIds: array<CatalogSpec.ProductId.t>})
   | Shipped
-  | Cancelled({productIds: array<string>})
+  | Cancelled({productIds: array<CatalogSpec.ProductId.t>})
   | Refunded({reason: string})
 
 @schema

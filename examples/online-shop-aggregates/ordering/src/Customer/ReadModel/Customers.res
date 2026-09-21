@@ -3,6 +3,8 @@
 
 @@reventless.spec
 
+module Id = CustomerId
+
 // Marked on the query side too, where it is what makes the field render as a
 // mailto link instead of a text box: the AutoUI reads the semantic off this
 // state schema, not off the command's.

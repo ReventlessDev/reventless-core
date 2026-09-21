@@ -20,6 +20,12 @@
 
 @@reventless.gwt
 
+// Ids are typed; the literals are made once, here.
+let c1 = OrderingPlugin.CustomerId.make("c1")
+let c2 = OrderingPlugin.CustomerId.make("c2")
+let p1 = CatalogSpec.ProductId.make("p1")
+let p2 = CatalogSpec.ProductId.make("p2")
+
 // Single-plugin steps inside Ordering ----------------------------------------
 
 module Sync = AggregateCommandStep(
@@ -48,16 +54,16 @@ describe("Aggregates ordering flow (single plugin)", () => {
     start
     ->Sync.whenCommand(~id="p1", Sync({name: "Book", price: 9.99}))
     ->Sync.thenEvent(Synced({name: "Book", price: 9.99}))
-    ->Place.whenCommand(~id="o1", Place({customerId: "c1", productIds: ["p1"]}))
-    ->Place.thenEvent(Placed({customerId: "c1", productIds: ["p1"]}))
+    ->Place.whenCommand(~id="o1", Place({customerId: c1, productIds: [p1]}))
+    ->Place.thenEvent(Placed({customerId: c1, productIds: [p1]}))
     ->Place.whenCommand(~id="o1", Ship)
     ->Place.thenEvent(Shipped)
   )
 
   test("re-placing the same order returns OrderAlreadyPlaced", () =>
     start
-    ->Place.whenCommand(~id="o1", Place({customerId: "c1", productIds: ["p1"]}))
-    ->Place.whenCommand(~id="o1", Place({customerId: "c1", productIds: ["p1"]}))
+    ->Place.whenCommand(~id="o1", Place({customerId: c1, productIds: [p1]}))
+    ->Place.whenCommand(~id="o1", Place({customerId: c1, productIds: [p1]}))
     ->Place.thenError(OrderAlreadyPlaced)
   )
 
@@ -69,15 +75,15 @@ describe("Aggregates ordering flow (single plugin)", () => {
 
   test("a second order is not blocked by the first (~id isolation)", () =>
     start
-    ->Place.whenCommand(~id="o1", Place({customerId: "c1", productIds: ["p1"]}))
-    ->Place.thenEvent(Placed({customerId: "c1", productIds: ["p1"]}))
-    ->Place.whenCommand(~id="o2", Place({customerId: "c2", productIds: ["p2"]}))
-    ->Place.thenEvent(Placed({customerId: "c2", productIds: ["p2"]}))
+    ->Place.whenCommand(~id="o1", Place({customerId: c1, productIds: [p1]}))
+    ->Place.thenEvent(Placed({customerId: c1, productIds: [p1]}))
+    ->Place.whenCommand(~id="o2", Place({customerId: c2, productIds: [p2]}))
+    ->Place.thenEvent(Placed({customerId: c2, productIds: [p2]}))
   )
 
   test("givenEvents seeds an order's prior history", () =>
     start
-    ->Place.givenEvents(~id="o1", [Placed({customerId: "c1", productIds: ["p1"]})])
+    ->Place.givenEvents(~id="o1", [Placed({customerId: c1, productIds: [p1]})])
     ->Place.whenCommand(~id="o1", Ship)
     ->Place.thenEvent(Shipped)
   )
@@ -106,7 +112,7 @@ describe("Aggregates cross-plugin flow", () => {
     ->ProductsEp.whenPublishedThrough
     ->ProductsEp.thenPublicEvent(
       CatalogSpec.Products_ExtensionPoint.ProductBecameAvailable({
-        productId: "p1",
+        productId: p1,
         name: "Book",
         price: 9.99,
       }),
@@ -119,8 +125,8 @@ describe("Aggregates cross-plugin flow", () => {
 
   test("Order.Place fans out to one ItemOrdered per product, round-tripping into Catalog", () =>
     start
-    ->Place.whenCommand(~id="o1", Place({customerId: "c1", productIds: ["p1", "p2"]}))
-    ->Place.thenEvent(Placed({customerId: "c1", productIds: ["p1", "p2"]}))
+    ->Place.whenCommand(~id="o1", Place({customerId: c1, productIds: [p1, p2]}))
+    ->Place.thenEvent(Placed({customerId: c1, productIds: [p1, p2]}))
     ->OrdersEp.whenPublishedThrough
     ->OrdersEp.thenPublicEvents([
       OrderingSpec.Orders_ExtensionPoint.ItemOrdered({

@@ -519,3 +519,37 @@ injection in spec packages.**
 - **Not tried: a `*-spec` package.** None of them depends on `reventless-spec` yet, so `Make`
   cannot be reached there. Adding that dependency is Phase 4's `module Id` skip, as open
   question 5 says.
+
+## Churn: the aggregates example (2026-09-21)
+
+What adopting identities cost `online-shop-aggregates`, measured before migrating the DCB
+example:
+
+- **Declarations:** 4 identity files (`CategoryId`, `OrderId`, `CustomerId` in their chapters,
+  `ProductId` in `catalog-spec`), and `module Id = <Identity>` on all 6 aggregates and 6 read
+  models. Ordering's `CatalogProduct` and its view share catalog's `ProductId` across the plugin
+  boundary.
+- **Source:** 18 files touched, but **8 conversions**, every one at a seam where the framework
+  routes by string: the catalog extension-point mapping (2, `makeFromString` of the delegate's
+  id), the ordering extension (2), the ordering extension-point mapping (3, into the untyped
+  ordering-spec contract), and the email side effect (1). Behaviours and projections needed
+  none: an aggregate-sourced projection keys rows by the envelope id, which is now the view's
+  own identity.
+- **References:** `Order.Place` drops its `@ref("AvailableProducts") @noDcbTag`; both its
+  references are derived from the types, and `Placed` / `Cancelled` gain the same references
+  they previously lacked.
+- **Tests:** 8 GWT files, about 20 literal bindings (`CustomerId.make("cust-1")`, made once per
+  file). The assertions on the string-routed side (published contracts, `PublishAggregateCommand`
+  ids) keep their literals.
+- **Unchanged:** the SDL (every retyped field was already `ID` by its name), stored data, the
+  GraphQL goldens. A live run on the local platform went through catalog → ordering → catalog
+  (product sync, order, per-product demand) with the typed ids.
+- **Left as strings, deliberately:** `ProductDemand.orderId`, since catalog cannot see ordering's
+  `OrderId`, and the ordering-spec contract's fields, since its consumers have no type to hold
+  them in. Typing them would mean ordering-spec declaring `OrderId`, a step for when a consumer
+  needs it.
+
+**Not found here, and worth knowing:** `Order_Place` over GraphQL never returns its
+`CommandResult` on the local platform (a timeout at 30 s), while the command and its whole
+cascade complete. It predates this work (reproduced with the example at the previous commit), and
+is the one command whose event mapping issues a command back to its own aggregate.

@@ -4,6 +4,8 @@
 
 @@reventless.spec
 
+module Id = CatalogSpec.ProductId
+
 @schema
 type command =
   | Sync({name: string, price: float})

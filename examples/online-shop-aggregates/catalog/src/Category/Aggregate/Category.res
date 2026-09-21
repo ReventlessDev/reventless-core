@@ -3,6 +3,8 @@
 
 @@reventless.spec
 
+module Id = CategoryId
+
 @schema
 type command =
   | Add({name: string})

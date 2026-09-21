@@ -16,7 +16,10 @@ describe(name ++ " SideEffect", () => {
     EmailService_Mock.install()
     givenEventForId(
       Order.Id.makeFromString("o1"),
-      Order.Placed({customerId: "alice@example.com", productIds: ["p1"]}),
+      Order.Placed({
+        customerId: CustomerId.make("alice@example.com"),
+        productIds: [CatalogSpec.ProductId.make("p1")],
+      }),
     )
     ->whenExecuted(EmailService_Mock.mock)
     ->thenExternalCalls([
@@ -33,7 +36,7 @@ describe(name ++ " SideEffect", () => {
 
   test("Cancelled is a no-op", () => {
     EmailService_Mock.install()
-    givenEvent(Order.Cancelled({productIds: ["p1"]}))
+    givenEvent(Order.Cancelled({productIds: [CatalogSpec.ProductId.make("p1")]}))
     ->whenExecuted(EmailService_Mock.mock)
     ->thenNoExternalCalls
   })

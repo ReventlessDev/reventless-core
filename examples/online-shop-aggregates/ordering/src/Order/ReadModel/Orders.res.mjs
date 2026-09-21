@@ -2,6 +2,8 @@
 
 import * as Sury from "sury";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
+import * as ProductId$CatalogSpec from "@reventlessdev/online-shop-aggregates-catalog-spec/src/ProductId.res.mjs";
+import * as CustomerId$OrderingPlugin from "../../Customer/CustomerId.res.mjs";
 
 let lifecycleSchema = Sury.union([
   Sury.literal("Placed"),
@@ -11,8 +13,8 @@ let lifecycleSchema = Sury.union([
 ]);
 
 let stateSchema = Sury.$schema(s => ({
-  customerId: s.m(Sury.string),
-  productIds: s.m(Sury.array(Sury.string)),
+  customerId: s.m(CustomerId$OrderingPlugin.schema),
+  productIds: s.m(Sury.array(ProductId$CatalogSpec.schema)),
   lifecycle: s.m(lifecycleSchema)
 }));
 

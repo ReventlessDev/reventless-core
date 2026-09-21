@@ -3,6 +3,8 @@
 
 @@reventless.spec
 
+module Id = CatalogSpec.ProductId
+
 @schema
 type state = {
   name: string,
