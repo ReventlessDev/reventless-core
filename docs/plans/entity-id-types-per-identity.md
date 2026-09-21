@@ -49,6 +49,12 @@ editor tooling may *write* a typed id into a DCB slice.
 
 Analysis F6. Independent of everything else; it can ship first or at any time.
 
+**Done (2026-09-21).** Only `classifyKeyField` / `resolveKeyField` take the kind.
+`deriveServerCapability` does not: it always reads the state-field ladder, because its
+output must stay byte-identical, and so the local and AWS resolvers are untouched. For a
+read model, several foreign `*Id` fields are `NoCandidate` rather than `Ambiguous`, since the
+sole rung never gave it a key to lose. Only the aggregates example's `Orders` changed.
+
 **Change.** Pass the component's kind to the key rule so it can tell a read model (row keyed by
 the envelope id) from a StateViewSlice (row keyed by a state field). For a read model, the
 "sole `*Id`" rung does not name the key.

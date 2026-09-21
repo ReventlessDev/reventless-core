@@ -94,7 +94,11 @@ describe("GraphQL_FragmentGenerator slice TODO rows", () => {
 // common cases; these pin which cases those are, and which still need `@id`.
 describe("resolveKeyField — the ladder", () => {
   let rungFor = (~entityName, schema) =>
-    GraphQL_FragmentGenerator.resolveKeyField(~entityName, schema->S.castToUnknown)
+    GraphQL_FragmentGenerator.resolveKeyField(
+      ~rowKeying=RowKeyedByStateField,
+      ~entityName,
+      schema->S.castToUnknown,
+    )
 
   testSync("a lone `*Id` field is the only thing the key could be", () => {
     let schema = S.schema(s => {"productId": s.matches(S.string), "name": s.matches(S.string)})
@@ -137,12 +141,50 @@ describe("resolveKeyField — the ladder", () => {
   })
 })
 
+// A read model's row is keyed by the envelope id of the events it folds, so its
+// lone `*Id` field is a foreign id: `Orders = {customerId, …}` is not keyed by the
+// customer.
+describe("resolveKeyField — a read model is keyed by its envelope", () => {
+  let keyFor = (~entityName, schema) =>
+    GraphQL_FragmentGenerator.resolveKeyField(
+      ~rowKeying=RowKeyedByEnvelope,
+      ~entityName,
+      schema->S.castToUnknown,
+    )
+
+  testSync("a lone foreign `*Id` field does not name the key", () => {
+    let schema = S.schema(
+      s => {"customerId": s.matches(S.string), "lifecycle": s.matches(S.string)},
+    )
+    expect(keyFor(~entityName="Orders", schema))->toEqual(None)
+  })
+
+  testSync("the convention rung still names it", () => {
+    let schema = S.schema(s => {"orderId": s.matches(S.string), "customerId": s.matches(S.string)})
+    expect(keyFor(~entityName="Orders", schema))->toEqual(Some(("orderId", "convention")))
+  })
+
+  testSync("several foreign `*Id` fields are not a gap worth a warning", () => {
+    let schema = S.schema(
+      s => {"productId": s.matches(S.string), "categoryId": s.matches(S.string)},
+    )
+    expect(
+      GraphQL_FragmentGenerator.classifyKeyField(
+        ~rowKeying=RowKeyedByEnvelope,
+        ~entityName="ProductDemand",
+        schema->S.castToUnknown,
+      )->GraphQL_FragmentGenerator.keyFieldGapMessage,
+    )->toEqual(None)
+  })
+})
+
 // Losing the key is invisible — the view keeps every field and every row, and
 // drops its `<field>Eq` filter and its whole `orderBy` from the SDL. These pin
 // which of the two ways to lose it is worth saying out loud.
 describe("keyFieldGapMessage — which gap is worth a warning", () => {
   let gapFor = (~entityName, schema) =>
     GraphQL_FragmentGenerator.classifyKeyField(
+      ~rowKeying=RowKeyedByStateField,
       ~entityName,
       schema->S.castToUnknown,
     )->GraphQL_FragmentGenerator.keyFieldGapMessage
@@ -195,6 +237,17 @@ describe("deriveServerCapability — inferred keys reach the SDL surface", () =>
     let c = capabilityFor(~entityName="Orders", schema)
     expect(c.filterFields->Array.map(f => f.name))->toEqual(["orderId"])
     expect(c.sortFields)->toEqual(["orderId"])
+  })
+
+  // Not the key of a read model, but filterable all the same: removing a
+  // generated filter is an SDL break.
+  testSync("a lone foreign `*Id` field stays filterable and sortable", () => {
+    let schema = S.schema(
+      s => {"customerId": s.matches(S.string), "lifecycle": s.matches(S.string)},
+    )
+    let c = capabilityFor(~entityName="Orders", schema)
+    expect(c.filterFields->Array.map(f => f.name))->toEqual(["customerId"])
+    expect(c.sortFields)->toEqual(["customerId"])
   })
 
   testSync("an unresolvable key still yields nothing — the old behaviour, now narrowed", () => {

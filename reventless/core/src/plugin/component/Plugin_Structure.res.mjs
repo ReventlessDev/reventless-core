@@ -706,7 +706,7 @@ function queryableDefFromSpec(plugin, name, stateSchema, authorization, visibili
   let linkedWriteSide = linkedWriteSideOpt !== undefined ? linkedWriteSideOpt : [];
   let qf = Api_Naming$ReventlessCore.queryFieldNamesForReadModel(plugin, name, undefined);
   let label = labelFieldsFromStateSchema(name, stateSchema);
-  let keyField = GraphQL_FragmentGenerator$ReventlessCore.resolveKeyField(name, stateSchema);
+  let keyField = GraphQL_FragmentGenerator$ReventlessCore.resolveKeyField("RowKeyedByEnvelope", name, stateSchema);
   return {
     name: name,
     queryField: qf.listFieldName,
@@ -1006,16 +1006,16 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       retiredFailures.push(f);
     });
   };
-  let recordKeyField = (entityName, stateSchema) => Stdlib_Option.forEach(GraphQL_FragmentGenerator$ReventlessCore.keyFieldGapMessage(GraphQL_FragmentGenerator$ReventlessCore.classifyKeyField(entityName, stateSchema)), why => log.warn("Plugin_Structure", undefined, name + `/` + entityName + ` ` + why));
+  let recordKeyField = (rowKeying, entityName, stateSchema) => Stdlib_Option.forEach(GraphQL_FragmentGenerator$ReventlessCore.keyFieldGapMessage(GraphQL_FragmentGenerator$ReventlessCore.classifyKeyField(rowKeying, entityName, stateSchema)), why => log.warn("Plugin_Structure", undefined, name + `/` + entityName + ` ` + why));
   let readModelDefs = readModels.map(R => {
     let qf = Api_Naming$ReventlessCore.queryFieldNamesForReadModel(name, R.Spec.name, undefined);
     let stateSchema = R.Spec.stateSchema;
     let label = labelFieldsFromStateSchema(R.Spec.name, stateSchema);
-    let keyField = GraphQL_FragmentGenerator$ReventlessCore.resolveKeyField(R.Spec.name, stateSchema);
+    let keyField = GraphQL_FragmentGenerator$ReventlessCore.resolveKeyField("RowKeyedByEnvelope", R.Spec.name, stateSchema);
     let consumed = qualify(name, R.consumedEventNames);
     recordRetired(R.Spec.name, stateSchema);
     recordLifecycle(R.Spec.name, stateSchema);
-    recordKeyField(R.Spec.name, stateSchema);
+    recordKeyField("RowKeyedByEnvelope", R.Spec.name, stateSchema);
     return {
       name: R.Spec.name,
       queryField: qf.listFieldName,
@@ -1044,10 +1044,10 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     let consumed = match[1];
     let stateSchema = SVS.Spec.stateSchema;
     let label = labelFieldsFromStateSchema(SVS.Spec.name, stateSchema);
-    let keyField = GraphQL_FragmentGenerator$ReventlessCore.resolveKeyField(SVS.Spec.name, stateSchema);
+    let keyField = GraphQL_FragmentGenerator$ReventlessCore.resolveKeyField("RowKeyedByStateField", SVS.Spec.name, stateSchema);
     recordRetired(SVS.Spec.name, stateSchema);
     recordLifecycle(SVS.Spec.name, stateSchema);
-    recordKeyField(SVS.Spec.name, stateSchema);
+    recordKeyField("RowKeyedByStateField", SVS.Spec.name, stateSchema);
     return {
       name: SVS.Spec.name,
       queryField: qf.listFieldName,

@@ -986,9 +986,12 @@ let queryableDefFromSpec = (
 ): Reventless.Plugin.queryableDef => {
   let qf = Api_Naming.queryFieldNamesForReadModel(~plugin, ~name)
   let label = labelFieldsFromStateSchema(~entityName=name, stateSchema)
-  // The same call the capability deriver makes, so the published key and the key
-  // the generated filter/order-by is built from cannot disagree.
-  let keyField = GraphQL_FragmentGenerator.resolveKeyField(~entityName=name, stateSchema)
+  // The published key is always filterable; not every filterable field is the key.
+  let keyField = GraphQL_FragmentGenerator.resolveKeyField(
+    ~rowKeying=RowKeyedByEnvelope,
+    ~entityName=name,
+    stateSchema,
+  )
   {
     Reventless.Plugin.name,
     queryField: qf.listFieldName,
@@ -1414,8 +1417,8 @@ let make = (
 
   // Warned rather than refused: an unkeyed view still answers, just without a
   // filter or an ordering, and a lint that stops a deploy gets silenced.
-  let recordKeyField = (~entityName, stateSchema) =>
-    GraphQL_FragmentGenerator.classifyKeyField(~entityName, stateSchema)
+  let recordKeyField = (~rowKeying, ~entityName, stateSchema) =>
+    GraphQL_FragmentGenerator.classifyKeyField(~rowKeying, ~entityName, stateSchema)
     ->GraphQL_FragmentGenerator.keyFieldGapMessage
     ->Option.forEach(why => log.warn(~comp="Plugin_Structure", `${name}/${entityName} ${why}`))
 
@@ -1425,14 +1428,17 @@ let make = (
     let qf = Api_Naming.queryFieldNamesForReadModel(~plugin=name, ~name=R.Spec.name)
     let stateSchema = R.Spec.stateSchema->S.castToUnknown
     let label = labelFieldsFromStateSchema(~entityName=R.Spec.name, stateSchema)
-    // The same call the capability deriver makes, so the published key and the
-    // key the generated filter/order-by is built from cannot disagree.
-    let keyField = GraphQL_FragmentGenerator.resolveKeyField(~entityName=R.Spec.name, stateSchema)
+    // The published key is always filterable; not every filterable field is the key.
+    let keyField = GraphQL_FragmentGenerator.resolveKeyField(
+      ~rowKeying=RowKeyedByEnvelope,
+      ~entityName=R.Spec.name,
+      stateSchema,
+    )
     // Qualified to the plugin's event ids so they match the producers' nodes.
     let consumed = qualify(~prefix=name, R.consumedEventNames)
     recordRetired(~entityName=R.Spec.name, stateSchema)
     recordLifecycle(~entityName=R.Spec.name, stateSchema)
-    recordKeyField(~entityName=R.Spec.name, stateSchema)
+    recordKeyField(~rowKeying=RowKeyedByEnvelope, ~entityName=R.Spec.name, stateSchema)
 
     (
       {
@@ -1471,12 +1477,13 @@ let make = (
       let stateSchema = SVS.Spec.stateSchema->S.castToUnknown
       let label = labelFieldsFromStateSchema(~entityName=SVS.Spec.name, stateSchema)
       let keyField = GraphQL_FragmentGenerator.resolveKeyField(
+        ~rowKeying=RowKeyedByStateField,
         ~entityName=SVS.Spec.name,
         stateSchema,
       )
       recordRetired(~entityName=SVS.Spec.name, stateSchema)
       recordLifecycle(~entityName=SVS.Spec.name, stateSchema)
-      recordKeyField(~entityName=SVS.Spec.name, stateSchema)
+      recordKeyField(~rowKeying=RowKeyedByStateField, ~entityName=SVS.Spec.name, stateSchema)
 
       (
         {

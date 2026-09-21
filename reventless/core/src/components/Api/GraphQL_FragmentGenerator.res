@@ -316,19 +316,32 @@ type keyFieldResolution =
   | Ambiguous({candidates: array<string>, conventional: string})
   | NoCandidate
 
+/** Where a view's row key lives. A read model's row is keyed by the envelope id of
+    the events it folds, so a `*Id` field in its state is somebody else's id unless
+    it is declared or named as the view's own. A StateViewSlice keys its row by a
+    state field. */
+type rowKeying = RowKeyedByEnvelope | RowKeyedByStateField
+
 /**
 The field that identifies a row, and which rung answered:
 
 - `"annotation"` — the state declares `@id`. Nothing outranks it.
 - `"convention"` — a field named `<singular entity name>Id` exists
   (`Products` → `productId`).
-- `"sole"` — the state has exactly one `*Id` field (`AvailableProducts`).
+- `"sole"` — the state has exactly one `*Id` field (`AvailableProducts`). Only for
+  `RowKeyedByStateField`: a read model's lone `*Id` is a foreign id (`Orders` →
+  `customerId`), and having none of its own is its ordinary shape, so neither
+  that nor several `*Id` fields is a gap.
 
 Convention outranks sole so a view carrying one foreign key and no key of its own
 is not keyed by the foreign key. `resolveKeyField` is this, with both gaps
 flattened to `None`.
 */
-let classifyKeyField = (~entityName: string, schema: S.t<unknown>): keyFieldResolution => {
+let classifyKeyField = (
+  ~rowKeying: rowKeying,
+  ~entityName: string,
+  schema: S.t<unknown>,
+): keyFieldResolution => {
   let declared = switch Reventless.StateAnnotations.getSpec(schema) {
   | Some({ids}) => ids->Array.get(0)
   | None => None
@@ -347,6 +360,8 @@ let classifyKeyField = (~entityName: string, schema: S.t<unknown>): keyFieldReso
       singular->String.slice(~start=1, ~end=singular->String.length) ++ "Id"
     if candidates->Array.includes(conventional) {
       Resolved({field: conventional, rung: "convention"})
+    } else if rowKeying == RowKeyedByEnvelope {
+      NoCandidate
     } else if candidates->Array.length == 1 {
       Resolved({field: candidates->Array.getUnsafe(0), rung: "sole"})
     } else if Array.length(candidates) == 0 {
@@ -357,8 +372,11 @@ let classifyKeyField = (~entityName: string, schema: S.t<unknown>): keyFieldReso
   }
 }
 
-let resolveKeyField = (~entityName: string, schema: S.t<unknown>): option<(string, string)> =>
-  switch classifyKeyField(~entityName, schema) {
+let resolveKeyField = (~rowKeying: rowKeying, ~entityName: string, schema: S.t<unknown>): option<(
+  string,
+  string,
+)> =>
+  switch classifyKeyField(~rowKeying, ~entityName, schema) {
   | Resolved({field, rung}) => Some((field, rung))
   | Ambiguous(_) | NoCandidate => None
   }
@@ -457,7 +475,9 @@ let deriveServerCapability = (~entityName: string, schema: S.t<unknown>): server
   // a client asked for happened client-side over one page. Its key is knowable
   // without the annotation in the common cases; take it. Pushed last, and both
   // pushes dedupe, so a declared `@id` keeps its position and this is a no-op.
-  switch resolveKeyField(~entityName, schema) {
+  // Read as a state-field key for every view: a read model's lone foreign id is
+  // not its key, but it stays filterable, since dropping it would break the SDL.
+  switch resolveKeyField(~rowKeying=RowKeyedByStateField, ~entityName, schema) {
   | Some((field, _rung)) =>
     pushFilter(field, ~range=false)
     pushSort(field)

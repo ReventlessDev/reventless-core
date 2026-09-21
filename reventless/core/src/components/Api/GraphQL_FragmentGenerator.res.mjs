@@ -256,7 +256,7 @@ function isKeyFieldName(name) {
   }
 }
 
-function classifyKeyField(entityName, schema) {
+function classifyKeyField(rowKeying, entityName, schema) {
   let match = StateAnnotations$Reventless.getSpec(schema);
   let declared = match !== undefined ? match.ids[0] : undefined;
   if (declared !== undefined) {
@@ -275,6 +275,8 @@ function classifyKeyField(entityName, schema) {
       field: conventional,
       rung: "convention"
     };
+  } else if (rowKeying === "RowKeyedByEnvelope") {
+    return "NoCandidate";
   } else if (candidates.length === 1) {
     return {
       TAG: "Resolved",
@@ -292,8 +294,8 @@ function classifyKeyField(entityName, schema) {
   }
 }
 
-function resolveKeyField(entityName, schema) {
-  let match = classifyKeyField(entityName, schema);
+function resolveKeyField(rowKeying, entityName, schema) {
+  let match = classifyKeyField(rowKeying, entityName, schema);
   if (typeof match !== "object" || match.TAG !== "Resolved") {
     return;
   } else {
@@ -373,7 +375,7 @@ function deriveServerCapability(entityName, schema) {
     spec.scan.forEach(name => pushFilter(name, false));
     spec.scanSort.forEach(pushSort);
   }
-  let match = resolveKeyField(entityName, schema);
+  let match = resolveKeyField("RowKeyedByStateField", entityName, schema);
   if (match !== undefined) {
     let field = match[0];
     pushFilter(field, false);
