@@ -587,31 +587,92 @@ let labelFieldsFromStateSchema = (
 // Mirrors the command walk for emitted events. Module-level so Platform_Admin,
 // whose components never pass through `make`, derives its defs the same way.
 
+/**
+The plugin's views by the identity each is keyed by, which is what lets a typed
+id find the view that lists it without an `@ref`. `report` says where the type
+cannot decide: several views keyed by the identity, none, or an `@ref` naming a
+view keyed by another.
+*/
+type identityViews = {
+  viewsByKey: dict<array<string>>,
+  viewNames: array<string>,
+  report: string => unit,
+}
+
+// The reference a typed id implies, and the check on one it declares.
+let identityReference = (
+  identityViews: identityViews,
+  ~fieldName,
+  fieldSchema: S.t<unknown>,
+  declared: array<(string, Reventless.Reference.target)>,
+): array<(string, Reventless.Reference.target)> =>
+  switch Reventless.Semantic.fieldIdentityKey(fieldSchema) {
+  | None => declared
+  | Some(key) =>
+    let keyed = identityViews.viewsByKey->Dict.get(key)->Option.getOr([])
+    switch declared {
+    | [] =>
+      switch keyed {
+      | [view] => [(fieldName, {Reventless.Semantic.entity: view, plugin: None, identity: key})]
+      | [] =>
+        identityViews.report(
+          `${fieldName} is a ${key}, and no view in this plugin is keyed by it, so it references nothing. List the identity in a view, or reference another plugin's with @ref("Plugin.View").`,
+        )
+        []
+      | several =>
+        identityViews.report(
+          `${fieldName} is a ${key}, and ${several->Array.join(
+              " and ",
+            )} are all keyed by it. Say which it references with @ref.`,
+        )
+        []
+      }
+    | _ =>
+      declared->Array.forEach(((_, target)) =>
+        if (
+          target.plugin->Option.isNone &&
+          identityViews.viewNames->Array.includes(target.entity) &&
+          !(keyed->Array.includes(target.entity))
+        ) {
+          identityViews.report(
+            `${fieldName} is a ${key}, and its @ref names ${target.entity}, which is not keyed by it.`,
+          )
+        }
+      )
+      declared
+    }
+  }
+
 // A variant's cross-entity references, shared by the command and event walks.
 // `getFieldTarget`, not `getTarget`: an `array<string>` field declares it on the
 // element schema.
-let extractReferences = (properties: dict<S.t<unknown>>): array<Reventless.Plugin.fieldReference> =>
+let extractReferences = (
+  ~identityViews: option<identityViews>=?,
+  properties: dict<S.t<unknown>>,
+): array<Reventless.Plugin.fieldReference> =>
   properties
   ->Dict.toArray
-  ->Array.flatMap(((fieldName, fieldSchema)) =>
+  ->Array.flatMap(((fieldName, fieldSchema)) => {
     // `collectFieldTargets`, not `getFieldTarget`: a reference declared on a field
     // of a record the field holds (an order line's `productId`) is one this
     // command declares, and it arrives named by its own path. Commands and events
     // both come through here, which is what stops one of them learning about
     // nesting and the other not.
-    Reventless.Reference.collectFieldTargets(fieldName, fieldSchema)->Array.map(((
-      path,
-      target,
-    )): Reventless.Plugin.fieldReference => {
+    let declared = Reventless.Reference.collectFieldTargets(fieldName, fieldSchema)
+    let targets = switch identityViews {
+    | Some(views) => identityReference(views, ~fieldName, fieldSchema, declared)
+    | None => declared
+    }
+    targets->Array.map(((path, target)): Reventless.Plugin.fieldReference => {
       Reventless.Plugin.fieldName: path,
       entity: target.entity,
       plugin: target.plugin,
     })
-  )
+  })
 
-let toEventDef = (v: S.t<unknown>): option<Reventless.Plugin.eventDef> => {
+let toEventDef = (~identityViews=?, v: S.t<unknown>): option<Reventless.Plugin.eventDef> => {
   let mkDef = (~variantName, ~properties) => {
-    let references = extractReferences(properties)
+    let references = extractReferences(~identityViews?, properties)
 
     (
       {
@@ -640,10 +701,12 @@ let toEventDef = (v: S.t<unknown>): option<Reventless.Plugin.eventDef> => {
   }
 }
 
-let extractEventDefs = (eventSchema: S.t<unknown>): array<Reventless.Plugin.eventDef> =>
+let extractEventDefs = (~identityViews=?, eventSchema: S.t<unknown>): array<
+  Reventless.Plugin.eventDef,
+> =>
   switch eventSchema {
-  | AnyOf({anyOf}) => anyOf->Array.filterMap(toEventDef)
-  | _ => toEventDef(eventSchema)->Option.mapOr([], def => [def])
+  | AnyOf({anyOf}) => anyOf->Array.filterMap(v => toEventDef(~identityViews?, v))
+  | _ => toEventDef(~identityViews?, eventSchema)->Option.mapOr([], def => [def])
   }
 
 // Errors walk identically to events; only the def type differs, so a consumer
@@ -750,6 +813,7 @@ let annotateArgTypes = (schema: JSON.t, argTypes: dict<string>): JSON.t => {
 }
 
 let toCommandDef = (
+  ~identityViews: option<identityViews>=?,
   ~isAggregate,
   ~partitionKey: option<string>=?,
   ~mutationFieldFor: string => string,
@@ -785,7 +849,7 @@ let toCommandDef = (
       ~variantName,
       properties,
     )
-    let references = extractReferences(properties)
+    let references = extractReferences(~identityViews?, properties)
     // Evaluated against a synthetic value per constructor, the same shape the
     // resolver builds at call time: a payload-bearing variant compiles to
     // `{TAG, ...}`, a payload-less one to a bare string.
@@ -923,6 +987,7 @@ let toCommandDef = (
 }
 
 let extractCommandDefs = (
+  ~identityViews: option<identityViews>=?,
   ~isAggregate,
   ~partitionKey: option<string>=?,
   ~mutationFieldFor: string => string,
@@ -935,6 +1000,7 @@ let extractCommandDefs = (
   | AnyOf({anyOf}) =>
     anyOf->Array.filterMap(v =>
       toCommandDef(
+        ~identityViews?,
         ~isAggregate,
         ~partitionKey?,
         ~mutationFieldFor,
@@ -948,6 +1014,7 @@ let extractCommandDefs = (
   | _ =>
     // Single-variant command types compile to a bare Object schema, not a Union.
     toCommandDef(
+      ~identityViews?,
       ~isAggregate,
       ~partitionKey?,
       ~mutationFieldFor,
@@ -1536,6 +1603,53 @@ let make = (
   }
   let partitionFailures = []
 
+  // Each view's key as an identity: a read model's `Spec.Id` when it is one, else
+  // the key field's type, else the key field's name, so a view keyed by an untyped
+  // `productId` still lists the `productId` identity.
+  let keyIdentityOf = (stateSchema: S.t<unknown>, idField: option<string>) =>
+    idField->Option.map(field =>
+      switch stateSchema {
+      | Object({properties}) =>
+        properties->Dict.get(field)->Option.flatMap(Reventless.Semantic.identityKey)
+      | _ => None
+      }->Option.getOr(field)
+    )
+  let viewKeys = Array.concat(
+    readModels->Array.mapWithIndex((
+      module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role),
+      i,
+    ) => {
+      let def = readModelDefs->Array.getUnsafe(i)
+      let key = switch R.Spec.Id.schema->Reventless.Semantic.identityKey {
+      | Some(_) as declared => declared
+      | None => keyIdentityOf(R.Spec.stateSchema->S.castToUnknown, def.idField)
+      }
+      (R.Spec.name, key)
+    }),
+    stateViewSlices->Array.mapWithIndex((module(SVS: ReventlessInfra.StateViewSlice.T), i) => {
+      let def = stateViewDefs->Array.getUnsafe(i)
+      (SVS.Spec.name, keyIdentityOf(SVS.Spec.stateSchema->S.castToUnknown, def.idField))
+    }),
+  )
+  let viewsByKey: dict<array<string>> = Dict.make()
+  viewKeys->Array.forEach(((view, key)) =>
+    key->Option.forEach(k =>
+      viewsByKey->Dict.set(k, viewsByKey->Dict.get(k)->Option.getOr([])->Array.concat([view]))
+    )
+  )
+  // Warned rather than refused, like the key-field gap: the field still decodes,
+  // it just links nowhere. Once per message, since a field recurs across variants.
+  let reported: Set.t<string> = Set.make()
+  let identityViews = {
+    viewsByKey,
+    viewNames: viewKeys->Array.map(((view, _)) => view),
+    report: message =>
+      if !(reported->Set.has(message)) {
+        reported->Set.add(message)
+        log.warn(~comp="Plugin_Structure", `${name}: ${message}`)
+      },
+  }
+
   let stateChangeDefs =
     stateChangeSlices->Array.mapWithIndex((module(SCS: ReventlessInfra.StateChangeSlice.T), i) => {
       let (_, produced) = scsProduced->Array.getUnsafe(i)
@@ -1545,6 +1659,7 @@ let make = (
         {
           Reventless.Plugin.name: SCS.Spec.name,
           commands: extractCommandDefs(
+            ~identityViews,
             ~isAggregate=false,
             ~partitionKey=?partitionBySlice->Dict.get(SCS.Spec.name),
             ~mutationFieldFor=variantName =>
@@ -1563,7 +1678,7 @@ let make = (
           consumedEventTypes: consumed,
           linkedViews: linkedSvsFor(produced),
           consistencyRead: consistencyReadFor(consumed),
-          events: extractEventDefs(SCS.Spec.eventSchema->S.castToUnknown),
+          events: extractEventDefs(~identityViews, SCS.Spec.eventSchema->S.castToUnknown),
           errors: extractErrorDefs(SCS.Spec.errorSchema->S.castToUnknown),
           chapter: chapterOf(SCS.Spec.name),
         }: Reventless.Plugin.writableDef
@@ -1580,6 +1695,7 @@ let make = (
       {
         Reventless.Plugin.name: A.Spec.name,
         commands: extractCommandDefs(
+          ~identityViews,
           ~isAggregate=true,
           ~mutationFieldFor=variantName =>
             Api_Naming.aggregateMutationField(
@@ -1596,7 +1712,7 @@ let make = (
         consumedEventTypes: [],
         linkedViews: Array.concat(linkedSvsFor(produced), linkedReadModelsFor(A.Spec.name)),
         consistencyRead: None,
-        events: extractEventDefs(A.Spec.eventSchema->S.castToUnknown),
+        events: extractEventDefs(~identityViews, A.Spec.eventSchema->S.castToUnknown),
         errors: extractErrorDefs(A.Spec.errorSchema->S.castToUnknown),
         chapter: chapterOf(A.Spec.name),
       }: Reventless.Plugin.writableDef

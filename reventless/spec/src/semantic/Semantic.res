@@ -258,6 +258,17 @@ let identityKey = (fieldSchema: S.t<'a>): option<string> =>
   | _ => None
   }
 
+/** The identity a field names, on its own value or on an array's elements. */
+let rec fieldIdentityKey = (fieldSchema: S.t<unknown>): option<string> =>
+  switch identityKey(fieldSchema) {
+  | Some(_) as found => found
+  | None =>
+    switch fieldSchema->unwrapOptional->Option.getOr(fieldSchema) {
+    | Array({additionalItems: Schema(item)}) => fieldIdentityKey(item)
+    | _ => None
+    }
+  }
+
 /** Whether a field's schema carries this specific semantic. */
 let has = (fieldSchema: S.t<'a>, ~id: string): bool =>
   switch get(fieldSchema) {

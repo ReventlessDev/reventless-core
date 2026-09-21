@@ -239,6 +239,25 @@ helpers. Beyond the plan:
 
 **Validation.** Tests for each case; the examples report nothing until migrated.
 
+**Done (2026-09-21).**
+- A view counts as keyed by an identity through a read model's `Spec.Id`, else its key
+  field's type, else its key field's *name*. That lets a typed id derive a reference to a
+  view whose key is still an untyped `productId`, so a plugin can migrate its commands
+  before its views.
+- Derived references and the `@ref` check are warnings at structure assembly (like the
+  key-field gap), deduplicated per plugin; the field still decodes.
+- The identity checks live in [`IdentityCheck`](../../reventless/spec/src/components/IdentityCheck.res),
+  a pure module `check:dcb-scope` calls, and they fail the check like a `@partitionTag`
+  issue. "Declared" means some field in the plugin is typed with the identity, so a plugin
+  that types nothing is never reported.
+- **The chapter check reads the declaring file from source.** Nothing at runtime knows
+  where `Id.Make` was applied, so the script scans `src/<Chapter>/*.res` for
+  `Id.Make({let key = …})`, and `IdentityCheck.checkChapters` compares that with each
+  slice's inferred partition. An identity from another package (`CatalogSpec.ProductId`)
+  has no chapter and is not checked.
+- Scope: DCB slices only, since the script reads `dcbSliceSchemas`. An aggregates-only
+  plugin gets the derived references but not the name checks.
+
 ---
 
 ## Phase 6: typed projections and row keys

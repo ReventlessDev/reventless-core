@@ -51,6 +51,30 @@ const Inference = await import(
 const Validation = await import(
   path.join(ROOT, "reventless/spec/src/components/DcbValidation.res.mjs")
 )
+const IdentityCheck = await import(
+  path.join(ROOT, "reventless/spec/src/components/IdentityCheck.res.mjs")
+)
+const ComponentKind = await import(
+  path.join(ROOT, "reventless/spec/src/components/ComponentKind.res.mjs")
+)
+
+// Where each identity is declared: `include Reventless.Id.Make({let key = "orderId"})`
+// in a file directly inside a chapter folder (`src/Order/OrderId.res`). Read off the
+// source because nothing at runtime knows which file an identity came from.
+const identityChapters = (pluginDir) => {
+  const src = path.join(pluginDir, "src")
+  const found = {}
+  for (const entry of readdirSync(src, { withFileTypes: true })) {
+    if (!entry.isDirectory() || ComponentKind.isKindFolder(entry.name)) continue
+    for (const file of readdirSync(path.join(src, entry.name))) {
+      if (!file.endsWith(".res")) continue
+      const text = readFileSync(path.join(src, entry.name, file), "utf8")
+      const match = text.match(/Id\.Make\(\s*\{\s*let\s+key\s*=\s*"([^"]+)"/)
+      if (match) found[match[1]] = entry.name
+    }
+  }
+  return found
+}
 
 // A plugin is a directory holding a compiled `src/Plugin.res.mjs`; it is part of
 // a DCB boundary only if the generator emitted `dcbSliceSchemas`, which it does
@@ -58,7 +82,11 @@ const Validation = await import(
 const plugins = (exampleDir) =>
   readdirSync(exampleDir, { withFileTypes: true })
     .filter((e) => e.isDirectory() && !e.name.startsWith("."))
-    .map((e) => ({ name: e.name, entry: path.join(exampleDir, e.name, "src/Plugin.res.mjs") }))
+    .map((e) => ({
+      name: e.name,
+      dir: path.join(exampleDir, e.name),
+      entry: path.join(exampleDir, e.name, "src/Plugin.res.mjs"),
+    }))
     .filter((p) => existsSync(p.entry))
 
 const examples = readdirSync(path.join(ROOT, "examples"), { withFileTypes: true })
@@ -68,13 +96,14 @@ const examples = readdirSync(path.join(ROOT, "examples"), { withFileTypes: true 
 
 let failures = 0
 let annotations = 0
+let identities = 0
 let drift = 0
 
 for (const example of examples) {
   const exampleDir = path.join(ROOT, "examples", example)
   const report = {}
 
-  for (const { name, entry } of plugins(exampleDir)) {
+  for (const { name, dir, entry } of plugins(exampleDir)) {
     const mod = await import(entry)
     const slices = mod.dcbSliceSchemas
     if (!slices || slices.length === 0) continue
@@ -90,6 +119,16 @@ for (const example of examples) {
     const hints = Validation.validatePartitionHintsVsInference(shapes)
     for (const { sliceName, message } of [...hints.contradictions, ...hints.redundancies]) {
       annotations++
+      console.error(`✗ ${example}/${name}: ${sliceName} — ${message}`)
+    }
+    // Adoption is opt-in per plugin and complete by check: a plugin that types no
+    // id is never reported, one that types some is held to all of them.
+    const identityFindings = [
+      ...IdentityCheck.check(slices),
+      ...IdentityCheck.checkChapters(identityChapters(dir), inferred.partitionBySlice, slices),
+    ]
+    for (const { sliceName, message } of identityFindings) {
+      identities++
       console.error(`✗ ${example}/${name}: ${sliceName} — ${message}`)
     }
     let partitionKeyByEventType = {}
@@ -146,9 +185,10 @@ for (const example of examples) {
   }
 }
 
-if (failures > 0 || annotations > 0 || drift > 0) {
+if (failures > 0 || annotations > 0 || identities > 0 || drift > 0) {
   console.error(
-    `\n${failures} unresolved slice(s), ${annotations} @partitionTag issue(s), ${drift} golden drift(s). ` +
+    `\n${failures} unresolved slice(s), ${annotations} @partitionTag issue(s), ` +
+      `${identities} identity issue(s), ${drift} golden drift(s). ` +
       `An unresolved partition is usually a consumed arm declaring the id its slice is already partitioned by — remove the field.`,
   )
   process.exit(1)

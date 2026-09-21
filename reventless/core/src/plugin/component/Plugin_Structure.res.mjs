@@ -12,6 +12,7 @@ import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js
 import * as Trait$Reventless from "@reventlessdev/reventless-spec/src/types/Trait.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
+import * as Semantic$Reventless from "@reventlessdev/reventless-spec/src/semantic/Semantic.res.mjs";
 import * as Lifecycle$Reventless from "@reventlessdev/reventless-spec/src/types/Lifecycle.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Reference$Reventless from "@reventlessdev/reventless-spec/src/components/Reference.res.mjs";
@@ -444,20 +445,62 @@ function labelFieldsFromStateSchema(entityName, stateSchema) {
   };
 }
 
-function extractReferences(properties) {
-  return Object.entries(properties).flatMap(param => Reference$Reventless.collectFieldTargets(param[0], param[1]).map(param => {
-    let target = param[1];
-    return {
-      fieldName: param[0],
-      entity: target.entity,
-      plugin: target.plugin
-    };
-  }));
+function identityReference(identityViews, fieldName, fieldSchema, declared) {
+  let key = Semantic$Reventless.fieldIdentityKey(fieldSchema);
+  if (key === undefined) {
+    return declared;
+  }
+  let keyed = Stdlib_Option.getOr(identityViews.viewsByKey[key], []);
+  if (declared.length !== 0) {
+    declared.forEach(param => {
+      let target = param[1];
+      if (Stdlib_Option.isNone(target.plugin) && identityViews.viewNames.includes(target.entity) && !keyed.includes(target.entity)) {
+        return identityViews.report(fieldName + ` is a ` + key + `, and its @ref names ` + target.entity + `, which is not keyed by it.`);
+      }
+    });
+    return declared;
+  }
+  let len = keyed.length;
+  if (len !== 1) {
+    if (len !== 0) {
+      identityViews.report(fieldName + ` is a ` + key + `, and ` + keyed.join(" and ") + ` are all keyed by it. Say which it references with @ref.`);
+      return [];
+    } else {
+      identityViews.report(fieldName + ` is a ` + key + `, and no view in this plugin is keyed by it, so it references nothing. List the identity in a view, or reference another plugin's with @ref("Plugin.View").`);
+      return [];
+    }
+  }
+  let view = keyed[0];
+  return [[
+      fieldName,
+      {
+        entity: view,
+        plugin: undefined,
+        identity: key
+      }
+    ]];
 }
 
-function toEventDef(v) {
+function extractReferences(identityViews, properties) {
+  return Object.entries(properties).flatMap(param => {
+    let fieldSchema = param[1];
+    let fieldName = param[0];
+    let declared = Reference$Reventless.collectFieldTargets(fieldName, fieldSchema);
+    let targets = identityViews !== undefined ? identityReference(identityViews, fieldName, fieldSchema, declared) : declared;
+    return targets.map(param => {
+      let target = param[1];
+      return {
+        fieldName: param[0],
+        entity: target.entity,
+        plugin: target.plugin
+      };
+    });
+  });
+}
+
+function toEventDef(identityViews, v) {
   let mkDef = (variantName, properties) => {
-    let references = extractReferences(properties);
+    let references = extractReferences(identityViews, properties);
     return {
       name: variantName,
       schema: JSON.stringify(SuryToJsonSchema$ReventlessCore.deriveObjectSchema(undefined, undefined, v)),
@@ -488,16 +531,16 @@ function toEventDef(v) {
   }
 }
 
-function extractEventDefs(eventSchema) {
+function extractEventDefs(identityViews, eventSchema) {
   if (eventSchema.type === "anyOf") {
-    return Stdlib_Array.filterMap(eventSchema.anyOf, toEventDef);
+    return Stdlib_Array.filterMap(eventSchema.anyOf, v => toEventDef(identityViews, v));
   } else {
-    return Stdlib_Option.mapOr(toEventDef(eventSchema), [], def => [def]);
+    return Stdlib_Option.mapOr(toEventDef(identityViews, eventSchema), [], def => [def]);
   }
 }
 
 function extractErrorDefs(errorSchema) {
-  return extractEventDefs(errorSchema).map(param => ({
+  return extractEventDefs(undefined, errorSchema).map(param => ({
     name: param.name,
     schema: param.schema,
     references: param.references
@@ -597,10 +640,10 @@ function annotateArgTypes(schema, argTypes) {
   return schema;
 }
 
-function toCommandDef(isAggregate, partitionKey, mutationFieldFor, parentSchema, commandAuthorization, commandTransition, derivedEdgeFor, v) {
+function toCommandDef(identityViews, isAggregate, partitionKey, mutationFieldFor, parentSchema, commandAuthorization, commandTransition, derivedEdgeFor, v) {
   let mkDef = (variantName, properties) => {
     let match = commandLevelAndId(isAggregate, partitionKey, variantName, properties);
-    let references = extractReferences(properties);
+    let references = extractReferences(identityViews, properties);
     let syntheticCommand = DcbTag$Reventless.isVariantPayloadBearing(parentSchema, variantName) ? ({
         TAG: variantName
       }) : variantName;
@@ -683,12 +726,12 @@ function toCommandDef(isAggregate, partitionKey, mutationFieldFor, parentSchema,
   }
 }
 
-function extractCommandDefs(isAggregate, partitionKey, mutationFieldFor, commandAuthorization, commandTransition, derivedEdgeForOpt, commandSchema) {
+function extractCommandDefs(identityViews, isAggregate, partitionKey, mutationFieldFor, commandAuthorization, commandTransition, derivedEdgeForOpt, commandSchema) {
   let derivedEdgeFor = derivedEdgeForOpt !== undefined ? derivedEdgeForOpt : param => {};
   if (commandSchema.type === "anyOf") {
-    return Stdlib_Array.filterMap(commandSchema.anyOf, v => toCommandDef(isAggregate, partitionKey, mutationFieldFor, commandSchema, commandAuthorization, commandTransition, derivedEdgeFor, v));
+    return Stdlib_Array.filterMap(commandSchema.anyOf, v => toCommandDef(identityViews, isAggregate, partitionKey, mutationFieldFor, commandSchema, commandAuthorization, commandTransition, derivedEdgeFor, v));
   } else {
-    return Stdlib_Option.mapOr(toCommandDef(isAggregate, partitionKey, mutationFieldFor, commandSchema, commandAuthorization, commandTransition, derivedEdgeFor, commandSchema), [], def => [def]);
+    return Stdlib_Option.mapOr(toCommandDef(identityViews, isAggregate, partitionKey, mutationFieldFor, commandSchema, commandAuthorization, commandTransition, derivedEdgeFor, commandSchema), [], def => [def]);
   }
 }
 
@@ -1101,6 +1144,46 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     };
   }
   let partitionFailures = [];
+  let keyIdentityOf = (stateSchema, idField) => Stdlib_Option.map(idField, field => {
+    let tmp;
+    tmp = stateSchema.type === "object" ? Stdlib_Option.flatMap(stateSchema.properties[field], Semantic$Reventless.identityKey) : undefined;
+    return Stdlib_Option.getOr(tmp, field);
+  });
+  let viewKeys = readModels.map((R, i) => {
+    let def = readModelDefs[i];
+    let declared = Semantic$Reventless.identityKey(R.Spec.Id.schema);
+    let key = declared !== undefined ? declared : keyIdentityOf(R.Spec.stateSchema, def.idField);
+    return [
+      R.Spec.name,
+      key
+    ];
+  }).concat(stateViewSlices.map((SVS, i) => {
+    let def = stateViewDefs[i];
+    return [
+      SVS.Spec.name,
+      keyIdentityOf(SVS.Spec.stateSchema, def.idField)
+    ];
+  }));
+  let viewsByKey = {};
+  viewKeys.forEach(param => {
+    let view = param[0];
+    Stdlib_Option.forEach(param[1], k => {
+      viewsByKey[k] = Stdlib_Option.getOr(viewsByKey[k], []).concat([view]);
+    });
+  });
+  let reported = new Set();
+  let identityViews_viewNames = viewKeys.map(param => param[0]);
+  let identityViews_report = message => {
+    if (!reported.has(message)) {
+      reported.add(message);
+      return log.warn("Plugin_Structure", undefined, name + `: ` + message);
+    }
+  };
+  let identityViews = {
+    viewsByKey: viewsByKey,
+    viewNames: identityViews_viewNames,
+    report: identityViews_report
+  };
   let stateChangeDefs = stateChangeSlices.map((SCS, i) => {
     let match = scsProduced[i];
     let produced = match[1];
@@ -1108,12 +1191,12 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     let consumed = match$1[1];
     return {
       name: SCS.Spec.name,
-      commands: extractCommandDefs(false, partitionBySlice[SCS.Spec.name], variantName => Api_Naming$ReventlessCore.sliceMutationFieldFor(name, SCS.Spec.name, SCS.Spec.commandSchema, variantName), SCS.Spec.commandAuthorization, SCS.Spec.commandTransition, extra => derivedEdgeFor(SCS.Spec.name, extra), SCS.Spec.commandSchema),
+      commands: extractCommandDefs(identityViews, false, partitionBySlice[SCS.Spec.name], variantName => Api_Naming$ReventlessCore.sliceMutationFieldFor(name, SCS.Spec.name, SCS.Spec.commandSchema, variantName), SCS.Spec.commandAuthorization, SCS.Spec.commandTransition, extra => derivedEdgeFor(SCS.Spec.name, extra), SCS.Spec.commandSchema),
       producedEventTypes: produced,
       consumedEventTypes: consumed,
       linkedViews: linkedSvsFor(produced),
       consistencyRead: consistencyReadFor(consumed),
-      events: extractEventDefs(SCS.Spec.eventSchema),
+      events: extractEventDefs(identityViews, SCS.Spec.eventSchema),
       errors: extractErrorDefs(SCS.Spec.errorSchema),
       chapter: componentChapters[SCS.Spec.name]
     };
@@ -1123,12 +1206,12 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     let produced = match[1];
     return {
       name: A.Spec.name,
-      commands: extractCommandDefs(true, undefined, variantName => Api_Naming$ReventlessCore.aggregateMutationField(name, A.Spec.name, variantName), A.Spec.commandAuthorization, A.Spec.commandTransition, extra => derivedEdgeFor(A.Spec.name, extra), A.Spec.commandSchema),
+      commands: extractCommandDefs(identityViews, true, undefined, variantName => Api_Naming$ReventlessCore.aggregateMutationField(name, A.Spec.name, variantName), A.Spec.commandAuthorization, A.Spec.commandTransition, extra => derivedEdgeFor(A.Spec.name, extra), A.Spec.commandSchema),
       producedEventTypes: produced,
       consumedEventTypes: [],
       linkedViews: linkedSvsFor(produced).concat(linkedReadModelsFor(A.Spec.name)),
       consistencyRead: undefined,
-      events: extractEventDefs(A.Spec.eventSchema),
+      events: extractEventDefs(identityViews, A.Spec.eventSchema),
       errors: extractErrorDefs(A.Spec.errorSchema),
       chapter: componentChapters[A.Spec.name]
     };
@@ -1452,6 +1535,7 @@ export {
   checkLifecycleTopology,
   labelFieldSourceToString,
   labelFieldsFromStateSchema,
+  identityReference,
   extractReferences,
   toEventDef,
   extractEventDefs,

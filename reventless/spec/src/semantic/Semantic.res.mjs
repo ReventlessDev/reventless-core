@@ -225,6 +225,26 @@ function identityKey(fieldSchema) {
   }
 }
 
+function fieldIdentityKey(_fieldSchema) {
+  while (true) {
+    let fieldSchema = _fieldSchema;
+    let found = identityKey(fieldSchema);
+    if (found !== undefined) {
+      return found;
+    }
+    let match = Stdlib_Option.getOr(unwrapOptional(fieldSchema), fieldSchema);
+    if (match.type !== "array") {
+      return;
+    }
+    let item = match.additionalItems;
+    if (item === "strip" || item === "strict") {
+      return;
+    }
+    _fieldSchema = item;
+    continue;
+  };
+}
+
 function has(fieldSchema, id) {
   let s = getFrom(fieldSchema);
   if (s !== undefined) {
@@ -246,6 +266,7 @@ export {
   getFrom,
   get,
   identityKey,
+  fieldIdentityKey,
   has,
 }
 /* semanticId Not a pure module */
