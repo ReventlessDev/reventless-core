@@ -459,7 +459,6 @@ function MakeWithConfig(Config) {
   let Spec = {
     name: UiFragmentRegistry$ReventlessCore.name,
     moduleUrl: UiFragmentRegistry$ReventlessCore.moduleUrl,
-    Id: Id$Reventless.$$String,
     consumedEventSchema: UiFragmentRegistry$ReventlessCore.consumedEventSchema,
     errorSchema: UiFragmentRegistry$ReventlessCore.errorSchema,
     eventSchema: UiFragmentRegistry$ReventlessCore.eventSchema,
@@ -479,6 +478,13 @@ function MakeWithConfig(Config) {
     name: UiFragments$ReventlessCore.name,
     moduleUrl: UiFragments$ReventlessCore.moduleUrl,
     stateSchema: UiFragments$ReventlessCore.stateSchema,
+    Key: {
+      schema: Id$Reventless.StringPure.schema,
+      make: prim => prim,
+      makeFromString: prim => prim,
+      toString: prim => prim,
+      cmp: Id$Reventless.StringPure.cmp
+    },
     consumedEventSchema: UiFragments$ReventlessCore.consumedEventSchema,
     config: UiFragments$ReventlessCore.config,
     subIdConfig: undefined,
@@ -1867,7 +1873,6 @@ function Make($star) {
   let Spec = {
     name: UiFragmentRegistry$ReventlessCore.name,
     moduleUrl: UiFragmentRegistry$ReventlessCore.moduleUrl,
-    Id: Id$Reventless.$$String,
     consumedEventSchema: UiFragmentRegistry$ReventlessCore.consumedEventSchema,
     errorSchema: UiFragmentRegistry$ReventlessCore.errorSchema,
     eventSchema: UiFragmentRegistry$ReventlessCore.eventSchema,
@@ -1887,6 +1892,13 @@ function Make($star) {
     name: UiFragments$ReventlessCore.name,
     moduleUrl: UiFragments$ReventlessCore.moduleUrl,
     stateSchema: UiFragments$ReventlessCore.stateSchema,
+    Key: {
+      schema: Id$Reventless.StringPure.schema,
+      make: prim => prim,
+      makeFromString: prim => prim,
+      toString: prim => prim,
+      cmp: Id$Reventless.StringPure.cmp
+    },
     consumedEventSchema: UiFragments$ReventlessCore.consumedEventSchema,
     config: UiFragments$ReventlessCore.config,
     subIdConfig: undefined,

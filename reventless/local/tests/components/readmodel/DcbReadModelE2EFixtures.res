@@ -93,10 +93,15 @@ module ProductsFromDcb = Mapping.Make(
   ProductCatalogDcbSource,
   ProductsReadModelSpec,
   {
-    let project = (msg: Message.event'<string, ProductCatalogDcbSource.event>) =>
+    let project = (
+      msg: Message.event'<ProductCatalogDcbSource.Id.t, ProductCatalogDcbSource.event>,
+    ) =>
       switch msg.event {
       | ProductAdded({productId, name}) =>
-        Set(productId, ({productId, name}: ProductsReadModelSpec.state))
+        Set(
+          ProductsReadModelSpec.Id.makeFromString(productId),
+          ({productId, name}: ProductsReadModelSpec.state),
+        )
       }
   },
 )

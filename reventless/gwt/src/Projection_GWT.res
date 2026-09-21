@@ -20,6 +20,8 @@ module type Spec = {
 
   let stateSchema: S.t<state>
 
+  module Key: Reventless.Id.T
+
   @schema
   type consumedEvent
 
@@ -31,7 +33,7 @@ module type Projection = {
   module Spec: Spec
 
   let project: Reventless.StateViewSlice.consumed<Spec.consumedEvent> => array<
-    Reventless.Projection.action<string, Spec.state>,
+    Reventless.Projection.action<Spec.Key.t, Spec.state>,
   >
 }
 
@@ -176,8 +178,10 @@ module Make = (Spec: Spec, Projection: Projection with module Spec := Spec): (
           recordedAt: TestFixtures.recordedAt,
         }
         ->Projection.project
-        ->Array.map(
-          ReventlessCore.Projection.rewriteTrail(_, ~at=TestFixtures.meta.time, Spec.stateSchema),
+        ->Array.map(action =>
+          action
+          ->Reventless.Projection.mapActionId(~to_=Spec.Key.toString, ~from=Spec.Key.makeFromString)
+          ->ReventlessCore.Projection.rewriteTrail(~at=TestFixtures.meta.time, Spec.stateSchema)
         )
       )
       ->Array.flat

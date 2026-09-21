@@ -7,6 +7,7 @@ import * as Stream from "effect/Stream";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as Outcome$ReventlessGwt from "./Outcome.res.mjs";
+import * as Projection$Reventless from "@reventlessdev/reventless-spec/src/types/Projection.res.mjs";
 import * as JestBind$ReventlessGwt from "./JestBind.res.mjs";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import * as Projection$ReventlessCore from "@reventlessdev/reventless-core/src/Projection.res.mjs";
@@ -45,7 +46,7 @@ function Make(Projection) {
   };
   let handleActions = (actions, operations) => Projection$ReventlessCore.handleActions(undefined, actions, operations, Projection.subIdConfig);
   let update = async (store, events$p) => {
-    await handleActions(events$p.map(event$p => Projection$ReventlessCore.rewriteTrail(Projection.project(event$p), event$p.meta.time, Projection.targetStateSchema)), {
+    await handleActions(events$p.map(event$p => Projection$ReventlessCore.rewriteTrail(Projection$Reventless.mapActionId(Projection.project(event$p), Projection.targetIdToString, Projection.targetIdFromString), event$p.meta.time, Projection.targetStateSchema)), {
       load: extra => Promise.resolve({
         TAG: "Ok",
         _0: states(store, extra)
@@ -169,32 +170,32 @@ function Make(Projection) {
     }
   };
   let givenEvents = events => update({}, events.map(event => ({
-    id: testId.contents,
+    id: Projection.SourceId.makeFromString(testId.contents),
     meta: meta.contents,
     event: event
   })));
   let givenEventsWithTime = events => update({}, events.map(param => {
     let newrecord = {...meta.contents};
     return {
-      id: testId.contents,
+      id: Projection.SourceId.makeFromString(testId.contents),
       meta: (newrecord.time = param[0], newrecord),
       event: param[1]
     };
   }));
   let whenEvent = (store, event) => (() => (async () => await update(await store, [{
-      id: testId.contents,
+      id: Projection.SourceId.makeFromString(testId.contents),
       meta: meta.contents,
       event: event
     }]))());
   let whenEvents = (store, events) => (() => (async () => await update(await store, events.map(event => ({
-    id: testId.contents,
+    id: Projection.SourceId.makeFromString(testId.contents),
     meta: meta.contents,
     event: event
   }))))());
   let whenEventWithTime = (store, time, event) => (() => (async () => {
     let newrecord = {...meta.contents};
     return await update(await store, [{
-        id: testId.contents,
+        id: Projection.SourceId.makeFromString(testId.contents),
         meta: (newrecord.time = time, newrecord),
         event: event
       }]);
@@ -202,7 +203,7 @@ function Make(Projection) {
   let whenEventsWithTime = (store, events) => (() => (async () => await update(await store, events.map(param => {
     let newrecord = {...meta.contents};
     return {
-      id: testId.contents,
+      id: Projection.SourceId.makeFromString(testId.contents),
       meta: (newrecord.time = param[0], newrecord),
       event: param[1]
     };

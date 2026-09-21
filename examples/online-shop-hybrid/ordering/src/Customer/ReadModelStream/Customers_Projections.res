@@ -31,7 +31,7 @@ module CustomerMapping = Mapping.Make(
         UpdateWithDefault(
           id,
           {
-            Customers.customerId: id,
+            Customers.customerId: id->Customer.Id.toString,
             email,
             address,
             geolocation: Pending({requestedFor: address}),
@@ -74,7 +74,7 @@ module CustomerOrdersMapping = Mapping.Make(
       switch event {
       | OrderPlaced({customerId}) =>
         UpdateWithDefault(
-          customerId,
+          Customers.Id.makeFromString(customerId),
           {
             Customers.customerId,
             email: "",

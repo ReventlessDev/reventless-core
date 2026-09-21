@@ -130,6 +130,8 @@ let name = "Products";
 
 let Id;
 
+let Key;
+
 let subIdConfig;
 
 let moduleUrl = "@reventlessdev/online-shop-hybrid-catalog/src/Product/StateViewStream/Products.res.mjs";
@@ -144,6 +146,7 @@ export {
   consumedEventSchema,
   shelfStatusSchema,
   config,
+  Key,
   subIdConfig,
   stateSchema$1 as stateSchema,
   moduleUrl,

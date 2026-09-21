@@ -97,7 +97,6 @@ function Make(Platform) {
   let CancelOrderSlice = Platform.StateChangeSlice.Make({
     name: CancelOrder$OrderingPlugin.name,
     moduleUrl: CancelOrder$OrderingPlugin.moduleUrl,
-    Id: Id$Reventless.$$String,
     consumedEventSchema: CancelOrder$OrderingPlugin.consumedEventSchema,
     errorSchema: CancelOrder$OrderingPlugin.errorSchema,
     eventSchema: CancelOrder$OrderingPlugin.eventSchema,
@@ -115,7 +114,6 @@ function Make(Platform) {
   let ChangeAddressSlice = Platform.StateChangeSlice.Make({
     name: ChangeAddress$OrderingPlugin.name,
     moduleUrl: ChangeAddress$OrderingPlugin.moduleUrl,
-    Id: Id$Reventless.$$String,
     consumedEventSchema: ChangeAddress$OrderingPlugin.consumedEventSchema,
     errorSchema: ChangeAddress$OrderingPlugin.errorSchema,
     eventSchema: ChangeAddress$OrderingPlugin.eventSchema,
@@ -133,7 +131,6 @@ function Make(Platform) {
   let ChangeEmailSlice = Platform.StateChangeSlice.Make({
     name: ChangeEmail$OrderingPlugin.name,
     moduleUrl: ChangeEmail$OrderingPlugin.moduleUrl,
-    Id: Id$Reventless.$$String,
     consumedEventSchema: ChangeEmail$OrderingPlugin.consumedEventSchema,
     errorSchema: ChangeEmail$OrderingPlugin.errorSchema,
     eventSchema: ChangeEmail$OrderingPlugin.eventSchema,
@@ -151,7 +148,6 @@ function Make(Platform) {
   let DeactivateCustomerSlice = Platform.StateChangeSlice.Make({
     name: DeactivateCustomer$OrderingPlugin.name,
     moduleUrl: DeactivateCustomer$OrderingPlugin.moduleUrl,
-    Id: Id$Reventless.$$String,
     consumedEventSchema: DeactivateCustomer$OrderingPlugin.consumedEventSchema,
     errorSchema: DeactivateCustomer$OrderingPlugin.errorSchema,
     eventSchema: DeactivateCustomer$OrderingPlugin.eventSchema,
@@ -169,7 +165,6 @@ function Make(Platform) {
   let PlaceOrderSlice = Platform.StateChangeSlice.Make({
     name: PlaceOrder$OrderingPlugin.name,
     moduleUrl: PlaceOrder$OrderingPlugin.moduleUrl,
-    Id: Id$Reventless.$$String,
     consumedEventSchema: PlaceOrder$OrderingPlugin.consumedEventSchema,
     errorSchema: PlaceOrder$OrderingPlugin.errorSchema,
     eventSchema: PlaceOrder$OrderingPlugin.eventSchema,
@@ -187,7 +182,6 @@ function Make(Platform) {
   let RegisterCustomerSlice = Platform.StateChangeSlice.Make({
     name: RegisterCustomer$OrderingPlugin.name,
     moduleUrl: RegisterCustomer$OrderingPlugin.moduleUrl,
-    Id: Id$Reventless.$$String,
     consumedEventSchema: RegisterCustomer$OrderingPlugin.consumedEventSchema,
     errorSchema: RegisterCustomer$OrderingPlugin.errorSchema,
     eventSchema: RegisterCustomer$OrderingPlugin.eventSchema,
@@ -205,7 +199,6 @@ function Make(Platform) {
   let ShipOrderSlice = Platform.StateChangeSlice.Make({
     name: ShipOrder$OrderingPlugin.name,
     moduleUrl: ShipOrder$OrderingPlugin.moduleUrl,
-    Id: Id$Reventless.$$String,
     consumedEventSchema: ShipOrder$OrderingPlugin.consumedEventSchema,
     errorSchema: ShipOrder$OrderingPlugin.errorSchema,
     eventSchema: ShipOrder$OrderingPlugin.eventSchema,
@@ -223,7 +216,6 @@ function Make(Platform) {
   let SyncCatalogProductSlice = Platform.StateChangeSlice.Make({
     name: SyncCatalogProduct$OrderingPlugin.name,
     moduleUrl: SyncCatalogProduct$OrderingPlugin.moduleUrl,
-    Id: Id$Reventless.$$String,
     consumedEventSchema: SyncCatalogProduct$OrderingPlugin.consumedEventSchema,
     errorSchema: SyncCatalogProduct$OrderingPlugin.errorSchema,
     eventSchema: SyncCatalogProduct$OrderingPlugin.eventSchema,
@@ -242,6 +234,13 @@ function Make(Platform) {
     name: AvailableProducts$OrderingPlugin.name,
     moduleUrl: AvailableProducts$OrderingPlugin.moduleUrl,
     stateSchema: AvailableProducts$OrderingPlugin.stateSchema,
+    Key: {
+      schema: Id$Reventless.StringPure.schema,
+      make: prim => prim,
+      makeFromString: prim => prim,
+      toString: prim => prim,
+      cmp: Id$Reventless.StringPure.cmp
+    },
     consumedEventSchema: AvailableProducts$OrderingPlugin.consumedEventSchema,
     config: AvailableProducts$OrderingPlugin.config,
     subIdConfig: undefined,
@@ -255,6 +254,13 @@ function Make(Platform) {
     name: Customers$OrderingPlugin.name,
     moduleUrl: Customers$OrderingPlugin.moduleUrl,
     stateSchema: Customers$OrderingPlugin.stateSchema,
+    Key: {
+      schema: Id$Reventless.StringPure.schema,
+      make: prim => prim,
+      makeFromString: prim => prim,
+      toString: prim => prim,
+      cmp: Id$Reventless.StringPure.cmp
+    },
     consumedEventSchema: Customers$OrderingPlugin.consumedEventSchema,
     config: Customers$OrderingPlugin.config,
     subIdConfig: undefined,
@@ -268,6 +274,13 @@ function Make(Platform) {
     name: Orders$OrderingPlugin.name,
     moduleUrl: Orders$OrderingPlugin.moduleUrl,
     stateSchema: Orders$OrderingPlugin.stateSchema,
+    Key: {
+      schema: Id$Reventless.StringPure.schema,
+      make: prim => prim,
+      makeFromString: prim => prim,
+      toString: prim => prim,
+      cmp: Id$Reventless.StringPure.cmp
+    },
     consumedEventSchema: Orders$OrderingPlugin.consumedEventSchema,
     config: Orders$OrderingPlugin.config,
     subIdConfig: undefined,

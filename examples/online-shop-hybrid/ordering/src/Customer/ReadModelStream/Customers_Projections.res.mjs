@@ -62,7 +62,7 @@ function project(param) {
         TAG: "UpdateWithDefault",
         _0: id,
         _1: {
-          customerId: id,
+          customerId: Id$Reventless.$$String.toString(id),
           email: email,
           address: address,
           geolocation: {
@@ -182,7 +182,7 @@ function project$1(param) {
   let customerId = param.event.customerId;
   return {
     TAG: "UpdateWithDefault",
-    _0: customerId,
+    _0: Id$Reventless.$$String.makeFromString(customerId),
     _1: {
       customerId: customerId,
       email: "",

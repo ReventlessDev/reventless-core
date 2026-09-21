@@ -51,7 +51,7 @@ module CategoryActivityMapping = Mapping.Make(
       switch event {
       | CategoryAdded({categoryId, name}) =>
         Set(
-          categoryId,
+          CategoryActivity.Id.makeFromString(categoryId),
           {
             CategoryActivity.name,
             kind: Category,
@@ -60,7 +60,7 @@ module CategoryActivityMapping = Mapping.Make(
         )
       | CategoryRenamed({categoryId, name}) =>
         Update(
-          categoryId,
+          CategoryActivity.Id.makeFromString(categoryId),
           state => {
             ...state,
             name,
@@ -68,7 +68,10 @@ module CategoryActivityMapping = Mapping.Make(
           },
         )
       | CategoryArchived({categoryId}) =>
-        Update(categoryId, state => {...state, lastChange: (Archived: CategoryActivity.change)})
+        Update(
+          CategoryActivity.Id.makeFromString(categoryId),
+          state => {...state, lastChange: (Archived: CategoryActivity.change)},
+        )
       }
   },
 )
@@ -85,9 +88,15 @@ module ProductActivityMapping = Mapping.Make(
     let project = ({event, _}) =>
       switch event {
       | ProductAdded({productId, name}) =>
-        Set(productId, {CategoryActivity.name, kind: Product, lastChange: Added})
+        Set(
+          CategoryActivity.Id.makeFromString(productId),
+          {CategoryActivity.name, kind: Product, lastChange: Added},
+        )
       | ProductNameChanged({productId, name}) =>
-        Update(productId, state => {...state, name, lastChange: Renamed})
+        Update(
+          CategoryActivity.Id.makeFromString(productId),
+          state => {...state, name, lastChange: Renamed},
+        )
       }
   },
 )

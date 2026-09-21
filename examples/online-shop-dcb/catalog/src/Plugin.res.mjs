@@ -98,7 +98,6 @@ function Make(Platform) {
   let AddCategorySlice = Platform.StateChangeSlice.Make({
     name: AddCategory$CatalogPlugin.name,
     moduleUrl: AddCategory$CatalogPlugin.moduleUrl,
-    Id: Id$Reventless.$$String,
     consumedEventSchema: AddCategory$CatalogPlugin.consumedEventSchema,
     errorSchema: AddCategory$CatalogPlugin.errorSchema,
     eventSchema: AddCategory$CatalogPlugin.eventSchema,
@@ -116,7 +115,6 @@ function Make(Platform) {
   let AddProductSlice = Platform.StateChangeSlice.Make({
     name: AddProduct$CatalogPlugin.name,
     moduleUrl: AddProduct$CatalogPlugin.moduleUrl,
-    Id: Id$Reventless.$$String,
     consumedEventSchema: AddProduct$CatalogPlugin.consumedEventSchema,
     errorSchema: AddProduct$CatalogPlugin.errorSchema,
     eventSchema: AddProduct$CatalogPlugin.eventSchema,
@@ -134,7 +132,6 @@ function Make(Platform) {
   let ArchiveCategorySlice = Platform.StateChangeSlice.Make({
     name: ArchiveCategory$CatalogPlugin.name,
     moduleUrl: ArchiveCategory$CatalogPlugin.moduleUrl,
-    Id: Id$Reventless.$$String,
     consumedEventSchema: ArchiveCategory$CatalogPlugin.consumedEventSchema,
     errorSchema: ArchiveCategory$CatalogPlugin.errorSchema,
     eventSchema: ArchiveCategory$CatalogPlugin.eventSchema,
@@ -152,7 +149,6 @@ function Make(Platform) {
   let ChangeProductDescriptionSlice = Platform.StateChangeSlice.Make({
     name: ChangeProductDescription$CatalogPlugin.name,
     moduleUrl: ChangeProductDescription$CatalogPlugin.moduleUrl,
-    Id: Id$Reventless.$$String,
     consumedEventSchema: ChangeProductDescription$CatalogPlugin.consumedEventSchema,
     errorSchema: ChangeProductDescription$CatalogPlugin.errorSchema,
     eventSchema: ChangeProductDescription$CatalogPlugin.eventSchema,
@@ -170,7 +166,6 @@ function Make(Platform) {
   let ChangeProductNameSlice = Platform.StateChangeSlice.Make({
     name: ChangeProductName$CatalogPlugin.name,
     moduleUrl: ChangeProductName$CatalogPlugin.moduleUrl,
-    Id: Id$Reventless.$$String,
     consumedEventSchema: ChangeProductName$CatalogPlugin.consumedEventSchema,
     errorSchema: ChangeProductName$CatalogPlugin.errorSchema,
     eventSchema: ChangeProductName$CatalogPlugin.eventSchema,
@@ -188,7 +183,6 @@ function Make(Platform) {
   let ChangeProductPriceSlice = Platform.StateChangeSlice.Make({
     name: ChangeProductPrice$CatalogPlugin.name,
     moduleUrl: ChangeProductPrice$CatalogPlugin.moduleUrl,
-    Id: Id$Reventless.$$String,
     consumedEventSchema: ChangeProductPrice$CatalogPlugin.consumedEventSchema,
     errorSchema: ChangeProductPrice$CatalogPlugin.errorSchema,
     eventSchema: ChangeProductPrice$CatalogPlugin.eventSchema,
@@ -206,7 +200,6 @@ function Make(Platform) {
   let RecordProductDemandSlice = Platform.StateChangeSlice.Make({
     name: RecordProductDemand$CatalogPlugin.name,
     moduleUrl: RecordProductDemand$CatalogPlugin.moduleUrl,
-    Id: Id$Reventless.$$String,
     consumedEventSchema: RecordProductDemand$CatalogPlugin.consumedEventSchema,
     errorSchema: RecordProductDemand$CatalogPlugin.errorSchema,
     eventSchema: RecordProductDemand$CatalogPlugin.eventSchema,
@@ -224,7 +217,6 @@ function Make(Platform) {
   let RenameCategorySlice = Platform.StateChangeSlice.Make({
     name: RenameCategory$CatalogPlugin.name,
     moduleUrl: RenameCategory$CatalogPlugin.moduleUrl,
-    Id: Id$Reventless.$$String,
     consumedEventSchema: RenameCategory$CatalogPlugin.consumedEventSchema,
     errorSchema: RenameCategory$CatalogPlugin.errorSchema,
     eventSchema: RenameCategory$CatalogPlugin.eventSchema,
@@ -243,6 +235,13 @@ function Make(Platform) {
     name: Categories$CatalogPlugin.name,
     moduleUrl: Categories$CatalogPlugin.moduleUrl,
     stateSchema: Categories$CatalogPlugin.stateSchema,
+    Key: {
+      schema: Id$Reventless.StringPure.schema,
+      make: prim => prim,
+      makeFromString: prim => prim,
+      toString: prim => prim,
+      cmp: Id$Reventless.StringPure.cmp
+    },
     consumedEventSchema: Categories$CatalogPlugin.consumedEventSchema,
     config: Categories$CatalogPlugin.config,
     subIdConfig: undefined,
@@ -256,6 +255,13 @@ function Make(Platform) {
     name: ProductDemand$CatalogPlugin.name,
     moduleUrl: ProductDemand$CatalogPlugin.moduleUrl,
     stateSchema: ProductDemand$CatalogPlugin.stateSchema,
+    Key: {
+      schema: Id$Reventless.StringPure.schema,
+      make: prim => prim,
+      makeFromString: prim => prim,
+      toString: prim => prim,
+      cmp: Id$Reventless.StringPure.cmp
+    },
     consumedEventSchema: ProductDemand$CatalogPlugin.consumedEventSchema,
     config: ProductDemand$CatalogPlugin.config,
     subIdConfig: undefined,
@@ -269,6 +275,13 @@ function Make(Platform) {
     name: Products$CatalogPlugin.name,
     moduleUrl: Products$CatalogPlugin.moduleUrl,
     stateSchema: Products$CatalogPlugin.stateSchema,
+    Key: {
+      schema: Id$Reventless.StringPure.schema,
+      make: prim => prim,
+      makeFromString: prim => prim,
+      toString: prim => prim,
+      cmp: Id$Reventless.StringPure.cmp
+    },
     consumedEventSchema: Products$CatalogPlugin.consumedEventSchema,
     config: Products$CatalogPlugin.config,
     subIdConfig: undefined,

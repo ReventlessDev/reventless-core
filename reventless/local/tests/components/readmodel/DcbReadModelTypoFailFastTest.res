@@ -42,9 +42,10 @@ module TypoMapping = Mapping.Make(
   TypoSource,
   RmSpec,
   {
-    let project = (msg: Message.event'<string, TypoSource.event>) =>
+    let project = (msg: Message.event'<TypoSource.Id.t, TypoSource.event>) =>
       switch msg.event {
-      | ProductAdded({productId, name}) => Set(productId, ({productId, name}: RmSpec.state))
+      | ProductAdded({productId, name}) =>
+        Set(RmSpec.Id.makeFromString(productId), ({productId, name}: RmSpec.state))
       }
   },
 )

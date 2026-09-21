@@ -12,6 +12,7 @@ import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js
 import * as DcbDecode$Reventless from "@reventlessdev/reventless-spec/src/components/DcbDecode.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
+import * as Projection$Reventless from "@reventlessdev/reventless-spec/src/types/Projection.res.mjs";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
@@ -108,7 +109,7 @@ function Make(RuntimeEnvironment) {
                   event: Primitive_option.valFromOption(event),
                   meta: meta,
                   recordedAt: recordedAt
-                });
+                }).map(__x => Projection$Reventless.mapActionId(__x, Spec.Key.toString, Spec.Key.makeFromString));
               } catch (raw_exn) {
                 let exn$1 = Primitive_exceptions.internalToException(raw_exn);
                 let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$1), Stdlib_JsExn.message), "unknown");

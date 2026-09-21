@@ -1564,7 +1564,7 @@ module SourceMapping = Mapping.Make(
   MirrorReadModel,
   {
     open Source
-    let project = ({event, id, _}: Reventless.Message.event'<string, Source.event>) =>
+    let project = ({event, id, _}: Reventless.Message.event'<Source.Id.t, Source.event>) =>
       switch event {
       | Touched({sourceId}) =>
         Set(id, ({mirrorId: sourceId, name: "demo"}: MirrorReadModel.state))
@@ -2484,6 +2484,8 @@ assert_js_contains "$JS" 'StateView/SplitView_Projection.res.mjs' "projection mo
 # they were injected (the project body references `consumedEvent` and `Set`
 # which are only in scope after `open SplitView` and `open Reventless.Projection`)
 pass "projection compiles (open Spec + module Spec injected; _Projection suffix stripped from filename)"
+JS="$PLUGIN/src/StateView/SplitView.res.mjs"
+assert_js_contains "$JS" 'let Key'                        "a StateView spec gets a default string Key"
 
 echo ""
 echo "=== Test: @@reventless.projection(Spec) explicit name ==="
@@ -3820,6 +3822,101 @@ else
   fi
 fi
 rm -f "$ERROR/src/SiteId.res" "$ERROR/src/SyncSite.res"
+
+echo ""
+echo "=== Test: compile error — a read model keyed by another identity ==="
+
+# The point of typing a projection: keying Orders rows by the customer's id is a
+# type error, not a row written under the wrong key.
+cat > "$ERROR/src/WrongIdentityProjection.res" <<'EOF'
+module OrderId = Reventless.Id.Make({
+  let key = "orderId"
+})
+module CustomerId = Reventless.Id.Make({
+  let key = "customerId"
+})
+
+module Orders = {
+  module Id = OrderId
+  let name = "Orders"
+  @schema
+  type state = {total: int}
+  let subIdConfig = None
+}
+
+module Customer = {
+  module Id = CustomerId
+  let name = "Customer"
+  @schema
+  type event = Registered({name: string})
+}
+
+module Wrong = Reventless.Projection.Mapping.Make(
+  Customer,
+  Orders,
+  {
+    let project = (msg: Reventless.Message.event'<_, _>) =>
+      Reventless.Projection.Set(msg.id, ({total: 0}: Orders.state))
+  },
+)
+EOF
+
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "wrong-identity projection" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q "Customer.Id.t" && echo "$OUTPUT" | grep -q "Orders.Id.t"; then
+    pass "wrong-identity projection → a type error naming both identities"
+  else
+    fail "wrong-identity projection" "unexpected error output: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/WrongIdentityProjection.res"
+
+echo ""
+echo "=== Test: compile error — a typed StateView key given a plain string ==="
+
+mkdir -p "$ERROR/src/StateView"
+cat > "$ERROR/src/OrderKey.res" <<'EOF'
+include Reventless.Id.Make({
+  let key = "orderId"
+})
+EOF
+cat > "$ERROR/src/StateView/KeyedOrders.res" <<'EOF'
+@@reventless.spec
+
+module Key = OrderKey
+
+@schema
+type state = {orderId: string}
+
+@schema
+type consumedEvent = Placed({orderId: string})
+EOF
+cat > "$ERROR/src/StateView/KeyedOrders_Projection.res" <<'EOF'
+@@reventless.projection
+
+let project = ({event}: Reventless.StateViewSlice.consumed<consumedEvent>) =>
+  switch event {
+  | Placed({orderId}) => [Set(orderId, {orderId: orderId})]
+  }
+EOF
+# The platform checks a projection against the signature when it wires the slice;
+# this does the same without a plugin.
+cat > "$ERROR/src/KeyedOrdersCheck.res" <<'EOF'
+module Checked: Reventless.StateViewSlice.Projection = KeyedOrders_Projection
+EOF
+
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "typed StateView key" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q "Key.t"; then
+    pass "typed StateView key → a plain string row key is a type error"
+  else
+    fail "typed StateView key" "unexpected error output: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/OrderKey.res" "$ERROR/src/KeyedOrdersCheck.res" \
+  "$ERROR/src/StateView/KeyedOrders.res" "$ERROR/src/StateView/KeyedOrders_Projection.res"
 
 echo ""
 echo "─────────────────────────"

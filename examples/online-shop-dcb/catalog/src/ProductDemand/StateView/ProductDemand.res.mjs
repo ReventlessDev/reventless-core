@@ -32,6 +32,8 @@ let name = "ProductDemand";
 
 let Id;
 
+let Key;
+
 let subIdConfig;
 
 let moduleUrl = "@reventlessdev/online-shop-dcb-catalog/src/ProductDemand/StateView/ProductDemand.res.mjs";
@@ -46,6 +48,7 @@ export {
   stateSchema,
   consumedEventSchema,
   config,
+  Key,
   subIdConfig,
   moduleUrl,
   authorization,

@@ -40,7 +40,14 @@ module Make = (
       | Some(event) =>
         idx := idx.contents + 1
         let id = raw.tags->Array.get(0)->Option.map(tag => tag.value)->Option.getOr("?")
-        let actions = Projection.project({event, meta: raw.meta, recordedAt: raw.recordedAt})
+        let actions =
+          Projection.project({event, meta: raw.meta, recordedAt: raw.recordedAt})->Array.map(
+            Reventless.Projection.mapActionId(
+              _,
+              ~to_=Spec.Key.toString,
+              ~from=Spec.Key.makeFromString,
+            ),
+          )
         let actionsStr = LogFormat.actionNames(actions)
         EffectLogger.logInfo(
           ~comp,

@@ -80,22 +80,59 @@ type action<'id, 'state> =
   | Ignore
 
 /**
+The same action keyed by another representation of its ids. `to_` converts the
+ids the action carries; `from` converts back the ids its callbacks receive. The
+storage edge uses it to turn a typed row key into the string a table is keyed by.
+*/
+let mapActionId = (action: action<'a, 's>, ~to_: 'a => 'b, ~from: 'b => 'a): action<'b, 's> =>
+  switch action {
+  | Create(id, state) => Create(to_(id), state)
+  | CreateMany(rows) => CreateMany(rows->Array.map(((id, state)) => (to_(id), state)))
+  | Update(id, f) => Update(to_(id), f)
+  | UpdateMany(ids, f) => UpdateMany(ids->Array.map(to_), (id, state) => f(from(id), state))
+  | UpdateWithDefault(id, default, f) => UpdateWithDefault(to_(id), default, f)
+  | UpdateManyWithDefault(ids, default, f) =>
+    UpdateManyWithDefault(
+      ids->Array.map(to_),
+      id => default(from(id)),
+      (id, state) => f(from(id), state),
+    )
+  | Set(id, state) => Set(to_(id), state)
+  | SetMany(ids, f) => SetMany(ids->Array.map(to_), id => f(from(id)))
+  | Delete(id) => Delete(to_(id))
+  | DeleteMany(ids) => DeleteMany(ids->Array.map(to_))
+  | DeleteIf(id, p) => DeleteIf(to_(id), p)
+  | DeleteManyIf(ids, p) => DeleteManyIf(ids->Array.map(to_), (id, state) => p(from(id), state))
+  | CreateMultiState(id, states) => CreateMultiState(to_(id), states)
+  | UpdateMultiState(id, f) => UpdateMultiState(to_(id), f)
+  | UpdateManyMultiStates(ids, f) =>
+    UpdateManyMultiStates(ids->Array.map(to_), (id, states) => f(from(id), states))
+  | Ignore => Ignore
+  }
+
+/**
 A compiled single-source-to-single-target mapping.
 
 Created by `Projection.Mapping.Make(Source, Target, MappingImpl)`.
 The `project` function receives a full `Message.event'` envelope and returns
-one `action` value.
+one `action` value. Both ends are typed: the envelope id is the source's `Id.t`
+and the row key the target's, so a projection that keys a view by another
+entity's id does not compile. A mapping between different ids converts
+explicitly (`Target.Id.makeFromString`), which marks the seam.
 */
 module type Mapping = {
   //module Source: Source
   //module Target: Target // NOTE: to be destructive substituted
   module SourceId: Id.T
+  type targetId
   @schema
   type sourceEvent
   @schema
   type targetState
 
-  let project: Message.event'<string, sourceEvent> => action<string, targetState>
+  let project: Message.event'<SourceId.t, sourceEvent> => action<targetId, targetState>
+  let targetIdToString: targetId => string
+  let targetIdFromString: string => targetId
   let sourceEventSchema: S.t<sourceEvent>
   let sourceName: string
   let subIdConfig: option<ReadModel.subIdConfig<targetState>>
@@ -116,9 +153,11 @@ module type Mappings = {
 }
 
 module type MappingImpl = {
+  type sourceId
+  type targetId
   type sourceEvent
   type targetState
-  let project: Message.event'<string, sourceEvent> => action<string, targetState>
+  let project: Message.event'<sourceId, sourceEvent> => action<targetId, targetState>
 }
 
 /**
@@ -147,7 +186,9 @@ module Mapping = {
     Target: Target,
     MappingImpl: MappingImpl
       with type sourceEvent := Source.event
-      and type targetState := Target.state,
+      and type targetState := Target.state
+      and type sourceId := Source.Id.t
+      and type targetId := Target.Id.t,
   ): (
     Mapping
       with type targetState = Target.state
@@ -155,11 +196,14 @@ module Mapping = {
       and module SourceId = Source.Id
   ) => {
     module SourceId = Source.Id
+    type targetId = Target.Id.t
     @schema
     type sourceEvent = Source.event
     @schema
     type targetState = Target.state
     let project = MappingImpl.project
+    let targetIdToString = Target.Id.toString
+    let targetIdFromString = Target.Id.makeFromString
     let sourceName = Source.name
     let subIdConfig = Target.subIdConfig
   }

@@ -120,6 +120,7 @@ module ShipOrderBehavior = {
 }
 
 module OrdersViewSlice = {
+  module Key = Reventless.Id.StringPure
   let name = "OrdersView"
 
   @schema

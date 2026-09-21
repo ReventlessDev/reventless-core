@@ -67,7 +67,7 @@ function project(param) {
     case "CategoryAdded" :
       return {
         TAG: "Set",
-        _0: event.categoryId,
+        _0: Id$Reventless.$$String.makeFromString(event.categoryId),
         _1: {
           name: event.name,
           kind: "Category",
@@ -78,7 +78,7 @@ function project(param) {
       let name = event.name;
       return {
         TAG: "Update",
-        _0: event.categoryId,
+        _0: Id$Reventless.$$String.makeFromString(event.categoryId),
         _1: state => ({
           name: name,
           kind: state.kind,
@@ -88,7 +88,7 @@ function project(param) {
     case "CategoryArchived" :
       return {
         TAG: "Update",
-        _0: event.categoryId,
+        _0: Id$Reventless.$$String.makeFromString(event.categoryId),
         _1: state => ({
           name: state.name,
           kind: state.kind,
@@ -116,7 +116,7 @@ function project$1(param) {
   if (event.TAG === "ProductAdded") {
     return {
       TAG: "Set",
-      _0: event.productId,
+      _0: Id$Reventless.$$String.makeFromString(event.productId),
       _1: {
         name: event.name,
         kind: "Product",
@@ -127,7 +127,7 @@ function project$1(param) {
   let name = event.name;
   return {
     TAG: "Update",
-    _0: event.productId,
+    _0: Id$Reventless.$$String.makeFromString(event.productId),
     _1: state => ({
       name: name,
       kind: state.kind,

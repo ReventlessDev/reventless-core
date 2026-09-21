@@ -29,6 +29,7 @@ module ScoreEventLog = {
 // ─────────────────────────────────────────────────────────────
 
 module ScoresViewSpec = {
+  module Key = Reventless.Id.StringPure
   let name = "ScoresView"
   let moduleUrl: string = %raw(`import.meta.url`)
 

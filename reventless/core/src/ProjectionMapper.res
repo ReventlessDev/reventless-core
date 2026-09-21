@@ -34,8 +34,14 @@ module Make = (
       module GenericMapping = {
         let sourceName = M.sourceName
         let acceptedTags = Reventless.DcbTag.extractAllVariantNames(M.sourceEventSchema)
-        module Source = Projection.Mapping.MakeGenericSource(M)
-        let project = MapperNto1.makeGenericMap(Source.decode', M.project)
+        // The storage edge: the envelope and the table carry strings, the
+        // projection typed ids — the same strings, decoded and encoded here.
+        let decode = json => json->Message.decodeEvent'(M.SourceId.schema, M.sourceEventSchema)
+        let project = MapperNto1.makeGenericMap(decode, msg =>
+          msg
+          ->M.project
+          ->Reventless.Projection.mapActionId(~to_=M.targetIdToString, ~from=M.targetIdFromString)
+        )
       }
       module(GenericMapping: Mapping)
     })

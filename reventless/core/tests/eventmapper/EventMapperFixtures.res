@@ -5,7 +5,7 @@ open Reventless.Projection
 // ─────────────────────────────────────────────────────────────
 
 module SourceSpec = {
-  module Id = Reventless.Id.String
+  module Id = Reventless.Id.StringPure
   let name = "SourceAggregate"
 
   @schema
@@ -22,7 +22,7 @@ module SourceSpec = {
 // ─────────────────────────────────────────────────────────────
 
 module TargetSpec = {
-  module Id = Reventless.Id.String
+  module Id = Reventless.Id.StringPure
   let name = "ItemCatalog"
 
   @schema

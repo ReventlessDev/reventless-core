@@ -33,6 +33,8 @@ module Make = (Projection: Reventless.Projection.Mapping): (
   T with type sourceEvent := Projection.sourceEvent and type targetState := Projection.targetState
 ) => {
   let testId = ref(TestFixtures.id)
+  // The envelope carries the source's id type; the store is keyed by strings.
+  let sourceId = () => Projection.SourceId.makeFromString(testId.contents)
   let meta = ref(TestFixtures.meta)
 
   let describe = JestBind.describe
@@ -129,6 +131,10 @@ module Make = (Projection: Reventless.Projection.Mapping): (
     ->Array.map(event' =>
       event'
       ->Projection.project
+      ->Reventless.Projection.mapActionId(
+        ~to_=Projection.targetIdToString,
+        ~from=Projection.targetIdFromString,
+      )
       ->ReventlessCore.Projection.rewriteTrail(~at=event'.meta.time, Projection.targetStateSchema)
     )
     ->handleActions({
@@ -146,13 +152,13 @@ module Make = (Projection: Reventless.Projection.Mapping): (
 
   let givenEvents = events =>
     Dict.make()->update(
-      events->Array.map(event => {Message.id: testId.contents, meta: meta.contents, event}),
+      events->Array.map(event => {Message.id: sourceId(), meta: meta.contents, event}),
     )
 
   let givenEventsWithTime = events =>
     Dict.make()->update(
       events->Array.map(((time, event)) => {
-        Message.id: testId.contents,
+        Message.id: sourceId(),
         meta: {...meta.contents, time},
         event,
       }),
@@ -162,14 +168,14 @@ module Make = (Projection: Reventless.Projection.Mapping): (
     () =>
       (
         async () =>
-          await (await store)->update([{Message.id: testId.contents, meta: meta.contents, event}])
+          await (await store)->update([{Message.id: sourceId(), meta: meta.contents, event}])
       )()
   let whenEvents = (store, events): storeThunk =>
     () =>
       (
         async () =>
           await (await store)->update(
-            events->Array.map(event => {Message.id: testId.contents, meta: meta.contents, event}),
+            events->Array.map(event => {Message.id: sourceId(), meta: meta.contents, event}),
           )
       )()
   let whenEventWithTime = (store, time, event): storeThunk =>
@@ -177,7 +183,7 @@ module Make = (Projection: Reventless.Projection.Mapping): (
       (
         async () =>
           await (await store)->update([
-            {Message.id: testId.contents, meta: {...meta.contents, time}, event},
+            {Message.id: sourceId(), meta: {...meta.contents, time}, event},
           ])
       )()
   let whenEventsWithTime = (store, events): storeThunk =>
@@ -186,7 +192,7 @@ module Make = (Projection: Reventless.Projection.Mapping): (
         async () =>
           await (await store)->update(
             events->Array.map(((time, event)) => {
-              Message.id: testId.contents,
+              Message.id: sourceId(),
               meta: {...meta.contents, time},
               event,
             }),

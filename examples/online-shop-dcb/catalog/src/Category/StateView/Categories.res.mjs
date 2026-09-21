@@ -33,6 +33,8 @@ let name = "Categories";
 
 let Id;
 
+let Key;
+
 let subIdConfig;
 
 let moduleUrl = "@reventlessdev/online-shop-dcb-catalog/src/Category/StateView/Categories.res.mjs";
@@ -47,6 +49,7 @@ export {
   stateSchema,
   consumedEventSchema,
   config,
+  Key,
   subIdConfig,
   moduleUrl,
   authorization,

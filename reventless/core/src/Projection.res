@@ -6,16 +6,6 @@ module Set = Belt.Set.String
 
 let log = Logger.fromEnv()
 
-module Mapping = {
-  module MakeGenericSource = (Mapping: Reventless.Projection.Mapping): (
-    Mapper.GenericSource with type t = Mapping.sourceEvent
-  ) => {
-    let name = Mapping.sourceName
-    type t = Mapping.sourceEvent
-    let decode' = json => json->Message.decodeEvent'(S.string, Mapping.sourceEventSchema)
-  }
-}
-
 // Lazy: the message thunk (and any `stateToString` it triggers) runs only when
 // debug logging is enabled, so projection actions don't serialize state on the
 // hot path at the default Info level.

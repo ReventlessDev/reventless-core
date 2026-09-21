@@ -126,6 +126,17 @@ let gen_module_id ~loc =
     };
     pstr_loc = loc }
 
+(* A StateView's row key: a plain string unless the view declares its identity. *)
+let gen_module_key ~loc =
+  let lid = { txt = Ldot (Ldot (Lident "Reventless", "Id"), "StringPure"); loc } in
+  { pstr_desc = Pstr_module {
+      pmb_name = { txt = Some "Key"; loc };
+      pmb_expr = { pmod_desc = Pmod_ident lid; pmod_loc = loc; pmod_attributes = [] };
+      pmb_attributes = [];
+      pmb_loc = loc;
+    };
+    pstr_loc = loc }
+
 let gen_module_alias ~loc ~alias_name ~target_name =
   let lid = { txt = Lident target_name; loc } in
   { pstr_desc = Pstr_module {
@@ -844,6 +855,7 @@ let transform (str : structure) : structure =
         else if is_stateview then
           (if not (Util.has_let_binding "config" body)
            then [gen_config_let ~loc ?owner_index body] else [])
+          @ (if not (Util.has_module_binding "Key" body) then [gen_module_key ~loc] else [])
           @ sub_id_items @ make_id_items @ state_annotations_items
         else []
       in

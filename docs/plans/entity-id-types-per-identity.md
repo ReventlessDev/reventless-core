@@ -19,7 +19,10 @@ reference whenever exactly one view is keyed by that identity.
 
 - **A spec that does not adopt identities compiles unchanged and behaves unchanged.**
   Adoption is opt-in per plugin. Each phase's validation includes building every example
-  *before* it is migrated.
+  *before* it is migrated. **One intended exception (Phase 6):** a read-model projection is
+  typed by its source's and target's `Id`, so one that keys a row by a payload `string`, or
+  stores the envelope id into a `string` field, now converts explicitly. It still *behaves*
+  unchanged.
 - **No wire change for an existing field.** JSON, stored events, tags and the SDL of every
   field that is not retyped stay byte-identical.
 - **No DCB slice may carry a typed id before Phase 4 is released.** Until then a typed field
@@ -273,6 +276,25 @@ helpers. Beyond the plan:
 
 **Validation.** All examples build unchanged; a projection that keys a read model by the wrong
 identity fails to compile (fixture).
+
+**Done (2026-09-21), as a breaking change** (decided against the hard constraint, above):
+- **Read models:** `Mapping.project` is `event'<SourceId.t, _> => action<targetId, _>`, and
+  `Mapping` carries `targetIdToString` / `targetIdFromString`. `ProjectionMapper` decodes the
+  envelope with `SourceId.schema` and converts the action back to string keys with the new
+  `Projection.mapActionId`, the F5 storage edge. The tree needed 7 conversions in examples
+  (`CategoryActivity` keys rows by two payload ids; hybrid `Customers` by one, and stores its
+  envelope id in a `string` field), plus test fixtures, which moved to `Id.StringPure`.
+- **StateViewSlices:** the spec gains `module Key: Id.T`, which the PPX defaults to
+  `Id.StringPure` in a `StateView/` folder, so a view that declares no identity keeps
+  `string` keys and compiles unchanged. `module Key = OrderId` types it. Six hand-written
+  inline test specs needed the default by hand.
+- **`module Id` is gone from `StateChangeSlice.Spec`, but not from the PPX's injection.**
+  A slice that is an extension point's `Delegate` must satisfy the delegate signature,
+  which requires `Id` (`UiFragmentRegistry`), so the injected `Id` stays on slice files. It
+  is no longer part of the slice contract.
+- **Other repos:** `reventless-sovereign` (k8s runtime fixtures, the minimal-k8s example) and
+  `reventless-tools` (codegen synthesis, vscode authoring) have read-model mappings that need
+  the same conversions when they take this release.
 
 ---
 

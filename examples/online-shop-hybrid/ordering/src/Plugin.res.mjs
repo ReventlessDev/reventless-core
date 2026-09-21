@@ -103,7 +103,6 @@ function Make(Platform) {
   let CancelOrderSlice = Platform.StateChangeSlice.Make({
     name: CancelOrder$OrderingPlugin.name,
     moduleUrl: CancelOrder$OrderingPlugin.moduleUrl,
-    Id: Id$Reventless.$$String,
     consumedEventSchema: CancelOrder$OrderingPlugin.consumedEventSchema,
     errorSchema: CancelOrder$OrderingPlugin.errorSchema,
     eventSchema: CancelOrder$OrderingPlugin.eventSchema,
@@ -121,7 +120,6 @@ function Make(Platform) {
   let EmailVerificationChallengesSlice = Platform.StateChangeSlice.Make({
     name: EmailVerificationChallenges$OrderingPlugin.name,
     moduleUrl: EmailVerificationChallenges$OrderingPlugin.moduleUrl,
-    Id: Id$Reventless.$$String,
     consumedEventSchema: EmailVerificationChallenges$OrderingPlugin.consumedEventSchema,
     errorSchema: EmailVerificationChallenges$OrderingPlugin.errorSchema,
     eventSchema: EmailVerificationChallenges$OrderingPlugin.eventSchema,
@@ -139,7 +137,6 @@ function Make(Platform) {
   let NotificationPreferencesSlice = Platform.StateChangeSlice.Make({
     name: NotificationPreferences$OrderingPlugin.name,
     moduleUrl: NotificationPreferences$OrderingPlugin.moduleUrl,
-    Id: Id$Reventless.$$String,
     consumedEventSchema: NotificationPreferences$OrderingPlugin.consumedEventSchema,
     errorSchema: NotificationPreferences$OrderingPlugin.errorSchema,
     eventSchema: NotificationPreferences$OrderingPlugin.eventSchema,
@@ -157,7 +154,6 @@ function Make(Platform) {
   let NotificationSourceClaimsSlice = Platform.StateChangeSlice.Make({
     name: NotificationSourceClaims$OrderingPlugin.name,
     moduleUrl: NotificationSourceClaims$OrderingPlugin.moduleUrl,
-    Id: Id$Reventless.$$String,
     consumedEventSchema: NotificationSourceClaims$OrderingPlugin.consumedEventSchema,
     errorSchema: NotificationSourceClaims$OrderingPlugin.errorSchema,
     eventSchema: NotificationSourceClaims$OrderingPlugin.eventSchema,
@@ -175,7 +171,6 @@ function Make(Platform) {
   let PlaceOrderSlice = Platform.StateChangeSlice.Make({
     name: PlaceOrder$OrderingPlugin.name,
     moduleUrl: PlaceOrder$OrderingPlugin.moduleUrl,
-    Id: Id$Reventless.$$String,
     consumedEventSchema: PlaceOrder$OrderingPlugin.consumedEventSchema,
     errorSchema: PlaceOrder$OrderingPlugin.errorSchema,
     eventSchema: PlaceOrder$OrderingPlugin.eventSchema,
@@ -193,7 +188,6 @@ function Make(Platform) {
   let ShipOrderSlice = Platform.StateChangeSlice.Make({
     name: ShipOrder$OrderingPlugin.name,
     moduleUrl: ShipOrder$OrderingPlugin.moduleUrl,
-    Id: Id$Reventless.$$String,
     consumedEventSchema: ShipOrder$OrderingPlugin.consumedEventSchema,
     errorSchema: ShipOrder$OrderingPlugin.errorSchema,
     eventSchema: ShipOrder$OrderingPlugin.eventSchema,
@@ -211,7 +205,6 @@ function Make(Platform) {
   let SyncCatalogProductSlice = Platform.StateChangeSlice.Make({
     name: SyncCatalogProduct$OrderingPlugin.name,
     moduleUrl: SyncCatalogProduct$OrderingPlugin.moduleUrl,
-    Id: Id$Reventless.$$String,
     consumedEventSchema: SyncCatalogProduct$OrderingPlugin.consumedEventSchema,
     errorSchema: SyncCatalogProduct$OrderingPlugin.errorSchema,
     eventSchema: SyncCatalogProduct$OrderingPlugin.eventSchema,
@@ -230,6 +223,13 @@ function Make(Platform) {
     name: AvailableProducts$OrderingPlugin.name,
     moduleUrl: AvailableProducts$OrderingPlugin.moduleUrl,
     stateSchema: AvailableProducts$OrderingPlugin.stateSchema,
+    Key: {
+      schema: Id$Reventless.StringPure.schema,
+      make: prim => prim,
+      makeFromString: prim => prim,
+      toString: prim => prim,
+      cmp: Id$Reventless.StringPure.cmp
+    },
     consumedEventSchema: AvailableProducts$OrderingPlugin.consumedEventSchema,
     config: AvailableProducts$OrderingPlugin.config,
     subIdConfig: undefined,
@@ -243,6 +243,13 @@ function Make(Platform) {
     name: NotificationDeliveries$OrderingPlugin.name,
     moduleUrl: NotificationDeliveries$OrderingPlugin.moduleUrl,
     stateSchema: NotificationDeliveries$OrderingPlugin.stateSchema,
+    Key: {
+      schema: Id$Reventless.StringPure.schema,
+      make: prim => prim,
+      makeFromString: prim => prim,
+      toString: prim => prim,
+      cmp: Id$Reventless.StringPure.cmp
+    },
     consumedEventSchema: NotificationDeliveries$OrderingPlugin.consumedEventSchema,
     config: NotificationDeliveries$OrderingPlugin.config,
     subIdConfig: undefined,
@@ -256,6 +263,13 @@ function Make(Platform) {
     name: NotificationSubscriptions$OrderingPlugin.name,
     moduleUrl: NotificationSubscriptions$OrderingPlugin.moduleUrl,
     stateSchema: NotificationSubscriptions$OrderingPlugin.stateSchema,
+    Key: {
+      schema: Id$Reventless.StringPure.schema,
+      make: prim => prim,
+      makeFromString: prim => prim,
+      toString: prim => prim,
+      cmp: Id$Reventless.StringPure.cmp
+    },
     consumedEventSchema: NotificationSubscriptions$OrderingPlugin.consumedEventSchema,
     config: NotificationSubscriptions$OrderingPlugin.config,
     subIdConfig: undefined,
@@ -269,6 +283,13 @@ function Make(Platform) {
     name: Orders$OrderingPlugin.name,
     moduleUrl: Orders$OrderingPlugin.moduleUrl,
     stateSchema: Orders$OrderingPlugin.stateSchema,
+    Key: {
+      schema: Id$Reventless.StringPure.schema,
+      make: prim => prim,
+      makeFromString: prim => prim,
+      toString: prim => prim,
+      cmp: Id$Reventless.StringPure.cmp
+    },
     consumedEventSchema: Orders$OrderingPlugin.consumedEventSchema,
     config: Orders$OrderingPlugin.config,
     subIdConfig: undefined,

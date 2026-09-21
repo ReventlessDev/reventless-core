@@ -124,7 +124,17 @@ module Make = (
                   let (eventType, dataDict) = rawEvent->Message.splitMessage
                   switch decoder.decode(~eventType, ~data=dataDict) {
                   | Some(event) =>
-                    let actions = try Projection.project({event, meta, recordedAt}) catch {
+                    let actions = try Projection.project({
+                      event,
+                      meta,
+                      recordedAt,
+                    })->Array.map(
+                      Reventless.Projection.mapActionId(
+                        _,
+                        ~to_=Spec.Key.toString,
+                        ~from=Spec.Key.makeFromString,
+                      ),
+                    ) catch {
                     | exn =>
                       let errMsg =
                         exn

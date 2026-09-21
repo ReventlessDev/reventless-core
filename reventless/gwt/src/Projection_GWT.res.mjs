@@ -7,6 +7,7 @@ import * as Stream from "effect/Stream";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as Outcome$ReventlessGwt from "./Outcome.res.mjs";
+import * as Projection$Reventless from "@reventlessdev/reventless-spec/src/types/Projection.res.mjs";
 import * as JestBind$ReventlessGwt from "./JestBind.res.mjs";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import * as Projection$ReventlessCore from "@reventlessdev/reventless-core/src/Projection.res.mjs";
@@ -63,7 +64,7 @@ function Make(Spec) {
         event: ev,
         meta: TestFixtures$ReventlessGwt.meta,
         recordedAt: TestFixtures$ReventlessGwt.recordedAt
-      }).map(__x => Projection$ReventlessCore.rewriteTrail(__x, TestFixtures$ReventlessGwt.meta.time, Spec.stateSchema))).flat();
+      }).map(action => Projection$ReventlessCore.rewriteTrail(Projection$Reventless.mapActionId(action, Spec.Key.toString, Spec.Key.makeFromString), TestFixtures$ReventlessGwt.meta.time, Spec.stateSchema))).flat();
       await runActions(actions, {
         load: extra => Promise.resolve({
           TAG: "Ok",

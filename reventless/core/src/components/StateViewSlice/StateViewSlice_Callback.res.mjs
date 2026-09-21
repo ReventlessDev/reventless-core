@@ -6,6 +6,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as DcbDecode$Reventless from "@reventlessdev/reventless-spec/src/components/DcbDecode.res.mjs";
+import * as Projection$Reventless from "@reventlessdev/reventless-spec/src/types/Projection.res.mjs";
 import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
 import * as Projection$ReventlessCore from "../../Projection.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
@@ -32,7 +33,7 @@ function Make(Spec) {
           event: event,
           meta: raw.meta,
           recordedAt: raw.recordedAt
-        });
+        }).map(__x => Projection$Reventless.mapActionId(__x, Spec.Key.toString, Spec.Key.makeFromString));
         let actionsStr = LogFormat$ReventlessCore.actionNames(actions);
         Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, raw.data, `handling event ` + idx.contents.toString() + `/` + count + `: ` + LogFormat$ReventlessCore.bold(raw.eventType) + `(` + id + `) ` + actionsStr));
         allActions.push(...actions.map(__x => Projection$ReventlessCore.rewriteAction(__x, raw.meta.time, Spec.stateSchema)));

@@ -47,6 +47,8 @@ let name = "Customers";
 
 let Id;
 
+let Key;
+
 let subIdConfig;
 
 let moduleUrl = "@reventlessdev/online-shop-dcb-ordering/src/Customer/StateView/Customers.res.mjs";
@@ -61,6 +63,7 @@ export {
   stateSchema$1 as stateSchema,
   consumedEventSchema,
   config,
+  Key,
   subIdConfig,
   moduleUrl,
   authorization,

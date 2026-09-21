@@ -42,16 +42,14 @@ let decide = (state, command) => switch command {
 ```
 */
 /**
-The lean Spec for a StateChangeSlice — types, identity, schemas. State and
-state-evolution functions live in the sibling `Behavior` module type.
+The lean Spec for a StateChangeSlice — types and schemas. State and
+state-evolution functions live in the sibling `Behavior` module type. A slice has
+no identity of its own: it decides about the one its partition field carries.
 */
 module type Spec = {
   /** Logical name of this slice (used as a command topic prefix). */
   let name: string
   let moduleUrl: string
-
-  /** Identity type — always `Id.String` for DCB slices. */
-  module Id: Id.T
 
   /**
   Events this slice reads to build its decision model (in `evolve`).
