@@ -549,7 +549,9 @@ example:
   them in. Typing them would mean ordering-spec declaring `OrderId`, a step for when a consumer
   needs it.
 
-**Not found here, and worth knowing:** `Order_Place` over GraphQL never returns its
-`CommandResult` on the local platform (a timeout at 30 s), while the command and its whole
-cascade complete. It predates this work (reproduced with the example at the previous commit), and
-is the one command whose event mapping issues a command back to its own aggregate.
+**Not caused here, and since fixed:** `Order_Place` over GraphQL never returned its
+`CommandResult` on the local platform, while the command and its whole cascade completed. It
+predated this work. The event mapper awaited the `Ship` it issued from inside its bus
+subscriber, and `Shipped` could not finish publishing until that subscriber dequeued it. The
+local mapper now detaches the publish, as the automation slice already did
+(`AggregateSelfMappingTest` holds it).

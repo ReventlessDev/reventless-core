@@ -79,8 +79,26 @@ module Make = (
           ~opts,
         )
 
+        // Not awaited, for the reason AutomationSlice_Builder gives: a mapping that
+        // commands its own source (Placed → Ship) appends an event this handler's
+        // fiber must dequeue, while the fiber is still waiting on the command. The
+        // bus then waits on itself, and so does the request that started it. Only
+        // the local runtime runs this handler; a deployed one uses its entry point.
+        let publishJsonsDetached = jsons => {
+          let _ = publishJsons(jsons)->Promise.catch(exn => {
+            log.error(
+              ~comp="EventMapper",
+              `detached publish error: ${exn
+                ->JsExn.fromException
+                ->Option.flatMap(JsExn.message)
+                ->Option.getOr("unknown")}`,
+            )
+            Promise.resolve()
+          })
+          Promise.resolve()
+        }
         module EventCollectorHandler = EventMapper_Callback.MakeEventCollectorHandler({
-          let publishJsons = publishJsons
+          let publishJsons = publishJsonsDetached
           let count = count
           let addToCounterTarget = addToCounterTarget
           let commonEventsHandler = CounterHandler.commonEventsHandler
