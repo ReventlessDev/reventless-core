@@ -719,6 +719,8 @@ This file tracks changes to the documentation. Since the doc package is not vers
 ## Changes
 
 ### 2026-09-21
+- feat(examples): the hybrid example types its ids ([e7a88a9](https://github.com/ReventlessDev/reventless-core/commit/e7a88a9883e04f41ff39c7fb5f709a14e9005772))
+### 2026-09-21
 - feat(examples): the DCB example types its ids ([2efb86f](https://github.com/ReventlessDev/reventless-core/commit/2efb86f0cf53c804c55fd930ecc897eea60c91e3))
 ### 2026-09-16
 - feat(core): fail the build when an extension cannot find its slice's partition key ([cf2b093](https://github.com/ReventlessDev/reventless-core/commit/cf2b093dd5dc7cf9425cdac919cd3910fc4aeefd))
