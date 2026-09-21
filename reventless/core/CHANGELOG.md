@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.268 (2026-09-21)
+
+### Bug Fixes
+
+* **core:** a creating command's own id derives no reference ([58a921c](https://github.com/ReventlessDev/reventless-core/commit/58a921c84352f6522e7c175387927e32365aa94a))
+
+
 # 3.0.0-alpha.267 (2026-09-21)
 
 ### Bug Fixes
