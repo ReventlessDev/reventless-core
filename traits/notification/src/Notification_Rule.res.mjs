@@ -23,11 +23,11 @@ let literalSchema = Sury.union([
   })),
   Sury.$schema(s => ({
     TAG: "Number",
-    _0: s.m(Sury.float)
+    _0: s.m(Sury.number)
   })),
   Sury.$schema(s => ({
     TAG: "Flag",
-    _0: s.m(Sury.bool)
+    _0: s.m(Sury.boolean)
   }))
 ]);
 
@@ -68,7 +68,7 @@ let deliverySchema = Sury.union([
   Sury.literal("Immediate"),
   Sury.$schema(s => ({
     TAG: "Digest",
-    windowSeconds: s.m(Sury.int)
+    windowSeconds: s.m(Sury.int32)
   }))
 ]);
 

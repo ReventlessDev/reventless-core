@@ -61,7 +61,7 @@ let menuEntrySchema = Sury.$schema(s => ({
   label: s.m(Sury.string),
   icon: s.m(Sury.$option(Sury.string)),
   group: s.m(Sury.$option(Sury.string)),
-  sortOrder: s.m(Sury.int)
+  sortOrder: s.m(Sury.int32)
 }));
 
 let pageManifestEntrySchema = Sury.$schema(s => ({
@@ -100,7 +100,7 @@ let commandDefSchema = Sury.$schema(s => ({
   allowedStates: s.m(Sury.$option(Sury.array(Sury.string))),
   targetState: s.m(Sury.$option(Sury.string)),
   allowedStatesSource: s.m(Sury.$option(Sury.string)),
-  apiExposed: s.m(Sury.$option(Sury.bool)),
+  apiExposed: s.m(Sury.$option(Sury.boolean)),
   requiredAccess: s.m(Sury.$option(Sury.array(Sury.string))),
   ownerField: s.m(Sury.$option(Sury.string))
 }));
@@ -118,7 +118,7 @@ let queryableDefSchema = Sury.$schema(s => ({
   ownerField: s.m(Sury.$option(Sury.string)),
   retiredField: s.m(Sury.$option(Sury.string)),
   retiredValues: s.m(Sury.$option(Sury.array(Sury.string))),
-  namedWhenRetired: s.m(Sury.$option(Sury.bool)),
+  namedWhenRetired: s.m(Sury.$option(Sury.boolean)),
   visibility: s.m(Sury.$option(Sury.string)),
   chapter: s.m(Sury.$option(Sury.string)),
   singleQueryField: s.m(Sury.$option(Sury.string)),

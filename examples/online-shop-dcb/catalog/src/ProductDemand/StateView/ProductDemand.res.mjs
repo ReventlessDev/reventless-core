@@ -8,7 +8,7 @@ import * as ProductId$CatalogSpec from "@reventlessdev/online-shop-dcb-catalog-s
 let stateSchema = Sury.$schema(s => ({
   productId: s.m(ProductId$CatalogSpec.schema),
   name: s.m(Sury.string),
-  orderCount: s.m(Sury.int)
+  orderCount: s.m(Sury.int32)
 }));
 
 let consumedEventSchema = Sury.union([

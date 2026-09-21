@@ -62,7 +62,7 @@ function entrySchema(_stateSchema) {
   return Sury.$schema(s => ({
     state: s.m(_stateSchema),
     at: s.m(DateTime$Reventless.schema),
-    afterGap: s.m(Sury.$option(Sury.bool))
+    afterGap: s.m(Sury.$option(Sury.boolean))
   }));
 }
 

@@ -11,7 +11,7 @@ let commandSchema = Sury.$schema(s => ({
   productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
   name: s.m(Sury.string),
   description: s.m(Sury.string),
-  price: s.m(Sury.float)
+  price: s.m(Sury.number)
 }));
 
 let errorSchema = Sury.literal("ProductAlreadyExists");
@@ -21,7 +21,7 @@ let eventSchema = Sury.$schema(s => ({
   productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
   name: s.m(Sury.string),
   description: s.m(Sury.string),
-  price: s.m(Sury.float)
+  price: s.m(Sury.number)
 }));
 
 function commandAuthorization(param) {

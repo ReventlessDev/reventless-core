@@ -38,7 +38,7 @@ external toString: t => string = "%identity"
 // to an append-only log, so the address has to survive the round trip as the
 // caller wrote it. `S.uri` is the string-preserving arm — it still rejects what
 // does not parse, and returns exactly what it was given.
-let grammar: S.t<string> = S.uri
+let grammar: S.t<string> = (S.uri :> S.t<string>)
 
 // Schemes are case-insensitive per RFC 3986, and `HTTPS://x` parses fine, so the
 // allowlist has to fold case or it rejects a valid address on a technicality.

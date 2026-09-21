@@ -2,15 +2,15 @@
 
 import * as Sury from "sury";
 
-let yearSchema = Sury.int;
+let yearSchema = Sury.int32;
 
-let monthSchema = Sury.int;
+let monthSchema = Sury.int32;
 
-let daySchema = Sury.int;
+let daySchema = Sury.int32;
 
-let hourSchema = Sury.int;
+let hourSchema = Sury.int32;
 
-let minuteSchema = Sury.int;
+let minuteSchema = Sury.int32;
 
 let rateSchema = Sury.union([
   Sury.$schema(s => ({
@@ -23,15 +23,15 @@ let rateSchema = Sury.union([
   })),
   Sury.$schema(s => ({
     TAG: "Minutes",
-    _0: s.m(Sury.int)
+    _0: s.m(Sury.int32)
   })),
   Sury.$schema(s => ({
     TAG: "Hours",
-    _0: s.m(Sury.int)
+    _0: s.m(Sury.int32)
   })),
   Sury.$schema(s => ({
     TAG: "Days",
-    _0: s.m(Sury.int)
+    _0: s.m(Sury.int32)
   })),
   Sury.$schema(s => ({
     TAG: "Daily",

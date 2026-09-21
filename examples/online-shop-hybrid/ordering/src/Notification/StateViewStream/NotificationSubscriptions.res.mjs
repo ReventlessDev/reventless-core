@@ -9,8 +9,8 @@ import * as NotificationPreferences$OrderingPlugin from "../StateChange/Notifica
 let subscriptionSchema = Sury.$schema(s => ({
   category: s.m(NotificationPreferences$OrderingPlugin.categorySchema),
   channel: s.m(NotificationPreferences$OrderingPlugin.channelSchema),
-  enabled: s.m(Sury.bool),
-  deliverable: s.m(Sury.bool)
+  enabled: s.m(Sury.boolean),
+  deliverable: s.m(Sury.boolean)
 }));
 
 let stateSchema = Sury.$schema(s => ({

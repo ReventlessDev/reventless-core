@@ -9,7 +9,7 @@
 open JestGlobals
 
 let roundTripInfo = (v: Resource.resourceInfo) => {
-  let json = v->S.decodeOrThrow(~from=Resource.resourceInfoSchema, ~to=S.json)
+  let json = v->S.convertOrThrow(~from=Resource.resourceInfoSchema, ~to=S.json)
   expect(json->S.parseOrThrow(~to=Resource.resourceInfoSchema))->toEqual(v)
 }
 
@@ -41,7 +41,7 @@ describe("Resource.t round-trip", () => {
       configuration: Dict.fromArray([("billingMode", "PAY_PER_REQUEST")]),
       tags: Dict.fromArray([("env", "prod")]),
     }
-    let json = original->S.decodeOrThrow(~from=Resource.schema, ~to=S.json)
+    let json = original->S.convertOrThrow(~from=Resource.schema, ~to=S.json)
     expect(json->S.parseOrThrow(~to=Resource.schema))->toEqual(original)
   })
 })

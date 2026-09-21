@@ -7,18 +7,18 @@ import * as ProductId$CatalogSpec from "@reventlessdev/online-shop-dcb-catalog-s
 let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "ProductAdded",
-    price: s.m(Sury.float)
+    price: s.m(Sury.number)
   })),
   Sury.$schema(s => ({
     TAG: "ProductPriceChanged",
-    price: s.m(Sury.float)
+    price: s.m(Sury.number)
   }))
 ]);
 
 let commandSchema = Sury.$schema(s => ({
   TAG: "ChangeProductPrice",
   productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
-  price: s.m(Sury.float)
+  price: s.m(Sury.number)
 }));
 
 let errorSchema = Sury.literal("ProductNotFound");
@@ -26,7 +26,7 @@ let errorSchema = Sury.literal("ProductNotFound");
 let eventSchema = Sury.$schema(s => ({
   TAG: "ProductPriceChanged",
   productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
-  price: s.m(Sury.float)
+  price: s.m(Sury.number)
 }));
 
 function commandAuthorization(param) {

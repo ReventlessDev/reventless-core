@@ -7,11 +7,11 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 
 let schema = Sury.$schema(s => ({
   version: s.m(Sury.string),
-  fields: s.m(Sury.dict(Sury.array(Sury.string)))
+  fields: s.m(Sury.record(Sury.array(Sury.string)))
 }));
 
 function fieldNamesOf(value, schema) {
-  return Stdlib_Option.mapOr(Stdlib_JSON.Decode.object(S.decodeOrThrow(value, schema, Sury.json)), [], prim => Object.keys(prim));
+  return Stdlib_Option.mapOr(Stdlib_JSON.Decode.object(S.convertOrThrow(value, schema, undefined, Sury.json)), [], prim => Object.keys(prim));
 }
 
 let version = "0.1.0-alpha.0";

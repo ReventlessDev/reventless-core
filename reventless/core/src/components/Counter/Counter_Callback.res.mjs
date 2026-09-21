@@ -12,7 +12,7 @@ import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
 
 let countsStateSchema = Sury.$schema(s => ({
   id: s.m(Sury.string),
-  count: s.m(Sury.int)
+  count: s.m(Sury.int32)
 }));
 
 function groupByCounterId(references) {

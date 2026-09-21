@@ -8,7 +8,7 @@ let commandSchema = Sury.union([
     TAG: "Add",
     name: s.m(Sury.string),
     description: s.m(Sury.string),
-    price: s.m(Sury.float),
+    price: s.m(Sury.number),
     imageUrl: s.m(StorageRef$Reventless.forStore(undefined, "productImages"))
   })),
   Sury.$schema(s => ({
@@ -21,7 +21,7 @@ let commandSchema = Sury.union([
   })),
   Sury.$schema(s => ({
     TAG: "UpdatePrice",
-    price: s.m(Sury.float)
+    price: s.m(Sury.number)
   })),
   Sury.$schema(s => ({
     TAG: "UpdateImage",
@@ -34,7 +34,7 @@ let eventSchema = Sury.union([
     TAG: "Added",
     name: s.m(Sury.string),
     description: s.m(Sury.string),
-    price: s.m(Sury.float),
+    price: s.m(Sury.number),
     imageUrl: s.m(StorageRef$Reventless.forStore(undefined, "productImages"))
   })),
   Sury.$schema(s => ({
@@ -47,7 +47,7 @@ let eventSchema = Sury.union([
   })),
   Sury.$schema(s => ({
     TAG: "PriceUpdated",
-    price: s.m(Sury.float)
+    price: s.m(Sury.number)
   })),
   Sury.$schema(s => ({
     TAG: "ImageUpdated",

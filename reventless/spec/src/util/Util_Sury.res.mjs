@@ -6,18 +6,20 @@ import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 
 function toJson(value, schema) {
-  return S.decodeOrThrow(value, schema, Sury.json);
+  return S.convertOrThrow(value, schema, undefined, Sury.json);
 }
 
 function toJsonString(value, schema, spaceOpt) {
   let space = spaceOpt !== undefined ? spaceOpt : 0;
-  return S.decodeOrThrow(value, schema, space === 0 ? Sury.jsonString : Sury.jsonStringWithSpace(space));
+  return S.convertOrThrow(value, schema, undefined, space === 0 ? Sury.jsonString : Sury.jsonStringWithSpace(space));
 }
 
-let fromJson = S.parseOrThrow;
+function fromJson(json, schema) {
+  return Sury.parseOrThrow(json, schema);
+}
 
 function fromJsonString(str, schema) {
-  return S.decodeOrThrow(str, Sury.jsonString, schema);
+  return S.convertOrThrow(str, Sury.jsonString, undefined, schema);
 }
 
 function exnMessage(exn, fallbackOpt) {

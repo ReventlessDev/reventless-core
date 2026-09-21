@@ -6,7 +6,7 @@ import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src
 
 let stateSchema = Sury.$schema(s => ({
   name: s.m(Sury.string),
-  price: s.m(Sury.float)
+  price: s.m(Sury.number)
 }));
 
 let config = ReadModel$Reventless.config(undefined, undefined, undefined);

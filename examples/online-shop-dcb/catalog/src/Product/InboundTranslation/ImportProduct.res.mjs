@@ -8,7 +8,7 @@ let externalInputSchema = Sury.$schema(s => ({
   sku: s.m(Sury.string),
   title: s.m(Sury.string),
   desc: s.m(Sury.string),
-  unitPrice: s.m(Sury.int),
+  unitPrice: s.m(Sury.int32),
   currency: s.m(Sury.string)
 }));
 
@@ -17,7 +17,7 @@ let commandSchema = Sury.$schema(s => ({
   productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
   name: s.m(Sury.string),
   description: s.m(Sury.string),
-  price: s.m(Sury.float)
+  price: s.m(Sury.number)
 }));
 
 function commandAuthorization(param) {

@@ -16,13 +16,13 @@ let storeSchema = Sury.$schema(s => ({
 
 let entrySchema = Sury.$schema(s => ({
   app: s.m(Sury.string),
-  port: s.m(Sury.int),
-  pid: s.m(Sury.int),
+  port: s.m(Sury.int32),
+  pid: s.m(Sury.int32),
   endpoint: s.m(Sury.string),
   loginEndpoint: s.m(Sury.string),
   store: s.m(storeSchema),
   startedAt: s.m(Sury.string),
-  tapPort: s.m(Sury.$option(Sury.int))
+  tapPort: s.m(Sury.$option(Sury.int32))
 }));
 
 function runningDir(cwdOpt, param) {

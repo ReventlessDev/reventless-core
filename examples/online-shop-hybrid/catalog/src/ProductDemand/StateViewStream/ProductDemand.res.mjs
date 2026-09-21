@@ -27,7 +27,7 @@ let stateSchema = Sury.$schema(s => ({
   productId: s.m(ProductId$CatalogSpec.schema),
   name: s.m(Sury.string),
   categoryId: s.m(CategoryId$CatalogPlugin.schema),
-  orderCount: s.m(Sury.int)
+  orderCount: s.m(Sury.int32)
 }));
 
 let config = ReadModel$Reventless.config(undefined, undefined, undefined);

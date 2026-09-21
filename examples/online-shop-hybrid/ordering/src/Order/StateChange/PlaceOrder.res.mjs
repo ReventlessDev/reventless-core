@@ -53,7 +53,7 @@ let shippingMethodSchema = Sury.union([
 
 let lineItemSchema = Sury.$schema(s => ({
   productId: s.m(Reference$Reventless.mark(ProductId$CatalogSpec.schema, undefined, undefined, "AvailableProducts")),
-  quantity: s.m(FieldDefault$Reventless.int(Sury.int, 1))
+  quantity: s.m(FieldDefault$Reventless.int(Sury.int32, 1))
 }));
 
 let commandSchema = Sury.$schema(s => ({
@@ -75,7 +75,7 @@ let errorSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "InvalidQuantity",
     productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
-    quantity: s.m(Sury.int)
+    quantity: s.m(Sury.int32)
   })),
   Sury.$schema(s => ({
     TAG: "MixedCurrencies",
@@ -91,7 +91,7 @@ let errorSchema = Sury.union([
 let orderLineSchema = Sury.$schema(s => ({
   productId: s.m(ProductId$CatalogSpec.schema),
   name: s.m(Sury.string),
-  quantity: s.m(Sury.int),
+  quantity: s.m(Sury.int32),
   unitPrice: s.m(Money$Reventless.schema),
   lineTotal: s.m(Money$Reventless.schema)
 }));

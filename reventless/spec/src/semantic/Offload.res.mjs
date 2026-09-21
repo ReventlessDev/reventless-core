@@ -10,7 +10,7 @@ let offloadedRefSchema = Sury.$schema(s => ({
   store: s.m(Sury.string),
   key: s.m(Sury.string),
   hash: s.m(Sury.string),
-  bytes: s.m(Sury.int)
+  bytes: s.m(Sury.int32)
 }));
 
 let sentinelKey = "$offload";

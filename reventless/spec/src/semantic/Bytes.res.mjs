@@ -29,7 +29,7 @@ function fromFloat(raw) {
   }
 }
 
-let schema = Semantic$Reventless.refined(Sury.float, Semantic$Reventless.Id.bytes, fromFloat);
+let schema = Semantic$Reventless.refined(Sury.number, Semantic$Reventless.Id.bytes, fromFloat);
 
 let units = [
   "B",

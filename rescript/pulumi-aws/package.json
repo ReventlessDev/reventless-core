@@ -31,12 +31,12 @@
     "@reventlessdev/rescript-aws-sdk": "workspace:*",
     "@reventlessdev/rescript-node": "workspace:*",
     "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
-    "sury": "11.0.0-rc.2"
+    "sury": "11.0.0"
   },
   "devDependencies": {
     "esbuild": "^0.25.12",
     "rescript": "12.3.1",
-    "sury-ppx": "11.0.0-rc.2"
+    "sury-ppx": "11.0.0"
   },
   "peerDependencies": {
     "rescript": "^12.3.1"

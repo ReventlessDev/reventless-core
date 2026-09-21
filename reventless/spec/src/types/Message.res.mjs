@@ -16,7 +16,7 @@ let metaSchema = Sury.$schema(s => ({
   causationId: s.m(Sury.$option(Sury.string)),
   traceparent: s.m(Sury.$option(Sury.string)),
   schemaVersion: s.m(Sury.$option(Sury.string)),
-  headers: s.m(Sury.$option(Sury.dict(Sury.string)))
+  headers: s.m(Sury.$option(Sury.record(Sury.string)))
 }));
 
 let contextSchema = Sury.$schema(s => ({
@@ -33,7 +33,7 @@ let commandJsonSchema = Sury.$schema(s => ({
   id: s.m(Sury.string),
   meta: s.m(metaSchema),
   commandJson: s.m(Sury.json),
-  delay: s.m(Sury.$option(Sury.int))
+  delay: s.m(Sury.$option(Sury.int32))
 }));
 
 let fillMissingDefaults = (function(schema, json, scalarFills){

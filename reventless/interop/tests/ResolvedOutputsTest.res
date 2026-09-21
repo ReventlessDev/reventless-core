@@ -39,28 +39,28 @@ describe("DCB interop types — round-trip serialization", () => {
       resources: [resource],
       eventTopic: eventTopicOutputs,
     }
-    let json = original->S.decodeOrThrow(~from=DcbEventLog.resolvedOutputsSchema, ~to=S.json)
+    let json = original->S.convertOrThrow(~from=DcbEventLog.resolvedOutputsSchema, ~to=S.json)
     let parsed = json->S.parseOrThrow(~to=DcbEventLog.resolvedOutputsSchema)
     expect(parsed)->toEqual(original)
   })
 
   testSync("StateChangeSlice.resolvedOutputs round-trips", () => {
     let original: StateChangeSlice.resolvedOutputs = {resources: [resource]}
-    let json = original->S.decodeOrThrow(~from=StateChangeSlice.resolvedOutputsSchema, ~to=S.json)
+    let json = original->S.convertOrThrow(~from=StateChangeSlice.resolvedOutputsSchema, ~to=S.json)
     let parsed = json->S.parseOrThrow(~to=StateChangeSlice.resolvedOutputsSchema)
     expect(parsed)->toEqual(original)
   })
 
   testSync("StateViewSlice.resolvedOutputs round-trips", () => {
     let original: StateViewSlice.resolvedOutputs = {resources: [resource], queryDb}
-    let json = original->S.decodeOrThrow(~from=StateViewSlice.resolvedOutputsSchema, ~to=S.json)
+    let json = original->S.convertOrThrow(~from=StateViewSlice.resolvedOutputsSchema, ~to=S.json)
     let parsed = json->S.parseOrThrow(~to=StateViewSlice.resolvedOutputsSchema)
     expect(parsed)->toEqual(original)
   })
 
   testSync("AutomationSlice.resolvedOutputs round-trips", () => {
     let original: AutomationSlice.resolvedOutputs = {resources: [resource], queryDb}
-    let json = original->S.decodeOrThrow(~from=AutomationSlice.resolvedOutputsSchema, ~to=S.json)
+    let json = original->S.convertOrThrow(~from=AutomationSlice.resolvedOutputsSchema, ~to=S.json)
     let parsed = json->S.parseOrThrow(~to=AutomationSlice.resolvedOutputsSchema)
     expect(parsed)->toEqual(original)
   })
@@ -68,7 +68,7 @@ describe("DCB interop types — round-trip serialization", () => {
   testSync("OutboundTranslationSlice.resolvedOutputs round-trips", () => {
     let original: OutboundTranslationSlice.resolvedOutputs = {resources: [resource], queryDb}
     let json =
-      original->S.decodeOrThrow(~from=OutboundTranslationSlice.resolvedOutputsSchema, ~to=S.json)
+      original->S.convertOrThrow(~from=OutboundTranslationSlice.resolvedOutputsSchema, ~to=S.json)
     let parsed = json->S.parseOrThrow(~to=OutboundTranslationSlice.resolvedOutputsSchema)
     expect(parsed)->toEqual(original)
   })
@@ -76,14 +76,14 @@ describe("DCB interop types — round-trip serialization", () => {
   testSync("InboundTranslationSlice.resolvedOutputs round-trips", () => {
     let original: InboundTranslationSlice.resolvedOutputs = {resources: [resource], queryDb}
     let json =
-      original->S.decodeOrThrow(~from=InboundTranslationSlice.resolvedOutputsSchema, ~to=S.json)
+      original->S.convertOrThrow(~from=InboundTranslationSlice.resolvedOutputsSchema, ~to=S.json)
     let parsed = json->S.parseOrThrow(~to=InboundTranslationSlice.resolvedOutputsSchema)
     expect(parsed)->toEqual(original)
   })
 
   testSync("QueryDb.resolvedOutputs round-trips", () => {
     let original: QueryDb.resolvedOutputs = {resources: [resource]}
-    let json = original->S.decodeOrThrow(~from=QueryDb.resolvedOutputsSchema, ~to=S.json)
+    let json = original->S.convertOrThrow(~from=QueryDb.resolvedOutputsSchema, ~to=S.json)
     let parsed = json->S.parseOrThrow(~to=QueryDb.resolvedOutputsSchema)
     expect(parsed)->toEqual(original)
   })
@@ -104,7 +104,7 @@ describe("Aggregate interop types — round-trip serialization", () => {
       commandTopic: commandTopicOutputs,
       eventLog: eventLogOutputs,
     }
-    let json = original->S.decodeOrThrow(~from=Aggregate.resolvedOutputsSchema, ~to=S.json)
+    let json = original->S.convertOrThrow(~from=Aggregate.resolvedOutputsSchema, ~to=S.json)
     let parsed = json->S.parseOrThrow(~to=Aggregate.resolvedOutputsSchema)
     expect(parsed)->toEqual(original)
   })
@@ -121,20 +121,20 @@ describe("Aggregate interop types — round-trip serialization", () => {
       eventLog: eventLogOutputs,
       eventMapper: em,
     }
-    let json = original->S.decodeOrThrow(~from=Aggregate.resolvedOutputsSchema, ~to=S.json)
+    let json = original->S.convertOrThrow(~from=Aggregate.resolvedOutputsSchema, ~to=S.json)
     let parsed = json->S.parseOrThrow(~to=Aggregate.resolvedOutputsSchema)
     expect(parsed)->toEqual(original)
   })
 
   testSync("EventLog.resolvedOutputs round-trips", () => {
-    let json = eventLogOutputs->S.decodeOrThrow(~from=EventLog.resolvedOutputsSchema, ~to=S.json)
+    let json = eventLogOutputs->S.convertOrThrow(~from=EventLog.resolvedOutputsSchema, ~to=S.json)
     let parsed = json->S.parseOrThrow(~to=EventLog.resolvedOutputsSchema)
     expect(parsed)->toEqual(eventLogOutputs)
   })
 
   testSync("CommandGenerator.resolvedOutputs round-trips", () => {
     let json =
-      commandGeneratorOutputs->S.decodeOrThrow(
+      commandGeneratorOutputs->S.convertOrThrow(
         ~from=CommandGenerator.resolvedOutputsSchema,
         ~to=S.json,
       )
@@ -146,7 +146,7 @@ describe("Aggregate interop types — round-trip serialization", () => {
 describe("Plugin.resolvedOutputs — round-trip with DCB fields", () => {
   testSync("minimal plugin (no optional fields) round-trips", () => {
     let original: Plugin.resolvedOutputs = {id: "test@1.0", version: "1.0.0"}
-    let json = original->S.decodeOrThrow(~from=Plugin.resolvedOutputsSchema, ~to=S.json)
+    let json = original->S.convertOrThrow(~from=Plugin.resolvedOutputsSchema, ~to=S.json)
     let parsed = json->S.parseOrThrow(~to=Plugin.resolvedOutputsSchema)
     expect(parsed)->toEqual(original)
   })
@@ -162,7 +162,7 @@ describe("Plugin.resolvedOutputs — round-trip with DCB fields", () => {
       version: "1.0.0",
       readModels: Dict.fromArray([("MyRM", rm)]),
     }
-    let json = original->S.decodeOrThrow(~from=Plugin.resolvedOutputsSchema, ~to=S.json)
+    let json = original->S.convertOrThrow(~from=Plugin.resolvedOutputsSchema, ~to=S.json)
     let parsed = json->S.parseOrThrow(~to=Plugin.resolvedOutputsSchema)
     expect(parsed)->toEqual(original)
   })
@@ -187,7 +187,7 @@ describe("Plugin.resolvedOutputs — round-trip with DCB fields", () => {
       outboundTranslationSlices: Dict.fromArray([("SendEmail", ots)]),
       inboundTranslationSlices: Dict.fromArray([("PaymentHook", its)]),
     }
-    let json = original->S.decodeOrThrow(~from=Plugin.resolvedOutputsSchema, ~to=S.json)
+    let json = original->S.convertOrThrow(~from=Plugin.resolvedOutputsSchema, ~to=S.json)
     let parsed = json->S.parseOrThrow(~to=Plugin.resolvedOutputsSchema)
     expect(parsed)->toEqual(original)
   })
@@ -204,7 +204,7 @@ describe("Plugin.resolvedOutputs — round-trip with DCB fields", () => {
       version: "1.0.0",
       aggregates: Dict.fromArray([("Customer", agg)]),
     }
-    let json = original->S.decodeOrThrow(~from=Plugin.resolvedOutputsSchema, ~to=S.json)
+    let json = original->S.convertOrThrow(~from=Plugin.resolvedOutputsSchema, ~to=S.json)
     let parsed = json->S.parseOrThrow(~to=Plugin.resolvedOutputsSchema)
     expect(parsed)->toEqual(original)
   })
@@ -248,14 +248,14 @@ describe("Plugin.resolvedOutputs — round-trip with DCB fields", () => {
       outboundTranslationSlices: Dict.fromArray([("OTS1", ots)]),
       inboundTranslationSlices: Dict.fromArray([("ITS1", its)]),
     }
-    let json = original->S.decodeOrThrow(~from=Plugin.resolvedOutputsSchema, ~to=S.json)
+    let json = original->S.convertOrThrow(~from=Plugin.resolvedOutputsSchema, ~to=S.json)
     let parsed = json->S.parseOrThrow(~to=Plugin.resolvedOutputsSchema)
     expect(parsed)->toEqual(original)
   })
 
   testSync("minimal plugin without optional fields round-trips", () => {
     let original: Plugin.resolvedOutputs = {id: "empty@1.0", version: "1.0.0"}
-    let json = original->S.decodeOrThrow(~from=Plugin.resolvedOutputsSchema, ~to=S.json)
+    let json = original->S.convertOrThrow(~from=Plugin.resolvedOutputsSchema, ~to=S.json)
     let parsed = json->S.parseOrThrow(~to=Plugin.resolvedOutputsSchema)
     expect(parsed)->toEqual(original)
   })
@@ -271,7 +271,7 @@ describe("Plugin.resolvedOutputs — round-trip with DCB fields", () => {
       resourceInfo: StorageKeys({partitionKey: "id", sortKey: None}),
     }
     let original: QueryDb.resolvedOutputs = {resources: [noSortKey]}
-    let json = original->S.decodeOrThrow(~from=QueryDb.resolvedOutputsSchema, ~to=S.json)
+    let json = original->S.convertOrThrow(~from=QueryDb.resolvedOutputsSchema, ~to=S.json)
     let parsed = json->S.parseOrThrow(~to=QueryDb.resolvedOutputsSchema)
     expect(parsed)->toEqual(original)
   })

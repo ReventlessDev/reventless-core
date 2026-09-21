@@ -9,7 +9,7 @@ let stateSchema = Sury.$schema(s => ({
   productId: s.m(ProductId$CatalogSpec.schema),
   name: s.m(Sury.string),
   description: s.m(Sury.string),
-  price: s.m(Sury.float)
+  price: s.m(Sury.number)
 }));
 
 let consumedEventSchema = Sury.union([
@@ -18,7 +18,7 @@ let consumedEventSchema = Sury.union([
     productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
     name: s.m(Sury.string),
     description: s.m(Sury.string),
-    price: s.m(Sury.float)
+    price: s.m(Sury.number)
   })),
   Sury.$schema(s => ({
     TAG: "ProductNameChanged",
@@ -33,7 +33,7 @@ let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "ProductPriceChanged",
     productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
-    price: s.m(Sury.float)
+    price: s.m(Sury.number)
   }))
 ]);
 

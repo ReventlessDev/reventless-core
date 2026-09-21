@@ -9,7 +9,7 @@ import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 
 let referencesStateSchema = Sury.$schema(s => ({
   id: s.m(Sury.string),
-  inc: s.m(Sury.int)
+  inc: s.m(Sury.int32)
 }));
 
 function groupCountItemsByCounterId(countItems) {

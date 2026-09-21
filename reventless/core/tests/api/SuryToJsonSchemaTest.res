@@ -1012,10 +1012,10 @@ describe("SuryToJsonSchema:", () => {
     )
   })
 
-  // Parity sanity-check: deriveObjectSchema and the legacy S.toJSONSchema must
+  // Parity sanity-check: deriveObjectSchema and the legacy S.toInputJSONSchemaOrThrow must
   // agree on `properties` keyset and `required` array for unannotated objects,
   // so swapping the encoder at Plugin_Structure.res:261/280 doesn't drop fields.
-  describe("parity with S.toJSONSchema for unannotated objects:", () => {
+  describe("parity with S.toInputJSONSchemaOrThrow for unannotated objects:", () => {
     let getKeys = (schema: JSON.t): array<string> =>
       switch getProperty(schema, "properties")->Option.flatMap(JSON.Decode.object) {
       | Some(obj) => obj->Dict.keysToArray
@@ -1031,7 +1031,7 @@ describe("SuryToJsonSchema:", () => {
     let sortStrings = (xs: array<string>): array<string> => xs->Array.toSorted(String.compare)
 
     testSync(
-      "properties keyset matches between deriveObjectSchema and S.toJSONSchema",
+      "properties keyset matches between deriveObjectSchema and S.toInputJSONSchemaOrThrow",
       () => {
         let schema = S.schema(
           s =>
@@ -1042,13 +1042,13 @@ describe("SuryToJsonSchema:", () => {
             },
         )->S.castToUnknown
         let derived = SuryToJsonSchema.deriveObjectSchema(schema)
-        let native = (schema->S.toJSONSchema->Obj.magic: JSON.t)
+        let native = (schema->S.toInputJSONSchemaOrThrow->Obj.magic: JSON.t)
         expect(derived->getKeys->sortStrings)->toEqual(native->getKeys->sortStrings)
       },
     )
 
     testSync(
-      "required array matches between deriveObjectSchema and S.toJSONSchema",
+      "required array matches between deriveObjectSchema and S.toInputJSONSchemaOrThrow",
       () => {
         let schema = S.schema(
           s =>
@@ -1058,13 +1058,13 @@ describe("SuryToJsonSchema:", () => {
             },
         )->S.castToUnknown
         let derived = SuryToJsonSchema.deriveObjectSchema(schema)
-        let native = (schema->S.toJSONSchema->Obj.magic: JSON.t)
+        let native = (schema->S.toInputJSONSchemaOrThrow->Obj.magic: JSON.t)
         expect(derived->getRequired->sortStrings)->toEqual(native->getRequired->sortStrings)
       },
     )
 
     testSync(
-      "S.toJSONSchema does NOT emit x-reventless-* keys even when metadata is set",
+      "S.toInputJSONSchemaOrThrow does NOT emit x-reventless-* keys even when metadata is set",
       () => {
         let withSpec = (schema, spec) =>
           schema->S.Metadata.set(~id=Reventless.StateAnnotations.stateAnnotationsId, spec)
@@ -1076,7 +1076,7 @@ describe("SuryToJsonSchema:", () => {
             },
         )->S.castToUnknown
         let schema' = schema->withSpec({...emptySpec, ids: ["entityId"]})
-        let native = (schema'->S.toJSONSchema->Obj.magic: JSON.t)
+        let native = (schema'->S.toInputJSONSchemaOrThrow->Obj.magic: JSON.t)
         let entityIdSchema = getPropertyOf(native, "entityId")
         expect(entityIdSchema->Option.flatMap(s => getProperty(s, "x-reventless-id")))->toBe(None)
       },

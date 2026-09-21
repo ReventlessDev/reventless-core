@@ -38,12 +38,12 @@
     "@reventlessdev/reventless-local": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*",
     "@reventlessdev/trait-attachments": "workspace:*",
-    "sury": "11.0.0-rc.2"
+    "sury": "11.0.0"
   },
   "devDependencies": {
     "@reventlessdev/reventless-ppx": "workspace:*",
     "rescript": "12.3.1",
-    "sury-ppx": "11.0.0-rc.2"
+    "sury-ppx": "11.0.0"
   },
   "peerDependencies": {
     "rescript": "^12.3.1"

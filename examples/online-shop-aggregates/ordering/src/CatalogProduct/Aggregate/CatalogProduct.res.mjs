@@ -6,11 +6,11 @@ let commandSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "Sync",
     name: s.m(Sury.string),
-    price: s.m(Sury.float)
+    price: s.m(Sury.number)
   })),
   Sury.$schema(s => ({
     TAG: "UpdatePrice",
-    price: s.m(Sury.float)
+    price: s.m(Sury.number)
   }))
 ]);
 
@@ -18,11 +18,11 @@ let eventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "Synced",
     name: s.m(Sury.string),
-    price: s.m(Sury.float)
+    price: s.m(Sury.number)
   })),
   Sury.$schema(s => ({
     TAG: "PriceUpdated",
-    price: s.m(Sury.float)
+    price: s.m(Sury.number)
   }))
 ]);
 

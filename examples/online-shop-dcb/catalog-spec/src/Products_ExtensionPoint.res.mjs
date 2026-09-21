@@ -10,12 +10,12 @@ let eventSchema = Sury.union([
     TAG: "ProductBecameAvailable",
     productId: s.m(ProductId$CatalogSpec.schema),
     name: s.m(Sury.string),
-    price: s.m(Sury.float)
+    price: s.m(Sury.number)
   })),
   Sury.$schema(s => ({
     TAG: "ProductPriceChanged",
     productId: s.m(ProductId$CatalogSpec.schema),
-    price: s.m(Sury.float)
+    price: s.m(Sury.number)
   }))
 ]);
 

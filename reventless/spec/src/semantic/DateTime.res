@@ -3,14 +3,14 @@ Marks a `string` field as an ISO-8601 instant.
 
 ## The grammar
 
-Sury's `S.isoDateTime`, and nothing added — the same rule the branded scalars
+Sury's `S.utcDateTime`, and nothing added — the same rule the branded scalars
 follow. `S.datetime` is the other binding and is not this one: it *transforms* to
 `Js.Date.t`, changing the field's runtime type, where this keeps the string the
 projection wrote.
 
 ## UTC only
 
-`S.isoDateTime` accepts a `Z` instant and rejects an offset — `2026-03-02T09:00:00+01:00`
+`S.utcDateTime` accepts a `Z` instant and rejects an offset — `2026-03-02T09:00:00+01:00`
 and a bare `2026-03-02T09:00:00` both fail. That is stricter than RFC 3339 and it
 is the strictness worth adopting: every instant the framework produces comes from
 `Message.nowAsISOString`, which is always `Z`. "Instants are stored in UTC" is a
@@ -48,7 +48,7 @@ external toString: t => string = "%identity"
 
 // Sury's rule, held once. `fromString` runs it rather than restating it, and
 // `schema` is built from `fromString`, so there is exactly one grammar here.
-let grammar: S.t<string> = S.isoDateTime
+let grammar: S.t<string> = (S.utcDateTime :> S.t<string>)
 
 /** Validate a raw string as a UTC ISO-8601 instant, saying why when it is not one. */
 let fromString = (raw: string): result<t, string> =>

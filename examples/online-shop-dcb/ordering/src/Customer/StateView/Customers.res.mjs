@@ -10,7 +10,7 @@ let stateSchema = Sury.$schema(s => ({
   customerId: s.m(CustomerId$OrderingPlugin.schema),
   email: s.m(Sury.string),
   address: s.m(Sury.string),
-  deactivated: s.m(Sury.bool),
+  deactivated: s.m(Sury.boolean),
   displayName: s.m(Sury.$option(Sury.string))
 }));
 

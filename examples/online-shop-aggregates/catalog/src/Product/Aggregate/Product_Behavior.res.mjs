@@ -8,7 +8,7 @@ let stateSchema = Sury.union([
     TAG: "Created",
     name: s.m(Sury.string),
     description: s.m(Sury.string),
-    price: s.m(Sury.float),
+    price: s.m(Sury.number),
     imageUrl: s.m(Sury.string)
   }))
 ]);

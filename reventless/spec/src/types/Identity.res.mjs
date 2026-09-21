@@ -15,7 +15,7 @@ let schema = Sury.$schema(s => ({
   userId: s.m(Sury.string),
   username: s.m(Sury.string),
   groups: s.m(Sury.array(Sury.string)),
-  claims: s.m(Sury.$option(Sury.dict(Sury.string))),
+  claims: s.m(Sury.$option(Sury.record(Sury.string))),
   provider: s.m(providerSchema)
 }));
 

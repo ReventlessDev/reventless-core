@@ -48,12 +48,12 @@ function validateLng(raw) {
   }
 }
 
-let latSchema = S.refine(Sury.float, raw => {
+let latSchema = S.refine(Sury.number, raw => {
   let match = validateLat(raw);
   return match.TAG === "Ok";
 }, "expected a latitude in -90…90", undefined);
 
-let lngSchema = S.refine(Sury.float, raw => {
+let lngSchema = S.refine(Sury.number, raw => {
   let match = validateLng(raw);
   return match.TAG === "Ok";
 }, "expected a longitude in -180…180", undefined);

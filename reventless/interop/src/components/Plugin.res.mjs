@@ -14,15 +14,15 @@ import * as OutboundTranslationSlice$ReventlessInterop from "./OutboundTranslati
 let resolvedOutputsSchema = Sury.$schema(s => ({
   id: s.m(Sury.string),
   version: s.m(Sury.string),
-  aggregates: s.m(Sury.$option(Sury.dict(Aggregate$ReventlessInterop.resolvedOutputsSchema))),
-  readModels: s.m(Sury.$option(Sury.dict(ReadModel$ReventlessInterop.resolvedOutputsSchema))),
-  extensionPoints: s.m(Sury.$option(Sury.dict(ExtensionPoint$ReventlessInterop.resolvedOutputsSchema))),
+  aggregates: s.m(Sury.$option(Sury.record(Aggregate$ReventlessInterop.resolvedOutputsSchema))),
+  readModels: s.m(Sury.$option(Sury.record(ReadModel$ReventlessInterop.resolvedOutputsSchema))),
+  extensionPoints: s.m(Sury.$option(Sury.record(ExtensionPoint$ReventlessInterop.resolvedOutputsSchema))),
   dcbEventLog: s.m(Sury.$option(DcbEventLog$ReventlessInterop.resolvedOutputsSchema)),
-  stateChangeSlices: s.m(Sury.$option(Sury.dict(StateChangeSlice$ReventlessInterop.resolvedOutputsSchema))),
-  stateViewSlices: s.m(Sury.$option(Sury.dict(StateViewSlice$ReventlessInterop.resolvedOutputsSchema))),
-  automationSlices: s.m(Sury.$option(Sury.dict(AutomationSlice$ReventlessInterop.resolvedOutputsSchema))),
-  outboundTranslationSlices: s.m(Sury.$option(Sury.dict(OutboundTranslationSlice$ReventlessInterop.resolvedOutputsSchema))),
-  inboundTranslationSlices: s.m(Sury.$option(Sury.dict(InboundTranslationSlice$ReventlessInterop.resolvedOutputsSchema)))
+  stateChangeSlices: s.m(Sury.$option(Sury.record(StateChangeSlice$ReventlessInterop.resolvedOutputsSchema))),
+  stateViewSlices: s.m(Sury.$option(Sury.record(StateViewSlice$ReventlessInterop.resolvedOutputsSchema))),
+  automationSlices: s.m(Sury.$option(Sury.record(AutomationSlice$ReventlessInterop.resolvedOutputsSchema))),
+  outboundTranslationSlices: s.m(Sury.$option(Sury.record(OutboundTranslationSlice$ReventlessInterop.resolvedOutputsSchema))),
+  inboundTranslationSlices: s.m(Sury.$option(Sury.record(InboundTranslationSlice$ReventlessInterop.resolvedOutputsSchema)))
 }));
 
 export {

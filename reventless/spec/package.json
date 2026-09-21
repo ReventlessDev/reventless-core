@@ -31,8 +31,8 @@
   "dependencies": {
     "@reventlessdev/rescript-node": "workspace:*",
     "jsonschema2graphql": "1.1.1",
-    "sury": "11.0.0-rc.2",
-    "sury-ppx": "11.0.0-rc.2",
+    "sury": "11.0.0",
+    "sury-ppx": "11.0.0",
     "yaml": "^2.8.3"
   },
   "devDependencies": {

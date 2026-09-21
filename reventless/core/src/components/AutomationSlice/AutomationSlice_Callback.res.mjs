@@ -28,8 +28,8 @@ let todoRowSchema = Sury.$schema(s => ({
   createdAt: s.m(Sury.string),
   processedAt: s.m(Sury.$option(Sury.string)),
   completedAt: s.m(Sury.$option(Sury.string)),
-  retryCount: s.m(Sury.int),
-  maxRetries: s.m(Sury.$option(Sury.int))
+  retryCount: s.m(Sury.int32),
+  maxRetries: s.m(Sury.$option(Sury.int32))
 }));
 
 function todoRowSchemaFor(itemSchema) {
@@ -39,8 +39,8 @@ function todoRowSchemaFor(itemSchema) {
     createdAt: s.m(Sury.string),
     processedAt: s.m(Sury.$option(Sury.string)),
     completedAt: s.m(Sury.$option(Sury.string)),
-    retryCount: s.m(Sury.int),
-    maxRetries: s.m(Sury.$option(Sury.int))
+    retryCount: s.m(Sury.int32),
+    maxRetries: s.m(Sury.$option(Sury.int32))
   }));
 }
 

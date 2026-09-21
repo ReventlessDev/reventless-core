@@ -54,7 +54,7 @@ function stringForKey(key) {
   return markForKey(Sury.string, key);
 }
 
-let int = Sury.$Metadata_set(Sury.int, dcbTagId, true);
+let int = Sury.$Metadata_set(Sury.int32, dcbTagId, true);
 
 let partition = markPartition(Sury.string);
 
@@ -88,7 +88,7 @@ let derivedPartitionTagSchema = Sury.union([
   })),
   Sury.$schema(s => ({
     TAG: "ByEventType",
-    _0: s.m(Sury.dict(Sury.string))
+    _0: s.m(Sury.record(Sury.string))
   }))
 ]);
 

@@ -7,7 +7,7 @@ import * as StorageRef$Reventless from "@reventlessdev/reventless-spec/src/seman
 let stateSchema = Sury.$schema(s => ({
   name: s.m(Sury.string),
   description: s.m(Sury.string),
-  price: s.m(Sury.float),
+  price: s.m(Sury.number),
   imageUrl: s.m(StorageRef$Reventless.forStore(undefined, "productImages"))
 }));
 

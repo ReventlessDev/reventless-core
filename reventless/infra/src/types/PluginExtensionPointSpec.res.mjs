@@ -3,7 +3,7 @@
 import * as Sury from "sury";
 import * as Plugin$Reventless from "@reventlessdev/reventless-spec/src/components/Plugin.res.mjs";
 
-let timeoutSchema = Sury.int;
+let timeoutSchema = Sury.int32;
 
 let forwardCommandSchema = Sury.$schema(s => ({
   extensionPointName: s.m(Sury.string),

@@ -10,7 +10,7 @@ let externalInputSchema = Sury.$schema(s => ({
   sku: s.m(Sury.string),
   title: s.m(Sury.string),
   desc: s.m(Sury.string),
-  unitPrice: s.m(Sury.int),
+  unitPrice: s.m(Sury.int32),
   currency: s.m(Sury.string),
   category: s.m(Sury.string)
 }));

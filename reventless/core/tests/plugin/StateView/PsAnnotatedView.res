@@ -1,6 +1,6 @@
 // Phase 4 fixture: state-view slice with structural annotations.
 // Used to verify Plugin_Structure.make ships x-reventless-* extension
-// properties through queryableDef.schema after swapping S.toJSONSchema
+// properties through queryableDef.schema after swapping S.toInputJSONSchemaOrThrow
 // for SuryToJsonSchema.deriveObjectSchema.
 
 @@reventless.spec("AnnotatedView")

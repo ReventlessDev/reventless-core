@@ -15,7 +15,7 @@ based on the upstream release notes and changelog, plus a search of this repo's 
 The repo pins the ReScript compiler to exactly **12.3.0**. There are two newer lines:
 
 - **12.3.1** is a patch release that came out on 2026-08-24 and is npm's `latest`. It fixes
-  the build crash that blocks a clean build of the host shell, and it tightens a few
+  a build crash on clean full builds, and it tightens a few
   type-checking rules. We should take it now. The trial build found **one blocker, in our
   PPX**: it emits lambdas without arity information, which 12.3.1 rejects. A three-line PPX
   fix, which also works on 12.3.0, clears it. With that fix, the build, all 4,626 tests and
@@ -44,12 +44,11 @@ The repo pins the ReScript compiler to exactly **12.3.0**. There are two newer l
 | Item | Value |
 |---|---|
 | Compiler | `rescript` **12.3.0**, pinned exactly. 95 occurrences across 53 `package.json` files, 42 of which also list it as a peer dependency |
-| Sibling repos | tools: a mix of `12.3.0` and `^12.3.0`. UI and business: `^12.3.0` |
 | READMEs | `Requires ReScript ^12.3.0 (peer dependency)` in core, aws, effect, graphql-yoga, mcp-sdk. **This does not match** the exact `12.3.0` in the manifests |
 | Module format | all 55 `rescript.json` files use `"module": "esmodule"` |
 | Serialization | `sury` / `sury-ppx` **11.0.0-rc.2** (11.0.0 final is out) |
 | Node | 22.17.1 |
-| Known 12.3.0 bug | a clean full build of `reventless-host-shell` crashes rewatch (`stdout should be non-null: Utf8Error`); see the related fix note |
+| Known 12.3.0 bug | a clean full build of a larger downstream application crashes rewatch (`stdout should be non-null: Utf8Error`); see the related fix note |
 
 ---
 
@@ -60,7 +59,7 @@ Release notes: [v12.3.1](https://github.com/rescript-lang/rescript/releases/tag/
 ### Fixes we want
 
 - **#8482: build crash on compiler output that isn't valid UTF-8.** This is exactly the
-  host-shell clean-build crash described in the related fix note. The one-line upstream
+  clean-build crash described in the related fix note. The one-line upstream
   patch that note proposes is no longer needed, and neither is the draft issue in it.
 - **#8520:** multibyte characters are preserved when long lines are wrapped in code frames.
   This fixes the same kind of bug in the part of the output that produced the bad bytes.
@@ -172,8 +171,8 @@ Every default involved is a literal (`[]`, `true`, `"."`) that the closure only 
 behaviour is the same. The only difference is that one `[]` is now shared across calls of
 the closure. The bump commit must include these files, or `check:outputs` will show drift.
 
-**Not verified:** a clean build of `reventless-host-shell`, the crash case, which lives in
-the UI repo. #8482 describes that exact panic.
+**Not verified:** the crash case itself, which occurs outside this repository. #8482
+describes that exact panic.
 
 ---
 
@@ -243,8 +242,7 @@ None of these is urgent enough to adopt an alpha compiler.
    fixed binary, or every spec file fails to compile.
 2. **Ship 12.3.1 in one commit:** 95 pins (peers relaxed to `^12.3.1`) and the four
    regenerated `.res.mjs` files. The trial needed nothing else. Mark the related fix note as
-   resolved by 12.3.1. Then bump tools, UI and business, whose `^12.3.0` ranges already
-   accept it, and build the host shell clean there.
+   resolved by 12.3.1.
 3. **Move sury / sury-ppx to 11.0.0 final**, as a separate change.
 4. **Remove `@rescript/std`** from `ssh2` / `web` if nothing needs it.
 5. **v13: wait** for 13.0.0 final and a sury release that accepts it. Then do a trial build

@@ -13,7 +13,7 @@ let configSchema = Sury.$schema(s => ({
   file: s.m(Sury.string),
   cardinality: s.m(Sury.$option(Attachments_Rules$TraitAttachments.cardinalitySchema)),
   created: s.m(Sury.string),
-  createdCarriesEntityId: s.m(Sury.$option(Sury.bool)),
+  createdCarriesEntityId: s.m(Sury.$option(Sury.boolean)),
   view: s.m(Sury.string),
   lifecycleType: s.m(Sury.$option(Sury.string)),
   refType: s.m(Sury.$option(Sury.string)),

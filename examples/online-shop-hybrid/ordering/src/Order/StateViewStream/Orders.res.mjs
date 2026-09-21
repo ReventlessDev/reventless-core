@@ -25,7 +25,7 @@ let shippingMethodSchema = Sury.union([
 let orderLineSchema = Sury.$schema(s => ({
   productId: s.m(ProductId$CatalogSpec.schema),
   name: s.m(Sury.string),
-  quantity: s.m(Sury.int),
+  quantity: s.m(Sury.int32),
   unitPrice: s.m(Money$Reventless.schema),
   lineTotal: s.m(Money$Reventless.schema)
 }));
@@ -71,7 +71,7 @@ let stateSchema = Sury.$schema(s => ({
   trail: s.m(Lifecycle$Reventless.Trail.schema(lifecycleSchema)),
   lines: s.m(Sury.array(orderLineSchema)),
   total: s.m(Money$Reventless.schema),
-  itemCount: s.m(Sury.int),
+  itemCount: s.m(Sury.int32),
   lifecycle: s.m(lifecycleSchema),
   shippingMethod: s.m(shippingMethodSchema),
   deliveryWindow: s.m(Sury.$option(DateRange$Reventless.schema)),

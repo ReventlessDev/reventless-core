@@ -7,7 +7,7 @@ import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/compon
 let stateSchema = Sury.$schema(s => ({
   email: s.m(Email$Reventless.schema),
   address: s.m(Sury.string),
-  deactivated: s.m(Sury.bool)
+  deactivated: s.m(Sury.boolean)
 }));
 
 let config = ReadModel$Reventless.config(undefined, undefined, undefined);

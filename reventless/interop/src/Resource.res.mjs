@@ -29,8 +29,8 @@ let schema = Sury.$schema(s => ({
   role: s.m(Sury.string),
   region: s.m(Sury.string),
   resourceType: s.m(Sury.string),
-  configuration: s.m(Sury.dict(Sury.string)),
-  tags: s.m(Sury.dict(Sury.string))
+  configuration: s.m(Sury.record(Sury.string)),
+  tags: s.m(Sury.record(Sury.string))
 }));
 
 export {

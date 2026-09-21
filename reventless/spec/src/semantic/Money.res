@@ -91,7 +91,7 @@ let validateAmount = (amount: float): result<float, string> =>
     The check sits on the field rather than on the pair because wholeness is a
     property of the amount: it does not need the currency, and a rule placed
     where it needs nothing else is a rule that cannot be read wrong. (A
-    record-level refinement is available — sury 11.0.0-rc.2 compiles one
+    record-level refinement is available — sury 11 compiles one
     correctly, where 11-alpha hoisted the result object above the field reads and
     threw `Cannot access 'v0' before initialization` — it is simply not what this
     check wants.) */

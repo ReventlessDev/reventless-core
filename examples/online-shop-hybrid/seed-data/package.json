@@ -20,7 +20,7 @@
     "@reventlessdev/reventless-seed": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*",
     "@reventlessdev/reventless-ui-slots": "3.0.0-alpha.11",
-    "sury": "11.0.0-rc.2"
+    "sury": "11.0.0"
   },
   "devDependencies": {
     "@reventlessdev/rescript-jest": "workspace:*",

@@ -6,7 +6,7 @@ import * as Util_Sury$Reventless from "../util/Util_Sury.res.mjs";
 
 let configFieldSchema = Sury.$schema(s => ({
   name: s.m(Sury.string),
-  required: s.m(Sury.bool)
+  required: s.m(Sury.boolean)
 }));
 
 let schema = Sury.$schema(s => ({
@@ -16,7 +16,7 @@ let schema = Sury.$schema(s => ({
   license: s.m(Sury.string),
   capabilities: s.m(Sury.array(Sury.string)),
   config: s.m(Sury.array(configFieldSchema)),
-  scaffolded: s.m(Sury.bool)
+  scaffolded: s.m(Sury.boolean)
 }));
 
 function render(manifest) {

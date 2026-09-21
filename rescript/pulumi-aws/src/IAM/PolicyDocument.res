@@ -124,12 +124,12 @@ type t = policy
 
 let toJsonString: t => string = t => {
   t
-  ->S.decodeOrThrow(~from=policySchema, ~to=S.json)
+  ->S.convertOrThrow(~from=policySchema, ~to=S.json)
   ->JSON.stringify(~space=1)
 }
 
 let fromJsonString: string => t = (policyString: string) =>
-  policyString->S.decodeOrThrow(~from=S.jsonString, ~to=policySchema)
+  S.JsonString(policyString)->S.convertOrThrow(~from=S.jsonString, ~to=policySchema)
 
 let make = (~version=Version2012, ~id=?, ~statements) => {
   version,

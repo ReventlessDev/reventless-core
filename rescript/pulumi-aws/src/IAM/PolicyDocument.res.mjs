@@ -48,7 +48,7 @@ let conditionEntrySchema = Sury.union([
   Sury.$schema(s => (s.m(Sury.array(Sury.string))))
 ]);
 
-let conditionMapSchema = Sury.dict(conditionEntrySchema);
+let conditionMapSchema = Sury.record(conditionEntrySchema);
 
 let conditionSchema = Sury.$schema(s => ({
   StringEquals: s.m(Sury.$option(conditionMapSchema)),
@@ -121,11 +121,11 @@ let policySchema = Sury.$schema(s => ({
 }));
 
 function toJsonString(t) {
-  return JSON.stringify(S.decodeOrThrow(t, policySchema, Sury.json), undefined, 1);
+  return JSON.stringify(S.convertOrThrow(t, policySchema, undefined, Sury.json), undefined, 1);
 }
 
 function fromJsonString(policyString) {
-  return S.decodeOrThrow(policyString, Sury.jsonString, policySchema);
+  return S.convertOrThrow(policyString, Sury.jsonString, undefined, policySchema);
 }
 
 function make(versionOpt, id, statements) {

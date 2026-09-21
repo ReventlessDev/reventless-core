@@ -20,7 +20,7 @@ let knownVersionSchema = Sury.$schema(s => ({
 
 let stateSchema = Sury.$schema(s => ({
   current: s.m(Sury.$option(Plugin$Reventless.versionSchema)),
-  known: s.m(Sury.dict(knownVersionSchema))
+  known: s.m(Sury.record(knownVersionSchema))
 }));
 
 let initialState_known = {};

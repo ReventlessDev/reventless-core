@@ -22,8 +22,8 @@
     "@reventlessdev/reventless-infra": "workspace:*",
     "@reventlessdev/reventless-ppx": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*",
-    "sury": "11.0.0-rc.2",
-    "sury-ppx": "11.0.0-rc.2"
+    "sury": "11.0.0",
+    "sury-ppx": "11.0.0"
   },
   "devDependencies": {
     "rescript": "12.3.1"

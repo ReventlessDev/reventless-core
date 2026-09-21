@@ -8,11 +8,11 @@ let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "CatalogProductSynced",
     name: s.m(Sury.string),
-    price: s.m(Sury.float)
+    price: s.m(Sury.number)
   })),
   Sury.$schema(s => ({
     TAG: "CatalogProductPriceChanged",
-    price: s.m(Sury.float)
+    price: s.m(Sury.number)
   }))
 ]);
 
@@ -21,12 +21,12 @@ let commandSchema = Sury.union([
     TAG: "SyncNewProduct",
     productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
     name: s.m(Sury.string),
-    price: s.m(Sury.float)
+    price: s.m(Sury.number)
   })),
   Sury.$schema(s => ({
     TAG: "ChangeSyncedPrice",
     productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
-    price: s.m(Sury.float)
+    price: s.m(Sury.number)
   }))
 ]);
 
@@ -37,12 +37,12 @@ let eventSchema = Sury.union([
     TAG: "CatalogProductSynced",
     productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
     name: s.m(Sury.string),
-    price: s.m(Sury.float)
+    price: s.m(Sury.number)
   })),
   Sury.$schema(s => ({
     TAG: "CatalogProductPriceChanged",
     productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
-    price: s.m(Sury.float)
+    price: s.m(Sury.number)
   }))
 ]);
 

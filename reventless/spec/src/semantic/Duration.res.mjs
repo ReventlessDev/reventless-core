@@ -18,7 +18,7 @@ function fromInt(raw) {
   }
 }
 
-let schema = Semantic$Reventless.refined(Sury.int, Semantic$Reventless.Id.duration, fromInt);
+let schema = Semantic$Reventless.refined(Sury.int32, Semantic$Reventless.Id.duration, fromInt);
 
 let scales = [
   [

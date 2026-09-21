@@ -40,7 +40,7 @@ external toString: t => string = "%identity"
 
 // Sury's rule, held once. `fromString` runs it rather than restating it, and
 // `schema` is built from `fromString`, so there is exactly one grammar here.
-let grammar: S.t<string> = S.isoDate
+let grammar: S.t<string> = (S.isoDate :> S.t<string>)
 
 /** Validate a raw string as an ISO-8601 calendar day, saying why when it is not one. */
 let fromString = (raw: string): result<t, string> =>

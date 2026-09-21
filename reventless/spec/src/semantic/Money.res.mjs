@@ -28,7 +28,7 @@ function validateAmount(amount) {
   }
 }
 
-let amountSchema = S.refine(Sury.float, amount => {
+let amountSchema = S.refine(Sury.number, amount => {
   let match = validateAmount(amount);
   return match.TAG === "Ok";
 }, "expected a monetary amount", undefined);

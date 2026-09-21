@@ -32,7 +32,7 @@ function makeCounterOps(config) {
 
 let referencesViewSchema = Sury.$schema(s => ({
   id: s.m(Sury.string),
-  inc: s.m(Sury.int)
+  inc: s.m(Sury.int32)
 }));
 
 function splitRecords(referencesStreamArn, countsStreamArn, records) {

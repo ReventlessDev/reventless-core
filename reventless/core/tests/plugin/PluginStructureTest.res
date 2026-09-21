@@ -1740,7 +1740,7 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
 
   // Phase 4: queryableDef.schema must carry x-reventless-* extension keys for
   // annotated state types. Plugin_Structure now uses SuryToJsonSchema.deriveObjectSchema
-  // (annotation-aware) instead of S.toJSONSchema (metadata-blind).
+  // (annotation-aware) instead of S.toInputJSONSchemaOrThrow (metadata-blind).
   describe("queryableDef.schema propagates x-reventless-* annotations", () => {
     let parseSchema = (svs: Reventless.Plugin.queryableDef): JSON.t => svs.schema->JSON.parseOrThrow
 

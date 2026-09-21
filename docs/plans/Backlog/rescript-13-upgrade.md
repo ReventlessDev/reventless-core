@@ -9,18 +9,16 @@ That analysis moved the repo to 12.3.1. This plan holds what it left open.
 Our own sources already avoid everything ReScript 13 removes. What blocks the upgrade is
 outside code: the serialization library `sury` accepts only ReScript 12, and the file format
 the compiler uses to talk to our PPX has not been confirmed stable in a final release.
-Steps 1–3 can be done now, independently. Step 4 waits for upstream.
+Steps 1–2 can be done now, independently. Step 3 waits for upstream.
 
 ## Steps
 
-1. **sury / sury-ppx 11.0.0-rc.2 → 11.0.0 final.** Every spec depends on these (37 + 36 pins,
-   see `pnpm-lock.yaml`). Bump, clean build, run the golden checks, run the full test suite.
+1. ✅ **sury / sury-ppx 11.0.0-rc.2 → 11.0.0 final.** Done 2026-09-21, see
+   [sury-11-final.md](../done/sury-11-final.md). sury 11.0.0 still declares
+   `rescript: 12.x`, so step 3 still waits for a sury release that accepts 13.
 2. **Remove `@rescript/std ^11.1.4`** from `rescript/ssh2` and `rescript/web`. It is the
    runtime package from the v11 era. Check whether anything still imports it, and drop it.
-3. **Sibling repos to 12.3.1.** tools, UI and business accept it through `^12.3.0`. Bump the
-   lockfiles and build `reventless-host-shell` clean. That is the build that crashed on 12.3.0
-   (see [rescript-rewatch-utf8-stdout-panic.md](../../fixes/rescript-rewatch-utf8-stdout-panic.md)).
-4. **ReScript 13**, once 13.0.0 is final and a sury release accepts it:
+3. **ReScript 13**, once 13.0.0 is final and a sury release accepts it:
    - Wipe every `lib/`. The AST, CMI and CMT formats change, so stale caches fail with
      "The value X can't be found".
    - Check first that both PPXes load and produce unchanged output. The upstream changelog

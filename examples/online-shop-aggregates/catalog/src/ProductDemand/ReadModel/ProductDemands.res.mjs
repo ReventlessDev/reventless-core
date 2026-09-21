@@ -5,7 +5,7 @@ import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/compon
 
 let stateSchema = Sury.$schema(s => ({
   name: s.m(Sury.string),
-  orderCount: s.m(Sury.int)
+  orderCount: s.m(Sury.int32)
 }));
 
 let config = ReadModel$Reventless.config(undefined, undefined, undefined);

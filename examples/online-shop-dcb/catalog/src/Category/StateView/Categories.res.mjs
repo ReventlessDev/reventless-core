@@ -8,7 +8,7 @@ import * as CategoryId$CatalogPlugin from "../CategoryId.res.mjs";
 let stateSchema = Sury.$schema(s => ({
   categoryId: s.m(CategoryId$CatalogPlugin.schema),
   name: s.m(Sury.string),
-  archived: s.m(Sury.bool)
+  archived: s.m(Sury.boolean)
 }));
 
 let consumedEventSchema = Sury.union([

@@ -4,7 +4,7 @@ import * as Sury from "sury";
 
 let resolvedOutputsSchema = Sury.$schema(s => ({
   name: s.m(Sury.string),
-  bucketNames: s.m(Sury.$option(Sury.dict(Sury.string))),
+  bucketNames: s.m(Sury.$option(Sury.record(Sury.string))),
   sideEffectSources: s.m(Sury.$option(Sury.array(Sury.string)))
 }));
 

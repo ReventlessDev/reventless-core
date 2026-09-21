@@ -5,7 +5,7 @@ import * as Util_Sury$Reventless from "../util/Util_Sury.res.mjs";
 
 let assertionSchema = Sury.$schema(s => ({
   name: s.m(Sury.string),
-  passed: s.m(Sury.bool)
+  passed: s.m(Sury.boolean)
 }));
 
 let schema = Sury.$schema(s => ({
@@ -15,8 +15,8 @@ let schema = Sury.$schema(s => ({
   host: s.m(Sury.string),
   suite: s.m(Sury.string),
   assertions: s.m(Sury.array(assertionSchema)),
-  passed: s.m(Sury.int),
-  failed: s.m(Sury.int)
+  passed: s.m(Sury.int32),
+  failed: s.m(Sury.int32)
 }));
 
 function verified(certificate) {

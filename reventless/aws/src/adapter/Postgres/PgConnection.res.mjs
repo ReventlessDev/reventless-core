@@ -13,7 +13,7 @@ import * as PgMigration_Builder$ReventlessAws from "./PgMigration_Builder.res.mj
 
 let connectionConfigSchema = Sury.$schema(s => ({
   host: s.m(Sury.string),
-  port: s.m(Sury.int),
+  port: s.m(Sury.int32),
   database: s.m(Sury.string),
   username: s.m(Sury.string),
   secretArn: s.m(Sury.string)

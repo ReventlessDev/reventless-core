@@ -3,13 +3,12 @@
 > **Status: resolved upstream in ReScript 12.3.1**, which this repo now pins. Its release notes
 > list "Fix build crash when the compiler emits output that is not valid UTF-8" (rescript-lang
 > PR 8482) and a companion fix that keeps multibyte characters intact when code frames wrap
-> (PR 8520). No issue needs filing. A clean `reventless-host-shell` build on 12.3.1 is still to
-> be confirmed in the UI repo; see
+> (PR 8520). No issue needs filing. See
 > [rescript-version-upgrade.md](../analysis/done/rescript-version-upgrade.md).
 
 ## Symptom
 
-A full (clean) `rescript build` of `reventless-host-shell` panics the Rust build
+A full (clean) `rescript build` of a larger downstream application panics the Rust build
 orchestrator (rewatch) before any module output is written:
 
 ```
@@ -73,14 +72,13 @@ Notes:
 
 ## Affected / not affected
 
-- **rescript 12.2.0**: builds `reventless-host-shell` fine (it was last built
+- **rescript 12.2.0**: builds the affected application fine (it was last built
   there on 2026-06-17). The panic is a **12.3.0 regression** for this path.
-- **rescript 12.3.0**: full clean build of `reventless-host-shell` panics.
+- **rescript 12.3.0**: a full clean build of that application panics.
 - **No fixed release exists** — npm `rescript` has only `12.3.0-beta.1` and
   `12.3.0` in the 12.3 line; `12.2.0` is the last good one.
-- `reventless-core` (incl. `reventless-aws`) and `reventless-ui` base/routes
-  build clean at 12.3.0 — their captured output happens not to split a
-  multibyte char at a read boundary. Only `reventless-host-shell` trips it.
+- `reventless-core` (incl. `reventless-aws`) builds clean at 12.3.0 — its
+  captured output happens not to split a multibyte char at a read boundary.
 
 ## Proposed upstream fix (one line)
 
@@ -132,20 +130,14 @@ consistency with `execute_post_build_command`.)
 
 ## Impact on this monorepo / workarounds
 
-- The user-facing bug this surfaced from (the cross-plugin product multi-select)
-  was fixed independently via an **incremental** rebuild of
-  `RegisterFragments.res.mjs` — see the AutoUI `generateFragments` signature
-  realignment. host-shell development and deploy are not blocked; only clean
-  full builds are.
+- The user-facing bug this surfaced from was fixed independently via an
+  **incremental** rebuild. Development and deploy were not blocked; only clean
+  full builds were.
 - **CI guard scoping:** a "clean rebuild → fail on tracked `.res.mjs` diff"
-  check is viable today for `reventless-core` + `reventless-ui` base/routes
-  (they rebuild idempotently at 12.3.0). For `reventless-host-shell`, substitute
-  a targeted check — *rebuild host-shell whenever `AutoUI.generateFragments`'s
-  signature changes* — until rescript ships the fix above, since a clean full
-  build cannot complete on 12.3.0.
-- Revisit a full host-shell clean-build guard once a patched rescript (>12.3.0
-  with the `from_utf8_lossy` fix) is released, or if the monorepo standardizes
-  back on 12.2.0.
+  check is viable for `reventless-core` (it rebuilds idempotently at 12.3.0).
+- Revisit a full clean-build guard for affected applications once a patched
+  rescript (>12.3.0 with the `from_utf8_lossy` fix) is released, or if they
+  standardize back on 12.2.0.
 
 ## Interaction with the test-`.res.mjs` untracking workstream (2026-07-25)
 
@@ -158,7 +150,7 @@ files carry the non-ASCII (em-dashes / box-drawing in GWT descriptions) that tri
 so `reventless-core` could panic where it currently builds clean.
 
 **Recommended companion fix:** run full/clean builds via `rescript-legacy build` (the ninja
-path, immune; `console-web` already does). `pinned-dependencies` is originally a bsb feature,
+path, immune). `pinned-dependencies` is originally a bsb feature,
 so it is fully supported under legacy — the switch de-risks both the panic and the pinning
 spike simultaneously. Keep rewatch (`rescript build`) for incremental `-w` dev only. The
 durable fix remains the one-line upstream `from_utf8_lossy` patch above — **still worth filing

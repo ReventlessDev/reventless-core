@@ -9,7 +9,7 @@ import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src
 let stateSchema = Sury.$schema(s => ({
   productId: s.m(ProductId$CatalogSpec.schema),
   name: s.m(Sury.string),
-  price: s.m(Sury.float)
+  price: s.m(Sury.number)
 }));
 
 let consumedEventSchema = Sury.union([
@@ -17,12 +17,12 @@ let consumedEventSchema = Sury.union([
     TAG: "CatalogProductSynced",
     productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
     name: s.m(Sury.string),
-    price: s.m(Sury.float)
+    price: s.m(Sury.number)
   })),
   Sury.$schema(s => ({
     TAG: "CatalogProductPriceChanged",
     productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
-    price: s.m(Sury.float)
+    price: s.m(Sury.number)
   }))
 ]);
 

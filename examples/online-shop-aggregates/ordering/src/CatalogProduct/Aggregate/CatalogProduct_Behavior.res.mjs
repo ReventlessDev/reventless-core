@@ -7,7 +7,7 @@ let stateSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "Created",
     name: s.m(Sury.string),
-    price: s.m(Sury.float)
+    price: s.m(Sury.number)
   }))
 ]);
 
