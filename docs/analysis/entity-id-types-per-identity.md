@@ -146,9 +146,12 @@ module type Identity = {
 module Make = (K: {let key: string}): Identity => {
   include StringPure
   let key = K.key
-  let schema = schema->S.Metadata.set(~id=identityId, key)
+  let schema = schema->Semantic.mark(~id=Semantic.Id.identity, ~payload=IdentityOf({key: K.key}))
 }
 ```
+
+The identity is a **semantic**, not new metadata. `Semantic` is the closed vocabulary for
+"what a field's value is", and its schema walk already reads every semantic generically.
 
 Each application of `Make` to a structure literal yields a fresh abstract type (F1's compile).
 `with type input = string` makes `make` usable again. Components refer to the identity
@@ -182,10 +185,12 @@ that `Make` sets. That gives the runtime one place to ask "is this an identity, 
 one?": `DcbTag`, `Plugin_Structure`, the read-model key, and the sidecar.
 
 - **The tag key follows the type when the field is typed.** `buyer: CustomerId.t` is tagged
-  `customerId` without `@dcbTag("customerId")`. Existing fields are unaffected, because every
-  tagged id today is named after its key.
-- **A name that disagrees with its type is a warning.** `orderId: CustomerId.t` is exactly
-  the mix-up this work exists to catch.
+  `customerId` without `@dcbTag("customerId")`. An explicit `@dcbTag("k")` still wins. Existing
+  fields are unaffected, because every tagged id today is named after its key.
+- **A name that is another identity's key is a warning.** `orderId: CustomerId.t` is exactly
+  the mix-up this work exists to catch. A role name is not: `sellerId: CustomerId.t` is
+  fine as long as no `SellerId` exists. Only a check that sees the plugin's identities can
+  tell the two apart, so this belongs beside `check:dcb-scope`, not in the per-file PPX.
 - **`DcbTag` and `Reference` need type-preserving helpers** (`S.t<'a> => S.t<'a>`). Their
   metadata is already type-agnostic.
 - **Partition inference reads identities.** `idFieldsOfProperties` reads identity metadata
@@ -284,11 +289,14 @@ by the wrong identity with no error.
 
 ## Costs
 
-- **PPX:** the F4 sites accept the identity shape; the tag key follows the type; a
-  name/type mismatch warns. One recognition helper, used at about a dozen sites.
-- **Spec:** `Id.Identity`, `Id.Make`, identity metadata; type-preserving `DcbTag` /
-  `Reference` helpers; the partition inference and read-model key read metadata first; a
-  generic key in `Projection.action`.
+- **PPX:** the F4 sites accept the identity shape; the tag key follows the type unless
+  `@dcbTag` overrides it; spec packages skip `module Id` injection. One recognition helper,
+  used at about a dozen sites.
+- **Spec:** `Id.Identity`, `Id.Make`, the `identity` semantic and an identity on
+  `ReferenceTo`; type-preserving `DcbTag` / `Reference` helpers; the partition inference and
+  read-model key read the semantic first; a generic key in `Projection.action`.
+- **Checks:** beside `check:dcb-scope`, a field named after another identity's key, and an
+  untyped field whose key has a declared identity.
 - **Handlers:** id collections in state, e.g. `array<string>` in DCB
   [`PlaceOrder_Behavior.res:6`](../../examples/online-shop-dcb/ordering/src/Order/StateChange/PlaceOrder_Behavior.res#L6),
   become `array<OrderId.t>`. `==` and `Array.includes` work on abstract types; `Dict` keys
@@ -300,16 +308,18 @@ by the wrong identity with no error.
 
 Each step ships on its own, in this order.
 
-1. **`Id.Identity`, `Id.Make` and identity metadata.** Additive. Correct `Id.T`'s doc
-   comment (F1).
+1. **`Id.Identity`, `Id.Make`, and the `identity` semantic** with `ReferenceTo` carrying an
+   optional identity (open question 2). Additive. Correct `Id.T`'s doc comment (F1).
 2. **The runtime accepts identity schemas:** typed `DcbTag` / `Reference` helpers; the
    partition inference, read-model key and `extractReferences` read metadata before names.
    Additive.
-3. **The PPX accepts identity-typed fields** at every F4 site, derives the tag key from the
-   type, and warns on a name/type mismatch. Nothing may write a typed id before this lands.
-4. **Derived and checked references.** Runtime only.
+3. **The PPX accepts identity-typed fields** at every F4 site and derives the tag key from the
+   type unless `@dcbTag("k")` says otherwise. Nothing may write a typed id before this lands.
+4. **Derived and checked references**, plus the identity-name check and the untyped-field
+   report (open question 3). Runtime and `check:dcb-scope` only.
 5. **Migrate one example plugin**, including one cross-plugin identity in its `*-spec`
-   package. Measure the handler, projection and test churn before recommending the rest.
+   package, whose `module Id` injection is skipped first (open question 5). Measure the
+   handler, projection and test churn before recommending the rest.
 6. **Point component Ids at identities.** Aggregates and read models write
    `module Id = <Identity>`; remove `StateChangeSlice.Spec.Id`; type StateViewSlice row keys.
 7. **Document the conversion rule (F5)**: schema inside JSON documents, `toString` for
@@ -318,14 +328,80 @@ Each step ships on its own, in this order.
 **Not recommended:** sealing afresh per file (F3); one type per chapter as the definition of
 identity; a generated catalog as anything but a one-off migration aid.
 
-## Open questions
+## Open questions and recommendations
 
-- **Composite partitions** (`@compositePartitionTag`): is the composite its own identity
-  (`Make` over a record), or a pair of identities?
-- **Validation per identity:** should `Make` accept a refinement (UUID, prefix), or does that
-  belong to semantic types?
-- **Should an untyped `*Id: string` eventually warn?**
-- **Existing data where name and key differ:** retyping such a field would change its tag key.
-  No example has one. A migration should refuse the retype, or keep the field-name key with
-  `@dcbTag`.
-- **The `*-spec` package:** depend on `reventless-spec`, or carry a copy of `Make`?
+### 1. Composite partitions: one identity, or several?
+
+**Recommendation: neither for now. Composite members stay `string`, and nothing is built
+until something references a composite as a whole.**
+
+The one composite shape in the tree (a resource sync keyed by `{environment, resourceName}`,
+fixture `EpCompositeSlice.res`) has members that are not identities. `environment` is a
+low-cardinality prefix that exists to spread fences, and no field anywhere names "a resource"
+by the joined value. Typing the members would claim entity-hood they do not have. A
+`Make`-over-record identity would be a new representation (the join lives in
+`DcbTag.compositePartitionMember`, not in the value) without a consumer to justify it.
+The composite pass keeps its `string` check, so none of this blocks the rest.
+
+**Revisit when** a field needs to hold a composite key as a value: a reference to a
+composite-keyed view, or a command that addresses such an entity by one id.
+
+### 2. Validation per identity: in `Make`, or in semantic types?
+
+**Recommendation: `Make` takes no refinement. The identity *is* a semantic, and a reference to
+an identity carries it.**
+
+- **An identity says which entity, not what shape.** UUID or prefix formats describe the
+  representation, which the semantic vocabulary and `Id.T`'s own extensibility already cover:
+  a hand-written `Identity` with its own `schema` stays possible. No example needs one, so
+  `Make` should not grow a parameter for it.
+- **Add `identity` to the closed `Semantic` vocabulary** (`IdentityOf({key})`) rather than a
+  new metadata id. The schema walk then reads identities with no new branch.
+- **Mind the one-marker rule.** A schema carries exactly one semantic, and `Reference.to_`
+  writes `ReferenceTo`. An `@ref` on an identity-typed field would therefore erase the
+  identity. Extend `referenceTarget` with `identity: option<string>` so a reference states
+  both facts. `Semantic.mark` is already type-preserving (`S.t<'a> => S.t<'a>`), which is
+  most of the typed-helper work in step 2.
+
+### 3. Should an untyped `*Id: string` warn?
+
+**Recommendation: yes, but only when an identity for that key is declared in scope, and as a
+report from `check:dcb-scope`, not a PPX warning.**
+
+A blanket warning on every `*Id: string` would fire on every existing plugin and on plugins
+that never adopt identities, and the per-file PPX cannot know which identities exist. The
+precise mistake is narrower: `ProductId` is declared, and a field still says
+`productId: string`. That is the half-migrated state where the compiler guards some uses and
+not others. Report it where the whole plugin is visible (step 4), so adopting identities is
+opt-in per plugin and, once adopted, complete by check.
+
+### 4. Existing data where a field's name and its identity key differ
+
+**Recommendation: preserve the stored key with an explicit `@dcbTag("<old key>")` rather than
+refusing the retype.**
+
+With the rule that an explicit `@dcbTag` wins (§ Recognition), retyping
+`sellerId: string` to `sellerId: CustomerId.t @dcbTag("sellerId")` keeps every stored tag
+matching, gains the type, and changes no data. A migration that retypes a field whose name
+is not its identity's key writes the annotation. Moving the data onto the identity's key
+is then a separate, deliberate event-log migration, not a side effect of a type change. No
+example has such a field today, so this is a rule for the migration, not a task.
+
+### 5. `*-spec` packages: depend on `reventless-spec`, or copy `Make`?
+
+**Recommendation: depend on `reventless-spec`, and first make the PPX skip `module Id`
+injection in spec packages.**
+
+- **A copy would drift.** `Make` marks the schema with a semantic from a closed,
+  framework-owned vocabulary. A copied `Make` either copies that vocabulary or marks nothing,
+  and the runtime would then not recognise the identity.
+- **It adds no weight for consumers.** Every package that consumes a `*-spec` package is a
+  plugin, and every plugin already depends on `reventless-spec`.
+- **The PPX would change behaviour.** `*-spec` packages already run `reventless-ppx`, and only
+  the missing dependency keeps it out of spec mode. With the dependency,
+  [`ReventlessPpx.ml:796`](../../packages/reventless-ppx/src/ppx/ReventlessPpx.ml#L796) would
+  inject `module Id = Reventless.Id.String` into every extension-point contract, because that
+  gate checks `has_reventless_spec` only. Authorization and read-consistency injection already
+  skip spec packages through `is_spec_namespace_pkg`
+  ([`AuthorizationInjection.ml:287`](../../packages/reventless-ppx/src/ppx/AuthorizationInjection.ml#L287)).
+  Give the Id injection the same skip in the same change (step 5).
