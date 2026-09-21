@@ -793,7 +793,12 @@ let transform (str : structure) : structure =
         prefix := !prefix @ [gen_open_projection ~loc];
       if not (Util.has_let_binding "name" body) then
         prefix := !prefix @ [gen_name ~loc name];
-      if has_reventless_spec && not (Util.has_module_binding "Id" body) then
+      (* A [*-spec] package publishes contracts, not components: an extension
+         point's events need no stream id, and a package that depends on
+         reventless-spec only to declare its identities must not grow one. *)
+      if has_reventless_spec
+         && not (AuthorizationInjection.is_spec_namespace_pkg loc)
+         && not (Util.has_module_binding "Id" body) then
         prefix := !prefix @ [gen_module_id ~loc];
       let is_readmodel =
         Util.is_readmodel_filename loc.loc_start.pos_fname

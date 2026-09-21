@@ -95,16 +95,32 @@ let is_array_string_type (ct : core_type) : bool =
 let dcb_role_json ~dcb_context ~(name : string) ~(ct : core_type)
     ~(attrs : attributes) : Yojson.Safe.t =
   let role s = `Assoc [ ("role", `String s) ] in
+  (* A typed id is tagged by its identity's key, which only the runtime schema
+     knows. The sidecar has the syntax alone, so it states the key the module
+     name gives by convention — inside the existing role vocabulary, which older
+     readers decode strictly. *)
+  let identity_key =
+    let m = match Util.identity_module ct with
+      | Some m -> Some m
+      | None -> Option.bind (Util.array_element ct) Util.identity_module
+    in
+    Option.bind m Util.conventional_identity_key
+  in
   if not dcb_context then role "noTag"
-  else if has_attr "partitionTag" attrs then role "partition"
+  else if has_attr "partitionTag" attrs then
+    (match identity_key with
+     | Some key -> `Assoc [ ("role", `String "partition"); ("key", `String key) ]
+     | None -> role "partition")
   else if has_attr "noDcbTag" attrs then role "suppressed"
   else if has_attr "dcbTag" attrs then
     let key =
-      match DcbTagInference.get_explicit_dcb_tag_key attrs with
-      | Some k -> k
-      | None -> name
+      match DcbTagInference.get_explicit_dcb_tag_key attrs, identity_key with
+      | Some k, _ | None, Some k -> k
+      | None, None -> name
     in
     `Assoc [ ("role", `String "customKey"); ("key", `String key) ]
+  else if identity_key <> None then
+    `Assoc [ ("role", `String "customKey"); ("key", `String (Option.get identity_key)) ]
   else if is_array_string_type ct && ends_with name "Ids" then
     role "autoStringForKey"
   else if is_string_type ct && ends_with name "Id" then role "autoString"

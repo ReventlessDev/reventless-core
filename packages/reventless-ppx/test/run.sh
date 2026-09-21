@@ -332,6 +332,45 @@ type event = ProductAdded
 type directive = unit
 EOF
 
+# ─── Fixture: spec package that depends on reventless-spec ────────────
+# It declares an identity for its plugin's consumers, and must not grow a
+# `module Id` in its extension-point contracts for having the dependency.
+
+IDSPEC="$TMPDIR/idspec"
+mkdir -p "$IDSPEC/src"
+
+cat > "$IDSPEC/package.json" <<'EOF'
+{ "name": "@test/id-spec" }
+EOF
+
+cat > "$IDSPEC/rescript.json" <<EOF
+{
+  "name": "@test/id-spec",
+  "namespace": "ShopSpec",
+  "ppx-flags": ["$PPX_BIN", "sury-ppx/bin"],
+  "package-specs": { "module": "esmodule", "in-source": true },
+  "suffix": ".res.mjs",
+  "sources": [{ "dir": "src", "subdirs": true }],
+  "dependencies": ["sury", "@reventlessdev/reventless-spec"]
+}
+EOF
+
+link_node_modules "$IDSPEC"
+
+cat > "$IDSPEC/src/ProductId.res" <<'EOF'
+include Reventless.Id.Make({
+  let key = "productId"
+})
+EOF
+
+cat > "$IDSPEC/src/Products_ExtensionPoint.res" <<'EOF'
+@@reventless.spec
+
+@schema type command = unit
+@schema type event = ProductAdded({productId: ProductId.t, name: string})
+@schema type directive = unit
+EOF
+
 # ─── Build PPX ──────────────────────────────────────────────────────
 
 # ─── Fixture: DCB package (tests @@reventless.dcbTags) ──────────────
@@ -370,6 +409,52 @@ type event = ItemAdded({itemId: string, name: string, count: int, tagIds: array<
 
 @schema
 type error = AlreadyExists
+EOF
+
+# Identities: one type per entity, marked with the key the runtime tags by.
+cat > "$DCB/src/CustomerId.res" <<'EOF'
+include Reventless.Id.Make({
+  let key = "customerId"
+})
+EOF
+cat > "$DCB/src/ProductId.res" <<'EOF'
+include Reventless.Id.Make({
+  let key = "productId"
+})
+EOF
+
+# Every DCB marker on identity-typed fields. `buyer` is not named `*Id`: the type
+# is what makes it a tag, and without the ppx accepting it the field would lose
+# its tag with no error.
+cat > "$DCB/src/RegisterBuyer.res" <<'EOF'
+@@reventless.spec
+@@reventless.dcbTags
+
+@schema
+type command = RegisterBuyer({@partitionTag buyer: CustomerId.t, name: string})
+
+@schema
+type event =
+  BuyerRegistered({
+    @partitionTag buyer: CustomerId.t,
+    @dcbTag("sellerId") seller: CustomerId.t,
+    @crossPartition watchers: array<CustomerId.t>,
+    wishlist: array<ProductId.t>,
+    @ref("Products") favourite: ProductId.t,
+    previous: option<CustomerId.t>,
+  })
+
+@schema
+type error = AlreadyRegistered
+EOF
+
+# @id and @owner on identity-typed state fields.
+mkdir -p "$DCB/src/ReadModel"
+cat > "$DCB/src/ReadModel/Buyers.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = {@id buyer: CustomerId.t, @owner owner: CustomerId.t, name: string}
 EOF
 
 # DCB Delegate module — @@reventless.spec auto-detects module Delegate, no @reventless.delegate needed
@@ -1835,6 +1920,19 @@ echo ""
 echo "=== Test: no module Id in spec package (no reventless-spec dep) ==="
 assert_js_not_contains "$JS" 'Reventless' "no Reventless reference in output"
 
+echo ""
+echo "Compiling identity-declaring spec package..."
+if ! (cd "$IDSPEC" && npx rescript build 2>&1); then
+  echo "Identity spec build FAILED"
+  exit 1
+fi
+
+echo ""
+echo "=== Test: a spec package with reventless-spec gets no module Id ==="
+JS="$IDSPEC/src/Products_ExtensionPoint.res.mjs"
+assert_js_not_contains "$JS" 'Id$Reventless' "no injected module Id in an extension-point contract"
+assert_js_contains "$JS" 'ProductId$ShopSpec.schema' "the contract's event carries the declared identity"
+
 # ─── Compile DCB package ────────────────────────────────────────────
 
 echo ""
@@ -1857,6 +1955,22 @@ else
   fail "DcbTag injection count" "expected >=4 DcbTag refs for itemId+tagIds, got $DCB_COUNT"
 fi
 assert_js_contains "$JS" 'let moduleUrl'                   "DCB moduleUrl injected"
+
+echo ""
+echo "=== Test: identity-typed fields keep their DCB markers ==="
+JS="$DCB/src/RegisterBuyer.res.mjs"
+assert_js_contains "$JS" 'DcbTag$Reventless.markPartition(CustomerId$TestDcb.schema)' "@partitionTag on an identity composes onto its schema"
+assert_js_contains "$JS" 'DcbTag$Reventless.markForKey(CustomerId$TestDcb.schema, "sellerId")' "@dcbTag(key) on an identity keeps the explicit key"
+assert_js_contains "$JS" 'DcbTag$Reventless.markCrossPartition(CustomerId$TestDcb.schema)' "@crossPartition on an array of identities marks the element"
+assert_js_contains "$JS" 'DcbTag$Reventless.mark(ProductId$TestDcb.schema)' "an array of identities is auto-tagged per element"
+assert_js_contains "$JS" 'Reference$Reventless.mark(ProductId$TestDcb.schema' "@ref on an identity composes onto its schema"
+assert_js_contains "$JS" 'Sury.$option(CustomerId$TestDcb.schema)' "an optional identity is left as it is, like option<string>"
+
+echo ""
+echo "=== Test: @id and @owner on identity-typed state fields ==="
+JS="$DCB/src/ReadModel/Buyers.res.mjs"
+assert_js_contains "$JS" 'state => state.buyer'               "@id on an identity generates makeId"
+assert_js_contains "$JS" 'Owner$Reventless.mark(CustomerId$TestDcb.schema)' "@owner on an identity composes onto its schema"
 
 echo ""
 echo "=== Test: module Delegate auto-detected via @@reventless.spec (no @reventless.delegate needed) ==="
@@ -2694,7 +2808,7 @@ EOF
 if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
   fail "@subId on non-string field" "expected compilation to fail but it succeeded"
 else
-  if echo "$OUTPUT" | grep -q "@subId can only be used on string fields"; then
+  if echo "$OUTPUT" | grep -q "@subId can only be used on string or identity fields"; then
     pass "@subId on non-string field → correct compile error"
   else
     fail "@subId on non-string field" "unexpected error output: $OUTPUT"
@@ -2736,7 +2850,7 @@ EOF
 if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
   fail "@id on non-string field" "expected compilation to fail but it succeeded"
 else
-  if echo "$OUTPUT" | grep -q "@id can only be used on string fields"; then
+  if echo "$OUTPUT" | grep -q "@id can only be used on string or identity fields"; then
     pass "@id on non-string field → correct compile error"
   else
     fail "@id on non-string field" "unexpected error output: $OUTPUT"
@@ -3674,6 +3788,38 @@ else
   fi
 fi
 rm -f "$ERROR/src/ReadModel/OldNoTag.res"
+
+echo ""
+echo "=== Test: PPX error — @compositePartitionTag on an identity ==="
+
+# A composite member is one segment of a joined key, not an entity's id. Left to
+# the string-only pass, the member would drop out of the key with no error.
+cat > "$ERROR/src/SiteId.res" <<'EOF'
+include Reventless.Id.Make({
+  let key = "siteId"
+})
+EOF
+cat > "$ERROR/src/SyncSite.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type event = SiteSynced({@compositePartitionTag env: string, @compositePartitionTag site: SiteId.t})
+@schema
+type command = unit
+@schema
+type error = unit
+EOF
+
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "identity composite member" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q "@compositePartitionTag members are plain strings"; then
+    pass "identity composite member → correct compile error"
+  else
+    fail "identity composite member" "unexpected error output: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/SiteId.res" "$ERROR/src/SyncSite.res"
 
 echo ""
 echo "─────────────────────────"

@@ -201,4 +201,36 @@ let () =
        (match other with Some s -> s | None -> "None");
      exit 1);
 
+  (* ── Typed ids: the role follows the type, inside the existing vocabulary ── *)
+  let identity_body : structure =
+    [%str
+      type event =
+        | BuyerRegistered of
+            { buyer : CustomerId.t
+            ; owner : CustomerId.t [@partitionTag]
+            ; seller : CustomerId.t [@dcbTag "sellerId"]
+            ; wishlist : ProductId.t array }
+        [@@schema]]
+  in
+  let ij =
+    ReventlessPpx__SidecarEmit.fragment_json ~spec_name:"RegisterBuyer"
+      ~fname:"RegisterBuyer.res" identity_body
+  in
+  let is = Yojson.Safe.to_string ij in
+  let imust label needle =
+    let contains hay sub =
+      let lh = String.length hay and ls = String.length sub in
+      let rec go i = i + ls <= lh && (String.equal (String.sub hay i ls) sub || go (i + 1)) in
+      ls = 0 || go 0
+    in
+    if contains is needle then Printf.printf "  ok(identity): %s\n" label
+    else (Printf.printf "  FAIL(identity): %s\n    missing %S in:\n%s\n" label needle is; exit 1)
+  in
+  imust "auto-tagged by the identity's key"
+    "\"name\":\"buyer\",\"kind\":{\"kind\":\"custom\",\"name\":\"CustomerId.t\"}";
+  imust "buyer → customerId" "{\"role\":\"customKey\",\"key\":\"customerId\"}";
+  imust "partition carries the key" "{\"role\":\"partition\",\"key\":\"customerId\"}";
+  imust "an explicit key wins" "{\"role\":\"customKey\",\"key\":\"sellerId\"}";
+  imust "array element → productId" "{\"role\":\"customKey\",\"key\":\"productId\"}";
+
   print_endline "ALL SIDECAR CHECKS PASSED"

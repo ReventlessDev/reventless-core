@@ -45,6 +45,37 @@ let dcb_tag_for_key_attr ~loc ~key =
     attr_payload = payload;
     attr_loc = loc }
 
+let strip_s_matches_attr (attrs : attributes) =
+  List.filter (fun (attr : attribute) ->
+    not (String.equal attr.attr_name.txt "s.matches")
+  ) attrs
+
+(** [@s.matches(Reventless.DcbTag.<fn>(M.schema))] for an identity-typed field:
+    the marker composes onto the identity's schema, so the field keeps its type
+    and its tag key follows the identity. [~key] is [@dcbTag("k")]'s override. *)
+let identity_tag_attr ~loc ?key fn m =
+  let key_args = match key with
+    | Some k -> [ (Labelled "key", Ast_builder.Default.estring ~loc k) ]
+    | None -> []
+  in
+  Util.s_matches_apply ~loc
+    (Ldot (Ldot (Lident "Reventless", "DcbTag"), fn))
+    ((Nolabel, Util.identity_schema_expr ~loc m) :: key_args)
+
+(** The identity module of an [array<<M>Id.t>] field's element. *)
+let array_identity (ct : core_type) =
+  match Util.array_element ct with
+  | Some elem -> Util.identity_module elem |> Option.map (fun m -> (elem, m))
+  | None -> None
+
+(** Puts [attr] on an array field's element type, replacing any [@s.matches]. *)
+let with_elem_attr (ld : label_declaration) (elem : core_type) attr =
+  match ld.pld_type.ptyp_desc with
+  | Ptyp_constr (arr_lid, [ _ ]) ->
+    let new_elem = { elem with ptyp_attributes = attr :: strip_s_matches_attr elem.ptyp_attributes } in
+    { ld with pld_type = { ld.pld_type with ptyp_desc = Ptyp_constr (arr_lid, [ new_elem ]) } }
+  | _ -> ld
+
 let ends_with_ids name =
   let len = String.length name in
   len >= 4
@@ -55,11 +86,6 @@ let ends_with_ids name =
 let has_s_matches_attr (attrs : attributes) =
   List.exists (fun (attr : attribute) ->
     String.equal attr.attr_name.txt "s.matches"
-  ) attrs
-
-let strip_s_matches_attr (attrs : attributes) =
-  List.filter (fun (attr : attribute) ->
-    not (String.equal attr.attr_name.txt "s.matches")
   ) attrs
 
 (** @partitionTag — marks field as the DcbTag.partition key. *)
@@ -152,6 +178,18 @@ let transform_label_decl ~loc (ld : label_declaration) =
      || has_cross_partition_field_attr ld.pld_attributes
      || has_no_tag_field_attr ld.pld_attributes
      || has_explicit_dcb_tag_field_attr ld.pld_attributes then ld
+  (* A typed id is tagged whatever it is called: the type is the declaration. *)
+  else if Util.identity_module ld.pld_type <> None then
+    if has_s_matches_attr ld.pld_type.ptyp_attributes then ld
+    else
+      let m = Option.get (Util.identity_module ld.pld_type) in
+      { ld with pld_type = { ld.pld_type with
+                             ptyp_attributes =
+                               identity_tag_attr ~loc "mark" m :: ld.pld_type.ptyp_attributes } }
+  else if array_identity ld.pld_type <> None then
+    let (elem, m) = Option.get (array_identity ld.pld_type) in
+    if has_s_matches_attr elem.ptyp_attributes then ld
+    else with_elem_attr ld elem (identity_tag_attr ~loc "mark" m)
   else if Util.ends_with_id ld.pld_name.txt
      && is_string_type ld.pld_type
      && not (has_s_matches_attr ld.pld_type.ptyp_attributes) then
@@ -237,6 +275,14 @@ let map_schema_fields (f : label_declaration -> label_declaration)
     DcbTag.partition, so @partitionTag works correctly on *Id fields in slice folders. *)
 let transform_partition_tags ~loc (str : structure) : structure =
   map_schema_fields (fun ld ->
+    match Util.identity_module ld.pld_type with
+    | Some m when has_partition_tag_field_attr ld.pld_attributes ->
+      { ld with
+        pld_type = { ld.pld_type with
+                     ptyp_attributes = identity_tag_attr ~loc "markPartition" m
+                                       :: strip_s_matches_attr ld.pld_type.ptyp_attributes };
+        pld_attributes = strip_partition_tag_field_attr ld.pld_attributes }
+    | _ ->
     if has_partition_tag_field_attr ld.pld_attributes
        && is_string_type ld.pld_type then
       { ld with
@@ -254,6 +300,17 @@ let transform_partition_tags ~loc (str : structure) : structure =
 let transform_cross_partition_tags ~loc (str : structure) : structure =
   map_schema_fields (fun ld ->
     if not (has_cross_partition_field_attr ld.pld_attributes) then ld
+    else if Util.identity_module ld.pld_type <> None then
+      let m = Option.get (Util.identity_module ld.pld_type) in
+      { ld with
+        pld_type = { ld.pld_type with
+                     ptyp_attributes = identity_tag_attr ~loc "markCrossPartition" m
+                                       :: strip_s_matches_attr ld.pld_type.ptyp_attributes };
+        pld_attributes = strip_cross_partition_field_attr ld.pld_attributes }
+    else if array_identity ld.pld_type <> None then
+      let (elem, m) = Option.get (array_identity ld.pld_type) in
+      { (with_elem_attr ld elem (identity_tag_attr ~loc "markCrossPartition" m)) with
+        pld_attributes = strip_cross_partition_field_attr ld.pld_attributes }
     else if is_string_type ld.pld_type then
       { ld with
         pld_type = { ld.pld_type with
@@ -294,6 +351,19 @@ let transform_explicit_dcb_tags ~loc (str : structure) : structure =
     else
       let key_override = get_explicit_dcb_tag_key ld.pld_attributes in
       let attr = dcb_explicit_tag_attr ~loc ~key_override in
+      let identity_fn = match key_override with Some _ -> "markForKey" | None -> "mark" in
+      let clean = strip_explicit_dcb_tag_field_attr ld.pld_attributes in
+      match Util.identity_module ld.pld_type, array_identity ld.pld_type with
+      | Some m, _ when not (has_s_matches_attr ld.pld_type.ptyp_attributes) ->
+        { ld with
+          pld_type = { ld.pld_type with
+                       ptyp_attributes = identity_tag_attr ~loc ?key:key_override identity_fn m
+                                         :: ld.pld_type.ptyp_attributes };
+          pld_attributes = clean }
+      | None, Some (elem, m) when not (has_s_matches_attr elem.ptyp_attributes) ->
+        { (with_elem_attr ld elem (identity_tag_attr ~loc ?key:key_override identity_fn m)) with
+          pld_attributes = clean }
+      | _ ->
       if is_string_type ld.pld_type
          && not (has_s_matches_attr ld.pld_type.ptyp_attributes) then
         { ld with
@@ -391,6 +461,15 @@ let transform_composite_partition_tags ~loc (str : structure) : structure =
               match cd.pcd_args with
               | Pcstr_record fields ->
                 (* Collect indices of fields annotated with @compositePartitionTag *)
+                List.iter (fun (ld : label_declaration) ->
+                  if has_composite_partition_tag_field_attr ld.pld_attributes
+                     && Util.identity_module ld.pld_type <> None then
+                    Location.raise_errorf ~loc:ld.pld_loc
+                      "@compositePartitionTag members are plain strings: a member is \
+                       one segment of a joined key, not an entity's id. Declare '%s' \
+                       as string."
+                      ld.pld_name.txt
+                ) fields;
                 let composite_indices =
                   List.mapi (fun i ld ->
                     if has_composite_partition_tag_field_attr ld.pld_attributes

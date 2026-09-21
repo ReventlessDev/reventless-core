@@ -241,6 +241,46 @@ let branded_string_schema_lident (ct : core_type) : Longident.t option =
     schema_lident_of_type_lident txt
   | _ -> None
 
+(* The identity module a [<M>Id.t] type names — [OrderId.t], or qualified
+   [CatalogSpec.ProductId.t]. Syntactic only: the ppx cannot see that the module
+   is an [Id.Make] application, so the shape stands in for it, and it is used only
+   to choose which schema a field's marker composes onto. The key itself comes
+   from the schema's metadata at runtime, never from this name. *)
+let identity_module (ct : core_type) : Longident.t option =
+  match ct.ptyp_desc with
+  | Ptyp_constr ({ txt = Ldot (m, "t"); _ }, []) ->
+    let last = match m with
+      | Lident n | Ldot (_, n) -> Some n
+      | Lapply _ -> None
+    in
+    (match last with
+     | Some n when ends_with_id n -> Some m
+     | _ -> None)
+  | _ -> None
+
+(* [M.schema] for an identity-typed field: the schema [Id.Make] marked. *)
+let identity_schema_expr ~loc (m : Longident.t) : expression =
+  Ast_builder.Default.pexp_ident ~loc { txt = Ldot (m, "schema"); loc }
+
+(* The key an identity has by convention, read off its module name
+   ([CustomerId] -> [customerId]). Only for the sidecar, which has no schema to
+   ask; the runtime reads the key [Id.Make] was given. *)
+let conventional_identity_key (m : Longident.t) : string option =
+  match m with
+  | Lident n | Ldot (_, n) when String.length n > 0 ->
+    Some (String.uncapitalize_ascii n)
+  | _ -> None
+
+(* [@s.matches(<fn>(<args>))] — the composing form every marker pass builds. *)
+let s_matches_apply ~loc (fn : Longident.t) (args : (arg_label * expression) list) : attribute =
+  let call =
+    Ast_builder.Default.pexp_apply ~loc
+      (Ast_builder.Default.pexp_ident ~loc { txt = fn; loc }) args
+  in
+  { attr_name = { txt = "s.matches"; loc };
+    attr_payload = PStr [{ pstr_desc = Pstr_eval (call, []); pstr_loc = loc }];
+    attr_loc = loc }
+
 (* The element type of [array<X>], if the type is one. *)
 let array_element (ct : core_type) : core_type option =
   match ct.ptyp_desc with

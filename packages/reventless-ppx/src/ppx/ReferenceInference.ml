@@ -102,6 +102,20 @@ let is_string_type (ct : core_type) =
   | Ptyp_constr ({ txt = Lident "string"; _ }, []) -> true
   | _ -> false
 
+(** [@s.matches(Reventless.Reference.mark(M.schema, ~plugin="P", "Entity"))] for an
+    identity-typed field: the reference composes onto the identity's schema and
+    carries the identity on its target. No key override — the identity is the key. *)
+let identity_ref_attr ~loc ~entity ~plugin_opt ~no_dcb m =
+  let fn = if no_dcb then "markWithoutDcbTag" else "mark" in
+  let plugin_args = match plugin_opt with
+    | None -> []
+    | Some plugin -> [ (Labelled "plugin", Ast_builder.Default.estring ~loc plugin) ]
+  in
+  Util.s_matches_apply ~loc
+    (Ldot (Ldot (Lident "Reventless", "Reference"), fn))
+    ((Nolabel, Util.identity_schema_expr ~loc m)
+     :: plugin_args @ [ (Nolabel, Ast_builder.Default.estring ~loc entity) ])
+
 let transform_label_decl (ld : label_declaration) : label_declaration =
   if not (has_ref_field_attr ld.pld_attributes) then ld
   else begin
@@ -114,6 +128,25 @@ let transform_label_decl (ld : label_declaration) : label_declaration =
     | Some (entity, plugin_opt) ->
       let no_dcb     = has_no_dcb_tag_attr ld.pld_attributes in
       let clean_attrs = strip_ref_field_attr ld.pld_attributes in
+      let identity_elem = match Util.array_element ld.pld_type with
+        | Some elem -> Util.identity_module elem |> Option.map (fun m -> (elem, m))
+        | None -> None
+      in
+      match Util.identity_module ld.pld_type, identity_elem with
+      | Some m, _ when not (has_s_matches_attr ld.pld_type.ptyp_attributes) ->
+        let attr = identity_ref_attr ~loc ~entity ~plugin_opt ~no_dcb m in
+        { ld with pld_attributes = clean_attrs;
+                  pld_type = { ld.pld_type with
+                               ptyp_attributes = attr :: ld.pld_type.ptyp_attributes } }
+      | None, Some (elem, m) when not (has_s_matches_attr elem.ptyp_attributes) ->
+        let attr = identity_ref_attr ~loc ~entity ~plugin_opt ~no_dcb m in
+        (match ld.pld_type.ptyp_desc with
+         | Ptyp_constr (arr_lid, [ _ ]) ->
+           let new_elem = { elem with ptyp_attributes = attr :: elem.ptyp_attributes } in
+           { ld with pld_attributes = clean_attrs;
+                     pld_type = { ld.pld_type with ptyp_desc = Ptyp_constr (arr_lid, [ new_elem ]) } }
+         | _ -> ld)
+      | _ ->
       if is_string_type ld.pld_type
          && not (has_s_matches_attr ld.pld_type.ptyp_attributes) then
         (* Scalar ref: the DCB tag key defaults to the field name, which already
@@ -147,7 +180,8 @@ let transform_label_decl (ld : label_declaration) : label_declaration =
           { ld with pld_attributes = clean_attrs; pld_type = new_type }
         | _ ->
           Location.raise_errorf ~loc:ld.pld_loc
-            "@ref only supports string and array<string> fields"
+            "@ref only supports string, array<string>, an identity (OrderId.t) and \
+             an array of one"
       end
   end
 

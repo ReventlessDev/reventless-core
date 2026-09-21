@@ -182,6 +182,10 @@ let is_string_type (ct : core_type) =
   | Ptyp_constr ({ txt = Lident "string"; _ }, []) -> true
   | _ -> false
 
+(* A key field holds a string at runtime: a plain one, or an identity. *)
+let is_key_type (ct : core_type) =
+  is_string_type ct || Util.identity_module ct <> None
+
 (** Find the @schema type state declaration in the structure, if it's a record type.
     Returns the list of label_declarations. *)
 let find_schema_state_record (str : structure) : label_declaration list option =
@@ -405,9 +409,9 @@ let generate_sub_id_config ~loc (str : structure) : structure_item list =
     (* @subId case *)
     if has_sub_id then begin
       let ld = List.hd sub_id_fields in
-      if not (is_string_type ld.pld_type) then
+      if not (is_key_type ld.pld_type) then
         Location.raise_errorf ~loc
-          "@subId can only be used on string fields, but '%s' is not a string"
+          "@subId can only be used on string or identity fields, but '%s' is neither"
           ld.pld_name.txt;
       [gen_single_sub_id ~loc ld.pld_name.txt]
     end
@@ -415,9 +419,9 @@ let generate_sub_id_config ~loc (str : structure) : structure_item list =
     else if has_composite then begin
       (* Validate all composite fields are strings *)
       List.iter (fun (ld : label_declaration) ->
-        if not (is_string_type ld.pld_type) then
+        if not (is_key_type ld.pld_type) then
           Location.raise_errorf ~loc
-            "@compositeSubId can only be used on string fields, but '%s' is not a string"
+            "@compositeSubId can only be used on string or identity fields, but '%s' is neither"
             ld.pld_name.txt
       ) composite_fields;
       (* Collect field names with separators in declaration order *)
@@ -562,9 +566,9 @@ let generate_make_id ~loc (str : structure) : structure_item list =
       (* @id case *)
       if has_id then begin
         let ld = List.hd id_fields in
-        if not (is_string_type ld.pld_type) then
+        if not (is_key_type ld.pld_type) then
           Location.raise_errorf ~loc
-            "@id can only be used on string fields, but '%s' is not a string"
+            "@id can only be used on string or identity fields, but '%s' is neither"
             ld.pld_name.txt;
         [gen_single_id ~loc ld.pld_name.txt]
       end
@@ -572,9 +576,9 @@ let generate_make_id ~loc (str : structure) : structure_item list =
       else begin
         (* Validate all composite fields are strings *)
         List.iter (fun (ld : label_declaration) ->
-          if not (is_string_type ld.pld_type) then
+          if not (is_key_type ld.pld_type) then
             Location.raise_errorf ~loc
-              "@compositeId can only be used on string fields, but '%s' is not a string"
+              "@compositeId can only be used on string or identity fields, but '%s' is neither"
               ld.pld_name.txt
         ) composite_fields;
         let field_info = List.map (fun (ld : label_declaration) ->

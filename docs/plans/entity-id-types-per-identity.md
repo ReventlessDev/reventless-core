@@ -206,6 +206,21 @@ and `option<CustomerId.t>`; a `*-spec` package with a `reventless-spec` dependen
 extension-point spec with no injected `module Id`. `check:dcb-scope` goldens unchanged. Every
 example builds.
 
+**Done (2026-09-21).** Every accepted site composes onto `M.schema` through the Phase 3
+helpers. Beyond the plan:
+- **`option<M.t>` is not auto-tagged**, matching `option<string>` today. An optional tag
+  would be a new behaviour for both, not part of this change.
+- **An identity-typed `@compositePartitionTag` is a compile error.** The member stays
+  `string` (open question 1). Left to the string-only pass, it would have dropped out of
+  the key silently.
+- **The sidecar stays inside its role vocabulary.** The tools repo's `Model.dcbRoleFromJson`
+  rejects an unknown role, so a typed id is `customKey` with the key its module name gives
+  by convention, and a `@partitionTag` on one adds that key beside `partition`. The field
+  kind stays `custom` (`CustomerId.t`), which is accurate.
+- **The `module Id` skip reached one package already.** `online-shop-hybrid-catalog-spec`
+  depends on `reventless-spec`, and its extension-point contract loses an `Id` export that
+  nothing read. Every other compiled file in the tree is byte-identical.
+
 **Release → Checkpoint B.**
 
 ---

@@ -133,14 +133,17 @@ let transform_label_decl (ld : label_declaration) : label_declaration =
            injecting [Owner.string] over it. Substituting would type-check and
            silently drop the brand's grammar, which is the one thing this pass
            is built not to do. *)
+        match Util.identity_module ty with
+        | Some m -> apply (owner_mark_attr ~loc (Util.identity_schema_expr ~loc m))
+        | None ->
         match Util.branded_string_schema_lident ty with
         | Some lid ->
           apply (owner_mark_attr ~loc
                    (Ast_builder.Default.pexp_ident ~loc { txt = lid; loc }))
         | None ->
           Location.raise_errorf ~loc
-            "@owner only supports string, option<string> and a semantic whose \
-             type is a string (Email.t and the like). A row has one owner, so \
+            "@owner only supports string, option<string>, an identity (CustomerId.t) \
+             and a semantic whose type is a string (Email.t and the like). A row has one owner, so \
              an array field cannot be one; give the owning id its own field. \
              For option<Email.t> and other wrapped forms, compose by hand with \
              @s.matches(Reventless.Owner.mark(<schema>))."

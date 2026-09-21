@@ -41,13 +41,10 @@ let directiveSchema = Sury.$schema(s => ({
 
 let name = "Catalog.Products";
 
-let Id;
-
 let moduleUrl = "@reventlessdev/online-shop-hybrid-catalog-spec/src/Products_ExtensionPoint.res.mjs";
 
 export {
   name,
-  Id,
   commandSchema,
   eventSchema,
   directiveSchema,
