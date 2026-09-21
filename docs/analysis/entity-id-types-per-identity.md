@@ -6,7 +6,8 @@ Id, on the grounds that each aggregate's `Id.t` is a distinct type. The revision
 premise false for every generated spec (F1) and works out what makes it true.<br/>
 **Status:** Analysis, no code changed. Verified against `alpha` by reading the PPX,
 `Reventless.Id`, `DcbTag`, `Reference`, `Plugin_Structure` and the three online-shop
-examples, and by compiling the sealing forms below in a scratch project.
+examples, and by compiling the sealing forms below in a scratch project.<br/>
+**Planned out in:** [entity-id-types-per-identity.md](../plans/entity-id-types-per-identity.md).
 
 ---
 
@@ -22,7 +23,7 @@ examples, and by compiling the sealing forms below in a scratch project.
 - **The Id module is per component, and an identity is not.** Many slices, views and plugins
   carry the same order id, and a DCB slice's own Id module is never read (F3).
 - **Proposal: one type per identity**, declared once with
-  `Reventless.Id.Make({let key = "productId"})`. The key is the DCB tag key, which the
+  `Reventless.Id.Make({let key = "productId"})`. In DCB the key is the tag key, which the
   runtime already treats as the plugin-wide name of "which thing". Every component that
   carries the identity uses that type.
 - **For DCB slices, the identity is not the chapter.** The chapter is the default place to
@@ -30,10 +31,16 @@ examples, and by compiling the sealing forms below in a scratch project.
 - **The type does not replace `@ref`.** The type says *what* a value is, and `@ref` says
   *which list* to pick it from. When exactly one view is keyed by the identity, the
   reference is derived. When several are, `@ref` chooses and is checked.
+- **Aggregates and read models use the same identities.** An aggregate's own id travels in
+  the envelope, so it adopts an identity with `module Id = OrderId` and no runtime change.
+  Read models need two fixes: their projections are string-typed, and the read-model key
+  rule cannot see the row's identity, which today mislabels the aggregates example's
+  `Orders` (F6).
 - **Nothing changes on the wire.** At runtime the type is a string schema, so no data
   needs migrating.
-- **The PPX must go first.** Every id-recognising site accepts only a literal `string`
-  (F4). Until that changes, a typed id field silently loses its DCB tag.
+- **The PPX must go first for DCB.** Every id-recognising site accepts only a literal
+  `string` (F4). Until that changes, a typed id field in a DCB slice silently loses its tag.
+  Aggregates carry no DCB tags, so they are the safe place to start.
 
 ---
 
@@ -121,17 +128,37 @@ out of the consistency boundary, and nothing reports it.
   the source plugin's Id type is not available there. Cross-plugin identities (below) change
   that.
 
+### F6: A read model's row identity is invisible, in its projections and in its key
+
+- **Projections drop to `string`.** `Projection.Mapping` carries `module SourceId: Id.T`, yet
+  `project` takes `Message.event'<string, _>` and returns `action<string, _>`
+  ([`Projection.res:98`](../../reventless/spec/src/types/Projection.res#L98)). The row key
+  in `Set(id, …)` is therefore a plain string whatever the read model's `module Id` says.
+- **The row identity is not in the state.** An aggregate's read model is keyed by the
+  envelope id. None of the aggregates example's read models (`Categories`, `Products`,
+  `AvailableProducts`, `Customers`, `Orders`) has its own id in its state.
+- **The key rule then answers from the wrong field.** `classifyKeyField`
+  ([`GraphQL_FragmentGenerator.res:331`](../../reventless/core/src/components/Api/GraphQL_FragmentGenerator.res#L331))
+  only looks at state fields. For `Orders = {customerId, productIds, lifecycle}` it finds no
+  `orderId`, takes the sole `*Id` field, and resolves the key to **`customerId`**.
+  `Plugin_Structure` publishes that as the view's key and builds the generated filter and
+  order-by on it. This happens today, independent of identity types: the rule's own
+  comment says convention outranks sole "so a view carrying one foreign key and no key of
+  its own is not keyed by the foreign key", and for an aggregate read model the
+  convention rung can never match.
+
 ---
 
 ## Design: one type per identity
 
 ### What an identity is
 
-An identity is a **DCB tag key**: `orderId`, `productId`, `customerId`. The runtime already
-reasons in these terms: tags are keyed by the key, partitions are chosen from it, and `*Ids`
-arrays are singularised onto it so they meet their producers. It also crosses plugins
-unchanged, from catalog's `ProductBecameAvailable({productId})` to ordering's
-`SyncCatalogProduct`.
+An identity is named by its **key**: `orderId`, `productId`, `customerId`. In DCB the key is
+the tag key, and the runtime already reasons in these terms: tags are keyed by it,
+partitions are chosen from it, and `*Ids` arrays are singularised onto it so they meet their
+producers. It also crosses plugins unchanged, from catalog's
+`ProductBecameAvailable({productId})` to ordering's `SyncCatalogProduct`. Aggregates have no
+tags, and for them the key is the name that references and read-model keys use.
 
 ### Declaring one
 
@@ -232,6 +259,40 @@ What the chapter is good for:
 - **The check.** Report a slice whose partition identity is not declared in its own chapter,
   e.g. `categoryId` partitioning a slice under `Product/`.
 
+### Aggregates and read models
+
+The same identities apply. What differs is where the aggregate's own id sits, and that
+read models need their projections and key rule to see it.
+
+- **The aggregate's id is in the envelope, not the payload.** `Order.Place` has no `orderId`
+  field. `module Id = OrderId` types the envelope, and the runtime already threads
+  `Spec.Id.t` generically through EventLog, CommandTopic, QueryDb and callbacks, so nothing
+  there changes. Payload fields that name other entities are typed as in a slice:
+  `Place({customerId: CustomerId.t, productIds: array<ProductId.t>})`.
+- **There is no tag to lose.** Automatic DCB tagging runs only in slice folders, which is why
+  the aggregates example writes `@noDcbTag` on `Order.Place`. F4's silent row does not apply;
+  the remaining string-only sites (`@ref`, `@owner`, `@id`) fail with a compile error. A gap
+  in an aggregate is therefore loud, which makes aggregates the safe first adopter.
+- **Event mappings gain the most.** `EventMapping.map` is already typed
+  `(Source.Id.t, …) => array<action<Target.Id.t, …>>`
+  ([`EventMapping.res:89`](../../reventless/spec/src/types/EventMapping.res#L89)), but both are
+  the same type today (F1). A mapping from `Order` to another aggregate that reuses the order
+  id as the target's id compiles now and becomes an error with identities. The example's
+  `AutoShipMapping` maps `Order` to `Order` and stays unchanged.
+- **Declare the identity in its own file, not in the aggregate.** `module Id = Make(…)`
+  inside `Order.res`, referred to as `Order.Id.t`, breaks as soon as two aggregates mention
+  each other, because ReScript forbids cyclic module dependencies. `OrderId.res` beside the
+  aggregate avoids that, and it serves a hybrid plugin in which aggregates and DCB slices
+  share the identity. An aggregate folder is already one entity, so the chapter question
+  does not arise.
+- **A read model's row identity is its `module Id`.** For a read model, write
+  `module Id = OrderId`; this states the row identity F6 found missing.
+  - The key rule consults it before the state fields.
+  - `customerId: CustomerId.t` in the state is then visibly a foreign identity and can
+    never be the key.
+  - The projection is typed by it: `project` takes `event'<SourceId.t, _>` and returns
+    `action<Id.t, _>`, the same generic key the StateViewSlice needs.
+
 ### Cross-plugin identities
 
 Plugins already depend at compile time on each other's `*-spec` packages; ordering depends on
@@ -248,9 +309,24 @@ belongs, used as `CatalogSpec.ProductId.t` in the extension-point events, in
 
 ### Wire compatibility
 
-JSON, GraphQL and storage are unchanged. The schema is `S.string`, and tag keys stay the same
-for every existing field. Adoption is source-only, plugin by plugin, with no event-log or
+JSON, GraphQL and storage are unchanged for every existing field. The schema is `S.string`,
+and tag keys stay the same. Adoption is source-only, plugin by plugin, with no event-log or
 read-model migration.
+
+**GraphQL typing.** `SchemaType.shapeOf`
+([:131](../../reventless/core/src/components/Api/SchemaType.res#L131)) types a string field as
+`ID` when it is tagged or referenced, and otherwise by its `*Id` name. It must also type an
+identity as `ID`. Otherwise `buyer: CustomerId.t` in an aggregate, which is untagged and
+unreferenced, would be published as `String` and lose its id-ness. Newly typed fields whose
+name does not end in `Id` then change from `String` to `ID`. Clients do not need to know
+this in advance: every mutation argument already carries the type the SDL declares, as
+`x-reventless-graphql-type` (`Plugin_Structure.annotateArgTypes`), rendered by the same call
+that writes the SDL. A client that honours that key cannot disagree with the server.
+
+**Name-based consumers degrade; they do not break.** A client that recognises entity links,
+reference cells or drill targets by the `*Id` name shows `buyer: CustomerId.t` as plain text
+until it reads the identity semantic. The semantic's key (`customerId`) gives the same entity
+stem the name did, so moving to it is a local change for such a client.
 
 ---
 
@@ -259,9 +335,9 @@ read-model migration.
 The type says which views are eligible, and it decides the reference whenever that set has one
 member.
 
-- **A view is keyed by an identity.** The key ladder (F2) names one field. When that field is
-  typed `ProductId.t`, the view's key is known from metadata rather than guessed from the
-  name.
+- **A view is keyed by an identity.** For a read model it is the `module Id`. For a
+  StateViewSlice the key rule (F2) names one field, and when that field is typed
+  `ProductId.t` the key is known from metadata rather than guessed from the name.
 - **Every `@ref` in the examples already points at a view keyed by the field's identity.**
   `PlaceOrder.productIds` → `AvailableProducts` (`productId`); `AddProduct.categoryId` →
   `Categories` (`categoryId`).
@@ -275,15 +351,16 @@ member.
 This belongs in `Plugin_Structure.extractReferences`
 ([:593](../../reventless/core/src/plugin/component/Plugin_Structure.res#L593)), which already
 sees every view schema in the plugin. It emits the same `{fieldName, entity, plugin}` records
-as today, so clients of the plugin structure are unaffected.
+as today, so clients that resolve references from those records need no change. (Clients
+that recognise ids by name are covered under Wire compatibility.)
 
 The type cannot choose **which list**. `AvailableProducts` is a filtered subset of the
 products, and preferring it to `Products` is a product decision. `@ref` stays for that
 choice, and only needs writing when there is one.
 
-StateViewSlice row keys should be typed too. `Projection.action` becomes generic in its key
-instead of `action<string, _>`. Otherwise `Set` is the one place where a view could be keyed
-by the wrong identity with no error.
+Row keys should be typed too, for read models and StateViewSlices alike. `Projection.action`
+becomes generic in its key instead of `action<string, _>`. Otherwise `Set` is the one place
+where a view could be keyed by the wrong identity with no error.
 
 ---
 
@@ -293,8 +370,10 @@ by the wrong identity with no error.
   `@dcbTag` overrides it; spec packages skip `module Id` injection. One recognition helper,
   used at about a dozen sites.
 - **Spec:** `Id.Identity`, `Id.Make`, the `identity` semantic and an identity on
-  `ReferenceTo`; type-preserving `DcbTag` / `Reference` helpers; the partition inference and
-  read-model key read the semantic first; a generic key in `Projection.action`.
+  `ReferenceTo`; type-preserving `DcbTag` / `Reference` helpers; the partition inference reads
+  the semantic first; the read-model key reads a read model's `module Id` first; projections
+  typed by `SourceId` with a generic key in `Projection.action`.
+- **Event mappings:** a mapping between different aggregates converts the id explicitly.
 - **Checks:** beside `check:dcb-scope`, a field named after another identity's key, and an
   untyped field whose key has a declared identity.
 - **Handlers:** id collections in state, e.g. `array<string>` in DCB
@@ -302,26 +381,42 @@ by the wrong identity with no error.
   become `array<OrderId.t>`. `==` and `Array.includes` work on abstract types; `Dict` keys
   need `toString`. Each conversion marks an edge, which is intended.
 - **Tests:** literals become `makeFromString`; `StringPure` stays for inline fixture specs.
-- **Unchanged:** stored data, GraphQL, and the plugin-structure records.
+- **GraphQL:** `SchemaType` types an identity as `ID`.
+- **Unchanged:** stored data, the SDL of every field not retyped, and the plugin-structure
+  records.
 
 ## Options
 
-Each step ships on its own, in this order.
+Step 0 is independent. Steps 1–7 ship one at a time, in this order.
 
+0. **Stop keying aggregate read models by a foreign id (F6).** Until read models declare
+   their identity, the key rule should not apply its "sole `*Id`" rung to a read model,
+   whose row is keyed by the envelope id rather than a state field. `Orders` then reports
+   no key instead of `customerId`. Keep the filter and order-by that the sole field
+   produced: removing a generated filter is an SDL break for any client using it, and
+   nothing outside core reads the published key. That replaces the stated invariant ("the
+   published key and the filter key cannot disagree") with a weaker one: the key is always
+   filterable, but not every filterable field is the key. This is a fix to today's
+   behaviour and needs no identities.
 1. **`Id.Identity`, `Id.Make`, and the `identity` semantic** with `ReferenceTo` carrying an
-   optional identity (open question 2). Additive. Correct `Id.T`'s doc comment (F1).
+   optional identity (open question 2), emitted to JSON Schema, and `SchemaType` typing an
+   identity as `ID`. Additive. Correct `Id.T`'s doc comment (F1).
 2. **The runtime accepts identity schemas:** typed `DcbTag` / `Reference` helpers; the
-   partition inference, read-model key and `extractReferences` read metadata before names.
-   Additive.
+   partition inference and `extractReferences` read metadata before names; the read-model
+   key reads a read model's `module Id` first. Additive.
 3. **The PPX accepts identity-typed fields** at every F4 site and derives the tag key from the
-   type unless `@dcbTag("k")` says otherwise. Nothing may write a typed id before this lands.
+   type unless `@dcbTag("k")` says otherwise. No DCB slice may carry a typed id before this
+   lands; an aggregate may, because its gaps are compile errors.
 4. **Derived and checked references**, plus the identity-name check and the untyped-field
    report (open question 3). Runtime and `check:dcb-scope` only.
-5. **Migrate one example plugin**, including one cross-plugin identity in its `*-spec`
-   package, whose `module Id` injection is skipped first (open question 5). Measure the
-   handler, projection and test churn before recommending the rest.
+5. **Migrate the aggregates example first**, including the cross-plugin `ProductId` in its
+   `*-spec` package, whose `module Id` injection is skipped first (open question 5). It
+   exercises the envelope, event mappings, read-model keys and projections without the tag
+   risk. Then migrate one DCB plugin. Measure the handler, projection and test churn
+   before recommending the rest.
 6. **Point component Ids at identities.** Aggregates and read models write
-   `module Id = <Identity>`; remove `StateChangeSlice.Spec.Id`; type StateViewSlice row keys.
+   `module Id = <Identity>`; remove `StateChangeSlice.Spec.Id`; type projections by `SourceId`
+   and row keys for read models and StateViewSlices.
 7. **Document the conversion rule (F5)**: schema inside JSON documents, `toString` for
    infrastructure keys.
 
