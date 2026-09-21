@@ -1770,8 +1770,9 @@ if [ -z "${REVENTLESS_PPX_SKIP_SELF_BUILD:-}" ]; then
   # `opam exec -- npm test`; run this script the same way by hand. Without it
   # dune resolves outside the switch and fails on a ppxlib/OCaml version
   # mismatch, which reads like a source error and is not one.
-  (cd src && dune build 2>&1) || {
-    echo "PPX build failed — if the error mentions ppxlib or 'not a compiled interface',"
+  # `@runtest` also runs the OCaml unit tests under src/test_*.
+  (cd src && dune build @default @runtest 2>&1) || {
+    echo "PPX build or unit tests failed — if the error mentions ppxlib or 'not a compiled interface',"
     echo "you are outside the opam switch: re-run as 'opam exec -- ./test/run.sh'."
     exit 1
   }

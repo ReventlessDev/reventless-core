@@ -1,0 +1,4 @@
+(test
+ (name test_arity)
+ (libraries ReventlessPpx ppxlib)
+ (preprocess (pps ppxlib.metaquot)))

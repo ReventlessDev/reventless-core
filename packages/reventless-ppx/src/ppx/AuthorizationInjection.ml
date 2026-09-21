@@ -88,10 +88,21 @@ let gen_open_authorization ~loc =
     };
     pstr_loc = loc }
 
+(* A one-argument lambda in the frozen PPX format: the compiler reads a function's
+   arity off a [Function$] wrapper carrying [@res.arity]; a bare [Pexp_fun] has none. *)
+let arity1_fun ~loc pat body =
+  let fn = Ast_builder.Default.pexp_fun ~loc Nolabel None pat body in
+  let arity =
+    Ast_builder.Default.attribute ~loc ~name:{ txt = "res.arity"; loc }
+      ~payload:(PStr [Ast_builder.Default.pstr_eval ~loc (Ast_builder.Default.eint ~loc 1) []])
+  in
+  { (Ast_builder.Default.pexp_construct ~loc { txt = Lident "Function$"; loc } (Some fn))
+    with pexp_attributes = [arity] }
+
 (* let commandAuthorization = _ => <rule> *)
 let gen_command_authorization ~loc rule =
   let wildcard = Ast_builder.Default.ppat_any ~loc in
-  let fn = Ast_builder.Default.pexp_fun ~loc Nolabel None wildcard rule in
+  let fn = arity1_fun ~loc wildcard rule in
   let pat = Ast_builder.Default.ppat_var ~loc { txt = "commandAuthorization"; loc } in
   Ast_builder.Default.pstr_value ~loc Nonrecursive
     [Ast_builder.Default.value_binding ~loc ~pat ~expr:fn]
@@ -133,7 +144,7 @@ let gen_command_authorization_switch
     Ast_builder.Default.pexp_ident ~loc { txt = Lident "command"; loc }
   in
   let switch = Ast_builder.Default.pexp_match ~loc cmd_var_ident cases in
-  let fn = Ast_builder.Default.pexp_fun ~loc Nolabel None cmd_var_pat switch in
+  let fn = arity1_fun ~loc cmd_var_pat switch in
   let pat = Ast_builder.Default.ppat_var ~loc { txt = "commandAuthorization"; loc } in
   Ast_builder.Default.pstr_value ~loc Nonrecursive
     [Ast_builder.Default.value_binding ~loc ~pat ~expr:fn]
@@ -400,7 +411,7 @@ let gen_command_transition ~loc =
       None
   in
   let wildcard = Ast_builder.Default.ppat_any ~loc in
-  let fn = Ast_builder.Default.pexp_fun ~loc Nolabel None wildcard undeclared in
+  let fn = arity1_fun ~loc wildcard undeclared in
   let pat = Ast_builder.Default.ppat_var ~loc { txt = "commandTransition"; loc } in
   Ast_builder.Default.pstr_value ~loc Nonrecursive
     [Ast_builder.Default.value_binding ~loc ~pat ~expr:fn]
