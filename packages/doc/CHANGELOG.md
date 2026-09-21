@@ -719,6 +719,8 @@ This file tracks changes to the documentation. Since the doc package is not vers
 ## Changes
 
 ### 2026-09-21
+- fix(deps): update rescript to 12.3.1 ([ea1ce37](https://github.com/ReventlessDev/reventless-core/commit/ea1ce377297640f6d0d360e6c84c778d59ecbcc5))
+### 2026-09-21
 - feat(examples): the hybrid example types its ids ([e7a88a9](https://github.com/ReventlessDev/reventless-core/commit/e7a88a9883e04f41ff39c7fb5f709a14e9005772))
 ### 2026-09-21
 - feat(examples): the DCB example types its ids ([2efb86f](https://github.com/ReventlessDev/reventless-core/commit/2efb86f0cf53c804c55fd930ecc897eea60c91e3))
