@@ -1,5 +1,12 @@
 open JestGlobals
 
+module OrderId = Reventless.Id.Make({
+  let key = "orderId"
+})
+module CustomerId = Reventless.Id.Make({
+  let key = "customerId"
+})
+
 // A multi-variant command union serializes as a sury `Union`, the same shape an
 // aggregate command produces. The generator must decide whether to inject the
 // aggregate-style `id: ID!` argument from the entry's `injectIdArg` flag, not
@@ -162,6 +169,21 @@ describe("resolveKeyField — a read model is keyed by its envelope", () => {
   testSync("the convention rung still names it", () => {
     let schema = S.schema(s => {"orderId": s.matches(S.string), "customerId": s.matches(S.string)})
     expect(keyFor(~entityName="Orders", schema))->toEqual(Some(("orderId", "convention")))
+  })
+
+  // The key is read off the type where there is one: a field typed as the view's
+  // own identity keys it whatever it is called, and one typed as another
+  // identity never does, whatever it is called.
+  testSync("a field typed as the view's identity is its key", () => {
+    let schema = S.schema(
+      s => {"order": s.matches(OrderId.schema), "customerId": s.matches(CustomerId.schema)},
+    )
+    expect(keyFor(~entityName="Orders", schema))->toEqual(Some(("order", "convention")))
+  })
+
+  testSync("a field named for the view but typed as another identity is not", () => {
+    let schema = S.schema(s => {"orderId": s.matches(CustomerId.schema)})
+    expect(keyFor(~entityName="Orders", schema))->toEqual(None)
   })
 
   testSync("several foreign `*Id` fields are not a gap worth a warning", () => {

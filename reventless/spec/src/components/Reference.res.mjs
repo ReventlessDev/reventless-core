@@ -21,6 +21,35 @@ function to_(plugin, key, entity) {
   }
 }
 
+function mark(schema, plugin, key, entity) {
+  let identity = Semantic$Reventless.identityKey(schema);
+  let base = Semantic$Reventless.mark(Sury.$Metadata_set(schema, DcbTag$Reventless.dcbTagId, true), Semantic$Reventless.Id.reference, {
+    TAG: "ReferenceTo",
+    _0: {
+      entity: entity,
+      plugin: plugin,
+      identity: identity
+    }
+  });
+  if (key !== undefined) {
+    return Sury.$Metadata_set(base, DcbTag$Reventless.dcbTagKeyOverrideId, key);
+  } else {
+    return base;
+  }
+}
+
+function markWithoutDcbTag(schema, plugin, entity) {
+  let identity = Semantic$Reventless.identityKey(schema);
+  return Semantic$Reventless.mark(schema, Semantic$Reventless.Id.reference, {
+    TAG: "ReferenceTo",
+    _0: {
+      entity: entity,
+      plugin: plugin,
+      identity: identity
+    }
+  });
+}
+
 function getTarget(schema) {
   let match = Semantic$Reventless.get(schema);
   if (match === undefined) {
@@ -92,6 +121,8 @@ function toWithoutDcbTag(plugin, entity) {
 
 export {
   to_,
+  mark,
+  markWithoutDcbTag,
   getTarget,
   getFieldTarget,
   collectFieldTargets,

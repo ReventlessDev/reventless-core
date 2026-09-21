@@ -248,6 +248,16 @@ let rec getFrom = (schema: S.t<unknown>): option<t> =>
 
 let get = (fieldSchema: S.t<'a>): option<t> => fieldSchema->S.castToUnknown->getFrom
 
+/** The identity a field's value is (`orderId`), read through `option<…>`. A
+    reference to an identity carries it on its target, since a schema holds one
+    semantic. */
+let identityKey = (fieldSchema: S.t<'a>): option<string> =>
+  switch get(fieldSchema) {
+  | Some({payload: IdentityOf({key})}) => Some(key)
+  | Some({payload: ReferenceTo({?identity})}) => identity
+  | _ => None
+  }
+
 /** Whether a field's schema carries this specific semantic. */
 let has = (fieldSchema: S.t<'a>, ~id: string): bool =>
   switch get(fieldSchema) {

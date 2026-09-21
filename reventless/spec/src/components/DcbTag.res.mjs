@@ -32,17 +32,33 @@ let dcbCompositePartitionMemberId = Sury.$Metadata_Id_make("dcb", "compositePart
 
 let dcbTagKeyOverrideId = Sury.$Metadata_Id_make("dcb", "tagKeyOverride");
 
+function mark(schema) {
+  return Sury.$Metadata_set(schema, dcbTagId, true);
+}
+
+function markForKey(schema, key) {
+  return Sury.$Metadata_set(Sury.$Metadata_set(schema, dcbTagId, true), dcbTagKeyOverrideId, key);
+}
+
+function markPartition(schema) {
+  return Sury.$Metadata_set(Sury.$Metadata_set(schema, dcbTagId, true), dcbPartitionTagId, true);
+}
+
+function markCrossPartition(schema) {
+  return Sury.$Metadata_set(Sury.$Metadata_set(schema, dcbTagId, true), dcbCrossPartitionId, true);
+}
+
 let string = Sury.$Metadata_set(Sury.string, dcbTagId, true);
 
 function stringForKey(key) {
-  return Sury.$Metadata_set(Sury.$Metadata_set(Sury.string, dcbTagId, true), dcbTagKeyOverrideId, key);
+  return markForKey(Sury.string, key);
 }
 
 let int = Sury.$Metadata_set(Sury.int, dcbTagId, true);
 
-let partition = Sury.$Metadata_set(Sury.$Metadata_set(Sury.string, dcbTagId, true), dcbPartitionTagId, true);
+let partition = markPartition(Sury.string);
 
-let crossPartition = Sury.$Metadata_set(Sury.$Metadata_set(Sury.string, dcbTagId, true), dcbCrossPartitionId, true);
+let crossPartition = markCrossPartition(Sury.string);
 
 function compositePartitionMember(position, sepOpt) {
   let sep = sepOpt !== undefined ? sepOpt : "/";
@@ -169,7 +185,12 @@ function isCrossPartitionTaggedArray(fieldSchema) {
 }
 
 function resolveTagKey(fieldName, fieldSchema) {
-  return Stdlib_Option.getOr(Sury.$Metadata_get(fieldSchema, dcbTagKeyOverrideId), fieldName);
+  let key = Sury.$Metadata_get(fieldSchema, dcbTagKeyOverrideId);
+  if (key !== undefined) {
+    return key;
+  } else {
+    return Stdlib_Option.getOr(Semantic$Reventless.identityKey(fieldSchema), fieldName);
+  }
 }
 
 function resolveArrayTagKey(fieldName, fieldSchema) {
@@ -180,7 +201,7 @@ function resolveArrayTagKey(fieldName, fieldSchema) {
   if (itemSchema === "strip" || itemSchema === "strict") {
     return fieldName;
   } else {
-    return Stdlib_Option.getOr(Sury.$Metadata_get(itemSchema, dcbTagKeyOverrideId), fieldName);
+    return resolveTagKey(fieldName, itemSchema);
   }
 }
 
@@ -627,33 +648,34 @@ function buildQueryFromCommand(eventTypes, schema, value, tagKeysByEventTypeOpt,
 }
 
 function extractTaggedFields(schema) {
+  let ofProperties = properties => Stdlib_Array.filterMap(Object.entries(properties), param => {
+    let fieldSchema = param[1];
+    if (Stdlib_Option.isSome(Sury.$Metadata_get(fieldSchema, dcbTagId))) {
+      return resolveTagKey(param[0], fieldSchema);
+    }
+  });
+  let keys;
   switch (schema.type) {
     case "object" :
-      return Stdlib_Array.filterMap(Object.entries(schema.properties), param => {
-        if (Stdlib_Option.isSome(Sury.$Metadata_get(param[1], dcbTagId))) {
-          return param[0];
-        }
-      }).toSorted(Primitive_string.compare);
+      keys = ofProperties(schema.properties);
+      break;
     case "anyOf" :
-      let allFields = schema.anyOf.flatMap(variantSchema => {
+      keys = schema.anyOf.flatMap(variantSchema => {
         if (variantSchema.type === "object") {
-          return Stdlib_Array.filterMap(Object.entries(variantSchema.properties), param => {
-            if (Stdlib_Option.isSome(Sury.$Metadata_get(param[1], dcbTagId))) {
-              return param[0];
-            }
-          });
+          return ofProperties(variantSchema.properties);
         } else {
           return [];
         }
       });
-      let fieldSet = new Set();
-      allFields.forEach(field => {
-        fieldSet.add(field);
-      });
-      return Array.from(fieldSet.values()).toSorted(Primitive_string.compare);
+      break;
     default:
-      return [];
+      keys = [];
   }
+  let seen = new Set();
+  keys.forEach(k => {
+    seen.add(k);
+  });
+  return Array.from(seen.values()).toSorted(Primitive_string.compare);
 }
 
 function crossPartitionKeysOfProperties(properties) {
@@ -703,8 +725,25 @@ function idFieldsOfProperties(properties) {
       return name.endsWith("Id");
     }
   };
+  let typedKey = (fieldSchema, isList) => {
+    let valueSchema;
+    if (isList && fieldSchema.type === "array") {
+      let item = fieldSchema.additionalItems;
+      valueSchema = item === "strip" || item === "strict" ? fieldSchema : item;
+    } else {
+      valueSchema = fieldSchema;
+    }
+    return Stdlib_Option.map(Semantic$Reventless.identityKey(valueSchema), param => resolveTagKey("", valueSchema));
+  };
   let identity = (name, fieldSchema, isList) => {
-    if (isIdName(name)) {
+    let key = typedKey(fieldSchema, isList);
+    if (key !== undefined) {
+      return {
+        name: name,
+        isList: isList,
+        key: key
+      };
+    } else if (isIdName(name)) {
       return {
         name: name,
         isList: isList
@@ -773,16 +812,18 @@ function extractPartitionTagFields(schema) {
   switch (schema.type) {
     case "object" :
       return Stdlib_Array.filterMap(Object.entries(schema.properties), param => {
-        if (Stdlib_Option.isSome(Sury.$Metadata_get(param[1], dcbPartitionTagId))) {
-          return param[0];
+        let fieldSchema = param[1];
+        if (Stdlib_Option.isSome(Sury.$Metadata_get(fieldSchema, dcbPartitionTagId))) {
+          return resolveTagKey(param[0], fieldSchema);
         }
       });
     case "anyOf" :
       let allFields = schema.anyOf.flatMap(variantSchema => {
         if (variantSchema.type === "object") {
           return Stdlib_Array.filterMap(Object.entries(variantSchema.properties), param => {
-            if (Stdlib_Option.isSome(Sury.$Metadata_get(param[1], dcbPartitionTagId))) {
-              return param[0];
+            let fieldSchema = param[1];
+            if (Stdlib_Option.isSome(Sury.$Metadata_get(fieldSchema, dcbPartitionTagId))) {
+              return resolveTagKey(param[0], fieldSchema);
             }
           });
         } else {
@@ -1043,6 +1084,10 @@ export {
   dcbCrossPartitionId,
   dcbCompositePartitionMemberId,
   dcbTagKeyOverrideId,
+  mark,
+  markForKey,
+  markPartition,
+  markCrossPartition,
   string,
   stringForKey,
   int,

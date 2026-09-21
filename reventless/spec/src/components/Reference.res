@@ -39,6 +39,32 @@ let to_ = (~plugin=?, ~key=?, entity: string): S.t<string> => {
   }
 }
 
+/**
+`to_` for a field whose schema is not a bare `S.string`: the schema keeps its
+type, and an identity it carries moves onto the reference's target rather than
+being overwritten.
+*/
+let mark = (schema: S.t<'a>, ~plugin=?, ~key=?, entity: string): S.t<'a> => {
+  let identity = Semantic.identityKey(schema)
+  let base =
+    schema
+    ->S.Metadata.set(~id=DcbTag.dcbTagId, true)
+    ->Semantic.mark(~id=Semantic.Id.reference, ~payload=ReferenceTo({entity, plugin, ?identity}))
+  switch key {
+  | Some(k) => base->S.Metadata.set(~id=DcbTag.dcbTagKeyOverrideId, k)
+  | None => base
+  }
+}
+
+/** `toWithoutDcbTag` for a field whose schema is not a bare `S.string`. */
+let markWithoutDcbTag = (schema: S.t<'a>, ~plugin=?, entity: string): S.t<'a> => {
+  let identity = Semantic.identityKey(schema)
+  schema->Semantic.mark(
+    ~id=Semantic.Id.reference,
+    ~payload=ReferenceTo({entity, plugin, ?identity}),
+  )
+}
+
 /** Returns the reference target if the schema carries `Reference.to_(...)` metadata. */
 let getTarget = (schema: S.t<unknown>): option<target> =>
   switch Semantic.get(schema) {

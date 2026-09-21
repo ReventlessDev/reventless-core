@@ -206,6 +206,25 @@ function getFrom(schema) {
 
 let get = getFrom;
 
+function identityKey(fieldSchema) {
+  let match = getFrom(fieldSchema);
+  if (match === undefined) {
+    return;
+  }
+  let match$1 = match.payload;
+  if (typeof match$1 !== "object") {
+    return;
+  }
+  switch (match$1.TAG) {
+    case "ReferenceTo" :
+      return match$1._0.identity;
+    case "IdentityOf" :
+      return match$1.key;
+    default:
+      return;
+  }
+}
+
 function has(fieldSchema, id) {
   let s = getFrom(fieldSchema);
   if (s !== undefined) {
@@ -226,6 +245,7 @@ export {
   unionVariant,
   getFrom,
   get,
+  identityKey,
   has,
 }
 /* semanticId Not a pure module */

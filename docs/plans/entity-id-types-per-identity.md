@@ -166,6 +166,25 @@ Additive for specs without identities.
 typed field is named `buyer` is tagged `customerId`; `@dcbTag("sellerId")` on a typed field
 keeps `sellerId`; a read model with `module Id = OrderId` publishes the identity as its key.
 
+**Done (2026-09-21).** Beyond the plan:
+- **`Reference.mark` / `markWithoutDcbTag`**, the type-preserving `@ref` helpers Phase 4 wraps
+  with. They carry the field's identity onto `ReferenceTo`, and `Semantic.identityKey` reads
+  it from there, so an `@ref` on a typed field keeps both facts.
+- **`extractTaggedFields` returns resolved tag keys, not field names.** It names the DynamoDB
+  GSIs (`tag_<key>`), so a typed `buyer` would otherwise get an index its tags never land in.
+  It changes nothing in the tree: no example has a scalar tag-key override. The partition
+  hint is resolved the same way.
+- **`DcbScopeInference.idField` gains an optional `key`**, which `tagKeyOf` prefers. That is
+  the one logic change there, since a typed field's key is not derivable from its name.
+
+One departure: **the read-model key does not consult `Spec.Id`.** The key has to stay
+filterable, and the capability deriver behind the SDL and the local, AWS and Postgres
+resolvers sees only the state schema. Threading `Spec.Id` to all of them would add a
+registry per path. Instead a key candidate's key is its identity when it is typed, so
+`Orders` is keyed by `order: OrderId.t` and never by `orderId: CustomerId.t`. A read model
+whose name does not match its identity (`OrderSummaries` over `OrderId`) still needs `@id`,
+which Phase 4 makes accept a typed field.
+
 Released together with Phase 4, because nothing can produce a typed field before it.
 
 ---

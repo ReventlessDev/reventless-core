@@ -127,6 +127,23 @@ let dcbTagKeyOverrideId: S.Metadata.Id.t<string> = S.Metadata.Id.make(
 )
 
 /**
+Type-preserving forms of the markers below, for a field whose schema is not a
+bare `S.string` — an identity (`OrderId.schema->DcbTag.mark`) keeps its type and
+its semantic, and the tag key follows the identity unless `markForKey` says
+otherwise.
+*/
+let mark = (schema: S.t<'a>): S.t<'a> => schema->S.Metadata.set(~id=dcbTagId, true)
+
+let markForKey = (schema: S.t<'a>, ~key: string): S.t<'a> =>
+  schema->mark->S.Metadata.set(~id=dcbTagKeyOverrideId, key)
+
+let markPartition = (schema: S.t<'a>): S.t<'a> =>
+  schema->mark->S.Metadata.set(~id=dcbPartitionTagId, true)
+
+let markCrossPartition = (schema: S.t<'a>): S.t<'a> =>
+  schema->mark->S.Metadata.set(~id=dcbCrossPartitionId, true)
+
+/**
 A sury string schema annotated as a DCB tag field.
 
 Use with `@s.matches(DcbTag.string)` on event and command record fields that
@@ -148,7 +165,7 @@ and array element types.
 ```
 */
 let string: S.t<string> =
-  S.string->S.Metadata.set(~id=dcbTagId, true)
+  S.string->mark
 
 /**
 A sury string schema annotated as a DCB tag field with an explicit tag-key override.
@@ -171,8 +188,7 @@ annotations carrying a string payload.
 // productIds: ["p1", "p2"] → tags [{key: "productId", value: "p1"}, {key: "productId", value: "p2"}]
 ```
 */
-let stringForKey = (~key: string): S.t<string> =>
-  S.string->S.Metadata.set(~id=dcbTagId, true)->S.Metadata.set(~id=dcbTagKeyOverrideId, key)
+let stringForKey = (~key: string): S.t<string> => S.string->markForKey(~key)
 
 /**
 A sury int schema annotated as a DCB tag field.
@@ -198,7 +214,7 @@ optional (auto-selected) when only one tagged field exists.
 ```
 */
 let partition: S.t<string> =
-  S.string->S.Metadata.set(~id=dcbTagId, true)->S.Metadata.set(~id=dcbPartitionTagId, true)
+  S.string->markPartition
 
 /**
 A sury string schema annotated as a DCB tag field with *cross-partition* read
@@ -224,7 +240,7 @@ entities but can be partitioned by only one (course-subscription capacity,
 ```
 */
 let crossPartition: S.t<string> =
-  S.string->S.Metadata.set(~id=dcbTagId, true)->S.Metadata.set(~id=dcbCrossPartitionId, true)
+  S.string->markCrossPartition
 
 /**
 A sury string schema marking a field as a composite partition key member.
@@ -355,19 +371,21 @@ let isCrossPartitionTaggedArray = (fieldSchema: S.t<unknown>) =>
 
 /**
 Resolves the tag key for a scalar tagged field: the explicit override metadata if
-present, otherwise the field name.
+present, else the field's identity, otherwise the field name.
 */
 let resolveTagKey = (fieldName: string, fieldSchema: S.t<unknown>): string =>
-  S.Metadata.get(fieldSchema, ~id=dcbTagKeyOverrideId)->Option.getOr(fieldName)
+  switch S.Metadata.get(fieldSchema, ~id=dcbTagKeyOverrideId) {
+  | Some(key) => key
+  | None => fieldSchema->Semantic.identityKey->Option.getOr(fieldName)
+  }
 
 /**
-Resolves the tag key for an array tagged field. The override metadata sits on the
-inner element schema; falls back to the field name when no override is set.
+Resolves the tag key for an array tagged field. The override metadata and the
+identity sit on the inner element schema; falls back to the field name.
 */
 let resolveArrayTagKey = (fieldName: string, fieldSchema: S.t<unknown>): string =>
   switch fieldSchema {
-  | Array({additionalItems: Schema(itemSchema)}) =>
-    S.Metadata.get(itemSchema, ~id=dcbTagKeyOverrideId)->Option.getOr(fieldName)
+  | Array({additionalItems: Schema(itemSchema)}) => resolveTagKey(fieldName, itemSchema)
   | _ => fieldName
   }
 
@@ -970,51 +988,33 @@ let buildQueryFromCommand = (
 // --- Extract tagged field names from event schema ---
 
 /**
-Extracts the names of all DCB-tagged fields across all variants of an event schema.
-
-Returns a sorted, deduplicated list of field names annotated with
-`@s.matches(DcbTag.string)` or `@s.matches(DcbTag.int)`.
+The tag keys of all DCB-tagged fields across all variants of an event schema,
+resolved as the tags themselves are, so an index is named after the key its tags
+carry. Sorted and deduplicated.
 
 For `CatalogEventLog.event` returns `["categoryId", "productId"]`.
 */
 let extractTaggedFields = (schema: S.t<'event>): array<string> => {
-  switch schema->toUnknownSchema {
-  | AnyOf({anyOf}) =>
-    // For union types, collect tagged fields from all variants
-    let allFields = anyOf->Array.flatMap(variantSchema =>
-      switch variantSchema {
-      | Object({properties}) =>
-        properties
-        ->Dict.toArray
-        ->Array.filterMap(((fieldName, fieldSchema)) =>
-          if isTagged(fieldSchema) {
-            Some(fieldName)
-          } else {
-            None
-          }
-        )
-      | _ => []
-      }
-    )
-    // Deduplicate field names using Set
-    let fieldSet = Set.make()
-    allFields->Array.forEach(field => fieldSet->Set.add(field))
-    Array.fromIterator(fieldSet->Set.values)->Array.toSorted((a, b) => String.compare(a, b))
-
-  | Object({properties}) =>
+  let ofProperties = properties =>
     properties
     ->Dict.toArray
     ->Array.filterMap(((fieldName, fieldSchema)) =>
-      if isTagged(fieldSchema) {
-        Some(fieldName)
-      } else {
-        None
+      isTagged(fieldSchema) ? Some(resolveTagKey(fieldName, fieldSchema)) : None
+    )
+  let keys = switch schema->toUnknownSchema {
+  | AnyOf({anyOf}) =>
+    anyOf->Array.flatMap(variantSchema =>
+      switch variantSchema {
+      | Object({properties}) => ofProperties(properties)
+      | _ => []
       }
     )
-    ->Array.toSorted((a, b) => String.compare(a, b))
-
+  | Object({properties}) => ofProperties(properties)
   | _ => []
   }
+  let seen = Set.make()
+  keys->Array.forEach(k => seen->Set.add(k))
+  Array.fromIterator(seen->Set.values)->Array.toSorted((a, b) => String.compare(a, b))
 }
 
 /**
@@ -1091,13 +1091,27 @@ let idFieldsOfProperties = (properties: dict<S.t<unknown>>): array<DcbScopeInfer
   // for every field except the ones that need it. Flagged, not folded in: taking
   // the annotation away takes the identity with it, which is what the redundancy
   // check has to be able to tell.
-  let identity = (name, fieldSchema, isList) =>
+  // A field's type outranks its name: `buyer: CustomerId.t` is keyed `customerId`,
+  // and so is `orderId: CustomerId.t`. An explicit `@dcbTag("k")` still wins.
+  let typedKey = (fieldSchema: S.t<unknown>, isList) => {
+    let valueSchema = switch (isList, fieldSchema) {
+    | (true, Array({additionalItems: Schema(item)})) => item
+    | _ => fieldSchema
+    }
+    valueSchema->Semantic.identityKey->Option.map(_ => resolveTagKey("", valueSchema))
+  }
+  let untypedIdentity = (name, fieldSchema, isList) =>
     if isIdName(name) {
       Some({DcbScopeInference.name, isList})
     } else if isPartitionTag(fieldSchema) {
       Some({DcbScopeInference.name, isList, byTag: true})
     } else {
       None
+    }
+  let identity = (name, fieldSchema, isList) =>
+    switch typedKey(fieldSchema, isList) {
+    | Some(key) => Some({DcbScopeInference.name, isList, key})
+    | None => untypedIdentity(name, fieldSchema, isList)
     }
   properties
   ->Dict.toArray
@@ -1148,7 +1162,8 @@ let eventShapesOfSchema = (schema: S.t<'a>): array<DcbScopeInference.eventShape>
 // --- Partition tag derivation ---
 
 /**
-Extracts field names annotated with `@s.matches(DcbTag.partition)` from an event schema.
+Extracts the tag keys of fields annotated with `@s.matches(DcbTag.partition)` from an
+event schema: the field name, unless an override or an identity says otherwise.
 */
 let extractPartitionTagFields = (schema: S.t<'event>): array<string> => {
   switch schema->toUnknownSchema {
@@ -1160,7 +1175,7 @@ let extractPartitionTagFields = (schema: S.t<'event>): array<string> => {
         ->Dict.toArray
         ->Array.filterMap(((fieldName, fieldSchema)) =>
           if isPartitionTag(fieldSchema) {
-            Some(fieldName)
+            Some(resolveTagKey(fieldName, fieldSchema))
           } else {
             None
           }
@@ -1177,7 +1192,7 @@ let extractPartitionTagFields = (schema: S.t<'event>): array<string> => {
     ->Dict.toArray
     ->Array.filterMap(((fieldName, fieldSchema)) =>
       if isPartitionTag(fieldSchema) {
-        Some(fieldName)
+        Some(resolveTagKey(fieldName, fieldSchema))
       } else {
         None
       }

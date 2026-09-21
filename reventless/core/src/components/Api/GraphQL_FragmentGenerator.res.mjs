@@ -5,6 +5,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_String from "@rescript/runtime/lib/es6/Stdlib_String.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
+import * as Semantic$Reventless from "@reventlessdev/reventless-spec/src/semantic/Semantic.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as Api_Naming$ReventlessCore from "./Api_Naming.res.mjs";
@@ -266,13 +267,23 @@ function classifyKeyField(rowKeying, entityName, schema) {
       rung: "annotation"
     };
   }
-  let candidates = Object.keys(Stdlib_Option.getOr(SchemaType$ReventlessCore.fromSuryObject("", schema), {})).filter(isKeyFieldName);
+  let properties;
+  properties = schema.type === "object" ? schema.properties : ({});
+  let keyOf = field => Stdlib_Option.flatMap(properties[field], Semantic$Reventless.identityKey);
+  let candidates = Object.keys(Stdlib_Option.getOr(SchemaType$ReventlessCore.fromSuryObject("", schema), {})).filter(field => {
+    if (isKeyFieldName(field)) {
+      return true;
+    } else {
+      return Stdlib_Option.isSome(keyOf(field));
+    }
+  });
   let singular = Api_Naming$ReventlessCore.singularize(Api_Naming$ReventlessCore.stripViewSuffix(entityName));
   let conventional = singular.slice(0, 1).toLowerCase() + singular.slice(1, singular.length) + "Id";
-  if (candidates.includes(conventional)) {
+  let field = candidates.find(field => Stdlib_Option.getOr(keyOf(field), field) === conventional);
+  if (field !== undefined) {
     return {
       TAG: "Resolved",
-      field: conventional,
+      field: field,
       rung: "convention"
     };
   } else if (rowKeying === "RowKeyedByEnvelope") {

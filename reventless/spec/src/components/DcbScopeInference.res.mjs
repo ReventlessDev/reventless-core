@@ -6,7 +6,9 @@ import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 
 function tagKeyOf(f) {
-  if (f.isList && f.name.endsWith("s")) {
+  if (Stdlib_Option.isSome(f.key)) {
+    return f.key;
+  } else if (f.isList && f.name.endsWith("s")) {
     return f.name.slice(0, f.name.length - 1 | 0);
   } else {
     return f.name;

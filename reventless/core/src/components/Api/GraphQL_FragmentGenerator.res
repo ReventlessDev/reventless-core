@@ -326,8 +326,8 @@ type rowKeying = RowKeyedByEnvelope | RowKeyedByStateField
 The field that identifies a row, and which rung answered:
 
 - `"annotation"` — the state declares `@id`. Nothing outranks it.
-- `"convention"` — a field named `<singular entity name>Id` exists
-  (`Products` → `productId`).
+- `"convention"` — a field keyed `<singular entity name>Id` exists
+  (`Products` → `productId`): named so, or typed as that identity.
 - `"sole"` — the state has exactly one `*Id` field (`AvailableProducts`). Only for
   `RowKeyedByStateField`: a read model's lone `*Id` is a foreign id (`Orders` →
   `customerId`), and having none of its own is its ordinary shape, so neither
@@ -349,25 +349,36 @@ let classifyKeyField = (
   switch declared {
   | Some(field) => Resolved({field, rung: "annotation"})
   | None =>
+    // A field is a candidate by its name or by its type, and its key is its
+    // identity when it has one: `orderId: CustomerId.t` never keys `Orders`, and
+    // `order: OrderId.t` does.
+    let properties = switch schema {
+    | Object({properties}) => properties
+    | _ => Dict.make()
+    }
+    let keyOf = field =>
+      properties->Dict.get(field)->Option.flatMap(Reventless.Semantic.identityKey)
     let candidates =
       SchemaType.fromSuryObject(~typeName="", schema)
       ->Option.getOr(Dict.make())
       ->Dict.keysToArray
-      ->Array.filter(isKeyFieldName)
+      ->Array.filter(field => isKeyFieldName(field) || keyOf(field)->Option.isSome)
     let singular = entityName->Api_Naming.stripViewSuffix->Api_Naming.singularize
     let conventional =
       singular->String.slice(~start=0, ~end=1)->String.toLowerCase ++
       singular->String.slice(~start=1, ~end=singular->String.length) ++ "Id"
-    if candidates->Array.includes(conventional) {
-      Resolved({field: conventional, rung: "convention"})
-    } else if rowKeying == RowKeyedByEnvelope {
-      NoCandidate
-    } else if candidates->Array.length == 1 {
-      Resolved({field: candidates->Array.getUnsafe(0), rung: "sole"})
-    } else if Array.length(candidates) == 0 {
-      NoCandidate
-    } else {
-      Ambiguous({candidates, conventional})
+    switch candidates->Array.find(field => keyOf(field)->Option.getOr(field) == conventional) {
+    | Some(field) => Resolved({field, rung: "convention"})
+    | None =>
+      if rowKeying == RowKeyedByEnvelope {
+        NoCandidate
+      } else if candidates->Array.length == 1 {
+        Resolved({field: candidates->Array.getUnsafe(0), rung: "sole"})
+      } else if Array.length(candidates) == 0 {
+        NoCandidate
+      } else {
+        Ambiguous({candidates, conventional})
+      }
     }
   }
 }

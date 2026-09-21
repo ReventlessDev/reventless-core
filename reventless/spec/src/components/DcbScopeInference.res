@@ -49,7 +49,13 @@ The three rules (over the representation):
     It is carried rather than folded in because removing the annotation removes
     the identity, which is exactly what the redundancy check has to know: a hint
     inference cannot reach without it is never redundant. */
-type idField = {name: string, isList: bool, byTag?: bool}
+type idField = {
+  name: string,
+  isList: bool,
+  byTag?: bool,
+  /** The tag key, when the field's type says it (an identity) rather than its name. */
+  key?: string,
+}
 
 /** One variant arm: its constructor name and the `*Id` fields it carries. */
 type eventShape = {eventType: string, idFields: array<idField>}
@@ -97,10 +103,13 @@ type derived = {
 /**
 The tag key for a `*Id`-shaped field. A plural `*Ids: array<string>` shares the
 singular producer's key (trailing `s` stripped — `productIds` -> `productId`);
-a scalar `*Id` uses the field name verbatim. Mirrors the PPX's `*Ids` rule.
+a scalar `*Id` uses the field name verbatim. Mirrors the PPX's `*Ids` rule. An
+identity-typed field carries its key, whatever it is called.
 */
 let tagKeyOf = (f: idField): string =>
-  if f.isList && f.name->String.endsWith("s") {
+  if f.key->Option.isSome {
+    f.key->Option.getUnsafe
+  } else if f.isList && f.name->String.endsWith("s") {
     f.name->String.slice(~start=0, ~end=f.name->String.length - 1)
   } else {
     f.name
