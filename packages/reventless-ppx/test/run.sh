@@ -441,6 +441,7 @@ type event =
     @crossPartition watchers: array<CustomerId.t>,
     wishlist: array<ProductId.t>,
     @ref("Products") favourite: ProductId.t,
+    @dcbTag("giftSku") @ref("Products") gift: ProductId.t,
     previous: option<CustomerId.t>,
   })
 
@@ -639,6 +640,7 @@ EOF
 # - plural *Ids array @ref must singularise the tag key (productIds → productId)
 #   so it shares a key with singular-named producers (Reference.to_ ~key)
 # - @ref + @noDcbTag drops the DCB tag (toWithoutDcbTag), so no key is emitted
+# - @ref + @dcbTag("k") keeps the explicit key, on a scalar and on an array
 cat > "$DCB/src/StateChange/OrderPicker.res" <<'EOF'
 @@reventless.spec
 
@@ -648,6 +650,8 @@ type command = Pick({
   @ref("Customer") customerId: string,
   @ref("AvailableProducts") productIds: array<string>,
   @ref("Warehouse") @noDcbTag warehouseIds: array<string>,
+  @dcbTag("shopper") @ref("Customer") buyer: string,
+  @dcbTag("sku") @ref("AvailableProducts") skus: array<string>,
 })
 
 @schema
@@ -1964,6 +1968,8 @@ assert_js_contains "$JS" 'DcbTag$Reventless.markForKey(CustomerId$TestDcb.schema
 assert_js_contains "$JS" 'DcbTag$Reventless.markCrossPartition(CustomerId$TestDcb.schema)' "@crossPartition on an array of identities marks the element"
 assert_js_contains "$JS" 'DcbTag$Reventless.mark(ProductId$TestDcb.schema)' "an array of identities is auto-tagged per element"
 assert_js_contains "$JS" 'Reference$Reventless.mark(ProductId$TestDcb.schema' "@ref on an identity composes onto its schema"
+assert_js_contains "$JS" 'Reference$Reventless.mark(ProductId$TestDcb.schema, undefined, "giftSku", "Products")' \
+  "@ref + @dcbTag(key) on an identity keeps the explicit key, not the identity's"
 assert_js_contains "$JS" 'Sury.$option(CustomerId$TestDcb.schema)' "an optional identity is left as it is, like option<string>"
 
 echo ""
@@ -2139,6 +2145,12 @@ assert_js_contains     "$JS" '"Customer"'           "@ref: scalar ref entity 'Cu
 assert_js_contains     "$JS" 'toWithoutDcbTag'      "@ref + @noDcbTag: toWithoutDcbTag emitted (no DCB tag)"
 assert_js_not_contains "$JS" '"warehouseId"'        "@ref + @noDcbTag: no tag key emitted for warehouseIds"
 assert_js_not_contains "$JS" 'noDcbTag'             "@ref: @noDcbTag field attr stripped"
+# @dcbTag("k") beside @ref: the reference pass runs first and the explicit-tag pass
+# skips a field it already marked, so the key has to be passed through @ref.
+assert_js_contains     "$JS" 'Reference$Reventless.to_(undefined, "shopper", "Customer")' \
+  "@ref + @dcbTag(key): the explicit key survives on a scalar"
+assert_js_contains     "$JS" 'Reference$Reventless.to_(undefined, "sku", "AvailableProducts")' \
+  "@ref + @dcbTag(key): the explicit key survives on an array"
 
 echo ""
 echo "=== Test: @owner composes with the DCB passes instead of replacing them ==="

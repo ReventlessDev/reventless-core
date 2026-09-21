@@ -341,6 +341,23 @@ string, recording the function as `constructor` so a writer can reproduce it.
 `common-modules/Id.md` was rewritten too: it recommended `Id.String` for keeping ids apart,
 which F1 disproved.
 
+## Follow-up (2026-09-21): `@dcbTag("k")` beside `@ref` is honoured
+
+`@dcbTag("k")` on a field that also declares `@ref` was ignored, and the field was tagged
+under its default key: the field name for a string, the identity's key for an identity. The
+sidecar reported `k` all the while. The cause was pass order: `ReferenceInference` runs first
+and injects `@s.matches(Reference.to_ / mark(…))` without a key. `transform_explicit_dcb_tags`
+skips any field that already carries `@s.matches`, so it never saw `@dcbTag`.
+
+`ReferenceInference` now reads the `@dcbTag` key itself, passes it as `~key` to `Reference.to_`
+or `Reference.mark` (both already took one), and consumes the attribute. A bare `@dcbTag`
+beside `@ref` adds nothing, since the reference tags the field anyway. Beside `@noDcbTag` the
+key is ignored, as before.
+
+This matters most when a string id is retyped to an identity. The tag key moves from the field
+name to the identity's key, and `@dcbTag("<old key>")` is how stored events keep matching. It
+has to hold on a field that is also a reference.
+
 ## Out of scope
 
 Composite partitions as identities (open question 1); per-identity validation (open

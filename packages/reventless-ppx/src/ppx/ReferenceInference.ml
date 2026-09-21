@@ -104,17 +104,22 @@ let is_string_type (ct : core_type) =
 
 (** [@s.matches(Reventless.Reference.mark(M.schema, ~plugin="P", "Entity"))] for an
     identity-typed field: the reference composes onto the identity's schema and
-    carries the identity on its target. No key override — the identity is the key. *)
-let identity_ref_attr ~loc ~entity ~plugin_opt ~no_dcb m =
+    carries the identity on its target. The identity is the key, unless [key_opt]
+    (a [@dcbTag("k")] beside the [@ref]) overrides it; ignored when [no_dcb]. *)
+let identity_ref_attr ~loc ~entity ~plugin_opt ~no_dcb ~key_opt m =
   let fn = if no_dcb then "markWithoutDcbTag" else "mark" in
   let plugin_args = match plugin_opt with
     | None -> []
     | Some plugin -> [ (Labelled "plugin", Ast_builder.Default.estring ~loc plugin) ]
   in
+  let key_args = match key_opt with
+    | Some key when not no_dcb -> [ (Labelled "key", Ast_builder.Default.estring ~loc key) ]
+    | _ -> []
+  in
   Util.s_matches_apply ~loc
     (Ldot (Ldot (Lident "Reventless", "Reference"), fn))
     ((Nolabel, Util.identity_schema_expr ~loc m)
-     :: plugin_args @ [ (Nolabel, Ast_builder.Default.estring ~loc entity) ])
+     :: plugin_args @ key_args @ [ (Nolabel, Ast_builder.Default.estring ~loc entity) ])
 
 let transform_label_decl (ld : label_declaration) : label_declaration =
   if not (has_ref_field_attr ld.pld_attributes) then ld
@@ -127,19 +132,25 @@ let transform_label_decl (ld : label_declaration) : label_declaration =
          @ref(\"EntityName\") or @ref(\"Plugin.Entity\")"
     | Some (entity, plugin_opt) ->
       let no_dcb     = has_no_dcb_tag_attr ld.pld_attributes in
-      let clean_attrs = strip_ref_field_attr ld.pld_attributes in
+      (* A [@dcbTag("k")] beside [@ref] is read here, because the explicit-tag pass
+         runs later and skips a field that already carries [@s.matches]. Consumed
+         either way: a bare [@dcbTag] adds nothing to a reference, which tags. *)
+      let key_override = DcbTagInference.get_explicit_dcb_tag_key ld.pld_attributes in
+      let clean_attrs =
+        DcbTagInference.strip_explicit_dcb_tag_field_attr
+          (strip_ref_field_attr ld.pld_attributes) in
       let identity_elem = match Util.array_element ld.pld_type with
         | Some elem -> Util.identity_module elem |> Option.map (fun m -> (elem, m))
         | None -> None
       in
       match Util.identity_module ld.pld_type, identity_elem with
       | Some m, _ when not (has_s_matches_attr ld.pld_type.ptyp_attributes) ->
-        let attr = identity_ref_attr ~loc ~entity ~plugin_opt ~no_dcb m in
+        let attr = identity_ref_attr ~loc ~entity ~plugin_opt ~no_dcb ~key_opt:key_override m in
         { ld with pld_attributes = clean_attrs;
                   pld_type = { ld.pld_type with
                                ptyp_attributes = attr :: ld.pld_type.ptyp_attributes } }
       | None, Some (elem, m) when not (has_s_matches_attr elem.ptyp_attributes) ->
-        let attr = identity_ref_attr ~loc ~entity ~plugin_opt ~no_dcb m in
+        let attr = identity_ref_attr ~loc ~entity ~plugin_opt ~no_dcb ~key_opt:key_override m in
         (match ld.pld_type.ptyp_desc with
          | Ptyp_constr (arr_lid, [ _ ]) ->
            let new_elem = { elem with ptyp_attributes = attr :: elem.ptyp_attributes } in
@@ -150,8 +161,9 @@ let transform_label_decl (ld : label_declaration) : label_declaration =
       if is_string_type ld.pld_type
          && not (has_s_matches_attr ld.pld_type.ptyp_attributes) then
         (* Scalar ref: the DCB tag key defaults to the field name, which already
-           matches singular-named producers — no key override needed. *)
-        let attr = make_ref_matches_attr ~loc ~entity ~plugin_opt ~no_dcb ~key_opt:None in
+           matches singular-named producers; only an explicit [@dcbTag("k")]
+           overrides it. *)
+        let attr = make_ref_matches_attr ~loc ~entity ~plugin_opt ~no_dcb ~key_opt:key_override in
         let new_type = { ld.pld_type with
                          ptyp_attributes = attr :: ld.pld_type.ptyp_attributes }
         in
@@ -165,9 +177,11 @@ let transform_label_decl (ld : label_declaration) : label_declaration =
              productId) so it shares a key with singular-named producer events,
              matching the un-reffed DcbTagInference path. *)
           let key_opt =
-            if ends_with_ids ld.pld_name.txt
-            then Some (Util.drop_trailing_s ld.pld_name.txt)
-            else None
+            match key_override with
+            | Some _ -> key_override
+            | None when ends_with_ids ld.pld_name.txt ->
+              Some (Util.drop_trailing_s ld.pld_name.txt)
+            | None -> None
           in
           let attr = make_ref_matches_attr ~loc ~entity ~plugin_opt ~no_dcb ~key_opt in
           let new_elem =
