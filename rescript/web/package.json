@@ -14,10 +14,10 @@
     "@rescript/std": "^11.1.4"
   },
   "devDependencies": {
-    "rescript": "12.3.0"
+    "rescript": "12.3.1"
   },
   "peerDependencies": {
-    "rescript": "12.3.0"
+    "rescript": "^12.3.1"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org"

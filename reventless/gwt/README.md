@@ -76,7 +76,7 @@ Register it as a ReScript dependency in `rescript.json`:
 }
 ```
 
-Requires ReScript `^12.3.0` (peer dependency). Run the CLI with `pnpm exec
+Requires ReScript `^12.3.1` (peer dependency). Run the CLI with `pnpm exec
 reventless-dev run` (or add it to a package script).
 
 ## Links

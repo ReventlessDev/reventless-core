@@ -486,9 +486,9 @@ function mergeSortedEvents(streams) {
   }));
 }
 
-function read(table, $staropt$star) {
+function read(table, crossPartitionTagKeysOpt) {
+  let crossPartitionTagKeys = crossPartitionTagKeysOpt !== undefined ? crossPartitionTagKeysOpt : [];
   return async (query, after) => {
-    let crossPartitionTagKeys = $staropt$star !== undefined ? $staropt$star : [];
     let queryResults = await Promise.all(query.map(queryItem => executeQueryItem(table, queryItem, after, crossPartitionTagKeys)));
     let allItems = queryResults.flat();
     let allEvents = allItems.map(fromItem);
@@ -1024,9 +1024,9 @@ async function appendConditional(table, events, cond, partitionTag, crossPartiti
   return await runTransactWrite(input, basePosition, "DCB append failed");
 }
 
-function append(table, partitionTag, $staropt$star) {
+function append(table, partitionTag, crossPartitionTagKeysOpt) {
+  let crossPartitionTagKeys = crossPartitionTagKeysOpt !== undefined ? crossPartitionTagKeysOpt : [];
   return async (events, condition) => {
-    let crossPartitionTagKeys = $staropt$star !== undefined ? $staropt$star : [];
     if (condition !== undefined) {
       return await appendConditional(table, events, condition, partitionTag, crossPartitionTagKeys);
     } else {
@@ -1158,10 +1158,10 @@ function executeQueryItemStream(table, queryItem, after, strongConsistencyOpt, c
   }
 }
 
-function readStream(table, $staropt$star) {
-  return (query, after, $staropt$star$1) => {
-    let crossPartitionTagKeys = $staropt$star !== undefined ? $staropt$star : [];
-    let strongConsistency = $staropt$star$1 !== undefined ? $staropt$star$1 : false;
+function readStream(table, crossPartitionTagKeysOpt) {
+  let crossPartitionTagKeys = crossPartitionTagKeysOpt !== undefined ? crossPartitionTagKeysOpt : [];
+  return (query, after, strongConsistencyOpt) => {
+    let strongConsistency = strongConsistencyOpt !== undefined ? strongConsistencyOpt : false;
     let streams = query.map(qi => executeQueryItemStream(table, qi, after, strongConsistency, crossPartitionTagKeys));
     let match = streams.length;
     if (match === 0) {

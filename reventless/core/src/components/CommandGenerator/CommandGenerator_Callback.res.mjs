@@ -59,103 +59,101 @@ function dropNullArguments(obj) {
   });
 }
 
-function makeGenerateCommand(publishJsons, publishJsonsAndWait, serviceName, commandSchema, componentKind, $staropt$star, partitionTag) {
-  return payload => {
-    let stripIdFromParams = $staropt$star !== undefined ? $staropt$star : true;
-    return Effect.flatMap(Effect.tap(Effect.sync(() => {
-      let msgId = Message$ReventlessCore.uuid();
-      let meta_time = Message$ReventlessCore.nowAsISOString();
-      let meta_ip = Stdlib_Option.getOr(payload.meta.ip.shift(), "");
-      let meta_user = payload.meta.user;
-      let meta = {
-        service: serviceName,
-        time: meta_time,
-        ip: meta_ip,
-        user: meta_user,
-        msgId: msgId,
-        correlationId: msgId
-      };
-      let obj = Stdlib_Option.flatMap(JSON.stringify(payload.arguments), jsonString => Stdlib_JSON.Decode.object(JSON.parse(jsonString)));
-      let params = obj !== undefined ? (stripIdFromParams ? Stdlib_Dict.$$delete(obj, "id") : undefined, dropNullArguments(obj), stampOwnerFields(obj, commandSchema, payload.command, payload.identity, serviceName), Object.entries(obj)) : Stdlib_JsError.throwWithMessage("Couldn't decode:" + Stdlib_Option.getOr(JSON.stringify(payload.arguments), "<payload.arguments>"));
-      let commandStr = payload.command;
-      let match = params.length;
-      let commandJson = match !== 0 ? Object.fromEntries([[
-            "TAG",
-            commandStr
-          ]].concat(params)) : commandStr;
-      let suppliedId = payload.arguments.id;
-      let id;
-      id = componentKind === "Aggregate" || !(suppliedId == null) ? suppliedId : Stdlib_Option.mapOr(partitionTag, "", pt => DcbTag$Reventless.partitionValueOfTags(DcbTag$Reventless.extractTagsFromJson(commandSchema, commandJson), pt));
-      return [
-        meta,
-        commandJson,
-        id
-      ];
-    }), param => {
-      let commandJson = param[1];
-      return EffectLogger$ReventlessCore.logInfo(`CommandGenerator(` + serviceName + `)`, commandJson, `generated command: ` + LogFormat$ReventlessCore.cmdLabelOfJson(commandJson));
-    }), param => {
-      let id = param[2];
-      let commandJson = param[1];
-      let meta = param[0];
-      let val;
-      try {
-        val = Message$ReventlessCore.decode(commandJson, commandSchema);
-      } catch (raw_err) {
-        let err = Primitive_exceptions.internalToException(raw_err);
-        let hook = Plugin_ResolverError$ReventlessCore.onResolverErrorHook.contents;
-        if (hook !== undefined) {
-          hook({
-            pluginName: "",
-            componentName: serviceName,
-            attemptedCommandType: Message$ReventlessCore.variantNameOfJson(commandJson),
-            timestamp: Message$ReventlessCore.nowAsISOString()
-          });
-        }
-        let message = Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message);
-        let reason = message !== undefined ? message : Stdlib_Option.getOr(JSON.stringify(err), "unknown error");
-        return Plugin_ResolverError$ReventlessCore.throwCallerFault(`Error: Couldn't decode ` + JSON.stringify(commandJson) + `: ` + reason);
+function makeGenerateCommand(publishJsons, publishJsonsAndWait, serviceName, commandSchema, componentKind, stripIdFromParamsOpt, partitionTag) {
+  let stripIdFromParams = stripIdFromParamsOpt !== undefined ? stripIdFromParamsOpt : true;
+  return payload => Effect.flatMap(Effect.tap(Effect.sync(() => {
+    let msgId = Message$ReventlessCore.uuid();
+    let meta_time = Message$ReventlessCore.nowAsISOString();
+    let meta_ip = Stdlib_Option.getOr(payload.meta.ip.shift(), "");
+    let meta_user = payload.meta.user;
+    let meta = {
+      service: serviceName,
+      time: meta_time,
+      ip: meta_ip,
+      user: meta_user,
+      msgId: msgId,
+      correlationId: msgId
+    };
+    let obj = Stdlib_Option.flatMap(JSON.stringify(payload.arguments), jsonString => Stdlib_JSON.Decode.object(JSON.parse(jsonString)));
+    let params = obj !== undefined ? (stripIdFromParams ? Stdlib_Dict.$$delete(obj, "id") : undefined, dropNullArguments(obj), stampOwnerFields(obj, commandSchema, payload.command, payload.identity, serviceName), Object.entries(obj)) : Stdlib_JsError.throwWithMessage("Couldn't decode:" + Stdlib_Option.getOr(JSON.stringify(payload.arguments), "<payload.arguments>"));
+    let commandStr = payload.command;
+    let match = params.length;
+    let commandJson = match !== 0 ? Object.fromEntries([[
+          "TAG",
+          commandStr
+        ]].concat(params)) : commandStr;
+    let suppliedId = payload.arguments.id;
+    let id;
+    id = componentKind === "Aggregate" || !(suppliedId == null) ? suppliedId : Stdlib_Option.mapOr(partitionTag, "", pt => DcbTag$Reventless.partitionValueOfTags(DcbTag$Reventless.extractTagsFromJson(commandSchema, commandJson), pt));
+    return [
+      meta,
+      commandJson,
+      id
+    ];
+  }), param => {
+    let commandJson = param[1];
+    return EffectLogger$ReventlessCore.logInfo(`CommandGenerator(` + serviceName + `)`, commandJson, `generated command: ` + LogFormat$ReventlessCore.cmdLabelOfJson(commandJson));
+  }), param => {
+    let id = param[2];
+    let commandJson = param[1];
+    let meta = param[0];
+    let val;
+    try {
+      val = Message$ReventlessCore.decode(commandJson, commandSchema);
+    } catch (raw_err) {
+      let err = Primitive_exceptions.internalToException(raw_err);
+      let hook = Plugin_ResolverError$ReventlessCore.onResolverErrorHook.contents;
+      if (hook !== undefined) {
+        hook({
+          pluginName: "",
+          componentName: serviceName,
+          attemptedCommandType: Message$ReventlessCore.variantNameOfJson(commandJson),
+          timestamp: Message$ReventlessCore.nowAsISOString()
+        });
       }
-      let interceptor = commandInterceptorHook.contents;
-      let interceptEffect = interceptor !== undefined ? Effect.promise(() => interceptor(payload.identity, serviceName, componentKind, payload.command, payload.arguments)) : Effect.succeed("Allow");
-      return Effect.flatMap(interceptEffect, interceptResult => {
-        if (typeof interceptResult !== "object") {
-          if (publishJsonsAndWait !== undefined) {
-            return Effect.map(Effect.promise(() => publishJsonsAndWait([{
-                id: id,
-                meta: meta,
-                commandJson: commandJson
-              }])), outcomes => {
-              let payload = outcomes[0];
-              switch (payload.TAG) {
-                case "Accepted" :
-                  if (!Stdlib_Option.isNone(payload.entityId)) {
-                    return payload;
-                  }
-                  let newrecord = {...payload};
-                  newrecord.entityId = id;
-                  return newrecord;
-                case "Rejected" :
-                case "Pending" :
+      let message = Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message);
+      let reason = message !== undefined ? message : Stdlib_Option.getOr(JSON.stringify(err), "unknown error");
+      return Plugin_ResolverError$ReventlessCore.throwCallerFault(`Error: Couldn't decode ` + JSON.stringify(commandJson) + `: ` + reason);
+    }
+    let interceptor = commandInterceptorHook.contents;
+    let interceptEffect = interceptor !== undefined ? Effect.promise(() => interceptor(payload.identity, serviceName, componentKind, payload.command, payload.arguments)) : Effect.succeed("Allow");
+    return Effect.flatMap(interceptEffect, interceptResult => {
+      if (typeof interceptResult !== "object") {
+        if (publishJsonsAndWait !== undefined) {
+          return Effect.map(Effect.promise(() => publishJsonsAndWait([{
+              id: id,
+              meta: meta,
+              commandJson: commandJson
+            }])), outcomes => {
+            let payload = outcomes[0];
+            switch (payload.TAG) {
+              case "Accepted" :
+                if (!Stdlib_Option.isNone(payload.entityId)) {
                   return payload;
-              }
-            });
-          } else {
-            return Effect.map(Effect.promise(() => publishJsons([{
-                id: id,
-                meta: meta,
-                commandJson: commandJson
-              }])), () => ({
-              TAG: "Pending",
-              msgId: meta.msgId
-            }));
-          }
+                }
+                let newrecord = {...payload};
+                newrecord.entityId = id;
+                return newrecord;
+              case "Rejected" :
+              case "Pending" :
+                return payload;
+            }
+          });
         } else {
-          return Stdlib_JsError.throwWithMessage(interceptResult._0);
+          return Effect.map(Effect.promise(() => publishJsons([{
+              id: id,
+              meta: meta,
+              commandJson: commandJson
+            }])), () => ({
+            TAG: "Pending",
+            msgId: meta.msgId
+          }));
         }
-      });
+      } else {
+        return Stdlib_JsError.throwWithMessage(interceptResult._0);
+      }
     });
-  };
+  });
 }
 
 function Make(Spec) {

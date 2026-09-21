@@ -26,10 +26,10 @@
     "sury-ppx": "11.0.0-rc.2"
   },
   "devDependencies": {
-    "rescript": "12.3.0"
+    "rescript": "12.3.1"
   },
   "peerDependencies": {
-    "rescript": "12.3.0"
+    "rescript": "^12.3.1"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org"

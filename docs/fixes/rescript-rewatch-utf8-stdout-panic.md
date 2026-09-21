@@ -1,5 +1,12 @@
 # ReScript 12.3.0: rewatch build panics on non-UTF-8 / multibyte bytes in compiler output
 
+> **Status: resolved upstream in ReScript 12.3.1**, which this repo now pins. Its release notes
+> list "Fix build crash when the compiler emits output that is not valid UTF-8" (rescript-lang
+> PR 8482) and a companion fix that keeps multibyte characters intact when code frames wrap
+> (PR 8520). No issue needs filing. A clean `reventless-host-shell` build on 12.3.1 is still to
+> be confirmed in the UI repo; see
+> [rescript-version-upgrade.md](../analysis/done/rescript-version-upgrade.md).
+
 ## Symptom
 
 A full (clean) `rescript build` of `reventless-host-shell` panics the Rust build

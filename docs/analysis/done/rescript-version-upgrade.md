@@ -1,11 +1,12 @@
 # ReScript version upgrade: 12.3.1 now, 13 later
 
 **Date:** 2026-09-21<br/>
-**Status:** Analysis, with a trial build of 12.3.1 done on 2026-09-21 in a separate worktree
-(see [Trial build of 12.3.1](#trial-build-of-1231)). No code changed on `alpha`. The rest is
+**Status:** 12.3.1 adopted on 2026-09-21 (steps 1 and 2 below). v13 is still open. The
+[trial build](#trial-build-of-1231) ran in a separate worktree before adoption. The rest is
 based on the upstream release notes and changelog, plus a search of this repo's sources,
 `rescript.json` files and `package.json` pins.<br/>
-**Related:** [rescript-rewatch-utf8-stdout-panic.md](../fixes/rescript-rewatch-utf8-stdout-panic.md)
+**Related:** [rescript-rewatch-utf8-stdout-panic.md](../../fixes/rescript-rewatch-utf8-stdout-panic.md)<br/>
+**Open steps (3–5) planned in:** [rescript-13-upgrade.md](../../plans/Backlog/rescript-13-upgrade.md)
 
 ---
 

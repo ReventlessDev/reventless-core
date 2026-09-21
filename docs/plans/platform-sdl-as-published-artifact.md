@@ -55,7 +55,7 @@ deployed. A snapshot that can only arrive by dependency bump cannot.
   `@reventlessdev/reventless-spec/schema/platform-api.graphql` is importable.
 - **It publishes.** No `files` allowlist, and `.npmignore` does not exclude a new
   `schema/` directory.
-- **No peer conflict.** The spec package peer-depends on `rescript 12.3.0`; the
+- **No peer conflict.** The spec package peer-depends on `rescript ^12.3.1`; the
   shell is already on `^12.3.0`.
 
 ## Steps

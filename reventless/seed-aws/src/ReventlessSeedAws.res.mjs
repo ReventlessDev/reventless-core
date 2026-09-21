@@ -300,9 +300,9 @@ async function setActiveRole(client, role) {
   }
 }
 
-function connect($staropt$star, stack, backend, param) {
+function connect(projectDirOpt, stack, backend, param) {
+  let projectDir = projectDirOpt !== undefined ? projectDirOpt : ".";
   return async () => {
-    let projectDir = $staropt$star !== undefined ? $staropt$star : ".";
     let url = Seed_Prompt$ReventlessSeed.envValue("SEED_PULUMI_BACKEND");
     let backend$1 = url !== undefined ? url : backend;
     let stackName = await resolveStack(projectDir, backend$1, stack);

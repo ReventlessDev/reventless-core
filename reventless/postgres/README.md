@@ -70,7 +70,7 @@ Then register it as a ReScript dependency in `rescript.json`:
 }
 ```
 
-Requires ReScript `^12.3.0` (peer dependency).
+Requires ReScript `^12.3.1` (peer dependency).
 
 ## Links
 

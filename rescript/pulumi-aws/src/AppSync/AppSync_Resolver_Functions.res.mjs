@@ -977,9 +977,9 @@ export function request(ctx) {
 `;
 }
 
-function resolveIds(idsField, sortField, ownerField, retiredField, retiredValues, $staropt$star) {
+function resolveIds(idsField, sortField, ownerField, retiredField, retiredValues, elevatedGroupsOpt) {
+  let elevatedGroups = elevatedGroupsOpt !== undefined ? elevatedGroupsOpt : [];
   return tableName => {
-    let elevatedGroups = $staropt$star !== undefined ? $staropt$star : [];
     let keysCode = sortField !== undefined ? `id => ({ id: util.dynamodb.toString(id.id), ` + sortField + `: util.dynamodb.toString(id.` + sortField + `) })` : `id => ({ id: util.dynamodb.toString(id) })`;
     return importUtil + `
 import { runtime } from '@aws-appsync/utils';
@@ -1011,10 +1011,9 @@ export function response(ctx) {
   };
 }
 
-function batchGetItemsByIds(ownerField, retiredField, retiredValues, $staropt$star) {
-  return tableName => {
-    let elevatedGroups = $staropt$star !== undefined ? $staropt$star : [];
-    return importUtil + `
+function batchGetItemsByIds(ownerField, retiredField, retiredValues, elevatedGroupsOpt) {
+  let elevatedGroups = elevatedGroupsOpt !== undefined ? elevatedGroupsOpt : [];
+  return tableName => importUtil + `
 import { runtime } from '@aws-appsync/utils';
 export function request(ctx) {
   const ids = ctx.args.ids ?? [];
@@ -1039,22 +1038,21 @@ export function response(ctx) {
   // caller does not own is dropped rather than refused, for the reason the
   // single-key door answers null: distinguishing "not yours" from "not there"
   // would make this door an oracle for which ids exist.` + (
-      ownerField !== undefined ? ownerGuardPreamble(ownerField, elevatedGroups) : ""
-    ) + retiredGuardPreamble(retiredField, retiredValues, elevatedGroups, Stdlib_Option.isSome(ownerField)) + `
+    ownerField !== undefined ? ownerGuardPreamble(ownerField, elevatedGroups) : ""
+  ) + retiredGuardPreamble(retiredField, retiredValues, elevatedGroups, Stdlib_Option.isSome(ownerField)) + `
   return (ctx.result?.data?.['` + tableName + `'] ?? []).filter(item =>
     item !== null` + (
-      Stdlib_Option.isSome(ownerField) ? " && _owns(item)" : ""
-    ) + (
-      Stdlib_Option.isSome(retiredField) ? " && _live(item)" : ""
-    ) + `);
+    Stdlib_Option.isSome(ownerField) ? " && _owns(item)" : ""
+  ) + (
+    Stdlib_Option.isSome(retiredField) ? " && _live(item)" : ""
+  ) + `);
 }
 `;
-  };
 }
 
-function refsByIds(labelField, retiredField, retiredValues, namedWhenRetired, imageExpr, ownerField, $staropt$star) {
+function refsByIds(labelField, retiredField, retiredValues, namedWhenRetired, imageExpr, ownerField, elevatedGroupsOpt) {
+  let elevatedGroups = elevatedGroupsOpt !== undefined ? elevatedGroupsOpt : [];
   return tableName => {
-    let elevatedGroups = $staropt$star !== undefined ? $staropt$star : [];
     let ownerGuard = ownerField !== undefined ? ownerGuardPreamble(ownerField, elevatedGroups) : "\n  const _owns = (row) => true;";
     let retiredExpr;
     if (retiredField !== undefined) {
