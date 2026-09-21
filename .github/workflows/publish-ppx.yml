@@ -339,10 +339,11 @@ jobs:
         run: |
           pkg="@reventlessdev/reventless-ppx-linux-x64@${VERSION}"
           ok=false
-          for i in 1 2 3 4 5; do
+          # ~4 min: the registry has taken ~2 min to list a just-published version.
+          for i in $(seq 1 12); do
             if npm pack "$pkg" --registry=https://registry.npmjs.org --pack-destination "$RUNNER_TEMP"; then ok=true; break; fi
-            echo "npm pack $pkg failed (registry may still be propagating) — retrying in 15s"
-            sleep 15
+            echo "npm pack $pkg failed (registry may still be propagating) — retrying in 20s"
+            sleep 20
           done
           if [ "$ok" != true ]; then echo "::error::could not fetch $pkg after retries"; exit 1; fi
           tar -xzf "$RUNNER_TEMP"/reventlessdev-reventless-ppx-linux-x64-*.tgz -C "$RUNNER_TEMP"
@@ -430,10 +431,10 @@ jobs:
           # Relock so --frozen-lockfile consumers resolve the new pin. Retry to
           # ride out registry propagation of the just-published packages.
           ok=false
-          for i in 1 2 3 4 5; do
+          for i in $(seq 1 12); do
             if pnpm install --lockfile-only --no-frozen-lockfile; then ok=true; break; fi
-            echo "relock attempt $i failed (registry may still be propagating) — retrying in 15s"
-            sleep 15
+            echo "relock attempt $i failed (registry may still be propagating) — retrying in 20s"
+            sleep 20
           done
           if [ "$ok" != true ]; then echo "::error::relock failed after retries"; exit 1; fi
 
