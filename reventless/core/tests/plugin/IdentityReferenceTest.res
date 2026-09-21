@@ -11,7 +11,7 @@ module CustomerId = Reventless.Id.Make({
   let key = "customerId"
 })
 
-let refsOf = (~viewsByKey, schema: S.t<'a>) => {
+let refsOf = (~viewsByKey, ~minted=?, schema: S.t<'a>) => {
   let reports = []
   let identityViews: Plugin_Structure.identityViews = {
     viewsByKey: Dict.fromArray(viewsByKey),
@@ -23,7 +23,7 @@ let refsOf = (~viewsByKey, schema: S.t<'a>) => {
   | _ => Dict.make()
   }
   let refs =
-    Plugin_Structure.extractReferences(~identityViews, properties)->Array.map(r => (
+    Plugin_Structure.extractReferences(~identityViews, ~minted?, properties)->Array.map(r => (
       r.fieldName,
       r.entity,
     ))
@@ -63,6 +63,17 @@ describe("a reference derived from the type", () => {
     expect(reports->Array.some(r => r->String.includes("no view in this plugin")))->toBe(true)
   })
 
+  // A create form mints this id; a list of the rows that already exist is the
+  // wrong control for it.
+  testSync("the id a creating command mints references nothing", () => {
+    let (refs, reports) = refsOf(
+      ~viewsByKey=[("customerId", ["Customers"]), ("productId", ["AvailableProducts"])],
+      ~minted="buyer",
+      order,
+    )
+    expect((refs, reports))->toEqual(([("productIds", "AvailableProducts")], []))
+  })
+
   testSync("an untyped field is left to its name, as before", () => {
     let (refs, reports) = refsOf(
       ~viewsByKey=[("customerId", ["Customers"])],
@@ -95,5 +106,13 @@ describe("a declared @ref on a typed id", () => {
       chosen,
     )
     expect((refs, reports))->toEqual(([("buyer", "Customers")], []))
+  })
+
+  testSync("stands on a minted id: only the derived one steps aside", () => {
+    let chosen = S.schema(
+      s => {"buyer": s.matches(CustomerId.schema->Reventless.Reference.mark("Customers"))},
+    )
+    let (refs, _) = refsOf(~viewsByKey=[("customerId", ["Customers"])], ~minted="buyer", chosen)
+    expect(refs)->toEqual([("buyer", "Customers")])
   })
 })

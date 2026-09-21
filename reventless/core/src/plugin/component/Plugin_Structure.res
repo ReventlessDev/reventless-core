@@ -648,6 +648,9 @@ let identityReference = (
 // element schema.
 let extractReferences = (
   ~identityViews: option<identityViews>=?,
+  // The id a creating command mints. Its identity names the row the command
+  // brings into existence, not one it refers to, so nothing is derived for it.
+  ~minted: option<string>=?,
   properties: dict<S.t<unknown>>,
 ): array<Reventless.Plugin.fieldReference> =>
   properties
@@ -660,8 +663,9 @@ let extractReferences = (
     // nesting and the other not.
     let declared = Reventless.Reference.collectFieldTargets(fieldName, fieldSchema)
     let targets = switch identityViews {
-    | Some(views) => identityReference(views, ~fieldName, fieldSchema, declared)
-    | None => declared
+    | Some(views) if minted != Some(fieldName) =>
+      identityReference(views, ~fieldName, fieldSchema, declared)
+    | _ => declared
     }
     targets->Array.map(((path, target)): Reventless.Plugin.fieldReference => {
       Reventless.Plugin.fieldName: path,
@@ -849,7 +853,6 @@ let toCommandDef = (
       ~variantName,
       properties,
     )
-    let references = extractReferences(~identityViews?, properties)
     // Evaluated against a synthetic value per constructor, the same shape the
     // resolver builds at call time: a payload-bearing variant compiles to
     // `{TAG, ...}`, a payload-less one to a bare string.
@@ -913,6 +916,11 @@ let toCommandDef = (
     | None => Reventless.Transition.targetState(declared)
     }
     let level = derived->Option.flatMap(d => d.level)->Option.getOr(guessedLevel)
+    let references = extractReferences(
+      ~identityViews?,
+      ~minted=?level == Reventless.Plugin.Collection ? aggregateIdField : None,
+      properties,
+    )
     // API-exposed iff the whole command isn't @noApi and this variant
     // isn't in its @noApi-variants set — mirrors the API-generation filter
     // (Plugin_Helpers / PluginBaseFragment). Drives the event-graph API badge.

@@ -481,12 +481,12 @@ function identityReference(identityViews, fieldName, fieldSchema, declared) {
     ]];
 }
 
-function extractReferences(identityViews, properties) {
+function extractReferences(identityViews, minted, properties) {
   return Object.entries(properties).flatMap(param => {
     let fieldSchema = param[1];
     let fieldName = param[0];
     let declared = Reference$Reventless.collectFieldTargets(fieldName, fieldSchema);
-    let targets = identityViews !== undefined ? identityReference(identityViews, fieldName, fieldSchema, declared) : declared;
+    let targets = identityViews !== undefined && Primitive_object.notequal(minted, fieldName) ? identityReference(identityViews, fieldName, fieldSchema, declared) : declared;
     return targets.map(param => {
       let target = param[1];
       return {
@@ -500,7 +500,7 @@ function extractReferences(identityViews, properties) {
 
 function toEventDef(identityViews, v) {
   let mkDef = (variantName, properties) => {
-    let references = extractReferences(identityViews, properties);
+    let references = extractReferences(identityViews, undefined, properties);
     return {
       name: variantName,
       schema: JSON.stringify(SuryToJsonSchema$ReventlessCore.deriveObjectSchema(undefined, undefined, v)),
@@ -643,7 +643,7 @@ function annotateArgTypes(schema, argTypes) {
 function toCommandDef(identityViews, isAggregate, partitionKey, mutationFieldFor, parentSchema, commandAuthorization, commandTransition, derivedEdgeFor, v) {
   let mkDef = (variantName, properties) => {
     let match = commandLevelAndId(isAggregate, partitionKey, variantName, properties);
-    let references = extractReferences(identityViews, properties);
+    let aggregateIdField = match[1];
     let syntheticCommand = DcbTag$Reventless.isVariantPayloadBearing(parentSchema, variantName) ? ({
         TAG: variantName
       }) : variantName;
@@ -678,6 +678,7 @@ function toCommandDef(identityViews, isAggregate, partitionKey, mutationFieldFor
     });
     let targetState = observed !== undefined ? observed : Transition$Reventless.targetState(declared);
     let level = Stdlib_Option.getOr(Stdlib_Option.flatMap(derived, d => d.level), match[0]);
+    let references = extractReferences(identityViews, level === "Collection" ? aggregateIdField : undefined, properties);
     let apiExposed = false;
     if (!ApiNoApiHelpers$ReventlessCore.isNoApi(parentSchema)) {
       let excluded = ApiNoApiHelpers$ReventlessCore.getExcludedVariants(parentSchema);
@@ -691,7 +692,7 @@ function toCommandDef(identityViews, isAggregate, partitionKey, mutationFieldFor
       name: variantName,
       schema: JSON.stringify(annotatedSchema),
       level: level,
-      aggregateIdField: match[1],
+      aggregateIdField: aggregateIdField,
       mutationField: mutationField,
       references: references,
       allowedStates: match$3[0],
