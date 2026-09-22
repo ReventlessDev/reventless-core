@@ -122,12 +122,34 @@ let label_json = function
 
 (* An outline of an expression: what a value is built from, each part with its
    span. Anything this walk does not name is `other`, with its text. *)
+(* The parser folds a minus into the constant it negates (`-2`, `-.3.5`) but keeps
+   the location of the digits, so the span would cut `2`. A negative constant's
+   span starts at its `-` (or `-.`), over any space between. *)
+let constant_loc ~src (loc : Location.t) (value : string) : Location.t =
+  if String.length value = 0 || value.[0] <> '-' then loc
+  else
+    let rec back i =
+      if i < 0 then None
+      else match src.[i] with
+        | ' ' | '\t' | '\n' | '\r' -> back (i - 1)
+        | '-' -> Some i
+        | '.' when i > 0 && src.[i - 1] = '-' -> Some (i - 1)
+        | _ -> None
+    in
+    match back (loc.loc_start.pos_cnum - 1) with
+    | Some i -> { loc with loc_start = { loc.loc_start with pos_cnum = i } }
+    | None -> loc
+
 let rec expr_json ~src (e : expression) : Yojson.Safe.t =
-  let node kind fields = `Assoc ((("kind", `String kind) :: fields) @ at ~src e.pexp_loc) in
+  let node ?(loc = e.pexp_loc) kind fields =
+    `Assoc ((("kind", `String kind) :: fields) @ at ~src loc)
+  in
   match e.pexp_desc with
   | Pexp_constant (Pconst_string (s, _, _)) -> node "string" [ ("value", `String s) ]
-  | Pexp_constant (Pconst_integer (s, _)) -> node "int" [ ("value", `String s) ]
-  | Pexp_constant (Pconst_float (s, _)) -> node "float" [ ("value", `String s) ]
+  | Pexp_constant (Pconst_integer (s, _)) ->
+    node ~loc:(constant_loc ~src e.pexp_loc s) "int" [ ("value", `String s) ]
+  | Pexp_constant (Pconst_float (s, _)) ->
+    node ~loc:(constant_loc ~src e.pexp_loc s) "float" [ ("value", `String s) ]
   | Pexp_construct ({ txt = Lident "Function$"; _ }, Some inner) -> function_json ~src ~outer:e inner
   | Pexp_fun _ -> function_json ~src ~outer:e e
   | Pexp_construct ({ txt; _ }, payload) ->

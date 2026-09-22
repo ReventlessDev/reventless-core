@@ -4057,6 +4057,13 @@ assert_js_contains "$READ_DIR/Marker_GWT.read.json" '"title":"unmarked","scenari
   "a test without a marker has none"
 assert_js_contains "$READ_DIR/Marker_GWT.read.json" '{"verb":"thenNoEvent","args":\[\]}' \
   "->thenNoEvent is a step with no values"
+printf 'let x = f(~qty=-2, -.3.5, 3 - 1)\n' > "$READ_DIR/Negative.res"
+"$READER" --bsc "$BSC" "$READ_DIR/Negative.res" > "$READ_DIR/Negative.read.json"
+assert_js_contains "$READ_DIR/Negative.read.json" '"value":"-2","span":{"start":[0-9]*,"end":[0-9]*},"text":"-2"' \
+  "a negative constant's span starts at its minus"
+assert_js_contains "$READ_DIR/Negative.read.json" '"value":"-3.5","span":{"start":[0-9]*,"end":[0-9]*},"text":"-.3.5"' \
+  "a negative float's span starts at its -."
+assert_js_contains "$READ_DIR/Negative.read.json" '"text":"3 - 1"' "a subtraction is left as it is"
 echo 'let x = (' > "$READ_DIR/Broken.res"
 if "$READER" --bsc "$BSC" "$READ_DIR/Broken.res" >/dev/null 2>&1; then
   fail "a file bsc cannot parse" "the reader exited 0"

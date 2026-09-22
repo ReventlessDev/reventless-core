@@ -149,6 +149,13 @@ arrive as `res.doc` attributes and are reported like any other attribute.
     tarball, which the registry served about 8 minutes after publishing; a rerun passed (386
     checks, the reader's included). The drift guard's and the relock's retry windows are now
     10 minutes.
+- **Fixed 2026-09-22 (after alpha.87): a negative constant's span.** The parser folds a
+  minus into the constant (`-2` is `Pconst_integer "-2"`) but keeps the location of the
+  digits, so the span cut `2`, and `-.3.5` cut `3.5`. The value was right. A tool inlining a
+  builder call by span (`line(~id="p1", ~qty=-2)`) wrote `quantity: 2`, and a test of a
+  negative quantity then placed an order. `constant_loc` now starts such a span at its `-`
+  (or `-.`), over any space between; a subtraction (`3 - 1`) is a call and unaffected.
+  `test/run.sh` checks both.
 - **Not built yet (rest of S2):** a projection's `project` cases and a spec's
   `commandTransition` arms. The GWT migration does not need them; the forms-as-views work does,
   and adds them when it starts.
