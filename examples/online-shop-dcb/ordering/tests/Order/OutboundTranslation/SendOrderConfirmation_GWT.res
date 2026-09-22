@@ -12,6 +12,8 @@ module SendOrderConfirmationSlice = {
 
 @@reventless.gwt
 
+open OrderingExamples
+
 let cid = CustomerId.make
 let oid = OrderId.make
 
@@ -22,14 +24,16 @@ describe("SendOrderConfirmation OutboundTranslationSlice", () => {
     ->thenTodos([("o1", {orderId: oid("o1"), customerId: cid("c1")})])
   )
 
+  // scenario-id: f72032f8-25ba-482e-be6e-4c765908bb70
   test("translate success marks the TODO Completed", () =>
-    givenTodo("o1", {orderId: oid("o1"), customerId: cid("c1")})
+    givenTodo("o1", {orderId: o1, customerId: c1})
     ->whenTranslateMocked((_id, _item) => Promise.resolve(Ok(None)))
     ->thenTodoStatus("o1", #Completed)
   )
 
+  // scenario-id: a4563058-8777-4756-8e12-983fcd0e8f20
   test("translate failure leaves the TODO Pending for retry", () =>
-    givenTodo("o1", {orderId: oid("o1"), customerId: cid("c1")})
+    givenTodo("o1", {orderId: o1, customerId: c1})
     ->whenTranslateMocked((_id, _item) => Promise.resolve(Error("smtp down")))
     ->thenTodoStatus("o1", #Pending)
   )
