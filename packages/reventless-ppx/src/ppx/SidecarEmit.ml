@@ -314,27 +314,55 @@ let maybe_emit ~spec_name ~fname (body : structure) : unit =
    from the source text by line, correlated to each `test(...)` location.
    ════════════════════════════════════════════════════════════════════════ *)
 
-(* ── example values from literal expressions (→ Model.exampleValue JSON) ── *)
+(* ── source text (read once per sidecar) ─────────────────────────────── *)
 
-let rec example_of_expr (e : expression) : Yojson.Safe.t option =
+(* The whole source file, or None when it cannot be read. One read serves both
+   the scenario-id markers (comments, which ppxlib drops) and the text of the
+   values the walk below records as code. *)
+let read_source (fname : string) : string option =
+  try
+    let ic = open_in_bin fname in
+    let len = in_channel_length ic in
+    let text = really_input_string ic len in
+    close_in ic;
+    Some text
+  with _ -> None
+
+(* The source text an expression was parsed from, cut by its byte offsets. None
+   when there is no source, or the location is one the parser did not set or
+   that does not fit the file — the value is then dropped, as before code
+   values existed. *)
+let text_at ?src (loc : Location.t) : string option =
+  match src with
+  | None -> None
+  | Some text ->
+    let a = loc.loc_start.pos_cnum and b = loc.loc_end.pos_cnum in
+    if a >= 0 && b > a && b <= String.length text then Some (String.sub text a (b - a))
+    else None
+
+let source_text ?src (e : expression) : string option = text_at ?src e.pexp_loc
+
+(* ── example values from expressions (→ Model.exampleValue JSON) ──────── *)
+
+let rec example_of_expr ?src (e : expression) : Yojson.Safe.t option =
   match e.pexp_desc with
   | Pexp_constant (Pconst_string (s, _, _)) ->
     Some (`Assoc [ ("kind", `String "string"); ("value", `String s) ])
   | Pexp_constant (Pconst_integer (s, _)) -> (
     match int_of_string_opt s with
     | Some i -> Some (`Assoc [ ("kind", `String "int"); ("value", `Int i) ])
-    | None -> None)
+    | None -> code_of_expr ?src e)
   | Pexp_constant (Pconst_float (s, _)) -> (
     match float_of_string_opt s with
     | Some f -> Some (`Assoc [ ("kind", `String "float"); ("value", `Float f) ])
-    | None -> None)
+    | None -> code_of_expr ?src e)
   | Pexp_construct ({ txt = Lident "true"; _ }, None) ->
     Some (`Assoc [ ("kind", `String "bool"); ("value", `Bool true) ])
   | Pexp_construct ({ txt = Lident "false"; _ }, None) ->
     Some (`Assoc [ ("kind", `String "bool"); ("value", `Bool false) ])
   | Pexp_construct ({ txt = Lident "None"; _ }, None) ->
     Some (`Assoc [ ("kind", `String "null") ])
-  | Pexp_construct ({ txt = Lident "Some"; _ }, Some inner) -> example_of_expr inner
+  | Pexp_construct ({ txt = Lident "Some"; _ }, Some inner) -> example_of_expr ?src inner
   (* A typed id made from a literal — `oid("o1")`, `OrderId.make("o1")`. Its
      value is the string: a scenario relates its given events to its command by
      comparing ids, and a test that types its ids must not read as one whose ids
@@ -359,11 +387,17 @@ let rec example_of_expr (e : expression) : Yojson.Safe.t option =
     Some
       (`Assoc
          [ ("kind", `String "enum"); ("value", `String (flatten_longident txt)) ])
+  (* A named value — `o1`, `dockLine`, `OrderingExamples.dockLine`. Recorded as
+     the name, not resolved: what it points to is the reader's to decide, and the
+     name is what a writer puts back. Dropping it made a list of named lines read
+     as an empty list. *)
+  | Pexp_ident { txt = (Lident _ | Ldot _) as lid; _ } ->
+    Some (`Assoc [ ("kind", `String "ref"); ("name", `String (flatten_longident lid)) ])
   | Pexp_array els ->
     Some
       (`Assoc
          [ ("kind", `String "list");
-           ("items", `List (List.filter_map example_of_expr els)) ])
+           ("items", `List (List.filter_map (example_of_expr ?src) els)) ])
   | Pexp_record (fields, _) ->
     Some
       (`Assoc
@@ -372,32 +406,43 @@ let rec example_of_expr (e : expression) : Yojson.Safe.t option =
              `List
                (List.filter_map
                   (fun ((lid : Longident.t loc), fexpr) ->
-                    match example_of_expr fexpr with
+                    match example_of_expr ?src fexpr with
                     | Some v ->
                       Some (`List [ `String (flatten_longident lid.txt); v ])
                     | None -> None)
                   fields) ) ])
-  | _ -> None
+  | _ -> code_of_expr ?src e
+
+(* Anything the walk above cannot read — `eur(4500.0)`,
+   `Reventless.Money.make(~amount=1000.0, ~currency=EUR)` — is recorded as the
+   source text it was written as, so a field the test states never reads as one
+   it leaves out. The text comes from the file, never from printing the AST:
+   the printer writes OCaml syntax, not ReScript. *)
+and code_of_expr ?src (e : expression) : Yojson.Safe.t option =
+  match source_text ?src e with
+  | Some text -> Some (`Assoc [ ("kind", `String "code"); ("value", `String text) ])
+  | None -> None
 
 (* `[name, exampleValue]` pairs matching Model.exampleEntriesSchema. *)
-let record_entries (e : expression) : Yojson.Safe.t list =
+let record_entries ?src (e : expression) : Yojson.Safe.t list =
   match e.pexp_desc with
   | Pexp_record (fields, _) ->
     List.filter_map
       (fun ((lid : Longident.t loc), fexpr) ->
-        match example_of_expr fexpr with
+        match example_of_expr ?src fexpr with
         | Some v -> Some (`List [ `String (flatten_longident lid.txt); v ])
         | None -> None)
       fields
   | _ -> []
 
 (* A `Ctor({..})` / `Ctor` → (element name, value entries). *)
-let element_of_constructor (e : expression) : (string * Yojson.Safe.t list) option =
+let element_of_constructor ?src (e : expression) :
+    (string * Yojson.Safe.t list) option =
   match e.pexp_desc with
   | Pexp_construct ({ txt; _ }, payload) ->
     let name = flatten_longident txt in
     let values =
-      match payload with Some rec_expr -> record_entries rec_expr | None -> []
+      match payload with Some rec_expr -> record_entries ?src rec_expr | None -> []
     in
     Some (name, values)
   | _ -> None
@@ -473,9 +518,10 @@ let step_json ~kind ~element ~values : Yojson.Safe.t =
    command that ran and produced nothing. That is the opposite of what it
    asserts, and it is why the lifecycle check called such a scenario a
    contradiction of the transition the command declares. *)
-let steps_of_payload ~(kind : string) (payload : expression) : Yojson.Safe.t list =
+let steps_of_payload ?src ~(kind : string) (payload : expression) :
+    Yojson.Safe.t list =
   let one el =
-    match element_of_constructor el with
+    match element_of_constructor ?src el with
     | Some (element, values) -> Some (step_json ~kind ~element ~values)
     | None -> None
   in
@@ -486,14 +532,16 @@ let steps_of_payload ~(kind : string) (payload : expression) : Yojson.Safe.t lis
 (* The same, for the verbs whose payload is a record rather than a constructor:
    a projection asserts the row itself, so there is no element name to read and
    `state` stands for every one of them. *)
-let state_steps_of_payload (payload : expression) : Yojson.Safe.t list =
-  let one el = step_json ~kind:"state" ~element:"state" ~values:(record_entries el) in
+let state_steps_of_payload ?src (payload : expression) : Yojson.Safe.t list =
+  let one el =
+    step_json ~kind:"state" ~element:"state" ~values:(record_entries ?src el)
+  in
   match payload.pexp_desc with
   | Pexp_array els -> List.map one els
   | _ -> [ one payload ]
 
 (* Build the given / when / then arrays for one test body. *)
-let extract_steps (body : expression) :
+let extract_steps ?src (body : expression) :
     Yojson.Safe.t list * Yojson.Safe.t list * Yojson.Safe.t list =
   let calls = collect_applies body [] in
   let find names =
@@ -503,7 +551,7 @@ let extract_steps (body : expression) :
     match find [ "givenEvents"; "givenEvent" ] with
     | Some (_, args) -> (
       match last args with
-      | Some payload -> steps_of_payload ~kind:"event" payload
+      | Some payload -> steps_of_payload ?src ~kind:"event" payload
       | None -> [])
     | None -> []
   in
@@ -519,7 +567,7 @@ let extract_steps (body : expression) :
       match last args with
       (* `whenEvents([..])` drives the fold with several events in order; each is
          a step of its own, the same way `givenEvents` expands. *)
-      | Some payload -> steps_of_payload ~kind payload
+      | Some payload -> steps_of_payload ?src ~kind payload
       | None -> [])
     | None -> []
   in
@@ -549,7 +597,7 @@ let extract_steps (body : expression) :
            the record either way, so the two share a case; the id is a routing
            detail of the fold, not part of the row's value. *)
         | "thenState" | "thenStateWithId" | "thenStates" | "thenStatesWithId" ->
-          state_steps_of_payload payload
+          state_steps_of_payload ?src payload
         | _ ->
           let kind =
             match name with
@@ -558,7 +606,7 @@ let extract_steps (body : expression) :
             | "thenSideEffect" -> "sideEffect"
             | _ -> "event"
           in
-          steps_of_payload ~kind payload)
+          steps_of_payload ?src ~kind payload)
       | None -> [])
     | None -> []
   in
@@ -572,7 +620,7 @@ let extract_steps (body : expression) :
    good. *)
 let scenario_id_prefixes = [ "// scenario-id:"; "// spec-id:" ]
 
-let read_scenario_ids (fname : string) : (int * string) list =
+let scenario_ids_of_source (text : string) : (int * string) list =
   let id_of_line (trimmed : string) : string option =
     List.find_map
       (fun prefix ->
@@ -582,23 +630,18 @@ let read_scenario_ids (fname : string) : (int * string) list =
         else None)
       scenario_id_prefixes
   in
-  try
-    let ic = open_in fname in
-    let rec loop n acc =
-      match input_line ic with
-      | line ->
-        let acc =
-          match id_of_line (String.trim line) with
-          | Some id -> (n, id) :: acc
-          | None -> acc
-        in
-        loop (n + 1) acc
-      | exception End_of_file ->
-        close_in ic;
-        List.rev acc
-    in
-    loop 1 []
-  with _ -> []
+  List.concat
+    (List.mapi
+       (fun i line ->
+         match id_of_line (String.trim line) with
+         | Some id -> [ (i + 1, id) ]
+         | None -> [])
+       (String.split_on_char '\n' text))
+
+let read_scenario_ids (fname : string) : (int * string) list =
+  match read_source fname with
+  | Some text -> scenario_ids_of_source text
+  | None -> []
 
 (* The id of the test starting on [line]: the nearest marker above it, and only
    when no other test starts between that marker and [line]. A marker belongs to
@@ -679,7 +722,10 @@ let describe_of_item (item : structure_item) :
   | _ -> None
 
 let gwt_fragment_json ~fname (str : structure) : Yojson.Safe.t option =
-  let scenario_ids = read_scenario_ids fname in
+  let src = read_source fname in
+  let scenario_ids =
+    match src with Some text -> scenario_ids_of_source text | None -> []
+  in
   let describes = List.filter_map describe_of_item str in
   match describes with
   | [] -> None
@@ -705,7 +751,7 @@ let gwt_fragment_json ~fname (str : structure) : Yojson.Safe.t option =
                 | Some id -> id
                 | None -> ""
               in
-              let given, when_, then_ = extract_steps body in
+              let given, when_, then_ = extract_steps ?src body in
               (* `specId` repeats the id for the released codegen, which reads
                  only that key; it goes once the codegen reads `scenarioId`. *)
               `Assoc
@@ -757,4 +803,135 @@ let maybe_emit_gwt ~fname (str : structure) : unit =
       | None -> ()
     with exn ->
       Printf.eprintf "[reventless-ppx] gwt sidecar emit failed for %s: %s\n"
+        fname (Printexc.to_string exn)
+
+(* ════════════════════════════════════════════════════════════════════════
+   Example files — emit <Stem>.examples.json for a file carrying
+   `@@reventless.examples`: a module of named example values a scenario refers
+   to by name (`lines: [OrderingExamples.dockLine]`). The GWT sidecar records
+   such a value as a `ref`; this sidecar is where a reader resolves it, without
+   parsing ReScript.
+
+     @@reventless.examples
+     let dockLine: orderLine = {productId: pid("p1"), quantity: 1, …}
+     let o1 = OrderId.make("o1")
+
+   Only top-level `let`s binding a single name count, annotated or not; any
+   other item is ignored. The attribute selects no mode and the file is
+   otherwise compiled as written — the dispatcher only removes the attribute.
+   ════════════════════════════════════════════════════════════════════════ *)
+
+let examples_attr_name = "reventless.examples"
+
+let is_examples_attr (a : attribute) : bool = String.equal a.attr_name.txt examples_attr_name
+
+let find_examples_attr (str : structure) : attribute option =
+  List.find_map
+    (fun (item : structure_item) ->
+      match item.pstr_desc with
+      | Pstr_attribute a when is_examples_attr a -> Some a
+      | _ -> None)
+    str
+
+let strip_examples_attr (str : structure) : structure =
+  List.filter
+    (fun (item : structure_item) ->
+      match item.pstr_desc with Pstr_attribute a -> not (is_examples_attr a) | _ -> true)
+    str
+
+(* A type as ReScript writes it, for when its source text is not to hand. *)
+let rec type_to_string (ct : core_type) : string =
+  match ct.ptyp_desc with
+  | Ptyp_constr ({ txt; _ }, []) -> flatten_longident txt
+  | Ptyp_constr ({ txt; _ }, args) ->
+    flatten_longident txt ^ "<" ^ String.concat ", " (List.map type_to_string args) ^ ">"
+  | Ptyp_var v -> "'" ^ v
+  | Ptyp_poly (_, t) -> type_to_string t
+  | _ -> ""
+
+(* The annotation as written: its source text when the file is at hand, else the
+   printed form above. *)
+let type_text ?src (ct : core_type) : string =
+  match text_at ?src ct.ptyp_loc with Some t -> t | None -> type_to_string ct
+
+let strip_poly (ct : core_type) : core_type =
+  match ct.ptyp_desc with Ptyp_poly ([], t) -> t | _ -> ct
+
+(* A binding of a single name → (name, annotation, value). The annotation sits on
+   the pattern (`let x: t = e`), on the expression (`let x = (e: t)`), or on both
+   — the parsers disagree on which, so all three are read. *)
+let named_binding (vb : value_binding) :
+    (string * core_type option * expression) option =
+  let unconstrain (e : expression) =
+    match e.pexp_desc with
+    | Pexp_constraint (inner, ct) -> (inner, Some ct)
+    | _ -> (e, None)
+  in
+  match vb.pvb_pat.ppat_desc with
+  | Ppat_var { txt; _ } ->
+    let e, ct = unconstrain vb.pvb_expr in
+    Some (txt, ct, e)
+  | Ppat_constraint ({ ppat_desc = Ppat_var { txt; _ }; _ }, ct) ->
+    let e, _ = unconstrain vb.pvb_expr in
+    Some (txt, Some (strip_poly ct), e)
+  | _ -> None
+
+let unknown_kind : Yojson.Safe.t =
+  `Assoc [ ("kind", `String "custom"); ("name", `String "Unknown") ]
+
+let examples_fragment_json ~fname (str : structure) : Yojson.Safe.t =
+  let src = read_source fname in
+  let examples =
+    List.concat_map
+      (fun (item : structure_item) ->
+        match item.pstr_desc with
+        | Pstr_value (_, vbs) ->
+          List.filter_map
+            (fun (vb : value_binding) ->
+              match named_binding vb with
+              | None -> None
+              | Some (name, ct, e) ->
+                let type_s, kind =
+                  match ct with
+                  | Some ct -> (type_text ?src ct, kind_of_type ct)
+                  | None -> ("", unknown_kind)
+                in
+                (* No value only when the source is not to hand for a value
+                   the walk records as code; the entry is dropped then, as a
+                   GWT field is. *)
+                Option.map
+                  (fun value ->
+                    `Assoc
+                      [ ("name", `String name);
+                        ("type", `String type_s);
+                        ("kind", kind);
+                        ("line", `Int vb.pvb_loc.loc_start.pos_lnum);
+                        ("value", value) ])
+                  (example_of_expr ?src e))
+            vbs
+        | _ -> [])
+      str
+  in
+  `Assoc
+    [ ("module", `String (filename_stem fname));
+      ("file", `String (repo_relative fname));
+      ("examples", `List examples) ]
+
+let examples_sidecar_path (fname : string) : string =
+  if Filename.check_suffix fname ".res" then
+    Filename.chop_suffix fname ".res" ^ ".examples.json"
+  else fname ^ ".examples.json"
+
+(* Public entry — called from the dispatcher, before any other pass, for a file
+   carrying `@@reventless.examples`. *)
+let maybe_emit_examples ~fname (str : structure) : unit =
+  if is_enabled () && fname <> "" then
+    try
+      let json = examples_fragment_json ~fname str in
+      let oc = open_out (examples_sidecar_path fname) in
+      output_string oc (Yojson.Safe.pretty_to_string json);
+      output_char oc '\n';
+      close_out oc
+    with exn ->
+      Printf.eprintf "[reventless-ppx] examples sidecar emit failed for %s: %s\n"
         fname (Printexc.to_string exn)

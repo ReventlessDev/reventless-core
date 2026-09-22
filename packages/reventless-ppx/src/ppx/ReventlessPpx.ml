@@ -684,6 +684,16 @@ let dispatch_task_impl ~loc ~specifier ~name body =
   !prefix @ body @ suffix
 
 let transform (str : structure) : structure =
+  (* @@reventless.examples: a file of named example values. Its sidecar is
+     written from the file as authored, and the attribute is then removed; it
+     selects no mode, so the rest of the file compiles as written. *)
+  let str =
+    match SidecarEmit.find_examples_attr str with
+    | Some attr ->
+      SidecarEmit.maybe_emit_examples ~fname:attr.attr_loc.loc_start.pos_fname str;
+      SidecarEmit.strip_examples_attr str
+    | None -> str
+  in
   (* Plan 06 Phase 2: emit <Stem>.gwt.json from the inline-literal test bodies
      before GwtInference injects the include/open. No-op unless
      REVENTLESS_EMIT_SIDECAR=1 and the file carries @@reventless.gwt. *)

@@ -320,4 +320,181 @@ let () =
        (match other with Some j -> Yojson.Safe.to_string j | None -> "None");
      exit 1);
 
+  (* ── Named values and code (R1) ─────────────────────────────────────────
+     `src` stands for the .res file the expressions were parsed from. The ASTs
+     are built in OCaml syntax, so an expression recorded as code is given the
+     location of its ReScript spelling in `src`, as the ReScript parser would. *)
+  let expect_json label got want =
+    let show = function Some j -> Yojson.Safe.to_string j | None -> "None" in
+    if show got = want then Printf.printf "  ok(values): %s\n" label
+    else (
+      Printf.printf "  FAIL(values): %s\n    got  %s\n    want %s\n" label (show got) want;
+      exit 1)
+  in
+  let money_text = "Reventless.Money.make(~amount=1000.0, ~currency=Reventless.Currency.EUR)" in
+  let src = "let price = " ^ money_text ^ "\n" in
+  let located (text : string) (e : expression) : expression =
+    let rec find i =
+      if String.sub src i (String.length text) = text then i else find (i + 1)
+    in
+    let a = find 0 in
+    let pos c = { Lexing.pos_fname = "Values.res"; pos_lnum = 1; pos_bol = 0; pos_cnum = c } in
+    { e with
+      pexp_loc =
+        { loc_start = pos a; loc_end = pos (a + String.length text); loc_ghost = false } }
+  in
+  let money =
+    located money_text
+      [%expr Reventless.Money.make ~amount:1000.0 ~currency:Reventless.Currency.EUR]
+  in
+  let example = ReventlessPpx__SidecarEmit.example_of_expr ~src in
+  expect_json "a bare name is a ref" (example [%expr o1])
+    "{\"kind\":\"ref\",\"name\":\"o1\"}";
+  expect_json "a qualified name is a ref" (example [%expr OrderingExamples.dockLine])
+    "{\"kind\":\"ref\",\"name\":\"OrderingExamples.dockLine\"}";
+  expect_json "Some(name) is the name's ref" (example [%expr Some o1])
+    "{\"kind\":\"ref\",\"name\":\"o1\"}";
+  expect_json "an array of names is a list of refs"
+    (example [%expr [| dockLine; OrderingExamples.chargerLine |]])
+    "{\"kind\":\"list\",\"items\":[{\"kind\":\"ref\",\"name\":\"dockLine\"},\
+     {\"kind\":\"ref\",\"name\":\"OrderingExamples.chargerLine\"}]}";
+  expect_json "a record field holding a name is a ref"
+    (example [%expr { orderId = o1; quantity = 2 }])
+    "{\"kind\":\"record\",\"entries\":[[\"orderId\",{\"kind\":\"ref\",\"name\":\"o1\"}],\
+     [\"quantity\",{\"kind\":\"int\",\"value\":2}]]}";
+  expect_json "a call is code, as written" (example money)
+    (Printf.sprintf "{\"kind\":\"code\",\"value\":%S}" money_text);
+  expect_json "a record field holding a call is kept, as code"
+    (example
+       { ([%expr { name = "Dock"; unitPrice = x }]) with
+         pexp_desc =
+           Pexp_record
+             ( [ ({ txt = Lident "name"; loc }, [%expr "Dock"]);
+                 ({ txt = Lident "unitPrice"; loc }, money) ],
+               None ) })
+    (Printf.sprintf
+       "{\"kind\":\"record\",\"entries\":[[\"name\",{\"kind\":\"string\",\"value\":\"Dock\"}],\
+        [\"unitPrice\",{\"kind\":\"code\",\"value\":%S}]]}"
+       money_text);
+  expect_json "Some(call) is the call's code" (example [%expr Some [%e money]])
+    (Printf.sprintf "{\"kind\":\"code\",\"value\":%S}" money_text);
+  (* No source, or a location the parser did not set: dropped, as before. *)
+  expect_json "a call without its source is dropped"
+    (ReventlessPpx__SidecarEmit.example_of_expr money) "None";
+  expect_json "a call with no location is dropped"
+    (example [%expr eur 4500.0]) "None";
+  (* The literal cases read as they did, source or no source. *)
+  List.iter
+    (fun (label, e, want) ->
+      expect_json (label ^ " (with source)") (example e) want;
+      expect_json (label ^ " (without)") (ReventlessPpx__SidecarEmit.example_of_expr e) want)
+    [ ("string", [%expr "p1"], "{\"kind\":\"string\",\"value\":\"p1\"}");
+      ("int", [%expr 3], "{\"kind\":\"int\",\"value\":3}");
+      ("float", [%expr 9.99], "{\"kind\":\"float\",\"value\":9.99}");
+      ("bool", [%expr true], "{\"kind\":\"bool\",\"value\":true}");
+      ("None", [%expr None], "{\"kind\":\"null\"}");
+      ("Some literal", [%expr Some "x"], "{\"kind\":\"string\",\"value\":\"x\"}");
+      ("enum", [%expr Customers.Active], "{\"kind\":\"enum\",\"value\":\"Customers.Active\"}");
+      ( "typed id",
+        [%expr oid "o1"],
+        "{\"kind\":\"string\",\"value\":\"o1\",\"constructor\":\"oid\"}" );
+      ( "record of literals",
+        [%expr { productId = "p1"; quantity = 1 }],
+        "{\"kind\":\"record\",\"entries\":[[\"productId\",{\"kind\":\"string\",\"value\":\"p1\"}],\
+         [\"quantity\",{\"kind\":\"int\",\"value\":1}]]}" ) ];
+
+  (* The same through a file: the GWT walk reads the source once and cuts each
+     code value from it. The file is in OCaml syntax here, so the text is too. *)
+  let gwt_lines =
+    [ ";; describe \"Lines\" (fun () ->";
+      "  test \"keeps named values and code\" (fun () ->";
+      "    thenState (givenEvents [||])";
+      "      { lines = [| dockLine; chargerLine |]; total = eur 4500.0; orderId = Some o1 }))" ]
+  in
+  let gwt_fname = Filename.temp_file "Lines_GWT" ".res" in
+  let oc = open_out gwt_fname in
+  output_string oc (String.concat "\n" gwt_lines);
+  close_out oc;
+  let gwt_ast = Parse.implementation (Lexing.from_string (String.concat "\n" gwt_lines)) in
+  let lj =
+    match ReventlessPpx__SidecarEmit.gwt_fragment_json ~fname:gwt_fname gwt_ast with
+    | Some j -> Yojson.Safe.to_string j
+    | None -> (Printf.printf "  FAIL(values): the GWT file extracted nothing\n"; exit 1)
+  in
+  Sys.remove gwt_fname;
+  let lmust label needle =
+    let contains hay sub =
+      let lh = String.length hay and ls = String.length sub in
+      let rec go i = i + ls <= lh && (String.equal (String.sub hay i ls) sub || go (i + 1)) in
+      ls = 0 || go 0
+    in
+    if contains lj needle then Printf.printf "  ok(values): %s\n" label
+    else (Printf.printf "  FAIL(values): %s\n    missing %S in:\n%s\n" label needle lj; exit 1)
+  in
+  lmust "a list of named lines is two refs"
+    "[\"lines\",{\"kind\":\"list\",\"items\":[{\"kind\":\"ref\",\"name\":\"dockLine\"},\
+     {\"kind\":\"ref\",\"name\":\"chargerLine\"}]}]";
+  lmust "a helper call is code, cut from the file"
+    "[\"total\",{\"kind\":\"code\",\"value\":\"eur 4500.0\"}]";
+  lmust "Some(name) is a ref" "[\"orderId\",{\"kind\":\"ref\",\"name\":\"o1\"}]";
+
+  (* ── The example-file sidecar (R2) ────────────────────────────────────── *)
+  let ex_lines =
+    [ "[@@@reventless.examples]";
+      "type orderLine = { name : string; quantity : int }";
+      "let dockLine : orderLine = { name = \"Fathom Dock\"; quantity = 1 }";
+      "let o1 = OrderId.make \"o1\"";
+      "let firstLine = dockLine";
+      "let (a, b) = (1, 2)";
+      ";; print_endline \"not an example\"";
+      "let total : Money.t = eur 4500.0" ]
+  in
+  let ex_fname = Filename.temp_file "OrderingExamples" ".res" in
+  let oc = open_out ex_fname in
+  output_string oc (String.concat "\n" ex_lines);
+  close_out oc;
+  let ex_ast = Parse.implementation (Lexing.from_string (String.concat "\n" ex_lines)) in
+  let xj = ReventlessPpx__SidecarEmit.examples_fragment_json ~fname:ex_fname ex_ast in
+  Sys.remove ex_fname;
+  let field k = function `Assoc fs -> List.assoc_opt k fs | _ -> None in
+  let examples =
+    match field "examples" xj with Some (`List xs) -> xs | _ -> []
+  in
+  let show_entry j = Yojson.Safe.to_string j in
+  let expect_entry label name want =
+    match
+      List.find_opt (fun j -> field "name" j = Some (`String name)) examples
+    with
+    | Some j when show_entry j = want -> Printf.printf "  ok(examples): %s\n" label
+    | Some j ->
+      Printf.printf "  FAIL(examples): %s\n    got  %s\n    want %s\n" label (show_entry j) want;
+      exit 1
+    | None -> Printf.printf "  FAIL(examples): %s — no entry %s\n" label name; exit 1
+  in
+  (match field "module" xj with
+   | Some (`String m) when m = Filename.chop_suffix (Filename.basename ex_fname) ".res" ->
+     print_endline "  ok(examples): module is the file stem"
+   | _ -> print_endline "  FAIL(examples): module"; exit 1);
+  expect_entry "an annotated let" "dockLine"
+    "{\"name\":\"dockLine\",\"type\":\"orderLine\",\
+     \"kind\":{\"kind\":\"custom\",\"name\":\"orderLine\"},\"line\":3,\
+     \"value\":{\"kind\":\"record\",\"entries\":[[\"name\",{\"kind\":\"string\",\"value\":\"Fathom Dock\"}],\
+     [\"quantity\",{\"kind\":\"int\",\"value\":1}]]}}";
+  expect_entry "an unannotated let" "o1"
+    "{\"name\":\"o1\",\"type\":\"\",\"kind\":{\"kind\":\"custom\",\"name\":\"Unknown\"},\"line\":4,\
+     \"value\":{\"kind\":\"string\",\"value\":\"o1\",\"constructor\":\"OrderId.make\"}}";
+  expect_entry "a let whose value is a ref" "firstLine"
+    "{\"name\":\"firstLine\",\"type\":\"\",\"kind\":{\"kind\":\"custom\",\"name\":\"Unknown\"},\
+     \"line\":5,\"value\":{\"kind\":\"ref\",\"name\":\"dockLine\"}}";
+  expect_entry "a let whose value is code" "total"
+    "{\"name\":\"total\",\"type\":\"Money.t\",\"kind\":{\"kind\":\"custom\",\"name\":\"Money.t\"},\
+     \"line\":8,\"value\":{\"kind\":\"code\",\"value\":\"eur 4500.0\"}}";
+  (match List.map (fun j -> field "name" j) examples with
+   | [ Some (`String "dockLine"); Some (`String "o1"); Some (`String "firstLine");
+       Some (`String "total") ] ->
+     print_endline "  ok(examples): the type, the destructuring let and the expression are ignored"
+   | _ ->
+     Printf.printf "  FAIL(examples): unexpected entries %s\n" (Yojson.Safe.to_string xj);
+     exit 1);
+
   print_endline "ALL SIDECAR CHECKS PASSED"

@@ -3931,6 +3931,91 @@ fi
 rm -f "$ERROR/src/OrderKey.res" "$ERROR/src/KeyedOrdersCheck.res" \
   "$ERROR/src/StateView/KeyedOrders.res" "$ERROR/src/StateView/KeyedOrders_Projection.res"
 
+# ─── Fixture: sidecars over real ReScript source ─────────────────────
+# The unit test builds its ASTs in OCaml syntax. This compiles ReScript with
+# REVENTLESS_EMIT_SIDECAR=1, so a code value is cut from ReScript source by the
+# locations the ReScript parser gives it, and an example file is compiled for
+# real with its attribute removed.
+
+SIDECARS="$TMPDIR/sidecars"
+mkdir -p "$SIDECARS/src"
+cat > "$SIDECARS/package.json" <<'EOF'
+{ "name": "@test/sidecars" }
+EOF
+cat > "$SIDECARS/rescript.json" <<EOF
+{
+  "name": "@test/sidecars",
+  "ppx-flags": ["$PPX_BIN"],
+  "package-specs": { "module": "esmodule", "in-source": true },
+  "suffix": ".res.mjs",
+  "sources": [{ "dir": "src", "subdirs": true }],
+  "dependencies": []
+}
+EOF
+link_node_modules "$SIDECARS"
+
+cat > "$SIDECARS/src/Money.res" <<'EOF'
+type currency = EUR | USD
+type t = {amount: float, currency: currency}
+let make = (~amount, ~currency) => {amount, currency}
+EOF
+cat > "$SIDECARS/src/OrderingExamples.res" <<'EOF'
+@@reventless.examples
+
+type orderLine = {name: string, quantity: int, total: Money.t}
+
+let eur = amount => Money.make(~amount, ~currency=EUR)
+
+let dockLine: orderLine = {name: "Fathom Dock", quantity: 1, total: eur(2500.0)}
+let lines: array<orderLine> = [dockLine]
+let firstLine = dockLine
+EOF
+cat > "$SIDECARS/src/Lines_GWT.res" <<'EOF'
+type row = {line: OrderingExamples.orderLine, total: Money.t}
+let describe = (_: string, f: unit => unit) => f()
+let test = (_: string, f: unit => unit) => f()
+let givenEvents = (_: array<unit>) => ()
+let thenState = ((), _: row) => ()
+
+describe("Lines", () => {
+  test("keeps named values and code", () =>
+    givenEvents([])->thenState({
+      line: OrderingExamples.dockLine,
+      total: Money.make(~amount=1000.0, ~currency=Money.EUR),
+    })
+  )
+})
+EOF
+
+echo ""
+echo "Compiling sidecar package..."
+if ! (cd "$SIDECARS" && REVENTLESS_EMIT_SIDECAR=1 npx rescript build 2>&1); then
+  echo "Sidecar package build FAILED"
+  exit 1
+fi
+
+echo ""
+echo "=== Test: @@reventless.examples compiles as written ==="
+JS="$SIDECARS/src/OrderingExamples.res.mjs"
+assert_js_contains "$JS" 'dockLine' "the example values are compiled"
+assert_js_not_contains "$JS" 'reventless' "nothing is injected into an example file"
+
+echo ""
+echo "=== Test: the example-file sidecar ==="
+EX="$SIDECARS/src/OrderingExamples.examples.json"
+assert_js_contains "$EX" '"module": "OrderingExamples"' "module is the file stem"
+assert_js_contains "$EX" '"type": "array<orderLine>"' "a type as written"
+assert_js_contains "$EX" '"value": "eur(2500.0)"' "a helper call is code, as written"
+assert_js_contains "$EX" '"kind": "ref", "name": "dockLine"' "a named value is a ref"
+assert_js_contains "$EX" '"line": 7' "the line of the let"
+
+echo ""
+echo "=== Test: the GWT sidecar keeps refs and code ==="
+GJ="$SIDECARS/src/Lines_GWT.gwt.json"
+assert_js_contains "$GJ" '"kind": "ref", "name": "OrderingExamples.dockLine"' "a qualified name is a ref"
+assert_js_contains "$GJ" '"value": "Money.make(~amount=1000.0, ~currency=Money.EUR)"' \
+  "a call is code, cut from the ReScript source"
+
 echo ""
 echo "─────────────────────────"
 echo "Results: $PASS passed, $FAIL failed"
