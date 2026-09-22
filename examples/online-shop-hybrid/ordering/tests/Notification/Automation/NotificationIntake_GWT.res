@@ -27,8 +27,6 @@ module Rule = TraitNotification.Notification_Rule
 
 open OrderingExamples
 
-let oid = OrderId.make
-
 // One row of the shape every rule's paths read, so a rule nobody wrote a
 // scenario for is still checked.
 let sample =
@@ -86,7 +84,7 @@ describe("NotificationIntake AutomationSlice", () => {
   test("collect: a placed order becomes one todo, keyed by its rule and the order", () =>
     givenEvent(OrderPlaced({orderId: o1, customerId: c1}))
     ->whenCollect
-    ->thenTodos([("confirm:o1", {ruleId: "confirm", recipientId: "c1", orderId: oid("o1")})])
+    ->thenTodos([("confirm:o1", {ruleId: "confirm", recipientId: "c1", orderId: o1})])
   )
 
   // The reference is the row key of the delivery view, the TODO id here, and how
@@ -95,7 +93,7 @@ describe("NotificationIntake AutomationSlice", () => {
   test("collect: a shipped order is a second todo under a second key", () =>
     givenEvent(OrderShipped({orderId: o1, customerId: c1}))
     ->whenCollect
-    ->thenTodos([("ship:o1", {ruleId: "ship", recipientId: "c1", orderId: oid("o1")})])
+    ->thenTodos([("ship:o1", {ruleId: "ship", recipientId: "c1", orderId: o1})])
   )
 
   // scenario-id: 662490a1-0c64-4d50-b321-7315bb964898

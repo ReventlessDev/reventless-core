@@ -14,14 +14,11 @@ module SendOrderConfirmationSlice = {
 
 open OrderingExamples
 
-let cid = CustomerId.make
-let oid = OrderId.make
-
 describe("SendOrderConfirmation OutboundTranslationSlice", () => {
   testSync("collect: OrderPlaced queues an outbound TODO", () =>
-    givenEvent(OrderPlaced({orderId: oid("o1"), customerId: cid("c1")}))
+    givenEvent(OrderPlaced({orderId: o1, customerId: c1}))
     ->whenCollect
-    ->thenTodos([("o1", {orderId: oid("o1"), customerId: cid("c1")})])
+    ->thenTodos([("o1", {orderId: o1, customerId: c1})])
   )
 
   // scenario-id: f72032f8-25ba-482e-be6e-4c765908bb70

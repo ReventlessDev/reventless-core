@@ -16,9 +16,6 @@
 
 open PlatformLocalExamples
 
-let cid = OrderingPlugin.CustomerId.make
-let oid = OrderingPlugin.OrderId.make
-
 // Compose the automation onto a flat slice — the production split keeps
 // collect/resolve inside the per-source mapping; the GWT needs them together.
 let testContext: Reventless.AutomationSlice.context = {
@@ -142,7 +139,7 @@ describe("DCB cross-plugin flow", () => {
     ->Ship.whenCommand(OrderingPlugin.ShipOrder.ShipOrder({orderId: o1}))
     ->Ship.thenEvent(OrderingPlugin.ShipOrder.OrderShipped({orderId: o1}))
     ->Confirm.thenOutbound([
-      ("o1", {OrderingPlugin.SendOrderConfirmation.orderId: oid("o1"), customerId: cid("c1")}),
+      ("o1", {OrderingPlugin.SendOrderConfirmation.orderId: o1, customerId: c1}),
     ])
   )
 

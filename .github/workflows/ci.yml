@@ -245,6 +245,19 @@ jobs:
         if: steps.build.outcome == 'success'
         run: pnpm run check:slots
 
+      # A GWT test's shared values live in its plugin's example file, so the
+      # authoring form shows a chip rather than ReScript text and the same
+      # product is spelled one way everywhere. The way back is a one-line
+      # `let pid = ProductId.make` at the top of a file: it reads fine, and the
+      # ids below it stop being values the sidecar can see. Forty files each had
+      # their own before this was made uniform, and `eur` meant major units in
+      # nine of them and minor units in two.
+      #
+      # Reads the tests' source, so it needs no build and can run beside the
+      # other source checks.
+      - name: Check GWT tests name the values they share
+        run: pnpm run check:examples
+
       - name: Run unit tests (all)
         if: steps.build.outcome == 'success' && steps.affected.outputs.select == 'all'
         run: pnpm run test

@@ -24,14 +24,12 @@ module AutoShipOrderSlice = {
 
 open OrderingExamples
 
-let oid = OrderId.make
-
 describe("AutoShipOrder AutomationSlice", () => {
   // scenario-id: 1ba638a2-88ea-4f2c-9a4e-1520276a0b37
   test("collect: an Express OrderPlaced creates a pending TODO", () =>
     givenEvent(OrderPlaced({orderId: o1, shippingMethod: Express}))
     ->whenCollect
-    ->thenTodos([("o1", {orderId: oid("o1")})])
+    ->thenTodos([("o1", {orderId: o1})])
   )
 
   // scenario-id: 024094c8-3c62-4061-940f-29a79cfc9c63
