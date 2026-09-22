@@ -398,11 +398,30 @@ let read_source (fname : string) : string option =
    when there is no source, or the location is one the parser did not set or
    that does not fit the file — the value is then dropped, as before code
    values existed. *)
+(* The byte offset of a position in [src]. The ReScript parser gives a line's start
+   (pos_bol) in bytes but counts the column (pos_cnum - pos_bol) in UTF-16 code
+   units, so after a non-ASCII character on the same line pos_cnum falls short of
+   the byte: by one for `é`, two for `—` or an emoji. The column is walked again
+   over the line's bytes. *)
+let byte_offset (src : string) (p : Lexing.position) : int =
+  let len = String.length src in
+  let rec go i units =
+    if units <= 0 || i >= len || src.[i] = '\n' then i
+    else
+      let c = Char.code src.[i] in
+      let bytes, u =
+        if c < 0x80 then (1, 1) else if c < 0xE0 then (2, 1) else if c < 0xF0 then (3, 1) else (4, 2)
+      in
+      go (i + bytes) (units - u)
+  in
+  if p.pos_bol < 0 || p.pos_bol > len || p.pos_cnum < p.pos_bol then p.pos_cnum
+  else go p.pos_bol (p.pos_cnum - p.pos_bol)
+
 let text_at ?src (loc : Location.t) : string option =
   match src with
   | None -> None
   | Some text ->
-    let a = loc.loc_start.pos_cnum and b = loc.loc_end.pos_cnum in
+    let a = byte_offset text loc.loc_start and b = byte_offset text loc.loc_end in
     if a >= 0 && b > a && b <= String.length text then Some (String.sub text a (b - a))
     else None
 

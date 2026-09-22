@@ -156,6 +156,16 @@ arrive as `res.doc` attributes and are reported like any other attribute.
   negative quantity then placed an order. `constant_loc` now starts such a span at its `-`
   (or `-.`), over any space between; a subtraction (`3 - 1`) is a call and unaffected.
   `test/run.sh` checks both.
+- **Fixed 2026-09-22 (after alpha.88): spans after non-ASCII text on the same line.** The
+  parser gives a position's line start (`pos_bol`) in bytes but counts its column in UTF-16
+  code units, so on a line holding `"Thanks — we have your order"` every later position fell
+  short of its byte: by one for `é`, two for `—` or an emoji. A tool replacing that string by
+  its span left `."` behind. `SidecarEmit.byte_offset` walks the column over the line's bytes;
+  the reader and the `.gwt.json` sidecar's `code` values both go through it. S0's check
+  missed this because no spec file has a non-ASCII string. `test/reader-spans.mjs` now checks
+  every value node of every GWT file of the hybrid example (7240: a string its quotes, a
+  number its value, a name itself, a constructor from its name), and `test/run.sh` a line with
+  `—`, an emoji and an accented comment.
 - **Not built yet (rest of S2):** a projection's `project` cases and a spec's
   `commandTransition` arms. The GWT migration does not need them; the forms-as-views work does,
   and adds them when it starts.

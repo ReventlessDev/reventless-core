@@ -4064,6 +4064,12 @@ assert_js_contains "$READ_DIR/Negative.read.json" '"value":"-2","span":{"start":
 assert_js_contains "$READ_DIR/Negative.read.json" '"value":"-3.5","span":{"start":[0-9]*,"end":[0-9]*},"text":"-.3.5"' \
   "a negative float's span starts at its -."
 assert_js_contains "$READ_DIR/Negative.read.json" '"text":"3 - 1"' "a subtraction is left as it is"
+printf 'let a = f("Thanks — we have it", 7)\nlet b = f("😀", 8)\nlet c = f(/* é */ 9)\n' > "$READ_DIR/Unicode.res"
+"$READER" --bsc "$BSC" "$READ_DIR/Unicode.res" > "$READ_DIR/Unicode.read.json"
+for v in 7 8 9; do
+  assert_js_contains "$READ_DIR/Unicode.read.json" "\"value\":\"$v\",\"span\":{\"start\":[0-9]*,\"end\":[0-9]*},\"text\":\"$v\"" \
+    "a value after non-ASCII text on its line is spanned in bytes ($v)"
+done
 echo 'let x = (' > "$READ_DIR/Broken.res"
 if "$READER" --bsc "$BSC" "$READ_DIR/Broken.res" >/dev/null 2>&1; then
   fail "a file bsc cannot parse" "the reader exited 0"

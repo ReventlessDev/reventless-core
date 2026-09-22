@@ -30,10 +30,17 @@ let span_json (a : int) (b : int) : Yojson.Safe.t =
 let cut ~src a b =
   if a >= 0 && b >= a && b <= String.length src then String.sub src a (b - a) else ""
 
-(* `span` and `text` of one location, as the fields every node starts with. *)
-let at ~src (loc : Location.t) : (string * Yojson.Safe.t) list =
-  let a = loc.loc_start.pos_cnum and b = loc.loc_end.pos_cnum in
+(* A location's byte span: see [SidecarEmit.byte_offset] for why pos_cnum is not
+   one after a non-ASCII character. *)
+let byte_of ~src (p : Lexing.position) = SidecarEmit.byte_offset src p
+
+let span_of ~src (loc : Location.t) = (byte_of ~src loc.loc_start, byte_of ~src loc.loc_end)
+
+(* `span` and `text` of a byte span, as the fields every node starts with. *)
+let at_span ~src ((a, b) : int * int) : (string * Yojson.Safe.t) list =
   [ ("span", span_json a b); ("text", `String (cut ~src a b)) ]
+
+let at ~src (loc : Location.t) = at_span ~src (span_of ~src loc)
 
 (* ── attributes ─────────────────────────────────────────────────────────── *)
 
@@ -49,12 +56,12 @@ let is_authored (a : attribute) =
 (* An attribute's location covers its name only (`@ref`), so its span runs on
    to the end of its payload and the `)` that closes it. *)
 let attribute_json ~src (a : attribute) : Yojson.Safe.t =
-  let start = a.attr_loc.loc_start.pos_cnum in
+  let start = byte_of ~src a.attr_loc.loc_start in
   let args, stop =
     match a.attr_payload with
     | PStr (_ :: _ as items) ->
-      let first = (List.hd items).pstr_loc.loc_start.pos_cnum in
-      let last = (List.nth items (List.length items - 1)).pstr_loc.loc_end.pos_cnum in
+      let first = byte_of ~src (List.hd items).pstr_loc.loc_start in
+      let last = byte_of ~src (List.nth items (List.length items - 1)).pstr_loc.loc_end in
       let rec close i =
         if i >= String.length src then last
         else match src.[i] with
@@ -63,7 +70,7 @@ let attribute_json ~src (a : attribute) : Yojson.Safe.t =
           | _ -> last
       in
       (`String (cut ~src first last), close last)
-    | _ -> (`Null, a.attr_loc.loc_end.pos_cnum)
+    | _ -> (`Null, byte_of ~src a.attr_loc.loc_end)
   in
   `Assoc
     [ ("name", `String a.attr_name.txt);
@@ -120,13 +127,12 @@ let label_json = function
   | Labelled s -> `String ("~" ^ s)
   | Optional s -> `String ("?" ^ s)
 
-(* An outline of an expression: what a value is built from, each part with its
-   span. Anything this walk does not name is `other`, with its text. *)
 (* The parser folds a minus into the constant it negates (`-2`, `-.3.5`) but keeps
    the location of the digits, so the span would cut `2`. A negative constant's
    span starts at its `-` (or `-.`), over any space between. *)
-let constant_loc ~src (loc : Location.t) (value : string) : Location.t =
-  if String.length value = 0 || value.[0] <> '-' then loc
+let constant_span ~src (loc : Location.t) (value : string) : int * int =
+  let a, b = span_of ~src loc in
+  if String.length value = 0 || value.[0] <> '-' then (a, b)
   else
     let rec back i =
       if i < 0 then None
@@ -136,20 +142,23 @@ let constant_loc ~src (loc : Location.t) (value : string) : Location.t =
         | '.' when i > 0 && src.[i - 1] = '-' -> Some (i - 1)
         | _ -> None
     in
-    match back (loc.loc_start.pos_cnum - 1) with
-    | Some i -> { loc with loc_start = { loc.loc_start with pos_cnum = i } }
-    | None -> loc
+    match back (a - 1) with
+    | Some i -> (i, b)
+    | None -> (a, b)
 
+(* An outline of an expression: what a value is built from, each part with its
+   span. Anything this walk does not name is `other`, with its text. *)
 let rec expr_json ~src (e : expression) : Yojson.Safe.t =
-  let node ?(loc = e.pexp_loc) kind fields =
-    `Assoc ((("kind", `String kind) :: fields) @ at ~src loc)
+  let node ?span kind fields =
+    let span = match span with Some s -> s | None -> span_of ~src e.pexp_loc in
+    `Assoc ((("kind", `String kind) :: fields) @ at_span ~src span)
   in
   match e.pexp_desc with
   | Pexp_constant (Pconst_string (s, _, _)) -> node "string" [ ("value", `String s) ]
   | Pexp_constant (Pconst_integer (s, _)) ->
-    node ~loc:(constant_loc ~src e.pexp_loc s) "int" [ ("value", `String s) ]
+    node ~span:(constant_span ~src e.pexp_loc s) "int" [ ("value", `String s) ]
   | Pexp_constant (Pconst_float (s, _)) ->
-    node ~loc:(constant_loc ~src e.pexp_loc s) "float" [ ("value", `String s) ]
+    node ~span:(constant_span ~src e.pexp_loc s) "float" [ ("value", `String s) ]
   | Pexp_construct ({ txt = Lident "Function$"; _ }, Some inner) -> function_json ~src ~outer:e inner
   | Pexp_fun _ -> function_json ~src ~outer:e e
   | Pexp_construct ({ txt; _ }, payload) ->
@@ -162,7 +171,7 @@ let rec expr_json ~src (e : expression) : Yojson.Safe.t =
     let field ((lid : Longident.t loc), value) =
       `Assoc
         [ ("name", `String (flatten lid.txt));
-          ("span", span_json lid.loc.loc_start.pos_cnum value.pexp_loc.loc_end.pos_cnum);
+          ("span", span_json (byte_of ~src lid.loc.loc_start) (byte_of ~src value.pexp_loc.loc_end));
           ("value", expr_json ~src value) ]
     in
     node "record"

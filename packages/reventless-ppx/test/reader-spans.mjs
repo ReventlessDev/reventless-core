@@ -95,6 +95,43 @@ const report = (label, bad) => {
   report(`${gwts.length} GWT files: ${tests} tests, each with its steps`, bad);
 }
 
+// Every value node of every GWT file cuts what it is: a string its quotes, a number
+// its value (with its sign), a name itself, a constructor from its name. Values sit
+// after non-ASCII text on the same line (`"Thanks — we have your order"`), where
+// the parser's columns count UTF-16 units, not bytes.
+{
+  const gwts = marked("@@reventless.gwt");
+  const bad = [];
+  let n = 0;
+  const last = (name) => name.split(".").at(-1);
+  for (const file of gwts) {
+    const j = read(file);
+    const cut = cutter(file);
+    const base = path.basename(file);
+    const walk = (x) => {
+      if (!x || typeof x !== "object") return;
+      if (Array.isArray(x)) return x.forEach(walk);
+      if (x.kind && x.span && typeof x.text === "string") {
+        const t = x.text;
+        let ok = t === cut(x.span);
+        // A template with `${…}` reaches the tree as its constant pieces
+        // (`` `hashed: `` and `}`), each spanned as written.
+        if (x.kind === "string") ok &&= /^"[\s\S]*"$/.test(t) || /^[`}]|`$/.test(t);
+        if (x.kind === "int" || x.kind === "float")
+          ok &&= t.replace(/\s+/g, "").replace(/^-\./, "-") === x.value;
+        if (x.kind === "ident") ok &&= t === x.name || t === last(x.name);
+        if (x.kind === "constructor") ok &&= t.startsWith(x.name) || t.startsWith(last(x.name));
+        n++;
+        if (!ok) bad.push(`${base}: ${x.kind} ${JSON.stringify(t).slice(0, 60)}`);
+      }
+      Object.values(x).forEach(walk);
+    };
+    walk(j.describes);
+    walk(j.lets);
+  }
+  report(`${gwts.length} GWT files: ${n} value spans cut exactly their value`, bad);
+}
+
 // The values the .gwt.json sidecar drops are there, as written.
 {
   const file = files.find((f) => f.endsWith("/Orders_GWT.res"));
