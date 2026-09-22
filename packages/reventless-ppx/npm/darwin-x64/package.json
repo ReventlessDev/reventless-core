@@ -9,7 +9,8 @@
     "x64"
   ],
   "files": [
-    "ppx.exe"
+    "ppx.exe",
+    "read.exe"
   ],
   "publishConfig": {
     "registry": "https://registry.npmjs.org"

@@ -155,7 +155,10 @@ jobs:
         run: |
           cp packages/reventless-ppx/src/_build/default/bin/bin.exe \
              packages/reventless-ppx/npm/${{ matrix.target }}/ppx.exe
-          chmod +x packages/reventless-ppx/npm/${{ matrix.target }}/ppx.exe
+          cp packages/reventless-ppx/src/_build/default/read/read.exe \
+             packages/reventless-ppx/npm/${{ matrix.target }}/read.exe
+          chmod +x packages/reventless-ppx/npm/${{ matrix.target }}/ppx.exe \
+                   packages/reventless-ppx/npm/${{ matrix.target }}/read.exe
 
       - name: Setup Node.js (for publish)
         if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish)
@@ -348,8 +351,10 @@ jobs:
           if [ "$ok" != true ]; then echo "::error::could not fetch $pkg after retries"; exit 1; fi
           tar -xzf "$RUNNER_TEMP"/reventlessdev-reventless-ppx-linux-x64-*.tgz -C "$RUNNER_TEMP"
           bin="$RUNNER_TEMP/package/ppx.exe"
-          chmod +x "$bin"
+          read_bin="$RUNNER_TEMP/package/read.exe"
+          chmod +x "$bin" "$read_bin"
           echo "bin=$bin" >> "$GITHUB_OUTPUT"
+          echo "read_bin=$read_bin" >> "$GITHUB_OUTPUT"
 
       - name: Run the PPX suite against the published binary
         # REVENTLESS_PPX_BIN points the fixtures at the published binary;
@@ -357,6 +362,7 @@ jobs:
         # here — we are testing the artifact, not the source).
         env:
           REVENTLESS_PPX_BIN: ${{ steps.fetch.outputs.bin }}
+          REVENTLESS_PPX_READ_BIN: ${{ steps.fetch.outputs.read_bin }}
           REVENTLESS_PPX_SKIP_SELF_BUILD: "1"
         run: ./test/run.sh
         working-directory: packages/reventless-ppx

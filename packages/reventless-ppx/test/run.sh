@@ -4016,6 +4016,54 @@ assert_js_contains "$GJ" '"kind": "ref", "name": "OrderingExamples.dockLine"' "a
 assert_js_contains "$GJ" '"value": "Money.make(~amount=1000.0, ~currency=Money.EUR)"' \
   "a call is code, cut from the ReScript source"
 
+# ─── The source reader (reventless-ppx-read) ─────────────────────────
+#
+# docs/plans/source-reader-with-spans.md. The reader is built by the dune build
+# above; bsc is the workspace's own.
+
+echo ""
+echo "=== Test: the source reader over examples/online-shop-hybrid ==="
+# REVENTLESS_PPX_READ_BIN points at a published reader, as REVENTLESS_PPX_BIN does
+# for the PPX (publish-ppx.yml's drift guard).
+READER="${REVENTLESS_PPX_READ_BIN:-$PPX_DIR/src/_build/default/read/read.exe}"
+while IFS= read -r line; do
+  case "$line" in
+    ok:*) pass "${line#ok: }" ;;
+    FAIL:*) fail "${line#FAIL: }" "see above" ;;
+    *) echo "$line" ;;
+  esac
+done < <(node "$PPX_DIR/test/reader-spans.mjs" "$READER" "$REPO_ROOT" 2>&1)
+
+echo ""
+echo "=== Test: the source reader reads markers and a verb without parentheses ==="
+READ_DIR="$TMPDIR/reader"
+mkdir -p "$READ_DIR"
+cat > "$READ_DIR/Marker_GWT.res" <<'EOF'
+@@reventless.gwt
+
+describe("PlaceOrder", () => {
+  // scenario-id: 7f3a
+  test("marked", () => givenEvents([])->whenCmd(PlaceOrder({orderId: o1}))->thenNoEvent)
+
+  test("unmarked", () => givenEvents([])->whenCmd(PlaceOrder({orderId: o2}))->thenNoEvent)
+})
+EOF
+BSC=$(find "$REPO_ROOT/node_modules/@rescript" -path '*/bin/bsc.exe' | head -1)
+READ_OUT=$("$READER" --bsc "$BSC" "$READ_DIR/Marker_GWT.res")
+echo "$READ_OUT" > "$READ_DIR/Marker_GWT.read.json"
+assert_js_contains "$READ_DIR/Marker_GWT.read.json" '"title":"marked","scenarioId":"7f3a"' \
+  "the marker above a test is its scenario id"
+assert_js_contains "$READ_DIR/Marker_GWT.read.json" '"title":"unmarked","scenarioId":null' \
+  "a test without a marker has none"
+assert_js_contains "$READ_DIR/Marker_GWT.read.json" '{"verb":"thenNoEvent","args":\[\]}' \
+  "->thenNoEvent is a step with no values"
+echo 'let x = (' > "$READ_DIR/Broken.res"
+if "$READER" --bsc "$BSC" "$READ_DIR/Broken.res" >/dev/null 2>&1; then
+  fail "a file bsc cannot parse" "the reader exited 0"
+else
+  pass "a file bsc cannot parse exits non-zero"
+fi
+
 echo ""
 echo "─────────────────────────"
 echo "Results: $PASS passed, $FAIL failed"

@@ -1,6 +1,6 @@
 # Plan: the model sidecar keeps reference targets and nested DCB tags
 
-**Status:** 🚧 S1 built — 2026-09-22. Not yet released (S2).<br/>
+**Status:** ✅ Done — 2026-09-22. S1 built and released in the PPX 1.0.0-alpha.86 (S2).<br/>
 **Touches:** `packages/reventless-ppx` only (`src/ppx/SidecarEmit.ml`, `src/test_sidecar/`) and
 `docs/guides/reverse-codegen-pipeline.md`.<br/>
 **Companion:** reventless-tools `docs/plans/scenario-example-data.md`, phase E7d, where the
@@ -55,7 +55,7 @@ Two gaps in `SidecarEmit`, both found on `examples/online-shop-hybrid/ordering`'
 
 ## S2 — Release
 
-The PPX release procedure, as in [gwt-sidecar-refs-and-examples.md](gwt-sidecar-refs-and-examples.md)
+The PPX release procedure, as in [gwt-sidecar-refs-and-examples.md](../gwt-sidecar-refs-and-examples.md)
 R3. **Exit:** the published PPX writes `ref` and nested roles; the companion plan's E7d may rely
 on them.
 

@@ -95,6 +95,11 @@ const binDst = join(pkgDir, 'ppx.exe')
 copyFileSync(binSrc, binDst)
 chmodSync(binDst, 0o755)
 console.log(`▶ Staged binary → npm/${target}/ppx.exe`)
+const readSrc = join(PPX, 'src/_build/default/read/read.exe')
+const readDst = join(pkgDir, 'read.exe')
+copyFileSync(readSrc, readDst)
+chmodSync(readDst, 0o755)
+console.log(`▶ Staged reader → npm/${target}/read.exe`)
 
 if (DRY_RUN) {
   console.log(`✓ Dry run — built and staged ${target}@${thisVersion}, skipped publish.`)

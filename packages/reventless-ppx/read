@@ -1,0 +1,41 @@
+#!/bin/sh
+# Resolve and exec reventless-ppx-read, the source reader, for the current platform.
+#
+#   reventless-ppx-read [--bsc <path-to-bsc>] <file.res>
+#
+# Prints the file's declarations with their spans as JSON
+# (docs/plans/source-reader-with-spans.md). The binary ships beside ppx.exe in the
+# per-platform package, and is found the way `bin` finds ppx.exe: sibling,
+# nested, or hoisted to an ancestor node_modules, then a local dune build.
+DIR="$(cd "$(dirname "$0")" && pwd)"
+
+case "$(uname -s)-$(uname -m)" in
+  Linux-x86_64)   PKG="linux-x64" ;;
+  Linux-aarch64)  PKG="linux-arm64" ;;
+  Darwin-x86_64)  PKG="darwin-x64" ;;
+  Darwin-arm64)   PKG="darwin-arm64" ;;
+  *) echo "reventless-ppx-read: unsupported platform $(uname -s)-$(uname -m)" >&2; exit 1 ;;
+esac
+
+# `-f`, then restore +x: installing from a tarball can drop the mode (see `bin`).
+for CAND in \
+  "$DIR/../reventless-ppx-$PKG/read.exe" \
+  "$DIR/node_modules/@reventlessdev/reventless-ppx-$PKG/read.exe"; do
+  if [ -f "$CAND" ]; then chmod u+x "$CAND" 2>/dev/null; exec "$CAND" "$@"; fi
+done
+
+ANCESTOR="$DIR"
+while [ "$ANCESTOR" != "/" ] && [ -n "$ANCESTOR" ]; do
+  ANCESTOR="$(dirname "$ANCESTOR")"
+  CAND="$ANCESTOR/node_modules/@reventlessdev/reventless-ppx-$PKG/read.exe"
+  if [ -f "$CAND" ]; then chmod u+x "$CAND" 2>/dev/null; exec "$CAND" "$@"; fi
+done
+
+# PPX development: the dune build in this package.
+CAND="$DIR/src/_build/default/read/read.exe"
+if [ -f "$CAND" ]; then exec "$CAND" "$@"; fi
+
+echo "reventless-ppx-read: no binary found for $(uname -s)-$(uname -m)." >&2
+echo "  Expected read.exe in @reventlessdev/reventless-ppx-$PKG," >&2
+echo "  or a local build at $DIR/src/_build/default/read/read.exe." >&2
+exit 1

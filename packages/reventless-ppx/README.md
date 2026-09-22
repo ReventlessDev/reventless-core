@@ -27,6 +27,21 @@ binary** installed as an optional dependency
 with no prebuilt binary (e.g. macOS x64, Linux arm64, Windows via WSL2), it is
 built from source with the OCaml toolchain (`opam` + `dune`).
 
+### The source reader
+
+The same package ships `reventless-ppx-read`, which prints one ReScript file's
+declarations as JSON, each with its span (byte offsets into the file) and source
+text: types with their cases, fields and attributes; top-level `let`s with a
+function's parameters and defaults; and the tests of a GWT file with their
+scenario-id markers and step values. It is for tools that edit source in place.
+
+```bash
+npx reventless-ppx-read [--bsc <path-to-bsc>] src/PlaceOrder.res
+```
+
+The file is parsed by the workspace's own ReScript compiler (found under
+`node_modules/@rescript`, or given with `--bsc`); nothing is built.
+
 ## Where it fits
 
 This is build tooling shared across the framework and its example apps, not a

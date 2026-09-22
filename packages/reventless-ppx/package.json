@@ -4,10 +4,12 @@
   "description": "ReScript PPX to eliminate boilerplate from Reventless application code",
   "license": "Apache-2.0",
   "files": [
-    "bin"
+    "bin",
+    "read"
   ],
   "bin": {
-    "reventless-ppx": "bin"
+    "reventless-ppx": "bin",
+    "reventless-ppx-read": "read"
   },
   "scripts": {
     "build:ppx": "cd src && opam exec -- dune build",
