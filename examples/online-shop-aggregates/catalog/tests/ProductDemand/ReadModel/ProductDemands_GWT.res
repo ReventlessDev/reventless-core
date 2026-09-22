@@ -10,6 +10,7 @@ module ProductDemandGwt = ReventlessGwt.MultiSourceProjection_GWT.Make(
 )
 
 ProductGwt.describe("ProductDemands ReadModel ← Product", () => {
+  // scenario-id: 5a99d971-c604-4533-924a-e3a36cd74364
   ProductGwt.test("Added initialises the entry with orderCount = 0", () =>
     ProductGwt.givenEvents([])
     ->ProductGwt.whenEvent(
@@ -23,6 +24,7 @@ ProductGwt.describe("ProductDemands ReadModel ← Product", () => {
     ->ProductGwt.thenState({ProductDemands.name: "Laptop", orderCount: 0})
   )
 
+  // scenario-id: 53a43536-a02d-4c2f-85dd-e9e038f940d9
   ProductGwt.test("NameUpdated is ignored (handled by Products read model)", () =>
     ProductGwt.givenEvents([
       Product.Added({
@@ -36,6 +38,7 @@ ProductGwt.describe("ProductDemands ReadModel ← Product", () => {
     ->ProductGwt.thenState({ProductDemands.name: "Laptop", orderCount: 0})
   )
 
+  // scenario-id: 922cbf7d-ef67-4777-86cb-2dc35883494b
   ProductGwt.test("DescriptionUpdated is ignored", () =>
     ProductGwt.givenEvents([
       Product.Added({
@@ -49,6 +52,7 @@ ProductGwt.describe("ProductDemands ReadModel ← Product", () => {
     ->ProductGwt.thenState({ProductDemands.name: "Laptop", orderCount: 0})
   )
 
+  // scenario-id: e563ab45-3036-4d29-a3a3-983ee55457cc
   ProductGwt.test("PriceUpdated is ignored", () =>
     ProductGwt.givenEvents([
       Product.Added({
@@ -70,12 +74,14 @@ ProductGwt.describe("ProductDemands ReadModel ← Product", () => {
 // never tries to initialise its own row — the integration relies on
 // Product.Added arriving first.
 ProductDemandGwt.describe("ProductDemands ReadModel ← ProductDemand", () => {
+  // scenario-id: d2ac1c9a-efeb-4875-b743-63b4e43c4c54
   ProductDemandGwt.test("Recorded without prior Product.Added throws StaleState", () =>
     ProductDemandGwt.givenEvents([])
     ->ProductDemandGwt.whenEvent(ProductDemand.Recorded({orderId: "order-1"}))
     ->ProductDemandGwt.thenThrow
   )
 
+  // scenario-id: 2b784d7b-910e-401a-9464-485de6fe3e79
   ProductDemandGwt.test("Revoked without prior Product.Added throws StaleState", () =>
     ProductDemandGwt.givenEvents([])
     ->ProductDemandGwt.whenEvent(ProductDemand.Revoked({orderId: "order-1"}))
