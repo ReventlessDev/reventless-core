@@ -1,9 +1,9 @@
 # Plan: the GWT scenario marker says `scenario-id`, and belongs to one test
 
-**Status:** 🚧 C1 and C2 built — 2026-09-21. The PPX reads both marker spellings, writes
-`scenarioId` and `specId`, and gives an id only to the test directly below its marker; the
-guide says so. Not yet released: the binary is published by CI when this reaches the
-registry (C3's exit). C4 waits for the companion plan's Phase 5.<br/>
+**Status:** ✅ C1–C3 shipped — released 2026-09-22 in ppx 1.0.0-alpha.84 (with spec
+3.0.0-alpha.142). The PPX reads both marker spellings, writes `scenarioId` and `specId`, and
+gives an id only to the test directly below its marker; the guide says so. C4 (stop writing
+`specId`) is still pending: it waits for the companion plan's Phase 5.<br/>
 **Touches:** `packages/reventless-ppx` only (`src/ppx/SidecarEmit.ml`, `src/test_sidecar/`), and
 `docs/guides/reverse-codegen-pipeline.md`.<br/>
 **Companion:** reventless-tools `docs/plans/scenario-naming-and-the-event-model-boundary.md`,

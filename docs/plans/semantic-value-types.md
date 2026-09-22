@@ -1,8 +1,9 @@
 # Plan: say how to write a value of every semantic type
 
-**Status:** 🚧 V1 built — 2026-09-22. `Semantic.valueTypes`, a `sample` on every branded
-string, and `tests/SemanticValueTypesTest.res`; where the sources differed from this plan, see
-[What V1 found](#what-v1-found). Not yet released (V2).<br/>
+**Status:** ✅ V1 and V2 shipped — released 2026-09-22 in spec 3.0.0-alpha.142 (with ppx
+1.0.0-alpha.84). `Semantic.valueTypes`, a `sample` on every branded string, and
+`tests/SemanticValueTypesTest.res`; where the sources differed from this plan, see
+[What V1 found](#what-v1-found).<br/>
 **Touches:** `reventless/spec/src/semantic/Semantic.res` and a test beside
 `tests/SemanticBrandedStringsTest.res`. No PPX change, no runtime change.<br/>
 **Consumer:** reventless-tools' scenario form, which fills every field of a new scenario with
