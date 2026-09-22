@@ -588,6 +588,12 @@ zero-payload form: the two-arg functor needs both modules named —
 
 ### 4.11 Companion fixtures module (`<Stem>_Fixtures.res`)
 
+> **For a shared *value*, reach for an example file (§ 4.12) instead.** The
+> example plugins use no fixtures modules at all. Fixtures remain the right tool
+> for what an example is not: a prepared command or event, an expected state
+> record, anything a single file finds repetitive, and anything you want
+> auto-opened without writing the `open`.
+
 Fixture-heavy suites — repeated identity strings, command/event payloads,
 expected state records — benefit from extracting shared values to a sibling
 module. When a file named `<Stem>_Fixtures.res` sits next to
@@ -640,6 +646,131 @@ Conventions:
 Not auto-opened: spec-adjacent types modules (e.g. `DeploymentTypes`,
 shared-variant modules beyond the Spec). Those still need an explicit
 `open` in the test body.
+
+### 4.12 Example files (`<Plugin>Examples.res`, `<Slice>_Examples.res`)
+
+**This is what the example plugins use, and what to reach for first.** A
+fixtures module (§ 4.11) holds whatever a file finds repetitive — a whole
+command, an expected state record, a helper. An *example* is narrower and more
+useful: a single named value that more than one test means.
+
+From `examples/online-shop-hybrid/ordering` — the plugin's shared values, grouped
+by type (extract):
+
+```rescript
+// tests/OrderingExamples.res
+@@reventless.examples
+
+let p1: CatalogSpec.ProductId.t = CatalogSpec.ProductId.makeFromString("p1")
+let p2: CatalogSpec.ProductId.t = CatalogSpec.ProductId.makeFromString("p2")
+
+let c1: CustomerId.t = CustomerId.makeFromString("c1")
+
+let o1: OrderId.t = OrderId.makeFromString("o1")
+
+let fathomDock: string = "Fathom Dock"
+
+let dockPrice: Reventless.Money.t = Reventless.Money.make(
+  ~amount=2500.0,
+  ~currency=Reventless.Currency.EUR,
+)
+```
+
+The slice's own record type lives beside its test, not in the plugin file:
+
+```rescript
+// tests/Order/StateChange/PlaceOrder_Examples.res
+@@reventless.examples
+
+open PlaceOrder
+open OrderingExamples
+
+// The line eleven tests place: one Fathom Dock at its shelf price.
+let dockLine: orderLine = {
+  productId: p1,
+  name: fathomDock,
+  quantity: 1,
+  unitPrice: dockPrice,
+  lineTotal: dockPrice,
+}
+```
+
+```rescript
+// tests/Order/StateChange/PlaceOrder_GWT.res
+@@reventless.gwt
+
+open OrderingExamples
+open PlaceOrder_Examples
+
+describe("PlaceOrder StateChangeSlice", () => {
+  // scenario-id: 7e494f69-e2bf-4727-8c51-08317ca42e0d
+  test("placement succeeds when products are available", () =>
+    givenEvents([CatalogProductSynced({productId: p1, name: fathomDock, price: dockPrice})])
+    ->whenCmd(
+      PlaceOrder({
+        orderId: o1,
+        customerId: c1,
+        lineItems: [{productId: p1, quantity: 1}],
+        shippingMethod: Standard,
+      }),
+    )
+    ->thenEvent(
+      OrderPlaced({
+        orderId: o1,
+        customerId: c1,
+        productIds: [p1],
+        lines: [dockLine],
+        total: dockPrice,
+        shippingMethod: Standard,
+        firstProductName: fathomDock,
+      }),
+    )
+  )
+})
+```
+
+Why it is worth the extra file rather than a literal in each test:
+
+- **The same thing is spelled one way.** Before this was made uniform, `pid("p1")`
+  appeared in nearly every file, each defining its own alias; `cid` meant
+  `CategoryId` in one plugin and `CustomerId` in another; and `eur` meant major
+  units in nine files and minor units in two, so `eur(2500.0)` was €2500 in one
+  test and €25 in another.
+- **The authoring tooling can read it.** A step written from named values comes
+  back as a name the scenario form shows as a chip and offers in a field menu.
+  A step built from a local helper call comes back as ReScript text with nothing
+  to pick.
+- **A price changes in one place.** Every test that meant that price follows.
+
+Conventions:
+
+- **Where a value lives is decided by its type.** Ids, framework values
+  (`Reventless.Money.t`, `Reventless.DateTime.t`) and other plugins' types go in
+  `tests/<Plugin>Examples.res`. A slice's own records and variants go in
+  `<Slice>_Examples.res` beside the GWT file — as
+  `Order/StateChange/PlaceOrder_Examples.res` holds `dockLine`, the `orderLine`
+  eleven tests place.
+- **Two tests or more.** A value only one test uses stays inline, written the way
+  codegen writes it. There is nothing to connect.
+- **Name it for what it means, not for its field.** `laptopPrice`, not
+  `eur999_99`; `mainStreet`, not `address`. An id is named after its value, so
+  `"p1"` becomes `p1`.
+- **Grouped by type, sorted by name within a group.** The tooling maintains this
+  when it adds one, so a hand-added example goes in its group too.
+- **Opened explicitly.** Unlike a fixtures module, an example file is not
+  auto-opened — the test writes `open <Plugin>Examples`. Both the plugin file and
+  a slice file can be open at once.
+- **Money is written in minor units through `Reventless.Money.make`.** That is the
+  one form; per-file `eur`/`usd` helpers are what this replaced.
+- **`// scenario-id:` marks each test** so the authoring tooling can address it by
+  id and rewrite that test alone. The tooling adds one when it first saves a test.
+
+`pnpm run check:examples` enforces the part that can be checked without types: a
+GWT file keeps no value helper it could retire. An id alias whose every call
+passes a name a `let` could bind, or a money writer whose every call writes its
+amount out, is a finding. A helper stays when a call passes a variable, or when an
+id's literal is not a name — `pid("p-1")` has to say its value, because no `let`
+can bind `p-1`.
 
 ---
 
@@ -776,9 +907,11 @@ Full field reference lives in
 
 ## 10. Test conventions
 
-- **Example plugins ship only `*_GWT.res` files.** In the example plugins
+- **Example plugins ship `*_GWT.res` files and their example files.** In the
+  example plugins
   (`examples/online-shop-aggregates/`, `online-shop-dcb/`, `online-shop-hybrid/`)
-  the `tests/` tree contains **only `*_GWT.res` files** — no `E2E`, no ad-hoc
+  the `tests/` tree contains **only `*_GWT.res` files and the `*Examples.res` they
+  share values through** (§ 4.12) — no `E2E`, no ad-hoc
   `*BehaviorTest.res` / `*DecisionTest.res` / `*ProjectionTest.res`. Tests mirror
   `src/` 1:1 (so the PPX folder-segment heuristic resolves the kind). Ship one
   `*_GWT.res` per Aggregate / StateChangeSlice / StateViewSlice /
@@ -809,9 +942,10 @@ Full field reference lives in
 - **Cover idempotency wherever the command has it.** At-least-once delivery
   means a repeated command is normal traffic, so `thenNoEvent` on the second
   application is a real assertion, not a formality.
-- **Push shared setup into a companion fixtures module** (see § 4.11) rather than
-  repeating event lists — the fixture is auto-opened, so the scenario body stays
-  the interesting part.
+- **Name a value two tests share** in the plugin's example file (see § 4.12)
+  rather than repeating the literal — `dockPrice`, not the amount written out in
+  each test. For repeated *setup* rather than a value, a companion fixtures
+  module (§ 4.11) is auto-opened, so the scenario body stays the interesting part.
 - **Reach for edge cases the domain actually has**: empty history, an entity in
   a terminal state, an optional field absent rather than empty.
 
