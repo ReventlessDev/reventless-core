@@ -1,7 +1,7 @@
 # Plan: a source reader that says where each declaration sits in a file
 
 **Status:** 🚧 2026-09-22 — S0 passed (verdict below: the reader runs as a ppx under bsc). S1,
-S2's GWT tests and top-level `let`s, and S3's packaging built; not yet released. S2's projection
+S2's GWT tests and top-level `let`s, and S3 released in the PPX 1.0.0-alpha.87. S2's projection
 and transition outlines are not built (see "What was built").<br/>
 **Touches:** `packages/reventless-ppx` only: a second executable beside `bin`, sharing the
 `ReventlessPpx` library.<br/>
@@ -145,6 +145,10 @@ arrive as `res.doc` attributes and are reported like any other attribute.
 - **Packaging (S3).** `publish-ppx.yml` stages `read.exe` beside `ppx.exe` in each platform
   package, and its drift guard runs the reader section against the published `read.exe`
   (`REVENTLESS_PPX_READ_BIN`). `scripts/publish-ppx-local.mjs` stages it too.
+  - Released in 1.0.0-alpha.87. Its first drift-guard run gave up waiting for the linux-x64
+    tarball, which the registry served about 8 minutes after publishing; a rerun passed (386
+    checks, the reader's included). The drift guard's and the relock's retry windows are now
+    10 minutes.
 - **Not built yet (rest of S2):** a projection's `project` cases and a spec's
   `commandTransition` arms. The GWT migration does not need them; the forms-as-views work does,
   and adds them when it starts.

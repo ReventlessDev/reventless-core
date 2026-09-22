@@ -342,8 +342,9 @@ jobs:
         run: |
           pkg="@reventlessdev/reventless-ppx-linux-x64@${VERSION}"
           ok=false
-          # ~4 min: the registry has taken ~2 min to list a just-published version.
-          for i in $(seq 1 12); do
+          # ~10 min: the registry has taken up to ~8 min to serve a just-published
+          # tarball (linux-x64, 1.0.0-alpha.87), though it lists the version sooner.
+          for i in $(seq 1 30); do
             if npm pack "$pkg" --registry=https://registry.npmjs.org --pack-destination "$RUNNER_TEMP"; then ok=true; break; fi
             echo "npm pack $pkg failed (registry may still be propagating) — retrying in 20s"
             sleep 20
@@ -441,7 +442,7 @@ jobs:
           # So a relock counts only once every pinned binary is locked at $VERSION.
           pinned=$(node -p 'Object.keys(require("./packages/reventless-ppx/package.json").optionalDependencies || {}).filter(k => k.startsWith("@reventlessdev/reventless-ppx-")).join(" ")')
           ok=false
-          for i in $(seq 1 12); do
+          for i in $(seq 1 30); do
             if pnpm install --lockfile-only --no-frozen-lockfile --config.prefer-offline=false; then
               missing=""
               for pkg in $pinned; do
