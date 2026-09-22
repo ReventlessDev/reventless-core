@@ -14,6 +14,8 @@ module GeocodeCustomerAddressSlice = {
 
 @@reventless.gwt
 
+open OrderingExamples
+
 let vienna: Reventless.GeoPoint.t = {lat: 48.2082, lng: 16.3738}
 
 // The real `translate`, driven by a stub geocoder. `whenTranslateMocked` takes any
@@ -31,19 +33,14 @@ let withGeocoder = (
   (id, item) => GeocodeCustomerAddress_Translation.translate(id, item, ~capabilities)
 }
 
-let candidate = (~label, ~point=vienna, ~relevance): Reventless.Geocoding.candidate => {
-  label,
-  point,
-  relevance: Some(relevance),
-}
-
 describe("GeocodeCustomerAddress OutboundTranslationSlice", () => {
+  // scenario-id: 8b319e75-7826-4d3d-bd88-a43a197fb014
   test("a confident match completes the TODO", () =>
     givenTodo(
       "cust-1:Stephansplatz 1, Vienna",
       {
-        customerId: "cust-1",
-        address: "Stephansplatz 1, Vienna",
+        customerId: cust1,
+        address: viennaAddress,
       },
     )
     ->whenTranslateMocked(
@@ -57,32 +54,47 @@ describe("GeocodeCustomerAddress OutboundTranslationSlice", () => {
 
   // The real `translate`, not a mock of it: a confident answer becomes SetLocation
   // with the point the geocoder returned.
+  // scenario-id: e630a084-41b4-4155-979a-8bb03552ba52
   test("translate: a confident answer produces SetLocation", () =>
     givenTodo(
       "cust-1:Stephansplatz 1, Vienna",
       {
-        customerId: "cust-1",
-        address: "Stephansplatz 1, Vienna",
+        customerId: cust1,
+        address: viennaAddress,
       },
     )
     ->whenTranslateMocked(
-      withGeocoder(Ok([candidate(~label="Stephansplatz 1, Vienna", ~relevance=0.995)])),
+      withGeocoder(
+        Ok([
+          {
+            label: "Stephansplatz 1, Vienna",
+            point: vienna,
+            relevance: Some(0.995),
+          },
+        ]),
+      ),
     )
-    ->thenCommand(
-      "cust-1",
-      SetLocation({location: vienna, resolvedFrom: "Stephansplatz 1, Vienna"}),
-    )
+    ->thenCommand("cust-1", SetLocation({location: vienna, resolvedFrom: viennaAddress}))
   )
 
   // An ambiguous answer is a verdict, and the reason names both candidates rather
   // than saying only that there was no confident match.
+  // scenario-id: 93103dd6-1304-42b1-83f9-fd4ac4a90160
   test("translate: an ambiguous answer produces a reason naming the candidates", () =>
-    givenTodo("cust-1:Springfield", {customerId: "cust-1", address: "Springfield"})
+    givenTodo("cust-1:Springfield", {customerId: cust1, address: "Springfield"})
     ->whenTranslateMocked(
       withGeocoder(
         Ok([
-          candidate(~label="Springfield, IL", ~relevance=0.99),
-          candidate(~label="Springfield, MA", ~relevance=0.985),
+          {
+            label: "Springfield, IL",
+            point: vienna,
+            relevance: Some(0.99),
+          },
+          {
+            label: "Springfield, MA",
+            point: vienna,
+            relevance: Some(0.985),
+          },
         ]),
       ),
     )

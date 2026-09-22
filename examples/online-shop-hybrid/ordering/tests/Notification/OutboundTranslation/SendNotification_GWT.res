@@ -9,6 +9,8 @@ module SendNotificationSlice = {
 
 @@reventless.gwt
 
+open OrderingExamples
+
 let item: SendNotification.outboundItem = {
   recipientId: "c1",
   reference: "confirm:o1",
@@ -32,18 +34,20 @@ let withProvider = (answer: result<Reventless.Messaging.receipt, Reventless.Mess
 }
 
 describe("SendNotification OutboundTranslationSlice", () => {
+  // scenario-id: 7c7c7c18-4d41-49de-a8c9-812e75014235
   test("an accepted message reports the provider's own id back", () =>
     givenTodo("confirm:o1", item)
     ->whenTranslateMocked(withProvider(Ok({ref: "ses-123"})))
     ->thenCommand(
       "c1",
-      RecordDelivery({recipientId: "c1", reference: "confirm:o1", providerRef: "ses-123"}),
+      RecordDelivery({recipientId: customerRef, reference: confirmReference, providerRef: sesRef}),
     )
   )
 
   // The half that must not settle. An unreachable provider says nothing about
   // this recipient, and writing the message off would lose a confirmation over a
   // network blip.
+  // scenario-id: 21b64329-72c5-45bb-8b35-35dc28e928e9
   test("an outage leaves the TODO pending", () =>
     givenTodo("confirm:o1", item)
     ->whenTranslateMocked(withProvider(Error(Unavailable("502"))))
@@ -52,29 +56,31 @@ describe("SendNotification OutboundTranslationSlice", () => {
 
   // The half that must settle. Two more attempts would learn the same thing, and
   // the recipient's row is what needs fixing.
+  // scenario-id: aa45c5c6-42f8-4337-9d8a-10be3a73ca6f
   test("a refused address is recorded as failed rather than retried", () =>
     givenTodo("confirm:o1", item)
     ->whenTranslateMocked(withProvider(Error(Refused("address on the suppression list"))))
     ->thenCommand(
       "c1",
       RecordDeliveryFailure({
-        recipientId: "c1",
-        reference: "confirm:o1",
-        reason: "address on the suppression list",
+        recipientId: customerRef,
+        reference: confirmReference,
+        reason: suppressedReason,
       }),
     )
   )
 
   // A channel this deployment does not run. Settled for the same reason: no
   // number of attempts provisions one.
+  // scenario-id: c7e99104-adf7-4c0b-b0ec-02b512d4cce1
   test("a channel the platform does not provision is recorded, not retried", () =>
     givenTodo("confirm:o1", item)
     ->whenTranslateMocked(withProvider(Error(UnsupportedChannel(Sms))))
     ->thenCommand(
       "c1",
       RecordDeliveryFailure({
-        recipientId: "c1",
-        reference: "confirm:o1",
+        recipientId: customerRef,
+        reference: confirmReference,
         reason: "this deployment provisions no Sms channel",
       }),
     )
@@ -84,14 +90,15 @@ describe("SendNotification OutboundTranslationSlice", () => {
   // the issuing service nor a Web Push subscription's keys, so there is nothing to
   // re-fuse and the provider is never asked. Recorded rather than retried: the row
   // needs a real push address, and no attempt supplies one.
+  // scenario-id: 95991b91-05fe-4888-85eb-686a58b591fe
   test("a push preference the directory cannot address is recorded, not sent", () =>
     givenTodo("confirm:o1", {...item, channel: Push, address: "device-token"})
     ->whenTranslateMocked(withProvider(Ok({ref: "must-not-be-used"})))
     ->thenCommand(
       "c1",
       RecordDeliveryFailure({
-        recipientId: "c1",
-        reference: "confirm:o1",
+        recipientId: customerRef,
+        reference: confirmReference,
         reason: "a push address names its issuing service, and the directory stores one flat address",
       }),
     )
@@ -99,14 +106,15 @@ describe("SendNotification OutboundTranslationSlice", () => {
 
   // An address the directory holds that its own channel's grammar refuses. The
   // provider is never called — there is nothing to send it to.
+  // scenario-id: b511e8dc-3962-4819-ace8-f8a833e5a538
   test("an address its channel cannot parse is recorded without asking the provider", () =>
     givenTodo("confirm:o1", {...item, address: "not-an-address"})
     ->whenTranslateMocked(withProvider(Ok({ref: "must-not-be-used"})))
     ->thenCommand(
       "c1",
       RecordDeliveryFailure({
-        recipientId: "c1",
-        reference: "confirm:o1",
+        recipientId: customerRef,
+        reference: confirmReference,
         reason: "expected an email address, got \"not-an-address\"",
       }),
     )

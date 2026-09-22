@@ -9,6 +9,8 @@
 
 @@reventless.gwt
 
+open OrderingExamples
+
 module Rule = TraitNotification.Notification_Rule
 
 // A rule id that no longer exists yields a reference matching neither expected
@@ -20,16 +22,6 @@ let referenceOf = ruleId =>
 
 let confirm = referenceOf("confirm")
 let ship = referenceOf("ship")
-
-let requested = (category, reference) => NotificationRequested({
-  recipientId: "c1",
-  category,
-  reference,
-  channel: NotificationPreferences.Email,
-  subjectType: "Order",
-  subjectRef: "o1",
-  origin: NotificationPreferences.Default,
-})
 
 let row = (category, reference, outcome, detail, settledAt): state => {
   reference,
@@ -52,11 +44,28 @@ describe("NotificationDeliveries StateViewSliceStream", () => {
   // a notification went missing. Spelling them out also pins the format, which
   // is load-bearing in three places — this row key, the relay's TODO id, and how
   // that TODO row is resolved.
+  // scenario-id: 3cc93af9-eecb-4b91-a669-bd0d2824b2cd
   test("placing and then shipping one order leaves two rows", () =>
     givenEvents([])
     ->whenEvents([
-      requested(NotificationPreferences.OrderConfirmation, confirm),
-      requested(NotificationPreferences.ShippingUpdate, ship),
+      NotificationRequested({
+        recipientId: customerRef,
+        category: NotificationPreferences.OrderConfirmation,
+        reference: confirm,
+        channel: NotificationPreferences.Email,
+        subjectType: orderSubject,
+        subjectRef: orderRef,
+        origin: NotificationPreferences.Default,
+      }),
+      NotificationRequested({
+        recipientId: customerRef,
+        category: NotificationPreferences.ShippingUpdate,
+        reference: ship,
+        channel: NotificationPreferences.Email,
+        subjectType: orderSubject,
+        subjectRef: orderRef,
+        origin: NotificationPreferences.Default,
+      }),
     ])
     ->thenAllStates(
       Dict.fromArray([
@@ -72,13 +81,34 @@ describe("NotificationDeliveries StateViewSliceStream", () => {
   // The half that fails silently. One outcome must close one row: if the two
   // notifications shared a key, delivering the confirmation would also settle the
   // shipping update, and the shop would report a message it never sent.
+  // scenario-id: d4fe96b7-929d-4515-a622-8242be3c1f91
   test("settling the confirmation leaves the shipping update still open", () =>
     givenEvents([
-      requested(NotificationPreferences.OrderConfirmation, confirm),
-      requested(NotificationPreferences.ShippingUpdate, ship),
+      NotificationRequested({
+        recipientId: customerRef,
+        category: NotificationPreferences.OrderConfirmation,
+        reference: confirm,
+        channel: NotificationPreferences.Email,
+        subjectType: orderSubject,
+        subjectRef: orderRef,
+        origin: NotificationPreferences.Default,
+      }),
+      NotificationRequested({
+        recipientId: customerRef,
+        category: NotificationPreferences.ShippingUpdate,
+        reference: ship,
+        channel: NotificationPreferences.Email,
+        subjectType: orderSubject,
+        subjectRef: orderRef,
+        origin: NotificationPreferences.Default,
+      }),
     ])
     ->whenEvent(
-      NotificationDelivered({recipientId: "c1", reference: confirm, providerRef: "provider-1"}),
+      NotificationDelivered({
+        recipientId: customerRef,
+        reference: confirm,
+        providerRef: "provider-1",
+      }),
     )
     ->thenAllStates(
       Dict.fromArray([

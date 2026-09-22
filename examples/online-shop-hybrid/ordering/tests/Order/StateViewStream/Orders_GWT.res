@@ -1,28 +1,25 @@
 @@reventless.gwt
 
-let oid = OrderId.make
-let cid = CustomerId.make
-let pid = CatalogSpec.ProductId.make
+open OrderingExamples
 
 // Minor units, the way `Money` counts them: 2500 is €25.00. The lines are the
 // write side's own — this view copies them through rather than deriving anything
 // from them, apart from `itemCount`.
-let eur = amount => Reventless.Money.make(~amount, ~currency=EUR)
 
 let dockLine: orderLine = {
-  productId: pid("p1"),
+  productId: p1,
   name: "Fathom Dock",
   quantity: 1,
-  unitPrice: eur(2500.0),
-  lineTotal: eur(2500.0),
+  unitPrice: Reventless.Money.make(~amount=2500.0, ~currency=Reventless.Currency.EUR),
+  lineTotal: Reventless.Money.make(~amount=2500.0, ~currency=Reventless.Currency.EUR),
 }
 
 let chargerLine: orderLine = {
-  productId: pid("p2"),
+  productId: p2,
   name: "Cirrus Charger",
   quantity: 2,
-  unitPrice: eur(1000.0),
-  lineTotal: eur(2000.0),
+  unitPrice: Reventless.Money.make(~amount=1000.0, ~currency=Reventless.Currency.EUR),
+  lineTotal: Reventless.Money.make(~amount=2000.0, ~currency=Reventless.Currency.EUR),
 }
 
 // Every event a projection GWT feeds carries the harness's fixed producer time,
@@ -34,15 +31,16 @@ let trail = (states: array<lifecycle>) =>
   })
 
 describe("Orders StateViewSlice", () => {
+  // scenario-id: f758b677-2fad-4184-b8f6-185a47a9c4ea
   test("OrderPlaced creates a row with status Placed", () =>
     givenEvents([])
     ->whenEvent(
       OrderPlaced({
-        orderId: oid("o1"),
-        customerId: cid("c1"),
-        productIds: [pid("p1"), pid("p2")],
+        orderId: o1,
+        customerId: c1,
+        productIds: [p1, p2],
         lines: [dockLine, chargerLine],
-        total: eur(4500.0),
+        total: Reventless.Money.make(~amount=4500.0, ~currency=Reventless.Currency.EUR),
         shippingMethod: Standard,
         deliveryWindow: None,
         firstProductName: None,
@@ -52,15 +50,15 @@ describe("Orders StateViewSlice", () => {
     ->thenStateWithId(
       "o1",
       {
-        orderId: oid("o1"),
-        customerId: cid("c1"),
-        productIds: [pid("p1"), pid("p2")],
+        orderId: o1,
+        customerId: c1,
+        productIds: [p1, p2],
         lines: [dockLine, chargerLine],
-        total: eur(4500.0),
+        total: Reventless.Money.make(~amount=4500.0, ~currency=Reventless.Currency.EUR),
         itemCount: 3,
         lifecycle: Placed,
         shippingMethod: Standard,
-        placedAt: "1970-01-01T00:00:00Z",
+        placedAt: epoch,
         trail: trail([Placed]),
         deliveryWindow: None,
         firstProductName: None,
@@ -72,6 +70,7 @@ describe("Orders StateViewSlice", () => {
   // The declared span is carried straight from the event onto the row, with
   // `customerId` beside it as the resource ref — which is what lets a scheduler
   // mode lay a bar out from the row without guessing the pair from field names.
+  // scenario-id: 5e6fe37a-b46a-4cbf-a26f-8716e7303848
   test("a requested delivery window lands on the row", () => {
     let window =
       Reventless.DateRange.make(
@@ -81,11 +80,11 @@ describe("Orders StateViewSlice", () => {
     givenEvents([])
     ->whenEvent(
       OrderPlaced({
-        orderId: oid("o1"),
-        customerId: cid("c1"),
-        productIds: [pid("p1")],
+        orderId: o1,
+        customerId: c1,
+        productIds: [p1],
         lines: [dockLine],
-        total: eur(2500.0),
+        total: dockPrice,
         shippingMethod: Standard,
         deliveryWindow: Some(window),
         firstProductName: None,
@@ -95,15 +94,15 @@ describe("Orders StateViewSlice", () => {
     ->thenStateWithId(
       "o1",
       {
-        orderId: oid("o1"),
-        customerId: cid("c1"),
-        productIds: [pid("p1")],
+        orderId: o1,
+        customerId: c1,
+        productIds: [p1],
         lines: [dockLine],
-        total: eur(2500.0),
+        total: dockPrice,
         itemCount: 1,
         lifecycle: Placed,
         shippingMethod: Standard,
-        placedAt: "1970-01-01T00:00:00Z",
+        placedAt: epoch,
         trail: trail([Placed]),
         deliveryWindow: Some(window),
         firstProductName: None,
@@ -112,15 +111,16 @@ describe("Orders StateViewSlice", () => {
     )
   })
 
+  // scenario-id: 47f4cef5-a851-43d9-b90d-db04732e7d1e
   test("the shipping method chosen at placement is projected onto the row", () =>
     givenEvents([])
     ->whenEvent(
       OrderPlaced({
-        orderId: oid("o1"),
-        customerId: cid("c1"),
-        productIds: [pid("p1")],
+        orderId: o1,
+        customerId: c1,
+        productIds: [p1],
         lines: [dockLine],
-        total: eur(2500.0),
+        total: dockPrice,
         shippingMethod: Pickup,
         deliveryWindow: None,
         firstProductName: None,
@@ -130,15 +130,15 @@ describe("Orders StateViewSlice", () => {
     ->thenStateWithId(
       "o1",
       {
-        orderId: oid("o1"),
-        customerId: cid("c1"),
-        productIds: [pid("p1")],
+        orderId: o1,
+        customerId: c1,
+        productIds: [p1],
         lines: [dockLine],
-        total: eur(2500.0),
+        total: dockPrice,
         itemCount: 1,
         lifecycle: Placed,
         shippingMethod: Pickup,
-        placedAt: "1970-01-01T00:00:00Z",
+        placedAt: epoch,
         trail: trail([Placed]),
         deliveryWindow: None,
         firstProductName: None,
@@ -147,33 +147,34 @@ describe("Orders StateViewSlice", () => {
     )
   )
 
+  // scenario-id: b7b61aa4-8318-4d7c-a7e2-1ed39fa41627
   test("OrderShipped updates status to Shipped", () =>
     givenEvents([
       OrderPlaced({
-        orderId: oid("o1"),
-        customerId: cid("c1"),
-        productIds: [pid("p1")],
+        orderId: o1,
+        customerId: c1,
+        productIds: [p1],
         lines: [dockLine],
-        total: eur(2500.0),
+        total: dockPrice,
         shippingMethod: Express,
         deliveryWindow: None,
         firstProductName: None,
         firstProductImage: None,
       }),
     ])
-    ->whenEvent(OrderShipped({orderId: oid("o1")}))
+    ->whenEvent(OrderShipped({orderId: o1}))
     ->thenStateWithId(
       "o1",
       {
-        orderId: oid("o1"),
-        customerId: cid("c1"),
-        productIds: [pid("p1")],
+        orderId: o1,
+        customerId: c1,
+        productIds: [p1],
         lines: [dockLine],
-        total: eur(2500.0),
+        total: dockPrice,
         itemCount: 1,
         lifecycle: Shipped,
         shippingMethod: Express,
-        placedAt: "1970-01-01T00:00:00Z",
+        placedAt: epoch,
         trail: trail([Placed, Shipped]),
         deliveryWindow: None,
         firstProductName: None,
@@ -182,33 +183,34 @@ describe("Orders StateViewSlice", () => {
     )
   )
 
+  // scenario-id: f3b24de1-8e25-41a6-abd8-2baf4e71d864
   test("OrderCancelled updates status to Cancelled", () =>
     givenEvents([
       OrderPlaced({
-        orderId: oid("o1"),
-        customerId: cid("c1"),
-        productIds: [pid("p1")],
+        orderId: o1,
+        customerId: c1,
+        productIds: [p1],
         lines: [dockLine],
-        total: eur(2500.0),
+        total: dockPrice,
         shippingMethod: Standard,
         deliveryWindow: None,
         firstProductName: None,
         firstProductImage: None,
       }),
     ])
-    ->whenEvent(OrderCancelled({orderId: oid("o1")}))
+    ->whenEvent(OrderCancelled({orderId: o1}))
     ->thenStateWithId(
       "o1",
       {
-        orderId: oid("o1"),
-        customerId: cid("c1"),
-        productIds: [pid("p1")],
+        orderId: o1,
+        customerId: c1,
+        productIds: [p1],
         lines: [dockLine],
-        total: eur(2500.0),
+        total: dockPrice,
         itemCount: 1,
         lifecycle: Cancelled,
         shippingMethod: Standard,
-        placedAt: "1970-01-01T00:00:00Z",
+        placedAt: epoch,
         trail: trail([Placed, Cancelled]),
         deliveryWindow: None,
         firstProductName: None,
@@ -222,34 +224,35 @@ describe("Orders StateViewSlice", () => {
   // would leave a reopened order rendering `Cancelled` for the rest of its life
   // while shipping perfectly well. The two halves have to agree, and only a
   // scenario on each says whether they do.
+  // scenario-id: 118aa260-d7d6-4fce-aafb-3d9135b97c9a
   test("OrderReopened puts a cancelled order back to Placed", () =>
     givenEvents([
       OrderPlaced({
-        orderId: oid("o1"),
-        customerId: cid("c1"),
-        productIds: [pid("p1")],
+        orderId: o1,
+        customerId: c1,
+        productIds: [p1],
         lines: [dockLine],
-        total: eur(2500.0),
+        total: dockPrice,
         shippingMethod: Standard,
         deliveryWindow: None,
         firstProductName: None,
         firstProductImage: None,
       }),
-      OrderCancelled({orderId: oid("o1")}),
+      OrderCancelled({orderId: o1}),
     ])
-    ->whenEvent(OrderReopened({orderId: oid("o1")}))
+    ->whenEvent(OrderReopened({orderId: o1}))
     ->thenStateWithId(
       "o1",
       {
-        orderId: oid("o1"),
-        customerId: cid("c1"),
-        productIds: [pid("p1")],
+        orderId: o1,
+        customerId: c1,
+        productIds: [p1],
         lines: [dockLine],
-        total: eur(2500.0),
+        total: dockPrice,
         itemCount: 1,
         lifecycle: Placed,
         shippingMethod: Standard,
-        placedAt: "1970-01-01T00:00:00Z",
+        placedAt: epoch,
         trail: trail([Placed, Cancelled, Placed]),
         deliveryWindow: None,
         firstProductName: None,

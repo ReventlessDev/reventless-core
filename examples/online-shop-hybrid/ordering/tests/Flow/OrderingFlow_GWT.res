@@ -16,9 +16,7 @@
 // the flow seeds a CatalogProductSynced event before placing the order.
 @@reventless.gwt
 
-let oid = OrderId.make
-let cid = CustomerId.make
-let pid = CatalogSpec.ProductId.make
+open OrderingExamples
 
 // Compose the automation onto a flat slice — the production split keeps
 // collect/resolve inside the per-source mapping; the GWT needs them together.
@@ -66,9 +64,9 @@ module Notify = AutomationStep(NotificationIntakeSlice)
 // it once. `ofMajor` scales by the currency's own exponent, which is what keeps
 // the literal honest: 9.99 EUR is 999 cents, and the same call on a JPY price
 // would scale by 1.
-let eur = amount => Reventless.Money.ofMajor(~amount, ~currency=EUR)
 
 describe("Ordering flow — place → auto-ship → confirm", () => {
+  // scenario-id: 0c04bbd0-be72-479b-9731-73c122f66b20
   test("an order is placed, auto-shipped, projected as Shipped, and confirmed", () => {
     // The requested delivery slot travels command → event → view row unchanged,
     // one `DateRange` end to end.
@@ -80,40 +78,40 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
     start
     ->Sync.givenEvents([
       SyncCatalogProduct.CatalogProductSynced({
-        productId: pid("p1"),
+        productId: p1,
         name: "Book",
-        price: eur(9.99),
+        price: Reventless.Money.make(~amount=999.0, ~currency=Reventless.Currency.EUR),
       }),
     ])
     // Express, so the automation picks it up — a Standard or Pickup order would
     // stop at Placed and wait for an explicit ShipOrder.
     ->Place.whenCommand(
       PlaceOrder.PlaceOrder({
-        orderId: oid("o1"),
-        customerId: cid("c1"),
-        lineItems: [{productId: pid("p1"), quantity: 2}],
+        orderId: o1,
+        customerId: c1,
+        lineItems: [{productId: p1, quantity: 2}],
         shippingMethod: Express,
         deliveryWindow: window,
       }),
     )
     ->Place.thenEvent(
       PlaceOrder.OrderPlaced({
-        orderId: oid("o1"),
-        customerId: cid("c1"),
-        productIds: [pid("p1")],
+        orderId: o1,
+        customerId: c1,
+        productIds: [p1],
         // The line is priced from the shelf the placement read, and the total is
         // the sum of the lines — two of a €9.99 book is €19.98, computed by
         // `Money` rather than by the behaviour.
         lines: [
           {
-            productId: pid("p1"),
+            productId: p1,
             name: "Book",
             quantity: 2,
-            unitPrice: eur(9.99),
-            lineTotal: eur(19.98),
+            unitPrice: Reventless.Money.make(~amount=999.0, ~currency=Reventless.Currency.EUR),
+            lineTotal: Reventless.Money.make(~amount=1998.0, ~currency=Reventless.Currency.EUR),
           },
         ],
-        total: eur(19.98),
+        total: Reventless.Money.make(~amount=1998.0, ~currency=Reventless.Currency.EUR),
         shippingMethod: Express,
         deliveryWindow: window,
         // Captured off the shelf at placement — the same name the catalog
@@ -122,25 +120,25 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
       }),
     )
     ->Auto.whenReacts
-    ->Auto.thenIssuesCommand(AutoShipOrder.ShipOrder({orderId: oid("o1")}))
-    ->Ship.whenCommand(ShipOrder.ShipOrder({orderId: oid("o1")}))
-    ->Ship.thenEvent(ShipOrder.OrderShipped({orderId: oid("o1"), customerId: cid("c1")}))
+    ->Auto.thenIssuesCommand(AutoShipOrder.ShipOrder({orderId: o1}))
+    ->Ship.whenCommand(ShipOrder.ShipOrder({orderId: o1}))
+    ->Ship.thenEvent(ShipOrder.OrderShipped({orderId: o1, customerId: c1}))
     ->OrdersView.thenViewState(
       "o1",
       {
-        Orders.orderId: oid("o1"),
-        customerId: cid("c1"),
-        productIds: [pid("p1")],
+        Orders.orderId: o1,
+        customerId: c1,
+        productIds: [p1],
         lines: [
           {
-            productId: pid("p1"),
+            productId: p1,
             name: "Book",
             quantity: 2,
-            unitPrice: eur(9.99),
-            lineTotal: eur(19.98),
+            unitPrice: Reventless.Money.make(~amount=999.0, ~currency=Reventless.Currency.EUR),
+            lineTotal: Reventless.Money.make(~amount=1998.0, ~currency=Reventless.Currency.EUR),
           },
         ],
-        total: eur(19.98),
+        total: Reventless.Money.make(~amount=1998.0, ~currency=Reventless.Currency.EUR),
         itemCount: 2,
         lifecycle: Shipped,
         shippingMethod: Express,
@@ -192,16 +190,17 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
     ])
   })
 
+  // scenario-id: c8689953-3429-4fe0-a146-cc9fcfc4a6c6
   test("placing an order for an unsynced product is rejected", () =>
     start
     ->Place.whenCommand(
       PlaceOrder.PlaceOrder({
-        orderId: oid("o1"),
-        customerId: cid("c1"),
-        lineItems: [{productId: pid("p1"), quantity: 1}],
+        orderId: o1,
+        customerId: c1,
+        lineItems: [{productId: p1, quantity: 1}],
         shippingMethod: Standard,
       }),
     )
-    ->Place.thenError(ProductsNotAvailable({missing: [pid("p1")]}))
+    ->Place.thenError(ProductsNotAvailable({missing: [p1]}))
   )
 })
