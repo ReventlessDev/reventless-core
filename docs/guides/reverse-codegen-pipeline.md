@@ -63,6 +63,10 @@ Event Modeling JSON has a single identity signal (`idAttribute`); Reventless DCB
 
 `@partitionTag` / `@noDcbTag` / `@dcbTag` survive `code → JSON → code`; plain `*Id` fields stay auto-tagged. The auto roles emit no annotation, so the forward emitter stays silent for them.
 
+**Nested records.** A `@schema` record that a command / event / consumedEvent field holds (as `T`, `option<T>` or `array<T>`) is tagged at runtime by `DcbTag.nestedRecordTags`, keyed by the nested field's own name. Only `@ref` puts tag metadata on a record's fields, so the sidecar reports such a field as `customKey` when it carries `@ref` (keyed like the runtime: `@dcbTag("k")`, else the identity's key, else the field name), `suppressed` when `@ref` sits beside `@noDcbTag`, and `noTag` otherwise. `PlaceOrder`'s `lineItems[].productId` is a `productId` tag; `OrderPlaced`'s `lines[].productId`, without `@ref`, is not.
+
+**Reference targets.** A field carrying `@ref("Entity")` or `@ref("Plugin.Entity")` also gets `"ref": {"entity": "Entity", "plugin": null | "Plugin"}` in the `.model.json` sidecar. Fields without `@ref` have no `ref` key.
+
 ## Merge authority
 
 `export` is a three-way merge against the [sync base](./forward-codegen-pipeline.md#sync-base) (`.reventless/sync-base/<id>.json`):

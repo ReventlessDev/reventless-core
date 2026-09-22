@@ -92,8 +92,8 @@ let is_array_string_type (ct : core_type) : bool =
 (* Replicates `EventModelingImport.resolveDcbRole` / `DcbTagInference`, reading
    the original annotations the PPX is about to consume. Explicit annotations
    win; otherwise a `*Id: string` / `*Ids: array<string>` field is auto-tagged. *)
-let dcb_role_json ~dcb_context ~(name : string) ~(ct : core_type)
-    ~(attrs : attributes) : Yojson.Safe.t =
+let dcb_role_json ~dcb_context ?(nested = false) ~(name : string) ~(ct : core_type)
+    ~(attrs : attributes) () : Yojson.Safe.t =
   let role s = `Assoc [ ("role", `String s) ] in
   (* A typed id is tagged by its identity's key, which only the runtime schema
      knows. The sidecar has the syntax alone, so it states the key the module
@@ -106,7 +106,23 @@ let dcb_role_json ~dcb_context ~(name : string) ~(ct : core_type)
     in
     Option.bind m Util.conventional_identity_key
   in
-  if not dcb_context then role "noTag"
+  (* A record a DCB-context type holds is tagged by `DcbTag.nestedRecordTags`,
+     but only `ReferenceInference` puts tag metadata on a record's fields: the
+     auto-`*Id`, typed-id and explicit `@dcbTag` passes rewrite variant
+     constructors alone. So a nested field is a tag exactly when it is a `@ref`. *)
+  if nested then
+    if not (ReferenceInference.has_ref_field_attr attrs) then role "noTag"
+    else if has_attr "noDcbTag" attrs then role "suppressed"
+    else
+      let key =
+        match DcbTagInference.get_explicit_dcb_tag_key attrs, identity_key with
+        | Some k, _ | None, Some k -> k
+        | None, None when is_array_string_type ct && ReferenceInference.ends_with_ids name ->
+          Util.drop_trailing_s name
+        | None, None -> name
+      in
+      `Assoc [ ("role", `String "customKey"); ("key", `String key) ]
+  else if not dcb_context then role "noTag"
   else if has_attr "partitionTag" attrs then
     (match identity_key with
      | Some key -> `Assoc [ ("role", `String "partition"); ("key", `String key) ]
@@ -128,7 +144,18 @@ let dcb_role_json ~dcb_context ~(name : string) ~(ct : core_type)
 
 (* ── label_declaration → Model.field JSON ───────────────────────────────── *)
 
-let field_json ~dcb_context (ld : label_declaration) : Yojson.Safe.t =
+(* `@ref("Entity")` / `@ref("Plugin.Entity")` → its target. Only fields that
+   carry one get the key, so sidecars without references are unchanged. *)
+let ref_json (attrs : attributes) : (string * Yojson.Safe.t) list =
+  match ReferenceInference.get_ref_target attrs with
+  | Some (entity, plugin) ->
+    [ ( "ref",
+        `Assoc
+          [ ("entity", `String entity);
+            ("plugin", match plugin with Some p -> `String p | None -> `Null) ] ) ]
+  | None -> []
+
+let field_json ~dcb_context ?(nested = false) (ld : label_declaration) : Yojson.Safe.t =
   let name = ld.pld_name.txt in
   let attrs = ld.pld_attributes in
   let is_id = has_attr "id" attrs || has_attr "compositeId" attrs in
@@ -139,14 +166,15 @@ let field_json ~dcb_context (ld : label_declaration) : Yojson.Safe.t =
     || has_attr "compositePartitionTag" attrs
   in
   `Assoc
-    [ ("name", `String name);
-      ("kind", kind_of_type ld.pld_type);
-      ("isId", `Bool is_id);
-      ("isIndex", `Bool is_index);
-      ("isCompositeTag", `Bool is_composite);
-      ("dcbRole", dcb_role_json ~dcb_context ~name ~ct:ld.pld_type ~attrs);
-      ("example", `Null);
-      ("annotations", `List (List.map (fun n -> `String n) (attr_names attrs))) ]
+    ([ ("name", `String name);
+       ("kind", kind_of_type ld.pld_type);
+       ("isId", `Bool is_id);
+       ("isIndex", `Bool is_index);
+       ("isCompositeTag", `Bool is_composite);
+       ("dcbRole", dcb_role_json ~dcb_context ~nested ~name ~ct:ld.pld_type ~attrs ());
+       ("example", `Null);
+       ("annotations", `List (List.map (fun n -> `String n) (attr_names attrs))) ]
+     @ ref_json attrs)
 
 (* ── constructor / record → element JSON ────────────────────────────────── *)
 
@@ -155,6 +183,44 @@ let fields_of_args ~dcb_context (args : constructor_arguments) :
   match args with
   | Pcstr_record lds -> List.map (field_json ~dcb_context) lds
   | Pcstr_tuple _ -> [] (* payload-less or positional — no named fields *)
+
+(* ── nested records ─────────────────────────────────────────────────────── *)
+
+(* The local type a field holds as `T`, `option<T>`, `array<T>` or
+   `array<option<T>>` — the shapes `DcbTag.nestedRecordProperties` unwraps. *)
+let held_type_name (ct : core_type) : string option =
+  let unwrap_option (ct : core_type) =
+    match ct.ptyp_desc with
+    | Ptyp_constr ({ txt = Lident "option"; _ }, [ t ]) -> t
+    | _ -> ct
+  in
+  let ct = unwrap_option ct in
+  let ct =
+    match ct.ptyp_desc with
+    | Ptyp_constr ({ txt = Lident ("array" | "list"); _ }, [ t ]) -> unwrap_option t
+    | _ -> ct
+  in
+  match ct.ptyp_desc with
+  | Ptyp_constr ({ txt = Lident n; _ }, []) -> Some n
+  | _ -> None
+
+(* The names of the types a DCB-context `@schema` type's fields hold. A record
+   among them is nested: its tagged fields are the decision's tags too. *)
+let nested_type_names (tds : type_declaration list) : string list =
+  let labels (td : type_declaration) =
+    match td.ptype_kind with
+    | Ptype_variant ctors ->
+      List.concat_map
+        (fun (c : constructor_declaration) ->
+          match c.pcd_args with Pcstr_record lds -> lds | Pcstr_tuple _ -> [])
+        ctors
+    | Ptype_record lds -> lds
+    | _ -> []
+  in
+  tds
+  |> List.filter (fun td -> is_dcb_context td.ptype_name.txt)
+  |> List.concat_map labels
+  |> List.filter_map (fun (ld : label_declaration) -> held_type_name ld.pld_type)
 
 let element_json ~name ~fields : Yojson.Safe.t =
   `Assoc
@@ -165,9 +231,10 @@ let element_json ~name ~fields : Yojson.Safe.t =
 (* A `@schema type` declaration → one "types" entry. Variants expand to one
    element per constructor; records collapse to a single element named after
    the type. Abstract / alias types are skipped (returns None). *)
-let type_entry (td : type_declaration) : Yojson.Safe.t option =
+let type_entry ?(nested = []) (td : type_declaration) : Yojson.Safe.t option =
   let type_name = td.ptype_name.txt in
   let dcb_context = is_dcb_context type_name in
+  let nested = (not dcb_context) && List.mem type_name nested in
   match td.ptype_kind with
   | Ptype_variant ctors ->
     let elements =
@@ -183,7 +250,7 @@ let type_entry (td : type_declaration) : Yojson.Safe.t option =
            ("shape", `String "variant");
            ("elements", `List elements) ])
   | Ptype_record lds ->
-    let fields = List.map (field_json ~dcb_context) lds in
+    let fields = List.map (field_json ~dcb_context ~nested) lds in
     Some
       (`Assoc
          [ ("typeName", `String type_name);
@@ -253,17 +320,16 @@ let repo_relative (fname : string) : string =
     | None -> fname
 
 let fragment_json ~spec_name ~fname (body : structure) : Yojson.Safe.t =
-  let types =
+  let schema_types =
     List.concat_map
       (fun (item : structure_item) ->
         match item.pstr_desc with
-        | Pstr_type (_, tds) ->
-          List.filter_map
-            (fun td -> if is_schema_type td then type_entry td else None)
-            tds
+        | Pstr_type (_, tds) -> List.filter is_schema_type tds
         | _ -> [])
       body
   in
+  let nested = nested_type_names schema_types in
+  let types = List.filter_map (type_entry ~nested) schema_types in
   `Assoc
     [ ("specName", `String spec_name);
       ("stem", `String (filename_stem fname));

@@ -307,6 +307,75 @@ let () =
   imust "partition carries the key" "{\"role\":\"partition\",\"key\":\"customerId\"}";
   imust "an explicit key wins" "{\"role\":\"customKey\",\"key\":\"sellerId\"}";
   imust "array element → productId" "{\"role\":\"customKey\",\"key\":\"productId\"}";
+  if Yojson.Safe.Util.(ij |> member "types" |> to_list |> List.hd |> member "elements"
+                       |> to_list |> List.hd |> member "fields" |> to_list
+                       |> List.for_all (fun f -> member "ref" f = `Null))
+  then print_endline "  ok(identity): a field without @ref has no ref key"
+  else (print_endline "  FAIL(identity): a ref key without @ref"; exit 1);
+
+  (* A record a command or event holds is nested: its @ref fields are the
+     decision's tags (DcbTag.nestedRecordTags); its other fields are not,
+     because only ReferenceInference tags a record's fields. *)
+  let nested_body : structure =
+    [%str
+      type lineItem =
+        { productId : CatalogSpec.ProductId.t [@ref "AvailableProducts"]
+        ; vendorRef : string [@ref "Catalog.Vendor"] [@noDcbTag]
+        ; bundleIds : string array [@ref "Bundle"]
+        ; quantity : int }
+      [@@schema]
+
+      type orderLine = { productId : CatalogSpec.ProductId.t; name : string } [@@schema]
+
+      type note = { authorId : AuthorId.t [@ref "Author"] } [@@schema]
+
+      type command =
+        | PlaceOrder of { orderId : OrderId.t; lineItems : lineItem array }
+      [@@schema]
+
+      type event =
+        | OrderPlaced of { orderId : OrderId.t; lines : orderLine array option }
+      [@@schema]
+
+      type state = { notes : note array } [@@schema]]
+  in
+  let nj =
+    ReventlessPpx__SidecarEmit.fragment_json ~spec_name:"PlaceOrder" ~fname:"PlaceOrder.res"
+      nested_body
+  in
+  let field_of type_name field_name =
+    let open Yojson.Safe.Util in
+    nj |> member "types" |> to_list
+    |> List.find (fun t -> member "typeName" t = `String type_name)
+    |> member "elements" |> to_list |> List.hd |> member "fields" |> to_list
+    |> List.find (fun f -> member "name" f = `String field_name)
+  in
+  let nmust label type_name field_name key expected =
+    let got = Yojson.Safe.to_string (Yojson.Safe.Util.member key (field_of type_name field_name)) in
+    if String.equal got expected then Printf.printf "  ok(nested): %s\n" label
+    else (Printf.printf "  FAIL(nested): %s\n    %s.%s %s = %s, expected %s\n" label type_name
+            field_name key got expected; exit 1)
+  in
+  nmust "a nested typed-id @ref is tagged by its identity" "lineItem" "productId" "dcbRole"
+    "{\"role\":\"customKey\",\"key\":\"productId\"}";
+  nmust "its target" "lineItem" "productId" "ref"
+    "{\"entity\":\"AvailableProducts\",\"plugin\":null}";
+  nmust "a nested @ref with @noDcbTag is suppressed" "lineItem" "vendorRef" "dcbRole"
+    "{\"role\":\"suppressed\"}";
+  nmust "a plugin target" "lineItem" "vendorRef" "ref"
+    "{\"entity\":\"Vendor\",\"plugin\":\"Catalog\"}";
+  nmust "a nested *Ids @ref takes the singular key" "lineItem" "bundleIds" "dcbRole"
+    "{\"role\":\"customKey\",\"key\":\"bundleId\"}";
+  nmust "a nested plain field is not a tag" "lineItem" "quantity" "dcbRole"
+    "{\"role\":\"noTag\"}";
+  nmust "a nested typed id without @ref is not a tag" "orderLine" "productId" "dcbRole"
+    "{\"role\":\"noTag\"}";
+  nmust "a record held only by state is not nested" "note" "authorId" "dcbRole"
+    "{\"role\":\"noTag\"}";
+  nmust "its target is still recorded" "note" "authorId" "ref"
+    "{\"entity\":\"Author\",\"plugin\":null}";
+  nmust "top-level fields keep their rules" "command" "orderId" "dcbRole"
+    "{\"role\":\"customKey\",\"key\":\"orderId\"}";
 
   (* A typed id made from a literal reads as that literal. *)
   (match
