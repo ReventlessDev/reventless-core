@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.142 (2026-09-22)
+
+### Features
+
+* **spec:** every semantic type says how to write a value ([b661296](https://github.com/ReventlessDev/reventless-core/commit/b661296c1b7c94109e2187efdf48f5643c507f28))
+
+
 # 3.0.0-alpha.141 (2026-09-21)
 
 ### Bug Fixes
