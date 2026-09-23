@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.144 (2026-09-23)
+
+* feat(node)!: every command-line tool reads its arguments through parseArgs ([2e41979](https://github.com/ReventlessDev/reventless-core/commit/2e41979b73646c46356e197e17eb4a3da0154c73))
+
+### BREAKING CHANGES
+
+* NodeProcess.onSignal takes the new NodeProcess.signal
+variant (SIGINT | SIGTERM | SIGHUP) instead of a polymorphic variant:
+write onSignal(SIGINT, …) for onSignal(#SIGINT, …). Node receives the
+same string.
+
+
+
 # 3.0.0-alpha.143 (2026-09-23)
 
 **Note:** Version bump only for package @reventlessdev/reventless-spec
