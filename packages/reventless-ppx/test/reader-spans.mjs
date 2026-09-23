@@ -143,18 +143,20 @@ const report = (label, bad) => {
   };
   read(file).describes.forEach(collect);
   const has = (name, text) => values.some(([n, t]) => n === name && t === text);
+  const total = "Reventless.Money.make(~amount=4500.0, ~currency=Reventless.Currency.EUR)";
   report(
-    "Orders_GWT: lines [dockLine, chargerLine] and total eur(4500.0) are read",
+    "Orders_GWT: lines [dockLine, chargerLine] and a Money.make total are read",
     [
       has("lines", "[dockLine, chargerLine]") ? null : "lines missing",
-      has("total", "eur(4500.0)") ? null : "total missing",
+      has("total", total) ? null : "total missing",
     ].filter(Boolean),
   );
 }
 
-// Every top-level let of PlaceOrder_GWT.res, with a builder's parameters.
+// Every top-level let of VerifyCustomerEmail_GWT.res, with a builder's parameters.
+// Defaults have a fixture of their own in run.sh: the example writes none.
 {
-  const file = files.find((f) => f.endsWith("/PlaceOrder_GWT.res"));
+  const file = files.find((f) => f.endsWith("/VerifyCustomerEmail_GWT.res"));
   const j = read(file);
   const cut = cutter(file);
   const bad = [];
@@ -166,8 +168,16 @@ const report = (label, bad) => {
     if (l.value.text !== cut(l.value.span) || !l.text.endsWith(l.value.text))
       bad.push(`let ${l.name}'s value`);
   }
-  const synced = j.lets.find((l) => l.name === "synced");
-  const params = synced?.value.params.map((p) => `${p.label}=${p.default?.text ?? ""}`).join(" ");
-  if (params !== "~id= ~name= ?price=2500.0") bad.push(`synced's parameters: ${params}`);
-  report(`PlaceOrder_GWT: ${j.lets.length} lets cut exactly, with parameters and defaults`, bad);
+  const params = (name) =>
+    j.lets
+      .find((l) => l.name === name)
+      ?.value.params.map((p) => `${p.label}=${p.default?.text ?? ""}`)
+      .join(" ");
+  // `refuses` returns a function: its parameters read as one list, unlabelled first.
+  for (const [name, want] of [
+    ["accepts", "~recipient= ~message="],
+    ["refuses", "null= ~recipient= ~message="],
+  ])
+    if (params(name) !== want) bad.push(`${name}'s parameters: ${params(name)}`);
+  report(`VerifyCustomerEmail_GWT: ${j.lets.length} lets cut exactly, with parameters`, bad);
 }

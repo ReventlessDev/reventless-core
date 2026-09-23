@@ -4091,6 +4091,12 @@ for v in 7 8 9; do
   assert_js_contains "$READ_DIR/Unicode.read.json" "\"value\":\"$v\",\"span\":{\"start\":[0-9]*,\"end\":[0-9]*},\"text\":\"$v\"" \
     "a value after non-ASCII text on its line is spanned in bytes ($v)"
 done
+printf 'let synced = (~id, ~name, ~price=2500.0, ()) => (id, name, price)\n' > "$READ_DIR/Builder.res"
+"$READER" --bsc "$BSC" "$READ_DIR/Builder.res" > "$READ_DIR/Builder.read.json"
+assert_js_contains "$READ_DIR/Builder.read.json" '"label":"~id","default":null' \
+  "a labelled parameter has no default"
+assert_js_contains "$READ_DIR/Builder.read.json" '"label":"?price","default":{"kind":"float","value":"2500.0"' \
+  "a parameter with a default is optional and carries its default"
 echo 'let x = (' > "$READ_DIR/Broken.res"
 if "$READER" --bsc "$BSC" "$READ_DIR/Broken.res" >/dev/null 2>&1; then
   fail "a file bsc cannot parse" "the reader exited 0"
