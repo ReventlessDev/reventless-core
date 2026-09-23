@@ -1,4 +1,4 @@
-open OrderingExamples
+open Ordering_Examples
 
 // `MultiSourceProjection_GWT.Make` is single-source, so one GWT module per source
 // mapping. At runtime the two merge on `customerId`; here each is tested alone.

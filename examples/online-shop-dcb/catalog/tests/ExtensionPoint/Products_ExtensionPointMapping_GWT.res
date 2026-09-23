@@ -2,7 +2,7 @@
 // events become the stable public events Ordering subscribes to.
 @@reventless.gwt
 
-open CatalogExamples
+open Catalog_Examples
 
 describe("Products ExtensionPoint mapping", () => {
   // scenario-id: affe4040-933d-4b31-b50e-011abe200945

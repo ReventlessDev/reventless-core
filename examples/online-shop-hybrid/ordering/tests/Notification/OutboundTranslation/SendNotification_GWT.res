@@ -9,7 +9,7 @@ module SendNotificationSlice = {
 
 @@reventless.gwt
 
-open OrderingExamples
+open Ordering_Examples
 
 let item: SendNotification.outboundItem = {
   recipientId: "c1",

@@ -14,7 +14,7 @@ module GeocodeCustomerAddressSlice = {
 
 @@reventless.gwt
 
-open OrderingExamples
+open Ordering_Examples
 
 let vienna: Reventless.GeoPoint.t = {lat: 48.2082, lng: 16.3738}
 

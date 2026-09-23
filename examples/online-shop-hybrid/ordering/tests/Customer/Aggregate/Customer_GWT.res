@@ -1,6 +1,6 @@
 @@reventless.gwt
 
-open OrderingExamples
+open Ordering_Examples
 
 describe("Customer Behavior", () => {
   // scenario-id: 190d3516-9b61-4ed3-bc89-beea8997f380

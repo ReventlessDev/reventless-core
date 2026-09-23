@@ -2,7 +2,7 @@
 // into one public per-product event each (one-to-many fan-out).
 @@reventless.gwt
 
-open OrderingExamples
+open Ordering_Examples
 
 describe("Orders ExtensionPoint mapping — per-product fan-out", () => {
   // scenario-id: b3fe53fe-84bd-4bb7-aca3-a0f9db5a186f

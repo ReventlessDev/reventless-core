@@ -1,6 +1,6 @@
 @@reventless.gwt
 
-open OrderingExamples
+open Ordering_Examples
 
 // What a claim does to the request that reads it is the trait's, and is asserted
 // through the conformance binding next door. What is left here is this slice's

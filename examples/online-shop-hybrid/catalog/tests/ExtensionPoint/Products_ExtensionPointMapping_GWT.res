@@ -2,7 +2,7 @@
 // become the stable public events Ordering subscribes to.
 @@reventless.gwt
 
-open CatalogExamples
+open Catalog_Examples
 
 // Published events and handled directives are disjoint channels on the same
 // mapping run — each `test` projects to one channel and asserts on it.

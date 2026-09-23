@@ -1,6 +1,6 @@
 @@reventless.gwt
 
-open OrderingExamples
+open Ordering_Examples
 
 // Prices are money, so a test writes the amount a person would say and converts
 // it once. `ofMajor` scales by the currency's own exponent, which is what keeps

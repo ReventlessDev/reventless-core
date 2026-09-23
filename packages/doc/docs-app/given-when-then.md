@@ -647,7 +647,7 @@ Not auto-opened: spec-adjacent types modules (e.g. `DeploymentTypes`,
 shared-variant modules beyond the Spec). Those still need an explicit
 `open` in the test body.
 
-### 4.12 Example files (`<Plugin>Examples.res`, `<Slice>_Examples.res`)
+### 4.12 Example files (`<Plugin>_Examples.res`, `<Slice>_Examples.res`)
 
 **This is what the example plugins use, and what to reach for first.** A
 fixtures module (§ 4.11) holds whatever a file finds repetitive — a whole
@@ -658,7 +658,7 @@ From `examples/online-shop-hybrid/ordering` — the plugin's shared values, grou
 by type (extract):
 
 ```rescript
-// tests/OrderingExamples.res
+// tests/Ordering_Examples.res
 @@reventless.examples
 
 let p1: CatalogSpec.ProductId.t = CatalogSpec.ProductId.makeFromString("p1")
@@ -683,7 +683,7 @@ The slice's own record type lives beside its test, not in the plugin file:
 @@reventless.examples
 
 open PlaceOrder
-open OrderingExamples
+open Ordering_Examples
 
 // The line eleven tests place: one Fathom Dock at its shelf price.
 let dockLine: orderLine = {
@@ -699,7 +699,7 @@ let dockLine: orderLine = {
 // tests/Order/StateChange/PlaceOrder_GWT.res
 @@reventless.gwt
 
-open OrderingExamples
+open Ordering_Examples
 open PlaceOrder_Examples
 
 describe("PlaceOrder StateChangeSlice", () => {
@@ -746,7 +746,7 @@ Conventions:
 
 - **Where a value lives is decided by its type.** Ids, framework values
   (`Reventless.Money.t`, `Reventless.DateTime.t`) and other plugins' types go in
-  `tests/<Plugin>Examples.res`. A slice's own records and variants go in
+  `tests/<Plugin>_Examples.res`. A slice's own records and variants go in
   `<Slice>_Examples.res` beside the GWT file — as
   `Order/StateChange/PlaceOrder_Examples.res` holds `dockLine`, the `orderLine`
   eleven tests place.
@@ -758,7 +758,7 @@ Conventions:
 - **Grouped by type, sorted by name within a group.** The tooling maintains this
   when it adds one, so a hand-added example goes in its group too.
 - **Opened explicitly.** Unlike a fixtures module, an example file is not
-  auto-opened — the test writes `open <Plugin>Examples`. Both the plugin file and
+  auto-opened — the test writes `open <Plugin>_Examples`. Both the plugin file and
   a slice file can be open at once.
 - **Money is written in minor units through `Reventless.Money.make`.** That is the
   one form; per-file `eur`/`usd` helpers are what this replaced.
@@ -910,7 +910,7 @@ Full field reference lives in
 - **Example plugins ship `*_GWT.res` files and their example files.** In the
   example plugins
   (`examples/online-shop-aggregates/`, `online-shop-dcb/`, `online-shop-hybrid/`)
-  the `tests/` tree contains **only `*_GWT.res` files and the `*Examples.res` they
+  the `tests/` tree contains **only `*_GWT.res` files and the `*_Examples.res` they
   share values through** (§ 4.12) — no `E2E`, no ad-hoc
   `*BehaviorTest.res` / `*DecisionTest.res` / `*ProjectionTest.res`. Tests mirror
   `src/` 1:1 (so the PPX folder-segment heuristic resolves the kind). Ship one

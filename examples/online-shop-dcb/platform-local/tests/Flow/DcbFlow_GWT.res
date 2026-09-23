@@ -14,7 +14,7 @@
 //          └─ SendOrderConfirmation : confirmation effect fired
 @@reventless.gwt
 
-open PlatformLocalExamples
+open PlatformLocal_Examples
 
 // Compose the automation onto a flat slice — the production split keeps
 // collect/resolve inside the per-source mapping; the GWT needs them together.

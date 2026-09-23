@@ -22,7 +22,7 @@ module AutoShipOrderSlice = {
 
 @@reventless.gwt
 
-open OrderingExamples
+open Ordering_Examples
 
 describe("AutoShipOrder AutomationSlice", () => {
   // scenario-id: 1ba638a2-88ea-4f2c-9a4e-1520276a0b37

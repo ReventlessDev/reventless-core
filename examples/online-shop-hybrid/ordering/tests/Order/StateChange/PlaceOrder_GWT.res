@@ -1,6 +1,6 @@
 @@reventless.gwt
 
-open OrderingExamples
+open Ordering_Examples
 open PlaceOrder_Examples
 
 describe("PlaceOrder StateChangeSlice", () => {

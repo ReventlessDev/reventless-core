@@ -1,6 +1,6 @@
 @@reventless.gwt
 
-open OrderingExamples
+open Ordering_Examples
 
 // Ids are typed; the literals are made once, here.
 let cust1 = CustomerId.make("cust-1")

@@ -25,7 +25,7 @@ module Rule = TraitNotification.Notification_Rule
 
 @@reventless.gwt
 
-open OrderingExamples
+open Ordering_Examples
 
 // One row of the shape every rule's paths read, so a rule nobody wrote a
 // scenario for is still checked.

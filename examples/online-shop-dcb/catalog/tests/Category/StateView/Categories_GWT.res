@@ -1,6 +1,6 @@
 @@reventless.gwt
 
-open CatalogExamples
+open Catalog_Examples
 
 describe("Categories StateViewSlice", () => {
   // scenario-id: 37a3e157-7469-49fe-8b4d-f15f8f2a5cbf

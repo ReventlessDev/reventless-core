@@ -1,6 +1,6 @@
 @@reventless.gwt
 
-open OrderingExamples
+open Ordering_Examples
 
 describe("AvailableProducts StateViewSlice", () => {
   // scenario-id: bbaa93a0-6f73-437b-948e-583c3f5b1b63

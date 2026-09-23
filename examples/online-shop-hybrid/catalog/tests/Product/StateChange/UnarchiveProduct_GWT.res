@@ -1,6 +1,6 @@
 @@reventless.gwt
 
-open CatalogExamples
+open Catalog_Examples
 
 // The modelling claim that makes the two retired states worth having, asserted
 // rather than left to a comment: one withdrawal can be undone and the other

@@ -1,6 +1,6 @@
 @@reventless.gwt
 
-open CatalogExamples
+open Catalog_Examples
 
 describe("ProductDemand Behavior", () => {
   // scenario-id: bfe0c68e-f135-447f-9036-c339c9769747

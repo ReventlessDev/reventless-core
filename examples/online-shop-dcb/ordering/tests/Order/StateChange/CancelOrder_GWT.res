@@ -1,6 +1,6 @@
 @@reventless.gwt
 
-open OrderingExamples
+open Ordering_Examples
 
 describe("CancelOrder StateChangeSlice", () => {
   // scenario-id: 8ec10480-8490-4004-a83c-1efa3d94695c

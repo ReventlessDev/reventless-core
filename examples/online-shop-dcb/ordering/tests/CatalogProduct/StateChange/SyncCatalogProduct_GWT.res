@@ -1,6 +1,6 @@
 @@reventless.gwt
 
-open OrderingExamples
+open Ordering_Examples
 
 describe("SyncCatalogProduct StateChangeSlice", () => {
   // scenario-id: 7aa368ea-aa0c-4643-9ac1-73fa767d66ee

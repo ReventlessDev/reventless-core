@@ -21,7 +21,7 @@
 @@reventless.gwt
 
 // Ids are typed; the literals are made once, in the examples file beside this one.
-open PlatformLocalExamples
+open PlatformLocal_Examples
 
 // Single-plugin steps inside Ordering ----------------------------------------
 

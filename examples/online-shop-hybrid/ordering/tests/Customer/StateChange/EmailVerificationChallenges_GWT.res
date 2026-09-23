@@ -1,6 +1,6 @@
 @@reventless.gwt
 
-open OrderingExamples
+open Ordering_Examples
 
 // The challenge ledger. What it owns is one secret at a time: issue it, count
 // wrong answers against it, settle it once, and let it lapse on its own.

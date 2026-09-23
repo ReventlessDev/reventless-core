@@ -9,7 +9,7 @@
 
 @@reventless.gwt
 
-open OrderingExamples
+open Ordering_Examples
 
 module Rule = TraitNotification.Notification_Rule
 

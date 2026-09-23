@@ -1,6 +1,6 @@
 @@reventless.gwt
 
-open OrderingExamples
+open Ordering_Examples
 
 describe("RegisterCustomer StateChangeSlice", () => {
   // scenario-id: fd616ac0-6ee3-47ef-b74f-212a7befac4a

@@ -1,6 +1,6 @@
 @@reventless.gwt
 
-open CatalogExamples
+open Catalog_Examples
 
 describe("Category Behavior", () => {
   // scenario-id: fb4b109a-87b5-4aa3-a8e2-4fca61d0c050

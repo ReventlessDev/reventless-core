@@ -12,7 +12,7 @@ module SendOrderConfirmationSlice = {
 
 @@reventless.gwt
 
-open OrderingExamples
+open Ordering_Examples
 
 describe("SendOrderConfirmation OutboundTranslationSlice", () => {
   testSync("collect: OrderPlaced queues an outbound TODO", () =>

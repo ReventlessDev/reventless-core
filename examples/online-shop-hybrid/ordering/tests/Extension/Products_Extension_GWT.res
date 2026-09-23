@@ -2,7 +2,7 @@
 // SyncCatalogProduct commands on Ordering's local shadow slice.
 @@reventless.gwt
 
-open OrderingExamples
+open Ordering_Examples
 
 // `Mapping` is brought into scope by the PPX `open Products_Extension`; opening
 // it surfaces the extension point's events and the delegate's commands.

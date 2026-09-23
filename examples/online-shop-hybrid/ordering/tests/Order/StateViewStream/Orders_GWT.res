@@ -1,6 +1,6 @@
 @@reventless.gwt
 
-open OrderingExamples
+open Ordering_Examples
 
 // Minor units, the way `Money` counts them: 2500 is €25.00. The lines are the
 // write side's own — this view copies them through rather than deriving anything

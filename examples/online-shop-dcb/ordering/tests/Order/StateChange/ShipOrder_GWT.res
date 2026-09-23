@@ -1,6 +1,6 @@
 @@reventless.gwt
 
-open OrderingExamples
+open Ordering_Examples
 
 describe("ShipOrder StateChangeSlice", () => {
   // scenario-id: 2146c7ce-d052-4b18-8d15-373916445f80

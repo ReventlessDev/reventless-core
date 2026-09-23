@@ -3,7 +3,7 @@
  * A GWT test names the values it shares, instead of defining a helper to spell them.
  *
  * The example apps' tests keep their shared values in example files — ids in
- * `tests/<Plugin>Examples.res`, a slice's own records in `<Slice>_Examples.res` —
+ * `tests/<Plugin>_Examples.res`, a slice's own records in `<Slice>_Examples.res` —
  * so a scenario opened in the authoring form shows a chip rather than ReScript
  * text, and so the same product is spelled one way everywhere. The tests were
  * brought to that shape once; this keeps them there, because both ways of
@@ -138,9 +138,9 @@ for (const plugin of pluginsOf(examplesRoot)) {
   const gwtFiles = filesUnder(tests, '_GWT.res')
   if (gwtFiles.length === 0) continue
 
-  const exampleFiles = new Set(
-    filesUnder(tests, '_Examples.res').concat(filesUnder(tests, 'Examples.res')),
-  )
+  // Both the plugin's file and a slice's carry the companion suffix, so one glob finds
+  // them: `Ordering_Examples.res`, `PlaceOrder_Examples.res`.
+  const exampleFiles = new Set(filesUnder(tests, '_Examples.res'))
   if (exampleFiles.size === 0) {
     findings.push(
       `${relative(repoRoot, plugin)}  has ${gwtFiles.length} GWT tests and no example file`,

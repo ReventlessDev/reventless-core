@@ -5,7 +5,7 @@
 // `Mapping` is brought into scope by the PPX `open Products_Extension`; opening
 // it surfaces the extension point's events and the delegate's commands.
 open Mapping
-open OrderingExamples
+open Ordering_Examples
 
 describe("Products Extension delegate", () => {
   // scenario-id: 4c14eb06-02b8-41ae-b0b8-cf33ef430e93

@@ -9,7 +9,7 @@ module ImportProductSlice = {
 
 @@reventless.gwt
 
-open CatalogExamples
+open Catalog_Examples
 
 let pid = CatalogSpec.ProductId.make
 

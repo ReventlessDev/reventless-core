@@ -16,7 +16,7 @@
 // the flow seeds a CatalogProductSynced event before placing the order.
 @@reventless.gwt
 
-open OrderingExamples
+open Ordering_Examples
 
 // Compose the automation onto a flat slice — the production split keeps
 // collect/resolve inside the per-source mapping; the GWT needs them together.

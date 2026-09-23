@@ -4,7 +4,7 @@
 
 @@reventless.gwt
 
-open CatalogExamples
+open Catalog_Examples
 
 let img = "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg"
 

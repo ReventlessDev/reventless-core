@@ -2,7 +2,7 @@
 // RecordProductDemand commands on Catalog's StateChangeSlices.
 @@reventless.gwt
 
-open CatalogExamples
+open Catalog_Examples
 
 // `Mapping` is brought into scope by the PPX `open Orders_Extension`; opening
 // it surfaces the extension point's events and the delegate's commands.

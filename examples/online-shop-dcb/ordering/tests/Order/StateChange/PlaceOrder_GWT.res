@@ -1,6 +1,6 @@
 @@reventless.gwt
 
-open OrderingExamples
+open Ordering_Examples
 
 describe("PlaceOrder StateChangeSlice", () => {
   // scenario-id: 2165f9d4-87c0-4f25-a4f6-c3e0ac59a41b

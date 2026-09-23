@@ -1,6 +1,6 @@
 @@reventless.gwt
 
-open CatalogExamples
+open Catalog_Examples
 
 describe("DiscontinueProduct StateChangeSlice", () => {
   // scenario-id: 16ad56a6-d9da-4144-9912-2893d70b15cc

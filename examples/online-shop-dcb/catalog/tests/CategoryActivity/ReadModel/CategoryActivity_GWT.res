@@ -1,4 +1,4 @@
-open CatalogExamples
+open Catalog_Examples
 
 // Multi-source ReadModel: one `_GWT` instance per source mapping. The
 // `MultiSourceProjection_GWT.Make` functor is single-source — wire one GWT

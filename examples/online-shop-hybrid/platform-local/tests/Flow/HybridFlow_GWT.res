@@ -14,7 +14,7 @@
 //               └─ Catalog: RecordProductDemand ─→ ProductDemandRecorded
 @@reventless.gwt
 
-open PlatformLocalExamples
+open PlatformLocal_Examples
 
 module Cat = CommandStep(CatalogPlugin.AddCategory, CatalogPlugin.AddCategory_Behavior)
 module Add = CommandStep(CatalogPlugin.AddProduct, CatalogPlugin.AddProduct_Behavior)

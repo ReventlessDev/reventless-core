@@ -1,6 +1,6 @@
 @@reventless.gwt
 
-open CatalogExamples
+open Catalog_Examples
 
 // Literals throughout: the lifecycle check harvests `shelfStatus` from the
 // sidecar the PPX writes, and it can only read what is spelled out.

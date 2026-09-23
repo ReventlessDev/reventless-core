@@ -3,7 +3,7 @@
 
 @@reventless.gwt
 
-open CatalogExamples
+open Catalog_Examples
 
 let img = "/uploads/cat/c1.svg"
 let banner = "/uploads/cat/c1-banner.svg"

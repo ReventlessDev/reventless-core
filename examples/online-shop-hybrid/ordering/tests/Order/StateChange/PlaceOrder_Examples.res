@@ -1,7 +1,7 @@
 @@reventless.examples
 
 open PlaceOrder
-open OrderingExamples
+open Ordering_Examples
 
 // The line eleven tests place: one Fathom Dock at its shelf price.
 let dockLine: orderLine = {
