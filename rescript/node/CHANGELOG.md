@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.0.0-alpha.14 (2026-09-23)
+
+### Features
+
+* **node:** bind process.stderr ([a8255b5](https://github.com/ReventlessDev/reventless-core/commit/a8255b5616f4dfa68fef5fa941dfaa092442428b))
+
+
 # 2.0.0-alpha.13 (2026-09-21)
 
 ### Bug Fixes
